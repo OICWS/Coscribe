@@ -23,7 +23,7 @@
 
 ## Not verified
 
-<!-- What you could not test (a real account, a platform, a vendor flow). Say so plainly. Each item that needs a real machine or an account gets an issue (label `needs-real-machine` or `needs-account`); put its number after the item. -->
+<!-- What you could not test (a real account, a platform, a vendor flow). Say so plainly, and say if a script could check it on Windows. -->
 
 ## Screenshots
 

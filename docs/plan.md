@@ -18,8 +18,10 @@ Last reviewed: 2026-10-11.
    3. The 126 stale references fixed and a checker that keeps them fixed.
    4. Done: a snapshot of the tool schemas and the system prompt (`tests/tool_schemas.txt`).
    5. Reviews and "not verified" items recorded where they can be found: the PR template
-      and the rules ask for an issue and a linked GitHub review (done); the not-verified
-      ledger as issues is next.
+      and the rules ask for an issue and a linked GitHub review (done). A ledger of issues
+      for the not-verified items was dropped: the maintainer tests by using the app, and
+      what a script can check on Windows goes into a Windows job in CI (step 13 of the
+      assessment, brought forward: the next step after this one).
    Then public interfaces and cards per package, golden-file and approval tests, and
    only after them the large splits (roadmap in the assessment).
 

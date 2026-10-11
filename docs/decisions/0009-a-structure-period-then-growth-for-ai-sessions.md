@@ -24,9 +24,10 @@ coverage.
 - **A change should need a bounded slice** (target: about 15 files, about 150k
   tokens), through packages with a public interface and a short card each.
 - **The core is budgeted at about 100k lines**, as the assessment defines it.
-- **Human minimum**: about 2 hours a week of smoke testing on a real Windows
-  machine, approving decision records and any loosening of a baseline, and a
-  security review each quarter. The second maintainer joins this when they arrive.
+- **Human minimum**: using the app now and then, at random, and reporting what is
+  wrong (no checklist, no fixed hours); approving decision records and any
+  loosening of a baseline; a security review each quarter. A Windows job in CI and
+  scripts cover what a real Windows machine would catch.
 - **Not decided**: moving the repository to a GitHub organisation (merge queue and
   team code owners need one).
 
