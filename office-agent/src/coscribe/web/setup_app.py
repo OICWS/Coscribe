@@ -327,7 +327,7 @@ def build_setup_app(
     That used to mean the whole process printing a "Configuration error"
     and exiting (cli.py's _load_settings) the instant it was reached --
     survivable at a terminal (fix .env, rerun), a dead end for the
-    desktop app (office-agent-desktop/dist/index.html's splash page has
+    desktop app (office-agent-desktop/src/splash/index.html's splash page has
     no way to tell this apart from any other startup crash, so it just
     showed "coscribe couldn't start" and pointed at a log file).
 

@@ -1,17 +1,12 @@
 """FastAPI app: serves the chat WebSocket protocol and the static frontend.
 
 Built on runtime_lg (the LangGraph-based runtime -- see runtime_lg/README.md
-for the full migration history). This module was `web/app_lg.py` through
-Phase 3 of that migration, developed alongside the original hand-rolled-
-runtime `web/app.py` as a parallel track; that original was deleted and
-this one promoted in its place once runtime_lg reached real feature parity
-and several rounds of live use turned up no gaps the old runtime still
-covered (see runtime_lg/README.md's "web cutover" section).
+for the full migration history).
 
 Reuses the existing frontend (web/static/*) unmodified -- the WS wire
 protocol was kept identical to the old runtime's on purpose throughout the
 migration, see runtime_lg/README.md's research notes. Plan Mode/Accept-
-Edits/Compact/Hooks are wired in via web/session.py -- see that module's
+Edits/Compact/Hooks are wired in via conversation/session.py -- see that module's
 docstring and runtime_lg/README.md for the design (interrupt_on membership
 doubling as the plan-mode-blocked set; all-tools interrupt gating when
 PreToolUse hooks are configured; checkpointer-state compaction). MCP tools
@@ -23,11 +18,8 @@ One real behavioral gap vs. the old runtime, **now closed for MCP
 connectors specifically, still open for everything else**: config changes
 elsewhere (a new custom provider, a new/removed skill) still only take
 effect for the next new thread/session, not every
-already-open one. The old runtime's identical endpoints hot-reloaded into
-every live ChatSession because runtime/runner.py's Runner re-read
-agent.tools and re-resolved the model fresh on every single turn;
-runtime_lg's create_agent() compiles a fixed graph once (model and tools
-baked in), so an already-open ChatSession keeps whatever it was built with
+already-open one: runtime_lg's create_agent() compiles a fixed graph once
+(model and tools baked in), so an already-open ChatSession keeps whatever it was built with
 until its process restarts or a fresh thread_id is opened, unless
 something explicitly rebuilds that graph in place.
 

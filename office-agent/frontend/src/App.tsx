@@ -611,7 +611,7 @@ function App() {
     }
     if (payload.displayText.trim().toLowerCase() === "/stop") {
       // Reaches the currently-running turn directly, not queued behind it
-      // like a normal message would -- see web/session.py's request_stop().
+      // like a normal message would -- see conversation/session.py's request_stop().
       // Not routed through runOrQueueSend: a turn has to already be
       // running for /stop to mean anything, which itself requires
       // history to have long since arrived.

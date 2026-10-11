@@ -1,6 +1,6 @@
 """Best-effort office-file thumbnail rendering via headless LibreOffice,
 shared by documents.py/spreadsheets.py/presentations.py's write_* tools,
-and (render_single_page_preview specifically) by web/session.py's
+and (render_single_page_preview specifically) by conversation/session.py's
 approval-preview (_build_pptx_edit_preview) -- a before/after slide
 render shown in the approval card for a pptx edit, instead of just its
 raw JSON arguments.
@@ -240,7 +240,7 @@ def render_single_page_preview(
     under `state_dir/previews/` -- `render_all_page_previews` always
     starts from page 1 and is capped by *count*, not by which page, so
     it can't cheaply target one specific page deep into a large deck.
-    web/session.py's approval-preview (`_build_pptx_edit_preview`) needs
+    conversation/session.py's approval-preview (`_build_pptx_edit_preview`) needs
     exactly that: the one slide a specific edit targets, wherever it
     falls in the deck, without paying to rasterize every slide before it.
     Same graceful-degradation contract as the rest of this module: never

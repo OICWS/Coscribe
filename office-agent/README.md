@@ -1904,7 +1904,7 @@ thread, same as `coscribe --thread <id>`. The mode pill (bottom-left of
 the message box) covers Manual/Accept Edits/Plan/Auto -- it just sends the
 same `/accept-edits`/`/plan`/`/auto` text the CLI understands, no separate
 protocol.
-The web layer (`src/coscribe/web/app.py` + `web/session.py`) runs
+The web layer (`src/coscribe/web/app.py` + `conversation/session.py`) runs
 directly on runtime_lg -- `ChatSessionLG` compiles and drives a LangGraph
 agent per thread, it isn't a bridge in front of a separate execution
 engine.
@@ -2036,7 +2036,7 @@ meant to be exposed beyond your own machine.
 Replies stream token-by-token (both here and in the CLI) for every
 provider uniformly -- anthropic/gemini/openai and any OpenAI-compatible
 custom one -- via one shared LangGraph `agent.astream(..., stream_mode=
-["messages"])` call (`web/session.py`'s `_stream_turn`), not
+["messages"])` call (`conversation/session.py`'s `_stream_turn`), not
 per-provider vendored code. This wasn't always true: an earlier runtime
 had per-provider streaming code that only covered the vendored Gemini
 provider, with Anthropic/OpenAI falling back to a single non-streamed

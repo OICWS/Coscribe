@@ -47,7 +47,7 @@ Decision = Literal["allow", "forbidden", "prompt"]
 _VALID_DECISIONS: frozenset[str] = frozenset({"allow", "forbidden", "prompt"})
 
 # The only two tools this applies to -- both take their source under a
-# `script` argument (see tools/scripts.py's/tools/node_scripts.py's own
+# `script` argument (see tools/scripts.py's and tools/node_scripts.py's own
 # `run_python_script`/`run_node_script`).
 EXEC_POLICY_TOOL_NAMES: frozenset[str] = frozenset({"run_python_script", "run_node_script"})
 

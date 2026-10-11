@@ -6,7 +6,7 @@ section for how this got here, and its Context section for why the
 migration happened at all: the original runtime's vendored Gemini adapter
 shipped three real bugs in a row).
 
-Reuses `web/session.py`'s `ChatSessionLG` directly instead of
+Reuses `conversation/session.py`'s `ChatSessionLG` directly instead of
 re-implementing /plan, /accept-edits, /compact, /clear, and
 /saveworkflow a second time -- every one of those is already built and tested
 against the web transport, and `ChatSessionLG`'s constructor needs
@@ -178,7 +178,7 @@ def _load_settings_or_none() -> Settings | None:
     story for the desktop app: office-agent-desktop's splash page has no
     way to tell it apart from any other startup failure, so it just showed
     "coscribe couldn't start" and pointed the user at a log file to hand-
-    edit .env from (see office-agent-desktop/dist/index.html's own
+    edit .env from (see office-agent-desktop/src/splash/index.html's own
     showFailure). _load_settings above is unchanged and still used by the
     CLI: a terminal is already the right place to fix a bad .env by hand,
     no setup UI needed there."""

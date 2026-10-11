@@ -61,8 +61,8 @@ check clicks with real input (xdotool under Xvfb, or Windows itself).
   was originally ported from).
 - **No `remote` capability grant needed for the sidecar's own origin.**
   Tauri's IPC bridge doesn't extend to a `WebviewUrl::External` origin
-  by default, which the Tauri shell's own `capabilities/default.json`
-  `remote.urls` grant existed solely to work around. Electron's preload
+  by default, which the Tauri shell had to work around with a `remote.urls`
+  capability grant. Electron's preload
   re-executes on every navigation of the same window (including the one
   to the sidecar's own `http://127.0.0.1:<port>` origin) -- there's no
   equivalent origin-ACL problem here at all.

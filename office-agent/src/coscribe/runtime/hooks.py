@@ -5,7 +5,7 @@ See ARCHITECTURE.md's "Approvals instead of a sandbox" -- originally PreToolUse/
 SessionStart only, reusing ToolPolicy's own event point for PreToolUse (see
 HookToolPolicy in policies.py) rather than inventing a separate mechanism.
 ROADMAP.md's Phase 7 item 3 (comparing against openai/codex's own 12-event
-hooks crate) added five more, all in web/session.py -- SessionEnd,
+hooks crate) added five more, all in conversation/session.py -- SessionEnd,
 UserPromptSubmit, PreCompact, PostCompact, Interrupt -- everywhere with a
 clear, already-existing async call site to fire from; SubagentStart/
 SubagentStop were left out on purpose (see ROADMAP.md), since

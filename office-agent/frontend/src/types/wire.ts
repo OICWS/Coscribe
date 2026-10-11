@@ -1,7 +1,7 @@
 import type { StepRecord } from "./workflow";
 /**
  * The exact wire contract coscribe-web speaks, as of this session's
- * full re-read of coscribe/web/app.py, web/session.py,
+ * full re-read of coscribe/web/app.py, conversation/session.py,
  * and runtime_lg/messages.py -- not reverse-
  * engineered from the old app.js, which could itself have drifted from
  * the real backend. This file is the single source of truth the rest of
@@ -103,7 +103,7 @@ export interface ToolResultEvent {
   type: "tool_result";
   tool_name: string;
   /** The call's own arguments, recovered server-side from the preceding
-   * AIMessage's tool_calls (see web/session.py's _stream_turn) -- lets a
+   * AIMessage's tool_calls (see conversation/session.py's _stream_turn) -- lets a
    * live turn's collapsed row show the real filename/query the way
    * history replay already can from its own checkpointed arguments,
    * instead of always falling back to generic phrasing ("a file"). */
@@ -125,7 +125,7 @@ export interface ApprovalRequiredEvent {
   /** Bare filenames under GET /api/previews/, same convention as a
    * completed tool result's own preview_path (see ChatLog.tsx's
    * previewPathOf) -- a before/after render of the one pptx edit this
-   * approval is gating, from web/session.py's _build_pptx_edit_preview.
+   * approval is gating, from conversation/session.py's _build_pptx_edit_preview.
    * Both null whenever that doesn't apply (not a previewable pptx edit,
    * LibreOffice/poppler missing, or the dry run itself failed) -- never
    * an error, just nothing to show beside the raw arguments below. */
@@ -306,7 +306,7 @@ export interface RewoundEvent {
 
 /** /saveskill's own success confirmation. `slug` is the skill's own
  * directory name -- also the /<slug> force-load token
- * (see QuestionRequiredEvent-adjacent skills_by_slug in web/session.py). */
+ * (see QuestionRequiredEvent-adjacent skills_by_slug in conversation/session.py). */
 export interface SkillSavedEvent {
   type: "skill_saved";
   name: string;

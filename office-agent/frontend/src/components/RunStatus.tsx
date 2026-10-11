@@ -12,7 +12,7 @@ interface RunStatusProps {
  * state.totalTokens (the same running total ContextRing shows) has grown
  * by since then. Both numbers tick/update live: the backend now sends a
  * "usage" WS event after every model response within a turn (see
- * web/session.py's _capture_segment_usage), not only once the whole turn
+ * conversation/session.py's _capture_segment_usage), not only once the whole turn
  * finishes, so a long multi-tool-call turn updates the token count as it
  * goes instead of jumping once at the end.
  *

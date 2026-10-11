@@ -804,7 +804,7 @@ function ToolCallRow({
 }
 
 /** A pptx edit's before/after slide render, side by side -- what
- * web/session.py's _build_pptx_edit_preview sends alongside a raw
+ * conversation/session.py's _build_pptx_edit_preview sends alongside a raw
  * arguments dump, so approving `{"shape_index": 3, "fill_color":
  * "38BDF8"}` doesn't require reading JSON to picture the result. Either
  * side can be missing on its own (the dry run failed, or there was
@@ -971,7 +971,7 @@ function ApprovalDetail({
  * swaps the bubble for an inline textarea; submitting truncates the
  * conversation at this turn and regenerates from the edited text (see
  * EditMessageOut's docstring in wire.ts and _handle_edit_message_locked
- * in web/session.py for what happens server-side). Its own useState (not
+ * in conversation/session.py for what happens server-side). Its own useState (not
  * lifted into ChatState) mirrors ToolCallRow/ToolRunGroupView's existing
  * pattern of local, ephemeral UI state that doesn't need to survive a
  * remount or be visible to any other component. */

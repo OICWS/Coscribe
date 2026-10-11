@@ -3,7 +3,7 @@
 This module used to also hold the compaction *mechanism* itself
 (run_compaction/compact_state/maybe_auto_compact/render_transcript,
 built around the old runtime's RunState/Runner) -- deleted as dead code
-once web/session.py's own async _handle_compact (built directly on
+once conversation/session.py's own async _handle_compact (built directly on
 runtime_lg's checkpointer/message-list model, which has no equivalent of
 the old RunState to collapse) became the only real compaction path left
 running. See runtime_lg/README.md's "audit + delete old runtime" section.

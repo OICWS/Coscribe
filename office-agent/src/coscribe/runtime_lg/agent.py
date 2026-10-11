@@ -132,7 +132,7 @@ class _CatchToolErrorsMiddleware(AgentMiddleware):
     does not exist: {path}")` is a completely ordinary code path there, not
     a crash. Under runtime_lg, before this fix, that `ValueError` propagated
     all the way out of `agent.astream()`/`.ainvoke()`, hit
-    `_handle_user_message_locked`'s `except Exception` in web/session.py,
+    `_handle_user_message_locked`'s `except Exception` in conversation/session.py,
     and ended the turn immediately with a bare `{"type": "error", ...}` WS
     message -- no `agent_message`, no `tasks_changed`, nothing further, which
     looks exactly like the turn hanging forever from the user's side. Live-
@@ -342,19 +342,17 @@ def build_langgraph_agent(
 
     Approval gating: every tool whose existing ToolMetadata.requires_approval
     is True is added to a HumanInTheLoopMiddleware interrupt_on map --
-    this is the direct replacement for runtime/policies.py's
-    RequireApprovalPolicy, reusing the *same* per-tool metadata rather than
-    a parallel tagging system. A bare BaseTool with no coscribe
+    it reuses the *same* per-tool metadata rather than a parallel
+    tagging system. A bare BaseTool with no coscribe
     ToolMetadata attached (spawn_agent today) just gets the all-tools-
     auto-approved default, same as any other untagged callable.
 
     `extra_interrupt_tool_names`: additional tool names to route through
     that same interrupt point even though their own ToolMetadata doesn't
-    require approval -- web/session.py passes every tool name here when
+    require approval -- conversation/session.py passes every tool name here when
     PreToolUse hooks are configured, since a hook needs the chance to veto a
-    low-risk tool too (mirroring runtime/policies.py's HookToolPolicy, which
-    wraps *every* tool call regardless of risk level, not just the ones
-    RequireApprovalPolicy would already stop for). The caller is
+    low-risk tool too, not just the ones that would already stop for
+    approval. The caller is
     responsible for auto-approving these once resumed if no hook denies
     them and the tool doesn't otherwise require human approval -- this
     function only arranges for the interrupt to fire, it doesn't decide
@@ -368,7 +366,7 @@ def build_langgraph_agent(
     the human's answer is substituted directly as the tool's result. See
     `HumanInTheLoopMiddleware._process_decision`'s own "Skip tool
     execution; the human answers on behalf of the tool" comment. The
-    caller (`web/session.py`'s `_decide_action_request`) is responsible
+    caller (`conversation/session.py`'s `_decide_action_request`) is responsible
     for only ever returning a `{"type": "respond", ...}` decision for a
     name in this set -- any other decision type raises inside the
     middleware, since `allowed_decisions=["respond"]` is the only one
@@ -380,9 +378,8 @@ def build_langgraph_agent(
     `Settings.auto_compact_threshold` used to drive the old runtime's own
     `Runner` loop directly (a plain turn-count cap; `maybe_auto_compact`
     called after every turn) and had no runtime_lg equivalent wired up.
-    Only `web/session.py`'s top-level `ChatSessionLG._build_lg_agent` passes
-    these -- the (now-deleted) old `tools/subagents.py` confirms
-    spawn_agent/review_work's own sub-agent `Runner`s always used their
+    Only `conversation/session.py`'s top-level `ChatSessionLG._build_lg_agent` passes
+    these -- spawn_agent/review_work's own sub-agents always used their
     *own* independent turn cap (a `spawn_agent` function parameter, default
     6, unrelated to `Settings.max_turns`) and never ran auto-compact at
     all, so leaving both `None` (the default) at `runtime_lg/subagents.py`'s
@@ -423,7 +420,7 @@ def build_langgraph_agent(
     fraction-based trigger is requested without profile data. The caller
     computes `auto_compact_tokens` from this project's own already-working
     `LLMClient.get_context_window(model_string)` instead of depending on
-    LangChain's incomplete model-profile registry -- see `web/session.py`'s
+    LangChain's incomplete model-profile registry -- see `conversation/session.py`'s
     `_build_lg_agent`.
     """
     approval_tool_names = {

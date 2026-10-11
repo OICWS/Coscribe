@@ -110,7 +110,7 @@ class SkillInfo:
     @property
     def slug(self) -> str:
         """The single-token identifier for the /<slug> chat command (see
-        web/session.py's skills_by_name and web/app.py's /api/commands) --
+        conversation/session.py's skills_by_name and web/app.py's /api/commands) --
         the skill's own directory name, lowercased. `name` is a human-
         readable display label that can contain spaces ("Skill Creator",
         "Word Documents"), so it can't be typed as a single command token

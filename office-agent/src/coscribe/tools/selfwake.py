@@ -19,7 +19,7 @@ hypothetical:
   wake nothing could ever resolve is never registered.
 - "subagent": a tools/subagent_tasks.py SubAgentTask.task_id. No tool
   creates one -- a background sub-agent reports to its conversation by
-  itself when it ends (web/session.py) -- but a pending one on disk still
+  itself when it ends (conversation/session.py) -- but a pending one on disk still
   resolves once the run has finished.
 - "event": wake_on_event(event_key) -- resolved by a signal_event call
   (this thread, another thread, or -- once ROADMAP.md Phase 5c's Slack/
