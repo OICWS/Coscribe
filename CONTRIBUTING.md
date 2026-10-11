@@ -20,6 +20,9 @@ See [`README.md`](README.md). Then check your setup works:
    (`tools/`), *server* (`web/`), *code module* (`code_runtime/`), *frontend*
    (`office-agent/frontend/`), *desktop* (`office-agent-desktop/`), *docs*.
    Stay inside one area per change; file an issue for what you notice elsewhere.
+   Open an issue before a change that is over about 200 lines, touches a hot file
+   or an invariant path, and link it in the pull request (`Closes #N` or
+   `Part of #N`); a smaller change writes `none: <why>` there.
 3. **Write the test with the change.** A bug fix gets a test that failed before.
 4. **Run the checks:** `cd office-agent && bash scripts/check.sh --fast` before
    pushing; CI runs the full `bash scripts/check.sh` (frontend `tsc -b` and

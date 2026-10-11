@@ -19,8 +19,8 @@ coverage.
 - **Numbers are ratchets**: coverage, size and complexity budgets, public
   interfaces, tool-schema snapshots. A baseline can only improve; the baseline
   files are under `CODEOWNERS`, and **only a human may loosen one**.
-- **Invariant paths get a second reviewer from another model family** (Codex), and
-  reviews are posted as GitHub reviews so they leave a record.
+- **Reviews are posted as GitHub reviews**, so they leave a record. A second reviewer
+  from another model family (Codex) for invariant paths waits for the second maintainer.
 - **A change should need a bounded slice** (target: about 15 files, about 150k
   tokens), through packages with a public interface and a short card each.
 - **The core is budgeted at about 100k lines**, as the assessment defines it.

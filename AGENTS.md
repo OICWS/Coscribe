@@ -79,6 +79,13 @@ that file.
 - Check `git log origin/main` and the open PRs before you start; open a draft
   PR early that says which area and which hot files you touch.
 - Never merge a PR or push to `main`: the maintainer merges.
+- Open an issue first (title, area, hot files) when the change is over about 200
+  lines, touches a hot file or an invariant path, and link it in the PR
+  (`Closes #N` or `Part of #N`); a smaller change writes `none: <why>`. The open
+  issues and PRs are the board of who does what.
+- An item of "Not verified" that needs a real machine or an account gets an issue
+  (label `needs-real-machine` or `needs-account`) and its number goes after the
+  item; the maintainer closes it once checked. `docs/plan.md` keeps only the count.
 - Log what you ship in `docs/log/<date>-<slug>.md` (format in `docs/log/README.md`),
   in the same PR; add or change an open item in `docs/plan.md`. Don't append to
   `office-agent/ROADMAP.md`.

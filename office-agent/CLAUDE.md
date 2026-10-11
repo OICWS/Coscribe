@@ -56,7 +56,10 @@ instruction -- only raise something you're actually confident about.
 
 This is the author's self-check, and it is the same model reviewing its own
 work. A pull request that touches an invariant path also needs an independent
-review by a separate session the maintainer starts (`/code-review <PR number>`).
+review by a separate session the maintainer starts
+(`/code-review <PR number> --comment`). The findings are posted on the pull
+request as a GitHub review, and the PR body links to it: the PR page then shows
+that the review happened and what it found, which a conversation does not.
 Invariant paths: `runtime/secrets*.py`, `runtime/secret_store.py`,
 `runtime_lg/tool_deferral.py`, `runtime_lg/mcp_oauth.py`,
 `code_runtime/permissions.py`, `coordinator.py` (the instructions and the core
