@@ -1,6 +1,6 @@
 # 0007: Working with more than one human and their AI sessions
 
-Status: proposed (2026-10-09), for the maintainer to accept, change or drop.
+Status: accepted (2026-10-11).
 
 ## Context
 0006 assumed one human and sessions sharing one GitHub identity, so review gates
