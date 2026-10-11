@@ -19,14 +19,15 @@ coverage.
 - **Numbers are ratchets**: coverage, size and complexity budgets, public
   interfaces, tool-schema snapshots. A baseline can only improve; the baseline
   files are under `CODEOWNERS`, and **only a human may loosen one**.
-- **Invariant paths get a second reviewer from another model family** (Codex), and
-  reviews are posted as GitHub reviews so they leave a record.
+- **Reviews are posted as GitHub reviews**, so they leave a record. A second reviewer
+  from another model family (Codex) for invariant paths waits for the second maintainer.
 - **A change should need a bounded slice** (target: about 15 files, about 150k
   tokens), through packages with a public interface and a short card each.
 - **The core is budgeted at about 100k lines**, as the assessment defines it.
-- **Human minimum**: about 2 hours a week of smoke testing on a real Windows
-  machine, approving decision records and any loosening of a baseline, and a
-  security review each quarter. The second maintainer joins this when they arrive.
+- **Human minimum**: using the app now and then, at random, and reporting what is
+  wrong (no checklist, no fixed hours); approving decision records and any
+  loosening of a baseline; a security review each quarter. A Windows job in CI and
+  scripts cover what a real Windows machine would catch.
 - **Not decided**: moving the repository to a GitHub organisation (merge queue and
   team code owners need one).
 

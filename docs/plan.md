@@ -17,7 +17,11 @@ Last reviewed: 2026-10-11.
       waits until the tests are shown independent. The coverage floor is 88 (CI: 88.58).
    3. Done: the stale references fixed and `tests/test_doc_references.py` keeps them fixed.
    4. Done: a snapshot of the tool schemas and the system prompt (`tests/tool_schemas.txt`).
-   5. Reviews and "not verified" items recorded where they can be found.
+   5. Reviews and "not verified" items recorded where they can be found: the PR template
+      and the rules ask for an issue and a linked GitHub review (done). A ledger of issues
+      for the not-verified items was dropped: the maintainer tests by using the app, and
+      what a script can check on Windows goes into a Windows job in CI (step 13 of the
+      assessment, brought forward: the next step after this one).
    Then public interfaces and cards per package, golden-file and approval tests, and
    only after them the large splits (roadmap in the assessment).
 
@@ -64,6 +68,11 @@ Last reviewed: 2026-10-11.
   one file at a time.
 
 ## Later (wanted, not scheduled)
+
+- Require every review thread to be resolved before a pull request can merge (a ruleset
+  setting): not needed at today's size; the maintainer decided on 2026-10-11 to wait.
+- A second model family (Codex) reviewing invariant paths: when the second maintainer
+  joins (decision 0009).
 
 - Conversations messaging each other (record 0008, proposed; design only).
 
