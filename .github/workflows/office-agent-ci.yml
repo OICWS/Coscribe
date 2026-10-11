@@ -22,7 +22,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      # The whole history: the changed-lines coverage compares with main.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -70,6 +73,19 @@ jobs:
       # is what keeps "passes locally" and "passes in CI" the same thing.
       - name: Checks
         run: bash scripts/check.sh
+        env:
+          COSCRIBE_COVERAGE: "1"
+
+      # Report only for now: what the lines this pull request changed lack in
+      # coverage. It becomes a failing check after a week of numbers.
+      - name: Coverage of the changed lines
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: |
+          pip install diff-cover
+          diff-cover coverage.xml --compare-branch=origin/main \
+            --format markdown:diff-coverage.md
+          cat diff-coverage.md >> "$GITHUB_STEP_SUMMARY"
 
   # Typechecks the Electron shell, which had no check at all. Not a required
   # check until it has passed once.

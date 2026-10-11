@@ -93,9 +93,7 @@ async def _fake_load_mcp_tools(
 
 
 def _patch_mcp(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "coscribe.runtime_lg.mcp.MultiServerMCPClient", _FakeMultiServerMCPClient
-    )
+    monkeypatch.setattr("coscribe.runtime_lg.mcp.MultiServerMCPClient", _FakeMultiServerMCPClient)
     monkeypatch.setattr("coscribe.runtime_lg.mcp.load_mcp_tools", _fake_load_mcp_tools)
 
 
@@ -179,13 +177,12 @@ async def test_connect_one_mcp_server_lg_returns_a_closeable_connection(
 async def test_connect_one_mcp_server_lg_reports_a_clear_error_on_timeout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Shrinks the module's real connect-timeout constant rather than
-    actually waiting 60s for this test."""
+    """Passes a short timeout: the default is bound when the function is defined,
+    so patching the module constant would still wait the full minute."""
     _patch_mcp(monkeypatch)
-    monkeypatch.setattr("coscribe.runtime_lg.mcp._CONNECT_TIMEOUT_SECONDS", 0.05)
 
     tools, connection, error = await connect_one_mcp_server_lg(
-        "hangs", {"command": "npx", "args": []}
+        "hangs", {"command": "npx", "args": []}, connect_timeout=0.05
     )
 
     assert tools == []
@@ -202,8 +199,7 @@ async def test_mcp_server_connection_connect_times_out_instead_of_hanging_foreve
     and the background task is still running afterward (proving a graceful
     close() would hang, and cancel() is the only safe cleanup)."""
     _patch_mcp(monkeypatch)
-    monkeypatch.setattr("coscribe.runtime_lg.mcp._CONNECT_TIMEOUT_SECONDS", 0.05)
-    connection = McpServerConnection("hangs", {"command": "npx", "args": []})
+    connection = McpServerConnection("hangs", {"command": "npx", "args": []}, connect_timeout=0.05)
 
     with pytest.raises(TimeoutError):
         await connection.connect()

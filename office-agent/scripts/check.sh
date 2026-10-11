@@ -32,6 +32,11 @@ lint-imports
 
 if [ "$fast" -eq 0 ]; then
   echo "== pytest =="
-  pytest -q
+  if [ -n "${COSCRIBE_COVERAGE:-}" ]; then
+    # CI sets this; locally it costs a fifth more time for a number nobody reads.
+    pytest -q --cov --cov-report=term --cov-report=xml
+  else
+    pytest -q
+  fi
 fi
 echo "All checks passed."

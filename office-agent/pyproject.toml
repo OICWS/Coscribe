@@ -170,6 +170,7 @@ dependencies = [
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
+    "pytest-cov>=5.0.0",
     "ruff>=0.6.0",
     "mypy>=1.11.0",
     "types-PyYAML>=6.0",
@@ -260,6 +261,24 @@ ignore_missing_imports = true
 # -- deliberately not a [project] dependency, see that script's docstring.
 module = "cairosvg.*"
 ignore_missing_imports = true
+
+# Vendored code is left out: its coverage says nothing about what a change to
+# our own code did.
+[tool.coverage.run]
+source = ["coscribe"]
+branch = true
+omit = [
+    "*/coscribe/tools/_native_*/*",
+    "*/coscribe/providers/gemini_provider.py",
+]
+
+[tool.coverage.report]
+skip_covered = true
+# Measured 89% (statements and branches together) on 2026-10-11, with pytest-cov
+# on our own code. Kept below it until the number in CI is known, since CI may
+# lack tools a local run has (LibreOffice); then it is raised to the measured value.
+fail_under = 85
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
