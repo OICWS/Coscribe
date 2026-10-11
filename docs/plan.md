@@ -14,7 +14,7 @@ Last reviewed: 2026-10-11.
    Steps, each one PR or less, from `docs/assessments/2026-10-11-scale-to-1m-lines.md`:
    1. Done: a report-only ratchet and the encoding lint rule; next, `--enforce` after a week.
    2. Done: coverage measured in CI and the two 60-second tests fixed; pytest in parallel
-      waits until the tests are shown independent; raise the coverage floor to CI's number.
+      waits until the tests are shown independent. The coverage floor is 88 (CI: 88.58).
    3. Done: the stale references fixed and `tests/test_doc_references.py` keeps them fixed.
    4. Done: a snapshot of the tool schemas and the system prompt (`tests/tool_schemas.txt`).
    5. Reviews and "not verified" items recorded where they can be found.

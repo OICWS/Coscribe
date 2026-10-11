@@ -274,10 +274,9 @@ omit = [
 
 [tool.coverage.report]
 skip_covered = true
-# Measured 89% (statements and branches together) on 2026-10-11, with pytest-cov
-# on our own code. Kept below it until the number in CI is known, since CI may
-# lack tools a local run has (LibreOffice); then it is raised to the measured value.
-fail_under = 85
+# CI measured 88.58% (statements and branches together, our own code) on 2026-10-11,
+# against 89% locally. The floor sits just under it: it may only be raised.
+fail_under = 88
 exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]
 
 [tool.pytest.ini_options]
