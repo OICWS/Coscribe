@@ -16,7 +16,7 @@ Last reviewed: 2026-10-11.
    2. Done: coverage measured in CI and the two 60-second tests fixed; pytest in parallel
       waits until the tests are shown independent; raise the coverage floor to CI's number.
    3. The 126 stale references fixed and a checker that keeps them fixed.
-   4. A snapshot of the tool schemas and the system prompt.
+   4. Done: a snapshot of the tool schemas and the system prompt (`tests/tool_schemas.txt`).
    5. Reviews and "not verified" items recorded where they can be found.
    Then public interfaces and cards per package, golden-file and approval tests, and
    only after them the large splits (roadmap in the assessment).

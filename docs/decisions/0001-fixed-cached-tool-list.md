@@ -23,6 +23,8 @@ schema or the system prompt.
   unless it is in `CORE_TOOL_NAMES`.
 - Tests pin it: the bound schemas and the system prompt must be identical across
   conversations that differ in folders and secrets (`tests/test_prompt_cache.py`,
-  `tests/test_http_request.py`).
+  `tests/test_http_request.py`). `tests/tool_schemas.txt` lists what is sent (the system
+  prompt's size and hash, each bound tool's parameters and description hash, every tool's
+  risk tier): a change edits it in the same PR, and it is a `CODEOWNERS` path.
 - Providers whose cache breaks on this (DeepSeek needs reasoning sent back) are
   handled per provider; there all built-in tools are bound up front.

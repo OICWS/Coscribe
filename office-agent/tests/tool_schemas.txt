@@ -1,0 +1,149 @@
+# The model is sent: the system prompt, then the tools bound to it (decision 0001).
+# A change here is a change to what providers cache. UPDATE_TOOL_SCHEMAS=1 rewrites it.
+
+system prompt: 44192 chars, ~11048 tokens, sha256 165e403285
+
+bound to the model: 22 tools, ~4852 tokens
+  ask_user_question (questions:array) desc 1435 chars sha256 e846e64163
+  draft_workflow (name?:string) desc 983 chars sha256 e91334c9ee
+  edit_file (new_text:string, old_text:string, path:string, replace_all?:boolean) desc 1330 chars sha256 3f5ab0dd7e
+  exit_plan_mode (plan:string) desc 509 chars sha256 9e553f14a8
+  get_file_info (path:string) desc 458 chars sha256 78103b0484
+  list_files (path?:string, pattern?:string, recursive?:boolean) desc 878 chars sha256 03bee73daf
+  read_docx (path:string) desc 248 chars sha256 8ca7bc3cef
+  read_file (head?:integer|null, path:string, start_line?:integer, tail?:integer|null) desc 1009 chars sha256 2a71ff9b29
+  read_pdf (end_page?:integer, path:string, start_page?:integer) desc 426 chars sha256 d1d3ba4d25
+  read_pptx (path:string, slide?:integer|null) desc 569 chars sha256 2499a87d8a
+  read_web_page (max_chars?:integer, start?:integer, url:string) desc 465 chars sha256 f6ad0746b5
+  read_xlsx (path:string, sheet?:string|null) desc 548 chars sha256 299925b715
+  revise_workflow (draft_id?:string, request:string, task_id?:string) desc 632 chars sha256 bb65f01516
+  search_files (path?:string, pattern?:string, query:string, regex?:boolean) desc 1842 chars sha256 f741658379
+  search_tools (query:string) desc 1807 chars sha256 bd770a7e04
+  task_create (content:string) desc 149 chars sha256 dea506b85f
+  task_list () desc 54 chars sha256 7bc88160db
+  task_update (status:string, task_id:string) desc 284 chars sha256 e5aa5260b7
+  test_workflow (draft_id?:string, inputs?:object|null, task_id?:string) desc 559 chars sha256 61a34ef677
+  use_tool (arguments:object, name:string) desc 297 chars sha256 707cbdc0c1
+  web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
+  write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
+
+registered: 119 tools, ~36075 tokens (the ones not bound are found through search_tools)
+  accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
+  add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
+  add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
+  add_pptx_animation | WRITE_LOCAL | documents | deferred | sha256 2f544cc469
+  add_pptx_audio | WRITE_LOCAL | documents | deferred | sha256 7e044a0cc6
+  add_pptx_chart | WRITE_LOCAL | documents | deferred | sha256 4af4873178
+  add_pptx_formula | WRITE_LOCAL | documents | deferred | sha256 721cfdd379
+  add_pptx_hyperlink | WRITE_LOCAL | documents | deferred | sha256 72854fd3e5
+  add_pptx_icon | WRITE_LOCAL | documents | deferred | sha256 9f55dc2da2
+  add_pptx_image | WRITE_LOCAL | documents | deferred | sha256 258e8f5c57
+  add_pptx_scrim | WRITE_LOCAL | documents | deferred | sha256 f9c9889ed2
+  add_pptx_shape | WRITE_LOCAL | documents | deferred | sha256 f788d8b7e2
+  add_pptx_shape_effect | WRITE_LOCAL | documents | deferred | sha256 7b217491ca
+  add_xlsx_chart | WRITE_LOCAL | documents | deferred | sha256 428cf24bd4
+  add_xlsx_conditional_format | WRITE_LOCAL | documents | deferred | sha256 cc7a65328c
+  ask_user_question | READ | interaction | core | sha256 9d692cba1a
+  cancel_wake | WRITE_LOCAL | selfwake | deferred | sha256 ff3c53d9ec
+  check_background_task | READ | background_tasks | deferred | sha256 1fe786e922
+  check_pptx_delivery | READ | documents | deferred | sha256 a52eddb3b5
+  check_subagent_task | READ | subagent_tasks | deferred | sha256 3a7ed67fac
+  convert_office_file | WRITE_LOCAL | documents | deferred | sha256 e3b317d870
+  copy_file | WRITE_LOCAL | filesystem | deferred | sha256 f6cdbcce8c
+  create_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 cc7745e488
+  crop_pptx_image | WRITE_LOCAL | documents | deferred | sha256 45b8d754c3
+  delete_docx_text | WRITE_LOCAL | documents | deferred | sha256 881c546c7c
+  delete_file | WRITE_LOCAL | filesystem | deferred | sha256 86460e1389
+  delete_pptx_shape | WRITE_LOCAL | documents | deferred | sha256 0878db543c
+  delete_pptx_slide | WRITE_LOCAL | documents | deferred | sha256 576e07dfa9
+  delete_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 a0c002e459
+  download_image | EXTERNAL | web | deferred | sha256 65e0363b61
+  draft_workflow | READ | - | core | sha256 e91334c9ee
+  duplicate_pptx_slide | WRITE_LOCAL | documents | deferred | sha256 ede3ae0640
+  edit_file | WRITE_LOCAL | filesystem | core | sha256 f8168b6c62
+  edit_file_batch | WRITE_LOCAL | filesystem | deferred | sha256 31b92256f0
+  edit_pptx_shape | WRITE_LOCAL | documents | deferred | sha256 d7dc66b696
+  edit_pptx_table_cell | WRITE_LOCAL | documents | deferred | sha256 6676746634
+  edit_pptx_text | WRITE_LOCAL | documents | deferred | sha256 96f40b79c0
+  edit_pptx_theme_colors | WRITE_LOCAL | documents | deferred | sha256 ffc61d7262
+  edit_pptx_xml | WRITE_LOCAL | documents | deferred | sha256 18520bcfdc
+  edit_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 39782553e3
+  edit_xlsx_cells | WRITE_LOCAL | documents | deferred | sha256 e05d89bbc1
+  exit_plan_mode | READ | interaction | core | sha256 f22b0af33b
+  extract_pptx_template | WRITE_LOCAL | documents | deferred | sha256 4462e72289
+  fill_pptx_template | WRITE_LOCAL | documents | deferred | sha256 645155af29
+  format_xlsx_cells | WRITE_LOCAL | documents | deferred | sha256 56c9e59fd1
+  freeze_xlsx_panes | WRITE_LOCAL | documents | deferred | sha256 008be6e5ee
+  get_file_info | READ | filesystem | core | sha256 258c40c574
+  http_request | EXTERNAL | web | deferred | sha256 bdbd5887fe
+  insert_docx_text | WRITE_LOCAL | documents | deferred | sha256 8af341a5aa
+  kill_background_task | WRITE_LOCAL | background_tasks | deferred | sha256 7491d2828c
+  list_background_tasks | READ | background_tasks | deferred | sha256 d99c0b74f9
+  list_conversations | READ | conversations | deferred | sha256 2274d7e8c3
+  list_files | READ | filesystem | core | sha256 f70a9b3342
+  list_pptx_animation_types | READ | documents | deferred | sha256 f73581da45
+  list_pptx_icons | READ | documents | deferred | sha256 9675fb6e78
+  list_pptx_shape_types | READ | documents | deferred | sha256 4ed552beeb
+  list_pptx_shapes | READ | documents | deferred | sha256 844a380941
+  list_pptx_transition_types | READ | documents | deferred | sha256 41967900e0
+  list_scheduled_tasks | READ | scheduled_tasks | deferred | sha256 511a595dd7
+  list_secrets | READ | web | deferred | sha256 d582a9e96f
+  list_subagent_tasks | READ | subagent_tasks | deferred | sha256 21efb81849
+  list_wakes | READ | selfwake | deferred | sha256 88b974a2c2
+  load_skill | READ | skills | deferred | sha256 7b0c5ee61e
+  merge_pptx_table_cells | WRITE_LOCAL | documents | deferred | sha256 2ab446f2a5
+  merge_xlsx_cells | WRITE_LOCAL | documents | deferred | sha256 d2da0f6fab
+  move_file | WRITE_LOCAL | filesystem | deferred | sha256 5dfd1f570c
+  pause_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 53a449b0cb
+  read_docx | READ | documents | core | sha256 fd1846dc8a
+  read_file | READ | filesystem | core | sha256 ee32c83a8a
+  read_pdf | READ | documents | core | sha256 3366cc72e1
+  read_pptx | READ | documents | core | sha256 c8c3ef7f3e
+  read_pptx_theme_colors | READ | documents | deferred | sha256 b3ee322f96
+  read_pptx_xml | READ | documents | deferred | sha256 001495249e
+  read_skill_file | READ | skills | deferred | sha256 641b92cec5
+  read_web_page | READ | web | core | sha256 cea631ab7d
+  read_xlsx | READ | documents | core | sha256 ebefe2ba4b
+  recalc_xlsx | WRITE_LOCAL | documents | deferred | sha256 18135e6ad6
+  recolor_pptx_icon | WRITE_LOCAL | documents | deferred | sha256 c79f3aa354
+  reject_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 625975143d
+  render_pptx_preview | READ | documents | deferred | sha256 1ba765da99
+  reorder_pptx_slide | WRITE_LOCAL | documents | deferred | sha256 3529565f4d
+  replace_docx_text | WRITE_LOCAL | documents | deferred | sha256 d3ce81d157
+  replace_pptx_image | WRITE_LOCAL | documents | deferred | sha256 b8c6137141
+  resume_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 3d546c3215
+  review_work | READ | - | deferred | sha256 3d07d2b688
+  revise_workflow | READ | - | core | sha256 bb65f01516
+  run_background_command | EXEC | background_tasks | deferred | sha256 ab3fa6162e
+  run_background_script | EXEC | background_tasks | deferred | sha256 db65d529c7
+  run_node_script | EXEC | scripts | deferred | sha256 a026ed9e1d
+  run_python_script | EXEC | scripts | deferred | sha256 107c5debcf
+  search_files | READ | filesystem | core | sha256 4c823f409b
+  search_images | READ | web | deferred | sha256 4a88b5659a
+  search_licensed_images | READ | web | deferred | sha256 bcc4e1115d
+  search_pdf | READ | documents | deferred | sha256 c8830261fb
+  send_to_conversation | WRITE_LOCAL | conversations | deferred | sha256 2d3321f165
+  set_pptx_background_image | WRITE_LOCAL | documents | deferred | sha256 5759df0f14
+  set_pptx_notes | WRITE_LOCAL | documents | deferred | sha256 fca90d132f
+  set_pptx_transition | WRITE_LOCAL | documents | deferred | sha256 c02028878b
+  set_xlsx_column_width | WRITE_LOCAL | documents | deferred | sha256 2f12a42450
+  set_xlsx_data_validation | WRITE_LOCAL | documents | deferred | sha256 dbea88b99c
+  signal_event | WRITE_LOCAL | selfwake | deferred | sha256 8f5e74e73b
+  sleep_for | WRITE_LOCAL | selfwake | deferred | sha256 3f01f80d46
+  sleep_until | WRITE_LOCAL | selfwake | deferred | sha256 0e6ba96879
+  spawn_agent | READ | subagents | deferred | sha256 1f412d7531
+  spawn_agent_background | READ | subagents | deferred | sha256 7253f0aa2c
+  stop_subagent | READ | subagent_tasks | deferred | sha256 29c04637a3
+  task_create | READ | tasks | core | sha256 40c8ae7f1d
+  task_list | READ | tasks | core | sha256 7bc88160db
+  task_update | READ | tasks | core | sha256 7e9e92c5a1
+  test_workflow | EXTERNAL | workflows | core | sha256 61a34ef677
+  unmerge_xlsx_cells | WRITE_LOCAL | documents | deferred | sha256 ae05b87f1c
+  wake_on_event | WRITE_LOCAL | selfwake | deferred | sha256 49123abfdf
+  wake_on_task | WRITE_LOCAL | selfwake | deferred | sha256 246c6a0f4f
+  web_search | READ | web | core | sha256 8ae68add7a
+  write_docx | WRITE_LOCAL | documents | deferred | sha256 b34c8624a0
+  write_file | WRITE_LOCAL | filesystem | core | sha256 509ae7daba
+  write_pdf | WRITE_LOCAL | documents | deferred | sha256 7e516e06d6
+  write_pptx | WRITE_LOCAL | documents | deferred | sha256 8a28365217
+  write_xlsx | WRITE_LOCAL | documents | deferred | sha256 9061b24236
