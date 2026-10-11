@@ -23,12 +23,21 @@ echo "== oxlint =="
 
 echo "== ruff =="
 ruff check src tests
+# A text file opened without an encoding reads in the locale's code page on
+# Windows, not UTF-8. It is a preview rule, and `preview = true` in the config
+# would turn on other rules' preview behaviour too, so it runs on its own.
+ruff check --preview --select PLW1514 src tests
 
 echo "== mypy =="
 mypy src
 
 echo "== import boundaries =="
 lint-imports
+
+# Report only for now: numbers about the code that may only get better
+# (quality/baseline.json). `--enforce` makes a worse number fail.
+echo "== ratchet =="
+python scripts/ratchet.py
 
 if [ "$fast" -eq 0 ]; then
   echo "== pytest =="
