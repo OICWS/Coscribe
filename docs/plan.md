@@ -6,9 +6,19 @@ are the way they are lives in [`docs/decisions/`](decisions/) and
 [`ARCHITECTURE.md`](../ARCHITECTURE.md). Update this file in the PR that
 changes the picture; keep it under about 150 lines.
 
-Last reviewed: 2026-10-09.
+Last reviewed: 2026-10-11.
 
 ## Next, in order
+
+0. **Structure period** (record 0009; features paused 2 to 3 weeks from 2026-10-11).
+   Steps, each one PR or less, from `docs/assessments/2026-10-11-scale-to-1m-lines.md`:
+   1. A report-only ratchet and the encoding lint rule.
+   2. Coverage measured in CI, the two 60-second tests fixed, pytest run in parallel.
+   3. The 126 stale references fixed and a checker that keeps them fixed.
+   4. A snapshot of the tool schemas and the system prompt.
+   5. Reviews and "not verified" items recorded where they can be found.
+   Then public interfaces and cards per package, golden-file and approval tests, and
+   only after them the large splits (roadmap in the assessment).
 
 1. **Make the repository easy to join** (governance review, 2026-10-08).
    - Done: `main` protected by a ruleset (PR only, squash, `test` required),
@@ -22,10 +32,9 @@ Last reviewed: 2026-10-09.
      every HTTP route is in `web/routes/` (one `router(state)` each).
    - Done: the two WebSocket routes are in `web/routes/ws.py`.
    - Done: `tests/test_web.py` is split into `tests/web/` by domain.
-2. **Working with more than one person** (record 0007, proposed): the maintainer
-   accepts or changes it; then an admin adds the second collaborator, their handle
-   goes into `.github/CODEOWNERS`, and the ruleset requires code-owner review for
-   those paths.
+2. **Working with more than one person** (record 0007, accepted): when the second
+   maintainer joins, an admin adds them as collaborator, their handle goes into
+   `.github/CODEOWNERS`, and the ruleset requires code-owner review for those paths.
 
 ## Needs the maintainer's testing (could not be verified here)
 

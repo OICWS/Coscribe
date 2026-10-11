@@ -15,5 +15,6 @@ old one; the old one stays, marked "Superseded by".
 | [0004](0004-connectors-sign-in-once-in-the-browser.md) | Connectors sign in once, in the user's own browser |
 | [0005](0005-code-is-a-second-runtime.md) | Code is a second runtime, never inside a fixed workflow |
 | [0006](0006-changes-reach-main-through-pull-requests.md) | Changes reach `main` only through pull requests |
-| [0007](0007-working-with-more-than-one-human.md) | Working with more than one human and their AI sessions (proposed) |
+| [0007](0007-working-with-more-than-one-human.md) | Working with more than one human and their AI sessions |
 | [0008](0008-conversations-can-message-each-other.md) | Conversations can message each other |
+| [0009](0009-a-structure-period-then-growth-for-ai-sessions.md) | A structure period, so AI sessions can keep up with growth to 1M lines |
