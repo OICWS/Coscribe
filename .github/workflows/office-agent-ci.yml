@@ -84,7 +84,7 @@ jobs:
         run: |
           pip install diff-cover
           diff-cover coverage.xml --compare-branch=origin/main \
-            --markdown-report diff-coverage.md
+            --format markdown:diff-coverage.md
           cat diff-coverage.md >> "$GITHUB_STEP_SUMMARY"
 
   # Typechecks the Electron shell, which had no check at all. Not a required
