@@ -3,7 +3,7 @@ to tools/selfwake.py: storage + model-callable tools live in tools/selfwake.py (
 live client/checkpointer needed there); actually resuming a sleeping thread
 does need one, so it lives here instead.
 
-Deliberately does NOT import web.session.ChatSessionLG -- web/session.py
+Deliberately does NOT import web.session.ChatSessionLG -- conversation/session.py
 already imports *from* runtime_lg (see runtime_lg/__init__.py), so importing
 it back here would be circular. Instead, poll_due_wakes takes a
 `get_session` callback (thread_id -> an object with an async
@@ -42,7 +42,7 @@ class SilentSocket:
     thread.
 
     `can_resolve_approvals = False` is the actual mechanism behind that
-    last sentence -- web/session.py's `_can_resolve_approvals()` checks
+    last sentence -- conversation/session.py's `_can_resolve_approvals()` checks
     for this attribute (duck-typed, not an isinstance check, since
     session.py can't import this module back without a circular import)
     and skips calling `_resolve_pending_approvals` entirely when it's

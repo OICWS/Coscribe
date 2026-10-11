@@ -5,11 +5,11 @@ here: a durable record of what a WRITE_LOCAL/EXEC/EXTERNAL action did,
 when, and under what approval -- whether a human was actually watching in
 real time or not. That last part is the whole point: an unattended
 selfwake/scheduled-task run has no live approval UI to show anyone (see
-web/session.py's SilentSocket), so without this, an autonomous run's
+conversation/session.py's SilentSocket), so without this, an autonomous run's
 approval-gated actions leave no trace anywhere for a human to review
 after the fact.
 
-Wired into web/session.py's _decide_action_request -- the single place
+Wired into conversation/session.py's _decide_action_request -- the single place
 every gated tool call's decision actually gets made (a PreToolUse hook
 veto, plan mode blocking it outright, accept-edits auto-approving it,
 or a real human approving/denying it live), for attended and unattended
@@ -176,7 +176,7 @@ def record_decision(
 ) -> None:
     """Thin convenience wrapper around AuditLog.append -- builds the
     timestamp and AuditEntry so the one real call site
-    (web/session.py's _decide_action_request) stays a one-liner per
+    (conversation/session.py's _decide_action_request) stays a one-liner per
     decision branch rather than repeating this construction five times."""
     audit_log.append(
         AuditEntry(

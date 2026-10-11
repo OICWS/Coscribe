@@ -1,6 +1,6 @@
 /**
  * Native OS folder picker -- ported from office-agent-desktop's (Tauri)
- * `tauri-plugin-dialog` registration + `capabilities/default.json`'s
+ * `tauri-plugin-dialog` registration and its
  * `dialog:allow-open` grant. Electron has no per-window capability/ACL
  * step to mirror here -- `ipcMain.handle` alone is the whole surface;
  * see the preload module for the contextBridge side of this.

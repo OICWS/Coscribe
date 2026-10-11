@@ -6,7 +6,7 @@ faster than typing a full sentence.
 
 Unlike every other tool in this package, this one never actually runs its
 own Python body. It's routed through LangGraph's HumanInTheLoopMiddleware
-with `allowed_decisions=["respond"]` (see web/session.py's
+with `allowed_decisions=["respond"]` (see conversation/session.py's
 _decide_action_request and runtime_lg/agent.py's `question_tool_names`) --
 the interrupt always fires, and the human's answer (typed via
 web/app.py's `question_response` message, or a stop/disconnect's own

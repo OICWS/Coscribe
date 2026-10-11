@@ -4,7 +4,7 @@ runtime context -- an LLMClient, live policy state -- beyond just Settings).
 
 Specialist agents (ARCHITECTURE.md) aren't a separate mechanism here: they're
 realized through the general spawn_agent/review_work delegation tools
-(tools/subagents.py), used ad hoc with whatever instructions and tool subset
+(runtime_lg/subagents.py), used ad hoc with whatever instructions and tool subset
 fit a given sub-task, not a hardcoded per-domain agent roster.
 """
 
@@ -50,7 +50,7 @@ from .workflows.permissions import granted_by
 from .workflows.spec import parse_workflow
 
 # The always-bound tool set when Settings.defer_tools is on (see
-# web/session.py's _build_lg_agent and runtime_lg/tool_deferral.py) --
+# conversation/session.py's _build_lg_agent and runtime_lg/tool_deferral.py) --
 # everything else among this module's own tools stays hidden until the
 # model calls search_tools for it. A reasoned starting set, not measured
 # usage data (no per-tool call-frequency log exists yet to measure it

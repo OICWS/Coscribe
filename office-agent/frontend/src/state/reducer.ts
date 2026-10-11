@@ -9,7 +9,7 @@ export type LogItem =
   // turnIndex: 0-based count among this thread's "user" items only (its
   // position ignoring every agent/tool/system item in between) -- exactly
   // the index EditMessageOut expects, since the backend counts the same
-  // way over its own checkpointed HumanMessages (see web/session.py's
+  // way over its own checkpointed HumanMessages (see conversation/session.py's
   // handle_edit_message). Assigned once at creation (below), not derived
   // at render time, so it stays stable even as later items are appended.
   | { id: string; kind: "user"; text: string; turnIndex: number; images?: string[] }
@@ -230,7 +230,7 @@ function closeStreamingBubble(items: LogItem[]): LogItem[] {
 }
 
 /** How the user answered a plan, read back from exit_plan_mode's result
- * (web/session.py's _decide_plan_request writes these sentences). */
+ * (conversation/session.py's _decide_plan_request writes these sentences). */
 function planStatusOf(result: string): "auto" | "manual" | "revise" {
   if (result.includes("switched to auto mode")) return "auto";
   if (result.includes("approved the plan")) return "manual";

@@ -1,6 +1,6 @@
 """Thin wrapper around aisuite's provider layer, kept alive today for just
 one thing: get_context_window()'s best-effort max-input-token lookup (see
-web/session.py's send_state / web/app.py, both of which use it purely for
+conversation/session.py's send_state / web/app.py, both of which use it purely for
 a UI indicator, never for an actual model call).
 
 This used to also drive every real chat turn (`complete`/`complete_stream`,

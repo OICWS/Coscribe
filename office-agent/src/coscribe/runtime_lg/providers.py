@@ -47,7 +47,7 @@ def resolve_chat_model(
             # condition checks base_url is None). Any custom
             # OpenAI-compatible provider (DeepSeek, Kimi, GLM, ...) always
             # sets base_url, so without this explicit flag the usage bar
-            # (web/session.py's _stream_turn) would silently never populate
+            # (conversation/session.py's _stream_turn) would silently never populate
             # for these providers specifically, unlike gemini:/anthropic:/
             # openai: -- see runtime_lg/README.md's "usage bar" section.
             stream_usage=True,

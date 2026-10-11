@@ -1420,7 +1420,7 @@ def _widen_stock_layouts(prs: PresentationType, original_width: int) -> None:
     just derived): the resulting margins/gaps on every stock layout used
     by this file (Title Slide, Title and Content, Title Only, Two
     Content) render at the same *proportional* position as before, just
-    scaled up -- see the write_pptx docstring/SKILL.md for the live
+    scaled up -- see the write_pptx docstring and SKILL.md for the live
     render this was checked against.
 
     Critical detail, found live: these stock placeholders start with no

@@ -1,7 +1,7 @@
 """ChatSessionLG: the web equivalent of cli.py's chat() loop body, built
 on runtime_lg instead of runtime/ (see runtime_lg/README.md, Phase 3).
 
-Mirrors web/session.py's ChatSession public shape (handle_user_message,
+Mirrors conversation/session.py's ChatSession public shape (handle_user_message,
 resolve_approval, send_state) closely enough that app.py's WS handler is
 nearly identical to app.py's -- but the internals are native async
 (agent.astream/aget_state) instead of the queue.Queue/asyncio.to_thread
@@ -12,8 +12,7 @@ are supported here (see runtime_lg/README.md's "Plan mode, accept-edits,
 compact, and Hooks under runtime_lg" section for the design of the first
 four; /stop and switch_model follow the same "port the contract, adapt the
 mechanism to a compiled graph" approach -- /stop is cooperative, checked at
-_stream_turn/_decide_action_request's own yield points, mirroring
-runtime/runner.py's threading.Event-based stop_event; switch_model rebuilds
+_stream_turn/_decide_action_request's own yield points; switch_model rebuilds
 self.lg_agent against the same checkpointer/thread_id rather than mutating
 a model string in place, since create_agent() bakes the model into a fixed
 compiled graph at construction time). Threshold-triggered *automatic*
@@ -587,9 +586,7 @@ class ChatSessionLG:
         # ToolMessage carrying its result doesn't itself include).
         self._pending_tool_args: dict[str, list[dict[str, Any]]] = defaultdict(list)
         # Cooperative /stop flag -- see request_stop's docstring. Reset at
-        # the start of every handle_user_message call, same as
-        # runtime/runner.py's threading.Event-based stop_event is cleared
-        # at the start of every turn there.
+        # the start of every handle_user_message call.
         self._stop_requested = False
         # Most recent model-response segment's real usage_metadata (see
         # _stream_turn's _capture_segment_usage) -- not reset per-turn like
@@ -598,7 +595,7 @@ class ChatSessionLG:
         # finishes, not checked mid-turn. None until the first real segment
         # completes, or if the active model never populates usage_metadata.
         self._last_usage_metadata: UsageMetadata | None = None
-        # web/session.py's ws_endpoint dispatches each incoming
+        # conversation/session.py's ws_endpoint dispatches each incoming
         # "user_message" via asyncio.create_task without awaiting it, so it
         # can go straight back to receiving the next one -- otherwise a
         # turn blocked on approval would freeze the whole socket, including
@@ -731,11 +728,8 @@ class ChatSessionLG:
         # (MCP connector tools -- see __init__'s comment on why these are
         # kept separate) *before* appending spawn_agent itself below -- a
         # sub-agent's own
-        # selectable tool_names never includes spawn_agent, matching
-        # tools/subagents.py's _DISALLOWED_SUBAGENT_TOOLS reasoning, and
-        # does include MCP tools, same as the old runtime's cli.py (which
-        # extends agent.tools with MCP tools before build_subagent_tools'
-        # own available_tools=agent.tools call).
+        # selectable tool_names never includes spawn_agent, and does include
+        # MCP tools.
         combined_tools = [*self._base_tools, *self._extra_tools]
         delegation_tools = build_delegation_tools(self._subagent_host(model), combined_tools)
         # The reviewer only ever gets read-only tools (document readers and
@@ -1272,9 +1266,7 @@ class ChatSessionLG:
         # When PreToolUse hooks are configured, route *every* tool call
         # through the same interrupt point -- not just the ones that
         # already require human approval -- so a hook gets the chance to
-        # veto a low-risk tool too. Mirrors runtime/policies.py's
-        # HookToolPolicy, which wraps every tool call regardless of risk
-        # level, not just RequireApprovalPolicy's gated subset.
+        # veto a low-risk tool too, not just a gated one.
         extra_interrupt_names = (
             [tool_name(t) for t in lg_tools] if self.hooks_config["PreToolUse"] else []
         )
@@ -1384,13 +1376,11 @@ class ChatSessionLG:
         awaited -- it has to reach whichever turn is *currently* running,
         same reasoning as resolve_approval. Mostly cooperative: sets a flag
         that _stream_turn/_decide_action_request check at their own natural
-        yield points, mirroring runtime/runner.py's threading.Event-based
-        stop_event (same cooperative-cancellation shape; this runtime's
-        turn loop is a single async coroutine rather than a worker thread,
-        so a plain flag serves the same purpose a thread-safe Event does
-        there). Also immediately denies any tool call currently blocked on
-        approval, so a stop can't get stuck waiting behind an approval
-        prompt no one is going to answer -- the stop-flag checks elsewhere
+        yield points (the turn loop is a single async coroutine rather than a
+        worker thread, so a plain flag is enough). Also immediately denies any
+        tool call currently blocked on approval, so a stop can't get stuck waiting
+        behind an approval prompt no one is going to answer -- the stop-flag checks
+        elsewhere
         run between chunks/decisions, which a pending approval wait would
         otherwise never reach. A pending ask_user_question gets the same
         treatment, resolved with a placeholder answer rather than a bool --
@@ -2469,9 +2459,8 @@ class ChatSessionLG:
         self, request: dict[str, Any], websocket: Any, *, honor_stop: bool = True
     ) -> Any:
         """Decide one pending action request, in precedence order: a
-        configured PreToolUse hook can veto it outright (same precedence as
-        runtime/policies.py's HookToolPolicy, which always runs before the
-        policy it wraps); otherwise, a request for a tool in
+        configured PreToolUse hook can veto it outright (a hook runs before
+        the approval policy it would otherwise reach); otherwise, a request for a tool in
         self._gated_tool_risks is genuinely gated. For
         run_python_script/run_node_script specifically (EXEC_POLICY_TOOL_NAMES),
         a configured exec policy (runtime_lg/exec_policy.py, ROADMAP.md
@@ -3649,8 +3638,7 @@ class ChatSessionLG:
         # real risk of *not* resetting; there's no other state to preserve
         # across turns here.
         self._pending_tool_args = defaultdict(list)
-        # Fresh start for /stop each turn, same as runtime/runner.py's
-        # stop_event.clear() -- a stop requested during a previous turn (or
+        # Fresh start for /stop each turn: a stop requested during a previous turn (or
         # left over from one that already finished) must not immediately
         # halt this new one.
         self._stop_requested = False

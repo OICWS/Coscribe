@@ -5,7 +5,7 @@ the old `coscribe/web/static/` vanilla HTML/JS frontend at cutover
 (see history below). The backend (`coscribe.web.app`) is unchanged by
 this rewrite -- this project is a pure frontend that speaks the same
 WebSocket/REST contract, hand-encoded in `src/types/wire.ts` from a
-direct read of `web/app.py`/`web/session.py`.
+direct read of `web/app.py`/`conversation/session.py`.
 
 ## Dev loop
 
@@ -181,7 +181,7 @@ to be reliable, not just pass once:
   guessed. Tight timeouts flake on that; it isn't a bug in the app.
 - `/clear wipes the chat log` sends `/clear` right after `hello` --
   found that `/clear` respects the turn lock (only `/stop` bypasses it,
-  per `request_stop()`'s docstring in `web/session.py`), so it can queue
+  per `request_stop()`'s docstring in `conversation/session.py`), so it can queue
   behind an in-flight turn instead of running immediately. The spec now
   waits for `hello`'s turn to actually finish first, same as a real user
   naturally would.

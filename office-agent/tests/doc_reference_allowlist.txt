@@ -1,0 +1,23 @@
+# Paths that Markdown, docstrings and comments may name although no file of this repository
+# has them: other projects' files, files a build or an install creates. One path prefix per
+# line. Adding a line loosens test_doc_references.py, so this file is a CODEOWNERS path.
+
+# Build outputs and installs
+dist/
+node_modules/
+web/static/
+
+# Files of the projects some code was ported from, named in the comments that credit them
+svg_to_pptx/
+svg_quality/
+pptx_to_svg/
+docx_mcp/
+skills/ppt-master/
+
+# Files of libraries and of Electron, named where the code works around them
+lib/browser/
+aisuite/
+ddgs/
+
+# A skill's own reference file, which lives in the skill, not here
+references/

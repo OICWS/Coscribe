@@ -1,6 +1,6 @@
 /** True when running inside the Electron desktop shell's window, checked
  * via the `coscribeDesktop` object exposed by that shell's own preload
- * script (`office-agent-desktop-electron/src/preload/index.ts`) through
+ * script (`office-agent-desktop/src/preload/index.ts`) through
  * `contextBridge` -- present only there, never in a plain browser tab or
  * inside the (parallel, being phased out) Tauri shell. */
 export function isElectron(): boolean {

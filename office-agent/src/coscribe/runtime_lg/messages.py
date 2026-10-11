@@ -1,4 +1,4 @@
-"""Small LangGraph-message-shape helpers shared between web/session.py
+"""Small LangGraph-message-shape helpers shared between conversation/session.py
 (a live turn's own streaming) and the curator prompts in runtime_lg/
 (e.g. skill_authoring.py), kept here so runtime_lg modules can use them
 without importing session.py (which already imports from runtime_lg).
@@ -218,7 +218,7 @@ def extract_text(content: Any) -> str:
 
 
 def extract_images(content: Any) -> list[str]:
-    """A HumanMessage's own image_url content blocks (see web/session.py's
+    """A HumanMessage's own image_url content blocks (see conversation/session.py's
     _handle_user_message_locked, which appends `{"type": "image_url",
     "image_url": {"url": ...}}` per attached image) -- the data URLs
     themselves, in the order they were attached. Mirrors extract_text's
@@ -300,7 +300,7 @@ def serialize_history_for_ws_lg(messages: list[Any]) -> list[dict[str, Any]]:
     Real, user-reported bug this also closes: a "user" entry's own
     attached images used to be silently dropped on replay -- the images
     were already faithfully checkpointed (baked into the HumanMessage's
-    own image_url content blocks, see web/session.py's
+    own image_url content blocks, see conversation/session.py's
     _handle_user_message_locked), just never read back out here, so they
     rendered fine for the rest of the *live* WS connection that sent them
     (the frontend's own optimistic local echo still had the data URLs in

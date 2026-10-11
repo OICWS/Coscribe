@@ -188,7 +188,7 @@ def router(state: AppState) -> APIRouter:
             # above (e.g. "accept-edits", not a display label); a skill's
             # own display name can contain spaces ("Skill Creator") and
             # was never usable as that token to begin with -- see
-            # web/session.py's skills_by_slug for the matching half.
+            # conversation/session.py's skills_by_slug for the matching half.
             commands.append({"name": skill.slug, "description": skill.description})
         return commands
 

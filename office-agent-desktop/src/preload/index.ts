@@ -4,7 +4,7 @@
  * origin -- this preload re-executes on every navigation of the same
  * window, including that one, so there is no Tauri-style "remote
  * capability grant for a `WebviewUrl::External` origin" problem to
- * solve here at all; see office-agent-desktop-electron/README.md's
+ * solve here at all; see office-agent-desktop/README.md's
  * "Compared to the Tauri shell" section).
  *
  * `contextIsolation: true` (set in mainWindow.ts) means this is the

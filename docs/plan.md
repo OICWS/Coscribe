@@ -15,7 +15,7 @@ Last reviewed: 2026-10-11.
    1. Done: a report-only ratchet and the encoding lint rule; next, `--enforce` after a week.
    2. Done: coverage measured in CI and the two 60-second tests fixed; pytest in parallel
       waits until the tests are shown independent. The coverage floor is 88 (CI: 88.58).
-   3. The 126 stale references fixed and a checker that keeps them fixed.
+   3. Done: the stale references fixed and `tests/test_doc_references.py` keeps them fixed.
    4. Done: a snapshot of the tool schemas and the system prompt (`tests/tool_schemas.txt`).
    5. Reviews and "not verified" items recorded where they can be found.
    Then public interfaces and cards per package, golden-file and approval tests, and
@@ -27,12 +27,12 @@ Last reviewed: 2026-10-11.
      `AGENTS.md`, templates.
    - Done: `ROADMAP.md` compacted (old one archived in `docs/history/`), plan,
      decisions and log in place, package dependencies checked in CI.
-   - Done: `web/session.py` and its helpers moved to `conversation/` (the CLI uses
+   - Done: `conversation/session.py` and its helpers moved to `conversation/` (the CLI uses
      it; it no longer imports `cli` or FastAPI).
    - Done: the setup page, request models and provider catalog are out of `web/app.py`;
      every HTTP route is in `web/routes/` (one `router(state)` each).
    - Done: the two WebSocket routes are in `web/routes/ws.py`.
-   - Done: `tests/test_web.py` is split into `tests/web/` by domain.
+   - Done: the server tests are in `tests/web/`, one file per domain.
 2. **Working with more than one person** (record 0007, accepted): when the second
    maintainer joins, an admin adds them as collaborator, their handle goes into
    `.github/CODEOWNERS`, and the ruleset requires code-owner review for those paths.

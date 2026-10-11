@@ -4,7 +4,7 @@ kind of task, written as instructions a future agent follows with
 judgment -- as opposed to a scheduled task (tools/scheduled_tasks.py),
 which is one concrete job to run again. One curator call decides to
 clarify or propose, then a preview + explicit yes/no confirm happens
-before anything is written -- see web/session.py's _handle_save_skill and
+before anything is written -- see conversation/session.py's _handle_save_skill and
 _handle_pending_skill_save_proposal.
 """
 
@@ -34,7 +34,7 @@ def _extract_json_object(text: str) -> str:
 @dataclass
 class SkillSaveProposal:
     """One curator round's outcome -- never persisted; the caller
-    (web/session.py's /saveskill handler) holds this in memory while
+    (conversation/session.py's /saveskill handler) holds this in memory while
     awaiting the user's answer/confirmation, and only calls
     write_skill_lg once they confirm. `decision` is "clarify" or
     "propose"; description/body are only meaningful when decision ==
@@ -119,7 +119,7 @@ def write_skill_lg(
     WRITE_LOCAL gate on top of it needed. Overwrites in place if the
     slug already names an existing *user* skill (re-running /saveskill
     with the same name is an update, same as Skill Creator's own "editing
-    an existing skill" guidance) -- but web/session.py's caller is
+    an existing skill" guidance) -- but conversation/session.py's caller is
     responsible for refusing a slug that collides with a *built-in*
     skill before ever calling this, since that collision would silently
     shadow the built-in for every /<slug> lookup afterward, not just

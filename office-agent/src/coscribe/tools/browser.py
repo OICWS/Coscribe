@@ -2,7 +2,7 @@
 panel, the same tabs the user sees, so every step happens in front of them
 and uses their logins there.
 
-The desktop app (office-agent-desktop, src/main/browserHost.ts) connects to
+The desktop app (office-agent-desktop, src/main/browserAgent.ts) connects to
 this server's /internal/browser-host stream with the token it started the
 server with, receives one command at a time and posts each result back.
 Commands travel over that connection instead of a remote-debugging port:
