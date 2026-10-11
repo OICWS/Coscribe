@@ -9,3 +9,5 @@
 /office-agent/src/coscribe/coordinator.py @OICWS
 /.github/CODEOWNERS @OICWS
 /.github/workflows/ @OICWS
+/office-agent/quality/ @OICWS
+/office-agent/scripts/ratchet.py @OICWS

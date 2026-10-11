@@ -12,8 +12,9 @@ Last reviewed: 2026-10-11.
 
 0. **Structure period** (record 0009; features paused 2 to 3 weeks from 2026-10-11).
    Steps, each one PR or less, from `docs/assessments/2026-10-11-scale-to-1m-lines.md`:
-   1. A report-only ratchet and the encoding lint rule.
-   2. Coverage measured in CI, the two 60-second tests fixed, pytest run in parallel.
+   1. Done: a report-only ratchet and the encoding lint rule; next, `--enforce` after a week.
+   2. Done: coverage measured in CI and the two 60-second tests fixed; pytest in parallel
+      waits until the tests are shown independent; raise the coverage floor to CI's number.
    3. The 126 stale references fixed and a checker that keeps them fixed.
    4. A snapshot of the tool schemas and the system prompt.
    5. Reviews and "not verified" items recorded where they can be found.

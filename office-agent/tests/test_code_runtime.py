@@ -385,7 +385,7 @@ def _alive(pid: int) -> bool:
         return False
     # A killed child of an exited parent may linger as a zombie.
     status = Path(f"/proc/{pid}/status")
-    return not (status.exists() and "State:\tZ" in status.read_text())
+    return not (status.exists() and "State:\tZ" in status.read_text(encoding="utf-8"))
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX process groups")
