@@ -28,3 +28,8 @@ dist/
 # replaced are gone from git history's tip but still browsable in the
 # pre-cutover commits).
 /src/coscribe/web/static/
+
+# Coverage output
+.coverage
+coverage.xml
+diff-coverage.md
