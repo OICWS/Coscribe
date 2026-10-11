@@ -1,6 +1,6 @@
 # Coverage is measured in CI; two tests no longer wait a minute each (shipped)
 
-Why: Step 2 of the structure period (record 0009). Nothing measured how much of our own code the tests reach, and `tests/test_mcp_lg.py` spent two minutes of its 122 seconds waiting for real 60-second timeouts.
+Why: Step 2 of the structure period (record 0009). Nothing measured how much of our own code the tests reach, and `tests/test_mcp_lg.py` spent almost all of its 122 seconds waiting for two real 60-second timeouts.
 
 ## Shipped
 - `pytest-cov` in the dev extras; `[tool.coverage]` in `pyproject.toml` counts statements and branches of `coscribe`, leaving out the vendored code (`tools/_native_*/`, `providers/gemini_provider.py`).
