@@ -13,7 +13,7 @@ that fires a run or its stored history (`runtime_lg/scheduled_tasks.py`), the ro
 `granted_by`, `sites_in`, `summarize` (permissions); `describe_params`, `tool_description`
 (catalog); `output_files`, `run_test`, `uses_browser` (test run); `DraftFailed`, `WorkflowDraft`,
 `draft_workflow`, `revise_workflow` (drafting from a conversation: it takes the serialized
-history, so this package does not import `runtime_lg`). Two callers still import submodules:
+history, so this package does not import `runtime_lg`). Two other callers still import submodules (`workflows.spec`, `.permissions`):
 `coordinator.py` (an invariant path) and `tools/scheduled_tasks.py` (importing the package
 there cycles); do not copy them.
 
@@ -26,6 +26,8 @@ there cycles); do not copy them.
 - A reference is a lookup, never an expression: nothing in `refs.py` evaluates code.
 - Saving is the consent: a site or folder outside what `permissions.granted_by` lists stops a run.
 - A test run stops before an approval step and writes no run history.
+- `UNAVAILABLE_TOOLS` in `engine.py` only lists tools a run may not call; the import contract,
+  not that list, is what keeps the code module out.
 
 ## Tests
 `tests/test_workflow_spec.py`, `tests/test_workflow_engine.py`, `tests/test_workflow_permissions.py`,
