@@ -12,10 +12,11 @@ friend's sessions cannot be messaged from ours.
 - **GitHub is the shared channel.** Work is claimed with a comment on a `task`
   issue naming the area and hot files; a draft PR is opened on the first push;
   anything one person's session wants another to know goes in an issue or PR
-  comment with the attribution footer. `send_message` stays for one account.
+  comment. `send_message` stays for one account.
 - **One GitHub identity per human**, as a collaborator (not a fork: CI and the
   ruleset then apply the same way). Each sets their own `git config` in every
-  clone; their sessions commit as them with the two trailers.
+  clone; their sessions commit as them, with no `Co-authored-by`, session link or
+  "Generated with" line in a commit, PR title or description (the `PR text` check).
 - **Invariant paths have a code owner.** `.github/CODEOWNERS` lists the paths
   from `office-agent/CLAUDE.md`. Once there are two owners, the ruleset requires
   a code-owner review for them; the other human approves, after their own session
