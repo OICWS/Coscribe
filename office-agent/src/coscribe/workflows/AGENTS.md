@@ -11,14 +11,14 @@ that fires a run or its stored history (`runtime_lg/scheduled_tasks.py`), the ro
 `BranchStep`, `LoopStep`, `Workflow`, `parse_workflow`, `walk`, `workflow_error` (the definition);
 `RunOutcome`, `StepContext`, `StepRecord`, `WorkflowNotRunnable`, `WorkflowRun` (a run);
 `granted_by`, `sites_in`, `summarize` (permissions); `describe_params`, `tool_description`
-(catalog); `output_files`, `run_test`, `uses_browser` (test run). `solidify` is imported as
-`coscribe.workflows.solidify`: it imports `runtime_lg`, which imports this package.
-Two other callers still import submodules (`workflows.spec`, `.permissions`):
+(catalog); `output_files`, `run_test`, `uses_browser` (test run); `DraftFailed`, `WorkflowDraft`,
+`draft_workflow`, `revise_workflow` (drafting from a conversation: it takes the serialized
+history, so this package does not import `runtime_lg`). Two other callers still import submodules (`workflows.spec`, `.permissions`):
 `coordinator.py` (an invariant path) and `tools/scheduled_tasks.py` (importing the package
 there cycles); do not copy them.
 
 ## Depends on
-`coscribe.needs_permission`, `coscribe.runtime_lg` (`solidify` only), `coscribe.tools`.
+`coscribe.needs_permission`, `coscribe.tools`.
 
 ## Invariants
 - `engine`, `spec`, `refs` and `permissions` never import `code_runtime`, `runtime_lg` or

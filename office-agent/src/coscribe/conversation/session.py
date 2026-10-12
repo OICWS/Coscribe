@@ -1053,10 +1053,10 @@ class ChatSessionLG:
         ) -> str:
             # The graph's live state, not the checkpoint: mid-turn the
             # checkpoint doesn't hold this turn's tool calls yet.
-            messages = list(state.get("messages", []))
+            history = serialize_history_for_ws_lg(list(state.get("messages", [])))
             try:
                 draft = await draft_workflow(
-                    self.model, messages, self.workflow_context(None).tools, name.strip()
+                    self.model, history, self.workflow_context(None).tools, name.strip()
                 )
             except DraftFailed as exc:
                 return json.dumps({"status": "failed", "error": str(exc)}, ensure_ascii=False)
@@ -1105,9 +1105,9 @@ class ChatSessionLG:
             messages = list(state.get("messages", []))
             try:
                 name, workflow, trigger = self._workflow_to_change(messages, task_id, draft_id)
-                draft = await revise_workflow(
-                    self.model, name, workflow, request, messages, self.workflow_context(None).tools
-                )
+                history = serialize_history_for_ws_lg(messages)
+                tools = self.workflow_context(None).tools
+                draft = await revise_workflow(self.model, name, workflow, request, history, tools)
             except DraftFailed as exc:
                 return json.dumps({"status": "failed", "error": str(exc)}, ensure_ascii=False)
             if trigger is None:
@@ -1798,9 +1798,9 @@ class ChatSessionLG:
         state = await self.lg_agent.aget_state(self.config)
         if state.next:
             raise DraftFailed("Resolve the pending approval first.")
-        messages = list(state.values.get("messages", [])) if state.values else []
+        history = serialize_history_for_ws_lg((state.values or {}).get("messages", []))
         return await draft_workflow(
-            self.model, messages, self.workflow_context(None).tools, name_hint
+            self.model, history, self.workflow_context(None).tools, name_hint
         )
 
     @property

@@ -37,7 +37,7 @@ from ...tools.subagent_tasks import (
     stop_subagent_task,
 )
 from ...tools.tasks import TaskToolkit
-from ...workflows.solidify import DraftFailed
+from ...workflows import DraftFailed
 from ..schemas import (
     GroupRename,
     OpenFileRequest,

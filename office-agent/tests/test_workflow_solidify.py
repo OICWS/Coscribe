@@ -9,6 +9,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 
+from coscribe.runtime_lg.messages import serialize_history_for_ws_lg
 from coscribe.workflows.solidify import (
     DraftFailed,
     check_draft,
@@ -72,6 +73,7 @@ CONVERSATION = [
     ToolMessage('"ok"', tool_call_id="c4"),
     AIMessage("Found 1 error line and wrote report.md."),
 ]
+HISTORY = serialize_history_for_ws_lg(CONVERSATION)
 
 GOOD_WORKFLOW = {
     "inputs": [{"name": "pdf_path", "label": "PDF", "type": "file", "default": "big.pdf"}],
@@ -99,7 +101,7 @@ def _reply(workflow: dict[str, Any], **extra: Any) -> str:
 
 
 def test_the_transcript_numbers_calls_and_marks_failures() -> None:
-    transcript, used = render_conversation(CONVERSATION)
+    transcript, used = render_conversation(serialize_history_for_ws_lg(CONVERSATION))
     assert '[tool call #3] search_pdf({"path": "big.pdf", "query": "Error code"})' in transcript
     assert "[tool call #2, FAILED] search_pdf" in transcript
     assert "error: no such page" in transcript
@@ -113,7 +115,7 @@ def test_a_long_transcript_keeps_its_beginning_and_end() -> None:
         messages += [_call(f"c{n}", "search_pdf", {"path": "a.pdf", "query": "x" * 200})]
         messages += [ToolMessage("[]", tool_call_id=f"c{n}")]
     messages.append(AIMessage("all done"))
-    transcript, _ = render_conversation(messages)
+    transcript, _ = render_conversation(serialize_history_for_ws_lg(messages))
     assert transcript.startswith("[user] the task")
     assert transcript.endswith("[assistant] all done")
     assert "middle of the conversation left out" in transcript
@@ -121,7 +123,7 @@ def test_a_long_transcript_keeps_its_beginning_and_end() -> None:
 
 async def test_drafts_a_workflow_that_holds_up() -> None:
     model = ScriptedModel(replies=["Here it is:\n" + _reply(GOOD_WORKFLOW)])
-    draft = await draft_workflow(model, CONVERSATION, TOOLS)
+    draft = await draft_workflow(model, HISTORY, TOOLS)
     assert draft.name == "Error audit"
     assert draft.notes == ["check"]
     assert draft.workflow == parse_workflow(GOOD_WORKFLOW).model_dump(mode="json")
@@ -133,7 +135,7 @@ async def test_drafts_a_workflow_that_holds_up() -> None:
 
 async def test_a_given_name_wins_over_the_curators() -> None:
     model = ScriptedModel(replies=[_reply(GOOD_WORKFLOW)])
-    draft = await draft_workflow(model, CONVERSATION, TOOLS, name_hint="Monthly audit")
+    draft = await draft_workflow(model, HISTORY, TOOLS, name_hint="Monthly audit")
     assert draft.name == "Monthly audit"
     assert 'Name the workflow "Monthly audit"' in str(model.received[0][1].content)
 
@@ -143,7 +145,7 @@ async def test_an_invalid_draft_goes_back_with_its_problems() -> None:
     bad["steps"][0]["args"]["pages"] = "1-5"
     bad["steps"][1]["conditions"][0]["left"] = {"ref": "hits"}
     model = ScriptedModel(replies=[_reply(bad), "not json at all", _reply(GOOD_WORKFLOW)])
-    draft = await draft_workflow(model, CONVERSATION, TOOLS)
+    draft = await draft_workflow(model, HISTORY, TOOLS)
     assert draft.workflow["steps"][0]["args"] == {"path": "{{pdf_path}}", "query": "Error code"}
     second_try = str(model.received[1][-1].content)
     assert "reads 'hits'" in second_try
@@ -156,20 +158,22 @@ async def test_gives_up_after_three_bad_drafts() -> None:
     unknown_tool["steps"][0]["tool"] = "search_everything"
     model = ScriptedModel(replies=[_reply(unknown_tool)] * 3)
     with pytest.raises(DraftFailed, match="no tool called 'search_everything'"):
-        await draft_workflow(model, CONVERSATION, TOOLS)
+        await draft_workflow(model, HISTORY, TOOLS)
     assert model.i == 3
 
 
 async def test_the_curator_can_say_theres_nothing_to_repeat() -> None:
     model = ScriptedModel(replies=['{"error": "This was a one-off question."}'])
     with pytest.raises(DraftFailed, match="one-off question"):
-        await draft_workflow(model, CONVERSATION, TOOLS)
+        await draft_workflow(model, HISTORY, TOOLS)
 
 
 async def test_a_conversation_without_tool_calls_is_refused_without_asking() -> None:
     model = ScriptedModel(replies=[])
     with pytest.raises(DraftFailed, match="hasn't used any tools"):
-        await draft_workflow(model, [HumanMessage("hi"), AIMessage("hello")], TOOLS)
+        await draft_workflow(
+            model, serialize_history_for_ws_lg([HumanMessage("hi"), AIMessage("hello")]), TOOLS
+        )
 
 
 def test_check_draft_catches_what_the_spec_cant() -> None:
@@ -310,7 +314,7 @@ BROWSER_CONVERSATION = [
 
 
 def test_the_transcript_names_browser_elements_instead_of_page_refs() -> None:
-    transcript, _ = render_conversation(BROWSER_CONVERSATION)
+    transcript, _ = render_conversation(serialize_history_for_ws_lg(BROWSER_CONVERSATION))
     assert '"ref": "checkbox \\"All items\\""' in transcript
     # The second field with the same name is told apart the way the
     # browser counts them.
