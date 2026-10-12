@@ -10,6 +10,7 @@
 /.github/CODEOWNERS @OICWS
 /.github/workflows/ @OICWS
 /office-agent/quality/ @OICWS
+/office-agent/pyproject.toml @OICWS
 /office-agent/scripts/ratchet.py @OICWS
 /office-agent/tests/tool_schemas.txt @OICWS
 /office-agent/tests/test_tool_schema_snapshot.py @OICWS

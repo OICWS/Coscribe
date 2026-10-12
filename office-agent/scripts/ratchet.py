@@ -4,14 +4,18 @@
 `quality/baseline.json` holds what each number was when it was last accepted.
 This script measures the code again and compares:
 
-    python scripts/ratchet.py            print the comparison, never fail
-    python scripts/ratchet.py --enforce  exit 1 if any number got worse
-    python scripts/ratchet.py --update   write the measured numbers as the baseline
+    python scripts/ratchet.py                 print the comparison, never fail
+    python scripts/ratchet.py --enforce       exit 1 if any number got worse
+    python scripts/ratchet.py --update        write the measured numbers as the baseline,
+                                              but only when none of them got worse
+    python scripts/ratchet.py --update --accept-worse
+                                              write them even though some got worse
 
 Nothing existing has to be fixed first: today's offenders are the baseline, and
 only new or growing ones count as worse. The baseline file is a CODEOWNERS path:
 raising a number there loosens the rule, and only a human may approve that
-(decision 0009).
+(decision 0009). `--update` refuses to write a worse number so that tightening the
+baseline cannot loosen it by the way; `--accept-worse` is the maintainer's flag.
 
 Every metric is a mapping from a name to a number, so "worse" is the same
 everywhere: a name that is new, or a number that grew.
@@ -280,10 +284,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--update", action="store_true", help="write the measured numbers as the baseline"
     )
+    parser.add_argument(
+        "--accept-worse",
+        action="store_true",
+        help="with --update: also accept numbers that got worse (the maintainer decides)",
+    )
     args = parser.parse_args(argv)
 
     measured = measure()
     if args.update:
+        if BASELINE.is_file() and not args.accept_worse:
+            worse, _ = compare(json.loads(BASELINE.read_text(encoding="utf-8")), measured)
+            if worse:
+                for line in worse:
+                    print(f"  WORSE  {line}")
+                print("Not written: --update only tightens. Fix what got worse, or ask the")
+                print("maintainer to run it with --accept-worse.")
+                return 1
         BASELINE.parent.mkdir(parents=True, exist_ok=True)
         BASELINE.write_text(json.dumps(measured, indent=1, sort_keys=True) + "\n", encoding="utf-8")
         print(f"Baseline written: {_summary(measured)}")
@@ -299,11 +316,10 @@ def main(argv: list[str] | None = None) -> int:
     for line in better:
         print(f"  better {line}")
     if better:
-        print(
-            "  Some numbers improved: run `python scripts/ratchet.py --update` and commit the baseline."
-        )
+        print("  Some numbers improved: run `python scripts/ratchet.py --update` and commit it.")
     if worse:
-        print("  Fix what got worse. Raising the baseline loosens the rule: a human approves that.")
+        print("  Fix what got worse. Raising the baseline loosens the rule: a human approves that")
+        print("  (`--update --accept-worse`).")
     return 1 if (worse and args.enforce) else 0
 
 
