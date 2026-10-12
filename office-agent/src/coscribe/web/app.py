@@ -117,9 +117,7 @@ from ..tools.scheduled_tasks import (
 from ..tools.skill_catalog import (
     enabled_skill_names,
 )
-from ..workflows.catalog import tool_description
-from ..workflows.permissions import granted_by
-from ..workflows.spec import parse_workflow
+from ..workflows import granted_by, parse_workflow, tool_description
 from .background_events import BackgroundEvent, BackgroundEventBus, run_event
 from .provider_catalog import (
     BUILTIN_PROVIDERS,
