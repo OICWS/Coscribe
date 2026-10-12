@@ -310,7 +310,6 @@ layers = [
 ]
 ignore_imports = [
     "coscribe.tools.scheduled_tasks -> coscribe.workflows.spec",
-    "coscribe.workflows.solidify -> coscribe.runtime_lg.messages",
     "coscribe.web.app -> coscribe.cli",
 ]
 

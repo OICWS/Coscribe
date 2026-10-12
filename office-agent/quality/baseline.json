@@ -173,7 +173,6 @@
   "coscribe.web.routes.threads -> coscribe.tools.scheduled_tasks": 1,
   "coscribe.web.routes.threads -> coscribe.tools.subagent_tasks": 1,
   "coscribe.web.routes.threads -> coscribe.tools.tasks": 1,
-  "coscribe.web.routes.threads -> coscribe.workflows.solidify": 1,
   "coscribe.web.state -> coscribe.conversation.session": 1,
   "coscribe.web.state -> coscribe.conversation.thread_meta": 1,
   "coscribe.web.state -> coscribe.runtime_lg.mcp": 1,
@@ -181,7 +180,6 @@
   "coscribe.web.state -> coscribe.tools.scheduled_tasks": 1,
   "coscribe.workflows.engine -> coscribe.tools.scripts": 1,
   "coscribe.workflows.engine -> coscribe.tools.scripts:_run_python_script": 1,
-  "coscribe.workflows.solidify -> coscribe.runtime_lg.messages": 1,
   "coscribe.workflows.testing -> coscribe.tools.browser": 1
  },
  "file_lines": {

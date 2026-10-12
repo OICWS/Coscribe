@@ -18,7 +18,6 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.constants import TAG_NOSTREAM
 from pydantic import ValidationError
 
-from ..runtime_lg.messages import serialize_history_for_ws_lg
 from .catalog import describe_params, tool_description
 from .engine import UNAVAILABLE_TOOLS
 from .spec import LLMStep, LoopStep, ToolStep, Workflow, parse_workflow, walk, workflow_error
@@ -220,13 +219,15 @@ def describe_browser_refs(entries: list[dict[str, Any]]) -> list[dict[str, Any]]
     return out
 
 
-def render_conversation(messages: list[Any]) -> tuple[str, list[str]]:
+def render_conversation(history: list[dict[str, Any]]) -> tuple[str, list[str]]:
     """The conversation as the curator reads it, and the tools it used
-    successfully, in first-use order."""
+    successfully, in first-use order. `history` is the replay entries
+    (`serialize_history_for_ws_lg`): the caller serializes, because
+    `runtime_lg` imports this package."""
     lines: list[str] = []
     used: list[str] = []
     call_number = 0
-    for entry in describe_browser_refs(serialize_history_for_ws_lg(messages)):
+    for entry in describe_browser_refs(history):
         if entry["kind"] == "user":
             lines.append(f"[user] {_clip(entry['text'], _TEXT_CHARS)}")
         elif entry["kind"] == "agent":
@@ -356,11 +357,11 @@ def _parse_reply(text: str, tools: dict[str, Any], name_hint: str) -> WorkflowDr
 
 async def draft_workflow(
     model: Any,
-    messages: list[Any],
+    history: list[dict[str, Any]],
     tools: dict[str, Any],
     name_hint: str = "",
 ) -> WorkflowDraft:
-    transcript, used = render_conversation(messages)
+    transcript, used = render_conversation(history)
     if not used:
         raise DraftFailed(
             "This conversation hasn't used any tools yet, so there's nothing to repeat. "
@@ -436,12 +437,12 @@ async def revise_workflow(
     name: str,
     workflow: dict[str, Any],
     request: str,
-    messages: list[Any],
+    history: list[dict[str, Any]],
     tools: dict[str, Any],
 ) -> WorkflowDraft:
     """The saved `workflow` changed as `request` asks, checked like a new
     draft, with a line per change for the person reviewing it."""
-    transcript, used = render_conversation(messages)
+    transcript, used = render_conversation(history)
     if "temperature" in getattr(type(model), "model_fields", {}):
         model = model.model_copy(update={"temperature": 0})
     described = list(dict.fromkeys([*_tools_in(workflow), *used, SCRIPT_TOOL]))
