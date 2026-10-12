@@ -6,6 +6,7 @@ import contextlib
 import json
 import socket
 import stat
+import sys
 import threading
 import time
 from pathlib import Path
@@ -613,6 +614,7 @@ def test_post_mcp_server_stores_env_via_keyring_when_available(
     assert ("coscribe", "mcp:github-local:env:GITHUB_TOKEN") not in fake_keyring.store
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX mode bits")
 def test_mcp_json_file_gets_owner_only_permissions(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

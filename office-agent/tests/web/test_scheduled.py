@@ -635,8 +635,8 @@ def test_a_failed_workflow_run_is_looked_into_in_a_new_conversation_lg(
                 break
             time.sleep(0.05)
         with client.websocket_connect(f"/ws/{thread_id}") as ws:
-            ws.receive_json()  # state
-            history = ws.receive_json()["entries"]
+            # Another event can arrive before the history on a slower machine.
+            history = _receive_until(ws, "history")[-1]["entries"]
         titles = {t["thread_id"]: t["preview"] for t in client.get("/api/threads").json()}
 
     assert task["source_thread"] == "t_source"

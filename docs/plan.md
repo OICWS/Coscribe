@@ -22,6 +22,8 @@ Last reviewed: 2026-10-11.
       for the not-verified items was dropped: the maintainer tests by using the app, and
       what a script can check on Windows goes into a Windows job in CI (step 13 of the
       assessment, brought forward: the next step after this one).
+   6. A Windows job in CI (`.github/workflows/windows.yml`): nightly, report only; fix or
+      fence what it shows, then make it required after two green weeks.
    Then public interfaces and cards per package, golden-file and approval tests, and
    only after them the large splits (roadmap in the assessment).
 

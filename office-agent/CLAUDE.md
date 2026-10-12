@@ -92,11 +92,18 @@ message or gets deleted outright -- never both.
 Commits are authored as the human whose session it is, not as Claude (decided
 2026-09-26, per person since 0007). A fresh container starts with git's identity
 set to Claude, so set it in the clone before the first commit, to that person's
-own GitHub name and email (the maintainer's are below):
+own GitHub name and their GitHub noreply address
+(`<id>+<login>@users.noreply.github.com`; the id is on the person's GitHub
+profile API, `https://api.github.com/users/<login>`). Never copy another
+person's identity, and never use an address the person no longer uses.
+
+Write no `Co-authored-by` or `Co-Authored-By` trailer: a squash merge copies
+every commit author and trailer into the merged commit. The maintainer's, as an
+example of the form:
 
 ```bash
 git config user.name "OICWS"
-git config user.email "OICW1803508708@outlook.com"
+git config user.email "216505477+OICWS@users.noreply.github.com"
 ```
 
 ## Delegating simple code changes

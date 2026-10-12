@@ -23,6 +23,7 @@ from coscribe.code_runtime.launch import CodexHost, LaunchSpec
 from coscribe.code_runtime.service import CodeService
 from coscribe.config import Settings
 
+EXE = ".exe" if sys.platform == "win32" else ""
 CODEX = b"#!/bin/sh\necho fake codex\n" * 1000
 RG = b"fake rg\n" * 500
 PADDING = os.urandom(400_000)
@@ -32,8 +33,8 @@ def _wheel_bytes() -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as wheel:
         wheel.writestr("codex_cli_bin/bin/codex-code-mode-host", PADDING)
-        wheel.writestr("codex_cli_bin/bin/codex", CODEX)
-        wheel.writestr("codex_cli_bin/codex-path/rg", RG)
+        wheel.writestr(f"codex_cli_bin/bin/codex{EXE}", CODEX)
+        wheel.writestr(f"codex_cli_bin/codex-path/rg{EXE}", RG)
     return buffer.getvalue()
 
 
@@ -47,11 +48,11 @@ def _fake_pins(codex: bytes = CODEX, wheel: bytes = WHEEL) -> dict[str, Any]:
         "sha256": hashlib.sha256(wheel).hexdigest(),
         "size": len(wheel),
         "members": {
-            "codex_cli_bin/bin/codex": {
+            f"codex_cli_bin/bin/codex{EXE}": {
                 "sha256": hashlib.sha256(codex).hexdigest(),
                 "size": len(codex),
             },
-            "codex_cli_bin/codex-path/rg": {
+            f"codex_cli_bin/codex-path/rg{EXE}": {
                 "sha256": hashlib.sha256(RG).hexdigest(),
                 "size": len(RG),
             },
@@ -132,7 +133,7 @@ def test_only_the_two_needed_members_are_downloaded(
 
     assert executable == codex_executable(tmp_path)
     assert executable.read_bytes() == CODEX
-    assert (install.codex_path_dir(tmp_path) / "rg").read_bytes() == RG
+    assert (install.codex_path_dir(tmp_path) / f"rg{EXE}").read_bytes() == RG
     if sys.platform != "win32":
         assert os.access(executable, os.X_OK)
     assert ranged.served < len(WHEEL) - len(PADDING) // 2

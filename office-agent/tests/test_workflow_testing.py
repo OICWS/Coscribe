@@ -77,7 +77,7 @@ async def test_a_test_lists_the_files_it_wrote_with_their_shape(tmp_path: Path) 
     os.utime(tmp_path / "old.csv", (1, 1))
 
     def write_file(path: str, content: str) -> dict[str, Any]:
-        (tmp_path / path).write_text(content, encoding="utf-8")
+        (tmp_path / path).write_bytes(content.encode("utf-8"))
         return {"path": path, "note": {"files": ["old.csv", "missing.csv"]}}
 
     step = {

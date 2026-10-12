@@ -294,7 +294,8 @@ def test_to_lg_connection_forwards_corporate_network_env(
 
     connection = _to_lg_connection({"command": "npx", "args": []})
 
-    assert connection["env"] == {
+    forwarded = {k.upper(): v for k, v in connection["env"].items()}
+    assert forwarded == {
         "HTTPS_PROXY": "http://proxy.corp.example:8080",
         "NODE_EXTRA_CA_CERTS": "C:\\corp-ca.pem",
     }

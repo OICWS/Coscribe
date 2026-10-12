@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import stat
+import sys
 from pathlib import Path
 
 import keyring.errors
@@ -192,6 +193,7 @@ def test_resolve_env_keyring_refs_replaces_sentinels_in_os_environ(
 # -- harden_file_permissions --
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX mode bits")
 def test_harden_file_permissions_sets_owner_only_mode(tmp_path: Path) -> None:
     path = tmp_path / "providers.json"
     path.write_text("{}", encoding="utf-8")

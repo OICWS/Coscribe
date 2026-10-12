@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -38,7 +39,9 @@ def test_granted_by_lists_the_sites_and_folders_the_steps_name() -> None:
     )
     named = granted_by(workflow)
     assert named["sites"] == ["sap.example.com"]
-    assert named["folders"] == ["D:\\reports\\monthly", "/srv/out"]
+    # A drive-less path is not absolute on Windows, so only POSIX sees /srv/out.
+    expected = ["D:\\reports\\monthly"] + ([] if sys.platform == "win32" else ["/srv/out"])
+    assert named["folders"] == expected
 
 
 def test_a_site_from_an_input_counts_through_its_default_or_is_left_for_run_time() -> None:
