@@ -34,10 +34,10 @@ mypy src
 echo "== import boundaries =="
 lint-imports
 
-# Report only for now: numbers about the code that may only get better
-# (quality/baseline.json). `--enforce` makes a worse number fail.
+# Numbers about the code that may only get better (quality/baseline.json): a worse
+# number fails. Raising one is the maintainer's decision (`ratchet.py --update --accept-worse`).
 echo "== ratchet =="
-python scripts/ratchet.py
+python scripts/ratchet.py --enforce
 
 if [ "$fast" -eq 0 ]; then
   echo "== pytest =="

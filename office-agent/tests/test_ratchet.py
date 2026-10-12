@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -136,3 +137,54 @@ def test_the_committed_baseline_has_every_metric(ratchet: ModuleType) -> None:
     baseline = ratchet.json.loads(ratchet.BASELINE.read_text(encoding="utf-8"))
 
     assert set(baseline) == set(ratchet.METRICS)
+
+
+def _baseline_with(
+    ratchet: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, **kw: int
+) -> Path:
+    """A baseline file in tmp_path, and a measurement the test chooses."""
+    baseline = tmp_path / "baseline.json"
+    baseline.write_text(json.dumps({"file_lines": {"a.py": 900, "b.py": 900}}), encoding="utf-8")
+    monkeypatch.setattr(ratchet, "BASELINE", baseline)
+    monkeypatch.setattr(ratchet, "measure", lambda: {"file_lines": kw})
+    return baseline
+
+
+def test_update_refuses_to_write_a_number_that_got_worse(
+    ratchet: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    baseline = _baseline_with(ratchet, tmp_path, monkeypatch, **{"a.py": 850, "b.py": 950})
+    before = baseline.read_text(encoding="utf-8")
+
+    assert ratchet.main(["--update"]) == 1
+    assert baseline.read_text(encoding="utf-8") == before
+
+
+def test_update_with_accept_worse_writes_it(
+    ratchet: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    baseline = _baseline_with(ratchet, tmp_path, monkeypatch, **{"a.py": 850, "b.py": 950})
+
+    assert ratchet.main(["--update", "--accept-worse"]) == 0
+    assert json.loads(baseline.read_text(encoding="utf-8")) == {
+        "file_lines": {"a.py": 850, "b.py": 950}
+    }
+
+
+def test_update_writes_when_every_number_only_improved(
+    ratchet: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    baseline = _baseline_with(ratchet, tmp_path, monkeypatch, **{"a.py": 850})
+
+    assert ratchet.main(["--update"]) == 0
+    assert json.loads(baseline.read_text(encoding="utf-8")) == {"file_lines": {"a.py": 850}}
+
+
+def test_enforce_fails_only_when_something_got_worse(
+    ratchet: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _baseline_with(ratchet, tmp_path, monkeypatch, **{"a.py": 900, "b.py": 901})
+    assert ratchet.main(["--enforce"]) == 1
+
+    monkeypatch.setattr(ratchet, "measure", lambda: {"file_lines": {"a.py": 900, "b.py": 800}})
+    assert ratchet.main(["--enforce"]) == 0

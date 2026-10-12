@@ -27,6 +27,10 @@ Last reviewed: 2026-10-11.
    7. Public interfaces and cards, one package per PR: `workflows` is the pilot (its card,
       its `__init__.py` as the interface, `tests/test_module_cards.py`); the next package
       follows if the pilot reads well.
+   8. The ratchet hardened after the second review: `--update` only tightens (`--accept-worse`
+      is the maintainer's), `check.sh` enforces it, `pyproject.toml` is a CODEOWNERS path and
+      the Windows run is red when a test fails. Changed-line coverage stays report-only until
+      we know how many recent pull requests would have failed 80%.
    Then golden-file and approval tests, and only after them the large splits (roadmap in
    the assessment).
 
@@ -79,7 +83,7 @@ Last reviewed: 2026-10-11.
 - A second model family (Codex) reviewing invariant paths: when the second maintainer
   joins (decision 0009).
 
-- Conversations messaging each other (record 0008, proposed; design only).
+- Conversations messaging each other (record 0008, accepted and built; see its record).
 
 - Network access per session (an Edit environment setting). Without a sandbox it
   could only switch off coscribe's own web tools; it must say so on its face.

@@ -53,7 +53,7 @@ read it, then only the document for the area you are touching.
   `workflows | code_runtime`, `tools`, `runtime | config`, `providers`; a
   package imports only from below. Only `web` imports FastAPI, only
   `runtime.secrets` imports the keychain, `tools` and `runtime` never import
-  LangChain. Three known upward imports are listed in `pyproject.toml`
+  LangChain. Two known upward imports are listed in `pyproject.toml`
   (`[tool.importlinter]`); fix them to shrink the list, never add one without a
   decision record.
 - **UI text is English only.** Code comments explain WHY, never WHAT or history

@@ -1,10 +1,10 @@
 name: Windows
 
 # What a Windows machine would catch that the Linux job cannot: paths, the code page,
-# PowerShell and cmd, the keychain. Report only for now: it never blocks a pull request,
-# and it is not a required check. It runs nightly, by hand, and on a pull request that
-# changes this file. When the failures it shows are fixed or fenced, and it has been
-# green for two weeks, it becomes a required check (decision 0009).
+# PowerShell and cmd, the keychain. It is not a required check yet, so a red run does not
+# block a pull request, but the run is red when a test fails: the run page and the
+# nightly history show it. It runs nightly, by hand, and on a pull request that changes
+# this file. When it has been green for two weeks it becomes a required check (decision 0009).
 "on":
   schedule:
     - cron: "17 19 * * *"
@@ -26,8 +26,6 @@ jobs:
   pytest:
     runs-on: windows-latest
     timeout-minutes: 60
-    # A failure here is information, not a red pull request.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
