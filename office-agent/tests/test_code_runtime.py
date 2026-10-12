@@ -255,6 +255,7 @@ def test_anything_else_is_asked_about(script: str, tmp_path: Path) -> None:
     assert not reads_only(f"/bin/bash -lc {shlex.quote(script)}", str(tmp_path), tmp_path)
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Codex wraps commands in /bin/bash on POSIX")
 def test_codex_cd_prefix_into_the_folder_still_counts_as_a_read(tmp_path: Path) -> None:
     (tmp_path / "sub").mkdir()
     folder = str(tmp_path)

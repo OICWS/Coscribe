@@ -34,7 +34,7 @@ import pytest
 
 pytest.importorskip("langgraph", reason="needs the langgraph_spike extra installed")
 
-from coscribe.cli import _load_settings_or_none
+from coscribe.cli import _app_data_dir, _load_settings_or_none
 from coscribe.web.app import _run_web_server, create_setup_app
 
 
@@ -144,10 +144,14 @@ async def test_setup_post_writes_env_and_resolves_configured(
     settings = configured.result()
     assert settings.default_model == "anthropic:claude-sonnet-4-5-20250929"  # type: ignore[attr-defined]
 
-    env_path = tmp_path / ".config" / "coscribe" / ".env"
+    env_path = _app_data_dir() / ".env"
     env_text = env_path.read_text()
     assert "COSCRIBE_DEFAULT_MODEL='anthropic:claude-sonnet-4-5-20250929'" in env_text
-    assert "ANTHROPIC_API_KEY='sk-ant-test-key'" in env_text
+    # A machine with a working keychain stores a reference, not the value.
+    assert (
+        "ANTHROPIC_API_KEY='sk-ant-test-key'" in env_text
+        or "ANTHROPIC_API_KEY='__coscribe_keyring__:builtin-provider:ANTHROPIC_API_KEY'" in env_text
+    )
     # Real bug, live-reported: this used to write only the global
     # COSCRIBE_DEFAULT_MODEL, never the per-provider COSCRIBE_ANTHROPIC_
     # DEFAULT_MODEL that get_providers (web/app.py) reads to decide whether

@@ -22,14 +22,14 @@ def test_exit_nonzero_with_stderr_uses_stderr_as_reason() -> None:
 
 
 def test_exit_nonzero_without_stderr_falls_back_to_generic_reason() -> None:
-    result = run_hook(f"{PY} -c 'exit(3)'", {})
+    result = run_hook(f'{PY} -c "exit(3)"', {})
     assert result.allowed is False
     assert result.reason is not None
     assert "3" in result.reason
 
 
 def test_timeout_is_denied_with_timeout_reason() -> None:
-    result = run_hook(f"{PY} -c 'import time; time.sleep(5)'", {}, timeout=0.2)
+    result = run_hook(f'{PY} -c "import time; time.sleep(5)"', {}, timeout=0.2)
     assert result.allowed is False
     assert "timed out" in (result.reason or "")
 

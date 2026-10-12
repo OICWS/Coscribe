@@ -199,7 +199,9 @@ def test_post_config_updates_env_and_rejects_bad_values(
     assert body["rejected"] == {
         "COSCRIBE_DEFAULT_MODEL": ('must be a "provider:model" string, e.g. "anthropic:sonnet"')
     }
-    assert dotenv_values(tmp_path / ".env")["GEMINI_API_KEY"] == "sk-newkey"
+    # A machine with a working keychain stores a reference, not the value.
+    stored = dotenv_values(tmp_path / ".env")["GEMINI_API_KEY"]
+    assert stored in ("sk-newkey", "__coscribe_keyring__:builtin-provider:GEMINI_API_KEY")
     assert os.environ["GEMINI_API_KEY"] == "sk-newkey"
 
 
@@ -431,6 +433,7 @@ def test_post_provider_builtin_key_stored_via_keyring_when_available(
     assert fake_keyring.store[("coscribe", "builtin-provider:GEMINI_API_KEY")] == "sk-gemini-real"
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX mode bits")
 def test_provider_files_get_owner_only_permissions(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

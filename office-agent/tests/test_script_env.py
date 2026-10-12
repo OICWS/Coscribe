@@ -91,7 +91,10 @@ def test_ensure_script_env_falls_back_to_a_real_python_when_sys_executable_cant_
     fixture -- ensure_script_env is idempotent (returns early if the venv
     already exists), so reusing that shared fixture here would skip the
     fallback path entirely rather than exercising it."""
-    monkeypatch.setattr("coscribe.tools.script_env.sys.executable", "/bin/false")
+    failing = str(tmp_path / "failing.cmd") if sys.platform == "win32" else "/bin/false"
+    if sys.platform == "win32":
+        Path(failing).write_text("@exit /b 1\r\n", encoding="ascii")
+    monkeypatch.setattr("coscribe.tools.script_env.sys.executable", failing)
 
     venv_dir = ensure_script_env(tmp_path)
 

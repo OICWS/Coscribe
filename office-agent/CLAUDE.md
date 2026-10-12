@@ -94,9 +94,13 @@ Commits are authored as the human whose session it is, not as Claude (decided
 set to Claude, so set it in the clone before the first commit, to that person's
 own GitHub name and email (the maintainer's are below):
 
+Use the GitHub noreply address and write no `Co-authored-by` or
+`Co-Authored-By` trailer in a commit message: a squash merge copies every
+commit author and trailer into the merged commit.
+
 ```bash
 git config user.name "OICWS"
-git config user.email "OICW1803508708@outlook.com"
+git config user.email "216505477+OICWS@users.noreply.github.com"
 ```
 
 ## Delegating simple code changes
