@@ -6,6 +6,9 @@ each other's way. The map of the code and the invariants are in
 [`CLAUDE.md`](CLAUDE.md); the detailed working rules are in
 [`office-agent/CLAUDE.md`](office-agent/CLAUDE.md).
 
+New here? [`docs/start-guide.md`](docs/start-guide.md) takes you from the invite to a
+first pull request in one page.
+
 ## Setup
 
 See [`README.md`](README.md). Then check your setup works:
