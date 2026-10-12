@@ -24,8 +24,11 @@ Last reviewed: 2026-10-11.
       assessment, brought forward: the next step after this one).
    6. A Windows job in CI (`.github/workflows/windows.yml`): nightly, report only; fix or
       fence what it shows, then make it required after two green weeks.
-   Then public interfaces and cards per package, golden-file and approval tests, and
-   only after them the large splits (roadmap in the assessment).
+   7. Public interfaces and cards, one package per PR: `workflows` is the pilot (its card,
+      its `__init__.py` as the interface, `tests/test_module_cards.py`); the next package
+      follows if the pilot reads well.
+   Then golden-file and approval tests, and only after them the large splits (roadmap in
+   the assessment).
 
 1. **Make the repository easy to join** (governance review, 2026-10-08).
    - Done: `main` protected by a ruleset (PR only, squash, `test` required),

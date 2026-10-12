@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..tools.scheduled_tasks import ScheduledRun, ScheduledTrigger
-from ..workflows.spec import parse_workflow, walk
+from ..workflows import parse_workflow, walk
 
 
 @dataclass

@@ -159,10 +159,8 @@ from ..tools.selfwake import WakeStore
 from ..tools.skill_catalog import enabled_skill_names
 from ..tools.spreadsheets import SpreadsheetToolkit
 from ..tools.subagent_tasks import SubAgentTask, SubAgentTaskStore, running_subagent
-from ..workflows.engine import StepContext, StepRecord
+from ..workflows import StepContext, StepRecord, parse_workflow, run_test, uses_browser, walk
 from ..workflows.solidify import DraftFailed, WorkflowDraft, draft_workflow, revise_workflow
-from ..workflows.spec import parse_workflow, walk
-from ..workflows.testing import run_test, uses_browser
 from .activity import summarize_activity, summarize_workflow_run
 from .context_usage import build_context_breakdown
 from .events import EventSink

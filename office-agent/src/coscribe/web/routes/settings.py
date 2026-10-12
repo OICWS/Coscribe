@@ -61,7 +61,7 @@ from ...tools.script_env import (
     uninstall_package,
     working_interpreters,
 )
-from ...workflows.catalog import describe_params, tool_description
+from ...workflows import describe_params, tool_description
 from ..provider_catalog import (
     BUILTIN_PROVIDERS,
     PROVIDER_CATALOG,
