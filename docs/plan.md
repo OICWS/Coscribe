@@ -46,9 +46,9 @@ Last reviewed: 2026-10-11.
      every HTTP route is in `web/routes/` (one `router(state)` each).
    - Done: the two WebSocket routes are in `web/routes/ws.py`.
    - Done: the server tests are in `tests/web/`, one file per domain.
-2. **Working with more than one person** (record 0007, accepted): when the second
-   maintainer joins, an admin adds them as collaborator, their handle goes into
-   `.github/CODEOWNERS`, and the ruleset requires code-owner review for those paths.
+2. **Working with more than one person** (record 0007, accepted): kurtosisOC is a
+   collaborator and an owner on every `.github/CODEOWNERS` line. Left: an admin turns on
+   "require code owner review" in the repository ruleset (a settings change, not a PR).
 
 ## Needs the maintainer's testing (could not be verified here)
 
