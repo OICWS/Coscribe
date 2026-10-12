@@ -131,6 +131,9 @@ Nothing is pushed to `main` directly.
 - One area per PR, about 600 changed lines at most (generated catalogs and
   icons excepted). Land partial work behind an unused code path ("part 1:
   nothing applies it yet") instead of stacking PRs.
+- No signature lines: a commit message, PR title or description has no
+  `Co-authored-by`, session link or "Generated with/by ..." line. The `PR text`
+  check fails a pull request that has one.
 - Update an open PR with `git merge origin/main`, not rebase and force-push.
 - **Never merge a PR, enable auto-merge or push to `main`.** The maintainer
   merges, when the PR's checks and `main`'s latest run are green.

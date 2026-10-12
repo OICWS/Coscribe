@@ -1,0 +1,40 @@
+name: PR text
+
+# A squash merge copies every commit message into the merged commit, so signature lines
+# make each commit longer for no reader's benefit. This fails a pull request whose title,
+# description or commit messages carry one. It is not a required check.
+"on":
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  signature-lines:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Look for signature lines
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Matched case-insensitively, at the start of a line or anywhere for the
+          # generated-by wording and session links.
+          pattern='^[[:space:]]*co-authored-by:|^[[:space:]]*claude-session:|generated (with|by) \[?claude|claude\.ai/code/session'
+          status=0
+          if printf '%s\n%s\n' "$PR_TITLE" "$PR_BODY" | grep -inE "$pattern"; then
+            echo "::error::The pull request title or description has a signature line (see above)."
+            status=1
+          fi
+          if git log --format='%H %B' "$BASE_SHA..$HEAD_SHA" | grep -inE "$pattern"; then
+            echo "::error::A commit message has a signature line (see above); amend or squash the commit."
+            status=1
+          fi
+          exit $status
