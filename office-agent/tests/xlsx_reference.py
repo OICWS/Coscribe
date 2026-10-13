@@ -14,6 +14,14 @@ from openpyxl.styles import Font
 from openpyxl.worksheet.datavalidation import DataValidation
 
 
+def _widen(book: Workbook, width: float = 18) -> None:
+    """Room for every number and label, so nothing prints as ### or is cut off."""
+    for sheet in book.worksheets:
+        for column in range(1, sheet.max_column + 1):
+            dimension = sheet.column_dimensions[sheet.cell(row=1, column=column).column_letter]
+            dimension.width = max(dimension.width or 0, width)
+
+
 def clean_csv(inputs: Path, out: Path) -> Path:
     wanted = []
     with (inputs / "orders_export.csv").open(encoding="utf-8", newline="") as handle:
@@ -48,6 +56,7 @@ def clean_csv(inputs: Path, out: Path) -> Path:
         sheet.cell(row=r, column=1).number_format = "yyyy-mm-dd"
         sheet.cell(row=r, column=4).number_format = "#,##0.00"
     path = out / "orders_clean.xlsx"
+    _widen(book)
     book.save(path)
     return path
 
@@ -70,6 +79,7 @@ def monthly_summary(inputs: Path, out: Path) -> Path:
     sheet["A5"] = "Total"
     for column in "BCDE":
         sheet[f"{column}5"] = f"=SUM({column}2:{column}4)"
+    _widen(book)
     book.save(path)
     return path
 
@@ -85,6 +95,7 @@ def lookup_two_sheets(inputs: Path, out: Path) -> Path:
         sheet[f"E{row}"] = f"=VLOOKUP(B{row},Prices!$A$2:$C$7,3,FALSE)"
         sheet[f"F{row}"] = f"=E{row}*C{row}"
     sheet["E11"], sheet["F11"] = "Total", "=SUM(F2:F9)"
+    _widen(book)
     book.save(path)
     return path
 
@@ -104,6 +115,7 @@ def line_chart(inputs: Path, out: Path) -> Path:
     chart.set_categories(Reference(sheet, min_col=1, min_row=2, max_row=13))
     sheet.add_chart(chart, "D2")
     path = out / "visits.xlsx"
+    _widen(book)
     book.save(path)
     return path
 
@@ -122,6 +134,7 @@ def edit_budget(inputs: Path, out: Path) -> Path:
     for column in "BCD":
         sheet[f"{column}8"] = f"=SUM({column}2:{column}7)"
         sheet[f"{column}8"]._style = sheet["C2"]._style
+    _widen(book)
     book.save(path)
     return path
 
@@ -153,6 +166,7 @@ def budget_model(inputs: Path, out: Path) -> Path:
         sheet.cell(row=row, column=2, value=formula)
     sheet["B11"].number_format = "0.0%"
     path = out / "budget_model.xlsx"
+    _widen(book)
     book.save(path)
     return path
 
@@ -172,6 +186,7 @@ def chinese_formats(inputs: Path, out: Path) -> Path:
         sheet[f"C{row}"].number_format = '#,##0.00"万"'
         sheet[f"D{row}"].number_format = "0.0%"
     path = out / "区域销售汇总.xlsx"
+    _widen(book)
     book.save(path)
     return path
 
@@ -188,6 +203,7 @@ def validation_list(inputs: Path, out: Path) -> Path:
         sheet[f"C{row}"] = "Open"
     sheet["G1"] = "Open tickets"
     sheet["H1"] = '=COUNTIF(C2:C11,"Open")'
+    _widen(book)
     book.save(path)
     return path
 

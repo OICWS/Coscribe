@@ -141,6 +141,7 @@ CHECK_COLUMNS: dict[str, list[tuple[str, Any]]] = {
         ("probe", lambda e: _passed(e, "probe")),
         ("styles kept", lambda e: _passed(e, "untouched")),
         ("used range", lambda e: _passed(e, "used_range")),
+        ("legible", lambda e: _passed(e, "legibility")),
         ("numbers not in input", _inventions),
     ],
 }

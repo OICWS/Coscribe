@@ -193,7 +193,8 @@ def measured_models(effort: str | None) -> Iterator[None]:
 async def run_task(
     task: Task, out: Path, model: str, effort: str | None, timeout: float
 ) -> dict[str, Any]:
-    task_out = out / task.name
+    # A relative path would reach the agent's tools as relative to their own working directory.
+    task_out = out.resolve() / task.name
     if task_out.exists():
         shutil.rmtree(task_out)
     workspace = task_out / "workspace"
@@ -298,6 +299,7 @@ def _kind_columns(kind: str, report: dict[str, Any]) -> dict[str, Any]:
             "probe": _ok(report, "probe"),
             "charts": _ok(report, "charts"),
             "validations": _ok(report, "validations"),
+            "legible": _ok(report, "legibility"),
         }
     layout = report.get("layout") or {}
     return {
@@ -328,6 +330,7 @@ SUMMARY_COLUMNS = {
         "probe",
         "charts",
         "validations",
+        "legible",
         "inventions",
     ],
 }

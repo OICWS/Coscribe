@@ -12,6 +12,7 @@ import datetime as dt
 import re
 import shutil
 import tempfile
+import unicodedata
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,7 @@ from .tasks import Task, XlsxExpect
 from .text_checks import check_facts, find_inventions, plain_number
 
 _DEFAULT_TOLERANCE = 0.005
+_DEFAULT_COLUMN_WIDTH = 8.43  # characters, what Excel and LibreOffice give a column nobody sized
 _LIST_CAP = 20
 _CHART_KINDS = {
     "line": ("lineChart", "line3DChart"),
@@ -419,6 +421,66 @@ def check_probe(path: Path, probe: dict[str, Any], scratch: Path) -> dict[str, A
     return {**report, "recalc_ok": recalc["ok"], "ok": report["ok"] and recalc["ok"]}
 
 
+def _text_width(text: str) -> float:
+    """Columns are measured in characters of the default font; a CJK character takes two."""
+    return float(sum(2 if unicodedata.east_asian_width(c) in "WF" else 1 for c in text))
+
+
+def _column_widths(sheet: Any) -> dict[int, float]:
+    from openpyxl.utils import column_index_from_string
+
+    widths: dict[int, float] = {}
+    for letter, dimension in sheet.column_dimensions.items():
+        if dimension.width:
+            first = dimension.min or column_index_from_string(letter)
+            for index in range(first, (dimension.max or first) + 1):
+                widths[index] = float(dimension.width)
+    return widths
+
+
+def clipped_texts(workbook: Any, values: Any) -> list[str]:
+    """Text that is wider than its column while the cell to its right is taken, so a reader sees
+    `Order Dat` for `Order Date`. Wrapped text grows its row instead and is left out."""
+    clipped = []
+    for sheet in workbook.worksheets:
+        widths = _column_widths(sheet)
+        shown = values[sheet.title]
+        for row in shown.iter_rows():
+            for cell in row:
+                text = cell.value
+                if not isinstance(text, str) or not text.strip():
+                    continue
+                if workbook[sheet.title][cell.coordinate].alignment.wrap_text:
+                    continue
+                width = widths.get(cell.column, _DEFAULT_COLUMN_WIDTH)
+                neighbour = shown.cell(row=cell.row, column=cell.column + 1).value
+                if _text_width(text) > width + 0.5 and neighbour not in (None, ""):
+                    clipped.append(f"{sheet.title}!{cell.coordinate} {text[:30]!r}")
+    return clipped
+
+
+def hash_cells(pdf: Path) -> int:
+    """Cells printed as `###` because the number does not fit its column; LibreOffice draws them
+    the way Excel does."""
+    import pdfplumber
+
+    with pdfplumber.open(str(pdf)) as document:
+        text = "\n".join(page.extract_text() or "" for page in document.pages)
+    return len(re.findall(r"(?<![^\s])#{3,}(?![^\s])", text))
+
+
+def check_legibility(workbook: Any, values: Any, pdf: Path | None) -> dict[str, Any]:
+    """Every number and label can be read as printed: nothing is `###` and no text is cut off."""
+    clipped = clipped_texts(workbook, values)
+    hashes = None if pdf is None else hash_cells(pdf)
+    return {
+        "ok": not clipped and not hashes,
+        "hash_cells": hashes,
+        "clipped": clipped[:_LIST_CAP],
+        "clipped_count": len(clipped),
+    }
+
+
 def check_workbook(task: Task, path: Path, workspace: Path, out_dir: Path) -> dict[str, Any]:
     """The checks a task's expectations ask for; one that cannot run says why and the rest go on."""
     from openpyxl import load_workbook
@@ -470,6 +532,11 @@ def check_workbook(task: Task, path: Path, workspace: Path, out_dir: Path) -> di
                 report["probe"] = check_probe(path, expect.probe, scratch)
             except Exception as exc:  # noqa: BLE001 -- a probe that cannot run is a finding
                 report["probe"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+        report["render"] = render_pages(path, out_dir)
+        pdf = out_dir / report["render"]["pdf"] if report["render"].get("pdf") else None
+        try:
+            report["legibility"] = check_legibility(formulas, values, pdf)
+        except Exception as exc:  # noqa: BLE001 -- a check that cannot run says why
+            report["legibility"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
         values.close()
-    report["render"] = render_pages(path, out_dir)
     return report

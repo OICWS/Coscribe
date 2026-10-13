@@ -13,7 +13,7 @@ import pytest
 from openpyxl import Workbook, load_workbook
 from openpyxl.chart import BarChart, LineChart, Reference
 from openpyxl.formatting.rule import CellIsRule
-from openpyxl.styles import Font, PatternFill
+from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.datavalidation import DataValidation
 
 from evals import compare, judge, run, tasks, text_checks, xlsx_checks
@@ -347,6 +347,75 @@ def test_a_whole_number_rule_is_not_a_dropdown_list() -> None:
         xlsx_checks.check_validations(book, book, [{"at": "Tickets!A2", "values": ["1"]}])["ok"]
         is False
     )
+
+
+# --- can every number and label be read -------------------------------------------------
+
+
+def test_a_label_wider_than_its_column_is_cut_off_only_when_the_next_cell_is_taken() -> None:
+    sheet = _book([["Order Date", "Customer"], ["Fixed costs", None], ["Net margin", ""]]).active
+    sheet.column_dimensions["A"].width = 8.43
+
+    clipped = xlsx_checks.clipped_texts(sheet.parent, sheet.parent)
+
+    assert clipped == ["Data!A1 'Order Date'"]
+
+
+def test_wide_columns_wrapped_text_and_chinese_widths_are_measured() -> None:
+    sheet = _book(
+        [["Order Date", "x"], ["销售额（元）", "x"], ["a long wrapped label", "x"]]
+    ).active
+    sheet.column_dimensions["A"].width = 10
+    sheet["A3"].alignment = Alignment(wrap_text=True)
+
+    clipped = xlsx_checks.clipped_texts(sheet.parent, sheet.parent)
+
+    assert clipped == ["Data!A2 '销售额（元）'"]  # 6 CJK characters take 12
+
+
+def test_a_column_range_gives_its_width_to_every_column_in_it() -> None:
+    labels = ["a longer label", "x", "another long label", "x", "x", "x", "wide label", "x"]
+    sheet = _book([labels]).active
+    narrow = ["Data!A1 'a longer label'", "Data!C1 'another long label'", "Data!G1 'wide label'"]
+    assert xlsx_checks.clipped_texts(sheet.parent, sheet.parent) == narrow
+
+    sheet.column_dimensions["A"].width = 30
+    sheet.column_dimensions["C"].width = 30
+    sheet.column_dimensions["E"].width = 20
+    sheet.column_dimensions["E"].min, sheet.column_dimensions["E"].max = 5, 8
+
+    assert xlsx_checks.clipped_texts(sheet.parent, sheet.parent) == []
+
+
+def _pdf(path: Path, lines: list[str]) -> Path:
+    from reportlab.pdfgen import canvas
+
+    page = canvas.Canvas(str(path))
+    for number, line in enumerate(lines):
+        page.drawString(72, 750 - 20 * number, line)
+    page.save()
+    return path
+
+
+def test_cells_printed_as_hashes_are_counted_and_other_hash_signs_are_not(tmp_path: Path) -> None:
+    pdf = _pdf(tmp_path / "p.pdf", ["### ### 5", "see C# and ## not", "2026-01-05 #####"])
+
+    assert xlsx_checks.hash_cells(pdf) == 3
+
+
+def test_a_sheet_is_legible_when_nothing_is_cut_off_and_nothing_prints_as_hashes(
+    tmp_path: Path,
+) -> None:
+    book = _book([["Order Date", "x"]])
+    pdf = _pdf(tmp_path / "p.pdf", ["Order Date x"])
+
+    assert xlsx_checks.check_legibility(book, book, pdf)["ok"] is False
+    book.active.column_dimensions["A"].width = 14
+    assert xlsx_checks.check_legibility(book, book, pdf)["ok"] is True
+    assert (
+        xlsx_checks.check_legibility(book, book, _pdf(tmp_path / "h.pdf", ["###"]))["ok"] is False
+    )
+    assert xlsx_checks.check_legibility(book, book, None)["hash_cells"] is None
 
 
 # --- the whole check on a file ----------------------------------------------------------
@@ -708,6 +777,28 @@ def test_a_check_only_rerun_reads_the_deck_key_of_an_older_run(
     run.check_task(tasks.discover("01")[0], folder)
 
     assert seen == [folder / "workspace" / "old.pptx"]
+
+
+async def test_a_relative_out_folder_reaches_the_session_as_an_absolute_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: list[Path] = []
+
+    class Session:
+        async def handle_user_message(self, brief: str, recorder: Any) -> None:
+            return None
+
+    def build(root: Path, workspace: Path, model: str, thread_id: str) -> Session:
+        seen.extend([root, workspace])
+        return Session()
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(run, "_build_session", build)
+    monkeypatch.setitem(run.CHECKERS, "xlsx", lambda task, path, ws, out_dir: {})
+
+    await run.run_task(_task("06"), Path("runs/x"), "deepseek:m", "low", 60)
+
+    assert seen and all(path.is_absolute() for path in seen)
 
 
 def test_no_output_is_recorded_as_a_file_that_does_not_open(tmp_path: Path) -> None:
