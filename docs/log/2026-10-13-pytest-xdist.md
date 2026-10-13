@@ -14,4 +14,4 @@ Why: CI's `test` job spent about 12 minutes on pytest because it used one of the
 - Only 7 parallel runs: a rarely colliding shared resource could still exist.
 
 ## Follow-ups
-- None.
+- #176: audit test isolation under xdist (the `_free_port()` close-then-rebind pattern in five test files, shared `.hypothesis` and `/tmp` paths) and run `-n 4` once on the Windows job.
