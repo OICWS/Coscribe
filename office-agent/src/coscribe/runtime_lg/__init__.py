@@ -16,7 +16,7 @@ from .messages import (
     strip_mode_note,
     tool_result_value,
 )
-from .providers import resolve_chat_model
+from .providers import keeps_tool_list_fixed, resolve_chat_model
 from .scheduled_tasks import (
     continue_workflow_run,
     execute_run,
@@ -26,19 +26,23 @@ from .scheduled_tasks import (
     start_investigation,
     stop_run,
 )
-from .selfwake import poll_due_wakes
+from .selfwake import SilentSocket, poll_due_wakes
 from .skill_authoring import SkillSaveProposal, propose_skill_save_lg, write_skill_lg
 from .subagents import (
+    SUBAGENT_MAX_STEPS,
     SubAgentHost,
     build_delegation_tools,
     build_review_work_tool,
     select_reviewer_tools,
+    subagent_report,
 )
 
 if TYPE_CHECKING:
     from .mcp import connect_one_mcp_server_lg
 
 __all__ = [
+    "SUBAGENT_MAX_STEPS",
+    "SilentSocket",
     "AuditLog",
     "AutoApproveReason",
     "CODE_APPROVAL_RISKS",
@@ -68,7 +72,9 @@ __all__ = [
     "SkillSaveProposal",
     "propose_skill_save_lg",
     "render_transcript_lg",
+    "keeps_tool_list_fixed",
     "resolve_chat_model",
+    "subagent_report",
     "review_action",
     "serialize_history_for_ws_lg",
     "strip_mode_note",

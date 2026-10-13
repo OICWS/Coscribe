@@ -7,7 +7,7 @@ from .connector_permissions import (
     is_read_only,
     name_of,
 )
-from .conversations import MessagingStore, build_conversation_tools
+from .conversations import MessagingStore, build_conversation_tools, format_incoming
 from .convert import build_convert_tools
 from .files import build_file_tools
 from .images import build_image_tools
@@ -62,12 +62,15 @@ from .subagent_tasks import (
     build_subagent_task_tools,
     forget_finished_subagents,
     get_subagent_transcript,
+    running_subagent,
     stop_subagent_task,
 )
 from .tasks import build_task_tools
 from .websearch import build_websearch_tools
 
 __all__ = [
+    "format_incoming",
+    "running_subagent",
     "SCHEDULED_THREAD_PREFIX",
     "ScheduledRun",
     "validate_mcp_config",
