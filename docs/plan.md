@@ -42,7 +42,14 @@ Last reviewed: 2026-10-11.
    10. Approval decision table (issue #103): part 1, the precedence of the standing approvals,
        plan mode, the exec policy and asking, is in `tests/test_approval_decisions.py`. Next:
        Auto mode's reviewer, the code module's allowances, the question and draft tools.
-   Then the large splits (roadmap in the assessment).
+   Then the large splits (roadmap in the assessment); the split of `tools/presentations.py`
+   waits for the first version of the deck engine below, so it is split once.
+
+0b. **The office route** (proposed decision 0010, `docs/assessments/2026-10-13-office-route.md`):
+   new decks compiled from whole-page SVG sources, edits through the page source and upgraded
+   object tools; open-source code reused as owned copies. Next, once 0010 is accepted: the
+   evaluation (tasks, checks, blind judge) in the repository, then the PowerPoint engine MVP;
+   Excel, then Word, the same way.
 
 1. **Make the repository easy to join** (governance review, 2026-10-08).
    - Done: `main` protected by a ruleset (PR only, squash, `test` required),
