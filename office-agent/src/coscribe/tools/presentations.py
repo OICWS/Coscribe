@@ -2970,8 +2970,9 @@ def _describe_shape(index: int, shape: Any) -> dict[str, object]:
     from pptx.enum.shapes import MSO_SHAPE_TYPE
 
     hyperlink: str | None
+    is_group = shape.shape_type == MSO_SHAPE_TYPE.GROUP  # click_action raises TypeError
     try:
-        jump_target = shape.click_action.target_slide
+        jump_target = None if is_group else shape.click_action.target_slide
     except ValueError:
         # A real, if unusual, PowerPoint construct this tool never
         # writes itself but must not crash reading back: a "next
@@ -2989,8 +2990,7 @@ def _describe_shape(index: int, shape: Any) -> dict[str, object]:
         # reordered/duplicated).
         hyperlink = f"#slide-{slides.index(jump_target) + 1}"
     else:
-        hyperlink = shape.click_action.hyperlink.address
-
+        hyperlink = None if is_group else shape.click_action.hyperlink.address
     text_preview: str | None = None
     if shape.has_text_frame:
         text = shape.text_frame.text.strip()
