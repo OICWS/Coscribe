@@ -5,6 +5,7 @@ it cannot tell apart.
     python -m evals.judge evals/runs/baseline --rounds 3
     python -m evals.judge evals/runs/a evals/runs/b --rounds 3 --judge gemini:gemini-3.5-flash
     python -m evals.judge evals/runs/excel --kind xlsx --rounds 3
+    python -m evals.judge evals/runs/word --kind docx --rounds 3
 
 With several runs, the decks every run made for one task go into one request under random
 labels (`Deck P`, `Deck Q`...), drawn again each round, so neither position nor name tells
@@ -62,7 +63,18 @@ If there are several workbooks, rank them from best to worst.
 Return JSON only: {"decks": {"<label>": {"design": n, "content": n, "coherence": n, "defects": [str]}}, "ranking": ["<label>", ...]}
 (The key is "decks" and the labels are "Deck P", "Deck Q"..., whatever the file kind.)"""
 
-RUBRICS = {"pptx": RUBRIC, "xlsx": RUBRIC_XLSX}
+RUBRIC_DOCX = """You are a strict senior business editor judging Word documents made for a real reader.
+You see the user's request, then the rendered pages of each document.
+Score each document from 1 to 5 (decimals allowed) on:
+- design: real heading hierarchy and consistent styles, readable body text, tables that fit the page with a clear header row, pictures sized to the text and captioned, sensible margins and spacing, no stray markup symbols, nothing cut off, East Asian and Latin text both showing in a proper font (no boxes);
+- content: it does what the request asked, in the right tone and length, the facts and figures are right and complete, nothing is invented, nothing important is missing and the edits asked for are made and no others;
+- coherence: the document reads as one piece with a logical order, the same wording and style throughout, and a reader finds what they need.
+Also list the 3 most serious concrete defects you see in each document (page number + defect).
+If there are several documents, rank them from best to worst.
+Return JSON only: {"decks": {"<label>": {"design": n, "content": n, "coherence": n, "defects": [str]}}, "ranking": ["<label>", ...]}
+(The key is "decks" and the labels are "Deck P", "Deck Q"..., whatever the file kind.)"""
+
+RUBRICS = {"pptx": RUBRIC, "xlsx": RUBRIC_XLSX, "docx": RUBRIC_DOCX}
 
 
 def assign_labels(count: int, rng: random.Random) -> list[str]:

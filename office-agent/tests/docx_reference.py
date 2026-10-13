@@ -1,0 +1,323 @@
+"""Reference solutions of the Word evaluation tasks: what a good answer looks like, built with
+python-docx. They show that every task can be solved and that its `expect.json` accepts it."""
+
+from __future__ import annotations
+
+import copy
+from pathlib import Path
+
+from docx import Document
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.shared import Inches
+
+_STAMP = {qn("w:id"): "0", qn("w:author"): "Claude", qn("w:date"): "2026-06-15T09:00:00Z"}
+
+
+def _stamped(tag: str, ident: int) -> OxmlElement:
+    element = OxmlElement(tag)
+    for key, value in _STAMP.items():
+        element.set(key, value)
+    element.set(qn("w:id"), str(ident))
+    return element
+
+
+def _run(text: str, deleted: bool = False) -> OxmlElement:
+    run = OxmlElement("w:r")
+    node = OxmlElement("w:delText" if deleted else "w:t")
+    node.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+    node.text = text
+    run.append(node)
+    return run
+
+
+def redline(paragraph, old: str, new: str, ident: int) -> None:
+    """Replace `old` by `new` inside a one-run paragraph as a tracked deletion plus insertion."""
+    run = paragraph.runs[0]
+    before, _, after = run.text.partition(old)
+    holder = run._r
+    for text in (before,):
+        if text:
+            holder.addprevious(_run(text))
+    deletion = _stamped("w:del", ident)
+    deletion.append(_run(old, deleted=True))
+    insertion = _stamped("w:ins", ident + 1)
+    insertion.append(_run(new))
+    holder.addprevious(deletion)
+    holder.addprevious(insertion)
+    if after:
+        holder.addprevious(_run(after))
+    holder.getparent().remove(holder)
+
+
+def _inserted_paragraph(document, anchor, style: str, text: str, ident: int):
+    paragraph = copy.deepcopy(anchor._p)
+    for child in list(paragraph):
+        paragraph.remove(child)
+    properties = OxmlElement("w:pPr")
+    style_node = OxmlElement("w:pStyle")
+    style_node.set(qn("w:val"), document.styles[style].style_id)
+    properties.append(style_node)
+    mark = OxmlElement("w:rPr")
+    mark.append(_stamped("w:ins", ident))
+    properties.append(mark)
+    paragraph.append(properties)
+    insertion = _stamped("w:ins", ident + 1)
+    insertion.append(_run(text))
+    paragraph.append(insertion)
+    anchor._p.addnext(paragraph)
+    return paragraph
+
+
+def report_from_notes(inputs: Path, out: Path) -> Path:
+    document = Document()
+    document.add_heading("Warehouse move: report", level=0)
+    document.add_heading("Summary", level=1)
+    document.add_paragraph(
+        "The lease on the old Leeds warehouse ends on 30 June 2026. The new site in Wakefield is "
+        "14 miles away. The move is quoted at 184,000 GBP against a budget of 200,000 GBP."
+    )
+    document.add_heading("Costs", level=1)
+    rows = [
+        ("Item", "Amount (GBP)"),
+        ("Move, quoted by Northline", "184,000"),
+        ("Wifi survey for 35 scanners", "6,500"),
+        ("Lower trailers", "1,800"),
+        ("Insurance in transit", "4,200"),
+        ("Replacement rack (each)", "310"),
+    ]
+    table = document.add_table(rows=len(rows), cols=2)
+    table.style = "Table Grid"
+    for index, (name, amount) in enumerate(rows):
+        table.cell(index, 0).text, table.cell(index, 1).text = name, amount
+    document.add_paragraph("40 racks move and 12 are scrapped because of rust.")
+    document.add_heading("Schedule", level=1)
+    document.add_paragraph(
+        "The move runs from Friday 19 June to Sunday 21 June; stock is picked again on Monday "
+        "22 June."
+    )
+    document.add_heading("Risks", level=1)
+    document.add_paragraph(
+        "The loading doors at Wakefield are 3.2 m high and two trailers are 3.4 m, so lower "
+        "trailers must be hired. Open question: nobody has decided whether to keep the Leeds "
+        "mezzanine."
+    )
+    document.add_heading("Next steps", level=1)
+    document.add_paragraph(
+        "Dana signs the quote by 10 April; Mei books the survey; Luis updates the budget."
+    )
+    path = out / "warehouse_report.docx"
+    document.save(path)
+    return path
+
+
+def memo_from_pdf(inputs: Path, out: Path) -> Path:
+    document = Document()
+    document.add_heading("Memo", level=0)
+    for line in (
+        "To: Dana, Operations",
+        "From: Finance",
+        "Date: 2 March 2026",
+        "Subject: Northline quote Q-2026-0412",
+    ):
+        document.add_paragraph(line)
+    document.add_paragraph(
+        "Northline quote the relocation of the Leeds warehouse to Wakefield at a total of 31,183 "
+        "GBP excluding VAT. The quote is valid until 2 April 2026."
+    )
+    document.add_paragraph(
+        "Payment: 30% deposit on acceptance, the balance 14 days after completion."
+    )
+    document.add_paragraph(
+        "Not included: insurance of goods in transit, replacement racking and IT equipment."
+    )
+    document.add_paragraph("Earliest start is 15 June 2026; a weekend move needs 3 weeks' notice.")
+    path = out / "northline_memo.docx"
+    document.save(path)
+    return path
+
+
+def tracked_contract(inputs: Path, out: Path) -> Path:
+    document = Document(str(inputs / "service_agreement.docx"))
+    fee = next(p for p in document.paragraphs if "2,400" in p.text)
+    redline(fee, "2,400", "2,650", 10)
+    payment = next(p for p in document.paragraphs if "within 30 days" in p.text)
+    redline(payment, "30 days", "45 days", 20)
+    last = document.paragraphs[-1]
+    heading = _inserted_paragraph(document, last, "Heading 2", "9. Governing law", 30)
+    holder = copy.copy(last)
+    holder._p = heading
+    _inserted_paragraph(
+        document,
+        holder,
+        "Normal",
+        "This Agreement is governed by the laws of England and Wales.",
+        40,
+    )
+    path = out / "service_agreement_redline.docx"
+    document.save(path)
+    return path
+
+
+def letter_on_template(inputs: Path, out: Path) -> Path:
+    document = Document(str(inputs / "letterhead.docx"))
+    for line in (
+        "15 June 2026",
+        "Ms Ruth Okafor, Harbour Foods Ltd, 4 Dock Road, Hull HU1 2AB",
+        "Dear Ms Okafor,",
+        "Your order 4471 (80 pallets) will ship on 22 June 2026, five days later than promised, "
+        "because a delivery of packaging arrived late. We apologise.",
+        "We would like to offer a 3% discount on the invoice.",
+        "Yours sincerely,",
+        "Dana Whitfield, Operations Manager",
+    ):
+        document.add_paragraph(line, style="Letter Body")
+    path = out / "letter.docx"
+    document.save(path)
+    return path
+
+
+def table_heavy(inputs: Path, out: Path) -> Path:
+    import csv
+    from collections import defaultdict
+
+    totals: dict[str, dict[str, int]] = defaultdict(dict)
+    with (inputs / "sales.csv").open(encoding="utf-8", newline="") as handle:
+        for row in csv.DictReader(handle):
+            region, quarter = row["Region"], row["Quarter"]
+            totals[region][quarter] = totals[region].get(quarter, 0) + int(row["Revenue"])
+    quarters = ["Q1", "Q2", "Q3", "Q4"]
+    document = Document()
+    document.add_heading("Regional sales review", level=0)
+    table = document.add_table(rows=len(totals) + 2, cols=6)
+    table.style = "Table Grid"
+    table.rows[0].cells[0].text = "Region"
+    for column, quarter in enumerate([*quarters, "Total"], start=1):
+        table.rows[0].cells[column].text = quarter
+    for index, region in enumerate(totals, start=1):
+        cells = table.rows[index].cells
+        cells[0].text = region
+        for column, quarter in enumerate(quarters, start=1):
+            cells[column].text = f"{totals[region][quarter]:,}"
+        cells[5].text = f"{sum(totals[region].values()):,}"
+    last = table.rows[-1].cells
+    last[0].text = "Total"
+    for column, quarter in enumerate(quarters, start=1):
+        last[column].text = f"{sum(t[quarter] for t in totals.values()):,}"
+    last[5].text = f"{sum(sum(t.values()) for t in totals.values()):,}"
+    document.add_paragraph(
+        "South is the largest region with 84,200. Revenue grows to 75,950 in Q4."
+    )
+    path = out / "regional_sales_review.docx"
+    document.save(path)
+    return path
+
+
+def mixed_language(inputs: Path, out: Path) -> Path:
+    document = Document()
+    document.add_heading("新员工入职通知", level=0)
+    document.add_heading("入职安排", level=1)
+    document.add_paragraph("入职日期：2026年5月6日（周三），上午9:30到前台报到。")
+    document.add_paragraph("部门：数据平台组 (Data Platform)，直属经理：陈静。")
+    document.add_heading("设备与待遇", level=1)
+    document.add_paragraph("笔记本电脑和门禁卡在第一天发放；IT 热线 8800。午餐补贴每天35元。")
+    document.add_heading("试用期与培训", level=1)
+    document.add_paragraph("试用期3个月，转正评估在2026年8月6日。")
+    path = out / "onboarding_zh.docx"
+    document.save(path)
+    return path
+
+
+def restructure(inputs: Path, out: Path) -> Path:
+    document = Document()
+    document.add_heading("Staff handbook", level=0)
+    document.add_paragraph("This handbook sets out how we work. It applies to all staff.")
+    paragraph = document.add_paragraph()
+    begin, instruction, end = (
+        OxmlElement("w:fldChar"),
+        OxmlElement("w:instrText"),
+        OxmlElement("w:fldChar"),
+    )
+    begin.set(qn("w:fldCharType"), "begin")
+    instruction.text = ' TOC \\o "1-3" \\h \\z \\u '
+    end.set(qn("w:fldCharType"), "end")
+    for node in (begin, instruction, end):
+        run = OxmlElement("w:r")
+        run.append(node)
+        paragraph._p.append(run)
+    sections = [
+        (
+            "Safety",
+            [
+                "Report any accident to the duty manager within one hour.",
+                "Fire exits are checked every Monday morning.",
+            ],
+        ),
+        (
+            "Onboarding",
+            [
+                "New starters get a laptop and an account on their first day.",
+                "A buddy is assigned for the first four weeks.",
+            ],
+        ),
+        (
+            "Working hours",
+            [
+                "Core hours are 10:00 to 16:00; the rest is flexible.",
+                "Overtime is agreed with the team lead in advance.",
+            ],
+        ),
+        (
+            "Remote work",
+            [
+                "Staff may work from home two days a week.",
+                "The company pays a 20 GBP monthly allowance.",
+            ],
+        ),
+        (
+            "Expenses",
+            [
+                "Claims are made in the expenses tool within 30 days.",
+                "Receipts are required for every amount over 25 GBP.",
+            ],
+        ),
+    ]
+    for title, items in sections:
+        document.add_heading(title, level=1)
+        for item in items:
+            document.add_paragraph(item, style="List Bullet")
+    document.add_heading("Contacts", level=1)
+    table = document.add_table(rows=3, cols=2)
+    table.style = "Table Grid"
+    for row, (name, who) in enumerate(
+        [("Duty manager", "ext. 201"), ("HR", "ext. 305"), ("IT desk", "ext. 410")]
+    ):
+        table.cell(row, 0).text, table.cell(row, 1).text = name, who
+    path = out / "handbook_v2.docx"
+    document.save(path)
+    return path
+
+
+def image_caption(inputs: Path, out: Path) -> Path:
+    document = Document()
+    document.add_heading("Intake process", level=0)
+    document.add_picture(str(inputs / "process.png"), width=Inches(6))
+    document.add_paragraph("Figure 1: Intake process", style="Caption")
+    document.add_paragraph(
+        "Work moves from left to right: Receive (blue), Review (orange), then Approve (green)."
+    )
+    path = out / "intake_process.docx"
+    document.save(path)
+    return path
+
+
+SOLUTIONS = {
+    "01-report-from-notes": report_from_notes,
+    "02-memo-from-pdf": memo_from_pdf,
+    "03-tracked-contract": tracked_contract,
+    "04-letter-on-template": letter_on_template,
+    "05-table-heavy": table_heavy,
+    "06-mixed-language": mixed_language,
+    "07-restructure": restructure,
+    "08-image-caption": image_caption,
+}

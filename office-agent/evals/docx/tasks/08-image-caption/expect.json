@@ -1,0 +1,32 @@
+{
+ "facts": [
+  [
+   "Intake process"
+  ],
+  [
+   "Figure 1"
+  ],
+  [
+   "Receive"
+  ],
+  [
+   "Review"
+  ],
+  [
+   "Approve"
+  ]
+ ],
+ "images_min": 1,
+ "image_fit": true,
+ "captions": [
+  {
+   "style": "Caption",
+   "starts_with": "Figure 1",
+   "below_image": true
+  }
+ ],
+ "pages": [
+  1,
+  1
+ ]
+}

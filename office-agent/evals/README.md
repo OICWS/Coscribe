@@ -3,9 +3,9 @@
 Decision 0010 (`docs/decisions/0010-office-files-are-compiled-from-whole-page-sources.md`) says each
 step of the office route is decided by measurement. This is the measurement: real tasks, sent to
 coscribe's real agent, checked automatically, with cost and time recorded. Part 1 covers PowerPoint
-(`--kind pptx`, the default); part 2 adds Excel (`--kind xlsx`, below). It calls a model, so it is run by hand
+(`--kind pptx`, the default); part 2 adds Excel (`--kind xlsx`) and Word (`--kind docx`), below. It calls a model, so it is run by hand
 and is not part of CI; only its deterministic parts are tested (`tests/test_evals_pptx.py`,
-`tests/test_evals_xlsx.py`). It changes nothing under `src/`.
+`tests/test_evals_xlsx.py`, `tests/test_evals_docx.py`). It changes nothing under `src/`.
 
 ## Run
 
@@ -16,6 +16,7 @@ python -m evals.run --route current --tasks all --out evals/runs/baseline
 python -m evals.run --tasks 01,07 --out evals/runs/try          # some tasks
 python -m evals.run --check-only --out evals/runs/baseline      # re-check, no model calls
 python -m evals.run --kind xlsx --out evals/runs/excel          # the Excel tasks
+python -m evals.run --kind docx --out evals/runs/word           # the Word tasks
 ```
 
 Long runs go off-peak on DeepSeek (weekdays 9:00-12:00 and 14:00-18:00 Beijing time cost double;
@@ -89,6 +90,35 @@ LibreOffice changes when it saves (`\-`, a quoted `"$"`, the alpha byte of a col
 and requires all checks to pass, so a task nobody can satisfy, or an `expect.json` that rejects a right
 answer, fails in the test run (it skips without LibreOffice).
 
+## Word (`--kind docx`)
+
+`docx/tasks/<NN-slug>/` has the same `brief.md`, `inputs/` and `expect.json`; `docx/make_inputs.py`
+rebuilds the binary inputs. The text is read from the document's XML in two views: *accepted* (tracked
+changes applied: what a reader sees after "Accept all", and what `facts` and `inventions` look at;
+python-docx's `paragraph.text` leaves tracked insertions out) and *rejected* (every change undone). A
+key left out of `expect.json` is not checked:
+
+| Key | What it says |
+|---|---|
+| `facts`, `absent`, `allowed_numbers`, `pages` | as for decks; `pages` counts the pages LibreOffice prints |
+| `headings` | `{"text", "level"?}` found in this order among the paragraphs in a Title or Heading style; bold text in a Normal paragraph is not a heading |
+| `toc` | a real table-of-contents field is there, not the words "Table of contents" |
+| `tables` | `{"rows_min", "cols_min", "header"?}`, each satisfied by a different table of the document |
+| `images_min`, `image_fit` | enough pictures; none wider than the text area (page width minus margins) |
+| `captions` | `{"style", "starts_with", "below_image"?}`: a paragraph in that style, directly under a picture |
+| `tracked` | `{"min_ins", "min_del", "rejected_equals_original"}`: the edit is a redline, and rejecting all of it gives the input's text back, so nothing was changed without a mark |
+| `original` + `styles`, `header_has`, `footer_has`, `style_uses`, `keep_styles` | the user's file is still the base: its styles are defined, its header and footer text is there, the text is set in its styles (at least that many paragraphs) and every style the original used is still used |
+
+`markdown` runs on every task: `#`, `**`, `-` bullets, table rules or backticks typed into the text
+instead of applied as formatting, the sign of markdown pasted into paragraphs. `inventions` lists the
+numbers in the document that no input has, per paragraph, as for decks.
+
+`tests/docx_reference.py` holds a good answer to every task (built with python-docx, the tracked changes
+by hand in XML). A test runs each through the checks, and a second one, skipped without LibreOffice,
+counts the pages for real; so a task nobody can satisfy, or an `expect.json` that rejects a right answer,
+fails in the test run. Tests that break one thing in a good answer (a flattened table, a bold-only
+heading, a stripped header, a too-wide picture) show that each check can fail.
+
 ## The blind judge (`judge.py`)
 
 ```bash
@@ -96,6 +126,7 @@ python -m evals.judge evals/runs/baseline --rounds 3                  # each dec
 python -m evals.judge evals/runs/a evals/runs/b --rounds 3            # the two runs' decks together
 python -m evals.judge evals/runs/a --judge gemini:gemini-3.5-flash    # a judge from another vendor
 python -m evals.judge evals/runs/excel --kind xlsx --rounds 3         # workbooks: their own rubric
+python -m evals.judge evals/runs/word --kind docx --rounds 3          # documents: their own rubric
 ```
 
 A vision model sees the user's brief and the rendered pages and scores design, content and coherence

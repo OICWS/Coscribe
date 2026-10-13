@@ -743,7 +743,7 @@ def test_the_original_must_be_one_of_the_inputs(tmp_path: Path) -> None:
 
 def test_a_kind_without_checks_is_not_offered_by_the_runner() -> None:
     with pytest.raises(SystemExit):
-        run.main(["--kind", "docx", "--out", "nowhere"])
+        run.main(["--kind", "odt", "--out", "nowhere"])
 
 
 def test_a_blank_fact_never_matches() -> None:
@@ -766,7 +766,6 @@ def test_an_unknown_kind_or_task_is_refused() -> None:
     with pytest.raises(ValueError, match="no such task: 99"):
         tasks.discover("99", kind="xlsx")
     assert [t.name[:2] for t in tasks.discover("01,05", kind="xlsx")] == ["01", "05"]
-    assert tasks.discover("all", kind="docx") == []  # no tasks yet is an empty list, not a crash
 
 
 # --- text shared by the kinds -----------------------------------------------------------

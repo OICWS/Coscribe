@@ -1,0 +1,1 @@
+Make a one-page Word document "Intake process" that shows process.png, sized to fit the page width, with a caption under it that reads "Figure 1: Intake process" in the Caption style, and a short paragraph that explains the three steps from left to right: Receive (blue), Review (orange), Approve (green). Do not change the picture.

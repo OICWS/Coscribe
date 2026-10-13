@@ -1,0 +1,57 @@
+{
+ "facts": [
+  [
+   "Okafor"
+  ],
+  [
+   "4471"
+  ],
+  [
+   "80 pallets"
+  ],
+  [
+   "22 June 2026"
+  ],
+  [
+   "five days",
+   "5 days"
+  ],
+  [
+   "apolog",
+   "sorry"
+  ],
+  [
+   "3%"
+  ],
+  [
+   "Dana Whitfield"
+  ],
+  [
+   "Operations Manager"
+  ],
+  [
+   "15 June 2026"
+  ],
+  [
+   "Dock Road"
+  ]
+ ],
+ "original": "letterhead.docx",
+ "styles": [
+  "Letter Body",
+  "Letter Sender"
+ ],
+ "header_has": [
+  "ACME Corporation"
+ ],
+ "footer_has": [
+  "04417281"
+ ],
+ "style_uses": {
+  "Letter Body": 4
+ },
+ "pages": [
+  1,
+  1
+ ]
+}

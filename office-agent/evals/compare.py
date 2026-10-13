@@ -144,6 +144,19 @@ CHECK_COLUMNS: dict[str, list[tuple[str, Any]]] = {
         ("legible", lambda e: _passed(e, "legibility")),
         ("numbers not in input", _inventions),
     ],
+    "docx": [
+        ("facts", _facts),
+        ("pages", lambda e: _passed(e, "pages")),
+        ("headings", lambda e: _passed(e, "headings")),
+        ("toc", lambda e: _passed(e, "toc")),
+        ("tables", lambda e: _passed(e, "tables")),
+        ("images", lambda e: _passed(e, "images")),
+        ("captions", lambda e: _passed(e, "captions")),
+        ("tracked", lambda e: _passed(e, "tracked")),
+        ("template", lambda e: _passed(e, "template")),
+        ("markdown left", lambda e: _passed(e, "markdown")),
+        ("numbers not in input", _inventions),
+    ],
 }
 
 

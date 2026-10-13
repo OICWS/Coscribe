@@ -1,0 +1,1 @@
+From sales.csv make a one-page Word document "Regional sales review" with a table of revenue by region (rows) and quarter (columns Q1 to Q4), with a total for each region and a total for each quarter, then two sentences on what the table shows. Show amounts with thousands separators.
