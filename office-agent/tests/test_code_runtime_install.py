@@ -18,6 +18,7 @@ from typing import Any
 import pytest
 
 from coscribe.code_runtime import _pins, install
+from coscribe.code_runtime import service as code_runtime_service
 from coscribe.code_runtime.install import CodexUnavailable, codex_executable, ensure_codex
 from coscribe.code_runtime.launch import CodexHost, LaunchSpec
 from coscribe.code_runtime.service import CodeService
@@ -224,7 +225,7 @@ def test_every_pinned_build_has_both_members_and_full_hashes() -> None:
 async def test_the_service_reports_downloads_and_removes_codex(
     monkeypatch: pytest.MonkeyPatch, pinned: dict[str, Any], ranged: _Server, tmp_path: Path
 ) -> None:
-    monkeypatch.setattr("coscribe.code_runtime.service.ensure_script_env", lambda state_dir: None)
+    monkeypatch.setattr(code_runtime_service, "ensure_script_env", lambda state_dir: None)
     settings = Settings(  # type: ignore[call-arg]
         _env_file=None, default_model="openai:x", state_dir=tmp_path, codex_wheel_url=ranged.url
     )

@@ -18,7 +18,10 @@ from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 from typer.testing import CliRunner
 
+from coscribe import cli
 from coscribe.cli import app
+from coscribe.conversation import session as conversation_session
+from coscribe.runtime_lg import mcp as lg_mcp
 from coscribe.tools.scheduled_tasks import ScheduledTrigger, ScheduledTriggerStore, ScheduleRule
 from coscribe.tools.selfwake import WakeRequest, WakeStore
 
@@ -92,12 +95,11 @@ def _env(tmp_path: Path, **overrides: str | None) -> dict[str, str | None]:
 
 def _patch_model(monkeypatch: pytest.MonkeyPatch, fake_model: FakeToolCallingChatModel) -> None:
     monkeypatch.setattr(
-        "coscribe.conversation.session.resolve_chat_model",
+        conversation_session,
+        "resolve_chat_model",
         lambda model, custom_providers=None: fake_model,
     )
-    monkeypatch.setattr(
-        "coscribe.cli.LLMClient", lambda custom_providers=None: _FakeContextWindowClient()
-    )
+    monkeypatch.setattr(cli, "LLMClient", lambda custom_providers=None: _FakeContextWindowClient())
 
 
 def test_simple_conversation_round_trip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -283,7 +285,7 @@ def test_mcp_tools_are_wired_into_the_session(
     async def _fake_connect(path: Any, **kwargs: Any) -> tuple[list[Any], dict[str, Any]]:
         return [fake_mcp_tool], {}
 
-    monkeypatch.setattr("coscribe.runtime_lg.mcp.connect_mcp_tools_lg", _fake_connect)
+    monkeypatch.setattr(lg_mcp, "connect_mcp_tools_lg", _fake_connect)
     call = _tool_call("call_1", "fake_mcp_tool", {})
     fake_model = FakeToolCallingChatModel(
         responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="got it")]
@@ -428,7 +430,7 @@ def test_a_question_is_answered_at_the_terminal_by_number_text_or_enter(
         "multi_select": True,
     }
     replies = iter(["1, 2", "only the summary", ""])
-    monkeypatch.setattr("coscribe.cli.typer.prompt", lambda *a, **k: next(replies))
+    monkeypatch.setattr(cli.typer, "prompt", lambda *a, **k: next(replies))
 
     assert _ask(question) == "Orders, Returns"
     assert _ask(question) == "only the summary"
