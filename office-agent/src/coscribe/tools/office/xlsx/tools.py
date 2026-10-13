@@ -2,14 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
 
 from ....runtime import tool_metadata
 from ..._output_truncation import cap_read_output
 from .toolkit import SpreadsheetToolkit
-
-if TYPE_CHECKING:
-    pass
 
 
 def build_spreadsheet_tools(

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
 
 from ..._file_locks import locked_by_path
 from ..._thumbnail import render_thumbnail
@@ -18,9 +18,6 @@ from .helpers import (
     _render_sheet_table,
     _workbook_has_any_formula,
 )
-
-if TYPE_CHECKING:
-    pass
 
 
 class SpreadsheetToolkit:

@@ -19,8 +19,7 @@ spreadsheets versus the one-shot documents in ``office/docx``.
 it, rather than at module level -- same real, measured startup-time
 reasoning as ``office/docx``'s identical change, see that module's
 docstring and runtime_lg/README.md's startup-time section. ``Worksheet``
-is only ever used as a type annotation (never at runtime, thanks to
-``from __future__ import annotations``), so it's imported under
+is only ever used as a type annotation, so ``helpers.py`` imports it under
 ``TYPE_CHECKING`` instead of even a lazy runtime import.
 
 ``add_xlsx_chart`` only builds through openpyxl's high-level chart
