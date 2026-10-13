@@ -177,6 +177,8 @@ dev = [
     "types-reportlab>=4.0.0",
     "types-openpyxl>=3.1.0",
     "import-linter>=2.15",
+    # scripts/ratchet.py reads the import graph directly (also pulled in by import-linter).
+    "grimp>=3.0",
 ]
 web = [
     # 0.132.0 rejects a JSON body without a JSON Content-Type. Earlier

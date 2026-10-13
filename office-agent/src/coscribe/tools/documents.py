@@ -90,6 +90,7 @@ from xml.sax.saxutils import escape as _xml_escape
 
 from ..runtime.types import tool_metadata
 from ._file_locks import locked_by_path
+from ._markdown_tables import _is_separator_row, _split_table_row
 from ._native_docx_tracks import _constants as _tracks_constants
 from ._native_docx_tracks.tracks import TracksMixin, _resolve
 from ._ooxml_validate import assert_wml_valid
@@ -103,7 +104,6 @@ _MC_IGNORABLE = "{http://schemas.openxmlformats.org/markup-compatibility/2006}Ig
 _HEADING_RE = re.compile(r"^(#{1,3})\s+(.*)$")
 _BULLET_RE = re.compile(r"^[-*]\s+(.*)$")
 _NUMBER_RE = re.compile(r"^\d+\.\s+(.*)$")
-_SEPARATOR_CELL_RE = re.compile(r"^:?-{2,}:?$")
 _TOC_LINE_RE = re.compile(r"^\[TOC\]$", re.IGNORECASE)
 _COMMENT_MARKER_RE = re.compile(r"\s*\{\{comment:\s*(.+?)\}\}\s*$", re.IGNORECASE)
 
@@ -174,16 +174,6 @@ def _pdf_page_texts(
         finally:
             document.close()
     return pages
-
-
-def _split_table_row(line: str) -> list[str] | None:
-    if not (line.startswith("|") and line.endswith("|") and len(line) >= 2):
-        return None
-    return [cell.strip() for cell in line[1:-1].split("|")]
-
-
-def _is_separator_row(cells: list[str]) -> bool:
-    return all(_SEPARATOR_CELL_RE.match(cell) for cell in cells)
 
 
 def parse_blocks(content: str) -> list[Block]:

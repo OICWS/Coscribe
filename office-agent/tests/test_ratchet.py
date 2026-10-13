@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import importlib.util
 import json
 import sys
@@ -129,6 +130,95 @@ def test_patching_a_dotted_name_by_string_is_counted_per_file(
     ratchet.ROOT = tmp_path
 
     assert ratchet.patch_by_string(tmp_path) == {"test_a.py": 1}
+
+
+def _package(root: Path, name: str, files: dict[str, str]) -> Path:
+    package = root / name
+    for rel, text in files.items():
+        path = package / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    return package
+
+
+def test_a_module_over_the_fan_out_limit_is_listed_with_its_distinct_imports(
+    ratchet: ModuleType, tmp_path: Path
+) -> None:
+    package = _package(
+        tmp_path,
+        "fanout_a",
+        {
+            "__init__.py": "",
+            # a package's __init__ is one module however many names come from it, a repeated
+            # import is one, and an external package is none
+            "hub.py": (
+                "import json\n"
+                "from fanout_a import one\n"
+                "from fanout_a.sub import x, y\n"
+                "from fanout_a.sub import z\n"
+                "from . import two\n"
+                "from .three import t\n"
+            ),
+            "quiet.py": "from fanout_a import one\n",
+            "one.py": "",
+            "two.py": "",
+            "three.py": "t = 1\n",
+            "sub/__init__.py": "x = y = z = 1\n",
+        },
+    )
+
+    assert ratchet.fan_out(package, listed=3) == {"fanout_a.hub": 4}
+    assert ratchet.fan_out(package, listed=4) == {}
+
+
+def test_fan_out_refuses_to_read_a_different_copy_of_the_package(
+    ratchet: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    elsewhere = _package(tmp_path / "installed", "fanout_b", {"__init__.py": ""})
+    checkout = _package(tmp_path / "checkout", "fanout_b", {"__init__.py": ""})
+    monkeypatch.syspath_prepend(str(elsewhere.parent))
+    monkeypatch.delitem(sys.modules, "fanout_b", raising=False)
+    try:
+        importlib.import_module("fanout_b")  # the other copy is already loaded
+
+        with pytest.raises(RuntimeError, match="fanout_b resolves to"):
+            ratchet.fan_out(checkout)
+    finally:
+        sys.modules.pop("fanout_b", None)
+
+
+def test_more_fan_out_than_the_baseline_allows_is_worse_and_less_is_better(
+    ratchet: ModuleType,
+) -> None:
+    baseline = {"fan_out": {"pkg.a": 30, "pkg.b": 28}}
+
+    worse, _ = ratchet.compare(baseline, {"fan_out": {"pkg.a": 31, "pkg.b": 28}})
+    assert worse == ["fan_out: pkg.a grew 30 -> 31"]
+
+    worse, _ = ratchet.compare(baseline, {"fan_out": {"pkg.a": 30, "pkg.b": 28, "pkg.c": 26}})
+    assert worse == ["fan_out: new  pkg.c = 26"]
+
+    worse, better = ratchet.compare(baseline, {"fan_out": {"pkg.a": 27}})
+    assert worse == []
+    assert better == ["fan_out: pkg.a 30 -> 27", "fan_out: pkg.b is gone (was 28)"]
+
+
+def test_fan_out_is_a_registered_metric_and_an_increase_fails_enforce(
+    ratchet: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert ratchet.METRICS["fan_out"] is ratchet.fan_out
+    baseline = tmp_path / "baseline.json"
+    baseline.write_text(json.dumps({"fan_out": {"pkg.a": 30}}), encoding="utf-8")
+    monkeypatch.setattr(ratchet, "BASELINE", baseline)
+
+    monkeypatch.setattr(ratchet, "measure", lambda: {"fan_out": {"pkg.a": 31}})
+    assert ratchet.main(["--enforce"]) == 1
+    assert ratchet.main(["--update"]) == 1
+
+    monkeypatch.setattr(ratchet, "measure", lambda: {"fan_out": {"pkg.a": 29}})
+    assert ratchet.main(["--enforce"]) == 0
+    assert ratchet.main(["--update"]) == 0
+    assert json.loads(baseline.read_text(encoding="utf-8")) == {"fan_out": {"pkg.a": 29}}
 
 
 def test_the_committed_baseline_has_every_metric(ratchet: ModuleType) -> None:
