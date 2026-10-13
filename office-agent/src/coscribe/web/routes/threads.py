@@ -51,8 +51,8 @@ from ..state import AppState
 def router(state: AppState) -> APIRouter:
     router = APIRouter()
     settings = state.settings
-    _read_workspace_sidecar = state.read_workspace_sidecar
-    _title_sidecar_path = state.title_sidecar_path
+    _read_workspace_sidecar = state.thread_files.read_workspace_sidecar
+    _title_sidecar_path = state.thread_files.title_sidecar_path
     checkpointer_holder = state.checkpointer_holder
     meta_store = state.meta_store
     sessions = state.sessions

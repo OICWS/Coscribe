@@ -49,7 +49,12 @@ COMPLEXITY_LISTED = 15
 FAN_OUT_LISTED = 25
 
 # Vendored code is left alone so a diff against its upstream stays meaningful.
-VENDORED = ("tools/_native_formula/", "tools/_native_docx_tracks/", "providers/gemini_provider.py")
+VENDORED = (
+    "tools/_native_formula/",
+    "tools/_native_docx_tracks/",
+    "tools/_native_svg/",
+    "providers/gemini_provider.py",
+)
 
 SUPPRESSIONS = {
     "type_ignore": re.compile(r"#\s*type:\s*ignore"),

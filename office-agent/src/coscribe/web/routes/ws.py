@@ -15,7 +15,7 @@ def router(state: AppState) -> APIRouter:
     meta_store = state.meta_store
     _get_session = state.get_session
     _track_background = state.track_background
-    _write_workspace_sidecar = state.write_workspace_sidecar
+    _write_workspace_sidecar = state.thread_files.write_workspace_sidecar
 
     @router.websocket("/ws/browser")
     async def browser_panel_ws(websocket: WebSocket) -> None:
