@@ -171,7 +171,7 @@ class ConnectorManager:
         ChatSessionLG -- a connector enabled mid-conversation would never show
         up in that same, already-open thread, only in threads started
         afterwards. Called once at the end of each of the three
-        connector-mutating endpoints in routes/connectors.py (not from inside
+        connector-mutating endpoints in the connectors routes (not from inside
         disconnect_mcp_server_lg/connect_and_register_mcp_server_lg
         themselves, since add/bump call both back to back and would
         otherwise rebuild every open session's graph twice for one

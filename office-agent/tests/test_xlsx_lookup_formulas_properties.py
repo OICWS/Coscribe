@@ -514,9 +514,9 @@ def test_a_formula_that_is_not_one_call_is_declined(
 
 
 def _recalculate(path: Path) -> dict[str, object]:
-    from coscribe.tools import spreadsheets
+    from coscribe.tools.office.xlsx import helpers
 
-    return spreadsheets._recalc_xlsx_and_evaluate_lookups(path)
+    return helpers._recalc_xlsx_and_evaluate_lookups(path)
 
 
 def _libreoffice_actually_works() -> bool:
