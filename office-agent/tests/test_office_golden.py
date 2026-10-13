@@ -78,6 +78,10 @@ def _png(name: str) -> None:
     shutil.copyfile(ASSETS / name, name)
 
 
+def _wav(name: str) -> None:
+    shutil.copyfile(ASSETS / "narration.wav", name)
+
+
 def _image(tools: dict[str, Callable[..., object]]) -> None:
     tools["write_pptx"](path="deck.pptx", content="# Our logo\n- placed top right")
     _png("logo.png")
@@ -190,7 +194,62 @@ def _background_image(tools: dict[str, Callable[..., object]]) -> None:
     tools["add_pptx_scrim"](path="deck.pptx", slide=1, opacity=0.4, color="000000")
 
 
+def _audio_deck(
+    **options: object,
+) -> Callable[[dict[str, Callable[..., object]]], None]:
+    def build(tools: dict[str, Callable[..., object]]) -> None:
+        tools["write_pptx"](path="deck.pptx", content="# Narrated\n- first\n- second")
+        _wav("narration.wav")
+        tools["add_pptx_audio"](path="deck.pptx", slide=1, audio_path="narration.wav", **options)
+
+    return build
+
+
+def _audio_after_animation(tools: dict[str, Callable[..., object]]) -> None:
+    # The audio shares the slide's existing timing tree instead of making a second one.
+    tools["write_pptx"](path="deck.pptx", content="# Narrated\n- first\n- second")
+    tools["add_pptx_animation"](path="deck.pptx", slide=1, shape_index=0, animation="fade")
+    _wav("narration.wav")
+    tools["add_pptx_audio"](path="deck.pptx", slide=1, audio_path="narration.wav", hidden=True)
+
+
+_CJK_CONTENT = "# 季度回顾\n- 收入增长 **12%**\n- 新增两个市场\n- 招聘进展顺利"
+
+
+def _cjk_bullets(tools: dict[str, Callable[..., object]]) -> None:
+    tools["write_pptx"](path="deck.pptx", content=_CJK_CONTENT)
+
+
+def _cjk_table_and_chart(tools: dict[str, Callable[..., object]]) -> None:
+    tools["write_pptx"](
+        path="deck.pptx",
+        content="# 区域业绩\n| 区域 | 第一季度 | 第二季度 |\n| --- | --- | --- |\n"
+        "| 华北 | 10 | 12 |\n| 华南 | 8 | 9 |",
+    )
+    tools["add_pptx_chart"](
+        path="deck.pptx",
+        slide=1,
+        chart_type="bar",
+        data="| 季度 | 收入 |\n| --- | --- |\n| 一 | 100 |\n| 二 | 120 |",
+        title="收入",
+    )
+
+
+def _cjk_template_fill(tools: dict[str, Callable[..., object]]) -> None:
+    tools["fill_pptx_template"](
+        path="deck.pptx",
+        template_id="bold-statement",
+        content="# 年度回顾\n增长的一年\n---\n# 亮点\n- 收入增长\n- 新市场\n---\n# 谢谢\n欢迎提问",
+    )
+
+
 DECKS: dict[str, Callable[[dict[str, Callable[..., object]]], None]] = {
+    "audio_after_animation": _audio_after_animation,
+    "audio_auto_visible": _audio_deck(left_in=8.0, top_in=0.5, start_delay=1.5),
+    "audio_on_click": _audio_deck(trigger="on-click"),
+    "cjk_bullets": _cjk_bullets,
+    "cjk_table_and_chart": _cjk_table_and_chart,
+    "cjk_template_fill": _cjk_template_fill,
     "background_image": _background_image,
     "bullets": _bullets,
     "chart_bar": _chart("bar", _ONE_SERIES),
