@@ -16,6 +16,8 @@ from langchain_core.messages import (
     ToolMessage,
 )
 
+from coscribe.web import app as web_app
+from coscribe.web.routes import settings as settings_routes
 from coscribe.web.schemas import ScriptEnvPackageInstall
 
 from ..test_web_routes import _flatten
@@ -92,7 +94,7 @@ def test_wake_poll_loop_starts_and_cancels_cleanly_on_shutdown(
         calls += 1
         return []
 
-    monkeypatch.setattr("coscribe.web.app.poll_due_wakes", _counting_poll_due_wakes)
+    monkeypatch.setattr(web_app, "poll_due_wakes", _counting_poll_due_wakes)
     fake_model = FakeToolCallingChatModel(responses=[])
     with _client_lg(tmp_path, monkeypatch, fake_model, wake_poll_seconds=0) as client:
         time.sleep(0.05)
@@ -135,8 +137,8 @@ def test_wake_poll_loop_publishes_background_events_for_fired_wakes_and_triggers
     ) -> list[Any]:
         return [store.load(digest.trigger_id)]
 
-    monkeypatch.setattr("coscribe.web.app.poll_due_wakes", _fake_poll_due_wakes)
-    monkeypatch.setattr("coscribe.web.app.poll_due_scheduled_tasks", _fake_poll_due_scheduled_tasks)
+    monkeypatch.setattr(web_app, "poll_due_wakes", _fake_poll_due_wakes)
+    monkeypatch.setattr(web_app, "poll_due_scheduled_tasks", _fake_poll_due_scheduled_tasks)
     fake_model = FakeToolCallingChatModel(responses=[])
     with _client_lg(tmp_path, monkeypatch, fake_model, wake_poll_seconds=0) as client:
         bus = client.app.state.background_events
@@ -180,7 +182,7 @@ def test_script_env_package_install_does_not_block_the_event_loop(
         time.sleep(0.5)
         return {"success": True, "error": None}
 
-    monkeypatch.setattr("coscribe.web.routes.settings.install_package", _slow_install)
+    monkeypatch.setattr(settings_routes, "install_package", _slow_install)
     fake_model = FakeToolCallingChatModel(responses=[])
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
         route = next(

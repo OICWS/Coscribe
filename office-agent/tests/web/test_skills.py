@@ -13,6 +13,8 @@ from langchain_core.messages import (
     HumanMessage,
 )
 
+from coscribe.web.routes import skills as skills_routes
+
 from .helpers import (
     FakeToolCallingChatModel,
     _client_lg,
@@ -364,7 +366,7 @@ def test_adding_a_discover_skill_downloads_and_checks_it_lg(
         ],
     }
     monkeypatch.setattr(skill_catalog, "load_catalog", lambda: catalog)
-    monkeypatch.setattr("coscribe.web.routes.skills.load_catalog", lambda: catalog)
+    monkeypatch.setattr(skills_routes, "load_catalog", lambda: catalog)
     served = {"SKILL.md": skill_md, "scripts/run.py": b"tampered"}
     fetched: list[str] = []
 

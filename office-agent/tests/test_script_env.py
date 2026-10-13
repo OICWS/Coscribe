@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from coscribe.tools import script_env
 from coscribe.tools.script_env import (
     ensure_script_env,
     get_interpreter_override,
@@ -49,7 +50,7 @@ def test_venv_python_uses_scripts_python_exe_on_windows(monkeypatch: pytest.Monk
     Scripts\\python.exe on Windows, not bin/python -- run_python_script and
     the Environment tab's package listing both raised FileNotFoundError on
     a real Windows machine before this platform branch existed."""
-    monkeypatch.setattr("coscribe.tools.script_env.sys.platform", "win32")
+    monkeypatch.setattr(script_env.sys, "platform", "win32")
 
     result = venv_python(Path("C:/state/script-env"))
 
@@ -57,7 +58,7 @@ def test_venv_python_uses_scripts_python_exe_on_windows(monkeypatch: pytest.Monk
 
 
 def test_venv_python_uses_bin_python_on_non_windows(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("coscribe.tools.script_env.sys.platform", "linux")
+    monkeypatch.setattr(script_env.sys, "platform", "linux")
 
     result = venv_python(Path("/state/script-env"))
 
@@ -94,7 +95,7 @@ def test_ensure_script_env_falls_back_to_a_real_python_when_sys_executable_cant_
     failing = str(tmp_path / "failing.cmd") if sys.platform == "win32" else "/bin/false"
     if sys.platform == "win32":
         Path(failing).write_text("@exit /b 1\r\n", encoding="ascii")
-    monkeypatch.setattr("coscribe.tools.script_env.sys.executable", failing)
+    monkeypatch.setattr(script_env.sys, "executable", failing)
 
     venv_dir = ensure_script_env(tmp_path)
 
@@ -235,7 +236,7 @@ def test_ensure_script_env_prefers_a_configured_override_over_sys_executable(
     (e.g. because auto-detection found the wrong one on their machine),
     auto-detection's own guesses shouldn't override that choice."""
     set_interpreter_override(tmp_path, sys.executable)
-    monkeypatch.setattr("coscribe.tools.script_env.sys.executable", "/bin/false")
+    monkeypatch.setattr(script_env.sys, "executable", "/bin/false")
 
     venv_dir = ensure_script_env(tmp_path)
 

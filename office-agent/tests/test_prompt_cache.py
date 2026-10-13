@@ -15,6 +15,7 @@ from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResu
 from langgraph.checkpoint.memory import InMemorySaver
 
 from coscribe.config import Settings
+from coscribe.conversation import session as conversation_session
 from coscribe.conversation.session import ChatSessionLG
 from coscribe.runtime import empty_hooks_config
 from coscribe.runtime_lg.messages import (
@@ -71,7 +72,8 @@ def _session(
     folder: Path,
 ) -> ChatSessionLG:
     monkeypatch.setattr(
-        "coscribe.conversation.session.resolve_chat_model",
+        conversation_session,
+        "resolve_chat_model",
         lambda name, custom_providers=None: model,
     )
     (tmp_path / "MEMORY.md").write_text("- The user prefers metric units.\n", encoding="utf-8")

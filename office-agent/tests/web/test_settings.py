@@ -21,6 +21,7 @@ from langchain_core.messages import (
 )
 from langchain_core.messages.ai import UsageMetadata
 
+from coscribe.conversation import session as conversation_session
 from coscribe.runtime import secrets as secrets_module
 
 from .helpers import (
@@ -121,7 +122,7 @@ def test_switch_model_picks_up_a_provider_added_after_the_session_was_created(
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
         # Must be set *after* entering _client_lg -- see the identical
         # gotcha noted on test_switch_model_rebuilds_the_graph above.
-        monkeypatch.setattr("coscribe.conversation.session.resolve_chat_model", _fake_resolve)
+        monkeypatch.setattr(conversation_session, "resolve_chat_model", _fake_resolve)
         with client.websocket_connect("/ws/t_switch_new_provider") as ws:
             ws.receive_json()  # state
             ws.receive_json()  # history -- session object created here, no custom providers yet
