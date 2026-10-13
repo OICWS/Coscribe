@@ -258,6 +258,13 @@
       <formula>80</formula>
       <formula>100</formula>
     </cfRule>
+    <cfRule priority="4" type="dataBar">
+      <dataBar showValue="1">
+        <cfvo type="min"/>
+        <cfvo type="max"/>
+        <color rgb="00638EC6"/>
+      </dataBar>
+    </cfRule>
   </conditionalFormatting>
   <conditionalFormatting sqref="C2:C5">
     <cfRule priority="3" type="colorScale">
@@ -269,15 +276,6 @@
         <color rgb="00FFEB84"/>
         <color rgb="00F8696B"/>
       </colorScale>
-    </cfRule>
-  </conditionalFormatting>
-  <conditionalFormatting sqref="A2:A5">
-    <cfRule priority="4" type="dataBar">
-      <dataBar showValue="1">
-        <cfvo type="min"/>
-        <cfvo type="max"/>
-        <color rgb="00638EC6"/>
-      </dataBar>
     </cfRule>
   </conditionalFormatting>
   <pageMargins bottom="1" footer="0.5" header="0.5" left="0.75" right="0.75" top="1"/>

@@ -107,7 +107,7 @@ def _number_formats_and_fonts(tools: Tools) -> None:
         sheet_name="Pricing",
     )
     tools["format_xlsx_cells"](
-        path=FILE, sheet_name="Pricing", cell_range="A1:D1", bold=True, font_color="FFFFFF"
+        path=FILE, sheet_name="Pricing", cell_range="A1:D1", bold=True, font_color="1F4E79"
     )
     tools["format_xlsx_cells"](
         path=FILE, sheet_name="Pricing", cell_range="B2:B4", number_format="$#,##0"
@@ -167,7 +167,7 @@ def _conditional_formats(tools: Tools) -> None:
     tools["add_xlsx_conditional_format"](
         path=FILE,
         sheet_name="Scores",
-        cell_range="A2:A5",
+        cell_range="B2:B5",
         rule_type="data_bar",
         fill_color="638EC6",
     )

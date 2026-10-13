@@ -43,7 +43,7 @@
     <font>
       <name val="Calibri"/>
       <b val="1"/>
-      <color rgb="00FFFFFF"/>
+      <color rgb="001F4E79"/>
       <sz val="11"/>
     </font>
     <font>
