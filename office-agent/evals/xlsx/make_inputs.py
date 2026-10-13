@@ -62,7 +62,7 @@ _THIN = Side(style="thin", color="808080")
 def _header(sheet, columns: int) -> None:  # type: ignore[no-untyped-def]
     for column in range(1, columns + 1):
         cell = sheet.cell(row=1, column=column)
-        cell.font = Font(bold=True, color="FFFFFF")
+        cell.font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
         cell.fill = _HEADER_FILL
         cell.alignment = Alignment(horizontal="center")
         cell.border = Border(bottom=_THIN)
@@ -159,7 +159,7 @@ def budget(path: Path) -> None:
             cell = sheet.cell(row=row, column=column)
             cell.number_format = '"$"#,##0'
             cell.border = Border(bottom=_THIN)
-        sheet.cell(row=row, column=1).font = Font(italic=True)
+        sheet.cell(row=row, column=1).font = Font(name="Calibri", size=11, italic=True)
     sheet.conditional_formatting.add(
         "C2:C7",
         CellIsRule(

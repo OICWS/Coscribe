@@ -234,7 +234,7 @@ def _color(color: Any) -> Any:
     if color is None:
         return None
     if color.type == "rgb":
-        return str(color.rgb)
+        return str(color.rgb)[-6:]  # LibreOffice writes the alpha byte as FF, openpyxl as 00
     return (color.type, color.theme if color.type == "theme" else color.indexed, color.tint)
 
 
@@ -243,10 +243,13 @@ def _side(side: Any) -> Any:
 
 
 def cell_style(cell: Any) -> dict[str, Any]:
-    """What a person sees of a cell besides its value."""
+    """What a person sees of a cell besides its value. The spellings LibreOffice changes when it
+    saves a workbook (an escaped `\\-` or a quoted `"$"` in a number format, `general` for no
+    alignment, the alpha byte of a color) are folded, so the comparison finds a lost style and not
+    a rewrite."""
     border = cell.border
     return {
-        "number_format": cell.number_format,
+        "number_format": cell.number_format.replace("\\", "").replace('"', ""),
         "bold": bool(cell.font.b),
         "italic": bool(cell.font.i),
         "size": cell.font.sz,
@@ -260,7 +263,7 @@ def cell_style(cell: Any) -> dict[str, Any]:
             _side(border.top),
             _side(border.bottom),
         ],
-        "align": cell.alignment.horizontal,
+        "align": cell.alignment.horizontal or "general",
         "wrap": bool(cell.alignment.wrap_text),
     }
 

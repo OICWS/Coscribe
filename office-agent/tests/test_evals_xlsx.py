@@ -449,6 +449,33 @@ def test_the_reference_solution_of_every_task_passes_every_check(task: str, tmp_
 
 
 @pytest.mark.real_libreoffice
+@pytest.mark.parametrize(
+    ("task", "original", "untouched"),
+    [
+        ("02-monthly-summary", "transactions.xlsx", "Data!A1:C15"),
+        ("03-lookup-two-sheets", "shop.xlsx", "Orders!A1:C9"),
+        ("05-edit-budget", "budget_q1.xlsx", "Budget!A1:C7"),
+        ("08-validation-list", "tickets.xlsx", "Tickets!A1:D11"),
+    ],
+)
+def test_a_workbook_that_libreoffice_resaved_keeps_the_styles_the_check_compares(
+    task: str, original: str, untouched: str, tmp_path: Path
+) -> None:
+    if not _libreoffice_recalculates(tmp_path):
+        pytest.skip("LibreOffice is not usable here")
+    given = _task(task).directory / "inputs" / original
+    resaved, _ = xlsx_checks.recalculate(given, tmp_path, original)
+
+    report = xlsx_checks.check_untouched_styles(
+        load_workbook(given), load_workbook(resaved), [untouched]
+    )
+    features = xlsx_checks.check_features_kept(load_workbook(given), load_workbook(resaved), 0)
+
+    assert report["ok"] is True, report["changed"]
+    assert features["ok"] is True
+
+
+@pytest.mark.real_libreoffice
 def test_a_model_with_pasted_numbers_fails_where_the_formulas_pass(tmp_path: Path) -> None:
     if not _libreoffice_recalculates(tmp_path):
         pytest.skip("LibreOffice is not usable here")
