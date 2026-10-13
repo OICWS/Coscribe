@@ -84,7 +84,7 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_mcp_adapters.sessions import Connection
 from langchain_mcp_adapters.tools import load_mcp_tools
 
-from ..runtime.types import tool_metadata
+from ..runtime import tool_metadata
 from ..tools.mcp import load_mcp_server_configs
 
 logger = logging.getLogger(__name__)
