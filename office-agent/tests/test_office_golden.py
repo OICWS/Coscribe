@@ -25,6 +25,7 @@ import pytest
 from coscribe.tools.presentations import build_presentation_tools
 
 from .pptx_canonical import canonical_parts
+from .pptx_fixtures import write_smartart_fixture
 
 GOLDEN_DIR = Path(__file__).parent / "golden" / "pptx"
 
@@ -190,6 +191,82 @@ def _background_image(tools: dict[str, Callable[..., object]]) -> None:
     tools["add_pptx_scrim"](path="deck.pptx", slide=1, opacity=0.4, color="000000")
 
 
+def _template_tools(root: Path) -> dict[str, Callable[..., object]]:
+    """Tools with a custom template distilled from a fixed reference deck.
+
+    The reference is built here from python-pptx's stock template (title, two content slides,
+    closing), not read from a bundled template, so editing a shipped template does not fail
+    these goldens."""
+    from pptx import Presentation
+
+    prs = Presentation()
+    for layout_index in (0, 1, 1, 0):
+        slide = prs.slides.add_slide(prs.slide_layouts[layout_index])
+        slide.shapes.title.text = "Reference"
+    prs.save(str(root / "reference.pptx"))
+    tools = {
+        tool.__name__: tool  # type: ignore[attr-defined]
+        for tool in build_presentation_tools(root, custom_templates_dir=root / "_templates")
+    }
+    tools["extract_pptx_template"](
+        source_path="reference.pptx", template_id="fixed", name="Fixed", description="a fixture"
+    )
+    return tools
+
+
+def _template_fill(content: str) -> Callable[[dict[str, Callable[..., object]]], None]:
+    def build(_: dict[str, Callable[..., object]]) -> None:
+        tools = _template_tools(Path.cwd())
+        tools["fill_pptx_template"](path="deck.pptx", template_id="fixed", content=content)
+
+    return build
+
+
+# Four template slides (title, two content, closing) against three chunks: a content slide is
+# dropped; against six: the repeatable content slide is duplicated.
+_FILL_SHRUNK = "# Annual review\nA year of growth\n---\n# Highlights\n- Revenue up\n---\n# Thanks"
+_FILL_GROWN = (
+    "# Annual review\nA year of growth\n---\n# One\n- a\n---\n# Two\n- b\n---\n# Three\n- c"
+    "\n---\n# Four\n- d\n---\n# Thanks"
+)
+_FILL_FIXED_ONLY = "# Annual review\nA year of growth\n---\n# Thanks"
+
+
+def _write_with_template_path(tools: dict[str, Callable[..., object]]) -> None:
+    tools["write_pptx"](
+        path="template.pptx",
+        content="# Old\n- old bullet",
+        theme="bg=111827,text=F8FAFC",
+    )
+    tools["write_pptx"](
+        path="deck.pptx", content="# New title\n- new bullet", template_path="template.pptx"
+    )
+
+
+def _smartart_text_edit(tools: dict[str, Callable[..., object]]) -> None:
+    write_smartart_fixture(Path("deck.pptx"))
+    tools["edit_pptx_xml"](
+        path="deck.pptx",
+        slide=1,
+        shape_index=0,
+        xpath=".//dgm:t[.//a:t='Plan']//a:t",
+        new_text="PLANNED START",
+    )
+
+
+def _smartart_shape_attributes(tools: dict[str, Callable[..., object]]) -> None:
+    # The same escape hatch on the graphicFrame itself (part="shape"), schema-validated.
+    write_smartart_fixture(Path("deck.pptx"))
+    tools["edit_pptx_xml"](
+        path="deck.pptx",
+        slide=1,
+        shape_index=0,
+        xpath="//p:cNvPr",
+        set_attributes="name=Roadmap\ndescr=Three phases",
+        part="shape",
+    )
+
+
 DECKS: dict[str, Callable[[dict[str, Callable[..., object]]], None]] = {
     "background_image": _background_image,
     "bullets": _bullets,
@@ -205,8 +282,14 @@ DECKS: dict[str, Callable[[dict[str, Callable[..., object]]], None]] = {
     "shapes": _shapes,
     "stat_callout": _stat_callout,
     "svg": _svg,
+    "smartart_shape_attributes": _smartart_shape_attributes,
+    "smartart_text_edit": _smartart_text_edit,
     "table": _table,
+    "template_fill_fixed_slides_only": _template_fill(_FILL_FIXED_ONLY),
+    "template_fill_grown": _template_fill(_FILL_GROWN),
+    "template_fill_shrunk": _template_fill(_FILL_SHRUNK),
     "two_column": _two_column,
+    "write_with_template_path": _write_with_template_path,
     "transition_and_animation": _transition_and_animation,
     "theme": _theme,
 }
@@ -228,12 +311,22 @@ def _no_libreoffice(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("shutil.which", lambda name: None)
 
 
-# The slide master, layouts and theme come from python-pptx's template and are the same in
-# nearly every deck; stored once, they would otherwise be most of every golden. A deck whose
-# copy differs (the theme deck) still shows its own full text, so theme code stays covered.
+# The slide master, layouts and theme are the same in nearly every deck; stored once, they
+# would otherwise be most of every golden. There are two masters: the 16:9 one `write_pptx`
+# makes, and python-pptx's stock 4:3 one (SmartArt and template decks). A deck whose copy
+# differs from both (the theme deck) still shows its own full text, so theme code stays covered.
 SHARED_GOLDEN = GOLDEN_DIR / "_shared.txt"
+SHARED_GOLDEN_4X3 = GOLDEN_DIR / "_shared_4x3.txt"
 _SHARED_PREFIXES = ("ppt/slideMasters/", "ppt/slideLayouts/", "ppt/theme/")
 _SHARED_SOURCE_DECK = "bullets"
+
+
+def _stock_4x3_deck(root: Path) -> Path:
+    from pptx import Presentation
+
+    root.mkdir(parents=True, exist_ok=True)
+    Presentation().save(str(root / "deck.pptx"))
+    return root / "deck.pptx"
 
 
 def _shared_parts(parts: dict[str, str]) -> dict[str, str]:
@@ -252,13 +345,14 @@ def _parse(text: str) -> dict[str, str]:
     return parts
 
 
-def _deck_golden_text(parts: dict[str, str], shared: dict[str, str]) -> str:
-    return _render(
-        {
-            name: "<same as _shared.txt>\n" if shared.get(name) == text else text
-            for name, text in parts.items()
-        }
-    )
+def _deck_golden_text(parts: dict[str, str], shared: dict[Path, dict[str, str]]) -> str:
+    def reduced(name: str, text: str) -> str:
+        for golden, golden_parts in shared.items():
+            if golden_parts.get(name) == text:
+                return f"<same as {golden.name}>\n"
+        return text
+
+    return _render({name: reduced(name, text) for name, text in parts.items()})
 
 
 def _expected_and_diff(golden: Path, actual: str) -> tuple[str, str]:
@@ -281,33 +375,42 @@ def _expected_and_diff(golden: Path, actual: str) -> tuple[str, str]:
     )
 
 
-def _built_shared(tmp_path: Path) -> dict[str, str]:
-    deck = build_deck(_SHARED_SOURCE_DECK, tmp_path / "_shared")
-    return _shared_parts(canonical_parts(deck))
+def _built_shared(tmp_path: Path) -> dict[Path, dict[str, str]]:
+    plain = build_deck(_SHARED_SOURCE_DECK, tmp_path / "_shared")
+    stock = _stock_4x3_deck(tmp_path / "_shared_4x3")
+    return {
+        SHARED_GOLDEN: _shared_parts(canonical_parts(plain)),
+        SHARED_GOLDEN_4X3: _shared_parts(canonical_parts(stock)),
+    }
 
 
-def test_shared_golden_matches_the_plain_deck(tmp_path: Path) -> None:
-    actual = _render(_built_shared(tmp_path))
-    expected, message = _expected_and_diff(SHARED_GOLDEN, actual)
+@pytest.mark.parametrize("golden", [SHARED_GOLDEN, SHARED_GOLDEN_4X3], ids=lambda p: p.stem)
+def test_shared_golden_matches_the_plain_deck(golden: Path, tmp_path: Path) -> None:
+    actual = _render(_built_shared(tmp_path)[golden])
+    expected, message = _expected_and_diff(golden, actual)
     assert actual == expected, message
 
 
 @pytest.mark.parametrize("name", sorted(DECKS))
 def test_deck_matches_its_golden(name: str, tmp_path: Path) -> None:
     parts = canonical_parts(build_deck(name, tmp_path / name))
-    # When regenerating, the shared golden may not be written yet (test order is not fixed).
+    # When regenerating, the shared goldens may not be written yet (test order is not fixed).
     shared = (
         _built_shared(tmp_path)
         if os.environ.get("UPDATE_GOLDENS") == "1"
-        else _parse(SHARED_GOLDEN.read_text(encoding="utf-8"))
+        else {
+            golden: _parse(golden.read_text(encoding="utf-8"))
+            for golden in (SHARED_GOLDEN, SHARED_GOLDEN_4X3)
+        }
     )
     actual = _deck_golden_text(parts, shared)
     expected, message = _expected_and_diff(GOLDEN_DIR / f"{name}.txt", actual)
     assert actual == expected, message
 
 
-def test_the_shared_golden_round_trips_through_the_parser() -> None:
-    text = SHARED_GOLDEN.read_text(encoding="utf-8")
+@pytest.mark.parametrize("golden", [SHARED_GOLDEN, SHARED_GOLDEN_4X3], ids=lambda p: p.stem)
+def test_the_shared_golden_round_trips_through_the_parser(golden: Path) -> None:
+    text = golden.read_text(encoding="utf-8")
     assert _render(_parse(text)) == text
 
 
@@ -315,6 +418,6 @@ def test_every_golden_belongs_to_a_deck() -> None:
     stale = sorted(
         path.stem
         for path in GOLDEN_DIR.glob("*.txt")
-        if path.stem not in DECKS and path != SHARED_GOLDEN
+        if path.stem not in DECKS and path not in (SHARED_GOLDEN, SHARED_GOLDEN_4X3)
     )
     assert stale == [], f"goldens with no deck that builds them: {stale}"
