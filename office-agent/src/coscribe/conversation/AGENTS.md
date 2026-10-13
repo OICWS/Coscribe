@@ -1,11 +1,13 @@
 # conversation: one conversation's turns, approvals and history, shared by the server and the CLI
 
 ## Purpose
-Owns `ChatSessionLG` (`session.py`: runs a thread's turns, holds the pending approvals, the
-turn counters and the history/compaction commands; being split into smaller modules, so check
+Owns `ChatSessionLG` (`session.py`: runs a thread's turns, holds the pending approvals and the
+turn counters; being split into smaller modules, so check
 the directory before assuming a piece is still in it), the approval decision (`approvals.py`: what
 runs without asking, what is refused, what waits for a person), sub-agent and inbox reports as
-turns (`subagents.py`), what the side panel shows (`activity.py`, `context_usage.py`), the
+turns (`subagents.py`), workflow drafting for the chat model and the save button
+(`workflow_drafting.py`), the checkpointed history: replay, paging back, /compact, /clear, edit and
+rewind (`history.py`), what the side panel shows (`activity.py`, `context_usage.py`), the
 sidebar's per-thread state (`thread_meta.py`), the turn lock (`turn_lock.py`), the chat
 socket's message types (`wire.py`) and where events go (`events.EventSink`). Does not own the
 agent graph or its middleware (`runtime_lg`), the routes or the socket itself (`web`), or the
