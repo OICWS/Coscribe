@@ -3,7 +3,7 @@ import { uploadSkill } from "../../../lib/rest";
 import { ArrowLeftIcon, UploadIcon } from "../../icons";
 
 /** Settings > Skills > Add > Upload skill (no security-scan UI: we don't
- * scan). Top-level, not nested in SkillsTab. */
+ * scan). */
 export function UploadSkillView({ onBack, onUploaded }: { onBack: () => void; onUploaded: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
