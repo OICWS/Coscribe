@@ -86,6 +86,24 @@ def _image(tools: dict[str, Callable[..., object]]) -> None:
     )
 
 
+def _chart(chart_type: str, data: str) -> Callable[[dict[str, Callable[..., object]]], None]:
+    def build(tools: dict[str, Callable[..., object]]) -> None:
+        tools["write_pptx"](path="deck.pptx", content=f"# A {chart_type} chart\n- see below")
+        tools["add_pptx_chart"](
+            path="deck.pptx", slide=1, chart_type=chart_type, data=data, title="Results"
+        )
+
+    return build
+
+
+_ONE_SERIES = "| Quarter | Revenue |\n| --- | --- |\n| Q1 | 100 |\n| Q2 | 120 |\n| Q3 | 90 |"
+_THREE_SERIES = (
+    "| Quarter | North | South | West |\n| --- | --- | --- | --- |\n"
+    "| Q1 | 10 | 8 | 5 |\n| Q2 | 12 | 9 | 7 |"
+)
+_SHARES = "| Region | Share |\n| --- | --- |\n| North | 60 |\n| South | 40 |"
+
+
 def _picture_index(tools: dict[str, Callable[..., object]]) -> int:
     shapes = tools["list_pptx_shapes"](path="deck.pptx", slide=1)["shapes"]  # type: ignore[index]
     return next(shape["index"] for shape in shapes if shape["is_picture"])
@@ -120,6 +138,10 @@ def _background_image(tools: dict[str, Callable[..., object]]) -> None:
 DECKS: dict[str, Callable[[dict[str, Callable[..., object]]], None]] = {
     "background_image": _background_image,
     "bullets": _bullets,
+    "chart_bar": _chart("bar", _ONE_SERIES),
+    "chart_bar_three_series": _chart("bar", _THREE_SERIES),
+    "chart_line": _chart("line", _ONE_SERIES),
+    "chart_pie": _chart("pie", _SHARES),
     "image": _image,
     "image_cropped_and_replaced": _image_cropped_and_replaced,
     "image_effects": _image_effects,
