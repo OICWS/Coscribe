@@ -127,7 +127,7 @@ def test_valid_real_docx_document_passes_wml_validation(tmp_path: Path) -> None:
     # Exercises every write_docx block kind in one document: headings,
     # bullets, numbers, a table, a TOC field, and a {{comment: ...}}
     # anchor -- the full real surface `write_docx` produces.
-    from coscribe.tools.documents import DocumentToolkit
+    from coscribe.tools.office.document_tools import DocumentToolkit
 
     toolkit = DocumentToolkit(tmp_path)
     content = (
@@ -148,7 +148,7 @@ def test_valid_real_docx_document_passes_wml_validation(tmp_path: Path) -> None:
 def test_valid_real_docx_with_track_changes_passes_wml_validation(tmp_path: Path) -> None:
     # <w:ins>/<w:del> tracked-insertion markup (_mark_paragraph_inserted)
     # is hand-built XML, exactly the class of write this gate exists for.
-    from coscribe.tools.documents import DocumentToolkit
+    from coscribe.tools.office.document_tools import DocumentToolkit
 
     toolkit = DocumentToolkit(tmp_path)
     toolkit.write_docx(
@@ -170,7 +170,7 @@ def test_valid_real_docx_from_template_with_track_changes_passes_wml_validation(
     # _mark_body_deleted's <w:del> paragraph-mark-deletion markup on a
     # template's existing content, exercised together with a new
     # tracked-insertion paragraph.
-    from coscribe.tools.documents import DocumentToolkit
+    from coscribe.tools.office.document_tools import DocumentToolkit
 
     toolkit = DocumentToolkit(tmp_path)
     toolkit.write_docx("template.docx", "# Old Report\n\nOld paragraph content.")

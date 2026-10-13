@@ -22,7 +22,7 @@ from pathlib import Path
 import pytest
 
 from coscribe.tools import _thumbnail
-from coscribe.tools.documents import build_document_tools
+from coscribe.tools.office.document_tools import build_document_tools
 
 from .docx_canonical import canonical_parts
 

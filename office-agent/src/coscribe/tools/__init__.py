@@ -2,13 +2,13 @@ from .background_tasks import BackgroundTask, BackgroundTaskStore, build_backgro
 from .browser import build_browser_tools
 from .conversations import MessagingStore, build_conversation_tools
 from .convert import build_convert_tools
-from .documents import build_document_tools
 from .files import build_file_tools
 from .images import build_image_tools
 from .interaction import QUESTION_TOOL_NAMES, build_interaction_tools
 from .mcp import load_mcp_server_configs
 from .memory import format_memory_section, load_memory
 from .node_scripts import build_node_script_tools
+from .office.document_tools import DocumentToolkit, build_document_tools
 from .pptx_templates import (
     TemplateInfo,
     format_template_listing,
@@ -67,6 +67,7 @@ __all__ = [
     "build_background_task_tools",
     "build_conversation_tools",
     "build_convert_tools",
+    "DocumentToolkit",
     "build_document_tools",
     "build_file_tools",
     "build_image_tools",

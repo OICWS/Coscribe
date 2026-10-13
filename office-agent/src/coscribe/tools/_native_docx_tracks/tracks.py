@@ -9,7 +9,7 @@ the three more host-contract methods -- `_find_para`/`_next_markup_id`/
 `_make_run` -- also extracted there) -- coscribe supplies its own
 `TracksMixin` host (`_require`/`_find_para`/`_next_markup_id`/`_make_run`/
 `_mark`) wrapping an already-open `python-docx` document instead of
-docx-mcp's own unzip/parse/repack lifecycle, see `documents.py`'s
+docx-mcp's own unzip/parse/repack lifecycle, see `office/docx/`'s
 `_TrackedDocxHost`.
 
 New in this version

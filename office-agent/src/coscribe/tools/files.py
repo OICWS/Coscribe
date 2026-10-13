@@ -1,7 +1,7 @@
 """Local filesystem tools, scoped to a single workspace root.
 
 Plain-text file I/O. Word/PDF documents have their own toolkit
-(tools/documents.py); everything else (browser automation, email, ...) is
+(tools/office/document_tools.py); everything else (browser automation, email, ...) is
 meant to arrive through MCP servers or Skills the user configures. See
 ARCHITECTURE.md.
 """

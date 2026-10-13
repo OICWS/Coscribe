@@ -83,7 +83,7 @@ dependencies = [
     "mammoth>=1.7.0",
     "markdownify>=0.13.0",
     "pdfplumber>=0.11.0",
-    # read_pdf/search_pdf's text extraction (see tools/documents.py's
+    # read_pdf/search_pdf's text extraction (see tools/office/pdf/text.py's
     # _pdf_page_texts) -- already pulled in by pdfplumber, pinned here
     # because it's now imported directly.
     "pypdfium2>=4.18.0",
