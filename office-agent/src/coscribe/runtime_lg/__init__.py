@@ -2,6 +2,8 @@
 the vendored Gemini provider. Not imported by cli.py/web/coordinator.py yet
 -- see the migration plan for scope and exit criteria."""
 
+from typing import TYPE_CHECKING
+
 from .agent import build_langgraph_agent, tool_name
 from .audit import AuditLog, record_decision, redact_secrets
 from .exec_policy import EXEC_POLICY_TOOL_NAMES, ExecPolicy, load_exec_policy
@@ -31,6 +33,9 @@ from .subagents import (
     select_reviewer_tools,
 )
 
+if TYPE_CHECKING:
+    from .mcp import connect_one_mcp_server_lg
+
 __all__ = [
     "AuditLog",
     "EXEC_POLICY_TOOL_NAMES",
@@ -41,6 +46,7 @@ __all__ = [
     "build_review_work_tool",
     "select_reviewer_tools",
     "connect_mcp_tools_lg",
+    "connect_one_mcp_server_lg",
     "continue_workflow_run",
     "extract_text",
     "execute_run",
@@ -76,4 +82,8 @@ def __getattr__(name: str) -> object:
         from .mcp import connect_mcp_tools_lg
 
         return connect_mcp_tools_lg
+    if name == "connect_one_mcp_server_lg":
+        from .mcp import connect_one_mcp_server_lg
+
+        return connect_one_mcp_server_lg
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
