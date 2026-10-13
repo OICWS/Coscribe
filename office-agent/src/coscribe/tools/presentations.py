@@ -1020,10 +1020,8 @@ def _build_audio_pic_element(
     nv_pr = etree.SubElement(nv_pic_pr, f"{{{_P_NS}}}nvPr")
     etree.SubElement(nv_pr, f"{{{_A_NS}}}audioFile", {f"{{{_R_NS}}}link": audio_rid})
     ext_lst = etree.SubElement(nv_pr, f"{{{_P_NS}}}extLst")
-    ext = etree.SubElement(ext_lst, f"{{{_P_NS}}}ext", uri=_AUDIO_EXT_URI)
-    etree.SubElement(
-        ext, f"{{{_P14_NS}}}media", {f"{{{_R_NS}}}embed": media_rid}, nsmap={"p14": _P14_NS}
-    )
+    ext = etree.SubElement(ext_lst, f"{{{_P_NS}}}ext", uri=_AUDIO_EXT_URI, nsmap={"p14": _P14_NS})
+    etree.SubElement(ext, f"{{{_P14_NS}}}media", {f"{{{_R_NS}}}embed": media_rid})
 
     blip_fill = etree.SubElement(pic, f"{{{_P_NS}}}blipFill")
     etree.SubElement(blip_fill, f"{{{_A_NS}}}blip", {f"{{{_R_NS}}}embed": poster_rid})

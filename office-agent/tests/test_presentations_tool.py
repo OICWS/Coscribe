@@ -3113,11 +3113,13 @@ def test_add_pptx_audio_declares_the_p14_prefix(tmp_path: Path) -> None:
 
     tools["add_pptx_audio"](path="deck.pptx", slide=1, audio_path="narration.wav")
 
+    from lxml import etree
+
     with zipfile.ZipFile(tmp_path / "deck.pptx") as archive:
-        slide_xml = archive.read("ppt/slides/slide1.xml").decode("utf-8")
-    assert "<p14:media " in slide_xml
-    assert "xmlns:p14=" in slide_xml
-    assert "ns1:" not in slide_xml
+        slide = etree.fromstring(archive.read("ppt/slides/slide1.xml"))
+    (media,) = slide.iter(f"{{{_P14_NS}}}media")
+    assert media.prefix == "p14"
+    assert not [element for element in slide.iter() if (element.prefix or "").startswith("ns")]
 
 
 def test_add_pptx_audio_auto_trigger_builds_delayed_timing_node(tmp_path: Path) -> None:
