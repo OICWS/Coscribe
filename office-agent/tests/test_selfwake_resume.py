@@ -26,6 +26,7 @@ from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResu
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
 from coscribe.config import Settings
+from coscribe.conversation import session as conversation_session
 from coscribe.conversation.session import ChatSessionLG
 from coscribe.runtime_lg.selfwake import poll_due_wakes
 from coscribe.tools import background_tasks
@@ -94,7 +95,8 @@ async def _make_get_session(
     settings: Settings, checkpointer: Any, fake_model: FakeToolCallingChatModel, monkeypatch: Any
 ) -> Any:
     monkeypatch.setattr(
-        "coscribe.conversation.session.resolve_chat_model",
+        conversation_session,
+        "resolve_chat_model",
         lambda *a, **k: fake_model,
     )
 

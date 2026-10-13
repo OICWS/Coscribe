@@ -1,5 +1,7 @@
 import pytest
 
+from coscribe.tools import presentations, spreadsheets
+
 
 @pytest.fixture(autouse=True)
 def _fast_libreoffice_by_default(
@@ -24,9 +26,10 @@ def _fast_libreoffice_by_default(
     """
     if request.node.get_closest_marker("real_libreoffice") is not None:
         return
-    monkeypatch.setattr("coscribe.tools.presentations._render_to_pdf", lambda pptx_path: None)
+    monkeypatch.setattr(presentations, "_render_to_pdf", lambda pptx_path: None)
     monkeypatch.setattr(
-        "coscribe.tools.spreadsheets._recalc_xlsx",
+        spreadsheets,
+        "_recalc_xlsx",
         lambda file_path, timeout=None: {
             "status": "skipped",
             "skipped_reason": "disabled in the test suite for speed -- see tests/conftest.py",
