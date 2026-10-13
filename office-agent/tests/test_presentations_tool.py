@@ -3456,10 +3456,11 @@ def test_list_pptx_shapes_lists_a_group_shape_without_crashing(tmp_path: Path) -
 
     shapes = tools["list_pptx_shapes"](path="deck.pptx", slide=1)["shapes"]
 
-    # Children of a group are not listed: a group is one addressable shape.
-    assert len(shapes) == 3
-    assert shapes[-1]["shape_type"] == "GROUP (6)"
-    assert shapes[-1]["hyperlink"] is None
+    # Children of a group are not listed: a group is one entry.
+    groups = [shape for shape in shapes if shape["shape_type"] == "GROUP (6)"]
+    assert len(groups) == 1
+    assert groups[0]["hyperlink"] is None
+    assert len(shapes) == len(Presentation(str(tmp_path / "deck.pptx")).slides[0].shapes)
 
 
 def test_list_pptx_shapes_reports_slide_jump_hyperlink_in_the_same_url_syntax(
