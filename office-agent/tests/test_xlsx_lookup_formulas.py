@@ -3,6 +3,8 @@ from pathlib import Path
 from openpyxl import Workbook
 
 from coscribe.tools._xlsx_lookup_formulas import (
+    _NO_MATCH,
+    _UNRESOLVABLE,
     FormulaError,
     evaluate_and_patch_lookup_formulas,
     evaluate_formula,
@@ -120,7 +122,7 @@ def test_evaluate_formula_declines_a_non_reference_argument() -> None:
     from coscribe.tools._xlsx_lookup_formulas import _UNRESOLVABLE
 
     wb = _values_workbook([["Alice", 9], ["Bob", 7]])
-    result = evaluate_formula('=XLOOKUP(SUM(A1:A1),A1:A2,B1:B2)', "Sheet", wb)
+    result = evaluate_formula("=XLOOKUP(SUM(A1:A1),A1:A2,B1:B2)", "Sheet", wb)
     assert result is _UNRESOLVABLE
 
 
@@ -190,3 +192,32 @@ def test_evaluate_and_patch_lookup_formulas_is_a_no_op_without_matches(tmp_path:
 
     assert report == {"formulas_evaluated": 0, "results": {}}
     assert path.read_bytes() == original_bytes
+
+
+def test_evaluate_formula_xlookup_over_a_one_cell_range() -> None:
+    wb = _values_workbook([["a", 1]])
+    assert evaluate_formula('=XLOOKUP("a",A1:A1,B1:B1)', "Sheet", wb) == 1
+    assert evaluate_formula('=XMATCH("a",A1:A1)', "Sheet", wb) == 1
+
+
+def test_evaluate_formula_xlookup_of_an_empty_result_cell_is_zero() -> None:
+    wb = _values_workbook([["a", 1], ["b", None]])
+    assert evaluate_formula('=XLOOKUP("b",A1:A2,B1:B2)', "Sheet", wb) == 0
+
+
+def test_xmatch_index_approximate_match_on_text() -> None:
+    assert xmatch_index("b", ["a", "c"], match_mode=-1, search_mode=1) == 0
+    assert xmatch_index("b", ["a", "c"], match_mode=1, search_mode=1) == 1
+    assert (
+        xmatch_index("B", ["a", "b"], match_mode=-1, search_mode=1) == 1
+    )  # exact, case-insensitive
+    assert (
+        xmatch_index("b", ["a", 5], match_mode=1, search_mode=1) is _NO_MATCH
+    )  # numbers never take part
+
+
+def test_two_calls_joined_by_an_operator_are_left_alone() -> None:
+    wb = _values_workbook([["k"]])
+    text = '=XLOOKUP(A1,B:B,C:C,"na")&XLOOKUP("k",B:B,C:C)'
+    assert parse_single_call(text) is None
+    assert evaluate_formula(text, "Sheet", wb) is _UNRESOLVABLE
