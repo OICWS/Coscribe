@@ -29,8 +29,10 @@ Last reviewed: 2026-10-11.
       follows if the pilot reads well.
    8. The ratchet hardened after the second review: `--update` only tightens (`--accept-worse`
       is the maintainer's), `check.sh` enforces it, `pyproject.toml` is a CODEOWNERS path and
-      the Windows run is red when a test fails. Changed-line coverage stays report-only until
-      we know how many recent pull requests would have failed 80%.
+      the Windows run is red when a test fails. Changed-line coverage stays report-only. Measured
+      (issue #94, `docs/assessments/2026-10-13-diff-coverage.md`): of the last 20 PRs that changed
+      `src/`, 17 measurable, 2 would fail at 80% (one test each), 6 at 90% (pure moves and a
+      Windows-only branch). The maintainer decides whether to enforce.
    9. Golden-file tests (assessment step 9). Part 1 (issue #86): the pptx XML is stable once
       canonicalised; 5 decks have goldens (`office-agent/tests/test_office_golden.py`). Part 2
       (issue #89): 13 decks so far, images and charts added (issue #93: the canonicaliser opens
