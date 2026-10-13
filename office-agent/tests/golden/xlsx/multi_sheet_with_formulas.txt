@@ -338,7 +338,7 @@
     <outlinePr summaryBelow="1" summaryRight="1"/>
     <pageSetUpPr/>
   </sheetPr>
-  <dimension ref="A1:B5"/>
+  <dimension ref="A1:B4"/>
   <sheetViews>
     <sheetView workbookViewId="0">
       <selection activeCell="A1" sqref="A1"/>
@@ -388,17 +388,6 @@
       </c>
       <c r="B4">
         <f>INDEX(Managers!B2:B4,MATCH("South",Managers!A2:A4,0))</f>
-        <v/>
-      </c>
-    </row>
-    <row r="5">
-      <c r="A5" t="inlineStr">
-        <is>
-          <t>Today</t>
-        </is>
-      </c>
-      <c r="B5">
-        <f>TODAY()</f>
         <v/>
       </c>
     </row>
