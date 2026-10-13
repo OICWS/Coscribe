@@ -312,13 +312,14 @@ def check_features_kept(original: Any, produced: Any, minimum_rules: int) -> dic
 
 
 def _points_in(reference: str) -> int:
+    """The cells a series reference names, however many areas: `(Data!$A$1:$A$3,Data!$B$1:$B$3)`."""
     from openpyxl.utils.cell import range_boundaries
 
-    match = re.search(r"(\$?[A-Z]+\$?\d+(?::\$?[A-Z]+\$?\d+)?)$", reference)
-    if not match:
-        return 0
-    first_col, first_row, last_col, last_row = range_boundaries(match.group(1).replace("$", ""))
-    return (last_col - first_col + 1) * (last_row - first_row + 1)
+    total = 0
+    for part in re.findall(r"\$?[A-Z]{1,3}\$?\d+(?::\$?[A-Z]{1,3}\$?\d+)?", reference):
+        first_col, first_row, last_col, last_row = range_boundaries(part.replace("$", ""))
+        total += (last_col - first_col + 1) * (last_row - first_row + 1)
+    return total
 
 
 def _text(element: Any) -> str:
@@ -326,7 +327,7 @@ def _text(element: Any) -> str:
 
 
 def _chart_facts(chart_xml: bytes) -> dict[str, Any]:
-    root = ET.fromstring(chart_xml)  # noqa: S314 -- the agent's own file, read for a kind and a size
+    root = ET.fromstring(chart_xml)  # noqa: S314 -- the agent's own file
     plot = root.find(f"{_C}chart/{_C}plotArea")
     kind, points = None, 0
     if plot is not None:
@@ -334,8 +335,10 @@ def _chart_facts(chart_xml: bytes) -> dict[str, Any]:
             name = child.tag.removeprefix(_C)
             if name.endswith("Chart"):
                 kind = kind or name
-                for reference in child.iterfind(f"{_C}ser/{_C}val//{_C}f"):
-                    points = max(points, _points_in(reference.text or ""))
+                for series in child.iterfind(f"{_C}ser"):
+                    for data in (f"{_C}val", f"{_C}yVal"):  # scatter charts name theirs yVal
+                        for reference in series.iterfind(f"{data}//{_C}f"):
+                            points = max(points, _points_in(reference.text or ""))
     title = root.find(f"{_C}chart/{_C}title")
     axes = [
         _text(axis.find(f"{_C}title"))
@@ -394,7 +397,11 @@ def check_validations(workbook: Any, values: Any, specs: list[dict[str, Any]]) -
         covered: set[str] = set()
         for validation in workbook[sheet_name].data_validations.dataValidation:
             offered = _offered_values(validation.formula1 or "", sheet_name, values)
-            if validation.type == "list" and offered and sorted(offered) == sorted(spec["values"]):
+            if (
+                validation.type == "list"
+                and offered
+                and sorted(offered) == sorted(str(v) for v in spec["values"])
+            ):
                 for part in str(validation.sqref).split():
                     covered |= {c.coordinate for c in cells_in(workbook, f"{sheet_name}!{part}")}
         left = sorted(wanted - covered)
@@ -440,7 +447,8 @@ def _column_widths(sheet: Any) -> dict[int, float]:
 
 def clipped_texts(workbook: Any, values: Any) -> list[str]:
     """Text that is wider than its column while the cell to its right is taken, so a reader sees
-    `Order Dat` for `Order Date`. Wrapped text grows its row instead and is left out."""
+    `Order Dat` for `Order Date`. Wrapped and merged cells are left out; text that is centred or
+    right-aligned can spill to the left and is still counted, so this errs towards reporting."""
     clipped = []
     for sheet in workbook.worksheets:
         widths = _column_widths(sheet)
@@ -451,6 +459,8 @@ def clipped_texts(workbook: Any, values: Any) -> list[str]:
                 if not isinstance(text, str) or not text.strip():
                     continue
                 if workbook[sheet.title][cell.coordinate].alignment.wrap_text:
+                    continue
+                if any(cell.coordinate in merged for merged in sheet.merged_cells.ranges):
                     continue
                 width = widths.get(cell.column, _DEFAULT_COLUMN_WIDTH)
                 neighbour = shown.cell(row=cell.row, column=cell.column + 1).value
@@ -481,6 +491,77 @@ def check_legibility(workbook: Any, values: Any, pdf: Path | None) -> dict[str, 
     }
 
 
+def _guarded(report: dict[str, Any], key: str, check: Any) -> None:
+    """One check that cannot run says why instead of ending the report."""
+    try:
+        report[key] = check()
+    except Exception as exc:  # noqa: BLE001 -- the failure is the finding
+        report[key] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+
+
+def _run_checks(
+    task: Task,
+    expect: XlsxExpect,
+    path: Path,
+    formulas: Any,
+    values: Any,
+    scratch: Path,
+    out_dir: Path,
+    report: dict[str, Any],
+) -> None:
+    from openpyxl import load_workbook
+
+    texts = workbook_texts(values)
+    _guarded(report, "facts", lambda: check_facts("\n".join(texts), expect.facts, expect.absent))
+    _guarded(
+        report,
+        "inventions",
+        lambda: find_inventions(texts, task.source_texts(), expect.allowed_numbers, "sheets"),
+    )
+    if expect.sheets:
+        _guarded(report, "sheets", lambda: check_sheets(list(formulas.sheetnames), expect.sheets))
+    if expect.cells:
+        _guarded(report, "cells", lambda: check_cells(values, expect.cells))
+    if expect.formulas:
+        _guarded(report, "formulas", lambda: check_formulas(formulas, expect.formulas))
+    if expect.constants:
+        _guarded(report, "constants", lambda: check_constants(formulas, expect.constants))
+    if expect.number_formats:
+        _guarded(
+            report, "number_formats", lambda: check_number_formats(formulas, expect.number_formats)
+        )
+    if expect.bold:
+        _guarded(report, "bold", lambda: check_bold(formulas, expect.bold))
+    if expect.used_range:
+        _guarded(report, "used_range", lambda: check_used_range(formulas, expect.used_range))
+    if expect.original:
+        given = next(p for p in task.inputs if p.name == expect.original)
+        original = load_workbook(str(given))
+        if expect.untouched:
+            _guarded(
+                report,
+                "untouched",
+                lambda: check_untouched_styles(original, formulas, expect.untouched),
+            )
+        _guarded(
+            report,
+            "features",
+            lambda: check_features_kept(original, formulas, expect.conditional_formats_min),
+        )
+    if expect.charts:
+        _guarded(report, "charts", lambda: check_charts(read_charts(path), expect.charts))
+    if expect.validations:
+        _guarded(
+            report, "validations", lambda: check_validations(formulas, values, expect.validations)
+        )
+    if expect.probe:
+        probe = expect.probe
+        _guarded(report, "probe", lambda: check_probe(path, probe, scratch))
+    _guarded(report, "render", lambda: render_pages(path, out_dir))
+    pdf = out_dir / report["render"]["pdf"] if report["render"].get("pdf") else None
+    _guarded(report, "legibility", lambda: check_legibility(formulas, values, pdf))
+
+
 def check_workbook(task: Task, path: Path, workspace: Path, out_dir: Path) -> dict[str, Any]:
     """The checks a task's expectations ask for; one that cannot run says why and the rest go on."""
     from openpyxl import load_workbook
@@ -494,49 +575,14 @@ def check_workbook(task: Task, path: Path, workspace: Path, out_dir: Path) -> di
     formulas = load_workbook(str(path))
     with tempfile.TemporaryDirectory(prefix="coscribe_eval_") as scratch_name:
         scratch = Path(scratch_name)
-        copy, report["recalc"] = recalculate(path, scratch)
-        values = load_workbook(str(copy), data_only=True)
-        texts = workbook_texts(values)
-        report["facts"] = check_facts("\n".join(texts), expect.facts, expect.absent)
-        report["inventions"] = find_inventions(
-            texts, task.source_texts(), expect.allowed_numbers, "sheets"
-        )
-        if expect.sheets:
-            report["sheets"] = check_sheets(list(formulas.sheetnames), expect.sheets)
-        if expect.cells:
-            report["cells"] = check_cells(values, expect.cells)
-        if expect.formulas:
-            report["formulas"] = check_formulas(formulas, expect.formulas)
-        if expect.constants:
-            report["constants"] = check_constants(formulas, expect.constants)
-        if expect.number_formats:
-            report["number_formats"] = check_number_formats(formulas, expect.number_formats)
-        if expect.bold:
-            report["bold"] = check_bold(formulas, expect.bold)
-        if expect.used_range:
-            report["used_range"] = check_used_range(formulas, expect.used_range)
-        if expect.original:
-            given = next(p for p in task.inputs if p.name == expect.original)
-            original = load_workbook(str(given))
-            if expect.untouched:
-                report["untouched"] = check_untouched_styles(original, formulas, expect.untouched)
-            report["features"] = check_features_kept(
-                original, formulas, expect.conditional_formats_min
-            )
-        if expect.charts:
-            report["charts"] = check_charts(read_charts(path), expect.charts)
-        if expect.validations:
-            report["validations"] = check_validations(formulas, values, expect.validations)
-        if expect.probe:
-            try:
-                report["probe"] = check_probe(path, expect.probe, scratch)
-            except Exception as exc:  # noqa: BLE001 -- a probe that cannot run is a finding
-                report["probe"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
-        report["render"] = render_pages(path, out_dir)
-        pdf = out_dir / report["render"]["pdf"] if report["render"].get("pdf") else None
         try:
-            report["legibility"] = check_legibility(formulas, values, pdf)
-        except Exception as exc:  # noqa: BLE001 -- a check that cannot run says why
-            report["legibility"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
-        values.close()
+            copy, report["recalc"] = recalculate(path, scratch)
+        except Exception as exc:  # noqa: BLE001 -- the values are then read as the agent saved them
+            copy, report["recalc"] = path, {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+        values = load_workbook(str(copy), data_only=True)
+        try:
+            _run_checks(task, expect, path, formulas, values, scratch, out_dir, report)
+        finally:
+            values.close()
+            formulas.close()
     return report

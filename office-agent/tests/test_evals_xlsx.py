@@ -299,6 +299,30 @@ def test_a_bar_chart_is_a_bar_chart(tmp_path: Path) -> None:
     assert found["kind"] == "barChart" and found["points"] == 3
 
 
+def test_the_points_of_a_scatter_chart_and_of_a_multi_area_reference_are_counted(
+    tmp_path: Path,
+) -> None:
+    from openpyxl.chart import ScatterChart, Series
+
+    assert xlsx_checks._points_in("(Data!$A$1:$A$3,Data!$B$1:$B$3)") == 6
+    assert xlsx_checks._points_in("Data!$B$2:$B$13") == 12
+    book = _book([[x, x * 2] for x in range(1, 9)])
+    sheet = book.active
+    chart = ScatterChart()
+    chart.series.append(
+        Series(
+            Reference(sheet, min_col=2, min_row=1, max_row=8),
+            Reference(sheet, min_col=1, min_row=1, max_row=8),
+        )
+    )
+    sheet.add_chart(chart, "D2")
+    book.save(tmp_path / "s.xlsx")
+
+    (found,) = xlsx_checks.read_charts(tmp_path / "s.xlsx")
+
+    assert found["kind"] == "scatterChart" and found["points"] == 8
+
+
 # --- dropdown lists ---------------------------------------------------------------------
 
 
@@ -337,6 +361,18 @@ def test_a_list_with_other_values_or_over_fewer_cells_is_not_the_one_asked_for()
     assert xlsx_checks.check_validations(short, short, [{**SPEC, "at": "Gone!A1"}])["ok"] is False
 
 
+def test_a_numeric_list_matches_the_numbers_it_offers() -> None:
+    book = _book([["n"], [None]], "Tickets")
+    validation = DataValidation(type="list", formula1='"1,2,3"')
+    book.active.add_data_validation(validation)
+    validation.add("A2")
+
+    assert (
+        xlsx_checks.check_validations(book, book, [{"at": "Tickets!A2", "values": [1, 2, 3]}])["ok"]
+        is True
+    )
+
+
 def test_a_whole_number_rule_is_not_a_dropdown_list() -> None:
     book = _book([["n"], [1]], "Tickets")
     validation = DataValidation(type="whole", formula1="1", formula2="5")
@@ -359,6 +395,13 @@ def test_a_label_wider_than_its_column_is_cut_off_only_when_the_next_cell_is_tak
     clipped = xlsx_checks.clipped_texts(sheet.parent, sheet.parent)
 
     assert clipped == ["Data!A1 'Order Date'"]
+
+
+def test_text_in_a_merged_cell_is_not_cut_off() -> None:
+    sheet = _book([["A very long merged title", "x"]]).active
+    sheet.merge_cells("A1:B1")
+
+    assert xlsx_checks.clipped_texts(sheet.parent, sheet.parent) == []
 
 
 def test_wide_columns_wrapped_text_and_chinese_widths_are_measured() -> None:
@@ -479,6 +522,25 @@ def test_numbers_typed_in_where_formulas_were_asked_pass_the_values_and_fail_the
     assert report["formulas"]["ok"] is False
     assert report["formulas"]["wrong"] == [f"Model!B{r}" for r in range(7, 12)]
     assert report["probe"]["ok"] is False
+
+
+def test_a_check_that_raises_is_recorded_and_the_others_still_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _fake_recalculation(monkeypatch)
+
+    def boom(*args: Any) -> None:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(xlsx_checks, "check_cells", boom)
+    path = tmp_path / "ws" / "m.xlsx"
+    path.parent.mkdir()
+    _book([["Units sold", 1]], "Model").save(path)
+
+    report = xlsx_checks.check_workbook(_task("06"), path, path.parent, tmp_path / "r")
+
+    assert report["cells"] == {"ok": False, "error": "RuntimeError: boom"}
+    assert "facts" in report and "formulas" in report and "render" in report
 
 
 def test_a_file_that_is_not_a_workbook_stops_at_opens(tmp_path: Path) -> None:
@@ -646,6 +708,8 @@ def _write_task(directory: Path, expect: dict[str, Any], inputs: tuple[str, ...]
         ({}, "expects nothing"),
         ({"cells": [{"at": "B2", "value": 1}]}, "Sheet!B2"),
         ({"cells": [{"at": "S!B2"}]}, 'needs a "value"'),
+        ({"cells": [{"at": "S!", "value": 1}]}, "must look like"),
+        ({"cells": [{"at": "S!A1:B2", "value": 1}]}, "one cell, not a range"),
         ({"cells": [{"at": "S!B2", "value": 1}], "formulas": ["B2"]}, "must look like"),
         ({"cells": [{"at": "S!B2", "value": 1}], "untouched": ["S!A1"]}, 'need "original"'),
         ({"cells": [{"at": "S!B2", "value": 1}], "probe": {"set": {}}}, "probe"),
@@ -675,6 +739,25 @@ def test_the_original_must_be_one_of_the_inputs(tmp_path: Path) -> None:
 
     _write_task(tmp_path, expect, inputs=("a.xlsx",))
     assert tasks.load_task(tmp_path, "xlsx").expect.original == "a.xlsx"  # type: ignore[union-attr]
+
+
+def test_a_kind_without_checks_is_not_offered_by_the_runner() -> None:
+    with pytest.raises(SystemExit):
+        run.main(["--kind", "docx", "--out", "nowhere"])
+
+
+def test_a_blank_fact_never_matches() -> None:
+    assert text_checks.contains("some text", "   ") is False
+    assert text_checks.check_facts("some text", [["  "]], [])["ok"] is False
+
+
+def test_judging_looks_at_no_more_than_twenty_pages_of_a_file(tmp_path: Path) -> None:
+    folder = tmp_path / "a" / "t" / "render"
+    folder.mkdir(parents=True)
+    for number in range(1, 31):
+        (folder / f"page-{number:02d}.png").write_bytes(b"png")
+
+    assert len(judge._pages(tmp_path / "a", "t")) == 20
 
 
 def test_an_unknown_kind_or_task_is_refused() -> None:
@@ -760,23 +843,6 @@ def test_the_summary_of_an_excel_run_shows_what_failed(tmp_path: Path) -> None:
     assert row["cells"] == "13/15" and row["formulas"] == "False" and row["probe"] == "False"
     assert row["constants"] == "True" and row["charts"] == "-" and row["cost"] == "0.0127"
     assert "pages" not in head and "overflow" not in head
-
-
-def test_a_check_only_rerun_reads_the_deck_key_of_an_older_run(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    out = _recorded(tmp_path, "pptx", {})
-    folder = out / "01-q3-review"
-    folder.mkdir()
-    (folder / "result.json").write_text(json.dumps({"deck": "old.pptx"}), encoding="utf-8")
-    seen: list[Path] = []
-    monkeypatch.setitem(
-        run.CHECKERS, "pptx", lambda task, path, ws, out_dir: seen.append(path) or {"opens": {}}
-    )
-
-    run.check_task(tasks.discover("01")[0], folder)
-
-    assert seen == [folder / "workspace" / "old.pptx"]
 
 
 async def test_a_relative_out_folder_reaches_the_session_as_an_absolute_one(

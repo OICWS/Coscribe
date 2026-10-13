@@ -227,8 +227,13 @@ def judge_round(
     raise AssertionError("unreachable")
 
 
+MAX_PAGES = (
+    20  # one request carries every page of every run; a sheet that prints on dozens would not fit
+)
+
+
 def _pages(run: Path, task: str) -> list[Path]:
-    return sorted((run / task / "render").glob("page-*.png"))
+    return sorted((run / task / "render").glob("page-*.png"))[:MAX_PAGES]
 
 
 def run_set_id(runs: Collection[Path]) -> str:

@@ -27,6 +27,8 @@ def contains(text: str, fact: str) -> bool:
     in `13周`, `42%` is not in `142%`, `120` is not in `1200`. Spacing inside the fact is free
     (`Win + L`), but the text keeps its spaces: `Q3 12,710` is not the number `312,710`."""
     needle = normalise(fact)
+    if not needle:
+        return False
     body = re.escape(needle[0])
     for previous, char in zip(needle, needle[1:], strict=False):
         body += ("" if previous.isdigit() and char.isdigit() else r"\s*") + re.escape(char)

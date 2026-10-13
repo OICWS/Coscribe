@@ -147,7 +147,10 @@ def _list_of(raw: dict[str, object], key: str, kind: type, where: Path) -> list[
 
 
 def _address_is_valid(address: object) -> bool:
-    return isinstance(address, str) and "!" in address and not address.startswith("!")
+    if not isinstance(address, str):
+        return False
+    sheet, _, cells = address.rpartition("!")
+    return bool(sheet and cells)
 
 
 def _parse_xlsx_expect(raw: dict[str, object], where: Path) -> XlsxExpect:
@@ -163,6 +166,8 @@ def _parse_xlsx_expect(raw: dict[str, object], where: Path) -> XlsxExpect:
     for spec in cells:
         if "value" not in spec:
             raise ValueError(f'{where}: a cell check needs a "value": {spec}')
+        if ":" in spec["at"]:
+            raise ValueError(f"{where}: a cell check names one cell, not a range: {spec}")
     for spec in number_formats:
         if not spec.get("any_of") or not isinstance(spec["any_of"], list):
             raise ValueError(f'{where}: a number format check needs "any_of": {spec}')

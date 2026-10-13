@@ -30,7 +30,7 @@ from typing import Any
 
 from .pptx_checks import check_deck
 from .prices import cost
-from .tasks import KINDS, Task, discover
+from .tasks import Task, discover
 from .xlsx_checks import check_workbook
 
 DEFAULT_MODEL = "deepseek:deepseek-flash"
@@ -39,7 +39,7 @@ DEFAULT_TIMEOUT = 1800.0
 DEEPSEEK_URL = "https://api.deepseek.com/v1"
 ROUTES = {"current": "coscribe's coordinator agent as it ships"}
 # What a task of each kind produces and how it is checked.
-SUFFIXES = {"pptx": ".pptx", "xlsx": ".xlsx", "docx": ".docx"}
+SUFFIXES = {"pptx": ".pptx", "xlsx": ".xlsx"}
 CHECKERS = {"pptx": check_deck, "xlsx": check_workbook}
 _ANSWER = "Decide it yourself, I am not available; continue with the task."
 
@@ -257,7 +257,7 @@ async def run_task(
 def check_task(task: Task, task_out: Path) -> dict[str, Any]:
     result = json.loads((task_out / "result.json").read_text(encoding="utf-8"))
     workspace = task_out / "workspace"
-    output = result.get("output") or result.get("deck")  # `deck` in runs made before the kinds
+    output = result.get("output")
     if output is None:
         report: dict[str, Any] = {
             "output": None,
@@ -409,7 +409,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter
     )
-    parser.add_argument("--kind", choices=KINDS, default="pptx", help="which office tasks to run")
+    parser.add_argument(
+        "--kind", choices=sorted(CHECKERS), default="pptx", help="which office tasks to run"
+    )
     parser.add_argument("--route", choices=sorted(ROUTES), default="current")
     parser.add_argument(
         "--tasks", default="all", help="`all`, or names / number prefixes, comma-separated"
