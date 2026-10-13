@@ -23,6 +23,7 @@ class _FakeKeyring:
 
     def __init__(self) -> None:
         self.store: dict[tuple[str, str], str] = {}
+        self.deleted: list[tuple[str, str]] = []
         self.errors = keyring.errors
 
     def set_password(self, service: str, ref: str, value: str) -> None:
@@ -32,6 +33,7 @@ class _FakeKeyring:
         return self.store.get((service, ref))
 
     def delete_password(self, service: str, ref: str) -> None:
+        self.deleted.append((service, ref))
         self.store.pop((service, ref), None)
 
 
@@ -42,6 +44,7 @@ class _AlwaysFailingKeyring:
 
     def __init__(self) -> None:
         self.errors = keyring.errors
+        self.delete_attempts: list[tuple[str, str]] = []
 
     def set_password(self, service: str, ref: str, value: str) -> None:
         raise keyring.errors.PasswordSetError("no backend available")
@@ -50,6 +53,7 @@ class _AlwaysFailingKeyring:
         raise keyring.errors.KeyringError("no backend available")
 
     def delete_password(self, service: str, ref: str) -> None:
+        self.delete_attempts.append((service, ref))
         raise keyring.errors.PasswordDeleteError("no backend available")
 
 
@@ -126,16 +130,20 @@ def test_delete_secret_removes_from_keyring(fake_keyring: _FakeKeyring) -> None:
         secrets.resolve_secret(stored)
 
 
-def test_delete_secret_is_a_noop_for_a_plain_string() -> None:
-    secrets.delete_secret("sk-plaintext")  # must not raise
+def test_delete_secret_is_a_noop_for_a_plain_string(fake_keyring: _FakeKeyring) -> None:
+    assert secrets.delete_secret("sk-plaintext") is None
+    assert fake_keyring.deleted == []
 
 
-def test_delete_secret_is_a_noop_for_none() -> None:
-    secrets.delete_secret(None)  # must not raise
+def test_delete_secret_is_a_noop_for_none(fake_keyring: _FakeKeyring) -> None:
+    assert secrets.delete_secret(None) is None
+    assert fake_keyring.deleted == []
 
 
 def test_delete_secret_swallows_keyring_errors(failing_keyring: _AlwaysFailingKeyring) -> None:
-    secrets.delete_secret({"keyring_ref": "whatever"})  # must not raise
+    assert secrets.delete_secret({"keyring_ref": "whatever"}) is None
+    # The delete was attempted and its error swallowed, not skipped.
+    assert failing_keyring.delete_attempts == [(secrets.SERVICE_NAME, "whatever")]
 
 
 # -- .env-specific helpers --
@@ -172,9 +180,10 @@ def test_env_delete_secret_if_ref_cleans_up_keyring(fake_keyring: _FakeKeyring) 
         secrets.env_resolve_secret_for_display(stored)
 
 
-def test_env_delete_secret_if_ref_is_a_noop_for_plain_value() -> None:
-    secrets.env_delete_secret_if_ref("sk-plain")  # must not raise
-    secrets.env_delete_secret_if_ref(None)  # must not raise
+def test_env_delete_secret_if_ref_is_a_noop_for_plain_value(fake_keyring: _FakeKeyring) -> None:
+    assert secrets.env_delete_secret_if_ref("sk-plain") is None
+    assert secrets.env_delete_secret_if_ref(None) is None
+    assert fake_keyring.deleted == []
 
 
 def test_resolve_env_keyring_refs_replaces_sentinels_in_os_environ(
@@ -206,4 +215,6 @@ def test_harden_file_permissions_sets_owner_only_mode(tmp_path: Path) -> None:
 
 
 def test_harden_file_permissions_swallows_errors_for_a_missing_file(tmp_path: Path) -> None:
-    secrets.harden_file_permissions(tmp_path / "does-not-exist.json")  # must not raise
+    missing = tmp_path / "does-not-exist.json"
+    assert secrets.harden_file_permissions(missing) is None
+    assert not missing.exists()
