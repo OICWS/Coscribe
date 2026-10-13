@@ -69,7 +69,7 @@ cloud sessions run; macOS is not developed, so don't build for it or list it as 
 ```bash
 cd office-agent
 bash scripts/check.sh --fast    # frontend build, oxlint, ruff, mypy
-bash scripts/check.sh           # also pytest (~12 min); CI runs exactly this
+bash scripts/check.sh           # also pytest (~4 min on 4 CPUs); CI runs exactly this
 ```
 
 A frontend change must pass `npm run build` (`tsc -b`), not only

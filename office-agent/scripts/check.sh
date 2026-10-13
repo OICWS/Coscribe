@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The checks CI runs, in the same order, so a local pass means a CI pass.
-#   bash scripts/check.sh          everything (the tests take about 12 minutes)
+#   bash scripts/check.sh          everything (the tests take about 4 minutes on 4 CPUs)
 #   bash scripts/check.sh --fast   everything except pytest
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -46,9 +46,9 @@ if [ "$fast" -eq 0 ]; then
   echo "== pytest =="
   if [ -n "${COSCRIBE_COVERAGE:-}" ]; then
     # CI sets this; locally it costs a fifth more time for a number nobody reads.
-    pytest -q --cov --cov-report=term --cov-report=xml
+    pytest -q -n 4 --cov --cov-report=term --cov-report=xml
   else
-    pytest -q
+    pytest -q -n 4
   fi
 fi
 echo "All checks passed."

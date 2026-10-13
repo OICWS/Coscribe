@@ -167,7 +167,7 @@ the file of its domain, and fakes and builders shared by several files go into
 CI is the gate. Before pushing run `bash scripts/check.sh --fast` (frontend
 build, oxlint, ruff, mypy) and the test files for what you touched; before
 marking a PR ready, wait for a green CI run (or run the full
-`bash scripts/check.sh`, about 12 minutes). A test that
+`bash scripts/check.sh`, about 4 minutes on 4 CPUs). A test that
 writes real files must `monkeypatch.chdir(tmp_path)` first if it (or
 code it calls) can fall back to a relative path -- a real, live-hit
 mistake this session made once already (see `test_web.py`'s own
