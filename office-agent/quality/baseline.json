@@ -174,7 +174,7 @@
   "src/coscribe/tools/presentations.py::PresentationToolkit.write_pptx": 133,
   "src/coscribe/tools/presentations.py::build_presentation_tools": 1471,
   "src/coscribe/tools/scheduled_tasks.py::build_scheduled_task_tools": 225,
-  "src/coscribe/tools/selfwake.py::build_selfwake_tools": 155,
+  "src/coscribe/tools/selfwake.py::build_selfwake_tools": 151,
   "src/coscribe/web/app.py::create_app_lg": 381,
   "src/coscribe/web/routes/connectors/servers.py::router": 142,
   "src/coscribe/web/routes/files.py::router": 165,

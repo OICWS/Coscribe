@@ -32,6 +32,8 @@ from coscribe.runtime_lg.tool_deferral import (
     unwrap_use_tool_call,
 )
 
+from .wire_check import check_event
+
 
 def read_thing(x: str) -> str:
     """A harmless read tool."""
@@ -467,6 +469,7 @@ def test_keeps_tool_list_fixed_only_for_deepseeks_own_host() -> None:
 
 class _Socket:
     async def send_json(self, data: dict[str, Any]) -> None:
+        check_event(data)
         pass
 
 
