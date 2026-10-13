@@ -66,8 +66,8 @@ def _multi_sheet_with_formulas(tools: Tools) -> None:
         path=FILE,
         content="| Item | Value |\n| --- | --- |\n| Total Q1 | =SUM(Sales!B2:B4) |\n"
         "| Growth | =(SUM(Sales!C2:C4)-SUM(Sales!B2:B4))/SUM(Sales!B2:B4) |\n"
-        '| South manager | =INDEX(Managers!B2:B4,MATCH("South",Managers!A2:A4,0)) |\n'
-        "| Today | =TODAY() |",
+=======
+>>>>>>> origin/tools/xlsx-goldens-a
         sheet_name="Summary",
     )
 
