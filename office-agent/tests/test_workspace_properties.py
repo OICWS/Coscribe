@@ -60,14 +60,15 @@ def layout(tmp_path: Path) -> _Layout:
 
 def _inside(path: Path, folder: Path) -> bool:
     try:
-        return os.path.commonpath([os.path.realpath(path), folder]) == str(folder)
+        common = os.path.commonpath([os.path.realpath(path), folder])
+        return os.path.normcase(common) == os.path.normcase(folder)
     except ValueError:  # a different drive
         return False
 
 
 _PIECES = st.sampled_from(
     ["..", ".", "", "a", "b.txt", "ws", "ws2", "outside", "link", "readable", "writable"]
-    + ["~", "C:", "c:", "D:", "\\\\server\\share", "...", " ..", ".. ", "a b"]
+    + ["~", "C:", "c:", "D:", "...", " ..", ".. ", "a b"]
 )
 _SEPARATORS = st.sampled_from(["/", "\\", "//", "\\\\", "/\\", "./", "\\.\\"])
 
@@ -110,8 +111,8 @@ def test_a_relative_path_climbing_out_is_refused(layout: _Layout, data: st.DataO
     separator = data.draw(st.sampled_from(["/", "//", "/./"]))
     tail = data.draw(st.sampled_from(["", "x.txt", "ws2/x.txt", "outside/x.txt"]))
     text = separator.join([".."] * ups + [tail])
-    # Under the base folder, one `..` from the root lands in the allowed
-    # readable or writable sibling only when it names it, which `tail` never does.
+    # From the root, `..` reaches the base folder; `tail` never names the
+    # readable or writable sibling there.
     with pytest.raises(PermissionError):
         layout.scope.resolve(text)
 

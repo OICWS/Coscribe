@@ -12,7 +12,7 @@ from __future__ import annotations
 import base64
 import json
 import tempfile
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import quote
@@ -23,7 +23,13 @@ from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
 from coscribe.runtime import secrets
-from coscribe.runtime.secret_store import MAX_VALUE, MIN_VALUE, SecretStore, redactor
+from coscribe.runtime.secret_store import (
+    _FORMS_CACHE,
+    MAX_VALUE,
+    MIN_VALUE,
+    SecretStore,
+    redactor,
+)
 from coscribe.runtime_lg.audit import redact_secrets
 
 _SETTINGS = settings(deadline=None, derandomize=True, max_examples=100)
@@ -57,7 +63,10 @@ def _redactor_for(values: list[str]) -> Iterator[Callable[[str], str]]:
         store = SecretStore(folder)
         for index, value in enumerate(values):
             store.save(f"SECRET_{index}", value, ["example.com"])
-        yield redactor(Path(folder))
+        try:
+            yield redactor(Path(folder))
+        finally:
+            _FORMS_CACHE.pop(str(Path(folder) / "secrets.json"), None)
 
 
 def _forms(value: str) -> set[str]:
@@ -81,6 +90,14 @@ _PROSE_ALPHABET = "abcdefghij .,\n"
 _PROSE = st.text(alphabet=_PROSE_ALPHABET, max_size=40)
 
 
+def _leaked(forms: Iterable[str], out: str) -> list[str]:
+    """The forms still in `out`. Looked for between the marks, never across one:
+    a form may end with the mark's first characters, and a correct redactor then
+    leaves them next to the mark."""
+    pieces = out.split(_MARK)
+    return [form for form in forms if any(form in piece for piece in pieces)]
+
+
 def _assume_mark_free(value: str) -> None:
     # A value that spells the replacement mark would "survive" as the mark.
     assume(not any(_MARK in form or form in _MARK for form in _forms(value)))
@@ -96,7 +113,7 @@ def test_every_covered_form_is_gone_wherever_it_sits(
     with _redactor_for([value]) as redact:
         for text in (form, form + after, before + form, before + form + after):
             out = redact(text)
-            assert form not in out, f"{form!r} survived in {out!r}"
+            assert not _leaked([form], out), f"{form!r} survived in {out!r}"
 
 
 @_SETTINGS
@@ -110,7 +127,7 @@ def test_a_form_repeated_is_gone_every_time(
     text = "".join(gap + form for gap, form in zip(gaps, picked, strict=True))
     with _redactor_for([value]) as redact:
         out = redact(text)
-    assert all(form not in out for form in picked), out
+    assert not _leaked(picked, out), out
 
 
 @_SETTINGS
@@ -128,7 +145,7 @@ def test_secrets_side_by_side_are_all_gone(values: list[str], gaps: str) -> None
     with _redactor_for(values) as redact:
         out = redact(text)
     for forms in all_forms:
-        assert not any(form in out for form in forms), out
+        assert not _leaked(forms, out), out
 
 
 @_SETTINGS
