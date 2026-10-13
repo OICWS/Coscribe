@@ -25,6 +25,7 @@ import pytest
 from coscribe.tools.presentations import build_presentation_tools
 
 from .pptx_canonical import canonical_parts
+from .test_presentations_tool import _write_smartart_fixture
 
 GOLDEN_DIR = Path(__file__).parent / "golden" / "pptx"
 
@@ -190,6 +191,84 @@ def _background_image(tools: dict[str, Callable[..., object]]) -> None:
     tools["add_pptx_scrim"](path="deck.pptx", slide=1, opacity=0.4, color="000000")
 
 
+_TEMPLATE_CONTENT = (
+    "# Annual review\nA year of growth\n---\n# Highlights\n- Revenue up\n- New markets\n"
+    "---\n# Thank you\nQuestions welcome"
+)
+
+
+def _template_fill(tools: dict[str, Callable[..., object]]) -> None:
+    tools["fill_pptx_template"](
+        path="deck.pptx", template_id="bold-statement", content=_TEMPLATE_CONTENT
+    )
+
+
+def _template_fill_grown(tools: dict[str, Callable[..., object]]) -> None:
+    # More content chunks than the template has content slides: the repeatable slide is
+    # duplicated, which is the part of the template code that clones slide XML.
+    content = (
+        "# Annual review\nA year of growth\n---\n# One\n- a\n---\n# Two\n- b\n---\n"
+        "# Three\n- c\n---\n# Four\n- d\n---\n# Thank you\nQuestions welcome"
+    )
+    tools["fill_pptx_template"](path="deck.pptx", template_id="bold-statement", content=content)
+
+
+def _write_with_template_path(tools: dict[str, Callable[..., object]]) -> None:
+    tools["write_pptx"](
+        path="template.pptx",
+        content="# Old\n- old bullet",
+        theme="bg=111827,text=F8FAFC",
+    )
+    tools["write_pptx"](
+        path="deck.pptx", content="# New title\n- new bullet", template_path="template.pptx"
+    )
+
+
+def _template_extracted_then_filled(tools: dict[str, Callable[..., object]]) -> None:
+    bundled = (
+        Path(__file__).parents[1]
+        / "src/coscribe/builtin_templates/pptx/bold-statement/template.pptx"
+    )
+    shutil.copyfile(bundled, "reference.pptx")
+    custom = build_presentation_tools(Path.cwd(), custom_templates_dir=Path.cwd() / "_templates")
+    by_name = {tool.__name__: tool for tool in custom}  # type: ignore[attr-defined]
+    by_name["extract_pptx_template"](
+        source_path="reference.pptx",
+        template_id="my-brand",
+        name="My Brand",
+        description="a distilled copy",
+    )
+    by_name["fill_pptx_template"](
+        path="deck.pptx",
+        template_id="my-brand",
+        content="# Real title\n- point one\n---\n# Closing\nThanks",
+    )
+
+
+def _smartart_text_edit(tools: dict[str, Callable[..., object]]) -> None:
+    _write_smartart_fixture(Path("deck.pptx"))
+    tools["edit_pptx_xml"](
+        path="deck.pptx",
+        slide=1,
+        shape_index=0,
+        xpath=".//dgm:t[.//a:t='Plan']//a:t",
+        new_text="PLANNED START",
+    )
+
+
+def _smartart_shape_attributes(tools: dict[str, Callable[..., object]]) -> None:
+    # The same escape hatch on the graphicFrame itself (part="shape"), schema-validated.
+    _write_smartart_fixture(Path("deck.pptx"))
+    tools["edit_pptx_xml"](
+        path="deck.pptx",
+        slide=1,
+        shape_index=0,
+        xpath="//p:cNvPr",
+        set_attributes="name=Roadmap\ndescr=Three phases",
+        part="shape",
+    )
+
+
 DECKS: dict[str, Callable[[dict[str, Callable[..., object]]], None]] = {
     "background_image": _background_image,
     "bullets": _bullets,
@@ -205,8 +284,14 @@ DECKS: dict[str, Callable[[dict[str, Callable[..., object]]], None]] = {
     "shapes": _shapes,
     "stat_callout": _stat_callout,
     "svg": _svg,
+    "smartart_shape_attributes": _smartart_shape_attributes,
+    "smartart_text_edit": _smartart_text_edit,
     "table": _table,
+    "template_extracted_then_filled": _template_extracted_then_filled,
+    "template_fill": _template_fill,
+    "template_fill_grown": _template_fill_grown,
     "two_column": _two_column,
+    "write_with_template_path": _write_with_template_path,
     "transition_and_animation": _transition_and_animation,
     "theme": _theme,
 }
