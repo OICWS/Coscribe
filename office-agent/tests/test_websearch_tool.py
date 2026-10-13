@@ -3,6 +3,7 @@ from typing import Any
 import pytest
 
 from coscribe.runtime.types import get_tool_metadata
+from coscribe.tools import websearch
 from coscribe.tools.websearch import build_websearch_tools, web_search
 
 
@@ -125,7 +126,7 @@ def _serve(monkeypatch: pytest.MonkeyPatch, handler: Any) -> None:
         kwargs.pop("proxy", None)
         return real_client(transport=httpx.MockTransport(handler), **kwargs)
 
-    monkeypatch.setattr("coscribe.tools.websearch.httpx.Client", client)
+    monkeypatch.setattr(websearch.httpx, "Client", client)
 
 
 def test_read_web_page_returns_the_main_text_as_markdown(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -181,7 +182,7 @@ def test_web_search_retries_a_query_the_engines_briefly_failed(
         return [{"title": "T", "href": "https://example.com", "body": "B"}]
 
     monkeypatch.setattr("ddgs.ddgs.DDGS.text", flaky_text)
-    monkeypatch.setattr("coscribe.tools.websearch._SEARCH_RETRY_SECONDS", 0)
+    monkeypatch.setattr(websearch, "_SEARCH_RETRY_SECONDS", 0)
 
     assert web_search("ai news") == [{"title": "T", "url": "https://example.com", "snippet": "B"}]
     assert len(calls) == 3
@@ -194,7 +195,7 @@ def test_web_search_gives_up_after_its_attempts(monkeypatch: pytest.MonkeyPatch)
         raise DDGSException("No results found.")
 
     monkeypatch.setattr("ddgs.ddgs.DDGS.text", always_fails)
-    monkeypatch.setattr("coscribe.tools.websearch._SEARCH_RETRY_SECONDS", 0)
+    monkeypatch.setattr(websearch, "_SEARCH_RETRY_SECONDS", 0)
 
     with pytest.raises(DDGSException, match="No results found"):
         web_search("nothing")
