@@ -1,0 +1,114 @@
+{
+ "facts": [
+  "Fixed costs",
+  "Net margin"
+ ],
+ "cells": [
+  {
+   "at": "Model!A2",
+   "value": "Units sold"
+  },
+  {
+   "at": "Model!B2",
+   "value": 1000
+  },
+  {
+   "at": "Model!B3",
+   "value": 25
+  },
+  {
+   "at": "Model!B4",
+   "value": 14
+  },
+  {
+   "at": "Model!B5",
+   "value": 6000
+  },
+  {
+   "at": "Model!A7",
+   "value": "Revenue"
+  },
+  {
+   "at": "Model!B7",
+   "value": 25000
+  },
+  {
+   "at": "Model!A8",
+   "value": "Variable costs"
+  },
+  {
+   "at": "Model!B8",
+   "value": 14000
+  },
+  {
+   "at": "Model!A9",
+   "value": "Gross profit"
+  },
+  {
+   "at": "Model!B9",
+   "value": 11000
+  },
+  {
+   "at": "Model!A10",
+   "value": "Net profit"
+  },
+  {
+   "at": "Model!B10",
+   "value": 5000
+  },
+  {
+   "at": "Model!A11",
+   "value": "Net margin"
+  },
+  {
+   "at": "Model!B11",
+   "value": 0.2,
+   "tol": 0.0005
+  }
+ ],
+ "formulas": [
+  "Model!B7:B11"
+ ],
+ "constants": [
+  "Model!B2:B5"
+ ],
+ "number_formats": [
+  {
+   "at": "Model!B11",
+   "any_of": [
+    "%"
+   ]
+  }
+ ],
+ "used_range": {
+  "Model": "A1:B11"
+ },
+ "probe": {
+  "set": {
+   "Model!B2": 2000
+  },
+  "expect": [
+   {
+    "at": "Model!B7",
+    "value": 50000
+   },
+   {
+    "at": "Model!B8",
+    "value": 28000
+   },
+   {
+    "at": "Model!B9",
+    "value": 22000
+   },
+   {
+    "at": "Model!B10",
+    "value": 16000
+   },
+   {
+    "at": "Model!B11",
+    "value": 0.32,
+    "tol": 0.0005
+   }
+  ]
+ }
+}

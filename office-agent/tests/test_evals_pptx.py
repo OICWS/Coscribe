@@ -406,10 +406,10 @@ def test_the_produced_deck_is_the_newest_one_that_is_not_an_untouched_input(
 ) -> None:
     _deck(tmp_path / "input.pptx", [("In", ["x"])])
     originals = {"input.pptx": (tmp_path / "input.pptx").read_bytes()}
-    assert run._find_deck(tmp_path, originals, []) is None
+    assert run._find_output(tmp_path, originals, [], ".pptx") is None
 
     _deck(tmp_path / "made.pptx", [("Out", ["y"])])
-    assert run._find_deck(tmp_path, originals, []) == tmp_path / "made.pptx"
+    assert run._find_output(tmp_path, originals, [], ".pptx") == tmp_path / "made.pptx"
 
 
 def test_a_deck_the_agent_names_wins_over_a_newer_scratch_one(tmp_path: Path) -> None:
@@ -420,8 +420,8 @@ def test_a_deck_the_agent_names_wins_over_a_newer_scratch_one(tmp_path: Path) ->
     os.utime(real, (1, 1))
     os.utime(scratch, (2, 2))
 
-    assert run._find_deck(tmp_path, {}, ["done"]) == scratch
-    assert run._find_deck(tmp_path, {}, ["saved as report.pptx"]) == real
+    assert run._find_output(tmp_path, {}, ["done"], ".pptx") == scratch
+    assert run._find_output(tmp_path, {}, ["saved as report.pptx"], ".pptx") == real
 
 
 async def test_each_overlapping_task_gets_its_own_usage_and_the_resolver_is_restored(

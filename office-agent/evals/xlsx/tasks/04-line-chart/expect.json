@@ -1,0 +1,129 @@
+{
+ "facts": [
+  "Visitors",
+  "Dec"
+ ],
+ "sheets": [
+  "Data"
+ ],
+ "cells": [
+  {
+   "at": "Data!A1",
+   "value": "Month"
+  },
+  {
+   "at": "Data!B1",
+   "value": "Visitors"
+  },
+  {
+   "at": "Data!A2",
+   "value": "Jan"
+  },
+  {
+   "at": "Data!B2",
+   "value": 1200
+  },
+  {
+   "at": "Data!A3",
+   "value": "Feb"
+  },
+  {
+   "at": "Data!B3",
+   "value": 1350
+  },
+  {
+   "at": "Data!A4",
+   "value": "Mar"
+  },
+  {
+   "at": "Data!B4",
+   "value": 1280
+  },
+  {
+   "at": "Data!A5",
+   "value": "Apr"
+  },
+  {
+   "at": "Data!B5",
+   "value": 1500
+  },
+  {
+   "at": "Data!A6",
+   "value": "May"
+  },
+  {
+   "at": "Data!B6",
+   "value": 1720
+  },
+  {
+   "at": "Data!A7",
+   "value": "Jun"
+  },
+  {
+   "at": "Data!B7",
+   "value": 1650
+  },
+  {
+   "at": "Data!A8",
+   "value": "Jul"
+  },
+  {
+   "at": "Data!B8",
+   "value": 1580
+  },
+  {
+   "at": "Data!A9",
+   "value": "Aug"
+  },
+  {
+   "at": "Data!B9",
+   "value": 1800
+  },
+  {
+   "at": "Data!A10",
+   "value": "Sep"
+  },
+  {
+   "at": "Data!B10",
+   "value": 2010
+  },
+  {
+   "at": "Data!A11",
+   "value": "Oct"
+  },
+  {
+   "at": "Data!B11",
+   "value": 1950
+  },
+  {
+   "at": "Data!A12",
+   "value": "Nov"
+  },
+  {
+   "at": "Data!B12",
+   "value": 2200
+  },
+  {
+   "at": "Data!A13",
+   "value": "Dec"
+  },
+  {
+   "at": "Data!B13",
+   "value": 2480
+  }
+ ],
+ "used_range": {
+  "Data": "A1:B13"
+ },
+ "charts": [
+  {
+   "kind": "line",
+   "title": "Monthly visitors",
+   "points_min": 12,
+   "axis_titles": [
+    "Month",
+    "Visitors"
+   ]
+  }
+ ]
+}

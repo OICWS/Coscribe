@@ -1,0 +1,1 @@
+tickets.xlsx tracks our bug tickets, but the Status column (C, rows 2 to 11) is empty. Make Status a dropdown list in C2:C11 that offers exactly Open, In progress and Done, and set all ten tickets to Open. Then put the label "Open tickets" in G1 and, in H1, a formula that counts the tickets whose Status is Open. Keep the rest of the sheet as it is.

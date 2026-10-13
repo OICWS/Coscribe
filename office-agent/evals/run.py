@@ -3,6 +3,7 @@
     python -m evals.run --route current --tasks all --out evals/runs/baseline
     python -m evals.run --tasks 01,03 --out evals/runs/try
     python -m evals.run --check-only --out evals/runs/baseline    # re-check, no model calls
+    python -m evals.run --kind xlsx --out evals/runs/excel        # the Excel tasks
 
 Each task gets a fresh workspace holding its input files; its brief is sent as one user
 message to a `ChatSessionLG` that acts without asking (the tier of a scheduled run), the
@@ -29,13 +30,17 @@ from typing import Any
 
 from .pptx_checks import check_deck
 from .prices import cost
-from .tasks import Task, discover
+from .tasks import KINDS, Task, discover
+from .xlsx_checks import check_workbook
 
 DEFAULT_MODEL = "deepseek:deepseek-flash"
 DEFAULT_EFFORT = "low"
 DEFAULT_TIMEOUT = 1800.0
 DEEPSEEK_URL = "https://api.deepseek.com/v1"
 ROUTES = {"current": "coscribe's coordinator agent as it ships"}
+# What a task of each kind produces and how it is checked.
+SUFFIXES = {"pptx": ".pptx", "xlsx": ".xlsx", "docx": ".docx"}
+CHECKERS = {"pptx": check_deck, "xlsx": check_workbook}
 _ANSWER = "Decide it yourself, I am not available; continue with the task."
 
 
@@ -145,17 +150,19 @@ def _build_session(root: Path, workspace: Path, model: str, thread_id: str) -> A
     return session
 
 
-def _find_deck(workspace: Path, originals: dict[str, bytes], messages: list[str]) -> Path | None:
-    """The .pptx the agent wrote or changed (an input still byte-identical is not one); when
-    several qualify, the newest of those its own messages name, else the newest."""
-    decks = [
+def _find_output(
+    workspace: Path, originals: dict[str, bytes], messages: list[str], suffix: str
+) -> Path | None:
+    """The file of the task's kind the agent wrote or changed (an input still byte-identical is
+    not one); when several qualify, the newest of those its own messages name, else the newest."""
+    files = [
         p
-        for p in workspace.rglob("*.pptx")
+        for p in workspace.rglob(f"*{suffix}")
         if originals.get(str(p.relative_to(workspace))) != p.read_bytes()
     ]
     said = "\n".join(messages)
-    named = [p for p in decks if p.name in said]
-    return max(named or decks, key=lambda p: p.stat().st_mtime, default=None)
+    named = [p for p in files if p.name in said]
+    return max(named or files, key=lambda p: p.stat().st_mtime, default=None)
 
 
 @contextlib.contextmanager
@@ -216,9 +223,10 @@ async def run_task(
         status, error = "error", f"{type(exc).__name__}: {exc}"
     wall = time.monotonic() - started
 
-    deck = _find_deck(workspace, originals, recorder.messages)
+    output = _find_output(workspace, originals, recorder.messages, SUFFIXES[task.kind])
     result = {
         "task": task.name,
+        "kind": task.kind,
         "route": "current",
         "model": model,
         "effort": effort,
@@ -235,7 +243,7 @@ async def run_task(
         "tool_calls": dict(recorder.tool_calls),
         "tool_errors": recorder.tool_errors,
         "questions_answered_for_the_user": recorder.questions,
-        "deck": str(deck.relative_to(workspace)) if deck else None,
+        "output": str(output.relative_to(workspace)) if output else None,
         "messages": recorder.messages,
     }
     (task_out / "result.json").write_text(
@@ -248,32 +256,92 @@ async def run_task(
 def check_task(task: Task, task_out: Path) -> dict[str, Any]:
     result = json.loads((task_out / "result.json").read_text(encoding="utf-8"))
     workspace = task_out / "workspace"
-    if result["deck"] is None:
-        report: dict[str, Any] = {"deck": None, "opens": {"ok": False, "error": "no deck produced"}}
+    output = result.get("output") or result.get("deck")  # `deck` in runs made before the kinds
+    if output is None:
+        report: dict[str, Any] = {
+            "output": None,
+            "opens": {"ok": False, "error": f"no {task.kind} file produced"},
+        }
     else:
-        report = check_deck(task, workspace / result["deck"], workspace, task_out / "render")
+        report = CHECKERS[task.kind](task, workspace / output, workspace, task_out / "render")
     (task_out / "checks.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     return report
 
 
-def summary_row(result: dict[str, Any], report: dict[str, Any]) -> dict[str, Any]:
+def _ok(report: dict[str, Any], check: str) -> bool | None:
+    """Whether a check passed; None for a check this task does not ask for."""
+    found = report.get(check)
+    return None if found is None else bool(found.get("ok"))
+
+
+def _matched(report: dict[str, Any], check: str) -> str | None:
+    found = report.get(check)
+    return None if found is None else f"{found['matched']}/{found['checked']}"
+
+
+def _kind_columns(kind: str, report: dict[str, Any]) -> dict[str, Any]:
+    if kind == "xlsx":
+        recalc = report.get("recalc") or {}
+        return {
+            "recalc": recalc.get("ok", False),
+            "formula_cells": recalc.get("formulas"),
+            "errors": recalc.get("errors"),
+            "cells": _matched(report, "cells"),
+            "formulas": _ok(report, "formulas"),
+            "constants": _ok(report, "constants"),
+            "formats": _ok(report, "number_formats"),
+            "styles_kept": _ok(report, "untouched"),
+            "features_kept": _ok(report, "features"),
+            "used_range": _ok(report, "used_range"),
+            "probe": _ok(report, "probe"),
+            "charts": _ok(report, "charts"),
+            "validations": _ok(report, "validations"),
+        }
     layout = report.get("layout") or {}
+    return {
+        "pages": (report.get("pages") or {}).get("count"),
+        "pages_ok": (report.get("pages") or {}).get("ok", False),
+        "editable": (report.get("editability") or {}).get("ok", False),
+        "pictures_ok": (report.get("pictures") or {}).get("ok"),
+        "template_kept": (report.get("template") or {}).get("ok"),
+        "overflow": layout.get("overflow_words"),
+        "overlaps": layout.get("text_overlaps"),
+    }
+
+
+# The summary table: the columns each kind shows, after `task`, `status` and `opens`.
+SUMMARY_COLUMNS = {
+    "pptx": ["facts", "pages", "editable", "inventions", "overflow", "overlaps"],
+    "xlsx": [
+        "recalc",
+        "errors",
+        "facts",
+        "cells",
+        "formulas",
+        "constants",
+        "formats",
+        "styles_kept",
+        "features_kept",
+        "used_range",
+        "probe",
+        "charts",
+        "validations",
+        "inventions",
+    ],
+}
+
+
+def summary_row(result: dict[str, Any], report: dict[str, Any]) -> dict[str, Any]:
     facts = report.get("facts") or {}
     return {
         "task": result["task"],
         "status": result["status"],
         "opens": report.get("opens", {}).get("ok", False),
         "facts": f"{facts.get('found', 0)}/{facts.get('total', 0)}",
-        "pages": (report.get("pages") or {}).get("count"),
-        "pages_ok": (report.get("pages") or {}).get("ok", False),
-        "editable": (report.get("editability") or {}).get("ok", False),
         "inventions": (report.get("inventions") or {}).get("count"),
-        "pictures_ok": (report.get("pictures") or {}).get("ok"),
-        "template_kept": (report.get("template") or {}).get("ok"),
-        "overflow": layout.get("overflow_words"),
-        "overlaps": layout.get("text_overlaps"),
+        **_kind_columns(result.get("kind", "pptx"), report),
         "seconds": result["wall_seconds"],
         "tool_calls": result["tool_call_count"],
         "input_tokens": result["input_tokens"],
@@ -283,7 +351,7 @@ def summary_row(result: dict[str, Any], report: dict[str, Any]) -> dict[str, Any
     }
 
 
-def write_summary(out: Path, tasks: list[Task]) -> None:
+def write_summary(out: Path, tasks: list[Task], kind: str = "pptx") -> None:
     rows = []
     for task in tasks:
         folder = out / task.name
@@ -297,24 +365,16 @@ def write_summary(out: Path, tasks: list[Task]) -> None:
     (out / "summary.json").write_text(
         json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    head = [
-        "task",
-        "status",
-        "opens",
-        "facts",
-        "pages",
-        "editable",
-        "inventions",
-        "overflow",
-        "overlaps",
-        "seconds",
-        "tool_calls",
-        "cost",
-    ]
+    head = ["task", "status", "opens", *SUMMARY_COLUMNS[kind], "seconds", "tool_calls", "cost"]
     lines = ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
     for row in rows:
         cells = [
-            f"{row[h]:.4f}" if h == "cost" and row[h] is not None else str(row[h]) for h in head
+            f"{row[h]:.4f}"
+            if h == "cost" and row[h] is not None
+            else "-"
+            if row[h] is None
+            else str(row[h])
+            for h in head
         ]
         lines.append("| " + " | ".join(cells) + " |")
     (out / "summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -346,6 +406,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter
     )
+    parser.add_argument("--kind", choices=KINDS, default="pptx", help="which office tasks to run")
     parser.add_argument("--route", choices=sorted(ROUTES), default="current")
     parser.add_argument(
         "--tasks", default="all", help="`all`, or names / number prefixes, comma-separated"
@@ -361,7 +422,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.effort == "none":
         args.effort = None
-    tasks = discover(args.tasks)
+    tasks = discover(args.tasks, kind=args.kind)
     out: Path = args.out
     out.mkdir(parents=True, exist_ok=True)
     if args.check_only:
@@ -374,7 +435,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         with measured_models(args.effort):
             asyncio.run(run_all(args, tasks, out))
-    write_summary(out, discover("all"))
+    write_summary(out, discover("all", kind=args.kind), args.kind)
     print((out / "summary.md").read_text(encoding="utf-8"))
     return 0
 

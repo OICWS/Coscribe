@@ -173,7 +173,9 @@ def _fake_decks(tmp_path: Path, names: list[str]) -> list[Path]:
 def _answers(monkeypatch: pytest.MonkeyPatch, fail_first: bool = False) -> None:
     calls = {"n": 0}
 
-    def fake(judge_name: str, brief: str, decks: dict, labels: list[str]) -> tuple[dict, dict]:
+    def fake(
+        judge_name: str, brief: str, decks: dict, labels: list[str], rubric: str = ""
+    ) -> tuple[dict, dict]:
         calls["n"] += 1
         if fail_first and calls["n"] == 1:
             raise RuntimeError("rate limit")

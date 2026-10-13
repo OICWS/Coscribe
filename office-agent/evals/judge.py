@@ -1,8 +1,10 @@
 # ruff: noqa: E501 -- the rubric is prompt text, kept as written
-"""A blind judge: a vision model scores the rendered pages of decks it cannot tell apart.
+"""A blind judge: a vision model scores the rendered pages of decks (or workbooks, or documents)
+it cannot tell apart.
 
     python -m evals.judge evals/runs/baseline --rounds 3
     python -m evals.judge evals/runs/a evals/runs/b --rounds 3 --judge gemini:gemini-3.5-flash
+    python -m evals.judge evals/runs/excel --kind xlsx --rounds 3
 
 With several runs, the decks every run made for one task go into one request under random
 labels (`Deck P`, `Deck Q`...), drawn again each round, so neither position nor name tells
@@ -49,6 +51,20 @@ If there are several decks, rank them from best to worst.
 Return JSON only: {"decks": {"<label>": {"design": n, "content": n, "coherence": n, "defects": [str]}}, "ranking": ["<label>", ...]}"""
 
 
+RUBRIC_XLSX = """You are a strict senior spreadsheet analyst judging workbooks made for a real business user.
+You see the user's request, then the printed pages of each workbook, one or more per sheet (a wide sheet may continue on a further page).
+Score each workbook from 1 to 5 (decimals allowed) on:
+- design: readable formatting: a clear header row, sensible column widths with no truncated text or ### cells, number, date, currency and percentage formats that fit the data, consistent alignment, a clean look, charts with a title, labelled axes and readable series;
+- content: it does what the request asked, the figures shown are plausible and complete, the labels say what each number is, nothing important is missing and nothing unrequested clutters the sheet;
+- coherence: the sheets and tables are organised the way a person would build them: inputs apart from results, one consistent layout and style, the pages read as one piece of work.
+Also list the 3 most serious concrete defects you see in each workbook (page number + defect).
+If there are several workbooks, rank them from best to worst.
+Return JSON only: {"decks": {"<label>": {"design": n, "content": n, "coherence": n, "defects": [str]}}, "ranking": ["<label>", ...]}
+(The key is "decks" and the labels are "Deck P", "Deck Q"..., whatever the file kind.)"""
+
+RUBRICS = {"pptx": RUBRIC, "xlsx": RUBRIC_XLSX}
+
+
 def assign_labels(count: int, rng: random.Random) -> list[str]:
     """`Deck P`... in a random order: the i-th entry is the label of the i-th run."""
     labels = [f"Deck {c}" for c in LABELS[:count]]
@@ -86,9 +102,11 @@ def parse_answer(text: str, labels: list[str]) -> dict[str, Any]:
     return {"decks": decks, "ranking": ranking if len(labels) > 1 else []}
 
 
-def build_request(brief: str, decks: dict[str, list[Path]]) -> list[tuple[str, Path | None]]:
+def build_request(
+    brief: str, decks: dict[str, list[Path]], rubric: str = RUBRIC
+) -> list[tuple[str, Path | None]]:
     """The request as (text, image-or-None) parts, decks in label order."""
-    parts: list[tuple[str, Path | None]] = [(RUBRIC, None), (f"The user's request:\n{brief}", None)]
+    parts: list[tuple[str, Path | None]] = [(rubric, None), (f"The user's request:\n{brief}", None)]
     for label in sorted(decks):
         parts.append((f"\n=== {label}: {len(decks[label])} pages ===", None))
         for number, page in enumerate(decks[label], start=1):
@@ -189,9 +207,14 @@ def _retryable(exc: Exception) -> bool:
 
 
 def judge_round(
-    judge: str, brief: str, decks: dict[str, list[Path]], labels: list[str], retries: int = 3
+    judge: str,
+    brief: str,
+    decks: dict[str, list[Path]],
+    labels: list[str],
+    retries: int = 3,
+    rubric: str = RUBRIC,
 ) -> tuple[dict[str, Any], dict[str, int]]:
-    parts = build_request(brief, decks)
+    parts = build_request(brief, decks, rubric)
     for attempt in range(retries):
         try:
             text, usage = ask(judge, parts)
@@ -222,13 +245,20 @@ def check_runs(runs: list[Path]) -> None:
         raise ValueError("the same run is given twice")
 
 
-def judge_runs(runs: list[Path], task_names: list[str], judge: str, rounds: int, seed: int) -> int:
+def judge_runs(
+    runs: list[Path],
+    task_names: list[str],
+    judge: str,
+    rounds: int,
+    seed: int,
+    kind: str = "pptx",
+) -> int:
     """Returns the number of rounds that failed: one bad answer does not stop the batch."""
     check_runs(runs)
     rng = random.Random(seed)
     tag = judge.replace(":", "-")
     failures = 0
-    for task in discover("all"):
+    for task in discover("all", kind=kind):
         if task.name not in task_names:
             continue
         present = [r for r in runs if _pages(r, task.name)]
@@ -244,7 +274,7 @@ def judge_runs(runs: list[Path], task_names: list[str], judge: str, rounds: int,
                 label: _pages(run, task.name) for label, run in zip(labels, present, strict=True)
             }
             try:
-                answer, usage = judge_round(judge, task.brief, decks, labels)
+                answer, usage = judge_round(judge, task.brief, decks, labels, rubric=RUBRICS[kind])
             except Exception as exc:  # noqa: BLE001 -- reported below, the other tasks go on
                 failures += 1
                 print(f"FAILED {task.name} round {number}: {type(exc).__name__}: {exc}", flush=True)
@@ -316,10 +346,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--rounds", type=int, default=3)
     parser.add_argument("--tasks", default="all")
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--kind", choices=sorted(RUBRICS), default="pptx", help="which tasks")
     args = parser.parse_args(argv)
-    names = [t.name for t in discover(args.tasks)]
+    names = [t.name for t in discover(args.tasks, kind=args.kind)]
     try:
-        failures = judge_runs(args.runs, names, args.judge, args.rounds, args.seed)
+        failures = judge_runs(args.runs, names, args.judge, args.rounds, args.seed, args.kind)
     except ValueError as exc:
         parser.error(str(exc))
     return 1 if failures else 0

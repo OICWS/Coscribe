@@ -1,0 +1,81 @@
+{
+ "facts": [
+  "Variance",
+  "Total"
+ ],
+ "cells": [
+  {
+   "at": "Budget!D1",
+   "value": "Variance"
+  },
+  {
+   "at": "Budget!D2",
+   "value": 1450
+  },
+  {
+   "at": "Budget!D3",
+   "value": -800
+  },
+  {
+   "at": "Budget!D4",
+   "value": 0
+  },
+  {
+   "at": "Budget!D5",
+   "value": 650
+  },
+  {
+   "at": "Budget!D6",
+   "value": -225
+  },
+  {
+   "at": "Budget!D7",
+   "value": 1100
+  },
+  {
+   "at": "Budget!A8",
+   "value": "Total"
+  },
+  {
+   "at": "Budget!B8",
+   "value": 36500
+  },
+  {
+   "at": "Budget!C8",
+   "value": 38675
+  },
+  {
+   "at": "Budget!D8",
+   "value": 2175
+  }
+ ],
+ "formulas": [
+  "Budget!D2:D8",
+  "Budget!B8:C8"
+ ],
+ "number_formats": [
+  {
+   "at": "Budget!D2:D8",
+   "any_of": [
+    "$"
+   ]
+  },
+  {
+   "at": "Budget!B8:C8",
+   "any_of": [
+    "$"
+   ]
+  }
+ ],
+ "bold": [
+  "Budget!D1"
+ ],
+ "used_range": {
+  "Budget": "A1:D8"
+ },
+ "original": "budget_q1.xlsx",
+ "untouched": [
+  "Budget!A1:C7"
+ ],
+ "conditional_formats_min": 1
+}

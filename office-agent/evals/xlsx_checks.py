@@ -1,0 +1,472 @@
+"""Automatic checks on one produced workbook, in plain Python: no model is called here.
+
+Each check returns a plain dict so a run can be written as JSON and two runs compared.
+`check_workbook` runs the ones a task's `expect.json` asks for. Values are read from a copy
+that LibreOffice recalculated (the path `recalc_xlsx` takes), formulas and styles from the file
+the agent made, so a workbook of pasted numbers and one of formulas look different.
+"""
+
+from __future__ import annotations
+
+import datetime as dt
+import re
+import shutil
+import tempfile
+import zipfile
+from pathlib import Path
+from typing import Any
+from xml.etree import ElementTree as ET
+
+from .render import render_pages
+from .tasks import Task, XlsxExpect
+from .text_checks import check_facts, find_inventions, plain_number
+
+_DEFAULT_TOLERANCE = 0.005
+_LIST_CAP = 20
+_CHART_KINDS = {
+    "line": ("lineChart", "line3DChart"),
+    "bar": ("barChart", "bar3DChart"),
+    "pie": ("pieChart", "pie3DChart", "doughnutChart"),
+    "scatter": ("scatterChart",),
+    "area": ("areaChart", "area3DChart"),
+}
+_C = "{http://schemas.openxmlformats.org/drawingml/2006/chart}"
+_A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
+
+
+def split_address(address: str) -> tuple[str, str]:
+    """`Sheet!B2:B9` or `'My sheet'!B2` into the sheet name and the cell or range."""
+    sheet, _, cells = address.rpartition("!")
+    if len(sheet) >= 2 and sheet[0] == sheet[-1] == "'":
+        sheet = sheet[1:-1].replace("''", "'")
+    return sheet, cells.replace("$", "")
+
+
+def cells_in(workbook: Any, address: str) -> list[Any]:
+    """The cells an address names; a sheet that does not exist raises `KeyError`."""
+    sheet, cells = split_address(address)
+    selection = workbook[sheet][cells]
+    if hasattr(selection, "row"):
+        return [selection]
+    if selection and isinstance(selection[0], tuple):
+        return [cell for row in selection for cell in row]
+    return list(selection)
+
+
+def _plain(value: Any) -> Any:
+    """What a person reads from a cell: a date as `YYYY-MM-DD`."""
+    if isinstance(value, dt.datetime):
+        return value.date().isoformat() if value.time() == dt.time(0) else value.isoformat()
+    if isinstance(value, dt.date):
+        return value.isoformat()
+    return value
+
+
+def _is_number(value: Any) -> bool:
+    return isinstance(value, int | float) and not isinstance(value, bool)
+
+
+def value_matches(got: Any, spec: dict[str, Any]) -> bool:
+    expected = spec["value"]
+    if spec.get("type") == "date":
+        return isinstance(got, dt.date) and _plain(got) == expected
+    if expected is None or expected == "":
+        return got is None or got == ""
+    if _is_number(expected):
+        tolerance = float(spec.get("tol", _DEFAULT_TOLERANCE))
+        return _is_number(got) and abs(got - expected) <= tolerance
+    return isinstance(got, str) and got == expected
+
+
+def check_opens(path: Path) -> dict[str, Any]:
+    from openpyxl import load_workbook
+
+    try:
+        workbook = load_workbook(str(path))
+    except Exception as exc:  # noqa: BLE001 -- any failure to open is the finding
+        return {"ok": False, "error": f"{type(exc).__name__}: {exc}", "sheets": []}
+    names = list(workbook.sheetnames)
+    workbook.close()
+    return {"ok": True, "sheets": names}
+
+
+def recalculate(
+    path: Path, scratch: Path, name: str = "recalc.xlsx"
+) -> tuple[Path, dict[str, Any]]:
+    """A recalculated copy, through the helper `recalc_xlsx` uses; the file is not touched."""
+    from coscribe.tools.office.xlsx.helpers import _recalc_xlsx_and_evaluate_lookups
+
+    copy = scratch / name
+    shutil.copyfile(path, copy)
+    result = _recalc_xlsx_and_evaluate_lookups(copy)
+    report = {
+        "ok": result["status"] == "success",
+        "status": result["status"],
+        "skipped_reason": result.get("skipped_reason"),
+        "formulas": result.get("total_formulas"),
+        "errors": result.get("total_errors"),
+        "error_locations": result.get("error_locations"),
+    }
+    return copy, report
+
+
+def workbook_texts(values: Any) -> list[str]:
+    """The text of each sheet as a person reads it: the sheet's name, then one line per row."""
+    texts = []
+    for sheet in values.worksheets:
+        lines = [sheet.title]
+        for row in sheet.iter_rows(values_only=True):
+            shown = [
+                plain_number(v) if _is_number(v) else str(_plain(v))
+                for v in row
+                if v is not None and v != ""
+            ]
+            if shown:
+                lines.append(" ".join(shown))
+        texts.append("\n".join(lines))
+    return texts
+
+
+def check_sheets(names: list[str], wanted: list[str]) -> dict[str, Any]:
+    present = {n.casefold() for n in names}
+    missing = [w for w in wanted if w.casefold() not in present]
+    return {"ok": not missing, "missing": missing}
+
+
+def check_cells(values: Any, specs: list[dict[str, Any]]) -> dict[str, Any]:
+    wrong = []
+    for spec in specs:
+        try:
+            (cell,) = cells_in(values, spec["at"])
+        except KeyError:
+            wrong.append({"at": spec["at"], "expected": spec["value"], "got": "no such sheet"})
+            continue
+        if not value_matches(cell.value, spec):
+            wrong.append({"at": spec["at"], "expected": spec["value"], "got": _plain(cell.value)})
+    return {
+        "ok": not wrong,
+        "checked": len(specs),
+        "matched": len(specs) - len(wrong),
+        "wrong": wrong[:_LIST_CAP],
+    }
+
+
+def _is_formula(cell: Any) -> bool:
+    return isinstance(cell.value, str) and cell.value.startswith("=")
+
+
+def _check_kind_of_cell(workbook: Any, ranges: list[str], want_formula: bool) -> dict[str, Any]:
+    wrong, total = [], 0
+    for address in ranges:
+        try:
+            cells = cells_in(workbook, address)
+        except KeyError:
+            wrong.append(f"{address} (no such sheet)")
+            continue
+        for cell in cells:
+            total += 1
+            if _is_formula(cell) != want_formula:
+                wrong.append(f"{cell.parent.title}!{cell.coordinate}")
+    return {"ok": not wrong, "checked": total, "wrong": wrong[:_LIST_CAP]}
+
+
+def check_formulas(workbook: Any, ranges: list[str]) -> dict[str, Any]:
+    """Every cell of the ranges holds a formula: a total typed in as a number is the finding."""
+    return _check_kind_of_cell(workbook, ranges, want_formula=True)
+
+
+def check_constants(workbook: Any, ranges: list[str]) -> dict[str, Any]:
+    """Inputs stay values: a formula there means the model computed what the user supplies."""
+    return _check_kind_of_cell(workbook, ranges, want_formula=False)
+
+
+def check_number_formats(workbook: Any, specs: list[dict[str, Any]]) -> dict[str, Any]:
+    wrong, total = [], 0
+    for spec in specs:
+        try:
+            cells = cells_in(workbook, spec["at"])
+        except KeyError:
+            wrong.append({"at": spec["at"], "format": "no such sheet"})
+            continue
+        for cell in cells:
+            total += 1
+            shown = cell.number_format
+            if not any(want in shown for want in spec["any_of"]):
+                wrong.append({"at": f"{cell.parent.title}!{cell.coordinate}", "format": shown})
+    return {"ok": not wrong, "checked": total, "wrong": wrong[:_LIST_CAP]}
+
+
+def check_bold(workbook: Any, ranges: list[str]) -> dict[str, Any]:
+    wrong, total = [], 0
+    for address in ranges:
+        try:
+            cells = cells_in(workbook, address)
+        except KeyError:
+            wrong.append(f"{address} (no such sheet)")
+            continue
+        for cell in cells:
+            total += 1
+            if not cell.font.b:
+                wrong.append(f"{cell.parent.title}!{cell.coordinate}")
+    return {"ok": not wrong, "checked": total, "wrong": wrong[:_LIST_CAP]}
+
+
+def check_used_range(workbook: Any, limits: dict[str, str]) -> dict[str, Any]:
+    from openpyxl.utils.cell import range_boundaries
+
+    outside = []
+    for sheet_name, cells in limits.items():
+        if sheet_name not in workbook.sheetnames:
+            outside.append(f"{sheet_name} (no such sheet)")
+            continue
+        first_col, first_row, last_col, last_row = range_boundaries(cells)
+        for row in workbook[sheet_name].iter_rows():
+            for cell in row:
+                if cell.value is None or cell.value == "":
+                    continue
+                inside = first_col <= cell.column <= last_col and first_row <= cell.row <= last_row
+                if not inside:
+                    outside.append(f"{sheet_name}!{cell.coordinate}")
+    return {"ok": not outside, "count": len(outside), "outside": outside[:_LIST_CAP]}
+
+
+def _color(color: Any) -> Any:
+    if color is None:
+        return None
+    if color.type == "rgb":
+        return str(color.rgb)
+    return (color.type, color.theme if color.type == "theme" else color.indexed, color.tint)
+
+
+def _side(side: Any) -> Any:
+    return None if side is None else side.style
+
+
+def cell_style(cell: Any) -> dict[str, Any]:
+    """What a person sees of a cell besides its value."""
+    border = cell.border
+    return {
+        "number_format": cell.number_format,
+        "bold": bool(cell.font.b),
+        "italic": bool(cell.font.i),
+        "size": cell.font.sz,
+        "font": cell.font.name,
+        "font_color": _color(cell.font.color),
+        "fill": cell.fill.patternType,
+        "fill_color": _color(cell.fill.fgColor) if cell.fill.patternType else None,
+        "border": [
+            _side(border.left),
+            _side(border.right),
+            _side(border.top),
+            _side(border.bottom),
+        ],
+        "align": cell.alignment.horizontal,
+        "wrap": bool(cell.alignment.wrap_text),
+    }
+
+
+def check_untouched_styles(original: Any, produced: Any, ranges: list[str]) -> dict[str, Any]:
+    """The styles of cells the brief does not ask to change, against the workbook the user gave."""
+    changed, total = [], 0
+    for address in ranges:
+        sheet, _ = split_address(address)
+        if sheet not in produced.sheetnames:
+            changed.append({"at": address, "difference": "the sheet is gone"})
+            continue
+        for before in cells_in(original, address):
+            total += 1
+            was, now = cell_style(before), cell_style(produced[sheet][before.coordinate])
+            diff = {k: [was[k], now[k]] for k in was if was[k] != now[k]}
+            if diff:
+                changed.append({"at": f"{sheet}!{before.coordinate}", "difference": diff})
+    return {"ok": not changed, "checked": total, "changed": changed[:_LIST_CAP]}
+
+
+def _count_rules(workbook: Any) -> int:
+    return sum(
+        len(conditional.rules)
+        for sheet in workbook.worksheets
+        for conditional in sheet.conditional_formatting
+    )
+
+
+def _count_validations(workbook: Any) -> int:
+    return sum(len(sheet.data_validations.dataValidation) for sheet in workbook.worksheets)
+
+
+def check_features_kept(original: Any, produced: Any, minimum_rules: int) -> dict[str, Any]:
+    """The conditional formats and validations of the original are still there."""
+    before = {"rules": _count_rules(original), "validations": _count_validations(original)}
+    after = {"rules": _count_rules(produced), "validations": _count_validations(produced)}
+    return {
+        "ok": after["rules"] >= max(before["rules"], minimum_rules)
+        and after["validations"] >= before["validations"],
+        "before": before,
+        "after": after,
+    }
+
+
+def _points_in(reference: str) -> int:
+    from openpyxl.utils.cell import range_boundaries
+
+    match = re.search(r"(\$?[A-Z]+\$?\d+(?::\$?[A-Z]+\$?\d+)?)$", reference)
+    if not match:
+        return 0
+    first_col, first_row, last_col, last_row = range_boundaries(match.group(1).replace("$", ""))
+    return (last_col - first_col + 1) * (last_row - first_row + 1)
+
+
+def _text(element: Any) -> str:
+    return "" if element is None else "".join(t.text or "" for t in element.iter(f"{_A}t"))
+
+
+def _chart_facts(chart_xml: bytes) -> dict[str, Any]:
+    root = ET.fromstring(chart_xml)  # noqa: S314 -- the agent's own file, read for a kind and a size
+    plot = root.find(f"{_C}chart/{_C}plotArea")
+    kind, points = None, 0
+    if plot is not None:
+        for child in plot:
+            name = child.tag.removeprefix(_C)
+            if name.endswith("Chart"):
+                kind = kind or name
+                for reference in child.iterfind(f"{_C}ser/{_C}val//{_C}f"):
+                    points = max(points, _points_in(reference.text or ""))
+    title = root.find(f"{_C}chart/{_C}title")
+    axes = [
+        _text(axis.find(f"{_C}title"))
+        for axis in (plot if plot is not None else [])
+        if axis.tag.endswith("Ax") and axis.find(f"{_C}title") is not None
+    ]
+    return {"kind": kind, "title": _text(title), "axis_titles": axes, "points": points}
+
+
+def read_charts(path: Path) -> list[dict[str, Any]]:
+    with zipfile.ZipFile(path) as archive:
+        names = sorted(n for n in archive.namelist() if re.fullmatch(r"xl/charts/chart\d+\.xml", n))
+        return [_chart_facts(archive.read(n)) for n in names]
+
+
+def _chart_fits(chart: dict[str, Any], spec: dict[str, Any]) -> bool:
+    kinds = _CHART_KINDS.get(str(spec.get("kind")), ())
+    titled = not spec.get("title") or check_facts(chart["title"], [[spec["title"]]], [])["ok"]
+    return (
+        (not kinds or chart["kind"] in kinds)
+        and titled
+        and chart["points"] >= int(spec.get("points_min", 0))
+        and all(
+            check_facts(" | ".join(chart["axis_titles"]), [[t]], [])["ok"]
+            for t in spec.get("axis_titles", [])
+        )
+    )
+
+
+def check_charts(charts: list[dict[str, Any]], specs: list[dict[str, Any]]) -> dict[str, Any]:
+    missing = [s for s in specs if not any(_chart_fits(c, s) for c in charts)]
+    return {"ok": not missing, "found": charts, "missing": missing}
+
+
+def _offered_values(formula: str, sheet_name: str, values: Any) -> list[str] | None:
+    """The choices of a list validation, typed in (`"a,b"`) or read from the cells it points at."""
+    formula = formula.strip()
+    if formula.startswith('"') and formula.endswith('"'):
+        return [v.strip() for v in formula[1:-1].split(",")]
+    try:
+        reference = formula if "!" in formula else f"{sheet_name}!{formula}"
+        return [str(c.value) for c in cells_in(values, reference) if c.value is not None]
+    except (KeyError, ValueError):
+        return None
+
+
+def check_validations(workbook: Any, values: Any, specs: list[dict[str, Any]]) -> dict[str, Any]:
+    """A dropdown covers every cell of a range and offers exactly the values asked for."""
+    missing = []
+    for spec in specs:
+        sheet_name, _ = split_address(spec["at"])
+        if sheet_name not in workbook.sheetnames:
+            missing.append({**spec, "reason": "no such sheet"})
+            continue
+        wanted = {c.coordinate for c in cells_in(workbook, spec["at"])}
+        covered: set[str] = set()
+        for validation in workbook[sheet_name].data_validations.dataValidation:
+            offered = _offered_values(validation.formula1 or "", sheet_name, values)
+            if validation.type == "list" and offered and sorted(offered) == sorted(spec["values"]):
+                for part in str(validation.sqref).split():
+                    covered |= {c.coordinate for c in cells_in(workbook, f"{sheet_name}!{part}")}
+        left = sorted(wanted - covered)
+        if left:
+            missing.append({**spec, "reason": f"no matching list on {left[:5]}"})
+    return {"ok": not missing, "missing": missing}
+
+
+def check_probe(path: Path, probe: dict[str, Any], scratch: Path) -> dict[str, Any]:
+    """Change inputs on a copy and recalculate it: a model whose totals are formulas moves, one
+    that pasted numbers does not."""
+    from openpyxl import load_workbook
+
+    workbook = load_workbook(str(path))
+    for address, value in probe["set"].items():
+        (cell,) = cells_in(workbook, address)
+        cell.value = value
+    changed = scratch / "probe.xlsx"
+    workbook.save(str(changed))
+    copy, recalc = recalculate(changed, scratch, "probe-recalc.xlsx")
+    values = load_workbook(str(copy), data_only=True)
+    report = check_cells(values, probe["expect"])
+    values.close()
+    return {**report, "recalc_ok": recalc["ok"], "ok": report["ok"] and recalc["ok"]}
+
+
+def check_workbook(task: Task, path: Path, workspace: Path, out_dir: Path) -> dict[str, Any]:
+    """The checks a task's expectations ask for; one that cannot run says why and the rest go on."""
+    from openpyxl import load_workbook
+
+    expect = task.expect
+    assert isinstance(expect, XlsxExpect)
+    report: dict[str, Any] = {"output": str(path.relative_to(workspace))}
+    report["opens"] = check_opens(path)
+    if not report["opens"]["ok"]:
+        return report
+    formulas = load_workbook(str(path))
+    with tempfile.TemporaryDirectory(prefix="coscribe_eval_") as scratch_name:
+        scratch = Path(scratch_name)
+        copy, report["recalc"] = recalculate(path, scratch)
+        values = load_workbook(str(copy), data_only=True)
+        texts = workbook_texts(values)
+        report["facts"] = check_facts("\n".join(texts), expect.facts, expect.absent)
+        report["inventions"] = find_inventions(
+            texts, task.source_texts(), expect.allowed_numbers, "sheets"
+        )
+        if expect.sheets:
+            report["sheets"] = check_sheets(list(formulas.sheetnames), expect.sheets)
+        if expect.cells:
+            report["cells"] = check_cells(values, expect.cells)
+        if expect.formulas:
+            report["formulas"] = check_formulas(formulas, expect.formulas)
+        if expect.constants:
+            report["constants"] = check_constants(formulas, expect.constants)
+        if expect.number_formats:
+            report["number_formats"] = check_number_formats(formulas, expect.number_formats)
+        if expect.bold:
+            report["bold"] = check_bold(formulas, expect.bold)
+        if expect.used_range:
+            report["used_range"] = check_used_range(formulas, expect.used_range)
+        if expect.original:
+            given = next(p for p in task.inputs if p.name == expect.original)
+            original = load_workbook(str(given))
+            if expect.untouched:
+                report["untouched"] = check_untouched_styles(original, formulas, expect.untouched)
+            report["features"] = check_features_kept(
+                original, formulas, expect.conditional_formats_min
+            )
+        if expect.charts:
+            report["charts"] = check_charts(read_charts(path), expect.charts)
+        if expect.validations:
+            report["validations"] = check_validations(formulas, values, expect.validations)
+        if expect.probe:
+            try:
+                report["probe"] = check_probe(path, expect.probe, scratch)
+            except Exception as exc:  # noqa: BLE001 -- a probe that cannot run is a finding
+                report["probe"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+        values.close()
+    report["render"] = render_pages(path, out_dir)
+    return report

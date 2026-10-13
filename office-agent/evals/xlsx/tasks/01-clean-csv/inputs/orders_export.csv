@@ -1,0 +1,12 @@
+Order Date,Customer ,Category,Amount
+2026/01/05,Acme Ltd ,hardware,"$1,200.50"
+5 Jan 2026,Beta GmbH,Software ,980
+2026-01-09,Acme Ltd,SOFTWARE,$75
+
+2026-01-12,Cobalt Inc,Hardware,"$2,310.00"
+2026-01-03,Delta Co,services,450.25
+2026-01-12,Cobalt Inc,Hardware,"$2,310.00"
+2026-01-15,Beta GmbH,services ,"1,100"
+2026-01-18,Delta Co,Software,$620.75
+2026-01-20,Acme Ltd,hardware,"$845.00"
+2026-01-22,Echo LLC,Services,300

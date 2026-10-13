@@ -1,0 +1,146 @@
+{
+ "facts": [
+  "Food",
+  "Rent",
+  "Transport"
+ ],
+ "sheets": [
+  "Data",
+  "Summary"
+ ],
+ "cells": [
+  {
+   "at": "Summary!A1",
+   "value": "Category"
+  },
+  {
+   "at": "Summary!B1",
+   "value": "Jan"
+  },
+  {
+   "at": "Summary!C1",
+   "value": "Feb"
+  },
+  {
+   "at": "Summary!D1",
+   "value": "Mar"
+  },
+  {
+   "at": "Summary!E1",
+   "value": "Total"
+  },
+  {
+   "at": "Summary!A2",
+   "value": "Food"
+  },
+  {
+   "at": "Summary!B2",
+   "value": 218.7
+  },
+  {
+   "at": "Summary!C2",
+   "value": 197.3
+  },
+  {
+   "at": "Summary!D2",
+   "value": 210.8
+  },
+  {
+   "at": "Summary!E2",
+   "value": 626.8
+  },
+  {
+   "at": "Summary!A3",
+   "value": "Rent"
+  },
+  {
+   "at": "Summary!B3",
+   "value": 1500
+  },
+  {
+   "at": "Summary!C3",
+   "value": 1500
+  },
+  {
+   "at": "Summary!D3",
+   "value": 1500
+  },
+  {
+   "at": "Summary!E3",
+   "value": 4500
+  },
+  {
+   "at": "Summary!A4",
+   "value": "Transport"
+  },
+  {
+   "at": "Summary!B4",
+   "value": 105
+  },
+  {
+   "at": "Summary!C4",
+   "value": 52.5
+  },
+  {
+   "at": "Summary!D4",
+   "value": 109.25
+  },
+  {
+   "at": "Summary!E4",
+   "value": 266.75
+  },
+  {
+   "at": "Summary!A5",
+   "value": "Total"
+  },
+  {
+   "at": "Summary!B5",
+   "value": 1823.7
+  },
+  {
+   "at": "Summary!C5",
+   "value": 1749.8
+  },
+  {
+   "at": "Summary!D5",
+   "value": 1820.05
+  },
+  {
+   "at": "Summary!E5",
+   "value": 5393.55
+  }
+ ],
+ "formulas": [
+  "Summary!B2:E5"
+ ],
+ "used_range": {
+  "Summary": "A1:E5"
+ },
+ "original": "transactions.xlsx",
+ "untouched": [
+  "Data!A1:C15"
+ ],
+ "probe": {
+  "set": {
+   "Data!C2": 220.5
+  },
+  "expect": [
+   {
+    "at": "Summary!B2",
+    "value": 318.7
+   },
+   {
+    "at": "Summary!E2",
+    "value": 726.8
+   },
+   {
+    "at": "Summary!B5",
+    "value": 1923.7
+   },
+   {
+    "at": "Summary!E5",
+    "value": 5493.55
+   }
+  ]
+ }
+}

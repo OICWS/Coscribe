@@ -1,0 +1,155 @@
+{
+ "facts": [
+  "Notebook",
+  "Backpack"
+ ],
+ "cells": [
+  {
+   "at": "Orders!D1",
+   "value": "Product"
+  },
+  {
+   "at": "Orders!E1",
+   "value": "Unit price"
+  },
+  {
+   "at": "Orders!F1",
+   "value": "Line total"
+  },
+  {
+   "at": "Orders!D2",
+   "value": "Notebook"
+  },
+  {
+   "at": "Orders!E2",
+   "value": 3.5
+  },
+  {
+   "at": "Orders!F2",
+   "value": 10.5
+  },
+  {
+   "at": "Orders!D3",
+   "value": "Pen"
+  },
+  {
+   "at": "Orders!E3",
+   "value": 1.2
+  },
+  {
+   "at": "Orders!F3",
+   "value": 12.0
+  },
+  {
+   "at": "Orders!D4",
+   "value": "Stapler"
+  },
+  {
+   "at": "Orders!E4",
+   "value": 7.95
+  },
+  {
+   "at": "Orders!F4",
+   "value": 15.9
+  },
+  {
+   "at": "Orders!D5",
+   "value": "Pen"
+  },
+  {
+   "at": "Orders!E5",
+   "value": 1.2
+  },
+  {
+   "at": "Orders!F5",
+   "value": 6.0
+  },
+  {
+   "at": "Orders!D6",
+   "value": "Desk lamp"
+  },
+  {
+   "at": "Orders!E6",
+   "value": 24.9
+  },
+  {
+   "at": "Orders!F6",
+   "value": 24.9
+  },
+  {
+   "at": "Orders!D7",
+   "value": "Notebook"
+  },
+  {
+   "at": "Orders!E7",
+   "value": 3.5
+  },
+  {
+   "at": "Orders!F7",
+   "value": 24.5
+  },
+  {
+   "at": "Orders!D8",
+   "value": "Stapler"
+  },
+  {
+   "at": "Orders!E8",
+   "value": 7.95
+  },
+  {
+   "at": "Orders!F8",
+   "value": 31.8
+  },
+  {
+   "at": "Orders!D9",
+   "value": "Backpack"
+  },
+  {
+   "at": "Orders!E9",
+   "value": 39.0
+  },
+  {
+   "at": "Orders!F9",
+   "value": 234.0
+  },
+  {
+   "at": "Orders!E11",
+   "value": "Total"
+  },
+  {
+   "at": "Orders!F11",
+   "value": 359.6
+  }
+ ],
+ "formulas": [
+  "Orders!D2:F9",
+  "Orders!F11"
+ ],
+ "used_range": {
+  "Orders": "A1:F11"
+ },
+ "original": "shop.xlsx",
+ "untouched": [
+  "Orders!A1:C9",
+  "Prices!A1:C7"
+ ],
+ "probe": {
+  "set": {
+   "Prices!C4": 2.0
+  },
+  "expect": [
+   {
+    "at": "Orders!F3",
+    "value": 20
+   },
+   {
+    "at": "Orders!F5",
+    "value": 10
+   },
+   {
+    "at": "Orders!F11",
+    "value": 371.6
+   }
+  ]
+ }
+}

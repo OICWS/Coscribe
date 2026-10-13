@@ -7,18 +7,13 @@ probe) are unit-tested, the render and the layout checks need LibreOffice.
 
 from __future__ import annotations
 
-import re
-import tempfile
-import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .render import render_pages as render_deck
 from .tasks import Task
-
-# A page number, a month or a day is not a claim about the world.
-_SMALL_INTEGER = 31
-_NUMBER = re.compile(r"\d+(?:\.\d+)?")
+from .text_checks import check_facts, find_inventions, normalise, plain_number  # noqa: F401
 
 
 @dataclass
@@ -45,11 +40,6 @@ def _leaf_shapes(shapes: Any) -> Any:
             yield shape
 
 
-def _plain_number(value: float) -> str:
-    """`12710000`, not `1.271e+07`: a fact is looked up as written."""
-    return format(value, "f").rstrip("0").rstrip(".") if value % 1 else str(int(value))
-
-
 def _chart_texts(chart: Any) -> list[str]:
     texts: list[str] = []
     if chart.has_title:
@@ -58,7 +48,7 @@ def _chart_texts(chart: Any) -> list[str]:
         texts.extend(str(c) for c in plot.categories)
         for series in plot.series:
             texts.append(str(series.name))
-            texts.extend(_plain_number(v) for v in series.values if v is not None)
+            texts.extend(plain_number(v) for v in series.values if v is not None)
     return texts
 
 
@@ -86,17 +76,6 @@ def read_deck(path: Path) -> Deck:
     return Deck(slides)
 
 
-def _fold(text: str) -> str:
-    folded = unicodedata.normalize("NFKC", text).casefold()
-    return re.sub(r"(?<=\d),(?=\d{3}(?!\d))", "", folded)
-
-
-def normalise(text: str) -> str:
-    """Fold full-width forms, thousands separators, spacing and case, so that `12,710`,
-    `12710` and `１２，７１０` are one number and `Win + L` equals `win+l`."""
-    return re.sub(r"\s+", "", _fold(text))
-
-
 def check_opens(path: Path) -> dict[str, Any]:
     try:
         deck = read_deck(path)
@@ -105,53 +84,9 @@ def check_opens(path: Path) -> dict[str, Any]:
     return {"ok": True, "slides": len(deck.slides)}
 
 
-def _contains(text: str, fact: str) -> bool:
-    """A fact that starts or ends in a digit must not be part of a longer number: `3周` is not
-    in `13周`, `42%` is not in `142%`, `120` is not in `1200`. Spacing inside the fact is free
-    (`Win + L`), but the text keeps its spaces: `Q3 12,710` is not the number `312,710`."""
-    needle = normalise(fact)
-    body = re.escape(needle[0])
-    for previous, char in zip(needle, needle[1:], strict=False):
-        body += ("" if previous.isdigit() and char.isdigit() else r"\s*") + re.escape(char)
-    before = r"(?<![\d.])" if needle[0].isdigit() else ""
-    after = r"(?!\d)" if needle[-1].isdigit() else ""
-    return re.search(before + body + after, _fold(text)) is not None
-
-
-def check_facts(deck_text: str, facts: list[list[str]], absent: list[str]) -> dict[str, Any]:
-    missing = [alts[0] for alts in facts if not any(_contains(deck_text, a) for a in alts)]
-    still_there = [a for a in absent if _contains(deck_text, a)]
-    return {
-        "ok": not missing and not still_there,
-        "found": len(facts) - len(missing),
-        "total": len(facts),
-        "missing": missing,
-        "forbidden_present": still_there,
-    }
-
-
-def _numbers(text: str) -> set[str]:
-    # Not `normalise`: removing line breaks would join the numbers of two lines.
-    return set(_NUMBER.findall(_fold(text)))
-
-
-def _is_claim(number: str) -> bool:
-    return "." in number or int(number) > _SMALL_INTEGER
-
-
 def check_inventions(deck: Deck, source_texts: list[str], allowed: list[str]) -> dict[str, Any]:
-    """Numbers on slides that appear in no input. A derived figure (a sum, a percentage the
-    model computed) is listed too: the list is for a person to read, not a failure."""
-    known = _numbers("\n".join(source_texts)) | _numbers("\n".join(allowed))
-    found: dict[str, list[int]] = {}
-    for number_of_slide, slide in enumerate(deck.slides, start=1):
-        for number in _numbers("\n".join([slide.title, *slide.texts])):
-            if _is_claim(number) and number not in known:
-                found.setdefault(number, []).append(number_of_slide)
-    return {
-        "count": len(found),
-        "numbers": [{"number": n, "slides": s} for n, s in sorted(found.items())],
-    }
+    units = ["\n".join([slide.title, *slide.texts]) for slide in deck.slides]
+    return find_inventions(units, source_texts, allowed, "slides")
 
 
 def check_page_count(count: int, low: int, high: int) -> dict[str, Any]:
@@ -213,37 +148,6 @@ def check_editability(path: Path, workspace: Path) -> dict[str, Any]:
             )
     result["ok"] = not result["untitled_slides"] and not result["shape_list_errors"]
     return result
-
-
-def render_deck(path: Path, out_dir: Path) -> dict[str, Any]:
-    """The deck as one PNG per page (`page-01.png`...) through LibreOffice; `pdf` is kept
-    for the overflow check."""
-    from coscribe.tools._thumbnail import _convert_to_pdf, _render_pdf_pages
-
-    out_dir.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="coscribe_eval_") as scratch:
-        pdf = _convert_to_pdf(path, Path(scratch))
-        if pdf is None:
-            return {"ok": False, "reason": "LibreOffice did not produce a PDF", "pages": []}
-        kept_pdf = out_dir / "deck.pdf"
-        kept_pdf.write_bytes(pdf.read_bytes())
-        for old in out_dir.glob("page-*.png"):
-            old.unlink()
-        try:
-            rendered = _render_pdf_pages(pdf, Path(scratch), 1, 10_000)
-        except Exception as exc:  # noqa: BLE001
-            return {
-                "ok": False,
-                "reason": f"{type(exc).__name__}: {exc}",
-                "pages": [],
-                "pdf": kept_pdf.name,
-            }
-        pages = []
-        for number, png in enumerate(rendered, start=1):
-            target = out_dir / f"page-{number:02d}.png"
-            target.write_bytes(png.read_bytes())
-            pages.append(target.name)
-    return {"ok": True, "pages": pages, "pdf": kept_pdf.name}
 
 
 def check_layout(path: Path, pdf: Path | None) -> dict[str, Any]:
