@@ -15,6 +15,7 @@ names is changed on purpose.
 from __future__ import annotations
 
 import asyncio
+import copy
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -221,7 +222,12 @@ async def _decide(
     """Run the decision and answer whatever it asks: an approval card with `bool(answer)`
     (a refusal when the row has no answer, so a decision that asks by mistake fails the
     assertions instead of hanging), a question or plan or draft with `answer` itself."""
-    request = {"name": tool, "args": args or {"script": "print(1)", "path": "a.txt"}}
+    request = {
+        "name": tool,
+        "args": copy.deepcopy(args)
+        if args is not None
+        else {"script": "print(1)", "path": "a.txt"},
+    }
 
     async def run() -> dict[str, Any]:
         task = asyncio.create_task(session._decide_action_request(request, socket))
@@ -498,6 +504,7 @@ AUTO_ROWS: dict[str, AutoRow] = {
         "block",
         attended=False,
         consulted=True,
+        message="Auto mode blocked this",
         in_row_after=1,
         total_after=1,
     ),
@@ -510,12 +517,18 @@ AUTO_ROWS: dict[str, AutoRow] = {
         total=2,
         attended=False,
         consulted=True,
+        message="No one is available to approve this",
         in_row_after=3,
         total_after=3,
         paused_after=True,
     ),
     "no_answer_unattended_refuses": AutoRow(
-        EXEC, "reject", ["unattended"], attended=False, consulted=True
+        EXEC,
+        "reject",
+        ["unattended"],
+        attended=False,
+        consulted=True,
+        message="No one is available to approve this",
     ),
 }
 
