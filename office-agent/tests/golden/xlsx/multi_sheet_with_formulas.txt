@@ -1,0 +1,396 @@
+===== [Content_Types].xml
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default ContentType="application/vnd.openxmlformats-package.relationships+xml" Extension="rels"/>
+  <Default ContentType="application/xml" Extension="xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml" PartName="/xl/styles.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.theme+xml" PartName="/xl/theme/theme1.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-package.core-properties+xml" PartName="/docProps/core.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml" PartName="/docProps/app.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml" PartName="/xl/worksheets/sheet1.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml" PartName="/xl/worksheets/sheet2.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml" PartName="/xl/worksheets/sheet3.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml" PartName="/xl/workbook.xml"/>
+</Types>
+===== _rels/.rels
+<same as _shared.txt>
+===== docProps/app.xml
+<same as _shared.txt>
+===== docProps/core.xml
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties">
+  <dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">openpyxl</dc:creator>
+  <dcterms:created xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="dcterms:W3CDTF">&lt;normalised&gt;</dcterms:created>
+  <dcterms:modified xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="dcterms:W3CDTF">&lt;normalised&gt;</dcterms:modified>
+</cp:coreProperties>
+===== xl/_rels/workbook.xml.rels
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Target="/xl/worksheets/sheet1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>
+  <Relationship Id="rId2" Target="/xl/worksheets/sheet2.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>
+  <Relationship Id="rId3" Target="/xl/worksheets/sheet3.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>
+  <Relationship Id="rId4" Target="styles.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles"/>
+  <Relationship Id="rId5" Target="theme/theme1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"/>
+</Relationships>
+===== xl/styles.xml
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <numFmts count="0"/>
+  <fonts count="1">
+    <font>
+      <name val="Calibri"/>
+      <family val="2"/>
+      <color theme="1"/>
+      <sz val="11"/>
+      <scheme val="minor"/>
+    </font>
+  </fonts>
+  <fills count="2">
+    <fill>
+      <patternFill/>
+    </fill>
+    <fill>
+      <patternFill patternType="gray125"/>
+    </fill>
+  </fills>
+  <borders count="1">
+    <border>
+      <left/>
+      <right/>
+      <top/>
+      <bottom/>
+      <diagonal/>
+    </border>
+  </borders>
+  <cellStyleXfs count="1">
+    <xf borderId="0" fillId="0" fontId="0" numFmtId="0"/>
+  </cellStyleXfs>
+  <cellXfs count="1">
+    <xf borderId="0" fillId="0" fontId="0" numFmtId="0" pivotButton="0" quotePrefix="0" xfId="0"/>
+  </cellXfs>
+  <cellStyles count="1">
+    <cellStyle builtinId="0" hidden="0" name="Normal" xfId="0"/>
+  </cellStyles>
+  <tableStyles count="0" defaultPivotStyle="PivotStyleLight16" defaultTableStyle="TableStyleMedium9"/>
+  <colors>
+    <indexedColors>
+      <rgbColor rgb="00000000"/>
+      <rgbColor rgb="00FFFFFF"/>
+      <rgbColor rgb="00FF0000"/>
+      <rgbColor rgb="0000FF00"/>
+      <rgbColor rgb="000000FF"/>
+      <rgbColor rgb="00FFFF00"/>
+      <rgbColor rgb="00FF00FF"/>
+      <rgbColor rgb="0000FFFF"/>
+      <rgbColor rgb="00000000"/>
+      <rgbColor rgb="00FFFFFF"/>
+      <rgbColor rgb="00FF0000"/>
+      <rgbColor rgb="0000FF00"/>
+      <rgbColor rgb="000000FF"/>
+      <rgbColor rgb="00FFFF00"/>
+      <rgbColor rgb="00FF00FF"/>
+      <rgbColor rgb="0000FFFF"/>
+      <rgbColor rgb="00800000"/>
+      <rgbColor rgb="00008000"/>
+      <rgbColor rgb="00000080"/>
+      <rgbColor rgb="00808000"/>
+      <rgbColor rgb="00800080"/>
+      <rgbColor rgb="00008080"/>
+      <rgbColor rgb="00C0C0C0"/>
+      <rgbColor rgb="00808080"/>
+      <rgbColor rgb="009999FF"/>
+      <rgbColor rgb="00993366"/>
+      <rgbColor rgb="00FFFFCC"/>
+      <rgbColor rgb="00CCFFFF"/>
+      <rgbColor rgb="00660066"/>
+      <rgbColor rgb="00FF8080"/>
+      <rgbColor rgb="000066CC"/>
+      <rgbColor rgb="00CCCCFF"/>
+      <rgbColor rgb="00000080"/>
+      <rgbColor rgb="00FF00FF"/>
+      <rgbColor rgb="00FFFF00"/>
+      <rgbColor rgb="0000FFFF"/>
+      <rgbColor rgb="00800080"/>
+      <rgbColor rgb="00800000"/>
+      <rgbColor rgb="00008080"/>
+      <rgbColor rgb="000000FF"/>
+      <rgbColor rgb="0000CCFF"/>
+      <rgbColor rgb="00CCFFFF"/>
+      <rgbColor rgb="00CCFFCC"/>
+      <rgbColor rgb="00FFFF99"/>
+      <rgbColor rgb="0099CCFF"/>
+      <rgbColor rgb="00FF99CC"/>
+      <rgbColor rgb="00CC99FF"/>
+      <rgbColor rgb="00FFCC99"/>
+      <rgbColor rgb="003366FF"/>
+      <rgbColor rgb="0033CCCC"/>
+      <rgbColor rgb="0099CC00"/>
+      <rgbColor rgb="00FFCC00"/>
+      <rgbColor rgb="00FF9900"/>
+      <rgbColor rgb="00FF6600"/>
+      <rgbColor rgb="00666699"/>
+      <rgbColor rgb="00969696"/>
+      <rgbColor rgb="00003366"/>
+      <rgbColor rgb="00339966"/>
+      <rgbColor rgb="00003300"/>
+      <rgbColor rgb="00333300"/>
+      <rgbColor rgb="00993300"/>
+      <rgbColor rgb="00993366"/>
+      <rgbColor rgb="00333399"/>
+      <rgbColor rgb="00333333"/>
+    </indexedColors>
+  </colors>
+</styleSheet>
+===== xl/theme/theme1.xml
+<same as _shared.txt>
+===== xl/workbook.xml
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <workbookPr/>
+  <workbookProtection/>
+  <bookViews>
+    <workbookView activeTab="2" autoFilterDateGrouping="1" firstSheet="0" minimized="0" showHorizontalScroll="1" showSheetTabs="1" showVerticalScroll="1" tabRatio="600" visibility="visible"/>
+  </bookViews>
+  <sheets>
+    <sheet xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" name="Sales" sheetId="1" state="visible" r:id="rId1"/>
+    <sheet xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" name="Managers" sheetId="2" state="visible" r:id="rId2"/>
+    <sheet xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" name="Summary" sheetId="3" state="visible" r:id="rId3"/>
+  </sheets>
+  <definedNames/>
+  <calcPr calcId="124519" fullCalcOnLoad="1"/>
+</workbook>
+===== xl/worksheets/sheet1.xml
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetPr>
+    <outlinePr summaryBelow="1" summaryRight="1"/>
+    <pageSetUpPr/>
+  </sheetPr>
+  <dimension ref="A1:D4"/>
+  <sheetViews>
+    <sheetView workbookViewId="0">
+      <selection activeCell="A1" sqref="A1"/>
+    </sheetView>
+  </sheetViews>
+  <sheetFormatPr baseColWidth="8" defaultRowHeight="15"/>
+  <sheetData>
+    <row r="1">
+      <c r="A1" t="inlineStr">
+        <is>
+          <t>Region</t>
+        </is>
+      </c>
+      <c r="B1" t="inlineStr">
+        <is>
+          <t>Q1</t>
+        </is>
+      </c>
+      <c r="C1" t="inlineStr">
+        <is>
+          <t>Q2</t>
+        </is>
+      </c>
+      <c r="D1" t="inlineStr">
+        <is>
+          <t>Note</t>
+        </is>
+      </c>
+    </row>
+    <row r="2">
+      <c r="A2" t="inlineStr">
+        <is>
+          <t>North</t>
+        </is>
+      </c>
+      <c r="B2" t="n">
+        <v>120</v>
+      </c>
+      <c r="C2" t="n">
+        <v>135.5</v>
+      </c>
+      <c r="D2" t="inlineStr">
+        <is>
+          <t>on plan</t>
+        </is>
+      </c>
+    </row>
+    <row r="3">
+      <c r="A3" t="inlineStr">
+        <is>
+          <t>South</t>
+        </is>
+      </c>
+      <c r="B3" t="n">
+        <v>80</v>
+      </c>
+      <c r="C3" t="n">
+        <v>95</v>
+      </c>
+      <c r="D3" t="inlineStr">
+        <is>
+          <t>late start</t>
+        </is>
+      </c>
+    </row>
+    <row r="4">
+      <c r="A4" t="inlineStr">
+        <is>
+          <t>West</t>
+        </is>
+      </c>
+      <c r="B4" t="n">
+        <v>60</v>
+      </c>
+      <c r="C4" t="n">
+        <v>70.25</v>
+      </c>
+      <c r="D4" t="inlineStr">
+        <is>
+          <t>new</t>
+        </is>
+      </c>
+    </row>
+  </sheetData>
+  <pageMargins bottom="1" footer="0.5" header="0.5" left="0.75" right="0.75" top="1"/>
+</worksheet>
+===== xl/worksheets/sheet2.xml
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetPr>
+    <outlinePr summaryBelow="1" summaryRight="1"/>
+    <pageSetUpPr/>
+  </sheetPr>
+  <dimension ref="A1:C4"/>
+  <sheetViews>
+    <sheetView workbookViewId="0">
+      <selection activeCell="A1" sqref="A1"/>
+    </sheetView>
+  </sheetViews>
+  <sheetFormatPr baseColWidth="8" defaultRowHeight="15"/>
+  <sheetData>
+    <row r="1">
+      <c r="A1" t="inlineStr">
+        <is>
+          <t>Region</t>
+        </is>
+      </c>
+      <c r="B1" t="inlineStr">
+        <is>
+          <t>Manager</t>
+        </is>
+      </c>
+      <c r="C1" t="inlineStr">
+        <is>
+          <t>Start date</t>
+        </is>
+      </c>
+    </row>
+    <row r="2">
+      <c r="A2" t="inlineStr">
+        <is>
+          <t>North</t>
+        </is>
+      </c>
+      <c r="B2" t="inlineStr">
+        <is>
+          <t>Ana</t>
+        </is>
+      </c>
+      <c r="C2" t="inlineStr">
+        <is>
+          <t>2026-01-15</t>
+        </is>
+      </c>
+    </row>
+    <row r="3">
+      <c r="A3" t="inlineStr">
+        <is>
+          <t>South</t>
+        </is>
+      </c>
+      <c r="B3" t="inlineStr">
+        <is>
+          <t>Ben</t>
+        </is>
+      </c>
+      <c r="C3" t="inlineStr">
+        <is>
+          <t>2026-03-01</t>
+        </is>
+      </c>
+    </row>
+    <row r="4">
+      <c r="A4" t="inlineStr">
+        <is>
+          <t>West</t>
+        </is>
+      </c>
+      <c r="B4" t="inlineStr">
+        <is>
+          <t>Chen</t>
+        </is>
+      </c>
+      <c r="C4" t="inlineStr">
+        <is>
+          <t>2026-06-30</t>
+        </is>
+      </c>
+    </row>
+  </sheetData>
+  <pageMargins bottom="1" footer="0.5" header="0.5" left="0.75" right="0.75" top="1"/>
+</worksheet>
+===== xl/worksheets/sheet3.xml
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetPr>
+    <outlinePr summaryBelow="1" summaryRight="1"/>
+    <pageSetUpPr/>
+  </sheetPr>
+  <dimension ref="A1:B4"/>
+  <sheetViews>
+    <sheetView workbookViewId="0">
+      <selection activeCell="A1" sqref="A1"/>
+    </sheetView>
+  </sheetViews>
+  <sheetFormatPr baseColWidth="8" defaultRowHeight="15"/>
+  <sheetData>
+    <row r="1">
+      <c r="A1" t="inlineStr">
+        <is>
+          <t>Item</t>
+        </is>
+      </c>
+      <c r="B1" t="inlineStr">
+        <is>
+          <t>Value</t>
+        </is>
+      </c>
+    </row>
+    <row r="2">
+      <c r="A2" t="inlineStr">
+        <is>
+          <t>Total Q1</t>
+        </is>
+      </c>
+      <c r="B2">
+        <f>SUM(Sales!B2:B4)</f>
+        <v/>
+      </c>
+    </row>
+    <row r="3">
+      <c r="A3" t="inlineStr">
+        <is>
+          <t>Growth</t>
+        </is>
+      </c>
+      <c r="B3">
+        <f>(SUM(Sales!C2:C4)-SUM(Sales!B2:B4))/SUM(Sales!B2:B4)</f>
+        <v/>
+      </c>
+    </row>
+    <row r="4">
+      <c r="A4" t="inlineStr">
+        <is>
+          <t>South manager</t>
+        </is>
+      </c>
+      <c r="B4">
+        <f>INDEX(Managers!B2:B4,MATCH("South",Managers!A2:A4,0))</f>
+        <v/>
+      </c>
+    </row>
+  </sheetData>
+  <pageMargins bottom="1" footer="0.5" header="0.5" left="0.75" right="0.75" top="1"/>
+</worksheet>
