@@ -219,8 +219,11 @@ async def test_mcp_server_connection_close_is_safe_to_call_twice(
     connection = McpServerConnection("fs", {"command": "npx", "args": []})
     await connection.connect()
 
-    await connection.close()
-    await connection.close()  # must not raise/hang the second time
+    # A bounded wait: a close that never stops the session task must fail here, not hang CI.
+    await asyncio.wait_for(connection.close(), timeout=5)
+    assert connection._task.done()
+    await asyncio.wait_for(connection.close(), timeout=5)
+    assert connection._task.done()
 
 
 def test_to_lg_connection_stdio_resolves_command_via_shutil_which(
@@ -384,8 +387,12 @@ def test_strip_boolean_enums_walks_nested_objects_and_arrays() -> None:
 
 
 def test_strip_boolean_enums_tolerates_none_and_non_dict_input() -> None:
-    _strip_boolean_enums(None)  # must not raise -- args_schema can be a pydantic model, not a dict
-    _strip_boolean_enums("not a schema")
+    # args_schema can be a pydantic model, not a dict.
+    not_a_schema: list[Any] = [None, "not a schema", 3]
+    assert _strip_boolean_enums(None) is None
+    assert _strip_boolean_enums("not a schema") is None
+    assert _strip_boolean_enums(not_a_schema) is None
+    assert not_a_schema == [None, "not a schema", 3]
 
 
 async def test_connect_one_mcp_server_lg_strips_boolean_enums_from_the_real_schema(
@@ -457,8 +464,11 @@ def test_default_missing_array_items_handles_a_type_list() -> None:
 
 
 def test_default_missing_array_items_tolerates_none_and_non_dict_input() -> None:
-    _default_missing_array_items(None)
-    _default_missing_array_items("not a schema")
+    not_a_schema: list[Any] = [None, "not a schema", 3]
+    assert _default_missing_array_items(None) is None
+    assert _default_missing_array_items("not a schema") is None
+    assert _default_missing_array_items(not_a_schema) is None
+    assert not_a_schema == [None, "not a schema", 3]
 
 
 def test_collapse_non_nullable_anyof_prefers_the_array_branch() -> None:
@@ -530,8 +540,11 @@ def test_collapse_non_nullable_anyof_falls_back_to_object_then_first_branch() ->
 
 
 def test_collapse_non_nullable_anyof_tolerates_none_and_non_dict_input() -> None:
-    _collapse_non_nullable_anyof(None)
-    _collapse_non_nullable_anyof("not a schema")
+    not_a_schema: list[Any] = [None, "not a schema", 3]
+    assert _collapse_non_nullable_anyof(None) is None
+    assert _collapse_non_nullable_anyof("not a schema") is None
+    assert _collapse_non_nullable_anyof(not_a_schema) is None
+    assert not_a_schema == [None, "not a schema", 3]
 
 
 async def test_a_connector_call_that_hangs_or_fails_comes_back_as_an_error_and_asks_for_a_reconnect(
