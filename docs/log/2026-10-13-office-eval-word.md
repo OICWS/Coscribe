@@ -18,7 +18,7 @@ exist before any Word engine work starts (#164, PR 2 of 2).
   insertions and deletions and rejects back to exactly the input's text; the user's template (styles defined,
   header and footer text, text set in its styles, every original style still used); markdown typed into the text;
   the page count through LibreOffice.
-- `tests/test_evals_docx.py` (75 tests) and `tests/docx_reference.py`: a good answer to every task that must pass every
+- `tests/test_evals_docx.py` (89 tests) and `tests/docx_reference.py`: a good answer to every task that must pass every
   check, once with a faked render in CI and once with the pages really counted (skips without LibreOffice).
   Each check was broken on purpose (24 changes to the checks, the task loader, the runner, judge and comparison)
   and a test failed every time; five changes the first set of tests missed got their own tests.

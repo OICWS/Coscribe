@@ -32,6 +32,9 @@ _DEFAULT_TEXT_WIDTH_TWIPS = 12240 - 2 * 1440
 _FIT_TOLERANCE = 1.01
 
 
+_MC = "http://schemas.openxmlformats.org/markup-compatibility/2006"
+
+
 def _q(tag: str) -> str:
     return f"{{{W}}}{tag}"
 
@@ -66,13 +69,18 @@ class Document:
         return "\n".join(p.rejected for p in self.paragraphs)
 
 
-def _inside(node: Any, tag: str) -> bool:
-    return any(a.tag == _q(tag) for a in node.iterancestors())
+def _inside(node: Any, tag: str, namespace: str = W) -> bool:
+    return any(a.tag == f"{{{namespace}}}{tag}" for a in node.iterancestors())
 
 
 def _text(paragraph: Any, view: str) -> str:
     parts = []
     for node in paragraph.iter(_q("t"), _q("delText"), _q("tab"), _q("br")):
+        # A tab stop defined in the paragraph's properties is not a tab the reader sees.
+        if _inside(node, "pPr") or (
+            node.tag in (_q("tab"), _q("br")) and node.getparent().tag != _q("r")
+        ):
+            continue
         if node.tag == _q("delText"):
             keep = view == "rejected"
         else:
@@ -121,11 +129,16 @@ def _text_width(body: Any) -> int:
 def read_document(path: Path) -> Document:
     with zipfile.ZipFile(path) as archive:
         body = etree.fromstring(archive.read("word/document.xml"))
-        names = _style_names(etree.fromstring(archive.read("word/styles.xml")))
+        has_styles = "word/styles.xml" in archive.namelist()
+        names = (
+            _style_names(etree.fromstring(archive.read("word/styles.xml"))) if has_styles else {}
+        )
         headers = [_plain(r) for r in _parts(archive, r"word/header\d*\.xml")]
         footers = [_plain(r) for r in _parts(archive, r"word/footer\d*\.xml")]
     paragraphs = []
     for node in body.iter(_q("p")):
+        if _inside(node, "Fallback", _MC):
+            continue
         style_node = node.find("w:pPr/w:pStyle", NS)
         style_id = style_node.get(_q("val")) if style_node is not None else None
         paragraphs.append(
@@ -139,6 +152,8 @@ def read_document(path: Path) -> Document:
         )
     tables = []
     for table in body.iter(_q("tbl")):
+        if _inside(table, "tbl"):
+            continue
         rows = table.findall(_q("tr"))
         cells = [[_text(c, "accepted").strip() for c in r.findall(_q("tc"))] for r in rows]
         tables.append(
@@ -197,6 +212,8 @@ def check_headings(document: Document, wanted: list[dict[str, Any]]) -> dict[str
     for spec in wanted:
         for index in range(position, len(have)):
             level, text = have[index]
+            if level == 0 and spec.get("level") != 0:
+                continue
             if contains(text, spec["text"]) and spec.get("level", level) == level:
                 position = index + 1
                 break
@@ -275,7 +292,9 @@ def check_tracked(
         "ok": document.inserted >= spec.get("min_ins", 0)
         and document.deleted >= spec.get("min_del", 0),
     }
-    if spec.get("rejected_equals_original") and original is not None:
+    if spec.get("rejected_equals_original"):
+        if original is None:
+            return {**report, "ok": False, "error": "the original could not be read"}
         got = normalise(document.rejected_text())
         want = normalise(original.accepted_text())
         report["rejected_equals_original"] = got == want
@@ -339,13 +358,19 @@ def check_document(task: Task, path: Path, workspace: Path, out_dir: Path) -> di
     expect = task.expect
     assert isinstance(expect, DocxExpect)
     report: dict[str, Any] = {"output": str(path.relative_to(workspace))}
-    report["opens"] = check_opens(path)
-    if not report["opens"]["ok"]:
+    try:
+        document = read_document(path)
+    except Exception as exc:  # noqa: BLE001 -- a file that cannot be read is the finding
+        report["opens"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
         return report
-    document = read_document(path)
+    report["opens"] = {"ok": True, "paragraphs": len(document.paragraphs)}
     original = None
     if expect.original:
-        original = read_document(next(p for p in task.inputs if p.name == expect.original))
+        given = next(p for p in task.inputs if p.name == expect.original)
+        try:
+            original = read_document(given)
+        except Exception as exc:  # noqa: BLE001
+            report["original"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
     report["facts"] = check_facts(document.accepted_text(), expect.facts, expect.absent)
     paragraphs = [p.accepted for p in document.paragraphs if p.accepted.strip()]
     report["inventions"] = find_inventions(
@@ -367,7 +392,7 @@ def check_document(task: Task, path: Path, workspace: Path, out_dir: Path) -> di
     if expect.tracked is not None:
         tracked = expect.tracked
         _guarded(report, "tracked", lambda: check_tracked(document, tracked, original))
-    if original is not None and (
+    if (
         expect.styles
         or expect.header_has
         or expect.footer_has
@@ -375,7 +400,10 @@ def check_document(task: Task, path: Path, workspace: Path, out_dir: Path) -> di
         or expect.keep_styles
     ):
         base = original
-        _guarded(report, "template", lambda: check_template(document, base, expect))
+        if base is None:
+            report["template"] = {"ok": False, "error": "the original could not be read"}
+        else:
+            _guarded(report, "template", lambda: check_template(document, base, expect))
     _guarded(report, "render", lambda: render_pages(path, out_dir))
     if expect.pages and report["render"].get("ok"):
         count = len(report["render"]["pages"])

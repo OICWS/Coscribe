@@ -674,7 +674,7 @@ def test_the_comparison_of_two_word_runs_shows_the_document_checks(tmp_path: Pat
 
     table = compare.compare(a, b, kind="docx")
 
-    assert "| yes | yes | - | - | NO | yes | - | - |" in table
+    assert "| yes | yes | - | - | - | - | - | - | - | - | NO | yes |" in table
     assert "recalculates" not in table and "overflow" not in table
 
 
@@ -711,3 +711,155 @@ def test_a_style_the_letterhead_defined_but_the_letter_lost_is_named(tmp_path: P
     )
 
     assert report["problems"] == ["styles no longer defined: ['No Such Style']"]
+
+
+# --- what a first review found ------------------------------------------------------------
+
+
+def _without(path: Path, member: str) -> Path:
+    import zipfile
+
+    stripped = path.with_name("stripped.docx")
+    with zipfile.ZipFile(path) as source, zipfile.ZipFile(stripped, "w") as target:
+        for item in source.infolist():
+            if item.filename != member:
+                target.writestr(item, source.read(item.filename))
+    return stripped
+
+
+def test_a_document_without_a_styles_part_still_opens_with_every_paragraph_normal(
+    tmp_path: Path,
+) -> None:
+    document = Document()
+    document.add_heading("Plan", level=1)
+    path = _without(_save(document, tmp_path), "word/styles.xml")
+
+    read = docx_checks.read_document(path)
+
+    assert [(p.style, p.accepted) for p in read.paragraphs] == [("normal", "Plan")]
+
+
+def test_a_table_inside_a_table_is_not_a_second_table(tmp_path: Path) -> None:
+    document = Document()
+    outer = document.add_table(rows=2, cols=2)
+    outer.cell(0, 0).add_table(rows=3, cols=3)
+    read = docx_checks.read_document(_save(document, tmp_path))
+    wanted = [{"rows_min": 2, "cols_min": 2}, {"rows_min": 2, "cols_min": 2}]
+
+    assert len(read.tables) == 1
+    assert not docx_checks.check_tables(read, wanted)["ok"]
+
+
+def test_the_fallback_copy_of_a_text_box_is_not_read_twice(tmp_path: Path) -> None:
+    from lxml import etree
+
+    document = Document()
+    paragraph = document.add_paragraph()
+    xml = (
+        "<mc:AlternateContent "
+        'xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" '
+        'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        "<mc:Choice><w:p><w:r><w:t>boxed</w:t></w:r></w:p></mc:Choice>"
+        "<mc:Fallback><w:p><w:r><w:t>boxed</w:t></w:r></w:p></mc:Fallback></mc:AlternateContent>"
+    )
+    paragraph._p.append(etree.fromstring(xml))
+
+    read = docx_checks.read_document(_save(document, tmp_path))
+
+    assert [p.accepted for p in read.paragraphs].count("boxed") == 1
+
+
+def test_a_tab_stop_definition_is_not_a_space_in_the_text(tmp_path: Path) -> None:
+    from docx.enum.text import WD_TAB_ALIGNMENT
+    from docx.shared import Cm
+
+    document = Document()
+    paragraph = document.add_paragraph("Q3")
+    paragraph.paragraph_format.tab_stops.add_tab_stop(Cm(5), WD_TAB_ALIGNMENT.RIGHT)
+    paragraph.add_run("\t12,710")
+
+    read = docx_checks.read_document(_save(document, tmp_path))
+
+    assert read.paragraphs[0].accepted == "Q3 12,710"
+
+
+def test_a_title_does_not_stand_in_for_a_wanted_section(tmp_path: Path) -> None:
+    document = Document()
+    document.add_heading("Summary of the warehouse move", level=0)
+    document.add_heading("Costs", level=1)
+    read = docx_checks.read_document(_save(document, tmp_path))
+
+    report = docx_checks.check_headings(read, [{"text": "Summary"}, {"text": "Costs"}])
+
+    assert report["missing_or_out_of_order"] == ["Summary"]
+
+
+def test_a_redline_check_without_the_original_to_compare_with_fails(tmp_path: Path) -> None:
+    read = docx_checks.read_document(_redlined(tmp_path))
+
+    report = docx_checks.check_tracked(read, {"rejected_equals_original": True}, None)
+
+    assert report["ok"] is False
+
+
+def test_a_task_that_asks_for_the_rejected_view_must_give_the_original(tmp_path: Path) -> None:
+    _write_task(tmp_path, {"tracked": {"rejected_equals_original": True}})
+
+    with pytest.raises(ValueError, match="needs .original"):
+        tasks.load_task(tmp_path, "docx")
+
+
+@pytest.mark.parametrize(
+    "expect",
+    [
+        {"captions": [{"style": "Caption", "starts_with": "Figure 1"}]},
+        {"toc": True},
+        {"pages": [1, 2]},
+        {"tracked": {"min_ins": 1}},
+        {"original": "a.docx", "keep_styles": True},
+    ],
+)
+def test_a_task_whose_only_expectation_is_any_check_the_runner_has_is_accepted(
+    tmp_path: Path, expect: dict[str, Any]
+) -> None:
+    _write_task(tmp_path, expect, inputs=("a.docx",))
+
+    assert tasks.load_task(tmp_path, "docx").expect.facts == []  # type: ignore[union-attr]
+
+
+def test_an_original_that_cannot_be_read_is_reported_and_the_other_checks_go_on(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        docx_checks, "render_pages", lambda path, out: {"ok": True, "pages": ["page-01.png"]}
+    )
+    chosen = _task("03-tracked-contract")
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    output = SOLUTIONS[chosen.name](chosen.directory / "inputs", workspace)
+    real = docx_checks.read_document
+
+    def read(path: Path) -> Any:
+        if path.name == "service_agreement.docx":
+            raise ValueError("damaged")
+        return real(path)
+
+    monkeypatch.setattr(docx_checks, "read_document", read)
+
+    report = docx_checks.check_document(chosen, output, workspace, tmp_path / "render")
+
+    assert report["original"] == {"ok": False, "error": "ValueError: damaged"}
+    assert report["tracked"]["ok"] is False and report["template"]["ok"] is False
+    assert report["facts"]["ok"] is True
+
+
+def test_the_comparison_of_word_runs_shows_the_contents_pictures_and_captions(
+    tmp_path: Path,
+) -> None:
+    report = {**DOCX_REPORT, "toc": {"ok": True}, "images": {"ok": False}, "captions": {"ok": True}}
+    a = _recorded(tmp_path / "x", report)
+    b = _recorded(tmp_path / "y", report)
+
+    table = compare.compare(a, b, kind="docx")
+
+    assert "| toc " in table and "| images " in table and "| captions " in table

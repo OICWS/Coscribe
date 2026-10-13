@@ -282,7 +282,21 @@ def _parse_docx_expect(raw: dict[str, object], where: Path) -> DocxExpect:
     template_keys = ("styles", "header_has", "footer_has", "style_uses", "keep_styles")
     if any(raw.get(key) for key in template_keys) and not original:
         raise ValueError(f'{where}: {", ".join(template_keys)} need "original"')
-    if not (facts or headings or tables or tracked or raw.get("images_min")):
+    if isinstance(tracked, dict) and tracked.get("rejected_equals_original") and not original:
+        raise ValueError(f'{where}: "rejected_equals_original" needs "original"')
+    asks = (
+        facts,
+        headings,
+        tables,
+        captions,
+        tracked,
+        pages,
+        raw.get("images_min"),
+        raw.get("image_fit"),
+        raw.get("toc"),
+        *(raw.get(key) for key in template_keys),
+    )
+    if not any(asks):
         raise ValueError(f"{where}: expects nothing: give facts, headings, tables or similar")
     return DocxExpect(
         facts=facts,
