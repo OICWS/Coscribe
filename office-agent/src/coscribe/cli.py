@@ -69,11 +69,11 @@ from .conversation.session import ChatSessionLG
 from .runtime import (
     LLMClient,
     empty_hooks_config,
+    load_custom_providers,
     load_hooks_config,
     resolve_env_keyring_refs,
     run_hook,
 )
-from .runtime.provider_config import load_custom_providers
 from .runtime_lg import poll_due_scheduled_tasks, poll_due_wakes
 from .tools.interaction import PLAN_CHOICE_AUTO, PLAN_CHOICE_MANUAL, PLAN_CHOICE_REVISE
 from .tools.scheduled_tasks import ScheduledTriggerStore, create_trigger, update_trigger

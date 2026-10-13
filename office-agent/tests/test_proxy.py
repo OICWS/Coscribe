@@ -6,7 +6,7 @@ rather than relying on their own libraries' unrelated env-var handling).
 
 import pytest
 
-from coscribe.runtime.proxy import configured_proxy
+from coscribe.runtime import configured_proxy
 
 _PROXY_ENV_VARS = ("HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy")
 

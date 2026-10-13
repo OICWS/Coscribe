@@ -16,7 +16,7 @@ from typing import Any
 
 from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 
-from ..runtime.types import ToolMetadata
+from ..runtime import ToolMetadata
 from ..tools._workspace import WorkspaceScope
 
 _OUTPUT_RISKS = frozenset({"WRITE_LOCAL", "EXTERNAL"})

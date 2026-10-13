@@ -34,7 +34,7 @@ from urllib.parse import urlsplit
 
 from ddgs import DDGS
 
-from ..runtime.types import tool_metadata
+from ..runtime import tool_metadata
 from ._licensed_image_search import (
     AssetCandidate,
     ImageSearchRequest,

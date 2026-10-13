@@ -7,7 +7,7 @@ import httpx
 import pytest
 from PIL import Image
 
-from coscribe.runtime.types import get_tool_metadata
+from coscribe.runtime import get_tool_metadata
 from coscribe.tools import images as images_module
 from coscribe.tools.images import (
     ImageToolkit,

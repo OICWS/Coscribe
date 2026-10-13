@@ -18,18 +18,18 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from ..runtime.proxy import configured_proxy
-from ..runtime.secret_store import (
+from ..runtime import (
     MIN_VALUE,
     SecretError,
     SecretStore,
     SessionEnvironments,
+    configured_proxy,
     host_allowed,
     placeholders_in,
     redactor,
     substitute,
+    tool_metadata,
 )
-from ..runtime.types import tool_metadata
 
 _METHODS = frozenset({"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"})
 _MAX_BODY_CHARS = 20000

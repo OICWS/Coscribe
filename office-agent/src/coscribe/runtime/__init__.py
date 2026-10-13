@@ -3,7 +3,18 @@ from .hooks import HookResult, empty_hooks_config, load_hooks_config, run_hook
 from .llm_client import LLMClient
 from .provider_config import load_custom_providers
 from .proxy import configured_proxy
-from .secret_store import SecretError, SessionEnvironments
+from .secret_store import (
+    MIN_VALUE,
+    KeychainUnavailable,
+    SecretError,
+    SecretStore,
+    SessionEnvironments,
+    host_allowed,
+    keychain_available,
+    placeholders_in,
+    redactor,
+    substitute,
+)
 from .secrets import (
     delete_secret,
     env_delete_secret_if_ref,
@@ -23,10 +34,13 @@ from .types import (
 
 __all__ = [
     "COMPACT_INSTRUCTIONS",
+    "MIN_VALUE",
     "Agent",
     "HookResult",
+    "KeychainUnavailable",
     "LLMClient",
     "SecretError",
+    "SecretStore",
     "SessionEnvironments",
     "ToolMetadata",
     "configured_proxy",
@@ -37,11 +51,16 @@ __all__ = [
     "env_value_for_storage",
     "get_tool_metadata",
     "harden_file_permissions",
+    "host_allowed",
+    "keychain_available",
     "load_custom_providers",
     "load_hooks_config",
+    "placeholders_in",
+    "redactor",
     "resolve_env_keyring_refs",
     "resolve_secret",
     "run_hook",
     "store_secret",
+    "substitute",
     "tool_metadata",
 ]

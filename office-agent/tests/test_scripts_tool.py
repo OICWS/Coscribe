@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 
-from coscribe.runtime.types import get_tool_metadata
+from coscribe.runtime import get_tool_metadata
 from coscribe.tools.scripts import build_script_tools
 
 

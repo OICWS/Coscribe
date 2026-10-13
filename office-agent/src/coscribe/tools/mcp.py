@@ -43,14 +43,14 @@ from pathlib import Path
 from typing import Any, TypedDict, cast
 from urllib.parse import urlsplit
 
-from ..runtime.secret_store import (
+from ..runtime import (
     SecretError,
     SecretStore,
     host_allowed,
     placeholders_in,
+    resolve_secret,
     substitute,
 )
-from ..runtime.secrets import resolve_secret
 from .script_env import resolve_python_command
 
 logger = logging.getLogger(__name__)

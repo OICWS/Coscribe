@@ -19,7 +19,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, ToolCall
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 
-from coscribe.runtime.types import tool_metadata
+from coscribe.runtime import tool_metadata
 from coscribe.runtime_lg.selfwake import poll_due_wakes
 from coscribe.runtime_lg.subagents import SubAgentHost, build_delegation_tools, subagent_report
 from coscribe.tools import subagent_tasks

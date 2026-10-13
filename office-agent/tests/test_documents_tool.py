@@ -8,7 +8,7 @@ from docx import Document
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate
 
-from coscribe.runtime.types import get_tool_metadata
+from coscribe.runtime import get_tool_metadata
 from coscribe.tools.office.document_tools import DocumentToolkit, build_document_tools
 from coscribe.tools.office.markdown_blocks import parse_inline_runs
 
