@@ -26,7 +26,7 @@ from openpyxl import Workbook, load_workbook
 from pptx import Presentation
 from pptx.util import Inches
 
-from coscribe.conversation.thread_meta import ThreadMetaStore
+from coscribe.conversation import ThreadMetaStore
 from coscribe.tools.office.document_tools import DocumentToolkit
 from coscribe.tools.presentations import PresentationToolkit
 from coscribe.web.routes import files as files_routes

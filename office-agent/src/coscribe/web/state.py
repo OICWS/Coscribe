@@ -9,8 +9,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ..config import Settings
-from ..conversation.session import ChatSessionLG
-from ..conversation.thread_meta import ThreadMetaStore
+from ..conversation import ChatSessionLG, ThreadMetaStore
 from ..runtime import LLMClient
 from ..runtime_lg.mcp import McpServerConnection
 from ..runtime_lg.mcp_oauth import LoopbackCallback, McpOAuth

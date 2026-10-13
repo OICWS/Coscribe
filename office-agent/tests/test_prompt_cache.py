@@ -15,8 +15,8 @@ from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResu
 from langgraph.checkpoint.memory import InMemorySaver
 
 from coscribe.config import Settings
+from coscribe.conversation import ChatSessionLG
 from coscribe.conversation import session as conversation_session
-from coscribe.conversation.session import ChatSessionLG
 from coscribe.runtime import empty_hooks_config
 from coscribe.runtime_lg.messages import (
     context_note,

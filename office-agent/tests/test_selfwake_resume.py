@@ -26,8 +26,8 @@ from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResu
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
 from coscribe.config import Settings
+from coscribe.conversation import ChatSessionLG
 from coscribe.conversation import session as conversation_session
-from coscribe.conversation.session import ChatSessionLG
 from coscribe.runtime_lg.selfwake import poll_due_wakes
 from coscribe.tools import background_tasks
 from coscribe.tools.background_tasks import BackgroundTask, BackgroundTaskStore

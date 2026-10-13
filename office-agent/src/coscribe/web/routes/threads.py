@@ -10,7 +10,7 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse, JSONResponse, Response
 
-from ...conversation.activity import OPENABLE_EXTENSIONS, open_in_os
+from ...conversation import OPENABLE_EXTENSIONS, open_in_os
 from ...runtime import (
     SecretError,
     SecretStore,
