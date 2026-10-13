@@ -46,7 +46,6 @@ import html
 import logging
 import os
 import sys
-import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -79,26 +78,19 @@ from ..runtime import (
     run_hook,
 )
 from ..runtime_lg import (
-    execute_run,
     poll_due_scheduled_tasks,
     poll_due_wakes,
     reconcile_interrupted_runs,
-    start_investigation,
 )
 from ..tools import (
     SkillInfo,
     load_builtin_skills,
     load_skills,
 )
-from ..tools.scheduled_tasks import (
-    SCHEDULED_THREAD_PREFIX,
-    ScheduledRun,
-    ScheduledTriggerStore,
-)
 from ..tools.skill_catalog import (
     enabled_skill_names,
 )
-from .background_events import BackgroundEvent, BackgroundEventBus, run_event
+from .background_events import BackgroundEventBus
 from .connector_manager import ConnectorManager
 from .provider_catalog import (
     BUILTIN_PROVIDERS,
@@ -112,6 +104,7 @@ from .routes.shared import _mask, _read_providers_raw
 from .routes.skills import router as skills_router
 from .routes.threads import router as threads_router
 from .routes.ws import router as ws_router
+from .scheduler import Scheduler
 from .setup_app import build_setup_app
 from .state import AppState
 from .thread_files import ThreadFiles
@@ -349,114 +342,6 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
         # plain sync, this is just the async wrapper it needs.
         return _get_session(thread_id)
 
-    async def _wake_poll_loop() -> None:
-        """Runs for the life of the web process, checking for due
-        sleep_until/sleep_for/wake_on/wake_on_event requests *and* due
-        Scheduled Tasks every settings.wake_poll_seconds -- the
-        zero-config half of both Phase 4's suspend/resume story and the
-        Scheduled Tasks feature built on top of it (cli.py's --check-wakes
-        flag is the other half, for a setup that doesn't keep the web
-        server running). One poll checking two stores, not two separate
-        background tasks -- they share the same "periodically check for
-        due things" shape. One bad poll iteration (of either kind) is
-        logged and skipped, not fatal to the loop -- same defensive
-        posture poll_due_wakes/poll_due_scheduled_tasks themselves take
-        per item."""
-        while True:
-            await asyncio.sleep(settings.wake_poll_seconds)
-            try:
-                fired_wakes = await poll_due_wakes(settings.state_dir, _get_session_async)
-                for wake in fired_wakes:
-                    background_events.publish(
-                        BackgroundEvent(
-                            kind="wake",
-                            status="completed",
-                            title=wake.reason,
-                            thread_id=wake.thread_id,
-                        )
-                    )
-                    # poll_due_wakes already resumed wake.thread_id's own
-                    # checkpointer correctly (via SilentSocket) -- this
-                    # is the other half, nudging a *live* browser tab (if
-                    # any) that was already open on that thread to go
-                    # re-fetch it, closing the real, previously-documented
-                    # gap where a poller-triggered resume wrote correctly
-                    # but never appeared in an already-open tab until its
-                    # next reload/reconnect. A no-op if no tab is open on
-                    # that thread right now (see notify_resync's own
-                    # docstring).
-                    live_session = sessions.get(wake.thread_id)
-                    if live_session is not None:
-                        await live_session.notify_resync()
-            except Exception:
-                logging.getLogger(__name__).exception("selfwake: poll_due_wakes failed")
-            # Backgrounded rather than awaited: a run can take minutes, and
-            # due wakes must keep being checked meanwhile. Overlapping polls
-            # can't double-fire a task -- its schedule advances before the
-            # run's first await (see poll_due_scheduled_tasks).
-            _track_background(asyncio.create_task(_poll_scheduled_tasks_once()))
-
-    async def _poll_scheduled_tasks_once() -> None:
-        try:
-            fired_triggers = await poll_due_scheduled_tasks(
-                settings.state_dir, _get_session_async, on_pruned=_delete_run_threads
-            )
-        except Exception:
-            logging.getLogger(__name__).exception(
-                "scheduled_tasks: poll_due_scheduled_tasks failed"
-            )
-            return
-        for trigger in fired_triggers:
-            if trigger.runs:
-                await _announce_run(trigger.trigger_id, trigger.runs[-1])
-
-    async def _announce_run(trigger_id: str, run: ScheduledRun | None) -> None:
-        """Tell the desktop app how a run ended -- and, for a failed run of a
-        task set to, start a conversation looking into it first, so the
-        notification can open that."""
-        if run is None:
-            return
-        store = ScheduledTriggerStore(settings.state_dir)
-        trigger = store.load(trigger_id)
-        if trigger is None:
-            return
-        investigation = None
-        if (
-            run.status == "failed"
-            and trigger.auto_investigate
-            and trigger.workflow is not None
-            and run.investigation is None
-        ):
-            investigation = uuid.uuid4().hex[:8]
-            _track_background(
-                asyncio.create_task(
-                    start_investigation(
-                        settings.state_dir,
-                        trigger_id,
-                        run.run_id,
-                        investigation,
-                        None,
-                        _get_session_async,
-                        attended=False,
-                    )
-                )
-            )
-        event = run_event(trigger, run, investigation)
-        if event is not None:
-            background_events.publish(event)
-
-    async def _execute_and_announce(trigger_id: str, run_id: str) -> None:
-        run = await execute_run(settings.state_dir, trigger_id, run_id, _get_session_async)
-        await _announce_run(trigger_id, run)
-
-    background_tasks: set[asyncio.Task[Any]] = set()
-
-    def _track_background(task: asyncio.Task[Any]) -> None:
-        # The event loop only holds weak references to tasks -- without a
-        # strong one here, a run could be garbage-collected mid-flight.
-        background_tasks.add(task)
-        task.add_done_callback(background_tasks.discard)
-
     async def _delete_thread_data(thread_id: str) -> bool:
         """Delete a thread's checkpoints plus every sidecar file that belongs
         to it -- otherwise a new thread later reusing the same id would
@@ -474,33 +359,16 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
         sessions.pop(thread_id, None)
         return existed
 
-    async def _delete_run_threads(runs: list[ScheduledRun]) -> None:
-        for run in runs:
-            await _delete_thread_data(run.thread_id)
-
-    async def _sweep_orphaned_run_threads() -> int:
-        """Delete run conversations no task still lists -- left behind by
-        paths with no checkpointer to delete through (the model's
-        delete_scheduled_task, `coscribe --check-wakes` pruning old runs).
-        Thread ids are read before the store: a run is recorded before its
-        conversation exists, so one starting concurrently (a CLI poll) is
-        never mistaken for an orphan."""
-        checkpointer = checkpointer_holder["checkpointer"]
-        await checkpointer.setup()  # see list_threads' identical comment
-        cursor = await checkpointer.conn.execute(
-            "SELECT DISTINCT thread_id FROM checkpoints WHERE thread_id LIKE ?",
-            (f"{SCHEDULED_THREAD_PREFIX}%",),
-        )
-        thread_ids = [row[0] for row in await cursor.fetchall()]
-        known = {
-            run.thread_id
-            for trigger in ScheduledTriggerStore(settings.state_dir).list_all()
-            for run in trigger.runs
-        }
-        orphans = [t for t in thread_ids if t not in known]
-        for thread_id in orphans:
-            await _delete_thread_data(thread_id)
-        return len(orphans)
+    scheduler = Scheduler(
+        settings,
+        sessions,
+        background_events,
+        _get_session_async,
+        _delete_thread_data,
+        lambda: checkpointer_holder["checkpointer"],
+        poll_due_wakes,
+        poll_due_scheduled_tasks,
+    )
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -572,22 +440,15 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
                     "left over from a previous process that didn't shut down cleanly.",
                     interrupted,
                 )
-            swept = await _sweep_orphaned_run_threads()
+            swept = await scheduler.sweep_orphaned_run_threads()
             if swept:
                 logging.getLogger(__name__).info(
                     "Deleted %d scheduled-run conversation(s) whose task or run record is gone.",
                     swept,
                 )
-            wake_poll_task = asyncio.create_task(_wake_poll_loop())
+            scheduler.start()
             yield
-            wake_poll_task.cancel()
-            try:
-                await wake_poll_task
-            except asyncio.CancelledError:
-                pass
-            for task in list(background_tasks):
-                task.cancel()
-            await asyncio.gather(*background_tasks, return_exceptions=True)
+            await scheduler.stop()
             if mcp_connect_task is not None and not mcp_connect_task.done():
                 mcp_connect_task.cancel()
                 try:
@@ -684,10 +545,10 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
         oauth_callback_response=_oauth_callback_response,
         thread_files=thread_files,
         delete_thread_data=_delete_thread_data,
-        delete_run_threads=_delete_run_threads,
-        execute_and_announce=_execute_and_announce,
-        announce_run=_announce_run,
-        track_background=_track_background,
+        delete_run_threads=scheduler.delete_run_threads,
+        execute_and_announce=scheduler.execute_and_announce,
+        announce_run=scheduler.announce_run,
+        track_background=scheduler.track_background,
     )
     for build_router in (
         internal_router,
