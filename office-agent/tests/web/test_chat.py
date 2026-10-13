@@ -26,6 +26,7 @@ from langchain_core.messages import (
 from langchain_core.messages.ai import UsageMetadata
 from langchain_core.outputs import ChatGenerationChunk
 
+from coscribe.conversation import session as conversation_session
 from coscribe.conversation.thread_meta import ThreadMetaStore
 from coscribe.runtime_lg.audit import AuditLog
 from coscribe.runtime_lg.messages import is_steer
@@ -1036,7 +1037,8 @@ def test_switch_model_rebuilds_the_graph_and_reports_the_new_model(
         # otherwise overwrite this one (same gotcha as
         # connect_one_mcp_server_lg elsewhere in this file).
         monkeypatch.setattr(
-            "coscribe.conversation.session.resolve_chat_model",
+            conversation_session,
+            "resolve_chat_model",
             lambda model, custom_providers=None: models[model],
         )
         with client.websocket_connect("/ws/t_switch") as ws:
@@ -2045,7 +2047,7 @@ def test_the_chat_model_tests_its_draft_and_fixes_what_failed_lg(
     from coscribe.tools.scheduled_tasks import ScheduledTriggerStore
 
     ids = iter(["d1", "d2"])
-    monkeypatch.setattr("coscribe.conversation.session._new_draft_id", lambda: next(ids))
+    monkeypatch.setattr(conversation_session, "_new_draft_id", lambda: next(ids))
     (tmp_path / "workspace").mkdir()
     (tmp_path / "workspace" / "input.txt").write_text("data", encoding="utf-8")
 

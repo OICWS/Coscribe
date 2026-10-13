@@ -21,6 +21,10 @@ from langchain_core.messages import (
     AIMessage,
 )
 
+from coscribe.runtime_lg import mcp as lg_mcp
+from coscribe.web import app as web_app
+from coscribe.web.routes import skills as skills_routes
+
 from .helpers import (
     FakeToolCallingChatModel,
     _client_lg,
@@ -84,7 +88,7 @@ def test_the_catalog_lists_the_tools_a_connector_reported_when_it_was_connected(
         running_oauth_mcp_server() as server,
         _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client,
     ):
-        monkeypatch.setattr("coscribe.runtime_lg.mcp.connect_one_mcp_server_lg", real_connect)
+        monkeypatch.setattr(lg_mcp, "connect_one_mcp_server_lg", real_connect)
         opened: list[str] = []
         monkeypatch.setattr("webbrowser.open", _sign_in_like_a_browser(client, opened))
         before = {e["name"]: e for e in client.get("/api/mcp/catalog").json()}["canva"]
@@ -184,9 +188,7 @@ def test_post_mcp_server_reconnect_retries_a_previously_failed_add(
             tool_metadata(_tool, risk_category="READ", category="mcp:fetch")
             return [_tool], _FakeConnection(), None
 
-        monkeypatch.setattr(
-            "coscribe.runtime_lg.mcp.connect_one_mcp_server_lg", _fake_connect_succeeds
-        )
+        monkeypatch.setattr(lg_mcp, "connect_one_mcp_server_lg", _fake_connect_succeeds)
 
         reconnect_response = client.post("/api/mcp/servers/fetch/reconnect")
         assert reconnect_response.json() == {"connected": True, "error": None}
@@ -242,9 +244,7 @@ def test_get_mcp_servers_connected_reflects_a_real_live_connection(
         # Stubbed to [] by _client_lg's own default -- never actually connects.
         client.post("/api/mcp/servers", json={"name": "flaky", "command": "uvx", "args": ["x"]})
 
-        monkeypatch.setattr(
-            "coscribe.runtime_lg.mcp.connect_one_mcp_server_lg", _fake_connect_returns_a_tool
-        )
+        monkeypatch.setattr(lg_mcp, "connect_one_mcp_server_lg", _fake_connect_returns_a_tool)
         client.post("/api/mcp/servers", json={"name": "healthy", "command": "uvx", "args": ["y"]})
 
         servers = client.get("/api/mcp/servers").json()
@@ -382,8 +382,8 @@ def test_lifespan_backgrounds_a_slow_mcp_connect_instead_of_blocking_startup(
         finished.set()
         return [_fake_tool_fn], {"fetch": _FakeConnection()}
 
-    monkeypatch.setattr("coscribe.web.app.MCP_STARTUP_TIMEOUT_SECONDS", 0.05)
-    monkeypatch.setattr("coscribe.runtime_lg.mcp.connect_mcp_tools_lg", _slow_connect_mcp_tools_lg)
+    monkeypatch.setattr(web_app, "MCP_STARTUP_TIMEOUT_SECONDS", 0.05)
+    monkeypatch.setattr(lg_mcp, "connect_mcp_tools_lg", _slow_connect_mcp_tools_lg)
 
     config_path = tmp_path / "mcp.json"
     config_path.write_text(
@@ -477,9 +477,7 @@ def test_post_mcp_server_splices_tools_into_both_new_and_already_open_sessions(
         # default stub for this same name on entry, which would otherwise
         # overwrite this one (bit me once already; see the surrounding
         # comment in _client_lg for why the default exists at all).
-        monkeypatch.setattr(
-            "coscribe.runtime_lg.mcp.connect_one_mcp_server_lg", _fake_connect_returns_a_tool
-        )
+        monkeypatch.setattr(lg_mcp, "connect_one_mcp_server_lg", _fake_connect_returns_a_tool)
         response = client.post(
             "/api/mcp/servers",
             json={"name": "fetch", "command": "uvx", "args": ["mcp-server-fetch"]},
@@ -652,7 +650,7 @@ def test_skill_plugins_can_be_previewed_then_added_with_connectors_matched_to_ou
         ],
     )
     monkeypatch.setattr(skill_catalog, "load_catalog", lambda: catalog)
-    monkeypatch.setattr("coscribe.web.routes.skills.load_catalog", lambda: catalog)
+    monkeypatch.setattr(skills_routes, "load_catalog", lambda: catalog)
     monkeypatch.setattr(skill_catalog, "_download", served.__getitem__)
     skill_catalog._preview_cache.clear()
     fake_model = FakeToolCallingChatModel(responses=[])
@@ -714,7 +712,7 @@ def test_connector_tool_permissions_change_what_a_conversation_may_do_lg(
         ]
     )
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
-        monkeypatch.setattr("coscribe.runtime_lg.mcp.connect_one_mcp_server_lg", _connect)
+        monkeypatch.setattr(lg_mcp, "connect_one_mcp_server_lg", _connect)
         client.post("/api/mcp/servers", json={"name": "notes", "command": "npx", "args": ["n"]})
 
         listed = client.get("/api/mcp/servers").json()["notes"]["tools"]
@@ -805,7 +803,7 @@ def _oauth_connector_client(
         running_oauth_mcp_server(with_tool) as server,
         _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client,
     ):
-        monkeypatch.setattr("coscribe.runtime_lg.mcp.connect_one_mcp_server_lg", real_connect)
+        monkeypatch.setattr(lg_mcp, "connect_one_mcp_server_lg", real_connect)
         opened: list[str] = []
         monkeypatch.setattr("webbrowser.open", _sign_in_like_a_browser(client, opened))
         yield client, server, opened

@@ -25,7 +25,11 @@ from langchain_core.messages import (
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 
 from coscribe.config import Settings
+from coscribe.conversation import session as conversation_session
 from coscribe.runtime import secrets as secrets_module
+from coscribe.runtime_lg import mcp as lg_mcp
+from coscribe.tools import scripts
+from coscribe.web import app as web_app
 from coscribe.web.app import create_app_lg
 
 
@@ -345,7 +349,8 @@ def _client_lg(
     **settings_overrides: object,
 ) -> Any:
     monkeypatch.setattr(
-        "coscribe.conversation.session.resolve_chat_model",
+        conversation_session,
+        "resolve_chat_model",
         lambda model, custom_providers=None: fake_model,
     )
 
@@ -363,11 +368,10 @@ def _client_lg(
     ) -> tuple[list[Any], None, None]:
         return [], None, None
 
+    monkeypatch.setattr(lg_mcp, "connect_one_mcp_server_lg", _fake_connect_one_mcp_server_lg)
     monkeypatch.setattr(
-        "coscribe.runtime_lg.mcp.connect_one_mcp_server_lg", _fake_connect_one_mcp_server_lg
-    )
-    monkeypatch.setattr(
-        "coscribe.web.app.LLMClient",
+        web_app,
+        "LLMClient",
         lambda custom_providers=None: _FakeContextWindowClient(),
     )
     app = create_app_lg(_settings(tmp_path, **settings_overrides))
@@ -409,10 +413,8 @@ def _stub_script_env(monkeypatch: pytest.MonkeyPatch) -> None:
     check let the call through, not about the script actually needing a
     separate environment. Runs the trivial scripts these tests use with
     whatever Python is already running pytest instead."""
-    monkeypatch.setattr(
-        "coscribe.tools.scripts.ensure_script_env", lambda state_dir: Path(sys.executable).parent
-    )
-    monkeypatch.setattr("coscribe.tools.scripts.venv_python", lambda venv_dir: Path(sys.executable))
+    monkeypatch.setattr(scripts, "ensure_script_env", lambda state_dir: Path(sys.executable).parent)
+    monkeypatch.setattr(scripts, "venv_python", lambda venv_dir: Path(sys.executable))
 
 
 def _run_turn(client: Any, thread_id: str, text: str, accept_edits: bool = True) -> None:
