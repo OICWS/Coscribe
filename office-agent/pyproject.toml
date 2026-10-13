@@ -222,6 +222,7 @@ extend-exclude = [
     "src/coscribe/providers/_vendor",
     "src/coscribe/tools/_native_formula",
     "src/coscribe/tools/_native_docx_tracks",
+    "src/coscribe/tools/_native_svg",
 ]
 
 [tool.ruff.lint]
@@ -240,6 +241,7 @@ exclude = [
     "src/coscribe/providers/_vendor",
     "src/coscribe/tools/_native_formula",
     "src/coscribe/tools/_native_docx_tracks",
+    "src/coscribe/tools/_native_svg",
 ]
 
 [[tool.mypy.overrides]]
