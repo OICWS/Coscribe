@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import importlib.util
 import json
 import sys
@@ -168,6 +169,22 @@ def test_a_module_over_the_fan_out_limit_is_listed_with_its_distinct_imports(
 
     assert ratchet.fan_out(package, listed=3) == {"fanout_a.hub": 4}
     assert ratchet.fan_out(package, listed=4) == {}
+
+
+def test_fan_out_refuses_to_read_a_different_copy_of_the_package(
+    ratchet: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    elsewhere = _package(tmp_path / "installed", "fanout_b", {"__init__.py": ""})
+    checkout = _package(tmp_path / "checkout", "fanout_b", {"__init__.py": ""})
+    monkeypatch.syspath_prepend(str(elsewhere.parent))
+    monkeypatch.delitem(sys.modules, "fanout_b", raising=False)
+    try:
+        importlib.import_module("fanout_b")  # the other copy is already loaded
+
+        with pytest.raises(RuntimeError, match="fanout_b resolves to"):
+            ratchet.fan_out(checkout)
+    finally:
+        sys.modules.pop("fanout_b", None)
 
 
 def test_more_fan_out_than_the_baseline_allows_is_worse_and_less_is_better(
