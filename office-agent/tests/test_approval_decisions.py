@@ -124,7 +124,6 @@ class Row:
     human: bool | None = None  # the person's answer, when the conversation asks
     announced: bool = False  # a `tool_started` message goes to the client
     asked: bool = False  # an `approval_required` message goes to the client
-    note: str = field(default="", compare=False)
 
 
 ROWS: dict[str, Row] = {
@@ -232,10 +231,10 @@ async def _decide(
     async def run() -> dict[str, Any]:
         task = asyncio.create_task(session._decide_action_request(request, socket))
         while not task.done():
-            for future in session._pending_approvals.values():
+            for future in list(session._pending_approvals.values()):
                 if not future.done():
                     future.set_result(bool(answer))
-            for future in session._pending_questions.values():
+            for future in list(session._pending_questions.values()):
                 if not future.done():
                     future.set_result(answer)
             await asyncio.sleep(0)
@@ -929,3 +928,24 @@ async def test_a_question_tool_answers_with_respond(
     assert session.plan_mode is row.plan_after
     assert session.auto_mode is row.auto_after
     assert not session._pending_questions
+
+
+@pytest.mark.parametrize(("tool", "consulted"), [(EXEC, 1), (LOCAL, 0), (EXTERNAL, 0)])
+async def test_the_exec_policy_is_read_for_scripts_only(
+    tool: str, consulted: int, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _session(tmp_path, monkeypatch)
+    _write_exec_rule(session, "forbidden")
+    reads: list[Path] = []
+    real = session_module.load_exec_policy
+
+    def spy(path: Path) -> Any:
+        reads.append(path)
+        return real(path)
+
+    monkeypatch.setattr(session_module, "load_exec_policy", spy)
+
+    result = await _decide(session, tool, _Socket(True), answer=True)
+
+    assert len(reads) == consulted
+    assert result["type"] == ("reject" if consulted else "approve")
