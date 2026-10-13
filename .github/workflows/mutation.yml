@@ -1,0 +1,89 @@
+name: Mutation
+
+# Coverage shows that code ran, not that a test checked it. Mutation testing changes the
+# code (a `<` to `<=`, a deleted line) and reports the changes no test notices. It runs on
+# the modules where a silent mistake is a security or data problem (the list is MODULES in
+# scripts/mutation.py), nightly and by hand. It reports and never fails because of a
+# survivor: each survivor is a gap to turn into an issue. It is not a required check.
+"on":
+  schedule:
+    - cron: "43 20 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+    working-directory: office-agent
+
+jobs:
+  mutate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - secret_store
+          - secrets
+          - exec_policy
+          - code_permissions
+          - script_guard
+          - workflow_spec
+          - xlsx_lookup_formulas
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: office-agent/pyproject.toml
+
+      # The package itself stays uninstalled: an editable install would put the
+      # unmutated source ahead of the mutated copy on sys.path.
+      - name: Install the dependencies
+        run: |
+          pip install ".[dev,web]"
+          pip install -U "google-genai>=2.13.0,<2.14.0"
+          pip uninstall -y coscribe
+          pip install mutmut==3.8.0
+
+      - name: Mutate ${{ matrix.module }}
+        run: python scripts/mutation.py run ${{ matrix.module }} --out mutation-results
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-${{ matrix.module }}
+          path: office-agent/mutation-results/
+
+  summary:
+    needs: mutate
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mutation-*
+          path: office-agent/mutation-results
+          merge-multiple: true
+
+      - name: Table
+        run: python scripts/mutation.py summary mutation-results >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mutation-survivors
+          path: |
+            office-agent/mutation-results/*-survivors.txt
+            office-agent/mutation-results/*.json
