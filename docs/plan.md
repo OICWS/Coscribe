@@ -31,8 +31,10 @@ Last reviewed: 2026-10-11.
       is the maintainer's), `check.sh` enforces it, `pyproject.toml` is a CODEOWNERS path and
       the Windows run is red when a test fails. Changed-line coverage stays report-only until
       we know how many recent pull requests would have failed 80%.
-   Then golden-file and approval tests, and only after them the large splits (roadmap in
-   the assessment).
+   9. Golden-file tests (assessment step 9). Part 1 (issue #86): the pptx XML is stable once
+      canonicalised; 5 decks have goldens (`office-agent/tests/test_office_golden.py`). Next: more
+      decks (about 20), then docx and xlsx the same way.
+   Then approval tests, and only after them the large splits (roadmap in the assessment).
 
 1. **Make the repository easy to join** (governance review, 2026-10-08).
    - Done: `main` protected by a ruleset (PR only, squash, `test` required),
