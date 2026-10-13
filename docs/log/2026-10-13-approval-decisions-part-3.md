@@ -22,12 +22,12 @@ card and writes the audit record. Splitting `conversation/session.py` must not c
     arguments and details are blanked. A stop and a call that is not gated leave no record.
 
 ## Mutation check
-Fifteen changes to `session.py` and `runtime_lg/audit.py` were tried, each reverted; fourteen
+Sixteen changes to `session.py` and `runtime_lg/audit.py` were tried, each reverted; fifteen
 failed 1 to 13 named rows: the page chosen by `slide`, the temporary copy left behind, a failed
 dry run losing the before picture, a private method previewed, the extension matched in one
-case, a missing file previewed, the card without arguments, a dropped hook, exec-rule,
+case, a missing file previewed, the workspace guard on a path removed, the card without arguments, a dropped hook, exec-rule,
 unattended or reviewer explanation, a wrong thread id, and arguments or details not redacted.
-The fifteenth (building the picture for an unattended run) changes nothing: an unattended run is
+The sixteenth (building the picture for an unattended run) changes nothing: an unattended run is
 refused before the card is built, so that condition cannot be reached.
 
 ## Not verified

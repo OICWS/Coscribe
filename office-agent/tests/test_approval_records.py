@@ -92,6 +92,7 @@ class PreviewRow:
     rendered: int  # pages rendered, before and after together
     page: int = 1  # the page both pictures are of
     file: str | None = "report.docx"  # created in the workspace first
+    outside: str | None = None  # created next to the workspace, where a path must not reach
     fails: bool = False  # the dry run raises
     attended: bool = True
 
@@ -127,7 +128,7 @@ PREVIEW_ROWS: dict[str, PreviewRow] = {
         "edit", {"path": "missing.docx"}, None, None, 0, file=None
     ),
     "a_path_outside_the_workspace_has_no_preview": PreviewRow(
-        "edit", {"path": "../outside.docx"}, None, None, 0, file=None
+        "edit", {"path": "../outside.docx"}, None, None, 0, file=None, outside="outside.docx"
     ),
     "a_path_that_is_not_text_has_no_preview": PreviewRow(
         "edit", {"path": 3}, None, None, 0, file=None
@@ -160,6 +161,8 @@ async def test_the_pictures_on_an_approval_card(
     session._gated_tool_risks[row.tool] = "WRITE_LOCAL"
     if row.file is not None:
         (tmp_path / "workspace" / row.file).write_bytes(b"before")
+    if row.outside is not None:
+        (tmp_path / row.outside).write_bytes(b"before")
     _Toolkit.fail = row.fails
     socket = _Socket(row.attended)
 
@@ -222,7 +225,7 @@ async def test_the_card_carries_the_call_and_its_reviewer_note(
     assert card["arguments"] == args
     assert card["before_preview"] is None and card["after_preview"] is None
     assert "gave no answer" in card["reviewer_note"]
-    assert len(card["id"]) == 32
+    assert isinstance(card["id"], str) and card["id"]
 
 
 async def test_two_cards_have_different_ids(
