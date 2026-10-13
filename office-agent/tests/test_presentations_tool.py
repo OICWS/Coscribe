@@ -1387,7 +1387,7 @@ def test_add_pptx_chart_on_missing_file_raises(tmp_path: Path) -> None:
 
 
 def test_add_pptx_chart_is_medium_risk_and_requires_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["add_pptx_chart"])
@@ -1576,7 +1576,7 @@ def test_add_pptx_image_on_missing_file_raises(tmp_path: Path) -> None:
 
 
 def test_add_pptx_image_is_medium_risk_and_requires_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["add_pptx_image"])
@@ -1662,7 +1662,7 @@ def test_set_pptx_background_image_on_missing_file_raises(tmp_path: Path) -> Non
 
 
 def test_set_pptx_background_image_is_medium_risk_and_requires_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["set_pptx_background_image"])
@@ -1788,7 +1788,7 @@ def test_add_pptx_scrim_out_of_range_slide_names_real_count(tmp_path: Path) -> N
 
 
 def test_add_pptx_scrim_is_medium_risk_and_requires_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["add_pptx_scrim"])
@@ -2078,7 +2078,7 @@ def test_add_pptx_shape_effect_rejects_out_of_range_shape_index(tmp_path: Path) 
 
 
 def test_add_pptx_shape_effect_is_medium_risk_and_requires_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["add_pptx_shape_effect"])
@@ -2156,7 +2156,7 @@ def test_set_pptx_notes_out_of_range_slide_names_real_count(tmp_path: Path) -> N
 
 
 def test_set_pptx_notes_is_medium_risk_and_requires_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["set_pptx_notes"])
@@ -2354,7 +2354,7 @@ def test_set_pptx_transition_out_of_range_slide_names_real_count(tmp_path: Path)
 
 
 def test_set_pptx_transition_is_medium_risk_and_requires_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["set_pptx_transition"])
@@ -2807,7 +2807,7 @@ def test_add_pptx_animation_out_of_range_slide_names_real_count(tmp_path: Path) 
 
 
 def test_add_pptx_animation_is_medium_risk_and_requires_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["add_pptx_animation"])
@@ -3007,7 +3007,7 @@ def test_add_pptx_animation_legacy_alias_and_full_name_produce_identical_xml(
 
 
 def test_list_pptx_animation_types_is_read_and_no_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["list_pptx_animation_types"])
@@ -3334,7 +3334,7 @@ def test_add_pptx_animation_after_audio_adds_a_mainseq_without_losing_the_audio(
 
 
 def test_add_pptx_audio_is_medium_risk_and_requires_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["add_pptx_audio"])
@@ -3603,7 +3603,7 @@ def test_add_pptx_hyperlink_out_of_range_slide_names_real_count(tmp_path: Path) 
 
 
 def test_add_pptx_hyperlink_is_medium_risk_and_requires_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["add_pptx_hyperlink"])
@@ -3799,7 +3799,7 @@ def test_check_pptx_delivery_falls_back_gracefully_when_python_pptx_cannot_parse
 
 
 def test_check_pptx_delivery_is_read_and_no_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["check_pptx_delivery"])
@@ -3922,7 +3922,7 @@ def test_edit_pptx_theme_colors_rejects_empty_colors(tmp_path: Path) -> None:
 
 
 def test_edit_pptx_theme_colors_is_medium_risk_and_requires_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["edit_pptx_theme_colors"])
@@ -3931,7 +3931,7 @@ def test_edit_pptx_theme_colors_is_medium_risk_and_requires_approval(tmp_path: P
 
 
 def test_read_pptx_theme_colors_is_low_risk(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["read_pptx_theme_colors"])
@@ -4405,7 +4405,7 @@ def test_extract_pptx_template_requires_custom_templates_dir_configured(tmp_path
 
 
 def test_extract_pptx_template_is_write_local_and_gated(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     workspace = tmp_path / "workspace"
     workspace.mkdir()
@@ -4573,7 +4573,7 @@ def test_fill_pptx_template_unknown_template_id_raises(
 
 
 def test_fill_pptx_template_is_medium_risk_and_requires_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["fill_pptx_template"])
@@ -4743,7 +4743,7 @@ def test_edit_pptx_text_placeholder_index_reaches_the_second_content_placeholder
 
 
 def test_edit_pptx_text_is_write_local_and_requires_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path / "workspace")
     metadata = get_tool_metadata(tools["edit_pptx_text"])  # type: ignore[arg-type]
@@ -5558,7 +5558,7 @@ def test_delete_pptx_shape_rejects_out_of_range_shape_index(tmp_path: Path) -> N
 
 
 def test_delete_pptx_shape_is_medium_risk_and_requires_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["delete_pptx_shape"])
@@ -6025,7 +6025,7 @@ def test_add_pptx_formula_renders_through_libreoffice_without_qa_skip(tmp_path: 
 
 
 def test_add_pptx_formula_is_write_local_and_gated(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["add_pptx_formula"])
@@ -6621,7 +6621,7 @@ def test_recolor_pptx_icon_rejects_out_of_range_shape_index(tmp_path: Path) -> N
 
 
 def test_recolor_pptx_icon_is_medium_risk_and_requires_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["recolor_pptx_icon"])

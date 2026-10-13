@@ -25,7 +25,7 @@ from langchain_core.messages import AIMessage
 from langchain_core.utils.function_calling import convert_to_openai_tool
 
 from coscribe.coordinator import CORE_TOOL_NAMES
-from coscribe.runtime.types import get_tool_metadata
+from coscribe.runtime import get_tool_metadata
 from coscribe.runtime_lg.agent import tool_name
 
 from .test_prompt_cache import _RecordingModel, _session, _Socket

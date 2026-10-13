@@ -18,8 +18,7 @@ import keyring.errors
 import pytest
 from langchain_core.messages import AIMessage, ToolMessage
 
-from coscribe.runtime import secrets
-from coscribe.runtime.secret_store import SecretError, SecretStore, SessionEnvironments, redactor
+from coscribe.runtime import SecretError, SecretStore, SessionEnvironments, redactor, secrets
 from coscribe.runtime_lg.agent import _RedactToolResultsMiddleware
 from coscribe.tools import http_request as http_module
 from coscribe.tools.http_request import build_http_tools

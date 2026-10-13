@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -41,7 +42,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from ..runtime.types import tool_metadata
+from ..runtime import tool_metadata
 from .background_tasks import BackgroundTaskStore
 
 VALID_KINDS = ("timer", "task", "subagent", "event")
@@ -50,6 +51,54 @@ VALID_STATUSES = ("pending", "woken", "cancelled")
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
+
+
+class _Sequence:
+    """A counter shared by every signal and wake in one state dir.
+
+    Whether a signal came before or after a wake is decided by this number,
+    never by the clock: Windows' clock can hand the same timestamp to two
+    calls made back to back, and neither ">=" nor ">" on a tie is right
+    (">=" fires a wake on a signal that predates it, ">" loses a signal
+    sent right after it). The counter is bumped under a lock file because
+    the web server and `--check-wakes` can run at once.
+    """
+
+    _LOCK_WAIT_SECONDS = 5.0
+
+    def __init__(self, state_dir: str | Path) -> None:
+        self.path = Path(state_dir) / "selfwake_seq.json"
+        self._lock = self.path.with_suffix(".lock")
+
+    def next(self) -> int:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        deadline = time.monotonic() + self._LOCK_WAIT_SECONDS
+        while True:
+            try:
+                os.close(os.open(self._lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+                break
+            except FileExistsError:
+                if time.monotonic() >= deadline:
+                    # A crashed holder never releases; waiting longer than any
+                    # real critical section takes means the lock is stale.
+                    self._lock.unlink(missing_ok=True)
+                    deadline = time.monotonic() + self._LOCK_WAIT_SECONDS
+                time.sleep(0.005)
+        try:
+            try:
+                current = int(json.loads(self.path.read_text(encoding="utf-8"))["seq"])
+            except (OSError, ValueError, KeyError, TypeError):
+                # An unreadable counter must not restart at 0: new numbers
+                # would fall below those already on disk. The clock in ns is
+                # above any count this file could have reached.
+                current = time.time_ns()
+            value = current + 1
+            tmp_path = self.path.with_suffix(".tmp")
+            tmp_path.write_text(json.dumps({"seq": value}), encoding="utf-8")
+            os.replace(tmp_path, self.path)
+            return value
+        finally:
+            self._lock.unlink(missing_ok=True)
 
 
 def _parse_iso(value: str, *, field_name: str) -> datetime:
@@ -76,6 +125,8 @@ class WakeRequest:
     subagent_task_id: str | None = None  # kind="subagent": a SubAgentTask.task_id
     event_key: str | None = None  # kind="event"
     woken_at: str | None = None
+    # Position in the shared signal/wake order (None: saved before it existed).
+    seq: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -90,6 +141,7 @@ class WakeRequest:
             "subagent_task_id": self.subagent_task_id,
             "event_key": self.event_key,
             "woken_at": self.woken_at,
+            "seq": self.seq,
         }
 
     @classmethod
@@ -106,6 +158,7 @@ class WakeRequest:
             subagent_task_id=data.get("subagent_task_id"),
             event_key=data.get("event_key"),
             woken_at=data.get("woken_at"),
+            seq=data.get("seq"),
         )
 
 
@@ -157,7 +210,12 @@ class SignalStore:
 
     def signal(self, event_key: str, payload: str) -> dict[str, Any]:
         self.root.mkdir(parents=True, exist_ok=True)
-        record = {"event_key": event_key, "signaled_at": _now_iso(), "payload": payload}
+        record = {
+            "event_key": event_key,
+            "signaled_at": _now_iso(),
+            "seq": _Sequence(self.root.parent).next(),
+            "payload": payload,
+        }
         path = self._path_for(event_key)
         tmp_path = path.with_suffix(".tmp")
         with tmp_path.open("w", encoding="utf-8") as handle:
@@ -165,11 +223,18 @@ class SignalStore:
         os.replace(tmp_path, path)
         return record
 
-    def fired_since(self, event_key: str, since_iso: str) -> bool:
+    def fired_since(
+        self, event_key: str, since_iso: str, since_seq: int | None = None
+    ) -> bool:
         path = self._path_for(event_key)
         if not path.exists():
             return False
         record = json.loads(path.read_text(encoding="utf-8"))
+        signal_seq = record.get("seq")
+        if since_seq is not None and signal_seq is not None:
+            return int(signal_seq) > since_seq
+        # Either side was saved before the counter existed: the clock is all
+        # there is to compare.
         return str(record["signaled_at"]) >= since_iso
 
     def _path_for(self, event_key: str) -> Path:
@@ -192,12 +257,8 @@ def build_selfwake_tools(thread_id: str, state_dir: str | Path) -> list[Callable
 
     def _create(kind: str, reason: str, **fields: Any) -> dict[str, Any]:
         wake = WakeRequest(
-            wake_id=uuid.uuid4().hex[:12],
-            thread_id=thread_id,
-            kind=kind,
-            reason=reason,
-            created_at=_now_iso(),
-            **fields,
+            wake_id=uuid.uuid4().hex[:12], thread_id=thread_id, kind=kind, reason=reason,
+            created_at=_now_iso(), seq=_Sequence(state_dir).next(), **fields,
         )
         wake_store.save(wake)
         return wake.to_dict()

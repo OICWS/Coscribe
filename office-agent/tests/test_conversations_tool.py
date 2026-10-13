@@ -3,8 +3,7 @@ from pathlib import Path
 import keyring.errors
 import pytest
 
-from coscribe.runtime import secrets
-from coscribe.runtime.secret_store import SecretStore
+from coscribe.runtime import SecretStore, secrets
 from coscribe.tools.conversations import (
     MAX_MESSAGE_CHARS,
     MessagingError,

@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from ..runtime.types import tool_metadata
+from ..runtime import tool_metadata
 from ._file_locks import file_lock
 
 VALID_STATUSES = ("pending", "in_progress", "completed")

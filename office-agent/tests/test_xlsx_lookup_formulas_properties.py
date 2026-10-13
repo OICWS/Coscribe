@@ -7,10 +7,9 @@ The evaluator supports only the two functions, as a whole-cell formula, with
 literal or plain reference arguments (no INDEX/MATCH, and no formula printer:
 the only round trip it offers is `parse_single_call`).
 
-Generators avoid the inputs where the evaluator is known to disagree with
-Excel, each tracked in an issue: a one-cell range (#156), an empty cell as the
-result (#157), text with `match_mode` -1/1 (#158), and two calls joined by an
-operator whose boundary arguments are both quoted strings (#159).
+The evaluator follows Excel for a one-cell range, an empty result cell, text
+with `match_mode` -1/1 and two calls joined by an operator; the generators
+cover all four.
 """
 
 from __future__ import annotations
@@ -75,15 +74,21 @@ def _ref_exact(keys: list[Any], needle: Any, search_mode: int) -> int | None:
     return _pick([i for i, key in enumerate(keys) if _ref_equal(key, needle)], search_mode)
 
 
-def _ref_approximate(
-    keys: list[Any], needle: float, match_mode: int, search_mode: int
-) -> int | None:
-    numbers = [(i, key) for i, key in enumerate(keys) if _kind(key) == "num"]
+def _ref_approximate(keys: list[Any], needle: Any, match_mode: int, search_mode: int) -> int | None:
+    """Nearest key of the needle's own kind (numbers with numbers, text with
+    text, case-insensitively); other cells never take part."""
+    kind = _kind(needle)
+
+    def comparable(value: Any) -> Any:
+        return value.casefold() if kind == "text" else value
+
+    same_kind = [(i, comparable(key)) for i, key in enumerate(keys) if _kind(key) == kind]
+    target = comparable(needle)
     if match_mode == -1:
-        eligible = [(i, key) for i, key in numbers if key <= needle]
+        eligible = [(i, key) for i, key in same_kind if key <= target]
         best = max((key for _, key in eligible), default=None)
     else:
-        eligible = [(i, key) for i, key in numbers if key >= needle]
+        eligible = [(i, key) for i, key in same_kind if key >= target]
         best = min((key for _, key in eligible), default=None)
     return _pick([i for i, key in eligible if key == best], search_mode)
 
@@ -124,9 +129,9 @@ def _lookup_case(draw: st.DrawFn) -> dict[str, Any]:
     search mode) are drawn as a prefix length."""
     function = draw(st.sampled_from(["XLOOKUP", "XMATCH"]))
     match_mode = draw(st.sampled_from([0, 0, -1, 1, 2]))
-    size = draw(st.integers(2, 8))
+    size = draw(st.integers(1, 8))
     keys = draw(st.lists(st.one_of(st.none(), _SCALAR), min_size=size, max_size=size))
-    returns = draw(st.lists(_SCALAR, min_size=size, max_size=size))
+    returns = draw(st.lists(st.one_of(st.none(), _SCALAR), min_size=size, max_size=size))
     if match_mode == 2:
         needle: Any = draw(st.text(alphabet="abAB*?", min_size=1, max_size=4))
         keys = [
@@ -134,7 +139,7 @@ def _lookup_case(draw: st.DrawFn) -> dict[str, Any]:
             for k in keys
         ]
     elif match_mode in (-1, 1):
-        needle = draw(_NUMBER)
+        needle = draw(st.one_of(_NUMBER, _TEXT))
     else:
         known = [k for k in keys if k is not None]
         needle = draw(st.one_of(st.sampled_from(known), _SCALAR) if known else _SCALAR)
@@ -181,7 +186,8 @@ def _expected(case: dict[str, Any]) -> Any:
         return "#N/A" if index is None else index + 1
     if index is None:
         return case["fallback"] if case["has_fallback"] else "#N/A"
-    return case["returns"][index]
+    matched = case["returns"][index]
+    return 0 if matched is None else matched
 
 
 def _fill(sheet: Any, case: dict[str, Any], whole_column: bool = False) -> tuple[str, str]:
@@ -217,12 +223,12 @@ def test_exact_match_is_the_first_or_last_equal_cell(
 @_FAST
 @given(
     keys=st.lists(st.one_of(st.none(), _SCALAR), max_size=10),
-    needle=_NUMBER,
+    needle=st.one_of(_NUMBER, _TEXT),
     match_mode=st.sampled_from([-1, 1]),
     search_mode=_SEARCH_MODES,
 )
-def test_approximate_match_is_the_nearest_number_on_the_requested_side(
-    keys: list[Any], needle: float, match_mode: int, search_mode: int
+def test_approximate_match_is_the_nearest_key_of_the_same_kind_on_the_requested_side(
+    keys: list[Any], needle: Any, match_mode: int, search_mode: int
 ) -> None:
     expected = _ref_approximate(keys, needle, match_mode, search_mode)
     actual = lookup.xmatch_index(needle, keys, match_mode=match_mode, search_mode=search_mode)
@@ -246,6 +252,30 @@ def test_approximate_match_on_sorted_keys_agrees_with_bisect(
         expected = position if position >= 0 else None
     else:
         position = bisect_left(keys, needle)
+        expected = position if position < len(keys) else None
+    actual = lookup.xmatch_index(needle, keys, match_mode=match_mode, search_mode=search_mode)
+    assert (actual is lookup._NO_MATCH) == (expected is None)
+    if expected is not None:
+        assert actual == expected
+
+
+@_FAST
+@given(
+    keys=st.lists(_TEXT, unique_by=str.casefold, min_size=1, max_size=10),
+    needle=_TEXT,
+    match_mode=st.sampled_from([-1, 1]),
+    search_mode=st.sampled_from([1, -1]),
+)
+def test_approximate_text_match_on_sorted_keys_agrees_with_bisect(
+    keys: list[str], needle: str, match_mode: int, search_mode: int
+) -> None:
+    keys = sorted(keys, key=str.casefold)
+    folded = [key.casefold() for key in keys]
+    if match_mode == -1:
+        position = bisect_right(folded, needle.casefold()) - 1
+        expected = position if position >= 0 else None
+    else:
+        position = bisect_left(folded, needle.casefold())
         expected = position if position < len(keys) else None
     actual = lookup.xmatch_index(needle, keys, match_mode=match_mode, search_mode=search_mode)
     assert (actual is lookup._NO_MATCH) == (expected is None)
@@ -493,11 +523,7 @@ def test_a_formula_that_is_not_one_call_is_declined(
     operator: str,
     shape: str,
 ) -> None:
-    # Only the first call's last argument is kept clear of string literals:
-    # a quoted last argument followed by a quoted first argument of the
-    # second call reads as one string spanning the `)op f(` between them.
     first_name, first_args = first
-    first_args = [*first_args[:-1], "A1"]
     one = f"{first_name}({','.join(first_args)})"
     other = f"{second[0]}({','.join(second[1])})"
     text = {
@@ -507,6 +533,7 @@ def test_a_formula_that_is_not_one_call_is_declined(
     }[shape]
     workbook = Workbook()
 
+    assert lookup.parse_single_call(text) is None
     assert lookup.evaluate_formula(text, workbook.active.title, workbook) is lookup._UNRESOLVABLE
 
 
@@ -567,6 +594,13 @@ def test_evaluator_agrees_with_libreoffice_on_the_equivalent_match_formulas(
         numbers_ref = f"Data!$A$1:$A${len(numbers)}"
         returns_ref = f"Data!$B$1:$B${len(numbers)}"
         descending_ref = f"Data!$D$1:$D${len(numbers)}"
+        ordered = sorted({t.casefold(): t for t in texts}.values(), key=str.casefold)
+        for row, text in enumerate(ordered, start=1):
+            data.cell(row=row, column=6, value=text)
+            data.cell(row=row, column=7, value=ordered[len(ordered) - row])
+        ordered_ref = f"Data!$F$1:$F${len(ordered)}"
+        descending_texts_ref = f"Data!$G$1:$G${len(ordered)}"
+        empty_ref = f"Data!$H$1:$H${len(texts)}"
         texts_ref = f"Data!$C$1:$C${len(texts)}"
         text_returns_ref = f"Data!$E$1:$E${len(texts)}"
 
@@ -599,6 +633,31 @@ def test_evaluator_agrees_with_libreoffice_on_the_equivalent_match_formulas(
             (
                 f'=_xlfn.XMATCH("{pattern}",{texts_ref},2)',
                 f'=MATCH("{pattern}",{texts_ref},0)',
+            )
+        )
+        for needle in text_needles:
+            pairs.append(
+                (
+                    f'=_xlfn.XMATCH("{needle}",{ordered_ref},-1)',
+                    f'=MATCH("{needle}",{ordered_ref},1)',
+                )
+            )
+            pairs.append(
+                (
+                    f'=_xlfn.XMATCH("{needle}",{descending_texts_ref},1)',
+                    f'=MATCH("{needle}",{descending_texts_ref},-1)',
+                )
+            )
+        pairs.append(
+            (
+                f'=_xlfn.XLOOKUP("{texts[0]}",{texts_ref},{empty_ref})',
+                f'=INDEX({empty_ref},MATCH("{texts[0]}",{texts_ref},0))',
+            )
+        )
+        pairs.append(
+            (
+                f"=_xlfn.XLOOKUP({numbers[0]},Data!$A$1:$A$1,Data!$B$1:$B$1)",
+                f"=INDEX(Data!$B$1:$B$1,MATCH({numbers[0]},Data!$A$1:$A$1,0))",
             )
         )
         out = workbook.create_sheet("Out")

@@ -1,5 +1,7 @@
 // Mirrors src/coscribe/workflows/spec.py (the definition) and
-// engine.py's StepRecord (one step of one run).
+// engine.py's StepRecord (one step of one run), which comes from wire.gen.ts.
+
+import type { WorkflowCheck, WorkflowStepRecord } from "./wire.gen";
 
 export type StepKind = "tool" | "script" | "llm" | "check" | "approval" | "branch" | "loop";
 export type OutputFieldType = "text" | "number" | "boolean" | "list";
@@ -95,26 +97,6 @@ export interface Workflow {
   steps: WorkflowStep[];
 }
 
-export type StepStatus = "pending" | "running" | "done" | "failed" | "skipped" | "waiting";
-
-export interface CheckResult {
-  held: boolean;
-  left: unknown;
-  right: unknown;
-}
-
-export interface StepRecord {
-  step_id: string;
-  status: StepStatus;
-  started_at: string | null;
-  finished_at: string | null;
-  output: unknown;
-  error: string | null;
-  checks: CheckResult[] | null;
-  /** What the person who answered an approval step wrote. */
-  note?: string | null;
-  /** Which pass of each loop around the step, outermost first. */
-  iteration?: number[];
-  /** A waiting step asking to be allowed a folder or site, not approved. */
-  permission?: { kind: "folder" | "site"; target: string; message: string } | null;
-}
+export type StepRecord = WorkflowStepRecord;
+export type StepStatus = StepRecord["status"];
+export type CheckResult = WorkflowCheck;

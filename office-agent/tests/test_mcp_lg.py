@@ -26,7 +26,7 @@ pytest.importorskip("langgraph", reason="needs the langgraph_spike extra install
 
 from langchain_core.tools import StructuredTool
 
-from coscribe.runtime.types import get_tool_metadata
+from coscribe.runtime import get_tool_metadata
 from coscribe.runtime_lg import mcp as lg_mcp
 from coscribe.runtime_lg.mcp import (
     McpServerConnection,

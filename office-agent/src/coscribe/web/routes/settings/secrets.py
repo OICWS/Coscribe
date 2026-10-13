@@ -10,13 +10,11 @@ from fastapi import (
 from fastapi.responses import JSONResponse
 
 from ....runtime import (
-    resolve_secret,
-)
-from ....runtime.secret_store import (
     KeychainUnavailable,
     SecretError,
     SecretStore,
     keychain_available,
+    resolve_secret,
 )
 from ....tools.mcp import (
     secret_names_used,

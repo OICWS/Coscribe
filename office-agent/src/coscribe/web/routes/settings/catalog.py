@@ -10,7 +10,7 @@ from fastapi import (
 )
 
 from ....coordinator import build_coordinator_agent
-from ....runtime.types import get_tool_metadata
+from ....runtime import get_tool_metadata
 from ....tools import (
     load_builtin_skills,
     load_skills,

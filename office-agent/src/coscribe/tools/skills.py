@@ -29,7 +29,7 @@ from typing import Any
 
 import yaml
 
-from ..runtime.types import tool_metadata
+from ..runtime import tool_metadata
 
 logger = logging.getLogger(__name__)
 

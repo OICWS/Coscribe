@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from ..needs_permission import SITE_MARK, NeedsPermission
-from ..runtime.types import tool_metadata
+from ..runtime import tool_metadata
 from ._workspace import WorkspaceScope
 
 _DEFAULT_TIMEOUT = 30.0

@@ -15,7 +15,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
-from ..runtime.types import tool_metadata
+from ..runtime import tool_metadata
 from ._office_bins import find_soffice, run_soffice
 from ._workspace import WorkspaceScope
 

@@ -39,6 +39,9 @@ lint-imports
 
 # Numbers about the code that may only get better (quality/baseline.json): a worse
 # number fails. Raising one is the maintainer's decision (`ratchet.py --update --accept-worse`).
+echo "== generated wire types =="
+python scripts/gen_wire_ts.py --check
+
 echo "== ratchet =="
 python scripts/ratchet.py --enforce
 

@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from ...coordinator import build_coordinator_agent
-from ...runtime.types import get_tool_metadata
+from ...runtime import get_tool_metadata
 from ...runtime_lg import (
     continue_workflow_run,
     start_investigation,

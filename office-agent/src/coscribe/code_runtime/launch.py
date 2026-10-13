@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .. import __version__
-from ..runtime.proxy import configured_proxy
+from ..runtime import configured_proxy
 from ..tools.script_env import venv_python
 from .client import AppServer
 from .install import CodexUnavailable, codex_path_dir
