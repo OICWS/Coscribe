@@ -5353,7 +5353,7 @@ def test_edit_pptx_xml_set_attributes_parses_multiple_lines(tmp_path: Path) -> N
         path="smartart.pptx",
         slide=1,
         shape_index=0,
-        xpath=".//dgm:pt[@modelId='4']",
+        xpath=".//dgm:pt[@modelId='11']",
         set_attributes="type=sibTrans\ncxnId=y",
     )
 
@@ -5414,7 +5414,7 @@ def test_edit_pptx_xml_rejects_an_ambiguous_match(tmp_path: Path) -> None:
     tools = _tools_by_name(tmp_path)
     _write_smartart_fixture(tmp_path / "smartart.pptx")
 
-    with pytest.raises(ValueError, match="matched 5 element"):
+    with pytest.raises(ValueError, match="matched 10 element"):
         tools["edit_pptx_xml"](
             path="smartart.pptx", slide=1, shape_index=0, xpath=".//dgm:pt", new_text="x"
         )
