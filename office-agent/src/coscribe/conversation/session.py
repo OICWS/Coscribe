@@ -681,7 +681,7 @@ class ChatSessionLG:
             self._build_test_workflow_tool(),
         ]
 
-    @property
+    @cached_property
     def _subagents(self) -> SubAgentReporter:
         return SubAgentReporter(self)
 
