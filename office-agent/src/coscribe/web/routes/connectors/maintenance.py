@@ -13,8 +13,6 @@ from fastapi import (
     APIRouter,
 )
 
-# Deferred import for the same reason as runtime_lg.mcp (see the comment
-# above MCP_STARTUP_TIMEOUT_SECONDS).
 from ....tools.mcp import (
     validate_mcp_config,
 )
@@ -24,6 +22,7 @@ from ...schemas import (
 from ...state import AppState
 from ..shared import _read_mcp_servers_raw
 
+# Plain name ("mcp-server-fetch") or scoped ("@playwright/mcp") npm package
 # name -- deliberately doesn't allow anything npm view could misparse as a
 # flag (e.g. a leading "-"), since `package` here comes straight from the
 # browser.

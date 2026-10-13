@@ -8,8 +8,6 @@ from fastapi import (
     APIRouter,
 )
 
-# Deferred import for the same reason as runtime_lg.mcp (see the comment
-# above MCP_STARTUP_TIMEOUT_SECONDS).
 from ...connector_catalog import MCP_CATALOG, SeenTools
 from ...state import AppState
 

@@ -10,8 +10,6 @@ from fastapi import (
 )
 from fastapi.responses import HTMLResponse
 
-# Deferred import for the same reason as runtime_lg.mcp (see the comment
-# above MCP_STARTUP_TIMEOUT_SECONDS).
 from ....tools.mcp import (
     validate_mcp_config,
 )

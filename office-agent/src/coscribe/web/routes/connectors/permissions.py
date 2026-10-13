@@ -7,8 +7,6 @@ from fastapi import (
 )
 from fastapi.responses import JSONResponse
 
-# Deferred import for the same reason as runtime_lg.mcp (see the comment
-# above MCP_STARTUP_TIMEOUT_SECONDS).
 from ....tools.connector_permissions import (
     POLICIES,
     ConnectorPermissions,
