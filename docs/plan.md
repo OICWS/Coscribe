@@ -45,10 +45,12 @@ Last reviewed: 2026-10-11.
    Then the large splits (roadmap in the assessment); the split of `tools/presentations.py`
    waits for the first version of the deck engine below, so it is split once.
 
-0b. **The office route** (proposed decision 0010, `docs/assessments/2026-10-13-office-route.md`):
+0b. **The office route** (decision 0010, `docs/assessments/2026-10-13-office-route.md`):
    new decks compiled from whole-page SVG sources, edits through the page source and upgraded
-   object tools; open-source code reused as owned copies. Next, once 0010 is accepted: the
-   evaluation (tasks, checks, blind judge) in the repository, then the PowerPoint engine MVP;
+   object tools; open-source code reused as owned copies. Done: the evaluation and the baseline
+   of today's route (`office-agent/evals/`), the engine's compiler (#141), its checks and folder
+   build (#198, PR 1). Next (#198): the build tool and an `engine` route in the evaluation, the
+   measurement against the baseline, and only if it wins the switch of new decks to the engine;
    Excel, then Word, the same way.
 
 1. **Make the repository easy to join** (governance review, 2026-10-08).
