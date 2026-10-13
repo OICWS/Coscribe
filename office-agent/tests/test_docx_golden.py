@@ -15,6 +15,7 @@ import contextlib
 import difflib
 import os
 import re
+import shutil
 from collections.abc import Callable
 from pathlib import Path
 
@@ -81,13 +82,86 @@ def _cjk(tools: Tools) -> None:
     )
 
 
+def _base(tools: Tools) -> None:
+    _headings_and_runs(tools)
+
+
+def _tracked_insert(tools: Tools) -> None:
+    _base(tools)
+    tools["insert_docx_text"](
+        path="doc.docx", text=" sharply", context_before="Revenue grew", author="Reviewer"
+    )
+
+
+def _tracked_delete(tools: Tools) -> None:
+    # The deleted text spans a bold run and an italic run.
+    _base(tools)
+    tools["delete_docx_text"](path="doc.docx", text="12% and costs", author="Reviewer")
+
+
+def _tracked_replace(tools: Tools) -> None:
+    _base(tools)
+    tools["replace_docx_text"](
+        path="doc.docx", find="Plain paragraph", replace="Short paragraph", author="Reviewer"
+    )
+
+
+def _three_tracked_edits(tools: Tools) -> None:
+    _base(tools)
+    tools["insert_docx_text"](
+        path="doc.docx", text=" sharply", context_before="Revenue grew", author="Reviewer"
+    )
+    tools["delete_docx_text"](path="doc.docx", text=" and costs were flat", author="Reviewer")
+    tools["replace_docx_text"](
+        path="doc.docx", find="Plain paragraph", replace="Short paragraph", author="Reviewer"
+    )
+
+
+def _accepted_changes(tools: Tools) -> None:
+    _three_tracked_edits(tools)
+    tools["accept_docx_tracked_changes"](path="doc.docx")
+
+
+def _rejected_changes(tools: Tools) -> None:
+    _three_tracked_edits(tools)
+    tools["reject_docx_tracked_changes"](path="doc.docx")
+
+
+def _image(tools: Tools) -> None:
+    _base(tools)
+    # Copied, not drawn at test time: a PNG's bytes depend on the encoder and zlib in use.
+    shutil.copyfile(GOLDEN_DIR / "assets" / "logo.png", "logo.png")
+    tools["add_docx_image"](
+        path="doc.docx", image_path="logo.png", after_text="Outlook", caption="Our logo", width=1.5
+    )
+
+
+def _chart(tools: Tools) -> None:
+    _base(tools)
+    tools["add_docx_chart"](
+        path="doc.docx",
+        chart_type="bar",
+        data="| Quarter | Revenue |\n| --- | --- |\n| Q1 | 100 |\n| Q2 | 120 |\n| Q3 | 90 |",
+        title="Results",
+        after_text="Outlook",
+        caption="Revenue by quarter",
+    )
+
+
 DOCUMENTS: dict[str, Callable[[Tools], None]] = {
+    "accepted_changes": _accepted_changes,
+    "chart": _chart,
     "cjk": _cjk,
     "headings_and_runs": _headings_and_runs,
+    "image": _image,
     "landscape": _landscape,
     "lists": _lists,
+    "rejected_changes": _rejected_changes,
     "table": _table,
     "toc": _toc,
+    "tracked_delete": _tracked_delete,
+    "tracked_insert": _tracked_insert,
+    "tracked_replace": _tracked_replace,
 }
 
 
