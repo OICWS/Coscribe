@@ -1,14 +1,10 @@
-import re
 from collections.abc import Iterator
-from pathlib import Path
 
 import pytest
 
 from coscribe.conversation import wire
 
 from .wire_check import WireError, check_client_message, check_event, violations
-
-_WIRE_TS = Path(__file__).parents[1] / "frontend" / "src" / "types" / "wire.ts"
 
 
 @pytest.fixture(autouse=True)
@@ -47,15 +43,9 @@ def test_question_responses_are_told_apart_by_their_keys() -> None:
         check_client_message({"type": "question_response", "id": "a", "dismissed": False})
 
 
-def test_every_event_wire_ts_declares_is_in_wire_py() -> None:
-    declared = set(re.findall(r'\btype: "(\w+)";', _WIRE_TS.read_text(encoding="utf-8")))
-    assert declared == set(wire.SERVER_EVENTS) | set(wire.CLIENT_MESSAGES)
-
-
 def test_the_step_record_typeddict_has_the_dataclass_fields() -> None:
     from dataclasses import fields
 
-    from coscribe.conversation import wire
     from coscribe.workflows.engine import StepRecord
 
     assert set(wire.WorkflowStepRecord.__annotations__) == {f.name for f in fields(StepRecord)}

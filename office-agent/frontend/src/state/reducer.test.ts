@@ -511,7 +511,7 @@ describe("approvals", () => {
       arguments: {},
       before_preview: null,
       after_preview: null,
-    });
+    } as ChatAction);
     expect(next.items[0]).toMatchObject({ reviewerNote: null });
   });
 
@@ -524,6 +524,7 @@ describe("approvals", () => {
       arguments: {},
       before_preview: null,
       after_preview: null,
+      reviewer_note: null,
       subagent_id: "sub-1",
     });
     expect(next).toBe(base);
