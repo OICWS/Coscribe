@@ -1,5 +1,5 @@
 from .background_tasks import BackgroundTask, BackgroundTaskStore, build_background_task_tools
-from .browser import build_browser_tools
+from .browser import BROWSER_HOST, build_browser_tools, page_screenshot
 from .connector_permissions import (
     ConnectorPermissions,
     apply_connector_permissions,
@@ -69,6 +69,8 @@ from .tasks import build_task_tools
 from .websearch import build_websearch_tools
 
 __all__ = [
+    "BROWSER_HOST",
+    "page_screenshot",
     "format_incoming",
     "running_subagent",
     "SCHEDULED_THREAD_PREFIX",

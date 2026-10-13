@@ -59,7 +59,6 @@
   "coscribe.conversation.session -> coscribe.tools.scheduled_tasks": 1,
   "coscribe.conversation.session -> coscribe.tools.skill_catalog": 1,
   "coscribe.conversation.session -> coscribe.tools.subagent_tasks": 1,
-  "coscribe.conversation.session -> coscribe.workflows.solidify": 1,
   "coscribe.coordinator -> coscribe.tools._workspace": 1,
   "coscribe.coordinator -> coscribe.tools.scheduled_tasks": 1,
   "coscribe.coordinator -> coscribe.workflows.permissions": 1,
@@ -135,7 +134,7 @@
   "coscribe.web.app": 28
  },
  "file_lines": {
-  "src/coscribe/conversation/session.py": 3031,
+  "src/coscribe/conversation/session.py": 2769,
   "src/coscribe/coordinator.py": 974,
   "src/coscribe/runtime_lg/subagents.py": 837,
   "src/coscribe/tools/presentations.py": 7092,
