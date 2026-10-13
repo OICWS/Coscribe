@@ -45,6 +45,11 @@ def _leaf_shapes(shapes: Any) -> Any:
             yield shape
 
 
+def _plain_number(value: float) -> str:
+    """`12710000`, not `1.271e+07`: a fact is looked up as written."""
+    return format(value, "f").rstrip("0").rstrip(".") if value % 1 else str(int(value))
+
+
 def _chart_texts(chart: Any) -> list[str]:
     texts: list[str] = []
     if chart.has_title:
@@ -53,7 +58,7 @@ def _chart_texts(chart: Any) -> list[str]:
         texts.extend(str(c) for c in plot.categories)
         for series in plot.series:
             texts.append(str(series.name))
-            texts.extend(f"{v:g}" for v in series.values if v is not None)
+            texts.extend(_plain_number(v) for v in series.values if v is not None)
     return texts
 
 
@@ -67,7 +72,7 @@ def read_deck(path: Path) -> Deck:
         title = title_shape.text_frame.text.strip() if title_shape is not None else ""
         texts: list[str] = []
         for shape in _leaf_shapes(slide.shapes):
-            if title_shape is not None and shape.shape_id == title_shape.shape_id:
+            if title_shape is not None and shape._element is title_shape._element:
                 continue
             if shape.has_text_frame:
                 texts.extend(p.text for p in shape.text_frame.paragraphs if p.text.strip())
@@ -75,6 +80,8 @@ def read_deck(path: Path) -> Deck:
                 texts.extend(cell.text for row in shape.table.rows for cell in row.cells)
             if getattr(shape, "has_chart", False) and shape.has_chart:
                 texts.extend(_chart_texts(shape.chart))
+        if slide.has_notes_slide:
+            texts.append(slide.notes_slide.notes_text_frame.text)
         slides.append(SlideText(title=title, texts=texts))
     return Deck(slides)
 
@@ -98,10 +105,22 @@ def check_opens(path: Path) -> dict[str, Any]:
     return {"ok": True, "slides": len(deck.slides)}
 
 
+def _contains(text: str, fact: str) -> bool:
+    """A fact that starts or ends in a digit must not be part of a longer number: `3周` is not
+    in `13周`, `42%` is not in `142%`, `120` is not in `1200`. Spacing inside the fact is free
+    (`Win + L`), but the text keeps its spaces: `Q3 12,710` is not the number `312,710`."""
+    needle = normalise(fact)
+    body = re.escape(needle[0])
+    for previous, char in zip(needle, needle[1:], strict=False):
+        body += ("" if previous.isdigit() and char.isdigit() else r"\s*") + re.escape(char)
+    before = r"(?<![\d.])" if needle[0].isdigit() else ""
+    after = r"(?!\d)" if needle[-1].isdigit() else ""
+    return re.search(before + body + after, _fold(text)) is not None
+
+
 def check_facts(deck_text: str, facts: list[list[str]], absent: list[str]) -> dict[str, Any]:
-    haystack = normalise(deck_text)
-    missing = [alts[0] for alts in facts if not any(normalise(a) in haystack for a in alts)]
-    still_there = [a for a in absent if normalise(a) in haystack]
+    missing = [alts[0] for alts in facts if not any(_contains(deck_text, a) for a in alts)]
+    still_there = [a for a in absent if _contains(deck_text, a)]
     return {
         "ok": not missing and not still_there,
         "found": len(facts) - len(missing),
@@ -213,7 +232,12 @@ def render_deck(path: Path, out_dir: Path) -> dict[str, Any]:
         try:
             rendered = _render_pdf_pages(pdf, Path(scratch), 1, 10_000)
         except Exception as exc:  # noqa: BLE001
-            return {"ok": False, "reason": f"{type(exc).__name__}: {exc}", "pages": []}
+            return {
+                "ok": False,
+                "reason": f"{type(exc).__name__}: {exc}",
+                "pages": [],
+                "pdf": kept_pdf.name,
+            }
         pages = []
         for number, png in enumerate(rendered, start=1):
             target = out_dir / f"page-{number:02d}.png"
@@ -260,7 +284,7 @@ def check_deck(task: Task, path: Path, workspace: Path, out_dir: Path) -> dict[s
         report["template"] = check_template_kept(layout_names(path), layout_names(template))
     report["editability"] = check_editability(path, workspace)
     report["render"] = render_deck(path, out_dir)
-    pdf = out_dir / report["render"]["pdf"] if report["render"]["ok"] else None
+    pdf = out_dir / report["render"]["pdf"] if report["render"].get("pdf") else None
     try:
         report["layout"] = check_layout(path, pdf)
     except Exception as exc:  # noqa: BLE001

@@ -17,7 +17,7 @@ that measurement, PowerPoint first. This part is the tasks, the runner and the c
   full-width digits folded), numbers on slides that no input has, page count, pictures used, template
   layouts kept, the editability probe with coscribe's own `read_pptx` and `list_pptx_shapes`, the render
   (LibreOffice to PNG) and coscribe's own overflow, overlap and contrast QA.
-- `tests/test_evals_pptx.py` (26 tests): the deterministic parts, plus one `real_libreoffice` render test.
+- `tests/test_evals_pptx.py` (33 tests): the deterministic parts, plus one `real_libreoffice` render test.
   `pytest` gets `pythonpath = ["."]` so tests can import `evals`.
 - A trial run of all 10 tasks on `deepseek-flash`, effort `low`, off-peak: every task finished, 3 to 8
   minutes and 0.025 to 0.062 each (listed price units), 31 to 143 tool calls. The numbers belong to part 2;

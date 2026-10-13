@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import contextvars
 import json
 import os
@@ -21,6 +22,7 @@ import shutil
 import sys
 import time
 from collections import Counter
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -83,7 +85,7 @@ class Recorder:
     tool_errors: list[str] = field(default_factory=list)
     questions: int = 0
     errors: list[str] = field(default_factory=list)
-    final_text: str = ""
+    messages: list[str] = field(default_factory=list)
 
     async def send_json(self, data: dict[str, Any]) -> None:
         kind = data.get("type")
@@ -102,7 +104,7 @@ class Recorder:
         elif kind == "approval_required":
             self.session.resolve_approval(data["id"], True)
         elif kind == "agent_message":
-            self.final_text = data["text"]
+            self.messages.append(data["text"])
         elif kind == "error":
             self.errors.append(str(data.get("message")))
 
@@ -143,21 +145,47 @@ def _build_session(root: Path, workspace: Path, model: str, thread_id: str) -> A
     return session
 
 
-def _find_deck(workspace: Path, originals: dict[str, bytes]) -> Path | None:
-    """The newest .pptx the agent wrote or changed: not an input still byte-identical."""
+def _find_deck(workspace: Path, originals: dict[str, bytes], messages: list[str]) -> Path | None:
+    """The .pptx the agent wrote or changed (an input still byte-identical is not one); when
+    several qualify, the newest of those its own messages name, else the newest."""
     decks = [
         p
         for p in workspace.rglob("*.pptx")
         if originals.get(str(p.relative_to(workspace))) != p.read_bytes()
     ]
-    return max(decks, key=lambda p: p.stat().st_mtime, default=None)
+    said = "\n".join(messages)
+    named = [p for p in decks if p.name in said]
+    return max(named or decks, key=lambda p: p.stat().st_mtime, default=None)
+
+
+@contextlib.contextmanager
+def measured_models(effort: str | None) -> Iterator[None]:
+    """Every model the sessions build reports its usage to the task that is running, and gets
+    the reasoning effort. Installed once around the whole run: tasks overlap, so a patch made
+    and undone per task would drop or leak another task's wrapper."""
+    from coscribe.conversation import session as session_module
+
+    original = session_module.resolve_chat_model
+
+    def resolve(name: str, custom_providers: Any = None) -> Any:
+        chat_model = original(name, custom_providers)
+        collector = _CURRENT_USAGE.get()
+        if collector is not None:
+            chat_model.callbacks = [_usage_callback(collector)]
+        if effort and hasattr(chat_model, "reasoning_effort"):
+            chat_model.reasoning_effort = effort
+        return chat_model
+
+    session_module.resolve_chat_model = resolve
+    try:
+        yield
+    finally:
+        session_module.resolve_chat_model = original
 
 
 async def run_task(
     task: Task, out: Path, model: str, effort: str | None, timeout: float
 ) -> dict[str, Any]:
-    from coscribe.conversation import session as session_module
-
     task_out = out / task.name
     if task_out.exists():
         shutil.rmtree(task_out)
@@ -173,18 +201,6 @@ async def run_task(
 
     usage = Usage()
     _CURRENT_USAGE.set(usage)
-    original_resolve = session_module.resolve_chat_model
-
-    def resolve(name: str, custom_providers: Any = None) -> Any:
-        chat_model = original_resolve(name, custom_providers)
-        collector = _CURRENT_USAGE.get()
-        if collector is not None:
-            chat_model.callbacks = [_usage_callback(collector)]
-        if effort and hasattr(chat_model, "reasoning_effort"):
-            chat_model.reasoning_effort = effort
-        return chat_model
-
-    session_module.resolve_chat_model = resolve
     recorder = Recorder()
     status, error = "ok", None
     started = time.monotonic()
@@ -198,11 +214,9 @@ async def run_task(
         status, error = "timeout", f"no end of turn after {timeout:.0f} s"
     except Exception as exc:  # noqa: BLE001 -- one task failing must not stop the run
         status, error = "error", f"{type(exc).__name__}: {exc}"
-    finally:
-        session_module.resolve_chat_model = original_resolve
     wall = time.monotonic() - started
 
-    deck = _find_deck(workspace, originals)
+    deck = _find_deck(workspace, originals, recorder.messages)
     result = {
         "task": task.name,
         "route": "current",
@@ -222,7 +236,7 @@ async def run_task(
         "tool_errors": recorder.tool_errors,
         "questions_answered_for_the_user": recorder.questions,
         "deck": str(deck.relative_to(workspace)) if deck else None,
-        "final_text": recorder.final_text,
+        "messages": recorder.messages,
     }
     (task_out / "result.json").write_text(
         json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -315,7 +329,8 @@ async def run_all(args: argparse.Namespace, tasks: list[Task], out: Path) -> Non
             # A dropped connection before the model answered once says nothing about the route.
             for _ in range(3):
                 result = await run_task(task, out, args.model, args.effort, args.timeout)
-                if result["status"] != "error" or result["model_calls"] > 0:
+                answered = result["model_calls"] or result["tool_call_count"] or result["messages"]
+                if result["status"] != "error" or answered:
                     break
                 print(f"retry {task.name}: {result['error']}", flush=True)
             print(
@@ -357,7 +372,8 @@ def main(argv: list[str] | None = None) -> int:
         if "DEEPSEEK_API_KEY" not in os.environ:
             print("DEEPSEEK_API_KEY is not set", file=sys.stderr)
             return 1
-        asyncio.run(run_all(args, tasks, out))
+        with measured_models(args.effort):
+            asyncio.run(run_all(args, tasks, out))
     write_summary(out, discover("all"))
     print((out / "summary.md").read_text(encoding="utf-8"))
     return 0

@@ -8,8 +8,7 @@ from pathlib import Path
 
 PPTX_TASKS = Path(__file__).resolve().parent / "pptx" / "tasks"
 
-# Text a check can read without a converter; other inputs (images, templates, decks) are
-# copied into the workspace and mentioned by the brief.
+# Plain-text inputs; the other kinds `input_text` knows are read with their own library.
 _TEXT_SUFFIXES = {".md", ".txt", ".csv", ".json"}
 
 
@@ -36,15 +35,39 @@ class Task:
 
     def source_texts(self) -> list[str]:
         """Everything a number in the deck may legitimately come from."""
-        texts = [self.brief]
-        for path in self.inputs:
-            if path.suffix.lower() in _TEXT_SUFFIXES:
-                texts.append(path.read_text(encoding="utf-8"))
-            elif path.suffix.lower() == ".pptx":
-                from .pptx_checks import read_deck
+        return [self.brief, *(t for t in map(input_text, self.inputs) if t)]
 
-                texts.append(read_deck(path).all_text())
-        return texts
+
+def input_text(path: Path) -> str:
+    """The text of an input file a person would read; an image or an unknown kind has none."""
+    suffix = path.suffix.lower()
+    if suffix in _TEXT_SUFFIXES:
+        return path.read_text(encoding="utf-8")
+    if suffix == ".pptx":
+        from .pptx_checks import read_deck
+
+        return read_deck(path).all_text()
+    if suffix == ".docx":
+        from docx import Document
+
+        document = Document(str(path))
+        cells = (c.text for t in document.tables for row in t.rows for c in row.cells)
+        return "\n".join([*(p.text for p in document.paragraphs), *cells])
+    if suffix in {".xlsx", ".xlsm"}:
+        from openpyxl import load_workbook
+
+        workbook = load_workbook(path, data_only=True, read_only=True)
+        return "\n".join(
+            " ".join("" if v is None else str(v) for v in row)
+            for sheet in workbook.worksheets
+            for row in sheet.iter_rows(values_only=True)
+        )
+    if suffix == ".pdf":
+        import pdfplumber
+
+        with pdfplumber.open(str(path)) as pdf:
+            return "\n".join(page.extract_text() or "" for page in pdf.pages)
+    return ""
 
 
 def _parse_expect(raw: dict[str, object], where: Path) -> Expect:
