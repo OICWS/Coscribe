@@ -25,12 +25,16 @@ from __future__ import annotations
 
 import argparse
 import ast
+import importlib
+import importlib.util
 import json
 import re
 import subprocess
 import sys
 from collections.abc import Iterator
 from pathlib import Path
+
+import grimp
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src" / "coscribe"
@@ -41,6 +45,8 @@ BASELINE = ROOT / "quality" / "baseline.json"
 FILE_LINES_LISTED = 800
 FUNCTION_LINES_LISTED = 100
 COMPLEXITY_LISTED = 15
+# Direct imports of other coscribe modules per module (assessment 2.5).
+FAN_OUT_LISTED = 25
 
 # Vendored code is left alone so a diff against its upstream stays meaningful.
 VENDORED = ("tools/_native_formula/", "tools/_native_docx_tracks/", "providers/gemini_provider.py")
@@ -239,6 +245,29 @@ def patch_by_string(tests: Path = TESTS) -> dict[str, int]:
     return found
 
 
+def fan_out(src: Path = SRC, listed: int = FAN_OUT_LISTED) -> dict[str, int]:
+    """Distinct other modules of the package each module imports directly. A package's
+    `__init__` counts as the package; external packages are not counted. Too many
+    imports in one module is where a read-in-one-session limit and bad splits start."""
+    sys.path.insert(0, str(src.parent))
+    try:
+        importlib.invalidate_caches()
+        spec = importlib.util.find_spec(src.name)
+        locations = spec.submodule_search_locations if spec else None
+        # An installed or already imported copy would make grimp read another tree.
+        if locations is not None and src.resolve() not in {Path(p).resolve() for p in locations}:
+            raise RuntimeError(f"{src.name} resolves to {list(locations)}, not {src}")
+        graph = grimp.build_graph(src.name, cache_dir=None)
+    finally:
+        sys.path.remove(str(src.parent))
+    found: dict[str, int] = {}
+    for module in sorted(graph.modules):
+        count = len(graph.find_modules_directly_imported_by(module) - {module})
+        if count > listed:
+            found[module] = count
+    return found
+
+
 METRICS = {
     "file_lines": file_lines,
     "long_functions": long_functions,
@@ -247,6 +276,7 @@ METRICS = {
     "deep_imports": deep_imports,
     "tests_without_a_check": tests_without_a_check,
     "patch_by_string": patch_by_string,
+    "fan_out": fan_out,
 }
 
 

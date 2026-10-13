@@ -171,12 +171,15 @@ dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
     "pytest-cov>=5.0.0",
+    "hypothesis>=6.169.0",
     "ruff>=0.6.0",
     "mypy>=1.11.0",
     "types-PyYAML>=6.0",
     "types-reportlab>=4.0.0",
     "types-openpyxl>=3.1.0",
     "import-linter>=2.15",
+    # scripts/ratchet.py reads the import graph directly (also pulled in by import-linter).
+    "grimp>=3.0",
 ]
 web = [
     # 0.132.0 rejects a JSON body without a JSON Content-Type. Earlier
