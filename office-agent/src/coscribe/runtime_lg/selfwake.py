@@ -93,7 +93,7 @@ def _is_due(
     if wake.kind == "event":
         if wake.event_key is None:
             return False
-        return signal_store.fired_since(wake.event_key, wake.created_at)
+        return signal_store.fired_since(wake.event_key, wake.created_at, wake.seq)
     return False
 
 
