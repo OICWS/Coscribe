@@ -1,1 +1,2 @@
 docs/history/*.md -text
+office-agent/tests/golden/** -text
