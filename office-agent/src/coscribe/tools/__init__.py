@@ -1,6 +1,6 @@
 from .background_tasks import BackgroundTask, BackgroundTaskStore, build_background_task_tools
 from .browser import build_browser_tools
-from .conversations import build_conversation_tools
+from .conversations import MessagingStore, build_conversation_tools
 from .convert import build_convert_tools
 from .documents import build_document_tools
 from .files import build_file_tools
@@ -22,6 +22,7 @@ from .scheduled_tasks import (
     ScheduleRule,
     build_scheduled_task_tools,
     compute_next_run_at,
+    parse_run_thread_id,
 )
 from .scripts import build_script_tools
 from .selfwake import SignalStore, WakeRequest, WakeStore, build_selfwake_tools
@@ -55,6 +56,7 @@ __all__ = [
     "ScheduledTrigger",
     "ScheduledTriggerStore",
     "SignalStore",
+    "MessagingStore",
     "SkillInfo",
     "SkillUploadError",
     "SubAgentTask",
@@ -81,6 +83,7 @@ __all__ = [
     "build_browser_tools",
     "build_websearch_tools",
     "compute_next_run_at",
+    "parse_run_thread_id",
     "format_memory_section",
     "format_skill_listing",
     "format_template_listing",

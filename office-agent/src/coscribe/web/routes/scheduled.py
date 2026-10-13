@@ -59,7 +59,7 @@ def router(state: AppState) -> APIRouter:
     _execute_and_announce = state.execute_and_announce
     _track_background = state.track_background
     _announce_run = state.announce_run
-    _write_workspace_sidecar = state.write_workspace_sidecar
+    _write_workspace_sidecar = state.thread_files.write_workspace_sidecar
 
     @router.post("/api/workflows/validate")
     async def validate_workflow(body: WorkflowCheck) -> JSONResponse:
