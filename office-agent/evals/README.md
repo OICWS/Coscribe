@@ -58,6 +58,29 @@ yourself" and counted. Usage comes from the model's own responses, not from the 
 | `layout` | coscribe's own QA: words past the page edge, overlapping text boxes, low contrast, slides with no visual element |
 | `pictures`, `template` | the images were used; the user's template layouts were kept |
 
-## Not in this part
+## The blind judge (`judge.py`)
 
-The blind judge, the comparison of two runs and the baseline numbers come in part 2.
+```bash
+python -m evals.judge evals/runs/baseline --rounds 3                  # each deck scored alone
+python -m evals.judge evals/runs/a evals/runs/b --rounds 3            # the two runs' decks together
+python -m evals.judge evals/runs/a --judge gemini:gemini-3.5-flash    # a judge from another vendor
+```
+
+A vision model sees the user's brief and the rendered pages and scores design, content and coherence
+from 1 to 5, with the three worst defects. With several runs, the decks of one task go into one request
+under random labels (`Deck P`, `Deck Q`...), drawn again every round, so neither order nor name says
+which route made which. Each round is written to `<run>/<task>/judge/`; the mean and spread
+(population standard deviation) over the rounds are what `compare.py` shows. The default judge is
+DeepSeek, which also made the decks, so it may favour its own style; a Gemini judge is optional and the
+free tier allows about 20 requests a day per model. Rounds of a lone deck and of a joint request are
+both kept and averaged together: judge a run one way only when the two should not mix.
+
+## Comparing two runs (`compare.py`)
+
+```bash
+python -m evals.compare evals/runs/baseline evals/runs/engine --out compare.md
+```
+
+One Markdown file with three tables, a row per task and the two runs side by side: the judge's scores,
+the automatic checks, and cost, time, tool calls and tokens, with totals. A task only one run has shows
+`-`. Run the same route twice first to see how far two runs of one route differ.
