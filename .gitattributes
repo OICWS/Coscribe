@@ -6,3 +6,4 @@ office-agent/frontend/package-lock.json linguist-generated=true
 office-agent-desktop/package-lock.json linguist-generated=true
 site/index.html linguist-generated=true
 office-agent/src/coscribe/skill_catalog.json linguist-generated=true
+office-agent/tests/openapi.json -text
