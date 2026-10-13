@@ -11,6 +11,7 @@ from .code_agent import CODE_APPROVAL_RISKS
 from .exec_policy import EXEC_POLICY_TOOL_NAMES, ExecPolicy, load_exec_policy
 from .messages import (
     extract_text,
+    is_steer,
     render_transcript_lg,
     serialize_history_for_ws_lg,
     strip_mode_note,
@@ -36,11 +37,15 @@ from .subagents import (
     select_reviewer_tools,
     subagent_report,
 )
+from .tool_calls import ORPHANED_TOOL_CALL_NOTE, answer_every_tool_call
 
 if TYPE_CHECKING:
     from .mcp import connect_one_mcp_server_lg
 
 __all__ = [
+    "ORPHANED_TOOL_CALL_NOTE",
+    "answer_every_tool_call",
+    "is_steer",
     "SUBAGENT_MAX_STEPS",
     "SilentSocket",
     "AuditLog",
