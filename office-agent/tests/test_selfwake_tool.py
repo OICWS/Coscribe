@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from coscribe.runtime.types import get_tool_metadata
+from coscribe.tools import selfwake as selfwake_module
 from coscribe.tools.background_tasks import BackgroundTask, BackgroundTaskStore
 from coscribe.tools.selfwake import SignalStore, WakeStore, build_selfwake_tools
 
@@ -123,11 +124,11 @@ def test_wake_on_event_then_signal_event_round_trip(tmp_path: Path) -> None:
     wake = tools["wake_on_event"](event_key="deploy-done", reason="tell the user")
     signal_store = SignalStore(tmp_path)
 
-    assert signal_store.fired_since("deploy-done", wake["created_at"]) is False
+    assert signal_store.fired_since("deploy-done", wake["created_at"], wake["seq"]) is False
 
     tools["signal_event"](event_key="deploy-done", payload="all green")
 
-    assert signal_store.fired_since("deploy-done", wake["created_at"]) is True
+    assert signal_store.fired_since("deploy-done", wake["created_at"], wake["seq"]) is True
 
 
 def test_signal_event_before_wake_registered_does_not_retroactively_fire_it(
@@ -139,7 +140,65 @@ def test_signal_event_before_wake_registered_does_not_retroactively_fire_it(
 
     wake = tools["wake_on_event"](event_key="deploy-done", reason="x")
 
-    assert signal_store.fired_since("deploy-done", wake["created_at"]) is False
+    assert signal_store.fired_since("deploy-done", wake["created_at"], wake["seq"]) is False
+
+
+@pytest.fixture
+def frozen_clock(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Windows' coarse clock hands back one timestamp for calls made back to back.
+    monkeypatch.setattr(selfwake_module, "_now_iso", lambda: "2026-10-13T12:00:00+00:00")
+
+
+def _fired_by_runtime(signal_store: SignalStore, wake: dict[str, object]) -> bool:
+    return signal_store.fired_since(
+        "deploy-done",
+        str(wake["created_at"]),
+        wake["seq"],  # type: ignore[arg-type]
+    )
+
+
+def test_signal_then_wake_in_the_same_clock_tick_does_not_fire(
+    tmp_path: Path, frozen_clock: None
+) -> None:
+    signal_store = SignalStore(tmp_path)
+    signal_store.signal("deploy-done", "earlier signal")
+    wake = _tools_by_name("thread-1", tmp_path)["wake_on_event"](
+        event_key="deploy-done", reason="x"
+    )
+
+    assert _fired_by_runtime(signal_store, wake) is False
+
+
+def test_wake_then_signal_in_the_same_clock_tick_fires(
+    tmp_path: Path, frozen_clock: None
+) -> None:
+    signal_store = SignalStore(tmp_path)
+    wake = _tools_by_name("thread-1", tmp_path)["wake_on_event"](
+        event_key="deploy-done", reason="x"
+    )
+    signal_store.signal("deploy-done", "later signal")
+
+    assert _fired_by_runtime(signal_store, wake) is True
+
+
+def test_a_wake_saved_before_the_counter_existed_falls_back_to_the_clock(
+    tmp_path: Path,
+) -> None:
+    signal_store = SignalStore(tmp_path)
+    signal_store.signal("deploy-done", "x")
+
+    assert signal_store.fired_since("deploy-done", "2000-01-01T00:00:00+00:00") is True
+    assert signal_store.fired_since("deploy-done", "2999-01-01T00:00:00+00:00") is False
+
+
+def test_sequence_only_grows_and_survives_a_corrupt_counter_file(tmp_path: Path) -> None:
+    sequence = selfwake_module._Sequence(tmp_path)
+    first, second = sequence.next(), sequence.next()
+    assert second == first + 1
+
+    sequence.path.write_text("not json", encoding="utf-8")
+
+    assert sequence.next() > second
 
 
 # -- list_wakes / cancel_wake --
