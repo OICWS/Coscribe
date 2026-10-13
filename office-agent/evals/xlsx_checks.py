@@ -432,7 +432,7 @@ def _column_widths(sheet: Any) -> dict[int, float]:
     widths: dict[int, float] = {}
     for letter, dimension in sheet.column_dimensions.items():
         if dimension.width:
-            first = dimension.min or column_index_from_string(letter)
+            first = column_index_from_string(letter)
             for index in range(first, (dimension.max or first) + 1):
                 widths[index] = float(dimension.width)
     return widths
