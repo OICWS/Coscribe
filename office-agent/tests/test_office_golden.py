@@ -15,6 +15,7 @@ from __future__ import annotations
 import contextlib
 import difflib
 import os
+import shutil
 from collections.abc import Callable
 from pathlib import Path
 
@@ -67,15 +68,18 @@ def _theme(tools: dict[str, Callable[..., object]]) -> None:
     tools["edit_pptx_theme_colors"](path="deck.pptx", colors="accent1=0F6B5C,accent2=C2410C")
 
 
-def _png(path: Path, color: str, size: tuple[int, int]) -> None:
-    from PIL import Image
+# Committed files, not written by Pillow at test time: a PNG's bytes depend on the encoder and
+# the zlib it links, which can differ between machines and versions.
+ASSETS = GOLDEN_DIR / "assets"
 
-    Image.new("RGB", size, color=color).save(path)
+
+def _png(name: str) -> None:
+    shutil.copyfile(ASSETS / name, name)
 
 
 def _image(tools: dict[str, Callable[..., object]]) -> None:
     tools["write_pptx"](path="deck.pptx", content="# Our logo\n- placed top right")
-    _png(Path("logo.png"), "red", (40, 20))
+    _png("logo.png")
     tools["add_pptx_image"](
         path="deck.pptx", slide=1, image_path="logo.png", left=8.0, top=0.5, width=2.0
     )
@@ -92,7 +96,7 @@ def _image_cropped_and_replaced(tools: dict[str, Callable[..., object]]) -> None
     tools["crop_pptx_image"](
         path="deck.pptx", slide=1, shape_index=index, crop_left=0.1, crop_right=0.2
     )
-    _png(Path("logo2.png"), "green", (40, 20))
+    _png("logo2.png")
     tools["replace_pptx_image"](
         path="deck.pptx", slide=1, shape_index=index, image_path="logo2.png"
     )
@@ -107,7 +111,7 @@ def _image_effects(tools: dict[str, Callable[..., object]]) -> None:
 
 def _background_image(tools: dict[str, Callable[..., object]]) -> None:
     tools["write_pptx"](path="deck.pptx", content="# Over a photo\n- with a scrim")
-    _png(Path("photo.png"), "navy", (64, 27))
+    _png("photo.png")
     tools["set_pptx_background_image"](path="deck.pptx", slide=1, image_path="photo.png")
     tools["add_pptx_scrim"](path="deck.pptx", slide=1, opacity=0.4, color="000000")
 
@@ -128,7 +132,7 @@ DECKS: dict[str, Callable[[dict[str, Callable[..., object]]], None]] = {
 def build_deck(name: str, root: Path) -> Path:
     """Build deck `name` in `root` and return its path."""
     root.mkdir(parents=True, exist_ok=True)
-    # Builders write their source images next to the deck, by relative path.
+    # Builders copy their source images next to the deck, by relative path.
     with contextlib.chdir(root):
         DECKS[name](_tools(root))
     return root / "deck.pptx"
