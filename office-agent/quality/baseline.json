@@ -272,11 +272,6 @@
   "tests/test_presentations_tool.py::test_add_pptx_hyperlink_survives_round_trip": 1,
   "tests/test_presentations_tool.py::test_edit_pptx_theme_colors_survives_round_trip": 1,
   "tests/test_presentations_tool.py::test_recolor_pptx_icon_survives_round_trip": 1,
-  "tests/test_presentations_tool.py::test_set_pptx_transition_is_schema_valid_for_every_registered_transition": 1,
-  "tests/test_secrets.py::test_delete_secret_is_a_noop_for_a_plain_string": 1,
-  "tests/test_secrets.py::test_delete_secret_is_a_noop_for_none": 1,
-  "tests/test_secrets.py::test_delete_secret_swallows_keyring_errors": 1,
-  "tests/test_secrets.py::test_env_delete_secret_if_ref_is_a_noop_for_plain_value": 1,
-  "tests/test_secrets.py::test_harden_file_permissions_swallows_errors_for_a_missing_file": 1
+  "tests/test_presentations_tool.py::test_set_pptx_transition_is_schema_valid_for_every_registered_transition": 1
  }
 }
