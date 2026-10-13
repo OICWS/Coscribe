@@ -112,8 +112,45 @@ def column_names(run_a: Path, run_b: Path) -> tuple[str, str]:
     return f"A {a.name}", f"B {b.name}"
 
 
-def compare(run_a: Path, run_b: Path, judge: str = DEFAULT_JUDGE, joint: bool = False) -> str:
-    names = [t.name for t in discover("all")]
+def _recalculated(entry: dict[str, Any] | None) -> str:
+    recalc = (entry or {}).get("checks", {}).get("recalc")
+    if recalc is None:
+        return "-"
+    return f"{'yes' if recalc.get('ok') else 'NO'} ({recalc.get('errors') or 0} errors)"
+
+
+def _cells(entry: dict[str, Any] | None) -> str:
+    cells = (entry or {}).get("checks", {}).get("cells")
+    return "-" if not cells else f"{cells.get('matched', '-')}/{cells.get('checked', '-')}"
+
+
+# The automatic-checks table: a column pair (run A, run B) per entry, by kind.
+CHECK_COLUMNS: dict[str, list[tuple[str, Any]]] = {
+    "pptx": [
+        ("facts", _facts),
+        ("pages", lambda e: _passed(e, "pages")),
+        ("editable", lambda e: _passed(e, "editability")),
+        ("numbers not in input", _inventions),
+        ("overflow / overlaps", _layout),
+    ],
+    "xlsx": [
+        ("facts", _facts),
+        ("recalculates", _recalculated),
+        ("cells", _cells),
+        ("formulas", lambda e: _passed(e, "formulas")),
+        ("probe", lambda e: _passed(e, "probe")),
+        ("styles kept", lambda e: _passed(e, "untouched")),
+        ("used range", lambda e: _passed(e, "used_range")),
+        ("legible", lambda e: _passed(e, "legibility")),
+        ("numbers not in input", _inventions),
+    ],
+}
+
+
+def compare(
+    run_a: Path, run_b: Path, judge: str = DEFAULT_JUDGE, joint: bool = False, kind: str = "pptx"
+) -> str:
+    names = [t.name for t in discover("all", kind=kind)]
     joint_with = [run_a, run_b] if joint else None
     pairs = [
         (n, _load(run_a, n, judge, joint_with), _load(run_b, n, judge, joint_with)) for n in names
@@ -121,11 +158,11 @@ def compare(run_a: Path, run_b: Path, judge: str = DEFAULT_JUDGE, joint: bool = 
     pairs = [p for p in pairs if p[1] is not None or p[2] is not None]
     a, b = column_names(run_a, run_b)
     common = [(n, ea, eb) for n, ea, eb in pairs if ea is not None and eb is not None]
-    kind = "both decks in one request" if joint else "each deck alone"
+    request = "both files in one request" if joint else "each file alone"
     out = [
         f"## {a} vs {b}",
         "",
-        f"Judge {judge}, {kind}; {len(common)} of {len(pairs)} tasks in both.",
+        f"Judge {judge}, {request}; {len(common)} of {len(pairs)} tasks in both.",
         "",
     ]
 
@@ -141,35 +178,9 @@ def compare(run_a: Path, run_b: Path, judge: str = DEFAULT_JUDGE, joint: bool = 
     header = ["task"] + [f"{d} {x}" for d in DIMENSIONS for x in (a, b)]
     out += _table("Blind judge scores (1 to 5, mean ± spread over rounds)", header, rows)
 
-    checks = [
-        [
-            n,
-            _facts(ea),
-            _facts(eb),
-            _passed(ea, "pages"),
-            _passed(eb, "pages"),
-            _passed(ea, "editability"),
-            _passed(eb, "editability"),
-            _inventions(ea),
-            _inventions(eb),
-            _layout(ea),
-            _layout(eb),
-        ]
-        for n, ea, eb in pairs
-    ]
-    header = [
-        "task",
-        f"facts {a}",
-        f"facts {b}",
-        f"pages {a}",
-        f"pages {b}",
-        f"editable {a}",
-        f"editable {b}",
-        f"numbers not in input {a}",
-        f"{b}",
-        f"overflow / overlaps {a}",
-        f"{b}",
-    ]
+    columns = CHECK_COLUMNS[kind]
+    checks = [[n, *(x for _, read in columns for x in (read(ea), read(eb)))] for n, ea, eb in pairs]
+    header = ["task", *(f"{label} {run}" for label, _ in columns for run in (a, b))]
     out += _table("Automatic checks", header, checks)
 
     cost_rows = [
@@ -226,12 +237,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("run_a", type=Path)
     parser.add_argument("run_b", type=Path)
     parser.add_argument("--out", type=Path, help="write the table here as well")
+    parser.add_argument("--kind", choices=sorted(CHECK_COLUMNS), default="pptx", help="which tasks")
     parser.add_argument("--judge", default=DEFAULT_JUDGE, help="whose scores to show")
     parser.add_argument(
         "--joint", action="store_true", help="scores from the two runs judged in one request"
     )
     args = parser.parse_args(argv)
-    table = compare(args.run_a, args.run_b, args.judge, args.joint)
+    table = compare(args.run_a, args.run_b, args.judge, args.joint, args.kind)
     if args.out:
         args.out.write_text(table, encoding="utf-8")
     print(table)

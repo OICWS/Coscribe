@@ -2,9 +2,10 @@
 
 Decision 0010 (`docs/decisions/0010-office-files-are-compiled-from-whole-page-sources.md`) says each
 step of the office route is decided by measurement. This is the measurement: real tasks, sent to
-coscribe's real agent, checked automatically, with cost and time recorded. Part 1 covers PowerPoint.
-It calls a model, so it is run by hand and is not part of CI; only its deterministic parts are tested
-(`tests/test_evals_pptx.py`). It changes nothing under `src/`.
+coscribe's real agent, checked automatically, with cost and time recorded. Part 1 covers PowerPoint
+(`--kind pptx`, the default); part 2 adds Excel (`--kind xlsx`, below). It calls a model, so it is run by hand
+and is not part of CI; only its deterministic parts are tested (`tests/test_evals_pptx.py`,
+`tests/test_evals_xlsx.py`). It changes nothing under `src/`.
 
 ## Run
 
@@ -14,6 +15,7 @@ export DEEPSEEK_API_KEY=...            # the default model is deepseek:deepseek-
 python -m evals.run --route current --tasks all --out evals/runs/baseline
 python -m evals.run --tasks 01,07 --out evals/runs/try          # some tasks
 python -m evals.run --check-only --out evals/runs/baseline      # re-check, no model calls
+python -m evals.run --kind xlsx --out evals/runs/excel          # the Excel tasks
 ```
 
 Long runs go off-peak on DeepSeek (weekdays 9:00-12:00 and 14:00-18:00 Beijing time cost double;
@@ -58,12 +60,42 @@ yourself" and counted. Usage comes from the model's own responses, not from the 
 | `layout` | coscribe's own QA: words past the page edge, overlapping text boxes, low contrast, slides with no visual element |
 | `pictures`, `template` | the images were used; the user's template layouts were kept |
 
+## Excel (`--kind xlsx`)
+
+`xlsx/tasks/<NN-slug>/` has the same `brief.md`, `inputs/` and `expect.json`; `xlsx/make_inputs.py` rebuilds
+the binary inputs. An address is `Sheet!B2` or `Sheet!B2:B13`. `expect.json` lists what the workbook must
+hold (a key left out is not checked):
+
+| Key | What it says |
+|---|---|
+| `facts`, `absent`, `allowed_numbers` | as for decks, over the text of every sheet after recalculation, dates as `YYYY-MM-DD` |
+| `sheets` | these sheets exist |
+| `cells` | `{"at", "value", "tol"?, "type"?}`: the value after LibreOffice recalculated a copy; numbers within `tol` (0.005), text exactly (case and spaces count), `"type": "date"` needs a real date |
+| `formulas` / `constants` | every cell of these ranges is a formula / is not one: a total typed in as a number is the finding |
+| `number_formats` | `{"at", "any_of"}`: the format contains one of the strings (`元`, `%`) |
+| `bold` | these cells are bold |
+| `used_range` | per sheet, the range nothing may be written outside of |
+| `original`, `untouched`, `conditional_formats_min` | an edit: the input workbook; the styles (number format, font, fill, border, alignment) of these ranges are as the input had them, and its conditional formats and validations are still there |
+| `probe` | `{"set": {address: value}, "expect": [cells]}`: inputs are changed on a copy, which is recalculated; a model of formulas moves, one of pasted numbers does not |
+| `charts` | `{"kind", "title", "points_min", "axis_titles"}`: a chart of that kind with that title, plotting at least that many points |
+| `validations` | `{"at", "values"}`: a dropdown list over every cell of the range offering exactly those values |
+
+The `recalc` check records what LibreOffice found (formula count, error cells). The workbook is rendered the
+same way as a deck, one PNG per printed page, for the judge. The styles compared fold the spellings
+LibreOffice changes when it saves (`\-`, a quoted `"$"`, the alpha byte of a color), because the agent's own
+`recalc_xlsx` saves through LibreOffice; what is left is a style that was lost.
+
+`tests/xlsx_reference.py` holds a good answer to every task. A test recalculates each through LibreOffice
+and requires all checks to pass, so a task nobody can satisfy, or an `expect.json` that rejects a right
+answer, fails in the test run (it skips without LibreOffice).
+
 ## The blind judge (`judge.py`)
 
 ```bash
 python -m evals.judge evals/runs/baseline --rounds 3                  # each deck scored alone
 python -m evals.judge evals/runs/a evals/runs/b --rounds 3            # the two runs' decks together
 python -m evals.judge evals/runs/a --judge gemini:gemini-3.5-flash    # a judge from another vendor
+python -m evals.judge evals/runs/excel --kind xlsx --rounds 3         # workbooks: their own rubric
 ```
 
 A vision model sees the user's brief and the rendered pages and scores design, content and coherence
@@ -82,6 +114,7 @@ named); a round that fails is reported and the batch goes on, with a non-zero ex
 
 ```bash
 python -m evals.compare evals/runs/baseline evals/runs/engine --out compare.md
+python -m evals.compare evals/runs/excel-a evals/runs/excel-b --kind xlsx
 ```
 
 One Markdown file with three tables, a row per task and the two runs side by side: the judge's scores,

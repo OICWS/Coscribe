@@ -1,0 +1,87 @@
+{
+ "facts": [
+  "Open tickets"
+ ],
+ "cells": [
+  {
+   "at": "Tickets!C2",
+   "value": "Open"
+  },
+  {
+   "at": "Tickets!C3",
+   "value": "Open"
+  },
+  {
+   "at": "Tickets!C4",
+   "value": "Open"
+  },
+  {
+   "at": "Tickets!C5",
+   "value": "Open"
+  },
+  {
+   "at": "Tickets!C6",
+   "value": "Open"
+  },
+  {
+   "at": "Tickets!C7",
+   "value": "Open"
+  },
+  {
+   "at": "Tickets!C8",
+   "value": "Open"
+  },
+  {
+   "at": "Tickets!C9",
+   "value": "Open"
+  },
+  {
+   "at": "Tickets!C10",
+   "value": "Open"
+  },
+  {
+   "at": "Tickets!C11",
+   "value": "Open"
+  },
+  {
+   "at": "Tickets!G1",
+   "value": "Open tickets"
+  },
+  {
+   "at": "Tickets!H1",
+   "value": 10
+  }
+ ],
+ "formulas": [
+  "Tickets!H1"
+ ],
+ "validations": [
+  {
+   "at": "Tickets!C2:C11",
+   "values": [
+    "Open",
+    "In progress",
+    "Done"
+   ]
+  }
+ ],
+ "used_range": {
+  "Tickets": "A1:H11"
+ },
+ "original": "tickets.xlsx",
+ "untouched": [
+  "Tickets!A1:D11"
+ ],
+ "probe": {
+  "set": {
+   "Tickets!C2": "Done",
+   "Tickets!C3": "Done"
+  },
+  "expect": [
+   {
+    "at": "Tickets!H1",
+    "value": 8
+   }
+  ]
+ }
+}

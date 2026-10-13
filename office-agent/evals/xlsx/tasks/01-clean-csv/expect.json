@@ -1,0 +1,205 @@
+{
+ "facts": [
+  "Cobalt Inc",
+  "Echo LLC",
+  "Services"
+ ],
+ "sheets": [
+  "Orders"
+ ],
+ "cells": [
+  {
+   "at": "Orders!A1",
+   "value": "Order Date"
+  },
+  {
+   "at": "Orders!B1",
+   "value": "Customer"
+  },
+  {
+   "at": "Orders!C1",
+   "value": "Category"
+  },
+  {
+   "at": "Orders!D1",
+   "value": "Amount"
+  },
+  {
+   "at": "Orders!A2",
+   "value": "2026-01-03",
+   "type": "date"
+  },
+  {
+   "at": "Orders!B2",
+   "value": "Delta Co"
+  },
+  {
+   "at": "Orders!C2",
+   "value": "Services"
+  },
+  {
+   "at": "Orders!D2",
+   "value": 450.25
+  },
+  {
+   "at": "Orders!A3",
+   "value": "2026-01-05",
+   "type": "date"
+  },
+  {
+   "at": "Orders!B3",
+   "value": "Acme Ltd"
+  },
+  {
+   "at": "Orders!C3",
+   "value": "Hardware"
+  },
+  {
+   "at": "Orders!D3",
+   "value": 1200.5
+  },
+  {
+   "at": "Orders!A4",
+   "value": "2026-01-05",
+   "type": "date"
+  },
+  {
+   "at": "Orders!B4",
+   "value": "Beta GmbH"
+  },
+  {
+   "at": "Orders!C4",
+   "value": "Software"
+  },
+  {
+   "at": "Orders!D4",
+   "value": 980
+  },
+  {
+   "at": "Orders!A5",
+   "value": "2026-01-09",
+   "type": "date"
+  },
+  {
+   "at": "Orders!B5",
+   "value": "Acme Ltd"
+  },
+  {
+   "at": "Orders!C5",
+   "value": "Software"
+  },
+  {
+   "at": "Orders!D5",
+   "value": 75
+  },
+  {
+   "at": "Orders!A6",
+   "value": "2026-01-12",
+   "type": "date"
+  },
+  {
+   "at": "Orders!B6",
+   "value": "Cobalt Inc"
+  },
+  {
+   "at": "Orders!C6",
+   "value": "Hardware"
+  },
+  {
+   "at": "Orders!D6",
+   "value": 2310
+  },
+  {
+   "at": "Orders!A7",
+   "value": "2026-01-15",
+   "type": "date"
+  },
+  {
+   "at": "Orders!B7",
+   "value": "Beta GmbH"
+  },
+  {
+   "at": "Orders!C7",
+   "value": "Services"
+  },
+  {
+   "at": "Orders!D7",
+   "value": 1100
+  },
+  {
+   "at": "Orders!A8",
+   "value": "2026-01-18",
+   "type": "date"
+  },
+  {
+   "at": "Orders!B8",
+   "value": "Delta Co"
+  },
+  {
+   "at": "Orders!C8",
+   "value": "Software"
+  },
+  {
+   "at": "Orders!D8",
+   "value": 620.75
+  },
+  {
+   "at": "Orders!A9",
+   "value": "2026-01-20",
+   "type": "date"
+  },
+  {
+   "at": "Orders!B9",
+   "value": "Acme Ltd"
+  },
+  {
+   "at": "Orders!C9",
+   "value": "Hardware"
+  },
+  {
+   "at": "Orders!D9",
+   "value": 845
+  },
+  {
+   "at": "Orders!A10",
+   "value": "2026-01-22",
+   "type": "date"
+  },
+  {
+   "at": "Orders!B10",
+   "value": "Echo LLC"
+  },
+  {
+   "at": "Orders!C10",
+   "value": "Services"
+  },
+  {
+   "at": "Orders!D10",
+   "value": 300
+  },
+  {
+   "at": "Orders!A11",
+   "value": null
+  }
+ ],
+ "number_formats": [
+  {
+   "at": "Orders!A2:A10",
+   "any_of": [
+    "yyyy-mm-dd"
+   ]
+  },
+  {
+   "at": "Orders!D2:D10",
+   "any_of": [
+    "#,##0.00"
+   ]
+  }
+ ],
+ "bold": [
+  "Orders!A1:D1"
+ ],
+ "used_range": {
+  "Orders": "A1:D10"
+ }
+}

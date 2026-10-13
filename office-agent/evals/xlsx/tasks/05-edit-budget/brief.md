@@ -1,0 +1,1 @@
+Open budget_q1.xlsx and add a column D called Variance, Actual minus Budget, for every item, and a Total row (row 8) that sums Budget, Actual and Variance. The new cells must be formulas, and must look like the existing ones (same header style, same dollar format). Do not change the cells that are already there, and keep the sheet's conditional formatting.
