@@ -3443,6 +3443,25 @@ def test_list_pptx_shapes_reports_whole_shape_hyperlink(tmp_path: Path) -> None:
     assert shapes[1]["hyperlink"] is None
 
 
+def test_list_pptx_shapes_lists_a_group_shape_without_crashing(tmp_path: Path) -> None:
+    from pptx import Presentation
+    from pptx.util import Inches
+
+    tools = _tools_by_name(tmp_path)
+    tools["write_pptx"](path="deck.pptx", content="# Title\n- body")
+    prs = Presentation(str(tmp_path / "deck.pptx"))
+    group = prs.slides[0].shapes.add_group_shape()
+    group.shapes.add_shape(1, Inches(1), Inches(1), Inches(1), Inches(1))
+    prs.save(str(tmp_path / "deck.pptx"))
+
+    shapes = tools["list_pptx_shapes"](path="deck.pptx", slide=1)["shapes"]
+
+    # Children of a group are not listed: a group is one addressable shape.
+    assert len(shapes) == 3
+    assert shapes[-1]["shape_type"] == "GROUP (6)"
+    assert shapes[-1]["hyperlink"] is None
+
+
 def test_list_pptx_shapes_reports_slide_jump_hyperlink_in_the_same_url_syntax(
     tmp_path: Path,
 ) -> None:
