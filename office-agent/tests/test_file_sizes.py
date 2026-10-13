@@ -27,6 +27,9 @@ ALLOWED = {
     "office-agent/tests/golden/docx/_shared.txt": "shared docx golden data",
     "office-agent/PPTX_DESIGN.md": "numbered pptx design decisions, read by section",
     "office-agent/src/coscribe/runtime_lg/README.md": "runtime findings, searched, not read whole",
+    "office-agent/src/coscribe/tools/_native_svg/pptx_shapes/data/presetShapeDefinitions.xml": (
+        "vendored DrawingML preset geometry (Apache POI)"
+    ),
 }
 
 

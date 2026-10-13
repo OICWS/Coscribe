@@ -39,6 +39,7 @@ VENDORED = (
     "office-agent/src/coscribe/tools/_native_formula/",
     "office-agent/src/coscribe/tools/_native_docx_tracks/",
     "office-agent/src/coscribe/tools/_native_animation_presets/",
+    "office-agent/src/coscribe/tools/_native_svg/",
     "office-agent/src/coscribe/providers/gemini_provider.py",
     "office-agent/src/coscribe/providers/_vendor/",
 )
