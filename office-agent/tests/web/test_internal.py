@@ -11,6 +11,8 @@ pytest.importorskip("langgraph", reason="needs the langgraph_spike extra install
 
 from dotenv import dotenv_values
 
+from coscribe.web.routes import threads as threads_routes
+
 from ..test_web_routes import _flatten
 from .helpers import (
     FakeToolCallingChatModel,
@@ -90,9 +92,7 @@ def test_a_json_body_without_a_json_content_type_is_refused_lg(
     only if it sends no JSON Content-Type -- such a body must not be
     parsed, or any website could drive these endpoints."""
     opened: list[Any] = []
-    monkeypatch.setattr(
-        "coscribe.web.routes.threads.open_in_os", lambda path, *, reveal: opened.append(path)
-    )
+    monkeypatch.setattr(threads_routes, "open_in_os", lambda path, *, reveal: opened.append(path))
     (tmp_path / "workspace").mkdir()
     (tmp_path / "workspace" / "report.xlsx").write_bytes(b"x")
     fake_model = FakeToolCallingChatModel(responses=[])

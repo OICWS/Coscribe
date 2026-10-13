@@ -18,6 +18,7 @@ from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResu
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
 
+from coscribe.conversation import session as conversation_session
 from coscribe.runtime.types import tool_metadata
 from coscribe.runtime_lg.agent import build_langgraph_agent
 from coscribe.runtime_lg.tool_deferral import (
@@ -488,7 +489,8 @@ async def _first_request_tools(
 
     model = FakeToolCallingChatModel(responses=[AIMessage(content="hi")])
     monkeypatch.setattr(
-        "coscribe.conversation.session.resolve_chat_model",
+        conversation_session,
+        "resolve_chat_model",
         lambda name, custom_providers=None: model,
     )
     settings = Settings(  # type: ignore[call-arg]

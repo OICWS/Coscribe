@@ -10,7 +10,7 @@ from docx import Document
 from openpyxl import Workbook, load_workbook
 
 from coscribe.runtime.types import get_tool_metadata
-from coscribe.tools import _office_bins
+from coscribe.tools import _office_bins, convert
 from coscribe.tools.convert import build_convert_tools
 
 
@@ -68,7 +68,7 @@ def test_an_existing_output_is_never_replaced(tmp_path: Path) -> None:
 
 def test_without_libreoffice_it_says_so(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     Document().save(str(tmp_path / "a.docx"))
-    monkeypatch.setattr("coscribe.tools.convert.find_soffice", lambda: None)
+    monkeypatch.setattr(convert, "find_soffice", lambda: None)
 
     with pytest.raises(ValueError, match="LibreOffice isn't installed"):
         _convert(tmp_path)(path="a.docx", to_format="pdf")
