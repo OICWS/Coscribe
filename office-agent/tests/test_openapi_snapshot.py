@@ -37,4 +37,5 @@ def test_the_openapi_document_is_the_checked_in_one(tmp_path: Path) -> None:
     if os.environ.get("UPDATE_SNAPSHOTS"):
         SNAPSHOT.write_text(document, encoding="utf-8", newline="\n")
 
+    assert SNAPSHOT.exists(), "run UPDATE_SNAPSHOTS=1 pytest tests/test_openapi_snapshot.py"
     assert document == SNAPSHOT.read_bytes().decode("utf-8")
