@@ -284,6 +284,8 @@ exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# `evals/` is a sibling of `src/`, not part of the package: its tests import it by name.
+pythonpath = ["."]
 asyncio_mode = "auto"
 markers = [
     "real_libreoffice: exercises actual headless LibreOffice conversion (soffice) -- opts out of conftest.py's default fast-mode monkeypatch of the QA/recalc steps; still skips cleanly via the test file's own _libreoffice_actually_works()-style check when soffice isn't usable in this environment",
