@@ -7,8 +7,8 @@ the directory before assuming a piece is still in it), the approval decision (`a
 runs without asking, what is refused, what waits for a person), sub-agent and inbox reports as
 turns (`subagents.py`), workflow drafting for the chat model and the save button
 (`workflow_drafting.py`), the checkpointed history: replay, paging back, /compact, /clear, edit and
-rewind (`history.py`), the /saveskill dialogue (`skill_save.py`), what the side panel shows (`activity.py`, `context_usage.py`), the
-sidebar's per-thread state (`thread_meta.py`), the turn lock (`turn_lock.py`), the chat
+rewind (`history.py`), the /saveskill dialogue (`skill_save.py`), what the side panel shows
+(`activity.py`, `context_usage.py`), the sidebar's per-thread state (`thread_meta.py`), the turn lock (`turn_lock.py`), the chat
 socket's message types (`wire.py`) and where events go (`events.EventSink`). Does not own the
 agent graph or its middleware (`runtime_lg`), the routes or the socket itself (`web`), or the
 coordinator's tools and prompt (`coordinator.py`).

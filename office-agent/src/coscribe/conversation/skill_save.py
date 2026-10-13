@@ -183,7 +183,7 @@ class SkillSave:
         await websocket.send_json(
             {"type": "skill_saved", "name": saved["name"], "slug": saved["slug"]}
         )
-        # Refreshes self._host.lg_agent/instructions/tools AND self._host.skills_by_slug
+        # Refreshes the session's lg_agent/instructions/tools AND skills_by_slug
         # from disk (set_enabled_skills' own rebuild already reloads both
         # load_builtin_skills()+load_skills(settings.skills_dir) fresh) --
         # without this, the just-saved skill wouldn't actually be usable
