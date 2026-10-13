@@ -182,6 +182,10 @@
   "coscribe.workflows.engine -> coscribe.tools.scripts:_run_python_script": 1,
   "coscribe.workflows.testing -> coscribe.tools.browser": 1
  },
+ "fan_out": {
+  "coscribe.conversation.session": 41,
+  "coscribe.web.app": 32
+ },
  "file_lines": {
   "src/coscribe/conversation/session.py": 3741,
   "src/coscribe/coordinator.py": 975,
