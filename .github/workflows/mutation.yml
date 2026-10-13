@@ -3,12 +3,16 @@ name: Mutation
 # Coverage shows that code ran, not that a test checked it. Mutation testing changes the
 # code (a `<` to `<=`, a deleted line) and reports the changes no test notices. It runs on
 # the modules where a silent mistake is a security or data problem (the list is MODULES in
-# scripts/mutation.py), nightly and by hand. It reports and never fails because of a
+# scripts/mutation.py), nightly, by hand, and on a pull request that changes this job. It reports and never fails because of a
 # survivor: each survivor is a gap to turn into an issue. It is not a required check.
 "on":
   schedule:
     - cron: "43 20 * * *"
   workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/mutation.yml"
+      - "office-agent/scripts/mutation.py"
 
 concurrency:
   group: mutation-${{ github.ref }}
