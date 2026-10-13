@@ -95,6 +95,11 @@ Last reviewed: 2026-10-11.
 
 ## Later (wanted, not scheduled)
 
+- A reasoning-effort choice for the user (a Faster–Smarter control next to the model, as in
+  Claude Code), passed to providers that support one (DeepSeek's `reasoning_effort`, Anthropic's
+  effort, OpenAI's reasoning effort). Measured on decks: `low` is level with `high` and cheaper,
+  `none` breaks pages (`docs/assessments/2026-10-13-office-route.md`, 2.3). Requested 2026-10-13.
+
 - Require every review thread to be resolved before a pull request can merge (a ruleset
   setting): not needed at today's size; the maintainer decided on 2026-10-11 to wait.
 - A second model family (Codex) reviewing invariant paths: when the second maintainer
