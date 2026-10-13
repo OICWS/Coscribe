@@ -5,7 +5,9 @@ the vendored Gemini provider. Not imported by cli.py/web/coordinator.py yet
 from typing import TYPE_CHECKING
 
 from .agent import build_langgraph_agent, tool_name
-from .audit import AuditLog, record_decision, redact_secrets
+from .audit import AuditLog, AutoApproveReason, record_decision, redact_secrets
+from .auto_review import Verdict, recent_user_requests, review_action
+from .code_agent import CODE_APPROVAL_RISKS
 from .exec_policy import EXEC_POLICY_TOOL_NAMES, ExecPolicy, load_exec_policy
 from .messages import (
     extract_text,
@@ -38,10 +40,13 @@ if TYPE_CHECKING:
 
 __all__ = [
     "AuditLog",
+    "AutoApproveReason",
+    "CODE_APPROVAL_RISKS",
     "EXEC_POLICY_TOOL_NAMES",
     "ExecPolicy",
     "build_langgraph_agent",
     "SubAgentHost",
+    "Verdict",
     "build_delegation_tools",
     "build_review_work_tool",
     "select_reviewer_tools",
@@ -54,6 +59,7 @@ __all__ = [
     "load_exec_policy",
     "poll_due_scheduled_tasks",
     "poll_due_wakes",
+    "recent_user_requests",
     "reconcile_interrupted_runs",
     "record_decision",
     "start_investigation",
@@ -63,6 +69,7 @@ __all__ = [
     "propose_skill_save_lg",
     "render_transcript_lg",
     "resolve_chat_model",
+    "review_action",
     "serialize_history_for_ws_lg",
     "strip_mode_note",
     "tool_name",

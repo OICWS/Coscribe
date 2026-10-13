@@ -20,7 +20,7 @@ against this project's actual dependency tree, not guessed:
     provider/plugin lookup PyInstaller's static import analysis can't
     see through on its own -- collected explicitly below.
   - Several of this project's own tool modules (office/docx, office/pdf,
-    spreadsheets.py/presentations.py) deliberately lazy-import their
+    office/xlsx/presentations.py) deliberately lazy-import their
     heavy libraries *inside function bodies*, not at module level (see
     those modules' own docstrings -- a real startup-time fix, this
     session). PyInstaller's static analysis walks module-level imports;
@@ -92,7 +92,7 @@ for pkg in (
 
 # This project's own tool modules deliberately lazy-import these inside
 # function bodies (a real startup-time fix, not an oversight -- see
-# tools/office/docx's, tools/spreadsheets.py's, and
+# tools/office/docx's, tools/office/xlsx/'s, and
 # tools/presentations.py's own docstrings) -- PyInstaller's static
 # analysis walks module-level imports and can miss a function-local one,
 # so every one of these needs to be collected explicitly, the same as
