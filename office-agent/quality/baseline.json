@@ -186,7 +186,7 @@
   "src/coscribe/conversation/session.py": 3741,
   "src/coscribe/coordinator.py": 975,
   "src/coscribe/runtime_lg/subagents.py": 838,
-  "src/coscribe/tools/documents.py": 1938,
+  "src/coscribe/tools/documents.py": 1928,
   "src/coscribe/tools/presentations.py": 7092,
   "src/coscribe/tools/scheduled_tasks.py": 1054,
   "src/coscribe/tools/spreadsheets.py": 1439,
