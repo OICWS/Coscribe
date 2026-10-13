@@ -4,7 +4,15 @@ from .conversations import MessagingStore, build_conversation_tools
 from .convert import build_convert_tools
 from .files import build_file_tools
 from .images import build_image_tools
-from .interaction import QUESTION_TOOL_NAMES, build_interaction_tools
+from .interaction import (
+    PLAN_CHOICE_AUTO,
+    PLAN_CHOICE_MANUAL,
+    PLAN_CHOICE_REVISE,
+    QUESTION_TOOL_NAMES,
+    build_interaction_tools,
+    format_question_answers,
+    normalize_questions,
+)
 from .mcp import load_mcp_server_configs
 from .memory import format_memory_section, load_memory
 from .node_scripts import build_node_script_tools
@@ -18,11 +26,13 @@ from .pptx_templates import (
 )
 from .presentations import build_presentation_tools
 from .scheduled_tasks import (
+    TASK_DRAFT_TOOL_NAMES,
     ScheduledTrigger,
     ScheduledTriggerStore,
     ScheduleRule,
     build_scheduled_task_tools,
     compute_next_run_at,
+    edit_draft,
     parse_run_thread_id,
 )
 from .scripts import build_script_tools
@@ -51,6 +61,9 @@ from .websearch import build_websearch_tools
 __all__ = [
     "BackgroundTask",
     "BackgroundTaskStore",
+    "PLAN_CHOICE_AUTO",
+    "PLAN_CHOICE_MANUAL",
+    "PLAN_CHOICE_REVISE",
     "QUESTION_TOOL_NAMES",
     "ScheduleRule",
     "ScheduledTrigger",
@@ -60,6 +73,7 @@ __all__ = [
     "SkillInfo",
     "SkillUploadError",
     "SubAgentTask",
+    "TASK_DRAFT_TOOL_NAMES",
     "SubAgentTaskStore",
     "TemplateInfo",
     "WakeRequest",
@@ -84,6 +98,9 @@ __all__ = [
     "build_task_tools",
     "build_browser_tools",
     "build_websearch_tools",
+    "edit_draft",
+    "format_question_answers",
+    "normalize_questions",
     "compute_next_run_at",
     "parse_run_thread_id",
     "format_memory_section",

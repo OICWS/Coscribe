@@ -42,7 +42,7 @@ class SilentSocket:
     thread.
 
     `can_resolve_approvals = False` is the actual mechanism behind that
-    last sentence -- conversation/session.py's `_can_resolve_approvals()` checks
+    last sentence -- conversation/session.py's `can_resolve_approvals()` checks
     for this attribute (duck-typed, not an isinstance check, since
     session.py can't import this module back without a circular import)
     and skips calling `_resolve_pending_approvals` entirely when it's
