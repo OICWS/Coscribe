@@ -39,7 +39,10 @@ Last reviewed: 2026-10-11.
       the workbook embedded with a chart and blanks its build time); the master, layouts and theme
       are kept once in a shared golden. Next: templates and SmartArt edits, then audio and CJK
       text; then docx and xlsx the same way.
-   Then approval tests, and only after them the large splits (roadmap in the assessment).
+   10. Approval decision table (issue #103): part 1, the precedence of the standing approvals,
+       plan mode, the exec policy and asking, is in `tests/test_approval_decisions.py`. Next:
+       Auto mode's reviewer, the code module's allowances, the question and draft tools.
+   Then the large splits (roadmap in the assessment).
 
 1. **Make the repository easy to join** (governance review, 2026-10-08).
    - Done: `main` protected by a ruleset (PR only, squash, `test` required),
