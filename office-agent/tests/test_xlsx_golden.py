@@ -66,7 +66,7 @@ def _multi_sheet_with_formulas(tools: Tools) -> None:
         path=FILE,
         content="| Item | Value |\n| --- | --- |\n| Total Q1 | =SUM(Sales!B2:B4) |\n"
         "| Growth | =(SUM(Sales!C2:C4)-SUM(Sales!B2:B4))/SUM(Sales!B2:B4) |\n"
-        "| South manager | =INDEX(Managers!B2:B4,MATCH(\"South\",Managers!A2:A4,0)) |\n"
+        '| South manager | =INDEX(Managers!B2:B4,MATCH("South",Managers!A2:A4,0)) |\n'
         "| Today | =TODAY() |",
         sheet_name="Summary",
     )
@@ -99,11 +99,172 @@ def _merged_and_unmerged(tools: Tools) -> None:
     tools["unmerge_xlsx_cells"](path=FILE, sheet_name="Report", cell_range="A3:A4")
 
 
+def _number_formats_and_fonts(tools: Tools) -> None:
+    tools["write_xlsx"](
+        path=FILE,
+        content="| Item | Price | Margin | Delta |\n| --- | --- | --- | --- |\n"
+        "| Widget | 1250 | 0.15 | -300 |\n| Gadget | 980.5 | 0.075 | 0 |\n"
+        "| Total | =SUM(B2:B3) | =AVERAGE(C2:C3) | =SUM(D2:D3) |",
+        sheet_name="Pricing",
+    )
+    tools["format_xlsx_cells"](
+        path=FILE, sheet_name="Pricing", cell_range="A1:D1", bold=True, font_color="FFFFFF"
+    )
+    tools["format_xlsx_cells"](
+        path=FILE, sheet_name="Pricing", cell_range="B2:B4", number_format="$#,##0"
+    )
+    tools["format_xlsx_cells"](
+        path=FILE,
+        sheet_name="Pricing",
+        cell_range="C2:C4",
+        number_format="0.0%",
+        font_color="0000FF",
+    )
+    tools["format_xlsx_cells"](
+        path=FILE,
+        sheet_name="Pricing",
+        cell_range="D2:D4",
+        number_format="$#,##0;($#,##0);-",
+        font_color="FF0000",
+        bold=True,
+    )
+
+
+_SCORES = (
+    "| Name | Score | Hours |\n| --- | --- | --- |\n| Ana | 91 | 12 |\n| Ben | 47 | 30 |\n"
+    "| Chen | 68 | 18 |\n| Dara | 83 | 22 |"
+)
+
+
+def _conditional_formats(tools: Tools) -> None:
+    tools["write_xlsx"](path=FILE, content=_SCORES, sheet_name="Scores")
+    tools["add_xlsx_conditional_format"](
+        path=FILE,
+        sheet_name="Scores",
+        cell_range="B2:B5",
+        rule_type="cell_is",
+        operator="<",
+        formula="50",
+        fill_color="FFC7CE",
+    )
+    tools["add_xlsx_conditional_format"](
+        path=FILE,
+        sheet_name="Scores",
+        cell_range="B2:B5",
+        rule_type="cell_is",
+        operator="between",
+        formula="80,100",
+        fill_color="C6EFCE",
+    )
+    tools["add_xlsx_conditional_format"](
+        path=FILE,
+        sheet_name="Scores",
+        cell_range="C2:C5",
+        rule_type="color_scale",
+        min_color="FFFFFF",
+        mid_color="FFEB84",
+        max_color="F8696B",
+    )
+    tools["add_xlsx_conditional_format"](
+        path=FILE,
+        sheet_name="Scores",
+        cell_range="A2:A5",
+        rule_type="data_bar",
+        fill_color="638EC6",
+    )
+
+
+def _data_validation(tools: Tools) -> None:
+    tools["write_xlsx"](
+        path=FILE,
+        content="| Task | Status | Priority | Hours |\n| --- | --- | --- | --- |\n"
+        "| Draft | Open | 1 | 4.5 |\n| Review | Done | 3 | 2 |",
+        sheet_name="Tasks",
+    )
+    tools["write_xlsx"](
+        path=FILE,
+        content="| Status |\n| --- |\n| Open |\n| Done |\n| Blocked |",
+        sheet_name="Lists",
+    )
+    tools["set_xlsx_data_validation"](
+        path=FILE,
+        sheet_name="Tasks",
+        cell_range="B2:B20",
+        validation_type="list",
+        formula1="Open,Done,Blocked",
+        error_message="Pick a status from the list",
+        error_title="Invalid status",
+    )
+    tools["set_xlsx_data_validation"](
+        path=FILE,
+        sheet_name="Tasks",
+        cell_range="C2:C20",
+        validation_type="whole",
+        formula1="1",
+        formula2="5",
+        error_message="Priority is 1 to 5",
+    )
+    tools["set_xlsx_data_validation"](
+        path=FILE,
+        sheet_name="Tasks",
+        cell_range="D2:D20",
+        validation_type="decimal",
+        operator="greaterThanOrEqual",
+        formula1="0",
+        allow_blank=False,
+    )
+    tools["set_xlsx_data_validation"](
+        path=FILE,
+        sheet_name="Tasks",
+        cell_range="B21:B30",
+        validation_type="list",
+        formula1="Lists!$A$2:$A$4",
+    )
+
+
+def _chart(chart_type: str, content: str, **kwargs: str) -> Callable[[Tools], None]:
+    def build(tools: Tools) -> None:
+        tools["write_xlsx"](path=FILE, content=content, sheet_name="Data")
+        tools["add_xlsx_chart"](
+            path=FILE, sheet_name="Data", chart_type=chart_type, title="Results", **kwargs
+        )
+
+    return build
+
+
+_ONE_SERIES = "| Quarter | Revenue |\n| --- | --- |\n| Q1 | 100 |\n| Q2 | 120 |\n| Q3 | 90 |"
+_THREE_SERIES = (
+    "| Quarter | North | South | West |\n| --- | --- | --- | --- |\n"
+    "| Q1 | 10 | 8 | 5 |\n| Q2 | 12 | 9 | 7 |\n| Q3 | 9 | 11 | 6 |"
+)
+
+
+def _edit_cells_keeps_structure(tools: Tools) -> None:
+    _merged_and_unmerged(tools)
+    tools["format_xlsx_cells"](
+        path=FILE, sheet_name="Report", cell_range="B3:D4", number_format="0.00", bold=True
+    )
+    tools["freeze_xlsx_panes"](path=FILE, sheet_name="Report", cell="A3")
+    tools["edit_xlsx_cells"](
+        path=FILE, sheet_name="Report", start_cell="B3", content="| 10 | 20 |\n| 40 | =B4*2 |"
+    )
+    tools["edit_xlsx_cells"](
+        path=FILE, sheet_name="Report", start_cell="A1", content="| Q4 report |"
+    )
+
+
 BOOKS: dict[str, Callable[[Tools], None]] = {
+    "chart_bar": _chart("bar", _ONE_SERIES),
+    "chart_line_three_series": _chart("line", _THREE_SERIES, anchor="G2"),
+    "chart_pie_subset": _chart("pie", _THREE_SERIES, data_range="A1:B4"),
     "column_widths": _column_widths,
+    "conditional_formats": _conditional_formats,
+    "data_validation": _data_validation,
+    "edit_cells_keeps_structure": _edit_cells_keeps_structure,
     "frozen_panes": _frozen_panes,
     "merged_and_unmerged": _merged_and_unmerged,
     "multi_sheet_with_formulas": _multi_sheet_with_formulas,
+    "number_formats_and_fonts": _number_formats_and_fonts,
     "plain": _plain,
 }
 
