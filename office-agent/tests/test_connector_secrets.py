@@ -13,6 +13,7 @@ import pytest
 
 from coscribe.runtime import secrets
 from coscribe.runtime.secret_store import SecretError, SecretStore
+from coscribe.runtime_lg import mcp as lg_mcp
 from coscribe.tools.mcp import (
     load_mcp_server_configs,
     prepare_for_connect,
@@ -160,7 +161,7 @@ def test_through_the_api_the_value_is_never_stored_shown_or_deleted_while_in_use
         return [], None, None
 
     with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
-        monkeypatch.setattr("coscribe.runtime_lg.mcp.connect_one_mcp_server_lg", recording_connect)
+        monkeypatch.setattr(lg_mcp, "connect_one_mcp_server_lg", recording_connect)
         client.put("/api/secrets/SVC_KEY", json={"value": KEY, "hosts": ["mcp.example.com"]})
         wrong_host = client.post(
             "/api/mcp/servers",
