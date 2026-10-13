@@ -64,12 +64,51 @@ class XlsxExpect:
 
 
 @dataclass(frozen=True)
+class DocxExpect:
+    """What a document must hold.
+
+    `facts`, `absent`, `allowed_numbers`: as for a deck, over the text a reader sees once
+    tracked changes are accepted. `pages`: `[min, max]`, optional.
+    `headings`: `{"text", "level"?}`, found in this order among the document's headings (a
+    paragraph in a Title or Heading style; Title is level 0), other headings allowed between.
+    `toc`: a real table-of-contents field is there.
+    `tables`: `{"rows_min", "cols_min", "header"?}`, each satisfied by a different table.
+    `images_min`; `image_fit`: no picture wider than the text area.
+    `captions`: `{"style", "starts_with", "below_image"?}`.
+    `tracked`: `{"min_ins", "min_del", "rejected_equals_original"}`: the edit is a redline, and
+    rejecting all of it gives the input back.
+    `original` with `styles` / `header_has` / `footer_has` / `style_uses`: the user's template or
+    document: its styles are still defined, its header and footer text are still there, and
+    paragraphs use the named styles at least that often. `keep_styles`: every style the original
+    used is still used.
+    """
+
+    facts: list[list[str]]
+    absent: list[str] = field(default_factory=list)
+    allowed_numbers: list[str] = field(default_factory=list)
+    pages: list[int] | None = None
+    headings: list[dict[str, object]] = field(default_factory=list)
+    toc: bool = False
+    tables: list[dict[str, object]] = field(default_factory=list)
+    images_min: int = 0
+    image_fit: bool = False
+    captions: list[dict[str, object]] = field(default_factory=list)
+    tracked: dict[str, object] | None = None
+    original: str | None = None
+    styles: list[str] = field(default_factory=list)
+    header_has: list[str] = field(default_factory=list)
+    footer_has: list[str] = field(default_factory=list)
+    style_uses: dict[str, int] = field(default_factory=dict)
+    keep_styles: bool = False
+
+
+@dataclass(frozen=True)
 class Task:
     name: str
     directory: Path
     brief: str
     inputs: list[Path]
-    expect: Expect | XlsxExpect
+    expect: Expect | XlsxExpect | DocxExpect
     kind: str = "pptx"
 
     def source_texts(self) -> list[str]:
@@ -214,6 +253,58 @@ def _parse_xlsx_expect(raw: dict[str, object], where: Path) -> XlsxExpect:
     )
 
 
+def _parse_docx_expect(raw: dict[str, object], where: Path) -> DocxExpect:
+    facts = _facts(raw, where, required=False)
+    headings = _list_of(raw, "headings", dict, where)
+    tables = _list_of(raw, "tables", dict, where)
+    captions = _list_of(raw, "captions", dict, where)
+    for spec in headings:
+        if not spec.get("text"):
+            raise ValueError(f'{where}: a heading check needs "text": {spec}')
+    for spec in tables:
+        if not (spec.get("rows_min") and spec.get("cols_min")):
+            raise ValueError(f'{where}: a table check needs "rows_min" and "cols_min": {spec}')
+    for spec in captions:
+        if not (spec.get("style") and spec.get("starts_with")):
+            raise ValueError(f'{where}: a caption check needs "style" and "starts_with": {spec}')
+    pages = raw.get("pages")
+    if pages is not None and not (
+        isinstance(pages, list) and len(pages) == 2 and 0 < pages[0] <= pages[1]
+    ):
+        raise ValueError(f'{where}: "pages" must be [min, max] with 0 < min <= max')
+    tracked = raw.get("tracked")
+    if tracked is not None and not isinstance(tracked, dict):
+        raise ValueError(f'{where}: "tracked" must be an object')
+    style_uses = raw.get("style_uses", {})
+    if not isinstance(style_uses, dict) or not all(isinstance(v, int) for v in style_uses.values()):
+        raise ValueError(f'{where}: "style_uses" must map a style name to a count')
+    original = raw.get("original")
+    template_keys = ("styles", "header_has", "footer_has", "style_uses", "keep_styles")
+    if any(raw.get(key) for key in template_keys) and not original:
+        raise ValueError(f'{where}: {", ".join(template_keys)} need "original"')
+    if not (facts or headings or tables or tracked or raw.get("images_min")):
+        raise ValueError(f"{where}: expects nothing: give facts, headings, tables or similar")
+    return DocxExpect(
+        facts=facts,
+        absent=_list_of(raw, "absent", str, where),
+        allowed_numbers=_list_of(raw, "allowed_numbers", str, where),
+        pages=[int(pages[0]), int(pages[1])] if pages else None,
+        headings=headings,
+        toc=bool(raw.get("toc", False)),
+        tables=tables,
+        images_min=int(raw.get("images_min", 0)),  # type: ignore[call-overload]
+        image_fit=bool(raw.get("image_fit", False)),
+        captions=captions,
+        tracked=tracked,
+        original=str(original) if original else None,
+        styles=_list_of(raw, "styles", str, where),
+        header_has=_list_of(raw, "header_has", str, where),
+        footer_has=_list_of(raw, "footer_has", str, where),
+        style_uses=style_uses,
+        keep_styles=bool(raw.get("keep_styles", False)),
+    )
+
+
 def load_task(directory: Path, kind: str = "pptx") -> Task:
     brief_path = directory / "brief.md"
     expect_path = directory / "expect.json"
@@ -225,9 +316,8 @@ def load_task(directory: Path, kind: str = "pptx") -> Task:
     inputs_dir = directory / "inputs"
     inputs = sorted(p for p in inputs_dir.rglob("*") if p.is_file()) if inputs_dir.is_dir() else []
     raw = json.loads(expect_path.read_text(encoding="utf-8"))
-    expect = (
-        _parse_xlsx_expect(raw, expect_path) if kind == "xlsx" else _parse_expect(raw, expect_path)
-    )
+    parse = {"xlsx": _parse_xlsx_expect, "docx": _parse_docx_expect}.get(kind, _parse_expect)
+    expect = parse(raw, expect_path)
     if getattr(expect, "original", None) and expect.original not in {p.name for p in inputs}:  # type: ignore[union-attr]
         raise ValueError(f"{expect_path}: original {expect.original!r} is not among the inputs")  # type: ignore[union-attr]
     return Task(

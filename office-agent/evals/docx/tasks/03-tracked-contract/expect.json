@@ -1,0 +1,35 @@
+{
+ "facts": [
+  [
+   "2,650"
+  ],
+  [
+   "45 days"
+  ],
+  [
+   "England and Wales"
+  ],
+  [
+   "Governing law"
+  ]
+ ],
+ "absent": [
+  "2,400",
+  "within 30 days"
+ ],
+ "original": "service_agreement.docx",
+ "keep_styles": true,
+ "tracked": {
+  "min_ins": 2,
+  "min_del": 2,
+  "rejected_equals_original": true
+ },
+ "headings": [
+  {
+   "text": "Termination"
+  },
+  {
+   "text": "Governing law"
+  }
+ ]
+}

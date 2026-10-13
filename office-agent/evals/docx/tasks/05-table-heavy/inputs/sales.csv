@@ -1,0 +1,17 @@
+Region,Quarter,Product,Units,Revenue
+North,Q1,Alpha,120,14400
+North,Q2,Alpha,150,18000
+North,Q3,Beta,90,13500
+North,Q4,Beta,110,16500
+South,Q1,Alpha,200,24000
+South,Q2,Gamma,80,16000
+South,Q3,Gamma,95,19000
+South,Q4,Alpha,210,25200
+East,Q1,Beta,60,9000
+East,Q2,Beta,70,10500
+East,Q3,Alpha,130,15600
+East,Q4,Gamma,100,20000
+West,Q1,Gamma,40,8000
+West,Q2,Alpha,90,10800
+West,Q3,Beta,85,12750
+West,Q4,Beta,95,14250

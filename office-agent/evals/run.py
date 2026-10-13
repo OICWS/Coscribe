@@ -4,6 +4,7 @@
     python -m evals.run --tasks 01,03 --out evals/runs/try
     python -m evals.run --check-only --out evals/runs/baseline    # re-check, no model calls
     python -m evals.run --kind xlsx --out evals/runs/excel        # the Excel tasks
+    python -m evals.run --kind docx --out evals/runs/word         # the Word tasks
 
 Each task gets a fresh workspace holding its input files; its brief is sent as one user
 message to a `ChatSessionLG` that acts without asking (the tier of a scheduled run), the
@@ -28,6 +29,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .docx_checks import check_document
 from .pptx_checks import check_deck
 from .prices import cost
 from .tasks import Task, discover
@@ -39,8 +41,8 @@ DEFAULT_TIMEOUT = 1800.0
 DEEPSEEK_URL = "https://api.deepseek.com/v1"
 ROUTES = {"current": "coscribe's coordinator agent as it ships"}
 # What a task of each kind produces and how it is checked.
-SUFFIXES = {"pptx": ".pptx", "xlsx": ".xlsx"}
-CHECKERS = {"pptx": check_deck, "xlsx": check_workbook}
+SUFFIXES = {"pptx": ".pptx", "xlsx": ".xlsx", "docx": ".docx"}
+CHECKERS = {"pptx": check_deck, "xlsx": check_workbook, "docx": check_document}
 _ANSWER = "Decide it yourself, I am not available; continue with the task."
 
 
@@ -301,6 +303,19 @@ def _kind_columns(kind: str, report: dict[str, Any]) -> dict[str, Any]:
             "validations": _ok(report, "validations"),
             "legible": _ok(report, "legibility"),
         }
+    if kind == "docx":
+        return {
+            "pages": (report.get("pages") or {}).get("count"),
+            "pages_ok": _ok(report, "pages"),
+            "headings": _ok(report, "headings"),
+            "toc": _ok(report, "toc"),
+            "tables": _ok(report, "tables"),
+            "images": _ok(report, "images"),
+            "captions": _ok(report, "captions"),
+            "tracked": _ok(report, "tracked"),
+            "template": _ok(report, "template"),
+            "markdown": _ok(report, "markdown"),
+        }
     layout = report.get("layout") or {}
     return {
         "pages": (report.get("pages") or {}).get("count"),
@@ -331,6 +346,19 @@ SUMMARY_COLUMNS = {
         "charts",
         "validations",
         "legible",
+        "inventions",
+    ],
+    "docx": [
+        "facts",
+        "pages",
+        "headings",
+        "toc",
+        "tables",
+        "images",
+        "captions",
+        "tracked",
+        "template",
+        "markdown",
         "inventions",
     ],
 }

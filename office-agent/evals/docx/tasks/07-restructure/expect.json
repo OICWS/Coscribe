@@ -1,0 +1,66 @@
+{
+ "facts": [
+  [
+   "new starters get a laptop"
+  ],
+  [
+   "buddy"
+  ],
+  [
+   "core hours"
+  ],
+  [
+   "duty manager within one hour"
+  ],
+  [
+   "fire exits"
+  ],
+  [
+   "30 days"
+  ],
+  [
+   "over 25 GBP"
+  ],
+  [
+   "ext. 305"
+  ],
+  [
+   "two days a week"
+  ],
+  [
+   "20 GBP"
+  ]
+ ],
+ "original": "handbook.docx",
+ "keep_styles": true,
+ "style_uses": {
+  "List Bullet": 10
+ },
+ "toc": true,
+ "headings": [
+  {
+   "text": "Safety"
+  },
+  {
+   "text": "Onboarding"
+  },
+  {
+   "text": "Working hours"
+  },
+  {
+   "text": "Remote work"
+  },
+  {
+   "text": "Expenses"
+  },
+  {
+   "text": "Contacts"
+  }
+ ],
+ "tables": [
+  {
+   "rows_min": 3,
+   "cols_min": 2
+  }
+ ]
+}

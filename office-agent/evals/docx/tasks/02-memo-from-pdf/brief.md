@@ -1,0 +1,1 @@
+Read northline_quote.pdf and write a one-page memo to Dana (Operations) about it, as a Word document. It needs To, From, Date and Subject lines at the top, then the total, what is included, the payment terms, what is excluded, the earliest start date and the deadline to accept. Use only what the quote says.

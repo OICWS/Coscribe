@@ -1,0 +1,70 @@
+{
+ "facts": [
+  [
+   "30 June 2026"
+  ],
+  [
+   "184,000"
+  ],
+  [
+   "200,000"
+  ],
+  [
+   "19 June"
+  ],
+  [
+   "22 June"
+  ],
+  [
+   "3.2 m"
+  ],
+  [
+   "1,800"
+  ],
+  [
+   "4,200"
+  ],
+  [
+   "6,500"
+  ],
+  [
+   "310"
+  ],
+  [
+   "10 April"
+  ],
+  [
+   "mezzanine"
+  ],
+  [
+   "Wakefield"
+  ]
+ ],
+ "headings": [
+  {
+   "text": "Summary"
+  },
+  {
+   "text": "Costs"
+  },
+  {
+   "text": "Schedule"
+  },
+  {
+   "text": "Risks"
+  },
+  {
+   "text": "Next steps"
+  }
+ ],
+ "tables": [
+  {
+   "rows_min": 4,
+   "cols_min": 2
+  }
+ ],
+ "pages": [
+  1,
+  3
+ ]
+}
