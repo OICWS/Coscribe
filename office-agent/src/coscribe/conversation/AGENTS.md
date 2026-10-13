@@ -13,7 +13,8 @@ coordinator's tools and prompt (`coordinator.py`).
 
 ## Public interface
 `ChatSessionLG`, `ThreadMetaStore`, `OPENABLE_EXTENSIONS`, `open_in_os`. `wire` is imported as a
-module (`from coscribe.conversation import wire`) by tests and `scripts/gen_wire_ts.py`. Tests
+module (`from coscribe.conversation import wire`) by tests and `scripts/gen_wire_ts.py`; that
+import loads the package's `__init__`, so the whole session comes with it. Tests
 still reach into `session` for private helpers and to patch it; do not copy that into `src`.
 
 ## Depends on
