@@ -25,6 +25,7 @@ from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResu
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
 from coscribe.config import Settings
+from coscribe.conversation import session as conversation_session
 from coscribe.conversation.session import ChatSessionLG
 from coscribe.runtime_lg.scheduled_tasks import (
     _run_in_session,
@@ -32,6 +33,7 @@ from coscribe.runtime_lg.scheduled_tasks import (
     poll_due_scheduled_tasks,
     reconcile_interrupted_runs,
 )
+from coscribe.tools import scripts
 from coscribe.tools.scheduled_tasks import (
     ScheduledRun,
     ScheduledTrigger,
@@ -102,7 +104,8 @@ async def _make_get_session(
     settings: Settings, checkpointer: Any, fake_model: FakeToolCallingChatModel, monkeypatch: Any
 ) -> Any:
     monkeypatch.setattr(
-        "coscribe.conversation.session.resolve_chat_model",
+        conversation_session,
+        "resolve_chat_model",
         lambda *a, **k: fake_model,
     )
 
@@ -521,7 +524,8 @@ async def test_approval_mode_auto_is_restored_after_the_run(
     checkpoint_path = tmp_path / "checkpoints.sqlite"
     async with AsyncSqliteSaver.from_conn_string(str(checkpoint_path)) as checkpointer:
         monkeypatch.setattr(
-            "coscribe.conversation.session.resolve_chat_model",
+            conversation_session,
+            "resolve_chat_model",
             lambda *a, **k: fake_model,
         )
         session = ChatSessionLG(
@@ -550,10 +554,8 @@ def _stub_script_env(monkeypatch: pytest.MonkeyPatch) -> None:
     the dedicated script venv."""
     import sys
 
-    monkeypatch.setattr(
-        "coscribe.tools.scripts.ensure_script_env", lambda state_dir: Path(sys.executable).parent
-    )
-    monkeypatch.setattr("coscribe.tools.scripts.venv_python", lambda venv_dir: Path(sys.executable))
+    monkeypatch.setattr(scripts, "ensure_script_env", lambda state_dir: Path(sys.executable).parent)
+    monkeypatch.setattr(scripts, "venv_python", lambda venv_dir: Path(sys.executable))
 
 
 def _script_call(call_id: str, script: str) -> Any:

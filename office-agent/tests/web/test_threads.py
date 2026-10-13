@@ -27,7 +27,10 @@ from pptx import Presentation
 from pptx.util import Inches
 
 from coscribe.conversation.thread_meta import ThreadMetaStore
+from coscribe.tools.documents import DocumentToolkit
 from coscribe.tools.presentations import PresentationToolkit
+from coscribe.web.routes import files as files_routes
+from coscribe.web.routes import threads as threads_routes
 
 from .helpers import (
     FakeToolCallingChatModel,
@@ -519,7 +522,7 @@ def test_stop_mid_tool_closes_the_orphaned_tool_call_instead_of_breaking_the_thr
         release.wait(timeout=10)
         return []
 
-    monkeypatch.setattr("coscribe.tools.documents.DocumentToolkit.search_pdf", slow_search_pdf)
+    monkeypatch.setattr(DocumentToolkit, "search_pdf", slow_search_pdf)
     call = ToolCall(name="search_pdf", args={"query": "Error code"}, id="call_1")
     fake_model = FakeToolCallingChatModel(
         responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="hi")]
@@ -956,7 +959,7 @@ def test_upload_sanitizes_path_traversal_attempt_in_filename(
 
 
 def test_upload_rejects_oversized_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("coscribe.web.routes.files.MAX_UPLOAD_BYTES", 10)
+    monkeypatch.setattr(files_routes, "MAX_UPLOAD_BYTES", 10)
     fake_model = FakeToolCallingChatModel(responses=[])
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
         response = client.post(
@@ -1937,7 +1940,8 @@ def test_opening_a_thread_file_only_hands_documents_to_the_os_lg(
 ) -> None:
     opened: list[tuple[str, bool]] = []
     monkeypatch.setattr(
-        "coscribe.web.routes.threads.open_in_os",
+        threads_routes,
+        "open_in_os",
         lambda path, *, reveal: opened.append((path.name, reveal)),
     )
     workspace = tmp_path / "workspace"

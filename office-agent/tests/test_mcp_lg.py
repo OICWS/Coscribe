@@ -27,6 +27,7 @@ pytest.importorskip("langgraph", reason="needs the langgraph_spike extra install
 from langchain_core.tools import StructuredTool
 
 from coscribe.runtime.types import get_tool_metadata
+from coscribe.runtime_lg import mcp as lg_mcp
 from coscribe.runtime_lg.mcp import (
     McpServerConnection,
     _collapse_non_nullable_anyof,
@@ -93,8 +94,8 @@ async def _fake_load_mcp_tools(
 
 
 def _patch_mcp(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("coscribe.runtime_lg.mcp.MultiServerMCPClient", _FakeMultiServerMCPClient)
-    monkeypatch.setattr("coscribe.runtime_lg.mcp.load_mcp_tools", _fake_load_mcp_tools)
+    monkeypatch.setattr(lg_mcp, "MultiServerMCPClient", _FakeMultiServerMCPClient)
+    monkeypatch.setattr(lg_mcp, "load_mcp_tools", _fake_load_mcp_tools)
 
 
 async def test_connect_mcp_tools_lg_tags_tools_and_prefixes_names(
@@ -238,14 +239,15 @@ def test_to_lg_connection_stdio_resolves_command_via_shutil_which(
     (which does PATHEXT-aware resolution) before handing the command to
     MultiServerMCPClient fixes it."""
     monkeypatch.setattr(
-        "coscribe.runtime_lg.mcp.shutil.which",
+        lg_mcp.shutil,
+        "which",
         lambda name: "C:\\Program Files\\nodejs\\npx.cmd" if name == "npx" else None,
     )
     # Deterministic regardless of what's actually set in the environment
     # this test happens to run in -- see the dedicated
     # test_to_lg_connection_forwards_corporate_network_env below for the
     # forwarding behavior itself.
-    monkeypatch.setattr("coscribe.runtime_lg.mcp._forwarded_network_env", dict)
+    monkeypatch.setattr(lg_mcp, "_forwarded_network_env", dict)
 
     connection = _to_lg_connection(
         {"command": "npx", "args": ["@scope/pkg"], "env": {"FOO": "bar"}, "cwd": "/tmp"}
@@ -273,7 +275,7 @@ def test_to_lg_connection_forwards_corporate_network_env(
     on a corporate network, not just one. Also confirms an explicit
     per-server env (e.g. Slack's token) still wins over a same-named
     forwarded var."""
-    monkeypatch.setattr("coscribe.runtime_lg.mcp.shutil.which", lambda name: name)
+    monkeypatch.setattr(lg_mcp.shutil, "which", lambda name: name)
     # This sandbox's own outbound HTTPS setup already sets several of
     # these (SSL_CERT_FILE/REQUESTS_CA_BUNDLE/UV_NATIVE_TLS/lowercase
     # https_proxy/no_proxy) -- clear every name this function forwards,
@@ -321,7 +323,7 @@ def test_to_lg_connection_raises_a_clear_error_when_the_command_is_missing(
     system cannot find the file specified` -- correct, but useless to a
     user with no reason to know what that code means. Now raises with the
     install instructions instead."""
-    monkeypatch.setattr("coscribe.runtime_lg.mcp.shutil.which", lambda name: None)
+    monkeypatch.setattr(lg_mcp.shutil, "which", lambda name: None)
 
     with pytest.raises(FileNotFoundError, match="uv"):
         _to_lg_connection({"command": "uvx", "args": []})
@@ -419,9 +421,7 @@ async def test_connect_one_mcp_server_lg_strips_boolean_enums_from_the_real_sche
     ) -> list[StructuredTool]:
         return [tool_with_raw_schema]
 
-    monkeypatch.setattr(
-        "coscribe.runtime_lg.mcp.load_mcp_tools", _fake_load_mcp_tools_with_bad_schema
-    )
+    monkeypatch.setattr(lg_mcp, "load_mcp_tools", _fake_load_mcp_tools_with_bad_schema)
 
     tools, connection, error = await connect_one_mcp_server_lg(
         "github", {"command": "npx", "args": []}
@@ -573,7 +573,7 @@ async def test_a_connector_call_that_hangs_or_fails_comes_back_as_an_error_and_a
             for name, fn in (("hang", hang), ("broken", broken), ("fine", fine), ("blank", blank))
         ]
 
-    monkeypatch.setattr("coscribe.runtime_lg.mcp.load_mcp_tools", load)
+    monkeypatch.setattr(lg_mcp, "load_mcp_tools", load)
     stale: list[str] = []
     connection = McpServerConnection(
         "fs", {"command": "npx", "args": []}, None, 5, stale.append, call_timeout=0.05
