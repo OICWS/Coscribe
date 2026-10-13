@@ -150,7 +150,7 @@ def test_parallel_previews_all_render(tmp_path: Path) -> None:
     from concurrent.futures import ThreadPoolExecutor
 
     from coscribe.tools._thumbnail import render_thumbnail
-    from coscribe.tools.documents import DocumentToolkit
+    from coscribe.tools.office.document_tools import DocumentToolkit
 
     toolkit = DocumentToolkit(tmp_path, state_dir=tmp_path / "state")
     for index in range(4):

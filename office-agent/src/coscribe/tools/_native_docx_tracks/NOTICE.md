@@ -29,7 +29,7 @@ lifecycle machinery -- so those three are extracted into `_constants.py`
 
 The five methods `TracksMixin` calls on `self` (`_require`, `_find_para`,
 `_next_markup_id`, `_make_run`, `_mark`) are coscribe's own small adapter
-(`documents.py`'s `_TrackedDocxHost`), wrapping an already-open
+(`office/docx/_xml.py`'s `_TrackedDocxHost`), wrapping an already-open
 `python-docx` `Document` instead of docx-mcp's unzip/repack lifecycle --
 coscribe already has the document open in memory by the time any of these
 tools run, so there's nothing to unzip. Only `_require` and `_mark` are

@@ -1,6 +1,6 @@
 """Excel (.xlsx) read/write tools, scoped to a single workspace root.
 
-Mirrors ``tools/documents.py``'s docx/pdf tools -- same ``WorkspaceScope``
+Mirrors ``tools/office/document_tools.py``'s docx/pdf tools -- same ``WorkspaceScope``
 sandboxing, same reasoning for being a built-in tool rather than an MCP
 server (``openpyxl`` is just as mature/audited as ``python-docx``/
 ``pdfplumber``, and there's no more authoritative Excel MCP server than the
@@ -8,16 +8,16 @@ personally-maintained niche repos already rejected for Word/PDF -- see
 ``ARCHITECTURE.md``).
 
 Unlike docx/pdf, a workbook is a *grid*, not flowing text, so ``write_xlsx``
-only accepts pipe-table rows (reusing ``documents.py``'s row-parsing
+only accepts pipe-table rows (reusing ``office/markdown_blocks.py``'s row-parsing
 helpers), not the full heading/bullet/paragraph markdown subset. And
 ``overwrite`` here is scoped to *the named sheet*, not the whole file --
 see ``write_xlsx``'s docstring -- since building up a multi-sheet workbook
 across several calls is the one thing that meaningfully differs about
-spreadsheets versus the one-shot documents in ``documents.py``.
+spreadsheets versus the one-shot documents in ``office/docx``.
 
 ``openpyxl`` is imported lazily, inside each method that actually needs
 it, rather than at module level -- same real, measured startup-time
-reasoning as ``documents.py``'s identical change, see that module's
+reasoning as ``office/docx``'s identical change, see that module's
 docstring and runtime_lg/README.md's startup-time section. ``Worksheet``
 is only ever used as a type annotation (never at runtime, thanks to
 ``from __future__ import annotations``), so it's imported under
@@ -107,11 +107,11 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from ..runtime.types import tool_metadata
 from ._file_locks import locked_by_path
-from ._markdown_tables import _is_separator_row, _split_table_row
 from ._office_bins import find_soffice, run_soffice
 from ._output_truncation import cap_read_output
 from ._thumbnail import render_thumbnail
 from ._workspace import WorkspaceScope
+from .office.markdown_blocks import _is_separator_row, _split_table_row
 
 if TYPE_CHECKING:
     from openpyxl.worksheet.worksheet import Worksheet
@@ -479,7 +479,7 @@ class SpreadsheetToolkit:
         """Like `_check_writable`, but requires the file to already exist --
         for tools that edit an existing workbook in place (merge/format/
         validation/etc.) rather than creating one, matching the same
-        write-scoped-and-must-already-exist contract `documents.py`'s
+        write-scoped-and-must-already-exist contract `office/docx`'s
         `_check_editable` uses for its own tracked-edit tools."""
         file_path = self._scope.resolve(path, write=True)
         if not file_path.exists():

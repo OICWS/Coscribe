@@ -1,6 +1,6 @@
 """PowerPoint (.pptx) read/write tools, scoped to a single workspace root.
 
-Mirrors ``tools/documents.py``/``spreadsheets.py`` -- same ``WorkspaceScope``
+Mirrors ``tools/office/document_tools.py``/``spreadsheets.py`` -- same ``WorkspaceScope``
 sandboxing, same shape (a toolkit class + a ``build_*_tools`` factory).
 
 Unlike docx/pdf/xlsx, ``python-pptx`` (the library used here) hasn't had a
@@ -18,14 +18,14 @@ explaining why.
 
 ``content`` is markdown where a line containing exactly ``---`` separates
 slides (the same convention Pandoc/Marp/reveal.js already use), reusing
-``documents.py``'s ``parse_blocks``/``Block`` per slide chunk: the first
+``office/markdown_blocks.py``'s ``parse_blocks``/``Block`` per slide chunk: the first
 heading becomes the slide title, remaining blocks become the body. A slide
 may have a table *or* bullets/paragraphs, not both -- deliberately
 constrained, like ``write_xlsx``'s per-sheet-overwrite rule.
 
 ``pdfplumber``/``pptx`` are imported lazily, inside each function that
 actually needs them, rather than at module level -- same real, measured
-startup-time reasoning as ``documents.py``'s identical change, see that
+startup-time reasoning as ``office/docx``'s identical change, see that
 module's docstring and runtime_lg/README.md's startup-time section.
 ``PresentationType`` is only ever used as a type annotation (never at
 runtime, thanks to ``from __future__ import annotations``), so it's
@@ -97,7 +97,7 @@ from ._output_truncation import cap_read_output
 from ._svg_slide import add_svg_slide
 from ._thumbnail import render_all_page_previews, render_thumbnail
 from ._workspace import WorkspaceScope
-from .documents import Block, parse_blocks, parse_inline_runs
+from .office.markdown_blocks import Block, parse_blocks, parse_inline_runs
 from .pptx_templates import load_builtin_templates as _load_builtin_templates
 from .pptx_templates import load_pptx_templates as _load_pptx_templates
 
@@ -1784,7 +1784,7 @@ def _unmark_mce_ignorable(root_element: Any, prefix: str) -> None:
 
 
 def _add_inline_runs(paragraph: Any, text: str) -> None:
-    """pptx counterpart to ``documents.py``'s ``_add_inline_runs`` -- adds
+    """pptx counterpart to ``office/docx/_xml.py``'s ``_add_inline_runs`` -- adds
     ``text`` as one run per ``parse_inline_runs`` fragment so
     ``**bold**``/``*italic*`` render as real formatting instead of literal
     markup characters."""

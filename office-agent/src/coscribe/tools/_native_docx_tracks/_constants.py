@@ -5,7 +5,7 @@ open `python-docx` document tree by the time these are needed, so it
 doesn't need docx-mcp's own unzip/parse/repack lifecycle. `_find_para`,
 `_next_markup_id`, and `_make_run` are methods in the original (`self.`
 bound) but never actually read `self` -- copied here as plain functions,
-identical logic, and `documents.py`'s host adapter binds them via
+identical logic, and `office/docx/`'s host adapter binds them via
 `staticmethod()`."""
 
 from __future__ import annotations
