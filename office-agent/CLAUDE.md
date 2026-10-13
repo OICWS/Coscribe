@@ -201,11 +201,8 @@ Which model a test run of ours uses: DeepSeek with `reasoning_effort: "low"`
 by default (measured 2026-10-13 on generated decks: judged level with the
 default `high` and up to 35% cheaper; `none` broke pages; most of the cost
 is the model's reasoning output, not cache misses:
-`docs/assessments/2026-10-13-office-route.md`). A run expected to spend many
-tokens goes to Anthropic instead when the environment has `ANTHROPIC_API_KEY`
-(a session's own Claude login is not usable by scripts); it also exercises
-coscribe's Anthropic provider. The Gemini key is free tier: 20 requests a day
-per model and no Pro quota, enough for small checks only.
+`docs/assessments/2026-10-13-office-route.md`). The Gemini key is free tier:
+20 requests a day per model and no Pro quota, enough for small checks only.
 
 Long live runs on DeepSeek (multi-turn tasks, benchmarks, anything over a
 few calls) go off-peak: weekdays 9:00-12:00 and 14:00-18:00 Beijing time
