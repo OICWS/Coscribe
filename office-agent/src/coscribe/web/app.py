@@ -60,7 +60,7 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
 from .. import __version__
 from ..cli import _dotenv_path, _load_settings_or_none
-from ..code_runtime.service import (
+from ..code_runtime import (
     remove_stale_code_sidecars,
     shutdown_code_services,
 )

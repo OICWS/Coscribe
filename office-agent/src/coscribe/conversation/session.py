@@ -66,7 +66,7 @@ from langgraph.graph.message import REMOVE_ALL_MESSAGES
 from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 
-from ..code_runtime.service import code_service
+from ..code_runtime import code_service
 from ..config import Settings
 from ..coordinator import CORE_TOOL_NAMES, build_coordinator_agent, conversation_context
 from ..runtime import (

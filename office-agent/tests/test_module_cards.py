@@ -66,5 +66,5 @@ def test_a_cards_dependencies_are_what_the_package_imports(card: Path) -> None:
         if not imported.startswith(name)
     }
     section = _section(card.read_text(encoding="utf-8"), "Depends on")
-    stated = set(re.findall(r"`(coscribe\.[a-z_]+)`", section))
+    stated = set(re.findall(r"`(coscribe(?:\.[a-z_]+)?)`", section))
     assert stated == actual
