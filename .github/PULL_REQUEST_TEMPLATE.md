@@ -23,7 +23,7 @@
 
 ## Not verified
 
-<!-- What you could not test (a real account, a platform, a vendor flow). Say so plainly, and say if a script could check it on Windows. -->
+<!-- What you could not test (a real account, a real Windows machine, a vendor flow). Say so plainly, and say if a script could check it on Windows. -->
 
 ## Screenshots
 

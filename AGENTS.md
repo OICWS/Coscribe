@@ -5,6 +5,9 @@ PowerPoint, PDF, the web, connectors). One human maintainer and several AI
 sessions (Claude Code, Codex) work on it in parallel, so this file is a map:
 read it, then only the document for the area you are touching.
 
+**Platform:** coscribe is developed and verified on Windows only. Linux is just where CI and
+cloud sessions run; macOS is not developed, so don't build for it or list it as "not verified".
+
 ## Layout
 
 | Path | What lives there |
