@@ -15,6 +15,7 @@ from __future__ import annotations
 import contextlib
 import difflib
 import os
+import re
 import shutil
 from collections.abc import Callable
 from pathlib import Path
@@ -23,7 +24,7 @@ import pytest
 
 from coscribe.tools.presentations import build_presentation_tools
 
-from .pptx_canonical import canonical_text
+from .pptx_canonical import canonical_parts
 
 GOLDEN_DIR = Path(__file__).parent / "golden" / "pptx"
 
@@ -145,12 +146,40 @@ def _no_libreoffice(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("shutil.which", lambda name: None)
 
 
-@pytest.mark.parametrize("name", sorted(DECKS))
-def test_deck_matches_its_golden(
-    name: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    actual = canonical_text(build_deck(name, tmp_path / name))
-    golden = GOLDEN_DIR / f"{name}.txt"
+# The slide master, layouts and theme come from python-pptx's template and are the same in
+# nearly every deck; stored once, they would otherwise be most of every golden. A deck whose
+# copy differs (the theme deck) still shows its own full text, so theme code stays covered.
+SHARED_GOLDEN = GOLDEN_DIR / "_shared.txt"
+_SHARED_PREFIXES = ("ppt/slideMasters/", "ppt/slideLayouts/", "ppt/theme/")
+_SHARED_SOURCE_DECK = "bullets"
+
+
+def _shared_parts(parts: dict[str, str]) -> dict[str, str]:
+    return {name: text for name, text in parts.items() if name.startswith(_SHARED_PREFIXES)}
+
+
+def _render(parts: dict[str, str]) -> str:
+    return "".join(f"===== {name}\n{text}" for name, text in parts.items())
+
+
+def _parse(text: str) -> dict[str, str]:
+    parts: dict[str, str] = {}
+    for chunk in re.split(r"^===== ", text, flags=re.MULTILINE)[1:]:
+        name, _, body = chunk.partition("\n")
+        parts[name] = body
+    return parts
+
+
+def _deck_golden_text(parts: dict[str, str], shared: dict[str, str]) -> str:
+    return _render(
+        {
+            name: "<same as _shared.txt>\n" if shared.get(name) == text else text
+            for name, text in parts.items()
+        }
+    )
+
+
+def _expected_and_diff(golden: Path, actual: str) -> tuple[str, str]:
     if os.environ.get("UPDATE_GOLDENS") == "1":
         golden.parent.mkdir(parents=True, exist_ok=True)
         golden.write_text(actual, encoding="utf-8", newline="\n")
@@ -159,17 +188,51 @@ def test_deck_matches_its_golden(
         difflib.unified_diff(
             expected.splitlines(keepends=True),
             actual.splitlines(keepends=True),
-            f"golden/pptx/{name}.txt",
+            f"golden/pptx/{golden.name}",
             "built now",
             n=2,
         )
     )
-    assert actual == expected, (
-        f"deck {name!r} differs from its golden; if the change is intended, run "
+    return expected, (
+        f"{golden.name} differs from what the tools build; if the change is intended, run "
         f"UPDATE_GOLDENS=1 pytest tests/test_office_golden.py and commit the diff:\n{diff[:4000]}"
     )
 
 
+def _built_shared(tmp_path: Path) -> dict[str, str]:
+    deck = build_deck(_SHARED_SOURCE_DECK, tmp_path / "_shared")
+    return _shared_parts(canonical_parts(deck))
+
+
+def test_shared_golden_matches_the_plain_deck(tmp_path: Path) -> None:
+    actual = _render(_built_shared(tmp_path))
+    expected, message = _expected_and_diff(SHARED_GOLDEN, actual)
+    assert actual == expected, message
+
+
+@pytest.mark.parametrize("name", sorted(DECKS))
+def test_deck_matches_its_golden(name: str, tmp_path: Path) -> None:
+    parts = canonical_parts(build_deck(name, tmp_path / name))
+    # When regenerating, the shared golden may not be written yet (test order is not fixed).
+    shared = (
+        _built_shared(tmp_path)
+        if os.environ.get("UPDATE_GOLDENS") == "1"
+        else _parse(SHARED_GOLDEN.read_text(encoding="utf-8"))
+    )
+    actual = _deck_golden_text(parts, shared)
+    expected, message = _expected_and_diff(GOLDEN_DIR / f"{name}.txt", actual)
+    assert actual == expected, message
+
+
+def test_the_shared_golden_round_trips_through_the_parser() -> None:
+    text = SHARED_GOLDEN.read_text(encoding="utf-8")
+    assert _render(_parse(text)) == text
+
+
 def test_every_golden_belongs_to_a_deck() -> None:
-    stale = sorted(path.stem for path in GOLDEN_DIR.glob("*.txt") if path.stem not in DECKS)
+    stale = sorted(
+        path.stem
+        for path in GOLDEN_DIR.glob("*.txt")
+        if path.stem not in DECKS and path != SHARED_GOLDEN
+    )
     assert stale == [], f"goldens with no deck that builds them: {stale}"
