@@ -5,7 +5,7 @@ import { defineConfig } from "vitest/config";
 // which fail when loaded outside Playwright's runner.
 export default defineConfig({
   test: {
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
     environment: "node",
   },
 });
