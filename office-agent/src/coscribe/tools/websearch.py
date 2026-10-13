@@ -36,8 +36,7 @@ from ddgs import DDGS
 from ddgs.exceptions import DDGSException
 from markdownify import markdownify
 
-from ..runtime.proxy import configured_proxy
-from ..runtime.types import tool_metadata
+from ..runtime import configured_proxy, tool_metadata
 
 # `from ddgs import DDGS` above is actually `ddgs`'s own `_DDGSProxy` (a
 # lazy-loading metaclass-based stand-in, see ddgs/__init__.py) -- calling

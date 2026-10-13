@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from coscribe.runtime.types import get_tool_metadata
+from coscribe.runtime import get_tool_metadata
 from coscribe.tools.tasks import build_task_tools
 
 

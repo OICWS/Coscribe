@@ -19,7 +19,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
 
 from coscribe.conversation import session as conversation_session
-from coscribe.runtime.types import tool_metadata
+from coscribe.runtime import tool_metadata
 from coscribe.runtime_lg.agent import build_langgraph_agent
 from coscribe.runtime_lg.tool_deferral import (
     SEARCH_TOOLS_NAME,

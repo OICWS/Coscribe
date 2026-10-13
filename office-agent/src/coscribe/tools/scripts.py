@@ -38,7 +38,7 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from ..runtime.types import tool_metadata
+from ..runtime import tool_metadata
 from ._files_written import snapshot_workspace, with_files_written
 from ._output_truncation import truncate_script_output
 from .script_env import ensure_script_env, overlay_env, venv_python

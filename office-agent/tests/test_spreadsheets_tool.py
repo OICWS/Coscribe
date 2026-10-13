@@ -419,7 +419,7 @@ def test_recalc_xlsx_on_missing_file_raises(tmp_path: Path) -> None:
 
 
 def test_recalc_xlsx_is_medium_risk_and_requires_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["recalc_xlsx"])
@@ -482,7 +482,7 @@ def test_format_xlsx_cells_rejects_invalid_range(tmp_path: Path) -> None:
 
 
 def test_format_xlsx_cells_is_medium_risk_and_requires_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["format_xlsx_cells"])
@@ -611,7 +611,7 @@ def test_add_xlsx_chart_on_missing_file_raises(tmp_path: Path) -> None:
 
 
 def test_add_xlsx_chart_is_medium_risk_and_requires_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["add_xlsx_chart"])
@@ -916,7 +916,7 @@ def test_edit_xlsx_cells_on_missing_file_raises(tmp_path: Path) -> None:
 
 
 def test_xlsx_gap_filling_tools_are_medium_risk_and_require_approval(tmp_path: Path) -> None:
-    from coscribe.runtime.types import get_tool_metadata
+    from coscribe.runtime import get_tool_metadata
 
     tools = _tools_by_name(tmp_path)
     for name in (

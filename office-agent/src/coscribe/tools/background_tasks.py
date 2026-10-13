@@ -58,7 +58,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from ..runtime.types import tool_metadata
+from ..runtime import tool_metadata
 from .node_env import ensure_node_env
 from .script_env import ensure_script_env, overlay_env, venv_python
 from .script_guard import (

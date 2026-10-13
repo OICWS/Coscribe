@@ -9,13 +9,13 @@ from pathlib import Path
 import keyring.errors
 import pytest
 
-from coscribe.runtime import secrets
-from coscribe.runtime.secret_store import (
+from coscribe.runtime import (
     KeychainUnavailable,
     SecretError,
     SecretStore,
     SessionEnvironments,
     host_allowed,
+    secrets,
 )
 
 

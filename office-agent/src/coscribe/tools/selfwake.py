@@ -42,7 +42,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from ..runtime.types import tool_metadata
+from ..runtime import tool_metadata
 from .background_tasks import BackgroundTaskStore
 
 VALID_KINDS = ("timer", "task", "subagent", "event")

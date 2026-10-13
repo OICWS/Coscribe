@@ -17,7 +17,7 @@ from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any, Literal, cast
 
-from ..runtime.types import get_tool_metadata, tool_metadata
+from ..runtime import get_tool_metadata, tool_metadata
 
 ToolPolicy = Literal["allow", "ask", "block"]
 POLICIES: tuple[ToolPolicy, ...] = ("allow", "ask", "block")

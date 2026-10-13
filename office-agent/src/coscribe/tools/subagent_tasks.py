@@ -22,7 +22,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from ..runtime.types import tool_metadata
+from ..runtime import tool_metadata
 
 VALID_STATUSES = ("running", "needs_approval", "succeeded", "failed", "stopped")
 FINISHED_STATUSES = ("succeeded", "failed", "stopped")

@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from coscribe.runtime.types import get_tool_metadata
+from coscribe.runtime import get_tool_metadata
 from coscribe.tools import websearch
 from coscribe.tools.websearch import build_websearch_tools, web_search
 

@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from langchain_core.tools import StructuredTool
 
-from coscribe.runtime.types import get_tool_metadata, tool_metadata
+from coscribe.runtime import get_tool_metadata, tool_metadata
 from coscribe.tools.connector_permissions import (
     ConnectorPermissions,
     apply_connector_permissions,

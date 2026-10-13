@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from ..config import Settings
-from ..runtime.provider_config import load_custom_providers
+from ..runtime import load_custom_providers
 from ..tools.script_env import ensure_script_env
 from ._pins import CODEX_VERSION
 from .install import codex_executable, ensure_codex, installed, installed_size, remove_codex

@@ -88,7 +88,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
-from ..runtime.types import tool_metadata
+from ..runtime import tool_metadata
 from ._chart_data import CHART_TYPES, parse_chart_table
 from ._file_locks import locked_by_path
 from ._office_bins import find_soffice, run_soffice, soffice_profile

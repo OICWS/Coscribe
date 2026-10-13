@@ -60,7 +60,7 @@ import httpx
 import websockets
 from websockets.asyncio.client import ClientConnection
 
-from ..runtime.proxy import configured_proxy
+from ..runtime import configured_proxy
 from .browser_detect import find_windows_browser
 
 logger = logging.getLogger(__name__)

@@ -27,8 +27,7 @@ from ..code_runtime.install import CodexUnavailable
 from ..code_runtime.launch import codex_model
 from ..code_runtime.service import CodeService
 from ..code_runtime.thread import ApprovalRequest, CodexEvent, CodexThread, shell_script
-from ..runtime.secret_store import redactor
-from ..runtime.types import tool_metadata
+from ..runtime import redactor, tool_metadata
 from ..tools.subagent_tasks import (
     SubAgentTask,
     SubAgentTaskStore,

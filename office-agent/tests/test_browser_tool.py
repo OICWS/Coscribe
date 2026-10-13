@@ -9,7 +9,7 @@ import pytest
 
 from coscribe.config import Settings
 from coscribe.coordinator import build_coordinator_agent
-from coscribe.runtime.types import get_tool_metadata
+from coscribe.runtime import get_tool_metadata
 from coscribe.tools.browser import BrowserHost, BrowserUnavailableError, build_browser_tools
 
 

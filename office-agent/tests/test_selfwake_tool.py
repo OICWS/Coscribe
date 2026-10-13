@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from coscribe.runtime.types import get_tool_metadata
+from coscribe.runtime import get_tool_metadata
 from coscribe.tools import selfwake as selfwake_module
 from coscribe.tools.background_tasks import BackgroundTask, BackgroundTaskStore
 from coscribe.tools.selfwake import SignalStore, WakeStore, build_selfwake_tools
