@@ -266,12 +266,5 @@
   "pragma_no_cover": 2,
   "type_ignore": 43
  },
- "tests_without_a_check": {
-  "tests/test_presentations_tool.py::test_add_pptx_animation_is_schema_valid_for_every_registered_animation": 1,
-  "tests/test_presentations_tool.py::test_add_pptx_audio_two_calls_do_not_crash_on_media_part_reload": 1,
-  "tests/test_presentations_tool.py::test_add_pptx_hyperlink_survives_round_trip": 1,
-  "tests/test_presentations_tool.py::test_edit_pptx_theme_colors_survives_round_trip": 1,
-  "tests/test_presentations_tool.py::test_recolor_pptx_icon_survives_round_trip": 1,
-  "tests/test_presentations_tool.py::test_set_pptx_transition_is_schema_valid_for_every_registered_transition": 1
- }
+ "tests_without_a_check": {}
 }

@@ -2,7 +2,7 @@ import concurrent.futures
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -2304,7 +2304,7 @@ def test_set_pptx_transition_resolves_legacy_aliases(tmp_path: Path) -> None:
     assert effect.get("spokes") == "1"
 
 
-def test_set_pptx_transition_is_schema_valid_for_every_registered_transition(
+def test_set_pptx_transition_writes_the_registered_effect_for_every_transition(
     tmp_path: Path,
 ) -> None:
     """Every single one of the 48 native transitions + 8 aliases actually
@@ -2317,8 +2317,18 @@ def test_set_pptx_transition_is_schema_valid_for_every_registered_transition(
     tools = _tools_by_name(tmp_path)
     tools["write_pptx"](path="deck.pptx", content="# Title\n- body")
 
+    from lxml import etree
+    from pptx import Presentation
+
     for transition in (*_TRANSITION_SPECS, *_TRANSITION_ALIASES):
         tools["set_pptx_transition"](path="deck.pptx", slide=1, transition=transition)
+
+        spec = _TRANSITION_SPECS[_TRANSITION_ALIASES.get(transition, transition)]
+        slide_el = Presentation(tmp_path / "deck.pptx").slides[0].element
+        transitions = slide_el.findall(f"{{{_P_NS}}}transition")
+        assert len(transitions) == 1, transition
+        effects = [etree.QName(child).localname for child in transitions[0]]
+        assert effects == [spec["element"].split(":")[-1]], transition
 
 
 def test_list_pptx_transition_types_matches_the_real_registry(tmp_path: Path) -> None:
@@ -2834,7 +2844,7 @@ def test_add_pptx_animation_survives_libreoffice_conversion(tmp_path: Path) -> N
     assert (tmp_path / "deck.pdf").is_file()
 
 
-def test_add_pptx_animation_is_schema_valid_for_every_registered_animation(
+def test_add_pptx_animation_writes_the_registered_preset_for_every_animation(
     tmp_path: Path,
 ) -> None:
     """Every single one of the 203 vendored presets + 6 legacy aliases
@@ -2843,17 +2853,37 @@ def test_add_pptx_animation_is_schema_valid_for_every_registered_animation(
     add_pptx_animation itself makes) -- not just the few spot-checked
     above. A real, cheap way to catch a bad id-renumbering/spid-retarget/
     duration-scaling edge case across the whole catalog at once, the same
-    role test_set_pptx_transition_is_schema_valid_for_every_registered_
-    transition plays for the 56-entry transition registry."""
-    from coscribe.tools.presentations import _ANIMATIONS
+    role test_set_pptx_transition_writes_the_registered_effect_for_
+    every_transition plays for the 56-entry transition registry."""
+    from pptx import Presentation
+
+    from coscribe.tools.presentations import (
+        _ANIMATION_ALIASES,
+        _ANIMATIONS,
+        _load_animation_presets,
+    )
 
     tools = _tools_by_name(tmp_path)
     tools["write_pptx"](path="deck.pptx", content="# Title\n- body")
 
-    for animation in _ANIMATIONS:
+    def effect_nodes() -> list[Any]:
+        slide_el = Presentation(tmp_path / "deck.pptx").slides[0].element
+        timing = slide_el.find(f"{{{_P_NS}}}timing")
+        assert timing is not None
+        return [cTn for cTn in timing.iter(f"{{{_P_NS}}}cTn") if cTn.get("presetClass")]
+
+    for added, animation in enumerate(sorted(_ANIMATIONS), start=1):
         tools["add_pptx_animation"](
             path="deck.pptx", slide=1, shape_index=0, animation=animation, trigger="with-previous"
         )
+
+        # Aliases share their target's preset, so only the per-call count and the
+        # newest node's preset prove each call wrote its own effect.
+        effects = effect_nodes()
+        assert len(effects) == added, animation
+        preset = _load_animation_presets()[_ANIMATION_ALIASES.get(animation, animation)]
+        assert effects[-1].get("presetID") == str(preset["preset_id"]), animation
+        assert effects[-1].get("presetSubtype") == str(preset["preset_subtype"]), animation
 
 
 def test_list_pptx_animation_types_matches_the_real_registry(tmp_path: Path) -> None:
@@ -3192,7 +3222,7 @@ def test_add_pptx_audio_rejects_missing_file(tmp_path: Path) -> None:
         tools["add_pptx_audio"](path="deck.pptx", slide=1, audio_path="missing.mp3")
 
 
-def test_add_pptx_audio_two_calls_do_not_crash_on_media_part_reload(tmp_path: Path) -> None:
+def test_add_pptx_audio_two_calls_share_one_media_part(tmp_path: Path) -> None:
     """Regression test for a real bug: python-pptx's own `PartFactory`
     ships with no content-type registered for any media part, so
     reopening a .pptx that already has one audio part loads it back as a
@@ -3207,6 +3237,24 @@ def test_add_pptx_audio_two_calls_do_not_crash_on_media_part_reload(tmp_path: Pa
 
     tools["add_pptx_audio"](path="deck.pptx", slide=1, audio_path="narration.wav")
     tools["add_pptx_audio"](path="deck.pptx", slide=2, audio_path="narration.wav")
+
+    import zipfile
+
+    from pptx import Presentation
+
+    audio_tag = "{http://schemas.openxmlformats.org/drawingml/2006/main}audioFile"
+    link_attr = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}link"
+    prs = Presentation(tmp_path / "deck.pptx")
+    targets = set()
+    for slide in prs.slides:
+        audio = slide.element.find(f".//{audio_tag}")
+        assert audio is not None
+        targets.add(slide.part.related_part(audio.get(link_attr)).partname)
+    # One shared part, not a copy per call.
+    assert len(targets) == 1
+    with zipfile.ZipFile(tmp_path / "deck.pptx") as archive:
+        media = [n for n in archive.namelist() if n.startswith("ppt/media/") and n.endswith(".wav")]
+    assert len(media) == 1
 
 
 def test_add_pptx_audio_after_animation_shares_the_existing_timing_tree(
@@ -3379,7 +3427,8 @@ def test_add_pptx_hyperlink_survives_round_trip(tmp_path: Path) -> None:
 
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        Presentation(str(tmp_path / "deck.pptx"))
+        prs = Presentation(str(tmp_path / "deck.pptx"))
+    assert prs.slides[0].shapes[0].click_action.hyperlink.address == "https://example.com"
 
 
 def test_list_pptx_shapes_reports_whole_shape_hyperlink(tmp_path: Path) -> None:
@@ -3788,6 +3837,8 @@ def test_edit_pptx_theme_colors_survives_round_trip(tmp_path: Path) -> None:
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         Presentation(str(tmp_path / "deck.pptx"))
+    colors = cast("dict[str, object]", tools["read_pptx_theme_colors"](path="deck.pptx")["colors"])
+    assert colors["accent1"] == "0F6B5C"
 
 
 def test_edit_pptx_theme_colors_on_real_bundled_template(tmp_path: Path) -> None:
@@ -6593,7 +6644,17 @@ def test_recolor_pptx_icon_survives_round_trip(tmp_path: Path) -> None:
 
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        Presentation(str(tmp_path / "deck.pptx"))
+        prs = Presentation(str(tmp_path / "deck.pptx"))
+
+    from io import BytesIO
+
+    from PIL import Image
+
+    pictures = [shape for shape in prs.slides[0].shapes if shape.shape_type == 13]
+    assert len(pictures) == 1
+    icon = Image.open(BytesIO(pictures[0].image.blob)).convert("RGBA")
+    visible = {rgba[:3] for _, rgba in icon.getcolors(icon.width * icon.height) or [] if rgba[3]}
+    assert visible == {(0xC2, 0x41, 0x0C)}
 
 
 def test_recolor_pptx_icon_rejects_non_picture_shape(tmp_path: Path) -> None:
