@@ -41,7 +41,7 @@ class ConnectorManager:
         # Plain mutable attributes rather than module globals, since the app may be
         # built more than once (e.g. once per test). `tools` does NOT have the
         # guarantee of being filled before the first session opens, deliberately:
-        # see the app's lifespan MCP-connect comment for why a session opened very
+        # see the lifespan's MCP-connect comment in web/app.py for why a session opened very
         # early may briefly see fewer tools than a slow-to-connect MCP server will
         # eventually provide.
         self.tools: list[Any] = []
@@ -89,7 +89,7 @@ class ConnectorManager:
         """Strips `name`'s tools from `tools` so the *next* new
         session doesn't get them; already-open ChatSessionLG instances only
         stop seeing them once their caller also calls
-        refresh_all_sessions_extra_tools() below (every current caller
+        refresh_all_sessions_extra_tools() (every current caller
         does, right after this). Async: also closes and forgets `name`'s
         McpServerConnection, if any -- unlike before the persistent-session
         fix (runtime_lg/mcp.py), there is now a real subprocess to actually
@@ -166,12 +166,12 @@ class ConnectorManager:
         return True, None
 
     async def refresh_all_sessions_extra_tools(self) -> None:
-        """Add/remove/bump_mcp_server only ever update `tools`, which the
-        app's get_session only reads when constructing a *brand-new*
+        """Add/remove/bump_mcp_server only ever update `tools`, which
+        get_session in web/app.py only reads when constructing a *brand-new*
         ChatSessionLG -- a connector enabled mid-conversation would never show
         up in that same, already-open thread, only in threads started
         afterwards. Called once at the end of each of the three
-        connector-mutating endpoints (not from inside
+        connector-mutating endpoints in routes/connectors.py (not from inside
         disconnect_mcp_server_lg/connect_and_register_mcp_server_lg
         themselves, since add/bump call both back to back and would
         otherwise rebuild every open session's graph twice for one

@@ -50,7 +50,7 @@ import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import uvicorn
 from dotenv import dotenv_values, load_dotenv
@@ -115,16 +115,6 @@ from .routes.ws import router as ws_router
 from .setup_app import build_setup_app
 from .state import AppState
 from .thread_files import ThreadFiles
-
-if TYPE_CHECKING:
-    # Real type only needed for a local variable annotation below (never
-    # evaluated at runtime -- `from __future__ import annotations` is in
-    # effect) -- kept out of the real import graph so `import coscribe.
-    # web.app` doesn't drag in langchain_mcp_adapters/mcp for a user with
-    # no MCP servers configured. See connect_mcp_tools_lg/connect_one_mcp_
-    # server_lg below for the same reasoning applied to the functions that
-    # actually need this module at runtime.
-    pass
 
 
 def _oauth_page(message: str) -> str:

@@ -217,7 +217,7 @@ def test_post_mcp_server_reconnect_reports_not_found_for_an_unconfigured_name(
 def test_get_mcp_servers_connected_reflects_a_real_live_connection(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """connected must be a live signal (web/app.py's mcp_connections
+    """connected must be a live signal (ConnectorManager's connections
     registry), not just "is it in mcp.json" -- add one server that stubs a
     successful connect and one that doesn't, and check GET /api/mcp/servers
     tells them apart."""
