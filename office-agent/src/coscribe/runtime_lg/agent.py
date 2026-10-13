@@ -27,7 +27,7 @@ from langchain_core.tools import BaseTool
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.errors import GraphBubbleUp
 
-from ..runtime.types import get_tool_metadata
+from ..runtime import get_tool_metadata
 from .messages import starts_a_turn, steer_message
 from .tool_calls import answer_every_tool_call
 from .tool_deferral import (

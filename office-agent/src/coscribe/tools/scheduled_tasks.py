@@ -40,7 +40,7 @@ from typing import Any, Optional
 
 from pydantic import ValidationError
 
-from ..runtime.types import tool_metadata
+from ..runtime import tool_metadata
 from ..workflows.spec import parse_workflow, workflow_error
 
 VALID_KINDS = ("manual", "once", "hourly", "daily", "weekdays", "weekly", "monthly")

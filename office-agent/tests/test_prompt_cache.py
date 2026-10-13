@@ -24,6 +24,8 @@ from coscribe.runtime_lg.messages import (
     strip_mode_note,
 )
 
+from .wire_check import check_event
+
 
 class _RecordingModel(BaseChatModel):
     responses: list[AIMessage]
@@ -56,6 +58,7 @@ class _RecordingModel(BaseChatModel):
 
 class _Socket:
     async def send_json(self, data: dict[str, Any]) -> None:
+        check_event(data)
         pass
 
 

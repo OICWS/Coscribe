@@ -9,7 +9,7 @@ import pytest
 from docx import Document
 from openpyxl import Workbook, load_workbook
 
-from coscribe.runtime.types import get_tool_metadata
+from coscribe.runtime import get_tool_metadata
 from coscribe.tools import _office_bins, convert
 from coscribe.tools.convert import build_convert_tools
 

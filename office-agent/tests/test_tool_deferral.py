@@ -19,7 +19,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
 
 from coscribe.conversation import session as conversation_session
-from coscribe.runtime.types import tool_metadata
+from coscribe.runtime import tool_metadata
 from coscribe.runtime_lg.agent import build_langgraph_agent
 from coscribe.runtime_lg.tool_deferral import (
     SEARCH_TOOLS_NAME,
@@ -31,6 +31,8 @@ from coscribe.runtime_lg.tool_deferral import (
     show_unbound_calls_as_use_tool,
     unwrap_use_tool_call,
 )
+
+from .wire_check import check_event
 
 
 def read_thing(x: str) -> str:
@@ -467,6 +469,7 @@ def test_keeps_tool_list_fixed_only_for_deepseeks_own_host() -> None:
 
 class _Socket:
     async def send_json(self, data: dict[str, Any]) -> None:
+        check_event(data)
         pass
 
 

@@ -11,8 +11,7 @@ from typing import Any
 import keyring.errors
 import pytest
 
-from coscribe.runtime import secrets
-from coscribe.runtime.secret_store import SecretError, SecretStore
+from coscribe.runtime import SecretError, SecretStore, secrets
 from coscribe.runtime_lg import mcp as lg_mcp
 from coscribe.tools.mcp import (
     load_mcp_server_configs,

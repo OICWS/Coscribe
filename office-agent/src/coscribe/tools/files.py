@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Optional
 
-from ..runtime.types import tool_metadata
+from ..runtime import tool_metadata
 from ._output_truncation import cap_read_output
 from ._workspace import WorkspaceScope
 

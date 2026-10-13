@@ -180,7 +180,7 @@ def test_post_mcp_server_reconnect_retries_a_previously_failed_add(
         async def _fake_connect_succeeds(
             name: str, config: Any, *args: Any, **kwargs: Any
         ) -> tuple[list[Any], Any, None]:
-            from coscribe.runtime.types import tool_metadata
+            from coscribe.runtime import tool_metadata
 
             def _tool(x: str = "") -> str:
                 """fake"""
@@ -229,7 +229,7 @@ def test_get_mcp_servers_connected_reflects_a_real_live_connection(
     async def _fake_connect_returns_a_tool(
         name: str, config: Any, *args: Any, **kwargs: Any
     ) -> tuple[list[Any], Any, None]:
-        from coscribe.runtime.types import tool_metadata
+        from coscribe.runtime import tool_metadata
 
         def _tool(x: str = "") -> str:
             """fake"""
@@ -358,7 +358,7 @@ def test_lifespan_backgrounds_a_slow_mcp_connect_instead_of_blocking_startup(
     opens while the slow connect is still unfinished, and that same session
     picks up the tool once the background connect completes, with no
     reconnect needed."""
-    from coscribe.runtime.types import tool_metadata
+    from coscribe.runtime import tool_metadata
 
     def _fake_tool_fn(x: str = "") -> str:
         """A fake MCP tool for this test."""
@@ -437,7 +437,7 @@ def test_post_mcp_server_splices_tools_into_both_new_and_already_open_sessions(
     session's model actually call the tool and confirms it executes (a
     real BaseTool the compiled graph genuinely knows about), not just that
     /api/mcp/servers reflects it."""
-    from coscribe.runtime.types import tool_metadata
+    from coscribe.runtime import tool_metadata
 
     def _fake_tool_fn(x: str = "") -> str:
         """A fake MCP tool for this test."""
@@ -679,7 +679,7 @@ def test_connector_tool_permissions_change_what_a_conversation_may_do_lg(
 ) -> None:
     from langchain_core.tools import StructuredTool
 
-    from coscribe.runtime.types import tool_metadata
+    from coscribe.runtime import tool_metadata
 
     def _make(name: str, read_only: bool) -> Any:
         def run(x: str = "") -> str:
@@ -1046,7 +1046,7 @@ class _ManagedConnection:
 
 
 def _connector_tool(connector: str, name: str) -> Any:
-    from coscribe.runtime.types import tool_metadata
+    from coscribe.runtime import tool_metadata
 
     def _tool(x: str = "") -> str:
         """Does a thing. And then more."""

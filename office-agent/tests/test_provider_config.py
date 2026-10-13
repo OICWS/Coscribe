@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from coscribe.runtime.provider_config import load_custom_providers
+from coscribe.runtime import load_custom_providers
 
 
 def _write_config(tmp_path: Path, providers: dict[str, object]) -> Path:

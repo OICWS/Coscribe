@@ -22,8 +22,7 @@ from coscribe.code_runtime.launch import CodexHost, LaunchSpec
 from coscribe.config import Settings
 from coscribe.conversation import session as conversation_session
 from coscribe.conversation.session import ChatSessionLG
-from coscribe.runtime import empty_hooks_config
-from coscribe.runtime.secret_store import SessionEnvironments
+from coscribe.runtime import SessionEnvironments, empty_hooks_config
 from coscribe.runtime_lg.code_agent import CODE_APPROVAL_RISKS, CODE_TASK_TOOL
 from coscribe.tools import subagent_tasks
 from coscribe.tools.subagent_tasks import (
@@ -32,6 +31,8 @@ from coscribe.tools.subagent_tasks import (
     get_subagent_transcript,
     stop_subagent_task,
 )
+
+from .wire_check import check_event
 
 FAKE = Path(__file__).with_name("fake_codex_app_server.py")
 
@@ -86,6 +87,7 @@ class _Socket:
         self.session: ChatSessionLG | None = None
 
     async def send_json(self, payload: dict[str, Any]) -> None:
+        check_event(payload)
         self.sent.append(payload)
         if payload.get("type") == "approval_required" and self.answer and self.session:
             self.session.resolve_approval(payload["id"], self.answer(payload), self.scope)

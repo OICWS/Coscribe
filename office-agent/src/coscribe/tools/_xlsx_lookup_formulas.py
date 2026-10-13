@@ -110,6 +110,7 @@ def _split_top_level_args(text: str) -> list[str]:
     current: list[str] = []
     depth = 0
     in_quotes = False
+    in_sheet_name = False
     i = 0
     n = len(text)
     while i < n:
@@ -124,7 +125,13 @@ def _split_top_level_args(text: str) -> list[str]:
                 in_quotes = False
             i += 1
             continue
-        if ch == '"':
+        if in_sheet_name:
+            current.append(ch)
+            in_sheet_name = ch != "'"
+        elif ch == "'":
+            in_sheet_name = True
+            current.append(ch)
+        elif ch == '"':
             in_quotes = True
             current.append(ch)
         elif ch == "(":
@@ -141,6 +148,28 @@ def _split_top_level_args(text: str) -> list[str]:
         i += 1
     args.append("".join(current))
     return args
+
+
+def _is_one_argument_list(text: str) -> bool:
+    """False when a `)` inside `text` closes the call's own `(` early, as in
+    `F(a)&F(b)` whose body between the outer parens is `a)&F(b`: that is two
+    calls, not one call with odd arguments. Parentheses inside a string or a
+    quoted sheet name do not count."""
+    depth = 0
+    quote = ""
+    for ch in text:
+        if quote:
+            if ch == quote:
+                quote = ""
+        elif ch in "\"'":
+            quote = ch
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth < 0:
+                return False
+    return depth == 0
 
 
 def parse_single_call(formula_text: str) -> tuple[str, list[str]] | None:
@@ -160,6 +189,8 @@ def parse_single_call(formula_text: str) -> tuple[str, list[str]] | None:
         return None
     name = match.group(1).upper()
     if name not in _SUPPORTED_FUNCTIONS:
+        return None
+    if not _is_one_argument_list(match.group(2)):
         return None
     args = [a.strip() for a in _split_top_level_args(match.group(2))]
     return name, args
@@ -188,9 +219,7 @@ def _parse_literal(text: str) -> Any:
     return _UNRESOLVABLE
 
 
-def _resolve_reference(
-    ref_text: str, current_sheet: str, values_workbook: Any
-) -> list[Any] | None:
+def _resolve_reference(ref_text: str, current_sheet: str, values_workbook: Any) -> list[Any] | None:
     """Resolve a (possibly sheet-qualified) cell/range reference against
     `values_workbook` (an already-`data_only=True`-loaded workbook, so a
     formula cell in range reads back its LibreOffice-recalculated cached
@@ -240,15 +269,13 @@ def _resolve_reference(
 
 
 def _resolve_arg(arg_text: str, current_sheet: str, values_workbook: Any) -> Any:
-    """Returns a plain scalar, a `list` (for a multi-cell range), or
-    `_UNRESOLVABLE` if `arg_text` is neither a plain literal nor a plain
+    """Returns a plain scalar (for a literal), a `list` (for any reference,
+    even to one cell), or `_UNRESOLVABLE` if `arg_text` is neither a plain literal nor a plain
     reference this module understands (e.g. a nested function call or an
     operator expression)."""
     if _REF_RE.match(arg_text):
         resolved = _resolve_reference(arg_text, current_sheet, values_workbook)
-        if resolved is None:
-            return _UNRESOLVABLE
-        return resolved[0] if len(resolved) == 1 else resolved
+        return _UNRESOLVABLE if resolved is None else resolved
     return _parse_literal(arg_text)
 
 
@@ -284,6 +311,38 @@ def _wildcard_match(value: Any, pattern: str) -> bool:
     return re.fullmatch(escaped, value, re.IGNORECASE) is not None
 
 
+def _comparable(value: Any, as_text: bool) -> Any:
+    """The value in the ordering shared with the lookup value, or `None` for a
+    cell of the other kind: numbers compare with numbers and text with text
+    (case-insensitively), and any other cell never takes part, as in Excel."""
+    if as_text:
+        return value.casefold() if isinstance(value, str) else None
+    return value if _is_number(value) else None
+
+
+def _nearest_index(
+    lookup_value: Any, array: list[Any], match_mode: int, order: range
+) -> int | _Sentinel:
+    """`match_mode` -1 (exact or next smaller) / 1 (exact or next larger)."""
+    as_text = isinstance(lookup_value, str)
+    target = _comparable(lookup_value, as_text)
+    best_index: int | None = None
+    best_value: Any = None
+    for i in order:
+        value = _comparable(array[i], as_text)
+        if value is None:
+            continue
+        if value == target:
+            return i
+        on_wanted_side = value < target if match_mode == -1 else value > target
+        closer = best_value is None or (
+            value > best_value if match_mode == -1 else value < best_value
+        )
+        if on_wanted_side and closer:
+            best_index, best_value = i, value
+    return best_index if best_index is not None else _NO_MATCH
+
+
 def xmatch_index(
     lookup_value: Any, array: list[Any], match_mode: int, search_mode: int
 ) -> int | _Sentinel:
@@ -304,28 +363,13 @@ def xmatch_index(
                 return i
         return _NO_MATCH
 
-    if match_mode == 0 or not _is_number(lookup_value):
+    if match_mode == 0 or not (_is_number(lookup_value) or isinstance(lookup_value, str)):
         for i in order:
             if _excel_eq(array[i], lookup_value):
                 return i
         return _NO_MATCH
 
-    # match_mode -1 (exact or next smaller) / 1 (exact or next larger).
-    best_index: int | None = None
-    best_value: float | None = None
-    for i in order:
-        value = array[i]
-        if not _is_number(value):
-            continue
-        if value == lookup_value:
-            return i
-        if match_mode == -1 and value < lookup_value:
-            if best_value is None or value > best_value:
-                best_index, best_value = i, value
-        elif match_mode == 1 and value > lookup_value:
-            if best_value is None or value < best_value:
-                best_index, best_value = i, value
-    return best_index if best_index is not None else _NO_MATCH
+    return _nearest_index(lookup_value, array, match_mode, order)
 
 
 def _as_int_arg(value: Any, default: int) -> int | None:
@@ -374,8 +418,13 @@ def evaluate_xlookup(args: list[Any]) -> Any:
         if if_not_found is not _NOT_GIVEN:
             return if_not_found
         return FormulaError("#N/A")
-    return return_array[cast(int, index)]
+    matched = return_array[cast(int, index)]
+    return 0 if matched is None else matched
 
+
+# Positions whose argument is a single value: a one-cell reference there is
+# that cell's value, while in the other positions it is a one-element range.
+_SCALAR_POSITIONS = {"XMATCH": frozenset({0, 2, 3}), "XLOOKUP": frozenset({0, 3, 4, 5})}
 
 _EVALUATORS = {"XMATCH": evaluate_xmatch, "XLOOKUP": evaluate_xlookup}
 _MIN_ARGS = {"XMATCH": 2, "XLOOKUP": 3}
@@ -396,6 +445,10 @@ def evaluate_formula(formula_text: str, current_sheet: str, values_workbook: Any
     resolved_args = [_resolve_arg(a, current_sheet, values_workbook) for a in raw_args]
     if any(a is _UNRESOLVABLE for a in resolved_args):
         return _UNRESOLVABLE
+    resolved_args = [
+        a[0] if isinstance(a, list) and len(a) == 1 and i in _SCALAR_POSITIONS[name] else a
+        for i, a in enumerate(resolved_args)
+    ]
     return _EVALUATORS[name](resolved_args)
 
 

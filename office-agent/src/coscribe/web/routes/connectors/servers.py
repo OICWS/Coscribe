@@ -14,13 +14,11 @@ from fastapi import (
 )
 
 from ....runtime import (
+    SecretError,
     delete_secret,
     harden_file_permissions,
-    store_secret,
-)
-from ....runtime.secret_store import (
-    SecretError,
     placeholders_in,
+    store_secret,
 )
 from ....tools.connector_permissions import (
     ConnectorPermissions,
