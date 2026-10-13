@@ -197,6 +197,13 @@ Live runs: `coscribe-web` (port 8000) started from a scratch directory
 holding its own `.env` and workspace, `npx vite --host 127.0.0.1` in
 `frontend/` (port 5173), then `npx playwright test <spec>`.
 
+Which model a test run of ours uses: DeepSeek with `reasoning_effort: "low"`
+by default (measured 2026-10-13 on generated decks: judged level with the
+default `high` and up to 35% cheaper; `none` broke pages; most of the cost
+is the model's reasoning output, not cache misses:
+`docs/assessments/2026-10-13-office-route.md`). The Gemini key is free tier:
+20 requests a day per model and no Pro quota, enough for small checks only.
+
 Long live runs on DeepSeek (multi-turn tasks, benchmarks, anything over a
 few calls) go off-peak: weekdays 9:00-12:00 and 14:00-18:00 Beijing time
 cost double (checked on DeepSeek's pricing page 2026-10-05; re-check

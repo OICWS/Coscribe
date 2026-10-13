@@ -18,3 +18,4 @@ old one; the old one stays, marked "Superseded by".
 | [0007](0007-working-with-more-than-one-human.md) | Working with more than one human and their AI sessions |
 | [0008](0008-conversations-can-message-each-other.md) | Conversations can message each other |
 | [0009](0009-a-structure-period-then-growth-for-ai-sessions.md) | A structure period, so AI sessions can keep up with growth to 1M lines |
+| [0010](0010-office-files-are-compiled-from-whole-page-sources.md) | Office files are compiled from whole-page sources; open-source code is reused as owned copies (proposed) |
