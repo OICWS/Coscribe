@@ -105,7 +105,7 @@ def router(state: AppState) -> APIRouter:
                 set_key(".env", builtin["default_model_env"], payload.default_model)
             # No context_window_client.invalidate_provider(...) equivalent
             # needed for the *chat* model -- resolve_chat_model builds fresh
-            # every call (see update_config's identical comment above).
+            # every call (see update_config in config.py, same reasoning).
             # context_window_client itself is the old-runtime LLMClient
             # class, though, so it keeps that class's real caching behavior
             # and does need this.
