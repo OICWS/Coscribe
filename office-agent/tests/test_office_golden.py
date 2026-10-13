@@ -104,6 +104,61 @@ _THREE_SERIES = (
 _SHARES = "| Region | Share |\n| --- | --- |\n| North | 60 |\n| South | 40 |"
 
 
+def _icon_list(tools: dict[str, Callable[..., object]]) -> None:
+    tools["write_pptx"](
+        path="deck.pptx",
+        content="layout: icon-list FF0000\n# Feature highlights\n- [*] Real-time tracking\n"
+        "- Mobile app control\n- [!] Alerts",
+    )
+
+
+def _stat_callout(tools: dict[str, Callable[..., object]]) -> None:
+    tools["write_pptx"](
+        path="deck.pptx",
+        content="layout: stat-callout 028090\n# Q4 highlights\n| Stat | Label |\n| --- | --- |\n"
+        "| 3x | Revenue growth |\n| 12 | New markets |\n| 98% | Retention |",
+    )
+
+
+def _svg(tools: dict[str, Callable[..., object]]) -> None:
+    svg = (
+        '<svg width="960" height="540" viewBox="0 0 960 540">'
+        '<rect x="0" y="0" width="960" height="540" fill="#1E2761"/>'
+        '<circle cx="120" cy="270" r="40" fill="FF0000"/>'
+        '<rect x="300" y="380" width="200" height="60" rx="12" fill="#F59E0B"/>'
+        '<path d="M 600 400 L 700 300 L 800 400 Z" fill="#10B981"/>'
+        '<text x="220" y="260" font-size="36" fill="#FFFFFF">Real-time tracking</text>'
+        "</svg>"
+    )
+    tools["write_pptx"](path="deck.pptx", content=f"layout: svg\n{svg}\n")
+
+
+def _icon(tools: dict[str, Callable[..., object]]) -> None:
+    tools["write_pptx"](path="deck.pptx", content="# With an icon\n- a star, top right")
+    tools["add_pptx_icon"](
+        path="deck.pptx", slide=1, icon_name="star", left_in=8.0, top_in=0.5, color="F59E0B"
+    )
+
+
+def _shapes(tools: dict[str, Callable[..., object]]) -> None:
+    tools["write_pptx"](path="deck.pptx", content="# Process\n- three steps")
+    for index, (shape_type, fill) in enumerate(
+        (("RECTANGLE", "1D4ED8"), ("ROUNDED_RECTANGLE", "059669"), ("OVAL", "DC2626"))
+    ):
+        tools["add_pptx_shape"](
+            path="deck.pptx",
+            slide=1,
+            shape_type=shape_type,
+            left_in=1.0 + 3.0 * index,
+            top_in=4.0,
+            width_in=2.5,
+            height_in=1.2,
+            text=f"Step {index + 1}",
+            fill_color=fill,
+            line_color="111827",
+        )
+
+
 def _picture_index(tools: dict[str, Callable[..., object]]) -> int:
     shapes = tools["list_pptx_shapes"](path="deck.pptx", slide=1)["shapes"]  # type: ignore[index]
     return next(shape["index"] for shape in shapes if shape["is_picture"])
@@ -142,9 +197,14 @@ DECKS: dict[str, Callable[[dict[str, Callable[..., object]]], None]] = {
     "chart_bar_three_series": _chart("bar", _THREE_SERIES),
     "chart_line": _chart("line", _ONE_SERIES),
     "chart_pie": _chart("pie", _SHARES),
+    "icon": _icon,
+    "icon_list": _icon_list,
     "image": _image,
     "image_cropped_and_replaced": _image_cropped_and_replaced,
     "image_effects": _image_effects,
+    "shapes": _shapes,
+    "stat_callout": _stat_callout,
+    "svg": _svg,
     "table": _table,
     "two_column": _two_column,
     "transition_and_animation": _transition_and_animation,
