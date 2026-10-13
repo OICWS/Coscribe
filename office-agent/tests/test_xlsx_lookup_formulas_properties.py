@@ -410,8 +410,10 @@ def test_patched_cells_read_back_as_the_reference_values(
 
         assert report["formulas_evaluated"] == len(cases)
         reopened = load_workbook(str(path), data_only=True)
+        reopened_cells = [reopened["Out"].cell(row=n, column=1) for n in range(1, len(cases) + 1)]
+        reopened.close()
         for number, case in enumerate(cases, start=1):
-            cell = reopened["Out"].cell(row=number, column=1)
+            cell = reopened_cells[number - 1]
             expected = _expected(case)
             assert _same(cell.value, expected), (number, cell.value, expected)
             if isinstance(expected, str) and expected.startswith("#"):
@@ -420,6 +422,8 @@ def test_patched_cells_read_back_as_the_reference_values(
                 assert cell.data_type == "b"
             elif _kind(expected) == "num":
                 assert cell.data_type == "n"
+            else:
+                assert cell.data_type == "s"
     finally:
         shutil.rmtree(folder, ignore_errors=True)
 
@@ -527,10 +531,6 @@ def _libreoffice_actually_works() -> bool:
 
 
 @pytest.mark.real_libreoffice
-@pytest.mark.skipif(
-    not _libreoffice_actually_works(),
-    reason="LibreOffice not installed or not functional in this environment",
-)
 @_LIBREOFFICE
 @given(
     numbers=st.lists(st.integers(-30, 30), unique=True, min_size=2, max_size=8).map(sorted),
@@ -546,6 +546,8 @@ def test_evaluator_agrees_with_libreoffice_on_the_equivalent_match_formulas(
     text_needles: list[str],
     pattern: str,
 ) -> None:
+    if not _libreoffice_actually_works():
+        pytest.skip("LibreOffice not installed or not functional in this environment")
     """LibreOffice before 24.8 cannot evaluate XLOOKUP/XMATCH at all, so each
     call is paired with the INDEX/MATCH formula LibreOffice does compute, and
     the two cells must hold the same value after one recalculation."""
