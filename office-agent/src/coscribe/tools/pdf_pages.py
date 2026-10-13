@@ -7,7 +7,7 @@ from __future__ import annotations
 import io
 from pathlib import Path
 
-from .documents import _PDFIUM_LOCK
+from .office.pdf.text import _PDFIUM_LOCK
 
 MAX_WIDTH = 1600
 

@@ -1,7 +1,7 @@
 """Structural OOXML schema validation for this package's own hand-written
 XML -- originally just `presentations.py`'s (`set_pptx_transition`,
 `add_pptx_animation`, `edit_pptx_theme_colors`, the theme-blob edits inside
-`write_pptx`/`fill_pptx_template`), now also `documents.py`'s `write_docx`
+`write_pptx`/`fill_pptx_template`), now also `office/docx/`'s `write_docx`
 via `assert_wml_valid`. Those are places this package writes OOXML
 python-pptx/python-docx has no public API for, or edits a whole document
 tree by hand; this is the safety net a schema-conformant library call
@@ -173,7 +173,7 @@ def assert_ooxml_valid(element: Any, context: str, schema_path: Path = _PML_XSD)
 
 def assert_wml_valid(element: Any, context: str) -> None:
     """`assert_ooxml_valid` against `wml.xsd` (WordprocessingML) instead of
-    `pml.xsd` -- for `documents.py`'s hand-written/hand-mutated docx XML
+    `pml.xsd` -- for `office/docx/`'s hand-written/hand-mutated docx XML
     (`write_docx`'s tracked-changes markup, comment anchors, TOC field,
     template body-clearing)."""
     assert_ooxml_valid(element, context, schema_path=_WML_XSD)

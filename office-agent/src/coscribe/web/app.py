@@ -43,7 +43,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import html
-import json
 import logging
 import os
 import sys
@@ -81,7 +80,6 @@ from ..runtime import (
 )
 from ..runtime.secret_store import (
     SecretError,
-    SessionEnvironments,
 )
 from ..runtime.types import get_tool_metadata
 from ..runtime_lg import (
@@ -103,7 +101,6 @@ from ..tools.connector_permissions import (
     is_read_only,
     name_of,
 )
-from ..tools.conversations import MessagingStore
 from ..tools.mcp import (
     prepare_for_connect,
     validate_mcp_config,
@@ -112,12 +109,11 @@ from ..tools.scheduled_tasks import (
     SCHEDULED_THREAD_PREFIX,
     ScheduledRun,
     ScheduledTriggerStore,
-    parse_run_thread_id,
 )
 from ..tools.skill_catalog import (
     enabled_skill_names,
 )
-from ..workflows import granted_by, parse_workflow, tool_description
+from ..workflows import tool_description
 from .background_events import BackgroundEvent, BackgroundEventBus, run_event
 from .provider_catalog import (
     BUILTIN_PROVIDERS,
@@ -133,6 +129,7 @@ from .routes.threads import router as threads_router
 from .routes.ws import router as ws_router
 from .setup_app import build_setup_app
 from .state import AppState
+from .thread_files import ThreadFiles
 
 if TYPE_CHECKING:
     # Real type only needed for a local variable annotation below (never
@@ -308,82 +305,7 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
 
     app_callback = LoopbackCallback(_oauth_callback_response)
     sign_in_tasks: set[asyncio.Task[None]] = set()
-
-    def _title_sidecar_path(thread_id: str) -> Path:
-        # Per-thread sidecar-file convention (plain text keyed by
-        # thread_id under settings.state_dir) shared with
-        # _workspace_sidecar_path/_skills_sidecar_path below -- holds a
-        # user-chosen rename, overriding list_threads' default
-        # "preview = first human message" title. Unlike the workspace
-        # sidecar, this one is never read to configure a live session --
-        # it only affects how a thread is displayed in the nav rail's
-        # session list.
-        return settings.state_dir / f"{thread_id}.title"
-
-    def _workspace_sidecar_path(thread_id: str) -> Path:
-        return settings.state_dir / f"{thread_id}.workspace"
-
-    def _write_workspace_sidecar(thread_id: str, folders: list[str]) -> None:
-        if not folders:
-            _workspace_sidecar_path(thread_id).unlink(missing_ok=True)
-            return
-        settings.state_dir.mkdir(parents=True, exist_ok=True)
-        _workspace_sidecar_path(thread_id).write_text(json.dumps(folders), encoding="utf-8")
-
-    def _read_workspace_sidecar(thread_id: str) -> list[str]:
-        sidecar = _workspace_sidecar_path(thread_id)
-        if not sidecar.is_file():
-            return []
-        text = sidecar.read_text(encoding="utf-8").strip()
-        # Threads from before multi-folder conversations hold one bare path.
-        if not text.startswith("["):
-            return [text] if text else []
-        try:
-            saved = json.loads(text)
-        except json.JSONDecodeError:
-            return []
-        return [str(folder) for folder in saved if isinstance(folder, str) and folder]
-
-    def _run_workspace(thread_id: str) -> str | None:
-        """A scheduled run's thread works in its task's folder."""
-        parsed = parse_run_thread_id(thread_id)
-        if parsed is None:
-            return None
-        trigger = ScheduledTriggerStore(settings.state_dir).load(parsed[0])
-        return trigger.workspace if trigger is not None else None
-
-    def _run_folders(thread_id: str) -> list[str]:
-        """A scheduled run's folders: its task's own, then the existing
-        ones its workflow names or the person allowed while a run waited."""
-        parsed = parse_run_thread_id(thread_id)
-        trigger = ScheduledTriggerStore(settings.state_dir).load(parsed[0]) if parsed else None
-        if trigger is None:
-            return []
-        extra = list(trigger.permissions.get("folders", []))
-        if trigger.workflow is not None:
-            extra = [*granted_by(parse_workflow(trigger.workflow))["folders"], *extra]
-        extra = [folder for folder in dict.fromkeys(extra) if Path(folder).is_dir()]
-        if not extra:
-            return [trigger.workspace] if trigger.workspace else []
-        return [trigger.workspace or str(settings.workspace_root), *extra]
-
-    def _resolve_folders(thread_id: str, workspace_param: str | None) -> list[Path]:
-        """The ?workspace= query param only counts the first time a thread
-        is seen; after that the sidecar (changed through set_folders) wins.
-        Empty means the app's default workspace -- kept distinct from an
-        explicit choice of that same folder, which the UI shows as chosen."""
-        if _workspace_sidecar_path(thread_id).is_file():
-            return [Path(folder) for folder in _read_workspace_sidecar(thread_id)]
-        run_folders = _run_folders(thread_id)
-        if run_folders and workspace_param is None:
-            _write_workspace_sidecar(thread_id, run_folders)
-            return [Path(folder) for folder in run_folders]
-        if workspace_param is None:
-            workspace_param = _run_workspace(thread_id)
-        if not workspace_param:
-            return []
-        _write_workspace_sidecar(thread_id, [workspace_param])
-        return [Path(workspace_param)]
+    thread_files = ThreadFiles(settings)
 
     def _skills_by_name() -> dict[str, SkillInfo]:
         # Re-scanned on every call, not a closure snapshot -- the same
@@ -436,7 +358,7 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
             }
             for command in hooks_config["SessionStart"]:
                 run_hook(command, session_start_payload)
-            folders = _resolve_folders(thread_id, workspace_param)
+            folders = thread_files.resolve_folders(thread_id, workspace_param)
             sessions[thread_id] = ChatSessionLG(
                 thread_id=thread_id,
                 settings=settings,
@@ -709,11 +631,7 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
         )
         existed = await cursor.fetchone() is not None
         await checkpointer.adelete_thread(thread_id)
-        (settings.state_dir / f"{thread_id}.tasks.json").unlink(missing_ok=True)
-        _workspace_sidecar_path(thread_id).unlink(missing_ok=True)
-        _title_sidecar_path(thread_id).unlink(missing_ok=True)
-        SessionEnvironments(settings.state_dir).delete(thread_id)
-        MessagingStore(settings.state_dir).delete(thread_id)
+        thread_files.delete(thread_id)
         ThreadMetaStore(settings.state_dir).delete(thread_id)
         sessions.pop(thread_id, None)
         return existed
@@ -926,9 +844,7 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
         disconnect_mcp_server_lg=_disconnect_mcp_server_lg,
         refresh_all_sessions_extra_tools=_refresh_all_sessions_extra_tools,
         oauth_callback_response=_oauth_callback_response,
-        read_workspace_sidecar=_read_workspace_sidecar,
-        write_workspace_sidecar=_write_workspace_sidecar,
-        title_sidecar_path=_title_sidecar_path,
+        thread_files=thread_files,
         delete_thread_data=_delete_thread_data,
         delete_run_threads=_delete_run_threads,
         execute_and_announce=_execute_and_announce,

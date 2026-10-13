@@ -3,6 +3,7 @@ from .hooks import HookResult, empty_hooks_config, load_hooks_config, run_hook
 from .llm_client import LLMClient
 from .provider_config import load_custom_providers
 from .proxy import configured_proxy
+from .secret_store import SessionEnvironments
 from .secrets import (
     delete_secret,
     env_delete_secret_if_ref,
@@ -25,6 +26,7 @@ __all__ = [
     "Agent",
     "HookResult",
     "LLMClient",
+    "SessionEnvironments",
     "ToolMetadata",
     "configured_proxy",
     "delete_secret",

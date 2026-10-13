@@ -1,8 +1,7 @@
 from .background_tasks import BackgroundTask, BackgroundTaskStore, build_background_task_tools
 from .browser import build_browser_tools
-from .conversations import build_conversation_tools
+from .conversations import MessagingStore, build_conversation_tools
 from .convert import build_convert_tools
-from .documents import build_document_tools
 from .files import build_file_tools
 from .images import build_image_tools
 from .interaction import (
@@ -17,6 +16,7 @@ from .interaction import (
 from .mcp import load_mcp_server_configs
 from .memory import format_memory_section, load_memory
 from .node_scripts import build_node_script_tools
+from .office.document_tools import DocumentToolkit, build_document_tools
 from .pptx_templates import (
     TemplateInfo,
     format_template_listing,
@@ -69,6 +69,7 @@ __all__ = [
     "ScheduledTrigger",
     "ScheduledTriggerStore",
     "SignalStore",
+    "MessagingStore",
     "SkillInfo",
     "SkillUploadError",
     "SubAgentTask",
@@ -80,6 +81,7 @@ __all__ = [
     "build_background_task_tools",
     "build_conversation_tools",
     "build_convert_tools",
+    "DocumentToolkit",
     "build_document_tools",
     "build_file_tools",
     "build_image_tools",
@@ -98,8 +100,8 @@ __all__ = [
     "edit_draft",
     "format_question_answers",
     "normalize_questions",
-    "parse_run_thread_id",
     "compute_next_run_at",
+    "parse_run_thread_id",
     "format_memory_section",
     "format_skill_listing",
     "format_template_listing",

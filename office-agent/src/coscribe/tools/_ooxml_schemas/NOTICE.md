@@ -28,7 +28,7 @@ other files here (drawingml, shared types, VML, math) -- the full
 update can just replace the whole directory without re-deriving which
 files are load-bearing.
 
-`wml.xsd` (the wordprocessingml schema `write_docx`/`documents.py`
+`wml.xsd` (the wordprocessingml schema `write_docx`/`office/docx/`
 validate against, via `assert_wml_valid`) is used the same way, but has
 one dependency the pml.xsd chain never exercised: `<xsd:import
 namespace="http://www.w3.org/XML/1998/namespace"/>` -- needed because

@@ -9,7 +9,8 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate
 
 from coscribe.runtime.types import get_tool_metadata
-from coscribe.tools.documents import DocumentToolkit, build_document_tools, parse_inline_runs
+from coscribe.tools.office.document_tools import DocumentToolkit, build_document_tools
+from coscribe.tools.office.markdown_blocks import parse_inline_runs
 
 
 def _tools_by_name(root: Path) -> dict[str, object]:
@@ -857,7 +858,7 @@ def _fonts_in(pdf_path: Path) -> set[str]:
 def test_write_pdf_renders_chinese_text_instead_of_black_boxes(tmp_path: Path) -> None:
     """Real bug: reportlab's built-in fonts have no Chinese glyphs, so a
     Chinese report came out as rows of black boxes -- with no error."""
-    from coscribe.tools import documents
+    from coscribe.tools.office.pdf import fonts as documents
 
     if documents._pdf_cjk_font() is None:  # no Chinese-capable font on this machine
         pytest.skip("no CJK font available")
@@ -884,7 +885,7 @@ def test_write_pdf_keeps_helvetica_for_text_without_chinese(tmp_path: Path) -> N
 
 
 def test_table_layout_keeps_a_short_label_on_one_line_beside_long_text() -> None:
-    from coscribe.tools.documents import _table_layout, _text_width_em
+    from coscribe.tools.office.table_layout import _table_layout, _text_width_em
 
     rows = [["地区", "这是一个很长很长很长的说明文字" * 3]]
     _, widths = _table_layout(rows, 450, [9], padding=12)
@@ -894,7 +895,7 @@ def test_table_layout_keeps_a_short_label_on_one_line_beside_long_text() -> None
 
 
 def test_table_layout_keeps_a_three_character_label_whole_beside_a_paragraph() -> None:
-    from coscribe.tools.documents import _table_layout, _text_width_em
+    from coscribe.tools.office.table_layout import _table_layout, _text_width_em
 
     note = "毛利率仅 31.52%，未达到上季度提出的回升到 33% 以上的要求" * 2
     rows = [["品类", "说明"], ["控制器", note]]
@@ -904,7 +905,7 @@ def test_table_layout_keeps_a_three_character_label_whole_beside_a_paragraph() -
 
 
 def test_table_layout_steps_the_font_down_before_breaking_numbers() -> None:
-    from coscribe.tools.documents import _table_layout
+    from coscribe.tools.office.table_layout import _table_layout
 
     rows = [["a", "23,457,888.42", "8,505,822.62", "24,350,000.00", "11,111,111.11"]]
 
@@ -930,7 +931,7 @@ def test_write_docx_table_gives_amounts_their_width_and_aligns_them_right(
     broke in two ("6,985,328." / "30") while the region column sat empty."""
     from docx.enum.text import WD_ALIGN_PARAGRAPH
 
-    from coscribe.tools.documents import _cell_width_em
+    from coscribe.tools.office.table_layout import _cell_width_em
 
     tools = _tools_by_name(tmp_path)
     tools["write_docx"](path="r.docx", content=f"# 区域\n\n{_REGION_TABLE}")

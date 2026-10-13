@@ -33,3 +33,6 @@ dist/
 .coverage
 coverage.xml
 diff-coverage.md
+
+# Evaluation runs (evals/run.py)
+/evals/runs/

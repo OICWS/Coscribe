@@ -83,7 +83,7 @@ dependencies = [
     "mammoth>=1.7.0",
     "markdownify>=0.13.0",
     "pdfplumber>=0.11.0",
-    # read_pdf/search_pdf's text extraction (see tools/documents.py's
+    # read_pdf/search_pdf's text extraction (see tools/office/pdf/text.py's
     # _pdf_page_texts) -- already pulled in by pdfplumber, pinned here
     # because it's now imported directly.
     "pypdfium2>=4.18.0",
@@ -222,6 +222,7 @@ extend-exclude = [
     "src/coscribe/providers/_vendor",
     "src/coscribe/tools/_native_formula",
     "src/coscribe/tools/_native_docx_tracks",
+    "src/coscribe/tools/_native_svg",
 ]
 
 [tool.ruff.lint]
@@ -240,6 +241,7 @@ exclude = [
     "src/coscribe/providers/_vendor",
     "src/coscribe/tools/_native_formula",
     "src/coscribe/tools/_native_docx_tracks",
+    "src/coscribe/tools/_native_svg",
 ]
 
 [[tool.mypy.overrides]]
@@ -284,6 +286,8 @@ exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# `evals/` is a sibling of `src/`, not part of the package: its tests import it by name.
+pythonpath = ["."]
 asyncio_mode = "auto"
 markers = [
     "real_libreoffice: exercises actual headless LibreOffice conversion (soffice) -- opts out of conftest.py's default fast-mode monkeypatch of the QA/recalc steps; still skips cleanly via the test file's own _libreoffice_actually_works()-style check when soffice isn't usable in this environment",
