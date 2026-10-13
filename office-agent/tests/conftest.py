@@ -1,6 +1,7 @@
 import pytest
 
-from coscribe.tools import presentations, spreadsheets
+from coscribe.tools import presentations
+from coscribe.tools.office.xlsx import helpers as spreadsheets
 
 
 @pytest.fixture(autouse=True)

@@ -844,7 +844,7 @@ def build_scheduled_task_tools(
     # PEP 604 `X | None` has origin `types.UnionType` instead -- it slips
     # through unwrapped and gets serialized as the literal string
     # "X | None" for the "type" field, which Gemini's strict
-    # OpenAPI-subset schema rejects (see tools/spreadsheets.py's read_xlsx
+    # OpenAPI-subset schema rejects (see tools/office/xlsx/'s read_xlsx
     # for the same fix, applied first).
     def create_scheduled_task(
         name: str,

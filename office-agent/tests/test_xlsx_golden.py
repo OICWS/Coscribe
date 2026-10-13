@@ -28,8 +28,9 @@ from pathlib import Path
 
 import pytest
 
-from coscribe.tools import _thumbnail, spreadsheets
-from coscribe.tools.spreadsheets import build_spreadsheet_tools
+from coscribe.tools import _thumbnail
+from coscribe.tools.office.xlsx import build_spreadsheet_tools
+from coscribe.tools.office.xlsx import helpers as spreadsheets
 
 from .pptx_canonical import canonical_parts
 
