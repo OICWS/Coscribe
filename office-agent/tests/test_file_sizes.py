@@ -24,6 +24,7 @@ ALLOWED = {
     "office-agent/src/coscribe/tools/_ooxml_schemas/transitional/sml.xsd": (
         "vendored ECMA-376 schema"
     ),
+    "office-agent/tests/golden/docx/_shared.txt": "shared docx golden data",
     "office-agent/PPTX_DESIGN.md": "numbered pptx design decisions, read by section",
     "office-agent/src/coscribe/runtime_lg/README.md": "runtime findings, searched, not read whole",
 }
@@ -54,4 +55,3 @@ def test_no_new_large_text_file() -> None:
         "Split the file, or mark it as data (`linguist-generated=true` in .gitattributes and a "
         "line in .ignore) and add it to ALLOWED in tests/test_file_sizes.py with a reason."
     )
-
