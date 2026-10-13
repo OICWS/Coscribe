@@ -42,6 +42,8 @@ from coscribe.tools.scheduled_tasks import (
     run_thread_id,
 )
 
+from .wire_check import check_event
+
 
 class FakeToolCallingChatModel(BaseChatModel):
     """Same shape as test_selfwake_resume.py's identical class."""
@@ -687,6 +689,7 @@ async def test_finishing_a_parked_auto_run_keeps_its_tier(
             self.events: list[dict[str, Any]] = []
 
         async def send_json(self, data: dict[str, Any]) -> None:
+            check_event(data)
             self.events.append(data)
 
     tab = _WatchingTab()
@@ -759,6 +762,7 @@ async def test_a_run_streams_live_to_a_tab_watching_its_thread(
             self.events: list[dict[str, Any]] = []
 
         async def send_json(self, data: dict[str, Any]) -> None:
+            check_event(data)
             self.events.append(data)
 
     tab = _WatchingTab()
@@ -795,6 +799,7 @@ async def test_history_shows_a_starting_runs_prompt_exactly_once(
             self.events: list[dict[str, Any]] = []
 
         async def send_json(self, data: dict[str, Any]) -> None:
+            check_event(data)
             self.events.append(data)
 
     checkpoint_path = tmp_path / "checkpoints.sqlite"
@@ -831,6 +836,7 @@ async def test_a_run_parked_on_approval_offers_it_to_a_watching_tab(
             self.events: list[dict[str, Any]] = []
 
         async def send_json(self, data: dict[str, Any]) -> None:
+            check_event(data)
             self.events.append(data)
 
     tab = _WatchingTab()

@@ -36,6 +36,8 @@ from coscribe.runtime_lg.audit import AuditLog
 from coscribe.runtime_lg.auto_review import Verdict
 from coscribe.tools.subagent_tasks import SubAgentTask
 
+from .wire_check import check_event
+
 READ, LOCAL, EXEC, EXTERNAL = "read_file", "write_file", "run_python_script", "send_email"
 CODE_COMMAND, CODE_CHANGE = "run_code_command", "apply_code_change"
 RISKS = {
@@ -72,6 +74,7 @@ class _Socket:
         self.sent: list[dict[str, Any]] = []
 
     async def send_json(self, data: dict[str, Any]) -> None:
+        check_event(data)
         self.sent.append(data)
 
 
