@@ -39,7 +39,7 @@ def canonical_part(name: str, data: bytes) -> str:
     if name.startswith(_EMBEDDINGS) and name.endswith(_PACKAGE_SUFFIXES):
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             return "".join(
-                f"----- {inner}\n{_canonical_member(inner, archive.read(inner))}"
+                f"----- {inner}\n{canonical_part(inner, archive.read(inner))}"
                 for inner in sorted(archive.namelist())
             )
     if not name.endswith(_XML_SUFFIXES):

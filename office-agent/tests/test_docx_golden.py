@@ -21,6 +21,7 @@ from pathlib import Path
 
 import pytest
 
+from coscribe.tools import _thumbnail
 from coscribe.tools.documents import build_document_tools
 
 from .docx_canonical import canonical_parts
@@ -177,7 +178,7 @@ def build_document(name: str, root: Path) -> Path:
 def _no_libreoffice(monkeypatch: pytest.MonkeyPatch) -> None:
     # The preview render only reads the file; skipping it keeps these tests fast and the same on
     # machines with and without LibreOffice.
-    monkeypatch.setattr("shutil.which", lambda name: None)
+    monkeypatch.setattr(_thumbnail, "find_soffice", lambda: None)
 
 
 # Styles, theme, settings and the package boilerplate come from python-docx's template and are
