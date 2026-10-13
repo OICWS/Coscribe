@@ -33,7 +33,9 @@ from .pptx_templates import (
 )
 from .presentations import build_presentation_tools
 from .scheduled_tasks import (
+    SCHEDULED_THREAD_PREFIX,
     TASK_DRAFT_TOOL_NAMES,
+    ScheduledRun,
     ScheduledTrigger,
     ScheduledTriggerStore,
     ScheduleRule,
@@ -66,6 +68,8 @@ from .tasks import build_task_tools
 from .websearch import build_websearch_tools
 
 __all__ = [
+    "SCHEDULED_THREAD_PREFIX",
+    "ScheduledRun",
     "validate_mcp_config",
     "prepare_for_connect",
     "name_of",

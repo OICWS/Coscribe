@@ -28,6 +28,7 @@ from .helpers import (
     _create_workflow_task,
     _receive_until,
     _run_turn,
+    _settings,
     _structured,
     _tool_call,
     _wait_for_run_status,
@@ -1046,3 +1047,177 @@ def test_revising_a_saved_workflow_proposes_changes_without_saving_them_lg(
     assert '"id": "read"' in reviser_request
     saved = ScheduledTriggerStore(tmp_path / "state").load(task.trigger_id)
     assert saved is not None and len(saved.workflow["steps"]) == 1
+
+
+class _FakeCheckpointer:
+    def __init__(self, thread_ids: list[str]) -> None:
+        self.thread_ids = thread_ids
+        self.conn = self
+
+    async def setup(self) -> None:
+        return None
+
+    async def execute(self, *args: Any) -> "_FakeCheckpointer":
+        return self
+
+    async def fetchall(self) -> list[tuple[str]]:
+        return [(thread_id,) for thread_id in self.thread_ids]
+
+
+def _scheduler(tmp_path: Path, **overrides: Any) -> tuple[Any, Any, list[str]]:
+    from coscribe.web.background_events import BackgroundEventBus
+    from coscribe.web.scheduler import Scheduler
+
+    deleted: list[str] = []
+
+    async def _delete(thread_id: str) -> bool:
+        deleted.append(thread_id)
+        return True
+
+    async def _no_wakes(*args: Any, **kwargs: Any) -> list[Any]:
+        return []
+
+    values: dict[str, Any] = {
+        "sessions": {},
+        "get_session_async": None,
+        "delete_thread_data": _delete,
+        "checkpointer": lambda: _FakeCheckpointer([]),
+        "poll_due_wakes": _no_wakes,
+        "poll_due_scheduled_tasks": _no_wakes,
+    }
+    values.update(overrides)
+    bus = BackgroundEventBus()
+    scheduler = Scheduler(
+        _settings(tmp_path, wake_poll_seconds=0),
+        values["sessions"],
+        bus,
+        values["get_session_async"],
+        values["delete_thread_data"],
+        values["checkpointer"],
+        values["poll_due_wakes"],
+        values["poll_due_scheduled_tasks"],
+    )
+    return scheduler, bus, deleted
+
+
+def test_scheduler_sweeps_run_conversations_that_no_task_lists(tmp_path: Path) -> None:
+    import asyncio
+
+    from coscribe.tools.scheduled_tasks import (
+        ScheduledRun,
+        ScheduledTriggerStore,
+        create_trigger,
+        run_thread_id,
+    )
+
+    settings = _settings(tmp_path)
+    store = ScheduledTriggerStore(settings.state_dir)
+    task = create_trigger(store, name="t", kind="manual", at="", prompt="p")
+    kept = run_thread_id(task.trigger_id, "r1")
+    task.runs.append(ScheduledRun(run_id="r1", thread_id=kept, started_at="x", source="manual"))
+    store.save(task)
+    orphan = run_thread_id("gone", "r9")
+    scheduler, _, deleted = _scheduler(
+        tmp_path, checkpointer=lambda: _FakeCheckpointer([kept, orphan])
+    )
+
+    assert asyncio.run(scheduler.sweep_orphaned_run_threads()) == 1
+    assert deleted == [orphan]
+
+
+def test_scheduler_announces_how_a_finished_run_ended(tmp_path: Path) -> None:
+    import asyncio
+
+    from coscribe.tools.scheduled_tasks import (
+        ScheduledRun,
+        ScheduledTriggerStore,
+        create_trigger,
+    )
+
+    store = ScheduledTriggerStore(_settings(tmp_path).state_dir)
+    task = create_trigger(store, name="Daily digest", kind="manual", at="", prompt="p")
+    run = ScheduledRun(
+        run_id="r1", thread_id="t", started_at="x", source="manual", status="completed"
+    )
+    task.runs.append(run)
+    store.save(task)
+    scheduler, bus, _ = _scheduler(tmp_path)
+    queue = bus.subscribe()
+
+    asyncio.run(scheduler.announce_run("no-such-task", run))
+    asyncio.run(scheduler.announce_run(task.trigger_id, None))
+    assert queue.empty()
+    asyncio.run(scheduler.announce_run(task.trigger_id, run))
+
+    event = queue.get_nowait()
+    assert (event["kind"], event["status"], event["title"]) == (
+        "scheduled_task",
+        "completed",
+        "Daily digest",
+    )
+
+
+def test_scheduler_fires_due_wakes_and_nudges_the_open_tab(tmp_path: Path) -> None:
+    import asyncio
+
+    from coscribe.tools.selfwake import WakeRequest
+
+    class _Tab:
+        resynced = 0
+
+        async def notify_resync(self) -> None:
+            self.resynced += 1
+
+    tab = _Tab()
+    calls = {"wakes": 0, "tasks": 0}
+
+    async def _wakes(*args: Any, **kwargs: Any) -> list[Any]:
+        calls["wakes"] += 1
+        if calls["wakes"] > 1:
+            return []
+        return [
+            WakeRequest(wake_id="w", thread_id="open", kind="timer", reason="r", created_at="x")
+        ]
+
+    async def _tasks(*args: Any, **kwargs: Any) -> list[Any]:
+        calls["tasks"] += 1
+        return []
+
+    scheduler, bus, _ = _scheduler(
+        tmp_path,
+        sessions={"open": tab},
+        poll_due_wakes=_wakes,
+        poll_due_scheduled_tasks=_tasks,
+    )
+    queue = bus.subscribe()
+
+    async def _run() -> None:
+        scheduler.start()
+        for _ in range(100):
+            if tab.resynced and calls["tasks"]:
+                break
+            await asyncio.sleep(0.01)
+        await scheduler.stop()
+
+    asyncio.run(_run())
+
+    assert tab.resynced == 1
+    assert queue.get_nowait()["kind"] == "wake"
+    assert calls["tasks"] >= 1
+
+
+def test_scheduler_stop_cancels_runs_still_in_flight(tmp_path: Path) -> None:
+    import asyncio
+
+    scheduler, _, _ = _scheduler(tmp_path)
+
+    async def _run() -> asyncio.Task[None]:
+        task = asyncio.create_task(asyncio.sleep(60))
+        scheduler.track_background(task)
+        scheduler.start()
+        await scheduler.stop()
+        return task
+
+    task = asyncio.run(_run())
+
+    assert task.cancelled()
