@@ -1,5 +1,5 @@
 """Best-effort office-file thumbnail rendering via headless LibreOffice,
-shared by documents.py/spreadsheets.py/presentations.py's write_* tools,
+shared by office/docx/pdf, spreadsheets.py/presentations.py's write_* tools,
 and (render_single_page_preview specifically) by conversation/session.py's
 approval-preview (_build_pptx_edit_preview) -- a before/after slide
 render shown in the approval card for a pptx edit, instead of just its

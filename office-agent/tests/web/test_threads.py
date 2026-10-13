@@ -27,7 +27,7 @@ from pptx import Presentation
 from pptx.util import Inches
 
 from coscribe.conversation.thread_meta import ThreadMetaStore
-from coscribe.tools.documents import DocumentToolkit
+from coscribe.tools.office.document_tools import DocumentToolkit
 from coscribe.tools.presentations import PresentationToolkit
 from coscribe.web.routes import files as files_routes
 from coscribe.web.routes import threads as threads_routes

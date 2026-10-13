@@ -3,7 +3,7 @@ pipe-table the model writes, parsed into categories and series."""
 
 from __future__ import annotations
 
-from ._markdown_tables import _is_separator_row, _split_table_row
+from .office.markdown_blocks import _is_separator_row, _split_table_row
 
 CHART_TYPES = frozenset({"bar", "line", "pie"})
 

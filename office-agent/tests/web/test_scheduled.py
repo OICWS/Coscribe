@@ -17,7 +17,7 @@ from langchain_core.messages import (
 )
 
 from coscribe.web import app as web_app
-from coscribe.web.routes import settings as settings_routes
+from coscribe.web.routes.settings import environments as settings_routes
 from coscribe.web.schemas import ScriptEnvPackageInstall
 
 from ..test_web_routes import _flatten

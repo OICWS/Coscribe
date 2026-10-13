@@ -128,6 +128,7 @@ from ..runtime_lg.tool_deferral import (
 )
 from ..tools import (
     QUESTION_TOOL_NAMES,
+    DocumentToolkit,
     format_skill_listing,
     load_builtin_skills,
     load_skills,
@@ -138,7 +139,6 @@ from ..tools._workspace import WorkspaceScope
 from ..tools.background_tasks import BackgroundTask, set_change_listener
 from ..tools.browser import BROWSER_HOST, page_screenshot
 from ..tools.conversations import MessagingStore, format_incoming, set_inbox_listener
-from ..tools.documents import DocumentToolkit
 from ..tools.http_request import build_http_tools
 from ..tools.interaction import (
     PLAN_CHOICE_AUTO,
