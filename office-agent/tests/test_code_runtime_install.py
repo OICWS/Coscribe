@@ -17,11 +17,10 @@ from typing import Any
 
 import pytest
 
-from coscribe.code_runtime import _pins, install
+from coscribe.code_runtime import CodeService, _pins, install
 from coscribe.code_runtime import service as code_runtime_service
 from coscribe.code_runtime.install import CodexUnavailable, codex_executable, ensure_codex
 from coscribe.code_runtime.launch import CodexHost, LaunchSpec
-from coscribe.code_runtime.service import CodeService
 from coscribe.config import Settings
 
 EXE = ".exe" if sys.platform == "win32" else ""

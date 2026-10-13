@@ -27,7 +27,7 @@ from langchain_core.messages import BaseMessage
 from langchain_core.outputs import ChatResult
 from langgraph.checkpoint.memory import InMemorySaver
 
-from coscribe.code_runtime.permissions import CodePermissions
+from coscribe.code_runtime import CodePermissions
 from coscribe.config import Settings
 from coscribe.conversation import session as session_module
 from coscribe.conversation.session import ChatSessionLG, _SubAgentApprovalChannel
