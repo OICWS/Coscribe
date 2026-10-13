@@ -110,6 +110,7 @@ def _split_top_level_args(text: str) -> list[str]:
     current: list[str] = []
     depth = 0
     in_quotes = False
+    in_sheet_name = False
     i = 0
     n = len(text)
     while i < n:
@@ -124,7 +125,13 @@ def _split_top_level_args(text: str) -> list[str]:
                 in_quotes = False
             i += 1
             continue
-        if ch == '"':
+        if in_sheet_name:
+            current.append(ch)
+            in_sheet_name = ch != "'"
+        elif ch == "'":
+            in_sheet_name = True
+            current.append(ch)
+        elif ch == '"':
             in_quotes = True
             current.append(ch)
         elif ch == "(":
@@ -146,14 +153,16 @@ def _split_top_level_args(text: str) -> list[str]:
 def _is_one_argument_list(text: str) -> bool:
     """False when a `)` inside `text` closes the call's own `(` early, as in
     `F(a)&F(b)` whose body between the outer parens is `a)&F(b`: that is two
-    calls, not one call with odd arguments."""
+    calls, not one call with odd arguments. Parentheses inside a string or a
+    quoted sheet name do not count."""
     depth = 0
-    in_quotes = False
+    quote = ""
     for ch in text:
-        if ch == '"':
-            in_quotes = not in_quotes
-        elif in_quotes:
-            continue
+        if quote:
+            if ch == quote:
+                quote = ""
+        elif ch in "\"'":
+            quote = ch
         elif ch == "(":
             depth += 1
         elif ch == ")":

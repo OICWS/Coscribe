@@ -119,8 +119,6 @@ def test_evaluate_formula_declines_a_non_reference_argument() -> None:
     # SUM(A1:A2) as an argument isn't a plain literal or reference this
     # module resolves -- must decline (not guess), same contract as a
     # too-complex whole formula.
-    from coscribe.tools._xlsx_lookup_formulas import _UNRESOLVABLE
-
     wb = _values_workbook([["Alice", 9], ["Bob", 7]])
     result = evaluate_formula("=XLOOKUP(SUM(A1:A1),A1:A2,B1:B2)", "Sheet", wb)
     assert result is _UNRESOLVABLE
@@ -221,3 +219,10 @@ def test_two_calls_joined_by_an_operator_are_left_alone() -> None:
     text = '=XLOOKUP(A1,B:B,C:C,"na")&XLOOKUP("k",B:B,C:C)'
     assert parse_single_call(text) is None
     assert evaluate_formula(text, "Sheet", wb) is _UNRESOLVABLE
+
+
+def test_parse_single_call_keeps_parentheses_inside_a_quoted_sheet_name() -> None:
+    assert parse_single_call("=XLOOKUP(\"a\",'Sales)'!A:A,'Sales)'!B:B)") == (
+        "XLOOKUP",
+        ['"a"', "'Sales)'!A:A", "'Sales)'!B:B"],
+    )
