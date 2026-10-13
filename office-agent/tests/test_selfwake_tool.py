@@ -124,11 +124,11 @@ def test_wake_on_event_then_signal_event_round_trip(tmp_path: Path) -> None:
     wake = tools["wake_on_event"](event_key="deploy-done", reason="tell the user")
     signal_store = SignalStore(tmp_path)
 
-    assert signal_store.fired_since("deploy-done", wake["created_at"]) is False
+    assert signal_store.fired_since("deploy-done", wake["created_at"], wake["seq"]) is False
 
     tools["signal_event"](event_key="deploy-done", payload="all green")
 
-    assert signal_store.fired_since("deploy-done", wake["created_at"]) is True
+    assert signal_store.fired_since("deploy-done", wake["created_at"], wake["seq"]) is True
 
 
 def test_signal_event_before_wake_registered_does_not_retroactively_fire_it(
@@ -140,7 +140,7 @@ def test_signal_event_before_wake_registered_does_not_retroactively_fire_it(
 
     wake = tools["wake_on_event"](event_key="deploy-done", reason="x")
 
-    assert signal_store.fired_since("deploy-done", wake["created_at"]) is False
+    assert signal_store.fired_since("deploy-done", wake["created_at"], wake["seq"]) is False
 
 
 @pytest.fixture
@@ -189,6 +189,16 @@ def test_a_wake_saved_before_the_counter_existed_falls_back_to_the_clock(
 
     assert signal_store.fired_since("deploy-done", "2000-01-01T00:00:00+00:00") is True
     assert signal_store.fired_since("deploy-done", "2999-01-01T00:00:00+00:00") is False
+
+
+def test_sequence_only_grows_and_survives_a_corrupt_counter_file(tmp_path: Path) -> None:
+    sequence = selfwake_module._Sequence(tmp_path)
+    first, second = sequence.next(), sequence.next()
+    assert second == first + 1
+
+    sequence.path.write_text("not json", encoding="utf-8")
+
+    assert sequence.next() > second
 
 
 # -- list_wakes / cancel_wake --

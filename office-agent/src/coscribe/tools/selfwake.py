@@ -88,7 +88,10 @@ class _Sequence:
             try:
                 current = int(json.loads(self.path.read_text(encoding="utf-8"))["seq"])
             except (OSError, ValueError, KeyError, TypeError):
-                current = 0
+                # An unreadable counter must not restart at 0: new numbers
+                # would fall below those already on disk. The clock in ns is
+                # above any count this file could have reached.
+                current = time.time_ns()
             value = current + 1
             tmp_path = self.path.with_suffix(".tmp")
             tmp_path.write_text(json.dumps({"seq": value}), encoding="utf-8")
