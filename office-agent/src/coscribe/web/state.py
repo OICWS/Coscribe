@@ -6,7 +6,6 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 from ..config import Settings
@@ -18,6 +17,7 @@ from ..runtime_lg.mcp_oauth import LoopbackCallback, McpOAuth
 from ..tools import SkillInfo
 from ..tools.scheduled_tasks import ScheduledRun
 from .background_events import BackgroundEventBus
+from .thread_files import ThreadFiles
 
 
 @dataclass
@@ -42,9 +42,7 @@ class AppState:
     disconnect_mcp_server_lg: Callable[[str], Coroutine[Any, Any, None]]
     refresh_all_sessions_extra_tools: Callable[[], Coroutine[Any, Any, None]]
     oauth_callback_response: Callable[..., Any]
-    read_workspace_sidecar: Callable[[str], list[str]]
-    write_workspace_sidecar: Callable[[str, list[str]], None]
-    title_sidecar_path: Callable[[str], Path]
+    thread_files: ThreadFiles
     delete_thread_data: Callable[[str], Coroutine[Any, Any, bool]]
     delete_run_threads: Callable[[list[ScheduledRun]], Coroutine[Any, Any, None]]
     execute_and_announce: Callable[[str, str], Coroutine[Any, Any, None]]
