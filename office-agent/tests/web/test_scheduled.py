@@ -1201,6 +1201,7 @@ def test_scheduler_fires_due_wakes_and_nudges_the_open_tab(tmp_path: Path) -> No
 
     asyncio.run(_run())
 
+    assert calls["wakes"] >= 1, "the wake loop never ran within the wait"
     assert tab.resynced == 1
     assert queue.get_nowait()["kind"] == "wake"
     assert calls["tasks"] >= 1

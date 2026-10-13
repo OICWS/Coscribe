@@ -64,7 +64,7 @@ class Scheduler:
     async def wake_poll_loop(self) -> None:
         """Runs for the life of the web process, checking for due
         sleep_until/sleep_for/wake_on/wake_on_event requests *and* due
-        Scheduled Tasks every self._settings.wake_poll_seconds -- the
+        Scheduled Tasks every settings.wake_poll_seconds -- the
         zero-config half of both Phase 4's suspend/resume story and the
         Scheduled Tasks feature built on top of it (cli.py's --check-wakes
         flag is the other half, for a setup that doesn't keep the web
