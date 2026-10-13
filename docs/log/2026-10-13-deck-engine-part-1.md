@@ -23,9 +23,10 @@ whole-page SVG sources. This is the compiler; issue #141.
 - The research pages (T1-A) compile to the same look as ppt-master's own exporter, including the
   two-line texts the research spike had joined into one.
 
+- The maintainer opened two compiled decks (the 6-page research deck and the 2-page test deck) in
+  PowerPoint on Windows: no repair prompt, every text and shape selectable and editable.
+
 ## Not verified
-- The compiled decks were rendered with LibreOffice only; opening one in PowerPoint on Windows
-  is still to be done.
 - Rotated, skewed or matrix group transforms, gradient backgrounds, native charts and tables,
   formulas, internal slide links: reported as errors or warnings, not converted yet.
 
