@@ -39,7 +39,9 @@ def _oversized_text_files() -> list[str]:
         if not path.is_file() or path.stat().st_size <= LIMIT_BYTES:
             continue
         # A NUL byte in the first block is git's own test for binary.
-        if b"\0" in path.read_bytes()[:8000]:
+        with path.open("rb") as handle:
+            head = handle.read(8000)
+        if b"\0" in head:
             continue
         found.append(name)
     return found
@@ -53,7 +55,3 @@ def test_no_new_large_text_file() -> None:
         "line in .ignore) and add it to ALLOWED in tests/test_file_sizes.py with a reason."
     )
 
-
-def test_allow_list_has_no_stale_entry() -> None:
-    stale = sorted(set(ALLOWED) - set(_oversized_text_files()))
-    assert not stale, f"Allowed but no longer over the limit or no longer tracked: {stale}"

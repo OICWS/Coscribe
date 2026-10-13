@@ -2,6 +2,6 @@
 # should search whole. `rg -u` still searches them. Code and the docs that sessions are
 # told to grep (skill_catalog.json, the frozen roadmap) stay searchable.
 office-agent/src/coscribe/tools/_native_animation_presets/animation_presets.json
-*.xsd
+office-agent/src/coscribe/tools/_ooxml_schemas/
 package-lock.json
 site/index.html
