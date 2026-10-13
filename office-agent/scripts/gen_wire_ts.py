@@ -41,9 +41,7 @@ def ts_type(annotation: Any) -> str:
     origin = get_origin(annotation)
     args = get_args(annotation)
     if origin is Literal:
-        return " | ".join(
-            "true" if a is True else "false" if a is False else _quote(a) for a in args
-        )
+        return " | ".join(_literal(a) for a in args)
     if origin in (Union, types.UnionType):
         return " | ".join(ts_type(a) for a in args)
     if origin is list:
@@ -57,7 +55,9 @@ def ts_type(annotation: Any) -> str:
 def _literal(value: Any) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
-    return _quote(value)
+    if isinstance(value, str):
+        return _quote(value)
+    raise TypeError(f"no TypeScript form for the literal {value!r}")
 
 
 def _quote(value: str) -> str:
@@ -65,7 +65,7 @@ def _quote(value: str) -> str:
 
 
 def _doc(text: str, indent: str) -> list[str]:
-    lines = [line.strip() for line in text.strip().splitlines()]
+    lines = [line.strip().replace("*/", "*\\/") for line in text.strip().splitlines()]
     if len(lines) == 1:
         return [f"{indent}/** {lines[0]} */"]
     return [f"{indent}/**", *[f"{indent} * {line}".rstrip() for line in lines], f"{indent} */"]
@@ -127,7 +127,15 @@ def render() -> str:
                 out.append(f"  {key}{optional}: {ts_type(annotation)};")
             out.append("}")
             out.append("")
-        elif isinstance(value, types.UnionType) and all(is_typeddict(a) for a in get_args(value)):
+        elif is_typeddict(value):
+            raise TypeError(
+                f"{name} is an alias of {value.__name__}; the generator has no form for it"
+            )
+        elif get_origin(value) in (Union, types.UnionType):
+            if not all(is_typeddict(a) for a in get_args(value)):
+                raise TypeError(
+                    f"{name} is a union of more than TypedDicts; the generator has no form for it"
+                )
             members = "\n".join(f"  | {a.__name__}" for a in get_args(value))
             out.append(f"export type {name} =\n{members};")
             out.append("")

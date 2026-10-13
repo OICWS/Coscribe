@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { HistoryEntry, QuestionSpec, StateEvent } from "../types/wire";
+import type { ApprovalRequiredEvent, HistoryEntry, QuestionSpec, StateEvent } from "../types/wire";
 import {
   TASK_DRAFT_SAVED_PREFIX,
   chatReducer,
@@ -511,7 +511,7 @@ describe("approvals", () => {
       arguments: {},
       before_preview: null,
       after_preview: null,
-    } as ChatAction);
+    } as Omit<ApprovalRequiredEvent, "reviewer_note"> as ChatAction);
     expect(next.items[0]).toMatchObject({ reviewerNote: null });
   });
 

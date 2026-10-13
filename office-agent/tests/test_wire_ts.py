@@ -1,5 +1,6 @@
 import importlib.util
 from pathlib import Path
+from typing import Literal, get_args
 
 import pytest
 
@@ -32,7 +33,22 @@ def test_every_wire_type_is_generated() -> None:
             assert f"export interface {cls.__name__} {{" in generated
 
 
-@pytest.mark.parametrize("annotation", [set, tuple[int, ...]])
+def test_the_unions_list_every_member() -> None:
+    from coscribe.conversation import wire
+
+    generated = _generator().render()
+    for name, union in (("ServerEvent", wire.ServerEvent), ("ClientMessage", wire.ClientMessage)):
+        block = generated.split(f"export type {name} =", 1)[1].split(";", 1)[0]
+        assert [m.strip(" |") for m in block.split("\n") if m.strip()] == [
+            cls.__name__ for cls in get_args(union)
+        ]
+
+
+def test_a_comment_cannot_end_itself_early() -> None:
+    assert _generator()._doc("a */ b", "") == ["/** a *\\/ b */"]
+
+
+@pytest.mark.parametrize("annotation", [set, tuple[int, ...], Literal[1, 2]])
 def test_a_type_without_a_typescript_form_is_refused(annotation: object) -> None:
     with pytest.raises(TypeError):
         _generator().ts_type(annotation)
