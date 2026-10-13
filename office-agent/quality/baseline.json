@@ -182,11 +182,15 @@
   "coscribe.workflows.engine -> coscribe.tools.scripts:_run_python_script": 1,
   "coscribe.workflows.testing -> coscribe.tools.browser": 1
  },
+ "fan_out": {
+  "coscribe.conversation.session": 41,
+  "coscribe.web.app": 32
+ },
  "file_lines": {
   "src/coscribe/conversation/session.py": 3741,
   "src/coscribe/coordinator.py": 975,
   "src/coscribe/runtime_lg/subagents.py": 838,
-  "src/coscribe/tools/documents.py": 1938,
+  "src/coscribe/tools/documents.py": 1928,
   "src/coscribe/tools/presentations.py": 7092,
   "src/coscribe/tools/scheduled_tasks.py": 1054,
   "src/coscribe/tools/spreadsheets.py": 1439,
@@ -266,17 +270,5 @@
   "pragma_no_cover": 2,
   "type_ignore": 43
  },
- "tests_without_a_check": {
-  "tests/test_presentations_tool.py::test_add_pptx_animation_is_schema_valid_for_every_registered_animation": 1,
-  "tests/test_presentations_tool.py::test_add_pptx_audio_two_calls_do_not_crash_on_media_part_reload": 1,
-  "tests/test_presentations_tool.py::test_add_pptx_hyperlink_survives_round_trip": 1,
-  "tests/test_presentations_tool.py::test_edit_pptx_theme_colors_survives_round_trip": 1,
-  "tests/test_presentations_tool.py::test_recolor_pptx_icon_survives_round_trip": 1,
-  "tests/test_presentations_tool.py::test_set_pptx_transition_is_schema_valid_for_every_registered_transition": 1,
-  "tests/test_secrets.py::test_delete_secret_is_a_noop_for_a_plain_string": 1,
-  "tests/test_secrets.py::test_delete_secret_is_a_noop_for_none": 1,
-  "tests/test_secrets.py::test_delete_secret_swallows_keyring_errors": 1,
-  "tests/test_secrets.py::test_env_delete_secret_if_ref_is_a_noop_for_plain_value": 1,
-  "tests/test_secrets.py::test_harden_file_permissions_swallows_errors_for_a_missing_file": 1
- }
+ "tests_without_a_check": {}
 }
