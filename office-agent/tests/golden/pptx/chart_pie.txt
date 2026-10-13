@@ -1,0 +1,923 @@
+===== [Content_Types].xml
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default ContentType="application/vnd.openxmlformats-officedocument.presentationml.printerSettings" Extension="bin"/>
+  <Default ContentType="image/jpeg" Extension="jpeg"/>
+  <Default ContentType="application/vnd.openxmlformats-package.relationships+xml" Extension="rels"/>
+  <Default ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" Extension="xlsx"/>
+  <Default ContentType="application/xml" Extension="xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml" PartName="/docProps/app.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-package.core-properties+xml" PartName="/docProps/core.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml" PartName="/ppt/charts/chart1.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.presentationml.presProps+xml" PartName="/ppt/presProps.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml" PartName="/ppt/presentation.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml" PartName="/ppt/slideLayouts/slideLayout1.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml" PartName="/ppt/slideLayouts/slideLayout10.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml" PartName="/ppt/slideLayouts/slideLayout11.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml" PartName="/ppt/slideLayouts/slideLayout2.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml" PartName="/ppt/slideLayouts/slideLayout3.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml" PartName="/ppt/slideLayouts/slideLayout4.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml" PartName="/ppt/slideLayouts/slideLayout5.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml" PartName="/ppt/slideLayouts/slideLayout6.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml" PartName="/ppt/slideLayouts/slideLayout7.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml" PartName="/ppt/slideLayouts/slideLayout8.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml" PartName="/ppt/slideLayouts/slideLayout9.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml" PartName="/ppt/slideMasters/slideMaster1.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml" PartName="/ppt/slides/slide1.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.presentationml.tableStyles+xml" PartName="/ppt/tableStyles.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.theme+xml" PartName="/ppt/theme/theme1.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.presentationml.viewProps+xml" PartName="/ppt/viewProps.xml"/>
+</Types>
+===== _rels/.rels
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Target="ppt/presentation.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"/>
+  <Relationship Id="rId2" Target="docProps/thumbnail.jpeg" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/thumbnail"/>
+  <Relationship Id="rId3" Target="docProps/core.xml" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties"/>
+  <Relationship Id="rId4" Target="docProps/app.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties"/>
+</Relationships>
+===== docProps/app.xml
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
+  <TotalTime>1</TotalTime>
+  <Words>0</Words>
+  <Application>Microsoft Macintosh PowerPoint</Application>
+  <PresentationFormat>On-screen Show (4:3)</PresentationFormat>
+  <Paragraphs>0</Paragraphs>
+  <Slides>0</Slides>
+  <Notes>0</Notes>
+  <HiddenSlides>0</HiddenSlides>
+  <MMClips>0</MMClips>
+  <ScaleCrop>false</ScaleCrop>
+  <HeadingPairs>
+    <vt:vector baseType="variant" size="4">
+      <vt:variant>
+        <vt:lpstr>Theme</vt:lpstr>
+      </vt:variant>
+      <vt:variant>
+        <vt:i4>1</vt:i4>
+      </vt:variant>
+      <vt:variant>
+        <vt:lpstr>Slide Titles</vt:lpstr>
+      </vt:variant>
+      <vt:variant>
+        <vt:i4>0</vt:i4>
+      </vt:variant>
+    </vt:vector>
+  </HeadingPairs>
+  <TitlesOfParts>
+    <vt:vector baseType="lpstr" size="1">
+      <vt:lpstr>Office Theme</vt:lpstr>
+    </vt:vector>
+  </TitlesOfParts>
+  <Manager/>
+  <Company/>
+  <LinksUpToDate>false</LinksUpToDate>
+  <SharedDoc>false</SharedDoc>
+  <HyperlinkBase/>
+  <HyperlinksChanged>false</HyperlinksChanged>
+  <AppVersion>14.0000</AppVersion>
+</Properties>
+===== docProps/core.xml
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <dc:title/>
+  <dc:subject/>
+  <dc:creator/>
+  <cp:keywords/>
+  <dc:description>generated using python-pptx</dc:description>
+  <cp:lastModifiedBy>Steve Canny</cp:lastModifiedBy>
+  <cp:revision>1</cp:revision>
+  <dcterms:created xsi:type="dcterms:W3CDTF">&lt;normalised&gt;</dcterms:created>
+  <dcterms:modified xsi:type="dcterms:W3CDTF">&lt;normalised&gt;</dcterms:modified>
+  <cp:category/>
+</cp:coreProperties>
+===== docProps/thumbnail.jpeg
+<binary 4067 bytes sha256=116f9aa8ea038e39ef47ee99a23592ab569cf77feafecd0a30e222369e931d25>
+===== ppt/_rels/presentation.xml.rels
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Target="slideMasters/slideMaster1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"/>
+  <Relationship Id="rId2" Target="printerSettings/printerSettings1.bin" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings"/>
+  <Relationship Id="rId3" Target="presProps.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/presProps"/>
+  <Relationship Id="rId4" Target="viewProps.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/viewProps"/>
+  <Relationship Id="rId5" Target="theme/theme1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"/>
+  <Relationship Id="rId6" Target="tableStyles.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tableStyles"/>
+  <Relationship Id="rId7" Target="slides/slide1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"/>
+</Relationships>
+===== ppt/charts/_rels/chart1.xml.rels
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Target="../embeddings/Microsoft_Excel_Sheet1.xlsx" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/package"/>
+</Relationships>
+===== ppt/charts/chart1.xml
+<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <c:chart>
+    <c:title>
+      <c:tx>
+        <c:rich>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          <a:p>
+            <a:r>
+              <a:t>Results</a:t>
+            </a:r>
+          </a:p>
+        </c:rich>
+      </c:tx>
+      <c:layout/>
+      <c:overlay val="0"/>
+    </c:title>
+    <c:autoTitleDeleted val="0"/>
+    <c:plotArea>
+      <c:pieChart>
+        <c:varyColors val="1"/>
+        <c:ser>
+          <c:idx val="0"/>
+          <c:order val="0"/>
+          <c:tx>
+            <c:strRef>
+              <c:f>Sheet1!$B$1</c:f>
+              <c:strCache>
+                <c:ptCount val="1"/>
+                <c:pt idx="0">
+                  <c:v>Share</c:v>
+                </c:pt>
+              </c:strCache>
+            </c:strRef>
+          </c:tx>
+          <c:cat>
+            <c:strRef>
+              <c:f>Sheet1!$A$2:$A$3</c:f>
+              <c:strCache>
+                <c:ptCount val="2"/>
+                <c:pt idx="0">
+                  <c:v>North</c:v>
+                </c:pt>
+                <c:pt idx="1">
+                  <c:v>South</c:v>
+                </c:pt>
+              </c:strCache>
+            </c:strRef>
+          </c:cat>
+          <c:val>
+            <c:numRef>
+              <c:f>Sheet1!$B$2:$B$3</c:f>
+              <c:numCache>
+                <c:formatCode>General</c:formatCode>
+                <c:ptCount val="2"/>
+                <c:pt idx="0">
+                  <c:v>60.0</c:v>
+                </c:pt>
+                <c:pt idx="1">
+                  <c:v>40.0</c:v>
+                </c:pt>
+              </c:numCache>
+            </c:numRef>
+          </c:val>
+        </c:ser>
+      </c:pieChart>
+    </c:plotArea>
+    <c:dispBlanksAs val="gap"/>
+  </c:chart>
+  <c:txPr>
+    <a:bodyPr/>
+    <a:lstStyle/>
+    <a:p>
+      <a:pPr>
+        <a:defRPr sz="1800">
+          <a:solidFill>
+            <a:srgbClr val="000000"/>
+          </a:solidFill>
+        </a:defRPr>
+      </a:pPr>
+      <a:endParaRPr lang="en-US"/>
+    </a:p>
+  </c:txPr>
+  <c:externalData r:id="rId1">
+    <c:autoUpdate val="0"/>
+  </c:externalData>
+</c:chartSpace>
+===== ppt/embeddings/Microsoft_Excel_Sheet1.xlsx
+----- [Content_Types].xml
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default ContentType="application/vnd.openxmlformats-package.relationships+xml" Extension="rels"/>
+  <Default ContentType="application/xml" Extension="xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml" PartName="/docProps/app.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-package.core-properties+xml" PartName="/docProps/core.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml" PartName="/xl/styles.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.theme+xml" PartName="/xl/theme/theme1.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml" PartName="/xl/workbook.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml" PartName="/xl/worksheets/sheet1.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml" PartName="/xl/sharedStrings.xml"/>
+</Types>
+----- _rels/.rels
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Target="xl/workbook.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"/>
+  <Relationship Id="rId2" Target="docProps/core.xml" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties"/>
+  <Relationship Id="rId3" Target="docProps/app.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties"/>
+</Relationships>
+----- docProps/app.xml
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
+  <Application>Microsoft Excel</Application>
+  <DocSecurity>0</DocSecurity>
+  <ScaleCrop>false</ScaleCrop>
+  <HeadingPairs>
+    <vt:vector baseType="variant" size="2">
+      <vt:variant>
+        <vt:lpstr>Worksheets</vt:lpstr>
+      </vt:variant>
+      <vt:variant>
+        <vt:i4>1</vt:i4>
+      </vt:variant>
+    </vt:vector>
+  </HeadingPairs>
+  <TitlesOfParts>
+    <vt:vector baseType="lpstr" size="1">
+      <vt:lpstr>Sheet1</vt:lpstr>
+    </vt:vector>
+  </TitlesOfParts>
+  <Company/>
+  <LinksUpToDate>false</LinksUpToDate>
+  <SharedDoc>false</SharedDoc>
+  <HyperlinksChanged>false</HyperlinksChanged>
+  <AppVersion>12.0000</AppVersion>
+</Properties>
+----- docProps/core.xml
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <dc:creator/>
+  <cp:lastModifiedBy/>
+  <dcterms:created xsi:type="dcterms:W3CDTF">&lt;normalised&gt;</dcterms:created>
+  <dcterms:modified xsi:type="dcterms:W3CDTF">&lt;normalised&gt;</dcterms:modified>
+</cp:coreProperties>
+----- xl/_rels/workbook.xml.rels
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Target="worksheets/sheet1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>
+  <Relationship Id="rId2" Target="theme/theme1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"/>
+  <Relationship Id="rId3" Target="styles.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles"/>
+  <Relationship Id="rId4" Target="sharedStrings.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings"/>
+</Relationships>
+----- xl/sharedStrings.xml
+<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="3" uniqueCount="3">
+  <si>
+    <t>North</t>
+  </si>
+  <si>
+    <t>South</t>
+  </si>
+  <si>
+    <t>Share</t>
+  </si>
+</sst>
+----- xl/styles.xml
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="1">
+    <font>
+      <sz val="11"/>
+      <color theme="1"/>
+      <name val="Calibri"/>
+      <family val="2"/>
+      <scheme val="minor"/>
+    </font>
+  </fonts>
+  <fills count="2">
+    <fill>
+      <patternFill patternType="none"/>
+    </fill>
+    <fill>
+      <patternFill patternType="gray125"/>
+    </fill>
+  </fills>
+  <borders count="1">
+    <border>
+      <left/>
+      <right/>
+      <top/>
+      <bottom/>
+      <diagonal/>
+    </border>
+  </borders>
+  <cellStyleXfs count="1">
+    <xf borderId="0" fillId="0" fontId="0" numFmtId="0"/>
+  </cellStyleXfs>
+  <cellXfs count="2">
+    <xf borderId="0" fillId="0" fontId="0" numFmtId="0" xfId="0"/>
+    <xf borderId="0" fillId="0" fontId="0" numFmtId="0" xfId="0"/>
+  </cellXfs>
+  <cellStyles count="1">
+    <cellStyle builtinId="0" name="Normal" xfId="0"/>
+  </cellStyles>
+  <dxfs count="0"/>
+  <tableStyles count="0" defaultPivotStyle="PivotStyleLight16" defaultTableStyle="TableStyleMedium9"/>
+</styleSheet>
+----- xl/theme/theme1.xml
+<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Office Theme">
+  <a:themeElements>
+    <a:clrScheme name="Office">
+      <a:dk1>
+        <a:sysClr lastClr="000000" val="windowText"/>
+      </a:dk1>
+      <a:lt1>
+        <a:sysClr lastClr="FFFFFF" val="window"/>
+      </a:lt1>
+      <a:dk2>
+        <a:srgbClr val="1F497D"/>
+      </a:dk2>
+      <a:lt2>
+        <a:srgbClr val="EEECE1"/>
+      </a:lt2>
+      <a:accent1>
+        <a:srgbClr val="4F81BD"/>
+      </a:accent1>
+      <a:accent2>
+        <a:srgbClr val="C0504D"/>
+      </a:accent2>
+      <a:accent3>
+        <a:srgbClr val="9BBB59"/>
+      </a:accent3>
+      <a:accent4>
+        <a:srgbClr val="8064A2"/>
+      </a:accent4>
+      <a:accent5>
+        <a:srgbClr val="4BACC6"/>
+      </a:accent5>
+      <a:accent6>
+        <a:srgbClr val="F79646"/>
+      </a:accent6>
+      <a:hlink>
+        <a:srgbClr val="0000FF"/>
+      </a:hlink>
+      <a:folHlink>
+        <a:srgbClr val="800080"/>
+      </a:folHlink>
+    </a:clrScheme>
+    <a:fontScheme name="Office">
+      <a:majorFont>
+        <a:latin typeface="Cambria"/>
+        <a:ea typeface=""/>
+        <a:cs typeface=""/>
+        <a:font script="Jpan" typeface="ＭＳ Ｐゴシック"/>
+        <a:font script="Hang" typeface="맑은 고딕"/>
+        <a:font script="Hans" typeface="宋体"/>
+        <a:font script="Hant" typeface="新細明體"/>
+        <a:font script="Arab" typeface="Times New Roman"/>
+        <a:font script="Hebr" typeface="Times New Roman"/>
+        <a:font script="Thai" typeface="Tahoma"/>
+        <a:font script="Ethi" typeface="Nyala"/>
+        <a:font script="Beng" typeface="Vrinda"/>
+        <a:font script="Gujr" typeface="Shruti"/>
+        <a:font script="Khmr" typeface="MoolBoran"/>
+        <a:font script="Knda" typeface="Tunga"/>
+        <a:font script="Guru" typeface="Raavi"/>
+        <a:font script="Cans" typeface="Euphemia"/>
+        <a:font script="Cher" typeface="Plantagenet Cherokee"/>
+        <a:font script="Yiii" typeface="Microsoft Yi Baiti"/>
+        <a:font script="Tibt" typeface="Microsoft Himalaya"/>
+        <a:font script="Thaa" typeface="MV Boli"/>
+        <a:font script="Deva" typeface="Mangal"/>
+        <a:font script="Telu" typeface="Gautami"/>
+        <a:font script="Taml" typeface="Latha"/>
+        <a:font script="Syrc" typeface="Estrangelo Edessa"/>
+        <a:font script="Orya" typeface="Kalinga"/>
+        <a:font script="Mlym" typeface="Kartika"/>
+        <a:font script="Laoo" typeface="DokChampa"/>
+        <a:font script="Sinh" typeface="Iskoola Pota"/>
+        <a:font script="Mong" typeface="Mongolian Baiti"/>
+        <a:font script="Viet" typeface="Times New Roman"/>
+        <a:font script="Uigh" typeface="Microsoft Uighur"/>
+      </a:majorFont>
+      <a:minorFont>
+        <a:latin typeface="Calibri"/>
+        <a:ea typeface=""/>
+        <a:cs typeface=""/>
+        <a:font script="Jpan" typeface="ＭＳ Ｐゴシック"/>
+        <a:font script="Hang" typeface="맑은 고딕"/>
+        <a:font script="Hans" typeface="宋体"/>
+        <a:font script="Hant" typeface="新細明體"/>
+        <a:font script="Arab" typeface="Arial"/>
+        <a:font script="Hebr" typeface="Arial"/>
+        <a:font script="Thai" typeface="Tahoma"/>
+        <a:font script="Ethi" typeface="Nyala"/>
+        <a:font script="Beng" typeface="Vrinda"/>
+        <a:font script="Gujr" typeface="Shruti"/>
+        <a:font script="Khmr" typeface="DaunPenh"/>
+        <a:font script="Knda" typeface="Tunga"/>
+        <a:font script="Guru" typeface="Raavi"/>
+        <a:font script="Cans" typeface="Euphemia"/>
+        <a:font script="Cher" typeface="Plantagenet Cherokee"/>
+        <a:font script="Yiii" typeface="Microsoft Yi Baiti"/>
+        <a:font script="Tibt" typeface="Microsoft Himalaya"/>
+        <a:font script="Thaa" typeface="MV Boli"/>
+        <a:font script="Deva" typeface="Mangal"/>
+        <a:font script="Telu" typeface="Gautami"/>
+        <a:font script="Taml" typeface="Latha"/>
+        <a:font script="Syrc" typeface="Estrangelo Edessa"/>
+        <a:font script="Orya" typeface="Kalinga"/>
+        <a:font script="Mlym" typeface="Kartika"/>
+        <a:font script="Laoo" typeface="DokChampa"/>
+        <a:font script="Sinh" typeface="Iskoola Pota"/>
+        <a:font script="Mong" typeface="Mongolian Baiti"/>
+        <a:font script="Viet" typeface="Arial"/>
+        <a:font script="Uigh" typeface="Microsoft Uighur"/>
+      </a:minorFont>
+    </a:fontScheme>
+    <a:fmtScheme name="Office">
+      <a:fillStyleLst>
+        <a:solidFill>
+          <a:schemeClr val="phClr"/>
+        </a:solidFill>
+        <a:gradFill rotWithShape="1">
+          <a:gsLst>
+            <a:gs pos="0">
+              <a:schemeClr val="phClr">
+                <a:tint val="50000"/>
+                <a:satMod val="300000"/>
+              </a:schemeClr>
+            </a:gs>
+            <a:gs pos="35000">
+              <a:schemeClr val="phClr">
+                <a:tint val="37000"/>
+                <a:satMod val="300000"/>
+              </a:schemeClr>
+            </a:gs>
+            <a:gs pos="100000">
+              <a:schemeClr val="phClr">
+                <a:tint val="15000"/>
+                <a:satMod val="350000"/>
+              </a:schemeClr>
+            </a:gs>
+          </a:gsLst>
+          <a:lin ang="16200000" scaled="1"/>
+        </a:gradFill>
+        <a:gradFill rotWithShape="1">
+          <a:gsLst>
+            <a:gs pos="0">
+              <a:schemeClr val="phClr">
+                <a:shade val="51000"/>
+                <a:satMod val="130000"/>
+              </a:schemeClr>
+            </a:gs>
+            <a:gs pos="80000">
+              <a:schemeClr val="phClr">
+                <a:shade val="93000"/>
+                <a:satMod val="130000"/>
+              </a:schemeClr>
+            </a:gs>
+            <a:gs pos="100000">
+              <a:schemeClr val="phClr">
+                <a:shade val="94000"/>
+                <a:satMod val="135000"/>
+              </a:schemeClr>
+            </a:gs>
+          </a:gsLst>
+          <a:lin ang="16200000" scaled="0"/>
+        </a:gradFill>
+      </a:fillStyleLst>
+      <a:lnStyleLst>
+        <a:ln algn="ctr" cap="flat" cmpd="sng" w="9525">
+          <a:solidFill>
+            <a:schemeClr val="phClr">
+              <a:shade val="95000"/>
+              <a:satMod val="105000"/>
+            </a:schemeClr>
+          </a:solidFill>
+          <a:prstDash val="solid"/>
+        </a:ln>
+        <a:ln algn="ctr" cap="flat" cmpd="sng" w="25400">
+          <a:solidFill>
+            <a:schemeClr val="phClr"/>
+          </a:solidFill>
+          <a:prstDash val="solid"/>
+        </a:ln>
+        <a:ln algn="ctr" cap="flat" cmpd="sng" w="38100">
+          <a:solidFill>
+            <a:schemeClr val="phClr"/>
+          </a:solidFill>
+          <a:prstDash val="solid"/>
+        </a:ln>
+      </a:lnStyleLst>
+      <a:effectStyleLst>
+        <a:effectStyle>
+          <a:effectLst>
+            <a:outerShdw blurRad="40000" dir="5400000" dist="20000" rotWithShape="0">
+              <a:srgbClr val="000000">
+                <a:alpha val="38000"/>
+              </a:srgbClr>
+            </a:outerShdw>
+          </a:effectLst>
+        </a:effectStyle>
+        <a:effectStyle>
+          <a:effectLst>
+            <a:outerShdw blurRad="40000" dir="5400000" dist="23000" rotWithShape="0">
+              <a:srgbClr val="000000">
+                <a:alpha val="35000"/>
+              </a:srgbClr>
+            </a:outerShdw>
+          </a:effectLst>
+        </a:effectStyle>
+        <a:effectStyle>
+          <a:effectLst>
+            <a:outerShdw blurRad="40000" dir="5400000" dist="23000" rotWithShape="0">
+              <a:srgbClr val="000000">
+                <a:alpha val="35000"/>
+              </a:srgbClr>
+            </a:outerShdw>
+          </a:effectLst>
+          <a:scene3d>
+            <a:camera prst="orthographicFront">
+              <a:rot lat="0" lon="0" rev="0"/>
+            </a:camera>
+            <a:lightRig dir="t" rig="threePt">
+              <a:rot lat="0" lon="0" rev="1200000"/>
+            </a:lightRig>
+          </a:scene3d>
+          <a:sp3d>
+            <a:bevelT h="25400" w="63500"/>
+          </a:sp3d>
+        </a:effectStyle>
+      </a:effectStyleLst>
+      <a:bgFillStyleLst>
+        <a:solidFill>
+          <a:schemeClr val="phClr"/>
+        </a:solidFill>
+        <a:gradFill rotWithShape="1">
+          <a:gsLst>
+            <a:gs pos="0">
+              <a:schemeClr val="phClr">
+                <a:tint val="40000"/>
+                <a:satMod val="350000"/>
+              </a:schemeClr>
+            </a:gs>
+            <a:gs pos="40000">
+              <a:schemeClr val="phClr">
+                <a:tint val="45000"/>
+                <a:shade val="99000"/>
+                <a:satMod val="350000"/>
+              </a:schemeClr>
+            </a:gs>
+            <a:gs pos="100000">
+              <a:schemeClr val="phClr">
+                <a:shade val="20000"/>
+                <a:satMod val="255000"/>
+              </a:schemeClr>
+            </a:gs>
+          </a:gsLst>
+          <a:path path="circle">
+            <a:fillToRect b="180000" l="50000" r="50000" t="-80000"/>
+          </a:path>
+        </a:gradFill>
+        <a:gradFill rotWithShape="1">
+          <a:gsLst>
+            <a:gs pos="0">
+              <a:schemeClr val="phClr">
+                <a:tint val="80000"/>
+                <a:satMod val="300000"/>
+              </a:schemeClr>
+            </a:gs>
+            <a:gs pos="100000">
+              <a:schemeClr val="phClr">
+                <a:shade val="30000"/>
+                <a:satMod val="200000"/>
+              </a:schemeClr>
+            </a:gs>
+          </a:gsLst>
+          <a:path path="circle">
+            <a:fillToRect b="50000" l="50000" r="50000" t="50000"/>
+          </a:path>
+        </a:gradFill>
+      </a:bgFillStyleLst>
+    </a:fmtScheme>
+  </a:themeElements>
+  <a:objectDefaults/>
+  <a:extraClrSchemeLst/>
+</a:theme>
+----- xl/workbook.xml
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <fileVersion appName="xl" lastEdited="4" lowestEdited="4" rupBuild="4505"/>
+  <workbookPr defaultThemeVersion="124226"/>
+  <bookViews>
+    <workbookView windowHeight="9660" windowWidth="16095" xWindow="240" yWindow="15"/>
+  </bookViews>
+  <sheets>
+    <sheet name="Sheet1" sheetId="1" r:id="rId1"/>
+  </sheets>
+  <calcPr calcId="124519" fullCalcOnLoad="1"/>
+</workbook>
+----- xl/worksheets/sheet1.xml
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <dimension ref="A1:B3"/>
+  <sheetViews>
+    <sheetView tabSelected="1" workbookViewId="0"/>
+  </sheetViews>
+  <sheetFormatPr defaultRowHeight="15"/>
+  <cols>
+    <col customWidth="1" max="1" min="1" width="10.7109375"/>
+  </cols>
+  <sheetData>
+    <row r="1" spans="1:2">
+      <c r="B1" t="s">
+        <v>2</v>
+      </c>
+    </row>
+    <row r="2" spans="1:2">
+      <c r="A2" s="1" t="s">
+        <v>0</v>
+      </c>
+      <c r="B2" s="1">
+        <v>60</v>
+      </c>
+    </row>
+    <row r="3" spans="1:2">
+      <c r="A3" s="1" t="s">
+        <v>1</v>
+      </c>
+      <c r="B3" s="1">
+        <v>40</v>
+      </c>
+    </row>
+  </sheetData>
+  <pageMargins bottom="0.75" footer="0.3" header="0.3" left="0.7" right="0.7" top="0.75"/>
+</worksheet>
+===== ppt/presProps.xml
+<p:presentationPr xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:extLst>
+    <p:ext uri="{E76CE94A-603C-4142-B9EB-6D1370010A27}">
+      <p14:discardImageEditData xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" val="0"/>
+    </p:ext>
+    <p:ext uri="{D31A062A-798A-4329-ABDD-BBA856620510}">
+      <p14:defaultImageDpi xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" val="0"/>
+    </p:ext>
+  </p:extLst>
+</p:presentationPr>
+===== ppt/presentation.xml
+<p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" autoCompressPictures="0" saveSubsetFonts="1">
+  <p:sldMasterIdLst>
+    <p:sldMasterId id="2147483648" r:id="rId1"/>
+  </p:sldMasterIdLst>
+  <p:sldIdLst>
+    <p:sldId id="256" r:id="rId7"/>
+  </p:sldIdLst>
+  <p:sldSz cx="12192000" cy="6858000" type="screen4x3"/>
+  <p:notesSz cx="6858000" cy="9144000"/>
+  <p:defaultTextStyle>
+    <a:defPPr>
+      <a:defRPr lang="en-US"/>
+    </a:defPPr>
+    <a:lvl1pPr algn="l" defTabSz="457200" eaLnBrk="1" hangingPunct="1" latinLnBrk="0" marL="0" rtl="0">
+      <a:defRPr kern="1200" sz="1800">
+        <a:solidFill>
+          <a:schemeClr val="tx1"/>
+        </a:solidFill>
+        <a:latin typeface="+mn-lt"/>
+        <a:ea typeface="+mn-ea"/>
+        <a:cs typeface="+mn-cs"/>
+      </a:defRPr>
+    </a:lvl1pPr>
+    <a:lvl2pPr algn="l" defTabSz="457200" eaLnBrk="1" hangingPunct="1" latinLnBrk="0" marL="457200" rtl="0">
+      <a:defRPr kern="1200" sz="1800">
+        <a:solidFill>
+          <a:schemeClr val="tx1"/>
+        </a:solidFill>
+        <a:latin typeface="+mn-lt"/>
+        <a:ea typeface="+mn-ea"/>
+        <a:cs typeface="+mn-cs"/>
+      </a:defRPr>
+    </a:lvl2pPr>
+    <a:lvl3pPr algn="l" defTabSz="457200" eaLnBrk="1" hangingPunct="1" latinLnBrk="0" marL="914400" rtl="0">
+      <a:defRPr kern="1200" sz="1800">
+        <a:solidFill>
+          <a:schemeClr val="tx1"/>
+        </a:solidFill>
+        <a:latin typeface="+mn-lt"/>
+        <a:ea typeface="+mn-ea"/>
+        <a:cs typeface="+mn-cs"/>
+      </a:defRPr>
+    </a:lvl3pPr>
+    <a:lvl4pPr algn="l" defTabSz="457200" eaLnBrk="1" hangingPunct="1" latinLnBrk="0" marL="1371600" rtl="0">
+      <a:defRPr kern="1200" sz="1800">
+        <a:solidFill>
+          <a:schemeClr val="tx1"/>
+        </a:solidFill>
+        <a:latin typeface="+mn-lt"/>
+        <a:ea typeface="+mn-ea"/>
+        <a:cs typeface="+mn-cs"/>
+      </a:defRPr>
+    </a:lvl4pPr>
+    <a:lvl5pPr algn="l" defTabSz="457200" eaLnBrk="1" hangingPunct="1" latinLnBrk="0" marL="1828800" rtl="0">
+      <a:defRPr kern="1200" sz="1800">
+        <a:solidFill>
+          <a:schemeClr val="tx1"/>
+        </a:solidFill>
+        <a:latin typeface="+mn-lt"/>
+        <a:ea typeface="+mn-ea"/>
+        <a:cs typeface="+mn-cs"/>
+      </a:defRPr>
+    </a:lvl5pPr>
+    <a:lvl6pPr algn="l" defTabSz="457200" eaLnBrk="1" hangingPunct="1" latinLnBrk="0" marL="2286000" rtl="0">
+      <a:defRPr kern="1200" sz="1800">
+        <a:solidFill>
+          <a:schemeClr val="tx1"/>
+        </a:solidFill>
+        <a:latin typeface="+mn-lt"/>
+        <a:ea typeface="+mn-ea"/>
+        <a:cs typeface="+mn-cs"/>
+      </a:defRPr>
+    </a:lvl6pPr>
+    <a:lvl7pPr algn="l" defTabSz="457200" eaLnBrk="1" hangingPunct="1" latinLnBrk="0" marL="2743200" rtl="0">
+      <a:defRPr kern="1200" sz="1800">
+        <a:solidFill>
+          <a:schemeClr val="tx1"/>
+        </a:solidFill>
+        <a:latin typeface="+mn-lt"/>
+        <a:ea typeface="+mn-ea"/>
+        <a:cs typeface="+mn-cs"/>
+      </a:defRPr>
+    </a:lvl7pPr>
+    <a:lvl8pPr algn="l" defTabSz="457200" eaLnBrk="1" hangingPunct="1" latinLnBrk="0" marL="3200400" rtl="0">
+      <a:defRPr kern="1200" sz="1800">
+        <a:solidFill>
+          <a:schemeClr val="tx1"/>
+        </a:solidFill>
+        <a:latin typeface="+mn-lt"/>
+        <a:ea typeface="+mn-ea"/>
+        <a:cs typeface="+mn-cs"/>
+      </a:defRPr>
+    </a:lvl8pPr>
+    <a:lvl9pPr algn="l" defTabSz="457200" eaLnBrk="1" hangingPunct="1" latinLnBrk="0" marL="3657600" rtl="0">
+      <a:defRPr kern="1200" sz="1800">
+        <a:solidFill>
+          <a:schemeClr val="tx1"/>
+        </a:solidFill>
+        <a:latin typeface="+mn-lt"/>
+        <a:ea typeface="+mn-ea"/>
+        <a:cs typeface="+mn-cs"/>
+      </a:defRPr>
+    </a:lvl9pPr>
+  </p:defaultTextStyle>
+</p:presentation>
+===== ppt/printerSettings/printerSettings1.bin
+<binary 9395 bytes sha256=d7768f87e07d29634782e448ece1cddd05a52b9499254222b1190bc8f6dc579e>
+===== ppt/slideLayouts/_rels/slideLayout1.xml.rels
+<same as _shared.txt>
+===== ppt/slideLayouts/_rels/slideLayout10.xml.rels
+<same as _shared.txt>
+===== ppt/slideLayouts/_rels/slideLayout11.xml.rels
+<same as _shared.txt>
+===== ppt/slideLayouts/_rels/slideLayout2.xml.rels
+<same as _shared.txt>
+===== ppt/slideLayouts/_rels/slideLayout3.xml.rels
+<same as _shared.txt>
+===== ppt/slideLayouts/_rels/slideLayout4.xml.rels
+<same as _shared.txt>
+===== ppt/slideLayouts/_rels/slideLayout5.xml.rels
+<same as _shared.txt>
+===== ppt/slideLayouts/_rels/slideLayout6.xml.rels
+<same as _shared.txt>
+===== ppt/slideLayouts/_rels/slideLayout7.xml.rels
+<same as _shared.txt>
+===== ppt/slideLayouts/_rels/slideLayout8.xml.rels
+<same as _shared.txt>
+===== ppt/slideLayouts/_rels/slideLayout9.xml.rels
+<same as _shared.txt>
+===== ppt/slideLayouts/slideLayout1.xml
+<same as _shared.txt>
+===== ppt/slideLayouts/slideLayout10.xml
+<same as _shared.txt>
+===== ppt/slideLayouts/slideLayout11.xml
+<same as _shared.txt>
+===== ppt/slideLayouts/slideLayout2.xml
+<same as _shared.txt>
+===== ppt/slideLayouts/slideLayout3.xml
+<same as _shared.txt>
+===== ppt/slideLayouts/slideLayout4.xml
+<same as _shared.txt>
+===== ppt/slideLayouts/slideLayout5.xml
+<same as _shared.txt>
+===== ppt/slideLayouts/slideLayout6.xml
+<same as _shared.txt>
+===== ppt/slideLayouts/slideLayout7.xml
+<same as _shared.txt>
+===== ppt/slideLayouts/slideLayout8.xml
+<same as _shared.txt>
+===== ppt/slideLayouts/slideLayout9.xml
+<same as _shared.txt>
+===== ppt/slideMasters/_rels/slideMaster1.xml.rels
+<same as _shared.txt>
+===== ppt/slideMasters/slideMaster1.xml
+<same as _shared.txt>
+===== ppt/slides/_rels/slide1.xml.rels
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Target="../slideLayouts/slideLayout2.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"/>
+  <Relationship Id="rId2" Target="../charts/chart1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart"/>
+</Relationships>
+===== ppt/slides/slide1.xml
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <p:cSld>
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr/>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="2" name="Title 1"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="title"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr/>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          <a:p>
+            <a:r>
+              <a:t>A pie chart</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="3" name="Content Placeholder 2"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph idx="1"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="609600" y="1600200"/>
+            <a:ext cx="10972800" cy="411480"/>
+          </a:xfrm>
+        </p:spPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle/>
+          <a:p>
+            <a:r>
+              <a:t>see below</a:t>
+            </a:r>
+          </a:p>
+        </p:txBody>
+      </p:sp>
+      <p:graphicFrame>
+        <p:nvGraphicFramePr>
+          <p:cNvPr id="4" name="Chart 3"/>
+          <p:cNvGraphicFramePr>
+            <a:graphicFrameLocks noGrp="1"/>
+          </p:cNvGraphicFramePr>
+          <p:nvPr/>
+        </p:nvGraphicFramePr>
+        <p:xfrm>
+          <a:off x="609600" y="2217420"/>
+          <a:ext cx="10972800" cy="4297680"/>
+        </p:xfrm>
+        <a:graphic>
+          <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart">
+            <c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" r:id="rId2"/>
+          </a:graphicData>
+        </a:graphic>
+      </p:graphicFrame>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr>
+    <a:masterClrMapping/>
+  </p:clrMapOvr>
+</p:sld>
+===== ppt/tableStyles.xml
+<a:tblStyleLst xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" def="{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"/>
+===== ppt/theme/theme1.xml
+<same as _shared.txt>
+===== ppt/viewProps.xml
+<p:viewPr xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" lastView="sldThumbnailView">
+  <p:normalViewPr>
+    <p:restoredLeft sz="15620"/>
+    <p:restoredTop sz="94660"/>
+  </p:normalViewPr>
+  <p:slideViewPr>
+    <p:cSldViewPr snapToGrid="0" snapToObjects="1">
+      <p:cViewPr varScale="1">
+        <p:scale>
+          <a:sx d="100" n="124"/>
+          <a:sy d="100" n="124"/>
+        </p:scale>
+        <p:origin x="-1512" y="-112"/>
+      </p:cViewPr>
+      <p:guideLst>
+        <p:guide orient="horz" pos="2160"/>
+        <p:guide pos="2880"/>
+      </p:guideLst>
+    </p:cSldViewPr>
+  </p:slideViewPr>
+  <p:notesTextViewPr>
+    <p:cViewPr>
+      <p:scale>
+        <a:sx d="100" n="100"/>
+        <a:sy d="100" n="100"/>
+      </p:scale>
+      <p:origin x="0" y="0"/>
+    </p:cViewPr>
+  </p:notesTextViewPr>
+  <p:gridSpacing cx="76200" cy="76200"/>
+</p:viewPr>
