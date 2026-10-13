@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from coscribe.tools import node_env
 from coscribe.tools.node_env import (
     ensure_node_env,
     install_package,
@@ -48,7 +49,7 @@ def real_state_dir() -> Iterator[Path]:
 def test_ensure_node_env_raises_a_clear_error_when_node_is_missing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr("coscribe.tools.node_env.shutil.which", lambda name: None)
+    monkeypatch.setattr(node_env.shutil, "which", lambda name: None)
 
     with pytest.raises(RuntimeError, match="node.*npm.*not found"):
         ensure_node_env(tmp_path)
