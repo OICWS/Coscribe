@@ -3,7 +3,7 @@
 Why: The last group of part 2 of the pptx goldens (issue #89): `add_pptx_audio` and Chinese text, before `tools/presentations.py` is split.
 
 ## Shipped
-- Three decks with goldens, 26 in all:
+- Three decks with goldens, 27 in all:
   - `cjk_bullets`: Chinese bullets, which get the Microsoft YaHei East-Asian font fix.
   - `cjk_table_and_chart`: a Chinese table and a chart with Chinese categories (the embedded workbook is canonicalised).
   - `cjk_template_fill`: `fill_pptx_template` with Chinese content, from the fixed template deck built in the test (as in the templates group), so it shares the stock 4:3 golden.
