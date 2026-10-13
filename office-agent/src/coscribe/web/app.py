@@ -65,8 +65,7 @@ from ..code_runtime import (
     shutdown_code_services,
 )
 from ..config import Settings
-from ..conversation.session import ChatSessionLG
-from ..conversation.thread_meta import ThreadMetaStore
+from ..conversation import ChatSessionLG, ThreadMetaStore
 from ..runtime import (
     LLMClient,
     empty_hooks_config,

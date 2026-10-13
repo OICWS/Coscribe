@@ -1,0 +1,45 @@
+# conversation: one conversation's turns, approvals and history, shared by the server and the CLI
+
+## Purpose
+Owns `ChatSessionLG` (`session.py`: runs a thread's turns, holds the pending approvals, the
+turn counters and the history/compaction commands; being split into smaller modules, so check
+the directory before assuming a piece is still in it), the approval decision (`approvals.py`: what
+runs without asking, what is refused, what waits for a person), sub-agent and inbox reports as
+turns (`subagents.py`), what the side panel shows (`activity.py`, `context_usage.py`), the
+sidebar's per-thread state (`thread_meta.py`), the turn lock (`turn_lock.py`), the chat
+socket's message types (`wire.py`) and where events go (`events.EventSink`). Does not own the
+agent graph or its middleware (`runtime_lg`), the routes or the socket itself (`web`), or the
+coordinator's tools and prompt (`coordinator.py`).
+
+## Public interface
+`ChatSessionLG`, `ThreadMetaStore`, `OPENABLE_EXTENSIONS`, `open_in_os`. `wire` is imported as a
+module (`from coscribe.conversation import wire`) by tests and `scripts/gen_wire_ts.py`. Tests
+still reach into `session` for private helpers and to patch it; do not copy that into `src`.
+
+## Depends on
+`coscribe.code_runtime`, `coscribe.config`, `coscribe.coordinator`, `coscribe.runtime`,
+`coscribe.runtime_lg`, `coscribe.tools`, `coscribe.workflows`.
+
+## Invariants
+- Only `coscribe.web` knows about HTTP: this package never imports FastAPI, Starlette or uvicorn
+  (import contract, `lint-imports`); it talks to whoever is connected through `EventSink`.
+- `wire.py` is stdlib only, and the chat socket's payloads match it: `tests/wire_check.py`
+  validates every payload the test suite sends, and the checked-in TypeScript types equal what
+  `scripts/gen_wire_ts.py` generates (`tests/test_wire_ts.py`).
+- The approval precedence lives in `approvals.py` only; the session keeps the pending futures
+  and their resolution (`tests/test_approval_decisions.py`).
+- Imports go downward: `conversation` sits under `web` and `cli` and above `coordinator` and
+  `runtime_lg` (layers contract, `lint-imports`).
+
+## Tests
+`tests/test_approval_decisions.py`, `tests/web/test_chat.py`, `tests/web/test_threads.py`,
+`tests/web/test_subagents.py`, `tests/test_subagent_tasks.py`, `tests/test_context_usage.py`,
+`tests/test_wire.py`, `tests/test_wire_ts.py`, `tests/test_title_length.py`.
+
+## Verify by hand
+A real conversation on Windows with a real model: approval cards for a command and a file edit,
+a sub-agent finishing while the tab is watching, /compact and /clear, the Outputs and Context
+panels, a download from the browser tab saving without asking while a turn runs.
+
+## Reviewed
+2026-10-13 (first card; `session.py` was still being split, #162).

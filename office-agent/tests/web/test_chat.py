@@ -26,8 +26,8 @@ from langchain_core.messages import (
 from langchain_core.messages.ai import UsageMetadata
 from langchain_core.outputs import ChatGenerationChunk
 
+from coscribe.conversation import ThreadMetaStore
 from coscribe.conversation import session as conversation_session
-from coscribe.conversation.thread_meta import ThreadMetaStore
 from coscribe.runtime_lg.audit import AuditLog
 from coscribe.runtime_lg.messages import is_steer
 

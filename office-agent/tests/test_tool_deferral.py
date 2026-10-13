@@ -487,7 +487,7 @@ async def _first_request_tools(
     tmp_path: Any, monkeypatch: pytest.MonkeyPatch, model_string: str, extra_tools: list[Any]
 ) -> list[str]:
     from coscribe.config import Settings
-    from coscribe.conversation.session import ChatSessionLG
+    from coscribe.conversation import ChatSessionLG
     from coscribe.runtime import empty_hooks_config
 
     model = FakeToolCallingChatModel(responses=[AIMessage(content="hi")])
