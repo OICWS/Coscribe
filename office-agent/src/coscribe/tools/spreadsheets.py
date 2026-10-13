@@ -107,11 +107,11 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from ..runtime.types import tool_metadata
 from ._file_locks import locked_by_path
+from ._markdown_tables import _is_separator_row, _split_table_row
 from ._office_bins import find_soffice, run_soffice
 from ._output_truncation import cap_read_output
 from ._thumbnail import render_thumbnail
 from ._workspace import WorkspaceScope
-from .documents import _is_separator_row, _split_table_row
 
 if TYPE_CHECKING:
     from openpyxl.worksheet.worksheet import Worksheet
