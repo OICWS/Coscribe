@@ -73,16 +73,14 @@ from ..runtime.provider_config import load_custom_providers
 from ..runtime.secret_store import SessionEnvironments, redactor
 from ..runtime_lg import (
     ORPHANED_TOOL_CALL_NOTE,
-    SkillSaveProposal,
+    SilentSocket,
     SubAgentHost,
     build_delegation_tools,
     build_langgraph_agent,
     build_review_work_tool,
-    propose_skill_save_lg,
     resolve_chat_model,
     select_reviewer_tools,
     tool_name,
-    write_skill_lg,
 )
 from ..runtime_lg import extract_text as _extract_text
 from ..runtime_lg import tool_result_value as _tool_result_value
@@ -107,7 +105,6 @@ from ..runtime_lg.messages import (
     strip_mode_note,
 )
 from ..runtime_lg.providers import keeps_tool_list_fixed, with_prompt_cache_key
-from ..runtime_lg.selfwake import SilentSocket
 from ..runtime_lg.tool_deferral import (
     bound_tool_names,
     build_search_tools_tool,
@@ -121,7 +118,6 @@ from ..tools import (
     format_skill_listing,
     load_builtin_skills,
     load_skills,
-    slugify_skill_name,
 )
 from ..tools._thumbnail import render_single_page_preview
 from ..tools._workspace import WorkspaceScope
@@ -145,6 +141,7 @@ from .events import EventSink
 from .history import ConversationHistory
 from .history import close_orphaned_tool_calls as _close_orphaned_tool_calls
 from .prompts import INIT_PROMPT
+from .skill_save import SkillSave
 from .subagents import _MAX_REPORT_TURNS_IN_ROW as _MAX_REPORT_TURNS_IN_ROW
 from .subagents import SubAgentApprovalChannel, SubAgentReporter
 from .thread_meta import ThreadMetaStore
@@ -166,10 +163,6 @@ SAVE_WORKFLOW_PROMPT = (
     "the expected output. Leave out dead ends and unrelated chatter. If there's no "
     "repeatable task in this conversation yet, ask me what to save instead."
 )
-
-# How many rounds of clarifying question/answer /saveskill goes through
-# before giving up.
-MAX_SAVE_CLARIFICATION_ROUNDS = 3
 
 # _build_document_edit_preview's dispatch table: which toolkit class
 # owns an approval-gated edit tool, keyed by the target file's extension
@@ -1986,159 +1979,15 @@ class ChatSessionLG:
     async def handle_rewind_message(self, index: int, websocket: EventSink) -> None:
         await self._history.handle_rewind_message(index, websocket)
 
-    async def _handle_save_skill(self, name: str, websocket: EventSink) -> None:
-        """/saveskill's own entry point: validate the name, require a
-        non-empty conversation, run one curator round
-        (propose_skill_save_lg), present it."""
-        name = name.strip()
-        if not name:
-            await websocket.send_json({"type": "error", "message": "Usage: /saveskill <name>"})
-            return
-        messages = await self._current_messages()
-        if not messages:
-            await websocket.send_json({"type": "error", "message": "Nothing to save yet."})
-            return
-        proposal = await propose_skill_save_lg(
-            name, messages=messages, model=self.model, clarification_history=[]
-        )
-        self.pending_save_skill_proposal = await self._present_skill_save_proposal(
-            name, proposal, [], 1, websocket
-        )
+    @cached_property
+    def _skill_save(self) -> SkillSave:
+        return SkillSave(self)
 
-    async def _present_skill_save_proposal(
-        self,
-        name: str,
-        proposal: SkillSaveProposal,
-        clarification_history: list[tuple[str, str]],
-        rounds: int,
-        websocket: EventSink,
-    ) -> dict[str, Any]:
-        """Same "plain chat bubble, not a new WS event type" reasoning as
-        _present_save_proposal -- the description/body preview is shown
-        in full (not truncated) for the same reason a script's full text
-        is shown before a run_python_script approval: this is exactly
-        the kind of content worth reading before confirming a write, not
-        something to skim a summary of."""
-        if proposal.decision == "clarify":
-            await websocket.send_json({"type": "agent_message", "text": proposal.question})
-            return {
-                "name": name,
-                "stage": "clarify",
-                "question": proposal.question,
-                "clarification_history": clarification_history,
-                "rounds": rounds,
-            }
-        slug = slugify_skill_name(name)
-        overwrite_note = ""
-        if (self.settings.skills_dir / slug / "SKILL.md").is_file():
-            overwrite_note = " (this will overwrite the existing skill at this slug)"
-        text = (
-            f'Proposed skill "{name}" (/{slug}){overwrite_note}:\n'
-            f"{proposal.description}\n\n"
-            f"{proposal.body}\n\n"
-            'Save this? Reply "yes" to save, anything else to discard.'
-        )
-        await websocket.send_json({"type": "agent_message", "text": text})
-        return {
-            "name": name,
-            "stage": "confirm",
-            "proposal": proposal,
-            "clarification_history": clarification_history,
-        }
+    async def _handle_save_skill(self, name: str, websocket: EventSink) -> None:
+        await self._skill_save._handle_save_skill(name, websocket)
 
     async def _handle_pending_skill_save_proposal(self, text: str, websocket: EventSink) -> None:
-        """While pending_save_skill_proposal is set, every incoming message
-        answers the curator's clarifying question or confirms/discards its
-        proposed save instead of running a normal turn."""
-        proposal_state = self.pending_save_skill_proposal
-        assert proposal_state is not None
-        if proposal_state["stage"] == "clarify":
-            answer = text.strip()
-            if not answer:
-                await websocket.send_json(
-                    {
-                        "type": "agent_message",
-                        "text": "(please answer, or say 'cancel' to abandon this save)",
-                    }
-                )
-                return
-            if answer.lower() == "cancel":
-                self.pending_save_skill_proposal = None
-                await websocket.send_json({"type": "agent_message", "text": "Cancelled."})
-                return
-            name = proposal_state["name"]
-            history = [
-                *proposal_state["clarification_history"],
-                (proposal_state["question"], answer),
-            ]
-            rounds = proposal_state["rounds"]
-            if rounds >= MAX_SAVE_CLARIFICATION_ROUNDS:
-                self.pending_save_skill_proposal = None
-                await websocket.send_json(
-                    {
-                        "type": "agent_message",
-                        "text": "Still unclear after a few tries -- try /saveskill again "
-                        "with a more specific name, or once the conversation has a "
-                        "clearer single task in it.",
-                    }
-                )
-                return
-            messages = await self._current_messages()
-            proposal = await propose_skill_save_lg(
-                name, messages=messages, model=self.model, clarification_history=history
-            )
-            self.pending_save_skill_proposal = await self._present_skill_save_proposal(
-                name, proposal, history, rounds + 1, websocket
-            )
-            return
-
-        # stage == "confirm"
-        answer = text.strip().lower()
-        name = proposal_state["name"]
-        proposal = proposal_state["proposal"]
-        self.pending_save_skill_proposal = None
-        if answer not in {"y", "yes"}:
-            await websocket.send_json(
-                {
-                    "type": "agent_message",
-                    "text": "Discarded -- refine your request and try /saveskill again.",
-                }
-            )
-            return
-        slug = slugify_skill_name(name)
-        # A slug colliding with a *built-in* skill would silently shadow
-        # it for every future /<slug> lookup (skills_by_slug below keeps
-        # whichever of load_builtin_skills()/load_skills() loads last for
-        # a repeated key) -- refused outright rather than allowed to
-        # overwrite-in-spirit a file this session doesn't even own.
-        # Colliding with an existing *user* skill is fine (see
-        # write_skill_lg's own docstring) -- that's this command's own
-        # "update" path, same as Skill Creator's own guidance.
-        if slug in {s.slug for s in load_builtin_skills()}:
-            await websocket.send_json(
-                {
-                    "type": "error",
-                    "message": f"/{slug} is already a built-in skill -- choose a "
-                    "different name for /saveskill.",
-                }
-            )
-            return
-        saved = write_skill_lg(
-            name,
-            proposal.description or "",
-            proposal.body or "",
-            skills_dir=self.settings.skills_dir,
-        )
-        await websocket.send_json(
-            {"type": "skill_saved", "name": saved["name"], "slug": saved["slug"]}
-        )
-        # Refreshes self.lg_agent/instructions/tools AND self.skills_by_slug
-        # from disk (set_enabled_skills' own rebuild already reloads both
-        # load_builtin_skills()+load_skills(settings.skills_dir) fresh) --
-        # without this, the just-saved skill wouldn't actually be usable
-        # (either passively or via /<slug>) until this session reconnects,
-        # which would make "yes" feel like it silently did nothing.
-        await self.set_enabled_skills(self.enabled_skill_names | {saved["name"]}, websocket)
+        await self._skill_save._handle_pending_skill_save_proposal(text, websocket)
 
     async def handle_user_message(
         self,
