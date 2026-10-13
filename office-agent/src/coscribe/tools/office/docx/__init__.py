@@ -1,4 +1,6 @@
-"""Word (.docx) and PDF read/write tools, scoped to a single workspace root.
+"""Word (.docx) read/write/edit tools, scoped to a single workspace root.
+
+(The PDF tools live in `office/pdf/`; `office/document_tools.py` assembles both.)
 
 Both writers accept the same lightweight markdown subset (headings via
 ``#``/``##``/``###``, ``-``/``*`` bullets, ``1.`` numbered items, and
@@ -17,8 +19,7 @@ markdown -- a superset of the writers' subset (arbitrary heading depth,
 links, bold/italic) -- rather than an exact mirror of what the writers
 accept, so round-tripping a generated file through read_docx won't be
 byte-for-byte identical, just semantically equivalent. ``read_pdf``/
-``search_pdf`` extract text with ``pypdfium2`` (Chrome's PDFium) -- see
-``_pdf_page_texts`` for why not ``pdfplumber``.
+``search_pdf`` (``office/pdf/``) extract text with ``pypdfium2``.
 
 ``mammoth``/``pypdfium2``/``docx``/``markdownify``/``reportlab`` are all
 imported lazily, inside each method that actually needs them, rather than
@@ -31,14 +32,14 @@ every tool's name/docstring/schema up front), but none of their
 None of the tool-facing function signatures below reference any of these
 libraries' own types (only `str`/`int`/`dict`/`list`), so LangChain's
 tool-schema introspection never forces the lazy import open -- confirmed
-by this file's own tests still passing with these deferred.
+by the docx tests still passing with these deferred.
 
 ``write_docx``'s optional ``template_path`` loads an existing .docx as the
 starting point instead of a blank ``Document()``, then clears its body --
 keeping only ``sectPr`` (page size/margins), removing every other child --
 before writing the new content. Verified empirically (round-tripped
 through python-docx) that removing anything else, or removing ``sectPr``
-too, breaks the document; this is the one thing in this file that isn't a
+too, breaks the document; this is the one thing in this package that isn't a
 pure library call.
 
 ``write_docx`` validates its finished in-memory document tree against the
