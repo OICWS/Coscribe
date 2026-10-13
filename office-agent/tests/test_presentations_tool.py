@@ -2,7 +2,7 @@ import concurrent.futures
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -638,14 +638,10 @@ def test_layout_icon_list_renders_glyphs_labels_and_stays_clean(tmp_path: Path) 
     prs = Presentation(str(tmp_path / "deck.pptx"))
     slide = prs.slides[0]
     icon_texts = [
-        shape.text_frame.text
-        for shape in slide.shapes
-        if shape.shape_type == 1  # AUTO_SHAPE
+        shape.text_frame.text for shape in slide.shapes if shape.shape_type == 1  # AUTO_SHAPE
     ]
     label_texts = [
-        shape.text_frame.text
-        for shape in slide.shapes
-        if shape.shape_type == 17  # TEXT_BOX
+        shape.text_frame.text for shape in slide.shapes if shape.shape_type == 17  # TEXT_BOX
     ]
     assert icon_texts == ["*", "2"]
     assert label_texts == ["Real-time energy tracking", "Mobile app control"]
@@ -714,7 +710,9 @@ def test_layout_icon_list_allows_short_initials_as_a_glyph(tmp_path: Path) -> No
     tools["write_pptx"](path="deck.pptx", content=content)
 
     prs = Presentation(str(tmp_path / "deck.pptx"))
-    icon_texts = [shape.text_frame.text for shape in prs.slides[0].shapes if shape.shape_type == 1]
+    icon_texts = [
+        shape.text_frame.text for shape in prs.slides[0].shapes if shape.shape_type == 1
+    ]
     assert icon_texts == ["AI"]
 
 
@@ -897,7 +895,9 @@ def test_layout_two_column_with_undersized_template_raises(tmp_path: Path) -> No
 
     content = "layout: two-column\n# Title\n- left\n>>>\n- right\n"
     with pytest.raises(ValueError, match="slide layout"):
-        tools["write_pptx"](path="deck.pptx", content=content, template_path="template.pptx")
+        tools["write_pptx"](
+            path="deck.pptx", content=content, template_path="template.pptx"
+        )
 
 
 def test_layout_svg_renders_background_circle_and_text_and_stays_clean(
@@ -1111,7 +1111,9 @@ def test_layout_svg_path_rejects_unsupported_command_naming_run_node_script(
 def test_layout_svg_path_requires_starting_moveto(tmp_path: Path) -> None:
     tools = _tools_by_name(tmp_path)
     svg_markup = (
-        '<svg width="100" height="100" viewBox="0 0 100 100"><path d="L90,90" fill="FF0000"/></svg>'
+        '<svg width="100" height="100" viewBox="0 0 100 100">'
+        '<path d="L90,90" fill="FF0000"/>'
+        "</svg>"
     )
     with pytest.raises(ValueError, match="moveto"):
         tools["write_pptx"](path="deck.pptx", content=f"layout: svg\n{svg_markup}\n")
@@ -1120,7 +1122,9 @@ def test_layout_svg_path_requires_starting_moveto(tmp_path: Path) -> None:
 def test_layout_svg_path_rejects_bare_moveto_with_no_drawing_command(tmp_path: Path) -> None:
     tools = _tools_by_name(tmp_path)
     svg_markup = (
-        '<svg width="100" height="100" viewBox="0 0 100 100"><path d="M10,10" fill="FF0000"/></svg>'
+        '<svg width="100" height="100" viewBox="0 0 100 100">'
+        '<path d="M10,10" fill="FF0000"/>'
+        "</svg>"
     )
     with pytest.raises(ValueError, match="at least one drawing command"):
         tools["write_pptx"](path="deck.pptx", content=f"layout: svg\n{svg_markup}\n")
@@ -1271,7 +1275,7 @@ def test_layout_svg_path_and_gradient_survive_libreoffice_conversion(tmp_path: P
 
 def test_layout_svg_rejects_malformed_xml(tmp_path: Path) -> None:
     tools = _tools_by_name(tmp_path)
-    content = 'layout: svg\n<svg width="100" height="100"><rect></svg>\n'
+    content = "layout: svg\n<svg width=\"100\" height=\"100\"><rect></svg>\n"
 
     with pytest.raises(ValueError, match="not valid XML"):
         tools["write_pptx"](path="deck.pptx", content=content)
@@ -1459,7 +1463,9 @@ def test_add_pptx_chart_font_color_matches_custom_dark_theme(tmp_path: Path) -> 
     from pptx.dml.color import RGBColor
 
     tools = _tools_by_name(tmp_path)
-    tools["write_pptx"](path="deck.pptx", content="# Title\n- body", theme="bg=111827,text=F8FAFC")
+    tools["write_pptx"](
+        path="deck.pptx", content="# Title\n- body", theme="bg=111827,text=F8FAFC"
+    )
 
     tools["add_pptx_chart"](path="deck.pptx", slide=1, chart_type="bar", data=CHART_TABLE)
 
@@ -1525,7 +1531,9 @@ def test_write_pptx_with_template_missing_required_layouts_raises(tmp_path: Path
     prs.save(tmp_path / "template.pptx")
 
     with pytest.raises(ValueError, match="slide layout"):
-        tools["write_pptx"](path="new.pptx", content="# Hi\n- x", template_path="template.pptx")
+        tools["write_pptx"](
+            path="new.pptx", content="# Hi\n- x", template_path="template.pptx"
+        )
 
 
 def _make_test_png(path: Path) -> None:
@@ -1617,7 +1625,9 @@ def test_set_pptx_background_image_crops_to_cover_without_distortion(tmp_path: P
     tools["set_pptx_background_image"](path="deck.pptx", slide=1, image_path="bg.png")
 
     prs = Presentation(tmp_path / "deck.pptx")
-    picture = next(shape for shape in prs.slides[0].shapes if shape.shape_type == 13)
+    picture = next(
+        shape for shape in prs.slides[0].shapes if shape.shape_type == 13
+    )
     # Wider-than-slide image -> crop left/right, not top/bottom -- and the
     # crop must be a real, non-trivial fraction (not 0.0, which would mean
     # the cover-crop math never ran and the image was just stretched).
@@ -2060,7 +2070,9 @@ def test_add_pptx_shape_effect_rejects_out_of_range_shape_index(tmp_path: Path) 
     tools["write_pptx"](path="deck.pptx", content="# Title\n- body")
 
     with pytest.raises(ValueError, match="shape_index"):
-        tools["add_pptx_shape_effect"](path="deck.pptx", slide=1, shape_index=99, effect="shadow")
+        tools["add_pptx_shape_effect"](
+            path="deck.pptx", slide=1, shape_index=99, effect="shadow"
+        )
 
 
 def test_add_pptx_shape_effect_is_medium_risk_and_requires_approval(tmp_path: Path) -> None:
@@ -2217,7 +2229,7 @@ def test_set_pptx_transition_rejects_unknown_transition(tmp_path: Path) -> None:
 
 
 def test_set_pptx_transition_supports_a_p14_extension_effect(tmp_path: Path) -> None:
-    """ "vortex" lives in the PowerPoint-2010 extension namespace (p14),
+    """"vortex" lives in the PowerPoint-2010 extension namespace (p14),
     not the base ECMA-376 "p" namespace fade/push/wipe use -- both the
     effect element itself and the p14:dur attribute need mc:Ignorable."""
     from pptx import Presentation
@@ -2237,7 +2249,7 @@ def test_set_pptx_transition_supports_a_p14_extension_effect(tmp_path: Path) -> 
 
 
 def test_set_pptx_transition_supports_a_p159_extension_effect(tmp_path: Path) -> None:
-    """ "morph" is the one native transition in the newest (2015/09,
+    """"morph" is the one native transition in the newest (2015/09,
     p159) extension namespace."""
     from pptx import Presentation
 
@@ -2292,7 +2304,7 @@ def test_set_pptx_transition_resolves_legacy_aliases(tmp_path: Path) -> None:
     assert effect.get("spokes") == "1"
 
 
-def test_set_pptx_transition_is_schema_valid_for_every_registered_transition(
+def test_set_pptx_transition_writes_the_registered_effect_for_every_transition(
     tmp_path: Path,
 ) -> None:
     """Every single one of the 48 native transitions + 8 aliases actually
@@ -2315,8 +2327,8 @@ def test_set_pptx_transition_is_schema_valid_for_every_registered_transition(
         slide_el = Presentation(tmp_path / "deck.pptx").slides[0].element
         transitions = slide_el.findall(f"{{{_P_NS}}}transition")
         assert len(transitions) == 1, transition
-        effect_names = [etree.QName(child).localname for child in transitions[0]]
-        assert effect_names == [spec["element"].split(":")[-1]], transition
+        effects = [etree.QName(child).localname for child in transitions[0]]
+        assert effects == [spec["element"].split(":")[-1]], transition
 
 
 def test_list_pptx_transition_types_matches_the_real_registry(tmp_path: Path) -> None:
@@ -2832,7 +2844,7 @@ def test_add_pptx_animation_survives_libreoffice_conversion(tmp_path: Path) -> N
     assert (tmp_path / "deck.pdf").is_file()
 
 
-def test_add_pptx_animation_is_schema_valid_for_every_registered_animation(
+def test_add_pptx_animation_writes_the_registered_preset_for_every_animation(
     tmp_path: Path,
 ) -> None:
     """Every single one of the 203 vendored presets + 6 legacy aliases
@@ -2841,24 +2853,37 @@ def test_add_pptx_animation_is_schema_valid_for_every_registered_animation(
     add_pptx_animation itself makes) -- not just the few spot-checked
     above. A real, cheap way to catch a bad id-renumbering/spid-retarget/
     duration-scaling edge case across the whole catalog at once, the same
-    role test_set_pptx_transition_is_schema_valid_for_every_registered_
-    transition plays for the 56-entry transition registry."""
-    from coscribe.tools.presentations import _ANIMATIONS
+    role test_set_pptx_transition_writes_the_registered_effect_for_
+    every_transition plays for the 56-entry transition registry."""
+    from pptx import Presentation
+
+    from coscribe.tools.presentations import (
+        _ANIMATION_ALIASES,
+        _ANIMATIONS,
+        _load_animation_presets,
+    )
 
     tools = _tools_by_name(tmp_path)
     tools["write_pptx"](path="deck.pptx", content="# Title\n- body")
 
-    for animation in _ANIMATIONS:
+    def effect_nodes() -> list[Any]:
+        slide_el = Presentation(tmp_path / "deck.pptx").slides[0].element
+        timing = slide_el.find(f"{{{_P_NS}}}timing")
+        assert timing is not None
+        return [cTn for cTn in timing.iter(f"{{{_P_NS}}}cTn") if cTn.get("presetClass")]
+
+    for added, animation in enumerate(sorted(_ANIMATIONS), start=1):
         tools["add_pptx_animation"](
             path="deck.pptx", slide=1, shape_index=0, animation=animation, trigger="with-previous"
         )
 
-    from pptx import Presentation
-
-    timing = Presentation(tmp_path / "deck.pptx").slides[0].element.find(f"{{{_P_NS}}}timing")
-    assert timing is not None
-    effects = [cTn for cTn in timing.iter(f"{{{_P_NS}}}cTn") if cTn.get("presetClass")]
-    assert len(effects) == len(_ANIMATIONS)
+        # Aliases share their target's preset, so only the per-call count and the
+        # newest node's preset prove each call wrote its own effect.
+        effects = effect_nodes()
+        assert len(effects) == added, animation
+        preset = _load_animation_presets()[_ANIMATION_ALIASES.get(animation, animation)]
+        assert effects[-1].get("presetID") == str(preset["preset_id"]), animation
+        assert effects[-1].get("presetSubtype") == str(preset["preset_subtype"]), animation
 
 
 def test_list_pptx_animation_types_matches_the_real_registry(tmp_path: Path) -> None:
@@ -2946,7 +2971,7 @@ def test_add_pptx_animation_non_scalable_preset_ignores_requested_duration(
 def test_add_pptx_animation_legacy_alias_and_full_name_produce_identical_xml(
     tmp_path: Path,
 ) -> None:
-    """ "fade" (the pre-203-catalog short name) and "entrance_fade" (the
+    """"fade" (the pre-203-catalog short name) and "entrance_fade" (the
     real preset key it was always secretly implementing, per
     _ANIMATION_ALIASES) must resolve to the exact same preset -- not two
     presets that happen to look similar."""
@@ -2958,7 +2983,9 @@ def test_add_pptx_animation_legacy_alias_and_full_name_produce_identical_xml(
     tools = _tools_by_name(tmp_path)
     tools["write_pptx"](path="deck.pptx", content="# Title\n- body")
     tools["add_pptx_animation"](path="deck.pptx", slide=1, shape_index=0, animation="fade")
-    tools["add_pptx_animation"](path="deck.pptx", slide=1, shape_index=1, animation="entrance_fade")
+    tools["add_pptx_animation"](
+        path="deck.pptx", slide=1, shape_index=1, animation="entrance_fade"
+    )
 
     prs = Presentation(tmp_path / "deck.pptx")
     timing = prs.slides[0].element.find(f"{{{_P_NS}}}timing")
@@ -2971,7 +2998,9 @@ def test_add_pptx_animation_legacy_alias_and_full_name_produce_identical_xml(
     # id (per-row running counter) and spid (the two calls deliberately
     # target different shapes) are both expected to differ -- strip both
     # before comparing everything else.
-    normalized = [re.sub(r' (id|spid)="\d+"', "", etree.tostring(row).decode()) for row in rows]
+    normalized = [
+        re.sub(r' (id|spid)="\d+"', "", etree.tostring(row).decode()) for row in rows
+    ]
     assert normalized[0] == normalized[1]
 
 
@@ -3009,30 +3038,19 @@ def test_add_pptx_animation_all_four_categories_survive_libreoffice_conversion(
         path="deck.pptx", slide=1, shape_index=0, animation="entrance_bounce", trigger="on-click"
     )
     tools["add_pptx_animation"](
-        path="deck.pptx",
-        slide=1,
-        shape_index=1,
-        animation="emphasis_teeter",
+        path="deck.pptx", slide=1, shape_index=1, animation="emphasis_teeter",
         trigger="with-previous",
     )
     tools["add_pptx_animation"](
-        path="deck.pptx",
-        slide=1,
-        shape_index=1,
-        animation="path_bean",
-        trigger="after-previous",
-        delay=0.2,
+        path="deck.pptx", slide=1, shape_index=1, animation="path_bean",
+        trigger="after-previous", delay=0.2,
     )
     tools["add_pptx_animation"](
         path="deck.pptx", slide=1, shape_index=0, animation="exit_bounce", trigger="after-previous"
     )
     tools["add_pptx_animation"](
-        path="deck.pptx",
-        slide=1,
-        shape_index=1,
-        animation="entrance_fly",
-        by_paragraph=True,
-        trigger="on-click",
+        path="deck.pptx", slide=1, shape_index=1, animation="entrance_fly",
+        by_paragraph=True, trigger="on-click",
     )
 
     with warnings.catch_warnings():
@@ -3164,7 +3182,9 @@ def test_add_pptx_audio_rejects_unknown_trigger(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("extension", [".mp3", ".m4a", ".wav"])
-def test_add_pptx_audio_accepts_every_supported_extension(tmp_path: Path, extension: str) -> None:
+def test_add_pptx_audio_accepts_every_supported_extension(
+    tmp_path: Path, extension: str
+) -> None:
     """WAV is the only format the other tests exercise with real,
     decodable audio bytes (no ffmpeg available in this environment to
     generate real mp3/m4a) -- nothing in the embed path actually decodes
@@ -3202,7 +3222,7 @@ def test_add_pptx_audio_rejects_missing_file(tmp_path: Path) -> None:
         tools["add_pptx_audio"](path="deck.pptx", slide=1, audio_path="missing.mp3")
 
 
-def test_add_pptx_audio_two_calls_do_not_crash_on_media_part_reload(tmp_path: Path) -> None:
+def test_add_pptx_audio_two_calls_share_one_media_part(tmp_path: Path) -> None:
     """Regression test for a real bug: python-pptx's own `PartFactory`
     ships with no content-type registered for any media part, so
     reopening a .pptx that already has one audio part loads it back as a
@@ -3222,11 +3242,16 @@ def test_add_pptx_audio_two_calls_do_not_crash_on_media_part_reload(tmp_path: Pa
 
     from pptx import Presentation
 
-    prs = Presentation(tmp_path / "deck.pptx")
     audio_tag = "{http://schemas.openxmlformats.org/drawingml/2006/main}audioFile"
+    link_attr = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}link"
+    prs = Presentation(tmp_path / "deck.pptx")
+    targets = set()
     for slide in prs.slides:
-        assert slide.element.find(f".//{audio_tag}") is not None
-    # The second call reuses the first call's media part instead of adding a copy.
+        audio = slide.element.find(f".//{audio_tag}")
+        assert audio is not None
+        targets.add(slide.part.related_part(audio.get(link_attr)).partname)
+    # One shared part, not a copy per call.
+    assert len(targets) == 1
     with zipfile.ZipFile(tmp_path / "deck.pptx") as archive:
         media = [n for n in archive.namelist() if n.startswith("ppt/media/") and n.endswith(".wav")]
     assert len(media) == 1
@@ -3319,7 +3344,9 @@ def test_add_pptx_audio_survives_libreoffice_conversion_in_both_orders(
     _write_wav(tmp_path / "narration.wav")
 
     tools["add_pptx_animation"](path="deck.pptx", slide=1, shape_index=0, animation="fade")
-    tools["add_pptx_audio"](path="deck.pptx", slide=1, audio_path="narration.wav", start_delay=0.5)
+    tools["add_pptx_audio"](
+        path="deck.pptx", slide=1, audio_path="narration.wav", start_delay=0.5
+    )
     tools["add_pptx_audio"](
         path="deck.pptx", slide=2, audio_path="narration.wav", trigger="on-click", hidden=True
     )
@@ -3446,7 +3473,9 @@ def test_add_pptx_hyperlink_whole_shape_jumps_to_another_slide(tmp_path: Path) -
     tools = _tools_by_name(tmp_path)
     tools["write_pptx"](path="deck.pptx", content="# S1\n- a\n---\n# S2\n- b\n---\n# S3\n- c")
 
-    result = tools["add_pptx_hyperlink"](path="deck.pptx", slide=1, shape_index=0, url="#slide-3")
+    result = tools["add_pptx_hyperlink"](
+        path="deck.pptx", slide=1, shape_index=0, url="#slide-3"
+    )
     assert result["url"] == "#slide-3"
 
     prs = Presentation(tmp_path / "deck.pptx")
@@ -3461,7 +3490,9 @@ def test_add_pptx_hyperlink_run_jumps_to_another_slide(tmp_path: Path) -> None:
     tools = _tools_by_name(tmp_path)
     tools["write_pptx"](path="deck.pptx", content="# S1\n- a\n---\n# S2\n- b")
 
-    tools["add_pptx_hyperlink"](path="deck.pptx", slide=1, shape_index=1, url="#slide-2", text="a")
+    tools["add_pptx_hyperlink"](
+        path="deck.pptx", slide=1, shape_index=1, url="#slide-2", text="a"
+    )
 
     prs = Presentation(tmp_path / "deck.pptx")
     run = prs.slides[0].shapes[1].text_frame.paragraphs[0].runs[0]
@@ -3560,7 +3591,9 @@ def test_add_pptx_hyperlink_slide_jump_survives_libreoffice_conversion(
     tools = _tools_by_name(tmp_path)
     tools["write_pptx"](path="deck.pptx", content="# S1\n- a\n---\n# S2\n- b\n---\n# S3\n- c")
     tools["add_pptx_hyperlink"](path="deck.pptx", slide=1, shape_index=0, url="#slide-3")
-    tools["add_pptx_hyperlink"](path="deck.pptx", slide=1, shape_index=1, url="#slide-2", text="a")
+    tools["add_pptx_hyperlink"](
+        path="deck.pptx", slide=1, shape_index=1, url="#slide-2", text="a"
+    )
 
     with warnings.catch_warnings():
         warnings.simplefilter("error")
@@ -3804,7 +3837,8 @@ def test_edit_pptx_theme_colors_survives_round_trip(tmp_path: Path) -> None:
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         Presentation(str(tmp_path / "deck.pptx"))
-    assert tools["read_pptx_theme_colors"](path="deck.pptx")["colors"]["accent1"] == "0F6B5C"  # type: ignore[index]
+    colors = cast("dict[str, object]", tools["read_pptx_theme_colors"](path="deck.pptx")["colors"])
+    assert colors["accent1"] == "0F6B5C"
 
 
 def test_edit_pptx_theme_colors_on_real_bundled_template(tmp_path: Path) -> None:
@@ -3812,7 +3846,9 @@ def test_edit_pptx_theme_colors_on_real_bundled_template(tmp_path: Path) -> None
     content = "\n---\n".join(
         ["# Title\nSubtitle", "# First\n- a", "# Second\n- b", "# Closing\nThanks"]
     )
-    tools["fill_pptx_template"](path="deck.pptx", template_id="bold-statement", content=content)
+    tools["fill_pptx_template"](
+        path="deck.pptx", template_id="bold-statement", content=content
+    )
 
     tools["edit_pptx_theme_colors"](path="deck.pptx", colors="accent1=0F6B5C")
     after = tools["read_pptx_theme_colors"](path="deck.pptx")["colors"]
@@ -3956,7 +3992,9 @@ def test_fill_pptx_template_happy_path_preserves_decorative_shape_and_fills_plac
 ) -> None:
     from pptx import Presentation
 
-    decorative = _make_fake_template(tmp_path, monkeypatch, [1], add_decorative_shape=True)
+    decorative = _make_fake_template(
+        tmp_path, monkeypatch, [1], add_decorative_shape=True
+    )
     tools = _tools_by_name(tmp_path / "workspace")
 
     tools["fill_pptx_template"](
@@ -4023,7 +4061,9 @@ def test_leftover_placeholder_warnings_does_not_flag_real_content() -> None:
 def test_write_pptx_flags_leftover_todo_in_generated_content(tmp_path: Path) -> None:
     tools = _tools_by_name(tmp_path)
 
-    result = tools["write_pptx"](path="deck.pptx", content="# Title\n- TODO: add real figures")
+    result = tools["write_pptx"](
+        path="deck.pptx", content="# Title\n- TODO: add real figures"
+    )
 
     assert result["placeholder_warnings"] == [{"slide": 1, "text": "TODO"}]
 
@@ -4523,7 +4563,9 @@ def test_edit_pptx_text_changes_title_and_content_leaving_the_rest_untouched(
         content="# Slide One\n- original a\n- original b\n\n---\n\n# Slide Two\n- untouched",
     )
 
-    tools["edit_pptx_text"](path="deck.pptx", slide=1, title="New Title", content="- new bullet")
+    tools["edit_pptx_text"](
+        path="deck.pptx", slide=1, title="New Title", content="- new bullet"
+    )
 
     prs = Presentation(str(tmp_path / "workspace" / "deck.pptx"))
     slide1 = prs.slides[0]
@@ -4620,7 +4662,9 @@ def test_edit_pptx_text_out_of_range_placeholder_index_raises(tmp_path: Path) ->
     tools["write_pptx"](path="deck.pptx", content="# Title\n- x")
 
     with pytest.raises(ValueError, match="placeholder_index=1"):
-        tools["edit_pptx_text"](path="deck.pptx", slide=1, content="- y", placeholder_index=1)
+        tools["edit_pptx_text"](
+            path="deck.pptx", slide=1, content="- y", placeholder_index=1
+        )
 
 
 def test_edit_pptx_text_placeholder_index_reaches_the_second_content_placeholder(
@@ -4700,7 +4744,9 @@ def test_table_slide_strips_default_style_and_uses_hairline_borders(tmp_path: Pa
             tags = [child.tag.split("}")[-1] for child in tc_pr]
             border_tags = [t for t in tags if t in ("lnL", "lnR", "lnT", "lnB")]
             assert border_tags == ["lnL", "lnR", "lnT", "lnB"]
-            fill_index = next(i for i, t in enumerate(tags) if t in ("noFill", "solidFill"))
+            fill_index = next(
+                i for i, t in enumerate(tags) if t in ("noFill", "solidFill")
+            )
             assert fill_index == len(border_tags)  # every ln* comes before the fill
 
 
@@ -6365,7 +6411,9 @@ def test_replace_pptx_image_rejects_out_of_range_shape_index(tmp_path: Path) -> 
     tools["write_pptx"](path="deck.pptx", content="# Title\n- bullet\n")
     _make_test_png(tmp_path / "red.png")
     with pytest.raises(ValueError, match="out of range"):
-        tools["replace_pptx_image"](path="deck.pptx", slide=1, shape_index=99, image_path="red.png")
+        tools["replace_pptx_image"](
+            path="deck.pptx", slide=1, shape_index=99, image_path="red.png"
+        )
 
 
 def test_replace_pptx_image_rejects_non_picture_shape(tmp_path: Path) -> None:
@@ -6373,7 +6421,9 @@ def test_replace_pptx_image_rejects_non_picture_shape(tmp_path: Path) -> None:
     tools["write_pptx"](path="deck.pptx", content="# Title\n- bullet\n")
     _make_test_png(tmp_path / "red.png")
     with pytest.raises(ValueError, match="isn't a picture"):
-        tools["replace_pptx_image"](path="deck.pptx", slide=1, shape_index=0, image_path="red.png")
+        tools["replace_pptx_image"](
+            path="deck.pptx", slide=1, shape_index=0, image_path="red.png"
+        )
 
 
 def test_replace_pptx_image_on_missing_file_raises(tmp_path: Path) -> None:
@@ -6437,7 +6487,9 @@ def test_add_pptx_icon_recolors_to_the_requested_color(tmp_path: Path) -> None:
 
     tools = _tools_by_name(tmp_path)
     tools["write_pptx"](path="deck.pptx", content="# Title\n- bullet\n")
-    tools["add_pptx_icon"](path="deck.pptx", slide=1, icon_name="check", color="38BDF8")
+    tools["add_pptx_icon"](
+        path="deck.pptx", slide=1, icon_name="check", color="38BDF8"
+    )
 
     prs = Presentation(str(tmp_path / "deck.pptx"))
     icon = list(prs.slides[0].shapes)[-1]
@@ -6594,14 +6646,15 @@ def test_recolor_pptx_icon_survives_round_trip(tmp_path: Path) -> None:
         warnings.simplefilter("error")
         prs = Presentation(str(tmp_path / "deck.pptx"))
 
-    import io
+    from io import BytesIO
 
     from PIL import Image
 
-    icon = Image.open(io.BytesIO(prs.slides[0].shapes[2].image.blob)).convert("RGBA")
-    colors = icon.getcolors(maxcolors=icon.width * icon.height) or []
-    opaque = {rgba[:3] for _, rgba in colors if rgba[3] == 255}
-    assert opaque == {(0xC2, 0x41, 0x0C)}
+    pictures = [shape for shape in prs.slides[0].shapes if shape.shape_type == 13]
+    assert len(pictures) == 1
+    icon = Image.open(BytesIO(pictures[0].image.blob)).convert("RGBA")
+    visible = {rgba[:3] for _, rgba in icon.getcolors(icon.width * icon.height) or [] if rgba[3]}
+    assert visible == {(0xC2, 0x41, 0x0C)}
 
 
 def test_recolor_pptx_icon_rejects_non_picture_shape(tmp_path: Path) -> None:
@@ -6719,7 +6772,9 @@ def test_duplicate_pptx_slide_copies_shape_content_leaves_original_untouched(
     tools["edit_pptx_text"](path="deck.pptx", slide=2, content="- CHANGED")
 
     prs = Presentation(str(tmp_path / "deck.pptx"))
-    original_body = next(p for p in prs.slides[0].placeholders if p.placeholder_format.idx != 0)
+    original_body = next(
+        p for p in prs.slides[0].placeholders if p.placeholder_format.idx != 0
+    )
     copy_body = next(p for p in prs.slides[1].placeholders if p.placeholder_format.idx != 0)
     assert "alpha" in original_body.text_frame.text
     assert "CHANGED" in copy_body.text_frame.text
