@@ -65,7 +65,7 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from pydantic import ValidationError
 
 from .config import Settings
-from .conversation.session import ChatSessionLG
+from .conversation import ChatSessionLG
 from .runtime import (
     LLMClient,
     empty_hooks_config,

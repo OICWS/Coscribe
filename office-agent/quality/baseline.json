@@ -29,7 +29,6 @@
   "src/coscribe/workflows/engine.py::build_graph": 44
  },
  "deep_imports": {
-  "coscribe.cli -> coscribe.conversation.session": 1,
   "coscribe.cli -> coscribe.runtime_lg.mcp": 2,
   "coscribe.cli -> coscribe.tools.interaction": 1,
   "coscribe.cli -> coscribe.tools.scheduled_tasks": 1,
@@ -77,8 +76,6 @@
   "coscribe.tools.scheduled_tasks -> coscribe.workflows.spec": 1,
   "coscribe.web.app -> coscribe.cli:_dotenv_path": 1,
   "coscribe.web.app -> coscribe.cli:_load_settings_or_none": 1,
-  "coscribe.web.app -> coscribe.conversation.session": 1,
-  "coscribe.web.app -> coscribe.conversation.thread_meta": 1,
   "coscribe.web.app -> coscribe.runtime_lg.mcp": 1,
   "coscribe.web.app -> coscribe.runtime_lg.mcp_oauth": 1,
   "coscribe.web.app -> coscribe.tools.skill_catalog": 1,
@@ -103,14 +100,11 @@
   "coscribe.web.routes.settings.secrets -> coscribe.tools.mcp": 1,
   "coscribe.web.routes.skills -> coscribe.tools._workspace": 1,
   "coscribe.web.routes.skills -> coscribe.tools.skill_catalog": 2,
-  "coscribe.web.routes.threads -> coscribe.conversation.activity": 1,
   "coscribe.web.routes.threads -> coscribe.tools.background_tasks": 1,
   "coscribe.web.routes.threads -> coscribe.tools.conversations": 1,
   "coscribe.web.routes.threads -> coscribe.tools.scheduled_tasks": 1,
   "coscribe.web.routes.threads -> coscribe.tools.subagent_tasks": 1,
   "coscribe.web.routes.threads -> coscribe.tools.tasks": 1,
-  "coscribe.web.state -> coscribe.conversation.session": 1,
-  "coscribe.web.state -> coscribe.conversation.thread_meta": 1,
   "coscribe.web.state -> coscribe.runtime_lg.mcp": 1,
   "coscribe.web.state -> coscribe.runtime_lg.mcp_oauth": 1,
   "coscribe.web.state -> coscribe.tools.scheduled_tasks": 1,
@@ -120,7 +114,7 @@
  },
  "fan_out": {
   "coscribe.conversation.session": 37,
-  "coscribe.web.app": 28
+  "coscribe.web.app": 27
  },
  "file_lines": {
   "src/coscribe/conversation/session.py": 2389,
