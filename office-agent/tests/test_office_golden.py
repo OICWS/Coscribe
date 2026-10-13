@@ -79,6 +79,10 @@ def _png(name: str) -> None:
     shutil.copyfile(ASSETS / name, name)
 
 
+def _wav(name: str) -> None:
+    shutil.copyfile(ASSETS / "narration.wav", name)
+
+
 def _image(tools: dict[str, Callable[..., object]]) -> None:
     tools["write_pptx"](path="deck.pptx", content="# Our logo\n- placed top right")
     _png("logo.png")
@@ -267,7 +271,27 @@ def _smartart_shape_attributes(tools: dict[str, Callable[..., object]]) -> None:
     )
 
 
+def _audio_deck(**options: object) -> Callable[[dict[str, Callable[..., object]]], None]:
+    def build(tools: dict[str, Callable[..., object]]) -> None:
+        tools["write_pptx"](path="deck.pptx", content="# Narrated\n- first\n- second")
+        _wav("narration.wav")
+        tools["add_pptx_audio"](path="deck.pptx", slide=1, audio_path="narration.wav", **options)
+
+    return build
+
+
+def _audio_after_animation(tools: dict[str, Callable[..., object]]) -> None:
+    # The audio shares the slide's existing timing tree instead of making a second one.
+    tools["write_pptx"](path="deck.pptx", content="# Narrated\n- first\n- second")
+    tools["add_pptx_animation"](path="deck.pptx", slide=1, shape_index=0, animation="fade")
+    _wav("narration.wav")
+    tools["add_pptx_audio"](path="deck.pptx", slide=1, audio_path="narration.wav", hidden=True)
+
+
 DECKS: dict[str, Callable[[dict[str, Callable[..., object]]], None]] = {
+    "audio_after_animation": _audio_after_animation,
+    "audio_auto_visible": _audio_deck(left_in=8.0, top_in=0.5, start_delay=1.5),
+    "audio_on_click": _audio_deck(trigger="on-click"),
     "background_image": _background_image,
     "bullets": _bullets,
     "chart_bar": _chart("bar", _ONE_SERIES),

@@ -3102,6 +3102,24 @@ def test_add_pptx_audio_embeds_a_real_media_part_and_relationships(tmp_path: Pat
     assert pic.find(f".//{{{_A_NS}}}blip") is not None
 
 
+def test_add_pptx_audio_declares_the_p14_prefix(tmp_path: Path) -> None:
+    """Without a declared prefix lxml names p14 `ns<N>`, with N depending on what the process did
+    before, so the same call wrote different bytes in different runs."""
+    import zipfile
+
+    tools = _tools_by_name(tmp_path)
+    tools["write_pptx"](path="deck.pptx", content="# Title\n- body")
+    _write_wav(tmp_path / "narration.wav")
+
+    tools["add_pptx_audio"](path="deck.pptx", slide=1, audio_path="narration.wav")
+
+    with zipfile.ZipFile(tmp_path / "deck.pptx") as archive:
+        slide_xml = archive.read("ppt/slides/slide1.xml").decode("utf-8")
+    assert "<p14:media " in slide_xml
+    assert "xmlns:p14=" in slide_xml
+    assert "ns1:" not in slide_xml
+
+
 def test_add_pptx_audio_auto_trigger_builds_delayed_timing_node(tmp_path: Path) -> None:
     from pptx import Presentation
 
