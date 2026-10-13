@@ -10,9 +10,12 @@ PowerPoint tasks. Every later step of the office route is compared against them 
   task go into one request under labels drawn again every round; rounds are written under each task's
   `judge/`; `aggregate_scores` gives the mean and the spread over rounds.
 - `evals/compare.py <runA> <runB>`: one Markdown file, a row per task, the runs side by side: judge scores,
-  automatic checks, cost, time, tool calls, tokens, with totals.
-- `tests/test_evals_judge_compare.py` (12 tests): labels, answer parsing (letters or full labels, scores
-  outside 1 to 5 refused), the request order, retry, aggregation, the comparison tables. The judge call
+  automatic checks, cost, time, tool calls, tokens; mean and total cover only the tasks both runs
+  have. Scores come from one judge and one kind of request (alone or `--joint`), never mixed.
+- `tests/test_evals_judge_compare.py` (29 tests): labels, answer parsing (letters or full labels, scores
+  outside 1 to 5 and booleans refused, ranking and defects checked), the request order, retry rules,
+  aggregation by judge and kind, record files per pairing, runs without pages, the Gemini key in a header,
+  the comparison tables with partial runs. The judge call
   itself is not in CI.
 
 ## The baseline (route `current`, `deepseek-flash`, effort low, 3 judge rounds, off-peak)

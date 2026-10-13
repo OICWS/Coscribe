@@ -72,8 +72,11 @@ under random labels (`Deck P`, `Deck Q`...), drawn again every round, so neither
 which route made which. Each round is written to `<run>/<task>/judge/`; the mean and spread
 (population standard deviation) over the rounds are what `compare.py` shows. The default judge is
 DeepSeek, which also made the decks, so it may favour its own style; a Gemini judge is optional and the
-free tier allows about 20 requests a day per model. Rounds of a lone deck and of a joint request are
-both kept and averaged together: judge a run one way only when the two should not mix.
+free tier allows about 20 requests a day per model. Each record names its judge, the runs judged
+together and the seed, and the file name carries a short id of that set of runs, so judging another
+pairing never overwrites an earlier one. A run with no rendered pages is left out of the request (and
+named); a round that fails is reported and the batch goes on, with a non-zero exit at the end. At most
+8 runs can be judged together.
 
 ## Comparing two runs (`compare.py`)
 
@@ -82,5 +85,7 @@ python -m evals.compare evals/runs/baseline evals/runs/engine --out compare.md
 ```
 
 One Markdown file with three tables, a row per task and the two runs side by side: the judge's scores,
-the automatic checks, and cost, time, tool calls and tokens, with totals. A task only one run has shows
-`-`. Run the same route twice first to see how far two runs of one route differ.
+the automatic checks, and cost, time, tool calls and tokens. A task only one run has shows `-`; the mean
+and total rows cover only the tasks both runs have, and say how many. Scores come from one judge
+(`--judge`, default DeepSeek) and one kind of request: each deck alone, or with `--joint` the two runs
+judged in one request; the two kinds are never averaged together. Run the same route twice first to see how far two runs of one route differ.
