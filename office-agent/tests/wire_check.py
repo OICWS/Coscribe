@@ -14,9 +14,18 @@ class WireError(AssertionError):
     pass
 
 
+# The server wraps some sends in `except Exception` (a gone tab must not fail a run),
+# which would swallow a WireError; the autouse fixture asserts this is empty at teardown.
+violations: list[str] = []
+
+
 def check_event(payload: Any) -> None:
     """Raise WireError unless `payload` is exactly one server -> client event."""
-    _check_top(payload, wire.SERVER_EVENTS, "event")
+    try:
+        _check_top(payload, wire.SERVER_EVENTS, "event")
+    except WireError as exc:
+        violations.append(str(exc))
+        raise
 
 
 def check_client_message(payload: Any) -> None:
@@ -83,6 +92,8 @@ def _check(value: Any, expected: Any, path: str) -> None:
         return
     if expected is int and isinstance(value, bool):
         raise WireError(f"{path}: expected an int, got a bool")
+    if not isinstance(expected, type):
+        raise WireError(f"{path}: wire.py uses {expected!r}, which this checker does not support")
     if not isinstance(value, expected):
         raise WireError(f"{path}: expected {expected.__name__}, got {value!r}")
 

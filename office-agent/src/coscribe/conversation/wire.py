@@ -1,9 +1,10 @@
 """The chat WebSocket's messages, one TypedDict per `type`.
 
-The server sends plain dicts, so this module is the one place their shape is
-written down: `tests/wire_check.py` validates every payload the test suite sends
-against it, and a field renamed in `session.py` without a change here fails a
-test. A new event is added here first, then sent.
+This is the per-thread chat socket (`/ws/{thread_id}`); the browser panel's socket and the
+desktop shell's background-event stream speak their own protocols. The server sends plain
+dicts, so this module is the one place their shape is written down: `tests/wire_check.py`
+validates every payload the test suite sends against it, and a field renamed in
+`session.py` without a change here fails a test. A new event is added here first, then sent.
 
 Stdlib only: `conversation` must not import FastAPI or pydantic. A docstring on a
 TypedDict says what the message means; keep the types to what a TypeScript
