@@ -3,8 +3,9 @@ name: Mutation
 # Coverage shows that code ran, not that a test checked it. Mutation testing changes the
 # code (a `<` to `<=`, a deleted line) and reports the changes no test notices. It runs on
 # the modules where a silent mistake is a security or data problem (the list is MODULES in
-# scripts/mutation.py), nightly, by hand, and on a pull request that changes this job. It reports and never fails because of a
-# survivor: each survivor is a gap to turn into an issue. It is not a required check.
+# scripts/mutation.py), nightly, by hand, and on a pull request that changes this job. It
+# reports and never fails because of a survivor: each survivor is a gap to turn into an
+# issue. It is not a required check.
 "on":
   schedule:
     - cron: "43 20 * * *"
@@ -14,9 +15,11 @@ name: Mutation
       - ".github/workflows/mutation.yml"
       - "office-agent/scripts/mutation.py"
 
+# The event is part of the group so a manual or pull request run on the same ref never
+# cancels the nightly one.
 concurrency:
-  group: mutation-${{ github.ref }}
-  cancel-in-progress: true
+  group: mutation-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -27,20 +30,26 @@ defaults:
     working-directory: office-agent
 
 jobs:
+  modules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      keys: ${{ steps.list.outputs.keys }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # MODULES in the script is the one list; the matrix follows it.
+      - id: list
+        run: echo "keys=$(python3 scripts/mutation.py list | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().split()))')" >> "$GITHUB_OUTPUT"
+
   mutate:
+    needs: modules
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        module:
-          - secret_store
-          - secrets
-          - exec_policy
-          - code_permissions
-          - script_guard
-          - workflow_spec
-          - xlsx_lookup_formulas
+        module: ${{ fromJSON(needs.modules.outputs.keys) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -69,7 +78,7 @@ jobs:
           path: office-agent/mutation-results/
 
   summary:
-    needs: mutate
+    needs: [modules, mutate]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -83,7 +92,7 @@ jobs:
           merge-multiple: true
 
       - name: Table
-        run: python scripts/mutation.py summary mutation-results >> "$GITHUB_STEP_SUMMARY"
+        run: python3 scripts/mutation.py summary mutation-results >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
         with:

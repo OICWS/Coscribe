@@ -120,26 +120,36 @@ def run(key: str, out: Path) -> int:
             for line in listing.splitlines()
             if line.strip().endswith((": survived", ": no tests"))
         ]
+        # mutmut exits 0 even when the tests fail before any mutation ("failed to collect
+        # stats", a failing clean run), so the output and the counts decide.
+        decided = sum(
+            stats[field]
+            for field in ("killed", "survived", "timeout", "no_tests", "suspicious", "skipped", "segfault")
+        )
+        broken = "failed to" in (result.stdout + result.stderr) or decided != stats["total"]
+        counts = {
+            "module": f"{PACKAGE}/{MODULES[key][0]}",
+            "mutants": stats["total"],
+            "killed": stats["killed"],
+            "survived": stats["survived"],
+            "timeout": stats["timeout"],
+            "no_tests": stats["no_tests"],
+            "other": stats["suspicious"] + stats["segfault"] + stats["skipped"],
+        }
+        # The counts go out before the per-survivor diffs, which take a process each.
+        if not broken and counts["mutants"]:
+            (out / f"{key}.json").write_text(json.dumps(counts, indent=2) + "\n", encoding="utf-8")
         blocks: list[str] = []
         for name in survivors:
             shown = _mutmut(work, "show", name).stdout.strip()
             blocks.append(shown or f"# {name}")
-    counts = {
-        "module": f"{PACKAGE}/{MODULES[key][0]}",
-        "mutants": stats["total"],
-        "killed": stats["killed"],
-        "survived": stats["survived"],
-        "timeout": stats["timeout"],
-        "no_tests": stats["no_tests"],
-        "other": stats["suspicious"] + stats["segfault"] + stats["skipped"],
-    }
-    (out / f"{key}.json").write_text(json.dumps(counts, indent=2) + "\n", encoding="utf-8")
     (out / f"{key}-survivors.txt").write_text(
         "\n\n".join(blocks) + ("\n" if blocks else ""), encoding="utf-8"
     )
     print(json.dumps(counts))
-    # A run that tested nothing means the setup broke, not that the tests are perfect.
-    return 0 if counts["mutants"] else 1
+    # A run that tested nothing or stopped early means the setup broke, not that the tests
+    # are perfect; no JSON is written, so the summary lists the module as missing.
+    return 1 if broken or not counts["mutants"] else 0
 
 
 def summary(directory: Path) -> str:
