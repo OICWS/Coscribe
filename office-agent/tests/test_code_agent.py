@@ -33,6 +33,8 @@ from coscribe.tools.subagent_tasks import (
     stop_subagent_task,
 )
 
+from .wire_check import check_event
+
 FAKE = Path(__file__).with_name("fake_codex_app_server.py")
 
 
@@ -86,6 +88,7 @@ class _Socket:
         self.session: ChatSessionLG | None = None
 
     async def send_json(self, payload: dict[str, Any]) -> None:
+        check_event(payload)
         self.sent.append(payload)
         if payload.get("type") == "approval_required" and self.answer and self.session:
             self.session.resolve_approval(payload["id"], self.answer(payload), self.scope)

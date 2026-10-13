@@ -164,6 +164,9 @@ connectors, settings, skills, scheduled, subagents, internal); a new test goes i
 the file of its domain, and fakes and builders shared by several files go into
 `tests/web/helpers.py`. Do not start a new catch-all file.
 
+A new WebSocket event is added to `conversation/wire.py` first; every payload a test sends is
+checked against it.
+
 CI is the gate. Before pushing run `bash scripts/check.sh --fast` (frontend
 build, oxlint, ruff, mypy) and the test files for what you touched; before
 marking a PR ready, wait for a green CI run (or run the full
