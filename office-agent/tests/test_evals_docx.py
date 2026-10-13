@@ -674,5 +674,40 @@ def test_the_comparison_of_two_word_runs_shows_the_document_checks(tmp_path: Pat
 
     table = compare.compare(a, b, kind="docx")
 
-    assert "tracked" in table and "| NO | yes |" in table
+    assert "| yes | yes | - | - | NO | yes | - | - |" in table
     assert "recalculates" not in table and "overflow" not in table
+
+
+def test_a_title_is_level_zero(tmp_path: Path) -> None:
+    document = Document()
+    document.add_heading("Report", level=0)
+    read = docx_checks.read_document(_save(document, tmp_path))
+
+    assert docx_checks.check_headings(read, [{"text": "Report", "level": 0}])["ok"]
+    assert not docx_checks.check_headings(read, [{"text": "Report", "level": 1}])["ok"]
+
+
+def test_a_redline_with_fewer_marks_than_asked_fails(tmp_path: Path) -> None:
+    read = docx_checks.read_document(_redlined(tmp_path))
+
+    assert not docx_checks.check_tracked(read, {"min_ins": 2}, None)["ok"]
+    assert not docx_checks.check_tracked(read, {"min_del": 2}, None)["ok"]
+
+
+def test_the_marks_of_an_inserted_paragraph_count_once_not_twice(tmp_path: Path) -> None:
+    chosen = _task("03-tracked-contract")
+    output = SOLUTIONS[chosen.name](chosen.directory / "inputs", tmp_path)
+
+    read = docx_checks.read_document(output)
+
+    assert (read.inserted, read.deleted) == (4, 2)
+
+
+def test_a_style_the_letterhead_defined_but_the_letter_lost_is_named(tmp_path: Path) -> None:
+    original, read = _letter(tmp_path)
+
+    report = docx_checks.check_template(
+        read, original, _template_expect(styles=["Letter Body", "No Such Style"])
+    )
+
+    assert report["problems"] == ["styles no longer defined: ['No Such Style']"]
