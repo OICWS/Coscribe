@@ -118,7 +118,6 @@ from ..runtime_lg.messages import (
 )
 from ..runtime_lg.providers import keeps_tool_list_fixed, with_prompt_cache_key
 from ..runtime_lg.selfwake import SilentSocket
-from ..runtime_lg.subagents import SUBAGENT_MAX_STEPS, subagent_report
 from ..runtime_lg.tool_calls import ORPHANED_TOOL_CALL_NOTE, answer_every_tool_call
 from ..runtime_lg.tool_deferral import (
     bound_tool_names,
@@ -139,7 +138,7 @@ from ..tools._thumbnail import render_single_page_preview
 from ..tools._workspace import WorkspaceScope
 from ..tools.background_tasks import BackgroundTask, set_change_listener
 from ..tools.browser import BROWSER_HOST, page_screenshot
-from ..tools.conversations import MessagingStore, format_incoming, set_inbox_listener
+from ..tools.conversations import set_inbox_listener
 from ..tools.http_request import build_http_tools
 from ..tools.presentations import PresentationToolkit
 from ..tools.scheduled_tasks import (
@@ -148,20 +147,24 @@ from ..tools.scheduled_tasks import (
     ScheduledTriggerStore,
     parse_run_thread_id,
 )
-from ..tools.selfwake import WakeStore
 from ..tools.skill_catalog import enabled_skill_names
-from ..tools.subagent_tasks import SubAgentTask, SubAgentTaskStore, running_subagent
+from ..tools.subagent_tasks import SubAgentTask
 from ..workflows import StepContext, StepRecord, parse_workflow, run_test, uses_browser, walk
 from ..workflows.solidify import DraftFailed, WorkflowDraft, draft_workflow, revise_workflow
 from .activity import summarize_activity, summarize_workflow_run
-from .approvals import ApprovalDecider, SubAgentChannel, can_resolve_approvals
+from .approvals import ApprovalDecider, can_resolve_approvals
 from .context_usage import build_context_breakdown
 from .events import EventSink
 from .prompts import INIT_PROMPT
+from .subagents import _MAX_REPORT_TURNS_IN_ROW as _MAX_REPORT_TURNS_IN_ROW
+from .subagents import SubAgentApprovalChannel, SubAgentReporter
 from .thread_meta import ThreadMetaStore
 from .turn_lock import TurnLock
 
 logger = logging.getLogger(__name__)
+
+# Tests construct the channel by this name.
+_SubAgentApprovalChannel = SubAgentApprovalChannel
 
 # /saveworkflow <name>: the model distills the conversation into a draft
 # scheduled task via create_scheduled_task, which the user then reviews.
@@ -415,64 +418,6 @@ def _fit_title(title: str) -> str:
     cut = title[:end]
     space = cut.rfind(" ")
     return (cut[:space] if space > len(cut) * 0.6 else cut).rstrip() + "…"
-
-
-_WIND_DOWN_REPORT_TURN = 3
-_MAX_REPORT_TURNS_IN_ROW = 5
-_MESSAGE_WIND_DOWN_NOTE = (
-    "\n\n(Several messages from other conversations have come in without a word from "
-    "the user. Tell the user where things stand rather than replying again, unless "
-    "they asked for more rounds.)"
-)
-_WIND_DOWN_NOTE = (
-    "\n\n(Several sub-agent reports in a row have come in without a word from the "
-    "user. Tell the user where things stand now rather than starting more sub-agents, "
-    "unless they asked for more rounds.)"
-)
-
-
-class _SubAgentApprovalChannel(SubAgentChannel):
-    """Stands in for the websocket when a sub-agent's call is decided: an
-    approval it needs is recorded on its task (the panel shows it from
-    there), announced to the watching tab, and forwarded to the turn's own
-    socket when no tab is watching -- the CLI answers approvals right
-    inside send_json."""
-
-    def __init__(self, session: ChatSessionLG, task: SubAgentTask) -> None:
-        self._session = session
-        self._task = task
-
-    @property
-    def delegated_task(self) -> str:
-        return self._task.prompt
-
-    @property
-    def task_id(self) -> str:
-        return self._task.task_id
-
-    @property
-    def can_resolve_approvals(self) -> bool:
-        socket = self._session._live_websocket or self._session._turn_websocket
-        return socket is not None and can_resolve_approvals(socket)
-
-    async def send_json(self, payload: dict[str, Any]) -> None:
-        if payload.get("type") != "approval_required":
-            return
-        task = self._task
-        task.pending_approval = {k: v for k, v in payload.items() if k != "type"}
-        task.status = "needs_approval"
-        SubAgentTaskStore(self._session.settings.state_dir).save(task)
-        await self._session._subagent_changed(task)
-        socket = self._session._live_websocket or self._session._turn_websocket
-        if socket is None:
-            return
-        try:
-            await socket.send_json(
-                {**payload, "subagent_id": task.task_id, "subagent": task.description}
-            )
-        except Exception:  # noqa: BLE001 -- e.g. the finished turn's closed socket
-            # The approval waits on the task; the panel shows it when opened.
-            logger.debug("sub-agent approval not forwarded", exc_info=True)
 
 
 class ChatSessionLG:
@@ -736,224 +681,27 @@ class ChatSessionLG:
             self._build_test_workflow_tool(),
         ]
 
+    @cached_property
+    def _subagents(self) -> SubAgentReporter:
+        return SubAgentReporter(self)
+
     def _subagent_host(self, model: Any) -> SubAgentHost:
-        def resolve_model(requested: str) -> tuple[str, Any]:
-            if not requested or requested == self._model_string:
-                return self._model_string, model
-            configured = self._configured_models()
-            if requested not in configured:
-                raise ValueError(
-                    f"{requested!r} isn't a configured model. Configured: {', '.join(configured)}"
-                )
-            return requested, resolve_chat_model(requested, self._custom_providers)
-
-        async def decide(request: dict[str, Any], task: SubAgentTask) -> Any:
-            channel = _SubAgentApprovalChannel(self, task)
-            return await self._decide_action_request(request, channel, honor_stop=False)
-
-        return SubAgentHost(
-            thread_id=self.thread_id,
-            state_dir=Path(self.settings.state_dir),
-            resolve_model=resolve_model,
-            configured_models=self._configured_models,
-            decide=decide,
-            changed=self._subagent_changed,
-            defer_tools=self.settings.defer_tools,
-            core_tool_names=CORE_TOOL_NAMES,
-            fixed_tool_names=frozenset(tool_name(t) for t in self._base_tools),
-            keeps_tool_list_fixed=lambda child_model: keeps_tool_list_fixed(
-                child_model, self._custom_providers
-            ),
-            interrupt_all=bool(self.hooks_config["PreToolUse"]),
-            max_turns=SUBAGENT_MAX_STEPS,
-        )
+        return self._subagents._subagent_host(model)
 
     async def _subagent_changed(self, task: SubAgentTask) -> None:
-        # Before any await: the wake poller runs on this loop too, and must
-        # not also resume the thread for a wake this report takes over.
-        # A stop the model asked for itself needs no report.
-        ended = task.status in ("succeeded", "failed") or (
-            task.status == "stopped" and task.stopped_by == "user"
-        )
-        if (
-            task.background
-            and ended
-            and not task.reported
-            and task.task_id not in self._reporting_subagents
-        ):
-            self._reporting_subagents.add(task.task_id)
-            reasons = self._take_subagent_wakes(task.task_id)
-            report = asyncio.create_task(self._report_subagent(task.task_id, reasons))
-            self._report_tasks.add(report)
-            report.add_done_callback(self._report_tasks.discard)
-        websocket = self._live_websocket
-        if websocket is None:
-            return
-        try:
-            await websocket.send_json(
-                {"type": "subagents_changed", "task_id": task.task_id, "status": task.status}
-            )
-        except Exception:  # noqa: BLE001 -- a closing tab mustn't fail the sub-agent's run
-            logger.debug("subagents_changed not delivered", exc_info=True)
+        await self._subagents._subagent_changed(task)
 
     def _background_task_changed(self, task: BackgroundTask) -> None:
-        websocket = self._live_websocket
-        if websocket is None:
-            return
-        message = {
-            "type": "background_tasks_changed",
-            "task_id": task.task_id,
-            "status": task.status,
-        }
-        notice = asyncio.get_running_loop().create_task(self._send_quietly(websocket, message))
-        self._report_tasks.add(notice)
-        notice.add_done_callback(self._report_tasks.discard)
-
-    @staticmethod
-    async def _send_quietly(websocket: EventSink, message: dict[str, Any]) -> None:
-        try:
-            await websocket.send_json(message)
-        except Exception:  # noqa: BLE001 -- a closing tab mustn't fail the script's run
-            logger.debug("%s not delivered", message["type"], exc_info=True)
-
-    def _take_subagent_wakes(self, task_id: str) -> list[str]:
-        wake_store = WakeStore(self.settings.state_dir)
-        reasons = []
-        for wake in wake_store.list_pending():
-            if (
-                wake.thread_id == self.thread_id
-                and wake.kind == "subagent"
-                and wake.subagent_task_id == task_id
-            ):
-                wake.status = "woken"
-                wake.woken_at = datetime.now(UTC).isoformat()
-                wake_store.save(wake)
-                reasons.append(wake.reason)
-        return reasons
+        self._subagents._background_task_changed(task)
 
     async def _report_subagent(self, task_id: str, reasons: list[str]) -> None:
-        """Tells the conversation how a background sub-agent ended, as a
-        turn of its own -- after the turn in progress, if there is one, so
-        the model hears it at its next chance rather than never. Skipped if
-        the model already read the outcome itself in the meantime."""
-        try:
-            async with self._turn_lock:
-                store = SubAgentTaskStore(self.settings.state_dir)
-                task = store.load(task_id)
-                if task is None or task.reported or self.is_workflow_run():
-                    logger.info(
-                        "sub-agent %s not reported to %s: %s",
-                        task_id,
-                        self.thread_id,
-                        "its record is gone"
-                        if task is None
-                        else "already read by the model"
-                        if task.reported
-                        else "a workflow run",
-                    )
-                    return
-                if self._report_turns_in_row >= _MAX_REPORT_TURNS_IN_ROW:
-                    # Left unreported: the model finds it with
-                    # list_subagent_tasks once the user is back.
-                    logger.info(
-                        "sub-agent %s not reported to %s: %d report turns without the user",
-                        task_id,
-                        self.thread_id,
-                        self._report_turns_in_row,
-                    )
-                    await self.notify_resync()
-                    return
-                self._report_turns_in_row += 1
-                task.reported = True
-                store.save(task)
-                text = subagent_report(task, reasons)
-                if self._report_turns_in_row >= _WIND_DOWN_REPORT_TURN:
-                    text += _WIND_DOWN_NOTE
-                websocket: Any = self._live_websocket
-                if websocket is not None:
-                    try:
-                        await websocket.send_json({"type": "turn_started", "text": text})
-                    except Exception:  # noqa: BLE001 -- the tab went away; run unwatched
-                        websocket = None
-                self._current_turn_task = asyncio.current_task()
-                socket: Any = websocket or SilentSocket()
-                await self._handle_user_message_locked(text, socket, notice=True)
-            if websocket is None:
-                await self.notify_resync()
-        except Exception:
-            logger.exception("reporting sub-agent %s to its conversation failed", task_id)
-        finally:
-            self._reporting_subagents.discard(task_id)
+        await self._subagents._report_subagent(task_id, reasons)
 
     def schedule_inbox_delivery(self) -> None:
-        """Messages from other conversations are waiting: turn them into a turn
-        of this one, once. Callable from a tool thread or a connect, with or
-        without a running loop (then they wait for the next call)."""
-        if self._delivering_inbox or self.is_workflow_run():
-            return
-        if MessagingStore(self.settings.state_dir).pending(self.thread_id) == 0:
-            return
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            # A sync tool runs in a worker thread: hand over to the server's loop.
-            if self._loop is not None and not self._loop.is_closed():
-                self._loop.call_soon_threadsafe(self.schedule_inbox_delivery)
-            return
-        self._loop = loop
-        self._delivering_inbox = True
-        task = loop.create_task(self._deliver_inbox())
-        self._report_tasks.add(task)
-        task.add_done_callback(self._report_tasks.discard)
-
-    async def _deliver_inbox(self) -> None:
-        """Tells the conversation what other conversations sent it, as a turn of
-        its own after the one in progress. Bounded like sub-agent reports: past
-        the cap the messages stay in the inbox until the user next speaks."""
-        store = MessagingStore(self.settings.state_dir)
-        # A message that arrives during the turn it started needs another one.
-        again = True
-        try:
-            async with self._turn_lock:
-                if self._report_turns_in_row >= _MAX_REPORT_TURNS_IN_ROW:
-                    again = False
-                    await self.notify_resync()
-                    return
-                messages = store.take_all(self.thread_id)
-                if not messages:
-                    return
-                self._report_turns_in_row += 1
-                text = format_incoming(messages)
-                if self._report_turns_in_row >= _WIND_DOWN_REPORT_TURN:
-                    text += _MESSAGE_WIND_DOWN_NOTE
-                ThreadMetaStore(self.settings.state_dir).update(self.thread_id, archived=False)
-                websocket: Any = self._live_websocket
-                if websocket is not None:
-                    try:
-                        await websocket.send_json({"type": "turn_started", "text": text})
-                    except Exception:  # noqa: BLE001 -- the tab went away; run unwatched
-                        websocket = None
-                self._current_turn_task = asyncio.current_task()
-                await self._handle_user_message_locked(
-                    text, websocket or SilentSocket(), notice=True
-                )
-            if websocket is None:
-                await self.notify_resync()
-        except Exception:
-            again = False
-            logger.exception("delivering messages from other conversations failed")
-        finally:
-            self._delivering_inbox = False
-            if again:
-                self.schedule_inbox_delivery()
+        self._subagents.schedule_inbox_delivery()
 
     def _stop_waited_on_subagents(self) -> None:
-        """Stop the sub-agents a turn is waiting on; background ones were
-        handed off and keep going."""
-        for task in SubAgentTaskStore(self.settings.state_dir).list_for_thread(self.thread_id):
-            runner = running_subagent(task.task_id)
-            if runner is not None and not task.background:
-                runner.cancel()
+        self._subagents._stop_waited_on_subagents()
 
     def _title_path(self) -> Path:
         # The same sidecar app.py's rename endpoint writes and list_threads

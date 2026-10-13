@@ -47,7 +47,6 @@
   "coscribe.conversation.session -> coscribe.runtime_lg.messages": 1,
   "coscribe.conversation.session -> coscribe.runtime_lg.providers": 1,
   "coscribe.conversation.session -> coscribe.runtime_lg.selfwake": 1,
-  "coscribe.conversation.session -> coscribe.runtime_lg.subagents": 1,
   "coscribe.conversation.session -> coscribe.runtime_lg.tool_calls": 1,
   "coscribe.conversation.session -> coscribe.runtime_lg.tool_deferral": 1,
   "coscribe.conversation.session -> coscribe.tools._thumbnail": 1,
@@ -58,7 +57,6 @@
   "coscribe.conversation.session -> coscribe.tools.http_request": 1,
   "coscribe.conversation.session -> coscribe.tools.presentations": 1,
   "coscribe.conversation.session -> coscribe.tools.scheduled_tasks": 1,
-  "coscribe.conversation.session -> coscribe.tools.selfwake": 1,
   "coscribe.conversation.session -> coscribe.tools.skill_catalog": 1,
   "coscribe.conversation.session -> coscribe.tools.subagent_tasks": 1,
   "coscribe.conversation.session -> coscribe.workflows.solidify": 1,
@@ -133,11 +131,11 @@
   "coscribe.workflows.testing -> coscribe.tools.browser": 1
  },
  "fan_out": {
-  "coscribe.conversation.session": 38,
+  "coscribe.conversation.session": 37,
   "coscribe.web.app": 28
  },
  "file_lines": {
-  "src/coscribe/conversation/session.py": 3283,
+  "src/coscribe/conversation/session.py": 3031,
   "src/coscribe/coordinator.py": 974,
   "src/coscribe/runtime_lg/subagents.py": 837,
   "src/coscribe/tools/presentations.py": 7092,
