@@ -44,14 +44,13 @@ from ..tools import (
 from .events import EventSink
 
 
-def _can_resolve_approvals(websocket: Any) -> bool:
+def can_resolve_approvals(websocket: Any) -> bool:
     """True for a real client connection able to actually answer an
     approval_required prompt; False for a silent/background stand-in
     (runtime_lg/selfwake.py's SilentSocket, driving an unattended
     sleep/wake or Scheduled Task turn) where nobody is present to ever
-    resolve one. Checked via a duck-typed attribute, not isinstance --
-    this module can't import runtime_lg back without a circular import
-    (see runtime_lg/selfwake.py's own docstring). A real fastapi
+    resolve one. Checked via a duck-typed attribute, not isinstance, so
+    the selfwake module needs no import of this one. A real fastapi
     WebSocket has no such attribute, so it defaults True, unchanged.
 
     Calling _resolve_pending_approvals anyway when this is False would
@@ -143,7 +142,7 @@ class ApprovalDecider:
         """Decide one pending action request, in precedence order: a
         configured PreToolUse hook can veto it outright (a hook runs before
         the approval policy it would otherwise reach); otherwise, a request for a tool in
-        self._host._gated_tool_risks is genuinely gated. For
+        self._gated_tool_risks is genuinely gated. For
         run_python_script/run_node_script specifically (EXEC_POLICY_TOOL_NAMES),
         a configured exec policy (runtime_lg/exec_policy.py, ROADMAP.md
         Phase 7) can pre-decide the call: "forbidden" rejects outright,
@@ -187,7 +186,7 @@ class ApprovalDecider:
         Audit logging (ROADMAP.md's Phase 4 "Audit logging" item, via
         runtime_lg/audit.py): every branch below that decides a genuinely
         risky action -- a hook veto (even for a tool outside
-        self._host._gated_tool_risks, since a hook denying something is
+        self._gated_tool_risks, since a hook denying something is
         inherently security-relevant regardless of that tool's own base
         risk tier), an exec-policy rule forbidding or auto-allowing a
         script call, plan mode blocking a gated call, accept-edits
@@ -224,7 +223,7 @@ class ApprovalDecider:
             )
             return _denied(hook_reason)
         if is_question:
-            if not _can_resolve_approvals(websocket):
+            if not can_resolve_approvals(websocket):
                 message = (
                     "No one is available to review this draft -- this is an unattended run, "
                     "so no task was created."
@@ -358,7 +357,7 @@ class ApprovalDecider:
                 )
             else:
                 reviewer_note = "Auto mode's reviewer gave no answer for this, so it's asking you."
-        if not _can_resolve_approvals(websocket):
+        if not can_resolve_approvals(websocket):
             # Reached only when this call is genuinely gated and neither
             # exec_policy nor accept_edits already decided it above --
             # creating the Future below would await a real approval nobody
@@ -394,7 +393,7 @@ class ApprovalDecider:
         # ever going to see resolved live.
         before_preview, after_preview = (
             await self._host._build_document_edit_preview(name, args)
-            if _can_resolve_approvals(websocket)
+            if can_resolve_approvals(websocket)
             else (None, None)
         )
         await websocket.send_json(
@@ -436,8 +435,8 @@ class ApprovalDecider:
         tool's own result, the tool's Python body never actually running
         (see tools/interaction.py's own docstring). Same pending-Future/
         request-id shape as the approval flow just above, kept as a
-        separate dict (self._host._pending_questions) rather than reusing
-        self._host._pending_approvals since the value type is different (a
+        separate dict (self._pending_questions) rather than reusing
+        self._pending_approvals since the value type is different (a
         free-text answer, not a bool) and request_stop/reconnect need to
         treat the two independently."""
         request_id = uuid.uuid4().hex

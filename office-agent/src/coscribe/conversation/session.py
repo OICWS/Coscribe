@@ -154,7 +154,7 @@ from ..tools.subagent_tasks import SubAgentTask, SubAgentTaskStore, running_suba
 from ..workflows import StepContext, StepRecord, parse_workflow, run_test, uses_browser, walk
 from ..workflows.solidify import DraftFailed, WorkflowDraft, draft_workflow, revise_workflow
 from .activity import summarize_activity, summarize_workflow_run
-from .approvals import ApprovalDecider, SubAgentChannel, _can_resolve_approvals
+from .approvals import ApprovalDecider, SubAgentChannel, can_resolve_approvals
 from .context_usage import build_context_breakdown
 from .events import EventSink
 from .prompts import INIT_PROMPT
@@ -453,7 +453,7 @@ class _SubAgentApprovalChannel(SubAgentChannel):
     @property
     def can_resolve_approvals(self) -> bool:
         socket = self._session._live_websocket or self._session._turn_websocket
-        return socket is not None and _can_resolve_approvals(socket)
+        return socket is not None and can_resolve_approvals(socket)
 
     async def send_json(self, payload: dict[str, Any]) -> None:
         if payload.get("type") != "approval_required":
@@ -2557,7 +2557,7 @@ class ChatSessionLG:
         latest_text: str | None = None
         state = await agent.aget_state(config)
         while state.next:
-            if not _can_resolve_approvals(websocket) and not all(
+            if not can_resolve_approvals(websocket) and not all(
                 self._decidable_unattended(request)
                 for task in state.tasks
                 for interrupt in task.interrupts
@@ -3201,7 +3201,7 @@ class ChatSessionLG:
                 # Unattended, only worth entering when something can
                 # approve without a person; _resolve_pending_approvals
                 # itself leaves anything else parked.
-                if _can_resolve_approvals(websocket) or self._auto_approval_active():
+                if can_resolve_approvals(websocket) or self._auto_approval_active():
                     resolved_text = await self._resolve_pending_approvals(websocket)
                     if resolved_text is not None:
                         reply_text = resolved_text
