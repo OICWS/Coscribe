@@ -14,6 +14,8 @@ from coscribe.tools.presentations import (
     build_presentation_tools,
 )
 
+from .pptx_fixtures import write_smartart_fixture as _write_smartart_fixture
+
 
 def _tools_by_name(root: Path) -> dict[str, object]:
     return {tool.__name__: tool for tool in build_presentation_tools(root)}  # type: ignore[attr-defined]
@@ -5144,118 +5146,14 @@ def test_list_pptx_shapes_rejects_out_of_range_slide(tmp_path: Path) -> None:
 # other library -- the layout algorithm lives in PowerPoint itself, not
 # the file format), so there's no way to build a real SmartArt-bearing
 # .pptx through python-pptx's own object model the way every other
-# fixture in this file is built. `_write_smartart_fixture` instead
+# fixture in this file is built. `write_smartart_fixture` (in
+# `pptx_fixtures.py`, shared with the golden tests) instead
 # hand-writes the real OOXML structure directly into a python-pptx-saved
 # file's zip package -- the exact <a:graphicData uri=".../diagram">/
 # <dgm:relIds r:dm=.../<dgm:pt>/<dgm:t> shape cross-checked against two
 # independent, real, working OOXML-consuming implementations (Apache
 # POI's XSLFDiagram, LibreOffice's oox diagram filter -- see this
 # module's own _SMARTART_NS comment), not guessed.
-
-
-def _write_smartart_fixture(path: Path) -> None:
-    import zipfile
-
-    from pptx import Presentation
-
-    base_path = path.with_suffix(".base.pptx")
-    prs = Presentation()
-    prs.slides.add_slide(prs.slide_layouts[6])
-    prs.save(str(base_path))
-
-    dgm = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
-    r_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-    a_ns = "http://schemas.openxmlformats.org/drawingml/2006/main"
-
-    data_xml = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<dgm:dataModel xmlns:dgm="{dgm}" xmlns:a="{a_ns}">
-  <dgm:ptLst>
-    <dgm:pt modelId="0" type="doc"><dgm:prSet/></dgm:pt>
-    <dgm:pt modelId="1"><dgm:t><a:bodyPr/><a:lstStyle/>
-      <a:p><a:r><a:t>Plan</a:t></a:r></a:p></dgm:t></dgm:pt>
-    <dgm:pt modelId="2"><dgm:t><a:bodyPr/><a:lstStyle/>
-      <a:p><a:r><a:t>Build</a:t></a:r><a:r><a:t> phase</a:t></a:r></a:p></dgm:t></dgm:pt>
-    <dgm:pt modelId="3"><dgm:t><a:bodyPr/><a:lstStyle/>
-      <a:p><a:r><a:t>Ship</a:t></a:r></a:p></dgm:t></dgm:pt>
-    <dgm:pt modelId="4" type="parTrans" cxnId="x"><dgm:prSet/></dgm:pt>
-  </dgm:ptLst>
-  <dgm:cxnLst/>
-  <dgm:bg/>
-  <dgm:whole/>
-</dgm:dataModel>"""
-    layout_xml = (
-        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-        '<dsp:dataModel xmlns:dsp="http://schemas.microsoft.com/office/drawing/2008/diagram"/>'
-    )
-    qs_xml = (
-        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-        f'<dgm:styleDefHdrLst xmlns:dgm="{dgm}"/>'
-    )
-    colors_xml = (
-        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-        f'<dgm:colorsDefHdrLst xmlns:dgm="{dgm}"/>'
-    )
-    graphicframe_xml = f"""<p:graphicFrame
-      xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
-      xmlns:a="{a_ns}" xmlns:r="{r_ns}">
-  <p:nvGraphicFramePr>
-    <p:cNvPr id="99" name="SmartArt 1"/>
-    <p:cNvGraphicFramePr/>
-    <p:nvPr/>
-  </p:nvGraphicFramePr>
-  <p:xfrm><a:off x="914400" y="914400"/><a:ext cx="4572000" cy="2743200"/></p:xfrm>
-  <a:graphic>
-    <a:graphicData uri="{dgm}">
-      <dgm:relIds xmlns:dgm="{dgm}" r:dm="rIdDM1" r:lo="rIdLO1" r:qs="rIdQS1" r:cs="rIdCS1"/>
-    </a:graphicData>
-  </a:graphic>
-</p:graphicFrame>"""
-
-    with zipfile.ZipFile(base_path, "r") as zin:
-        contents = {name: zin.read(name) for name in zin.namelist()}
-
-    slide_xml = contents["ppt/slides/slide1.xml"].decode("utf-8")
-    slide_xml = slide_xml.replace("</p:spTree>", graphicframe_xml + "</p:spTree>")
-
-    slide_rels_text = contents["ppt/slides/_rels/slide1.xml.rels"].decode("utf-8")
-    rel_type_base = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-    new_rels = (
-        f'<Relationship Id="rIdDM1" Type="{rel_type_base}/diagramData" '
-        'Target="../diagrams/data1.xml"/>'
-        f'<Relationship Id="rIdLO1" Type="{rel_type_base}/diagramLayout" '
-        'Target="../diagrams/layout1.xml"/>'
-        f'<Relationship Id="rIdQS1" Type="{rel_type_base}/diagramQuickStyle" '
-        'Target="../diagrams/quickStyle1.xml"/>'
-        f'<Relationship Id="rIdCS1" Type="{rel_type_base}/diagramColors" '
-        'Target="../diagrams/colors1.xml"/>'
-    )
-    slide_rels_text = slide_rels_text.replace("</Relationships>", new_rels + "</Relationships>")
-
-    contents["ppt/slides/slide1.xml"] = slide_xml.encode("utf-8")
-    contents["ppt/slides/_rels/slide1.xml.rels"] = slide_rels_text.encode("utf-8")
-    contents["ppt/diagrams/data1.xml"] = data_xml.encode("utf-8")
-    contents["ppt/diagrams/layout1.xml"] = layout_xml.encode("utf-8")
-    contents["ppt/diagrams/quickStyle1.xml"] = qs_xml.encode("utf-8")
-    contents["ppt/diagrams/colors1.xml"] = colors_xml.encode("utf-8")
-
-    content_types = contents["[Content_Types].xml"].decode("utf-8")
-    overrides = (
-        '<Override PartName="/ppt/diagrams/data1.xml" '
-        'ContentType="application/vnd.openxmlformats-officedocument.drawingml.diagramData+xml"/>'
-        '<Override PartName="/ppt/diagrams/layout1.xml" '
-        'ContentType="application/vnd.openxmlformats-officedocument.drawingml.diagramLayout+xml"/>'
-        '<Override PartName="/ppt/diagrams/quickStyle1.xml" '
-        'ContentType="application/vnd.openxmlformats-officedocument.drawingml.diagramStyle+xml"/>'
-        '<Override PartName="/ppt/diagrams/colors1.xml" '
-        'ContentType="application/vnd.openxmlformats-officedocument.drawingml.diagramColors+xml"/>'
-    )
-    content_types = content_types.replace("</Types>", overrides + "</Types>")
-    contents["[Content_Types].xml"] = content_types.encode("utf-8")
-
-    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zout:
-        for name, data in contents.items():
-            zout.writestr(name, data)
-    base_path.unlink()
 
 
 def test_list_pptx_shapes_detects_smartart_and_extracts_node_text(tmp_path: Path) -> None:
