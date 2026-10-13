@@ -3,7 +3,7 @@ name: E2E
 # The Playwright specs in office-agent/frontend/tests/e2e/ run against the real server and a
 # stub model (scripts/stub_llm.py, which answers "OK" to everything), so a UI regression
 # shows up the next morning instead of when someone happens to use that screen. It runs
-# nightly and by hand, never on an ordinary pull request, and it is not a required check: a red run
+# nightly and by hand (and on a pull request that changes this file, so the workflow proves itself), and it is not a required check: a red run
 # is read in the morning. No model key is used.
 "on":
   schedule:
@@ -31,6 +31,8 @@ env:
   # here is left out for the reason given:
   #   approval.spec.ts  needs a model that calls a tool (the stub never does)
   #   chat.spec.ts      checks the model's answer ("4"); the stub only says "OK"
+  # A spec file in neither list fails the run, so a new spec is never skipped unnoticed.
+  EXCLUDED: approval chat
   SPECS: >-
     attachment code composer-drop-paste connector-setup connectors find labels navigation
     permissions rail-dialog secrets settings sidebar skill-plugins titlebar
@@ -85,15 +87,21 @@ jobs:
           (cd frontend && nohup npx vite --host 127.0.0.1 > "$scratch/vite.log" 2>&1 &)
           for url in http://127.0.0.1:9999/v1/models http://127.0.0.1:8000/ http://127.0.0.1:5173/static/; do
             for _ in $(seq 60); do curl -sf "$url" > /dev/null && continue 2; sleep 1; done
-            echo "$url did not come up"; exit 1
+            echo "$url did not come up"; tail -n 30 "$scratch"/*.log; exit 1
           done
 
       - name: Specs
         working-directory: office-agent/frontend
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-report.json
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
+          COSCRIBE_BACKEND: http://127.0.0.1:8000
         run: |
           export PLAYWRIGHT_CHROMIUM_PATH="$(node -e 'console.log(require("@playwright/test").chromium.executablePath())')"
+          for f in tests/e2e/*.spec.ts; do
+            name="$(basename "$f" .spec.ts)"
+            case " $SPECS $EXCLUDED " in *" $name "*) ;; *) echo "$name.spec.ts is in neither SPECS nor EXCLUDED"; exit 1;; esac
+          done
           files=()
           for name in $SPECS; do files+=("tests/e2e/$name.spec.ts"); done
           npx playwright test "${files[@]}" --reporter=list,json,html --trace=retain-on-failure
@@ -109,17 +117,22 @@ jobs:
           except OSError:
               print("No report was written.")
               raise SystemExit
-          rows = []
+          failed = []
           def walk(suite):
               for spec in suite.get("specs", []):
-                  rows.append((spec["file"], spec["title"], spec["ok"]))
+                  if not spec["ok"]:
+                      failed.append((spec["file"], spec["title"]))
               for child in suite.get("suites", []):
                   walk(child)
           for top in report["suites"]:
               walk(top)
-          failed = [r for r in rows if not r[2]]
-          print(f"## E2E against the stub model: {len(rows)} tests, {len(failed)} failed\n")
-          for file, title, _ in failed:
+          stats = report["stats"]
+          total = stats["expected"] + stats["unexpected"] + stats["flaky"] + stats["skipped"]
+          print(f"## E2E against the stub model: {total} tests, {stats['unexpected']} failed, "
+                f"{stats['flaky']} flaky, {stats['skipped']} skipped\n")
+          for error in report.get("errors", []):
+              print(f"- load error: {error.get('message', '')[:200]}")
+          for file, title in failed:
               print(f"- `{file}`: {title}")
           PY
 
@@ -130,3 +143,5 @@ jobs:
           path: |
             office-agent/frontend/playwright-report/
             office-agent/frontend/test-results/
+            office-agent/frontend/playwright-report.json
+            ${{ runner.temp }}/e2e/*.log
