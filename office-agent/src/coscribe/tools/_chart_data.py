@@ -14,7 +14,7 @@ def parse_chart_table(content: str, tool_name: str) -> tuple[list[str], dict[str
     header cell) -- avoids a list/dict-typed tool parameter entirely, since
     no tool in this package uses one: aisuite's Gemini schema inference has
     broken on less exotic type hints than that (see this module's and
-    spreadsheets.py's `Optional[int]` comments), so a plain pipe-table
+    office/xlsx's `Optional[int]` comments), so a plain pipe-table
     string is the safer, already-proven shape."""
     rows: list[list[str]] = []
     for raw_line in content.splitlines():

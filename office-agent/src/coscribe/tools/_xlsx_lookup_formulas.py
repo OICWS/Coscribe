@@ -1,5 +1,5 @@
 """Native, coscribe-owned evaluation of `XLOOKUP`/`XMATCH` -- the two of
-`spreadsheets.py`'s six blocked "LibreOffice can't evaluate this" functions
+`office/xlsx/`'s six blocked "LibreOffice can't evaluate this" functions
 that are commonly used in their plain *scalar* form (one lookup value, one
 result), as opposed to `FILTER`/`UNIQUE`/`SORT`/`SEQUENCE`, which are
 "dynamic array" functions that spill a result across multiple cells --

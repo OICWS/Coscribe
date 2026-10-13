@@ -1,6 +1,6 @@
 """PowerPoint (.pptx) read/write tools, scoped to a single workspace root.
 
-Mirrors ``tools/office/document_tools.py``/``spreadsheets.py`` -- same ``WorkspaceScope``
+Mirrors ``tools/office/document_tools.py``/``office/xlsx`` -- same ``WorkspaceScope``
 sandboxing, same shape (a toolkit class + a ``build_*_tools`` factory).
 
 Unlike docx/pdf/xlsx, ``python-pptx`` (the library used here) hasn't had a
@@ -34,7 +34,7 @@ imported under ``TYPE_CHECKING`` instead of even a lazy runtime import.
 ``add_pptx_chart`` only builds through python-pptx's high-level
 ``CategoryChartData``/``add_chart`` API, never hand-written chart XML --
 axis/series registration is correct by construction that way. Same
-deliberate scoping as ``spreadsheets.py``'s ``add_xlsx_chart``: single-
+deliberate scoping as ``office/xlsx``'s ``add_xlsx_chart``: single-
 purpose bar/line/pie charts only, no stacked or secondary-axis/combo
 charts -- exactly the configurations Anthropic's own pptx skill documents
 as producing schema-valid XML that PowerPoint silently treats as corrupt.
@@ -44,7 +44,7 @@ same convention ``write_xlsx`` already uses -- not a list/dict tool
 parameter, which no tool in this package uses: aisuite's Gemini schema
 inference has broken on less exotic type hints than that (see the
 ``Optional[int]``/``Optional[str]`` comments below and in
-``spreadsheets.py``).
+``office/xlsx``).
 
 ``add_pptx_image``/``set_pptx_notes`` and ``write_pptx``'s/``write_docx``'s
 ``template_path`` are all pure high-level python-pptx/python-docx API calls,

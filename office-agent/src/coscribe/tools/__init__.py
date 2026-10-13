@@ -9,6 +9,7 @@ from .mcp import load_mcp_server_configs
 from .memory import format_memory_section, load_memory
 from .node_scripts import build_node_script_tools
 from .office.document_tools import DocumentToolkit, build_document_tools
+from .office.xlsx import SpreadsheetToolkit, build_spreadsheet_tools
 from .pptx_templates import (
     TemplateInfo,
     format_template_listing,
@@ -36,7 +37,6 @@ from .skills import (
     save_uploaded_skill,
     slugify_skill_name,
 )
-from .spreadsheets import build_spreadsheet_tools
 from .subagent_tasks import (
     SubAgentTask,
     SubAgentTaskStore,
@@ -68,6 +68,7 @@ __all__ = [
     "build_conversation_tools",
     "build_convert_tools",
     "DocumentToolkit",
+    "SpreadsheetToolkit",
     "build_document_tools",
     "build_file_tools",
     "build_image_tools",

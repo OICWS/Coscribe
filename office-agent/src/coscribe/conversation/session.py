@@ -129,6 +129,7 @@ from ..runtime_lg.tool_deferral import (
 from ..tools import (
     QUESTION_TOOL_NAMES,
     DocumentToolkit,
+    SpreadsheetToolkit,
     format_skill_listing,
     load_builtin_skills,
     load_skills,
@@ -157,7 +158,6 @@ from ..tools.scheduled_tasks import (
 )
 from ..tools.selfwake import WakeStore
 from ..tools.skill_catalog import enabled_skill_names
-from ..tools.spreadsheets import SpreadsheetToolkit
 from ..tools.subagent_tasks import SubAgentTask, SubAgentTaskStore, running_subagent
 from ..workflows import StepContext, StepRecord, parse_workflow, run_test, uses_browser, walk
 from ..workflows.solidify import DraftFailed, WorkflowDraft, draft_workflow, revise_workflow

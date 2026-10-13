@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from openpyxl import load_workbook
 
-from coscribe.tools.spreadsheets import SpreadsheetToolkit, build_spreadsheet_tools
+from coscribe.tools.office.xlsx import SpreadsheetToolkit, build_spreadsheet_tools
 
 
 def _tools_by_name(root: Path) -> dict[str, object]:
@@ -1037,7 +1037,7 @@ def test_parallel_cell_formatting_calls_on_one_workbook_all_land(tmp_path: Path)
 def test_cells_only_become_numbers_when_they_are_plain_numbers(text: str, expected: object) -> None:
     """Real data loss: an ID like 00123 became 123 and a 19-digit card
     number a rounded float."""
-    from coscribe.tools.spreadsheets import _coerce_cell
+    from coscribe.tools.office.xlsx.helpers import _coerce_cell
 
     assert _coerce_cell(text) == expected
     assert type(_coerce_cell(text)) is type(expected)
