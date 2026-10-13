@@ -23,6 +23,7 @@ from langchain_core.messages import (
 
 from coscribe.runtime_lg import mcp as lg_mcp
 from coscribe.web import app as web_app
+from coscribe.web.connector_manager import ConnectorManager
 from coscribe.web.routes import skills as skills_routes
 
 from .helpers import (
@@ -30,6 +31,7 @@ from .helpers import (
     _client_lg,
     _install_fake_keyring,
     _receive_until,
+    _settings,
     _tool_call,
 )
 
@@ -215,7 +217,7 @@ def test_post_mcp_server_reconnect_reports_not_found_for_an_unconfigured_name(
 def test_get_mcp_servers_connected_reflects_a_real_live_connection(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """connected must be a live signal (web/app.py's mcp_connections
+    """connected must be a live signal (ConnectorManager's connections
     registry), not just "is it in mcp.json" -- add one server that stubs a
     successful connect and one that doesn't, and check GET /api/mcp/servers
     tells them apart."""
@@ -1033,3 +1035,105 @@ def test_signing_in_to_a_server_with_no_tools_says_so_instead_of_pretending(
         info = client.get("/api/mcp/servers").json()["docs"]
         assert info["connected"] is False
         assert info["signin_error"] == "The server connected but offers no tools."
+
+
+class _ManagedConnection:
+    def __init__(self) -> None:
+        self.closed = False
+
+    async def close(self) -> None:
+        self.closed = True
+
+
+def _connector_tool(connector: str, name: str) -> Any:
+    from coscribe.runtime.types import tool_metadata
+
+    def _tool(x: str = "") -> str:
+        """Does a thing. And then more."""
+        return x
+
+    _tool.__name__ = f"{connector}_{name}"
+    tool_metadata(_tool, risk_category="READ", category=f"mcp:{connector}")
+    return _tool
+
+
+def test_connector_manager_lists_a_connectors_tools_with_their_policy(tmp_path: Path) -> None:
+    from coscribe.tools import ConnectorPermissions
+
+    settings = _settings(tmp_path)
+    manager = ConnectorManager(settings, {}, lambda *args: None)
+    manager.tools = [_connector_tool("fetch", "get-page"), _connector_tool("other", "x")]
+    ConnectorPermissions(settings.state_dir).update("fetch", {"fetch_get-page": "block"})
+
+    listed = manager.connector_tools("fetch")
+
+    assert [(t["name"], t["title"], t["policy"]) for t in listed] == [
+        ("fetch_get-page", "Get page", "block")
+    ]
+    assert listed[0]["description"] == "Does a thing"
+
+
+def test_connector_manager_disconnect_drops_one_connectors_tools_and_closes_it(
+    tmp_path: Path,
+) -> None:
+    manager = ConnectorManager(_settings(tmp_path), {}, lambda *args: None)
+    keep, drop = _connector_tool("keep", "a"), _connector_tool("drop", "b")
+    manager.tools = [keep, drop]
+    connection = _ManagedConnection()
+    manager.connections["drop"] = connection
+
+    asyncio.run(manager.disconnect_mcp_server_lg("drop"))
+
+    assert manager.tools == [keep]
+    assert "drop" not in manager.connections
+    assert connection.closed
+
+
+def test_connector_manager_registers_a_connected_server_and_closes_one_without_tools(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.tools.mcp import validate_mcp_config
+
+    results: dict[str, tuple[list[Any], Any, str | None]] = {}
+
+    async def _fake_connect(
+        name: str, config: Any, *args: Any, **kwargs: Any
+    ) -> tuple[list[Any], Any, str | None]:
+        return results[name]
+
+    monkeypatch.setattr(lg_mcp, "connect_one_mcp_server_lg", _fake_connect)
+    manager = ConnectorManager(_settings(tmp_path), {}, lambda *args: None)
+    config = validate_mcp_config({"type": "mcp", "name": "x", "command": "uvx", "args": ["x"]})
+    live, empty = _ManagedConnection(), _ManagedConnection()
+    results["good"] = ([_connector_tool("good", "t")], live, None)
+    results["empty"] = ([], empty, None)
+
+    assert asyncio.run(manager.connect_and_register_mcp_server_lg("good", config)) == (True, None)
+    assert asyncio.run(manager.connect_and_register_mcp_server_lg("empty", config)) == (
+        False,
+        "The server connected but offers no tools.",
+    )
+
+    assert list(manager.connections) == ["good"]
+    assert len(manager.tools) == 1
+    assert empty.closed and not live.closed
+
+
+def test_connector_manager_refresh_gives_every_open_session_the_current_tools(
+    tmp_path: Path,
+) -> None:
+    class _Session:
+        def __init__(self) -> None:
+            self.seen: list[Any] | None = None
+
+        async def refresh_extra_tools(self, tools: list[Any]) -> None:
+            self.seen = tools
+
+    first, second = _Session(), _Session()
+    manager = ConnectorManager(_settings(tmp_path), {"a": first, "b": second}, lambda *args: None)
+    tool = _connector_tool("fetch", "t")
+    manager.tools = [tool]
+
+    asyncio.run(manager.refresh_all_sessions_extra_tools())
+
+    assert first.seen == [tool] and second.seen == [tool]

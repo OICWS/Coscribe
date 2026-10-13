@@ -27,8 +27,8 @@ MCP connectors got that explicit rebuild after a real, live-reported bug:
 a user enabled a connector mid-conversation and it had no effect on that
 same, already-open thread (confirmed against this exact "next new session
 only" gap). add_mcp_server/remove_mcp_server/bump_mcp_server_version below
-now all call _refresh_all_sessions_extra_tools() after mutating
-extra_tools_holder, which calls ChatSessionLG.refresh_extra_tools on every
+now all call ConnectorManager.refresh_all_sessions_extra_tools() after mutating
+the manager's tools, which calls ChatSessionLG.refresh_extra_tools on every
 currently-open session -- same "rebuild the compiled graph in place, same
 checkpointer/thread_id" mechanism switch_model already used for models.
 Providers/skills don't get the same treatment here: rebuilding
@@ -50,7 +50,7 @@ import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import uvicorn
 from dotenv import dotenv_values, load_dotenv
@@ -78,10 +78,6 @@ from ..runtime import (
     resolve_secret,
     run_hook,
 )
-from ..runtime.secret_store import (
-    SecretError,
-)
-from ..runtime.types import get_tool_metadata
 from ..runtime_lg import (
     execute_run,
     poll_due_scheduled_tasks,
@@ -94,17 +90,6 @@ from ..tools import (
     load_builtin_skills,
     load_skills,
 )
-from ..tools.connector_permissions import (
-    ConnectorPermissions,
-    apply_connector_permissions,
-    connector_of,
-    is_read_only,
-    name_of,
-)
-from ..tools.mcp import (
-    prepare_for_connect,
-    validate_mcp_config,
-)
 from ..tools.scheduled_tasks import (
     SCHEDULED_THREAD_PREFIX,
     ScheduledRun,
@@ -113,8 +98,8 @@ from ..tools.scheduled_tasks import (
 from ..tools.skill_catalog import (
     enabled_skill_names,
 )
-from ..workflows import tool_description
 from .background_events import BackgroundEvent, BackgroundEventBus, run_event
+from .connector_manager import ConnectorManager
 from .provider_catalog import (
     BUILTIN_PROVIDERS,
 )
@@ -123,23 +108,13 @@ from .routes.files import router as files_router
 from .routes.internal import router as internal_router
 from .routes.scheduled import router as scheduled_router
 from .routes.settings import router as settings_router
-from .routes.shared import _mask, _read_mcp_servers_raw, _read_providers_raw
+from .routes.shared import _mask, _read_providers_raw
 from .routes.skills import router as skills_router
 from .routes.threads import router as threads_router
 from .routes.ws import router as ws_router
 from .setup_app import build_setup_app
 from .state import AppState
 from .thread_files import ThreadFiles
-
-if TYPE_CHECKING:
-    # Real type only needed for a local variable annotation below (never
-    # evaluated at runtime -- `from __future__ import annotations` is in
-    # effect) -- kept out of the real import graph so `import coscribe.
-    # web.app` doesn't drag in langchain_mcp_adapters/mcp for a user with
-    # no MCP servers configured. See connect_mcp_tools_lg/connect_one_mcp_
-    # server_lg below for the same reasoning applied to the functions that
-    # actually need this module at runtime.
-    from ..runtime_lg.mcp import McpServerConnection
 
 
 def _oauth_page(message: str) -> str:
@@ -264,24 +239,16 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
     # below) -- _get_session is only reachable from ws_endpoint, which
     # can't run until the lifespan's own yield has happened.
     #
-    # extra_tools_holder does NOT have that same guarantee, deliberately:
+    # connectors.tools does NOT have that same guarantee, deliberately:
     # see lifespan's own MCP-connect comment for why a session opened
     # very early may briefly see fewer tools than a slow-to-connect MCP
     # server will eventually provide.
     checkpointer_holder: dict[str, Any] = {}
-    extra_tools_holder: dict[str, list[Any]] = {"tools": []}
     # Fan-out for background-completion events (see background_events.py's
     # module docstring) -- the desktop shell's SSE client is the only
     # subscriber today, but this is a plain broadcaster, not a single-slot
     # holder, so nothing stops a future second subscriber.
     background_events = BackgroundEventBus()
-    # {server_name: McpServerConnection} for every currently-connected MCP
-    # server -- each owns a persistent session/subprocess (see runtime_lg/
-    # mcp.py's module docstring for why persistent, not the previous
-    # per-tool-call default) that must be explicitly close()d when this
-    # server disconnects/reconnects or the app shuts down, or its
-    # subprocess (and, for Playwright, its browser) leaks past that point.
-    mcp_connections: dict[str, McpServerConnection] = {}
     # Deferred import for the same reason as runtime_lg.mcp (see the comment
     # above MCP_STARTUP_TIMEOUT_SECONDS).
     from ..runtime_lg.mcp_oauth import (
@@ -290,6 +257,7 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
     )
 
     mcp_oauth = McpOAuth(settings.state_dir)
+    connectors = ConnectorManager(settings, sessions, mcp_oauth.auth_for)
 
     def _oauth_callback_response(
         state: str, code: str | None, error: str | None
@@ -304,7 +272,6 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
         )
 
     app_callback = LoopbackCallback(_oauth_callback_response)
-    sign_in_tasks: set[asyncio.Task[None]] = set()
     thread_files = ThreadFiles(settings)
 
     def _skills_by_name() -> dict[str, SkillInfo]:
@@ -364,7 +331,7 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
                 settings=settings,
                 context_window_client=context_window_client,
                 custom_providers=session_custom_providers,
-                extra_tools=_session_extra_tools(),
+                extra_tools=connectors.session_extra_tools(),
                 checkpointer=checkpointer_holder["checkpointer"],
                 hooks_config=hooks_config,
                 enabled_skill_names=_enabled_skills(),
@@ -374,135 +341,6 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
                 configured_models=_configured_models,
             )
         return sessions[thread_id]
-
-    def _session_extra_tools() -> list[Any]:
-        """The connector tools conversations get, under the permissions set
-        in Settings > Connectors."""
-        return apply_connector_permissions(
-            extra_tools_holder["tools"], ConnectorPermissions(settings.state_dir).load()
-        )
-
-    def _connector_tools(name: str) -> list[dict[str, Any]]:
-        permissions = ConnectorPermissions(settings.state_dir).load().get(name, {})
-        prefix = f"{name}_"
-        result = []
-        for tool in extra_tools_holder["tools"]:
-            if connector_of(tool) != name:
-                continue
-            full_name = name_of(tool)
-            bare = full_name[len(prefix) :] if full_name.startswith(prefix) else full_name
-            title = (getattr(tool, "metadata", None) or {}).get("title") or (
-                bare.replace("-", " ").replace("_", " ").strip().capitalize()
-            )
-            result.append(
-                {
-                    "name": full_name,
-                    "title": title,
-                    "description": tool_description(tool).split(". ")[0],
-                    "read_only": is_read_only(tool),
-                    "policy": permissions.get(full_name, "ask"),
-                }
-            )
-        return result
-
-    async def _disconnect_mcp_server_lg(name: str) -> None:
-        """Strips `name`'s tools from extra_tools_holder so the *next* new
-        session doesn't get them; already-open ChatSessionLG instances only
-        stop seeing them once their caller also calls
-        _refresh_all_sessions_extra_tools() below (every current caller
-        does, right after this). Async: also closes and forgets `name`'s
-        McpServerConnection, if any -- unlike before the persistent-session
-        fix (runtime_lg/mcp.py), there is now a real subprocess to actually
-        tear down here, not just a tool list to filter."""
-        extra_tools_holder["tools"] = [
-            t for t in extra_tools_holder["tools"] if get_tool_metadata(t).category != f"mcp:{name}"
-        ]
-        connection = mcp_connections.pop(name, None)
-        if connection is not None:
-            await connection.close()
-
-    reconnecting: set[str] = set()
-
-    def _reconnect_stale_connector(name: str) -> None:
-        """A connector call hung or hit a dead session: connect it afresh in
-        the background, once at a time per connector."""
-        if name in reconnecting:
-            return
-        reconnecting.add(name)
-
-        async def reconnect() -> None:
-            try:
-                if settings.mcp_config_path is None or not settings.mcp_config_path.is_file():
-                    return
-                entry = _read_mcp_servers_raw(settings.mcp_config_path)["mcpServers"].get(name)
-                if entry is None:
-                    return
-                config = validate_mcp_config({"type": "mcp", "name": name, **entry})
-                await _disconnect_mcp_server_lg(name)
-                await _connect_and_register_mcp_server_lg(name, config)
-                await _refresh_all_sessions_extra_tools()
-            except Exception:  # noqa: BLE001 -- the Connectors page shows it as not connected
-                logging.getLogger(__name__).warning(
-                    "Reconnecting connector %r failed", name, exc_info=True
-                )
-            finally:
-                reconnecting.discard(name)
-
-        task = asyncio.create_task(reconnect())
-        sign_in_tasks.add(task)
-        task.add_done_callback(sign_in_tasks.discard)
-
-    async def _connect_and_register_mcp_server_lg(
-        name: str, config: Any, connect_timeout: float | None = None
-    ) -> tuple[bool, str | None]:
-        """Connects one MCP server and registers its tools into
-        extra_tools_holder. Returns (connected, error) -- error is a
-        human-readable failure reason from connect_one_mcp_server_lg, or
-        None on success. connect_one_mcp_server_lg's only positive-connect
-        signal is a non-empty tool list, same imprecision as treating a
-        real server that happens to expose zero tools as "didn't connect";
-        accepted here since real MCP servers always expose at least one
-        tool in practice."""
-        # Deferred import -- see the top-of-file comment above MCP_STARTUP_TIMEOUT_SECONDS.
-        from ..runtime_lg.mcp import connect_one_mcp_server_lg
-
-        try:
-            config = prepare_for_connect(config, settings.state_dir)
-        except (SecretError, RuntimeError) as exc:
-            return False, str(exc)
-        extra = {} if connect_timeout is None else {"connect_timeout": connect_timeout}
-        new_tools, connection, error = await connect_one_mcp_server_lg(
-            name, config, mcp_oauth.auth_for, on_stale=_reconnect_stale_connector, **extra
-        )
-        if connection is None:
-            return False, error
-        if not new_tools:
-            # Connected, but a connector with no tools is no use, and its
-            # session would otherwise stay open with nothing to close it.
-            await connection.close()
-            return False, "The server connected but offers no tools."
-        extra_tools_holder["tools"].extend(new_tools)
-        mcp_connections[name] = connection
-        return True, None
-
-    async def _refresh_all_sessions_extra_tools() -> None:
-        """Real, live-reported bug: add/remove/bump_mcp_server above only
-        ever updated extra_tools_holder["tools"], which _get_session only
-        reads when constructing a *brand-new* ChatSessionLG (see its own
-        comment) -- a connector enabled mid-conversation never showed up
-        in that same, already-open thread, only in threads started
-        afterwards. Called once at the end of each of the three
-        connector-mutating endpoints below (not from inside
-        _disconnect_mcp_server_lg/_connect_and_register_mcp_server_lg
-        themselves, since add/bump call both back to back and would
-        otherwise rebuild every open session's graph twice for one
-        request). Best-effort per session -- ChatSessionLG.refresh_extra_
-        tools already logs-and-keeps-previous-tools on its own failure, so
-        one broken session's rebuild can't block the others from picking
-        up the change."""
-        tools = _session_extra_tools()
-        for session in sessions.values():
-            await session.refresh_extra_tools(tools)
 
     async def _get_session_async(thread_id: str) -> ChatSessionLG:
         # poll_due_wakes takes an async get_session callback (see its own
@@ -692,7 +530,7 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
                     connect_mcp_tools_lg(
                         settings.mcp_config_path,
                         mcp_oauth.auth_for,
-                        _reconnect_stale_connector,
+                        connectors.reconnect_stale_connector,
                         state_dir=settings.state_dir,
                     )
                 )
@@ -701,8 +539,8 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
                     tools, connections = await asyncio.wait_for(
                         asyncio.shield(connect_task), timeout=MCP_STARTUP_TIMEOUT_SECONDS
                     )
-                    extra_tools_holder["tools"] = tools
-                    mcp_connections.update(connections)
+                    connectors.tools = tools
+                    connectors.connections.update(connections)
                     mcp_connect_task = None
                 except TimeoutError:
                     # Still connecting -- let the app start serving
@@ -722,9 +560,9 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
                                 "connect_mcp_tools_lg: background connect failed"
                             )
                             return
-                        extra_tools_holder["tools"] = extra_tools_holder["tools"] + tools
-                        mcp_connections.update(connections)
-                        await _refresh_all_sessions_extra_tools()
+                        connectors.tools = connectors.tools + tools
+                        connectors.connections.update(connections)
+                        await connectors.refresh_all_sessions_extra_tools()
 
                     asyncio.create_task(_finish_mcp_connect_in_background(connect_task))
             interrupted = reconcile_interrupted_runs(settings.state_dir)
@@ -760,9 +598,9 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
             # runtime_lg/mcp.py's module docstring) -- close them all here
             # rather than letting them leak past this process's own
             # shutdown (a lingering Playwright browser, most visibly).
-            for connection in mcp_connections.values():
+            for connection in connectors.connections.values():
                 await connection.close()
-            for task in list(sign_in_tasks):
+            for task in list(connectors.sign_in_tasks):
                 task.cancel()
             await app_callback.stop()
             await shutdown_code_services()
@@ -830,19 +668,19 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
         sessions=sessions,
         checkpointer_holder=checkpointer_holder,
         background_events=background_events,
-        mcp_connections=mcp_connections,
+        mcp_connections=connectors.connections,
         mcp_oauth=mcp_oauth,
         app_callback=app_callback,
-        sign_in_tasks=sign_in_tasks,
+        sign_in_tasks=connectors.sign_in_tasks,
         get_session=_get_session,
         get_session_async=_get_session_async,
-        session_extra_tools=_session_extra_tools,
+        session_extra_tools=connectors.session_extra_tools,
         skills_by_name=_skills_by_name,
         providers_info=_providers_info,
-        connector_tools=_connector_tools,
-        connect_and_register_mcp_server_lg=_connect_and_register_mcp_server_lg,
-        disconnect_mcp_server_lg=_disconnect_mcp_server_lg,
-        refresh_all_sessions_extra_tools=_refresh_all_sessions_extra_tools,
+        connector_tools=connectors.connector_tools,
+        connect_and_register_mcp_server_lg=connectors.connect_and_register_mcp_server_lg,
+        disconnect_mcp_server_lg=connectors.disconnect_mcp_server_lg,
+        refresh_all_sessions_extra_tools=connectors.refresh_all_sessions_extra_tools,
         oauth_callback_response=_oauth_callback_response,
         thread_files=thread_files,
         delete_thread_data=_delete_thread_data,

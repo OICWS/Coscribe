@@ -1,5 +1,12 @@
 from .background_tasks import BackgroundTask, BackgroundTaskStore, build_background_task_tools
 from .browser import build_browser_tools
+from .connector_permissions import (
+    ConnectorPermissions,
+    apply_connector_permissions,
+    connector_of,
+    is_read_only,
+    name_of,
+)
 from .conversations import MessagingStore, build_conversation_tools
 from .convert import build_convert_tools
 from .files import build_file_tools
@@ -13,7 +20,7 @@ from .interaction import (
     format_question_answers,
     normalize_questions,
 )
-from .mcp import load_mcp_server_configs
+from .mcp import load_mcp_server_configs, prepare_for_connect, validate_mcp_config
 from .memory import format_memory_section, load_memory
 from .node_scripts import build_node_script_tools
 from .office.document_tools import DocumentToolkit, build_document_tools
@@ -59,6 +66,13 @@ from .tasks import build_task_tools
 from .websearch import build_websearch_tools
 
 __all__ = [
+    "validate_mcp_config",
+    "prepare_for_connect",
+    "name_of",
+    "is_read_only",
+    "connector_of",
+    "apply_connector_permissions",
+    "ConnectorPermissions",
     "BackgroundTask",
     "BackgroundTaskStore",
     "PLAN_CHOICE_AUTO",

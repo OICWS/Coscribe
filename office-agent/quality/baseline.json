@@ -15,7 +15,7 @@
   "src/coscribe/tools/presentations.py::edit_pptx_shape": 19,
   "src/coscribe/tools/presentations.py::write_pptx": 17,
   "src/coscribe/tools/scheduled_tasks.py::compute_next_run_at": 18,
-  "src/coscribe/web/app.py::create_app_lg": 73,
+  "src/coscribe/web/app.py::create_app_lg": 55,
   "src/coscribe/web/routes/connectors/servers.py::router": 24,
   "src/coscribe/web/routes/files.py::router": 29,
   "src/coscribe/web/routes/scheduled.py::router": 62,
@@ -125,12 +125,8 @@
   "coscribe.web.app -> coscribe.code_runtime.service": 1,
   "coscribe.web.app -> coscribe.conversation.session": 1,
   "coscribe.web.app -> coscribe.conversation.thread_meta": 1,
-  "coscribe.web.app -> coscribe.runtime.secret_store": 1,
-  "coscribe.web.app -> coscribe.runtime.types": 1,
-  "coscribe.web.app -> coscribe.runtime_lg.mcp": 3,
+  "coscribe.web.app -> coscribe.runtime_lg.mcp": 1,
   "coscribe.web.app -> coscribe.runtime_lg.mcp_oauth": 1,
-  "coscribe.web.app -> coscribe.tools.connector_permissions": 1,
-  "coscribe.web.app -> coscribe.tools.mcp": 1,
   "coscribe.web.app -> coscribe.tools.scheduled_tasks": 1,
   "coscribe.web.app -> coscribe.tools.skill_catalog": 1,
   "coscribe.web.background_events -> coscribe.tools.scheduled_tasks": 1,
@@ -180,8 +176,8 @@
   "coscribe.workflows.testing -> coscribe.tools.browser": 1
  },
  "fan_out": {
-  "coscribe.conversation.session": 39,
-  "coscribe.web.app": 32
+  "coscribe.conversation.session": 38,
+  "coscribe.web.app": 28
  },
  "file_lines": {
   "src/coscribe/conversation/session.py": 3283,
@@ -189,7 +185,7 @@
   "src/coscribe/runtime_lg/subagents.py": 838,
   "src/coscribe/tools/presentations.py": 7092,
   "src/coscribe/tools/scheduled_tasks.py": 1054,
-  "src/coscribe/web/app.py": 1016,
+  "src/coscribe/web/app.py": 854,
   "src/coscribe/web/browser_panel.py": 822,
   "src/coscribe/web/connector_catalog.py": 948,
   "src/coscribe/workflows/engine.py": 922
@@ -223,7 +219,7 @@
   "src/coscribe/tools/presentations.py::build_presentation_tools": 1471,
   "src/coscribe/tools/scheduled_tasks.py::build_scheduled_task_tools": 225,
   "src/coscribe/tools/selfwake.py::build_selfwake_tools": 155,
-  "src/coscribe/web/app.py::create_app_lg": 650,
+  "src/coscribe/web/app.py::create_app_lg": 513,
   "src/coscribe/web/app.py::create_app_lg.lifespan": 101,
   "src/coscribe/web/routes/connectors/servers.py::router": 142,
   "src/coscribe/web/routes/files.py::router": 165,
