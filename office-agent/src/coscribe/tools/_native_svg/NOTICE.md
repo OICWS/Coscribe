@@ -8,6 +8,12 @@ before it (`svg_to_pptx/tspan_flattener.py` with `svg_finalize/flatten_tspan.py`
 `svg_to_pptx/geometry_properties.py`). Why this part and nothing else, and how it was
 measured: `docs/assessments/2026-10-13-office-route.md` (2.6) and decision 0010.
 
+Added from the same commit on 2026-10-14: the import closure of
+`svg_to_pptx/native_objects/__init__.py` (native charts with their embedded workbook, native
+tables, and the markers and checks around them; 12 modules, about 10.7k lines, among them
+`semantic_table.py` from the scripts directory), so a page can carry a chart or a table as data
+and the deck gets a PowerPoint chart or table instead of drawn shapes.
+
 This copy is ours to maintain: a fixed snapshot, updated only on purpose (re-copy, then diff).
 coscribe's own code that walks an SVG page and packages the slides lives in
 `tools/office/pptx/engine/`; nothing outside it imports from here.
@@ -16,12 +22,11 @@ coscribe's own code that walks an SVG page and packages the slides lives in
 
 1. Imports of the upstream scripts directory's top-level modules (`from pptx_shapes import`,
    `from language_tags import`, ...) are rewritten to package-relative imports
-   (`from ...pptx_shapes import`): 17 lines, mechanical, so the copy is a package inside
+   (`from ...pptx_shapes import`): 21 lines, mechanical, so the copy is a package inside
    coscribe instead of a set of top-level modules on `sys.path`.
-2. The package `__init__.py` files of `svg_to_pptx/`, `svg_to_pptx/native_objects/`,
-   `svg_to_pptx/drawingml/` and `pptx_to_svg/` are empty: upstream they import modules
-   outside this copy (the exporter CLI, chart and table objects). `pptx_shapes/__init__.py` is
-   unchanged.
+2. The package `__init__.py` files of `svg_to_pptx/`, `svg_to_pptx/drawingml/` and
+   `pptx_to_svg/` are empty: upstream they import modules outside this copy (the exporter CLI).
+   `svg_to_pptx/native_objects/__init__.py` and `pptx_shapes/__init__.py` are unchanged.
 3. `svg_finalize/flatten_tspan.py` no longer configures the process's stdout encoding at import
    (three lines for its command-line use, which pulled in upstream's attribution check);
    `svg_to_pptx/tspan_flattener.py` imports it package-relatively instead of editing `sys.path`.
@@ -68,6 +73,14 @@ measured by upstream from Office for Mac fonts.
 - `svg_to_pptx/drawingml/theme_fonts.py`
 - `svg_to_pptx/drawingml/utils.py`
 - `svg_to_pptx/geometry_properties.py`
+- `semantic_table.py`
+- `svg_to_pptx/native_objects/__init__.py`
+- `svg_to_pptx/native_objects/chart_data.py`
+- `svg_to_pptx/native_objects/chart_style.py`
+- `svg_to_pptx/native_objects/chart_xml.py`
+- `svg_to_pptx/native_objects/chartex.py`
+- `svg_to_pptx/native_objects/fallback_hash.py`
+- `svg_to_pptx/native_objects/formula.py`
 - `svg_to_pptx/native_objects/formula_ast.py`
 - `svg_to_pptx/native_objects/formula_compiler.py`
 - `svg_to_pptx/native_objects/formula_omml.py`
@@ -76,6 +89,10 @@ measured by upstream from Office for Mac fonts.
 - `svg_to_pptx/native_objects/formula_run_properties.py`
 - `svg_to_pptx/native_objects/inline_formula.py`
 - `svg_to_pptx/native_objects/marker_attributes.py`
+- `svg_to_pptx/native_objects/marker_common.py`
+- `svg_to_pptx/native_objects/marker_status.py`
+- `svg_to_pptx/native_objects/table.py`
+- `svg_to_pptx/native_objects/workbook.py`
 - `svg_to_pptx/tspan_flattener.py`
 
 ## License
