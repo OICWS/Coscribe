@@ -84,12 +84,52 @@ def test_every_slide_with_slide_zero_table_cells_included(tmp_path: Path) -> Non
     assert "".join(run.text for run in _runs(tmp_path)) == "售价 349 元"
 
 
-def test_an_empty_replacement_removes_the_phrase(tmp_path: Path) -> None:
+def test_remove_deletes_the_phrase(tmp_path: Path) -> None:
     _deck(tmp_path)
 
-    _edit(tmp_path, slide=2, find="首发 ", replace="")
+    _edit(tmp_path, slide=2, find="首发 ", remove=True)
 
     assert list(Presentation(str(tmp_path / "deck.pptx")).slides[1].shapes)[1].text == "399 元"
+
+
+def test_a_forgotten_replacement_deletes_nothing(tmp_path: Path) -> None:
+    _deck(tmp_path)
+
+    with pytest.raises(ValueError, match="remove=true"):
+        _edit(tmp_path, slide=0, find="399")
+
+    assert "".join(run.text for run in _runs(tmp_path)) == "售价 399 元"
+
+
+def test_a_line_break_in_the_replacement_is_refused(tmp_path: Path) -> None:
+    _deck(tmp_path)
+
+    with pytest.raises(ValueError, match="content="):
+        _edit(tmp_path, slide=1, find="399", replace="349\n限时")
+
+
+def _broken_line(root: Path) -> None:
+    """One paragraph: "售价", a line break, "399 元"."""
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    box = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(4), Inches(1))
+    paragraph = box.text_frame.paragraphs[0]
+    paragraph.add_run().text = "售价"
+    paragraph.add_line_break()
+    paragraph.add_run().text = "399 元"
+    prs.save(str(root / "deck.pptx"))
+
+
+def test_a_phrase_never_matches_across_a_line_break(tmp_path: Path) -> None:
+    _broken_line(tmp_path)
+
+    with pytest.raises(ValueError, match="line break"):
+        _edit(tmp_path, slide=1, find="售价399", replace="现价349")
+
+    _edit(tmp_path, slide=1, find="399", replace="349")
+
+    shape = list(Presentation(str(tmp_path / "deck.pptx")).slides[0].shapes)[0]
+    assert shape.text_frame.text == "售价\v349 元"
 
 
 def test_a_phrase_that_is_not_there_says_how_to_look(tmp_path: Path) -> None:

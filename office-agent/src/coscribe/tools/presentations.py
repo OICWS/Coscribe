@@ -3806,15 +3806,14 @@ class PresentationToolkit:
         placeholder_index: int = 0,
         find: str = "",
         replace: str = "",
+        remove: bool = False,
     ) -> dict[str, object]:
-        """Edit one existing slide's title and/or body text, or replace a
-        phrase anywhere (`find`), in any .pptx in the workspace. Everything
-        else in the file (theme, other slides, images, decorative shapes,
-        the other placeholders) is left exactly as authored."""
+        """Edit one slide's title and/or body text, or replace a phrase
+        anywhere (`find`); the rest of the file is left as authored."""
         if (title is None and content is None) == (not find):
             raise ValueError("edit_pptx_text needs title and/or content, or find, to change.")
         prs, file_path, target_slide = self._open_slide(path, slide or int(bool(find)))
-        replaced = replace_text(prs, slide, find, replace) if find else None
+        replaced = replace_text(prs, slide, find, replace, remove) if find else None
         if title is not None:
             if target_slide.shapes.title is None:
                 raise ValueError(
@@ -5895,6 +5894,7 @@ def build_presentation_tools(
         placeholder_index: int = 0,
         find: str = "",
         replace: str = "",
+        remove: bool = False,
     ) -> dict[str, object]:
         """Change what an existing slide *says*, without touching how it
         looks, in any .pptx in the workspace (the user's own, a deck someone
@@ -5917,18 +5917,16 @@ def build_presentation_tools(
                 placeholder's existing text. Omit to leave all content
                 placeholders on this slide untouched.
             placeholder_index: which content placeholder `content` targets,
-                0-based in on-slide order -- almost every slide only has
-                one, so leave this at 0 unless the slide has a "two
-                column" layout with a second, independent content area you
-                also want to change (call this again with
-                placeholder_index=1 for the second one).
+                0-based; leave it at 0 unless the slide has a "two column"
+                layout and you also change its second area (call again
+                with placeholder_index=1).
             find: exact text to replace (instead of title/content), as
                 read_pptx shows it; the result lists where it was
-            replace: the text `find` becomes ("" removes it)
+            replace: the one-line text `find` becomes; remove: true deletes it
         """
         return toolkit.edit_pptx_text(
             path=path, slide=slide, title=title, content=content,
-            placeholder_index=placeholder_index, find=find, replace=replace,
+            placeholder_index=placeholder_index, find=find, replace=replace, remove=remove,
         )
 
     def delete_pptx_slide(path: str, slide: int) -> dict[str, object]:
