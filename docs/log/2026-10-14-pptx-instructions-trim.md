@@ -32,7 +32,7 @@ before is 03 to 05 on #213 and 06, 07 in the measurement (`2026-10-14-deck-engin
 - No score moved by more than about one judge spread (0.1 to 0.5 here); 07's design and content
   are the lowest changes and a run of 07 with the same prompt (PR 1 to 3, the same evening)
   scored 3.17 / 4.47 / 3.77, so they are run-to-run variation. 06 and 07 still went through the
-  template and edit tools; no new deck loaded "PPTX Slides".
+  template and edit tools.
 - Cost 0.172 dollars for the five, the same as before (0.172). 04 and 05 lost their connection to
   the model in the first minute and were run again (infrastructure, 0.015 for the failed
   attempts); with the judge the evening cost 0.21 dollars, about 1.4 yuan.
