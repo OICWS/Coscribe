@@ -854,7 +854,11 @@ async def test_a_relative_out_folder_reaches_the_session_as_an_absolute_one(
             return None
 
     def build(
-        root: Path, workspace: Path, model: str, thread_id: str, route: str = "current"
+        root: Path,
+        workspace: Path,
+        model: str,
+        thread_id: str,
+        effort: str = "low",
     ) -> Session:
         seen.extend([root, workspace])
         return Session()

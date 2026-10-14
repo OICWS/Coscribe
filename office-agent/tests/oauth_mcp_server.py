@@ -137,23 +137,28 @@ class OAuthMcpServer:
 
 @contextmanager
 def running_oauth_mcp_server(with_tool: bool = True) -> Any:
-    with socket.socket() as sock:
+    # The listener stays open from bind to serve: closing it and letting uvicorn
+    # bind the number again leaves a gap in which a parallel test can take it.
+    sock = socket.socket()
+    uv: uvicorn.Server | None = None
+    thread: threading.Thread | None = None
+    try:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
-    server = OAuthMcpServer(port, with_tool)
-    uv = uvicorn.Server(
-        uvicorn.Config(
-            server.mcp.streamable_http_app(), host="127.0.0.1", port=port, log_level="error"
-        )
-    )
-    thread = threading.Thread(target=uv.run, daemon=True)
-    thread.start()
-    for _ in range(200):
-        if uv.started:
-            break
-        time.sleep(0.05)
-    try:
+        server = OAuthMcpServer(port, with_tool)
+        uv = uvicorn.Server(uvicorn.Config(server.mcp.streamable_http_app(), log_level="error"))
+        thread = threading.Thread(target=uv.run, kwargs={"sockets": [sock]}, daemon=True)
+        thread.start()
+        for _ in range(200):
+            if uv.started:
+                break
+            time.sleep(0.05)
         yield server
     finally:
-        uv.should_exit = True
-        thread.join(timeout=5)
+        if uv is not None:
+            uv.should_exit = True
+        if thread is not None:
+            thread.join(timeout=5)
+        # A server thread still running may still be accepting on it.
+        if thread is None or not thread.is_alive():
+            sock.close()

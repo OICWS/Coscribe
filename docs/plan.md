@@ -49,10 +49,16 @@ Last reviewed: 2026-10-11.
    new decks compiled from whole-page SVG sources, edits through the page source and upgraded
    object tools; open-source code reused as owned copies. Done: the evaluation and the baseline
    of today's route (`office-agent/evals/`), the engine's compiler (#141), its checks and folder
-   build (#198, PR 1), the build tool and an `engine` route in the evaluation (PR 2). Next (#198):
-   the measurement against the baseline, cost per deck included (one task cost 1.7 times today's
-   route), and only if it wins the switch of new decks to the engine;
-   Excel, then Word, the same way.
+   build (#198, PR 1), the build tool and an `engine` route in the evaluation (PR 2), the
+   measurement (PR 3: the engine wins new decks, design 3.97 against 3.11, at 0.94 times the
+   cost), and new decks built from pages in the product (PR 4; a user's template and edits stay on
+   today's tools), the PowerPoint instructions cut to what templates and edits need (prompt 22%
+   shorter). Next, PowerPoint part 2: editing inside the grouped shapes a page compiles to
+   (address by name and group path), native charts and tables from data, the user's own template
+   built from pages, Windows font metrics for the overflow check, the split of
+   `tools/presentations.py`. Then Excel, then Word, the same way.
+   Instructions are changed by cutting first and measuring after: a shorter prompt that scores
+   the same is the better one.
 
 1. **Make the repository easy to join** (governance review, 2026-10-08).
    - Done: `main` protected by a ruleset (PR only, squash, `test` required),
@@ -98,9 +104,11 @@ Last reviewed: 2026-10-11.
 
 ## Later (wanted, not scheduled)
 
-- A reasoning-effort choice for the user (#202): the scale and its mapping per model
-  (`runtime_lg/effort.py`) and the pill and slider next to the model are in; next the
-  evaluation's `--effort` through the same mapping.
+- A reasoning-effort choice for the user (#202): done (the scale and its mapping per model, the
+  pill and slider, the evaluation on the same scale). Left: a look in the dark theme.
+- The context panel: show the deferred system and MCP tools as their own rows (not counted in
+  the window), and find why system tools read 38.2k at the start of a conversation while the
+  bound tools measure about 4.9k tokens (`tests/tool_schemas.txt`).
 
 - Require every review thread to be resolved before a pull request can merge (a ruleset
   setting): not needed at today's size; the maintainer decided on 2026-10-11 to wait.

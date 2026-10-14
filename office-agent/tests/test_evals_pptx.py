@@ -444,12 +444,31 @@ async def test_each_overlapping_task_gets_its_own_usage_and_the_resolver_is_rest
         await asyncio.sleep(delay)
         seen[name] = session_module.resolve_chat_model("deepseek:m")
 
-    with run.measured_models("low"):
+    with run.measured_models():
         await asyncio.gather(task("fast", 0.0), task("slow", 0.05))
 
     assert session_module.resolve_chat_model is original
-    assert seen["fast"].reasoning_effort == seen["slow"].reasoning_effort == "low"
     assert seen["fast"].callbacks[0] is not seen["slow"].callbacks[0]
+
+
+def test_the_effort_levels_are_the_products() -> None:
+    from coscribe.runtime_lg.effort import LEVELS
+
+    assert run.EFFORT_LEVELS == LEVELS
+
+
+def test_a_run_reaches_the_session_at_its_effort_level_as_the_products_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "k")
+
+    session = run._build_session(
+        tmp_path, tmp_path / "ws", "deepseek:deepseek-flash", "t", effort="extra"
+    )
+
+    assert session._effort == "extra"
+    assert session._effort_runs_as == "xhigh"
+    assert session.model.reasoning_effort == "xhigh"
 
 
 def test_the_summary_has_one_row_per_task_that_ran(tmp_path: Path) -> None:

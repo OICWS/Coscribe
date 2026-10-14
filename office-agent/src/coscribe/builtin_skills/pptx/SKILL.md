@@ -1,6 +1,6 @@
 ---
 name: PPTX Slides
-description: Color palettes, typography, layout rules, write_pptx's prefab layout directives (icon-list/stat-callout/two-column/svg), and fill_pptx_template for filling coscribe's own pre-designed templates -- plus when a slide still needs run_node_script's real pptxgenjs scripting instead. Load before writing any PowerPoint deck, not just an already-agreed-"polished" one.
+description: Color palettes, typography, layout rules, write_pptx's prefab layout directives (icon-list/stat-callout/two-column/svg), and fill_pptx_template for filling coscribe's own pre-designed templates -- plus when a slide still needs run_node_script's real pptxgenjs scripting instead. Load before filling a template or writing a deck with write_pptx; a new deck is built from pages (PPTX Pages).
 ---
 Deeper design guidance for `write_pptx`/`run_node_script`/`add_pptx_chart`/
 `add_pptx_image`/`search_images`/`download_image`/

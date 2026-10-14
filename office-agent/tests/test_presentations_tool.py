@@ -1,6 +1,7 @@
 import concurrent.futures
 import shutil
 import tempfile
+import zipfile
 from pathlib import Path
 from typing import Any, cast
 
@@ -3476,7 +3477,7 @@ def test_list_pptx_shapes_lists_a_group_shape_without_crashing(tmp_path: Path) -
 
     shapes = tools["list_pptx_shapes"](path="deck.pptx", slide=1)["shapes"]
 
-    # Children of a group are not listed: a group is one entry.
+    # A group is one entry; its members are listed under it.
     groups = [shape for shape in shapes if shape["shape_type"] == "GROUP (6)"]
     assert len(groups) == 1
     assert groups[0]["hyperlink"] is None
@@ -5975,6 +5976,10 @@ def test_add_pptx_formula_marks_mc_ignorable_a14_on_the_slide(tmp_path: Path) ->
     )
     assert mc_ignorable is not None
     assert "a14" in mc_ignorable.split()
+    with zipfile.ZipFile(tmp_path / "deck.pptx") as archive:
+        slide_xml = archive.read("ppt/slides/slide1.xml").decode("utf-8")
+    assert 'mc:Ignorable="a14"' in slide_xml
+    assert "xmlns:ns0=" not in slide_xml
 
 
 def test_add_pptx_formula_rejects_malformed_latex(tmp_path: Path) -> None:
