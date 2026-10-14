@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import datetime as dt
+import re
 import unicodedata
 from dataclasses import dataclass, field
 from typing import Any
@@ -56,6 +58,7 @@ class _Section:
     prefix: list[str] = field(default_factory=list)
     suffix: list[str] = field(default_factory=list)
     exponent: bool = False
+    general: bool = False
     unmeasured: bool = False
 
     def literal(self, text: str) -> None:
@@ -83,6 +86,11 @@ def _parse(section: str) -> _Section:
             if section[i + 1 : i + 2] == "$":
                 parsed.literal(section[i + 2 : end].split("-")[0])
             i = end + 1
+            continue
+        if section[i : i + 7].lower() == "general":
+            parsed.general = True
+            parsed.codes.append("G")
+            i += 7
             continue
         if char in "Ee" and following in "+-" and following and parsed.codes:
             parsed.exponent = True
@@ -116,31 +124,61 @@ def _pick_section(value: float, sections: list[str]) -> str:
 
 def _number(value: float, parsed: _Section) -> str:
     codes = "".join(parsed.codes)
-    integer_codes, _, decimal_codes = codes.replace("%", "").partition(".")
+    body = codes.replace("%", "")
+    # A comma after the last digit divides by a thousand (`#,##0,"K"`, `#,##0.0,"K"`).
+    thousands = len(body) - len(body.rstrip(","))
+    integer_codes, _, decimal_codes = body.rstrip(",").partition(".")
     decimals = sum(decimal_codes.count(code) for code in _DIGIT_CODES)
     if parsed.exponent:
         return f"{abs(value):.{decimals}E}"
     percent = codes.count("%")
-    # A comma after the last digit divides by a thousand (`#,##0,"K"`).
-    thousands = len(integer_codes) - len(integer_codes.rstrip(","))
     shown = abs(value) * 100**percent / 1000**thousands
-    grouping = "," if "," in integer_codes.rstrip(",") else ""
+    grouping = "," if "," in integer_codes else ""
     return f"{shown:{grouping}.{decimals}f}{'%' * percent}"
 
 
 def _formatted(value: float, number_format: str) -> str:
     sections = _sections(number_format)
     section = _pick_section(value, sections)
-    if section.strip().lower() in ("general", ""):
-        return _general(value)
+    if not section.strip():
+        # An empty section shows nothing (`0;;0` hides negatives); a format of nothing is General.
+        return "" if len(sections) > 1 else _general(value)
     parsed = _parse(section)
     if parsed.unmeasured:
-        return max(_general(value), section.replace('"', ""), key=text_width)
+        return max(_general(value), _date_like(section), key=text_width)
     sign = "-" if value < 0 and len(sections) == 1 else ""
     prefix, suffix = "".join(parsed.prefix), "".join(parsed.suffix)
+    if parsed.general:
+        return f"{sign}{prefix}{_general(abs(value))}{suffix}"
     if not any(code in parsed.codes for code in _DIGIT_CODES):
         return sign + prefix + suffix
     return f"{sign}{prefix}{_number(value, parsed)}{suffix}"
+
+
+# The longest a date part can print, so a column fits every month and weekday.
+_DATE_PARTS = (
+    (re.compile(r'"([^"]*)"'), r"\1"),
+    (re.compile(r"\[[^\]]*\]|\\"), ""),
+    (re.compile(r"m{4,}", re.IGNORECASE), "September"),
+    (re.compile(r"d{4,}", re.IGNORECASE), "Wednesday"),
+    (re.compile(r"am/pm", re.IGNORECASE), "AM"),
+)
+_DATE_CODES = re.compile(r"[ymdhs]", re.IGNORECASE)
+
+
+def _date_like(section: str) -> str:
+    for pattern, longest in _DATE_PARTS:
+        section = pattern.sub(longest, section)
+    return section
+
+
+def _date_text(value: dt.date | dt.time, number_format: str) -> str:
+    section = _sections(number_format)[0]
+    if _DATE_CODES.search(section.replace("General", "")):
+        return _date_like(section)
+    if isinstance(value, dt.datetime):
+        return "yyyy-mm-dd hh:mm:ss"
+    return "yyyy-mm-dd" if isinstance(value, dt.date) else "hh:mm:ss"
 
 
 def displayed_text(value: Any, number_format: str = "General") -> str:
@@ -151,6 +189,8 @@ def displayed_text(value: Any, number_format: str = "General") -> str:
         return "TRUE" if value else "FALSE"
     if isinstance(value, int | float):
         return _formatted(value, number_format or "General")
+    if isinstance(value, dt.date | dt.time):
+        return _date_text(value, number_format or "General")
     return str(value)
 
 

@@ -84,16 +84,19 @@ def _shown_width(span: Span | None) -> float:
     return DEFAULT_WIDTH if span.width is None else span.width
 
 
-def _set_width(spans: list[Span], column: int, width: float) -> None:
+def _own_span(spans: list[Span], column: int) -> Span:
+    """The span of `column` alone, split out of the range it was part of."""
     for i, span in enumerate(spans):
         if span.min <= column <= span.max:
+            own = replace(span, min=column, max=column, look=dict(span.look))
             pieces = [replace(span, max=column - 1)] if span.min < column else []
-            pieces.append(replace(span, min=column, max=column, width=width))
+            pieces.append(own)
             if column < span.max:
                 pieces.append(replace(span, min=column + 1))
             spans[i : i + 1] = pieces
-            return
-    spans.append(Span(column, column, width))
+            return own
+    spans.append(own := Span(column, column))
+    return own
 
 
 def widen(spans: list[Span], needed: dict[int, float]) -> bool:
@@ -106,7 +109,7 @@ def widen(spans: list[Span], needed: dict[int, float]) -> bool:
             continue
         target = round(min(width, MAX_WIDTH), 2)
         if target > _shown_width(span):
-            _set_width(spans, column, target)
+            _own_span(spans, column).width = target
             changed = True
     return changed
 
@@ -120,7 +123,12 @@ def _needed(sheet: Worksheet, spans: list[Span]) -> dict[int, float]:
     last = sheet.max_column
     spilling = []
     for row in sheet.iter_rows():
+        filled = [cell for cell in row if not _empty(cell.value)]
         for column, cell in enumerate(row, start=1):
+            # A label alone in its row (a title over a table) runs on past the table's last
+            # column, so it never needs a width of its own.
+            if filled == [cell] and isinstance(cell.value, str):
+                continue
             # A formula has no value before LibreOffice recalculates the saved file; its header
             # and the constants beside it size the column.
             if cell.data_type == "f":
@@ -180,19 +188,34 @@ def apply_spans(sheet: Worksheet, spans: list[Span]) -> None:
 
 
 def fit_columns(sheet: Worksheet, spans: list[Span]) -> None:
-    """Lay `spans` onto `sheet`, each column widened to its longest shown value."""
+    """Lay `spans` onto `sheet`, each column widened to its longest shown value; a hidden column
+    that now holds data is shown again."""
+    filled = {
+        column
+        for row in sheet.iter_rows()
+        for column, cell in enumerate(row, start=1)
+        if not _empty(cell.value)
+    }
+    for column in sorted(filled):
+        span = _span_at(spans, column)
+        if span is not None and span.look.get("hidden"):
+            _own_span(spans, column).look["hidden"] = False
     widen(spans, _needed(sheet, spans))
     apply_spans(sheet, spans)
 
 
-def _shown_in_own_column(sheet: Worksheet, cell: Any) -> bool:
+def _shown_in_own_column(
+    sheet: Worksheet, cell: Any, merged: list[tuple[int, int, int, int]]
+) -> bool:
     """False for a merged cell and for text with an empty cell to its right, which both have
     more room than their column."""
-    if any(cell.coordinate in merged for merged in sheet.merged_cells.ranges):
+    if any(c1 <= cell.column <= c2 and r1 <= cell.row <= r2 for c1, r1, c2, r2 in merged):
         return False
     if not isinstance(cell.value, str) or cell.column >= sheet.max_column:
         return True
-    return not _empty(sheet.cell(row=cell.row, column=cell.column + 1).value)
+    # Read, not `sheet.cell()`, which would create the neighbour.
+    right = sheet._cells.get((cell.row, cell.column + 1))
+    return right is not None and not _empty(right.value)
 
 
 def widen_for_values(
@@ -202,14 +225,15 @@ def widen_for_values(
     is the same sheet loaded with the computed values, for formula cells; without it a formula
     is not measured."""
     needed: dict[int, float] = {}
+    merged = [tuple(merged.bounds) for merged in sheet.merged_cells.ranges]
     for cell in cells:
         if cell.data_type == "f" and values is None:
             continue
         value = values[cell.coordinate].value if cell.data_type == "f" else cell.value
-        if _shown_in_own_column(sheet, cell):
+        if _shown_in_own_column(sheet, cell, merged):
             needed[cell.column] = max(
                 needed.get(cell.column, 0.0), needed_width(value, cell.number_format)
             )
     spans = sheet_spans(sheet, width_starts)
-    if widen(spans, {column: width for column, width in needed.items() if width > DEFAULT_WIDTH}):
+    if widen(spans, needed):
         apply_spans(sheet, spans)
