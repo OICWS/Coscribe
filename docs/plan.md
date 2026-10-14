@@ -52,8 +52,13 @@ Last reviewed: 2026-10-11.
    build (#198, PR 1), the build tool and an `engine` route in the evaluation (PR 2), the
    measurement (PR 3: the engine wins new decks, design 3.97 against 3.11, at 0.94 times the
    cost), and new decks built from pages in the product (PR 4; a user's template and edits stay on
-   today's tools). Next: trim the PowerPoint instructions with the split of `tools/presentations.py`,
-   the object tools for decks the user brings; Excel, then Word, the same way.
+   today's tools), the PowerPoint instructions cut to what templates and edits need (prompt 22%
+   shorter). Next, PowerPoint part 2: editing inside the grouped shapes a page compiles to
+   (address by name and group path), native charts and tables from data, the user's own template
+   built from pages, Windows font metrics for the overflow check, the split of
+   `tools/presentations.py`. Then Excel, then Word, the same way.
+   Instructions are changed by cutting first and measuring after: a shorter prompt that scores
+   the same is the better one.
 
 1. **Make the repository easy to join** (governance review, 2026-10-08).
    - Done: `main` protected by a ruleset (PR only, squash, `test` required),
@@ -100,8 +105,11 @@ Last reviewed: 2026-10-11.
 ## Later (wanted, not scheduled)
 
 - A reasoning-effort choice for the user (#202): done (the scale and its mapping per model, the
-  pill and slider, the evaluation on the same scale). Left: a look on Windows and in the dark
-  theme.
+  pill and slider, the evaluation on the same scale). Left: the panel drops its "This model runs
+  it as ..." note (the maintainer, 2026-10-14); a look in the dark theme.
+- The context panel: show the deferred system and MCP tools as their own rows (not counted in
+  the window), and find why system tools read 38.2k at the start of a conversation while the
+  bound tools measure about 4.9k tokens (`tests/tool_schemas.txt`).
 
 - Require every review thread to be resolved before a pull request can merge (a ruleset
   setting): not needed at today's size; the maintainer decided on 2026-10-11 to wait.
