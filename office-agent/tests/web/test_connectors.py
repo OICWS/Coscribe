@@ -7,6 +7,7 @@ import json
 import socket
 import stat
 import sys
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -848,6 +849,25 @@ def test_an_oauth_connector_signs_in_through_the_browser_and_keeps_the_sign_in(
         assert server.provider.registrations == 1
 
 
+@contextlib.contextmanager
+def _callback_port_to_ourselves() -> Any:
+    """Holds an OS file lock while a test uses the fixed sign-in callback port.
+
+    That port is a constant every pytest worker shares (and every pytest run on
+    the machine), so two of these tests at once would see each other's listener
+    as the busy-port case. The lock lapses if its holder dies."""
+    from coscribe.tools._office_bins import _try_lock, _unlock
+
+    with (Path(tempfile.gettempdir()) / "coscribe-test-oauth-callback-port.lock").open(
+        "a+b"
+    ) as handle:
+        _wait_until(lambda: _try_lock(handle), seconds=120)
+        try:
+            yield
+        finally:
+            _unlock(handle)
+
+
 def _register_app(server: Any, client_id: str, secret: str) -> None:
     from mcp.shared.auth import OAuthClientInformationFull
     from pydantic import AnyUrl
@@ -869,7 +889,10 @@ def test_a_connector_with_its_own_registered_app_signs_in_on_the_fixed_port_with
 ) -> None:
     from coscribe.runtime_lg.mcp_oauth import APP_REDIRECT_URI
 
-    with _oauth_connector_client(tmp_path, monkeypatch) as (client, server, opened):
+    with (
+        _callback_port_to_ourselves(),
+        _oauth_connector_client(tmp_path, monkeypatch) as (client, server, opened),
+    ):
         _register_app(server, "my-app-id", "my-app-secret")
         refused = client.put("/api/mcp/oauth-apps/acme", json={"client_id": "has space"})
         saved = client.put(
@@ -909,7 +932,10 @@ def test_a_connector_that_needs_its_app_says_so_and_a_busy_port_is_explained(
 
     from coscribe.runtime_lg.mcp_oauth import CALLBACK_PORT
 
-    with _oauth_connector_client(tmp_path, monkeypatch) as (client, server, opened):
+    with (
+        _callback_port_to_ourselves(),
+        _oauth_connector_client(tmp_path, monkeypatch) as (client, server, opened),
+    ):
         body = {"name": "docs", "server_url": server.mcp_url, "auth": "oauth", "oauth_app": "acme"}
         missing = client.post("/api/mcp/servers", json=body).json()
         client.put("/api/mcp/oauth-apps/acme", json={"client_id": "x", "client_secret": "y"})

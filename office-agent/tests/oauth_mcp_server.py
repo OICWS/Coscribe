@@ -137,16 +137,14 @@ class OAuthMcpServer:
 
 @contextmanager
 def running_oauth_mcp_server(with_tool: bool = True) -> Any:
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        port = sock.getsockname()[1]
+    # The listener stays open from bind to serve: closing it and letting uvicorn
+    # bind the number again leaves a gap in which a parallel test can take it.
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
     server = OAuthMcpServer(port, with_tool)
-    uv = uvicorn.Server(
-        uvicorn.Config(
-            server.mcp.streamable_http_app(), host="127.0.0.1", port=port, log_level="error"
-        )
-    )
-    thread = threading.Thread(target=uv.run, daemon=True)
+    uv = uvicorn.Server(uvicorn.Config(server.mcp.streamable_http_app(), log_level="error"))
+    thread = threading.Thread(target=uv.run, kwargs={"sockets": [sock]}, daemon=True)
     thread.start()
     for _ in range(200):
         if uv.started:
@@ -157,3 +155,4 @@ def running_oauth_mcp_server(with_tool: bool = True) -> Any:
     finally:
         uv.should_exit = True
         thread.join(timeout=5)
+        sock.close()
