@@ -50,7 +50,6 @@ import json
 import logging
 import os
 import shutil
-import socket
 import sys
 import tempfile
 from pathlib import Path
@@ -108,15 +107,6 @@ _KEY_DEFINITIONS: dict[str, _KeyDefinition] = {
     "ArrowRight": _KeyDefinition("ArrowRight", 0x27),
     "ArrowDown": _KeyDefinition("ArrowDown", 0x28),
 }
-
-
-def _free_port() -> int:
-    """Same "bind port 0, read back what the OS actually assigned" trick
-    office-agent-desktop's own free_port() (lib.rs) uses -- avoids a
-    fixed port colliding with anything else already running."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("127.0.0.1", 0))
-        return int(sock.getsockname()[1])
 
 
 def _jpeg_size(data: bytes) -> tuple[int, int] | None:
@@ -198,40 +188,21 @@ class BrowserPanelSession:
                 "No Chromium-family browser found (Edge/Chrome) -- the Browser panel "
                 "needs one of these installed, same requirement as the Playwright connector."
             )
-        port = _free_port()
         self._profile_dir = Path(tempfile.mkdtemp(prefix="coscribe_browser_panel_"))
         args = [
             executable,
-            f"--remote-debugging-port={port}",
+            # Port 0 lets Chromium pick one itself and report it in DevToolsActivePort;
+            # picking a free port here and handing it over leaves a gap for another
+            # process to take it first.
+            "--remote-debugging-port=0",
             "--headless=new",
             f"--user-data-dir={self._profile_dir}",
             "--no-first-run",
             "--no-default-browser-check",
-            # Just a starting size, grown dynamically later if needed --
-            # headless Chrome's own compositor surface (what
-            # Page.startScreencast/captureScreenshot actually reads
-            # pixels from) is bounded by the real browser *window* size,
-            # which a later Emulation.setDeviceMetricsOverride does NOT
-            # resize -- that call only changes what the page itself
-            # believes its viewport is (window.innerWidth,
-            # elementFromPoint, layout), leaving CSS logic and captured
-            # pixels silently disagreeing the moment the emulated size
-            # exceeds this window's real one. Caught live: a page emulated
-            # at 439x816 was screencasting frames only 439x218 tall (the
-            # real window's own height, clipping the rest), while
-            # elementFromPoint correctly used the full 816 -- exactly the
-            # kind of "looks fine, coordinates are wrong" bug a visual
-            # screenshot alone won't reveal. Used to be a fixed size,
-            # deliberately never resized after launch, on the reasoning
-            # that this was already "comfortably above" the only thing
-            # that could ever be asked of it (BrowserPanel.tsx's own
-            # on-screen panel width) -- no longer true once resize() can
-            # be asked for the user's real screen resolution instead (see
-            # remoteViewportSize in BrowserPanel.tsx), which plenty of
-            # ordinary monitors already exceed this. resize() now grows
-            # the real window to fit via _ensure_real_window_at_least
-            # when needed; this launch size is just the reasonable
-            # common-case starting point, not an assumed ceiling anymore.
+            # Only a starting size: headless Chrome captures pixels from the real
+            # window, which Emulation.setDeviceMetricsOverride does not resize, so
+            # resize() grows the window when the emulated size exceeds it
+            # (_ensure_real_window_at_least).
             "--window-size=1920,1200",
         ]
         # Chrome/Edge's own zygote refuses to start as root at all without
@@ -261,12 +232,32 @@ class BrowserPanelSession:
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
         )
+        port = await self._wait_for_devtools_port(self._profile_dir)
         target_url = await self._wait_for_page_target(port)
         self._ws = await websockets.connect(target_url, max_size=None)
         self._reader_task = asyncio.create_task(self._read_loop())
         await self.send("Page.enable")
         await self.send("Runtime.enable")
         await self._apply_device_metrics(self._viewport_width, self._viewport_height)
+
+    async def _wait_for_devtools_port(self, profile_dir: Path) -> int:
+        """The port Chromium bound, from the first line of the file it writes in the
+        profile directory once DevTools is listening."""
+        port_file = profile_dir / "DevToolsActivePort"
+        deadline = asyncio.get_event_loop().time() + _LAUNCH_TIMEOUT
+        while asyncio.get_event_loop().time() < deadline:
+            if self._process is not None and self._process.returncode is not None:
+                raise BrowserPanelError(
+                    f"Browser process exited immediately (code {self._process.returncode})"
+                )
+            try:
+                first_line = port_file.read_text(encoding="utf-8").split("\n", 1)[0].strip()
+            except OSError:
+                first_line = ""
+            if first_line.isdigit():
+                return int(first_line)
+            await asyncio.sleep(0.1)
+        raise BrowserPanelError("Browser never reported its DevTools port")
 
     async def _wait_for_page_target(self, port: int) -> str:
         deadline = asyncio.get_event_loop().time() + _LAUNCH_TIMEOUT
