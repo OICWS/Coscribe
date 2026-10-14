@@ -19,6 +19,8 @@ MAX_WIDTH = 50.0
 # to scientific notation rather than printing `###`.
 _GENERAL_MAX_CHARS = 11
 _DIGIT_CODES = "0#?"
+# Marks text that stands between digit codes (`000-00-0000`) in a section's codes.
+_LITERAL = "\x00"
 # Fractions, dates, times and text placeholders are not rendered here; such a format is measured
 # by its own length or the General text, whichever is longer.
 _UNMEASURED_CODES = frozenset("/@yYmMdDhHsS")
@@ -60,9 +62,15 @@ class _Section:
     exponent: bool = False
     general: bool = False
     unmeasured: bool = False
+    pending: list[str] = field(default_factory=list)
 
     def literal(self, text: str) -> None:
-        (self.suffix if self.codes else self.prefix).append(text)
+        (self.pending if self.codes else self.prefix).append(text)
+
+    def code(self, char: str) -> None:
+        self.codes.extend(_LITERAL + text for text in self.pending)
+        self.pending.clear()
+        self.codes.append(char)
 
 
 def _closing(section: str, start: int, mark: str) -> int:
@@ -89,7 +97,7 @@ def _parse(section: str) -> _Section:
             continue
         if section[i : i + 7].lower() == "general":
             parsed.general = True
-            parsed.codes.append("G")
+            parsed.code("G")
             i += 7
             continue
         if char in "Ee" and following in "+-" and following and parsed.codes:
@@ -101,11 +109,12 @@ def _parse(section: str) -> _Section:
             i += 2
             continue
         if char in _DIGIT_CODES + ".,%":
-            parsed.codes.append(char)
+            parsed.code(char)
         else:
             parsed.unmeasured = parsed.unmeasured or char in _UNMEASURED_CODES
             parsed.literal(char)
         i += 1
+    parsed.suffix.extend(parsed.pending)
     return parsed
 
 
@@ -122,19 +131,47 @@ def _pick_section(value: float, sections: list[str]) -> str:
     return sections[0]
 
 
+def _fill(digits: str, codes: list[str]) -> str:
+    """Digits placed into the digit codes right to left, with the text between them kept; digits
+    beyond the codes go in front."""
+    left = list(digits)
+    shown = []
+    for code in reversed(codes):
+        if code.startswith(_LITERAL):
+            shown.append(code[1:])
+        elif code in _DIGIT_CODES:
+            shown.append(left.pop() if left else {"0": "0", "?": " "}.get(code, ""))
+    return "".join(left) + "".join(reversed(shown))
+
+
+def _grouped(digits: str) -> str:
+    groups: list[str] = []
+    while len(digits) > 3:
+        groups.insert(0, digits[-3:])
+        digits = digits[:-3]
+    return ",".join([digits, *groups])
+
+
 def _number(value: float, parsed: _Section) -> str:
-    codes = "".join(parsed.codes)
-    body = codes.replace("%", "")
+    body = "".join(code for code in parsed.codes if not code.startswith(_LITERAL))
+    body = body.replace("%", "")
     # A comma after the last digit divides by a thousand (`#,##0,"K"`, `#,##0.0,"K"`).
     thousands = len(body) - len(body.rstrip(","))
     integer_codes, _, decimal_codes = body.rstrip(",").partition(".")
     decimals = sum(decimal_codes.count(code) for code in _DIGIT_CODES)
     if parsed.exponent:
         return f"{abs(value):.{decimals}E}"
-    percent = codes.count("%")
+    percent = parsed.codes.count("%")
     shown = abs(value) * 100**percent / 1000**thousands
-    grouping = "," if "," in integer_codes else ""
-    return f"{shown:{grouping}.{decimals}f}{'%' * percent}"
+    whole, _, fraction = f"{shown:.{decimals}f}".partition(".")
+    whole = whole.zfill(integer_codes.count("0"))
+    point = parsed.codes.index(".") if "." in parsed.codes else len(parsed.codes)
+    if any(code.startswith(_LITERAL) for code in parsed.codes[:point]):
+        whole = _fill(whole, parsed.codes[:point])
+    elif "," in integer_codes:
+        whole = _grouped(whole)
+    between = "".join(code[1:] for code in parsed.codes[point:] if code.startswith(_LITERAL))
+    return f"{whole}{'.' if decimals else ''}{fraction}{between}{'%' * percent}"
 
 
 def _formatted(value: float, number_format: str) -> str:

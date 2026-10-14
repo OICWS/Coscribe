@@ -113,12 +113,36 @@ def test_a_cjk_character_counts_twice_and_one_long_note_is_capped(tmp_path: Path
 
 
 def test_a_label_widens_its_column_only_when_it_cannot_run_on(tmp_path: Path) -> None:
-    _write(tmp_path, "| Quarterly sales report for all regions | | |\n| Region | Q1 | Q2 |")
+    title = "Quarterly sales report for all regions"
+    _write(tmp_path, f"| {title} | | | | |\n| Region | Q1 | Q2 | Q3 | Q4 |")
     assert _cols(tmp_path) == []
 
     label = "Sales for all regions together"
     _write(tmp_path, f"| {label} | | x |\n| Region | Q1 | Q2 |")
     assert _width(tmp_path, "A") >= text_width(label)
+
+
+def test_a_label_alone_in_its_row_widens_when_nothing_to_its_right_holds_it(
+    tmp_path: Path,
+) -> None:
+    name = "Northwind Traders International"
+    _write(tmp_path, f"| Customer |\n| {name} |")
+    assert _width(tmp_path, "A") == text_width(name) + 2
+
+    _write(tmp_path, f"| Customer | Notes |\n| {name} | |", sheet_name="Notes")
+    assert _width(tmp_path, "A", sheet="Notes") == text_width(name) + 2
+
+
+def test_edit_xlsx_cells_widens_text_longer_than_the_empty_cells_beside_it(
+    tmp_path: Path,
+) -> None:
+    note = "Open orders: see the list below for details"
+    _write(tmp_path, "| a | b |\n| 1 | 2 |")
+
+    edit = _tools(tmp_path)["edit_xlsx_cells"]
+    edit(path=FILE, sheet_name="Orders", start_cell="A3", content=f"| {note} |")  # type: ignore[operator]
+
+    assert _width(tmp_path, "A") == text_width(note) + 2
 
 
 def test_writing_a_sheet_again_widens_a_column_but_never_narrows_it(tmp_path: Path) -> None:
@@ -249,6 +273,9 @@ def test_edit_xlsx_cells_leaves_merged_text_and_text_with_room_beside_it(tmp_pat
         (1234567890, '#,##0.0,,"M"', "1,234.6M"),
         (-5, "0;;0", ""),
         (5, ";;;", ""),
+        (1, "0000000000", "0000000001"),
+        (12345678, "000-00-0000", "012-34-5678"),
+        (5, "000,000", "000,005"),
     ],
 )
 def test_general_inside_a_format_scaling_and_empty_sections(

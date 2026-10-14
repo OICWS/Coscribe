@@ -5,6 +5,7 @@ from __future__ import annotations
 import zipfile
 from copy import copy
 from dataclasses import dataclass, field, replace
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from xml.etree import ElementTree as ET
@@ -12,6 +13,8 @@ from xml.etree import ElementTree as ET
 from .column_widths import DEFAULT_WIDTH, MAX_WIDTH, needed_width
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from openpyxl.worksheet.worksheet import Worksheet
 
 _PARTS_NAMING_SHEETS = ("xl/workbook.xml", "xl/_rels/workbook.xml.rels")
@@ -118,17 +121,28 @@ def _empty(value: Any) -> bool:
     return value is None or value == ""
 
 
+def _empty_in(row: tuple[Any, ...], column: int) -> bool:
+    return _empty(row[column - 1].value)
+
+
+def _spill_room(
+    column: int, last: int, empty_at: Callable[[int], bool], shown: Callable[[int], float]
+) -> float:
+    """How wide text in `column` can print: text runs on over the empty cells to its right, up to
+    the sheet's last column (where a printed page cuts it)."""
+    room, right = shown(column), column + 1
+    while right <= last and empty_at(right):
+        room += shown(right)
+        right += 1
+    return room
+
+
 def _needed(sheet: Worksheet, spans: list[Span]) -> dict[int, float]:
     needed: dict[int, float] = {}
     last = sheet.max_column
     spilling = []
     for row in sheet.iter_rows():
-        filled = [cell for cell in row if not _empty(cell.value)]
         for column, cell in enumerate(row, start=1):
-            # A label alone in its row (a title over a table) runs on past the table's last
-            # column, so it never needs a width of its own.
-            if filled == [cell] and isinstance(cell.value, str):
-                continue
             # A formula has no value before LibreOffice recalculates the saved file; its header
             # and the constants beside it size the column.
             if cell.data_type == "f":
@@ -142,13 +156,10 @@ def _needed(sheet: Worksheet, spans: list[Span]) -> dict[int, float]:
     def shown(column: int) -> float:
         return max(_shown_width(_span_at(spans, column)), min(needed.get(column, 0.0), MAX_WIDTH))
 
-    # Text runs on over the empty cells to its right, up to the sheet's last column (where a
-    # printed page cuts it); only text longer than that run widens its own column.
+    # Measured after every column's own values, so a title over a table only widens its column
+    # when it is longer than all the columns it runs over.
     for row, column, width in spilling:
-        room, right = shown(column), column + 1
-        while right <= last and _empty(row[right - 1].value):
-            room += shown(right)
-            right += 1
+        room = _spill_room(column, last, partial(_empty_in, row), shown)
         if width > room:
             needed[column] = max(needed.get(column, 0.0), width)
     return needed
@@ -204,18 +215,22 @@ def fit_columns(sheet: Worksheet, spans: list[Span]) -> None:
     apply_spans(sheet, spans)
 
 
-def _shown_in_own_column(
-    sheet: Worksheet, cell: Any, merged: list[tuple[int, int, int, int]]
-) -> bool:
-    """False for a merged cell and for text with an empty cell to its right, which both have
-    more room than their column."""
-    if any(c1 <= cell.column <= c2 and r1 <= cell.row <= r2 for c1, r1, c2, r2 in merged):
-        return False
-    if not isinstance(cell.value, str) or cell.column >= sheet.max_column:
-        return True
-    # Read, not `sheet.cell()`, which would create the neighbour.
-    right = sheet._cells.get((cell.row, cell.column + 1))
-    return right is not None and not _empty(right.value)
+def _cell_needed(sheet: Worksheet, spans: list[Span], cell: Any, value: Any) -> float:
+    """The width `cell` needs in its own column: 0 for a merged cell, and for text no longer than
+    the empty cells to its right that it runs on over."""
+    width = needed_width(value, cell.number_format)
+    if not isinstance(value, str):
+        return width
+
+    def empty_at(column: int) -> bool:
+        # Read, not `sheet.cell()`, which would create the neighbour.
+        right = sheet._cells.get((cell.row, column))
+        return right is None or _empty(right.value)
+
+    def shown(column: int) -> float:
+        return _shown_width(_span_at(spans, column))
+
+    return width if width > _spill_room(cell.column, sheet.max_column, empty_at, shown) else 0.0
 
 
 def widen_for_values(
@@ -226,14 +241,16 @@ def widen_for_values(
     is not measured."""
     needed: dict[int, float] = {}
     merged = [tuple(merged.bounds) for merged in sheet.merged_cells.ranges]
+    spans = sheet_spans(sheet, width_starts)
     for cell in cells:
         if cell.data_type == "f" and values is None:
             continue
+        # A merged cell has the room of all the columns it covers.
+        if any(c1 <= cell.column <= c2 and r1 <= cell.row <= r2 for c1, r1, c2, r2 in merged):
+            continue
         value = values[cell.coordinate].value if cell.data_type == "f" else cell.value
-        if _shown_in_own_column(sheet, cell, merged):
-            needed[cell.column] = max(
-                needed.get(cell.column, 0.0), needed_width(value, cell.number_format)
-            )
-    spans = sheet_spans(sheet, width_starts)
+        needed[cell.column] = max(
+            needed.get(cell.column, 0.0), _cell_needed(sheet, spans, cell, value)
+        )
     if widen(spans, needed):
         apply_spans(sheet, spans)
