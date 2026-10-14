@@ -17,7 +17,7 @@ from .messages import (
     strip_mode_note,
     tool_result_value,
 )
-from .providers import keeps_tool_list_fixed, resolve_chat_model
+from .providers import for_conversation, keeps_tool_list_fixed, resolve_chat_model
 from .scheduled_tasks import (
     continue_workflow_run,
     execute_run,
@@ -77,6 +77,7 @@ __all__ = [
     "SkillSaveProposal",
     "propose_skill_save_lg",
     "render_transcript_lg",
+    "for_conversation",
     "keeps_tool_list_fixed",
     "resolve_chat_model",
     "subagent_report",

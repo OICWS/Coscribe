@@ -9,6 +9,12 @@ export interface StateEvent {
   /** A reviewer model decides risky calls instead of the user. */
   auto_mode: boolean;
   model: string;
+  effort: "low" | "medium" | "high" | "extra" | "max" | "ultra";
+  /**
+   * The model's own level that `effort` runs as (`xhigh` for extra, for example);
+   * None when the model takes no effort setting.
+   */
+  effort_runs_as: string | null;
   context_window: number;
   /**
    * Skills offered in this thread's instructions: the global on/off set, re-read at
@@ -453,10 +459,15 @@ export interface StopOut {
   type: "stop";
 }
 
-/** `model` is a "provider:model" string. Answered with `state`, or `error`. */
+/**
+ * `model` is a "provider:model" string; `effort`, when given, changes the level too (the
+ * model stays the same to change only the level). Answered with `state`, or `error`
+ * leaving both as they were.
+ */
 export interface SwitchModelOut {
   type: "switch_model";
   model: string;
+  effort?: "low" | "medium" | "high" | "extra" | "max" | "ultra";
 }
 
 /**

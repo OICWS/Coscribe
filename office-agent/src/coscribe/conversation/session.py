@@ -78,6 +78,8 @@ from ..runtime_lg import (
     build_delegation_tools,
     build_langgraph_agent,
     build_review_work_tool,
+    for_conversation,
+    keeps_tool_list_fixed,
     resolve_chat_model,
     select_reviewer_tools,
     tool_name,
@@ -104,7 +106,6 @@ from ..runtime_lg.messages import (
     last_conversation_context,
     strip_mode_note,
 )
-from ..runtime_lg.providers import keeps_tool_list_fixed, with_prompt_cache_key
 from ..runtime_lg.tool_deferral import (
     bound_tool_names,
     build_search_tools_tool,
@@ -494,9 +495,9 @@ class ChatSessionLG:
         self._title_task: asyncio.Task[None] | None = None
         self._instructions = agent.instructions or ""
         self._model_string = settings.default_model
-
-        self.model = with_prompt_cache_key(
-            resolve_chat_model(self._model_string, custom_providers), thread_id
+        self._effort: str = settings.default_effort
+        self.model, self._effort_runs_as = self._conversation_model(
+            self._model_string, self._effort
         )
         lg_tools = self._build_lg_tools(self.model)
         # The *original* requires_approval set, computed independently of
@@ -537,6 +538,11 @@ class ChatSessionLG:
         # whoever started it for someone who isn't there to be asked.
         self.preapproved_tools: frozenset[str] = frozenset()
         self._offer_task: asyncio.Task[None] | None = None
+
+    def _conversation_model(self, model_string: str, effort: str) -> tuple[Any, str | None]:
+        return for_conversation(
+            resolve_chat_model(model_string, self._custom_providers), self.thread_id, effort
+        )
 
     def _build_lg_tools(self, model: Any) -> list[Callable[..., Any] | BaseTool]:
         # self._base_tools ("domain" tools) combined with self._extra_tools
@@ -891,42 +897,18 @@ class ChatSessionLG:
         if self._current_turn_task is not None and not self._current_turn_task.done():
             self._current_turn_task.cancel()
 
-    async def switch_model(self, model: str, websocket: EventSink) -> None:
-        """Change this thread's active model immediately, mid-session, no
-        restart, no reconnect -- mirrors ChatSession.switch_model's public
-        contract exactly, but the mechanism is necessarily different:
-        Runner re-reads agent.model fresh every turn, so the old runtime
-        just mutates a string in place. create_agent() bakes the model into
-        a *compiled graph* once, so this rebuilds that graph instead
-        (self.lg_agent), reusing everything else about the session
-        unchanged -- same checkpointer, same thread_id/config, same base
-        tools, same instructions. Rebinding a new compiled graph object to
-        the *same* checkpointer/thread_id is safe even if a turn is
-        mid-approval when this is called: HumanInTheLoopMiddleware's
-        interrupt_on set is derived purely from tool *names*/hooks
-        configuration, both unchanged by a model switch, and LangGraph
-        resumes from checkpointed state, not from the compiled graph
-        object's own identity.
+    async def switch_model(
+        self, model: str, websocket: EventSink, effort: str | None = None
+    ) -> None:
+        """Change this thread's model, its effort level, or both, from the next request on.
+        create_agent() bakes the model into a compiled graph, so the graph is rebuilt around the
+        new model object; the same checkpointer and thread keep the history, which is safe even
+        mid-approval (the interrupt set comes from tool names and hooks, which a switch does not
+        change). A failure (an unknown provider, an SDK that validates eagerly, an unknown effort
+        level) leaves everything as it was.
 
-        Only a basic "provider:model" shape check happens here; a
-        genuinely bad choice (unknown provider prefix, or a provider whose
-        SDK validates eagerly) is caught by resolve_chat_model/
-        get_context_window below, both of which can raise -- reverted on
-        that failure rather than leaving the thread pinned to a model that
-        can never actually be used.
-
-        self._custom_providers is refreshed from disk right here, not
-        trusted as-is -- it's otherwise only a startup-time snapshot
-        (_get_session in web/app.py loads it once, when a thread's session
-        object is first created, and never again for that thread's
-        lifetime). Without this, adding a custom provider via the
-        Providers tab in an *already-open* thread and then immediately
-        trying to switch to it here would raise resolve_chat_model's own
-        "Unsupported provider" -- a real, live-reported confusion (the
-        provider genuinely is configured; this session object just hadn't
-        heard about it yet), not a sign DeepSeek/Kimi/GLM/etc. don't work.
-        A plain small JSON read, cheap enough to redo on every switch
-        rather than add a second cache to keep in sync."""
+        The custom providers are re-read from disk: the session's copy is a startup snapshot,
+        and a provider added in Settings since must be usable without reopening the thread."""
         if ":" not in model:
             await websocket.send_json(
                 {
@@ -935,26 +917,28 @@ class ChatSessionLG:
                 }
             )
             return
-        previous_model = self.model
-        previous_lg_agent = self.lg_agent
-        previous_model_string = self._model_string
+        previous = (
+            self.model,
+            self.lg_agent,
+            self._model_string,
+            self._effort,
+            self._effort_runs_as,
+        )
         self._context_window = None
         try:
             if self.settings.providers_config_path is not None:
                 self._custom_providers = load_custom_providers(self.settings.providers_config_path)
-            new_model = with_prompt_cache_key(
-                resolve_chat_model(model, self._custom_providers), self.thread_id
-            )
+            effort = effort or self._effort
+            new_model, runs_as = self._conversation_model(model, effort)
             lg_tools = self._build_lg_tools(new_model)
             new_lg_agent = self._build_lg_agent(new_model, model, lg_tools)
-            self.model = new_model
-            self.lg_agent = new_lg_agent
-            self._model_string = model
+            self.model, self.lg_agent, self._model_string = new_model, new_lg_agent, model
+            self._effort, self._effort_runs_as = effort, runs_as
             await self.send_state(websocket)
         except Exception as exc:  # noqa: BLE001 -- a bad/misconfigured provider must not corrupt session state
-            self.model = previous_model
-            self.lg_agent = previous_lg_agent
-            self._model_string = previous_model_string
+            (self.model, self.lg_agent, self._model_string, self._effort, self._effort_runs_as) = (
+                previous
+            )
             self._context_window = None
             await websocket.send_json(
                 {"type": "error", "message": f"Could not switch to {model!r}: {exc}"}
@@ -1165,6 +1149,8 @@ class ChatSessionLG:
             "accept_edits": self.accept_edits,
             "auto_mode": self.auto_mode,
             "model": self._model_string,
+            "effort": self._effort,
+            "effort_runs_as": self._effort_runs_as,
             "context_window": self._context_window,
             "enabled_skills": sorted(self.enabled_skill_names),
             "workspace_root": str(self.workspace_root),
@@ -2184,9 +2170,8 @@ class ChatSessionLG:
                 if not retried_after_grpc_metadata_overflow and is_grpc_metadata_overflow:
                     retried_after_grpc_metadata_overflow = True
                     try:
-                        self.model = with_prompt_cache_key(
-                            resolve_chat_model(self._model_string, self._custom_providers),
-                            self.thread_id,
+                        self.model, self._effort_runs_as = self._conversation_model(
+                            self._model_string, self._effort
                         )
                         lg_tools = self._build_lg_tools(self.model)
                         self.lg_agent = self._build_lg_agent(

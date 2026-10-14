@@ -29,6 +29,7 @@ from langchain_core.outputs import ChatGenerationChunk
 from coscribe.conversation import ThreadMetaStore
 from coscribe.conversation import session as conversation_session
 from coscribe.runtime_lg.audit import AuditLog
+from coscribe.runtime_lg.effort import runs_as
 from coscribe.runtime_lg.messages import is_steer
 
 from .helpers import (
@@ -1058,6 +1059,37 @@ def test_switch_model_rebuilds_the_graph_and_reports_the_new_model(
     assert agent_message["text"] == "hi from B"
 
 
+def test_switch_model_with_an_effort_rebuilds_the_model_at_that_level_and_refuses_an_unknown_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="hi")])
+    levels_asked: list[str] = []
+
+    def for_conversation(model: object, thread_id: str, effort: str) -> tuple[object, str | None]:
+        levels_asked.append(effort)
+        return model, runs_as(effort, ("low", "high"))
+
+    monkeypatch.setattr(conversation_session, "for_conversation", for_conversation)
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_effort") as ws:
+            state = ws.receive_json()
+            ws.receive_json()  # history
+            assert (state["effort"], state["effort_runs_as"]) == ("medium", "low")
+
+            ws.send_json({"type": "switch_model", "model": "fake:model", "effort": "ultra"})
+            changed = ws.receive_json()
+            assert (changed["effort"], changed["effort_runs_as"]) == ("ultra", "high")
+
+            ws.send_json({"type": "switch_model", "model": "fake:model", "effort": "huge"})
+            assert ws.receive_json()["type"] == "error"
+
+            ws.send_json({"type": "user_message", "text": "hello"})
+            messages = _receive_until(ws, "tasks_changed")
+
+    assert levels_asked[-1] == "huge"
+    assert next(m for m in messages if m["type"] == "agent_message")["text"] == "hi"
+
+
 def test_plan_mode_toggle_updates_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="unused")])
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
@@ -1071,6 +1103,8 @@ def test_plan_mode_toggle_updates_state(tmp_path: Path, monkeypatch: pytest.Monk
                 "plan_mode": True,
                 "accept_edits": False,
                 "model": "fake:model",
+                "effort": "medium",
+                "effort_runs_as": None,
                 "context_window": 128_000,
                 "enabled_skills": [
                     "Excel Spreadsheets",
