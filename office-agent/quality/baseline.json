@@ -9,7 +9,7 @@
   "src/coscribe/tools/browser.py::build_browser_tools": 45,
   "src/coscribe/tools/http_request.py::build_http_tools": 16,
   "src/coscribe/tools/mcp.py::validate_mcp_config": 19,
-  "src/coscribe/tools/office/docx/toolkit.py::write_docx": 18,
+  "src/coscribe/tools/office/docx/toolkit.py::write_docx": 17,
   "src/coscribe/tools/presentations.py::_analyze_pptx_delivery": 17,
   "src/coscribe/tools/presentations.py::build_presentation_tools": 40,
   "src/coscribe/tools/presentations.py::write_pptx": 17,

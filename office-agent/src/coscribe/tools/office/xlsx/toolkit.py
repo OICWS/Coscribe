@@ -7,6 +7,14 @@ from typing import Any, Optional
 from ..._file_locks import locked_by_path
 from ..._thumbnail import render_thumbnail
 from ..._workspace import WorkspaceScope
+from .column_layout import (
+    Span,
+    explicit_width_starts,
+    fit_columns,
+    sheet_spans,
+    widen_after_recalc,
+    widen_for_values,
+)
 from .helpers import (
     _CHART_TYPES,
     _CONDITIONAL_FORMAT_RULE_TYPES,
@@ -87,11 +95,15 @@ class SpreadsheetToolkit:
 
         rows = _parse_table_rows(content)
         file_path = self._check_writable(path)
+        spans: list[Span] = []
         if file_path.exists():
             workbook = load_workbook(str(file_path))
             if sheet_name in workbook.sheetnames:
                 if not overwrite:
                     raise FileExistsError(f"Sheet already exists: {sheet_name}")
+                spans = sheet_spans(
+                    workbook[sheet_name], explicit_width_starts(file_path, sheet_name)
+                )
                 del workbook[sheet_name]
                 sheet = workbook.create_sheet(sheet_name)
             else:
@@ -104,6 +116,7 @@ class SpreadsheetToolkit:
                 workbook.remove(default_sheet)
         for row in rows:
             sheet.append([_coerce_cell(cell) for cell in row])
+        formula_cells = fit_columns(sheet, spans)
         # Makes the just-written sheet the one LibreOffice renders for the
         # preview thumbnail below (and the one Excel opens to) -- without
         # this, amending an existing workbook leaves whatever sheet was
@@ -115,6 +128,8 @@ class SpreadsheetToolkit:
         recalc_result: dict[str, object] = {"status": "skipped", "skipped_reason": None}
         if has_formula:
             recalc_result = _recalc_xlsx_and_evaluate_lookups(file_path)
+        if recalc_result["status"] != "skipped":
+            widen_after_recalc(file_path, sheet_name, formula_cells)
 
         preview_path, preview_skipped_reason = render_thumbnail(file_path, self._state_dir)
         return {
@@ -187,6 +202,12 @@ class SpreadsheetToolkit:
                     bold=bold or cell.font.bold,
                     color=font_color or cell.font.color,
                 )
+        if number_format:
+            values = load_workbook(str(file_path), data_only=True)
+            widen_for_values(
+                sheet, values[sheet_name], cells, explicit_width_starts(file_path, sheet_name)
+            )
+            values.close()
         workbook.save(str(file_path))
         return {
             "path": self._scope.relative(file_path),
@@ -561,11 +582,13 @@ class SpreadsheetToolkit:
         except ValueError as exc:
             raise ValueError(f"Invalid start_cell {start_cell!r}: {exc}") from None
 
+        written = []
         for row_offset, row in enumerate(rows):
             for col_offset, raw_cell in enumerate(row):
-                sheet.cell(
-                    row=start_row + row_offset, column=start_col + col_offset
-                ).value = _coerce_cell(raw_cell)
+                cell = sheet.cell(row=start_row + row_offset, column=start_col + col_offset)
+                cell.value = _coerce_cell(raw_cell)
+                written.append(cell)
+        widen_for_values(sheet, None, written, explicit_width_starts(file_path, sheet_name))
 
         has_formula = _workbook_has_any_formula(workbook)
         workbook.save(str(file_path))
@@ -573,6 +596,9 @@ class SpreadsheetToolkit:
         recalc_result: dict[str, object] = {"status": "skipped", "skipped_reason": None}
         if has_formula:
             recalc_result = _recalc_xlsx_and_evaluate_lookups(file_path)
+        if recalc_result["status"] != "skipped":
+            formulas = [cell.coordinate for cell in written if cell.data_type == "f"]
+            widen_after_recalc(file_path, sheet_name, formulas)
 
         preview_path, preview_skipped_reason = render_thumbnail(file_path, self._state_dir)
         return {

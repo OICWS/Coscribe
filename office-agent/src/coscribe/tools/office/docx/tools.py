@@ -45,9 +45,9 @@ def build_docx_tools(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
 
         - A line that is exactly `[TOC]` inserts a real Word table-of-
           contents field at that position, built from the document's own
-          heading levels. It shows placeholder text until Word recalculates
-          it, which happens automatically the first time the file is opened
-          -- no manual "Update Field" needed.
+          headings (levels 1-3, wherever they are in the content). It lists
+          the headings in every viewer; Word adds the page numbers itself
+          the first time the file is opened -- no manual "Update Field".
         - A trailing `{{comment: your comment text}}` on a heading,
           paragraph, bullet, or numbered-item line attaches a real Word
           comment (visible in Word's Comments pane) anchored to that whole

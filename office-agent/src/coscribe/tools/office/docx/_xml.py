@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+import re
 import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
@@ -134,51 +135,159 @@ def _mark_body_deleted(document: Any, author: str, change_ids: _ChangeIdCounter)
             document.element.body.remove(child)
 
 
+_TOC_INSTRUCTION = 'TOC \\o "1-3" \\h \\z \\u'
+_TOC_EMPTY_RESULT = "No table of contents entries found."
+
+
 def _add_toc(document: Any) -> Any:
-    """Insert a Word TOC field (``TOC \\o "1-3" \\h \\z \\u``) at the current
-    end of the document -- python-docx has no native TOC API, this is the
-    standard raw-OXML field-code recipe (fldChar begin/separate/end +
-    instrText), matching the docx skill's own guidance that headings must
-    use built-in ``HeadingLevel``-equivalent styles (``add_heading`` already
-    does that). The placeholder text only shows until Word recalculates the
-    field -- ``_enable_update_fields`` makes that happen automatically on
-    open instead of requiring the user to press F9."""
+    """Insert a Word TOC field at the current end of the document with an
+    empty result -- python-docx has no native TOC API, this is the standard
+    raw-OXML field-code recipe (fldChar begin/separate/end + instrText). The
+    result stays empty here because headings written after the marker are
+    not known yet; ``_fill_toc`` writes it once the whole body exists."""
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
 
     paragraph = document.add_paragraph()
-    run = paragraph.add_run()
-    r_element = run._r
-
+    code_run = paragraph.add_run()._r
     begin = OxmlElement("w:fldChar")
     begin.set(qn("w:fldCharType"), "begin")
-
     instr = OxmlElement("w:instrText")
     instr.set(qn("xml:space"), "preserve")
-    instr.text = 'TOC \\o "1-3" \\h \\z \\u'
-
+    instr.text = _TOC_INSTRUCTION
     separate = OxmlElement("w:fldChar")
     separate.set(qn("w:fldCharType"), "separate")
-
-    placeholder = OxmlElement("w:t")
-    placeholder.text = "Right-click and choose Update Field to generate the table of contents."
+    code_run.append(begin)
+    code_run.append(instr)
+    code_run.append(separate)
 
     end = OxmlElement("w:fldChar")
     end.set(qn("w:fldCharType"), "end")
-
-    r_element.append(begin)
-    r_element.append(instr)
-    r_element.append(separate)
-    r_element.append(placeholder)
-    r_element.append(end)
+    paragraph.add_run()._r.append(end)
     return paragraph
+
+
+def _toc_levels(instruction: str) -> tuple[int, int]:
+    match = re.search(r'\\o\s+"(\d)-(\d)"', instruction)
+    if match is None:
+        return 1, 9
+    return int(match.group(1)), int(match.group(2))
+
+
+def _toc_style(document: Any, level: int) -> Any:
+    """The template's own ``toc N`` style, else Word's built-in definition of
+    it added to the document: Word matches built-in styles by name, so its own
+    field update on open keeps the same style. The id only has to be unique;
+    a template may already use ``TOC1`` for a style of another name."""
+    from docx.enum.style import WD_STYLE_TYPE
+    from docx.oxml.ns import qn
+    from docx.shared import Pt, Twips
+
+    name = f"toc {level}"
+    used_ids = set()
+    for style in document.styles:
+        used_ids.add(style.style_id)
+        if style.type != WD_STYLE_TYPE.PARAGRAPH:
+            continue
+        if style.name.lower() == name or (
+            style.style_id == f"TOC{level}" and style.name.lower().replace(" ", "") == f"toc{level}"
+        ):
+            return style
+    style_id = f"TOC{level}"
+    suffix = 1
+    while style_id in used_ids:
+        suffix += 1
+        style_id = f"TOC{level}_{suffix}"
+    style = document.styles.add_style(name, WD_STYLE_TYPE.PARAGRAPH)
+    # A custom style named like a built-in one is a different style to Word.
+    style.element.attrib.pop(qn("w:customStyle"), None)
+    style.style_id = style_id
+    style.base_style = document.styles["Normal"]
+    style.next_paragraph_style = document.styles["Normal"]
+    style.priority = 39
+    style.unhide_when_used = True
+    style.paragraph_format.space_after = Pt(5)
+    if level > 1:
+        style.paragraph_format.left_indent = Twips(220 * (level - 1))
+    return style
+
+
+def _fill_toc(document: Any, toc_paragraph: Any, headings: list[tuple[int, str]]) -> list[Any]:
+    """Write the result of an ``_add_toc`` field: one paragraph per heading in
+    the field's ``\\o`` level range, without page numbers -- only Word can
+    paginate, and ``updateFields`` has it rebuild the result with numbers on
+    open, while LibreOffice, PDF export and previews show it as written.
+    Returns the paragraphs added after ``toc_paragraph``."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    from docx.text.paragraph import Paragraph
+
+    p_element = toc_paragraph._p
+    instruction = "".join(el.text or "" for el in p_element.iter(qn("w:instrText")))
+    low, high = _toc_levels(instruction)
+    entries = [
+        (level, text.strip()) for level, text in headings if low <= level <= high and text.strip()
+    ]
+
+    end_run = p_element.findall(qn("w:r"))[-1]
+    p_element.remove(end_run)
+    if not entries:
+        toc_paragraph.add_run(_TOC_EMPTY_RESULT)
+        p_element.append(end_run)
+        return []
+
+    first_level, first_text = entries[0]
+    toc_paragraph.style = _toc_style(document, first_level)
+    toc_paragraph.add_run(first_text)
+    added: list[Any] = []
+    previous = p_element
+    for level, text in entries[1:]:
+        new_element = OxmlElement("w:p")
+        previous.addnext(new_element)
+        paragraph = Paragraph(new_element, toc_paragraph._parent)
+        paragraph.style = _toc_style(document, level)
+        paragraph.add_run(text)
+        added.append(paragraph)
+        previous = new_element
+    previous.append(end_run)
+    return added
+
+
+def _toc_result_paragraphs(body: Any) -> set[Any]:
+    """Every paragraph holding text of a TOC field's result. That result
+    repeats each heading's text, so a lookup of a heading by its text must
+    not count these copies. The set holds the elements themselves, not their
+    ``id()``: lxml reuses a proxy only while something references it."""
+    from docx.oxml.ns import qn
+
+    fld_char, instr_text, paragraph_tag = qn("w:fldChar"), qn("w:instrText"), qn("w:p")
+    text_tags = {qn("w:t"), qn("w:delText")}
+    # One entry per open field: [is a TOC field, past its separator].
+    fields: list[list[bool]] = []
+    inside: set[Any] = set()
+    for element in body.iter(fld_char, instr_text, *text_tags):
+        if element.tag == fld_char:
+            kind = element.get(qn("w:fldCharType"))
+            if kind == "begin":
+                fields.append([False, False])
+            elif kind == "separate" and fields:
+                fields[-1][1] = True
+            elif kind == "end" and fields:
+                fields.pop()
+        elif element.tag == instr_text:
+            if fields and (element.text or "").strip().upper().startswith("TOC"):
+                fields[-1][0] = True
+        elif any(is_toc and in_result for is_toc, in_result in fields):
+            paragraph = next(element.iterancestors(paragraph_tag), None)
+            if paragraph is not None:
+                inside.add(paragraph)
+    return inside
 
 
 def _enable_update_fields(document: Any) -> None:
     """Set ``<w:updateFields w:val="true"/>`` in settings.xml so Word
     recalculates every field (our TOC included) automatically on open,
-    instead of showing stale placeholder text until the user manually
-    updates it."""
+    adding the page numbers our written TOC result leaves out."""
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
 
@@ -473,7 +582,10 @@ def _locate_paragraph(
         raise ValueError("find text is empty")
     matches: list[str] = []
     ambiguous_within: list[str] = []
+    toc_entries = _toc_result_paragraphs(document_element)
     for paragraph in document_element.iter(f"{_tracks_constants.W}p"):
+        if paragraph in toc_entries:
+            continue
         para_id = paragraph.get(f"{_tracks_constants.W14}paraId", "")
         try:
             _resolve(

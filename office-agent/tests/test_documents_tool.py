@@ -246,6 +246,171 @@ def test_write_docx_toc_marker_inserts_a_toc_field_and_enables_update_fields(
     assert update_fields.get(qn("w:val")) == "true"
 
 
+TOC_CONTENT = (
+    "# Handbook\n\n[TOC]\n\n## Setup\n\nInstall it.\n\n### Windows\n\nRun the installer.\n\n"
+    "## Usage\n\nRun it."
+)
+
+
+def _toc_field_result(doc: Document) -> list[tuple[str, str]]:
+    """(paragraph style id, text) of each paragraph between the TOC field's
+    separate and end marks."""
+    from docx.oxml.ns import qn
+
+    result: list[tuple[str, str]] = []
+    inside = False
+    for paragraph in doc.paragraphs:
+        text = ""
+        for element in paragraph._p.iter(qn("w:fldChar"), qn("w:t")):
+            if element.tag == qn("w:t"):
+                text += element.text if inside else ""
+            elif element.get(qn("w:fldCharType")) == "separate":
+                inside = True
+            elif element.get(qn("w:fldCharType")) == "end" and inside:
+                result.append((paragraph.style.style_id, text))
+                return result
+        if inside:
+            result.append((paragraph.style.style_id, text))
+    raise AssertionError("no TOC field result found")
+
+
+def test_write_docx_toc_result_lists_the_headings_written_after_it(tmp_path: Path) -> None:
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](path="report.docx", content=TOC_CONTENT)
+
+    result = _toc_field_result(Document(tmp_path / "report.docx"))
+
+    assert result == [
+        ("TOC1", "Handbook"),
+        ("TOC2", "Setup"),
+        ("TOC3", "Windows"),
+        ("TOC2", "Usage"),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("levels", "expected"),
+    [('"1-3"', ["One", "Two", "Three"]), ('"2-4"', ["Two", "Three", "Four"])],
+)
+def test_toc_result_keeps_only_the_heading_levels_its_field_asks_for(
+    levels: str, expected: list[str]
+) -> None:
+    from docx.oxml.ns import qn
+
+    from coscribe.tools.office.docx._xml import _add_toc, _fill_toc
+
+    doc = Document()
+    toc = _add_toc(doc)
+    instr = next(toc._p.iter(qn("w:instrText")))
+    instr.text = instr.text.replace('"1-3"', levels)
+    _fill_toc(doc, toc, [(1, "One"), (2, "Two"), (3, "Three"), (4, "Four")])
+
+    assert [text for _, text in _toc_field_result(doc)] == expected
+
+
+def test_write_docx_toc_with_no_headings_says_so_like_word(tmp_path: Path) -> None:
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](path="report.docx", content="[TOC]\n\nJust text.")
+
+    result = _toc_field_result(Document(tmp_path / "report.docx"))
+
+    assert [text for _, text in result] == ["No table of contents entries found."]
+
+
+def test_write_docx_tracked_toc_marks_every_entry_inserted(tmp_path: Path) -> None:
+    from docx.oxml.ns import qn
+
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](path="report.docx", content=TOC_CONTENT, track_changes=True)
+
+    doc = Document(tmp_path / "report.docx")
+    toc_paragraphs = [p for p in doc.paragraphs if p.style.style_id.startswith("TOC")]
+    assert len(toc_paragraphs) == 4
+    for paragraph in toc_paragraphs:
+        assert paragraph._p.findall(qn("w:r")) == []
+
+
+@pytest.mark.parametrize("tool", ["replace_docx_text", "delete_docx_text"])
+def test_editing_a_heading_ignores_its_copy_in_the_toc(tmp_path: Path, tool: str) -> None:
+    from docx.oxml.ns import qn
+
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](path="report.docx", content=TOC_CONTENT)
+    if tool == "replace_docx_text":
+        tools[tool](path="report.docx", find="Windows", replace="Linux")
+    else:
+        tools[tool](path="report.docx", text="Windows")
+
+    doc = Document(tmp_path / "report.docx")
+    heading = next(p for p in doc.paragraphs if p.style.name == "Heading 3")
+    assert heading._p.findall(f".//{qn('w:del')}") != []
+    assert [text for _, text in _toc_field_result(doc)][2] == "Windows"
+
+
+def test_add_docx_image_after_a_heading_ignores_its_copy_in_the_toc(tmp_path: Path) -> None:
+    from PIL import Image
+
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](path="report.docx", content=TOC_CONTENT)
+    Image.new("RGB", (40, 20), "red").save(tmp_path / "pic.png")
+
+    tools["add_docx_image"](path="report.docx", image_path="pic.png", after_text="Usage")
+
+    texts = _body_texts(tmp_path / "report.docx")
+    assert texts[-3:] == ["Usage", "[picture]", "Run it."]
+
+
+def test_toc_style_keeps_a_template_style_that_already_has_the_id_toc1(tmp_path: Path) -> None:
+    from docx.enum.style import WD_STYLE_TYPE
+
+    template = Document()
+    template.styles.add_style("Box Contents", WD_STYLE_TYPE.PARAGRAPH).style_id = "TOC1"
+    template.save(str(tmp_path / "template.docx"))
+    tools = _tools_by_name(tmp_path)
+
+    tools["write_docx"](path="report.docx", content=TOC_CONTENT, template_path="template.docx")
+
+    doc = Document(tmp_path / "report.docx")
+    ids = [style.style_id for style in doc.styles]
+    assert len(ids) == len(set(ids))
+    assert doc.styles.get_by_id("TOC1", WD_STYLE_TYPE.PARAGRAPH).name == "Box Contents"
+    entry = next(p for p in doc.paragraphs if p.text == "Handbook" and "toc" in p.style.name)
+    assert entry.style.name == "toc 1"
+
+
+def test_toc_style_reuses_a_template_toc1_style_found_by_its_id(tmp_path: Path) -> None:
+    from docx.enum.style import WD_STYLE_TYPE
+
+    template = Document()
+    template.styles.add_style("TOC1", WD_STYLE_TYPE.PARAGRAPH).style_id = "TOC1"
+    template.save(str(tmp_path / "template.docx"))
+    tools = _tools_by_name(tmp_path)
+
+    tools["write_docx"](path="report.docx", content=TOC_CONTENT, template_path="template.docx")
+
+    doc = Document(tmp_path / "report.docx")
+    assert [s.name for s in doc.styles if s.name.lower().replace(" ", "") == "toc1"] == ["TOC1"]
+    assert _toc_field_result(doc)[0] == ("TOC1", "Handbook")
+
+
+@pytest.mark.real_libreoffice
+@pytest.mark.skipif(not _libreoffice_actually_works(), reason="LibreOffice not usable here")
+def test_write_docx_toc_renders_as_a_contents_list_in_libreoffice(tmp_path: Path) -> None:
+    from coscribe.tools.convert import build_convert_tools
+
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](path="report.docx", content=TOC_CONTENT)
+    (convert,) = build_convert_tools(tmp_path, state_dir=tmp_path / "state")
+    convert(path="report.docx", to_format="pdf", output_path="report.pdf")
+
+    text = tools["read_pdf"](path="report.pdf")
+
+    contents = text[text.index("Handbook") : text.index("Install it.")]
+    # The contents list, then the "Setup" heading itself, come before its body.
+    assert contents.split() == ["Handbook", "Handbook", "Setup", "Windows", "Usage", "Setup"]
+    assert "Update Field" not in text
+
+
 def test_write_docx_without_toc_marker_reports_no_toc(tmp_path: Path) -> None:
     tools = _tools_by_name(tmp_path)
     result = tools["write_docx"](path="report.docx", content="# Title\n\nBody.")
