@@ -6,15 +6,18 @@ the saved file, so a column of formulas under a short header (`Total`, `占比`)
 a large result could still print as `###` (#193).
 
 ## Shipped
-- After the recalculation `write_xlsx` already runs when a sheet has formulas,
-  `column_layout.widen_after_recalc` reads the computed values of the formula cells it wrote and
-  widens their columns by the same rule as the rest: the shown value plus 2, never past 50, never
-  narrower than the column already is, a hidden or zero-width column left alone.
+- After the recalculation `write_xlsx` and `edit_xlsx_cells` already run when a workbook has
+  formulas, `column_layout.widen_after_recalc` reads the computed values of the formula cells
+  the call wrote and widens their columns by the same rule as the rest: the shown value plus 2,
+  never past 50, never narrower than the column already is, a hidden or zero-width column left
+  alone.
 - The widths are patched into `<cols>` of the saved sheet: saving through openpyxl again would
   drop every computed value. A `<col>` range the column falls in is split; the rest of the range
   keeps its width and look. The preview is rendered after the patch.
 - Tests: the patch widens and splits a range but never narrows; a column holding only
-  `=123456789012/7` under the header `Sum` gets at least 11 characters (real LibreOffice).
+  `=123456789012/7` under the header `Sum` gets at least 11 characters, from `write_xlsx` and
+  from `edit_xlsx_cells` (real LibreOffice). This is `Orders!D6` `Desk lamp` of the lookup task
+  (03): an `INDEX`/`MATCH` result written with `edit_xlsx_cells`.
 
 ## Not verified
 - Excel on Windows was not opened; checked against LibreOffice only.

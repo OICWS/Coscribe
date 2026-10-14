@@ -188,17 +188,31 @@ def fit_columns(sheet: Worksheet, spans: list[Span]) -> list[str]:
     return [cell.coordinate for row in sheet.iter_rows() for cell in row if cell.data_type == "f"]
 
 
+def _shown_in_own_column(sheet: Worksheet, cell: Any) -> bool:
+    """False for a merged cell and for text with an empty cell to its right, which both have
+    more room than their column."""
+    if any(cell.coordinate in merged for merged in sheet.merged_cells.ranges):
+        return False
+    if not isinstance(cell.value, str) or cell.column >= sheet.max_column:
+        return True
+    return not _empty(sheet.cell(row=cell.row, column=cell.column + 1).value)
+
+
 def widen_for_values(
     sheet: Worksheet, values: Any, cells: list[Any], width_starts: set[int]
 ) -> None:
-    """Widen the columns of `cells` to show each value under the cell's number format; `values`
-    is the same sheet loaded with the computed values, for formula cells."""
+    """Widen the columns of `cells` to show each value under the cell's number format. `values`
+    is the same sheet loaded with the computed values, for formula cells; without it a formula
+    is not measured."""
     needed: dict[int, float] = {}
     for cell in cells:
+        if cell.data_type == "f" and values is None:
+            continue
         value = values[cell.coordinate].value if cell.data_type == "f" else cell.value
-        needed[cell.column] = max(
-            needed.get(cell.column, 0.0), needed_width(value, cell.number_format)
-        )
+        if _shown_in_own_column(sheet, cell):
+            needed[cell.column] = max(
+                needed.get(cell.column, 0.0), needed_width(value, cell.number_format)
+            )
     spans = sheet_spans(sheet, width_starts)
     if widen(spans, {column: width for column, width in needed.items() if width > DEFAULT_WIDTH}):
         apply_spans(sheet, spans)
