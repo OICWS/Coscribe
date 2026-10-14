@@ -113,11 +113,16 @@ class CompileReport:
 
 
 def compile_pages(
-    pages: Sequence[tuple[str, str]], out: Path, *, resource_root: Path | None = None
+    pages: Sequence[tuple[str, str]],
+    out: Path,
+    *,
+    resource_root: Path | None = None,
+    svg_dir: Path | None = None,
 ) -> CompileReport:
     """Write `out` from `(name, svg_text)` pages, one slide each, in order.
 
-    `resource_root` is the folder images are resolved against; an image outside it is an error.
+    An image's href is resolved against `svg_dir` (default `resource_root`), the folder the
+    pages are in; an image outside `resource_root` is an error.
     The deck is written even when pages have errors (their failing elements are left out), so
     a preview can show what the repair has to fix.
     """
@@ -141,7 +146,7 @@ def compile_pages(
             report.errors.append(
                 f"canvas {width}x{height} differs from the deck's {size[0]}x{size[1]}"
             )
-        _compile_page(prs, root, report, resource_root)
+        _compile_page(prs, root, report, resource_root, svg_dir or resource_root)
     out.parent.mkdir(parents=True, exist_ok=True)
     prs.save(str(out))
     return CompileReport(out, reports)
@@ -160,7 +165,11 @@ def _canvas(root: ET.Element, report: PageReport) -> tuple[int, int]:
 
 
 def _compile_page(
-    prs: Any, root: ET.Element, report: PageReport, resource_root: Path | None
+    prs: Any,
+    root: ET.Element,
+    report: PageReport,
+    resource_root: Path | None,
+    svg_dir: Path | None,
 ) -> None:
     slide = prs.slides.add_slide(prs.slide_layouts[_TITLE_ONLY_LAYOUT])
     for placeholder in list(slide.placeholders):
@@ -171,8 +180,10 @@ def _compile_page(
         report.errors.append(f"inline geometry: {e}")
     for check in _PAGE_CHECKS:
         report.errors.extend(check(root))
-    if resource_root is not None:
-        report.errors.extend(elements.project_image_errors(root, resource_root))
+    if svg_dir is not None:
+        report.errors.extend(
+            elements.project_image_errors(root, svg_dir, resource_root=resource_root)
+        )
     tree = ET.ElementTree(root)
     tspan_flattener.flatten_positional_tspans(
         tree, merge_paragraphs=True, preserve_line_breaks=True
@@ -181,7 +192,7 @@ def _compile_page(
     defs, _duplicates = utils.project_definition_index(root)
     ctx = ConvertContext(
         defs=defs,
-        svg_dir=resource_root,
+        svg_dir=svg_dir,
         resource_root=resource_root,
         inherited_styles=utils._extract_inheritable_styles(root),
         viewport_width=float(prs.slide_width) / EMU_PER_PX,
