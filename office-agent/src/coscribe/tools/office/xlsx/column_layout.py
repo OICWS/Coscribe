@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import zipfile
 from copy import copy
 from dataclasses import dataclass, field, replace
@@ -39,6 +40,7 @@ class Span:
 class Fit:
     owned: set[int] = field(default_factory=set)
     widths: dict[int, float] = field(default_factory=dict)
+    formula_columns: set[int] = field(default_factory=set)
 
 
 def _sheet_part(archive: zipfile.ZipFile, sheet_name: str) -> str | None:
@@ -163,15 +165,14 @@ def _empty(value: Any) -> bool:
     return value is None or value == ""
 
 
-def _needed(sheet: Worksheet, spans: list[Span]) -> dict[int, float]:
+def _needed(sheet: Worksheet, spans: list[Span], fit: Fit) -> dict[int, float]:
     needed: dict[int, float] = {}
     last = sheet.max_column
     spilling = []
     for row in sheet.iter_rows():
         for column, cell in enumerate(row, start=1):
-            # A formula has no value before LibreOffice recalculates the saved file; its header
-            # and the constants beside it size the column.
             if cell.data_type == "f":
+                fit.formula_columns.add(column)
                 continue
             width = needed_width(cell.value, cell.number_format)
             if isinstance(cell.value, str) and column < last and _empty(row[column].value):
@@ -219,9 +220,10 @@ def fit_columns(sheet: Worksheet, spans: list[Span]) -> Fit:
     """Widen every column of `sheet` whose longest shown value does not fit; a column with a
     kept width in `spans` stays as it is."""
     fit = Fit()
-    needed = _needed(sheet, spans)
+    needed = _needed(sheet, spans, fit)
     for column in range(1, sheet.max_column + 1):
         if _kept_width(spans, column) is not None:
+            fit.formula_columns.discard(column)
             continue
         fit.owned.add(column)
         if needed.get(column, 0.0) > DEFAULT_WIDTH:
@@ -229,3 +231,71 @@ def fit_columns(sheet: Worksheet, spans: list[Span]) -> Fit:
             _set_width(spans, column, fit.widths[column])
     _apply(sheet, spans)
     return fit
+
+
+def _col_xml(span: Span) -> str:
+    sized = {} if span.width is None else {"width": f"{span.width:g}", "customWidth": "1"}
+    attributes = {**span.look, "min": str(span.min), "max": str(span.max), **sized}
+    return ET.tostring(ET.Element("col", attributes), encoding="unicode")
+
+
+def _patch_cols(path: Path, sheet_name: str, widths: dict[int, float]) -> None:
+    with zipfile.ZipFile(path) as archive:
+        part = _sheet_part(archive, sheet_name)
+        if part is None:
+            return
+        entries = [(info, archive.read(info.filename)) for info in archive.infolist()]
+    xml = dict((info.filename, data) for info, data in entries)[part].decode("utf-8")
+    found = re.search(r"<cols>.*?</cols>|<cols/>", xml, re.DOTALL)
+    start = found.start() if found else xml.find("<sheetData")
+    end = found.end() if found else start
+    if start < 0:
+        return
+    spans = []
+    for col in ET.fromstring(found.group(0)) if found else []:
+        look = {k: v for k, v in col.attrib.items() if k not in ("min", "max", "width")}
+        size = col.get("width")
+        spans.append(
+            Span(
+                int(col.get("min", "0")),
+                int(col.get("max", "0")),
+                float(size) if size else None,
+                look,
+            )
+        )
+    for column, width in widths.items():
+        _set_width(spans, column, width)
+    columns = "".join(_col_xml(span) for span in sorted(spans, key=lambda span: span.min))
+    xml = f"{xml[:start]}<cols>{columns}</cols>{xml[end:]}"
+    patched = path.with_name(path.name + ".cols")
+    with zipfile.ZipFile(patched, "w", zipfile.ZIP_DEFLATED) as archive:
+        for info, data in entries:
+            archive.writestr(info, xml.encode("utf-8") if info.filename == part else data)
+    patched.replace(path)
+
+
+def widen_after_recalc(path: Path, sheet_name: str, fit: Fit) -> None:
+    """Size the formula columns from the values LibreOffice computed. The file is patched in
+    place: openpyxl would drop every cached value if it saved it again."""
+    from openpyxl import load_workbook
+
+    if not fit.formula_columns:
+        return
+    values = load_workbook(str(path), data_only=True)
+    try:
+        sheet = values[sheet_name]
+        widths = {}
+        for column in fit.formula_columns:
+            needed = max(
+                (
+                    needed_width(c.value, c.number_format)
+                    for (c,) in sheet.iter_rows(min_col=column, max_col=column)
+                ),
+                default=0.0,
+            )
+            if needed > max(fit.widths.get(column, 0.0), DEFAULT_WIDTH):
+                widths[column] = round(min(needed, MAX_WIDTH), 2)
+    finally:
+        values.close()
+    if widths:
+        _patch_cols(path, sheet_name, widths)
