@@ -53,6 +53,11 @@ jobs:
           pip install -e ".[dev,web]"
           pip install -U "google-genai>=2.13.0,<2.14.0"
 
+      # The text widths the deck engine sizes boxes with, measured on this machine's fonts.
+      # The table is committed; the test below keeps it equal to the fonts.
+      - name: Measure font advances
+        run: python scripts/measure_font_advances.py "C:/Windows/Fonts" --out windows-font-advances.json
+
       - name: Tests
         run: python -m pytest -q -n 4 -p no:cacheprovider --tb=short -rfE --junitxml=windows-junit.xml
 
@@ -81,4 +86,6 @@ jobs:
         if: always()
         with:
           name: windows-junit
-          path: office-agent/windows-junit.xml
+          path: |
+            office-agent/windows-junit.xml
+            office-agent/windows-font-advances.json
