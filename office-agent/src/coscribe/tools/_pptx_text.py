@@ -28,6 +28,8 @@ def replace_text(
         raise ValueError("find must not be empty.")
     if not replace and not remove:
         raise ValueError("replace is empty: give the new text, or remove=true to delete it.")
+    if replace and remove:
+        raise ValueError("remove=true deletes the phrase; leave replace empty with it.")
     if "\n" in replace or "\v" in replace:
         raise ValueError(
             "replace is one line of text; for several lines or paragraphs give the placeholder's "

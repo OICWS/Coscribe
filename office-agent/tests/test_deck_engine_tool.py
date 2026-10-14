@@ -15,6 +15,7 @@ from pptx import Presentation
 
 from coscribe.tools import NEW_DECK_INSTRUCTIONS
 from coscribe.tools.office.pptx.engine.tool import build_engine_tools
+from coscribe.tools.presentations import build_presentation_tools
 from coscribe.tools.skills import load_builtin_skills
 
 _SVG = (
@@ -87,6 +88,23 @@ def test_a_page_using_everything_the_contract_allows_compiles_cleanly(tmp_path: 
     slide = Presentation(str(tmp_path / "deck.pptx")).slides[0]
     assert slide.shapes.title.text == "一页全部元素"
     assert "card" in {shape.name for shape in slide.shapes}
+
+
+def test_an_element_id_names_its_shape_for_the_edit_tools(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "deck-pages",
+        "01.svg",
+        f'<svg {_SVG}><text id="title" x="64" y="100" font-size="40">发布</text>'
+        '<text id="price" x="64" y="300" font-size="40">399 元</text></svg>',
+    )
+    _tool(tmp_path)("deck-pages", "deck.pptx")
+    edit = {t.__name__: t for t in build_presentation_tools(tmp_path)}["edit_pptx_shape"]  # type: ignore[attr-defined]
+
+    edit(path="deck.pptx", slide=1, shape_index="price", text_color="C2410C")
+
+    shapes = {s.name: s for s in Presentation(str(tmp_path / "deck.pptx")).slides[0].shapes}
+    run = shapes["price"].text_frame.paragraphs[0].runs[0]
+    assert str(run.font.color.rgb) == "C2410C"
 
 
 def test_sources_feed_the_number_check(tmp_path: Path) -> None:
