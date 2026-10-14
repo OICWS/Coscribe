@@ -80,7 +80,13 @@ def test_get_skills_lists_the_builtin_skills(
 
     assert response.status_code == 200
     names = {s["name"] for s in response.json()}
-    assert names == {"PPTX Slides", "Excel Spreadsheets", "Word Documents", "Skill Creator"}
+    assert names == {
+        "PPTX Slides",
+        "PPTX Pages",
+        "Excel Spreadsheets",
+        "Word Documents",
+        "Skill Creator",
+    }
 
 
 def test_get_skills_tags_builtin_vs_custom_source(
@@ -290,6 +296,7 @@ def test_new_thread_defaults_to_the_builtin_skills_enabled(
 
     assert sorted(state["enabled_skills"]) == [
         "Excel Spreadsheets",
+        "PPTX Pages",
         "PPTX Slides",
         "Skill Creator",
         "Word Documents",

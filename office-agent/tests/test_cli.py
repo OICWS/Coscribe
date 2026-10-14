@@ -341,6 +341,7 @@ def test_builtin_skills_are_enabled_by_default(
     assert result.exit_code == 0, result.output
     assert captured["enabled_skill_names"] == {
         "PPTX Slides",
+        "PPTX Pages",
         "Excel Spreadsheets",
         "Word Documents",
         "Skill Creator",
