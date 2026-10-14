@@ -13,7 +13,9 @@ not fit as `###` (#193, found by the Excel evaluation of #164).
   or `Wednesday` (an unformatted date as `yyyy-mm-dd`, with ` hh:mm:ss` for a time); fractions
   and `@` by the longer of the format's own length and the General text.
 - `tools/office/xlsx/column_layout.py`: a column gets its longest shown value plus 2, never more
-  than 50, and only when that is wider than what it has. Columns are only ever widened:
+  than 50, and only when that is wider than what it has (a column the file gives no width has
+  the sheet's default, `defaultColWidth`, such as 14.43 in a Google Sheets export, else 8.43).
+  Columns are only ever widened:
   - `write_xlsx` sizes the sheet it wrote. Text over empty cells to its right (a title over a
     table, a name beside an empty Notes cell) runs on over them, up to the sheet's last column,
     and widens its own column only when it is longer than that whole run; in the sheet's last
@@ -38,7 +40,7 @@ not fit as `###` (#193, found by the Excel evaluation of #164).
     empty cells to its right follows the same run-on rule as in `write_xlsx`. Hidden and
     zero-width columns are left alone.
 - Nothing is reported to the model. The xlsx goldens change only in `<cols>`.
-- `tests/test_xlsx_column_widths.py` (38 tests).
+- `tests/test_xlsx_column_widths.py` (40 tests).
 
 ## Not verified
 - The model run of the affected Excel tasks (`03-lookup-two-sheets`, `07-chinese-formats`, check

@@ -166,10 +166,10 @@ def _number(value: float, parsed: _Section) -> str:
     whole, _, fraction = f"{shown:.{decimals}f}".partition(".")
     whole = whole.zfill(integer_codes.count("0"))
     point = parsed.codes.index(".") if "." in parsed.codes else len(parsed.codes)
+    if "," in integer_codes:
+        whole = _grouped(whole)
     if any(code.startswith(_LITERAL) for code in parsed.codes[:point]):
         whole = _fill(whole, parsed.codes[:point])
-    elif "," in integer_codes:
-        whole = _grouped(whole)
     between = "".join(code[1:] for code in parsed.codes[point:] if code.startswith(_LITERAL))
     return f"{whole}{'.' if decimals else ''}{fraction}{between}{'%' * percent}"
 
