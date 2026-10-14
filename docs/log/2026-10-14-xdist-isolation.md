@@ -1,4 +1,4 @@
-# Tests that are safe under `pytest -n 4`; the Windows job tries `-n 4` (partly shipped)
+# Tests that are safe under `pytest -n 4`; the Windows job runs `-n 4` (shipped)
 
 Why: CI runs pytest on 4 workers, and some tests took a port in a way another worker could take
 first (#176, item 4 of #201).
@@ -23,7 +23,9 @@ first (#176, item 4 of #201).
   workers. Two of its three, `test_file_sizes.py::test_no_new_large_text_file` (`elements.py`
   over 200 KB) and `test_office_golden.py::test_deck_matches_its_golden[icon]`, fail the same way
   in that serial nightly run. The third was the handover test handing a `dup()` of a listener to
-  a second server, which Windows' proactor loop refuses (`WinError 87`); the test no longer does.
+  a second server, which Windows' proactor loop refuses (`WinError 87`); the test no longer does,
+  and the second Windows run (run 38507835963, 361 s) passes it: 2427 passed, only the two
+  pre-existing failures (#210).
 - Measured: a stress script of 8 processes x 3000 binds saw 10 `EADDRINUSE` with the old
   pick-close-rebind pattern and 0 with bind-0-and-keep. Three pytest processes at once running
   the two callback-port tests, 5 rounds: 4 of 15 failed on the fixed port, 0 with the port
@@ -36,9 +38,9 @@ first (#176, item 4 of #201).
   an OS file lock in `tools/_office_bins.py`).
 
 ## Not verified
-- The reworked handover test on Windows (real app binding the port after the setup server let
-  go): it runs on this pull request's next Windows run.
+- A real Windows desktop (the Windows CI runner is the only Windows that ran these tests).
 
 ## Follow-ups
 - #209: `web/browser_panel.py::_free_port` (product code) picks a port and closes it before
   Chromium binds it: the same gap, outside the tests.
+- #210: the two Windows-only failures on `main` (file-size check on `elements.py`, icon golden).
