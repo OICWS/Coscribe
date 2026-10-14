@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import zipfile
 from copy import copy
 from dataclasses import dataclass, field, replace
@@ -213,9 +214,10 @@ def apply_spans(sheet: Worksheet, spans: list[Span]) -> None:
         sheet.column_dimensions[letter] = dimension
 
 
-def fit_columns(sheet: Worksheet, spans: list[Span]) -> None:
+def fit_columns(sheet: Worksheet, spans: list[Span]) -> list[str]:
     """Lay `spans` onto `sheet`, each column widened to its longest shown value; a hidden column
-    that now holds data is shown again."""
+    that now holds data is shown again. Returns the formula cells, which have no value to measure
+    until LibreOffice recalculates."""
     filled = {
         column
         for row in sheet.iter_rows()
@@ -229,6 +231,7 @@ def fit_columns(sheet: Worksheet, spans: list[Span]) -> None:
     default = sheet_default_width(sheet)
     widen(spans, _needed(sheet, spans, default), default)
     apply_spans(sheet, spans)
+    return [cell.coordinate for row in sheet.iter_rows() for cell in row if cell.data_type == "f"]
 
 
 def _cell_needed(sheet: Worksheet, spans: list[Span], cell: Any, value: Any) -> float:
@@ -270,3 +273,71 @@ def widen_for_values(
         )
     if widen(spans, needed, sheet_default_width(sheet)):
         apply_spans(sheet, spans)
+
+
+def _col_xml(span: Span) -> str:
+    sized = {} if span.width is None else {"width": f"{span.width:g}", "customWidth": "1"}
+    look = {k: ("1" if v is True else "0" if v is False else str(v)) for k, v in span.look.items()}
+    attributes = {**look, "min": str(span.min), "max": str(span.max), **sized}
+    return ET.tostring(ET.Element("col", attributes), encoding="unicode")
+
+
+def _xml_spans(cols: str) -> list[Span]:
+    spans = []
+    for col in ET.fromstring(cols) if cols else []:
+        look: dict[str, Any] = {
+            k: v for k, v in col.attrib.items() if k not in ("min", "max", "width", "customWidth")
+        }
+        look["hidden"] = look.get("hidden") in ("1", "true")
+        size = col.get("width")
+        first, last = int(col.get("min", "0")), int(col.get("max", "0"))
+        spans.append(Span(first, last, float(size) if size else None, look))
+    return spans
+
+
+def _patch_cols(path: Path, sheet_name: str, needed: dict[int, float], default: float) -> None:
+    """Widen columns of `sheet_name` in the saved file by rewriting its `<cols>` only: an openpyxl
+    save would drop every value LibreOffice computed."""
+    from ..._xlsx_lookup_formulas import _sheet_archive_paths
+
+    with zipfile.ZipFile(path) as archive:
+        entries = {info.filename: archive.read(info.filename) for info in archive.infolist()}
+        infos = archive.infolist()
+    part = _sheet_archive_paths(entries).get(sheet_name)
+    if part is None:
+        return
+    xml = entries[part].decode("utf-8")
+    found = re.search(r"<cols>.*?</cols>|<cols/>", xml, re.DOTALL)
+    start = found.start() if found else xml.find("<sheetData")
+    end = found.end() if found else start
+    spans = _xml_spans(found.group(0) if found else "")
+    if start < 0 or not widen(spans, needed, default):
+        return
+    columns = "".join(_col_xml(span) for span in sorted(spans, key=lambda span: span.min))
+    entries[part] = f"{xml[:start]}<cols>{columns}</cols>{xml[end:]}".encode()
+    patched = path.with_name(path.name + ".cols")
+    with zipfile.ZipFile(patched, "w", zipfile.ZIP_DEFLATED) as archive:
+        for info in infos:
+            archive.writestr(info, entries[info.filename])
+    patched.replace(path)
+
+
+def widen_after_recalc(path: Path, sheet_name: str, formula_cells: list[str]) -> None:
+    """Widen the columns of `formula_cells` to the values LibreOffice computed for them."""
+    from openpyxl import load_workbook
+
+    if not formula_cells:
+        return
+    values = load_workbook(str(path), data_only=True)
+    try:
+        sheet = values[sheet_name]
+        default = sheet_default_width(sheet)
+        needed: dict[int, float] = {}
+        for coordinate in formula_cells:
+            cell = sheet[coordinate]
+            needed[cell.column] = max(
+                needed.get(cell.column, 0.0), needed_width(cell.value, cell.number_format)
+            )
+    finally:
+        values.close()
+    _patch_cols(path, sheet_name, needed, default)

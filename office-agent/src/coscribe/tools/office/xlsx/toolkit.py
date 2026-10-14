@@ -12,6 +12,7 @@ from .column_layout import (
     explicit_width_starts,
     fit_columns,
     sheet_spans,
+    widen_after_recalc,
     widen_for_values,
 )
 from .helpers import (
@@ -115,7 +116,7 @@ class SpreadsheetToolkit:
                 workbook.remove(default_sheet)
         for row in rows:
             sheet.append([_coerce_cell(cell) for cell in row])
-        fit_columns(sheet, spans)
+        formula_cells = fit_columns(sheet, spans)
         # Makes the just-written sheet the one LibreOffice renders for the
         # preview thumbnail below (and the one Excel opens to) -- without
         # this, amending an existing workbook leaves whatever sheet was
@@ -127,6 +128,8 @@ class SpreadsheetToolkit:
         recalc_result: dict[str, object] = {"status": "skipped", "skipped_reason": None}
         if has_formula:
             recalc_result = _recalc_xlsx_and_evaluate_lookups(file_path)
+        if recalc_result["status"] != "skipped":
+            widen_after_recalc(file_path, sheet_name, formula_cells)
 
         preview_path, preview_skipped_reason = render_thumbnail(file_path, self._state_dir)
         return {
@@ -593,6 +596,9 @@ class SpreadsheetToolkit:
         recalc_result: dict[str, object] = {"status": "skipped", "skipped_reason": None}
         if has_formula:
             recalc_result = _recalc_xlsx_and_evaluate_lookups(file_path)
+        if recalc_result["status"] != "skipped":
+            formulas = [cell.coordinate for cell in written if cell.data_type == "f"]
+            widen_after_recalc(file_path, sheet_name, formulas)
 
         preview_path, preview_skipped_reason = render_thumbnail(file_path, self._state_dir)
         return {

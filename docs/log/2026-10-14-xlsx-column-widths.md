@@ -20,7 +20,8 @@ not fit as `###` (#193, found by the Excel evaluation of #164).
     table, a name beside an empty Notes cell) runs on over them, up to the sheet's last column,
     and widens its own column only when it is longer than that whole run; in the sheet's last
     column it is measured like any value. A formula has no value yet, so its column is sized by
-    its header and constants.
+    its header and constants, and again from the computed values after LibreOffice recalculates
+    (`2026-10-14-xlsx-widths-after-recalc.md`).
   - When `write_xlsx` replaces a sheet, each column of the old sheet is carried over whole
     (width, hidden, outline level, style, and ranges such as `A:XFD`); before this, replacing a
     sheet dropped all of it. A width set earlier (by `set_xlsx_column_width`, a template or an
@@ -34,11 +35,12 @@ not fit as `###` (#193, found by the Excel evaluation of #164).
     the `###` of the Chinese-format task: `12850000` becomes `12,850,000元` after `write_xlsx`.
   - `edit_xlsx_cells` widens the columns of the cells it wrote (a header such as `Unit price`
     added next to a user's table), also a column set narrower than the default. A formula it
-    writes has no value yet and is not measured; a merged cell is not measured, and text with
+    writes is measured once LibreOffice has recalculated
+    (`2026-10-14-xlsx-widths-after-recalc.md`); a merged cell is not measured, and text with
     empty cells to its right follows the same run-on rule as in `write_xlsx`. Hidden and
     zero-width columns are left alone.
 - Nothing is reported to the model. The xlsx goldens change only in `<cols>`.
-- `tests/test_xlsx_column_widths.py` (38 tests).
+- `tests/test_xlsx_column_widths.py` (40 tests).
 
 ## Not verified
 - The model run of the affected Excel tasks (`03-lookup-two-sheets`, `07-chinese-formats`, check
@@ -50,8 +52,5 @@ not fit as `###` (#193, found by the Excel evaluation of #164).
   formatting B and then C (`=B2/10000` as `#,##0.00"万"` under a short header), C printed `###`.
 
 ## Follow-ups
-- Next PR (`tools/xlsx-widths-after-recalc`): size a column of formulas from the values
-  LibreOffice computed, after the recalculation `write_xlsx` and `edit_xlsx_cells` already run.
-- A formula `edit_xlsx_cells` writes is not measured: in the lookup task (03) the products it looks
-  up (`Orders!D6` `Desk lamp`, `=INDEX(Prices!...)`) are still cut off; the next PR measures
-  them after LibreOffice recalculates.
+- Whether `format_xlsx_cells` should recalculate first, so that a second call on a formula
+  column has values to measure.

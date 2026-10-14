@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import datetime as dt
 import re
+import shutil
 import zipfile
 from pathlib import Path
 
@@ -13,8 +14,13 @@ from openpyxl import Workbook, load_workbook
 
 from coscribe.tools import _thumbnail
 from coscribe.tools.office.xlsx import build_spreadsheet_tools
-from coscribe.tools.office.xlsx.column_layout import fit_columns, widen_for_values
-from coscribe.tools.office.xlsx.column_widths import MAX_WIDTH, displayed_text, text_width
+from coscribe.tools.office.xlsx.column_layout import _patch_cols, fit_columns, widen_for_values
+from coscribe.tools.office.xlsx.column_widths import (
+    DEFAULT_WIDTH,
+    MAX_WIDTH,
+    displayed_text,
+    text_width,
+)
 from evals.xlsx_checks import clipped_texts
 
 FILE = "book.xlsx"
@@ -224,6 +230,37 @@ def test_a_number_format_applied_later_widens_its_column(tmp_path: Path) -> None
         path=FILE, sheet_name="Orders", cell_range="B2:B3", number_format="0"
     )
     assert _width(tmp_path, "B") == 30
+
+
+def test_widths_after_recalculation_widen_the_saved_file_and_never_narrow_it(
+    tmp_path: Path,
+) -> None:
+    _book_with_cols(tmp_path, '<col min="3" max="4" width="9" customWidth="1"/>')
+
+    _patch_cols(tmp_path / FILE, "Orders", {2: 20.0, 3: 5.0, 4: 30.0}, DEFAULT_WIDTH)
+
+    assert [(c["min"], c["max"], c["width"]) for c in _cols(tmp_path)] == [
+        ("2", "2", "20"),
+        ("3", "3", "9"),
+        ("4", "4", "30"),
+    ]
+    load_workbook(tmp_path / FILE)
+
+
+@pytest.mark.real_libreoffice
+@pytest.mark.skipif(shutil.which("soffice") is None, reason="needs LibreOffice")
+def test_a_column_of_formulas_is_sized_from_the_computed_values(tmp_path: Path) -> None:
+    _write(tmp_path, "| Item | Sum |\n| a | =123456789012/7 |")
+
+    assert load_workbook(tmp_path / FILE, data_only=True)["Orders"]["B2"].value
+    (sized,) = [c for c in _cols(tmp_path) if c["min"] == "2"]
+    assert float(sized["width"]) >= len("17636684145")
+
+    _tools(tmp_path)["edit_xlsx_cells"](  # type: ignore[operator]
+        path=FILE, sheet_name="Orders", start_cell="C1", content="| Total |\n| =B2*1 |"
+    )
+    (sized,) = [c for c in _cols(tmp_path) if c["min"] == "3"]
+    assert float(sized["width"]) >= len("17636684145")
 
 
 def test_edit_xlsx_cells_widens_the_columns_it_wrote(tmp_path: Path) -> None:
