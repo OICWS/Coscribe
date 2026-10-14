@@ -12,7 +12,17 @@ from coscribe.workflows.refs import (
     render_value,
     resolve,
 )
-from coscribe.workflows.spec import Condition, parse_workflow, walk, workflow_error
+from coscribe.workflows.spec import (
+    BranchStep,
+    Condition,
+    LoopStep,
+    Operand,
+    _locate,
+    child_lists,
+    parse_workflow,
+    walk,
+    workflow_error,
+)
 
 FIXTURE = Path(__file__).parent / "fixtures" / "pdf_error_audit_workflow.json"
 
@@ -307,3 +317,329 @@ def test_a_model_steps_fields_are_the_only_ones_to_read() -> None:
     )  # fmt: skip
     with pytest.raises(ValidationError, match="reads 'note.text', but note only has summary"):
         parse_workflow(_with(loop))
+
+
+# -- what a save-time error says, word for word --
+
+
+def _error(data: Any) -> str:
+    with pytest.raises(ValidationError) as caught:
+        parse_workflow(data)
+    return workflow_error(caught.value, data)
+
+
+def _llm(step_id: str, save_as: str, *fields: str) -> dict[str, Any]:
+    return {
+        "id": step_id, "kind": "llm", "title": step_id.title(), "prompt": "go",
+        "fields": [{"name": f} for f in fields], "save_as": save_as,
+    }  # fmt: skip
+
+
+def _script(step_id: str, **inputs: Any) -> dict[str, Any]:
+    return {
+        "id": step_id, "kind": "script", "title": step_id.title(), "code": "print(1)",
+        "inputs": inputs,
+    }  # fmt: skip
+
+
+def _check(*conditions: dict[str, Any]) -> dict[str, Any]:
+    return {"id": "gate", "kind": "check", "title": "Gate", "conditions": list(conditions)}
+
+
+def _approval(when: dict[str, Any] | None = None, message: str = "ok?") -> dict[str, Any]:
+    step: dict[str, Any] = {"id": "ask", "kind": "approval", "title": "Ask", "message": message}
+    if when is not None:
+        step["when"] = when
+    return step
+
+
+def test_a_bad_name_says_what_a_name_looks_like() -> None:
+    assert _error({"inputs": [{"name": "Bad"}]}) == (
+        "inputs.0.name: 'Bad' must start with a lowercase letter and use only a-z, 0-9 and _ "
+        "(at most 40 characters)"
+    )
+    parse_workflow({"inputs": [{"name": "a" + "b" * 39}]})
+    assert "at most 40" in _error({"inputs": [{"name": "a" + "b" * 40}]})
+
+
+def test_a_problem_outside_the_steps_has_no_step_number() -> None:
+    assert _error({"inputs": [{"name": "a"}, {"name": "a"}]}) == "input names must be unique"
+
+
+def test_several_problems_are_joined_with_semicolons() -> None:
+    data = {"steps": [{"id": "x", "kind": "tool"}]}
+
+    assert _error(data) == "step 1: title: Field required; step 1: tool: Field required"
+
+
+def test_an_operand_is_read_by_its_reference_or_count_and_a_value_has_none() -> None:
+    assert Operand(ref="a.b").reference() == "a.b"
+    assert Operand(count="files").reference() == "files"
+    assert Operand(value=3).reference() is None
+
+
+def test_a_deep_reference_is_judged_by_its_first_name() -> None:
+    workflow = parse_workflow(_with(_tool("a", path="{{files.x.y.z}}")))
+
+    assert [step.id for step in workflow.steps] == ["a"]
+
+
+def test_both_sides_of_a_condition_must_name_something_that_exists() -> None:
+    ghost_left = _check({"left": {"ref": "ghost"}, "op": "eq", "right": {"value": 1}})
+    ghost_right = _check({"left": {"ref": "files"}, "op": "eq", "right": {"ref": "ghost"}})
+
+    assert _error(_with(ghost_left)) == (
+        "step 1 ('Gate') reads 'ghost', which isn't an input or the result of an earlier step"
+    )
+    assert _error(_with(ghost_right)) == (
+        "step 1 ('Gate') reads 'ghost', which isn't an input or the result of an earlier step"
+    )
+    parse_workflow(_with(_check({"left": {"ref": "files"}, "op": "not_empty"})))
+    parse_workflow(
+        _with(_branch([], []) | {"condition": {"left": {"ref": "files"}, "op": "not_empty"}})
+    )
+
+
+def test_an_approval_condition_is_checked_only_when_there_is_one() -> None:
+    parse_workflow(_with(_approval()))
+    parse_workflow(_with(_approval({"left": {"ref": "files"}, "op": "not_empty"})))
+
+    assert "reads 'ghost'" in _error(
+        _with(_approval({"left": {"ref": "ghost"}, "op": "not_empty"}))
+    )
+
+
+def test_references_inside_lists_and_script_inputs_are_checked() -> None:
+    missing = "reads 'ghost', which isn't an input or the result of an earlier step"
+
+    assert missing in _error(_with(_tool("a", paths=["{{files}}", ["{{ghost}}"]])))
+    assert missing in _error(_with(_script("s", nested={"deep": ["{{ghost}}"]})))
+    parse_workflow(_with(_script("s", nested={"deep": ["{{files}}"]})))
+
+
+def test_a_template_that_is_not_a_reference_is_refused_wherever_it_hides() -> None:
+    for step in (
+        _tool("a", paths=["x", ["{{files | upper}}"]]),
+        _script("s", nested={"deep": ["{{files | upper}}"]}),
+    ):
+        assert "isn't a reference -- write {{name}} or {{name.field}}" in _error(_with(step))
+
+
+def test_a_blocks_lists_are_named_in_document_order() -> None:
+    branch = parse_workflow(_with(_branch([_tool("a", path="x")], [_tool("b", path="y")])))
+    loop = parse_workflow(_with(_loop([_tool("c", path="{{file}}")])))
+
+    (branch_step,) = branch.steps
+    (loop_step,) = loop.steps
+    assert isinstance(branch_step, BranchStep) and isinstance(loop_step, LoopStep)
+    assert child_lists(branch_step) == [
+        ("then", branch_step.then),
+        ("otherwise", branch_step.otherwise),
+    ]
+    assert child_lists(loop_step) == [("steps", loop_step.steps)]
+    assert child_lists(branch_step.then[0]) == []
+
+
+def test_only_a_loop_adds_itself_to_the_loops_around_its_steps() -> None:
+    workflow = parse_workflow(
+        _with(
+            _branch([_tool("a", path="x")], []),
+            {
+                **_loop([_branch([_tool("c", path="{{file}}")], []) | {"id": "inner"}]),
+                "id": "outer",
+            },
+        )
+    )
+
+    assert [(p.step.id, p.loops) for p in walk(workflow.steps)] == [
+        ("decide", ()), ("a", ()), ("outer", ()), ("inner", ("outer",)), ("c", ("outer",)),
+    ]  # fmt: skip
+
+
+def test_a_field_is_judged_by_its_first_name_after_the_result() -> None:
+    steps = [_llm("m", "note", "summary")]
+
+    parse_workflow(_with(*steps, _tool("a", path="{{note.summary.deep.er}}")))
+    parse_workflow(_with(*steps, _tool("a", path="{{note.summary}}")))
+    assert _error(_with(*steps, _tool("a", path="{{note.nope.deeper}}"))) == (
+        "step 2 ('A') reads 'note.nope.deeper', but note only has summary"
+    )
+
+
+def test_what_a_step_cannot_read_is_explained_and_a_loop_or_arm_name_is_hinted() -> None:
+    assert _error(_with(_tool("a", path="{{ghost}}"))) == (
+        "step 1 ('A') reads 'ghost', which isn't an input or the result of an earlier step"
+    )
+    hint = " here (it's made inside a loop, or in only one arm of a branch)"
+    one_arm = _branch([_tool("a", "x", path="1")], [])
+    other_arm = {**_branch([], [_tool("b", "y", path="2")]), "id": "decide2"}
+    assert _error(_with(one_arm, other_arm, _tool("z", path="{{x}}"))) == (
+        "step 5 ('Z') reads 'x', which isn't an input or the result of an earlier step" + hint
+    )
+    in_loop = _loop([_tool("c", "inside", path="{{file}}")])
+    assert _error(_with(in_loop, _tool("z", path="{{inside}}"))) == (
+        "step 3 ('Z') reads 'inside', which isn't an input or the result of an earlier step" + hint
+    )
+
+
+def test_names_hinted_from_two_loops_are_both_remembered() -> None:
+    hint = " here (it's made inside a loop, or in only one arm of a branch)"
+    first = _loop([_tool("c", "one", path="{{file}}")])
+    second = {**_loop([_tool("d", "two", path="{{file}}")]), "id": "each2"}
+
+    message = _error(_with(first, second, _tool("z", path="{{one}}")))
+
+    assert message.endswith(hint)
+
+
+def test_a_workflow_has_at_most_a_hundred_steps_nested_ones_included() -> None:
+    flat = [_tool(f"t{i}", path="x") for i in range(98)]
+    fits = _branch([_tool("in1", path="x")], [])
+    too_many = _branch([_tool("in1", path="x"), _tool("in2", path="x")], [])
+
+    parse_workflow(_with(*flat, fits))
+    assert (
+        _error(_with(*flat, too_many)) == "a workflow has at most 100 steps, nested ones included"
+    )
+
+
+def test_a_step_id_and_a_saved_name_may_be_used_once() -> None:
+    assert _error(_with(_tool("a", path="x"), _tool("a", path="y"))) == (
+        "step 2: id 'a' is used twice"
+    )
+    assert _error(_with(_tool("a", "x", path="1"), _tool("b", "x", path="2"))) == (
+        "step 2: 'x' is already taken"
+    )
+
+
+def test_what_a_branch_saves_stays_taken_after_it_whichever_arm_saved_it() -> None:
+    then_only = _branch([_tool("a", "x", path="1")], [])
+    otherwise_only = _branch([], [_tool("a", "x", path="1")])
+    both = _branch([_tool("a", "x", path="1")], [_tool("b", "x", path="2")])
+
+    for branch in (then_only, otherwise_only, both):
+        assert _error(_with(branch, _tool("later", "x", path="3"))).endswith("'x' is already taken")
+
+
+def test_a_branch_leaves_earlier_and_input_names_readable() -> None:
+    workflow = parse_workflow(
+        _with(
+            _tool("first", "early", path="x"),
+            _branch([_tool("a", "x", path="1")], [_tool("b", "x", path="2")]),
+            _tool("after", path="{{early}} {{files}} {{x}}"),
+        )
+    )
+
+    assert [step.id for step in workflow.steps] == ["first", "decide", "after"]
+
+
+def _nest(kind: str, arm: str, depth: int) -> dict[str, Any]:
+    """`depth` blocks inside one another, each holding the next in `arm`."""
+    inner: dict[str, Any] = _tool("leaf", path="x")
+    for level in range(depth):
+        if kind == "loop":
+            block = {**_loop([inner]), "item": f"item{level}"}
+        else:
+            block = {**_branch([], []), arm: [inner]}
+        inner = {**block, "id": f"b{level}"}
+    return inner
+
+
+@pytest.mark.parametrize("kind", ["loop", "then", "otherwise"])
+def test_blocks_nest_three_deep_in_any_arm_but_not_four(kind: str) -> None:
+    shape = "loop" if kind == "loop" else "branch"
+
+    parse_workflow(_with(_nest(shape, kind, 3)))
+    assert _error(_with(_nest(shape, kind, 4))).endswith("branches and loops nest at most 3 deep")
+
+
+def test_a_loop_names_its_item_and_says_what_it_cannot_collect() -> None:
+    assert _error(_with(_loop([_tool("a", "file", path="x")]))) == (
+        "step 2: 'file' is already taken"
+    )
+    inner = {**_loop([_tool("a", path="x")]), "id": "inner", "over": "files"}
+    assert _error(_with(_loop([inner]))) == (
+        "step 2 ('Each file'): 'file' is already taken, name the item differently"
+    )
+    assert _error(_with(_loop([_tool("a", "t", path="x")], collect="files", save_as="ts"))) == (
+        "step 1 ('Each file') collects 'files', which isn't the item or a result of "
+        "a step inside the loop"
+    )
+    note = _loop([_llm("m", "note", "summary")], collect="note.text", save_as="notes")
+    assert _error(_with(note)) == (
+        "step 1 ('Each file') reads 'note.text', but note only has summary"
+    )
+
+
+# -- where an error is located --
+
+
+def _step_data(kind: str, **extra: Any) -> dict[str, Any]:
+    return {"id": kind, "kind": kind, "title": kind, **extra}
+
+
+@pytest.mark.parametrize(
+    ("loc", "expected"),
+    [
+        (["steps"], (None, ["steps"])),
+        (["inputs", 0], (None, ["inputs", 0])),
+        (["other", 0, "title"], (None, ["other", 0, "title"])),
+        (["steps", "x"], (None, ["steps", "x"])),
+        (["steps", 0], (1, [])),
+        (["steps", 0, "title"], (1, ["title"])),
+        (["steps", 0, "tool", "title"], (1, ["title"])),
+        (["steps", 0, "tool", "args", "path"], (1, ["args", "path"])),
+        (["steps", 9, "tool", "title"], (1, ["title"])),
+    ],
+)
+def test_locating_an_error_in_flat_data(
+    loc: list[Any], expected: tuple[int | None, list[Any]]
+) -> None:
+    assert _locate({"steps": []}, loc) == expected
+    assert _locate(None, loc) == expected
+
+
+def test_locating_counts_every_step_before_it_nested_ones_included() -> None:
+    loop = _step_data("loop", steps=[_step_data("tool"), _step_data("tool")])
+    branch = _step_data("branch", then=[_step_data("tool")], otherwise=[_step_data("tool"), {}])
+    data = {"steps": ["junk", loop, branch, {}]}
+
+    assert _locate(data, ["steps", 1, "loop", "title"]) == (2, ["title"])
+    assert _locate(data, ["steps", 2, "branch", "title"])[0] == 5
+    assert _locate(data, ["steps", 3, "tool", "title"]) == (9, ["title"])
+    assert _locate(data, ["steps", 0, "tool", "title"])[0] == 1
+    assert _locate(data, ["steps", 1, "loop", "steps", 1, "tool", "title"]) == (4, ["title"])
+    assert _locate(data, ["steps", 2, "branch", "then", 0, "tool", "title"]) == (6, ["title"])
+    assert _locate(data, ["steps", 2, "branch", "otherwise", 1, "tool", "title"]) == (8, ["title"])
+    assert _locate(data, ["steps", 2, "branch", "then", 0]) == (6, [])
+
+
+def test_locating_goes_two_levels_down() -> None:
+    inner = _step_data("branch", then=[_step_data("tool")], otherwise=[_step_data("tool")])
+    outer = _step_data("loop", steps=[_step_data("tool"), inner])
+    data = {"steps": [outer]}
+
+    loc = ["steps", 0, "loop", "steps", 1, "branch", "otherwise", 0, "tool", "title"]
+    assert _locate(data, loc) == (5, ["title"])
+
+
+def test_a_block_inside_a_block_counts_all_its_steps_when_numbering_what_follows() -> None:
+    inner = _step_data("branch", then=[_step_data("tool"), _step_data("tool")])
+    data = {"steps": [_step_data("loop", steps=[inner]), _step_data("tool")]}
+
+    assert _locate(data, ["steps", 1, "tool", "title"]) == (5, ["title"])
+
+
+def test_the_steps_of_a_nested_then_arm_are_counted_before_the_otherwise_arm() -> None:
+    branch = _step_data(
+        "branch",
+        then=[_step_data("branch", then=[_step_data("tool")])],
+        otherwise=[_step_data("tool")],
+    )
+
+    assert _locate(
+        {"steps": [branch]}, ["steps", 0, "branch", "otherwise", 0, "tool", "title"]
+    ) == (
+        4,
+        ["title"],
+    )
