@@ -20,13 +20,14 @@ references (MIT licence, copyright Hugo He).
    accent, plus two or three neutrals for text and backgrounds, all as #RRGGBB), a type scale, the
    margins, and one recurring motif (a band, a rule, a corner shape). Every page reuses them.
 4. **Write the pages** with write_file into a folder next to the deck, e.g. `q3-review-pages/`,
-   named so they sort in order: `01-cover.svg`, `02-agenda.svg`, ... One page per call.
-5. **Build**: build_pptx_from_pages(pages_dir, path, sources=[the material's files]). Fix every
-   error it reports by editing the named page, and build again; at most two repair rounds. Read the
-   warnings and fix the ones that are real (an invented number, faint body text); leave the ones
-   that are not (an axis tick, a watermark).
-6. **Look at it**: render_pptx_preview(path) and check the pages as a reader would before saying
-   the deck is ready.
+   named so they sort in order: `01-cover.svg`, `02-agenda.svg`, ... Write every page before the
+   first build, and write each one carefully once: every extra round trip costs the user money.
+5. **Build once**: build_pptx_from_pages(pages_dir, path, sources=[the material's files]). Fix
+   every error it reports by editing the named page, then build again; at most two repair rounds.
+   Fix the warnings that are real (an invented number, faint body text) in the same edits; do not
+   rebuild for a warning you decide to keep (an axis tick, a watermark).
+6. **Look once**: when the build has no errors, render_pptx_preview(path) once and change only
+   what is clearly wrong, with one more build at most.
 
 To edit a deck built this way: edit the page's SVG (edit_file) and build again; for a change that
 touches every page (a colour, a font), edit each page. If the build refuses because the .pptx was

@@ -1,5 +1,7 @@
-"""Price per million tokens, as listed on https://api-docs.deepseek.com/quick_start/pricing
-(checked 2026-10-13; off-peak, which is when a run is meant to happen)."""
+"""Price per million tokens in US dollars, as listed on
+https://api-docs.deepseek.com/quick_start/pricing (checked 2026-10-14; off-peak, which is when a
+run is meant to happen). The Chinese page bills in yuan: 0.02 / 1 / 4 for deepseek-flash, about
+6.7 times these numbers."""
 
 from __future__ import annotations
 
