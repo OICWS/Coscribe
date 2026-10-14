@@ -7,6 +7,7 @@ from typing import Any, Optional
 from ..._file_locks import locked_by_path
 from ..._thumbnail import render_thumbnail
 from ..._workspace import WorkspaceScope
+from .column_widths import explicit_column_widths, fit_column_widths
 from .helpers import (
     _CHART_TYPES,
     _CONDITIONAL_FORMAT_RULE_TYPES,
@@ -87,11 +88,13 @@ class SpreadsheetToolkit:
 
         rows = _parse_table_rows(content)
         file_path = self._check_writable(path)
+        kept_widths: dict[str, float] = {}
         if file_path.exists():
             workbook = load_workbook(str(file_path))
             if sheet_name in workbook.sheetnames:
                 if not overwrite:
                     raise FileExistsError(f"Sheet already exists: {sheet_name}")
+                kept_widths = explicit_column_widths(workbook[sheet_name])
                 del workbook[sheet_name]
                 sheet = workbook.create_sheet(sheet_name)
             else:
@@ -104,6 +107,7 @@ class SpreadsheetToolkit:
                 workbook.remove(default_sheet)
         for row in rows:
             sheet.append([_coerce_cell(cell) for cell in row])
+        fit_column_widths(sheet, kept_widths)
         # Makes the just-written sheet the one LibreOffice renders for the
         # preview thumbnail below (and the one Excel opens to) -- without
         # this, amending an existing workbook leaves whatever sheet was
