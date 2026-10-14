@@ -1,18 +1,19 @@
-# write_xlsx sizes a column of formulas from the computed values (shipped)
+# write_xlsx widens a column of formulas to the computed values (shipped)
 
-Why: `write_xlsx` sizes the columns of the sheet it writes from what they show
+Why: `write_xlsx` widens the columns of the sheet it writes to what they show
 (`2026-10-14-xlsx-column-widths.md`), but a formula has no value until LibreOffice recalculates
-the saved file, so a column of formulas under a short header (`Total`, `占比`) kept the default
-width and a large result could still print as `###` (#193).
+the saved file, so a column of formulas under a short header (`Total`, `占比`) kept its width and
+a large result could still print as `###` (#193).
 
 ## Shipped
 - After the recalculation `write_xlsx` already runs when a sheet has formulas,
-  `column_layout.widen_after_recalc` reads the computed values and widens each formula column
-  of the written sheet that needs more room, never past 50 and never one with a kept width.
+  `column_layout.widen_after_recalc` reads the computed values of the formula cells it wrote and
+  widens their columns by the same rule as the rest: the shown value plus 2, never past 50, never
+  narrower than the column already is, a hidden or zero-width column left alone.
 - The widths are patched into `<cols>` of the saved sheet: saving through openpyxl again would
-  drop every cached value. A `<col>` range the column falls in is split, the rest of the range
+  drop every computed value. A `<col>` range the column falls in is split; the rest of the range
   keeps its width and look. The preview is rendered after the patch.
-- Tests: the patch splits a range and keeps the rest; a column holding only
+- Tests: the patch widens and splits a range but never narrows; a column holding only
   `=123456789012/7` under the header `Sum` gets at least 11 characters (real LibreOffice).
 
 ## Not verified
