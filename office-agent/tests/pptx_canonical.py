@@ -17,6 +17,7 @@ import zipfile
 from pathlib import Path
 
 from lxml import etree
+from PIL import Image
 
 _XML_SUFFIXES = (".xml", ".rels")
 _EMBEDDINGS = "ppt/embeddings/"
@@ -52,9 +53,14 @@ def _embedded_package(data: bytes) -> str:
 
 def canonical_part(name: str, data: bytes) -> str:
     """The canonical text of one zip member: indented XML, an embedded Office package member by
-    member, or a size and hash for other binaries."""
+    member, a decoded size and mode for a PNG, or a size and hash for other binaries."""
     if name.startswith(_EMBEDDINGS) and name.endswith(_PACKAGE_SUFFIXES):
         return _embedded_package(data)
+    if name.endswith(".png"):
+        # A rasterised picture's bytes depend on the platform's fonts and PNG encoder, so only
+        # what the deck shows is pinned: the decoded size and colour mode.
+        with Image.open(io.BytesIO(data)) as image:
+            return f"<png {image.width}x{image.height} {image.mode}>\n"
     if not name.endswith(_XML_SUFFIXES):
         return f"<binary {len(data)} bytes sha256={hashlib.sha256(data).hexdigest()}>\n"
     parser = etree.XMLParser(remove_blank_text=True)

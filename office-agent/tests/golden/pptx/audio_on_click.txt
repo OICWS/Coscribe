@@ -101,7 +101,7 @@
   <Relationship Id="rId7" Target="slides/slide1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"/>
 </Relationships>
 ===== ppt/media/image1.png
-<binary 4979 bytes sha256=eda715cfa5bfee179f178a4c3c8aa63ea72eedac9ef6dd3a8d29e67eda80b069>
+<png 120x55 RGBA>
 ===== ppt/media/media1.wav
 <binary 1644 bytes sha256=c726d333dd159a31423f3480dbb1c5c4a9dfcd30efe1f7e12ade390dc92e8908>
 ===== ppt/presProps.xml

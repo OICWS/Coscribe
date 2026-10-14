@@ -33,14 +33,34 @@ ALLOWED = {
 }
 
 
-def _oversized_text_files() -> list[str]:
-    listed = subprocess.run(
-        ["git", "ls-files", "-z"], cwd=REPO, check=True, capture_output=True
+def _blob_sizes() -> dict[str, int]:
+    # The size git stores, not the working-tree file's: a Windows checkout converts line
+    # endings and would push a file near the limit over it.
+    staged = subprocess.run(
+        ["git", "ls-files", "-s", "-z"], cwd=REPO, check=True, capture_output=True
     ).stdout.decode()
+    blobs = {}
+    for entry in filter(None, staged.split("\0")):
+        meta, name = entry.split("\t", 1)
+        mode, blob, _stage = meta.split()
+        if mode != "160000":  # a submodule is a commit, not a blob
+            blobs[name] = blob
+    sizes = subprocess.run(
+        ["git", "cat-file", "--batch-check=%(objectname) %(objectsize)"],
+        cwd=REPO,
+        check=True,
+        capture_output=True,
+        input="".join(f"{blob}\n" for blob in blobs.values()).encode(),
+    ).stdout.decode()
+    size_of = {line.split()[0]: int(line.split()[1]) for line in sizes.splitlines()}
+    return {name: size_of[blob] for name, blob in blobs.items()}
+
+
+def _oversized_text_files() -> list[str]:
     found = []
-    for name in filter(None, listed.split("\0")):
+    for name, size in _blob_sizes().items():
         path = REPO / name
-        if not path.is_file() or path.stat().st_size <= LIMIT_BYTES:
+        if size <= LIMIT_BYTES or not path.is_file():
             continue
         # A NUL byte in the first block is git's own test for binary.
         with path.open("rb") as handle:

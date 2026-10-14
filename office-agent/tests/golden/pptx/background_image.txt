@@ -100,7 +100,7 @@
   <Relationship Id="rId7" Target="slides/slide1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"/>
 </Relationships>
 ===== ppt/media/image1.png
-<binary 117 bytes sha256=5f92321c6f91994127f8d8f5c981d45c1b0abcc5b2fe3685d4beebb4b4ab2d17>
+<png 64x27 RGB>
 ===== ppt/presProps.xml
 <p:presentationPr xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
   <p:extLst>
