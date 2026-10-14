@@ -116,7 +116,7 @@
  },
  "file_lines": {
   "src/coscribe/conversation/session.py": 2223,
-  "src/coscribe/coordinator.py": 974,
+  "src/coscribe/coordinator.py": 869,
   "src/coscribe/runtime_lg/subagents.py": 837,
   "src/coscribe/tools/presentations.py": 7092,
   "src/coscribe/tools/scheduled_tasks.py": 1054,
