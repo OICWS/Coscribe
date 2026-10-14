@@ -56,7 +56,10 @@ Last reviewed: 2026-10-11.
    shorter). Next, PowerPoint part 2: editing inside the grouped shapes a page compiles to
    (address by name and group path), native charts and tables from data, the user's own template
    built from pages, Windows font metrics for the overflow check, the split of
-   `tools/presentations.py`. Then Excel, then Word, the same way.
+   `tools/presentations.py`. Then Excel, then Word, the same way: their baselines are done
+   (#164: Excel PR #181, Word with it; the `current` route on eight tasks each), and the two
+   defects they found are fixed (#193 column widths, #219; #197 Word contents list, #216). No
+   Excel or Word engine work has started.
    Instructions are changed by cutting first and measuring after: a shorter prompt that scores
    the same is the better one.
 
