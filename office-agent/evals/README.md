@@ -12,7 +12,7 @@ and is not part of CI; only its deterministic parts are tested (`tests/test_eval
 ```bash
 cd office-agent
 export DEEPSEEK_API_KEY=...            # the default model is deepseek:deepseek-flash
-python -m evals.run --route current --tasks all --out evals/runs/baseline
+python -m evals.run --tasks all --out evals/runs/baseline
 python -m evals.run --tasks 01,07 --out evals/runs/try          # some tasks
 python -m evals.run --check-only --out evals/runs/baseline      # re-check, no model calls
 python -m evals.run --kind xlsx --out evals/runs/excel          # the Excel tasks
@@ -132,7 +132,7 @@ python -m evals.judge evals/runs/word --kind docx --rounds 3          # document
 A vision model sees the user's brief and the rendered pages and scores design, content and coherence
 from 1 to 5, with the three worst defects. With several runs, the decks of one task go into one request
 under random labels (`Deck P`, `Deck Q`...), drawn again every round, so neither order nor name says
-which route made which. Each round is written to `<run>/<task>/judge/`; the mean and spread
+which run made which. Each round is written to `<run>/<task>/judge/`; the mean and spread
 (population standard deviation) over the rounds are what `compare.py` shows. The default judge is
 DeepSeek, which also made the decks, so it may favour its own style; a Gemini judge is optional and the
 free tier allows about 20 requests a day per model. Each record names its judge, the runs judged
@@ -152,4 +152,4 @@ One Markdown file with three tables, a row per task and the two runs side by sid
 the automatic checks, and cost, time, tool calls and tokens. A task only one run has shows `-`; the mean
 and total rows cover only the tasks both runs have, and say how many. Scores come from one judge
 (`--judge`, default DeepSeek) and one kind of request: each deck alone, or with `--joint` the two runs
-judged in one request; the two kinds are never averaged together. Run the same route twice first to see how far two runs of one route differ.
+judged in one request; the two kinds are never averaged together. Run the same code twice first to see how far two runs of it differ.
