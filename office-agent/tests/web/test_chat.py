@@ -45,6 +45,7 @@ from .helpers import (
     _tool_call,
     _verdict,
     _wait_for_run_status,
+    _wait_until,
     _write_call,
 )
 
@@ -1999,14 +2000,16 @@ def test_closing_a_tab_on_a_run_being_looked_into_leaves_it_going_lg(
         _wait_for_run_status(client, task["trigger_id"], run["run_id"])
         base = f"/api/scheduled-tasks/{task['trigger_id']}/runs/{run['run_id']}"
         thread_id = client.post(f"{base}/investigate", json={}).json()["thread_id"]
-        deadline = time.time() + 5
-        while not fake_model.slow_started and time.time() < deadline:
-            time.sleep(0.02)
+        _wait_until(lambda: fake_model.slow_started)
         # A tab opens the conversation mid-turn and is closed again.
         with client.websocket_connect(f"/ws/{thread_id}") as ws:
             ws.receive_json()  # state
             ws.receive_json()  # history
-        time.sleep(1.5)
+        # Waits on the turn's own end, not a fixed time: under a loaded CI
+        # runner the rest of the turn can take longer than the slow reply.
+        _wait_until(
+            lambda: client.get("/api/threads/status").json()["statuses"][thread_id] != "working"
+        )
         with client.websocket_connect(f"/ws/{thread_id}") as ws:
             ws.receive_json()  # state
             history = ws.receive_json()["entries"]

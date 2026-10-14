@@ -31,17 +31,12 @@ from pathlib import Path
 
 import httpx
 import pytest
+import uvicorn
 
 pytest.importorskip("langgraph", reason="needs the langgraph_spike extra installed")
 
 from coscribe.cli import _app_data_dir, _load_settings_or_none
 from coscribe.web.app import _run_web_server, create_setup_app
-
-
-def _free_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("127.0.0.1", 0))
-        return int(sock.getsockname()[1])
 
 
 def _isolate_dotenv(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -198,7 +193,32 @@ async def test_run_web_server_hands_over_to_the_real_app_on_the_same_port(
     create_app_lg really does hand over cleanly on a real socket, not
     just that create_setup_app's own routes behave in isolation."""
     _isolate_dotenv(tmp_path, monkeypatch)
-    port = _free_port()
+    # The setup server starts on a listener the test bound itself, so no parallel
+    # test can take the port before it. The real app then binds the port number
+    # itself after the setup server let go, as it does in production; that gap
+    # is the one this test is about.
+    listener = socket.socket()
+    # As uvicorn sets it on the sockets it binds: without it, the setup server's
+    # connections still open block the real app's bind on Linux.
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    listener.bind(("127.0.0.1", 0))
+    port = int(listener.getsockname()[1])
+    served: list[uvicorn.Server] = []
+    real_serve = uvicorn.Server.serve
+
+    async def serve_on_the_listener(
+        self: uvicorn.Server, sockets: list[socket.socket] | None = None
+    ) -> None:
+        first = not served
+        served.append(self)
+        try:
+            await real_serve(self, sockets=[listener] if first else sockets)
+        except SystemExit as exc:
+            # uvicorn exits the process when it cannot bind or start; inside a
+            # task that would end the whole test run instead of failing this test.
+            raise RuntimeError(f"uvicorn server {len(served)} exited ({exc.code})") from exc
+
+    monkeypatch.setattr(uvicorn.Server, "serve", serve_on_the_listener)
 
     server_task = asyncio.create_task(_run_web_server("127.0.0.1", port))
     try:
@@ -218,18 +238,30 @@ async def test_run_web_server_hands_over_to_the_real_app_on_the_same_port(
 
             for _ in range(50):
                 await asyncio.sleep(0.1)
+                if server_task.done():
+                    await server_task  # raises why the real app never started
                 try:
-                    real_resp = await client.get(f"http://127.0.0.1:{port}/")
+                    real_resp = await client.get(f"http://127.0.0.1:{port}/", timeout=2)
                 except httpx.TransportError:
-                    continue  # the brief gap between the two servers binding
+                    continue  # the gap between the two servers binding
                 if "coscribe-setup-marker" not in real_resp.text:
                     break
             else:
                 raise AssertionError("the real app never took over the port")
+
+            # On Windows SO_REUSEADDR lets the real app bind beside a setup server
+            # that never stopped, and both would accept: only new connections show it.
+            assert len(served) == 2
+            for _ in range(10):
+                again = await client.get(
+                    f"http://127.0.0.1:{port}/", headers={"Connection": "close"}
+                )
+                assert "coscribe-setup-marker" not in again.text
     finally:
         server_task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await server_task
+        listener.close()
 
 
 async def _retry_get(client: httpx.AsyncClient, url: str, attempts: int = 30) -> httpx.Response:

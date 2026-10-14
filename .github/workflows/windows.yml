@@ -54,7 +54,7 @@ jobs:
           pip install -U "google-genai>=2.13.0,<2.14.0"
 
       - name: Tests
-        run: python -m pytest -q -p no:cacheprovider --tb=short -rfE --junitxml=windows-junit.xml
+        run: python -m pytest -q -n 4 -p no:cacheprovider --tb=short -rfE --junitxml=windows-junit.xml
 
       - name: Summary of the failures
         if: always()
