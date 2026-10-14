@@ -105,8 +105,7 @@ Last reviewed: 2026-10-11.
 ## Later (wanted, not scheduled)
 
 - A reasoning-effort choice for the user (#202): done (the scale and its mapping per model, the
-  pill and slider, the evaluation on the same scale). Left: the panel drops its "This model runs
-  it as ..." note (the maintainer, 2026-10-14); a look in the dark theme.
+  pill and slider, the evaluation on the same scale). Left: a look in the dark theme.
 - The context panel: show the deferred system and MCP tools as their own rows (not counted in
   the window), and find why system tools read 38.2k at the start of a conversation while the
   bound tools measure about 4.9k tokens (`tests/tool_schemas.txt`).
