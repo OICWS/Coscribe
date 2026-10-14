@@ -1,3 +1,5 @@
+import codecs
+import json
 import shutil
 import subprocess
 import sys
@@ -5,10 +7,13 @@ from pathlib import Path
 
 import pytest
 
+from coscribe.tools import script_guard
 from coscribe.tools.script_guard import (
+    PYTHON_WRAPPER,
     blocked_write,
     locked_file_note,
     node_guard_args,
+    refusal_note,
     suggested_folder,
     without_guard_warnings,
     writable_roots,
@@ -172,7 +177,7 @@ def test_suggested_folder_is_the_nearest_existing_one_but_never_a_drive_or_home(
 @pytest.mark.parametrize(
     "stderr",
     [
-        "Traceback (most recent call last):\n  File \"x.py\", line 3, in <module>\n"
+        'Traceback (most recent call last):\n  File "x.py", line 3, in <module>\n'
         "PermissionError: [Errno 13] Permission denied: 'C:\\\\Users\\\\a\\\\report.xlsx'",
         "PermissionError: [WinError 32] The process cannot access the file because it is "
         "being used by another process: 'C:\\\\Users\\\\a\\\\report.xlsx'",
@@ -188,3 +193,135 @@ def test_locked_file_note_names_the_file_and_says_to_ask_the_user(stderr: str) -
 def test_locked_file_note_stays_quiet_for_other_errors() -> None:
     assert locked_file_note("ValueError: bad input") == ""
     assert locked_file_note("") == ""
+
+
+def test_the_python_wrapper_and_its_config_are_written_beside_the_script(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: list[str | None] = []
+    real_write = Path.write_text
+
+    def write_text(self: Path, data: str, encoding: str | None = None, **kw: object) -> int:
+        seen.append(encoding)
+        return real_write(self, data, encoding=encoding, **kw)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(Path, "write_text", write_text)
+
+    wrapper, config = write_python_wrapper(tmp_path, ["/work/空间", "/tmp"])
+
+    assert (wrapper, config) == (tmp_path / "guard_runner.py", tmp_path / "guard.json")
+    assert wrapper.read_text(encoding="utf-8") == PYTHON_WRAPPER
+    assert json.loads(config.read_text(encoding="utf-8")) == {"write": ["/work/空间", "/tmp"]}
+    assert len(seen) == 2
+    assert all(e is not None and codecs.lookup(e).name == "utf-8" for e in seen), seen
+
+
+class _ScriptedNode:
+    """Stands in for `subprocess.run` while probing a Node: each call gets the next return code
+    (or exception) and is recorded."""
+
+    def __init__(self, outcomes: list[int | Exception]) -> None:
+        self.outcomes = list(outcomes)
+        self.calls: list[tuple[list[str], dict[str, object]]] = []
+
+    def __call__(self, args: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        self.calls.append((args, kwargs))
+        outcome = self.outcomes.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        if kwargs.get("check") and outcome != 0:
+            raise subprocess.CalledProcessError(outcome, args)
+        return subprocess.CompletedProcess(args, outcome)
+
+
+_ALLOWANCES = ["--allow-fs-read=*", "--allow-child-process", "--allow-worker"]
+
+
+def test_probing_a_node_runs_each_flag_set_until_one_starts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake = _ScriptedNode([1, 2, 0])
+    monkeypatch.setattr(script_guard.subprocess, "run", fake)
+
+    flags = script_guard._probe_node_flags("/usr/bin/node")
+
+    assert flags == (
+        "--experimental-permission",
+        "--disable-warning=ExperimentalWarning",
+        "--disable-warning=SecurityWarning",
+        *_ALLOWANCES,
+    )
+    assert [args for args, _ in fake.calls] == [
+        ["/usr/bin/node", "--permission", "--allow-addons", *_ALLOWANCES, "-e", ""],
+        ["/usr/bin/node", "--permission", *_ALLOWANCES, "-e", ""],
+        ["/usr/bin/node", *flags, "-e", ""],
+    ]
+    assert all(
+        kwargs == {"capture_output": True, "timeout": 20, "check": False}
+        for _, kwargs in fake.calls
+    )
+
+
+def test_probing_a_node_gives_none_when_no_flag_set_starts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake = _ScriptedNode([1, 1, 1, 1])
+    monkeypatch.setattr(script_guard.subprocess, "run", fake)
+
+    assert script_guard._probe_node_flags("node") is None
+    assert len(fake.calls) == 4
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [FileNotFoundError("no node"), subprocess.TimeoutExpired("node", 20)],
+)
+def test_probing_a_node_that_cannot_run_gives_none_without_trying_more(
+    failure: Exception, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = _ScriptedNode([failure, 0])
+    monkeypatch.setattr(script_guard.subprocess, "run", fake)
+
+    assert script_guard._probe_node_flags("node") is None
+    assert len(fake.calls) == 1
+
+
+def test_node_guard_args_probe_each_node_once_and_allow_writes_only_to_the_roots(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    probed: list[str] = []
+
+    def probe(node: str) -> tuple[str, ...] | None:
+        probed.append(node)
+        return ("--permission",) if node == "node-new" else None
+
+    monkeypatch.setattr(script_guard, "_node_guard_flags", {})
+    monkeypatch.setattr(script_guard, "_probe_node_flags", probe)
+
+    assert node_guard_args("node-new", ["/ws", "/tmp"]) == [
+        "--permission",
+        "--allow-fs-write=/ws",
+        "--allow-fs-write=/tmp",
+    ]
+    assert node_guard_args("node-new", ["/other"]) == ["--permission", "--allow-fs-write=/other"]
+    assert node_guard_args("node-old", ["/ws"]) is None
+    assert node_guard_args("node-old", ["/ws"]) is None
+    assert probed == ["node-new", "node-old"]
+
+
+def test_the_refusal_note_names_the_path_and_says_what_to_do() -> None:
+    assert refusal_note("/data/out.txt") == (
+        '\n[coscribe] The script was stopped from writing "/data/out.txt": it is outside the '
+        "workspace and the folders added to this conversation. Write inside the workspace "
+        "instead, or ask the user to add that folder (the chat shows an Add folder button)."
+    )
+
+
+def test_the_locked_file_note_tells_the_model_to_ask_the_user() -> None:
+    note = locked_file_note("PermissionError: [Errno 13] Permission denied: '/data/report.xlsx'")
+
+    assert note == (
+        '\n[coscribe] "report.xlsx" could not be written: it is probably open in another '
+        "program (Excel, Word, a PDF viewer) or read-only. Ask the user to close it and "
+        "try again; don't save a copy under another name unless they say so."
+    )
