@@ -51,8 +51,9 @@ Last reviewed: 2026-10-11.
    of today's route (`office-agent/evals/`), the engine's compiler (#141), its checks and folder
    build (#198, PR 1), the build tool and an `engine` route in the evaluation (PR 2), the
    measurement (PR 3: the engine wins new decks, design 3.97 against 3.11, at 0.94 times the
-   cost). Next (#198): the switch of new decks to the engine in the product (a user's template and
-   edits stay on today's tools); Excel, then Word, the same way.
+   cost), and new decks built from pages in the product (PR 4; a user's template and edits stay on
+   today's tools). Next: trim the PowerPoint instructions with the split of `tools/presentations.py`,
+   the object tools for decks the user brings; Excel, then Word, the same way.
 
 1. **Make the repository easy to join** (governance review, 2026-10-08).
    - Done: `main` protected by a ruleset (PR only, squash, `test` required),

@@ -1,4 +1,4 @@
-"""`build_pptx_from_pages`, the deck engine's tool, and the evaluation route that uses it.
+"""`build_pptx_from_pages`, the deck engine's tool, and the instructions that send new decks to it.
 
 The tool's description is the page contract the model writes to, so a page using everything it
 allows must compile without an error; the rest pins the tool's path rules and its refusal.
@@ -13,10 +13,9 @@ import pytest
 from PIL import Image
 from pptx import Presentation
 
-from coscribe import coordinator
+from coscribe.tools import NEW_DECK_INSTRUCTIONS
 from coscribe.tools.office.pptx.engine.tool import build_engine_tools
-from coscribe.tools.skills import load_skills
-from evals import run as eval_run
+from coscribe.tools.skills import load_builtin_skills
 
 _SVG = (
     'xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="Microsoft YaHei, Arial"'
@@ -167,31 +166,11 @@ def test_a_deck_changed_after_its_build_is_refused_with_the_way_out(tmp_path: Pa
     assert tool("pages", "deck.pptx", replace_changes=True)["ok"]
 
 
-def test_the_engine_route_installs_its_skill_and_instructions_and_undoes_them(
-    tmp_path: Path,
-) -> None:
-    from coscribe.tools.skill_catalog import disabled_skill_names
+def test_the_instructions_send_new_decks_to_the_skill_and_the_tool_that_exist() -> None:
+    (skill,) = [s for s in load_builtin_skills() if "build_pptx_from_pages" in s.description]
 
-    original = coordinator.INSTRUCTIONS
-    with eval_run.route_instructions("engine"):
-        assert coordinator.INSTRUCTIONS.startswith(original)
-        assert "build_pptx_from_pages" in coordinator.INSTRUCTIONS[len(original) :]
-    assert coordinator.INSTRUCTIONS == original
-    with eval_run.route_instructions("current"):
-        assert coordinator.INSTRUCTIONS == original
-
-    eval_run._install_engine_skill(tmp_path / "skills", tmp_path / "state")
-
-    assert [s.name for s in load_skills(tmp_path / "skills")] == ["PPTX Pages"]
-    assert "PPTX Slides" in disabled_skill_names(tmp_path / "state")
-
-
-def test_the_instructions_name_the_skill_and_the_tool_that_exist() -> None:
-    paragraph = (eval_run.ENGINE_GUIDE / "instructions.md").read_text(encoding="utf-8")
-    (skill,) = load_skills(eval_run.ENGINE_GUIDE.parent)
-
-    assert f'load_skill("{skill.name}")' in paragraph
-    assert build_engine_tools(Path("."))[0].__name__ in paragraph
+    assert f'load_skill("{skill.name}")' in NEW_DECK_INSTRUCTIONS
+    assert build_engine_tools(Path("."))[0].__name__ in NEW_DECK_INSTRUCTIONS
 
 
 def test_a_scaled_group_with_text_is_reported_as_the_contract_says(tmp_path: Path) -> None:

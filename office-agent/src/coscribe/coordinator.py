@@ -16,6 +16,7 @@ from pathlib import Path
 from .config import Settings
 from .runtime import Agent, SessionEnvironments
 from .tools import (
+    NEW_DECK_INSTRUCTIONS,
     build_background_task_tools,
     build_browser_tools,
     build_conversation_tools,
@@ -217,9 +218,8 @@ something to actually fix before calling the deck done, the same way you \
 already react to overflow_warnings; fill_pptx_template and edit_pptx_text \
 return the same field for the same reason (a template's own undesigned-for \
 shape, or existing junk text an edit just made visible). If a "PPTX \
-Slides" skill is listed below, call \
-load_skill("PPTX Slides") before writing any deck the user will actually \
-look at: it documents \
+Slides" skill is listed below, call load_skill("PPTX Slides") before \
+filling a template or writing a deck with write_pptx: it documents \
 every layout id's exact syntax and explains when a genuinely custom slide \
 still needs run_node_script's real pptxgenjs scripting instead -- now the \
 fallback for what the four prefab layouts can't express, not the \
@@ -926,7 +926,7 @@ def build_coordinator_agent(
     # by prefix, and the tool list comes after the system prompt, so a
     # per-conversation line here makes every new conversation re-read the
     # rest of the prompt and every tool schema uncached.
-    instructions = INSTRUCTIONS
+    instructions = f"{INSTRUCTIONS}\n\n{NEW_DECK_INSTRUCTIONS}"
     if settings.browser_host_token:
         tools += build_browser_tools(
             thread_id,

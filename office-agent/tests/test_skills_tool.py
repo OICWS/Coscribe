@@ -148,7 +148,13 @@ def test_load_builtin_skills_finds_the_four_shipped_skills() -> None:
     skills = load_builtin_skills()
 
     names = {s.name for s in skills}
-    assert names == {"PPTX Slides", "Excel Spreadsheets", "Word Documents", "Skill Creator"}
+    assert names == {
+        "PPTX Slides",
+        "PPTX Pages",
+        "Excel Spreadsheets",
+        "Word Documents",
+        "Skill Creator",
+    }
     for skill in skills:
         assert skill.description
         assert skill.body
