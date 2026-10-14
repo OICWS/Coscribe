@@ -1,5 +1,5 @@
 """Tests for the Browser panel: web/browser_panel.py's own pure-Python
-bits (find_browser_executable's env-override escape hatch, _free_port),
+bits (find_browser_executable's env-override escape hatch, the DevTools port file),
 and the /ws/browser route in web/app.py.
 
 The route tests monkeypatch coscribe.web.routes.ws.BrowserPanelSession with a
@@ -12,6 +12,7 @@ and error-handling contract, which a real-browser test can't isolate from
 CDP timing.
 """
 
+import asyncio
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +23,7 @@ pytest.importorskip("langgraph", reason="needs the langgraph_spike extra install
 from fastapi.testclient import TestClient
 
 from coscribe.config import Settings
+from coscribe.web import browser_panel
 from coscribe.web.app import create_app_lg
 from coscribe.web.browser_panel import (
     BrowserPanelError,
@@ -430,3 +432,70 @@ def test_ws_browser_reports_mid_session_error_without_closing(
         # only launch() failures close the connection (see the route's own
         # try/except around session.launch()).
         ws.send_json({"type": "reload"})
+
+
+# -- finding the port Chromium chose --
+
+
+class _Exited:
+    returncode = 3
+
+
+@pytest.mark.parametrize(
+    ("content", "port"), [("9222\n/devtools/browser/abc", 9222), ("40123", 40123)]
+)
+async def test_the_devtools_port_is_the_first_line_of_the_file_chromium_writes(
+    tmp_path: Path, content: str, port: int
+) -> None:
+    (tmp_path / "DevToolsActivePort").write_text(content, encoding="utf-8")
+
+    assert await BrowserPanelSession()._wait_for_devtools_port(tmp_path) == port
+
+
+async def test_the_devtools_port_is_waited_for_until_the_file_has_a_whole_first_line(
+    tmp_path: Path,
+) -> None:
+    session = BrowserPanelSession()
+    port_file = tmp_path / "DevToolsActivePort"
+    seen = asyncio.create_task(session._wait_for_devtools_port(tmp_path))
+
+    await asyncio.sleep(0.3)
+    assert not seen.done()
+    port_file.write_text("not-a-port", encoding="utf-8")
+    await asyncio.sleep(0.3)
+    assert not seen.done()
+    port_file.write_text("51234\n/devtools/browser/x", encoding="utf-8")
+
+    assert await asyncio.wait_for(seen, 5) == 51234
+
+
+async def test_a_browser_that_exits_before_it_reports_a_port_is_an_error(tmp_path: Path) -> None:
+    session = BrowserPanelSession()
+    session._process = _Exited()  # type: ignore[assignment]
+
+    with pytest.raises(BrowserPanelError, match=r"exited immediately \(code 3\)"):
+        await session._wait_for_devtools_port(tmp_path)
+
+
+async def test_a_browser_that_never_reports_a_port_times_out(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(browser_panel, "_LAUNCH_TIMEOUT", 0.3)
+
+    with pytest.raises(BrowserPanelError, match="never reported its DevTools port"):
+        await BrowserPanelSession()._wait_for_devtools_port(tmp_path)
+
+
+@pytest.mark.skipif(find_browser_executable() is None, reason="needs a Chromium-family browser")
+async def test_a_real_browser_launches_on_the_port_it_chose_itself() -> None:
+    session = BrowserPanelSession()
+    try:
+        await session.launch()
+
+        assert session._profile_dir is not None
+        port_line = (session._profile_dir / "DevToolsActivePort").read_text().split("\n")[0]
+        assert int(port_line) > 0
+        result = await session.send("Runtime.evaluate", {"expression": "1 + 1"})
+        assert result["result"]["value"] == 2
+    finally:
+        await session.close()
