@@ -81,6 +81,7 @@ interface ComposerProps {
   modePill: ReactNode;
   folderPicker: ReactNode;
   modelPicker: ReactNode;
+  effortPicker: ReactNode;
   usageRing: ReactNode;
   onSend: (payload: ComposerSendPayload) => void;
   /** Text sent while a reply is being worked on: a note the model reads
@@ -119,6 +120,7 @@ export function Composer({
   modePill,
   folderPicker,
   modelPicker,
+  effortPicker,
   usageRing,
   onSend,
   onSteer,
@@ -596,6 +598,7 @@ export function Composer({
         <RunStatus turnInFlight={turnInFlight} totalTokens={totalTokens} workflowTest={workflowTest} />
         <div className="flex items-center gap-1.5">
           {modelPicker}
+          {effortPicker}
           {usageRing}
         </div>
       </div>

@@ -73,6 +73,8 @@ describe("state", () => {
       acceptEdits: true,
       autoMode: true,
       model: "m1",
+      effort: "medium",
+      effortRunsAs: "low",
       contextWindow: 1000,
       enabledSkills: ["s1"],
       workspaceRoot: "C:\\work",
