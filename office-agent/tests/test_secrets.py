@@ -114,8 +114,70 @@ def test_resolve_secret_raises_when_ref_present_but_backend_has_nothing(
 ) -> None:
     # Backend works, but this specific ref was never actually stored there
     # (e.g. the keychain was cleared out from under the app).
-    with pytest.raises(RuntimeError, match="re-enter it via Settings"):
+    with pytest.raises(RuntimeError) as raised:
         secrets.resolve_secret({"keyring_ref": "never-stored"})
+
+    assert str(raised.value) == (
+        "Secret 'never-stored' was expected in the OS keychain but is missing -- "
+        "re-enter it via Settings."
+    )
+
+
+def test_resolve_secret_says_keyring_is_missing_when_the_package_is_absent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(secrets, "keyring", None)
+
+    with pytest.raises(RuntimeError) as raised:
+        secrets.resolve_secret({"keyring_ref": "custom-provider:deepseek"})
+
+    assert str(raised.value) == (
+        "Secret 'custom-provider:deepseek' was stored in the OS keychain, but keyring is not "
+        "available in this environment -- re-enter it via Settings."
+    )
+
+
+# -- keychain_backend_usable --
+
+
+def test_keychain_backend_is_not_usable_without_the_keyring_package(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(secrets, "keyring", None)
+
+    assert secrets.keychain_backend_usable() is False
+
+
+def test_keychain_backend_is_not_usable_with_the_do_nothing_backend(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from keyring.backends import fail
+
+    monkeypatch.setattr(secrets.keyring, "get_keyring", lambda: fail.Keyring())
+
+    assert secrets.keychain_backend_usable() is False
+
+
+def test_keychain_backend_is_usable_with_a_real_backend(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _RealBackend:
+        pass
+
+    monkeypatch.setattr(secrets.keyring, "get_keyring", lambda: _RealBackend())
+
+    assert secrets.keychain_backend_usable() is True
+
+
+def test_keychain_backend_is_not_usable_when_probing_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _boom() -> object:
+        raise RuntimeError("backend probe crashed")
+
+    monkeypatch.setattr(secrets.keyring, "get_keyring", _boom)
+
+    assert secrets.keychain_backend_usable() is False
 
 
 # -- delete_secret --
@@ -138,6 +200,14 @@ def test_delete_secret_is_a_noop_for_a_plain_string(fake_keyring: _FakeKeyring) 
 def test_delete_secret_is_a_noop_for_none(fake_keyring: _FakeKeyring) -> None:
     assert secrets.delete_secret(None) is None
     assert fake_keyring.deleted == []
+
+
+def test_delete_secret_is_a_noop_for_a_ref_when_the_keyring_package_is_absent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(secrets, "keyring", None)
+
+    assert secrets.delete_secret({"keyring_ref": "custom-provider:deepseek"}) is None
 
 
 def test_delete_secret_swallows_keyring_errors(failing_keyring: _AlwaysFailingKeyring) -> None:
@@ -197,6 +267,20 @@ def test_resolve_env_keyring_refs_replaces_sentinels_in_os_environ(
 
     assert os.environ["ANTHROPIC_API_KEY"] == "sk-ant-real"
     assert os.environ["UNRELATED_VAR"] == "plain-value"
+
+
+def test_resolve_env_keyring_refs_keeps_an_empty_secret_empty(
+    fake_keyring: _FakeKeyring, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stored = secrets.env_value_for_storage("builtin-provider:OPTIONAL_KEY", "")
+    monkeypatch.setenv("OPTIONAL_KEY", stored)
+
+    assert stored.startswith(secrets.ENV_KEYRING_PREFIX)
+    assert fake_keyring.store == {("coscribe", "builtin-provider:OPTIONAL_KEY"): ""}
+
+    secrets.resolve_env_keyring_refs()
+
+    assert os.environ["OPTIONAL_KEY"] == ""
 
 
 # -- harden_file_permissions --
