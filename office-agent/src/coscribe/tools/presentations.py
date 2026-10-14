@@ -1756,12 +1756,12 @@ def _set_slide_transition(slide_element: Any, transition: str, duration: float) 
 
 
 def _mark_mce_ignorable(root_element: Any, prefix: str) -> None:
-    """Add `prefix` to `root_element`'s `mc:Ignorable` token list (creating
-    the attribute if absent, a no-op if `prefix` is already there) -- the
-    declaration real PowerPoint-authored slides carry alongside any p14:/
-    a14:-namespaced extension attribute, and what lets `_ooxml_validate.py`
-    tell a real OOXML defect apart from expected, declared extension
-    content instead of rejecting both alike."""
+    """Add `prefix` to `mc:Ignorable`, which lets `_ooxml_validate.py` tell a real OOXML defect
+    from declared p14:/a14: extension content. Registering `mc` makes lxml spell the prefix as
+    PowerPoint does instead of an `ns0` that depends on what else the root declares."""
+    from lxml import etree
+
+    etree.register_namespace("mc", _MC_NS)
     existing_tokens = (root_element.get(f"{{{_MC_NS}}}Ignorable") or "").split()
     if prefix in existing_tokens:
         return
