@@ -19,10 +19,28 @@ score for new decks at 0.94 times the cost; decision 0010 switches new decks whe
 - Tests: the instructions name the built-in skill and the tool that exist; the built-in skill
   lists gain "PPTX Pages"; `tests/tool_schemas.txt`'s prompt line.
 
+## Checked (2026-10-14, at peak price)
+Tasks 03, 04 and 05 on this change and #212's guide, `deepseek-flash` at effort low, 3 judge
+rounds; before is the measurement in `2026-10-14-deck-engine-measurement.md`.
+
+| Task | Facts | Numbers in no input | Design | Content | Coherence | Cost |
+|---|---|---|---|---|---|---|
+| 03-project-proposal | 18/18 (18/18) | 0 (5, one an invented date) | 4.27 (4.27) | 4.57 (4.60) | 4.50 (4.53) | 0.043 (0.027) |
+| 04-product-launch | 12/12 (10/12) | 0 (0) | 3.63 (3.63) | 3.87 (4.17) | 3.87 (4.23) | 0.038 (0.047) |
+| 05-long-report | 23/23 (22/23) | 1 (1) | 4.40 (4.23) | 4.30 (4.33) | 4.57 (4.47) | 0.050 (0.050) |
+
+- All three faults the guide was changed for are gone: "399 元" and "50 元" are written as in the
+  material, the survey keeps its 41%, no date the material lacks. 05's one flagged number is a
+  share computed from the material.
+- Scores are level within the judge's spread (04's content and coherence are 0.3 lower, about
+  one spread). Cost 0.131 against 0.124 dollars; the run and its judge cost 0.148 at the page's
+  off-peak prices, about 2.0 yuan at the doubled peak price it ran at.
+- Each task loaded one skill and then wrote pages and built them; the run does not record the
+  skill's name, so that it was "PPTX Pages" and not "PPTX Slides" is inferred from the workflow.
+
 ## Not verified
 - Windows: the maintainer builds one new deck in the app before merging.
-- In the measurement "PPTX Slides" was switched off; here it stays listed for template work. A
-  new deck may still load it; the off-peak run after merging shows whether it does.
+- Which skill a new deck loads, by name (above).
 
 ## Follow-ups
 - Today's PowerPoint section of the instructions (write_pptx's layouts, choosing a template) now
