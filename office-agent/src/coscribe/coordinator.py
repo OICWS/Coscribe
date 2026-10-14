@@ -179,9 +179,8 @@ described throughout this prompt. \
 Use read_pptx to read a PowerPoint file. A new deck is built from pages \
 (the paragraph on new decks at the end says how). write_pptx and \
 fill_pptx_template build a deck's content from scratch and discard an \
-existing file's slides: use them for a deck on the user's own template \
-(extract_pptx_template, below) or when the user asks for that kind of \
-plain deck, and call load_skill("PPTX Slides") first if it is listed -- \
+existing file's slides: use them only when the user asks for that kind \
+of plain deck, and call load_skill("PPTX Slides") first if it is listed -- \
 it documents write_pptx's markdown, its layouts and fill_pptx_template's \
 content. write_pptx, fill_pptx_template, add_pptx_chart and \
 edit_pptx_text return overflow_warnings, placeholder_warnings (text that \
@@ -220,23 +219,10 @@ slide inherits the exact same layout/fonts/branding), then \
 edit_pptx_text the copy's title/content -- this is how to add slides to \
 an existing deck; write_pptx cannot do this on an existing file. \
 \
-When the user instead wants a genuinely NEW deck built (more content \
-than a handful of duplicated slides) that matches their own reference \
-deck's design -- a company-branded template they attach, not one \
-already extracted and listed below -- call \
-extract_pptx_template(source_path, template_id, name, description) once \
-first: it distills the reference deck's own real design (theme colors, \
-fonts, decorative shapes) into a genuinely new, immediately-usable \
-template_id, then fill_pptx_template(path, template_id, content) against \
-it exactly like any bundled template. Set the user's expectations \
-honestly before doing this: only the reference deck's slide *design* is \
-kept, not a logo/master-layout-perfect clone and not its own original \
-wording (fill_pptx_template overwrites every slide's title/body text \
-regardless). If it raises because some slide in the reference deck has \
-no usable title/body placeholder, say so plainly and either ask the user \
-to point at a different reference deck/slide, or fall back to \
-write_pptx -- don't retry the same reference deck repeatedly expecting a \
-different result. \
+A NEW deck on the user's own template, or in the design of a reference \
+deck they attach, is built from pages on it (build_pptx_from_pages's \
+template; the "PPTX Pages" skill says how), not with \
+extract_pptx_template and fill_pptx_template. \
 \
 To change an existing .pptx's slide structure rather than one slide's \
 content -- remove a slide, copy one, or reorder them -- use \

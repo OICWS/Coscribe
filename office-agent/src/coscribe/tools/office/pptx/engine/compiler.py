@@ -28,6 +28,7 @@ from ...._native_svg.svg_to_pptx.drawingml import elements, paths, text_properti
 from ...._native_svg.svg_to_pptx.drawingml.context import ConvertContext, ShapeResult
 from ...._native_svg.svg_to_pptx.drawingml.styles import build_effect_xml, get_element_opacity
 from . import native
+from .template import Example, canvas, layout, open_template, start_from
 
 SVG_NS = "http://www.w3.org/2000/svg"
 EMU_PER_PX = utils.EMU_PER_PX
@@ -37,7 +38,6 @@ _NS = {
     "p": "http://schemas.openxmlformats.org/presentationml/2006/main",
 }
 _NSDECL = " ".join(f'xmlns:{k}="{v}"' for k, v in _NS.items())
-_TITLE_ONLY_LAYOUT = 5  # python-pptx's default template: "Title Only"
 TITLE_ID = "title"
 
 _CONVERTERS: dict[str, Callable[[ET.Element, ConvertContext], ShapeResult | None]] = {
@@ -119,17 +119,19 @@ def compile_pages(
     *,
     resource_root: Path | None = None,
     svg_dir: Path | None = None,
+    template: Path | None = None,
 ) -> CompileReport:
     """Write `out` from `(name, svg_text)` pages, one slide each, in order.
 
     An image's href is resolved against `svg_dir` (default `resource_root`), the folder the
-    pages are in; an image outside `resource_root` is an error.
+    pages are in; an image outside `resource_root` is an error. With `template` (the user's
+    .pptx) the slides are made from its layouts and every page's viewBox is its slide size.
     The deck is written even when pages have errors (their failing elements are left out), so
     a preview can show what the repair has to fix.
     """
-    prs = Presentation()
+    prs, examples = open_template(template) if template is not None else (Presentation(), [])
     reports: list[PageReport] = []
-    size: tuple[int, int] | None = None
+    size: tuple[int, int] | None = canvas(prs) if template is not None else None
     for name, svg_text in pages:
         report = PageReport(name)
         reports.append(report)
@@ -137,7 +139,7 @@ def compile_pages(
             root = ET.fromstring(svg_text)
         except ET.ParseError as e:
             report.errors.append(f"not well-formed XML: {e}")
-            prs.slides.add_slide(prs.slide_layouts[_TITLE_ONLY_LAYOUT])
+            prs.slides.add_slide(layout(prs, None))
             continue
         width, height = _canvas(root, report)
         if size is None:
@@ -147,7 +149,7 @@ def compile_pages(
             report.errors.append(
                 f"canvas {width}x{height} differs from the deck's {size[0]}x{size[1]}"
             )
-        _compile_page(prs, root, report, resource_root, svg_dir or resource_root)
+        _compile_page(prs, root, report, resource_root, svg_dir or resource_root, examples)
     out.parent.mkdir(parents=True, exist_ok=True)
     prs.save(str(out))
     return CompileReport(out, reports)
@@ -171,10 +173,19 @@ def _compile_page(
     report: PageReport,
     resource_root: Path | None,
     svg_dir: Path | None,
+    examples: list[Example],
 ) -> None:
-    slide = prs.slides.add_slide(prs.slide_layouts[_TITLE_ONLY_LAYOUT])
+    example = _example(root, examples, report)
+    try:
+        chosen = example.layout if example else layout(prs, root.get("data-layout"))
+    except ValueError as e:
+        report.errors.append(str(e))
+        chosen = layout(prs, None)
+    slide = prs.slides.add_slide(chosen)
     for placeholder in list(slide.placeholders):
         placeholder.element.getparent().remove(placeholder.element)
+    if example is not None:
+        start_from(slide, example)
     try:
         geometry_properties.materialize_inline_geometry_properties(root)
     except Exception as e:  # reported to the model, not raised
@@ -218,6 +229,22 @@ def _compile_page(
     if background is not None:
         slide._element.cSld.insert(0, etree.fromstring(background))
     _make_title_placeholder(sp_tree, report)
+
+
+def _example(root: ET.Element, examples: list[Example], report: PageReport) -> Example | None:
+    """The template slide the page starts from (`data-template-slide`, 1-based), if any."""
+    wanted = root.get("data-template-slide")
+    if wanted is None:
+        return None
+    if not examples:
+        report.errors.append("data-template-slide needs a template")
+        return None
+    if not wanted.isdigit() or not 1 <= int(wanted) <= len(examples):
+        report.errors.append(
+            f"data-template-slide {wanted!r}: the template has {len(examples)} slides"
+        )
+        return None
+    return examples[int(wanted) - 1]
 
 
 def _local(elem: ET.Element) -> str:

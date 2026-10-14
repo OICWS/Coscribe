@@ -14,7 +14,8 @@ from typing import Any
 from .....runtime import tool_metadata
 from ...._file_locks import file_lock
 from ...._workspace import WorkspaceScope
-from .build import DeckChangedError, build_deck
+from .build import DeckChangedError, build_deck, page_files
+from .template import describe
 
 
 def build_engine_tools(
@@ -30,6 +31,7 @@ def build_engine_tools(
         path: str,
         sources: list[str] | None = None,
         replace_changes: bool = False,
+        template: str = "",
     ) -> dict[str, Any]:
         """Build a PowerPoint deck from a folder of SVG pages, one page per slide, and check it.
 
@@ -54,6 +56,10 @@ def build_engine_tools(
           user may change (<text id="price">): any id becomes the shape's name, which the edit
           tools take. A group's transform is translate(x y) only; size and rotate its elements.
         - A <rect> covering the whole canvas, drawn first, becomes the slide background.
+        - On the user's own template (`template`): call this first with the template and the
+          empty pages folder to get its canvas, colours, fonts and example slides; a page then
+          starts from one example slide's decoration with data-template-slide="N" on its root
+          (or uses a layout by name with data-layout), and draws no background of its own.
         - A chart or a table is a native PowerPoint object whose data the user can edit: a <g
           id="..." data-pptx-replace-with="chart"> (or "table") holding only one <metadata
           type="application/json"> with its box (x, y, width, height in px) and its data; the
@@ -67,11 +73,18 @@ def build_engine_tools(
             pages_dir: folder holding the .svg pages, relative to the workspace root
             path: the .pptx to write, relative to the workspace root
             sources: the files the deck's facts come from (documents, sheets, notes)
+            template: the user's own .pptx or .potx the deck is built on (its master, layouts
+                and example slides' decoration)
             replace_changes: only when the user agreed: build even though the .pptx was changed
                 after its last build (in PowerPoint or with the edit_pptx_* tools), which throws
                 those changes away
         """
         folder = scope.resolve(pages_dir)
+        template_path = scope.resolve(template) if template else None
+        if template_path is not None and not template_path.is_file():
+            raise ValueError(f"Template does not exist: {template}")
+        if template_path is not None and not (folder.is_dir() and page_files(folder)):
+            return {"template": describe(template_path), "next": "write the pages, then build"}
         if not folder.is_dir():
             raise ValueError(f"Not a folder: {pages_dir}")
         if not path.lower().endswith(".pptx"):
@@ -89,6 +102,7 @@ def build_engine_tools(
                     sources=source_paths,
                     resource_root=_allowed_root(scope, folder),
                     replace_changes=replace_changes,
+                    template=template_path,
                 )
             except DeckChangedError as e:
                 raise ValueError(
