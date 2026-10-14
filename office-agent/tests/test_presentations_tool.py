@@ -1,6 +1,7 @@
 import concurrent.futures
 import shutil
 import tempfile
+import zipfile
 from pathlib import Path
 from typing import Any, cast
 
@@ -5975,6 +5976,10 @@ def test_add_pptx_formula_marks_mc_ignorable_a14_on_the_slide(tmp_path: Path) ->
     )
     assert mc_ignorable is not None
     assert "a14" in mc_ignorable.split()
+    with zipfile.ZipFile(tmp_path / "deck.pptx") as archive:
+        slide_xml = archive.read("ppt/slides/slide1.xml").decode("utf-8")
+    assert 'mc:Ignorable="a14"' in slide_xml
+    assert "xmlns:ns0=" not in slide_xml
 
 
 def test_add_pptx_formula_rejects_malformed_latex(tmp_path: Path) -> None:
