@@ -56,6 +56,8 @@ def build_engine_tools(
           user may change (<text id="price">): any id becomes the shape's name, which the edit
           tools take. A group's transform is translate(x y) only; size and rotate its elements.
         - A <rect> covering the whole canvas, drawn first, becomes the slide background.
+        - What the presenter says goes in <desc id="notes">, one paragraph per line: it becomes
+          the slide's speaker notes, not drawn.
         - On the user's own template (`template`): call this first with the template and the
           empty pages folder to get its canvas, colours, fonts and example slides; a page then
           starts from one example slide's decoration with data-template-slide="N" on its root

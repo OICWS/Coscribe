@@ -27,7 +27,7 @@ bound to the model: 22 tools, ~4852 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 120 tools, ~36913 tokens (the ones not bound are found through search_tools)
+registered: 120 tools, ~36946 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -44,7 +44,7 @@ registered: 120 tools, ~36913 tokens (the ones not bound are found through searc
   add_xlsx_chart | WRITE_LOCAL | documents | deferred | sha256 428cf24bd4
   add_xlsx_conditional_format | WRITE_LOCAL | documents | deferred | sha256 cc7a65328c
   ask_user_question | READ | interaction | core | sha256 9d692cba1a
-  build_pptx_from_pages | WRITE_LOCAL | documents | deferred | sha256 c64b7dcff7
+  build_pptx_from_pages | WRITE_LOCAL | documents | deferred | sha256 9185abaa6b
   cancel_wake | WRITE_LOCAL | selfwake | deferred | sha256 ff3c53d9ec
   check_background_task | READ | background_tasks | deferred | sha256 1fe786e922
   check_pptx_delivery | READ | documents | deferred | sha256 a52eddb3b5

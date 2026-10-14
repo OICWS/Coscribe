@@ -109,6 +109,17 @@ def check_pictures(count: int, minimum: int) -> dict[str, Any]:
     return {"ok": count >= minimum, "count": count, "minimum": minimum}
 
 
+def check_notes(path: Path, share: float) -> dict[str, Any]:
+    """Slides whose speaker notes hold text, against the share the brief asks for."""
+    from pptx import Presentation
+
+    slides = list(Presentation(str(path)).slides)
+    noted = sum(
+        1 for s in slides if s.has_notes_slide and s.notes_slide.notes_text_frame.text.strip()
+    )
+    return {"ok": noted >= share * len(slides), "with_notes": noted, "slides": len(slides)}
+
+
 def layout_names(path: Path) -> set[str]:
     from pptx import Presentation
 
@@ -186,6 +197,8 @@ def check_deck(task: Task, path: Path, workspace: Path, out_dir: Path) -> dict[s
     if expect.template:
         template = next(p for p in task.inputs if p.name == expect.template)
         report["template"] = check_template_kept(layout_names(path), layout_names(template))
+    if expect.notes:
+        report["notes"] = check_notes(path, expect.notes)
     report["editability"] = check_editability(path, workspace)
     report["render"] = render_deck(path, out_dir)
     pdf = out_dir / report["render"]["pdf"] if report["render"].get("pdf") else None
