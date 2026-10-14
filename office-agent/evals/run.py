@@ -37,6 +37,9 @@ from .xlsx_checks import check_workbook
 
 DEFAULT_MODEL = "deepseek:deepseek-flash"
 DEFAULT_EFFORT = "low"
+# The product's levels (runtime_lg/effort.py LEVELS), written out so `--help` needs no import of
+# the agent; a test keeps the two equal.
+EFFORT_LEVELS = ("low", "medium", "high", "extra", "max", "ultra")
 DEFAULT_TIMEOUT = 1800.0
 DEEPSEEK_URL = "https://api.deepseek.com/v1"
 ROUTES = {
@@ -122,7 +125,12 @@ class Recorder:
 
 
 def _build_session(
-    root: Path, workspace: Path, model: str, thread_id: str, route: str = "current"
+    root: Path,
+    workspace: Path,
+    model: str,
+    thread_id: str,
+    route: str = "current",
+    effort: str = DEFAULT_EFFORT,
 ) -> Any:
     from langgraph.checkpoint.memory import InMemorySaver
 
@@ -141,6 +149,9 @@ def _build_session(
         custom_templates_dir=root / "templates",
         memory_path=root / "MEMORY.md",
         auto_title_threads=False,
+        # The product's own scale and mapping (runtime_lg/effort.py), so a run's level means
+        # what the same level means to a user.
+        default_effort=effort,
     )
     if route == "engine":
         _install_engine_skill(settings.skills_dir, settings.state_dir)
@@ -206,10 +217,10 @@ def _find_output(
 
 
 @contextlib.contextmanager
-def measured_models(effort: str | None) -> Iterator[None]:
-    """Every model the sessions build reports its usage to the task that is running, and gets
-    the reasoning effort. Installed once around the whole run: tasks overlap, so a patch made
-    and undone per task would drop or leak another task's wrapper."""
+def measured_models() -> Iterator[None]:
+    """Every model the sessions build reports its usage to the task that is running. Installed
+    once around the whole run: tasks overlap, so a patch made and undone per task would drop or
+    leak another task's wrapper."""
     from coscribe.conversation import session as session_module
 
     original = session_module.resolve_chat_model
@@ -219,8 +230,6 @@ def measured_models(effort: str | None) -> Iterator[None]:
         collector = _CURRENT_USAGE.get()
         if collector is not None:
             chat_model.callbacks = [_usage_callback(collector)]
-        if effort and hasattr(chat_model, "reasoning_effort"):
-            chat_model.reasoning_effort = effort
         return chat_model
 
     session_module.resolve_chat_model = resolve
@@ -234,7 +243,7 @@ async def run_task(
     task: Task,
     out: Path,
     model: str,
-    effort: str | None,
+    effort: str,
     timeout: float,
     route: str = "current",
 ) -> dict[str, Any]:
@@ -258,7 +267,7 @@ async def run_task(
     status, error = "ok", None
     started = time.monotonic()
     try:
-        session = _build_session(task_out, workspace, model, task.name, route)
+        session = _build_session(task_out, workspace, model, task.name, route, effort)
         recorder.session = session
         await asyncio.wait_for(session.handle_user_message(task.brief, recorder), timeout)
         if recorder.errors:
@@ -276,6 +285,7 @@ async def run_task(
         "route": route,
         "model": model,
         "effort": effort,
+        "effort_runs_as": getattr(recorder.session, "_effort_runs_as", None),
         "status": status,
         "error": error,
         "wall_seconds": round(wall, 1),
@@ -492,14 +502,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument(
-        "--effort", default=DEFAULT_EFFORT, help="reasoning effort; `none` leaves the default"
+        "--effort",
+        choices=EFFORT_LEVELS,
+        default=DEFAULT_EFFORT,
+        help="the level a user would pick; each model runs the nearest one it supports",
     )
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT, help="seconds per task")
     parser.add_argument("--jobs", type=int, default=2, help="tasks run at the same time")
     parser.add_argument("--check-only", action="store_true", help="re-check an earlier run")
     args = parser.parse_args(argv)
-    if args.effort == "none":
-        args.effort = None
     tasks = discover(args.tasks, kind=args.kind)
     out: Path = args.out
     out.mkdir(parents=True, exist_ok=True)
@@ -511,7 +522,7 @@ def main(argv: list[str] | None = None) -> int:
         if "DEEPSEEK_API_KEY" not in os.environ:
             print("DEEPSEEK_API_KEY is not set", file=sys.stderr)
             return 1
-        with measured_models(args.effort), route_instructions(args.route):
+        with measured_models(), route_instructions(args.route):
             asyncio.run(run_all(args, tasks, out))
     write_summary(out, discover("all", kind=args.kind), args.kind)
     print((out / "summary.md").read_text(encoding="utf-8"))
