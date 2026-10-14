@@ -1,9 +1,9 @@
 """The deck engine: a deck's page sources (SVG) compiled into native PowerPoint shapes, checked,
 and rebuilt only while the .pptx is still what they built (decision 0010).
 
-`tool.py` is its one tool, `build_pptx_from_pages`; `guide/` holds the skill and the paragraph of
-instructions that would offer it for new decks. The product does not load them yet: the
-evaluation's `engine` route does, and decides whether the engine replaces today's route.
+`tool.py` is its one tool, `build_pptx_from_pages`. New decks are built with it: the coordinator's
+instructions say so, and the built-in skill "PPTX Pages" (`builtin_skills/pptx-pages/`) is the
+guide the agent loads first.
 """
 
 from .build import MANIFEST, BuildReport, DeckChangedError, build_deck, page_files, slide_hashes

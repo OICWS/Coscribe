@@ -626,7 +626,11 @@ Alongside plain-text `read_file`/`write_file`, the Coordinator has
 `read_docx`/`write_docx`, `read_pdf`/`write_pdf`, `read_xlsx`/`write_xlsx`,
 and `read_pptx`/`write_pptx` for real Word, PDF, Excel, and PowerPoint files
 under the workspace -- see `ARCHITECTURE.md` for why these are built in
-rather than routed through Skill/MCP like other document formats. The
+rather than routed through Skill/MCP like other document formats. A new
+PowerPoint deck is written as one SVG page per slide and compiled into
+native, editable shapes by `build_pptx_from_pages` (the *PPTX Pages* skill,
+decision 0010); `write_pptx` and the template tools stay for a user's own
+template and for decks the user brings. The
 docx/pdf writers (`python-docx`/`reportlab`) take the same lightweight
 markdown subset:
 
@@ -1479,8 +1483,8 @@ reference files and scripts beside it -- the same format [Claude Code's
 Skills](https://code.claude.com/docs/en/skills) use. Settings → Skills
 lists them in three groups:
 
-- **Built into coscribe**: *PPTX Slides*, *Excel Spreadsheets*, *Word
-  Documents* and *Skill Creator*. They can be switched off but not
+- **Built into coscribe**: *PPTX Pages*, *PPTX Slides*, *Excel
+  Spreadsheets*, *Word Documents* and *Skill Creator*. They can be switched off but not
   removed.
 - **From Anthropic** (the **Discover** tab): Apache-2.0 skills from
   [anthropics/skills](https://github.com/anthropics/skills) that work with

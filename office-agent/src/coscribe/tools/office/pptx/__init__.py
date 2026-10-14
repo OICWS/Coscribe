@@ -10,7 +10,10 @@ from pathlib import Path
 from typing import Any
 
 from ...presentations import build_presentation_tools as _build_legacy_tools
+from .engine.instructions import NEW_DECK_INSTRUCTIONS
 from .engine.tool import build_engine_tools
+
+__all__ = ["NEW_DECK_INSTRUCTIONS", "build_presentation_tools"]
 
 
 def build_presentation_tools(

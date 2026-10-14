@@ -1,7 +1,7 @@
 # The model is sent: the system prompt, then the tools bound to it (decision 0001).
 # A change here is a change to what providers cache. UPDATE_TOOL_SCHEMAS=1 rewrites it.
 
-system prompt: 44192 chars, ~11048 tokens, sha256 165e403285
+system prompt: 35111 chars, ~8777 tokens, sha256 c155508b94
 
 bound to the model: 22 tools, ~4852 tokens
   ask_user_question (questions:array) desc 1435 chars sha256 e846e64163
@@ -27,7 +27,7 @@ bound to the model: 22 tools, ~4852 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 120 tools, ~36751 tokens (the ones not bound are found through search_tools)
+registered: 120 tools, ~36703 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -85,7 +85,7 @@ registered: 120 tools, ~36751 tokens (the ones not bound are found through searc
   list_pptx_animation_types | READ | documents | deferred | sha256 f73581da45
   list_pptx_icons | READ | documents | deferred | sha256 9675fb6e78
   list_pptx_shape_types | READ | documents | deferred | sha256 4ed552beeb
-  list_pptx_shapes | READ | documents | deferred | sha256 844a380941
+  list_pptx_shapes | READ | documents | deferred | sha256 bdf9935ed7
   list_pptx_transition_types | READ | documents | deferred | sha256 41967900e0
   list_scheduled_tasks | READ | scheduled_tasks | deferred | sha256 511a595dd7
   list_secrets | READ | web | deferred | sha256 d582a9e96f

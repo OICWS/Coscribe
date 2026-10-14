@@ -94,6 +94,7 @@ from ._file_locks import locked_by_path
 from ._office_bins import find_soffice, run_soffice, soffice_profile
 from ._ooxml_validate import assert_ooxml_valid
 from ._output_truncation import cap_read_output
+from ._pptx_shapes import describe_members, find_shape, in_group, set_slide_box
 from ._svg_slide import add_svg_slide
 from ._thumbnail import render_all_page_previews, render_thumbnail
 from ._workspace import WorkspaceScope
@@ -1756,12 +1757,12 @@ def _set_slide_transition(slide_element: Any, transition: str, duration: float) 
 
 
 def _mark_mce_ignorable(root_element: Any, prefix: str) -> None:
-    """Add `prefix` to `root_element`'s `mc:Ignorable` token list (creating
-    the attribute if absent, a no-op if `prefix` is already there) -- the
-    declaration real PowerPoint-authored slides carry alongside any p14:/
-    a14:-namespaced extension attribute, and what lets `_ooxml_validate.py`
-    tell a real OOXML defect apart from expected, declared extension
-    content instead of rejecting both alike."""
+    """Add `prefix` to `mc:Ignorable`, which lets `_ooxml_validate.py` tell a real OOXML defect
+    from declared p14:/a14: extension content. Registering `mc` makes lxml spell the prefix as
+    PowerPoint does instead of an `ns0` that depends on what else the root declares."""
+    from lxml import etree
+
+    etree.register_namespace("mc", _MC_NS)
     existing_tokens = (root_element.get(f"{{{_MC_NS}}}Ignorable") or "").split()
     if prefix in existing_tokens:
         return
@@ -2951,7 +2952,7 @@ def _describe_shape_fill(shape: Any) -> str | dict[str, object] | None:
     return _describe_fill_color(fill.fore_color)
 
 
-def _describe_shape(index: int, shape: Any) -> dict[str, object]:
+def _describe_shape(index: int | str, shape: Any) -> dict[str, object]:
     """One `list_pptx_shapes` entry -- enough for a text-only model to
     pick a target (`shape_index`) for `edit_pptx_shape`/`replace_pptx_image`/
     the table-cell-editing tools without guessing: type, a short text
@@ -3021,20 +3022,11 @@ def _describe_shape(index: int, shape: Any) -> dict[str, object]:
     return info
 
 
-def _get_shape_at_index(target_slide: Any, slide_number: int, shape_index: int) -> Any:
-    """Shared bounds check for every tool that targets one shape by
-    index -- raises a clear, actionable error (naming list_pptx_shapes)
-    rather than an opaque IndexError."""
-    shapes = list(target_slide.shapes)
-    if not 0 <= shape_index < len(shapes):
-        raise ValueError(
-            f"shape_index {shape_index} out of range: slide {slide_number} has "
-            f"{len(shapes)} shape(s) -- call list_pptx_shapes first."
-        )
-    return shapes[shape_index]
+def _get_shape_at_index(target_slide: Any, slide_number: int, shape_index: int | str) -> Any:
+    return find_shape(target_slide, slide_number, shape_index)
 
 
-def _get_table_shape(target_slide: Any, slide_number: int, shape_index: int) -> Any:
+def _get_table_shape(target_slide: Any, slide_number: int, shape_index: int | str) -> Any:
     """Shared bounds-and-kind validation for edit_pptx_table_cell/
     merge_pptx_table_cells -- raises a clear, actionable error (naming
     list_pptx_shapes) rather than an opaque AttributeError if shape_index
@@ -3049,7 +3041,7 @@ def _get_table_shape(target_slide: Any, slide_number: int, shape_index: int) -> 
     return shape
 
 
-def _get_picture_shape(target_slide: Any, slide_number: int, shape_index: int) -> Any:
+def _get_picture_shape(target_slide: Any, slide_number: int, shape_index: int | str) -> Any:
     """Shared bounds-and-kind validation for replace_pptx_image/
     recolor_pptx_icon/crop_pptx_image -- raises a clear, actionable
     error if shape_index doesn't point at a picture (a `<p:pic>` shape,
@@ -3899,7 +3891,12 @@ class PresentationToolkit:
         if not 1 <= slide <= slide_count:
             raise ValueError(f"Slide {slide} out of range: deck has {slide_count} slides")
         target_slide = prs.slides[slide - 1]
+        from pptx.enum.shapes import MSO_SHAPE_TYPE
+
         shapes = [_describe_shape(index, shape) for index, shape in enumerate(target_slide.shapes)]
+        for info, shape in zip(shapes, target_slide.shapes, strict=True):
+            if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+                info["members"] = describe_members(shape, str(info["index"]), _describe_shape)
         return {
             "slide": slide,
             "shape_count": len(shapes),
@@ -3913,7 +3910,7 @@ class PresentationToolkit:
         self,
         path: str,
         slide: int,
-        shape_index: int,
+        shape_index: int | str,
         left_in: Optional[float] = None,  # noqa: UP045
         top_in: Optional[float] = None,  # noqa: UP045
         width_in: Optional[float] = None,  # noqa: UP045
@@ -3991,14 +3988,8 @@ class PresentationToolkit:
             )
         prs, file_path, target_slide = self._open_slide(path, slide)
         shape = _get_shape_at_index(target_slide, slide, shape_index)
-        if left_in is not None:
-            shape.left = Inches(left_in)
-        if top_in is not None:
-            shape.top = Inches(top_in)
-        if width_in is not None:
-            shape.width = Inches(width_in)
-        if height_in is not None:
-            shape.height = Inches(height_in)
+        box = [None if v is None else Inches(v) for v in (left_in, top_in, width_in, height_in)]
+        set_slide_box(shape, *box)
         if rotation is not None:
             shape.rotation = rotation
         if fill_color:
@@ -4047,7 +4038,7 @@ class PresentationToolkit:
         }
 
     @locked_by_path
-    def delete_pptx_shape(self, path: str, slide: int, shape_index: int) -> dict[str, object]:
+    def delete_pptx_shape(self, path: str, slide: int, shape_index: int | str) -> dict[str, object]:
         prs, file_path, target_slide = self._open_slide(path, slide)
         shape = _get_shape_at_index(target_slide, slide, shape_index)
         element = shape._element  # noqa: SLF001
@@ -4249,7 +4240,7 @@ class PresentationToolkit:
 
     @locked_by_path
     def replace_pptx_image(
-        self, path: str, slide: int, shape_index: int, image_path: str
+        self, path: str, slide: int, shape_index: int | str, image_path: str
     ) -> dict[str, object]:
         """Swap an existing picture's image in place, on any already-
         existing .pptx -- position, size, and crop are all untouched
@@ -4282,7 +4273,7 @@ class PresentationToolkit:
         self,
         path: str,
         slide: int,
-        shape_index: int,
+        shape_index: int | str,
         crop_left: float = 0.0,
         crop_right: float = 0.0,
         crop_top: float = 0.0,
@@ -4393,7 +4384,7 @@ class PresentationToolkit:
 
     @locked_by_path
     def recolor_pptx_icon(
-        self, path: str, slide: int, shape_index: int, color: str
+        self, path: str, slide: int, shape_index: int | str, color: str
     ) -> dict[str, object]:
         if not _THEME_HEX_RE.match(color):
             raise ValueError(f"color {color!r} must be a 6-hex-digit color (no '#').")
@@ -4424,7 +4415,7 @@ class PresentationToolkit:
 
     @locked_by_path
     def edit_pptx_table_cell(
-        self, path: str, slide: int, shape_index: int, row: int, col: int, text: str
+        self, path: str, slide: int, shape_index: int | str, row: int, col: int, text: str
     ) -> dict[str, object]:
         """Replace one cell's text in an existing table, in place, on
         any already-existing .pptx -- call `list_pptx_shapes` first to
@@ -4461,7 +4452,7 @@ class PresentationToolkit:
         self,
         path: str,
         slide: int,
-        shape_index: int,
+        shape_index: int | str,
         start_row: int,
         start_col: int,
         end_row: int,
@@ -4921,7 +4912,7 @@ class PresentationToolkit:
         self,
         path: str,
         slide: int,
-        shape_index: int,
+        shape_index: int | str,
         effect: str,
         color: str = "000000",
         opacity: float = 0.4,
@@ -4977,7 +4968,7 @@ class PresentationToolkit:
 
     @locked_by_path
     def read_pptx_xml(
-        self, path: str, slide: int, shape_index: int, part: str = "auto"
+        self, path: str, slide: int, shape_index: int | str, part: str = "auto"
     ) -> dict[str, object]:
         """Raw OOXML for one shape -- the escape hatch for anything
         python-pptx has no API for at all beyond what add_pptx_shape_effect/
@@ -5009,7 +5000,7 @@ class PresentationToolkit:
         self,
         path: str,
         slide: int,
-        shape_index: int,
+        shape_index: int | str,
         xpath: str,
         new_text: Optional[str] = None,  # noqa: UP045
         set_attributes: Optional[str] = None,  # noqa: UP045
@@ -5141,7 +5132,7 @@ class PresentationToolkit:
         self,
         path: str,
         slide: int,
-        shape_index: int,
+        shape_index: int | str,
         animation: str,
         duration: float = 0.5,
         trigger: str = "on-click",
@@ -5158,6 +5149,11 @@ class PresentationToolkit:
             )
         prs, file_path, target_slide = self._open_slide(path, slide)
         shape = _get_shape_at_index(target_slide, slide, shape_index)
+        if in_group(shape):
+            raise ValueError(
+                f"Shape {shape_index!r} is inside a group, and PowerPoint animates a group as one "
+                "shape: animate the group (the path before the last '/') instead."
+            )
         shape_id = shape.shape_id
         duration_ms = max(1, round(duration * 1000))
         delay_ms = max(0, round(delay * 1000))
@@ -5334,7 +5330,7 @@ class PresentationToolkit:
         self,
         path: str,
         slide: int,
-        shape_index: int,
+        shape_index: int | str,
         url: str,
         text: Optional[str] = None,  # noqa: UP045
     ) -> dict[str, object]:
@@ -5989,9 +5985,9 @@ def build_presentation_tools(
 
         Call this before edit_pptx_shape/delete_pptx_shape (or before
         editing a table's cells) on any slide you haven't already
-        inspected -- the `shape_index` those tools need is this list's
-        own `index`, and guessing it blind on a slide with several
-        shapes risks editing the wrong one.
+        inspected. `shape_index` takes this list's `index`, a group
+        member's `path` ("3/1": member 1 of the group at index 3, listed
+        under its `members`) or a `name` only one shape has.
 
         Args:
             path: the .pptx file to inspect, relative to the workspace root
@@ -5999,7 +5995,7 @@ def build_presentation_tools(
         """
         return toolkit.list_pptx_shapes(path=path, slide=slide)
 
-    def delete_pptx_shape(path: str, slide: int, shape_index: int) -> dict[str, object]:
+    def delete_pptx_shape(path: str, slide: int, shape_index: str) -> dict[str, object]:
         """Remove one shape from an existing slide, in place -- every
         other shape and the rest of the deck are untouched. Works on any
         shape type (a plain autoshape/textbox, a picture, a table, a
@@ -6015,14 +6011,14 @@ def build_presentation_tools(
         Args:
             path: file to modify, relative to the workspace root
             slide: 1-based slide number the shape is on
-            shape_index: 0-based shape order on that slide
+            shape_index: list_pptx_shapes's index, a member's path, or a name
         """
         return toolkit.delete_pptx_shape(path=path, slide=slide, shape_index=shape_index)
 
     def edit_pptx_shape(
         path: str,
         slide: int,
-        shape_index: int,
+        shape_index: str,
         left_in: Optional[float] = None,  # noqa: UP045
         top_in: Optional[float] = None,  # noqa: UP045
         width_in: Optional[float] = None,  # noqa: UP045
@@ -6049,8 +6045,7 @@ def build_presentation_tools(
         Args:
             path: path to an existing .pptx already in the workspace
             slide: 1-based slide index the shape is on
-            shape_index: which shape to edit, 0-based in on-slide order --
-                this is list_pptx_shapes's own "index" field for this shape
+            shape_index: list_pptx_shapes's index, a member's path, or a name
             left_in: new horizontal position in inches from the slide's
                 left edge. Omit to leave unchanged.
             top_in: new vertical position in inches from the slide's top
@@ -6096,7 +6091,7 @@ def build_presentation_tools(
         )
 
     def replace_pptx_image(
-        path: str, slide: int, shape_index: int, image_path: str
+        path: str, slide: int, shape_index: str, image_path: str
     ) -> dict[str, object]:
         """Swap an existing picture's image in place on an existing
         PowerPoint (.pptx) file's slide -- position, size, and crop are
@@ -6111,8 +6106,7 @@ def build_presentation_tools(
         Args:
             path: path to an existing .pptx already in the workspace
             slide: 1-based slide index the picture is on
-            shape_index: which shape is the picture, 0-based in on-slide
-                order -- this is list_pptx_shapes's own "index" field
+            shape_index: list_pptx_shapes's index, a member's path, or a name
             image_path: path to the new image file already on disk,
                 relative to the workspace root. Raster formats only
                 (PNG/JPEG/GIF/BMP/TIFF, same as add_pptx_image) -- not SVG.
@@ -6229,7 +6223,7 @@ def build_presentation_tools(
     def crop_pptx_image(
         path: str,
         slide: int,
-        shape_index: int,
+        shape_index: str,
         crop_left: float = 0.0,
         crop_right: float = 0.0,
         crop_top: float = 0.0,
@@ -6246,8 +6240,7 @@ def build_presentation_tools(
         Args:
             path: path to an existing .pptx already in the workspace
             slide: 1-based slide index the picture is on
-            shape_index: which shape is the picture, 0-based in on-slide
-                order -- this is list_pptx_shapes's own "index" field
+            shape_index: list_pptx_shapes's index, a member's path, or a name
             crop_left: fraction (0.0-1.0) of the image's own width to trim
                 from its left edge. Defaults to 0.0 (no crop).
             crop_right: fraction (0.0-1.0) of the image's own width to trim
@@ -6314,7 +6307,9 @@ def build_presentation_tools(
             color=color,
         )
 
-    def recolor_pptx_icon(path: str, slide: int, shape_index: int, color: str) -> dict[str, object]:
+    def recolor_pptx_icon(
+        path: str, slide: int, shape_index: str, color: str
+    ) -> dict[str, object]:
         """Change the color of an icon or logo-like picture already on a
         slide, in place -- position, size, and crop are untouched, only
         the pixels change (same relationship-swap mechanism as
@@ -6337,7 +6332,7 @@ def build_presentation_tools(
         Args:
             path: file to modify, relative to the workspace root
             slide: 1-based slide number the icon is on
-            shape_index: 0-based shape order on that slide
+            shape_index: list_pptx_shapes's index, a member's path, or a name
             color: new 6-hex-digit fill color, no '#'
         """
         return toolkit.recolor_pptx_icon(
@@ -6345,7 +6340,7 @@ def build_presentation_tools(
         )
 
     def edit_pptx_table_cell(
-        path: str, slide: int, shape_index: int, row: int, col: int, text: str
+        path: str, slide: int, shape_index: str, row: int, col: int, text: str
     ) -> dict[str, object]:
         """Replace one cell's text in an existing table on an existing
         PowerPoint (.pptx) file's slide, without touching any other cell
@@ -6361,8 +6356,7 @@ def build_presentation_tools(
         Args:
             path: path to an existing .pptx already in the workspace
             slide: 1-based slide index the table is on
-            shape_index: which shape is the table, 0-based in on-slide
-                order -- this is list_pptx_shapes's own "index" field
+            shape_index: list_pptx_shapes's index, a member's path, or a name
             row: 0-based row index of the cell to change
             col: 0-based column index of the cell to change
             text: new text for the cell, completely replacing its
@@ -6375,7 +6369,7 @@ def build_presentation_tools(
     def merge_pptx_table_cells(
         path: str,
         slide: int,
-        shape_index: int,
+        shape_index: str,
         start_row: int,
         start_col: int,
         end_row: int,
@@ -6396,8 +6390,7 @@ def build_presentation_tools(
         Args:
             path: path to an existing .pptx already in the workspace
             slide: 1-based slide index the table is on
-            shape_index: which shape is the table, 0-based in on-slide
-                order -- this is list_pptx_shapes's own "index" field
+            shape_index: list_pptx_shapes's index, a member's path, or a name
             start_row: 0-based row index of one corner of the range
             start_col: 0-based column index of one corner of the range
             end_row: 0-based row index of the opposite corner
@@ -6538,7 +6531,7 @@ def build_presentation_tools(
     def add_pptx_shape_effect(
         path: str,
         slide: int,
-        shape_index: int,
+        shape_index: str,
         effect: str,
         color: str = "000000",
         opacity: float = 0.4,
@@ -6589,7 +6582,7 @@ def build_presentation_tools(
         )
 
     def read_pptx_xml(
-        path: str, slide: int, shape_index: int, part: str = "auto"
+        path: str, slide: int, shape_index: str, part: str = "auto"
     ) -> dict[str, object]:
         """Read one shape's raw underlying OOXML from a PowerPoint (.pptx)
         file -- the escape hatch for anything not covered by a dedicated
@@ -6621,7 +6614,7 @@ def build_presentation_tools(
     def edit_pptx_xml(
         path: str,
         slide: int,
-        shape_index: int,
+        shape_index: str,
         xpath: str,
         new_text: Optional[str] = None,  # noqa: UP045
         set_attributes: Optional[str] = None,  # noqa: UP045
@@ -6744,7 +6737,7 @@ def build_presentation_tools(
     def add_pptx_animation(
         path: str,
         slide: int,
-        shape_index: int,
+        shape_index: str,
         animation: str,
         duration: float = 0.5,
         trigger: str = "on-click",
@@ -6817,7 +6810,7 @@ def build_presentation_tools(
         Args:
             path: file to modify, relative to the workspace root
             slide: 1-based slide number the shape is on
-            shape_index: 0-based shape order on that slide (see above)
+            shape_index: list_pptx_shapes's index, a member's path, or a name
             animation: one of list_pptx_animation_types()'s names, or one
                 of the six legacy short aliases above
             duration: animation length in seconds (ignored for the few
@@ -6906,7 +6899,7 @@ def build_presentation_tools(
         )
 
     def add_pptx_hyperlink(
-        path: str, slide: int, shape_index: int, url: str, text: Optional[str] = None  # noqa: UP045
+        path: str, slide: int, shape_index: str, url: str, text: Optional[str] = None  # noqa: UP045
     ) -> dict[str, object]:
         """Add a clickable hyperlink to an external URL, either on a
         specific run of text or on a whole shape.
@@ -6940,7 +6933,7 @@ def build_presentation_tools(
         Args:
             path: file to modify, relative to the workspace root
             slide: 1-based slide number the shape is on
-            shape_index: 0-based shape order on that slide (see above)
+            shape_index: list_pptx_shapes's index, a member's path, or a name
             url: destination URL (e.g. "https://example.com") or
                 "#slide-N" to jump to slide N within this presentation
             text: exact text of one run to hyperlink; omit to hyperlink

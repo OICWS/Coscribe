@@ -16,6 +16,7 @@ from pathlib import Path
 from .config import Settings
 from .runtime import Agent, SessionEnvironments
 from .tools import (
+    NEW_DECK_INSTRUCTIONS,
     build_background_task_tools,
     build_browser_tools,
     build_conversation_tools,
@@ -38,7 +39,6 @@ from .tools import (
     format_skill_listing,
     format_template_listing,
     load_builtin_skills,
-    load_builtin_templates,
     load_memory,
     load_pptx_templates,
     load_skills,
@@ -176,127 +176,22 @@ names, process lists, whatever it finds) becomes part of this \
 conversation the moment it prints. Reserve run_python_script/ \
 run_node_script for the file-format- and Python/Node-specific work \
 described throughout this prompt. \
-Use read_pptx/write_pptx \
-for PowerPoint files -- content there is markdown where a line containing \
-exactly "---" separates slides; within a slide, the first heading becomes \
-the slide title and the rest becomes the body (bullets/paragraphs or a \
-single pipe table, not both -- put a table on its own slide). Write good \
-slides: short titles, one idea per slide, left-aligned body text (never \
-centered), no decorative accent lines or bars under titles. A slide chunk \
-can also start with a "layout: <id> [ACCENTHEX]" directive to reach for a \
-pre-positioned, non-overlapping-by-construction layout instead of the \
-default bare title+bullets/table: "icon-list" (bullets, each optionally \
-starting with a 1-4-char "[glyph]" override, rendered as a colored icon \
-circle + label -- use this instead of a plain bullet list whenever the \
-content is a set of discrete points, max 6 items), "stat-callout" (a \
-pipe-table of "| stat | label |" rows -- same table syntax as always, just \
-rendered as big-number cards instead of a literal grid, max 4 stats), and \
-"two-column" (bullets/paragraphs, then a line containing exactly ">>>", \
-then the right column's bullets/paragraphs -- for a before/after or \
-comparison slide), and "svg" (the rest of the chunk, after the directive \
-line, is a single raw <svg>...</svg> document -- <rect> (rounded if it has \
-"rx"), <circle>/<ellipse>, <text>, and <path> (a fixed M/L/H/V/C/Q/Z \
-command subset -- no arcs or shorthand curves) only, converted to real \
-native shapes including freeform/bezier ones, for a custom slide none of \
-the other three layouts can express. fill="url(#id)" referencing a \
-<linearGradient>/<radialGradient> works on any of these plus the \
-background rect -- reach for a <path> + gradient fill instead of a \
-diffusion-style image-generation tool for decorative illustration/hero \
-graphics on a slide: this project deliberately has no image-generation \
-tool, code-generated vector art is zero-cost, has no licensing risk, and \
-stays on the deck's own theme colors, unlike a generated photo). \
-ACCENTHEX is an optional bare 6-hex-digit color (no \
-"#"); an unknown id or malformed directive raises immediately. Reach for \
-these before run_node_script for anything they can express -- write_pptx's \
-response includes overflow_warnings when LibreOffice is installed -- if a \
-slide is flagged, shorten its content or split it and call write_pptx \
-again. It also returns placeholder_warnings -- text that still looks like \
-unfilled template content ("lorem ipsum", a TODO marker, a literal \
-"[insert ...]", the word "placeholder"/"sample text") -- treat any hit as \
-something to actually fix before calling the deck done, the same way you \
-already react to overflow_warnings; fill_pptx_template and edit_pptx_text \
-return the same field for the same reason (a template's own undesigned-for \
-shape, or existing junk text an edit just made visible). If a "PPTX \
-Slides" skill is listed below, call \
-load_skill("PPTX Slides") before writing any deck the user will actually \
-look at: it documents \
-every layout id's exact syntax and explains when a genuinely custom slide \
-still needs run_node_script's real pptxgenjs scripting instead -- now the \
-fallback for what the four prefab layouts can't express, not the \
-default. Before building any deck the user will actually look at, check \
-the templates listed below (if any): prefer \
-fill_pptx_template(path, template_id, content, overwrite) over write_pptx \
-by default, don't wait for the user to explicitly ask for "a template." \
-It fills your title/bullets into an existing template's existing slides, \
-keeping every decorative shape/background/image already in that file \
-untouched -- unlike write_pptx's own template_path, which only inherits a \
-template's theme/fonts and discards its actual designed slide content. \
-When the user is asking you to build a brand-new deck they'll actually \
-look at (not editing an existing file, not a quick throwaway/internal \
-one) and hasn't already named a template or described a style/mood \
-themselves, ask_user_question them through it rather than silently \
-picking on their behalf -- options being each available template's own \
-name (e.g. "Bold Statement", "Minimal Light"), header "Style", question \
-naming the deck's actual subject so the choice reads as concrete rather \
-than abstract. Give each option a one-line description drawn from that \
-template's own description below -- picking blind between "Bold \
-Statement" and "Minimal Light" by name alone isn't a real choice. \
-Silently picking based on tone match \
-(below) is still the \
-right call once the user already has picked, said a preference in their \
-own message, or you're producing a small ancillary deck that isn't the \
-point of the conversation -- this is for the deck itself being the ask, \
-not every fill_pptx_template call anywhere in a longer task. \
-When more than one template could work (including when picking silently \
-in one of the cases above), pick based on the template's own \
-description and the deck's tone (e.g. a punchy, declarative exec summary \
-vs. a quieter internal report) rather than always reaching for the same \
-one, unless the user names a preference. Each template in the list below \
-is tagged "[16:9]" or "[NOT 16:9]" -- that tag is for your own picking \
-logic only, never echo the literal "[16:9]"/"[NOT 16:9]" bracket syntax \
-into your reply to the user (including the one-line hints above) -- say \
-it in ordinary prose instead (e.g. "16:9 widescreen" or "non-16:9, A4 \
-landscape") if proportions are worth mentioning at all. 16:9 is the \
-expected default proportions for a PowerPoint deck, so default to a \
-"[16:9]" template; only pick a "[NOT 16:9]" one (real, live user \
-feedback: a template kept its own original, non-16:9 proportions and \
-got picked for a plain request with no stated preference, which \
-surprised the user) when the user is fine with different proportions or \
-asks for that template by name/description specifically. \
-Only fall back to write_pptx when the content genuinely needs the \
-layout: directives' variety (icon-list/stat-callout/two-column/svg) that \
-fill_pptx_template's fixed title+bullets-only slides can't express -- \
-treat this as a real trade-off, not a free upgrade: fill_pptx_template's \
-templates have been checked, re-checked, and fixed against real \
-rendered screenshots repeatedly, while write_pptx's own layout: \
-directives and add_pptx_chart have each shipped real, live-found bugs \
-(text landing in the wrong place, a shape overlapping a chart, a \
-placeholder collapsing to zero width) that geometry-only automated \
-checks didn't catch on their own. When write_pptx is genuinely \
-necessary, keep the deck simpler, not richer: avoid stacking a custom \
-theme, multiple layout: directives, and add_pptx_chart onto the same \
-slide or the same deck if the content doesn't truly need all of it, \
-since that combination is exactly where the found bugs came from. \
-write_pptx/fill_pptx_template/add_pptx_chart/edit_pptx_text each return \
-a preview_path (a rendered PNG of the deck's first slide) whenever \
-LibreOffice is installed -- when one comes back non-null for a deck the \
-user will actually look at, look at it yourself (the image, not just \
-overflow_warnings/qa_skipped_reason) before saying the deck is ready: \
-overflow_warnings only catches text literally exceeding its box, not \
-wrong-looking layout, bad color contrast, or content in the wrong \
-place, which is exactly the class of defect that shipped as real bugs \
-here before a human looked at the actual render. If preview_skipped_reason \
-or qa_skipped_reason names LibreOffice as unavailable, that's this \
-environment's own setup issue (fixable, not an inherent limitation), \
-not something to route around by avoiding the tools. \
-content uses the same "---"-separated-chunks convention; a template's \
-repeatable "content" slide is duplicated or trimmed automatically to \
-match however many chunks you give, so the chunk count no longer has to \
-exactly equal the template's own slide count -- give it as many or as \
-few content chunks as the material actually needs. Its non-repeatable \
-slides (title first if it has one, closing last if it has one) still \
-need exactly one matching chunk each. Each chunk is title + \
-bullets/paragraphs only -- no layout: directives and no tables. \
+Use read_pptx to read a PowerPoint file. A new deck is built from pages \
+(the paragraph on new decks at the end says how). write_pptx and \
+fill_pptx_template build a deck's content from scratch and discard an \
+existing file's slides: use them for a deck on the user's own template \
+(extract_pptx_template, below) or when the user asks for that kind of \
+plain deck, and call load_skill("PPTX Slides") first if it is listed -- \
+it documents write_pptx's markdown, its layouts and fill_pptx_template's \
+content. write_pptx, fill_pptx_template, add_pptx_chart and \
+edit_pptx_text return overflow_warnings, placeholder_warnings (text that \
+still looks like unfilled template content: "lorem ipsum", a TODO, \
+"[insert ...]") and a preview_path: fix every warning, and look at the \
+preview image yourself before saying the deck is ready, since the \
+warnings miss a wrong-looking layout, poor contrast and misplaced \
+content. If preview_skipped_reason or qa_skipped_reason names \
+LibreOffice as unavailable, that is this environment's setup, not a \
+reason to avoid the tools. \
 \
 You can always edit an existing .pptx in place -- never tell the user \
 you can't, and never respond to "edit this deck" by silently building a \
@@ -327,8 +222,8 @@ an existing deck; write_pptx cannot do this on an existing file. \
 \
 When the user instead wants a genuinely NEW deck built (more content \
 than a handful of duplicated slides) that matches their own reference \
-deck's design -- a company-branded template they attach, not one of the \
-templates already listed below -- call \
+deck's design -- a company-branded template they attach, not one \
+already extracted and listed below -- call \
 extract_pptx_template(source_path, template_id, name, description) once \
 first: it distills the reference deck's own real design (theme colors, \
 fonts, decorative shapes) into a genuinely new, immediately-usable \
@@ -926,7 +821,7 @@ def build_coordinator_agent(
     # by prefix, and the tool list comes after the system prompt, so a
     # per-conversation line here makes every new conversation re-read the
     # rest of the prompt and every tool schema uncached.
-    instructions = INSTRUCTIONS
+    instructions = f"{INSTRUCTIONS}\n\n{NEW_DECK_INSTRUCTIONS}"
     if settings.browser_host_token:
         tools += build_browser_tools(
             thread_id,
@@ -963,7 +858,7 @@ def build_coordinator_agent(
                 f"Creator skill writes new skills, one subdirectory per skill, "
                 f"each with its own SKILL.md) is: {settings.skills_dir}"
             )
-    templates = load_builtin_templates() + load_pptx_templates(settings.custom_templates_dir)
+    templates = load_pptx_templates(settings.custom_templates_dir)
     if templates:
         instructions = f"{instructions}\n\n{format_template_listing(templates)}"
     return Agent(

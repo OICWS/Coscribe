@@ -24,7 +24,7 @@ from .mcp import load_mcp_server_configs, prepare_for_connect, validate_mcp_conf
 from .memory import format_memory_section, load_memory
 from .node_scripts import build_node_script_tools
 from .office.document_tools import DocumentToolkit, build_document_tools
-from .office.pptx import build_presentation_tools
+from .office.pptx import NEW_DECK_INSTRUCTIONS, build_presentation_tools
 from .office.xlsx import SpreadsheetToolkit, build_spreadsheet_tools
 from .pptx_templates import (
     TemplateInfo,
@@ -112,6 +112,7 @@ __all__ = [
     "build_interaction_tools",
     "build_node_script_tools",
     "build_presentation_tools",
+    "NEW_DECK_INSTRUCTIONS",
     "build_scheduled_task_tools",
     "build_script_tools",
     "build_selfwake_tools",

@@ -1,6 +1,6 @@
 """Run evaluation tasks through coscribe's real agent and check what comes out.
 
-    python -m evals.run --route current --tasks all --out evals/runs/baseline
+    python -m evals.run --tasks all --out evals/runs/baseline
     python -m evals.run --tasks 01,03 --out evals/runs/try
     python -m evals.run --check-only --out evals/runs/baseline    # re-check, no model calls
     python -m evals.run --kind xlsx --out evals/runs/excel        # the Excel tasks
@@ -37,14 +37,11 @@ from .xlsx_checks import check_workbook
 
 DEFAULT_MODEL = "deepseek:deepseek-flash"
 DEFAULT_EFFORT = "low"
+# The product's levels (runtime_lg/effort.py LEVELS), written out so `--help` needs no import of
+# the agent; a test keeps the two equal.
+EFFORT_LEVELS = ("low", "medium", "high", "extra", "max", "ultra")
 DEFAULT_TIMEOUT = 1800.0
 DEEPSEEK_URL = "https://api.deepseek.com/v1"
-ROUTES = {
-    "current": "coscribe's coordinator agent as it ships",
-    "engine": "new decks built from SVG pages with build_pptx_from_pages (decision 0010)",
-}
-# The engine route's instructions and skill, as they would ship if it replaced today's route.
-ENGINE_GUIDE = Path(__file__).resolve().parents[1] / "src/coscribe/tools/office/pptx/engine/guide"
 # What a task of each kind produces and how it is checked.
 SUFFIXES = {"pptx": ".pptx", "xlsx": ".xlsx", "docx": ".docx"}
 CHECKERS = {"pptx": check_deck, "xlsx": check_workbook, "docx": check_document}
@@ -122,7 +119,11 @@ class Recorder:
 
 
 def _build_session(
-    root: Path, workspace: Path, model: str, thread_id: str, route: str = "current"
+    root: Path,
+    workspace: Path,
+    model: str,
+    thread_id: str,
+    effort: str = DEFAULT_EFFORT,
 ) -> Any:
     from langgraph.checkpoint.memory import InMemorySaver
 
@@ -141,9 +142,10 @@ def _build_session(
         custom_templates_dir=root / "templates",
         memory_path=root / "MEMORY.md",
         auto_title_threads=False,
+        # The product's own scale and mapping (runtime_lg/effort.py), so a run's level means
+        # what the same level means to a user.
+        default_effort=effort,
     )
-    if route == "engine":
-        _install_engine_skill(settings.skills_dir, settings.state_dir)
     providers = {"deepseek": {"base_url": DEEPSEEK_URL, "api_key": os.environ["DEEPSEEK_API_KEY"]}}
     session = ChatSessionLG(
         thread_id=thread_id,
@@ -159,35 +161,6 @@ def _build_session(
     # A scheduled run's tier: every gated call goes ahead, nobody is asked.
     session.run_approval_mode = "skip"
     return session
-
-
-def _install_engine_skill(skills_dir: Path, state_dir: Path) -> None:
-    """The engine's skill in this task's own skills folder, and the deck skill it replaces
-    switched off (the instructions name that one only when it is listed)."""
-    from coscribe.tools.skill_catalog import set_skill_enabled
-
-    target = skills_dir / "pptx-pages"
-    target.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(ENGINE_GUIDE / "SKILL.md", target / "SKILL.md")
-    set_skill_enabled(state_dir, "PPTX Slides", False)
-
-
-@contextlib.contextmanager
-def route_instructions(route: str) -> Iterator[None]:
-    """The engine route's paragraph after the coordinator's instructions, for the whole run
-    (tasks overlap, so it is not installed per task)."""
-    if route != "engine":
-        yield
-        return
-    from coscribe import coordinator
-
-    original = coordinator.INSTRUCTIONS
-    paragraph = (ENGINE_GUIDE / "instructions.md").read_text(encoding="utf-8").strip()
-    coordinator.INSTRUCTIONS = f"{original}\n\n{paragraph}"
-    try:
-        yield
-    finally:
-        coordinator.INSTRUCTIONS = original
 
 
 def _find_output(
@@ -206,10 +179,10 @@ def _find_output(
 
 
 @contextlib.contextmanager
-def measured_models(effort: str | None) -> Iterator[None]:
-    """Every model the sessions build reports its usage to the task that is running, and gets
-    the reasoning effort. Installed once around the whole run: tasks overlap, so a patch made
-    and undone per task would drop or leak another task's wrapper."""
+def measured_models() -> Iterator[None]:
+    """Every model the sessions build reports its usage to the task that is running. Installed
+    once around the whole run: tasks overlap, so a patch made and undone per task would drop or
+    leak another task's wrapper."""
     from coscribe.conversation import session as session_module
 
     original = session_module.resolve_chat_model
@@ -219,8 +192,6 @@ def measured_models(effort: str | None) -> Iterator[None]:
         collector = _CURRENT_USAGE.get()
         if collector is not None:
             chat_model.callbacks = [_usage_callback(collector)]
-        if effort and hasattr(chat_model, "reasoning_effort"):
-            chat_model.reasoning_effort = effort
         return chat_model
 
     session_module.resolve_chat_model = resolve
@@ -234,9 +205,8 @@ async def run_task(
     task: Task,
     out: Path,
     model: str,
-    effort: str | None,
+    effort: str,
     timeout: float,
-    route: str = "current",
 ) -> dict[str, Any]:
     # A relative path would reach the agent's tools as relative to their own working directory.
     task_out = out.resolve() / task.name
@@ -258,7 +228,7 @@ async def run_task(
     status, error = "ok", None
     started = time.monotonic()
     try:
-        session = _build_session(task_out, workspace, model, task.name, route)
+        session = _build_session(task_out, workspace, model, task.name, effort)
         recorder.session = session
         await asyncio.wait_for(session.handle_user_message(task.brief, recorder), timeout)
         if recorder.errors:
@@ -273,9 +243,9 @@ async def run_task(
     result = {
         "task": task.name,
         "kind": task.kind,
-        "route": route,
         "model": model,
         "effort": effort,
+        "effort_runs_as": getattr(recorder.session, "_effort_runs_as", None),
         "status": status,
         "error": error,
         "wall_seconds": round(wall, 1),
@@ -460,11 +430,9 @@ async def run_all(args: argparse.Namespace, tasks: list[Task], out: Path) -> Non
     async def one(task: Task) -> None:
         async with gate:
             print(f"start {task.name}", flush=True)
-            # A dropped connection before the model answered once says nothing about the route.
+            # A dropped connection before the model answered once says nothing about the agent.
             for _ in range(3):
-                result = await run_task(
-                    task, out, args.model, args.effort, args.timeout, args.route
-                )
+                result = await run_task(task, out, args.model, args.effort, args.timeout)
                 answered = result["model_calls"] or result["tool_call_count"] or result["messages"]
                 if result["status"] != "error" or answered:
                     break
@@ -485,21 +453,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--kind", choices=sorted(CHECKERS), default="pptx", help="which office tasks to run"
     )
-    parser.add_argument("--route", choices=sorted(ROUTES), default="current")
     parser.add_argument(
         "--tasks", default="all", help="`all`, or names / number prefixes, comma-separated"
     )
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument(
-        "--effort", default=DEFAULT_EFFORT, help="reasoning effort; `none` leaves the default"
+        "--effort",
+        choices=EFFORT_LEVELS,
+        default=DEFAULT_EFFORT,
+        help="the level a user would pick; each model runs the nearest one it supports",
     )
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT, help="seconds per task")
     parser.add_argument("--jobs", type=int, default=2, help="tasks run at the same time")
     parser.add_argument("--check-only", action="store_true", help="re-check an earlier run")
     args = parser.parse_args(argv)
-    if args.effort == "none":
-        args.effort = None
     tasks = discover(args.tasks, kind=args.kind)
     out: Path = args.out
     out.mkdir(parents=True, exist_ok=True)
@@ -511,7 +479,7 @@ def main(argv: list[str] | None = None) -> int:
         if "DEEPSEEK_API_KEY" not in os.environ:
             print("DEEPSEEK_API_KEY is not set", file=sys.stderr)
             return 1
-        with measured_models(args.effort), route_instructions(args.route):
+        with measured_models():
             asyncio.run(run_all(args, tasks, out))
     write_summary(out, discover("all", kind=args.kind), args.kind)
     print((out / "summary.md").read_text(encoding="utf-8"))

@@ -11,11 +11,16 @@ references (MIT licence, copyright Hugo He).
 
 1. **Read the material** the user gave (read_docx / read_xlsx / read_pdf / read_file). Every
    number, name and date on a slide comes from it; a figure you compute (a sum, a share) must be
-   exact. Never add a year, a version number or a statistic the material does not have.
+   exact. Never add a year, a version number or a statistic the material does not have: no date
+   on the cover or in a footer unless the material gives one. Write a figure with its unit as the
+   material writes it ("399 元" stays "399 元", not "¥399"; "41%" stays "41%"), because the reader
+   checks the slide against the material.
 2. **Plan the deck** before drawing: one line per page with its role (cover, agenda, section,
    content, closing), its title (a short claim, not a label: "华东增长最快", not "区域数据"), and
-   the content it must show. One idea per page. Page count as the user asked; otherwise about one
-   page per two minutes of talk.
+   the figures it must show. A breakdown keeps all its parts (every share of a survey, every
+   price of an offer); before writing pages, check that each figure in the material is on a
+   page or left out on purpose. One idea per page. Page count as the user asked; otherwise about
+   one page per two minutes of talk.
 3. **Fix the look once** for the whole deck: a palette (one dominant colour, one support, one
    accent, plus two or three neutrals for text and backgrounds, all as #RRGGBB), a type scale, the
    margins, and one recurring motif (a band, a rule, a corner shape). Every page reuses them.
