@@ -120,48 +120,76 @@ def test_a_title_widens_its_column_only_past_the_empty_cells_beside_it(tmp_path:
     assert _width(tmp_path, "A") >= text_width(title)
 
 
-def test_writing_a_sheet_again_sizes_it_for_the_new_content(tmp_path: Path) -> None:
-    _write(tmp_path, f"| Item | Note |\n| Lamp | {'a long note ' * 3} |")
-    _write(tmp_path, "| Item | Note |\n| Lamp | short |")
+def test_writing_a_sheet_again_widens_a_column_but_never_narrows_it(tmp_path: Path) -> None:
+    _write(tmp_path, "| Item | Price |\n| Lamp | 1 |")
     assert _cols(tmp_path) == []
 
     _write(tmp_path, "| Item | Price |\n| Lamp | 123456789.5 |")
-    assert _width(tmp_path, "B") >= len("123456789.5")
+    wide = _width(tmp_path, "B")
+    assert wide >= len("123456789.5")
+
+    _write(tmp_path, "| Item | Price |\n| Lamp | 1 |")
+    assert _width(tmp_path, "B") == wide
 
 
-def test_a_width_set_earlier_is_kept_when_the_sheet_is_written_again(tmp_path: Path) -> None:
+def test_a_width_set_earlier_is_kept_unless_the_content_needs_more(tmp_path: Path) -> None:
     tools = _tools(tmp_path)
     content = "| Product | Unit price |\n| Desk lamp | 24.5 |"
     tools["write_xlsx"](path=FILE, content=content, sheet_name="Orders")  # type: ignore[operator]
-    tools["set_xlsx_column_width"](path=FILE, sheet_name="Orders", columns="B", width=6)  # type: ignore[operator]
-
+    tools["set_xlsx_column_width"](path=FILE, sheet_name="Orders", columns="A:B", width=30)  # type: ignore[operator]
     tools["write_xlsx"](path=FILE, content=content, sheet_name="Orders")  # type: ignore[operator]
+    assert _width(tmp_path, "A") == _width(tmp_path, "B") == 30
 
-    assert _width(tmp_path, "B") == 6
+    tools["set_xlsx_column_width"](path=FILE, sheet_name="Orders", columns="B", width=6)  # type: ignore[operator]
+    tools["write_xlsx"](path=FILE, content=content, sheet_name="Orders")  # type: ignore[operator]
+    assert 6 < _width(tmp_path, "B") and _width(tmp_path, "B") >= text_width("Unit price")
 
 
-def test_a_template_width_is_kept_and_stays_one_range(tmp_path: Path) -> None:
+def test_a_template_range_keeps_its_width_where_the_content_fits(tmp_path: Path) -> None:
     _book_with_cols(
         tmp_path, '<col min="1" max="1" width="40"/><col min="2" max="16384" width="7"/>'
     )
 
-    _write(tmp_path, "| Product | Unit price | Open tickets |\n| Desk lamp | 24.5 | 3 |")
+    _write(tmp_path, "| Product | Unit price | x |\n| Desk lamp | 24.5 | 3 |")
 
     assert [(c["min"], c["max"], c["width"]) for c in _cols(tmp_path)] == [
         ("1", "1", "40"),
-        ("2", "16384", "7"),
+        ("2", "2", "12"),
+        ("3", "16384", "7"),
     ]
 
 
-def test_a_template_column_without_a_width_is_sized_and_keeps_its_look(tmp_path: Path) -> None:
+def test_a_template_column_keeps_its_look_and_a_hidden_or_closed_one_stays_so(
+    tmp_path: Path,
+) -> None:
     _book_with_cols(
-        tmp_path, '<col min="1" max="1" hidden="1"/><col min="2" max="16384" outlineLevel="1"/>'
+        tmp_path,
+        '<col min="1" max="1" hidden="1"/><col min="2" max="2" width="0" customWidth="1"/>'
+        '<col min="3" max="16384" outlineLevel="1"/>',
     )
 
-    _write(tmp_path, "| Product | Unit price |\n| Desk lamp | 24.5 |")
+    _write(tmp_path, "| Product | Unit price | Open tickets |\n| Desk lamp | 24.5 | 3 |")
 
-    hidden, sized, rest = _cols(tmp_path)
-    assert hidden["hidden"] == "1" and float(hidden["width"]) >= text_width("Desk lamp")
-    assert sized["outlineLevel"] == "1" and float(sized["width"]) >= text_width("Unit price")
-    assert (rest["min"], rest["max"], rest["outlineLevel"]) == ("3", "16384", "1")
+    hidden, closed, sized, rest = _cols(tmp_path)
+    assert hidden["hidden"] == "1" and "width" not in hidden
+    assert closed["width"] == "0"
+    assert sized["outlineLevel"] == "1" and float(sized["width"]) >= text_width("Open tickets")
+    assert (rest["min"], rest["max"], rest["outlineLevel"]) == ("4", "16384", "1")
     assert "width" not in rest
+
+
+def test_a_number_format_applied_later_widens_its_column(tmp_path: Path) -> None:
+    tools = _tools(tmp_path)
+    _write(tmp_path, "| 区域 | 销售额 | 备注 |\n| 华东 | 12850000 | x |\n| 华北 | 9420000 | x |")
+    assert _width(tmp_path, "B") < text_width("12,850,000元")
+
+    tools["format_xlsx_cells"](  # type: ignore[operator]
+        path=FILE, sheet_name="Orders", cell_range="B2:B3", number_format='#,##0"元"'
+    )
+    assert _width(tmp_path, "B") >= text_width("12,850,000元")
+
+    tools["set_xlsx_column_width"](path=FILE, sheet_name="Orders", columns="B", width=30)  # type: ignore[operator]
+    tools["format_xlsx_cells"](  # type: ignore[operator]
+        path=FILE, sheet_name="Orders", cell_range="B2:B3", number_format="0"
+    )
+    assert _width(tmp_path, "B") == 30
