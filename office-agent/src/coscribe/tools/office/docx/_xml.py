@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+import re
 import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
@@ -134,51 +135,116 @@ def _mark_body_deleted(document: Any, author: str, change_ids: _ChangeIdCounter)
             document.element.body.remove(child)
 
 
+_TOC_INSTRUCTION = 'TOC \\o "1-3" \\h \\z \\u'
+_TOC_EMPTY_RESULT = "No table of contents entries found."
+
+
 def _add_toc(document: Any) -> Any:
-    """Insert a Word TOC field (``TOC \\o "1-3" \\h \\z \\u``) at the current
-    end of the document -- python-docx has no native TOC API, this is the
-    standard raw-OXML field-code recipe (fldChar begin/separate/end +
-    instrText), matching the docx skill's own guidance that headings must
-    use built-in ``HeadingLevel``-equivalent styles (``add_heading`` already
-    does that). The placeholder text only shows until Word recalculates the
-    field -- ``_enable_update_fields`` makes that happen automatically on
-    open instead of requiring the user to press F9."""
+    """Insert a Word TOC field at the current end of the document with an
+    empty result -- python-docx has no native TOC API, this is the standard
+    raw-OXML field-code recipe (fldChar begin/separate/end + instrText). The
+    result stays empty here because headings written after the marker are
+    not known yet; ``_fill_toc`` writes it once the whole body exists."""
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
 
     paragraph = document.add_paragraph()
-    run = paragraph.add_run()
-    r_element = run._r
-
+    code_run = paragraph.add_run()._r
     begin = OxmlElement("w:fldChar")
     begin.set(qn("w:fldCharType"), "begin")
-
     instr = OxmlElement("w:instrText")
     instr.set(qn("xml:space"), "preserve")
-    instr.text = 'TOC \\o "1-3" \\h \\z \\u'
-
+    instr.text = _TOC_INSTRUCTION
     separate = OxmlElement("w:fldChar")
     separate.set(qn("w:fldCharType"), "separate")
-
-    placeholder = OxmlElement("w:t")
-    placeholder.text = "Right-click and choose Update Field to generate the table of contents."
+    code_run.append(begin)
+    code_run.append(instr)
+    code_run.append(separate)
 
     end = OxmlElement("w:fldChar")
     end.set(qn("w:fldCharType"), "end")
-
-    r_element.append(begin)
-    r_element.append(instr)
-    r_element.append(separate)
-    r_element.append(placeholder)
-    r_element.append(end)
+    paragraph.add_run()._r.append(end)
     return paragraph
+
+
+def _toc_levels(instruction: str) -> tuple[int, int]:
+    match = re.search(r'\\o\s+"(\d)-(\d)"', instruction)
+    if match is None:
+        return 1, 9
+    return int(match.group(1)), int(match.group(2))
+
+
+def _toc_style(document: Any, level: int) -> Any:
+    """The template's own ``toc N`` style, else Word's built-in definition of
+    it added to the document: Word matches built-in styles by name, so its own
+    field update on open keeps the same style."""
+    from docx.enum.style import WD_STYLE_TYPE
+    from docx.oxml.ns import qn
+    from docx.shared import Pt, Twips
+
+    name = f"toc {level}"
+    for style in document.styles:
+        if style.type == WD_STYLE_TYPE.PARAGRAPH and style.name.lower() == name:
+            return style
+    style = document.styles.add_style(name, WD_STYLE_TYPE.PARAGRAPH)
+    # A custom style named like a built-in one is a different style to Word.
+    style.element.attrib.pop(qn("w:customStyle"), None)
+    style.style_id = f"TOC{level}"
+    style.base_style = document.styles["Normal"]
+    style.next_paragraph_style = document.styles["Normal"]
+    style.priority = 39
+    style.unhide_when_used = True
+    style.paragraph_format.space_after = Pt(5)
+    if level > 1:
+        style.paragraph_format.left_indent = Twips(220 * (level - 1))
+    return style
+
+
+def _fill_toc(document: Any, toc_paragraph: Any, headings: list[tuple[int, str]]) -> list[Any]:
+    """Write the result of an ``_add_toc`` field: one paragraph per heading in
+    the field's ``\\o`` level range, without page numbers -- only Word can
+    paginate, and ``updateFields`` has it rebuild the result with numbers on
+    open, while LibreOffice, PDF export and previews show it as written.
+    Returns the paragraphs added after ``toc_paragraph``."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    from docx.text.paragraph import Paragraph
+
+    p_element = toc_paragraph._p
+    instruction = "".join(el.text or "" for el in p_element.iter(qn("w:instrText")))
+    low, high = _toc_levels(instruction)
+    entries = [
+        (level, text.strip()) for level, text in headings if low <= level <= high and text.strip()
+    ]
+
+    end_run = p_element.findall(qn("w:r"))[-1]
+    p_element.remove(end_run)
+    if not entries:
+        toc_paragraph.add_run(_TOC_EMPTY_RESULT)
+        p_element.append(end_run)
+        return []
+
+    first_level, first_text = entries[0]
+    toc_paragraph.style = _toc_style(document, first_level)
+    toc_paragraph.add_run(first_text)
+    added: list[Any] = []
+    previous = p_element
+    for level, text in entries[1:]:
+        new_element = OxmlElement("w:p")
+        previous.addnext(new_element)
+        paragraph = Paragraph(new_element, toc_paragraph._parent)
+        paragraph.style = _toc_style(document, level)
+        paragraph.add_run(text)
+        added.append(paragraph)
+        previous = new_element
+    previous.append(end_run)
+    return added
 
 
 def _enable_update_fields(document: Any) -> None:
     """Set ``<w:updateFields w:val="true"/>`` in settings.xml so Word
     recalculates every field (our TOC included) automatically on open,
-    instead of showing stale placeholder text until the user manually
-    updates it."""
+    adding the page numbers our written TOC result leaves out."""
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
 

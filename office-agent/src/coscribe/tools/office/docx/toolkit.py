@@ -17,6 +17,7 @@ from ._xml import (
     _clear_body,
     _enable_update_fields,
     _fill_docx_table,
+    _fill_toc,
     _locate_paragraph,
     _mark_body_deleted,
     _mark_paragraph_inserted,
@@ -25,6 +26,23 @@ from ._xml import (
     _TrackedDocxHost,
     _write_comments_part,
 )
+
+
+def _finish_tocs(
+    document: Any,
+    toc_paragraphs: list[Any],
+    headings: list[tuple[int, str]],
+    change_author: str | None,
+    change_ids: _ChangeIdCounter,
+) -> bool:
+    for toc_paragraph in toc_paragraphs:
+        added = _fill_toc(document, toc_paragraph, headings)
+        if change_author is not None:
+            for entry in [toc_paragraph, *added]:
+                _mark_paragraph_inserted(entry._p, change_author, change_ids)
+    if toc_paragraphs:
+        _enable_update_fields(document)
+    return bool(toc_paragraphs)
 
 
 class DocxToolkit(WorkspaceToolkit):
@@ -67,7 +85,8 @@ class DocxToolkit(WorkspaceToolkit):
 
         if page_size or orientation:
             _apply_page_setup(document, page_size, orientation)
-        has_toc = False
+        toc_paragraphs: list[Any] = []
+        headings: list[tuple[int, str]] = []
         pending_comments: list[tuple[Any, str]] = []
         previous_kind = ""
         for block in parse_blocks(content):
@@ -75,6 +94,7 @@ class DocxToolkit(WorkspaceToolkit):
             if block.kind == "heading":
                 paragraph = document.add_heading("", level=block.level)
                 _add_inline_runs(paragraph, block.text)
+                headings.append((block.level, paragraph.text))
             elif block.kind == "bullet":
                 paragraph = document.add_paragraph(style="List Bullet")
                 _add_inline_runs(paragraph, block.text)
@@ -82,8 +102,7 @@ class DocxToolkit(WorkspaceToolkit):
                 paragraph = document.add_paragraph(style="List Number")
                 _add_inline_runs(paragraph, block.text)
             elif block.kind == "toc":
-                paragraph = _add_toc(document)
-                has_toc = True
+                toc_paragraphs.append(_add_toc(document))
             elif block.kind == "table" and block.rows:
                 if previous_kind == "table":
                     # Word joins back-to-back tables into one.
@@ -103,8 +122,10 @@ class DocxToolkit(WorkspaceToolkit):
             if block.comment:
                 pending_comments.append((paragraph._p, block.comment))
 
-        if has_toc:
-            _enable_update_fields(document)
+        # Written only now, so the TOC also lists the headings after its marker.
+        has_toc = _finish_tocs(
+            document, toc_paragraphs, headings, change_author if track_changes else None, change_ids
+        )
         for index, (paragraph_element, _) in enumerate(pending_comments):
             _new_comment_anchor(paragraph_element, str(index))
 

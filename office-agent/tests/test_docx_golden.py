@@ -183,7 +183,7 @@ def _no_libreoffice(monkeypatch: pytest.MonkeyPatch) -> None:
 
 # Styles, theme, settings and the package boilerplate come from python-docx's template and are
 # the same in every document; stored once they would be most of every golden. A document whose
-# copy differs still shows its own full text.
+# copy differs shows its unified diff against the shared one.
 SHARED_GOLDEN = GOLDEN_DIR / "_shared.txt"
 _SHARED_PREFIXES = (
     "_rels/.rels",
@@ -217,13 +217,20 @@ def _parse(text: str) -> dict[str, str]:
     return parts
 
 
-def _document_golden_text(parts: dict[str, str], shared: dict[str, str]) -> str:
-    return _render(
-        {
-            name: "<same as _shared.txt>\n" if shared.get(name) == text else text
-            for name, text in parts.items()
-        }
+def _against_shared(shared_text: str | None, text: str) -> str:
+    if shared_text is None:
+        return text
+    if shared_text == text:
+        return "<same as _shared.txt>\n"
+    diff = difflib.unified_diff(
+        shared_text.splitlines(keepends=True), text.splitlines(keepends=True), n=2
     )
+    # Drop the ---/+++ header: it names no files and carries no information here.
+    return "<_shared.txt with this diff>\n" + "".join(list(diff)[2:])
+
+
+def _document_golden_text(parts: dict[str, str], shared: dict[str, str]) -> str:
+    return _render({name: _against_shared(shared.get(name), text) for name, text in parts.items()})
 
 
 def _expected_and_diff(golden: Path, actual: str) -> tuple[str, str]:
