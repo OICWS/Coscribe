@@ -1,6 +1,6 @@
 ---
 name: PPTX Pages
-description: How to build a new PowerPoint deck as one SVG page per slide with build_pptx_from_pages -- the workflow, the page language, layout and colour choices, and how to edit a deck built this way. Load before writing any new deck.
+description: How to build a new PowerPoint deck as one SVG page per slide with build_pptx_from_pages -- the workflow, the page language, layout and colour choices, a deck on the user's own template, and how to edit a deck built this way. Load before writing any new deck.
 ---
 A deck built this way is a folder of SVG pages, one per slide, compiled into a .pptx whose shapes
 and text stay editable in PowerPoint. The pages are the deck's source: to change the deck later,
@@ -41,8 +41,24 @@ replace_changes on your own: either make the change with the edit_pptx_* tools o
 or a number: edit_pptx_text with find, on every slide at once; a shape: list_pptx_shapes, then its
 name or path), or ask the user whether their changes may be replaced.
 
-Not for this way: a deck on the user's own template or a deck the user brought (use the template
-and edit tools), or a request to change a few words in an existing deck.
+Not for this way: changing a deck the user brought (use the edit tools), or a few words in an
+existing deck.
+
+## On the user's own template
+
+When the user names their template (a .pptx or .potx), the deck is built on it:
+
+1. build_pptx_from_pages(pages_dir, path, template="公司模板.pptx") with the pages folder still
+   empty returns the template's `viewBox`, theme `colours` and `fonts`, its `layouts`, and each
+   `example_slides` entry's layout, `background` and `decoration` (bands, panels, pictures with
+   their box and fill).
+2. Fix the look from it, not from step 3 above: the template's colours (the decoration's fills
+   first; they are what the template looks like), its fonts, and its decoration's place.
+3. Each page's root takes `data-template-slide="N"`: the slide starts with example slide N's
+   background and decoration, and the page draws only the content, around them and in colours
+   that read on that background. A cover starts from the template's cover, a content page from
+   a content slide, a closing page from its last slide. No page draws a full background.
+4. Build with the same `template`; every later build passes it too.
 
 ## Layout
 

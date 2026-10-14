@@ -80,6 +80,7 @@ def build_deck(
     sources: Sequence[Path] = (),
     resource_root: Path | None = None,
     replace_changes: bool = False,
+    template: Path | None = None,
 ) -> BuildReport:
     """Compile every page in `pages_dir` into `out`, check it and record the build.
 
@@ -95,7 +96,9 @@ def build_deck(
         _refuse_if_changed(out, previous)
 
     texts = [(p.name, p.read_text(encoding="utf-8")) for p in files]
-    compiled = compile_pages(texts, out, resource_root=resource_root, svg_dir=pages_dir)
+    compiled = compile_pages(
+        texts, out, resource_root=resource_root, svg_dir=pages_dir, template=template
+    )
     report = BuildReport(out, compiled.pages)
     source_texts, report.warnings = _source_texts(sources)
     check_deck(compiled, source_texts if sources else None)
