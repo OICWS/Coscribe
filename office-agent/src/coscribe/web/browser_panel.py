@@ -199,31 +199,10 @@ class BrowserPanelSession:
             f"--user-data-dir={self._profile_dir}",
             "--no-first-run",
             "--no-default-browser-check",
-            # Just a starting size, grown dynamically later if needed --
-            # headless Chrome's own compositor surface (what
-            # Page.startScreencast/captureScreenshot actually reads
-            # pixels from) is bounded by the real browser *window* size,
-            # which a later Emulation.setDeviceMetricsOverride does NOT
-            # resize -- that call only changes what the page itself
-            # believes its viewport is (window.innerWidth,
-            # elementFromPoint, layout), leaving CSS logic and captured
-            # pixels silently disagreeing the moment the emulated size
-            # exceeds this window's real one. Caught live: a page emulated
-            # at 439x816 was screencasting frames only 439x218 tall (the
-            # real window's own height, clipping the rest), while
-            # elementFromPoint correctly used the full 816 -- exactly the
-            # kind of "looks fine, coordinates are wrong" bug a visual
-            # screenshot alone won't reveal. Used to be a fixed size,
-            # deliberately never resized after launch, on the reasoning
-            # that this was already "comfortably above" the only thing
-            # that could ever be asked of it (BrowserPanel.tsx's own
-            # on-screen panel width) -- no longer true once resize() can
-            # be asked for the user's real screen resolution instead (see
-            # remoteViewportSize in BrowserPanel.tsx), which plenty of
-            # ordinary monitors already exceed this. resize() now grows
-            # the real window to fit via _ensure_real_window_at_least
-            # when needed; this launch size is just the reasonable
-            # common-case starting point, not an assumed ceiling anymore.
+            # Only a starting size: headless Chrome captures pixels from the real
+            # window, which Emulation.setDeviceMetricsOverride does not resize, so
+            # resize() grows the window when the emulated size exceeds it
+            # (_ensure_real_window_at_least).
             "--window-size=1920,1200",
         ]
         # Chrome/Edge's own zygote refuses to start as root at all without
