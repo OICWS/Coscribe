@@ -1,5 +1,6 @@
-"""The Windows font table the deck engine sizes text with: equal to the fonts it was measured on
-(on the Windows job), and read by the emitter in place of its guess."""
+"""The text widths the deck engine sizes boxes with: Latin text in the face PowerPoint draws it in,
+and the Windows table, equal to the fonts it was measured on (on the Windows job), for the CJK
+faces upstream has no advances for."""
 
 from __future__ import annotations
 
@@ -48,3 +49,15 @@ def test_a_family_in_the_table_sizes_its_latin_text() -> None:
     )
 
     assert width == pytest.approx(sum(advances[ch] for ch in "Q3 2026") * 40)
+
+
+def test_latin_text_is_sized_in_the_face_powerpoint_draws_it_in() -> None:
+    # The emitter writes `a:latin` as Arial for this stack, so its digits are Arial's.
+    arial = utils.get_font_advances("Arial")
+    assert arial is not None
+
+    width = sum(
+        utils.estimate_text_cluster_widths("5,410", 36, font_family="Microsoft YaHei, Arial")
+    )
+
+    assert width == pytest.approx(sum(arial[ch] for ch in "5,410") * 36)

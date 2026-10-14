@@ -71,7 +71,7 @@
           <p:spPr>
             <a:xfrm>
               <a:off x="1038606" y="3603625"/>
-              <a:ext cx="2816924" cy="694944"/>
+              <a:ext cx="2825359" cy="694944"/>
             </a:xfrm>
             <a:prstGeom prst="rect">
               <a:avLst/>
@@ -379,7 +379,7 @@
           <p:spPr>
             <a:xfrm>
               <a:off x="819912" y="2317750"/>
-              <a:ext cx="1435951" cy="704088"/>
+              <a:ext cx="1249416" cy="704088"/>
             </a:xfrm>
             <a:prstGeom prst="rect">
               <a:avLst/>

@@ -41,10 +41,11 @@ FONTS: dict[str, dict[str, tuple[str, int]]] = {
     "kaiti": {"regular": ("simkai.ttf", 0)},
     "fangsong": {"regular": ("simfang.ttf", 0)},
     "microsoft jhenghei": {"regular": ("msjh.ttc", 0), "bold": ("msjhbd.ttc", 0)},
-    "segoe ui": {"regular": ("segoeui.ttf", 0), "bold": ("segoeuib.ttf", 0)},
 }
-# Upstream measured these on the Mac; measured here only to report whether Windows agrees.
+# Upstream measured these on the Mac (Segoe UI through Selawik, its metric-compatible
+# replacement); measured here only to report whether Windows agrees.
 COMPARED: dict[str, dict[str, tuple[str, int]]] = {
+    "segoe ui": {"regular": ("segoeui.ttf", 0), "bold": ("segoeuib.ttf", 0)},
     "arial": {"regular": ("arial.ttf", 0), "bold": ("arialbd.ttf", 0)},
     "calibri": {"regular": ("calibri.ttf", 0), "bold": ("calibrib.ttf", 0)},
     "times new roman": {"regular": ("times.ttf", 0)},
@@ -112,10 +113,14 @@ def main() -> int:
         print(f"missing: {line}")
     upstream = json.loads((_DRAWINGML / "font_advances.json").read_text(encoding="utf-8"))
     compared, _ = measure(args.fonts_dir, COMPARED)
-    for line in _differences(
+    differences = _differences(
         {f: {s: upstream["families"][f][s] for s in compared[f]} for f in compared}, compared
-    )[:20]:
+    )
+    for line in differences[:20]:
         print(f"differs from upstream's Mac measurement: {line}")
+    print(
+        f"compared with upstream: {', '.join(compared) or 'none found'}; {len(differences)} differ"
+    )
 
     if args.check:
         committed = json.loads(args.check.read_text(encoding="utf-8"))["families"]
