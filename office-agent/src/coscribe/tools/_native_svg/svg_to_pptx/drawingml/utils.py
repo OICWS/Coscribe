@@ -3750,6 +3750,9 @@ def get_font_advances(
     if _FONT_ADVANCES_CACHE is None:
         with Path(__file__).with_name('font_advances.json').open(encoding='utf-8') as handle:
             _FONT_ADVANCES_CACHE = json.load(handle)['families']
+        with Path(__file__).with_name('font_advances_windows.json').open(encoding='utf-8') as handle:
+            for family, styles in json.load(handle)['families'].items():
+                _FONT_ADVANCES_CACHE[family] = styles
 
     bold = font_weight in ('bold', '600', '700', '800', '900')
     italic = font_style in ('italic', 'oblique')

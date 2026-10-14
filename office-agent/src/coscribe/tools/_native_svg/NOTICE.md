@@ -30,7 +30,10 @@ coscribe's own code that walks an SVG page and packages the slides lives in
 3. `svg_finalize/flatten_tspan.py` no longer configures the process's stdout encoding at import
    (three lines for its command-line use, which pulled in upstream's attribution check);
    `svg_to_pptx/tspan_flattener.py` imports it package-relatively instead of editing `sys.path`.
-4. Nothing else. Docstrings still show upstream's usage examples with top-level imports.
+4. `svg_to_pptx/drawingml/utils.py`'s `get_font_advances` also reads
+   `font_advances_windows.json`, which is ours (below), and takes a family from it over
+   upstream's: 3 lines.
+5. Nothing else. Docstrings still show upstream's usage examples with top-level imports.
 
 The upstream project checks its own attribution (SKILL.md metadata, LICENSE, SPONSORS) at its
 script entry points; none of those entry points is in this copy. The MIT licence below is kept
@@ -39,7 +42,10 @@ as it requires.
 `pptx_shapes/data/` carries its own provenance (`pptx_shapes/data/NOTICE.md`): DrawingML
 preset geometry from Apache POI (Apache-2.0) and the shape type list from the Open XML SDK (MIT).
 `svg_to_pptx/drawingml/font_metrics.json` and `font_advances.json` are numeric font metrics
-measured by upstream from Office for Mac fonts.
+measured by upstream from Office for Mac fonts. `svg_to_pptx/drawingml/font_advances_windows.json`
+is coscribe's, not upstream's: the same table for the Windows fonts pages are written in
+(Microsoft YaHei, DengXian, SimHei and others upstream has no advances for), measured on the
+Windows CI job by `office-agent/scripts/measure_font_advances.py`, which also checks it nightly.
 
 ## Files
 
