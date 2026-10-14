@@ -1,3 +1,33 @@
-"""PowerPoint: the deck engine (compiled page sources). The editing tools still live in
-`tools/presentations.py` until it is split along the engine / edit / motion / qa / xml /
-templates boundary."""
+"""PowerPoint: the deck engine (compiled page sources) and, until `tools/presentations.py` is split
+along the engine / edit / motion / qa / xml / templates boundary, the tools that still live there.
+`build_presentation_tools` here is the one the coordinator registers: today's tools and the
+engine's together."""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Sequence
+from pathlib import Path
+from typing import Any
+
+from ...presentations import build_presentation_tools as _build_legacy_tools
+from .engine.tool import build_engine_tools
+
+
+def build_presentation_tools(
+    root: str | Path,
+    *,
+    state_dir: str | Path | None = None,
+    custom_templates_dir: str | Path | None = None,
+    extra_readable: Sequence[str | Path] = (),
+    extra_writable: Sequence[str | Path] = (),
+) -> list[Callable[..., Any]]:
+    return [
+        *_build_legacy_tools(
+            root,
+            state_dir=state_dir,
+            custom_templates_dir=custom_templates_dir,
+            extra_readable=extra_readable,
+            extra_writable=extra_writable,
+        ),
+        *build_engine_tools(root, extra_readable=extra_readable, extra_writable=extra_writable),
+    ]

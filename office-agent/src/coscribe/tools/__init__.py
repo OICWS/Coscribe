@@ -24,6 +24,7 @@ from .mcp import load_mcp_server_configs, prepare_for_connect, validate_mcp_conf
 from .memory import format_memory_section, load_memory
 from .node_scripts import build_node_script_tools
 from .office.document_tools import DocumentToolkit, build_document_tools
+from .office.pptx import build_presentation_tools
 from .office.xlsx import SpreadsheetToolkit, build_spreadsheet_tools
 from .pptx_templates import (
     TemplateInfo,
@@ -31,7 +32,6 @@ from .pptx_templates import (
     load_builtin_templates,
     load_pptx_templates,
 )
-from .presentations import build_presentation_tools
 from .scheduled_tasks import (
     SCHEDULED_THREAD_PREFIX,
     TASK_DRAFT_TOOL_NAMES,
