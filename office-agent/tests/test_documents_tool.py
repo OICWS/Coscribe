@@ -330,6 +330,69 @@ def test_write_docx_tracked_toc_marks_every_entry_inserted(tmp_path: Path) -> No
         assert paragraph._p.findall(qn("w:r")) == []
 
 
+@pytest.mark.parametrize("tool", ["replace_docx_text", "delete_docx_text"])
+def test_editing_a_heading_ignores_its_copy_in_the_toc(tmp_path: Path, tool: str) -> None:
+    from docx.oxml.ns import qn
+
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](path="report.docx", content=TOC_CONTENT)
+    if tool == "replace_docx_text":
+        tools[tool](path="report.docx", find="Windows", replace="Linux")
+    else:
+        tools[tool](path="report.docx", text="Windows")
+
+    doc = Document(tmp_path / "report.docx")
+    heading = next(p for p in doc.paragraphs if p.style.name == "Heading 3")
+    assert heading._p.findall(f".//{qn('w:del')}") != []
+    assert [text for _, text in _toc_field_result(doc)][2] == "Windows"
+
+
+def test_add_docx_image_after_a_heading_ignores_its_copy_in_the_toc(tmp_path: Path) -> None:
+    from PIL import Image
+
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](path="report.docx", content=TOC_CONTENT)
+    Image.new("RGB", (40, 20), "red").save(tmp_path / "pic.png")
+
+    tools["add_docx_image"](path="report.docx", image_path="pic.png", after_text="Usage")
+
+    texts = _body_texts(tmp_path / "report.docx")
+    assert texts[-3:] == ["Usage", "[picture]", "Run it."]
+
+
+def test_toc_style_keeps_a_template_style_that_already_has_the_id_toc1(tmp_path: Path) -> None:
+    from docx.enum.style import WD_STYLE_TYPE
+
+    template = Document()
+    template.styles.add_style("Box Contents", WD_STYLE_TYPE.PARAGRAPH).style_id = "TOC1"
+    template.save(str(tmp_path / "template.docx"))
+    tools = _tools_by_name(tmp_path)
+
+    tools["write_docx"](path="report.docx", content=TOC_CONTENT, template_path="template.docx")
+
+    doc = Document(tmp_path / "report.docx")
+    ids = [style.style_id for style in doc.styles]
+    assert len(ids) == len(set(ids))
+    assert doc.styles.get_by_id("TOC1", WD_STYLE_TYPE.PARAGRAPH).name == "Box Contents"
+    entry = next(p for p in doc.paragraphs if p.text == "Handbook" and "toc" in p.style.name)
+    assert entry.style.name == "toc 1"
+
+
+def test_toc_style_reuses_a_template_toc1_style_found_by_its_id(tmp_path: Path) -> None:
+    from docx.enum.style import WD_STYLE_TYPE
+
+    template = Document()
+    template.styles.add_style("TOC1", WD_STYLE_TYPE.PARAGRAPH).style_id = "TOC1"
+    template.save(str(tmp_path / "template.docx"))
+    tools = _tools_by_name(tmp_path)
+
+    tools["write_docx"](path="report.docx", content=TOC_CONTENT, template_path="template.docx")
+
+    doc = Document(tmp_path / "report.docx")
+    assert [s.name for s in doc.styles if s.name.lower().replace(" ", "") == "toc1"] == ["TOC1"]
+    assert _toc_field_result(doc)[0] == ("TOC1", "Handbook")
+
+
 @pytest.mark.real_libreoffice
 @pytest.mark.skipif(not _libreoffice_actually_works(), reason="LibreOffice not usable here")
 def test_write_docx_toc_renders_as_a_contents_list_in_libreoffice(tmp_path: Path) -> None:

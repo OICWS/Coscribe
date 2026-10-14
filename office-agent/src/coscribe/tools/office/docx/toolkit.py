@@ -23,6 +23,7 @@ from ._xml import (
     _mark_paragraph_inserted,
     _new_comment_anchor,
     _text_column_emu,
+    _toc_result_paragraphs,
     _TrackedDocxHost,
     _write_comments_part,
 )
@@ -260,9 +261,9 @@ class DocxToolkit(WorkspaceToolkit):
         if not after_text:
             return
         # The new paragraphs are still the last two in the body; find the
-        # anchor among the others.
-        moving = {id(paragraph._p), id(last._p)}  # noqa: SLF001
-        others = [p for p in document.paragraphs if id(p._p) not in moving]  # noqa: SLF001
+        # anchor among the others, not counting a TOC's copies of headings.
+        skipped = {paragraph._p, last._p} | _toc_result_paragraphs(document.element.body)  # noqa: SLF001
+        others = [p for p in document.paragraphs if p._p not in skipped]  # noqa: SLF001
         wanted = after_text.strip()
         exact = [p for p in others if p.text.strip() == wanted]
         matches = exact or [p for p in others if wanted in p.text]

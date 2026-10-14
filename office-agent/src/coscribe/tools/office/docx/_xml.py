@@ -177,19 +177,31 @@ def _toc_levels(instruction: str) -> tuple[int, int]:
 def _toc_style(document: Any, level: int) -> Any:
     """The template's own ``toc N`` style, else Word's built-in definition of
     it added to the document: Word matches built-in styles by name, so its own
-    field update on open keeps the same style."""
+    field update on open keeps the same style. The id only has to be unique;
+    a template may already use ``TOC1`` for a style of another name."""
     from docx.enum.style import WD_STYLE_TYPE
     from docx.oxml.ns import qn
     from docx.shared import Pt, Twips
 
     name = f"toc {level}"
+    used_ids = set()
     for style in document.styles:
-        if style.type == WD_STYLE_TYPE.PARAGRAPH and style.name.lower() == name:
+        used_ids.add(style.style_id)
+        if style.type != WD_STYLE_TYPE.PARAGRAPH:
+            continue
+        if style.name.lower() == name or (
+            style.style_id == f"TOC{level}" and style.name.lower().replace(" ", "") == f"toc{level}"
+        ):
             return style
+    style_id = f"TOC{level}"
+    suffix = 1
+    while style_id in used_ids:
+        suffix += 1
+        style_id = f"TOC{level}_{suffix}"
     style = document.styles.add_style(name, WD_STYLE_TYPE.PARAGRAPH)
     # A custom style named like a built-in one is a different style to Word.
     style.element.attrib.pop(qn("w:customStyle"), None)
-    style.style_id = f"TOC{level}"
+    style.style_id = style_id
     style.base_style = document.styles["Normal"]
     style.next_paragraph_style = document.styles["Normal"]
     style.priority = 39
@@ -239,6 +251,37 @@ def _fill_toc(document: Any, toc_paragraph: Any, headings: list[tuple[int, str]]
         previous = new_element
     previous.append(end_run)
     return added
+
+
+def _toc_result_paragraphs(body: Any) -> set[Any]:
+    """Every paragraph holding text of a TOC field's result. That result
+    repeats each heading's text, so a lookup of a heading by its text must
+    not count these copies. The set holds the elements themselves, not their
+    ``id()``: lxml reuses a proxy only while something references it."""
+    from docx.oxml.ns import qn
+
+    fld_char, instr_text, paragraph_tag = qn("w:fldChar"), qn("w:instrText"), qn("w:p")
+    text_tags = {qn("w:t"), qn("w:delText")}
+    # One entry per open field: [is a TOC field, past its separator].
+    fields: list[list[bool]] = []
+    inside: set[Any] = set()
+    for element in body.iter(fld_char, instr_text, *text_tags):
+        if element.tag == fld_char:
+            kind = element.get(qn("w:fldCharType"))
+            if kind == "begin":
+                fields.append([False, False])
+            elif kind == "separate" and fields:
+                fields[-1][1] = True
+            elif kind == "end" and fields:
+                fields.pop()
+        elif element.tag == instr_text:
+            if fields and (element.text or "").strip().upper().startswith("TOC"):
+                fields[-1][0] = True
+        elif any(is_toc and in_result for is_toc, in_result in fields):
+            paragraph = next(element.iterancestors(paragraph_tag), None)
+            if paragraph is not None:
+                inside.add(paragraph)
+    return inside
 
 
 def _enable_update_fields(document: Any) -> None:
@@ -539,7 +582,10 @@ def _locate_paragraph(
         raise ValueError("find text is empty")
     matches: list[str] = []
     ambiguous_within: list[str] = []
+    toc_entries = _toc_result_paragraphs(document_element)
     for paragraph in document_element.iter(f"{_tracks_constants.W}p"):
+        if paragraph in toc_entries:
+            continue
         para_id = paragraph.get(f"{_tracks_constants.W14}paraId", "")
         try:
             _resolve(
