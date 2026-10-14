@@ -579,11 +579,13 @@ class SpreadsheetToolkit:
         except ValueError as exc:
             raise ValueError(f"Invalid start_cell {start_cell!r}: {exc}") from None
 
+        written = []
         for row_offset, row in enumerate(rows):
             for col_offset, raw_cell in enumerate(row):
-                sheet.cell(
-                    row=start_row + row_offset, column=start_col + col_offset
-                ).value = _coerce_cell(raw_cell)
+                cell = sheet.cell(row=start_row + row_offset, column=start_col + col_offset)
+                cell.value = _coerce_cell(raw_cell)
+                written.append(cell)
+        widen_for_values(sheet, None, written, explicit_width_starts(file_path, sheet_name))
 
         has_formula = _workbook_has_any_formula(workbook)
         workbook.save(str(file_path))

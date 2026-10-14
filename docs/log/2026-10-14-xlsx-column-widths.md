@@ -1,4 +1,4 @@
-# write_xlsx and format_xlsx_cells widen columns to what they show (shipped)
+# write_xlsx, edit_xlsx_cells and format_xlsx_cells widen columns to what they show (shipped)
 
 Why: workbooks the agent made with `write_xlsx` kept the default column width (8.43 characters), so
 LibreOffice cut labels (`Unit price`, `Open tickets`, `销售额（万元）`) and printed numbers that did
@@ -25,8 +25,11 @@ not fit as `###` (#193, found by the Excel evaluation of #164).
   - `format_xlsx_cells` with a `number_format` widens the columns of the range to show their
     values under the new format (formula cells by the value LibreOffice last computed). This is
     the `###` of the Chinese-format task: `12850000` becomes `12,850,000元` after `write_xlsx`.
+  - `edit_xlsx_cells` widens the columns of the cells it wrote (a header such as `Unit price`
+    added next to a user's table). A formula it writes has no value yet and is not measured; a
+    merged cell and text with an empty cell to its right are not measured either.
 - Nothing is reported to the model. The xlsx goldens change only by the added `<cols>` elements.
-- `tests/test_xlsx_column_widths.py` (20 tests).
+- `tests/test_xlsx_column_widths.py` (22 tests).
 
 ## Not verified
 - The model run of the affected Excel tasks (`03-lookup-two-sheets`, `07-chinese-formats`, check
@@ -39,5 +42,7 @@ not fit as `###` (#193, found by the Excel evaluation of #164).
 
 ## Follow-ups
 - Next PR (`tools/xlsx-widths-after-recalc`): size a column of formulas from the values
-  LibreOffice computed, after the recalculation `write_xlsx` already runs.
-- `edit_xlsx_cells` does not resize columns.
+  LibreOffice computed, after the recalculation `write_xlsx` and `edit_xlsx_cells` already run.
+- A formula `edit_xlsx_cells` writes is not measured: in the lookup task (03) the products it looks
+  up (`Orders!D6` `Desk lamp`, `=INDEX(Prices!...)`) are still cut off; the next PR measures
+  them after LibreOffice recalculates.

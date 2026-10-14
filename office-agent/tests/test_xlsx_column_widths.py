@@ -193,3 +193,41 @@ def test_a_number_format_applied_later_widens_its_column(tmp_path: Path) -> None
         path=FILE, sheet_name="Orders", cell_range="B2:B3", number_format="0"
     )
     assert _width(tmp_path, "B") == 30
+
+
+def test_edit_xlsx_cells_widens_the_columns_it_wrote(tmp_path: Path) -> None:
+    _book_with_cols(
+        tmp_path,
+        '<col min="1" max="3" width="14" customWidth="1"/><col min="7" max="7" hidden="1"/>',
+    )
+
+    _tools(tmp_path)["edit_xlsx_cells"](  # type: ignore[operator]
+        path=FILE,
+        sheet_name="Orders",
+        start_cell="D1",
+        content="| Product | Unit price | Line total | Notes |\n| Desk lamp | 24.9 | =E2*2 | x |",
+    )
+
+    cols = [(c["min"], c["max"], c.get("width"), c.get("hidden")) for c in _cols(tmp_path)]
+    assert cols == [
+        ("1", "3", "14", None),
+        ("4", "4", "11", None),
+        ("5", "5", "12", None),
+        ("6", "6", "12", None),
+        ("7", "7", None, "1"),
+    ]
+
+
+def test_edit_xlsx_cells_leaves_merged_text_and_text_with_room_beside_it(tmp_path: Path) -> None:
+    tools = _tools(tmp_path)
+    _write(tmp_path, "| a | b | c |\n| 1 | 2 | 3 |")
+    tools["merge_xlsx_cells"](path=FILE, sheet_name="Orders", cell_range="A3:C3")  # type: ignore[operator]
+
+    tools["edit_xlsx_cells"](  # type: ignore[operator]
+        path=FILE,
+        sheet_name="Orders",
+        start_cell="A3",
+        content="| 123456789012 |\n| Open orders: see below |",
+    )
+
+    assert _cols(tmp_path) == []
