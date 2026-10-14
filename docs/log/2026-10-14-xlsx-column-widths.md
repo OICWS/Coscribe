@@ -12,9 +12,8 @@ not fit as `###` (#193, found by the Excel evaluation of #164).
   by the longer of the format's own length and the General text.
 - `tools/office/xlsx/column_layout.py`: a column is widened to its longest value plus 2 when that
   exceeds the default, never past 50. Text over empty cells to its right widens its column only
-  when it is longer than that run of cells (up to the sheet's last column). Formula columns are
-  sized after LibreOffice recalculates, from the computed values, by patching `<cols>` in the
-  saved file (an openpyxl save would drop the cached values).
+  when it is longer than that run of cells (up to the sheet's last column). A formula cell has
+  no value yet, so its column is sized by its header and constants.
 - The columns `write_xlsx` sized are listed per sheet in a custom document property,
   `coscribe.fitted_columns` (LibreOffice drops `bestFit`, but keeps custom properties). When a
   sheet is written again, those columns are sized again for the new content; any other width
@@ -25,7 +24,7 @@ not fit as `###` (#193, found by the Excel evaluation of #164).
   the model.
 - The xlsx goldens change by the added `<cols>` elements and by the new `docProps/custom.xml`
   part (with its content type and relationship).
-- `tests/test_xlsx_column_widths.py` (21 tests, one with real LibreOffice).
+- `tests/test_xlsx_column_widths.py` (19 tests).
 
 ## Not verified
 - The model run of the affected Excel tasks (`03-lookup-two-sheets`, `07-chinese-formats`, check
@@ -35,5 +34,7 @@ not fit as `###` (#193, found by the Excel evaluation of #164).
 - Excel on Windows was not opened; widths were checked against LibreOffice's rendering only.
 
 ## Follow-ups
+- Next PR (`tools/xlsx-widths-after-recalc`): size a column of formulas from the values
+  LibreOffice computed, after the recalculation `write_xlsx` already runs.
 - `format_xlsx_cells` and `edit_xlsx_cells` do not resize: a number format applied after
   `write_xlsx` that no longer fits the column can still print `###`; the same measure applies.

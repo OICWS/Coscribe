@@ -4,7 +4,6 @@ was already set, and `column_widths` measures a cell the way Excel draws it."""
 from __future__ import annotations
 
 import re
-import shutil
 import zipfile
 from pathlib import Path
 
@@ -13,7 +12,7 @@ from openpyxl import Workbook, load_workbook
 
 from coscribe.tools import _thumbnail
 from coscribe.tools.office.xlsx import build_spreadsheet_tools
-from coscribe.tools.office.xlsx.column_layout import _patch_cols, fit_columns
+from coscribe.tools.office.xlsx.column_layout import fit_columns
 from coscribe.tools.office.xlsx.column_widths import MAX_WIDTH, displayed_text, text_width
 from evals.xlsx_checks import clipped_texts
 
@@ -166,26 +165,3 @@ def test_a_template_column_without_a_width_is_sized_and_keeps_its_look(tmp_path:
     assert sized["outlineLevel"] == "1" and float(sized["width"]) >= text_width("Unit price")
     assert (rest["min"], rest["max"], rest["outlineLevel"]) == ("3", "16384", "1")
     assert "width" not in rest
-
-
-def test_widths_after_recalculation_are_patched_into_the_saved_file(tmp_path: Path) -> None:
-    _book_with_cols(tmp_path, '<col min="3" max="4" width="9" customWidth="1"/>')
-
-    _patch_cols(tmp_path / FILE, "Orders", {2: 20.0, 4: 30.0})
-
-    assert [(c["min"], c["max"], c["width"]) for c in _cols(tmp_path)] == [
-        ("2", "2", "20"),
-        ("3", "3", "9"),
-        ("4", "4", "30"),
-    ]
-    load_workbook(tmp_path / FILE)
-
-
-@pytest.mark.real_libreoffice
-@pytest.mark.skipif(shutil.which("soffice") is None, reason="needs LibreOffice")
-def test_a_column_of_formulas_is_sized_from_the_computed_values(tmp_path: Path) -> None:
-    _write(tmp_path, "| Item | Sum |\n| a | =123456789012/7 |")
-
-    assert load_workbook(tmp_path / FILE, data_only=True)["Orders"]["B2"].value
-    (sized,) = [c for c in _cols(tmp_path) if c["min"] == "2"]
-    assert float(sized["width"]) >= len("17636684145")

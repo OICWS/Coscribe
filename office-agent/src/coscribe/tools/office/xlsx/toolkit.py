@@ -15,7 +15,6 @@ from .column_layout import (
     fitted_columns,
     forget_fitted,
     record_fitted,
-    widen_after_recalc,
 )
 from .helpers import (
     _CHART_TYPES,
@@ -133,8 +132,6 @@ class SpreadsheetToolkit:
         recalc_result: dict[str, object] = {"status": "skipped", "skipped_reason": None}
         if has_formula:
             recalc_result = _recalc_xlsx_and_evaluate_lookups(file_path)
-        if recalc_result["status"] != "skipped":
-            widen_after_recalc(file_path, sheet_name, fit)
 
         preview_path, preview_skipped_reason = render_thumbnail(file_path, self._state_dir)
         return {
