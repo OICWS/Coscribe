@@ -101,6 +101,13 @@ def test_a_forgotten_replacement_deletes_nothing(tmp_path: Path) -> None:
     assert "".join(run.text for run in _runs(tmp_path)) == "售价 399 元"
 
 
+def test_remove_with_a_replacement_is_refused(tmp_path: Path) -> None:
+    _deck(tmp_path)
+
+    with pytest.raises(ValueError, match="leave replace empty"):
+        _edit(tmp_path, slide=1, find="399", replace="349", remove=True)
+
+
 def test_a_line_break_in_the_replacement_is_refused(tmp_path: Path) -> None:
     _deck(tmp_path)
 

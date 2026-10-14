@@ -37,8 +37,9 @@ references (MIT licence, copyright Hugo He).
 To edit a deck built this way: edit the page's SVG (edit_file) and build again; for a change that
 touches every page (a colour, a font), edit each page. If the build refuses because the .pptx was
 changed after it was built (in PowerPoint, or with the edit_pptx_* tools), do not pass
-replace_changes on your own: either make the change with the edit_pptx_* tools on the .pptx, or ask
-the user whether their changes may be replaced.
+replace_changes on your own: either make the change with the edit_pptx_* tools on the .pptx (a word
+or a number: edit_pptx_text with find, on every slide at once; a shape: list_pptx_shapes, then its
+name or path), or ask the user whether their changes may be replaced.
 
 Not for this way: a deck on the user's own template or a deck the user brought (use the template
 and edit tools), or a request to change a few words in an existing deck.

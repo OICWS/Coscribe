@@ -78,6 +78,53 @@ def _edit_deck(path: Path) -> None:
     prs.save(path)
 
 
+_SVG = 'xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="Microsoft YaHei, Arial"'
+_BENEFITS = [
+    ("护眼无频闪", "光线稳定不频闪，长时间读写更舒服"),
+    ("旋钮一键调光", "一颗旋钮，亮度与色温随时调好"),
+    ("可折叠随身带", "机身 480 克，折叠收起放进包里"),
+]
+
+
+def _built_deck(path: Path) -> None:
+    """A deck built from pages, as a colleague hands it on: the .pptx only, no pages to rebuild
+    from, so a change goes through the edit tools; the benefits are groups."""
+    from coscribe.tools.office.pptx.engine import compile_pages
+
+    cover = (
+        f'<svg {_SVG}><rect width="1280" height="720" fill="#0F172A"/>'
+        '<text id="title" x="96" y="320" font-size="56" font-weight="bold" fill="#FFFFFF">'
+        "云朵 Pro 智能台灯</text>"
+        '<text id="price" x="96" y="400" font-size="28" fill="#FBBF24">首发价 399 元</text></svg>'
+    )
+    items = "".join(
+        f'<g id="benefit-{i}"><circle cx="128" cy="{216 + 140 * (i - 1)}" r="22" fill="#C2410C"/>'
+        f'<text x="128" y="{224 + 140 * (i - 1)}" font-size="20" font-weight="bold" fill="#FFFFFF"'
+        f' text-anchor="middle">0{i}</text>'
+        f'<text x="176" y="{214 + 140 * (i - 1)}" font-size="30" font-weight="bold" fill="#0E1116">'
+        f"{name}</text>"
+        f'<text x="176" y="{252 + 140 * (i - 1)}" font-size="20" fill="#4B5563">{detail}</text></g>'
+        for i, (name, detail) in enumerate(_BENEFITS, start=1)
+    )
+    benefits = (
+        f'<svg {_SVG}><rect width="1280" height="720" fill="#F5F3EF"/>'
+        '<text id="title" x="96" y="120" font-size="40" font-weight="bold" fill="#0E1116">'
+        f"三个理由，把它放在手边</text>{items}</svg>"
+    )
+    launch = (
+        f'<svg {_SVG}><rect width="1280" height="720" fill="#F5F3EF"/>'
+        '<text id="title" x="96" y="120" font-size="40" font-weight="bold" fill="#0E1116">'
+        "11 月 18 日首发</text>"
+        '<g id="offer"><rect x="96" y="220" width="640" height="200" rx="16" fill="#FFFFFF"/>'
+        '<text x="128" y="300" font-size="36" font-weight="bold" fill="#C2410C">399 元</text>'
+        '<text x="128" y="360" font-size="22" fill="#4B5563">前 1,000 名下单再减 50 元</text>'
+        "</g></svg>"
+    )
+    pages = [("01-cover", cover), ("02-benefits", benefits), ("03-launch", launch)]
+    report = compile_pages(pages, path)
+    assert not report.errors(), report.errors()
+
+
 def main() -> None:
     images = TASKS / "04-product-launch" / "inputs"
     images.mkdir(parents=True, exist_ok=True)
@@ -86,6 +133,9 @@ def main() -> None:
     _lamp_image(images / "lamp-detail.png", "#2b2b30", desk=False, close=True)
     shutil.copyfile(TEMPLATE, TASKS / "06-own-template" / "inputs" / "公司模板.pptx")
     _edit_deck(TASKS / "07-edit-deck" / "inputs" / "季度汇报.pptx")
+    built = TASKS / "11-edit-built-deck" / "inputs"
+    built.mkdir(parents=True, exist_ok=True)
+    _built_deck(built / "新品发布.pptx")
 
 
 if __name__ == "__main__":

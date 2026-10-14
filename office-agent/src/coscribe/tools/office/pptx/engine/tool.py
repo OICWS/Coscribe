@@ -50,8 +50,9 @@ def build_engine_tools(
           accessibility, edit_pptx_text).
         - Text never wraps: one <text> per paragraph, each further line a
           <tspan x="(same x)" dy="(line height)">; a styled word is a <tspan> without x/dy.
-        - A <g id="..."> per logical unit (card, chart, list item): the id becomes the shape's
-          name. A group's transform is translate(x y) only; size and rotate the elements inside.
+        - A <g id="..."> per logical unit (card, chart, list item), and an id on a figure the
+          user may change (<text id="price">): any id becomes the shape's name, which the edit
+          tools take. A group's transform is translate(x y) only; size and rotate its elements.
         - A <rect> covering the whole canvas, drawn first, becomes the slide background.
         - Charts and tables are drawn with shapes and text, every value from the material.
 
