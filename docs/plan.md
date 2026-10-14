@@ -49,8 +49,9 @@ Last reviewed: 2026-10-11.
    new decks compiled from whole-page SVG sources, edits through the page source and upgraded
    object tools; open-source code reused as owned copies. Done: the evaluation and the baseline
    of today's route (`office-agent/evals/`), the engine's compiler (#141), its checks and folder
-   build (#198, PR 1). Next (#198): the build tool and an `engine` route in the evaluation, the
-   measurement against the baseline, and only if it wins the switch of new decks to the engine;
+   build (#198, PR 1), the build tool and an `engine` route in the evaluation (PR 2). Next (#198):
+   the measurement against the baseline, cost per deck included (one task cost 1.7 times today's
+   route), and only if it wins the switch of new decks to the engine;
    Excel, then Word, the same way.
 
 1. **Make the repository easy to join** (governance review, 2026-10-08).

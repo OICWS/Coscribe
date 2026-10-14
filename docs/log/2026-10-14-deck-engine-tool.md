@@ -25,10 +25,19 @@ today's route; until the measurement says so, nothing in the product tells the a
   holds text, and the contract now says translate only); path rules; the refusal; the route
   installs and removes its instructions; the instructions name the skill and the tool that exist.
 
+- One task end to end on the engine route (01-q3-review, deepseek-flash, effort low, off-peak):
+  the agent loaded the skill, wrote 6 pages, built and repaired them; all 19 facts present, 6
+  pages, every slide titled and listable, no overflow or overlap, and a clean, consistent deck to
+  the eye. It cost 0.043 dollars (about 0.29 yuan at the Chinese page's prices) and 334 s, against
+  0.025 and 183 s for today's route on the same task in the baseline. Of its 55k output tokens 38k
+  were reasoning over 26 model calls; the pages themselves are about 17k. The round trips were
+  the waste (5 builds, 5 renders, 7 small edits for 6 pages), so the guide now says to write each
+  page once, build once and look once. `evals/prices.py` now says its prices are dollars.
+
 ## Not verified
 - Windows.
-- One task was run end to end on the engine route here (see the PR); the measurement on all ten
-  is the next PR.
+- The guide's write-once wording was not run again here; the measurement on all ten tasks is the
+  next PR and shows whether it lowers the cost.
 
 ## Follow-ups
 - #198: the measurement against the baseline; only if it wins, the instructions switch.

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .....runtime import tool_metadata
 from ...._file_locks import file_lock
@@ -25,12 +25,10 @@ def build_engine_tools(
 ) -> list[Callable[..., Any]]:
     scope = WorkspaceScope(root, extra_readable=extra_readable, extra_writable=extra_writable)
 
-    # `Optional[list[str]]`, not `list[str] | None`: see `read_pptx` in `tools/presentations.py`
-    # for why the tool schema needs `typing.Optional`.
     def build_pptx_from_pages(
         pages_dir: str,
         path: str,
-        sources: Optional[list[str]] = None,  # noqa: UP045
+        sources: list[str] | None = None,
         replace_changes: bool = False,
     ) -> dict[str, Any]:
         """Build a PowerPoint deck from a folder of SVG pages, one page per slide, and check it.
