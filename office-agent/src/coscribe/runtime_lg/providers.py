@@ -1,4 +1,4 @@
-""""provider:model" string -> LangChain chat model, mirroring
+""" "provider:model" string -> LangChain chat model, mirroring
 runtime/llm_client.py's LLMClient._resolve_provider shape and the same
 provider-string convention (so Settings.default_model doesn't need to
 change format if this ever replaces the old runtime).
@@ -136,6 +136,15 @@ def with_prompt_cache_key(model: Any, key: str) -> Any:
     return model.model_copy(
         update={"model_kwargs": {**model.model_kwargs, "prompt_cache_key": key}}
     )
+
+
+def for_conversation(model: Any, thread_id: str, effort: str) -> tuple[Any, str | None]:
+    """`model` as one conversation runs it: at its effort level (and the level it runs as, None
+    when the model takes none), with that conversation's prompt-cache key."""
+    from .effort import with_effort
+
+    model, runs_as = with_effort(model, effort)
+    return with_prompt_cache_key(model, thread_id), runs_as
 
 
 def keeps_tool_list_fixed(model: str, custom_providers: dict[str, dict[str, str]]) -> bool:

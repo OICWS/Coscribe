@@ -18,6 +18,9 @@ from typing import Any, Literal, NotRequired, TypedDict, get_args, get_type_hint
 # Server -> client
 # ---------------------------------------------------------------------------
 
+# How hard the model thinks (runtime_lg/effort.py LEVELS; a test keeps the two equal).
+Effort = Literal["low", "medium", "high", "extra", "max", "ultra"]
+
 
 class StateEvent(TypedDict):
     """The conversation's settings, sent on connect and after each change."""
@@ -28,6 +31,10 @@ class StateEvent(TypedDict):
     # A reviewer model decides risky calls instead of the user.
     auto_mode: bool
     model: str
+    effort: Effort
+    # The model's own level that `effort` runs as (`xhigh` for extra, for example); None when the
+    # model takes no effort setting.
+    effort_runs_as: str | None
     context_window: int
     # Skills offered in this thread's instructions: the global on/off set, re-read at
     # the start of every turn.
@@ -469,10 +476,13 @@ class StopOut(TypedDict):
 
 
 class SwitchModelOut(TypedDict):
-    """`model` is a "provider:model" string. Answered with `state`, or `error`."""
+    """`model` is a "provider:model" string; `effort`, when given, changes the level too (the
+    model stays the same to change only the level). Answered with `state`, or `error` leaving
+    both as they were."""
 
     type: Literal["switch_model"]
     model: str
+    effort: NotRequired[Effort]
 
 
 class SetFoldersOut(TypedDict):

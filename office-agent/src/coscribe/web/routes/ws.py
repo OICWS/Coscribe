@@ -175,7 +175,7 @@ def router(state: AppState) -> APIRouter:
                     # wait on a human the way an approval-blocked turn
                     # does, and Starlette's WebSocket.send() has no
                     # internal locking against concurrent callers.
-                    await session.switch_model(data["model"], websocket)
+                    await session.switch_model(data["model"], websocket, data.get("effort"))
                 elif message_type == "set_folders":
                     folders = [str(folder) for folder in data.get("folders", [])]
                     # Persisted only once the session took them, so the

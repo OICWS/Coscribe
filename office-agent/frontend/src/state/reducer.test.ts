@@ -56,6 +56,8 @@ describe("state", () => {
     accept_edits: true,
     auto_mode: true,
     model: "m1",
+    effort: "medium",
+    effort_runs_as: "low",
     context_window: 1000,
     enabled_skills: ["s1"],
     workspace_root: "C:\\work",

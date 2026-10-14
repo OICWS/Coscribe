@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     default_model: str
     """Model for the Coordinator agent, as an aisuite "provider:model" string."""
 
+    default_effort: Literal["low", "medium", "high", "extra", "max", "ultra"] = "medium"
+    """How hard a new conversation's model thinks; each model runs it as the nearest level it
+    supports (runtime_lg/effort.py). The user changes it per conversation."""
+
     workspace_root: Path = Path("./workspace")
     """Directory the built-in file tools may read/write under."""
 

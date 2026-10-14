@@ -43,7 +43,6 @@
   "coscribe.conversation.session -> coscribe.runtime_lg.code_agent": 1,
   "coscribe.conversation.session -> coscribe.runtime_lg.exec_policy": 1,
   "coscribe.conversation.session -> coscribe.runtime_lg.messages": 1,
-  "coscribe.conversation.session -> coscribe.runtime_lg.providers": 1,
   "coscribe.conversation.session -> coscribe.runtime_lg.tool_deferral": 1,
   "coscribe.conversation.session -> coscribe.tools._thumbnail": 1,
   "coscribe.conversation.session -> coscribe.tools._workspace": 1,
@@ -112,11 +111,11 @@
   "coscribe.workflows.testing -> coscribe.tools.browser": 1
  },
  "fan_out": {
-  "coscribe.conversation.session": 37,
+  "coscribe.conversation.session": 36,
   "coscribe.web.app": 27
  },
  "file_lines": {
-  "src/coscribe/conversation/session.py": 2238,
+  "src/coscribe/conversation/session.py": 2223,
   "src/coscribe/coordinator.py": 974,
   "src/coscribe/runtime_lg/subagents.py": 837,
   "src/coscribe/tools/presentations.py": 7092,
@@ -129,7 +128,7 @@
   "src/coscribe/cli.py::_chat_async": 108,
   "src/coscribe/conversation/approvals.py::ApprovalDecider._decide_action_request": 289,
   "src/coscribe/conversation/session.py::ChatSessionLG.__init__": 207,
-  "src/coscribe/conversation/session.py::ChatSessionLG._handle_user_message_locked": 213,
+  "src/coscribe/conversation/session.py::ChatSessionLG._handle_user_message_locked": 212,
   "src/coscribe/conversation/session.py::ChatSessionLG._stream_turn": 221,
   "src/coscribe/coordinator.py::build_coordinator_agent": 153,
   "src/coscribe/runtime_lg/agent.py::build_langgraph_agent": 184,
