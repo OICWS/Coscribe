@@ -98,7 +98,7 @@ def check_deck(report: CompileReport, sources: Sequence[str] | None = None) -> N
         page.errors.extend(unreadable)
         page.warnings.extend(faint)
         if known is not None:
-            page.warnings.extend(_unknown_numbers(texts, known))
+            page.warnings.extend(_unknown_numbers(texts + _data(slide), known))
 
 
 def _schema(slide: Any) -> Iterator[str]:
@@ -308,6 +308,32 @@ def _luminance(hex_colour: str) -> float:
 def _contrast_ratio(a: str, b: str) -> float:
     light, dark = sorted((_luminance(a), _luminance(b)), reverse=True)
     return (light + 0.05) / (dark + 0.05)
+
+
+def _data(slide: Any) -> list[_Text]:
+    """What a native chart or table on the slide shows: its cells, categories and values.
+    A chart's data lives in its own part, outside the slide's XML."""
+    found: list[str] = []
+    for frame in slide._element.iter(f"{_P}graphicFrame"):
+        found.extend(t.text or "" for t in frame.iter(f"{_A}t"))
+    for shape in slide.shapes:
+        for chart in _charts(shape):
+            for plot in chart.plots:
+                found.extend(str(category) for category in plot.categories)
+                for series in plot.series:
+                    found.extend(_plain(value) for value in series.values if value is not None)
+    return [_Text(text, _Box(0, 0, 0, 0), None, "", None) for text in found if text.strip()]
+
+
+def _charts(shape: Any) -> Iterator[Any]:
+    if getattr(shape, "has_chart", False) and shape.has_chart:
+        yield shape.chart
+    for member in getattr(shape, "shapes", ()):
+        yield from _charts(member)
+
+
+def _plain(value: float) -> str:
+    return str(int(value)) if float(value).is_integer() else repr(value)
 
 
 def _numbers(text: str) -> set[str]:

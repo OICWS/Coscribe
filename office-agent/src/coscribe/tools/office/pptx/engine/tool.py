@@ -54,7 +54,10 @@ def build_engine_tools(
           user may change (<text id="price">): any id becomes the shape's name, which the edit
           tools take. A group's transform is translate(x y) only; size and rotate its elements.
         - A <rect> covering the whole canvas, drawn first, becomes the slide background.
-        - Charts and tables are drawn with shapes and text, every value from the material.
+        - A chart or a table is a native PowerPoint object whose data the user can edit: a <g
+          id="..." data-pptx-replace-with="chart"> (or "table") holding only one <metadata
+          type="application/json"> with its box (x, y, width, height in px) and its data; the
+          "PPTX Pages" skill has the fields.
 
         Returns per page `errors` (fix the page and build again) and `warnings` (judge them: a
         number no source has may be a sum you computed or an axis tick). `sources` are the files

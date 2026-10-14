@@ -27,6 +27,7 @@ from ...._native_svg.svg_to_pptx import geometry_properties, tspan_flattener
 from ...._native_svg.svg_to_pptx.drawingml import elements, paths, text_properties, utils
 from ...._native_svg.svg_to_pptx.drawingml.context import ConvertContext, ShapeResult
 from ...._native_svg.svg_to_pptx.drawingml.styles import build_effect_xml, get_element_opacity
+from . import native
 
 SVG_NS = "http://www.w3.org/2000/svg"
 EMU_PER_PX = utils.EMU_PER_PX
@@ -207,8 +208,6 @@ def _compile_page(
         result = _convert(child, ctx, report)
         if result is not None:
             shapes.append(result.xml)
-    if ctx.package_files or ctx.content_type_overrides:
-        report.warnings.append("native formulas and chart/table objects are not supported yet")
     shapes = _attach_relationships(slide, ctx, shapes, report)
 
     sp_tree = slide.shapes._spTree
@@ -230,6 +229,12 @@ def _convert(elem: ET.Element, ctx: ConvertContext, report: PageReport) -> Shape
     if tag in _NON_VISUAL:
         return None
     label = f'<{tag} id="{elem.get("id")}">' if elem.get("id") else f"<{tag}>"
+    if tag == "g" and native.native_kind(elem):
+        try:
+            return native.convert(elem, ctx)
+        except Exception as e:  # reported like any element's error
+            report.errors.append(f"{label}: {e}")
+            return None
     if tag == "g":
         return _convert_group(elem, ctx, report)
     converter = _CONVERTERS.get(tag)
@@ -339,6 +344,8 @@ def _attach_relationships(
             _part, new_id = slide.part.get_or_add_image_part(io.BytesIO(data))
         elif entry["type"] == RT.HYPERLINK and entry.get("target_mode") == "External":
             new_id = slide.part.relate_to(target, RT.HYPERLINK, is_external=True)
+        elif entry["type"].endswith("/chart") or entry["type"].endswith("/chartEx"):
+            new_id = slide.part.relate_to(native.add_part(slide, ctx, target), entry["type"])
         else:
             kind = entry["type"].rsplit("/", 1)[-1]
             report.warnings.append(f"relationship {kind} not supported yet")

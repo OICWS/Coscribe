@@ -80,11 +80,46 @@ dense page, a lighter one.
 
 ## Charts and tables
 
-Draw them with shapes and text: bars as rects whose lengths are exactly proportional to the
-values (state the scale to yourself: 100 px per 1,000), the value written at the end of each bar,
-the category beside it, a baseline line, no 3D. The title says the finding ("华东增长最快，+12.2%"),
-not the axis. A table: a header row on a tint, rows separated by hairlines (#E5E7EB), numbers
-right-aligned, one row or cell highlighted when the point is about it.
+A chart or a table is a native PowerPoint chart or table, not drawn shapes: the user can change
+its data in PowerPoint, and its JSON is shorter than drawing it. The group holds the JSON only:
+
+```xml
+<g id="revenue-chart" data-pptx-replace-with="chart"><metadata type="application/json">
+{"x": 64, "y": 160, "width": 560, "height": 480, "type": "column",
+ "categories": ["华东", "华南", "华北"],
+ "series": [{"name": "Q3 营收（万元）", "values": [5410, 3980, 2120],
+             "point_colors": ["#C2410C", "#94A3B8", "#94A3B8"]}],
+ "data_labels": {"number_format": "#,##0"}, "font_size": 18,
+ "style": {"colors": ["#94A3B8"], "text_color": "#374151", "grid_color": "#E5E7EB"}}
+</metadata></g>
+```
+
+- `type`: column, bar (horizontal; categories top-down), line, area, pie, doughnut. Several
+  series for a comparison, with `"show_legend": true`; `point_colors` on a column or bar series
+  marks the bar the point is about.
+- Values are the material's numbers as plain numbers (5410, not "5,410"); `number_format`
+  writes them: "#,##0", "0.0", and `0"%"` for a share written as 41 (shows 41%). `font_size`
+  is in px like the page.
+- Negative values: `"axes": {"category": {"label_position": "low"}}`, so the category names
+  sit below the plot instead of on the bars.
+- The text above the chart says the finding with its figure ("位置便利占 41%，居首"), not the
+  axis: the reader, and the checks, read the figure there.
+
+```xml
+<g id="regions" data-pptx-replace-with="table"><metadata type="application/json">
+{"x": 680, "y": 180, "width": 536, "height": 260, "schema": "ppt-master.semantic-table.v2",
+ "columns": ["区域", "营收（万元）", "同比"],
+ "rows": [["华东", {"text": "5,410", "align": "r"},
+           {"text": "+12.2%", "align": "r", "color": "#15803D", "bold": true}],
+          ["华北", {"text": "2,120", "align": "r"}, {"text": "-3.1%", "align": "r"}]],
+ "style": {"font_size": 18, "header_fill": "#0F172A", "header_text": "#FFFFFF",
+           "band_fill": "#F1F5F9", "border_color": "#E5E7EB"}}
+</metadata></g>
+```
+
+- A cell is a string, or `{"text", "align": "r"}` for a number, plus `bold`, `color`, `fill` to
+  mark the cell the point is about. Every row is in `rows`, written as the material writes it.
+- A long table goes over two pages rather than below 16 px.
 
 ## Avoid
 
