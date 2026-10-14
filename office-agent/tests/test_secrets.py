@@ -207,7 +207,7 @@ def test_delete_secret_is_a_noop_for_a_ref_when_the_keyring_package_is_absent(
 ) -> None:
     monkeypatch.setattr(secrets, "keyring", None)
 
-    secrets.delete_secret({"keyring_ref": "custom-provider:deepseek"})
+    assert secrets.delete_secret({"keyring_ref": "custom-provider:deepseek"}) is None
 
 
 def test_delete_secret_swallows_keyring_errors(failing_keyring: _AlwaysFailingKeyring) -> None:
@@ -274,6 +274,9 @@ def test_resolve_env_keyring_refs_keeps_an_empty_secret_empty(
 ) -> None:
     stored = secrets.env_value_for_storage("builtin-provider:OPTIONAL_KEY", "")
     monkeypatch.setenv("OPTIONAL_KEY", stored)
+
+    assert stored.startswith(secrets.ENV_KEYRING_PREFIX)
+    assert fake_keyring.store == {("coscribe", "builtin-provider:OPTIONAL_KEY"): ""}
 
     secrets.resolve_env_keyring_refs()
 
