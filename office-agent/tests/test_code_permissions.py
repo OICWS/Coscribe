@@ -6,6 +6,7 @@ from __future__ import annotations
 import codecs
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -92,15 +93,13 @@ def test_code_permissions_file_is_read_and_written_as_utf8(
     seen: list[str | None] = []
     real_read, real_write = Path.read_text, Path.write_text
 
-    def read_text(self: Path, encoding: str | None = None, errors: str | None = None) -> str:
-        seen.append(encoding)
-        return real_read(self, encoding=encoding, errors=errors)
+    def read_text(self: Path, *args: Any, **kwargs: Any) -> str:
+        seen.append(kwargs.get("encoding"))
+        return real_read(self, *args, **kwargs)
 
-    def write_text(
-        self: Path, data: str, encoding: str | None = None, errors: str | None = None
-    ) -> int:
-        seen.append(encoding)
-        return real_write(self, data, encoding=encoding, errors=errors)
+    def write_text(self: Path, data: str, *args: Any, **kwargs: Any) -> int:
+        seen.append(kwargs.get("encoding"))
+        return real_write(self, data, *args, **kwargs)
 
     monkeypatch.setattr(Path, "read_text", read_text)
     monkeypatch.setattr(Path, "write_text", write_text)
