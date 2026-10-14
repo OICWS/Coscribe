@@ -16,8 +16,6 @@ const LABELS: Record<Effort, string> = {
   max: "Max",
   ultra: "Ultra",
 };
-// The provider's own name for a level, as `effort_runs_as` reports it, in the scale's words.
-const PROVIDER_LABELS: Record<string, string> = { ...LABELS, xhigh: "Extra" };
 interface EffortPickerProps {
   effort: Effort;
   /** The model's level the choice runs as; null when the model takes no effort setting. */
@@ -47,12 +45,7 @@ export function EffortPicker({ effort: confirmed, runsAs, onChange }: EffortPick
   const unsupported = runsAs === null;
   const index = EFFORTS.indexOf(effort);
   const ultra = effort === "ultra";
-  const runsAsLabel = runsAs === null ? null : (PROVIDER_LABELS[runsAs] ?? runsAs);
-  const note = unsupported
-    ? "This model has no effort setting."
-    : runsAsLabel !== LABELS[effort]
-      ? `This model runs it as ${runsAsLabel}.`
-      : null;
+  const note = unsupported ? "This model has no effort setting." : null;
 
   const pick = (next: Effort) => {
     if (next === effort) return;
