@@ -434,3 +434,11 @@ body {
   background-color: var(--find-current-bg);
   color: #1f1f1f;
 }
+
+/* Effort at Ultra (EffortPicker): the level's name in the violet of its track (UltraField). */
+.effort-ultra-text {
+  color: #6f4ad8;
+}
+:root[data-theme="dark"] .effort-ultra-text {
+  color: #a98ff5;
+}

@@ -17,6 +17,8 @@ import {
 import { FindInPage } from "./components/FindInPage";
 import { COLLAPSED_CLUSTER_WIDTH, DRAWS_TITLE_BAR, useTitleBarColors } from "./lib/titleBar";
 import type { PlanChoice, PlanItem } from "./components/PlanCard";
+import { EffortPicker } from "./components/EffortPicker";
+import type { Effort } from "./components/EffortPicker";
 import { ModelPicker } from "./components/ModelPicker";
 import { BrowserPanel, type BrowserCapture } from "./components/BrowserPanel";
 import { NAV_RAIL_EXPANDED_WIDTH, NavRail, type NavMode } from "./components/NavRail";
@@ -692,6 +694,8 @@ function App() {
   );
 
   const onSwitchModel = (model: string) => socketRef.current?.send({ type: "switch_model", model });
+  const onSetEffort = (effort: Effort) =>
+    socketRef.current?.send({ type: "switch_model", model: state.model, effort });
 
   // Guarded by olderStatus in the reducer (a second call while one's
   // already "loading" is a no-op there) -- ChatLog.tsx also only offers
@@ -740,6 +744,7 @@ function App() {
         <FolderPicker folders={state.folders} disabled={state.turnInFlight} onChange={onSetFolders} />
       }
       modelPicker={<ModelPicker currentModel={state.model} onSwitch={onSwitchModel} />}
+      effortPicker={<EffortPicker effort={state.effort} runsAs={state.effortRunsAs} onChange={onSetEffort} />}
       usageRing={
         onHome ? null : (
           <ContextRing

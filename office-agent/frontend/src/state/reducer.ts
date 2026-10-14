@@ -1,4 +1,4 @@
-import type { HistoryEntry, QuestionSpec, TaskDraft, WsServerEvent } from "../types/wire";
+import type { HistoryEntry, QuestionSpec, StateEvent, TaskDraft, WsServerEvent } from "../types/wire";
 
 /** The answer the frontend sends for a saved draft starts with this --
  * also how a replayed create_scheduled_task call tells "saved" apart
@@ -85,6 +85,9 @@ export interface ChatState {
   acceptEdits: boolean;
   autoMode: boolean;
   model: string;
+  /** See StateEvent.effort / effort_runs_as. */
+  effort: StateEvent["effort"];
+  effortRunsAs: string | null;
   contextWindow: number;
   /** Skills offered in this thread's instructions (see StateEvent.enabled_skills). */
   enabledSkills: string[];
@@ -156,6 +159,8 @@ export const initialChatState: ChatState = {
   acceptEdits: false,
   autoMode: false,
   model: "",
+  effort: "medium",
+  effortRunsAs: null,
   contextWindow: 0,
   enabledSkills: [],
   connectorTools: new Set(),
@@ -293,6 +298,8 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...initialChatState,
         model: state.model,
+        effort: state.effort,
+        effortRunsAs: state.effortRunsAs,
         contextWindow: state.contextWindow,
         enabledSkills: state.enabledSkills,
         connectorTools: state.connectorTools,
@@ -410,6 +417,8 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         acceptEdits: action.accept_edits,
         autoMode: action.auto_mode ?? false,
         model: action.model,
+        effort: action.effort,
+        effortRunsAs: action.effort_runs_as,
         contextWindow: action.context_window,
         enabledSkills: action.enabled_skills,
         connectorTools: new Set(action.connector_tools ?? []),
