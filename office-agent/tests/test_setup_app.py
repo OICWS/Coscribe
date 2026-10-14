@@ -193,11 +193,14 @@ async def test_run_web_server_hands_over_to_the_real_app_on_the_same_port(
     create_app_lg really does hand over cleanly on a real socket, not
     just that create_setup_app's own routes behave in isolation."""
     _isolate_dotenv(tmp_path, monkeypatch)
-    # Each server gets a copy of one listener the test holds open from start to
-    # end, so no parallel test can take the port between the two servers or
-    # before the first. uvicorn closes the socket it was given when it stops,
-    # which is why each gets its own copy.
+    # The setup server starts on a listener the test bound itself, so no parallel
+    # test can take the port before it. The real app then binds the port number
+    # itself after the setup server let go, as it does in production; that gap
+    # is the one this test is about.
     listener = socket.socket()
+    # As uvicorn sets it on the sockets it binds: without it, the setup server's
+    # connections still open block the real app's bind on Linux.
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     listener.bind(("127.0.0.1", 0))
     port = int(listener.getsockname()[1])
     served: list[uvicorn.Server] = []
@@ -206,8 +209,14 @@ async def test_run_web_server_hands_over_to_the_real_app_on_the_same_port(
     async def serve_on_the_listener(
         self: uvicorn.Server, sockets: list[socket.socket] | None = None
     ) -> None:
+        first = not served
         served.append(self)
-        await real_serve(self, sockets=[listener.dup()])
+        try:
+            await real_serve(self, sockets=[listener] if first else sockets)
+        except SystemExit as exc:
+            # uvicorn exits the process when it cannot bind or start; inside a
+            # task that would end the whole test run instead of failing this test.
+            raise RuntimeError(f"uvicorn server {len(served)} exited ({exc.code})") from exc
 
     monkeypatch.setattr(uvicorn.Server, "serve", serve_on_the_listener)
 
@@ -234,14 +243,14 @@ async def test_run_web_server_hands_over_to_the_real_app_on_the_same_port(
                 try:
                     real_resp = await client.get(f"http://127.0.0.1:{port}/", timeout=2)
                 except httpx.TransportError:
-                    continue
+                    continue  # the gap between the two servers binding
                 if "coscribe-setup-marker" not in real_resp.text:
                     break
             else:
                 raise AssertionError("the real app never took over the port")
 
-            # Both servers share one listen queue here, so a setup server that
-            # never stopped would still accept some of these new connections.
+            # On Windows SO_REUSEADDR lets the real app bind beside a setup server
+            # that never stopped, and both would accept: only new connections show it.
             assert len(served) == 2
             for _ in range(10):
                 again = await client.get(
