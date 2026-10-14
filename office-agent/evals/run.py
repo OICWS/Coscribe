@@ -39,7 +39,12 @@ DEFAULT_MODEL = "deepseek:deepseek-flash"
 DEFAULT_EFFORT = "low"
 DEFAULT_TIMEOUT = 1800.0
 DEEPSEEK_URL = "https://api.deepseek.com/v1"
-ROUTES = {"current": "coscribe's coordinator agent as it ships"}
+ROUTES = {
+    "current": "coscribe's coordinator agent as it ships",
+    "engine": "new decks built from SVG pages with build_pptx_from_pages (decision 0010)",
+}
+# The engine route's instructions and skill, as they would ship if it replaced today's route.
+ENGINE_GUIDE = Path(__file__).resolve().parents[1] / "src/coscribe/tools/office/pptx/engine/guide"
 # What a task of each kind produces and how it is checked.
 SUFFIXES = {"pptx": ".pptx", "xlsx": ".xlsx", "docx": ".docx"}
 CHECKERS = {"pptx": check_deck, "xlsx": check_workbook, "docx": check_document}
@@ -116,7 +121,9 @@ class Recorder:
             self.errors.append(str(data.get("message")))
 
 
-def _build_session(root: Path, workspace: Path, model: str, thread_id: str) -> Any:
+def _build_session(
+    root: Path, workspace: Path, model: str, thread_id: str, route: str = "current"
+) -> Any:
     from langgraph.checkpoint.memory import InMemorySaver
 
     from coscribe.config import Settings
@@ -135,6 +142,8 @@ def _build_session(root: Path, workspace: Path, model: str, thread_id: str) -> A
         memory_path=root / "MEMORY.md",
         auto_title_threads=False,
     )
+    if route == "engine":
+        _install_engine_skill(settings.skills_dir, settings.state_dir)
     providers = {"deepseek": {"base_url": DEEPSEEK_URL, "api_key": os.environ["DEEPSEEK_API_KEY"]}}
     session = ChatSessionLG(
         thread_id=thread_id,
@@ -150,6 +159,35 @@ def _build_session(root: Path, workspace: Path, model: str, thread_id: str) -> A
     # A scheduled run's tier: every gated call goes ahead, nobody is asked.
     session.run_approval_mode = "skip"
     return session
+
+
+def _install_engine_skill(skills_dir: Path, state_dir: Path) -> None:
+    """The engine's skill in this task's own skills folder, and the deck skill it replaces
+    switched off (the instructions name that one only when it is listed)."""
+    from coscribe.tools.skill_catalog import set_skill_enabled
+
+    target = skills_dir / "pptx-pages"
+    target.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(ENGINE_GUIDE / "SKILL.md", target / "SKILL.md")
+    set_skill_enabled(state_dir, "PPTX Slides", False)
+
+
+@contextlib.contextmanager
+def route_instructions(route: str) -> Iterator[None]:
+    """The engine route's paragraph after the coordinator's instructions, for the whole run
+    (tasks overlap, so it is not installed per task)."""
+    if route != "engine":
+        yield
+        return
+    from coscribe import coordinator
+
+    original = coordinator.INSTRUCTIONS
+    paragraph = (ENGINE_GUIDE / "instructions.md").read_text(encoding="utf-8").strip()
+    coordinator.INSTRUCTIONS = f"{original}\n\n{paragraph}"
+    try:
+        yield
+    finally:
+        coordinator.INSTRUCTIONS = original
 
 
 def _find_output(
@@ -193,7 +231,12 @@ def measured_models(effort: str | None) -> Iterator[None]:
 
 
 async def run_task(
-    task: Task, out: Path, model: str, effort: str | None, timeout: float
+    task: Task,
+    out: Path,
+    model: str,
+    effort: str | None,
+    timeout: float,
+    route: str = "current",
 ) -> dict[str, Any]:
     # A relative path would reach the agent's tools as relative to their own working directory.
     task_out = out.resolve() / task.name
@@ -215,7 +258,7 @@ async def run_task(
     status, error = "ok", None
     started = time.monotonic()
     try:
-        session = _build_session(task_out, workspace, model, task.name)
+        session = _build_session(task_out, workspace, model, task.name, route)
         recorder.session = session
         await asyncio.wait_for(session.handle_user_message(task.brief, recorder), timeout)
         if recorder.errors:
@@ -230,7 +273,7 @@ async def run_task(
     result = {
         "task": task.name,
         "kind": task.kind,
-        "route": "current",
+        "route": route,
         "model": model,
         "effort": effort,
         "status": status,
@@ -419,7 +462,9 @@ async def run_all(args: argparse.Namespace, tasks: list[Task], out: Path) -> Non
             print(f"start {task.name}", flush=True)
             # A dropped connection before the model answered once says nothing about the route.
             for _ in range(3):
-                result = await run_task(task, out, args.model, args.effort, args.timeout)
+                result = await run_task(
+                    task, out, args.model, args.effort, args.timeout, args.route
+                )
                 answered = result["model_calls"] or result["tool_call_count"] or result["messages"]
                 if result["status"] != "error" or answered:
                     break
@@ -466,7 +511,7 @@ def main(argv: list[str] | None = None) -> int:
         if "DEEPSEEK_API_KEY" not in os.environ:
             print("DEEPSEEK_API_KEY is not set", file=sys.stderr)
             return 1
-        with measured_models(args.effort):
+        with measured_models(args.effort), route_instructions(args.route):
             asyncio.run(run_all(args, tasks, out))
     write_summary(out, discover("all", kind=args.kind), args.kind)
     print((out / "summary.md").read_text(encoding="utf-8"))

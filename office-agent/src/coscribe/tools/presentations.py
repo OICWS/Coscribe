@@ -98,6 +98,7 @@ from ._svg_slide import add_svg_slide
 from ._thumbnail import render_all_page_previews, render_thumbnail
 from ._workspace import WorkspaceScope
 from .office.markdown_blocks import Block, parse_blocks, parse_inline_runs
+from .office.pptx.engine.tool import build_engine_tools
 from .pptx_templates import load_builtin_templates as _load_builtin_templates
 from .pptx_templates import load_pptx_templates as _load_pptx_templates
 
@@ -423,22 +424,59 @@ _TRANSITIONS = frozenset({*_TRANSITION_SPECS, *_TRANSITION_ALIASES, "none"})
 _SHAPE_TYPES = frozenset(
     {
         # Basic
-        "RECTANGLE", "ROUNDED_RECTANGLE", "OVAL", "ISOSCELES_TRIANGLE",
-        "RIGHT_TRIANGLE", "DIAMOND", "PARALLELOGRAM", "TRAPEZOID", "PENTAGON",
-        "HEXAGON", "OCTAGON", "CROSS", "PLAQUE", "CAN", "CUBE",
+        "RECTANGLE",
+        "ROUNDED_RECTANGLE",
+        "OVAL",
+        "ISOSCELES_TRIANGLE",
+        "RIGHT_TRIANGLE",
+        "DIAMOND",
+        "PARALLELOGRAM",
+        "TRAPEZOID",
+        "PENTAGON",
+        "HEXAGON",
+        "OCTAGON",
+        "CROSS",
+        "PLAQUE",
+        "CAN",
+        "CUBE",
         # Arrows
-        "RIGHT_ARROW", "LEFT_ARROW", "UP_ARROW", "DOWN_ARROW", "LEFT_RIGHT_ARROW",
-        "UP_DOWN_ARROW", "BENT_ARROW", "CHEVRON", "NOTCHED_RIGHT_ARROW", "U_TURN_ARROW",
+        "RIGHT_ARROW",
+        "LEFT_ARROW",
+        "UP_ARROW",
+        "DOWN_ARROW",
+        "LEFT_RIGHT_ARROW",
+        "UP_DOWN_ARROW",
+        "BENT_ARROW",
+        "CHEVRON",
+        "NOTCHED_RIGHT_ARROW",
+        "U_TURN_ARROW",
         # Flowchart
-        "FLOWCHART_PROCESS", "FLOWCHART_DECISION", "FLOWCHART_TERMINATOR",
-        "FLOWCHART_DATA", "FLOWCHART_DOCUMENT", "FLOWCHART_PREPARATION",
-        "FLOWCHART_PREDEFINED_PROCESS", "FLOWCHART_CONNECTOR",
+        "FLOWCHART_PROCESS",
+        "FLOWCHART_DECISION",
+        "FLOWCHART_TERMINATOR",
+        "FLOWCHART_DATA",
+        "FLOWCHART_DOCUMENT",
+        "FLOWCHART_PREPARATION",
+        "FLOWCHART_PREDEFINED_PROCESS",
+        "FLOWCHART_CONNECTOR",
         # Callouts
-        "ROUNDED_RECTANGULAR_CALLOUT", "RECTANGULAR_CALLOUT", "OVAL_CALLOUT",
+        "ROUNDED_RECTANGULAR_CALLOUT",
+        "RECTANGULAR_CALLOUT",
+        "OVAL_CALLOUT",
         "CLOUD_CALLOUT",
         # Decorative
-        "CLOUD", "HEART", "LIGHTNING_BOLT", "SUN", "MOON", "STAR_5_POINT",
-        "STAR_4_POINT", "SMILEY_FACE", "DONUT", "NO_SYMBOL", "BLOCK_ARC", "ARC",
+        "CLOUD",
+        "HEART",
+        "LIGHTNING_BOLT",
+        "SUN",
+        "MOON",
+        "STAR_5_POINT",
+        "STAR_4_POINT",
+        "SMILEY_FACE",
+        "DONUT",
+        "NO_SYMBOL",
+        "BLOCK_ARC",
+        "ARC",
     }
 )
 
@@ -471,7 +509,7 @@ def _validate_hyperlink_url(url: str) -> None:
     if not url.startswith(_HYPERLINK_SCHEMES):
         raise ValueError(
             f"add_pptx_hyperlink: url {url!r} must start with one of "
-            f"{', '.join(_HYPERLINK_SCHEMES)}, or be \"#slide-N\" to jump to slide N -- "
+            f'{", ".join(_HYPERLINK_SCHEMES)}, or be "#slide-N" to jump to slide N -- '
             "got a scheme-less or unsupported value."
         )
 
@@ -507,23 +545,79 @@ def _resolve_slide_jump_target(prs: PresentationType, slide: int, url: str) -> A
 # Lowercase, matching how it's compared (case-insensitively) below.
 _SAFE_FONTS = frozenset(
     {
-        "microsoft yahei", "simhei", "simsun", "kaiti", "fangsong", "dengxian",
-        "microsoft jhenghei", "microsoft jhenghei ui", "pmingliu", "mingliu",
-        "mingliu_hkscs", "dfkai-sb",
-        "pingfang sc", "heiti sc", "songti sc", "stsong",
-        "pingfang tc", "pingfang hk", "heiti tc", "songti tc", "kaiti tc",
-        "yu gothic", "yu gothic ui", "yu mincho",
-        "meiryo", "meiryo ui",
-        "ms gothic", "ms mincho", "ms pgothic", "ms pmincho", "ms ui gothic",
-        "malgun gothic", "gulim", "dotum", "batang",
-        "nirmala ui", "mangal", "kokila", "aparajita", "utsaah",
-        "leelawadee ui", "leelawadee", "cordia new", "angsana new", "browallia new",
-        "david", "miriam", "frank ruehl", "gisha", "levenim mt", "narkisim", "aharoni",
-        "arial", "arial black", "calibri", "segoe ui", "verdana",
-        "helvetica", "helvetica neue", "tahoma", "trebuchet ms",
-        "times new roman", "times", "georgia", "cambria", "cambria math", "palatino",
-        "garamond", "book antiqua",
-        "consolas", "courier new", "menlo", "monaco",
+        "microsoft yahei",
+        "simhei",
+        "simsun",
+        "kaiti",
+        "fangsong",
+        "dengxian",
+        "microsoft jhenghei",
+        "microsoft jhenghei ui",
+        "pmingliu",
+        "mingliu",
+        "mingliu_hkscs",
+        "dfkai-sb",
+        "pingfang sc",
+        "heiti sc",
+        "songti sc",
+        "stsong",
+        "pingfang tc",
+        "pingfang hk",
+        "heiti tc",
+        "songti tc",
+        "kaiti tc",
+        "yu gothic",
+        "yu gothic ui",
+        "yu mincho",
+        "meiryo",
+        "meiryo ui",
+        "ms gothic",
+        "ms mincho",
+        "ms pgothic",
+        "ms pmincho",
+        "ms ui gothic",
+        "malgun gothic",
+        "gulim",
+        "dotum",
+        "batang",
+        "nirmala ui",
+        "mangal",
+        "kokila",
+        "aparajita",
+        "utsaah",
+        "leelawadee ui",
+        "leelawadee",
+        "cordia new",
+        "angsana new",
+        "browallia new",
+        "david",
+        "miriam",
+        "frank ruehl",
+        "gisha",
+        "levenim mt",
+        "narkisim",
+        "aharoni",
+        "arial",
+        "arial black",
+        "calibri",
+        "segoe ui",
+        "verdana",
+        "helvetica",
+        "helvetica neue",
+        "tahoma",
+        "trebuchet ms",
+        "times new roman",
+        "times",
+        "georgia",
+        "cambria",
+        "cambria math",
+        "palatino",
+        "garamond",
+        "book antiqua",
+        "consolas",
+        "courier new",
+        "menlo",
+        "monaco",
         "impact",
     }
 )
@@ -683,6 +777,7 @@ def _animation_preset_expected_children(animation: str) -> frozenset[str]:
     child_lst = root.find(f"{{{_P_NS}}}childTnLst")
     tags = {etree.QName(child).localname for child in child_lst}
     return frozenset(tags - {"set"}) or frozenset({"set"})
+
 
 # nodeType on the presetID-bearing <p:cTn> encodes which Animation Pane
 # "Start" mode this row uses -- confirmed against hugohe3/ppt-master's
@@ -1007,9 +1102,7 @@ def _build_audio_pic_element(
 
     pic = etree.Element(f"{{{_P_NS}}}pic")
     nv_pic_pr = etree.SubElement(pic, f"{{{_P_NS}}}nvPicPr")
-    c_nv_pr = etree.SubElement(
-        nv_pic_pr, f"{{{_P_NS}}}cNvPr", id=str(shape_id), name=shape_name
-    )
+    c_nv_pr = etree.SubElement(nv_pic_pr, f"{{{_P_NS}}}cNvPr", id=str(shape_id), name=shape_name)
     etree.SubElement(
         c_nv_pr,
         f"{{{_A_NS}}}hlinkClick",
@@ -1153,9 +1246,7 @@ def _add_animation_step(
             # invalid, so it's only ever added once an animation needs
             # it) -- add one now, alongside whatever audio/video nodes
             # are already there, rather than discarding the tree.
-            root_child = timing.find(
-                f".//{{{_P_NS}}}cTn[@nodeType='tmRoot']/{{{_P_NS}}}childTnLst"
-            )
+            root_child = timing.find(f".//{{{_P_NS}}}cTn[@nodeType='tmRoot']/{{{_P_NS}}}childTnLst")
             main_child = _append_main_seq(root_child, _next_timing_id(timing))
             group = None
         else:
@@ -1180,8 +1271,15 @@ def _add_animation_step(
             etree.SubElement(begin_cond, f"{{{_P_NS}}}tn", val="2")
         outer_child = etree.SubElement(outer_ctn, f"{{{_P_NS}}}childTnLst")
         _append_step(
-            outer_child, step_id, row_id, shape_id, animation, duration_ms, node_type,
-            delay_ms, paragraph_index,
+            outer_child,
+            step_id,
+            row_id,
+            shape_id,
+            animation,
+            duration_ms,
+            node_type,
+            delay_ms,
+            paragraph_index,
         )
         return
 
@@ -1195,8 +1293,15 @@ def _add_animation_step(
     )
     step_id, row_id = next_id, next_id + 1
     _append_step(
-        group_child, step_id, row_id, shape_id, animation, duration_ms, node_type,
-        start_ms, paragraph_index,
+        group_child,
+        step_id,
+        row_id,
+        shape_id,
+        animation,
+        duration_ms,
+        node_type,
+        start_ms,
+        paragraph_index,
     )
 
 
@@ -1277,9 +1382,7 @@ def _verify_animation_readback(
         sp_tgt = candidate.find(f".//{{{_P_NS}}}spTgt")
         if sp_tgt is None or sp_tgt.get("spid") != str(shape_id):
             continue
-        if not all(
-            candidate.find(f".//{{{_P_NS}}}{tag}") is not None for tag in expected_children
-        ):
+        if not all(candidate.find(f".//{{{_P_NS}}}{tag}") is not None for tag in expected_children):
             continue
         p_rg = sp_tgt.find(f"{{{_P_NS}}}txEl/{{{_P_NS}}}pRg")
         found.add(int(p_rg.get("st")) if p_rg is not None else None)
@@ -1658,8 +1761,7 @@ def _parse_theme_color_slots(colors: str) -> dict[str, str]:
             )
         if not _THEME_HEX_RE.match(value):
             raise ValueError(
-                f"color {key}={value!r} must be a 6-hex-digit color (no '#'), "
-                f"e.g. '{key}=0F6B5C'."
+                f"color {key}={value!r} must be a 6-hex-digit color (no '#'), e.g. '{key}=0F6B5C'."
             )
         tokens[key] = value.upper()
     return tokens
@@ -2031,9 +2133,7 @@ def _icon_list_items(blocks: list[Block]) -> list[tuple[str, str]]:
     if not blocks:
         raise ValueError("layout: icon-list needs at least one bullet item.")
     if any(block.kind not in ("bullet", "number") for block in blocks):
-        raise ValueError(
-            "layout: icon-list only accepts bullet items -- no paragraphs or tables."
-        )
+        raise ValueError("layout: icon-list only accepts bullet items -- no paragraphs or tables.")
     if len(blocks) > _ICON_LIST_MAX_ITEMS:
         raise ValueError(
             f"layout: icon-list supports at most {_ICON_LIST_MAX_ITEMS} items "
@@ -2087,9 +2187,7 @@ def _add_icon_list_slide(
     for index, (glyph, label) in enumerate(items):
         row_top = top + index * row_height
         icon_top = row_top + (row_height - icon_diameter) // 2
-        icon = slide.shapes.add_shape(
-            MSO_SHAPE.OVAL, left, icon_top, icon_diameter, icon_diameter
-        )
+        icon = slide.shapes.add_shape(MSO_SHAPE.OVAL, left, icon_top, icon_diameter, icon_diameter)
         icon.fill.solid()
         # No explicit per-slide accent (empty string) follows the deck's
         # own theme accent color (accent1) instead of a hardcoded literal
@@ -3497,9 +3595,7 @@ class PresentationToolkit:
             headings = [block for block in blocks if block.kind == "heading"]
             title = headings[0].text if headings else ""
             table_blocks = [block for block in blocks if block.kind == "table"]
-            other_blocks = [
-                block for block in blocks if block.kind not in ("heading", "table")
-            ]
+            other_blocks = [block for block in blocks if block.kind not in ("heading", "table")]
 
             if layout_id == "icon-list":
                 if table_blocks:
@@ -4119,13 +4215,11 @@ class PresentationToolkit:
             )
         if fill_color and not _THEME_HEX_RE.match(fill_color):
             raise ValueError(
-                f"fill_color {fill_color!r} must be a 6-hex-digit color (no '#'), "
-                f"e.g. '38BDF8'."
+                f"fill_color {fill_color!r} must be a 6-hex-digit color (no '#'), e.g. '38BDF8'."
             )
         if line_color and not _THEME_HEX_RE.match(line_color):
             raise ValueError(
-                f"line_color {line_color!r} must be a 6-hex-digit color (no '#'), "
-                f"e.g. '38BDF8'."
+                f"line_color {line_color!r} must be a 6-hex-digit color (no '#'), e.g. '38BDF8'."
             )
         prs, file_path, target_slide = self._open_slide(path, slide)
         shape = target_slide.shapes.add_shape(
@@ -4363,8 +4457,7 @@ class PresentationToolkit:
         immediately rather than silently doing nothing."""
         if icon_name not in _ICON_NAMES:
             raise ValueError(
-                f"Unknown icon {icon_name!r} -- call list_pptx_icons() to see the "
-                f"available names."
+                f"Unknown icon {icon_name!r} -- call list_pptx_icons() to see the available names."
             )
         if not _THEME_HEX_RE.match(color):
             raise ValueError(f"color {color!r} must be a 6-hex-digit color (no '#').")
@@ -4550,7 +4643,10 @@ class PresentationToolkit:
 
     @locked_by_path
     def duplicate_pptx_slide(
-        self, path: str, slide: int, insert_at: Optional[int] = None  # noqa: UP045
+        self,
+        path: str,
+        slide: int,
+        insert_at: Optional[int] = None,  # noqa: UP045
     ) -> dict[str, object]:
         """Duplicate one slide in an existing .pptx, in place -- every
         shape, its exact position/size/formatting, and every image the
@@ -5127,8 +5223,7 @@ class PresentationToolkit:
     ) -> dict[str, object]:
         if transition not in _TRANSITIONS:
             raise ValueError(
-                f"Unknown transition {transition!r}. Use one of: "
-                f"{', '.join(sorted(_TRANSITIONS))}"
+                f"Unknown transition {transition!r}. Use one of: {', '.join(sorted(_TRANSITIONS))}"
             )
         prs, file_path, target_slide = self._open_slide(path, slide)
         _set_slide_transition(target_slide.element, transition, duration)
@@ -5181,7 +5276,12 @@ class PresentationToolkit:
                 )
             for paragraph_index in paragraph_indexes:
                 _add_animation_step(
-                    target_slide.element, shape_id, animation, duration_ms, trigger, delay_ms,
+                    target_slide.element,
+                    shape_id,
+                    animation,
+                    duration_ms,
+                    trigger,
+                    delay_ms,
                     paragraph_index,
                 )
             timing = target_slide.element.find(f"{{{_P_NS}}}timing")
@@ -5422,9 +5522,7 @@ class PresentationToolkit:
             media_total_bytes = sum(info.file_size for info in media_infos)
             media_largest = [
                 {"part": info.filename, "bytes": info.file_size}
-                for info in sorted(media_infos, key=lambda info: info.file_size, reverse=True)[
-                    :5
-                ]
+                for info in sorted(media_infos, key=lambda info: info.file_size, reverse=True)[:5]
             ]
 
         try:
@@ -5560,9 +5658,7 @@ class PresentationToolkit:
             if not 1 <= slide <= slide_count:
                 raise ValueError(f"Slide {slide} out of range: deck has {slide_count} slides")
             return self._render_slide(prs.slides[slide - 1])
-        return "\n\n---\n\n".join(
-            self._render_slide(s, with_heading=True) for s in prs.slides
-        )
+        return "\n\n---\n\n".join(self._render_slide(s, with_heading=True) for s in prs.slides)
 
     @locked_by_path
     def render_pptx_preview(self, path: str, max_slides: int = 8) -> dict[str, object]:
@@ -5948,7 +6044,9 @@ def build_presentation_tools(
         return toolkit.delete_pptx_slide(path=path, slide=slide)
 
     def duplicate_pptx_slide(
-        path: str, slide: int, insert_at: Optional[int] = None  # noqa: UP045
+        path: str,
+        slide: int,
+        insert_at: Optional[int] = None,  # noqa: UP045
     ) -> dict[str, object]:
         """Duplicate one slide in an existing PowerPoint (.pptx) file --
         every shape, its exact position/size/formatting, and every image
@@ -6906,7 +7004,11 @@ def build_presentation_tools(
         )
 
     def add_pptx_hyperlink(
-        path: str, slide: int, shape_index: int, url: str, text: Optional[str] = None  # noqa: UP045
+        path: str,
+        slide: int,
+        shape_index: int,
+        url: str,
+        text: Optional[str] = None,  # noqa: UP045
     ) -> dict[str, object]:
         """Add a clickable hyperlink to an external URL, either on a
         specific run of text or on a whole shape.
@@ -7046,9 +7148,7 @@ def build_presentation_tools(
         tool_metadata(render_pptx_preview, risk_category="READ", category="documents"),
         tool_metadata(write_pptx, risk_category="WRITE_LOCAL", category="documents"),
         tool_metadata(fill_pptx_template, risk_category="WRITE_LOCAL", category="documents"),
-        tool_metadata(
-            extract_pptx_template, risk_category="WRITE_LOCAL", category="documents"
-        ),
+        tool_metadata(extract_pptx_template, risk_category="WRITE_LOCAL", category="documents"),
         tool_metadata(edit_pptx_text, risk_category="WRITE_LOCAL", category="documents"),
         tool_metadata(delete_pptx_slide, risk_category="WRITE_LOCAL", category="documents"),
         tool_metadata(duplicate_pptx_slide, risk_category="WRITE_LOCAL", category="documents"),
@@ -7068,25 +7168,20 @@ def build_presentation_tools(
         tool_metadata(merge_pptx_table_cells, risk_category="WRITE_LOCAL", category="documents"),
         tool_metadata(add_pptx_chart, risk_category="WRITE_LOCAL", category="documents"),
         tool_metadata(add_pptx_image, risk_category="WRITE_LOCAL", category="documents"),
-        tool_metadata(
-            set_pptx_background_image, risk_category="WRITE_LOCAL", category="documents"
-        ),
+        tool_metadata(set_pptx_background_image, risk_category="WRITE_LOCAL", category="documents"),
         tool_metadata(add_pptx_scrim, risk_category="WRITE_LOCAL", category="documents"),
         tool_metadata(add_pptx_shape_effect, risk_category="WRITE_LOCAL", category="documents"),
         tool_metadata(read_pptx_xml, risk_category="READ", category="documents"),
         tool_metadata(edit_pptx_xml, risk_category="WRITE_LOCAL", category="documents"),
         tool_metadata(set_pptx_notes, risk_category="WRITE_LOCAL", category="documents"),
         tool_metadata(set_pptx_transition, risk_category="WRITE_LOCAL", category="documents"),
-        tool_metadata(
-            list_pptx_transition_types, risk_category="READ", category="documents"
-        ),
+        tool_metadata(list_pptx_transition_types, risk_category="READ", category="documents"),
         tool_metadata(add_pptx_animation, risk_category="WRITE_LOCAL", category="documents"),
-        tool_metadata(
-            list_pptx_animation_types, risk_category="READ", category="documents"
-        ),
+        tool_metadata(list_pptx_animation_types, risk_category="READ", category="documents"),
         tool_metadata(add_pptx_audio, risk_category="WRITE_LOCAL", category="documents"),
         tool_metadata(add_pptx_hyperlink, risk_category="WRITE_LOCAL", category="documents"),
         tool_metadata(check_pptx_delivery, risk_category="READ", category="documents"),
         tool_metadata(read_pptx_theme_colors, risk_category="READ", category="documents"),
         tool_metadata(edit_pptx_theme_colors, risk_category="WRITE_LOCAL", category="documents"),
+        *build_engine_tools(root, extra_readable=extra_readable, extra_writable=extra_writable),
     ]
