@@ -438,11 +438,6 @@ def _record_text_encodings(monkeypatch: pytest.MonkeyPatch) -> list[str | None]:
     return seen
 
 
-def _assert_all_utf8(seen: list[str | None]) -> None:
-    assert seen
-    assert all(e is not None and codecs.lookup(e).name == "utf-8" for e in seen), seen
-
-
 def test_the_store_files_are_read_and_written_as_utf8_whatever_the_locale(
     tmp_path: Path, keychain: _FakeKeyring, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -456,7 +451,8 @@ def test_the_store_files_are_read_and_written_as_utf8_whatever_the_locale(
     environments.get("t")
     environments.detach_everywhere("K")
 
-    _assert_all_utf8(seen)
+    assert seen
+    assert all(e is not None and codecs.lookup(e).name == "utf-8" for e in seen), seen
 
 
 # -- a session's environment --
