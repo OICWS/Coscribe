@@ -19,7 +19,7 @@
 
 ## Independent review
 
-<!-- Only if the change touches an invariant path (office-agent/CLAUDE.md): the link to the GitHub review a separate session posted with `/code-review <PR> --comment`. Otherwise: not needed. -->
+<!-- Only if the change touches an invariant path (office-agent/CLAUDE.md): the link to the GitHub review posted by a session that did not write the change (the maintainer's or a collaborator's). Otherwise: not needed. -->
 
 ## Not verified
 
