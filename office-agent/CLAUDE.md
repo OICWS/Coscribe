@@ -27,8 +27,8 @@ deliberately short; it's a map, not the content.
 - `src/coscribe/<package>/AGENTS.md` -- a package's card (purpose, public interface,
   dependencies, invariants, tests). Read it before the package's source, and import from
   the package (`from ..workflows import ...`), not from a submodule, for any name on its
-  card. `tests/test_module_cards.py` keeps a card equal to the code. Only `workflows` has
-  one so far.
+  card. `tests/test_module_cards.py` keeps a card equal to the code. Cards exist for
+  `code_runtime`, `conversation`, `runtime`, `runtime_lg` and `workflows`.
 
 Every one of these is written the same way: real findings, real
 numbers, real bugs -- not guessed. Match that bar in anything you add
