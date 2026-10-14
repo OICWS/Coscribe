@@ -3,6 +3,7 @@ was already set, and `column_widths` measures a cell the way Excel draws it."""
 
 from __future__ import annotations
 
+import datetime as dt
 import re
 import shutil
 import zipfile
@@ -13,7 +14,7 @@ from openpyxl import Workbook, load_workbook
 
 from coscribe.tools import _thumbnail
 from coscribe.tools.office.xlsx import build_spreadsheet_tools
-from coscribe.tools.office.xlsx.column_layout import _patch_cols, fit_columns
+from coscribe.tools.office.xlsx.column_layout import _patch_cols, fit_columns, widen_for_values
 from coscribe.tools.office.xlsx.column_widths import MAX_WIDTH, displayed_text, text_width
 from evals.xlsx_checks import clipped_texts
 
@@ -112,13 +113,13 @@ def test_a_cjk_character_counts_twice_and_one_long_note_is_capped(tmp_path: Path
     assert _width(tmp_path, "C") == MAX_WIDTH
 
 
-def test_a_title_widens_its_column_only_past_the_empty_cells_beside_it(tmp_path: Path) -> None:
-    _write(tmp_path, "| Quarterly sales report | | |\n| Region | Q1 | Q2 |")
+def test_a_label_widens_its_column_only_when_it_cannot_run_on(tmp_path: Path) -> None:
+    _write(tmp_path, "| Quarterly sales report for all regions | | |\n| Region | Q1 | Q2 |")
     assert _cols(tmp_path) == []
 
-    title = "Quarterly sales report for all regions"
-    _write(tmp_path, f"| {title} | | |\n| Region | Q1 | Q2 |")
-    assert _width(tmp_path, "A") >= text_width(title)
+    label = "Sales for all regions together"
+    _write(tmp_path, f"| {label} | | x |\n| Region | Q1 | Q2 |")
+    assert _width(tmp_path, "A") >= text_width(label)
 
 
 def test_writing_a_sheet_again_widens_a_column_but_never_narrows_it(tmp_path: Path) -> None:
@@ -160,23 +161,29 @@ def test_a_template_range_keeps_its_width_where_the_content_fits(tmp_path: Path)
     ]
 
 
-def test_a_template_column_keeps_its_look_and_a_hidden_or_closed_one_stays_so(
+def test_a_template_column_keeps_its_look_and_a_hidden_one_with_new_data_is_shown(
     tmp_path: Path,
 ) -> None:
     _book_with_cols(
         tmp_path,
         '<col min="1" max="1" hidden="1"/><col min="2" max="2" width="0" customWidth="1"/>'
-        '<col min="3" max="16384" outlineLevel="1"/>',
+        '<col min="3" max="3" outlineLevel="1"/><col min="4" max="4" hidden="1"/>'
+        '<col min="5" max="16384" outlineLevel="1"/>',
     )
 
     _write(tmp_path, "| Product | Unit price | Open tickets |\n| Desk lamp | 24.5 | 3 |")
 
-    hidden, closed, sized, rest = _cols(tmp_path)
-    assert hidden["hidden"] == "1" and "width" not in hidden
+    shown, closed, sized, hidden, rest = _cols(tmp_path)
+    assert "hidden" not in shown and float(shown["width"]) >= text_width("Desk lamp")
     assert closed["width"] == "0"
     assert sized["outlineLevel"] == "1" and float(sized["width"]) >= text_width("Open tickets")
-    assert (rest["min"], rest["max"], rest["outlineLevel"]) == ("4", "16384", "1")
-    assert "width" not in rest
+    assert hidden["hidden"] == "1" and "width" not in hidden
+    assert (rest["min"], rest["max"], rest["outlineLevel"], rest.get("width")) == (
+        "5",
+        "16384",
+        "1",
+        None,
+    )
 
 
 def test_a_number_format_applied_later_widens_its_column(tmp_path: Path) -> None:
@@ -263,3 +270,49 @@ def test_edit_xlsx_cells_leaves_merged_text_and_text_with_room_beside_it(tmp_pat
     )
 
     assert _cols(tmp_path) == []
+
+
+@pytest.mark.parametrize(
+    ("value", "fmt", "shown"),
+    [
+        (1285, 'General"元"', "1285元"),
+        (-3, 'General" pcs";(General)', "(3)"),
+        (1234567, '#,##0.0,"K"', "1,234.6K"),
+        (1234567890, '#,##0.0,,"M"', "1,234.6M"),
+        (-5, "0;;0", ""),
+        (5, ";;;", ""),
+    ],
+)
+def test_general_inside_a_format_scaling_and_empty_sections(
+    value: float, fmt: str, shown: str
+) -> None:
+    assert displayed_text(value, fmt) == shown
+
+
+def test_a_date_is_measured_by_its_number_format() -> None:
+    day = dt.datetime(2026, 9, 30, 14, 5)
+    assert displayed_text(day, "yyyy-mm-dd") == "yyyy-mm-dd"
+    assert text_width(displayed_text(day, "mmmm d, yyyy")) == len("September d, yyyy")
+    assert text_width(displayed_text(day, "General")) == len("2026-09-30 14:05:00")
+    assert text_width(displayed_text(dt.date(2026, 9, 30), "General")) == len("2026-09-30")
+
+
+def test_a_column_set_narrower_than_the_default_is_widened_to_its_values(tmp_path: Path) -> None:
+    tools = _tools(tmp_path)
+    _write(tmp_path, "| Item | Qty |\n| Lamp | 1 |")
+    tools["set_xlsx_column_width"](path=FILE, sheet_name="Orders", columns="B", width=3)  # type: ignore[operator]
+
+    tools["edit_xlsx_cells"](path=FILE, sheet_name="Orders", start_cell="B2", content="| 12345 |")  # type: ignore[operator]
+
+    assert _width(tmp_path, "B") == len("12345") + 2
+
+
+def test_measuring_a_cell_does_not_create_its_neighbours() -> None:
+    sheet = Workbook().active
+    assert sheet is not None
+    sheet["A1"] = "a label"
+    sheet["C1"] = 1
+
+    widen_for_values(sheet, None, [sheet["A1"]], set())
+
+    assert sorted(sheet._cells) == [(1, 1), (1, 3)]

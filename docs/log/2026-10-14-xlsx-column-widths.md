@@ -6,31 +6,38 @@ not fit as `###` (#193, found by the Excel evaluation of #164).
 
 ## Shipped
 - `tools/office/xlsx/column_widths.py` measures a cell as Excel shows it: a number with its number
-  format applied (`#,##0"元"`, `0.0%`, `$#,##0;($#,##0)`, `0.00E+00`, `#,##0,"K"`, quoted and
-  escaped `;`), a General number at most 11 characters, a CJK or full-width character as two
-  (the same rule as the evaluation's `legibility` check). Fractions, dates and `@` are measured
-  by the longer of the format's own length and the General text.
+  format applied (`#,##0"元"`, `0.0%`, `$#,##0;($#,##0)`, `0.00E+00`, `#,##0.0,"K"`,
+  `General"元"`, empty sections as in `0;;0`, quoted and escaped `;`), a General number at most
+  11 characters, a CJK or full-width character as two (the same rule as the evaluation's
+  `legibility` check). A date is measured by its format, a month or weekday name as `September`
+  or `Wednesday` (an unformatted date as `yyyy-mm-dd`, with ` hh:mm:ss` for a time); fractions
+  and `@` by the longer of the format's own length and the General text.
 - `tools/office/xlsx/column_layout.py`: a column gets its longest shown value plus 2, never more
   than 50, and only when that is wider than what it has. Columns are only ever widened:
-  - `write_xlsx` sizes the sheet it wrote. Text over empty cells to its right widens its column
-    only when it is longer than that run of cells (up to the sheet's last column). A formula has
-    no value yet, so its column is sized by its header and constants, and again from the
-    computed values after LibreOffice recalculates (`2026-10-14-xlsx-widths-after-recalc.md`).
+  - `write_xlsx` sizes the sheet it wrote. A label alone in its row (a title over a table) runs
+    on past the table and widens nothing; other text over empty cells to its right widens its
+    column only when it is longer than that run of cells (up to the sheet's last column). A
+    formula has no value yet, so its column is sized by its header and constants, and again from
+    the computed values after LibreOffice recalculates (`2026-10-14-xlsx-widths-after-recalc.md`).
   - When `write_xlsx` replaces a sheet, each column of the old sheet is carried over whole
     (width, hidden, outline level, style, and ranges such as `A:XFD`); before this, replacing a
     sheet dropped all of it. A width set earlier (by `set_xlsx_column_width`, a template or an
     earlier write) is kept unless the new content needs more; a width that is now too wide is
-    not shrunk. A hidden column and a column of width 0 are left exactly as they were (openpyxl
-    would drop `width="0"` on save, so it is written explicitly). A `<col>` without a width does
+    not shrunk. A column of width 0 is left exactly so (openpyxl would drop `width="0"` on save,
+    so it is written explicitly); a hidden column stays hidden unless the new sheet puts data in
+    it, which shows it again. A `<col>` without a width does
     not count as a set width.
   - `format_xlsx_cells` with a `number_format` widens the columns of the range to show their
     values under the new format (formula cells by the value LibreOffice last computed). This is
     the `###` of the Chinese-format task: `12850000` becomes `12,850,000元` after `write_xlsx`.
   - `edit_xlsx_cells` widens the columns of the cells it wrote (a header such as `Unit price`
-    added next to a user's table). A formula it writes is measured once LibreOffice has
-    recalculated (`2026-10-14-xlsx-widths-after-recalc.md`); a merged cell and text with an empty cell to its right are not measured either.
-- Nothing is reported to the model. The xlsx goldens change only by the added `<cols>` elements.
-- `tests/test_xlsx_column_widths.py` (22 tests).
+    added next to a user's table), also a column set narrower than the default. A formula it
+    writes is measured once LibreOffice has recalculated
+    (`2026-10-14-xlsx-widths-after-recalc.md`); a merged cell and text with an empty cell to its
+    right are not measured. Hidden and zero-width columns are left alone.
+- Nothing is reported to the model. The xlsx goldens change only in `<cols>` (a one-column list
+  of labels, each alone in its row, gets no width).
+- `tests/test_xlsx_column_widths.py` (33 tests).
 
 ## Not verified
 - The model run of the affected Excel tasks (`03-lookup-two-sheets`, `07-chinese-formats`, check
