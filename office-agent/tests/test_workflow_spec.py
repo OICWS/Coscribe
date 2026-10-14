@@ -379,7 +379,9 @@ def test_an_operand_is_read_by_its_reference_or_count_and_a_value_has_none() -> 
 
 
 def test_a_deep_reference_is_judged_by_its_first_name() -> None:
-    parse_workflow(_with(_tool("a", path="{{files.x.y.z}}")))
+    workflow = parse_workflow(_with(_tool("a", path="{{files.x.y.z}}")))
+
+    assert [step.id for step in workflow.steps] == ["a"]
 
 
 def test_both_sides_of_a_condition_must_name_something_that_exists() -> None:
@@ -520,13 +522,15 @@ def test_what_a_branch_saves_stays_taken_after_it_whichever_arm_saved_it() -> No
 
 
 def test_a_branch_leaves_earlier_and_input_names_readable() -> None:
-    parse_workflow(
+    workflow = parse_workflow(
         _with(
             _tool("first", "early", path="x"),
             _branch([_tool("a", "x", path="1")], [_tool("b", "x", path="2")]),
             _tool("after", path="{{early}} {{files}} {{x}}"),
         )
     )
+
+    assert [step.id for step in workflow.steps] == ["first", "decide", "after"]
 
 
 def _nest(kind: str, arm: str, depth: int) -> dict[str, Any]:
