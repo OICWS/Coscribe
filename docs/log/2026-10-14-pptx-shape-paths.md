@@ -14,7 +14,9 @@ inside its groups (decision 0010, editing path b).
   `off`/`ext`), so listing and moving a member go through every enclosing group's transform.
 - `list_pptx_shapes`: a group's entry lists its `members`, each with its `path`, nested groups
   included; top-level entries are unchanged, so the preview's click-to-pick overlay is unaffected.
-- The 13 tools that take `shape_index` take a path or a name too. `add_pptx_animation` refuses a
+- The 13 tools that take `shape_index` take a path or a name too; the tools take it as a string
+  (`"3"`, `"3/1"`, a name), since a parameter of two types has no single schema type and Gemini
+  refuses that (`tests/test_coordinator.py`). `add_pptx_animation` refuses a
   member (PowerPoint animates a group as one shape) and names the group to animate instead.
 - No new tool; `tests/tool_schemas.txt` changes for `list_pptx_shapes`' description.
   `tools/presentations.py` is 7 lines shorter.

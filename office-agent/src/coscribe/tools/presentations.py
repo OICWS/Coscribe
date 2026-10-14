@@ -94,7 +94,7 @@ from ._file_locks import locked_by_path
 from ._office_bins import find_soffice, run_soffice, soffice_profile
 from ._ooxml_validate import assert_ooxml_valid
 from ._output_truncation import cap_read_output
-from ._pptx_shapes import ShapeRef, describe_members, find_shape, in_group, set_slide_box
+from ._pptx_shapes import describe_members, find_shape, in_group, set_slide_box
 from ._svg_slide import add_svg_slide
 from ._thumbnail import render_all_page_previews, render_thumbnail
 from ._workspace import WorkspaceScope
@@ -3022,11 +3022,11 @@ def _describe_shape(index: int | str, shape: Any) -> dict[str, object]:
     return info
 
 
-def _get_shape_at_index(target_slide: Any, slide_number: int, shape_index: ShapeRef) -> Any:
+def _get_shape_at_index(target_slide: Any, slide_number: int, shape_index: int | str) -> Any:
     return find_shape(target_slide, slide_number, shape_index)
 
 
-def _get_table_shape(target_slide: Any, slide_number: int, shape_index: ShapeRef) -> Any:
+def _get_table_shape(target_slide: Any, slide_number: int, shape_index: int | str) -> Any:
     """Shared bounds-and-kind validation for edit_pptx_table_cell/
     merge_pptx_table_cells -- raises a clear, actionable error (naming
     list_pptx_shapes) rather than an opaque AttributeError if shape_index
@@ -3041,7 +3041,7 @@ def _get_table_shape(target_slide: Any, slide_number: int, shape_index: ShapeRef
     return shape
 
 
-def _get_picture_shape(target_slide: Any, slide_number: int, shape_index: ShapeRef) -> Any:
+def _get_picture_shape(target_slide: Any, slide_number: int, shape_index: int | str) -> Any:
     """Shared bounds-and-kind validation for replace_pptx_image/
     recolor_pptx_icon/crop_pptx_image -- raises a clear, actionable
     error if shape_index doesn't point at a picture (a `<p:pic>` shape,
@@ -3910,7 +3910,7 @@ class PresentationToolkit:
         self,
         path: str,
         slide: int,
-        shape_index: ShapeRef,
+        shape_index: int | str,
         left_in: Optional[float] = None,  # noqa: UP045
         top_in: Optional[float] = None,  # noqa: UP045
         width_in: Optional[float] = None,  # noqa: UP045
@@ -4038,7 +4038,7 @@ class PresentationToolkit:
         }
 
     @locked_by_path
-    def delete_pptx_shape(self, path: str, slide: int, shape_index: ShapeRef) -> dict[str, object]:
+    def delete_pptx_shape(self, path: str, slide: int, shape_index: int | str) -> dict[str, object]:
         prs, file_path, target_slide = self._open_slide(path, slide)
         shape = _get_shape_at_index(target_slide, slide, shape_index)
         element = shape._element  # noqa: SLF001
@@ -4240,7 +4240,7 @@ class PresentationToolkit:
 
     @locked_by_path
     def replace_pptx_image(
-        self, path: str, slide: int, shape_index: ShapeRef, image_path: str
+        self, path: str, slide: int, shape_index: int | str, image_path: str
     ) -> dict[str, object]:
         """Swap an existing picture's image in place, on any already-
         existing .pptx -- position, size, and crop are all untouched
@@ -4273,7 +4273,7 @@ class PresentationToolkit:
         self,
         path: str,
         slide: int,
-        shape_index: ShapeRef,
+        shape_index: int | str,
         crop_left: float = 0.0,
         crop_right: float = 0.0,
         crop_top: float = 0.0,
@@ -4384,7 +4384,7 @@ class PresentationToolkit:
 
     @locked_by_path
     def recolor_pptx_icon(
-        self, path: str, slide: int, shape_index: ShapeRef, color: str
+        self, path: str, slide: int, shape_index: int | str, color: str
     ) -> dict[str, object]:
         if not _THEME_HEX_RE.match(color):
             raise ValueError(f"color {color!r} must be a 6-hex-digit color (no '#').")
@@ -4415,7 +4415,7 @@ class PresentationToolkit:
 
     @locked_by_path
     def edit_pptx_table_cell(
-        self, path: str, slide: int, shape_index: ShapeRef, row: int, col: int, text: str
+        self, path: str, slide: int, shape_index: int | str, row: int, col: int, text: str
     ) -> dict[str, object]:
         """Replace one cell's text in an existing table, in place, on
         any already-existing .pptx -- call `list_pptx_shapes` first to
@@ -4452,7 +4452,7 @@ class PresentationToolkit:
         self,
         path: str,
         slide: int,
-        shape_index: ShapeRef,
+        shape_index: int | str,
         start_row: int,
         start_col: int,
         end_row: int,
@@ -4912,7 +4912,7 @@ class PresentationToolkit:
         self,
         path: str,
         slide: int,
-        shape_index: ShapeRef,
+        shape_index: int | str,
         effect: str,
         color: str = "000000",
         opacity: float = 0.4,
@@ -4968,7 +4968,7 @@ class PresentationToolkit:
 
     @locked_by_path
     def read_pptx_xml(
-        self, path: str, slide: int, shape_index: ShapeRef, part: str = "auto"
+        self, path: str, slide: int, shape_index: int | str, part: str = "auto"
     ) -> dict[str, object]:
         """Raw OOXML for one shape -- the escape hatch for anything
         python-pptx has no API for at all beyond what add_pptx_shape_effect/
@@ -5000,7 +5000,7 @@ class PresentationToolkit:
         self,
         path: str,
         slide: int,
-        shape_index: ShapeRef,
+        shape_index: int | str,
         xpath: str,
         new_text: Optional[str] = None,  # noqa: UP045
         set_attributes: Optional[str] = None,  # noqa: UP045
@@ -5132,7 +5132,7 @@ class PresentationToolkit:
         self,
         path: str,
         slide: int,
-        shape_index: ShapeRef,
+        shape_index: int | str,
         animation: str,
         duration: float = 0.5,
         trigger: str = "on-click",
@@ -5330,7 +5330,7 @@ class PresentationToolkit:
         self,
         path: str,
         slide: int,
-        shape_index: ShapeRef,
+        shape_index: int | str,
         url: str,
         text: Optional[str] = None,  # noqa: UP045
     ) -> dict[str, object]:
@@ -5995,7 +5995,7 @@ def build_presentation_tools(
         """
         return toolkit.list_pptx_shapes(path=path, slide=slide)
 
-    def delete_pptx_shape(path: str, slide: int, shape_index: ShapeRef) -> dict[str, object]:
+    def delete_pptx_shape(path: str, slide: int, shape_index: str) -> dict[str, object]:
         """Remove one shape from an existing slide, in place -- every
         other shape and the rest of the deck are untouched. Works on any
         shape type (a plain autoshape/textbox, a picture, a table, a
@@ -6018,7 +6018,7 @@ def build_presentation_tools(
     def edit_pptx_shape(
         path: str,
         slide: int,
-        shape_index: ShapeRef,
+        shape_index: str,
         left_in: Optional[float] = None,  # noqa: UP045
         top_in: Optional[float] = None,  # noqa: UP045
         width_in: Optional[float] = None,  # noqa: UP045
@@ -6091,7 +6091,7 @@ def build_presentation_tools(
         )
 
     def replace_pptx_image(
-        path: str, slide: int, shape_index: ShapeRef, image_path: str
+        path: str, slide: int, shape_index: str, image_path: str
     ) -> dict[str, object]:
         """Swap an existing picture's image in place on an existing
         PowerPoint (.pptx) file's slide -- position, size, and crop are
@@ -6223,7 +6223,7 @@ def build_presentation_tools(
     def crop_pptx_image(
         path: str,
         slide: int,
-        shape_index: ShapeRef,
+        shape_index: str,
         crop_left: float = 0.0,
         crop_right: float = 0.0,
         crop_top: float = 0.0,
@@ -6308,7 +6308,7 @@ def build_presentation_tools(
         )
 
     def recolor_pptx_icon(
-        path: str, slide: int, shape_index: ShapeRef, color: str
+        path: str, slide: int, shape_index: str, color: str
     ) -> dict[str, object]:
         """Change the color of an icon or logo-like picture already on a
         slide, in place -- position, size, and crop are untouched, only
@@ -6340,7 +6340,7 @@ def build_presentation_tools(
         )
 
     def edit_pptx_table_cell(
-        path: str, slide: int, shape_index: ShapeRef, row: int, col: int, text: str
+        path: str, slide: int, shape_index: str, row: int, col: int, text: str
     ) -> dict[str, object]:
         """Replace one cell's text in an existing table on an existing
         PowerPoint (.pptx) file's slide, without touching any other cell
@@ -6369,7 +6369,7 @@ def build_presentation_tools(
     def merge_pptx_table_cells(
         path: str,
         slide: int,
-        shape_index: ShapeRef,
+        shape_index: str,
         start_row: int,
         start_col: int,
         end_row: int,
@@ -6531,7 +6531,7 @@ def build_presentation_tools(
     def add_pptx_shape_effect(
         path: str,
         slide: int,
-        shape_index: ShapeRef,
+        shape_index: str,
         effect: str,
         color: str = "000000",
         opacity: float = 0.4,
@@ -6582,7 +6582,7 @@ def build_presentation_tools(
         )
 
     def read_pptx_xml(
-        path: str, slide: int, shape_index: ShapeRef, part: str = "auto"
+        path: str, slide: int, shape_index: str, part: str = "auto"
     ) -> dict[str, object]:
         """Read one shape's raw underlying OOXML from a PowerPoint (.pptx)
         file -- the escape hatch for anything not covered by a dedicated
@@ -6614,7 +6614,7 @@ def build_presentation_tools(
     def edit_pptx_xml(
         path: str,
         slide: int,
-        shape_index: ShapeRef,
+        shape_index: str,
         xpath: str,
         new_text: Optional[str] = None,  # noqa: UP045
         set_attributes: Optional[str] = None,  # noqa: UP045
@@ -6737,7 +6737,7 @@ def build_presentation_tools(
     def add_pptx_animation(
         path: str,
         slide: int,
-        shape_index: ShapeRef,
+        shape_index: str,
         animation: str,
         duration: float = 0.5,
         trigger: str = "on-click",
@@ -6899,7 +6899,7 @@ def build_presentation_tools(
         )
 
     def add_pptx_hyperlink(
-        path: str, slide: int, shape_index: ShapeRef, url: str, text: Optional[str] = None  # noqa: UP045
+        path: str, slide: int, shape_index: str, url: str, text: Optional[str] = None  # noqa: UP045
     ) -> dict[str, object]:
         """Add a clickable hyperlink to an external URL, either on a
         specific run of text or on a whole shape.
