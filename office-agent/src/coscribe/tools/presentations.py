@@ -95,6 +95,7 @@ from ._office_bins import find_soffice, run_soffice, soffice_profile
 from ._ooxml_validate import assert_ooxml_valid
 from ._output_truncation import cap_read_output
 from ._pptx_shapes import describe_members, find_shape, in_group, set_slide_box
+from ._pptx_text import replace_text
 from ._svg_slide import add_svg_slide
 from ._thumbnail import render_all_page_previews, render_thumbnail
 from ._workspace import WorkspaceScope
@@ -3803,18 +3804,17 @@ class PresentationToolkit:
         title: Optional[str] = None,  # noqa: UP045
         content: Optional[str] = None,  # noqa: UP045
         placeholder_index: int = 0,
+        find: str = "",
+        replace: str = "",
     ) -> dict[str, object]:
-        """Edit one existing slide's title and/or body text in an
-        already-existing .pptx -- any file already in the workspace
-        (something the user placed there or uploaded), not just one of
-        coscribe's own bundled templates the way fill_pptx_template is
-        restricted to. Everything else in the file (theme, other slides,
-        images, decorative shapes, the *other* placeholders on this same
-        slide) is left exactly as authored -- this only ever replaces the
-        text inside the one/two placeholders you name."""
-        if title is None and content is None:
-            raise ValueError("edit_pptx_text needs at least one of title or content to change.")
-        prs, file_path, target_slide = self._open_slide(path, slide)
+        """Edit one existing slide's title and/or body text, or replace a
+        phrase anywhere (`find`), in any .pptx in the workspace. Everything
+        else in the file (theme, other slides, images, decorative shapes,
+        the other placeholders) is left exactly as authored."""
+        if (title is None and content is None) == (not find):
+            raise ValueError("edit_pptx_text needs title and/or content, or find, to change.")
+        prs, file_path, target_slide = self._open_slide(path, slide or int(bool(find)))
+        replaced = replace_text(prs, slide, find, replace) if find else None
         if title is not None:
             if target_slide.shapes.title is None:
                 raise ValueError(
@@ -3858,6 +3858,7 @@ class PresentationToolkit:
         return {
             "path": self._scope.relative(file_path),
             "slide": slide,
+            "replaced": replaced,
             "overflow_warnings": overflow_warnings,
             "placeholder_warnings": _leftover_placeholder_warnings(prs),
             "qa_skipped_reason": qa_skipped_reason,
@@ -5892,24 +5893,21 @@ def build_presentation_tools(
         title: Optional[str] = None,  # noqa: UP045
         content: Optional[str] = None,  # noqa: UP045
         placeholder_index: int = 0,
+        find: str = "",
+        replace: str = "",
     ) -> dict[str, object]:
         """Change what an existing slide *says*, without touching how it
-        looks -- the tool for a real PowerPoint file the user already put
-        in the workspace or uploaded (their own company template, a deck
-        someone sent them), not just one of coscribe's own bundled
-        templates (that's fill_pptx_template, which is restricted to
-        those and needs the whole deck's content up front). This edits
-        one slide's title and/or one content placeholder's text in place;
-        the file's theme, every other slide, images, and any decorative
-        shapes are left byte-for-byte as they were.
-
-        Call read_pptx(path, slide) first to see what a slide currently
-        says (and how many bullets/paragraphs are already there) before
-        deciding what to replace it with.
+        looks, in any .pptx in the workspace (the user's own, a deck someone
+        sent, one built from pages): one slide's title and/or one content
+        placeholder's text, or with `find` every occurrence of a phrase in
+        any shape (text boxes, group members, table cells) on one slide or
+        on all, each keeping its font, size and colour. The theme, images and
+        other shapes stay as they were. read_pptx(path, slide) first shows
+        what a slide says.
 
         Args:
             path: path to an existing .pptx already in the workspace
-            slide: 1-based slide index to edit (read_pptx shows the count)
+            slide: 1-based slide index to edit; with `find`, 0 for every slide
             title: new title text, completely replacing the slide's
                 existing title. Omit to leave the title untouched. Raises
                 if this slide has no title placeholder at all.
@@ -5924,13 +5922,13 @@ def build_presentation_tools(
                 column" layout with a second, independent content area you
                 also want to change (call this again with
                 placeholder_index=1 for the second one).
+            find: exact text to replace (instead of title/content), as
+                read_pptx shows it; the result lists where it was
+            replace: the text `find` becomes ("" removes it)
         """
         return toolkit.edit_pptx_text(
-            path=path,
-            slide=slide,
-            title=title,
-            content=content,
-            placeholder_index=placeholder_index,
+            path=path, slide=slide, title=title, content=content,
+            placeholder_index=placeholder_index, find=find, replace=replace,
         )
 
     def delete_pptx_slide(path: str, slide: int) -> dict[str, object]:

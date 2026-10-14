@@ -4668,7 +4668,7 @@ def test_edit_pptx_text_neither_title_nor_content_raises(tmp_path: Path) -> None
     tools = _tools_by_name(tmp_path / "workspace")
     tools["write_pptx"](path="deck.pptx", content="# Title\n- x")
 
-    with pytest.raises(ValueError, match="at least one of title or content"):
+    with pytest.raises(ValueError, match="needs title and/or content, or find"):
         tools["edit_pptx_text"](path="deck.pptx", slide=1)
 
 
