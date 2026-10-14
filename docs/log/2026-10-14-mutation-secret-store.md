@@ -10,7 +10,7 @@ Why: the nightly mutation run left 135 survivors, 12 of them in code no test rea
 |---|---|---|
 | `"utf-8"` to `"UTF-8"` or `"ASCII"` (`_read`, `_write`, `get`, `set`, `detach_everywhere` x2, `_forms` x2) | 8 | Python's codec names are case-insensitive; the `ascii` decode only sees base64 text. |
 | `".tmp"` to `".TMP"` (`_write`, `set`, `detach_everywhere`) | 3 | The temp file is renamed away before anything looks at it. |
-| `ensure_ascii` omitted, `True` or `None` in `secrets.json` (`_write` x3) | 3 | Everything in that file is ASCII: names, host names, `secret:NAME` references and ISO timestamps. |
+| `ensure_ascii` omitted, `True` or `None` in `secrets.json` (`_write` x3) | 3 | Everything in that file is ASCII: names, `secret:NAME` references and ISO timestamps match ASCII-only patterns, and a host name must too (the host pattern allows `a-z`, `0-9` and `-`, so an internationalised name has to be given as punycode; a test refuses `例え.jp`). |
 | `ensure_ascii=None` in the session files (`set`, `detach_everywhere`) | 2 | `None` is falsy, the same as `False`. |
 | `host != pattern[2:]` to `[3:]` (`host_allowed`) | 1 | `endswith(".example.com")` already excludes `example.com`, so the second test is never decisive. |
 | `raw = {}` to `raw = None` (`SessionEnvironments.get`) | 1 | The next line turns any non-dict into `{}`. |

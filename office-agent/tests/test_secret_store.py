@@ -6,6 +6,7 @@ from __future__ import annotations
 import base64
 import codecs
 import json
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -27,6 +28,7 @@ class _FakeKeyring:
     def __init__(self) -> None:
         self.store: dict[tuple[str, str], str] = {}
         self.reads = 0
+        self.unreadable: set[str] = set()
         self.errors = keyring.errors
 
     def set_password(self, service: str, ref: str, value: str) -> None:
@@ -34,6 +36,8 @@ class _FakeKeyring:
 
     def get_password(self, service: str, ref: str) -> str | None:
         self.reads += 1
+        if ref in self.unreadable:
+            raise keyring.errors.KeyringError("keychain locked")
         return self.store.get((service, ref))
 
     def delete_password(self, service: str, ref: str) -> None:
@@ -235,6 +239,13 @@ def test_the_messages_for_a_bad_host_list_say_what_to_give(tmp_path: Path) -> No
     assert _refusal(lambda: store.save("K", "value-ok-1", [])) == (
         "A secret needs at least one host it may be sent to."
     )
+
+
+def test_a_host_must_be_plain_ascii_so_the_secrets_file_stays_ascii(tmp_path: Path) -> None:
+    store = SecretStore(tmp_path)
+
+    assert "isn't a host name" in _refusal(lambda: store.save("K", "value-ok-1", ["例え.jp"]))
+    assert "isn't a host name" in _refusal(lambda: store.save("K", "value-ok-1", ["bücher.de"]))
 
 
 def test_a_secret_may_have_twenty_hosts_but_not_twenty_one(
@@ -526,9 +537,12 @@ def test_detaching_a_secret_skips_unreadable_files_and_keeps_going(
     (tmp_path / "a-broken.env.json").write_text("{not json")
     (tmp_path / "b-list.env.json").write_text('["K"]')
     real_glob = Path.glob
-    monkeypatch.setattr(Path, "glob", lambda self, pattern: iter(sorted(real_glob(self, pattern))))
-
-    environments.detach_everywhere("K")
+    with monkeypatch.context() as scoped:
+        # The broken files come first, so a `break` instead of a `continue` would show.
+        scoped.setattr(
+            Path, "glob", lambda self, pattern, **kw: iter(sorted(real_glob(self, pattern, **kw)))
+        )
+        environments.detach_everywhere("K")
 
     assert environments.get("z1") == {"variables": {"LABEL": "名称"}, "secrets": []}
     assert environments.get("z2")["secrets"] == ["J"]
@@ -599,7 +613,7 @@ def test_the_longer_of_two_overlapping_values_is_redacted_whole(
     tmp_path: Path, keychain: _FakeKeyring
 ) -> None:
     redact = store_module.redactor(
-        _store_with(tmp_path, keychain, SHORT="bcdefghi", LONG="abcdefghi")
+        _store_with(tmp_path, keychain, A_SHORT="bcdefghi", B_LONG="abcdefghi")
     )
 
     assert redact("x abcdefghi y") == "x [REDACTED SECRET] y"
@@ -617,8 +631,11 @@ def test_the_redaction_forms_are_cached_until_the_file_changes(
     assert keychain.reads == reads
 
     # A second secret written behind the store's back: only the file's own stamp tells.
+    # The size differs too, and the mtime is moved on explicitly so a coarse clock cannot hide it.
     keychain.store[("coscribe", "secret:J")] = "value-two-2"
-    (tmp_path / "secrets.json").write_text(
+    secrets_file = tmp_path / "secrets.json"
+    before = secrets_file.stat().st_mtime_ns
+    secrets_file.write_text(
         json.dumps(
             {
                 "K": {"ref": {"keyring_ref": "secret:K"}, "hosts": ["a.com"]},
@@ -626,6 +643,7 @@ def test_the_redaction_forms_are_cached_until_the_file_changes(
             }
         )
     )
+    os.utime(secrets_file, ns=(before + 1_000_000_000, before + 1_000_000_000))
     assert redact("x value-two-2 y") == "x [REDACTED SECRET] y"
 
 
@@ -633,17 +651,16 @@ def test_one_unreadable_secret_does_not_stop_the_others_being_redacted(
     tmp_path: Path, keychain: _FakeKeyring, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _store_with(tmp_path, keychain, A_GOOD="value-good-1", Z_GOOD="value-good-2")
-    keychain.store.pop(("coscribe", "secret:A_GOOD"))
-    keychain.store[("coscribe", "secret:A_GOOD")] = "value-good-1"
     store = SecretStore(tmp_path)
     data = json.loads(store.path.read_text())
     data["A_BAD"] = {"ref": {"keyring_ref": "secret:A_BAD"}, "hosts": ["a.com"]}
     store.path.write_text(json.dumps(data))
+    keychain.unreadable.add("secret:A_BAD")
     monkeypatch.setattr(SecretStore, "names", lambda self: ["A_BAD", "A_GOOD", "Z_GOOD"])
 
     redact = store_module.redactor(tmp_path)
 
-    assert redact("value-good-1 and value-good-2") == ("[REDACTED SECRET] and [REDACTED SECRET]")
+    assert redact("value-good-1 and value-good-2") == "[REDACTED SECRET] and [REDACTED SECRET]"
 
 
 def test_redaction_with_no_secrets_file_changes_nothing(tmp_path: Path) -> None:
