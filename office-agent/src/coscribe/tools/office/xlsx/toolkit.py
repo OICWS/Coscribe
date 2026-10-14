@@ -7,7 +7,16 @@ from typing import Any, Optional
 from ..._file_locks import locked_by_path
 from ..._thumbnail import render_thumbnail
 from ..._workspace import WorkspaceScope
-from .column_widths import explicit_column_widths, fit_column_widths
+from .column_layout import (
+    Span,
+    carried_spans,
+    explicit_width_starts,
+    fit_columns,
+    fitted_columns,
+    forget_fitted,
+    record_fitted,
+    widen_after_recalc,
+)
 from .helpers import (
     _CHART_TYPES,
     _CONDITIONAL_FORMAT_RULE_TYPES,
@@ -88,13 +97,17 @@ class SpreadsheetToolkit:
 
         rows = _parse_table_rows(content)
         file_path = self._check_writable(path)
-        kept_widths: dict[str, float] = {}
+        spans: list[Span] = []
         if file_path.exists():
             workbook = load_workbook(str(file_path))
             if sheet_name in workbook.sheetnames:
                 if not overwrite:
                     raise FileExistsError(f"Sheet already exists: {sheet_name}")
-                kept_widths = explicit_column_widths(workbook[sheet_name])
+                spans = carried_spans(
+                    workbook[sheet_name],
+                    explicit_width_starts(file_path, sheet_name),
+                    fitted_columns(workbook, sheet_name),
+                )
                 del workbook[sheet_name]
                 sheet = workbook.create_sheet(sheet_name)
             else:
@@ -107,7 +120,8 @@ class SpreadsheetToolkit:
                 workbook.remove(default_sheet)
         for row in rows:
             sheet.append([_coerce_cell(cell) for cell in row])
-        fit_column_widths(sheet, kept_widths)
+        fit = fit_columns(sheet, spans)
+        record_fitted(workbook, sheet_name, fit.owned)
         # Makes the just-written sheet the one LibreOffice renders for the
         # preview thumbnail below (and the one Excel opens to) -- without
         # this, amending an existing workbook leaves whatever sheet was
@@ -119,6 +133,8 @@ class SpreadsheetToolkit:
         recalc_result: dict[str, object] = {"status": "skipped", "skipped_reason": None}
         if has_formula:
             recalc_result = _recalc_xlsx_and_evaluate_lookups(file_path)
+        if recalc_result["status"] != "skipped":
+            widen_after_recalc(file_path, sheet_name, fit)
 
         preview_path, preview_skipped_reason = render_thumbnail(file_path, self._state_dir)
         return {
@@ -532,6 +548,7 @@ class SpreadsheetToolkit:
         letters = [get_column_letter(idx) for idx in range(start_idx, end_idx + 1)]
         for letter in letters:
             sheet.column_dimensions[letter].width = width
+        forget_fitted(workbook, sheet_name, range(start_idx, end_idx + 1))
         workbook.save(str(file_path))
         return {
             "path": self._scope.relative(file_path),

@@ -5,29 +5,35 @@ LibreOffice cut labels (`Unit price`, `Open tickets`, `销售额（万元）`) a
 not fit as `###` (#193, found by the Excel evaluation of #164).
 
 ## Shipped
-- `tools/office/xlsx/column_widths.py`: a cell is measured as Excel shows it: a number with its
-  number format applied (`#,##0"元"`, `0.0%`, `$#,##0;($#,##0)`, a General number at most 11
-  characters), a CJK or full-width character as two. A column is widened to its longest value
-  plus 2 characters when that exceeds the default, and never past 50. Formula cells have no value
-  before LibreOffice recalculates, so their column is sized by the header and constants. Text with
-  an empty cell to its right (a title over a table) does not widen its column, except in the
-  sheet's last column.
-- `write_xlsx` calls it on the sheet it wrote. A width set on that sheet before (by
-  `set_xlsx_column_width` or in the user's template) is carried over when the sheet is replaced and
-  is not resized; before this a replaced sheet lost those widths. Nothing is reported to the model.
-- The xlsx goldens change only by the new `<cols>` elements (12 sheets in 7 goldens); the
-  `column_widths` golden, whose widths are set explicitly, is unchanged.
-- `tests/test_xlsx_column_widths.py`: a label is no longer clipped (the evaluation's own
-  `clipped_texts` check), a formatted number gets room, number formats, CJK, the cap, a title over
-  empty cells, a kept width, a template width.
+- `tools/office/xlsx/column_widths.py` measures a cell as Excel shows it: a number with its number
+  format applied (`#,##0"元"`, `0.0%`, `$#,##0;($#,##0)`, `0.00E+00`, `#,##0,"K"`, quoted and
+  escaped `;`), a General number at most 11 characters, a CJK or full-width character as two
+  (the same rule as the evaluation's `legibility` check). Fractions, dates and `@` are measured
+  by the longer of the format's own length and the General text.
+- `tools/office/xlsx/column_layout.py`: a column is widened to its longest value plus 2 when that
+  exceeds the default, never past 50. Text over empty cells to its right widens its column only
+  when it is longer than that run of cells (up to the sheet's last column). Formula columns are
+  sized after LibreOffice recalculates, from the computed values, by patching `<cols>` in the
+  saved file (an openpyxl save would drop the cached values).
+- The columns `write_xlsx` sized are listed per sheet in a custom document property,
+  `coscribe.fitted_columns` (LibreOffice drops `bestFit`, but keeps custom properties). When a
+  sheet is written again, those columns are sized again for the new content; any other width
+  (a template's, or one `set_xlsx_column_width` set, which takes the column off the list) is
+  kept. The rest of a replaced sheet's columns (hidden, outline level, style, ranges such as
+  `A:XFD`) is carried over as ranges; before this, replacing a sheet dropped all of it. A `<col>`
+  without a width (only hidden or styled) does not count as a set width. Nothing is reported to
+  the model.
+- The xlsx goldens change by the added `<cols>` elements and by the new `docProps/custom.xml`
+  part (with its content type and relationship).
+- `tests/test_xlsx_column_widths.py` (21 tests, one with real LibreOffice).
 
 ## Not verified
-- The model run of the affected Excel tasks (`03-lookup-two-sheets`, `07-chinese-formats`,
-  check `legibility`) was not made: the work finished in DeepSeek's peak hours.
-- A number format applied after `write_xlsx` (by `format_xlsx_cells`) does not resize the column;
-  a header usually leaves enough room (`销售额（元）` is 12 wide, `12,850,000元` too), but not always.
-- Excel on Windows was not opened; widths were checked against LibreOffice's rendering rules only.
+- The model run of the affected Excel tasks (`03-lookup-two-sheets`, `07-chinese-formats`, check
+  `legibility`) was not made: the work finished in DeepSeek's peak hours.
+- A width a person changes in Excel by hand on a column `write_xlsx` sized is not told apart from
+  the sized one, so writing the sheet again sizes it again.
+- Excel on Windows was not opened; widths were checked against LibreOffice's rendering only.
 
 ## Follow-ups
-- Whether `format_xlsx_cells` should widen a column whose new format no longer fits (the same
-  measure applies).
+- `format_xlsx_cells` and `edit_xlsx_cells` do not resize: a number format applied after
+  `write_xlsx` that no longer fits the column can still print `###`; the same measure applies.
