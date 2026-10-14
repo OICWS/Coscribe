@@ -2315,7 +2315,7 @@ def test_set_pptx_transition_writes_the_registered_effect_for_every_transition(
     set_pptx_transition itself makes) -- not just the few spot-checked
     above. A real, cheap way to catch a typo'd element/attribute name
     across the whole retyped registry at once."""
-    from coscribe.tools.presentations import _TRANSITION_ALIASES, _TRANSITION_SPECS
+    from coscribe.tools.office.pptx.transitions import _TRANSITION_ALIASES, _TRANSITION_SPECS
 
     tools = _tools_by_name(tmp_path)
     tools["write_pptx"](path="deck.pptx", content="# Title\n- body")
@@ -2335,7 +2335,7 @@ def test_set_pptx_transition_writes_the_registered_effect_for_every_transition(
 
 
 def test_list_pptx_transition_types_matches_the_real_registry(tmp_path: Path) -> None:
-    from coscribe.tools.presentations import _TRANSITION_ALIASES, _TRANSITION_SPECS
+    from coscribe.tools.office.pptx.transitions import _TRANSITION_ALIASES, _TRANSITION_SPECS
 
     tools = _tools_by_name(tmp_path)
 
@@ -2860,7 +2860,7 @@ def test_add_pptx_animation_writes_the_registered_preset_for_every_animation(
     every_transition plays for the 56-entry transition registry."""
     from pptx import Presentation
 
-    from coscribe.tools.presentations import (
+    from coscribe.tools.office.pptx.animation import (
         _ANIMATION_ALIASES,
         _ANIMATIONS,
         _load_animation_presets,
@@ -2890,7 +2890,7 @@ def test_add_pptx_animation_writes_the_registered_preset_for_every_animation(
 
 
 def test_list_pptx_animation_types_matches_the_real_registry(tmp_path: Path) -> None:
-    from coscribe.tools.presentations import _ANIMATION_ALIASES, _load_animation_presets
+    from coscribe.tools.office.pptx.animation import _ANIMATION_ALIASES, _load_animation_presets
 
     tools = _tools_by_name(tmp_path)
 

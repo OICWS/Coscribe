@@ -117,9 +117,9 @@
   "src/coscribe/conversation/session.py": 2223,
   "src/coscribe/coordinator.py": 855,
   "src/coscribe/runtime_lg/subagents.py": 837,
-  "src/coscribe/tools/presentations.py": 7081,
+  "src/coscribe/tools/presentations.py": 6109,
   "src/coscribe/tools/scheduled_tasks.py": 1054,
-  "src/coscribe/web/browser_panel.py": 822,
+  "src/coscribe/web/browser_panel.py": 813,
   "src/coscribe/web/connector_catalog.py": 948,
   "src/coscribe/workflows/engine.py": 922
  },
