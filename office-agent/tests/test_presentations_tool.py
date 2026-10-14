@@ -3477,7 +3477,7 @@ def test_list_pptx_shapes_lists_a_group_shape_without_crashing(tmp_path: Path) -
 
     shapes = tools["list_pptx_shapes"](path="deck.pptx", slide=1)["shapes"]
 
-    # Children of a group are not listed: a group is one entry.
+    # A group is one entry; its members are listed under it.
     groups = [shape for shape in shapes if shape["shape_type"] == "GROUP (6)"]
     assert len(groups) == 1
     assert groups[0]["hyperlink"] is None
