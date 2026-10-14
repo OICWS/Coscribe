@@ -9,15 +9,23 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from lxml import etree
 from PIL import Image
 from pptx import Presentation
+from pptx.chart.data import CategoryChartData
 from pptx.dml.color import RGBColor
+from pptx.enum.chart import XL_CHART_TYPE
 from pptx.util import Emu, Inches
 
 from coscribe.tools.office.pptx.engine import compile_pages
 from coscribe.tools.office.pptx.engine.template import describe
 from coscribe.tools.office.pptx.engine.tool import build_engine_tools
 
+_NS = (
+    'xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" '
+    'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+    'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"'
+)
 _SVG = 'xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="Microsoft YaHei"'
 
 
@@ -139,6 +147,18 @@ def test_a_potx_template_is_read(tmp_path: Path) -> None:
             target.writestr(item, data)
 
     assert len(describe(tmp_path / "t.potx")["example_slides"]) == 2  # type: ignore[arg-type]
+    report = compile_pages(
+        [("p", _page('data-template-slide="2"'))],
+        tmp_path / "deck.pptx",
+        template=tmp_path / "t.potx",
+    )
+    assert report.ok, report.errors()
+    with zipfile.ZipFile(tmp_path / "deck.pptx") as package:
+        assert b"presentationml.presentation.main+xml" in package.read("[Content_Types].xml")
+    assert [s.name for s in Presentation(str(tmp_path / "deck.pptx")).slides[0].shapes] == [
+        "band",
+        "title",
+    ]
 
 
 def test_the_tool_describes_the_template_first_and_then_builds_on_it(tmp_path: Path) -> None:
@@ -146,11 +166,85 @@ def test_the_tool_describes_the_template_first_and_then_builds_on_it(tmp_path: P
     (tool,) = build_engine_tools(tmp_path)
 
     first: dict[str, Any] = tool("pages", "deck.pptx", template="t.pptx")
+    assert not (tmp_path / "deck.pptx").exists()
     (tmp_path / "pages").mkdir()
     (tmp_path / "pages" / "01.svg").write_text(_page('data-template-slide="2"'), encoding="utf-8")
     built: dict[str, Any] = tool("pages", "deck.pptx", template="t.pptx")
 
     assert first["template"]["viewBox"] == "0 0 1280 720"
-    assert not (tmp_path / "deck.pptx").exists() or built
     assert built["ok"], built
     assert "band" in {s.name for s in Presentation(str(tmp_path / "deck.pptx")).slides[0].shapes}
+
+
+def _rich_template(path: Path) -> None:
+    """One example slide with a picture background, a text box linking to a web page, a chart
+    and a rectangle, with the low shape ids a slide has once its placeholders are gone."""
+    prs = Presentation()
+    prs.slide_width, prs.slide_height = Emu(12192000), Emu(6858000)
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    picture = io.BytesIO()
+    Image.new("RGB", (16, 9), "#1E2761").save(picture, "PNG")
+    _image, rel_id = slide.part.get_or_add_image_part(picture)
+    slide.element.cSld.insert(
+        0,
+        etree.fromstring(
+            f'<p:bg {_NS}><p:bgPr><a:blipFill><a:blip r:embed="{rel_id}"/><a:stretch>'
+            "<a:fillRect/></a:stretch></a:blipFill><a:effectLst/></p:bgPr></p:bg>"
+        ),
+    )
+    link = slide.shapes.add_textbox(Inches(1), Inches(6.5), Inches(4), Inches(0.5))
+    link.name = "link"
+    run = link.text_frame.paragraphs[0].add_run()
+    run.text = "example.com"
+    run.hyperlink.address = "https://example.com/"
+    data = CategoryChartData()
+    data.categories = ["Q1", "Q2"]
+    data.add_series("sales", (1, 2))
+    slide.shapes.add_chart(
+        XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(6), Inches(1), Inches(4), Inches(3), data
+    ).name = "chart"
+    slide.shapes.add_shape(1, 0, 0, Inches(1), Inches(1)).name = "corner"
+    prs.save(str(path))
+
+
+def test_a_copied_slide_resolves_every_relationship_and_leaves_out_what_it_cannot_copy(
+    tmp_path: Path,
+) -> None:
+    _rich_template(tmp_path / "t.pptx")
+    out = tmp_path / "deck.pptx"
+
+    report = compile_pages(
+        [("p", _page('data-template-slide="1"'))], out, template=tmp_path / "t.pptx"
+    )
+
+    assert report.ok, report.errors()
+    (warning,) = report.pages[0].warnings
+    assert '"chart"' in warning
+    slide = Presentation(str(out)).slides[0]
+    assert [s.name for s in slide.shapes] == ["link", "corner", "title"]
+    rels = slide.part.rels
+    referenced = {
+        value
+        for node in slide.element.iter()
+        for name, value in node.attrib.items()
+        if name.startswith("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}")
+    }
+    assert referenced and referenced <= set(rels)
+    background = slide.element.cSld.bg.xpath(".//a:blip/@r:embed")[0]
+    assert Image.open(io.BytesIO(slide.part.related_part(background).blob)).size == (16, 9)
+    run = slide.shapes[0].text_frame.paragraphs[0].runs[0]
+    assert run.hyperlink.address == "https://example.com/"
+
+
+def test_copied_shapes_get_ids_of_their_own(tmp_path: Path) -> None:
+    _rich_template(tmp_path / "t.pptx")
+    out = tmp_path / "deck.pptx"
+    body = '<rect id="box" x="100" y="200" width="300" height="100" fill="#1E2761"/>'
+
+    compile_pages(
+        [("p", _page('data-template-slide="1"', body))], out, template=tmp_path / "t.pptx"
+    )
+
+    ids = [shape.shape_id for shape in Presentation(str(out)).slides[0].shapes]
+    assert len(ids) == 4
+    assert len(set(ids)) == len(ids)

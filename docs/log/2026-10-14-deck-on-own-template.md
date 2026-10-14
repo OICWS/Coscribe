@@ -12,6 +12,11 @@ part 2.
   decoration (bands, panels, pictures, copied with their images), since many templates draw
   their design there rather than on the master; or `data-layout` names a layout. Every page's
   viewBox must be the template's slide size. A `.potx` is read as the `.pptx` it would make.
+- A copied example keeps every relationship it refers to: pictures (the background's too) are
+  added to the slide, a web link keeps its target. A shape referring to anything else (a chart,
+  SmartArt, media, a link to another slide) is left out with a warning naming it, so the slide
+  never points at a part it does not have. Copied shapes get ids above the page's own, so no two
+  shapes on a slide share one.
 - `describe`: the template's viewBox, background, theme colours and fonts, layouts, and each
   example slide's layout, background and decoration (kind, box in px, fill or gradient stops).
   `build_pptx_from_pages(template=...)` returns it while the pages folder is still empty, so the
@@ -22,9 +27,11 @@ part 2.
   design of a reference deck, is built from pages with `template`, not with
   `extract_pptx_template` and `fill_pptx_template`. The system prompt is 848 characters
   shorter.
-- `tests/test_deck_engine_template.py` (8 tests): the description, a page starting from an
+- `tests/test_deck_engine_template.py` (10 tests): the description, a page starting from an
   example slide (decoration, layout, picture and its image, the example slides gone), layouts
-  by name and a wrong name, wrong references, a .potx, the tool describing then building.
+  by name and a wrong name, wrong references, a .potx described and built, the tool describing then building, an example
+  slide with a picture background, a web link and a chart (every relationship resolves, the chart
+  is left out with a warning), copied shapes' ids unique.
 
 ## Checked (2026-10-14, off-peak)
 Task 06 (a quarterly report on the user's template), `deepseek-flash` at effort low, 3 judge

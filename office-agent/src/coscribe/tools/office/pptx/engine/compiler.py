@@ -28,7 +28,7 @@ from ...._native_svg.svg_to_pptx.drawingml import elements, paths, text_properti
 from ...._native_svg.svg_to_pptx.drawingml.context import ConvertContext, ShapeResult
 from ...._native_svg.svg_to_pptx.drawingml.styles import build_effect_xml, get_element_opacity
 from . import native
-from .template import Example, canvas, layout, open_template, start_from
+from .template import Example, canvas, layout, open_template, renumber, start_from
 
 SVG_NS = "http://www.w3.org/2000/svg"
 EMU_PER_PX = utils.EMU_PER_PX
@@ -184,8 +184,13 @@ def _compile_page(
     slide = prs.slides.add_slide(chosen)
     for placeholder in list(slide.placeholders):
         placeholder.element.getparent().remove(placeholder.element)
-    if example is not None:
-        start_from(slide, example)
+    copied = start_from(slide, example) if example is not None else []
+    if example is not None and example.dropped:
+        report.warnings.append(
+            f"left out of example slide {root.get('data-template-slide')}: "
+            f"{', '.join(example.dropped)} (a chart, SmartArt, media or a link to a slide "
+            "cannot be copied; draw it on the page if the deck needs it)"
+        )
     try:
         geometry_properties.materialize_inline_geometry_properties(root)
     except Exception as e:  # reported to the model, not raised
@@ -227,7 +232,10 @@ def _compile_page(
             sp_tree.append(element)
             report.shapes += 1
     if background is not None:
+        for previous in slide._element.cSld.findall(f"{{{_NS['p']}}}bg"):
+            previous.getparent().remove(previous)
         slide._element.cSld.insert(0, etree.fromstring(background))
+    renumber(slide, copied)
     _make_title_placeholder(sp_tree, report)
 
 
