@@ -33,6 +33,7 @@ from .helpers import (
     _receive_until,
     _settings,
     _tool_call,
+    _wait_until,
 )
 
 
@@ -779,13 +780,6 @@ def _sign_in_like_a_browser(client: Any, opened: list[str], approve: bool = True
         threading.Thread(target=visit, daemon=True).start()
 
     return open_page
-
-
-def _wait_until(condition: Any, seconds: float = 20.0) -> None:
-    deadline = time.monotonic() + seconds
-    while not condition():
-        assert time.monotonic() < deadline, "timed out"
-        time.sleep(0.1)
 
 
 def _use_callback_port(monkeypatch: pytest.MonkeyPatch, port: int) -> None:

@@ -393,6 +393,13 @@ def _receive_until(ws: Any, target_type: str) -> list[dict[str, Any]]:
             return messages
 
 
+def _wait_until(condition: Any, seconds: float = 20.0) -> None:
+    deadline = time.monotonic() + seconds
+    while not condition():
+        assert time.monotonic() < deadline, "timed out"
+        time.sleep(0.1)
+
+
 def _wait_for_run_status(
     client: Any, trigger_id: str, run_id: str, timeout: float = 5.0
 ) -> dict[str, Any]:

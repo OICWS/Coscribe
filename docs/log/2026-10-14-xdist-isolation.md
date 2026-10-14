@@ -26,6 +26,12 @@ first (#176, item 4 of #201).
   a second server, which Windows' proactor loop refuses (`WinError 87`); the test no longer does,
   and the second Windows run (run 38507835963, 361 s) passes it: 2427 passed, only the two
   pre-existing failures (#210).
+- `tests/web/test_chat.py::test_closing_a_tab_on_a_run_being_looked_into_leaves_it_going_lg`
+  waited a fixed 1.5 s for a turn whose slow reply alone takes 1.0 s, and failed on the third
+  Windows `-n 4` run (job 115671752791) with only the user message in the history. It now waits
+  until `/api/threads/status` no longer says `working`, and fails if the slow reply never starts.
+  With the slow reply made 3 s, the old test fails and the new one passes. `_wait_until` moved to
+  `tests/web/helpers.py`, shared by `test_chat.py` and `test_connectors.py`.
 - Measured: a stress script of 8 processes x 3000 binds saw 10 `EADDRINUSE` with the old
   pick-close-rebind pattern and 0 with bind-0-and-keep. Three pytest processes at once running
   the two callback-port tests, 5 rounds: 4 of 15 failed on the fixed port, 0 with the port
@@ -43,4 +49,7 @@ first (#176, item 4 of #201).
 ## Follow-ups
 - #209: `web/browser_panel.py::_free_port` (product code) picks a port and closes it before
   Chromium binds it: the same gap, outside the tests.
+- `test_connectors.py::test_lifespan_backgrounds_a_slow_mcp_connect_instead_of_blocking_startup`
+  still sleeps a fixed 0.5 s for the tools to be spliced into open sessions; it has not failed
+  yet, but it is the same pattern as the chat test above.
 - #210: the two Windows-only failures on `main` (file-size check on `elements.py`, icon golden).
