@@ -11,7 +11,10 @@ today's route; until the measurement says so, nothing in the product tells the a
   contract. Pages are written and read back with the file tools the agent already has, so no
   second tool is needed. A deck changed after its build is refused with the way out named (the
   edit_pptx_* tools, or the user's consent to `replace_changes`). Images are taken from the
-  workspace, or from the trusted folder the pages are in. `tests/tool_schemas.txt` gains the tool;
+  workspace, or from the trusted folder the pages are in. It is registered from
+  `tools/office/pptx/` (its `build_presentation_tools` adds it to today's tools), so
+  `tools/presentations.py`, held at its size by the ratchet, and `coordinator.py` are unchanged.
+  `tests/tool_schemas.txt` gains the tool;
   `search_tools`' description changes once (its group count).
 - `tools/office/pptx/engine/guide/`: `SKILL.md` ("PPTX Pages": the workflow, layout by content
   relationship, type and colour, charts drawn to scale, an avoid list; condensed in part from
