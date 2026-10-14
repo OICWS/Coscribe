@@ -79,12 +79,26 @@ def _span_at(spans: list[Span], column: int) -> Span | None:
     return next((span for span in spans if span.min <= column <= span.max), None)
 
 
-def _shown_width(span: Span | None) -> float:
+def default_width(default_col_width: float | None, base_col_width: float | None) -> float:
+    """The width of a column the file gives none, from the sheet's `<sheetFormatPr>`."""
+    if default_col_width:
+        return float(default_col_width)
+    # Excel's 8.43 is a base of 8 digits plus the cell margins; other bases keep those margins.
+    if base_col_width:
+        return round(DEFAULT_WIDTH - 8 + float(base_col_width), 2)
+    return DEFAULT_WIDTH
+
+
+def sheet_default_width(sheet: Worksheet) -> float:
+    return default_width(sheet.sheet_format.defaultColWidth, sheet.sheet_format.baseColWidth)
+
+
+def _shown_width(span: Span | None, default: float) -> float:
     if span is None:
-        return DEFAULT_WIDTH
+        return default
     if span.look.get("hidden"):
         return 0.0
-    return DEFAULT_WIDTH if span.width is None else span.width
+    return default if span.width is None else span.width
 
 
 def _own_span(spans: list[Span], column: int) -> Span:
@@ -102,7 +116,7 @@ def _own_span(spans: list[Span], column: int) -> Span:
     return own
 
 
-def widen(spans: list[Span], needed: dict[int, float]) -> bool:
+def widen(spans: list[Span], needed: dict[int, float], default: float) -> bool:
     """Give each column the width it needs, capped, unless it already has more; a hidden or
     zero-width column is left as someone made it."""
     changed = False
@@ -111,7 +125,7 @@ def widen(spans: list[Span], needed: dict[int, float]) -> bool:
         if span is not None and (span.look.get("hidden") or span.width == 0):
             continue
         target = round(min(width, MAX_WIDTH), 2)
-        if target > _shown_width(span):
+        if target > _shown_width(span, default):
             _own_span(spans, column).width = target
             changed = True
     return changed
@@ -137,7 +151,7 @@ def _spill_room(
     return room
 
 
-def _needed(sheet: Worksheet, spans: list[Span]) -> dict[int, float]:
+def _needed(sheet: Worksheet, spans: list[Span], default: float) -> dict[int, float]:
     needed: dict[int, float] = {}
     last = sheet.max_column
     spilling = []
@@ -154,7 +168,8 @@ def _needed(sheet: Worksheet, spans: list[Span]) -> dict[int, float]:
             needed[column] = max(needed.get(column, 0.0), width)
 
     def shown(column: int) -> float:
-        return max(_shown_width(_span_at(spans, column)), min(needed.get(column, 0.0), MAX_WIDTH))
+        shown_now = _shown_width(_span_at(spans, column), default)
+        return max(shown_now, min(needed.get(column, 0.0), MAX_WIDTH))
 
     # Measured after every column's own values, so a title over a table only widens its column
     # when it is longer than all the columns it runs over.
@@ -211,7 +226,8 @@ def fit_columns(sheet: Worksheet, spans: list[Span]) -> None:
         span = _span_at(spans, column)
         if span is not None and span.look.get("hidden"):
             _own_span(spans, column).look["hidden"] = False
-    widen(spans, _needed(sheet, spans))
+    default = sheet_default_width(sheet)
+    widen(spans, _needed(sheet, spans, default), default)
     apply_spans(sheet, spans)
 
 
@@ -228,7 +244,7 @@ def _cell_needed(sheet: Worksheet, spans: list[Span], cell: Any, value: Any) -> 
         return right is None or _empty(right.value)
 
     def shown(column: int) -> float:
-        return _shown_width(_span_at(spans, column))
+        return _shown_width(_span_at(spans, column), sheet_default_width(sheet))
 
     return width if width > _spill_room(cell.column, sheet.max_column, empty_at, shown) else 0.0
 
@@ -252,5 +268,5 @@ def widen_for_values(
         needed[cell.column] = max(
             needed.get(cell.column, 0.0), _cell_needed(sheet, spans, cell, value)
         )
-    if widen(spans, needed):
+    if widen(spans, needed, sheet_default_width(sheet)):
         apply_spans(sheet, spans)

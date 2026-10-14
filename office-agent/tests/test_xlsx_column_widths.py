@@ -276,6 +276,7 @@ def test_edit_xlsx_cells_leaves_merged_text_and_text_with_room_beside_it(tmp_pat
         (1, "0000000000", "0000000001"),
         (12345678, "000-00-0000", "012-34-5678"),
         (5, "000,000", "000,005"),
+        (12345.67, "#,##0 %", "1,234,567 %"),
     ],
 )
 def test_general_inside_a_format_scaling_and_empty_sections(
@@ -300,6 +301,20 @@ def test_a_column_set_narrower_than_the_default_is_widened_to_its_values(tmp_pat
     tools["edit_xlsx_cells"](path=FILE, sheet_name="Orders", start_cell="B2", content="| 12345 |")  # type: ignore[operator]
 
     assert _width(tmp_path, "B") == len("12345") + 2
+
+
+def test_a_sheet_wide_default_width_counts_as_the_width_a_column_has(tmp_path: Path) -> None:
+    book = Workbook()
+    assert book.active is not None
+    book.active.title = "Orders"
+    book.active.sheet_format.defaultColWidth = 20
+    book.save(tmp_path / FILE)
+    edit = _tools(tmp_path)["edit_xlsx_cells"]
+
+    edit(path=FILE, sheet_name="Orders", start_cell="B2", content="| 1234567.25 |")  # type: ignore[operator]
+    edit(path=FILE, sheet_name="Orders", start_cell="A3", content=f"| {'a note ' * 4} |")  # type: ignore[operator]
+
+    assert _cols(tmp_path) == []
 
 
 def test_measuring_a_cell_does_not_create_its_neighbours() -> None:
