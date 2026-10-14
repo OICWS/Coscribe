@@ -178,7 +178,7 @@
 ===== word/fontTable.xml
 <same as _shared.txt>
 ===== word/media/image1.png
-<binary 93 bytes sha256=83a7c38d777e99dfdfaf193b3121ec2feb81de8fa125fd0df85e90bdfa5f9569>
+<png 40x20 RGB>
 ===== word/numbering.xml
 <same as _shared.txt>
 ===== word/settings.xml
