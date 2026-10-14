@@ -38,7 +38,7 @@ not fit as `###` (#193, found by the Excel evaluation of #164).
     empty cells to its right follows the same run-on rule as in `write_xlsx`. Hidden and
     zero-width columns are left alone.
 - Nothing is reported to the model. The xlsx goldens change only in `<cols>`.
-- `tests/test_xlsx_column_widths.py` (37 tests).
+- `tests/test_xlsx_column_widths.py` (38 tests).
 
 ## Not verified
 - The model run of the affected Excel tasks (`03-lookup-two-sheets`, `07-chinese-formats`, check
