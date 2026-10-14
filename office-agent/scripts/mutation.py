@@ -47,6 +47,7 @@ MODULES: dict[str, tuple[str, list[str]]] = {
         [
             "tests/web/test_settings.py",
             "tests/test_code_agent.py",
+            "tests/test_code_permissions.py",
             "-k",
             "code_permissions or always_allowing",
         ],
