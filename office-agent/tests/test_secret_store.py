@@ -3,7 +3,10 @@ value goes to the keychain only, and nothing hands it back out."""
 
 from __future__ import annotations
 
+import base64
+import codecs
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import keyring.errors
@@ -17,17 +20,20 @@ from coscribe.runtime import (
     host_allowed,
     secrets,
 )
+from coscribe.runtime import secret_store as store_module
 
 
 class _FakeKeyring:
     def __init__(self) -> None:
         self.store: dict[tuple[str, str], str] = {}
+        self.reads = 0
         self.errors = keyring.errors
 
     def set_password(self, service: str, ref: str, value: str) -> None:
         self.store[(service, ref)] = value
 
     def get_password(self, service: str, ref: str) -> str | None:
+        self.reads += 1
         return self.store.get((service, ref))
 
     def delete_password(self, service: str, ref: str) -> None:
@@ -206,3 +212,439 @@ def test_a_session_environment_is_checked(tmp_path: Path, keychain: _FakeKeyring
             environments.set("s", variables, secrets_, store.names())
     assert environments.get("s") == saved
 
+
+# -- what the store says when it refuses --
+
+
+def _refusal(call: object) -> str:
+    with pytest.raises(SecretError) as raised:
+        call()  # type: ignore[operator]
+    return str(raised.value)
+
+
+def test_the_messages_for_a_bad_host_list_say_what_to_give(tmp_path: Path) -> None:
+    store = SecretStore(tmp_path)
+
+    assert _refusal(lambda: store.save("K", "value-ok-1", "a.com")) == (
+        "hosts must be a list of host names."
+    )
+    assert _refusal(lambda: store.save("K", "value-ok-1", ["HTTPS://a.com "])) == (
+        "'https://a.com' isn't a host name: give just the host, like api.example.com "
+        "or *.example.com, with no https:// or path."
+    )
+    assert _refusal(lambda: store.save("K", "value-ok-1", [])) == (
+        "A secret needs at least one host it may be sent to."
+    )
+
+
+def test_a_secret_may_have_twenty_hosts_but_not_twenty_one(
+    tmp_path: Path, keychain: _FakeKeyring
+) -> None:
+    store = SecretStore(tmp_path)
+    hosts = [f"h{i}.example.com" for i in range(21)]
+
+    assert store.save("K", "value-ok-1", hosts[:20])["hosts"] == hosts[:20]
+    assert _refusal(lambda: store.save("K", "value-ok-1", hosts)) == (
+        "At most 20 hosts per secret."
+    )
+
+
+def test_what_save_says_about_a_bad_name_or_value(tmp_path: Path, keychain: _FakeKeyring) -> None:
+    store = SecretStore(tmp_path)
+
+    assert _refusal(lambda: store.save("1bad", "value-ok-1", ["a.com"])) == (
+        "A secret's name is letters, digits and underscores, not starting with a digit."
+    )
+    assert _refusal(lambda: store.save("NEW", None, ["a.com"])) == "A new secret needs a value."
+    assert _refusal(lambda: store.save("K", "", ["a.com"])) == "The value can't be empty."
+    assert _refusal(lambda: store.save("K", "short", ["a.com"])) == (
+        "A value is at least 8 characters: a shorter one can't be told "
+        "from ordinary text, so it could not be kept out of what the model reads."
+    )
+    assert _refusal(lambda: store.save("K", "v" * 16385, ["a.com"])) == (
+        "A value is at most 16384 characters."
+    )
+    assert keychain.store == {}
+
+
+def test_a_value_of_the_longest_allowed_length_is_kept(
+    tmp_path: Path, keychain: _FakeKeyring
+) -> None:
+    SecretStore(tmp_path).save("K", "v" * 16384, ["a.com"])
+
+    assert keychain.store[("coscribe", "secret:K")] == "v" * 16384
+
+
+def test_what_save_says_when_the_keychain_cannot_keep_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = SecretStore(tmp_path)
+    monkeypatch.setattr(secrets, "keychain_backend_usable", lambda: False)
+
+    assert _refusal(lambda: store.save("K", "value-ok-1", ["a.com"])) == (
+        "This computer has no keychain to keep a secret in, and secrets are "
+        "never written to a plain file. On Windows that is Credential Manager; "
+        "on Linux it needs a Secret Service such as GNOME Keyring."
+    )
+
+    monkeypatch.setattr(secrets, "keychain_backend_usable", lambda: True)
+    monkeypatch.setattr(secrets, "store_secret", lambda ref, value: value)
+
+    with pytest.raises(KeychainUnavailable) as raised:
+        store.save("K", "value-ok-1", ["a.com"])
+    assert str(raised.value) == "The keychain refused to store this secret."
+
+
+def test_what_resolve_says_when_a_secret_cannot_be_read(
+    tmp_path: Path, keychain: _FakeKeyring
+) -> None:
+    store = SecretStore(tmp_path)
+    store.save("GONE", "value-gone-1", ["a.com"])
+    keychain.store.clear()
+
+    message = _refusal(lambda: store.resolve("GONE"))
+    assert message.startswith("The secret GONE can't be read from the keychain (")
+    assert message.endswith("). Enter it again in Settings > Secrets.")
+
+    (tmp_path / "secrets.json").write_text(json.dumps({"EMPTY": {"hosts": ["a.com"]}}))
+    assert _refusal(lambda: store.resolve("EMPTY")) == (
+        "The secret EMPTY has no value. Enter it again in Settings."
+    )
+
+
+# -- what is kept, and how --
+
+
+def test_save_keeps_the_first_creation_time_and_returns_what_it_wrote(
+    tmp_path: Path, keychain: _FakeKeyring
+) -> None:
+    store = SecretStore(tmp_path)
+
+    first = store.save("K", "value-one-1", ["a.com"])
+    created = datetime.fromisoformat(first["created_at"])
+    assert created.utcoffset() == UTC.utcoffset(None)
+    assert abs((datetime.now(UTC) - created).total_seconds()) < 60
+    assert first == {"name": "K", "hosts": ["a.com"], "created_at": first["created_at"]}
+
+    assert store.save("K", "value-two-2", ["b.com"]) == {
+        "name": "K",
+        "hosts": ["b.com"],
+        "created_at": first["created_at"],
+    }
+    assert store.save("K", None, ["c.com"])["created_at"] == first["created_at"]
+
+
+def test_the_file_holds_a_readable_record_without_the_value(
+    tmp_path: Path, keychain: _FakeKeyring
+) -> None:
+    store = SecretStore(tmp_path / "state" / "nested")
+
+    saved = store.save("K", "value-one-1", ["a.com"])
+
+    on_disk = (tmp_path / "state" / "nested" / "secrets.json").read_text()
+    entry = {
+        "ref": {"keyring_ref": "secret:K"},
+        "hosts": ["a.com"],
+        "created_at": saved["created_at"],
+    }
+    assert on_disk == json.dumps({"K": entry}, indent=2)
+    assert not list((tmp_path / "state" / "nested").glob("*.tmp"))
+
+
+def test_entries_list_names_hosts_and_creation_time_only(
+    tmp_path: Path, keychain: _FakeKeyring
+) -> None:
+    store = SecretStore(tmp_path)
+    created = store.save("B", "value-bbbb", ["b.com"])["created_at"]
+    (tmp_path / "secrets.json").write_text(
+        json.dumps(
+            {
+                "B": {
+                    "ref": {"keyring_ref": "secret:B"},
+                    "hosts": ["b.com"],
+                    "created_at": created,
+                },
+                "A": {"ref": {"keyring_ref": "secret:A"}},
+            }
+        )
+    )
+
+    assert store.entries() == [
+        {"name": "A", "hosts": [], "created_at": None},
+        {"name": "B", "hosts": ["b.com"], "created_at": created},
+    ]
+
+
+def test_hosts_of_an_unknown_secret_is_none_and_of_a_bare_entry_is_empty(tmp_path: Path) -> None:
+    (tmp_path / "secrets.json").write_text(json.dumps({"BARE": {"ref": "x"}}))
+    store = SecretStore(tmp_path)
+
+    assert store.hosts_of("MISSING") is None
+    assert store.hosts_of("BARE") == []
+
+
+def test_a_secrets_file_that_is_not_a_map_counts_as_empty(tmp_path: Path) -> None:
+    (tmp_path / "secrets.json").write_text(json.dumps(["not", "a", "map"]))
+
+    store = SecretStore(tmp_path)
+
+    assert store.names() == set()
+    assert store.entries() == []
+
+
+def test_saving_and_deleting_drop_the_redaction_cache_for_that_file(
+    tmp_path: Path, keychain: _FakeKeyring
+) -> None:
+    store = SecretStore(tmp_path)
+    store.save("K", "value-one-1", ["a.com"])
+    store_module.redactor(tmp_path)("text")
+    assert str(store.path) in store_module._FORMS_CACHE
+
+    store.save("K", "value-two-2", ["a.com"])
+    assert str(store.path) not in store_module._FORMS_CACHE
+
+    store_module.redactor(tmp_path)("text")
+    store.delete("K")
+    assert str(store.path) not in store_module._FORMS_CACHE
+
+
+def _record_text_encodings(monkeypatch: pytest.MonkeyPatch) -> list[str | None]:
+    seen: list[str | None] = []
+    real_read, real_write = Path.read_text, Path.write_text
+
+    def read_text(self: Path, encoding: str | None = None, errors: str | None = None) -> str:
+        seen.append(encoding)
+        return real_read(self, encoding=encoding, errors=errors)
+
+    def write_text(
+        self: Path, data: str, encoding: str | None = None, errors: str | None = None
+    ) -> int:
+        seen.append(encoding)
+        return real_write(self, data, encoding=encoding, errors=errors)
+
+    monkeypatch.setattr(Path, "read_text", read_text)
+    monkeypatch.setattr(Path, "write_text", write_text)
+    return seen
+
+
+def _assert_all_utf8(seen: list[str | None]) -> None:
+    assert seen
+    assert all(e is not None and codecs.lookup(e).name == "utf-8" for e in seen), seen
+
+
+def test_the_store_files_are_read_and_written_as_utf8_whatever_the_locale(
+    tmp_path: Path, keychain: _FakeKeyring, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen = _record_text_encodings(monkeypatch)
+    store = SecretStore(tmp_path)
+    environments = SessionEnvironments(tmp_path)
+
+    store.save("K", "value-one-1", ["a.com"])
+    store.names()
+    environments.set("t", {"LABEL": "名称"}, ["K"], store.names())
+    environments.get("t")
+    environments.detach_everywhere("K")
+
+    _assert_all_utf8(seen)
+
+
+# -- a session's environment --
+
+
+def test_a_session_environment_keeps_non_ascii_text_as_written(
+    tmp_path: Path, keychain: _FakeKeyring
+) -> None:
+    environments = SessionEnvironments(tmp_path)
+
+    environments.set("t", {"LABEL": "名称"}, [], set())
+
+    assert "名称" in (tmp_path / "t.env.json").read_bytes().decode("utf-8")
+    assert environments.get("t")["variables"] == {"LABEL": "名称"}
+
+
+def test_a_session_environment_that_is_not_a_map_reads_as_empty(tmp_path: Path) -> None:
+    environments = SessionEnvironments(tmp_path)
+    (tmp_path / "list.env.json").write_text("[1, 2]")
+    (tmp_path / "broken.env.json").write_text("{not json")
+
+    assert environments.get("list") == {"variables": {}, "secrets": []}
+    assert environments.get("broken") == {"variables": {}, "secrets": []}
+
+
+def test_what_a_session_environment_says_when_it_refuses(tmp_path: Path) -> None:
+    environments = SessionEnvironments(tmp_path)
+
+    def attempt(variables: object, secrets_: object, known: set[str] | None = None) -> str:
+        return _refusal(lambda: environments.set("t", variables, secrets_, known or set()))
+
+    assert attempt([], []) == "variables must be a map of names to text values."
+    assert attempt({}, "AB") == "secrets must be a list of secret names."
+    assert attempt({}, [1]) == "secrets must be a list of secret names."
+    assert attempt({}, {"A": 1}) == "secrets must be a list of secret names."
+    assert attempt({f"V{i}": "1" for i in range(101)}, []) == "At most 100 variables per session."
+    assert attempt({"bad name": "1"}, []) == (
+        "'bad name' isn't a variable name: letters, digits and underscores."
+    )
+    assert attempt({"X": "y" * 4097}, []) == "The value of X is longer than 4096 characters."
+    assert attempt({}, ["A", "B", "C"], {"C"}) == "No such secret: A, B."
+    assert attempt({"A": "1", "B": "1"}, ["B", "A"], {"A", "B"}) == (
+        "A, B is both a variable and a secret; keep one."
+    )
+
+
+def test_a_session_may_have_a_hundred_variables_of_the_longest_allowed_value(
+    tmp_path: Path,
+) -> None:
+    environments = SessionEnvironments(tmp_path / "nested" / "state")
+    variables = {f"V{i}": "y" * 4096 for i in range(100)}
+
+    assert environments.set("t", variables, [], set())["variables"] == variables
+    assert environments.get("t")["variables"] == variables
+    assert not list((tmp_path / "nested" / "state").glob("*.tmp"))
+
+
+def test_deleting_a_session_environment_removes_its_file_and_tolerates_a_missing_one(
+    tmp_path: Path,
+) -> None:
+    environments = SessionEnvironments(tmp_path)
+    environments.set("t1", {"A": "1"}, [], set())
+    environments.set("t2", {"B": "2"}, [], set())
+
+    environments.delete("t1")
+    environments.delete("never-existed")
+
+    assert not (tmp_path / "t1.env.json").exists()
+    assert environments.get("t2")["variables"] == {"B": "2"}
+
+
+def test_detaching_a_secret_skips_unreadable_files_and_keeps_going(
+    tmp_path: Path, keychain: _FakeKeyring, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    environments = SessionEnvironments(tmp_path)
+    environments.set("z1", {"LABEL": "名称"}, ["K"], {"K"})
+    environments.set("z2", {}, ["K", "J"], {"K", "J"})
+    (tmp_path / "a-broken.env.json").write_text("{not json")
+    (tmp_path / "b-list.env.json").write_text('["K"]')
+    real_glob = Path.glob
+    monkeypatch.setattr(Path, "glob", lambda self, pattern: iter(sorted(real_glob(self, pattern))))
+
+    environments.detach_everywhere("K")
+
+    assert environments.get("z1") == {"variables": {"LABEL": "名称"}, "secrets": []}
+    assert environments.get("z2")["secrets"] == ["J"]
+    assert "名称" in (tmp_path / "z1.env.json").read_bytes().decode("utf-8")
+    assert (tmp_path / "b-list.env.json").read_text() == '["K"]'
+    assert not list(tmp_path.glob("*.tmp"))
+
+
+# -- placeholders --
+
+
+def test_placeholders_are_found_and_replaced_by_name() -> None:
+    text = "curl -H 'Authorization: {{secret:API_KEY}}' {{secret:B_1}} {{secret:API_KEY}} {{x}}"
+
+    assert store_module.placeholders_in(text) == {"API_KEY", "B_1"}
+    assert store_module.substitute(text, {"API_KEY": "k1", "B_1": "b1"}) == (
+        "curl -H 'Authorization: k1' b1 k1 {{x}}"
+    )
+    assert store_module.placeholders_in("no placeholders here") == set()
+
+
+# -- redaction --
+
+
+def _store_with(tmp_path: Path, keychain: _FakeKeyring, **values: str) -> Path:
+    store = SecretStore(tmp_path)
+    for name, value in values.items():
+        store.save(name, value, ["a.com"])
+    return tmp_path
+
+
+def test_a_value_is_redacted_in_every_common_encoding(
+    tmp_path: Path, keychain: _FakeKeyring
+) -> None:
+    value = 'pa"ss\\word\n-1'
+    redact = store_module.redactor(_store_with(tmp_path, keychain, K=value))
+    raw = value.encode("utf-8")
+    forms = [
+        value,
+        store_module.quote(value, safe=""),
+        raw.hex(),
+        raw.hex().upper(),
+        json.dumps(value)[1:-1],
+        base64.b64encode(raw).decode("ascii"),
+        base64.urlsafe_b64encode(raw).decode("ascii"),
+        base64.b64encode(raw).decode("ascii").rstrip("="),
+    ]
+
+    for form in forms:
+        assert redact(f"before {form} after") == "before [REDACTED SECRET] after", form
+    assert redact("") == ""
+    assert redact("nothing to hide") == "nothing to hide"
+
+
+def test_the_redaction_forms_do_not_swallow_a_look_alike_ending_in_x(
+    tmp_path: Path, keychain: _FakeKeyring
+) -> None:
+    value = "abcdefghW"
+    encoded = base64.b64encode(value.encode()).decode()
+    assert encoded.endswith("X") and "=" not in encoded
+    redact = store_module.redactor(_store_with(tmp_path, keychain, K=value))
+
+    assert redact(f"see {encoded[:-1]} here") == f"see {encoded[:-1]} here"
+    assert redact(f"see {encoded} here") == "see [REDACTED SECRET] here"
+
+
+def test_the_longer_of_two_overlapping_values_is_redacted_whole(
+    tmp_path: Path, keychain: _FakeKeyring
+) -> None:
+    redact = store_module.redactor(
+        _store_with(tmp_path, keychain, SHORT="bcdefghi", LONG="abcdefghi")
+    )
+
+    assert redact("x abcdefghi y") == "x [REDACTED SECRET] y"
+
+
+def test_the_redaction_forms_are_cached_until_the_file_changes(
+    tmp_path: Path, keychain: _FakeKeyring
+) -> None:
+    redact = store_module.redactor(_store_with(tmp_path, keychain, K="value-one-1"))
+
+    redact("a")
+    reads = keychain.reads
+    redact("b")
+    redact("c")
+    assert keychain.reads == reads
+
+    # A second secret written behind the store's back: only the file's own stamp tells.
+    keychain.store[("coscribe", "secret:J")] = "value-two-2"
+    (tmp_path / "secrets.json").write_text(
+        json.dumps(
+            {
+                "K": {"ref": {"keyring_ref": "secret:K"}, "hosts": ["a.com"]},
+                "J": {"ref": {"keyring_ref": "secret:J"}, "hosts": ["a.com"]},
+            }
+        )
+    )
+    assert redact("x value-two-2 y") == "x [REDACTED SECRET] y"
+
+
+def test_one_unreadable_secret_does_not_stop_the_others_being_redacted(
+    tmp_path: Path, keychain: _FakeKeyring, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _store_with(tmp_path, keychain, A_GOOD="value-good-1", Z_GOOD="value-good-2")
+    keychain.store.pop(("coscribe", "secret:A_GOOD"))
+    keychain.store[("coscribe", "secret:A_GOOD")] = "value-good-1"
+    store = SecretStore(tmp_path)
+    data = json.loads(store.path.read_text())
+    data["A_BAD"] = {"ref": {"keyring_ref": "secret:A_BAD"}, "hosts": ["a.com"]}
+    store.path.write_text(json.dumps(data))
+    monkeypatch.setattr(SecretStore, "names", lambda self: ["A_BAD", "A_GOOD", "Z_GOOD"])
+
+    redact = store_module.redactor(tmp_path)
+
+    assert redact("value-good-1 and value-good-2") == ("[REDACTED SECRET] and [REDACTED SECRET]")
+
+
+def test_redaction_with_no_secrets_file_changes_nothing(tmp_path: Path) -> None:
+    assert store_module.redactor(tmp_path / "missing")("value-good-1") == "value-good-1"
