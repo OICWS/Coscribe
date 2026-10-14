@@ -164,6 +164,9 @@
     </sheetView>
   </sheetViews>
   <sheetFormatPr baseColWidth="8" defaultRowHeight="15"/>
+  <cols>
+    <col customWidth="1" max="3" min="3" width="10"/>
+  </cols>
   <sheetData>
     <row r="1">
       <c r="A1" t="inlineStr">
@@ -254,6 +257,9 @@
     </sheetView>
   </sheetViews>
   <sheetFormatPr baseColWidth="8" defaultRowHeight="15"/>
+  <cols>
+    <col customWidth="1" max="1" min="1" width="9"/>
+  </cols>
   <sheetData>
     <row r="1">
       <c r="A1" t="inlineStr">

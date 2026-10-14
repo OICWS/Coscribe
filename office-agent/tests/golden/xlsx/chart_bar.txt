@@ -276,6 +276,10 @@
     </sheetView>
   </sheetViews>
   <sheetFormatPr baseColWidth="8" defaultRowHeight="15"/>
+  <cols>
+    <col customWidth="1" max="1" min="1" width="9"/>
+    <col customWidth="1" max="2" min="2" width="9"/>
+  </cols>
   <sheetData>
     <row r="1">
       <c r="A1" t="inlineStr">
