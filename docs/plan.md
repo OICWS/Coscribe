@@ -83,8 +83,14 @@ Last reviewed: 2026-10-15.
    (ppt-master's 20k-line PPTX-to-SVG code; task 15 showed a redesign does not need it); a
    group's own rotate and scale. Next: Excel, then Word, the same way: their baselines are done
    (#164: Excel PR #181, Word with it; the `current` route on eight tasks each), and the two
-   defects they found are fixed (#193 column widths, #219; #197 Word contents list, #216). No
-   Excel or Word engine work has started.
+   defects they found are fixed (#193 column widths, #219; #197 Word contents list, #216).
+   Excel research done (`docs/assessments/2026-10-15-excel-quality.md`): on two new open tasks
+   a workbook written whole scored 4.1 on design against 2.8-3.2 for the many-small-tools
+   route, at the same cost. Next: a `build_xlsx` tool writing blocks of cells with their
+   styles in one call, as Claude for Excel's `set_cell_range` does (part 1 unused, part 2 the
+   skill and the measurement), with print-layout, clipped-text and edit-style checks. Its
+   engine is openpyxl and LibreOffice first (no Excel needed); real Excel through COM, and an
+   Office.js add-in, are later engines behind the same interface, chosen from real use.
    Instructions are changed by cutting first and measuring after: a shorter prompt that scores
    the same is the better one.
 
