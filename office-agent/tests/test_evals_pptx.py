@@ -109,6 +109,18 @@ def test_numbers_in_no_input_are_listed_with_their_slides(tmp_path: Path) -> Non
     assert [(n["number"], n["slides"]) for n in result["numbers"]] == [("2024", [2]), ("25.5", [2])]
 
 
+def test_a_count_converted_to_another_unit_is_not_an_invention(tmp_path: Path) -> None:
+    deck = pptx_checks.read_deck(
+        _deck(
+            tmp_path / "d.pptx", [("Exports", ["2.615 million units", "SGMW 267k", "约 178 万辆"])]
+        )
+    )
+
+    result = pptx_checks.check_inventions(deck, ["出口 261.5 万辆，五菱 26.7 万辆"], [])
+
+    assert [n["number"] for n in result["numbers"]] == ["178"]
+
+
 def test_small_integers_and_allowed_numbers_are_not_claims(tmp_path: Path) -> None:
     deck = pptx_checks.read_deck(
         _deck(tmp_path / "d.pptx", [("Page 3 of 12", ["30% 对冲，第 7 条", "99.9%"])])

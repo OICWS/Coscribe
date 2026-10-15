@@ -6,9 +6,10 @@ import re
 import unicodedata
 from typing import Any
 
+from coscribe.tools.office.pptx.engine.checker import is_known, known_numbers, number_values
+
 # A page number, a month or a day is not a claim about the world.
 _SMALL_INTEGER = 31
-_NUMBER = re.compile(r"\d+(?:\.\d+)?")
 
 
 def _fold(text: str) -> str:
@@ -54,11 +55,6 @@ def plain_number(value: float) -> str:
     return format(value, "f").rstrip("0").rstrip(".") if value % 1 else str(int(value))
 
 
-def numbers_in(text: str) -> set[str]:
-    # Not `normalise`: removing line breaks would join the numbers of two lines.
-    return set(_NUMBER.findall(_fold(text)))
-
-
 def _is_claim(number: str) -> bool:
     return "." in number or int(number) > _SMALL_INTEGER
 
@@ -69,11 +65,11 @@ def find_inventions(
     """Numbers in the text of a unit (a slide, a sheet, a section) that appear in no input. A
     derived figure (a sum, a percentage the model computed) is listed too: the list is for a
     person to read, not a failure."""
-    known = numbers_in("\n".join(source_texts)) | numbers_in("\n".join(allowed))
+    known = known_numbers("\n".join([*source_texts, *allowed]))
     found: dict[str, list[int]] = {}
     for position, text in enumerate(units, start=1):
-        for number in numbers_in(text):
-            if _is_claim(number) and number not in known:
+        for number, value in number_values(text):
+            if _is_claim(number) and not is_known(number, value, known):
                 found.setdefault(number, []).append(position)
     return {
         "count": len(found),
