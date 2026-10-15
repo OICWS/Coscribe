@@ -121,7 +121,8 @@ def build_engine_tools(
                     "ask the user whether their changes may be replaced (replace_changes)."
                 ) from e
         result = {**report.as_dict(), "path": scope.relative(out)}
-        return {**result, "next": _AFTER_A_CLEAN_BUILD} if report.ok else result
+        clean = report.ok and not report.warning_count()
+        return {**result, "next": _AFTER_A_CLEAN_BUILD} if clean else result
 
     return [tool_metadata(build_pptx_from_pages, risk_category="WRITE_LOCAL", category="documents")]
 

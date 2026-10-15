@@ -11,16 +11,19 @@ builds were not spent on findings the model could not fix. Timing each tool show
   (47-110 s).
 
 ## Shipped
-- `render_pptx_preview` on a deck built from pages (a `build.json` next to it names the deck)
-  returns the images only; its build has run its own checks. The preview's body moves from
+- `render_pptx_preview` on a deck built from pages returns the images only, while every slide is
+  still as its build wrote it (a `build.json` next to the deck names it and the slide hashes
+  match); a deck edited since gets the full checks. The preview's body moves from
   `presentations.py` to `office/pptx/qa.py` (the big file is 20 lines shorter).
-- A clean `build_pptx_from_pages` result says what is next: preview once, change only what is
-  clearly wrong, no `review_work`. The coordinator's review rule says the same; the prompt line
-  alone did not stop the reviewer rounds in a run, the tool result did.
-- The number check takes a power of ten from 1000 up as a unit, not a claim: "(10,000 units)"
-  under a 万辆 axis was flagged on three pages of task 14.
+- A `build_pptx_from_pages` result with no errors and no warnings says what is next: preview
+  once, change only what is clearly wrong, no `review_work`. A first try put this in the
+  coordinator's review rule; the prompt line alone did not stop the reviewer rounds in a run, the
+  tool result did, so the system prompt stays as it was.
+- The number check leaves out a power of ten in brackets, a unit label: "(10,000 units)" under a
+  万辆 axis was flagged on three pages of task 14. A round number in the text is still checked.
 - The evaluation records each deck build's errors and warnings by page (`builds` in
-  `result.json`) and the seconds spent in each tool (`tool_seconds`).
+  `result.json`) and the seconds spent in each tool (`tool_seconds`), a deferred tool under its
+  own name.
 
 ## Checked
 Tasks 13 and 14 (DeepSeek, effort low), before (the theme run from `main`) and after:
@@ -32,7 +35,9 @@ Tasks 13 and 14 (DeepSeek, effort low), before (the theme run from `main`) and a
 | 14 before | 6 | 5 | 2 | 10.8 | 0.59 |
 | 14 after | 3 | 1 | 0 | 6.1 | 0.38 |
 
-Facts 6/6 and 8/8 as before, no number left that the inputs do not have. A run with only the
+Facts 6/6 and 8/8 as before, no number left that the inputs do not have. The maintainer's review (on the PR) narrowed the preview and the hint to an
+unchanged deck and a build with no findings; the measured runs predate that, with the same flow
+for a clean deck. A run with only the
 preview change had 3 builds and 2 previews on task 13 but still two reviewer rounds (110 s).
 
 ## Not verified

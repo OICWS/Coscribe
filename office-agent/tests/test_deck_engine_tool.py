@@ -204,3 +204,12 @@ def test_a_scaled_group_with_text_is_reported_as_the_contract_says(tmp_path: Pat
 
     assert not result["ok"]
     assert any("card" in e for e in result["pages"][0]["errors"])
+
+
+def test_only_a_build_without_findings_says_no_reviewer_is_needed(tmp_path: Path) -> None:
+    _write(tmp_path / "deck-pages", "01.svg", _title_page("出口 2025 年 9999 万辆"))
+    (tmp_path / "notes.md").write_text("出口 2025 年", encoding="utf-8")
+
+    result = _tool(tmp_path)("deck-pages", "deck.pptx", sources=["notes.md"])
+
+    assert result["ok"] and "next" not in result, result

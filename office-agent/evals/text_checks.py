@@ -6,12 +6,7 @@ import re
 import unicodedata
 from typing import Any
 
-from coscribe.tools.office.pptx.engine.checker import (
-    is_claim,
-    is_known,
-    known_numbers,
-    number_values,
-)
+from coscribe.tools.office.pptx.engine.checker import claims, is_known, known_numbers
 
 
 def _fold(text: str) -> str:
@@ -66,8 +61,8 @@ def find_inventions(
     known = known_numbers("\n".join([*source_texts, *allowed]))
     found: dict[str, list[int]] = {}
     for position, text in enumerate(units, start=1):
-        for number, value in number_values(text):
-            if is_claim(number) and not is_known(number, value, known):
+        for number, value in claims(text):
+            if not is_known(number, value, known):
                 found.setdefault(number, []).append(position)
     return {
         "count": len(found),
