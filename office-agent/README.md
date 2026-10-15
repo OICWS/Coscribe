@@ -5,10 +5,7 @@
 Local, user-friendly agentic system for office work. Agent runtime and
 model access go through [LangGraph](https://github.com/langchain-ai/langgraph)/
 [LangChain](https://github.com/langchain-ai/langchain) (`runtime_lg/`) --
-[`aisuite`](https://github.com/andrewyng/aisuite), this project's original
-foundation, is still a dependency but only for two narrow, unrelated
-things now (a context-window-size lookup and an MCP tool-wrapper
-compatibility fix), not for talking to a model. See `../ARCHITECTURE.md`
+the project's original foundation, aisuite, is no longer a dependency. See `../ARCHITECTURE.md`
 for the full design and `runtime_lg/README.md` for why/how that changed.
 
 A single Coordinator agent with built-in file, document/spreadsheet/
@@ -24,16 +21,6 @@ cd office-agent
 python3 -m venv .venv
 source .venv/bin/activate          # Windows PowerShell: .\.venv\Scripts\Activate.ps1
 pip install -e ".[dev,web]"
-# Required for real multi-turn tool-calling with Gemini's "thinking" models --
-# see the google-genai comment in pyproject.toml's dependencies list for why
-# this can't just be folded into the pin above (aisuite's own httpx pin
-# conflicts with google-genai>=1.5.0's, so it has to be upgraded as its own
-# separate step, after the main install, not resolved together with it).
-# Skipping this produces pydantic "extra_forbidden"/"thought_signature"
-# errors on the second turn of any tool-calling conversation with Gemini.
-# Upper-bounded below 2.14.0, which removed Part.thought_signature again
-# (an upstream regression) and reintroduces the exact same errors.
-pip install -U "google-genai>=2.13.0,<2.14.0"
 cp .env.example .env
 # edit .env and set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GEMINI_API_KEY,
 # and COSCRIBE_DEFAULT_MODEL as "provider:model" (e.g. gemini:gemini-2.5-flash)
@@ -60,10 +47,8 @@ Supported model prefixes: `anthropic:`, `openai:`, `gemini:` (Gemini Developer
 API — a plain API key from https://aistudio.google.com/apikey, not Vertex AI).
 Every real conversation turn goes through `langchain-google-genai`/
 `langchain-anthropic`/`langchain-openai` (published packages, not vendored
-code) via runtime_lg's `resolve_chat_model`. A small Gemini provider is
-still vendored into this repo (`src/coscribe/providers/gemini_provider.py`)
-for one narrow, unrelated purpose -- the context-usage bar's max-size
-lookup, see [below](#web-ui) -- see that file's header comment for why.
+code) via runtime_lg's `resolve_chat_model`. The context-usage bar's max-size
+lookup asks the Gemini API directly (`runtime/llm_client.py`) and estimates for the rest.
 
 Any other OpenAI-compatible API (DeepSeek, Kimi/Moonshot, Zhipu GLM, or
 anything else) can be added as a custom provider prefix -- see

@@ -5,46 +5,17 @@ build-backend = "hatchling.build"
 [project]
 name = "coscribe"
 version = "0.1.0"
-description = "Local, user-friendly agentic system for office work, built on aisuite."
+description = "Local, user-friendly agentic system for office work."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 dependencies = [
-    "aisuite[openai,mcp]>=0.1.14",
-    # Deliberately NOT installed via aisuite's own "anthropic" extra, which
-    # hard-pins anthropic>=0.30.1,<0.31.0 (a 2024-era release, predating
-    # prompt caching's cache_control field existing in the SDK's types at
-    # all -- verified empirically: TextBlockParam/ToolParam on 0.30.1 have
-    # no cache_control field, confirmed absent from the installed package's
-    # source). aisuite's own anthropic_provider.py only ever does
-    # `anthropic.Anthropic(**config)` and `.messages.create(...)` -- both
-    # stable across this range -- so declaring our own newer floor here
-    # instead and dropping aisuite's extra is safe: verified by installing
-    # 0.68.2 in this project's venv and running the full test suite clean.
-    # See coscribe/providers/anthropic_provider.py for what this
-    # actually enables.
+    # cache_control (prompt caching) exists in the SDK's types only from about 0.68.
     "anthropic>=0.68.0,<2.0.0",
-    # google-genai's Part.thought_signature (needed for multi-turn function calling
-    # with current "thinking" Gemini models, see gemini_provider.py) only exists
-    # from 2.13.0 on, but every google-genai>=1.5.0 requires httpx>=0.28.1, which
-    # conflicts with aisuite 0.1.14's own httpx<0.28.0 pin -- pip's resolver treats
-    # that as unsatisfiable in a single `pip install -e ".[dev]"` (both are
-    # top-level requirements resolved together, so this can't be worked around
-    # from this file alone; only running `pip install -U google-genai` as its
-    # own separate command afterward lets pip upgrade it without re-resolving
-    # aisuite). The upper bound below is just to stop pip from backtracking
-    # through every >=1.5.0 release's metadata before landing on 1.4.x -- it
-    # doesn't change that the follow-up step is still required for real
-    # tool-calling with thinking-capable Gemini models:
-    # `pip install -U "google-genai>=2.13.0,<2.14.0"` by hand. Verified
-    # compatible in practice: aisuite's httpx usage (ollama/lmstudio/together/
-    # xai/fireworks providers, mcp/client.py) is plain post()/AsyncClient()
-    # calls unaffected by the 0.27->0.28 change, and none of those aisuite
-    # providers are used here. Upper-bounded below 2.14.0 -- that release
-    # removed Part.thought_signature again (confirmed by diffing its
-    # model_fields against 2.13.0's own), an upstream regression, not an
-    # intentional API change on our end.
-    "google-genai>=1.0.0,<1.5.0",
+    # Part.thought_signature (multi-turn function calling with "thinking" Gemini
+    # models) exists from 2.13.0; 2.14.0 removed it again (diffed model_fields against
+    # 2.13.0), so the range stops below it. Dependabot ignores this package for that reason.
+    "google-genai>=2.13.0,<2.14.0",
     # Explicit pin, not just relying on pydantic-settings'/mcp's/langchain's
     # own transitive floors -- real, live-reported bug: with no upper bound
     # anywhere in this dependency tree, `pip install` on a real Windows
@@ -93,22 +64,7 @@ dependencies = [
     # standard, complete-enough option for this use case. See
     # ARCHITECTURE.md's 范围边界 section.
     "python-pptx>=1.0.0",
-    # coscribe's real engine (runtime_lg/, cli.py, web/session.py,
-    # web/app.py) -- LangChain/LangGraph-based, replacing the
-    # hand-vendored runtime/providers/gemini_provider.py adapter that
-    # shipped three real bugs in a row (see runtime_lg/README.md's own
-    # Context section). Used to be a separate, optional langgraph_spike
-    # extra, kept out of base dependencies specifically because aisuite's
-    # own "anthropic" extra hard-pinned anthropic<0.31.0, disjoint from
-    # every langchain-anthropic release's anthropic>=0.64.0 floor. That
-    # conflict no longer applies: this project already stopped using
-    # aisuite's anthropic extra in favor of a direct anthropic>=0.68.0
-    # pin above (see that entry's own comment) for an unrelated reason
-    # (prompt-caching support) well before this migration -- verified
-    # empirically that installing everything below together in one fresh
-    # venv now resolves cleanly with no conflict, so there's no reason
-    # left to keep this split. `coscribe` (cli.py) now depends on
-    # these directly, the same as any other built-in capability.
+    # coscribe's real engine (runtime_lg/, cli.py, web/session.py, web/app.py).
     "langchain>=1.0.0",
     "langgraph>=1.0.0",
     # >=1.0.0, not the old 0.3.0 floor -- runtime_lg/agent.py now imports
@@ -119,39 +75,28 @@ dependencies = [
     # langchain>=1.0.0 above) -- a 0.3.x install predates that module
     # existing at all.
     "langchain-anthropic>=1.0.0",
-    "langchain-google-genai>=2.0.0",
+    # Below 4: its ChatGoogleGenerativeAI has no thinking_level field (it takes
+    # thinking_config), so runtime_lg/effort.py would silently set nothing.
+    "langchain-google-genai>=3.2.0,<4",
     "langchain-openai>=0.2.0",
     # coscribe's persistent checkpointer (cli.py) -- lets --thread
     # survive a process restart. Also used by web/session.py's async
     # twin, AsyncSqliteSaver, from the same package.
     "langgraph-checkpoint-sqlite>=2.0.0",
-    # runtime_lg's own MCP connector (runtime_lg/mcp.py), in place of
-    # tools/mcp.py's aisuite-based one -- aisuite's MCPToolWrapper collapses
-    # each tool's real JSON Schema into a lossy generic Python signature,
-    # confirmed live to make a real model guess a wrong field name and loop
-    # on the resulting error (see runtime_lg/README.md's "MCP tools under
-    # runtime_lg" section). langchain-mcp-adapters builds each tool's
-    # args_schema directly from the MCP server's real inputSchema instead.
+    # runtime_lg's MCP connector (runtime_lg/mcp.py). It builds each tool's args_schema
+    # from the server's real inputSchema, so a model sees the true field names.
     "langchain-mcp-adapters>=0.3.0",
-    # web_search tool (tools/websearch.py) -- free, no API key, matching
-    # this project's local-first stance (unlike Tavily and most other
-    # agent-oriented search APIs, which require a paid key). Pulls in a
-    # newer httpx (>=0.28.1) than aisuite's own <0.28.0 pin -- verified
-    # compatible in practice the same way google-genai's identical httpx
-    # conflict above already was (aisuite's own httpx usage is unaffected
-    # by the 0.27->0.28 change); confirmed by installing both together
-    # and running the full test suite clean.
+    # runtime_lg/mcp_oauth.py imports its auth types directly.
+    "mcp>=1.0.0",
+    # web_search tool (tools/websearch.py): free, no API key, matching the local-first stance.
     "ddgs>=9.0.0",
-    # download_image (tools/images.py) uses httpx directly to stream a
-    # remote image's bytes -- already present transitively (forced to
-    # >=0.28.1 by ddgs/google-genai, per the comments above), declaring it
-    # directly here just makes that explicit now that this codebase has
-    # its own real usage, not just a transitive one. Pillow validates the
+    # httpx streams remote images (tools/images.py) and talks to the browser panel; the
+    # floor is what google-genai and ddgs already require. Pillow validates the
     # downloaded bytes actually decode as an image (a Content-Type header
     # alone isn't trustworthy) and reads real pixel dimensions for
     # set_pptx_background_image's cover-crop math -- no image-processing
     # library existed in this codebase before this.
-    "httpx>=0.27.0",
+    "httpx>=0.28.1",
     "Pillow>=10.0.0",
     # Context-window breakdown panel (web/context_usage.py) -- counts
     # tokens for the system prompt/tool schemas/skill listing text to
@@ -193,9 +138,7 @@ web = [
     # reaching endpoints that add MCP servers or open files.
     "fastapi>=0.132.0",
     "uvicorn[standard]>=0.30.0",
-    # Required for FastAPI's UploadFile (POST /api/upload) -- already pulled
-    # in transitively via aisuite's mcp extra, but declared explicitly since
-    # we now depend on it directly.
+    # Required for FastAPI's UploadFile (POST /api/upload).
     "python-multipart>=0.0.9",
     # web/browser_panel.py's hand-rolled Chrome DevTools Protocol client
     # (the Browser panel's live view -- see that module's own docstring for
@@ -221,10 +164,8 @@ packages = ["src/coscribe"]
 line-length = 100
 target-version = "py311"
 # Vendored, unmodified-from-upstream code (see the header comment in each file):
-# left alone so a future diff against aisuite's/ppt-master's source stays meaningful.
+# left alone so a future diff against ppt-master's source stays meaningful.
 extend-exclude = [
-    "src/coscribe/providers/gemini_provider.py",
-    "src/coscribe/providers/_vendor",
     "src/coscribe/tools/_native_formula",
     "src/coscribe/tools/_native_docx_tracks",
     "src/coscribe/tools/_native_svg",
@@ -242,16 +183,10 @@ python_version = "3.11"
 strict = true
 warn_unused_ignores = true
 exclude = [
-    "src/coscribe/providers/gemini_provider.py",
-    "src/coscribe/providers/_vendor",
     "src/coscribe/tools/_native_formula",
     "src/coscribe/tools/_native_docx_tracks",
     "src/coscribe/tools/_native_svg",
 ]
-
-[[tool.mypy.overrides]]
-module = "aisuite.*"
-ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "mammoth.*"
@@ -279,7 +214,6 @@ source = ["coscribe"]
 branch = true
 omit = [
     "*/coscribe/tools/_native_*/*",
-    "*/coscribe/providers/gemini_provider.py",
 ]
 
 [tool.coverage.report]
@@ -319,7 +253,6 @@ layers = [
     "coscribe.workflows | coscribe.code_runtime",
     "coscribe.tools",
     "coscribe.runtime | coscribe.config | coscribe.needs_permission",
-    "coscribe.providers",
 ]
 ignore_imports = [
     "coscribe.tools.scheduled_tasks -> coscribe.workflows.spec",

@@ -28,7 +28,7 @@ deliberately short; it's a map, not the content.
   dependencies, invariants, tests). Read it before the package's source, and import from
   the package (`from ..workflows import ...`), not from a submodule, for any name on its
   card. `tests/test_module_cards.py` keeps a card equal to the code. Cards exist for
-  every package: `code_runtime`, `conversation`, `providers`, `runtime`, `runtime_lg`, `tools`,
+  every package: `code_runtime`, `conversation`, `runtime`, `runtime_lg`, `tools`,
   `web` and `workflows`. The single modules (`cli`, `config`, `coordinator`, `needs_permission`)
   have none: the test only reads packages.
 

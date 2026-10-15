@@ -41,8 +41,8 @@ as producing schema-valid XML that PowerPoint silently treats as corrupt.
 Restricting the feature surface avoids that failure class outright rather
 than needing a post-hoc validator. Chart data is a pipe-table string, the
 same convention ``write_xlsx`` already uses -- not a list/dict tool
-parameter, which no tool in this package uses: aisuite's Gemini schema
-inference has broken on less exotic type hints than that (see the
+parameter, which no tool in this package uses: tool-schema inference
+has broken on less exotic type hints than that (see the
 ``Optional[int]``/``Optional[str]`` comments below and in
 ``office/xlsx``).
 

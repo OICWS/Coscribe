@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     )
 
     default_model: str
-    """Model for the Coordinator agent, as an aisuite "provider:model" string."""
+    """Model for the Coordinator agent, as a "provider:model" string."""
 
     default_effort: Literal["low", "medium", "high", "extra", "max", "ultra"] = "medium"
     """How hard a new conversation's model thinks; each model runs it as the nearest level it
@@ -227,7 +227,7 @@ class Settings(BaseSettings):
     def _validate_default_model(cls, value: str) -> str:
         if ":" not in value:
             raise ValueError(
-                'default_model must be an aisuite "provider:model" string, '
+                'default_model must be a "provider:model" string, '
                 f'e.g. "anthropic:claude-sonnet-4-5" (got {value!r})'
             )
         return value

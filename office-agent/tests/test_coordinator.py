@@ -170,29 +170,21 @@ def test_the_model_has_no_tool_to_write_the_global_instructions(tmp_path: Path) 
 
 
 def test_all_tool_schemas_are_gemini_compatible(tmp_path: Path) -> None:
-    """Regression test for a real bug: aisuite's Tools.__infer_from_signature
-    (the schema builder every provider's tool spec comes from, including
-    Gemini's) only unwraps `typing.Optional[X]` -- it checks
-    `get_origin(t) is Union`, and PEP 604 `X | None` has origin
-    `types.UnionType` instead, so it slips through unwrapped and gets
-    serialized as the literal string "X | None" for the JSON-schema "type"
-    field. Gemini's strict OpenAPI-subset schema validation then rejects the
-    whole request with 400 INVALID_ARGUMENT (hit for real with read_xlsx's
-    `sheet` and read_pptx's `slide` params). Guard every current and future
-    built-in tool against reintroducing this by asserting every parameter's
-    schema "type" is one of the real JSON Schema primitives."""
-    from aisuite.utils.tools import Tools
+    """Every parameter of every built-in tool keeps a schema type once converted for Gemini.
+
+    Gemini's strict OpenAPI-subset validation rejects a parameter with no type with a 400
+    INVALID_ARGUMENT (hit for real with an unwrapped `X | None` on read_xlsx's `sheet`)."""
+    # The conversion langchain-google-genai applies to the tools it sends (private, but it is
+    # the code whose output Gemini validates).
+    from langchain_google_genai._function_utils import convert_to_genai_function_declarations
 
     agent = build_coordinator_agent(_settings(tmp_path), "thread-1")
-    specs = Tools(list(agent.tools)).tools("openai")  # type: ignore[arg-type]
-
-    valid_types = {"string", "integer", "number", "boolean", "array", "object"}
-    for spec in specs:
-        function = spec["function"]
-        for param_name, schema in function["parameters"]["properties"].items():
-            assert schema["type"] in valid_types, (
-                f"{function['name']}'s {param_name!r} param has schema type "
-                f"{schema['type']!r} -- likely an unwrapped `X | None` annotation"
+    declarations = convert_to_genai_function_declarations(list(agent.tools)).function_declarations
+    for declaration in declarations or []:
+        for param_name, schema in (declaration.parameters.properties or {}).items():
+            assert schema.type is not None, (
+                f"{declaration.name}'s {param_name!r} param has no schema type "
+                f"-- likely an unwrapped `X | None` annotation"
             )
 
 
