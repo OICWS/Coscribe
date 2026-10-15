@@ -99,6 +99,7 @@ from .office.pptx.qa import (
     leftover_placeholder_warnings,
     preview_deck,
 )
+from .office.pptx.reading import render_slide
 from .office.pptx.shape_tools import ShapeToolsMixin
 from .office.pptx.template_slides import adjust_template_content_slides
 from .office.pptx.theme import (
@@ -746,9 +747,9 @@ class PresentationToolkit(ShapeToolsMixin, XmlAnimationMixin, ImageToolsMixin, T
         if slide is not None:
             if not 1 <= slide <= slide_count:
                 raise ValueError(f"Slide {slide} out of range: deck has {slide_count} slides")
-            return self._render_slide(prs.slides[slide - 1])
+            return render_slide(prs.slides[slide - 1])
         return "\n\n---\n\n".join(
-            self._render_slide(s, with_heading=True) for s in prs.slides
+            render_slide(s, with_heading=True) for s in prs.slides
         )
 
     @locked_by_path
@@ -757,23 +758,6 @@ class PresentationToolkit(ShapeToolsMixin, XmlAnimationMixin, ImageToolsMixin, T
         state_dir = Path(self._state_dir) if self._state_dir is not None else None
         return preview_deck(file_path, state_dir, max_slides)
 
-    @staticmethod
-    def _render_slide(slide: Any, with_heading: bool = False) -> str:
-        title_shape = slide.shapes.title
-        title = title_shape.text if title_shape is not None else ""
-        title_shape_id = title_shape.shape_id if title_shape is not None else None
-        lines = [f"## {title}"] if with_heading else []
-        for shape in th.leaf_shapes(slide.shapes):
-            if title_shape_id is not None and shape.shape_id == title_shape_id:
-                continue
-            if shape.has_table:
-                for row in shape.table.rows:
-                    lines.append("| " + " | ".join(cell.text for cell in row.cells) + " |")
-            elif shape.has_text_frame:
-                for paragraph in shape.text_frame.paragraphs:
-                    if paragraph.text:
-                        lines.append(f"- {paragraph.text}")
-        return "\n".join(lines)
 
 
 def build_presentation_tools(

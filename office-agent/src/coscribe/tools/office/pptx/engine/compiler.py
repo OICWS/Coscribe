@@ -323,6 +323,9 @@ def _convert_group(elem: ET.Element, ctx: ConvertContext, report: PageReport) ->
     )
     child_ctx.depth = ctx.depth + 1
     results = [r for r in (_convert(child, child_ctx, report) for child in elem) if r is not None]
+    # The child numbers relationships and shape ids from its own copy of the counters; without
+    # this, pictures in two sibling groups both get rId2 and show the same image.
+    ctx.sync_from_child(child_ctx)
     if not results:
         return None
     if len(results) == 1 and not elem.get("id"):

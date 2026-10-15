@@ -275,7 +275,7 @@
   "src/coscribe/conversation/session.py": 1472,
   "src/coscribe/coordinator.py": 855,
   "src/coscribe/runtime_lg/subagents.py": 836,
-  "src/coscribe/tools/presentations.py": 2242,
+  "src/coscribe/tools/presentations.py": 2226,
   "src/coscribe/tools/scheduled_tasks.py": 1054,
   "src/coscribe/web/browser_panel.py": 813,
   "src/coscribe/web/connector_catalog.py": 948,

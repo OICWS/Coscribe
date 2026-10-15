@@ -8,6 +8,7 @@ image) must come out as the PowerPoint object a user can select and edit.
 from __future__ import annotations
 
 import difflib
+import io
 import os
 from pathlib import Path
 
@@ -218,3 +219,26 @@ def test_the_canvas_must_be_a_whole_pixel_viewbox_at_the_origin(tmp_path: Path, 
     _out, report = _compile(tmp_path, [("P01", page)])
 
     assert report.pages[0].errors
+
+
+def test_pictures_in_sibling_groups_keep_their_own_images(tmp_path: Path) -> None:
+    Image.new("RGB", (120, 80), "#FF0000").save(tmp_path / "store.png")
+    Image.new("RGB", (120, 80), "#0000FF").save(tmp_path / "team.png")
+    page = (
+        f'<svg {_SVG}><text id="title" x="60" y="80" font-size="30" fill="#000000">'
+        "门店与团队</text>"
+        '<g id="store"><image href="store.png" x="60" y="120" width="500" height="300"/>'
+        "</g>"
+        '<g id="team"><image href="team.png" x="660" y="120" width="500" height="300"/>'
+        "</g></svg>"
+    )
+
+    out, _report = _compile(tmp_path, [("p1", page)], svg_dir=tmp_path)
+
+    slide = Presentation(str(out)).slides[0]
+    colours = {
+        group.name: Image.open(io.BytesIO(group.shapes[0].image.blob)).getpixel((1, 1))
+        for group in slide.shapes
+        if group.name in ("store", "team")
+    }
+    assert colours == {"store": (255, 0, 0), "team": (0, 0, 255)}

@@ -26,6 +26,7 @@ class Expect:
     allowed_numbers: list[str] = field(default_factory=list)
     pictures_min: int = 0
     template: str | None = None  # an input deck whose layouts the result must keep
+    pictures_of: str | None = None  # an input deck whose every picture the result must show
     notes: float = 0.0  # the share of slides that must carry speaker notes
 
 
@@ -166,6 +167,7 @@ def _parse_expect(raw: dict[str, object], where: Path) -> Expect:
         allowed_numbers=[str(a) for a in allowed],
         pictures_min=int(raw.get("pictures_min", 0)),  # type: ignore[call-overload]
         template=str(raw["template"]) if raw.get("template") else None,
+        pictures_of=str(raw["pictures_of"]) if raw.get("pictures_of") else None,
         notes=float(raw.get("notes", 0)),  # type: ignore[arg-type]
     )
 
