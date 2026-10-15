@@ -45,6 +45,10 @@ class XlsxExpect:
     `probe`: `{"set": {address: value}, "expect": [cells]}`, inputs changed on a copy that is
     then recalculated.
     `charts`: `{"kind", "title", "points_min", "axis_titles"}`; `validations`: `{"at", "values"}`.
+    For an open task, where the model chooses the layout: `formulas_min`, at least that many
+    formula cells; `figures`, `{"value", "rel"?}` numbers some cell must show, in ones, thousands
+    or 万; `input_probe`, `{"find", "set", "figures"}`, the constant cell holding `find` set to
+    `set` on a copy, which is recalculated and must then show `figures`.
     """
 
     facts: list[list[str]]
@@ -60,6 +64,9 @@ class XlsxExpect:
     original: str | None = None
     untouched: list[str] = field(default_factory=list)
     conditional_formats_min: int = 0
+    formulas_min: int = 0
+    figures: list[dict[str, object]] = field(default_factory=list)
+    input_probe: dict[str, object] | None = None
     probe: dict[str, object] | None = None
     charts: list[dict[str, object]] = field(default_factory=list)
     validations: list[dict[str, object]] = field(default_factory=list)
@@ -235,7 +242,14 @@ def _parse_xlsx_expect(raw: dict[str, object], where: Path) -> XlsxExpect:
     if (untouched or raw.get("conditional_formats_min")) and not original:
         raise ValueError(f'{where}: "untouched" and "conditional_formats_min" need "original"')
     facts = _facts(raw, where, required=False)
-    if not (facts or cells or formulas or probe):
+    figures = _list_of(raw, "figures", dict, where)
+    input_probe = raw.get("input_probe")
+    if input_probe is not None and not (
+        isinstance(input_probe, dict)
+        and {"find", "set", "figures"} <= input_probe.keys()
+    ):
+        raise ValueError(f'{where}: "input_probe" needs "find", "set" and "figures"')
+    if not (facts or cells or formulas or probe or figures):
         raise ValueError(f'{where}: expects nothing: give "facts", "cells", "formulas" or "probe"')
     return XlsxExpect(
         facts=facts,
@@ -251,6 +265,9 @@ def _parse_xlsx_expect(raw: dict[str, object], where: Path) -> XlsxExpect:
         original=str(original) if original else None,
         untouched=untouched,
         conditional_formats_min=int(raw.get("conditional_formats_min", 0)),  # type: ignore[call-overload]
+        formulas_min=int(raw.get("formulas_min", 0)),  # type: ignore[call-overload]
+        figures=figures,
+        input_probe=input_probe,
         probe=probe,
         charts=charts,
         validations=validations,

@@ -368,6 +368,66 @@ def _chart_fits(chart: dict[str, Any], spec: dict[str, Any]) -> bool:
     )
 
 
+_SCALES = (1, 1_000, 10_000)
+
+
+def check_figures(values: Any, specs: list[dict[str, Any]]) -> dict[str, Any]:
+    """Each number appears in some cell, in ones, thousands or 万, within a relative tolerance:
+    where it sits and in which unit is the model's choice in an open task."""
+    shown = [
+        cell.value
+        for sheet in values.worksheets
+        for row in sheet.iter_rows()
+        for cell in row
+        if _is_number(cell.value)
+    ]
+    missing = []
+    for spec in specs:
+        expected, rel = float(spec["value"]), float(spec.get("rel", 0.001))
+        wanted = [expected / scale for scale in _SCALES]
+        if not any(abs(got - w) <= abs(w) * rel for got in shown for w in wanted):
+            missing.append(spec["value"])
+    return {"ok": not missing, "found": len(specs) - len(missing), "missing": missing}
+
+
+def check_input_probe(path: Path, probe: dict[str, Any], scratch: Path) -> dict[str, Any]:
+    """Change one assumption, found by its value, on a copy and recalculate: results wired to
+    the assumption move to the expected figures, pasted ones do not."""
+    from openpyxl import load_workbook
+
+    workbook = load_workbook(str(path))
+    found = [
+        cell
+        for sheet in workbook.worksheets
+        for row in sheet.iter_rows()
+        for cell in row
+        if _is_number(cell.value) and abs(cell.value - probe["find"]) <= 1e-9
+    ]
+    if not found:
+        return {"ok": False, "error": f"no constant cell holds {probe['find']}"}
+    for cell in found:
+        cell.value = probe["set"]
+    changed = scratch / "input-probe.xlsx"
+    workbook.save(str(changed))
+    copy, recalc = recalculate(changed, scratch, "input-probe-recalc.xlsx")
+    values = load_workbook(str(copy), data_only=True)
+    report = check_figures(values, probe["figures"])
+    values.close()
+    return {**report, "cells_set": len(found), "recalc_ok": recalc["ok"],
+            "ok": report["ok"] and recalc["ok"]}
+
+
+def check_formula_count(workbook: Any, minimum: int) -> dict[str, Any]:
+    count = sum(
+        1
+        for sheet in workbook.worksheets
+        for row in sheet.iter_rows()
+        for cell in row
+        if isinstance(cell.value, str) and cell.value.startswith("=")
+    )
+    return {"ok": count >= minimum, "count": count, "minimum": minimum}
+
+
 def check_charts(charts: list[dict[str, Any]], specs: list[dict[str, Any]]) -> dict[str, Any]:
     missing = [s for s in specs if not any(_chart_fits(c, s) for c in charts)]
     return {"ok": not missing, "found": charts, "missing": missing}
@@ -526,6 +586,12 @@ def _run_checks(
         _guarded(report, "formulas", lambda: check_formulas(formulas, expect.formulas))
     if expect.constants:
         _guarded(report, "constants", lambda: check_constants(formulas, expect.constants))
+    if expect.formulas_min:
+        _guarded(
+            report, "formulas_min", lambda: check_formula_count(formulas, expect.formulas_min)
+        )
+    if expect.figures:
+        _guarded(report, "figures", lambda: check_figures(values, expect.figures))
     if expect.number_formats:
         _guarded(
             report, "number_formats", lambda: check_number_formats(formulas, expect.number_formats)
@@ -553,6 +619,11 @@ def _run_checks(
     if expect.validations:
         _guarded(
             report, "validations", lambda: check_validations(formulas, values, expect.validations)
+        )
+    if expect.input_probe:
+        input_probe = expect.input_probe
+        _guarded(
+            report, "input_probe", lambda: check_input_probe(path, input_probe, scratch)
         )
     if expect.probe:
         probe = expect.probe

@@ -9,7 +9,7 @@ import shutil
 from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
-from openpyxl.chart import LineChart, Reference
+from openpyxl.chart import BarChart, LineChart, Reference
 from openpyxl.styles import Font
 from openpyxl.worksheet.datavalidation import DataValidation
 
@@ -208,6 +208,73 @@ def validation_list(inputs: Path, out: Path) -> Path:
     return path
 
 
+def sales_report(inputs: Path, out: Path) -> Path:
+    book = Workbook()
+    summary = book.active
+    summary.title = "汇总"
+    ledger = book.create_sheet("明细")
+    with (inputs / "销售明细.csv").open(encoding="utf-8", newline="") as handle:
+        for index, row in enumerate(csv.reader(handle)):
+            ledger.append(row if index == 0 else [row[0], row[1], row[2], *map(int, row[3:])])
+    last = ledger.max_row
+    summary.append(["区域", "销售额"])
+    for region in ["华东", "华南", "华北", "西南"]:
+        row = summary.max_row + 1
+        summary.append([region, f"=SUMIF(明细!B2:B{last},A{row},明细!F2:F{last})"])
+    summary.append(["合计", "=SUM(B2:B5)"])
+    summary.append([])
+    summary.append(["产品线", "销售额"])
+    for product in ["智能门锁", "扫地机器人", "空气净化器"]:
+        row = summary.max_row + 1
+        summary.append([product, f"=SUMIF(明细!C2:C{last},A{row},明细!F2:F{last})"])
+    chart = BarChart()
+    chart.title = "各区域销售额"
+    chart.add_data(Reference(summary, min_col=2, min_row=1, max_row=5), titles_from_data=True)
+    chart.set_categories(Reference(summary, min_col=1, min_row=2, max_row=5))
+    summary.add_chart(chart, "D2")
+    path = out / "销售分析.xlsx"
+    _widen(book)
+    book.save(path)
+    return path
+
+
+def store_forecast(inputs: Path, out: Path) -> Path:
+    book = Workbook()
+    sheet = book.active
+    sheet.title = "模型"
+    for row, (label, value) in enumerate(
+        [
+            ("门店数", 5),
+            ("每店月营收（元）", 300000),
+            ("年增长", 0.08),
+            ("毛利率", 0.55),
+            ("人工（每店每月）", 60000),
+            ("房租（每店每月）", 40000),
+            ("总部费用（每年）", 1200000),
+        ],
+        start=1,
+    ):
+        sheet.cell(row=row, column=1, value=label)
+        sheet.cell(row=row, column=2, value=value)
+    sheet.append([])
+    sheet.append(["", "第1年", "第2年", "第3年"])
+    lines = [
+        ("营收", "=$B$1*$B$2*12", "={prev}10*(1+$B$3)"),
+        ("毛利", "={col}10*$B$4", None),
+        ("费用", "=$B$1*($B$5+$B$6)*12+$B$7", None),
+        ("净利润", "={col}11-{col}12", None),
+    ]
+    for row, (label, first, later) in enumerate(lines, start=10):
+        sheet.cell(row=row, column=1, value=label)
+        for column, col, prev in ((2, "B", ""), (3, "C", "B"), (4, "D", "C")):
+            formula = later if later and col != "B" else first
+            sheet.cell(row=row, column=column, value=formula.format(col=col, prev=prev))
+    path = out / "门店盈利预测.xlsx"
+    _widen(book)
+    book.save(path)
+    return path
+
+
 SOLUTIONS = {
     "01-clean-csv": clean_csv,
     "02-monthly-summary": monthly_summary,
@@ -217,4 +284,6 @@ SOLUTIONS = {
     "06-budget-model": budget_model,
     "07-chinese-formats": chinese_formats,
     "08-validation-list": validation_list,
+    "09-sales-report": sales_report,
+    "10-store-forecast": store_forecast,
 }

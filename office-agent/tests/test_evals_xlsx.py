@@ -625,6 +625,41 @@ def test_a_model_with_pasted_numbers_fails_where_the_formulas_pass(tmp_path: Pat
     assert report["probe"]["ok"] is False
 
 
+def test_a_figure_is_found_in_any_cell_in_ones_thousands_or_wan() -> None:
+    book = _book([["营收", 1800], ["净利润", "270"], ["k", 3492.0]])
+    specs = [{"value": 18_000_000}, {"value": 2_700_000}, {"value": 3_492_000}]
+
+    report = xlsx_checks.check_figures(book, specs)
+
+    assert report["missing"] == [2_700_000]
+
+
+def test_formula_cells_are_counted_over_every_sheet() -> None:
+    book = _book([[1, "=A1+1"], ["=SUM(A1:B1)", "text"]])
+    book.create_sheet("Other")["A1"] = "=1"
+
+    assert xlsx_checks.check_formula_count(book, 3)["ok"] is True
+    assert xlsx_checks.check_formula_count(book, 4) == {"ok": False, "count": 3, "minimum": 4}
+
+
+@pytest.mark.real_libreoffice
+def test_a_forecast_with_pasted_numbers_fails_the_input_probe(tmp_path: Path) -> None:
+    if not _libreoffice_recalculates(tmp_path):
+        pytest.skip("LibreOffice is not usable here")
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    chosen = _task("10")
+    good = SOLUTIONS["10-store-forecast"](chosen.directory / "inputs", workspace)
+    pasted = workspace / "pasted.xlsx"
+    load_workbook(xlsx_checks.recalculate(good, tmp_path)[0], data_only=True).save(pasted)
+
+    report = xlsx_checks.check_workbook(chosen, pasted, workspace, tmp_path / "render")
+
+    assert report["figures"]["ok"] is True
+    assert report["input_probe"]["ok"] is False
+    assert report["formulas_min"]["ok"] is False
+
+
 @pytest.mark.real_libreoffice
 def test_a_formula_error_after_recalculation_is_reported(tmp_path: Path) -> None:
     if not _libreoffice_recalculates(tmp_path):
@@ -643,11 +678,11 @@ def test_a_formula_error_after_recalculation_is_reported(tmp_path: Path) -> None
 def test_every_excel_task_loads_and_its_files_exist() -> None:
     found = tasks.discover("all", kind="xlsx")
 
-    assert len(found) == 8 and {t.kind for t in found} == {"xlsx"}
+    assert len(found) == 10 and {t.kind for t in found} == {"xlsx"}
     assert set(SOLUTIONS) == {t.name for t in found}
     for task in found:
         assert task.brief and isinstance(task.expect, tasks.XlsxExpect)
-        assert task.expect.cells or task.expect.facts
+        assert task.expect.cells or task.expect.facts or task.expect.figures
 
 
 def test_the_briefs_name_their_input_files() -> None:
