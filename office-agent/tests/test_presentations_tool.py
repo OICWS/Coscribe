@@ -3987,7 +3987,7 @@ def _make_fake_template(
     """Build a throwaway .pptx with one slide per entry in layout_indexes
     (a python-pptx stock layout index each), optionally add one decorative
     (non-placeholder) shape to slide 1, monkeypatch
-    coscribe.tools.presentations._load_builtin_templates to return exactly
+    coscribe.tools.office.pptx.template_tools._load_builtin_templates to return exactly
     this one fake TemplateInfo, and return the decorative shape's captured
     (left, top, width, height, fill_rgb) if requested, else {}. `slide_roles`
     defaults to every slide being "content" (the repeatable role) -- tests
@@ -3997,7 +3997,7 @@ def _make_fake_template(
     from pptx.dml.color import RGBColor
     from pptx.enum.shapes import MSO_SHAPE
 
-    import coscribe.tools.presentations as presentations_module
+    from coscribe.tools.office.pptx import template_tools as presentations_module
     from coscribe.tools.pptx_templates import TemplateInfo
 
     prs = Presentation()
