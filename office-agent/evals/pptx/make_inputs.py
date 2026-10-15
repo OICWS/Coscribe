@@ -7,6 +7,7 @@ edit), so they are reproducible rather than opaque. The outputs are committed.
 from __future__ import annotations
 
 import shutil
+import tempfile
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -125,6 +126,110 @@ def _built_deck(path: Path) -> None:
     assert not report.errors(), report.errors()
 
 
+def _photo(path: Path, sky: str, kind: str) -> None:
+    image = Image.new("RGB", (1200, 800), sky)
+    draw = ImageDraw.Draw(image)
+    if kind == "store":
+        draw.rectangle([0, 560, 1200, 800], fill="#9a9a9a")
+        draw.rectangle([220, 180, 980, 600], fill="#f2efe8")
+        draw.rectangle([220, 180, 980, 260], fill="#1f4e79")
+        draw.rectangle([300, 320, 560, 600], fill="#6fa3c7")
+        draw.rectangle([640, 320, 900, 520], fill="#6fa3c7")
+    elif kind == "team":
+        draw.rectangle([0, 600, 1200, 800], fill="#c8b89a")
+        for i, colour in enumerate(["#2f4858", "#86bbd8", "#f6ae2d", "#f26419", "#33658a"]):
+            x = 200 + i * 200
+            draw.ellipse([x - 55, 250, x + 55, 360], fill="#e9c9a8")
+            draw.rectangle([x - 80, 370, x + 80, 640], fill=colour)
+    else:
+        draw.ellipse([350, 150, 850, 650], fill="#1f4e79")
+        draw.rectangle([520, 300, 680, 500], fill="#ffffff")
+    image.save(path)
+
+
+def _rough_deck(path: Path) -> None:
+    """A first draft as a user makes one: the default theme, bullets, a wall of text, photos
+    dropped in, a native chart and a table. The content is right; the design is not."""
+    from pptx import Presentation
+    from pptx.chart.data import CategoryChartData
+    from pptx.dml.color import RGBColor
+    from pptx.enum.chart import XL_CHART_TYPE
+    from pptx.util import Inches, Pt
+
+    # The photos are only inside the deck, as a user hands it over.
+    folder = Path(tempfile.mkdtemp())
+    for name, sky, kind in [
+        ("store.png", "#bcd4e6", "store"),
+        ("team.png", "#e8e2d6", "team"),
+        ("logo.png", "#ffffff", "logo"),
+    ]:
+        _photo(folder / name, sky, kind)
+    prs = Presentation()
+    prs.slide_width, prs.slide_height = Inches(13.333), Inches(7.5)
+
+    def bullets(title: str, lines: list[str]) -> object:
+        s = prs.slides.add_slide(prs.slide_layouts[1])
+        s.shapes.title.text = title
+        body = s.placeholders[1].text_frame
+        body.text = lines[0]
+        for line in lines[1:]:
+            body.add_paragraph().text = line
+        return s
+
+    cover = prs.slides.add_slide(prs.slide_layouts[0])
+    cover.shapes.title.text = "2025 年华东区销售总结"
+    cover.placeholders[1].text = "华东大区 销售部 王磊 2026年1月"
+    bullets(
+        "全年概况",
+        [
+            "2025 年华东区全年销售额 5,560 万元，比 2024 年的 4,630 万元增长 20.1%，完成年度目标的 103%",
+            "新开门店 12 家，门店总数达到 86 家，其中上海 31 家、杭州 22 家、南京 18 家、苏州 15 家",
+            "会员人数突破 42 万，会员复购率 38%，比上年提高 5 个百分点",
+            "线上渠道销售额 1,240 万元，占比 22%，第四季度上线了小程序商城",
+            "客单价 286 元，同比提升 6%",
+            "主要问题：南京两家老店租约到期关闭，苏州新店爬坡慢于预期",
+        ],
+    )
+    stores = prs.slides.add_slide(prs.slide_layouts[5])
+    stores.shapes.title.text = "门店与团队"
+    stores.shapes.add_picture(str(folder / "store.png"), Inches(0.6), Inches(1.6), Inches(5.2))
+    stores.shapes.add_picture(str(folder / "team.png"), Inches(6.9), Inches(2.3), Inches(4.6))
+    caption = stores.shapes.add_textbox(Inches(0.6), Inches(5.3), Inches(5), Inches(0.6))
+    caption.text_frame.text = "上海淮海路旗舰店（2025 年 6 月开业）"
+    team = stores.shapes.add_textbox(Inches(6.9), Inches(5.6), Inches(5), Inches(0.6))
+    team.text_frame.text = "华东区销售团队 共 214 人"
+    team.text_frame.paragraphs[0].runs[0].font.color.rgb = RGBColor(0xFF, 0x00, 0x00)
+    quarters = prs.slides.add_slide(prs.slide_layouts[5])
+    quarters.shapes.title.text = "分季度销售额（万元）"
+    data = CategoryChartData()
+    data.categories = ["Q1", "Q2", "Q3", "Q4"]
+    data.add_series("销售额", (1180, 1320, 1410, 1650))
+    quarters.shapes.add_chart(
+        XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(1), Inches(1.6), Inches(8), Inches(5), data
+    )
+    cities = prs.slides.add_slide(prs.slide_layouts[5])
+    cities.shapes.title.text = "各城市业绩"
+    rows = [
+        ["城市", "销售额（万元）", "同比"],
+        ["上海", "2,310", "+18%"],
+        ["杭州", "1,420", "+26%"],
+        ["南京", "980", "+9%"],
+        ["苏州", "850", "+31%"],
+    ]
+    table = cities.shapes.add_table(5, 3, Inches(1), Inches(1.7), Inches(9), Inches(3.5)).table
+    for r, row in enumerate(rows):
+        for c, value in enumerate(row):
+            table.cell(r, c).text = value
+    plan = bullets(
+        "2026 年计划",
+        ["销售额目标 6,500 万元", "新开门店 15 家，重点在杭州和苏州", "会员人数目标 55 万"],
+    )
+    plan.shapes.add_picture(str(folder / "logo.png"), Inches(11.4), Inches(0.3), Inches(1.4))
+    for paragraph in plan.placeholders[1].text_frame.paragraphs:
+        paragraph.runs[0].font.size = Pt(32)
+    prs.save(path)
+
+
 def main() -> None:
     images = TASKS / "04-product-launch" / "inputs"
     images.mkdir(parents=True, exist_ok=True)
@@ -136,6 +241,9 @@ def main() -> None:
     built = TASKS / "11-edit-built-deck" / "inputs"
     built.mkdir(parents=True, exist_ok=True)
     _built_deck(built / "新品发布.pptx")
+    rough = TASKS / "15-beautify-deck" / "inputs"
+    rough.mkdir(parents=True, exist_ok=True)
+    _rough_deck(rough / "华东销售总结.pptx")
 
 
 if __name__ == "__main__":

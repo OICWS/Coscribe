@@ -241,6 +241,19 @@ turns solid: draw the repeated dots or lines as shapes).
 One illustration on the cover and section pages at most, none on a page of numbers. Text keeps
 a plain area of its own: never on top of the drawing's busy part.
 
+## Photos
+
+A photograph earns its place when the content is a real place, product, team or event; otherwise
+draw (above) or let the page's figures carry it. The user's own pictures come first: those in the
+material, in the workspace, or inside a deck they gave you. Without them, and only when the
+deck's style is built on photographs, search_licensed_images (an English query, orientation
+"landscape") returns openly licensed images; download_image the chosen one into the pages folder.
+Never search_images for a deck: its results carry no licence. Place a photo with
+`<image href="store.jpg" x y width height preserveAspectRatio="xMidYMid slice"/>` (cropped to
+fill its box), text over it only on a dark scrim, and for an "attribution-required" result its
+`attribution_text` as a 13-14 px credit line on the same page. One search per photo, at most
+three photos a deck unless the user asks for more.
+
 ## Avoid
 
 - A text box that runs past its card or the page; long sentences on slides (split them).
