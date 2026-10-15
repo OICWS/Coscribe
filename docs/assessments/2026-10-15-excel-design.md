@@ -201,6 +201,14 @@ cannot act on are not reported.
   - "Open in Excel" uses the existing `open_in_os`.
 - **Later**: clicking a cell shows its formula, from the overview data, not the HTML.
 
+**Not done** (the maintainer agreed, 2026-10-15): showing Excel itself inside the app.
+- Embedding the desktop window needs a commercial ActiveX control or native window tricks.
+- Excel for the web needs the file in OneDrive or SharePoint.
+- An editable grid such as Univer has xlsx import and export only in its non-open edition,
+  would grow the installer, and would be a second engine that disagrees with Excel.
+
+With COM, the user's own Excel window sits beside the app and updates live.
+
 ## 6. Stage 2: real Excel through COM
 
 - **The same operations**, executed by Excel in a worker thread. COM calls must stay on one
