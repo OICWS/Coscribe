@@ -11,7 +11,7 @@ broader architecture effort (this file is intentionally separate from
 `ROADMAP.md`: different owner/workstream, narrower scope, avoids
 colliding with that file's own active edits).
 
-All code lives in `src/coscribe/tools/presentations.py` unless noted; the transition, animation and audio XML lives in `src/coscribe/tools/office/pptx/{transitions,animation,xmlns}.py`.
+All code lives in `src/coscribe/tools/presentations.py` unless noted; the Markdown slide builders live in `src/coscribe/tools/office/pptx/slide_builders.py`, and the transition, animation and audio XML in `src/coscribe/tools/office/pptx/{transitions,animation,xmlns}.py`.
 
 ---
 
@@ -199,7 +199,7 @@ further investment goes. The `surface`-token bug above is left
 unfixed, deliberately -- not worth spending effort polishing a
 de-prioritized feature.
 
-- **`_add_table_slide` (`presentations.py:605`) applies zero styling
+- **`add_table_slide` (`office/pptx/slide_builders.py`) applies zero styling
   after `slide.shapes.add_table(...)`** -- no style override, no border
   cleanup, no alignment, no conditional formatting. This means every
   coscribe-generated table renders with PowerPoint's raw default table
@@ -210,7 +210,7 @@ de-prioritized feature.
   this: no fill, only thin horizontal rules, right-aligned numbers, and
   values over 100% conditionally bolded red to flag them -- a real,
   deliberate design decision, not just "a table exists."
-- **`_add_stat_callout_slide` (`presentations.py:790`) fills each card
+- **`add_stat_callout_slide` (`office/pptx/slide_builders.py`) fills each card
   solid with the raw accent color** (`card.fill.solid()`), centers a
   32pt white bold number and a 13pt white label with not much weight
   contrast between them, no border-only/light-card option, no trend/

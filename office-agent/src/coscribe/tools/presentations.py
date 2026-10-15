@@ -97,7 +97,8 @@ from ._pptx_text import replace_text
 from ._svg_slide import add_svg_slide
 from ._thumbnail import render_thumbnail
 from ._workspace import WorkspaceScope
-from .office.markdown_blocks import Block, parse_blocks, parse_inline_runs
+from .office.markdown_blocks import Block, parse_blocks
+from .office.pptx import slide_builders as sb
 from .office.pptx.animation import (
     ANIMATIONS,
     AUDIO_CONTENT_TYPES,
@@ -157,9 +158,6 @@ if TYPE_CHECKING:
 
 SOFFICE_TIMEOUT = 20.0
 
-_TITLE_AND_CONTENT_LAYOUT = 1
-_TITLE_ONLY_LAYOUT = 5
-_TWO_CONTENT_LAYOUT = 3
 
 # python-pptx's own bundled default template (used whenever write_pptx gets
 # no template_path) is authored for the legacy 4:3 canvas (10in x 7.5in) --
@@ -170,49 +168,11 @@ _TWO_CONTENT_LAYOUT = 3
 # from the 4:3 default).
 _WIDESCREEN_WIDTH_EMU = 12192000
 
-# write_pptx's prefab layout library (see builtin_skills/pptx/SKILL.md) --
-# a slide chunk's first non-blank line, if it matches this, selects a
-# pre-positioned layout instead of the default title+bullets/table shape.
-# Positions for each are computed once by the layout functions below from
-# the deck's own slide_width/slide_height, not re-derived per call the way
-# a run_node_script pptxgenjs script has to -- this is what eliminates the
-# overlap-bug class by construction rather than hoping the model's ad-hoc
-# positioning math is correct every time.
-_LAYOUT_IDS = frozenset({"icon-list", "stat-callout", "two-column", "svg"})
-_LAYOUT_PREFIX_RE = re.compile(r"^layout:\s*", re.IGNORECASE)
-_LAYOUT_DIRECTIVE_RE = re.compile(
-    r"^layout:\s*(?P<id>[a-z-]+)(?:\s+(?P<accent>[0-9A-Fa-f]{6}))?\s*$", re.IGNORECASE
-)
-_TWO_COLUMN_MARKER_RE = re.compile(r"^>>>$")
-_ICON_GLYPH_RE = re.compile(r"^\[(?P<glyph>.{1,4})\]\s*(?P<text>.*)$")
-# A glyph of 3+ plain ASCII letters is almost certainly a spelled-out word
-# (e.g. "dash", "star", "bolt" -- observed live) rather than a symbol; a
-# 1-2 letter glyph (initials like "AI") is still allowed through.
-_WORD_LIKE_GLYPH_RE = re.compile(r"^[A-Za-z]{3,}$")
-# Plain ASCII only -- observed live, an emoji/pictograph glyph (e.g. a
-# multi-color "house" or "rocket" character) renders via the font's own
-# built-in color glyph, which ignores the icon circle's font.color.rgb
-# override entirely. The result is a deck where some icons are clean
-# accent-colored circles and others are mismatched full-color stickers,
-# inconsistently, depending on which specific character the model picked --
-# not something this code can control once it's an emoji glyph, so it's
-# rejected up front instead of shipping an inconsistent-looking deck.
-_SAFE_GLYPH_RE = re.compile(r"^[A-Za-z0-9!?*+\-=/#@%&]+$")
-_ICON_LIST_MAX_ITEMS = 6
-_STAT_CALLOUT_MAX_ITEMS = 4
-
 # extract_pptx_template's own id validation -- same shape as the bundled
 # templates' own ids ("bold-statement", "minimal-light", ...), enforced
 # here rather than left to whatever a directory name happens to be, since
 # this id becomes fill_pptx_template's own template_id argument afterward.
 _TEMPLATE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}[a-z0-9]$")
-# Fractions of slide_width/slide_height for the body content area, measured
-# against python-pptx's own default Title-and-Content layout's real
-# placeholder geometry (0.5in/1.75in margins on a 10in x 7.5in slide) --
-# see _content_area's own docstring.
-_MARGIN_FRACTION = 0.05
-_CONTENT_TOP_FRACTION = 0.2333
-_CONTENT_BOTTOM_FRACTION = 0.9
 
 # add_pptx_shape's own curated subset of python-pptx's ~180-member
 # MSO_SHAPE enum (every name below verified against the real installed
@@ -448,685 +408,6 @@ def _render_to_pdf(pptx_path: Path) -> Path | None:
     return pdf_path if pdf_path.is_file() else None
 
 
-def _slide_chunks(content: str) -> list[str]:
-    return [chunk for chunk in content.split("\n---\n") if chunk.strip()]
-
-
-def _clear_slides(prs: PresentationType) -> None:
-    """Remove every existing slide from a loaded template, in place.
-
-    Removing only the <p:sldId> list entry leaves the slide's XML part
-    orphaned in the zip package, where it collides with a newly-added
-    slide's auto-generated part name (e.g. both claiming
-    'ppt/slides/slide1.xml') -- verified empirically to produce a
-    'Duplicate name' warning and a genuinely corrupt-risk file on save.
-    Dropping the relationship first (`drop_rel`) makes python-pptx's
-    package writer omit the now-unreachable part entirely, which is the
-    correct fix, also verified empirically."""
-    from pptx.oxml.ns import qn
-
-    sld_id_lst = prs.slides._sldIdLst  # noqa: SLF001
-    for sld_id in list(sld_id_lst):
-        r_id = sld_id.get(qn("r:id"))
-        prs.part.drop_rel(r_id)
-        sld_id_lst.remove(sld_id)
-
-
-def _widen_stock_layouts(prs: PresentationType, original_width: int) -> None:
-    """After widening `prs.slide_width` (a bare `Presentation()`'s stock
-    layouts are authored for the old, narrower canvas), rescale every
-    TITLE/CENTER_TITLE/SUBTITLE/BODY/OBJECT-type placeholder's left/width
-    proportionally to the new width -- top/height untouched, since only
-    the width changed, not the height.
-
-    A uniform horizontal scale (rather than e.g. only widening
-    right-anchored placeholders) is what keeps this correct for the
-    "Two Content" layout's two side-by-side OBJECT placeholders too: both
-    columns and the gap between them scale by the same factor, so they
-    stay equal width with a proportionally-sized gap, instead of one
-    column growing and the other staying put. Verified empirically (not
-    just derived): the resulting margins/gaps on every stock layout used
-    by this file (Title Slide, Title and Content, Title Only, Two
-    Content) render at the same *proportional* position as before, just
-    scaled up -- see the write_pptx docstring and SKILL.md for the live
-    render this was checked against.
-
-    Critical detail, found live: these stock placeholders start with no
-    explicit <a:xfrm> of their own at all (position/size is entirely
-    inherited from the slide master) -- `placeholder.top`/`.height`
-    resolve that inheritance correctly on *read*, but writing `.left`/
-    `.width` makes python-pptx materialize a brand-new <a:xfrm> with
-    whichever fields weren't explicitly set defaulting to 0, silently
-    discarding the inherited top/height (rendered as a title clipped to
-    a zero-height box). Reading top/height first and writing them back
-    unchanged is what keeps them intact."""
-    from pptx.enum.shapes import PP_PLACEHOLDER
-
-    scale = prs.slide_width / original_width
-    if scale == 1:
-        return
-    relevant = frozenset(
-        {
-            PP_PLACEHOLDER.TITLE,
-            PP_PLACEHOLDER.CENTER_TITLE,
-            PP_PLACEHOLDER.SUBTITLE,
-            PP_PLACEHOLDER.BODY,
-            PP_PLACEHOLDER.OBJECT,
-        }
-    )
-    for master in prs.slide_masters:
-        for layout in master.slide_layouts:
-            for placeholder in layout.placeholders:
-                if placeholder.placeholder_format.type in relevant:
-                    top, height = placeholder.top, placeholder.height
-                    placeholder.left = round(placeholder.left * scale)
-                    placeholder.width = round(placeholder.width * scale)
-                    placeholder.top = top
-                    placeholder.height = height
-
-
-
-
-def _add_inline_runs(paragraph: Any, text: str) -> None:
-    """pptx counterpart to ``office/docx/_xml.py``'s ``_add_inline_runs`` -- adds
-    ``text`` as one run per ``parse_inline_runs`` fragment so
-    ``**bold**``/``*italic*`` render as real formatting instead of literal
-    markup characters."""
-    for run_text, bold, italic in parse_inline_runs(text):
-        run = paragraph.add_run()
-        run.text = run_text
-        if bold:
-            run.font.bold = True
-        if italic:
-            run.font.italic = True
-
-
-def _set_title(slide: Any, title: str) -> None:
-    # .clear() first -- see _fill_content_placeholder's docstring for why:
-    # a freshly-added slide's title placeholder is already empty, so this
-    # is a no-op there, but fill_pptx_template reuses this same helper on
-    # an *existing* template slide's title, which a real-world template
-    # (anyone's own uploaded .pptx, not just coscribe's own bundled ones)
-    # almost always ships with real placeholder/sample text already in it.
-    text_frame = slide.shapes.title.text_frame
-    text_frame.clear()
-    _add_inline_runs(text_frame.paragraphs[0], title)
-
-
-def _add_bullet_slide(prs: PresentationType, title: str, blocks: list[Block]) -> None:
-    body_blocks = [block for block in blocks if block.kind != "heading"]
-    if not body_blocks:
-        # No body content -- Title Only avoids leaving an empty "click to
-        # add text" placeholder in the deck.
-        slide = prs.slides.add_slide(prs.slide_layouts[_TITLE_ONLY_LAYOUT])
-        _set_title(slide, title)
-        return
-    slide = prs.slides.add_slide(prs.slide_layouts[_TITLE_AND_CONTENT_LAYOUT])
-    _set_title(slide, title)
-    _fill_content_placeholder(slide.placeholders[1], body_blocks)
-
-
-_NUMERIC_CELL_RE = re.compile(r"^[¥$€]?-?[\d,]+(\.\d+)?\s*[%MKmk]?$")
-_PERCENT_CELL_RE = re.compile(r"^(-?\d+(?:\.\d+)?)%$")
-
-
-def _looks_numeric_cell(text: str) -> bool:
-    """Heuristic for right-aligning a table cell's text -- ¥8.2M/34%/112%/
-    2,847 all match, plain words (region/person names) don't. Used only to
-    decide alignment, never to reject/transform content, so a false
-    negative (a numeric-looking value rendered left-aligned) is harmless."""
-    return bool(_NUMERIC_CELL_RE.match(text.strip()))
-
-
-def _percent_cell_over_100(text: str) -> bool:
-    """True for a lone "NNN%" cell over 100 -- a completion-rate/target-
-    attainment table's most useful signal, and the one piece of design
-    polish a real user directly flagged a competing tool doing that
-    coscribe's own tables didn't (see PPTX_DESIGN.md §0)."""
-    match = _PERCENT_CELL_RE.match(text.strip())
-    return match is not None and float(match.group(1)) > 100
-
-
-def _set_cell_thin_bottom_border(cell: Any, color_hex: str) -> None:
-    """Hairline bottom-only border (hides left/right/top) -- the "minimal
-    horizontal-rule table" look instead of PowerPoint's default full grid.
-    ``CT_TableCellProperties``'s child sequence is schema-fixed (lnL, lnR,
-    lnT, lnB, *then* a fill element) and python-pptx has no generated
-    insert-in-order helpers for the ln* elements in this version (`dir()`
-    on a real ``tcPr`` has no `_insert_lnL`/etc.) -- inserting in the
-    wrong order still round-trips fine through python-pptx's own lenient
-    reader (confirmed empirically), but real PowerPoint enforces the
-    schema strictly, so this always locates tcPr's existing fill child
-    (call ``cell.fill.background()``/``.solid()`` *before* this, never
-    after) and inserts lnL/lnR/lnT/lnB immediately before it, guaranteeing
-    correct order regardless of what fill was set."""
-    from lxml import etree
-    from pptx.oxml.ns import qn
-
-    fill_tags = {
-        qn("a:noFill"),
-        qn("a:solidFill"),
-        qn("a:gradFill"),
-        qn("a:blipFill"),
-        qn("a:pattFill"),
-        qn("a:grpFill"),
-    }
-    tc_pr = cell._tc.get_or_add_tcPr()
-    insert_at = len(tc_pr)
-    for index, child in enumerate(tc_pr):
-        if child.tag in fill_tags:
-            insert_at = index
-            break
-    for offset, (tag, border_color) in enumerate(
-        [("a:lnL", None), ("a:lnR", None), ("a:lnT", None), ("a:lnB", color_hex)]
-    ):
-        line = etree.Element(qn(tag))
-        if border_color is None:
-            etree.SubElement(line, qn("a:noFill"))
-        else:
-            line.set("w", "9525")  # 0.75pt hairline
-            solid_fill = etree.SubElement(line, qn("a:solidFill"))
-            etree.SubElement(solid_fill, qn("a:srgbClr")).set("val", border_color)
-        tc_pr.insert(insert_at + offset, line)
-
-
-def _add_table_slide(prs: PresentationType, title: str, rows: list[list[str]]) -> None:
-    """Real, live-reported bug this fixes (PPTX_DESIGN.md §0): building a
-    table with no styling at all leaves PowerPoint's own default table
-    style applied -- a dated, heavy blue-banded grid a real user directly
-    compared against a competing tool's output and found worse-looking,
-    despite that competitor's "table" not even being a real table object.
-    Strips the default style (no fill/banding), replaces the full grid
-    with hairline bottom-only rules, right-aligns numeric-looking cells,
-    and bolds+flags any lone "NNN%" cell over 100 in a warm accent color --
-    a completion-rate table's single most useful visual signal, and
-    specifically the one polish detail a competing tool was confirmed to
-    do that this function didn't.
-
-    Real, live-reported bug this `_content_area` call fixes too: the
-    previous hardcoded `Inches(0.5), Inches(9)` placement was sized for
-    python-pptx's own default 10in-wide blank Presentation(), but
-    write_pptx always resizes the deck to widescreen
-    (`_WIDESCREEN_WIDTH_EMU`, 13.333in) -- on the real slide width the
-    table actually ends up on, that fixed 9in width left ~3.8in of dead
-    space on the right, visibly off-center. icon-list/stat-callout
-    already computed position from the deck's own real dimensions via
-    `_content_area`; this did not, confirmed directly against a real
-    rendered screenshot."""
-    from pptx.dml.color import RGBColor
-    from pptx.enum.dml import MSO_THEME_COLOR
-    from pptx.enum.text import PP_ALIGN
-    from pptx.util import Pt
-
-    slide = prs.slides.add_slide(prs.slide_layouts[_TITLE_ONLY_LAYOUT])
-    _set_title(slide, title)
-    n_cols = max(len(row) for row in rows)
-    left, top, width, height = _content_area(prs)
-    table_shape = slide.shapes.add_table(len(rows), n_cols, left, top, width, height)
-    table = table_shape.table
-    table.first_row = False
-    table.horz_banding = False
-
-    # theme_color, not a literal RGB -- follows whatever the deck's own
-    # <a:clrScheme> dk1 is (the stock near-black default, or write_pptx's
-    # `theme` token's `text` value), so a table stays readable if the
-    # deck sets a dark background instead of staying hardcoded dark-gray-
-    # on-white. flagged_color stays a literal: "over 100%" is a semantic
-    # warning color, not part of the deck's own identity.
-    flagged_color = RGBColor(0xB3, 0x26, 0x1E)  # type: ignore[no-untyped-call]
-    header_border = "333333"
-    body_border = "D9D9D9"
-
-    for row_index, row in enumerate(rows):
-        is_header = row_index == 0
-        for col_index in range(n_cols):
-            cell_text = row[col_index] if col_index < len(row) else ""
-            cell = table.cell(row_index, col_index)
-            cell.fill.background()
-            _set_cell_thin_bottom_border(cell, header_border if is_header else body_border)
-            cell.margin_top = Pt(6)
-            cell.margin_bottom = Pt(6)
-            paragraph = cell.text_frame.paragraphs[0]
-            paragraph.alignment = (
-                PP_ALIGN.RIGHT
-                if not is_header and _looks_numeric_cell(cell_text)
-                else PP_ALIGN.LEFT
-            )
-            _add_inline_runs(paragraph, cell_text)
-            flagged = not is_header and _percent_cell_over_100(cell_text)
-            for run in paragraph.runs:
-                run.font.size = Pt(12)
-                if is_header:
-                    run.font.bold = True
-                    run.font.color.theme_color = MSO_THEME_COLOR.DARK_1
-                elif flagged:
-                    run.font.bold = True
-                    run.font.color.rgb = flagged_color
-                else:
-                    run.font.color.theme_color = MSO_THEME_COLOR.DARK_1
-
-
-def _parse_layout_directive(chunk: str) -> tuple[str, str, str]:
-    """Split an optional ``layout: <id> [ACCENTHEX]`` directive off the
-    first non-blank line of a slide chunk. Returns ``(layout_id,
-    accent_hex, remaining_chunk)`` -- ``layout_id`` is ``""`` when the
-    first non-blank line isn't a layout directive at all, which is the
-    existing title+bullets/table path, byte-for-byte unchanged.
-    ``accent_hex`` is ``""`` when no explicit hex was given -- the
-    icon-list/stat-callout builders treat that as "follow the deck's
-    theme accent color" rather than a hardcoded fallback hex, so a
-    slide's accent tracks whatever `write_pptx`'s `theme` parameter (or
-    the stock theme, if none was given) sets accent1 to. A line that
-    *does* start with ``layout:`` but doesn't fully match (bad id,
-    malformed hex) raises rather than silently falling through as plain
-    body text, since that would be a confusing way to fail."""
-    lines = chunk.splitlines()
-    for index, raw_line in enumerate(lines):
-        line = raw_line.strip()
-        if not line:
-            continue
-        if not _LAYOUT_PREFIX_RE.match(line):
-            return "", "", chunk
-        match = _LAYOUT_DIRECTIVE_RE.match(line)
-        if match is None:
-            raise ValueError(
-                f"Malformed layout directive {line!r} -- expected "
-                f"'layout: <id> [ACCENTHEX]' with id one of "
-                f"{', '.join(sorted(_LAYOUT_IDS))} and an optional 6-hex-digit color."
-            )
-        layout_id = match.group("id").lower()
-        if layout_id not in _LAYOUT_IDS:
-            raise ValueError(
-                f"Unknown layout {layout_id!r} -- valid layouts are "
-                f"{', '.join(sorted(_LAYOUT_IDS))}."
-            )
-        accent = (match.group("accent") or "").upper()
-        remaining = "\n".join(lines[:index] + lines[index + 1 :])
-        return layout_id, accent, remaining
-    return "", "", chunk
-
-
-def _content_area(prs: PresentationType) -> tuple[int, int, int, int]:
-    """(left, top, width, height) in EMU for the body area below the title
-    placeholder -- expressed as fractions of the deck's own
-    slide_width/slide_height (measured against python-pptx's own default
-    Title-and-Content layout's real placeholder geometry: 0.5in/1.75in
-    margins on a 10in x 7.5in slide), not hardcoded inches, so it still
-    holds under a differently-sized `template_path` deck, not just the
-    default 4:3 canvas."""
-    # `or` fallback, not an assert: python-pptx types slide_width/slide_height
-    # as `Length | None` (only None for a malformed/sizeless deck, which
-    # never happens for a real .pptx), and 9144000/6858000 EMU is exactly
-    # python-pptx's own default 10in x 7.5in -- the same size this
-    # function's constants were measured against.
-    slide_width = prs.slide_width or 9144000
-    slide_height = prs.slide_height or 6858000
-    left = int(slide_width * _MARGIN_FRACTION)
-    top = int(slide_height * _CONTENT_TOP_FRACTION)
-    width = int(slide_width * (1 - 2 * _MARGIN_FRACTION))
-    height = int(slide_height * (_CONTENT_BOTTOM_FRACTION - _CONTENT_TOP_FRACTION))
-    return left, top, width, height
-
-
-def _icon_list_items(blocks: list[Block]) -> list[tuple[str, str]]:
-    """(glyph, label) pairs from a `layout: icon-list` slide's bullet
-    blocks -- `- [X] label` uses X as the glyph, a bare bullet is
-    auto-numbered."""
-    if not blocks:
-        raise ValueError("layout: icon-list needs at least one bullet item.")
-    if any(block.kind not in ("bullet", "number") for block in blocks):
-        raise ValueError(
-            "layout: icon-list only accepts bullet items -- no paragraphs or tables."
-        )
-    if len(blocks) > _ICON_LIST_MAX_ITEMS:
-        raise ValueError(
-            f"layout: icon-list supports at most {_ICON_LIST_MAX_ITEMS} items "
-            f"({len(blocks)} given) -- split the rest onto another slide."
-        )
-    items: list[tuple[str, str]] = []
-    for index, block in enumerate(blocks, start=1):
-        match = _ICON_GLYPH_RE.match(block.text)
-        if match:
-            glyph = match.group("glyph")
-            if not _SAFE_GLYPH_RE.match(glyph):
-                raise ValueError(
-                    f"layout: icon-list glyph {glyph!r} isn't plain ASCII -- an emoji or "
-                    "other pictograph character renders using the font's own built-in "
-                    "color glyph, which ignores the icon circle's accent color and looks "
-                    "like a mismatched sticker (verified live: some emoji render clean, "
-                    "others don't, inconsistently within the same deck). Use a bold "
-                    "letter, digit(s), or one of !?*+-=/#@%& instead (e.g. 'AI', '1', "
-                    "'*'), or drop the '[...]' prefix entirely to auto-number."
-                )
-            if _WORD_LIKE_GLYPH_RE.match(glyph):
-                raise ValueError(
-                    f"layout: icon-list glyph {glyph!r} looks like a spelled-out word, "
-                    "not a symbol -- a circle this small can't fit one legibly. Use a "
-                    "single character, digit(s), or a symbol instead (e.g. '*', '1', "
-                    "'AI'), or drop the '[...]' prefix entirely to auto-number."
-                )
-            items.append((glyph, match.group("text")))
-        else:
-            items.append((str(index), block.text))
-    return items
-
-
-def _add_icon_list_slide(
-    prs: PresentationType, title: str, items: list[tuple[str, str]], accent: str
-) -> None:
-    from pptx.dml.color import RGBColor
-    from pptx.enum.dml import MSO_THEME_COLOR
-    from pptx.enum.shapes import MSO_SHAPE
-    from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
-    from pptx.util import Pt
-
-    slide = prs.slides.add_slide(prs.slide_layouts[_TITLE_ONLY_LAYOUT])
-    _set_title(slide, title)
-
-    left, top, width, height = _content_area(prs)
-    row_height = height // len(items)
-    icon_diameter = min(int(row_height * 0.7), int(width * 0.08))
-    label_gap = int(icon_diameter * 0.35)
-
-    for index, (glyph, label) in enumerate(items):
-        row_top = top + index * row_height
-        icon_top = row_top + (row_height - icon_diameter) // 2
-        icon = slide.shapes.add_shape(
-            MSO_SHAPE.OVAL, left, icon_top, icon_diameter, icon_diameter
-        )
-        icon.fill.solid()
-        # No explicit per-slide accent (empty string) follows the deck's
-        # own theme accent color (accent1) instead of a hardcoded literal
-        # -- so a write_pptx `theme` token actually reaches this shape,
-        # not just the background/title text. See PPTX_DESIGN.md's
-        # theme_color-migration note.
-        if accent:
-            icon.fill.fore_color.rgb = RGBColor.from_string(accent)  # type: ignore[no-untyped-call]
-        else:
-            icon.fill.fore_color.theme_color = MSO_THEME_COLOR.ACCENT_1
-        icon.line.fill.background()
-        icon_frame = icon.text_frame
-        icon_frame.word_wrap = True
-        icon_frame.vertical_anchor = MSO_ANCHOR.MIDDLE
-        icon_frame.margin_left = icon_frame.margin_right = 0
-        icon_frame.margin_top = icon_frame.margin_bottom = 0
-        icon_paragraph = icon_frame.paragraphs[0]
-        icon_paragraph.alignment = PP_ALIGN.CENTER
-        icon_run = icon_paragraph.add_run()
-        icon_run.text = glyph
-        icon_run.font.bold = True
-        icon_run.font.size = Pt(min(24, max(11, round(icon_diameter / 914400 * 22))))
-        icon_run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)  # type: ignore[no-untyped-call]
-
-        label_left = left + icon_diameter + label_gap
-        label_width = left + width - label_left
-        label_box = slide.shapes.add_textbox(label_left, row_top, label_width, row_height)
-        label_frame = label_box.text_frame
-        label_frame.word_wrap = True
-        label_frame.vertical_anchor = MSO_ANCHOR.MIDDLE
-        label_frame.margin_left = label_frame.margin_right = 0
-        _add_inline_runs(label_frame.paragraphs[0], label)
-
-
-def _stats_from_table(rows: list[list[str]]) -> list[tuple[str, str]]:
-    """(stat, label) pairs from a `layout: stat-callout` slide's pipe-table
-    -- the *same* table grammar every other table block uses, just read as
-    stat/label pairs instead of rendered as a literal grid; the header row
-    is discarded, mirroring `parse_chart_table`'s header/data split."""
-    if len(rows) < 2:
-        raise ValueError(
-            "layout: stat-callout's table needs a header row plus at least one stat row."
-        )
-    header, *data_rows = rows
-    if len(header) < 2:
-        raise ValueError("layout: stat-callout's table needs a stat column and a label column.")
-    if len(data_rows) > _STAT_CALLOUT_MAX_ITEMS:
-        raise ValueError(
-            f"layout: stat-callout supports at most {_STAT_CALLOUT_MAX_ITEMS} stats "
-            f"({len(data_rows)} given) -- split the rest onto another slide."
-        )
-    pairs = [(row[0] if row else "", row[1] if len(row) > 1 else "") for row in data_rows]
-    # Real, live-reproduced mistake this catches: the first column must be
-    # the short headline value ("+18.4%", "62") and the second the longer
-    # descriptive label ("季度营收增长") -- _add_stat_callout_slide renders
-    # column 0 large/bold/accent-colored and column 1 small/muted, so a
-    # caller that puts the label first (an easy mix-up -- "label, value"
-    # reads more naturally than "value, label" in a table) gets a card
-    # with a wrapped, oversized label and a shrunken value instead of an
-    # error, which only shows up as a rendering defect, not a caught
-    # mistake. A stat is essentially always shorter than its own label in
-    # any real KPI table, so "column 0 longer than column 1" on a
-    # majority of rows is a reliable enough signal to raise instead of
-    # silently rendering it backwards.
-    swapped = sum(1 for stat, label in pairs if label and len(stat) > len(label))
-    if swapped > len(pairs) // 2:
-        raise ValueError(
-            "layout: stat-callout's table columns look swapped -- the FIRST column "
-            "must be the short headline value (e.g. '+18.4%', '62', '3,140') and the "
-            "SECOND column the longer descriptive label (e.g. '季度营收增长'), not the "
-            "other way around. Example: header '| 数值 | 指标 |', then a row like "
-            "'| +18.4% | 季度营收增长 |'."
-        )
-    return pairs
-
-
-def _add_stat_callout_slide(
-    prs: PresentationType, title: str, stats: list[tuple[str, str]], accent: str
-) -> None:
-    """Real, live-reported bug this fixes (PPTX_DESIGN.md §0): the
-    previous design filled each card solid with the raw accent color and
-    centered two same-weight white text lines on it -- a flat block, not
-    a "designed" card. A real user directly compared this against a
-    competing tool's KPI cards (light background, border only, a small
-    muted label above a large emphasized number) and found ours
-    noticeably worse despite being the "more native" implementation.
-    Rewritten to the same light-card, real-typographic-hierarchy shape:
-    white/bordered instead of solid-filled, a small muted label first,
-    then a large accent-colored number -- left-aligned, not centered,
-    matching the reference layout's own visual rhythm. `stats`' own
-    (stat, label) tuple order/meaning is unchanged (stat is still the
-    headline value); only which one renders first/larger changed."""
-    from pptx.dml.color import RGBColor
-    from pptx.enum.dml import MSO_THEME_COLOR
-    from pptx.enum.shapes import MSO_SHAPE
-    from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
-    from pptx.util import Pt
-
-    slide = prs.slides.add_slide(prs.slide_layouts[_TITLE_ONLY_LAYOUT])
-    _set_title(slide, title)
-
-    left, top, width, height = _content_area(prs)
-    gap = int(width * 0.03)
-    card_width = (width - gap * (len(stats) - 1)) // len(stats)
-    # 0.4, not the previous 0.7 -- a label line + one emphasized number
-    # line don't need a near-square card; the previous ratio left a real
-    # user-reported large empty gap at the bottom of every card, visible
-    # in a rendered screenshot.
-    card_height = min(height, int(card_width * 0.4))
-    # Vertically centered in the content area, not anchored to its top --
-    # a real, live-reproduced defect: card_height is deliberately much
-    # smaller than the full content area (see the 0.4 ratio comment
-    # above), and anchoring at `top` alone dumped the entire leftover
-    # space below the cards as a large empty gap for the rest of the
-    # slide instead of splitting it above/below.
-    card_top = top + (height - card_height) // 2
-    border_color = RGBColor(0xE0, 0xE0, 0xE0)  # type: ignore[no-untyped-call]
-    label_color = RGBColor(0x70, 0x70, 0x70)  # type: ignore[no-untyped-call]
-
-    for index, (stat, label) in enumerate(stats):
-        card_left = left + index * (card_width + gap)
-        card = slide.shapes.add_shape(
-            MSO_SHAPE.ROUNDED_RECTANGLE, card_left, card_top, card_width, card_height
-        )
-        card.fill.solid()
-        card.fill.fore_color.rgb = RGBColor(0xFF, 0xFF, 0xFF)  # type: ignore[no-untyped-call]
-        card.line.color.rgb = border_color
-        card.line.width = Pt(0.75)
-        frame = card.text_frame
-        frame.word_wrap = True
-        frame.vertical_anchor = MSO_ANCHOR.TOP
-        pad = int(card_width * 0.08)
-        frame.margin_left = frame.margin_right = pad
-        frame.margin_top = int(card_height * 0.14)
-        frame.margin_bottom = pad
-
-        label_paragraph = frame.paragraphs[0]
-        label_paragraph.alignment = PP_ALIGN.LEFT
-        label_run = label_paragraph.add_run()
-        label_run.text = label
-        label_run.font.size = Pt(12)
-        label_run.font.color.rgb = label_color
-
-        stat_paragraph = frame.add_paragraph()
-        stat_paragraph.alignment = PP_ALIGN.LEFT
-        stat_paragraph.space_before = Pt(8)
-        stat_run = stat_paragraph.add_run()
-        stat_run.text = stat
-        stat_run.font.bold = True
-        stat_run.font.size = Pt(28)
-        # Same theme-accent-when-unspecified logic as _add_icon_list_slide.
-        if accent:
-            stat_run.font.color.rgb = RGBColor.from_string(accent)  # type: ignore[no-untyped-call]
-        else:
-            stat_run.font.color.theme_color = MSO_THEME_COLOR.ACCENT_1
-
-
-def _split_two_column(body_text: str) -> tuple[str, str]:
-    """Split a `layout: two-column` slide's post-title content on a line
-    containing exactly `>>>` -- same line-scan style as the module's own
-    `_slide_chunks`."""
-    lines = body_text.splitlines()
-    marker_index = next(
-        (i for i, line in enumerate(lines) if _TWO_COLUMN_MARKER_RE.match(line.strip())), None
-    )
-    if marker_index is None:
-        raise ValueError(
-            "layout: two-column needs a line containing exactly '>>>' separating the "
-            "left column's content from the right column's."
-        )
-    left = "\n".join(lines[:marker_index])
-    right = "\n".join(lines[marker_index + 1 :])
-    return left, right
-
-
-def _fill_content_placeholder(placeholder: Any, blocks: list[Block]) -> None:
-    """Real, live-found bug this .clear() fixes: every existing caller
-    hands this a placeholder from a slide this code itself just added
-    (always empty), so appending straight into paragraphs[0] was
-    invisible. fill_pptx_template reuses this same helper on an *existing*
-    template slide's own body placeholder instead -- which, for any
-    real-world template (a user's own uploaded .pptx, not just coscribe's
-    own bundled ones, which are deliberately authored with empty
-    placeholders), almost always already has real sample text and extra
-    paragraphs in it. Confirmed live against a real Microsoft-authored
-    template ("The science of public speaking"): without this .clear(),
-    filling "NEW BULLET A" into a placeholder already containing "Know
-    your material in advance" produced the single garbled run "Know your
-    material in advanceNEW BULLET A", and any of the template's *original*
-    paragraphs past the first one (blocks[1:] only ever *adds* new
-    paragraphs, never removes old ones) survived untouched in the final
-    file. TextFrame.clear()/_Paragraph.clear() are python-pptx's own
-    primitives for exactly this: remove every paragraph but the first,
-    then strip that first paragraph's content while preserving its
-    paragraph-level formatting (alignment, bullet/indent level) so newly
-    added runs still inherit the placeholder's own designed look.
-
-    Real, live-reported bug this ``_suppress_bullet_for_paragraph`` call
-    fixes: this function never distinguished a markdown ``Block(kind=
-    "paragraph")`` (a plain flowing line, no leading ``-``/``*``) from
-    ``Block(kind="bullet")`` at the XML level -- every block just became
-    a new paragraph with no bullet-related formatting touched at all.
-    Harmless for coscribe's own bundled templates/write_pptx layouts,
-    whose "Title and Content" placeholder happens to auto-bullet every
-    paragraph by inherited layout default -- but that same inheritance
-    means a single flowing paragraph (a dense-text slide, no bullets
-    intended at all) rendered with a meaningless bullet glyph in front
-    of it, confirmed directly against a real rendered screenshot."""
-    text_frame = placeholder.text_frame
-    if not blocks:
-        return
-    text_frame.clear()
-    _add_inline_runs(text_frame.paragraphs[0], blocks[0].text)
-    _suppress_bullet_for_paragraph(text_frame.paragraphs[0], blocks[0])
-    for block in blocks[1:]:
-        paragraph = text_frame.add_paragraph()
-        _add_inline_runs(paragraph, block.text)
-        _suppress_bullet_for_paragraph(paragraph, block)
-
-
-def _suppress_bullet_for_paragraph(paragraph: Any, block: Block) -> None:
-    """No-op for bullet/number-kind blocks -- their existing, not-
-    reported-as-broken behavior (inheriting whatever bullet character
-    the placeholder/layout already applies) is untouched. For a plain
-    ``kind="paragraph"`` block, adds an explicit ``<a:buNone/>`` to the
-    paragraph's own ``<a:pPr>``, which overrides that same inherited
-    default -- verified this round-trips cleanly through python-pptx
-    with no schema-order issues (``<a:buNone/>`` as the sole ``pPr``
-    child is always schema-valid, unlike table cell borders' fixed
-    multi-child sequence, see ``_set_cell_thin_bottom_border``)."""
-    if block.kind != "paragraph":
-        return
-    from lxml import etree
-    from pptx.oxml.ns import qn
-
-    p_pr = paragraph._p.get_or_add_pPr()
-    etree.SubElement(p_pr, qn("a:buNone"))
-
-
-def _find_body_placeholder(slide: Any, index: int = 0) -> Any | None:
-    """The `index`-th (0-based, in on-slide order) non-title placeholder on
-    `slide` whose type is BODY, OBJECT, or SUBTITLE -- the realistic set of
-    "receives paragraph/bullet text" placeholder types a real slide can
-    have (confirmed live against python-pptx's own stock layouts: "Title
-    and Content" uses OBJECT for its content placeholder, not BODY; "Title
-    Slide" uses SUBTITLE for its second placeholder). Used by
-    fill_pptx_template/edit_pptx_text to fill an *existing* slide's own
-    placeholder, unlike _fill_content_placeholder's other callers, which
-    always operate on a placeholder from a slide this code itself just
-    added.
-
-    `index` exists for edit_pptx_text's placeholder_index parameter --
-    real templates commonly have a "two column" layout with *two*
-    independent content placeholders on one slide (confirmed against a
-    real Microsoft-authored template), and index=0 (the default, and
-    fill_pptx_template's only behavior) can only ever reach the first one.
-
-    Real, live-found bug this .has_text_frame check fixes: an OBJECT
-    placeholder slot can already hold a native table (a GraphicFrame, not
-    a text-frame shape) rather than plain text -- confirmed against a real
-    Microsoft-authored template whose "Agenda" slide's content placeholder
-    was exactly this. Without the check, this function still matched it
-    (its placeholder_format.type is OBJECT same as a text one), and the
-    caller's `.text_frame` access below crashed with an opaque
-    AttributeError: 'PlaceholderGraphicFrame' object has no attribute
-    'text_frame' instead of the same clean, actionable "no body/content
-    placeholder" ValueError a slide with no eligible placeholder at all
-    already produces -- treating a table-holding slot as ineligible here
-    gets both cases the same clear error."""
-    from pptx.enum.shapes import PP_PLACEHOLDER
-
-    eligible = {PP_PLACEHOLDER.BODY, PP_PLACEHOLDER.OBJECT, PP_PLACEHOLDER.SUBTITLE}
-    title_shape = slide.shapes.title
-    matches = []
-    for placeholder in slide.placeholders:
-        if title_shape is not None and placeholder.shape_id == title_shape.shape_id:
-            continue
-        if placeholder.placeholder_format.type in eligible and placeholder.has_text_frame:
-            matches.append(placeholder)
-    if index < 0 or index >= len(matches):
-        return None
-    return matches[index]
-
-
-def _add_two_column_slide(
-    prs: PresentationType, title: str, left_blocks: list[Block], right_blocks: list[Block]
-) -> None:
-    slide = prs.slides.add_slide(prs.slide_layouts[_TWO_CONTENT_LAYOUT])
-    _set_title(slide, title)
-    _fill_content_placeholder(slide.placeholders[1], left_blocks)
-    _fill_content_placeholder(slide.placeholders[2], right_blocks)
-
-
 def _resolve_xml_qname(name: str) -> str:
     """Resolve an attribute/tag name for edit_pptx_xml's `set_attributes` --
     "prefix:local" using a prefix from `_GENERIC_XML_NSMAP` becomes real
@@ -1256,7 +537,6 @@ def _recolor_icon(icon_path: Path, color_hex: str) -> Any:
     return _recolor_image(Image.open(icon_path), color_hex)
 
 
-
 # Prefix -> namespace-URI map for read_pptx_xml/edit_pptx_xml's own `xpath`
 # and `set_attributes` arguments -- lets the model write real, readable
 # XPath ("//dgm:t[.='Plan']") instead of lxml's Clark notation
@@ -1326,18 +606,18 @@ class PresentationToolkit:
         if template_path:
             template_file = self._check_readable(template_path)
             prs = Presentation(str(template_file))
-            required_layouts = max(_TITLE_AND_CONTENT_LAYOUT, _TITLE_ONLY_LAYOUT)
+            required_layouts = max(sb.TITLE_AND_CONTENT_LAYOUT, sb.TITLE_ONLY_LAYOUT)
             if len(prs.slide_layouts) <= required_layouts:
                 raise ValueError(
                     f"Template {template_path!r} only has {len(prs.slide_layouts)} slide "
                     f"layout(s); write_pptx needs at least {required_layouts + 1}."
                 )
-            _clear_slides(prs)
+            sb.clear_slides(prs)
         else:
             prs = Presentation()
             original_width = prs.slide_width
             prs.slide_width = Emu(_WIDESCREEN_WIDTH_EMU)
-            _widen_stock_layouts(prs, original_width)
+            sb.widen_stock_layouts(prs, original_width)
             # Only the freshly-created default deck, not a user-supplied
             # template_path -- silently rewriting fonts in someone's own
             # uploaded/branded template would be an unwanted side effect,
@@ -1345,16 +625,16 @@ class PresentationToolkit:
             apply_cjk_font_fix(prs)
         if theme_tokens:
             apply_theme(prs, theme_tokens)
-        for chunk in _slide_chunks(content):
-            layout_id, accent, remaining_chunk = _parse_layout_directive(chunk)
+        for chunk in sb.slide_chunks(content):
+            layout_id, accent, remaining_chunk = sb.parse_layout_directive(chunk)
 
             if layout_id == "two-column":
-                if len(prs.slide_layouts) <= _TWO_CONTENT_LAYOUT:
+                if len(prs.slide_layouts) <= sb.TWO_CONTENT_LAYOUT:
                     raise ValueError(
                         f"Template only has {len(prs.slide_layouts)} slide layout(s); "
-                        f"layout: two-column needs at least {_TWO_CONTENT_LAYOUT + 1}."
+                        f"layout: two-column needs at least {sb.TWO_CONTENT_LAYOUT + 1}."
                     )
-                left_text, right_text = _split_two_column(remaining_chunk)
+                left_text, right_text = sb.split_two_column(remaining_chunk)
                 left_blocks = parse_blocks(left_text)
                 right_blocks = parse_blocks(right_text)
                 left_headings = [b for b in left_blocks if b.kind == "heading"]
@@ -1371,7 +651,7 @@ class PresentationToolkit:
                     raise ValueError(
                         "layout: two-column's title must come before the '>>>' marker."
                     )
-                _add_two_column_slide(prs, title, left_body, right_blocks)
+                sb.add_two_column_slide(prs, title, left_body, right_blocks)
                 continue
 
             if layout_id == "svg":
@@ -1394,8 +674,8 @@ class PresentationToolkit:
                     raise ValueError(
                         "layout: icon-list doesn't support tables -- use bullets only."
                     )
-                items = _icon_list_items(other_blocks)
-                _add_icon_list_slide(prs, title, items, accent)
+                items = sb.icon_list_items(other_blocks)
+                sb.add_icon_list_slide(prs, title, items, accent)
                 continue
             if layout_id == "stat-callout":
                 if other_blocks or len(table_blocks) != 1:
@@ -1403,8 +683,8 @@ class PresentationToolkit:
                         "layout: stat-callout needs exactly one pipe-table of "
                         "stat/label rows and no other content."
                     )
-                stats = _stats_from_table(table_blocks[0].rows)
-                _add_stat_callout_slide(prs, title, stats, accent)
+                stats = sb.stats_from_table(table_blocks[0].rows)
+                sb.add_stat_callout_slide(prs, title, stats, accent)
                 continue
 
             if table_blocks and other_blocks:
@@ -1414,9 +694,9 @@ class PresentationToolkit:
                 )
             if table_blocks:
                 self._require_single_table(table_blocks)
-                _add_table_slide(prs, title, table_blocks[0].rows)
+                sb.add_table_slide(prs, title, table_blocks[0].rows)
             else:
-                _add_bullet_slide(prs, title, blocks)
+                sb.add_bullet_slide(prs, title, blocks)
         prs.save(str(file_path))
 
         overflow_warnings: list[dict[str, object]] = []
@@ -1491,11 +771,11 @@ class PresentationToolkit:
         # East-Asian typeface the same way write_pptx's own default deck
         # does. See `theme.py`'s _CJK_FALLBACK_TYPEFACE.
         apply_cjk_font_fix(prs)
-        chunks = _slide_chunks(content)
+        chunks = sb.slide_chunks(content)
         adjust_template_content_slides(prs, template.slide_roles, len(chunks))
         slides = list(prs.slides)
         for index, (slide, chunk) in enumerate(zip(slides, chunks, strict=True), start=1):
-            layout_id, _accent, remaining = _parse_layout_directive(chunk)
+            layout_id, _accent, remaining = sb.parse_layout_directive(chunk)
             if layout_id:
                 raise ValueError(
                     f"fill_pptx_template doesn't support 'layout:' directives "
@@ -1523,9 +803,9 @@ class PresentationToolkit:
                         f"{title!r} -- remove the heading or use a different "
                         f"template."
                     )
-                _set_title(slide, title)
+                sb.set_title(slide, title)
             if body_blocks:
-                body_placeholder = _find_body_placeholder(slide)
+                body_placeholder = sb.find_body_placeholder(slide)
                 if body_placeholder is None:
                     raise ValueError(
                         f"Slide {index} of template {template_id!r} has no "
@@ -1533,7 +813,7 @@ class PresentationToolkit:
                         f"bullets or paragraphs -- remove the content or use a "
                         f"different template."
                     )
-                _fill_content_placeholder(body_placeholder, body_blocks)
+                sb.fill_content_placeholder(body_placeholder, body_blocks)
         prs.save(str(file_path))
 
         overflow_warnings: list[dict[str, object]] = []
@@ -1645,7 +925,7 @@ class PresentationToolkit:
             else:
                 role = "content"
             has_title = slide.shapes.title is not None
-            has_body = _find_body_placeholder(slide) is not None
+            has_body = sb.find_body_placeholder(slide) is not None
             if not has_title and not has_body:
                 raise ValueError(
                     f"Slide {index + 1} of {source_path!r} has no usable title or "
@@ -1716,7 +996,7 @@ class PresentationToolkit:
                     f"new title text -- read_pptx the slide first to see what's "
                     f"actually there."
                 )
-            _set_title(target_slide, title)
+            sb.set_title(target_slide, title)
         if content is not None:
             blocks = parse_blocks(content)
             if any(block.kind == "table" for block in blocks):
@@ -1724,7 +1004,7 @@ class PresentationToolkit:
                     "edit_pptx_text doesn't support tables -- edit_pptx_text is "
                     "for a slide's own title/bullet placeholders only."
                 )
-            body_placeholder = _find_body_placeholder(target_slide, placeholder_index)
+            body_placeholder = sb.find_body_placeholder(target_slide, placeholder_index)
             if body_placeholder is None:
                 raise ValueError(
                     f"Slide {slide} of {path!r} has no content placeholder at "
@@ -1732,7 +1012,7 @@ class PresentationToolkit:
                     f"text -- read_pptx the slide first to see what's actually "
                     f"there, or try a different placeholder_index."
                 )
-            _fill_content_placeholder(body_placeholder, blocks)
+            sb.fill_content_placeholder(body_placeholder, blocks)
         prs.save(str(file_path))
 
         overflow_warnings: list[dict[str, object]] = []
@@ -2027,7 +1307,7 @@ class PresentationToolkit:
             text_frame.vertical_anchor = MSO_ANCHOR.MIDDLE
             paragraph = text_frame.paragraphs[0]
             paragraph.alignment = PP_ALIGN.CENTER
-            _add_inline_runs(paragraph, text)
+            sb.add_inline_runs(paragraph, text)
         if fill_color:
             shape.fill.solid()
             shape.fill.fore_color.rgb = RGBColor.from_string(fill_color)  # type: ignore[no-untyped-call]
@@ -2328,10 +1608,10 @@ class PresentationToolkit:
                 f"table_dimensions."
             )
         cell = table.cell(row, col)
-        # .clear() first -- same reasoning as _set_title/_fill_content_placeholder:
+        # .clear() first -- same reasoning as sb.set_title/sb.fill_content_placeholder:
         # this REPLACES the cell's existing content instead of appending onto it.
         cell.text_frame.clear()
-        _add_inline_runs(cell.text_frame.paragraphs[0], text)
+        sb.add_inline_runs(cell.text_frame.paragraphs[0], text)
         prs.save(str(file_path))
 
         return {
@@ -2416,7 +1696,7 @@ class PresentationToolkit:
     def delete_pptx_slide(self, path: str, slide: int) -> dict[str, object]:
         """Remove one slide from an existing .pptx, in place -- every
         other slide, and their own order, is untouched. Same drop-the-
-        relationship-then-remove-the-list-entry mechanism `_clear_slides`
+        relationship-then-remove-the-list-entry mechanism `sb.clear_slides`
         already uses when write_pptx builds on a `template_path`."""
         from pptx.oxml.ns import qn
 
@@ -2528,9 +1808,9 @@ class PresentationToolkit:
         # slide's own body/content placeholder, so a chart added next to a
         # short intro sentence rendered directly on top of it. Default to
         # the same content-area geometry every other content slide uses.
-        left, top, width, height = _content_area(prs)
+        left, top, width, height = sb.content_area(prs)
         slide_height = prs.slide_height or 6858000
-        body_placeholder = _find_body_placeholder(target_slide)
+        body_placeholder = sb.find_body_placeholder(target_slide)
         if (
             body_placeholder is not None
             and body_placeholder.has_text_frame
@@ -2593,7 +1873,7 @@ class PresentationToolkit:
                     )
                 gap = int(slide_height * 0.03)
                 new_top = b_top + intro_height + gap
-                usable_bottom = slide_height - int(slide_height * _MARGIN_FRACTION)
+                usable_bottom = slide_height - int(slide_height * sb.MARGIN_FRACTION)
                 remaining = usable_bottom - new_top
                 min_chart_height = int(slide_height * 0.35)
                 if remaining < min_chart_height:

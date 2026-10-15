@@ -795,7 +795,7 @@ def test_layout_stat_callout_cards_are_vertically_centered(tmp_path: Path) -> No
     instead of dumping all of it below."""
     from pptx import Presentation
 
-    from coscribe.tools.presentations import _content_area
+    from coscribe.tools.office.pptx.slide_builders import content_area
 
     tools = _tools_by_name(tmp_path)
     content = (
@@ -808,7 +808,7 @@ def test_layout_stat_callout_cards_are_vertically_centered(tmp_path: Path) -> No
     tools["write_pptx"](path="deck.pptx", content=content)
 
     prs = Presentation(tmp_path / "deck.pptx")
-    _left, content_top, _width, _height = _content_area(prs)
+    _left, content_top, _width, _height = content_area(prs)
     card = next(s for s in prs.slides[0].shapes if s.shape_type == 1)
     assert card.top > content_top
 
@@ -4511,7 +4511,7 @@ def test_find_body_placeholder_skips_a_table_occupying_the_content_placeholder(
     tests above already cover end to end."""
     from pptx.enum.shapes import PP_PLACEHOLDER
 
-    from coscribe.tools.presentations import _find_body_placeholder
+    from coscribe.tools.office.pptx.slide_builders import find_body_placeholder
 
     class _FakePlaceholderFormat:
         def __init__(self, type_: object, idx: int) -> None:
@@ -4537,7 +4537,7 @@ def test_find_body_placeholder_skips_a_table_occupying_the_content_placeholder(
     table_shape = _FakeShape(PP_PLACEHOLDER.OBJECT, idx=1, shape_id=2, has_text_frame=False)
     slide = _FakeSlide(title_shape, [title_shape, table_shape])
 
-    assert _find_body_placeholder(slide) is None
+    assert find_body_placeholder(slide) is None
 
 
 def test_fill_pptx_template_rejects_layout_directive_naming_write_pptx(
