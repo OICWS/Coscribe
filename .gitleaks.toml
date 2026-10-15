@@ -1,0 +1,24 @@
+# Secret scanning (.github/workflows/audit.yml). The default rules plus an allowlist of the
+# few files whose matches are known not to be secrets. A new match anywhere else is a finding.
+title = "coscribe"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Fake keys that tests feed to the redaction, audit and settings code"
+paths = [
+  '''office-agent/tests/test_audit_log\.py''',
+  '''office-agent/tests/test_conversations_tool\.py''',
+  '''office-agent/tests/test_http_request\.py''',
+  '''office-agent/tests/test_web\.py''',
+  '''office-agent/tests/web/test_settings\.py''',
+]
+
+[[allowlists]]
+description = "Opaque ids in the vendored PowerPoint animation preset catalog, not keys"
+paths = ['''office-agent/src/coscribe/tools/_native_animation_presets/animation_presets\.json''']
+
+[[allowlists]]
+description = "Bitbucket's public OAuth client id: an OAuth client id is not a secret, the guided setup page never ships a client secret"
+paths = ['''office-agent/src/coscribe/web/connector_catalog\.py''']

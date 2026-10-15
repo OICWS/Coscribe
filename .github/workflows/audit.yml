@@ -1,0 +1,184 @@
+name: Audit
+
+# What the code depends on can turn vulnerable, change its licence, or leak a secret without a
+# line of ours changing, so this looks again every week: known vulnerabilities in the Python
+# and npm dependencies, strong-copyleft licences among the Python ones, and secrets in the
+# tree. It reports and never fails the run because of a finding: the findings go into one
+# issue, "Audit findings", which the weekly run opens, updates and closes when clean. Run by
+# hand, or by a pull request that changes this job, it only prints. Not a required check.
+"on":
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/audit.yml"
+      - ".gitleaks.toml"
+      - "office-agent/scripts/check_licenses.py"
+
+concurrency:
+  group: audit-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  # Checked against the release's own checksums file when this was pinned (2026-10-15).
+  GITLEAKS_VERSION: "8.30.1"
+  GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+        working-directory: office-agent
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: office-agent/pyproject.toml
+
+      - name: Install the dependencies
+        run: |
+          pip install ".[dev,web]"
+          pip install pip-audit pip-licenses
+
+      # pip-audit exits 1 on a finding; the report is what matters, so the step keeps going.
+      - name: Vulnerabilities
+        run: |
+          mkdir -p ../audit-report
+          if pip-audit --progress-spinner off --skip-editable > ../audit-report/python-vulnerabilities.txt 2>&1; then
+            : > ../audit-report/python-vulnerabilities.txt
+          fi
+          cat ../audit-report/python-vulnerabilities.txt
+
+      - name: Licences
+        run: |
+          pip-licenses --format=json > /tmp/licences.json
+          if python scripts/check_licenses.py < /tmp/licences.json > ../audit-report/python-licences.txt 2>&1; then
+            : > ../audit-report/python-licences.txt
+          fi
+          cat ../audit-report/python-licences.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: audit-python
+          path: audit-report/
+
+  npm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        directory: [office-agent/frontend, office-agent-desktop]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Only what ships (--omit=dev), and only high and critical: a moderate advisory in a
+      # build tool is not worth an issue every week.
+      - name: Vulnerabilities in ${{ matrix.directory }}
+        run: |
+          mkdir -p audit-report
+          name="$(echo '${{ matrix.directory }}' | tr / -)"
+          if (cd '${{ matrix.directory }}' && npm audit --omit=dev --audit-level=high) > "audit-report/npm-$name.txt" 2>&1; then
+            : > "audit-report/npm-$name.txt"
+          fi
+          cat "audit-report/npm-$name.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: audit-npm-${{ strategy.job-index }}
+          path: audit-report/
+
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install gitleaks
+        run: |
+          curl -sSLo gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum --check
+          tar xzf gitleaks.tar.gz gitleaks
+
+      # The tree, not the history: a secret already committed is rotated, not hidden by a
+      # report. The values are redacted in the output.
+      - name: Secrets
+        run: |
+          mkdir -p audit-report
+          if ./gitleaks dir . --config .gitleaks.toml --redact --no-banner > audit-report/secrets.txt 2>&1; then
+            : > audit-report/secrets.txt
+          fi
+          cat audit-report/secrets.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: audit-secrets
+          path: audit-report/
+
+  report:
+    needs: [python, npm, secrets]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: audit-*
+          path: audit-report
+          merge-multiple: true
+
+      - name: Summary
+        run: |
+          {
+            echo "## Audit"
+            found=0
+            for file in audit-report/*.txt; do
+              [ -s "$file" ] || continue
+              found=1
+              echo "### $(basename "$file" .txt)"
+              echo '```'
+              cat "$file"
+              echo '```'
+            done
+            [ "$found" = 0 ] && echo "No findings."
+          } | tee audit.md >> "$GITHUB_STEP_SUMMARY"
+
+      # Only the weekly run and a manual run touch the issue; a pull request run must not.
+      - name: Issue
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Audit findings"
+          number="$(gh issue list --state open --search "\"$title\" in:title" --json number,title --jq "map(select(.title == \"$title\"))[0].number // empty")"
+          if grep -q 'No findings\.' audit.md; then
+            if [ -n "$number" ]; then
+              gh issue close "$number" --comment "The audit is clean now: $RUN_URL"
+            fi
+            exit 0
+          fi
+          { cat audit.md; echo; echo "Run: $RUN_URL"; } > body.md
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --body-file body.md
+          else
+            gh issue create --title "$title" --body-file body.md
+          fi
