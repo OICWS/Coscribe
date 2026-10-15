@@ -40,8 +40,9 @@ unchanged deck and a build with no findings; the measured runs predate that, wit
 for a clean deck. A run with only the
 preview change had 3 builds and 2 previews on task 13 but still two reviewer rounds (110 s).
 
+In the LibreOffice render of task 14 a few long titles wrapped onto their English subtitle; the
+maintainer opened both decks in PowerPoint on Windows and nothing overlaps there, so it is
+LibreOffice's fallback for Microsoft YaHei, not a defect a reviewer round would have caught.
+
 ## Not verified
-- Whether the reviewer rounds caught anything the build does not: in the LibreOffice render of
-  task 14 a few long titles wrap onto their English subtitle, a font fallback the build's
-  Windows widths say does not happen in PowerPoint. The maintainer looks at the decks there.
 - In the app on Windows: how long the maintainer waits for a deck.
