@@ -402,3 +402,36 @@ def check_low_contrast(prs: Any) -> list[dict[str, object]]:
                             }
                         )
     return warnings
+
+
+def preview_deck(path: Path, state_dir: Path | None, max_slides: int) -> dict[str, object]:
+    """Every slide rendered to an image, with the checks of the deck's text and layout."""
+    from pptx import Presentation
+
+    from ..._thumbnail import render_all_page_previews
+    from .engine import built_from_pages
+
+    layout: list[dict[str, Any]] = []
+    names, skipped_reason = render_all_page_previews(
+        path, state_dir, max_pages=max_slides, layout=layout
+    )
+    result: dict[str, object] = {
+        "preview_paths": names,
+        "preview_paths_csv": ",".join(names),
+        "preview_skipped_reason": skipped_reason,
+    }
+    # These checks misread a page compiled from SVG (a two-line title, a figure over its caption)
+    # as overlaps, and its build has already run stricter checks of its own.
+    pages = built_from_pages(path)
+    if pages is not None:
+        return {**result, "built_from_pages": pages.name, "checks": "done by the build"}
+    prs = Presentation(str(path))
+    small_text, sparse = check_rendered_layout(layout, prs)
+    return {
+        **result,
+        "text_overlap_warnings": check_text_overlaps(prs),
+        "slides_missing_visual_elements": check_missing_visual_elements(prs),
+        "low_contrast_warnings": check_low_contrast(prs),
+        "small_text_slides": small_text,
+        "sparse_slides": sparse,
+    }

@@ -401,3 +401,19 @@ def test_a_unit_spelled_out_as_a_number_is_not_a_claim() -> None:
     assert not is_claim("10000") and not is_claim("1000")
     assert is_claim("10001") and is_claim("2000") and is_claim("100.0")
     assert not is_claim("31")
+
+
+def test_the_preview_of_a_deck_built_from_pages_leaves_the_checks_to_the_build(
+    tmp_path: Path,
+) -> None:
+    from coscribe.tools.office.pptx.qa import preview_deck
+
+    _pages(tmp_path / "deck-pages", ["1-cover.svg"])
+    build_deck(tmp_path / "deck-pages", tmp_path / "deck.pptx")
+    Presentation().save(str(tmp_path / "other.pptx"))
+
+    built = preview_deck(tmp_path / "deck.pptx", None, 1)
+    other = preview_deck(tmp_path / "other.pptx", None, 1)
+
+    assert built["built_from_pages"] == "deck-pages" and "text_overlap_warnings" not in built
+    assert "built_from_pages" not in other and "text_overlap_warnings" in other

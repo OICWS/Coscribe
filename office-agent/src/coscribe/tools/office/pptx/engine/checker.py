@@ -451,11 +451,7 @@ def is_known(number: str, value: Decimal, known: set[str | Decimal]) -> bool:
 def _unknown_numbers(texts: list[_Text], known: set[str | Decimal]) -> Iterator[str]:
     values = number_values("\n".join(t.text for t in texts))
     found = sorted(
-        {
-            n
-            for n, v in values
-            if is_claim(n) and not is_known(n, v, known)
-        },
+        {n for n, v in values if is_claim(n) and not is_known(n, v, known)},
         key=float,
     )
     if found:

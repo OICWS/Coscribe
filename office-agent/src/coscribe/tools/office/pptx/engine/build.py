@@ -131,6 +131,19 @@ def build_deck(
     return report
 
 
+def built_from_pages(deck: Path) -> Path | None:
+    """The pages folder next to `deck` whose last build wrote it, if there is one."""
+    target = deck.resolve()
+    for folder in deck.parent.iterdir():
+        manifest = folder / MANIFEST
+        if (
+            manifest.is_file()
+            and Path(_read_manifest(manifest).get("deck", "")).resolve() == target
+        ):
+            return folder
+    return None
+
+
 def slide_hashes(deck: Path) -> list[str]:
     """One hash per slide over its XML and everything it points to, so a changed picture
     counts as a changed slide too."""
