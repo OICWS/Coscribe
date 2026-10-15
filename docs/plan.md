@@ -44,8 +44,8 @@ Last reviewed: 2026-10-11.
        Auto mode's reviewer, the code module's allowances, the question and draft tools.
    Then the large splits (roadmap in the assessment). `tools/presentations.py` is being split
    in pure-move PRs (#232 item 5): part 1 (transitions, animation, audio into
-   `tools/office/pptx/`) and part 2 (the deck checks into `qa.py`) are done; still to move: theme
-   and template helpers, SmartArt, shape description and effects. One session at a time: ask on #232 first.
+   `tools/office/pptx/`) and part 2 (the deck checks into `qa.py`) and part 3 (the theme code into `theme.py`) are
+   done; still to move: SmartArt, shape description and effects, template slide copying. One session at a time: ask on #232 first.
 
 0b. **The office route** (decision 0010, `docs/assessments/2026-10-13-office-route.md`):
    new decks compiled from whole-page SVG sources, edits through the page source and upgraded
