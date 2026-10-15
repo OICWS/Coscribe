@@ -83,6 +83,23 @@ def _usage_callback(usage: Usage) -> Any:
     return Collect()
 
 
+def _build_findings(result: Any) -> dict[str, Any]:
+    """A build's errors and warnings by page, without the rest of its report."""
+    if isinstance(result, str):
+        try:
+            result = json.loads(result)
+        except ValueError:
+            return {"raw": result[:2000]}
+    if not isinstance(result, dict):
+        return {"raw": str(result)[:2000]}
+    pages = [
+        {"page": page.get("page"), **{k: page[k] for k in ("errors", "warnings") if k in page}}
+        for page in result.get("pages", [])
+        if page.get("errors") or page.get("warnings")
+    ]
+    return {"ok": result.get("ok"), "pages": pages, "warnings": result.get("warnings", [])}
+
+
 @dataclass
 class Recorder:
     """The client end of one conversation: records what happened and answers whatever would
@@ -95,6 +112,11 @@ class Recorder:
     questions: int = 0
     errors: list[str] = field(default_factory=list)
     messages: list[str] = field(default_factory=list)
+    # What each deck build reported, to see which findings cost repair rounds.
+    builds: list[dict[str, Any]] = field(default_factory=list)
+    # Seconds spent in each tool, to see where a task's time goes.
+    tool_seconds: Counter[str] = field(default_factory=Counter)
+    _started: dict[str, list[float]] = field(default_factory=dict)
 
     async def send_json(self, data: dict[str, Any]) -> None:
         kind = data.get("type")
@@ -102,8 +124,15 @@ class Recorder:
             name = data["tool_name"]
             inner = (data.get("arguments") or {}).get("name") if name == "use_tool" else None
             self.tool_calls[f"{name}:{inner}" if inner else name] += 1
-        elif kind == "tool_result" and data.get("is_error"):
-            self.tool_errors.append(f"{data['tool_name']}: {str(data.get('result'))[:300]}")
+            self._started.setdefault(name, []).append(time.monotonic())
+        elif kind == "tool_result":
+            name = data["tool_name"]
+            if self._started.get(name):
+                self.tool_seconds[name] += round(time.monotonic() - self._started[name].pop(0), 1)
+            if data.get("is_error"):
+                self.tool_errors.append(f"{name}: {str(data.get('result'))[:300]}")
+            elif name == "build_pptx_from_pages":
+                self.builds.append(_build_findings(data.get("result")))
         elif kind == "question_required":
             self.questions += 1
             self.session.resolve_question(data["id"], [_ANSWER for _ in data["questions"]])
@@ -261,6 +290,8 @@ async def run_task(
         "questions_answered_for_the_user": recorder.questions,
         "output": str(output.relative_to(workspace)) if output else None,
         "messages": recorder.messages,
+        "builds": recorder.builds,
+        "tool_seconds": dict(recorder.tool_seconds),
     }
     (task_out / "result.json").write_text(
         json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"

@@ -419,7 +419,8 @@ tools, which is what delegating keeps out of this conversation. After a sub-agen
 after writing a multi-page/multi-slide or heavily formatted document \
 (more than one slide, a background image applied, track_changes=True, a \
 non-trivial table or set of formulas), or before a high-risk/irreversible \
-action, call review_work(original_request, summary_of_work, file_path=..., \
+action -- but not after build_pptx_from_pages, whose build checks every \
+page and whose skill has its own one look -- call review_work(original_request, summary_of_work, file_path=..., \
 preview_name=...) to get a second opinion from a reviewer who didn't do \
 the work -- pass file_path so it independently reads the actual file \
 rather than just trusting your summary, and preview_name (a write tool's \
