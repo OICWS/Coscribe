@@ -99,34 +99,34 @@ from ._thumbnail import render_all_page_previews, render_thumbnail
 from ._workspace import WorkspaceScope
 from .office.markdown_blocks import Block, parse_blocks, parse_inline_runs
 from .office.pptx.animation import (
-    _ANIMATIONS,
-    _AUDIO_CONTENT_TYPES,
-    _AUDIO_MARKER_SIZE_EMU,
-    _AUDIO_TRIGGERS,
-    _TRIGGERS,
-    _add_animation_step,
-    _build_audio_pic_element,
-    _build_audio_timing_node,
-    _ensure_paragraph_build,
-    _next_timing_id,
-    _register_audio_media_part_class,
-    _resolve_animation_preset,
-    _timing_root_child_list,
-    _verify_animation_readback,
+    ANIMATIONS,
+    AUDIO_CONTENT_TYPES,
+    AUDIO_MARKER_SIZE_EMU,
+    AUDIO_TRIGGERS,
+    TRIGGERS,
+    add_animation_step,
+    build_audio_pic_element,
+    build_audio_timing_node,
+    ensure_paragraph_build,
+    next_timing_id,
+    register_audio_media_part_class,
+    resolve_animation_preset,
+    timing_root_child_list,
+    verify_animation_readback,
 )
 from .office.pptx.transitions import (
-    _TRANSITIONS,
-    _mark_mce_ignorable,
-    _set_slide_transition,
+    TRANSITIONS,
+    mark_mce_ignorable,
+    set_slide_transition,
 )
 from .office.pptx.xmlns import (
-    _A14_NS,
-    _A_NS,
-    _P14_NS,
-    _P15_NS,
-    _P159_NS,
-    _P_NS,
-    _R_NS,
+    A14_NS,
+    A_NS,
+    P14_NS,
+    P15_NS,
+    P159_NS,
+    P_NS,
+    R_NS,
 )
 from .pptx_templates import load_builtin_templates as _load_builtin_templates
 from .pptx_templates import load_pptx_templates as _load_pptx_templates
@@ -399,15 +399,15 @@ def _analyze_pptx_delivery(file_path: Path) -> dict[str, Any]:
     animation_slides: list[int] = []
     audio_slides: list[int] = []
     for index, slide in enumerate(prs.slides, start=1):
-        if slide.element.find(f"{{{_P_NS}}}transition") is not None:
+        if slide.element.find(f"{{{P_NS}}}transition") is not None:
             transition_slides.append(index)
-        timing = slide.element.find(f"{{{_P_NS}}}timing")
+        timing = slide.element.find(f"{{{P_NS}}}timing")
         if timing is None:
             continue
-        main_child = timing.find(f".//{{{_P_NS}}}cTn[@nodeType='mainSeq']/{{{_P_NS}}}childTnLst")
+        main_child = timing.find(f".//{{{P_NS}}}cTn[@nodeType='mainSeq']/{{{P_NS}}}childTnLst")
         if main_child is not None and len(main_child):
             animation_slides.append(index)
-        if timing.find(f".//{{{_P_NS}}}audio") is not None:
+        if timing.find(f".//{{{P_NS}}}audio") is not None:
             audio_slides.append(index)
 
     return {
@@ -2144,14 +2144,14 @@ def _recolor_icon(icon_path: Path, color_hex: str) -> Any:
 # already write) rather than re-declaring them, so there's exactly one
 # source of truth for each URI.
 _GENERIC_XML_NSMAP = {
-    "p": _P_NS,
-    "a": _A_NS,
-    "r": _R_NS,
+    "p": P_NS,
+    "a": A_NS,
+    "r": R_NS,
     "dgm": _SMARTART_NS,
-    "p14": _P14_NS,
-    "a14": _A14_NS,
-    "p15": _P15_NS,
-    "p159": _P159_NS,
+    "p14": P14_NS,
+    "a14": A14_NS,
+    "p15": P15_NS,
+    "p159": P159_NS,
 }
 
 
@@ -2212,7 +2212,7 @@ def _duplicate_slide_part(prs: PresentationType, source_slide: Any) -> str:
     if rid_remap:
         for element in new_element.iter():
             for attr_name, attr_value in list(element.attrib.items()):
-                if attr_name.startswith(f"{{{_R_NS}}}") and attr_value in rid_remap:
+                if attr_name.startswith(f"{{{R_NS}}}") and attr_value in rid_remap:
                     element.set(attr_name, rid_remap[attr_value])
 
     return presentation_part.relate_to(new_part, RT.SLIDE)
@@ -3087,7 +3087,7 @@ class PresentationToolkit:
         PowerPoint's real native transition gallery (48 effects) plus 8
         legacy aliases. No path/slide argument: this is a static list, the
         same regardless of which file or slide you're working on."""
-        return sorted(_TRANSITIONS - {"none"})
+        return sorted(TRANSITIONS - {"none"})
 
     def list_pptx_animation_types(self) -> list[str]:
         """Every `animation` name `add_pptx_animation` accepts, sorted --
@@ -3096,7 +3096,7 @@ class PresentationToolkit:
         legacy short aliases. No path/slide argument: this is a static
         list, the same regardless of which file or slide you're working
         on."""
-        return sorted(_ANIMATIONS)
+        return sorted(ANIMATIONS)
 
     @locked_by_path
     def add_pptx_shape(
@@ -3243,14 +3243,14 @@ class PresentationToolkit:
         paragraph = shape.text_frame.paragraphs[0]
         p_element = paragraph._p  # noqa: SLF001
         # `<a14:m>` wrapping `<m:oMathPara>`/`<m:oMath>` -- the exact shape
-        # hugohe3/ppt-master's own documented contract uses (see _A14_NS's
+        # hugohe3/ppt-master's own documented contract uses (see A14_NS's
         # comment above). A fresh text box's first paragraph has no runs
         # yet, so this is simply appended as the paragraph's sole content.
         math_root = etree.fromstring(omml_xml.encode("utf-8"))
-        a14_wrapper = etree.SubElement(p_element, f"{{{_A14_NS}}}m", nsmap={"a14": _A14_NS})
+        a14_wrapper = etree.SubElement(p_element, f"{{{A14_NS}}}m", nsmap={"a14": A14_NS})
         a14_wrapper.append(math_root)
 
-        _mark_mce_ignorable(target_slide.element, "a14")
+        mark_mce_ignorable(target_slide.element, "a14")
         assert_ooxml_valid(target_slide.element, "add_pptx_formula")
         prs.save(str(file_path))
 
@@ -4144,13 +4144,13 @@ class PresentationToolkit:
     def set_pptx_transition(
         self, path: str, slide: int, transition: str, duration: float = 1.0
     ) -> dict[str, object]:
-        if transition not in _TRANSITIONS:
+        if transition not in TRANSITIONS:
             raise ValueError(
                 f"Unknown transition {transition!r}. Use one of: "
-                f"{', '.join(sorted(_TRANSITIONS))}"
+                f"{', '.join(sorted(TRANSITIONS))}"
             )
         prs, file_path, target_slide = self._open_slide(path, slide)
-        _set_slide_transition(target_slide.element, transition, duration)
+        set_slide_transition(target_slide.element, transition, duration)
         assert_ooxml_valid(target_slide.element, "set_pptx_transition")
         prs.save(str(file_path))
         return {"path": self._scope.relative(file_path), "slide": slide, "transition": transition}
@@ -4167,13 +4167,13 @@ class PresentationToolkit:
         delay: float = 0.0,
         by_paragraph: bool = False,
     ) -> dict[str, object]:
-        if animation not in _ANIMATIONS:
+        if animation not in ANIMATIONS:
             raise ValueError(
-                f"Unknown animation {animation!r}. Use one of: {', '.join(sorted(_ANIMATIONS))}"
+                f"Unknown animation {animation!r}. Use one of: {', '.join(sorted(ANIMATIONS))}"
             )
-        if trigger not in _TRIGGERS:
+        if trigger not in TRIGGERS:
             raise ValueError(
-                f"Unknown trigger {trigger!r}. Use one of: {', '.join(sorted(_TRIGGERS))}"
+                f"Unknown trigger {trigger!r}. Use one of: {', '.join(sorted(TRIGGERS))}"
             )
         prs, file_path, target_slide = self._open_slide(path, slide)
         shape = _get_shape_at_index(target_slide, slide, shape_index)
@@ -4204,14 +4204,14 @@ class PresentationToolkit:
                     "non-empty paragraphs to animate by_paragraph."
                 )
             for paragraph_index in paragraph_indexes:
-                _add_animation_step(
+                add_animation_step(
                     target_slide.element, shape_id, animation, duration_ms, trigger, delay_ms,
                     paragraph_index,
                 )
-            timing = target_slide.element.find(f"{{{_P_NS}}}timing")
-            _ensure_paragraph_build(timing, shape_id)
+            timing = target_slide.element.find(f"{{{P_NS}}}timing")
+            ensure_paragraph_build(timing, shape_id)
         else:
-            _add_animation_step(
+            add_animation_step(
                 target_slide.element, shape_id, animation, duration_ms, trigger, delay_ms, None
             )
 
@@ -4223,7 +4223,7 @@ class PresentationToolkit:
         tmp_path = file_path.with_name(f"{file_path.name}.animation-tmp")
         prs.save(str(tmp_path))
         try:
-            _verify_animation_readback(
+            verify_animation_readback(
                 tmp_path, slide, shape_id, animation, trigger, paragraph_indexes
             )
         except Exception:
@@ -4231,7 +4231,7 @@ class PresentationToolkit:
             raise
         tmp_path.replace(file_path)
 
-        preset = _resolve_animation_preset(animation)
+        preset = resolve_animation_preset(animation)
         actual_duration_ms = (
             duration_ms
             if preset["duration_scalable"] and preset["default_duration_ms"] is not None
@@ -4260,16 +4260,16 @@ class PresentationToolkit:
         start_delay: float = 0.0,
         hidden: bool = False,
     ) -> dict[str, object]:
-        if trigger not in _AUDIO_TRIGGERS:
+        if trigger not in AUDIO_TRIGGERS:
             raise ValueError(
-                f"Unknown trigger {trigger!r}. Use one of: {', '.join(sorted(_AUDIO_TRIGGERS))}"
+                f"Unknown trigger {trigger!r}. Use one of: {', '.join(sorted(AUDIO_TRIGGERS))}"
             )
         audio_file = self._check_readable(audio_path)
         ext = audio_file.suffix.lower()
-        if ext not in _AUDIO_CONTENT_TYPES:
+        if ext not in AUDIO_CONTENT_TYPES:
             raise ValueError(
                 f"add_pptx_audio: unsupported audio format {ext!r} on {audio_path!r} -- "
-                f"use one of: {', '.join(sorted(_AUDIO_CONTENT_TYPES))}"
+                f"use one of: {', '.join(sorted(AUDIO_CONTENT_TYPES))}"
             )
         prs, file_path, target_slide = self._open_slide(path, slide)
 
@@ -4293,8 +4293,8 @@ class PresentationToolkit:
         # audio (and mismatched against this method's own `<a:audioFile>`
         # element) -- built directly with the real `RT.AUDIO` type
         # instead, confirmed to exist in python-pptx's own constants.
-        _register_audio_media_part_class()
-        video = Video.from_path_or_file_like(str(audio_file), _AUDIO_CONTENT_TYPES[ext])
+        register_audio_media_part_class()
+        video = Video.from_path_or_file_like(str(audio_file), AUDIO_CONTENT_TYPES[ext])
         slide_part = target_slide.part
         media_part = slide_part.package.get_or_add_media_part(video)
         audio_rid = slide_part.relate_to(media_part, RT.AUDIO)
@@ -4308,11 +4308,11 @@ class PresentationToolkit:
         shape_id = target_slide.shapes._next_shape_id
         shape_name = audio_file.name
         if hidden:
-            x_emu = y_emu = -_AUDIO_MARKER_SIZE_EMU
+            x_emu = y_emu = -AUDIO_MARKER_SIZE_EMU
         else:
             x_emu, y_emu = int(Inches(left_in)), int(Inches(top_in))
 
-        pic = _build_audio_pic_element(
+        pic = build_audio_pic_element(
             shape_id,
             shape_name,
             audio_rid,
@@ -4320,9 +4320,9 @@ class PresentationToolkit:
             poster_rid,
             x_emu,
             y_emu,
-            _AUDIO_MARKER_SIZE_EMU,
+            AUDIO_MARKER_SIZE_EMU,
         )
-        # `_build_audio_pic_element` returns a plain lxml element -- python-
+        # `build_audio_pic_element` returns a plain lxml element -- python-
         # pptx's own shape factory (invoked whenever `target_slide.shapes`
         # is iterated, which `render_pptx_preview`/`list_pptx_shapes` and
         # this method's own shape_index computation below all do) expects
@@ -4335,11 +4335,11 @@ class PresentationToolkit:
         target_slide.shapes._spTree.append(parse_xml(etree.tostring(pic)))
         shape_index = len(list(target_slide.shapes)) - 1
 
-        root_child = _timing_root_child_list(target_slide.element)
-        timing = target_slide.element.find(f"{{{_P_NS}}}timing")
-        next_id = _next_timing_id(timing)
+        root_child = timing_root_child_list(target_slide.element)
+        timing = target_slide.element.find(f"{{{P_NS}}}timing")
+        next_id = next_timing_id(timing)
         start_delay_ms = None if trigger == "on-click" else max(0, round(start_delay * 1000))
-        root_child.append(_build_audio_timing_node(shape_id, next_id, start_delay_ms))
+        root_child.append(build_audio_timing_node(shape_id, next_id, start_delay_ms))
 
         assert_ooxml_valid(target_slide.element, "add_pptx_audio")
         prs.save(str(file_path))

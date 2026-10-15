@@ -11,7 +11,7 @@ broader architecture effort (this file is intentionally separate from
 `ROADMAP.md`: different owner/workstream, narrower scope, avoids
 colliding with that file's own active edits).
 
-All code lives in `src/coscribe/tools/presentations.py` unless noted.
+All code lives in `src/coscribe/tools/presentations.py` unless noted; the transition, animation and audio XML lives in `src/coscribe/tools/office/pptx/{transitions,animation,xmlns}.py`.
 
 ---
 

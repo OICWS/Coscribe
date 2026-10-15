@@ -1,16 +1,16 @@
-"""Slide transitions: the registry and the hand-built `<p:transition>` XML of `set_pptx_transition`,
-moved out of `tools/presentations.py` unchanged."""
+"""Slide transitions: the registry and the hand-built `<p:transition>` XML of
+`set_pptx_transition`."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from .xmlns import _MC_NS, _P14_NS, _P15_NS, _P159_NS, _P_NS
+from .xmlns import MC_NS, P14_NS, P15_NS, P159_NS, P_NS
 
-_TRANSITION_NAMESPACES = {"p": _P_NS, "p14": _P14_NS, "p15": _P15_NS, "p159": _P159_NS}
+_TRANSITION_NAMESPACES = {"p": P_NS, "p14": P14_NS, "p15": P15_NS, "p159": P159_NS}
 # The three extension prefixes a transition (and only a transition -- this
 # codebase's only other p14 user, add_pptx_formula, owns a14 instead) can
-# ever need mc:Ignorable for -- see _set_slide_transition's own comment on
+# ever need mc:Ignorable for -- see set_slide_transition's own comment on
 # why unmarking all three unconditionally before setting a new transition
 # is correct rather than fragile.
 _TRANSITION_MCE_PREFIXES = ("p14", "p15", "p159")
@@ -18,7 +18,7 @@ _TRANSITION_MCE_PREFIXES = ("p14", "p15", "p159")
 # PowerPoint's real native transition gallery (48 effects across its own
 # Subtle/Exciting/Dynamic Content categories) plus common legacy aliases
 # (8 more) -- retyped from hugohe3/ppt-master's own `pptx_transitions.py`
-# (`_TRANSITION_SPECS`/`TRANSITION_ALIASES`, commit `6e3ce9c5a3b994a0e223
+# (`TRANSITION_SPECS`/`TRANSITION_ALIASES`, commit `6e3ce9c5a3b994a0e223
 # a14a0f7eddf42fd0b9f5`), the real element/attribute mapping for each
 # effect having been reverse-engineered against actual PowerPoint-authored
 # XML there -- not independently guessable, and not worth re-deriving.
@@ -30,9 +30,9 @@ _TRANSITION_MCE_PREFIXES = ("p14", "p15", "p159")
 # the base "p" (ECMA-376) namespace; "fallback" is only meaningful for a
 # non-"p" prefix, naming which base transition an older/non-MCE-aware
 # reader should see instead (this codebase's own mc:Ignorable-based
-# approach doesn't use it today -- see _set_slide_transition -- but it's
+# approach doesn't use it today -- see set_slide_transition -- but it's
 # kept in the data for a future AlternateContent-based upgrade).
-_TRANSITION_SPECS: dict[str, dict[str, Any]] = {
+TRANSITION_SPECS: dict[str, dict[str, Any]] = {
     "fade": {"element": "fade", "attrs": {}},
     "push": {"element": "push", "attrs": {"dir": "r"}},
     "wipe": {"element": "wipe", "attrs": {"dir": "r"}},
@@ -166,7 +166,7 @@ _TRANSITION_SPECS: dict[str, dict[str, Any]] = {
 # Legacy/compatibility names mapping onto one of the 48 canonical keys
 # above -- e.g. an older "strips"/"wheel" name a caller (or a round-
 # tripped PPTX) might still use.
-_TRANSITION_ALIASES: dict[str, str] = {
+TRANSITION_ALIASES: dict[str, str] = {
     "strips": "wipe",
     "circle": "shape",
     "diamond": "shape",
@@ -177,7 +177,7 @@ _TRANSITION_ALIASES: dict[str, str] = {
     "wheel": "clock",
 }
 
-_TRANSITIONS = frozenset({*_TRANSITION_SPECS, *_TRANSITION_ALIASES, "none"})
+TRANSITIONS = frozenset({*TRANSITION_SPECS, *TRANSITION_ALIASES, "none"})
 
 
 
@@ -190,7 +190,7 @@ def _spd_for(duration: float) -> str:
     return "slow"
 
 
-def _set_slide_transition(slide_element: Any, transition: str, duration: float) -> None:
+def set_slide_transition(slide_element: Any, transition: str, duration: float) -> None:
     """Replace `slide_element`'s (a <p:sld>) transition, in place.
 
     Verified empirically (round-tripped through python-pptx with warnings
@@ -217,23 +217,23 @@ def _set_slide_transition(slide_element: Any, transition: str, duration: float) 
     """
     from lxml import etree
 
-    existing = slide_element.find(f"{{{_P_NS}}}transition")
+    existing = slide_element.find(f"{{{P_NS}}}transition")
     if existing is not None:
         slide_element.remove(existing)
     for prefix in _TRANSITION_MCE_PREFIXES:
         _unmark_mce_ignorable(slide_element, prefix)
     if transition == "none":
         return
-    canonical = _TRANSITION_ALIASES.get(transition, transition)
-    spec = _TRANSITION_SPECS[canonical]
+    canonical = TRANSITION_ALIASES.get(transition, transition)
+    spec = TRANSITION_SPECS[canonical]
     prefix = str(spec.get("prefix", "p"))
     namespace = _TRANSITION_NAMESPACES[prefix]
 
     transition_element = etree.SubElement(
-        slide_element, f"{{{_P_NS}}}transition", nsmap={"p14": _P14_NS}
+        slide_element, f"{{{P_NS}}}transition", nsmap={"p14": P14_NS}
     )
     transition_element.set("spd", _spd_for(duration))
-    transition_element.set(f"{{{_P14_NS}}}dur", str(round(duration * 1000)))
+    transition_element.set(f"{{{P14_NS}}}dur", str(round(duration * 1000)))
     effect_element = etree.SubElement(
         transition_element,
         f"{{{namespace}}}{spec['element']}",
@@ -242,34 +242,34 @@ def _set_slide_transition(slide_element: Any, transition: str, duration: float) 
     for key, value in spec["attrs"].items():
         effect_element.set(key, str(value))
 
-    _mark_mce_ignorable(slide_element, "p14")
+    mark_mce_ignorable(slide_element, "p14")
     if prefix != "p":
-        _mark_mce_ignorable(slide_element, prefix)
+        mark_mce_ignorable(slide_element, prefix)
 
 
-def _mark_mce_ignorable(root_element: Any, prefix: str) -> None:
+def mark_mce_ignorable(root_element: Any, prefix: str) -> None:
     """Add `prefix` to `mc:Ignorable`, which lets `_ooxml_validate.py` tell a real OOXML defect
     from declared p14:/a14: extension content. Registering `mc` makes lxml spell the prefix as
     PowerPoint does instead of an `ns0` that depends on what else the root declares."""
     from lxml import etree
 
-    etree.register_namespace("mc", _MC_NS)
-    existing_tokens = (root_element.get(f"{{{_MC_NS}}}Ignorable") or "").split()
+    etree.register_namespace("mc", MC_NS)
+    existing_tokens = (root_element.get(f"{{{MC_NS}}}Ignorable") or "").split()
     if prefix in existing_tokens:
         return
-    root_element.set(f"{{{_MC_NS}}}Ignorable", " ".join([*existing_tokens, prefix]))
+    root_element.set(f"{{{MC_NS}}}Ignorable", " ".join([*existing_tokens, prefix]))
 
 
 def _unmark_mce_ignorable(root_element: Any, prefix: str) -> None:
-    """Inverse of `_mark_mce_ignorable` -- drops `prefix` from the token
+    """Inverse of `mark_mce_ignorable` -- drops `prefix` from the token
     list (and the attribute entirely once empty), keeping a slide that no
     longer has any p14:-namespaced content from still claiming it does."""
     remaining = [
         token
-        for token in (root_element.get(f"{{{_MC_NS}}}Ignorable") or "").split()
+        for token in (root_element.get(f"{{{MC_NS}}}Ignorable") or "").split()
         if token != prefix
     ]
     if remaining:
-        root_element.set(f"{{{_MC_NS}}}Ignorable", " ".join(remaining))
-    elif root_element.get(f"{{{_MC_NS}}}Ignorable") is not None:
-        del root_element.attrib[f"{{{_MC_NS}}}Ignorable"]
+        root_element.set(f"{{{MC_NS}}}Ignorable", " ".join(remaining))
+    elif root_element.get(f"{{{MC_NS}}}Ignorable") is not None:
+        del root_element.attrib[f"{{{MC_NS}}}Ignorable"]
