@@ -102,6 +102,7 @@ def test_an_iso_date_becomes_a_real_date_and_other_text_stays_text() -> None:
         ([{"sheet": "S", "rows": [["=FILTER(A:A,B:B>1)"]]}], "FILTER"),
         ([{"sheet": "S", "rows": [[1]], "like": "A1", "like_row": 1}], "`like_row`"),
         ([{"sheet": "S", "rows": [["2026-02-30"]]}], "not one"),
+        ([{"sheet": "S", "rows": [[1]], "row_styles": "head"}], "by position"),
     ],
 )
 def test_a_bad_block_is_refused_before_anything_is_written(blocks: list, message: str) -> None:

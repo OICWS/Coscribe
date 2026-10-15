@@ -243,8 +243,10 @@ APPLY: dict[str, Callable[[Workbook, dict[str, Any]], None]] = {
 
 
 def apply_ops(workbook: Workbook, ops: list[dict[str, Any]]) -> None:
+    from openpyxl.utils.exceptions import CellCoordinatesException
+
     for index, op in enumerate(ops):
         try:
             APPLY[op["op"]](workbook, op)
-        except (ValueError, KeyError, TypeError) as exc:
+        except (ValueError, KeyError, TypeError, CellCoordinatesException) as exc:
             raise ValueError(f"ops[{index}] ({op['op']}): {exc}") from None

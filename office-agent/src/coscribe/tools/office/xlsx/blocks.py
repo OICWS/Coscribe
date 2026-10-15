@@ -139,6 +139,8 @@ def _per_index(raw: Any, size: int, named: dict[str, Any], where: str) -> list[d
     """`row_styles` / `col_styles`: a list by position, or an object keyed by position."""
     if raw is None:
         return [{} for _ in range(size)]
+    if not isinstance(raw, list | dict):
+        raise ValueError(f"{where}: a list of styles by position, or an object keyed by it")
     items = enumerate(raw) if isinstance(raw, list) else ((int(k), v) for k, v in raw.items())
     styles: list[dict[str, Any]] = [{} for _ in range(size)]
     for index, style in items:

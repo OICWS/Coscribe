@@ -84,7 +84,9 @@ def _pattern_breaks(sheet: Any) -> list[str]:
 def _chart_cells(sheet: Any, chart: Any, spans: list[Any], default: float) -> tuple[int, ...]:
     """The rows and columns a chart covers: (first row, last row, first col, last col)."""
     anchor = chart.anchor
-    start = anchor._from
+    start = getattr(anchor, "_from", None)
+    if start is None:
+        return ()
     if getattr(anchor, "to", None) is not None:
         return start.row + 1, anchor.to.row + 1, start.col + 1, anchor.to.col + 1
     width_px, height_px = chart.width * _PX_PER_CM, chart.height * _PX_PER_CM
@@ -101,7 +103,10 @@ def _charts_over_cells(sheet: Any, path: Path) -> list[str]:
     default = sheet_default_width(sheet)
     found = []
     for chart in getattr(sheet, "_charts", []):
-        top, bottom, first, last = _chart_cells(sheet, chart, spans, default)
+        cells = _chart_cells(sheet, chart, spans, default)
+        if not cells:
+            continue
+        top, bottom, first, last = cells
         covered = [
             cell.coordinate
             for row in sheet.iter_rows(min_row=top, max_row=bottom, min_col=first, max_col=last)
@@ -118,16 +123,18 @@ def _look(cell: Any) -> tuple[Any, ...]:
     return (cell.number_format, bool(cell.font.bold), cell.fill.fgColor.rgb if cell.fill else None)
 
 
-def _header_row(sheet: Any, column: int) -> int:
+def _header_row(sheet: Any, column: int, headers: dict[int, int]) -> int:
     """The first filled row of a column: its header, which data below rightly looks unlike."""
-    return next(
-        (
-            row
-            for row in range(1, sheet.max_row + 1)
-            if sheet.cell(row, column).value not in (None, "")
-        ),
-        0,
-    )
+    if column not in headers:
+        headers[column] = next(
+            (
+                r
+                for r in range(1, sheet.max_row + 1)
+                if sheet.cell(r, column).value not in ("", None)
+            ),
+            0,
+        )
+    return headers[column]
 
 
 def _unstyled_edits(workbook: Any, written: Written) -> list[str]:
@@ -138,12 +145,13 @@ def _unstyled_edits(workbook: Any, written: Written) -> list[str]:
         if name not in written.sheets_with_content or name not in workbook.sheetnames:
             continue
         sheet = workbook[name]
+        headers: dict[int, int] = {}
         for coordinate, looked in cells:
             cell = sheet[coordinate]
             if looked or cell.value in (None, "") or cell.row == 1:
                 continue
             above = sheet.cell(cell.row - 1, cell.column)
-            if above.value in (None, "") or above.row == _header_row(sheet, cell.column):
+            if above.value in (None, "") or above.row == _header_row(sheet, cell.column, headers):
                 continue
             if _look(above) != _look(cell):
                 found.append(
