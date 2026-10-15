@@ -21,9 +21,8 @@ references (MIT licence, copyright Hugo He).
    price of an offer); before writing pages, check that each figure in the material is on a
    page or left out on purpose. One idea per page. Page count as the user asked; otherwise about
    one page per two minutes of talk.
-3. **Fix the look once** for the whole deck: a palette (one dominant colour, one support, one
-   accent, plus two or three neutrals for text and backgrounds, all as #RRGGBB), a type scale, the
-   margins, and one recurring motif (a band, a rule, a corner shape). Every page reuses them.
+3. **Write the design spec** (section "Design spec" below) into `design.md` in the pages folder,
+   after reading the one visual-style file it picks. Every page follows it.
 4. **Write the pages** with write_file into a folder next to the deck, e.g. `q3-review-pages/`,
    named so they sort in order: `01-cover.svg`, `02-agenda.svg`, ... Write every page before the
    first build, and write each one carefully once: every extra round trip costs the user money.
@@ -46,6 +45,69 @@ name or path), or ask the user whether their changes may be replaced.
 Not for this way: changing a deck the user brought (use the edit tools), or a few words in an
 existing deck.
 
+## Design spec
+
+A deck looks designed when one decision runs through every page. Before any page, choose:
+
+1. **A visual style**: how the deck looks. Pick one from the list by the content and audience, read
+   its file with read_skill_file("PPTX Pages", "visual-styles/<id>.md"), and no other style file.
+2. **A method** (optional): how the deck argues, for a kind of deck the list names; read
+   read_skill_file("PPTX Pages", "methods/<id>.md"). Its fallback colours and typography are
+   defaults the spec may take.
+
+Then write `design.md` in the pages folder, short, with exactly these parts:
+
+- **Direction**: the style's id and one sentence that names this deck's look (e.g. "双语公报：数据
+  新闻式栅格，中文主行与英文副行成对").
+- **Palette**: field, surface, ink, primary, accent (and at most two more), each as #RRGGBB with
+  its job. The accent marks the key figure only.
+- **Type**: the families by role, from fonts every Windows PC has: Chinese titles SimSun (serif,
+  authority) or Microsoft YaHei / SimHei (sans); Chinese body Microsoft YaHei or DengXian; Latin
+  and figures Cambria, Georgia or Times New Roman (serif) or Arial, Calibri, Segoe UI (sans);
+  Consolas for code. At most three families. A text sets its own `font-family`
+  ("SimSun, Cambria") when it differs from the root's. Sizes in px: display 56-80, title 36-44,
+  lead 24-28, body 20-24 (never under 20 on a content page), annotation 16-18, source line 13-14.
+- **Grid**: margins (56-80 px), columns, the gap between blocks, the corner radius (0 for a
+  hard-edged style).
+- **Recurring elements**: what sits in the same place on every content page (a header rule, a
+  section index, a source line) and what the cover and the section pages share.
+- **Pages**: one line each, its role and its composition (a hero number, chart and takeaway, a
+  table, a comparison, a timeline, cards...). No three pages in a row with the same composition;
+  a dense page is followed by a lighter one.
+
+Visual styles (`visual-styles/<id>.md`):
+
+| id | Look |
+|---|---|
+| `swiss-minimal` | Strict grid, sharp geometry, aggressive whitespace, near-zero decoration |
+| `editorial` | Magazine hierarchy: columns, hairline rules, serif and sans interplay |
+| `data-journalism` | Economist / Bloomberg infographic: dense grid, hero numbers, sidebars, source lines |
+| `brutalist` | Newspaper density, heavy rules, raw structure |
+| `photo-editorial` | Photography leads, text as captions and points |
+| `soft-rounded` | Rounded cards, gentle elevation, approachable (product, training) |
+| `glassmorphism` | Frosted-glass panels, gradient light (SaaS, product) |
+| `dark-tech` | Dark canvas, luminous accents, geometric precision (tech, AI, launches) |
+| `blueprint` | Engineering schematic: line work on dark paper, annotated |
+| `ink-wash` | New-Chinese ink wash: rice paper, brush, seal red |
+| `ink-notes` | Whiteboard ink, minimal hand-drawn marks |
+| `sketch-notes` | Warm hand-drawn sketchnotes |
+| `chalkboard` | Classroom chalkboard |
+| `paper-cut` | Layered cut paper, soft shadows |
+| `memphis` | Pop colour blocks, geometric confetti |
+| `zine` | Risograph zine, halftone, limited palette |
+| `vintage-poster` | Mid-century print poster |
+| `pixel-art` | 8-bit retro game |
+
+Methods (`methods/<id>.md`): `operating-review` (business reviews: result, variance, cause, owned
+action), `consulting-decision` and `mbb-consulting` (answer-first decision documents),
+`solution-proposal`, `investor-pitch`, `product-launch`, `creative-pitch`, `narrative-keynote`,
+`academic-research`, `science-explainer`, `technical-deepdive`, `incident-postmortem`,
+`workshop-teaching` (training), `duty-manual` (rules and procedures). Their mentions of
+confirmation steps, workspaces and image rows belong to the project they come from: take the
+method and the defaults, not the procedure.
+
+The style files and methods are ppt-master's (MIT licence, copyright Hugo He; `NOTICE.md`).
+
 ## On the user's own template
 
 When the user names their template (a .pptx or .potx), the deck is built on it:
@@ -54,7 +116,7 @@ When the user names their template (a .pptx or .potx), the deck is built on it:
    empty returns the template's `viewBox`, theme `colours` and `fonts`, its `layouts`, and each
    `example_slides` entry's layout, `background` and `decoration` (bands, panels, pictures with
    their box and fill).
-2. Fix the look from it, not from step 3 above: the template's colours (the decoration's fills
+2. Fix the look from it, not from a visual style's defaults: the template's colours (the decoration's fills
    first; they are what the template looks like), its fonts, and its decoration's place.
 3. Each page's root takes `data-template-slide="N"`: the slide starts with example slide N's
    background and decoration, and the page draws only the content, around them and in colours
@@ -83,8 +145,7 @@ dense page, a lighter one.
 
 ## Type and colour
 
-- Sizes: title 36-44, subtitle or takeaway line 20-26, body 18-22 (never under 16 on a content
-  page), captions and sources 13-14, hero numbers 56-120. Bold for the title and for one or two
+- Sizes: as the design spec fixes them (body never under 20 on a content page). Bold for the title and for one or two
   load-bearing words or numbers per sentence, not for whole paragraphs.
 - Left-align body text. Break lines at phrase or punctuation boundaries; a line should not end
   with a single character.
