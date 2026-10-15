@@ -36,6 +36,11 @@ references (MIT licence, copyright Hugo He).
 6. **Look once**: when the build has no errors, render_pptx_preview(path) once and change only
    what is clearly wrong, with one more build at most.
 
+To redesign a deck the user made ("美化", a rough draft to make presentable): read_pptx gives
+every slide's text, tables, chart data and pictures; keep all of it, the pictures saved as above,
+pass the old deck in `sources` so the number check holds the new pages to it, and write the new
+deck under a new name.
+
 To edit a deck built this way: edit the page's SVG (edit_file) and build again; for a change that
 touches every page (a colour, a font), edit each page. If the build refuses because the .pptx was
 changed after it was built (in PowerPoint, or with the edit_pptx_* tools), do not pass
@@ -245,7 +250,8 @@ a plain area of its own: never on top of the drawing's busy part.
 
 A photograph earns its place when the content is a real place, product, team or event; otherwise
 draw (above) or let the page's figures carry it. The user's own pictures come first: those in the
-material, in the workspace, or inside a deck they gave you. Without them, and only when the
+material, in the workspace, or inside a deck they gave you (read_pptx lists them; save each into
+the pages folder with run_python_script: a python-pptx picture's `image.blob`, `image.ext`). Without them, and only when the
 deck's style is built on photographs, search_licensed_images (an English query, orientation
 "landscape") returns openly licensed images; download_image the chosen one into the pages folder.
 Never search_images for a deck: its results carry no licence. Place a photo with

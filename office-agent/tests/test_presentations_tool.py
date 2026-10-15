@@ -3813,6 +3813,32 @@ def test_check_pptx_delivery_is_read_and_no_approval(tmp_path: Path) -> None:
     assert metadata.requires_approval is False
 
 
+def test_read_pptx_shows_a_charts_data_and_the_pictures(tmp_path: Path) -> None:
+    from PIL import Image
+    from pptx import Presentation
+    from pptx.chart.data import CategoryChartData
+    from pptx.enum.chart import XL_CHART_TYPE
+    from pptx.util import Inches
+
+    Image.new("RGB", (40, 20), "#336699").save(tmp_path / "photo.png")
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    data = CategoryChartData()
+    data.categories = ["Q1", "Q2"]
+    data.add_series("销售额", (1180, 1320.5))
+    slide.shapes.add_chart(
+        XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(1), Inches(1), Inches(4), Inches(3), data
+    )
+    slide.shapes.add_picture(str(tmp_path / "photo.png"), Inches(6), Inches(1), Inches(2))
+    prs.save(str(tmp_path / "deck.pptx"))
+
+    text = _tools_by_name(tmp_path)["read_pptx"](path="deck.pptx", slide=1)
+
+    lines = text.splitlines()
+    assert lines[:2] == ["[chart column_clustered]", "  销售额: Q1 1180, Q2 1320.5"]
+    assert lines[2].startswith("[picture 'Picture 2', png, 192x96 px]")
+
+
 def test_read_pptx_theme_colors_returns_all_12_stock_slots(tmp_path: Path) -> None:
     tools = _tools_by_name(tmp_path)
     tools["write_pptx"](path="deck.pptx", content="# Title\n- body")

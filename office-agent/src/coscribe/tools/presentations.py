@@ -81,7 +81,7 @@ import re
 import shutil
 import subprocess
 import tempfile
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Sequence
 from io import BytesIO
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
@@ -122,6 +122,7 @@ from .office.pptx.qa import (
     preview_deck,
     shape_bbox,
 )
+from .office.pptx.reading import render_slide
 from .office.pptx.shape_description import describe_shape as _describe_shape
 from .office.pptx.shape_description import emu_to_inches
 from .office.pptx.smartart import SMARTART_NS, is_smartart, smartart_data_part
@@ -2730,9 +2731,9 @@ class PresentationToolkit:
         if slide is not None:
             if not 1 <= slide <= slide_count:
                 raise ValueError(f"Slide {slide} out of range: deck has {slide_count} slides")
-            return self._render_slide(prs.slides[slide - 1])
+            return render_slide(prs.slides[slide - 1])
         return "\n\n---\n\n".join(
-            self._render_slide(s, with_heading=True) for s in prs.slides
+            render_slide(s, with_heading=True) for s in prs.slides
         )
 
     @locked_by_path
@@ -2741,36 +2742,6 @@ class PresentationToolkit:
         state_dir = Path(self._state_dir) if self._state_dir is not None else None
         return preview_deck(file_path, state_dir, max_slides)
 
-    @staticmethod
-    def _render_slide(slide: Any, with_heading: bool = False) -> str:
-        title_shape = slide.shapes.title
-        title = title_shape.text if title_shape is not None else ""
-        title_shape_id = title_shape.shape_id if title_shape is not None else None
-        lines = [f"## {title}"] if with_heading else []
-        for shape in _leaf_shapes(slide.shapes):
-            if title_shape_id is not None and shape.shape_id == title_shape_id:
-                continue
-            if shape.has_table:
-                for row in shape.table.rows:
-                    lines.append("| " + " | ".join(cell.text for cell in row.cells) + " |")
-            elif shape.has_text_frame:
-                for paragraph in shape.text_frame.paragraphs:
-                    if paragraph.text:
-                        lines.append(f"- {paragraph.text}")
-        return "\n".join(lines)
-
-
-def _leaf_shapes(shapes: Any) -> Iterator[Any]:
-    """Every shape on a slide in document order, with groups opened up --
-    SVG-compiled and designer-made decks keep most of their text inside
-    groups."""
-    from pptx.enum.shapes import MSO_SHAPE_TYPE
-
-    for shape in shapes:
-        if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
-            yield from _leaf_shapes(shape.shapes)
-        else:
-            yield shape
 
 
 def build_presentation_tools(
