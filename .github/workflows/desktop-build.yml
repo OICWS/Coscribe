@@ -40,11 +40,6 @@ jobs:
           python -m venv .venv
           .venv/Scripts/python -m pip install --upgrade pip
           .venv/Scripts/python -m pip install -e ".[dev,web]"
-          # See pyproject.toml's dependencies comment: aisuite 0.1.14 pins
-          # httpx<0.28.0, which conflicts with google-genai>=1.5.0's own
-          # httpx>=0.28.1 requirement, so this has to be a separate step
-          # (same two-step install office-agent-ci.yml already documents).
-          .venv/Scripts/python -m pip install -U "google-genai>=2.13.0,<2.14.0"
           .venv/Scripts/python -m pip install pyinstaller
 
       # Also builds the frontend itself (npm install && npm run build in

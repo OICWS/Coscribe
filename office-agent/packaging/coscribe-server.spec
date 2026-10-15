@@ -69,7 +69,6 @@ binaries = []
 # generation).
 for pkg in (
     "coscribe",
-    "aisuite",
     "mcp",
     "ddgs",
     "docstring_parser",

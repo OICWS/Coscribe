@@ -42,14 +42,14 @@ tools, and repeat work on a schedule. It needs only a model API key.
   hand-written runtime whose own provider adapters kept producing bugs.
 - **Models.** Anthropic, OpenAI and Gemini directly, and any
   OpenAI-compatible API (DeepSeek, Kimi, GLM, local runners) as a custom
-  provider. `aisuite`, the original foundation, is kept only for a
-  context-window lookup and an MCP compatibility fix.
+  provider. The context-window indicator asks the Gemini API
+  directly and estimates for the rest.
 - **Persistence.** Plain files under `state_dir` (JSON records, previews,
   tasks, memory) and a SQLite checkpointer for conversation state. No
   database server.
 - **Two modes in the nav rail.** Chat, and Scheduled (tasks and workflows).
 - **Package layers**, top to bottom: `cli`, `web`, `conversation`, `coordinator | runtime_lg`,
-  `workflows | code_runtime`, `tools`, `runtime | config`, `providers`. A package
+  `workflows | code_runtime`, `tools`, `runtime | config`. A package
   imports only from below; the rule is checked in CI (`lint-imports`).
 
 ## Key decisions

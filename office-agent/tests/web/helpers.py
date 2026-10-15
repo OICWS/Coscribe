@@ -275,14 +275,12 @@ class ConcurrentSpawnFakeModel(BaseChatModel):
 class _FakeContextWindowClient:
     """Stand-in for LLMClient, used by ChatSessionLG.send_state only for its
     get_context_window() heuristic -- the real LLMClient would try to
-    resolve "fake:model" as a live aisuite provider and fail.
+    look "fake:model" up against a live API.
 
     Also stands in for app.py's context_window_client in the
     /api/providers tests below -- register_custom_provider/
-    deregister_custom_provider/invalidate_provider are plain in-memory
-    bookkeeping on the real LLMClient too (no live provider calls), so a
-    minimal fake here is enough to exercise those endpoints without a real
-    LLMClient's aisuite-backed construction."""
+    deregister_custom_provider are plain in-memory bookkeeping on the real
+    LLMClient too, so a minimal fake is enough to exercise those endpoints."""
 
     def get_context_window(self, model: str) -> int:
         return 128_000
@@ -291,9 +289,6 @@ class _FakeContextWindowClient:
         pass
 
     def deregister_custom_provider(self, name: str) -> None:
-        pass
-
-    def invalidate_provider(self, name: str) -> None:
         pass
 
 

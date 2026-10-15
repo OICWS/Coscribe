@@ -26,8 +26,6 @@ if [ ! -d .venv ]; then
   python3 -m venv .venv
 fi
 .venv/bin/pip install -q -e ".[dev,web]"
-# A separate step for the reason pyproject.toml's google-genai comment gives.
-.venv/bin/pip install -q -U "google-genai>=2.13.0,<2.14.0"
 
 if [ ! -d frontend/node_modules ]; then
   (cd frontend && npm ci --no-audit --no-fund)

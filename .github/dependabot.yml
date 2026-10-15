@@ -14,7 +14,7 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
-      # The declared range is a workaround, not the version we run (issue #299).
+      # 2.14 removed Part.thought_signature, which the code needs (issue #299).
       - dependency-name: "google-genai"
     groups:
       python-minor-and-patch:

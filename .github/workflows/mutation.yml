@@ -64,7 +64,6 @@ jobs:
       - name: Install the dependencies
         run: |
           pip install ".[dev,web]"
-          pip install -U "google-genai>=2.13.0,<2.14.0"
           pip uninstall -y coscribe
           pip install mutmut==3.8.0
 

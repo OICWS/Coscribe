@@ -51,7 +51,6 @@ jobs:
       - name: Install coscribe
         run: |
           pip install -e ".[dev,web]"
-          pip install -U "google-genai>=2.13.0,<2.14.0"
 
       # The text widths the deck engine sizes boxes with, measured on this machine's fonts.
       # The table is committed; the test below keeps it equal to the fonts.

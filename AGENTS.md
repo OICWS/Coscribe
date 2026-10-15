@@ -53,7 +53,7 @@ cloud sessions run; macOS is not developed, so don't build for it or list it as 
   ship a shared client secret.
 - **Package dependencies are checked** by `lint-imports` (part of `check.sh`).
   Layers, top to bottom: `cli`, `web`, `conversation`, `coordinator | runtime_lg`,
-  `workflows | code_runtime`, `tools`, `runtime | config`, `providers`; a
+  `workflows | code_runtime`, `tools`, `runtime | config`; a
   package imports only from below. Only `web` imports FastAPI, only
   `runtime.secrets` imports the keychain, `tools` and `runtime` never import
   LangChain. Two known upward imports are listed in `pyproject.toml`

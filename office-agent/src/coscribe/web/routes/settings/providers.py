@@ -103,13 +103,8 @@ def router(state: AppState) -> APIRouter:
             os.environ[builtin["api_key_env"]] = payload.api_key
             if payload.default_model:
                 set_key(".env", builtin["default_model_env"], payload.default_model)
-            # No context_window_client.invalidate_provider(...) equivalent
-            # needed for the *chat* model -- resolve_chat_model builds fresh
-            # every call (see update_config in config.py, same reasoning).
-            # context_window_client itself is the old-runtime LLMClient
-            # class, though, so it keeps that class's real caching behavior
-            # and does need this.
-            context_window_client.invalidate_provider(builtin["key"])
+            # Nothing caches the key: resolve_chat_model and the context-window lookup
+            # both build their client fresh on every call.
             return {"restart_required": False, "rejected": {}}
 
         if not payload.base_url.strip():
@@ -160,7 +155,6 @@ def router(state: AppState) -> APIRouter:
             env_delete_secret_if_ref(dotenv_values(".env").get(builtin["api_key_env"]))
             set_key(".env", builtin["api_key_env"], "")
             os.environ.pop(builtin["api_key_env"], None)
-            context_window_client.invalidate_provider(builtin["key"])
             return {"restart_required": False}
         if settings.providers_config_path is None or not settings.providers_config_path.is_file():
             return {"restart_required": False}
