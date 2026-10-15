@@ -54,8 +54,8 @@ _BUILTIN_TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "builtin_templ
 _REQUIRED_MANIFEST_FIELDS = ("id", "name", "description", "accent", "slide_count", "slide_roles")
 
 # The only three slide roles fill_pptx_template understands. "content" is
-# the sole repeatable one -- _adjust_template_content_slides (in
-# presentations.py) duplicates/deletes only "content"-role slides to
+# the sole repeatable one -- adjust_template_content_slides (in
+# office/pptx/template_slides.py) duplicates/deletes only "content"-role slides to
 # match a caller's actual chunk count, never "title"/"closing".
 _VALID_SLIDE_ROLES = frozenset({"title", "content", "closing"})
 

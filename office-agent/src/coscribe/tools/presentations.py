@@ -114,6 +114,7 @@ from .office.pptx.animation import (
     timing_root_child_list,
     verify_animation_readback,
 )
+from .office.pptx.effects import SHAPE_EFFECT_TYPES, apply_shape_effect
 from .office.pptx.qa import (
     check_low_contrast,
     check_missing_visual_elements,
@@ -123,6 +124,10 @@ from .office.pptx.qa import (
     leftover_placeholder_warnings,
     shape_bbox,
 )
+from .office.pptx.shape_description import describe_shape as _describe_shape
+from .office.pptx.shape_description import emu_to_inches
+from .office.pptx.smartart import SMARTART_NS, is_smartart, smartart_data_part
+from .office.pptx.template_slides import adjust_template_content_slides, duplicate_slide_part
 from .office.pptx.theme import (
     THEME_HEX_RE,
     THEME_SCHEME_SLOTS,
@@ -1125,92 +1130,6 @@ def _add_two_column_slide(
     _fill_content_placeholder(slide.placeholders[2], right_blocks)
 
 
-def _emu_to_inches(value: int | None) -> float | None:
-    return round(value / 914400, 2) if value is not None else None
-
-
-# SmartArt: python-pptx has no first-class detection or reading for it at
-# all -- `GraphicFrame.shape_type` simply returns None for this case (its
-# own docstring says so explicitly: "This value is None when none of
-# these four types apply, for example when the shape contains
-# SmartArt"). There's also no way to *generate* real SmartArt from
-# outside PowerPoint -- the layout algorithm lives in the client itself,
-# not the file format (confirmed: Apache POI, a mature OOXML library,
-# only ever *reads* SmartArt via a `@Beta`-flagged best-effort class,
-# never writes it). What's buildable and genuinely useful instead:
-# detecting that an *uploaded* file's shape is SmartArt and extracting
-# its nodes' own text, so the model can see what a diagram actually said
-# before deciding how to rebuild the slide with this file's other tools.
-#
-# The graphicData uri and <dgm:relIds>'s `dm` relationship-id below are
-# cross-checked against Apache POI's real, working
-# `XSLFDiagram.DRAWINGML_DIAGRAM_URI` constant and its
-# `relIds.getDm()`-based data-model-part resolution -- not guessed. The
-# <dgm:pt>/<dgm:t> text-body structure is cross-checked against
-# LibreOffice's real oox filter source (`PtContext::onCreateContext`
-# routes `DGM_TOKEN(t)` to the exact same `TextBodyContext` class used
-# for every other DrawingML text body, and doesn't filter by a point's
-# own `type` attribute when deciding whether to parse its text) -- both
-# real, independent, working OOXML-consuming implementations, not just
-# the written spec.
-_SMARTART_NS = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
-
-
-def _is_smartart(shape: Any) -> bool:
-    """True if `shape` is a <p:graphicFrame> containing real SmartArt."""
-    from pptx.shapes.graphfrm import GraphicFrame
-
-    if not isinstance(shape, GraphicFrame):
-        return False
-    graphic_data_uri: str | None = shape._graphicFrame.graphicData_uri  # noqa: SLF001
-    return graphic_data_uri == _SMARTART_NS
-
-
-def _smartart_text(shape: Any) -> list[str]:
-    """Every SmartArt node's own text, one entry per <dgm:pt> that has
-    non-empty text (skipping structural/transition points, which in
-    practice never carry a <dgm:t> child at all -- see this section's
-    own comment on LibreOffice's real parser). Returns [] if `shape`
-    isn't SmartArt or its data-model part can't be resolved (should not
-    happen for a real, schema-valid file, but this is a best-effort
-    read, not a requirement)."""
-    from pptx.oxml.ns import qn
-
-    if not _is_smartart(shape):
-        return []
-    graphic_data = shape._graphicFrame.graphic.graphicData  # noqa: SLF001
-    rel_ids = graphic_data.find(f"{{{_SMARTART_NS}}}relIds")
-    if rel_ids is None:
-        return []
-    dm_rId = rel_ids.get(qn("r:dm"))
-    if dm_rId is None:
-        return []
-    try:
-        data_part = shape.part.related_part(dm_rId)
-    except KeyError:
-        return []
-
-    from lxml import etree
-
-    root = etree.fromstring(data_part.blob)
-    texts: list[str] = []
-    for pt in root.iter(f"{{{_SMARTART_NS}}}pt"):
-        t_element = pt.find(f"{{{_SMARTART_NS}}}t")
-        if t_element is None:
-            continue
-        # Runs within one paragraph concatenate directly (no separator,
-        # same as python-pptx's own text_frame.text within a paragraph);
-        # separate paragraphs within one point get a space between them.
-        paragraphs = [
-            "".join(run.text or "" for run in paragraph.iter(qn("a:t")))
-            for paragraph in t_element.iter(qn("a:p"))
-        ]
-        joined = " ".join(p for p in paragraphs if p).strip()
-        if joined:
-            texts.append(joined)
-    return texts
-
-
 def _resolve_xml_qname(name: str) -> str:
     """Resolve an attribute/tag name for edit_pptx_xml's `set_attributes` --
     "prefix:local" using a prefix from `_GENERIC_XML_NSMAP` becomes real
@@ -1257,174 +1176,9 @@ def _parse_set_attributes(raw: str | None) -> dict[str, str]:
     return attributes
 
 
-def _smartart_data_part(shape: Any) -> Any:
-    """The related package part holding a SmartArt shape's real, editable
-    text/structure (`ppt/diagrams/dataN.xml`) -- a SmartArt shape's own
-    inline `<p:graphicFrame>` XML in the slide is just relationship
-    pointers to this and three sibling parts (layout/quickStyle/colors),
-    see `_smartart_text`'s own identical lookup above. Raises rather than
-    returning `None` -- every call site here is already inside a
-    `part in ("auto", "smartart_data")` branch that only runs for a shape
-    `_is_smartart` already confirmed, so a lookup failure past that point
-    means a malformed file, a real error worth surfacing, not a routine
-    "not SmartArt" case (`_smartart_text`'s own `[]`-on-failure is a
-    best-effort *read*; this backs a tool call that should say clearly
-    why it can't proceed)."""
-    from pptx.oxml.ns import qn
-
-    if not _is_smartart(shape):
-        raise ValueError("This shape isn't SmartArt -- it has no separate data part to target.")
-    graphic_data = shape._graphicFrame.graphic.graphicData  # noqa: SLF001
-    rel_ids = graphic_data.find(f"{{{_SMARTART_NS}}}relIds")
-    if rel_ids is None:
-        raise ValueError("This SmartArt shape has no relIds -- its data part can't be resolved.")
-    dm_rId = rel_ids.get(qn("r:dm"))
-    if dm_rId is None:
-        raise ValueError(
-            "This SmartArt shape has no r:dm relationship -- its data part can't be resolved."
-        )
-    try:
-        return shape.part.related_part(dm_rId)
-    except KeyError as exc:
-        raise ValueError(
-            f"This SmartArt shape's data part ({dm_rId}) is missing from the file."
-        ) from exc
-
-
 def _validate_xml_part_arg(part: str) -> None:
     if part not in ("auto", "shape", "smartart_data"):
         raise ValueError(f'part must be "auto", "shape", or "smartart_data", got {part!r}.')
-
-
-def _describe_fill_color(color: Any) -> str | None:
-    """One `ColorFormat`'s own value as `"#RRGGBB"`/`"theme:ACCENT_1"` --
-    the shared per-color logic `_describe_shape_fill` uses for both a
-    solid fill's single color and a gradient fill's two-or-more stops."""
-    from pptx.enum.dml import MSO_COLOR_TYPE
-
-    if color.type == MSO_COLOR_TYPE.SCHEME:
-        return f"theme:{color.theme_color.name}"
-    if color.type == MSO_COLOR_TYPE.RGB:
-        return f"#{color.rgb}"
-    return None
-
-
-def _describe_shape_fill(shape: Any) -> str | dict[str, object] | None:
-    """A shape's fill: a solid fill's color as `"#RRGGBB"` (literal) or
-    `"theme:ACCENT_1"` (a `theme_color` reference); a gradient fill (see
-    `edit_pptx_shape`'s `fill_color_2`) as `{"type": "gradient", "colors":
-    [...], "angle": <degrees or None>}`, one entry in `colors` per stop,
-    in gradient order -- lets a model confirm what it just set via
-    `list_pptx_shapes` the same way it can for a solid color. `None` when
-    the shape has no fill concept at all (a table/chart `GraphicFrame`,
-    which has no `.fill` attribute), no fill set, or a picture/pattern
-    fill (out of scope -- `list_pptx_shapes` only needs enough to target
-    or verify a plain accent-colored/gradient shape, not describe every
-    fill type OOXML supports)."""
-    from pptx.enum.dml import MSO_FILL
-
-    fill = getattr(shape, "fill", None)
-    if fill is None:
-        return None
-    try:
-        fill_type = fill.type
-    except (AttributeError, TypeError):
-        return None
-    if fill_type == MSO_FILL.GRADIENT:
-        angle: float | None
-        try:
-            angle = fill.gradient_angle
-        except ValueError:
-            angle = None  # non-linear (e.g. radial) -- angle doesn't apply
-        except TypeError:
-            # Real python-pptx bug, hit live while testing this: a fresh
-            # `fill.gradient()`'s <a:lin> element has no `ang` attribute
-            # at all (angle "inherited"), and gradient_angle's own getter
-            # does `360.0 - None` in that case instead of treating it the
-            # same as no <a:lin> at all. edit_pptx_shape works around this
-            # by always setting an explicit angle after calling
-            # `.gradient()` (see below), but a gradient from an externally
-            # -authored file could still hit this, so this is defensive
-            # here too, not just relying on that workaround.
-            angle = None
-        return {
-            "type": "gradient",
-            "colors": [_describe_fill_color(stop.color) for stop in fill.gradient_stops],
-            "angle": angle,
-        }
-    if fill_type != MSO_FILL.SOLID:
-        return None
-    return _describe_fill_color(fill.fore_color)
-
-
-def _describe_shape(index: int | str, shape: Any) -> dict[str, object]:
-    """One `list_pptx_shapes` entry -- enough for a text-only model to
-    pick a target (`shape_index`) for `edit_pptx_shape`/`replace_pptx_image`/
-    the table-cell-editing tools without guessing: type, a short text
-    preview, position/size in inches (matching `edit_pptx_shape`'s own
-    `*_in` parameters), rotation, fill color if it's a plain solid fill,
-    whole-shape hyperlink address (matching `add_pptx_hyperlink`'s own
-    whole-shape mode) if one is set -- `"#slide-N"` for an internal slide
-    jump, same syntax `add_pptx_hyperlink`'s own `url` accepts, not the
-    raw internal relationship target -- and whether it's real SmartArt
-    (`is_smartart`) -- if so, `smartart_text` lists every node's own
-    text, since neither python-pptx nor this file can generate or edit
-    real SmartArt (the layout algorithm lives in PowerPoint itself, not
-    the file format); this is what lets a model see what a diagram
-    actually said before deciding how to rebuild the slide with this
-    file's other tools."""
-    from pptx.enum.shapes import MSO_SHAPE_TYPE
-
-    hyperlink: str | None
-    is_group = shape.shape_type == MSO_SHAPE_TYPE.GROUP  # click_action raises TypeError
-    try:
-        jump_target = None if is_group else shape.click_action.target_slide
-    except ValueError:
-        # A real, if unusual, PowerPoint construct this tool never
-        # writes itself but must not crash reading back: a "next
-        # slide"/"previous slide" navigation action on the last/first
-        # slide, where python-pptx's own target_slide resolution raises
-        # rather than returning None.
-        jump_target = None
-    if jump_target is not None:
-        slides = shape.part.package.presentation_part.presentation.slides
-        # The same "#slide-N" syntax add_pptx_hyperlink's own `url`
-        # accepts -- reading this field back and feeding it straight into
-        # another add_pptx_hyperlink call must round-trip, not show the
-        # raw internal relationship target (e.g. "slide2.xml", which
-        # isn't even guaranteed to match display order after slides are
-        # reordered/duplicated).
-        hyperlink = f"#slide-{slides.index(jump_target) + 1}"
-    else:
-        hyperlink = None if is_group else shape.click_action.hyperlink.address
-    text_preview: str | None = None
-    if shape.has_text_frame:
-        text = shape.text_frame.text.strip()
-        if text:
-            text_preview = text if len(text) <= 80 else text[:77] + "..."
-    is_smartart = _is_smartart(shape)
-    info: dict[str, object] = {
-        "index": index,
-        "name": shape.name,
-        "shape_type": str(shape.shape_type) if shape.shape_type is not None else None,
-        "left_in": _emu_to_inches(shape.left),
-        "top_in": _emu_to_inches(shape.top),
-        "width_in": _emu_to_inches(shape.width),
-        "height_in": _emu_to_inches(shape.height),
-        "rotation": shape.rotation,
-        "is_placeholder": shape.is_placeholder,
-        "is_table": shape.has_table,
-        "is_picture": shape.shape_type == MSO_SHAPE_TYPE.PICTURE,
-        "is_smartart": is_smartart,
-        "smartart_text": _smartart_text(shape) if is_smartart else None,
-        "text_preview": text_preview,
-        "fill": _describe_shape_fill(shape),
-        "hyperlink": hyperlink,
-    }
-    if shape.has_table:
-        table = shape.table
-        info["table_dimensions"] = {"rows": len(table.rows), "cols": len(table.columns)}
-    return info
 
 
 def _get_shape_at_index(target_slide: Any, slide_number: int, shape_index: int | str) -> Any:
@@ -1517,266 +1271,12 @@ _GENERIC_XML_NSMAP = {
     "p": P_NS,
     "a": A_NS,
     "r": R_NS,
-    "dgm": _SMARTART_NS,
+    "dgm": SMARTART_NS,
     "p14": P14_NS,
     "a14": A14_NS,
     "p15": P15_NS,
     "p159": P159_NS,
 }
-
-
-def _duplicate_slide_part(prs: PresentationType, source_slide: Any) -> str:
-    """Deep-copies `source_slide`'s own XML part into a new slide part in
-    the same package. Returns the new part's relationship id (from the
-    presentation part) -- not yet inserted into `<p:sldIdLst>`, the
-    caller positions it there.
-
-    Every relationship the source slide has -- its slideLayout, every
-    image/chart/hyperlink -- is re-added to the new part pointing at the
-    SAME target part, not a deep copy of the target: valid OOXML (a part
-    can be related-to by more than one other part), and safe here
-    specifically because nothing in this module ever mutates a shared
-    target part in place -- `replace_pptx_image`, the only tool that
-    changes what a blip points at, always adds a brand-new image part
-    and repoints one shape's own blip, never edits an existing image
-    part's bytes in place. Every r:id-bearing attribute in the copied
-    XML (`<a:blip r:embed>`, `<a:hlinkClick r:id>`, ...) is remapped
-    whenever the newly assigned relationship id differs from the
-    source's own -- verified live this isn't guaranteed to match (a
-    synthetic forced-offset test confirmed the remap still resolves
-    every reference correctly, not just in the common case where the
-    ids happen to line up).
-
-    Speaker notes are NOT carried over (`notesSlide` relationships are
-    skipped) -- a deliberate v1 scope cut, not an oversight: correctly
-    duplicating a notes part needs this same clone-plus-remap machinery
-    applied recursively to it, and nothing has asked for duplicated
-    notes yet. A chart on a duplicated slide will share its
-    chart-plus-embedded-workbook part with the original (charts aren't
-    deep-copied either) -- a real caveat for a future chart-data-editing
-    tool to revisit, not a concern for anything that exists today."""
-    from copy import deepcopy
-
-    from pptx.opc.constants import RELATIONSHIP_TYPE as RT
-    from pptx.parts.slide import SlidePart
-
-    presentation_part = prs.part
-    package = presentation_part.package
-    source_part = source_slide.part
-
-    partname = presentation_part._next_slide_partname  # noqa: SLF001
-    new_element = deepcopy(source_part._element)  # noqa: SLF001
-    new_part = SlidePart(partname, source_part.content_type, package, new_element)
-
-    rid_remap: dict[str, str] = {}
-    for old_rid, rel in source_part.rels.items():
-        if rel.reltype == RT.NOTES_SLIDE:
-            continue
-        if rel.is_external:
-            new_rid = new_part.relate_to(rel.target_ref, rel.reltype, is_external=True)
-        else:
-            new_rid = new_part.relate_to(rel.target_part, rel.reltype)
-        if new_rid != old_rid:
-            rid_remap[old_rid] = new_rid
-
-    if rid_remap:
-        for element in new_element.iter():
-            for attr_name, attr_value in list(element.attrib.items()):
-                if attr_name.startswith(f"{{{R_NS}}}") and attr_value in rid_remap:
-                    element.set(attr_name, rid_remap[attr_value])
-
-    return presentation_part.relate_to(new_part, RT.SLIDE)
-
-
-def _adjust_template_content_slides(
-    prs: PresentationType, slide_roles: list[str], target_count: int
-) -> list[str]:
-    """Grows or shrinks a loaded template's "content"-role slides in
-    place to reach `target_count` slides total -- duplicating or
-    deleting only "content"-role slides, never "title"/"closing" -- so
-    fill_pptx_template's slide count adapts to however many chunks the
-    caller actually gave it, instead of the previous hard requirement
-    that the chunk count exactly equal the template's fixed slide count.
-    Returns the adjusted role list (same length/order as `prs.slides`
-    after this call).
-
-    Reuses the exact same `<p:sldIdLst>`/`_duplicate_slide_part`
-    machinery `delete_pptx_slide`/`duplicate_pptx_slide` already use and
-    this session already verified live (forced-rId-offset test, etc.) --
-    this is the same operation, just applied from inside
-    fill_pptx_template instead of as a standalone tool call. Growing
-    duplicates the *last* content slide repeatedly (each duplicate is an
-    identical clone of the same design, so which specific content slide
-    is duplicated from doesn't affect the result); shrinking removes
-    trailing content slides, keeping the earlier one(s)."""
-    from pptx.oxml.ns import qn
-
-    content_positions = [i for i, role in enumerate(slide_roles) if role == "content"]
-    n_fixed = len(slide_roles) - len(content_positions)
-    n_content_needed = target_count - n_fixed
-    if n_content_needed < 0 or (n_content_needed > 0 and not content_positions):
-        if content_positions:
-            detail = f"{n_fixed} fixed slide(s) plus at least one content slide"
-            min_valid = n_fixed + 1
-        else:
-            detail = f"{n_fixed} fixed slide(s), no repeatable content slide"
-            min_valid = n_fixed
-        raise ValueError(
-            f"this template needs at least {min_valid} chunk(s) total "
-            f"({detail}) -- got {target_count}."
-        )
-    n_content_current = len(content_positions)
-    sld_id_lst = prs.slides._sldIdLst  # noqa: SLF001
-
-    if n_content_needed > n_content_current:
-        insert_at = content_positions[-1] + 1 if content_positions else 0
-        last_index = content_positions[-1] if content_positions else -1
-        for _ in range(n_content_needed - n_content_current):
-            source_slide = prs.slides[last_index]
-            new_rid = _duplicate_slide_part(prs, source_slide)
-            new_sld_id = sld_id_lst.add_sldId(new_rid)
-            sld_id_lst.remove(new_sld_id)
-            last_index += 1
-            sld_id_lst.insert(last_index, new_sld_id)
-        return (
-            slide_roles[:insert_at]
-            + ["content"] * (n_content_needed - n_content_current)
-            + slide_roles[insert_at:]
-        )
-
-    if n_content_needed < n_content_current:
-        to_remove = set(content_positions[n_content_needed:])
-        sld_id_elements = list(sld_id_lst)
-        for index in sorted(to_remove, reverse=True):
-            r_id = sld_id_elements[index].get(qn("r:id"))
-            prs.part.drop_rel(r_id)
-            sld_id_lst.remove(sld_id_elements[index])
-        return [role for i, role in enumerate(slide_roles) if i not in to_remove]
-
-    return slide_roles
-
-
-# DrawingML shape effects (drop shadow / glow / soft edge) -- CT_EffectList,
-# a <p:spPr> child shared by every shape kind (autoshape/picture/connector),
-# real schema in _ooxml_schemas/transitional/dml-main.xsd. python-pptx has
-# zero public API for this (its own ShadowFormat can only *suppress* an
-# *inherited* theme shadow -- shape.shadow.inherit = False, used by
-# add_pptx_scrim above -- never create/customize one), so every effect
-# element below is hand-built. CT_EffectList's real child order is fixed
-# (blur, fillOverlay, glow, innerShdw, outerShdw, prstShdw, reflection,
-# softEdge), each optional and maxOccurs=1 -- _apply_shape_effect below
-# always inserts a new effect at the correct position relative to whichever
-# other supported effects (if any) are already present, rather than
-# assuming effectLst is either empty or already holds only this tool's own
-# children. Verified live in a REPL: python-pptx's own oxml class for
-# <p:spPr> (pptx.oxml.shapes.shared.CT_ShapeProperties) already declares
-# effectLst = ZeroOrOne("a:effectLst", successors=...), so
-# spPr.get_or_add_effectLst() alone (no hand-XML needed) already inserts
-# <a:effectLst> at the schema-correct position within <p:spPr> -- confirmed
-# for both autoshapes and pictures.
-_EFFECT_LIST_CHILD_LOCALNAMES = (
-    "blur",
-    "fillOverlay",
-    "glow",
-    "innerShdw",
-    "outerShdw",
-    "prstShdw",
-    "reflection",
-    "softEdge",
-)
-_SHAPE_EFFECT_LOCALNAMES = {"glow": "glow", "shadow": "outerShdw", "soft_edge": "softEdge"}
-_SHAPE_EFFECT_TYPES = frozenset({"shadow", "glow", "soft_edge", "none"})
-
-
-def _shape_effect_color_element(color: str, opacity: float) -> Any:
-    """<a:srgbClr val="RRGGBB"><a:alpha val="NNNNN"/></a:srgbClr> -- the same
-    EG_ColorChoice pattern add_pptx_scrim already hand-builds for its own
-    <a:solidFill>, reused here for <a:glow>/<a:outerShdw>."""
-    from pptx.oxml.xmlchemy import OxmlElement
-
-    srgb_clr = OxmlElement("a:srgbClr")
-    srgb_clr.set("val", color)
-    alpha = OxmlElement("a:alpha")
-    alpha.set("val", str(round(opacity * 100000)))
-    srgb_clr.append(alpha)
-    return srgb_clr
-
-
-def _build_shape_effect_element(
-    effect: str, color: str, opacity: float, size_pt: float, distance_pt: float, direction: float
-) -> Any:
-    from pptx.oxml.xmlchemy import OxmlElement
-    from pptx.util import Pt
-
-    if effect == "glow":
-        glow = OxmlElement("a:glow")
-        glow.set("rad", str(Pt(size_pt)))
-        glow.append(_shape_effect_color_element(color, opacity))
-        return glow
-    if effect == "soft_edge":
-        soft_edge = OxmlElement("a:softEdge")
-        soft_edge.set("rad", str(Pt(size_pt)))
-        return soft_edge
-    # "shadow" -- CT_OuterShadowEffect. dir is in 60,000ths of a degree,
-    # clockwise from 3 o'clock -- the same OOXML angle convention shape
-    # rotation (xfrm@rot) and every other DrawingML angle attribute use.
-    outer_shdw = OxmlElement("a:outerShdw")
-    outer_shdw.set("blurRad", str(Pt(size_pt)))
-    outer_shdw.set("dist", str(Pt(distance_pt)))
-    outer_shdw.set("dir", str(round(direction * 60000) % 21600000))
-    outer_shdw.set("rotWithShape", "0")
-    outer_shdw.append(_shape_effect_color_element(color, opacity))
-    return outer_shdw
-
-
-def _apply_shape_effect(
-    shape: Any,
-    effect: str,
-    color: str,
-    opacity: float,
-    size_pt: float,
-    distance_pt: float,
-    direction: float,
-) -> None:
-    """Inserts (or, for effect="none", removes) one effect element inside
-    this shape's <a:effectLst>, at the position CT_EffectList's own fixed
-    child order requires relative to whichever other supported effect
-    type(s) (if any) are already present. Re-applying the same `effect`
-    replaces its own existing element in place (find-and-remove first --
-    the schema caps each child tag at one), rather than raising or
-    stacking an invalid duplicate; applying a *different* `effect` leaves
-    any other effect type already on this shape untouched, so effects
-    compose across separate calls (e.g. shadow, then soft_edge, leaves
-    both)."""
-    from pptx.oxml.ns import qn
-
-    effect_lst = shape._element.spPr.get_or_add_effectLst()  # noqa: SLF001
-
-    if effect == "none":
-        for local_name in _SHAPE_EFFECT_LOCALNAMES.values():
-            existing = effect_lst.find(qn(f"a:{local_name}"))
-            if existing is not None:
-                effect_lst.remove(existing)
-        return
-
-    target_local = _SHAPE_EFFECT_LOCALNAMES[effect]
-    target_rank = _EFFECT_LIST_CHILD_LOCALNAMES.index(target_local)
-    existing = effect_lst.find(qn(f"a:{target_local}"))
-    if existing is not None:
-        effect_lst.remove(existing)
-
-    local_by_tag = {qn(f"a:{name}"): name for name in _EFFECT_LIST_CHILD_LOCALNAMES}
-    insert_at = 0
-    for child in effect_lst:
-        child_local = local_by_tag.get(child.tag)
-        if child_local is None or _EFFECT_LIST_CHILD_LOCALNAMES.index(child_local) >= target_rank:
-            break
-        insert_at += 1
-
-    new_element = _build_shape_effect_element(
-        effect, color, opacity, size_pt, distance_pt, direction
-    )
-    effect_lst.insert(insert_at, new_element)
 
 
 class PresentationToolkit:
@@ -1995,7 +1495,7 @@ class PresentationToolkit:
         # does. See `theme.py`'s _CJK_FALLBACK_TYPEFACE.
         apply_cjk_font_fix(prs)
         chunks = _slide_chunks(content)
-        _adjust_template_content_slides(prs, template.slide_roles, len(chunks))
+        adjust_template_content_slides(prs, template.slide_roles, len(chunks))
         slides = list(prs.slides)
         for index, (slide, chunk) in enumerate(zip(slides, chunks, strict=True), start=1):
             layout_id, _accent, remaining = _parse_layout_directive(chunk)
@@ -2299,8 +1799,8 @@ class PresentationToolkit:
             "slide": slide,
             "shape_count": len(shapes),
             "shapes": shapes,
-            "slide_width_in": _emu_to_inches(prs.slide_width),
-            "slide_height_in": _emu_to_inches(prs.slide_height),
+            "slide_width_in": emu_to_inches(prs.slide_width),
+            "slide_height_in": emu_to_inches(prs.slide_height),
         }
 
     @locked_by_path
@@ -2944,7 +2444,7 @@ class PresentationToolkit:
         """Duplicate one slide in an existing .pptx, in place -- every
         shape, its exact position/size/formatting, and every image the
         source slide has are copied. Speaker notes are not (see
-        `_duplicate_slide_part`'s docstring). Defaults to inserting the
+        `duplicate_slide_part`'s docstring). Defaults to inserting the
         copy immediately after the source; pass `insert_at` (1-based) to
         place it elsewhere instead."""
         prs, file_path, source_slide = self._open_slide(path, slide)
@@ -2955,7 +2455,7 @@ class PresentationToolkit:
                 f"insert_at {target_position} out of range: deck has {slide_count} "
                 f"slide(s), valid positions are 1 to {slide_count + 1}."
             )
-        new_rid = _duplicate_slide_part(prs, source_slide)
+        new_rid = duplicate_slide_part(prs, source_slide)
         sld_id_lst = prs.slides._sldIdLst  # noqa: SLF001
         new_sld_id = sld_id_lst.add_sldId(new_rid)
         sld_id_lst.remove(new_sld_id)
@@ -3335,8 +2835,8 @@ class PresentationToolkit:
         for (shadow, glow) and one color-free effect (soft_edge) are
         supported; blur/fillOverlay/innerShdw/prstShdw/reflection are
         not."""
-        if effect not in _SHAPE_EFFECT_TYPES:
-            raise ValueError(f"effect {effect!r} must be one of {sorted(_SHAPE_EFFECT_TYPES)}.")
+        if effect not in SHAPE_EFFECT_TYPES:
+            raise ValueError(f"effect {effect!r} must be one of {sorted(SHAPE_EFFECT_TYPES)}.")
         if effect != "none":
             if not THEME_HEX_RE.match(color):
                 raise ValueError(f"color {color!r} must be a 6-hex-digit color (no '#').")
@@ -3349,7 +2849,7 @@ class PresentationToolkit:
 
         prs, file_path, target_slide = self._open_slide(path, slide)
         shape = _get_shape_at_index(target_slide, slide, shape_index)
-        _apply_shape_effect(shape, effect, color.upper(), opacity, size_pt, distance_pt, direction)
+        apply_shape_effect(shape, effect, color.upper(), opacity, size_pt, distance_pt, direction)
         assert_ooxml_valid(target_slide.element, "add_pptx_shape_effect")
         prs.save(str(file_path))
 
@@ -3381,9 +2881,9 @@ class PresentationToolkit:
         _validate_xml_part_arg(part)
         _prs, _file_path, target_slide = self._open_slide(path, slide)
         shape = _get_shape_at_index(target_slide, slide, shape_index)
-        use_smartart_data = part == "smartart_data" or (part == "auto" and _is_smartart(shape))
+        use_smartart_data = part == "smartart_data" or (part == "auto" and is_smartart(shape))
         if use_smartart_data:
-            root = etree.fromstring(_smartart_data_part(shape).blob)
+            root = etree.fromstring(smartart_data_part(shape).blob)
             source = "smartart_data"
         else:
             root = shape._element  # noqa: SLF001
@@ -3423,7 +2923,7 @@ class PresentationToolkit:
 
         prs, file_path, target_slide = self._open_slide(path, slide)
         shape = _get_shape_at_index(target_slide, slide, shape_index)
-        use_smartart_data = part == "smartart_data" or (part == "auto" and _is_smartart(shape))
+        use_smartart_data = part == "smartart_data" or (part == "auto" and is_smartart(shape))
 
         # Real gotcha, verified empirically (not assumed): `//foo` in
         # XPath means "search the whole document this node belongs to",
@@ -3442,7 +2942,7 @@ class PresentationToolkit:
         data_part = None
         original_shape_element = None
         if use_smartart_data:
-            data_part = _smartart_data_part(shape)
+            data_part = smartart_data_part(shape)
             root = etree.fromstring(data_part.blob)
             source = "smartart_data"
         else:

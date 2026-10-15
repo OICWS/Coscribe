@@ -42,7 +42,7 @@ A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 
 # The relationships namespace every r:id/r:embed/r:link attribute lives
 # in, regardless of which element or local attribute name carries it --
-# used by _duplicate_slide_part to blanket-remap every such attribute in
+# used by duplicate_slide_part to blanket-remap every such attribute in
 # one pass rather than enumerating every possible tag (a:blip r:embed,
 # a:hlinkClick r:id, c:chart r:id, a:videoFile r:link, ...).
 R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
