@@ -265,6 +265,20 @@ These are for a checker, as on PowerPoint:
    - pivot tables;
    - dynamic-array functions.
 
+The engine underneath, decided with the maintainer on 2026-10-15, comes in stages behind one
+tool interface:
+
+1. **openpyxl and LibreOffice**: works with no Excel installed, which is the baseline every
+   user gets.
+2. **Real Excel through COM** on Windows when it is installed: Excel recalculates and saves,
+   so charts, pivot tables and slicers survive as they do in Claude for Excel. It falls back
+   to stage 1 when Excel is missing.
+3. **An Excel add-in (Office.js)**: a task-pane page that is coscribe's hands inside Excel,
+   working on the open workbook. The local server stays the brain: model, tools, approvals.
+
+Stages 2 and 3 are chosen from real use after stage 1 ships. The block interface is what
+carries over to all three.
+
 Size: the tool and its checks are about 500–700 lines with tests, in `tools/office/xlsx/`, and
 the installer does not grow. It lands as two PRs:
 - part 1: the tool, not yet offered to the model;
