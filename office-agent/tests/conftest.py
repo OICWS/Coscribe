@@ -5,6 +5,15 @@ import pytest
 from coscribe.tools import presentations
 from coscribe.tools.office.xlsx import helpers as spreadsheets
 
+# The flaky-test policy (tests/flaky_policy.py): the hooks and the quarantine fixture
+# register by being names in this module.
+from .flaky_policy import (  # noqa: F401
+    _quarantine,
+    pytest_collection_modifyitems,
+    pytest_runtest_logreport,
+    pytest_terminal_summary,
+)
+
 
 @pytest.fixture(autouse=True)
 def _fast_libreoffice_by_default(

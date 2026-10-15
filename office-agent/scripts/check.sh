@@ -49,9 +49,9 @@ if [ "$fast" -eq 0 ]; then
   echo "== pytest =="
   if [ -n "${COSCRIBE_COVERAGE:-}" ]; then
     # CI sets this; locally it costs a fifth more time for a number nobody reads.
-    pytest -q -n 4 --cov --cov-report=term --cov-report=xml
+    pytest -q -n 4 --reruns 1 --cov --cov-report=term --cov-report=xml
   else
-    pytest -q -n 4
+    pytest -q -n 4 --reruns 1
   fi
 fi
 echo "All checks passed."

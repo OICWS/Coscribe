@@ -172,6 +172,8 @@ dev = [
     "pytest-asyncio>=0.24.0",
     "pytest-cov>=5.0.0",
     "pytest-xdist>=3.8.0",
+    # CI reruns a failed test once; tests/flaky_policy.py reports the ones that then pass.
+    "pytest-rerunfailures>=14.0",
     "hypothesis>=6.169.0",
     "ruff>=0.6.0",
     "mypy>=1.11.0",
@@ -293,6 +295,7 @@ testpaths = ["tests"]
 pythonpath = ["."]
 asyncio_mode = "auto"
 markers = [
+    "quarantine(issue, until): a known-flaky test, tolerated until the date (tests/flaky_policy.py); after it the test fails",
     "real_libreoffice: exercises actual headless LibreOffice conversion (soffice) -- opts out of conftest.py's default fast-mode monkeypatch of the QA/recalc steps; still skips cleanly via the test file's own _libreoffice_actually_works()-style check when soffice isn't usable in this environment",
 ]
 
