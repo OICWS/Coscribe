@@ -423,7 +423,7 @@ async def execute_run(
     updated = store.finish_run(trigger_id, run_id, status, error)
     if status == "needs_approval" and trigger.workflow is None:
         # Only after finish_run: resolving the approval re-records the run
-        # (see ChatSessionLG._record_resumed_run_status).
+        # (see ApprovalResumer._record_resumed_run_status).
         session.offer_pending_approval_to_live_tab()
     return updated.find_run(run_id) if updated is not None else None
 

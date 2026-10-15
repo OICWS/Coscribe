@@ -310,11 +310,11 @@
   "coscribe.workflows.testing -> coscribe.tools.browser": 1
  },
  "fan_out": {
-  "coscribe.conversation.session": 39,
+  "coscribe.conversation.session": 40,
   "coscribe.web.app": 27
  },
  "file_lines": {
-  "src/coscribe/conversation/session.py": 1616,
+  "src/coscribe/conversation/session.py": 1472,
   "src/coscribe/coordinator.py": 855,
   "src/coscribe/runtime_lg/subagents.py": 837,
   "src/coscribe/tools/presentations.py": 4979,

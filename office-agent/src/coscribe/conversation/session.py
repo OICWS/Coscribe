@@ -51,7 +51,6 @@ from langchain_core.messages import (
 from langchain_core.messages.ai import UsageMetadata
 from langchain_core.tools import BaseTool
 from langgraph.constants import TAG_NOSTREAM
-from langgraph.types import Command
 
 from ..code_runtime import code_service
 from ..config import Settings
@@ -85,7 +84,7 @@ from ..runtime_lg.code_agent import (
     CodeTaskContext,
     build_code_task_tool,
 )
-from ..runtime_lg.exec_policy import EXEC_POLICY_TOOL_NAMES, ExecPolicy, load_exec_policy
+from ..runtime_lg.exec_policy import ExecPolicy, load_exec_policy
 from ..runtime_lg.messages import (
     ACCEPT_EDITS_MODE_NOTE,
     AUTO_MODE_NOTE,
@@ -123,12 +122,12 @@ from ..tools.subagent_tasks import SubAgentTask
 from ..workflows import StepContext, WorkflowDraft
 from . import tool_hooks
 from .activity import summarize_activity, summarize_workflow_run
+from .approval_resume import ApprovalResumer
 from .approvals import ApprovalDecider, can_resolve_approvals
 from .context_usage import build_context_breakdown
 from .edit_preview import build_document_edit_preview
 from .events import EventSink
 from .history import ConversationHistory
-from .history import close_orphaned_tool_calls as _close_orphaned_tool_calls
 from .prompts import INIT_PROMPT
 from .reconfigure import SessionReconfigurer
 from .skill_save import SkillSave
@@ -1160,25 +1159,6 @@ class ChatSessionLG:
     def _load_exec_policy(self) -> ExecPolicy:
         return load_exec_policy(self.settings.exec_policy_path)
 
-    def _decidable_unattended(self, request: dict[str, Any]) -> bool:
-        """Whether _decide_action_request can settle this request with
-        nobody present other than by refusing for lack of a person. A gated
-        call that can't must stay parked for someone to approve later,
-        rather than be rejected and let the run carry on without it."""
-        name = request["name"]
-        if name in QUESTION_TOOL_NAMES or name in TASK_DRAFT_TOOL_NAMES:
-            return True
-        if name not in self._gated_tool_risks or self.plan_mode:
-            return True
-        if self._auto_approves(name) is not None:
-            return True
-        if self._auto_review_active():
-            return True
-        if name in EXEC_POLICY_TOOL_NAMES:
-            decision, _ = self._load_exec_policy().decide(request["args"].get("script", ""))
-            return decision != "prompt"
-        return False
-
     async def _decide_question_request(
         self, args: dict[str, Any], websocket: EventSink
     ) -> dict[str, Any]:
@@ -1194,121 +1174,15 @@ class ChatSessionLG:
     ) -> dict[str, Any]:
         return await self._approvals._decide_task_draft_request(name, args, websocket)
 
+    @cached_property
+    def _approval_resumer(self) -> ApprovalResumer:
+        return ApprovalResumer(self)
+
     async def _resolve_pending_approvals(self, websocket: EventSink) -> str | None:
-        """While the graph is paused, decide every pending action request
-        and resume -- looping in case a resumed turn immediately hits
-        another approval-gated call.
-
-        Returns the *last* resumed `_stream_turn` call's own text, not a
-        concatenation of every round -- each round already streamed its own
-        narration live as its own "agent_delta" bubble (see reducer.ts's
-        agent_delta/agent_message cases), so re-joining them here would
-        duplicate that text in the final "agent_message" a caller sends
-        with this return value: a real bug found live (DeepSeek/GLM, both
-        of which narrate before a gated tool call, unlike this app's usual
-        Gemini/Anthropic testing) -- "I'll create notes.txt...Done! I
-        created **notes.txt**..." glued with no separator, because the
-        pre-tool narration and the post-tool narration were joined as if
-        they were one continuous reply. Returns None specifically (not
-        "") when the loop never runs at all (nothing was pending) -- a
-        caller needs to tell "nothing to resolve, keep whatever text you
-        already had" apart from "resolved, and the model said nothing
-        further," which an empty string can't distinguish on its own.
-
-        More than one *task* can be pending at once -- concretely, two
-        concurrent spawn_agent calls proposed in the same AIMessage, each
-        independently bridging its own child's approval via interrupt()
-        (see runtime_lg/subagents.py). LangGraph gives each task's
-        interrupt its own id and, once more than one is pending
-        simultaneously, *requires* resuming each individually via
-        `Command(resume={interrupt_id: value, ...})` -- a single shared
-        resume value (this method's own approach before this was found and
-        fixed) raises `RuntimeError: When there are multiple pending
-        interrupts, you must specify the interrupt id when resuming` the
-        moment a second task is pending at the same time as the first.
-        Live-verified against real Gemini: two concurrent spawn_agent
-        calls, one approved and one rejected, resolved correctly and
-        independently, with no cross-contamination between them -- see
-        runtime_lg/README.md.
-
-        Multiple pending tasks are decided *sequentially* here (one
-        `_decide_action_request` await fully completes before the next
-        task's own interrupt is even inspected) -- so a caller/client must
-        answer the first approval_required before the second one is sent,
-        not expect both up front. A test (or a future UI) that tries to
-        `receive` two approval_required messages back-to-back before
-        answering either one will deadlock against this method, not
-        against LangGraph -- see test_concurrent_spawn_agent_approvals_
-        resolve_independently's request/respond/request/respond shape."""
-        agent = self.lg_agent
-        config = self.config
-        latest_text: str | None = None
-        state = await agent.aget_state(config)
-        while state.next:
-            if not can_resolve_approvals(websocket) and not all(
-                self._decidable_unattended(request)
-                for task in state.tasks
-                for interrupt in task.interrupts
-                for request in interrupt.value.get("action_requests", [])
-            ):
-                break
-            resume_map: dict[str, Any] = {}
-            for task in state.tasks:
-                for interrupt in task.interrupts:
-                    action_requests = interrupt.value.get("action_requests", [])
-                    decisions = [
-                        await self._decide_action_request(request, websocket)
-                        for request in action_requests
-                    ]
-                    resume_map[interrupt.id] = {"decisions": decisions}
-
-            latest_text = await self._stream_turn(Command(resume=resume_map), websocket)
-            state = await agent.aget_state(config)
-        return latest_text
+        return await self._approval_resumer.resolve_pending_approvals(websocket)
 
     async def resume_after_reconnect(self, websocket: EventSink) -> None:
-        """If this session's graph is still paused on an approval from
-        before a dropped connection or a process restart, redeliver it now
-        instead of leaving the browser with nothing to resolve -- the
-        checkpointer already durably persisted the pending state (that's
-        the whole point of a persistent checkpointer over InMemorySaver, see
-        runtime_lg/README.md's reconnect/restart verdict); this just
-        re-runs the same delivery path a fresh turn's approval already
-        uses. A no-op when nothing is pending.
-
-        Guarded by _turn_lock, same reasoning as handle_user_message -- this
-        runs as a backgrounded task right after connect (see ws_endpoint),
-        so without the lock it could run fully concurrently with a
-        user_message the client sends immediately after connecting, racing
-        on the same self.lg_agent/self.config the way two concurrent
-        handle_user_message calls would."""
-        if self.is_workflow_run():
-            return
-        async with self._turn_lock:
-            self._current_turn_task = asyncio.current_task()
-            # So that this connection closing releases the lock too:
-            # abandon_orphaned_turn only cancels a turn driven by the socket
-            # that went away, and a question redelivered here waits on it.
-            self._turn_websocket = websocket
-            # A turn hard-cancelled mid-tool also leaves state.next set, but
-            # with no interrupt to redeliver -- resuming it would silently
-            # re-run that tool (possibly minutes of work the user just
-            # stopped), so close it off instead.
-            await _close_orphaned_tool_calls(self.lg_agent, self.config)
-            state = await self.lg_agent.aget_state(self.config)
-            if not state.next:
-                return
-            # state.next already confirmed truthy above, so
-            # _resolve_pending_approvals's own while loop is guaranteed to
-            # run at least once -- its None return (nothing was pending)
-            # can't actually happen here; `or ""` only satisfies the type
-            # checker, not a real runtime fallback.
-            text = await self._resolve_pending_approvals(websocket) or ""
-            await self._record_resumed_run_status()
-            await websocket.send_json({"type": "agent_message", "text": format_reply(text)})
-            if self._last_usage_metadata is not None:
-                await websocket.send_json(usage_event(self._last_usage_metadata))
-            await websocket.send_json({"type": "tasks_changed"})
+        await self._approval_resumer.resume_after_reconnect(websocket)
 
     def offer_pending_approval_to_live_tab(self) -> None:
         """A background run that parked on an approval while someone was
@@ -1318,24 +1192,6 @@ class ChatSessionLG:
         if websocket is None:
             return
         self._offer_task = asyncio.create_task(self.resume_after_reconnect(websocket))
-
-    async def _record_resumed_run_status(self) -> None:
-        """A scheduled run that parked on an approval ended as
-        "needs_approval"; once someone resolves it here and the turn
-        finishes, the run record should say how it actually ended."""
-        parsed = parse_run_thread_id(self.thread_id)
-        if parsed is None:
-            return
-        trigger_id, run_id = parsed
-        store = ScheduledTriggerStore(self.settings.state_dir)
-        trigger = store.load(trigger_id)
-        run = trigger.find_run(run_id) if trigger is not None else None
-        if run is None or run.status != "needs_approval":
-            return
-        state = await self.lg_agent.aget_state(self.config)
-        if any(task.interrupts for task in state.tasks):
-            return
-        store.finish_run(trigger_id, run_id, "stopped" if self._stop_requested else "completed")
 
     async def _handle_compact(self, websocket: EventSink) -> None:
         await self._history._handle_compact(websocket)
