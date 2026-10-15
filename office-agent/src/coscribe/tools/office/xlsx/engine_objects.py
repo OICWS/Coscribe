@@ -11,6 +11,9 @@ if TYPE_CHECKING:
     from openpyxl.worksheet.worksheet import Worksheet
 
 
+_PALETTE = ["1F4E79", "ED7D31", "70AD47", "FFC000", "5B9BD5", "A5A5A5", "7030A0", "C00000"]
+
+
 def _sheet(workbook: Workbook, name: str) -> Worksheet:
     if name not in workbook.sheetnames:
         raise ValueError(f"No sheet {name!r}; the workbook has {workbook.sheetnames}")
@@ -135,9 +138,13 @@ def _chart(workbook: Workbook, op: dict[str, Any]) -> None:
         chart.x_axis.title = op.get("x_title") or None
         chart.y_axis.title = op.get("y_title") or None
         chart.x_axis.delete = chart.y_axis.delete = False
-    for series, color in zip(chart.series, op.get("colors", []), strict=False):
-        series.graphicalProperties.solidFill = color
-        series.graphicalProperties.line.solidFill = color
+    # A series left to the theme's colour is drawn invisibly once LibreOffice has resaved the
+    # workbook (a line chart rendered with no line), so every series gets a colour.
+    if op["kind"] != "pie":
+        colors = [*op.get("colors", []), *_PALETTE]
+        for series, color in zip(chart.series, colors, strict=False):
+            series.graphicalProperties.solidFill = color
+            series.graphicalProperties.line.solidFill = color
     width, height = op.get("size", [16, 8])
     chart.width, chart.height = float(width), float(height)
     sheet.add_chart(chart, op["at"])

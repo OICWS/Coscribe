@@ -21,6 +21,10 @@ from .guard import copy_path, inventory, load_watching, losses
 from .helpers import _recalc_xlsx_and_evaluate_lookups
 
 _RESULTS_LISTED = 40
+_NO_CACHED_VALUES = (
+    "Saved without computed values on purpose: Excel recalculates when the file opens, and "
+    "formula_results are those values. Do not resave it with recalc_xlsx or a script."
+)
 
 
 def _open(path: Path) -> tuple[Any, list[str], Written]:
@@ -133,6 +137,7 @@ def _finish(
             "saved_as_copy": target != path,
             "lost_if_saved_over_original": lost,
             "recalc": recalc,
+            **({"note": _NO_CACHED_VALUES} if existed else {}),
             **_results(saved, values, written),
             "findings": check(saved, values, target, written),
         }

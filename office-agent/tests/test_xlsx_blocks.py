@@ -352,3 +352,41 @@ def test_the_tools_stay_inside_the_workspace(tmp_path: Path) -> None:
         tools["write_xlsx_cells"](path="../escape.xlsx", blocks=[{"sheet": "S", "rows": [[1]]}])
     with pytest.raises(Exception, match="outside|not allowed|workspace"):
         tools["write_xlsx_cells"](path="a.xlsx", blocks=[{"sheet": "S", "from_csv": "../x.csv"}])
+
+
+def test_every_series_of_a_chart_gets_a_colour_so_none_is_drawn_invisibly(tmp_path: Path) -> None:
+    path = _table(tmp_path / "t.xlsx")
+
+    modify_workbook(
+        path,
+        [{"op": "chart", "sheet": "Data", "kind": "line", "source": "A1:B4", "at": "E2"}],
+    )
+
+    with zipfile.ZipFile(path) as archive:
+        chart = archive.read("xl/charts/chart1.xml").decode()
+    assert "1F4E79" in chart
+
+
+def test_an_edit_says_why_the_file_has_no_computed_values(tmp_path: Path) -> None:
+    path = _table(tmp_path / "t.xlsx")
+
+    edited = write_cells(
+        path, [{"sheet": "Data", "at": "A5", "like_row": 4, "rows": [["Gym", 45]]}]
+    )
+    new = write_cells(tmp_path / "n.xlsx", [{"sheet": "S", "rows": [[1]]}])
+
+    assert "recalc_xlsx" in edited["note"] and "note" not in new
+
+
+def test_reading_a_workbook_shows_its_layout(tmp_path: Path) -> None:
+    from coscribe.tools.office.xlsx.toolkit import SpreadsheetToolkit
+
+    path = _table(tmp_path / "t.xlsx")
+    write_cells(path, [{"sheet": "Data", "at": "C2", "rows": [["=B2*2"]], "fill_down_to": 4}])
+    modify_workbook(path, [{"op": "freeze", "sheet": "Data", "at": "A2"}])
+
+    text = SpreadsheetToolkit(tmp_path).read_xlsx("t.xlsx")
+
+    assert "header row 1 (bold)" in text and "frozen at A2" in text
+    assert 'B2:B4 format "$"#,##0' in text
+    assert "C2:C4; 3 formulas, first C2 =B2*2" in text

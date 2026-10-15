@@ -50,12 +50,15 @@ refuses.
 - **Charts**: a chart where a trend or a comparison is the point, with a title, anchored
   beside its table (two columns right of it), never over cells that hold data.
 - **Columns** widen themselves to what they show; set a width only for a long label column.
-- **Printed or sent as PDF**: `{"op": "print", "landscape": true, "fit_width": 1}` keeps every
-  column on the page.
+- **Print setup**: a report or a sheet with a chart is printed or sent as a PDF, so give it
+  `{"op": "print", "sheet": ..., "landscape": true, "fit_width": 1}`, which keeps every column
+  and the chart on the page.
 
 ## Changing a user's workbook
 
-- **Read it first** (`read_xlsx`): know where its tables, headers and formats are.
+- **Read it first** (`read_xlsx`): its `Layout:` lines name the header's look, each
+  column's number format and formula, frozen panes, rules and charts. No script is needed to
+  inspect it.
 - **Match its look**:
   - a new column takes the look of its neighbour with `"like": "C2"`;
   - a new row takes each column's look with `"like_row": 7`.
