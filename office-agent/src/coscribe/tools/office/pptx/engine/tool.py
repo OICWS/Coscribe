@@ -55,6 +55,8 @@ def build_engine_tools(
         - A <g id="..."> per logical unit (card, chart, list item), and an id on a figure the
           user may change (<text id="price">): any id becomes the shape's name, which the edit
           tools take. A group's transform is translate(x y) only; size and rotate its elements.
+        - An icon: <use data-icon="ship" x y width height stroke="#RRGGBB"/>, names in the
+          "PPTX Pages" skill's icons.md.
         - A <rect> covering the whole canvas, drawn first, becomes the slide background.
         - What the presenter says goes in <desc id="notes">, one paragraph per line: it becomes
           the slide's speaker notes, not drawn.

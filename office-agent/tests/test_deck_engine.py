@@ -162,6 +162,32 @@ def test_a_pages_notes_become_its_speaker_notes_and_are_not_drawn(tmp_path: Path
     assert not second.has_notes_slide
 
 
+def test_an_icon_is_drawn_at_its_box_in_its_colour(tmp_path: Path) -> None:
+    icon = (
+        '<use id="export" data-icon="ship" x="100" y="200" width="72" height="72" '
+        'stroke="#0E3A66"/>'
+    )
+    page = CARDS.replace("</svg>", f"  {icon}\n</svg>")
+
+    out, report = _compile(tmp_path, [("P01", page)])
+
+    assert report.ok, report.errors()
+    shape = next(s for s in Presentation(str(out)).slides[0].shapes if s.name == "export")
+    paths = [p for g in shape.shapes for p in getattr(g, "shapes", [g])]
+    assert paths and all(str(p.line.color.rgb) == "0E3A66" for p in paths)
+    assert all(abs(p.line.width.pt - 4.5) < 0.1 for p in paths)  # 2 px on 24 px, drawn at 72 px
+    assert 100 <= shape.left / 9525 and shape.left / 9525 + shape.width / 9525 <= 172 + 2
+
+
+def test_an_unknown_icon_is_an_error_naming_the_nearest(tmp_path: Path) -> None:
+    page = CARDS.replace("</svg>", '  <use data-icon="shipp" x="0" y="0" width="24"/>\n</svg>')
+
+    _out, report = _compile(tmp_path, [("P01", page)])
+
+    (error,) = report.errors()
+    assert 'no icon named "shipp"' in error and "ship" in error.split("near:")[1]
+
+
 def test_a_compiled_deck_matches_its_golden(tmp_path: Path) -> None:
     out, report = _compile(tmp_path, [("P01", COVER), ("P02", CARDS)])
     assert report.ok, report.errors()
