@@ -39,7 +39,7 @@ from .tool_deferral import (
 
 def tool_name(tool: Callable[..., Any] | BaseTool) -> str:
     """A tool's name regardless of its underlying shape -- a plain function
-    or aisuite's MCPToolWrapper has `__name__` but no `.name`; a LangChain
+    has `__name__` but no `.name`; a LangChain
     `BaseTool` (spawn_agent/review_work, or an MCP tool converted by
     langchain-mcp-adapters) has `.name` but no `__name__`. Shared here
     rather than duplicated inline in both this module and subagents.py's

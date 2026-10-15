@@ -16,7 +16,6 @@ skills/ppt-master/
 
 # Files of libraries and of Electron, named where the code works around them
 lib/browser/
-aisuite/
 ddgs/
 
 # A skill's own reference file, which lives in the skill, not here

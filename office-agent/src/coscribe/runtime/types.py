@@ -10,9 +10,7 @@ checkpointer-backed persistence became the only real state-persistence
 path left running. See runtime_lg/README.md's "audit + delete old
 runtime" section.
 
-Design is modeled on aisuite's (unreleased, main-branch-only) `agents`
-module, reimplemented here because that module is not part of the
-published aisuite package we depend on (see ARCHITECTURE.md).
+Design is modeled on aisuite's `agents` module (see ARCHITECTURE.md).
 """
 
 from __future__ import annotations

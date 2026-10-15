@@ -11,7 +11,7 @@ docstring and runtime_lg/README.md for the design (interrupt_on membership
 doubling as the plan-mode-blocked set; all-tools interrupt gating when
 PreToolUse hooks are configured; checkpointer-state compaction). MCP tools
 go through runtime_lg/mcp.py's connect_mcp_tools_lg (langchain-mcp-
-adapters), not tools/connect_mcp_tools (aisuite) -- see that module's
+adapters), not the removed tools/connect_mcp_tools -- see that module's
 docstring for why.
 
 One real behavioral gap vs. the old runtime, **now closed for MCP
