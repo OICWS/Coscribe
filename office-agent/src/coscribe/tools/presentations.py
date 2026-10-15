@@ -79,8 +79,6 @@ from __future__ import annotations
 
 import re
 import shutil
-import subprocess
-import tempfile
 from collections.abc import Callable, Sequence
 from io import BytesIO
 from pathlib import Path
@@ -89,16 +87,16 @@ from typing import TYPE_CHECKING, Any, Optional
 from ..runtime import tool_metadata
 from ._chart_data import CHART_TYPES, parse_chart_table
 from ._file_locks import locked_by_path
-from ._office_bins import find_soffice, run_soffice, soffice_profile
 from ._ooxml_validate import assert_ooxml_valid
 from ._output_truncation import cap_read_output
-from ._pptx_shapes import describe_members, find_shape, in_group, set_slide_box
+from ._pptx_shapes import describe_members, in_group, set_slide_box
 from ._pptx_text import replace_text
 from ._svg_slide import add_svg_slide
 from ._thumbnail import render_thumbnail
 from ._workspace import WorkspaceScope
 from .office.markdown_blocks import Block, parse_blocks
 from .office.pptx import slide_builders as sb
+from .office.pptx import toolkit_helpers as th
 from .office.pptx.animation import (
     ANIMATIONS,
     AUDIO_CONTENT_TYPES,
@@ -125,7 +123,7 @@ from .office.pptx.qa import (
 from .office.pptx.reading import render_slide
 from .office.pptx.shape_description import describe_shape as _describe_shape
 from .office.pptx.shape_description import emu_to_inches
-from .office.pptx.smartart import SMARTART_NS, is_smartart, smartart_data_part
+from .office.pptx.smartart import is_smartart, smartart_data_part
 from .office.pptx.template_slides import adjust_template_content_slides, duplicate_slide_part
 from .office.pptx.theme import (
     THEME_HEX_RE,
@@ -144,20 +142,13 @@ from .office.pptx.transitions import (
 )
 from .office.pptx.xmlns import (
     A14_NS,
-    A_NS,
-    P14_NS,
-    P15_NS,
-    P159_NS,
     P_NS,
-    R_NS,
 )
 from .pptx_templates import load_builtin_templates as _load_builtin_templates
 from .pptx_templates import load_pptx_templates as _load_pptx_templates
 
 if TYPE_CHECKING:
     from pptx.presentation import Presentation as PresentationType
-
-SOFFICE_TIMEOUT = 20.0
 
 
 # python-pptx's own bundled default template (used whenever write_pptx gets
@@ -174,387 +165,6 @@ _WIDESCREEN_WIDTH_EMU = 12192000
 # here rather than left to whatever a directory name happens to be, since
 # this id becomes fill_pptx_template's own template_id argument afterward.
 _TEMPLATE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}[a-z0-9]$")
-
-# add_pptx_shape's own curated subset of python-pptx's ~180-member
-# MSO_SHAPE enum (every name below verified against the real installed
-# enum, not guessed) -- basic shapes, arrows, flowchart nodes, and
-# callouts, the same categories hugohe3/ppt-master's own feature list
-# names ("block arrows, chevrons, callouts, flowchart nodes"). Excludes
-# the long tail of rarely-used/legacy AutoShapes (line-callout variants
-# 1-4 with every border/accent-bar permutation, the 10/12/16/24/32-point
-# star sizes, seal/ribbon banners, etc.) -- a smaller, well-named set a
-# model can pick from by name alone beats exposing the full enum, the
-# same reasoning add_pptx_icon's own curated Lucide subset already uses.
-_SHAPE_TYPES = frozenset(
-    {
-        # Basic
-        "RECTANGLE", "ROUNDED_RECTANGLE", "OVAL", "ISOSCELES_TRIANGLE",
-        "RIGHT_TRIANGLE", "DIAMOND", "PARALLELOGRAM", "TRAPEZOID", "PENTAGON",
-        "HEXAGON", "OCTAGON", "CROSS", "PLAQUE", "CAN", "CUBE",
-        # Arrows
-        "RIGHT_ARROW", "LEFT_ARROW", "UP_ARROW", "DOWN_ARROW", "LEFT_RIGHT_ARROW",
-        "UP_DOWN_ARROW", "BENT_ARROW", "CHEVRON", "NOTCHED_RIGHT_ARROW", "U_TURN_ARROW",
-        # Flowchart
-        "FLOWCHART_PROCESS", "FLOWCHART_DECISION", "FLOWCHART_TERMINATOR",
-        "FLOWCHART_DATA", "FLOWCHART_DOCUMENT", "FLOWCHART_PREPARATION",
-        "FLOWCHART_PREDEFINED_PROCESS", "FLOWCHART_CONNECTOR",
-        # Callouts
-        "ROUNDED_RECTANGULAR_CALLOUT", "RECTANGULAR_CALLOUT", "OVAL_CALLOUT",
-        "CLOUD_CALLOUT",
-        # Decorative
-        "CLOUD", "HEART", "LIGHTNING_BOLT", "SUN", "MOON", "STAR_5_POINT",
-        "STAR_4_POINT", "SMILEY_FACE", "DONUT", "NO_SYMBOL", "BLOCK_ARC", "ARC",
-    }
-)
-
-# add_pptx_hyperlink's scope: external URLs via python-pptx's own public
-# Hyperlink API (Shape.click_action.hyperlink/Run.hyperlink), plus
-# internal "jump to another slide" links via a *different* public
-# python-pptx API this file previously missed: ActionSetting.target_slide
-# (Shape.click_action.target_slide, settable to a real Slide object) --
-# confirmed by reading python-pptx's own source before assuming otherwise,
-# not carried over from an earlier, now-stale assumption that no public
-# support existed. That setter already builds the exact real relationship/
-# attribute pair hugohe3/ppt-master's own `hyperlink_contract.py` names
-# (`SLIDE_REL_TYPE` = the real "…/relationships/slide" type, `action =
-# "ppaction://hlinksldjump"`) -- no hand-rolled XML needed at all, unlike
-# set_pptx_transition/add_pptx_animation/add_pptx_audio, since python-
-# pptx's own maintainers had already wired this up (its `action` property
-# even already recognizes `PP_ACTION.NAMED_SLIDE` on the *read* side; only
-# the write-side setter had gone unnoticed here). The `"#slide-N"` url
-# syntax below borrows ppt-master's own real convention (`hyperlink_
-# contract.py`'s `_SLIDE_TARGET_RE`) rather than inventing a new one.
-_HYPERLINK_SCHEMES = ("http://", "https://", "mailto:", "ftp://")
-_SLIDE_TARGET_RE = re.compile(r"^#slide-([1-9][0-9]*)$")
-
-
-def _validate_hyperlink_url(url: str) -> None:
-    if not url.strip():
-        raise ValueError("add_pptx_hyperlink: url must not be empty.")
-    if _SLIDE_TARGET_RE.match(url):
-        return
-    if not url.startswith(_HYPERLINK_SCHEMES):
-        raise ValueError(
-            f"add_pptx_hyperlink: url {url!r} must start with one of "
-            f"{', '.join(_HYPERLINK_SCHEMES)}, or be \"#slide-N\" to jump to slide N -- "
-            "got a scheme-less or unsupported value."
-        )
-
-
-def _resolve_slide_jump_target(prs: PresentationType, slide: int, url: str) -> Any | None:
-    """None if `url` isn't a `"#slide-N"` target; otherwise the real
-    `Slide` object N refers to, raising a helpful, real-count-naming
-    error if N is out of range -- matching this file's own established
-    out-of-range error convention elsewhere (e.g. `_open_slide`)."""
-    match = _SLIDE_TARGET_RE.match(url)
-    if match is None:
-        return None
-    target_number = int(match.group(1))
-    slide_count = len(prs.slides)
-    if not 1 <= target_number <= slide_count:
-        raise ValueError(
-            f"add_pptx_hyperlink: slide target {url!r} on slide {slide} is out of range "
-            f"-- deck has {slide_count} slides."
-        )
-    return prs.slides[target_number - 1]
-
-
-# check_pptx_delivery's own curated cross-platform-safe font list -- real,
-# hard-won knowledge (which font *names* ship pre-installed on real
-# Windows/Mac machines across scripts, not guessable from first
-# principles), retyped and credited from hugohe3/ppt-master's
-# `svg_to_pptx/drawingml/utils.py`'s own `PPT_SAFE_FONTS` (commit
-# `6e3ce9c5a3b994a0e223a14a0f7edd42fd0b9f5`) -- the same "external
-# knowledge, retyped and credited" ceremony level `add_pptx_shape`'s own
-# curated `MSO_SHAPE` subset and `set_pptx_transition`'s retyped registry
-# already use, not vendored as a whole file (it's one flat set of
-# lowercase strings, nothing to meaningfully diff against upstream).
-# Lowercase, matching how it's compared (case-insensitively) below.
-_SAFE_FONTS = frozenset(
-    {
-        "microsoft yahei", "simhei", "simsun", "kaiti", "fangsong", "dengxian",
-        "microsoft jhenghei", "microsoft jhenghei ui", "pmingliu", "mingliu",
-        "mingliu_hkscs", "dfkai-sb",
-        "pingfang sc", "heiti sc", "songti sc", "stsong",
-        "pingfang tc", "pingfang hk", "heiti tc", "songti tc", "kaiti tc",
-        "yu gothic", "yu gothic ui", "yu mincho",
-        "meiryo", "meiryo ui",
-        "ms gothic", "ms mincho", "ms pgothic", "ms pmincho", "ms ui gothic",
-        "malgun gothic", "gulim", "dotum", "batang",
-        "nirmala ui", "mangal", "kokila", "aparajita", "utsaah",
-        "leelawadee ui", "leelawadee", "cordia new", "angsana new", "browallia new",
-        "david", "miriam", "frank ruehl", "gisha", "levenim mt", "narkisim", "aharoni",
-        "arial", "arial black", "calibri", "segoe ui", "verdana",
-        "helvetica", "helvetica neue", "tahoma", "trebuchet ms",
-        "times new roman", "times", "georgia", "cambria", "cambria math", "palatino",
-        "garamond", "book antiqua",
-        "consolas", "courier new", "menlo", "monaco",
-        "impact",
-    }
-)
-# 20MB -- roughly the point real email providers start rejecting or
-# aggressively compressing an attachment; a round, memorable threshold
-# rather than a precisely-researched one, deliberately conservative so
-# the advisory fires before delivery actually fails.
-_DELIVERY_MEDIA_ADVISORY_BYTES = 20_000_000
-
-
-def _analyze_pptx_delivery(file_path: Path) -> dict[str, Any]:
-    """The python-pptx-dependent half of check_pptx_delivery -- hidden
-    slides, font usage, and per-slide motion (transitions/animations/
-    audio) -- split out from the raw-zip-level half so a file broken
-    enough that python-pptx can't fully walk it (python-pptx parses
-    slide parts lazily, so this can surface anywhere in here, not only
-    at `Presentation()` construction) can be caught as one unit by the
-    caller and still return the zip-level findings rather than crashing
-    the whole audit -- confirmed against a deliberately-corrupted test
-    fixture, not assumed sufficient from wrapping only the constructor."""
-    from lxml import etree
-    from pptx import Presentation
-    from pptx.opc.constants import RELATIONSHIP_TYPE as RT
-    from pptx.oxml.ns import qn
-
-    prs = Presentation(str(file_path))
-
-    hidden_slides = [
-        index + 1
-        for index, slide in enumerate(prs.slides)
-        if (slide.element.get("show") or "").strip().lower() in ("0", "false")
-    ]
-
-    fonts_used: set[str] = set()
-    for master in prs.slide_masters:
-        try:
-            theme_root = etree.fromstring(master.part.part_related_by(RT.THEME).blob)
-        except (KeyError, etree.XMLSyntaxError):
-            # A real, if malformed/unusual, file this read-only audit
-            # must still report on rather than crash -- a missing or
-            # unparsable theme part is itself worth surfacing via
-            # advisories below, not a reason to abort the whole audit.
-            continue
-        font_scheme = theme_root.find(f".//{qn('a:fontScheme')}")
-        if font_scheme is None:
-            continue
-        for role in ("majorFont", "minorFont"):
-            latin = font_scheme.find(f"{qn(f'a:{role}')}/{qn('a:latin')}")
-            typeface = latin.get("typeface") if latin is not None else None
-            if typeface and typeface != "+mn-lt" and typeface != "+mj-lt":
-                fonts_used.add(typeface)
-    for slide in prs.slides:
-        for shape in slide.shapes:
-            if not shape.has_text_frame:
-                continue
-            for paragraph in shape.text_frame.paragraphs:
-                for run in paragraph.runs:
-                    if run.font.name:
-                        fonts_used.add(run.font.name)
-    unsafe_fonts = sorted(font for font in fonts_used if font.strip().lower() not in _SAFE_FONTS)
-
-    transition_slides: list[int] = []
-    animation_slides: list[int] = []
-    audio_slides: list[int] = []
-    for index, slide in enumerate(prs.slides, start=1):
-        if slide.element.find(f"{{{P_NS}}}transition") is not None:
-            transition_slides.append(index)
-        timing = slide.element.find(f"{{{P_NS}}}timing")
-        if timing is None:
-            continue
-        main_child = timing.find(f".//{{{P_NS}}}cTn[@nodeType='mainSeq']/{{{P_NS}}}childTnLst")
-        if main_child is not None and len(main_child):
-            animation_slides.append(index)
-        if timing.find(f".//{{{P_NS}}}audio") is not None:
-            audio_slides.append(index)
-
-    return {
-        "slide_count": len(prs.slides),
-        "hidden_slides": hidden_slides,
-        "fonts_used": sorted(fonts_used),
-        "unsafe_fonts": unsafe_fonts,
-        "motion": {
-            "transitions": transition_slides,
-            "animations": animation_slides,
-            "audio": audio_slides,
-        },
-    }
-
-
-def _render_to_pdf(pptx_path: Path) -> Path | None:
-    """Convert `pptx_path` to a PDF via headless LibreOffice, for the
-    overflow check below. Returns None -- "QA skipped", not an error -- if
-    `soffice` isn't installed, times out, or fails: write_pptx has already
-    succeeded by the time this runs, this is a best-effort diagnostic on
-    top of it, not a requirement for the write to count as successful."""
-    soffice = find_soffice()
-    if soffice is None:
-        return None
-    out_dir = Path(tempfile.mkdtemp(prefix="coscribe_pptx_qa_"))
-    try:
-        with soffice_profile() as profile:
-            run_soffice(
-                [
-                    soffice,
-                    "--headless",
-                    profile,
-                    "--convert-to",
-                    "pdf",
-                    "--outdir",
-                    str(out_dir),
-                    str(pptx_path),
-                ],
-                SOFFICE_TIMEOUT,
-            )
-    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, OSError):
-        return None
-    pdf_path = out_dir / f"{pptx_path.stem}.pdf"
-    return pdf_path if pdf_path.is_file() else None
-
-
-def _resolve_xml_qname(name: str) -> str:
-    """Resolve an attribute/tag name for edit_pptx_xml's `set_attributes` --
-    "prefix:local" using a prefix from `_GENERIC_XML_NSMAP` becomes real
-    Clark notation ("{uri}local"), lxml's own internal representation, so
-    `element.set(...)` writes it into the right namespace. A plain
-    unprefixed name (the common case -- "modelId", "type") or a prefix
-    this map doesn't know passes through unchanged -- python-pptx/lxml
-    both accept a no-namespace attribute name exactly as given."""
-    if ":" in name:
-        prefix, _, local = name.partition(":")
-        if prefix in _GENERIC_XML_NSMAP:
-            return f"{{{_GENERIC_XML_NSMAP[prefix]}}}{local}"
-    return name
-
-
-def _parse_set_attributes(raw: str | None) -> dict[str, str]:
-    """Parse edit_pptx_xml's own `set_attributes` -- one `name=value` pair
-    per line, not a `dict[str, str]` parameter -- **found the hard way**
-    (see edit_file_batch's own identical note): this codebase's tool
-    schemas have to stay Gemini-compatible, and aisuite's own schema
-    builder (`Tools.__infer_from_signature`) has no handling at all for
-    dict-typed parameters, falling back to a broken literal type string
-    ("dict[str, str]") that Gemini's strict schema validation rejects
-    outright -- confirmed live by `test_all_tool_schemas_are_gemini_
-    compatible` failing the moment a dict-typed parameter was tried here.
-    A plain `str` is the one shape guaranteed to produce a valid JSON
-    Schema "string" type through that builder. Blank lines are skipped; a
-    line with no "=" raises rather than silently dropping a value the
-    caller thought they set."""
-    if not raw:
-        return {}
-    attributes: dict[str, str] = {}
-    for line in raw.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        if "=" not in line:
-            raise ValueError(
-                f"set_attributes line {line!r} has no '=' -- each line must be "
-                "'name=value' (one attribute per line)."
-            )
-        name, _, value = line.partition("=")
-        attributes[name.strip()] = value
-    return attributes
-
-
-def _validate_xml_part_arg(part: str) -> None:
-    if part not in ("auto", "shape", "smartart_data"):
-        raise ValueError(f'part must be "auto", "shape", or "smartart_data", got {part!r}.')
-
-
-def _get_shape_at_index(target_slide: Any, slide_number: int, shape_index: int | str) -> Any:
-    return find_shape(target_slide, slide_number, shape_index)
-
-
-def _get_table_shape(target_slide: Any, slide_number: int, shape_index: int | str) -> Any:
-    """Shared bounds-and-kind validation for edit_pptx_table_cell/
-    merge_pptx_table_cells -- raises a clear, actionable error (naming
-    list_pptx_shapes) rather than an opaque AttributeError if shape_index
-    is out of range or doesn't point at a table."""
-    shape = _get_shape_at_index(target_slide, slide_number, shape_index)
-    if not shape.has_table:
-        raise ValueError(
-            f"Shape {shape_index} on slide {slide_number} ({shape.shape_type}) isn't a "
-            f"table -- call list_pptx_shapes first to find the right shape_index "
-            f"(table shapes have is_table: true)."
-        )
-    return shape
-
-
-def _get_picture_shape(target_slide: Any, slide_number: int, shape_index: int | str) -> Any:
-    """Shared bounds-and-kind validation for replace_pptx_image/
-    recolor_pptx_icon/crop_pptx_image -- raises a clear, actionable
-    error if shape_index doesn't point at a picture (a `<p:pic>` shape,
-    python-pptx's `MSO_SHAPE_TYPE.PICTURE`)."""
-    from pptx.enum.shapes import MSO_SHAPE_TYPE
-
-    shape = _get_shape_at_index(target_slide, slide_number, shape_index)
-    if shape.shape_type != MSO_SHAPE_TYPE.PICTURE:
-        raise ValueError(
-            f"Shape {shape_index} on slide {slide_number} ({shape.shape_type}) isn't a "
-            f"picture -- call list_pptx_shapes first to find the right shape_index."
-        )
-    return shape
-
-
-# add_pptx_icon's bundled icon set: a curated ~50-icon subset of Lucide
-# (https://lucide.dev, ISC license -- see builtin_icons/lucide/LICENSE),
-# rasterized to black-on-transparent PNG at build time by
-# scripts/build_pptx_icons.py (not fetched or rendered at runtime -- no
-# SVG-rasterization library is a runtime dependency of this package).
-# `_recolor_icon` below reads a bundled PNG and swaps solid black for the
-# caller's requested color at call time, keeping the alpha channel (so
-# anti-aliased edges stay clean) -- this is why the bundled assets are
-# plain black, not pre-colored per icon.
-_ICONS_DIR = Path(__file__).resolve().parent.parent / "builtin_icons" / "lucide"
-_ICON_NAMES = frozenset(p.stem for p in _ICONS_DIR.glob("*.png"))
-
-
-def _recolor_image(image: Any, color_hex: str) -> Any:
-    """Returns a new PIL Image: every pixel of `image` recolored to
-    `color_hex`, its own alpha channel preserved untouched -- works on
-    any RGBA-convertible image with meaningful transparency, not just a
-    bundled icon, since only the alpha channel (the silhouette shape)
-    is read, never the source's existing color. This is what makes
-    recolor_pptx_icon possible: an icon already placed on a slide can
-    be recolored starting from its own current pixels, without needing
-    to know which bundled icon name it originally was (or whether it
-    came from add_pptx_icon at all)."""
-    from PIL import Image
-
-    red, green, blue = (int(color_hex[i : i + 2], 16) for i in (0, 2, 4))
-    recolored = Image.new("RGBA", image.size, (red, green, blue, 255))
-    recolored.putalpha(image.convert("RGBA").getchannel("A"))
-    return recolored
-
-
-def _recolor_icon(icon_path: Path, color_hex: str) -> Any:
-    """Returns a PIL Image: the bundled black-on-transparent icon PNG
-    with every non-transparent pixel recolored to `color_hex`, alpha
-    channel (anti-aliased edges) preserved untouched. Uses PIL's own
-    `putalpha` rather than a per-pixel Python loop over all 256x256
-    pixels -- verified both produce an identical result, this is just
-    the fast path."""
-    from PIL import Image
-
-    return _recolor_image(Image.open(icon_path), color_hex)
-
-
-# Prefix -> namespace-URI map for read_pptx_xml/edit_pptx_xml's own `xpath`
-# and `set_attributes` arguments -- lets the model write real, readable
-# XPath ("//dgm:t[.='Plan']") instead of lxml's Clark notation
-# ("//{http://schemas.../diagram}t"). Reuses this file's own existing
-# namespace constants (the exact ones set_pptx_transition/add_pptx_formula
-# already write) rather than re-declaring them, so there's exactly one
-# source of truth for each URI.
-_GENERIC_XML_NSMAP = {
-    "p": P_NS,
-    "a": A_NS,
-    "r": R_NS,
-    "dgm": SMARTART_NS,
-    "p14": P14_NS,
-    "a14": A14_NS,
-    "p15": P15_NS,
-    "p159": P159_NS,
-}
 
 
 class PresentationToolkit:
@@ -702,7 +312,7 @@ class PresentationToolkit:
 
         overflow_warnings: list[dict[str, object]] = []
         qa_skipped_reason: str | None = None
-        pdf_path = _render_to_pdf(file_path)
+        pdf_path = th.render_to_pdf(file_path)
         if pdf_path is None:
             qa_skipped_reason = "LibreOffice (soffice) not found or conversion failed"
         else:
@@ -819,7 +429,7 @@ class PresentationToolkit:
 
         overflow_warnings: list[dict[str, object]] = []
         qa_skipped_reason: str | None = None
-        pdf_path = _render_to_pdf(file_path)
+        pdf_path = th.render_to_pdf(file_path)
         if pdf_path is None:
             qa_skipped_reason = "LibreOffice (soffice) not found or conversion failed"
         else:
@@ -1018,7 +628,7 @@ class PresentationToolkit:
 
         overflow_warnings: list[dict[str, object]] = []
         qa_skipped_reason: str | None = None
-        pdf_path = _render_to_pdf(file_path)
+        pdf_path = th.render_to_pdf(file_path)
         if pdf_path is None:
             qa_skipped_reason = "LibreOffice (soffice) not found or conversion failed"
         else:
@@ -1163,7 +773,7 @@ class PresentationToolkit:
                 f"text_color {text_color!r} must be a 6-hex-digit color (no '#'), e.g. '38BDF8'."
             )
         prs, file_path, target_slide = self._open_slide(path, slide)
-        shape = _get_shape_at_index(target_slide, slide, shape_index)
+        shape = th.get_shape_at_index(target_slide, slide, shape_index)
         box = [None if v is None else Inches(v) for v in (left_in, top_in, width_in, height_in)]
         set_slide_box(shape, *box)
         if rotation is not None:
@@ -1216,7 +826,7 @@ class PresentationToolkit:
     @locked_by_path
     def delete_pptx_shape(self, path: str, slide: int, shape_index: int | str) -> dict[str, object]:
         prs, file_path, target_slide = self._open_slide(path, slide)
-        shape = _get_shape_at_index(target_slide, slide, shape_index)
+        shape = th.get_shape_at_index(target_slide, slide, shape_index)
         element = shape._element  # noqa: SLF001
         element.getparent().remove(element)
         prs.save(str(file_path))
@@ -1228,7 +838,7 @@ class PresentationToolkit:
         shapes, arrows, flowchart nodes, callouts). No path/slide
         argument: this is a static list, the same regardless of which
         file or slide you're working on."""
-        return sorted(_SHAPE_TYPES)
+        return sorted(th.SHAPE_TYPES)
 
     def list_pptx_transition_types(self) -> list[str]:
         """Every `transition` name `set_pptx_transition` accepts, sorted --
@@ -1279,7 +889,7 @@ class PresentationToolkit:
         from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
         from pptx.util import Inches
 
-        if shape_type not in _SHAPE_TYPES:
+        if shape_type not in th.SHAPE_TYPES:
             raise ValueError(
                 f"Unknown shape_type {shape_type!r} -- call list_pptx_shape_types() "
                 f"to see the available names."
@@ -1429,7 +1039,7 @@ class PresentationToolkit:
         `add_pptx_image` supports); not SVG."""
         image_file = self._check_readable(image_path)
         prs, file_path, target_slide = self._open_slide(path, slide)
-        shape = _get_picture_shape(target_slide, slide, shape_index)
+        shape = th.get_picture_shape(target_slide, slide, shape_index)
         _image_part, r_id = shape.part.get_or_add_image_part(str(image_file))
         shape._element.blipFill.blip.rEmbed = r_id  # noqa: SLF001
         prs.save(str(file_path))
@@ -1481,7 +1091,7 @@ class PresentationToolkit:
                 f"-- otherwise no part of the image's height would remain visible."
             )
         prs, file_path, target_slide = self._open_slide(path, slide)
-        shape = _get_picture_shape(target_slide, slide, shape_index)
+        shape = th.get_picture_shape(target_slide, slide, shape_index)
         shape.crop_left = crop_left
         shape.crop_right = crop_right
         shape.crop_top = crop_top
@@ -1508,7 +1118,7 @@ class PresentationToolkit:
         full ~1500-icon set. No path/slide argument: this is a static
         list, the same regardless of which file or slide you're
         working on."""
-        return sorted(_ICON_NAMES)
+        return sorted(th.ICON_NAMES)
 
     @locked_by_path
     def add_pptx_icon(
@@ -1528,7 +1138,7 @@ class PresentationToolkit:
         actual recognizable pictogram. Call `list_pptx_icons()` first if
         you're not sure `icon_name` is bundled; an unknown name raises
         immediately rather than silently doing nothing."""
-        if icon_name not in _ICON_NAMES:
+        if icon_name not in th.ICON_NAMES:
             raise ValueError(
                 f"Unknown icon {icon_name!r} -- call list_pptx_icons() to see the "
                 f"available names."
@@ -1539,7 +1149,7 @@ class PresentationToolkit:
 
         from pptx.util import Inches
 
-        recolored = _recolor_icon(_ICONS_DIR / f"{icon_name}.png", color)
+        recolored = th.recolor_icon(th.ICONS_DIR / f"{icon_name}.png", color)
         buffer = BytesIO()
         recolored.save(buffer, format="PNG")
         buffer.seek(0)
@@ -1565,12 +1175,12 @@ class PresentationToolkit:
         if not THEME_HEX_RE.match(color):
             raise ValueError(f"color {color!r} must be a 6-hex-digit color (no '#').")
         prs, file_path, target_slide = self._open_slide(path, slide)
-        shape = _get_picture_shape(target_slide, slide, shape_index)
+        shape = th.get_picture_shape(target_slide, slide, shape_index)
 
         from PIL import Image
 
         current_image = Image.open(BytesIO(shape.image.blob))
-        recolored = _recolor_image(current_image, color)
+        recolored = th.recolor_image(current_image, color)
         buffer = BytesIO()
         recolored.save(buffer, format="PNG")
         buffer.seek(0)
@@ -1599,7 +1209,7 @@ class PresentationToolkit:
         (rows/cols); `row`/`col` are 0-based. Every other cell, and the
         rest of the deck, is untouched."""
         prs, file_path, target_slide = self._open_slide(path, slide)
-        shape = _get_table_shape(target_slide, slide, shape_index)
+        shape = th.get_table_shape(target_slide, slide, shape_index)
         table = shape.table
         n_rows, n_cols = len(table.rows), len(table.columns)
         if not 0 <= row < n_rows or not 0 <= col < n_cols:
@@ -1647,7 +1257,7 @@ class PresentationToolkit:
         already contains a
         merged cell."""
         prs, file_path, target_slide = self._open_slide(path, slide)
-        shape = _get_table_shape(target_slide, slide, shape_index)
+        shape = th.get_table_shape(target_slide, slide, shape_index)
         table = shape.table
         n_rows, n_cols = len(table.rows), len(table.columns)
         for row, col, label in (
@@ -2126,7 +1736,7 @@ class PresentationToolkit:
                 raise ValueError(f"distance_pt {distance_pt} must be non-negative.")
 
         prs, file_path, target_slide = self._open_slide(path, slide)
-        shape = _get_shape_at_index(target_slide, slide, shape_index)
+        shape = th.get_shape_at_index(target_slide, slide, shape_index)
         apply_shape_effect(shape, effect, color.upper(), opacity, size_pt, distance_pt, direction)
         assert_ooxml_valid(target_slide.element, "add_pptx_shape_effect")
         prs.save(str(file_path))
@@ -2156,9 +1766,9 @@ class PresentationToolkit:
         target, and this is the only way to see them."""
         from lxml import etree
 
-        _validate_xml_part_arg(part)
+        th.validate_xml_part_arg(part)
         _prs, _file_path, target_slide = self._open_slide(path, slide)
-        shape = _get_shape_at_index(target_slide, slide, shape_index)
+        shape = th.get_shape_at_index(target_slide, slide, shape_index)
         use_smartart_data = part == "smartart_data" or (part == "auto" and is_smartart(shape))
         if use_smartart_data:
             root = etree.fromstring(smartart_data_part(shape).blob)
@@ -2196,11 +1806,11 @@ class PresentationToolkit:
 
         if new_text is None and not set_attributes:
             raise ValueError("Provide new_text and/or set_attributes -- nothing to change.")
-        _validate_xml_part_arg(part)
-        parsed_attributes = _parse_set_attributes(set_attributes)
+        th.validate_xml_part_arg(part)
+        parsed_attributes = th.parse_set_attributes(set_attributes)
 
         prs, file_path, target_slide = self._open_slide(path, slide)
-        shape = _get_shape_at_index(target_slide, slide, shape_index)
+        shape = th.get_shape_at_index(target_slide, slide, shape_index)
         use_smartart_data = part == "smartart_data" or (part == "auto" and is_smartart(shape))
 
         # Real gotcha, verified empirically (not assumed): `//foo` in
@@ -2228,7 +1838,7 @@ class PresentationToolkit:
             root = etree.fromstring(etree.tostring(original_shape_element))
             source = "shape"
 
-        matches = root.xpath(xpath, namespaces=_GENERIC_XML_NSMAP)
+        matches = root.xpath(xpath, namespaces=th.GENERIC_XML_NSMAP)
         if len(matches) != 1:
             raise ValueError(
                 f"xpath {xpath!r} matched {len(matches)} element(s) inside this {source} "
@@ -2245,7 +1855,7 @@ class PresentationToolkit:
         if new_text is not None:
             element.text = new_text
         for name, value in parsed_attributes.items():
-            element.set(_resolve_xml_qname(name), value)
+            element.set(th.resolve_xml_qname(name), value)
 
         # Splice the edited detached copy back into the real, live slide
         # tree at the shape's own original position (getparent().replace,
@@ -2324,7 +1934,7 @@ class PresentationToolkit:
                 f"Unknown trigger {trigger!r}. Use one of: {', '.join(sorted(TRIGGERS))}"
             )
         prs, file_path, target_slide = self._open_slide(path, slide)
-        shape = _get_shape_at_index(target_slide, slide, shape_index)
+        shape = th.get_shape_at_index(target_slide, slide, shape_index)
         if in_group(shape):
             raise ValueError(
                 f"Shape {shape_index!r} is inside a group, and PowerPoint animates a group as one "
@@ -2510,10 +2120,10 @@ class PresentationToolkit:
         url: str,
         text: Optional[str] = None,  # noqa: UP045
     ) -> dict[str, object]:
-        _validate_hyperlink_url(url)
+        th.validate_hyperlink_url(url)
         prs, file_path, target_slide = self._open_slide(path, slide)
-        shape = _get_shape_at_index(target_slide, slide, shape_index)
-        jump_target = _resolve_slide_jump_target(prs, slide, url)
+        shape = th.get_shape_at_index(target_slide, slide, shape_index)
+        jump_target = th.resolve_slide_jump_target(prs, slide, url)
 
         if text is None:
             if jump_target is not None:
@@ -2600,12 +2210,12 @@ class PresentationToolkit:
             ]
 
         try:
-            pptx_report = _analyze_pptx_delivery(file_path)
+            pptx_report = th.analyze_pptx_delivery(file_path)
         except Exception as exc:
             # A file broken enough that python-pptx itself can't fully
             # load/walk it (corrupt beyond just a duplicate/oversized
             # part -- python-pptx parses slide parts lazily, so this can
-            # surface anywhere in _analyze_pptx_delivery, not only at
+            # surface anywhere in th.analyze_pptx_delivery, not only at
             # Presentation() construction) must still return whatever
             # the raw-zip pass above already found, rather than crashing
             # this read-only audit outright -- hit for real against a
@@ -2653,7 +2263,7 @@ class PresentationToolkit:
                 f"{', '.join(pptx_report['unsafe_fonts'])} -- may substitute or render "
                 "differently on a machine that doesn't have them installed."
             )
-        if media_total_bytes > _DELIVERY_MEDIA_ADVISORY_BYTES:
+        if media_total_bytes > th.DELIVERY_MEDIA_ADVISORY_BYTES:
             advisories.append(
                 f"Embedded media totals {media_total_bytes / 1_000_000:.1f}MB across "
                 f"{len(media_infos)} file(s) -- consider compressing images before "

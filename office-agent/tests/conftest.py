@@ -2,7 +2,7 @@ from collections.abc import Iterator
 
 import pytest
 
-from coscribe.tools import presentations
+from coscribe.tools.office.pptx import toolkit_helpers
 from coscribe.tools.office.xlsx import helpers as spreadsheets
 
 # The flaky-test policy (tests/flaky_policy.py): the hooks and the quarantine fixture
@@ -38,7 +38,7 @@ def _fast_libreoffice_by_default(
     """
     if request.node.get_closest_marker("real_libreoffice") is not None:
         return
-    monkeypatch.setattr(presentations, "_render_to_pdf", lambda pptx_path: None)
+    monkeypatch.setattr(toolkit_helpers, "render_to_pdf", lambda pptx_path: None)
     monkeypatch.setattr(
         spreadsheets,
         "_recalc_xlsx",

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from typing import Any
+
+from .toolkit_helpers import leaf_shapes
 
 _EMU_PER_PX = 9525
 
@@ -30,19 +31,6 @@ def render_slide(slide: Any, with_heading: bool = False) -> str:
                 if paragraph.text:
                     lines.append(f"- {paragraph.text}")
     return "\n".join(lines)
-
-
-def leaf_shapes(shapes: Any) -> Iterator[Any]:
-    """Every shape on a slide in document order, with groups opened up --
-    SVG-compiled and designer-made decks keep most of their text inside
-    groups."""
-    from pptx.enum.shapes import MSO_SHAPE_TYPE
-
-    for shape in shapes:
-        if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
-            yield from leaf_shapes(shape.shapes)
-        else:
-            yield shape
 
 
 def _chart_lines(shape: Any) -> list[str]:

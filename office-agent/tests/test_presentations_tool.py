@@ -3736,22 +3736,22 @@ def test_check_pptx_delivery_flags_unsafe_font(tmp_path: Path) -> None:
 
 
 def test_check_pptx_delivery_flags_oversized_media(tmp_path: Path) -> None:
-    from coscribe.tools import presentations as presentations_module
+    from coscribe.tools.office.pptx import toolkit_helpers as presentations_module
 
     tools = _tools_by_name(tmp_path)
     tools["write_pptx"](path="deck.pptx", content="# Title\n- body")
 
-    original_threshold = presentations_module._DELIVERY_MEDIA_ADVISORY_BYTES
+    original_threshold = presentations_module.DELIVERY_MEDIA_ADVISORY_BYTES
     # -1, not a small positive number: a plain write_pptx deck may have
     # zero embedded media (no images at all), so the threshold must be
     # guaranteed below the real total (0 bytes included) to reliably
     # trigger the advisory regardless of what write_pptx happens to
     # embed.
-    presentations_module._DELIVERY_MEDIA_ADVISORY_BYTES = -1
+    presentations_module.DELIVERY_MEDIA_ADVISORY_BYTES = -1
     try:
         report = tools["check_pptx_delivery"](path="deck.pptx")
     finally:
-        presentations_module._DELIVERY_MEDIA_ADVISORY_BYTES = original_threshold
+        presentations_module.DELIVERY_MEDIA_ADVISORY_BYTES = original_threshold
 
     assert any("Embedded media totals" in advisory for advisory in report["advisories"])
 
