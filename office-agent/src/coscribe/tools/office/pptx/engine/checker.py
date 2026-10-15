@@ -14,6 +14,7 @@ person would fix and leaves the ones the judges rated best alone.
 from __future__ import annotations
 
 import copy
+import math
 import re
 import unicodedata
 from collections.abc import Iterator, Sequence
@@ -23,6 +24,7 @@ from typing import Any
 
 from pptx import Presentation
 
+from ...._native_svg.svg_to_pptx.drawingml.utils import estimate_text_width
 from ...._ooxml_validate import ooxml_errors
 from .compiler import EMU_PER_PX, CompileReport
 
@@ -57,6 +59,9 @@ _NUMBER = re.compile(r"\d+(?:\.\d+)?")
 # has it), so it is removed from the copy that is validated.
 _XML_SPACE = "{http://www.w3.org/XML/1998/namespace}space"
 _SCHEMA_PREFIX = re.compile(r"^.*?ERROR:SCHEMASV:\w+: ")
+# PowerPoint's default cell margins (0.1 in left and right, 0.05 in top and bottom) and the line
+# height it gives a cell's text.
+_CELL_MARGIN_X, _CELL_MARGIN_Y, _CELL_LINE = 9.6, 4.8, 1.2
 
 
 @dataclass(frozen=True)
@@ -94,6 +99,7 @@ def check_deck(report: CompileReport, sources: Sequence[str] | None = None) -> N
         texts = _texts(slide._element)
         page.errors.extend(_outside(texts, width, height))
         page.errors.extend(_overlaps(texts))
+        page.errors.extend(_grown_tables(slide._element, texts, height))
         unreadable, faint = _contrast(texts)
         page.errors.extend(unreadable)
         page.warnings.extend(faint)
@@ -205,6 +211,62 @@ def _overlaps(texts: list[_Text]) -> Iterator[str]:
                     f"other (around x {max(a.ink.left, b.ink.left):.0f}, "
                     f"y {max(a.ink.top, b.ink.top):.0f}): move one or shorten it"
                 )
+
+
+def _grown_tables(slide: Any, texts: list[_Text], height: float) -> Iterator[str]:
+    """A table's rows grow when a cell's text wraps, so its bottom is lower than its frame says;
+    reported only where the grown table runs into text or off the page."""
+    for frame in slide.iter(f"{_P}graphicFrame"):
+        table = frame.find(f".//{_A}tbl")
+        xfrm = frame.find(f"{_P}xfrm")
+        if table is None or xfrm is None:
+            continue
+        off, ext = xfrm.find(f"{_A}off"), xfrm.find(f"{_A}ext")
+        left, top = int(off.get("x")) / EMU_PER_PX, int(off.get("y")) / EMU_PER_PX
+        right = left + int(ext.get("cx")) / EMU_PER_PX
+        stated = top + int(ext.get("cy")) / EMU_PER_PX
+        bottom = top + _table_height(table)
+        if bottom <= stated + _TOLERANCE_PX:
+            continue
+        hit = [
+            t
+            for t in texts
+            if min(t.ink.right, right) - max(t.ink.left, left) > _TOLERANCE_PX
+            and min(t.ink.bottom, bottom) - max(t.ink.top, stated) > _TOLERANCE_PX
+        ]
+        if not hit and bottom <= height:
+            continue
+        name = frame.find(f".//{_P}cNvPr").get("name", "")
+        over = f"over text {_quote(hit[0].text)}" if hit else "past the bottom of the page"
+        yield (
+            f"table {name!r}: cells whose text wraps make its rows taller, so it reaches y "
+            f"{bottom:.0f} instead of {stated:.0f}, {over}: widen the narrow columns, shorten "
+            "the long cells, use smaller text or fewer rows"
+        )
+
+
+def _table_height(table: Any) -> float:
+    widths = [int(c.get("w")) / EMU_PER_PX for c in table.iter(f"{_A}gridCol")]
+    total = 0.0
+    for row in table.iter(f"{_A}tr"):
+        height = int(row.get("h", 0)) / EMU_PER_PX
+        for width, cell in zip(widths, row.findall(f"{_A}tc"), strict=False):
+            if cell.get("hMerge") or cell.get("vMerge") or cell.get("gridSpan"):
+                continue
+            sizes = [int(r.get("sz")) for r in cell.iter(f"{_A}rPr") if r.get("sz")]
+            size = (max(sizes) / 100 if sizes else 18) * _PX_PER_PT
+            inner = max(width - 2 * _CELL_MARGIN_X, 1.0)
+            lines = sum(
+                max(1, math.ceil(estimate_text_width(_cell_text(p), size) / inner))
+                for p in cell.iter(f"{_A}p")
+            )
+            height = max(height, lines * size * _CELL_LINE + 2 * _CELL_MARGIN_Y)
+        total += height
+    return total
+
+
+def _cell_text(paragraph: Any) -> str:
+    return "".join(t.text or "" for t in paragraph.iter(f"{_A}t"))
 
 
 def _contrast(texts: list[_Text]) -> tuple[list[str], list[str]]:
