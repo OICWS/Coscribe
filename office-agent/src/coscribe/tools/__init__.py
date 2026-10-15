@@ -1,6 +1,6 @@
 from ._workspace import WorkspaceScope
 from .background_tasks import BackgroundTask, BackgroundTaskStore, build_background_task_tools
-from .browser import BROWSER_HOST, build_browser_tools, page_screenshot
+from .browser import BROWSER_HOST, BROWSER_RUNS, build_browser_tools, page_screenshot
 from .connector_permissions import (
     ConnectorPermissions,
     apply_connector_permissions,
@@ -77,6 +77,7 @@ from .websearch import build_websearch_tools
 
 __all__ = [
     "BROWSER_HOST",
+    "BROWSER_RUNS",
     "WorkspaceScope",
     "create_trigger",
     "patch_trigger",

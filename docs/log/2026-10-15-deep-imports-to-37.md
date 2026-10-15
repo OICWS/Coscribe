@@ -1,4 +1,4 @@
-# deep_imports 82 to 39
+# deep_imports 82 to 37
 
 Importers now take a name from the package it lives in (`from ..tools import X`) wherever the
 package already exported it, and `tools` exports the few names that several importers reached

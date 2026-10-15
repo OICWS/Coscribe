@@ -237,7 +237,6 @@
   "coscribe.conversation.session -> coscribe.tools.http_request": 1,
   "coscribe.conversation.turn_stream -> coscribe.runtime_lg.tool_deferral": 1,
   "coscribe.runtime_lg.code_agent -> coscribe.tools.subagent_tasks": 1,
-  "coscribe.runtime_lg.scheduled_tasks -> coscribe.tools.browser": 1,
   "coscribe.runtime_lg.selfwake -> coscribe.tools.subagent_tasks": 1,
   "coscribe.runtime_lg.skill_authoring -> coscribe.tools.skills": 1,
   "coscribe.runtime_lg.subagents -> coscribe.tools.subagent_tasks": 1,
@@ -263,8 +262,7 @@
   "coscribe.web.state -> coscribe.runtime_lg.mcp": 1,
   "coscribe.web.state -> coscribe.runtime_lg.mcp_oauth": 1,
   "coscribe.workflows.engine -> coscribe.tools.scripts": 1,
-  "coscribe.workflows.engine -> coscribe.tools.scripts:_run_python_script": 1,
-  "coscribe.workflows.testing -> coscribe.tools.browser": 1
+  "coscribe.workflows.engine -> coscribe.tools.scripts:_run_python_script": 1
  },
  "fan_out": {
   "coscribe.conversation.session": 30,
