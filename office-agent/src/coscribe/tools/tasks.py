@@ -9,14 +9,13 @@ via MCP/Skill, so it ships as a built-in tool family alongside the file tools.
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
 from ..runtime import tool_metadata
-from ._file_locks import file_lock
+from ._file_locks import file_lock, replace_with_retry
 
 VALID_STATUSES = ("pending", "in_progress", "completed")
 
@@ -63,7 +62,7 @@ class TaskToolkit:
             tmp_path = self._path.with_suffix(".tmp")
             with tmp_path.open("w", encoding="utf-8") as handle:
                 json.dump(self._tasks, handle, ensure_ascii=False, indent=2)
-            os.replace(tmp_path, self._path)
+            replace_with_retry(tmp_path, self._path)
 
     def create(self, content: str) -> dict[str, Any]:
         task = {"id": str(self._next_id), "content": content, "status": "pending"}
