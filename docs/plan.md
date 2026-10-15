@@ -69,10 +69,14 @@ Last reviewed: 2026-10-15.
    today's tools), the PowerPoint instructions cut to what templates and edits need (prompt 22%
    shorter). PowerPoint part 2 so far: native charts and tables, the user's template built from
    pages, Windows font metrics, speaker notes, a design spec from ppt-master's styles, icons,
-   SVG illustrations, talk-or-read density, the table and unit-number checks and a repair cap.
-   Next: why a deck still takes 6-7 builds and 10-13 minutes (record each build's findings in
-   the evaluation, then cut the repairs); editing inside the grouped shapes a page compiles to
-   (address by name and group path). Then Excel, then Word, the same way: their baselines are done
+   SVG illustrations, talk-or-read density, the table and unit-number checks and a repair cap,
+   a deck in half the time (#304: no preview loop, no reviewer round; about 6 minutes and 0.4
+   yuan a 16-page deck), redesigning a user's deck (task 15: 5 minutes, every picture kept) and
+   licensed photos. Edits inside the compiled groups work (tasks 07 and 11, about 2 minutes).
+   PowerPoint is done for now; left, each only when a real case asks for it: a check of names
+   (people, companies) against the sources, not only numbers; lifting a slide back to SVG
+   (ppt-master's 20k-line PPTX-to-SVG code; task 15 showed a redesign does not need it); a
+   group's own rotate and scale. Next: Excel, then Word, the same way: their baselines are done
    (#164: Excel PR #181, Word with it; the `current` route on eight tasks each), and the two
    defects they found are fixed (#193 column widths, #219; #197 Word contents list, #216). No
    Excel or Word engine work has started.

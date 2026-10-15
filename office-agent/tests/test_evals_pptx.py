@@ -589,3 +589,13 @@ def test_a_deck_renders_to_one_png_per_page(tmp_path: Path) -> None:
     assert (
         pptx_checks.check_layout(path, tmp_path / "render" / result["pdf"])["overflow_words"] == 0
     )
+
+
+def test_a_picture_is_kept_when_re_saved_and_missing_when_swapped() -> None:
+    from PIL import Image
+
+    red, blue = Image.new("RGB", (32, 32), "#C03030"), Image.new("RGB", (32, 32), "#3050C0")
+    red_again = Image.new("RGB", (32, 32), "#C23131")
+
+    assert pptx_checks.check_pictures_kept([red, blue], [blue, red_again])["ok"]
+    assert pptx_checks.check_pictures_kept([red, blue], [blue, blue])["missing"] == [1]

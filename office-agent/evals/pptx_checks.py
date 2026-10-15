@@ -105,6 +105,42 @@ def count_pictures(path: Path) -> int:
     )
 
 
+def picture_thumbnails(path: Path) -> list[Any]:
+    """Every picture of a deck, small and in colour, to tell the same image re-encoded or
+    cropped from a different one."""
+    import io
+
+    from PIL import Image
+    from pptx import Presentation
+    from pptx.enum.shapes import MSO_SHAPE_TYPE
+
+    return [
+        Image.open(io.BytesIO(shape.image.blob)).convert("RGB").resize((32, 32))
+        for slide in Presentation(str(path)).slides
+        for shape in _leaf_shapes(slide.shapes)
+        if shape.shape_type == MSO_SHAPE_TYPE.PICTURE
+    ]
+
+
+# Mean channel difference (0-255) under which two thumbnails are one picture; different
+# pictures measured 32-73 apart, the same one re-saved 0.
+_SAME_PICTURE = 8.0
+
+
+def check_pictures_kept(original: list[Any], result: list[Any]) -> dict[str, Any]:
+    from PIL import ImageChops, ImageStat
+
+    def distance(a: Any, b: Any) -> float:
+        return float(sum(ImageStat.Stat(ImageChops.difference(a, b)).mean) / 3)
+
+    missing = [
+        n
+        for n, picture in enumerate(original, start=1)
+        if not any(distance(picture, other) < _SAME_PICTURE for other in result)
+    ]
+    return {"ok": not missing, "missing": missing, "of": len(original)}
+
+
 def check_pictures(count: int, minimum: int) -> dict[str, Any]:
     return {"ok": count >= minimum, "count": count, "minimum": minimum}
 
@@ -194,6 +230,11 @@ def check_deck(task: Task, path: Path, workspace: Path, out_dir: Path) -> dict[s
     report["pages"] = check_page_count(len(deck.slides), expect.pages_min, expect.pages_max)
     if expect.pictures_min:
         report["pictures"] = check_pictures(count_pictures(path), expect.pictures_min)
+    if expect.pictures_of:
+        original = next(p for p in task.inputs if p.name == expect.pictures_of)
+        report["pictures_kept"] = check_pictures_kept(
+            picture_thumbnails(original), picture_thumbnails(path)
+        )
     if expect.template:
         template = next(p for p in task.inputs if p.name == expect.template)
         report["template"] = check_template_kept(layout_names(path), layout_names(template))

@@ -482,8 +482,11 @@ def source_text(path: Path) -> str:
         values = (v for sheet in book for row in sheet.iter_rows(values_only=True) for v in row)
         return "\n".join(str(v) for v in values if v is not None)
     if suffix == ".pptx":
+        from ..reading import render_slide
+
+        # A chart's numbers are in its own data, not in the slide's text runs.
         deck = Presentation(str(path))
-        return "\n".join(t.text or "" for s in deck.slides for t in s._element.iter(f"{_A}t"))
+        return "\n".join(render_slide(slide, with_heading=True) for slide in deck.slides)
     if suffix == ".pdf":
         from ...pdf.text import _pdf_page_texts
 
