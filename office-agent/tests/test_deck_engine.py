@@ -225,9 +225,12 @@ def test_pictures_in_sibling_groups_keep_their_own_images(tmp_path: Path) -> Non
     Image.new("RGB", (120, 80), "#FF0000").save(tmp_path / "store.png")
     Image.new("RGB", (120, 80), "#0000FF").save(tmp_path / "team.png")
     page = (
-        f'<svg {_SVG}><text id="title" x="60" y="80" font-size="30" fill="#000000">门店与团队</text>'
-        '<g id="store"><image href="store.png" x="60" y="120" width="500" height="300"/></g>'
-        '<g id="team"><image href="team.png" x="660" y="120" width="500" height="300"/></g></svg>'
+        f'<svg {_SVG}><text id="title" x="60" y="80" font-size="30" fill="#000000">'
+        "门店与团队</text>"
+        '<g id="store"><image href="store.png" x="60" y="120" width="500" height="300"/>'
+        "</g>"
+        '<g id="team"><image href="team.png" x="660" y="120" width="500" height="300"/>'
+        "</g></svg>"
     )
 
     out, _report = _compile(tmp_path, [("p1", page)], svg_dir=tmp_path)
