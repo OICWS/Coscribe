@@ -4,7 +4,7 @@
   "src/coscribe/conversation/activity.py::summarize_activity": 18,
   "src/coscribe/conversation/approvals.py::_decide_action_request": 25,
   "src/coscribe/conversation/session.py::_handle_user_message_locked": 30,
-  "src/coscribe/conversation/session.py::_stream_turn": 17,
+  "src/coscribe/conversation/turn_stream.py::stream_turn": 17,
   "src/coscribe/tools/_svg_slide.py::add_svg_slide": 16,
   "src/coscribe/tools/browser.py::build_browser_tools": 45,
   "src/coscribe/tools/http_request.py::build_http_tools": 16,
@@ -54,6 +54,7 @@
   "coscribe.conversation.session -> coscribe.tools.scheduled_tasks": 1,
   "coscribe.conversation.session -> coscribe.tools.skill_catalog": 1,
   "coscribe.conversation.session -> coscribe.tools.subagent_tasks": 1,
+  "coscribe.conversation.turn_stream -> coscribe.runtime_lg.tool_deferral": 1,
   "coscribe.coordinator -> coscribe.tools._workspace": 1,
   "coscribe.coordinator -> coscribe.tools.scheduled_tasks": 1,
   "coscribe.coordinator -> coscribe.workflows.permissions": 1,
@@ -111,11 +112,11 @@
   "coscribe.workflows.testing -> coscribe.tools.browser": 1
  },
  "fan_out": {
-  "coscribe.conversation.session": 38,
+  "coscribe.conversation.session": 39,
   "coscribe.web.app": 27
  },
  "file_lines": {
-  "src/coscribe/conversation/session.py": 1852,
+  "src/coscribe/conversation/session.py": 1616,
   "src/coscribe/coordinator.py": 855,
   "src/coscribe/runtime_lg/subagents.py": 837,
   "src/coscribe/tools/presentations.py": 4979,
@@ -129,7 +130,7 @@
   "src/coscribe/conversation/approvals.py::ApprovalDecider._decide_action_request": 289,
   "src/coscribe/conversation/session.py::ChatSessionLG.__init__": 207,
   "src/coscribe/conversation/session.py::ChatSessionLG._handle_user_message_locked": 212,
-  "src/coscribe/conversation/session.py::ChatSessionLG._stream_turn": 221,
+  "src/coscribe/conversation/turn_stream.py::TurnStreamer.stream_turn": 115,
   "src/coscribe/coordinator.py::build_coordinator_agent": 153,
   "src/coscribe/runtime_lg/agent.py::build_langgraph_agent": 184,
   "src/coscribe/runtime_lg/messages.py::serialize_history_for_ws_lg": 115,

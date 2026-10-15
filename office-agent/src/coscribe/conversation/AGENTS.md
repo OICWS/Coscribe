@@ -3,7 +3,7 @@
 ## Purpose
 Owns `ChatSessionLG` (`session.py`: runs a thread's turns, holds the pending approvals and the
 turn counters; being split into smaller modules, so check
-the directory before assuming a piece is still in it), the turn text helpers (`turn_text.py`), the approval card's before and after picture of a document edit (`edit_preview.py`), the hook commands run around tool calls (`tool_hooks.py`), the folder and skill changes between turns (`reconfigure.py`), the approval decision (`approvals.py`: what
+the directory before assuming a piece is still in it), the turn text helpers (`turn_text.py`), the approval card's before and after picture of a document edit (`edit_preview.py`), the hook commands run around tool calls (`tool_hooks.py`), the folder and skill changes between turns (`reconfigure.py`), the stream of one run to the tab (`turn_stream.py`), the approval decision (`approvals.py`: what
 runs without asking, what is refused, what waits for a person), sub-agent and inbox reports as
 turns (`subagents.py`), workflow drafting for the chat model and the save button
 (`workflow_drafting.py`), the checkpointed history: replay, paging back, /compact, /clear, edit and
