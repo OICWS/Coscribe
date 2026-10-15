@@ -62,7 +62,7 @@ dependencies = [
     # 2.x line already verified working throughout this project (2.13.4 in
     # this sandbox); raise this once 2.14 actually ships a stable release
     # and is verified compatible, not just because the alpha exists.
-    "pydantic>=2.5.0,<2.14.0",
+    "pydantic>=2.5.0,<2.15.0",
     "pydantic-settings>=2.5.0",
     "python-dotenv>=1.0.0",
     # runtime/secrets.py: OS-keychain-backed secret storage, optional at
