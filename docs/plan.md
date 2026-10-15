@@ -6,7 +6,7 @@ are the way they are lives in [`docs/decisions/`](decisions/) and
 [`ARCHITECTURE.md`](../ARCHITECTURE.md). Update this file in the PR that
 changes the picture; keep it under about 150 lines.
 
-Last reviewed: 2026-10-11.
+Last reviewed: 2026-10-15.
 
 ## Next, in order
 
@@ -42,10 +42,22 @@ Last reviewed: 2026-10-11.
    10. Approval decision table (issue #103): part 1, the precedence of the standing approvals,
        plan mode, the exec policy and asking, is in `tests/test_approval_decisions.py`. Next:
        Auto mode's reviewer, the code module's allowances, the question and draft tools.
-   Then the large splits (roadmap in the assessment). `tools/presentations.py` is being split
-   in pure-move PRs (#232 item 5): part 1 (transitions, animation, audio into
-   `tools/office/pptx/`) and part 2 (the deck checks into `qa.py`) and part 3 (the theme code into `theme.py`) and part 4 (SmartArt,
-   shape description, effects, template slide copying) are done; what is left is the toolkit class and the slide builders. One session at a time: ask on #232 first.
+   Batch 6 (#232), state on 2026-10-15:
+   - Done: the Windows job exists (nightly, report only); mutation survivors #221 to #227 and
+     #165; the browser-panel port (#209); package cards for every package; guardrails 9
+     (security audit and Dependabot, major versions ignored), 10 (dead code ratchet) and 11
+     (flaky tests reported, then quarantined with an end date).
+   - Done: `conversation/session.py` is split (1,472 lines; hooks, folder and skill changes,
+     the turn stream and the approval resume are their own modules).
+   - Open: `tools/presentations.py` is still 4,979 lines (parts 1 to 4 of its split are
+     merged; the toolkit class and the slide builders are left).
+   - Open: `deep_imports` is 82 and the exit criterion is 40 or fewer; the importers still reach
+     into submodules instead of the package interfaces.
+   - Open: the Windows job must be green 14 days before it is required. It was red on 10-14
+     (#267: `os.replace` raises PermissionError in `tools/tasks.py`), so the clock has not started.
+   - Open: `test_tool_schema_snapshot` fails in cloud containers but passes in CI (#252).
+   - For the maintainer: switch on Dependabot security updates, secret scanning and push
+     protection in the repository settings (listed in #263).
 
 0b. **The office route** (decision 0010, `docs/assessments/2026-10-13-office-route.md`):
    new decks compiled from whole-page SVG sources, edits through the page source and upgraded
@@ -126,6 +138,4 @@ Last reviewed: 2026-10-11.
   could only switch off coscribe's own web tools; it must say so on its face.
 - A callback helper so a script can use a secret (needs its own local
   authentication).
-- Splitting `tools/presentations.py` (7k lines) and `ChatSessionLG`, when
-  presentation work resumes.
 - A terminal UI.
