@@ -4995,7 +4995,7 @@ def test_bullet_body_text_still_has_no_explicit_bullet_override(tmp_path: Path) 
 def _theme_xml_parts(pptx_path: Path) -> tuple[object, object, object]:
     """(clrScheme element, majorFont element, master) for a saved deck's
     own theme part -- python-pptx has no public API for clrScheme/
-    fontScheme (see _apply_theme's docstring), so tests read the raw XML
+    fontScheme (see apply_theme's docstring), so tests read the raw XML
     the same way the implementation writes it."""
     from lxml import etree
     from pptx import Presentation
