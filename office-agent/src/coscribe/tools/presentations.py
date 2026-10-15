@@ -95,7 +95,7 @@ from ._output_truncation import cap_read_output
 from ._pptx_shapes import describe_members, find_shape, in_group, set_slide_box
 from ._pptx_text import replace_text
 from ._svg_slide import add_svg_slide
-from ._thumbnail import render_all_page_previews, render_thumbnail
+from ._thumbnail import render_thumbnail
 from ._workspace import WorkspaceScope
 from .office.markdown_blocks import Block, parse_blocks
 from .office.pptx import slide_builders as sb
@@ -117,12 +117,9 @@ from .office.pptx.animation import (
 )
 from .office.pptx.effects import SHAPE_EFFECT_TYPES, apply_shape_effect
 from .office.pptx.qa import (
-    check_low_contrast,
-    check_missing_visual_elements,
     check_overflow,
-    check_rendered_layout,
-    check_text_overlaps,
     leftover_placeholder_warnings,
+    preview_deck,
     shape_bbox,
 )
 from .office.pptx.shape_description import describe_shape as _describe_shape
@@ -2740,26 +2737,9 @@ class PresentationToolkit:
 
     @locked_by_path
     def render_pptx_preview(self, path: str, max_slides: int = 8) -> dict[str, object]:
-        from pptx import Presentation
-
         file_path = self._check_readable(path)
         state_dir = Path(self._state_dir) if self._state_dir is not None else None
-        layout: list[dict[str, Any]] = []
-        preview_names, skipped_reason = render_all_page_previews(
-            file_path, state_dir, max_pages=max_slides, layout=layout
-        )
-        prs = Presentation(str(file_path))
-        small_text, sparse = check_rendered_layout(layout, prs)
-        return {
-            "preview_paths": preview_names,
-            "preview_paths_csv": ",".join(preview_names),
-            "preview_skipped_reason": skipped_reason,
-            "text_overlap_warnings": check_text_overlaps(prs),
-            "slides_missing_visual_elements": check_missing_visual_elements(prs),
-            "low_contrast_warnings": check_low_contrast(prs),
-            "small_text_slides": small_text,
-            "sparse_slides": sparse,
-        }
+        return preview_deck(file_path, state_dir, max_slides)
 
     @staticmethod
     def _render_slide(slide: Any, with_heading: bool = False) -> str:

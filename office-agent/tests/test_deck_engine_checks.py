@@ -26,7 +26,12 @@ from coscribe.tools.office.pptx.engine import (
     page_files,
     source_text,
 )
-from coscribe.tools.office.pptx.engine.checker import is_known, known_numbers, number_values
+from coscribe.tools.office.pptx.engine.checker import (
+    claims,
+    is_known,
+    known_numbers,
+    number_values,
+)
 
 _SVG = (
     'xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="Microsoft YaHei, Arial"'
@@ -390,3 +395,31 @@ def test_a_count_in_another_unit_is_known_and_a_rounded_one_is_not() -> None:
         assert known_as(written), written
     assert not known_as("140 万亿元")
     assert number_values("100km") == [("100", Decimal(100))]
+
+
+def test_a_unit_spelled_out_in_brackets_is_not_a_claim() -> None:
+    assert [n for n, _ in claims("出口量(万辆) · Exports (10,000 units)")] == []
+    assert [n for n, _ in claims("均价（USD 10,000 per vehicle）")] == []
+    assert [n for n, _ in claims("1000 users, 共 10000 人")] == ["1000", "10000"]
+    assert [n for n, _ in claims("第 3 页，增长 2.5")] == ["2.5"]
+
+
+def test_the_preview_of_a_deck_built_from_pages_leaves_the_checks_to_the_build(
+    tmp_path: Path,
+) -> None:
+    from coscribe.tools.office.pptx.qa import preview_deck
+
+    _pages(tmp_path / "deck-pages", ["1-cover.svg"])
+    build_deck(tmp_path / "deck-pages", tmp_path / "deck.pptx")
+    Presentation().save(str(tmp_path / "other.pptx"))
+
+    built = preview_deck(tmp_path / "deck.pptx", None, 1)
+    other = preview_deck(tmp_path / "other.pptx", None, 1)
+    edited = Presentation(str(tmp_path / "deck.pptx"))
+    edited.slides[0].shapes.add_textbox(0, 0, 100, 100).text = "added in PowerPoint"
+    edited.save(str(tmp_path / "deck.pptx"))
+    after_an_edit = preview_deck(tmp_path / "deck.pptx", None, 1)
+
+    assert built["built_from_pages"] == "deck-pages" and "text_overlap_warnings" not in built
+    assert "built_from_pages" not in other and "text_overlap_warnings" in other
+    assert "built_from_pages" not in after_an_edit and "text_overlap_warnings" in after_an_edit

@@ -6,7 +6,15 @@ instructions say so, and the built-in skill "PPTX Pages" (`builtin_skills/pptx-p
 guide the agent loads first.
 """
 
-from .build import MANIFEST, BuildReport, DeckChangedError, build_deck, page_files, slide_hashes
+from .build import (
+    MANIFEST,
+    BuildReport,
+    DeckChangedError,
+    build_deck,
+    built_from_pages,
+    page_files,
+    slide_hashes,
+)
 from .checker import check_deck, source_text
 from .compiler import TITLE_ID, CompileReport, PageReport, compile_pages
 
@@ -18,6 +26,7 @@ __all__ = [
     "DeckChangedError",
     "PageReport",
     "build_deck",
+    "built_from_pages",
     "check_deck",
     "compile_pages",
     "page_files",
