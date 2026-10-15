@@ -42,8 +42,10 @@ Last reviewed: 2026-10-11.
    10. Approval decision table (issue #103): part 1, the precedence of the standing approvals,
        plan mode, the exec policy and asking, is in `tests/test_approval_decisions.py`. Next:
        Auto mode's reviewer, the code module's allowances, the question and draft tools.
-   Then the large splits (roadmap in the assessment); the split of `tools/presentations.py`
-   waits for the first version of the deck engine below, so it is split once.
+   Then the large splits (roadmap in the assessment). `tools/presentations.py` is being split
+   in pure-move PRs (#232 item 5): part 1 (transitions, animation, audio into
+   `tools/office/pptx/`) is done; still to move: the rendered-slide checks, theme and template
+   helpers, SmartArt, shape description and effects. One session at a time: ask on #232 first.
 
 0b. **The office route** (decision 0010, `docs/assessments/2026-10-13-office-route.md`):
    new decks compiled from whole-page SVG sources, edits through the page source and upgraded

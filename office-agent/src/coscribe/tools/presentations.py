@@ -77,13 +77,11 @@ and LibreOffice's own more forgiving parser would silently accept anyway.
 
 from __future__ import annotations
 
-import json
 import re
 import shutil
 import subprocess
 import tempfile
 from collections.abc import Callable, Iterator, Sequence
-from functools import cache, lru_cache
 from io import BytesIO
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
@@ -100,6 +98,36 @@ from ._svg_slide import add_svg_slide
 from ._thumbnail import render_all_page_previews, render_thumbnail
 from ._workspace import WorkspaceScope
 from .office.markdown_blocks import Block, parse_blocks, parse_inline_runs
+from .office.pptx.animation import (
+    ANIMATIONS,
+    AUDIO_CONTENT_TYPES,
+    AUDIO_MARKER_SIZE_EMU,
+    AUDIO_TRIGGERS,
+    TRIGGERS,
+    add_animation_step,
+    build_audio_pic_element,
+    build_audio_timing_node,
+    ensure_paragraph_build,
+    next_timing_id,
+    register_audio_media_part_class,
+    resolve_animation_preset,
+    timing_root_child_list,
+    verify_animation_readback,
+)
+from .office.pptx.transitions import (
+    TRANSITIONS,
+    mark_mce_ignorable,
+    set_slide_transition,
+)
+from .office.pptx.xmlns import (
+    A14_NS,
+    A_NS,
+    P14_NS,
+    P15_NS,
+    P159_NS,
+    P_NS,
+    R_NS,
+)
 from .pptx_templates import load_builtin_templates as _load_builtin_templates
 from .pptx_templates import load_pptx_templates as _load_pptx_templates
 
@@ -191,226 +219,6 @@ _CJK_FALLBACK_TYPEFACE = "Microsoft YaHei"
 _MARGIN_FRACTION = 0.05
 _CONTENT_TOP_FRACTION = 0.2333
 _CONTENT_BOTTOM_FRACTION = 0.9
-
-# The presentationml namespace every <p:...> element in a slide part lives
-# in, and the PowerPoint-2010 extension namespace real PowerPoint uses for
-# the transition duration attribute (`p14:dur`, milliseconds) -- the base
-# ECMA-376 schema only has the three-value `spd` attribute (fast/med/slow),
-# `p14:dur` is the real-world attribute PowerPoint itself writes for
-# precise timing, confirmed by inspecting real .pptx files' XML.
-_P_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
-_P14_NS = "http://schemas.microsoft.com/office/powerpoint/2010/main"
-# Markup Compatibility and Extensibility (ECMA-376 Part 3) -- the mechanism
-# that makes a foreign-namespace attribute like `p14:dur` below valid OOXML
-# at all: a producer declares the namespace prefix "ignorable" via
-# `mc:Ignorable` on an ancestor, and a schema-strict consumer is specified
-# to strip that content before validating rather than reject it outright.
-# Confirmed live against `_ooxml_schemas/`: `CT_SlideTransition`/`CT_Slide`
-# have no `xsd:anyAttribute` wildcard, so `p14:dur` genuinely doesn't
-# validate against the bare ECMA-376 schema without this declaration --
-# `_ooxml_validate.py` implements the matching strip-before-validate side.
-_MC_NS = "http://schemas.openxmlformats.org/markup-compatibility/2006"
-
-# add_pptx_formula's own pair: the PowerPoint-2010 DrawingML extension
-# namespace real PowerPoint uses to embed a native Office Math equation
-# inside a text paragraph (`<a14:m>`, wrapping `<m:oMathPara>`/`<m:oMath>`),
-# and Office Math's own namespace -- confirmed against
-# hugohe3/ppt-master's own documented contract (`references/native-
-# formula.md`: "Export replaces the whole group with a14:m > m:oMathPara >
-# m:oMath"), not guessed. Same foreign-namespace-extension-content shape as
-# `p14:dur` above -- `<a:p>`'s base ECMA-376 content model has no slot for
-# either `a14:m` or `m:oMath`, so this needs the exact same `mc:Ignorable`
-# treatment (`_mark_mce_ignorable`/`_ooxml_validate.py`'s strip-before-
-# validate side), reused unmodified rather than duplicated.
-_A14_NS = "http://schemas.microsoft.com/office/drawing/2010/main"
-_M_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
-# DrawingML's base namespace -- add_pptx_audio's own <a:audioFile>/
-# <a:blip>/<a:xfrm> below, none of which needed a dedicated constant
-# until now (every earlier hand-XML feature only ever needed the "p"/
-# "p14"/"a14"/"m" namespaces above).
-_A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
-
-# PowerPoint 2012/2015 extension namespaces -- set_pptx_transition's own
-# pair beyond _P14_NS above, needed for the newer transition effects below
-# (Morph is p159; the 2013 "Exciting"-category ones -- Fracture, Crush,
-# Airplane, Origami, etc. -- are p15). Same foreign-namespace-extension
-# reasoning as _P14_NS/_A14_NS: real PowerPoint XML for these effects,
-# confirmed against hugohe3/ppt-master's own reverse-engineered registry
-# (`pptx_transitions.py`), not guessed.
-_P15_NS = "http://schemas.microsoft.com/office/powerpoint/2012/main"
-_P159_NS = "http://schemas.microsoft.com/office/powerpoint/2015/09/main"
-
-_TRANSITION_NAMESPACES = {"p": _P_NS, "p14": _P14_NS, "p15": _P15_NS, "p159": _P159_NS}
-# The three extension prefixes a transition (and only a transition -- this
-# codebase's only other p14 user, add_pptx_formula, owns a14 instead) can
-# ever need mc:Ignorable for -- see _set_slide_transition's own comment on
-# why unmarking all three unconditionally before setting a new transition
-# is correct rather than fragile.
-_TRANSITION_MCE_PREFIXES = ("p14", "p15", "p159")
-
-# PowerPoint's real native transition gallery (48 effects across its own
-# Subtle/Exciting/Dynamic Content categories) plus common legacy aliases
-# (8 more) -- retyped from hugohe3/ppt-master's own `pptx_transitions.py`
-# (`_TRANSITION_SPECS`/`TRANSITION_ALIASES`, commit `6e3ce9c5a3b994a0e223
-# a14a0f7eddf42fd0b9f5`), the real element/attribute mapping for each
-# effect having been reverse-engineered against actual PowerPoint-authored
-# XML there -- not independently guessable, and not worth re-deriving.
-# Deliberately narrower than the source in one way: each effect here is
-# its own single, sensible default variant (e.g. "push" always defaults to
-# `dir="r"`) with no exposed per-transition options (direction/shape/style
-# overrides) -- ppt-master's own effect_options system is real, scoped-out
-# extra surface for a later pass, not ported here. "prefix" absent means
-# the base "p" (ECMA-376) namespace; "fallback" is only meaningful for a
-# non-"p" prefix, naming which base transition an older/non-MCE-aware
-# reader should see instead (this codebase's own mc:Ignorable-based
-# approach doesn't use it today -- see _set_slide_transition -- but it's
-# kept in the data for a future AlternateContent-based upgrade).
-_TRANSITION_SPECS: dict[str, dict[str, Any]] = {
-    "fade": {"element": "fade", "attrs": {}},
-    "push": {"element": "push", "attrs": {"dir": "r"}},
-    "wipe": {"element": "wipe", "attrs": {"dir": "r"}},
-    "split": {"element": "split", "attrs": {"orient": "horz", "dir": "out"}},
-    "cover": {"element": "cover", "attrs": {"dir": "r"}},
-    "random": {"element": "random", "attrs": {}},
-    "blinds": {"element": "blinds", "attrs": {"dir": "vert"}},
-    "checkerboard": {"element": "checker", "attrs": {"dir": "horz"}},
-    "comb": {"element": "comb", "attrs": {"dir": "horz"}},
-    "cut": {"element": "cut", "attrs": {"thruBlk": "0"}},
-    "dissolve": {"element": "dissolve", "attrs": {}},
-    "random_bars": {"element": "randomBar", "attrs": {"dir": "vert"}},
-    "zoom": {"element": "warp", "attrs": {"dir": "in"}, "prefix": "p14", "fallback": "fade"},
-    "morph": {
-        "element": "morph",
-        "attrs": {"option": "byObject"},
-        "prefix": "p159",
-        "fallback": "fade",
-    },
-    "reveal": {"element": "reveal", "attrs": {"dir": "r"}, "prefix": "p14", "fallback": "fade"},
-    "shape": {"element": "circle", "attrs": {}},
-    "uncover": {"element": "pull", "attrs": {"dir": "r"}},
-    "flash": {"element": "flash", "attrs": {}, "prefix": "p14", "fallback": "fade"},
-    "fall_over": {
-        "element": "prstTrans",
-        "attrs": {"prst": "fallOver", "invX": "1"},
-        "prefix": "p15",
-        "fallback": "fade",
-    },
-    "drape": {
-        "element": "prstTrans",
-        "attrs": {"prst": "drape", "invX": "1"},
-        "prefix": "p15",
-        "fallback": "fade",
-    },
-    "curtains": {
-        "element": "prstTrans",
-        "attrs": {"prst": "curtains"},
-        "prefix": "p15",
-        "fallback": "fade",
-    },
-    "wind": {
-        "element": "prstTrans",
-        "attrs": {"prst": "wind"},
-        "prefix": "p15",
-        "fallback": "fade",
-    },
-    "prestige": {
-        "element": "prstTrans",
-        "attrs": {"prst": "prestige"},
-        "prefix": "p15",
-        "fallback": "fade",
-    },
-    "fracture": {
-        "element": "prstTrans",
-        "attrs": {"prst": "fracture"},
-        "prefix": "p15",
-        "fallback": "fade",
-    },
-    "crush": {
-        "element": "prstTrans",
-        "attrs": {"prst": "crush"},
-        "prefix": "p15",
-        "fallback": "fade",
-    },
-    "peel_off": {
-        "element": "prstTrans",
-        "attrs": {"prst": "peelOff", "invX": "1"},
-        "prefix": "p15",
-        "fallback": "fade",
-    },
-    "page_curl": {
-        "element": "prstTrans",
-        "attrs": {"prst": "pageCurlSingle", "invX": "1"},
-        "prefix": "p15",
-        "fallback": "fade",
-    },
-    "airplane": {
-        "element": "prstTrans",
-        "attrs": {"prst": "airplane"},
-        "prefix": "p15",
-        "fallback": "fade",
-    },
-    "origami": {
-        "element": "prstTrans",
-        "attrs": {"prst": "origami"},
-        "prefix": "p15",
-        "fallback": "fade",
-    },
-    "clock": {"element": "wheel", "attrs": {"spokes": "1"}},
-    "ripple": {"element": "ripple", "attrs": {}, "prefix": "p14", "fallback": "fade"},
-    "honeycomb": {"element": "honeycomb", "attrs": {}, "prefix": "p14", "fallback": "fade"},
-    "glitter": {"element": "glitter", "attrs": {}, "prefix": "p14", "fallback": "fade"},
-    "vortex": {"element": "vortex", "attrs": {"dir": "r"}, "prefix": "p14", "fallback": "fade"},
-    "shred": {"element": "shred", "attrs": {"dir": "out"}, "prefix": "p14", "fallback": "fade"},
-    "switch": {"element": "switch", "attrs": {"dir": "r"}, "prefix": "p14", "fallback": "fade"},
-    "flip": {"element": "flip", "attrs": {"dir": "r"}, "prefix": "p14", "fallback": "fade"},
-    "gallery": {"element": "gallery", "attrs": {"dir": "r"}, "prefix": "p14", "fallback": "fade"},
-    "cube": {"element": "prism", "attrs": {"dir": "r"}, "prefix": "p14", "fallback": "fade"},
-    "doors": {"element": "doors", "attrs": {"dir": "vert"}, "prefix": "p14", "fallback": "fade"},
-    "box": {"element": "zoom", "attrs": {}},
-    "pan": {"element": "pan", "attrs": {"dir": "r"}, "prefix": "p14", "fallback": "fade"},
-    "ferris_wheel": {
-        "element": "ferris",
-        "attrs": {"dir": "r"},
-        "prefix": "p14",
-        "fallback": "fade",
-    },
-    "conveyor": {
-        "element": "conveyor",
-        "attrs": {"dir": "r"},
-        "prefix": "p14",
-        "fallback": "fade",
-    },
-    "rotate": {
-        "element": "prism",
-        "attrs": {"dir": "r", "isContent": "1"},
-        "prefix": "p14",
-        "fallback": "fade",
-    },
-    "window": {"element": "window", "attrs": {}, "prefix": "p14", "fallback": "fade"},
-    "orbit": {
-        "element": "prism",
-        "attrs": {"dir": "r", "isContent": "1", "isInverted": "1"},
-        "prefix": "p14",
-        "fallback": "fade",
-    },
-    "fly_through": {"element": "flythrough", "attrs": {}, "prefix": "p14", "fallback": "fade"},
-}
-
-# Legacy/compatibility names mapping onto one of the 48 canonical keys
-# above -- e.g. an older "strips"/"wheel" name a caller (or a round-
-# tripped PPTX) might still use.
-_TRANSITION_ALIASES: dict[str, str] = {
-    "strips": "wipe",
-    "circle": "shape",
-    "diamond": "shape",
-    "newsflash": "flash",
-    "plus": "shape",
-    "pull": "uncover",
-    "wedge": "clock",
-    "wheel": "clock",
-}
-
-_TRANSITIONS = frozenset({*_TRANSITION_SPECS, *_TRANSITION_ALIASES, "none"})
 
 # add_pptx_shape's own curated subset of python-pptx's ~180-member
 # MSO_SHAPE enum (every name below verified against the real installed
@@ -591,15 +399,15 @@ def _analyze_pptx_delivery(file_path: Path) -> dict[str, Any]:
     animation_slides: list[int] = []
     audio_slides: list[int] = []
     for index, slide in enumerate(prs.slides, start=1):
-        if slide.element.find(f"{{{_P_NS}}}transition") is not None:
+        if slide.element.find(f"{{{P_NS}}}transition") is not None:
             transition_slides.append(index)
-        timing = slide.element.find(f"{{{_P_NS}}}timing")
+        timing = slide.element.find(f"{{{P_NS}}}timing")
         if timing is None:
             continue
-        main_child = timing.find(f".//{{{_P_NS}}}cTn[@nodeType='mainSeq']/{{{_P_NS}}}childTnLst")
+        main_child = timing.find(f".//{{{P_NS}}}cTn[@nodeType='mainSeq']/{{{P_NS}}}childTnLst")
         if main_child is not None and len(main_child):
             animation_slides.append(index)
-        if timing.find(f".//{{{_P_NS}}}audio") is not None:
+        if timing.find(f".//{{{P_NS}}}audio") is not None:
             audio_slides.append(index)
 
     return {
@@ -613,687 +421,6 @@ def _analyze_pptx_delivery(file_path: Path) -> dict[str, Any]:
             "audio": audio_slides,
         },
     }
-
-
-# presetID/presetClass/presetSubtype values and the exact effect-node shape
-# (p:set for the visibility toggle, then p:animEffect/p:anim/p:animScale/
-# p:animRot/p:animMotion/p:animClr for the motion) are not guessed -- they
-# come straight from hugohe3/ppt-master's vendored `pptx_animation_presets.
-# json` (`_native_animation_presets/`, commit `6e3ce9c5a3b994a0e223a14a0f7e
-# dd42fd0b9f5`, see that directory's own NOTICE.md): a real, PowerPoint-
-# authored `<p:cTn>` XML row per effect -- the file's own `source` metadata
-# says it was generated by exporting from actual Microsoft PowerPoint 16,
-# not hand-derived, 203 presets across entrance/emphasis/exit/path
-# (motion-path) categories. `_instantiate_animation_preset_row` below
-# parses one preset's row_xml at call time and adapts it to the target
-# slide (renumbers ids, retargets spid, scales duration) rather than this
-# file hand-rebuilding each effect's XML from scratch -- the earlier design
-# (kept in git history) manually reimplemented exactly 6 of these 203
-# presets one `if`/`elif` branch at a time; scaling that approach to the
-# full catalog by hand was not realistic, so this switched to parsing the
-# real authored XML instead, the same shift `set_pptx_transition` made from
-# "guess the XML shape" to "retype the real table" (PPTX_DESIGN.md §27).
-_ANIMATION_PRESETS_PATH = (
-    Path(__file__).parent / "_native_animation_presets" / "animation_presets.json"
-)
-
-# The 6 preset names this file exposed before the 203-preset catalog above
-# replaced the hand-rolled 6-effect builder -- kept working under their old
-# names for backward compatibility, mapped onto the real preset key each
-# one turned out to already implement (confirmed by matching presetID/
-# presetSubtype/category, not by name similarity).
-_ANIMATION_ALIASES = {
-    "fade": "entrance_fade",
-    "fly-in": "entrance_fly",
-    "exit-fade": "exit_fade",
-    "exit-fly": "exit_fly",
-    "emphasis-grow": "emphasis_grow_shrink",
-    "emphasis-spin": "emphasis_spin",
-}
-
-
-@lru_cache(maxsize=1)
-def _load_animation_presets() -> dict[str, dict[str, Any]]:
-    """Every vendored preset, keyed by its real preset key
-    (`"entrance_fade"`, `"path_circle"`, ...) -- loaded and cached once."""
-    payload = json.loads(_ANIMATION_PRESETS_PATH.read_text(encoding="utf-8"))
-    return {effect["key"]: effect for effect in payload["effects"]}
-
-
-_ANIMATIONS = frozenset({*_load_animation_presets(), *_ANIMATION_ALIASES})
-
-
-def _resolve_animation_preset(animation: str) -> dict[str, Any]:
-    key = _ANIMATION_ALIASES.get(animation, animation)
-    return _load_animation_presets()[key]
-
-
-@cache
-def _animation_preset_expected_children(animation: str) -> frozenset[str]:
-    """Distinct direct-child tag names of a preset's own `<p:childTnLst>`
-    (e.g. `{"animEffect"}` for a fade, `{"anim"}` for a fly, `{"animMotion"}`
-    for a motion path) -- the generalization of the old hand-maintained
-    `_ANIMATION_CHILD_TAGS` single-tag map, now derived from the real XML
-    instead of listed by hand for each of 203 presets. `"set"` (the shared
-    visibility toggle every entrance/exit preset also carries) is excluded
-    unless it is the *only* child, since it doesn't disambiguate one preset
-    from another the way the motion/effect tag does."""
-    from lxml import etree
-
-    preset = _resolve_animation_preset(animation)
-    root = etree.fromstring(preset["row_xml"].encode("utf-8"))
-    child_lst = root.find(f"{{{_P_NS}}}childTnLst")
-    tags = {etree.QName(child).localname for child in child_lst}
-    return frozenset(tags - {"set"}) or frozenset({"set"})
-
-# nodeType on the presetID-bearing <p:cTn> encodes which Animation Pane
-# "Start" mode this row uses -- confirmed against hugohe3/ppt-master's
-# pptx_animations.py (_TRIGGER_NODE_TYPES there, identical mapping), which
-# always *overwrites* this attribute at row-instantiation time based on
-# the caller's actual trigger, regardless of whatever value the raw
-# preset template happened to store. Every preset in the vendored
-# animation_presets.json stores nodeType="afterEffect" -- a generic
-# placeholder value from the manifest, not a per-preset fact -- so this
-# file's own previous "fix" from "clickEffect" to hardcoded "afterEffect"
-# (see git history) was itself wrong for the on-click-only trigger this
-# file exposed at the time: on-click should be "clickEffect". Found while
-# researching trigger-mode support below, not guessed --
-# add_pptx_animation's `trigger` parameter now always derives nodeType
-# from this table instead of hardcoding one value.
-_TRIGGER_NODE_TYPES = {
-    "on-click": "clickEffect",
-    "with-previous": "withEffect",
-    "after-previous": "afterEffect",
-}
-_TRIGGERS = frozenset(_TRIGGER_NODE_TYPES)
-
-# add_pptx_audio's own, deliberately small format set -- the three real
-# content types hugohe3/ppt-master's own narration tooling supports
-# (`AUDIO_CONTENT_TYPES` in `svg_to_pptx/pptx_package/narration.py`),
-# not independently guessed.
-_AUDIO_CONTENT_TYPES = {".mp3": "audio/mpeg", ".m4a": "audio/mp4", ".wav": "audio/wav"}
-_AUDIO_TRIGGERS = frozenset({"auto", "on-click"})
-# 457200 EMU = 0.5in -- the real size PowerPoint itself uses for an
-# inserted-audio icon (matches hugohe3/ppt-master's own
-# AUDIO_MARKER_SIZE_EMU), not independently chosen.
-_AUDIO_MARKER_SIZE_EMU = 457200
-
-
-def _register_audio_media_part_class() -> None:
-    """Register `MediaPart` for every audio content type add_pptx_audio
-    uses -- python-pptx's own `PartFactory.part_type_for` dict is a real,
-    documented extension point ("Client code can register a subclass of
-    |Part| to be used for a package blob based on its content type," per
-    its own docstring), but ships with nothing registered for *any*
-    media content type, audio or video. Without this, reopening a .pptx
-    that already has one audio/video part loads it back as a plain
-    |Part| (no `.sha1`), and `Package.get_or_add_media_part`'s own
-    dedup-by-sha1 lookup crashes with `AttributeError: 'Part' object has
-    no attribute 'sha1'` on every subsequent add_pptx_audio call in the
-    same process -- confirmed by hitting exactly that crash on a second
-    call before adding this registration, not assumed. A one-time,
-    idempotent process-wide side effect, matching how the module-level
-    docstring already documents this file lazily importing `pptx`/`lxml`
-    inside functions rather than at module scope."""
-    from pptx.opc.package import PartFactory
-    from pptx.parts.media import MediaPart
-
-    for content_type in _AUDIO_CONTENT_TYPES.values():
-        PartFactory.part_type_for[content_type] = MediaPart
-
-
-def _ctn_numeric_delay(ctn: Any) -> int:
-    """Largest direct numeric start delay on one <p:cTn>'s own
-    <p:stCondLst>/<p:cond> children (0 if none/non-numeric)."""
-    conditions = ctn.find(f"{{{_P_NS}}}stCondLst")
-    if conditions is None:
-        return 0
-    values = [
-        int(condition.get("delay", "0"))
-        for condition in conditions.findall(f"{{{_P_NS}}}cond")
-        if (condition.get("delay") or "").isdigit()
-    ]
-    return max(values, default=0)
-
-
-def _row_effective_duration_ms(row: Any) -> int | None:
-    """Finite end time (delay + dur) PowerPoint would expose for one
-    preset row, or None if nothing in it has a finite numeric duration."""
-    ends = []
-    for ctn in row.iter(f"{{{_P_NS}}}cTn"):
-        if ctn is row:
-            continue
-        raw_duration = ctn.get("dur")
-        if raw_duration is None or not raw_duration.isdigit():
-            continue
-        ends.append(_ctn_numeric_delay(ctn) + int(raw_duration))
-    return max(ends) if ends else None
-
-
-def _scale_preset_row_duration(row: Any, base_duration_ms: int, requested_duration_ms: int) -> None:
-    """Scale every finite duration/delay in one parsed preset row so its
-    overall length matches `requested_duration_ms` instead of the
-    preset's own authored `base_duration_ms` -- adapted from
-    hugohe3/ppt-master's `pptx_animations.py`'s
-    `_scale_animation_row_duration` (commit `6e3ce9c5a3b994a0e223a14a0f7e
-    dd42fd0b9f5`, see `_native_animation_presets/NOTICE.md`), ported from
-    `xml.etree.ElementTree` to this file's own `lxml`. A `dur="1"` node
-    (the visibility toggle every entrance/exit preset carries) is left at
-    exactly 1ms regardless of ratio -- scaling it down to 0 would make the
-    shape appear/disappear instantly with no fade *before* the real motion
-    starts, and scaling it up would visibly delay the motion for no
-    reason; real PowerPoint-authored XML never scales this node either."""
-    ratio = requested_duration_ms / base_duration_ms
-    for ctn in row.iter(f"{{{_P_NS}}}cTn"):
-        if ctn is row:
-            continue
-        raw_duration = ctn.get("dur")
-        if raw_duration is not None and raw_duration.isdigit():
-            numeric_duration = int(raw_duration)
-            ctn.set(
-                "dur",
-                "1" if numeric_duration == 1 else str(max(1, round(numeric_duration * ratio))),
-            )
-        conditions = ctn.find(f"{{{_P_NS}}}stCondLst")
-        if conditions is None:
-            continue
-        for condition in conditions.findall(f"{{{_P_NS}}}cond"):
-            raw_delay = condition.get("delay")
-            if raw_delay is not None and raw_delay.isdigit():
-                condition.set("delay", str(round(int(raw_delay) * ratio)))
-
-    actual_duration = _row_effective_duration_ms(row)
-    if actual_duration is None or actual_duration == requested_duration_ms:
-        return
-    # Rounding several independently-scaled nodes rarely lands exactly on
-    # the requested total -- nudge whichever node(s) actually determine
-    # the row's end time so the row's real length matches what was asked
-    # for, not just "close after rounding."
-    end_nodes = [
-        ctn
-        for ctn in row.iter(f"{{{_P_NS}}}cTn")
-        if ctn is not row
-        and (ctn.get("dur") or "").isdigit()
-        and _ctn_numeric_delay(ctn) + int(ctn.get("dur", "0")) == actual_duration
-    ]
-    for ctn in end_nodes:
-        delay = _ctn_numeric_delay(ctn)
-        if delay >= requested_duration_ms:
-            conditions = ctn.find(f"{{{_P_NS}}}stCondLst")
-            numeric = (
-                [
-                    condition
-                    for condition in conditions.findall(f"{{{_P_NS}}}cond")
-                    if (condition.get("delay") or "").isdigit()
-                ]
-                if conditions is not None
-                else []
-            )
-            if numeric:
-                numeric[-1].set("delay", str(max(0, requested_duration_ms - 1)))
-                delay = _ctn_numeric_delay(ctn)
-        ctn.set("dur", str(max(1, requested_duration_ms - delay)))
-
-
-def _instantiate_animation_preset_row(
-    row_par: Any,
-    effect_id: int,
-    shape_id: int,
-    animation: str,
-    duration_ms: int,
-    node_type: str,
-    paragraph_index: int | None = None,
-) -> int:
-    """Instantiate one vendored preset as the innermost <p:cTn
-    presetID=...> node (and everything under it), appended as a child of
-    `row_par` (a <p:par> already created by the caller). Returns the next
-    free id.
-
-    Rather than hand-rebuilding each animation type's XML shape (the
-    previous design, practical for the original 6 presets but not for the
-    full 203-preset catalog), this parses the preset's own real,
-    PowerPoint-authored `row_xml` and adapts it in place: renumbers every
-    <p:cTn id=...> sequentially from `effect_id` (the row_xml's own ids
-    always start at a fixed 5/6/7... baseline, since it was authored
-    against a hypothetical single-shape slide -- they'd collide with a
-    real slide's own running id counter otherwise), retargets every
-    <p:spTgt spid="2"> placeholder to the real `shape_id`, and -- when the
-    preset declares itself duration-scalable -- scales every finite
-    duration/delay from the preset's own authored default to
-    `duration_ms` via `_scale_preset_row_duration`. A handful of presets
-    (instant appear/disappear toggles, discrete state changes like "change
-    font") are not duration-scalable at all; for those, `duration_ms` is
-    ignored and the preset's own authored timing is kept verbatim --
-    real PowerPoint doesn't expose a duration control for these either."""
-    from lxml import etree
-
-    preset = _resolve_animation_preset(animation)
-    root = etree.fromstring(preset["row_xml"].encode("utf-8"))
-    root.set("nodeType", node_type)
-
-    next_id = effect_id
-    for ctn in root.iter(f"{{{_P_NS}}}cTn"):
-        ctn.set("id", str(next_id))
-        next_id += 1
-
-    for sp_tgt in root.iter(f"{{{_P_NS}}}spTgt"):
-        sp_tgt.set("spid", str(shape_id))
-        if paragraph_index is not None:
-            tx_el = etree.SubElement(sp_tgt, f"{{{_P_NS}}}txEl")
-            etree.SubElement(
-                tx_el, f"{{{_P_NS}}}pRg", st=str(paragraph_index), end=str(paragraph_index)
-            )
-
-    base_duration_ms = preset["default_duration_ms"]
-    if preset["duration_scalable"] and base_duration_ms is not None:
-        _scale_preset_row_duration(root, base_duration_ms, duration_ms)
-
-    row_par.append(root)
-    return next_id
-
-
-def _append_main_seq(root_child: Any, main_seq_id: int) -> Any:
-    """Append a fresh, empty <p:seq> (mainSeq) to `root_child` (tmRoot's
-    own <p:childTnLst>), returning mainSeq's own (also empty) childTnLst
-    for the caller to append its first <p:par> step into -- the shared
-    "add animation support to a slide" step, whether that slide has no
-    timing tree at all yet (`_new_timing_tree`) or already has one
-    without a mainSeq because `add_pptx_audio` created it first
-    (`_add_animation_step`'s own mainSeq-missing branch)."""
-    from lxml import etree
-
-    seq = etree.SubElement(root_child, f"{{{_P_NS}}}seq", concurrent="1", nextAc="seek")
-    main_ctn = etree.SubElement(
-        seq, f"{{{_P_NS}}}cTn", id=str(main_seq_id), dur="indefinite", nodeType="mainSeq"
-    )
-    main_child = etree.SubElement(main_ctn, f"{{{_P_NS}}}childTnLst")
-    prev_cond_lst = etree.SubElement(seq, f"{{{_P_NS}}}prevCondLst")
-    prev_cond = etree.SubElement(prev_cond_lst, f"{{{_P_NS}}}cond", evt="onPrev", delay="0")
-    etree.SubElement(etree.SubElement(prev_cond, f"{{{_P_NS}}}tgtEl"), f"{{{_P_NS}}}sldTgt")
-    next_cond_lst = etree.SubElement(seq, f"{{{_P_NS}}}nextCondLst")
-    next_cond = etree.SubElement(next_cond_lst, f"{{{_P_NS}}}cond", evt="onNext", delay="0")
-    etree.SubElement(etree.SubElement(next_cond, f"{{{_P_NS}}}tgtEl"), f"{{{_P_NS}}}sldTgt")
-    return main_child
-
-
-def _new_timing_tree(slide_element: Any) -> tuple[Any, Any]:
-    """Create `slide_element`'s (a <p:sld>) very first <p:timing> tree,
-    including its mainSeq -- the tmRoot/seq/mainSeq skeleton every
-    animation, regardless of trigger, lives under. Returns (timing,
-    mainSeq's own childTnLst)."""
-    from lxml import etree
-
-    timing = etree.SubElement(slide_element, f"{{{_P_NS}}}timing")
-    tn_lst = etree.SubElement(timing, f"{{{_P_NS}}}tnLst")
-    root_par = etree.SubElement(tn_lst, f"{{{_P_NS}}}par")
-    root_ctn = etree.SubElement(
-        root_par, f"{{{_P_NS}}}cTn", id="1", dur="indefinite", restart="never", nodeType="tmRoot"
-    )
-    root_child = etree.SubElement(root_ctn, f"{{{_P_NS}}}childTnLst")
-    main_child = _append_main_seq(root_child, 2)
-    return timing, main_child
-
-
-def _next_timing_id(timing: Any) -> int:
-    existing_ids = [
-        int(element.get("id"))
-        for element in timing.iter(f"{{{_P_NS}}}cTn")
-        if element.get("id") is not None
-    ]
-    return max(existing_ids, default=2) + 1
-
-
-def _timing_root_child_list(slide_element: Any) -> Any:
-    """Return-or-create the <p:timing>'s tmRoot <p:cTn>'s own
-    <p:childTnLst> -- where <p:seq> (add_pptx_animation's mainSeq) and
-    <p:audio>/<p:video> (auto-playing media, add_pptx_audio's own node)
-    live as siblings. Creates only the minimal tmRoot/childTnLst skeleton
-    if the slide has no <p:timing> yet -- deliberately *not* an empty
-    mainSeq: `CT_TimeNodeList` (mainSeq's own childTnLst type) requires
-    at least one child, so an empty <p:seq> is schema-invalid on its own,
-    confirmed by hitting exactly that real validation error before fixing
-    this. mainSeq is only ever added once an actual animation needs it
-    (see _add_animation_step's own mainSeq-missing branch)."""
-    from lxml import etree
-
-    timing = slide_element.find(f"{{{_P_NS}}}timing")
-    if timing is None:
-        timing = etree.SubElement(slide_element, f"{{{_P_NS}}}timing")
-        tn_lst = etree.SubElement(timing, f"{{{_P_NS}}}tnLst")
-        root_par = etree.SubElement(tn_lst, f"{{{_P_NS}}}par")
-        root_ctn = etree.SubElement(
-            root_par,
-            f"{{{_P_NS}}}cTn",
-            id="1",
-            dur="indefinite",
-            restart="never",
-            nodeType="tmRoot",
-        )
-        return etree.SubElement(root_ctn, f"{{{_P_NS}}}childTnLst")
-    return timing.find(f".//{{{_P_NS}}}cTn[@nodeType='tmRoot']/{{{_P_NS}}}childTnLst")
-
-
-_AUDIO_EXT_URI = "{DAA4B4D4-6D71-4841-9C94-3DE7FCFB9230}"
-
-
-def _build_audio_pic_element(
-    shape_id: int,
-    shape_name: str,
-    audio_rid: str,
-    media_rid: str,
-    poster_rid: str,
-    x_emu: int,
-    y_emu: int,
-    size_emu: int,
-) -> Any:
-    """<p:pic> shape carrying embedded narration/background audio --
-    adapted from hugohe3/ppt-master's own `svg_to_pptx/pptx_package/
-    narration.py`'s `_create_audio_pic_element` (commit
-    `6e3ce9c5a3b994a0e223a14a0f7edd42fd0b9f5`): real PowerPoint audio XML
-    needs BOTH a legacy `<a:audioFile r:link=...>` reference (`EG_Media`,
-    the pre-2010 mechanism) and a PowerPoint-2010 `<p14:media
-    r:embed=...>` extension (inside `<p:nvPr>`'s own `<p:extLst>`)
-    pointing at the SAME media part via two different relationship types
-    -- confirmed against python-pptx's own `add_movie`, which builds the
-    video equivalent (`<a:videoFile>`) the identical way for the
-    identical documented reason ("two relationships to the same part...
-    for legacy support for an earlier pre-Office 2010 PowerPoint media
-    embedding strategy"). No `mc:Ignorable` needed for `p14:media` here,
-    unlike `p14:dur`/`a14:m` elsewhere in this file -- confirmed against
-    the real vendored schema: `<p:ext>` (`CT_Extension`/
-    `CT_OfficeArtExtension`) already declares an `xsd:any
-    processContents="lax"` wildcard, so foreign-namespaced content inside
-    an extLst is schema-legitimate on its own, unlike a bare foreign
-    attribute/element with no such wildcard slot."""
-    from lxml import etree
-
-    pic = etree.Element(f"{{{_P_NS}}}pic")
-    nv_pic_pr = etree.SubElement(pic, f"{{{_P_NS}}}nvPicPr")
-    c_nv_pr = etree.SubElement(
-        nv_pic_pr, f"{{{_P_NS}}}cNvPr", id=str(shape_id), name=shape_name
-    )
-    etree.SubElement(
-        c_nv_pr,
-        f"{{{_A_NS}}}hlinkClick",
-        {f"{{{_R_NS}}}id": "", "action": "ppaction://media"},
-    )
-    c_nv_pic_pr = etree.SubElement(nv_pic_pr, f"{{{_P_NS}}}cNvPicPr")
-    etree.SubElement(c_nv_pic_pr, f"{{{_A_NS}}}picLocks", noChangeAspect="1")
-    nv_pr = etree.SubElement(nv_pic_pr, f"{{{_P_NS}}}nvPr")
-    etree.SubElement(nv_pr, f"{{{_A_NS}}}audioFile", {f"{{{_R_NS}}}link": audio_rid})
-    ext_lst = etree.SubElement(nv_pr, f"{{{_P_NS}}}extLst")
-    ext = etree.SubElement(ext_lst, f"{{{_P_NS}}}ext", uri=_AUDIO_EXT_URI, nsmap={"p14": _P14_NS})
-    etree.SubElement(ext, f"{{{_P14_NS}}}media", {f"{{{_R_NS}}}embed": media_rid})
-
-    blip_fill = etree.SubElement(pic, f"{{{_P_NS}}}blipFill")
-    etree.SubElement(blip_fill, f"{{{_A_NS}}}blip", {f"{{{_R_NS}}}embed": poster_rid})
-    stretch = etree.SubElement(blip_fill, f"{{{_A_NS}}}stretch")
-    etree.SubElement(stretch, f"{{{_A_NS}}}fillRect")
-
-    sp_pr = etree.SubElement(pic, f"{{{_P_NS}}}spPr")
-    xfrm = etree.SubElement(sp_pr, f"{{{_A_NS}}}xfrm")
-    etree.SubElement(xfrm, f"{{{_A_NS}}}off", x=str(x_emu), y=str(y_emu))
-    etree.SubElement(xfrm, f"{{{_A_NS}}}ext", cx=str(size_emu), cy=str(size_emu))
-    prst_geom = etree.SubElement(sp_pr, f"{{{_A_NS}}}prstGeom", prst="rect")
-    etree.SubElement(prst_geom, f"{{{_A_NS}}}avLst")
-    return pic
-
-
-def _build_audio_timing_node(shape_id: int, ctn_id: int, start_delay_ms: int | None) -> Any:
-    """<p:audio> media-playback timing node -- auto-plays `start_delay_ms`
-    after the slide begins, or (when `start_delay_ms` is None) waits for
-    the shape's own `ppaction://media` click hyperlink instead
-    (`delay="indefinite"`, matching python-pptx's own `add_movie`/
-    `_add_video_timing` for the click-triggered case). Adapted from
-    hugohe3/ppt-master's own `svg_to_pptx/pptx_package/narration.py`'s
-    `_create_audio_timing_element` (commit
-    `6e3ce9c5a3b994a0e223a14a0f7edd42fd0b9f5`)."""
-    from lxml import etree
-
-    audio = etree.Element(f"{{{_P_NS}}}audio")
-    media_node = etree.SubElement(audio, f"{{{_P_NS}}}cMediaNode", vol="80000")
-    time_node = etree.SubElement(
-        media_node, f"{{{_P_NS}}}cTn", id=str(ctn_id), fill="hold", display="0"
-    )
-    delay = "indefinite" if start_delay_ms is None else str(start_delay_ms)
-    st_cond_lst = etree.SubElement(time_node, f"{{{_P_NS}}}stCondLst")
-    etree.SubElement(st_cond_lst, f"{{{_P_NS}}}cond", delay=delay)
-    target = etree.SubElement(media_node, f"{{{_P_NS}}}tgtEl")
-    etree.SubElement(target, f"{{{_P_NS}}}spTgt", spid=str(shape_id))
-    return audio
-
-
-def _append_step(
-    child_lst: Any,
-    step_id: int,
-    row_id: int,
-    shape_id: int,
-    animation: str,
-    duration_ms: int,
-    node_type: str,
-    start_ms: int,
-    paragraph_index: int | None,
-) -> None:
-    """Append one more <p:par> step to `child_lst` (a group's own
-    childTnLst, or a freshly-created group's), starting `start_ms`
-    milliseconds after whatever that group's own trigger condition
-    resolves. This is the one shape shared by a click group's first (and
-    only, pre-this-feature) step and every with-previous/after-previous
-    step chained onto an existing group -- structurally identical, only
-    `start_ms` and `node_type` differ."""
-    from lxml import etree
-
-    step_par = etree.SubElement(child_lst, f"{{{_P_NS}}}par")
-    step_ctn = etree.SubElement(step_par, f"{{{_P_NS}}}cTn", id=str(step_id), fill="hold")
-    step_st = etree.SubElement(step_ctn, f"{{{_P_NS}}}stCondLst")
-    etree.SubElement(step_st, f"{{{_P_NS}}}cond", delay=str(start_ms))
-    step_child = etree.SubElement(step_ctn, f"{{{_P_NS}}}childTnLst")
-    row_par = etree.SubElement(step_child, f"{{{_P_NS}}}par")
-    _instantiate_animation_preset_row(
-        row_par, row_id, shape_id, animation, duration_ms, node_type, paragraph_index
-    )
-
-
-def _step_timing(step_par: Any) -> tuple[int, int]:
-    """(start_ms, duration_ms) already recorded for one existing step
-    <p:par> (built by _append_step) -- used to compute where the *next*
-    with-previous/after-previous step chained onto the same group should
-    start. duration_ms is the max `dur` among the step's own descendant
-    <p:cTn> elements (every animation type here sets `dur=str(duration_ms)`
-    on at least one -- the motion element itself, not just the 1ms
-    visibility toggle -- so max() recovers it without per-type
-    special-casing)."""
-    step_ctn = step_par.find(f"{{{_P_NS}}}cTn")
-    cond = step_ctn.find(f"{{{_P_NS}}}stCondLst/{{{_P_NS}}}cond")
-    start_ms = int(cond.get("delay"))
-    durations = [
-        int(element.get("dur"))
-        for element in step_ctn.iter(f"{{{_P_NS}}}cTn")
-        if element is not step_ctn and element.get("dur") not in (None, "indefinite")
-    ]
-    return start_ms, max(durations, default=0)
-
-
-def _add_animation_step(
-    slide_element: Any,
-    shape_id: int,
-    animation: str,
-    duration_ms: int,
-    trigger: str,
-    delay_ms: int,
-    paragraph_index: int | None,
-) -> None:
-    """Add one animation to `slide_element`'s (a <p:sld>) <p:timing> tree,
-    creating the tree if this is the slide's first animation.
-
-    trigger="on-click" always starts a brand-new top-level click group --
-    PowerPoint plays click groups in the order they appear in childTnLst,
-    so on-click animations added in call order play in that order during
-    the slideshow, same as this file's behavior before trigger existed.
-
-    trigger="with-previous"/"after-previous" instead chains onto the LAST
-    existing group on this slide (whichever kind it is) as one more step,
-    computing its start time from that group's own most-recently-added
-    step: with-previous starts at the same time as that step, after-
-    previous starts once that step's own animation duration has elapsed
-    -- `delay_ms` adds any extra gap on top of either. If the slide has
-    no groups yet, a with-previous/after-previous call instead becomes
-    the anchor of a brand-new group that starts automatically when the
-    slide itself begins (no click needed) -- matching real PowerPoint,
-    where the very first animation on a slide still plays even if its
-    own Start mode is "After Previous"."""
-    node_type = _TRIGGER_NODE_TYPES[trigger]
-    timing = slide_element.find(f"{{{_P_NS}}}timing")
-    if timing is None:
-        timing, main_child = _new_timing_tree(slide_element)
-        group = None
-    else:
-        main_child = timing.find(f".//{{{_P_NS}}}cTn[@nodeType='mainSeq']/{{{_P_NS}}}childTnLst")
-        if main_child is None:
-            # add_pptx_audio already created this slide's <p:timing> tree
-            # without a mainSeq (an empty <p:seq> is itself schema-
-            # invalid, so it's only ever added once an animation needs
-            # it) -- add one now, alongside whatever audio/video nodes
-            # are already there, rather than discarding the tree.
-            root_child = timing.find(
-                f".//{{{_P_NS}}}cTn[@nodeType='tmRoot']/{{{_P_NS}}}childTnLst"
-            )
-            main_child = _append_main_seq(root_child, _next_timing_id(timing))
-            group = None
-        else:
-            group = main_child[-1] if len(main_child) else None
-
-    next_id = _next_timing_id(timing)
-
-    if trigger == "on-click" or group is None:
-        from lxml import etree
-
-        outer_id, step_id, row_id = next_id, next_id + 1, next_id + 2
-        outer_par = etree.SubElement(main_child, f"{{{_P_NS}}}par")
-        outer_ctn = etree.SubElement(outer_par, f"{{{_P_NS}}}cTn", id=str(outer_id), fill="hold")
-        outer_st = etree.SubElement(outer_ctn, f"{{{_P_NS}}}stCondLst")
-        etree.SubElement(outer_st, f"{{{_P_NS}}}cond", delay="indefinite")
-        if trigger != "on-click":
-            # This slide has no existing animation to chain onto, so this
-            # with-previous/after-previous call anchors a new group that
-            # starts on slide entry instead: it waits for mainSeq (id=2)
-            # itself to begin, not a click.
-            begin_cond = etree.SubElement(outer_st, f"{{{_P_NS}}}cond", evt="onBegin", delay="0")
-            etree.SubElement(begin_cond, f"{{{_P_NS}}}tn", val="2")
-        outer_child = etree.SubElement(outer_ctn, f"{{{_P_NS}}}childTnLst")
-        _append_step(
-            outer_child, step_id, row_id, shape_id, animation, duration_ms, node_type,
-            delay_ms, paragraph_index,
-        )
-        return
-
-    group_ctn = group.find(f"{{{_P_NS}}}cTn")
-    group_child = group_ctn.find(f"{{{_P_NS}}}childTnLst")
-    prev_start_ms, prev_duration_ms = _step_timing(group_child[-1])
-    start_ms = (
-        prev_start_ms + delay_ms
-        if trigger == "with-previous"
-        else prev_start_ms + prev_duration_ms + delay_ms
-    )
-    step_id, row_id = next_id, next_id + 1
-    _append_step(
-        group_child, step_id, row_id, shape_id, animation, duration_ms, node_type,
-        start_ms, paragraph_index,
-    )
-
-
-def _ensure_paragraph_build(timing: Any, shape_id: int) -> None:
-    """Add <p:bldP spid=shape_id grpId="0" build="p"/> to <p:timing>'s
-    <p:bldLst> (creating it as tnLst's next sibling if needed -- CT_Timing's
-    own child order is tnLst then bldLst) -- the sibling element real
-    PowerPoint always emits alongside per-paragraph <p:txEl><p:pRg>
-    targeting, declaring that this shape's text frame builds in one
-    paragraph at a time rather than all at once. Idempotent per shape --
-    a second by_paragraph call for the same shape must not add a
-    duplicate bldP (spid, grpId) pair, which real PowerPoint XML never
-    repeats."""
-    from lxml import etree
-
-    bld_lst = timing.find(f"{{{_P_NS}}}bldLst")
-    if bld_lst is None:
-        bld_lst = etree.SubElement(timing, f"{{{_P_NS}}}bldLst")
-    for existing in bld_lst.findall(f"{{{_P_NS}}}bldP"):
-        if existing.get("spid") == str(shape_id):
-            return
-    etree.SubElement(bld_lst, f"{{{_P_NS}}}bldP", spid=str(shape_id), grpId="0", build="p")
-
-
-def _verify_animation_readback(
-    pptx_path: Path,
-    slide: int,
-    shape_id: int,
-    animation: str,
-    trigger: str,
-    paragraph_indexes: list[int] | None,
-) -> None:
-    """Re-open the just-saved file and confirm every animation we intended
-    to add is structurally present -- one click/with/after-previous step
-    per expected paragraph (or one step targeting the whole shape, if
-    `paragraph_indexes` is None) whose effect node targets `shape_id` with
-    the right presetID/presetClass/presetSubtype/nodeType, containing
-    every one of the preset's own distinguishing motion/effect tags (see
-    `_animation_preset_expected_children` -- animEffect for a fade,
-    anim/tavLst for a fly, animScale for a grow, animMotion for a motion
-    path, and so on for all 203 vendored presets, not a hand-maintained
-    per-preset list). This is a *structural* check, not a visual one -- it
-    catches "we wrote something that doesn't even parse back as intended"
-    (a real risk for hand-written OOXML), not "this looks right in
-    PowerPoint" (which this sandbox, with no real PowerPoint, has no way
-    to check). presetClass and nodeType must match too, not just
-    presetID/presetSubtype -- entrance/exit variants of the same effect
-    share identical presetID/presetSubtype in real PowerPoint XML, and the
-    three trigger modes share presetID/presetClass/presetSubtype entirely
-    (see _TRIGGER_NODE_TYPES's comment) -- so presetClass disambiguates
-    entrance/exit/emphasis/path and nodeType disambiguates trigger, and
-    skipping either would let this check silently pass on a structurally
-    wrong animation or trigger."""
-    from pptx import Presentation
-
-    prs = Presentation(str(pptx_path))
-    target_slide = prs.slides[slide - 1]
-    preset = _resolve_animation_preset(animation)
-    preset_class = preset["category"][:4]
-    preset_id = str(preset["preset_id"])
-    preset_subtype = str(preset["preset_subtype"])
-    node_type = _TRIGGER_NODE_TYPES[trigger]
-    expected_children = _animation_preset_expected_children(animation)
-    expected: list[int | None] = (
-        list(paragraph_indexes) if paragraph_indexes is not None else [None]
-    )
-
-    matches = [
-        cTn
-        for cTn in target_slide.element.iter(f"{{{_P_NS}}}cTn")
-        if cTn.get("presetID") == preset_id
-        and cTn.get("presetSubtype") == preset_subtype
-        and cTn.get("presetClass") == preset_class
-        and cTn.get("nodeType") == node_type
-    ]
-    found: set[int | None] = set()
-    for candidate in matches:
-        sp_tgt = candidate.find(f".//{{{_P_NS}}}spTgt")
-        if sp_tgt is None or sp_tgt.get("spid") != str(shape_id):
-            continue
-        if not all(
-            candidate.find(f".//{{{_P_NS}}}{tag}") is not None for tag in expected_children
-        ):
-            continue
-        p_rg = sp_tgt.find(f"{{{_P_NS}}}txEl/{{{_P_NS}}}pRg")
-        found.add(int(p_rg.get("st")) if p_rg is not None else None)
-
-    missing = [p for p in expected if p not in found]
-    if missing:
-        raise RuntimeError(
-            f"add_pptx_animation: read-back verification failed -- the saved file's "
-            f"timing tree doesn't structurally match the {animation!r}/{trigger!r} "
-            f"animation just added to shape {shape_id} on slide {slide} "
-            f"(paragraph(s) {missing} not found as expected). The file was not modified."
-        )
 
 
 def _render_to_pdf(pptx_path: Path) -> Path | None:
@@ -1690,99 +817,6 @@ def _read_scheme_color(clr_scheme: Any, tag: str) -> str | None:
         last_clr: str | None = sys_clr.get("lastClr")
         return last_clr
     return None
-
-
-def _spd_for(duration: float) -> str:
-    if duration <= 0.5:
-        return "fast"
-    if duration <= 1.5:
-        return "med"
-    return "slow"
-
-
-def _set_slide_transition(slide_element: Any, transition: str, duration: float) -> None:
-    """Replace `slide_element`'s (a <p:sld>) transition, in place.
-
-    Verified empirically (round-tripped through python-pptx with warnings
-    treated as errors, and through a real LibreOffice conversion): a fresh
-    slide's only children are cSld/clrMapOvr, and per the ECMA-376 schema
-    order, <p:transition> belongs immediately after those and before any
-    <p:timing>/<p:extLst> -- since neither of those exist yet on any slide
-    this tool touches, appending at the end of `slide_element` is always
-    schema-correct here. "none" means no <p:transition> element at all,
-    which is how PowerPoint itself represents no transition.
-
-    p14:dur (precise millisecond timing) is written for every effect, not
-    just the 12 whose own preset element already lives in the base "p"
-    namespace -- same reasoning either way: the base ECMA-376 schema only
-    has the coarse `spd` (fast/med/slow) attribute, `p14:dur` is what real
-    PowerPoint XML actually carries for the exact duration a caller gave.
-    A non-"p"-namespaced effect (p14/p15/p159, e.g. "morph"/"vortex")
-    means both the effect's own preset element *and* the p14:dur attribute
-    need marking -- unmarking all three extension prefixes unconditionally
-    before marking exactly the one(s) this transition actually needs is
-    simpler and just as correct as tracking what the *previous* transition
-    used, since transitions are this codebase's sole owner of p14/p15/p159
-    (add_pptx_formula owns a14 instead, untouched here).
-    """
-    from lxml import etree
-
-    existing = slide_element.find(f"{{{_P_NS}}}transition")
-    if existing is not None:
-        slide_element.remove(existing)
-    for prefix in _TRANSITION_MCE_PREFIXES:
-        _unmark_mce_ignorable(slide_element, prefix)
-    if transition == "none":
-        return
-    canonical = _TRANSITION_ALIASES.get(transition, transition)
-    spec = _TRANSITION_SPECS[canonical]
-    prefix = str(spec.get("prefix", "p"))
-    namespace = _TRANSITION_NAMESPACES[prefix]
-
-    transition_element = etree.SubElement(
-        slide_element, f"{{{_P_NS}}}transition", nsmap={"p14": _P14_NS}
-    )
-    transition_element.set("spd", _spd_for(duration))
-    transition_element.set(f"{{{_P14_NS}}}dur", str(round(duration * 1000)))
-    effect_element = etree.SubElement(
-        transition_element,
-        f"{{{namespace}}}{spec['element']}",
-        nsmap={prefix: namespace} if prefix != "p" else None,
-    )
-    for key, value in spec["attrs"].items():
-        effect_element.set(key, str(value))
-
-    _mark_mce_ignorable(slide_element, "p14")
-    if prefix != "p":
-        _mark_mce_ignorable(slide_element, prefix)
-
-
-def _mark_mce_ignorable(root_element: Any, prefix: str) -> None:
-    """Add `prefix` to `mc:Ignorable`, which lets `_ooxml_validate.py` tell a real OOXML defect
-    from declared p14:/a14: extension content. Registering `mc` makes lxml spell the prefix as
-    PowerPoint does instead of an `ns0` that depends on what else the root declares."""
-    from lxml import etree
-
-    etree.register_namespace("mc", _MC_NS)
-    existing_tokens = (root_element.get(f"{{{_MC_NS}}}Ignorable") or "").split()
-    if prefix in existing_tokens:
-        return
-    root_element.set(f"{{{_MC_NS}}}Ignorable", " ".join([*existing_tokens, prefix]))
-
-
-def _unmark_mce_ignorable(root_element: Any, prefix: str) -> None:
-    """Inverse of `_mark_mce_ignorable` -- drops `prefix` from the token
-    list (and the attribute entirely once empty), keeping a slide that no
-    longer has any p14:-namespaced content from still claiming it does."""
-    remaining = [
-        token
-        for token in (root_element.get(f"{{{_MC_NS}}}Ignorable") or "").split()
-        if token != prefix
-    ]
-    if remaining:
-        root_element.set(f"{{{_MC_NS}}}Ignorable", " ".join(remaining))
-    elif root_element.get(f"{{{_MC_NS}}}Ignorable") is not None:
-        del root_element.attrib[f"{{{_MC_NS}}}Ignorable"]
 
 
 def _add_inline_runs(paragraph: Any, text: str) -> None:
@@ -3101,12 +2135,6 @@ def _recolor_icon(icon_path: Path, color_hex: str) -> Any:
     return _recolor_image(Image.open(icon_path), color_hex)
 
 
-# The relationships namespace every r:id/r:embed/r:link attribute lives
-# in, regardless of which element or local attribute name carries it --
-# used by _duplicate_slide_part to blanket-remap every such attribute in
-# one pass rather than enumerating every possible tag (a:blip r:embed,
-# a:hlinkClick r:id, c:chart r:id, a:videoFile r:link, ...).
-_R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 
 # Prefix -> namespace-URI map for read_pptx_xml/edit_pptx_xml's own `xpath`
 # and `set_attributes` arguments -- lets the model write real, readable
@@ -3116,14 +2144,14 @@ _R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 # already write) rather than re-declaring them, so there's exactly one
 # source of truth for each URI.
 _GENERIC_XML_NSMAP = {
-    "p": _P_NS,
-    "a": _A_NS,
-    "r": _R_NS,
+    "p": P_NS,
+    "a": A_NS,
+    "r": R_NS,
     "dgm": _SMARTART_NS,
-    "p14": _P14_NS,
-    "a14": _A14_NS,
-    "p15": _P15_NS,
-    "p159": _P159_NS,
+    "p14": P14_NS,
+    "a14": A14_NS,
+    "p15": P15_NS,
+    "p159": P159_NS,
 }
 
 
@@ -3184,7 +2212,7 @@ def _duplicate_slide_part(prs: PresentationType, source_slide: Any) -> str:
     if rid_remap:
         for element in new_element.iter():
             for attr_name, attr_value in list(element.attrib.items()):
-                if attr_name.startswith(f"{{{_R_NS}}}") and attr_value in rid_remap:
+                if attr_name.startswith(f"{{{R_NS}}}") and attr_value in rid_remap:
                     element.set(attr_name, rid_remap[attr_value])
 
     return presentation_part.relate_to(new_part, RT.SLIDE)
@@ -4059,7 +3087,7 @@ class PresentationToolkit:
         PowerPoint's real native transition gallery (48 effects) plus 8
         legacy aliases. No path/slide argument: this is a static list, the
         same regardless of which file or slide you're working on."""
-        return sorted(_TRANSITIONS - {"none"})
+        return sorted(TRANSITIONS - {"none"})
 
     def list_pptx_animation_types(self) -> list[str]:
         """Every `animation` name `add_pptx_animation` accepts, sorted --
@@ -4068,7 +3096,7 @@ class PresentationToolkit:
         legacy short aliases. No path/slide argument: this is a static
         list, the same regardless of which file or slide you're working
         on."""
-        return sorted(_ANIMATIONS)
+        return sorted(ANIMATIONS)
 
     @locked_by_path
     def add_pptx_shape(
@@ -4215,14 +3243,14 @@ class PresentationToolkit:
         paragraph = shape.text_frame.paragraphs[0]
         p_element = paragraph._p  # noqa: SLF001
         # `<a14:m>` wrapping `<m:oMathPara>`/`<m:oMath>` -- the exact shape
-        # hugohe3/ppt-master's own documented contract uses (see _A14_NS's
+        # hugohe3/ppt-master's own documented contract uses (see A14_NS's
         # comment above). A fresh text box's first paragraph has no runs
         # yet, so this is simply appended as the paragraph's sole content.
         math_root = etree.fromstring(omml_xml.encode("utf-8"))
-        a14_wrapper = etree.SubElement(p_element, f"{{{_A14_NS}}}m", nsmap={"a14": _A14_NS})
+        a14_wrapper = etree.SubElement(p_element, f"{{{A14_NS}}}m", nsmap={"a14": A14_NS})
         a14_wrapper.append(math_root)
 
-        _mark_mce_ignorable(target_slide.element, "a14")
+        mark_mce_ignorable(target_slide.element, "a14")
         assert_ooxml_valid(target_slide.element, "add_pptx_formula")
         prs.save(str(file_path))
 
@@ -5116,13 +4144,13 @@ class PresentationToolkit:
     def set_pptx_transition(
         self, path: str, slide: int, transition: str, duration: float = 1.0
     ) -> dict[str, object]:
-        if transition not in _TRANSITIONS:
+        if transition not in TRANSITIONS:
             raise ValueError(
                 f"Unknown transition {transition!r}. Use one of: "
-                f"{', '.join(sorted(_TRANSITIONS))}"
+                f"{', '.join(sorted(TRANSITIONS))}"
             )
         prs, file_path, target_slide = self._open_slide(path, slide)
-        _set_slide_transition(target_slide.element, transition, duration)
+        set_slide_transition(target_slide.element, transition, duration)
         assert_ooxml_valid(target_slide.element, "set_pptx_transition")
         prs.save(str(file_path))
         return {"path": self._scope.relative(file_path), "slide": slide, "transition": transition}
@@ -5139,13 +4167,13 @@ class PresentationToolkit:
         delay: float = 0.0,
         by_paragraph: bool = False,
     ) -> dict[str, object]:
-        if animation not in _ANIMATIONS:
+        if animation not in ANIMATIONS:
             raise ValueError(
-                f"Unknown animation {animation!r}. Use one of: {', '.join(sorted(_ANIMATIONS))}"
+                f"Unknown animation {animation!r}. Use one of: {', '.join(sorted(ANIMATIONS))}"
             )
-        if trigger not in _TRIGGERS:
+        if trigger not in TRIGGERS:
             raise ValueError(
-                f"Unknown trigger {trigger!r}. Use one of: {', '.join(sorted(_TRIGGERS))}"
+                f"Unknown trigger {trigger!r}. Use one of: {', '.join(sorted(TRIGGERS))}"
             )
         prs, file_path, target_slide = self._open_slide(path, slide)
         shape = _get_shape_at_index(target_slide, slide, shape_index)
@@ -5176,14 +4204,14 @@ class PresentationToolkit:
                     "non-empty paragraphs to animate by_paragraph."
                 )
             for paragraph_index in paragraph_indexes:
-                _add_animation_step(
+                add_animation_step(
                     target_slide.element, shape_id, animation, duration_ms, trigger, delay_ms,
                     paragraph_index,
                 )
-            timing = target_slide.element.find(f"{{{_P_NS}}}timing")
-            _ensure_paragraph_build(timing, shape_id)
+            timing = target_slide.element.find(f"{{{P_NS}}}timing")
+            ensure_paragraph_build(timing, shape_id)
         else:
-            _add_animation_step(
+            add_animation_step(
                 target_slide.element, shape_id, animation, duration_ms, trigger, delay_ms, None
             )
 
@@ -5195,7 +4223,7 @@ class PresentationToolkit:
         tmp_path = file_path.with_name(f"{file_path.name}.animation-tmp")
         prs.save(str(tmp_path))
         try:
-            _verify_animation_readback(
+            verify_animation_readback(
                 tmp_path, slide, shape_id, animation, trigger, paragraph_indexes
             )
         except Exception:
@@ -5203,7 +4231,7 @@ class PresentationToolkit:
             raise
         tmp_path.replace(file_path)
 
-        preset = _resolve_animation_preset(animation)
+        preset = resolve_animation_preset(animation)
         actual_duration_ms = (
             duration_ms
             if preset["duration_scalable"] and preset["default_duration_ms"] is not None
@@ -5232,16 +4260,16 @@ class PresentationToolkit:
         start_delay: float = 0.0,
         hidden: bool = False,
     ) -> dict[str, object]:
-        if trigger not in _AUDIO_TRIGGERS:
+        if trigger not in AUDIO_TRIGGERS:
             raise ValueError(
-                f"Unknown trigger {trigger!r}. Use one of: {', '.join(sorted(_AUDIO_TRIGGERS))}"
+                f"Unknown trigger {trigger!r}. Use one of: {', '.join(sorted(AUDIO_TRIGGERS))}"
             )
         audio_file = self._check_readable(audio_path)
         ext = audio_file.suffix.lower()
-        if ext not in _AUDIO_CONTENT_TYPES:
+        if ext not in AUDIO_CONTENT_TYPES:
             raise ValueError(
                 f"add_pptx_audio: unsupported audio format {ext!r} on {audio_path!r} -- "
-                f"use one of: {', '.join(sorted(_AUDIO_CONTENT_TYPES))}"
+                f"use one of: {', '.join(sorted(AUDIO_CONTENT_TYPES))}"
             )
         prs, file_path, target_slide = self._open_slide(path, slide)
 
@@ -5265,8 +4293,8 @@ class PresentationToolkit:
         # audio (and mismatched against this method's own `<a:audioFile>`
         # element) -- built directly with the real `RT.AUDIO` type
         # instead, confirmed to exist in python-pptx's own constants.
-        _register_audio_media_part_class()
-        video = Video.from_path_or_file_like(str(audio_file), _AUDIO_CONTENT_TYPES[ext])
+        register_audio_media_part_class()
+        video = Video.from_path_or_file_like(str(audio_file), AUDIO_CONTENT_TYPES[ext])
         slide_part = target_slide.part
         media_part = slide_part.package.get_or_add_media_part(video)
         audio_rid = slide_part.relate_to(media_part, RT.AUDIO)
@@ -5280,11 +4308,11 @@ class PresentationToolkit:
         shape_id = target_slide.shapes._next_shape_id
         shape_name = audio_file.name
         if hidden:
-            x_emu = y_emu = -_AUDIO_MARKER_SIZE_EMU
+            x_emu = y_emu = -AUDIO_MARKER_SIZE_EMU
         else:
             x_emu, y_emu = int(Inches(left_in)), int(Inches(top_in))
 
-        pic = _build_audio_pic_element(
+        pic = build_audio_pic_element(
             shape_id,
             shape_name,
             audio_rid,
@@ -5292,9 +4320,9 @@ class PresentationToolkit:
             poster_rid,
             x_emu,
             y_emu,
-            _AUDIO_MARKER_SIZE_EMU,
+            AUDIO_MARKER_SIZE_EMU,
         )
-        # `_build_audio_pic_element` returns a plain lxml element -- python-
+        # `build_audio_pic_element` returns a plain lxml element -- python-
         # pptx's own shape factory (invoked whenever `target_slide.shapes`
         # is iterated, which `render_pptx_preview`/`list_pptx_shapes` and
         # this method's own shape_index computation below all do) expects
@@ -5307,11 +4335,11 @@ class PresentationToolkit:
         target_slide.shapes._spTree.append(parse_xml(etree.tostring(pic)))
         shape_index = len(list(target_slide.shapes)) - 1
 
-        root_child = _timing_root_child_list(target_slide.element)
-        timing = target_slide.element.find(f"{{{_P_NS}}}timing")
-        next_id = _next_timing_id(timing)
+        root_child = timing_root_child_list(target_slide.element)
+        timing = target_slide.element.find(f"{{{P_NS}}}timing")
+        next_id = next_timing_id(timing)
         start_delay_ms = None if trigger == "on-click" else max(0, round(start_delay * 1000))
-        root_child.append(_build_audio_timing_node(shape_id, next_id, start_delay_ms))
+        root_child.append(build_audio_timing_node(shape_id, next_id, start_delay_ms))
 
         assert_ooxml_valid(target_slide.element, "add_pptx_audio")
         prs.save(str(file_path))

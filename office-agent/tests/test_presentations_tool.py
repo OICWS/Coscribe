@@ -2315,7 +2315,7 @@ def test_set_pptx_transition_writes_the_registered_effect_for_every_transition(
     set_pptx_transition itself makes) -- not just the few spot-checked
     above. A real, cheap way to catch a typo'd element/attribute name
     across the whole retyped registry at once."""
-    from coscribe.tools.presentations import _TRANSITION_ALIASES, _TRANSITION_SPECS
+    from coscribe.tools.office.pptx.transitions import TRANSITION_ALIASES, TRANSITION_SPECS
 
     tools = _tools_by_name(tmp_path)
     tools["write_pptx"](path="deck.pptx", content="# Title\n- body")
@@ -2323,10 +2323,10 @@ def test_set_pptx_transition_writes_the_registered_effect_for_every_transition(
     from lxml import etree
     from pptx import Presentation
 
-    for transition in (*_TRANSITION_SPECS, *_TRANSITION_ALIASES):
+    for transition in (*TRANSITION_SPECS, *TRANSITION_ALIASES):
         tools["set_pptx_transition"](path="deck.pptx", slide=1, transition=transition)
 
-        spec = _TRANSITION_SPECS[_TRANSITION_ALIASES.get(transition, transition)]
+        spec = TRANSITION_SPECS[TRANSITION_ALIASES.get(transition, transition)]
         slide_el = Presentation(tmp_path / "deck.pptx").slides[0].element
         transitions = slide_el.findall(f"{{{_P_NS}}}transition")
         assert len(transitions) == 1, transition
@@ -2335,13 +2335,13 @@ def test_set_pptx_transition_writes_the_registered_effect_for_every_transition(
 
 
 def test_list_pptx_transition_types_matches_the_real_registry(tmp_path: Path) -> None:
-    from coscribe.tools.presentations import _TRANSITION_ALIASES, _TRANSITION_SPECS
+    from coscribe.tools.office.pptx.transitions import TRANSITION_ALIASES, TRANSITION_SPECS
 
     tools = _tools_by_name(tmp_path)
 
     result = tools["list_pptx_transition_types"]()
 
-    assert result == sorted({*_TRANSITION_SPECS, *_TRANSITION_ALIASES})
+    assert result == sorted({*TRANSITION_SPECS, *TRANSITION_ALIASES})
     assert "none" not in result
     assert len(result) == 48 + 8
 
@@ -2860,10 +2860,10 @@ def test_add_pptx_animation_writes_the_registered_preset_for_every_animation(
     every_transition plays for the 56-entry transition registry."""
     from pptx import Presentation
 
-    from coscribe.tools.presentations import (
-        _ANIMATION_ALIASES,
-        _ANIMATIONS,
-        _load_animation_presets,
+    from coscribe.tools.office.pptx.animation import (
+        ANIMATION_ALIASES,
+        ANIMATIONS,
+        load_animation_presets,
     )
 
     tools = _tools_by_name(tmp_path)
@@ -2875,7 +2875,7 @@ def test_add_pptx_animation_writes_the_registered_preset_for_every_animation(
         assert timing is not None
         return [cTn for cTn in timing.iter(f"{{{_P_NS}}}cTn") if cTn.get("presetClass")]
 
-    for added, animation in enumerate(sorted(_ANIMATIONS), start=1):
+    for added, animation in enumerate(sorted(ANIMATIONS), start=1):
         tools["add_pptx_animation"](
             path="deck.pptx", slide=1, shape_index=0, animation=animation, trigger="with-previous"
         )
@@ -2884,19 +2884,25 @@ def test_add_pptx_animation_writes_the_registered_preset_for_every_animation(
         # newest node's preset prove each call wrote its own effect.
         effects = effect_nodes()
         assert len(effects) == added, animation
-        preset = _load_animation_presets()[_ANIMATION_ALIASES.get(animation, animation)]
+        preset = load_animation_presets()[ANIMATION_ALIASES.get(animation, animation)]
         assert effects[-1].get("presetID") == str(preset["preset_id"]), animation
         assert effects[-1].get("presetSubtype") == str(preset["preset_subtype"]), animation
 
 
+def test_the_animation_preset_catalog_is_found_next_to_the_package() -> None:
+    from coscribe.tools.office.pptx.animation import _ANIMATION_PRESETS_PATH
+
+    assert _ANIMATION_PRESETS_PATH.is_file()
+
+
 def test_list_pptx_animation_types_matches_the_real_registry(tmp_path: Path) -> None:
-    from coscribe.tools.presentations import _ANIMATION_ALIASES, _load_animation_presets
+    from coscribe.tools.office.pptx.animation import ANIMATION_ALIASES, load_animation_presets
 
     tools = _tools_by_name(tmp_path)
 
     result = tools["list_pptx_animation_types"]()
 
-    assert result == sorted({*_load_animation_presets(), *_ANIMATION_ALIASES})
+    assert result == sorted({*load_animation_presets(), *ANIMATION_ALIASES})
     assert len(result) == 203 + 6
 
 
@@ -2976,7 +2982,7 @@ def test_add_pptx_animation_legacy_alias_and_full_name_produce_identical_xml(
 ) -> None:
     """"fade" (the pre-203-catalog short name) and "entrance_fade" (the
     real preset key it was always secretly implementing, per
-    _ANIMATION_ALIASES) must resolve to the exact same preset -- not two
+    ANIMATION_ALIASES) must resolve to the exact same preset -- not two
     presets that happen to look similar."""
     import re
 

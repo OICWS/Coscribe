@@ -24,8 +24,8 @@ which the ECMA-376 sequence requires the other way around).
 Every call site runs this *before* the mutated element is serialized back
 into the file being written -- `assert_ooxml_valid`/`assert_wml_valid`
 raising here means the user's file was never touched, the same guarantee
-`add_pptx_animation`'s own `_verify_animation_readback` already makes for
-its own narrower, application-level check. This is a stronger, general
+`add_pptx_animation`'s own `verify_animation_readback` (`office/pptx/animation.py`) already
+makes for its own narrower, application-level check. This is a stronger, general
 check on top of that one, not a replacement for it: readback confirms
 *the specific animation we meant to add is there*; schema validation
 confirms *the whole slide/document is still a schema-conformant OOXML
@@ -57,7 +57,7 @@ _XML_1998_NS = "http://www.w3.org/XML/1998/namespace"
 # consumer runs *before* schema validation, not something the base schema
 # expresses. Real PowerPoint-authored files rely on exactly this: an
 # extension attribute/element in a foreign namespace (e.g. `p14:dur` on
-# `<p:transition>`, see presentations.py's `_set_slide_transition`) is
+# `<p:transition>`, see `office/pptx/transitions.py`'s `set_slide_transition`) is
 # valid OOXML only because its namespace prefix is declared ignorable via
 # `mc:Ignorable` on an ancestor -- `_strip_mce_ignorable` below is this
 # module's side of that same mechanism, so a real, deliberate extension
@@ -104,7 +104,7 @@ def _strip_mce_ignorable(element: Any) -> Any:
     # whichever element carries `mc:Ignorable` -- a real OOXML part often
     # binds an extension prefix (e.g. "p14") on the specific descendant
     # that actually uses it (python-pptx/coscribe both do: see
-    # `_set_slide_transition`'s own `nsmap={"p14": ...}` on the
+    # `set_slide_transition`'s own `nsmap={"p14": ...}` on the
     # `<p:transition>` child, not the `<p:sld>` root the Ignorable
     # declaration sits on) while the declaration itself lives higher up.
     # `mc:Ignorable`'s value is a plain space-separated token list, not a
