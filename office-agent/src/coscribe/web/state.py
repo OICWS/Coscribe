@@ -13,8 +13,7 @@ from ..conversation import ChatSessionLG, ThreadMetaStore
 from ..runtime import LLMClient
 from ..runtime_lg.mcp import McpServerConnection
 from ..runtime_lg.mcp_oauth import LoopbackCallback, McpOAuth
-from ..tools import SkillInfo
-from ..tools.scheduled_tasks import ScheduledRun
+from ..tools import ScheduledRun, SkillInfo
 from .background_events import BackgroundEventBus
 from .thread_files import ThreadFiles
 

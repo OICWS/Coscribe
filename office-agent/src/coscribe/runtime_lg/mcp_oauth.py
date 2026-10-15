@@ -36,7 +36,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
-from ..runtime.secrets import delete_secret, harden_file_permissions, resolve_secret, store_secret
+from ..runtime import delete_secret, harden_file_permissions, resolve_secret, store_secret
 
 # The MCP SDK and httpx are imported where they are used: this module is
 # loaded for every server start, and most people have no remote connector.

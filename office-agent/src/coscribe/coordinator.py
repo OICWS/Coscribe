@@ -17,6 +17,7 @@ from .config import Settings
 from .runtime import Agent, SessionEnvironments
 from .tools import (
     NEW_DECK_INSTRUCTIONS,
+    ScheduledTriggerStore,
     build_background_task_tools,
     build_browser_tools,
     build_conversation_tools,
@@ -42,11 +43,10 @@ from .tools import (
     load_memory,
     load_pptx_templates,
     load_skills,
+    parse_run_thread_id,
 )
 from .tools._workspace import WorkspaceScope
-from .tools.scheduled_tasks import ScheduledTriggerStore, parse_run_thread_id
-from .workflows.permissions import granted_by
-from .workflows.spec import parse_workflow
+from .workflows import granted_by, parse_workflow
 
 # The always-bound tool set when Settings.defer_tools is on (see
 # conversation/session.py's _build_lg_agent and runtime_lg/tool_deferral.py) --

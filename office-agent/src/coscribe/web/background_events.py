@@ -29,7 +29,7 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..tools.scheduled_tasks import ScheduledRun, ScheduledTrigger
+from ..tools import ScheduledRun, ScheduledTrigger
 from ..workflows import parse_workflow, walk
 
 

@@ -10,7 +10,7 @@ from fastapi import (
 )
 from fastapi.responses import HTMLResponse
 
-from ....tools.mcp import (
+from ....tools import (
     validate_mcp_config,
 )
 from ...state import AppState
