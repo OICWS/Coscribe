@@ -85,6 +85,7 @@ def test_a_page_using_everything_the_contract_allows_compiles_cleanly(tmp_path: 
     assert result["ok"], result
     assert "errors" not in result["pages"][0]
     assert result["path"] == "deck.pptx"
+    assert "no review_work" in result["next"]
     slide = Presentation(str(tmp_path / "deck.pptx")).slides[0]
     assert slide.shapes.title.text == "一页全部元素"
     assert "card" in {shape.name for shape in slide.shapes}
