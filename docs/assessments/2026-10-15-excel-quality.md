@@ -64,6 +64,60 @@ tasks, and a recommendation.
 | xlsx-evaluate | MIT | a Python formula evaluator (fork of xlcalculator); pycel is archived |
 | Anthropic's xlsx skill | proprietary | ideas only: openpyxl script, LibreOffice recalc, a zero-formula-error rule, colour conventions; coscribe's skill already has these |
 
+### 2.1 How the products write a workbook
+
+**Claude for Excel** (Anthropic's add-in). Anthropic has not published its tools; this
+comes from a third party's reverse-engineering notes (`hewliyang/reversing`,
+`claude-for-excel/`), so it is unverified and may have changed. Ideas only, no text copied.
+- **Size of the tool set**: about a dozen coarse tools.
+  - Reads: sheet metadata, ranges, CSV, search, objects.
+  - Writes: a block of cells, clear, copy a pattern, rows and columns, sheets, resize, and
+    `modify_object` for charts and pivot tables.
+  - An Office.js escape hatch, and a Python container for large data, which calls the read
+    and write tools from code.
+- **The main write tool, `set_cell_range`**, writes a rectangular block in one call.
+  - Each cell carries a value or a formula, a note, font, fill, alignment, number format and
+    borders.
+  - `copyToRange` repeats a pattern down a column.
+  - Nothing is overwritten without being asked.
+  - It returns the computed value of every formula it wrote, so a wrong one shows at once.
+- **Charts** take a contiguous source range and an anchor cell.
+- **Context**: the first message carries the workbook's sheets with their sizes and frozen
+  panes; every message carries the active sheet and the selection.
+- **Its rules**:
+  - formulas over computed numbers;
+  - assumptions in their own cells;
+  - the finance colours;
+  - when editing, copy the format of a neighbouring cell (which is task 03's defect);
+  - for a big task, plan, check at milestones, then review references, errors and formats
+    at the end.
+
+**Microsoft Excel Agent Mode**:
+- a "Document Context Producer" sends a compact blueprint of the workbook (layout, values,
+  objects, formula dependencies), and the agent asks for more when it needs it;
+- a plan, act, check loop that runs light tests before each action and writes through
+  Office.js.
+
+**Shortcut** (self-reported): planning, execution and verification agents, and its own
+spreadsheet engine so it can create .xlsx files without Excel.
+
+**Research and open source**:
+- **SheetBrain** (Microsoft, MIT, AAAI 2026): understand, then execute in a Python sandbox,
+  then validate and retry. It is aimed at analysis questions, not at building a workbook.
+- **sv-excel-agent** (MIT): about 30 MCP tools, scored on a 50-task SpreadsheetBench subset.
+  It notes that LibreOffice recalculates less faithfully than Excel, so its scores can differ.
+- **opensheets** (MIT): an Excel and Google Sheets add-in, with little documentation.
+
+What they share:
+- the model writes a whole block of cells, styles included, in one call, not a value call
+  followed by format calls;
+- every write returns its computed results;
+- the workbook's shape is given to the model before it starts;
+- an edit copies the format around it.
+
+coscribe's `write_xlsx` takes values only, so styling one table costs 5–20 more calls, which
+is where the current route's 26–59 calls come from.
+
 There is no engine to take over. The open projects use openpyxl as we do. The best product
 gains from reading the workbook first and verifying each step, which coscribe already does
 (`write_xlsx` recalculates and reports errors). So the open question is how the model writes
@@ -184,9 +238,16 @@ These are for a checker, as on PowerPoint:
 
 1. **`build_xlsx(path, spec)`**, a WRITE_LOCAL tool, compiles a whole-workbook spec in one call
    with openpyxl, then recalculates and checks it.
-   - **The spec**: sheets; cells as values or formulas; styles (named once and referenced);
-     number formats; widths; merges; freeze panes; charts placed beside their table;
-     conditional formats; validation lists; print setup.
+   - **The spec**: sheets made of blocks, as in Claude for Excel's `set_cell_range`:
+     - an anchor cell and rows of cells, each a value or a formula;
+     - a style per cell or per block, named once and referenced, or copied from a
+       neighbouring cell;
+     - a pattern repeated down a column.
+
+     Then widths, merges, freeze panes, charts given by source range and anchor, conditional
+     formats, validation lists and print setup.
+   - **The result** returns the computed value of each formula after LibreOffice
+     recalculates, so a wrong number shows in the same round.
    - **The result** names errors by cell: formula errors, `###`, clipped text, a chart over
      cells or across a page break, and a typed number where its row is formulas.
    - A user's workbook that is being reshaped (new sheets, a report built on its data) gets
