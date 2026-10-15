@@ -18,7 +18,6 @@ ALLOWED = {
     "office-agent/src/coscribe/tools/_native_animation_presets/animation_presets.json": (
         "generated animation preset data"
     ),
-    "office-agent/src/coscribe/tools/presentations.py": "pptx tool, waiting to be split",
     "site/index.html": "generated project site page",
     "office-agent/tests/test_presentations_tool.py": "tests of presentations.py, split with it",
     "office-agent/src/coscribe/tools/_ooxml_schemas/transitional/sml.xsd": (
