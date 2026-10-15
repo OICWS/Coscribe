@@ -200,11 +200,21 @@ its data in PowerPoint, and its JSON is shorter than drawing it. The group holds
   mark the cell the point is about. Every row is in `rows`, written as the material writes it.
 - A long table goes over two pages rather than below 16 px.
 
+## Icons
+
+An icon is one line: `<use data-icon="ship" x="100" y="200" width="48" height="48"
+stroke="#0E3A66"/>` (an `id` names it for the edit tools). The build draws the icon at that box
+in the colour given, with the deck's other icons' line weight. The names are listed in
+read_skill_file("PPTX Pages", "icons.md"): trending-up, users, building-factory, ship, target,
+shield-check, calendar, coin, bolt, leaf, rocket and about 280 more; a wrong name is reported
+with the nearest ones. Use them where they carry meaning (a category, a step, a status), one
+size per role, never drawn from scratch.
+
 ## Avoid
 
 - A text box that runs past its card or the page; long sentences on slides (split them).
 - Decoration with no job: stripes down every edge, gradients on body text, icons drawn from
-  scratch that look like clip art.
+  scratch instead of taken from the icon set.
 - Every page the same layout; every card with a shadow.
 - Light grey text on a light background; text over a picture without a dark scrim under it.
 - Facts, dates or numbers the material does not have.

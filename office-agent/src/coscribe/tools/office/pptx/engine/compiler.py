@@ -28,6 +28,7 @@ from ...._native_svg.svg_to_pptx.drawingml import elements, paths, text_properti
 from ...._native_svg.svg_to_pptx.drawingml.context import ConvertContext, ShapeResult
 from ...._native_svg.svg_to_pptx.drawingml.styles import build_effect_xml, get_element_opacity
 from . import native
+from .icons import expand_icons
 from .template import Example, canvas, layout, open_template, renumber, start_from
 
 SVG_NS = "http://www.w3.org/2000/svg"
@@ -191,6 +192,7 @@ def _compile_page(
             f"{', '.join(example.dropped)} (a chart, SmartArt, media or a link to a slide "
             "cannot be copied; draw it on the page if the deck needs it)"
         )
+    report.errors.extend(expand_icons(root))
     try:
         geometry_properties.materialize_inline_geometry_properties(root)
     except Exception as e:  # reported to the model, not raised
