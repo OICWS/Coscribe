@@ -6,7 +6,10 @@ reproducible rather than opaque. The outputs are committed.
 
 from __future__ import annotations
 
+import csv
 import datetime as dt
+import io
+import random
 from pathlib import Path
 
 from openpyxl import Workbook
@@ -202,6 +205,28 @@ def tickets(path: Path) -> None:
     book.save(path)
 
 
+_PRICES = {"智能门锁": 1299, "扫地机器人": 2499, "空气净化器": 1899}
+
+
+def sales_ledger() -> str:
+    """480 order lines over 2026 with a seeded generator, so the totals in expect.json hold."""
+    rng = random.Random(9)
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator="\n")
+    writer.writerow(["日期", "区域", "产品线", "销量", "单价", "销售额"])
+    for month in range(1, 13):
+        for _ in range(40):
+            day = rng.randint(1, 28)
+            region = rng.choice(["华东", "华东", "华南", "华北", "西南"])
+            product = rng.choice(list(_PRICES))
+            units = rng.randint(5, 60) + (month * 2 if region == "华南" else 0)
+            price = _PRICES[product]
+            writer.writerow(
+                [f"2026-{month:02d}-{day:02d}", region, product, units, price, units * price]
+            )
+    return out.getvalue()
+
+
 def main() -> None:
     def put(task: str, name: str) -> Path:
         folder = TASKS / task / "inputs"
@@ -215,6 +240,7 @@ def main() -> None:
     budget(put("05-edit-budget", "budget_q1.xlsx"))
     put("07-chinese-formats", "各区域销售.csv").write_text(SALES_CSV, encoding="utf-8")
     tickets(put("08-validation-list", "tickets.xlsx"))
+    put("09-sales-report", "销售明细.csv").write_text(sales_ledger(), encoding="utf-8")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,17 @@
+{
+ "facts": [],
+ "figures": [
+  {"value": 18000000},
+  {"value": 19440000},
+  {"value": 20995200},
+  {"value": 2700000},
+  {"value": 3492000},
+  {"value": 4347360}
+ ],
+ "formulas_min": 9,
+ "input_probe": {
+  "find": 0.08,
+  "set": 0.1,
+  "figures": [{"value": 3690000}, {"value": 4779000}]
+ }
+}
