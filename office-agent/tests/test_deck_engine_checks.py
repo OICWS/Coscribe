@@ -152,6 +152,55 @@ def test_a_watermark_digit_behind_a_card_is_neither_unreadable_nor_an_overlap(
     assert errors == []
 
 
+def _table(columns: list[int], label: str, y: int, rows: int) -> str:
+    table = {
+        "x": 64,
+        "y": y,
+        "width": sum(columns),
+        "height": 36 * rows,
+        "schema": "ppt-master.semantic-table.v2",
+        "columns": ["行业", "增加值"],
+        "column_widths": columns,
+        "rows": [[label, "5,410"]] * (rows - 1),
+        "style": {"font_size": 17},
+    }
+    return (
+        '<g id="industries" data-pptx-replace-with="table">'
+        f'<metadata type="application/json">{json.dumps(table, ensure_ascii=False)}</metadata></g>'
+        '<text x="64" y="690" font-size="14" fill="#1E2A36">数据来源：国家统计局</text>'
+    )
+
+
+def test_a_table_whose_wrapped_cells_reach_the_footer_is_an_error(tmp_path: Path) -> None:
+    errors, _ = _findings(tmp_path, _table([150, 120], "信息传输、软件和信息技术服务业", 380, 8))
+
+    (error,) = errors
+    assert "table 'industries'" in error and "数据来源" in error
+
+
+def test_a_table_whose_cells_fit_is_not_flagged(tmp_path: Path) -> None:
+    errors, _ = _findings(tmp_path, _table([420, 120], "信息传输、软件和信息技术服务业", 380, 8))
+
+    assert errors == []
+
+
+def test_after_two_repair_rounds_the_build_says_to_stop(tmp_path: Path) -> None:
+    pages = tmp_path / "pages"
+    pages.mkdir()
+    broken = '<text x="1100" y="400" font-size="40" fill="#1E2A36">营收同比增长百分之十二</text>'
+    (pages / "1.svg").write_text(_page(broken), encoding="utf-8")
+
+    reports = [build_deck(pages, tmp_path / "deck.pptx") for _ in range(3)]
+
+    assert [r.ok for r in reports] == [False, False, False]
+    assert not reports[1].warnings
+    assert "stop repairing" in reports[2].warnings[0]
+    (pages / "1.svg").write_text(_page(""), encoding="utf-8")
+    assert build_deck(pages, tmp_path / "deck.pptx").ok
+    manifest = json.loads((pages / MANIFEST).read_text(encoding="utf-8"))
+    assert manifest["failing_builds"] == 0
+
+
 def test_a_number_no_source_has_is_a_warning(tmp_path: Path) -> None:
     body = (
         '<text x="64" y="300" font-size="24" fill="#1E2A36">合计 12,710 万元，2024 年</text>'

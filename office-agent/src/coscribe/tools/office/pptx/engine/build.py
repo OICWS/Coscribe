@@ -30,6 +30,11 @@ class DeckChangedError(Exception):
     """The .pptx is not the one these pages last built."""
 
 
+# Each repair is a model call over every page it touches; past two the cost grows faster than
+# the deck improves.
+_REPAIR_ROUNDS = 2
+
+
 @dataclass
 class BuildReport:
     path: Path
@@ -108,8 +113,15 @@ def build_deck(
     report.changed = [
         name for (name, _), h in zip(texts, hashes, strict=True) if before.get(name) != h
     ]
+    failing = previous.get("failing_builds", 0) + 1 if not report.ok else 0
+    if failing > _REPAIR_ROUNDS:
+        report.warnings.append(
+            f"build {failing} in a row with errors: stop repairing. The deck is written; tell the "
+            "user which pages still have the problems above, so they can decide"
+        )
     manifest = {
         "deck": str(out.resolve()),
+        "failing_builds": failing,
         "pages": [
             {"page": name, "source": source, "slide": slide}
             for (name, _), source, slide in zip(texts, hashes, slide_hashes(out), strict=True)
