@@ -390,3 +390,26 @@ def test_reading_a_workbook_shows_its_layout(tmp_path: Path) -> None:
     assert "header row 1 (bold)" in text and "frozen at A2" in text
     assert 'B2:B4 format "$"#,##0' in text
     assert "C2:C4; 3 formulas, first C2 =B2*2" in text
+
+
+def test_data_labels_show_the_value_only(tmp_path: Path) -> None:
+    path = _table(tmp_path / "t.xlsx")
+
+    modify_workbook(
+        path,
+        [
+            {
+                "op": "chart",
+                "sheet": "Data",
+                "kind": "column",
+                "source": "A1:B4",
+                "at": "E2",
+                "labels": True,
+            }
+        ],
+    )
+
+    with zipfile.ZipFile(path) as archive:
+        chart = archive.read("xl/charts/chart1.xml").decode()
+    assert '<showVal val="1"/>' in chart and '<showSerName val="0"/>' in chart
+    assert '<showCatName val="0"/>' in chart

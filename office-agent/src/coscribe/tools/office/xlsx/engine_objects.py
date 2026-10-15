@@ -99,7 +99,18 @@ def _chart_object(kind: str, stacked: bool, labels: bool) -> Any:
     from openpyxl.chart import AreaChart, BarChart, LineChart, PieChart, ScatterChart
     from openpyxl.chart.label import DataLabelList
 
-    shown = DataLabelList(showVal=True) if labels else None
+    # Flags left unset read as shown in LibreOffice: series, category and value pile up.
+    shown = (
+        DataLabelList(
+            showVal=True,
+            showSerName=False,
+            showCatName=False,
+            showLegendKey=False,
+            showPercent=False,
+        )
+        if labels
+        else None
+    )
     if kind in ("column", "bar"):
         return BarChart(
             barDir="col" if kind == "column" else "bar",
