@@ -26,8 +26,9 @@ references (MIT licence, copyright Hugo He).
 4. **Write the pages** with write_file into a folder next to the deck, e.g. `q3-review-pages/`,
    named so they sort in order: `01-cover.svg`, `02-agenda.svg`, ... Write every page before the
    first build, and write each one carefully once: every extra round trip costs the user money.
-   Speaker notes only when the user asks for them (a talk, 讲稿, 演讲者备注): what the presenter
-   says on that page, in its `<desc id="notes">`, a few sentences, not the slide's text again.
+   Speaker notes for a talk deck, or when the user asks for them (讲稿, 演讲者备注): what the
+   presenter says on that page, in its `<desc id="notes">`, a few sentences, not the slide's text
+   again.
 5. **Build once**: build_pptx_from_pages(pages_dir, path, sources=[the material's files]). Fix
    every error it reports by editing the named page, then build again; at most two repair rounds.
    Fix the warnings that are real (an invented number, faint body text) in the same edits; do not
@@ -49,14 +50,27 @@ existing deck.
 
 A deck looks designed when one decision runs through every page. Before any page, choose:
 
-1. **A visual style**: how the deck looks. Pick one from the list by the content and audience, read
+1. **Talk or read**: whether someone presents the deck or people read it on their own. The user
+   decides, not the style: take it from the request ("汇报", "演讲", "听众", a talk → talk; "发给",
+   "阅读", "读者", a report to send round → read). When the request does not say and you can ask,
+   ask once with ask_user_question, the two choices in one line each; a deck made with no one to
+   ask is read.
+   - **Talk**: the speaker carries the content, the page carries one point. A claim title, then
+     one figure, chart or picture, or at most three short lines; body 24-28 px. What the speaker
+     will say is in the speaker notes, not on the page. In two languages, the second one is a
+     smaller line under the title and the key points only.
+   - **Read**: the page stands on its own, as a document would. Full statements, tables and
+     sources are fine; body 18-22 px, annotations 14-16. Still one idea per page, and room
+     between blocks.
+2. **A visual style**: how the deck looks. Pick one from the list by the content and audience, read
    its file with read_skill_file("PPTX Pages", "visual-styles/<id>.md"), and no other style file.
-2. **A method** (optional): how the deck argues, for a kind of deck the list names; read
+3. **A method** (optional): how the deck argues, for a kind of deck the list names; read
    read_skill_file("PPTX Pages", "methods/<id>.md"). Its fallback colours and typography are
    defaults the spec may take.
 
 Then write `design.md` in the pages folder, short, with exactly these parts:
 
+- **Use**: talk or read, and how the request said it.
 - **Direction**: the style's id and one sentence that names this deck's look (e.g. "双语公报：数据
   新闻式栅格，中文主行与英文副行成对").
 - **Palette**: field, surface, ink, primary, accent (and at most two more), each as #RRGGBB with
@@ -66,7 +80,8 @@ Then write `design.md` in the pages folder, short, with exactly these parts:
   and figures Cambria, Georgia or Times New Roman (serif) or Arial, Calibri, Segoe UI (sans);
   Consolas for code. At most three families. A text sets its own `font-family`
   ("SimSun, Cambria") when it differs from the root's. Sizes in px: display 56-80, title 36-44,
-  lead 24-28, body 20-24 (never under 20 on a content page), annotation 16-18, source line 13-14.
+  lead 24-28, body as talk or read sets it, annotation 16-18 (14-16 when read), source line
+  13-14.
 - **Grid**: margins (56-80 px), columns, the gap between blocks, the corner radius (0 for a
   hard-edged style).
 - **Recurring elements**: what sits in the same place on every content page (a header rule, a
@@ -145,7 +160,7 @@ dense page, a lighter one.
 
 ## Type and colour
 
-- Sizes: as the design spec fixes them (body never under 20 on a content page). Bold for the title and for one or two
+- Sizes: as the design spec fixes them (body never under 24 on a talk page, 18 on a read page). Bold for the title and for one or two
   load-bearing words or numbers per sentence, not for whole paragraphs.
 - Left-align body text. Break lines at phrase or punctuation boundaries; a line should not end
   with a single character.
@@ -209,6 +224,22 @@ read_skill_file("PPTX Pages", "icons.md"): trending-up, users, building-factory,
 shield-check, calendar, coin, bolt, leaf, rocket and about 280 more; a wrong name is reported
 with the nearest ones. Use them where they carry meaning (a category, a step, a status), one
 size per role, never drawn from scratch.
+
+## Illustrations
+
+A picture the deck needs (a cover scene, a section divider, a metaphor beside a point) is drawn on
+the page in SVG, and the build turns every part of it into a shape the user can recolour and
+move. Draw it flat, from the deck's palette: a few large shapes (`path` with curves, `polygon`,
+`circle`, `ellipse`, `rect`), layered back to front, in one `<g id="...">`, about 40 shapes at
+most. A silhouette reads better than detail: a ship is a hull, a deck and two funnels.
+
+What carries over: linear and radial gradients, `opacity` and `fill-opacity`, `stroke-dasharray`,
+`rotate`, a drop shadow (a `<filter>` with `feOffset` and `feGaussianBlur`) and a glow (the
+blur alone). What does not: `<mask>` (an error: cut the shape out instead) and `<pattern>` (it
+turns solid: draw the repeated dots or lines as shapes).
+
+One illustration on the cover and section pages at most, none on a page of numbers. Text keeps
+a plain area of its own: never on top of the drawing's busy part.
 
 ## Avoid
 
