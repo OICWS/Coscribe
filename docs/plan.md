@@ -58,8 +58,9 @@ Last reviewed: 2026-10-15.
      1,464-line function before part 11.
    - Done: `deep_imports` is 37 (exit criterion 40 or fewer; #298).
    - Open: the Windows job must be green 14 days before it is required. It was red on 10-14
-     (#267: `os.replace` raised PermissionError in `tools/tasks.py`; fixed 10-15), so the 14-day
-     clock runs from the first green nightly after that fix.
+     (#267: `os.replace` raised PermissionError in `tools/tasks.py`; fixed 10-15). The first green
+     nightly after the fix was run 23 on 10-15 (main at 8a08b0d), so the clock started on 10-15:
+     14 green nights in a row end on 10-28. A red night restarts it.
    - Open: `test_tool_schema_snapshot` fails in cloud containers but passes in CI (#252).
    - For the maintainer: switch on Dependabot security updates, secret scanning and push
      protection in the repository settings (listed in #263).
