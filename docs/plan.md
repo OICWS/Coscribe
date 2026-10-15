@@ -49,10 +49,10 @@ Last reviewed: 2026-10-15.
      (flaky tests reported, then quarantined with an end date).
    - Done: `conversation/session.py` is split (1,472 lines; hooks, folder and skill changes,
      the turn stream and the approval resume are their own modules).
-   - Done: `tools/presentations.py` is a 83-line entry point (parts 1 to 10 of its split; the
+   - Done: `tools/presentations.py` is a 83-line entry point (parts 1 to 11 of its split; the
      toolkit is `office/pptx/toolkit.py` and the topic mixins, the tool wrappers are
-     `office/pptx/tool_wrappers.py`, 1,477 lines). `build_presentation_tools` in it is one
-     1,464-line function; splitting it by topic is a possible follow-up, not an exit criterion.
+     `office/pptx/tool_wrappers.py`, 88 lines, plus five `wrappers_*.py` topic modules). It was one
+     1,464-line function before part 11.
    - Done: `deep_imports` is 37 (exit criterion 40 or fewer; #298).
    - Open: the Windows job must be green 14 days before it is required. It was red on 10-14
      (#267: `os.replace` raised PermissionError in `tools/tasks.py`; fixed 10-15), so the 14-day
