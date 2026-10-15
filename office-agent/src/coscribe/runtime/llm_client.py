@@ -17,7 +17,9 @@ def _gemini_context_window(model: str) -> int:
     # Lazy: the SDK is only needed when a Gemini model is selected.
     from google import genai
 
-    limit = genai.Client(api_key=api_key).models.get(model=model).input_token_limit
+    # Bound to a name: a client garbage-collected mid-call closes its HTTP client.
+    client = genai.Client(api_key=api_key)
+    limit = client.models.get(model=model).input_token_limit
     if limit is None:
         raise ValueError(f"the API reported no input-token limit for {model!r}")
     return int(limit)
