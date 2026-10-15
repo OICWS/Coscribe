@@ -570,7 +570,9 @@ def test_close_orphaned_tool_calls_heals_a_thread_already_corrupted_mid_history(
     from langchain_core.messages import ToolCall
     from langgraph.checkpoint.memory import InMemorySaver
 
-    from coscribe.conversation.session import _close_orphaned_tool_calls
+    from coscribe.conversation.history import (
+        close_orphaned_tool_calls as _close_orphaned_tool_calls,
+    )
 
     def lookup(q: str) -> str:
         """Look something up."""
