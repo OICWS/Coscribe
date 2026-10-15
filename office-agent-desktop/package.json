@@ -13,7 +13,7 @@
     "icon": "echo icons/ was copied from the original Tauri shell (since removed) -- see office-agent-desktop/README.md"
   },
   "devDependencies": {
-    "@types/node": "^24.13.3",
+    "@types/node": "^26.6.5",
     "electron": "^33.4.11",
     "electron-builder": "^25.1.8",
     "typescript": "~6.0.2"
