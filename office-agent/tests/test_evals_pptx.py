@@ -389,6 +389,63 @@ class _FakeSession:
         self.approvals[request_id] = approved
 
 
+async def test_the_recorder_keeps_what_each_deck_build_found() -> None:
+    recorder = run.Recorder(session=_FakeSession())
+    report = {
+        "ok": False,
+        "slides": 2,
+        "pages": [
+            {"page": "01.svg", "shapes": 3},
+            {"page": "02.svg", "shapes": 5, "errors": ["text overlaps"], "warnings": ["faint"]},
+        ],
+    }
+
+    await recorder.send_json(
+        {
+            "type": "tool_result",
+            "tool_name": "build_pptx_from_pages",
+            "is_error": False,
+            "result": json.dumps(report),
+        }
+    )
+    await recorder.send_json(
+        {
+            "type": "tool_result",
+            "tool_name": "build_pptx_from_pages",
+            "is_error": False,
+            "result": {"ok": True, "pages": [], "warnings": ["stop repairing"]},
+        }
+    )
+
+    assert recorder.builds == [
+        {
+            "ok": False,
+            "pages": [{"page": "02.svg", "errors": ["text overlaps"], "warnings": ["faint"]}],
+            "warnings": [],
+        },
+        {"ok": True, "pages": [], "warnings": ["stop repairing"]},
+    ]
+
+
+async def test_the_recorder_sees_a_deferred_tool_by_its_own_name() -> None:
+    recorder = run.Recorder(session=_FakeSession())
+    called = {"name": "build_pptx_from_pages", "arguments": {}}
+
+    await recorder.send_json({"type": "tool_started", "tool_name": "use_tool", "arguments": called})
+    await recorder.send_json(
+        {
+            "type": "tool_result",
+            "tool_name": "use_tool",
+            "arguments": called,
+            "is_error": False,
+            "result": {"ok": True, "pages": []},
+        }
+    )
+
+    assert recorder.builds == [{"ok": True, "pages": [], "warnings": []}]
+    assert set(recorder.tool_seconds) == {"build_pptx_from_pages"}
+
+
 async def test_the_recorder_counts_calls_and_answers_what_would_wait_for_a_person() -> None:
     session = _FakeSession()
     recorder = run.Recorder(session=session)

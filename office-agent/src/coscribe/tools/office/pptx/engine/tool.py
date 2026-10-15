@@ -17,6 +17,13 @@ from ...._workspace import WorkspaceScope
 from .build import DeckChangedError, build_deck, page_files
 from .template import describe
 
+# A reviewer round sends every slide image to a vision model: on a deck the build has checked, it
+# cost about as much time as all the rest of the checking together.
+_AFTER_A_CLEAN_BUILD = (
+    "render_pptx_preview once and change only what is clearly wrong; this deck needs no "
+    "review_work, the build has checked every page"
+)
+
 
 def build_engine_tools(
     root: str | Path,
@@ -113,9 +120,9 @@ def build_engine_tools(
                     f"{e}. Make this change with the edit_pptx_* tools on the .pptx instead, or "
                     "ask the user whether their changes may be replaced (replace_changes)."
                 ) from e
-        result = report.as_dict()
-        result["path"] = scope.relative(out)
-        return result
+        result = {**report.as_dict(), "path": scope.relative(out)}
+        clean = report.ok and not report.warning_count()
+        return {**result, "next": _AFTER_A_CLEAN_BUILD} if clean else result
 
     return [tool_metadata(build_pptx_from_pages, risk_category="WRITE_LOCAL", category="documents")]
 

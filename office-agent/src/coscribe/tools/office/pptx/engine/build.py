@@ -47,6 +47,9 @@ class BuildReport:
     def ok(self) -> bool:
         return all(not page.errors for page in self.pages)
 
+    def warning_count(self) -> int:
+        return len(self.warnings) + sum(len(page.warnings) for page in self.pages)
+
     def as_dict(self) -> dict[str, Any]:
         return {
             "path": str(self.path),
@@ -129,6 +132,18 @@ def build_deck(
     }
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     return report
+
+
+def built_from_pages(deck: Path) -> Path | None:
+    """The pages folder next to `deck` whose last build wrote it, while every slide is still as
+    that build wrote it (an edit since then was not checked by the build)."""
+    target = deck.resolve()
+    for folder in deck.parent.iterdir():
+        manifest = _read_manifest(folder / MANIFEST)
+        if manifest and Path(manifest["deck"]).resolve() == target:
+            built = [entry["slide"] for entry in manifest["pages"]]
+            return folder if built == slide_hashes(deck) else None
+    return None
 
 
 def slide_hashes(deck: Path) -> list[str]:

@@ -70,6 +70,8 @@ _MAGNITUDES = {
     "bn": 10**9,
     "mn": 10**6,
 }
+# A power of ten from a thousand up in brackets, as a page names the unit an axis or column counts.
+_UNIT_LABEL = re.compile(r"[(（][^()（）\d]*\b10(?:,?000)+\b[^()（）\d]*[)）]")
 # A one-letter abbreviation counts only right after the digits (2.615m, 267k), not as a word.
 _LETTERS = {"k": 10**3, "m": 10**6, "b": 10**9}
 _VALUE = re.compile(
@@ -436,18 +438,25 @@ def known_numbers(text: str) -> set[str | Decimal]:
     return {item for pair in number_values(text) for item in pair}
 
 
+def is_claim(number: str) -> bool:
+    """Whether a number says something about the world; a page number or a day does not."""
+    return "." in number or int(number) > _SMALL_INTEGER
+
+
+def claims(text: str) -> list[tuple[str, Decimal]]:
+    """The numbers of `text` that are claims, each with its value, leaving out a unit spelled
+    out in brackets: "(10,000 units)" under a 万辆 axis says what the axis counts."""
+    return [(n, v) for n, v in number_values(_UNIT_LABEL.sub(" ", text)) if is_claim(n)]
+
+
 def is_known(number: str, value: Decimal, known: set[str | Decimal]) -> bool:
     return number in known or value in known
 
 
 def _unknown_numbers(texts: list[_Text], known: set[str | Decimal]) -> Iterator[str]:
-    values = number_values("\n".join(t.text for t in texts))
+    values = claims("\n".join(t.text for t in texts))
     found = sorted(
-        {
-            n
-            for n, v in values
-            if ("." in n or int(n) > _SMALL_INTEGER) and not is_known(n, v, known)
-        },
+        {n for n, v in values if not is_known(n, v, known)},
         key=float,
     )
     if found:
