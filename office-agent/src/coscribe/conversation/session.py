@@ -36,14 +36,10 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-import shutil
-import tempfile
-import unicodedata
 import uuid
 from asyncio import Future
 from collections import defaultdict
 from collections.abc import Callable, Sequence
-from datetime import UTC, datetime
 from functools import cached_property
 from pathlib import Path
 from typing import Any, cast
@@ -114,19 +110,15 @@ from ..runtime_lg.tool_deferral import (
 )
 from ..tools import (
     QUESTION_TOOL_NAMES,
-    DocumentToolkit,
-    SpreadsheetToolkit,
     format_skill_listing,
     load_builtin_skills,
     load_skills,
 )
-from ..tools._thumbnail import render_single_page_preview
 from ..tools._workspace import WorkspaceScope
 from ..tools.background_tasks import BackgroundTask, set_change_listener
 from ..tools.browser import BROWSER_HOST
 from ..tools.conversations import set_inbox_listener
 from ..tools.http_request import build_http_tools
-from ..tools.presentations import PresentationToolkit
 from ..tools.scheduled_tasks import (
     TASK_DRAFT_TOOL_NAMES,
     ScheduledTriggerStore,
@@ -138,6 +130,7 @@ from ..workflows import StepContext, WorkflowDraft
 from .activity import summarize_activity, summarize_workflow_run
 from .approvals import ApprovalDecider, can_resolve_approvals
 from .context_usage import build_context_breakdown
+from .edit_preview import build_document_edit_preview
 from .events import EventSink
 from .history import ConversationHistory
 from .history import close_orphaned_tool_calls as _close_orphaned_tool_calls
@@ -147,6 +140,13 @@ from .subagents import _MAX_REPORT_TURNS_IN_ROW as _MAX_REPORT_TURNS_IN_ROW
 from .subagents import SubAgentApprovalChannel, SubAgentReporter
 from .thread_meta import ThreadMetaStore
 from .turn_lock import TurnLock
+from .turn_text import (
+    TITLE_INSTRUCTIONS,
+    build_instructions,
+    clean_title,
+    format_reply,
+    usage_event,
+)
 from .workflow_drafting import WorkflowDrafting
 
 logger = logging.getLogger(__name__)
@@ -165,83 +165,7 @@ SAVE_WORKFLOW_PROMPT = (
     "repeatable task in this conversation yet, ask me what to save instead."
 )
 
-# _build_document_edit_preview's dispatch table: which toolkit class
-# owns an approval-gated edit tool, keyed by the target file's extension
-# -- all three toolkits share the same (root, *, state_dir=,
-# extra_readable=, extra_writable=) constructor shape (see that method's
-# own docstring), which is what makes a single dict lookup enough instead
-# of three near-duplicate preview-building methods.
-_PREVIEWABLE_TOOLKITS_BY_EXTENSION: dict[str, type[Any]] = {
-    ".pptx": PresentationToolkit,
-    ".potx": PresentationToolkit,
-    ".docx": DocumentToolkit,
-    ".dotx": DocumentToolkit,
-    ".xlsx": SpreadsheetToolkit,
-    ".xlsm": SpreadsheetToolkit,
-    ".xltx": SpreadsheetToolkit,
-}
-
-
-def _format_reply(text: str) -> str:
-    if not text.strip():
-        return "[no reply -- the model ended its turn without responding; try rephrasing]"
-    return text
-
-
-def _now_iso_lg() -> str:
-    return datetime.now(UTC).isoformat()
-
-
 _ORPHANED_TOOL_CALL_NOTE = ORPHANED_TOOL_CALL_NOTE
-
-
-def _build_instructions(agent_instructions: str | None, *, defer_tools: bool) -> str:
-    """Appends _SEARCH_TOOLS_NOTE (only when some tools are actually left
-    for search_tools to find) to whatever build_coordinator_agent
-    assembled. Called where the agent is built and where its context is
-    measured, from the same _tool_binding answer, so the note and the
-    tool can't disagree."""
-    notes: list[str] = []
-    if defer_tools:
-        notes.append(_SEARCH_TOOLS_NOTE)
-    if not agent_instructions:
-        return "\n\n".join(notes)
-    return "\n\n".join([agent_instructions, *notes])
-
-
-def _usage_event(usage: UsageMetadata) -> dict[str, Any]:
-    """Build the "usage" WS event from a response's UsageMetadata,
-    including prompt-cache stats when the provider reports them --
-    real, user-reported gap: the token counter only ever showed
-    total_tokens, with no way to tell whether prompt caching was
-    actually reducing anything or a long, tool-heavy conversation was
-    genuinely just that large. `input_token_details.cache_read` is
-    langchain-core's own standard field for "how many of this call's
-    input tokens were served from cache" -- populated for Anthropic
-    (this project's own explicit cache_control breakpoints) *and*,
-    unprompted by any coscribe code, for any OpenAI-compatible provider
-    too (langchain_openai maps the raw API's own `prompt_tokens_details.
-    cached_tokens` into this same field -- confirmed by reading its
-    source directly). GLM specifically documents "implicit caching":
-    automatic, no cache_control equivalent needed, so this field simply
-    starts appearing once a call's prompt prefix repeats one already
-    seen. Omitted (not sent as 0) when the provider didn't report it at
-    all, so the frontend can distinguish "no cache activity reported"
-    from "genuinely zero tokens were cached this call" -- the two read
-    very differently to a user trying to tell whether caching is
-    working at all. cache_hit_rate is computed here, not on the
-    frontend, so every caller (there are three) gets the identical
-    definition (cache_read / input_tokens, Codex CLI's own metric,
-    chosen over total_tokens as the denominator since output tokens are
-    never cacheable and would understate the real hit rate)."""
-    event: dict[str, Any] = {"type": "usage", "total_tokens": usage["total_tokens"]}
-    cache_read = usage.get("input_token_details", {}).get("cache_read")
-    input_tokens = usage.get("input_tokens")
-    if cache_read is not None and input_tokens:
-        event["cache_read_tokens"] = cache_read
-        event["input_tokens"] = input_tokens
-        event["cache_hit_rate"] = cache_read / input_tokens
-    return event
 
 
 def _new_draft_id() -> str:
@@ -279,55 +203,6 @@ def _risks_of_gated_tools(lg_tools: list[Any]) -> dict[str, str]:
 # recreate the client (a fresh channel starts the header at zero) before
 # retrying.
 _GRPC_METADATA_OVERFLOW_SIGNATURE = "metadata size exceeds soft limit"
-
-
-# Only appended when Settings.defer_tools is on (see _build_instructions
-# below) -- the model has no other way to learn search_tools exists or
-# when to reach for it, since most tools are hidden from its own tool
-# list by default in that mode (see runtime_lg/tool_deferral.py).
-_SEARCH_TOOLS_NOTE = (
-    "Most tools beyond the basics aren't in your tool list -- this keeps "
-    "this conversation's context small. If what you need isn't there (a "
-    "PPTX/XLSX edit tool, a background script, a scheduled-task tool, "
-    'etc.), call search_tools(query) first -- e.g. search_tools("pptx '
-    'chart") -- it returns each match with its parameters. Run one with '
-    "use_tool(name, arguments). Don't assume something can't be done "
-    "just because you don't see a tool for it; search before giving up "
-    "or falling back to a workaround."
-)
-
-
-_TITLE_INSTRUCTIONS = (
-    "Name this conversation for a sidebar: at most 6 words (or 14 characters "
-    "in Chinese or Japanese), in the language the user wrote in, saying what "
-    "it's about. Reply with the title only -- no quotes, no ending punctuation."
-)
-
-
-# Characters of room in a sidebar row, counting a wide (Chinese, Japanese, Korean) one as two.
-_TITLE_WIDTH = 40
-
-
-def _clean_title(text: str) -> str:
-    title = " ".join(text.strip().splitlines()[0].split()) if text.strip() else ""
-    return _fit_title(title.strip("\"'“”「」《》*#。.").strip())
-
-
-def _fit_title(title: str) -> str:
-    """The title cut to the sidebar's width, for a model that answers with a sentence
-    although it was asked for a few words."""
-    width = 0
-    end = 0
-    for char in title:
-        width += 2 if unicodedata.east_asian_width(char) in ("W", "F") else 1
-        if width > _TITLE_WIDTH:
-            break
-        end += 1
-    if end == len(title):
-        return title
-    cut = title[:end]
-    space = cut.rfind(" ")
-    return (cut[:space] if space > len(cut) * 0.6 else cut).rstrip() + "…"
 
 
 class ChatSessionLG:
@@ -656,7 +531,7 @@ class ChatSessionLG:
                 return
             reply = await self.model.ainvoke(
                 [
-                    SystemMessage(content=_TITLE_INSTRUCTIONS),
+                    SystemMessage(content=TITLE_INSTRUCTIONS),
                     HumanMessage(
                         content=f"User: {first_user[:1500]}"
                         + (f"\n\nAssistant: {last_reply[:1500]}" if last_reply else "")
@@ -664,7 +539,7 @@ class ChatSessionLG:
                 ],
                 config={"tags": [TAG_NOSTREAM]},
             )
-            title = _clean_title(_extract_text(reply.content))
+            title = clean_title(_extract_text(reply.content))
             if not title or self._title_path().exists():
                 return
             self._title_path().parent.mkdir(parents=True, exist_ok=True)
@@ -721,7 +596,7 @@ class ChatSessionLG:
         return build_langgraph_agent(
             model,
             lg_tools,
-            _build_instructions(self._instructions, defer_tools=defer),
+            build_instructions(self._instructions, defer_tools=defer),
             checkpointer=self._checkpointer,
             extra_interrupt_tool_names=extra_interrupt_names,
             question_tool_names=QUESTION_TOOL_NAMES | TASK_DRAFT_TOOL_NAMES,
@@ -1254,7 +1129,7 @@ class ChatSessionLG:
             mcp_tools = [t for t in mcp_tools if tool_name(t) in bound]
         return await asyncio.to_thread(
             build_context_breakdown,
-            instructions=_build_instructions(self._instructions, defer_tools=defer),
+            instructions=build_instructions(self._instructions, defer_tools=defer),
             skills_listing=skills_listing,
             base_tools=base_tools,
             mcp_tools=mcp_tools,
@@ -1435,7 +1310,7 @@ class ChatSessionLG:
                 # own docstring), so sending it here, at every boundary this
                 # function already runs at, is a correct running total, not
                 # an approximation.
-                await websocket.send_json(_usage_event(segment.usage_metadata))
+                await websocket.send_json(usage_event(segment.usage_metadata))
             segment = None
 
         # "updates" is only for the model node's finished message: it lands
@@ -1626,97 +1501,14 @@ class ChatSessionLG:
     async def _build_document_edit_preview(
         self, tool_name_: str, args: dict[str, Any]
     ) -> tuple[str | None, str | None]:
-        """Best-effort before/after preview for an approval-gated
-        document edit (pptx/docx/xlsx) -- dry-runs the *exact* same tool
-        call, with the *exact* same args, against a throwaway copy of the
-        target file, so the approval card can show what the edit will
-        actually produce instead of the raw JSON arguments dump it fell
-        back to before (`{"shape_index": 3, "fill_color": "38BDF8"}`
-        tells a user little about what's about to change; a picture
-        does). Reusing the real edit method this way -- not a second,
-        hand-written "what would this look like" implementation -- means
-        the preview can never drift out of sync with what actually
-        happens on approval.
-
-        Deliberately generic, not a hardcoded per-tool dispatch table:
-        `_PREVIEWABLE_TOOLKITS_BY_EXTENSION` below maps a file extension
-        to its toolkit class (PresentationToolkit/DocumentToolkit/
-        SpreadsheetToolkit -- all three share the same `(root, *,
-        state_dir=, extra_readable=, extra_writable=)` constructor
-        shape, which is what makes this dispatch table-driven instead of
-        three near-duplicate copies of this method); applies to *any*
-        tool name that happens to be a method on that class (private
-        helpers are all `_`-prefixed, so this can't accidentally match
-        one) whose `path` argument names an existing file with a
-        recognized extension -- covers every current and future edit
-        tool across all three formats with zero maintenance here, and
-        naturally excludes a pure-create tool like `fill_pptx_template`
-        (no existing file to diff against) without needing a denylist --
-        `write_pptx`/`write_docx`/`write_xlsx` *do* get previewed when
-        they're actually overwriting something that already exists,
-        which is exactly the case worth previewing.
-
-        Never raises and never touches the real file -- any failure
-        (soffice missing, a bad dry-run, a locked file, an
-        unrecognized extension) just means one or both preview images
-        come back None, and the approval flow proceeds exactly as it did
-        before this existed.
-        """
-        path_arg = args.get("path")
-        if not isinstance(path_arg, str):
-            return None, None
-        toolkit_cls = _PREVIEWABLE_TOOLKITS_BY_EXTENSION.get(Path(path_arg.lower()).suffix)
-        if toolkit_cls is None:
-            return None, None
-        if tool_name_.startswith("_") or not hasattr(toolkit_cls, tool_name_):
-            return None, None
-        try:
-            real_scope = WorkspaceScope(
-                self.workspace_root,
-                extra_readable=self.settings.extra_readable_dirs,
-                extra_writable=self.settings.extra_writable_dirs,
-            )
-            real_path = real_scope.resolve(path_arg)
-        except (PermissionError, OSError):
-            return None, None
-        if not real_path.is_file():
-            return None, None
-
-        state_dir = Path(self.settings.state_dir)
-        # "slide" is pptx's own page-selector arg name -- docx/xlsx tool
-        # calls never carry one, so they fall through to page 1, the
-        # same default an argument-less pptx edit (e.g.
-        # edit_pptx_theme_colors, which is deck-wide) already gets.
-        slide = args.get("slide")
-        page = slide if isinstance(slide, int) and slide > 0 else 1
-
-        before_name, _ = await asyncio.to_thread(
-            render_single_page_preview, real_path, state_dir, page
+        return await build_document_edit_preview(
+            tool_name_,
+            args,
+            self.workspace_root,
+            self.settings.extra_readable_dirs,
+            self.settings.extra_writable_dirs,
+            Path(self.settings.state_dir),
         )
-
-        after_name: str | None = None
-        tmp_dir = tempfile.mkdtemp(prefix="coscribe_preview_edit_")
-        try:
-            preview_path = Path(tmp_dir) / real_path.name
-            shutil.copyfile(real_path, preview_path)
-            preview_toolkit = toolkit_cls(tmp_dir)
-            method = getattr(preview_toolkit, tool_name_)
-            dry_run_args = {**args, "path": preview_path.name}
-            try:
-                await asyncio.to_thread(lambda: method(**dry_run_args))
-            except Exception:
-                logger.debug(
-                    "approval preview: dry run of %s failed, showing 'before' only",
-                    tool_name_,
-                    exc_info=True,
-                )
-                return before_name, None
-            after_name, _ = await asyncio.to_thread(
-                render_single_page_preview, preview_path, state_dir, page
-            )
-        finally:
-            shutil.rmtree(tmp_dir, ignore_errors=True)
-        return before_name, after_name
 
     async def _decide_action_request(
         self, request: dict[str, Any], websocket: Any, *, honor_stop: bool = True
@@ -1912,9 +1704,9 @@ class ChatSessionLG:
             # checker, not a real runtime fallback.
             text = await self._resolve_pending_approvals(websocket) or ""
             await self._record_resumed_run_status()
-            await websocket.send_json({"type": "agent_message", "text": _format_reply(text)})
+            await websocket.send_json({"type": "agent_message", "text": format_reply(text)})
             if self._last_usage_metadata is not None:
-                await websocket.send_json(_usage_event(self._last_usage_metadata))
+                await websocket.send_json(usage_event(self._last_usage_metadata))
             await websocket.send_json({"type": "tasks_changed"})
 
     def offer_pending_approval_to_live_tab(self) -> None:
@@ -2210,13 +2002,13 @@ class ChatSessionLG:
             reply_text = f"{reply_text}\n\n[stopped]" if reply_text.strip() else "[stopped]"
             await websocket.send_json({"type": "agent_message", "text": reply_text})
         else:
-            await websocket.send_json({"type": "agent_message", "text": _format_reply(reply_text)})
+            await websocket.send_json({"type": "agent_message", "text": format_reply(reply_text)})
         # self._last_usage_metadata is set by _stream_turn (see its
         # docstring) -- None if the model never populated usage_metadata at
         # all, in which case the event is omitted entirely rather than
         # showing a fabricated number.
         if self._last_usage_metadata is not None:
-            await websocket.send_json(_usage_event(self._last_usage_metadata))
+            await websocket.send_json(usage_event(self._last_usage_metadata))
         await websocket.send_json({"type": "tasks_changed"})
         if self._wants_title():
             # Off the turn's own path: the reply is done, the title can lag.

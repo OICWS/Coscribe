@@ -18,7 +18,7 @@ from typing import Any
 
 import pytest
 
-from coscribe.conversation import session as session_module
+from coscribe.conversation import edit_preview as edit_preview_module
 from coscribe.runtime_lg.audit import AuditLog
 from coscribe.runtime_lg.auto_review import Verdict
 from tests.test_approval_decisions import (
@@ -72,9 +72,9 @@ def renders(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> list[tuple[bytes
         pages.append((Path(path).read_bytes(), page))
         return (f"picture-{len(pages)}.png", "ok")
 
-    monkeypatch.setattr(session_module, "render_single_page_preview", render)
-    monkeypatch.setitem(session_module._PREVIEWABLE_TOOLKITS_BY_EXTENSION, ".docx", _Toolkit)
-    monkeypatch.setitem(session_module._PREVIEWABLE_TOOLKITS_BY_EXTENSION, ".xlsx", _Toolkit)
+    monkeypatch.setattr(edit_preview_module, "render_single_page_preview", render)
+    monkeypatch.setitem(edit_preview_module.PREVIEWABLE_TOOLKITS_BY_EXTENSION, ".docx", _Toolkit)
+    monkeypatch.setitem(edit_preview_module.PREVIEWABLE_TOOLKITS_BY_EXTENSION, ".xlsx", _Toolkit)
     monkeypatch.setattr(tempfile, "tempdir", str(tmp_path / "tmp"))
     (tmp_path / "tmp").mkdir()
     _Toolkit.calls, _Toolkit.fail = [], False
