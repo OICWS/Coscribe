@@ -49,7 +49,7 @@ Last reviewed: 2026-10-15.
      (flaky tests reported, then quarantined with an end date).
    - Done: `conversation/session.py` is split (1,472 lines; hooks, folder and skill changes,
      the turn stream and the approval resume are their own modules).
-   - Open: `tools/presentations.py` is 2,242 lines (parts 1 to 8 of its split are merged or
+   - Open: `tools/presentations.py` is 1,569 lines (parts 1 to 9 of its split are merged or
      in review; the toolkit class and the tool wrappers are left).
    - Done: `deep_imports` is 37 (exit criterion 40 or fewer; #298).
    - Open: the Windows job must be green 14 days before it is required. It was red on 10-14
