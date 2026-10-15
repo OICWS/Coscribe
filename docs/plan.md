@@ -49,12 +49,12 @@ Last reviewed: 2026-10-15.
      (flaky tests reported, then quarantined with an end date).
    - Done: `conversation/session.py` is split (1,472 lines; hooks, folder and skill changes,
      the turn stream and the approval resume are their own modules).
-   - Open: `tools/presentations.py` is 4,259 lines (parts 1 to 5 of its split are merged or
+   - Open: `tools/presentations.py` is 3,856 lines (parts 1 to 6 of its split are merged or
      in review; the toolkit class and the tool wrappers are left).
-   - Open: `deep_imports` is 82 and the exit criterion is 40 or fewer; the importers still reach
-     into submodules instead of the package interfaces.
+   - Done: `deep_imports` is 37 (exit criterion 40 or fewer; #298).
    - Open: the Windows job must be green 14 days before it is required. It was red on 10-14
-     (#267: `os.replace` raises PermissionError in `tools/tasks.py`), so the clock has not started.
+     (#267: `os.replace` raised PermissionError in `tools/tasks.py`; fixed 10-15), so the 14-day
+     clock runs from the first green nightly after that fix.
    - Open: `test_tool_schema_snapshot` fails in cloud containers but passes in CI (#252).
    - For the maintainer: switch on Dependabot security updates, secret scanning and push
      protection in the repository settings (listed in #263).
