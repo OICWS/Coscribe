@@ -14,7 +14,7 @@ from pptx.chart.data import CategoryChartData
 from pptx.enum.chart import XL_CHART_TYPE
 from pptx.util import Inches
 
-from coscribe.tools import presentations
+from coscribe.tools.office.pptx import shape_tools
 from evals import pptx_checks, prices, run, tasks
 
 # --- building small decks -------------------------------------------------------------
@@ -291,7 +291,7 @@ def test_a_crash_of_the_shape_list_is_recorded_per_slide(
     def broken(index: int, shape: Any) -> dict[str, object]:
         raise TypeError("a group shape cannot have a click action")
 
-    monkeypatch.setattr(presentations, "_describe_shape", broken)
+    monkeypatch.setattr(shape_tools, "_describe_shape", broken)
 
     result = pptx_checks.check_editability(path, tmp_path)
 
