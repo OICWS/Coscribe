@@ -264,7 +264,7 @@ def add_table_slide(prs: PresentationType, title: str, rows: list[list[str]]) ->
     previous hardcoded `Inches(0.5), Inches(9)` placement was sized for
     python-pptx's own default 10in-wide blank Presentation(), but
     write_pptx always resizes the deck to widescreen
-    (`_WIDESCREEN_WIDTH_EMU`, 13.333in) -- on the real slide width the
+    (`_WIDESCREEN_WIDTH_EMU` in `template_tools.py`, 13.333in) -- on the real slide width the
     table actually ends up on, that fixed 9in width left ~3.8in of dead
     space on the right, visibly off-center. icon-list/stat-callout
     already computed position from the deck's own real dimensions via
