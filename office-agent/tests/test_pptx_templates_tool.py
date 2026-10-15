@@ -220,24 +220,24 @@ def test_every_bundled_template_has_no_geometric_text_overlaps_or_missing_visual
     placeholder's own box -- this is what actually proves that, for
     minimal-light and bold-statement specifically (modern-block predates
     that script and was hand-verified separately when it shipped).
-    _check_low_contrast is included too -- every bundled template's own
+    check_low_contrast is included too -- every bundled template's own
     text/background color choices should already clear WCAG's minimum
     ratio; a hit here would mean a real design defect in a shipped
     template, not a false positive (confirmed live: all four pass with
     zero warnings before this assertion was added)."""
     from pptx import Presentation
 
-    from coscribe.tools.presentations import (
-        _check_low_contrast,
-        _check_missing_visual_elements,
-        _check_text_overlaps,
+    from coscribe.tools.office.pptx.qa import (
+        check_low_contrast,
+        check_missing_visual_elements,
+        check_text_overlaps,
     )
 
     for template in load_builtin_templates():
         prs = Presentation(str(template.path))
-        assert _check_text_overlaps(prs) == [], template.id
-        assert _check_missing_visual_elements(prs) == [], template.id
-        assert _check_low_contrast(prs) == [], template.id
+        assert check_text_overlaps(prs) == [], template.id
+        assert check_missing_visual_elements(prs) == [], template.id
+        assert check_low_contrast(prs) == [], template.id
 
 
 def test_fill_pptx_template_round_trips_through_every_real_bundled_template(
