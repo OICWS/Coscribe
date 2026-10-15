@@ -423,3 +423,21 @@ def test_the_preview_of_a_deck_built_from_pages_leaves_the_checks_to_the_build(
     assert built["built_from_pages"] == "deck-pages" and "text_overlap_warnings" not in built
     assert "built_from_pages" not in other and "text_overlap_warnings" in other
     assert "built_from_pages" not in after_an_edit and "text_overlap_warnings" in after_an_edit
+
+
+def test_a_deck_as_a_source_gives_its_charts_numbers(tmp_path: Path) -> None:
+    from pptx.chart.data import CategoryChartData
+    from pptx.enum.chart import XL_CHART_TYPE
+    from pptx.util import Inches
+
+    deck = Presentation()
+    data = CategoryChartData()
+    data.categories = ["Q1", "Q2"]
+    data.add_series("销售额", (1180, 1320))
+    slide = deck.slides.add_slide(deck.slide_layouts[6])
+    slide.shapes.add_chart(
+        XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(1), Inches(1), Inches(4), Inches(3), data
+    )
+    deck.save(str(tmp_path / "draft.pptx"))
+
+    assert "Q1 1180, Q2 1320" in source_text(tmp_path / "draft.pptx")
