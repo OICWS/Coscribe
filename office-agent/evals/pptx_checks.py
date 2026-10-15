@@ -154,13 +154,13 @@ def check_layout(path: Path, pdf: Path | None) -> dict[str, Any]:
     """coscribe's own QA functions, as its tools use them after a write."""
     from pptx import Presentation
 
-    from coscribe.tools import presentations as p
+    from coscribe.tools.office.pptx import qa
 
     prs = Presentation(str(path))
-    overflow = p._check_overflow(pdf) if pdf is not None and pdf.is_file() else None
-    overlaps = p._check_text_overlaps(prs)
-    low_contrast = p._check_low_contrast(prs)
-    plain = p._check_missing_visual_elements(prs)
+    overflow = qa.check_overflow(pdf) if pdf is not None and pdf.is_file() else None
+    overlaps = qa.check_text_overlaps(prs)
+    low_contrast = qa.check_low_contrast(prs)
+    plain = qa.check_missing_visual_elements(prs)
     return {
         "overflow_words": None if overflow is None else len(overflow),
         "overflow": overflow,

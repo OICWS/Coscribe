@@ -7,13 +7,12 @@ from typing import Any, cast
 
 import pytest
 
-from coscribe.tools.presentations import (
-    PresentationToolkit,
-    _check_low_contrast,
-    _check_missing_visual_elements,
-    _check_text_overlaps,
-    build_presentation_tools,
+from coscribe.tools.office.pptx.qa import (
+    check_low_contrast,
+    check_missing_visual_elements,
+    check_text_overlaps,
 )
+from coscribe.tools.presentations import PresentationToolkit, build_presentation_tools
 
 from .pptx_fixtures import write_smartart_fixture as _write_smartart_fixture
 
@@ -398,7 +397,7 @@ def test_check_missing_visual_elements_ignores_slide_background_color(tmp_path: 
     icon.fill.solid()
     icon.fill.fore_color.rgb = RGBColor(0xFF, 0x00, 0x00)
 
-    assert _check_missing_visual_elements(prs) == [1]
+    assert check_missing_visual_elements(prs) == [1]
 
 
 def test_check_missing_visual_elements_counts_a_decorative_shape_inherited_from_the_layout(
@@ -438,7 +437,7 @@ def test_check_missing_visual_elements_counts_a_decorative_shape_inherited_from_
     text_box = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(3), Inches(1))
     text_box.text_frame.text = "Title only, no shapes of its own"
 
-    assert _check_missing_visual_elements(prs) == []
+    assert check_missing_visual_elements(prs) == []
 
 
 def test_check_low_contrast_flags_light_text_on_a_matching_light_background(
@@ -461,7 +460,7 @@ def test_check_low_contrast_flags_light_text_on_a_matching_light_background(
     run.font.color.rgb = RGBColor(0xCC, 0xCC, 0xCC)
     run.font.size = Pt(16)  # ordinary body text -- 4.5:1 threshold applies
 
-    warnings = _check_low_contrast(prs)
+    warnings = check_low_contrast(prs)
     assert len(warnings) == 1
     assert warnings[0]["slide"] == 1
     assert warnings[0]["text"] == "Barely readable"
@@ -495,7 +494,7 @@ def test_check_low_contrast_uses_the_looser_ratio_for_large_bold_text(tmp_path: 
     small_run.font.color.rgb = RGBColor(0x80, 0x80, 0x80)
     small_run.font.size = Pt(16)
 
-    warnings = _check_low_contrast(prs)
+    warnings = check_low_contrast(prs)
     assert [w["text"] for w in warnings] == ["Same color, small body text"]
 
 
@@ -530,7 +529,7 @@ def test_check_low_contrast_skips_what_it_cannot_resolve(tmp_path: Path) -> None
     scheme_run.font.color.theme_color = MSO_THEME_COLOR.ACCENT_1
     scheme_run.font.size = Pt(16)
 
-    assert _check_low_contrast(prs) == []
+    assert check_low_contrast(prs) == []
 
 
 def test_check_low_contrast_resolves_background_from_the_slide_when_shape_has_no_fill(
@@ -553,7 +552,7 @@ def test_check_low_contrast_resolves_background_from_the_slide_when_shape_has_no
     run.font.color.rgb = RGBColor(0xCC, 0xCC, 0xCC)
     run.font.size = Pt(16)
 
-    warnings = _check_low_contrast(prs)
+    warnings = check_low_contrast(prs)
     assert [w["text"] for w in warnings] == ["Inherits the slide background"]
 
 
@@ -568,7 +567,7 @@ def test_check_text_overlaps_flags_significantly_overlapping_text_boxes(tmp_path
     body = slide.shapes.add_textbox(Inches(1), Inches(1.6), Inches(4), Inches(2))
     body.text_frame.text = "Real-Time Tracking: identify power-hungry appliances instantly."
 
-    warnings = _check_text_overlaps(prs)
+    warnings = check_text_overlaps(prs)
 
     assert len(warnings) == 1
     assert warnings[0]["slide"] == 1
@@ -600,7 +599,7 @@ def test_check_text_overlaps_flags_text_overlapping_a_chart(tmp_path: Path) -> N
         XL_CHART_TYPE.LINE, Inches(1), Inches(1.6), Inches(6), Inches(4), chart_data
     )
 
-    warnings = _check_text_overlaps(prs)
+    warnings = check_text_overlaps(prs)
 
     assert len(warnings) == 1
     assert warnings[0]["slide"] == 1
@@ -620,7 +619,7 @@ def test_check_text_overlaps_does_not_flag_a_small_incidental_overlap(tmp_path: 
     body = slide.shapes.add_textbox(Inches(0.5), Inches(1.4), Inches(6), Inches(3))
     body.text_frame.text = "Body content well below the title"
 
-    assert _check_text_overlaps(prs) == []
+    assert check_text_overlaps(prs) == []
 
 
 # --- Prefab layout library (layout: icon-list / stat-callout / two-column) ---
@@ -648,8 +647,8 @@ def test_layout_icon_list_renders_glyphs_labels_and_stays_clean(tmp_path: Path) 
     ]
     assert icon_texts == ["*", "2"]
     assert label_texts == ["Real-time energy tracking", "Mobile app control"]
-    assert _check_text_overlaps(prs) == []
-    assert _check_missing_visual_elements(prs) == []
+    assert check_text_overlaps(prs) == []
+    assert check_missing_visual_elements(prs) == []
 
 
 def test_layout_omitted_produces_the_same_slide_as_before(tmp_path: Path) -> None:
@@ -744,8 +743,8 @@ def test_layout_stat_callout_renders_cards_and_stays_clean(tmp_path: Path) -> No
     # own docstring (PPTX_DESIGN.md §0) for why this reads label-then-value
     # now instead of value-then-label.
     assert card_texts == ["New markets\n12", "Retention\n98%", "Revenue growth\n3x"]
-    assert _check_text_overlaps(prs) == []
-    assert _check_missing_visual_elements(prs) == []
+    assert check_text_overlaps(prs) == []
+    assert check_missing_visual_elements(prs) == []
 
 
 def test_layout_stat_callout_rejects_bullets_instead_of_a_table(tmp_path: Path) -> None:
@@ -863,8 +862,8 @@ def test_layout_two_column_flags_missing_visual_element_by_design(tmp_path: Path
     # Documented exception: two-column is plain text by construction (the
     # stock "Two Content" layout has no shape of its own), so this flags
     # unless the model separately adds a chart/image -- intended, not a bug.
-    assert _check_missing_visual_elements(prs) == [1]
-    assert _check_text_overlaps(prs) == []
+    assert check_missing_visual_elements(prs) == [1]
+    assert check_text_overlaps(prs) == []
 
 
 def test_layout_unknown_id_raises_naming_valid_ids(tmp_path: Path) -> None:
@@ -930,8 +929,8 @@ def test_layout_svg_renders_background_circle_and_text_and_stays_clean(
     assert slide.background.fill.fore_color.rgb == RGBColor.from_string("1E2761")
     text_shapes = [s for s in slide.shapes if s.has_text_frame and s.shape_type == 17]
     assert sorted(s.text_frame.text for s in text_shapes) == ["Aurora", "Real-time tracking"]
-    assert _check_text_overlaps(prs) == []
-    assert _check_missing_visual_elements(prs) == []
+    assert check_text_overlaps(prs) == []
+    assert check_missing_visual_elements(prs) == []
 
 
 def test_layout_svg_rx_selects_rounded_rectangle_without_rx_selects_rectangle(
@@ -1020,7 +1019,7 @@ def test_layout_svg_path_straight_lines_renders_a_freeform_shape(tmp_path: Path)
     assert len(shapes) == 1
     assert shapes[0].shape_type == MSO_SHAPE_TYPE.FREEFORM
     assert shapes[0].fill.fore_color.rgb == RGBColor.from_string("FF0000")
-    assert _check_missing_visual_elements(prs) == []
+    assert check_missing_visual_elements(prs) == []
 
 
 def test_layout_svg_path_bezier_curves_render_without_error(tmp_path: Path) -> None:
@@ -1310,8 +1309,8 @@ def test_layout_mixed_deck_in_one_write_pptx_call(tmp_path: Path) -> None:
 
     assert result["slide_count"] == 5
     prs = Presentation(str(tmp_path / "deck.pptx"))
-    assert _check_text_overlaps(prs) == []
-    assert _check_missing_visual_elements(prs) == [1, 4]
+    assert check_text_overlaps(prs) == []
+    assert check_missing_visual_elements(prs) == [1, 4]
 
 
 CHART_TABLE = """\
@@ -1422,7 +1421,7 @@ def test_add_pptx_chart_positions_below_existing_body_text_without_overlap(
     chart_shape = next(s for s in slide.shapes if s.has_chart)
     assert chart_shape.top >= body.top + body.height
     assert chart_shape.top + chart_shape.height <= (prs.slide_height or 0)
-    assert _check_text_overlaps(prs) == []
+    assert check_text_overlaps(prs) == []
     # Real, live-reproduced defect this last assertion catches: shrinking
     # the body placeholder by setting only `.height` (before this was
     # fixed to set left/top/width too) made python-pptx create a bare new
@@ -4075,7 +4074,7 @@ def test_fill_pptx_template_happy_path_preserves_decorative_shape_and_fills_plac
 def test_leftover_placeholder_warnings_flags_known_patterns() -> None:
     from pptx import Presentation
 
-    from coscribe.tools.presentations import _leftover_placeholder_warnings
+    from coscribe.tools.office.pptx.qa import leftover_placeholder_warnings
 
     prs = Presentation()
     cases = [
@@ -4090,7 +4089,7 @@ def test_leftover_placeholder_warnings_flags_known_patterns() -> None:
         slide = prs.slides.add_slide(prs.slide_layouts[5])
         slide.shapes.title.text = text
 
-    warnings = _leftover_placeholder_warnings(prs)
+    warnings = leftover_placeholder_warnings(prs)
     assert len(warnings) == len(cases)
     assert [w["slide"] for w in warnings] == list(range(1, len(cases) + 1))
 
@@ -4098,13 +4097,13 @@ def test_leftover_placeholder_warnings_flags_known_patterns() -> None:
 def test_leftover_placeholder_warnings_does_not_flag_real_content() -> None:
     from pptx import Presentation
 
-    from coscribe.tools.presentations import _leftover_placeholder_warnings
+    from coscribe.tools.office.pptx.qa import leftover_placeholder_warnings
 
     prs = Presentation()
     slide = prs.slides.add_slide(prs.slide_layouts[5])
     slide.shapes.title.text = "How to insert a chart: a sample workflow"
 
-    assert _leftover_placeholder_warnings(prs) == []
+    assert leftover_placeholder_warnings(prs) == []
 
 
 def test_write_pptx_flags_leftover_todo_in_generated_content(tmp_path: Path) -> None:
@@ -6814,7 +6813,7 @@ def test_rendered_layout_check_flags_small_body_text_and_sparse_content_slides()
     from pptx import Presentation
     from pptx.util import Inches
 
-    from coscribe.tools.presentations import _check_rendered_layout
+    from coscribe.tools.office.pptx.qa import check_rendered_layout
 
     prs = Presentation()
     for _ in range(3):
@@ -6833,7 +6832,7 @@ def test_rendered_layout_check_flags_small_body_text_and_sparse_content_slides()
         page(40, 14.4, 150),  # 12pt body, content ends at 28%
         page(40, 28, 480),  # 23pt body, fills the slide
     ]
-    small, sparse = _check_rendered_layout(layout, prs)
+    small, sparse = check_rendered_layout(layout, prs)
 
     assert small == [{"slide": 2, "body_text_pt": 12.0}]
     assert [s["slide"] for s in sparse] == [2]
@@ -6849,5 +6848,5 @@ def test_rendered_layout_check_flags_small_body_text_and_sparse_content_slides()
     prs.slides[1].shapes.add_chart(
         XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(1), Inches(3), Inches(6), Inches(3.5), data
     )
-    _, sparse_with_chart = _check_rendered_layout(layout, prs)
+    _, sparse_with_chart = check_rendered_layout(layout, prs)
     assert sparse_with_chart == []
