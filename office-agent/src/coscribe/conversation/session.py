@@ -45,11 +45,8 @@ from pathlib import Path
 from typing import Any, cast
 
 from langchain_core.messages import (
-    AIMessage,
-    AIMessageChunk,
     HumanMessage,
     SystemMessage,
-    ToolMessage,
 )
 from langchain_core.messages.ai import UsageMetadata
 from langchain_core.tools import BaseTool
@@ -80,7 +77,6 @@ from ..runtime_lg import (
     tool_name,
 )
 from ..runtime_lg import extract_text as _extract_text
-from ..runtime_lg import tool_result_value as _tool_result_value
 from ..runtime_lg.audit import AutoApproveReason
 from ..runtime_lg.auto_review import Verdict
 from ..runtime_lg.code_agent import (
@@ -105,7 +101,6 @@ from ..runtime_lg.tool_deferral import (
     bound_tool_names,
     build_search_tools_tool,
     build_use_tool_tool,
-    unwrap_use_tool_call,
 )
 from ..tools import (
     QUESTION_TOOL_NAMES,
@@ -141,6 +136,7 @@ from .subagents import _MAX_REPORT_TURNS_IN_ROW as _MAX_REPORT_TURNS_IN_ROW
 from .subagents import SubAgentApprovalChannel, SubAgentReporter
 from .thread_meta import ThreadMetaStore
 from .turn_lock import TurnLock
+from .turn_stream import TurnStreamer
 from .turn_text import (
     TITLE_INSTRUCTIONS,
     build_instructions,
@@ -288,7 +284,7 @@ class ChatSessionLG:
         # the start of every handle_user_message call.
         self._stop_requested = False
         # Most recent model-response segment's real usage_metadata (see
-        # _stream_turn's _capture_segment_usage) -- not reset per-turn like
+        # turn_stream's _capture_segment_usage) -- not reset per-turn like
         # _pending_tool_args/_stop_requested above, since it's read once
         # after the whole turn (including any approval-resume continuation)
         # finishes, not checked mid-turn. None until the first real segment
@@ -1070,244 +1066,12 @@ class ChatSessionLG:
     async def load_older_messages(self, websocket: EventSink) -> None:
         await self._history.load_older_messages(websocket)
 
+    @cached_property
+    def _turn_streamer(self) -> TurnStreamer:
+        return TurnStreamer(self)
+
     async def _stream_turn(self, turn_input: Any, websocket: EventSink) -> str:
-        """Runs one astream() call, forwarding the model's own narration as
-        "agent_delta" events and each tool's return value as "tool_result",
-        same wire shape as ChatSession's _on_delta/_post_tool_use. Returns
-        only the *last* model response's own narration text -- not every
-        response of this call concatenated -- reset (text_parts.clear())
-        at each ToolMessage boundary, the same point _capture_segment_usage
-        already resets `segment` at. A single astream() call can cover more
-        than one model response when it includes an *ungated* tool call
-        (the loop just keeps going past the ToolMessage); without the reset,
-        this method's return value would glue the pre-tool narration onto
-        the post-tool one with no separator, even though the pre-tool text
-        already streamed live as its own "agent_delta" bubble.
-
-        The gated case has the identical join done differently: this method's
-        own astream() loop ends *without* a ToolMessage the moment the model
-        proposes a call that needs approval (the interrupt fires first), so
-        its return value here is already just the pre-tool narration, single-
-        segment; the risk there is a *caller* joining this call's return
-        value with a later _resolve_pending_approvals one -- see that
-        method's own docstring for the matching half of this fix.
-
-        Also recovers each tool call's arguments for the PostToolUse hook
-        payload below -- a ToolMessage only carries a tool's result, not the
-        arguments it was called with, so this accumulates the preceding
-        AIMessageChunk stream (stream_mode=["messages"] yields incremental
-        deltas, merged here via AIMessageChunk's own __add__) into a full
-        AIMessage and reads its .tool_calls. Flushed into
-        self._pending_tool_args in two places: right before a ToolMessage
-        that arrived in the *same* call (the common, non-gated-tool case),
-        and again unconditionally once the astream loop ends (the
-        approval-gated case -- the AIMessage proposing a gated call is
-        always fully streamed *before* the interrupt fires, since
-        interrupt() runs in after_model once the AIMessage already exists,
-        but the interrupt then ends this call's astream loop with no
-        ToolMessage ever arriving in it; the flush at the end is what
-        carries those args over to the *next* _stream_turn call --
-        _resolve_pending_approvals's post-resume one -- where the
-        ToolMessage for that call actually shows up). registered_ids
-        prevents the shared end-of-loop flush from double-registering a
-        call already flushed by the inline branch above it.
-
-        Checks self._stop_requested after every chunk (see request_stop's
-        docstring) -- cooperative, so it can't interrupt a single model
-        call already in flight (same limitation the old runtime's
-        stop_event has for any non-token-streaming provider), but it stops
-        consuming *further* chunks/turns promptly. Explicitly closes the
-        astream() generator on the way out (in a finally, whether the loop
-        ended naturally or via a stop-triggered break) rather than just
-        letting it fall out of scope -- an abandoned, ungarbage-collected
-        async generator keeps running in the background instead of
-        propagating GeneratorExit into LangGraph's own execution.
-
-        Also tracks `self._last_usage_metadata`: a *separate* accumulator
-        (`segment`, distinct from `accumulated` above) that resets at each
-        ToolMessage boundary, so it only ever sums the chunks of the single
-        most recent model response -- not the whole multi-response turn,
-        which would double-count (each individual response's own
-        usage_metadata.total_tokens already reflects the *cumulative*
-        context size at that point, since Gemini/Anthropic/OpenAI all
-        report "tokens in the whole prompt this call sent" as input_tokens,
-        not just what's new since the last call). Verified live against
-        real Gemini through this exact astream(stream_mode=["messages"])
-        path, including a real tool call in between two model responses --
-        confirmed each individual response's accumulated usage_metadata is
-        correct (not the all-zero result an earlier, older
-        langchain-google-genai version returned, see runtime_lg/README.md's
-        "usage bar" section for the fix and how the earlier finding was
-        superseded by an upstream fix in that package). Left as None (no
-        WS event sent) if a response never populates usage_metadata at all
-        -- some providers/configurations still don't; see that same
-        section for langchain-openai's stream_usage caveat.
-
-        _capture_segment_usage also sends a live "usage" WS event itself,
-        at every boundary it runs at (each ToolMessage, plus once more at
-        this method's own return) -- not only from the two post-turn sends
-        the callers below already do once _stream_turn returns. Drives the
-        composer's live running-token counter (ContextRing gets the same
-        event) across a long, multi-tool-call turn instead of only
-        updating once the whole turn is over."""
-        agent = self.lg_agent
-        config = self.config
-        self._turn_websocket = websocket
-        if not isinstance(turn_input, Command):
-            await _close_orphaned_tool_calls(agent, config)
-        text_parts: list[str] = []
-        accumulated: AIMessageChunk | None = None
-        segment: AIMessageChunk | None = None
-        registered_ids: set[str] = set()
-
-        def _flush_accumulated() -> None:
-            nonlocal accumulated
-            if accumulated is None:
-                return
-            for call in accumulated.tool_calls:
-                call_id = call["id"]
-                if call_id is not None and call_id not in registered_ids:
-                    # The stream carries the model's own use_tool call; the
-                    # tool's result comes back under the real name.
-                    name, args = unwrap_use_tool_call(call["name"], call["args"])
-                    self._pending_tool_args[name].append(args)
-                    registered_ids.add(call_id)
-            # Providers number each response's tool calls from index 0 and
-            # send a call's later argument pieces without its id; adding
-            # chunks joins such a piece to the first call with that index.
-            # Carried into the next response, its pieces would join this
-            # response's call and the new call would lose its arguments.
-            accumulated = None
-
-        async def _capture_segment_usage() -> None:
-            nonlocal segment
-            if segment is not None and segment.usage_metadata:
-                self._last_usage_metadata = segment.usage_metadata
-                # Live, not just at turn-end: a multi-step turn (tool call,
-                # then another model response) previously only told the
-                # frontend the token count once the *whole* turn finished
-                # (see the callers' own "usage" sends after _stream_turn
-                # returns) -- nothing to drive a live-updating counter with
-                # while a long turn is still running. Each individual
-                # response's usage_metadata.total_tokens is already the
-                # cumulative context size at that point (see this method's
-                # own docstring), so sending it here, at every boundary this
-                # function already runs at, is a correct running total, not
-                # an approximation.
-                await websocket.send_json(usage_event(segment.usage_metadata))
-            segment = None
-
-        # "updates" is only for the model node's finished message: it lands
-        # before any of its tool calls run, which "messages" has no event for.
-        stream = agent.astream(turn_input, config=config, stream_mode=["messages", "updates"])
-        try:
-            async for mode, chunk in stream:
-                if mode == "updates":
-                    await self._announce_started_tools(chunk, websocket)
-                    continue
-                message, _metadata = chunk
-                if isinstance(message, AIMessageChunk):
-                    text = _extract_text(message.content)
-                    if text:
-                        text_parts.append(text)
-                        await websocket.send_json({"type": "agent_delta", "text": text})
-                    accumulated = message if accumulated is None else accumulated + message
-                    segment = message if segment is None else segment + message
-                elif isinstance(message, ToolMessage):
-                    _flush_accumulated()
-                    await _capture_segment_usage()
-                    # A tool call (gated or not) ends the model's current
-                    # response -- discard whatever narration text_parts
-                    # accumulated for it, same boundary _capture_segment_usage
-                    # already resets `segment` at. That narration already
-                    # streamed live as its own "agent_delta" bubble; without
-                    # this reset, this call's eventual return value would glue
-                    # it onto whatever the model says *after* the tool result
-                    # comes back, with no separator -- a real bug found live
-                    # (see this method's own docstring).
-                    text_parts.clear()
-                    name = message.name or ""
-                    result_value = _tool_result_value(message.content)
-                    args = (
-                        self._pending_tool_args[name].pop(0)
-                        if self._pending_tool_args[name]
-                        else {}
-                    )
-                    await self._run_post_tool_use_hooks(name, args, result_value)
-                    # ask_user_question's own "question"/"answered" card (sent by
-                    # _decide_question_request as question_required, resolved locally
-                    # on answer -- see reducer.ts's "question_required"/
-                    # "local_question_answered" cases) already fully represents this
-                    # call; sending the normal tool_result here too would additionally
-                    # fall into the reducer's tool_result fallback branch (no matching
-                    # pending "tool" item exists, since question tools never got a
-                    # "tool_call" one) and add a second, redundant "Asked: ..." row
-                    # underneath the card for the same interaction.
-                    if name not in QUESTION_TOOL_NAMES and name not in TASK_DRAFT_TOOL_NAMES:
-                        # `args` (recovered above, same value the hook just got)
-                        # rides along so a live turn's collapsed row can show the
-                        # real filename/query -- without this the frontend only
-                        # ever learns the actual arguments for a *gated* tool
-                        # (via approval_required) or a *replayed* one (via
-                        # history's own checkpointed entry.arguments); an
-                        # ungated tool completing in a live turn had no event
-                        # carrying arguments at all until now, so its row always
-                        # fell back to generic phrasing ("Read a file" instead
-                        # of "Read notes.txt").
-                        await websocket.send_json(
-                            {
-                                "type": "tool_result",
-                                "tool_name": name,
-                                "arguments": args,
-                                "result": result_value,
-                                "is_error": message.status == "error",
-                            }
-                        )
-                elif isinstance(message, AIMessage):
-                    # Real, live-caught gap: a middleware-injected terminal
-                    # message (e.g. ModelCallLimitMiddleware's
-                    # exit_behavior="end" AIMessage, added directly via a
-                    # before_model hook's return dict rather than an actual
-                    # model call) never goes through _generate/_stream, so
-                    # stream_mode=["messages"] emits it as one complete
-                    # AIMessage instead of the usual AIMessageChunk deltas
-                    # -- the `isinstance(message, AIMessageChunk)` branch
-                    # above never matches it (AIMessageChunk is a subclass
-                    # of AIMessage, not the reverse), so without this branch
-                    # its content was silently dropped and the turn ended
-                    # with an empty "[no reply -- ...]" instead of telling
-                    # the user *why* it stopped. Confirmed live: printing
-                    # the raw astream(stream_mode=["messages"]) output for a
-                    # max_turns-capped run shows this exact message arriving
-                    # as a plain AIMessage, not a chunk.
-                    text = _extract_text(message.content)
-                    if text:
-                        text_parts.append(text)
-                        await websocket.send_json({"type": "agent_delta", "text": text})
-                if self._stop_requested:
-                    break
-        finally:
-            await stream.aclose()
-        _flush_accumulated()
-        await _capture_segment_usage()
-        return "".join(text_parts)
-
-    async def _announce_started_tools(self, update: Any, websocket: EventSink) -> None:
-        """Tells the page which ungated calls are about to run, so it can
-        show them running. Gated ones are announced by the approval path
-        instead, and only when nobody is asked: a call waiting for approval
-        shows as its approval card."""
-        if not isinstance(update, dict):
-            return
-        for node_update in update.values():
-            if not isinstance(node_update, dict):
-                continue
-            for message in node_update.get("messages", []) or []:
-                if not isinstance(message, AIMessage):
-                    continue
-                for call in message.tool_calls:
-                    if call["name"] not in self._gated_tool_risks:
-                        await self._send_tool_started(call["name"], call["args"], websocket)
+        return await self._turn_streamer.stream_turn(turn_input, websocket)
 
     async def _send_tool_started(
         self, name: str, args: dict[str, Any], websocket: EventSink
