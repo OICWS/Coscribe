@@ -63,7 +63,6 @@ from ..runtime import (
     LLMClient,
     empty_hooks_config,
     get_tool_metadata,
-    run_hook,
 )
 from ..runtime.provider_config import load_custom_providers
 from ..runtime.secret_store import SessionEnvironments, redactor
@@ -127,6 +126,7 @@ from ..tools.scheduled_tasks import (
 from ..tools.skill_catalog import enabled_skill_names
 from ..tools.subagent_tasks import SubAgentTask
 from ..workflows import StepContext, WorkflowDraft
+from . import tool_hooks
 from .activity import summarize_activity, summarize_workflow_run
 from .approvals import ApprovalDecider, can_resolve_approvals
 from .context_usage import build_context_breakdown
@@ -135,6 +135,7 @@ from .events import EventSink
 from .history import ConversationHistory
 from .history import close_orphaned_tool_calls as _close_orphaned_tool_calls
 from .prompts import INIT_PROMPT
+from .reconfigure import SessionReconfigurer
 from .skill_save import SkillSave
 from .subagents import _MAX_REPORT_TURNS_IN_ROW as _MAX_REPORT_TURNS_IN_ROW
 from .subagents import SubAgentApprovalChannel, SubAgentReporter
@@ -874,144 +875,27 @@ class ChatSessionLG:
         empty while it uses the app's default workspace."""
         return [self.workspace_root, *self.extra_folders] if self._workspace_explicit else []
 
+    @cached_property
+    def _reconfigurer(self) -> SessionReconfigurer:
+        return SessionReconfigurer(self)
+
+    def _build_lg_agent_with_risks(self) -> tuple[Any, dict[str, str]]:
+        lg_tools = self._build_lg_tools(self.model)
+        return (
+            self._build_lg_agent(self.model, self._model_string, lg_tools),
+            _risks_of_gated_tools(lg_tools),
+        )
+
     async def set_folders(self, paths: list[str], websocket: EventSink) -> bool:
-        """Replace this conversation's folders -- any time between turns.
-        The first is the main one (relative paths resolve there); none
-        means the app's default workspace. Rebuilds the tools against them,
-        leaving the session as it was if that fails. Returns whether it
-        took effect, so the caller persists only what's in use."""
-        # A short wait, not an immediate refusal: resume_after_reconnect
-        # holds the lock for a moment right after every connect. Waiting for
-        # a real turn instead would stall this socket's receive loop, and
-        # with it the approval that turn may be waiting on. Polled rather
-        # than wait_for(acquire()): on 3.11 a timeout racing the acquire can
-        # leave the lock held with nobody to release it.
-        loop = asyncio.get_running_loop()
-        deadline = loop.time() + 2
-        while self._turn_lock.locked():
-            if loop.time() >= deadline:
-                message = "Wait for the reply to finish, then change folders."
-                await websocket.send_json({"type": "error", "message": message})
-                return False
-            await asyncio.sleep(0.05)
-        async with self._turn_lock:
-            return await self._apply_folders(paths, websocket)
+        return await self._reconfigurer.set_folders(paths, websocket)
 
     async def add_folder(self, path: str, websocket: EventSink) -> bool:
-        """One more folder for this conversation, keeping the ones it has --
-        the default workspace stays the main one when none were chosen."""
-        folder = Path(path).expanduser()
-        current = [Path(self.workspace_root).resolve(), *self.extra_folders]
-        if folder in current:
-            return True
-        return await self.set_folders([str(p) for p in current] + [str(folder)], websocket)
-
-    async def _apply_folders(self, paths: list[str], websocket: EventSink) -> bool:
-        chosen: list[Path] = []
-        for raw in paths:
-            folder = Path(raw).expanduser()
-            if not folder.is_absolute() or not folder.is_dir():
-                await websocket.send_json(
-                    {"type": "error", "message": f"{raw!r} isn't an existing folder."}
-                )
-                return False
-            if folder not in chosen:
-                chosen.append(folder)
-        previous = (
-            self.workspace_root,
-            self.extra_folders,
-            self._workspace_explicit,
-            self._instructions,
-            self._base_tools,
-            self.lg_agent,
-            self._gated_tool_risks,
-        )
-        self._context_window = None
-        try:
-            self.workspace_root = chosen[0] if chosen else Path(self.settings.workspace_root)
-            self.extra_folders = chosen[1:]
-            self._workspace_explicit = bool(chosen)
-            agent = self._build_agent()
-            self._instructions = agent.instructions or ""
-            self._base_tools = list(agent.tools)
-            lg_tools = self._build_lg_tools(self.model)
-            new_gated_tool_risks = _risks_of_gated_tools(lg_tools)
-            new_lg_agent = self._build_lg_agent(self.model, self._model_string, lg_tools)
-        except Exception as exc:  # noqa: BLE001 -- a bad folder must not corrupt session state
-            (
-                self.workspace_root,
-                self.extra_folders,
-                self._workspace_explicit,
-                self._instructions,
-                self._base_tools,
-                self.lg_agent,
-                self._gated_tool_risks,
-            ) = previous
-            await websocket.send_json(
-                {"type": "error", "message": f"Could not use those folders: {exc}"}
-            )
-            return False
-        self.lg_agent = new_lg_agent
-        self._gated_tool_risks = new_gated_tool_risks
-        await self.send_state(websocket)
-        return True
+        return await self._reconfigurer.add_folder(path, websocket)
 
     async def set_enabled_skills(
         self, skill_names: set[str], websocket: EventSink, *, announce: bool = True
     ) -> None:
-        """Toggle this thread's active built-in/local skills, live,
-        mid-session -- deliberately with NO "once only" guard: the user
-        asked for selectable-anytime toggling, like Claude Code's own
-        skills. Every call fully replaces the enabled set and rebuilds
-        self._instructions/self._base_tools from scratch via
-        build_coordinator_agent, rather than accumulating skill text onto
-        whatever was there from a previous toggle -- so turning a skill
-        back off actually removes its listing, not just stops adding
-        more.
-
-        Same revert-on-failure shape as switch_model: a bad rebuild must
-        not corrupt an otherwise-working session."""
-        previous_instructions = self._instructions
-        previous_base_tools = self._base_tools
-        previous_lg_agent = self.lg_agent
-        previous_gated_tool_risks = self._gated_tool_risks
-        previous_enabled_skill_names = self.enabled_skill_names
-        self.enabled_skill_names = set(skill_names)
-        agent = self._build_agent()
-        self._instructions = agent.instructions or ""
-        self._base_tools = list(agent.tools)
-        self._context_window = None
-        try:
-            lg_tools = self._build_lg_tools(self.model)
-            new_gated_tool_risks = _risks_of_gated_tools(lg_tools)
-            new_lg_agent = self._build_lg_agent(self.model, self._model_string, lg_tools)
-        except Exception as exc:  # noqa: BLE001 -- a bad rebuild must not corrupt session state
-            self._instructions = previous_instructions
-            self._base_tools = previous_base_tools
-            self.lg_agent = previous_lg_agent
-            self._gated_tool_risks = previous_gated_tool_risks
-            self.enabled_skill_names = previous_enabled_skill_names
-            self._context_window = None
-            await websocket.send_json(
-                {"type": "error", "message": f"Could not update skills: {exc}"}
-            )
-            return
-        self.lg_agent = new_lg_agent
-        self._gated_tool_risks = new_gated_tool_risks
-        # Also re-scans disk for skills_by_slug (the /<slug> force-load
-        # lookup, unrestricted by enabled_skill_names -- see its own
-        # comment in __init__) -- cheap, and keeps it correctly in sync
-        # with whatever's actually on disk rather than a stale __init__-
-        # time snapshot. Exists mainly for /saveskill's own confirm
-        # handler below, which calls this method specifically so a
-        # freshly-saved skill is usable via /<slug> in this same session
-        # immediately, without waiting for a reconnect.
-        self.skills_by_slug = {
-            skill.slug: skill
-            for skill in load_builtin_skills() + load_skills(self.settings.skills_dir)
-        }
-        if announce:
-            await self.send_state(websocket)
+        await self._reconfigurer.set_enabled_skills(skill_names, websocket, announce=announce)
 
     async def send_state(self, websocket: EventSink, *, on_connect: bool = False) -> None:
         if self._context_window is None:
@@ -1433,67 +1317,20 @@ class ChatSessionLG:
         await websocket.send_json({"type": "tool_started", "tool_name": name, "arguments": args})
 
     async def _run_pre_tool_use_hooks(self, name: str, args: dict[str, Any]) -> str | None:
-        """Returns a denial reason if any configured PreToolUse hook vetoes
-        this call, None if all pass (or none are configured). run_hook is a
-        blocking subprocess call, bridged off the event loop the same way
-        every other blocking call in this module is."""
-        if not self.hooks_config["PreToolUse"]:
-            return None
-        payload = {
-            "event": "PreToolUse",
-            "tool_name": name,
-            "arguments": args,
-            "agent_name": "coordinator",
-        }
-        for command in self.hooks_config["PreToolUse"]:
-            result = await asyncio.to_thread(run_hook, command, payload)
-            if not result.allowed:
-                return result.reason
-        return None
+        return await tool_hooks.run_pre_tool_use(self.hooks_config, name, args)
 
     async def _run_post_tool_use_hooks(self, name: str, args: dict[str, Any], result: Any) -> None:
-        if not self.hooks_config["PostToolUse"]:
-            return
-        payload = {
-            "event": "PostToolUse",
-            "tool_name": name,
-            "arguments": args,
-            "agent_name": "coordinator",
-            "result": result,
-        }
-        for command in self.hooks_config["PostToolUse"]:
-            outcome = await asyncio.to_thread(run_hook, command, payload)
-            if not outcome.allowed:
-                logger.warning("PostToolUse hook failed: %s", outcome.reason)
+        await tool_hooks.run_post_tool_use(self.hooks_config, name, args, result)
 
     async def _run_observational_hooks(self, event: str, payload: dict[str, Any]) -> None:
-        """Shared implementation for every hook event added in ROADMAP.md's
-        Phase 7 item 3 (SessionEnd/UserPromptSubmit/PreCompact/PostCompact/
-        Interrupt) -- none of them can veto the action they're reporting
-        on, only PreToolUse can (see its own method above), so this is
-        just "run every configured command, log a warning if one fails,"
-        the same shape _run_post_tool_use_hooks already had before this
-        got pulled out as a reusable helper (that one isn't routed through
-        this, on purpose -- no reason to touch an already-working,
-        already-tested code path for a pure refactor)."""
-        for command in self.hooks_config.get(event, []):
-            outcome = await asyncio.to_thread(run_hook, command, payload)
-            if not outcome.allowed:
-                logger.warning("%s hook failed: %s", event, outcome.reason)
+        await tool_hooks.run_observational(self.hooks_config, event, payload)
 
     async def run_interrupt_hooks(self) -> None:
-        """Called from app.py's ws_endpoint alongside request_stop() --
-        not underscore-prefixed, unlike this class's other hook methods,
-        since (like request_stop/abandon_orphaned_turn) it's meant to be
-        called from outside this class."""
         await self._run_observational_hooks(
             "Interrupt", {"event": "Interrupt", "thread_id": self.thread_id}
         )
 
     async def run_session_end_hooks(self) -> None:
-        """Called from app.py's ws_endpoint on WebSocketDisconnect, every
-        time a connection for this thread_id drops -- not just the
-        orphaned-turn case abandon_orphaned_turn exists for."""
         await self._run_observational_hooks(
             "SessionEnd", {"event": "SessionEnd", "thread_id": self.thread_id}
         )
