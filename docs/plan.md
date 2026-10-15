@@ -49,7 +49,7 @@ Last reviewed: 2026-10-15.
      (flaky tests reported, then quarantined with an end date).
    - Done: `conversation/session.py` is split (1,472 lines; hooks, folder and skill changes,
      the turn stream and the approval resume are their own modules).
-   - Open: `tools/presentations.py` is 4,322 lines (parts 1 to 5 of its split are merged or
+   - Open: `tools/presentations.py` is 4,259 lines (parts 1 to 5 of its split are merged or
      in review; the toolkit class and the tool wrappers are left).
    - Open: `deep_imports` is 82 and the exit criterion is 40 or fewer; the importers still reach
      into submodules instead of the package interfaces.

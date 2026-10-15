@@ -12,12 +12,9 @@ if TYPE_CHECKING:
 
 TITLE_AND_CONTENT_LAYOUT = 1
 
-
 TITLE_ONLY_LAYOUT = 5
 
-
 TWO_CONTENT_LAYOUT = 3
-
 
 # write_pptx's prefab layout library (see builtin_skills/pptx/SKILL.md) --
 # a slide chunk's first non-blank line, if it matches this, selects a
@@ -29,26 +26,20 @@ TWO_CONTENT_LAYOUT = 3
 # positioning math is correct every time.
 LAYOUT_IDS = frozenset({"icon-list", "stat-callout", "two-column", "svg"})
 
-
 LAYOUT_PREFIX_RE = re.compile(r"^layout:\s*", re.IGNORECASE)
-
 
 LAYOUT_DIRECTIVE_RE = re.compile(
     r"^layout:\s*(?P<id>[a-z-]+)(?:\s+(?P<accent>[0-9A-Fa-f]{6}))?\s*$", re.IGNORECASE
 )
 
-
 TWO_COLUMN_MARKER_RE = re.compile(r"^>>>$")
 
-
 ICON_GLYPH_RE = re.compile(r"^\[(?P<glyph>.{1,4})\]\s*(?P<text>.*)$")
-
 
 # A glyph of 3+ plain ASCII letters is almost certainly a spelled-out word
 # (e.g. "dash", "star", "bolt" -- observed live) rather than a symbol; a
 # 1-2 letter glyph (initials like "AI") is still allowed through.
 WORD_LIKE_GLYPH_RE = re.compile(r"^[A-Za-z]{3,}$")
-
 
 # Plain ASCII only -- observed live, an emoji/pictograph glyph (e.g. a
 # multi-color "house" or "rocket" character) renders via the font's own
@@ -60,12 +51,9 @@ WORD_LIKE_GLYPH_RE = re.compile(r"^[A-Za-z]{3,}$")
 # rejected up front instead of shipping an inconsistent-looking deck.
 SAFE_GLYPH_RE = re.compile(r"^[A-Za-z0-9!?*+\-=/#@%&]+$")
 
-
 ICON_LIST_MAX_ITEMS = 6
 
-
 STAT_CALLOUT_MAX_ITEMS = 4
-
 
 # Fractions of slide_width/slide_height for the body content area, measured
 # against python-pptx's own default Title-and-Content layout's real
@@ -73,9 +61,7 @@ STAT_CALLOUT_MAX_ITEMS = 4
 # see content_area's own docstring.
 MARGIN_FRACTION = 0.05
 
-
 CONTENT_TOP_FRACTION = 0.2333
-
 
 CONTENT_BOTTOM_FRACTION = 0.9
 
@@ -158,7 +144,7 @@ def widen_stock_layouts(prs: PresentationType, original_width: int) -> None:
 
 
 def add_inline_runs(paragraph: Any, text: str) -> None:
-    """pptx counterpart to ``office/docx/_xml.py``'s ``add_inline_runs`` -- adds
+    """pptx counterpart to ``office/docx/_xml.py``'s ``_add_inline_runs`` -- adds
     ``text`` as one run per ``parse_inline_runs`` fragment so
     ``**bold**``/``*italic*`` render as real formatting instead of literal
     markup characters."""
@@ -197,7 +183,6 @@ def add_bullet_slide(prs: PresentationType, title: str, blocks: list[Block]) -> 
 
 
 NUMERIC_CELL_RE = re.compile(r"^[¥$€]?-?[\d,]+(\.\d+)?\s*[%MKmk]?$")
-
 
 PERCENT_CELL_RE = re.compile(r"^(-?\d+(?:\.\d+)?)%$")
 

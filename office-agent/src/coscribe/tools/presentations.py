@@ -98,6 +98,7 @@ from ._svg_slide import add_svg_slide
 from ._thumbnail import render_all_page_previews, render_thumbnail
 from ._workspace import WorkspaceScope
 from .office.markdown_blocks import Block, parse_blocks
+from .office.pptx import slide_builders as sb
 from .office.pptx.animation import (
     ANIMATIONS,
     AUDIO_CONTENT_TYPES,
@@ -126,69 +127,6 @@ from .office.pptx.qa import (
 )
 from .office.pptx.shape_description import describe_shape as _describe_shape
 from .office.pptx.shape_description import emu_to_inches
-from .office.pptx.slide_builders import (
-    MARGIN_FRACTION as _MARGIN_FRACTION,
-)
-from .office.pptx.slide_builders import (
-    TITLE_AND_CONTENT_LAYOUT as _TITLE_AND_CONTENT_LAYOUT,
-)
-from .office.pptx.slide_builders import (
-    TITLE_ONLY_LAYOUT as _TITLE_ONLY_LAYOUT,
-)
-from .office.pptx.slide_builders import (
-    TWO_CONTENT_LAYOUT as _TWO_CONTENT_LAYOUT,
-)
-from .office.pptx.slide_builders import (
-    add_bullet_slide as _add_bullet_slide,
-)
-from .office.pptx.slide_builders import (
-    add_icon_list_slide as _add_icon_list_slide,
-)
-from .office.pptx.slide_builders import (
-    add_inline_runs as _add_inline_runs,
-)
-from .office.pptx.slide_builders import (
-    add_stat_callout_slide as _add_stat_callout_slide,
-)
-from .office.pptx.slide_builders import (
-    add_table_slide as _add_table_slide,
-)
-from .office.pptx.slide_builders import (
-    add_two_column_slide as _add_two_column_slide,
-)
-from .office.pptx.slide_builders import (
-    clear_slides as _clear_slides,
-)
-from .office.pptx.slide_builders import (
-    content_area as _content_area,
-)
-from .office.pptx.slide_builders import (
-    fill_content_placeholder as _fill_content_placeholder,
-)
-from .office.pptx.slide_builders import (
-    find_body_placeholder as _find_body_placeholder,
-)
-from .office.pptx.slide_builders import (
-    icon_list_items as _icon_list_items,
-)
-from .office.pptx.slide_builders import (
-    parse_layout_directive as _parse_layout_directive,
-)
-from .office.pptx.slide_builders import (
-    set_title as _set_title,
-)
-from .office.pptx.slide_builders import (
-    slide_chunks as _slide_chunks,
-)
-from .office.pptx.slide_builders import (
-    split_two_column as _split_two_column,
-)
-from .office.pptx.slide_builders import (
-    stats_from_table as _stats_from_table,
-)
-from .office.pptx.slide_builders import (
-    widen_stock_layouts as _widen_stock_layouts,
-)
 from .office.pptx.smartart import SMARTART_NS, is_smartart, smartart_data_part
 from .office.pptx.template_slides import adjust_template_content_slides, duplicate_slide_part
 from .office.pptx.theme import (
@@ -232,7 +170,6 @@ SOFFICE_TIMEOUT = 20.0
 # itself uses for that preset (13.333...in -- height stays 7.5in, unchanged
 # from the 4:3 default).
 _WIDESCREEN_WIDTH_EMU = 12192000
-
 
 # extract_pptx_template's own id validation -- same shape as the bundled
 # templates' own ids ("bold-statement", "minimal-light", ...), enforced
@@ -672,18 +609,18 @@ class PresentationToolkit:
         if template_path:
             template_file = self._check_readable(template_path)
             prs = Presentation(str(template_file))
-            required_layouts = max(_TITLE_AND_CONTENT_LAYOUT, _TITLE_ONLY_LAYOUT)
+            required_layouts = max(sb.TITLE_AND_CONTENT_LAYOUT, sb.TITLE_ONLY_LAYOUT)
             if len(prs.slide_layouts) <= required_layouts:
                 raise ValueError(
                     f"Template {template_path!r} only has {len(prs.slide_layouts)} slide "
                     f"layout(s); write_pptx needs at least {required_layouts + 1}."
                 )
-            _clear_slides(prs)
+            sb.clear_slides(prs)
         else:
             prs = Presentation()
             original_width = prs.slide_width
             prs.slide_width = Emu(_WIDESCREEN_WIDTH_EMU)
-            _widen_stock_layouts(prs, original_width)
+            sb.widen_stock_layouts(prs, original_width)
             # Only the freshly-created default deck, not a user-supplied
             # template_path -- silently rewriting fonts in someone's own
             # uploaded/branded template would be an unwanted side effect,
@@ -691,16 +628,16 @@ class PresentationToolkit:
             apply_cjk_font_fix(prs)
         if theme_tokens:
             apply_theme(prs, theme_tokens)
-        for chunk in _slide_chunks(content):
-            layout_id, accent, remaining_chunk = _parse_layout_directive(chunk)
+        for chunk in sb.slide_chunks(content):
+            layout_id, accent, remaining_chunk = sb.parse_layout_directive(chunk)
 
             if layout_id == "two-column":
-                if len(prs.slide_layouts) <= _TWO_CONTENT_LAYOUT:
+                if len(prs.slide_layouts) <= sb.TWO_CONTENT_LAYOUT:
                     raise ValueError(
                         f"Template only has {len(prs.slide_layouts)} slide layout(s); "
-                        f"layout: two-column needs at least {_TWO_CONTENT_LAYOUT + 1}."
+                        f"layout: two-column needs at least {sb.TWO_CONTENT_LAYOUT + 1}."
                     )
-                left_text, right_text = _split_two_column(remaining_chunk)
+                left_text, right_text = sb.split_two_column(remaining_chunk)
                 left_blocks = parse_blocks(left_text)
                 right_blocks = parse_blocks(right_text)
                 left_headings = [b for b in left_blocks if b.kind == "heading"]
@@ -717,7 +654,7 @@ class PresentationToolkit:
                     raise ValueError(
                         "layout: two-column's title must come before the '>>>' marker."
                     )
-                _add_two_column_slide(prs, title, left_body, right_blocks)
+                sb.add_two_column_slide(prs, title, left_body, right_blocks)
                 continue
 
             if layout_id == "svg":
@@ -740,8 +677,8 @@ class PresentationToolkit:
                     raise ValueError(
                         "layout: icon-list doesn't support tables -- use bullets only."
                     )
-                items = _icon_list_items(other_blocks)
-                _add_icon_list_slide(prs, title, items, accent)
+                items = sb.icon_list_items(other_blocks)
+                sb.add_icon_list_slide(prs, title, items, accent)
                 continue
             if layout_id == "stat-callout":
                 if other_blocks or len(table_blocks) != 1:
@@ -749,8 +686,8 @@ class PresentationToolkit:
                         "layout: stat-callout needs exactly one pipe-table of "
                         "stat/label rows and no other content."
                     )
-                stats = _stats_from_table(table_blocks[0].rows)
-                _add_stat_callout_slide(prs, title, stats, accent)
+                stats = sb.stats_from_table(table_blocks[0].rows)
+                sb.add_stat_callout_slide(prs, title, stats, accent)
                 continue
 
             if table_blocks and other_blocks:
@@ -760,9 +697,9 @@ class PresentationToolkit:
                 )
             if table_blocks:
                 self._require_single_table(table_blocks)
-                _add_table_slide(prs, title, table_blocks[0].rows)
+                sb.add_table_slide(prs, title, table_blocks[0].rows)
             else:
-                _add_bullet_slide(prs, title, blocks)
+                sb.add_bullet_slide(prs, title, blocks)
         prs.save(str(file_path))
 
         overflow_warnings: list[dict[str, object]] = []
@@ -837,11 +774,11 @@ class PresentationToolkit:
         # East-Asian typeface the same way write_pptx's own default deck
         # does. See `theme.py`'s _CJK_FALLBACK_TYPEFACE.
         apply_cjk_font_fix(prs)
-        chunks = _slide_chunks(content)
+        chunks = sb.slide_chunks(content)
         adjust_template_content_slides(prs, template.slide_roles, len(chunks))
         slides = list(prs.slides)
         for index, (slide, chunk) in enumerate(zip(slides, chunks, strict=True), start=1):
-            layout_id, _accent, remaining = _parse_layout_directive(chunk)
+            layout_id, _accent, remaining = sb.parse_layout_directive(chunk)
             if layout_id:
                 raise ValueError(
                     f"fill_pptx_template doesn't support 'layout:' directives "
@@ -869,9 +806,9 @@ class PresentationToolkit:
                         f"{title!r} -- remove the heading or use a different "
                         f"template."
                     )
-                _set_title(slide, title)
+                sb.set_title(slide, title)
             if body_blocks:
-                body_placeholder = _find_body_placeholder(slide)
+                body_placeholder = sb.find_body_placeholder(slide)
                 if body_placeholder is None:
                     raise ValueError(
                         f"Slide {index} of template {template_id!r} has no "
@@ -879,7 +816,7 @@ class PresentationToolkit:
                         f"bullets or paragraphs -- remove the content or use a "
                         f"different template."
                     )
-                _fill_content_placeholder(body_placeholder, body_blocks)
+                sb.fill_content_placeholder(body_placeholder, body_blocks)
         prs.save(str(file_path))
 
         overflow_warnings: list[dict[str, object]] = []
@@ -991,7 +928,7 @@ class PresentationToolkit:
             else:
                 role = "content"
             has_title = slide.shapes.title is not None
-            has_body = _find_body_placeholder(slide) is not None
+            has_body = sb.find_body_placeholder(slide) is not None
             if not has_title and not has_body:
                 raise ValueError(
                     f"Slide {index + 1} of {source_path!r} has no usable title or "
@@ -1062,7 +999,7 @@ class PresentationToolkit:
                     f"new title text -- read_pptx the slide first to see what's "
                     f"actually there."
                 )
-            _set_title(target_slide, title)
+            sb.set_title(target_slide, title)
         if content is not None:
             blocks = parse_blocks(content)
             if any(block.kind == "table" for block in blocks):
@@ -1070,7 +1007,7 @@ class PresentationToolkit:
                     "edit_pptx_text doesn't support tables -- edit_pptx_text is "
                     "for a slide's own title/bullet placeholders only."
                 )
-            body_placeholder = _find_body_placeholder(target_slide, placeholder_index)
+            body_placeholder = sb.find_body_placeholder(target_slide, placeholder_index)
             if body_placeholder is None:
                 raise ValueError(
                     f"Slide {slide} of {path!r} has no content placeholder at "
@@ -1078,7 +1015,7 @@ class PresentationToolkit:
                     f"text -- read_pptx the slide first to see what's actually "
                     f"there, or try a different placeholder_index."
                 )
-            _fill_content_placeholder(body_placeholder, blocks)
+            sb.fill_content_placeholder(body_placeholder, blocks)
         prs.save(str(file_path))
 
         overflow_warnings: list[dict[str, object]] = []
@@ -1373,7 +1310,7 @@ class PresentationToolkit:
             text_frame.vertical_anchor = MSO_ANCHOR.MIDDLE
             paragraph = text_frame.paragraphs[0]
             paragraph.alignment = PP_ALIGN.CENTER
-            _add_inline_runs(paragraph, text)
+            sb.add_inline_runs(paragraph, text)
         if fill_color:
             shape.fill.solid()
             shape.fill.fore_color.rgb = RGBColor.from_string(fill_color)  # type: ignore[no-untyped-call]
@@ -1674,10 +1611,10 @@ class PresentationToolkit:
                 f"table_dimensions."
             )
         cell = table.cell(row, col)
-        # .clear() first -- same reasoning as _set_title/_fill_content_placeholder:
+        # .clear() first -- same reasoning as sb.set_title/sb.fill_content_placeholder:
         # this REPLACES the cell's existing content instead of appending onto it.
         cell.text_frame.clear()
-        _add_inline_runs(cell.text_frame.paragraphs[0], text)
+        sb.add_inline_runs(cell.text_frame.paragraphs[0], text)
         prs.save(str(file_path))
 
         return {
@@ -1762,7 +1699,7 @@ class PresentationToolkit:
     def delete_pptx_slide(self, path: str, slide: int) -> dict[str, object]:
         """Remove one slide from an existing .pptx, in place -- every
         other slide, and their own order, is untouched. Same drop-the-
-        relationship-then-remove-the-list-entry mechanism `_clear_slides`
+        relationship-then-remove-the-list-entry mechanism `sb.clear_slides`
         already uses when write_pptx builds on a `template_path`."""
         from pptx.oxml.ns import qn
 
@@ -1874,9 +1811,9 @@ class PresentationToolkit:
         # slide's own body/content placeholder, so a chart added next to a
         # short intro sentence rendered directly on top of it. Default to
         # the same content-area geometry every other content slide uses.
-        left, top, width, height = _content_area(prs)
+        left, top, width, height = sb.content_area(prs)
         slide_height = prs.slide_height or 6858000
-        body_placeholder = _find_body_placeholder(target_slide)
+        body_placeholder = sb.find_body_placeholder(target_slide)
         if (
             body_placeholder is not None
             and body_placeholder.has_text_frame
@@ -1939,7 +1876,7 @@ class PresentationToolkit:
                     )
                 gap = int(slide_height * 0.03)
                 new_top = b_top + intro_height + gap
-                usable_bottom = slide_height - int(slide_height * _MARGIN_FRACTION)
+                usable_bottom = slide_height - int(slide_height * sb.MARGIN_FRACTION)
                 remaining = usable_bottom - new_top
                 min_chart_height = int(slide_height * 0.35)
                 if remaining < min_chart_height:
