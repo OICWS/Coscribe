@@ -20,31 +20,53 @@ def _relative(scope: WorkspaceScope, report: dict[str, Any]) -> dict[str, Any]:
     return {**report, "path": scope.relative(Path(report["path"]))}
 
 
-def _csv_rows(scope: WorkspaceScope, name: str) -> list[list[Any]]:
-    """A CSV file's rows with numbers as numbers, so a large table is not retyped by the model."""
+def _csv_value(value: str) -> Any:
+    """Numbers as numbers; text stays text, including text that starts with `=`: a downloaded
+    file's cell is data, never a formula to run."""
+    if not value.strip():
+        return None
+    if value.startswith("="):
+        return {"v": value, "text": True}
+    return _coerce_cell(value)
+
+
+def _csv_lines(path: Path) -> list[str]:
+    """The file's text: UTF-8, or GB18030 as Excel saves a CSV on a Chinese system."""
+    raw = path.read_bytes()
+    try:
+        return raw.decode("utf-8-sig").splitlines()
+    except UnicodeDecodeError:
+        return raw.decode("gb18030").splitlines()
+
+
+def _csv_rows(scope: WorkspaceScope, name: Any) -> list[list[Any]]:
+    """A CSV file's rows, blank lines kept so row offsets match the file."""
     import csv
 
-    path = scope.resolve(name)
-    with path.open(encoding="utf-8-sig", newline="") as handle:
-        rows = [
-            [_coerce_cell(value) if value.strip() else None for value in row]
-            for row in csv.reader(handle)
-            if any(value.strip() for value in row)
-        ]
-    if len(rows) > _CSV_ROWS:
-        raise ValueError(f"{name} has {len(rows)} rows; a workbook block takes {_CSV_ROWS}")
+    if not isinstance(name, str) or not name:
+        raise ValueError("`from_csv` is the path of a CSV file in the workspace")
+    rows: list[list[Any]] = []
+    for row in csv.reader(_csv_lines(scope.resolve(name))):
+        if len(rows) == _CSV_ROWS:
+            raise ValueError(f"{name} has more than {_CSV_ROWS} rows, more than a block takes")
+        rows.append([_csv_value(value) for value in row])
+    while rows and not any(v is not None for v in rows[-1]):
+        rows.pop()
     return rows
 
 
 def _expand(scope: WorkspaceScope, blocks: Any) -> Any:
     if not isinstance(blocks, list):
         return blocks
-    return [
-        {**{k: v for k, v in b.items() if k != "from_csv"}, "rows": _csv_rows(scope, b["from_csv"])}
-        if isinstance(b, dict) and "from_csv" in b
-        else b
-        for b in blocks
-    ]
+    expanded = []
+    for i, block in enumerate(blocks):
+        if isinstance(block, dict) and "from_csv" in block:
+            if "rows" in block:
+                raise ValueError(f"blocks[{i}]: give `rows` or `from_csv`, not both")
+            rest = {k: v for k, v in block.items() if k != "from_csv"}
+            block = {**rest, "rows": _csv_rows(scope, block["from_csv"])}
+        expanded.append(block)
+    return expanded
 
 
 def build_block_tools(
@@ -68,7 +90,8 @@ def build_block_tools(
 
         A block: {"sheet": "Summary", "at": "A1", "rows": [[...], [...]], ...}
         - rows: a list of rows; a cell is a number, text, true/false, null (left empty), a
-          formula "=SUM(B2:B9)", or {"v": value | "f": "=formula", "s": style, "note": "..."}.
+          formula "=SUM(B2:B9)", or {"v": value | "f": "=formula", "s": style, "note": "...",
+          "text": true (the value as written, never a formula or a date)}.
           Text written as 2026-01-05 (or 2026-01-05 14:30) becomes a real date.
         - style / row_styles / col_styles: a style for the block, by row or by column position
           (a list, or {"0": style}); a cell's own "s" wins, then the row's, then the column's.

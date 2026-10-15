@@ -31,6 +31,7 @@ class Cell:
     value: Any
     style: dict[str, Any] = field(default_factory=dict)
     note: str | None = None
+    text: bool = False
 
 
 @dataclass(frozen=True)
@@ -107,11 +108,13 @@ def _resolve(style: Any, named: dict[str, dict[str, Any]], where: str) -> dict[s
 def _cell(raw: Any, style: dict[str, Any], named: dict[str, dict[str, Any]], where: str) -> Cell:
     note = None
     if isinstance(raw, dict):
-        unknown = set(raw) - {"v", "f", "s", "note"}
+        unknown = set(raw) - {"v", "f", "s", "note", "text"}
         if unknown or ("v" in raw and "f" in raw):
-            raise ValueError(f"{where}: a cell object has `v` or `f`, and `s`, `note`")
+            raise ValueError(f"{where}: a cell object has `v` or `f`, and `s`, `note`, `text`")
         style = {**style, **_resolve(raw.get("s"), named, where)}
         note = raw.get("note")
+        if raw.get("text"):
+            return Cell(str(raw.get("v", "")), style, None if note is None else str(note), True)
         if "f" in raw:
             raw = str(raw["f"]) if str(raw["f"]).startswith("=") else "=" + str(raw["f"])
         else:

@@ -137,7 +137,9 @@ def _finish(
             "saved_as_copy": target != path,
             "lost_if_saved_over_original": lost,
             "recalc": recalc,
-            **({"note": _NO_CACHED_VALUES} if existed else {}),
+            **(
+                {"note": _NO_CACHED_VALUES} if existed and recalc.get("status") != "skipped" else {}
+            ),
             **_results(saved, values, written),
             "findings": check(saved, values, target, written),
         }

@@ -139,6 +139,33 @@ def _chart_series(chart: Any, source: Worksheet, ref: str, kind: str) -> None:
     chart.set_categories(categories)
 
 
+def _colours(given: list[str], count: int) -> list[str]:
+    """The caller's colours, then the palette from where they stop, repeating as needed."""
+    rest = _PALETTE[len(given) % len(_PALETTE) :] + _PALETTE[: len(given) % len(_PALETTE)]
+    return [*given, *(rest * (count // len(rest) + 1))][:count]
+
+
+def _colour_series(chart: Any, kind: str, given: list[str]) -> None:
+    """A series left to the theme's colour is drawn invisibly once LibreOffice has resaved the
+    workbook (a line chart rendered with no line), so each gets one: a line or scatter series on
+    its line only, a bar or area series as its fill, a pie's slices one by one."""
+    from openpyxl.chart.marker import DataPoint
+    from openpyxl.chart.shapes import GraphicalProperties
+
+    if kind == "pie":
+        if given and chart.series:
+            chart.series[0].dPt.extend(
+                DataPoint(idx=i, spPr=GraphicalProperties(solidFill=color))
+                for i, color in enumerate(given)
+            )
+        return
+    for series, color in zip(chart.series, _colours(given, len(chart.series)), strict=True):
+        if kind in ("line", "scatter"):
+            series.graphicalProperties.line.solidFill = color
+        else:
+            series.graphicalProperties.solidFill = color
+
+
 def _chart(workbook: Workbook, op: dict[str, Any]) -> None:
     sheet = _sheet(workbook, op["sheet"])
     source_name, ref = _split_ref(op["source"], op["sheet"])
@@ -149,13 +176,7 @@ def _chart(workbook: Workbook, op: dict[str, Any]) -> None:
         chart.x_axis.title = op.get("x_title") or None
         chart.y_axis.title = op.get("y_title") or None
         chart.x_axis.delete = chart.y_axis.delete = False
-    # A series left to the theme's colour is drawn invisibly once LibreOffice has resaved the
-    # workbook (a line chart rendered with no line), so every series gets a colour.
-    if op["kind"] != "pie":
-        colors = [*op.get("colors", []), *_PALETTE]
-        for series, color in zip(chart.series, colors, strict=False):
-            series.graphicalProperties.solidFill = color
-            series.graphicalProperties.line.solidFill = color
+    _colour_series(chart, op["kind"], op.get("colors", []))
     width, height = op.get("size", [16, 8])
     chart.width, chart.height = float(width), float(height)
     sheet.add_chart(chart, op["at"])

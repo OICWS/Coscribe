@@ -9,6 +9,19 @@ from typing import Any
 _LISTED = 8
 
 
+def _filled(value: Any) -> bool:
+    return value is not None and value != ""
+
+
+def _colour(color: Any) -> str:
+    """A hex colour, or the theme or palette slot a template's colour points at."""
+    if isinstance(color.rgb, str):
+        return color.rgb[-6:]
+    if color.type == "theme":
+        return f"theme colour {color.theme}"
+    return f"palette colour {color.indexed}"
+
+
 def _look(cell: Any) -> str:
     parts = []
     if cell.font.bold:
@@ -17,7 +30,7 @@ def _look(cell: Any) -> str:
         if cell.font.color.rgb[-6:] not in ("000000",):
             parts.append(f"color {cell.font.color.rgb[-6:]}")
     if cell.fill is not None and cell.fill.fill_type == "solid":
-        parts.append(f"fill {str(cell.fill.fgColor.rgb)[-6:]}")
+        parts.append(f"fill {_colour(cell.fill.fgColor)}")
     if cell.border.bottom is not None and cell.border.bottom.style:
         parts.append(f"bottom border {cell.border.bottom.style}")
     return ", ".join(parts) or "plain"
@@ -80,8 +93,12 @@ def sheet_layout(sheet: Any) -> str:
     """`Layout:` lines for one sheet; empty for an empty sheet."""
     if sheet.max_row == 1 and sheet.max_column == 1 and sheet["A1"].value is None:
         return ""
-    header = next((r for r in range(1, sheet.max_row + 1) if any(c.value for c in sheet[r])), 1)
-    first = next(c for c in sheet[header] if c.value not in (None, ""))
+    header = next(
+        (r for r in range(1, sheet.max_row + 1) if any(_filled(c.value) for c in sheet[r])), None
+    )
+    if header is None:
+        return ""
+    first = next(c for c in sheet[header] if _filled(c.value))
     lines = [f"used {sheet.dimensions}; header row {header} ({_look(first)})"]
     lines += _objects(sheet)
     lines += _columns(sheet, header)
