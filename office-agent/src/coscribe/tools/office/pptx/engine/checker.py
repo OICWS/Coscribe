@@ -19,6 +19,7 @@ import re
 import unicodedata
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -53,7 +54,29 @@ _WATERMARK_CHARS = 3
 _LISTED = 4
 # A page number, a month or a day is not a claim about the world.
 _SMALL_INTEGER = 31
-_NUMBER = re.compile(r"\d+(?:\.\d+)?")
+# A count in one unit is written in another on a page: 261.5 万 as 2.615 million or 2,615,000,
+# so a number is known when the sources have it as written or by value.
+_MAGNITUDES = {
+    "万亿": 10**12,
+    "千万": 10**7,
+    "百万": 10**6,
+    "亿": 10**8,
+    "万": 10**4,
+    "千": 10**3,
+    "trillion": 10**12,
+    "billion": 10**9,
+    "million": 10**6,
+    "thousand": 10**3,
+    "bn": 10**9,
+    "mn": 10**6,
+}
+# A one-letter abbreviation counts only right after the digits (2.615m, 267k), not as a word.
+_LETTERS = {"k": 10**3, "m": 10**6, "b": 10**9}
+_VALUE = re.compile(
+    r"(\d+(?:\.\d+)?)(?:\s*(" + "|".join(sorted(_MAGNITUDES, key=len, reverse=True)) + ")"
+    r"|([kmb])(?![a-z]))?",
+    re.IGNORECASE,
+)
 # The schema forbids `xml:space` on a text run, which the emitter writes to keep a run's edge
 # spaces; PowerPoint accepts it (the part 1 deck that opened without a repair prompt on Windows
 # has it), so it is removed from the copy that is validated.
@@ -93,7 +116,7 @@ def check_deck(report: CompileReport, sources: Sequence[str] | None = None) -> N
     prs = Presentation(str(report.path))
     # The compiler always sets the slide size, so neither is None here.
     width, height = int(prs.slide_width or 0) / EMU_PER_PX, int(prs.slide_height or 0) / EMU_PER_PX
-    known = _numbers("\n".join(sources)) if sources is not None else None
+    known = known_numbers("\n".join(sources)) if sources is not None else None
     for page, slide in zip(report.pages, prs.slides, strict=True):
         page.errors.extend(_schema(slide._element))
         texts = _texts(slide._element)
@@ -398,13 +421,35 @@ def _plain(value: float) -> str:
     return str(int(value)) if float(value).is_integer() else repr(value)
 
 
-def _numbers(text: str) -> set[str]:
+def number_values(text: str) -> list[tuple[str, Decimal]]:
+    """Every number in `text` as written, with its value in ones: 261.5 万 is 2615000."""
     folded = re.sub(r"(?<=\d),(?=\d{3}(?!\d))", "", unicodedata.normalize("NFKC", text))
-    return {n for n in _NUMBER.findall(folded) if "." in n or int(n) > _SMALL_INTEGER}
+    found = []
+    for number, word, letter in _VALUE.findall(folded):
+        scale = _MAGNITUDES.get(word.lower()) or _LETTERS.get(letter.lower(), 1)
+        found.append((number, Decimal(number) * scale))
+    return found
 
 
-def _unknown_numbers(texts: list[_Text], known: set[str]) -> Iterator[str]:
-    found = sorted(_numbers("\n".join(t.text for t in texts)) - known, key=float)
+def known_numbers(text: str) -> set[str | Decimal]:
+    """The numbers of a source, both as written and by value, for `is_known`."""
+    return {item for pair in number_values(text) for item in pair}
+
+
+def is_known(number: str, value: Decimal, known: set[str | Decimal]) -> bool:
+    return number in known or value in known
+
+
+def _unknown_numbers(texts: list[_Text], known: set[str | Decimal]) -> Iterator[str]:
+    values = number_values("\n".join(t.text for t in texts))
+    found = sorted(
+        {
+            n
+            for n, v in values
+            if ("." in n or int(n) > _SMALL_INTEGER) and not is_known(n, v, known)
+        },
+        key=float,
+    )
     if found:
         yield (
             f"numbers no source file has: {', '.join(found)}. Axis ticks and figures computed "

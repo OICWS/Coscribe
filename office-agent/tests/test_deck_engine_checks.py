@@ -8,6 +8,7 @@ behind coloured text, a watermark digit behind a card.
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -25,6 +26,7 @@ from coscribe.tools.office.pptx.engine import (
     page_files,
     source_text,
 )
+from coscribe.tools.office.pptx.engine.checker import is_known, known_numbers, number_values
 
 _SVG = (
     'xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="Microsoft YaHei, Arial"'
@@ -375,3 +377,16 @@ def test_xml_powerpoint_would_reject_is_an_error(tmp_path: Path) -> None:
 
     assert any("file format" in e for e in report.pages[0].errors)
     assert not any("file format" in e for e in report.pages[1].errors)
+
+
+def test_a_count_in_another_unit_is_known_and_a_rounded_one_is_not() -> None:
+    known = known_numbers("出口 261.5 万辆；产能 15 万辆；GDP 1401879 亿元")
+
+    def known_as(text: str) -> bool:
+        ((number, value),) = number_values(text)
+        return is_known(number, value, known)
+
+    for written in ["2.615 million", "2.615m", "2,615,000", "261.5", "150k", "150,000"]:
+        assert known_as(written), written
+    assert not known_as("140 万亿元")
+    assert number_values("100km") == [("100", Decimal(100))]
