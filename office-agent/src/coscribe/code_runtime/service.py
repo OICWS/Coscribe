@@ -14,7 +14,7 @@ from typing import Any
 
 from ..config import Settings
 from ..runtime import load_custom_providers
-from ..tools.script_env import ensure_script_env
+from ..tools import ensure_script_env
 from ._pins import CODEX_VERSION
 from .install import codex_executable, ensure_codex, installed, installed_size, remove_codex
 from .launch import CodexHost, LaunchSpec, launch_spec, script_env_bin

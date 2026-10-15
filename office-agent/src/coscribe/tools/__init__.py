@@ -1,3 +1,4 @@
+from ._workspace import WorkspaceScope
 from .background_tasks import BackgroundTask, BackgroundTaskStore, build_background_task_tools
 from .browser import BROWSER_HOST, build_browser_tools, page_screenshot
 from .connector_permissions import (
@@ -41,11 +42,17 @@ from .scheduled_tasks import (
     ScheduleRule,
     build_scheduled_task_tools,
     compute_next_run_at,
+    create_trigger,
     edit_draft,
     parse_run_thread_id,
+    patch_trigger,
+    record_draft,
+    update_trigger,
 )
+from .script_env import ensure_script_env, venv_python
 from .scripts import build_script_tools
 from .selfwake import SignalStore, WakeRequest, WakeStore, build_selfwake_tools
+from .skill_catalog import enabled_skill_names
 from .skills import (
     SkillInfo,
     SkillUploadError,
@@ -70,6 +77,14 @@ from .websearch import build_websearch_tools
 
 __all__ = [
     "BROWSER_HOST",
+    "WorkspaceScope",
+    "create_trigger",
+    "patch_trigger",
+    "record_draft",
+    "update_trigger",
+    "enabled_skill_names",
+    "ensure_script_env",
+    "venv_python",
     "page_screenshot",
     "format_incoming",
     "running_subagent",

@@ -109,16 +109,16 @@ from ..tools import (
     TASK_DRAFT_TOOL_NAMES,
     ScheduledTriggerStore,
     SubAgentTask,
+    WorkspaceScope,
+    enabled_skill_names,
     format_skill_listing,
     load_builtin_skills,
     load_skills,
     parse_run_thread_id,
 )
-from ..tools._workspace import WorkspaceScope
 from ..tools.background_tasks import BackgroundTask, set_change_listener
 from ..tools.conversations import set_inbox_listener
 from ..tools.http_request import build_http_tools
-from ..tools.skill_catalog import enabled_skill_names
 from ..workflows import StepContext, WorkflowDraft
 from . import tool_hooks
 from .activity import summarize_activity, summarize_workflow_run

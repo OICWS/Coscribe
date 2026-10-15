@@ -10,9 +10,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from ..tools import DocumentToolkit, SpreadsheetToolkit
+from ..tools import DocumentToolkit, SpreadsheetToolkit, WorkspaceScope
 from ..tools._thumbnail import render_single_page_preview
-from ..tools._workspace import WorkspaceScope
 from ..tools.presentations import PresentationToolkit
 
 logger = logging.getLogger(__name__)

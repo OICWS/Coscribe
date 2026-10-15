@@ -18,6 +18,7 @@ from .runtime import Agent, SessionEnvironments
 from .tools import (
     NEW_DECK_INSTRUCTIONS,
     ScheduledTriggerStore,
+    WorkspaceScope,
     build_background_task_tools,
     build_browser_tools,
     build_conversation_tools,
@@ -45,7 +46,6 @@ from .tools import (
     load_skills,
     parse_run_thread_id,
 )
-from .tools._workspace import WorkspaceScope
 from .workflows import granted_by, parse_workflow
 
 # The always-bound tool set when Settings.defer_tools is on (see
