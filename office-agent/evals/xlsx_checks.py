@@ -193,7 +193,9 @@ def check_number_formats(workbook: Any, specs: list[dict[str, Any]]) -> dict[str
         for cell in cells:
             total += 1
             shown = cell.number_format
-            if not any(want in shown for want in spec["any_of"]):
+            # `yyyy\-mm\-dd` and `yyyy-mm-dd` show the same: a backslash only escapes a literal.
+            plain = shown.replace("\\", "")
+            if not any(want in plain for want in spec["any_of"]):
                 wrong.append({"at": f"{cell.parent.title}!{cell.coordinate}", "format": shown})
     return {"ok": not wrong, "checked": total, "wrong": wrong[:_LIST_CAP]}
 

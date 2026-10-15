@@ -145,6 +145,15 @@ def test_a_number_format_must_contain_one_of_the_strings() -> None:
     assert report["wrong"] == [{"at": "Data!A2", "format": "General"}]
 
 
+def test_an_escaped_literal_in_a_number_format_still_matches() -> None:
+    book = _book([[dt.datetime(2026, 1, 5)]])
+    book["Data"]["A1"].number_format = "yyyy\\-mm\\-dd"
+
+    report = xlsx_checks.check_number_formats(book, [{"at": "Data!A1", "any_of": ["yyyy-mm-dd"]}])
+
+    assert report["ok"] is True
+
+
 def test_bold_cells_are_found_by_their_font() -> None:
     sheet = _book([["h1", "h2"]]).active
     sheet["A1"].font = Font(bold=True)
