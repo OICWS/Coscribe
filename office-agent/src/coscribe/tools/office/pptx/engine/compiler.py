@@ -237,6 +237,19 @@ def _compile_page(
         slide._element.cSld.insert(0, etree.fromstring(background))
     renumber(slide, copied)
     _make_title_placeholder(sp_tree, report)
+    notes = _notes(root)
+    if notes:
+        slide.notes_slide.notes_text_frame.text = "\n".join(notes)
+
+
+def _notes(root: ET.Element) -> list[str]:
+    """The speaker notes a page carries in a top-level `<desc id="notes">`, one paragraph per
+    line: a line the model wrapped inside a paragraph cannot be told from a new one, and joining
+    Chinese lines with a space would put a space in a sentence."""
+    for child in root:
+        if _local(child) == "desc" and child.get("id") == "notes":
+            return [line.strip() for line in "".join(child.itertext()).splitlines() if line.strip()]
+    return []
 
 
 def _example(root: ET.Element, examples: list[Example], report: PageReport) -> Example | None:

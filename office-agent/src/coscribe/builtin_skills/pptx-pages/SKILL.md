@@ -27,6 +27,8 @@ references (MIT licence, copyright Hugo He).
 4. **Write the pages** with write_file into a folder next to the deck, e.g. `q3-review-pages/`,
    named so they sort in order: `01-cover.svg`, `02-agenda.svg`, ... Write every page before the
    first build, and write each one carefully once: every extra round trip costs the user money.
+   Speaker notes only when the user asks for them (a talk, 讲稿, 演讲者备注): what the presenter
+   says on that page, in its `<desc id="notes">`, a few sentences, not the slide's text again.
 5. **Build once**: build_pptx_from_pages(pages_dir, path, sources=[the material's files]). Fix
    every error it reports by editing the named page, then build again; at most two repair rounds.
    Fix the warnings that are real (an invented number, faint body text) in the same edits; do not

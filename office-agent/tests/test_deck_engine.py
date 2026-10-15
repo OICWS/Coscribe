@@ -148,6 +148,20 @@ def test_problems_are_reported_per_page_and_the_other_pages_still_compile(tmp_pa
     assert len(Presentation(str(out)).slides) == 3
 
 
+def test_a_pages_notes_become_its_speaker_notes_and_are_not_drawn(tmp_path: Path) -> None:
+    notes = '<desc id="notes">\n    先讲华东的增长。\n\n    再说明新市场的进度。\n  </desc>'
+    page = COVER.replace("</svg>", f"  {notes}\n</svg>")
+
+    out, report = _compile(tmp_path, [("P01", page), ("P02", CARDS)])
+
+    assert report.ok, report.errors()
+    first, second = Presentation(str(out)).slides
+    paragraphs = first.notes_slide.notes_text_frame.paragraphs
+    assert [p.text for p in paragraphs] == ["先讲华东的增长。", "再说明新市场的进度。"]
+    assert not any("华东的增长" in s.text_frame.text for s in first.shapes if s.has_text_frame)
+    assert not second.has_notes_slide
+
+
 def test_a_compiled_deck_matches_its_golden(tmp_path: Path) -> None:
     out, report = _compile(tmp_path, [("P01", COVER), ("P02", CARDS)])
     assert report.ok, report.errors()
