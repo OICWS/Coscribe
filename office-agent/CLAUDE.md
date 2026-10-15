@@ -170,6 +170,12 @@ the file of its domain, and fakes and builders shared by several files go into
 A new WebSocket event is added to `conversation/wire.py` first; every payload a test sends is
 checked against it.
 
+A test that fails and then passes on the one rerun CI allows (`--reruns 1`) is a flake, not a
+pass: the run lists it at the end and in the job summary. Open an issue for it and mark it
+`@pytest.mark.quarantine(issue=N, until="YYYY-MM-DD")`, at most a week out. It keeps running and
+may fail meanwhile; after the date it fails with the issue's number (`tests/flaky_policy.py`).
+Do not assert on elapsed wall-clock time.
+
 CI is the gate. Before pushing run `bash scripts/check.sh --fast` (frontend
 build, oxlint, ruff, mypy) and the test files for what you touched; before
 marking a PR ready, wait for a green CI run (or run the full
