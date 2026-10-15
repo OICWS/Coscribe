@@ -176,12 +176,9 @@ def router(state: AppState) -> APIRouter:
                 # provider SDK's own constructor reads straight from
                 # os.environ, and a plain .env-file write (possibly now a
                 # keyring-ref sentinel) is invisible to this already-running
-                # process until a restart. Unlike web/app.py, there's no
-                # client.invalidate_provider(...) call needed here:
-                # resolve_chat_model (runtime_lg/providers.py) builds a
-                # fresh ChatAnthropic/ChatGoogleGenerativeAI/ChatOpenAI
-                # instance from scratch on every call, no cached instance to
-                # go stale in the first place.
+                # process until a restart. Nothing caches the key:
+                # resolve_chat_model (runtime_lg/providers.py) builds a fresh chat
+                # model on every call, and so does the context-window lookup.
                 os.environ[key] = value
             else:
                 set_key(".env", key, value)

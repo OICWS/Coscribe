@@ -57,7 +57,6 @@ VENDORED = (
     "tools/_native_formula/",
     "tools/_native_docx_tracks/",
     "tools/_native_svg/",
-    "providers/gemini_provider.py",
 )
 
 SUPPRESSIONS = {

@@ -71,20 +71,6 @@ jobs:
       - name: Install coscribe
         run: pip install -e ".[dev,web]"
 
-      # See pyproject.toml's dependencies comment: aisuite 0.1.14 pins
-      # httpx<0.28.0, which conflicts with google-genai>=1.5.0's own
-      # httpx>=0.28.1 requirement, so the two can't be resolved together in
-      # one `pip install` -- google-genai has to be upgraded as its own
-      # separate step afterward. Without this, pip resolves google-genai to
-      # the old <1.5.0 pin, whose Part type doesn't have thought_signature
-      # yet, and test_gemini_provider.py's real-SDK validation test fails.
-      # Upper-bounded at <2.14.0 -- 2.14.0 removed Part.thought_signature
-      # again (an upstream regression, confirmed by diffing its model_fields
-      # against 2.13.0's), which breaks the exact same test the other way.
-      - name: Upgrade google-genai (needed for Part.thought_signature)
-        if: steps.scope.outputs.scope == 'full'
-        run: pip install -U "google-genai>=2.13.0,<2.14.0"
-
       # The one command contributors run locally too: builds the frontend
       # (tsc -b, vite), then ruff, mypy and pytest. Keeping them in one script
       # is what keeps "passes locally" and "passes in CI" the same thing.

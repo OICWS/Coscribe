@@ -316,8 +316,7 @@
   "src/coscribe/web/routes/connectors/servers.py::router": 142,
   "src/coscribe/web/routes/files.py::router": 165,
   "src/coscribe/web/routes/scheduled.py::router": 347,
-  "src/coscribe/web/routes/settings/config.py::router": 101,
-  "src/coscribe/web/routes/settings/providers.py::router": 144,
+  "src/coscribe/web/routes/settings/providers.py::router": 138,
   "src/coscribe/web/routes/skills.py::router": 220,
   "src/coscribe/web/routes/threads.py::router": 337,
   "src/coscribe/web/routes/ws.py::router": 205,
@@ -328,7 +327,7 @@
  "suppressions": {
   "noqa": 142,
   "pragma_no_cover": 2,
-  "type_ignore": 43
+  "type_ignore": 42
  },
  "tests_without_a_check": {}
 }

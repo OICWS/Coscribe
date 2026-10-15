@@ -21,7 +21,7 @@ Callers import these from `coscribe.runtime`, not from a submodule; tests may st
 a submodule for a private name or to patch it.
 
 ## Depends on
-`coscribe.providers`.
+No other coscribe package.
 
 ## Invariants
 - Only `runtime.secrets` imports the keychain (import contract "Only runtime.secrets talks to

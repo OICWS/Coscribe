@@ -181,18 +181,20 @@ def test_all_tool_schemas_are_gemini_compatible(tmp_path: Path) -> None:
     `sheet` and read_pptx's `slide` params). Guard every current and future
     built-in tool against reintroducing this by asserting every parameter's
     schema "type" is one of the real JSON Schema primitives."""
-    from aisuite.utils.tools import Tools
+    from langchain_core.utils.function_calling import convert_to_openai_tool
 
     agent = build_coordinator_agent(_settings(tmp_path), "thread-1")
-    specs = Tools(list(agent.tools)).tools("openai")  # type: ignore[arg-type]
+    specs = [convert_to_openai_tool(tool) for tool in agent.tools]
 
     valid_types = {"string", "integer", "number", "boolean", "array", "object"}
     for spec in specs:
         function = spec["function"]
         for param_name, schema in function["parameters"]["properties"].items():
-            assert schema["type"] in valid_types, (
-                f"{function['name']}'s {param_name!r} param has schema type "
-                f"{schema['type']!r} -- likely an unwrapped `X | None` annotation"
+            # An optional parameter is an anyOf of its type and null.
+            types = [schema["type"]] if "type" in schema else [m["type"] for m in schema["anyOf"]]
+            assert set(types) <= valid_types | {"null"}, (
+                f"{function['name']}'s {param_name!r} param has schema types {types!r} "
+                f"-- likely an unwrapped `X | None` annotation"
             )
 
 
