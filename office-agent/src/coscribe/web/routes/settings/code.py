@@ -15,7 +15,7 @@ from ....code_runtime import (
     code_service,
     codex_model,
 )
-from ....runtime_lg.code_agent import CODE_APPROVAL_RISKS
+from ....runtime_lg import CODE_APPROVAL_RISKS
 from ...state import AppState
 
 

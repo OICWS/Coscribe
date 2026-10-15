@@ -20,7 +20,7 @@ from ....runtime import (
     placeholders_in,
     store_secret,
 )
-from ....tools.connector_permissions import (
+from ....tools import (
     ConnectorPermissions,
 )
 from ....tools.mcp import (

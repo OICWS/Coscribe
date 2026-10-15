@@ -83,11 +83,9 @@ from ..runtime_lg import (
 )
 from ..tools import (
     SkillInfo,
+    enabled_skill_names,
     load_builtin_skills,
     load_skills,
-)
-from ..tools.skill_catalog import (
-    enabled_skill_names,
 )
 from .background_events import BackgroundEventBus
 from .connector_manager import ConnectorManager

@@ -9,7 +9,7 @@ from fastapi import (
     APIRouter,
 )
 
-from ....tools.memory import load_memory
+from ....tools import load_memory
 from ...schemas import (
     MemoryUpdate,
 )

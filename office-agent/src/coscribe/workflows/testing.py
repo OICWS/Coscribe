@@ -20,7 +20,7 @@ from typing import Any
 
 from langgraph.checkpoint.memory import InMemorySaver
 
-from ..tools.browser import BROWSER_RUNS
+from ..tools import BROWSER_RUNS
 from .engine import StepContext, StepRecord, WorkflowNotRunnable, WorkflowRun, preview
 from .spec import ToolStep, Workflow, walk
 

@@ -20,8 +20,10 @@ from typing import Any
 
 def _create_gemini_provider(config: dict[str, Any]) -> Any:
     # Vendored, not part of the published aisuite package — see
-    # coscribe/providers/gemini_provider.py for why.
-    from ..providers.gemini_provider import GeminiProvider
+    # coscribe/providers/gemini_provider.py for why. Function-level on purpose:
+    # `providers/__init__` imports it eagerly, and it imports aisuite, so hoisting this
+    # import would load aisuite at startup.
+    from ..providers import GeminiProvider
 
     return GeminiProvider(**config)  # type: ignore[no-untyped-call]  # vendored, not type-checked
 

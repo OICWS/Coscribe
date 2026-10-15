@@ -13,7 +13,7 @@ from fastapi import (
 )
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
-from ...tools.browser import BROWSER_HOST
+from ...tools import BROWSER_HOST
 from ..schemas import (
     BrowserHostReply,
 )

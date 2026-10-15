@@ -24,7 +24,7 @@ from pathlib import Path
 
 from .. import __version__
 from ..runtime import configured_proxy
-from ..tools.script_env import venv_python
+from ..tools import venv_python
 from .client import AppServer
 from .install import CodexUnavailable, codex_path_dir
 

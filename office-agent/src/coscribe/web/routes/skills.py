@@ -14,10 +14,10 @@ from fastapi.responses import JSONResponse
 
 from ...tools import (
     SkillUploadError,
+    WorkspaceScope,
     load_builtin_skills,
     save_uploaded_skill,
 )
-from ...tools._workspace import WorkspaceScope
 from ...tools.skill_catalog import SOURCE_MARKER as SKILL_SOURCE_MARKER
 from ...tools.skill_catalog import (
     SkillCatalogError,

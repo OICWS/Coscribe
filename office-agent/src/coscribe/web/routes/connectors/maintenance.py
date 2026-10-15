@@ -13,7 +13,7 @@ from fastapi import (
     APIRouter,
 )
 
-from ....tools.mcp import (
+from ....tools import (
     validate_mcp_config,
 )
 from ...schemas import (

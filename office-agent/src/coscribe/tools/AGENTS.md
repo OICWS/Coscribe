@@ -30,7 +30,7 @@ Factories: `build_file_tools`, `build_document_tools`, `build_spreadsheet_tools`
 `PLAN_CHOICE_MANUAL`, `PLAN_CHOICE_REVISE`, `edit_draft`, `format_question_answers`,
 `normalize_questions`. Runs and browser: `compute_next_run_at`, `parse_run_thread_id`,
 `SCHEDULED_THREAD_PREFIX`, `format_incoming`, `running_subagent`, `get_subagent_transcript`,
-`stop_subagent_task`, `forget_finished_subagents`, `BROWSER_HOST`, `page_screenshot`. Import these from `coscribe.tools`, not a submodule.
+`stop_subagent_task`, `forget_finished_subagents`, `BROWSER_HOST`, `BROWSER_RUNS`, `page_screenshot`. Folders, skills and environments: `WorkspaceScope`, `enabled_skill_names`, `ensure_script_env`, `venv_python`. Scheduled-trigger writes: `create_trigger`, `update_trigger`, `patch_trigger`, `record_draft`. Import these from `coscribe.tools`, not a submodule.
 
 ## Depends on
 `coscribe.needs_permission`, `coscribe.runtime`, `coscribe.workflows`.

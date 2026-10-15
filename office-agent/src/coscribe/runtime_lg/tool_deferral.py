@@ -233,7 +233,7 @@ _INDEX_EXAMPLES = 6
 def _catalog_index(tools: Sequence[Callable[..., Any] | BaseTool]) -> str:
     """What the hidden tools are, by group: each built-in category and
     each connector, with a count and a few names to search by."""
-    from ..runtime.types import get_tool_metadata
+    from ..runtime import get_tool_metadata
 
     groups: dict[str, list[str]] = {}
     for tool in tools:
