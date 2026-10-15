@@ -181,6 +181,8 @@ dev = [
     "import-linter>=2.15",
     # scripts/ratchet.py reads the import graph directly (also pulled in by import-linter).
     "grimp>=3.0",
+    # scripts/ratchet.py lists names nothing references (dead_code).
+    "vulture>=2.14,<3",
 ]
 web = [
     # 0.132.0 rejects a JSON body without a JSON Content-Type. Earlier

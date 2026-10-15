@@ -35,6 +35,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import grimp
+import vulture
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src" / "coscribe"
@@ -47,6 +48,9 @@ FUNCTION_LINES_LISTED = 100
 COMPLEXITY_LISTED = 15
 # Direct imports of other coscribe modules per module (assessment 2.5).
 FAN_OUT_LISTED = 25
+# vulture's own scale: 60 is "never referenced by name", 100 is "provably unused". Below 60 it
+# would also list every import.
+DEAD_CODE_CONFIDENCE = 60
 
 # Vendored code is left alone so a diff against its upstream stays meaningful.
 VENDORED = (
@@ -273,6 +277,22 @@ def fan_out(src: Path = SRC, listed: int = FAN_OUT_LISTED) -> dict[str, int]:
     return found
 
 
+def dead_code(src: Path = SRC, confidence: int = DEAD_CODE_CONFIDENCE) -> dict[str, int]:
+    """Names vulture finds no reference to, counted per file and kind. Many are not dead: a
+    tool the model calls, a route, a Protocol member or a pydantic field is only ever reached
+    by name at run time. Those are the baseline (the whitelist), so what the ratchet catches
+    is a new unreferenced name. Removing one, or using it, makes the number better."""
+    checker = vulture.Vulture()
+    files = [str(p) for p in _python_files(src, skip_vendored=True)]
+    checker.scavenge(files)
+    found: dict[str, int] = {}
+    for item in checker.get_unused_code(min_confidence=confidence):
+        path = Path(item.filename).resolve().relative_to(src.parent.resolve()).as_posix()
+        key = f"{path}::{item.typ} {item.name}"
+        found[key] = found.get(key, 0) + 1
+    return found
+
+
 METRICS = {
     "file_lines": file_lines,
     "long_functions": long_functions,
@@ -282,6 +302,7 @@ METRICS = {
     "tests_without_a_check": tests_without_a_check,
     "patch_by_string": patch_by_string,
     "fan_out": fan_out,
+    "dead_code": dead_code,
 }
 
 
