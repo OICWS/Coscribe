@@ -16,7 +16,7 @@
     "@types/node": "^24.13.3",
     "electron": "^33.4.11",
     "electron-builder": "^25.1.8",
-    "typescript": "~6.0.2"
+    "typescript": "~7.0.2"
   },
   "dependencies": {
     "dotenv": "^16.4.7"
