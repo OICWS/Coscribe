@@ -19,6 +19,7 @@ from openpyxl.worksheet.datavalidation import DataValidation
 from evals import compare, judge, run, tasks, text_checks, xlsx_checks
 
 from .xlsx_reference import SOLUTIONS
+from .xlsx_reference_blocks import SOLUTIONS as BLOCK_SOLUTIONS
 
 # --- small workbooks --------------------------------------------------------------------
 
@@ -582,6 +583,22 @@ def test_the_reference_solution_of_every_task_passes_every_check(task: str, tmp_
     chosen = _task(task)
 
     output = SOLUTIONS[task](chosen.directory / "inputs", workspace)
+    report = xlsx_checks.check_workbook(chosen, output, workspace, tmp_path / "render")
+
+    failed = {k: v for k, v in report.items() if isinstance(v, dict) and v.get("ok") is False}
+    assert not failed
+
+
+@pytest.mark.real_libreoffice
+@pytest.mark.parametrize("task", [t.name for t in tasks.discover("all", kind="xlsx")])
+def test_every_task_can_be_solved_with_the_block_operations(task: str, tmp_path: Path) -> None:
+    if not _libreoffice_recalculates(tmp_path):
+        pytest.skip("LibreOffice is not usable here")
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    chosen = _task(task)
+
+    output = BLOCK_SOLUTIONS[task](chosen.directory / "inputs", workspace)
     report = xlsx_checks.check_workbook(chosen, output, workspace, tmp_path / "render")
 
     failed = {k: v for k, v in report.items() if isinstance(v, dict) and v.get("ok") is False}

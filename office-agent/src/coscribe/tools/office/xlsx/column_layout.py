@@ -102,6 +102,11 @@ def _shown_width(span: Span | None, default: float) -> float:
     return default if span.width is None else span.width
 
 
+def column_width(spans: list[Span], column: int, default: float) -> float:
+    """The width a column shows, 0 when it is hidden."""
+    return _shown_width(_span_at(spans, column), default)
+
+
 def _own_span(spans: list[Span], column: int) -> Span:
     """The span of `column` alone, split out of the range it was part of."""
     for i, span in enumerate(spans):
