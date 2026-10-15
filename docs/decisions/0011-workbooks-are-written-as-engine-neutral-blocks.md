@@ -1,6 +1,6 @@
 # 0011: Workbooks are written as engine-neutral blocks; Excel engines come in stages
 
-Status: proposed (2026-10-15), for the maintainer to accept. Evidence:
+Status: accepted (2026-10-15, by the maintainer). Evidence:
 `docs/assessments/2026-10-15-excel-quality.md`, design: `docs/assessments/2026-10-15-excel-design.md`.
 
 ## Context

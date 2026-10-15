@@ -1,7 +1,7 @@
 # Excel: the design of workbook writing, its engines and the preview
 
-Design, 2026-10-15, for the maintainer to decide before any code. It follows the research in
-`2026-10-15-excel-quality.md` and is recorded as decision 0011 (proposed).
+Design, 2026-10-15. It follows the research in `2026-10-15-excel-quality.md` and is recorded as
+decision 0011, accepted by the maintainer with the three open choices decided as recommended.
 
 ## 中文摘要
 
@@ -53,7 +53,12 @@ Design, 2026-10-15, for the maintainer to decide before any code. It follows the
    - 花费不高于现在，正确性不降，任务 03 不低于 4.17；
    - 新增两个任务：一本带丰富功能的用户表（测“不丢东西”），一份 5000 行的数据（测大数据）。
 
-**需要你定的 3 件事：**
+**已定（维护者，2026-10-15）：**
+- 改过的用户原文件不再由 LibreOffice 重存；
+- 达标后删掉旧的 10 个写入工具；
+- 第 2 步先做 COM，加载项后议。
+
+原先列出的 3 件事：
 - 交付给用户的、改过的原文件，是否不再由 LibreOffice 重存？建议不再重存。
 - 第二部分评测达标后，是否删掉旧的 10 个写入工具？建议删。
 - 第 2 步是否先做 COM、加载项后议？建议是。
