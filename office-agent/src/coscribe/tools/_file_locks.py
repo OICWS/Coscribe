@@ -27,7 +27,10 @@ event loop other tool calls/WS messages run on.
 from __future__ import annotations
 
 import inspect
+import os
+import sys
 import threading
+import time
 from collections.abc import Callable
 from functools import wraps
 from pathlib import Path
@@ -53,6 +56,20 @@ def file_lock(path: Path) -> threading.RLock:
             lock = threading.RLock()
             _locks[path] = lock
         return lock
+
+
+def replace_with_retry(src: Path, dst: Path, *, attempts: int = 5, delay: float = 0.02) -> None:
+    """``os.replace`` that waits out a Windows virus scanner or indexer holding the
+    target for a few milliseconds; it raises ``PermissionError`` there even though the
+    caller holds the file lock. Other platforms get the plain call."""
+    for attempt in range(attempts):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if sys.platform != "win32" or attempt == attempts - 1:
+                raise
+            time.sleep(delay * (attempt + 1))
 
 
 def locked_by_path(method: _F) -> _F:

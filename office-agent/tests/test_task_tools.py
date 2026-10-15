@@ -110,3 +110,39 @@ def test_different_threads_have_independent_task_lists(tmp_path: Path) -> None:
 
     assert len(thread_a["task_list"]()) == 1
     assert thread_b["task_list"]() == []
+
+
+def test_save_retries_a_replace_that_windows_refuses_for_a_moment(tmp_path, monkeypatch):
+    from coscribe.tools import _file_locks
+
+    real_replace = _file_locks.os.replace
+    calls = {"n": 0}
+
+    def flaky(src, dst):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise PermissionError("access denied")
+        real_replace(src, dst)
+
+    monkeypatch.setattr(_file_locks.sys, "platform", "win32")
+    monkeypatch.setattr(_file_locks.time, "sleep", lambda _s: None)
+    monkeypatch.setattr(_file_locks.os, "replace", flaky)
+    src = tmp_path / "a.tmp"
+    src.write_text("x")
+    _file_locks.replace_with_retry(src, tmp_path / "a.json")
+    assert calls["n"] == 3
+    assert (tmp_path / "a.json").read_text() == "x"
+
+
+def test_a_permission_error_off_windows_is_not_retried(tmp_path, monkeypatch):
+    import pytest
+
+    from coscribe.tools import _file_locks
+
+    def refuse(src, dst):
+        raise PermissionError("access denied")
+
+    monkeypatch.setattr(_file_locks.sys, "platform", "linux")
+    monkeypatch.setattr(_file_locks.os, "replace", refuse)
+    with pytest.raises(PermissionError):
+        _file_locks.replace_with_retry(tmp_path / "a.tmp", tmp_path / "a.json")
