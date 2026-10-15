@@ -221,6 +221,47 @@ def test_fan_out_is_a_registered_metric_and_an_increase_fails_enforce(
     assert json.loads(baseline.read_text(encoding="utf-8")) == {"fan_out": {"pkg.a": 29}}
 
 
+def test_a_name_nothing_references_is_dead_code_and_a_used_one_is_not(
+    ratchet: ModuleType, tmp_path: Path
+) -> None:
+    package = _package(
+        tmp_path,
+        "dead_a",
+        {
+            "__init__.py": "",
+            "mod.py": (
+                "def used():\n    return 1\n"
+                "def unused():\n    return 2\n"
+                "class Box:\n    def spare(self):\n        return used()\n"
+            ),
+            "other.py": "from dead_a.mod import used\n\n\ndef run():\n    return used()\n",
+        },
+    )
+
+    found = ratchet.dead_code(package)
+
+    assert found == {
+        "dead_a/mod.py::function unused": 1,
+        "dead_a/mod.py::method spare": 1,
+        "dead_a/mod.py::class Box": 1,
+        "dead_a/other.py::function run": 1,
+    }
+
+
+def test_dead_code_is_a_registered_metric_and_a_new_unreferenced_name_is_worse(
+    ratchet: ModuleType,
+) -> None:
+    assert ratchet.METRICS["dead_code"] is ratchet.dead_code
+
+    worse, better = ratchet.compare(
+        {"dead_code": {"p/a.py::function old": 1}},
+        {"dead_code": {"p/a.py::function old": 1, "p/a.py::function fresh": 1}},
+    )
+
+    assert worse == ["dead_code: new  p/a.py::function fresh = 1"]
+    assert better == []
+
+
 def test_the_committed_baseline_has_every_metric(ratchet: ModuleType) -> None:
     """Report only for now: the baseline must exist and name every metric, but a number
     that got worse does not fail the tests until the ratchet is enforced."""
