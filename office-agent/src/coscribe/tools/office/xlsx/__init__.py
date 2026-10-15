@@ -95,7 +95,28 @@ the check openpyxl itself skips.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
+from pathlib import Path
+from typing import Any
+
+from .block_tools import build_block_tools
 from .toolkit import SpreadsheetToolkit
-from .tools import build_spreadsheet_tools
+from .tools import build_spreadsheet_tools as _build_cell_tools
+
+
+def build_spreadsheet_tools(
+    root: str | Path,
+    *,
+    state_dir: str | Path | None = None,
+    extra_readable: Sequence[str | Path] = (),
+    extra_writable: Sequence[str | Path] = (),
+) -> list[Callable[..., Any]]:
+    return [
+        *_build_cell_tools(
+            root, state_dir=state_dir, extra_readable=extra_readable, extra_writable=extra_writable
+        ),
+        *build_block_tools(root, extra_readable=extra_readable, extra_writable=extra_writable),
+    ]
+
 
 __all__ = ["SpreadsheetToolkit", "build_spreadsheet_tools"]

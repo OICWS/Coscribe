@@ -44,6 +44,7 @@ def _open(path: Path) -> tuple[Any, list[str], Written]:
 def _save(workbook: Any, path: Path, existed: bool) -> Path:
     if existed:
         workbook.calculation.fullCalcOnLoad = True
+    path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".~{path.stem}.coscribe{path.suffix}")
     workbook.save(str(temporary))
     return temporary

@@ -108,8 +108,6 @@
   "coscribe/tools/office/pptx/theme.py::attribute _blob": 2,
   "coscribe/tools/office/pptx/xmlns.py::variable M_NS": 1,
   "coscribe/tools/office/xlsx/build.py::attribute fullCalcOnLoad": 2,
-  "coscribe/tools/office/xlsx/build.py::function modify_workbook": 1,
-  "coscribe/tools/office/xlsx/build.py::function write_cells": 1,
   "coscribe/tools/office/xlsx/engine_objects.py::attribute fitToHeight": 1,
   "coscribe/tools/office/xlsx/engine_objects.py::attribute fitToWidth": 1,
   "coscribe/tools/office/xlsx/engine_objects.py::attribute pageSetUpPr": 1,
@@ -278,7 +276,7 @@
  },
  "file_lines": {
   "src/coscribe/conversation/session.py": 1472,
-  "src/coscribe/coordinator.py": 855,
+  "src/coscribe/coordinator.py": 846,
   "src/coscribe/runtime_lg/subagents.py": 836,
   "src/coscribe/tools/scheduled_tasks.py": 1054,
   "src/coscribe/web/browser_panel.py": 813,

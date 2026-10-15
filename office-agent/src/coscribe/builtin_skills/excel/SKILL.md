@@ -1,69 +1,79 @@
 ---
 name: Excel Spreadsheets
-description: Formula discipline, financial-model color/number conventions, and verification habits for Excel workbooks. Load before writing a workbook with write_xlsx.
+description: How to build or change an Excel workbook with write_xlsx_cells and modify_xlsx - layout, formulas, styles, charts, and checking the result. Load before writing a workbook.
 ---
-Deeper conventions for `write_xlsx`/`format_xlsx_cells`/`add_xlsx_chart`/
-`recalc_xlsx` -- on top of what's already in your base instructions
-(pipe-table content, `=`-prefixed formulas, the per-sheet overwrite scope,
-and the automatic recalc/error-check `write_xlsx` already does).
+## Plan the workbook, then write it whole
 
-## Formulas over hardcoded values, always
+Decide first, in two or three lines, what the reader needs: which sheets, what each holds,
+where the inputs are and where the results go.
+- A report for a manager starts with a summary sheet (the key figures, a breakdown, a chart)
+  and keeps the raw data on its own sheet behind it.
+- A model puts every assumption in one labelled block, one per cell with its unit, and the
+  calculation below or beside it, one period per column.
 
-If a value depends on other cells, write the formula, not the number you
-computed for it. This isn't just style: a hardcoded value silently goes
-stale the moment an input changes, and there's no way for the user to tell
-it happened just by looking at the cell. Reference other cells by address
-(`=B5*(1+$B$6)`), not by re-typing the number you read from them. Keep the
-same formula shape across a whole row or column of a projection -- a
-single cell that was edited by hand mid-row, breaking the pattern, is the
-most common silent error in a spreadsheet and is easy to miss on a glance.
+Then write it with `write_xlsx_cells`, the whole table or the whole workbook in one call:
+- one block per table;
+- the header styled through `row_styles`;
+- number formats through `col_styles`;
+- the styles named once in `styles`.
 
-`write_xlsx` rejects `XLOOKUP`/`XMATCH`/`SORT`/`FILTER`/`UNIQUE`/`SEQUENCE`
-outright because it can't verify them against LibreOffice's recalc step --
-use `INDEX`/`MATCH` for lookups instead, and sort/dedupe the data in
-`content` itself before writing it if you need it pre-sorted.
+Add charts, freeze panes, column widths, conditional formats and print setup with **one**
+`modify_xlsx` call. Two or three calls make a good workbook; twenty small ones make a worse
+one.
 
-## Financial-model conventions
+For a large input (hundreds of rows), give the block `"from_csv": "明细.csv"` instead of
+`rows`: the tool copies the file and you never retype it. If the data is messy, clean it into
+a CSV with `run_python_script` (pandas) first. The totals stay formulas in the workbook.
 
-Apply these with `format_xlsx_cells` when building something in that
-genre, unless the user's own file already does something different (match
-an existing file's conventions over these defaults):
+## Formulas over typed numbers, always
 
-- Blue font (`0000FF`) for hardcoded inputs and assumptions -- anything a
-  reader might reasonably want to change.
-- Black (leave `font_color` empty) for formulas.
-- Green (`008000`) for a formula that links to another sheet in the same
-  workbook.
-- Currency as `"$#,##0"`, with the unit named in the header cell
-  (`Revenue ($mm)`) rather than repeated in every row.
-- Percentages as `"0.0%"`, **stored as a fraction** -- `0.15` renders as
-  `15.0%`; writing `15` renders as `1500.0%`, a very easy mistake to make
-  since it looks right until you check the format.
-- Negatives in parentheses, zeros rendered as a dash:
-  `"$#,##0;($#,##0);-"`.
-- Bold header rows and section labels (`bold=True`), to make a large sheet
-  scannable without color alone.
+Every result is a formula on the cells it comes from, never a number you computed:
+- `=SUMIF(明细!B:B,A2,明细!F:F)`, `=B5*(1+$B$3)`;
+- an assumption is referenced by its cell (`$B$3`), never retyped into a formula;
+- use the same formula shape along a row or column; `fill_down_to` repeats it.
 
-## Verification is not optional
+A typed number between formulas is the most common silent error, and the result reports it.
+Use SUMIF/SUMIFS/COUNTIF/INDEX/MATCH. Avoid FILTER, UNIQUE, SORT and SEQUENCE, which the tool
+refuses.
 
-`write_xlsx` recalculates automatically and reports `recalc_status`/
-`total_errors`/`formula_error_locations` whenever the sheet has formulas --
-`recalc_status: "errors_found"` means don't tell the user it's done yet;
-fix the cells named and write again. A clean recalc proves the formulas
-*evaluate*, not that they're *correct* -- spot-check two or three values
-against what you expect by hand before building out a full grid from the
-same pattern, the same way you'd sanity-check the first few rows of any
-generated table.
+## Make it readable
 
-If you're editing a file the user attached rather than building one from
-scratch and it already had formulas, run `recalc_xlsx` on it before
-trusting any cached values you read -- `write_xlsx` only recalculates
-sheets it itself just wrote.
+- **Header row**: bold, with a fill (white text on a dark fill reads well), and frozen with
+  `{"op": "freeze", "at": "A2"}`.
+- **Number formats** on every number:
+  - thousands separators: `#,##0`;
+  - the unit in the header (`销售额（元）`, `Revenue ($)`) rather than in each cell;
+  - percentages stored as fractions, shown as `0.0%`;
+  - dates as `yyyy-mm-dd`.
+- **Financial models**: inputs in blue font (`0000FF`), formulas in black, links to another
+  sheet in green (`008000`).
+- **Charts**: a chart where a trend or a comparison is the point, with a title, anchored
+  beside its table (two columns right of it), never over cells that hold data.
+- **Columns** widen themselves to what they show; set a width only for a long label column.
+- **Printed or sent as PDF**: `{"op": "print", "landscape": true, "fit_width": 1}` keeps every
+  column on the page.
 
-## Structure
+## Changing a user's workbook
 
-One assumption per labeled cell, referenced by the formulas that use it --
-not a number typed directly into a formula. If a number in the sheet has
-no clear source (not computed, not from the user, not an obvious input),
-say in your response where it came from rather than presenting it as if it
-were self-evidently correct.
+- **Read it first** (`read_xlsx`): know where its tables, headers and formats are.
+- **Match its look**:
+  - a new column takes the look of its neighbour with `"like": "C2"`;
+  - a new row takes each column's look with `"like_row": 7`.
+
+  Keep their conventions over these defaults.
+- **Cells that hold something** are not written over unless `overwrite` is true. Read them
+  and be sure before you set it.
+- **If the result says `saved_as_copy`**, the user's file has something that could not be kept
+  (`lost_if_saved_over_original`). Tell the user where the new file is and what it lacks.
+
+## Check before saying it is done
+
+Each call returns:
+- `formula_results`, the value every formula you wrote computed. Compare two or three with
+  what you expect by hand;
+- `recalc`, formula errors by cell;
+- `findings` by cell: `###`, cut-off text, a typed number between formulas, a chart over data,
+  a new cell unlike the table above it.
+
+Fix what they name in one more call. After two rounds, stop and say what is left. If a number
+has no clear source, say where it came from.

@@ -6,6 +6,7 @@ from __future__ import annotations
 import datetime as dt
 import zipfile
 from pathlib import Path
+from typing import Any
 
 import pytest
 from openpyxl import Workbook, load_workbook
@@ -317,3 +318,37 @@ def test_an_edit_reports_values_from_a_recalculated_copy(tmp_path: Path) -> None
 
     assert report["formula_results"] == {"Data!B5": 1900}
     assert load_workbook(path, data_only=True)["Data"]["B5"].value is None
+
+
+# --- the tools ---------------------------------------------------------------------------
+
+
+def _block_tools(root: Path) -> dict[str, Any]:
+    from coscribe.tools.office.xlsx import build_spreadsheet_tools
+
+    return {tool.__name__: tool for tool in build_spreadsheet_tools(root)}
+
+
+def test_a_csv_is_copied_into_a_block_with_numbers_as_numbers(tmp_path: Path) -> None:
+    (tmp_path / "data.csv").write_text("Region,Sales\nEast,1200\nWest,980.5\n", encoding="utf-8")
+
+    report = _block_tools(tmp_path)["write_xlsx_cells"](
+        path="out/book.xlsx", blocks=[{"sheet": "Data", "from_csv": "data.csv"}]
+    )
+
+    sheet = load_workbook(tmp_path / "out" / "book.xlsx")["Data"]
+    assert report["path"] == "out/book.xlsx"
+    assert [[c.value for c in row] for row in sheet.iter_rows()] == [
+        ["Region", "Sales"],
+        ["East", 1200],
+        ["West", 980.5],
+    ]
+
+
+def test_the_tools_stay_inside_the_workspace(tmp_path: Path) -> None:
+    tools = _block_tools(tmp_path / "ws")
+
+    with pytest.raises(Exception, match="outside|not allowed|workspace"):
+        tools["write_xlsx_cells"](path="../escape.xlsx", blocks=[{"sheet": "S", "rows": [[1]]}])
+    with pytest.raises(Exception, match="outside|not allowed|workspace"):
+        tools["write_xlsx_cells"](path="a.xlsx", blocks=[{"sheet": "S", "from_csv": "../x.csv"}])
