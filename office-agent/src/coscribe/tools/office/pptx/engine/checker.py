@@ -436,6 +436,14 @@ def known_numbers(text: str) -> set[str | Decimal]:
     return {item for pair in number_values(text) for item in pair}
 
 
+def is_claim(number: str) -> bool:
+    """Whether a number says something about the world. A page number or a day does not, nor a
+    unit spelled out as a number: "(10,000 units)" under a 万辆 axis."""
+    if "." in number:
+        return True
+    return int(number) > _SMALL_INTEGER and not re.fullmatch(r"10{3,}", number)
+
+
 def is_known(number: str, value: Decimal, known: set[str | Decimal]) -> bool:
     return number in known or value in known
 
@@ -446,7 +454,7 @@ def _unknown_numbers(texts: list[_Text], known: set[str | Decimal]) -> Iterator[
         {
             n
             for n, v in values
-            if ("." in n or int(n) > _SMALL_INTEGER) and not is_known(n, v, known)
+            if is_claim(n) and not is_known(n, v, known)
         },
         key=float,
     )

@@ -26,7 +26,12 @@ from coscribe.tools.office.pptx.engine import (
     page_files,
     source_text,
 )
-from coscribe.tools.office.pptx.engine.checker import is_known, known_numbers, number_values
+from coscribe.tools.office.pptx.engine.checker import (
+    is_claim,
+    is_known,
+    known_numbers,
+    number_values,
+)
 
 _SVG = (
     'xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="Microsoft YaHei, Arial"'
@@ -390,3 +395,9 @@ def test_a_count_in_another_unit_is_known_and_a_rounded_one_is_not() -> None:
         assert known_as(written), written
     assert not known_as("140 万亿元")
     assert number_values("100km") == [("100", Decimal(100))]
+
+
+def test_a_unit_spelled_out_as_a_number_is_not_a_claim() -> None:
+    assert not is_claim("10000") and not is_claim("1000")
+    assert is_claim("10001") and is_claim("2000") and is_claim("100.0")
+    assert not is_claim("31")

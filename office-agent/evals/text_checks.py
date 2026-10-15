@@ -6,10 +6,12 @@ import re
 import unicodedata
 from typing import Any
 
-from coscribe.tools.office.pptx.engine.checker import is_known, known_numbers, number_values
-
-# A page number, a month or a day is not a claim about the world.
-_SMALL_INTEGER = 31
+from coscribe.tools.office.pptx.engine.checker import (
+    is_claim,
+    is_known,
+    known_numbers,
+    number_values,
+)
 
 
 def _fold(text: str) -> str:
@@ -55,10 +57,6 @@ def plain_number(value: float) -> str:
     return format(value, "f").rstrip("0").rstrip(".") if value % 1 else str(int(value))
 
 
-def _is_claim(number: str) -> bool:
-    return "." in number or int(number) > _SMALL_INTEGER
-
-
 def find_inventions(
     units: list[str], source_texts: list[str], allowed: list[str], unit: str
 ) -> dict[str, Any]:
@@ -69,7 +67,7 @@ def find_inventions(
     found: dict[str, list[int]] = {}
     for position, text in enumerate(units, start=1):
         for number, value in number_values(text):
-            if _is_claim(number) and not is_known(number, value, known):
+            if is_claim(number) and not is_known(number, value, known):
                 found.setdefault(number, []).append(position)
     return {
         "count": len(found),
