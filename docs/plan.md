@@ -91,8 +91,12 @@ Last reviewed: 2026-10-15.
    styles in one call, as Claude for Excel's `set_cell_range` does (part 1 unused, part 2 the
    skill and the measurement), with print-layout, clipped-text and edit-style checks. Parts 1a and 1b
    are done: the model writes workbooks with write_xlsx_cells and modify_xlsx (design 4.18 on
-   the open tasks against 2.88, at the same cost and two thirds of the time). Its engine is openpyxl and LibreOffice first (no Excel needed); real Excel through COM, and an
-   Office.js add-in, are later engines behind the same interface, chosen from real use.
+   the open tasks against 2.88, at the same cost and two thirds of the time). Its engine is openpyxl, with IronCalc for formula values (no Excel needed); real Excel through
+   COM, and an Office.js add-in, are later engines behind the same interface, chosen from real use.
+   **No LibreOffice in the product** (decision 0012, #319): step 1 (no Office needed) is IronCalc
+   for formula values and resvg for a built deck's page previews, PDF pages with PDFium; step 2,
+   conversion and the exact previews of Word, Excel and PowerPoint files through Office (COM);
+   step 3, remove the LibreOffice code paths, kept only for the evaluation.
    Instructions are changed by cutting first and measuring after: a shorter prompt that scores
    the same is the better one.
 

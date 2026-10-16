@@ -59,6 +59,12 @@ dependencies = [
     # because it's now imported directly.
     "pypdfium2>=4.18.0",
     "openpyxl>=3.1.0",
+    # Formula values without Excel or LibreOffice (decision 0012); a native
+    # extension, so pinned to the version measured against LibreOffice.
+    "ironcalc==0.9.0",
+    # A deck page previewed from its SVG without an office program (decision
+    # 0012); a native extension, so pinned to the version measured.
+    "resvg-py==0.5.0",
     # Not actively maintained upstream (no release since Aug 2024) -- unlike
     # the libraries above, this isn't a "mature and audited" pick, just the
     # standard, complete-enough option for this use case. See
@@ -194,6 +200,10 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "pypdfium2.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["ironcalc.*", "resvg_py.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

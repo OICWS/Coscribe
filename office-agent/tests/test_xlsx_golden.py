@@ -9,10 +9,8 @@ golden in the same pull request, so the reviewer sees the XML that changed.
 `UPDATE_GOLDENS=1 pytest tests/test_xlsx_golden.py` rewrites them; read the diff before
 committing it.
 
-`recalc_xlsx` is not covered: it runs LibreOffice, whose output is not ours to pin. The
-LibreOffice pass that `write_xlsx` and `edit_xlsx_cells` run after writing a formula is
-switched off for the same reason, so a formula is stored without a cached value, as openpyxl
-writes it.
+A formula is stored with the value the in-process engine computed for it (`calc.py`), the
+same on every machine, so the goldens pin it too.
 
 The only value blanked is the creation and modification time in `docProps/core.xml` (see
 `pptx_canonical.py`); the workbook tools write no other time or random id.
@@ -30,7 +28,6 @@ import pytest
 
 from coscribe.tools import _thumbnail
 from coscribe.tools.office.xlsx import build_spreadsheet_tools
-from coscribe.tools.office.xlsx import helpers as spreadsheets
 
 from .pptx_canonical import canonical_parts
 
@@ -278,9 +275,8 @@ def build_book(name: str, root: Path) -> Path:
 
 @pytest.fixture(autouse=True)
 def _no_libreoffice(monkeypatch: pytest.MonkeyPatch) -> None:
-    # The recalculation and the preview thumbnail both start LibreOffice; without it the tests
-    # are fast and the same on machines with and without it.
-    monkeypatch.setattr(spreadsheets, "find_soffice", lambda: None)
+    # The preview thumbnail starts LibreOffice; without it the tests are fast and the same on
+    # machines with and without it.
     monkeypatch.setattr(_thumbnail, "find_soffice", lambda: None)
 
 

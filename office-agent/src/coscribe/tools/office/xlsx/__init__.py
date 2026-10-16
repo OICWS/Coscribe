@@ -46,31 +46,13 @@ Excel stores with a hidden ``_xlfn.`` prefix (``TEXTJOIN``/``CONCAT``/
 ``IFS``/``SWITCH``/``MAXIFS``/``MINIFS``/``XLOOKUP``/``XMATCH``) --
 written bare, each evaluates to ``#NAME?`` in the saved file, so the
 model doesn't need to remember this Excel/OOXML wrinkle itself. After
-writing, ``_recalc_xlsx`` force-recalculates the whole workbook via a
-LibreOffice macro (the same ``ThisComponent.calculateAll() + store() +
-close()`` technique the xlsx skill's own ``recalc.py`` uses -- plain
-``--convert-to`` does NOT force recalculation, only a macro does, verified
-empirically here) and reports any Excel error strings (``#DIV/0!`` etc.)
-found afterward. Without this, every formula cell openpyxl just wrote
-reads back as ``None`` to ``read_xlsx``/anything using ``data_only=True``
-until the user happens to open the file in real Excel -- a real,
-confirmed gap this closes.
-
-``XLOOKUP``/``XMATCH`` are the two exceptions LibreOffice still can't
-compute, but *aren't* hard-blocked -- their common scalar usage (one
-lookup value, one result -- as opposed to a lookup value spanning
-multiple cells, or a multi-column ``return_array``, both real Excel
-usages this module declines rather than guesses at) needs no spill
-metadata at all, so ``_xlsx_lookup_formulas.py`` evaluates them itself
-and patches a real cached value straight into the saved worksheet XML --
-``_recalc_xlsx_and_evaluate_lookups`` is the combined entry point
-``write_xlsx``/``edit_xlsx_cells``/``recalc_xlsx`` all call instead of
-``_recalc_xlsx`` directly. See that module's own docstring for why direct
-XML patching is necessary (openpyxl has no API to write *any* formula
-cell's cached value, confirmed by reading its writer source) and exactly
-how narrowly it's scoped (declines anything beyond a single top-level
-call with literal/plain-reference arguments, same as this file's own
-"fail loudly, don't guess" formula-safety posture).
+writing, ``calc.recalculate`` evaluates every formula with IronCalc, in
+process, writes the values into the file (openpyxl has no API to write a
+formula cell's cached value, so they are patched into the worksheet XML),
+and reports any Excel error strings (``#DIV/0!`` etc.). Without it, every
+formula cell openpyxl just wrote reads back as ``None`` to ``read_xlsx``
+and to any viewer that does not calculate. No LibreOffice is involved
+(decision 0012).
 
 ``merge_xlsx_cells``/``unmerge_xlsx_cells``/``add_xlsx_conditional_format``/
 ``set_xlsx_data_validation``/``freeze_xlsx_panes``/``set_xlsx_column_width``/

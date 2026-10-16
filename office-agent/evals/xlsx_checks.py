@@ -95,12 +95,12 @@ def check_opens(path: Path) -> dict[str, Any]:
 def recalculate(
     path: Path, scratch: Path, name: str = "recalc.xlsx"
 ) -> tuple[Path, dict[str, Any]]:
-    """A recalculated copy, through the helper `recalc_xlsx` uses; the file is not touched."""
-    from coscribe.tools.office.xlsx.helpers import _recalc_xlsx_and_evaluate_lookups
+    """A recalculated copy, through the engine the tools use; the file is not touched."""
+    from coscribe.tools.office.xlsx.calc import recalculate as engine
 
     copy = scratch / name
     shutil.copyfile(path, copy)
-    result = _recalc_xlsx_and_evaluate_lookups(copy)
+    result = engine(copy)
     report = {
         "ok": result["status"] == "success",
         "status": result["status"],

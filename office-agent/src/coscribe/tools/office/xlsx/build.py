@@ -1,30 +1,23 @@
 """Writing a workbook from block and object operations: execute, guard, recalculate, check.
 
-A new workbook is recalculated in place, so every viewer shows its numbers. A user's existing
-workbook is saved by openpyxl alone, marked to recalculate when opened, and recalculated only on
-a copy for the results and the checks: LibreOffice's resave would rewrite its styles and drop
-features (decision 0011)."""
+openpyxl saves the workbook, marked to recalculate when Excel opens it; IronCalc then writes each
+formula's value into the file, so every viewer shows numbers and the checks read them (decisions
+0011 and 0012). No other program rewrites the user's file."""
 
 from __future__ import annotations
 
-import shutil
-import tempfile
 from pathlib import Path
 from typing import Any
 
 from .blocks import parse_blocks, parse_ops
+from .calc import recalculate
 from .column_layout import explicit_width_starts, widen_after_recalc, widen_for_values
 from .engine_objects import apply_ops
 from .engine_openpyxl import conflicts, write_block
 from .findings import Written, check
 from .guard import copy_path, inventory, load_watching, losses
-from .helpers import _recalc_xlsx_and_evaluate_lookups
 
 _RESULTS_LISTED = 40
-_NO_CACHED_VALUES = (
-    "Saved without computed values on purpose: Excel recalculates when the file opens, and "
-    "formula_results are those values. Do not resave it with recalc_xlsx or a script."
-)
 
 
 def _open(path: Path) -> tuple[Any, list[str], Written]:
@@ -45,9 +38,8 @@ def _open(path: Path) -> tuple[Any, list[str], Written]:
     return workbook, dropped, written
 
 
-def _save(workbook: Any, path: Path, existed: bool) -> Path:
-    if existed:
-        workbook.calculation.fullCalcOnLoad = True
+def _save(workbook: Any, path: Path) -> Path:
+    workbook.calculation.fullCalcOnLoad = True
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".~{path.stem}.coscribe{path.suffix}")
     workbook.save(str(temporary))
@@ -60,16 +52,6 @@ def _place(temporary: Path, path: Path, existed: bool, lost: list[str]) -> Path:
     return target
 
 
-def _recalculated(target: Path, existed: bool, scratch: Path) -> tuple[Path, dict[str, Any]]:
-    """The file whose cached values are the results: the target itself when it is new, else a
-    recalculated copy in `scratch`."""
-    if not existed:
-        return target, _recalc_xlsx_and_evaluate_lookups(target)
-    copy = scratch / f"recalc{target.suffix}"
-    shutil.copyfile(target, copy)
-    return copy, _recalc_xlsx_and_evaluate_lookups(copy)
-
-
 def _formula_cells(workbook: Any, written: Written) -> dict[str, list[str]]:
     return {
         name: [c for c, _ in cells if str(workbook[name][c].value).startswith("=")]
@@ -78,23 +60,11 @@ def _formula_cells(workbook: Any, written: Written) -> dict[str, list[str]]:
     }
 
 
-def _widen(target: Path, values_path: Path, formulas: dict[str, list[str]], existed: bool) -> None:
-    """Columns wide enough for the computed numbers, which only exist after recalculation. A new
-    file keeps LibreOffice's values, so only its `<cols>` are patched."""
-    if not existed:
-        for name, cells in formulas.items():
-            widen_after_recalc(target, name, cells)
-        return
-    from openpyxl import load_workbook
-
-    workbook = load_workbook(str(target), keep_vba=target.suffix.lower() == ".xlsm")
-    values = load_workbook(str(values_path), data_only=True)
+def _widen(target: Path, formulas: dict[str, list[str]]) -> None:
+    """Columns wide enough for the computed numbers, which exist only once the values are in the
+    file; only its `<cols>` are patched, so the values stay."""
     for name, cells in formulas.items():
-        sheet = workbook[name]
-        starts = explicit_width_starts(target, name)
-        widen_for_values(sheet, values[name], [sheet[c] for c in cells], starts)
-    workbook.calculation.fullCalcOnLoad = True
-    workbook.save(str(target))
+        widen_after_recalc(target, name, cells)
 
 
 def _results(workbook: Any, values: Any, written: Written) -> dict[str, Any]:
@@ -119,30 +89,25 @@ def _finish(
 
     existed = path.exists()
     before = inventory(path) if existed else None
-    temporary = _save(workbook, path, existed)
+    temporary = _save(workbook, path)
     try:
         lost = [] if before is None else losses(before, inventory(temporary), dropped, deleted)
         target = _place(temporary, path, existed, lost)
     finally:
         temporary.unlink(missing_ok=True)
-    formulas = _formula_cells(workbook, written)
-    with tempfile.TemporaryDirectory(prefix="coscribe_xlsx_") as scratch:
-        values_path, recalc = _recalculated(target, existed, Path(scratch))
-        if recalc.get("status") != "skipped":
-            _widen(target, values_path, formulas, existed)
-        saved = load_workbook(str(target))
-        values = load_workbook(str(values_path), data_only=True)
-        report = {
-            "path": str(target),
-            "saved_as_copy": target != path,
-            "lost_if_saved_over_original": lost,
-            "recalc": recalc,
-            **(
-                {"note": _NO_CACHED_VALUES} if existed and recalc.get("status") != "skipped" else {}
-            ),
-            **_results(saved, values, written),
-            "findings": check(saved, values, target, written),
-        }
+    recalc = recalculate(target)
+    if recalc.get("status") != "skipped":
+        _widen(target, _formula_cells(workbook, written))
+    saved = load_workbook(str(target))
+    values = load_workbook(str(target), data_only=True)
+    report = {
+        "path": str(target),
+        "saved_as_copy": target != path,
+        "lost_if_saved_over_original": lost,
+        "recalc": recalc,
+        **_results(saved, values, written),
+        "findings": check(saved, values, target, written),
+    }
     return report
 
 
