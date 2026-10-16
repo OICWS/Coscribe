@@ -765,3 +765,39 @@ export function FolderPlusIcon(props: SVGProps<SVGSVGElement>) {
     </Icon>
   );
 }
+
+/** The window with one region filled: where the Move menu puts a panel. */
+function LayoutIcon({ regions, ...props }: SVGProps<SVGSVGElement> & { regions: [number, number, number, number][] }) {
+  return (
+    <Icon strokeWidth={1.6} {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      {regions.map(([x, y, w, h]) => (
+        <rect key={`${x}-${y}`} x={x} y={y} width={w} height={h} rx="1" fill="currentColor" stroke="none" />
+      ))}
+    </Icon>
+  );
+}
+
+export const LayoutLeftIcon = (props: SVGProps<SVGSVGElement>) => <LayoutIcon regions={[[5.5, 6.5, 5, 11]]} {...props} />;
+export const LayoutRightIcon = (props: SVGProps<SVGSVGElement>) => <LayoutIcon regions={[[13.5, 6.5, 5, 11]]} {...props} />;
+export const LayoutTopIcon = (props: SVGProps<SVGSVGElement>) => <LayoutIcon regions={[[5.5, 6.5, 13, 4.5]]} {...props} />;
+export const LayoutBottomIcon = (props: SVGProps<SVGSVGElement>) => <LayoutIcon regions={[[5.5, 13, 13, 4.5]]} {...props} />;
+export const LayoutFillIcon = (props: SVGProps<SVGSVGElement>) => <LayoutIcon regions={[[5.5, 6.5, 13, 11]]} {...props} />;
+export const LayoutColumnsIcon = (props: SVGProps<SVGSVGElement>) => (
+  <LayoutIcon
+    regions={[
+      [5.5, 6.5, 5.5, 11],
+      [13, 6.5, 5.5, 11],
+    ]}
+    {...props}
+  />
+);
+export const LayoutRowsIcon = (props: SVGProps<SVGSVGElement>) => (
+  <LayoutIcon
+    regions={[
+      [5.5, 6.5, 13, 4.5],
+      [5.5, 13, 13, 4.5],
+    ]}
+    {...props}
+  />
+);

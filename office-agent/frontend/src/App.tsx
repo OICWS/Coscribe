@@ -31,6 +31,9 @@ import { StartupSplash } from "./components/StartupSplash";
 import { ShortcutsDialog } from "./components/ShortcutsDialog";
 import { BackgroundTasksPanel } from "./components/BackgroundTasksPanel";
 import { TaskPanel } from "./components/TaskPanel";
+import { PanelDock } from "./components/dock/PanelDock";
+import type { PanelId } from "./lib/dockLayout";
+import { useMediaQuery } from "./lib/useMediaQuery";
 import { WorkflowDraftPage } from "./components/workflow/WorkflowDraftPage";
 import { WorkflowRunView } from "./components/workflow/WorkflowRunView";
 import { BrowserIcon, HelpIcon, MoreIcon, PanelRightIcon, SettingsIcon, SubAgentsIcon } from "./components/icons";
@@ -72,7 +75,9 @@ import type { StepRecord, Workflow } from "./types/workflow";
 
 type TaskDraftItem = Extract<LogItem, { kind: "task_draft" }>;
 
-type SidePanel = "browser" | "subagents" | null;
+type ConversationPanel = Exclude<PanelId, "task">;
+
+const PANEL_TITLES: Record<PanelId, string> = { task: "Task details", browser: "Browser", background: "Background tasks" };
 
 function App() {
   const [state, dispatch] = useReducer(chatReducer, initialChatState);
@@ -83,24 +88,31 @@ function App() {
   const [findKey, setFindKey] = useState<number | null>(null);
   const [pendingComposerAction, setPendingComposerAction] = useState<ComposerAction | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  // One side panel at a time, since they share the chat's right edge, and
-  // remembered per conversation: each one's sub-agents and browsing are its own.
-  const [panelByThread, setPanelByThread] = useState<Record<string, SidePanel>>({});
-  const sidePanel = panelByThread[threadId] ?? null;
-  const browserPanelOpen = sidePanel === "browser";
-  const subAgentsPanelOpen = sidePanel === "subagents";
-  const setSidePanel = (panel: SidePanel) =>
-    setPanelByThread((panels) => ({ ...panels, [threadIdRef.current]: panel }));
-  const toggleSidePanel = (panel: Exclude<SidePanel, null>) =>
-    setPanelByThread((panels) => {
+  // Which panels are open is remembered per conversation: each one's
+  // sub-agents and browsing are its own. Where they sit is PanelDock's.
+  const [panelsByThread, setPanelsByThread] = useState<Record<string, ConversationPanel[]>>({});
+  const openPanels = panelsByThread[threadId] ?? [];
+  const browserPanelOpen = openPanels.includes("browser");
+  const subAgentsPanelOpen = openPanels.includes("background");
+  const setPanelOpen = (panel: ConversationPanel, open: boolean) =>
+    setPanelsByThread((panels) => {
       const current = threadIdRef.current;
-      return { ...panels, [current]: panels[current] === panel ? null : panel };
+      const list = (panels[current] ?? []).filter((p) => p !== panel);
+      return { ...panels, [current]: open ? [...list, panel] : list };
+    });
+  const togglePanel = (panel: ConversationPanel) =>
+    setPanelsByThread((panels) => {
+      const current = threadIdRef.current;
+      const list = panels[current] ?? [];
+      return { ...panels, [current]: list.includes(panel) ? list.filter((p) => p !== panel) : [...list, panel] };
     });
   const [subAgentsTick, setSubAgentsTick] = useState(0);
   const [subAgentFocus, setSubAgentFocus] = useState<{ threadId: string; taskId: string } | null>(null);
   // Per conversation, this page load: whether the panel was opened or
   // closed by hand. Unset, it opens only when it has something to show.
   const [taskPanelChoice, setTaskPanelChoice] = useState<Record<string, boolean>>({});
+  // Below this the panels would cover the conversation, so Task details stays shut.
+  const wideWindow = useMediaQuery("(min-width: 1024px)");
   // Set by BrowserPanel's "Send to chat" (an element it picked, screenshot
   // + a short description) -- Composer watches this prop and appends it to
   // its own pendingImages the moment it changes, same "external image
@@ -231,7 +243,7 @@ function App() {
     () =>
       onBrowserAgent((payload) => {
         if (!payload.open) return;
-        setSidePanel("browser");
+        setPanelOpen("browser", true);
       }),
     [],
   );
@@ -283,7 +295,7 @@ function App() {
         if (event.type === "approval_required" && event.subagent_id) {
           // Its approval card lives in the Background tasks panel.
           setSubAgentFocus({ threadId, taskId: event.subagent_id });
-          setSidePanel("subagents");
+          setPanelOpen("background", true);
           setSubAgentsTick((tick) => tick + 1);
           return;
         }
@@ -360,8 +372,6 @@ function App() {
   const threadTask = isScheduledTaskThread ? taskForThread(scheduledTasks, threadId) : null;
   const threadRun = threadTask?.runs.find((r) => r.thread_id === threadId) ?? null;
   const threadWorkflow = threadRun ? (threadTask?.workflow ?? null) : null;
-  // Browser and Background tasks take the same right-hand space, so either one
-  // open hides this panel without forgetting that it's wanted.
   const hasPlan = state.items.some((item) => item.kind === "tool" && item.toolName === "task_create");
   const taskPanelWanted = taskPanelChoice[threadId] ?? (threadWorkflow !== null || isScheduledTaskThread || hasPlan);
   const onHome =
@@ -374,16 +384,12 @@ function App() {
   const taskPanelShown =
     navMode === "create" &&
     taskPanelWanted &&
-    !browserPanelOpen &&
-    !subAgentsPanelOpen &&
+    wideWindow &&
     (threadWorkflow !== null || (state.historyReceived && (state.items.length > 0 || state.olderItems.length > 0)));
   const finishedToolCalls = state.items.filter((item) => item.kind === "tool" && item.result !== undefined).length;
   const toggleTaskPanel = () => {
     const next = !taskPanelShown;
     setTaskPanelChoice((choices) => ({ ...choices, [threadId]: next }));
-    if (next) {
-      setSidePanel(null);
-    }
   };
   const selectedTask = scheduledTasks.find((t) => t.trigger_id === selectedTaskId) ?? null;
   // Browser and Background tasks belong to a conversation, not the Scheduled pages.
@@ -768,9 +774,22 @@ function App() {
     />
   );
 
-  const sidePanels = (
-    <>
-      {taskPanelShown && (
+  const visiblePanels: PanelId[] = [
+    ...(taskPanelShown ? (["task"] as const) : []),
+    ...(browserPanelOpen ? (["browser"] as const) : []),
+    ...(subAgentsPanelOpen ? (["background"] as const) : []),
+  ];
+  const closePanel = (panel: PanelId) => {
+    if (panel === "task") {
+      setTaskPanelChoice((choices) => ({ ...choices, [threadId]: false }));
+      return;
+    }
+    setPanelOpen(panel, false);
+    if (panel === "background") setSubAgentFocus(null);
+  };
+  const renderPanel = (panel: PanelId) => {
+    if (panel === "task") {
+      return (
         <TaskPanel
           threadId={threadId}
           title={sessionLabel}
@@ -782,30 +801,21 @@ function App() {
           onSaveAsWorkflow={threadTask ? undefined : () => startWorkflowDraft("")}
           busy={state.turnInFlight}
         />
-      )}
-      {browserPanelOpen && (
-        <BrowserPanel
-          threadId={threadId}
-          onClose={() => setSidePanel(null)}
-          onSendToChat={onBrowserPanelCapture}
-          onStopAgent={onStop}
-        />
-      )}
-      {subAgentsPanelOpen && (
-        <BackgroundTasksPanel
-          key={threadId}
-          threadId={threadId}
-          refreshKey={subAgentsTick}
-          focusTaskId={subAgentFocus?.threadId === threadId ? subAgentFocus.taskId : null}
-          onApprove={onApprove}
-          onClose={() => {
-            setSidePanel(null);
-            setSubAgentFocus(null);
-          }}
-        />
-      )}
-    </>
-  );
+      );
+    }
+    if (panel === "browser") {
+      return <BrowserPanel threadId={threadId} onSendToChat={onBrowserPanelCapture} onStopAgent={onStop} />;
+    }
+    return (
+      <BackgroundTasksPanel
+        key={threadId}
+        threadId={threadId}
+        refreshKey={subAgentsTick}
+        focusTaskId={subAgentFocus?.threadId === threadId ? subAgentFocus.taskId : null}
+        onApprove={onApprove}
+      />
+    );
+  };
 
   // The panel switches: in the desktop title bar beside Settings, else at
   // the right end of the conversation's header.
@@ -824,7 +834,7 @@ function App() {
         type="button"
         title="Browser"
         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${browserPanelOpen ? "bg-[var(--accent-soft)] text-[var(--accent-ink)]" : "text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"}`}
-        onClick={() => toggleSidePanel("browser")}
+        onClick={() => togglePanel("browser")}
       >
         <BrowserIcon className="h-[18px] w-[18px]" />
       </button>
@@ -832,7 +842,7 @@ function App() {
         type="button"
         title={subAgentsTitle}
         className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${subAgentsPanelOpen ? "bg-[var(--accent-soft)] text-[var(--accent-ink)]" : "text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"}`}
-        onClick={() => toggleSidePanel("subagents")}
+        onClick={() => togglePanel("background")}
       >
         <SubAgentsIcon className="h-[18px] w-[18px]" />
         {subAgents.running > 0 && (
@@ -885,7 +895,7 @@ function App() {
           <div className="titlebar-controls-space" />
         </div>
       )}
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
       <div
         className="relative flex h-full min-w-0 flex-1 flex-col"
         style={navPinned ? { paddingLeft: NAV_RAIL_EXPANDED_WIDTH } : undefined}
@@ -1069,7 +1079,13 @@ function App() {
         />
         {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
       </div>
-      {inConversation && sidePanels}
+      <PanelDock
+        visible={inConversation ? visiblePanels : []}
+        titles={PANEL_TITLES}
+        render={renderPanel}
+        onClose={closePanel}
+        leftInset={navPinned ? NAV_RAIL_EXPANDED_WIDTH : 0}
+      />
       </div>
       {/* Last in the page: the desktop shell works out which parts of the
        * window drag it in page order, so the sidebar's own buttons must
