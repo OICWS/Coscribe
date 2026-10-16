@@ -626,7 +626,9 @@ markdown subset:
 
 Around those: `add_docx_chart` (a native, editable bar/line/pie chart from a
 pipe-table) and `add_docx_image` put a chart or picture into an existing Word
-file after a named paragraph; `convert_office_file` opens a legacy
+file after a named paragraph; `edit_docx_structure` inserts sections, lists,
+tables or a contents list into an existing Word file, and moves or deletes
+sections, leaving the rest of the file as it is; `convert_office_file` opens a legacy
 `.doc`/`.xls`/`.ppt` (by converting it to the OOXML format the readers take)
 and exports Word/Excel/PowerPoint files as PDF. Conversion and the page
 previews of Word, Excel and PowerPoint files use the Microsoft Office or WPS

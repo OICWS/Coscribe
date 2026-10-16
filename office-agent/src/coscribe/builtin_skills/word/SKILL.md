@@ -6,6 +6,24 @@ Deeper guidance for `write_docx`/`read_docx` -- on top of what's already in
 your base instructions (the markdown subset, and the "no partial editing,
 rewrite the whole content and overwrite=True" rule).
 
+## Changing an existing document's structure
+
+To add a section, a list, a table or a contents list to a user's document,
+move a section or delete one, use `edit_docx_structure` -- one call with a
+list of operations -- not a script and not `write_docx` (which would rebuild
+the file and lose what the markdown subset can't hold). For example, a
+contents list after the introduction and a section moved to the front:
+
+    [{"op": "insert", "after": "<first words of the intro>", "content": "# Contents\n\n[TOC]"},
+     {"op": "move_section", "section": "Safety", "before": "Onboarding"}]
+
+`after_section` places content after everything under a heading. Pass
+`output_path` when the user wants a new file. Everything the operations
+don't name is kept as it is, and the result's `document` lists the new
+headings, tables, pictures, header and footer: check the edit there, not
+with a script. `read_docx` shows the headings to name before editing. Use `replace_docx_text` and
+friends for wording inside paragraphs.
+
 ## Table of contents
 
 A line that is exactly `[TOC]` inserts a real Word TOC field, built from

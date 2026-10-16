@@ -6,44 +6,21 @@ from typing import Any
 from ..._file_locks import locked_by_path
 from ..._ooxml_validate import assert_wml_valid
 from ..._thumbnail import render_thumbnail
-from ..markdown_blocks import parse_blocks
 from ..toolkit import WorkspaceToolkit
+from ._structure import add_blocks, apply_operations, finish_tocs, summary
 from ._xml import (
-    _add_inline_runs,
-    _add_toc,
     _apply_page_setup,
     _build_comments_xml,
     _ChangeIdCounter,
     _clear_body,
-    _enable_update_fields,
-    _fill_docx_table,
-    _fill_toc,
     _locate_paragraph,
     _mark_body_deleted,
-    _mark_paragraph_inserted,
     _new_comment_anchor,
     _text_column_emu,
     _toc_result_paragraphs,
     _TrackedDocxHost,
     _write_comments_part,
 )
-
-
-def _finish_tocs(
-    document: Any,
-    toc_paragraphs: list[Any],
-    headings: list[tuple[int, str]],
-    change_author: str | None,
-    change_ids: _ChangeIdCounter,
-) -> bool:
-    for toc_paragraph in toc_paragraphs:
-        added = _fill_toc(document, toc_paragraph, headings)
-        if change_author is not None:
-            for entry in [toc_paragraph, *added]:
-                _mark_paragraph_inserted(entry._p, change_author, change_ids)
-    if toc_paragraphs:
-        _enable_update_fields(document)
-    return bool(toc_paragraphs)
 
 
 class DocxToolkit(WorkspaceToolkit):
@@ -86,47 +63,11 @@ class DocxToolkit(WorkspaceToolkit):
 
         if page_size or orientation:
             _apply_page_setup(document, page_size, orientation)
-        toc_paragraphs: list[Any] = []
-        headings: list[tuple[int, str]] = []
-        pending_comments: list[tuple[Any, str]] = []
-        previous_kind = ""
-        for block in parse_blocks(content):
-            paragraph = None
-            if block.kind == "heading":
-                paragraph = document.add_heading("", level=block.level)
-                _add_inline_runs(paragraph, block.text)
-                headings.append((block.level, paragraph.text))
-            elif block.kind == "bullet":
-                paragraph = document.add_paragraph(style="List Bullet")
-                _add_inline_runs(paragraph, block.text)
-            elif block.kind == "number":
-                paragraph = document.add_paragraph(style="List Number")
-                _add_inline_runs(paragraph, block.text)
-            elif block.kind == "toc":
-                toc_paragraphs.append(_add_toc(document))
-            elif block.kind == "table" and block.rows:
-                if previous_kind == "table":
-                    # Word joins back-to-back tables into one.
-                    spacer = document.add_paragraph()
-                    if track_changes:
-                        _mark_paragraph_inserted(spacer._p, change_author, change_ids)
-                _fill_docx_table(document, block)
-            else:
-                paragraph = document.add_paragraph()
-                _add_inline_runs(paragraph, block.text)
-
-            previous_kind = block.kind
-            if paragraph is None:
-                continue
-            if track_changes:
-                _mark_paragraph_inserted(paragraph._p, change_author, change_ids)
-            if block.comment:
-                pending_comments.append((paragraph._p, block.comment))
-
+        author = change_author if track_changes else None
+        written = add_blocks(document, content, author, change_ids)
         # Written only now, so the TOC also lists the headings after its marker.
-        has_toc = _finish_tocs(
-            document, toc_paragraphs, headings, change_author if track_changes else None, change_ids
-        )
+        has_toc = finish_tocs(document, written.tocs, written.headings, author, change_ids)
+        pending_comments = written.comments
         for index, (paragraph_element, _) in enumerate(pending_comments):
             _new_comment_anchor(paragraph_element, str(index))
 
@@ -167,6 +108,39 @@ class DocxToolkit(WorkspaceToolkit):
         return {
             "path": self._scope.relative(file_path),
             "bytes_written": file_path.stat().st_size,
+            "preview_path": preview_path,
+            "preview_skipped_reason": preview_skipped_reason,
+        }
+
+    @locked_by_path
+    def edit_docx_structure(
+        self,
+        path: str,
+        operations: list[dict[str, str]],
+        output_path: str = "",
+        track_changes: bool = False,
+        author: str = "Coscribe",
+    ) -> dict[str, object]:
+        from docx import Document
+        from docx.oxml.ns import qn
+
+        if not operations:
+            raise ValueError("operations is empty")
+        source = self._check_readable(path) if output_path else self._check_editable(path)
+        target = self._check_writable(output_path, overwrite=False) if output_path else source
+        document = Document(str(source))
+        # Word needs revision ids unique across the document, the user's own included.
+        ids = [int(v) for e in document.element.iter() if (v := e.get(qn("w:id"), "")).isdigit()]
+        change_ids = _ChangeIdCounter(max(ids, default=0) + 1)
+        done = apply_operations(document, operations, author if track_changes else None, change_ids)
+        assert_wml_valid(document.element, "edit_docx_structure")
+        document.save(str(target))
+        preview_path, preview_skipped_reason = render_thumbnail(target, self._state_dir)
+        return {
+            "path": self._scope.relative(target),
+            "bytes_written": target.stat().st_size,
+            "done": done,
+            "document": summary(document),
             "preview_path": preview_path,
             "preview_skipped_reason": preview_skipped_reason,
         }
