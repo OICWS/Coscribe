@@ -15,7 +15,7 @@ import {
   requestFindStep,
 } from "./lib/menuCommands";
 import { FindInPage } from "./components/FindInPage";
-import { COLLAPSED_CLUSTER_WIDTH, DRAWS_TITLE_BAR, useTitleBarColors } from "./lib/titleBar";
+import { COLLAPSED_CLUSTER_WIDTH, DRAWS_TITLE_BAR, TITLE_BAR_ICON, useTitleBarColors } from "./lib/titleBar";
 import type { PlanChoice, PlanItem } from "./components/PlanCard";
 import { EffortPicker } from "./components/EffortPicker";
 import type { Effort } from "./components/EffortPicker";
@@ -33,7 +33,6 @@ import { BackgroundTasksPanel } from "./components/BackgroundTasksPanel";
 import { TaskPanel } from "./components/TaskPanel";
 import { PanelDock } from "./components/dock/PanelDock";
 import type { PanelId } from "./lib/dockLayout";
-import { useMediaQuery } from "./lib/useMediaQuery";
 import { WorkflowDraftPage } from "./components/workflow/WorkflowDraftPage";
 import { WorkflowRunView } from "./components/workflow/WorkflowRunView";
 import { BrowserIcon, HelpIcon, MoreIcon, PanelRightIcon, SettingsIcon, SubAgentsIcon } from "./components/icons";
@@ -111,8 +110,6 @@ function App() {
   // Per conversation, this page load: whether the panel was opened or
   // closed by hand. Unset, it opens only when it has something to show.
   const [taskPanelChoice, setTaskPanelChoice] = useState<Record<string, boolean>>({});
-  // Below this the panels would cover the conversation, so Task details stays shut.
-  const wideWindow = useMediaQuery("(min-width: 1024px)");
   // Set by BrowserPanel's "Send to chat" (an element it picked, screenshot
   // + a short description) -- Composer watches this prop and appends it to
   // its own pendingImages the moment it changes, same "external image
@@ -384,7 +381,6 @@ function App() {
   const taskPanelShown =
     navMode === "create" &&
     taskPanelWanted &&
-    wideWindow &&
     (threadWorkflow !== null || (state.historyReceived && (state.items.length > 0 || state.olderItems.length > 0)));
   const finishedToolCalls = state.items.filter((item) => item.kind === "tool" && item.result !== undefined).length;
   const toggleTaskPanel = () => {
@@ -817,34 +813,56 @@ function App() {
     );
   };
 
+  // The page's title: the conversation's name, or where in Scheduled this is.
+  const pageTitle =
+    navMode === "create" && isScheduledTaskThread ? (
+      <RunBreadcrumb
+        task={threadTask}
+        threadId={threadId}
+        statusLabel={threadWorkflow && threadRun ? workflowRunLabel(threadWorkflow, threadRun) : null}
+        onOpenPortal={() => showScheduledTaskPage(null)}
+        onOpenTask={showScheduledTaskPage}
+      />
+    ) : navMode === "create" && !onHome ? (
+      <ThreadHeader sessionLabel={sessionLabel} />
+    ) : selectedTask && !workflowDraft ? (
+      <TaskPageBreadcrumb task={selectedTask} onOpenPortal={() => showScheduledTaskPage(null)} />
+    ) : (
+      <div className="min-w-0 flex-1" />
+    );
+
   // The panel switches: in the desktop title bar beside Settings, else at
   // the right end of the conversation's header.
+  const toggleIcon = DRAWS_TITLE_BAR ? TITLE_BAR_ICON : { className: "h-[18px] w-[18px]" };
+  const toggleOff = DRAWS_TITLE_BAR
+    ? "text-[var(--fg)] hover:bg-[var(--card-bg)]"
+    : "text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]";
   const panelToggles = (
     <>
       <button
         type="button"
         title={taskPanelShown ? "Hide task details" : "Show task details"}
         aria-pressed={taskPanelShown}
-        className={`hidden h-8 w-8 shrink-0 items-center justify-center rounded-md lg:flex ${taskPanelShown ? "bg-[var(--accent-soft)] text-[var(--accent-ink)]" : "text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"}`}
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${taskPanelShown ? "bg-[var(--accent-soft)] text-[var(--accent-ink)]" : toggleOff}`}
         onClick={toggleTaskPanel}
       >
-        <PanelRightIcon className="h-[18px] w-[18px]" />
+        <PanelRightIcon {...toggleIcon} />
       </button>
       <button
         type="button"
         title="Browser"
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${browserPanelOpen ? "bg-[var(--accent-soft)] text-[var(--accent-ink)]" : "text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"}`}
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${browserPanelOpen ? "bg-[var(--accent-soft)] text-[var(--accent-ink)]" : toggleOff}`}
         onClick={() => togglePanel("browser")}
       >
-        <BrowserIcon className="h-[18px] w-[18px]" />
+        <BrowserIcon {...toggleIcon} />
       </button>
       <button
         type="button"
         title={subAgentsTitle}
-        className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${subAgentsPanelOpen ? "bg-[var(--accent-soft)] text-[var(--accent-ink)]" : "text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"}`}
+        className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${subAgentsPanelOpen ? "bg-[var(--accent-soft)] text-[var(--accent-ink)]" : toggleOff}`}
         onClick={() => togglePanel("background")}
       >
-        <SubAgentsIcon className="h-[18px] w-[18px]" />
+        <SubAgentsIcon {...toggleIcon} />
         {subAgents.running > 0 && (
           <span
             aria-label={
@@ -873,21 +891,16 @@ function App() {
         // end, the OS window buttons its right end.
         <div className="flex h-10 shrink-0 items-center">
           <div className="shrink-0" style={{ width: navPinned ? NAV_RAIL_EXPANDED_WIDTH : COLLAPSED_CLUSTER_WIDTH }} />
-          <div className="titlebar-drag h-full min-w-0 flex-1" />
-          {inConversation && (
-            <div className="flex shrink-0 items-center gap-1">
-              {panelToggles}
-              <div className="mx-1.5 h-[18px] w-px bg-[var(--border)]" />
-            </div>
-          )}
+          <div className="titlebar-drag flex h-full min-w-0 flex-1 items-center pl-2 pr-4">{pageTitle}</div>
+          {inConversation && <div className="mr-1 flex shrink-0 items-center gap-1">{panelToggles}</div>}
           <button
             type="button"
             title="Settings"
             aria-label="Settings"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--fg)] hover:bg-[var(--card-bg)]"
             onClick={() => setSettingsOpen(true)}
           >
-            <MoreIcon className="h-[18px] w-[18px]" />
+            <MoreIcon {...TITLE_BAR_ICON} />
           </button>
           {/* Keeps Settings apart from the OS minimize button, so the two
            * aren't mistaken for one group. */}
@@ -901,62 +914,31 @@ function App() {
         style={navPinned ? { paddingLeft: NAV_RAIL_EXPANDED_WIDTH } : undefined}
       >
         {inConversation && findKey !== null && <FindInPage focusKey={findKey} onClose={() => setFindKey(null)} />}
-        {/* pl-12 lives here, not on the page-level wrapper above -- it only
-         * needs to clear NavRail's own collapsed footprint (a 48px-square
-         * toggle button pinned to the top-left corner, `absolute` so it
-         * doesn't consume layout space on its own), and that footprint
-         * never extends below this row. Reserving the same 48px on every
-         * row below (ChatLog/Composer) had no such collision to avoid --
-         * it just pushed their own mx-auto-centered content off-center
-         * from the window's true center for no reason. */}
-        <div
-          className={`flex h-12 shrink-0 items-center gap-1 pr-4 ${navPinned || DRAWS_TITLE_BAR ? "pl-4" : "pl-12"}`}
-        >
-          {/* Only in Chat mode -- a chat thread's own label/workspace
-           * badge has no meaning while Run mode's Scheduled portal/
-           * detail page is showing instead (a real, previously-confirmed
-           * bug: this used to render unconditionally). A flex-1 spacer
-           * keeps the icon buttons right-aligned either way, matching
-           * ThreadHeader's own flex-1 when it is shown. */}
-          {navMode === "create" && isScheduledTaskThread ? (
-            <RunBreadcrumb
-              task={threadTask}
-              threadId={threadId}
-              statusLabel={threadWorkflow && threadRun ? workflowRunLabel(threadWorkflow, threadRun) : null}
-              onOpenPortal={() => showScheduledTaskPage(null)}
-              onOpenTask={showScheduledTaskPage}
-            />
-          ) : navMode === "create" && !onHome ? (
-            <ThreadHeader sessionLabel={sessionLabel} />
-          ) : selectedTask && !workflowDraft ? (
-            <TaskPageBreadcrumb task={selectedTask} onOpenPortal={() => showScheduledTaskPage(null)} />
-          ) : (
-            <div className="min-w-0 flex-1" />
-          )}
-          {!DRAWS_TITLE_BAR && inConversation && panelToggles}
-          {/* In the desktop shell these live in the title bar (Settings)
-           * and the app menu (Help > Keyboard Shortcuts). */}
-          {!DRAWS_TITLE_BAR && (
-            <>
-              <button
-                type="button"
-                title="Keyboard shortcuts (?)"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
-                onClick={() => setShortcutsOpen(true)}
-              >
-                <HelpIcon className="h-[18px] w-[18px]" />
-              </button>
-              <button
-                type="button"
-                title="Settings"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
-                onClick={() => setSettingsOpen(true)}
-              >
-                <SettingsIcon className="h-[18px] w-[18px]" />
-              </button>
-            </>
-          )}
-        </div>
+        {/* Outside the desktop shell, which has a title bar for all of this.
+         * pl-12 clears NavRail's collapsed 48px toggle, absolutely placed
+         * over this row's left end; rows below don't need it. */}
+        {!DRAWS_TITLE_BAR && (
+          <div className={`flex h-12 shrink-0 items-center gap-1 pr-4 ${navPinned ? "pl-4" : "pl-12"}`}>
+            {pageTitle}
+            {inConversation && panelToggles}
+            <button
+              type="button"
+              title="Keyboard shortcuts (?)"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
+              onClick={() => setShortcutsOpen(true)}
+            >
+              <HelpIcon className="h-[18px] w-[18px]" />
+            </button>
+            <button
+              type="button"
+              title="Settings"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <SettingsIcon className="h-[18px] w-[18px]" />
+            </button>
+          </div>
+        )}
         {connectionStatus === "reconnecting" && (
           <div className="bg-yellow-500/20 px-4 py-1 text-center text-sm text-yellow-700 dark:text-yellow-300">
             Connection lost -- reconnecting...

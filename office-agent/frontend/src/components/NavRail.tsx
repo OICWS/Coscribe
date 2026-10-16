@@ -11,7 +11,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { EnvironmentDialog } from "./EnvironmentDialog";
 import { RunStatusIcon } from "./RunStatusIcon";
 import { ThreadList } from "./ThreadList";
-import { COLLAPSED_CLUSTER_WIDTH, DRAWS_TITLE_BAR } from "../lib/titleBar";
+import { COLLAPSED_CLUSTER_WIDTH, DRAWS_TITLE_BAR, TITLE_BAR_ICON } from "../lib/titleBar";
 import { AppMenuButton, HistoryButtons } from "./WindowControls";
 import {
   ClockIcon,
@@ -277,15 +277,15 @@ export function NavRail({
             <button
               type="button"
               title={pinned ? "Unpin navigation" : "Pin navigation open"}
-              className={`flex h-9 w-9 items-center justify-center rounded-md hover:bg-[var(--card-bg)] ${
-                pinned ? "text-[var(--fg)]" : "text-[var(--muted)] hover:text-[var(--fg)]"
-              }`}
+              className={`flex items-center justify-center rounded-md hover:bg-[var(--card-bg)] ${
+                DRAWS_TITLE_BAR ? "h-8 w-8" : "h-9 w-9"
+              } ${pinned || DRAWS_TITLE_BAR ? "text-[var(--fg)]" : "text-[var(--muted)] hover:text-[var(--fg)]"}`}
               onClick={() => onPinnedChange(!pinned)}
               // The desktop row also holds the menu and Back/Forward, which
               // mustn't pop the panel open; only this button does.
               onMouseEnter={DRAWS_TITLE_BAR ? () => setHovering(true) : undefined}
             >
-              <SidebarIcon className="h-[18px] w-[18px]" />
+              <SidebarIcon {...(DRAWS_TITLE_BAR ? TITLE_BAR_ICON : { className: "h-[18px] w-[18px]" })} />
             </button>
             {DRAWS_TITLE_BAR && <HistoryButtons />}
           </div>
