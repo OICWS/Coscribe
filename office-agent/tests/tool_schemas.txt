@@ -1,7 +1,7 @@
 # The model is sent: the system prompt, then the tools bound to it (decision 0001).
 # A change here is a change to what providers cache. UPDATE_TOOL_SCHEMAS=1 rewrites it.
 
-system prompt: 33589 chars, ~8397 tokens, sha256 4365604a1f
+system prompt: 33586 chars, ~8396 tokens, sha256 b8098c7f5c
 
 bound to the model: 22 tools, ~4852 tokens
   ask_user_question (questions:array) desc 1435 chars sha256 e846e64163
@@ -27,13 +27,13 @@ bound to the model: 22 tools, ~4852 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 122 tools, ~38068 tokens (the ones not bound are found through search_tools)
+registered: 122 tools, ~38079 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
   add_pptx_animation | WRITE_LOCAL | documents | deferred | sha256 2f544cc469
   add_pptx_audio | WRITE_LOCAL | documents | deferred | sha256 7e044a0cc6
-  add_pptx_chart | WRITE_LOCAL | documents | deferred | sha256 4af4873178
+  add_pptx_chart | WRITE_LOCAL | documents | deferred | sha256 90e276cf40
   add_pptx_formula | WRITE_LOCAL | documents | deferred | sha256 721cfdd379
   add_pptx_hyperlink | WRITE_LOCAL | documents | deferred | sha256 72854fd3e5
   add_pptx_icon | WRITE_LOCAL | documents | deferred | sha256 9f55dc2da2
@@ -41,7 +41,7 @@ registered: 122 tools, ~38068 tokens (the ones not bound are found through searc
   add_pptx_scrim | WRITE_LOCAL | documents | deferred | sha256 f9c9889ed2
   add_pptx_shape | WRITE_LOCAL | documents | deferred | sha256 f788d8b7e2
   add_pptx_shape_effect | WRITE_LOCAL | documents | deferred | sha256 7b217491ca
-  add_xlsx_chart | WRITE_LOCAL | documents | deferred | sha256 428cf24bd4
+  add_xlsx_chart | WRITE_LOCAL | documents | deferred | sha256 d15a11b262
   add_xlsx_conditional_format | WRITE_LOCAL | documents | deferred | sha256 cc7a65328c
   ask_user_question | READ | interaction | core | sha256 9d692cba1a
   build_pptx_from_pages | WRITE_LOCAL | documents | deferred | sha256 9c239d3393
@@ -69,7 +69,7 @@ registered: 122 tools, ~38068 tokens (the ones not bound are found through searc
   edit_pptx_theme_colors | WRITE_LOCAL | documents | deferred | sha256 ffc61d7262
   edit_pptx_xml | WRITE_LOCAL | documents | deferred | sha256 18520bcfdc
   edit_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 39782553e3
-  edit_xlsx_cells | WRITE_LOCAL | documents | deferred | sha256 caf02fce2d
+  edit_xlsx_cells | WRITE_LOCAL | documents | deferred | sha256 6260dcdacc
   exit_plan_mode | READ | interaction | core | sha256 f22b0af33b
   extract_pptx_template | WRITE_LOCAL | documents | deferred | sha256 4462e72289
   fill_pptx_template | WRITE_LOCAL | documents | deferred | sha256 645155af29
@@ -109,7 +109,7 @@ registered: 122 tools, ~38068 tokens (the ones not bound are found through searc
   recalc_xlsx | WRITE_LOCAL | documents | deferred | sha256 aeedf3a870
   recolor_pptx_icon | WRITE_LOCAL | documents | deferred | sha256 c79f3aa354
   reject_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 625975143d
-  render_pptx_preview | READ | documents | deferred | sha256 1ba765da99
+  render_pptx_preview | READ | documents | deferred | sha256 ae8d4ec268
   reorder_pptx_slide | WRITE_LOCAL | documents | deferred | sha256 3529565f4d
   replace_docx_text | WRITE_LOCAL | documents | deferred | sha256 d3ce81d157
   replace_pptx_image | WRITE_LOCAL | documents | deferred | sha256 b8c6137141
@@ -144,9 +144,9 @@ registered: 122 tools, ~38068 tokens (the ones not bound are found through searc
   wake_on_event | WRITE_LOCAL | selfwake | deferred | sha256 49123abfdf
   wake_on_task | WRITE_LOCAL | selfwake | deferred | sha256 246c6a0f4f
   web_search | READ | web | core | sha256 8ae68add7a
-  write_docx | WRITE_LOCAL | documents | deferred | sha256 c6992a8b6c
+  write_docx | WRITE_LOCAL | documents | deferred | sha256 59ecbb17be
   write_file | WRITE_LOCAL | filesystem | core | sha256 509ae7daba
-  write_pdf | WRITE_LOCAL | documents | deferred | sha256 7e516e06d6
-  write_pptx | WRITE_LOCAL | documents | deferred | sha256 8a28365217
-  write_xlsx | WRITE_LOCAL | documents | deferred | sha256 7399afc46a
+  write_pdf | WRITE_LOCAL | documents | deferred | sha256 468c6374f7
+  write_pptx | WRITE_LOCAL | documents | deferred | sha256 b53c3c22c9
+  write_xlsx | WRITE_LOCAL | documents | deferred | sha256 1675525bf0
   write_xlsx_cells | WRITE_LOCAL | documents | deferred | sha256 1351337f25

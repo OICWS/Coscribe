@@ -1,6 +1,5 @@
 import concurrent.futures
 import shutil
-import tempfile
 import zipfile
 from pathlib import Path
 from typing import Any, cast
@@ -12,8 +11,9 @@ from coscribe.tools.office.pptx.qa import (
     check_missing_visual_elements,
     check_text_overlaps,
 )
-from coscribe.tools.presentations import PresentationToolkit, build_presentation_tools
+from coscribe.tools.presentations import build_presentation_tools
 
+from .libreoffice_probe import libreoffice_works
 from .pptx_fixtures import write_smartart_fixture as _write_smartart_fixture
 
 
@@ -37,21 +37,7 @@ def _write_wav(path: Path, seconds: float = 1.0) -> None:
 
 
 def _libreoffice_actually_works() -> bool:
-    """`shutil.which("soffice")` alone isn't enough to gate the real
-    overflow-detection test -- some environments have the soffice binary on
-    PATH but it fails to convert anything (broken font config, sandboxing,
-    etc.), which would make that test fail rather than skip. Probe with an
-    actual trivial write_pptx call and check its own QA result, in a
-    throwaway temp dir (skipif conditions run at collection time, before
-    the tmp_path fixture exists)."""
-    probe_dir = Path(tempfile.mkdtemp(prefix="coscribe_lo_probe_"))
-    try:
-        result = PresentationToolkit(probe_dir).write_pptx(
-            path="probe.pptx", content="# Probe\n- hi"
-        )
-        return result["qa_skipped_reason"] is None
-    finally:
-        shutil.rmtree(probe_dir, ignore_errors=True)
+    return libreoffice_works()
 
 
 TWO_SLIDE_CONTENT = """\

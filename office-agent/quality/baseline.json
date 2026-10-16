@@ -276,7 +276,7 @@
  },
  "file_lines": {
   "src/coscribe/conversation/session.py": 1472,
-  "src/coscribe/coordinator.py": 846,
+  "src/coscribe/coordinator.py": 845,
   "src/coscribe/runtime_lg/subagents.py": 836,
   "src/coscribe/tools/scheduled_tasks.py": 1054,
   "src/coscribe/web/browser_panel.py": 813,
@@ -289,7 +289,7 @@
   "src/coscribe/conversation/session.py::ChatSessionLG.__init__": 207,
   "src/coscribe/conversation/session.py::ChatSessionLG._handle_user_message_locked": 212,
   "src/coscribe/conversation/turn_stream.py::TurnStreamer.stream_turn": 115,
-  "src/coscribe/coordinator.py::build_coordinator_agent": 153,
+  "src/coscribe/coordinator.py::build_coordinator_agent": 152,
   "src/coscribe/runtime_lg/agent.py::build_langgraph_agent": 184,
   "src/coscribe/runtime_lg/messages.py::serialize_history_for_ws_lg": 115,
   "src/coscribe/runtime_lg/providers.py::resolve_chat_model": 107,
@@ -329,7 +329,7 @@
  },
  "patch_by_string": {},
  "suppressions": {
-  "noqa": 142,
+  "noqa": 140,
   "pragma_no_cover": 2,
   "type_ignore": 42
  },

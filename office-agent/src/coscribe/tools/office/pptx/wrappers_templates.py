@@ -30,10 +30,10 @@ def build_templates_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..
         one idea per slide, left-align body text (never centered), no
         decorative accent lines/bars under titles. If text overflows its
         slide, the response's `overflow_warnings` will say so (when
-        LibreOffice is installed) -- shorten the content or split the slide
+        an office program is installed) -- shorten the content or split the slide
         and call write_pptx again.
 
-        The response's `preview_path` (when LibreOffice is installed) names
+        The response's `preview_path` (when the file can be drawn) names
         a rendered thumbnail of the first slide the user can see in the
         chat UI -- not something to fetch or parse yourself.
 
@@ -74,8 +74,8 @@ def build_templates_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..
         (Georgia, Trebuchet MS, Impact, Arial Black, Garamond, Consolas,
         Palatino Linotype -- and never Aptos, unreliable on old and new
         Office installs alike) renders correctly in real PowerPoint but
-        makes `overflow_warnings` itself approximate, since whatever
-        machine LibreOffice runs on for this check may substitute a
+        makes `overflow_warnings` itself approximate, since the office
+        program that draws the deck for this check may substitute a
         different-width font for it -- size that font's own text
         containers with ~10% extra slack rather than trusting a clean
         overflow check at face value.

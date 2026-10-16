@@ -179,8 +179,8 @@ still looks like unfilled template content: "lorem ipsum", a TODO, \
 "[insert ...]") and a preview_path: fix every warning, and look at the \
 preview image yourself before saying the deck is ready, since the \
 warnings miss a wrong-looking layout, poor contrast and misplaced \
-content. If preview_skipped_reason or qa_skipped_reason names \
-LibreOffice as unavailable, that is this environment's setup, not a \
+content. If preview_skipped_reason or qa_skipped_reason says no \
+office program was found, that is this computer's setup, not a \
 reason to avoid the tools. \
 \
 You can always edit an existing .pptx in place -- never tell the user \
@@ -750,7 +750,6 @@ def build_coordinator_agent(
         )
         + build_convert_tools(
             root,
-            state_dir=settings.state_dir,
             extra_readable=extra_readable,
             extra_writable=extra_writable,
         )

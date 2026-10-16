@@ -106,17 +106,21 @@ enough to be reliable:
 
 - Native, editable charts only through the libraries' own chart APIs
   (a docx chart reuses python-pptx's chart part).
-- Workbooks are recalculated with LibreOffice so formula values are
-  cached. `XLOOKUP`/`XMATCH`, which it can't evaluate, are computed by
-  coscribe; dynamic-array functions (`FILTER`, `SORT`, ...) are refused.
+- Formula values are computed in-process by IronCalc and written into the
+  workbook, so a viewer that does not calculate still sees them;
+  dynamic-array functions (`FILTER`, `SORT`, ...) are refused.
 - Where OOXML is written by hand (tracked changes, comments, transitions,
-  animations, background images), the result is converted with LibreOffice
-  to prove it opens.
+  animations, background images), the tests convert the result with
+  LibreOffice to prove it opens.
 - Every write renders a preview image, so the model and the reviewer see
   the page, not a description of it.
 
-LibreOffice is an optional runtime dependency: without it, previews,
-recalculation and checks are skipped, never the write itself.
+The product does not depend on LibreOffice (decision 0012): a PDF and a deck
+built from SVG pages are drawn without any office program, and other Word,
+Excel and PowerPoint files are drawn and converted by the Microsoft Office or
+WPS the user has, through COM. Without one, previews and conversion are
+skipped with a reason, never the write itself. LibreOffice stays in
+development and in the evaluation, as an independent reader of the files.
 
 ### Repeated work becomes fixed steps; the AI stays outside the run
 

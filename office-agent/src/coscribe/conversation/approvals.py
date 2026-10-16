@@ -389,7 +389,7 @@ class ApprovalDecider:
         # Only worth building for a socket that can actually show it to
         # someone -- for an unattended selfwake/Scheduled Task turn (see
         # _can_resolve_approvals's own docstring), this would just spend a
-        # real soffice conversion + dry-run edit on a prompt nobody is
+        # real office-program conversion + dry-run edit on a prompt nobody is
         # ever going to see resolved live.
         before_preview, after_preview = (
             await self._host._build_document_edit_preview(name, args)

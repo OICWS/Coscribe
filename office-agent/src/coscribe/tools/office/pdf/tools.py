@@ -33,7 +33,7 @@ def build_pdf_tools(toolkit: PdfToolkit) -> list[Callable[..., Any]]:
         Uses the same markdown subset as `write_docx` (headings, bullets,
         numbered items, pipe tables, and plain paragraphs).
 
-        The response's `preview_path` (when LibreOffice is installed) names
+        The response's `preview_path` (when the file can be drawn) names
         a rendered thumbnail of the first page the user can see in the
         chat UI -- not something to fetch or parse yourself.
 

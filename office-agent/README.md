@@ -628,11 +628,12 @@ Around those: `add_docx_chart` (a native, editable bar/line/pie chart from a
 pipe-table) and `add_docx_image` put a chart or picture into an existing Word
 file after a named paragraph; `convert_office_file` opens a legacy
 `.doc`/`.xls`/`.ppt` (by converting it to the OOXML format the readers take)
-and exports Word/Excel/PowerPoint files as PDF. Conversion, page previews,
-the layout checks and recalculation all use LibreOffice, found on `PATH` or in
-its standard install folder (on Windows `soffice` is not on `PATH` by
-default); pages are rasterized and measured with PDFium, so nothing else needs
-installing.
+and exports Word/Excel/PowerPoint files as PDF. Conversion and the page
+previews of Word, Excel and PowerPoint files use the Microsoft Office or WPS
+installed on Windows, through COM (decision 0012); a PDF, and a deck built from
+SVG pages, are drawn without any office program. Pages are rasterized and
+measured with PDFium, and formulas are computed by IronCalc, so nothing else
+needs installing.
 
 `read_docx`/`read_pdf` go the other way through `mammoth`+`markdownify`
 and `pdfplumber` respectively -- the same libraries microsoft/markitdown
@@ -670,17 +671,17 @@ A cell starting with `=` in `write_xlsx`'s `content` is written as a real
 Excel formula (`=SUM(B2:B9)`), not a hardcoded number -- prefer this
 whenever a value depends on other cells, so the sheet actually
 recalculates when its inputs change. `XLOOKUP`/`XMATCH`/`SORT`/`FILTER`/
-`UNIQUE`/`SEQUENCE` are rejected outright (LibreOffice, used to verify
-every formula, can't evaluate them, and a partial success would silently
-populate only one cell); use `INDEX`/`MATCH` for lookups instead. Six
+`UNIQUE`/`SEQUENCE` are rejected outright (they spill over many cells,
+which the formula engine that verifies every formula does not do, and a
+partial success would silently populate only one cell). Six
 post-2007 functions (`TEXTJOIN`/`CONCAT`/`IFS`/`SWITCH`/`MAXIFS`/
 `MINIFS`) are auto-prefixed with the hidden `_xlfn.` Excel itself uses, so
-you don't need to remember that. If `soffice` is on `PATH`, `write_xlsx`
-automatically re-opens any file it just wrote a formula into and forces a
-real LibreOffice recalculation (openpyxl only ever writes the formula
-text, never a cached value) -- see the response's `recalc_status`
-(`"success"`/`"errors_found"`/`"skipped"`), `total_errors`, and
-`formula_error_locations`. `recalc_xlsx(path, timeout=30.0)` does the same
+you don't need to remember that. `write_xlsx` computes every formula it
+just wrote with IronCalc and stores the values in the file (openpyxl only
+ever writes the formula text, never a cached value) -- see the response's
+`recalc_status` (`"success"`/`"errors_found"`/`"skipped"`), `total_errors`,
+`formula_error_locations` and `unchecked_formulas` (functions the engine
+does not have; Excel computes them on open). `recalc_xlsx(path)` does the same
 recalculation on demand, for a file that already has formulas but wasn't
 written by `write_xlsx`. `format_xlsx_cells(path, sheet_name, cell_range,
 number_format="", font_color="", bold=False)` applies a number format
@@ -1155,37 +1156,34 @@ clears every effect this tool manages. Deliberately narrower than the full
 schema -- only shadow/glow/soft_edge, not blur/fillOverlay/innerShdw/
 prstShdw/reflection.
 
-**Optional: install LibreOffice for overflow warnings and preview thumbnails.**
-If `soffice` is on `PATH`, `write_pptx` renders the deck to PDF in the
-background and flags any text that overflows its slide bounds in the
+**Overflow warnings and preview thumbnails come from the office program.**
+With Microsoft Office or WPS installed, `write_pptx` has it draw the deck as a
+PDF in the background and flags any text that overflows its slide bounds in the
 response's `overflow_warnings` -- the single most common visual defect in
 generated decks. `write_docx`/`write_pdf`/`write_xlsx`/`write_pptx` and
 `add_xlsx_chart`/`add_pptx_chart` also each render a one-page PNG thumbnail
 (the first slide for pptx, the affected sheet for xlsx) that shows up as an
 inline image in the chat UI right under the tool call, so you can see what
 got generated -- chart included -- without opening the file yourself. Both
-are best-effort: without LibreOffice installed, every tool still works
+are best-effort: without an office program, every tool still works
 exactly the same -- `write_pptx` just returns `overflow_warnings: []` with a
 `qa_skipped_reason`, and every write/chart tool's `preview_path` comes back
 `null` with a `preview_skipped_reason`
-explaining why. LibreOffice is a real (non-`pip install`) system dependency
-(`apt install libreoffice` / `brew install libreoffice` / etc.) -- worth
-having for nicer decks and previews, not required for the tools to function.
+explaining why. A PDF, and a deck built with `build_pptx_pages`, are previewed
+without any office program.
 Note also that `python-pptx` itself hasn't seen a release since August 2024;
 it's still the standard library for this, just not as actively maintained as
 the libraries `docx`/`pdf`/`xlsx` support relies on (see `ARCHITECTURE.md`).
 
-`render_pptx_preview(path)` is the multi-slide counterpart: LibreOffice's own
-`--convert-to png` only ever emits page 1, so `write_pptx`'s automatic
-thumbnail can only ever show the first slide -- not enough to catch a deck
-where the title slide looks fine but the rest don't. With LibreOffice
-installed, `render_pptx_preview` converts the deck to PDF and rasterizes each
-page with PDFium (nothing else to install; LibreOffice is found on PATH or in
-its standard Windows folder), so it renders every slide (capped at `max_slides`, default
+`render_pptx_preview(path)` is the multi-slide counterpart: `write_pptx`'s
+automatic thumbnail shows only the first slide -- not enough to catch a deck
+where the title slide looks fine but the rest don't. `render_pptx_preview`
+draws a built deck from its SVG pages, and any other deck through the office
+program as a PDF rasterized with PDFium, so it renders every slide (capped at `max_slides`, default
 8) so `review_work` can check the whole deck, not just the first slide --
 this is what a deck built with `run_node_script` needs for any real visual
 QA, since that tool returns no preview of its own. Same graceful-degradation
-contract as everything else here: a missing LibreOffice just means
+contract as everything else here: a missing office program just means
 `preview_paths` comes back empty with a `preview_skipped_reason`.
 
 ## Running scripts
@@ -1267,7 +1265,7 @@ stock placeholder layouts).
 **Optional: install Node.js** (https://nodejs.org) for this tool to work
 at all -- unlike Python (coscribe's own runtime, always present),
 Node.js/npm are a genuinely optional system dependency, the same way
-LibreOffice is optional for preview thumbnails/overflow warnings above. A
+an office program is optional for preview thumbnails/overflow warnings above. A
 call to `run_node_script` before Node.js is installed fails with a clear
 message naming what's missing, rather than every other built-in tool
 being affected -- `write_pptx` and everything else keep working without
@@ -1814,7 +1812,7 @@ custom providers' `api_key` (`providers.json`, above), and MCP server
    the permission-hardened plaintext file above; nothing fails, saving a
    key/token always works either way.
 
-This degrades the same way LibreOffice-optional features do elsewhere in
+This degrades the same way the office-program features do elsewhere in
 this project: best effort, never the reason an operation fails. One real
 tradeoff worth knowing: a keychain-backed secret doesn't travel with a
 copied `.env`/`state_dir` the way a plaintext one does -- if you move

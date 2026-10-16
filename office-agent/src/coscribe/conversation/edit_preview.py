@@ -72,7 +72,7 @@ async def build_document_edit_preview(
     which is exactly the case worth previewing.
 
     Never raises and never touches the real file -- any failure
-    (soffice missing, a bad dry-run, a locked file, an
+    (no office program, a bad dry-run, a locked file, an
     unrecognized extension) just means one or both preview images
     come back None, and the approval flow proceeds exactly as it did
     before this existed.

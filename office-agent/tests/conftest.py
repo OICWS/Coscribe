@@ -2,7 +2,7 @@ from collections.abc import Iterator
 
 import pytest
 
-from coscribe.tools.office.pptx import toolkit_helpers
+from coscribe.tools import _office_com
 
 # The flaky-test policy (tests/flaky_policy.py): the hooks and the quarantine fixture
 # register by being names in this module.
@@ -15,28 +15,18 @@ from .flaky_policy import (  # noqa: F401
 
 
 @pytest.fixture(autouse=True)
-def _fast_libreoffice_by_default(
-    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """write_pptx/fill_pptx_template/add_pptx_chart's overflow-QA step
-    unconditionally shells out to a real headless LibreOffice process,
-    regardless of whether the test calling it cares about that step at
-    all. That's correct behavior for the small number of tests marked `real_libreoffice` (they exist
-    specifically to verify real LibreOffice conversion), but once soffice
-    is actually installed and working (as it now is in this environment --
-    see the SessionStart hook), it turns every ordinary content/geometry
-    test that happens to call write_pptx into a real, slow LibreOffice
-    subprocess launch too.
+def _no_office_program(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """No test starts the Microsoft Office or WPS installed on a developer's machine: previews and
+    the deck overflow check would open Word or PowerPoint for every file a test writes, slowly and
+    differently from CI, which has none. A test of the COM path fakes what it needs on top.
 
-    Short-circuits it to its already-well-tested "soffice unavailable"
-    branch by default. A test that genuinely needs the real behavior opts
-    back in with `@pytest.mark.real_libreoffice`, which still skips
-    cleanly (via that file's own `_libreoffice_actually_works()`-style
-    probe) in an environment where soffice isn't actually usable.
-    """
+    A test marked `real_libreoffice` gets LibreOffice standing in for the office program, so a
+    preview or a conversion is checked end to end; it skips itself where LibreOffice is absent."""
+    monkeypatch.setattr(_office_com, "_registered", lambda prog_id: False)
     if request.node.get_closest_marker("real_libreoffice") is not None:
-        return
-    monkeypatch.setattr(toolkit_helpers, "render_to_pdf", lambda pptx_path: None)
+        from .libreoffice_probe import libreoffice_as_office
+
+        monkeypatch.setattr(_office_com, "convert", libreoffice_as_office)
 
 
 @pytest.fixture(autouse=True)

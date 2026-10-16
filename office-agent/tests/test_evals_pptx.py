@@ -222,6 +222,7 @@ def test_the_pdf_is_kept_when_only_the_page_images_fail(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from coscribe.tools import _thumbnail
+    from evals import libreoffice
 
     def make_pdf(path: Path, out_dir: Path) -> Path:
         pdf = out_dir / "d.pdf"
@@ -231,7 +232,7 @@ def test_the_pdf_is_kept_when_only_the_page_images_fail(
     def no_images(*args: Any) -> list[Path]:
         raise RuntimeError("no renderer")
 
-    monkeypatch.setattr(_thumbnail, "_convert_to_pdf", make_pdf)
+    monkeypatch.setattr(libreoffice, "convert_to_pdf", make_pdf)
     monkeypatch.setattr(_thumbnail, "_render_pdf_pages", no_images)
 
     result = pptx_checks.render_deck(tmp_path / "d.pptx", tmp_path / "out")

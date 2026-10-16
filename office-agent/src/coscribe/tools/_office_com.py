@@ -15,7 +15,7 @@ import sys
 import threading
 from pathlib import Path
 
-from ._office_bins import run_soffice
+from ._office_bins import run_killable
 
 # The program that opens each type, Microsoft's name first, then WPS's.
 _PROGRAMS: dict[str, tuple[str, ...]] = {
@@ -121,7 +121,7 @@ def convert(source: Path, target: Path, to_format: str, timeout: float) -> str |
     }
     with _LOCK:
         try:
-            run_soffice(command, timeout, env=env)
+            run_killable(command, timeout, env=env)
         except subprocess.TimeoutExpired:
             raise ValueError(f"{prog_id} took too long to convert this file.") from None
         except (subprocess.CalledProcessError, OSError) as error:

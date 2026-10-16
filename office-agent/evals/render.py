@@ -10,11 +10,13 @@ from typing import Any
 def render_pages(path: Path, out_dir: Path) -> dict[str, Any]:
     """The file as one PNG per page (`page-01.png`...) through LibreOffice; `pdf` is kept
     for the overflow check."""
-    from coscribe.tools._thumbnail import _convert_to_pdf, _render_pdf_pages
+    from coscribe.tools._thumbnail import _render_pdf_pages
+
+    from .libreoffice import convert_to_pdf
 
     out_dir.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="coscribe_eval_") as scratch:
-        pdf = _convert_to_pdf(path, Path(scratch))
+        pdf = convert_to_pdf(path, Path(scratch))
         if pdf is None:
             return {"ok": False, "reason": "LibreOffice did not produce a PDF", "pages": []}
         kept_pdf = out_dir / "deck.pdf"

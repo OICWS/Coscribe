@@ -6,13 +6,13 @@ sandboxing, same shape (a toolkit class + a ``build_*_tools`` factory).
 Unlike docx/pdf/xlsx, ``python-pptx`` (the library used here) hasn't had a
 release since August 2024 -- it's the standard, complete-enough library for
 this, not a "mature and audited" pick like the others. And unlike every
-other tool in this package, ``write_pptx`` optionally shells out to headless
-LibreOffice (``soffice``) to render the deck to PDF and flag text that
+other tool in this package, ``write_pptx`` optionally has the office program
+installed draw the deck as a PDF (decision 0012) and flags text that
 overflows its slide bounds -- the single most common visual defect,
 per Anthropic's own published pptx Skill notes (see ``ARCHITECTURE.md`` for
 why we don't use that Skill directly: it's script-driven, and coscribe
 has no code-execution tool). This is a *diagnostic*, not a requirement --
-``soffice`` missing, timing out, or failing to convert just means the write
+no office program, a timeout or a failed conversion just means the write
 still succeeds with ``overflow_warnings: []`` and a ``qa_skipped_reason``
 explaining why.
 

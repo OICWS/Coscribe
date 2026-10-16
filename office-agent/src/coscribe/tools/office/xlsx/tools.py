@@ -85,7 +85,7 @@ def build_spreadsheet_tools(
         calls); writing an existing `sheet_name` replaces its content only
         if `overwrite=True`, otherwise raises.
 
-        The response's `preview_path` (when LibreOffice is installed) names
+        The response's `preview_path` (when the file can be drawn) names
         a rendered thumbnail of `sheet_name` the user can see in the chat
         UI -- not something to fetch or parse yourself.
 
@@ -180,7 +180,7 @@ def build_spreadsheet_tools(
         `"line"`, or `"pie"` -- a pie chart takes exactly one data column (a
         second series has no meaningful rendering as pie slices).
 
-        The response's `preview_path` (when LibreOffice is installed) names
+        The response's `preview_path` (when the file can be drawn) names
         a rendered thumbnail the user can see in the chat UI -- not
         something to fetch or parse yourself.
 
@@ -394,7 +394,7 @@ def build_spreadsheet_tools(
         recalculates the workbook the same way `write_xlsx`
         does -- see the response's `recalc_status`/`total_errors`.
 
-        The response's `preview_path` (when LibreOffice is installed) names
+        The response's `preview_path` (when the file can be drawn) names
         a rendered thumbnail of `sheet_name` the user can see in the chat
         UI -- not something to fetch or parse yourself.
 

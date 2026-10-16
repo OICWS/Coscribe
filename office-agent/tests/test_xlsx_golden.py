@@ -26,7 +26,6 @@ from pathlib import Path
 
 import pytest
 
-from coscribe.tools import _thumbnail
 from coscribe.tools.office.xlsx import build_spreadsheet_tools
 
 from .pptx_canonical import canonical_parts
@@ -271,13 +270,6 @@ def build_book(name: str, root: Path) -> Path:
     root.mkdir(parents=True, exist_ok=True)
     BOOKS[name](_tools(root))
     return root / FILE
-
-
-@pytest.fixture(autouse=True)
-def _no_libreoffice(monkeypatch: pytest.MonkeyPatch) -> None:
-    # The preview thumbnail starts LibreOffice; without it the tests are fast and the same on
-    # machines with and without it.
-    monkeypatch.setattr(_thumbnail, "find_soffice", lambda: None)
 
 
 # The theme, the content types and the package relationships are the same in every workbook.

@@ -167,7 +167,7 @@ class TemplateToolsMixin(ToolkitBase):
         qa_skipped_reason: str | None = None
         pdf_path = th.render_to_pdf(file_path)
         if pdf_path is None:
-            qa_skipped_reason = "LibreOffice (soffice) not found or conversion failed"
+            qa_skipped_reason = "no office program to draw the deck, or it failed"
         else:
             try:
                 overflow_warnings = check_overflow(pdf_path)
@@ -284,7 +284,7 @@ class TemplateToolsMixin(ToolkitBase):
         qa_skipped_reason: str | None = None
         pdf_path = th.render_to_pdf(file_path)
         if pdf_path is None:
-            qa_skipped_reason = "LibreOffice (soffice) not found or conversion failed"
+            qa_skipped_reason = "no office program to draw the deck, or it failed"
         else:
             try:
                 overflow_warnings = check_overflow(pdf_path)
@@ -483,7 +483,7 @@ class TemplateToolsMixin(ToolkitBase):
         qa_skipped_reason: str | None = None
         pdf_path = th.render_to_pdf(file_path)
         if pdf_path is None:
-            qa_skipped_reason = "LibreOffice (soffice) not found or conversion failed"
+            qa_skipped_reason = "no office program to draw the deck, or it failed"
         else:
             try:
                 overflow_warnings = check_overflow(pdf_path)
