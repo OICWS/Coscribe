@@ -8,6 +8,7 @@
   <Override ContentType="application/vnd.openxmlformats-package.core-properties+xml" PartName="/docProps/core.xml"/>
   <Override ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml" PartName="/word/document.xml"/>
   <Override ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml" PartName="/word/fontTable.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml" PartName="/word/footer1.xml"/>
   <Override ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml" PartName="/word/numbering.xml"/>
   <Override ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml" PartName="/word/settings.xml"/>
   <Override ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml" PartName="/word/styles.xml"/>
@@ -50,13 +51,14 @@
   <Relationship Id="rId8" Target="theme/theme1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"/>
   <Relationship Id="rId1" Target="../customXml/item1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml"/>
   <Relationship Id="rId2" Target="numbering.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering"/>
+  <Relationship Id="rId9" Target="footer1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer"/>
 </Relationships>
 ===== word/document.xml
 <w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:mo="http://schemas.microsoft.com/office/mac/office/2008/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:mv="urn:schemas-microsoft-com:mac:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk" xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" mc:Ignorable="w14 wp14">
   <w:body>
     <w:p>
       <w:pPr>
-        <w:pStyle w:val="Heading1"/>
+        <w:pStyle w:val="Title"/>
       </w:pPr>
       <w:r>
         <w:t>季度报告</w:t>
@@ -86,13 +88,13 @@
     </w:p>
     <w:tbl>
       <w:tblPr>
-        <w:tblStyle w:val="TableGrid"/>
+        <w:tblStyle w:val="ReportTable"/>
         <w:tblW w:type="auto" w:w="0"/>
-        <w:tblLook w:firstColumn="1" w:firstRow="1" w:lastColumn="0" w:lastRow="0" w:noHBand="0" w:noVBand="1" w:val="04A0"/>
+        <w:tblLook w:firstColumn="0" w:firstRow="1" w:lastColumn="0" w:lastRow="0" w:noHBand="1" w:noVBand="1" w:val="0620"/>
       </w:tblPr>
       <w:tblGrid>
-        <w:gridCol w:w="3961"/>
-        <w:gridCol w:w="4679"/>
+        <w:gridCol w:w="3813"/>
+        <w:gridCol w:w="4493"/>
       </w:tblGrid>
       <w:tr>
         <w:trPr>
@@ -100,7 +102,7 @@
         </w:trPr>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="3961"/>
+            <w:tcW w:type="dxa" w:w="3813"/>
           </w:tcPr>
           <w:p>
             <w:r>
@@ -113,7 +115,7 @@
         </w:tc>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="4679"/>
+            <w:tcW w:type="dxa" w:w="4493"/>
           </w:tcPr>
           <w:p>
             <w:pPr>
@@ -131,7 +133,7 @@
       <w:tr>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="3961"/>
+            <w:tcW w:type="dxa" w:w="3813"/>
           </w:tcPr>
           <w:p>
             <w:r>
@@ -141,7 +143,7 @@
         </w:tc>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="4679"/>
+            <w:tcW w:type="dxa" w:w="4493"/>
           </w:tcPr>
           <w:p>
             <w:pPr>
@@ -155,7 +157,8 @@
       </w:tr>
     </w:tbl>
     <w:sectPr w:rsidR="00FC693F" w:rsidRPr="0006063C" w:rsidSect="00034616">
-      <w:pgSz w:h="15840" w:w="12240"/>
+      <w:footerReference r:id="rId9" w:type="default"/>
+      <w:pgSz w:h="16838" w:w="11906"/>
       <w:pgMar w:bottom="1440" w:footer="720" w:gutter="0" w:header="720" w:left="1800" w:right="1800" w:top="1440"/>
       <w:cols w:space="720"/>
       <w:docGrid w:linePitch="360"/>
@@ -164,12 +167,65 @@
 </w:document>
 ===== word/fontTable.xml
 <same as _shared.txt>
+===== word/footer1.xml
+<w:ftr xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:mo="http://schemas.microsoft.com/office/mac/office/2008/main" xmlns:mv="urn:schemas-microsoft-com:mac:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml" xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" mc:Ignorable="w14 wp14">
+  <w:p>
+    <w:pPr>
+      <w:pStyle w:val="Footer"/>
+      <w:jc w:val="center"/>
+    </w:pPr>
+    <w:r>
+      <w:rPr>
+        <w:color w:val="7F7F7F"/>
+        <w:sz w:val="18"/>
+      </w:rPr>
+      <w:fldChar w:fldCharType="begin"/>
+    </w:r>
+    <w:r>
+      <w:rPr>
+        <w:color w:val="7F7F7F"/>
+        <w:sz w:val="18"/>
+      </w:rPr>
+      <w:instrText xml:space="preserve"> PAGE </w:instrText>
+    </w:r>
+    <w:r>
+      <w:rPr>
+        <w:color w:val="7F7F7F"/>
+        <w:sz w:val="18"/>
+      </w:rPr>
+      <w:fldChar w:fldCharType="separate"/>
+    </w:r>
+    <w:r>
+      <w:rPr>
+        <w:color w:val="7F7F7F"/>
+        <w:sz w:val="18"/>
+      </w:rPr>
+      <w:t>1</w:t>
+    </w:r>
+    <w:r>
+      <w:rPr>
+        <w:color w:val="7F7F7F"/>
+        <w:sz w:val="18"/>
+      </w:rPr>
+      <w:fldChar w:fldCharType="end"/>
+    </w:r>
+  </w:p>
+</w:ftr>
 ===== word/numbering.xml
 <same as _shared.txt>
 ===== word/settings.xml
 <same as _shared.txt>
 ===== word/styles.xml
-<same as _shared.txt>
+<_shared.txt with this diff>
+@@ -4,6 +4,6 @@
+       <w:rPr>
+         <w:rFonts w:ascii="Calibri" w:cs="Calibri" w:eastAsia="Microsoft YaHei" w:hAnsi="Calibri"/>
+-        <w:sz w:val="22"/>
+-        <w:szCs w:val="22"/>
++        <w:sz w:val="21"/>
++        <w:szCs w:val="21"/>
+         <w:lang w:bidi="ar-SA" w:eastAsia="en-US" w:val="en-US"/>
+       </w:rPr>
 ===== word/stylesWithEffects.xml
 <same as _shared.txt>
 ===== word/theme/theme1.xml

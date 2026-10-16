@@ -209,7 +209,7 @@ def test_the_structure_view_shows_what_the_markdown_leaves_out(tmp_path: Path) -
         "contents list (5 entries)",
     ]
     assert "[List Bullet] A laptop on day one." in lines
-    assert any(line.startswith("table 2x2 [Table Grid]: Who | Ext") for line in lines)
+    assert any(line.startswith("table 2x2 [") and line.endswith("]: Who | Ext") for line in lines)
     assert any("+ picture" in line for line in lines)
     assert lines[-1].startswith("section 1: page ") and "header: Acme Ltd" in lines[-1]
     with pytest.raises(ValueError, match="structure"):

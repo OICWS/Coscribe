@@ -212,9 +212,11 @@ def check_headings(document: Document, wanted: list[dict[str, Any]]) -> dict[str
     for spec in wanted:
         for index in range(position, len(have)):
             level, text = have[index]
-            if level == 0 and spec.get("level") != 0:
+            wanted_level = spec.get("level")
+            levels = wanted_level if isinstance(wanted_level, list) else [wanted_level]
+            if level == 0 and 0 not in levels:
                 continue
-            if contains(text, spec["text"]) and spec.get("level", level) == level:
+            if contains(text, spec["text"]) and (wanted_level is None or level in levels):
                 position = index + 1
                 break
         else:

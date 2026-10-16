@@ -81,7 +81,8 @@ class DocxExpect:
     `facts`, `absent`, `allowed_numbers`: as for a deck, over the text a reader sees once
     tracked changes are accepted. `pages`: `[min, max]`, optional.
     `headings`: `{"text", "level"?}`, found in this order among the document's headings (a
-    paragraph in a Title or Heading style; Title is level 0), other headings allowed between.
+    paragraph in a Title or Heading style; Title is level 0, and counts only when `level` names
+    it), other headings allowed between. `level` is one level or a list of them.
     `toc`: a real table-of-contents field is there.
     `tables`: `{"rows_min", "cols_min", "header"?}`, each satisfied by a different table.
     `images_min`; `image_fit`: no picture wider than the text area.

@@ -6,6 +6,20 @@ Deeper guidance for `write_docx`/`read_docx` -- on top of what's already in
 your base instructions (the markdown subset, and the "no partial editing,
 rewrite the whole content and overwrite=True" rule).
 
+## A new document
+
+Without `template_path`, `write_docx` lays the document out itself: fonts
+(including Chinese), heading styles, A4, page numbers, and tables with a
+shaded header row; a last row whose first cell is "Total" or "合计" is set
+bold. Spend the effort on content and structure instead:
+
+- Decide who reads it and what they must see first. The opening says what
+  the document is, for whom, and its point in two lines.
+- `#` once for the title, `##` for sections; put figures a reader compares
+  in a table, not in sentences.
+- Every figure, date and name exactly as in the sources. Add nothing they
+  do not contain: no attendees, roles or budget lines the notes don't give.
+
 ## Changing an existing document's structure
 
 To add a section, a list, a table or a contents list to a user's document,

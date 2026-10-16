@@ -8,6 +8,7 @@ from ..._ooxml_validate import assert_wml_valid
 from ..._thumbnail import render_thumbnail
 from ..toolkit import WorkspaceToolkit
 from ._structure import add_blocks, apply_operations, describe, finish_tocs, summary
+from ._style import TITLE_STYLE, apply_house_style, has_cjk
 from ._xml import (
     _apply_page_setup,
     _build_comments_xml,
@@ -21,6 +22,19 @@ from ._xml import (
     _TrackedDocxHost,
     _write_comments_part,
 )
+
+
+def _title_first_heading(document: Any, written: Any) -> None:
+    """A document that opens with a `#` heading opens with its title: set in the Title style,
+    it stands apart from the section headings and stays out of a contents list."""
+    from docx.oxml.ns import qn
+
+    first = written.elements[0] if written.elements else None
+    style = first.find(f"{qn('w:pPr')}/{qn('w:pStyle')}") if first is not None else None
+    if style is None or style.get(qn("w:val")) != "Heading1":
+        return
+    style.set(qn("w:val"), document.styles[TITLE_STYLE].style_id)
+    written.headings.pop(0)
 
 
 class DocxToolkit(WorkspaceToolkit):
@@ -37,7 +51,10 @@ class DocxToolkit(WorkspaceToolkit):
         if view != "text":
             raise ValueError('view is "text" or "structure"')
         with file_path.open("rb") as docx_file:
-            html = mammoth.convert_to_html(docx_file).value
+            # A document's title reads back as `#`, the way write_docx takes it.
+            html = mammoth.convert_to_html(
+                docx_file, style_map="p[style-name='Title'] => h1:fresh"
+            ).value
         return markdownify(html, heading_style="ATX", bullets="-", table_infer_header=True).strip()
 
     @locked_by_path
@@ -66,11 +83,14 @@ class DocxToolkit(WorkspaceToolkit):
                 _clear_body(document)
         else:
             document = Document()
+            apply_house_style(document, cjk=has_cjk(content))
 
         if page_size or orientation:
             _apply_page_setup(document, page_size, orientation)
         author = change_author if track_changes else None
         written = add_blocks(document, content, author, change_ids)
+        if not template_path:
+            _title_first_heading(document, written)
         # Written only now, so the TOC also lists the headings after its marker.
         has_toc = finish_tocs(document, written.tocs, written.headings, author, change_ids)
         pending_comments = written.comments

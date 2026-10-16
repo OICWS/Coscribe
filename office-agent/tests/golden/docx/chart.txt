@@ -10,6 +10,7 @@
   <Override ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml" PartName="/word/charts/chart1.xml"/>
   <Override ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml" PartName="/word/document.xml"/>
   <Override ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml" PartName="/word/fontTable.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml" PartName="/word/footer1.xml"/>
   <Override ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml" PartName="/word/numbering.xml"/>
   <Override ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml" PartName="/word/settings.xml"/>
   <Override ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml" PartName="/word/styles.xml"/>
@@ -52,7 +53,8 @@
   <Relationship Id="rId8" Target="theme/theme1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"/>
   <Relationship Id="rId1" Target="../customXml/item1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml"/>
   <Relationship Id="rId2" Target="numbering.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering"/>
-  <Relationship Id="rId9" Target="charts/chart1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart"/>
+  <Relationship Id="rId9" Target="footer1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer"/>
+  <Relationship Id="rId10" Target="charts/chart1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart"/>
 </Relationships>
 ===== word/charts/_rels/chart1.xml.rels
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
@@ -188,7 +190,7 @@
   <w:body>
     <w:p>
       <w:pPr>
-        <w:pStyle w:val="Heading1"/>
+        <w:pStyle w:val="Title"/>
       </w:pPr>
       <w:r>
         <w:t>Quarterly review</w:t>
@@ -232,11 +234,11 @@
       <w:r>
         <w:drawing>
           <wp:inline distB="0" distL="0" distR="0" distT="0">
-            <wp:extent cx="5486400" cy="2926080"/>
+            <wp:extent cx="5274310" cy="2926080"/>
             <wp:docPr id="1" name="Chart 1"/>
             <a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
               <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart">
-                <c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" r:id="rId9"/>
+                <c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" r:id="rId10"/>
               </a:graphicData>
             </a:graphic>
           </wp:inline>
@@ -277,7 +279,8 @@
       </w:r>
     </w:p>
     <w:sectPr w:rsidR="00FC693F" w:rsidRPr="0006063C" w:rsidSect="00034616">
-      <w:pgSz w:h="15840" w:w="12240"/>
+      <w:footerReference r:id="rId9" w:type="default"/>
+      <w:pgSz w:h="16838" w:w="11906"/>
       <w:pgMar w:bottom="1440" w:footer="720" w:gutter="0" w:header="720" w:left="1800" w:right="1800" w:top="1440"/>
       <w:cols w:space="720"/>
       <w:docGrid w:linePitch="360"/>
@@ -737,6 +740,50 @@
 </worksheet>
 ===== word/fontTable.xml
 <same as _shared.txt>
+===== word/footer1.xml
+<w:ftr xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:mo="http://schemas.microsoft.com/office/mac/office/2008/main" xmlns:mv="urn:schemas-microsoft-com:mac:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml" xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" mc:Ignorable="w14 wp14">
+  <w:p>
+    <w:pPr>
+      <w:pStyle w:val="Footer"/>
+      <w:jc w:val="center"/>
+    </w:pPr>
+    <w:r>
+      <w:rPr>
+        <w:color w:val="7F7F7F"/>
+        <w:sz w:val="18"/>
+      </w:rPr>
+      <w:fldChar w:fldCharType="begin"/>
+    </w:r>
+    <w:r>
+      <w:rPr>
+        <w:color w:val="7F7F7F"/>
+        <w:sz w:val="18"/>
+      </w:rPr>
+      <w:instrText xml:space="preserve"> PAGE </w:instrText>
+    </w:r>
+    <w:r>
+      <w:rPr>
+        <w:color w:val="7F7F7F"/>
+        <w:sz w:val="18"/>
+      </w:rPr>
+      <w:fldChar w:fldCharType="separate"/>
+    </w:r>
+    <w:r>
+      <w:rPr>
+        <w:color w:val="7F7F7F"/>
+        <w:sz w:val="18"/>
+      </w:rPr>
+      <w:t>1</w:t>
+    </w:r>
+    <w:r>
+      <w:rPr>
+        <w:color w:val="7F7F7F"/>
+        <w:sz w:val="18"/>
+      </w:rPr>
+      <w:fldChar w:fldCharType="end"/>
+    </w:r>
+  </w:p>
+</w:ftr>
 ===== word/numbering.xml
 <same as _shared.txt>
 ===== word/settings.xml

@@ -14,6 +14,7 @@ from ..._native_docx_tracks import _constants as _tracks_constants
 from ..._native_docx_tracks.tracks import TracksMixin, _resolve
 from ..markdown_blocks import Block, parse_inline_runs
 from ..table_layout import _numeric_columns, _table_layout
+from ._style import TABLE_STYLE_ID, is_total_row, set_table_look
 
 _MC_IGNORABLE = "{http://schemas.openxmlformats.org/markup-compatibility/2006}Ignorable"
 
@@ -52,6 +53,13 @@ def _docx_body_font_pt(document: Any) -> float:
     return 11.0
 
 
+def _house_table_style(document: Any) -> Any:
+    for style in document.styles:
+        if style.style_id == TABLE_STYLE_ID:
+            return style
+    return None
+
+
 def _fill_docx_table(document: Any, block: Block) -> None:
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.oxml import OxmlElement
@@ -60,7 +68,8 @@ def _fill_docx_table(document: Any, block: Block) -> None:
     rows = block.rows
     n_cols = max(len(row) for row in rows)
     table = document.add_table(rows=len(rows), cols=n_cols)
-    table.style = "Table Grid"
+    house_style = _house_table_style(document)
+    table.style = house_style or "Table Grid"
     body_size = _docx_body_font_pt(document)
     # 10 and 9 pt are 五号/小五, the usual sizes of a Chinese report's tables.
     sizes = [body_size] + [size for size in (10.0, 9.0) if size < body_size]
@@ -89,8 +98,12 @@ def _fill_docx_table(document: Any, block: Block) -> None:
                     run.font.size = Pt(font_size)
             if numeric[col_index]:
                 paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    first_tr = table.rows[0]._tr  # noqa: SLF001
+    if house_style is not None:
+        last_row = len(rows) > 2 and is_total_row(rows[-1])
+        set_table_look(first_tr.getparent(), first_row=block.header, last_row=last_row)
     if block.header:
-        tr_pr = table.rows[0]._tr.get_or_add_trPr()  # noqa: SLF001
+        tr_pr = first_tr.get_or_add_trPr()
         tr_pr.append(OxmlElement("w:tblHeader"))
 
 

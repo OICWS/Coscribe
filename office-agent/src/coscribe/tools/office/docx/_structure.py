@@ -45,6 +45,7 @@ def add_blocks(
     existing = set(body)
     written = Written()
     previous_kind = ""
+    list_num: int | None = None
     for block in parse_blocks(content):
         paragraph = None
         if block.kind == "heading":
@@ -57,6 +58,10 @@ def add_blocks(
         elif block.kind == "number":
             paragraph = document.add_paragraph(style="List Number")
             _add_inline_runs(paragraph, block.text)
+            if previous_kind != "number":
+                list_num = _restarted_numbering(document, paragraph)
+            if list_num is not None:
+                paragraph._p.get_or_add_pPr().get_or_add_numPr().get_or_add_numId().val = list_num
         elif block.kind == "toc":
             written.tocs.append(_add_toc(document))
         elif block.kind == "table" and block.rows:
@@ -79,6 +84,23 @@ def add_blocks(
             written.comments.append((paragraph._p, block.comment))
     written.elements = [child for child in body if child not in existing]
     return written
+
+
+def _restarted_numbering(document: Any, paragraph: Any) -> int | None:
+    """A new numbering instance for a numbered list, restarting at 1: every List Number
+    paragraph shares the style's one instance, so a second list would go on counting from
+    where the first stopped."""
+    from docx.oxml.ns import qn
+
+    num_pr = paragraph.style.element.find(f"{qn('w:pPr')}/{qn('w:numPr')}")
+    num_id = num_pr.find(qn("w:numId")) if num_pr is not None else None
+    if num_id is None:
+        return None
+    numbering = document.part.numbering_part.element
+    abstract = numbering.num_having_numId(int(num_id.get(qn("w:val")))).abstractNumId.val
+    num = numbering.add_num(abstract)
+    num.add_lvlOverride(ilvl=0).add_startOverride(1)
+    return int(num.numId)
 
 
 def finish_tocs(

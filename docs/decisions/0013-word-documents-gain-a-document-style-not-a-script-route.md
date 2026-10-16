@@ -1,6 +1,6 @@
 # 0013: Word documents gain a document style, not a script route
 
-Status: proposed (2026-10-16). Evidence: `docs/assessments/2026-10-16-word-quality.md`.
+Status: accepted (2026-10-16, by the maintainer). Evidence: `docs/assessments/2026-10-16-word-quality.md`.
 
 ## Context
 On ten Word tasks, two rounds, judged blind, a new document written whole by one python-docx
