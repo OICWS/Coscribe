@@ -104,8 +104,10 @@ Last reviewed: 2026-10-15.
    Word research done (`docs/assessments/2026-10-16-word-quality.md`): a document written whole by
    a script scored 4.2-4.3 on design against 3.7-3.9 for `write_docx`, with content level; the gap
    is layout `write_docx` cannot set (a shaded table header, an East Asian font, heading styles,
-   page numbers), and the script route added facts and costs more. Next: a document style for
-   `write_docx`, compiled onto real Word styles (#325, decision 0013, proposed); the edit tools stay.
+   page numbers), and the script route added facts and costs more. A new document without a
+   template gets a house style compiled onto real Word styles (#325, decision 0013): design 4.0-4.2
+   against 3.7 in the same judging, content no lower, cheaper; the gate's 4.2 design was missed by
+   0.1 and the maintainer accepted it. Open: the open tasks' layout (09, 10).
    Restructuring a user's document (insert a section, a list, a table or a contents list; move or
    delete a section) is one `edit_docx_structure` call (#329): on task 07 about half the time and
    cost of the scripts it replaced. With `read_docx(view="structure")` (#331) the model checks a
