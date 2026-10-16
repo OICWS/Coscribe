@@ -116,8 +116,8 @@ Last reviewed: 2026-10-15.
    the same is the better one.
    Viewing the files a run produced, inside the app (Word review with its comments, slides,
    sheets): designs reviewed by the maintainer 2026-10-16. First the window's panels: the panel
-   switches moved into the title bar (done), then several panels open at once, arranged by
-   dragging (next), then the viewers as panels.
+   switches moved into the title bar (done), several panels open at once, arranged by
+   dragging (#334, done), then the viewers as panels (next).
 
 1. **Make the repository easy to join** (governance review, 2026-10-08).
    - Done: `main` protected by a ruleset (PR only, squash, `test` required),

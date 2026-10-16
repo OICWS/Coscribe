@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { CloseIcon } from "./icons";
 import { isElectron } from "../lib/electron";
 import { DesktopBrowserPanel } from "./DesktopBrowserPanel";
-import { usePanelWidth } from "../lib/usePanelWidth";
+import { useDockPanel } from "./dock/dockContext";
 
 import { PickedPreview, type BrowserCapture, type PickedElement } from "./PickedPreview";
 
@@ -79,10 +79,8 @@ function remoteViewportSize(): { width: number; height: number } {
  * automatically (see the ResizeObserver effect below), the same path
  * that already keeps it in sync with the window being resized. */
 function ScreencastBrowserPanel({
-  onClose,
   onSendToChat,
 }: {
-  onClose: () => void;
   onSendToChat: (capture: BrowserCapture) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -139,7 +137,7 @@ function ScreencastBrowserPanel({
   const [picked, setPicked] = useState<PickedElement | null>(null);
   const [canvasSize, setCanvasSize] = useState(canvasSizeRef.current);
   const [hoverElement, setHoverElement] = useState<HoveredElement | null>(null);
-  const { width: panelWidth, onResizeHandleMouseDown } = usePanelWidth();
+  const dock = useDockPanel();
 
   useEffect(() => {
     statusRef.current = status;
@@ -277,9 +275,8 @@ function ScreencastBrowserPanel({
   // onCanvasClick sent mousePressed immediately followed by
   // mouseReleased on every click -- there was no way for a drag to ever
   // exist as far as the remote page's own event handling was concerned,
-  // click or not. Fixed the same way the panel's own resize-handle drag
-  // (onResizeHandleMouseDown, above) already works: mousedown starts it,
-  // a window-level mouseup (not just the canvas's own) ends it so a drag
+  // click or not. Fixed the way any drag that may leave its element
+  // works: mousedown starts it, a window-level mouseup (not just the canvas's own) ends it so a drag
   // that leaves the canvas mid-gesture still completes correctly, same
   // as a real OS would report it.
   const mouseDownRef = useRef(false);
@@ -471,22 +468,10 @@ function ScreencastBrowserPanel({
   }
 
   return (
-    <div
-      className="relative flex h-full shrink-0 flex-col border-l border-[var(--border)] bg-[var(--panel-bg)]"
-      style={{ width: panelWidth }}
-    >
-      <div
-        onMouseDown={onResizeHandleMouseDown}
-        title="Drag to resize"
-        className="absolute -left-1 top-0 z-10 h-full w-2 cursor-col-resize hover:bg-[var(--accent)]/40"
-      />
-      <div className="flex items-center gap-2 border-b border-[var(--border)] px-3 py-2.5">
+    <div className="relative flex h-full min-h-0 flex-col">
+      <div className="flex h-11 shrink-0 items-center gap-2 border-b border-[var(--border)] pl-3.5 pr-2" {...dock.headerProps}>
         <span className="text-sm font-medium">Browser</span>
-        <div className="ml-auto flex items-center gap-1">
-          <button type="button" className="text-[var(--muted)] hover:text-[var(--fg)]" title="Close" onClick={onClose}>
-            <CloseIcon className="h-4 w-4" />
-          </button>
-        </div>
+        <div className="ml-auto flex items-center gap-0.5">{dock.controls}</div>
       </div>
 
         <>
@@ -634,19 +619,17 @@ function ScreencastBrowserPanel({
  * in a plain browser tab, a screencast of a headless browser instead. */
 export function BrowserPanel({
   threadId,
-  onClose,
   onSendToChat,
   onStopAgent,
 }: {
   threadId: string;
-  onClose: () => void;
   onSendToChat: (capture: BrowserCapture) => void;
   onStopAgent: () => void;
 }) {
   if (isElectron()) {
-    return <DesktopBrowserPanel threadId={threadId} onClose={onClose} onSendToChat={onSendToChat} onStopAgent={onStopAgent} />;
+    return <DesktopBrowserPanel threadId={threadId} onSendToChat={onSendToChat} onStopAgent={onStopAgent} />;
   }
-  return <ScreencastBrowserPanel onClose={onClose} onSendToChat={onSendToChat} />;
+  return <ScreencastBrowserPanel onSendToChat={onSendToChat} />;
 }
 
 function drawFrame(canvas: HTMLCanvasElement | null, base64Jpeg: string): void {

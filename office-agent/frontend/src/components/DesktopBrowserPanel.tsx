@@ -2,13 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import {
   CloseIcon,
   CursorClickIcon,
-  ExpandIcon,
   ExternalLinkIcon,
   GlobeIcon,
   MoreIcon,
   PlusIcon,
   ReloadIcon,
-  ShrinkIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
   PencilIcon,
@@ -45,7 +43,7 @@ import {
 } from "../lib/electron";
 import { useBackdropOpen } from "../lib/titleBar";
 import { PickedPreview, type BrowserCapture, type PickedElement } from "./PickedPreview";
-import { usePanelWidth } from "../lib/usePanelWidth";
+import { useDockPanel } from "./dock/dockContext";
 
 // Matches the desktop app's own limit (browserPanel.ts's MAX_TABS).
 const MAX_TABS = 9;
@@ -131,12 +129,10 @@ function TabButton({
  * which drives them through the browser_* tools while the user watches. */
 export function DesktopBrowserPanel({
   threadId,
-  onClose,
   onSendToChat,
   onStopAgent,
 }: {
   threadId: string;
-  onClose: () => void;
   onSendToChat: (capture: BrowserCapture) => void;
   onStopAgent: () => void;
 }) {
@@ -152,7 +148,11 @@ export function DesktopBrowserPanel({
   const [annotation, setAnnotation] = useState<PageCapture | null>(null);
   const [permission, setPermission] = useState<BrowserPermissionRequest | null>(null);
   const [allowedSitesOpen, setAllowedSitesOpen] = useState(false);
-  const { width, expanded, toggleExpanded, onResizeHandleMouseDown } = usePanelWidth();
+  const dock = useDockPanel();
+  const repositionRef = useRef<() => void>(() => {});
+  // While panels are dragged or a menu is open the live page, drawn by the
+  // OS above the window, would cover them: a picture of it stands in.
+  const [snapshot, setSnapshot] = useState<string | null>(null);
 
   const active = tabs.find((t) => t.id === activeId) ?? null;
 
@@ -161,7 +161,7 @@ export function DesktopBrowserPanel({
   }, [active?.url, editingAddress]);
 
   // The native view is laid over containerRef's box; it moves whenever
-  // that box does -- the window resizing, the panel being dragged wider,
+  // that box does -- the window resizing, the panel being resized or moved,
   // the sidebar opening.
   useEffect(() => {
     let cancelled = false;
@@ -175,6 +175,7 @@ export function DesktopBrowserPanel({
       const next = rect();
       if (next && !cancelled) void browserPanelReposition(next);
     };
+    repositionRef.current = reposition;
     const stopTabs = onBrowserPanelTabs((payload) => {
       setTabs(payload.tabs);
       setActiveId(payload.activeId);
@@ -203,6 +204,28 @@ export function DesktopBrowserPanel({
       void browserPanelClose();
     };
   }, []);
+
+  // A move to a box of the same size is no resize, so the observer misses it.
+  useEffect(() => repositionRef.current(), [dock.boundsKey]);
+
+  useEffect(() => {
+    if (!dock.frozen) {
+      setSnapshot(null);
+      return;
+    }
+    let live = true;
+    browserPanelCapture()
+      .then((capture) => {
+        if (live) setSnapshot(capture?.dataUrl ?? "");
+      })
+      // No picture: the page area just shows empty while it steps aside.
+      .catch(() => {
+        if (live) setSnapshot("");
+      });
+    return () => {
+      live = false;
+    };
+  }, [dock.frozen]);
 
   useEffect(() => {
     void browserPanelSetPickMode(pickMode);
@@ -239,7 +262,7 @@ export function DesktopBrowserPanel({
   // The live page is a native view drawn over the window; while the
   // drawing layer or any dialog needs that spot, the view steps aside.
   const backdropOpen = useBackdropOpen();
-  const viewHidden = annotation !== null || backdropOpen;
+  const viewHidden = annotation !== null || backdropOpen || dock.hidden || snapshot !== null;
   useEffect(() => {
     void browserPanelSetViewHidden(viewHidden);
   }, [viewHidden, agent]);
@@ -275,18 +298,8 @@ export function DesktopBrowserPanel({
   const showEmptyState = !active || !active.url;
 
   return (
-    <aside
-      aria-label="Browser"
-      className="relative my-2 mr-2 flex shrink-0 flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel-bg)]"
-      style={{ width }}
-    >
-      <div
-        onMouseDown={onResizeHandleMouseDown}
-        title="Drag to resize"
-        className="absolute left-0 top-0 z-10 h-full w-1.5 cursor-col-resize hover:bg-[var(--accent)]/30"
-      />
-
-      <div className="flex h-11 items-center gap-1 px-2">
+    <div className="relative flex h-full min-h-0 flex-col">
+      <div className="flex h-11 shrink-0 items-center gap-1 px-2" {...dock.headerProps}>
         <div
           role="tablist"
           aria-label="Tabs"
@@ -330,18 +343,7 @@ export function DesktopBrowserPanel({
         >
           <MoreIcon className="h-4 w-4" />
         </button>
-        <button
-          type="button"
-          title={expanded ? "Restore size" : "Expand"}
-          aria-label={expanded ? "Restore size" : "Expand"}
-          className={iconButton}
-          onClick={toggleExpanded}
-        >
-          {expanded ? <ShrinkIcon className="h-4 w-4" /> : <ExpandIcon className="h-4 w-4" />}
-        </button>
-        <button type="button" title="Close" aria-label="Close browser" className={iconButton} onClick={onClose}>
-          <CloseIcon className="h-4 w-4" />
-        </button>
+        {dock.controls}
       </div>
 
       <div className="flex h-10 items-center gap-0.5 px-2 pb-1.5">
@@ -490,6 +492,7 @@ export function DesktopBrowserPanel({
 
       <div className="flex min-h-0 flex-1 flex-col px-1.5 pb-1.5">
         <div ref={containerRef} data-testid="browser-page-area" className="relative min-h-0 flex-1 overflow-hidden rounded-lg bg-[var(--bg)]">
+          {snapshot && <img src={snapshot} alt="" className="absolute inset-0 h-full w-full object-cover" />}
           {annotation && <BrowserAnnotator capture={annotation} onClose={stopAnnotating} onSendToChat={onSendToChat} />}
           {showEmptyState && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-6 text-center">
@@ -507,6 +510,6 @@ export function DesktopBrowserPanel({
 
       {allowedSitesOpen && <AllowedSitesDialog onClose={() => setAllowedSitesOpen(false)} />}
       {picked && <PickedPreview picked={picked} onDiscard={() => setPicked(null)} onSendToChat={onSendToChat} />}
-    </aside>
+    </div>
   );
 }

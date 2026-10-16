@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useDockPanel } from "./dock/dockContext";
 import { getThreadActivity, openThreadFile, threadFileDownloadUrl } from "../lib/rest";
 import { formatRunTime, runSourceLabel } from "../lib/runLabels";
 import { toolLabel } from "../lib/toolLabels";
@@ -103,6 +104,7 @@ export function TaskPanel({
     [threadId],
   );
 
+  const dock = useDockPanel();
   const progressItems: ProgressItem[] | null = workflowSteps ?? (activity?.tasks.length ? activity.tasks : null);
 
   const contextEmpty =
@@ -113,24 +115,26 @@ export function TaskPanel({
     activity.skills.length === 0;
 
   return (
-    <aside
-      aria-label="Task details"
-      className="my-2 mr-2 hidden w-[320px] shrink-0 flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] lg:flex"
-    >
-      <div className="px-4 pb-3 pt-3.5">
-        {task ? (
-          <button
-            type="button"
-            className="group flex max-w-full items-center gap-1 text-left text-sm font-medium"
-            onClick={() => onOpenTask(task)}
-            title="Task details"
-          >
-            <span className="truncate">{task.name}</span>
-            <ChevronRightIcon className="h-3.5 w-3.5 shrink-0 text-[var(--muted)] transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
-          </button>
-        ) : (
-          <div className="truncate text-sm font-medium">{title}</div>
-        )}
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="px-4 pb-3 pt-3.5" {...dock.headerProps}>
+        <div className="flex items-center gap-1">
+          <div className="min-w-0 flex-1">
+            {task ? (
+              <button
+                type="button"
+                className="group flex max-w-full items-center gap-1 text-left text-sm font-medium"
+                onClick={() => onOpenTask(task)}
+                title="Task details"
+              >
+                <span className="truncate">{task.name}</span>
+                <ChevronRightIcon className="h-3.5 w-3.5 shrink-0 text-[var(--muted)] transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
+              </button>
+            ) : (
+              <div className="truncate text-sm font-medium">{title}</div>
+            )}
+          </div>
+          <div className="-my-1 -mr-2 flex shrink-0 items-center gap-0.5">{dock.controls}</div>
+        </div>
         {run && (
           <div className="mt-2.5 flex items-center gap-2 rounded-lg bg-[var(--card-bg)] px-2.5 py-2 text-[13px]">
             <RunStatusIcon status={run.status} />
@@ -194,7 +198,7 @@ export function TaskPanel({
           </p>
         </div>
       )}
-    </aside>
+    </div>
   );
 }
 

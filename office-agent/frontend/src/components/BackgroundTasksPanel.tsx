@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useDockPanel } from "./dock/dockContext";
 import { formatElapsed, formatTokenCount } from "../lib/format";
 import {
   type BackgroundEntry,
@@ -26,7 +27,6 @@ import {
   ArrowLeftIcon,
   CheckCircleIcon,
   ChevronRightIcon,
-  CloseIcon,
   StopIcon,
   TrashIcon,
   XCircleIcon,
@@ -401,7 +401,6 @@ interface BackgroundTasksPanelProps {
   /** A run to open, e.g. one that just asked for approval. */
   focusTaskId: string | null;
   onApprove: (id: string, approved: boolean, scope?: "task") => void;
-  onClose: () => void;
 }
 
 /** What this conversation runs in the background: the running ones as cards
@@ -414,7 +413,6 @@ export function BackgroundTasksPanel({
   refreshKey,
   focusTaskId,
   onApprove,
-  onClose,
 }: BackgroundTasksPanelProps) {
   const [entries, setEntries] = useState<BackgroundEntry[]>([]);
   const entriesRef = useRef<BackgroundEntry[]>([]);
@@ -467,14 +465,12 @@ export function BackgroundTasksPanel({
     setEntries(await loadBackgroundEntries(threadId, entriesRef.current));
   };
 
+  const dock = useDockPanel();
   const opened = openId ? entries.find((entry) => entryId(entry) === openId) : undefined;
 
   return (
-    <aside
-      aria-label="Background tasks"
-      className="flex h-full w-[460px] shrink-0 flex-col border-l border-[var(--border)] bg-[var(--bg)] max-md:w-full"
-    >
-      <div className="flex h-12 shrink-0 items-center gap-2 px-3">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex h-12 shrink-0 items-center gap-2 px-3" {...dock.headerProps}>
         {openId && (
           <button
             type="button"
@@ -489,15 +485,7 @@ export function BackgroundTasksPanel({
         <span className="min-w-0 flex-1 truncate px-1 text-[15px]">
           {openId ? (opened?.task.description ?? "Background task") : "Background tasks"}
         </span>
-        <button
-          type="button"
-          title="Close"
-          aria-label="Close"
-          className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
-          onClick={onClose}
-        >
-          <CloseIcon className="h-4 w-4" />
-        </button>
+        {dock.controls}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -579,6 +567,6 @@ export function BackgroundTasksPanel({
           </div>
         )}
       </div>
-    </aside>
+    </div>
   );
 }
