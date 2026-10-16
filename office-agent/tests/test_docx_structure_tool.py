@@ -187,3 +187,38 @@ def test_output_path_leaves_the_original_and_new_tables_match_its_style(tmp_path
             output_path="h2.docx",
             operations=[{"op": "delete_section", "section": "Safety"}],
         )
+
+
+def test_the_structure_view_shows_what_the_markdown_leaves_out(tmp_path: Path) -> None:
+    tools = _tools(tmp_path)
+    document = Document(str(tmp_path / "h.docx"))
+    document.sections[0].header.paragraphs[0].text = "Acme Ltd"
+    document.add_paragraph().add_run().add_picture(str(_png(tmp_path)))
+    document.save(str(tmp_path / "h.docx"))
+    tools["edit_docx_structure"](
+        path="h.docx",
+        operations=[{"op": "insert", "after": "This handbook", "content": "# Contents\n\n[TOC]"}],
+    )
+
+    lines = tools["read_docx"](path="h.docx", view="structure").splitlines()
+
+    assert lines[:4] == [
+        "[Normal] Staff handbook",
+        "[Normal] This handbook sets out how we work.",
+        "[TOC Heading] Contents",
+        "contents list (5 entries)",
+    ]
+    assert "[List Bullet] A laptop on day one." in lines
+    assert any(line.startswith("table 2x2 [Table Grid]: Who | Ext") for line in lines)
+    assert any("+ picture" in line for line in lines)
+    assert lines[-1].startswith("section 1: page ") and "header: Acme Ltd" in lines[-1]
+    with pytest.raises(ValueError, match="structure"):
+        tools["read_docx"](path="h.docx", view="xml")
+
+
+def _png(tmp_path: Path) -> Path:
+    from PIL import Image
+
+    path = tmp_path / "p.png"
+    Image.new("RGB", (40, 20), "white").save(path)
+    return path

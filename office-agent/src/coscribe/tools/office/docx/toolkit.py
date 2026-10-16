@@ -7,7 +7,7 @@ from ..._file_locks import locked_by_path
 from ..._ooxml_validate import assert_wml_valid
 from ..._thumbnail import render_thumbnail
 from ..toolkit import WorkspaceToolkit
-from ._structure import add_blocks, apply_operations, finish_tocs, summary
+from ._structure import add_blocks, apply_operations, describe, finish_tocs, summary
 from ._xml import (
     _apply_page_setup,
     _build_comments_xml,
@@ -25,11 +25,17 @@ from ._xml import (
 
 class DocxToolkit(WorkspaceToolkit):
     @locked_by_path
-    def read_docx(self, path: str) -> str:
+    def read_docx(self, path: str, view: str = "text") -> str:
         import mammoth
         from markdownify import markdownify
 
         file_path = self._check_readable(path)
+        if view == "structure":
+            from docx import Document
+
+            return describe(Document(str(file_path)))
+        if view != "text":
+            raise ValueError('view is "text" or "structure"')
         with file_path.open("rb") as docx_file:
             html = mammoth.convert_to_html(docx_file).value
         return markdownify(html, heading_style="ATX", bullets="-", table_infer_header=True).strip()

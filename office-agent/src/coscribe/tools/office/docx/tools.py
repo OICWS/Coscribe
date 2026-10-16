@@ -11,20 +11,6 @@ from .toolkit import DocxToolkit
 def build_docx_tools(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
     """The Word tools, bound to `toolkit`."""
 
-    def read_docx(path: str) -> str:
-        """Read a Word (.docx) file under the workspace as markdown.
-
-        Headings, lists, tables, links, and bold/italic all come through as
-        their markdown equivalents.
-
-        Args:
-            path: file to read, relative to the workspace root
-        """
-        return cap_read_output(
-            toolkit.read_docx(path=path),
-            "search_files or a script (python-docx) reaches the rest without reading it all",
-        )
-
     def write_docx(
         path: str,
         content: str,
@@ -365,7 +351,7 @@ def build_docx_tools(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
         return toolkit.reject_docx_tracked_changes(path=path, author=author)
 
     return [
-        tool_metadata(read_docx, risk_category="READ", category="documents"),
+        _read_docx_tool(toolkit),
         tool_metadata(write_docx, risk_category="WRITE_LOCAL", category="documents"),
         tool_metadata(add_docx_chart, risk_category="WRITE_LOCAL", category="documents"),
         tool_metadata(add_docx_image, risk_category="WRITE_LOCAL", category="documents"),
@@ -438,3 +424,27 @@ def _edit_docx_structure_tool(toolkit: DocxToolkit) -> Callable[..., Any]:
         )
 
     return tool_metadata(edit_docx_structure, risk_category="WRITE_LOCAL", category="documents")
+
+
+def _read_docx_tool(toolkit: DocxToolkit) -> Callable[..., Any]:
+    """Kept out of `build_docx_tools`, which already holds every other Word tool."""
+
+    def read_docx(path: str, view: str = "text") -> str:
+        """Read a Word (.docx) file under the workspace as markdown.
+
+        Headings, lists, tables, links, and bold/italic all come through as
+        their markdown equivalents. `view="structure"` lists instead each
+        block's style, tables with their style, pictures, contents lists,
+        and each section's page, header and footer: use it to check a
+        document before and after an edit, rather than a script.
+
+        Args:
+            path: file to read, relative to the workspace root
+            view: "text" (markdown) or "structure"
+        """
+        return cap_read_output(
+            toolkit.read_docx(path=path, view=view),
+            "search_files or a script (python-docx) reaches the rest without reading it all",
+        )
+
+    return tool_metadata(read_docx, risk_category="READ", category="documents")

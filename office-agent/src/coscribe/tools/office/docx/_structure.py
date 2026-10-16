@@ -246,6 +246,71 @@ def summary(document: Any) -> dict[str, object]:
     }
 
 
+def describe(document: Any) -> str:
+    """The document's structure as text: one line per top-level block in order (a paragraph's
+    style and the start of its text, a table's size, style and first row, a picture's size, a
+    contents list, a section break), then each section's page, header and footer. What the
+    markdown view leaves out, for checking a document before and after an edit."""
+    from docx.oxml.ns import qn
+
+    def cut(text: str, length: int = 70) -> str:
+        return text if len(text) <= length else text[: length - 1] + "…"
+
+    body = document.element.body
+    names = {style.style_id: style.name or "" for style in document.styles}
+    default = document.styles.default(1).name
+    toc_entries = _toc_result_paragraphs(body)
+    lines: list[str] = []
+    for child in body.iterchildren():
+        if child.tag == qn("w:tbl"):
+            rows = child.findall(qn("w:tr"))
+            columns = max((len(r.findall(qn("w:tc"))) for r in rows), default=0)
+            style = child.find(f"{qn('w:tblPr')}/{qn('w:tblStyle')}")
+            name = names.get(style.get(qn("w:val")), "") if style is not None else "no style"
+            first = " | ".join(
+                "".join(t.text or "" for t in cell.iter(qn("w:t"))).strip()
+                for cell in (rows[0].findall(qn("w:tc")) if rows else [])
+            )
+            lines.append(f"table {len(rows)}x{columns} [{name}]: {cut(first)}")
+            continue
+        if child.tag != qn("w:p"):
+            continue
+        # The field's first paragraph is also its first entry, so it is looked at first.
+        if any("TOC" in (t.text or "") for t in child.iter(qn("w:instrText"))):
+            count = sum(1 for e in toc_entries if e.getparent() is body)
+            lines.append(f"contents list ({count} entries)")
+            continue
+        if child in toc_entries:
+            continue
+        style = child.find(f"{qn('w:pPr')}/{qn('w:pStyle')}")
+        name = names.get(style.get(qn("w:val")), "") if style is not None else default
+        text = "".join(t.text or "" for t in child.iter(qn("w:t"))).strip()
+        line = f"[{name}] {cut(text)}" if text else f"[{name}] (empty)"
+        for extent in child.iter(
+            "{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}extent"
+        ):
+            width, height = (int(extent.get(k, "0")) / 360000 for k in ("cx", "cy"))
+            line += f" + picture {width:.1f}x{height:.1f} cm"
+        if (
+            child.find(f".//{qn('w:ins')}") is not None
+            or child.find(f".//{qn('w:del')}") is not None
+        ):
+            line += " (tracked changes)"
+        if child.find(f"{qn('w:pPr')}/{qn('w:sectPr')}") is not None:
+            line += " -- section break"
+        lines.append(line)
+    for number, section in enumerate(document.sections, start=1):
+        width = (section.page_width or 0) / 360000
+        height = (section.page_height or 0) / 360000
+        header = " / ".join(p.text for p in section.header.paragraphs if p.text) or "(none)"
+        footer = " / ".join(p.text for p in section.footer.paragraphs if p.text) or "(none)"
+        lines.append(
+            f"section {number}: page {width:.1f}x{height:.1f} cm; header: {header}; "
+            f"footer: {footer}"
+        )
+    return "\n".join(lines)
+
+
 def apply_operations(
     document: Any,
     operations: list[dict[str, str]],
