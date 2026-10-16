@@ -6,6 +6,7 @@ from __future__ import annotations
 import datetime as dt
 import zipfile
 from pathlib import Path
+from typing import Any
 
 import pytest
 from openpyxl import Workbook, load_workbook
@@ -317,3 +318,200 @@ def test_an_edit_reports_values_from_a_recalculated_copy(tmp_path: Path) -> None
 
     assert report["formula_results"] == {"Data!B5": 1900}
     assert load_workbook(path, data_only=True)["Data"]["B5"].value is None
+
+
+# --- the tools ---------------------------------------------------------------------------
+
+
+def _block_tools(root: Path) -> dict[str, Any]:
+    from coscribe.tools.office.xlsx import build_spreadsheet_tools
+
+    return {tool.__name__: tool for tool in build_spreadsheet_tools(root)}
+
+
+def test_a_csv_is_copied_into_a_block_with_numbers_as_numbers(tmp_path: Path) -> None:
+    (tmp_path / "data.csv").write_text("Region,Sales\nEast,1200\nWest,980.5\n", encoding="utf-8")
+
+    report = _block_tools(tmp_path)["write_xlsx_cells"](
+        path="out/book.xlsx", blocks=[{"sheet": "Data", "from_csv": "data.csv"}]
+    )
+
+    sheet = load_workbook(tmp_path / "out" / "book.xlsx")["Data"]
+    assert report["path"] == "out/book.xlsx"
+    assert [[c.value for c in row] for row in sheet.iter_rows()] == [
+        ["Region", "Sales"],
+        ["East", 1200],
+        ["West", 980.5],
+    ]
+
+
+def test_the_tools_stay_inside_the_workspace(tmp_path: Path) -> None:
+    tools = _block_tools(tmp_path / "ws")
+
+    with pytest.raises(Exception, match="outside|not allowed|workspace"):
+        tools["write_xlsx_cells"](path="../escape.xlsx", blocks=[{"sheet": "S", "rows": [[1]]}])
+    with pytest.raises(Exception, match="outside|not allowed|workspace"):
+        tools["write_xlsx_cells"](path="a.xlsx", blocks=[{"sheet": "S", "from_csv": "../x.csv"}])
+
+
+def test_every_series_of_a_chart_gets_a_colour_so_none_is_drawn_invisibly(tmp_path: Path) -> None:
+    path = _table(tmp_path / "t.xlsx")
+
+    modify_workbook(
+        path,
+        [{"op": "chart", "sheet": "Data", "kind": "line", "source": "A1:B4", "at": "E2"}],
+    )
+
+    with zipfile.ZipFile(path) as archive:
+        chart = archive.read("xl/charts/chart1.xml").decode()
+    assert "1F4E79" in chart
+
+
+def test_without_libreoffice_an_edit_promises_no_computed_values(tmp_path: Path) -> None:
+    path = _table(tmp_path / "t.xlsx")
+
+    edited = write_cells(
+        path, [{"sheet": "Data", "at": "A5", "like_row": 4, "rows": [["Gym", 45]]}]
+    )
+
+    assert edited["recalc"]["status"] == "skipped" and "note" not in edited
+
+
+@pytest.mark.real_libreoffice
+def test_an_edit_says_why_the_file_has_no_computed_values(tmp_path: Path) -> None:
+    if not _libreoffice(tmp_path):
+        pytest.skip("LibreOffice is not usable here")
+    path = _table(tmp_path / "t.xlsx")
+
+    edited = write_cells(path, [{"sheet": "Data", "at": "B5", "rows": [["=SUM(B2:B4)"]]}])
+    new = write_cells(tmp_path / "n.xlsx", [{"sheet": "S", "rows": [[1]]}])
+
+    assert "recalc_xlsx" in edited["note"] and "note" not in new
+
+
+def test_reading_a_workbook_shows_its_layout(tmp_path: Path) -> None:
+    from coscribe.tools.office.xlsx.toolkit import SpreadsheetToolkit
+
+    path = _table(tmp_path / "t.xlsx")
+    write_cells(path, [{"sheet": "Data", "at": "C2", "rows": [["=B2*2"]], "fill_down_to": 4}])
+    modify_workbook(path, [{"op": "freeze", "sheet": "Data", "at": "A2"}])
+
+    text = SpreadsheetToolkit(tmp_path).read_xlsx("t.xlsx")
+
+    assert "header row 1 (bold)" in text and "frozen at A2" in text
+    assert 'B2:B4 format "$"#,##0' in text
+    assert "C2:C4; 3 formulas, first C2 =B2*2" in text
+
+
+def test_data_labels_show_the_value_only(tmp_path: Path) -> None:
+    path = _table(tmp_path / "t.xlsx")
+
+    modify_workbook(
+        path,
+        [
+            {
+                "op": "chart",
+                "sheet": "Data",
+                "kind": "column",
+                "source": "A1:B4",
+                "at": "E2",
+                "labels": True,
+            }
+        ],
+    )
+
+    with zipfile.ZipFile(path) as archive:
+        chart = archive.read("xl/charts/chart1.xml").decode()
+    assert '<showVal val="1"/>' in chart and '<showSerName val="0"/>' in chart
+    assert '<showCatName val="0"/>' in chart
+
+
+def _chart_xml(path: Path) -> str:
+    with zipfile.ZipFile(path) as archive:
+        return archive.read("xl/charts/chart1.xml").decode()
+
+
+def test_a_line_series_is_coloured_on_its_line_and_every_series_gets_a_colour(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "c.xlsx"
+    header = ["Month", *[f"S{i}" for i in range(10)]]
+    write_cells(path, [{"sheet": "S", "rows": [header, ["Jan", *range(10)], ["Feb", *range(10)]]}])
+
+    modify_workbook(
+        path,
+        [
+            {
+                "op": "chart",
+                "sheet": "S",
+                "kind": "line",
+                "source": "A1:K3",
+                "at": "A6",
+                "colors": ["111111"],
+            }
+        ],
+    )
+
+    chart = _chart_xml(path)
+    assert chart.count("<a:ln") >= 10 and '<a:solidFill><a:srgbClr val="111111"' in chart
+    assert chart.count("srgbClr") >= 10
+    assert "1F4E79" not in chart.split("111111")[0]
+
+
+def test_a_pie_takes_the_callers_colours_slice_by_slice(tmp_path: Path) -> None:
+    path = _table(tmp_path / "t.xlsx")
+
+    modify_workbook(
+        path,
+        [
+            {
+                "op": "chart",
+                "sheet": "Data",
+                "kind": "pie",
+                "source": "A1:B4",
+                "at": "E2",
+                "colors": ["AA0000", "00AA00", "0000AA"],
+            }
+        ],
+    )
+
+    chart = _chart_xml(path)
+    assert chart.count("<dPt>") == 3 and "00AA00" in chart
+
+
+def test_a_csv_keeps_its_blank_lines_reads_gbk_and_never_runs_a_formula(tmp_path: Path) -> None:
+    (tmp_path / "d.csv").write_bytes('区域,备注\n华东,=HYPERLINK("x")\n\n华南,1\n'.encode("gbk"))
+
+    _block_tools(tmp_path)["write_xlsx_cells"](
+        path="b.xlsx", blocks=[{"sheet": "S", "from_csv": "d.csv"}]
+    )
+
+    sheet = load_workbook(tmp_path / "b.xlsx")["S"]
+    assert sheet["B2"].value == '=HYPERLINK("x")' and sheet["B2"].data_type == "s"
+    assert sheet["A3"].value is None and sheet["A4"].value == "华南" and sheet["B4"].value == 1
+
+
+def test_a_block_gives_rows_or_a_csv_not_both(tmp_path: Path) -> None:
+    (tmp_path / "d.csv").write_text("a\n1\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="not both"):
+        _block_tools(tmp_path)["write_xlsx_cells"](
+            path="b.xlsx", blocks=[{"sheet": "S", "from_csv": "d.csv", "rows": [["a"]]}]
+        )
+
+
+def test_the_layout_of_a_sheet_without_values_or_with_a_theme_fill_reads(tmp_path: Path) -> None:
+    from openpyxl.styles import PatternFill
+    from openpyxl.styles.colors import Color
+
+    from coscribe.tools.office.xlsx.toolkit import SpreadsheetToolkit
+
+    book = Workbook()
+    book.active["B3"].fill = PatternFill("solid", fgColor=Color(theme=4))
+    book.create_sheet("T")["A1"] = "Head"
+    book["T"]["A1"].fill = PatternFill("solid", fgColor=Color(theme=4))
+    book.save(tmp_path / "x.xlsx")
+
+    text = SpreadsheetToolkit(tmp_path).read_xlsx("x.xlsx")
+
+    assert "fill theme colour 4" in text

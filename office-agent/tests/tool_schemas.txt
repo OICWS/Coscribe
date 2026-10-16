@@ -1,7 +1,7 @@
 # The model is sent: the system prompt, then the tools bound to it (decision 0001).
 # A change here is a change to what providers cache. UPDATE_TOOL_SCHEMAS=1 rewrites it.
 
-system prompt: 34263 chars, ~8565 tokens, sha256 5c65a2ec8f
+system prompt: 33589 chars, ~8397 tokens, sha256 4365604a1f
 
 bound to the model: 22 tools, ~4852 tokens
   ask_user_question (questions:array) desc 1435 chars sha256 e846e64163
@@ -18,7 +18,7 @@ bound to the model: 22 tools, ~4852 tokens
   read_xlsx (path:string, sheet?:string|null) desc 548 chars sha256 299925b715
   revise_workflow (draft_id?:string, request:string, task_id?:string) desc 632 chars sha256 bb65f01516
   search_files (path?:string, pattern?:string, query:string, regex?:boolean) desc 1842 chars sha256 f741658379
-  search_tools (query:string) desc 1807 chars sha256 79152e7afb
+  search_tools (query:string) desc 1808 chars sha256 5035d715fe
   task_create (content:string) desc 149 chars sha256 dea506b85f
   task_list () desc 54 chars sha256 7bc88160db
   task_update (status:string, task_id:string) desc 284 chars sha256 e5aa5260b7
@@ -27,7 +27,7 @@ bound to the model: 22 tools, ~4852 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 120 tools, ~36976 tokens (the ones not bound are found through search_tools)
+registered: 122 tools, ~38122 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -94,6 +94,7 @@ registered: 120 tools, ~36976 tokens (the ones not bound are found through searc
   load_skill | READ | skills | deferred | sha256 7b0c5ee61e
   merge_pptx_table_cells | WRITE_LOCAL | documents | deferred | sha256 2ab446f2a5
   merge_xlsx_cells | WRITE_LOCAL | documents | deferred | sha256 d2da0f6fab
+  modify_xlsx | WRITE_LOCAL | documents | deferred | sha256 3e15498c5f
   move_file | WRITE_LOCAL | filesystem | deferred | sha256 5dfd1f570c
   pause_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 53a449b0cb
   read_docx | READ | documents | core | sha256 fd1846dc8a
@@ -148,3 +149,4 @@ registered: 120 tools, ~36976 tokens (the ones not bound are found through searc
   write_pdf | WRITE_LOCAL | documents | deferred | sha256 7e516e06d6
   write_pptx | WRITE_LOCAL | documents | deferred | sha256 8a28365217
   write_xlsx | WRITE_LOCAL | documents | deferred | sha256 9061b24236
+  write_xlsx_cells | WRITE_LOCAL | documents | deferred | sha256 1351337f25

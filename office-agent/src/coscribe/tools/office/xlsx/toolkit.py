@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import zipfile
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Optional
@@ -26,6 +27,23 @@ from .helpers import (
     _render_sheet_table,
     _workbook_has_any_formula,
 )
+from .overview import sheet_layout
+
+
+def _formulas_or_none(path: Path) -> Any:
+    """The workbook with its formulas, for the layout; a file openpyxl reads only for its values
+    still reads, without one."""
+    from openpyxl import load_workbook
+
+    try:
+        return load_workbook(str(path))
+    except (KeyError, ValueError, TypeError, AttributeError, OSError, zipfile.BadZipFile):
+        return None
+
+
+def _with_layout(table: str, sheet: Any) -> str:
+    layout = sheet_layout(sheet) if hasattr(sheet, "iter_cols") else ""
+    return f"{table}\n\n{layout}" if layout else table
 
 
 class SpreadsheetToolkit:
@@ -76,15 +94,17 @@ class SpreadsheetToolkit:
 
         file_path = self._check_readable(path)
         workbook = load_workbook(str(file_path), data_only=True)
+        formulas = _formulas_or_none(file_path)
         if sheet is not None:
             if sheet not in workbook.sheetnames:
                 raise ValueError(
                     f"Sheet {sheet!r} not found. Available sheets: {workbook.sheetnames}"
                 )
-            return _render_sheet_table(workbook[sheet])
+            return _with_layout(_render_sheet_table(workbook[sheet]), formulas and formulas[sheet])
         sections = []
         for name in workbook.sheetnames:
-            sections.append(f"## {name}\n\n{_render_sheet_table(workbook[name])}")
+            table = _with_layout(_render_sheet_table(workbook[name]), formulas and formulas[name])
+            sections.append(f"## {name}\n\n{table}")
         return "\n\n".join(sections)
 
     @locked_by_path

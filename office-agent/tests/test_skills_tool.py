@@ -167,7 +167,8 @@ def test_load_builtin_skills_bodies_reference_the_real_tool_names() -> None:
     assert "icon-list" in by_name["PPTX Slides"].body
     assert "layout: svg" in by_name["PPTX Slides"].body
     assert "fill_pptx_template" in by_name["PPTX Slides"].body
-    assert "format_xlsx_cells" in by_name["Excel Spreadsheets"].body
+    assert "write_xlsx_cells" in by_name["Excel Spreadsheets"].body
+    assert "modify_xlsx" in by_name["Excel Spreadsheets"].body
     assert "[TOC]" in by_name["Word Documents"].body
 
 

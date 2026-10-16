@@ -146,22 +146,13 @@ convert_office_file it first (it also exports Word/Excel/PowerPoint files \
 as PDF). For a specific term inside one or more \
 PDFs, use search_pdf instead of read_pdf on the whole document -- it \
 returns matching page numbers without spending context on pages you don't \
-need. Use read_xlsx/write_xlsx for Excel files -- content there is pipe- \
-table rows only (a spreadsheet is a grid, not flowing text, so the heading/ \
-bullet/paragraph subset doesn't apply). write_xlsx's overwrite is scoped to \
-the one sheet you're writing, not the whole file: writing a new sheet_name \
-always appends it, so build a multi-sheet workbook with repeated calls \
-instead of trying to write every sheet at once. write_xlsx/format_xlsx_cells/ \
-add_xlsx_chart cover routine spreadsheet work, but their pipe-table/formula \
-shape can't express a pivot table, a join across sheets, cleaning messy/ \
-inconsistent data, or anything over a few dozen rows (typing thousands of \
-rows as a pipe-table wastes context and doesn't scale) -- reach for \
-run_python_script instead for those: its dedicated environment already has \
-pandas and openpyxl installed, so a script can pd.read_excel() the same \
-file, do real multi-step analysis (groupby, pivot_table, merge, pct_change, \
-whatever the task needs), and write results back with \
-pd.ExcelWriter(..., engine="openpyxl", mode="a") into new sheets of the \
-same workbook -- verified to round-trip cleanly with read_xlsx afterward. \
+need. Excel: read with read_xlsx; build or change a workbook with \
+write_xlsx_cells (blocks of cells with their formulas and styles, a whole \
+table or workbook per call) and modify_xlsx (charts, layout, rules, print \
+setup), after loading the "Excel Spreadsheets" skill. Analysis over large \
+or messy data (groupby, pivots, joins) goes through run_python_script, \
+whose environment has pandas and openpyxl; its results go into the \
+workbook as formulas through those two tools. \
 run_python_script/run_node_script run with no sandbox at all -- a script's \
 reach is the user's own OS account (any file it can read, any network \
 destination it can reach), not scoped to the workspace directory the way \

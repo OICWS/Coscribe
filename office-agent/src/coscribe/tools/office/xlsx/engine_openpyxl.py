@@ -107,6 +107,8 @@ def _put(sheet: Worksheet, row: int, col: int, cell: Cell, block: Block) -> Any:
 
     target = sheet.cell(row, col)
     target.value = cell.value
+    if cell.text:
+        target.data_type = "s"
     if block.like_row is not None:
         _copy_look(sheet.cell(block.like_row, col), target)
     elif block.like is not None:
@@ -128,11 +130,13 @@ def _fill_down(sheet: Worksheet, block: Block) -> list[Any]:
         for row in range(last + 1, (block.fill_down_to or last) + 1):
             target = sheet.cell(row, col)
             value = source.value
-            if isinstance(value, str) and value.startswith("="):
+            if source.data_type == "f" and isinstance(value, str):
                 value = Translator(value, origin=source.coordinate).translate_formula(
                     target.coordinate
                 )
             target.value = value
+            if source.data_type == "s":
+                target.data_type = "s"
             _copy_look(source, target)
             written.append(target)
     return written

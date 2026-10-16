@@ -89,9 +89,9 @@ Last reviewed: 2026-10-15.
    a workbook written whole scored 4.1 on design against 2.8-3.2 for the many-small-tools
    route, at the same cost. Next: a `build_xlsx` tool writing blocks of cells with their
    styles in one call, as Claude for Excel's `set_cell_range` does (part 1 unused, part 2 the
-   skill and the measurement), with print-layout, clipped-text and edit-style checks. Part 1a
-   (the operations, the openpyxl engine, the guard and the checker, not offered yet) is
-   done. Its engine is openpyxl and LibreOffice first (no Excel needed); real Excel through COM, and an
+   skill and the measurement), with print-layout, clipped-text and edit-style checks. Parts 1a and 1b
+   are done: the model writes workbooks with write_xlsx_cells and modify_xlsx (design 4.18 on
+   the open tasks against 2.88, at the same cost and two thirds of the time). Its engine is openpyxl and LibreOffice first (no Excel needed); real Excel through COM, and an
    Office.js add-in, are later engines behind the same interface, chosen from real use.
    Instructions are changed by cutting first and measuring after: a shorter prompt that scores
    the same is the better one.
