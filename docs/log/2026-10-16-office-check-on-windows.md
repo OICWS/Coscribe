@@ -17,13 +17,14 @@ the tests fake PowerShell, and the maintainer had a checklist to work through by
 - `tests/test_check_office.py`: the script's logic against a faked Office.
 
 ## Verified
-- Microsoft Office on the maintainer's Windows machine (2026-10-16): all nine conversions, the
-  three previews and the three open-file cases passed, each in 1-11 s.
+- Microsoft Office on the maintainer's Windows machine (2026-10-16), twice: all nine
+  conversions, the three previews and the three open-file cases passed, each in 1-11 s. On the
+  second run, after the fix below, no office program was left running.
+- The first run had found Word, Excel and PowerPoint still running: the open-file cases had
+  started them themselves. The leftover check now runs before those cases, and the script
+  quits the programs it started.
 
 ## Not verified
-- That no office program is left running after a conversion. The first run found Word, Excel
-  and PowerPoint still running, but the open-file cases had started them themselves; the check
-  now runs before those cases, and has not been run again.
 - WPS Office. Installing it on a GitHub runner was tried and dropped: the 357 MB installer
   winget lists (official-package.wpscdn.cn) came at about 100 KB/s, an hour per run. Someone
   with WPS runs the script once.
