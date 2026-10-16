@@ -9,7 +9,7 @@ CHART_TYPES = frozenset({"bar", "line", "pie"})
 
 
 def parse_chart_table(content: str, tool_name: str) -> tuple[list[str], dict[str, list[float]]]:
-    """Parse a pipe-table (same convention as write_xlsx's content) into
+    """Parse a pipe-table (a markdown table) into
     categories (first column) and series (remaining columns, keyed by their
     header cell) -- avoids a list/dict-typed tool parameter entirely, since
     no tool in this package uses one: aisuite's Gemini schema inference has

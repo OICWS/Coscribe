@@ -1,9 +1,10 @@
-"""`write_xlsx` widens the columns of the sheet it writes to what they show, keeps a width that
-was already set, and `column_widths` measures a cell the way Excel draws it."""
+"""`write_xlsx_cells` widens the columns it writes to what they show, keeps a width that was
+already set, and `column_widths` measures a cell the way Excel draws it."""
 
 from __future__ import annotations
 
 import datetime as dt
+import functools
 import re
 import shutil
 import zipfile
@@ -13,13 +14,14 @@ import pytest
 from openpyxl import Workbook, load_workbook
 
 from coscribe.tools.office.xlsx import build_spreadsheet_tools
-from coscribe.tools.office.xlsx.column_layout import _patch_cols, fit_columns, widen_for_values
+from coscribe.tools.office.xlsx.column_layout import _patch_cols, widen_for_values
 from coscribe.tools.office.xlsx.column_widths import (
     DEFAULT_WIDTH,
     MAX_WIDTH,
     displayed_text,
     text_width,
 )
+from coscribe.tools.office.xlsx.helpers import _coerce_cell
 from evals.xlsx_checks import clipped_texts
 
 FILE = "book.xlsx"
@@ -30,7 +32,38 @@ def _tools(root: Path) -> dict[str, object]:
 
 
 def _write(root: Path, content: str, sheet_name: str = "Orders") -> None:
-    _tools(root)["write_xlsx"](path=FILE, content=content, sheet_name=sheet_name)  # type: ignore[operator]
+    """A pipe table written over the sheet from A1."""
+    _tools(root)["write_xlsx_cells"](
+        path=FILE, blocks=[{"sheet": sheet_name, "rows": _rows(content)}], overwrite=True
+    )
+
+
+def _rows(content: str) -> list[list[object]]:
+    return [
+        [_coerce_cell(c.strip()) if c.strip() else None for c in line.strip().strip("|").split("|")]
+        for line in content.strip().splitlines()
+        if not set(line.strip()) <= set("|- :")
+    ]
+
+
+def _edit(root: Path, *, path: str, sheet_name: str, start_cell: str, content: str) -> None:
+    _tools(root)["write_xlsx_cells"](
+        path=path,
+        blocks=[{"sheet": sheet_name, "at": start_cell, "rows": _rows(content)}],
+        overwrite=True,
+    )
+
+
+def _set_width(root: Path, *, path: str, sheet_name: str, columns: str, width: float) -> None:
+    _tools(root)["modify_xlsx"](
+        path=path, ops=[{"op": "cols", "sheet": sheet_name, "cols": columns, "width": width}]
+    )
+
+
+def _merge(root: Path, *, path: str, sheet_name: str, cell_range: str) -> None:
+    _tools(root)["modify_xlsx"](
+        path=path, ops=[{"op": "merge", "sheet": sheet_name, "range": cell_range}]
+    )
 
 
 def _width(root: Path, letter: str, sheet: str = "Orders") -> float:
@@ -66,18 +99,6 @@ def test_a_label_wider_than_the_default_column_is_no_longer_cut_off(tmp_path: Pa
     book = load_workbook(tmp_path / FILE)
     assert clipped_texts(book, book) == []
     assert _width(tmp_path, "C") >= text_width("Open tickets")
-
-
-def test_a_formatted_number_wider_than_the_default_column_gets_room() -> None:
-    sheet = Workbook().active
-    assert sheet is not None
-    sheet.append(["区域", 12850000])
-    sheet["B1"].number_format = '#,##0"元"'
-
-    fit_columns(sheet, [])
-
-    # 8.43 characters hold `12850000` but not `12,850,000元`, which prints as `###`.
-    assert sheet.column_dimensions["B"].width >= text_width("12,850,000元")
 
 
 @pytest.mark.parametrize(
@@ -133,14 +154,14 @@ def test_a_label_alone_in_its_row_widens_when_nothing_to_its_right_holds_it(
     assert _width(tmp_path, "A", sheet="Notes") == text_width(name) + 2
 
 
-def test_edit_xlsx_cells_widens_text_longer_than_the_empty_cells_beside_it(
+def test_writing_cells_widens_text_longer_than_the_empty_cells_beside_it(
     tmp_path: Path,
 ) -> None:
     note = "Open orders: see the list below for details"
     _write(tmp_path, "| a | b |\n| 1 | 2 |")
 
-    edit = _tools(tmp_path)["edit_xlsx_cells"]
-    edit(path=FILE, sheet_name="Orders", start_cell="A3", content=f"| {note} |")  # type: ignore[operator]
+    edit = functools.partial(_edit, tmp_path)
+    edit(path=FILE, sheet_name="Orders", start_cell="A3", content=f"| {note} |")
 
     assert _width(tmp_path, "A") == text_width(note) + 2
 
@@ -158,15 +179,14 @@ def test_writing_a_sheet_again_widens_a_column_but_never_narrows_it(tmp_path: Pa
 
 
 def test_a_width_set_earlier_is_kept_unless_the_content_needs_more(tmp_path: Path) -> None:
-    tools = _tools(tmp_path)
     content = "| Product | Unit price |\n| Desk lamp | 24.5 |"
-    tools["write_xlsx"](path=FILE, content=content, sheet_name="Orders")  # type: ignore[operator]
-    tools["set_xlsx_column_width"](path=FILE, sheet_name="Orders", columns="A:B", width=30)  # type: ignore[operator]
-    tools["write_xlsx"](path=FILE, content=content, sheet_name="Orders")  # type: ignore[operator]
+    _write(tmp_path, content)
+    _set_width(tmp_path, path=FILE, sheet_name="Orders", columns="A:B", width=30)
+    _write(tmp_path, content)
     assert _width(tmp_path, "A") == _width(tmp_path, "B") == 30
 
-    tools["set_xlsx_column_width"](path=FILE, sheet_name="Orders", columns="B", width=6)  # type: ignore[operator]
-    tools["write_xlsx"](path=FILE, content=content, sheet_name="Orders")  # type: ignore[operator]
+    _set_width(tmp_path, path=FILE, sheet_name="Orders", columns="B", width=6)
+    _write(tmp_path, content)
     assert 6 < _width(tmp_path, "B") and _width(tmp_path, "B") >= text_width("Unit price")
 
 
@@ -182,48 +202,6 @@ def test_a_template_range_keeps_its_width_where_the_content_fits(tmp_path: Path)
         ("2", "2", "12"),
         ("3", "16384", "7"),
     ]
-
-
-def test_a_template_column_keeps_its_look_and_a_hidden_one_with_new_data_is_shown(
-    tmp_path: Path,
-) -> None:
-    _book_with_cols(
-        tmp_path,
-        '<col min="1" max="1" hidden="1"/><col min="2" max="2" width="0" customWidth="1"/>'
-        '<col min="3" max="3" outlineLevel="1"/><col min="4" max="4" hidden="1"/>'
-        '<col min="5" max="16384" outlineLevel="1"/>',
-    )
-
-    _write(tmp_path, "| Product | Unit price | Open tickets |\n| Desk lamp | 24.5 | 3 |")
-
-    shown, closed, sized, hidden, rest = _cols(tmp_path)
-    assert "hidden" not in shown and float(shown["width"]) >= text_width("Desk lamp")
-    assert closed["width"] == "0"
-    assert sized["outlineLevel"] == "1" and float(sized["width"]) >= text_width("Open tickets")
-    assert hidden["hidden"] == "1" and "width" not in hidden
-    assert (rest["min"], rest["max"], rest["outlineLevel"], rest.get("width")) == (
-        "5",
-        "16384",
-        "1",
-        None,
-    )
-
-
-def test_a_number_format_applied_later_widens_its_column(tmp_path: Path) -> None:
-    tools = _tools(tmp_path)
-    _write(tmp_path, "| 区域 | 销售额 | 备注 |\n| 华东 | 12850000 | x |\n| 华北 | 9420000 | x |")
-    assert _width(tmp_path, "B") < text_width("12,850,000元")
-
-    tools["format_xlsx_cells"](  # type: ignore[operator]
-        path=FILE, sheet_name="Orders", cell_range="B2:B3", number_format='#,##0"元"'
-    )
-    assert _width(tmp_path, "B") >= text_width("12,850,000元")
-
-    tools["set_xlsx_column_width"](path=FILE, sheet_name="Orders", columns="B", width=30)  # type: ignore[operator]
-    tools["format_xlsx_cells"](  # type: ignore[operator]
-        path=FILE, sheet_name="Orders", cell_range="B2:B3", number_format="0"
-    )
-    assert _width(tmp_path, "B") == 30
 
 
 def test_widths_after_recalculation_widen_the_saved_file_and_never_narrow_it(
@@ -250,20 +228,19 @@ def test_a_column_of_formulas_is_sized_from_the_computed_values(tmp_path: Path) 
     (sized,) = [c for c in _cols(tmp_path) if c["min"] == "2"]
     assert float(sized["width"]) >= len("17636684145")
 
-    _tools(tmp_path)["edit_xlsx_cells"](  # type: ignore[operator]
-        path=FILE, sheet_name="Orders", start_cell="C1", content="| Total |\n| =B2*1 |"
-    )
+    _edit(tmp_path, path=FILE, sheet_name="Orders", start_cell="C1", content="| Total |\n| =B2*1 |")
     (sized,) = [c for c in _cols(tmp_path) if c["min"] == "3"]
     assert float(sized["width"]) >= len("17636684145")
 
 
-def test_edit_xlsx_cells_widens_the_columns_it_wrote(tmp_path: Path) -> None:
+def test_writing_cells_widens_the_columns_it_wrote(tmp_path: Path) -> None:
     _book_with_cols(
         tmp_path,
         '<col min="1" max="3" width="14" customWidth="1"/><col min="7" max="7" hidden="1"/>',
     )
 
-    _tools(tmp_path)["edit_xlsx_cells"](  # type: ignore[operator]
+    _edit(
+        tmp_path,
         path=FILE,
         sheet_name="Orders",
         start_cell="D1",
@@ -280,12 +257,12 @@ def test_edit_xlsx_cells_widens_the_columns_it_wrote(tmp_path: Path) -> None:
     ]
 
 
-def test_edit_xlsx_cells_leaves_merged_text_and_text_with_room_beside_it(tmp_path: Path) -> None:
-    tools = _tools(tmp_path)
+def test_writing_cells_leaves_merged_text_and_text_with_room_beside_it(tmp_path: Path) -> None:
     _write(tmp_path, "| a | b | c |\n| 1 | 2 | 3 |")
-    tools["merge_xlsx_cells"](path=FILE, sheet_name="Orders", cell_range="A3:C3")  # type: ignore[operator]
+    _merge(tmp_path, path=FILE, sheet_name="Orders", cell_range="A3:C3")
 
-    tools["edit_xlsx_cells"](  # type: ignore[operator]
+    _edit(
+        tmp_path,
         path=FILE,
         sheet_name="Orders",
         start_cell="A3",
@@ -325,11 +302,10 @@ def test_a_date_is_measured_by_its_number_format() -> None:
 
 
 def test_a_column_set_narrower_than_the_default_is_widened_to_its_values(tmp_path: Path) -> None:
-    tools = _tools(tmp_path)
     _write(tmp_path, "| Item | Qty |\n| Lamp | 1 |")
-    tools["set_xlsx_column_width"](path=FILE, sheet_name="Orders", columns="B", width=3)  # type: ignore[operator]
+    _set_width(tmp_path, path=FILE, sheet_name="Orders", columns="B", width=3)
 
-    tools["edit_xlsx_cells"](path=FILE, sheet_name="Orders", start_cell="B2", content="| 12345 |")  # type: ignore[operator]
+    _edit(tmp_path, path=FILE, sheet_name="Orders", start_cell="B2", content="| 12345 |")
 
     assert _width(tmp_path, "B") == len("12345") + 2
 
@@ -340,10 +316,10 @@ def test_a_sheet_wide_default_width_counts_as_the_width_a_column_has(tmp_path: P
     book.active.title = "Orders"
     book.active.sheet_format.defaultColWidth = 20
     book.save(tmp_path / FILE)
-    edit = _tools(tmp_path)["edit_xlsx_cells"]
+    edit = functools.partial(_edit, tmp_path)
 
-    edit(path=FILE, sheet_name="Orders", start_cell="B2", content="| 1234567.25 |")  # type: ignore[operator]
-    edit(path=FILE, sheet_name="Orders", start_cell="A3", content=f"| {'a note ' * 4} |")  # type: ignore[operator]
+    edit(path=FILE, sheet_name="Orders", start_cell="B2", content="| 1234567.25 |")
+    edit(path=FILE, sheet_name="Orders", start_cell="A3", content=f"| {'a note ' * 4} |")
 
     assert _cols(tmp_path) == []
 

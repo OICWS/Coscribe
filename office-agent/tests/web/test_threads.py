@@ -289,14 +289,12 @@ def test_approval_preview_covers_write_docx_overwriting_an_existing_file(
     not _libreoffice_actually_works(),
     reason="LibreOffice not installed/functional in this environment",
 )
-def test_approval_preview_covers_format_xlsx_cells(
+def test_approval_preview_covers_write_xlsx_cells(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """_build_document_edit_preview's dispatch table covers xlsx too, via
-    SpreadsheetToolkit -- format_xlsx_cells never creates a file (only
-    READ_check's the target), so real_path.is_file() being required is
-    what makes this safe to dry-run unconditionally. Scenario: bolding
-    and red-coloring a budget overage cell in an existing sheet."""
+    """The approval preview's dispatch covers xlsx too, through SpreadsheetToolkit's
+    write_xlsx_cells, dry-run on a copy of the existing workbook. Scenario: bolding and
+    red-colouring a budget overage cell in an existing sheet."""
     workspace = tmp_path / "workspace"
     workspace.mkdir(parents=True, exist_ok=True)
     workbook = Workbook()
@@ -310,13 +308,18 @@ def test_approval_preview_covers_format_xlsx_cells(
 
     call = _tool_call(
         "call_1",
-        "format_xlsx_cells",
+        "write_xlsx_cells",
         {
             "path": "budget.xlsx",
-            "sheet_name": "Budget",
-            "cell_range": "B2",
-            "font_color": "FF0000",
-            "bold": True,
+            "blocks": [
+                {
+                    "sheet": "Budget",
+                    "at": "B2",
+                    "rows": [[15200]],
+                    "style": {"bold": True, "color": "FF0000"},
+                }
+            ],
+            "overwrite": True,
         },
     )
     fake_model = FakeToolCallingChatModel(
@@ -330,7 +333,7 @@ def test_approval_preview_covers_format_xlsx_cells(
 
             approval = ws.receive_json()
             assert approval["type"] == "approval_required"
-            assert approval["tool_name"] == "format_xlsx_cells"
+            assert approval["tool_name"] == "write_xlsx_cells"
             before_name = approval["before_preview"]
             after_name = approval["after_preview"]
             assert before_name is not None
@@ -780,16 +783,14 @@ def test_get_tools_lists_builtin_tools_with_metadata(
     assert response.status_code == 200
     tools = {tool["name"]: tool for tool in response.json()["tools"]}
     assert tools["read_docx"]["category"] == "documents"
-    assert tools["write_xlsx"]["requires_approval"] is True
+    assert tools["write_xlsx_cells"]["requires_approval"] is True
     assert tools["task_create"]["category"] == "tasks"
     assert tools["web_search"]["category"] == "web"
     assert tools["web_search"]["requires_approval"] is False
-    assert tools["add_xlsx_chart"]["category"] == "documents"
-    assert tools["add_xlsx_chart"]["requires_approval"] is True
+    assert tools["modify_xlsx"]["category"] == "documents"
+    assert tools["modify_xlsx"]["requires_approval"] is True
     assert tools["recalc_xlsx"]["category"] == "documents"
     assert tools["recalc_xlsx"]["requires_approval"] is True
-    assert tools["format_xlsx_cells"]["category"] == "documents"
-    assert tools["format_xlsx_cells"]["requires_approval"] is True
     assert tools["add_pptx_chart"]["category"] == "documents"
     assert tools["add_pptx_chart"]["requires_approval"] is True
     assert tools["add_pptx_image"]["category"] == "documents"

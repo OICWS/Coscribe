@@ -5,8 +5,6 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any
 
-from ...office.markdown_blocks import _is_separator_row, _split_table_row
-
 if TYPE_CHECKING:
     from openpyxl.worksheet.worksheet import Worksheet
 
@@ -39,25 +37,6 @@ _XLSX_XLFN_FUNCTIONS = (
     "XLOOKUP",
     "XMATCH",
 )
-
-def _parse_table_rows(content: str) -> list[list[str]]:
-    """Parse pipe-table-only markdown (no headings/bullets/paragraphs --
-    a spreadsheet is a grid, not flowing text) into raw string rows."""
-    rows: list[list[str]] = []
-    for raw_line in content.splitlines():
-        line = raw_line.strip()
-        if not line:
-            continue
-        cells = _split_table_row(line)
-        if cells is None:
-            raise ValueError(
-                f"write_xlsx content must be pipe-table rows only (`| cell | cell |`), "
-                f"got: {line!r}"
-            )
-        if _is_separator_row(cells):
-            continue
-        rows.append(cells)
-    return rows
 
 
 def _validate_and_normalize_formula(formula: str) -> str:
@@ -118,22 +97,3 @@ def _render_sheet_table(sheet: Worksheet) -> str:
     return "\n".join(lines)
 
 
-def _workbook_has_any_formula(workbook: Any) -> bool:
-    for sheet_name in workbook.sheetnames:
-        sheet = workbook[sheet_name]
-        if not hasattr(sheet, "iter_rows"):
-            continue
-        for row in sheet.iter_rows():
-            for cell in row:
-                if isinstance(cell.value, str) and cell.value.startswith("="):
-                    return True
-    return False
-
-
-_CHART_TYPES = frozenset({"bar", "line", "pie"})
-
-_CONDITIONAL_FORMAT_RULE_TYPES = frozenset({"cell_is", "color_scale", "data_bar"})
-
-_DATA_VALIDATION_TYPES = frozenset(
-    {"list", "whole", "decimal", "date", "time", "textLength", "custom"}
-)

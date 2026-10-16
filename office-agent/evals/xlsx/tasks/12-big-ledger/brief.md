@@ -1,0 +1,1 @@
+orders_2025.csv holds our 5,000 orders of 2025. Make orders_2025.xlsx from it: an Orders sheet with every order and an Amount column (Qty × Unit price), and a Summary sheet with the total amount per region. Amount and the totals must be formulas, so the workbook updates when an order changes; do not paste numbers computed elsewhere.
