@@ -96,7 +96,6 @@
   "coscribe/tools/office/pptx/review_tools.py::attribute _blob": 1,
   "coscribe/tools/office/pptx/shape_tools.py::attribute vertical_anchor": 1,
   "coscribe/tools/office/pptx/shape_tools.py::attribute word_wrap": 1,
-  "coscribe/tools/office/pptx/slide_builders.py::attribute first_row": 1,
   "coscribe/tools/office/pptx/slide_builders.py::attribute horz_banding": 1,
   "coscribe/tools/office/pptx/slide_builders.py::attribute margin_bottom": 3,
   "coscribe/tools/office/pptx/slide_builders.py::attribute margin_left": 3,

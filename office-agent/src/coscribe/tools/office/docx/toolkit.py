@@ -8,6 +8,7 @@ from ..._ooxml_validate import assert_wml_valid
 from ..._thumbnail import render_thumbnail
 from ..markdown_blocks import parse_blocks
 from ..toolkit import WorkspaceToolkit
+from ._style import apply_house_style, has_cjk
 from ._xml import (
     _add_inline_runs,
     _add_toc,
@@ -83,6 +84,7 @@ class DocxToolkit(WorkspaceToolkit):
                 _clear_body(document)
         else:
             document = Document()
+            apply_house_style(document, cjk=has_cjk(content))
 
         if page_size or orientation:
             _apply_page_setup(document, page_size, orientation)

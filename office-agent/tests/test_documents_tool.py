@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 from docx import Document
+from docx.shared import RGBColor
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate
 
@@ -181,6 +182,59 @@ def test_write_pdf_does_not_overwrite_when_disabled(tmp_path: Path) -> None:
         tools["write_pdf"](path="a.pdf", content="Replacement", overwrite=False)
 
     assert "Original" in tools["read_pdf"](path="a.pdf")
+
+
+_W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+
+
+def test_write_docx_gives_a_new_document_the_house_style(tmp_path: Path) -> None:
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](
+        path="r.docx",
+        content="# 半年总结\n\n正文。\n\n| 区域 | 收入 |\n| --- | --- |\n| 华东 | 100 |\n"
+        "| 华南 | 80 |\n| 合计 | 180 |",
+    )
+
+    document = Document(str(tmp_path / "r.docx"))
+    fonts = document.styles.element.find(f"{_W}docDefaults").find(f".//{_W}rFonts")
+    assert fonts.get(f"{_W}eastAsia") == "Microsoft YaHei"
+    assert fonts.get(f"{_W}eastAsiaTheme") is None
+    assert document.styles["Heading 1"].font.color.rgb == RGBColor.from_string("1F4E79")
+    assert round(document.sections[0].page_width.mm) == 210
+
+    table = document.tables[0]
+    assert table.style.style_id == "ReportTable"
+    look = table._tbl.tblPr.find(f"{_W}tblLook")  # noqa: SLF001
+    assert (look.get(f"{_W}firstRow"), look.get(f"{_W}lastRow")) == ("1", "1")
+
+    footer = document.sections[0].footer._element  # noqa: SLF001
+    assert any(" PAGE " == (node.text or "") for node in footer.iter(f"{_W}instrText"))
+
+
+def test_write_docx_marks_no_total_row_when_the_last_row_is_data(tmp_path: Path) -> None:
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](
+        path="t.docx", content="| Region | Revenue |\n| --- | --- |\n| North | 1 |\n| South | 2 |"
+    )
+
+    look = Document(str(tmp_path / "t.docx")).tables[0]._tbl.tblPr.find(f"{_W}tblLook")  # noqa: SLF001
+    assert look.get(f"{_W}lastRow") == "0"
+
+
+def test_write_docx_leaves_a_templates_styles_alone(tmp_path: Path) -> None:
+    Document().save(str(tmp_path / "template.docx"))
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](
+        path="new.docx",
+        content="# Title\n\n| a | b |\n| --- | --- |\n| 1 | 2 |",
+        template_path="template.docx",
+    )
+
+    document = Document(str(tmp_path / "new.docx"))
+    assert document.tables[0].style.name == "Table Grid"
+    assert document.styles["Heading 1"].font.color.rgb != RGBColor.from_string("1F4E79")
+    assert round(document.sections[0].page_width.mm) == 216
+    assert not document.sections[0].footer.paragraphs[0].text
 
 
 def test_write_docx_with_template_path_keeps_page_setup_and_drops_old_content(
@@ -1091,11 +1145,14 @@ def test_write_docx_table_gives_amounts_their_width_and_aligns_them_right(
     tools = _tools_by_name(tmp_path)
     tools["write_docx"](path="r.docx", content=f"# 区域\n\n{_REGION_TABLE}")
 
-    table = Document(str(tmp_path / "r.docx")).tables[0]
+    document = Document(str(tmp_path / "r.docx"))
+    section = document.sections[0]
+    text_width = (section.page_width - section.left_margin - section.right_margin) / 12700
+    table = document.tables[0]
     widths = [column.width.pt for column in table.columns]
     font_size = table.rows[1].cells[2].paragraphs[0].runs[0].font.size.pt
     assert font_size < 11
-    assert abs(sum(widths) - 432) < 1
+    assert abs(sum(widths) - text_width) < 1
     assert widths[2] >= _cell_width_em("**23,457,888.42**") * font_size + 12 - 0.5
     assert widths[0] < widths[2]
     assert [cell.width.pt for cell in table.rows[1].cells] == pytest.approx(widths, abs=0.05)
