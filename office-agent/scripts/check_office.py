@@ -59,7 +59,7 @@ _PROCESSES = ("WINWORD.EXE", "EXCEL.EXE", "POWERPNT.EXE", "wps.exe", "et.exe", "
 class Result:
     case: str
     program: str
-    status: str  # "ok", "FAIL", "warn" or "skip"
+    status: str  # "ok", "FAIL" or "skip"
     seconds: float
     detail: str = ""
 
@@ -201,7 +201,8 @@ def check_users_file_stays_open(work: Path, kind: str, source: str) -> Result:
         finally:
             close = attach + (
                 f"$app.{collection} | Where-Object {{ $_.FullName -eq $env:COSCRIBE_SOURCE }} "
-                "| ForEach-Object { $_.Close() }"
+                "| ForEach-Object { $_.Close() }\n"
+                f"if ($app.{collection}.Count -eq 0) {{ $app.Quit() }}"
             )
             powershell(close, env, check=False)
 
@@ -216,6 +217,18 @@ def run_checks(work: Path) -> list[Result]:
 
     results = [check_conversion(work, source, fmt) for source, fmt in CONVERSIONS]
     results += [check_preview(work, source) for source in PREVIEWS]
+    # Checked before the open-file cases below, which start the programs themselves.
+    time.sleep(5)  # Office takes a moment to exit after Quit.
+    left = running_office_processes() - before
+    results.append(
+        Result(
+            "no program left running",
+            "-",
+            "FAIL" if left else "ok",
+            0.0,
+            f"still running: {', '.join(sorted(left))}" if left else "",
+        )
+    )
     for kind, source in (
         ("word", "sample.docx"),
         ("excel", "sample.xlsx"),
@@ -225,18 +238,6 @@ def run_checks(work: Path) -> list[Result]:
             results.append(Result(f"{source} stays open", "-", "skip", 0.0, "no program"))
         else:
             results.append(check_users_file_stays_open(work, kind, source))
-
-    time.sleep(5)  # Office takes a moment to exit after Quit.
-    left = running_office_processes() - before
-    results.append(
-        Result(
-            "no program left running",
-            "-",
-            "warn" if left else "ok",
-            0.0,
-            f"still running: {', '.join(sorted(left))}" if left else "",
-        )
-    )
     return results
 
 

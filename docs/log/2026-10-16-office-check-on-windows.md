@@ -19,8 +19,11 @@ the tests fake PowerShell, and the maintainer had a checklist to work through by
   script; not a required check.
 - `tests/test_check_office.py`: the script's logic against a faked Office.
 
+## Verified
+- Microsoft Office on the maintainer's Windows machine (2026-10-16): all nine conversions, the
+  three previews and the three open-file cases passed, each in 1-11 s.
+
 ## Not verified
-- Microsoft Office: no runner has it. The maintainer runs `python scripts/check_office.py` once
-  on Windows with Office.
-- Whether WPS installs and answers COM on a runner without anyone at the screen: this PR's run
-  of the new workflow says.
+- Whether WPS installs and answers COM on a runner without anyone at the screen: the new
+  workflow's runs on this PR timed out installing it.
+- WPS on a real machine.
