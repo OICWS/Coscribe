@@ -908,166 +908,165 @@ function App() {
           <div className="titlebar-controls-space" />
         </div>
       )}
-      <div className="relative flex min-h-0 flex-1 overflow-hidden">
-      <div
-        className="relative flex h-full min-w-0 flex-1 flex-col"
-        style={navPinned ? { paddingLeft: NAV_RAIL_EXPANDED_WIDTH } : undefined}
-      >
-        {inConversation && findKey !== null && <FindInPage focusKey={findKey} onClose={() => setFindKey(null)} />}
-        {/* Outside the desktop shell, which has a title bar for all of this.
-         * pl-12 clears NavRail's collapsed 48px toggle, absolutely placed
-         * over this row's left end; rows below don't need it. */}
-        {!DRAWS_TITLE_BAR && (
-          <div className={`flex h-12 shrink-0 items-center gap-1 pr-4 ${navPinned ? "pl-4" : "pl-12"}`}>
-            {pageTitle}
-            {inConversation && panelToggles}
-            <button
-              type="button"
-              title="Keyboard shortcuts (?)"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
-              onClick={() => setShortcutsOpen(true)}
-            >
-              <HelpIcon className="h-[18px] w-[18px]" />
-            </button>
-            <button
-              type="button"
-              title="Settings"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
-              onClick={() => setSettingsOpen(true)}
-            >
-              <SettingsIcon className="h-[18px] w-[18px]" />
-            </button>
-          </div>
-        )}
-        {connectionStatus === "reconnecting" && (
-          <div className="bg-yellow-500/20 px-4 py-1 text-center text-sm text-yellow-700 dark:text-yellow-300">
-            Connection lost -- reconnecting...
-          </div>
-        )}
-        {navMode === "create" && threadWorkflow && threadTask && threadRun ? (
-          <WorkflowRunView
-            task={threadTask}
-            run={threadRun}
-            workflow={threadWorkflow}
-            onRetry={(stepId) => retryWorkflow(threadTask, threadRun, stepId)}
-            onAnswer={(approved, note) => answerWorkflow(threadTask, threadRun, approved, note)}
-            onEditStep={(stepId) => editWorkflowStep(threadTask, stepId)}
-            onStop={() => stopWorkflow(threadTask, threadRun)}
-            onInvestigate={(model) => investigateWorkflow(threadTask, threadRun, model)}
-          />
-        ) : navMode === "create" && onHome ? (
-          // A new conversation: greeting and message box centered in the page.
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center pb-[6vh]">
-            <HomeGreeting />
-            {state.error && (
-              <div className="mx-auto w-full max-w-[880px] px-4 py-1 text-sm text-red-500">{state.error}</div>
-            )}
-            {composer}
-          </div>
-        ) : navMode === "create" ? (
-          <>
-            <ChatLog
-              items={state.items}
-              turnInFlight={state.turnInFlight}
-              connectorTools={state.connectorTools}
-              onApprove={onApprove}
-              onAnswerPlan={onAnswerPlan}
-              onEditMessage={state.turnInFlight ? undefined : onEditMessage}
-              onRewindMessage={state.turnInFlight ? undefined : onRewindMessage}
-              loading={!state.historyReceived}
-              onReviewTaskDraft={onReviewTaskDraft}
-              onDismissTaskDraft={onDismissTaskDraft}
-              onReviewWorkflowDraft={reviewWorkflowDraft}
-              draftCards={draftCards}
-              folderActions={{
-                folders: state.folders,
-                busy: state.turnInFlight,
-                onAddFolder: (folder) => socketRef.current?.send({ type: "add_folder", folder }),
-                onTryAgain: () => sendRaw("I added the folder. Please try again."),
-              }}
-              onPptxShapePicked={onPptxShapePicked}
-              olderItems={state.olderItems}
-              olderStatus={state.olderStatus}
-              onLoadOlder={onLoadOlderMessages}
-            />
-            {/* Real, live-reported bug: this used to be a bare full-width
-             * div, a sibling of ChatLog/Composer rather than living inside
-             * either one's own centered column -- so a turn-ending error
-             * (e.g. hitting a token-usage limit) rendered as a raw red
-             * line spanning edge-to-edge from the window's left border,
-             * instead of aligning with the chat column like everything
-             * else on this page. mx-auto/max-w-[880px]/px-4 here match
-             * ChatLog.tsx's own wrapper and Composer's root exactly. */}
-            {state.error && (
-              <div className="mx-auto w-full max-w-[880px] px-4 py-1 text-sm text-red-500">{state.error}</div>
-            )}
-            {pendingQuestion && (
-              <QuestionPanel key={pendingQuestion.id} item={pendingQuestion} onAnswer={onAnswerQuestion} />
-            )}
-            {composer}
-          </>
-        ) : workflowDraft ? (
-          <WorkflowDraftPage
-            threadId={workflowDraft.threadId}
-            threadTitle={workflowDraft.threadTitle}
-            nameHint={workflowDraft.nameHint}
-            initial={workflowDraft.initial}
-            revision={workflowDraft.revision}
-            onSaveRevision={saveWorkflowRevision}
-            onBack={leaveWorkflowDraft}
-            onDiscard={leaveWorkflowDraft}
-            onSave={(name, workflow) =>
-              setScheduledTaskModal({
-                task: null,
-                newWorkflow: workflow,
-                initialName: name,
-                initialWorkspace: workflowDraft.workspace,
-                fromDraft: workflowDraft.draftId,
-                fromThread: workflowDraft.threadId,
-              })
-            }
-          />
-        ) : (
-          <RunPanel
-            tasks={scheduledTasks}
-            onScheduledTasksChanged={refreshScheduledTasks}
-            selectedTask={selectedTask}
-            onSelectTask={showScheduledTaskPage}
-            onOpenTask={openScheduledTask}
-            onEditTask={(task) => setScheduledTaskModal({ task })}
-            onRunNow={runTaskNow}
-            focusStepId={focusStepId}
-            onCreateWithCoscribe={createTaskWithCoscribe}
-            onBuildWorkflow={() => setScheduledTaskModal({ task: null, newWorkflow: EMPTY_WORKFLOW })}
-          />
-        )}
-        {scheduledTaskModal && (
-          <ScheduledTaskModal
-            task={scheduledTaskModal.task}
-            draft={scheduledTaskModal.draft?.draft}
-            newWorkflow={scheduledTaskModal.newWorkflow}
-            initialName={scheduledTaskModal.initialName}
-            initialWorkspace={scheduledTaskModal.initialWorkspace}
-            fromDraft={scheduledTaskModal.fromDraft}
-            fromThread={scheduledTaskModal.fromThread}
-            onClose={() => setScheduledTaskModal(null)}
-            onSaved={onTaskSaved}
-          />
-        )}
-        <SettingsModal
-          open={settingsOpen}
-          onCreateSkill={onCreateSkill}
-          onClose={() => setSettingsOpen(false)}
+      <div className="relative flex min-h-0 flex-1">
+        <PanelDock
+          visible={inConversation ? visiblePanels : []}
+          titles={PANEL_TITLES}
+          render={renderPanel}
+          onClose={closePanel}
+          leftInset={navPinned ? NAV_RAIL_EXPANDED_WIDTH : 0}
+          chat={
+            <div className="relative flex h-full min-w-0 flex-1 flex-col">
+              {inConversation && findKey !== null && <FindInPage focusKey={findKey} onClose={() => setFindKey(null)} />}
+              {/* Outside the desktop shell, which has a title bar for all of this.
+               * pl-12 clears NavRail's collapsed 48px toggle, absolutely placed
+               * over this row's left end; rows below don't need it. */}
+              {!DRAWS_TITLE_BAR && (
+                <div className={`flex h-12 shrink-0 items-center gap-1 pr-4 ${navPinned ? "pl-4" : "pl-12"}`}>
+                  {pageTitle}
+                  {inConversation && panelToggles}
+                  <button
+                    type="button"
+                    title="Keyboard shortcuts (?)"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
+                    onClick={() => setShortcutsOpen(true)}
+                  >
+                    <HelpIcon className="h-[18px] w-[18px]" />
+                  </button>
+                  <button
+                    type="button"
+                    title="Settings"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
+                    onClick={() => setSettingsOpen(true)}
+                  >
+                    <SettingsIcon className="h-[18px] w-[18px]" />
+                  </button>
+                </div>
+              )}
+              {connectionStatus === "reconnecting" && (
+                <div className="bg-yellow-500/20 px-4 py-1 text-center text-sm text-yellow-700 dark:text-yellow-300">
+                  Connection lost -- reconnecting...
+                </div>
+              )}
+              {navMode === "create" && threadWorkflow && threadTask && threadRun ? (
+                <WorkflowRunView
+                  task={threadTask}
+                  run={threadRun}
+                  workflow={threadWorkflow}
+                  onRetry={(stepId) => retryWorkflow(threadTask, threadRun, stepId)}
+                  onAnswer={(approved, note) => answerWorkflow(threadTask, threadRun, approved, note)}
+                  onEditStep={(stepId) => editWorkflowStep(threadTask, stepId)}
+                  onStop={() => stopWorkflow(threadTask, threadRun)}
+                  onInvestigate={(model) => investigateWorkflow(threadTask, threadRun, model)}
+                />
+              ) : navMode === "create" && onHome ? (
+                // A new conversation: greeting and message box centered in the page.
+                <div className="flex min-h-0 flex-1 flex-col items-center justify-center pb-[6vh]">
+                  <HomeGreeting />
+                  {state.error && (
+                    <div className="mx-auto w-full max-w-[880px] px-4 py-1 text-sm text-red-500">{state.error}</div>
+                  )}
+                  {composer}
+                </div>
+              ) : navMode === "create" ? (
+                <>
+                  <ChatLog
+                    items={state.items}
+                    turnInFlight={state.turnInFlight}
+                    connectorTools={state.connectorTools}
+                    onApprove={onApprove}
+                    onAnswerPlan={onAnswerPlan}
+                    onEditMessage={state.turnInFlight ? undefined : onEditMessage}
+                    onRewindMessage={state.turnInFlight ? undefined : onRewindMessage}
+                    loading={!state.historyReceived}
+                    onReviewTaskDraft={onReviewTaskDraft}
+                    onDismissTaskDraft={onDismissTaskDraft}
+                    onReviewWorkflowDraft={reviewWorkflowDraft}
+                    draftCards={draftCards}
+                    folderActions={{
+                      folders: state.folders,
+                      busy: state.turnInFlight,
+                      onAddFolder: (folder) => socketRef.current?.send({ type: "add_folder", folder }),
+                      onTryAgain: () => sendRaw("I added the folder. Please try again."),
+                    }}
+                    onPptxShapePicked={onPptxShapePicked}
+                    olderItems={state.olderItems}
+                    olderStatus={state.olderStatus}
+                    onLoadOlder={onLoadOlderMessages}
+                  />
+                  {/* Real, live-reported bug: this used to be a bare full-width
+                   * div, a sibling of ChatLog/Composer rather than living inside
+                   * either one's own centered column -- so a turn-ending error
+                   * (e.g. hitting a token-usage limit) rendered as a raw red
+                   * line spanning edge-to-edge from the window's left border,
+                   * instead of aligning with the chat column like everything
+                   * else on this page. mx-auto/max-w-[880px]/px-4 here match
+                   * ChatLog.tsx's own wrapper and Composer's root exactly. */}
+                  {state.error && (
+                    <div className="mx-auto w-full max-w-[880px] px-4 py-1 text-sm text-red-500">{state.error}</div>
+                  )}
+                  {pendingQuestion && (
+                    <QuestionPanel key={pendingQuestion.id} item={pendingQuestion} onAnswer={onAnswerQuestion} />
+                  )}
+                  {composer}
+                </>
+              ) : workflowDraft ? (
+                <WorkflowDraftPage
+                  threadId={workflowDraft.threadId}
+                  threadTitle={workflowDraft.threadTitle}
+                  nameHint={workflowDraft.nameHint}
+                  initial={workflowDraft.initial}
+                  revision={workflowDraft.revision}
+                  onSaveRevision={saveWorkflowRevision}
+                  onBack={leaveWorkflowDraft}
+                  onDiscard={leaveWorkflowDraft}
+                  onSave={(name, workflow) =>
+                    setScheduledTaskModal({
+                      task: null,
+                      newWorkflow: workflow,
+                      initialName: name,
+                      initialWorkspace: workflowDraft.workspace,
+                      fromDraft: workflowDraft.draftId,
+                      fromThread: workflowDraft.threadId,
+                    })
+                  }
+                />
+              ) : (
+                <RunPanel
+                  tasks={scheduledTasks}
+                  onScheduledTasksChanged={refreshScheduledTasks}
+                  selectedTask={selectedTask}
+                  onSelectTask={showScheduledTaskPage}
+                  onOpenTask={openScheduledTask}
+                  onEditTask={(task) => setScheduledTaskModal({ task })}
+                  onRunNow={runTaskNow}
+                  focusStepId={focusStepId}
+                  onCreateWithCoscribe={createTaskWithCoscribe}
+                  onBuildWorkflow={() => setScheduledTaskModal({ task: null, newWorkflow: EMPTY_WORKFLOW })}
+                />
+              )}
+              {scheduledTaskModal && (
+                <ScheduledTaskModal
+                  task={scheduledTaskModal.task}
+                  draft={scheduledTaskModal.draft?.draft}
+                  newWorkflow={scheduledTaskModal.newWorkflow}
+                  initialName={scheduledTaskModal.initialName}
+                  initialWorkspace={scheduledTaskModal.initialWorkspace}
+                  fromDraft={scheduledTaskModal.fromDraft}
+                  fromThread={scheduledTaskModal.fromThread}
+                  onClose={() => setScheduledTaskModal(null)}
+                  onSaved={onTaskSaved}
+                />
+              )}
+              <SettingsModal
+                open={settingsOpen}
+                onCreateSkill={onCreateSkill}
+                onClose={() => setSettingsOpen(false)}
+              />
+              {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
+            </div>
+          }
         />
-        {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
-      </div>
-      <PanelDock
-        visible={inConversation ? visiblePanels : []}
-        titles={PANEL_TITLES}
-        render={renderPanel}
-        onClose={closePanel}
-        leftInset={navPinned ? NAV_RAIL_EXPANDED_WIDTH : 0}
-      />
       </div>
       {/* Last in the page: the desktop shell works out which parts of the
        * window drag it in page order, so the sidebar's own buttons must

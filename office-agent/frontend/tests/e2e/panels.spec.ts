@@ -61,3 +61,30 @@ test("panels open together, move by dragging and from the menu, and fill the win
     expect(b.x + b.width).toBeLessThan(t.x);
   }).toPass();
 });
+
+test("a panel dropped on the conversation's left half sits left of it, and the conversation moves over", async ({ page }) => {
+  await page.goto(freshThreadPath("panels-left"));
+  await page.evaluate(() => localStorage.removeItem("coscribe.panelLayout"));
+  await page.reload();
+  await waitForConnected(page);
+  await page.locator("textarea").fill("Reply with just the word ok.");
+  await page.keyboard.press("Enter");
+  await page.getByTitle("Background tasks", { exact: true }).click();
+  const background = await box(page, "Background tasks");
+  const before = await page.getByTestId("chat-log").boundingBox();
+
+  await page.mouse.move(background.x + 60, background.y + 22);
+  await page.mouse.down();
+  await page.mouse.move(background.x + 20, background.y + 80, { steps: 4 });
+  await page.mouse.move(200, 450, { steps: 12 });
+  // Before the button is let go, the conversation already shows where it will be.
+  await expect(async () => {
+    expect((await page.getByTestId("chat-log").boundingBox())!.x).toBeGreaterThan(before!.x + 100);
+  }).toPass();
+  await page.mouse.up();
+
+  await expect(async () => {
+    const [b, chat] = [await box(page, "Background tasks"), await page.getByTestId("chat-log").boundingBox()];
+    expect(b.x + b.width).toBeLessThan(chat!.x + 1);
+  }).toPass();
+});
