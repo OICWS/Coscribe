@@ -108,8 +108,8 @@ Last reviewed: 2026-10-15.
    `write_docx`, compiled onto real Word styles (#325, decision 0013, proposed); the edit tools stay.
    Restructuring a user's document (insert a section, a list, a table or a contents list; move or
    delete a section) is one `edit_docx_structure` call (#329): on task 07 about half the time and
-   cost of the scripts it replaced. The model still checks its edit with 1-4 read-only scripts;
-   next, a structure view in `read_docx` (paragraph styles, tables, pictures, header and footer).
+   cost of the scripts it replaced. With `read_docx(view="structure")` (#331) the model checks a
+   document without a script too: no script on tasks 07 and 11, 18-47 s a task.
    Instructions are changed by cutting first and measuring after: a shorter prompt that scores
    the same is the better one.
 

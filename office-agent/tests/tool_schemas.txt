@@ -3,14 +3,14 @@
 
 system prompt: 33586 chars, ~8396 tokens, sha256 b8098c7f5c
 
-bound to the model: 22 tools, ~4851 tokens
+bound to the model: 22 tools, ~4938 tokens
   ask_user_question (questions:array) desc 1435 chars sha256 e846e64163
   draft_workflow (name?:string) desc 983 chars sha256 e91334c9ee
   edit_file (new_text:string, old_text:string, path:string, replace_all?:boolean) desc 1330 chars sha256 3f5ab0dd7e
   exit_plan_mode (plan:string) desc 509 chars sha256 9e553f14a8
   get_file_info (path:string) desc 458 chars sha256 78103b0484
   list_files (path?:string, pattern?:string, recursive?:boolean) desc 878 chars sha256 03bee73daf
-  read_docx (path:string) desc 248 chars sha256 8ca7bc3cef
+  read_docx (path:string, view?:string) desc 546 chars sha256 88ec6e9067
   read_file (head?:integer|null, path:string, start_line?:integer, tail?:integer|null) desc 1009 chars sha256 2a71ff9b29
   read_pdf (end_page?:integer, path:string, start_page?:integer) desc 426 chars sha256 d1d3ba4d25
   read_pptx (path:string, slide?:integer|null) desc 569 chars sha256 2499a87d8a
@@ -27,7 +27,7 @@ bound to the model: 22 tools, ~4851 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 113 tools, ~35030 tokens (the ones not bound are found through search_tools)
+registered: 113 tools, ~35112 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -92,7 +92,7 @@ registered: 113 tools, ~35030 tokens (the ones not bound are found through searc
   modify_xlsx | WRITE_LOCAL | documents | deferred | sha256 3e15498c5f
   move_file | WRITE_LOCAL | filesystem | deferred | sha256 5dfd1f570c
   pause_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 53a449b0cb
-  read_docx | READ | documents | core | sha256 fd1846dc8a
+  read_docx | READ | documents | core | sha256 dbcba018fc
   read_file | READ | filesystem | core | sha256 ee32c83a8a
   read_pdf | READ | documents | core | sha256 3366cc72e1
   read_pptx | READ | documents | core | sha256 c8c3ef7f3e
