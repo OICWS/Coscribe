@@ -96,8 +96,9 @@ Last reviewed: 2026-10-15.
    COM, and an Office.js add-in, are later engines behind the same interface, chosen from real use.
    **No LibreOffice in the product** (decision 0012, #319): step 1 (no Office needed) is IronCalc
    for formula values and resvg for a built deck's page previews, PDF pages with PDFium; step 2
-   (built, to be checked on Windows), conversion and the exact previews of Word, Excel and
-   PowerPoint files through Office (COM), or WPS;
+   (built, to be checked on Windows: `scripts/check_office.py` runs every case in one command;
+   the `Windows with WPS Office` workflow runs it against WPS), conversion and the exact
+   previews of Word, Excel and PowerPoint files through Office (COM), or WPS;
    step 3 (done), the LibreOffice code paths removed, LibreOffice kept for development and the
    evaluation.
    Word research done (`docs/assessments/2026-10-16-word-quality.md`): a document written whole by

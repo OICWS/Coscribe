@@ -1,0 +1,74 @@
+name: Windows with WPS Office
+
+# GitHub's Windows runners have no Microsoft Office, so coscribe's conversions and previews
+# through COM (decision 0012) are faked in the tests. This job installs WPS Office, which
+# registers the same object model, and runs scripts/check_office.py against it for real.
+# An experiment: WPS's first start may wait on a dialog no one can click. It runs by hand and
+# on a pull request that changes this file; it is not a required check.
+"on":
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/windows-office.yml"
+      - "office-agent/scripts/check_office.py"
+
+concurrency:
+  group: windows-office-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+    working-directory: office-agent
+
+jobs:
+  wps:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: office-agent/pyproject.toml
+
+      - name: Install coscribe
+        run: pip install -e .
+
+      # The installer's address and switches are the ones winget's manifest lists for
+      # Kingsoft.WPSOffice-x64 (an NSIS installer).
+      - name: Install WPS Office
+        timeout-minutes: 15
+        shell: pwsh
+        run: |
+          $installer = "$env:RUNNER_TEMP\wps-setup.exe"
+          Invoke-WebRequest "https://official-package.wpscdn.cn/wps/download/WPS_Setup_x64_29158.exe" -OutFile $installer
+          Start-Process $installer -ArgumentList "/S", "-agreelicense" -Wait
+          foreach ($id in "KWps.Application", "Ket.Application", "Kwpp.Application") {
+            $found = Test-Path "Registry::HKEY_CLASSES_ROOT\$id\CLSID"
+            Write-Output "$id registered: $found"
+          }
+
+      - name: Check conversions and previews through WPS
+        timeout-minutes: 15
+        run: python scripts/check_office.py --require --out office-check | tee office-check.txt
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Office check with WPS"
+            echo '```'
+            cat office-check.txt 2>/dev/null || echo "No report was written."
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: office-check
+          path: |
+            office-agent/office-check.txt
+            office-agent/office-check/
