@@ -95,6 +95,16 @@ def test_headings_in_the_wrong_order_are_reported(tmp_path: Path) -> None:
     assert report["ok"] is False and report["missing_or_out_of_order"] == ["Costs"]
 
 
+def test_a_title_counts_when_its_level_is_among_those_asked(tmp_path: Path) -> None:
+    document = Document()
+    document.add_heading("新员工入职通知", level=0)
+    document.add_heading("报到安排", level=2)
+    read = docx_checks.read_document(_save(document, tmp_path))
+
+    assert docx_checks.check_headings(read, [{"text": "入职", "level": [0, 1]}])["ok"]
+    assert not docx_checks.check_headings(read, [{"text": "入职"}])["ok"]
+
+
 def test_bold_text_is_not_a_heading(tmp_path: Path) -> None:
     read = _headed(tmp_path, ["Summary", "Costs"], bold_only=("Costs",))
 
