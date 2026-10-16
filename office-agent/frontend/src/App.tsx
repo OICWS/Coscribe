@@ -807,6 +807,54 @@ function App() {
     </>
   );
 
+  // The panel switches: in the desktop title bar beside Settings, else at
+  // the right end of the conversation's header.
+  const panelToggles = (
+    <>
+      <button
+        type="button"
+        title={taskPanelShown ? "Hide task details" : "Show task details"}
+        aria-pressed={taskPanelShown}
+        className={`hidden h-8 w-8 shrink-0 items-center justify-center rounded-md lg:flex ${taskPanelShown ? "bg-[var(--accent-soft)] text-[var(--accent-ink)]" : "text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"}`}
+        onClick={toggleTaskPanel}
+      >
+        <PanelRightIcon className="h-[18px] w-[18px]" />
+      </button>
+      <button
+        type="button"
+        title="Browser"
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${browserPanelOpen ? "bg-[var(--accent-soft)] text-[var(--accent-ink)]" : "text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"}`}
+        onClick={() => toggleSidePanel("browser")}
+      >
+        <BrowserIcon className="h-[18px] w-[18px]" />
+      </button>
+      <button
+        type="button"
+        title={subAgentsTitle}
+        className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${subAgentsPanelOpen ? "bg-[var(--accent-soft)] text-[var(--accent-ink)]" : "text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"}`}
+        onClick={() => toggleSidePanel("subagents")}
+      >
+        <SubAgentsIcon className="h-[18px] w-[18px]" />
+        {subAgents.running > 0 && (
+          <span
+            aria-label={
+              subAgents.waiting > 0
+                ? `${subAgents.running} running, ${subAgents.waiting} waiting for you`
+                : `${subAgents.running} running`
+            }
+            className={`absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium leading-none ${
+              subAgents.waiting > 0
+                ? "bg-[var(--warning)] text-[var(--bg)]"
+                : "bg-[var(--accent)] text-[var(--accent-fg)] motion-safe:animate-pulse"
+            }`}
+          >
+            {subAgents.running}
+          </span>
+        )}
+      </button>
+    </>
+  );
+
   return (
     <ThreadIdContext.Provider value={threadId}>
     <div className="relative flex h-full flex-col">
@@ -816,6 +864,12 @@ function App() {
         <div className="flex h-10 shrink-0 items-center">
           <div className="shrink-0" style={{ width: navPinned ? NAV_RAIL_EXPANDED_WIDTH : COLLAPSED_CLUSTER_WIDTH }} />
           <div className="titlebar-drag h-full min-w-0 flex-1" />
+          {inConversation && (
+            <div className="flex shrink-0 items-center gap-1">
+              {panelToggles}
+              <div className="mx-1.5 h-[18px] w-px bg-[var(--border)]" />
+            </div>
+          )}
           <button
             type="button"
             title="Settings"
@@ -825,6 +879,9 @@ function App() {
           >
             <MoreIcon className="h-[18px] w-[18px]" />
           </button>
+          {/* Keeps Settings apart from the OS minimize button, so the two
+           * aren't mistaken for one group. */}
+          <div className="w-3 shrink-0" />
           <div className="titlebar-controls-space" />
         </div>
       )}
@@ -866,53 +923,7 @@ function App() {
           ) : (
             <div className="min-w-0 flex-1" />
           )}
-          {navMode === "create" && !onHome && (
-            <button
-              type="button"
-              title={taskPanelShown ? "Hide task details" : "Show task details"}
-              aria-pressed={taskPanelShown}
-              className={`hidden h-8 w-8 shrink-0 items-center justify-center rounded-md hover:bg-[var(--card-bg)] hover:text-[var(--fg)] lg:flex ${taskPanelShown ? "bg-[var(--card-bg)] text-[var(--fg)]" : "text-[var(--muted)]"}`}
-              onClick={toggleTaskPanel}
-            >
-              <PanelRightIcon className="h-[18px] w-[18px]" />
-            </button>
-          )}
-          {inConversation && (
-            <>
-              <button
-                type="button"
-                title="Browser"
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md hover:bg-[var(--card-bg)] hover:text-[var(--fg)] ${browserPanelOpen ? "bg-[var(--card-bg)] text-[var(--fg)]" : "text-[var(--muted)]"}`}
-                onClick={() => toggleSidePanel("browser")}
-              >
-                <BrowserIcon className="h-[18px] w-[18px]" />
-              </button>
-              <button
-                type="button"
-                title={subAgentsTitle}
-                className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-md hover:bg-[var(--card-bg)] hover:text-[var(--fg)] ${subAgentsPanelOpen ? "bg-[var(--card-bg)] text-[var(--fg)]" : "text-[var(--muted)]"}`}
-                onClick={() => toggleSidePanel("subagents")}
-              >
-                <SubAgentsIcon className="h-[18px] w-[18px]" />
-                {subAgents.running > 0 && (
-                  <span
-                    aria-label={
-                      subAgents.waiting > 0
-                        ? `${subAgents.running} running, ${subAgents.waiting} waiting for you`
-                        : `${subAgents.running} running`
-                    }
-                    className={`absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium leading-none ${
-                      subAgents.waiting > 0
-                        ? "bg-[var(--warning)] text-[var(--bg)]"
-                        : "bg-[var(--accent)] text-[var(--accent-fg)] motion-safe:animate-pulse"
-                    }`}
-                  >
-                    {subAgents.running}
-                  </span>
-                )}
-              </button>
-            </>
-          )}
+          {!DRAWS_TITLE_BAR && inConversation && panelToggles}
           {/* In the desktop shell these live in the title bar (Settings)
            * and the app menu (Help > Keyboard Shortcuts). */}
           {!DRAWS_TITLE_BAR && (

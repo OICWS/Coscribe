@@ -232,39 +232,79 @@
   box-sizing: border-box;
 }
 
-/* Thin scrollbars everywhere, replacing the OS default (a thick track
-   with arrow buttons). The standard properties are for Firefox only:
-   Chromium 121+ ignores every ::-webkit-scrollbar rule on an element that
-   has scrollbar-width or scrollbar-color, falling back to the native
-   scrollbar -- on Windows a square one with arrows. `background-clip:
-   content-box` with a transparent border is what makes the thumb narrower
-   than the scrollbar's hit area; `width` on the thumb has no effect. */
+/* Thin scrollbars everywhere, the same in every panel: a slim rounded
+   thumb that darkens under the pointer, and small arrows at the ends.
+   The standard properties are for Firefox only: Chromium 121+ ignores
+   every ::-webkit-scrollbar rule on an element that has scrollbar-width
+   or scrollbar-color, falling back to the native scrollbar. `background-
+   clip: content-box` with a transparent border is what makes the thumb
+   narrower than the scrollbar's hit area; `width` on the thumb has no
+   effect. */
 @supports not selector(::-webkit-scrollbar) {
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
+    scrollbar-color: color-mix(in srgb, var(--fg) 24%, transparent) transparent;
   }
 }
 *::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
 }
-*::-webkit-scrollbar-track {
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background-color: var(--border);
+  min-height: 28px;
+  min-width: 28px;
+  background-color: color-mix(in srgb, var(--fg) 24%, transparent);
   background-clip: content-box;
-  border: 2px solid transparent;
+  border: 3px solid transparent;
   border-radius: 6px;
 }
-*::-webkit-scrollbar-thumb:hover {
-  background-color: var(--muted);
+*::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:active {
+  background-color: color-mix(in srgb, var(--fg) 58%, transparent);
 }
 *::-webkit-scrollbar-button {
   display: none;
-  width: 0;
-  height: 0;
+}
+/* One arrow at each end; Chromium would otherwise draw a pair at both. */
+*::-webkit-scrollbar-button:single-button {
+  display: block;
+  width: 12px;
+  height: 12px;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 7px;
+}
+*::-webkit-scrollbar-button:single-button:hover {
+  background-size: 8px;
+}
+*::-webkit-scrollbar-button:single-button:vertical:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpolygon points='4,1 7,6 1,6' fill='%23a19d9b'/%3E%3C/svg%3E");
+}
+*::-webkit-scrollbar-button:single-button:vertical:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpolygon points='1,2 7,2 4,7' fill='%23a19d9b'/%3E%3C/svg%3E");
+}
+*::-webkit-scrollbar-button:single-button:horizontal:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpolygon points='1,4 6,1 6,7' fill='%23a19d9b'/%3E%3C/svg%3E");
+}
+*::-webkit-scrollbar-button:single-button:horizontal:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpolygon points='2,1 7,4 2,7' fill='%23a19d9b'/%3E%3C/svg%3E");
+}
+:root[data-theme="dark"] *::-webkit-scrollbar-button:single-button:vertical:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpolygon points='4,1 7,6 1,6' fill='%236f6b69'/%3E%3C/svg%3E");
+}
+:root[data-theme="dark"] *::-webkit-scrollbar-button:single-button:vertical:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpolygon points='1,2 7,2 4,7' fill='%236f6b69'/%3E%3C/svg%3E");
+}
+:root[data-theme="dark"] *::-webkit-scrollbar-button:single-button:horizontal:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpolygon points='1,4 6,1 6,7' fill='%236f6b69'/%3E%3C/svg%3E");
+}
+:root[data-theme="dark"] *::-webkit-scrollbar-button:single-button:horizontal:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpolygon points='2,1 7,4 2,7' fill='%236f6b69'/%3E%3C/svg%3E");
 }
 
 html,

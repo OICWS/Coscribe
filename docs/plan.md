@@ -114,6 +114,10 @@ Last reviewed: 2026-10-15.
    document without a script too: no script on tasks 07 and 11, 18-47 s a task.
    Instructions are changed by cutting first and measuring after: a shorter prompt that scores
    the same is the better one.
+   Viewing the files a run produced, inside the app (Word review with its comments, slides,
+   sheets): designs reviewed by the maintainer 2026-10-16. First the window's panels: the panel
+   switches moved into the title bar (done), then several panels open at once, arranged by
+   dragging (next), then the viewers as panels.
 
 1. **Make the repository easy to join** (governance review, 2026-10-08).
    - Done: `main` protected by a ruleset (PR only, squash, `test` required),
