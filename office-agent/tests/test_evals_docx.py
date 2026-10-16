@@ -359,10 +359,10 @@ def _task(name: str) -> tasks.Task:
     return tasks.discover(name, kind="docx")[0]
 
 
-def test_there_are_eight_word_tasks_each_with_its_inputs() -> None:
+def test_there_are_eleven_word_tasks_each_with_its_inputs() -> None:
     found = tasks.discover("all", kind="docx")
 
-    assert [t.name[:2] for t in found] == [f"{n:02d}" for n in range(1, 11)]
+    assert [t.name[:2] for t in found] == [f"{n:02d}" for n in range(1, 12)]
     assert all(t.inputs and isinstance(t.expect, tasks.DocxExpect) for t in found)
 
 

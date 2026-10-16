@@ -96,8 +96,9 @@ Last reviewed: 2026-10-15.
    COM, and an Office.js add-in, are later engines behind the same interface, chosen from real use.
    **No LibreOffice in the product** (decision 0012, #319): step 1 (no Office needed) is IronCalc
    for formula values and resvg for a built deck's page previews, PDF pages with PDFium; step 2
-   (built, to be checked on Windows), conversion and the exact previews of Word, Excel and
-   PowerPoint files through Office (COM), or WPS;
+   (done; `scripts/check_office.py` passed every case with Microsoft Office on Windows, WPS
+   not yet checked), conversion and the exact previews of Word, Excel and PowerPoint files
+   through Office (COM), or WPS;
    step 3 (done), the LibreOffice code paths removed, LibreOffice kept for development and the
    evaluation.
    Word research done (`docs/assessments/2026-10-16-word-quality.md`): a document written whole by
@@ -105,6 +106,10 @@ Last reviewed: 2026-10-15.
    is layout `write_docx` cannot set (a shaded table header, an East Asian font, heading styles,
    page numbers), and the script route added facts and costs more. Next: a document style for
    `write_docx`, compiled onto real Word styles (#325, decision 0013, proposed); the edit tools stay.
+   Restructuring a user's document (insert a section, a list, a table or a contents list; move or
+   delete a section) is one `edit_docx_structure` call (#329): on task 07 about half the time and
+   cost of the scripts it replaced. With `read_docx(view="structure")` (#331) the model checks a
+   document without a script too: no script on tasks 07 and 11, 18-47 s a task.
    Instructions are changed by cutting first and measuring after: a shorter prompt that scores
    the same is the better one.
 

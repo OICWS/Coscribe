@@ -355,8 +355,8 @@ class _ChangeIdCounter:
     ``<w:ins>``/``<w:del>`` element a single ``write_docx`` call produces --
     Word requires these unique across the whole document."""
 
-    def __init__(self) -> None:
-        self._next = 0
+    def __init__(self, start: int = 0) -> None:
+        self._next = start
 
     def next(self) -> int:
         value = self._next

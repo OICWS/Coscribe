@@ -20,6 +20,26 @@ bold. Spend the effort on content and structure instead:
 - Every figure, date and name exactly as in the sources. Add nothing they
   do not contain: no attendees, roles or budget lines the notes don't give.
 
+## Changing an existing document's structure
+
+To add a section, a list, a table or a contents list to a user's document,
+move a section or delete one, use `edit_docx_structure` -- one call with a
+list of operations -- not a script and not `write_docx` (which would rebuild
+the file and lose what the markdown subset can't hold). For example, a
+contents list after the introduction and a section moved to the front:
+
+    [{"op": "insert", "after": "<first words of the intro>", "content": "# Contents\n\n[TOC]"},
+     {"op": "move_section", "section": "Safety", "before": "Onboarding"}]
+
+`after_section` places content after everything under a heading. Pass
+`output_path` when the user wants a new file. Everything the operations
+don't name is kept as it is, and the result's `document` lists the new
+headings, tables, pictures, header and footer: check the edit there, not
+with a script. Before editing, `read_docx(path, view="structure")` shows each
+block's style, the tables with their styles, the pictures, and the header
+and footer -- what the markdown view leaves out -- without a script. Use `replace_docx_text` and
+friends for wording inside paragraphs.
+
 ## Table of contents
 
 A line that is exactly `[TOC]` inserts a real Word TOC field, built from

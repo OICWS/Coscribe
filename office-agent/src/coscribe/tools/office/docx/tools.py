@@ -11,20 +11,6 @@ from .toolkit import DocxToolkit
 def build_docx_tools(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
     """The Word tools, bound to `toolkit`."""
 
-    def read_docx(path: str) -> str:
-        """Read a Word (.docx) file under the workspace as markdown.
-
-        Headings, lists, tables, links, and bold/italic all come through as
-        their markdown equivalents.
-
-        Args:
-            path: file to read, relative to the workspace root
-        """
-        return cap_read_output(
-            toolkit.read_docx(path=path),
-            "search_files or a script (python-docx) reaches the rest without reading it all",
-        )
-
     def write_docx(
         path: str,
         content: str,
@@ -365,7 +351,7 @@ def build_docx_tools(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
         return toolkit.reject_docx_tracked_changes(path=path, author=author)
 
     return [
-        tool_metadata(read_docx, risk_category="READ", category="documents"),
+        _read_docx_tool(toolkit),
         tool_metadata(write_docx, risk_category="WRITE_LOCAL", category="documents"),
         tool_metadata(add_docx_chart, risk_category="WRITE_LOCAL", category="documents"),
         tool_metadata(add_docx_image, risk_category="WRITE_LOCAL", category="documents"),
@@ -378,4 +364,87 @@ def build_docx_tools(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
         tool_metadata(
             reject_docx_tracked_changes, risk_category="WRITE_LOCAL", category="documents"
         ),
-    ]
+    ] + [_edit_docx_structure_tool(toolkit)]
+
+
+def _edit_docx_structure_tool(toolkit: DocxToolkit) -> Callable[..., Any]:
+    """Kept out of `build_docx_tools`, which already holds every other Word tool."""
+
+    def edit_docx_structure(
+        path: str,
+        operations: list[dict[str, str]],
+        output_path: str = "",
+        track_changes: bool = False,
+        author: str = "Coscribe",
+    ) -> dict[str, object]:
+        """Restructure an existing Word (.docx) file in one call: add headed
+        sections, lists, tables or a contents list, move a section, delete a
+        section. Everything not named is left as it is -- styles, headers,
+        pictures, charts, other tables -- unlike `write_docx`, which rebuilds
+        the whole file. Use this rather than a script for any change to a
+        document's structure; use `replace_docx_text` for wording.
+
+        `operations` run in order, each a dict with an `op`:
+
+        - `{"op": "insert", "content": "...", <place>}`: `content` in
+          write_docx's markdown subset (#/##/### headings, - bullets, 1.
+          numbered items, | pipe | tables |, and a `[TOC]` line for a contents
+          list). It takes the document's own heading and list styles, and new
+          tables the style of its existing ones.
+        - `{"op": "move_section", "section": "<heading>", <place>}`: the
+          heading and everything under it, up to the next heading of the same
+          or a higher level.
+        - `{"op": "delete_section", "section": "<heading>"}`.
+
+        `<place>` is exactly one of `"after": "<paragraph text>"`,
+        `"before": "<paragraph text>"` or `"after_section": "<heading>"`
+        (after everything under that heading). Text is matched exactly, or
+        else as part of one paragraph; it must name one. A contents list is
+        filled from all the document's headings once every operation has run.
+        If any operation fails, nothing is saved. The result's `document`
+        lists the edited file's headings in order, its tables, pictures,
+        header, footer and contents list -- enough to check the edit without
+        opening the file.
+
+        Args:
+            path: existing .docx file, relative to the workspace root
+            operations: the edits, in order
+            output_path: save to this new file instead and leave `path` as it
+                is; it must not exist yet
+            track_changes: show inserted and deleted text as tracked changes
+                for review (a move can't be tracked)
+            author: name shown on tracked changes
+        """
+        return toolkit.edit_docx_structure(
+            path=path,
+            operations=operations,
+            output_path=output_path,
+            track_changes=track_changes,
+            author=author,
+        )
+
+    return tool_metadata(edit_docx_structure, risk_category="WRITE_LOCAL", category="documents")
+
+
+def _read_docx_tool(toolkit: DocxToolkit) -> Callable[..., Any]:
+    """Kept out of `build_docx_tools`, which already holds every other Word tool."""
+
+    def read_docx(path: str, view: str = "text") -> str:
+        """Read a Word (.docx) file under the workspace as markdown.
+
+        Headings, lists, tables, links, and bold/italic all come through as
+        their markdown equivalents. `view="structure"` lists instead each
+        block's style, tables with their style, pictures, contents lists,
+        and each section's page, header and footer: use it to check a
+        document before and after an edit, rather than a script.
+
+        Args:
+            path: file to read, relative to the workspace root
+            view: "text" (markdown) or "structure"
+        """
+        return cap_read_output(
+            toolkit.read_docx(path=path, view=view),
+            "search_files or a script (python-docx) reaches the rest without reading it all",
+        )
+
+    return tool_metadata(read_docx, risk_category="READ", category="documents")
