@@ -100,6 +100,11 @@ Last reviewed: 2026-10-15.
    PowerPoint files through Office (COM), or WPS;
    step 3 (done), the LibreOffice code paths removed, LibreOffice kept for development and the
    evaluation.
+   Word research done (`docs/assessments/2026-10-16-word-quality.md`): a document written whole by
+   a script scored 4.2-4.3 on design against 3.7-3.9 for `write_docx`, with content level; the gap
+   is layout `write_docx` cannot set (a shaded table header, an East Asian font, heading styles,
+   page numbers), and the script route added facts and costs more. Next: a document style for
+   `write_docx`, compiled onto real Word styles (#325, decision 0013, proposed); the edit tools stay.
    Instructions are changed by cutting first and measuring after: a shorter prompt that scores
    the same is the better one.
 
