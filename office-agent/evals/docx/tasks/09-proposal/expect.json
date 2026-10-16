@@ -1,0 +1,11 @@
+{
+ "facts": [
+  ["Northwind"], ["Priya Raman"], ["140"], ["40 minutes"], ["6%"], ["1 March 2027"],
+  ["21 October 2026"], ["Daniel Cho"], ["Ana Ruiz"], ["Tom Price"], ["12,000", "12000"],
+  ["84,000", "84000"], ["9,500", "9500"], ["14,000", "14000"], ["18,000", "18000"],
+  ["137,500", "137500"], ["offline"], ["undocumented"]
+ ],
+ "allowed_numbers": ["137,500", "137500"],
+ "tables": [{"rows_min": 6, "cols_min": 2}],
+ "pages": [1, 8]
+}

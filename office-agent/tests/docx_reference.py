@@ -311,6 +311,94 @@ def image_caption(inputs: Path, out: Path) -> Path:
     return path
 
 
+def _table(document: Document, rows: list[tuple[str, ...]]) -> None:
+    table = document.add_table(rows=len(rows), cols=len(rows[0]))
+    table.style = "Table Grid"
+    for r, row in enumerate(rows):
+        for c, value in enumerate(row):
+            table.cell(r, c).text = value
+
+
+def proposal(inputs: Path, out: Path) -> Path:
+    document = Document()
+    document.add_heading("Proposal: one delivery form for Northwind Logistics", level=0)
+    document.add_paragraph(
+        "For Priya Raman, Head of Operations. Decision by the board on 21 October 2026."
+    )
+    document.add_heading("The problem", level=1)
+    document.add_paragraph(
+        "Drivers re-key delivery notes into three systems, about 40 minutes per driver per day, "
+        "and 6% of invoices had errors last quarter."
+    )
+    document.add_heading("Our approach", level=1)
+    document.add_paragraph(
+        "One Android form that works offline in the vans and feeds the warehouse system, "
+        "invoicing and the customer portal, for all 140 drivers."
+    )
+    document.add_heading("Timeline", level=1)
+    document.add_paragraph(
+        "Two weeks of discovery, three 4-week build sprints, a pilot with 20 drivers in January "
+        "and full rollout in February, live before 1 March 2027."
+    )
+    document.add_heading("Team", level=1)
+    document.add_paragraph(
+        "Daniel Cho (delivery lead), Ana Ruiz (Android), Tom Price (integration)."
+    )
+    document.add_heading("Price", level=1)
+    _table(
+        document,
+        [
+            ("Item", "Amount (GBP)"),
+            ("Discovery (2 weeks)", "12,000"),
+            ("Build sprints (3 x 4 weeks)", "84,000"),
+            ("Pilot support (20 drivers)", "9,500"),
+            ("Rollout and training (140 drivers)", "14,000"),
+            ("Year-one support", "18,000"),
+            ("Total", "137,500"),
+        ],
+    )
+    document.add_heading("Risk", level=1)
+    document.add_paragraph(
+        "The customer portal vendor's API is undocumented; discovery confirms it first."
+    )
+    document.add_page_break()
+    document.add_paragraph("Northwind Logistics, Leeds.")
+    path = out / "proposal_northwind.docx"
+    document.save(path)
+    return path
+
+
+def half_year_summary(inputs: Path, out: Path) -> Path:
+    document = Document()
+    document.add_heading("华东销售部2026年上半年工作总结", level=0)
+    document.add_heading("一、主要成绩", level=1)
+    document.add_paragraph(
+        "上半年营收 5805 万元，完成全年目标 11000 万元的 52.8%；新客户 257 家；"
+        "客户满意度从 1 月的 91.2 提升到 6 月的 94.0。"
+        "新的报价系统上线后，报价周期从 3 天缩短到 1 天。"
+    )
+    _table(
+        document,
+        [
+            ("月份", "营收(万元)", "新客户数", "客户满意度"),
+            ("1月", "812", "34", "91.2"),
+            ("2月", "705", "28", "90.5"),
+            ("3月", "968", "41", "92.8"),
+            ("4月", "1023", "45", "93.1"),
+            ("5月", "1110", "52", "92.4"),
+            ("6月", "1187", "57", "94.0"),
+        ],
+    )
+    document.add_paragraph("2 月受春节影响营收最低（705 万元）。")
+    document.add_heading("二、存在的问题", level=1)
+    document.add_paragraph("苏州大客户流失 1 家，原因是交付延期；人员流动率 12%。")
+    document.add_heading("三、下半年计划", level=1)
+    document.add_paragraph("重点开拓南京市场；6 名新人在 8 月前完成培训；交付准时率提升到 98%。")
+    path = out / "华东销售部2026年上半年工作总结.docx"
+    document.save(path)
+    return path
+
+
 SOLUTIONS = {
     "01-report-from-notes": report_from_notes,
     "02-memo-from-pdf": memo_from_pdf,
@@ -320,4 +408,6 @@ SOLUTIONS = {
     "06-mixed-language": mixed_language,
     "07-restructure": restructure,
     "08-image-caption": image_caption,
+    "09-proposal": proposal,
+    "10-half-year-summary": half_year_summary,
 }
