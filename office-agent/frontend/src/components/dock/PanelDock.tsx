@@ -343,7 +343,7 @@ export function PanelDock({
               className={`group/panel absolute flex flex-col overflow-hidden rounded-xl border bg-[var(--panel-bg)] ${
                 isDragged
                   ? "pointer-events-none z-20 border-[var(--border-hover)] opacity-95 shadow-[0_12px_32px_rgba(0,0,0,0.18)]"
-                  : "border-[var(--border)]"
+                  : "border-[var(--panel-edge)] shadow-[var(--panel-shadow)]"
               }`}
               style={
                 rect

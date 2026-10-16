@@ -7,8 +7,12 @@ export const TITLE_BAR_PLATFORM = titleBarPlatform();
 export const DRAWS_TITLE_BAR = TITLE_BAR_PLATFORM !== null;
 
 /** Width of the top-left cluster (menu, sidebar toggle, back, forward)
- * while the sidebar is collapsed: 36px buttons, 2px gaps, 6px padding. */
-export const COLLAPSED_CLUSTER_WIDTH = DRAWS_TITLE_BAR ? 4 * 38 + 10 : 48;
+ * while the sidebar is collapsed: 32px buttons, 2px gaps, 6px padding. */
+export const COLLAPSED_CLUSTER_WIDTH = DRAWS_TITLE_BAR ? 4 * 34 + 10 : 48;
+
+/** An icon in the desktop title bar: smaller and finer than the page's,
+ * in the text colour, matching the OS window buttons beside them. */
+export const TITLE_BAR_ICON = { className: "h-4 w-4", strokeWidth: 1.75 } as const;
 
 type Rgb = [number, number, number];
 
@@ -63,10 +67,10 @@ function blend(base: Rgb, layers: { rgb: Rgb; alpha: number }[]): Rgb {
 function sendThemeColors() {
   const styles = getComputedStyle(document.documentElement);
   const bg = hexToRgb(styles.getPropertyValue("--bg"));
-  const muted = hexToRgb(styles.getPropertyValue("--muted"));
-  if (!bg || !muted) return;
+  const fg = hexToRgb(styles.getPropertyValue("--fg"));
+  if (!bg || !fg) return;
   const layers = openBackdrops();
-  setTitleBarColors(rgbToHex(blend(bg, layers)), rgbToHex(blend(muted, layers)));
+  setTitleBarColors(rgbToHex(blend(bg, layers)), rgbToHex(blend(fg, layers)));
 }
 
 let lastSent = "";

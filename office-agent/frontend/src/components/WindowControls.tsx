@@ -1,9 +1,10 @@
 import { useEffect, useState, type MouseEvent } from "react";
 import { showAppMenu } from "../lib/electron";
+import { TITLE_BAR_ICON } from "../lib/titleBar";
 import { ArrowLeftIcon, ArrowRightIcon, MenuIcon } from "./icons";
 
 const iconButton =
-  "flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)] disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-[var(--muted)]";
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--fg)] hover:bg-[var(--card-bg)] disabled:opacity-35 disabled:hover:bg-transparent";
 
 interface NavigationLike extends EventTarget {
   canGoBack: boolean;
@@ -41,7 +42,7 @@ export function AppMenuButton() {
   };
   return (
     <button type="button" title="Menu" aria-label="Menu" className={iconButton} onClick={open}>
-      <MenuIcon className="h-[18px] w-[18px]" />
+      <MenuIcon {...TITLE_BAR_ICON} />
     </button>
   );
 }
@@ -59,7 +60,7 @@ export function HistoryButtons() {
         className={iconButton}
         onClick={() => window.history.back()}
       >
-        <ArrowLeftIcon className="h-[18px] w-[18px]" />
+        <ArrowLeftIcon {...TITLE_BAR_ICON} />
       </button>
       <button
         type="button"
@@ -69,7 +70,7 @@ export function HistoryButtons() {
         className={iconButton}
         onClick={() => window.history.forward()}
       >
-        <ArrowRightIcon className="h-[18px] w-[18px]" />
+        <ArrowRightIcon {...TITLE_BAR_ICON} />
       </button>
     </>
   );

@@ -45,12 +45,12 @@ interface TitleBarColors {
   symbolColor: string;
 }
 
-// The frontend's --bg and --muted tokens, used until the page reports the
+// The frontend's --bg and --fg tokens, used until the page reports the
 // theme it actually rendered.
 function defaultColors(): TitleBarColors {
   return nativeTheme.shouldUseDarkColors
-    ? { color: "#232120", symbolColor: "#a19d9b" }
-    : { color: "#fcfcfb", symbolColor: "#7d7979" };
+    ? { color: "#232120", symbolColor: "#f7f5f3" }
+    : { color: "#fcfcfb", symbolColor: "#201e1d" };
 }
 
 export function titleBarWindowOptions(): BrowserWindowConstructorOptions {
