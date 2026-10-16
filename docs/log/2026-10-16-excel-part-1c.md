@@ -29,10 +29,30 @@ workbook, the ten single-purpose tools and the block tools; one is clearer and c
   concurrency, column widths, approval preview). The xlsx goldens pinned the old writers' XML
   and are removed with them. The frontend keeps the old tools' labels for old conversations.
 
+## Measured (2026-10-16, off-peak, DeepSeek at effort low, main at a36ea4e)
+- Tasks 01-12 with only the four tools, and with no LibreOffice anywhere in the product
+  (decision 0012): every deterministic check passed on every task, with no formula errors.
+  The cost was 1.08 yuan for twelve tasks; part 1b's second run cost 1.03 yuan for ten.
+- Task 11: the model saw the sparkline could not be kept. It left `plan_2026.xlsx` as it was,
+  saved `plan_2026 (coscribe).xlsx`, told the user the new file lacks the H2 sparkline, and
+  offered a line chart instead. `original_keeps` passed.
+- Task 12: 5,000 rows, with amounts and region totals as formulas; the price probe passed.
+- Design, judged blind against part 1b's second run (3 rounds):
+
+  | task | 1b round 2 | 1c |
+  |---|---|---|
+  | 02 | 4.17 | 4.43 |
+  | 03 | 3.83 | 4.17 |
+  | 04 | 4.60 | 4.57 |
+  | 09 | 3.47 | 4.40 |
+  | 10 | 3.83 | 4.20 |
+  | mean | 3.98 | 4.35 |
+
+  The gate (design no lower, every check as before, cost level) is met.
+
 ## Not verified
-- The model on tasks 01-12 with only the four tools: the off-peak run is next, and the gate is
-  the same as part 1b's.
 - In Excel on Windows: task 11's copy and the 5,000-row workbook.
 
 ## Follow-ups
-- 1d, the preview panel.
+- None for part 1. 1d (showing a workbook inside the app) was tried and dropped; stage 2
+  (Excel through COM) comes from real use.
