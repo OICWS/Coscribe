@@ -3,7 +3,7 @@
 
 system prompt: 33586 chars, ~8396 tokens, sha256 b8098c7f5c
 
-bound to the model: 22 tools, ~4849 tokens
+bound to the model: 22 tools, ~4851 tokens
   ask_user_question (questions:array) desc 1435 chars sha256 e846e64163
   draft_workflow (name?:string) desc 983 chars sha256 e91334c9ee
   edit_file (new_text:string, old_text:string, path:string, replace_all?:boolean) desc 1330 chars sha256 3f5ab0dd7e
@@ -18,7 +18,7 @@ bound to the model: 22 tools, ~4849 tokens
   read_xlsx (path:string, sheet?:string|null) desc 548 chars sha256 299925b715
   revise_workflow (draft_id?:string, request:string, task_id?:string) desc 632 chars sha256 bb65f01516
   search_files (path?:string, pattern?:string, query:string, regex?:boolean) desc 1842 chars sha256 f741658379
-  search_tools (query:string) desc 1794 chars sha256 c5f472ebfd
+  search_tools (query:string) desc 1804 chars sha256 ef23fbbea3
   task_create (content:string) desc 149 chars sha256 dea506b85f
   task_list () desc 54 chars sha256 7bc88160db
   task_update (status:string, task_id:string) desc 284 chars sha256 e5aa5260b7
@@ -27,7 +27,7 @@ bound to the model: 22 tools, ~4849 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 112 tools, ~34448 tokens (the ones not bound are found through search_tools)
+registered: 113 tools, ~34985 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -59,6 +59,7 @@ registered: 112 tools, ~34448 tokens (the ones not bound are found through searc
   download_image | EXTERNAL | web | deferred | sha256 65e0363b61
   draft_workflow | READ | - | core | sha256 e91334c9ee
   duplicate_pptx_slide | WRITE_LOCAL | documents | deferred | sha256 ede3ae0640
+  edit_docx_structure | WRITE_LOCAL | documents | deferred | sha256 77d8642aad
   edit_file | WRITE_LOCAL | filesystem | core | sha256 f8168b6c62
   edit_file_batch | WRITE_LOCAL | filesystem | deferred | sha256 31b92256f0
   edit_pptx_shape | WRITE_LOCAL | documents | deferred | sha256 d7dc66b696

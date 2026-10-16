@@ -399,6 +399,33 @@ def half_year_summary(inputs: Path, out: Path) -> Path:
     return path
 
 
+def restructure_report(inputs: Path, out: Path) -> Path:
+    """Done with coscribe's own `edit_docx_structure`, as the task means it to be."""
+    import shutil
+
+    from coscribe.tools.office.document_tools import build_document_tools
+
+    shutil.copy(inputs / "weekly_report.docx", out / "weekly_report.docx")
+    tools = {tool.__name__: tool for tool in build_document_tools(out)}  # type: ignore[attr-defined]
+    tools["edit_docx_structure"](
+        path="weekly_report.docx",
+        output_path="weekly_report_v2.docx",
+        operations=[
+            {"op": "delete_section", "section": "旧流程说明"},
+            {"op": "move_section", "section": "问题与风险", "before": "二、项目进展"},
+            {
+                "op": "insert",
+                "after_section": "问题与风险",
+                "content": "# 三、下周计划\n\n| 工作 | 负责人 | 日期 |\n| --- | --- | --- |\n"
+                "| 系统切换 | 王敏 | 6 月 20 日 |\n| 新员工培训 | 李强 | 6 月 24 日 |\n"
+                "| 项目验收 | 张华 | 6 月 28 日 |",
+            },
+        ],
+    )
+    (out / "weekly_report.docx").unlink()
+    return out / "weekly_report_v2.docx"
+
+
 SOLUTIONS = {
     "01-report-from-notes": report_from_notes,
     "02-memo-from-pdf": memo_from_pdf,
@@ -410,4 +437,5 @@ SOLUTIONS = {
     "08-image-caption": image_caption,
     "09-proposal": proposal,
     "10-half-year-summary": half_year_summary,
+    "11-restructure-report": restructure_report,
 }

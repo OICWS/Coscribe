@@ -195,6 +195,46 @@ def _handbook(path: Path) -> None:
     document.save(path)
 
 
+WEEKLY_SECTIONS = [
+    ("一、本周概况", ["本周华东区 4 个项目按计划推进，整体进度 72%。", "客户满意度调查回收 38 份，平均 4.6 分。"]),
+    ("二、项目进展", ["各项目进度如下表。"]),
+    ("三、问题与风险", ["苏州仓库的网络改造延期一周，影响系统切换。", "宁波项目缺少一名测试工程师。"]),
+    ("四、旧流程说明（已废止）", ["原纸质审批单自 5 月 1 日起停止使用，相关说明不再适用。"]),
+    ("五、联系人", ["项目负责人：陈静，分机 3021。"]),
+]
+
+
+def _weekly_report(path: Path, chart: Path) -> None:
+    document = Document()
+    document.sections[0].header.paragraphs[0].text = "华东区项目周报"
+    document.sections[0].footer.paragraphs[0].text = "内部资料，请勿外传"
+    document.add_heading("华东区项目周报（第 24 周）", level=0)
+    for title, lines in WEEKLY_SECTIONS:
+        document.add_heading(title, level=1)
+        for line in lines:
+            document.add_paragraph(line)
+        if title.startswith("二"):
+            table = document.add_table(rows=4, cols=2)
+            table.style = "Light Grid Accent 1"
+            for row, cells in enumerate(
+                [("项目", "进度"), ("苏州仓储", "65%"), ("宁波门店", "80%"), ("上海总部", "71%")]
+            ):
+                for col, text in enumerate(cells):
+                    table.cell(row, col).text = text
+            document.add_picture(str(chart))
+    document.save(path)
+
+
+def _progress_chart(path: Path) -> None:
+    image = Image.new("RGB", (480, 240), "white")
+    draw = ImageDraw.Draw(image)
+    for index, value in enumerate((65, 80, 71)):
+        left = 60 + index * 140
+        draw.rectangle([left, 220 - value * 2, left + 80, 220], fill=(31, 78, 121))
+    draw.line([40, 220, 460, 220], fill="black", width=2)
+    image.save(path)
+
+
 def _quote_pdf(path: Path) -> None:
     from reportlab.pdfgen import canvas
 
@@ -290,6 +330,10 @@ def main() -> None:
     put("09-proposal", "pricing.csv").write_text(PRICING_CSV, encoding="utf-8")
     put("10-half-year-summary", "上半年数据.csv").write_text(HALF_YEAR_CSV, encoding="utf-8")
     put("10-half-year-summary", "上半年要点.md").write_text(HALF_YEAR_NOTES_MD, encoding="utf-8")
+    chart = put("11-restructure-report", "progress.png")
+    _progress_chart(chart)
+    _weekly_report(put("11-restructure-report", "weekly_report.docx"), chart)
+    chart.unlink()
 
 
 if __name__ == "__main__":
