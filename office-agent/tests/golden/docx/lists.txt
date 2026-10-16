@@ -58,7 +58,7 @@
   <w:body>
     <w:p>
       <w:pPr>
-        <w:pStyle w:val="Heading1"/>
+        <w:pStyle w:val="Title"/>
       </w:pPr>
       <w:r>
         <w:t>Plan</w:t>
@@ -83,6 +83,9 @@
     <w:p>
       <w:pPr>
         <w:pStyle w:val="ListNumber"/>
+        <w:numPr>
+          <w:numId w:val="10"/>
+        </w:numPr>
       </w:pPr>
       <w:r>
         <w:t>step one</w:t>
@@ -91,6 +94,9 @@
     <w:p>
       <w:pPr>
         <w:pStyle w:val="ListNumber"/>
+        <w:numPr>
+          <w:numId w:val="10"/>
+        </w:numPr>
       </w:pPr>
       <w:r>
         <w:t>step two</w:t>
@@ -99,6 +105,9 @@
     <w:p>
       <w:pPr>
         <w:pStyle w:val="ListNumber"/>
+        <w:numPr>
+          <w:numId w:val="10"/>
+        </w:numPr>
       </w:pPr>
       <w:r>
         <w:t>step three</w:t>
@@ -160,7 +169,17 @@
   </w:p>
 </w:ftr>
 ===== word/numbering.xml
-<same as _shared.txt>
+<_shared.txt with this diff>
+@@ -198,3 +198,9 @@
+     <w:abstractNumId w:val="0"/>
+   </w:num>
++  <w:num w:numId="10">
++    <w:abstractNumId w:val="7"/>
++    <w:lvlOverride w:ilvl="0">
++      <w:startOverride w:val="1"/>
++    </w:lvlOverride>
++  </w:num>
+ </w:numbering>
 ===== word/settings.xml
 <same as _shared.txt>
 ===== word/styles.xml

@@ -19,7 +19,7 @@ _TOTAL_LABEL = re.compile(
 )
 
 # (level, size in pt, space before in pt, colour)
-_HEADINGS = ((1, 16.0, 18.0, ACCENT), (2, 13.0, 14.0, ACCENT), (3, 11.5, 10.0, _HEADING_GREY))
+_HEADINGS = ((1, 16.0, 12.0, ACCENT), (2, 13.0, 10.0, ACCENT), (3, 11.5, 8.0, _HEADING_GREY))
 
 A4_EMU = (7560310, 10692130)
 
@@ -28,6 +28,9 @@ _LOOK_FIRST_ROW = 0x0020
 _LOOK_LAST_ROW = 0x0040
 _LOOK_NO_H_BAND = 0x0200
 _LOOK_NO_V_BAND = 0x0400
+
+
+TITLE_STYLE = "Title"
 
 
 def has_cjk(text: str) -> bool:
@@ -54,12 +57,14 @@ def apply_house_style(document: Any, *, cjk: bool) -> None:
     for tag in ("w:sz", "w:szCs"):
         run_defaults.find(qn(tag)).set(qn("w:val"), size)
     spacing = defaults.find(qn("w:pPrDefault")).find(qn("w:pPr")).find(qn("w:spacing"))
-    spacing.set(qn("w:after"), "120")
-    spacing.set(qn("w:line"), "276")
+    # 4 pt after and 1.1 lines: a one-page memo with a small table still fits one A4 page.
+    spacing.set(qn("w:after"), "80")
+    spacing.set(qn("w:line"), "264")
     spacing.set(qn("w:lineRule"), "auto")
 
     for level, size_pt, before_pt, colour in _HEADINGS:
         _style_heading(document.styles[f"Heading {level}"], size_pt, before_pt, colour)
+    _style_heading(document.styles["Title"], 22.0, 0.0, ACCENT)
     styles_element.append(_table_style_element())
     for section in document.sections:
         # python-docx's blank document is US Letter; A4 is the paper nearly everywhere else.
@@ -92,10 +97,15 @@ def _style_heading(style: Any, size_pt: float, before_pt: float, colour: str) ->
     style.font.size = Pt(size_pt)
     style.font.bold = True
     style.font.color.rgb = RGBColor.from_string(colour)
-    # The blank document's heading styles already carry a w:spacing.
-    spacing = style.element.get_or_add_pPr().find(qn("w:spacing"))
+    p_pr = style.element.get_or_add_pPr()
+    spacing = p_pr.find(qn("w:spacing"))
+    if spacing is None:
+        from docx.oxml import OxmlElement
+
+        spacing = OxmlElement("w:spacing")
+        p_pr.append(spacing)
     spacing.set(qn("w:before"), str(round(before_pt * 20)))
-    spacing.set(qn("w:after"), "120")
+    spacing.set(qn("w:after"), "80")
 
 
 def _table_style_element() -> Any:
@@ -111,8 +121,8 @@ def _table_style_element() -> Any:
         "<w:tblPr><w:tblBorders>"
         f"<w:top {border}/><w:left {border}/><w:bottom {border}/><w:right {border}/>"
         f"<w:insideH {border}/><w:insideV {border}/>"
-        '</w:tblBorders><w:tblCellMar><w:top w:w="40" w:type="dxa"/>'
-        '<w:left w:w="100" w:type="dxa"/><w:bottom w:w="40" w:type="dxa"/>'
+        '</w:tblBorders><w:tblCellMar><w:top w:w="20" w:type="dxa"/>'
+        '<w:left w:w="100" w:type="dxa"/><w:bottom w:w="20" w:type="dxa"/>'
         '<w:right w:w="100" w:type="dxa"/></w:tblCellMar></w:tblPr>'
         '<w:tblStylePr w:type="firstRow"><w:rPr><w:b/><w:bCs/><w:color w:val="FFFFFF"/></w:rPr>'
         f'<w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="{ACCENT}"/></w:tcPr></w:tblStylePr>'

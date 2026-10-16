@@ -383,7 +383,7 @@
     </w:rPrDefault>
     <w:pPrDefault>
       <w:pPr>
-        <w:spacing w:after="120" w:line="276" w:lineRule="auto"/>
+        <w:spacing w:after="80" w:line="264" w:lineRule="auto"/>
       </w:pPr>
     </w:pPrDefault>
   </w:docDefaults>
@@ -586,7 +586,7 @@
     <w:pPr>
       <w:keepNext/>
       <w:keepLines/>
-      <w:spacing w:after="120" w:before="360"/>
+      <w:spacing w:after="80" w:before="240"/>
       <w:outlineLvl w:val="0"/>
     </w:pPr>
     <w:rPr>
@@ -610,7 +610,7 @@
     <w:pPr>
       <w:keepNext/>
       <w:keepLines/>
-      <w:spacing w:after="120" w:before="280"/>
+      <w:spacing w:after="80" w:before="200"/>
       <w:outlineLvl w:val="1"/>
     </w:pPr>
     <w:rPr>
@@ -634,7 +634,7 @@
     <w:pPr>
       <w:keepNext/>
       <w:keepLines/>
-      <w:spacing w:after="120" w:before="200"/>
+      <w:spacing w:after="80" w:before="160"/>
       <w:outlineLvl w:val="2"/>
     </w:pPr>
     <w:rPr>
@@ -876,15 +876,16 @@
       <w:pBdr>
         <w:bottom w:color="4F81BD" w:space="4" w:sz="8" w:themeColor="accent1" w:val="single"/>
       </w:pBdr>
-      <w:spacing w:after="300" w:line="240" w:lineRule="auto"/>
+      <w:spacing w:after="80" w:before="0" w:line="240" w:lineRule="auto"/>
       <w:contextualSpacing/>
     </w:pPr>
     <w:rPr>
-      <w:rFonts w:asciiTheme="majorHAnsi" w:cstheme="majorBidi" w:eastAsiaTheme="majorEastAsia" w:hAnsiTheme="majorHAnsi"/>
-      <w:color w:themeColor="text2" w:themeShade="BF" w:val="17365D"/>
+      <w:rFonts w:ascii="Calibri" w:cs="Calibri" w:eastAsia="Microsoft YaHei" w:hAnsi="Calibri"/>
+      <w:b/>
+      <w:color w:val="1F4E79"/>
       <w:spacing w:val="5"/>
       <w:kern w:val="28"/>
-      <w:sz w:val="52"/>
+      <w:sz w:val="44"/>
       <w:szCs w:val="52"/>
     </w:rPr>
   </w:style>
@@ -12232,9 +12233,9 @@
         <w:insideV w:color="BFBFBF" w:space="0" w:sz="4" w:val="single"/>
       </w:tblBorders>
       <w:tblCellMar>
-        <w:top w:type="dxa" w:w="40"/>
+        <w:top w:type="dxa" w:w="20"/>
         <w:left w:type="dxa" w:w="100"/>
-        <w:bottom w:type="dxa" w:w="40"/>
+        <w:bottom w:type="dxa" w:w="20"/>
         <w:right w:type="dxa" w:w="100"/>
       </w:tblCellMar>
     </w:tblPr>

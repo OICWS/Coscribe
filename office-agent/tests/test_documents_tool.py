@@ -99,9 +99,7 @@ def test_parse_inline_runs_leaves_an_unterminated_marker_as_plain_text() -> None
     # A lone asterisk with no closing partner (e.g. "the file *.txt") isn't
     # markup -- it should pass through unchanged, not swallow the rest of
     # the string as unterminated italics.
-    assert parse_inline_runs("the file *.txt is here") == [
-        ("the file *.txt is here", False, False)
-    ]
+    assert parse_inline_runs("the file *.txt is here") == [("the file *.txt is here", False, False)]
 
 
 def test_write_docx_bold_and_italic_markers_become_real_formatting(tmp_path: Path) -> None:
@@ -211,6 +209,28 @@ def test_write_docx_gives_a_new_document_the_house_style(tmp_path: Path) -> None
     assert any(" PAGE " == (node.text or "") for node in footer.iter(f"{_W}instrText"))
 
 
+def test_write_docx_restarts_each_numbered_list_and_titles_the_first_heading(
+    tmp_path: Path,
+) -> None:
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](
+        path="n.docx",
+        content="# Report\n\n## Problems\n\n1. a\n2. b\n\n## Plans\n\n1. c\n2. d\n\n[TOC]",
+    )
+
+    document = Document(str(tmp_path / "n.docx"))
+    assert document.paragraphs[0].style.name == "Title"
+    items = [p for p in document.paragraphs if p.style.name == "List Number"]
+    num_ids = [p._p.pPr.numPr.numId.val for p in items]  # noqa: SLF001
+    assert num_ids[0] == num_ids[1] != num_ids[2] == num_ids[3]
+    numbering = document.part.numbering_part.element
+    for num_id in {num_ids[0], num_ids[2]}:
+        override = numbering.num_having_numId(num_id).find(f"{_W}lvlOverride/{_W}startOverride")
+        assert override.get(f"{_W}val") == "1"
+    toc_entries = [p.text for p in document.paragraphs if p.style.name.lower().startswith("toc")]
+    assert "Report" not in toc_entries and "Plans" in toc_entries
+
+
 def test_write_docx_marks_no_total_row_when_the_last_row_is_data(tmp_path: Path) -> None:
     tools = _tools_by_name(tmp_path)
     tools["write_docx"](
@@ -280,9 +300,7 @@ def test_write_docx_toc_marker_inserts_a_toc_field_and_enables_update_fields(
     assert result["has_toc"] is True
 
     doc = Document(tmp_path / "report.docx")
-    instr_texts = [
-        el.text for el in doc.element.body.iter(qn("w:instrText")) if el.text
-    ]
+    instr_texts = [el.text for el in doc.element.body.iter(qn("w:instrText")) if el.text]
     assert any("TOC" in text for text in instr_texts)
 
     update_fields = doc.settings.element.find(qn("w:updateFields"))
@@ -290,9 +308,10 @@ def test_write_docx_toc_marker_inserts_a_toc_field_and_enables_update_fields(
     assert update_fields.get(qn("w:val")) == "true"
 
 
+# The opening line keeps "# Handbook" a heading rather than the document's title.
 TOC_CONTENT = (
-    "# Handbook\n\n[TOC]\n\n## Setup\n\nInstall it.\n\n### Windows\n\nRun the installer.\n\n"
-    "## Usage\n\nRun it."
+    "Internal.\n\n# Handbook\n\n[TOC]\n\n## Setup\n\nInstall it.\n\n"
+    "### Windows\n\nRun the installer.\n\n## Usage\n\nRun it."
 )
 
 
@@ -628,9 +647,7 @@ def test_delete_docx_text_wraps_the_deletion_in_a_real_w_del(tmp_path: Path) -> 
     del_elements = list(doc.element.body.iter(qn("w:del")))
     assert len(del_elements) == 1
     assert del_elements[0].get(qn("w:author")) == "Bob"
-    assert (
-        "".join(t.text or "" for t in del_elements[0].iter(qn("w:delText"))) == "100 dollars"
-    )
+    assert "".join(t.text or "" for t in del_elements[0].iter(qn("w:delText"))) == "100 dollars"
     # Still present as a <w:delText>, not actually removed -- the text is
     # gone from python-docx's own paragraph.text (which skips w:del) but
     # not from the file itself.
@@ -705,9 +722,7 @@ def test_accept_docx_tracked_changes_can_be_scoped_to_one_author(tmp_path: Path)
     doc = Document(tmp_path / "c.docx")
     from docx.oxml.ns import qn
 
-    remaining_ins_authors = {
-        el.get(qn("w:author")) for el in doc.element.body.iter(qn("w:ins"))
-    }
+    remaining_ins_authors = {el.get(qn("w:author")) for el in doc.element.body.iter(qn("w:ins"))}
     assert remaining_ins_authors == {"Bob"}
     assert " ALICE" in doc.paragraphs[1].text
 
@@ -841,9 +856,7 @@ def test_edit_tools_preserve_headers_footers_and_tables_write_docx_would_drop(
     from docx.oxml.ns import qn
 
     deleted = {
-        t.text
-        for el in reopened.element.body.iter(qn("w:del"))
-        for t in el.iter(qn("w:delText"))
+        t.text for el in reopened.element.body.iter(qn("w:del")) for t in el.iter(qn("w:delText"))
     }
     inserted = {
         t.text for el in reopened.element.body.iter(qn("w:ins")) for t in el.iter(qn("w:t"))
@@ -870,8 +883,7 @@ def test_write_docx_with_all_advanced_features_converts_cleanly_via_libreoffice(
     result = tools["write_docx"](
         path="final.docx",
         content=(
-            "# Final Report\n\n[TOC]\n\n## Notes\n\n"
-            "Reviewed content. {{comment: looks good}}\n"
+            "# Final Report\n\n[TOC]\n\n## Notes\n\nReviewed content. {{comment: looks good}}\n"
         ),
         template_path="template.docx",
         page_size="a4",
@@ -1162,9 +1174,12 @@ def test_write_docx_table_gives_amounts_their_width_and_aligns_them_right(
     assert all(a == WD_ALIGN_PARAGRAPH.RIGHT for a in alignments[1:])
     assert all(run.bold for cell in table.rows[0].cells for run in cell.paragraphs[0].runs)
     assert not any(run.bold for run in table.rows[1].cells[0].paragraphs[0].runs)
-    assert table.rows[0]._tr.trPr.find(  # noqa: SLF001
-        "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tblHeader"
-    ) is not None
+    assert (
+        table.rows[0]._tr.trPr.find(  # noqa: SLF001
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tblHeader"
+        )
+        is not None
+    )
 
 
 def test_write_docx_keeps_two_tables_in_a_row_apart(tmp_path: Path) -> None:
@@ -1204,9 +1219,18 @@ def test_write_docx_amounts_stay_on_one_line_when_rendered(tmp_path: Path) -> No
     tools = _tools_by_name(tmp_path)
     tools["write_docx"](path="r.docx", content=_REGION_TABLE)
     subprocess.run(
-        ["soffice", "--headless", "--convert-to", "pdf", "--outdir", str(tmp_path),
-         str(tmp_path / "r.docx")],
-        check=True, capture_output=True, timeout=120,
+        [
+            "soffice",
+            "--headless",
+            "--convert-to",
+            "pdf",
+            "--outdir",
+            str(tmp_path),
+            str(tmp_path / "r.docx"),
+        ],
+        check=True,
+        capture_output=True,
+        timeout=120,
     )
     text = tools["read_pdf"](path="r.pdf")
 
@@ -1251,7 +1275,13 @@ def test_add_docx_chart_lands_after_the_named_paragraph_and_keeps_the_rest(
 
     assert result["path"] == "r.docx"
     assert _body_texts(tmp_path / "r.docx") == [
-        "Report", "Intro.", "Trend", "[chart]", "Figure 1", "Body.", "End"
+        "Report",
+        "Intro.",
+        "Trend",
+        "[chart]",
+        "Figure 1",
+        "Body.",
+        "End",
     ]
     names = zipfile.ZipFile(tmp_path / "r.docx").namelist()
     assert "word/charts/chart1.xml" in names
