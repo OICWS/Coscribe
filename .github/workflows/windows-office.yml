@@ -38,14 +38,26 @@ jobs:
         run: pip install -e .
 
       # The installer's address and switches are the ones winget's manifest lists for
-      # Kingsoft.WPSOffice-x64 (an NSIS installer).
+      # Kingsoft.WPSOffice-x64 (an NSIS installer). Download and install are separate steps,
+      # so a hang shows which one it is.
+      - name: Download WPS Office
+        timeout-minutes: 10
+        run: |
+          start=$(date +%s)
+          curl.exe -fL --retry 2 -o "$RUNNER_TEMP/wps-setup.exe" \
+            "https://official-package.wpscdn.cn/wps/download/WPS_Setup_x64_29158.exe"
+          echo "downloaded $(wc -c < "$RUNNER_TEMP/wps-setup.exe") bytes in $(( $(date +%s) - start )) s"
+
       - name: Install WPS Office
-        timeout-minutes: 15
+        timeout-minutes: 12
         shell: pwsh
         run: |
-          $installer = "$env:RUNNER_TEMP\wps-setup.exe"
-          Invoke-WebRequest "https://official-package.wpscdn.cn/wps/download/WPS_Setup_x64_29158.exe" -OutFile $installer
-          Start-Process $installer -ArgumentList "/S", "-agreelicense" -Wait
+          $setup = Start-Process "$env:RUNNER_TEMP\wps-setup.exe" -ArgumentList "/S", "-agreelicense" -PassThru
+          if (-not $setup.WaitForExit(600000)) {
+            Get-Process | Where-Object { $_.MainWindowTitle } | Format-Table Id, ProcessName, MainWindowTitle
+            throw "The WPS installer was still running after 10 minutes."
+          }
+          Write-Output "installer exit code: $($setup.ExitCode)"
           foreach ($id in "KWps.Application", "Ket.Application", "Kwpp.Application") {
             $found = Test-Path "Registry::HKEY_CLASSES_ROOT\$id\CLSID"
             Write-Output "$id registered: $found"
