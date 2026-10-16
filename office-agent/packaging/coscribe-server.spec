@@ -112,6 +112,8 @@ for pkg in (
     "markdownify",
     "reportlab",
     "openpyxl",
+    # A native extension module.
+    "ironcalc",
     "pptx",
 ):
     d, b, h = collect_all(pkg)

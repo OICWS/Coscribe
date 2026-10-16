@@ -8,6 +8,7 @@ from typing import Any, Optional
 from ..._file_locks import locked_by_path
 from ..._thumbnail import render_thumbnail
 from ..._workspace import WorkspaceScope
+from .calc import recalculate
 from .column_layout import (
     Span,
     explicit_width_starts,
@@ -20,10 +21,8 @@ from .helpers import (
     _CHART_TYPES,
     _CONDITIONAL_FORMAT_RULE_TYPES,
     _DATA_VALIDATION_TYPES,
-    _XLSX_RECALC_TIMEOUT,
     _coerce_cell,
     _parse_table_rows,
-    _recalc_xlsx_and_evaluate_lookups,
     _render_sheet_table,
     _workbook_has_any_formula,
 )
@@ -137,17 +136,17 @@ class SpreadsheetToolkit:
         for row in rows:
             sheet.append([_coerce_cell(cell) for cell in row])
         formula_cells = fit_columns(sheet, spans)
-        # Makes the just-written sheet the one LibreOffice renders for the
-        # preview thumbnail below (and the one Excel opens to) -- without
-        # this, amending an existing workbook leaves whatever sheet was
-        # already active, which usually isn't sheet_name.
+        # Makes the just-written sheet the one the preview thumbnail below
+        # renders (and the one Excel opens to) -- without this, amending an
+        # existing workbook leaves whatever sheet was already active, which
+        # usually isn't sheet_name.
         workbook.active = workbook.index(sheet)
         has_formula = _workbook_has_any_formula(workbook)
         workbook.save(str(file_path))
 
         recalc_result: dict[str, object] = {"status": "skipped", "skipped_reason": None}
         if has_formula:
-            recalc_result = _recalc_xlsx_and_evaluate_lookups(file_path)
+            recalc_result = recalculate(file_path)
         if recalc_result["status"] != "skipped":
             widen_after_recalc(file_path, sheet_name, formula_cells)
 
@@ -163,12 +162,13 @@ class SpreadsheetToolkit:
             "total_formulas": recalc_result.get("total_formulas"),
             "total_errors": recalc_result.get("total_errors"),
             "formula_error_locations": recalc_result.get("error_locations"),
+            "unchecked_formulas": recalc_result.get("unchecked"),
         }
 
     @locked_by_path
-    def recalc_xlsx(self, path: str, timeout: float = _XLSX_RECALC_TIMEOUT) -> dict[str, object]:
+    def recalc_xlsx(self, path: str) -> dict[str, object]:
         file_path = self._check_readable(path)
-        result = _recalc_xlsx_and_evaluate_lookups(file_path, timeout=timeout)
+        result = recalculate(file_path)
         return {
             "path": self._scope.relative(file_path),
             "status": result["status"],
@@ -176,6 +176,7 @@ class SpreadsheetToolkit:
             "total_formulas": result.get("total_formulas"),
             "total_errors": result.get("total_errors"),
             "error_locations": result.get("error_locations"),
+            "unchecked": result.get("unchecked"),
         }
 
     @locked_by_path
@@ -615,7 +616,7 @@ class SpreadsheetToolkit:
 
         recalc_result: dict[str, object] = {"status": "skipped", "skipped_reason": None}
         if has_formula:
-            recalc_result = _recalc_xlsx_and_evaluate_lookups(file_path)
+            recalc_result = recalculate(file_path)
         if recalc_result["status"] != "skipped":
             formulas = [cell.coordinate for cell in written if cell.data_type == "f"]
             widen_after_recalc(file_path, sheet_name, formulas)
@@ -635,4 +636,5 @@ class SpreadsheetToolkit:
             "total_formulas": recalc_result.get("total_formulas"),
             "total_errors": recalc_result.get("total_errors"),
             "formula_error_locations": recalc_result.get("error_locations"),
+            "unchecked_formulas": recalc_result.get("unchecked"),
         }

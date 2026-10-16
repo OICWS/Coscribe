@@ -353,7 +353,8 @@
   </sheetViews>
   <sheetFormatPr baseColWidth="8" defaultRowHeight="15"/>
   <cols>
-    <col customWidth="1" max="1" min="1" width="15"/>
+    <col customWidth="1" hidden="0" max="1" min="1" width="15"/>
+    <col customWidth="1" max="2" min="2" width="13"/>
   </cols>
   <sheetData>
     <row r="1">
@@ -376,7 +377,7 @@
       </c>
       <c r="B2">
         <f>SUM(Sales!B2:B4)</f>
-        <v/>
+        <v>260</v>
       </c>
     </row>
     <row r="3">
@@ -387,7 +388,7 @@
       </c>
       <c r="B3">
         <f>(SUM(Sales!C2:C4)-SUM(Sales!B2:B4))/SUM(Sales!B2:B4)</f>
-        <v/>
+        <v>0.15673076923076923</v>
       </c>
     </row>
     <row r="4">
@@ -396,9 +397,9 @@
           <t>South manager</t>
         </is>
       </c>
-      <c r="B4">
+      <c r="B4" t="str">
         <f>INDEX(Managers!B2:B4,MATCH("South",Managers!A2:A4,0))</f>
-        <v/>
+        <v>Ben</v>
       </c>
     </row>
   </sheetData>

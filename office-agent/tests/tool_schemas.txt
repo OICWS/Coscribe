@@ -27,7 +27,7 @@ bound to the model: 22 tools, ~4852 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 122 tools, ~38122 tokens (the ones not bound are found through search_tools)
+registered: 122 tools, ~38063 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -69,7 +69,7 @@ registered: 122 tools, ~38122 tokens (the ones not bound are found through searc
   edit_pptx_theme_colors | WRITE_LOCAL | documents | deferred | sha256 ffc61d7262
   edit_pptx_xml | WRITE_LOCAL | documents | deferred | sha256 18520bcfdc
   edit_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 39782553e3
-  edit_xlsx_cells | WRITE_LOCAL | documents | deferred | sha256 e05d89bbc1
+  edit_xlsx_cells | WRITE_LOCAL | documents | deferred | sha256 caf02fce2d
   exit_plan_mode | READ | interaction | core | sha256 f22b0af33b
   extract_pptx_template | WRITE_LOCAL | documents | deferred | sha256 4462e72289
   fill_pptx_template | WRITE_LOCAL | documents | deferred | sha256 645155af29
@@ -106,7 +106,7 @@ registered: 122 tools, ~38122 tokens (the ones not bound are found through searc
   read_skill_file | READ | skills | deferred | sha256 641b92cec5
   read_web_page | READ | web | core | sha256 cea631ab7d
   read_xlsx | READ | documents | core | sha256 ebefe2ba4b
-  recalc_xlsx | WRITE_LOCAL | documents | deferred | sha256 18135e6ad6
+  recalc_xlsx | WRITE_LOCAL | documents | deferred | sha256 aeedf3a870
   recolor_pptx_icon | WRITE_LOCAL | documents | deferred | sha256 c79f3aa354
   reject_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 625975143d
   render_pptx_preview | READ | documents | deferred | sha256 1ba765da99
@@ -148,5 +148,5 @@ registered: 122 tools, ~38122 tokens (the ones not bound are found through searc
   write_file | WRITE_LOCAL | filesystem | core | sha256 509ae7daba
   write_pdf | WRITE_LOCAL | documents | deferred | sha256 7e516e06d6
   write_pptx | WRITE_LOCAL | documents | deferred | sha256 8a28365217
-  write_xlsx | WRITE_LOCAL | documents | deferred | sha256 9061b24236
+  write_xlsx | WRITE_LOCAL | documents | deferred | sha256 7399afc46a
   write_xlsx_cells | WRITE_LOCAL | documents | deferred | sha256 1351337f25

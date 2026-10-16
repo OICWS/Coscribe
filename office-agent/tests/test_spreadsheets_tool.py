@@ -180,7 +180,7 @@ def test_write_xlsx_writes_formula_strings_as_real_formulas(tmp_path: Path) -> N
 def test_write_xlsx_rejects_filter_formula(tmp_path: Path) -> None:
     # SORT/FILTER/UNIQUE/SEQUENCE stay hard-blocked -- they're dynamic-array
     # (spilling) functions, unlike XLOOKUP/XMATCH's scalar usage, which this
-    # module now evaluates natively (see test_xlsx_lookup_formulas.py).
+    # the formula engine evaluates.
     tools = _tools_by_name(tmp_path)
 
     with pytest.raises(ValueError, match="FILTER"):
@@ -239,12 +239,7 @@ def test_write_xlsx_without_formulas_skips_recalc(tmp_path: Path) -> None:
     assert result["recalc_skipped_reason"] is None
 
 
-@pytest.mark.real_libreoffice
-@pytest.mark.skipif(
-    not _libreoffice_actually_works(),
-    reason="LibreOffice not installed or not functional in this environment",
-)
-def test_write_xlsx_recalculates_formulas_via_libreoffice(tmp_path: Path) -> None:
+def test_write_xlsx_recalculates_formulas(tmp_path: Path) -> None:
     tools = _tools_by_name(tmp_path)
 
     result = tools["write_xlsx"](
@@ -261,11 +256,6 @@ def test_write_xlsx_recalculates_formulas_via_libreoffice(tmp_path: Path) -> Non
     assert "| 1 | 2 | 3 |" in text
 
 
-@pytest.mark.real_libreoffice
-@pytest.mark.skipif(
-    not _libreoffice_actually_works(),
-    reason="LibreOffice not installed or not functional in this environment",
-)
 def test_write_xlsx_recalc_reports_formula_errors(tmp_path: Path) -> None:
     tools = _tools_by_name(tmp_path)
 
@@ -280,16 +270,7 @@ def test_write_xlsx_recalc_reports_formula_errors(tmp_path: Path) -> None:
     assert result["formula_error_locations"]["#DIV/0!"] == ["Scores!C2"]
 
 
-@pytest.mark.real_libreoffice
-@pytest.mark.skipif(
-    not _libreoffice_actually_works(),
-    reason="LibreOffice not installed or not functional in this environment",
-)
-def test_write_xlsx_evaluates_xlookup_natively(tmp_path: Path) -> None:
-    # LibreOffice itself can't compute XLOOKUP -- this is the real,
-    # end-to-end confirmation that _recalc_xlsx_and_evaluate_lookups'
-    # native pass actually runs as part of the normal write_xlsx path, not
-    # just a unit test of the evaluator in isolation.
+def test_write_xlsx_evaluates_xlookup(tmp_path: Path) -> None:
     tools = _tools_by_name(tmp_path)
 
     result = tools["write_xlsx"](
@@ -310,11 +291,6 @@ def test_write_xlsx_evaluates_xlookup_natively(tmp_path: Path) -> None:
     assert workbook["Scores"]["C3"].value == 9
 
 
-@pytest.mark.real_libreoffice
-@pytest.mark.skipif(
-    not _libreoffice_actually_works(),
-    reason="LibreOffice not installed or not functional in this environment",
-)
 def test_write_xlsx_xlookup_not_found_without_fallback_is_a_real_error(
     tmp_path: Path,
 ) -> None:
@@ -335,12 +311,7 @@ def test_write_xlsx_xlookup_not_found_without_fallback_is_a_real_error(
     assert result["formula_error_locations"]["#N/A"] == ["Scores!C3"]
 
 
-@pytest.mark.real_libreoffice
-@pytest.mark.skipif(
-    not _libreoffice_actually_works(),
-    reason="LibreOffice not installed or not functional in this environment",
-)
-def test_edit_xlsx_cells_evaluates_xmatch_natively(tmp_path: Path) -> None:
+def test_edit_xlsx_cells_evaluates_xmatch(tmp_path: Path) -> None:
     tools = _tools_by_name(tmp_path)
     tools["write_xlsx"](path="report.xlsx", content=TABLE_CONTENT, sheet_name="Scores")
 
@@ -356,17 +327,7 @@ def test_edit_xlsx_cells_evaluates_xmatch_natively(tmp_path: Path) -> None:
     assert workbook["Scores"]["D1"].value == 2
 
 
-@pytest.mark.real_libreoffice
-@pytest.mark.skipif(
-    not _libreoffice_actually_works(),
-    reason="LibreOffice not installed or not functional in this environment",
-)
-def test_write_xlsx_leaves_a_too_complex_xlookup_as_name_error(tmp_path: Path) -> None:
-    # A formula that isn't a single top-level XLOOKUP call (here: nested
-    # inside an addition) is deliberately declined, not guessed at -- left
-    # exactly as LibreOffice's own pass leaves it, same as before this
-    # module existed. Confirms the "fail loudly, don't guess" scoping is
-    # real, not just documented.
+def test_write_xlsx_evaluates_an_xlookup_nested_in_a_formula(tmp_path: Path) -> None:
     tools = _tools_by_name(tmp_path)
 
     result = tools["write_xlsx"](
@@ -380,15 +341,11 @@ def test_write_xlsx_leaves_a_too_complex_xlookup_as_name_error(tmp_path: Path) -
         sheet_name="Scores",
     )
 
-    assert result["recalc_status"] == "errors_found"
-    assert result["formula_error_locations"]["#NAME?"] == ["Scores!C3"]
+    assert result["recalc_status"] == "success"
+    workbook = load_workbook(tmp_path / "report.xlsx", data_only=True)
+    assert workbook["Scores"]["C3"].value == 10
 
 
-@pytest.mark.real_libreoffice
-@pytest.mark.skipif(
-    not _libreoffice_actually_works(),
-    reason="LibreOffice not installed or not functional in this environment",
-)
 def test_recalc_xlsx_recalculates_an_existing_file(tmp_path: Path) -> None:
     from openpyxl import Workbook
 

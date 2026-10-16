@@ -54,10 +54,7 @@ MODULES: dict[str, tuple[str, list[str]]] = {
     ),
     "script_guard": ("tools/script_guard.py", ["tests/test_script_guard.py"]),
     "workflow_spec": ("workflows/spec.py", ["tests/test_workflow_spec.py"]),
-    "xlsx_lookup_formulas": (
-        "tools/_xlsx_lookup_formulas.py",
-        ["tests/test_xlsx_lookup_formulas.py"],
-    ),
+    "xlsx_calc": ("tools/office/xlsx/calc.py", ["tests/test_xlsx_calc.py"]),
 }
 
 

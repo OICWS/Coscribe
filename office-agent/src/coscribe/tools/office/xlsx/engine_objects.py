@@ -146,9 +146,9 @@ def _colours(given: list[str], count: int) -> list[str]:
 
 
 def _colour_series(chart: Any, kind: str, given: list[str]) -> None:
-    """A series left to the theme's colour is drawn invisibly once LibreOffice has resaved the
-    workbook (a line chart rendered with no line), so each gets one: a line or scatter series on
-    its line only, a bar or area series as its fill, a pie's slices one by one."""
+    """A series left to the theme's colour depends on the theme the file carries, which a resave
+    by another program can replace (a line chart then drew no line), so each gets one: a line or
+    scatter series on its line only, a bar or area series as its fill, a pie's slices one by one."""
     from openpyxl.chart.marker import DataPoint
     from openpyxl.chart.shapes import GraphicalProperties
 

@@ -13,7 +13,6 @@ from openpyxl import Workbook, load_workbook
 
 from coscribe.tools.office.xlsx.blocks import parse_blocks, parse_ops
 from coscribe.tools.office.xlsx.build import modify_workbook, write_cells
-from coscribe.tools.office.xlsx.helpers import _recalc_xlsx
 
 _SPARKLINES = (
     '<extLst><ext uri="{05C60535-1F16-4fd2-B633-F4F36F0B64E0}" '
@@ -283,21 +282,10 @@ def test_a_number_too_wide_for_its_column_and_a_chart_over_data_are_reported(
     assert any("chart covers" in f for f in charted["findings"])
 
 
-# --- with LibreOffice ---------------------------------------------------------------------
+# --- computed values ----------------------------------------------------------------------
 
 
-def _libreoffice(tmp_path: Path) -> bool:
-    probe = tmp_path / "probe.xlsx"
-    book = Workbook()
-    book.active.append([1, "=A1+1"])
-    book.save(probe)
-    return _recalc_xlsx(probe)["status"] == "success"
-
-
-@pytest.mark.real_libreoffice
 def test_each_formula_written_comes_back_with_its_value(tmp_path: Path) -> None:
-    if not _libreoffice(tmp_path):
-        pytest.skip("LibreOffice is not usable here")
     path = tmp_path / "f.xlsx"
 
     report = write_cells(path, [{"sheet": "S", "rows": [[2, 3, "=A1*B1", "=1/0"]]}])
@@ -308,16 +296,27 @@ def test_each_formula_written_comes_back_with_its_value(tmp_path: Path) -> None:
         assert b"<v>6</v>" in archive.read("xl/worksheets/sheet1.xml")
 
 
-@pytest.mark.real_libreoffice
-def test_an_edit_reports_values_from_a_recalculated_copy(tmp_path: Path) -> None:
-    if not _libreoffice(tmp_path):
-        pytest.skip("LibreOffice is not usable here")
+def test_an_edited_file_carries_its_values_and_still_recalculates_on_open(
+    tmp_path: Path,
+) -> None:
     path = _table(tmp_path / "t.xlsx")
 
     report = write_cells(path, [{"sheet": "Data", "at": "B5", "rows": [["=SUM(B2:B4)"]]}])
 
     assert report["formula_results"] == {"Data!B5": 1900}
-    assert load_workbook(path, data_only=True)["Data"]["B5"].value is None
+    assert load_workbook(path, data_only=True)["Data"]["B5"].value == 1900
+    assert load_workbook(path)["Data"]["B5"].value == "=SUM(B2:B4)"
+    with zipfile.ZipFile(path) as archive:
+        assert b'fullCalcOnLoad="1"' in archive.read("xl/workbook.xml")
+
+
+def test_a_text_result_and_a_boolean_keep_their_types(tmp_path: Path) -> None:
+    path = tmp_path / "f.xlsx"
+
+    write_cells(path, [{"sheet": "S", "rows": [["a", '=A1&"b"', "=1>0"]]}])
+
+    values = load_workbook(path, data_only=True)["S"]
+    assert values["B1"].value == "ab" and values["C1"].value is True
 
 
 # --- the tools ---------------------------------------------------------------------------
@@ -365,28 +364,6 @@ def test_every_series_of_a_chart_gets_a_colour_so_none_is_drawn_invisibly(tmp_pa
     with zipfile.ZipFile(path) as archive:
         chart = archive.read("xl/charts/chart1.xml").decode()
     assert "1F4E79" in chart
-
-
-def test_without_libreoffice_an_edit_promises_no_computed_values(tmp_path: Path) -> None:
-    path = _table(tmp_path / "t.xlsx")
-
-    edited = write_cells(
-        path, [{"sheet": "Data", "at": "A5", "like_row": 4, "rows": [["Gym", 45]]}]
-    )
-
-    assert edited["recalc"]["status"] == "skipped" and "note" not in edited
-
-
-@pytest.mark.real_libreoffice
-def test_an_edit_says_why_the_file_has_no_computed_values(tmp_path: Path) -> None:
-    if not _libreoffice(tmp_path):
-        pytest.skip("LibreOffice is not usable here")
-    path = _table(tmp_path / "t.xlsx")
-
-    edited = write_cells(path, [{"sheet": "Data", "at": "B5", "rows": [["=SUM(B2:B4)"]]}])
-    new = write_cells(tmp_path / "n.xlsx", [{"sheet": "S", "rows": [[1]]}])
-
-    assert "recalc_xlsx" in edited["note"] and "note" not in new
 
 
 def test_reading_a_workbook_shows_its_layout(tmp_path: Path) -> None:

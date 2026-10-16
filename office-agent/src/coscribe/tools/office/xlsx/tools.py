@@ -69,9 +69,9 @@ def build_spreadsheet_tools(
         write_xlsx call with formulas referencing it.
 
         After writing, if the sheet contains any formulas, this
-        automatically re-opens the file in LibreOffice to force a real
-        recalculation (openpyxl itself only writes the formula text, no
-        cached value) and checks for Excel error strings (`#DIV/0!` etc.)
+        automatically recalculates them and writes the values into the
+        file (openpyxl itself only writes the formula text, no cached
+        value), and checks for Excel error strings (`#DIV/0!` etc.)
         -- see the response's `recalc_status`/`total_errors`/
         `formula_error_locations`. `recalc_status: "errors_found"` means
         ship nothing yet: fix the formulas the errors point at and call
@@ -99,9 +99,9 @@ def build_spreadsheet_tools(
             path=path, content=content, sheet_name=sheet_name, overwrite=overwrite
         )
 
-    def recalc_xlsx(path: str, timeout: float = 30.0) -> dict[str, object]:
-        """Force LibreOffice to recalculate every formula in an existing
-        Excel (.xlsx) file and rewrite it in place with real cached values.
+    def recalc_xlsx(path: str) -> dict[str, object]:
+        """Recalculate every formula in an existing Excel (.xlsx) file and
+        write the computed values into it.
 
         write_xlsx already does this automatically whenever it writes a
         formula, so you don't need to call this after write_xlsx. Use it
@@ -111,15 +111,13 @@ def build_spreadsheet_tools(
 
         `status` in the response is `"success"`, `"errors_found"` (fix the
         cells `error_locations` names and recalc again), or `"skipped"`
-        (LibreOffice isn't installed, or the workbook links to another
-        file and recalculating would destroy that link -- see
+        (the formula engine could not read the workbook -- see
         `skipped_reason`).
 
         Args:
             path: file to recalculate, relative to the workspace root
-            timeout: seconds to wait for LibreOffice before giving up
         """
-        return toolkit.recalc_xlsx(path=path, timeout=timeout)
+        return toolkit.recalc_xlsx(path=path)
 
     def format_xlsx_cells(
         path: str,
@@ -393,7 +391,7 @@ def build_spreadsheet_tools(
         formula, validated/auto-corrected the same way `write_xlsx` does
         (rejecting `XLOOKUP`-class functions, `_xlfn.`-prefixing post-2007
         functions). If any formula is written, this automatically
-        recalculates the workbook via LibreOffice the same way `write_xlsx`
+        recalculates the workbook the same way `write_xlsx`
         does -- see the response's `recalc_status`/`total_errors`.
 
         The response's `preview_path` (when LibreOffice is installed) names

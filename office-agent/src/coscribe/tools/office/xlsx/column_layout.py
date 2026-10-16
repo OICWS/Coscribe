@@ -35,10 +35,10 @@ class Span:
 def explicit_width_starts(path: Path, sheet_name: str) -> set[int]:
     """The first column of each `<col>` that carries a width; openpyxl gives one without a width
     (only hidden, styled or outlined) a width of 13, so the file itself is read."""
-    from ..._xlsx_lookup_formulas import _sheet_archive_paths
+    from .calc import sheet_parts
 
     with zipfile.ZipFile(path) as archive:
-        part = _sheet_archive_paths({name: archive.read(name) for name in _PARTS_NAMING_SHEETS})
+        part = sheet_parts({name: archive.read(name) for name in _PARTS_NAMING_SHEETS})
         if sheet_name not in part:
             return set()
         starts = set()
@@ -163,7 +163,7 @@ def _needed(sheet: Worksheet, spans: list[Span], default: float) -> dict[int, fl
     spilling = []
     for row in sheet.iter_rows():
         for column, cell in enumerate(row, start=1):
-            # A formula has no value before LibreOffice recalculates the saved file; its header
+            # A formula has no value before the saved file is recalculated; its header
             # and the constants beside it size the column.
             if cell.data_type == "f":
                 continue
@@ -222,7 +222,7 @@ def apply_spans(sheet: Worksheet, spans: list[Span]) -> None:
 def fit_columns(sheet: Worksheet, spans: list[Span]) -> list[str]:
     """Lay `spans` onto `sheet`, each column widened to its longest shown value; a hidden column
     that now holds data is shown again. Returns the formula cells, which have no value to measure
-    until LibreOffice recalculates."""
+    until the file is recalculated."""
     filled = {
         column
         for row in sheet.iter_rows()
@@ -302,13 +302,13 @@ def _xml_spans(cols: str) -> list[Span]:
 
 def _patch_cols(path: Path, sheet_name: str, needed: dict[int, float], default: float) -> None:
     """Widen columns of `sheet_name` in the saved file by rewriting its `<cols>` only: an openpyxl
-    save would drop every value LibreOffice computed."""
-    from ..._xlsx_lookup_formulas import _sheet_archive_paths
+    save would drop every computed value."""
+    from .calc import sheet_parts
 
     with zipfile.ZipFile(path) as archive:
         entries = {info.filename: archive.read(info.filename) for info in archive.infolist()}
         infos = archive.infolist()
-    part = _sheet_archive_paths(entries).get(sheet_name)
+    part = sheet_parts(entries).get(sheet_name)
     if part is None:
         return
     xml = entries[part].decode("utf-8")
@@ -328,7 +328,7 @@ def _patch_cols(path: Path, sheet_name: str, needed: dict[int, float], default: 
 
 
 def widen_after_recalc(path: Path, sheet_name: str, formula_cells: list[str]) -> None:
-    """Widen the columns of `formula_cells` to the values LibreOffice computed for them."""
+    """Widen the columns of `formula_cells` to the values computed for them."""
     from openpyxl import load_workbook
 
     if not formula_cells:
