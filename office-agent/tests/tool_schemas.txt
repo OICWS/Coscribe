@@ -27,7 +27,7 @@ bound to the model: 22 tools, ~4852 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 122 tools, ~38063 tokens (the ones not bound are found through search_tools)
+registered: 122 tools, ~38068 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -49,7 +49,7 @@ registered: 122 tools, ~38063 tokens (the ones not bound are found through searc
   check_background_task | READ | background_tasks | deferred | sha256 1fe786e922
   check_pptx_delivery | READ | documents | deferred | sha256 a52eddb3b5
   check_subagent_task | READ | subagent_tasks | deferred | sha256 3a7ed67fac
-  convert_office_file | WRITE_LOCAL | documents | deferred | sha256 e3b317d870
+  convert_office_file | WRITE_LOCAL | documents | deferred | sha256 0ce017a5dd
   copy_file | WRITE_LOCAL | filesystem | deferred | sha256 f6cdbcce8c
   create_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 cc7745e488
   crop_pptx_image | WRITE_LOCAL | documents | deferred | sha256 45b8d754c3

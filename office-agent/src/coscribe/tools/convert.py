@@ -1,4 +1,5 @@
-"""Converting between Office formats with LibreOffice.
+"""Converting between Office formats with the office program installed (Microsoft Office or
+WPS, through COM: decision 0012), or LibreOffice when one is found.
 
 Two jobs people ask for constantly and nothing else here does: open a legacy
 file (.xls, .doc, .ppt -- the readers only take the OOXML formats) and
@@ -16,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from ..runtime import tool_metadata
+from . import _office_com
 from ._office_bins import find_soffice, run_soffice
 from ._workspace import WorkspaceScope
 
@@ -90,39 +92,15 @@ class ConvertToolkit:
                 f"{self._scope.relative(destination)} already exists -- pick another "
                 "output_path rather than replacing it."
             )
-        soffice = find_soffice()
-        if soffice is None:
-            raise ValueError(
-                "LibreOffice isn't installed (or couldn't be found), and converting needs it."
-            )
-
         work = Path(tempfile.mkdtemp(prefix="coscribe_convert_"))
         try:
-            with _PROFILE_LOCK:
-                self._profile_dir.mkdir(parents=True, exist_ok=True)
-                try:
-                    run_soffice(
-                        [
-                            soffice,
-                            "--headless",
-                            "--norestore",
-                            f"-env:UserInstallation={self._profile_dir.as_uri()}",
-                            "--convert-to",
-                            target_format,
-                            "--outdir",
-                            str(work),
-                            str(source),
-                        ],
-                        _CONVERT_TIMEOUT,
-                    )
-                except subprocess.TimeoutExpired:
-                    raise ValueError("LibreOffice took too long to convert this file.") from None
-                except (subprocess.CalledProcessError, OSError) as error:
-                    raise ValueError(f"LibreOffice could not convert this file: {error}") from None
             produced = work / f"{source.stem}.{target_format}"
+            program = _office_com.convert(source, produced, target_format, _CONVERT_TIMEOUT)
+            if program is None:
+                program = self._with_libreoffice(source, work, target_format)
             if not produced.is_file():
                 raise ValueError(
-                    "LibreOffice produced no file -- the source may be damaged or "
+                    f"{program} produced no file -- the source may be damaged or "
                     "password-protected."
                 )
             destination.parent.mkdir(parents=True, exist_ok=True)
@@ -133,7 +111,38 @@ class ConvertToolkit:
             "path": self._scope.relative(destination),
             "bytes_written": destination.stat().st_size,
             "converted_from": self._scope.relative(source),
+            "converted_by": program,
         }
+
+    def _with_libreoffice(self, source: Path, work: Path, target_format: str) -> str:
+        soffice = find_soffice()
+        if soffice is None:
+            raise ValueError(
+                "Converting needs Microsoft Office (or WPS Office) on this computer, and none "
+                "was found."
+            )
+        with _PROFILE_LOCK:
+            self._profile_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                run_soffice(
+                    [
+                        soffice,
+                        "--headless",
+                        "--norestore",
+                        f"-env:UserInstallation={self._profile_dir.as_uri()}",
+                        "--convert-to",
+                        target_format,
+                        "--outdir",
+                        str(work),
+                        str(source),
+                    ],
+                    _CONVERT_TIMEOUT,
+                )
+            except subprocess.TimeoutExpired:
+                raise ValueError("LibreOffice took too long to convert this file.") from None
+            except (subprocess.CalledProcessError, OSError) as error:
+                raise ValueError(f"LibreOffice could not convert this file: {error}") from None
+        return "LibreOffice"
 
 
 def build_convert_tools(
@@ -148,7 +157,7 @@ def build_convert_tools(
     )
 
     def convert_office_file(path: str, to_format: str, output_path: str = "") -> dict[str, object]:
-        """Convert an Office file to another format with LibreOffice -- the
+        """Convert an Office file to another format with the office program installed -- the
         way to open a legacy .xls/.doc/.ppt (the read tools take only
         .xlsx/.docx/.pptx: convert first, then read the new file) and the way
         to export a Word, Excel or PowerPoint file as a PDF.

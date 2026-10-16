@@ -6,8 +6,9 @@ render shown in the approval card for a pptx edit, instead of just its
 raw JSON arguments.
 
 A PDF is drawn with PDFium and a deck still as its pages built it from those SVG pages, so
-neither needs an office program (decision 0012); any other file goes through a headless
-LibreOffice when one is found.
+neither needs an office program; any other file goes through the office program installed
+(Microsoft Office or WPS, through COM), and a headless LibreOffice only when there is none
+(decision 0012).
 
 Same graceful-degradation contract as presentations.py's pre-existing
 overflow-check pipeline: `soffice` missing, timing out, or failing to
@@ -34,6 +35,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from . import _office_com
 from ._office_bins import find_soffice, run_soffice, soffice_profile
 
 # The first launch on a fresh Windows profile builds LibreOffice's user
@@ -76,26 +78,43 @@ def _convert_to_pdf(file_path: Path, out_dir: Path) -> Path | None:
     return pdf_path if pdf_path.is_file() else None
 
 
-def _without_office(file_path: Path, out_dir: Path, first: int, last: int) -> list[Path] | None:
-    """Pages first..last of a file whose pages need no office program to draw: a PDF (PDFium),
-    or a deck its SVG pages last built, deck and pages still as built (resvg). None for any
-    other file. Raises when a page cannot be drawn."""
+def _without_libreoffice(
+    file_path: Path,
+    out_dir: Path,
+    first: int,
+    last: int,
+    layout: list[dict[str, Any]] | None = None,
+) -> list[Path] | None:
+    """Pages first..last drawn without LibreOffice: a PDF (PDFium); a deck its SVG pages last
+    built, deck and pages still as built (resvg); any other Office file through the office
+    program installed (COM), its PDF then drawn by PDFium, with the words of its pages added
+    to `layout`. None when none of these applies. Raises when a page cannot be drawn."""
     if file_path.suffix.lower() == ".pdf":
         return _render_pdf_pages(file_path, out_dir, first, last)
-    if file_path.suffix.lower() != ".pptx":
-        return None
-    from ._svg_preview import render_page
-    from .office.pptx.engine.build import built_pages
-
-    pages = built_pages(file_path)
+    pages = _built_pages(file_path)
     if pages is None:
-        return None
+        pdf_path = out_dir / f"{file_path.stem}.pdf"
+        if _office_com.convert(file_path, pdf_path, "pdf", SOFFICE_TIMEOUT) is None:
+            return None
+        if layout is not None:
+            layout.extend(measure_page_words(pdf_path, last))
+        return _render_pdf_pages(pdf_path, out_dir, first, last)
+    from ._svg_preview import render_page
+
     files = []
     for number, page in enumerate(pages[max(first, 1) - 1 : last], max(first, 1)):
         target = out_dir / f"page-{number:04d}.png"
         render_page(page, target)
         files.append(target)
     return files
+
+
+def _built_pages(file_path: Path) -> list[Path] | None:
+    if file_path.suffix.lower() != ".pptx":
+        return None
+    from .office.pptx.engine.build import built_pages
+
+    return built_pages(file_path)
 
 
 def _keep(page_files: list[Path], state_dir: Path) -> list[str]:
@@ -122,7 +141,7 @@ def render_thumbnail(file_path: Path, state_dir: Path | None) -> tuple[str | Non
     out_dir = Path(tempfile.mkdtemp(prefix="coscribe_thumbnail_"))
     try:
         try:
-            drawn = _without_office(file_path, out_dir, 1, 1)
+            drawn = _without_libreoffice(file_path, out_dir, 1, 1)
         except _DRAW_ERRORS:
             return None, "page rendering failed"
         if drawn is not None:
@@ -255,7 +274,7 @@ def render_all_page_previews(
     out_dir = Path(tempfile.mkdtemp(prefix="coscribe_thumbnail_"))
     try:
         try:
-            page_files = _without_office(file_path, out_dir, 1, max_pages)
+            page_files = _without_libreoffice(file_path, out_dir, 1, max_pages, layout)
         except _DRAW_ERRORS:
             return [], "page rendering failed"
         if page_files is None:
@@ -295,7 +314,7 @@ def render_single_page_preview(
     out_dir = Path(tempfile.mkdtemp(prefix="coscribe_thumbnail_"))
     try:
         try:
-            page_files = _without_office(file_path, out_dir, page, page)
+            page_files = _without_libreoffice(file_path, out_dir, page, page)
             if page_files is None:
                 pdf_path = _convert_to_pdf(file_path, out_dir)
                 if pdf_path is None:

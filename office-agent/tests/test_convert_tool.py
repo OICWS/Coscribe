@@ -66,11 +66,13 @@ def test_an_existing_output_is_never_replaced(tmp_path: Path) -> None:
     assert (tmp_path / "a.pdf").read_bytes() == b"keep me"
 
 
-def test_without_libreoffice_it_says_so(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_without_an_office_program_it_says_one_is_needed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     Document().save(str(tmp_path / "a.docx"))
     monkeypatch.setattr(convert, "find_soffice", lambda: None)
 
-    with pytest.raises(ValueError, match="LibreOffice isn't installed"):
+    with pytest.raises(ValueError, match="needs Microsoft Office"):
         _convert(tmp_path)(path="a.docx", to_format="pdf")
 
 
