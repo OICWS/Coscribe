@@ -647,8 +647,8 @@ def evidence_log(messages: Sequence[Any]) -> str:
     )
 
 
-# LibreOffice's own PNG export (render_pptx_preview et al) has no
-# explicit width/height set (see tools/_thumbnail.py), so a slide preview
+# A page preview (tools/_thumbnail.py) is drawn at a fixed resolution, not a
+# size set for the model, so a slide preview
 # commonly lands well past this on its long edge -- and vision APIs
 # charge per-pixel-patch (Anthropic: ceil(w/28) * ceil(h/28) "visual
 # tokens", verified live against Anthropic's own docs 2026-09-17), not a
@@ -673,7 +673,7 @@ def _downscale_preview_for_review(image_bytes: bytes) -> bytes:
     smaller, so a small preview never gets needlessly re-encoded.
     Real, live-reported cost problem this addresses: a real multi-slide
     review pass (render every slide, call review_work with all of them)
-    sent every preview at LibreOffice's own uncapped export resolution,
+    sent every preview at its full, uncapped resolution,
     a meaningful and entirely avoidable slice of a run that measured
     ~9.3M tokens for one deck.
 

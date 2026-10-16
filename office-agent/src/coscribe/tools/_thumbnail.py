@@ -1,100 +1,54 @@
-"""Best-effort office-file thumbnail rendering, shared by office/docx/pdf,
-office/xlsx, presentations.py's write_* tools, and
-(render_single_page_preview specifically) by conversation/session.py's
-approval-preview (_build_pptx_edit_preview) -- a before/after slide
-render shown in the approval card for a pptx edit, instead of just its
-raw JSON arguments.
+"""Page previews of an office file, shared by the write tools, `preview_pptx`, `review_work`
+and the approval card's slide preview (conversation/edit_preview.py).
 
-A PDF is drawn with PDFium and a deck still as its pages built it from those SVG pages, so
-neither needs an office program; any other file goes through the office program installed
-(Microsoft Office or WPS, through COM), and a headless LibreOffice only when there is none
-(decision 0012).
+No office program is needed for a PDF (PDFium) or for a deck still as its SVG pages built it
+(resvg); any other Word, Excel or PowerPoint file is drawn through the office program installed,
+Microsoft Office or WPS, over COM (decision 0012). Without one there is no preview, and the
+reason says so: a preview is never an error, since the write has already succeeded.
 
-Same graceful-degradation contract as presentations.py's pre-existing
-overflow-check pipeline: `soffice` missing, timing out, or failing to
-convert is never an error -- the write has already succeeded by the time
-this runs, a thumbnail is a diagnostic/preview extra on top of it, not a
-requirement.
-
-Previews are written under `<state_dir>/previews/`, not the user's
-workspace -- they're generated bookkeeping, same category as
-`state_dir`'s existing task storage, not a file the user
-asked for. Naming them with a fresh uuid4 (never derived from the
-source path) means `GET /api/previews/{name}` can look one up by a plain
-filename match against that one directory without needing
-WorkspaceScope-style path-traversal checking -- the name space is
-entirely server-generated.
+Previews are written under `<state_dir>/previews/`, not the user's workspace. Their names are
+fresh uuid4s, never derived from the source path, so `GET /api/previews/{name}` looks one up by
+a plain name match in that one directory without path-traversal checks.
 """
 
 from __future__ import annotations
 
 import shutil
-import subprocess
 import tempfile
 import uuid
 from pathlib import Path
 from typing import Any
 
 from . import _office_com
-from ._office_bins import find_soffice, run_soffice, soffice_profile
 
-# The first launch on a fresh Windows profile builds LibreOffice's user
-# profile and can take half a minute; killing it at 20s left every later
-# call starting from scratch too.
-SOFFICE_TIMEOUT = 60.0
+# The first start of Word or PowerPoint after a login can take half a minute.
+OFFICE_TIMEOUT = 60.0
+NO_OFFICE_PROGRAM = "drawing this file needs Microsoft Office or WPS Office, and neither was found"
 
 _PREVIEW_DPI = 100
 # What drawing a page raises: resvg's ValueError, a malformed SVG, PDFium's RuntimeError, a file
-# that went away. A preview is never worth failing the write.
+# that went away, the office program failing (ValueError). A preview is never worth failing the
+# write.
 _DRAW_ERRORS = (ValueError, SyntaxError, RuntimeError, OSError)
 
 
-def _convert_to_pdf(file_path: Path, out_dir: Path) -> Path | None:
-    """Shared soffice-to-PDF step behind render_all_page_previews and
-    render_single_page_preview below -- factored out once a second caller
-    needed the exact same subprocess call. Returns the produced PDF path,
-    or None if soffice is missing, times out, or fails; never raises."""
-    soffice = find_soffice()
-    if soffice is None:
-        return None
-    try:
-        with soffice_profile() as profile:
-            run_soffice(
-                [
-                    soffice,
-                    "--headless",
-                    profile,
-                    "--convert-to",
-                    "pdf",
-                    "--outdir",
-                    str(out_dir),
-                    str(file_path),
-                ],
-                SOFFICE_TIMEOUT,
-            )
-    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, OSError):
-        return None
-    pdf_path = out_dir / f"{file_path.stem}.pdf"
-    return pdf_path if pdf_path.is_file() else None
-
-
-def _without_libreoffice(
+def _draw(
     file_path: Path,
     out_dir: Path,
     first: int,
     last: int,
     layout: list[dict[str, Any]] | None = None,
 ) -> list[Path] | None:
-    """Pages first..last drawn without LibreOffice: a PDF (PDFium); a deck its SVG pages last
-    built, deck and pages still as built (resvg); any other Office file through the office
-    program installed (COM), its PDF then drawn by PDFium, with the words of its pages added
-    to `layout`. None when none of these applies. Raises when a page cannot be drawn."""
+    """Pages first..last as PNG files: a PDF with PDFium; a deck its SVG pages last built, deck
+    and pages still as built, with resvg; any other Office file through the office program
+    installed, its PDF then drawn by PDFium, with the words of its pages added to `layout`.
+    None when no office program can draw it. Raises one of `_DRAW_ERRORS` on a failure."""
     if file_path.suffix.lower() == ".pdf":
         return _render_pdf_pages(file_path, out_dir, first, last)
     pages = _built_pages(file_path)
     if pages is None:
         pdf_path = out_dir / f"{file_path.stem}.pdf"
-        if _office_com.convert(file_path, pdf_path, "pdf", SOFFICE_TIMEOUT) is None:
+        if _office_com.convert(file_path, pdf_path, "pdf", OFFICE_TIMEOUT) is None:
             return None
         if layout is not None:
             layout.extend(measure_page_words(pdf_path, last))
@@ -128,54 +82,40 @@ def _keep(page_files: list[Path], state_dir: Path) -> list[str]:
     return names
 
 
-def render_thumbnail(file_path: Path, state_dir: Path | None) -> tuple[str | None, str | None]:
-    """Render `file_path` (docx/pdf/xlsx/pptx) to a one-page PNG thumbnail
-    under `state_dir/previews/`.
-
-    Returns `(preview_name, None)` on success -- `preview_name` is a bare
-    filename, not a path, suitable for `GET /api/previews/{preview_name}`.
-    Returns `(None, reason)` if skipped for any reason; never raises.
-    """
+def _previews(
+    file_path: Path,
+    state_dir: Path | None,
+    first: int,
+    last: int,
+    layout: list[dict[str, Any]] | None = None,
+) -> tuple[list[str], str | None]:
     if state_dir is None:
-        return None, "no state_dir configured"
+        return [], "no state_dir configured"
     out_dir = Path(tempfile.mkdtemp(prefix="coscribe_thumbnail_"))
     try:
         try:
-            drawn = _without_libreoffice(file_path, out_dir, 1, 1)
+            page_files = _draw(file_path, out_dir, first, last, layout)
         except _DRAW_ERRORS:
-            return None, "page rendering failed"
-        if drawn is not None:
-            return (_keep(drawn, state_dir)[0], None) if drawn else (None, "no pages to render")
-        soffice = find_soffice()
-        if soffice is None:
-            return None, "LibreOffice (soffice) not found"
-        try:
-            with soffice_profile() as profile:
-                run_soffice(
-                    [
-                        soffice,
-                        "--headless",
-                        profile,
-                        "--convert-to",
-                        "png",
-                        "--outdir",
-                        str(out_dir),
-                        str(file_path),
-                    ],
-                    SOFFICE_TIMEOUT,
-                )
-        except (subprocess.TimeoutExpired, subprocess.CalledProcessError, OSError):
-            return None, "LibreOffice conversion failed"
-        png_path = out_dir / f"{file_path.stem}.png"
-        if not png_path.is_file():
-            return None, "LibreOffice did not produce a PNG"
-        previews_dir = state_dir / "previews"
-        previews_dir.mkdir(parents=True, exist_ok=True)
-        preview_name = f"{uuid.uuid4().hex}.png"
-        shutil.move(str(png_path), str(previews_dir / preview_name))
-        return preview_name, None
+            return [], "page rendering failed"
+        if page_files is None:
+            return [], NO_OFFICE_PROGRAM
+        if not page_files:
+            return [], (
+                f"page {first} out of range for this document"
+                if first > 1
+                else "no pages to render"
+            )
+        return _keep(page_files, state_dir), None
     finally:
         shutil.rmtree(out_dir, ignore_errors=True)
+
+
+def render_thumbnail(file_path: Path, state_dir: Path | None) -> tuple[str | None, str | None]:
+    """The first page of `file_path` (docx/pdf/xlsx/pptx) as a PNG under `state_dir/previews/`:
+    `(preview_name, None)`, the name a bare file name for `GET /api/previews/{name}`, or
+    `(None, reason)`. Never raises."""
+    names, reason = _previews(file_path, state_dir, 1, 1)
+    return (names[0] if names else None), reason
 
 
 def measure_page_words(pdf_path: Path, max_pages: int) -> list[dict[str, Any]]:
@@ -252,78 +192,19 @@ def render_all_page_previews(
     max_pages: int = 8,
     layout: list[dict[str, Any]] | None = None,
 ) -> tuple[list[str], str | None]:
-    """Render every page of `file_path` (docx/pdf/xlsx/pptx) to its own PNG
-    under `state_dir/previews/`, via soffice-to-PDF (like `render_thumbnail`
-    above) then PDFium to rasterize each page --
-    `render_thumbnail`'s single PNG only ever shows page/slide 1, since
-    soffice's own `--convert-to png` CLI path emits one page no matter how
-    many the source has. That's not enough to catch a real, reproduced bug:
-    a 4-slide deck where slide 1 (the title) looked fine and slides 2-4 were
-    plain, undesigned bullet lists -- a first-slide-only check would have
-    missed it entirely. This is what `run_node_script`-produced decks need
-    for any real visual QA, since (unlike `write_pptx`) they get no
-    preview_path of their own.
-
-    Returns `(preview_names, None)` on success, capped at `max_pages` (a
-    large deck's every slide isn't worth the token cost of reviewing each
-    one). Returns `([], reason)` if skipped for any reason (soffice
-    missing, conversion failure, timeout); never raises.
-    """
-    if state_dir is None:
-        return [], "no state_dir configured"
-    out_dir = Path(tempfile.mkdtemp(prefix="coscribe_thumbnail_"))
-    try:
-        try:
-            page_files = _without_libreoffice(file_path, out_dir, 1, max_pages, layout)
-        except _DRAW_ERRORS:
-            return [], "page rendering failed"
-        if page_files is None:
-            if find_soffice() is None:
-                return [], "LibreOffice (soffice) not found"
-            pdf_path = _convert_to_pdf(file_path, out_dir)
-            if pdf_path is None:
-                return [], "LibreOffice conversion failed"
-            if layout is not None:
-                layout.extend(measure_page_words(pdf_path, max_pages))
-            try:
-                page_files = _render_pdf_pages(pdf_path, out_dir, 1, max_pages)
-            except Exception:  # noqa: BLE001 -- a preview is never worth failing the write
-                return [], "page rendering failed"
-        if not page_files:
-            return [], "the document has no pages to render"
-        return _keep(page_files, state_dir), None
-    finally:
-        shutil.rmtree(out_dir, ignore_errors=True)
+    """Every page of `file_path` up to `max_pages`, each its own PNG: a first-page check missed a
+    deck whose title slide looked fine and whose other slides were plain bullet lists. A large
+    deck's every slide is not worth the tokens of reviewing each. `layout` receives the words of
+    each page when the file was drawn through its PDF. `([], reason)` when skipped; never
+    raises."""
+    return _previews(file_path, state_dir, 1, max_pages, layout)
 
 
 def render_single_page_preview(
     file_path: Path, state_dir: Path | None, page: int
 ) -> tuple[str | None, str | None]:
-    """Render just page/slide `page` (1-based) of `file_path` to a PNG
-    under `state_dir/previews/` -- `render_all_page_previews` always
-    starts from page 1 and is capped by *count*, not by which page, so
-    it can't cheaply target one specific page deep into a large deck.
-    conversation/session.py's approval-preview (`_build_pptx_edit_preview`) needs
-    exactly that: the one slide a specific edit targets, wherever it
-    falls in the deck, without paying to rasterize every slide before it.
-    Same graceful-degradation contract as the rest of this module: never
-    raises, `(None, reason)` on any failure (including `page` being out
-    of range for this document)."""
-    if state_dir is None:
-        return None, "no state_dir configured"
-    out_dir = Path(tempfile.mkdtemp(prefix="coscribe_thumbnail_"))
-    try:
-        try:
-            page_files = _without_libreoffice(file_path, out_dir, page, page)
-            if page_files is None:
-                pdf_path = _convert_to_pdf(file_path, out_dir)
-                if pdf_path is None:
-                    return None, "LibreOffice conversion failed"
-                page_files = _render_pdf_pages(pdf_path, out_dir, page, page)
-        except Exception:  # noqa: BLE001 -- a preview is never worth failing the write
-            return None, "page rendering failed"
-        if not page_files:
-            return None, f"page {page} out of range for this document"
-        return _keep(page_files, state_dir)[0], None
-    finally:
-        shutil.rmtree(out_dir, ignore_errors=True)
+    """Page `page` (1-based) alone, for the approval card's preview of the one slide an edit
+    targets, without drawing the pages before it as images. `(None, reason)` on any failure,
+    a page out of range included; never raises."""
+    names, reason = _previews(file_path, state_dir, page, page)
+    return (names[0] if names else None), reason

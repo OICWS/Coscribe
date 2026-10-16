@@ -356,7 +356,7 @@ def build_shapes_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., 
         exactly one data column (a second series has no meaningful
         rendering as pie slices).
 
-        The response's `preview_path` (when LibreOffice is installed) names
+        The response's `preview_path` (when the file can be drawn) names
         a rendered thumbnail of the slide the user can see in the chat UI --
         not something to fetch or parse yourself.
 

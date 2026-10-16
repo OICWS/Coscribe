@@ -3,8 +3,6 @@
 
 import asyncio
 import json
-import shutil
-import tempfile
 import threading
 import time
 from pathlib import Path
@@ -28,11 +26,11 @@ from pptx.util import Inches
 
 from coscribe.conversation import ThreadMetaStore
 from coscribe.tools.office.document_tools import DocumentToolkit
-from coscribe.tools.presentations import PresentationToolkit
 from coscribe.web.routes import files as files_routes
 from coscribe.web.routes import threads as threads_routes
 from coscribe.web.thread_files import ThreadFiles
 
+from ..libreoffice_probe import libreoffice_works
 from .helpers import (
     FakeToolCallingChatModel,
     _client_lg,
@@ -97,19 +95,7 @@ def test_threads_can_be_grouped_archived_and_their_groups_renamed_and_deleted_lg
 
 
 def _libreoffice_actually_works() -> bool:
-    """Same probe technique as test_presentations_tool.py's identical
-    helper (not imported from there -- each test file in this project
-    stays self-contained): `shutil.which` alone can't tell a genuinely
-    broken soffice install from a working one, so this actually tries a
-    trivial conversion in a throwaway temp dir."""
-    probe_dir = Path(tempfile.mkdtemp(prefix="coscribe_lo_probe_"))
-    try:
-        result = PresentationToolkit(probe_dir).write_pptx(
-            path="probe.pptx", content="# Probe\n- hi"
-        )
-        return result["qa_skipped_reason"] is None
-    finally:
-        shutil.rmtree(probe_dir, ignore_errors=True)
+    return libreoffice_works()
 
 
 def _write_test_deck(workspace: Path, name: str = "deck.pptx") -> None:

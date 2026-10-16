@@ -42,8 +42,8 @@ def build_review_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., 
         undesigned slide, since bullet text reads the same whether or not
         the slide behind it looks good.
 
-        Needs LibreOffice (`soffice`)
-        installed -- when it is missing, or conversion fails,
+        A deck built from SVG pages is drawn from them; any other deck needs
+        Microsoft Office or WPS -- when neither is there, or drawing fails,
         `preview_paths` comes back empty and `preview_skipped_reason` says
         why; this is never an error.
 
@@ -52,7 +52,7 @@ def build_review_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., 
         every rendered slide in one call.
 
         Three more fields need no rendering at all, so they're always
-        populated regardless of LibreOffice: `text_overlap_warnings`
+        populated regardless of the drawing: `text_overlap_warnings`
         flags pairs of text boxes on the same slide whose bounding boxes
         significantly overlap (a real, reproduced defect -- a subtitle box
         landing on top of the body text), `slides_missing_visual_elements`
@@ -71,7 +71,7 @@ def build_review_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., 
         the same way you'd react to overflow_warnings.
 
         Two more are measured on the rendered slides (so they need
-        LibreOffice, and are empty without it):
+        an office program, and are empty without one):
         `small_text_slides` lists slides whose body text renders under
         14pt (`body_text_pt`) -- raise the size, or cut the words, until
         it reads from across a room -- and `sparse_slides` lists content

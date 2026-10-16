@@ -97,7 +97,8 @@ Last reviewed: 2026-10-15.
    for formula values and resvg for a built deck's page previews, PDF pages with PDFium; step 2
    (built, to be checked on Windows), conversion and the exact previews of Word, Excel and
    PowerPoint files through Office (COM), or WPS;
-   step 3, remove the LibreOffice code paths, kept only for the evaluation.
+   step 3 (done), the LibreOffice code paths removed, LibreOffice kept for development and the
+   evaluation.
    Instructions are changed by cutting first and measuring after: a shorter prompt that scores
    the same is the better one.
 

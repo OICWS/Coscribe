@@ -54,7 +54,7 @@ def build_docx_tools(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
           line, authored as `comment_author`. Not recognized inside table
           cells.
 
-        The response's `preview_path` (when LibreOffice is installed) names
+        The response's `preview_path` (when the file can be drawn) names
         a rendered thumbnail of the first page the user can see in the
         chat UI -- not something to fetch or parse yourself.
 

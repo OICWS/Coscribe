@@ -12,7 +12,6 @@ from pathlib import Path
 import pytest
 from openpyxl import Workbook, load_workbook
 
-from coscribe.tools import _thumbnail
 from coscribe.tools.office.xlsx import build_spreadsheet_tools
 from coscribe.tools.office.xlsx.column_layout import _patch_cols, fit_columns, widen_for_values
 from coscribe.tools.office.xlsx.column_widths import (
@@ -24,11 +23,6 @@ from coscribe.tools.office.xlsx.column_widths import (
 from evals.xlsx_checks import clipped_texts
 
 FILE = "book.xlsx"
-
-
-@pytest.fixture(autouse=True)
-def _no_preview(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(_thumbnail, "find_soffice", lambda: None)
 
 
 def _tools(root: Path) -> dict[str, object]:

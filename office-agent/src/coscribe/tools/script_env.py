@@ -201,8 +201,8 @@ def working_interpreters(candidates: list[str]) -> list[str]:
 
 def venv_python(venv_dir: Path) -> Path:
     # venv's own bin/Scripts layout genuinely differs by platform (unlike
-    # e.g. the soffice subprocess calls elsewhere, which don't need a
-    # Windows branch because "soffice" resolves via PATH either way) --
+    # e.g. the PowerShell calls elsewhere, which don't need a Windows-only
+    # path because "powershell" resolves via PATH) --
     # a real, live-reported bug: a Windows user's run_python_script and
     # the Environment tab's package listing both raised
     # FileNotFoundError, since venv creates Scripts\python.exe on Windows,
@@ -231,7 +231,7 @@ def _ensure_script_env(state_dir: Path) -> Path:
     run_python_script tool, or the settings API) can't do anything useful
     without a working venv and shouldn't guess why. Seeding failure is
     intentionally NOT swallowed into a "skipped" state the way e.g.
-    write_pptx's optional LibreOffice QA is -- run_python_script's own
+    write_pptx's optional overflow QA is -- run_python_script's own
     docstring promises these packages are there, so silently proceeding
     without them would make that promise a lie the model has no way to
     detect until a script's `import pandas` fails confusingly later."""

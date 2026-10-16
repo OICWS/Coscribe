@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import re
-import subprocess
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from ..._office_bins import find_soffice, run_soffice, soffice_profile
+from ... import _office_com
 from ..._pptx_shapes import find_shape
 from .smartart import SMARTART_NS
 from .xmlns import A14_NS, A_NS, P14_NS, P15_NS, P159_NS, P_NS, R_NS
@@ -17,7 +16,7 @@ from .xmlns import A14_NS, A_NS, P14_NS, P15_NS, P159_NS, P_NS, R_NS
 if TYPE_CHECKING:
     from pptx.presentation import Presentation as PresentationType
 
-SOFFICE_TIMEOUT = 20.0
+OFFICE_TIMEOUT = 60.0
 
 
 # add_pptx_shape's own curated subset of python-pptx's ~180-member
@@ -229,34 +228,17 @@ def analyze_pptx_delivery(file_path: Path) -> dict[str, Any]:
 
 
 def render_to_pdf(pptx_path: Path) -> Path | None:
-    """Convert `pptx_path` to a PDF via headless LibreOffice, for the
-    overflow check below. Returns None -- "QA skipped", not an error -- if
-    `soffice` isn't installed, times out, or fails: write_pptx has already
-    succeeded by the time this runs, this is a best-effort diagnostic on
-    top of it, not a requirement for the write to count as successful."""
-    soffice = find_soffice()
-    if soffice is None:
-        return None
+    """`pptx_path` as a PDF drawn by the office program installed, for the overflow check
+    below. None -- "QA skipped", not an error -- without an office program or when it fails:
+    the write has already succeeded, and this check is an extra on top of it."""
     out_dir = Path(tempfile.mkdtemp(prefix="coscribe_pptx_qa_"))
-    try:
-        with soffice_profile() as profile:
-            run_soffice(
-                [
-                    soffice,
-                    "--headless",
-                    profile,
-                    "--convert-to",
-                    "pdf",
-                    "--outdir",
-                    str(out_dir),
-                    str(pptx_path),
-                ],
-                SOFFICE_TIMEOUT,
-            )
-    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, OSError):
-        return None
     pdf_path = out_dir / f"{pptx_path.stem}.pdf"
-    return pdf_path if pdf_path.is_file() else None
+    try:
+        if _office_com.convert(pptx_path, pdf_path, "pdf", OFFICE_TIMEOUT) is None:
+            return None
+    except ValueError:
+        return None
+    return pdf_path
 
 
 def resolve_xml_qname(name: str) -> str:

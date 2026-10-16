@@ -1,5 +1,6 @@
-"""Checks on a finished deck: text past the page edge in a LibreOffice render, leftover placeholder
-text, overlapping text boxes, slides with no visual, sparse or cramped layouts, low contrast."""
+"""Checks on a finished deck: text past the page edge in the PDF an office program drew,
+leftover placeholder text, overlapping text boxes, slides with no visual, sparse or cramped
+layouts, low contrast."""
 
 from __future__ import annotations
 
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 
 def check_overflow(pdf_path: Path) -> list[dict[str, object]]:
     """Flag any word whose bounding box crosses the rendered page's edge --
-    the LibreOffice-rendered PDF's page size mirrors the pptx slide size, so
+    the rendered PDF's page size mirrors the pptx slide size, so
     this is a genuine "this text overflows its slide" signal. Pure
     vector/text analysis via pdfplumber (already a dependency); no
     pixel rasterization needed."""
@@ -92,7 +93,7 @@ _TEXT_OVERLAP_THRESHOLD = 0.15
 def check_text_overlaps(prs: Any) -> list[dict[str, object]]:
     """Flag pairs of non-empty text shapes on the same slide whose bounding
     boxes overlap significantly -- a purely geometric check that needs no
-    rendering (no LibreOffice), so it runs unconditionally.
+    rendering (no office program), so it runs unconditionally.
     Catches a real, reproduced bug directly: `run_node_script`-generated
     scripts sometimes place a subtitle text box at a fixed y-offset that
     overlaps the body content box on some slides but not others (depending

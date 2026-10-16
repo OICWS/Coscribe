@@ -1,6 +1,4 @@
 import concurrent.futures
-import shutil
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -8,23 +6,15 @@ from openpyxl import load_workbook
 
 from coscribe.tools.office.xlsx import SpreadsheetToolkit, build_spreadsheet_tools
 
+from .libreoffice_probe import libreoffice_works
+
 
 def _tools_by_name(root: Path) -> dict[str, object]:
     return {tool.__name__: tool for tool in build_spreadsheet_tools(root)}  # type: ignore[attr-defined]
 
 
 def _libreoffice_actually_works() -> bool:
-    """Same reasoning as test_presentations_tool.py's identical helper --
-    `shutil.which("soffice")` alone doesn't prove conversion actually
-    works in this environment."""
-    probe_dir = Path(tempfile.mkdtemp(prefix="coscribe_lo_probe_"))
-    try:
-        result = SpreadsheetToolkit(probe_dir, state_dir=probe_dir / "state").write_xlsx(
-            path="probe.xlsx", content=TABLE_CONTENT, sheet_name="Scores"
-        )
-        return result["preview_skipped_reason"] is None
-    finally:
-        shutil.rmtree(probe_dir, ignore_errors=True)
+    return libreoffice_works()
 
 
 TABLE_CONTENT = """\

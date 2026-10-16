@@ -240,7 +240,7 @@ pythonpath = ["."]
 asyncio_mode = "auto"
 markers = [
     "quarantine(issue, until): a known-flaky test, tolerated until the date (tests/flaky_policy.py); after it the test fails",
-    "real_libreoffice: exercises actual headless LibreOffice conversion (soffice) -- opts out of conftest.py's default fast-mode monkeypatch of the QA/recalc steps; still skips cleanly via the test file's own _libreoffice_actually_works()-style check when soffice isn't usable in this environment",
+    "real_libreoffice: uses a real LibreOffice, as an independent reader of a written file or standing in for the office program (conftest.py); skips where LibreOffice is not usable",
 ]
 
 # Which package may import which. Checked by `lint-imports` (scripts/check.sh,

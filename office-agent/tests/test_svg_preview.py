@@ -22,11 +22,6 @@ _CHART = """<g id="revenue" data-pptx-replace-with="chart"><metadata type="appli
  "series": [{"name": "Q3 营收", "values": [5, 3]}]}</metadata></g>"""
 
 
-@pytest.fixture(autouse=True)
-def _no_libreoffice(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(_thumbnail, "find_soffice", lambda: None)
-
-
 def _deck(tmp_path: Path, pages: int = 3) -> Path:
     pages_dir = tmp_path / "pages"
     pages_dir.mkdir()
@@ -86,7 +81,7 @@ def test_a_deck_edited_since_its_build_is_not_previewed_from_stale_pages(
 
     names, reason = _thumbnail.render_all_page_previews(deck, tmp_path / "state")
 
-    assert names == [] and reason == "LibreOffice (soffice) not found"
+    assert names == [] and reason == _thumbnail.NO_OFFICE_PROGRAM
 
 
 def test_a_pdf_is_previewed_without_an_office_program(tmp_path: Path) -> None:
@@ -106,7 +101,7 @@ def test_a_page_edited_since_the_build_is_not_shown_as_the_deck(tmp_path: Path) 
 
     name, reason = _thumbnail.render_thumbnail(deck, tmp_path / "state")
 
-    assert name is None and reason == "LibreOffice (soffice) not found"
+    assert name is None and reason == _thumbnail.NO_OFFICE_PROGRAM
 
 
 def test_a_page_that_cannot_be_drawn_skips_the_preview(

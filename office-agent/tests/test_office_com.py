@@ -43,7 +43,7 @@ class _FakeOffice:
 @pytest.fixture
 def office(monkeypatch: pytest.MonkeyPatch) -> _FakeOffice:
     fake = _FakeOffice()
-    monkeypatch.setattr(_office_com, "run_soffice", fake)
+    monkeypatch.setattr(_office_com, "run_killable", fake)
     monkeypatch.setattr(_office_com, "shutil", type("S", (), {"which": staticmethod(str)}))
     monkeypatch.setattr(_office_com, "_registered", lambda prog_id: prog_id.startswith("K"))
     return fake
@@ -89,9 +89,6 @@ def test_the_program_is_closed_and_hidden_only_when_it_holds_no_file_of_the_user
 def test_convert_uses_the_office_program_and_says_which(
     office: _FakeOffice, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from coscribe.tools import convert
-
-    monkeypatch.setattr(convert, "find_soffice", lambda: None)
     (tmp_path / "old.xls").write_bytes(b"x")
     (tool,) = build_convert_tools(tmp_path)
 
@@ -104,9 +101,6 @@ def test_convert_uses_the_office_program_and_says_which(
 def test_without_any_office_program_convert_says_it_needs_one(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from coscribe.tools import convert
-
-    monkeypatch.setattr(convert, "find_soffice", lambda: None)
     (tmp_path / "a.docx").write_bytes(b"x")
     (tool,) = build_convert_tools(tmp_path)
 
@@ -127,7 +121,6 @@ def test_a_failure_in_office_is_reported_with_its_message(
 def test_a_word_file_is_previewed_through_the_office_program(
     office: _FakeOffice, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(_thumbnail, "find_soffice", lambda: None)
     (tmp_path / "a.docx").write_bytes(b"x")
 
     name, reason = _thumbnail.render_thumbnail(tmp_path / "a.docx", tmp_path / "state")

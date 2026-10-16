@@ -1,5 +1,3 @@
-import shutil
-import tempfile
 import zipfile
 from pathlib import Path
 
@@ -12,24 +10,15 @@ from coscribe.runtime import get_tool_metadata
 from coscribe.tools.office.document_tools import DocumentToolkit, build_document_tools
 from coscribe.tools.office.markdown_blocks import parse_inline_runs
 
+from .libreoffice_probe import libreoffice_works
+
 
 def _tools_by_name(root: Path) -> dict[str, object]:
     return {tool.__name__: tool for tool in build_document_tools(root)}  # type: ignore[attr-defined]
 
 
 def _libreoffice_actually_works() -> bool:
-    """Same reasoning as test_presentations_tool.py's identical helper --
-    `shutil.which("soffice")` alone doesn't prove conversion actually
-    works in this environment."""
-    probe_dir = Path(tempfile.mkdtemp(prefix="coscribe_lo_probe_"))
-    try:
-        # A docx: a PDF's preview is drawn without LibreOffice.
-        result = DocumentToolkit(probe_dir, state_dir=probe_dir / "state").write_docx(
-            path="probe.docx", content="Probe"
-        )
-        return result["preview_skipped_reason"] is None
-    finally:
-        shutil.rmtree(probe_dir, ignore_errors=True)
+    return libreoffice_works()
 
 
 DOCUMENT_CONTENT = """\
@@ -401,7 +390,7 @@ def test_write_docx_toc_renders_as_a_contents_list_in_libreoffice(tmp_path: Path
 
     tools = _tools_by_name(tmp_path)
     tools["write_docx"](path="report.docx", content=TOC_CONTENT)
-    (convert,) = build_convert_tools(tmp_path, state_dir=tmp_path / "state")
+    (convert,) = build_convert_tools(tmp_path)
     convert(path="report.docx", to_format="pdf", output_path="report.pdf")
 
     text = tools["read_pdf"](path="report.pdf")
