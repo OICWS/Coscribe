@@ -6,7 +6,6 @@ import re
 import zipfile
 from copy import copy
 from dataclasses import dataclass, field, replace
-from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from xml.etree import ElementTree as ET
@@ -141,10 +140,6 @@ def _empty(value: Any) -> bool:
     return value is None or value == ""
 
 
-def _empty_in(row: tuple[Any, ...], column: int) -> bool:
-    return _empty(row[column - 1].value)
-
-
 def _spill_room(
     column: int, last: int, empty_at: Callable[[int], bool], shown: Callable[[int], float]
 ) -> float:
@@ -155,35 +150,6 @@ def _spill_room(
         room += shown(right)
         right += 1
     return room
-
-
-def _needed(sheet: Worksheet, spans: list[Span], default: float) -> dict[int, float]:
-    needed: dict[int, float] = {}
-    last = sheet.max_column
-    spilling = []
-    for row in sheet.iter_rows():
-        for column, cell in enumerate(row, start=1):
-            # A formula has no value before the saved file is recalculated; its header
-            # and the constants beside it size the column.
-            if cell.data_type == "f":
-                continue
-            width = needed_width(cell.value, cell.number_format)
-            if isinstance(cell.value, str) and column < last and _empty(row[column].value):
-                spilling.append((row, column, width))
-                continue
-            needed[column] = max(needed.get(column, 0.0), width)
-
-    def shown(column: int) -> float:
-        shown_now = _shown_width(_span_at(spans, column), default)
-        return max(shown_now, min(needed.get(column, 0.0), MAX_WIDTH))
-
-    # Measured after every column's own values, so a title over a table only widens its column
-    # when it is longer than all the columns it runs over.
-    for row, column, width in spilling:
-        room = _spill_room(column, last, partial(_empty_in, row), shown)
-        if width > room:
-            needed[column] = max(needed.get(column, 0.0), width)
-    return needed
 
 
 def _exact_width_dimension() -> type:
@@ -217,26 +183,6 @@ def apply_spans(sheet: Worksheet, spans: list[Span]) -> None:
         if span.style is not None:
             dimension._style = copy(span.style)
         sheet.column_dimensions[letter] = dimension
-
-
-def fit_columns(sheet: Worksheet, spans: list[Span]) -> list[str]:
-    """Lay `spans` onto `sheet`, each column widened to its longest shown value; a hidden column
-    that now holds data is shown again. Returns the formula cells, which have no value to measure
-    until the file is recalculated."""
-    filled = {
-        column
-        for row in sheet.iter_rows()
-        for column, cell in enumerate(row, start=1)
-        if not _empty(cell.value)
-    }
-    for column in sorted(filled):
-        span = _span_at(spans, column)
-        if span is not None and span.look.get("hidden"):
-            _own_span(spans, column).look["hidden"] = False
-    default = sheet_default_width(sheet)
-    widen(spans, _needed(sheet, spans, default), default)
-    apply_spans(sheet, spans)
-    return [cell.coordinate for row in sheet.iter_rows() for cell in row if cell.data_type == "f"]
 
 
 def _cell_needed(sheet: Worksheet, spans: list[Span], cell: Any, value: Any) -> float:

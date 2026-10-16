@@ -343,7 +343,7 @@ def build_shapes_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., 
     ) -> dict[str, object]:
         """Add a chart to an existing slide in a PowerPoint (.pptx) file.
 
-        `data` is a pipe-table (same convention as write_xlsx's content): the
+        `data` is a pipe-table (a markdown table): the
         first column is the category axis, every other column is its own
         data series named from that column's header cell, e.g.:
 

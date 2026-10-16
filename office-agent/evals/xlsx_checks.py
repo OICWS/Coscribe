@@ -313,6 +313,18 @@ def check_features_kept(original: Any, produced: Any, minimum_rules: int) -> dic
     }
 
 
+def check_original_keeps(original: Path, wanted: list[str]) -> dict[str, Any]:
+    """Whether the user's file still holds each feature, by a text in its sheets' XML."""
+    with zipfile.ZipFile(original) as archive:
+        sheets = "".join(
+            archive.read(name).decode("utf-8", "replace")
+            for name in archive.namelist()
+            if name.startswith("xl/worksheets/sheet")
+        )
+    lost = [text for text in wanted if text not in sheets]
+    return {"ok": not lost, "lost": lost}
+
+
 def _points_in(reference: str) -> int:
     """The cells a series reference names, however many areas: `(Data!$A$1:$A$3,Data!$B$1:$B$3)`."""
     from openpyxl.utils.cell import range_boundaries
@@ -570,6 +582,7 @@ def _run_checks(
     scratch: Path,
     out_dir: Path,
     report: dict[str, Any],
+    workspace: Path,
 ) -> None:
     from openpyxl import load_workbook
 
@@ -616,6 +629,10 @@ def _run_checks(
             "features",
             lambda: check_features_kept(original, formulas, expect.conditional_formats_min),
         )
+        if expect.original_keeps:
+            in_workspace = workspace / expect.original
+            keeps = expect.original_keeps
+            _guarded(report, "original_keeps", lambda: check_original_keeps(in_workspace, keeps))
     if expect.charts:
         _guarded(report, "charts", lambda: check_charts(read_charts(path), expect.charts))
     if expect.validations:
@@ -654,7 +671,7 @@ def check_workbook(task: Task, path: Path, workspace: Path, out_dir: Path) -> di
             copy, report["recalc"] = path, {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
         values = load_workbook(str(copy), data_only=True)
         try:
-            _run_checks(task, expect, path, formulas, values, scratch, out_dir, report)
+            _run_checks(task, expect, path, formulas, values, scratch, out_dir, report, workspace)
         finally:
             values.close()
             formulas.close()

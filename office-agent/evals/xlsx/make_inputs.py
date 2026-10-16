@@ -10,6 +10,7 @@ import csv
 import datetime as dt
 import io
 import random
+import zipfile
 from pathlib import Path
 
 from openpyxl import Workbook
@@ -227,6 +228,79 @@ def sales_ledger() -> str:
     return out.getvalue()
 
 
+_PLAN = [
+    ("Jan", 42000, 40500),
+    ("Feb", 45000, 46800),
+    ("Mar", 47000, 47000),
+    ("Apr", 50000, 48100),
+    ("May", 52000, 53900),
+    ("Jun", 55000, 56250),
+]
+# A sparkline lives in an extension openpyxl does not read: a workbook it loads and saves again
+# loses it, which is what task 11 is about.
+_SPARKLINE = (
+    '<extLst><ext uri="{05C60535-1F16-4fd2-B633-F4F36F0B64E0}" '
+    'xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main">'
+    '<x14:sparklineGroups xmlns:xm="http://schemas.microsoft.com/office/excel/2006/main">'
+    "<x14:sparklineGroup><x14:sparklines><x14:sparkline><xm:f>Plan!C2:C7</xm:f>"
+    "<xm:sqref>H2</xm:sqref></x14:sparkline></x14:sparklines></x14:sparklineGroup>"
+    "</x14:sparklineGroups></ext></extLst></worksheet>"
+)
+
+
+def plan(path: Path) -> None:
+    """A user's half-year plan: styled, a rule, frozen panes and a sparkline in H2."""
+    book = Workbook()
+    sheet = book.active
+    sheet.title = "Plan"
+    sheet.append(["Month", "Target", "Actual"])
+    for line in _PLAN:
+        sheet.append(list(line))
+    sheet["H1"] = "Trend"
+    _header(sheet, 3)
+    for row in range(2, 8):
+        for column in (2, 3):
+            cell = sheet.cell(row=row, column=column)
+            cell.number_format = '"$"#,##0'
+            cell.border = Border(bottom=_THIN)
+    sheet.conditional_formatting.add(
+        "C2:C7",
+        CellIsRule(operator="lessThan", formula=["B2"], fill=PatternFill("solid", bgColor="F4B6B6")),
+    )
+    for column, width in (("A", 12), ("B", 12), ("C", 12), ("H", 16)):
+        sheet.column_dimensions[column].width = width
+    sheet.freeze_panes = "A2"
+    book.save(path)
+    with zipfile.ZipFile(path) as archive:
+        parts = {name: archive.read(name) for name in archive.namelist()}
+    sheet_xml = parts["xl/worksheets/sheet1.xml"].decode()
+    parts["xl/worksheets/sheet1.xml"] = sheet_xml.replace("</worksheet>", _SPARKLINE).encode()
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
+        for name, data in parts.items():
+            archive.writestr(name, data)
+
+
+_REGIONS = ["North", "South", "East", "West"]
+_ITEMS = {"Desk": 320, "Chair": 145, "Lamp": 38, "Shelf": 210, "Monitor arm": 89}
+
+
+def orders_2025() -> str:
+    """5,000 orders over 2025 with a seeded generator, so the totals in expect.json hold."""
+    rng = random.Random(25)
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator="\n")
+    writer.writerow(["Order", "Date", "Region", "Product", "Qty", "Unit price"])
+    start = dt.date(2025, 1, 1)
+    for number in range(1, 5001):
+        day = start + dt.timedelta(days=rng.randint(0, 364))
+        product = rng.choice(list(_ITEMS))
+        writer.writerow(
+            [f"SO-{number:05d}", day.isoformat(), rng.choice(_REGIONS), product,
+             rng.randint(1, 12), _ITEMS[product]]
+        )
+    return out.getvalue()
+
+
 def main() -> None:
     def put(task: str, name: str) -> Path:
         folder = TASKS / task / "inputs"
@@ -241,6 +315,8 @@ def main() -> None:
     put("07-chinese-formats", "各区域销售.csv").write_text(SALES_CSV, encoding="utf-8")
     tickets(put("08-validation-list", "tickets.xlsx"))
     put("09-sales-report", "销售明细.csv").write_text(sales_ledger(), encoding="utf-8")
+    plan(put("11-rich-workbook", "plan_2026.xlsx"))
+    put("12-big-ledger", "orders_2025.csv").write_text(orders_2025(), encoding="utf-8")
 
 
 if __name__ == "__main__":

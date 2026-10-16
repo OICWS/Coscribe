@@ -404,6 +404,8 @@ const TOOL_SUMMARIES: Record<string, (args: ArgRecord) => SummaryParts> = {
   write_docx: (a) => ({ verb: "Wrote", object: fileArg(a) ?? "a document" }),
   write_pdf: (a) => ({ verb: "Wrote", object: fileArg(a) ?? "a PDF" }),
   write_xlsx: (a) => ({ verb: "Wrote", object: fileArg(a) ?? "a spreadsheet" }),
+  write_xlsx_cells: (a) => ({ verb: "Wrote", object: fileArg(a) ?? "a spreadsheet" }),
+  modify_xlsx: (a) => ({ verb: "Changed", object: fileArg(a) ?? "a spreadsheet" }),
   write_pptx: (a) => ({ verb: "Wrote", object: fileArg(a) ?? "a deck" }),
   write_file: (a) => ({ verb: "Wrote", object: fileArg(a) ?? "a file" }),
   edit_file: (a) => ({ verb: "Edited", object: fileArg(a) ?? "a file" }),

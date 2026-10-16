@@ -310,6 +310,61 @@ def store_forecast(inputs: Path, out: Path) -> Path:
     return path
 
 
+def rich_workbook(inputs: Path, out: Path) -> Path:
+    """The guard sees the sparkline would be lost and writes `plan_2026 (coscribe).xlsx`."""
+    path = out / "plan_2026.xlsx"
+    shutil.copyfile(inputs / "plan_2026.xlsx", path)
+    report = write_cells(
+        path,
+        [
+            {"sheet": "Plan", "at": "D1", "like": "C1", "rows": [["Gap"]]},
+            {"sheet": "Plan", "at": "D2", "like": "C2", "rows": [["=C2-B2"]], "fill_down_to": 7},
+            {
+                "sheet": "Plan",
+                "at": "A8",
+                "like_row": 7,
+                "rows": [["Total", "=SUM(B2:B7)", "=SUM(C2:C7)", "=SUM(D2:D7)"]],
+            },
+        ],
+    )
+    return Path(report["path"])
+
+
+def big_ledger(inputs: Path, out: Path) -> Path:
+    ledger = _csv(inputs / "orders_2025.csv")
+    last = len(ledger)
+    path = out / "orders_2025.xlsx"
+
+    def total(row: int) -> str:
+        return f"=SUMIF(Orders!$C$2:$C${last},A{row},Orders!$G$2:$G${last})"
+
+    write_cells(
+        path,
+        [
+            {
+                "sheet": "Orders",
+                "row_styles": [_HEAD],
+                "rows": [
+                    [*ledger[0], "Amount"],
+                    *[[*r[:4], *map(int, r[4:])] for r in ledger[1:]],
+                ],
+            },
+            {"sheet": "Orders", "at": "G2", "rows": [["=E2*F2"]], "fill_down_to": last},
+            {
+                "sheet": "Summary",
+                "row_styles": [_HEAD],
+                "col_styles": [None, {"num": "#,##0"}],
+                "rows": [
+                    ["Region", "Amount"],
+                    *[[r, total(i)] for i, r in enumerate(["North", "South", "East", "West"], 2)],
+                    ["Total", "=SUM(B2:B5)"],
+                ],
+            },
+        ],
+    )
+    return path
+
+
 SOLUTIONS = {
     "01-clean-csv": clean_csv,
     "02-monthly-summary": monthly_summary,
@@ -321,4 +376,6 @@ SOLUTIONS = {
     "08-validation-list": validation_list,
     "09-sales-report": sales_report,
     "10-store-forecast": store_forecast,
+    "11-rich-workbook": rich_workbook,
+    "12-big-ledger": big_ledger,
 }

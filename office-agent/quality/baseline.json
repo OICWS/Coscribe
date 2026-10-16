@@ -313,7 +313,7 @@
   "src/coscribe/tools/office/pptx/wrappers_xml_animation.py::build_xml_animation_tools": 328,
   "src/coscribe/tools/office/pptx/xml_animation.py::XmlAnimationMixin.add_pptx_audio": 103,
   "src/coscribe/tools/office/pptx/xml_animation.py::XmlAnimationMixin.edit_pptx_xml": 108,
-  "src/coscribe/tools/office/xlsx/tools.py::build_spreadsheet_tools": 417,
+  "src/coscribe/tools/office/xlsx/tools.py::build_spreadsheet_tools": 144,
   "src/coscribe/tools/scheduled_tasks.py::build_scheduled_task_tools": 225,
   "src/coscribe/tools/selfwake.py::build_selfwake_tools": 151,
   "src/coscribe/web/app.py::create_app_lg": 381,
@@ -331,7 +331,7 @@
  "suppressions": {
   "noqa": 140,
   "pragma_no_cover": 2,
-  "type_ignore": 42
+  "type_ignore": 36
  },
  "tests_without_a_check": {}
 }

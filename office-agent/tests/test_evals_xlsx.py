@@ -705,7 +705,7 @@ def test_a_formula_error_after_recalculation_is_reported(tmp_path: Path) -> None
 def test_every_excel_task_loads_and_its_files_exist() -> None:
     found = tasks.discover("all", kind="xlsx")
 
-    assert len(found) == 10 and {t.kind for t in found} == {"xlsx"}
+    assert len(found) == 12 and {t.kind for t in found} == {"xlsx"}
     assert set(SOLUTIONS) == {t.name for t in found}
     for task in found:
         assert task.brief and isinstance(task.expect, tasks.XlsxExpect)
@@ -982,3 +982,17 @@ def test_the_comparison_of_two_excel_runs_shows_the_workbook_checks(tmp_path: Pa
     assert "| 13/15 | 15/15 |" in table
     assert "NO | yes" in table
     assert "overflow" not in table and "pages" not in table
+
+
+def test_an_original_saved_over_without_its_sparkline_fails_the_keep_check(tmp_path: Path) -> None:
+    given = _task("11-rich-workbook").directory / "inputs" / "plan_2026.xlsx"
+    kept = tmp_path / "kept.xlsx"
+    kept.write_bytes(given.read_bytes())
+    resaved = tmp_path / "resaved.xlsx"
+    load_workbook(given).save(resaved)
+
+    assert xlsx_checks.check_original_keeps(kept, ["sparklineGroup"])["ok"]
+    assert xlsx_checks.check_original_keeps(resaved, ["sparklineGroup"]) == {
+        "ok": False,
+        "lost": ["sparklineGroup"],
+    }

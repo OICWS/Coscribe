@@ -1,0 +1,27 @@
+{
+ "facts": ["Gap", "Total"],
+ "cells": [
+  {"at": "Plan!D1", "value": "Gap"},
+  {"at": "Plan!D2", "value": -1500},
+  {"at": "Plan!D3", "value": 1800},
+  {"at": "Plan!D4", "value": 0},
+  {"at": "Plan!D5", "value": -1900},
+  {"at": "Plan!D6", "value": 1900},
+  {"at": "Plan!D7", "value": 1250},
+  {"at": "Plan!A8", "value": "Total"},
+  {"at": "Plan!B8", "value": 291000},
+  {"at": "Plan!C8", "value": 292550},
+  {"at": "Plan!D8", "value": 1550}
+ ],
+ "formulas": ["Plan!D2:D8", "Plan!B8:C8"],
+ "number_formats": [
+  {"at": "Plan!D2:D8", "any_of": ["$"]},
+  {"at": "Plan!B8:C8", "any_of": ["$"]}
+ ],
+ "bold": ["Plan!D1"],
+ "used_range": {"Plan": "A1:H8"},
+ "original": "plan_2026.xlsx",
+ "untouched": ["Plan!A1:C7"],
+ "conditional_formats_min": 1,
+ "original_keeps": ["sparklineGroup"]
+}

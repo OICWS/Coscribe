@@ -41,7 +41,8 @@ class XlsxExpect:
     `bold`: ranges whose cells must be bold.
     `used_range`: per sheet, the range nothing may be written outside of.
     `original` and `untouched`: for an edit, the input workbook and the ranges whose styles must
-    be as they were.
+    be as they were. `original_keeps`: text that must still be in the original's sheets in the
+    workspace afterwards (a feature an edit could drop: kept in place, or the file left alone).
     `probe`: `{"set": {address: value}, "expect": [cells]}`, inputs changed on a copy that is
     then recalculated.
     `charts`: `{"kind", "title", "points_min", "axis_titles"}`; `validations`: `{"at", "values"}`.
@@ -63,6 +64,7 @@ class XlsxExpect:
     used_range: dict[str, str] = field(default_factory=dict)
     original: str | None = None
     untouched: list[str] = field(default_factory=list)
+    original_keeps: list[str] = field(default_factory=list)
     conditional_formats_min: int = 0
     formulas_min: int = 0
     figures: list[dict[str, object]] = field(default_factory=list)
@@ -264,6 +266,7 @@ def _parse_xlsx_expect(raw: dict[str, object], where: Path) -> XlsxExpect:
         used_range=used_range,
         original=str(original) if original else None,
         untouched=untouched,
+        original_keeps=_list_of(raw, "original_keeps", str, where),
         conditional_formats_min=int(raw.get("conditional_formats_min", 0)),  # type: ignore[call-overload]
         formulas_min=int(raw.get("formulas_min", 0)),  # type: ignore[call-overload]
         figures=figures,

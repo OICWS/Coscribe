@@ -275,6 +275,47 @@ def store_forecast(inputs: Path, out: Path) -> Path:
     return path
 
 
+def rich_workbook(inputs: Path, out: Path) -> Path:
+    """openpyxl cannot keep the sparkline, so the original stays as it was and the result is a
+    new file."""
+    shutil.copyfile(inputs / "plan_2026.xlsx", out / "plan_2026.xlsx")
+    book = load_workbook(inputs / "plan_2026.xlsx")
+    sheet = book["Plan"]
+    sheet["D1"] = "Gap"
+    sheet["D1"]._style = sheet["C1"]._style
+    for row in range(2, 8):
+        sheet[f"D{row}"] = f"=C{row}-B{row}"
+        sheet[f"D{row}"]._style = sheet[f"C{row}"]._style
+    sheet["A8"] = "Total"
+    for column in "BCD":
+        sheet[f"{column}8"] = f"=SUM({column}2:{column}7)"
+        sheet[f"{column}8"]._style = sheet["C2"]._style
+    path = out / "plan_2026 with gap.xlsx"
+    book.save(path)
+    return path
+
+
+def big_ledger(inputs: Path, out: Path) -> Path:
+    with (inputs / "orders_2025.csv").open(encoding="utf-8", newline="") as handle:
+        rows = list(csv.reader(handle))
+    book = Workbook()
+    orders = book.active
+    orders.title = "Orders"
+    orders.append([*rows[0], "Amount"])
+    for number, row in enumerate(rows[1:], start=2):
+        orders.append([*row[:4], int(row[4]), int(row[5]), f"=E{number}*F{number}"])
+    last = len(rows)
+    summary = book.create_sheet("Summary")
+    summary.append(["Region", "Amount"])
+    for number, region in enumerate(["North", "South", "East", "West"], start=2):
+        summary.append([region, f"=SUMIF(Orders!$C$2:$C${last},A{number},Orders!$G$2:$G${last})"])
+    summary.append(["Total", "=SUM(B2:B5)"])
+    _widen(book)
+    path = out / "orders_2025.xlsx"
+    book.save(path)
+    return path
+
+
 SOLUTIONS = {
     "01-clean-csv": clean_csv,
     "02-monthly-summary": monthly_summary,
@@ -286,4 +327,6 @@ SOLUTIONS = {
     "08-validation-list": validation_list,
     "09-sales-report": sales_report,
     "10-store-forecast": store_forecast,
+    "11-rich-workbook": rich_workbook,
+    "12-big-ledger": big_ledger,
 }
