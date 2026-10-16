@@ -23,8 +23,9 @@ def _libreoffice_actually_works() -> bool:
     works in this environment."""
     probe_dir = Path(tempfile.mkdtemp(prefix="coscribe_lo_probe_"))
     try:
-        result = DocumentToolkit(probe_dir, state_dir=probe_dir / "state").write_pdf(
-            path="probe.pdf", content="Probe"
+        # A docx: a PDF's preview is drawn without LibreOffice.
+        result = DocumentToolkit(probe_dir, state_dir=probe_dir / "state").write_docx(
+            path="probe.docx", content="Probe"
         )
         return result["preview_skipped_reason"] is None
     finally:

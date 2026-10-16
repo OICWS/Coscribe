@@ -563,14 +563,15 @@ def test_a_file_that_is_not_a_workbook_stops_at_opens(tmp_path: Path) -> None:
     assert report["opens"]["ok"] is False and "recalc" not in report
 
 
-# --- the reference solutions (recalculated by LibreOffice) -------------------------------
+# --- the reference solutions (rendered by LibreOffice) -----------------------------------
 
 
 def _libreoffice_recalculates(tmp_path: Path) -> bool:
+    """Whether LibreOffice renders here: the checks draw the pages with it, while the formula
+    values come from IronCalc everywhere."""
     path = tmp_path / "probe.xlsx"
     _book([[1, "=A1+1"]]).save(path)
-    _, report = xlsx_checks.recalculate(path, tmp_path)
-    return bool(report["ok"])
+    return bool(xlsx_checks.render_pages(path, tmp_path / "probe-render")["ok"])
 
 
 @pytest.mark.real_libreoffice
