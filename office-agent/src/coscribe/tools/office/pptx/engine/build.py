@@ -146,6 +146,20 @@ def built_from_pages(deck: Path) -> Path | None:
     return None
 
 
+def built_pages(deck: Path) -> list[Path] | None:
+    """The SVG pages `deck` was built from, in slide order, while both the deck and the pages are
+    as that build left them; None otherwise."""
+    folder = built_from_pages(deck)
+    if folder is None:
+        return None
+    recorded = _read_manifest(folder / MANIFEST)["pages"]
+    pages = [folder / entry["page"] for entry in recorded]
+    for page, entry in zip(pages, recorded, strict=True):
+        if not page.is_file() or _sha(page.read_bytes()) != entry["source"]:
+            return None
+    return pages
+
+
 def slide_hashes(deck: Path) -> list[str]:
     """One hash per slide over its XML and everything it points to, so a changed picture
     counts as a changed slide too."""

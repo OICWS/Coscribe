@@ -1,9 +1,13 @@
-"""Best-effort office-file thumbnail rendering via headless LibreOffice,
-shared by office/docx/pdf, office/xlsx, presentations.py's write_* tools,
-and (render_single_page_preview specifically) by conversation/session.py's
+"""Best-effort office-file thumbnail rendering, shared by office/docx/pdf,
+office/xlsx, presentations.py's write_* tools, and
+(render_single_page_preview specifically) by conversation/session.py's
 approval-preview (_build_pptx_edit_preview) -- a before/after slide
 render shown in the approval card for a pptx edit, instead of just its
 raw JSON arguments.
+
+A PDF is drawn with PDFium and a deck still as its pages built it from those SVG pages, so
+neither needs an office program (decision 0012); any other file goes through a headless
+LibreOffice when one is found.
 
 Same graceful-degradation contract as presentations.py's pre-existing
 overflow-check pipeline: `soffice` missing, timing out, or failing to
@@ -38,6 +42,9 @@ from ._office_bins import find_soffice, run_soffice, soffice_profile
 SOFFICE_TIMEOUT = 60.0
 
 _PREVIEW_DPI = 100
+# What drawing a page raises: resvg's ValueError, a malformed SVG, PDFium's RuntimeError, a file
+# that went away. A preview is never worth failing the write.
+_DRAW_ERRORS = (ValueError, SyntaxError, RuntimeError, OSError)
 
 
 def _convert_to_pdf(file_path: Path, out_dir: Path) -> Path | None:
@@ -69,6 +76,39 @@ def _convert_to_pdf(file_path: Path, out_dir: Path) -> Path | None:
     return pdf_path if pdf_path.is_file() else None
 
 
+def _without_office(file_path: Path, out_dir: Path, first: int, last: int) -> list[Path] | None:
+    """Pages first..last of a file whose pages need no office program to draw: a PDF (PDFium),
+    or a deck its SVG pages last built, deck and pages still as built (resvg). None for any
+    other file. Raises when a page cannot be drawn."""
+    if file_path.suffix.lower() == ".pdf":
+        return _render_pdf_pages(file_path, out_dir, first, last)
+    if file_path.suffix.lower() != ".pptx":
+        return None
+    from ._svg_preview import render_page
+    from .office.pptx.engine.build import built_pages
+
+    pages = built_pages(file_path)
+    if pages is None:
+        return None
+    files = []
+    for number, page in enumerate(pages[max(first, 1) - 1 : last], max(first, 1)):
+        target = out_dir / f"page-{number:04d}.png"
+        render_page(page, target)
+        files.append(target)
+    return files
+
+
+def _keep(page_files: list[Path], state_dir: Path) -> list[str]:
+    previews_dir = state_dir / "previews"
+    previews_dir.mkdir(parents=True, exist_ok=True)
+    names = []
+    for page_file in page_files:
+        name = f"{uuid.uuid4().hex}.png"
+        shutil.move(str(page_file), str(previews_dir / name))
+        names.append(name)
+    return names
+
+
 def render_thumbnail(file_path: Path, state_dir: Path | None) -> tuple[str | None, str | None]:
     """Render `file_path` (docx/pdf/xlsx/pptx) to a one-page PNG thumbnail
     under `state_dir/previews/`.
@@ -79,11 +119,17 @@ def render_thumbnail(file_path: Path, state_dir: Path | None) -> tuple[str | Non
     """
     if state_dir is None:
         return None, "no state_dir configured"
-    soffice = find_soffice()
-    if soffice is None:
-        return None, "LibreOffice (soffice) not found"
     out_dir = Path(tempfile.mkdtemp(prefix="coscribe_thumbnail_"))
     try:
+        try:
+            drawn = _without_office(file_path, out_dir, 1, 1)
+        except _DRAW_ERRORS:
+            return None, "page rendering failed"
+        if drawn is not None:
+            return (_keep(drawn, state_dir)[0], None) if drawn else (None, "no pages to render")
+        soffice = find_soffice()
+        if soffice is None:
+            return None, "LibreOffice (soffice) not found"
         try:
             with soffice_profile() as profile:
                 run_soffice(
@@ -206,29 +252,27 @@ def render_all_page_previews(
     """
     if state_dir is None:
         return [], "no state_dir configured"
-    if find_soffice() is None:
-        return [], "LibreOffice (soffice) not found"
     out_dir = Path(tempfile.mkdtemp(prefix="coscribe_thumbnail_"))
     try:
-        pdf_path = _convert_to_pdf(file_path, out_dir)
-        if pdf_path is None:
-            return [], "LibreOffice conversion failed"
-        if layout is not None:
-            layout.extend(measure_page_words(pdf_path, max_pages))
         try:
-            page_files = _render_pdf_pages(pdf_path, out_dir, 1, max_pages)
-        except Exception:  # noqa: BLE001 -- a preview is never worth failing the write
+            page_files = _without_office(file_path, out_dir, 1, max_pages)
+        except _DRAW_ERRORS:
             return [], "page rendering failed"
+        if page_files is None:
+            if find_soffice() is None:
+                return [], "LibreOffice (soffice) not found"
+            pdf_path = _convert_to_pdf(file_path, out_dir)
+            if pdf_path is None:
+                return [], "LibreOffice conversion failed"
+            if layout is not None:
+                layout.extend(measure_page_words(pdf_path, max_pages))
+            try:
+                page_files = _render_pdf_pages(pdf_path, out_dir, 1, max_pages)
+            except Exception:  # noqa: BLE001 -- a preview is never worth failing the write
+                return [], "page rendering failed"
         if not page_files:
             return [], "the document has no pages to render"
-        previews_dir = state_dir / "previews"
-        previews_dir.mkdir(parents=True, exist_ok=True)
-        preview_names = []
-        for page_file in page_files:
-            preview_name = f"{uuid.uuid4().hex}.png"
-            shutil.move(str(page_file), str(previews_dir / preview_name))
-            preview_names.append(preview_name)
-        return preview_names, None
+        return _keep(page_files, state_dir), None
     finally:
         shutil.rmtree(out_dir, ignore_errors=True)
 
@@ -250,19 +294,17 @@ def render_single_page_preview(
         return None, "no state_dir configured"
     out_dir = Path(tempfile.mkdtemp(prefix="coscribe_thumbnail_"))
     try:
-        pdf_path = _convert_to_pdf(file_path, out_dir)
-        if pdf_path is None:
-            return None, "LibreOffice conversion failed"
         try:
-            page_files = _render_pdf_pages(pdf_path, out_dir, page, page)
+            page_files = _without_office(file_path, out_dir, page, page)
+            if page_files is None:
+                pdf_path = _convert_to_pdf(file_path, out_dir)
+                if pdf_path is None:
+                    return None, "LibreOffice conversion failed"
+                page_files = _render_pdf_pages(pdf_path, out_dir, page, page)
         except Exception:  # noqa: BLE001 -- a preview is never worth failing the write
             return None, "page rendering failed"
         if not page_files:
             return None, f"page {page} out of range for this document"
-        previews_dir = state_dir / "previews"
-        previews_dir.mkdir(parents=True, exist_ok=True)
-        preview_name = f"{uuid.uuid4().hex}.png"
-        shutil.move(str(page_files[0]), str(previews_dir / preview_name))
-        return preview_name, None
+        return _keep(page_files, state_dir)[0], None
     finally:
         shutil.rmtree(out_dir, ignore_errors=True)
