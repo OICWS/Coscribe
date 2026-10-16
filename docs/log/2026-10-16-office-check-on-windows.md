@@ -14,9 +14,6 @@ the tests fake PowerShell, and the maintainer had a checklist to work through by
 
   It prints one table and exits 1 when a check fails; `--require` also fails when no program is
   found. The legacy samples are in `scripts/office_check_samples/` (made with LibreOffice).
-- `.github/workflows/windows-office.yml`: installs WPS Office on a Windows runner (the installer
-  winget lists) and runs the script against it. By hand, and on a PR that changes it or the
-  script; not a required check.
 - `tests/test_check_office.py`: the script's logic against a faked Office.
 
 ## Verified
@@ -24,6 +21,9 @@ the tests fake PowerShell, and the maintainer had a checklist to work through by
   three previews and the three open-file cases passed, each in 1-11 s.
 
 ## Not verified
-- Whether WPS installs and answers COM on a runner without anyone at the screen: the new
-  workflow's runs on this PR timed out installing it.
-- WPS on a real machine.
+- That no office program is left running after a conversion. The first run found Word, Excel
+  and PowerPoint still running, but the open-file cases had started them themselves; the check
+  now runs before those cases, and has not been run again.
+- WPS Office. Installing it on a GitHub runner was tried and dropped: the 357 MB installer
+  winget lists (official-package.wpscdn.cn) came at about 100 KB/s, an hour per run. Someone
+  with WPS runs the script once.
