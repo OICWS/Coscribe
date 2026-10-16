@@ -202,6 +202,10 @@ def _match_table_style(document: Any, new_elements: list[Any]) -> None:
             element.find(f"{qn('w:tblPr')}/{qn('w:tblStyle')}").set(
                 qn("w:val"), style.get(qn("w:val"))
             )
+            # The user's table style decides how its header row looks, as it does for theirs.
+            first_row = element.find(qn("w:tr"))
+            for bold in list(first_row.iter(qn("w:b"))) if first_row is not None else []:
+                bold.getparent().remove(bold)
         return
 
 
@@ -218,6 +222,28 @@ def _title_tocs(document: Any, written: Written) -> None:
     for element, following in zip(written.elements, written.elements[1:], strict=False):
         if element in levels and following in toc_elements:
             element.find(f"{qn('w:pPr')}/{qn('w:pStyle')}").set(qn("w:val"), title.style_id)
+
+
+def summary(document: Any) -> dict[str, object]:
+    """What the edited document holds, so the caller can check the result without opening it:
+    its headings in order, its tables and pictures, its header and footer, its contents list."""
+    from docx.oxml.ns import qn
+
+    body = document.element.body
+    skipped = _toc_result_paragraphs(body)
+    section = document.sections[0]
+    return {
+        "headings": [
+            f"{'#' * level} {text}"
+            for element, text, level in _paragraphs(document)
+            if level is not None and element not in skipped
+        ],
+        "tables": len(list(body.iterchildren(qn("w:tbl")))),
+        "pictures": len(list(body.iter(qn("w:drawing")))),
+        "contents_list": any("TOC" in (t.text or "") for t in body.iter(qn("w:instrText"))),
+        "header": " / ".join(p.text for p in section.header.paragraphs if p.text),
+        "footer": " / ".join(p.text for p in section.footer.paragraphs if p.text),
+    }
 
 
 def apply_operations(

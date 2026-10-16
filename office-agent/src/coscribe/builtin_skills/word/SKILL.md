@@ -18,7 +18,10 @@ contents list after the introduction and a section moved to the front:
      {"op": "move_section", "section": "Safety", "before": "Onboarding"}]
 
 `after_section` places content after everything under a heading. Pass
-`output_path` when the user wants a new file. Use `replace_docx_text` and
+`output_path` when the user wants a new file. Everything the operations
+don't name is kept as it is, and the result's `document` lists the new
+headings, tables, pictures, header and footer: check the edit there, not
+with a script. `read_docx` shows the headings to name before editing. Use `replace_docx_text` and
 friends for wording inside paragraphs.
 
 ## Table of contents

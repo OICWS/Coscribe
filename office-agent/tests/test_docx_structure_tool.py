@@ -47,6 +47,8 @@ def test_insert_after_a_section_uses_the_documents_styles(tmp_path: Path) -> Non
 
     outline = _outline(tmp_path / "h.docx")
     assert result["done"] == ["operation 1 (insert): inserted 2 block(s)"]
+    assert result["document"]["headings"][2:4] == ["## Overtime", "# Remote work"]
+    assert result["document"]["tables"] == 1 and not result["document"]["contents_list"]
     position = outline.index(("Heading 1", "Remote work"))
     assert outline[position - 1] == ("Normal", "Agreed in advance.")
     assert outline[position + 1] == ("List Bullet", "Two days a week.")
@@ -177,6 +179,8 @@ def test_output_path_leaves_the_original_and_new_tables_match_its_style(tmp_path
     assert (tmp_path / "h.docx").read_bytes() == original
     tables = Document(str(tmp_path / "h2.docx")).tables
     assert [t.style.name for t in tables] == ["Light Grid Accent 1"] * 2
+    (new,) = [t for t in tables if t.rows[0].cells[0].text == "A"]
+    assert not any(run.bold for cell in new.rows[0].cells for run in cell.paragraphs[0].runs)
     with pytest.raises(FileExistsError):
         tools["edit_docx_structure"](
             path="h.docx",

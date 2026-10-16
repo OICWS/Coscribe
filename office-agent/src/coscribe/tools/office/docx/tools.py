@@ -415,7 +415,10 @@ def _edit_docx_structure_tool(toolkit: DocxToolkit) -> Callable[..., Any]:
         (after everything under that heading). Text is matched exactly, or
         else as part of one paragraph; it must name one. A contents list is
         filled from all the document's headings once every operation has run.
-        If any operation fails, nothing is saved.
+        If any operation fails, nothing is saved. The result's `document`
+        lists the edited file's headings in order, its tables, pictures,
+        header, footer and contents list -- enough to check the edit without
+        opening the file.
 
         Args:
             path: existing .docx file, relative to the workspace root

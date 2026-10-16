@@ -7,7 +7,7 @@ from ..._file_locks import locked_by_path
 from ..._ooxml_validate import assert_wml_valid
 from ..._thumbnail import render_thumbnail
 from ..toolkit import WorkspaceToolkit
-from ._structure import add_blocks, apply_operations, finish_tocs
+from ._structure import add_blocks, apply_operations, finish_tocs, summary
 from ._xml import (
     _apply_page_setup,
     _build_comments_xml,
@@ -140,6 +140,7 @@ class DocxToolkit(WorkspaceToolkit):
             "path": self._scope.relative(target),
             "bytes_written": target.stat().st_size,
             "done": done,
+            "document": summary(document),
             "preview_path": preview_path,
             "preview_skipped_reason": preview_skipped_reason,
         }
