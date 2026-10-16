@@ -98,7 +98,9 @@ def soffice_profile() -> Iterator[str]:
         handle.close()
 
 
-def run_soffice(command: list[str], timeout: float) -> subprocess.CompletedProcess[bytes]:
+def run_soffice(
+    command: list[str], timeout: float, env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[bytes]:
     """`subprocess.run(command, capture_output=True, timeout=timeout,
     check=True)`, except that a timeout kills LibreOffice too, not only its
     launcher: `soffice` starts `soffice.bin` and a plain timeout leaves that
@@ -109,7 +111,7 @@ def run_soffice(command: list[str], timeout: float) -> subprocess.CompletedProce
     else:
         group = {"start_new_session": True}
     with subprocess.Popen(
-        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **group  # type: ignore[call-overload]
+        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, **group  # type: ignore[call-overload]
     ) as process:
         try:
             stdout, stderr = process.communicate(timeout=timeout)
