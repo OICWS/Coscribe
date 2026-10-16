@@ -90,7 +90,8 @@ Last reviewed: 2026-10-15.
    route, at the same cost. Next: a `build_xlsx` tool writing blocks of cells with their
    styles in one call, as Claude for Excel's `set_cell_range` does (part 1 unused, part 2 the
    skill and the measurement), with print-layout, clipped-text and edit-style checks. Parts 1a, 1b and
-   1c are done (1c: the ten single-purpose writers removed, tasks 11 and 12 added): the model writes workbooks with write_xlsx_cells and modify_xlsx (design 4.18 on
+   1c are done (1c: the ten single-purpose writers removed, tasks 11 and 12 added; 1d,
+   showing a workbook inside the app, was tried and dropped: the user opens it in Excel): the model writes workbooks with write_xlsx_cells and modify_xlsx (design 4.18 on
    the open tasks against 2.88, at the same cost and two thirds of the time). Its engine is openpyxl, with IronCalc for formula values (no Excel needed); real Excel through
    COM, and an Office.js add-in, are later engines behind the same interface, chosen from real use.
    **No LibreOffice in the product** (decision 0012, #319): step 1 (no Office needed) is IronCalc

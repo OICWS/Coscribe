@@ -223,6 +223,55 @@ def _diagram(path: Path) -> None:
     image.save(path)
 
 
+CLIENT_BRIEF_MD = """\
+# Northwind Logistics: what they asked for (call notes, 3 Sept 2026)
+
+- Contact: Priya Raman, Head of Operations, Northwind Logistics (Leeds).
+- Problem: drivers re-key delivery notes into three systems; about 40 minutes per driver per day.
+  Errors in 6% of invoices last quarter.
+- They want: one mobile form that feeds the warehouse system, invoicing and the customer portal.
+- Must work offline in the vans; 140 drivers; Android only.
+- Go-live wanted before 1 March 2027 (peak season ends then).
+- Budget signal: "under 150k for the first year".
+- Decision by their board on 21 October 2026. They want the proposal by 10 October.
+- Our team: Daniel Cho (delivery lead), Ana Ruiz (Android), Tom Price (integration).
+- Our approach, agreed internally: 2-week discovery, then three 4-week build sprints, pilot with
+  20 drivers in January, full rollout in February.
+- Risk they raised: the customer portal vendor's API is undocumented.
+"""
+
+PRICING_CSV = """\
+Item,Amount (GBP)
+Discovery (2 weeks),12000
+Build sprints (3 x 4 weeks),84000
+Pilot support (20 drivers),9500
+Rollout and training (140 drivers),14000
+Year-one support,18000
+"""
+
+HALF_YEAR_CSV = """\
+月份,营收(万元),新客户数,客户满意度
+1月,812,34,91.2
+2月,705,28,90.5
+3月,968,41,92.8
+4月,1023,45,93.1
+5月,1110,52,92.4
+6月,1187,57,94.0
+"""
+
+HALF_YEAR_NOTES_MD = """\
+# 华东销售部 2026 年上半年要点（部门内部记录）
+
+- 上半年营收 5805 万元，完成全年目标 11000 万元的 52.8%。
+- 新客户 257 家；6 月新客户数为上半年最高。
+- 客户满意度从 1 月的 91.2 提升到 6 月的 94.0。
+- 2 月受春节影响营收最低（705 万元）。
+- 上线了新的报价系统，报价周期从 3 天缩短到 1 天。
+- 问题：苏州大客户流失 1 家，原因是交付延期；人员流动率 12%。
+- 下半年计划：重点开拓南京市场；6 名新人在 8 月前完成培训；把交付准时率提升到 98%。
+"""
+
+
 def main() -> None:
     def put(task: str, name: str) -> Path:
         folder = TASKS / task / "inputs"
@@ -237,6 +286,10 @@ def main() -> None:
     put("06-mixed-language", "入职说明.md").write_text(BILINGUAL_MD, encoding="utf-8")
     _handbook(put("07-restructure", "handbook.docx"))
     _diagram(put("08-image-caption", "process.png"))
+    put("09-proposal", "northwind_brief.md").write_text(CLIENT_BRIEF_MD, encoding="utf-8")
+    put("09-proposal", "pricing.csv").write_text(PRICING_CSV, encoding="utf-8")
+    put("10-half-year-summary", "上半年数据.csv").write_text(HALF_YEAR_CSV, encoding="utf-8")
+    put("10-half-year-summary", "上半年要点.md").write_text(HALF_YEAR_NOTES_MD, encoding="utf-8")
 
 
 if __name__ == "__main__":
