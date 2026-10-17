@@ -61,29 +61,27 @@ from ..runtime import (
     load_custom_providers,
 )
 from ..runtime_lg import (
+    ACCEPT_EDITS_MODE_NOTE,
+    AUTO_MODE_NOTE,
+    NORMAL_MODE_NOTE,
     ORPHANED_TOOL_CALL_NOTE,
+    PLAN_MODE_NOTE,
     AutoApproveReason,
     ExecPolicy,
     SilentSocket,
     SubAgentHost,
     Verdict,
+    context_note,
+    current_date_note,
     for_conversation,
+    language_note,
+    last_conversation_context,
     load_exec_policy,
     resolve_chat_model,
+    strip_mode_note,
     tool_name,
 )
 from ..runtime_lg import extract_text as _extract_text
-from ..runtime_lg.messages import (
-    ACCEPT_EDITS_MODE_NOTE,
-    AUTO_MODE_NOTE,
-    NORMAL_MODE_NOTE,
-    PLAN_MODE_NOTE,
-    context_note,
-    current_date_note,
-    language_note,
-    last_conversation_context,
-    strip_mode_note,
-)
 from ..tools import (
     BROWSER_HOST,
     QUESTION_TOOL_NAMES,

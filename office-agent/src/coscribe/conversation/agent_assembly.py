@@ -17,24 +17,20 @@ from ..config import Settings
 from ..coordinator import CORE_TOOL_NAMES
 from ..runtime import LLMClient, SessionEnvironments, get_tool_metadata, redactor
 from ..runtime_lg import (
-    SubAgentHost,
-    build_delegation_tools,
-    build_langgraph_agent,
-    build_review_work_tool,
-    keeps_tool_list_fixed,
-    select_reviewer_tools,
-    tool_name,
-)
-from ..runtime_lg.code_agent import (
     CODE_APPROVAL_RISKS,
     CODE_TASK_TOOL,
     CodeTaskContext,
-    build_code_task_tool,
-)
-from ..runtime_lg.tool_deferral import (
+    SubAgentHost,
     bound_tool_names,
+    build_code_task_tool,
+    build_delegation_tools,
+    build_langgraph_agent,
+    build_review_work_tool,
     build_search_tools_tool,
     build_use_tool_tool,
+    keeps_tool_list_fixed,
+    select_reviewer_tools,
+    tool_name,
 )
 from ..tools import (
     QUESTION_TOOL_NAMES,

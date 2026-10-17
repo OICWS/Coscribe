@@ -9,11 +9,17 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
-from ...presentations import build_presentation_tools as _build_legacy_tools
 from .engine.instructions import NEW_DECK_INSTRUCTIONS
 from .engine.tool import build_engine_tools
+from .tool_wrappers import build_presentation_tools as build_legacy_presentation_tools
+from .toolkit import PresentationToolkit
 
-__all__ = ["NEW_DECK_INSTRUCTIONS", "build_presentation_tools"]
+__all__ = [
+    "NEW_DECK_INSTRUCTIONS",
+    "PresentationToolkit",
+    "build_legacy_presentation_tools",
+    "build_presentation_tools",
+]
 
 
 def build_presentation_tools(
@@ -25,7 +31,7 @@ def build_presentation_tools(
     extra_writable: Sequence[str | Path] = (),
 ) -> list[Callable[..., Any]]:
     return [
-        *_build_legacy_tools(
+        *build_legacy_presentation_tools(
             root,
             state_dir=state_dir,
             custom_templates_dir=custom_templates_dir,

@@ -74,8 +74,9 @@ Last reviewed: 2026-10-15.
    in (card, `__init__.py` interface, tests by path; slice <= 15 files, 150k tokens). Done: the
    component map and generated `CODEOWNERS` (#349); `tools` cut into `tools.office.{docx,xlsx,pdf,pptx}`
    (#350), `tools.exec` (#351), `tools.web` (#352) and `tools.bookkeeping` (item 1); a generated
-   `protected` contract per package and a `layers` contract for the office formats, with 42 ignored
-   imports to shrink (item 2); `scripts/slice.py` and the discovery protocol in `AGENTS.md` (item 3,
+   `protected` contract per package and a `layers` contract for the office formats, with 4 imports
+   (8 of 42 lines) left to shrink (item 2, 6b: the workflow spec and the pptx engine); `scripts/slice.py`
+   and the discovery protocol in `AGENTS.md` (item 3,
    the measured sample changes are still open). Also done: long functions and fan-out split
    (item 4), `web/tests` split by path (item 5), frontend ratchet and knip guardrails (item 6),
    `docs/security/review-pack.md` (item 7), `scripts/review_pack.py` and

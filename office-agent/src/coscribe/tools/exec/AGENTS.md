@@ -10,9 +10,12 @@ or the Settings routes that install packages (`web/routes/settings/environments.
 
 ## Public interface
 `build_script_tools`, `build_node_script_tools`, `ensure_script_env`, `ensure_node_env`,
-`venv_python`, `overlay_env`, `resolve_python_command`, `suggested_folder`. Import them from
-`coscribe.tools.exec`. The package-install functions (`install_package`, `list_packages`,
-`uninstall_package`) and the guard helpers are still imported from their submodules.
+`venv_python`, `overlay_env`, `resolve_python_command`, the package-install functions
+(`install_python_package`, `list_python_packages`, `uninstall_python_package` and the `_node_`
+twins), the interpreter overrides (`get_interpreter_override`, `set_interpreter_override`,
+`working_interpreters`, `fallbacks_for_platform`), the folder-guard helpers (`suggested_folder`,
+`blocked_write`, `refusal_note`, `node_guard_args`, `writable_roots`, `write_python_wrapper`,
+`without_guard_warnings`) and `run_python_script`. Import them from `coscribe.tools.exec`.
 
 ## Depends on
 `coscribe.runtime`, `coscribe.tools._files_written`, `coscribe.tools._output_truncation`.

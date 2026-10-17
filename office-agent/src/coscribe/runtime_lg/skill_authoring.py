@@ -18,7 +18,7 @@ from typing import Any
 import yaml
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from ..tools.skills import SKILL_SAVE_CURATOR_INSTRUCTIONS, slugify_skill_name
+from ..tools import SKILL_SAVE_CURATOR_INSTRUCTIONS, slugify_skill_name
 from .messages import extract_text, render_transcript_lg
 
 __all__ = ["SkillSaveProposal", "propose_skill_save_lg", "write_skill_lg"]

@@ -22,8 +22,6 @@ from ....runtime import (
 )
 from ....tools import (
     ConnectorPermissions,
-)
-from ....tools.mcp import (
     load_mcp_server_configs,
     validate_mcp_config,
     with_secrets,

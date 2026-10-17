@@ -10,8 +10,10 @@ from .web import (
 )
 
 # isort: split
+from ._thumbnail import render_single_page_preview
 from ._workspace import WorkspaceScope
 from .bookkeeping import (
+    FINISHED_STATUSES,
     PLAN_CHOICE_AUTO,
     PLAN_CHOICE_MANUAL,
     PLAN_CHOICE_REVISE,
@@ -20,6 +22,7 @@ from .bookkeeping import (
     TASK_DRAFT_TOOL_NAMES,
     BackgroundTask,
     BackgroundTaskStore,
+    MessagingError,
     MessagingStore,
     ScheduledRun,
     ScheduledTrigger,
@@ -28,6 +31,7 @@ from .bookkeeping import (
     SignalStore,
     SubAgentTask,
     SubAgentTaskStore,
+    TaskToolkit,
     WakeRequest,
     WakeStore,
     build_background_task_tools,
@@ -40,6 +44,7 @@ from .bookkeeping import (
     compute_next_run_at,
     create_trigger,
     edit_draft,
+    forget_finished_background_tasks,
     forget_finished_subagents,
     format_incoming,
     format_memory_section,
@@ -49,12 +54,19 @@ from .bookkeeping import (
     normalize_questions,
     parse_run_thread_id,
     patch_trigger,
+    read_background_log,
     record_draft,
+    register_subagent_run,
     running_subagent,
+    set_change_listener,
+    set_inbox_listener,
+    stop_background_task,
     stop_subagent_task,
+    take_stop_requester,
     update_trigger,
 )
 from .connector_permissions import (
+    POLICIES,
     ConnectorPermissions,
     apply_connector_permissions,
     connector_of,
@@ -66,21 +78,54 @@ from .exec import (
     build_node_script_tools,
     build_script_tools,
     ensure_script_env,
+    fallbacks_for_platform,
+    get_interpreter_override,
+    install_node_package,
+    install_python_package,
+    list_node_packages,
+    list_python_packages,
+    run_python_script,
+    set_interpreter_override,
+    uninstall_node_package,
+    uninstall_python_package,
     venv_python,
+    working_interpreters,
 )
 from .files import build_file_tools
-from .mcp import load_mcp_server_configs, prepare_for_connect, validate_mcp_config
+from .mcp import (
+    load_mcp_server_configs,
+    prepare_for_connect,
+    secret_names_used,
+    validate_mcp_config,
+    with_secrets,
+)
 from .office.document_tools import DocumentToolkit, build_document_tools
-from .office.pptx import NEW_DECK_INSTRUCTIONS, build_presentation_tools
+from .office.pptx import NEW_DECK_INSTRUCTIONS, PresentationToolkit, build_presentation_tools
 from .office.xlsx import SpreadsheetToolkit, build_spreadsheet_tools
+from .pdf_pages import pdf_page_count, render_pdf_page
 from .pptx_templates import (
     TemplateInfo,
     format_template_listing,
     load_builtin_templates,
     load_pptx_templates,
 )
-from .skill_catalog import enabled_skill_names
+from .skill_catalog import SOURCE_MARKER as SKILL_SOURCE_MARKER
+from .skill_catalog import (
+    SkillCatalogError,
+    all_skills,
+    disabled_skill_names,
+    enabled_skill_names,
+    get_plugin,
+    install_catalog_skill,
+    install_plugin,
+    load_catalog,
+    plugin_file,
+    remove_skill,
+    set_skill_enabled,
+    skill_source,
+)
 from .skills import (
+    SKILL_SAVE_CURATOR_INSTRUCTIONS,
     SkillInfo,
     SkillUploadError,
     build_skill_tools,
@@ -92,6 +137,47 @@ from .skills import (
 )
 
 __all__ = [
+    "fallbacks_for_platform",
+    "get_interpreter_override",
+    "install_node_package",
+    "install_python_package",
+    "list_node_packages",
+    "list_python_packages",
+    "run_python_script",
+    "set_interpreter_override",
+    "uninstall_node_package",
+    "uninstall_python_package",
+    "working_interpreters",
+    "FINISHED_STATUSES",
+    "MessagingError",
+    "TaskToolkit",
+    "forget_finished_background_tasks",
+    "read_background_log",
+    "register_subagent_run",
+    "set_change_listener",
+    "set_inbox_listener",
+    "stop_background_task",
+    "take_stop_requester",
+    "POLICIES",
+    "PresentationToolkit",
+    "SKILL_SAVE_CURATOR_INSTRUCTIONS",
+    "SKILL_SOURCE_MARKER",
+    "SkillCatalogError",
+    "all_skills",
+    "disabled_skill_names",
+    "get_plugin",
+    "install_catalog_skill",
+    "install_plugin",
+    "load_catalog",
+    "pdf_page_count",
+    "plugin_file",
+    "remove_skill",
+    "render_pdf_page",
+    "render_single_page_preview",
+    "secret_names_used",
+    "set_skill_enabled",
+    "skill_source",
+    "with_secrets",
     "BROWSER_HOST",
     "BROWSER_RUNS",
     "WorkspaceScope",

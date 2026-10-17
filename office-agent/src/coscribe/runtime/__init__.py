@@ -1,4 +1,5 @@
 from .compaction import COMPACT_INSTRUCTIONS
+from .dotenv_file import app_data_dir, dotenv_path, prepare_env
 from .hooks import HookResult, empty_hooks_config, load_hooks_config, run_hook
 from .llm_client import LLMClient
 from .provider_config import load_custom_providers
@@ -33,6 +34,9 @@ from .types import (
 )
 
 __all__ = [
+    "app_data_dir",
+    "dotenv_path",
+    "prepare_env",
     "COMPACT_INSTRUCTIONS",
     "MIN_VALUE",
     "Agent",
