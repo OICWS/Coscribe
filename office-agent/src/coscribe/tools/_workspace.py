@@ -15,7 +15,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from ..needs_permission import NeedsPermission
-from .script_guard import suggested_folder
+from .exec import suggested_folder
 
 
 class WorkspaceScope:

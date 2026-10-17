@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 
 from coscribe.runtime import get_tool_metadata
-from coscribe.tools.scripts import build_script_tools
+from coscribe.tools.exec.scripts import build_script_tools
 
 
 def _network_reachable() -> bool:
@@ -128,7 +128,7 @@ def test_run_python_script_venv_is_isolated_from_the_coscribe_process(
     tools: ScriptTools,
 ) -> None:
     """A script's own sys.executable must not be coscribe's own
-    interpreter -- proves the isolation tools/script_env.py's docstring
+    interpreter -- proves the isolation tools/exec/script_env.py's docstring
     promises is real, not just a design intention."""
     result = tools.run_python_script(
         script="import sys\nprint(sys.executable)", description="report interpreter path"

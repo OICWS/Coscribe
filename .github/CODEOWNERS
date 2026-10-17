@@ -11,6 +11,7 @@
 /office-agent/src/coscribe/tools/office/xlsx/ @OICWS
 /office-agent/src/coscribe/tools/office/pdf/ @OICWS
 /office-agent/src/coscribe/tools/office/pptx/ @OICWS
+/office-agent/src/coscribe/tools/exec/ @OICWS
 /office-agent/src/coscribe/runtime/ @OICWS
 /office-agent/src/coscribe/config.py @OICWS
 /office-agent/src/coscribe/needs_permission.py @OICWS

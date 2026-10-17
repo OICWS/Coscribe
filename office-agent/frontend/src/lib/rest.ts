@@ -289,7 +289,7 @@ export const setScriptEnvInterpreter = (path: string) =>
   postJson<ScriptEnvInstallResult>("/api/script-env/interpreter", { path });
 
 // Mirrors the script-env functions above exactly -- backed by
-// run_node_script's node-env directory instead (see tools/node_env.py).
+// run_node_script's node-env directory instead (see tools/exec/node_env.py).
 export const getNodeEnvPackages = () => getJson<ScriptEnvPackage[]>("/api/node-env/packages");
 export const installNodeEnvPackage = (packageName: string) =>
   postJson<ScriptEnvInstallResult>("/api/node-env/packages", { package: packageName });

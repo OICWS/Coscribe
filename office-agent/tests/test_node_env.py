@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from coscribe.tools import node_env
-from coscribe.tools.node_env import (
+from coscribe.tools.exec import node_env
+from coscribe.tools.exec.node_env import (
     ensure_node_env,
     install_package,
     list_packages,

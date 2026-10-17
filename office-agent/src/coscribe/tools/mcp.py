@@ -51,7 +51,7 @@ from ..runtime import (
     resolve_secret,
     substitute,
 )
-from .script_env import resolve_python_command
+from .exec import resolve_python_command
 
 logger = logging.getLogger(__name__)
 

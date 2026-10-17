@@ -1,5 +1,5 @@
 """``run_python_script`` -- one of two tools in this package classified
-``risk_category="EXEC"`` (see ``tools/node_scripts.py`` for the other).
+``risk_category="EXEC"`` (see ``tools/exec/node_scripts.py`` for the other).
 
 **No sandbox.** coscribe runs on the local desktop as a normal OS
 process, with no OS-level sandbox (Seatbelt/bubblewrap/container/VM) around
@@ -9,7 +9,7 @@ support native Windows. On Windows hosts, use WSL2 or one of the container
 or VM approaches"). **The approval prompt showing the full script text
 before it runs is the safety mechanism.**
 
-What is checked, by `tools/script_guard.py`: writes outside the workspace
+What is checked, by `tools/exec/script_guard.py`: writes outside the workspace
 and the folders the conversation added are refused, so a script lands
 files where the file tools can see them. That is a guard rail against a
 model's mistakes, not a boundary: a script can still read any file the OS
@@ -22,7 +22,7 @@ restriction is trivially bypassable (``__import__``, ``importlib``,
 ``subprocess.run(["pip", "install", ...])``) and would only offer a false
 sense of security while blocking legitimate use. The one thing this *does*
 control -- deliberately, and for a different reason -- is which Python
-environment the script runs in: ``tools/script_env.py``'s dedicated venv,
+environment the script runs in: ``tools/exec/script_env.py``'s dedicated venv,
 kept separate from coscribe's own runtime dependencies so a script
 installing a package can't destabilize the agent itself. See that module's
 docstring.
@@ -38,9 +38,9 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from ..runtime import tool_metadata
-from ._files_written import snapshot_workspace, with_files_written
-from ._output_truncation import truncate_script_output
+from ...runtime import tool_metadata
+from .._files_written import snapshot_workspace, with_files_written
+from .._output_truncation import truncate_script_output
 from .script_env import ensure_script_env, overlay_env, venv_python
 from .script_guard import (
     blocked_write,

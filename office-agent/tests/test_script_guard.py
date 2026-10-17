@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from coscribe.tools import script_guard
-from coscribe.tools.script_guard import (
+from coscribe.tools.exec import script_guard
+from coscribe.tools.exec.script_guard import (
     PYTHON_WRAPPER,
     blocked_write,
     locked_file_note,

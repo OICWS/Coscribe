@@ -9,7 +9,7 @@ import pytest
 
 from coscribe.tools.mcp import with_interpreter
 
-_SCRIPT_ENV = "coscribe.tools.script_env"
+_SCRIPT_ENV = "coscribe.tools.exec.script_env"
 
 
 def _config(command: str) -> dict[str, object]:

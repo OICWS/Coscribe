@@ -252,7 +252,7 @@ async def test_run_background_script_handles_chinese_text_in_the_script_and_its_
     tools: BgTools,
 ) -> None:
     """Regression test for the same real Windows charmap bug fixed in
-    tools/scripts.py's run_python_script (see test_scripts_tool.py's
+    tools/exec/scripts.py's run_python_script (see test_scripts_tool.py's
     identical test docstring) -- run_background_script has its own,
     independent copy of the write_text(script) call and its own subprocess
     environment, so it needed its own fix (explicit encoding="utf-8" on

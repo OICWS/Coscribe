@@ -65,7 +65,7 @@ from .browser_detect import find_windows_browser
 logger = logging.getLogger(__name__)
 
 # Matches the synchronous scripts tools' own already-battle-tested
-# balance (see tools/scripts.py) -- long enough for a real page load over
+# balance (see tools/exec/scripts.py) -- long enough for a real page load over
 # a slow connection, short enough that a hung launch doesn't leave the
 # WS handler waiting forever.
 _LAUNCH_TIMEOUT = 20.0

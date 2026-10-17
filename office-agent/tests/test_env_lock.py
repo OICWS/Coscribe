@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from coscribe.tools import node_env, script_env
+from coscribe.tools.exec import node_env, script_env
 
 
 def test_two_first_runs_create_and_seed_the_script_env_once(

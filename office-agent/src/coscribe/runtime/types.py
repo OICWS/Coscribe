@@ -31,7 +31,7 @@ from typing import Any, Literal
 # WRITE_LOCAL: side effects confined to this machine (write_file,
 #   write_pptx, task_create, ...).
 # EXEC: arbitrary code execution -- run_python_script/run_node_script (see
-#   tools/scripts.py's docstring for the "no sandbox, the approval prompt
+#   tools/exec/scripts.py's docstring for the "no sandbox, the approval prompt
 #   IS the safety mechanism" posture this implies). Real tools exist here
 #   today -- this was added deliberately for the pptx skill work, reversing
 #   the earlier "decided against" stance an older draft of this taxonomy's

@@ -1,6 +1,6 @@
 """A dedicated Node.js/npm package directory for `run_node_script` to
 execute pptxgenjs-based (and any other) scripts against -- the Node
-sibling of `tools/script_env.py`'s Python venv, for the same reason:
+sibling of `tools/exec/script_env.py`'s Python venv, for the same reason:
 `write_pptx`'s markdown-to-fixed-layout model can't express custom
 shapes, multi-column layouts, or precise positioning the way a real
 `pptxgenjs` generation script can (Anthropic's own pptx Skill is built

@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 
 from coscribe.runtime import get_tool_metadata
-from coscribe.tools.node_scripts import build_node_script_tools
+from coscribe.tools.exec.node_scripts import build_node_script_tools
 
 
 def _node_and_npm_available() -> bool:
@@ -169,7 +169,7 @@ pres.writeFile({ fileName: "deck.pptx" }).then(() => console.log("done"));
 def test_run_node_script_refuses_a_write_outside_the_workspace_and_says_where(
     tools: NodeScriptTools, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from coscribe.tools.script_guard import node_guard_args
+    from coscribe.tools.exec.script_guard import node_guard_args
 
     # The temp folder is writable, and pytest's tmp_path lives in it.
     system_temp = tmp_path / "system-temp"

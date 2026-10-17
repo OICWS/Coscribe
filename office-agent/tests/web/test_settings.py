@@ -557,7 +557,7 @@ def test_set_script_env_interpreter_rejects_a_bad_path(
 def _node_npm_available_and_reachable() -> bool:
     """Mirrors _network_reachable above, plus node/npm actually being
     installed -- unlike Python (coscribe's own runtime, always present),
-    Node is a genuinely optional system dependency (see tools/node_env.py)
+    Node is a genuinely optional system dependency (see tools/exec/node_env.py)
     that may not exist in every CI environment."""
     if shutil.which("node") is None or shutil.which("npm") is None:
         return False
