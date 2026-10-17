@@ -1,5 +1,5 @@
 """Tests for runtime/proxy.py -- the shared corporate-proxy detection
-used by both tools/websearch.py and web/browser_panel.py (see that
+used by both tools/web/websearch.py and web/browser_panel.py (see that
 module's own docstring for why these two needed it forwarded explicitly
 rather than relying on their own libraries' unrelated env-var handling).
 """

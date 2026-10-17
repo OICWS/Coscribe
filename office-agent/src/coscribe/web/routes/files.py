@@ -15,8 +15,8 @@ from fastapi import (
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 from ...tools import WorkspaceScope
-from ...tools.browser import SCREENSHOT_FOLDER
 from ...tools.pdf_pages import pdf_page_count, render_pdf_page
+from ...tools.web import SCREENSHOT_FOLDER
 from ..state import AppState
 from .shared import MAX_UPLOAD_BYTES
 

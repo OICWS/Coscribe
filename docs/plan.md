@@ -69,8 +69,8 @@ Last reviewed: 2026-10-15.
 0a. **Structure phase 2: components** (#348, decision 0009): the component the unit a session works
    in (card, `__init__.py` interface, tests by path; slice <= 15 files, 150k tokens). Item 1 done so far:
    `components.toml`, generated `docs/components.md` and `CODEOWNERS` block (#349); cards for
-   `tools.office.{docx,xlsx,pdf,pptx}` (#350), `tools.exec` moved out of `tools/`. Next: `tools.web` and
-   the bookkeeping tools, then import contracts, discovery, long functions, tests by path, frontend
+   `tools.office.{docx,xlsx,pdf,pptx}` (#350), `tools.exec` (#351) and `tools.web` moved out of `tools/`.
+   Next: the bookkeeping tools, then import contracts, discovery, long functions, tests by path, frontend
    guardrails, security follow-through, review and metrics (the issue has the order).
 
 0b. **The office route** (decision 0010, `docs/assessments/2026-10-13-office-route.md`):

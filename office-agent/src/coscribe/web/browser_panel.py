@@ -222,7 +222,7 @@ class BrowserPanelSession:
         # HTTP_PROXY/HTTPS_PROXY. Pass it explicitly via --proxy-server
         # so a corporate-proxy .env setting reaches this headless
         # instance the same way it already reaches the LLM provider SDKs
-        # (see runtime/proxy.py, also used by tools/websearch.py).
+        # (see runtime/proxy.py, also used by tools/web/websearch.py).
         proxy = configured_proxy()
         if proxy:
             args.append(f"--proxy-server={proxy}")

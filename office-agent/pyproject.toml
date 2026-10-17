@@ -94,9 +94,9 @@ dependencies = [
     "langchain-mcp-adapters>=0.3.0",
     # runtime_lg/mcp_oauth.py imports its auth types directly.
     "mcp>=1.0.0",
-    # web_search tool (tools/websearch.py): free, no API key, matching the local-first stance.
+    # web_search tool (tools/web/websearch.py): free, no API key, matching the local-first stance.
     "ddgs>=9.0.0",
-    # httpx streams remote images (tools/images.py) and talks to the browser panel; the
+    # httpx streams remote images (tools/web/images.py) and talks to the browser panel; the
     # floor is what google-genai and ddgs already require. Pillow validates the
     # downloaded bytes actually decode as an image (a Content-Type header
     # alone isn't trustworthy) and reads real pixel dimensions for

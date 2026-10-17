@@ -210,7 +210,7 @@ def test_the_browser_host_turns_the_desktop_apps_site_refusal_into_a_permission_
     import asyncio
 
     from coscribe.needs_permission import SITE_MARK
-    from coscribe.tools.browser import BrowserHost
+    from coscribe.tools.web.browser import BrowserHost
 
     host = BrowserHost()
 

@@ -4781,7 +4781,7 @@
     },
     "/internal/browser-host": {
       "get": {
-        "description": "The desktop app's browser takes its commands from here; see\ntools/browser.py.",
+        "description": "The desktop app's browser takes its commands from here; see\ntools/web/browser.py.",
         "operationId": "browser_host_stream_internal_browser_host_get",
         "responses": {
           "200": {

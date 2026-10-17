@@ -118,7 +118,7 @@ from ..tools import (
 )
 from ..tools.background_tasks import BackgroundTask, set_change_listener
 from ..tools.conversations import set_inbox_listener
-from ..tools.http_request import build_http_tools
+from ..tools.web import build_http_tools
 from ..workflows import StepContext, WorkflowDraft
 from . import tool_hooks
 from .activity import summarize_activity, summarize_workflow_run

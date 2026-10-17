@@ -34,7 +34,8 @@ from urllib.parse import urlsplit
 
 from ddgs import DDGS
 
-from ..runtime import tool_metadata
+from ...runtime import tool_metadata
+from .._workspace import WorkspaceScope
 from ._licensed_image_search import (
     AssetCandidate,
     ImageSearchRequest,
@@ -43,7 +44,6 @@ from ._licensed_image_search import (
     search_openverse,
     search_wikimedia,
 )
-from ._workspace import WorkspaceScope
 
 # See websearch.py's own comment on the same subject: `from ddgs import
 # DDGS` is `ddgs`'s lazy `_DDGSProxy`, so tests must monkeypatch

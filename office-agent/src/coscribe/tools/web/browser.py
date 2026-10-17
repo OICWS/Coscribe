@@ -25,9 +25,9 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from ..needs_permission import SITE_MARK, NeedsPermission
-from ..runtime import tool_metadata
-from ._workspace import WorkspaceScope
+from ...needs_permission import SITE_MARK, NeedsPermission
+from ...runtime import tool_metadata
+from .._workspace import WorkspaceScope
 
 _DEFAULT_TIMEOUT = 30.0
 _NAVIGATE_TIMEOUT = 60.0

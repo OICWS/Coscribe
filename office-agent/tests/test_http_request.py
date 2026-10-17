@@ -1,4 +1,4 @@
-"""http_request and list_secrets (tools/http_request.py), and the blanking of
+"""http_request and list_secrets (tools/web/http_request.py), and the blanking of
 secret values out of every tool result (runtime_lg/agent.py): a secret is put
 in only at the moment of the request, for its own hosts, over https, and the
 model never reads it back."""
@@ -20,8 +20,8 @@ from langchain_core.messages import AIMessage, ToolMessage
 
 from coscribe.runtime import SecretError, SecretStore, SessionEnvironments, redactor, secrets
 from coscribe.runtime_lg.agent import _RedactToolResultsMiddleware
-from coscribe.tools import http_request as http_module
-from coscribe.tools.http_request import build_http_tools
+from coscribe.tools.web import http_request as http_module
+from coscribe.tools.web.http_request import build_http_tools
 
 from .test_code_agent import (
     _Model,

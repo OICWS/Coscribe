@@ -18,7 +18,7 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from ..runtime import (
+from ...runtime import (
     MIN_VALUE,
     SecretError,
     SecretStore,
