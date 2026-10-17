@@ -31,7 +31,10 @@ None re-exported: `__all__` is empty. Entry points: `create_app_lg` and `main` i
   against it. A route's request and response shapes are pinned by `tests/test_openapi_snapshot.py`.
 - Every request and WebSocket passes `LocalOnlyGuard` (`local_guard.py`): `Host` and a browser `Origin` must be
   loopback or in `COSCRIBE_ALLOWED_HOSTS`. A new app (like the setup app) adds it; tests get `testserver` from
-  `tests/conftest.py`.
+  `tests/conftest.py`. The real app also passes a launch token: a WebSocket and every request that
+  is not a read must carry it, so a new GET route must change nothing
+  (`tests/web/test_launch_token.py` lists the audited ones); tests use `TokenClient` from
+  `tests/web/helpers.py`.
 - Hosted connectors sign in once in the user's own browser; the catalog lists no shared client
   secret (`docs/decisions/0004-connectors-sign-in-once-in-the-browser.md`).
 - A new route test goes into the file of its domain under `tests/web/`, shared fakes into
@@ -40,7 +43,7 @@ None re-exported: `__all__` is empty. Entry points: `create_app_lg` and `main` i
 ## Tests
 `tests/web/test_*.py` by domain (chat, threads, connectors, settings, skills, scheduled,
 subagents, internal), `tests/test_web_routes.py`, `tests/test_openapi_snapshot.py`,
-`tests/web/test_local_guard.py`, `tests/test_setup_app.py`, `tests/test_browser_panel.py`, `tests/test_browser_detect.py`;
+`tests/web/test_local_guard.py`, `tests/web/test_launch_token.py`, `tests/test_setup_app.py`, `tests/test_browser_panel.py`, `tests/test_browser_detect.py`;
 `frontend/tests/e2e/` runs the UI against a live server.
 
 ## Verify by hand

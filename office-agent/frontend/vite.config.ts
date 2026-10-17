@@ -11,13 +11,18 @@ import tailwindcss from "@tailwindcss/vite";
 // entry specifically -- Vite's http-proxy-middleware only upgrades
 // WebSocket connections for paths that opt in.
 const backend = process.env.COSCRIBE_BACKEND ?? "http://127.0.0.1:8000";
+// The page this dev server serves has no token in it (only the backend's own page does), so it
+// adds the launch token to what it proxies: start the backend with the same COSCRIBE_LAUNCH_TOKEN.
+const headers = process.env.COSCRIBE_LAUNCH_TOKEN
+  ? { "x-coscribe-token": process.env.COSCRIBE_LAUNCH_TOKEN }
+  : undefined;
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      "/api": { target: backend, changeOrigin: true },
-      "/ws": { target: backend, ws: true },
+      "/api": { target: backend, changeOrigin: true, headers },
+      "/ws": { target: backend, ws: true, headers },
     },
   },
   // Cutover: `npm run build`'s output lands directly in

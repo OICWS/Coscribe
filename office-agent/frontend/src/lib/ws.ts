@@ -1,4 +1,5 @@
 import type { WsClientMessage, WsServerEvent } from "../types/wire";
+import { socketUrl } from "./launchToken";
 
 /** Same thread-id-in-URL convention app.js used: reuse ?thread= from the
  * query string, generate+persist one via history.replaceState otherwise. */
@@ -66,7 +67,7 @@ export function connect(
   const openSocket = () => {
     readyToSend = false;
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/${threadId}`);
+    const ws = new WebSocket(socketUrl(`${protocol}//${window.location.host}/ws/${threadId}`));
     socket = ws;
 
     ws.addEventListener("open", () => {

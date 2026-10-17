@@ -212,7 +212,9 @@ OpenAI-compatible model that always answers "OK": enough for UI e2e
 
 Live runs: `coscribe-web` (port 8000) started from a scratch directory
 holding its own `.env` and workspace, `npx vite --host 127.0.0.1` in
-`frontend/` (port 5173), then `npx playwright test <spec>`.
+`frontend/` (port 5173), then `npx playwright test <spec>`. Start both with the same
+`COSCRIBE_LAUNCH_TOKEN=<anything>`: the Vite page has no token of its own, so Vite adds it to
+what it proxies.
 
 Which model a test run of ours uses: DeepSeek with `reasoning_effort: "low"`
 by default (measured 2026-10-13 on generated decks: judged level with the

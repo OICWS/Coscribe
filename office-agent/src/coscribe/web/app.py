@@ -54,7 +54,7 @@ from typing import Any
 import uvicorn
 from dotenv import dotenv_values, load_dotenv
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
@@ -89,7 +89,7 @@ from ..tools import (
 )
 from .background_events import BackgroundEventBus
 from .connector_manager import ConnectorManager
-from .local_guard import ALLOWED_HOSTS_ENV, LocalOnlyGuard
+from .local_guard import ALLOWED_HOSTS_ENV, LocalOnlyGuard, launch_token, page_with_token
 from .provider_catalog import (
     BUILTIN_PROVIDERS,
 )
@@ -537,14 +537,14 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
             app_callback,
         )
     )
-    app.add_middleware(LocalOnlyGuard)
+    app.add_middleware(LocalOnlyGuard, token=(token := launch_token()))
     # On app.state so tests publish to the bus _wake_poll_loop uses without
     # going through the SSE endpoint, which never completes.
     app.state.background_events = background_events
 
     @app.get("/")
-    async def index() -> FileResponse:
-        return FileResponse(STATIC_DIR / "index.html")
+    async def index() -> Response:
+        return page_with_token(STATIC_DIR / "index.html", token)
 
     state = AppState(
         settings=settings,

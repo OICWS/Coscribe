@@ -63,7 +63,7 @@ allowed host that echoes a value back, and encodings the redaction does not know
 
 | Listener | Binds | Opened by | Check |
 |---|---|---|---|
-| The web server and the chat and browser sockets | `127.0.0.1`, port 8000 by default (the desktop shell picks a free port, `office-agent-desktop/src/main/paths.ts`) | `web/app.py` | `tests/test_web_routes.py` pins the routes; `Host` and `Origin` must name this machine (`web/local_guard.py`, `tests/web/test_local_guard.py`), no token |
+| The web server and the chat and browser sockets | `127.0.0.1`, port 8000 by default (the desktop shell picks a free port, `office-agent-desktop/src/main/paths.ts`) | `web/app.py` | `tests/test_web_routes.py` pins the routes; `Host` and `Origin` must name this machine (`web/local_guard.py`, `tests/web/test_local_guard.py`); a WebSocket and any request that changes state also carry the launch token (`tests/web/test_launch_token.py`) |
 | The connector sign-in callback | `localhost`, one fixed port, only during a sign-in | `runtime_lg/mcp_oauth.py` | the callback tests in `tests/web/test_connectors.py` |
 | The in-app browser's debugging port | loopback, a port Chromium picks (`--remote-debugging-port=0`) | `web/browser_panel.py` | `tests/test_browser_panel.py` |
 | The desktop shell's background-event stream | the same server, `/internal/` | `web/routes/internal.py` | no auth beyond being reachable, as the file says |
@@ -73,8 +73,20 @@ Every request and WebSocket handshake passes `LocalOnlyGuard` (`web/local_guard.
 `coscribe-web` fills from a non-loopback `--host`; names only, ports are ignored), which stops a rebound hostname. A browser-sent
 `Origin` must name one of those hosts on any port, which stops a cross-site page; a request without
 an `Origin` (the CLI, the desktop shell, scripts) passes, unless the browser says `Sec-Fetch-Site: cross-site`. Odd forms (userinfo, backslashes, a bad port, a second `Host` or `Origin` header) are refused. A refused handshake is closed with 1008
-before it is accepted. Not covered: another page served from a loopback port on the same machine,
-and any local process, which can send whatever headers it likes (no sandbox, decision 0002).
+before it is accepted.
+
+A page served from *another loopback port* passes both checks (`localhost:5173` is loopback), so each
+launch also makes a random token (`COSCRIBE_LAUNCH_TOKEN` fixes one for a dev setup). The app's own
+page is served with it in a `<meta>`; its scripts send it as `x-coscribe-token` on every request that
+is not a read, and as `?token=` on a WebSocket, which cannot set a header. A page on another port
+cannot read the token (no CORS headers) and cannot send the header without a preflight the app
+refuses. Reads need no token, so images, downloads and iframes keep working; that is safe only while
+no GET changes anything, which `test_every_get_route_has_been_read_for_side_effects` enforces by
+failing on any GET route not read by a person. The one GET that does change state is the connector
+sign-in callback, which is a cross-site navigation by nature and carries the sign-in's own `state`.
+The desktop app's browser-host routes keep their own token. The first-run setup page has no token
+(it runs once, before any data exists). Not covered: any local process, which can read the page, or
+send whatever headers it likes (no sandbox, decision 0002).
 
 Text the model reads (files, pages, messages from other conversations) is covered in
 [`prompt-injection.md`](prompt-injection.md).

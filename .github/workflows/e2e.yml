@@ -82,9 +82,9 @@ jobs:
           COSCRIBE_STATE_DIR=$scratch/state
           ENV
           nohup python scripts/stub_llm.py > "$scratch/stub.log" 2>&1 &
-          (cd "$scratch" && PYTHON_KEYRING_BACKEND=keyrings.alt.file.PlaintextKeyring \
+          (cd "$scratch" && COSCRIBE_LAUNCH_TOKEN=e2e-launch-token PYTHON_KEYRING_BACKEND=keyrings.alt.file.PlaintextKeyring \
             XDG_DATA_HOME="$scratch/xdg" nohup coscribe-web > "$scratch/web.log" 2>&1 &)
-          (cd frontend && nohup npx vite --host 127.0.0.1 > "$scratch/vite.log" 2>&1 &)
+          (cd frontend && COSCRIBE_LAUNCH_TOKEN=e2e-launch-token nohup npx vite --host 127.0.0.1 > "$scratch/vite.log" 2>&1 &)
           for url in http://127.0.0.1:9999/v1/models http://127.0.0.1:8000/ http://127.0.0.1:5173/static/; do
             for _ in $(seq 60); do curl -sf "$url" > /dev/null && continue 2; sleep 1; done
             echo "$url did not come up"; tail -n 30 "$scratch"/*.log; exit 1

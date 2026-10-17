@@ -34,6 +34,7 @@ from coscribe.tools.exec import scripts
 from coscribe.web import app as web_app
 from coscribe.web.app import create_app_lg
 
+from ..conftest import LAUNCH_TOKEN
 from ..libreoffice_probe import libreoffice_works
 
 
@@ -340,6 +341,18 @@ def _settings(tmp_path: Path, **overrides: object) -> Settings:
     return Settings(_env_file=None, **values)  # type: ignore[call-arg, arg-type]
 
 
+class TokenClient(TestClient):
+    """A TestClient that carries the launch token the way the app's own page does."""
+
+    def __init__(self, app: Any, **kwargs: Any) -> None:
+        super().__init__(app, headers={"x-coscribe-token": LAUNCH_TOKEN}, **kwargs)
+
+    def websocket_connect(self, url: str, *args: Any, **kwargs: Any) -> Any:
+        return super().websocket_connect(
+            f"{url}{'&' if '?' in url else '?'}token={LAUNCH_TOKEN}", *args, **kwargs
+        )
+
+
 @contextlib.contextmanager
 def _client_lg(
     tmp_path: Path,
@@ -379,7 +392,7 @@ def _client_lg(
     # when the client is used as a context manager -- see starlette's
     # TestClient.__enter__, which is the only path that starts the ASGI
     # lifespan protocol at all.
-    with TestClient(app) as client:
+    with TokenClient(app) as client:
         yield client
 
 
