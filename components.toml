@@ -6,6 +6,15 @@
 # owner: a GitHub login or team that reviews changes here.
 # card: the component's AGENTS.md; leave it out only for a single module or a component whose
 #       card is not written yet.
+# protected_modules: only for a component that has loose modules beside its sub-components
+#       (`tools`): the modules that may be imported only from inside it. Every other package
+#       protects all of its direct children.
+# ignore_imports: today's imports from outside into a component's submodules. Each is a line
+#       of debt: the list may only shrink (an entry that no longer matches fails
+#       `lint-imports`), and a new import goes through the component's `__init__.py` instead.
+#
+# Every package here gets an import-linter "protected" contract, generated into the last block
+# of `office-agent/pyproject.toml`.
 
 [[component]]
 name = "cli"
@@ -39,6 +48,19 @@ path = "office-agent/src/coscribe/runtime_lg"
 layer = "coordinator | runtime_lg"
 owner = ["@OICWS"]
 card = "office-agent/src/coscribe/runtime_lg/AGENTS.md"
+ignore_imports = [
+    "coscribe.cli -> coscribe.runtime_lg.mcp",
+    "coscribe.conversation.session -> coscribe.runtime_lg.tool_deferral",
+    "coscribe.conversation.session -> coscribe.runtime_lg.code_agent",
+    "coscribe.conversation.session -> coscribe.runtime_lg.messages",
+    "coscribe.conversation.turn_stream -> coscribe.runtime_lg.tool_deferral",
+    "coscribe.web.app -> coscribe.runtime_lg.mcp",
+    "coscribe.web.app -> coscribe.runtime_lg.mcp_oauth",
+    "coscribe.web.routes.connectors._shared -> coscribe.runtime_lg.mcp_oauth",
+    "coscribe.web.routes.connectors.oauth_apps -> coscribe.runtime_lg.mcp_oauth",
+    "coscribe.web.state -> coscribe.runtime_lg.mcp_oauth",
+    "coscribe.web.state -> coscribe.runtime_lg.mcp",
+]
 
 [[component]]
 name = "workflows"
@@ -46,6 +68,9 @@ path = "office-agent/src/coscribe/workflows"
 layer = "workflows | code_runtime"
 owner = ["@OICWS"]
 card = "office-agent/src/coscribe/workflows/AGENTS.md"
+ignore_imports = [
+    "coscribe.tools.bookkeeping.scheduled_tasks -> coscribe.workflows.spec",
+]
 
 [[component]]
 name = "code_runtime"
@@ -60,6 +85,45 @@ path = "office-agent/src/coscribe/tools"
 layer = "tools"
 owner = ["@OICWS"]
 card = "office-agent/src/coscribe/tools/AGENTS.md"
+protected_modules = [
+    "coscribe.tools.files",
+    "coscribe.tools.convert",
+    "coscribe.tools.pdf_pages",
+    "coscribe.tools.mcp",
+    "coscribe.tools.connector_permissions",
+    "coscribe.tools.skills",
+    "coscribe.tools.skill_catalog",
+    "coscribe.tools.pptx_templates",
+    "coscribe.tools.presentations",
+    "coscribe.tools._chart_data",
+    "coscribe.tools._docx_chart",
+    "coscribe.tools._file_locks",
+    "coscribe.tools._files_written",
+    "coscribe.tools._native_docx_tracks",
+    "coscribe.tools._native_formula",
+    "coscribe.tools._native_svg",
+    "coscribe.tools._office_bins",
+    "coscribe.tools._office_com",
+    "coscribe.tools._ooxml_validate",
+    "coscribe.tools._output_truncation",
+    "coscribe.tools._pptx_shapes",
+    "coscribe.tools._pptx_text",
+    "coscribe.tools._svg_preview",
+    "coscribe.tools._svg_slide",
+    "coscribe.tools._thumbnail",
+    "coscribe.tools._workspace",
+]
+ignore_imports = [
+    "coscribe.conversation.edit_preview -> coscribe.tools._thumbnail",
+    "coscribe.conversation.edit_preview -> coscribe.tools.presentations",
+    "coscribe.runtime_lg.skill_authoring -> coscribe.tools.skills",
+    "coscribe.web.routes.connectors.permissions -> coscribe.tools.connector_permissions",
+    "coscribe.web.routes.connectors.servers -> coscribe.tools.mcp",
+    "coscribe.web.routes.files -> coscribe.tools.pdf_pages",
+    "coscribe.web.routes.files -> coscribe.tools.presentations",
+    "coscribe.web.routes.settings.secrets -> coscribe.tools.mcp",
+    "coscribe.web.routes.skills -> coscribe.tools.skill_catalog",
+]
 
 [[component]]
 name = "tools.office.docx"
@@ -81,6 +145,10 @@ path = "office-agent/src/coscribe/tools/office/pdf"
 layer = "tools"
 owner = ["@OICWS"]
 card = "office-agent/src/coscribe/tools/office/pdf/AGENTS.md"
+ignore_imports = [
+    "coscribe.tools.office.pptx.engine.checker -> coscribe.tools.office.pdf.text",
+    "coscribe.tools.pdf_pages -> coscribe.tools.office.pdf.text",
+]
 
 [[component]]
 name = "tools.office.pptx"
@@ -88,6 +156,12 @@ path = "office-agent/src/coscribe/tools/office/pptx"
 layer = "tools"
 owner = ["@OICWS"]
 card = "office-agent/src/coscribe/tools/office/pptx/AGENTS.md"
+ignore_imports = [
+    "coscribe.tools._svg_preview -> coscribe.tools.office.pptx.engine.native",
+    "coscribe.tools._thumbnail -> coscribe.tools.office.pptx.engine.build",
+    "coscribe.tools.presentations -> coscribe.tools.office.pptx.tool_wrappers",
+    "coscribe.tools.presentations -> coscribe.tools.office.pptx.toolkit",
+]
 
 [[component]]
 name = "tools.exec"
@@ -95,6 +169,12 @@ path = "office-agent/src/coscribe/tools/exec"
 layer = "tools"
 owner = ["@OICWS"]
 card = "office-agent/src/coscribe/tools/exec/AGENTS.md"
+ignore_imports = [
+    "coscribe.tools.bookkeeping.background_tasks -> coscribe.tools.exec.script_guard",
+    "coscribe.web.routes.settings.environments -> coscribe.tools.exec.script_env",
+    "coscribe.web.routes.settings.environments -> coscribe.tools.exec.node_env",
+    "coscribe.workflows.engine -> coscribe.tools.exec.scripts",
+]
 
 [[component]]
 name = "tools.web"
@@ -109,6 +189,16 @@ path = "office-agent/src/coscribe/tools/bookkeeping"
 layer = "tools"
 owner = ["@OICWS"]
 card = "office-agent/src/coscribe/tools/bookkeeping/AGENTS.md"
+ignore_imports = [
+    "coscribe.conversation.session -> coscribe.tools.bookkeeping.conversations",
+    "coscribe.conversation.session -> coscribe.tools.bookkeeping.background_tasks",
+    "coscribe.runtime_lg.code_agent -> coscribe.tools.bookkeeping.subagent_tasks",
+    "coscribe.runtime_lg.selfwake -> coscribe.tools.bookkeeping.subagent_tasks",
+    "coscribe.runtime_lg.subagents -> coscribe.tools.bookkeeping.subagent_tasks",
+    "coscribe.web.routes.threads -> coscribe.tools.bookkeeping.conversations",
+    "coscribe.web.routes.threads -> coscribe.tools.bookkeeping.tasks",
+    "coscribe.web.routes.threads -> coscribe.tools.bookkeeping.background_tasks",
+]
 
 [[component]]
 name = "runtime"

@@ -67,11 +67,12 @@ Last reviewed: 2026-10-15.
      protection in the repository settings (listed in #263).
 
 0a. **Structure phase 2: components** (#348, decision 0009): the component the unit a session works
-   in (card, `__init__.py` interface, tests by path; slice <= 15 files, 150k tokens). Item 1 done so far:
-   `components.toml`, generated `docs/components.md` and `CODEOWNERS` block (#349); cards for
-   `tools.office.{docx,xlsx,pdf,pptx}` (#350), `tools.exec` (#351), `tools.web` (#352) and `tools.bookkeeping` moved out of `tools/`; item 1 is done.
-   Next: import contracts (item 2), then import contracts, discovery, long functions, tests by path, frontend
-   guardrails, security follow-through, review and metrics (the issue has the order).
+   in (card, `__init__.py` interface, tests by path; slice <= 15 files, 150k tokens). Done: the
+   component map and generated `CODEOWNERS` (#349); `tools` cut into `tools.office.{docx,xlsx,pdf,pptx}`
+   (#350), `tools.exec` (#351), `tools.web` (#352) and `tools.bookkeeping` (item 1); a generated
+   `protected` contract per package and a `layers` contract for the office formats, with 42 ignored
+   imports to shrink (item 2). Next: discovery (item 3), then long functions, tests by path,
+   frontend guardrails, security follow-through, review and metrics (the issue has the order).
 
 0b. **The office route** (decision 0010, `docs/assessments/2026-10-13-office-route.md`):
    new decks compiled from whole-page SVG sources, edits through the page source and upgraded

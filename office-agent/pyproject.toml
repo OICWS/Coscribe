@@ -268,6 +268,7 @@ ignore_imports = [
     "coscribe.tools.bookkeeping.scheduled_tasks -> coscribe.workflows.spec",
     "coscribe.web.app -> coscribe.cli",
 ]
+broken_contract_guidance = "A package may import only from the layers below it (see the root AGENTS.md). Move the shared code down into a lower layer, or pass the value in as an argument. Do not add an ignore line without a decision record."
 
 [[tool.importlinter.contracts]]
 name = "Only runtime.secrets talks to the OS keychain"
@@ -279,6 +280,7 @@ source_modules = [
 ]
 forbidden_modules = ["keyring"]
 allow_indirect_imports = true
+broken_contract_guidance = "Only coscribe.runtime.secrets may import keyring. Call store_secret, resolve_secret or delete_secret from coscribe.runtime instead (decision 0003)."
 
 [[tool.importlinter.contracts]]
 name = "Only coscribe.web knows about HTTP"
@@ -289,12 +291,14 @@ source_modules = [
     "coscribe.config",
 ]
 forbidden_modules = ["fastapi", "starlette", "uvicorn"]
+broken_contract_guidance = "Only coscribe.web may import fastapi, starlette or uvicorn. Keep the HTTP types in a route and pass plain values into the other packages."
 
 [[tool.importlinter.contracts]]
 name = "Built-in tools do not depend on LangChain or LangGraph"
 type = "forbidden"
 source_modules = ["coscribe.tools", "coscribe.runtime"]
 forbidden_modules = ["langchain", "langchain_core", "langgraph"]
+broken_contract_guidance = "coscribe.tools and coscribe.runtime must not import langchain or langgraph; only runtime_lg and above know the agent loop. Return plain values from a tool and let runtime_lg adapt them."
 
 [[tool.importlinter.contracts]]
 name = "A fixed workflow run never reaches an autonomous agent"
@@ -304,3 +308,176 @@ source_modules = [
     "coscribe.workflows.refs", "coscribe.workflows.permissions",
 ]
 forbidden_modules = ["coscribe.code_runtime", "coscribe.runtime_lg", "coscribe.coordinator"]
+broken_contract_guidance = "A fixed workflow run must not import code_runtime, runtime_lg or the coordinator: a workflow step never starts an agent that can choose its own actions."
+
+[[tool.importlinter.contracts]]
+name = "Office formats: Word, Excel, PowerPoint and PDF do not know each other"
+type = "layers"
+containers = ["coscribe.tools.office"]
+layers = [
+    "document_tools",
+    "docx | pdf | pptx | xlsx",
+    "table_layout",
+    "markdown_blocks | toolkit",
+]
+exhaustive = true
+ignore_imports = [
+    "coscribe.tools.office.pptx.engine.checker -> coscribe.tools.office.pdf.text",
+    "coscribe.tools._thumbnail -> coscribe.tools.office.pptx.engine.build",
+    "coscribe.tools._svg_preview -> coscribe.tools.office.pptx.engine.native",
+]
+broken_contract_guidance = "A format (docx, pdf, pptx, xlsx) may use only the shared modules below it (table_layout, markdown_blocks, toolkit) and tools/ helpers that do not import a format. Move shared code down into one of those instead of importing a sibling format. Do not add an ignore line."
+
+# BEGIN generated from components.toml (python office-agent/scripts/gen_components.py)
+
+[[tool.importlinter.contracts]]
+name = "coscribe.web is entered through its package"
+type = "protected"
+protected_modules = ["coscribe.web.*"]
+allowed_importers = ["coscribe.web"]
+broken_contract_guidance = "Import from coscribe.web (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.web/__init__.py and put it on the card. Do not add an ignore line."
+
+[[tool.importlinter.contracts]]
+name = "coscribe.conversation is entered through its package"
+type = "protected"
+protected_modules = ["coscribe.conversation.*"]
+allowed_importers = ["coscribe.conversation"]
+broken_contract_guidance = "Import from coscribe.conversation (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.conversation/__init__.py and put it on the card. Do not add an ignore line."
+
+[[tool.importlinter.contracts]]
+name = "coscribe.runtime_lg is entered through its package"
+type = "protected"
+protected_modules = ["coscribe.runtime_lg.*"]
+allowed_importers = ["coscribe.runtime_lg"]
+ignore_imports = [
+    "coscribe.cli -> coscribe.runtime_lg.mcp",
+    "coscribe.conversation.session -> coscribe.runtime_lg.tool_deferral",
+    "coscribe.conversation.session -> coscribe.runtime_lg.code_agent",
+    "coscribe.conversation.session -> coscribe.runtime_lg.messages",
+    "coscribe.conversation.turn_stream -> coscribe.runtime_lg.tool_deferral",
+    "coscribe.web.app -> coscribe.runtime_lg.mcp",
+    "coscribe.web.app -> coscribe.runtime_lg.mcp_oauth",
+    "coscribe.web.routes.connectors._shared -> coscribe.runtime_lg.mcp_oauth",
+    "coscribe.web.routes.connectors.oauth_apps -> coscribe.runtime_lg.mcp_oauth",
+    "coscribe.web.state -> coscribe.runtime_lg.mcp_oauth",
+    "coscribe.web.state -> coscribe.runtime_lg.mcp",
+]
+broken_contract_guidance = "Import from coscribe.runtime_lg (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.runtime_lg/__init__.py and put it on the card. Do not add an ignore line."
+
+[[tool.importlinter.contracts]]
+name = "coscribe.workflows is entered through its package"
+type = "protected"
+protected_modules = ["coscribe.workflows.*"]
+allowed_importers = ["coscribe.workflows"]
+ignore_imports = [
+    "coscribe.tools.bookkeeping.scheduled_tasks -> coscribe.workflows.spec",
+]
+broken_contract_guidance = "Import from coscribe.workflows (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.workflows/__init__.py and put it on the card. Do not add an ignore line."
+
+[[tool.importlinter.contracts]]
+name = "coscribe.code_runtime is entered through its package"
+type = "protected"
+protected_modules = ["coscribe.code_runtime.*"]
+allowed_importers = ["coscribe.code_runtime"]
+broken_contract_guidance = "Import from coscribe.code_runtime (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.code_runtime/__init__.py and put it on the card. Do not add an ignore line."
+
+[[tool.importlinter.contracts]]
+name = "coscribe.tools is entered through its package"
+type = "protected"
+protected_modules = ["coscribe.tools.files", "coscribe.tools.convert", "coscribe.tools.pdf_pages", "coscribe.tools.mcp", "coscribe.tools.connector_permissions", "coscribe.tools.skills", "coscribe.tools.skill_catalog", "coscribe.tools.pptx_templates", "coscribe.tools.presentations", "coscribe.tools._chart_data", "coscribe.tools._docx_chart", "coscribe.tools._file_locks", "coscribe.tools._files_written", "coscribe.tools._native_docx_tracks", "coscribe.tools._native_formula", "coscribe.tools._native_svg", "coscribe.tools._office_bins", "coscribe.tools._office_com", "coscribe.tools._ooxml_validate", "coscribe.tools._output_truncation", "coscribe.tools._pptx_shapes", "coscribe.tools._pptx_text", "coscribe.tools._svg_preview", "coscribe.tools._svg_slide", "coscribe.tools._thumbnail", "coscribe.tools._workspace"]
+allowed_importers = ["coscribe.tools"]
+ignore_imports = [
+    "coscribe.conversation.edit_preview -> coscribe.tools._thumbnail",
+    "coscribe.conversation.edit_preview -> coscribe.tools.presentations",
+    "coscribe.runtime_lg.skill_authoring -> coscribe.tools.skills",
+    "coscribe.web.routes.connectors.permissions -> coscribe.tools.connector_permissions",
+    "coscribe.web.routes.connectors.servers -> coscribe.tools.mcp",
+    "coscribe.web.routes.files -> coscribe.tools.pdf_pages",
+    "coscribe.web.routes.files -> coscribe.tools.presentations",
+    "coscribe.web.routes.settings.secrets -> coscribe.tools.mcp",
+    "coscribe.web.routes.skills -> coscribe.tools.skill_catalog",
+]
+broken_contract_guidance = "Import from coscribe.tools (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.tools/__init__.py and put it on the card. Do not add an ignore line."
+
+[[tool.importlinter.contracts]]
+name = "coscribe.tools.office.docx is entered through its package"
+type = "protected"
+protected_modules = ["coscribe.tools.office.docx.*"]
+allowed_importers = ["coscribe.tools.office.docx"]
+broken_contract_guidance = "Import from coscribe.tools.office.docx (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.tools.office.docx/__init__.py and put it on the card. Do not add an ignore line."
+
+[[tool.importlinter.contracts]]
+name = "coscribe.tools.office.xlsx is entered through its package"
+type = "protected"
+protected_modules = ["coscribe.tools.office.xlsx.*"]
+allowed_importers = ["coscribe.tools.office.xlsx"]
+broken_contract_guidance = "Import from coscribe.tools.office.xlsx (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.tools.office.xlsx/__init__.py and put it on the card. Do not add an ignore line."
+
+[[tool.importlinter.contracts]]
+name = "coscribe.tools.office.pdf is entered through its package"
+type = "protected"
+protected_modules = ["coscribe.tools.office.pdf.*"]
+allowed_importers = ["coscribe.tools.office.pdf"]
+ignore_imports = [
+    "coscribe.tools.office.pptx.engine.checker -> coscribe.tools.office.pdf.text",
+    "coscribe.tools.pdf_pages -> coscribe.tools.office.pdf.text",
+]
+broken_contract_guidance = "Import from coscribe.tools.office.pdf (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.tools.office.pdf/__init__.py and put it on the card. Do not add an ignore line."
+
+[[tool.importlinter.contracts]]
+name = "coscribe.tools.office.pptx is entered through its package"
+type = "protected"
+protected_modules = ["coscribe.tools.office.pptx.*"]
+allowed_importers = ["coscribe.tools.office.pptx"]
+ignore_imports = [
+    "coscribe.tools._svg_preview -> coscribe.tools.office.pptx.engine.native",
+    "coscribe.tools._thumbnail -> coscribe.tools.office.pptx.engine.build",
+    "coscribe.tools.presentations -> coscribe.tools.office.pptx.tool_wrappers",
+    "coscribe.tools.presentations -> coscribe.tools.office.pptx.toolkit",
+]
+broken_contract_guidance = "Import from coscribe.tools.office.pptx (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.tools.office.pptx/__init__.py and put it on the card. Do not add an ignore line."
+
+[[tool.importlinter.contracts]]
+name = "coscribe.tools.exec is entered through its package"
+type = "protected"
+protected_modules = ["coscribe.tools.exec.*"]
+allowed_importers = ["coscribe.tools.exec"]
+ignore_imports = [
+    "coscribe.tools.bookkeeping.background_tasks -> coscribe.tools.exec.script_guard",
+    "coscribe.web.routes.settings.environments -> coscribe.tools.exec.script_env",
+    "coscribe.web.routes.settings.environments -> coscribe.tools.exec.node_env",
+    "coscribe.workflows.engine -> coscribe.tools.exec.scripts",
+]
+broken_contract_guidance = "Import from coscribe.tools.exec (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.tools.exec/__init__.py and put it on the card. Do not add an ignore line."
+
+[[tool.importlinter.contracts]]
+name = "coscribe.tools.web is entered through its package"
+type = "protected"
+protected_modules = ["coscribe.tools.web.*"]
+allowed_importers = ["coscribe.tools.web"]
+broken_contract_guidance = "Import from coscribe.tools.web (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.tools.web/__init__.py and put it on the card. Do not add an ignore line."
+
+[[tool.importlinter.contracts]]
+name = "coscribe.tools.bookkeeping is entered through its package"
+type = "protected"
+protected_modules = ["coscribe.tools.bookkeeping.*"]
+allowed_importers = ["coscribe.tools.bookkeeping"]
+ignore_imports = [
+    "coscribe.conversation.session -> coscribe.tools.bookkeeping.conversations",
+    "coscribe.conversation.session -> coscribe.tools.bookkeeping.background_tasks",
+    "coscribe.runtime_lg.code_agent -> coscribe.tools.bookkeeping.subagent_tasks",
+    "coscribe.runtime_lg.selfwake -> coscribe.tools.bookkeeping.subagent_tasks",
+    "coscribe.runtime_lg.subagents -> coscribe.tools.bookkeeping.subagent_tasks",
+    "coscribe.web.routes.threads -> coscribe.tools.bookkeeping.conversations",
+    "coscribe.web.routes.threads -> coscribe.tools.bookkeeping.tasks",
+    "coscribe.web.routes.threads -> coscribe.tools.bookkeeping.background_tasks",
+]
+broken_contract_guidance = "Import from coscribe.tools.bookkeeping (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.tools.bookkeeping/__init__.py and put it on the card. Do not add an ignore line."
+
+[[tool.importlinter.contracts]]
+name = "coscribe.runtime is entered through its package"
+type = "protected"
+protected_modules = ["coscribe.runtime.*"]
+allowed_importers = ["coscribe.runtime"]
+broken_contract_guidance = "Import from coscribe.runtime (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.runtime/__init__.py and put it on the card. Do not add an ignore line."
+# END generated

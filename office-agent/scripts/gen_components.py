@@ -15,6 +15,8 @@ ROOT = Path(__file__).resolve().parents[2]
 MAP = ROOT / "components.toml"
 DOC = ROOT / "docs" / "components.md"
 CODEOWNERS = ROOT / ".github" / "CODEOWNERS"
+PYPROJECT = ROOT / "office-agent" / "pyproject.toml"
+SOURCE = "office-agent/src/"
 BEGIN = "# BEGIN generated from components.toml (python office-agent/scripts/gen_components.py)"
 END = "# END generated"
 
@@ -65,14 +67,60 @@ def merged_codeowners(current: str, block: str) -> str:
     return f"{block}\n{current}"
 
 
+def dotted(item: dict[str, object]) -> str | None:
+    """The package's module name, or None for a single module or a non-Python component."""
+    path = str(item["path"])
+    if not path.startswith(SOURCE) or path.endswith(".py"):
+        return None
+    return path.removeprefix(SOURCE).replace("/", ".")
+
+
+def render_contracts(components: list[dict[str, object]]) -> str:
+    lines = [BEGIN]
+    for item in components:
+        name = dotted(item)
+        if name is None:
+            continue
+        protected = item.get("protected_modules") or [f"{name}.*"]
+        guidance = (
+            f"Import from {name} (the names in its __all__, listed on its card), not from a "
+            f"submodule. If the name is missing, export it from {name}/__init__.py and put it "
+            "on the card. Do not add an ignore line."
+        )
+        lines += ["", "[[tool.importlinter.contracts]]"]
+        lines.append(f'name = "{name} is entered through its package"')
+        lines.append('type = "protected"')
+        lines.append("protected_modules = [" + ", ".join(f'"{m}"' for m in protected) + "]")  # type: ignore[attr-defined]
+        lines.append(f'allowed_importers = ["{name}"]')
+        ignored = item.get("ignore_imports") or []
+        if ignored:
+            lines.append("ignore_imports = [")
+            lines += [f'    "{entry}",' for entry in ignored]  # type: ignore[attr-defined]
+            lines.append("]")
+        lines.append(f'broken_contract_guidance = "{guidance}"')
+    lines.append(END)
+    return "\n".join(lines) + "\n"
+
+
+def merged_pyproject(current: str, block: str) -> str:
+    if BEGIN in current:
+        head, rest = current.split(BEGIN, 1)
+        tail = rest.split(END, 1)[1].lstrip("\n")
+        return f"{head}{block}{tail}"
+    return f"{current.rstrip()}\n\n{block}"
+
+
 def main(argv: list[str]) -> int:
     components = load()
     doc = render_doc(components)
     codeowners = merged_codeowners(CODEOWNERS.read_text(encoding="utf-8"), render_block(components))
+    pyproject = merged_pyproject(
+        PYPROJECT.read_text(encoding="utf-8"), render_contracts(components)
+    )
     if "--check" in argv:
         stale = [
             str(path.relative_to(ROOT))
-            for path, text in ((DOC, doc), (CODEOWNERS, codeowners))
+            for path, text in ((DOC, doc), (CODEOWNERS, codeowners), (PYPROJECT, pyproject))
             if not path.exists() or path.read_text(encoding="utf-8") != text
         ]
         if stale:
@@ -81,6 +129,7 @@ def main(argv: list[str]) -> int:
         return 0
     DOC.write_text(doc, encoding="utf-8")
     CODEOWNERS.write_text(codeowners, encoding="utf-8")
+    PYPROJECT.write_text(pyproject, encoding="utf-8")
     return 0
 
 
