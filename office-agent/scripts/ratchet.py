@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import functools
 import importlib
 import importlib.util
 import json
@@ -51,6 +52,9 @@ FAN_OUT_LISTED = 25
 # vulture's own scale: 60 is "never referenced by name", 100 is "provably unused". Below 60 it
 # would also list every import.
 DEAD_CODE_CONFIDENCE = 60
+
+# The TypeScript sources, measured with the same limits as the Python.
+FRONTEND_DIRS = ("office-agent/frontend/src", "office-agent-desktop/src")
 
 # Vendored code is left alone so a diff against its upstream stays meaningful.
 VENDORED = (
@@ -153,6 +157,42 @@ def complex_functions(src: Path = SRC, listed: int = COMPLEXITY_LISTED) -> dict[
         if match:
             found[f"{_rel(path)}::{match.group(1)}"] = int(match.group(2))
     return found
+
+
+@functools.cache
+def _ts_sizes(repo: Path, dirs: tuple[str, ...]) -> dict[str, dict[str, int]]:
+    """Line counts of every TypeScript file and named function, from `ts_sizes.mjs`."""
+    if not (Path(__file__).resolve().parents[1] / "frontend/node_modules/typescript").is_dir():
+        raise SystemExit("ratchet: the frontend is not installed; run `npm ci` in frontend/ first")
+    result = subprocess.run(
+        [
+            "node",
+            str(Path(__file__).with_name("ts_sizes.mjs")),
+            str(repo),
+            *(str(repo / d) for d in dirs),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    sizes: dict[str, dict[str, int]] = json.loads(result.stdout)
+    return sizes
+
+
+def frontend_file_lines(
+    repo: Path | None = None, dirs: tuple[str, ...] = FRONTEND_DIRS, listed: int = FILE_LINES_LISTED
+) -> dict[str, int]:
+    sizes = _ts_sizes(repo or ROOT.parent, dirs)["files"]
+    return {name: n for name, n in sizes.items() if n > listed}
+
+
+def frontend_long_functions(
+    repo: Path | None = None,
+    dirs: tuple[str, ...] = FRONTEND_DIRS,
+    listed: int = FUNCTION_LINES_LISTED,
+) -> dict[str, int]:
+    sizes = _ts_sizes(repo or ROOT.parent, dirs)["functions"]
+    return {name: n for name, n in sizes.items() if n > listed}
 
 
 def suppressions(src: Path = SRC) -> dict[str, int]:
@@ -296,6 +336,8 @@ METRICS = {
     "file_lines": file_lines,
     "long_functions": long_functions,
     "complex_functions": complex_functions,
+    "frontend_file_lines": frontend_file_lines,
+    "frontend_long_functions": frontend_long_functions,
     "suppressions": suppressions,
     "deep_imports": deep_imports,
     "tests_without_a_check": tests_without_a_check,
