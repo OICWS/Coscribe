@@ -4,7 +4,8 @@ name: Windows
 # PowerShell and cmd, the keychain. It is not a required check yet, so a red run does not
 # block a pull request, but the run is red when a test fails: the run page and the
 # nightly history show it. It runs nightly, by hand, and on a pull request that changes
-# this file. When it has been green for two weeks it becomes a required check (decision 0009).
+# this file (a pull request that fixes a test only Windows fails touches a comment here to get a
+# run). When it has been green for two weeks it becomes a required check (decision 0009).
 "on":
   schedule:
     - cron: "17 19 * * *"

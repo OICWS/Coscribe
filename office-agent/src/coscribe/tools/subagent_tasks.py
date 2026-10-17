@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import re
 import threading
 from collections.abc import Callable
@@ -23,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from ..runtime import tool_metadata
+from ._file_locks import replace_with_retry
 
 VALID_STATUSES = ("running", "needs_approval", "succeeded", "failed", "stopped")
 FINISHED_STATUSES = ("succeeded", "failed", "stopped")
@@ -141,7 +141,7 @@ class SubAgentTaskStore:
         tmp_path = path.with_suffix(".tmp")
         with tmp_path.open("w", encoding="utf-8") as handle:
             json.dump(task.to_dict(), handle, ensure_ascii=False, indent=2)
-        os.replace(tmp_path, path)
+        replace_with_retry(tmp_path, path)
 
     def load(self, task_id: str) -> SubAgentTask | None:
         if not _SAFE_ID.fullmatch(task_id):

@@ -270,7 +270,9 @@ def test_deleting_a_task_deletes_its_run_conversations_lg(
             json={"name": "Temp", "kind": "manual", "at": "", "prompt": "Do it"},
         ).json()
         run = client.post(f"/api/scheduled-tasks/{created['trigger_id']}/run").json()["run"]
-        _wait_for_run_status(client, created["trigger_id"], run["run_id"])
+        # Deleting while the run still writes its checkpoints would bring the conversation back.
+        finished = _wait_for_run_status(client, created["trigger_id"], run["run_id"])
+        assert finished["status"] != "running"
 
         assert client.delete(f"/api/scheduled-tasks/{created['trigger_id']}").status_code == 200
         with client.websocket_connect(f"/ws/{run['thread_id']}") as ws:

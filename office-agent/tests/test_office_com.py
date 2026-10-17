@@ -54,7 +54,7 @@ def test_no_office_program_is_found_off_windows(tmp_path: Path) -> None:
 
 
 def test_a_file_name_never_becomes_part_of_the_script(office: _FakeOffice, tmp_path: Path) -> None:
-    source = tmp_path / "a'; Remove-Item C:\\ -Recurse; '.docx"
+    source = tmp_path / "a'; Remove-Item -Recurse -Force; '.docx"
     source.write_bytes(b"x")
 
     _office_com.convert(source, tmp_path / "out.pdf", "pdf", 30)
