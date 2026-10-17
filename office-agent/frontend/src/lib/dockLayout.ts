@@ -1,6 +1,6 @@
-/** Where the side panels sit beside the conversation: a tree of splits,
- * each a row or a column of children with their shares of its length.
- * Pure functions only: the panel dock draws it, useDockLayout.ts keeps it. */
+/** The panels in one column of the window (dockArrangement.ts): a tree of
+ * splits, each a row or a column of children with their shares of its
+ * length. Pure functions only. */
 
 export type PanelId = "task" | "browser" | "background";
 export const PANEL_IDS: readonly PanelId[] = ["task", "browser", "background"];
@@ -141,18 +141,6 @@ export function insertPanel(node: DockNode | null, id: PanelId, target: PanelId 
   return tidy(place(root)) ?? leaf;
 }
 
-/** Every visible panel in one row or one column, equal shares. */
-export function arrange(node: DockNode | null, dir: Direction): DockNode | null {
-  const ids = panelIds(node);
-  if (ids.length < 2) return node;
-  return {
-    kind: "split",
-    dir,
-    children: ids.map((id) => ({ kind: "panel", id })),
-    sizes: ids.map(() => 1 / ids.length),
-  };
-}
-
 /** The tree with the shares of the split at `path` replaced. */
 export function withSizes(node: DockNode, path: number[], sizes: number[]): DockNode {
   if (node.kind === "panel") return node;
@@ -215,94 +203,6 @@ export function layout(node: DockNode | null, area: Rect, gap = GAP): Layout {
   };
   if (node) walk(node, area, []);
   return result;
-}
-
-/** The edge of the whole area a panel lies flush along, if it spans that side. */
-export function edgeOf(rects: Layout["panels"], area: Rect, id: PanelId): Edge | null {
-  const r = rects[id];
-  if (!r || Object.keys(rects).length < 2) return null;
-  const near = (a: number, b: number) => Math.abs(a - b) <= 2;
-  const fullHeight = near(r.y, area.y) && near(r.y + r.h, area.y + area.h);
-  const fullWidth = near(r.x, area.x) && near(r.x + r.w, area.x + area.w);
-  if (fullHeight && near(r.x, area.x)) return "left";
-  if (fullHeight && near(r.x + r.w, area.x + area.w)) return "right";
-  if (fullWidth && near(r.y, area.y)) return "top";
-  if (fullWidth && near(r.y + r.h, area.y + area.h)) return "bottom";
-  return null;
-}
-
-export interface DropTarget {
-  target: PanelId | null;
-  edge: Edge;
-  /** Where to draw the drop line. */
-  line: Rect;
-}
-
-const LINE = 4;
-const AREA_EDGE = 24;
-
-function lineAlong(r: Rect, edge: Edge, offset: number): Rect {
-  if (edge === "left") return { x: r.x - offset - LINE / 2, y: r.y, w: LINE, h: r.h };
-  if (edge === "right") return { x: r.x + r.w + offset - LINE / 2, y: r.y, w: LINE, h: r.h };
-  if (edge === "top") return { x: r.x, y: r.y - offset - LINE / 2, w: r.w, h: LINE };
-  return { x: r.x, y: r.y + r.h + offset - LINE / 2, w: r.w, h: LINE };
-}
-
-/** Where a dragged panel would land with the pointer at (x, y): along an
- * edge of the whole area when the pointer is near it, else along the
- * nearest edge of the panel under the pointer. */
-export function dropTarget(rects: Layout["panels"], area: Rect, dragged: PanelId, x: number, y: number): DropTarget | null {
-  const others = (Object.keys(rects) as PanelId[]).filter((id) => id !== dragged);
-  if (others.length === 0) return null;
-  if (x < area.x - AREA_EDGE || x > area.x + area.w + AREA_EDGE || y < area.y - AREA_EDGE || y > area.y + area.h + AREA_EDGE) {
-    return null;
-  }
-  const inset = -LINE / 2;
-  if (x < area.x + AREA_EDGE) return { target: null, edge: "left", line: lineAlong(area, "left", inset) };
-  if (x > area.x + area.w - AREA_EDGE) return { target: null, edge: "right", line: lineAlong(area, "right", inset) };
-  if (y < area.y + AREA_EDGE) return { target: null, edge: "top", line: lineAlong(area, "top", inset) };
-  if (y > area.y + area.h - AREA_EDGE) return { target: null, edge: "bottom", line: lineAlong(area, "bottom", inset) };
-  for (const id of others) {
-    const r = rects[id];
-    if (!r || x < r.x || x > r.x + r.w || y < r.y || y > r.y + r.h) continue;
-    const distances: Record<Edge, number> = {
-      left: (x - r.x) / r.w,
-      right: (r.x + r.w - x) / r.w,
-      top: (y - r.y) / r.h,
-      bottom: (r.y + r.h - y) / r.h,
-    };
-    const edge = (Object.keys(distances) as Edge[]).reduce((a, b) => (distances[a] <= distances[b] ? a : b));
-    return { target: id, edge, line: lineAlong(r, edge, GAP / 2) };
-  }
-  return null;
-}
-
-/** How many columns the tree shows side by side. */
-export function columnCount(node: DockNode | null): number {
-  if (!node) return 0;
-  if (node.kind === "panel") return 1;
-  if (node.dir === "row") return node.children.reduce((sum, c) => sum + columnCount(c), 0);
-  return Math.max(...node.children.map(columnCount));
-}
-
-/** Where a panel that isn't in the tree yet goes when opened: a new column
- * on the right while columns stay at least `minColumn` wide, otherwise
- * under the last panel of the rightmost column. */
-export function placeNewPanel(
-  visibleTree: DockNode | null,
-  fullTree: DockNode | null,
-  id: PanelId,
-  width: number,
-  minColumn: number,
-): DockNode {
-  const columns = columnCount(visibleTree);
-  if (!visibleTree || width / (columns + 1) >= minColumn) return insertPanel(fullTree, id, null, "right");
-  const rightmost =
-    visibleTree.kind === "split" && visibleTree.dir === "row"
-      ? visibleTree.children[visibleTree.children.length - 1]
-      : visibleTree;
-  const ids = panelIds(rightmost);
-  return insertPanel(fullTree, id, ids[ids.length - 1], "bottom");
 }
 
 export function isDockNode(value: unknown): value is DockNode {

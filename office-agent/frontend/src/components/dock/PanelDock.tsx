@@ -5,100 +5,70 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import {
-  arrange,
-  columnCount,
-  dragGutter,
-  dropTarget,
-  edgeOf,
-  insertPanel,
-  neighbourOf,
-  layout,
-  nodeAt,
-  PANEL_IDS,
-  panelIds,
-  placeNewPanel,
-  removePanel,
-  withSizes,
-  type Direction,
-  type DockNode,
-  type DropTarget,
-  type Edge,
-  type Gutter,
-  type PanelId,
-  type Rect,
-} from "../../lib/dockLayout";
+  applyDrop,
+  arrangeAll,
+  arrangementLayout,
+  arrangementPanels,
+  columnOf,
+  COLUMN_MIN,
+  dropAt,
+  hintFor,
+  movePanel,
+  openPanel,
+  withColumnTree,
+  withColumnWidth,
+  withoutPanel,
+  type Arrangement,
+  type ArrangementLayout,
+  type ColumnRef,
+  type Drop,
+} from "../../lib/dockArrangement";
+import { dragGutter, GAP, nodeAt, PANEL_IDS, withSizes, type Gutter, type PanelId, type Rect } from "../../lib/dockLayout";
 import { useDockLayout, type DockState } from "../../lib/useDockLayout";
 import { DockControls, type DockActions } from "./DockControls";
 import { DockPanelContext, type DockPanelApi } from "./dockContext";
 
-/** What the conversation keeps, at least, beside the panels; opening a
- * panel widens the panels only while it keeps CHAT_ROOMY. */
+/** The conversation keeps at least CHAT_MIN beside the panels, else they lie
+ * over it; a newly opened panel gets its own column while it keeps CHAT_ROOMY. */
 const CHAT_MIN = 380;
 const CHAT_ROOMY = 560;
-const DOCK_MIN = 300;
-const COLUMN_MIN = 300;
 const PANEL_MIN = 140;
 const PREFERRED_WIDTH: Record<PanelId, number> = { task: 320, browser: 440, background: 440 };
 const DRAG_THRESHOLD = 5;
+const NO_PANELS: Arrangement = { left: [], right: [] };
 
 const INTERACTIVE = 'button, a, input, textarea, select, [role="tab"], [role="menuitem"], [contenteditable="true"]';
 
 /** Brings the arrangement in line with the panels this conversation shows.
- * A closed panel leaves a hint to come back beside the same neighbour; with
- * none open the arrangement is kept as it is, for the next one. A new
- * column widens the panels' share of the window while the conversation
- * keeps CHAT_ROOMY; losing one narrows it. */
-function sync(prev: DockState, visible: readonly PanelId[], rowWidth: number): DockState {
+ * A closed panel leaves a hint to come back where it was; with none open
+ * the arrangement is kept as it is, for the next one. */
+function sync(prev: DockState, visible: readonly PanelId[], areaWidth: number): DockState {
   if (visible.length === 0) return prev;
-  let tree = prev.tree;
+  let arrangement = prev.arrangement;
   const hints = { ...prev.hints };
-  const before = columnCount(tree);
-  for (const id of panelIds(tree)) {
+  for (const id of arrangementPanels(arrangement)) {
     if (visible.includes(id)) continue;
-    const hint = neighbourOf(tree, id);
+    const hint = hintFor(arrangement, id);
     if (hint) hints[id] = hint;
-    tree = removePanel(tree, id);
+    arrangement = withoutPanel(arrangement, id);
   }
-  let width = tree ? prev.width : 0;
   for (const id of visible) {
-    if (panelIds(tree).includes(id)) continue;
-    if (!tree) {
-      tree = { kind: "panel", id };
-      width = PREFERRED_WIDTH[id];
-      continue;
-    }
-    const hint = hints[id];
-    const columns = columnCount(tree);
-    if (hint && panelIds(tree).includes(hint.target)) {
-      tree = insertPanel(tree, id, hint.target, hint.edge);
-      if (columnCount(tree) > columns) width += Math.max(0, Math.min(rowWidth - CHAT_ROOMY - width, PREFERRED_WIDTH[id]));
-      continue;
-    }
-    const room = Math.max(0, rowWidth - CHAT_ROOMY - width);
-    const grown = width + Math.min(room, PREFERRED_WIDTH[id]);
-    tree = placeNewPanel(tree, tree, id, grown, COLUMN_MIN);
-    if (columnCount(tree) > columns) {
-      tree = keepColumnWidths(tree, width, grown);
-      width = grown;
-    }
+    if (arrangementPanels(arrangement).includes(id)) continue;
+    const used = [...arrangement.left, ...arrangement.right].reduce((sum, c) => sum + c.width + GAP, GAP);
+    const room = areaWidth - used - GAP - CHAT_ROOMY;
+    arrangement = openPanel(arrangement, id, hints[id], PREFERRED_WIDTH[id], room);
   }
-  const after = columnCount(tree);
-  if (before > 0 && after > 0 && after < before) width = Math.max(DOCK_MIN, (width * after) / before);
-  if (tree === prev.tree && width === prev.width) return prev;
-  return { tree, width: Math.round(width), hints };
+  return arrangement === prev.arrangement ? prev : { arrangement, hints };
 }
 
-/** After a column is added on the right and the panels widened from
- * `before` to `after` pixels, the old columns keep their widths. */
-function keepColumnWidths(tree: DockNode, before: number, after: number): DockNode {
-  if (tree.kind !== "split" || tree.dir !== "row") return tree;
-  const n = tree.sizes.length;
-  const kept = after > before ? before / after : (n - 1) / n;
-  return { ...tree, sizes: [...tree.sizes.slice(0, -1).map((s) => (s / (1 - tree.sizes[n - 1])) * kept), 1 - kept] };
+function widthIn(arrangement: Arrangement, id: PanelId): number {
+  const ref = columnOf(arrangement, id);
+  return ref ? arrangement[ref.side][ref.index].width : PREFERRED_WIDTH[id];
 }
 
 interface Drag {
@@ -108,78 +78,82 @@ interface Drag {
   dx: number;
   dy: number;
   live: boolean;
-  drop: DropTarget | null;
+  drop: Drop | null;
 }
 
-/** The side panels beside the conversation, in rows and columns: drag a
- * header to move a panel, drag a gap to resize, and the expand button's
- * menu to move, fill or arrange. Panels are one flat list placed by
- * position, so moving one never remounts it (the browser keeps its tabs). */
+const boxStyle = (rect: Rect | undefined, extra?: CSSProperties): CSSProperties | undefined =>
+  rect ? { left: rect.x, top: rect.y, width: rect.w, height: rect.h, ...extra } : undefined;
+
+const MOVING = "transition-[left,top,width,height] duration-150 ease-out motion-reduce:transition-none";
+const GUTTER_LINE =
+  "rounded-full group-hover/gutter:bg-[color-mix(in_srgb,var(--fg)_24%,transparent)] group-active/gutter:bg-[color-mix(in_srgb,var(--fg)_58%,transparent)]";
+
+/** The window below the title bar: the conversation and the side panels
+ * around it, in columns on either side. Drag a header to move a panel; the
+ * other panels and the conversation move to where they will be as it goes.
+ * Drag a gap to resize; the expand button's menu moves, fills or arranges.
+ * Every box is placed by position in one flat list, so moving a panel never
+ * remounts it (the browser keeps its tabs). */
 export function PanelDock({
   visible,
   titles,
   render,
   onClose,
   leftInset,
+  chat,
 }: {
   visible: readonly PanelId[];
   titles: Record<PanelId, string>;
   render: (id: PanelId) => ReactNode;
   onClose: (id: PanelId) => void;
-  /** Where the overlay starts when the panels cover the conversation. */
+  /** Room kept free at the left for the pinned sidebar. */
   leftInset: number;
+  chat: ReactNode;
 }) {
   const [dock, setDock] = useDockLayout();
   const [filled, setFilled] = useState<PanelId | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [menuFor, setMenuFor] = useState<PanelId | null>(null);
-  const [rowWidth, setRowWidth] = useState(0);
-  const [area, setArea] = useState({ w: 0, h: 0 });
+  const [size, setSize] = useState({ w: 0, h: 0 });
   const rootRef = useRef<HTMLDivElement>(null);
-  const areaRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<Drag | null>(null);
   const shown = useMemo(() => PANEL_IDS.filter((id) => visible.includes(id)), [visible]);
   const visibleKey = visible.join(",");
 
-  useEffect(() => {
-    const row = rootRef.current?.parentElement;
-    if (!row) return;
-    const observer = new ResizeObserver(() => setRowWidth(row.clientWidth));
-    observer.observe(row);
-    setRowWidth(row.clientWidth);
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const measure = () => setSize({ w: el.clientWidth, h: el.clientHeight });
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    measure();
     return () => observer.disconnect();
   }, []);
 
+  const area: Rect = { x: leftInset, y: 0, w: Math.max(0, size.w - leftInset), h: size.h };
+  const measured = area.w > 0;
+
   useLayoutEffect(() => {
-    if (rowWidth <= 0) return;
-    setDock((prev) => sync(prev, visibleKey ? (visibleKey.split(",") as PanelId[]) : [], rowWidth));
-  }, [visibleKey, rowWidth, setDock]);
+    if (!measured) return;
+    const ids = visibleKey ? (visibleKey.split(",") as PanelId[]) : [];
+    setDock((prev) => sync(prev, ids, area.w));
+    // Only a change in which panels show re-places them, not every resize.
+  }, [visibleKey, measured, setDock]); // oxlint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (filled && !visible.includes(filled)) setFilled(null);
   }, [filled, visible]);
 
-  const hasPanels = shown.length > 0 && dock.tree !== null;
-  const narrow = rowWidth > 0 && rowWidth - CHAT_MIN < DOCK_MIN;
-  const overlay = hasPanels && (narrow || filled !== null);
-  const width = Math.max(DOCK_MIN, Math.min(dock.width || DOCK_MIN, rowWidth - CHAT_MIN));
+  const arrangement = shown.length > 0 ? dock.arrangement : NO_PANELS;
+  const placed: ArrangementLayout = arrangementLayout(arrangement, area, CHAT_MIN);
+  const preview =
+    drag?.live && drag.drop
+      ? arrangementLayout(applyDrop(arrangement, drag.id, drag.drop, widthIn(arrangement, drag.id)), area, CHAT_MIN)
+      : null;
+  const shownLayout = preview ?? placed;
 
-  useLayoutEffect(() => {
-    const el = areaRef.current;
-    if (!el) return;
-    const measure = () => setArea({ w: el.clientWidth, h: el.clientHeight });
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    measure();
-    return () => observer.disconnect();
-  }, [hasPanels]);
-
-  const areaRect: Rect = { x: 0, y: 0, w: area.w, h: area.h };
-  const placed = layout(dock.tree, areaRect);
-  const rects = filled ? { [filled]: areaRect } : placed.panels;
-
-  const setTree = useCallback(
-    (update: (tree: DockState["tree"]) => DockState["tree"]) => setDock((prev) => ({ ...prev, tree: update(prev.tree) })),
+  const setArrangement = useCallback(
+    (update: (a: Arrangement) => Arrangement) => setDock((prev) => ({ ...prev, arrangement: update(prev.arrangement) })),
     [setDock],
   );
   const setMenuOpen = useCallback(
@@ -190,15 +164,15 @@ export function PanelDock({
   const actions: DockActions = {
     filled,
     panelCount: shown.length,
-    edgeOf: (id) => (filled ? null : edgeOf(placed.panels, areaRect, id)),
-    move: (id, edge: Edge) => {
+    edgeOf: (id) => (filled ? null : (columnOf(arrangement, id)?.side ?? null)),
+    move: (id, edge) => {
       setFilled(null);
-      setTree((tree) => insertPanel(tree, id, null, edge));
+      setArrangement((a) => movePanel(a, id, edge, widthIn(a, id)));
     },
     fill: setFilled,
-    arrange: (dir: Direction) => {
+    arrange: (dir) => {
       setFilled(null);
-      setTree((tree) => arrange(tree, dir));
+      setArrangement((a) => arrangeAll(a, dir));
     },
     close: onClose,
     setMenuOpen,
@@ -219,10 +193,9 @@ export function PanelDock({
   }, [drag?.live, filled, menuFor]);
 
   const startDrag = (id: PanelId, e: ReactPointerEvent<HTMLElement>) => {
-    if (e.button !== 0 || filled || shown.length < 2) return;
+    if (e.button !== 0 || filled) return;
     if ((e.target as HTMLElement).closest(INTERACTIVE)) return;
-    const start: Drag = { id, startX: e.clientX, startY: e.clientY, dx: 0, dy: 0, live: false, drop: null };
-    dragRef.current = start;
+    dragRef.current = { id, startX: e.clientX, startY: e.clientY, dx: 0, dy: 0, live: false, drop: null };
     const onMove = (ev: PointerEvent) => {
       const current = dragRef.current;
       if (!current) return;
@@ -230,8 +203,8 @@ export function PanelDock({
       const dy = ev.clientY - current.startY;
       if (!current.live && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
       if (!current.live) document.body.style.userSelect = "none";
-      const box = areaRef.current?.getBoundingClientRect();
-      const drop = box ? dropTarget(placed.panels, areaRect, current.id, ev.clientX - box.left, ev.clientY - box.top) : null;
+      const box = rootRef.current?.getBoundingClientRect();
+      const drop = box ? dropAt(placed, arrangement, area, current.id, ev.clientX - box.left, ev.clientY - box.top) : null;
       const next = { ...current, dx, dy, live: true, drop };
       dragRef.current = next;
       setDrag(next);
@@ -245,8 +218,8 @@ export function PanelDock({
       dragRef.current = null;
       setDrag(null);
       if (done?.live && done.drop) {
-        const { target, edge } = done.drop;
-        setTree((tree) => insertPanel(tree, done.id, target, edge));
+        const drop = done.drop;
+        setArrangement((a) => applyDrop(a, done.id, drop, widthIn(a, done.id)));
       }
     };
     window.addEventListener("pointermove", onMove);
@@ -254,21 +227,10 @@ export function PanelDock({
     window.addEventListener("pointercancel", onUp);
   };
 
-  const startGutter = (gutter: Gutter, e: ReactPointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0 || !dock.tree) return;
+  const track = (e: ReactPointerEvent<HTMLDivElement>, onMove: (ev: PointerEvent) => void) => {
     e.preventDefault();
     const handle = e.currentTarget;
     handle.setPointerCapture(e.pointerId);
-    const split = nodeAt(dock.tree, gutter.path);
-    if (split.kind !== "split") return;
-    const sizes = split.sizes;
-    const from = gutter.dir === "row" ? e.clientX : e.clientY;
-    const min = gutter.dir === "row" ? COLUMN_MIN * 0.75 : PANEL_MIN;
-    const onMove = (ev: PointerEvent) => {
-      const delta = (gutter.dir === "row" ? ev.clientX : ev.clientY) - from;
-      const next = dragGutter(sizes, gutter.index, delta, gutter.length, min);
-      setTree((tree) => (tree ? withSizes(tree, gutter.path, next) : tree));
-    };
     const onUp = () => {
       handle.removeEventListener("pointermove", onMove);
       handle.removeEventListener("pointerup", onUp);
@@ -277,132 +239,127 @@ export function PanelDock({
     handle.addEventListener("pointerup", onUp);
   };
 
-  const startResize = (e: ReactPointerEvent<HTMLDivElement>) => {
+  const startGutter = (gutter: Gutter & { column: ColumnRef }, e: ReactPointerEvent<HTMLDivElement>) => {
+    const column = arrangement[gutter.column.side][gutter.column.index];
+    const split = column ? nodeAt(column.tree, gutter.path) : null;
+    if (e.button !== 0 || !split || split.kind !== "split") return;
+    const sizes = split.sizes;
+    const from = gutter.dir === "row" ? e.clientX : e.clientY;
+    const min = gutter.dir === "row" ? COLUMN_MIN / 2 : PANEL_MIN;
+    track(e, (ev) => {
+      const delta = (gutter.dir === "row" ? ev.clientX : ev.clientY) - from;
+      const next = dragGutter(sizes, gutter.index, delta, gutter.length, min);
+      setArrangement((a) => {
+        const current = a[gutter.column.side][gutter.column.index];
+        return current ? withColumnTree(a, gutter.column, withSizes(current.tree, gutter.path, next)) : a;
+      });
+    });
+  };
+
+  const startColumnResize = (ref: ColumnRef, e: ReactPointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
-    e.preventDefault();
-    const handle = e.currentTarget;
-    handle.setPointerCapture(e.pointerId);
+    const start = arrangement[ref.side][ref.index]?.width ?? COLUMN_MIN;
     const from = e.clientX;
-    const startWidth = width;
-    const onMove = (ev: PointerEvent) => {
-      const next = Math.max(DOCK_MIN, Math.min(rowWidth - CHAT_MIN, startWidth - (ev.clientX - from)));
-      setDock((prev) => ({ ...prev, width: Math.round(next) }));
-    };
-    const onUp = () => {
-      handle.removeEventListener("pointermove", onMove);
-      handle.removeEventListener("pointerup", onUp);
-    };
-    handle.addEventListener("pointermove", onMove);
-    handle.addEventListener("pointerup", onUp);
+    const others = [...arrangement.left, ...arrangement.right].reduce((sum, c) => sum + c.width + GAP, GAP) - start;
+    const max = Math.max(COLUMN_MIN, area.w - others - GAP - CHAT_MIN);
+    track(e, (ev) => {
+      const delta = (ev.clientX - from) * (ref.side === "left" ? 1 : -1);
+      setArrangement((a) => withColumnWidth(a, ref, Math.max(COLUMN_MIN, Math.min(max, start + delta))));
+    });
   };
 
   const frozen = Boolean(drag?.live) || menuFor !== null;
-
-  if (!hasPanels) return <div ref={rootRef} className="hidden" />;
+  const dragged = drag?.live ? drag.id : null;
+  const fillRect: Rect = { x: area.x + GAP, y: GAP, w: Math.max(0, area.w - 2 * GAP), h: Math.max(0, area.h - 2 * GAP) };
+  const resizable = !filled && !dragged;
 
   return (
-    <div
-      ref={rootRef}
-      className={overlay ? "absolute inset-y-0 right-0 z-30 flex bg-[var(--bg)]" : "relative flex shrink-0"}
-      style={overlay ? { left: leftInset } : { width }}
-    >
-      {!overlay && (
-        <div
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Resize the panels"
-          title="Drag to resize"
-          className="group/gutter flex w-2 shrink-0 cursor-col-resize justify-center py-3"
-          onPointerDown={startResize}
-        >
-          <span className="w-0.5 rounded-full group-hover/gutter:bg-[color-mix(in_srgb,var(--fg)_24%,transparent)] group-active/gutter:bg-[color-mix(in_srgb,var(--fg)_58%,transparent)]" />
-        </div>
-      )}
-      <div ref={areaRef} className={`relative my-2 mr-2 min-w-0 flex-1 ${overlay ? "ml-2" : ""}`}>
-        {shown.map((id) => {
-          const rect = rects[id];
-          const isDragged = drag?.live && drag.id === id;
-          const api: DockPanelApi = {
-            id,
-            headerProps: {
-              onPointerDown: (e) => startDrag(id, e),
-              onDoubleClick: (e) => {
-                if (!(e.target as HTMLElement).closest(INTERACTIVE)) setFilled(filled === id ? null : id);
-              },
-            },
-            controls: <DockControls id={id} title={titles[id]} actions={actions} />,
-            frozen,
-            hidden: !rect,
-            boundsKey: rect ? `${rect.x},${rect.y},${rect.w},${rect.h},${overlay}` : "",
-          };
-          return (
-            <section
-              key={id}
-              aria-label={titles[id]}
-              hidden={!rect}
-              className={`group/panel absolute flex flex-col overflow-hidden rounded-xl border bg-[var(--panel-bg)] ${
-                isDragged
-                  ? "pointer-events-none z-20 border-[var(--border-hover)] opacity-95 shadow-[0_12px_32px_rgba(0,0,0,0.18)]"
-                  : "border-[var(--panel-edge)] shadow-[var(--panel-shadow)]"
-              }`}
-              style={
-                rect
-                  ? {
-                      left: rect.x,
-                      top: rect.y,
-                      width: rect.w,
-                      height: rect.h,
-                      transform: isDragged ? `translate(${drag.dx}px, ${drag.dy}px)` : undefined,
-                    }
-                  : undefined
-              }
-            >
-              {shown.length > 1 && !filled && (
-                <div
-                  title="Move"
-                  className="absolute left-1/2 top-0 z-10 flex h-3 w-14 -translate-x-1/2 cursor-grab justify-center pt-1 active:cursor-grabbing"
-                  onPointerDown={(e) => startDrag(id, e)}
-                >
-                  <span className="h-1 w-8 rounded-full bg-[var(--fg)] opacity-0 transition-opacity group-hover/panel:opacity-25 hover:!opacity-70 motion-reduce:transition-none" />
-                </div>
-              )}
-              <DockPanelContext.Provider value={api}>{render(id)}</DockPanelContext.Provider>
-            </section>
-          );
-        })}
-        {!filled &&
-          placed.gutters.map((gutter) => (
-            <div
-              key={`${gutter.path.join(".")}:${gutter.index}`}
-              role="separator"
-              aria-orientation={gutter.dir === "row" ? "vertical" : "horizontal"}
-              className={`group/gutter absolute z-10 flex ${
-                gutter.dir === "row" ? "cursor-col-resize justify-center py-3" : "cursor-row-resize flex-col justify-center px-3"
-              }`}
-              style={{ left: gutter.rect.x, top: gutter.rect.y, width: gutter.rect.w, height: gutter.rect.h }}
-              onPointerDown={(e) => startGutter(gutter, e)}
-            >
-              <span
-                className={`rounded-full group-hover/gutter:bg-[color-mix(in_srgb,var(--fg)_24%,transparent)] group-active/gutter:bg-[color-mix(in_srgb,var(--fg)_58%,transparent)] ${
-                  gutter.dir === "row" ? "w-0.5" : "h-0.5"
-                }`}
-              />
-            </div>
-          ))}
-        {drag?.live && drag.drop && (
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute z-30 rounded-full bg-[var(--accent)]"
-            style={{
-              left: Math.max(0, Math.min(area.w - drag.drop.line.w, drag.drop.line.x)),
-              top: Math.max(0, Math.min(area.h - drag.drop.line.h, drag.drop.line.y)),
-              width: drag.drop.line.w,
-              height: drag.drop.line.h,
-            }}
-          />
-        )}
+    <div ref={rootRef} className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
+      <div
+        hidden={filled !== null}
+        className={`absolute flex flex-col ${dragged ? MOVING : ""}`}
+        style={boxStyle(shownLayout.chat)}
+      >
+        {chat}
       </div>
+      {shown.map((id) => {
+        let rect: Rect | undefined;
+        if (filled) rect = filled === id ? fillRect : undefined;
+        else rect = dragged === id ? placed.panels[id] : shownLayout.panels[id];
+        const isDragged = dragged === id;
+        const api: DockPanelApi = {
+          id,
+          headerProps: {
+            onPointerDown: (e) => startDrag(id, e),
+            onDoubleClick: (e) => {
+              if (!(e.target as HTMLElement).closest(INTERACTIVE)) setFilled(filled === id ? null : id);
+            },
+          },
+          controls: <DockControls id={id} title={titles[id]} actions={actions} />,
+          frozen,
+          hidden: !rect,
+          boundsKey: rect ? `${rect.x},${rect.y},${rect.w},${rect.h}` : "",
+        };
+        const look = isDragged
+          ? "pointer-events-none z-30 border-[var(--border-hover)] opacity-95 shadow-[0_12px_32px_rgba(0,0,0,0.18)]"
+          : `z-10 border-[var(--panel-edge)] shadow-[var(--panel-shadow)] ${dragged ? MOVING : ""}`;
+        return (
+          <section
+            key={id}
+            aria-label={titles[id]}
+            hidden={!rect}
+            className={`group/panel absolute flex flex-col overflow-hidden rounded-xl border bg-[var(--panel-bg)] ${look}`}
+            style={boxStyle(rect, isDragged && drag ? { transform: `translate(${drag.dx}px, ${drag.dy}px)` } : undefined)}
+          >
+            {!filled && (
+              <div
+                title="Move"
+                className="absolute left-1/2 top-0 z-10 flex h-3 w-14 -translate-x-1/2 cursor-grab justify-center pt-1 active:cursor-grabbing"
+                onPointerDown={(e) => startDrag(id, e)}
+              >
+                <span className="h-1 w-8 rounded-full bg-[var(--fg)] opacity-0 transition-opacity group-hover/panel:opacity-25 hover:!opacity-70 motion-reduce:transition-none" />
+              </div>
+            )}
+            <DockPanelContext.Provider value={api}>{render(id)}</DockPanelContext.Provider>
+          </section>
+        );
+      })}
+      {dragged && preview?.panels[dragged] && (
+        <div
+          aria-hidden="true"
+          className={`pointer-events-none absolute z-20 rounded-xl border-2 border-dashed border-[var(--accent)] bg-[var(--accent-soft)] ${MOVING}`}
+          style={boxStyle(preview.panels[dragged])}
+        />
+      )}
+      {resizable &&
+        placed.gutters.map((gutter) => (
+          <div
+            key={`${gutter.column.side}${gutter.column.index}:${gutter.path.join(".")}:${gutter.index}`}
+            role="separator"
+            aria-orientation={gutter.dir === "row" ? "vertical" : "horizontal"}
+            className={`group/gutter absolute z-10 flex ${
+              gutter.dir === "row" ? "cursor-col-resize justify-center py-3" : "cursor-row-resize flex-col justify-center px-3"
+            }`}
+            style={boxStyle(gutter.rect)}
+            onPointerDown={(e) => startGutter(gutter, e)}
+          >
+            <span className={`${GUTTER_LINE} ${gutter.dir === "row" ? "w-0.5" : "h-0.5"}`} />
+          </div>
+        ))}
+      {resizable &&
+        placed.columnGutters.map(({ column, rect }) => (
+          <div
+            key={`column:${column.side}${column.index}`}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize the panels"
+            className="group/gutter absolute z-10 flex cursor-col-resize justify-center py-3"
+            style={boxStyle(rect)}
+            onPointerDown={(e) => startColumnResize(column, e)}
+          >
+            <span className={`${GUTTER_LINE} w-0.5`} />
+          </div>
+        ))}
     </div>
   );
 }
-
