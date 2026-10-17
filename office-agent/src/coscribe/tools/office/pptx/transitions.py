@@ -250,14 +250,24 @@ def set_slide_transition(slide_element: Any, transition: str, duration: float) -
 def mark_mce_ignorable(root_element: Any, prefix: str) -> None:
     """Add `prefix` to `mc:Ignorable`, which lets `_ooxml_validate.py` tell a real OOXML defect
     from declared p14:/a14: extension content. Registering `mc` makes lxml spell the prefix as
-    PowerPoint does instead of an `ns0` that depends on what else the root declares."""
+    PowerPoint does instead of an `ns0` that depends on what else the root declares.
+
+    The prefix is also declared on the root itself: markup compatibility resolves an Ignorable
+    prefix where the attribute is, and PowerPoint asks to repair a slide whose Ignorable names a
+    prefix only a descendant declares."""
     from lxml import etree
 
     etree.register_namespace("mc", MC_NS)
     existing_tokens = (root_element.get(f"{{{MC_NS}}}Ignorable") or "").split()
-    if prefix in existing_tokens:
-        return
-    root_element.set(f"{{{MC_NS}}}Ignorable", " ".join([*existing_tokens, prefix]))
+    if prefix not in existing_tokens:
+        root_element.set(f"{{{MC_NS}}}Ignorable", " ".join([*existing_tokens, prefix]))
+    uri = next((el.nsmap[prefix] for el in root_element.iter() if prefix in el.nsmap), None)
+    if uri is not None and root_element.nsmap.get(prefix) != uri:
+        etree.cleanup_namespaces(
+            root_element,
+            top_nsmap={prefix: uri},
+            keep_ns_prefixes=[*root_element.nsmap, prefix],
+        )
 
 
 def _unmark_mce_ignorable(root_element: Any, prefix: str) -> None:
