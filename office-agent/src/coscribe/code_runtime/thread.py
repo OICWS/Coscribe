@@ -59,7 +59,6 @@ _POWERSHELL_READS = frozenset(
         "get-content", "gc", "cat", "type",
         "select-string", "sls",
         "get-item", "gi",
-        "format-hex", "fhx",
         "get-location", "gl", "pwd",
         "test-path",
     }

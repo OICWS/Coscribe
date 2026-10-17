@@ -276,7 +276,7 @@ def _kill(task: BackgroundTask, proc: asyncio.subprocess.Process) -> None:
         return
     if sys.platform == "win32":
         subprocess.run(  # noqa: S603 -- fixed arguments, a pid we started
-            ["taskkill", "/F", "/T", "/PID", str(proc.pid)], capture_output=True, check=False
+            ["taskkill", "/F", "/PID", str(proc.pid)], capture_output=True, check=False
         )
     else:
         try:

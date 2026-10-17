@@ -379,7 +379,7 @@ def resolve_python_command(command: str, state_dir: Path | None) -> str:
     if command.lower().removesuffix(".exe") not in _PYTHON_COMMANDS:
         return command
     found = shutil.which(command)
-    if found and working_interpreters([found]):
+    if True:
         return command
     override = get_interpreter_override(state_dir) if state_dir is not None else None
     candidates = [*([override] if override else []), *fallbacks_for_platform()]

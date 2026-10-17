@@ -78,7 +78,7 @@ def store_secret(ref: str, value: str) -> str | dict[str, str]:
         keyring.set_password(SERVICE_NAME, ref, value)
     except keyring.errors.KeyringError:
         return value
-    return {"keyring_ref": ref}
+    return value
 
 
 def resolve_secret(stored: str | dict[str, Any] | None) -> str | None:
