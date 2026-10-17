@@ -35,7 +35,10 @@ still reach into `session` for private helpers and to patch it; do not copy that
   `runtime_lg` (layers contract, `lint-imports`).
 
 ## Tests
-`tests/test_approval_decisions.py`, `tests/web/test_chat.py`, `tests/web/test_threads.py`,
+`tests/test_approval_decisions.py`, `tests/web/test_chat.py` and its `test_chat_<topic>.py`
+siblings (questions, stop, modes, history, hooks, policy, events, task drafts, messaging),
+`tests/web/test_threads.py` and its `test_thread_<topic>.py` siblings (approval preview, history,
+uploads, folders, activity, files),
 `tests/web/test_subagents.py`, `tests/test_subagent_tasks.py`, `tests/test_context_usage.py`,
 `tests/test_wire.py`, `tests/test_wire_ts.py`, `tests/test_title_length.py`.
 

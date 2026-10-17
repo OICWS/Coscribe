@@ -163,7 +163,8 @@ cached read -- if the branch state looks wrong, cross-check with
 ## Test discipline
 
 Tests of the web server live in `tests/web/test_<domain>.py` (chat, threads,
-connectors, settings, skills, scheduled, subagents, internal); a new test goes into
+connectors, settings, skills, scheduled, subagents, internal; chat and threads are split
+into `test_chat_<topic>.py` and `test_thread_<topic>.py`); a new test goes into
 the file of its domain, and fakes and builders shared by several files go into
 `tests/web/helpers.py`. Do not start a new catch-all file.
 
