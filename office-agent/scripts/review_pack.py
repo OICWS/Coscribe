@@ -124,9 +124,7 @@ def render(
         out.append("- none of the files belongs to a component")
     out += ["", "## Invariant paths touched"]
     if invariants:
-        out.append(
-            "These need an independent review (both owners are in .github/CODEOWNERS):"
-        )
+        out.append("These need an independent review (both owners are in .github/CODEOWNERS):")
         out += [f"- `{path}`" for path in invariants]
     else:
         out.append("- none")
