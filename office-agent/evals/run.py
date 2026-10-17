@@ -5,6 +5,7 @@
     python -m evals.run --check-only --out evals/runs/baseline    # re-check, no model calls
     python -m evals.run --kind xlsx --out evals/runs/excel        # the Excel tasks
     python -m evals.run --kind docx --out evals/runs/word         # the Word tasks
+    python -m evals.run --language sections --out evals/runs/slides   # decks as HTML sections
 
 Each task gets a fresh workspace holding its input files; its brief is sent as one user
 message to a `ChatSessionLG` that acts without asking (the tier of a scheduled run), the
@@ -42,6 +43,12 @@ DEFAULT_EFFORT = "low"
 EFFORT_LEVELS = ("low", "medium", "high", "extra", "max", "ultra")
 DEFAULT_TIMEOUT = 1800.0
 DEEPSEEK_URL = "https://api.deepseek.com/v1"
+# How new decks are written: the SVG pages the product ships, or the HTML sections of decision
+# 0015, which replace them only if they measure at least level.
+LANGUAGES = ("pages", "sections")
+SECTIONS_GUIDE = (
+    Path(__file__).resolve().parents[1] / "src/coscribe/tools/office/pptx/engine/sections_guide"
+)
 # What a task of each kind produces and how it is checked.
 SUFFIXES = {"pptx": ".pptx", "xlsx": ".xlsx", "docx": ".docx"}
 CHECKERS = {"pptx": check_deck, "xlsx": check_workbook, "docx": check_document}
@@ -160,6 +167,7 @@ def _build_session(
     model: str,
     thread_id: str,
     effort: str = DEFAULT_EFFORT,
+    language: str = "pages",
 ) -> Any:
     from langgraph.checkpoint.memory import InMemorySaver
 
@@ -182,6 +190,10 @@ def _build_session(
         # what the same level means to a user.
         default_effort=effort,
     )
+    if language == "sections":
+        target = settings.skills_dir / "slides"
+        target.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(SECTIONS_GUIDE / "SKILL.md", target / "SKILL.md")
     providers = {"deepseek": {"base_url": DEEPSEEK_URL, "api_key": os.environ["DEEPSEEK_API_KEY"]}}
     session = ChatSessionLG(
         thread_id=thread_id,
@@ -215,6 +227,24 @@ def _find_output(
 
 
 @contextlib.contextmanager
+def deck_language(language: str) -> Iterator[None]:
+    """The coordinator's new-deck paragraph for `language`, for the whole run (tasks overlap, so
+    it is not installed per task)."""
+    if language == "pages":
+        yield
+        return
+    from coscribe import coordinator
+
+    original = coordinator.NEW_DECK_INSTRUCTIONS
+    paragraph = (SECTIONS_GUIDE / "instructions.md").read_text(encoding="utf-8").strip()
+    coordinator.NEW_DECK_INSTRUCTIONS = paragraph
+    try:
+        yield
+    finally:
+        coordinator.NEW_DECK_INSTRUCTIONS = original
+
+
+@contextlib.contextmanager
 def measured_models() -> Iterator[None]:
     """Every model the sessions build reports its usage to the task that is running. Installed
     once around the whole run: tasks overlap, so a patch made and undone per task would drop or
@@ -243,6 +273,7 @@ async def run_task(
     model: str,
     effort: str,
     timeout: float,
+    language: str = "pages",
 ) -> dict[str, Any]:
     # A relative path would reach the agent's tools as relative to their own working directory.
     task_out = out.resolve() / task.name
@@ -264,7 +295,7 @@ async def run_task(
     status, error = "ok", None
     started = time.monotonic()
     try:
-        session = _build_session(task_out, workspace, model, task.name, effort)
+        session = _build_session(task_out, workspace, model, task.name, effort, language)
         recorder.session = session
         await asyncio.wait_for(session.handle_user_message(task.brief, recorder), timeout)
         if recorder.errors:
@@ -281,6 +312,7 @@ async def run_task(
         "kind": task.kind,
         "model": model,
         "effort": effort,
+        "language": language,
         "effort_runs_as": getattr(recorder.session, "_effort_runs_as", None),
         "status": status,
         "error": error,
@@ -476,7 +508,9 @@ async def run_all(args: argparse.Namespace, tasks: list[Task], out: Path) -> Non
             print(f"start {task.name}", flush=True)
             # A dropped connection before the model answered once says nothing about the agent.
             for _ in range(3):
-                result = await run_task(task, out, args.model, args.effort, args.timeout)
+                result = await run_task(
+                    task, out, args.model, args.effort, args.timeout, args.language
+                )
                 answered = result["model_calls"] or result["tool_call_count"] or result["messages"]
                 if result["status"] != "error" or answered:
                     break
@@ -508,6 +542,9 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_EFFORT,
         help="the level a user would pick; each model runs the nearest one it supports",
     )
+    parser.add_argument(
+        "--language", choices=LANGUAGES, default="pages", help="how new decks are written"
+    )
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT, help="seconds per task")
     parser.add_argument("--jobs", type=int, default=2, help="tasks run at the same time")
     parser.add_argument("--check-only", action="store_true", help="re-check an earlier run")
@@ -523,7 +560,7 @@ def main(argv: list[str] | None = None) -> int:
         if "DEEPSEEK_API_KEY" not in os.environ:
             print("DEEPSEEK_API_KEY is not set", file=sys.stderr)
             return 1
-        with measured_models():
+        with measured_models(), deck_language(args.language):
             asyncio.run(run_all(args, tasks, out))
     write_summary(out, discover("all", kind=args.kind), args.kind)
     print((out / "summary.md").read_text(encoding="utf-8"))

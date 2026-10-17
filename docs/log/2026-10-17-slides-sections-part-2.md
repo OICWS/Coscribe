@@ -40,10 +40,15 @@ Why: a section must say everything an SVG page can before the two are measured a
   - A folder of sections building, and refusing to overwrite a deck changed in PowerPoint.
   - A folder that mixes kinds.
 
+## Checked on Windows (the maintainer, PowerPoint, 2026-10-17)
+- A first deck with build-ins on a table and a chart asked to be repaired. Its timing named
+  them but its build list did not; each animated chart or table now gets a `bldGraphic` entry
+  and each text box a `bldP`, and a deck with build-ins only opens cleanly and plays them.
+- Decks with Morph still asked to be repaired: the cause was in the existing transition code
+  (Ignorable prefixes not declared on the slide root), fixed in #400. After it, Morph, Push and
+  Fade open cleanly and play.
+
 ## Not verified
-- Morph between two section slides and the three build-ins, played in PowerPoint on Windows.
-  The transition and animation XML come from the tools that already write them for edited
-  decks.
 - The deck order still follows file names. `deck.json` (order, sections, the app's state) comes
   with the panel that edits a deck.
 
