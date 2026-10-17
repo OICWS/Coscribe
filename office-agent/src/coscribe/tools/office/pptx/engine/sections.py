@@ -192,7 +192,9 @@ def _convert(
 def _text(element: TextElement, report: PageReport) -> TextBox:
     x, y, width, height = element.box
     inner = width - 2 * element.padding
-    needed = text_height(element.paragraphs, inner, element.line_height) + 2 * element.padding
+    measured_width = float("inf") if element.nowrap else inner
+    needed = text_height(element.paragraphs, measured_width, element.line_height)
+    needed += 2 * element.padding
     if needed > height + _TOLERANCE_PX:
         report.errors.append(
             f"{element.label}: its text needs {needed:.0f} px of height and the box has "
@@ -221,6 +223,7 @@ def _text(element: TextElement, report: PageReport) -> TextBox:
         padding=element.padding,
         fill=element.fill,
         fits_text=fits,
+        nowrap=element.nowrap,
     )
 
 

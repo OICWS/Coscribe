@@ -29,11 +29,13 @@ class TextBox:
     bullets: str | None  # None, "bullet" or "number"
     align: str  # l, ctr, r, just
     anchor: str  # t, ctr, b
-    line_height: float
+    line_height: float | None  # None: the font's own single spacing
     padding: float = 0.0
     fill: str | None = None
     # A box drawn to its text's height grows with its text when edited in PowerPoint.
     fits_text: bool = False
+    # Lines break only where the text says (a converted SVG page's text), never at the width.
+    nowrap: bool = False
 
 
 def text_box_xml(box: TextBox) -> str:
@@ -45,19 +47,24 @@ def text_box_xml(box: TextBox) -> str:
     # A text body needs at least one paragraph, even an empty one.
     paragraphs = "".join(_paragraph(p, box, i) for i, p in enumerate(box.paragraphs)) or "<a:p/>"
     autofit = "<a:spAutoFit/>" if box.fits_text else "<a:noAutofit/>"
+    wrap = "none" if box.nowrap else "square"
     return (
         f'<p:sp><p:nvSpPr><p:cNvPr id="{box.shape_id}" name="{_attr(box.name)}"/>'
         '<p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>'
         f'<p:spPr><a:xfrm><a:off x="{x}" y="{y}"/><a:ext cx="{w}" cy="{h}"/></a:xfrm>'
         f'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>{fill}</p:spPr>'
-        f'<p:txBody><a:bodyPr wrap="square" lIns="{inset}" tIns="{inset}" rIns="{inset}" '
+        f'<p:txBody><a:bodyPr wrap="{wrap}" lIns="{inset}" tIns="{inset}" rIns="{inset}" '
         f'bIns="{inset}" anchor="{box.anchor}" rtlCol="0">{autofit}</a:bodyPr>'
         f"<a:lstStyle/>{paragraphs}</p:txBody></p:sp>"
     )
 
 
 def _paragraph(paragraph: Paragraph, box: TextBox, index: int) -> str:
-    spacing = _points(paragraph.size * box.line_height)
+    spacing = (
+        f'<a:lnSpc><a:spcPts val="{_points(paragraph.size * box.line_height)}"/></a:lnSpc>'
+        if box.line_height is not None
+        else ""
+    )
     before = (
         f'<a:spcBef><a:spcPts val="{_points(paragraph.space_before)}"/></a:spcBef>'
         if index and paragraph.space_before
@@ -70,7 +77,7 @@ def _paragraph(paragraph: Paragraph, box: TextBox, index: int) -> str:
     runs = "".join(_runs(paragraph.runs))
     end = _run_properties(paragraph.runs[-1], "a:endParaRPr") if paragraph.runs else ""
     return (
-        f'<a:p><a:pPr algn="{box.align}"{margins}><a:lnSpc><a:spcPts val="{spacing}"/></a:lnSpc>'
+        f'<a:p><a:pPr algn="{box.align}"{margins}>{spacing}'
         f"{before}{bullet}</a:pPr>{runs}{end}</a:p>"
     )
 
@@ -101,6 +108,7 @@ def _run_properties(run: Run, tag: str) -> str:
     lang = "zh-CN" if any(is_cjk_char(ch) for ch in run.text) else "en-US"
     flags = (' b="1"' if font.bold else "") + (' i="1"' if font.italic else "")
     flags += ' u="sng"' if run.underline else ""
+    flags += f' spc="{_points(font.tracking)}"' if font.tracking else ""
     return (
         f'<{tag} lang="{lang}" sz="{_points(font.size)}"{flags} dirty="0">'
         f'<a:solidFill><a:srgbClr val="{run.colour}"/></a:solidFill>'

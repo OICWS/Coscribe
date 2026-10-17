@@ -25,12 +25,18 @@ _NO_LINE_START = set("，。、；：？！）」』》〉】〕’”…—%‰
 _NO_LINE_END = set("（「『《〈【〔‘“([{")
 
 
+# PowerPoint's single line spacing is the face's own height: 1.32 em for Microsoft YaHei, the
+# tallest of the default faces, so a box measured with it holds the text in any of them.
+NORMAL_LINE_HEIGHT = 1.32
+
+
 @dataclass(frozen=True)
 class Font:
     family: str
     size: float  # px on the 1920-wide canvas
     bold: bool = False
     italic: bool = False
+    tracking: float = 0.0  # px added after each character (letter-spacing)
 
 
 @dataclass(frozen=True)
@@ -75,9 +81,10 @@ def line_count(paragraph: Paragraph, width: float) -> int:
     return lines
 
 
-def text_height(paragraphs: Sequence[Paragraph], width: float, line_height: float) -> float:
+def text_height(paragraphs: Sequence[Paragraph], width: float, line_height: float | None) -> float:
     """Px the paragraphs take at `width`, with exact line spacing `line_height` times each
-    paragraph's size, as the compiled text box sets it."""
+    paragraph's size, as the compiled text box sets it; None is the font's own single spacing."""
+    line_height = NORMAL_LINE_HEIGHT if line_height is None else line_height
     total = 0.0
     for i, paragraph in enumerate(paragraphs):
         if i:
@@ -122,7 +129,7 @@ def _clusters(run: Run) -> Iterator[tuple[str, float]]:
                 font_family=font.family,
                 font_style="italic" if font.italic else "normal",
             )
-            yield from zip(clusters, widths, strict=True)
+            yield from ((c, w + font.tracking) for c, w in zip(clusters, widths, strict=True))
 
 
 def _breaks_between(before: str, after: str, spaced: bool) -> bool:

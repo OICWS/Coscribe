@@ -5,8 +5,9 @@ and rebuilt only while the .pptx is still what they built (decision 0010).
 instructions say so, and the built-in skill "PPTX Pages" (`builtin_skills/pptx-pages/`) is the
 guide the agent loads first.
 
-`sections.py` compiles the other source language, positioned HTML sections (decision 0015). No
-tool uses it yet: it replaces the SVG pages only if the deck evaluation says it is at least level.
+`sections.py` compiles the other source language, positioned HTML sections (decision 0015): a
+slide becomes one when it is first edited (decision 0016), converted with its content unchanged
+by `svg_to_section.py`. Nothing calls either yet.
 """
 
 from .build import (
@@ -21,6 +22,7 @@ from .build import (
 from .checker import check_deck, source_text
 from .compiler import TITLE_ID, CompileReport, PageReport, compile_pages
 from .sections import check_sections, compile_sections
+from .svg_to_section import convert_page
 
 __all__ = [
     "MANIFEST",
@@ -35,6 +37,7 @@ __all__ = [
     "check_sections",
     "compile_pages",
     "compile_sections",
+    "convert_page",
     "page_files",
     "slide_hashes",
     "source_text",
