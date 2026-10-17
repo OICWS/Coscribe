@@ -148,8 +148,10 @@ Then write `design.md` in the deck folder, short, with exactly these parts:
   line 20-21.
 - **Grid**: margins (84-120 px), columns, the gap between blocks, the corner radius (0 for a
   hard-edged style).
-- **Recurring elements**: what sits in the same place on every content slide (a header rule, a
-  section index, a source line) and what the cover and the section slides share.
+- **Recurring elements**: what sits in the same place on every content slide and what the cover
+  and the section slides share. A content slide carries, above its title, a small label with the
+  section's index and name ("02 / 区域表现"), and a footer line: the source on the left ("数据来源：
+  公司季度经营数据（万元）"), "03 / 06" on the right, both at source-line size.
 - **Slides**: one line each, its role and its composition (a hero number, chart and takeaway, a
   table, a comparison, a timeline, cards...). No three slides in a row with the same
   composition; a dense slide is followed by a lighter one.
@@ -184,8 +186,16 @@ Pick the structure from how the content relates, not from habit:
 | A whole and its parts | A centre with satellites, or a stacked bar |
 
 Vary the structure from slide to slide; a deck of identical card grids reads as a template.
-After a dense slide, a lighter one. A card is an `x-shape` (round-rect) with its texts placed
-over it, each inside the card's box with the card's padding.
+After a dense slide, a lighter one.
+
+Blocks side by side share their top and bottom edges: a table or chart beside a column of cards
+is given the cards' full height (a table's rows share its box height evenly), and nothing leaves a
+hollow under one block that the next block fills.
+
+A card is an `x-shape` surface with its texts placed over it, inside the card's padding. A card
+that stands for a finding gets a 6 px accent bar down its left edge (a second `x-shape` in the
+accent or the alert colour), a small label above its headline at annotation size in that colour
+("需要解释的偏差", "新市场"), then the headline figure, then one or two lines of explanation.
 
 ## Type and colour
 
@@ -216,6 +226,10 @@ its data in PowerPoint.
 </x-chart>
 ```
 
+- A table or chart has a caption above it at annotation size that names what it shows and its
+  unit ("分区域营收（万元）"); its column headers and series names stay short ("Q2", "Q3")
+  without the unit. A caveat about the data ("西南、东南亚为本季度新进入市场，不计算环比") is a
+  footnote line under it.
 - The JSON holds the data and its look; the box is the element's style, never in the JSON.
 - `type`: column, bar (horizontal; categories top-down), line, area, pie, doughnut. Several
   series for a comparison, with `"show_legend": true`; `point_colors` on a column or bar series
@@ -229,9 +243,11 @@ its data in PowerPoint.
   axis: the reader, and the checks, read the figure there.
 
 ```html
+<p id="regions-caption" style="left:1020px;top:220px;width:804px;height:40px;font-size:24px;
+   color:#6B7280">分区域营收（万元）</p>
 <table id="regions" style="left:1020px;top:270px;width:804px;height:390px;font-size:27px;
        border-color:#E5E7EB">
-  <tr><th style="background:#0F172A;color:#FFFFFF">区域</th><th>营收（万元）</th><th>同比</th></tr>
+  <tr><th style="background:#0F172A;color:#FFFFFF">区域</th><th>Q3</th><th>同比</th></tr>
   <tr><td>华东</td><td style="text-align:right">5,410</td>
       <td style="text-align:right;color:#15803D;font-weight:bold">+12.2%</td></tr>
   <tr><td>华北</td><td style="text-align:right">2,120</td><td style="text-align:right">-3.1%</td></tr>
