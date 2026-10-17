@@ -19,7 +19,7 @@ import { pageAgent } from "./browserAgentPage";
 import { type AgentFrame, type Download, type PageDialog, type TabCdp, cdpFor, existingCdp } from "./browserCdp";
 import { inSites, isAllowed, normalizeSite, requestPermission } from "./browserPermissions";
 import {
-  BROWSER_AGENT_EVENT,
+  sendAgentEvent,
   MAX_TABS,
   activeTab,
   allTabs,
@@ -799,10 +799,6 @@ export function startBrowserAgent(port: number, token: string, getWindow: () => 
   let frameOffTimer: ReturnType<typeof setTimeout> | undefined;
   onTabDownload(onDownload);
 
-  const notify = (payload: Record<string, unknown>) => {
-    const win = getWindow();
-    if (win && !win.isDestroyed()) win.webContents.send(BROWSER_AGENT_EVENT, payload);
-  };
 
   const reply = async (id: string, body: Record<string, unknown>) => {
     try {
@@ -831,7 +827,7 @@ export function startBrowserAgent(port: number, token: string, getWindow: () => 
     // the user is on another page, where every step would wait in vain.
     const win = getWindow();
     if (!isPanelOpen() && win?.isVisible() && !win.isMinimized()) {
-      notify({ open: true, threadId: command.thread_id });
+      sendAgentEvent({ open: true, threadId: command.thread_id });
       const declined = panelDeclinedAt.get(command.thread_id) ?? 0;
       if (Date.now() - declined > PANEL_RETRY_MS && !(await waitForPanelOpen(5000))) {
         panelDeclinedAt.set(command.thread_id, Date.now());
@@ -859,7 +855,7 @@ export function startBrowserAgent(port: number, token: string, getWindow: () => 
     // The AI's steps land on the live page, so an annotation in progress
     // gives way (the panel drops its drawing when it sees "busy").
     setViewHidden(false);
-    notify({ busy: true, threadId: command.thread_id, action: command.action });
+    sendAgentEvent({ busy: true, threadId: command.thread_id, action: command.action });
     clearTimeout(frameOffTimer);
     const frameTab = command.action === "tabs" ? undefined : ensureActiveTab();
     if (frameTab && !frameTab.blank) void inPage(frameTab.view.webContents, "agent_frame", { on: true }).catch(() => undefined);
@@ -871,7 +867,7 @@ export function startBrowserAgent(port: number, token: string, getWindow: () => 
       await reply(command.id, { ok: false, error: err instanceof Error ? err.message : String(err) });
     } finally {
       running = null;
-      notify({ busy: false, threadId: command.thread_id });
+      sendAgentEvent({ busy: false, threadId: command.thread_id });
       // Steps come a few seconds apart while the model thinks; the frame
       // stays up between them instead of flickering.
       frameOffTimer = setTimeout(() => {

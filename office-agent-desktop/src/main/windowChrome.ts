@@ -15,6 +15,7 @@ const SHOW_APP_MENU_CHANNEL = "window:show-app-menu";
 const SET_TITLE_BAR_COLORS_CHANNEL = "window:set-title-bar-colors";
 const SHOW_SHORTCUTS_CHANNEL = "app:show-shortcuts";
 const SET_THEME_SOURCE_CHANNEL = "window:set-theme-source";
+const SET_TITLE_BAR_HEIGHT_CHANNEL = "window:set-title-bar-height";
 
 // What the page does for a menu item: the page owns conversations,
 // Settings and the composer, so the menu only names the command. Sent as
@@ -53,14 +54,24 @@ function defaultColors(): TitleBarColors {
     : { color: "#fcfcfb", symbolColor: "#201e1d" };
 }
 
-export function titleBarWindowOptions(): BrowserWindowConstructorOptions {
+// A panel's own window has the panel's header as its top row, so its
+// OS buttons are centred on that header instead of the main title bar.
+const overlayHeights = new WeakMap<BrowserWindow, number>();
+const overlayColors = new WeakMap<BrowserWindow, TitleBarColors>();
+
+export function titleBarWindowOptions(height = TITLE_BAR_HEIGHT): BrowserWindowConstructorOptions {
   const colors = defaultColors();
   return {
     titleBarStyle: "hidden",
     backgroundColor: colors.color,
     autoHideMenuBar: true,
-    titleBarOverlay: { ...colors, height: TITLE_BAR_HEIGHT },
+    titleBarOverlay: { ...colors, height },
   };
+}
+
+function applyOverlay(win: BrowserWindow): void {
+  const colors = overlayColors.get(win) ?? defaultColors();
+  win.setTitleBarOverlay({ ...colors, height: overlayHeights.get(win) ?? TITLE_BAR_HEIGHT });
 }
 
 function goBy(win: BrowserWindow | undefined, offset: 1 | -1): void {
@@ -164,6 +175,15 @@ export function registerWindowChromeHandlers(): void {
     if (!win) return;
     if (!isColor(colors?.color) || !isColor(colors?.symbolColor)) return;
     win.setBackgroundColor(colors.color);
-    win.setTitleBarOverlay({ color: colors.color, symbolColor: colors.symbolColor, height: TITLE_BAR_HEIGHT });
+    overlayColors.set(win, { color: colors.color, symbolColor: colors.symbolColor });
+    applyOverlay(win);
+  });
+
+  ipcMain.on(SET_TITLE_BAR_HEIGHT_CHANNEL, (event, height: unknown) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const value = Math.round(Number(height));
+    if (!win || !Number.isFinite(value)) return;
+    overlayHeights.set(win, Math.max(32, Math.min(72, value)));
+    applyOverlay(win);
   });
 }

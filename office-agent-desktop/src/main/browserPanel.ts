@@ -25,7 +25,7 @@ import {
   ipcMain,
   session,
   shell,
-  type BrowserWindow,
+  BrowserWindow,
   type Rectangle,
   type DownloadItem,
   type Session,
@@ -416,8 +416,33 @@ async function handlePicked(tab: Tab, info: PickedElementInfo): Promise<void> {
   });
 }
 
-function openPanel(window: BrowserWindow, rect: PanelRect): void {
+/** The window showing the panel: the main window, or the panel's own
+ * window once it is opened there. The tab views move with it. */
+function setHost(window: BrowserWindow): void {
+  if (win === window) return;
+  if (win && !win.isDestroyed()) {
+    for (const tab of tabs) {
+      if (win.contentView.children.includes(tab.view)) win.contentView.removeChildView(tab.view);
+    }
+  }
   win = window;
+}
+
+function isHost(sender: WebContents): boolean {
+  return BrowserWindow.fromWebContents(sender) === win;
+}
+
+/** A panel window closing hands the views back to the main window. */
+export function releaseBrowserPanelHost(window: BrowserWindow, mainWindow: BrowserWindow): void {
+  if (win !== window) return;
+  panelRect = null;
+  viewHidden = false;
+  setHost(mainWindow);
+  layout();
+}
+
+function openPanel(window: BrowserWindow, rect: PanelRect): void {
+  setHost(window);
   panelRect = rect;
   ensureActiveTab();
   layout();
@@ -449,7 +474,7 @@ export function registerBrowserPanelHandlers(window: BrowserWindow): void {
   // view, a native layer, would otherwise stay painted over whatever the
   // page shows next.
   window.webContents.on("did-start-navigation", (details) => {
-    if (details.isMainFrame && !details.isSameDocument && panelRect) closePanel();
+    if (details.isMainFrame && !details.isSameDocument && panelRect && win === window) closePanel();
   });
   ipcMain.on(CONTENT_PICKED_CHANNEL, (event, info: PickedElementInfo) => {
     const tab = tabFor(event.sender);
@@ -460,13 +485,20 @@ export function registerBrowserPanelHandlers(window: BrowserWindow): void {
     const wc = tabFor(event.sender)?.view.webContents;
     if (wc) wc.setZoomFactor(clampZoomFactor(wc.getZoomFactor() * (1 - deltaY * 0.001)));
   });
-  ipcMain.handle(BROWSER_PANEL_OPEN_CHANNEL, (_event, rect: PanelRect) => openPanel(window, rect));
-  ipcMain.handle(BROWSER_PANEL_REPOSITION_CHANNEL, (_event, rect: PanelRect) => {
-    if (!panelRect) return;
+  ipcMain.handle(BROWSER_PANEL_OPEN_CHANNEL, (event, rect: PanelRect) => {
+    const host = BrowserWindow.fromWebContents(event.sender);
+    if (host) openPanel(host, rect);
+  });
+  // Moving the panel to its own window unmounts it in one window as it
+  // mounts in the other, in either order: only the host moves or closes it.
+  ipcMain.handle(BROWSER_PANEL_REPOSITION_CHANNEL, (event, rect: PanelRect) => {
+    if (!panelRect || !isHost(event.sender)) return;
     panelRect = rect;
     layout();
   });
-  ipcMain.handle(BROWSER_PANEL_CLOSE_CHANNEL, () => closePanel());
+  ipcMain.handle(BROWSER_PANEL_CLOSE_CHANNEL, (event) => {
+    if (isHost(event.sender)) closePanel();
+  });
   ipcMain.handle(BROWSER_PANEL_NAVIGATE_CHANNEL, (_event, url: string) => {
     void ensureActiveTab().view.webContents.loadURL(normalizeUrl(url)).catch(() => undefined);
   });
@@ -498,11 +530,14 @@ export function registerBrowserPanelHandlers(window: BrowserWindow): void {
     const info = tabInfo(tab);
     return { dataUrl: image.toDataURL(), title: info.title, url: info.url };
   });
-  ipcMain.handle(BROWSER_PANEL_SET_VIEW_HIDDEN_CHANNEL, (_event, hidden: boolean) => setViewHidden(Boolean(hidden)));
-  ipcMain.on(BROWSER_PANEL_SHOW_MENU_CHANNEL, (_event, position: { x: number; y: number }) => {
+  ipcMain.handle(BROWSER_PANEL_SET_VIEW_HIDDEN_CHANNEL, (event, hidden: boolean) => {
+    if (isHost(event.sender)) setViewHidden(Boolean(hidden));
+  });
+  ipcMain.on(BROWSER_PANEL_SHOW_MENU_CHANNEL, (event, position: { x: number; y: number }) => {
+    const menuWindow = BrowserWindow.fromWebContents(event.sender) ?? window;
     const tab = activeTab();
     Menu.buildFromTemplate([
-      { label: "Save screenshot…", enabled: Boolean(tab && !tab.blank), click: () => void saveScreenshot(window) },
+      { label: "Save screenshot…", enabled: Boolean(tab && !tab.blank), click: () => void saveScreenshot(menuWindow) },
       {
         label: "Close other tabs",
         enabled: tabs.length > 1,
@@ -519,11 +554,11 @@ export function registerBrowserPanelHandlers(window: BrowserWindow): void {
       },
       {
         label: "Manage allowed sites…",
-        click: () => window.webContents.send(BROWSER_PANEL_SHOW_ALLOWED_SITES_EVENT),
+        click: () => menuWindow.webContents.send(BROWSER_PANEL_SHOW_ALLOWED_SITES_EVENT),
       },
       { type: "separator" },
-      { label: "Clear browsing data…", click: () => void clearBrowsingData(window) },
-    ]).popup({ window, x: Math.round(Number(position?.x) || 0), y: Math.round(Number(position?.y) || 0) });
+      { label: "Clear browsing data…", click: () => void clearBrowsingData(menuWindow) },
+    ]).popup({ window: menuWindow, x: Math.round(Number(position?.x) || 0), y: Math.round(Number(position?.y) || 0) });
   });
 }
 
@@ -542,6 +577,14 @@ async function saveScreenshot(window: BrowserWindow): Promise<void> {
 /** A link clicked in the app's own pages (a chat message, say): into a
  * tab of the Browser panel, or the user's own browser if they've turned
  * that off. The app window itself never navigates away. */
+/** The AI's use of the browser, to every window: the panel may be in one
+ * of its own, and the main window still answers `open`. */
+export function sendAgentEvent(payload: Record<string, unknown>): void {
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (!window.isDestroyed()) window.webContents.send(BROWSER_AGENT_EVENT, payload);
+  }
+}
+
 export function openLinkFromApp(url: string): void {
   if (!/^https?:\/\//i.test(url)) {
     if (/^mailto:/i.test(url)) void shell.openExternal(url);

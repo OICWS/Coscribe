@@ -8,6 +8,8 @@ export interface DockPanelApi {
   headerProps: {
     onPointerDown: (e: PointerEvent<HTMLElement>) => void;
     onDoubleClick: (e: React.MouseEvent<HTMLElement>) => void;
+    /** Marks the header: in a panel's own window it is the title bar. */
+    "data-dock-header": true;
   };
   controls: ReactNode;
   /** A panel is being dragged or the Move menu is open: page content drawn
@@ -23,7 +25,7 @@ const noop = () => {};
 
 const OUTSIDE_DOCK: DockPanelApi = {
   id: null,
-  headerProps: { onPointerDown: noop, onDoubleClick: noop },
+  headerProps: { onPointerDown: noop, onDoubleClick: noop, "data-dock-header": true },
   controls: null,
   frozen: false,
   hidden: false,

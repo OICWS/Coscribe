@@ -212,6 +212,17 @@ declare global {
       showAppMenu?(x: number, y: number): void;
       setTitleBarColors?(color: string, symbolColor: string): void;
       setThemeSource?(theme: string): void;
+      setTitleBarHeight?(height: number): void;
+      openPanelWindow?(request: unknown): Promise<void>;
+      focusPanelWindow?(panel: string): Promise<void>;
+      listPanelWindows?(): Promise<string[]>;
+      sendPanelWindowState?(panel: string, state: unknown): void;
+      onPanelWindowAction?(callback: (payload: unknown) => void): () => void;
+      onPanelWindowClosed?(callback: (payload: unknown) => void): () => void;
+      onPanelWindowState?(callback: (payload: unknown) => void): () => void;
+      sendPanelWindowAction?(action: unknown): void;
+      dockPanelWindow?(): void;
+      setPanelWindowPinned?(pinned: boolean): Promise<boolean>;
       onShowShortcuts?(callback: () => void): void;
       pickFolder(): Promise<string | null>;
       browserPanelOpen(rect: BrowserPanelRect): Promise<void>;

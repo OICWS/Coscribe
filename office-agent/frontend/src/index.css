@@ -465,6 +465,14 @@ body {
   app-region: no-drag;
 }
 
+/* A panel in a window of its own: its header is the title bar. */
+.panel-window [data-dock-header] {
+  app-region: drag;
+}
+.panel-window [data-dock-header] :is(button, input, textarea, select, a, [role="menu"], [role="button"], [role="tab"], [role="dialog"]) {
+  app-region: no-drag;
+}
+
 /* Keeps the row's content clear of the OS window buttons drawn over its
    right end (Window Controls Overlay); zero everywhere else. */
 .titlebar-controls-space {

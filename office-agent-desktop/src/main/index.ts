@@ -17,6 +17,7 @@ import { registerWindowChromeHandlers } from "./windowChrome";
 import { registerBrowserPanelHandlers, destroyBrowserPanel } from "./browserPanel";
 import { startBrowserAgent } from "./browserAgent";
 import { registerBrowserPermissionHandlers } from "./browserPermissions";
+import { registerPanelWindowHandlers } from "./panelWindows";
 
 // MUST run before anything else touches the window: a second launch
 // fires the 'second-instance' handler below in the ALREADY-running
@@ -48,6 +49,7 @@ if (!gotLock) {
     registerDialogHandlers(win);
     registerBrowserPanelHandlers(win);
     registerBrowserPermissionHandlers(win);
+    registerPanelWindowHandlers(win, preloadPath());
     startBrowserAgent(port, browserHostToken, () => (win.isDestroyed() ? BrowserWindow.getAllWindows()[0] : win));
     createTray(iconsDirFromApp(), showMainWindow, () => {
       markQuitting();
