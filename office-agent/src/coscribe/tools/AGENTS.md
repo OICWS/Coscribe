@@ -9,8 +9,7 @@ environments (`scripts.py`, `node_scripts.py`, `script_guard.py`, `script_env.py
 `memory.py`, `interaction.py`, `selfwake.py`, `scheduled_tasks.py`, `subagent_tasks.py`,
 `background_tasks.py`, `conversations.py`) and the connector config and permissions (`mcp.py`,
 `connector_permissions.py`). Does not own the agent loop or approvals (`runtime_lg/`), the
-routes (`web/`) or the coordinator's tool list (`coordinator.py`). Word, Excel, PowerPoint and
-PDF have their own cards in `office/<format>/`; read those instead of this one for them.
+routes (`web/`) or the coordinator's tool list (`coordinator.py`). Word, Excel, PowerPoint and PDF have cards in `office/<format>/`.
 
 ## Public interface
 Factories: `build_file_tools`, `build_document_tools`, `build_spreadsheet_tools`,
@@ -54,8 +53,8 @@ Factories: `build_file_tools`, `build_document_tools`, `build_spreadsheet_tools`
 `tests/test_script_env.py`, the `tests/test_*_golden.py` files and `tests/test_tool_schema_snapshot.py`.
 
 ## Verify by hand
-Output opened in the real Office on Windows; a script run with no Python or Node installed;
-the browser tools against a real page.
+Office output in the real Office on Windows; a script with no Python or Node installed; the
+browser tools against a real page.
 
 ## Reviewed
 2026-10-14 (first card).
