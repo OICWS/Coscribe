@@ -114,6 +114,24 @@ def test_set_pptx_transition_supports_a_p159_extension_effect(tmp_path: Path) ->
     assert set(ignorable) == {"p14", "p159"}
 
 
+def test_every_ignorable_prefix_is_declared_on_the_slide_root(tmp_path: Path) -> None:
+    """PowerPoint asks to repair a slide whose mc:Ignorable names a prefix only a descendant
+    declares (found on Windows with a Morph transition); the saved root must declare each one."""
+    import zipfile
+
+    from lxml import etree
+
+    tools = _tools_by_name(tmp_path)
+    tools["write_pptx"](path="deck.pptx", content="# Title\n- body")
+    tools["set_pptx_transition"](path="deck.pptx", slide=1, transition="morph")
+
+    with zipfile.ZipFile(tmp_path / "deck.pptx") as package:
+        root = etree.fromstring(package.read("ppt/slides/slide1.xml"))
+    ignorable = (root.get(f"{{{_MC_NS}}}Ignorable") or "").split()
+    assert ignorable and all(prefix in root.nsmap for prefix in ignorable)
+    assert root.nsmap["p159"] == _P159_NS
+
+
 def test_set_pptx_transition_switching_namespaces_cleans_up_the_old_prefix(
     tmp_path: Path,
 ) -> None:

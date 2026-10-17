@@ -277,7 +277,7 @@
   <Relationship Id="rId1" Target="../slideLayouts/slideLayout2.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"/>
 </Relationships>
 ===== ppt/slides/slide1.xml
-<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="p14">
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" mc:Ignorable="p14">
   <p:cSld>
     <p:spTree>
       <p:nvGrpSpPr>
@@ -338,7 +338,7 @@
   <p:clrMapOvr>
     <a:masterClrMapping/>
   </p:clrMapOvr>
-  <p:transition xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" spd="med" p14:dur="800">
+  <p:transition spd="med" p14:dur="800">
     <p:fade/>
   </p:transition>
 </p:sld>
