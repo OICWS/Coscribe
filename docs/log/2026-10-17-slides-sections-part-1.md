@@ -50,10 +50,19 @@ PR 1 of 4). This part is the language and the compiler; nothing calls it yet.
   - Thirteen refusals, and spaces at line ends dropped as in HTML.
   - Line breaking, punctuation rules and long words.
 
+## Checked on Windows (the maintainer, PowerPoint, 2026-10-17)
+- `scripts/sections_wrap_check.py`'s deck, the 32 px / 420 px slide:
+  - The two Chinese paragraphs break into the same lines as predicted (3 and 4).
+  - The long English paragraph breaks into the predicted 7 lines.
+  - The short English one fits on 3 lines where 4 were predicted. "Revenue grew 23.5% to 54.1"
+    is 412.7 px by our advances, which PowerPoint fits in the 420 px line; the compiler breaks
+    at 97% (407 px). The error is on the safe side: the box is one line taller than the text.
+- In the first version of that deck, the last box ran past the bottom of the slide, so its last
+  line was cut by the slide edge, not by the box. The script now stacks the boxes by their
+  heights and starts a new column when a slide is full.
+
 ## Not verified
-- PowerPoint's own line breaks on Windows: the overflow check is only as good as they match
-  `text_layout`. Open the deck `scripts/sections_wrap_check.py` writes: text below a tinted box
-  is a mismatch. LibreOffice here (substituted fonts) keeps every paragraph inside its box.
+- The other five slides of that deck (24 px text, and 640 and 900 px boxes).
 
 ## Follow-ups
 - Part 2: `table`, `x-chart`, `x-icon`, transitions and build-ins, the deck folder with per-slide
