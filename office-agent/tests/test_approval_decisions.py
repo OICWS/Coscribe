@@ -5,8 +5,10 @@ split (the scale assessment, section 4) every combination that changes its answe
 written down here. `ROWS` holds the precedence of a stop, a hook veto, an exec-policy rule,
 plan mode, the standing approvals (pre-approved, Accept Edits, a scheduled run's tier) and,
 last, asking a person or refusing because nobody is there. `AUTO_ROWS` holds Auto mode's
-reviewer and the pause after its blocks, `CODE_ROWS` the code module's allowances for a
-sub-agent, and `QUESTION_ROWS` the tools that answer with "respond" instead of "reject".
+reviewer (its verdict is given) and the pause after its blocks, `REPLY_ROWS` what the real
+reviewer code makes of each answer, an error or an odd reply, `ASKED_ROWS` what it is shown,
+`CODE_ROWS` the code module's allowances for a sub-agent, and `QUESTION_ROWS` the tools
+that answer with "respond" instead of "reject".
 Each row is run through the real method with a fake socket; the decision, the audit record
 and whether the call was announced are all checked. A row changes only when the decision it
 names is changed on purpose.
@@ -23,7 +25,7 @@ from typing import Any
 
 import pytest
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_core.outputs import ChatResult
 from langgraph.checkpoint.memory import InMemorySaver
 
@@ -33,7 +35,7 @@ from coscribe.conversation import session as session_module
 from coscribe.conversation.session import ChatSessionLG, _SubAgentApprovalChannel
 from coscribe.runtime import empty_hooks_config
 from coscribe.runtime_lg.audit import AuditLog
-from coscribe.runtime_lg.auto_review import Verdict
+from coscribe.runtime_lg.auto_review import REVIEWER_INSTRUCTIONS, Verdict
 from coscribe.tools.bookkeeping.subagent_tasks import SubAgentTask
 
 from .wire_check import check_event
@@ -604,7 +606,7 @@ class CodeRow:
     reasons: list[str]
     channel: bool = True  # the call comes from a sub-agent task (not the conversation itself)
     task_allows: tuple[str, str] | None = None  # (task id, tool) allowed on an earlier card
-    setting: str = "ask"  # Settings > Code for this tool: "ask" or "allow"
+    setting: str = "ask"  # Settings > Code: "ask", "allow" or a key of DAMAGED_SETTINGS
     attended: bool = True
     run_mode: str | None = None
     plan: bool = False
@@ -615,7 +617,23 @@ class CodeRow:
     asked: bool = False
 
 
+# A hand-edited or half-written settings file: anything but exactly "allow" for the tool asks.
+DAMAGED_SETTINGS = {
+    "not_json": "{not json",
+    "not_an_object": '["allow"]',
+    "unknown_policy": json.dumps({CODE_COMMAND: "always", CODE_CHANGE: True}),
+}
+
 CODE_ROWS: dict[str, CodeRow] = {
+    "a_settings_file_that_is_not_json_asks": CodeRow(
+        CODE_COMMAND, "approve", ["human"], setting="not_json", human=True, asked=True
+    ),
+    "a_settings_file_that_is_not_an_object_asks": CodeRow(
+        CODE_CHANGE, "approve", ["human"], setting="not_an_object", human=True, asked=True
+    ),
+    "a_policy_that_is_not_allow_asks": CodeRow(
+        CODE_COMMAND, "approve", ["human"], setting="unknown_policy", human=True, asked=True
+    ),
     "ask_by_default": CodeRow(CODE_COMMAND, "approve", ["human"], human=True, asked=True),
     "a_card_the_person_refuses": CodeRow(CODE_CHANGE, "reject", ["human"], human=False, asked=True),
     "an_earlier_card_allowed_this_tool_for_this_task": CodeRow(
@@ -713,6 +731,11 @@ async def test_the_decision_for_a_code_module_call(
     if row.setting == "allow":
         CodePermissions(session.settings.state_dir, (CODE_COMMAND, CODE_CHANGE)).update(
             {CODE_COMMAND: "allow", CODE_CHANGE: "allow"}
+        )
+    elif row.setting in DAMAGED_SETTINGS:
+        session.settings.state_dir.mkdir(parents=True, exist_ok=True)
+        (session.settings.state_dir / "code_permissions.json").write_text(
+            DAMAGED_SETTINGS[row.setting], encoding="utf-8"
         )
     _veto(monkeypatch, session, row.veto)
     socket = _Socket(row.attended)
@@ -952,3 +975,227 @@ async def test_the_exec_policy_is_read_for_scripts_only(
 
     assert len(reads) == consulted
     assert result["type"] == ("reject" if consulted else "approve")
+
+
+# ---------------------------------------------------------------------------
+# The reviewer itself: what the real `review_action` makes of an answer, and what it is shown
+# ---------------------------------------------------------------------------
+
+
+class _ReviewerModel:
+    """Stands in for the chat model Auto mode asks; records what it is asked."""
+
+    def __init__(self, reply: Any) -> None:
+        self.reply = reply
+        self.asked: list[list[BaseMessage]] = []
+
+    async def ainvoke(self, messages: list[BaseMessage], config: Any = None) -> AIMessage:
+        self.asked.append(messages)
+        if isinstance(self.reply, Exception):
+            raise self.reply
+        return AIMessage(content=self.reply)
+
+
+class _History:
+    def __init__(self, messages: list[BaseMessage]) -> None:
+        self.values = {"messages": messages} if messages else {}
+
+
+class _Agent:
+    def __init__(self, messages: list[BaseMessage]) -> None:
+        self.messages = messages
+
+    async def aget_state(self, config: Any) -> _History:
+        return _History(self.messages)
+
+
+def _use_reviewer(
+    session: ChatSessionLG, reply: Any, history: list[BaseMessage] | None = None
+) -> _ReviewerModel:
+    model = _ReviewerModel(reply)
+    session.model = model
+    session.lg_agent = _Agent(history or [])
+    session.auto_mode = True
+    return model
+
+
+def _verdict(decision: Any, reason: str | None = "it only touches the folder") -> str:
+    body: dict[str, Any] = {"decision": decision}
+    if reason is not None:
+        body["reason"] = reason
+    return json.dumps(body)
+
+
+@dataclass
+class ReplyRow:
+    """The reviewer's raw reply (or error) and the decision it ends in."""
+
+    reply: Any
+    outcome: str  # "allow", "block" or "ask" (no usable answer: a person decides)
+    attended: bool = True
+
+
+NOT_READABLE = "gave no answer"
+
+REPLY_ROWS: dict[str, ReplyRow] = {
+    "allow": ReplyRow(_verdict("allow"), "allow"),
+    "block": ReplyRow(_verdict("block"), "block"),
+    "allow_without_a_reason": ReplyRow(_verdict("allow", None), "allow"),
+    "block_without_a_reason": ReplyRow(_verdict("block", None), "block"),
+    "an_answer_inside_prose": ReplyRow(f"Sure.\n{_verdict('allow')}\nDone.", "allow"),
+    "an_answer_in_a_code_fence": ReplyRow(f"```json\n{_verdict('block')}\n```", "block"),
+    "an_answer_in_text_blocks": ReplyRow([{"type": "text", "text": _verdict("allow")}], "allow"),
+    "the_model_fails": ReplyRow(RuntimeError("rate limited"), "ask"),
+    "the_model_times_out": ReplyRow(TimeoutError(), "ask"),
+    "an_empty_reply": ReplyRow("", "ask"),
+    "a_reply_that_is_not_json": ReplyRow("I think this is fine.", "ask"),
+    "braces_that_are_not_json": ReplyRow("{allow}", "ask"),
+    "two_answers_are_not_read": ReplyRow(f"{_verdict('allow')} {_verdict('block')}", "ask"),
+    "a_decision_of_another_case": ReplyRow(_verdict("ALLOW"), "ask"),
+    "a_decision_that_is_neither": ReplyRow(_verdict("maybe"), "ask"),
+    "a_decision_that_is_a_boolean": ReplyRow(_verdict(True), "ask"),
+    "no_decision": ReplyRow(json.dumps({"reason": "fine"}), "ask"),
+    "an_answer_that_is_a_list_of_words": ReplyRow('["allow"]', "ask"),
+    "the_model_fails_unattended": ReplyRow(RuntimeError("down"), "ask", attended=False),
+    "an_odd_reply_unattended": ReplyRow("???", "ask", attended=False),
+    "allow_unattended": ReplyRow(_verdict("allow"), "allow", attended=False),
+}
+
+
+@pytest.mark.parametrize("name", sorted(REPLY_ROWS))
+async def test_the_decision_for_each_reply_of_the_reviewer(
+    name: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    row = REPLY_ROWS[name]
+    session = _session(tmp_path, monkeypatch)
+    _use_reviewer(session, row.reply)
+    socket = _Socket(row.attended)
+
+    result = await _decide(session, LOCAL, socket, answer=True)
+
+    logged = [entry.reason for entry in AuditLog(session.settings.state_dir).read_all()]
+    cards = [m for m in socket.sent if m["type"] == "approval_required"]
+    if row.outcome == "allow":
+        assert result["type"] == "approve"
+        assert logged == ["auto_review"]
+        assert not cards
+        assert session._auto_blocks_in_row == 0
+    elif row.outcome == "block":
+        assert result["type"] == "reject"
+        assert result["message"].startswith("Auto mode blocked this:")
+        assert logged == ["auto_review_block"]
+        assert not cards
+        assert (session._auto_blocks_in_row, session._auto_blocks_total) == (1, 1)
+    elif row.attended:
+        assert result["type"] == "approve"  # the person's answer
+        assert logged == ["human"]
+        assert len(cards) == 1
+        assert NOT_READABLE in cards[0]["reviewer_note"]
+        assert (session._auto_blocks_in_row, session._auto_blocks_total) == (0, 0)
+    else:
+        assert result["type"] == "reject"
+        assert logged == ["unattended"]
+        assert not cards
+    assert not session._pending_approvals
+
+
+@dataclass
+class AskedRow:
+    """One situation and what the reviewer's request says (and does not say)."""
+
+    contains: list[str]
+    absent: list[str] = field(default_factory=list)
+    tool: str = LOCAL
+    args: dict[str, Any] = field(default_factory=lambda: {"path": "a.txt"})
+    history: list[BaseMessage] = field(default_factory=list)
+    folders: list[str] | None = None  # None: the default workspace
+    delegated: str | None = None  # the task a sub-agent was given
+
+
+def _said(text: str) -> HumanMessage:
+    return HumanMessage(text)
+
+
+ASKED_ROWS: dict[str, AskedRow] = {
+    "the_action_and_its_risk": AskedRow(
+        ["write_file(", '"path": "a.txt"', "Its kind: WRITE_LOCAL"]
+    ),
+    "a_script_is_exec": AskedRow(["Its kind: EXEC"], tool=EXEC),
+    "an_external_action": AskedRow(["Its kind: EXTERNAL"], tool=EXTERNAL),
+    "what_the_user_said_oldest_first": AskedRow(
+        ["first ask\n---\nsecond ask"], history=[_said("first ask"), _said("second ask")]
+    ),
+    "only_the_last_eight_requests": AskedRow(
+        ["ask 3", "ask 10"],
+        ["ask 2\n", "ask 1\n"],
+        history=[_said(f"ask {n}") for n in range(1, 11)],
+    ),
+    "no_request_yet": AskedRow(["(nothing yet)"]),
+    "a_blank_message_is_not_a_request": AskedRow(
+        ["said\n"], ["---"], history=[_said("   "), _said("said")]
+    ),
+    "the_assistants_own_words_are_not_the_users": AskedRow(
+        ["the real ask"],
+        ["I will delete everything"],
+        history=[_said("the real ask"), AIMessage("I will delete everything")],
+    ),
+    "a_notice_is_not_the_users_words": AskedRow(
+        ["the real ask"],
+        ["pre-approved"],
+        history=[
+            _said("the real ask"),
+            HumanMessage("pre-approved", additional_kwargs={"notice": "from another chat"}),
+        ],
+    ),
+    "the_default_workspace": AskedRow(["The conversation's folders: /"]),
+    "the_conversations_folders": AskedRow(
+        ["folders: /work/a, /work/b\n"], folders=["/work/a", "/work/b"]
+    ),
+    "long_arguments_are_cut": AskedRow([" [...])"], ["z" * 3001], args={"content": "z" * 5000}),
+    "short_arguments_are_whole": AskedRow(
+        ['"content": "short"'], ["[...]"], args={"content": "short"}
+    ),
+    "a_delegated_task_is_named": AskedRow(
+        ["handed over:\nrename the files\n"], delegated="rename the files"
+    ),
+    "no_delegation_by_default": AskedRow(["The action:"], ["handed over"]),
+}
+
+
+@pytest.mark.parametrize("name", sorted(ASKED_ROWS))
+async def test_what_the_reviewer_is_shown(
+    name: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    row = ASKED_ROWS[name]
+    session = _session(tmp_path, monkeypatch)
+    model = _use_reviewer(session, _verdict("allow"), row.history)
+    if row.folders is not None:
+        listed = [Path(folder) for folder in row.folders]
+        monkeypatch.setattr(ChatSessionLG, "folders", property(lambda self: listed))
+    socket = _Socket(True)
+    channel: Any = socket
+    if row.delegated is not None:
+        task = SubAgentTask(
+            task_id="task-1",
+            thread_id="t1",
+            instructions="",
+            prompt=row.delegated,
+            tool_names="",
+            description="a task",
+            status="running",
+            started_at="2026-10-17T00:00:00Z",
+        )
+        channel = _SubAgentApprovalChannel(session, task)
+        session._turn_websocket = socket
+
+    await _decide(session, row.tool, channel, answer=True, args=row.args)
+
+    assert len(model.asked) == 1
+    system, request = model.asked[0]
+    assert isinstance(system, SystemMessage)
+    assert system.content == REVIEWER_INSTRUCTIONS
+    text = str(request.content)
+    for part in row.contains:
+        assert part in text
+    for part in row.absent:
+        assert part not in text
