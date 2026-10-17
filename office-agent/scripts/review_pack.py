@@ -125,7 +125,7 @@ def render(
     out += ["", "## Invariant paths touched"]
     if invariants:
         out.append(
-            "Both owners are listed in .github/CODEOWNERS; invariant paths need an independent review:"
+            "These need an independent review (both owners are in .github/CODEOWNERS):"
         )
         out += [f"- `{path}`" for path in invariants]
     else:
