@@ -89,6 +89,7 @@ from ..tools import (
 )
 from .background_events import BackgroundEventBus
 from .connector_manager import ConnectorManager
+from .local_guard import ALLOWED_HOSTS_ENV, LocalOnlyGuard
 from .provider_catalog import (
     BUILTIN_PROVIDERS,
 )
@@ -536,9 +537,9 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
             app_callback,
         )
     )
-    # Exposed on app.state so tests can reach the same bus _wake_poll_loop
-    # publishes to without going through the (necessarily infinite, so not
-    # directly awaitable-to-completion) SSE endpoint itself.
+    app.add_middleware(LocalOnlyGuard)
+    # On app.state so tests publish to the bus _wake_poll_loop uses without
+    # going through the SSE endpoint, which never completes.
     app.state.background_events = background_events
 
     @app.get("/")
@@ -721,6 +722,11 @@ def main() -> None:
     args = parser.parse_args()
 
     _exit_when_orphaned()
+    if args.host not in ("127.0.0.1", "localhost", "::1", "0.0.0.0", "::"):
+        # Served under its own name on purpose: the Host check must accept it.
+        os.environ[ALLOWED_HOSTS_ENV] = ",".join(
+            filter(None, [os.environ.get(ALLOWED_HOSTS_ENV, ""), args.host])
+        )
     asyncio.run(_run_web_server(args.host, args.port))
 
 

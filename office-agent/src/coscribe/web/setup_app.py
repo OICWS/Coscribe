@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from ..config import Settings
 from ..runtime import env_value_for_storage, harden_file_permissions
+from .local_guard import LocalOnlyGuard
 from .provider_catalog import BUILTIN_PROVIDERS
 
 # Example models shown as placeholder text on the setup page below -- the
@@ -347,6 +348,7 @@ def build_setup_app(
     kill-on-quit, breaking exactly the platform this ships on.
     """
     app = FastAPI()
+    app.add_middleware(LocalOnlyGuard)
 
     @app.get("/", response_class=HTMLResponse)
     async def index() -> str:

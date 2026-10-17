@@ -30,6 +30,13 @@ def _no_office_program(request: pytest.FixtureRequest, monkeypatch: pytest.Monke
 
 
 @pytest.fixture(autouse=True)
+def _testserver_is_a_local_host(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Starlette's TestClient sends `Host: testserver`; the Host guard (web/local_guard.py) would
+    refuse every request of every web test. Its own tests clear this and name hosts explicitly."""
+    monkeypatch.setenv("COSCRIBE_ALLOWED_HOSTS", "testserver")
+
+
+@pytest.fixture(autouse=True)
 def _manual_permission_mode_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     """Most tests script the model's exact replies, and Auto mode (the
     shipped default) adds a reviewer call before each gated action. Tests
