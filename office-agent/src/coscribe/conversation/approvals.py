@@ -577,7 +577,9 @@ class ApprovalDecider:
                 [
                     HumanMessage(strip_mode_note(_extract_text(m.content)))
                     for m in messages
-                    if m.type == "human"
+                    # A message from another conversation or a sub-agent's report is stored as a
+                    # human message but is not what the user said.
+                    if m.type == "human" and not m.additional_kwargs.get("notice")
                 ]
             ),
             delegated_task=delegated_task,
