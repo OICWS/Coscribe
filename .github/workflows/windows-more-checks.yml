@@ -46,17 +46,16 @@ jobs:
       # -rs lists a skipped test: a check that silently skips would pass without checking.
       - name: Run the checks
         run: |
-          python -m pytest tests/test_windows_real.py -v -rs -p no:randomly -n0 | tee pytest.out
+          python -m pytest tests/test_windows_real.py -v -rs -n0 | tee pytest.out
           if grep -q SKIPPED pytest.out; then echo "a check was skipped"; exit 1; fi
 
   codeowners:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      # Needs a token that can see the repository's settings; the default one may not.
       - name: No errors in CODEOWNERS
         env:
-          GH_TOKEN: ${{ secrets.CODEOWNERS_CHECK_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           errors=$(gh api "repos/${{ github.repository }}/codeowners/errors" --jq '.errors | length')
           echo "CODEOWNERS errors: $errors"
