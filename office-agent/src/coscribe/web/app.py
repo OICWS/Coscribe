@@ -46,8 +46,8 @@ import html
 import logging
 import os
 import sys
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator, Callable
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -179,6 +179,171 @@ class _NoCacheStaticFiles(StaticFiles):
 
 def create_setup_app(configured: asyncio.Future[Settings]) -> FastAPI:
     return build_setup_app(configured, _dotenv_path, _load_settings_or_none)
+
+
+async def _start_mcp_connect(
+    settings: Settings, mcp_oauth: Any, connectors: ConnectorManager
+) -> asyncio.Task[Any] | None:
+    """Connect the configured MCP servers, waiting only up to the startup timeout; a slow one
+    finishes in the background. Returns the still-running task, if any, for shutdown to cancel."""
+    mcp_connect_task: asyncio.Task[Any] | None = None
+    if settings.mcp_config_path is not None:
+        # Real, user-reported bug: this used to be a plain
+        # `await connect_mcp_tools_lg(...)`, so the app didn't
+        # start serving *anything* -- not even the splash/setup
+        # page -- until every configured MCP server finished
+        # connecting. A slow-to-start one (Playwright launching a
+        # real browser process is the worst case) meant a real,
+        # repeatable multi-minute wait on every single cold
+        # start, unrelated to which desktop shell was used.
+        # Mirrors Claude Code's own real fix for the identical
+        # problem (MCP_CONNECT_TIMEOUT_MS, default 5s): wait up
+        # to MCP_STARTUP_TIMEOUT_SECONDS, then stop blocking
+        # startup on it -- asyncio.shield() keeps the connect
+        # task itself running rather than cancelling it just
+        # because this wait_for gave up on it.
+        # Deferred import -- see the top-of-file comment above MCP_STARTUP_TIMEOUT_SECONDS.
+        from ..runtime_lg.mcp import connect_mcp_tools_lg
+
+        connect_task: asyncio.Task[Any] = asyncio.create_task(
+            connect_mcp_tools_lg(
+                settings.mcp_config_path,
+                mcp_oauth.auth_for,
+                connectors.reconnect_stale_connector,
+                state_dir=settings.state_dir,
+            )
+        )
+        mcp_connect_task = connect_task
+        try:
+            tools, connections = await asyncio.wait_for(
+                asyncio.shield(connect_task), timeout=MCP_STARTUP_TIMEOUT_SECONDS
+            )
+            connectors.tools = tools
+            connectors.connections.update(connections)
+            mcp_connect_task = None
+        except TimeoutError:
+            # Still connecting -- let the app start serving
+            # requests now (a session opened in this window
+            # simply starts with fewer tools, same as any
+            # mid-conversation connector add/remove already
+            # behaves) and splice the result in once it's ready,
+            # reusing the exact mechanism a live connector-add
+            # already uses to reach already-open sessions.
+            async def _finish_mcp_connect_in_background(
+                task: asyncio.Task[Any],
+            ) -> None:
+                try:
+                    tools, connections = await task
+                except Exception:
+                    logging.getLogger(__name__).exception(
+                        "connect_mcp_tools_lg: background connect failed"
+                    )
+                    return
+                connectors.tools = connectors.tools + tools
+                connectors.connections.update(connections)
+                await connectors.refresh_all_sessions_extra_tools()
+
+            asyncio.create_task(_finish_mcp_connect_in_background(connect_task))
+    return mcp_connect_task
+
+
+def _make_lifespan(
+    settings: Settings,
+    checkpoint_path: Path,
+    checkpointer_holder: dict[str, Any],
+    connectors: ConnectorManager,
+    mcp_oauth: Any,
+    scheduler: Scheduler,
+    app_callback: Any,
+) -> Callable[[FastAPI], AbstractAsyncContextManager[None]]:
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        remove_stale_code_sidecars(settings.state_dir)
+        async with AsyncSqliteSaver.from_conn_string(str(checkpoint_path)) as checkpointer:
+            checkpointer_holder["checkpointer"] = checkpointer
+            mcp_connect_task = await _start_mcp_connect(settings, mcp_oauth, connectors)
+            interrupted = reconcile_interrupted_runs(settings.state_dir)
+            if interrupted:
+                logging.getLogger(__name__).warning(
+                    "Marked %d scheduled run(s) as failed -- still running at startup, "
+                    "left over from a previous process that didn't shut down cleanly.",
+                    interrupted,
+                )
+            swept = await scheduler.sweep_orphaned_run_threads()
+            if swept:
+                logging.getLogger(__name__).info(
+                    "Deleted %d scheduled-run conversation(s) whose task or run record is gone.",
+                    swept,
+                )
+            scheduler.start()
+            yield
+            await scheduler.stop()
+            if mcp_connect_task is not None and not mcp_connect_task.done():
+                mcp_connect_task.cancel()
+                try:
+                    await mcp_connect_task
+                except (asyncio.CancelledError, Exception):
+                    pass
+            # Each connection now owns a real, persistent subprocess (see
+            # runtime_lg/mcp.py's module docstring) -- close them all here
+            # rather than letting them leak past this process's own
+            # shutdown (a lingering Playwright browser, most visibly).
+            for connection in connectors.connections.values():
+                await connection.close()
+            for task in list(connectors.sign_in_tasks):
+                task.cancel()
+            await app_callback.stop()
+            await shutdown_code_services()
+
+    return lifespan
+
+
+def _configured_models(settings: Settings) -> list[str]:
+    return [
+        f"{name}:{info['default_model']}"
+        for name, info in _providers_info(settings).items()
+        if info["default_model"]
+    ]
+
+
+def _providers_info(settings: Settings) -> dict[str, Any]:
+    env_values = dotenv_values(".env")
+    # Fallback for an existing .env from before /api/setup started also
+    # writing the per-provider default (see setup() above) -- without
+    # this, a provider whose own COSCRIBE_<X>_DEFAULT_MODEL was never
+    # set (true for whichever provider first-run setup picked, on any
+    # .env written before that fix) silently vanishes from this list,
+    # and therefore from the model switcher, the moment a *different*
+    # provider becomes the active model and this one is no longer
+    # rendered via the switcher's own currentModel-prop fallback.
+    default_provider_key, _, default_model_fallback = (
+        env_values.get("COSCRIBE_DEFAULT_MODEL") or ""
+    ).partition(":")
+    result: dict[str, Any] = {}
+    for provider in BUILTIN_PROVIDERS:
+        api_key = env_resolve_secret_for_display(env_values.get(provider["api_key_env"])) or ""
+        if not api_key:
+            continue
+        default_model = env_values.get(provider["default_model_env"]) or ""
+        if not default_model and provider["key"] == default_provider_key:
+            default_model = default_model_fallback
+        result[provider["key"]] = {
+            "base_url": None,
+            "default_model": default_model,
+            "masked_key": _mask(api_key),
+            "builtin": True,
+        }
+    if settings.providers_config_path is not None and settings.providers_config_path.is_file():
+        raw = _read_providers_raw(settings.providers_config_path)
+        for name, entry in raw["providers"].items():
+            api_key = resolve_secret(entry.get("api_key")) or ""
+            result[name] = {
+                "base_url": entry.get("base_url", ""),
+                "default_model": entry.get("default_model", ""),
+                "masked_key": _mask(api_key) if api_key else None,
+                "builtin": False,
+            }
+    return result
 
 
 def create_app_lg(settings: Settings | None = None) -> FastAPI:
@@ -328,7 +493,7 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
                 workspace_root=folders[0] if folders else settings.workspace_root,
                 workspace_explicit=bool(folders),
                 extra_folders=folders[1:],
-                configured_models=_configured_models,
+                configured_models=lambda: _configured_models(settings),
             )
         return sessions[thread_id]
 
@@ -367,103 +532,17 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
         poll_due_scheduled_tasks,
     )
 
-    @asynccontextmanager
-    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-        remove_stale_code_sidecars(settings.state_dir)
-        async with AsyncSqliteSaver.from_conn_string(str(checkpoint_path)) as checkpointer:
-            checkpointer_holder["checkpointer"] = checkpointer
-            mcp_connect_task: asyncio.Task[Any] | None = None
-            if settings.mcp_config_path is not None:
-                # Real, user-reported bug: this used to be a plain
-                # `await connect_mcp_tools_lg(...)`, so the app didn't
-                # start serving *anything* -- not even the splash/setup
-                # page -- until every configured MCP server finished
-                # connecting. A slow-to-start one (Playwright launching a
-                # real browser process is the worst case) meant a real,
-                # repeatable multi-minute wait on every single cold
-                # start, unrelated to which desktop shell was used.
-                # Mirrors Claude Code's own real fix for the identical
-                # problem (MCP_CONNECT_TIMEOUT_MS, default 5s): wait up
-                # to MCP_STARTUP_TIMEOUT_SECONDS, then stop blocking
-                # startup on it -- asyncio.shield() keeps the connect
-                # task itself running rather than cancelling it just
-                # because this wait_for gave up on it.
-                # Deferred import -- see the top-of-file comment above MCP_STARTUP_TIMEOUT_SECONDS.
-                from ..runtime_lg.mcp import connect_mcp_tools_lg
-
-                connect_task: asyncio.Task[Any] = asyncio.create_task(
-                    connect_mcp_tools_lg(
-                        settings.mcp_config_path,
-                        mcp_oauth.auth_for,
-                        connectors.reconnect_stale_connector,
-                        state_dir=settings.state_dir,
-                    )
-                )
-                mcp_connect_task = connect_task
-                try:
-                    tools, connections = await asyncio.wait_for(
-                        asyncio.shield(connect_task), timeout=MCP_STARTUP_TIMEOUT_SECONDS
-                    )
-                    connectors.tools = tools
-                    connectors.connections.update(connections)
-                    mcp_connect_task = None
-                except TimeoutError:
-                    # Still connecting -- let the app start serving
-                    # requests now (a session opened in this window
-                    # simply starts with fewer tools, same as any
-                    # mid-conversation connector add/remove already
-                    # behaves) and splice the result in once it's ready,
-                    # reusing the exact mechanism a live connector-add
-                    # already uses to reach already-open sessions.
-                    async def _finish_mcp_connect_in_background(
-                        task: asyncio.Task[Any],
-                    ) -> None:
-                        try:
-                            tools, connections = await task
-                        except Exception:
-                            logging.getLogger(__name__).exception(
-                                "connect_mcp_tools_lg: background connect failed"
-                            )
-                            return
-                        connectors.tools = connectors.tools + tools
-                        connectors.connections.update(connections)
-                        await connectors.refresh_all_sessions_extra_tools()
-
-                    asyncio.create_task(_finish_mcp_connect_in_background(connect_task))
-            interrupted = reconcile_interrupted_runs(settings.state_dir)
-            if interrupted:
-                logging.getLogger(__name__).warning(
-                    "Marked %d scheduled run(s) as failed -- still running at startup, "
-                    "left over from a previous process that didn't shut down cleanly.",
-                    interrupted,
-                )
-            swept = await scheduler.sweep_orphaned_run_threads()
-            if swept:
-                logging.getLogger(__name__).info(
-                    "Deleted %d scheduled-run conversation(s) whose task or run record is gone.",
-                    swept,
-                )
-            scheduler.start()
-            yield
-            await scheduler.stop()
-            if mcp_connect_task is not None and not mcp_connect_task.done():
-                mcp_connect_task.cancel()
-                try:
-                    await mcp_connect_task
-                except (asyncio.CancelledError, Exception):
-                    pass
-            # Each connection now owns a real, persistent subprocess (see
-            # runtime_lg/mcp.py's module docstring) -- close them all here
-            # rather than letting them leak past this process's own
-            # shutdown (a lingering Playwright browser, most visibly).
-            for connection in connectors.connections.values():
-                await connection.close()
-            for task in list(connectors.sign_in_tasks):
-                task.cancel()
-            await app_callback.stop()
-            await shutdown_code_services()
-
-    app = FastAPI(lifespan=lifespan)
+    app = FastAPI(
+        lifespan=_make_lifespan(
+            settings,
+            checkpoint_path,
+            checkpointer_holder,
+            connectors,
+            mcp_oauth,
+            scheduler,
+            app_callback,
+        )
+    )
     # Exposed on app.state so tests can reach the same bus _wake_poll_loop
     # publishes to without going through the (necessarily infinite, so not
     # directly awaitable-to-completion) SSE endpoint itself.
@@ -472,52 +551,6 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
     @app.get("/")
     async def index() -> FileResponse:
         return FileResponse(STATIC_DIR / "index.html")
-
-    def _configured_models() -> list[str]:
-        return [
-            f"{name}:{info['default_model']}"
-            for name, info in _providers_info().items()
-            if info["default_model"]
-        ]
-
-    def _providers_info() -> dict[str, Any]:
-        env_values = dotenv_values(".env")
-        # Fallback for an existing .env from before /api/setup started also
-        # writing the per-provider default (see setup() above) -- without
-        # this, a provider whose own COSCRIBE_<X>_DEFAULT_MODEL was never
-        # set (true for whichever provider first-run setup picked, on any
-        # .env written before that fix) silently vanishes from this list,
-        # and therefore from the model switcher, the moment a *different*
-        # provider becomes the active model and this one is no longer
-        # rendered via the switcher's own currentModel-prop fallback.
-        default_provider_key, _, default_model_fallback = (
-            env_values.get("COSCRIBE_DEFAULT_MODEL") or ""
-        ).partition(":")
-        result: dict[str, Any] = {}
-        for provider in BUILTIN_PROVIDERS:
-            api_key = env_resolve_secret_for_display(env_values.get(provider["api_key_env"])) or ""
-            if not api_key:
-                continue
-            default_model = env_values.get(provider["default_model_env"]) or ""
-            if not default_model and provider["key"] == default_provider_key:
-                default_model = default_model_fallback
-            result[provider["key"]] = {
-                "base_url": None,
-                "default_model": default_model,
-                "masked_key": _mask(api_key),
-                "builtin": True,
-            }
-        if settings.providers_config_path is not None and settings.providers_config_path.is_file():
-            raw = _read_providers_raw(settings.providers_config_path)
-            for name, entry in raw["providers"].items():
-                api_key = resolve_secret(entry.get("api_key")) or ""
-                result[name] = {
-                    "base_url": entry.get("base_url", ""),
-                    "default_model": entry.get("default_model", ""),
-                    "masked_key": _mask(api_key) if api_key else None,
-                    "builtin": False,
-                }
-        return result
 
     state = AppState(
         settings=settings,
@@ -534,7 +567,7 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
         get_session_async=_get_session_async,
         session_extra_tools=connectors.session_extra_tools,
         skills_by_name=_skills_by_name,
-        providers_info=_providers_info,
+        providers_info=lambda: _providers_info(settings),
         connector_tools=connectors.connector_tools,
         connect_and_register_mcp_server_lg=connectors.connect_and_register_mcp_server_lg,
         disconnect_mcp_server_lg=connectors.disconnect_mcp_server_lg,
