@@ -142,13 +142,13 @@ def _compile(
             continue
         builds.append(build)
     sp_tree = slide.shapes._spTree
-    animated: list[tuple[int, str]] = []
+    animated: list[tuple[Any, str]] = []
     for xml, build in zip(attach_relationships(slide, ctx, shapes, report), builds, strict=True):
         for i, element in enumerate(etree.fromstring(f"<p:wrap {NSDECL}>{xml}</p:wrap>")):
             sp_tree.append(element)
             report.shapes += 1
             if build and i == 0:
-                animated.append((int(element.xpath(".//p:cNvPr/@id", namespaces=_P)[0]), build))
+                animated.append((element, build))
     _finish(slide, section, report)
     _motion(slide, section.transition, animated)
 
@@ -354,13 +354,37 @@ def _context(
     )
 
 
-def _motion(slide: Any, transition: str | None, animated: list[tuple[int, str]]) -> None:
+def _motion(slide: Any, transition: str | None, animated: list[tuple[Any, str]]) -> None:
     """The slide's transition, then its build-ins, one click each in the section's order: the
     transition must come first, since the schema puts it before the timing tree."""
     if transition is not None:
         set_slide_transition(slide._element, transition, _TRANSITION_SECONDS)
-    for shape_id, effect in animated:
-        add_animation_step(slide._element, shape_id, effect, _BUILD_MS, "on-click", 0, None)
+    for element, effect in animated:
+        add_animation_step(
+            slide._element, _shape_id(element), effect, _BUILD_MS, "on-click", 0, None
+        )
+    if animated:
+        _build_list(slide._element.find(f"{{{_P['p']}}}timing"), animated)
+
+
+def _build_list(timing: Any, animated: list[tuple[Any, str]]) -> None:
+    """How each animated object builds, as PowerPoint writes it: a chart or table as one piece
+    (`bldGraphic`), a text box by its text (`bldP`)."""
+    builds = etree.SubElement(timing, f"{{{_P['p']}}}bldLst")
+    for element, _effect in animated:
+        spid = str(_shape_id(element))
+        kind = etree.QName(element).localname
+        if kind == "graphicFrame":
+            graphic = etree.SubElement(builds, f"{{{_P['p']}}}bldGraphic", spid=spid, grpId="0")
+            etree.SubElement(graphic, f"{{{_P['p']}}}bldAsOne")
+        elif kind == "sp" and element.find(f"{{{_P['p']}}}txBody") is not None:
+            etree.SubElement(builds, f"{{{_P['p']}}}bldP", spid=spid, grpId="0")
+    if not len(builds):
+        timing.remove(builds)
+
+
+def _shape_id(element: Any) -> int:
+    return int(element.xpath(".//p:cNvPr/@id", namespaces=_P)[0])
 
 
 def _finish(slide: Any, section: Section, report: PageReport) -> None:

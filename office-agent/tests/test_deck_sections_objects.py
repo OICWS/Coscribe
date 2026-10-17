@@ -73,6 +73,10 @@ def test_a_chart_is_native_and_the_icon_is_drawn_with_both_built_in_order(tmp_pa
     assert _shape(slide, "ship").shape_type == 6  # a group of the icon's paths
     effects = slide._element.findall(f".//{_P}cTn[@nodeType='clickEffect']")
     assert [e.get("presetID") for e in effects] == ["37", "23"]  # rise up, then zoom
+    builds = slide._element.find(f"{_P}timing/{_P}bldLst")
+    assert [(b.tag, b.get("spid")) for b in builds] == [
+        (f"{_P}bldGraphic", str(chart.shape_id))
+    ]  # the chart builds as one piece; the icon (a group) needs no entry
 
 
 def test_the_section_names_its_transition(tmp_path: Path) -> None:
