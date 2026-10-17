@@ -147,10 +147,11 @@ Last reviewed: 2026-10-15.
    Direction changed 2026-10-17: what coscribe makes becomes an artifact (Slides first, then
    Docs, Design/Dashboard, Sheets last), edited in the app and exported to the Office format; the
    Slides design is settled (decision 0015, `docs/assessments/2026-10-17-slides-artifact.md`):
-   positioned HTML sections. Step 1 (#392): the format, validator and HTML → PPTX compiler with
-   no UI (parts 1 and 2 done: text, shapes, pictures, drawings, tables, charts, icons, transitions,
-   build-ins, building a folder of sections), measured on the deck evaluation
-   against the SVG pages. The
+   positioned HTML sections. Step 1 (#392, done): the section language and its HTML → PPTX
+   compiler (text, shapes, pictures, drawings, tables, charts, icons, transitions, build-ins), and
+   a measurement against the SVG pages. Result, decision 0016: new slides stay SVG pages; a slide
+   becomes a section when the user first edits it. Next: the SVG page → section converter
+   (content unchanged) and decks that mix the two, then the read-only Slides panel. The
    docx-preview actions are paused. A name for the user's own review actions in Settings is open;
    until then they carry the computer's user name.
 
