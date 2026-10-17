@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 
 from .agent import build_langgraph_agent, tool_name
 from .audit import AuditLog, AutoApproveReason, record_decision, redact_secrets
+from .audit import Decision as AuditDecision
+from .audit import Reason as AuditReason
 from .auto_review import Verdict, recent_user_requests, review_action
 from .code_agent import CODE_APPROVAL_RISKS
 from .exec_policy import EXEC_POLICY_TOOL_NAMES, ExecPolicy, load_exec_policy
@@ -48,7 +50,9 @@ __all__ = [
     "is_steer",
     "SUBAGENT_MAX_STEPS",
     "SilentSocket",
+    "AuditDecision",
     "AuditLog",
+    "AuditReason",
     "AutoApproveReason",
     "CODE_APPROVAL_RISKS",
     "EXEC_POLICY_TOOL_NAMES",

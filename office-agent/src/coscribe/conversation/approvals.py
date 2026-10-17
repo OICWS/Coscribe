@@ -19,7 +19,9 @@ from ..config import Settings
 from ..runtime_lg import (
     CODE_APPROVAL_RISKS,
     EXEC_POLICY_TOOL_NAMES,
+    AuditDecision,
     AuditLog,
+    AuditReason,
     AutoApproveReason,
     ExecPolicy,
     Verdict,
@@ -200,28 +202,14 @@ class ApprovalDecider:
         name = request["name"]
         is_draft = name in TASK_DRAFT_TOOL_NAMES
         is_question = name in QUESTION_TOOL_NAMES or is_draft
-
-        def _denied(message: str) -> dict[str, Any]:
-            if is_question:
-                return {"type": "respond", "message": message}
-            return {"type": "reject", "message": message}
-
         if honor_stop and self._host._stop_requested:
-            return _denied("Stopped by user.")
+            return self._denied(name, "Stopped by user.")
         args = request["args"]
         audit_log = AuditLog(self._host.settings.state_dir)
         hook_reason = await self._host._run_pre_tool_use_hooks(name, args)
         if hook_reason is not None:
-            record_decision(
-                audit_log,
-                thread_id=self._host.thread_id,
-                tool_name=name,
-                arguments=args,
-                decision="reject",
-                reason="hook_veto",
-                detail=hook_reason,
-            )
-            return _denied(hook_reason)
+            self._audit(audit_log, name, args, "reject", "hook_veto", hook_reason)
+            return self._denied(name, hook_reason)
         if is_question:
             if not can_resolve_approvals(websocket):
                 message = (
@@ -230,16 +218,8 @@ class ApprovalDecider:
                     if is_draft
                     else "No one is available to answer this question -- this is an unattended run."
                 )
-                record_decision(
-                    audit_log,
-                    thread_id=self._host.thread_id,
-                    tool_name=name,
-                    arguments=args,
-                    decision="reject",
-                    reason="unattended",
-                    detail=message,
-                )
-                return _denied(message)
+                self._audit(audit_log, name, args, "reject", "unattended", message)
+                return self._denied(name, message)
             if is_draft:
                 return await self._decide_task_draft_request(name, args, websocket)
             if name == "exit_plan_mode":
@@ -247,21 +227,59 @@ class ApprovalDecider:
             return await self._decide_question_request(args, websocket)
         if name not in self._host._gated_tool_risks:
             return {"type": "approve"}
+        return await self._decide_gated_request(name, args, websocket, audit_log)
+
+    def _denied(self, name: str, message: str) -> dict[str, Any]:
+        if name in QUESTION_TOOL_NAMES or name in TASK_DRAFT_TOOL_NAMES:
+            return {"type": "respond", "message": message}
+        return {"type": "reject", "message": message}
+
+    def _audit(
+        self,
+        audit_log: AuditLog,
+        name: str,
+        args: dict[str, Any],
+        decision: AuditDecision,
+        reason: AuditReason,
+        detail: str | None = None,
+    ) -> None:
+        record_decision(
+            audit_log,
+            thread_id=self._host.thread_id,
+            tool_name=name,
+            arguments=args,
+            decision=decision,
+            reason=reason,
+            detail=detail,
+        )
+
+    async def _approved(
+        self,
+        audit_log: AuditLog,
+        name: str,
+        args: dict[str, Any],
+        websocket: Any,
+        reason: AuditReason | AutoApproveReason,
+        detail: str | None = None,
+    ) -> dict[str, Any]:
+        self._audit(audit_log, name, args, "approve", reason, detail)
+        await self._host._send_tool_started(name, args, websocket)
+        return {"type": "approve"}
+
+    async def _decide_gated_request(
+        self, name: str, args: dict[str, Any], websocket: Any, audit_log: AuditLog
+    ) -> Any:
+        """The precedence for a gated tool once no hook has vetoed it: exec
+        policy forbids, plan mode, exec policy allows, a code-module
+        allowance, accept-edits or auto mode, the auto reviewer, and last
+        a person."""
         exec_policy_decision, exec_policy_detail = "prompt", None
         if name in EXEC_POLICY_TOOL_NAMES:
             exec_policy = self._host._load_exec_policy()
             exec_policy_decision, exec_policy_detail = exec_policy.decide(args.get("script", ""))
         if exec_policy_decision == "forbidden":
             message = exec_policy_detail or "Forbidden by exec policy."
-            record_decision(
-                audit_log,
-                thread_id=self._host.thread_id,
-                tool_name=name,
-                arguments=args,
-                decision="reject",
-                reason="exec_policy",
-                detail=message,
-            )
+            self._audit(audit_log, name, args, "reject", "exec_policy", message)
             return {"type": "reject", "message": message}
         if self._host.plan_mode:
             message = (
@@ -269,94 +287,24 @@ class ApprovalDecider:
                 "task_create instead; the user needs to turn plan mode "
                 "off before it can run."
             )
-            record_decision(
-                audit_log,
-                thread_id=self._host.thread_id,
-                tool_name=name,
-                arguments=args,
-                decision="reject",
-                reason="plan_mode",
-                detail=message,
-            )
+            self._audit(audit_log, name, args, "reject", "plan_mode", message)
             return {"type": "reject", "message": message}
         if exec_policy_decision == "allow":
-            record_decision(
-                audit_log,
-                thread_id=self._host.thread_id,
-                tool_name=name,
-                arguments=args,
-                decision="approve",
-                reason="exec_policy",
-                detail=exec_policy_detail,
+            return await self._approved(
+                audit_log, name, args, websocket, "exec_policy", exec_policy_detail
             )
-            await self._host._send_tool_started(name, args, websocket)
-            return {"type": "approve"}
         if self._code_allows(name, websocket):
-            record_decision(
-                audit_log,
-                thread_id=self._host.thread_id,
-                tool_name=name,
-                arguments=args,
-                decision="approve",
-                reason="code_allowed",
-            )
-            await self._host._send_tool_started(name, args, websocket)
-            return {"type": "approve"}
+            return await self._approved(audit_log, name, args, websocket, "code_allowed")
         auto_reason = self._auto_approves(name)
         if auto_reason is not None:
-            record_decision(
-                audit_log,
-                thread_id=self._host.thread_id,
-                tool_name=name,
-                arguments=args,
-                decision="approve",
-                reason=auto_reason,
-            )
-            await self._host._send_tool_started(name, args, websocket)
-            return {"type": "approve"}
+            return await self._approved(audit_log, name, args, websocket, auto_reason)
         reviewer_note: str | None = None
         if self._auto_review_active():
-            verdict = await self._host._auto_review(
-                name, args, delegated_task=getattr(websocket, "delegated_task", "")
+            decision, reviewer_note = await self._auto_review_decision(
+                audit_log, name, args, websocket
             )
-            if verdict is not None and verdict.allow:
-                self._host._auto_blocks_in_row = 0
-                record_decision(
-                    audit_log,
-                    thread_id=self._host.thread_id,
-                    tool_name=name,
-                    arguments=args,
-                    decision="approve",
-                    reason="auto_review",
-                    detail=verdict.reason,
-                )
-                await self._host._send_tool_started(name, args, websocket)
-                return {"type": "approve"}
-            if verdict is not None:
-                self._host._auto_blocks_in_row += 1
-                self._host._auto_blocks_total += 1
-                record_decision(
-                    audit_log,
-                    thread_id=self._host.thread_id,
-                    tool_name=name,
-                    arguments=args,
-                    decision="reject",
-                    reason="auto_review_block",
-                    detail=verdict.reason,
-                )
-                if self._host._auto_blocks_in_row < 3 and self._host._auto_blocks_total < 20:
-                    return _denied(
-                        f"Auto mode blocked this: {verdict.reason} Find another way, or ask "
-                        "the user to allow this specific action."
-                    )
-                self._host._auto_paused = True
-                if self._host._auto_blocks_total >= 20:
-                    self._host._auto_blocks_total = 0
-                reviewer_note = (
-                    f"Auto mode kept blocking actions, so it's asking you: {verdict.reason}"
-                )
-            else:
-                reviewer_note = "Auto mode's reviewer gave no answer for this, so it's asking you."
+            if decision is not None:
+                return decision
         if not can_resolve_approvals(websocket):
             # Reached only when this call is genuinely gated and neither
             # exec_policy nor accept_edits already decided it above --
@@ -368,17 +316,53 @@ class ApprovalDecider:
             # on, which does resolve approvals and must not hang the poller
             # forever.
             message = "No one is available to approve this -- this is an unattended run."
-            record_decision(
-                audit_log,
-                thread_id=self._host.thread_id,
-                tool_name=name,
-                arguments=args,
-                decision="reject",
-                reason="unattended",
-                detail=message,
-            )
-            return _denied(message)
+            self._audit(audit_log, name, args, "reject", "unattended", message)
+            return self._denied(name, message)
+        return await self._ask_person(audit_log, name, args, websocket, reviewer_note)
 
+    async def _auto_review_decision(
+        self, audit_log: AuditLog, name: str, args: dict[str, Any], websocket: Any
+    ) -> tuple[dict[str, Any] | None, str | None]:
+        """The auto reviewer's verdict: a decision to return now, or None
+        to fall through to a person, with the note that explains why."""
+        verdict = await self._host._auto_review(
+            name, args, delegated_task=getattr(websocket, "delegated_task", "")
+        )
+        if verdict is None:
+            return None, "Auto mode's reviewer gave no answer for this, so it's asking you."
+        if verdict.allow:
+            self._host._auto_blocks_in_row = 0
+            return (
+                await self._approved(
+                    audit_log, name, args, websocket, "auto_review", verdict.reason
+                ),
+                None,
+            )
+        self._host._auto_blocks_in_row += 1
+        self._host._auto_blocks_total += 1
+        self._audit(audit_log, name, args, "reject", "auto_review_block", verdict.reason)
+        if self._host._auto_blocks_in_row < 3 and self._host._auto_blocks_total < 20:
+            return (
+                self._denied(
+                    name,
+                    f"Auto mode blocked this: {verdict.reason} Find another way, or ask "
+                    "the user to allow this specific action.",
+                ),
+                None,
+            )
+        self._host._auto_paused = True
+        if self._host._auto_blocks_total >= 20:
+            self._host._auto_blocks_total = 0
+        return None, f"Auto mode kept blocking actions, so it's asking you: {verdict.reason}"
+
+    async def _ask_person(
+        self,
+        audit_log: AuditLog,
+        name: str,
+        args: dict[str, Any],
+        websocket: Any,
+        reviewer_note: str | None,
+    ) -> dict[str, Any]:
         request_id = uuid.uuid4().hex
         future: Future[bool] = get_running_loop().create_future()
         self._host._pending_approvals[request_id] = future
@@ -416,14 +400,7 @@ class ApprovalDecider:
         if approved and self._host._auto_paused:
             self._host._auto_paused = False
             self._host._auto_blocks_in_row = 0
-        record_decision(
-            audit_log,
-            thread_id=self._host.thread_id,
-            tool_name=name,
-            arguments=args,
-            decision="approve" if approved else "reject",
-            reason="human",
-        )
+        self._audit(audit_log, name, args, "approve" if approved else "reject", "human")
         return {"type": "approve" if approved else "reject"}
 
     async def _decide_question_request(
