@@ -1,0 +1,67 @@
+name: Windows more checks
+
+# The checks that used to wait for a person on a Windows machine and can be scripted on a runner:
+# the real Credential Manager, cmd and PowerShell hooks, Format-Hex, taskkill on a process tree,
+# the Store python stub, YaHei in resvg. Kept in its own workflow so a failure here does not reset
+# windows.yml's run of green nights (decision 0009) or block windows-checks.yml.
+"on":
+  schedule:
+    - cron: "27 19 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/windows-more-checks.yml"
+      - "office-agent/tests/test_windows_real.py"
+      - ".github/CODEOWNERS"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-more-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+    working-directory: office-agent
+
+jobs:
+  real-windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      COSCRIBE_WINDOWS_REAL: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: office-agent/pyproject.toml
+
+      - name: Install coscribe
+        run: pip install -e ".[dev,web]"
+
+      # -rs lists a skipped test: a check that silently skips would pass without checking.
+      - name: Run the checks
+        run: |
+          python -m pytest tests/test_windows_real.py -v -rs -n0 | tee pytest.out
+          if grep -q SKIPPED pytest.out; then echo "a check was skipped"; exit 1; fi
+
+  codeowners:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    timeout-minutes: 5
+    steps:
+      - name: No errors in CODEOWNERS
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ref="${{ github.head_ref || github.ref_name }}"
+          errors=$(gh api "repos/${{ github.repository }}/codeowners/errors?ref=$ref" --jq '.errors | length')
+          echo "CODEOWNERS errors: $errors"
+          [ "$errors" = "0" ]
