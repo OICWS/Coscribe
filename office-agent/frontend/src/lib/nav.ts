@@ -1,4 +1,4 @@
-// Must match tools/scheduled_tasks.py's SCHEDULED_THREAD_PREFIX: every
+// Must match tools/bookkeeping/scheduled_tasks.py's SCHEDULED_THREAD_PREFIX: every
 // scheduled run's conversation id starts with it.
 export const SCHEDULED_THREAD_PREFIX = "scheduled-";
 

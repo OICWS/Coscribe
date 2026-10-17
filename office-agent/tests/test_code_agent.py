@@ -24,8 +24,8 @@ from coscribe.conversation import ChatSessionLG
 from coscribe.conversation import session as conversation_session
 from coscribe.runtime import SessionEnvironments, empty_hooks_config
 from coscribe.runtime_lg.code_agent import CODE_APPROVAL_RISKS, CODE_TASK_TOOL
-from coscribe.tools import subagent_tasks
-from coscribe.tools.subagent_tasks import (
+from coscribe.tools.bookkeeping import subagent_tasks
+from coscribe.tools.bookkeeping.subagent_tasks import (
     SubAgentTask,
     SubAgentTaskStore,
     get_subagent_transcript,

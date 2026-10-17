@@ -372,7 +372,7 @@ function App() {
   const current = threads?.find((t) => t.thread_id === threadId);
   const sessionLabel = (current && shortLabel(current.preview)) || "New session";
 
-  // A scheduled run's own conversation (see tools/scheduled_tasks.py's
+  // A scheduled run's own conversation (see tools/bookkeeping/scheduled_tasks.py's
   // run_thread_id): gets the "Scheduled / <task>" breadcrumb instead of
   // ThreadHeader, and the sidebar stays on the task list.
   const isScheduledTaskThread = threadId.startsWith(SCHEDULED_THREAD_PREFIX);

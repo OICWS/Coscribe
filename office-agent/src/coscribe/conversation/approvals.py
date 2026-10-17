@@ -433,7 +433,7 @@ class ApprovalDecider:
         real person's answer, and return it as a "respond" decision --
         HumanInTheLoopMiddleware substitutes this message directly as the
         tool's own result, the tool's Python body never actually running
-        (see tools/interaction.py's own docstring). Same pending-Future/
+        (see tools/bookkeeping/interaction.py's own docstring). Same pending-Future/
         request-id shape as the approval flow just above, kept as a
         separate dict (self._pending_questions) rather than reusing
         self._pending_approvals since the value type is different (a

@@ -2087,7 +2087,7 @@ def test_an_auto_approved_call_is_announced_before_it_runs_lg(
 def test_the_chat_model_tests_its_draft_and_fixes_what_failed_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from coscribe.tools.scheduled_tasks import ScheduledTriggerStore
+    from coscribe.tools.bookkeeping.scheduled_tasks import ScheduledTriggerStore
 
     ids = iter(["d1", "d2"])
     monkeypatch.setattr(conversation_session, "_new_draft_id", lambda: next(ids))
@@ -2196,7 +2196,7 @@ def test_testing_an_unknown_draft_says_so_lg(
 def test_editing_a_saved_task_asks_the_user_with_the_whole_task_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from coscribe.tools.scheduled_tasks import ScheduledTriggerStore, create_trigger
+    from coscribe.tools.bookkeeping.scheduled_tasks import ScheduledTriggerStore, create_trigger
 
     store = ScheduledTriggerStore(tmp_path / "state")
     task = create_trigger(
@@ -2450,7 +2450,7 @@ def test_modes_are_one_at_a_time_lg(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 def test_a_message_from_another_conversation_becomes_a_turn_of_its_own(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from coscribe.tools.conversations import build_conversation_tools
+    from coscribe.tools.bookkeeping.conversations import build_conversation_tools
 
     fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="Noted the totals.")])
     state_dir = tmp_path / "state"
@@ -2478,7 +2478,7 @@ def test_a_message_from_another_conversation_becomes_a_turn_of_its_own(
 def test_a_message_to_a_conversation_nobody_has_opened_waits_until_it_is(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from coscribe.tools.conversations import MessagingStore, build_conversation_tools
+    from coscribe.tools.bookkeeping.conversations import MessagingStore, build_conversation_tools
 
     fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="Read it.")])
     state_dir = tmp_path / "state"
@@ -2503,7 +2503,7 @@ def test_messages_stop_after_the_cap_until_the_user_speaks(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from coscribe.conversation.session import _MAX_REPORT_TURNS_IN_ROW
-    from coscribe.tools.conversations import MessagingStore, build_conversation_tools
+    from coscribe.tools.bookkeeping.conversations import MessagingStore, build_conversation_tools
 
     fake_model = FakeToolCallingChatModel(
         responses=[AIMessage(content=f"reply {i}") for i in range(_MAX_REPORT_TURNS_IN_ROW + 2)]

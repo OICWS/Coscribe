@@ -1,7 +1,7 @@
 """Suspend/resume primitives (ROADMAP.md Phase 4): sleep_for/sleep_until,
 wake_on_task, wake_on_event -- let the model end a turn
 saying "check back later" instead of the *user* having to schedule
-anything. Distinct from tools/scheduled_tasks.py: a wake resumes *this*
+anything. Distinct from tools/bookkeeping/scheduled_tasks.py: a wake resumes *this*
 conversation once; a scheduled task runs on its own schedule in fresh
 conversations of its own.
 
@@ -14,10 +14,10 @@ way to construct/reuse a ChatSessionLG -- lives in runtime_lg/selfwake.py.
 Kinds of wake, deliberately scoped to backing that's real today, not
 hypothetical:
 - "timer": sleep_for/sleep_until -- wake at a wall-clock time.
-- "task": wake_on_task(task_id) -- task_id is a tools/background_tasks.py
+- "task": wake_on_task(task_id) -- task_id is a tools/bookkeeping/background_tasks.py
   BackgroundTask.task_id. Validated against that store up front, so a
   wake nothing could ever resolve is never registered.
-- "subagent": a tools/subagent_tasks.py SubAgentTask.task_id. No tool
+- "subagent": a tools/bookkeeping/subagent_tasks.py SubAgentTask.task_id. No tool
   creates one -- a background sub-agent reports to its conversation by
   itself when it ends (conversation/session.py) -- but a pending one on disk still
   resolves once the run has finished.
@@ -42,7 +42,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from ..runtime import tool_metadata
+from ...runtime import tool_metadata
 from .background_tasks import BackgroundTaskStore
 
 VALID_KINDS = ("timer", "task", "subagent", "event")

@@ -14,7 +14,7 @@ that fires a run or its stored history (`runtime_lg/scheduled_tasks.py`), the ro
 (catalog); `output_files`, `run_test`, `uses_browser` (test run); `DraftFailed`, `WorkflowDraft`,
 `draft_workflow`, `revise_workflow` (drafting from a conversation: it takes the serialized
 history, so this package does not import `runtime_lg`). Two other callers still import submodules (`workflows.spec`, `.permissions`):
-`coordinator.py` (an invariant path) and `tools/scheduled_tasks.py` (importing the package
+`coordinator.py` (an invariant path) and `tools/bookkeeping/scheduled_tasks.py` (importing the package
 there cycles); do not copy them.
 
 ## Depends on

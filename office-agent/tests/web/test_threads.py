@@ -1428,7 +1428,7 @@ def test_get_threads_endpoint_strips_mode_note_and_sorts_by_recency_lg(
 def test_delete_thread_endpoint_removes_checkpoints_and_tasks_sidecar_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from coscribe.tools.tasks import TaskToolkit
+    from coscribe.tools.bookkeeping.tasks import TaskToolkit
 
     fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="hi")])
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
@@ -2175,7 +2175,7 @@ def test_thread_files_take_the_workspace_param_only_the_first_time(tmp_path: Pat
 
 
 def test_thread_files_open_a_scheduled_run_in_its_tasks_folders(tmp_path: Path) -> None:
-    from coscribe.tools.scheduled_tasks import (
+    from coscribe.tools.bookkeeping.scheduled_tasks import (
         ScheduledTriggerStore,
         create_trigger,
         run_thread_id,

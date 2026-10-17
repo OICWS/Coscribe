@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from coscribe.runtime import get_tool_metadata
-from coscribe.tools.tasks import build_task_tools
+from coscribe.tools.bookkeeping.tasks import build_task_tools
 
 
 def _tools_by_name(thread_id: str, state_dir: Path) -> dict[str, object]:

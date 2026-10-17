@@ -3,7 +3,7 @@ import { ChevronRightIcon, MessageCircleIcon } from "./icons";
 
 const Markdown = lazy(() => import("./Markdown").then((m) => ({ default: m.Markdown })));
 
-// Mirrors tools/conversations.py's format_incoming.
+// Mirrors tools/bookkeeping/conversations.py's format_incoming.
 export const CONVERSATION_MESSAGE_PREFIX = "[Message from another conversation]";
 const HEADER_RE = /^\[Message from another conversation\] from "(.*?)" \(conversation ([\w-]+)\):\n\n/s;
 const NOTE_RE = /\n\n\(This came from another conversation, not from the user\.[^)]*\)\s*$/s;

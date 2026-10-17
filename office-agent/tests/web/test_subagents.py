@@ -19,7 +19,7 @@ from langchain_core.messages import (
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 
 from coscribe.config import Settings
-from coscribe.tools.subagent_tasks import SubAgentTaskStore
+from coscribe.tools.bookkeeping.subagent_tasks import SubAgentTaskStore
 
 from .helpers import (
     ConcurrentSpawnFakeModel,
@@ -256,8 +256,8 @@ async def test_a_sub_agents_approval_survives_a_closed_turn_socket(
     from types import SimpleNamespace
 
     from coscribe.conversation.session import _SubAgentApprovalChannel
-    from coscribe.tools import subagent_tasks
-    from coscribe.tools.subagent_tasks import SubAgentTask
+    from coscribe.tools.bookkeeping import subagent_tasks
+    from coscribe.tools.bookkeeping.subagent_tasks import SubAgentTask
 
     monkeypatch.setitem(subagent_tasks._RUNNING, "t1", asyncio.get_running_loop().create_future())
 

@@ -104,6 +104,13 @@ owner = ["@OICWS"]
 card = "office-agent/src/coscribe/tools/web/AGENTS.md"
 
 [[component]]
+name = "tools.bookkeeping"
+path = "office-agent/src/coscribe/tools/bookkeeping"
+layer = "tools"
+owner = ["@OICWS"]
+card = "office-agent/src/coscribe/tools/bookkeeping/AGENTS.md"
+
+[[component]]
 name = "runtime"
 path = "office-agent/src/coscribe/runtime"
 layer = "runtime | config"

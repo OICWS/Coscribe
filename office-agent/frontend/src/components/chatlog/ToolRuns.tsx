@@ -264,7 +264,7 @@ function ToolCallRow({
  * instead of being buried, JSON-escaped, inside a generic arguments dump
  * the way every other tool's args are. run_background_script's arguments
  * carry the same script/description shape as the other two (see
- * tools/background_tasks.py), so it reuses this exact rendering. */
+ * tools/bookkeeping/background_tasks.py), so it reuses this exact rendering. */
 function ApprovalDetail({
   item,
   onApprove,

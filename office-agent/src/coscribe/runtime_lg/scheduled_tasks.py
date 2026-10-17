@@ -1,6 +1,6 @@
 """Scheduled Tasks run side for runtime_lg -- the LangGraph-native
-counterpart to tools/scheduled_tasks.py, same split runtime_lg/selfwake.py
-already uses: storage + model-callable tools live in tools/scheduled_tasks.py
+counterpart to tools/bookkeeping/scheduled_tasks.py, same split runtime_lg/selfwake.py
+already uses: storage + model-callable tools live in tools/bookkeeping/scheduled_tasks.py
 (no live client/checkpointer needed there); actually executing a run does
 need one, so it lives here.
 

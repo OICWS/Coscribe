@@ -1,6 +1,6 @@
 # ruff: noqa: E402
 """Tests for runtime_lg/scheduled_tasks.py's poll_due_scheduled_tasks --
-the resume half of the Scheduled Tasks feature (tools/scheduled_tasks.py
+the resume half of the Scheduled Tasks feature (tools/bookkeeping/scheduled_tasks.py
 holds the create/list/pause/resume/delete half, covered by
 tests/test_scheduled_tasks_tool.py instead).
 
@@ -33,14 +33,14 @@ from coscribe.runtime_lg.scheduled_tasks import (
     poll_due_scheduled_tasks,
     reconcile_interrupted_runs,
 )
-from coscribe.tools.exec import scripts
-from coscribe.tools.scheduled_tasks import (
+from coscribe.tools.bookkeeping.scheduled_tasks import (
     ScheduledRun,
     ScheduledTrigger,
     ScheduledTriggerStore,
     ScheduleRule,
     run_thread_id,
 )
+from coscribe.tools.exec import scripts
 
 from .wire_check import check_event
 

@@ -1,6 +1,6 @@
 """Scheduled Tasks: a real, independently-manageable product feature for
 "do this later, once or on a repeating schedule" -- distinct from
-tools/selfwake.py's sleep_for/wake_on/wake_on_event, which are agent-
+tools/bookkeeping/selfwake.py's sleep_for/wake_on/wake_on_event, which are agent-
 initiated, one-off, thread-scoped pauses only callable from inside an
 existing conversation. A ScheduledTrigger is the opposite shape: global,
 named, persisted, creatable either mid-conversation (create_scheduled_task)
@@ -9,7 +9,7 @@ at all -- global, named, and persisted, so it's its own concept rather
 than a new WakeRequest kind. See ARCHITECTURE.md's "Repeated work becomes fixed
 steps" section for the fuller reasoning.
 
-Split the same way tools/selfwake.py splits its own data model/storage/
+Split the same way tools/bookkeeping/selfwake.py splits its own data model/storage/
 tools from the runtime-specific resume logic: this
 module holds ScheduleRule/ScheduledTrigger/ScheduledTriggerStore and the
 model-callable tools (no live LLM client or checkpointer needed for any of
@@ -40,8 +40,8 @@ from typing import Any, Optional
 
 from pydantic import ValidationError
 
-from ..runtime import tool_metadata
-from ..workflows.spec import parse_workflow, workflow_error
+from ...runtime import tool_metadata
+from ...workflows.spec import parse_workflow, workflow_error
 
 VALID_KINDS = ("manual", "once", "hourly", "daily", "weekdays", "weekly", "monthly")
 VALID_APPROVAL_MODES = ("manual", "auto", "skip")

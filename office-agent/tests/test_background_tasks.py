@@ -11,7 +11,10 @@ from typing import Any
 import pytest
 
 from coscribe.runtime import get_tool_metadata
-from coscribe.tools.background_tasks import BackgroundTaskStore, build_background_task_tools
+from coscribe.tools.bookkeeping.background_tasks import (
+    BackgroundTaskStore,
+    build_background_task_tools,
+)
 
 
 def _network_reachable() -> bool:
@@ -306,7 +309,7 @@ def test_kill_background_task_is_write_local_and_gated(tools: BgTools) -> None:
 
 
 def test_background_task_store_round_trips_through_json() -> None:
-    from coscribe.tools.background_tasks import BackgroundTask
+    from coscribe.tools.bookkeeping.background_tasks import BackgroundTask
 
     store = BackgroundTaskStore(Path(tempfile.mkdtemp(prefix="coscribe_bg_store_test_")))
     task = BackgroundTask(

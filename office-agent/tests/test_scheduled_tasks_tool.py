@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from coscribe.runtime import get_tool_metadata
-from coscribe.tools.scheduled_tasks import (
+from coscribe.tools.bookkeeping.scheduled_tasks import (
     MAX_NOTES_CHARS,
     MAX_RUNS_KEPT,
     ScheduledTrigger,

@@ -32,14 +32,14 @@ from ...tools import (
     get_subagent_transcript,
     stop_subagent_task,
 )
-from ...tools.background_tasks import (
+from ...tools.bookkeeping.background_tasks import (
     BackgroundTaskStore,
     forget_finished_background_tasks,
     read_background_log,
     stop_background_task,
 )
-from ...tools.conversations import MessagingError, MessagingStore
-from ...tools.tasks import TaskToolkit
+from ...tools.bookkeeping.conversations import MessagingError, MessagingStore
+from ...tools.bookkeeping.tasks import TaskToolkit
 from ...workflows import DraftFailed
 from ..schemas import (
     DocxReviewEdit,
