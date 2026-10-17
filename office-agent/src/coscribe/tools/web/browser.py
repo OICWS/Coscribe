@@ -247,21 +247,21 @@ def page_screenshot(
     return name
 
 
-def build_browser_tools(
-    thread_id: str,
-    host: BrowserHost = BROWSER_HOST,
-    *,
-    scope: WorkspaceScope | None = None,
-    saved_workflow: bool = False,
-    allowed_sites: Callable[[], list[str]] | None = None,
-) -> list[Callable[..., Any]]:
-    """`saved_workflow`: these tools run a saved workflow's steps, which
-    the user reviewed and saved -- consent to the sites they visit -- so
-    the desktop app doesn't stop an unattended run to ask. `allowed_sites`
-    (read at each call, since a run may be allowed one more while it waits)
-    is what that consent covers: a site outside it is refused with
-    NeedsPermission instead."""
+# The tools are grouped into builders under 100 lines; `build_browser_tools` puts them back in the
+# original order, which is the tool-list order the schema snapshot pins.
+def _wait_limit(timeout: float) -> float:
+    if timeout <= 0:
+        raise ValueError("timeout must be more than 0 seconds.")
+    return min(float(timeout), _MAX_WAIT)
 
+
+def _browser_call(
+    thread_id: str,
+    host: BrowserHost,
+    scope: WorkspaceScope | None,
+    saved_workflow: bool,
+    allowed_sites: Callable[[], list[str]] | None,
+) -> Callable[..., dict[str, Any]]:
     def call(action: str, limit: float = _DEFAULT_TIMEOUT, **args: Any) -> dict[str, Any]:
         if scope is not None:
             args["download_dir"] = str(scope.root / _DOWNLOADS_FOLDER)
@@ -277,11 +277,10 @@ def build_browser_tools(
                 download["path"] = scope.relative(path) if path.is_absolute() else str(path)
         return result
 
-    def wait_limit(timeout: float) -> float:
-        if timeout <= 0:
-            raise ValueError("timeout must be more than 0 seconds.")
-        return min(float(timeout), _MAX_WAIT)
+    return call
 
+
+def _navigation_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable[..., Any]]:
     def browser_navigate(url: str) -> str:
         """Open a URL in coscribe's browser (the Browser panel the user
         watches), in the current tab. Use this instead of read_web_page when
@@ -326,6 +325,43 @@ def build_browser_tools(
             )
         return f"{header}\n\n{text}" if header else text
 
+    def browser_hover(ref: str, timeout: float = _DEFAULT_WAIT) -> str:
+        """Move the mouse over an element in coscribe's browser, e.g. to open
+        a menu that appears on hover.
+
+        Args:
+            ref: the element's ref from the latest browser_snapshot, or its
+                description
+            timeout: how long a described element may take to appear, in
+                seconds (default 30, up to 3600)
+        """
+        wait = _wait_limit(timeout)
+        result = call("hover", wait + _DEFAULT_TIMEOUT, ref=ref, timeout=wait)
+        return _with_tab(f"Hovering over {result.get('element') or ref}.", result)
+
+    def browser_scroll(direction: str = "down", ref: str = "") -> str:
+        """Scroll the current page in coscribe's browser by about one
+        screen, or bring one element into view.
+
+        Args:
+            direction: "down" or "up"
+            ref: scroll this element into view instead (from browser_snapshot)
+        """
+        if direction not in ("down", "up"):
+            raise ValueError('direction must be "down" or "up".')
+        result = call("scroll", direction=direction, ref=ref or None)
+        return _with_tab(str(result.get("note") or "Scrolled."), result)
+
+    return {
+        "browser_navigate": browser_navigate,
+        "browser_navigate_back": browser_navigate_back,
+        "browser_snapshot": browser_snapshot,
+        "browser_hover": browser_hover,
+        "browser_scroll": browser_scroll,
+    }
+
+
+def _input_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable[..., Any]]:
     def browser_click(ref: str, double: bool = False, timeout: float = _DEFAULT_WAIT) -> str:
         """Click an element in coscribe's browser, by its ref from the latest
         browser_snapshot. Clicks as a real mouse would, so links open and
@@ -337,7 +373,7 @@ def build_browser_tools(
             timeout: how long a described element may take to appear, in
                 seconds (default 30, up to 3600)
         """
-        wait = wait_limit(timeout)
+        wait = _wait_limit(timeout)
         result = call("click", wait + _DEFAULT_TIMEOUT, ref=ref, double=double, timeout=wait)
         return _with_tab(f"Clicked {result.get('element') or ref}.", result)
 
@@ -354,7 +390,7 @@ def build_browser_tools(
             timeout: how long a described element may take to appear, in
                 seconds (default 30, up to 3600)
         """
-        wait = wait_limit(timeout)
+        wait = _wait_limit(timeout)
         result = call(
             "type", wait + _DEFAULT_TIMEOUT, ref=ref, text=text, submit=submit, timeout=wait
         )
@@ -380,40 +416,24 @@ def build_browser_tools(
             timeout: how long a described element may take to appear, in
                 seconds (default 30, up to 3600)
         """
-        wait = wait_limit(timeout)
+        wait = _wait_limit(timeout)
         result = call(
             "select_option", wait + _DEFAULT_TIMEOUT, ref=ref, values=values, timeout=wait
         )
         chosen = ", ".join(str(v) for v in result.get("selected") or values)
         return _with_tab(f"Selected {chosen}.", result)
 
-    def browser_hover(ref: str, timeout: float = _DEFAULT_WAIT) -> str:
-        """Move the mouse over an element in coscribe's browser, e.g. to open
-        a menu that appears on hover.
+    return {
+        "browser_click": browser_click,
+        "browser_type": browser_type,
+        "browser_press_key": browser_press_key,
+        "browser_select_option": browser_select_option,
+    }
 
-        Args:
-            ref: the element's ref from the latest browser_snapshot, or its
-                description
-            timeout: how long a described element may take to appear, in
-                seconds (default 30, up to 3600)
-        """
-        wait = wait_limit(timeout)
-        result = call("hover", wait + _DEFAULT_TIMEOUT, ref=ref, timeout=wait)
-        return _with_tab(f"Hovering over {result.get('element') or ref}.", result)
 
-    def browser_scroll(direction: str = "down", ref: str = "") -> str:
-        """Scroll the current page in coscribe's browser by about one
-        screen, or bring one element into view.
-
-        Args:
-            direction: "down" or "up"
-            ref: scroll this element into view instead (from browser_snapshot)
-        """
-        if direction not in ("down", "up"):
-            raise ValueError('direction must be "down" or "up".')
-        result = call("scroll", direction=direction, ref=ref or None)
-        return _with_tab(str(result.get("note") or "Scrolled."), result)
-
+def _waiting_tools(
+    call: Callable[..., dict[str, Any]], scope: WorkspaceScope | None
+) -> dict[str, Callable[..., Any]]:
     def browser_wait_for(
         text: str = "",
         gone: str = "",
@@ -455,7 +475,7 @@ def build_browser_tools(
             chosen.append("download")
         if len(chosen) > 1:
             raise ValueError(f"Wait for one thing at a time, not {' and '.join(chosen)}.")
-        limit = wait_limit(max(timeout, seconds))
+        limit = _wait_limit(max(timeout, seconds))
         if not chosen:
             if seconds <= 0:
                 raise ValueError("Pass text, gone, element or download=True -- or seconds.")
@@ -495,6 +515,14 @@ def build_browser_tools(
             message = f'"{text}" is on the page.'
         return _with_tab(message, result)
 
+    return {
+        "browser_wait_for": browser_wait_for,
+    }
+
+
+def _page_tools(
+    call: Callable[..., dict[str, Any]], scope: WorkspaceScope | None
+) -> dict[str, Callable[..., Any]]:
     def browser_tabs(action: str = "list", tab_id: int = 0, url: str = "") -> str:
         """List, open, switch to or close tabs in coscribe's browser (at
         most 9 are open at once). The other browser_* tools act on the
@@ -578,26 +606,56 @@ def build_browser_tools(
             )
         return _with_tab(value, result)
 
-    read: list[Callable[..., Any]] = [
-        browser_navigate,
-        browser_navigate_back,
-        browser_snapshot,
-        browser_hover,
-        browser_scroll,
-        browser_wait_for,
-        browser_tabs,
+    return {
+        "browser_tabs": browser_tabs,
+        "browser_handle_dialog": browser_handle_dialog,
+        "browser_file_upload": browser_file_upload,
+        "browser_evaluate": browser_evaluate,
+    }
+
+
+def build_browser_tools(
+    thread_id: str,
+    host: BrowserHost = BROWSER_HOST,
+    *,
+    scope: WorkspaceScope | None = None,
+    saved_workflow: bool = False,
+    allowed_sites: Callable[[], list[str]] | None = None,
+) -> list[Callable[..., Any]]:
+    """`saved_workflow`: these tools run a saved workflow's steps, which
+    the user reviewed and saved -- consent to the sites they visit -- so
+    the desktop app doesn't stop an unattended run to ask. `allowed_sites`
+    (read at each call, since a run may be allowed one more while it waits)
+    is what that consent covers: a site outside it is refused with
+    NeedsPermission instead."""
+
+    call = _browser_call(thread_id, host, scope, saved_workflow, allowed_sites)
+    fns = {
+        **_navigation_tools(call),
+        **_input_tools(call),
+        **_waiting_tools(call, scope),
+        **_page_tools(call, scope),
+    }
+    read = [
+        fns["browser_navigate"],
+        fns["browser_navigate_back"],
+        fns["browser_snapshot"],
+        fns["browser_hover"],
+        fns["browser_scroll"],
+        fns["browser_wait_for"],
+        fns["browser_tabs"],
     ]
-    act: list[Callable[..., Any]] = [
-        browser_click,
-        browser_type,
-        browser_press_key,
-        browser_select_option,
-        browser_handle_dialog,
-        browser_file_upload,
+    act = [
+        fns["browser_click"],
+        fns["browser_type"],
+        fns["browser_press_key"],
+        fns["browser_select_option"],
+        fns["browser_handle_dialog"],
+        fns["browser_file_upload"],
     ]
     return (
         [tool_metadata(f, risk_category="READ", category="browser") for f in read]
         + [tool_metadata(f, risk_category="EXTERNAL", category="browser") for f in act]
         # Arbitrary script with the user's logins behind it.
-        + [tool_metadata(browser_evaluate, risk_category="EXEC", category="browser")]
+        + [tool_metadata(fns["browser_evaluate"], risk_category="EXEC", category="browser")]
     )
