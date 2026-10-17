@@ -52,6 +52,8 @@ GET /api/threads/status
 GET /api/threads/{thread_id}/activity
 GET /api/threads/{thread_id}/background-tasks
 GET /api/threads/{thread_id}/context-breakdown
+GET /api/threads/{thread_id}/docx-review
+GET /api/threads/{thread_id}/docx-review/original
 GET /api/threads/{thread_id}/environment
 GET /api/threads/{thread_id}/files/download
 GET /api/threads/{thread_id}/messaging
@@ -93,6 +95,7 @@ POST /api/skills/upload
 POST /api/skills/{name}/enabled
 POST /api/subagents/{task_id}/stop
 POST /api/thread-groups/{name}/rename
+POST /api/threads/{thread_id}/docx-review
 POST /api/threads/{thread_id}/files/open
 POST /api/threads/{thread_id}/meta
 POST /api/threads/{thread_id}/rename
