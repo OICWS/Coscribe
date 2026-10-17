@@ -77,7 +77,9 @@ Last reviewed: 2026-10-15.
    `docs/security/review-pack.md` (item 7), `scripts/review_pack.py` and
    `scripts/weekly_metrics.py` (item 8). Open: the fresh-session measurement of three sample
    changes (item 3), reading the first `audit.yml` run and the CodeQL alerts after 2026-10-19
-   (item 7), and Origin/Host validation on the local server.
+   (item 7). The next stage is Batch 8 (#388): Origin/Host validation (#390), the first audit and
+   CodeQL read, the 281 "Not verified" items sorted (`docs/metrics/2026-10-17-not-verified-triage.md`:
+   20 checks for a person), the fresh-session measurement, prompt-injection tests, small items.
 
 0b. **The office route** (decision 0010, `docs/assessments/2026-10-13-office-route.md`):
    new decks compiled from whole-page SVG sources, edits through the page source and upgraded

@@ -1,0 +1,59 @@
+name: Windows checks
+
+# The repository's own scripts on a Windows machine: they read source files, so a path
+# separator or a line ending could change their result. Kept apart from windows.yml so a
+# failure here does not reset that workflow's run of green nights (decision 0009).
+"on":
+  schedule:
+    - cron: "47 19 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/windows-checks.yml"
+
+concurrency:
+  group: windows-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+    working-directory: office-agent
+
+jobs:
+  scripts:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: office-agent/pyproject.toml
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: office-agent/frontend/package-lock.json
+
+      - name: Install the frontend packages
+        working-directory: office-agent/frontend
+        run: npm ci
+
+      - name: Install coscribe
+        run: pip install -e ".[dev,web]"
+
+      - name: Import boundaries
+        run: lint-imports
+
+      - name: Generated wire types and component map
+        run: |
+          python scripts/gen_wire_ts.py --check
+          python scripts/gen_components.py --check
+
+      # Also runs the frontend metrics: file sizes, long functions and knip's unused exports.
+      - name: Ratchet
+        run: python scripts/ratchet.py --enforce
