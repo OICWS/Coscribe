@@ -80,9 +80,11 @@ launch also makes a random token (`COSCRIBE_LAUNCH_TOKEN` fixes one for a dev se
 page is served with it in a `<meta>`; its scripts send it as `x-coscribe-token` on every request that
 is not a read, and as `?token=` on a WebSocket, which cannot set a header. A page on another port
 cannot read the token (no CORS headers) and cannot send the header without a preflight the app
-refuses. Reads need no token, so images, downloads and iframes keep working; that is safe only while
-no GET changes anything, which `test_every_get_route_has_been_read_for_side_effects` enforces by
-failing on any GET route not read by a person. The one GET that does change state is the connector
+refuses. Reads need no token, so images, downloads and iframes keep working. Some GETs do start things (a
+session and its `SessionStart` hooks, a package environment, `npm view`), so a browser GET that
+says `Sec-Fetch-Site: same-site` or `cross-site` is refused; a browser that sends no such header
+is not covered. `test_every_get_route_has_been_read_for_side_effects` also fails on any GET route
+not read by a person. The one GET that does change state is the connector
 sign-in callback, which is a cross-site navigation by nature and carries the sign-in's own `state`.
 The desktop app's browser-host routes keep their own token. The first-run setup page has no token
 (it runs once, before any data exists). Not covered: any local process, which can read the page, or

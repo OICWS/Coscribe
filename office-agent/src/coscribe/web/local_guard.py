@@ -11,8 +11,11 @@ Those two checks still let a page served from another loopback port through (`lo
 is loopback too), so each launch also makes a token: the app's own page is served with it, and
 a WebSocket handshake or any request that changes state must carry it. A page on another port
 cannot read the token (the app sends no CORS headers) and cannot send the header without a
-preflight the app refuses. GET requests need no token: they change nothing (audited, see
-`tests/web/test_local_guard.py`), and an image, a download link or an iframe cannot send headers.
+preflight the app refuses. A GET needs no token, because an image, a download link or an iframe
+cannot send headers; instead a browser GET that says it comes from another site, or from another
+port of this machine (`Sec-Fetch-Site: same-site`), is refused, since some GET routes start a
+session or an environment. `tests/web/test_launch_token.py` lists the GET routes read for
+side effects.
 
 An ASGI middleware, not Starlette's `BaseHTTPMiddleware`, because that one does not see
 WebSocket handshakes.
@@ -38,7 +41,8 @@ _HINT = f" (list the names it is served under in {ALLOWED_HOSTS_ENV}, comma-sepa
 TOKEN_ENV = "COSCRIBE_LAUNCH_TOKEN"
 TOKEN_HEADER = b"x-coscribe-token"
 _READ_ONLY = frozenset({"GET", "HEAD", "OPTIONS"})
-# These routes check a token of their own (the desktop app's browser host).
+# These routes check a token of their own (the desktop app's browser host); a new route under
+# this prefix must check it too.
 _OWN_TOKEN_PREFIX = "/internal/browser-host"
 # The page an identity provider sends the browser back to is a cross-site navigation by nature;
 # it carries the sign-in's own `state` instead.
@@ -85,12 +89,16 @@ def violation(scope: Scope) -> str | None:
     if len(origins) > 1 or (origins and _hostname(origins[0], scheme="origin") not in allowed):
         # Includes the literal "null" a sandboxed frame or a data: page sends.
         return "Origin is not this machine"
-    cross_site_page = scope["type"] == "http" and (
-        scope["method"] == "GET" and scope["path"] == _OAUTH_CALLBACK
-    )
-    if "cross-site" in _headers(scope, b"sec-fetch-site") and not cross_site_page:
+    site = _headers(scope, b"sec-fetch-site")
+    is_http = scope["type"] == "http"
+    cross_site_page = is_http and scope["method"] == "GET" and scope["path"] == _OAUTH_CALLBACK
+    if "cross-site" in site and not cross_site_page:
         # A browser sends no Origin on a cross-site <img> or navigation GET, but does say so here.
         return "Request comes from another site"
+    if "same-site" in site and is_http and scope["method"] in _READ_ONLY:
+        # Another port of this machine: the app's own page is same-origin, and a write there
+        # is stopped by the token, which a GET does not carry.
+        return "Request comes from another page on this machine"
     return None
 
 
@@ -107,9 +115,9 @@ def page_with_token(page: Path, token: str) -> HTMLResponse:
 
 def _token_missing(scope: Scope, token: str) -> bool:
     """Whether this request has to carry the token and does not."""
-    if scope["type"] == "http" and (
-        scope["method"] in _READ_ONLY or scope["path"].startswith(_OWN_TOKEN_PREFIX)
-    ):
+    path = scope.get("path", "")
+    own_token = path == _OWN_TOKEN_PREFIX or path.startswith(_OWN_TOKEN_PREFIX + "/")
+    if scope["type"] == "http" and (scope["method"] in _READ_ONLY or own_token):
         return False
     given = _headers(scope, TOKEN_HEADER)
     if not given and scope["type"] == "websocket":

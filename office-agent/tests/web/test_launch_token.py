@@ -148,9 +148,10 @@ def test_the_real_app_hands_its_page_the_token_and_refuses_a_post_without_it(
             static.rmdir()
 
 
-# Every GET route, read by a person for a side effect. A page on another port can make the
-# browser send a GET without the token (a link, an image), so none may change anything that
-# matters: a new GET route fails this test until someone reads it and adds it here.
+# Every GET route, read by a person for a side effect. A GET carries no token, and only the
+# `Sec-Fetch-Site` check keeps another page on this machine from sending one (a browser that
+# sends no such header is not covered), so a GET must not change anything that matters: a new
+# GET route fails this test until someone reads it and adds it here.
 AUDITED_READ_ONLY_GETS = {
     "/",
     "/api/attachment/pdf",
@@ -217,3 +218,15 @@ def test_every_get_route_has_been_read_for_side_effects(
         "running process). If it changes something make it a POST; if not, add it here."
     )
     assert AUDITED_READ_ONLY_GETS - gets == set(), "A route listed here no longer exists."
+
+
+@pytest.mark.parametrize("site", ["same-site", "cross-site"])
+def test_a_get_from_another_page_is_refused(client: TestClient, site: str) -> None:
+    assert client.get("/ping", headers={"Sec-Fetch-Site": site}).status_code == 403
+    assert client.get("/ping", headers={"Sec-Fetch-Site": "same-origin"}).status_code == 200
+    assert client.get("/ping", headers={"Sec-Fetch-Site": "none"}).status_code == 200
+
+
+def test_the_browser_host_exemption_is_not_a_bare_prefix(client: TestClient) -> None:
+    assert client.post("/internal/browser-hostX").status_code == 403
+    assert client.post("/internal/browser-host/result").status_code == 200

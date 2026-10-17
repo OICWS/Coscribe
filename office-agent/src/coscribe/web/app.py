@@ -695,7 +695,10 @@ async def _run_web_server(host: str, port: int) -> None:
         await serve_task
 
     logging.basicConfig(level=settings.log_level)
-    await uvicorn.Server(uvicorn.Config(create_app_lg(settings), host=host, port=port)).serve()
+    # No access log: it would print the launch token a WebSocket carries in its URL.
+    await uvicorn.Server(
+        uvicorn.Config(create_app_lg(settings), host=host, port=port, access_log=False)
+    ).serve()
 
 
 def main() -> None:
