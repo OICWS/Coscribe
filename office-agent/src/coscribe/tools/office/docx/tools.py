@@ -8,9 +8,9 @@ from ..._output_truncation import cap_read_output
 from .toolkit import DocxToolkit
 
 
-def build_docx_tools(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
-    """The Word tools, bound to `toolkit`."""
-
+# The tools are grouped into builders under 100 lines; `build_docx_tools` concatenates them in the
+# original order, which is the tool-list order the schema snapshot pins.
+def _docx_tools_1(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
     def write_docx(
         path: str,
         content: str,
@@ -98,6 +98,12 @@ def build_docx_tools(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
             comment_author=comment_author,
         )
 
+    return [
+        tool_metadata(write_docx, risk_category="WRITE_LOCAL", category="documents"),
+    ]
+
+
+def _docx_tools_2(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
     def add_docx_chart(
         path: str,
         chart_type: str,
@@ -173,6 +179,13 @@ def build_docx_tools(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
             path=path, image_path=image_path, after_text=after_text, caption=caption, width=width
         )
 
+    return [
+        tool_metadata(add_docx_chart, risk_category="WRITE_LOCAL", category="documents"),
+        tool_metadata(add_docx_image, risk_category="WRITE_LOCAL", category="documents"),
+    ]
+
+
+def _docx_tools_3(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
     def insert_docx_text(
         path: str,
         text: str,
@@ -224,6 +237,12 @@ def build_docx_tools(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
             ignore_case=ignore_case,
         )
 
+    return [
+        tool_metadata(insert_docx_text, risk_category="WRITE_LOCAL", category="documents"),
+    ]
+
+
+def _docx_tools_4(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
     def delete_docx_text(
         path: str,
         text: str,
@@ -271,6 +290,12 @@ def build_docx_tools(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
             ignore_case=ignore_case,
         )
 
+    return [
+        tool_metadata(delete_docx_text, risk_category="WRITE_LOCAL", category="documents"),
+    ]
+
+
+def _docx_tools_5(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
     def replace_docx_text(
         path: str,
         find: str,
@@ -351,12 +376,6 @@ def build_docx_tools(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
         return toolkit.reject_docx_tracked_changes(path=path, author=author)
 
     return [
-        _read_docx_tool(toolkit),
-        tool_metadata(write_docx, risk_category="WRITE_LOCAL", category="documents"),
-        tool_metadata(add_docx_chart, risk_category="WRITE_LOCAL", category="documents"),
-        tool_metadata(add_docx_image, risk_category="WRITE_LOCAL", category="documents"),
-        tool_metadata(insert_docx_text, risk_category="WRITE_LOCAL", category="documents"),
-        tool_metadata(delete_docx_text, risk_category="WRITE_LOCAL", category="documents"),
         tool_metadata(replace_docx_text, risk_category="WRITE_LOCAL", category="documents"),
         tool_metadata(
             accept_docx_tracked_changes, risk_category="WRITE_LOCAL", category="documents"
@@ -364,7 +383,22 @@ def build_docx_tools(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
         tool_metadata(
             reject_docx_tracked_changes, risk_category="WRITE_LOCAL", category="documents"
         ),
-    ] + [_edit_docx_structure_tool(toolkit), *_docx_review_tools(toolkit)]
+    ]
+
+
+def build_docx_tools(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
+    """The Word tools, bound to `toolkit`."""
+
+    return [
+        _read_docx_tool(toolkit),
+        *_docx_tools_1(toolkit),
+        *_docx_tools_2(toolkit),
+        *_docx_tools_3(toolkit),
+        *_docx_tools_4(toolkit),
+        *_docx_tools_5(toolkit),
+        _edit_docx_structure_tool(toolkit),
+        *_docx_review_tools(toolkit),
+    ]
 
 
 def _docx_review_tools(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
