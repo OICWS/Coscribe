@@ -351,8 +351,8 @@ protected_modules = ["coscribe.runtime_lg.*"]
 allowed_importers = ["coscribe.runtime_lg"]
 ignore_imports = [
     "coscribe.cli -> coscribe.runtime_lg.mcp",
-    "coscribe.conversation.session -> coscribe.runtime_lg.tool_deferral",
-    "coscribe.conversation.session -> coscribe.runtime_lg.code_agent",
+    "coscribe.conversation.agent_assembly -> coscribe.runtime_lg.tool_deferral",
+    "coscribe.conversation.agent_assembly -> coscribe.runtime_lg.code_agent",
     "coscribe.conversation.session -> coscribe.runtime_lg.messages",
     "coscribe.conversation.turn_stream -> coscribe.runtime_lg.tool_deferral",
     "coscribe.web.app -> coscribe.runtime_lg.mcp",
@@ -463,8 +463,8 @@ type = "protected"
 protected_modules = ["coscribe.tools.bookkeeping.*"]
 allowed_importers = ["coscribe.tools.bookkeeping"]
 ignore_imports = [
-    "coscribe.conversation.session -> coscribe.tools.bookkeeping.conversations",
-    "coscribe.conversation.session -> coscribe.tools.bookkeeping.background_tasks",
+    "coscribe.conversation.subagents -> coscribe.tools.bookkeeping.conversations",
+    "coscribe.conversation.subagents -> coscribe.tools.bookkeeping.background_tasks",
     "coscribe.runtime_lg.code_agent -> coscribe.tools.bookkeeping.subagent_tasks",
     "coscribe.runtime_lg.selfwake -> coscribe.tools.bookkeeping.subagent_tasks",
     "coscribe.runtime_lg.subagents -> coscribe.tools.bookkeeping.subagent_tasks",
