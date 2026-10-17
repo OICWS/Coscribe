@@ -17,7 +17,6 @@
   "src/coscribe/web/routes/settings/config.py::router": 23,
   "src/coscribe/web/routes/settings/config.py::update_config": 16,
   "src/coscribe/web/routes/skills.py::router": 35,
-  "src/coscribe/web/routes/threads.py::router": 60,
   "src/coscribe/web/routes/ws.py::browser_panel_ws": 16,
   "src/coscribe/web/routes/ws.py::router": 36,
   "src/coscribe/web/routes/ws.py::ws_endpoint": 19,
@@ -313,7 +312,6 @@
   "src/coscribe/web/routes/files.py::router": 165,
   "src/coscribe/web/routes/settings/providers.py::router": 138,
   "src/coscribe/web/routes/skills.py::router": 220,
-  "src/coscribe/web/routes/threads.py::router": 337,
   "src/coscribe/web/routes/ws.py::router": 205,
   "src/coscribe/web/routes/ws.py::router.ws_endpoint": 120,
   "src/coscribe/workflows/engine.py::build_graph": 285

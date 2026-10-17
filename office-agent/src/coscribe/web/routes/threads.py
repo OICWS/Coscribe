@@ -52,17 +52,47 @@ from ..schemas import (
 from ..state import AppState
 
 
-def router(state: AppState) -> APIRouter:
-    router = APIRouter()
+async def _threads_waiting_for_input(state: AppState) -> set[str]:
+    """Threads whose latest checkpoint holds an unanswered interrupt: an
+    approval, a question or a plan waiting on a person -- also after a
+    restart, when no session is in memory."""
+    checkpointer = state.checkpointer_holder["checkpointer"]
+    await checkpointer.setup()  # see list_threads' identical comment
+    cursor = await checkpointer.conn.execute(
+        "SELECT DISTINCT w.thread_id FROM writes w JOIN "
+        "(SELECT thread_id, MAX(checkpoint_id) AS cid FROM checkpoints "
+        "WHERE checkpoint_ns = '' GROUP BY thread_id) c "
+        "ON w.thread_id = c.thread_id AND w.checkpoint_id = c.cid "
+        "WHERE w.checkpoint_ns = '' AND w.channel = '__interrupt__'"
+    )
+    return {row[0] for row in await cursor.fetchall()}
+
+
+def _thread_status(state: AppState, thread_id: str, waiting: set[str], meta: dict[str, Any]) -> str:
+    """ "needs_input" | "working" | "ready" | "idle"."""
+    session = state.sessions.get(thread_id)
+    if thread_id in waiting:
+        return "needs_input"
+    if session is not None and session.turn_running:
+        return "working"
+    return "ready" if meta["unseen"] else "idle"
+
+
+def _thread_file(state: AppState, thread_id: str, path: str) -> Path | None:
+    try:
+        resolved = state.get_session(thread_id).workspace_scope().resolve(path)
+    except (PermissionError, OSError, ValueError):
+        return None
+    return resolved if resolved.is_file() else None
+
+
+def _listing_routes(router: APIRouter, state: AppState) -> None:
     settings = state.settings
     _read_workspace_sidecar = state.thread_files.read_workspace_sidecar
     _title_sidecar_path = state.thread_files.title_sidecar_path
     checkpointer_holder = state.checkpointer_holder
     meta_store = state.meta_store
     sessions = state.sessions
-    _delete_thread_data = state.delete_thread_data
-    _get_session = state.get_session
-    _get_session_async = state.get_session_async
 
     @router.get("/api/threads")
     async def list_threads() -> list[dict[str, Any]]:
@@ -94,7 +124,7 @@ def router(state: AppState) -> APIRouter:
         # sidebar's session list, which would otherwise happen the moment
         # a trigger's first turn writes a checkpoint under its thread_id.
         rows = [row for row in rows if not row[0].startswith(SCHEDULED_THREAD_PREFIX)]
-        waiting = await _threads_waiting_for_input()
+        waiting = await _threads_waiting_for_input(state)
         # Real per-thread metadata (Phase 2 of ROADMAP.md), not just bare
         # ids -- aget_tuple(thread_id) fetches each thread's *latest*
         # checkpoint directly off the checkpointer, without needing a
@@ -131,49 +161,29 @@ def router(state: AppState) -> APIRouter:
                     "workspace_root": workspace_root,
                     "group": meta["group"],
                     "archived": meta["archived"],
-                    "status": _thread_status(thread_id, waiting, meta),
+                    "status": _thread_status(state, thread_id, waiting, meta),
                 }
             )
         summaries.sort(key=lambda s: s["updated_at"] or "", reverse=True)
         return summaries
 
-    async def _threads_waiting_for_input() -> set[str]:
-        """Threads whose latest checkpoint holds an unanswered interrupt: an
-        approval, a question or a plan waiting on a person -- also after a
-        restart, when no session is in memory."""
-        checkpointer = checkpointer_holder["checkpointer"]
-        await checkpointer.setup()  # see list_threads' identical comment
-        cursor = await checkpointer.conn.execute(
-            "SELECT DISTINCT w.thread_id FROM writes w JOIN "
-            "(SELECT thread_id, MAX(checkpoint_id) AS cid FROM checkpoints "
-            "WHERE checkpoint_ns = '' GROUP BY thread_id) c "
-            "ON w.thread_id = c.thread_id AND w.checkpoint_id = c.cid "
-            "WHERE w.checkpoint_ns = '' AND w.channel = '__interrupt__'"
-        )
-        return {row[0] for row in await cursor.fetchall()}
-
-    def _thread_status(thread_id: str, waiting: set[str], meta: dict[str, Any]) -> str:
-        """ "needs_input" | "working" | "ready" | "idle"."""
-        session = sessions.get(thread_id)
-        if thread_id in waiting:
-            return "needs_input"
-        if session is not None and session.turn_running:
-            return "working"
-        return "ready" if meta["unseen"] else "idle"
-
     @router.get("/api/threads/status")
     async def threads_status() -> dict[str, Any]:
         """Just each conversation's status, cheap enough to poll."""
-        waiting = await _threads_waiting_for_input()
+        waiting = await _threads_waiting_for_input(state)
         known = set(sessions) | waiting
         known |= {p.name.removesuffix(".meta.json") for p in settings.state_dir.glob("*.meta.json")}
         return {
             "statuses": {
-                thread_id: _thread_status(thread_id, waiting, meta_store.get(thread_id))
+                thread_id: _thread_status(state, thread_id, waiting, meta_store.get(thread_id))
                 for thread_id in known
                 if not thread_id.startswith(SCHEDULED_THREAD_PREFIX)
             }
         }
+
+
+def _group_and_lifecycle_routes(router: APIRouter, state: AppState) -> None:
+    meta_store = state.meta_store
 
     @router.get("/api/thread-groups")
     async def thread_groups() -> dict[str, Any]:
@@ -211,6 +221,13 @@ def router(state: AppState) -> APIRouter:
             return JSONResponse({"error": f"No group {name!r}"}, status_code=404)
         return JSONResponse({"groups": meta_store.groups()})
 
+
+def _delete_and_rename_routes(router: APIRouter, state: AppState) -> None:
+    settings = state.settings
+    _title_sidecar_path = state.thread_files.title_sidecar_path
+    checkpointer_holder = state.checkpointer_holder
+    _delete_thread_data = state.delete_thread_data
+
     @router.delete("/api/threads/{thread_id}")
     async def delete_thread(thread_id: str) -> JSONResponse:
         existed = await _delete_thread_data(thread_id)
@@ -234,6 +251,12 @@ def router(state: AppState) -> APIRouter:
         _title_sidecar_path(thread_id).write_text(title[:200], encoding="utf-8")
         return JSONResponse({"thread_id": thread_id, "title": title[:200]})
 
+
+def _task_and_draft_routes(router: APIRouter, state: AppState) -> None:
+    settings = state.settings
+    _get_session = state.get_session
+    _get_session_async = state.get_session_async
+
     @router.get("/api/threads/{thread_id}/tasks")
     async def get_tasks(thread_id: str) -> list[dict[str, Any]]:
         return TaskToolkit(thread_id, settings.state_dir).list_tasks()
@@ -255,16 +278,13 @@ def router(state: AppState) -> APIRouter:
             return JSONResponse({"error": str(exc)}, status_code=400)
         return JSONResponse(draft.to_dict())
 
-    def _thread_file(thread_id: str, path: str) -> Path | None:
-        try:
-            resolved = _get_session(thread_id).workspace_scope().resolve(path)
-        except (PermissionError, OSError, ValueError):
-            return None
-        return resolved if resolved.is_file() else None
+
+def _file_and_context_routes(router: APIRouter, state: AppState) -> None:
+    _get_session = state.get_session
 
     @router.post("/api/threads/{thread_id}/files/open")
     async def open_thread_file(thread_id: str, body: OpenFileRequest) -> JSONResponse:
-        resolved = _thread_file(thread_id, body.path)
+        resolved = _thread_file(state, thread_id, body.path)
         if resolved is None:
             return JSONResponse({"error": f"No file {body.path!r}"}, status_code=404)
         if not body.reveal and resolved.suffix.lower() not in OPENABLE_EXTENSIONS:
@@ -285,7 +305,7 @@ def router(state: AppState) -> APIRouter:
 
     @router.get("/api/threads/{thread_id}/files/download")
     async def download_thread_file(thread_id: str, path: str) -> Response:
-        resolved = _thread_file(thread_id, path)
+        resolved = _thread_file(state, thread_id, path)
         if resolved is None:
             return JSONResponse({"error": f"No file {path!r}"}, status_code=404)
         return FileResponse(resolved, filename=resolved.name)
@@ -299,6 +319,10 @@ def router(state: AppState) -> APIRouter:
         # usage report, not a generic recomputation from scratch.
         session = _get_session(thread_id)
         return await session.get_context_breakdown()
+
+
+def _subagent_routes(router: APIRouter, state: AppState) -> None:
+    settings = state.settings
 
     # -- Sub Agents panel. Reads are polled; a running session also nudges
     # the tab with "subagents_changed". Stopping is the user's call, so it's
@@ -331,6 +355,10 @@ def router(state: AppState) -> APIRouter:
     async def forget_finished_subagents_endpoint(thread_id: str) -> dict[str, int]:
         return {"removed": forget_finished_subagents(settings.state_dir, thread_id)}
 
+
+def _background_task_routes(router: APIRouter, state: AppState) -> None:
+    settings = state.settings
+
     # Background scripts share the panel with sub-agents; the same four
     # actions, over their own store.
 
@@ -358,6 +386,10 @@ def router(state: AppState) -> APIRouter:
     @router.delete("/api/threads/{thread_id}/background-tasks")
     async def forget_finished_background_tasks_endpoint(thread_id: str) -> dict[str, int]:
         return {"removed": forget_finished_background_tasks(settings.state_dir, thread_id)}
+
+
+def _environment_and_messaging_routes(router: APIRouter, state: AppState) -> None:
+    settings = state.settings
 
     @router.get("/api/threads/{thread_id}/environment")
     async def get_session_environment(thread_id: str) -> dict[str, Any]:
@@ -388,7 +420,18 @@ def router(state: AppState) -> APIRouter:
         except MessagingError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
 
-    return _with_docx_review_routes(router, state, _thread_file)
+
+def router(state: AppState) -> APIRouter:
+    router = APIRouter()
+    _listing_routes(router, state)
+    _group_and_lifecycle_routes(router, state)
+    _delete_and_rename_routes(router, state)
+    _task_and_draft_routes(router, state)
+    _file_and_context_routes(router, state)
+    _subagent_routes(router, state)
+    _background_task_routes(router, state)
+    _environment_and_messaging_routes(router, state)
+    return _with_docx_review_routes(router, state, lambda t, p: _thread_file(state, t, p))
 
 
 def _with_docx_review_routes(
