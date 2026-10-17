@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
+import getpass
+import zipfile
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +26,7 @@ from ...runtime_lg import (
 )
 from ...tools import (
     SCHEDULED_THREAD_PREFIX,
+    DocumentToolkit,
     SubAgentTaskStore,
     forget_finished_subagents,
     get_subagent_transcript,
@@ -37,6 +42,7 @@ from ...tools.conversations import MessagingError, MessagingStore
 from ...tools.tasks import TaskToolkit
 from ...workflows import DraftFailed
 from ..schemas import (
+    DocxReviewEdit,
     GroupRename,
     OpenFileRequest,
     ThreadMetaPatch,
@@ -381,5 +387,60 @@ def router(state: AppState) -> APIRouter:
             )
         except MessagingError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
+
+    return _with_docx_review_routes(router, state, _thread_file)
+
+
+def _with_docx_review_routes(
+    router: APIRouter, state: AppState, thread_file: Callable[[str, str], Path | None]
+) -> APIRouter:
+    """The Word viewer's review: read it, act on it, and the Original copy."""
+
+    def _documents(thread_id: str) -> DocumentToolkit:
+        session = state.get_session(thread_id)
+        return DocumentToolkit(
+            session.workspace_root,
+            state_dir=state.settings.state_dir,
+            extra_readable=[*session.settings.extra_readable_dirs, *session.extra_folders],
+            extra_writable=[*session.settings.extra_writable_dirs, *session.extra_folders],
+        )
+
+    @router.get("/api/threads/{thread_id}/docx-review")
+    async def read_docx_review(thread_id: str, path: str) -> JSONResponse:
+        if thread_file(thread_id, path) is None:
+            return JSONResponse({"error": f"No file {path!r}"}, status_code=404)
+        try:
+            return JSONResponse(
+                await asyncio.to_thread(_documents(thread_id).read_docx_review, path)
+            )
+        except (ValueError, zipfile.BadZipFile) as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+
+    @router.post("/api/threads/{thread_id}/docx-review")
+    async def edit_docx_review(thread_id: str, body: DocxReviewEdit) -> JSONResponse:
+        if thread_file(thread_id, body.path) is None:
+            return JSONResponse({"error": f"No file {body.path!r}"}, status_code=404)
+        # Word itself names a reviewer after the computer's user until one is set.
+        author = getpass.getuser()
+        try:
+            result = await asyncio.to_thread(
+                _documents(thread_id).edit_docx_review, body.path, body.operations, author
+            )
+        except (ValueError, PermissionError, zipfile.BadZipFile) as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(result)
+
+    @router.get("/api/threads/{thread_id}/docx-review/original")
+    async def docx_original(thread_id: str, path: str) -> Response:
+        if thread_file(thread_id, path) is None:
+            return JSONResponse({"error": f"No file {path!r}"}, status_code=404)
+        try:
+            data = await asyncio.to_thread(_documents(thread_id).docx_original, path)
+        except (ValueError, zipfile.BadZipFile) as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return Response(
+            data,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
 
     return router

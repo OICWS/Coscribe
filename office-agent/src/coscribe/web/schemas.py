@@ -27,6 +27,11 @@ class OpenFileRequest(BaseModel):
     reveal: bool = False
 
 
+class DocxReviewEdit(BaseModel):
+    path: str
+    operations: list[dict[str, str]]
+
+
 class MemoryUpdate(BaseModel):
     content: str
 

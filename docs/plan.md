@@ -119,8 +119,9 @@ Last reviewed: 2026-10-15.
    sheets): designs reviewed by the maintainer 2026-10-16. First the window's panels: the panel
    switches moved into the title bar (done), several panels open at once, arranged by
    dragging (#334, done), then the viewers as panels (decision 0014,
-   `docs/assessments/2026-10-17-file-viewers.md`): the Word review tools (done, #343), its two
-   routes next, then the Word panel, PowerPoint, Excel.
+   `docs/assessments/2026-10-17-file-viewers.md`): the Word review tools and routes (done, #343),
+   the Word panel next, then PowerPoint, Excel. A name for the user's own review actions in
+   Settings is open; until then they carry the computer's user name.
 
 1. **Make the repository easy to join** (governance review, 2026-10-08).
    - Done: `main` protected by a ruleset (PR only, squash, `test` required),
