@@ -30,9 +30,11 @@ import { SettingsModal } from "./components/settings/SettingsModal";
 import { StartupSplash } from "./components/StartupSplash";
 import { ShortcutsDialog } from "./components/ShortcutsDialog";
 import { BackgroundTasksPanel } from "./components/BackgroundTasksPanel";
+import { DocxViewerPanel } from "./components/DocxViewerPanel";
 import { TaskPanel } from "./components/TaskPanel";
 import { PanelDock } from "./components/dock/PanelDock";
 import type { PanelId } from "./lib/dockLayout";
+import { isDocx } from "./lib/docxReview";
 import { WorkflowDraftPage } from "./components/workflow/WorkflowDraftPage";
 import { WorkflowRunView } from "./components/workflow/WorkflowRunView";
 import { BrowserIcon, HelpIcon, MoreIcon, PanelRightIcon, SettingsIcon, SubAgentsIcon } from "./components/icons";
@@ -76,7 +78,12 @@ type TaskDraftItem = Extract<LogItem, { kind: "task_draft" }>;
 
 type ConversationPanel = Exclude<PanelId, "task">;
 
-const PANEL_TITLES: Record<PanelId, string> = { task: "Task details", browser: "Browser", background: "Background tasks" };
+const PANEL_TITLES: Record<PanelId, string> = {
+  task: "Task details",
+  browser: "Browser",
+  background: "Background tasks",
+  viewer: "Viewer",
+};
 
 function App() {
   const [state, dispatch] = useReducer(chatReducer, initialChatState);
@@ -93,6 +100,9 @@ function App() {
   const openPanels = panelsByThread[threadId] ?? [];
   const browserPanelOpen = openPanels.includes("browser");
   const subAgentsPanelOpen = openPanels.includes("background");
+  // The file each conversation's viewer shows.
+  const [viewerFiles, setViewerFiles] = useState<Record<string, string>>({});
+  const viewerFile = openPanels.includes("viewer") ? viewerFiles[threadId] : undefined;
   const setPanelOpen = (panel: ConversationPanel, open: boolean) =>
     setPanelsByThread((panels) => {
       const current = threadIdRef.current;
@@ -774,7 +784,14 @@ function App() {
     ...(taskPanelShown ? (["task"] as const) : []),
     ...(browserPanelOpen ? (["browser"] as const) : []),
     ...(subAgentsPanelOpen ? (["background"] as const) : []),
+    ...(viewerFile ? (["viewer"] as const) : []),
   ];
+  const viewFile = (path: string) => {
+    if (!isDocx(path)) return false;
+    setViewerFiles((files) => ({ ...files, [threadIdRef.current]: path }));
+    setPanelOpen("viewer", true);
+    return true;
+  };
   const closePanel = (panel: PanelId) => {
     if (panel === "task") {
       setTaskPanelChoice((choices) => ({ ...choices, [threadId]: false }));
@@ -796,6 +813,17 @@ function App() {
           onOpenTask={showScheduledTaskPage}
           onSaveAsWorkflow={threadTask ? undefined : () => startWorkflowDraft("")}
           busy={state.turnInFlight}
+          onView={viewFile}
+        />
+      );
+    }
+    if (panel === "viewer" && viewerFile) {
+      return (
+        <DocxViewerPanel
+          key={`${threadId}:${viewerFile}`}
+          threadId={threadId}
+          path={viewerFile}
+          refreshKey={`${state.turnTick}:${finishedToolCalls}`}
         />
       );
     }
