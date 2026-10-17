@@ -1,17 +1,17 @@
 # Slides artifact: design checklist v1
 
-Design draft, 2026-10-17, for the maintainer to go through item by item before any editor code.
+Design, 2026-10-17. The maintainer accepted D1 and the recommendation on D2–D10 the same day;
+recorded as decision [0015](../decisions/0015-what-coscribe-makes-is-an-artifact.md).
 It follows the Claude Slides screens the maintainer walked through on 2026-10-17, group by group.
-For each item: what Claude does (as seen in those screens), what coscribe would do, and what is
-still to decide. Once the open items are settled this becomes decision record 0015 (artifacts) and
-the build order in section 14.
+For each item: what Claude does (as seen in those screens) and what coscribe does. The build
+order is section 14.
 
 ## 中文摘要
 
 - **是什么**：coscribe 生成的演示文稿成为一个 Slides artifact：工作区里的一个文件夹，每页一个
   受限的 HTML 片段。在应用里看、评论、做基本编辑，导出 PPTX / PDF / PNG / HTML。用户点名要
   .pptx 时，同时自动导出一份 .pptx 放在旁边。
-- **最大的一个决定（第 1 节）**：页面源格式。建议改用“绝对定位的 HTML”：每个元素有自己的
+- **最大的一个决定（第 1 节）**：页面源格式，定为“绝对定位的 HTML”：每个元素有自己的
   框（x, y, 宽, 高），和 PowerPoint 的对象模型一一对应；文字在框内自动换行，中文输入法、列表、
   表格都由浏览器原生处理。插图和图表仍用现有的 SVG → 原生形状编译器。代价：要写一个
   HTML → PPTX 编译器，并且必须先在现有评测上不输给 SVG 路线（0010 的规则）才能换。
@@ -24,9 +24,9 @@ the build order in section 14.
 - **顺序**：格式和编译器（无界面，先评测）→ 只读面板（看、缩略图、放映、导出）→ 评论和发给 AI
   → 编辑 → 导入 pptx → PowerPoint 往返。
 
-### 需要你定的（每项我给了建议）
+### 已定（2026-10-17，维护者：D1 同意，其余按建议）
 
-| # | 问题 | 建议 |
+| # | 问题 | 决定 |
 |---|---|---|
 | D1 | 页面源格式：SVG（现有）还是绝对定位 HTML | 绝对定位 HTML，SVG 只用于插图（第 1 节） |
 | D2 | 画布尺寸：1920×1080 还是现有 1280×720 | 1920×1080（第 1.4 节） |
@@ -39,7 +39,7 @@ the build order in section 14.
 | D9 | Canvas 视图里点一页是跳到那页还是只选中 | 单击选中，双击跳到该页（第 8 节） |
 | D10 | 属性面板在右侧还是底部 | 右侧，与批注栏同一位置（第 6 节） |
 
-## 1. The page source format (decide first)
+## 1. The page source format
 
 Everything below depends on it: how the editor edits, how the model writes, how export works.
 
@@ -56,7 +56,7 @@ Everything below depends on it: how the editor edits, how the model writes, how 
     composition or lists. All of that would be written by us.
   - Tables are a `<metadata>` JSON blob, not something one can click into.
 
-### 1.2 Option B: positioned HTML sections (recommended)
+### 1.2 Option B: positioned HTML sections (chosen)
 
 - One `<section>` per slide, 1920×1080, a closed set of elements and inline styles, close to the
   Claude Slides format: `h1`–`h3`, `p`, `ul`/`ol`, `img`, `table`, `svg`, and a few custom
@@ -265,7 +265,7 @@ every edit would have to convert back.
 5. **Opening a .pptx** with verbatim slides.
 6. **PowerPoint round trip**: detecting slides changed outside and re-importing them.
 
-## 15. Not known yet (inferred from the screenshots, to confirm)
+## 15. Not known about Claude Slides (inferred from the screenshots; our choice stands either way)
 
 - The shapes dropdown's contents (D7).
 - Whether Claude inserts a new slide after the current one or at the end (D8).

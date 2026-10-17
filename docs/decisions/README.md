@@ -23,3 +23,4 @@ old one; the old one stays, marked "Superseded by".
 | [0012](0012-the-product-does-not-depend-on-libreoffice.md) | The product does not depend on LibreOffice |
 | [0013](0013-word-documents-gain-a-document-style-not-a-script-route.md) | Word documents gain a document style, not a script route |
 | [0014](0014-office-files-are-shown-in-the-app-as-panels.md) | Office files are shown in the app as panels; changes to them go through the backend |
+| [0015](0015-what-coscribe-makes-is-an-artifact.md) | What coscribe makes is an artifact; Slides are positioned HTML sections |
