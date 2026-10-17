@@ -364,7 +364,57 @@ def build_docx_tools(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
         tool_metadata(
             reject_docx_tracked_changes, risk_category="WRITE_LOCAL", category="documents"
         ),
-    ] + [_edit_docx_structure_tool(toolkit)]
+    ] + [_edit_docx_structure_tool(toolkit), *_docx_review_tools(toolkit)]
+
+
+def _docx_review_tools(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
+    def read_docx_review(path: str) -> dict[str, object]:
+        """List a Word (.docx) file's tracked changes and comments, each with
+        the id that `edit_docx_review` takes.
+
+        `changes` are the insertions and deletions in document order, with
+        their author, date, text and the heading they fall under;
+        `other_changes` counts the rest (moves, formatting changes), which
+        only Word can act on one by one. `comments` are the comment threads,
+        each with the words it is anchored to, whether it is resolved
+        (`done`), and its replies.
+
+        Args:
+            path: .docx file, relative to the workspace root
+        """
+        return toolkit.read_docx_review(path=path)
+
+    def edit_docx_review(
+        path: str, operations: list[dict[str, str]], author: str = "Coscribe"
+    ) -> dict[str, object]:
+        """Act on a Word (.docx) file's review, the way a reviewer in Word
+        would: accept or reject single tracked changes, reply to, resolve or
+        reopen comments, or comment on some words. Ids come from
+        `read_docx_review`.
+
+        `operations` run in order, each a dict with an `op`:
+
+        - `{"op": "accept", "change": "<id>"}` / `{"op": "reject", "change": "<id>"}`
+        - `{"op": "accept_all"}` / `{"op": "reject_all"}`
+        - `{"op": "reply", "comment": "<id>", "text": "..."}`
+        - `{"op": "resolve", "comment": "<id>"}` / `{"op": "reopen", "comment": "<id>"}`:
+          the whole thread
+        - `{"op": "comment", "on": "<words>", "text": "..."}`: a new comment on
+          words that appear exactly once in the document
+
+        If any operation fails, nothing is saved.
+
+        Args:
+            path: existing .docx file, relative to the workspace root
+            operations: the actions, in order
+            author: name shown on new comments and replies
+        """
+        return toolkit.edit_docx_review(path=path, operations=operations, author=author)
+
+    return [
+        tool_metadata(read_docx_review, risk_category="READ", category="documents"),
+        tool_metadata(edit_docx_review, risk_category="WRITE_LOCAL", category="documents"),
+    ]
 
 
 def _edit_docx_structure_tool(toolkit: DocxToolkit) -> Callable[..., Any]:
