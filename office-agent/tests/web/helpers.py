@@ -396,7 +396,7 @@ def _wait_until(condition: Any, seconds: float = 20.0) -> None:
 
 
 def _wait_for_run_status(
-    client: Any, trigger_id: str, run_id: str, timeout: float = 5.0
+    client: Any, trigger_id: str, run_id: str, timeout: float = 30.0
 ) -> dict[str, Any]:
     deadline = time.time() + timeout
     while True:

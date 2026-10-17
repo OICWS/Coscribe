@@ -112,7 +112,7 @@ def build_deck(
     check_deck(compiled, source_texts if sources else None)
 
     before = {entry["page"]: entry["source"] for entry in previous.get("pages", [])}
-    hashes = [_sha(text.encode("utf-8")) for _name, text in texts]
+    hashes = [_source_hash(text) for _name, text in texts]
     report.changed = [
         name for (name, _), h in zip(texts, hashes, strict=True) if before.get(name) != h
     ]
@@ -155,7 +155,7 @@ def built_pages(deck: Path) -> list[Path] | None:
     recorded = _read_manifest(folder / MANIFEST)["pages"]
     pages = [folder / entry["page"] for entry in recorded]
     for page, entry in zip(pages, recorded, strict=True):
-        if not page.is_file() or _sha(page.read_bytes()) != entry["source"]:
+        if not page.is_file() or _source_hash(page.read_text(encoding="utf-8")) != entry["source"]:
             return None
     return pages
 
@@ -222,6 +222,12 @@ def _source_texts(sources: Sequence[Path]) -> tuple[list[str], list[str]]:
                 f"source {path.name} could not be read ({e}); its numbers are not known"
             )
     return texts, problems
+
+
+def _source_hash(text: str) -> str:
+    """Of the text as the build reads it: Python's newline translation makes a page saved with
+    CRLF (Windows) the same text as one saved with LF, so the raw bytes must not be hashed."""
+    return _sha(text.encode("utf-8"))
 
 
 def _sha(data: bytes) -> str:

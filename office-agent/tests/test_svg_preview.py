@@ -115,3 +115,17 @@ def test_a_page_that_cannot_be_drawn_skips_the_preview(
     name, reason = _thumbnail.render_thumbnail(deck, tmp_path / "state")
 
     assert name is None and reason == "page rendering failed"
+
+
+def test_a_deck_built_from_pages_saved_with_windows_line_endings_is_still_previewed(
+    tmp_path: Path,
+) -> None:
+    deck = _deck(tmp_path, pages=1)
+    page = tmp_path / "pages" / "1.svg"
+    page.write_bytes(page.read_bytes().replace(b"\n", b"\r\n"))
+    # The build read the same text through Python's newline translation, so it is unchanged.
+    build_deck(tmp_path / "pages", deck, replace_changes=True)
+
+    name, reason = _thumbnail.render_thumbnail(deck, tmp_path / "state")
+
+    assert reason is None and name is not None
