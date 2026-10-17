@@ -42,7 +42,8 @@ def text_box_xml(box: TextBox) -> str:
     fill = (
         f'<a:solidFill><a:srgbClr val="{box.fill}"/></a:solidFill>' if box.fill else "<a:noFill/>"
     )
-    paragraphs = "".join(_paragraph(p, box, i) for i, p in enumerate(box.paragraphs))
+    # A text body needs at least one paragraph, even an empty one.
+    paragraphs = "".join(_paragraph(p, box, i) for i, p in enumerate(box.paragraphs)) or "<a:p/>"
     autofit = "<a:spAutoFit/>" if box.fits_text else "<a:noAutofit/>"
     return (
         f'<p:sp><p:nvSpPr><p:cNvPr id="{box.shape_id}" name="{_attr(box.name)}"/>'

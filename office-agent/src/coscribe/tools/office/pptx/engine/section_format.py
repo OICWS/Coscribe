@@ -10,6 +10,7 @@ is accepted.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from xml.etree import ElementTree as ET
 
@@ -56,6 +57,20 @@ _ANCHOR = {"top": "t", "middle": "ctr", "bottom": "b"}
 _COLOUR = re.compile(r"#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})")
 _PX = re.compile(r"(-?\d+(?:\.\d+)?)(px)?")
 _SAFE_PATH = re.compile(r"(?![a-zA-Z][a-zA-Z0-9+.-]*:)(?!/)(?!\\)(?!.*\.\.)[^\s]+")
+# What would run code, load from elsewhere or change the drawing after it is checked.
+_REFUSED_IN_SVG = frozenset(
+    {
+        "script",
+        "foreignObject",
+        "style",
+        "iframe",
+        "a",
+        "animate",
+        "animateMotion",
+        "animateTransform",
+        "set",
+    }
+)
 # Below this a body line is hard to read on a projected 1920-wide slide.
 MIN_READABLE_PX = 24.0
 
@@ -199,14 +214,26 @@ def _check_svg(svg: ET.Element) -> None:
     would run code or load from elsewhere when the app draws the section."""
     for elem in svg.iter():
         tag = local(elem)
-        if tag in {"script", "foreignObject", "style", "iframe", "a"}:
+        if tag in _REFUSED_IN_SVG:
             raise SectionError(f"{label(svg)}: <{tag}> is not allowed in a drawing")
+        if elem is svg:
+            continue  # its own attributes are the section's, checked with the others
         for name, value in elem.attrib.items():
-            short = name.rsplit("}", 1)[-1]
-            if short.lower().startswith("on"):
-                raise SectionError(f"{label(svg)}: event attribute {short!r} is not allowed")
-            if short == "href" and not value.startswith("#") and not _SAFE_PATH.fullmatch(value):
-                raise SectionError(f"{label(svg)}: href {value!r} must be a file in the deck")
+            _check_svg_attribute(svg, name.rsplit("}", 1)[-1], value)
+
+
+def _check_svg_attribute(svg: ET.Element, name: str, value: str) -> None:
+    if name.lower().startswith("on") or name in {"style", "class"}:
+        raise SectionError(
+            f"{label(svg)}: attribute {name!r} is not allowed in a drawing; use presentation "
+            'attributes such as fill="#RRGGBB"'
+        )
+    if name == "href" and not value.startswith("#") and not _SAFE_PATH.fullmatch(value):
+        raise SectionError(f"{label(svg)}: href {value!r} must be a file in the deck")
+    if "url(" in value and not re.fullmatch(r"\s*url\(#[\w.-]+\)\s*", value):
+        raise SectionError(
+            f"{label(svg)}: {name}={value!r} may only point into the drawing, url(#id)"
+        )
 
 
 def text_element(elem: ET.Element, style: Style, section: Section) -> TextElement:
@@ -243,6 +270,10 @@ def _items(elem: ET.Element) -> list[ET.Element]:
     for item in items:
         if local(item) != "li":
             raise SectionError(f"{label(elem)} holds only <li> items, found {label(item)}")
+        if item.attrib:
+            raise SectionError(f"{label(elem)}: <li> takes no attributes")
+        if (item.tail or "").strip():
+            raise SectionError(f"{label(elem)}: text belongs inside an <li>")
     if (elem.text or "").strip():
         raise SectionError(f"{label(elem)}: text belongs inside an <li>")
     return items
@@ -274,6 +305,8 @@ def _collect(
             raise SectionError(
                 f"{label(elem)}: {label(child)} cannot sit in text; use b, i, u, span or br"
             )
+        if tag != "span" and child.attrib:
+            raise SectionError(f"{label(elem)}: <{tag}> takes no attributes")
         if tag == "br":
             runs.append(Run("\n", font, run_colour, underline))
         else:
@@ -308,13 +341,30 @@ def _inline(
 
 def _trim(runs: list[Run]) -> list[Run]:
     """HTML's whitespace rules: runs of spaces are one, and none at either end of a line."""
-    if runs and runs[0].text.startswith(" "):
-        first = runs[0]
-        runs[0] = Run(first.text.lstrip(" "), first.font, first.colour, first.underline)
-    if runs and runs[-1].text.endswith(" "):
-        last = runs[-1]
-        runs[-1] = Run(last.text.rstrip(" "), last.font, last.colour, last.underline)
-    return [run for run in runs if run.text]
+    lines: list[list[Run]] = [[]]
+    for run in runs:
+        if run.text == "\n":
+            lines.append([run])
+        else:
+            lines[-1].append(run)
+    trimmed: list[Run] = []
+    for line in lines:
+        _strip_edge(line, 0, str.lstrip)
+        _strip_edge(line, -1, str.rstrip)
+        trimmed.extend(run for run in line if run.text)
+    return trimmed
+
+
+def _strip_edge(line: list[Run], end: int, strip: Callable[[str, str], str]) -> None:
+    """Strip spaces from one end of a line, through runs that are only spaces."""
+    order = range(len(line)) if end == 0 else range(len(line) - 1, -1, -1)
+    for i in order:
+        run = line[i]
+        if run.text == "\n":
+            continue
+        line[i] = Run(strip(run.text, " "), run.font, run.colour, run.underline)
+        if line[i].text:
+            return
 
 
 def _spaces(text: str) -> str:

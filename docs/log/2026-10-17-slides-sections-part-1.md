@@ -10,8 +10,10 @@ PR 1 of 4). This part is the language and the compiler; nothing calls it yet.
   - Top-level elements: `h1`–`h3`, `p`, `ul`/`ol`, `x-shape`, `img`, `svg` and `aside` (notes).
   - Each element is positioned by `left`, `top`, `width` and `height` in px.
   - A closed set of attributes and styles per element. No `em`, `%`, `var()`, `margin` or
-    classes, no event attributes, no URLs; `<script>`, `<style>` and `foreignObject` are refused
-    inside a drawing too. Every refusal says what to write instead.
+    classes, no event attributes, no URLs.
+  - Inside a drawing: no `<script>`, `<style>`, `foreignObject`, links or animation elements, no
+    `style` or `class` attributes, and `url()` only to the drawing's own definitions.
+  - Every refusal says what to write instead.
 - `text_layout.py`: line breaking as PowerPoint and the browser do it.
   - Breaks at spaces and between CJK characters; never before closing punctuation or after
     opening punctuation.
@@ -40,12 +42,12 @@ PR 1 of 4). This part is the language and the compiler; nothing calls it yet.
   `attach_relationships`, `make_title_placeholder`, `PAGE_CHECKS`, `NSDECL`).
 - `scripts/sections_wrap_check.py` writes a deck of tinted boxes, each exactly as tall as the
   compiler says its text needs, to check PowerPoint's line breaks by eye.
-- `tests/test_deck_sections.py`: 17 tests.
+- `tests/test_deck_sections.py`: 22 tests.
   - Native objects and slide size.
   - Wrapping, exact spacing, runs and lists.
   - A box drawn to its text's height, and the overflow error.
   - Coordinates in the checker's findings.
-  - Nine refusals.
+  - Thirteen refusals, and spaces at line ends dropped as in HTML.
   - Line breaking, punctuation rules and long words.
 
 ## Not verified

@@ -149,6 +149,22 @@ def test_findings_name_the_sections_own_coordinates(tmp_path: Path) -> None:
             '<section><p style="left:0;top:0;width:9px;height:9px"><div>a</div></p></section>',
             "cannot sit in text",
         ),
+        (f'<section><p style="{_BOX}"><b onclick="x()">a</b></p></section>', "takes no attributes"),
+        (
+            f'<section><svg viewBox="0 0 9 9" style="{_BOX}">'
+            '<rect style="fill:red"/></svg></section>',
+            "'style' is not allowed in a drawing",
+        ),
+        (
+            f'<section><svg viewBox="0 0 9 9" style="{_BOX}">'
+            '<rect fill="url(https://x.test/p.svg#g)"/></svg></section>',
+            "may only point into the drawing",
+        ),
+        (
+            f'<section><svg viewBox="0 0 9 9" style="{_BOX}">'
+            '<set attributeName="x"/></svg></section>',
+            "<set> is not allowed",
+        ),
     ],
 )
 def test_what_the_language_does_not_allow_is_refused(
@@ -156,6 +172,16 @@ def test_what_the_language_does_not_allow_is_refused(
 ) -> None:
     report, _prs = _deck(tmp_path, section)
     assert any(message in e for e in report.errors()), report.errors()
+
+
+def test_spaces_at_line_ends_are_dropped_and_an_empty_box_stays_valid(tmp_path: Path) -> None:
+    section = f"""<section>
+      <p id="title" style="{_BOX.replace("9px", "900px")}">  one  <br/>  two <b> </b></p>
+      <p id="empty" style="{_BOX}"> </p>
+    </section>"""
+    report, prs = _deck(tmp_path, section)
+    assert report.ok, report.errors()
+    assert prs.slides[0].shapes.title.text_frame.text == "one\vtwo"
 
 
 def _paragraph(text: str, size: float = 20.0) -> Paragraph:
