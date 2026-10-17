@@ -261,3 +261,17 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [entry.strip() for entry in value.split(",") if entry.strip()]
         return value
+
+    def protected_paths(self) -> list[Path]:
+        """The files and folders coscribe itself reads its settings, policies and state from. The
+        model's file tools never write them, wherever the workspace sits (`.env` is the one the
+        server loads from its working directory)."""
+        configured = (
+            self.state_dir,
+            self.memory_path,
+            self.mcp_config_path,
+            self.hooks_config_path,
+            self.providers_config_path,
+            self.exec_policy_path,
+        )
+        return [Path(".env"), *(path for path in configured if path is not None)]

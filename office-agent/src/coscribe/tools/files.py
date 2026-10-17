@@ -84,9 +84,13 @@ class FileToolkit:
         *,
         extra_readable: Sequence[str | Path] = (),
         extra_writable: Sequence[str | Path] = (),
+        protected: Sequence[str | Path] = (),
     ) -> None:
         self._scope = WorkspaceScope(
-            root, extra_readable=extra_readable, extra_writable=extra_writable
+            root,
+            extra_readable=extra_readable,
+            extra_writable=extra_writable,
+            protected=protected,
         )
 
     @property
@@ -445,14 +449,13 @@ class FileToolkit:
 
 def build_file_tools(
     root: str | Path,
-    *,
     extra_readable: Sequence[str | Path] = (),
     extra_writable: Sequence[str | Path] = (),
+    protected: Sequence[str | Path] = (),
 ) -> list[Callable[..., Any]]:
-    """Return the tool callables the Coordinator agent can call, bound to `root`
-    (plus any user-configured extra_readable/extra_writable directories --
-    COSCRIBE_EXTRA_READABLE_DIRS/COSCRIBE_EXTRA_WRITABLE_DIRS)."""
-    toolkit = FileToolkit(root, extra_readable=extra_readable, extra_writable=extra_writable)
+    """The Coordinator's file tools; `protected` paths are never written."""
+    kept = {"extra_readable": extra_readable, "extra_writable": extra_writable}
+    toolkit = FileToolkit(root, protected=protected, **kept)
 
     def list_files(
         path: str = ".", pattern: str = "*", recursive: bool = True

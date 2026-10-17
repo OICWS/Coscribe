@@ -25,8 +25,10 @@ class WorkspaceScope:
         *,
         extra_readable: Sequence[str | Path] = (),
         extra_writable: Sequence[str | Path] = (),
+        protected: Sequence[str | Path] = (),
     ) -> None:
         self.root = Path(root).expanduser().resolve()
+        self._protected = [Path(p).expanduser().resolve() for p in protected]
         self.root.mkdir(parents=True, exist_ok=True)
         self._extra_writable = [Path(p).expanduser().resolve() for p in extra_writable]
         self._extra_readable = [
@@ -46,6 +48,13 @@ class WorkspaceScope:
         resolved = (
             candidate.resolve() if candidate.is_absolute() else (self.root / candidate).resolve()
         )
+        if write and any(self._under(resolved, p) for p in self._protected):
+            # The model writes files in Accept Edits without asking, so a settings file it could
+            # reach (a policy, a hook, a connector list) would be changed with nobody asked.
+            raise PermissionError(
+                f"Path is one of coscribe's own settings files; only the user changes it, in "
+                f"Settings: {path}"
+            )
         if self._under(resolved, self.root):
             return resolved
         allowed = self._extra_writable if write else self._extra_readable
