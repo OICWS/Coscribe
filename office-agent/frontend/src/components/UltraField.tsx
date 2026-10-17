@@ -4,8 +4,8 @@ import { useEffect, useRef } from "react";
 // to a muted violet at the smarter end, sweeping in from the right with a ragged edge and then
 // holding still; over it a grid of squares, five to the height, each a little lighter than the
 // field, so the field itself draws the lines between them and the grid fades with it; and white
-// that lights squares at random, in soft waves that keep running from the smarter end to the
-// faster one.
+// that lights squares at random, in soft waves that start with the sweep and keep running from
+// the smarter end to the faster one.
 const ROWS = 5;
 const SWEEP_SECONDS = 1;
 // One white wave crosses the track in this time; a second follows half a period behind.
@@ -55,7 +55,7 @@ export function UltraField() {
       const progress = still ? 1 : Math.min(1, seconds / SWEEP_SECONDS);
       // The edge starts right of the track and ends left of it, so every square is whole by then.
       const front = (1 - progress * progress * (3 - 2 * progress)) * (cols + 2 * RAGGED) - RAGGED;
-      const waveTime = still ? -1 : seconds - SWEEP_SECONDS;
+      const waveTime = still ? -1 : seconds;
       const waves =
         waveTime < 0 ? [] : [0, 0.5].map((offset) => 1.15 - ((waveTime / WAVE_SECONDS + offset) % 1) * 1.4);
       context.clearRect(0, 0, width, height);

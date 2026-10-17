@@ -327,7 +327,7 @@ export function PanelDock({
       {dragged && preview?.panels[dragged] && (
         <div
           aria-hidden="true"
-          className={`pointer-events-none absolute z-20 rounded-xl border-2 border-dashed border-[var(--accent)] bg-[var(--accent-soft)] ${MOVING}`}
+          className={`pointer-events-none absolute z-20 rounded-xl bg-[var(--accent-soft)] ${MOVING}`}
           style={boxStyle(preview.panels[dragged])}
         />
       )}
