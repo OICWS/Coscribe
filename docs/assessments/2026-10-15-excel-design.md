@@ -191,7 +191,7 @@ cannot act on are not reported.
 
 ## 5. The preview panel (after part 2)
 
-**Dropped (2026-10-16, the maintainer).** Two forms were built and looked at, neither shipped:
+**Superseded (2026-10-17)** by the file viewers design (`2026-10-17-file-viewers.md`, decision 0014): a grid drawn by the app, in a panel opened on demand. **Dropped (2026-10-16, the maintainer).** Two forms were built and looked at, neither shipped:
 a grid drawn by the app from the workbook's stored values (no charts, and its look differs from
 Excel's), and a picture of the first printed page under each write (laid one page wide and
 cropped; still small and unlike the open workbook). Neither was worth showing beside the chat.
@@ -259,7 +259,7 @@ would be its executor's protocol.
 | 1a | the operation schema, the openpyxl executor, the guard, the checker; not offered to the model | ~700 lines with tests | unit tests; the reference solutions of tasks 01–10 rebuilt through it pass every check |
 | 1b | the tools registered, `read_xlsx` overview, the skill, the coordinator text (invariant path: independent review) | ~300 lines | tasks 01–10 off-peak, two rounds: design ≥ about 4.0 on 02/04/09/10, cost ≤ current, every check as before, task 03 ≥ 4.17 |
 | 1c | two new tasks (a rich user workbook: nothing lost or a copy with the losses named; 5,000 rows: formulas, not pasted numbers), then removing the ten tools | ~200 lines | the same runs |
-| 1d | the preview panel: **dropped** (2026-10-16, see section 5) | — | — |
+| 1d | the preview panel: dropped 2026-10-16, back as the viewer panel's grid (decision 0014) | — | — |
 | 2 | the COM engine | after real use | the maintainer's Windows check |
 | 3 | the add-in spike | after 2 | a written decision |
 

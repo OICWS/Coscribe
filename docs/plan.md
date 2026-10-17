@@ -117,7 +117,9 @@ Last reviewed: 2026-10-15.
    Viewing the files a run produced, inside the app (Word review with its comments, slides,
    sheets): designs reviewed by the maintainer 2026-10-16. First the window's panels: the panel
    switches moved into the title bar (done), several panels open at once, arranged by
-   dragging (#334, done), then the viewers as panels (next).
+   dragging (#334, done), then the viewers as panels (decision 0014,
+   `docs/assessments/2026-10-17-file-viewers.md`): Word review backend next, then the Word
+   panel, PowerPoint, Excel.
 
 1. **Make the repository easy to join** (governance review, 2026-10-08).
    - Done: `main` protected by a ruleset (PR only, squash, `test` required),
