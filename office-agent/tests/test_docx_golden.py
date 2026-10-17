@@ -148,7 +148,60 @@ def _chart(tools: Tools) -> None:
     )
 
 
+def _structure_edit(tools: Tools) -> None:
+    _base(tools)
+    tools["edit_docx_structure"](
+        path="doc.docx",
+        operations=[
+            {
+                "op": "insert",
+                "content": "## Budget\n\n- hardware\n- people",
+                "after_section": "Risks",
+            },
+            {"op": "move_section", "section": "Outlook", "after_section": "Budget"},
+        ],
+    )
+
+
+def _structure_edit_tracked(tools: Tools) -> None:
+    _base(tools)
+    tools["edit_docx_structure"](
+        path="doc.docx",
+        operations=[
+            {
+                "op": "insert",
+                "content": "| Item | Cost |\n| --- | --- |\n| Desk | 300 |",
+                "after": "Revenue grew",
+            },
+            {"op": "delete_section", "section": "Risks"},
+        ],
+        track_changes=True,
+        author="Reviewer",
+    )
+
+
+def _comment_and_reply(tools: Tools) -> None:
+    _base(tools)
+    tools["edit_docx_review"](
+        path="doc.docx",
+        operations=[{"op": "comment", "on": "Outlook", "text": "Add the forecast here."}],
+        author="Reviewer",
+    )
+    thread = tools["read_docx_review"](path="doc.docx")["comments"][0]  # type: ignore[index]
+    tools["edit_docx_review"](
+        path="doc.docx",
+        operations=[
+            {"op": "reply", "comment": thread["id"], "text": "Done."},
+            {"op": "resolve", "comment": thread["id"]},
+        ],
+        author="Author",
+    )
+
+
 DOCUMENTS: dict[str, Callable[[Tools], None]] = {
+    "comment_and_reply": _comment_and_reply,
+    "structure_edit": _structure_edit,
+    "structure_edit_tracked": _structure_edit_tracked,
     "accepted_changes": _accepted_changes,
     "chart": _chart,
     "cjk": _cjk,

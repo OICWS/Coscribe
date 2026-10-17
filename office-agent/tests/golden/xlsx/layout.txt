@@ -1,0 +1,299 @@
+===== <cells>
+[Sales] state=visible dimensions=A1:C6
+A1 'Region' | fmt='General' bold font=Calibri,11.0 color=00FFFFFF fill=001F3864 align=center,None,wrap=None,indent=0.0
+B1 'Revenue' | fmt='"$"#,##0.00' bold font=Calibri,11.0 color=00FFFFFF fill=001F3864 align=center,None,wrap=None,indent=0.0
+C1 'Share' | fmt='0.0%' bold italic font=Calibri,11.0 color=00FFFFFF fill=001F3864 align=center,None,wrap=None,indent=0.0
+A2 'North' | fmt='General' font=Calibri,11.0
+B2 1200 | fmt='"$"#,##0.00' font=Calibri,11.0
+C2 0.6 | fmt='0.0%' italic font=Calibri,11.0
+A3 'South' | fmt='General' font=Calibri,11.0
+B3 800.5 | fmt='"$"#,##0.00' font=Calibri,11.0
+C3 0.4 | fmt='0.0%' italic font=Calibri,11.0
+A4 'Total' | fmt='General' font=Calibri,11.0
+B4 '=SUM(B2:B3)' -> 2000.5 | fmt='"$"#,##0.00' font=Calibri,11.0
+C4 '=SUM(C2:C3)' -> 1 | fmt='0.0%' italic font=Calibri,11.0
+===== [Content_Types].xml
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default ContentType="application/vnd.openxmlformats-package.relationships+xml" Extension="rels"/>
+  <Default ContentType="application/xml" Extension="xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml" PartName="/xl/styles.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.theme+xml" PartName="/xl/theme/theme1.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-package.core-properties+xml" PartName="/docProps/core.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml" PartName="/docProps/app.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml" PartName="/xl/worksheets/sheet1.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml" PartName="/xl/workbook.xml"/>
+</Types>
+===== _rels/.rels
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Target="xl/workbook.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"/>
+  <Relationship Id="rId2" Target="docProps/core.xml" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties"/>
+  <Relationship Id="rId3" Target="docProps/app.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties"/>
+</Relationships>
+===== docProps/app.xml
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">
+  <Application>Microsoft Excel Compatible / Openpyxl 3.1.5</Application>
+  <AppVersion>3.1</AppVersion>
+</Properties>
+===== docProps/core.xml
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties">
+  <dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">openpyxl</dc:creator>
+  <dcterms:created xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="dcterms:W3CDTF">&lt;normalised&gt;</dcterms:created>
+  <dcterms:modified xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="dcterms:W3CDTF">&lt;normalised&gt;</dcterms:modified>
+</cp:coreProperties>
+===== xl/_rels/workbook.xml.rels
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Target="/xl/worksheets/sheet1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>
+  <Relationship Id="rId2" Target="styles.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles"/>
+  <Relationship Id="rId3" Target="theme/theme1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"/>
+</Relationships>
+===== xl/styles.xml
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <numFmts count="2">
+    <numFmt formatCode="&quot;$&quot;#,##0.00" numFmtId="164"/>
+    <numFmt formatCode="0.0%" numFmtId="165"/>
+  </numFmts>
+  <fonts count="4">
+    <font>
+      <name val="Calibri"/>
+      <family val="2"/>
+      <color theme="1"/>
+      <sz val="11"/>
+      <scheme val="minor"/>
+    </font>
+    <font>
+      <name val="Calibri"/>
+      <b val="1"/>
+      <color rgb="00FFFFFF"/>
+      <sz val="11"/>
+    </font>
+    <font>
+      <name val="Calibri"/>
+      <b val="1"/>
+      <i val="1"/>
+      <color rgb="00FFFFFF"/>
+      <sz val="11"/>
+    </font>
+    <font>
+      <name val="Calibri"/>
+      <i val="1"/>
+      <color theme="1"/>
+      <sz val="11"/>
+    </font>
+  </fonts>
+  <fills count="3">
+    <fill>
+      <patternFill/>
+    </fill>
+    <fill>
+      <patternFill patternType="gray125"/>
+    </fill>
+    <fill>
+      <patternFill patternType="solid">
+        <fgColor rgb="001F3864"/>
+      </patternFill>
+    </fill>
+  </fills>
+  <borders count="1">
+    <border>
+      <left/>
+      <right/>
+      <top/>
+      <bottom/>
+      <diagonal/>
+    </border>
+  </borders>
+  <cellStyleXfs count="1">
+    <xf borderId="0" fillId="0" fontId="0" numFmtId="0"/>
+  </cellStyleXfs>
+  <cellXfs count="6">
+    <xf borderId="0" fillId="0" fontId="0" numFmtId="0" pivotButton="0" quotePrefix="0" xfId="0"/>
+    <xf applyAlignment="1" borderId="0" fillId="2" fontId="1" numFmtId="0" pivotButton="0" quotePrefix="0" xfId="0">
+      <alignment horizontal="center"/>
+    </xf>
+    <xf applyAlignment="1" borderId="0" fillId="2" fontId="1" numFmtId="164" pivotButton="0" quotePrefix="0" xfId="0">
+      <alignment horizontal="center"/>
+    </xf>
+    <xf applyAlignment="1" borderId="0" fillId="2" fontId="2" numFmtId="165" pivotButton="0" quotePrefix="0" xfId="0">
+      <alignment horizontal="center"/>
+    </xf>
+    <xf borderId="0" fillId="0" fontId="0" numFmtId="164" pivotButton="0" quotePrefix="0" xfId="0"/>
+    <xf borderId="0" fillId="0" fontId="3" numFmtId="165" pivotButton="0" quotePrefix="0" xfId="0"/>
+  </cellXfs>
+  <cellStyles count="1">
+    <cellStyle builtinId="0" hidden="0" name="Normal" xfId="0"/>
+  </cellStyles>
+  <tableStyles count="0" defaultPivotStyle="PivotStyleLight16" defaultTableStyle="TableStyleMedium9"/>
+  <colors>
+    <indexedColors>
+      <rgbColor rgb="00000000"/>
+      <rgbColor rgb="00FFFFFF"/>
+      <rgbColor rgb="00FF0000"/>
+      <rgbColor rgb="0000FF00"/>
+      <rgbColor rgb="000000FF"/>
+      <rgbColor rgb="00FFFF00"/>
+      <rgbColor rgb="00FF00FF"/>
+      <rgbColor rgb="0000FFFF"/>
+      <rgbColor rgb="00000000"/>
+      <rgbColor rgb="00FFFFFF"/>
+      <rgbColor rgb="00FF0000"/>
+      <rgbColor rgb="0000FF00"/>
+      <rgbColor rgb="000000FF"/>
+      <rgbColor rgb="00FFFF00"/>
+      <rgbColor rgb="00FF00FF"/>
+      <rgbColor rgb="0000FFFF"/>
+      <rgbColor rgb="00800000"/>
+      <rgbColor rgb="00008000"/>
+      <rgbColor rgb="00000080"/>
+      <rgbColor rgb="00808000"/>
+      <rgbColor rgb="00800080"/>
+      <rgbColor rgb="00008080"/>
+      <rgbColor rgb="00C0C0C0"/>
+      <rgbColor rgb="00808080"/>
+      <rgbColor rgb="009999FF"/>
+      <rgbColor rgb="00993366"/>
+      <rgbColor rgb="00FFFFCC"/>
+      <rgbColor rgb="00CCFFFF"/>
+      <rgbColor rgb="00660066"/>
+      <rgbColor rgb="00FF8080"/>
+      <rgbColor rgb="000066CC"/>
+      <rgbColor rgb="00CCCCFF"/>
+      <rgbColor rgb="00000080"/>
+      <rgbColor rgb="00FF00FF"/>
+      <rgbColor rgb="00FFFF00"/>
+      <rgbColor rgb="0000FFFF"/>
+      <rgbColor rgb="00800080"/>
+      <rgbColor rgb="00800000"/>
+      <rgbColor rgb="00008080"/>
+      <rgbColor rgb="000000FF"/>
+      <rgbColor rgb="0000CCFF"/>
+      <rgbColor rgb="00CCFFFF"/>
+      <rgbColor rgb="00CCFFCC"/>
+      <rgbColor rgb="00FFFF99"/>
+      <rgbColor rgb="0099CCFF"/>
+      <rgbColor rgb="00FF99CC"/>
+      <rgbColor rgb="00CC99FF"/>
+      <rgbColor rgb="00FFCC99"/>
+      <rgbColor rgb="003366FF"/>
+      <rgbColor rgb="0033CCCC"/>
+      <rgbColor rgb="0099CC00"/>
+      <rgbColor rgb="00FFCC00"/>
+      <rgbColor rgb="00FF9900"/>
+      <rgbColor rgb="00FF6600"/>
+      <rgbColor rgb="00666699"/>
+      <rgbColor rgb="00969696"/>
+      <rgbColor rgb="00003366"/>
+      <rgbColor rgb="00339966"/>
+      <rgbColor rgb="00003300"/>
+      <rgbColor rgb="00333300"/>
+      <rgbColor rgb="00993300"/>
+      <rgbColor rgb="00993366"/>
+      <rgbColor rgb="00333399"/>
+      <rgbColor rgb="00333333"/>
+    </indexedColors>
+  </colors>
+</styleSheet>
+===== xl/theme/theme1.xml
+<sha256=d15e8ebf78ef7b9720839d7ae8fdc81a7df5bc24706d8e137df61a5683c358d9>
+===== xl/workbook.xml
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <workbookPr/>
+  <workbookProtection/>
+  <bookViews>
+    <workbookView activeTab="0" autoFilterDateGrouping="1" firstSheet="0" minimized="0" showHorizontalScroll="1" showSheetTabs="1" showVerticalScroll="1" tabRatio="600" visibility="visible"/>
+  </bookViews>
+  <sheets>
+    <sheet xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" name="Sales" sheetId="1" state="visible" r:id="rId1"/>
+  </sheets>
+  <definedNames>
+    <definedName name="Revenue">Sales!$B$2:$B$3</definedName>
+    <definedName localSheetId="0" name="_xlnm.Print_Titles">'Sales'!$1:$1</definedName>
+  </definedNames>
+  <calcPr calcId="124519" fullCalcOnLoad="1"/>
+</workbook>
+===== xl/worksheets/sheet1.xml
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetPr>
+    <tabColor rgb="001F3864"/>
+    <outlinePr summaryBelow="1" summaryRight="1"/>
+    <pageSetUpPr fitToPage="1"/>
+  </sheetPr>
+  <dimension ref="A1:C6"/>
+  <sheetViews>
+    <sheetView workbookViewId="0">
+      <pane activePane="bottomLeft" state="frozen" topLeftCell="A2" ySplit="1"/>
+      <selection activeCell="A1" pane="bottomLeft" sqref="A1"/>
+    </sheetView>
+  </sheetViews>
+  <sheetFormatPr baseColWidth="8" defaultRowHeight="15"/>
+  <cols>
+    <col customWidth="1" max="1" min="1" width="18"/>
+    <col customWidth="1" max="2" min="2" width="18"/>
+    <col customWidth="1" max="3" min="3" width="18"/>
+  </cols>
+  <sheetData>
+    <row customHeight="1" ht="30" r="1">
+      <c r="A1" s="1" t="inlineStr">
+        <is>
+          <t>Region</t>
+        </is>
+      </c>
+      <c r="B1" s="2" t="inlineStr">
+        <is>
+          <t>Revenue</t>
+        </is>
+      </c>
+      <c r="C1" s="3" t="inlineStr">
+        <is>
+          <t>Share</t>
+        </is>
+      </c>
+    </row>
+    <row r="2">
+      <c r="A2" t="inlineStr">
+        <is>
+          <t>North</t>
+        </is>
+      </c>
+      <c r="B2" s="4" t="n">
+        <v>1200</v>
+      </c>
+      <c r="C2" s="5" t="n">
+        <v>0.6</v>
+      </c>
+    </row>
+    <row r="3">
+      <c r="A3" t="inlineStr">
+        <is>
+          <t>South</t>
+        </is>
+      </c>
+      <c r="B3" s="4" t="n">
+        <v>800.5</v>
+      </c>
+      <c r="C3" s="5" t="n">
+        <v>0.4</v>
+      </c>
+    </row>
+    <row r="4">
+      <c r="A4" t="inlineStr">
+        <is>
+          <t>Total</t>
+        </is>
+      </c>
+      <c r="B4" s="4">
+        <f>SUM(B2:B3)</f>
+        <v>2000.5</v>
+      </c>
+      <c r="C4" s="5">
+        <f>SUM(C2:C3)</f>
+        <v>1</v>
+      </c>
+    </row>
+    <row r="6"/>
+  </sheetData>
+  <mergeCells count="1">
+    <mergeCell ref="A6:C6"/>
+  </mergeCells>
+  <pageMargins bottom="1" footer="0.5" header="0.5" left="0.75" right="0.75" top="1"/>
+  <pageSetup fitToHeight="0" fitToWidth="1" orientation="landscape"/>
+</worksheet>
