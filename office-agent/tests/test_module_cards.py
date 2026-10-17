@@ -15,7 +15,7 @@ import grimp
 import pytest
 
 SRC = Path(__file__).resolve().parents[1] / "src" / "coscribe"
-CARDS = sorted(SRC.glob("*/AGENTS.md"))
+CARDS = sorted([*SRC.glob("*/AGENTS.md"), *SRC.glob("tools/office/*/AGENTS.md")])
 HEADINGS = [
     "Purpose",
     "Public interface",
@@ -38,7 +38,11 @@ def _names(text: str) -> set[str]:
     return set(re.findall(r"`([A-Za-z_][A-Za-z_0-9]*)`", text))
 
 
-@pytest.mark.parametrize("card", CARDS, ids=lambda p: p.parent.name)
+def _dotted(card: Path) -> str:
+    return ".".join(["coscribe", *card.parent.relative_to(SRC).parts])
+
+
+@pytest.mark.parametrize("card", CARDS, ids=lambda p: _dotted(p))
 def test_a_card_has_the_fixed_headings_and_stays_short(card: Path) -> None:
     text = card.read_text(encoding="utf-8")
     assert re.findall(r"^## (.+)$", text, re.M) == HEADINGS
@@ -47,24 +51,36 @@ def test_a_card_has_the_fixed_headings_and_stays_short(card: Path) -> None:
     assert card.with_name("CLAUDE.md").read_text(encoding="utf-8").strip() == "@AGENTS.md"
 
 
-@pytest.mark.parametrize("card", CARDS, ids=lambda p: p.parent.name)
+@pytest.mark.parametrize("card", CARDS, ids=lambda p: _dotted(p))
 def test_a_cards_public_interface_is_the_packages_all(card: Path) -> None:
-    package = importlib.import_module(f"coscribe.{card.parent.name}")
+    package = importlib.import_module(_dotted(card))
     section = _section(card.read_text(encoding="utf-8"), "Public interface")
     missing = set(package.__all__) - _names(section)
     assert not missing, f"exported but not on the card: {sorted(missing)}"
 
 
-@pytest.mark.parametrize("card", CARDS, ids=lambda p: p.parent.name)
+def _depends_on_name(imported: str, component: str) -> str:
+    """The unit a card names for an import: a sibling inside the component's parent package,
+    otherwise a module of the same top-level package, otherwise another top-level package."""
+    parts = imported.split(".")
+    parent = component.split(".")[:-1]
+    if len(parent) > 1 and parts[: len(parent)] == parent:
+        return ".".join(parts[: len(parent) + 1])
+    if len(parent) > 1 and parts[:2] == component.split(".")[:2]:
+        return ".".join(parts[:3])
+    return ".".join(parts[:2])
+
+
+@pytest.mark.parametrize("card", CARDS, ids=lambda p: _dotted(p))
 def test_a_cards_dependencies_are_what_the_package_imports(card: Path) -> None:
-    name = f"coscribe.{card.parent.name}"
+    name = _dotted(card)
     graph = grimp.build_graph("coscribe")
     actual = {
-        ".".join(imported.split(".")[:2])
+        _depends_on_name(imported, name)
         for module in graph.find_descendants(name)
         for imported in graph.find_modules_directly_imported_by(module)
-        if not imported.startswith(name)
+        if imported != name and not imported.startswith(f"{name}.")
     }
     section = _section(card.read_text(encoding="utf-8"), "Depends on")
-    stated = set(re.findall(r"`(coscribe(?:\.[a-z_]+)?)`", section))
+    stated = set(re.findall(r"`(coscribe(?:\.[A-Za-z_0-9]+)*)`", section))
     assert stated == actual

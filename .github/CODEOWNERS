@@ -7,6 +7,10 @@
 /office-agent/src/coscribe/workflows/ @OICWS
 /office-agent/src/coscribe/code_runtime/ @OICWS
 /office-agent/src/coscribe/tools/ @OICWS
+/office-agent/src/coscribe/tools/office/docx/ @OICWS
+/office-agent/src/coscribe/tools/office/xlsx/ @OICWS
+/office-agent/src/coscribe/tools/office/pdf/ @OICWS
+/office-agent/src/coscribe/tools/office/pptx/ @OICWS
 /office-agent/src/coscribe/runtime/ @OICWS
 /office-agent/src/coscribe/config.py @OICWS
 /office-agent/src/coscribe/needs_permission.py @OICWS

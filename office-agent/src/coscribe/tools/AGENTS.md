@@ -9,7 +9,8 @@ environments (`scripts.py`, `node_scripts.py`, `script_guard.py`, `script_env.py
 `memory.py`, `interaction.py`, `selfwake.py`, `scheduled_tasks.py`, `subagent_tasks.py`,
 `background_tasks.py`, `conversations.py`) and the connector config and permissions (`mcp.py`,
 `connector_permissions.py`). Does not own the agent loop or approvals (`runtime_lg/`), the
-routes (`web/`) or the coordinator's tool list (`coordinator.py`).
+routes (`web/`) or the coordinator's tool list (`coordinator.py`). Word, Excel, PowerPoint and
+PDF have their own cards in `office/<format>/`; read those instead of this one for them.
 
 ## Public interface
 Factories: `build_file_tools`, `build_document_tools`, `build_spreadsheet_tools`,
