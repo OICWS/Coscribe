@@ -24,20 +24,28 @@ cloud sessions run; macOS is not developed, so don't build for it or list it as 
 | `office-agent-desktop/` | Electron shell: starts the server as a sidecar, the built-in browser panel |
 | `office-agent/tests/` | pytest; `frontend/tests/e2e/` holds Playwright specs run against a live backend |
 
-## Read this first (about 15 minutes)
+## How to find your slice
+
+A change needs one component, not the repository. Read in this order and stop when you can
+act:
 
 1. This file.
-2. `office-agent/CLAUDE.md`: the working rules in detail (tests, comments,
-   commits, live testing). **Read all of it.**
-3. `docs/plan.md` (what is open now) and `ARCHITECTURE.md` (why the system is shaped
-   as it is). Before changing anything an invariant below covers, read its record in
-   `docs/decisions/`.
-4. For the area you touch, one of: `office-agent/src/coscribe/runtime_lg/README.md`
-   (runtime history and findings, 3.6k lines: search it, don't read it whole),
-   `office-agent/PPTX_DESIGN.md` (presentations only). History of a past phase:
-   `grep -n "^## Phase 8ax" docs/history/roadmap-through-2026-10-08.md` (frozen,
-   8.9k lines); `office-agent/ROADMAP.md` is only a short index of it. What
-   shipped since 2026-10-08 is `docs/log/`.
+2. `docs/components.md`: find the component that owns the path you change (generated from
+   `components.toml`). `python office-agent/scripts/slice.py <path>` does that for one path and
+   prints the card, the interface, the tests and the modules that import it. The budget is 15
+   files and 150k tokens; the script says when a slice is over it.
+3. The component's card (`AGENTS.md` next to its `__init__.py`).
+4. The interface the card lists (`__all__`), then the implementation files of that component
+   only. Import from the component, never from a submodule of another one.
+5. `office-agent/CLAUDE.md` for the working rules: read the sections for what you do (tests,
+   comments, commits, live testing). `docs/plan.md` for what is open, `ARCHITECTURE.md` for why
+   the system is shaped as it is, and a record in `docs/decisions/` before changing anything an
+   invariant below covers.
+
+Never read a file over 1,500 lines whole, and never read `docs/history/`, the frozen
+`office-agent/ROADMAP.md` history or `runtime_lg/README.md` except by `grep`. Past phases:
+`grep -n "^## Phase 8ax" docs/history/roadmap-through-2026-10-08.md`; what shipped since
+2026-10-08 is `docs/log/`. Presentations also have `office-agent/PPTX_DESIGN.md`.
 
 ## Invariants that are easy to break
 
