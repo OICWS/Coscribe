@@ -4,7 +4,8 @@
 Owns the Word tools and their toolkit: reading a document as markdown, writing one from the
 shared markdown subset, structure edits (headings, tables, styles, TOC; `_structure.py`,
 `_style.py`), tracked-change edits and the review tools (`_review.py`), and the raw XML helpers
-(`_xml.py`). Does not own PDF, Excel or PowerPoint, the shared markdown blocks and table
+(`_xml.py`). The tool wrappers (names, parameters, docstrings the model sees) are in `tools.py`, the
+implementation in `toolkit.py`; a changed signature also changes `tests/tool_schemas.txt`. Does not own PDF, Excel or PowerPoint, the shared markdown blocks and table
 layout (`tools/office/`), or how the viewer panel draws a document (`web/`, `frontend/`).
 
 ## Public interface
