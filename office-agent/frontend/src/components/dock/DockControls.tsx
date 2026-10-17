@@ -13,6 +13,7 @@ import {
   LayoutTopIcon,
   ShrinkIcon,
 } from "../icons";
+import { NewWindowIcon } from "./windowIcons";
 
 export interface DockActions {
   filled: PanelId | null;
@@ -23,6 +24,8 @@ export interface DockActions {
   arrange: (dir: Direction) => void;
   close: (id: PanelId) => void;
   setMenuOpen: (id: PanelId, open: boolean) => void;
+  /** Absent where a panel can't have a window of its own (a browser tab). */
+  popOut?: (id: PanelId) => void;
 }
 
 const MOVES: { edge: Edge; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
@@ -79,7 +82,6 @@ export function DockControls({ id, title, actions }: { id: PanelId; title: strin
     return () => window.removeEventListener("keydown", onKey);
   }, [anchor]);
 
-  const here = actions.edgeOf(id);
   const run = (action: () => void) => {
     closeNow();
     action();
@@ -133,7 +135,7 @@ export function DockControls({ id, title, actions }: { id: PanelId; title: strin
                   role="menuitem"
                   title={label}
                   aria-label={label}
-                  className={here === edge ? menuButtonOn : menuButton}
+                  className={actions.edgeOf(id) === edge ? menuButtonOn : menuButton}
                   disabled={actions.panelCount < 2}
                   onClick={() => run(() => actions.move(id, edge))}
                 >
@@ -176,9 +178,27 @@ export function DockControls({ id, title, actions }: { id: PanelId; title: strin
                 <LayoutRowsIcon className="h-[18px] w-[18px]" />
               </button>
             </div>
+            {actions.popOut && <OpenInNewWindow onClick={() => run(() => actions.popOut?.(id))} />}
           </div>,
           document.body,
         )}
+    </>
+  );
+}
+
+function OpenInNewWindow({ onClick }: { onClick: () => void }) {
+  return (
+    <>
+      <div className="mx-1 my-2.5 border-t border-[var(--border)]" />
+      <button
+        type="button"
+        role="menuitem"
+        className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2 text-left text-sm text-[var(--fg)] hover:bg-[var(--card-bg)]"
+        onClick={onClick}
+      >
+        <NewWindowIcon className="h-[18px] w-[18px]" />
+        Open in new window
+      </button>
     </>
   );
 }

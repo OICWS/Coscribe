@@ -88,6 +88,18 @@ const SHOW_APP_MENU_CHANNEL = "window:show-app-menu";
 const SET_TITLE_BAR_COLORS_CHANNEL = "window:set-title-bar-colors";
 const SHOW_SHORTCUTS_CHANNEL = "app:show-shortcuts";
 const SET_THEME_SOURCE_CHANNEL = "window:set-theme-source";
+const SET_TITLE_BAR_HEIGHT_CHANNEL = "window:set-title-bar-height";
+
+// panelWindows.ts's channels.
+const PANEL_WINDOW_OPEN_CHANNEL = "panel-window:open";
+const PANEL_WINDOW_FOCUS_CHANNEL = "panel-window:focus";
+const PANEL_WINDOW_LIST_CHANNEL = "panel-window:list";
+const PANEL_WINDOW_STATE_CHANNEL = "panel-window:state";
+const PANEL_WINDOW_READY_CHANNEL = "panel-window:ready";
+const PANEL_WINDOW_ACTION_CHANNEL = "panel-window:action";
+const PANEL_WINDOW_DOCK_CHANNEL = "panel-window:dock";
+const PANEL_WINDOW_PIN_CHANNEL = "panel-window:pin";
+const PANEL_WINDOW_CLOSED_EVENT = "panel-window:closed";
 
 contextBridge.exposeInMainWorld("coscribeDesktop", {
   /** The page draws the window's top bar (see main/windowChrome.ts). */
@@ -105,6 +117,47 @@ contextBridge.exposeInMainWorld("coscribeDesktop", {
   /** Recolors the OS window buttons to match the page's theme, as #rrggbb. */
   setTitleBarColors(color: string, symbolColor: string): void {
     ipcRenderer.send(SET_TITLE_BAR_COLORS_CHANNEL, { color, symbolColor });
+  },
+
+  /** Centres the OS window buttons on a top row of this height, in CSS pixels. */
+  setTitleBarHeight(height: number): void {
+    ipcRenderer.send(SET_TITLE_BAR_HEIGHT_CHANNEL, height);
+  },
+
+  /** A panel in a window of its own -- see panelWindows.ts. The main
+   * window's page opens one and sends it the panel's data; the panel's
+   * page sends back what the user does. */
+  openPanelWindow(request: unknown): Promise<void> {
+    return ipcRenderer.invoke(PANEL_WINDOW_OPEN_CHANNEL, request);
+  },
+  focusPanelWindow(panel: string): Promise<void> {
+    return ipcRenderer.invoke(PANEL_WINDOW_FOCUS_CHANNEL, panel);
+  },
+  listPanelWindows(): Promise<string[]> {
+    return ipcRenderer.invoke(PANEL_WINDOW_LIST_CHANNEL);
+  },
+  sendPanelWindowState(panel: string, state: unknown): void {
+    ipcRenderer.send(PANEL_WINDOW_STATE_CHANNEL, panel, state);
+  },
+  onPanelWindowAction(callback: (payload: unknown) => void): () => void {
+    return subscribe(PANEL_WINDOW_ACTION_CHANNEL, callback);
+  },
+  onPanelWindowClosed(callback: (payload: unknown) => void): () => void {
+    return subscribe(PANEL_WINDOW_CLOSED_EVENT, callback);
+  },
+  onPanelWindowState(callback: (payload: unknown) => void): () => void {
+    const stop = subscribe(PANEL_WINDOW_STATE_CHANNEL, callback);
+    ipcRenderer.send(PANEL_WINDOW_READY_CHANNEL);
+    return stop;
+  },
+  sendPanelWindowAction(action: unknown): void {
+    ipcRenderer.send(PANEL_WINDOW_ACTION_CHANNEL, action);
+  },
+  dockPanelWindow(): void {
+    ipcRenderer.send(PANEL_WINDOW_DOCK_CHANNEL);
+  },
+  setPanelWindowPinned(pinned: boolean): Promise<boolean> {
+    return ipcRenderer.invoke(PANEL_WINDOW_PIN_CHANNEL, pinned);
   },
 
   /** Help > Keyboard Shortcuts in the application menu. */

@@ -99,6 +99,7 @@ export function PanelDock({
   titles,
   render,
   onClose,
+  onPopOut,
   leftInset,
   chat,
 }: {
@@ -106,6 +107,8 @@ export function PanelDock({
   titles: Record<PanelId, string>;
   render: (id: PanelId) => ReactNode;
   onClose: (id: PanelId) => void;
+  /** Opens the panel in a window of its own, from its box on screen. */
+  onPopOut?: (id: PanelId, rect: Rect) => void;
   /** Room kept free at the left for the pinned sidebar. */
   leftInset: number;
   chat: ReactNode;
@@ -176,6 +179,7 @@ export function PanelDock({
     },
     close: onClose,
     setMenuOpen,
+    popOut: onPopOut && ((id) => popOutFrom(rootRef.current, id, onPopOut, () => setFilled(null))),
   };
 
   // Escape puts a dragged panel back, then leaves the filled window.
@@ -294,6 +298,7 @@ export function PanelDock({
             onDoubleClick: (e) => {
               if (!(e.target as HTMLElement).closest(INTERACTIVE)) setFilled(filled === id ? null : id);
             },
+            "data-dock-header": true,
           },
           controls: <DockControls id={id} title={titles[id]} actions={actions} />,
           frozen,
@@ -306,20 +311,13 @@ export function PanelDock({
         return (
           <section
             key={id}
+            data-panel={id}
             aria-label={titles[id]}
             hidden={!rect}
             className={`group/panel absolute flex flex-col overflow-hidden rounded-xl border bg-[var(--panel-bg)] ${look}`}
             style={boxStyle(rect, isDragged && drag ? { transform: `translate(${drag.dx}px, ${drag.dy}px)` } : undefined)}
           >
-            {!filled && (
-              <div
-                title="Move"
-                className="absolute left-1/2 top-0 z-10 flex h-3 w-14 -translate-x-1/2 cursor-grab justify-center pt-1 active:cursor-grabbing"
-                onPointerDown={(e) => startDrag(id, e)}
-              >
-                <span className="h-1 w-8 rounded-full bg-[var(--fg)] opacity-0 transition-opacity group-hover/panel:opacity-25 hover:!opacity-70 motion-reduce:transition-none" />
-              </div>
-            )}
+            {!filled && <MoveGrip onPointerDown={(e) => startDrag(id, e)} />}
             <DockPanelContext.Provider value={api}>{render(id)}</DockPanelContext.Provider>
           </section>
         );
@@ -362,4 +360,23 @@ export function PanelDock({
         ))}
     </div>
   );
+}
+
+/** The bar at a panel's top edge to drag it by. */
+function MoveGrip({ onPointerDown }: { onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void }) {
+  return (
+    <div
+      title="Move"
+      className="absolute left-1/2 top-0 z-10 flex h-3 w-14 -translate-x-1/2 cursor-grab justify-center pt-1 active:cursor-grabbing"
+      onPointerDown={onPointerDown}
+    >
+      <span className="h-1 w-8 rounded-full bg-[var(--fg)] opacity-0 transition-opacity group-hover/panel:opacity-25 hover:!opacity-70 motion-reduce:transition-none" />
+    </div>
+  );
+}
+
+function popOutFrom(root: HTMLElement | null, id: PanelId, onPopOut: (id: PanelId, rect: Rect) => void, unfill: () => void) {
+  const box = root?.querySelector(`section[data-panel="${id}"]`)?.getBoundingClientRect();
+  unfill();
+  if (box) onPopOut(id, { x: box.left, y: box.top, w: box.width, h: box.height });
 }

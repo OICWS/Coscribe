@@ -273,16 +273,16 @@
   "src/coscribe/workflows/engine.py": 901
  },
  "frontend_file_lines": {
-  "office-agent-desktop/src/main/browserAgent.ts": 938,
-  "office-agent/frontend/src/App.tsx": 1124,
+  "office-agent-desktop/src/main/browserAgent.ts": 934,
+  "office-agent/frontend/src/App.tsx": 1112,
   "office-agent/frontend/src/components/icons.tsx": 803,
   "office-agent/frontend/src/components/workflow/WorkflowRunView.tsx": 860
  },
  "frontend_long_functions": {
   "office-agent-desktop/src/main/browserAgent.ts::act": 156,
-  "office-agent-desktop/src/main/browserAgent.ts::startBrowserAgent": 144,
+  "office-agent-desktop/src/main/browserAgent.ts::startBrowserAgent": 140,
   "office-agent-desktop/src/main/browserAgentPage.ts::pageAgent": 343,
-  "office-agent/frontend/src/App.tsx::App": 1035,
+  "office-agent/frontend/src/App.tsx::App": 1021,
   "office-agent/frontend/src/components/AllowedSitesDialog.tsx::AllowedSitesDialog": 132,
   "office-agent/frontend/src/components/Attachments.tsx::AttachmentDialog": 106,
   "office-agent/frontend/src/components/BackgroundTasksPanel.tsx::BackgroundTasksPanel": 162,
@@ -306,7 +306,7 @@
   "office-agent/frontend/src/components/ThreadList.tsx::ThreadMenu": 151,
   "office-agent/frontend/src/components/chatlog/UserMessageView.tsx::UserMessageView": 117,
   "office-agent/frontend/src/components/dock/DockControls.tsx::DockControls": 140,
-  "office-agent/frontend/src/components/dock/PanelDock.tsx::PanelDock": 269,
+  "office-agent/frontend/src/components/dock/PanelDock.tsx::PanelDock": 267,
   "office-agent/frontend/src/components/settings/ConnectorSetup.tsx::ConnectorSetup": 224,
   "office-agent/frontend/src/components/settings/ConnectorsTab.tsx::ConnectorsTab": 364,
   "office-agent/frontend/src/components/settings/DirBrowserModal.tsx::DirBrowserModal": 107,

@@ -33,11 +33,13 @@ import { BackgroundTasksPanel } from "./components/BackgroundTasksPanel";
 import { DocxViewerPanel } from "./components/DocxViewerPanel";
 import { TaskPanel } from "./components/TaskPanel";
 import { PanelDock } from "./components/dock/PanelDock";
+import { PanelToggles } from "./components/dock/PanelToggles";
 import type { PanelId } from "./lib/dockLayout";
 import { isDocx } from "./lib/docxReview";
+import { canOpenPanelWindows, focusPanelWindow, usePanelWindows } from "./lib/panelWindows";
 import { WorkflowDraftPage } from "./components/workflow/WorkflowDraftPage";
 import { WorkflowRunView } from "./components/workflow/WorkflowRunView";
-import { BrowserIcon, HelpIcon, MoreIcon, PanelRightIcon, SettingsIcon, SubAgentsIcon } from "./components/icons";
+import { HelpIcon, MoreIcon, SettingsIcon } from "./components/icons";
 import { ThreadHeader } from "./components/ThreadHeader";
 import {
   answerWorkflowStep,
@@ -394,6 +396,10 @@ function App() {
     (threadWorkflow !== null || (state.historyReceived && (state.items.length > 0 || state.olderItems.length > 0)));
   const finishedToolCalls = state.items.filter((item) => item.kind === "tool" && item.result !== undefined).length;
   const toggleTaskPanel = () => {
+    if (poppedOut.includes("task")) {
+      focusPanelWindow("task");
+      return;
+    }
     const next = !taskPanelShown;
     setTaskPanelChoice((choices) => ({ ...choices, [threadId]: next }));
   };
@@ -734,6 +740,49 @@ function App() {
     setPendingComposerText("/skill-creator ");
   };
 
+  const closePanel = (panel: PanelId) => {
+    if (panel === "task") {
+      setTaskPanelChoice((choices) => ({ ...choices, [threadId]: false }));
+      return;
+    }
+    setPanelOpen(panel, false);
+    if (panel === "background") setSubAgentFocus(null);
+  };
+  const refreshKey = `${state.turnTick}:${finishedToolCalls}`;
+  const workflowSteps = threadWorkflow && threadRun ? workflowProgress(threadWorkflow, threadRun) : null;
+  const refreshSignal = `${refreshKey}:${threadRun?.steps.length ?? 0}:${threadRun?.status ?? ""}`;
+  const taskProps = { threadId, title: sessionLabel, task: threadTask, run: threadRun, workflowSteps, refreshSignal };
+  const focusTaskId = subAgentFocus?.threadId === threadId ? subAgentFocus.taskId : null;
+  const backgroundProps = { threadId, refreshKey: subAgentsTick, focusTaskId };
+  const { poppedOut, popOut } = usePanelWindows({
+    states: {
+      task: { panel: "task", ...taskProps, busy: state.turnInFlight, canSaveAsWorkflow: !threadTask },
+      browser: { panel: "browser", threadId },
+      background: { panel: "background", ...backgroundProps },
+      viewer: { panel: "viewer", threadId, path: viewerFiles[threadId] ?? null, refreshKey },
+    },
+    titles: PANEL_TITLES,
+    threadId,
+    onAction: (action) => {
+      if (action.type === "openTask") showScheduledTaskPage(action.task);
+      else if (action.type === "saveAsWorkflow") startWorkflowDraft("");
+      else if (action.type === "view") viewFile(action.path);
+      else if (action.type === "sendToChat") onBrowserPanelCapture(action.capture);
+      else if (action.type === "stopAgent") onStop();
+      else onApprove(action.id, action.approved, action.scope);
+    },
+    onClosed: (panel, dock) => {
+      if (!dock) closePanel(panel);
+    },
+  });
+  const viewFile = (path: string) => {
+    if (!isDocx(path)) return false;
+    setViewerFiles((files) => ({ ...files, [threadIdRef.current]: path }));
+    setPanelOpen("viewer", true);
+    if (poppedOut.includes("viewer")) focusPanelWindow("viewer");
+    return true;
+  };
+
   if (!bootstrapped) return <StartupSplash />;
 
   const composer = (
@@ -780,36 +829,19 @@ function App() {
     />
   );
 
-  const visiblePanels: PanelId[] = [
-    ...(taskPanelShown ? (["task"] as const) : []),
-    ...(browserPanelOpen ? (["browser"] as const) : []),
-    ...(subAgentsPanelOpen ? (["background"] as const) : []),
-    ...(viewerFile ? (["viewer"] as const) : []),
-  ];
-  const viewFile = (path: string) => {
-    if (!isDocx(path)) return false;
-    setViewerFiles((files) => ({ ...files, [threadIdRef.current]: path }));
-    setPanelOpen("viewer", true);
-    return true;
-  };
-  const closePanel = (panel: PanelId) => {
-    if (panel === "task") {
-      setTaskPanelChoice((choices) => ({ ...choices, [threadId]: false }));
-      return;
-    }
-    setPanelOpen(panel, false);
-    if (panel === "background") setSubAgentFocus(null);
-  };
+  const visiblePanels = (
+    [
+      ...(taskPanelShown ? (["task"] as const) : []),
+      ...(browserPanelOpen ? (["browser"] as const) : []),
+      ...(subAgentsPanelOpen ? (["background"] as const) : []),
+      ...(viewerFile ? (["viewer"] as const) : []),
+    ] as PanelId[]
+  ).filter((panel) => !poppedOut.includes(panel));
   const renderPanel = (panel: PanelId) => {
     if (panel === "task") {
       return (
         <TaskPanel
-          threadId={threadId}
-          title={sessionLabel}
-          task={threadTask}
-          run={threadRun}
-          workflowSteps={threadWorkflow && threadRun ? workflowProgress(threadWorkflow, threadRun) : null}
-          refreshSignal={`${state.turnTick}:${finishedToolCalls}:${threadRun?.steps.length ?? 0}:${threadRun?.status ?? ""}`}
+          {...taskProps}
           onOpenTask={showScheduledTaskPage}
           onSaveAsWorkflow={threadTask ? undefined : () => startWorkflowDraft("")}
           busy={state.turnInFlight}
@@ -819,25 +851,14 @@ function App() {
     }
     if (panel === "viewer" && viewerFile) {
       return (
-        <DocxViewerPanel
-          key={`${threadId}:${viewerFile}`}
-          threadId={threadId}
-          path={viewerFile}
-          refreshKey={`${state.turnTick}:${finishedToolCalls}`}
-        />
+        <DocxViewerPanel key={`${threadId}:${viewerFile}`} threadId={threadId} path={viewerFile} refreshKey={refreshKey} />
       );
     }
     if (panel === "browser") {
       return <BrowserPanel threadId={threadId} onSendToChat={onBrowserPanelCapture} onStopAgent={onStop} />;
     }
     return (
-      <BackgroundTasksPanel
-        key={threadId}
-        threadId={threadId}
-        refreshKey={subAgentsTick}
-        focusTaskId={subAgentFocus?.threadId === threadId ? subAgentFocus.taskId : null}
-        onApprove={onApprove}
-      />
+      <BackgroundTasksPanel key={threadId} {...backgroundProps} onApprove={onApprove} />
     );
   };
 
@@ -859,56 +880,22 @@ function App() {
       <div className="min-w-0 flex-1" />
     );
 
-  // The panel switches: in the desktop title bar beside Settings, else at
-  // the right end of the conversation's header.
-  const toggleIcon = DRAWS_TITLE_BAR ? TITLE_BAR_ICON : { className: "h-[18px] w-[18px]" };
-  const toggleOff = DRAWS_TITLE_BAR
-    ? "text-[var(--fg)] hover:bg-[var(--card-bg)]"
-    : "text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]";
+  const togglePanelOrWindow = (panel: "browser" | "background") => {
+    if (poppedOut.includes(panel)) focusPanelWindow(panel);
+    else togglePanel(panel);
+  };
   const panelToggles = (
-    <>
-      <button
-        type="button"
-        title={taskPanelShown ? "Hide task details" : "Show task details"}
-        aria-pressed={taskPanelShown}
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${taskPanelShown ? "bg-[var(--accent-soft)] text-[var(--accent-ink)]" : toggleOff}`}
-        onClick={toggleTaskPanel}
-      >
-        <PanelRightIcon {...toggleIcon} />
-      </button>
-      <button
-        type="button"
-        title="Browser"
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${browserPanelOpen ? "bg-[var(--accent-soft)] text-[var(--accent-ink)]" : toggleOff}`}
-        onClick={() => togglePanel("browser")}
-      >
-        <BrowserIcon {...toggleIcon} />
-      </button>
-      <button
-        type="button"
-        title={subAgentsTitle}
-        className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${subAgentsPanelOpen ? "bg-[var(--accent-soft)] text-[var(--accent-ink)]" : toggleOff}`}
-        onClick={() => togglePanel("background")}
-      >
-        <SubAgentsIcon {...toggleIcon} />
-        {subAgents.running > 0 && (
-          <span
-            aria-label={
-              subAgents.waiting > 0
-                ? `${subAgents.running} running, ${subAgents.waiting} waiting for you`
-                : `${subAgents.running} running`
-            }
-            className={`absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium leading-none ${
-              subAgents.waiting > 0
-                ? "bg-[var(--warning)] text-[var(--bg)]"
-                : "bg-[var(--accent)] text-[var(--accent-fg)] motion-safe:animate-pulse"
-            }`}
-          >
-            {subAgents.running}
-          </span>
-        )}
-      </button>
-    </>
+    <PanelToggles
+      task={taskPanelShown || poppedOut.includes("task")}
+      browser={browserPanelOpen || poppedOut.includes("browser")}
+      background={subAgentsPanelOpen || poppedOut.includes("background")}
+      onTask={toggleTaskPanel}
+      onBrowser={() => togglePanelOrWindow("browser")}
+      onBackground={() => togglePanelOrWindow("background")}
+      backgroundTitle={subAgentsTitle}
+      running={subAgents.running}
+      waiting={subAgents.waiting}
+    />
   );
 
   return (
@@ -942,6 +929,7 @@ function App() {
           titles={PANEL_TITLES}
           render={renderPanel}
           onClose={closePanel}
+          onPopOut={canOpenPanelWindows() ? popOut : undefined}
           leftInset={navPinned ? NAV_RAIL_EXPANDED_WIDTH : 0}
           chat={
             <div className="relative flex h-full min-w-0 flex-1 flex-col">
