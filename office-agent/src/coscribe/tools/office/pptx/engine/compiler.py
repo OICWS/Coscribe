@@ -38,7 +38,7 @@ _NS = {
     "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
     "p": "http://schemas.openxmlformats.org/presentationml/2006/main",
 }
-_NSDECL = " ".join(f'xmlns:{k}="{v}"' for k, v in _NS.items())
+NSDECL = " ".join(f'xmlns:{k}="{v}"' for k, v in _NS.items())
 TITLE_ID = "title"
 
 _CONVERTERS: dict[str, Callable[[ET.Element, ConvertContext], ShapeResult | None]] = {
@@ -71,7 +71,7 @@ _TRANSLATE_SCALE = re.compile(
 
 # Upstream's converter preflight, minus its project-only checks (templates, formulas, icons):
 # what the emitter would otherwise convert wrongly or reject element by element.
-_PAGE_CHECKS: tuple[Callable[[ET.Element], list[str]], ...] = (
+PAGE_CHECKS: tuple[Callable[[ET.Element], list[str]], ...] = (
     utils.project_geometry_length_errors,
     text_properties.project_text_property_errors,
     paths.project_freeform_geometry_errors,
@@ -197,7 +197,7 @@ def _compile_page(
         geometry_properties.materialize_inline_geometry_properties(root)
     except Exception as e:  # reported to the model, not raised
         report.errors.append(f"inline geometry: {e}")
-    for check in _PAGE_CHECKS:
+    for check in PAGE_CHECKS:
         report.errors.extend(check(root))
     if svg_dir is not None:
         report.errors.extend(
@@ -217,20 +217,20 @@ def _compile_page(
         viewport_width=float(prs.slide_width) / EMU_PER_PX,
         viewport_height=float(prs.slide_height) / EMU_PER_PX,
         # Far above python-pptx's own numbering, so a relationship left unmapped by
-        # `_attach_relationships` points nowhere and fails instead of hitting another part.
+        # `attach_relationships` points nowhere and fails instead of hitting another part.
         rel_id_counter=1000,
     )
     background = _promote_background(root)
     shapes: list[str] = []
     for child in root:
-        result = _convert(child, ctx, report)
+        result = convert_element(child, ctx, report)
         if result is not None:
             shapes.append(result.xml)
-    shapes = _attach_relationships(slide, ctx, shapes, report)
+    shapes = attach_relationships(slide, ctx, shapes, report)
 
     sp_tree = slide.shapes._spTree
     for xml in shapes:
-        for element in etree.fromstring(f"<p:wrap {_NSDECL}>{xml}</p:wrap>"):
+        for element in etree.fromstring(f"<p:wrap {NSDECL}>{xml}</p:wrap>"):
             sp_tree.append(element)
             report.shapes += 1
     if background is not None:
@@ -238,7 +238,7 @@ def _compile_page(
             previous.getparent().remove(previous)
         slide._element.cSld.insert(0, etree.fromstring(background))
     renumber(slide, copied)
-    _make_title_placeholder(sp_tree, report)
+    make_title_placeholder(sp_tree, report)
     notes = _notes(root)
     if notes:
         slide.notes_slide.notes_text_frame.text = "\n".join(notes)
@@ -274,7 +274,9 @@ def _local(elem: ET.Element) -> str:
     return elem.tag.replace(f"{{{SVG_NS}}}", "")
 
 
-def _convert(elem: ET.Element, ctx: ConvertContext, report: PageReport) -> ShapeResult | None:
+def convert_element(
+    elem: ET.Element, ctx: ConvertContext, report: PageReport
+) -> ShapeResult | None:
     tag = _local(elem)
     if tag in _NON_VISUAL:
         return None
@@ -322,7 +324,9 @@ def _convert_group(elem: ET.Element, ctx: ConvertContext, report: PageReport) ->
         opacity_multiplier=1.0 if opacity is None else opacity,
     )
     child_ctx.depth = ctx.depth + 1
-    results = [r for r in (_convert(child, child_ctx, report) for child in elem) if r is not None]
+    results = [
+        r for r in (convert_element(child, child_ctx, report) for child in elem) if r is not None
+    ]
     # The child numbers relationships and shape ids from its own copy of the counters; without
     # this, pictures in two sibling groups both get rId2 and show the same image.
     ctx.sync_from_child(child_ctx)
@@ -374,12 +378,12 @@ def _promote_background(root: ET.Element) -> str | None:
         return None
     root.remove(first)
     return (
-        f'<p:bg {_NSDECL}><p:bgPr><a:solidFill><a:srgbClr val="{fill[1:].upper()}"/>'
+        f'<p:bg {NSDECL}><p:bgPr><a:solidFill><a:srgbClr val="{fill[1:].upper()}"/>'
         "</a:solidFill><a:effectLst/></p:bgPr></p:bg>"
     )
 
 
-def _attach_relationships(
+def attach_relationships(
     slide: Any, ctx: ConvertContext, shapes: list[str], report: PageReport
 ) -> list[str]:
     """Give each image and link the emitter referenced a real relationship on this slide.
@@ -410,7 +414,7 @@ def _attach_relationships(
     return [pattern.sub(lambda m: f'{m.group(1)}{mapping[m.group(2)]}"', xml) for xml in shapes]
 
 
-def _make_title_placeholder(sp_tree: Any, report: PageReport) -> None:
+def make_title_placeholder(sp_tree: Any, report: PageReport) -> None:
     """The text with id "title" becomes the slide's title placeholder, so PowerPoint's outline,
     accessibility checker and `edit_pptx_text` find the page title. A placeholder cannot sit in
     a group, so a title inside one is moved out to the top level, in front of its group."""
