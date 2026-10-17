@@ -13,22 +13,20 @@ from fastapi import (
 from fastapi.responses import JSONResponse
 
 from ...tools import (
+    SKILL_SOURCE_MARKER,
+    SkillCatalogError,
     SkillUploadError,
     WorkspaceScope,
-    load_builtin_skills,
-    save_uploaded_skill,
-)
-from ...tools.skill_catalog import SOURCE_MARKER as SKILL_SOURCE_MARKER
-from ...tools.skill_catalog import (
-    SkillCatalogError,
     all_skills,
     disabled_skill_names,
     get_plugin,
     install_catalog_skill,
     install_plugin,
+    load_builtin_skills,
     load_catalog,
     plugin_file,
     remove_skill,
+    save_uploaded_skill,
     set_skill_enabled,
     skill_source,
 )

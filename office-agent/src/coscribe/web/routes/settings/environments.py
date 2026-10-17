@@ -9,18 +9,18 @@ from fastapi import (
     APIRouter,
 )
 
-from ....tools.exec.node_env import install_package as install_node_package
-from ....tools.exec.node_env import list_packages as list_node_packages
-from ....tools.exec.node_env import uninstall_package as uninstall_node_package
-from ....tools.exec.script_env import (
+from ....tools import (
     fallbacks_for_platform,
     get_interpreter_override,
-    install_package,
-    list_packages,
+    install_node_package,
+    list_node_packages,
     set_interpreter_override,
-    uninstall_package,
+    uninstall_node_package,
     working_interpreters,
 )
+from ....tools import install_python_package as install_package
+from ....tools import list_python_packages as list_packages
+from ....tools import uninstall_python_package as uninstall_package
 from ...schemas import (
     ScriptEnvInterpreterUpdate,
     ScriptEnvPackageInstall,

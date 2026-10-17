@@ -57,9 +57,9 @@ from fastapi import FastAPI
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from pydantic import ValidationError
 
 from .. import __version__
-from ..cli import _dotenv_path, _load_settings_or_none
 from ..code_runtime import (
     remove_stale_code_sidecars,
     shutdown_code_services,
@@ -72,11 +72,17 @@ from ..runtime import (
     env_resolve_secret_for_display,
     load_custom_providers,
     load_hooks_config,
+    prepare_env,
     resolve_env_keyring_refs,
     resolve_secret,
     run_hook,
 )
+from ..runtime import (
+    dotenv_path as _dotenv_path,
+)
 from ..runtime_lg import (
+    LoopbackCallback,
+    McpOAuth,
     poll_due_scheduled_tasks,
     poll_due_wakes,
     reconcile_interrupted_runs,
@@ -171,6 +177,17 @@ class _NoCacheStaticFiles(StaticFiles):
 # command + args + env) for anyone who wants them anyway.
 
 
+def _load_settings_or_none() -> Settings | None:
+    """None instead of an error exit on a config ValidationError, so main() falls into first-run
+    setup mode rather than crashing on a fresh install with no default model or API key yet; the
+    CLI's _load_settings still exits, since a terminal is the right place to fix .env by hand."""
+    path = prepare_env()
+    try:
+        return Settings(_env_file=path)  # type: ignore[call-arg]
+    except ValidationError:
+        return None
+
+
 def create_setup_app(configured: asyncio.Future[Settings]) -> FastAPI:
     return build_setup_app(configured, _dotenv_path, _load_settings_or_none)
 
@@ -197,7 +214,7 @@ async def _start_mcp_connect(
         # task itself running rather than cancelling it just
         # because this wait_for gave up on it.
         # Deferred import -- see the top-of-file comment above MCP_STARTUP_TIMEOUT_SECONDS.
-        from ..runtime_lg.mcp import connect_mcp_tools_lg
+        from ..runtime_lg import connect_mcp_tools_lg
 
         connect_task: asyncio.Task[Any] = asyncio.create_task(
             connect_mcp_tools_lg(
@@ -398,13 +415,6 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
     # subscriber today, but this is a plain broadcaster, not a single-slot
     # holder, so nothing stops a future second subscriber.
     background_events = BackgroundEventBus()
-    # Deferred import for the same reason as runtime_lg.mcp (see the comment
-    # above MCP_STARTUP_TIMEOUT_SECONDS).
-    from ..runtime_lg.mcp_oauth import (
-        LoopbackCallback,
-        McpOAuth,
-    )
-
     mcp_oauth = McpOAuth(settings.state_dir)
     connectors = ConnectorManager(settings, sessions, mcp_oauth.auth_for)
 

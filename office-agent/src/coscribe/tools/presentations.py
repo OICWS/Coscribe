@@ -77,7 +77,7 @@ and LibreOffice's own more forgiving parser would silently accept anyway.
 
 from __future__ import annotations
 
-from .office.pptx.tool_wrappers import build_presentation_tools
-from .office.pptx.toolkit import PresentationToolkit
+from .office.pptx import PresentationToolkit
+from .office.pptx import build_legacy_presentation_tools as build_presentation_tools
 
 __all__ = ["PresentationToolkit", "build_presentation_tools"]

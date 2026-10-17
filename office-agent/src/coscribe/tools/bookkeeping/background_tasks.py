@@ -59,12 +59,15 @@ from pathlib import Path
 from typing import Any
 
 from ...runtime import tool_metadata
-from ..exec import ensure_node_env, ensure_script_env, overlay_env, venv_python
-from ..exec.script_guard import (
+from ..exec import (
     blocked_write,
+    ensure_node_env,
+    ensure_script_env,
     node_guard_args,
+    overlay_env,
     refusal_note,
     suggested_folder,
+    venv_python,
     without_guard_warnings,
     writable_roots,
     write_python_wrapper,

@@ -9,7 +9,8 @@ there, belong here too until they move. Does not own Word, Excel or PDF, or how 
 a deck.
 
 ## Public interface
-`NEW_DECK_INSTRUCTIONS`, `build_presentation_tools`. Import them from `coscribe.tools.office.pptx`.
+`NEW_DECK_INSTRUCTIONS`, `PresentationToolkit`, `build_legacy_presentation_tools` (the tools that still live in
+`tool_wrappers.py`, for `tools/presentations.py`), `build_presentation_tools`. Import them from `coscribe.tools.office.pptx`.
 
 ## Depends on
 `coscribe.runtime`, `coscribe.tools._chart_data`, `coscribe.tools._file_locks`,

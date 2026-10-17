@@ -10,9 +10,7 @@ from fastapi import (
     Request,
 )
 
-# Deferred import for the same reason as runtime_lg.mcp (see the comment
-# above MCP_STARTUP_TIMEOUT_SECONDS).
-from ....runtime_lg.mcp_oauth import (
+from ....runtime_lg import (
     APP_REDIRECT_URI,
     SIGN_IN_TIMEOUT_SECONDS,
     CallbackPortBusy,

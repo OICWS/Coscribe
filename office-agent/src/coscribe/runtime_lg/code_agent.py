@@ -33,12 +33,7 @@ from ..code_runtime import (
     shell_script,
 )
 from ..runtime import redactor, tool_metadata
-from ..tools.bookkeeping.subagent_tasks import (
-    SubAgentTask,
-    SubAgentTaskStore,
-    register_subagent_run,
-    take_stop_requester,
-)
+from ..tools import SubAgentTask, SubAgentTaskStore, register_subagent_run, take_stop_requester
 from .subagents import SubAgentHost, subagent_outcome
 
 logger = logging.getLogger(__name__)

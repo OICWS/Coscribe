@@ -7,7 +7,7 @@ from __future__ import annotations
 import io
 from pathlib import Path
 
-from .office.pdf.text import _PDFIUM_LOCK
+from .office.pdf import PDFIUM_LOCK
 
 MAX_WIDTH = 1600
 
@@ -15,7 +15,7 @@ MAX_WIDTH = 1600
 def pdf_page_count(path: Path) -> int:
     import pypdfium2 as pdfium
 
-    with _PDFIUM_LOCK:
+    with PDFIUM_LOCK:
         document = pdfium.PdfDocument(str(path))
         try:
             return len(document)
@@ -28,7 +28,7 @@ def render_pdf_page(path: Path, page: int, width: int) -> bytes:
     import pypdfium2 as pdfium
 
     width = max(1, min(width, MAX_WIDTH))
-    with _PDFIUM_LOCK:
+    with PDFIUM_LOCK:
         document = pdfium.PdfDocument(str(path))
         try:
             if not 1 <= page <= len(document):

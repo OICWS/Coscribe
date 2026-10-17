@@ -9,11 +9,27 @@ from .audit import AuditLog, AutoApproveReason, record_decision, redact_secrets
 from .audit import Decision as AuditDecision
 from .audit import Reason as AuditReason
 from .auto_review import Verdict, recent_user_requests, review_action
-from .code_agent import CODE_APPROVAL_RISKS
+from .code_agent import CODE_APPROVAL_RISKS, CODE_TASK_TOOL, CodeTaskContext, build_code_task_tool
 from .exec_policy import EXEC_POLICY_TOOL_NAMES, ExecPolicy, load_exec_policy
+from .mcp_oauth import (
+    APP_REDIRECT_URI,
+    SIGN_IN_TIMEOUT_SECONDS,
+    CallbackPortBusy,
+    LoopbackCallback,
+    McpOAuth,
+    NeedsSignIn,
+)
 from .messages import (
+    ACCEPT_EDITS_MODE_NOTE,
+    AUTO_MODE_NOTE,
+    NORMAL_MODE_NOTE,
+    PLAN_MODE_NOTE,
+    context_note,
+    current_date_note,
     extract_text,
     is_steer,
+    language_note,
+    last_conversation_context,
     render_transcript_lg,
     serialize_history_for_ws_lg,
     strip_mode_note,
@@ -40,11 +56,39 @@ from .subagents import (
     subagent_report,
 )
 from .tool_calls import ORPHANED_TOOL_CALL_NOTE, answer_every_tool_call
+from .tool_deferral import (
+    bound_tool_names,
+    build_search_tools_tool,
+    build_use_tool_tool,
+    unwrap_use_tool_call,
+)
 
 if TYPE_CHECKING:
-    from .mcp import connect_one_mcp_server_lg
+    from .mcp import McpServerConnection, connect_mcp_tools_lg, connect_one_mcp_server_lg
 
 __all__ = [
+    "ACCEPT_EDITS_MODE_NOTE",
+    "APP_REDIRECT_URI",
+    "AUTO_MODE_NOTE",
+    "CODE_TASK_TOOL",
+    "CallbackPortBusy",
+    "CodeTaskContext",
+    "LoopbackCallback",
+    "McpOAuth",
+    "McpServerConnection",
+    "NORMAL_MODE_NOTE",
+    "NeedsSignIn",
+    "PLAN_MODE_NOTE",
+    "SIGN_IN_TIMEOUT_SECONDS",
+    "bound_tool_names",
+    "build_code_task_tool",
+    "build_search_tools_tool",
+    "build_use_tool_tool",
+    "context_note",
+    "current_date_note",
+    "language_note",
+    "last_conversation_context",
+    "unwrap_use_tool_call",
     "ORPHANED_TOOL_CALL_NOTE",
     "answer_every_tool_call",
     "is_steer",
@@ -105,8 +149,12 @@ def __getattr__(name: str) -> object:
         from .mcp import connect_mcp_tools_lg
 
         return connect_mcp_tools_lg
+    if name == "McpServerConnection":
+        from .mcp import McpServerConnection
+
+        return McpServerConnection
     if name == "connect_one_mcp_server_lg":
-        from .mcp import connect_one_mcp_server_lg
+        from .mcp import McpServerConnection, connect_one_mcp_server_lg
 
         return connect_one_mcp_server_lg
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

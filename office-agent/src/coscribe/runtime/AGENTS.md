@@ -16,7 +16,8 @@ Secrets: `store_secret`, `resolve_secret`, `delete_secret`, `harden_file_permiss
 `KeychainUnavailable`, `keychain_available`, `MIN_VALUE`, `host_allowed`, `placeholders_in`,
 `substitute`, `redactor`. Hooks: `HookResult`, `empty_hooks_config`, `load_hooks_config`,
 `run_hook`. Types: `Agent`, `ToolMetadata`, `tool_metadata`, `get_tool_metadata`. Other:
-`LLMClient`, `load_custom_providers`, `configured_proxy`, `COMPACT_INSTRUCTIONS`.
+`LLMClient`, `load_custom_providers`, `configured_proxy`, `COMPACT_INSTRUCTIONS`, and where `.env`
+lives and is loaded (`dotenv_file.py`): `dotenv_path`, `app_data_dir`, `prepare_env`.
 Callers import these from `coscribe.runtime`, not from a submodule; tests may still reach into
 a submodule for a private name or to patch it.
 
