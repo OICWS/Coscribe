@@ -41,9 +41,12 @@ Last reviewed: 2026-10-15.
       text. Part 3 (issue #402 item 7): docx has 16 goldens (structure edits and comment
       threads added), xlsx 11 workbooks (`tests/test_xlsx_golden.py`, `tests/xlsx_canonical.py`);
       more tools (pdf, `recalc_xlsx`) the same way.
-   10. Approval decision table (issue #103): part 1, the precedence of the standing approvals,
-       plan mode, the exec policy and asking, is in `tests/test_approval_decisions.py`. Next:
-       Auto mode's reviewer, the code module's allowances, the question and draft tools.
+   10. Approval decision table (issue #103): done in `tests/test_approval_decisions.py` (the
+       precedence of the standing approvals, plan mode, the exec policy and asking; Auto mode's
+       pause rules; the code module's allowances, including a damaged Settings > Code file; the
+       question and draft tools) and `tests/test_approval_records.py` (cards and audit records).
+       The reviewer's own side (what it is shown, each odd reply or error) is in the same table
+       file.
    Batch 6 (#232), state on 2026-10-15:
    - Done: the Windows job exists (nightly, report only); mutation survivors #221 to #227 and
      #165; the browser-panel port (#209); package cards for every package; guardrails 9
