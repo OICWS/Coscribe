@@ -172,8 +172,9 @@ Last reviewed: 2026-10-15.
   vendors' guides, tested only against a local OAuth server. Google's Workspace
   MCP servers are a Developer Preview; whether HubSpot accepts a `localhost`
   redirect is not documented.
-- Secrets against a real Windows Credential Manager, and a real remote connector
-  with a header from Settings > Secrets.
+- Secrets against a real Windows Credential Manager (scripted in `windows-more-checks.yml`;
+  the Settings > Secrets screen stays by hand), and a real remote connector with a header from
+  Settings > Secrets. The 20 checks for a person, with what is scripted: `docs/manual-checks.md`.
 - The attachment cards and the new question-card colours in the desktop app; the
   thin scrollbar on pages in the built-in browser.
 - The code module on real Windows.

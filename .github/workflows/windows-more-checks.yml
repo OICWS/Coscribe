@@ -12,6 +12,7 @@ name: Windows more checks
     paths:
       - ".github/workflows/windows-more-checks.yml"
       - "office-agent/tests/test_windows_real.py"
+      - ".github/CODEOWNERS"
 
 permissions:
   contents: read
@@ -60,6 +61,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          errors=$(gh api "repos/${{ github.repository }}/codeowners/errors" --jq '.errors | length')
+          ref="${{ github.head_ref || github.ref_name }}"
+          errors=$(gh api "repos/${{ github.repository }}/codeowners/errors?ref=$ref" --jq '.errors | length')
           echo "CODEOWNERS errors: $errors"
           [ "$errors" = "0" ]
