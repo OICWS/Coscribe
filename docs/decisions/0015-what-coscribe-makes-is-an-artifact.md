@@ -1,6 +1,7 @@
 # 0015: What coscribe makes is an artifact; Slides are positioned HTML sections
 
-Status: accepted (2026-10-17, by the maintainer). Design: `docs/assessments/2026-10-17-slides-artifact.md`.
+Status: accepted (2026-10-17, by the maintainer); partly superseded by 0016 (new slides stay SVG
+pages and become sections when first edited). Design: `docs/assessments/2026-10-17-slides-artifact.md`.
 
 ## Context
 A .pptx, .docx or .xlsx written by the model can only be looked at in the app (decision 0014), not
