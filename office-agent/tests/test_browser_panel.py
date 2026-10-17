@@ -20,7 +20,6 @@ import pytest
 
 pytest.importorskip("langgraph", reason="needs the langgraph_spike extra installed")
 
-from fastapi.testclient import TestClient
 
 from coscribe.config import Settings
 from coscribe.web import browser_panel
@@ -31,6 +30,8 @@ from coscribe.web.browser_panel import (
     find_browser_executable,
 )
 from coscribe.web.routes import ws as ws_routes
+
+from .web.helpers import TokenClient
 
 
 def _settings(tmp_path: Path, **overrides: object) -> Settings:
@@ -336,9 +337,9 @@ class FailingPickBrowserPanelSession(FakeBrowserPanelSession):
         raise BrowserPanelError("nothing under that point")
 
 
-def _client(tmp_path: Path) -> TestClient:
+def _client(tmp_path: Path) -> TokenClient:
     app = create_app_lg(_settings(tmp_path))
-    return TestClient(app)
+    return TokenClient(app)
 
 
 def test_ws_browser_reports_launch_failure_and_closes(

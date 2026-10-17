@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CloseIcon } from "./icons";
 import { isElectron } from "../lib/electron";
+import { socketUrl } from "../lib/launchToken";
 import { DesktopBrowserPanel } from "./DesktopBrowserPanel";
 import { useDockPanel } from "./dock/dockContext";
 
@@ -155,7 +156,7 @@ function ScreencastBrowserPanel({
 
   useEffect(() => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/browser`);
+    const ws = new WebSocket(socketUrl(`${protocol}//${window.location.host}/ws/browser`));
     wsRef.current = ws;
 
     ws.addEventListener("open", () => {

@@ -36,6 +36,16 @@ def _testserver_is_a_local_host(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("COSCRIBE_ALLOWED_HOSTS", "testserver")
 
 
+LAUNCH_TOKEN = "test-launch-token"
+
+
+@pytest.fixture(autouse=True)
+def _fixed_launch_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every app a test builds would make its own random token; `tests/web/helpers.TokenClient`
+    sends this one on every request and WebSocket."""
+    monkeypatch.setenv("COSCRIBE_LAUNCH_TOKEN", LAUNCH_TOKEN)
+
+
 @pytest.fixture(autouse=True)
 def _manual_permission_mode_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     """Most tests script the model's exact replies, and Auto mode (the
