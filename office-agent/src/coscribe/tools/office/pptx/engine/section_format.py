@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from xml.etree import ElementTree as ET
 
 from .text_layout import Font, Paragraph, Run
@@ -40,6 +40,8 @@ _TEXT_STYLES = {
     "vertical-align",
     "padding",
     "background",
+    "letter-spacing",
+    "white-space",
 }
 _STYLES = {
     "section": {"background", "font-family", "color"},
@@ -50,7 +52,7 @@ _STYLES = {
     "table": set(_BOX) | {"font-size", "font-family", "color", "background", "border-color"},
     "x-chart": set(_BOX),
     "x-icon": set(_BOX) | {"color"},
-    "span": {"color", "font-weight", "font-style", "font-size"},
+    "span": {"color", "font-weight", "font-style", "font-size", "font-family", "letter-spacing"},
     "cell": {"text-align", "color", "background", "font-weight", "width"},
 }
 _ATTRIBUTES = {
@@ -128,7 +130,8 @@ class TextElement:
     bullets: str | None
     align: str
     anchor: str
-    line_height: float
+    line_height: float | None
+    nowrap: bool
     padding: float
     fill: str | None
 
@@ -276,6 +279,7 @@ def text_element(elem: ET.Element, style: Style, section: Section) -> TextElemen
         size=size,
         bold=_bold(style.values.get("font-weight"), tag in _SIZE),
         italic=style.values.get("font-style", "normal") == "italic",
+        tracking=style.px("letter-spacing", 0.0),
     )
     run_colour = style.colour("color", section.colour) or section.colour
     if tag in {"ul", "ol"}:
@@ -292,6 +296,7 @@ def text_element(elem: ET.Element, style: Style, section: Section) -> TextElemen
         align=_choice(style, "text-align", _ALIGN, "left"),
         anchor=_choice(style, "vertical-align", _ANCHOR, "top"),
         line_height=_line_height(style, _LINE_HEIGHT.get(tag, 1.35)),
+        nowrap=_choice(style, "white-space", {"normal": "", "nowrap": "nowrap"}, "normal") != "",
         padding=style.px("padding", 0.0),
         fill=style.colour("background"),
     )
@@ -353,20 +358,22 @@ def _inline(
 ) -> tuple[Font, str, bool]:
     tag = local(child)
     if tag in {"b", "strong"}:
-        return Font(font.family, font.size, True, font.italic), run_colour, underline
+        return replace(font, bold=True), run_colour, underline
     if tag in {"i", "em"}:
-        return Font(font.family, font.size, font.bold, True), run_colour, underline
+        return replace(font, italic=True), run_colour, underline
     if tag == "u":
         return font, run_colour, True
     for name in child.attrib:
         if name != "style":
             raise SectionError(f"{label(child)}: attribute {name!r} is not allowed")
     style = read_style(child, "span")
-    inner = Font(
-        font.family,
-        style.px("font-size", font.size),
-        _bold(style.values.get("font-weight"), font.bold),
-        style.values.get("font-style", "italic" if font.italic else "normal") == "italic",
+    inner = replace(
+        font,
+        family=style.values.get("font-family", font.family),
+        size=style.px("font-size", font.size),
+        bold=_bold(style.values.get("font-weight"), font.bold),
+        italic=style.values.get("font-style", "italic" if font.italic else "normal") == "italic",
+        tracking=style.px("letter-spacing", font.tracking),
     )
     return inner, style.colour("color", run_colour) or run_colour, underline
 
@@ -400,7 +407,8 @@ def _strip_edge(line: list[Run], end: int, strip: Callable[[str, str], str]) -> 
 
 
 def _spaces(text: str) -> str:
-    return re.sub(r"\s+", " ", text)
+    """HTML's collapsing of white space; a no-break space (U+00A0) is kept as written."""
+    return re.sub(r"[ \t\r\n]+", " ", text)
 
 
 def _bold(raw: str | None, default: bool) -> bool:
@@ -417,15 +425,18 @@ def _choice(style: Style, name: str, choices: dict[str, str], default: str) -> s
     return choices[raw]
 
 
-def _line_height(style: Style, default: float) -> float:
+def _line_height(style: Style, default: float) -> float | None:
+    """A multiple of the font size, or None for `normal`: the face's own single spacing."""
     raw = style.values.get("line-height")
     if raw is None:
         return default
+    if raw.strip() == "normal":
+        return None
     try:
         value = float(raw)
     except ValueError:
         raise SectionError(
-            f"{style.label}: line-height is a plain number (1.3), got {raw!r}"
+            f"{style.label}: line-height is a plain number (1.3) or normal, got {raw!r}"
         ) from None
     if not 1.0 <= value <= 2.5:
         raise SectionError(f"{style.label}: line-height must be between 1.0 and 2.5")
