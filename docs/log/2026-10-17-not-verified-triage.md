@@ -11,6 +11,8 @@ a plan. Most were stale, already covered by a Windows run, or a stated limit.
   `ratchet.py --enforce` (which includes knip and the TypeScript sizes) on a Windows runner, nightly
   and when the file changes. A separate workflow so a failure does not reset `windows.yml`'s green
   nights.
+- `scripts/ratchet.py` starts knip through `knip.cmd` on Windows: the first Windows run failed with
+  `WinError 193` on the POSIX script.
 - The 10 area issues #376 to #385 are closed; one issue carries the 20 checks, each with steps.
 
 ## Not verified
