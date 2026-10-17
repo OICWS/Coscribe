@@ -28,14 +28,14 @@ from pptx import Presentation
 
 from ...._native_svg.svg_to_pptx.drawingml.utils import estimate_text_width
 from ...._ooxml_validate import ooxml_errors
-from .compiler import EMU_PER_PX, CompileReport
+from .compiler import EMU_PER_PX, CompileReport, PageReport
 
 _A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
 _P = "{http://schemas.openxmlformats.org/presentationml/2006/main}"
 _DRAWN = (f"{_P}sp", f"{_P}pic", f"{_P}cxnSp")
 _EMU_PER_PT = 12700
-# A deck is checked in the px its pages were written in: 1/96 in for the SVG pages, 1/144 in for
-# the 1920-wide sections, so a finding names the coordinates the page source has.
+# A slide is checked in the px its source was written in: 1/96 in for an SVG page, 1/144 in for
+# a 1920-wide section, so a finding names the coordinates the source has.
 _UNIT: ContextVar[float] = ContextVar("emu_per_px", default=EMU_PER_PX)
 # A crossing smaller than this is anti-aliasing, not a defect anyone can see.
 _TOLERANCE_PX = 2.0
@@ -115,35 +115,40 @@ class _Text:
 
 
 def check_deck(
-    report: CompileReport, sources: Sequence[str] | None = None, *, emu_per_px: float = EMU_PER_PX
+    report: CompileReport,
+    sources: Sequence[str] | None = None,
+    *,
+    emu_per_px: float | Sequence[float] = EMU_PER_PX,
 ) -> None:
-    """Add each page's findings to its page report.
+    """Add each page's findings to its page report, in the page's px: `emu_per_px` is one unit
+    for the deck or one per page.
 
     `sources` are the texts the deck was made from; without them the number check is skipped,
     since every number would look invented."""
-    token = _UNIT.set(emu_per_px)
-    try:
-        _check(report, sources)
-    finally:
-        _UNIT.reset(token)
-
-
-def _check(report: CompileReport, sources: Sequence[str] | None) -> None:
     prs = Presentation(str(report.path))
+    units = [emu_per_px] * len(report.pages) if isinstance(emu_per_px, int | float) else emu_per_px
+    known = known_numbers("\n".join(sources)) if sources is not None else None
+    for page, slide, unit in zip(report.pages, prs.slides, units, strict=True):
+        token = _UNIT.set(unit)
+        try:
+            _check(prs, page, slide, known)
+        finally:
+            _UNIT.reset(token)
+
+
+def _check(prs: Any, page: PageReport, slide: Any, known: set[str | Decimal] | None) -> None:
     # The compiler always sets the slide size, so neither is None here.
     width, height = _px(prs.slide_width or 0), _px(prs.slide_height or 0)
-    known = known_numbers("\n".join(sources)) if sources is not None else None
-    for page, slide in zip(report.pages, prs.slides, strict=True):
-        page.errors.extend(_schema(slide._element))
-        texts = _texts(slide._element)
-        page.errors.extend(_outside(texts, width, height))
-        page.errors.extend(_overlaps(texts))
-        page.errors.extend(_grown_tables(slide._element, texts, height))
-        unreadable, faint = _contrast(texts)
-        page.errors.extend(unreadable)
-        page.warnings.extend(faint)
-        if known is not None:
-            page.warnings.extend(_unknown_numbers(texts + _data(slide), known))
+    page.errors.extend(_schema(slide._element))
+    texts = _texts(slide._element)
+    page.errors.extend(_outside(texts, width, height))
+    page.errors.extend(_overlaps(texts))
+    page.errors.extend(_grown_tables(slide._element, texts, height))
+    unreadable, faint = _contrast(texts)
+    page.errors.extend(unreadable)
+    page.warnings.extend(faint)
+    if known is not None:
+        page.warnings.extend(_unknown_numbers(texts + _data(slide), known))
 
 
 def _schema(slide: Any) -> Iterator[str]:

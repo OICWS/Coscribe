@@ -134,26 +134,41 @@ def compile_pages(
     reports: list[PageReport] = []
     size: tuple[int, int] | None = canvas(prs) if template is not None else None
     for name, svg_text in pages:
-        report = PageReport(name)
+        report, size = add_page(
+            prs, name, svg_text, size, resource_root, svg_dir or resource_root, examples
+        )
         reports.append(report)
-        try:
-            root = ET.fromstring(svg_text)
-        except ET.ParseError as e:
-            report.errors.append(f"not well-formed XML: {e}")
-            prs.slides.add_slide(layout(prs, None))
-            continue
-        width, height = _canvas(root, report)
-        if size is None:
-            size = (width, height)
-            prs.slide_width, prs.slide_height = Emu(width * EMU_PER_PX), Emu(height * EMU_PER_PX)
-        elif (width, height) != size:
-            report.errors.append(
-                f"canvas {width}x{height} differs from the deck's {size[0]}x{size[1]}"
-            )
-        _compile_page(prs, root, report, resource_root, svg_dir or resource_root, examples)
     out.parent.mkdir(parents=True, exist_ok=True)
     prs.save(str(out))
     return CompileReport(out, reports)
+
+
+def add_page(
+    prs: Any,
+    name: str,
+    svg_text: str,
+    size: tuple[int, int] | None,
+    resource_root: Path | None,
+    svg_dir: Path | None,
+    examples: Sequence[Example] = (),
+) -> tuple[PageReport, tuple[int, int]]:
+    """Add the page as the next slide of `prs`. `size` is the canvas every page must have, in
+    page px; None makes this page's canvas the deck's. Returns the report and the canvas."""
+    report = PageReport(name)
+    try:
+        root = ET.fromstring(svg_text)
+    except ET.ParseError as e:
+        report.errors.append(f"not well-formed XML: {e}")
+        prs.slides.add_slide(layout(prs, None))
+        return report, size or (1280, 720)
+    width, height = _canvas(root, report)
+    if size is None:
+        size = (width, height)
+        prs.slide_width, prs.slide_height = Emu(width * EMU_PER_PX), Emu(height * EMU_PER_PX)
+    elif (width, height) != size:
+        report.errors.append(f"canvas {width}x{height} differs from the deck's {size[0]}x{size[1]}")
+    _compile_page(prs, root, report, resource_root, svg_dir, list(examples))
+    return report, size
 
 
 def _canvas(root: ET.Element, report: PageReport) -> tuple[int, int]:

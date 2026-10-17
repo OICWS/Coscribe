@@ -1,11 +1,11 @@
 """Build a deck from its folder of page sources, check it, and remember what was built.
 
-A deck's sources are a folder of SVG pages, one per slide, in file-name order. Building compiles
-them all (it takes well under a second a page), checks the result and writes `build.json` next to
-the pages: a hash of each page and of each slide as written. The slide hashes are what makes a
-rebuild safe: if the .pptx changed since it was built (edited in PowerPoint, or by an object
-tool), rebuilding from the sources would silently throw that work away, so it is refused unless
-the caller says to replace it.
+A deck's sources are a folder of SVG pages and sections, one file per slide, in file-name order.
+Building compiles them all (it takes well under a second a page), checks the result and writes
+`build.json` next to the pages: a hash of each page and of each slide as written. The slide hashes
+are what makes a rebuild safe: if the .pptx changed since it was built (edited in PowerPoint, or by
+an object tool), rebuilding from the sources would silently throw that work away, so it is refused
+unless the caller says to replace it.
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ from pptx import Presentation
 from .checker import check_deck, source_text
 from .compiler import PageReport, compile_pages
 from .sections import check_sections, compile_sections
+from .svg_to_section import convert_page
 
 MANIFEST = "build.json"
 
@@ -70,31 +71,50 @@ class BuildReport:
         }
 
 
-def page_files(pages_dir: Path, suffix: str = ".svg") -> list[Path]:
+def page_files(pages_dir: Path, suffix: str | tuple[str, ...] = ".svg") -> list[Path]:
     """The folder's pages in order: by file name, numbers compared as numbers, so `2.svg`
-    comes before `10.svg`. `suffix` is ".html" for slide sections."""
+    comes before `10.svg`. `suffix` is ".html" for slide sections, or a tuple of suffixes."""
 
     def key(path: Path) -> list[Any]:
         return [
             int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", path.name)
         ]
 
-    return sorted((p for p in pages_dir.glob(f"*{suffix}") if p.is_file()), key=key)
+    suffixes = (suffix,) if isinstance(suffix, str) else suffix
+    return sorted(
+        (p for p in pages_dir.iterdir() if p.is_file() and p.suffix.lower() in suffixes), key=key
+    )
 
 
 def _sources(pages_dir: Path, template: Path | None) -> tuple[list[Path], bool]:
-    """The folder's page files and whether they are sections. A folder holds one language, so
-    a deck never mixes pages a build would read with pages it would skip."""
-    pages, sections = page_files(pages_dir), page_files(pages_dir, ".html")
-    if pages and sections:
-        raise ValueError(
-            f"{pages_dir} holds both .svg pages and .html sections; keep one kind per deck"
-        )
-    if not pages and not sections:
+    """The folder's slide files in order and whether any is a section. SVG pages and sections
+    share a deck (decision 0016), each slide one file, so a name held by both is refused."""
+    found = page_files(pages_dir, (".svg", ".html"))
+    if not found:
         raise ValueError(f"no .svg pages or .html sections in {pages_dir}")
+    stems = [p.stem.lower() for p in found]
+    twice = sorted({p.stem for p in found if stems.count(p.stem.lower()) > 1})
+    if twice:
+        raise ValueError(
+            f"{', '.join(twice)}: a slide is one file, either the .svg page or the .html section"
+        )
+    sections = any(p.suffix.lower() == ".html" for p in found)
     if sections and template is not None:
-        raise ValueError("a deck of sections is not built on a template")
-    return pages or sections, bool(sections)
+        raise ValueError("a deck with sections is not built on a template")
+    return found, sections
+
+
+def convert_slide(page: Path) -> tuple[Path, list[str]]:
+    """Turn the SVG page `page` into a section next to it, with its content unchanged
+    (decision 0016), and remove the page. Returns the section and what stayed a drawing.
+    Raises `SectionError` for a page that has no section form (one on a template)."""
+    section, kept = convert_page(page.read_text(encoding="utf-8"))
+    target = page.with_suffix(".html")
+    if target.exists():
+        raise ValueError(f"{target.name} exists already")
+    target.write_text(section, encoding="utf-8")
+    page.unlink()
+    return target, kept
 
 
 def build_deck(
@@ -165,12 +185,14 @@ def built_from_pages(deck: Path) -> Path | None:
 
 def built_pages(deck: Path) -> list[Path] | None:
     """The SVG pages `deck` was built from, in slide order, while both the deck and the pages are
-    as that build left them; None otherwise."""
+    as that build left them; None otherwise, and when a slide is a section."""
     folder = built_from_pages(deck)
     if folder is None:
         return None
     recorded = _read_manifest(folder / MANIFEST)["pages"]
     pages = [folder / entry["page"] for entry in recorded]
+    if any(page.suffix.lower() != ".svg" for page in pages):
+        return None
     for page, entry in zip(pages, recorded, strict=True):
         if not page.is_file() or _source_hash(page.read_text(encoding="utf-8")) != entry["source"]:
             return None
