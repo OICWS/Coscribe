@@ -52,6 +52,7 @@ Last reviewed: 2026-10-15.
    - Done: aisuite is no longer a dependency (#299): one `pip install` resolves, the hand-run
      google-genai step is gone from CI and the session hook. Follow-up: move to
      langchain-google-genai 4.x (`thinking_config` replaces `thinking_level`); now bounded `<4`.
+     Until then Gemini gets no effort control (3.x sends an unknown `thinking_level` field, #315).
    - Done: `tools/presentations.py` is a 83-line entry point (parts 1 to 11 of its split; the
      toolkit is `office/pptx/toolkit.py` and the topic mixins, the tool wrappers are
      `office/pptx/tool_wrappers.py`, 88 lines, plus five `wrappers_*.py` topic modules). It was one
