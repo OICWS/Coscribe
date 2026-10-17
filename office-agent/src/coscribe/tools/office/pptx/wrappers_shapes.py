@@ -8,7 +8,9 @@ from typing import Any, Optional
 from .toolkit import PresentationToolkit
 
 
-def _slide_and_shape_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
+# The tools are grouped into builders under 100 lines; `build_shapes_tools` merges them in the
+# original order, which is the tool-list order the schema snapshot pins.
+def _shapes_tools_1(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
     def delete_pptx_slide(path: str, slide: int) -> dict[str, object]:
         """Remove one slide from an existing PowerPoint (.pptx) file --
         every other slide, and their order, is untouched.
@@ -93,6 +95,16 @@ def _slide_and_shape_tools(toolkit: PresentationToolkit) -> dict[str, Callable[.
         """
         return toolkit.delete_pptx_shape(path=path, slide=slide, shape_index=shape_index)
 
+    return {
+        "delete_pptx_slide": delete_pptx_slide,
+        "duplicate_pptx_slide": duplicate_pptx_slide,
+        "reorder_pptx_slide": reorder_pptx_slide,
+        "list_pptx_shapes": list_pptx_shapes,
+        "delete_pptx_shape": delete_pptx_shape,
+    }
+
+
+def _shapes_tools_2(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
     def edit_pptx_shape(
         path: str,
         slide: int,
@@ -175,6 +187,13 @@ def _slide_and_shape_tools(toolkit: PresentationToolkit) -> dict[str, Callable[.
         this is a static list, not specific to any file or slide."""
         return toolkit.list_pptx_shape_types()
 
+    return {
+        "edit_pptx_shape": edit_pptx_shape,
+        "list_pptx_shape_types": list_pptx_shape_types,
+    }
+
+
+def _shapes_tools_3(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
     def add_pptx_shape(
         path: str,
         slide: int,
@@ -226,6 +245,12 @@ def _slide_and_shape_tools(toolkit: PresentationToolkit) -> dict[str, Callable[.
             line_color=line_color,
         )
 
+    return {
+        "add_pptx_shape": add_pptx_shape,
+    }
+
+
+def _shapes_tools_4(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
     def add_pptx_formula(
         path: str,
         slide: int,
@@ -273,20 +298,6 @@ def _slide_and_shape_tools(toolkit: PresentationToolkit) -> dict[str, Callable[.
             display=display,
         )
 
-    return {
-        "delete_pptx_slide": delete_pptx_slide,
-        "duplicate_pptx_slide": duplicate_pptx_slide,
-        "reorder_pptx_slide": reorder_pptx_slide,
-        "list_pptx_shapes": list_pptx_shapes,
-        "delete_pptx_shape": delete_pptx_shape,
-        "edit_pptx_shape": edit_pptx_shape,
-        "list_pptx_shape_types": list_pptx_shape_types,
-        "add_pptx_shape": add_pptx_shape,
-        "add_pptx_formula": add_pptx_formula,
-    }
-
-
-def _table_chart_link_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
     def edit_pptx_table_cell(
         path: str, slide: int, shape_index: str, row: int, col: int, text: str
     ) -> dict[str, object]:
@@ -314,6 +325,13 @@ def _table_chart_link_tools(toolkit: PresentationToolkit) -> dict[str, Callable[
             path=path, slide=slide, shape_index=shape_index, row=row, col=col, text=text
         )
 
+    return {
+        "add_pptx_formula": add_pptx_formula,
+        "edit_pptx_table_cell": edit_pptx_table_cell,
+    }
+
+
+def _shapes_tools_5(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
     def merge_pptx_table_cells(
         path: str,
         slide: int,
@@ -387,6 +405,13 @@ def _table_chart_link_tools(toolkit: PresentationToolkit) -> dict[str, Callable[
             path=path, slide=slide, chart_type=chart_type, data=data, title=title
         )
 
+    return {
+        "merge_pptx_table_cells": merge_pptx_table_cells,
+        "add_pptx_chart": add_pptx_chart,
+    }
+
+
+def _shapes_tools_6(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
     def add_pptx_hyperlink(
         path: str,
         slide: int,
@@ -437,12 +462,16 @@ def _table_chart_link_tools(toolkit: PresentationToolkit) -> dict[str, Callable[
         )
 
     return {
-        "edit_pptx_table_cell": edit_pptx_table_cell,
-        "merge_pptx_table_cells": merge_pptx_table_cells,
-        "add_pptx_chart": add_pptx_chart,
         "add_pptx_hyperlink": add_pptx_hyperlink,
     }
 
 
 def build_shapes_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
-    return {**_slide_and_shape_tools(toolkit), **_table_chart_link_tools(toolkit)}
+    return {
+        **_shapes_tools_1(toolkit),
+        **_shapes_tools_2(toolkit),
+        **_shapes_tools_3(toolkit),
+        **_shapes_tools_4(toolkit),
+        **_shapes_tools_5(toolkit),
+        **_shapes_tools_6(toolkit),
+    }

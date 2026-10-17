@@ -1,12 +1,13 @@
-# `build_shapes_tools` split into two builders (shipped)
+# `build_shapes_tools` split into six builders (shipped)
 
 Why: #348 item 4. `build_shapes_tools` was 423 lines, the longest function in the repository.
 
 ## Shipped
-- `tools/office/pptx/wrappers_shapes.py`: the slide-order, shape and formula tools moved into
-  `_slide_and_shape_tools`, the table, chart and hyperlink tools into `_table_chart_link_tools`;
-  `build_shapes_tools` merges the two dicts. Each builder is under 300 lines. A pure move: bodies,
-  docstrings (the tool schemas) and the key order are unchanged.
+- `tools/office/pptx/wrappers_shapes.py`: the 13 tools are grouped, in order, into six builders
+  of under 100 lines each; `build_shapes_tools` merges their dicts. A pure move: bodies, docstrings
+  (the tool schemas) and the key order are unchanged. `quality/baseline.json`: `long_functions`
+  42 to 41 (the 423-line entry is gone; the ratchet counts functions over 100 lines, so two
+  builders over 100 would have been worse).
 
 ## Not verified
 - `tests/test_tool_schema_snapshot.py` fails in a cloud session on main as well (#252), so the
