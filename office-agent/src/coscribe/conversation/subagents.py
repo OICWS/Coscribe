@@ -35,9 +35,9 @@ from ..tools import (
     WakeStore,
     format_incoming,
     running_subagent,
+    set_change_listener,
+    set_inbox_listener,
 )
-from ..tools.bookkeeping.background_tasks import set_change_listener
-from ..tools.bookkeeping.conversations import set_inbox_listener
 from .approvals import SubAgentChannel, can_resolve_approvals
 from .events import EventSink
 from .thread_meta import ThreadMetaStore

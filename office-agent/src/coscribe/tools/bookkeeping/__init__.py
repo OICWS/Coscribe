@@ -3,8 +3,22 @@ self-wakes, messages between conversations, questions and plan choices, and the 
 
 from __future__ import annotations
 
-from .background_tasks import BackgroundTask, BackgroundTaskStore, build_background_task_tools
-from .conversations import MessagingStore, build_conversation_tools, format_incoming
+from .background_tasks import (
+    BackgroundTask,
+    BackgroundTaskStore,
+    build_background_task_tools,
+    forget_finished_background_tasks,
+    read_background_log,
+    set_change_listener,
+    stop_background_task,
+)
+from .conversations import (
+    MessagingError,
+    MessagingStore,
+    build_conversation_tools,
+    format_incoming,
+    set_inbox_listener,
+)
 from .interaction import (
     PLAN_CHOICE_AUTO,
     PLAN_CHOICE_MANUAL,
@@ -38,17 +52,30 @@ from .selfwake import (
     build_selfwake_tools,
 )
 from .subagent_tasks import (
+    FINISHED_STATUSES,
     SubAgentTask,
     SubAgentTaskStore,
     build_subagent_task_tools,
     forget_finished_subagents,
     get_subagent_transcript,
+    register_subagent_run,
     running_subagent,
     stop_subagent_task,
+    take_stop_requester,
 )
-from .tasks import build_task_tools
+from .tasks import TaskToolkit, build_task_tools
 
 __all__ = [
+    "FINISHED_STATUSES",
+    "MessagingError",
+    "TaskToolkit",
+    "forget_finished_background_tasks",
+    "read_background_log",
+    "register_subagent_run",
+    "set_change_listener",
+    "set_inbox_listener",
+    "stop_background_task",
+    "take_stop_requester",
     "PLAN_CHOICE_AUTO",
     "PLAN_CHOICE_MANUAL",
     "PLAN_CHOICE_REVISE",

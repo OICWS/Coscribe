@@ -14,8 +14,12 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse, JSONResponse, Response
 
-from ...tools import WorkspaceScope
-from ...tools.pdf_pages import pdf_page_count, render_pdf_page
+from ...tools import (
+    PresentationToolkit,
+    WorkspaceScope,
+    pdf_page_count,
+    render_pdf_page,
+)
 from ...tools.web import SCREENSHOT_FOLDER
 from ..state import AppState
 from .shared import MAX_UPLOAD_BYTES
@@ -147,8 +151,6 @@ def router(state: AppState) -> APIRouter:
         # list_pptx_shapes tool calls -- this is a plain, ungated REST
         # read, not a tool call, since it's UI-only (never reaches the
         # model, never touches the audit log a real tool call would).
-        from ...tools.presentations import PresentationToolkit
-
         if thread_id:
             scope = _get_session(thread_id).workspace_scope()
             toolkit = PresentationToolkit(

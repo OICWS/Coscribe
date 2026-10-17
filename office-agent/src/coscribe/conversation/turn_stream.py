@@ -11,7 +11,7 @@ from langgraph.types import Command
 
 from ..runtime_lg import extract_text as _extract_text
 from ..runtime_lg import tool_result_value as _tool_result_value
-from ..runtime_lg.tool_deferral import unwrap_use_tool_call
+from ..runtime_lg import unwrap_use_tool_call
 from ..tools import QUESTION_TOOL_NAMES, TASK_DRAFT_TOOL_NAMES
 from .events import EventSink
 from .history import close_orphaned_tool_calls

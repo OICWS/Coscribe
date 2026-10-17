@@ -7,7 +7,7 @@ writing (`fonts.py`) and `write_pdf`, which renders the shared markdown subset w
 PowerPoint.
 
 ## Public interface
-`PdfToolkit`, `build_pdf_tools`. Import them from `coscribe.tools.office.pdf`; the coordinator
+`PdfToolkit`, `build_pdf_tools`, `PDFIUM_LOCK` (the lock around pdfium, shared with `tools/pdf_pages.py`). Import them from `coscribe.tools.office.pdf`; the coordinator
 reaches them through `coscribe.tools.office.document_tools`.
 
 ## Depends on

@@ -258,9 +258,9 @@ def _default_run_script(
     timeout: float,
     extra_writable: Sequence[Path] = (),
 ) -> dict[str, object]:
-    from ..tools.exec.scripts import _run_python_script
+    from ..tools import run_python_script
 
-    return _run_python_script(workspace_root, state_dir, script, timeout, extra_writable)
+    return run_python_script(workspace_root, state_dir, script, timeout, extra_writable)
 
 
 async def _run_script(step: ScriptStep, values: dict[str, Any], ctx: StepContext) -> Any:

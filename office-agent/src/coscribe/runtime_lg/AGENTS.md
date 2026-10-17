@@ -13,18 +13,11 @@ conversation into a skill (`skill_authoring.py`) and message-shape helpers (`mes
 prompt (`coordinator.py`).
 
 ## Public interface
-Agent and tools: `build_langgraph_agent`, `tool_name`, `SubAgentHost`, `SUBAGENT_MAX_STEPS`,
-`build_delegation_tools`, `build_review_work_tool`, `select_reviewer_tools`, `subagent_report`.
-Approvals: `AuditDecision`, `AuditLog`, `AuditReason`, `AutoApproveReason`, `record_decision`, `redact_secrets`, `Verdict`,
-`review_action`, `recent_user_requests`, `ExecPolicy`, `EXEC_POLICY_TOOL_NAMES`,
-`load_exec_policy`, `CODE_APPROVAL_RISKS`. Models: `resolve_chat_model`, `for_conversation`,
-`keeps_tool_list_fixed`. Connectors: `connect_mcp_tools_lg`, `connect_one_mcp_server_lg` (loaded on
-first use: importing them eagerly costs 250 to 360 ms at startup). Runs: `execute_run`,
-`start_investigation`, `continue_workflow_run`, `fire_trigger_now`, `stop_run`,
-`poll_due_scheduled_tasks`, `reconcile_interrupted_runs`, `poll_due_wakes`, `SilentSocket`.
-Skills and messages: `SkillSaveProposal`, `propose_skill_save_lg`, `write_skill_lg`,
-`extract_text`, `is_steer`, `render_transcript_lg`, `serialize_history_for_ws_lg`,
-`strip_mode_note`, `tool_result_value`, `answer_every_tool_call`, `ORPHANED_TOOL_CALL_NOTE`.
+Agent and tools: `build_langgraph_agent`, `tool_name`, `SubAgentHost`, `SUBAGENT_MAX_STEPS`, `build_delegation_tools`, `build_review_work_tool`, `select_reviewer_tools`, `subagent_report`.
+Approvals: `AuditDecision`, `AuditLog`, `AuditReason`, `AutoApproveReason`, `record_decision`, `redact_secrets`, `Verdict`, `review_action`, `recent_user_requests`, `ExecPolicy`, `EXEC_POLICY_TOOL_NAMES`, `load_exec_policy`, `CODE_APPROVAL_RISKS`. Models: `resolve_chat_model`, `for_conversation`, `keeps_tool_list_fixed`.
+Connectors: `connect_mcp_tools_lg`, `connect_one_mcp_server_lg`, `McpServerConnection` (loaded on first use: eager import costs 250 to 360 ms at startup). Sign-in: `McpOAuth`, `LoopbackCallback`, `NeedsSignIn`, `CallbackPortBusy`, `APP_REDIRECT_URI`, `SIGN_IN_TIMEOUT_SECONDS`. Deferral: `bound_tool_names`, `build_search_tools_tool`, `build_use_tool_tool`, `unwrap_use_tool_call`. Code tasks: `CODE_TASK_TOOL`, `CodeTaskContext`, `build_code_task_tool`.
+Runs: `execute_run`, `start_investigation`, `continue_workflow_run`, `fire_trigger_now`, `stop_run`, `poll_due_scheduled_tasks`, `reconcile_interrupted_runs`, `poll_due_wakes`, `SilentSocket`.
+Skills and messages: `SkillSaveProposal`, `propose_skill_save_lg`, `write_skill_lg`, `extract_text`, `is_steer`, `render_transcript_lg`, `serialize_history_for_ws_lg`, `strip_mode_note`, `tool_result_value`, `context_note`, `current_date_note`, `language_note`, `last_conversation_context`, `ACCEPT_EDITS_MODE_NOTE`, `AUTO_MODE_NOTE`, `NORMAL_MODE_NOTE`, `PLAN_MODE_NOTE`, `answer_every_tool_call`, `ORPHANED_TOOL_CALL_NOTE`.
 Callers import these from `coscribe.runtime_lg`, not a submodule.
 
 ## Depends on

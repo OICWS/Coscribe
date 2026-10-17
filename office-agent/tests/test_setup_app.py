@@ -35,8 +35,8 @@ import uvicorn
 
 pytest.importorskip("langgraph", reason="needs the langgraph_spike extra installed")
 
-from coscribe.cli import _app_data_dir, _load_settings_or_none
-from coscribe.web.app import _run_web_server, create_setup_app
+from coscribe.runtime import app_data_dir as _app_data_dir
+from coscribe.web.app import _load_settings_or_none, _run_web_server, create_setup_app
 
 
 def _isolate_dotenv(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

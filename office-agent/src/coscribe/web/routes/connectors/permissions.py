@@ -7,10 +7,7 @@ from fastapi import (
 )
 from fastapi.responses import JSONResponse
 
-from ....tools.connector_permissions import (
-    POLICIES,
-    ConnectorPermissions,
-)
+from ....tools import POLICIES, ConnectorPermissions
 from ...schemas import (
     ConnectorPermissionsUpdate,
 )

@@ -17,7 +17,7 @@ None re-exported: `__all__` is empty. Entry points: `create_app_lg` and `main` i
 `create_app_lg`; tests import them to patch (`tests/web/helpers.py` holds the shared fakes).
 
 ## Depends on
-`coscribe`, `coscribe.cli`, `coscribe.code_runtime`, `coscribe.config`, `coscribe.conversation`,
+`coscribe`, `coscribe.code_runtime`, `coscribe.config`, `coscribe.conversation`,
 `coscribe.coordinator`, `coscribe.runtime`, `coscribe.runtime_lg`, `coscribe.tools`,
 `coscribe.workflows`.
 

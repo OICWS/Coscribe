@@ -3,11 +3,10 @@ spawn_agent_background (it doesn't). Both run the child as its own
 asyncio task, visible in the Sub Agents panel while it works.
 
 A child's approvals go through its host's decide() -- the session's own
-approval policy -- rather than being bridged up through the parent's
-graph with interrupt(). So a child waiting on approval is answered from
-the panel whether or not its parent is still waiting, and plan mode,
-accept-edits, exec policy and hooks apply to it exactly as they do to the
-parent.
+approval policy -- rather than being bridged up through the parent's graph
+with interrupt(). So a child waiting on approval is answered from the panel
+whether or not its parent is still waiting, and plan mode, accept-edits,
+exec policy and hooks apply to it exactly as they do to the parent.
 """
 
 from __future__ import annotations
@@ -31,8 +30,9 @@ from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 
 from ..runtime import get_tool_metadata, redactor, tool_metadata
-from ..tools import QUESTION_TOOL_NAMES, TASK_DRAFT_TOOL_NAMES
-from ..tools.bookkeeping.subagent_tasks import (
+from ..tools import (
+    QUESTION_TOOL_NAMES,
+    TASK_DRAFT_TOOL_NAMES,
     SubAgentTask,
     SubAgentTaskStore,
     register_subagent_run,

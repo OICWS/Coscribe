@@ -53,14 +53,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
-import sys
 import uuid
-from pathlib import Path
 from typing import Any
 
 import typer
-from dotenv import load_dotenv
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from pydantic import ValidationError
 
@@ -71,7 +67,7 @@ from .runtime import (
     empty_hooks_config,
     load_custom_providers,
     load_hooks_config,
-    resolve_env_keyring_refs,
+    prepare_env,
     run_hook,
 )
 from .runtime_lg import poll_due_scheduled_tasks, poll_due_wakes
@@ -88,80 +84,8 @@ from .tools import (
 app = typer.Typer(add_completion=False, no_args_is_help=False)
 logger = logging.getLogger(__name__)
 
-def _app_data_dir() -> Path:
-    """Per-user application-data directory -- the fallback _dotenv_path
-    below uses when the process has no meaningful project-directory cwd
-    (office-agent-desktop's Electron shell spawns the sidecar with no
-    natural project dir to look for a `.env` in, and the same is true
-    running the PyInstaller-packaged binary directly). Same convention
-    most desktop apps use: `%APPDATA%\\coscribe` on Windows,
-    `~/Library/Application Support/coscribe` on macOS,
-    `~/.config/coscribe` elsewhere."""
-    if sys.platform == "win32":
-        base = os.environ.get("APPDATA")
-        return Path(base) / "coscribe" if base else Path.home() / "coscribe"
-    if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "coscribe"
-    return Path.home() / ".config" / "coscribe"
-
-
-def _dotenv_path() -> Path:
-    """Where to load/write `.env`. Prefers a real, existing project-
-    relative `./.env` -- the ordinary CLI/manually-run-web-server case,
-    completely unchanged from before -- and only falls back to
-    _app_data_dir() (creating it if needed) when no such file exists,
-    which is the normal case for office-agent-desktop's sidecar (no
-    natural project cwd) or the packaged binary run directly. The
-    Electron shell additionally spawns the sidecar with this same
-    directory as its cwd (belt-and-suspenders, not required for this to
-    work) -- so
-    this fallback mainly matters for running the packaged binary on its
-    own, e.g. this project's own PyInstaller smoke test."""
-    cwd_env = Path(".env")
-    if cwd_env.exists():
-        return cwd_env
-    app_data_env = _app_data_dir() / ".env"
-    app_data_env.parent.mkdir(parents=True, exist_ok=True)
-    return app_data_env
-
-
-def _prepare_env() -> Path:
-    """Shared first half of _load_settings/_load_settings_or_none below:
-    resolves .env's real location and loads it into the real process
-    environment, so both callers agree on the exact same file (see
-    _dotenv_path's own docstring for why that matters) and both get a
-    real provider API key rather than a stale keyring-ref sentinel.
-
-    Settings' own env_file only feeds its declared COSCRIBE_-prefixed
-    fields; provider API keys (GEMINI_API_KEY etc.) are unprefixed and
-    read directly from os.environ by each provider SDK, so .env needs to
-    be loaded into the real process environment too, not just parsed by
-    Settings -- see config.py's Settings docstring.
-    """
-    dotenv_path = _dotenv_path()
-    # override=True: .env is the one place a double-click desktop app's
-    # user can configure anything at all (no terminal to set a real
-    # environment variable in) -- live-hit without this: a corporate
-    # machine already had HTTP_PROXY/HTTPS_PROXY set at the Windows
-    # user/system level (a security agent's local traffic-interception
-    # relay, pointed at 127.0.0.1 rather than the real upstream proxy),
-    # and python-dotenv's own default (override=False) silently kept
-    # that stale value instead of the one the user had just written into
-    # .env, with no error -- the Gemini call just failed to reach the
-    # real proxy at all.
-    load_dotenv(dotenv_path, override=True)
-    # A provider API key written by a previous run may be a keyring-ref
-    # sentinel string rather than the real value (see runtime/secrets.py)
-    # -- resolve it in the real process environment right here, the same
-    # place .env just got loaded into it, so every downstream
-    # os.getenv("ANTHROPIC_API_KEY")-style read (inside the SDKs
-    # themselves) sees the real secret, never the sentinel.
-    resolve_env_keyring_refs()
-    return dotenv_path
-
-
 def _load_settings() -> Settings:
-    dotenv_path = _prepare_env()
+    dotenv_path = prepare_env()
     try:
         return Settings(_env_file=dotenv_path)  # type: ignore[call-arg]
     except ValidationError as exc:
@@ -173,27 +97,6 @@ def _load_settings() -> Settings:
             err=True,
         )
         raise typer.Exit(code=1) from exc
-
-
-def _load_settings_or_none() -> Settings | None:
-    """Like _load_settings, but returns None instead of printing an error
-    and exiting the process on a config ValidationError -- web/app.py's
-    main() uses this to fall into first-run setup mode (create_setup_app)
-    rather than crashing outright the moment a fresh install has no
-    default_model/API key configured yet. That crash used to be the whole
-    story for the desktop app: office-agent-desktop's splash page has no
-    way to tell it apart from any other startup failure, so it just showed
-    "coscribe couldn't start" and pointed the user at a log file to hand-
-    edit .env from (see office-agent-desktop/src/splash/index.html's own
-    showFailure). _load_settings above is unchanged and still used by the
-    CLI: a terminal is already the right place to fix a bad .env by hand,
-    no setup UI needed there."""
-    dotenv_path = _prepare_env()
-    try:
-        return Settings(_env_file=dotenv_path)  # type: ignore[call-arg]
-    except ValidationError:
-        return None
-
 
 
 def _ask(question: dict[str, Any]) -> str | None:
@@ -407,7 +310,7 @@ async def _chat_async(
         # Deferred import -- pulls in langchain_mcp_adapters/mcp, which
         # otherwise cost every cold start ~250-360ms even with zero MCP
         # servers configured. See runtime_lg/__init__.py's __getattr__.
-        from .runtime_lg.mcp import connect_mcp_tools_lg
+        from .runtime_lg import connect_mcp_tools_lg
 
         mcp_tools, mcp_connections = await connect_mcp_tools_lg(
             settings.mcp_config_path, state_dir=settings.state_dir
@@ -508,7 +411,7 @@ async def _check_wakes_async(settings: Any) -> None:
     mcp_tools: list[Any] = []
     mcp_connections: dict[str, Any] = {}
     if settings.mcp_config_path is not None:
-        from .runtime_lg.mcp import connect_mcp_tools_lg  # see the other call site's note
+        from .runtime_lg import connect_mcp_tools_lg  # see the other call site's note
 
         mcp_tools, mcp_connections = await connect_mcp_tools_lg(
             settings.mcp_config_path, state_dir=settings.state_dir

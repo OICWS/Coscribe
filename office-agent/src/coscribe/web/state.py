@@ -11,8 +11,7 @@ from typing import Any
 from ..config import Settings
 from ..conversation import ChatSessionLG, ThreadMetaStore
 from ..runtime import LLMClient
-from ..runtime_lg.mcp import McpServerConnection
-from ..runtime_lg.mcp_oauth import LoopbackCallback, McpOAuth
+from ..runtime_lg import LoopbackCallback, McpOAuth, McpServerConnection
 from ..tools import ScheduledRun, SkillInfo
 from .background_events import BackgroundEventBus
 from .thread_files import ThreadFiles

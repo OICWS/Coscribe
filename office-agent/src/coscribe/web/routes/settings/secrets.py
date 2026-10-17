@@ -16,9 +16,7 @@ from ....runtime import (
     keychain_available,
     resolve_secret,
 )
-from ....tools.mcp import (
-    secret_names_used,
-)
+from ....tools import secret_names_used
 from ...state import AppState
 from ..shared import _read_mcp_servers_raw
 

@@ -6,7 +6,8 @@ lazily like every other heavy library here."""
 
 from __future__ import annotations
 
+from .text import _PDFIUM_LOCK as PDFIUM_LOCK
 from .toolkit import PdfToolkit
 from .tools import build_pdf_tools
 
-__all__ = ["PdfToolkit", "build_pdf_tools"]
+__all__ = ["PDFIUM_LOCK", "PdfToolkit", "build_pdf_tools"]

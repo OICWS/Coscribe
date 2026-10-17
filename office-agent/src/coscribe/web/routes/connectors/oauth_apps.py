@@ -9,11 +9,7 @@ from fastapi import (
 )
 from fastapi.responses import JSONResponse
 
-# Deferred import for the same reason as runtime_lg.mcp (see the comment
-# above MCP_STARTUP_TIMEOUT_SECONDS).
-from ....runtime_lg.mcp_oauth import (
-    APP_REDIRECT_URI,
-)
+from ....runtime_lg import APP_REDIRECT_URI
 from ...connector_catalog import MCP_CATALOG
 from ...schemas import (
     OAuthAppCredentials,
