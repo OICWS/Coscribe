@@ -3,7 +3,7 @@
  * (Tauri) src-tauri/src/lib.rs (`app_data_dir`, `free_port`, `server_bin`,
  * `server_log_file`). This file is the one place in this whole shell where
  * "port faithfully, don't just port similarly" actually matters: the
- * Python backend's own `coscribe.cli._app_data_dir()` expects the exact
+ * Python backend's own `coscribe.runtime.app_data_dir()` expects the exact
  * same directory convention regardless of which shell launched it, and
  * `COSCRIBE_APP_DATA_DIR`/`COSCRIBE_SERVER_BIN` are dev/testing overrides
  * both shells already share.
@@ -18,7 +18,7 @@ import { join } from "node:path";
  * (this project's own dev/testing convention, shared with the Python
  * side's identical override). Otherwise: `%APPDATA%\coscribe` on Windows,
  * `~/Library/Application Support/coscribe` on macOS, `~/.config/coscribe`
- * elsewhere -- must stay byte-identical to `cli.py`'s `_app_data_dir()`. */
+ * elsewhere -- must stay byte-identical to `runtime/dotenv_file.py`'s `app_data_dir()`. */
 export function appDataDir(): string {
   const override = process.env.COSCRIBE_APP_DATA_DIR;
   if (override) return override;

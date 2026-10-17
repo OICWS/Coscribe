@@ -18,17 +18,16 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from coscribe.cli import _dotenv_path
+from coscribe.runtime import dotenv_path
 from coscribe.runtime_lg import resolve_chat_model
 from coscribe.runtime_lg.mcp import connect_one_mcp_server_lg
 from coscribe.tools.mcp import load_mcp_server_configs
 
-# Same dotenv loading coscribe-web/coscribe do at startup (cli.py's own
-# _load_settings) -- without it, GEMINI_API_KEY only exists in .env, never
-# makes it into os.environ, and resolve_chat_model's ChatGoogleGenerativeAI
+# Same dotenv loading coscribe-web/coscribe do at startup -- without it, GEMINI_API_KEY only
+# exists in .env, never makes it into os.environ, and resolve_chat_model's ChatGoogleGenerativeAI
 # falls through to looking for Google Cloud Application Default
 # Credentials instead, failing with a confusing, unrelated error.
-load_dotenv(_dotenv_path())
+load_dotenv(dotenv_path())
 
 
 async def try_bind(model, tools: list) -> tuple[bool, str]:  # type: ignore[no-untyped-def]
