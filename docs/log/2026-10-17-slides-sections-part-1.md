@@ -61,8 +61,10 @@ PR 1 of 4). This part is the language and the compiler; nothing calls it yet.
   line was cut by the slide edge, not by the box. The script now stacks the boxes by their
   heights and starts a new column when a slide is full.
 
-## Not verified
-- The other five slides of that deck (24 px text, and 640 and 900 px boxes).
+- The script's second deck, all six slides (24 and 32 px text in 420, 640 and 900 px boxes):
+  no text past any box.
+- A paragraph in the sample deck reflows when edited: two characters typed in its first line
+  moved the line's last word to the next one, inside the box's width.
 
 ## Follow-ups
 - Part 2: `table`, `x-chart`, `x-icon`, transitions and build-ins, the deck folder with per-slide

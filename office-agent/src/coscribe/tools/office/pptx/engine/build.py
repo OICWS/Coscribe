@@ -22,6 +22,7 @@ from pptx import Presentation
 
 from .checker import check_deck, source_text
 from .compiler import PageReport, compile_pages
+from .sections import check_sections, compile_sections
 
 MANIFEST = "build.json"
 
@@ -69,16 +70,31 @@ class BuildReport:
         }
 
 
-def page_files(pages_dir: Path) -> list[Path]:
-    """The folder's SVG pages in order: by file name, numbers compared as numbers, so `2.svg`
-    comes before `10.svg`."""
+def page_files(pages_dir: Path, suffix: str = ".svg") -> list[Path]:
+    """The folder's pages in order: by file name, numbers compared as numbers, so `2.svg`
+    comes before `10.svg`. `suffix` is ".html" for slide sections."""
 
     def key(path: Path) -> list[Any]:
         return [
             int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", path.name)
         ]
 
-    return sorted((p for p in pages_dir.glob("*.svg") if p.is_file()), key=key)
+    return sorted((p for p in pages_dir.glob(f"*{suffix}") if p.is_file()), key=key)
+
+
+def _sources(pages_dir: Path, template: Path | None) -> tuple[list[Path], bool]:
+    """The folder's page files and whether they are sections. A folder holds one language, so
+    a deck never mixes pages a build would read with pages it would skip."""
+    pages, sections = page_files(pages_dir), page_files(pages_dir, ".html")
+    if pages and sections:
+        raise ValueError(
+            f"{pages_dir} holds both .svg pages and .html sections; keep one kind per deck"
+        )
+    if not pages and not sections:
+        raise ValueError(f"no .svg pages or .html sections in {pages_dir}")
+    if sections and template is not None:
+        raise ValueError("a deck of sections is not built on a template")
+    return pages or sections, bool(sections)
 
 
 def build_deck(
@@ -95,21 +111,22 @@ def build_deck(
     `sources` are the files the deck's content comes from (for the number check); without any,
     that check is skipped. Raises `DeckChangedError` when `out` exists and is not exactly what
     these pages last built, unless `replace_changes`."""
-    files = page_files(pages_dir)
-    if not files:
-        raise ValueError(f"no .svg pages in {pages_dir}")
+    files, sections = _sources(pages_dir, template)
     manifest_path = pages_dir / MANIFEST
     previous = _read_manifest(manifest_path)
     if out.exists() and not replace_changes:
         _refuse_if_changed(out, previous)
 
     texts = [(p.name, p.read_text(encoding="utf-8")) for p in files]
-    compiled = compile_pages(
-        texts, out, resource_root=resource_root, svg_dir=pages_dir, template=template
-    )
+    if sections:
+        compiled = compile_sections(texts, out, resource_root=resource_root, sections_dir=pages_dir)
+    else:
+        compiled = compile_pages(
+            texts, out, resource_root=resource_root, svg_dir=pages_dir, template=template
+        )
     report = BuildReport(out, compiled.pages)
     source_texts, report.warnings = _source_texts(sources)
-    check_deck(compiled, source_texts if sources else None)
+    (check_sections if sections else check_deck)(compiled, source_texts if sources else None)
 
     before = {entry["page"]: entry["source"] for entry in previous.get("pages", [])}
     hashes = [_source_hash(text) for _name, text in texts]

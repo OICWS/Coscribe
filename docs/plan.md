@@ -142,7 +142,8 @@ Last reviewed: 2026-10-15.
    Docs, Design/Dashboard, Sheets last), edited in the app and exported to the Office format; the
    Slides design is settled (decision 0015, `docs/assessments/2026-10-17-slides-artifact.md`):
    positioned HTML sections. Step 1 (#392): the format, validator and HTML → PPTX compiler with
-   no UI (part 1 done: text, shapes, pictures, drawings), measured on the deck evaluation
+   no UI (parts 1 and 2 done: text, shapes, pictures, drawings, tables, charts, icons, transitions,
+   build-ins, building a folder of sections), measured on the deck evaluation
    against the SVG pages. The
    docx-preview actions are paused. A name for the user's own review actions in Settings is open;
    until then they carry the computer's user name.
