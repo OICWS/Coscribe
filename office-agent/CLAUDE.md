@@ -189,6 +189,10 @@ for the established pattern to copy).
 
 ## Cloud sessions: environment and live testing
 
+In a git worktree the `.venv` is the main checkout's and imports its `src`, and `web/static/` (the
+built UI) is missing: run `PYTHONPATH=src` with that venv's python, and create an empty
+`src/coscribe/web/static/` for tests that build the app (remove it afterwards).
+
 `.claude/hooks/session-start.sh` installs everything (venv, frontend
 `node_modules`, `ocr`, LibreOffice, poppler). In this container
 `NO_PROXY` sends pypi/npm direct and apt's sources are `http://` -- both
