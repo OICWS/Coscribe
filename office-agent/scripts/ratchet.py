@@ -198,7 +198,8 @@ def frontend_long_functions(
 def frontend_unused_exports(repo: Path | None = None) -> dict[str, int]:
     """Exports, types and files nothing imports, per file, from knip (frontend/knip.json)."""
     frontend = (repo or ROOT.parent) / "office-agent" / "frontend"
-    knip = frontend / "node_modules" / ".bin" / "knip"
+    # npm links a shell script for POSIX and a .cmd shim for Windows; only the shim starts there.
+    knip = frontend / "node_modules" / ".bin" / ("knip.cmd" if sys.platform == "win32" else "knip")
     if not knip.is_file():
         raise SystemExit("ratchet: the frontend is not installed; run `npm ci` in frontend/ first")
     # knip exits 1 whenever it finds something, which is the normal case here.
@@ -207,6 +208,7 @@ def frontend_unused_exports(repo: Path | None = None) -> dict[str, int]:
         cwd=frontend,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=False,
     )
     found: dict[str, int] = {}
