@@ -319,3 +319,31 @@ def test_enforce_fails_only_when_something_got_worse(
 
     monkeypatch.setattr(ratchet, "measure", lambda: {"file_lines": {"a.py": 900, "b.py": 800}})
     assert ratchet.main(["--enforce"]) == 0
+
+
+def _frontend_installed() -> bool:
+    return (
+        Path(__file__).resolve().parents[1] / "frontend" / "node_modules" / "typescript"
+    ).is_dir()
+
+
+@pytest.mark.skipif(not _frontend_installed(), reason="needs `npm ci` in frontend/")
+def test_a_long_typescript_function_and_file_are_listed_by_name(
+    ratchet: ModuleType, tmp_path: Path
+) -> None:
+    src = tmp_path / "web" / "src"
+    src.mkdir(parents=True)
+    body = "".join(f"  const y{i} = {i};\n" for i in range(8))
+    (src / "big.tsx").write_text(
+        f"export function Panel() {{\n{body}}}\n"
+        f"export const Row = () => {{\n{body}}};\n"
+        "export const small = () => 1;\n",
+        encoding="utf-8",
+    )
+    ratchet._ts_sizes.cache_clear()
+
+    files = ratchet.frontend_file_lines(tmp_path, ("web/src",), listed=10)
+    functions = ratchet.frontend_long_functions(tmp_path, ("web/src",), listed=5)
+
+    assert files == {"web/src/big.tsx": 21}
+    assert functions == {"web/src/big.tsx::Panel": 10, "web/src/big.tsx::Row": 10}
