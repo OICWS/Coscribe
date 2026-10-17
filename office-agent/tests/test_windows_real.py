@@ -100,7 +100,8 @@ def test_a_hook_runs_under_cmd_and_under_powershell() -> None:
 @real
 def test_format_hex_returns_the_bytes_unscrambled_and_counts_as_a_read(tmp_path: Path) -> None:
     (tmp_path / "data.bin").write_bytes(bytes(range(16)))
-    script = "Format-Hex -LiteralPath data.bin -Count 16"
+    # No -Count: Windows PowerShell 5.1, the one every Windows has, lacks it (added in 6.1).
+    script = "Format-Hex -LiteralPath data.bin"
     command = (
         f"{_POWERSHELL} -NoProfile -Command "
         f'"[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; {script}"'
