@@ -39,7 +39,7 @@ import logging
 import uuid
 from asyncio import Future
 from collections import defaultdict
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from functools import cached_property
 from pathlib import Path
 from typing import Any, cast
@@ -52,16 +52,13 @@ from langchain_core.messages.ai import UsageMetadata
 from langchain_core.tools import BaseTool
 from langgraph.constants import TAG_NOSTREAM
 
-from ..code_runtime import code_service
 from ..config import Settings
-from ..coordinator import CORE_TOOL_NAMES, build_coordinator_agent, conversation_context
+from ..coordinator import build_coordinator_agent, conversation_context
 from ..runtime import (
     LLMClient,
-    SessionEnvironments,
     empty_hooks_config,
     get_tool_metadata,
     load_custom_providers,
-    redactor,
 )
 from ..runtime_lg import (
     ORPHANED_TOOL_CALL_NOTE,
@@ -70,23 +67,12 @@ from ..runtime_lg import (
     SilentSocket,
     SubAgentHost,
     Verdict,
-    build_delegation_tools,
-    build_langgraph_agent,
-    build_review_work_tool,
     for_conversation,
-    keeps_tool_list_fixed,
     load_exec_policy,
     resolve_chat_model,
-    select_reviewer_tools,
     tool_name,
 )
 from ..runtime_lg import extract_text as _extract_text
-from ..runtime_lg.code_agent import (
-    CODE_APPROVAL_RISKS,
-    CODE_TASK_TOOL,
-    CodeTaskContext,
-    build_code_task_tool,
-)
 from ..runtime_lg.messages import (
     ACCEPT_EDITS_MODE_NOTE,
     AUTO_MODE_NOTE,
@@ -98,33 +84,25 @@ from ..runtime_lg.messages import (
     last_conversation_context,
     strip_mode_note,
 )
-from ..runtime_lg.tool_deferral import (
-    bound_tool_names,
-    build_search_tools_tool,
-    build_use_tool_tool,
-)
 from ..tools import (
     BROWSER_HOST,
     QUESTION_TOOL_NAMES,
     TASK_DRAFT_TOOL_NAMES,
+    BackgroundTask,
     ScheduledTriggerStore,
     SubAgentTask,
     WorkspaceScope,
     enabled_skill_names,
-    format_skill_listing,
     load_builtin_skills,
     load_skills,
     parse_run_thread_id,
 )
-from ..tools.bookkeeping.background_tasks import BackgroundTask, set_change_listener
-from ..tools.bookkeeping.conversations import set_inbox_listener
-from ..tools.web import build_http_tools
 from ..workflows import StepContext, WorkflowDraft
 from . import tool_hooks
 from .activity import summarize_activity, summarize_workflow_run
+from .agent_assembly import AgentAssembly, risks_of_gated_tools
 from .approval_resume import ApprovalResumer
 from .approvals import ApprovalDecider, can_resolve_approvals
-from .context_usage import build_context_breakdown
 from .edit_preview import build_document_edit_preview
 from .events import EventSink
 from .history import ConversationHistory
@@ -138,7 +116,6 @@ from .turn_lock import TurnLock
 from .turn_stream import TurnStreamer
 from .turn_text import (
     TITLE_INSTRUCTIONS,
-    build_instructions,
     clean_title,
     format_reply,
     usage_event,
@@ -166,21 +143,6 @@ _ORPHANED_TOOL_CALL_NOTE = ORPHANED_TOOL_CALL_NOTE
 
 def _new_draft_id() -> str:
     return uuid.uuid4().hex[:8]
-
-
-def _risks_of_gated_tools(lg_tools: list[Any]) -> dict[str, str]:
-    """Every approval-gated tool's name -> its risk category, which the
-    scheduled-run approval tiers key on (see _auto_approves)."""
-    risks: dict[str, str] = {}
-    for t in lg_tools:
-        metadata = get_tool_metadata(cast(Any, t))
-        if metadata.requires_approval:
-            risks[tool_name(t)] = metadata.risk_category
-        # The code module's commands and file changes are asked about under
-        # these names; a name missing here would be approved without asking.
-        if tool_name(t) == CODE_TASK_TOOL:
-            risks.update(CODE_APPROVAL_RISKS)
-    return risks
 
 
 # langchain_google_genai's gRPC channel accumulates something into the
@@ -381,7 +343,7 @@ class ChatSessionLG:
         # change across a model switch (same base tools, same spawn_agent/
         # review_work names every time), so this set is computed once here
         # and never needs recomputing anywhere else.
-        self._gated_tool_risks = _risks_of_gated_tools(lg_tools)
+        self._gated_tool_risks = risks_of_gated_tools(lg_tools)
         self.lg_agent = self._build_lg_agent(self.model, self._model_string, lg_tools)
         self.config = {"configurable": {"thread_id": thread_id}}
         # The currently-connected browser tab's websocket, if any -- set/
@@ -391,8 +353,7 @@ class ChatSessionLG:
         # notify_resync's own docstring for why this one specifically
         # needs a place to live outside any single call's stack).
         self._live_websocket: EventSink | None = None
-        set_change_listener(self.thread_id, self._background_task_changed)
-        set_inbox_listener(self.thread_id, self.schedule_inbox_delivery)
+        self._subagents.listen()
         # A reply is being worked on -- unlike the turn lock, not held for the
         # moments a reconnect or a folder change takes it.
         self.turn_running = False
@@ -416,49 +377,11 @@ class ChatSessionLG:
         )
 
     def _build_lg_tools(self, model: Any) -> list[Callable[..., Any] | BaseTool]:
-        # self._base_tools ("domain" tools) combined with self._extra_tools
-        # (MCP connector tools -- see __init__'s comment on why these are
-        # kept separate) *before* appending spawn_agent itself below -- a
-        # sub-agent's own
-        # selectable tool_names never includes spawn_agent, and does include
-        # MCP tools.
-        combined_tools = [*self._base_tools, *self._extra_tools]
-        delegation_tools = build_delegation_tools(self._subagent_host(model), combined_tools)
-        # The reviewer only ever gets read-only tools (document readers and
-        # file listing/reading) -- independent verification of a generated
-        # file's real content, never a way for it to change anything. See
-        # select_reviewer_tools for why that also keeps it from pausing on
-        # an approval.
-        reviewer_tools = select_reviewer_tools(combined_tools)
-        review_work_tool = build_review_work_tool(model, reviewer_tools, self.settings.state_dir)
-        code_tools: list[Callable[..., Any]] = []
-        if self.settings.code_module_enabled:
-            code_tools.append(
-                build_code_task_tool(
-                    self._subagent_host(model),
-                    CodeTaskContext(
-                        service=lambda: code_service(self.settings),
-                        model=lambda: self.settings.code_model or self._model_string,
-                        folder=lambda: Path(self.workspace_root),
-                        context_window=lambda: self._context_window_client.get_context_window(
-                            self.settings.code_model or self._model_string
-                        ),
-                        env=lambda: SessionEnvironments(self.settings.state_dir).get(
-                            self.thread_id
-                        )["variables"],
-                    ),
-                )
-            )
-        return [
-            *combined_tools,
-            *delegation_tools,
-            *code_tools,
-            *build_http_tools(self.settings.state_dir, self.thread_id),
-            review_work_tool,
-            self._build_draft_workflow_tool(),
-            self._build_revise_workflow_tool(),
-            self._build_test_workflow_tool(),
-        ]
+        return self._assembly.build_lg_tools(model)
+
+    @cached_property
+    def _assembly(self) -> AgentAssembly:
+        return AgentAssembly(self)
 
     @cached_property
     def _subagents(self) -> SubAgentReporter:
@@ -566,56 +489,7 @@ class ChatSessionLG:
     def _build_lg_agent(
         self, model: Any, model_string: str, lg_tools: list[Callable[..., Any] | BaseTool]
     ) -> Any:
-        # When PreToolUse hooks are configured, route *every* tool call
-        # through the same interrupt point -- not just the ones that
-        # already require human approval -- so a hook gets the chance to
-        # veto a low-risk tool too, not just a gated one.
-        extra_interrupt_names = (
-            [tool_name(t) for t in lg_tools] if self.hooks_config["PreToolUse"] else []
-        )
-        # `model_string` is taken as its own parameter rather than read from
-        # self._model_string -- switch_model (below) calls this *before*
-        # updating self._model_string (so a failed switch can revert
-        # cleanly without ever having mutated it), so reading the field
-        # here would silently compute auto_compact_tokens for the *old*
-        # model on every switch. get_context_window is best-effort and
-        # never raises (see LLMClient.get_context_window's own docstring),
-        # so no try/except is needed around it here.
-        auto_compact_tokens = max(
-            1,
-            int(
-                self._context_window_client.get_context_window(model_string)
-                * self.settings.auto_compact_threshold
-            ),
-        )
-        core_names, defer = self._tool_binding(model_string, lg_tools)
-        return build_langgraph_agent(
-            model,
-            lg_tools,
-            build_instructions(self._instructions, defer_tools=defer),
-            checkpointer=self._checkpointer,
-            extra_interrupt_tool_names=extra_interrupt_names,
-            question_tool_names=QUESTION_TOOL_NAMES | TASK_DRAFT_TOOL_NAMES,
-            max_turns=self.settings.max_turns,
-            auto_compact_tokens=auto_compact_tokens,
-            defer_tools=defer,
-            core_tool_names=core_names,
-            take_steers=self._take_steers,
-            redact=redactor(self.settings.state_dir),
-        )
-
-    def _tool_binding(
-        self, model_string: str, tools: Sequence[Callable[..., Any] | BaseTool]
-    ) -> tuple[frozenset[str], bool]:
-        """(the tools bound from the first request, whether any are left
-        for search_tools). Connector tools stay deferred everywhere: four
-        connectors were 394k tokens of schemas."""
-        core = CORE_TOOL_NAMES
-        if keeps_tool_list_fixed(model_string, self._custom_providers):
-            connector_names = {tool_name(t) for t in self._extra_tools}
-            core = core | {tool_name(t) for t in tools if tool_name(t) not in connector_names}
-        defer = self.settings.defer_tools and any(tool_name(t) not in core for t in tools)
-        return core, defer
+        return self._assembly.build_lg_agent(model, model_string, lg_tools)
 
     def resolve_approval(self, request_id: str, approved: bool, scope: str | None = None) -> None:
         # "task": the person allowed this kind of action for the rest of the
@@ -853,7 +727,7 @@ class ChatSessionLG:
                 )
                 return
             self.lg_agent = new_lg_agent
-            self._gated_tool_risks = _risks_of_gated_tools(lg_tools)
+            self._gated_tool_risks = risks_of_gated_tools(lg_tools)
 
     def _build_agent(self) -> Any:
         return build_coordinator_agent(
@@ -878,7 +752,7 @@ class ChatSessionLG:
         lg_tools = self._build_lg_tools(self.model)
         return (
             self._build_lg_agent(self.model, self._model_string, lg_tools),
-            _risks_of_gated_tools(lg_tools),
+            risks_of_gated_tools(lg_tools),
         )
 
     async def set_folders(self, paths: list[str], websocket: EventSink) -> bool:
@@ -969,84 +843,17 @@ class ChatSessionLG:
         return summarize_activity(messages, catalog, self.workspace_scope())
 
     async def get_context_breakdown(self) -> dict[str, Any]:
-        """Where this thread's context-window budget actually goes --
-        backs the context-usage panel (ContextRing.tsx's expanded view).
-        See context_usage.py's own module docstring for the measurement
-        approach and its documented approximation.
-
-        Recomputes the currently-enabled skills' own listing text fresh
-        (rather than trying to re-extract it from the already-concatenated
-        self._instructions) via the exact same load-then-filter-by-name
-        expression __init__/set_enabled_skills/switch_model already use
-        to build self._instructions in the first place -- guaranteed to
-        match, since self.enabled_skill_names is the one shared input
-        every one of those call sites feeds into build_coordinator_agent's
-        own identical filter."""
-        if self._context_window is None:
-            self._context_window = await asyncio.to_thread(
-                self._context_window_client.get_context_window, self._model_string
-            )
-        skills = [
-            skill
-            for skill in load_builtin_skills() + load_skills(self.settings.skills_dir)
-            if skill.name in self.enabled_skill_names
-        ]
-        skills_listing = format_skill_listing(skills) if skills else ""
-        last_total = (
-            self._last_usage_metadata["total_tokens"] if self._last_usage_metadata else None
-        )
-        base_tools = list(self._base_tools)
-        mcp_tools = list(self._extra_tools)
-        core_names, defer = self._tool_binding(self._model_string, [*base_tools, *mcp_tools])
-        if defer:
-            # Only what a request sends counts; the rest waits behind
-            # search_tools.
-            bound = bound_tool_names(core_names)
-            deferred = [t for t in [*base_tools, *mcp_tools] if tool_name(t) not in bound]
-            base_tools = [t for t in base_tools if tool_name(t) in bound]
-            base_tools.extend([build_search_tools_tool(deferred), build_use_tool_tool()])
-            mcp_tools = [t for t in mcp_tools if tool_name(t) in bound]
-        return await asyncio.to_thread(
-            build_context_breakdown,
-            instructions=build_instructions(self._instructions, defer_tools=defer),
-            skills_listing=skills_listing,
-            base_tools=base_tools,
-            mcp_tools=mcp_tools,
-            context_window=self._context_window or 0,
-            auto_compact_threshold=self.settings.auto_compact_threshold,
-            last_total_tokens=last_total,
-        )
+        """Where this thread's context-window budget goes, for the context panel."""
+        return await self._assembly.context_breakdown()
 
     async def notify_resync(self) -> None:
-        """Tell whichever browser tab is currently watching this thread
-        (if any) that something changed server-side outside of its own
-        turn -- a background wake/scheduled-task/sub-agent resuming this
-        thread while nobody was actively typing into it. Real, previously-
-        documented gap this closes: a poller-triggered resume wrote
-        correctly to the checkpointer but never appeared in an already-
-        open tab until its next reload/reconnect (ROADMAP.md).
+        """Tell the tab watching this thread, if any, that something changed
+        outside its own turn (a wake, scheduled task or sub-agent resumed it).
+        It re-sends the "history" event a fresh connection gets, so the
+        frontend's existing reducer replaces its items with the replay.
 
-        Deliberately just re-sends the exact same "history" event
-        send_history already sends on every fresh connection, rather than
-        inventing a new WS message type/frontend handler -- the frontend's
-        "history" reducer case already replaces state.items wholesale
-        with the authoritative replay (see reducer.ts), which is exactly
-        "go re-fetch the now-correct state," and reusing it means zero
-        new frontend wiring. This is the "stored state + resync" shape
-        this feature's own design discussion found Claude Code's own
-        Remote Control (stored transcript, reconnect/resync) and
-        claude-code-best's goal service (plain status flag, no event
-        emitter) both already use, rather than a full multi-listener
-        broadcast bus -- this app only ever has one browser tab watching
-        a given thread at a time in practice, so there's nothing more to
-        fan out to.
-
-        Silently does nothing if no tab is currently connected (the
-        common case for an unattended wake) -- there's nothing to nudge.
-        Best-effort: a dead/closing socket's send can raise, and a missed
-        resync is recoverable (the next reconnect sees correct state
-        anyway), not worth failing whatever background work triggered
-        this over."""
+        Best-effort: a dead socket can raise, and a missed resync is fixed by
+        the next reconnect, not worth failing the background work over."""
         websocket = self._live_websocket
         if websocket is None:
             return

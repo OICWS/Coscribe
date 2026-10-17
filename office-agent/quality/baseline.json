@@ -225,14 +225,14 @@
  },
  "deep_imports": {
   "coscribe.cli -> coscribe.runtime_lg.mcp": 2,
+  "coscribe.conversation.agent_assembly -> coscribe.runtime_lg.code_agent": 1,
+  "coscribe.conversation.agent_assembly -> coscribe.runtime_lg.tool_deferral": 1,
+  "coscribe.conversation.agent_assembly -> coscribe.tools.web": 1,
   "coscribe.conversation.edit_preview -> coscribe.tools._thumbnail": 1,
   "coscribe.conversation.edit_preview -> coscribe.tools.presentations": 1,
-  "coscribe.conversation.session -> coscribe.runtime_lg.code_agent": 1,
   "coscribe.conversation.session -> coscribe.runtime_lg.messages": 1,
-  "coscribe.conversation.session -> coscribe.runtime_lg.tool_deferral": 1,
-  "coscribe.conversation.session -> coscribe.tools.bookkeeping.background_tasks": 1,
-  "coscribe.conversation.session -> coscribe.tools.bookkeeping.conversations": 1,
-  "coscribe.conversation.session -> coscribe.tools.web": 1,
+  "coscribe.conversation.subagents -> coscribe.tools.bookkeeping.background_tasks": 1,
+  "coscribe.conversation.subagents -> coscribe.tools.bookkeeping.conversations": 1,
   "coscribe.conversation.turn_stream -> coscribe.runtime_lg.tool_deferral": 1,
   "coscribe.runtime_lg.code_agent -> coscribe.tools.bookkeeping.subagent_tasks": 1,
   "coscribe.runtime_lg.selfwake -> coscribe.tools.bookkeeping.subagent_tasks": 1,
@@ -263,11 +263,10 @@
   "coscribe.workflows.engine -> coscribe.tools.exec.scripts:_run_python_script": 1
  },
  "fan_out": {
-  "coscribe.conversation.session": 30,
   "coscribe.web.app": 26
  },
  "file_lines": {
-  "src/coscribe/conversation/session.py": 1472,
+  "src/coscribe/conversation/session.py": 1279,
   "src/coscribe/coordinator.py": 845,
   "src/coscribe/runtime_lg/subagents.py": 836,
   "src/coscribe/tools/bookkeeping/scheduled_tasks.py": 1054,
@@ -277,7 +276,7 @@
  },
  "long_functions": {
   "src/coscribe/cli.py::_chat_async": 108,
-  "src/coscribe/conversation/session.py::ChatSessionLG.__init__": 207,
+  "src/coscribe/conversation/session.py::ChatSessionLG.__init__": 206,
   "src/coscribe/conversation/session.py::ChatSessionLG._handle_user_message_locked": 212,
   "src/coscribe/conversation/turn_stream.py::TurnStreamer.stream_turn": 115,
   "src/coscribe/coordinator.py::build_coordinator_agent": 152,
