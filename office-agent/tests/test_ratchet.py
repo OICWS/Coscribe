@@ -347,3 +347,26 @@ def test_a_long_typescript_function_and_file_are_listed_by_name(
 
     assert files == {"web/src/big.tsx": 21}
     assert functions == {"web/src/big.tsx::Panel": 10, "web/src/big.tsx::Row": 10}
+
+
+@pytest.mark.skipif(not _frontend_installed(), reason="needs `npm ci` in frontend/")
+def test_an_export_nothing_imports_is_listed_per_file(ratchet: ModuleType, tmp_path: Path) -> None:
+    frontend = tmp_path / "office-agent" / "frontend"
+    (frontend / "src").mkdir(parents=True)
+    real = Path(__file__).resolve().parents[1] / "frontend"
+    (frontend / "node_modules").symlink_to(real / "node_modules", target_is_directory=True)
+    (frontend / "knip.json").write_text(
+        json.dumps({"entry": ["src/main.ts"], "project": ["src/**/*.ts"]}), encoding="utf-8"
+    )
+    (frontend / "package.json").write_text('{"type": "module"}', encoding="utf-8")
+    (frontend / "src" / "main.ts").write_text(
+        'import { used } from "./lib";\nconsole.log(used);\n', encoding="utf-8"
+    )
+    (frontend / "src" / "lib.ts").write_text(
+        "export const used = 1;\nexport const unused = 2;\nexport type Gone = string;\n",
+        encoding="utf-8",
+    )
+
+    found = ratchet.frontend_unused_exports(tmp_path)
+
+    assert found == {"office-agent/frontend/src/lib.ts": 2}
