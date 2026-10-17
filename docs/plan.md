@@ -71,7 +71,8 @@ Last reviewed: 2026-10-15.
    component map and generated `CODEOWNERS` (#349); `tools` cut into `tools.office.{docx,xlsx,pdf,pptx}`
    (#350), `tools.exec` (#351), `tools.web` (#352) and `tools.bookkeeping` (item 1); a generated
    `protected` contract per package and a `layers` contract for the office formats, with 42 ignored
-   imports to shrink (item 2). Next: discovery (item 3), then long functions, tests by path,
+   imports to shrink (item 2); `scripts/slice.py` and the discovery protocol in `AGENTS.md` (item 3,
+   the measured sample changes are still open). Next: long functions, tests by path,
    frontend guardrails, security follow-through, review and metrics (the issue has the order).
 
 0b. **The office route** (decision 0010, `docs/assessments/2026-10-13-office-route.md`):
