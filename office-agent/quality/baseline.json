@@ -335,6 +335,26 @@
   "office-agent/frontend/src/components/workflow/WorkflowRunView.tsx::RunBanner": 151,
   "office-agent/frontend/src/state/reducer.ts::chatReducer": 460
  },
+ "frontend_unused_exports": {
+  "office-agent/frontend/src/components/icons.tsx": 3,
+  "office-agent/frontend/src/components/workflow/StepSummary.tsx": 1,
+  "office-agent/frontend/src/components/workflow/parts.tsx": 2,
+  "office-agent/frontend/src/lib/annotation.ts": 1,
+  "office-agent/frontend/src/lib/appearance.ts": 3,
+  "office-agent/frontend/src/lib/desktop.ts": 2,
+  "office-agent/frontend/src/lib/dockArrangement.ts": 3,
+  "office-agent/frontend/src/lib/dockLayout.ts": 2,
+  "office-agent/frontend/src/lib/docxReview.ts": 2,
+  "office-agent/frontend/src/lib/rest.ts": 1,
+  "office-agent/frontend/src/lib/titleBar.ts": 1,
+  "office-agent/frontend/src/lib/transcriptGrouping.ts": 4,
+  "office-agent/frontend/src/lib/workflowEdit.ts": 3,
+  "office-agent/frontend/src/lib/workflowTree.ts": 1,
+  "office-agent/frontend/src/state/reducer.ts": 1,
+  "office-agent/frontend/src/types/session.ts": 2,
+  "office-agent/frontend/src/types/settings.ts": 3,
+  "office-agent/frontend/src/types/workflow.ts": 1
+ },
  "long_functions": {
   "src/coscribe/cli.py::_chat_async": 108,
   "src/coscribe/conversation/session.py::ChatSessionLG.__init__": 206,

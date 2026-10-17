@@ -195,6 +195,28 @@ def frontend_long_functions(
     return {name: n for name, n in sizes.items() if n > listed}
 
 
+def frontend_unused_exports(repo: Path | None = None) -> dict[str, int]:
+    """Exports, types and files nothing imports, per file, from knip (frontend/knip.json)."""
+    frontend = (repo or ROOT.parent) / "office-agent" / "frontend"
+    knip = frontend / "node_modules" / ".bin" / "knip"
+    if not knip.is_file():
+        raise SystemExit("ratchet: the frontend is not installed; run `npm ci` in frontend/ first")
+    # knip exits 1 whenever it finds something, which is the normal case here.
+    result = subprocess.run(
+        [str(knip), "--include", "exports,types,files,enumMembers", "--reporter", "json"],
+        cwd=frontend,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    found: dict[str, int] = {}
+    for issue in json.loads(result.stdout)["issues"]:
+        count = sum(len(issue[kind]) for kind in ("exports", "types", "files", "enumMembers"))
+        if count:
+            found[f"office-agent/frontend/{issue['file']}"] = count
+    return found
+
+
 def suppressions(src: Path = SRC) -> dict[str, int]:
     counts = dict.fromkeys(SUPPRESSIONS, 0)
     for path in _python_files(src, skip_vendored=True):
@@ -338,6 +360,7 @@ METRICS = {
     "complex_functions": complex_functions,
     "frontend_file_lines": frontend_file_lines,
     "frontend_long_functions": frontend_long_functions,
+    "frontend_unused_exports": frontend_unused_exports,
     "suppressions": suppressions,
     "deep_imports": deep_imports,
     "tests_without_a_check": tests_without_a_check,
