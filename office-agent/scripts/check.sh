@@ -42,6 +42,9 @@ lint-imports
 echo "== generated wire types =="
 python scripts/gen_wire_ts.py --check
 
+echo "== component map =="
+python scripts/gen_components.py --check
+
 echo "== ratchet =="
 python scripts/ratchet.py --enforce
 

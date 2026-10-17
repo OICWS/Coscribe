@@ -66,6 +66,12 @@ Last reviewed: 2026-10-15.
    - For the maintainer: switch on Dependabot security updates, secret scanning and push
      protection in the repository settings (listed in #263).
 
+0a. **Structure phase 2: components** (#348, decision 0009): the component the unit a session works
+   in (card, `__init__.py` interface, tests by path; slice <= 15 files, 150k tokens). Item 1 part 1
+   done: `components.toml`, generated `docs/components.md` and `CODEOWNERS` block. Next: cut `tools`
+   into components, then import contracts, discovery, long functions, tests by path, frontend
+   guardrails, security follow-through, review and metrics (the issue has the order).
+
 0b. **The office route** (decision 0010, `docs/assessments/2026-10-13-office-route.md`):
    new decks compiled from whole-page SVG sources, edits through the page source and upgraded
    object tools; open-source code reused as owned copies. Done: the evaluation and the baseline

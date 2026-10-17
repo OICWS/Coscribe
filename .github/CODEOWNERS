@@ -1,3 +1,19 @@
+# BEGIN generated from components.toml (python office-agent/scripts/gen_components.py)
+/office-agent/src/coscribe/cli.py @OICWS
+/office-agent/src/coscribe/web/ @OICWS
+/office-agent/src/coscribe/conversation/ @OICWS
+/office-agent/src/coscribe/coordinator.py @OICWS
+/office-agent/src/coscribe/runtime_lg/ @OICWS
+/office-agent/src/coscribe/workflows/ @OICWS
+/office-agent/src/coscribe/code_runtime/ @OICWS
+/office-agent/src/coscribe/tools/ @OICWS
+/office-agent/src/coscribe/runtime/ @OICWS
+/office-agent/src/coscribe/config.py @OICWS
+/office-agent/src/coscribe/needs_permission.py @OICWS
+/office-agent/frontend/ @OICWS
+/office-agent-desktop/ @OICWS
+# END generated
+
 # Invariant paths (office-agent/CLAUDE.md, decision 0007). Each line has both
 # owners; the ruleset requires code-owner review for these paths once an admin
 # turns that setting on.
