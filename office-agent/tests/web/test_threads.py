@@ -1958,6 +1958,47 @@ def test_opening_a_thread_file_only_hands_documents_to_the_os_lg(
     assert missing.status_code == 404
 
 
+def test_the_word_review_routes_read_act_on_and_show_the_original_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(threads_routes.getpass, "getuser", lambda: "ana")
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    toolkit = DocumentToolkit(workspace)
+    toolkit.write_docx(path="c.docx", content="Pay 100 dollars. {{comment: Final?}}")
+    toolkit.replace_docx_text(path="c.docx", find="100", replace="120")
+    (workspace / "notes.txt").write_text("x", encoding="utf-8")
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        url = "/api/threads/t_review/docx-review"
+        review = client.get(url, params={"path": "c.docx"}).json()
+        comment = review["comments"][0]["id"]
+        original = client.get(f"{url}/original", params={"path": "c.docx"})
+        edited = client.post(
+            url,
+            json={
+                "path": "c.docx",
+                "operations": [
+                    {"op": "accept", "change": review["changes"][0]["id"]},
+                    {"op": "reply", "comment": comment, "text": "Yes"},
+                ],
+            },
+        )
+        failed = client.post(url, json={"path": "c.docx", "operations": [{"op": "nope"}]})
+        after = client.get(url, params={"path": "c.docx"}).json()
+        not_word = client.get(url, params={"path": "notes.txt"})
+        missing = client.get(url, params={"path": "nope.docx"})
+
+    assert [c["kind"] for c in review["changes"]] == ["delete", "insert"]
+    assert edited.status_code == 200 and edited.json()["changes_left"] == 1
+    assert failed.status_code == 400 and "unknown op" in failed.json()["error"]
+    assert [c["kind"] for c in after["changes"]] == ["insert"]
+    assert after["comments"][0]["replies"][0]["author"] == "ana"
+    (tmp_path / "o.docx").write_bytes(original.content)
+    assert Document(tmp_path / "o.docx").paragraphs[0].text == "Pay 100 dollars."
+    assert not_word.status_code == 400 and missing.status_code == 404
+
+
 def test_a_saved_run_waits_for_a_folder_it_hasnt_been_allowed_then_carries_on_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

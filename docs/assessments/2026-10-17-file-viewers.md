@@ -105,8 +105,8 @@ Every action rewrites the real file with one operation and the panel re-renders 
 - **The tools** are a read and an edit, `read_docx_review` and `edit_docx_review` (operations
   list, like `edit_docx_structure`). They are new deferred tools, so the tool schema snapshot
   changes in a reviewed PR (decision 0001).
-- **Author**: actions taken in the panel carry the user's name from Settings; the model's carry
-  "Coscribe".
+- **Author**: actions taken in the panel carry the computer's user name, as Word does until a
+  name is set (a name in Settings is a follow-up); the model's carry "Coscribe".
 - **The model learns** of the user's panel actions from the file the next time it reads it. A
   conversation message for each action is not sent.
 

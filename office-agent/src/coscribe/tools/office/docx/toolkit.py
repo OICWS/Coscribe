@@ -7,7 +7,7 @@ from ..._file_locks import locked_by_path
 from ..._ooxml_validate import assert_wml_valid
 from ..._thumbnail import render_thumbnail
 from ..toolkit import WorkspaceToolkit
-from ._review import edit_review, read_review, write_atomically
+from ._review import edit_review, read_review, rejected_copy, write_atomically
 from ._structure import add_blocks, apply_operations, describe, finish_tocs, summary
 from ._style import TITLE_STYLE, apply_house_style, has_cjk
 from ._xml import (
@@ -405,3 +405,7 @@ class DocxToolkit(WorkspaceToolkit):
             "preview_path": preview_path,
             "preview_skipped_reason": preview_skipped_reason,
         }
+
+    @locked_by_path
+    def docx_original(self, path: str) -> bytes:
+        return rejected_copy(self._check_readable(path).read_bytes())
