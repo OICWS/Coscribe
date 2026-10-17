@@ -224,6 +224,7 @@ name = "frontend"
 path = "office-agent/frontend"
 layer = "ui"
 owner = ["@OICWS"]
+card = "office-agent/frontend/AGENTS.md"
 
 [[component]]
 name = "desktop"
