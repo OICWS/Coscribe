@@ -4,7 +4,7 @@ with no COSCRIBE_DEFAULT_MODEL/API key configured yet crashing the whole
 process outright (see cli.py's _load_settings, still used unchanged by
 the CLI itself).
 
-_dotenv_path() (cli.py) resolves to a per-user app-data directory
+dotenv_path() (runtime/dotenv_file.py) resolves to a per-user app-data directory
 (~/.config/coscribe/.env on Linux) whenever no ./.env already exists in
 the cwd -- exactly the case this whole feature exists for -- so every
 test here isolates *both* the cwd (monkeypatch.chdir) and HOME (so the

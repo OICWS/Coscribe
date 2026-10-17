@@ -360,8 +360,8 @@ def _providers_info(settings: Settings) -> dict[str, Any]:
 def create_app_lg(settings: Settings | None = None) -> FastAPI:
     # Same reasoning as create_app: each provider SDK's own os.getenv() call
     # needs unprefixed keys in the real process environment, which Settings'
-    # own env_file parsing doesn't provide. Same _dotenv_path() cli.py's own
-    # _load_settings uses (see its docstring) -- main() below always passes
+    # own env_file parsing doesn't provide. Same dotenv_path() the CLI's
+    # settings loading uses -- main() below always passes
     # settings explicitly (via _load_settings), so this branch only runs for
     # a caller that constructs the app directly with settings=None.
     dotenv_path = _dotenv_path()
