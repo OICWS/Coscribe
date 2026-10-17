@@ -13,6 +13,10 @@ its card, then the interface the card lists, then only that component's implemen
 | `workflows` | `office-agent/src/coscribe/workflows` | workflows \| code_runtime | @OICWS | [AGENTS.md](../office-agent/src/coscribe/workflows/AGENTS.md) |
 | `code_runtime` | `office-agent/src/coscribe/code_runtime` | workflows \| code_runtime | @OICWS | [AGENTS.md](../office-agent/src/coscribe/code_runtime/AGENTS.md) |
 | `tools` | `office-agent/src/coscribe/tools` | tools | @OICWS | [AGENTS.md](../office-agent/src/coscribe/tools/AGENTS.md) |
+| `tools.office.docx` | `office-agent/src/coscribe/tools/office/docx` | tools | @OICWS | [AGENTS.md](../office-agent/src/coscribe/tools/office/docx/AGENTS.md) |
+| `tools.office.xlsx` | `office-agent/src/coscribe/tools/office/xlsx` | tools | @OICWS | [AGENTS.md](../office-agent/src/coscribe/tools/office/xlsx/AGENTS.md) |
+| `tools.office.pdf` | `office-agent/src/coscribe/tools/office/pdf` | tools | @OICWS | [AGENTS.md](../office-agent/src/coscribe/tools/office/pdf/AGENTS.md) |
+| `tools.office.pptx` | `office-agent/src/coscribe/tools/office/pptx` | tools | @OICWS | [AGENTS.md](../office-agent/src/coscribe/tools/office/pptx/AGENTS.md) |
 | `runtime` | `office-agent/src/coscribe/runtime` | runtime \| config | @OICWS | [AGENTS.md](../office-agent/src/coscribe/runtime/AGENTS.md) |
 | `config` | `office-agent/src/coscribe/config.py` | runtime \| config | @OICWS | none |
 | `needs_permission` | `office-agent/src/coscribe/needs_permission.py` | runtime \| config | @OICWS | none |

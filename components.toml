@@ -62,6 +62,34 @@ owner = ["@OICWS"]
 card = "office-agent/src/coscribe/tools/AGENTS.md"
 
 [[component]]
+name = "tools.office.docx"
+path = "office-agent/src/coscribe/tools/office/docx"
+layer = "tools"
+owner = ["@OICWS"]
+card = "office-agent/src/coscribe/tools/office/docx/AGENTS.md"
+
+[[component]]
+name = "tools.office.xlsx"
+path = "office-agent/src/coscribe/tools/office/xlsx"
+layer = "tools"
+owner = ["@OICWS"]
+card = "office-agent/src/coscribe/tools/office/xlsx/AGENTS.md"
+
+[[component]]
+name = "tools.office.pdf"
+path = "office-agent/src/coscribe/tools/office/pdf"
+layer = "tools"
+owner = ["@OICWS"]
+card = "office-agent/src/coscribe/tools/office/pdf/AGENTS.md"
+
+[[component]]
+name = "tools.office.pptx"
+path = "office-agent/src/coscribe/tools/office/pptx"
+layer = "tools"
+owner = ["@OICWS"]
+card = "office-agent/src/coscribe/tools/office/pptx/AGENTS.md"
+
+[[component]]
 name = "runtime"
 path = "office-agent/src/coscribe/runtime"
 layer = "runtime | config"
