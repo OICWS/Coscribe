@@ -31,7 +31,7 @@ from pydantic import Field
 # pydantic needs typing_extensions' TypedDict before Python 3.12.
 from typing_extensions import TypedDict
 
-from ..runtime import tool_metadata
+from ...runtime import tool_metadata
 
 QUESTION_TOOL_NAMES: frozenset[str] = frozenset({"ask_user_question", "exit_plan_mode"})
 

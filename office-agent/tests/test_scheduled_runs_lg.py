@@ -10,7 +10,7 @@ from coscribe.runtime_lg.scheduled_tasks import (
     build_investigation_prompt,
     stop_run,
 )
-from coscribe.tools.scheduled_tasks import ScheduledRun, ScheduledTrigger, ScheduleRule
+from coscribe.tools.bookkeeping.scheduled_tasks import ScheduledRun, ScheduledTrigger, ScheduleRule
 from coscribe.web.background_events import run_event
 
 

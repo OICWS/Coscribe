@@ -116,7 +116,7 @@ def router(state: AppState) -> APIRouter:
     # -- /api/scheduled-tasks -- the Settings > Scheduled Tasks panel's
     # create-without-a-conversation entry point; direct ScheduledTriggerStore
     # reads/writes, no session/graph involved. POST reuses create_trigger
-    # (tools/scheduled_tasks.py) -- the exact same validation
+    # (tools/bookkeeping/scheduled_tasks.py) -- the exact same validation
     # create_scheduled_task (the model tool) uses, so the two creation
     # paths can't silently drift apart.
 

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from coscribe.tools.memory import format_memory_section, load_memory
+from coscribe.tools.bookkeeping.memory import format_memory_section, load_memory
 
 
 def test_missing_file_returns_empty_string(tmp_path: Path) -> None:

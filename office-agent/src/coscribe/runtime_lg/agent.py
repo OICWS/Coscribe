@@ -359,7 +359,7 @@ def build_langgraph_agent(
     what to do with it.
 
     `question_tool_names`: tool names that always interrupt with only
-    `"respond"` as an allowed decision (`tools/interaction.py`'s
+    `"respond"` as an allowed decision (`tools/bookkeeping/interaction.py`'s
     `ask_user_question`, today) -- unlike an approval-gated tool, which
     the human approves/rejects/edits and then the tool itself actually
     runs, a "respond"-only tool's own Python body never executes at all:

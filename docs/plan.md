@@ -58,7 +58,7 @@ Last reviewed: 2026-10-15.
      1,464-line function before part 11.
    - Done: `deep_imports` is 37 (exit criterion 40 or fewer; #298).
    - Open: the Windows job must be green 14 days before it is required. It was red on 10-14
-     (#267: `os.replace` raised PermissionError in `tools/tasks.py`; fixed 10-15). The first green
+     (#267: `os.replace` raised PermissionError in `tools/bookkeeping/tasks.py`; fixed 10-15). The first green
      nightly after the fix was run 23 on 10-15 (main at 8a08b0d), but 10-16 was red (5 tests, #339;
      fixed in the PR that links it), so the clock starts again from the next green night. A red
      night restarts it.
@@ -69,8 +69,8 @@ Last reviewed: 2026-10-15.
 0a. **Structure phase 2: components** (#348, decision 0009): the component the unit a session works
    in (card, `__init__.py` interface, tests by path; slice <= 15 files, 150k tokens). Item 1 done so far:
    `components.toml`, generated `docs/components.md` and `CODEOWNERS` block (#349); cards for
-   `tools.office.{docx,xlsx,pdf,pptx}` (#350), `tools.exec` (#351) and `tools.web` moved out of `tools/`.
-   Next: the bookkeeping tools, then import contracts, discovery, long functions, tests by path, frontend
+   `tools.office.{docx,xlsx,pdf,pptx}` (#350), `tools.exec` (#351), `tools.web` (#352) and `tools.bookkeeping` moved out of `tools/`; item 1 is done.
+   Next: import contracts (item 2), then import contracts, discovery, long functions, tests by path, frontend
    guardrails, security follow-through, review and metrics (the issue has the order).
 
 0b. **The office route** (decision 0010, `docs/assessments/2026-10-13-office-route.md`):

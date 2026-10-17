@@ -22,8 +22,12 @@ from coscribe import cli
 from coscribe.cli import app
 from coscribe.conversation import session as conversation_session
 from coscribe.runtime_lg import mcp as lg_mcp
-from coscribe.tools.scheduled_tasks import ScheduledTrigger, ScheduledTriggerStore, ScheduleRule
-from coscribe.tools.selfwake import WakeRequest, WakeStore
+from coscribe.tools.bookkeeping.scheduled_tasks import (
+    ScheduledTrigger,
+    ScheduledTriggerStore,
+    ScheduleRule,
+)
+from coscribe.tools.bookkeeping.selfwake import WakeRequest, WakeStore
 
 
 class FakeToolCallingChatModel(BaseChatModel):

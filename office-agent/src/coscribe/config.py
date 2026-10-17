@@ -216,7 +216,7 @@ class Settings(BaseSettings):
 
     wake_poll_seconds: int = 30
     """How often the web server checks for due sleep_until/sleep_for/
-    wake_on/wake_on_event requests (tools/selfwake.py) and resumes their
+    wake_on/wake_on_event requests (tools/bookkeeping/selfwake.py) and resumes their
     threads, while the server process is running -- see
     runtime_lg/selfwake.py's poll_due_wakes, run from web/app.py's
     lifespan. Has no effect on the CLI's --check-wakes flag, which is a

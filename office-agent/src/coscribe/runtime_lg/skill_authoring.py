@@ -1,7 +1,7 @@
 """/saveskill's curator + writer -- turns a live conversation into a new
 SKILL.md. A Skill captures generalized, reusable KNOWLEDGE -- how to do a
 kind of task, written as instructions a future agent follows with
-judgment -- as opposed to a scheduled task (tools/scheduled_tasks.py),
+judgment -- as opposed to a scheduled task (tools/bookkeeping/scheduled_tasks.py),
 which is one concrete job to run again. One curator call decides to
 clarify or propose, then a preview + explicit yes/no confirm happens
 before anything is written -- see conversation/session.py's _handle_save_skill and

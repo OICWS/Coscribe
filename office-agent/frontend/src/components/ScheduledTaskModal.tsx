@@ -25,7 +25,7 @@ const APPROVAL_OPTIONS: { value: ApprovalMode; label: string }[] = [
 
 // Display order matches the reference screenshot (Sunday first, JS
 // Date.getDay() order); `value` is ScheduleRule.weekday's own convention
-// (0=Monday..6=Sunday, see tools/scheduled_tasks.py) -- the two orders
+// (0=Monday..6=Sunday, see tools/bookkeeping/scheduled_tasks.py) -- the two orders
 // differ, so this table (not a formula) is what bridges them.
 const WEEKDAY_OPTIONS: { label: string; value: number }[] = [
   { label: "Sunday", value: 6 },
@@ -327,7 +327,7 @@ export function ScheduledTaskModal({
             {/* manual/hourly show no further controls at all -- hourly
              * always fires on the hour (:00), not user-configurable from
              * here (the backend itself supports an arbitrary minute, see
-             * tools/scheduled_tasks.py's compute_next_run_at, but the
+             * tools/bookkeeping/scheduled_tasks.py's compute_next_run_at, but the
              * reference screenshots never expose that). daily/weekdays
              * add just a time; weekly adds a time + a weekday dropdown
              * (not a date -- ScheduleRule.weekday is a bare 0-6, no

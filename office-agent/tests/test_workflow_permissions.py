@@ -244,7 +244,7 @@ def test_sites_in_reads_the_hosts_a_runs_outputs_show() -> None:
 
 
 def test_a_task_keeps_what_its_runs_were_allowed(tmp_path: Path) -> None:
-    from coscribe.tools.scheduled_tasks import ScheduledTriggerStore, create_trigger
+    from coscribe.tools.bookkeeping.scheduled_tasks import ScheduledTriggerStore, create_trigger
 
     store = ScheduledTriggerStore(tmp_path)
     created = create_trigger(

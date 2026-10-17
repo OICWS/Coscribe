@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from coscribe.tools.background_tasks import build_background_task_tools
+from coscribe.tools.bookkeeping.background_tasks import build_background_task_tools
 
 posix_only = pytest.mark.skipif(sys.platform == "win32", reason="uses sh syntax")
 

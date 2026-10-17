@@ -126,7 +126,7 @@ def test_wake_poll_loop_publishes_background_events_for_fired_wakes_and_triggers
     async def _fake_poll_due_wakes(state_dir: Any, get_session: Any) -> list[Any]:
         return [types.SimpleNamespace(reason="research done", thread_id="thread-a")]
 
-    from coscribe.tools.scheduled_tasks import ScheduledTriggerStore, create_trigger
+    from coscribe.tools.bookkeeping.scheduled_tasks import ScheduledTriggerStore, create_trigger
 
     store = ScheduledTriggerStore(tmp_path / "state")
     digest = create_trigger(store, name="daily digest", kind="manual", at="", prompt="p")
@@ -209,7 +209,11 @@ def test_script_env_package_install_does_not_block_the_event_loop(
 def test_get_scheduled_tasks_endpoint_lists_saved_triggers_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from coscribe.tools.scheduled_tasks import ScheduledTrigger, ScheduledTriggerStore, ScheduleRule
+    from coscribe.tools.bookkeeping.scheduled_tasks import (
+        ScheduledTrigger,
+        ScheduledTriggerStore,
+        ScheduleRule,
+    )
 
     store = ScheduledTriggerStore(tmp_path / "state")
     store.save(
@@ -288,7 +292,7 @@ def test_startup_sweeps_run_conversations_no_task_lists_lg(
     """A task deleted without a checkpointer at hand (the model's
     delete_scheduled_task) leaves its run conversations behind; the next
     startup removes them and keeps every run a task still lists."""
-    from coscribe.tools.scheduled_tasks import ScheduledTriggerStore
+    from coscribe.tools.bookkeeping.scheduled_tasks import ScheduledTriggerStore
 
     fake_model = FakeToolCallingChatModel(
         responses=[AIMessage(content="done"), AIMessage(content="done")]
@@ -317,7 +321,7 @@ def test_startup_sweeps_run_conversations_no_task_lists_lg(
 
 
 def test_scheduled_task_notes_endpoints_lg(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from coscribe.tools.scheduled_tasks import MAX_NOTES_CHARS
+    from coscribe.tools.bookkeeping.scheduled_tasks import MAX_NOTES_CHARS
 
     fake_model = FakeToolCallingChatModel(responses=[])
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
@@ -344,7 +348,7 @@ def test_create_scheduled_task_is_a_draft_the_user_reviews_lg(
     """The model's create_scheduled_task call never creates anything
     itself: the user gets the draft, saves (or dismisses) it from the UI,
     and their answer becomes the tool's result."""
-    from coscribe.tools.scheduled_tasks import ScheduledTriggerStore
+    from coscribe.tools.bookkeeping.scheduled_tasks import ScheduledTriggerStore
 
     draft_args = {"name": "Weekly export", "kind": "weekly", "at": "09:00", "prompt": "Export"}
     fake_model = FakeToolCallingChatModel(
@@ -399,7 +403,7 @@ def test_saveworkflow_asks_the_model_to_draft_a_task_lg(
 def test_create_scheduled_task_endpoint_persists_a_prompt_backed_trigger_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from coscribe.tools.scheduled_tasks import ScheduledTriggerStore
+    from coscribe.tools.bookkeeping.scheduled_tasks import ScheduledTriggerStore
 
     fake_model = FakeToolCallingChatModel(responses=[])
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
@@ -439,7 +443,7 @@ def test_create_scheduled_task_endpoint_rejects_invalid_payload_lg(
 def test_pause_and_resume_scheduled_task_endpoints_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from coscribe.tools.scheduled_tasks import ScheduledTriggerStore
+    from coscribe.tools.bookkeeping.scheduled_tasks import ScheduledTriggerStore
 
     fake_model = FakeToolCallingChatModel(responses=[])
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
@@ -470,7 +474,7 @@ def test_pause_scheduled_task_endpoint_unknown_id_404s_lg(
 
 
 def test_delete_scheduled_task_endpoint_lg(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from coscribe.tools.scheduled_tasks import ScheduledTriggerStore
+    from coscribe.tools.bookkeeping.scheduled_tasks import ScheduledTriggerStore
 
     fake_model = FakeToolCallingChatModel(responses=[])
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
@@ -500,7 +504,7 @@ def test_get_threads_endpoint_excludes_scheduled_task_threads_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A fired Scheduled Task's own dedicated conversation (thread_id
-    "scheduled-<trigger_id>", see tools/scheduled_tasks.py's
+    "scheduled-<trigger_id>", see tools/bookkeeping/scheduled_tasks.py's
     SCHEDULED_THREAD_PREFIX) has its own surface in the frontend's
     Scheduled section -- it must not also show up in the ordinary chat
     sidebar's session list once its first turn writes a checkpoint,
@@ -781,7 +785,7 @@ def test_a_workflow_runs_activity_comes_from_its_steps_lg(
 def test_workflow_draft_distills_the_threads_tool_calls_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from coscribe.tools.scheduled_tasks import ScheduledTriggerStore
+    from coscribe.tools.bookkeeping.scheduled_tasks import ScheduledTriggerStore
 
     (tmp_path / "workspace").mkdir()
     (tmp_path / "workspace" / "input.txt").write_text("data", encoding="utf-8")
@@ -904,7 +908,7 @@ def test_a_failed_pass_is_retried_where_it_stopped_not_the_whole_loop_lg(
 def test_the_chat_model_drafts_a_fixed_workflow_without_saving_it_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from coscribe.tools.scheduled_tasks import ScheduledTriggerStore
+    from coscribe.tools.bookkeeping.scheduled_tasks import ScheduledTriggerStore
 
     (tmp_path / "workspace").mkdir()
     (tmp_path / "workspace" / "input.txt").write_text("data", encoding="utf-8")
@@ -986,7 +990,7 @@ def test_a_tasks_runs_work_in_its_own_workspace_lg(
 
 
 def _saved_workflow_task(tmp_path: Path) -> Any:
-    from coscribe.tools.scheduled_tasks import ScheduledTriggerStore, create_trigger
+    from coscribe.tools.bookkeeping.scheduled_tasks import ScheduledTriggerStore, create_trigger
 
     workflow = {
         "steps": [{"id": "read", "kind": "tool", "title": "Read it", "tool": "read_file",
@@ -1005,7 +1009,7 @@ def _saved_workflow_task(tmp_path: Path) -> Any:
 def test_revising_a_saved_workflow_proposes_changes_without_saving_them_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from coscribe.tools.scheduled_tasks import ScheduledTriggerStore
+    from coscribe.tools.bookkeeping.scheduled_tasks import ScheduledTriggerStore
 
     task = _saved_workflow_task(tmp_path)
     revised = {
@@ -1105,7 +1109,7 @@ def _scheduler(tmp_path: Path, **overrides: Any) -> tuple[Any, Any, list[str]]:
 def test_scheduler_sweeps_run_conversations_that_no_task_lists(tmp_path: Path) -> None:
     import asyncio
 
-    from coscribe.tools.scheduled_tasks import (
+    from coscribe.tools.bookkeeping.scheduled_tasks import (
         ScheduledRun,
         ScheduledTriggerStore,
         create_trigger,
@@ -1130,7 +1134,7 @@ def test_scheduler_sweeps_run_conversations_that_no_task_lists(tmp_path: Path) -
 def test_scheduler_announces_how_a_finished_run_ended(tmp_path: Path) -> None:
     import asyncio
 
-    from coscribe.tools.scheduled_tasks import (
+    from coscribe.tools.bookkeeping.scheduled_tasks import (
         ScheduledRun,
         ScheduledTriggerStore,
         create_trigger,
@@ -1162,7 +1166,7 @@ def test_scheduler_announces_how_a_finished_run_ended(tmp_path: Path) -> None:
 def test_scheduler_fires_due_wakes_and_nudges_the_open_tab(tmp_path: Path) -> None:
     import asyncio
 
-    from coscribe.tools.selfwake import WakeRequest
+    from coscribe.tools.bookkeeping.selfwake import WakeRequest
 
     class _Tab:
         resynced = 0

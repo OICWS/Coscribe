@@ -265,7 +265,7 @@ layers = [
     "coscribe.runtime | coscribe.config | coscribe.needs_permission",
 ]
 ignore_imports = [
-    "coscribe.tools.scheduled_tasks -> coscribe.workflows.spec",
+    "coscribe.tools.bookkeeping.scheduled_tasks -> coscribe.workflows.spec",
     "coscribe.web.app -> coscribe.cli",
 ]
 

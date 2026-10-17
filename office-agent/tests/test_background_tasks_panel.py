@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from coscribe.tools import background_tasks
-from coscribe.tools.background_tasks import (
+from coscribe.tools.bookkeeping import background_tasks
+from coscribe.tools.bookkeeping.background_tasks import (
     BackgroundTask,
     BackgroundTaskStore,
     forget_finished_background_tasks,

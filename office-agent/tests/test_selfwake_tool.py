@@ -4,9 +4,9 @@ from pathlib import Path
 import pytest
 
 from coscribe.runtime import get_tool_metadata
-from coscribe.tools import selfwake as selfwake_module
-from coscribe.tools.background_tasks import BackgroundTask, BackgroundTaskStore
-from coscribe.tools.selfwake import SignalStore, WakeStore, build_selfwake_tools
+from coscribe.tools.bookkeeping import selfwake as selfwake_module
+from coscribe.tools.bookkeeping.background_tasks import BackgroundTask, BackgroundTaskStore
+from coscribe.tools.bookkeeping.selfwake import SignalStore, WakeStore, build_selfwake_tools
 
 
 def _tools_by_name(thread_id: str, state_dir: Path) -> dict[str, object]:

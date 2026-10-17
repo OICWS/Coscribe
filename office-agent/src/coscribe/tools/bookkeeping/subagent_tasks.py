@@ -1,7 +1,7 @@
 """Delegated sub-agent runs: the task record, its store, and the
 in-process registry of live runs. Driving a run (it needs a model and a
 compiled graph) lives in runtime_lg/subagents.py; this module stays free
-of LLM clients, the same tools/ vs runtime_lg/ split tools/selfwake.py
+of LLM clients, the same tools/ vs runtime_lg/ split tools/bookkeeping/selfwake.py
 describes.
 
 A run's transcript exists only in its live graph's in-memory
@@ -21,8 +21,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from ..runtime import tool_metadata
-from ._file_locks import replace_with_retry
+from ...runtime import tool_metadata
+from .._file_locks import replace_with_retry
 
 VALID_STATUSES = ("running", "needs_approval", "succeeded", "failed", "stopped")
 FINISHED_STATUSES = ("succeeded", "failed", "stopped")

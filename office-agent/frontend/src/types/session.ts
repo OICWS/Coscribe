@@ -40,7 +40,7 @@ export type CommandsResponse = CommandInfo[];
 
 export type UploadResult = { path: string; bytes_written: number } | { error: string };
 
-/** A delegated sub-agent run -- tools/subagent_tasks.py's
+/** A delegated sub-agent run -- tools/bookkeeping/subagent_tasks.py's
  * SubAgentTask.to_dict(). */
 export interface SubAgentTask {
   task_id: string;
@@ -73,7 +73,7 @@ export interface SubAgentTask {
   continues?: string;
 }
 
-/** A script or command started with run_background_script / run_background_command -- tools/background_tasks.py's
+/** A script or command started with run_background_script / run_background_command -- tools/bookkeeping/background_tasks.py's
  * BackgroundTask.to_dict(). */
 export interface BackgroundScriptTask {
   task_id: string;

@@ -34,7 +34,7 @@ from coscribe.conversation.session import ChatSessionLG, _SubAgentApprovalChanne
 from coscribe.runtime import empty_hooks_config
 from coscribe.runtime_lg.audit import AuditLog
 from coscribe.runtime_lg.auto_review import Verdict
-from coscribe.tools.subagent_tasks import SubAgentTask
+from coscribe.tools.bookkeeping.subagent_tasks import SubAgentTask
 
 from .wire_check import check_event
 

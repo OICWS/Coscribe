@@ -17,7 +17,7 @@ result ambiguous depending on a boolean the model has to remember to check.
 doesn't push live output either -- a durable log file plus a *bounded*,
 on-demand read (`check_background_task`'s `tail_bytes`), not a live
 WebSocket stream. Simpler, and matches what selfwake.py's wake mechanism
-already gives for "come back when it's done" -- see tools/selfwake.py's
+already gives for "come back when it's done" -- see tools/bookkeeping/selfwake.py's
 `wake_on_task`, the direct extension of its existing `wake_on(job_id)` to
 a second kind of "background thing that eventually finishes," this
 module's `BackgroundTaskStore` as its new backing.
@@ -58,9 +58,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from ..runtime import tool_metadata
-from .exec import ensure_node_env, ensure_script_env, overlay_env, venv_python
-from .exec.script_guard import (
+from ...runtime import tool_metadata
+from ..exec import ensure_node_env, ensure_script_env, overlay_env, venv_python
+from ..exec.script_guard import (
     blocked_write,
     node_guard_args,
     refusal_note,
@@ -188,7 +188,7 @@ class BackgroundTask:
 class BackgroundTaskStore:
     """One JSON record + one plain-text log file per task, both under
     state_dir/background_tasks/ -- same "one file per request" shape as
-    tools/selfwake.py's WakeStore, plus a sibling .log file the JSON
+    tools/bookkeeping/selfwake.py's WakeStore, plus a sibling .log file the JSON
     record doesn't try to also hold (unbounded script output has no
     business living inside a small JSON status file re-read/re-written on
     every status change)."""

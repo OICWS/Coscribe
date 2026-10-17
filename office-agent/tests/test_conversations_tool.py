@@ -4,7 +4,7 @@ import keyring.errors
 import pytest
 
 from coscribe.runtime import SecretStore, secrets
-from coscribe.tools.conversations import (
+from coscribe.tools.bookkeeping.conversations import (
     MAX_MESSAGE_CHARS,
     MessagingError,
     MessagingStore,

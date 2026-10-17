@@ -1,6 +1,6 @@
 # ruff: noqa: E402
 """Tests for runtime_lg/selfwake.py's poll_due_wakes -- the resume half of
-Phase 4's suspend/resume primitives (tools/selfwake.py holds the create/
+Phase 4's suspend/resume primitives (tools/bookkeeping/selfwake.py holds the create/
 list/cancel half, covered by tests/test_selfwake_tool.py instead).
 
 Builds a real ChatSessionLG against a real (tmp-file) AsyncSqliteSaver
@@ -29,10 +29,10 @@ from coscribe.config import Settings
 from coscribe.conversation import ChatSessionLG
 from coscribe.conversation import session as conversation_session
 from coscribe.runtime_lg.selfwake import poll_due_wakes
-from coscribe.tools import background_tasks
-from coscribe.tools.background_tasks import BackgroundTask, BackgroundTaskStore
-from coscribe.tools.selfwake import WakeRequest, WakeStore
-from coscribe.tools.subagent_tasks import SubAgentTask, SubAgentTaskStore
+from coscribe.tools.bookkeeping import background_tasks
+from coscribe.tools.bookkeeping.background_tasks import BackgroundTask, BackgroundTaskStore
+from coscribe.tools.bookkeeping.selfwake import WakeRequest, WakeStore
+from coscribe.tools.bookkeeping.subagent_tasks import SubAgentTask, SubAgentTaskStore
 
 
 class FakeToolCallingChatModel(BaseChatModel):

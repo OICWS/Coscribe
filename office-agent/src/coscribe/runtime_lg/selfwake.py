@@ -1,7 +1,7 @@
 """Selfwake resume side for runtime_lg -- the LangGraph-native counterpart
-to tools/selfwake.py: storage + model-callable tools live in tools/selfwake.py (no
-live client/checkpointer needed there); actually resuming a sleeping thread
-does need one, so it lives here instead.
+to tools/bookkeeping/selfwake.py: storage + model-callable tools live in
+tools/bookkeeping/selfwake.py (no live client/checkpointer needed there); actually resuming a
+sleeping thread does need one, so it lives here instead.
 
 Deliberately does NOT import web.session.ChatSessionLG -- conversation/session.py
 already imports *from* runtime_lg (see runtime_lg/__init__.py), so importing
@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from ..tools import BackgroundTaskStore, SignalStore, WakeRequest, WakeStore
-from ..tools.subagent_tasks import FINISHED_STATUSES, SubAgentTaskStore
+from ..tools.bookkeeping.subagent_tasks import FINISHED_STATUSES, SubAgentTaskStore
 
 logger = logging.getLogger(__name__)
 

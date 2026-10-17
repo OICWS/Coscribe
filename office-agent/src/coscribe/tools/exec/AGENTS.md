@@ -4,7 +4,7 @@
 Owns `run_python_script` and `run_node_script` (`scripts.py`, `node_scripts.py`), the dedicated
 Python venv and the npm directory the scripts run in (`script_env.py`, `node_env.py`) and the
 guard that catches a script's mistaken writes outside the conversation's folders
-(`script_guard.py`). Does not own the background-command tool (`tools/background_tasks.py`,
+(`script_guard.py`). Does not own the background-command tool (`tools/bookkeeping/background_tasks.py`,
 which uses the same environments), the approval policy for scripts (`runtime_lg/exec_policy.py`)
 or the Settings routes that install packages (`web/routes/settings/environments.py`).
 

@@ -1,15 +1,13 @@
 # tools: the built-in tools the agent can call, and the stores behind them
 
 ## Purpose
-Owns every built-in tool factory (`build_*_tools`) with the risk tier it carries: files and
-folders (`files.py`), Word, Excel, PowerPoint and PDF (`office/`, `presentations.py`,
-`convert.py`, `pdf_pages.py`), Python and Node scripts with their folder guard and isolated
-environments (`scripts.py`, `node_scripts.py`, `script_guard.py`, `script_env.py`), the web (`websearch.py`, `images.py`,
-`http_request.py`, `browser.py`), the model's own bookkeeping (`tasks.py`, `skills.py`,
-`memory.py`, `interaction.py`, `selfwake.py`, `scheduled_tasks.py`, `subagent_tasks.py`,
-`background_tasks.py`, `conversations.py`) and the connector config and permissions (`mcp.py`,
-`connector_permissions.py`). Does not own the agent loop or approvals (`runtime_lg/`), the
-routes (`web/`) or the coordinator's tool list (`coordinator.py`). Word, Excel, PowerPoint and PDF have cards in `office/<format>/`.
+Owns the tool layer's shared entry point and the tools that fit no smaller component: files and
+folders (`files.py`), conversions (`convert.py`, `pdf_pages.py`), the connector config and
+permissions (`mcp.py`, `connector_permissions.py`) and the skills and PowerPoint template
+catalogs (`skills.py`, `skill_catalog.py`, `pptx_templates.py`). The rest is split by card:
+Word, Excel, PowerPoint and PDF in `office/<format>/`, scripts in `exec/`, the browser, search,
+HTTP and images in `web/`, the model's own state in `bookkeeping/`. Does not own the agent loop
+or approvals (`runtime_lg/`), the routes (`web/`) or the coordinator's tool list (`coordinator.py`).
 
 ## Public interface
 Factories: `build_file_tools`, `build_document_tools`, `build_spreadsheet_tools`,
@@ -41,20 +39,18 @@ Factories: `build_file_tools`, `build_document_tools`, `build_spreadsheet_tools`
   (`docs/decisions/0001-fixed-cached-tool-list.md`, `tests/test_tool_schema_snapshot.py`).
 - Every tool carries a risk tier (`READ`, `WRITE_LOCAL`, `EXEC`, `EXTERNAL`) through
   `tool_metadata`; approvals read it.
-- File tools are scoped to the workspace root; the folder guard in `script_guard.py` catches a
-  script's mistaken writes outside the conversation's folders and is not a security boundary
-  (`docs/decisions/0002-approvals-not-a-sandbox.md`).
-- A secret's value never reaches the model: `http_request` substitutes it after the model's call.
+- File tools are scoped to the workspace root; the folder guard in `exec/script_guard.py` is not a
+  security boundary (`docs/decisions/0002-approvals-not-a-sandbox.md`).
+- A secret's value never reaches the model: `web/http_request.py` substitutes it after the call.
 - Office files are compiled from whole-page sources
   (`docs/decisions/0010-office-files-are-compiled-from-whole-page-sources.md`).
 
 ## Tests
-`tests/test_*_tool.py` and `tests/test_*_tools.py` per tool, `tests/test_script_guard.py`,
-`tests/test_script_env.py`, the `tests/test_*_golden.py` files and `tests/test_tool_schema_snapshot.py`.
+`tests/test_*_tool.py` and `tests/test_*_tools.py` per tool, the `tests/test_*_golden.py` files and
+`tests/test_tool_schema_snapshot.py`; each sub-component's card lists its own.
 
 ## Verify by hand
-Office output in the real Office on Windows; a script with no Python or Node installed; the
-browser tools against a real page.
+The file tools and conversions on Windows; connector permissions after a sign-in.
 
 ## Reviewed
 2026-10-14 (first card).

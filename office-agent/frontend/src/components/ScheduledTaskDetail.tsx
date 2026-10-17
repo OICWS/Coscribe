@@ -22,7 +22,7 @@ import { RunInputsDialog } from "./workflow/RunInputsDialog";
 import { WorkflowEditor } from "./workflow/WorkflowEditor";
 import { WorkflowPermissions } from "./workflow/WorkflowPermissions";
 
-// Mirrors tools/scheduled_tasks.py's MAX_NOTES_CHARS.
+// Mirrors tools/bookkeeping/scheduled_tasks.py's MAX_NOTES_CHARS.
 const MAX_NOTES_CHARS = 4000;
 
 const APPROVAL_LABEL: Record<ScheduledTask["approval_mode"], string> = {

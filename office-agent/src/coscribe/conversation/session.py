@@ -116,8 +116,8 @@ from ..tools import (
     load_skills,
     parse_run_thread_id,
 )
-from ..tools.background_tasks import BackgroundTask, set_change_listener
-from ..tools.conversations import set_inbox_listener
+from ..tools.bookkeeping.background_tasks import BackgroundTask, set_change_listener
+from ..tools.bookkeeping.conversations import set_inbox_listener
 from ..tools.web import build_http_tools
 from ..workflows import StepContext, WorkflowDraft
 from . import tool_hooks

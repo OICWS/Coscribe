@@ -1,6 +1,6 @@
 # ruff: noqa: E402
 """Tests for delegated sub-agents: runtime_lg/subagents.py's runner and
-spawn tools, and tools/subagent_tasks.py's store and stop. A fake model
+spawn tools, and tools/bookkeeping/subagent_tasks.py's store and stop. A fake model
 drives a real LangGraph agent; the host's decide() stands in for the
 session's approval policy.
 """
@@ -22,9 +22,9 @@ from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResu
 from coscribe.runtime import tool_metadata
 from coscribe.runtime_lg.selfwake import poll_due_wakes
 from coscribe.runtime_lg.subagents import SubAgentHost, build_delegation_tools, subagent_report
-from coscribe.tools import subagent_tasks
-from coscribe.tools.selfwake import WakeRequest, WakeStore
-from coscribe.tools.subagent_tasks import (
+from coscribe.tools.bookkeeping import subagent_tasks
+from coscribe.tools.bookkeeping.selfwake import WakeRequest, WakeStore
+from coscribe.tools.bookkeeping.subagent_tasks import (
     SubAgentTask,
     SubAgentTaskStore,
     build_subagent_task_tools,

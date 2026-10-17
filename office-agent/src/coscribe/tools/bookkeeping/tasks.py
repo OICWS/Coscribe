@@ -14,8 +14,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from ..runtime import tool_metadata
-from ._file_locks import file_lock, replace_with_retry
+from ...runtime import tool_metadata
+from .._file_locks import file_lock, replace_with_retry
 
 VALID_STATUSES = ("pending", "in_progress", "completed")
 
