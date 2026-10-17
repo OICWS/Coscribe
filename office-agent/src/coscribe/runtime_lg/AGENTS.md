@@ -15,7 +15,7 @@ prompt (`coordinator.py`).
 ## Public interface
 Agent and tools: `build_langgraph_agent`, `tool_name`, `SubAgentHost`, `SUBAGENT_MAX_STEPS`,
 `build_delegation_tools`, `build_review_work_tool`, `select_reviewer_tools`, `subagent_report`.
-Approvals: `AuditLog`, `AutoApproveReason`, `record_decision`, `redact_secrets`, `Verdict`,
+Approvals: `AuditDecision`, `AuditLog`, `AuditReason`, `AutoApproveReason`, `record_decision`, `redact_secrets`, `Verdict`,
 `review_action`, `recent_user_requests`, `ExecPolicy`, `EXEC_POLICY_TOOL_NAMES`,
 `load_exec_policy`, `CODE_APPROVAL_RISKS`. Models: `resolve_chat_model`, `for_conversation`,
 `keeps_tool_list_fixed`. Connectors: `connect_mcp_tools_lg`, `connect_one_mcp_server_lg` (loaded on

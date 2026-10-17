@@ -2,7 +2,6 @@
  "complex_functions": {
   "src/coscribe/cli.py::send_json": 19,
   "src/coscribe/conversation/activity.py::summarize_activity": 18,
-  "src/coscribe/conversation/approvals.py::_decide_action_request": 25,
   "src/coscribe/conversation/session.py::_handle_user_message_locked": 30,
   "src/coscribe/conversation/turn_stream.py::stream_turn": 17,
   "src/coscribe/tools/_svg_slide.py::add_svg_slide": 16,
@@ -278,7 +277,6 @@
  },
  "long_functions": {
   "src/coscribe/cli.py::_chat_async": 108,
-  "src/coscribe/conversation/approvals.py::ApprovalDecider._decide_action_request": 289,
   "src/coscribe/conversation/session.py::ChatSessionLG.__init__": 207,
   "src/coscribe/conversation/session.py::ChatSessionLG._handle_user_message_locked": 212,
   "src/coscribe/conversation/turn_stream.py::TurnStreamer.stream_turn": 115,

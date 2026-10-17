@@ -102,9 +102,7 @@ async def build_document_edit_preview(
     slide = args.get("slide")
     page = slide if isinstance(slide, int) and slide > 0 else 1
 
-    before_name, _ = await asyncio.to_thread(
-        render_single_page_preview, real_path, state_dir, page
-    )
+    before_name, _ = await asyncio.to_thread(render_single_page_preview, real_path, state_dir, page)
 
     after_name: str | None = None
     tmp_dir = tempfile.mkdtemp(prefix="coscribe_preview_edit_")
