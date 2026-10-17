@@ -199,6 +199,8 @@ AUDITED_READ_ONLY_GETS = {
     "/api/threads/{thread_id}/environment",
     "/api/threads/{thread_id}/files/download",
     "/api/threads/{thread_id}/messaging",
+    "/api/threads/{thread_id}/slides",
+    "/api/threads/{thread_id}/slides/{index}/svg",
     "/api/threads/{thread_id}/subagents",
     "/api/threads/{thread_id}/tasks",
     "/api/tools",

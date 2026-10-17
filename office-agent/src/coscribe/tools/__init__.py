@@ -100,7 +100,14 @@ from .mcp import (
     with_secrets,
 )
 from .office.document_tools import DocumentToolkit, build_document_tools
-from .office.pptx import NEW_DECK_INSTRUCTIONS, PresentationToolkit, build_presentation_tools
+from .office.pptx import (
+    NEW_DECK_INSTRUCTIONS,
+    NotBuiltFromPages,
+    PresentationToolkit,
+    build_presentation_tools,
+    read_deck,
+    slide_svg,
+)
 from .office.xlsx import SpreadsheetToolkit, build_spreadsheet_tools
 from .pdf_pages import pdf_page_count, render_pdf_page
 from .pptx_templates import (
@@ -159,6 +166,7 @@ __all__ = [
     "stop_background_task",
     "take_stop_requester",
     "POLICIES",
+    "NotBuiltFromPages",
     "PresentationToolkit",
     "SKILL_SAVE_CURATOR_INSTRUCTIONS",
     "SKILL_SOURCE_MARKER",
@@ -173,7 +181,9 @@ __all__ = [
     "plugin_file",
     "remove_skill",
     "render_pdf_page",
+    "read_deck",
     "render_single_page_preview",
+    "slide_svg",
     "secret_names_used",
     "set_skill_enabled",
     "skill_source",

@@ -255,6 +255,35 @@ def test_the_word_review_routes_read_act_on_and_show_the_original_lg(
     assert not_word.status_code == 400 and missing.status_code == 404
 
 
+def test_the_slides_routes_read_a_built_deck_and_draw_its_slides_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.tools.office.pptx.engine import build_deck
+
+    from ..test_deck_engine import COVER
+
+    pages = tmp_path / "workspace" / "q3"
+    pages.mkdir(parents=True)
+    (pages / "01.svg").write_text(COVER, encoding="utf-8")
+    assert build_deck(pages, pages.parent / "q3.pptx").ok
+    (pages.parent / "notes.txt").write_text("x", encoding="utf-8")
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        url = "/api/threads/t_slides/slides"
+        deck = client.get(url, params={"path": "q3.pptx"})
+        svg = client.get(f"{url}/0/svg", params={"path": "q3.pptx"})
+        past_end = client.get(f"{url}/1/svg", params={"path": "q3.pptx"})
+        not_a_deck = client.get(url, params={"path": "notes.txt"})
+        outside = client.get(url, params={"path": "../q3.pptx"})
+
+    assert deck.status_code == 200 and [s["name"] for s in deck.json()["slides"]] == ["01.svg"]
+    assert svg.headers["content-type"] == "image/svg+xml"
+    assert "default-src 'none'" in svg.headers["content-security-policy"]
+    assert svg.text.startswith("<svg")
+    assert past_end.status_code == 404
+    assert not_a_deck.status_code == 404 and outside.status_code == 404
+
+
 def test_a_saved_run_waits_for_a_folder_it_hasnt_been_allowed_then_carries_on_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
