@@ -179,8 +179,10 @@ def test_all_tool_schemas_are_gemini_compatible(tmp_path: Path) -> None:
     from langchain_google_genai._function_utils import convert_to_genai_function_declarations
 
     agent = build_coordinator_agent(_settings(tmp_path), "thread-1")
-    declarations = convert_to_genai_function_declarations(list(agent.tools)).function_declarations
-    for declaration in declarations or []:
+    tools = convert_to_genai_function_declarations(list(agent.tools))
+    declarations = [d for tool in tools for d in tool.function_declarations or []]
+    assert declarations
+    for declaration in declarations:
         for param_name, schema in (declaration.parameters.properties or {}).items():
             assert schema.type is not None, (
                 f"{declaration.name}'s {param_name!r} param has no schema type "

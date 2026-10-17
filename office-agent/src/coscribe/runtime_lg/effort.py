@@ -1,7 +1,7 @@
 """How hard the model thinks: one scale for every model, mapped to what each one supports.
 
 The user picks one of six levels. Providers offer fewer and name them differently (Anthropic's
-`output_config.effort`, OpenAI's and DeepSeek's `reasoning_effort`), so a
+`output_config.effort`, OpenAI's, DeepSeek's and Gemini's `reasoning_effort`), so a
 level runs as the nearest one the model supports at or below it: above a model's top it runs as
 the top, in a gap it runs as the level below (cheaper), and below a model's lowest as its lowest.
 A model whose levels are not known gets nothing: an unknown request field can be refused.
@@ -36,7 +36,10 @@ def effort_levels(model: Any) -> tuple[str, ...] | None:
     or its levels are not known."""
     kind = type(model).__name__
     name = str(getattr(model, "model_name", None) or getattr(model, "model", "") or "")
-    if kind == "ChatAnthropic":
+    if kind in ("ChatAnthropic", "ChatGoogleGenerativeAI"):
+        # Gemini: the library maps `reasoning_effort` onto `thinking_config.thinking_level`. Its
+        # profile lists the levels per model and has none for 2.x, which take a token budget
+        # instead and so get no level. `minimal` is not in our scale and is dropped.
         profile = getattr(model, "profile", None) or {}
         levels = profile.get("reasoning_effort_levels") if isinstance(profile, dict) else None
         return _ordered(levels) if levels else None
@@ -46,12 +49,6 @@ def effort_levels(model: Any) -> tuple[str, ...] | None:
         # Only OpenAI's own endpoint: an OpenAI-compatible provider may refuse the field.
         if getattr(model, "openai_api_base", None) is None and _OPENAI_REASONING.match(name):
             return _OPENAI_LEVELS
-        return None
-    if kind == "ChatGoogleGenerativeAI":
-        # langchain-google-genai 3.x builds the request through a protobuf that has no
-        # `thinking_level`: every level fails live with "Unknown field for ThinkingConfig"
-        # (measured 2026-10-17, #315). Gemini thinks at its own default until 4.x, which takes
-        # `thinking_config`.
         return None
     return None
 
