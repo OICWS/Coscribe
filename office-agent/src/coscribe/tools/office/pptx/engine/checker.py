@@ -18,6 +18,7 @@ import math
 import re
 import unicodedata
 from collections.abc import Iterator, Sequence
+from contextvars import ContextVar
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
@@ -32,7 +33,10 @@ from .compiler import EMU_PER_PX, CompileReport
 _A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
 _P = "{http://schemas.openxmlformats.org/presentationml/2006/main}"
 _DRAWN = (f"{_P}sp", f"{_P}pic", f"{_P}cxnSp")
-_PX_PER_PT = 96 / 72
+_EMU_PER_PT = 12700
+# A deck is checked in the px its pages were written in: 1/96 in for the SVG pages, 1/144 in for
+# the 1920-wide sections, so a finding names the coordinates the page source has.
+_UNIT: ContextVar[float] = ContextVar("emu_per_px", default=EMU_PER_PX)
 # A crossing smaller than this is anti-aliasing, not a defect anyone can see.
 _TOLERANCE_PX = 2.0
 # A text frame is larger than its glyphs. Vertically it runs from about 0.97 em above the
@@ -84,9 +88,9 @@ _VALUE = re.compile(
 # has it), so it is removed from the copy that is validated.
 _XML_SPACE = "{http://www.w3.org/XML/1998/namespace}space"
 _SCHEMA_PREFIX = re.compile(r"^.*?ERROR:SCHEMASV:\w+: ")
-# PowerPoint's default cell margins (0.1 in left and right, 0.05 in top and bottom) and the line
-# height it gives a cell's text.
-_CELL_MARGIN_X, _CELL_MARGIN_Y, _CELL_LINE = 9.6, 4.8, 1.2
+# PowerPoint's default cell margins (0.1 in left and right, 0.05 in top and bottom, in pt) and
+# the line height it gives a cell's text.
+_CELL_MARGIN_X, _CELL_MARGIN_Y, _CELL_LINE = 7.2, 3.6, 1.2
 
 
 @dataclass(frozen=True)
@@ -110,14 +114,24 @@ class _Text:
     behind: str | None
 
 
-def check_deck(report: CompileReport, sources: Sequence[str] | None = None) -> None:
+def check_deck(
+    report: CompileReport, sources: Sequence[str] | None = None, *, emu_per_px: float = EMU_PER_PX
+) -> None:
     """Add each page's findings to its page report.
 
     `sources` are the texts the deck was made from; without them the number check is skipped,
     since every number would look invented."""
+    token = _UNIT.set(emu_per_px)
+    try:
+        _check(report, sources)
+    finally:
+        _UNIT.reset(token)
+
+
+def _check(report: CompileReport, sources: Sequence[str] | None) -> None:
     prs = Presentation(str(report.path))
     # The compiler always sets the slide size, so neither is None here.
-    width, height = int(prs.slide_width or 0) / EMU_PER_PX, int(prs.slide_height or 0) / EMU_PER_PX
+    width, height = _px(prs.slide_width or 0), _px(prs.slide_height or 0)
     known = known_numbers("\n".join(sources)) if sources is not None else None
     for page, slide in zip(report.pages, prs.slides, strict=True):
         page.errors.extend(_schema(slide._element))
@@ -175,15 +189,13 @@ def _box(element: Any) -> _Box | None:
     ext = xfrm.find(f"{_A}ext") if xfrm is not None else None
     if off is None or ext is None:
         return None
-    left, top = int(off.get("x")) / EMU_PER_PX, int(off.get("y")) / EMU_PER_PX
-    return _Box(
-        left, top, left + int(ext.get("cx")) / EMU_PER_PX, top + int(ext.get("cy")) / EMU_PER_PX
-    )
+    left, top = _px(off.get("x")), _px(off.get("y"))
+    return _Box(left, top, left + _px(ext.get("cx")), top + _px(ext.get("cy")))
 
 
 def _ink(element: Any, box: _Box) -> _Box:
     sizes = [int(r.get("sz")) for r in element.iter(f"{_A}rPr") if r.get("sz")]
-    em = max(sizes) / 100 * _PX_PER_PT if sizes else 0.0
+    em = max(sizes) / 100 * _px_per_pt() if sizes else 0.0
     top, bottom = box.top + _INK_TOP_EM * em, box.bottom - _INK_BOTTOM_EM * em
     width = (box.right - box.left) * _INK_WIDTH
     p_pr = element.find(f".//{_A}pPr")
@@ -194,6 +206,14 @@ def _ink(element: Any, box: _Box) -> _Box:
         middle = (box.left + box.right) / 2
         return _Box(middle - width / 2, top, middle + width / 2, bottom)
     return _Box(box.left, top, box.left + width, bottom)
+
+
+def _px(emu: Any) -> float:
+    return int(emu) / _UNIT.get()
+
+
+def _px_per_pt() -> float:
+    return _EMU_PER_PT / _UNIT.get()
 
 
 def _quote(text: str) -> str:
@@ -247,9 +267,9 @@ def _grown_tables(slide: Any, texts: list[_Text], height: float) -> Iterator[str
         if table is None or xfrm is None:
             continue
         off, ext = xfrm.find(f"{_A}off"), xfrm.find(f"{_A}ext")
-        left, top = int(off.get("x")) / EMU_PER_PX, int(off.get("y")) / EMU_PER_PX
-        right = left + int(ext.get("cx")) / EMU_PER_PX
-        stated = top + int(ext.get("cy")) / EMU_PER_PX
+        left, top = _px(off.get("x")), _px(off.get("y"))
+        right = left + _px(ext.get("cx"))
+        stated = top + _px(ext.get("cy"))
         bottom = top + _table_height(table)
         if bottom <= stated + _TOLERANCE_PX:
             continue
@@ -271,21 +291,21 @@ def _grown_tables(slide: Any, texts: list[_Text], height: float) -> Iterator[str
 
 
 def _table_height(table: Any) -> float:
-    widths = [int(c.get("w")) / EMU_PER_PX for c in table.iter(f"{_A}gridCol")]
+    widths = [_px(c.get("w")) for c in table.iter(f"{_A}gridCol")]
     total = 0.0
     for row in table.iter(f"{_A}tr"):
-        height = int(row.get("h", 0)) / EMU_PER_PX
+        height = _px(row.get("h", 0))
         for width, cell in zip(widths, row.findall(f"{_A}tc"), strict=False):
             if cell.get("hMerge") or cell.get("vMerge") or cell.get("gridSpan"):
                 continue
             sizes = [int(r.get("sz")) for r in cell.iter(f"{_A}rPr") if r.get("sz")]
-            size = (max(sizes) / 100 if sizes else 18) * _PX_PER_PT
-            inner = max(width - 2 * _CELL_MARGIN_X, 1.0)
+            size = (max(sizes) / 100 if sizes else 18) * _px_per_pt()
+            inner = max(width - 2 * _CELL_MARGIN_X * _px_per_pt(), 1.0)
             lines = sum(
                 max(1, math.ceil(estimate_text_width(_cell_text(p), size) / inner))
                 for p in cell.iter(f"{_A}p")
             )
-            height = max(height, lines * size * _CELL_LINE + 2 * _CELL_MARGIN_Y)
+            height = max(height, lines * size * _CELL_LINE + 2 * _CELL_MARGIN_Y * _px_per_pt())
         total += height
     return total
 

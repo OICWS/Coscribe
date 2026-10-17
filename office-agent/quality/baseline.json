@@ -93,7 +93,6 @@
   "coscribe/tools/office/pptx/slide_builders.py::attribute margin_left": 3,
   "coscribe/tools/office/pptx/slide_builders.py::attribute margin_right": 3,
   "coscribe/tools/office/pptx/slide_builders.py::attribute margin_top": 3,
-  "coscribe/tools/office/pptx/slide_builders.py::attribute space_before": 1,
   "coscribe/tools/office/pptx/slide_builders.py::attribute vertical_anchor": 3,
   "coscribe/tools/office/pptx/slide_builders.py::attribute word_wrap": 3,
   "coscribe/tools/office/pptx/theme.py::attribute _blob": 2,
