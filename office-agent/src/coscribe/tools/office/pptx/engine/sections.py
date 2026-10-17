@@ -21,6 +21,9 @@ from pptx.util import Emu
 from ...._native_svg.svg_to_pptx import geometry_properties, tspan_flattener
 from ...._native_svg.svg_to_pptx.drawingml import elements, utils
 from ...._native_svg.svg_to_pptx.drawingml.context import ConvertContext, ShapeResult
+from ..animation import add_animation_step
+from ..transitions import set_slide_transition
+from . import section_objects
 from .checker import check_deck
 from .compiler import (
     EMU_PER_PX as SVG_EMU_PER_PX,
@@ -38,6 +41,7 @@ from .compiler import (
 )
 from .icons import expand_icons
 from .section_format import (
+    BUILD_INS,
     CANVAS,
     MIN_READABLE_PX,
     SHAPES,
@@ -62,6 +66,9 @@ _TOLERANCE_PX = 2.0
 _MAX_ELEMENTS = 200
 _FIT = {"cover": "xMidYMid slice", "contain": "xMidYMid meet", "fill": "none"}
 _SHIFT = {"t": 0.0, "ctr": 0.5, "b": 1.0}
+_P = {"p": "http://schemas.openxmlformats.org/presentationml/2006/main"}
+_TRANSITION_SECONDS = 0.7
+_BUILD_MS = 500
 
 # ("text", TextBox) or ("drawing", (the SVG element to convert, the scale it is drawn at))
 Planned = tuple[str, Any]
@@ -115,25 +122,35 @@ def _compile(
         )
     drawing = ET.Element(f"{{{SVG_NS}}}svg", viewBox=f"0 0 {CANVAS[0]} {CANVAS[1]}")
     planned: list[Planned] = []
+    build_ins: list[str | None] = []
     for elem, style in section.elements:
         try:
             planned.append(_plan(elem, style, section, drawing, report))
         except SectionError as e:
             report.errors.append(str(e))
+            continue
+        build_ins.append(BUILD_INS.get(elem.get("data-build-in", "")))
     ctx = _context(drawing, report, resource_root, folder)
-    shapes = []
-    for kind, item in planned:
+    shapes, builds = [], []
+    for (kind, item), build in zip(planned, build_ins, strict=True):
         if kind == "text":
             item.shape_id = ctx.next_id()
             shapes.append(text_box_xml(item))
         elif (result := _convert(item[0], item[1], ctx, report)) is not None:
             shapes.append(result.xml)
+        else:
+            continue
+        builds.append(build)
     sp_tree = slide.shapes._spTree
-    for xml in attach_relationships(slide, ctx, shapes, report):
-        for element in etree.fromstring(f"<p:wrap {NSDECL}>{xml}</p:wrap>"):
+    animated: list[tuple[int, str]] = []
+    for xml, build in zip(attach_relationships(slide, ctx, shapes, report), builds, strict=True):
+        for i, element in enumerate(etree.fromstring(f"<p:wrap {NSDECL}>{xml}</p:wrap>")):
             sp_tree.append(element)
             report.shapes += 1
+            if build and i == 0:
+                animated.append((int(element.xpath(".//p:cNvPr/@id", namespaces=_P)[0]), build))
     _finish(slide, section, report)
+    _motion(slide, section.transition, animated)
 
 
 def _plan(
@@ -147,6 +164,12 @@ def _plan(
         svg = _shape(elem, style)
     elif tag == "img":
         svg = _picture(elem, style)
+    elif tag == "table":
+        svg = section_objects.table(elem, style, _SCALE)
+    elif tag == "x-chart":
+        svg = section_objects.chart(elem, style, _SCALE)
+    elif tag == "x-icon":
+        svg = section_objects.icon(elem, style)
     else:
         svg, scale = _drawing(elem, style, drawing)
     drawing.append(svg)
@@ -329,6 +352,15 @@ def _context(
         # As for the pages: an unmapped relationship then points nowhere instead of elsewhere.
         rel_id_counter=1000,
     )
+
+
+def _motion(slide: Any, transition: str | None, animated: list[tuple[int, str]]) -> None:
+    """The slide's transition, then its build-ins, one click each in the section's order: the
+    transition must come first, since the schema puts it before the timing tree."""
+    if transition is not None:
+        set_slide_transition(slide._element, transition, _TRANSITION_SECONDS)
+    for shape_id, effect in animated:
+        add_animation_step(slide._element, shape_id, effect, _BUILD_MS, "on-click", 0, None)
 
 
 def _finish(slide: Any, section: Section, report: PageReport) -> None:

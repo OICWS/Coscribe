@@ -19,7 +19,11 @@ from .text_layout import Font, Paragraph, Run
 CANVAS = (1920, 1080)
 DEFAULT_FONT = "Microsoft YaHei, Arial"
 TEXT_TAGS = frozenset({"h1", "h2", "h3", "p", "ul", "ol"})
-OTHER_TAGS = frozenset({"x-shape", "img", "svg", "aside"})
+OTHER_TAGS = frozenset({"x-shape", "img", "svg", "table", "x-chart", "x-icon", "aside"})
+# The slide transitions and build-ins a section can name, and PowerPoint's effect for each:
+# "magic" moves elements with the same id from one slide to the next, as Morph does.
+TRANSITIONS = {"fade": "fade", "push": "push", "magic": "morph"}
+BUILD_INS = {"fade": "entrance_fade", "rise": "entrance_rise_up", "pop": "entrance_zoom"}
 SHAPES = ("rect", "round-rect", "ellipse", "triangle", "arrow", "line")
 _INLINE = frozenset({"b", "strong", "i", "em", "u", "span", "br"})
 _SIZE = {"h1": 64.0, "h2": 48.0, "h3": 36.0}
@@ -43,15 +47,23 @@ _STYLES = {
     "x-shape": set(_BOX) | {"background", "border", "border-radius", "opacity"},
     "img": set(_BOX) | {"object-fit"},
     "svg": set(_BOX),
+    "table": set(_BOX) | {"font-size", "font-family", "color", "background", "border-color"},
+    "x-chart": set(_BOX),
+    "x-icon": set(_BOX) | {"color"},
     "span": {"color", "font-weight", "font-style", "font-size"},
+    "cell": {"text-align", "color", "background", "font-weight", "width"},
 }
 _ATTRIBUTES = {
-    "section": {"id", "style"},
-    "text": {"id", "style"},
-    "x-shape": {"id", "style", "data-shape"},
-    "img": {"id", "style", "src", "alt"},
-    "svg": {"id", "style", "viewBox", "preserveAspectRatio"},
+    "section": {"id", "style", "data-transition"},
+    "text": {"data-build-in", "id", "style"},
+    "x-shape": {"data-build-in", "id", "style", "data-shape"},
+    "img": {"data-build-in", "id", "style", "src", "alt"},
+    "svg": {"data-build-in", "id", "style", "viewBox", "preserveAspectRatio"},
+    "table": {"data-build-in", "id", "style"},
+    "x-chart": {"data-build-in", "id", "style"},
+    "x-icon": {"data-build-in", "id", "style", "data-icon"},
 }
+_EMPTY_TAGS = frozenset({"img", "x-icon", "x-chart", "x-shape"})
 _ALIGN = {"left": "l", "center": "ctr", "right": "r", "justify": "just"}
 _ANCHOR = {"top": "t", "middle": "ctr", "bottom": "b"}
 _COLOUR = re.compile(r"#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})")
@@ -128,6 +140,7 @@ class Section:
     colour: str
     elements: list[tuple[ET.Element, Style]] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    transition: str | None = None
 
 
 def colour(raw: str, where: str) -> str:
@@ -162,6 +175,7 @@ def parse_section(text: str) -> Section:
         background=style.colour("background"),
         font=style.values.get("font-family", DEFAULT_FONT),
         colour=style.colour("color", "000000") or "000000",
+        transition=_named(root, "data-transition", TRANSITIONS),
     )
     for child in root:
         _read_child(section, child)
@@ -179,6 +193,9 @@ def _read_child(section: Section, child: ET.Element) -> None:
         allowed = ", ".join(sorted(TEXT_TAGS | OTHER_TAGS))
         raise SectionError(f"{label(child)} is not part of a section; use one of {allowed}")
     _check_attributes(child, kind)
+    if tag in _EMPTY_TAGS and len(child):
+        raise SectionError(f"{label(child)} holds no elements")
+    _named(child, "data-build-in", BUILD_INS)
     if tag == "svg":
         _check_svg(child)
     section.elements.append((child, read_style(child, kind)))
@@ -196,6 +213,21 @@ def read_style(elem: ET.Element, kind: str) -> Style:
             raise SectionError(f"{label(elem)}: style {name!r} is not allowed here ({allowed})")
         values[name] = value.strip()
     return Style(values, label(elem))
+
+
+def _named(elem: ET.Element, name: str, effects: dict[str, str]) -> str | None:
+    """The PowerPoint effect an attribute names, or None when the element has none."""
+    raw = elem.get(name)
+    if raw is None:
+        return None
+    if raw not in effects:
+        raise SectionError(f"{label(elem)}: {name} is one of {', '.join(effects)}, got {raw!r}")
+    return effects[raw]
+
+
+def read_cell_style(elem: ET.Element) -> Style:
+    """A table cell's or column's own style: its colours, alignment, weight and width."""
+    return read_style(elem, "cell")
 
 
 def _check_attributes(elem: ET.Element, kind: str) -> None:
