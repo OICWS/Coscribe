@@ -1,4 +1,4 @@
-from coscribe.tools._licensed_image_search import (
+from coscribe.tools.web._licensed_image_search import (
     AssetCandidate,
     ImageSearchRequest,
     build_attribution_text,

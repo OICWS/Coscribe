@@ -2445,13 +2445,13 @@ Flickr/museums/etc.) and Wikimedia Commons (strong on
 educational/scientific/geographic/historical imagery) -- both
 smoke-tested live against the real APIs, not assumed reachable.
 
-This closes a real, previously-documented gap: `tools/images.py`'s own
+This closes a real, previously-documented gap: `tools/web/images.py`'s own
 module docstring already named "images found this way are not
 license-filtered... unlike a curated stock-photo API such as
 Unsplash/Pexels, which was considered and explicitly not chosen" as a
 known limitation of the existing `search_images` (DuckDuckGo). New
 `search_licensed_images(query, orientation, min_width, min_height,
-required_terms, max_results)` in `tools/images.py` is the curated
+required_terms, max_results)` in `tools/web/images.py` is the curated
 alternative, sitting alongside it rather than replacing it -- both are
 `risk_category="READ"`/`category="web"` tools the model can choose
 between depending on whether the user cares about usage rights.
@@ -2473,7 +2473,7 @@ needed at all, `download_image` (already httpx-based, Pillow-validated,
 size-capped) is reused entirely unmodified.
 
 **`requests` -> `httpx`**, coscribe's own established HTTP client
-(`tools/images.py`'s `download_image` already uses it, with the same
+(`tools/web/images.py`'s `download_image` already uses it, with the same
 real-browser-shaped `User-Agent` some hosts require) -- a deliberate
 adaptation, not a second redundant HTTP dependency.
 

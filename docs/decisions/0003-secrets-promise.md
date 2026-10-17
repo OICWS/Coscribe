@@ -1,6 +1,6 @@
 # 0003: Secrets: the model cannot see a value; nothing more is promised
 
-Status: accepted (2026-10-08). Implementation: `runtime/secret_store.py`, `tools/http_request.py`.
+Status: accepted (2026-10-08). Implementation: `runtime/secret_store.py`, `tools/web/http_request.py`.
 
 ## Context
 Users want to give the assistant API keys without the model ever knowing them.

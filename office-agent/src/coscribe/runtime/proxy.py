@@ -1,7 +1,7 @@
 """Shared corporate-proxy detection -- see ROADMAP.md's "Unified
 corporate-proxy support" backlog item: LLM provider SDKs already read
 HTTP_PROXY/HTTPS_PROXY themselves (httpx/grpc's own env-var support), but
-web_search (tools/websearch.py) and the Browser panel's headless Chrome
+web_search (tools/web/websearch.py) and the Browser panel's headless Chrome
 (web/browser_panel.py) each need it forwarded explicitly -- ddgs's
 DDGS.text() has its own separate proxy= kwarg unrelated to the standard
 env vars, and Chromium's env-var-based proxy auto-detection is

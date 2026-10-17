@@ -3,8 +3,8 @@ from typing import Any
 import pytest
 
 from coscribe.runtime import get_tool_metadata
-from coscribe.tools import websearch
-from coscribe.tools.websearch import build_websearch_tools, web_search
+from coscribe.tools.web import websearch
+from coscribe.tools.web.websearch import build_websearch_tools, web_search
 
 
 def test_web_search_normalizes_ddgs_result_shape(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -132,7 +132,7 @@ def _serve(monkeypatch: pytest.MonkeyPatch, handler: Any) -> None:
 def test_read_web_page_returns_the_main_text_as_markdown(monkeypatch: pytest.MonkeyPatch) -> None:
     import httpx
 
-    from coscribe.tools.websearch import read_web_page
+    from coscribe.tools.web.websearch import read_web_page
 
     html = (
         "<html><head><title>Q3 results</title><script>track()</script></head><body>"
@@ -154,7 +154,7 @@ def test_read_web_page_returns_the_main_text_as_markdown(monkeypatch: pytest.Mon
 def test_read_web_page_refuses_what_isnt_a_page(monkeypatch: pytest.MonkeyPatch) -> None:
     import httpx
 
-    from coscribe.tools.websearch import read_web_page
+    from coscribe.tools.web.websearch import read_web_page
 
     _serve(
         monkeypatch,

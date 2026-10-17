@@ -3,7 +3,7 @@
  * tabs. Commands arrive over the sidecar's /internal/browser-host
  * Server-Sent Events stream (authenticated with the token this app
  * started the sidecar with) and each result is POSTed back; see the
- * sidecar's tools/browser.py. No remote-debugging port is opened: that
+ * sidecar's tools/web/browser.py. No remote-debugging port is opened: that
  * would let any local program drive the user's signed-in pages.
  *
  * Reading the page and locating elements run in the page and its frames

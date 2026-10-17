@@ -14,7 +14,7 @@ level `presentations.py`'s retyped `_TRANSITION_SPECS` already uses
 (PPTX_DESIGN.md §27), not §25's "vendor whole files unmodified"
 treatment: real adaptation was needed, not just retyping, since the
 source uses `requests` and coscribe deliberately standardized on `httpx`
-(see `tools/images.py`'s own `download_image`). What's kept: the license
+(see `tools/web/images.py`'s own `download_image`). What's kept: the license
 classification token lists/tiers (real, hard-won knowledge -- which
 license strings each provider actually returns, and which tier they map
 to), the two providers' real API endpoints/response shapes, and the
@@ -427,7 +427,7 @@ def build_attribution_text(candidate: AssetCandidate) -> str:
 
 # ---------------------------------------------------------------------------
 # Providers -- httpx, not requests (coscribe's own client of choice, see
-# tools/images.py's download_image), otherwise the same real endpoints/
+# tools/web/images.py's download_image), otherwise the same real endpoints/
 # response-shape knowledge as the source.
 # ---------------------------------------------------------------------------
 

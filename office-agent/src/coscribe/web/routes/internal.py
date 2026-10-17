@@ -59,7 +59,7 @@ def router(state: AppState) -> APIRouter:
     @router.get("/internal/browser-host", response_model=None)
     async def browser_host_stream(request: Request) -> Response:
         """The desktop app's browser takes its commands from here; see
-        tools/browser.py."""
+        tools/web/browser.py."""
         if not _is_browser_host(request):
             return JSONResponse({"error": "Not the desktop app's browser."}, status_code=403)
         outbox = BROWSER_HOST.attach()

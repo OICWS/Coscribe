@@ -1,4 +1,4 @@
-"""Standalone (not pytest) live verification of tools/websearch.py's
+"""Standalone (not pytest) live verification of tools/web/websearch.py's
 web_search -- a real DuckDuckGo query, no LLM involved at all (the tool
 itself is a pure function, nothing about it needs a model).
 
@@ -17,7 +17,7 @@ Run with: python scripts/verify_websearch.py
 
 from __future__ import annotations
 
-from coscribe.tools.websearch import web_search
+from coscribe.tools.web.websearch import web_search
 
 
 def main() -> None:
