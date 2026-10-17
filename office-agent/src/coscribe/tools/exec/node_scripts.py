@@ -1,4 +1,4 @@
-"""``run_node_script`` -- the Node.js sibling of ``tools/scripts.py``'s
+"""``run_node_script`` -- the Node.js sibling of ``tools/exec/scripts.py``'s
 ``run_python_script``, added specifically so the model can write real
 ``pptxgenjs`` generation scripts (custom shapes, multi-column layouts,
 precise positioning, icons) when ``write_pptx``'s fixed Title-and-Content/
@@ -9,12 +9,12 @@ Same safety posture as ``run_python_script``, restated here rather than
 just cross-referenced since it's the whole justification for this tool's
 existence: **no sandbox**, the approval prompt showing the full script
 text before it runs is the safety mechanism -- plus the write guard of
-``tools/script_guard.py`` (Node's ``--permission``, when the installed Node
+``tools/exec/script_guard.py`` (Node's ``--permission``, when the installed Node
 has it), a guard rail rather than a boundary -- and deliberately no
 import/library allowlist (trivially bypassable, same reasoning as Claude
 Code's own Bash tool). The one thing genuinely different from
 ``run_python_script``: which packages the script can ``require()`` comes
-from ``tools/node_env.py``'s ``state_dir/node-env`` directory via the
+from ``tools/exec/node_env.py``'s ``state_dir/node-env`` directory via the
 ``NODE_PATH`` environment variable, not a baked-in interpreter path --
 see that module's docstring for why Node has no venv equivalent and how
 this was verified before being relied on here.
@@ -30,9 +30,9 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from ..runtime import tool_metadata
-from ._files_written import snapshot_workspace, with_files_written
-from ._output_truncation import truncate_script_output
+from ...runtime import tool_metadata
+from .._files_written import snapshot_workspace, with_files_written
+from .._output_truncation import truncate_script_output
 from .node_env import ensure_node_env
 from .script_env import overlay_env
 from .script_guard import (
@@ -66,7 +66,7 @@ def _run_node_script(
     scratch_dir = Path(tempfile.mkdtemp(prefix="coscribe_node_script_"))
     script_path = scratch_dir / "script.js"
     script_path.write_text(script, encoding="utf-8")
-    # Same Windows charmap bug as tools/scripts.py's _run_python_script --
+    # Same Windows charmap bug as tools/exec/scripts.py's _run_python_script --
     # see that function's comment for the full explanation. Node itself
     # always writes UTF-8 to a piped (non-TTY) stdout/stderr regardless of
     # the console codepage, so only the host-side write_text above (this

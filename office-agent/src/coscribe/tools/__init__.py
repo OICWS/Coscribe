@@ -10,6 +10,12 @@ from .connector_permissions import (
 )
 from .conversations import MessagingStore, build_conversation_tools, format_incoming
 from .convert import build_convert_tools
+from .exec import (
+    build_node_script_tools,
+    build_script_tools,
+    ensure_script_env,
+    venv_python,
+)
 from .files import build_file_tools
 from .images import build_image_tools
 from .interaction import (
@@ -23,7 +29,6 @@ from .interaction import (
 )
 from .mcp import load_mcp_server_configs, prepare_for_connect, validate_mcp_config
 from .memory import format_memory_section, load_memory
-from .node_scripts import build_node_script_tools
 from .office.document_tools import DocumentToolkit, build_document_tools
 from .office.pptx import NEW_DECK_INSTRUCTIONS, build_presentation_tools
 from .office.xlsx import SpreadsheetToolkit, build_spreadsheet_tools
@@ -49,8 +54,6 @@ from .scheduled_tasks import (
     record_draft,
     update_trigger,
 )
-from .script_env import ensure_script_env, venv_python
-from .scripts import build_script_tools
 from .selfwake import SignalStore, WakeRequest, WakeStore, build_selfwake_tools
 from .skill_catalog import enabled_skill_names
 from .skills import (

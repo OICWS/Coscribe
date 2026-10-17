@@ -28,7 +28,7 @@ from coscribe.config import Settings
 from coscribe.conversation import session as conversation_session
 from coscribe.runtime import secrets as secrets_module
 from coscribe.runtime_lg import mcp as lg_mcp
-from coscribe.tools import scripts
+from coscribe.tools.exec import scripts
 from coscribe.web import app as web_app
 from coscribe.web.app import create_app_lg
 
@@ -410,7 +410,7 @@ def _wait_for_run_status(
 
 def _stub_script_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """run_python_script normally provisions a dedicated venv on first use
-    (tools/script_env.py's ensure_script_env) -- real, but slow and
+    (tools/exec/script_env.py's ensure_script_env) -- real, but slow and
     unnecessary for a test that only cares about whether the exec-policy
     check let the call through, not about the script actually needing a
     separate environment. Runs the trivial scripts these tests use with

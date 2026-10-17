@@ -5,7 +5,7 @@ down for coscribe's actual shape.
 
 **Rules are human-authored configuration, never inferred from content by
 coscribe itself.** This is the whole reason this doesn't contradict
-`tools/scripts.py`'s own documented stance that no import/library
+`tools/exec/scripts.py`'s own documented stance that no import/library
 allowlist exists because "any such restriction is trivially bypassable
 ... and would only offer a false sense of security" -- that critique is
 about coscribe (or the model) deciding for itself that some code pattern
@@ -47,7 +47,7 @@ Decision = Literal["allow", "forbidden", "prompt"]
 _VALID_DECISIONS: frozenset[str] = frozenset({"allow", "forbidden", "prompt"})
 
 # The only two tools this applies to -- both take their source under a
-# `script` argument (see tools/scripts.py's and tools/node_scripts.py's own
+# `script` argument (see tools/exec/scripts.py's and tools/exec/node_scripts.py's own
 # `run_python_script`/`run_node_script`).
 EXEC_POLICY_TOOL_NAMES: frozenset[str] = frozenset({"run_python_script", "run_node_script"})
 

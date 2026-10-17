@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from coscribe.tools import script_env
-from coscribe.tools.script_env import (
+from coscribe.tools.exec import script_env
+from coscribe.tools.exec.script_env import (
     ensure_script_env,
     get_interpreter_override,
     install_package,
@@ -248,7 +248,7 @@ def test_overlay_env_replaces_a_name_that_differs_only_in_case_on_windows(
 ) -> None:
     from types import SimpleNamespace  # noqa: PLC0415
 
-    from coscribe.tools import script_env  # noqa: PLC0415
+    from coscribe.tools.exec import script_env  # noqa: PLC0415
 
     base = {"PATH": "/bin", "HOME": "/h"}
 

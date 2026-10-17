@@ -256,8 +256,8 @@
   "coscribe.web.routes.files -> coscribe.tools.browser": 1,
   "coscribe.web.routes.files -> coscribe.tools.pdf_pages": 1,
   "coscribe.web.routes.files -> coscribe.tools.presentations": 1,
-  "coscribe.web.routes.settings.environments -> coscribe.tools.node_env": 3,
-  "coscribe.web.routes.settings.environments -> coscribe.tools.script_env": 1,
+  "coscribe.web.routes.settings.environments -> coscribe.tools.exec.node_env": 3,
+  "coscribe.web.routes.settings.environments -> coscribe.tools.exec.script_env": 1,
   "coscribe.web.routes.settings.secrets -> coscribe.tools.mcp": 1,
   "coscribe.web.routes.skills -> coscribe.tools.skill_catalog": 2,
   "coscribe.web.routes.threads -> coscribe.tools.background_tasks": 1,
@@ -265,8 +265,8 @@
   "coscribe.web.routes.threads -> coscribe.tools.tasks": 1,
   "coscribe.web.state -> coscribe.runtime_lg.mcp": 1,
   "coscribe.web.state -> coscribe.runtime_lg.mcp_oauth": 1,
-  "coscribe.workflows.engine -> coscribe.tools.scripts": 1,
-  "coscribe.workflows.engine -> coscribe.tools.scripts:_run_python_script": 1
+  "coscribe.workflows.engine -> coscribe.tools.exec.scripts": 1,
+  "coscribe.workflows.engine -> coscribe.tools.exec.scripts:_run_python_script": 1
  },
  "fan_out": {
   "coscribe.conversation.session": 30,

@@ -3,7 +3,7 @@ to execute user-approved scripts in -- deliberately *not* the same
 interpreter/site-packages coscribe's own process runs on.
 
 Two reasons, both concrete: (1) a script installing a package (which it's
-free to do -- see tools/scripts.py's docstring on why there's no import
+free to do -- see tools/exec/scripts.py's docstring on why there's no import
 allowlist) must never be able to collide with or destabilize coscribe's
 own pinned runtime dependencies (langgraph/langchain and friends); this
 project's own development sandbox has hit real, repeated dependency
@@ -16,10 +16,10 @@ package list a non-technical user can point-and-click, not a freeform shell
 script (see EnvironmentTab.tsx's docstring for why that UI choice was made
 instead of copying Claude Code's textarea).
 
-No sandboxing happens here or in tools/scripts.py -- this module only
+No sandboxing happens here or in tools/exec/scripts.py -- this module only
 isolates *dependencies*, not execution. A script run against this venv can
 still read/write any file the coscribe process's OS user can, and make
-any network call -- see tools/scripts.py's docstring for the full safety
+any network call -- see tools/exec/scripts.py's docstring for the full safety
 model (approval + full script visibility is the only gate, same as Claude
 Code's own Bash tool on a sandboxless host).
 """
@@ -41,7 +41,7 @@ _SETUP_TIMEOUT = 300.0
 # Pre-seeded on first use so a script can read/write the same file formats
 # coscribe's own built-in tools do (openpyxl/python-docx/python-pptx/
 # pdfplumber) plus pandas for bulk tabular work, without the user having to
-# know to add these themselves first -- tools/scripts.py's own docstring
+# know to add these themselves first -- tools/exec/scripts.py's own docstring
 # promises this. Anything else the user wants is on them to add from the
 # Environment settings tab.
 _BASELINE_PACKAGES = ("openpyxl", "python-docx", "python-pptx", "pandas", "pdfplumber")

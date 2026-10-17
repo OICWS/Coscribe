@@ -1,5 +1,5 @@
 """``run_background_script`` and friends -- the fire-and-forget counterpart
-to ``tools/scripts.py``'s ``run_python_script``/``tools/node_scripts.py``'s
+to ``tools/exec/scripts.py``'s ``run_python_script``/``tools/exec/node_scripts.py``'s
 ``run_node_script``, for a script expected to run *longer* than those two
 tools' own 600s hard cap (a long OCR/data-processing job, a batch pipeline)
 without blocking the conversation for the whole run.
@@ -22,7 +22,7 @@ already gives for "come back when it's done" -- see tools/selfwake.py's
 a second kind of "background thing that eventually finishes," this
 module's `BackgroundTaskStore` as its new backing.
 
-**Same no-sandbox posture as the synchronous scripts** (see tools/scripts.py's
+**Same no-sandbox posture as the synchronous scripts** (see tools/exec/scripts.py's
 own docstring for the full reasoning) -- the approval prompt before a
 background script starts is the only safety mechanism, same as the
 synchronous tools' approval prompt before they run.
@@ -59,9 +59,8 @@ from pathlib import Path
 from typing import Any
 
 from ..runtime import tool_metadata
-from .node_env import ensure_node_env
-from .script_env import ensure_script_env, overlay_env, venv_python
-from .script_guard import (
+from .exec import ensure_node_env, ensure_script_env, overlay_env, venv_python
+from .exec.script_guard import (
     blocked_write,
     node_guard_args,
     refusal_note,
@@ -460,7 +459,7 @@ def build_background_task_tools(
             scratch_dir = Path(tempfile.mkdtemp(prefix="coscribe_bg_script_"))
             script_path = scratch_dir / "script.py"
             # PYTHONIOENCODING/PYTHONUTF8 forced for the same reason
-            # tools/scripts.py's _run_python_script does -- without them, a
+            # tools/exec/scripts.py's _run_python_script does -- without them, a
             # background script's own print() of non-Latin1 text (Chinese,
             # routine for this codebase's users) can crash inside the child
             # itself on a Windows machine with a non-UTF-8 locale, the

@@ -2016,8 +2016,8 @@ tool.py`/`test_ooxml_validate.py` suite (291 tests) passes, `ruff check`/
 `mypy` clean.
 
 **Not fixed in this pass, noted for later**: the Windows `charmap`
-subprocess-encoding bug (§22.2) -- real, but lives in `tools/scripts.py`/
-`tools/node_scripts.py`, a different subsystem than this file covers.
+subprocess-encoding bug (§22.2) -- real, but lives in `tools/exec/scripts.py`/
+`tools/exec/node_scripts.py`, a different subsystem than this file covers.
 
 ## 23. §22.2's deferred bug, fixed: the Windows `charmap` encoding failure
 in `run_python_script`/`run_node_script`
@@ -2032,8 +2032,8 @@ process's own stdio both fall back to `locale.getpreferredencoding(False)`
 unless told otherwise (Python's PEP 540 UTF-8 mode is opt-in via
 `PYTHONUTF8`/`-X utf8`, not a Windows default the way it effectively is on
 modern Linux). Two independent failure points existed in
-`tools/scripts.py`'s `_run_python_script` (and the identical pattern in
-`tools/node_scripts.py`'s `_run_node_script`), both unencoded:
+`tools/exec/scripts.py`'s `_run_python_script` (and the identical pattern in
+`tools/exec/node_scripts.py`'s `_run_node_script`), both unencoded:
 
 1. `script_path.write_text(script)` -- writing the model's own script
    source to a temp file. Any Chinese comment or string literal in the
@@ -2099,8 +2099,8 @@ and the child's own env needed fixing.)
 
 **Preventive hardening, not confirmed bugs** (no live report, but the
 identical unguarded pattern): every remaining `subprocess.run(...,
-text=True, ...)` with no `encoding=` -- `tools/node_env.py` and
-`tools/script_env.py`'s npm/pip install/list/uninstall/`--version` calls
+text=True, ...)` with no `encoding=` -- `tools/exec/node_env.py` and
+`tools/exec/script_env.py`'s npm/pip install/list/uninstall/`--version` calls
 (7 and 4 call sites respectively), and `runtime/hooks.py`'s `run_hook`
 (shell-command hooks, which capture output as text and are fed a
 JSON payload via `input=`, though `json.dumps`'s default `ensure_ascii=
@@ -2129,7 +2129,7 @@ other `write_text`/`read_text` call in `src/` already passed
 selfwake.py, background_tasks.py's JSON records, pptx_templates.py,
 web/app.py's dozen-plus sidecar/config writers, skill_authoring.py) --
 this codebase's own convention was already correct almost everywhere;
-`tools/scripts.py`/`tools/node_scripts.py` (§23) and `tools/background_
+`tools/exec/scripts.py`/`tools/exec/node_scripts.py` (§23) and `tools/background_
 tasks.py` (this section) were the exceptions, both because they write a
 *model-generated* script file, a pattern that didn't exist yet when the
 "always pass encoding=" convention was established elsewhere.

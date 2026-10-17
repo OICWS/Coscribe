@@ -9,10 +9,10 @@ from fastapi import (
     APIRouter,
 )
 
-from ....tools.node_env import install_package as install_node_package
-from ....tools.node_env import list_packages as list_node_packages
-from ....tools.node_env import uninstall_package as uninstall_node_package
-from ....tools.script_env import (
+from ....tools.exec.node_env import install_package as install_node_package
+from ....tools.exec.node_env import list_packages as list_node_packages
+from ....tools.exec.node_env import uninstall_package as uninstall_node_package
+from ....tools.exec.script_env import (
     fallbacks_for_platform,
     get_interpreter_override,
     install_package,
@@ -36,7 +36,7 @@ def router(state: AppState) -> APIRouter:
     # list_packages/install_package/uninstall_package/set_interpreter_override
     # all shell out via subprocess.run with multi-minute timeouts (venv
     # creation alone allows 120s, baseline package seeding 300s -- see
-    # tools/script_env.py's _VENV_TIMEOUT/_SETUP_TIMEOUT). Calling them
+    # tools/exec/script_env.py's _VENV_TIMEOUT/_SETUP_TIMEOUT). Calling them
     # directly from an `async def` route handler, as this code did before,
     # runs that blocking subprocess wait *on the single asyncio event
     # loop* -- not just stalling this one HTTP response, but freezing
@@ -93,7 +93,7 @@ def router(state: AppState) -> APIRouter:
         )
 
     # Mirrors the script-env endpoints above exactly, backed by
-    # tools/node_env.py's npm-based node-env directory instead -- see that
+    # tools/exec/node_env.py's npm-based node-env directory instead -- see that
     # module's docstring for why Node needs a different isolation
     # mechanism than the Python venv, and why node/npm being genuinely
     # optional (unlike Python, coscribe's own runtime) means these can
