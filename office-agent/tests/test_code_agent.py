@@ -20,7 +20,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from coscribe.code_runtime.launch import CodexHost, LaunchSpec
 from coscribe.config import Settings
-from coscribe.conversation import ChatSessionLG
+from coscribe.conversation import ChatSessionLG, agent_assembly
 from coscribe.conversation import session as conversation_session
 from coscribe.runtime import SessionEnvironments, empty_hooks_config
 from coscribe.runtime_lg.code_agent import CODE_APPROVAL_RISKS, CODE_TASK_TOOL
@@ -139,7 +139,7 @@ def _session(
         lambda name, custom_providers=None: model,
     )
     monkeypatch.setattr(
-        conversation_session,
+        agent_assembly,
         "code_service",
         lambda settings: _Service(codex),
     )
@@ -585,7 +585,7 @@ async def test_the_panel_hears_of_a_code_task_before_codex_is_ready(
             await release.wait()
             return await super().prepare()
 
-    monkeypatch.setattr(conversation_session, "code_service", lambda settings: Slow(codex))
+    monkeypatch.setattr(agent_assembly, "code_service", lambda settings: Slow(codex))
     socket = _Socket(answer=lambda payload: True)
     socket.session = session
     session._live_websocket = socket  # type: ignore[assignment]

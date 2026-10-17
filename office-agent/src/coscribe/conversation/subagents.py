@@ -36,6 +36,8 @@ from ..tools import (
     format_incoming,
     running_subagent,
 )
+from ..tools.bookkeeping.background_tasks import set_change_listener
+from ..tools.bookkeeping.conversations import set_inbox_listener
 from .approvals import SubAgentChannel, can_resolve_approvals
 from .events import EventSink
 from .thread_meta import ThreadMetaStore
@@ -151,6 +153,10 @@ class SubAgentSessionHost(SubAgentChannelHost, Protocol):
 class SubAgentReporter:
     def __init__(self, host: SubAgentSessionHost) -> None:
         self._host = host
+
+    def listen(self) -> None:
+        set_change_listener(self._host.thread_id, self._background_task_changed)
+        set_inbox_listener(self._host.thread_id, self.schedule_inbox_delivery)
 
     def _subagent_host(self, model: Any) -> SubAgentHost:
         def resolve_model(requested: str) -> tuple[str, Any]:
