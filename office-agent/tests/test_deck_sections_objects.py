@@ -148,8 +148,8 @@ def test_a_folder_of_sections_builds_and_is_not_overwritten_after_a_change(tmp_p
         build_deck(deck, out, resource_root=tmp_path)
 
 
-def test_a_folder_holds_one_kind_of_page(tmp_path: Path) -> None:
+def test_a_deck_with_sections_is_not_built_on_a_template(tmp_path: Path) -> None:
     (tmp_path / "01.html").write_text(TABLE, encoding="utf-8")
     (tmp_path / "02.svg").write_text("<svg/>", encoding="utf-8")
-    with pytest.raises(ValueError, match="one kind per deck"):
-        build_deck(tmp_path, tmp_path / "deck.pptx")
+    with pytest.raises(ValueError, match="not built on a template"):
+        build_deck(tmp_path, tmp_path / "deck.pptx", template=tmp_path / "brand.pptx")

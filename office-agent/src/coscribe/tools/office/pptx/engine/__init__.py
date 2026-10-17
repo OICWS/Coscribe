@@ -7,7 +7,8 @@ guide the agent loads first.
 
 `sections.py` compiles the other source language, positioned HTML sections (decision 0015): a
 slide becomes one when it is first edited (decision 0016), converted with its content unchanged
-by `svg_to_section.py`. Nothing calls either yet.
+by `svg_to_section.py` (`convert_slide`), and a deck's folder may hold both kinds. Nothing
+converts a slide yet.
 """
 
 from .build import (
@@ -16,6 +17,7 @@ from .build import (
     DeckChangedError,
     build_deck,
     built_from_pages,
+    convert_slide,
     page_files,
     slide_hashes,
 )
@@ -38,6 +40,7 @@ __all__ = [
     "compile_pages",
     "compile_sections",
     "convert_page",
+    "convert_slide",
     "page_files",
     "slide_hashes",
     "source_text",
