@@ -538,9 +538,8 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
         )
     )
     app.add_middleware(LocalOnlyGuard)
-    # Exposed on app.state so tests can reach the same bus _wake_poll_loop
-    # publishes to without going through the (necessarily infinite, so not
-    # directly awaitable-to-completion) SSE endpoint itself.
+    # On app.state so tests publish to the bus _wake_poll_loop uses without
+    # going through the SSE endpoint, which never completes.
     app.state.background_events = background_events
 
     @app.get("/")
