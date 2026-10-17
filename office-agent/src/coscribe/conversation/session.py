@@ -1164,11 +1164,11 @@ class ChatSessionLG:
             + user_input
         )
 
-        content: str | list[dict[str, Any]] = model_input
+        content: str | list[str | dict[Any, Any]] = model_input
         if images:
             content = [{"type": "text", "text": model_input}]
             content.extend({"type": "image_url", "image_url": {"url": url}} for url in images)
-        turn_input = {"messages": [{"role": "user", "content": content}]}
+        turn_input = {"messages": [HumanMessage(content, additional_kwargs={"notice": notice})]}
 
         # Reset for this turn -- see _stream_turn's docstring. A stale
         # entry from a previous turn popping for the wrong call is the only

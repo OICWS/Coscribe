@@ -76,6 +76,9 @@ an `Origin` (the CLI, the desktop shell, scripts) passes, unless the browser say
 before it is accepted. Not covered: another page served from a loopback port on the same machine,
 and any local process, which can send whatever headers it likes (no sandbox, decision 0002).
 
+Text the model reads (files, pages, messages from other conversations) is covered in
+[`prompt-injection.md`](prompt-injection.md).
+
 ## 5. No sandbox (decision 0002)
 
 - Scripts, Node scripts and Codex commands run as the user. The folder guard
