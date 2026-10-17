@@ -35,6 +35,7 @@ from .compiler import (
     TITLE_ID,
     CompileReport,
     PageReport,
+    add_page,
     attach_relationships,
     convert_element,
     make_title_placeholder,
@@ -61,6 +62,8 @@ from .text_box import EMU_PER_PX, TextBox, text_box_xml
 from .text_layout import text_height
 
 _SCALE = EMU_PER_PX / SVG_EMU_PER_PX
+# The page canvas of the same slide size, for the SVG pages of a deck that has sections too.
+PAGE_CANVAS = (round(CANVAS[0] * _SCALE), round(CANVAS[1] * _SCALE))
 # Text that needs this little more height than its box still fits: rounding, not overflow.
 _TOLERANCE_PX = 2.0
 _MAX_ELEMENTS = 200
@@ -82,12 +85,18 @@ def compile_sections(
     sections_dir: Path | None = None,
 ) -> CompileReport:
     """Write `out` from `(name, section_text)` pairs, one slide each, in order. A picture's
-    path is resolved against `sections_dir`, the folder the sections are in. The deck is written
-    even when sections have errors, so a preview can show what the repair has to fix."""
+    path is resolved against `sections_dir`, the folder the sections are in. A name ending in
+    .svg is an SVG page of the same deck (decision 0016: a slide becomes a section when it is
+    first edited), compiled as `compile_pages` does. The deck is written even when sections
+    have errors, so a preview can show what the repair has to fix."""
     prs = Presentation()
     prs.slide_width, prs.slide_height = (Emu(v * EMU_PER_PX) for v in CANVAS)
+    folder = sections_dir or resource_root
     reports = []
     for name, text in sections:
+        if name.lower().endswith(".svg"):
+            reports.append(add_page(prs, name, text, PAGE_CANVAS, resource_root, folder)[0])
+            continue
         report = PageReport(name)
         reports.append(report)
         slide = prs.slides.add_slide(layout(prs, None))
@@ -98,15 +107,20 @@ def compile_sections(
         except SectionError as e:
             report.errors.append(str(e))
             continue
-        _compile(slide, section, report, resource_root, sections_dir or resource_root)
+        _compile(slide, section, report, resource_root, folder)
     out.parent.mkdir(parents=True, exist_ok=True)
     prs.save(str(out))
     return CompileReport(out, reports)
 
 
 def check_sections(report: CompileReport, sources: Sequence[str] | None = None) -> None:
-    """The SVG pages' checks over a compiled deck of sections, reported in the sections' px."""
-    check_deck(report, sources, emu_per_px=EMU_PER_PX)
+    """The SVG pages' checks over a compiled deck of sections, reported in each slide's own
+    px: the canvas px for a section, the page px for an SVG page among them."""
+    units = [
+        SVG_EMU_PER_PX if page.name.lower().endswith(".svg") else EMU_PER_PX
+        for page in report.pages
+    ]
+    check_deck(report, sources, emu_per_px=units)
 
 
 def _compile(

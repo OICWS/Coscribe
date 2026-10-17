@@ -150,8 +150,9 @@ Last reviewed: 2026-10-15.
    positioned HTML sections. Step 1 (#392, done): the section language and its HTML → PPTX
    compiler (text, shapes, pictures, drawings, tables, charts, icons, transitions, build-ins), and
    a measurement against the SVG pages. Result, decision 0016: new slides stay SVG pages; a slide
-   becomes a section when the user first edits it. Next: the SVG page → section converter
-   (content unchanged) and decks that mix the two, then the read-only Slides panel. The
+   becomes a section when the user first edits it. Step 2 (#414, done): the SVG page → section
+   converter (content unchanged) and decks that mix the two. Next: the Slides panel, as the
+   maintainer's mockups of 2026-10-17 draw it. The
    docx-preview actions are paused. A name for the user's own review actions in Settings is open;
    until then they carry the computer's user name.
 

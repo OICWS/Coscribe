@@ -17,7 +17,14 @@ import pytest
 from lxml import etree
 from PIL import Image
 
-from coscribe.tools.office.pptx.engine import compile_pages, compile_sections, convert_page
+from coscribe.tools.office.pptx.engine import (
+    build_deck,
+    compile_pages,
+    compile_sections,
+    convert_page,
+    convert_slide,
+)
+from coscribe.tools.office.pptx.engine.build import built_pages
 from coscribe.tools.office.pptx.engine.section_format import SectionError, parse_section
 
 from .test_deck_engine import CARDS, COVER
@@ -162,3 +169,36 @@ def test_a_rotated_text_stays_a_drawing_and_is_reported(tmp_path: Path) -> None:
 def test_a_slide_on_a_template_is_not_converted() -> None:
     with pytest.raises(SectionError, match="template"):
         convert_page(f'<svg {_SVG} data-template-slide="2"><text x="1" y="1">a</text></svg>')
+
+
+def test_a_deck_converted_one_slide_at_a_time_stays_the_same(tmp_path: Path) -> None:
+    pages = tmp_path / "pages"
+    pages.mkdir()
+    Image.new("RGB", (960, 440), (30, 120, 200)).save(pages / "photo.png")
+    for i, page in enumerate((COVER, CARDS, OBJECTS), start=1):
+        (pages / f"{i:02d}.svg").write_text(page, encoding="utf-8")
+    deck = tmp_path / "deck.pptx"
+    assert build_deck(pages, deck, resource_root=tmp_path).ok
+    texts, shapes = _texts(deck), _shapes(deck)
+    assert built_pages(deck) is not None
+
+    section, kept = convert_slide(pages / "02.svg")
+    assert section.name == "02.html" and kept == []
+    assert not (pages / "02.svg").exists()
+    report = build_deck(pages, deck, resource_root=tmp_path)
+    assert report.ok, [e for p in report.pages for e in p.errors]
+    assert [p.name for p in report.pages] == ["01.svg", "02.html", "03.svg"]
+    assert report.changed == ["02.html"]
+    assert _texts(deck) == texts and _shapes(deck) == shapes
+    # The preview draws SVG pages; a deck with a section is drawn from the .pptx instead.
+    assert built_pages(deck) is None
+
+
+def test_a_slide_is_one_file_in_a_mixed_folder(tmp_path: Path) -> None:
+    (tmp_path / "01.svg").write_text(COVER, encoding="utf-8")
+    (tmp_path / "01.html").write_text(convert_page(COVER)[0], encoding="utf-8")
+    with pytest.raises(ValueError, match="a slide is one file"):
+        build_deck(tmp_path, tmp_path / "deck.pptx")
+    with pytest.raises(ValueError, match="exists already"):
+        convert_slide(tmp_path / "01.svg")
+    assert (tmp_path / "01.svg").exists()
