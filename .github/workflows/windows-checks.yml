@@ -11,6 +11,9 @@ name: Windows checks
     paths:
       - ".github/workflows/windows-checks.yml"
 
+permissions:
+  contents: read
+
 concurrency:
   group: windows-checks-${{ github.ref }}
   cancel-in-progress: true
