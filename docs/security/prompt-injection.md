@@ -53,19 +53,17 @@ fails without the filter.
 - **The auto reviewer being persuaded.** It sees the action and the user's requests, but an
   injected string inside the action's arguments (a file name, a script body) is also read by it.
   Not measured; the limit is the reviewer's judgment.
-- **Policy files inside a folder the file tools can write.** With the default layout the
-  workspace, the state folder and the settings files are siblings, so the file tools cannot reach
-  the exec policy, hooks or connector config. A user who points `exec_policy_path` or
-  `hooks_config_path` into the workspace or a trusted folder lets `write_file` change them, and
-  Accept Edits does that without asking. Reported to the maintainer; a protected-paths list in
-  `tools/_workspace.py` would close it.
-- **A script run as the user** can do anything the user can (decision 0002). Approval is the only
-  gate.
+- **A script run as the user** can do anything the user can, including rewriting a policy file the
+  file tools may not touch (decision 0002). Approval is the only gate for it.
+- **Reading a settings file.** The file tools refuse to write coscribe's own settings, policies and
+  state (`Settings.protected_paths()`), but a file inside the workspace can still be read.
 - **A user who approves what the card shows.** The card is honest about the call, not about whether
   the document the call came from was hostile.
 
 ## Tests
 
+`tests/test_protected_paths.py`: the file tools cannot write a policy, hook, connector, memory or
+state file, a `.env`, or a symlink to one, even inside the workspace.
 `tests/web/test_prompt_injection.py`: a file that claims approval does not stop the asking; a model
 reply that looks like a mode command is text; a message from another conversation cannot switch the
 mode or skip approval; Plan mode stays read-only whatever a file says; the auto reviewer does not

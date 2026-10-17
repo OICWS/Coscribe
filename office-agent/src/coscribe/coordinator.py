@@ -741,7 +741,7 @@ def build_coordinator_agent(
         return variables
 
     tools = (
-        build_file_tools(root, extra_readable=file_tool_readable, extra_writable=file_tool_writable)
+        build_file_tools(root, file_tool_readable, file_tool_writable, settings.protected_paths())
         + build_document_tools(
             root,
             state_dir=settings.state_dir,
