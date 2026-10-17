@@ -63,16 +63,18 @@ allowed host that echoes a value back, and encodings the redaction does not know
 
 | Listener | Binds | Opened by | Check |
 |---|---|---|---|
-| The web server and the chat and browser sockets | `127.0.0.1`, port 8000 by default (the desktop shell picks a free port, `office-agent-desktop/src/main/paths.ts`) | `web/app.py` | `tests/test_web_routes.py` pins the routes; **no `Origin` or `Host` check and no token** (open question below) |
+| The web server and the chat and browser sockets | `127.0.0.1`, port 8000 by default (the desktop shell picks a free port, `office-agent-desktop/src/main/paths.ts`) | `web/app.py` | `tests/test_web_routes.py` pins the routes; `Host` and `Origin` must name this machine (`web/local_guard.py`, `tests/web/test_local_guard.py`), no token |
 | The connector sign-in callback | `localhost`, one fixed port, only during a sign-in | `runtime_lg/mcp_oauth.py` | the callback tests in `tests/web/test_connectors.py` |
 | The in-app browser's debugging port | loopback, a port Chromium picks (`--remote-debugging-port=0`) | `web/browser_panel.py` | `tests/test_browser_panel.py` |
 | The desktop shell's background-event stream | the same server, `/internal/` | `web/routes/internal.py` | no auth beyond being reachable, as the file says |
 
-Open question for the reviewer: every endpoint, including the chat WebSocket that also answers
-approval prompts, trusts "reachable on 127.0.0.1". A WebSocket accept (`web/routes/ws.py`) and the
-HTTP routes do not look at `Origin` or `Host`, so a page open in the user's browser or a
-rebinding hostname reaches them as a local client would. This is reported to the maintainer
-privately; do not file it as a public issue.
+Every request and WebSocket handshake passes `LocalOnlyGuard` (`web/local_guard.py`) first. The
+`Host` must be `localhost`, `127.0.0.1` or `::1` (or a name in `COSCRIBE_ALLOWED_HOSTS`, which
+`coscribe-web` fills from a non-loopback `--host`), which stops a rebound hostname. A browser-sent
+`Origin` must name one of those hosts on any port, which stops a cross-site page; a request without
+an `Origin` (the CLI, the desktop shell, scripts) passes. A refused handshake is closed with 1008
+before it is accepted. Not covered: another page served from a loopback port on the same machine,
+and any local process, which can send whatever headers it likes (no sandbox, decision 0002).
 
 ## 5. No sandbox (decision 0002)
 

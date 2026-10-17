@@ -83,7 +83,7 @@ async def test_setup_page_is_served_at_root(
     app = create_setup_app(configured)  # type: ignore[arg-type]
 
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+    async with httpx.AsyncClient(transport=transport, base_url="http://127.0.0.1:8000") as client:
         resp = await client.get("/")
         assert resp.status_code == 200
         assert "coscribe-setup-marker" in resp.text
@@ -108,7 +108,7 @@ async def test_setup_post_rejects_bad_input_without_resolving(
     app = create_setup_app(configured)  # type: ignore[arg-type]
 
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+    async with httpx.AsyncClient(transport=transport, base_url="http://127.0.0.1:8000") as client:
         resp = await client.post("/api/setup", json=payload)
         result = resp.json()
         assert result["success"] is False
@@ -124,7 +124,7 @@ async def test_setup_post_writes_env_and_resolves_configured(
     app = create_setup_app(configured)  # type: ignore[arg-type]
 
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+    async with httpx.AsyncClient(transport=transport, base_url="http://127.0.0.1:8000") as client:
         resp = await client.post(
             "/api/setup",
             json={
@@ -172,7 +172,7 @@ async def test_setup_post_rejects_a_second_submission_once_configured(
     }
 
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+    async with httpx.AsyncClient(transport=transport, base_url="http://127.0.0.1:8000") as client:
         first = await client.post("/api/setup", json=valid_payload)
         assert first.json()["success"] is True
 

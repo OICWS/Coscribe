@@ -7,8 +7,8 @@ module per area under `routes/` (`ws.py` the chat and browser sockets; `threads.
 `skills.py`, `scheduled.py`, `internal.py`; `settings/` and `connectors/` one module per
 resource), request bodies (`schemas.py`), the connector catalog and the live connectors
 (`connector_catalog.py`, `connector_manager.py`), the provider catalog, the loop that fires due
-wakes and scheduled tasks (`scheduler.py`), background events for the tray (`background_events.py`)
-and the browser panel (`browser_panel.py`, `browser_detect.py`). Does not own a conversation's turns
+wakes and scheduled tasks (`scheduler.py`), background events for the tray (`background_events.py`),
+the browser panel (`browser_panel.py`, `browser_detect.py`) and the `Host`/`Origin` guard on every request and socket (`local_guard.py`). Does not own a conversation's turns
 or approvals (`conversation/`), the agent (`runtime_lg/`) or the UI (`frontend/`, built into `static/`).
 
 ## Public interface
@@ -29,6 +29,9 @@ None re-exported: `__all__` is empty. Entry points: `create_app_lg` and `main` i
   file: look at the open pull requests before editing it.
 - A new WebSocket event is added to `conversation/wire.py` first; the tests check every payload
   against it. A route's request and response shapes are pinned by `tests/test_openapi_snapshot.py`.
+- Every request and WebSocket passes `LocalOnlyGuard` (`local_guard.py`): `Host` and a browser `Origin` must be
+  loopback or in `COSCRIBE_ALLOWED_HOSTS`. A new app (like the setup app) adds it; tests get `testserver` from
+  `tests/conftest.py`.
 - Hosted connectors sign in once in the user's own browser; the catalog lists no shared client
   secret (`docs/decisions/0004-connectors-sign-in-once-in-the-browser.md`).
 - A new route test goes into the file of its domain under `tests/web/`, shared fakes into
@@ -37,7 +40,7 @@ None re-exported: `__all__` is empty. Entry points: `create_app_lg` and `main` i
 ## Tests
 `tests/web/test_*.py` by domain (chat, threads, connectors, settings, skills, scheduled,
 subagents, internal), `tests/test_web_routes.py`, `tests/test_openapi_snapshot.py`,
-`tests/test_setup_app.py`, `tests/test_browser_panel.py`, `tests/test_browser_detect.py`;
+`tests/web/test_local_guard.py`, `tests/test_setup_app.py`, `tests/test_browser_panel.py`, `tests/test_browser_detect.py`;
 `frontend/tests/e2e/` runs the UI against a live server.
 
 ## Verify by hand
