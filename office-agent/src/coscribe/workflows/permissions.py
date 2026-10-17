@@ -38,7 +38,7 @@ _NOTABLE_RISKS = ("EXEC", "EXTERNAL")
 
 
 def site_of(url: str) -> str | None:
-    """"https://www.Example.com/a" -> "example.com", as the desktop app
+    """ "https://www.Example.com/a" -> "example.com", as the desktop app
     names a site: a host, without "www.", and a bare domain covers its
     subdomains."""
     text = url.strip().lower()
