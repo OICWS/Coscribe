@@ -23,6 +23,8 @@ from langchain_core.messages import (
     ToolMessage,
 )
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
+from pptx import Presentation
+from pptx.util import Inches
 
 from coscribe.config import Settings
 from coscribe.conversation import session as conversation_session
@@ -31,6 +33,8 @@ from coscribe.runtime_lg import mcp as lg_mcp
 from coscribe.tools.exec import scripts
 from coscribe.web import app as web_app
 from coscribe.web.app import create_app_lg
+
+from ..libreoffice_probe import libreoffice_works
 
 
 class FakeToolCallingChatModel(BaseChatModel):
@@ -480,3 +484,19 @@ def _start_mode(ws: Any, mode: str) -> dict[str, Any]:
     ws.receive_json()  # history
     ws.send_json({"type": "user_message", "text": mode})
     return ws.receive_json()
+
+
+def _libreoffice_actually_works() -> bool:
+    return libreoffice_works()
+
+
+def _write_test_deck(workspace: Path, name: str = "deck.pptx") -> None:
+    """A one-slide deck with a single plain (unfilled) textbox -- enough
+    for the approval-preview tests to have something real to
+    diff a fill-color edit against."""
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    box = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(2), Inches(1))
+    box.text_frame.text = "hello"
+    (workspace).mkdir(parents=True, exist_ok=True)
+    prs.save(str(workspace / name))
