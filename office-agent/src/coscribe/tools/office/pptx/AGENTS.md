@@ -28,7 +28,8 @@ a deck.
 - Every write is validated against the OOXML schemas before the file is touched.
 
 ## Tests
-`tests/test_presentations_tool.py` (6.8k lines, to be split by concern), `tests/test_deck_engine*.py`,
+`tests/tools/office/pptx/` (the tool tests, one file per concern: layouts, charts, animation,
+templates, ...; shared builders in `helpers.py`), `tests/test_deck_engine*.py`,
 `tests/test_pptx_*.py`, `tests/test_office_golden.py` (XML goldens), `tests/test_evals_pptx.py`.
 
 ## Verify by hand
