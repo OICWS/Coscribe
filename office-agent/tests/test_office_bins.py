@@ -149,7 +149,6 @@ def test_run_killable_timeout_kills_what_the_launcher_started(tmp_path: Path) ->
     import subprocess
     import time
 
-
     marker = tmp_path / "still-running"
     launcher = f"(sleep 2; touch {marker}) & wait"
     with pytest.raises(subprocess.TimeoutExpired):
@@ -162,7 +161,18 @@ def test_run_killable_timeout_kills_what_the_launcher_started(tmp_path: Path) ->
 def test_run_killable_reports_a_failed_run() -> None:
     import subprocess
 
-
     with pytest.raises(subprocess.CalledProcessError):
         run_killable([sys.executable, "-c", "raise SystemExit(3)"], 10)
     assert run_killable([sys.executable, "-c", "print('ok')"], 10).stdout.strip() == b"ok"
+
+
+def test_no_test_runs_soffice_on_the_shared_default_profile() -> None:
+    """Parallel workers sharing one soffice profile hand each other their jobs and some convert
+    nothing (#399): conversions go through `tests.libreoffice_probe.convert_with_libreoffice`."""
+    tests = Path(__file__).parent
+    offenders = [
+        path.relative_to(tests).as_posix()
+        for path in tests.rglob("*.py")
+        if path.name != "test_office_bins.py" and '"soffice",' in path.read_text(encoding="utf-8")
+    ]
+    assert offenders == []

@@ -6,6 +6,7 @@ from coscribe.tools.office.pptx.qa import (
     check_missing_visual_elements,
     check_text_overlaps,
 )
+from tests.libreoffice_probe import convert_with_libreoffice
 
 from .helpers import (
     _libreoffice_actually_works,
@@ -628,7 +629,6 @@ def test_layout_svg_path_and_gradient_survive_libreoffice_conversion(tmp_path: P
     """Real, non-mocked round trip -- catches OOXML corruption from the
     hand-appended <a:cubicBezTo>/<a:quadBezTo>/<a:gradFill> elements that a
     pure structural check could miss."""
-    import subprocess
 
     tools = _tools_by_name(tmp_path)
     svg_markup = (
@@ -645,20 +645,8 @@ def test_layout_svg_path_and_gradient_survive_libreoffice_conversion(tmp_path: P
     )
     tools["write_pptx"](path="deck.pptx", content=f"layout: svg\n{svg_markup}\n")
 
-    result = subprocess.run(
-        [
-            "soffice",
-            "--headless",
-            "--convert-to",
-            "pdf",
-            "--outdir",
-            str(tmp_path),
-            str(tmp_path / "deck.pptx"),
-        ],
-        capture_output=True,
-        timeout=30,
-    )
-    assert result.returncode == 0
+    pdf = convert_with_libreoffice(tmp_path / "deck.pptx", tmp_path)
+    assert pdf.stat().st_size > 0
 
 
 def test_layout_svg_rejects_malformed_xml(tmp_path: Path) -> None:

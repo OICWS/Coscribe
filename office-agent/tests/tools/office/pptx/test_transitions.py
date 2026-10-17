@@ -2,6 +2,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.libreoffice_probe import convert_with_libreoffice
+
 from .helpers import (
     _P14_NS,
     _P_NS,
@@ -232,27 +234,12 @@ def test_set_pptx_transition_is_medium_risk_and_requires_approval(tmp_path: Path
     reason="LibreOffice not installed or not functional in this environment",
 )
 def test_set_pptx_transition_survives_libreoffice_conversion(tmp_path: Path) -> None:
-    import subprocess
 
     tools = _tools_by_name(tmp_path)
     tools["write_pptx"](path="deck.pptx", content="# Title\n- body")
     tools["set_pptx_transition"](path="deck.pptx", slide=1, transition="fade", duration=0.8)
 
-    result = subprocess.run(
-        [
-            "soffice",
-            "--headless",
-            "--convert-to",
-            "pdf",
-            "--outdir",
-            str(tmp_path),
-            str(tmp_path / "deck.pptx"),
-        ],
-        capture_output=True,
-        timeout=30,
-        check=True,
-    )
-    assert result.returncode == 0
+    convert_with_libreoffice(tmp_path / "deck.pptx", tmp_path)
     assert (tmp_path / "deck.pdf").is_file()
 
 
@@ -273,7 +260,6 @@ def test_set_pptx_transition_exotic_effects_survive_libreoffice_conversion(
     check available: it proves the file isn't corrupted the way a
     hand-XML mistake across a 48-entry retyped registry plausibly could
     produce for at least one entry."""
-    import subprocess
     import warnings
 
     from pptx import Presentation
@@ -293,19 +279,5 @@ def test_set_pptx_transition_exotic_effects_survive_libreoffice_conversion(
         prs = Presentation(tmp_path / "deck.pptx")
         assert len(prs.slides) == 5
 
-    result = subprocess.run(
-        [
-            "soffice",
-            "--headless",
-            "--convert-to",
-            "pdf",
-            "--outdir",
-            str(tmp_path),
-            str(tmp_path / "deck.pptx"),
-        ],
-        capture_output=True,
-        timeout=30,
-        check=True,
-    )
-    assert result.returncode == 0
+    convert_with_libreoffice(tmp_path / "deck.pptx", tmp_path)
     assert (tmp_path / "deck.pdf").is_file()
