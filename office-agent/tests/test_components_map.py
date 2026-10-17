@@ -68,3 +68,26 @@ def test_every_top_level_package_and_module_is_a_component() -> None:
 
 def test_generated_files_are_not_stale(capsys: pytest.CaptureFixture[str]) -> None:
     assert gen.main(["--check"]) == 0, capsys.readouterr().out
+
+
+def test_a_package_with_loose_modules_protects_each_of_them() -> None:
+    """`tools` lists its protected modules by hand: a new loose module must not escape the
+    contract, and a sub-component or a container of them is entered through its own package."""
+    names = {str(c["name"]) for c in COMPONENTS}
+    for item in COMPONENTS:
+        listed = item.get("protected_modules")
+        if not listed:
+            continue
+        prefix = str(item["path"]).removeprefix("office-agent/src/").replace("/", ".")
+        children = {
+            entry.stem
+            for entry in (ROOT / item["path"]).iterdir()
+            if entry.name != "__init__.py"
+            and (entry.suffix == ".py" or (entry / "__init__.py").exists())
+        }
+        owned = {
+            child
+            for child in children
+            if any(name.startswith(f"{item['name']}.{child}") for name in names)
+        }
+        assert set(listed) == {f"{prefix}.{child}" for child in children - owned}, item["name"]
