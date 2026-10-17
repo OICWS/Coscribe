@@ -1893,6 +1893,13 @@ thread, same as `coscribe --thread <id>`. The mode pill (bottom-left of
 the message box) covers Manual/Accept Edits/Plan/Auto -- it just sends the
 same `/accept-edits`/`/plan`/`/auto` text the CLI understands, no separate
 protocol.
+
+The server answers only requests whose `Host` is `localhost`, `127.0.0.1` or `::1` and, when a
+browser sends an `Origin`, only that same set (a page on another site, or a rebound hostname,
+is refused with 403 and a WebSocket is closed). To serve it under another name, for example with
+`--host 0.0.0.0` or behind a reverse proxy, list the names in `COSCRIBE_ALLOWED_HOSTS`
+(comma-separated, host names without ports): `COSCRIBE_ALLOWED_HOSTS=coscribe.lan coscribe-web --host 0.0.0.0`.
+`--host <name>` for a specific name adds that name by itself.
 The web layer (`src/coscribe/web/app.py` + `conversation/session.py`) runs
 directly on runtime_lg -- `ChatSessionLG` compiles and drives a LangGraph
 agent per thread, it isn't a bridge in front of a separate execution

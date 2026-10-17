@@ -70,9 +70,9 @@ allowed host that echoes a value back, and encodings the redaction does not know
 
 Every request and WebSocket handshake passes `LocalOnlyGuard` (`web/local_guard.py`) first. The
 `Host` must be `localhost`, `127.0.0.1` or `::1` (or a name in `COSCRIBE_ALLOWED_HOSTS`, which
-`coscribe-web` fills from a non-loopback `--host`), which stops a rebound hostname. A browser-sent
+`coscribe-web` fills from a non-loopback `--host`; names only, ports are ignored), which stops a rebound hostname. A browser-sent
 `Origin` must name one of those hosts on any port, which stops a cross-site page; a request without
-an `Origin` (the CLI, the desktop shell, scripts) passes. A refused handshake is closed with 1008
+an `Origin` (the CLI, the desktop shell, scripts) passes, unless the browser says `Sec-Fetch-Site: cross-site`. Odd forms (userinfo, backslashes, a bad port, a second `Host` or `Origin` header) are refused. A refused handshake is closed with 1008
 before it is accepted. Not covered: another page served from a loopback port on the same machine,
 and any local process, which can send whatever headers it likes (no sandbox, decision 0002).
 
