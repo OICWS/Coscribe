@@ -15,8 +15,8 @@ Why: issue #348 item 3. A session should find its slice from a path instead of r
   outside every component.
 
 ## Not verified
-- The measurement of three real changes (docx, web, frontend) is not done yet; see Follow-ups.
+- Fresh sessions making three real changes were not run; `docs/metrics/2026-10-17-slice-budget.md` holds the static slice sizes instead (docx 7 files / 28k tokens, web 8 / 18k, frontend 1 / 12.5k with no card).
 - Token counts are an estimate from file size, not a tokenizer.
 
 ## Follow-ups
-- Measure three sample changes made by fresh sessions and record them in `docs/metrics/` (#348 item 3).
+- Measure three sample changes made by fresh sessions (#348 item 3); the frontend slice has no card yet.
