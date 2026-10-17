@@ -262,9 +262,7 @@
   "coscribe.workflows.engine -> coscribe.tools.exec.scripts": 1,
   "coscribe.workflows.engine -> coscribe.tools.exec.scripts:_run_python_script": 1
  },
- "fan_out": {
-  "coscribe.web.app": 26
- },
+ "fan_out": {},
  "file_lines": {
   "src/coscribe/conversation/session.py": 1279,
   "src/coscribe/coordinator.py": 845,
@@ -383,7 +381,7 @@
   "src/coscribe/tools/office/pptx/xml_animation.py::XmlAnimationMixin.edit_pptx_xml": 108,
   "src/coscribe/tools/office/xlsx/tools.py::build_spreadsheet_tools": 144,
   "src/coscribe/tools/web/http_request.py::build_http_tools": 116,
-  "src/coscribe/web/app.py::create_app_lg": 249,
+  "src/coscribe/web/app.py::create_app_lg": 239,
   "src/coscribe/web/routes/connectors/servers.py::router": 142,
   "src/coscribe/web/routes/files.py::router": 165,
   "src/coscribe/web/routes/settings/providers.py::router": 138,

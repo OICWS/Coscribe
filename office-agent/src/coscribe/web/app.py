@@ -92,15 +92,8 @@ from .connector_manager import ConnectorManager
 from .provider_catalog import (
     BUILTIN_PROVIDERS,
 )
-from .routes.connectors import router as connectors_router
-from .routes.files import router as files_router
-from .routes.internal import router as internal_router
-from .routes.scheduled import router as scheduled_router
-from .routes.settings import router as settings_router
+from .routes import include_routers
 from .routes.shared import _mask, _read_providers_raw
-from .routes.skills import router as skills_router
-from .routes.threads import router as threads_router
-from .routes.ws import router as ws_router
 from .scheduler import Scheduler
 from .setup_app import build_setup_app
 from .state import AppState
@@ -580,17 +573,7 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
         announce_run=scheduler.announce_run,
         track_background=scheduler.track_background,
     )
-    for build_router in (
-        internal_router,
-        threads_router,
-        scheduled_router,
-        settings_router,
-        skills_router,
-        files_router,
-        connectors_router,
-        ws_router,
-    ):
-        app.include_router(build_router(state))
+    include_routers(app, state)
 
     app.mount("/static", _NoCacheStaticFiles(directory=STATIC_DIR), name="static")
 
