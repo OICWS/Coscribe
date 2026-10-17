@@ -35,7 +35,7 @@ env:
   EXCLUDED: approval chat
   SPECS: >-
     attachment code composer-drop-paste connector-setup connectors find labels navigation
-    permissions rail-dialog secrets settings sidebar skill-plugins titlebar
+    panels permissions rail-dialog secrets settings sidebar skill-plugins titlebar
 
 jobs:
   playwright:
