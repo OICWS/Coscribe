@@ -21,7 +21,9 @@ affected, not only Morph. `add_pptx_formula` (`a14`) goes through the same funct
   slide's root. The test fails without the fix.
 - The `transition_and_animation` golden: `xmlns:p14` moves from `<p:transition>` to `<p:sld>`.
 
+## Checked on Windows (the maintainer, PowerPoint, 2026-10-17)
+- Four slides with no transition, Morph, Push and Fade open without a repair prompt, and each
+  transition plays.
+
 ## Not verified
-- The fixed deck opened in PowerPoint on Windows: four slides with no transition, Morph, Push
-  and Fade, sent to the maintainer.
 - A formula (`add_pptx_formula`, `a14`) opened in PowerPoint after the fix.
