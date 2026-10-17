@@ -1,0 +1,93 @@
+# The component map: the one list of what a session can work in. `docs/components.md` and the
+# generated block of `.github/CODEOWNERS` come from it (`python office-agent/scripts/gen_components.py`);
+# `tests/test_components_map.py` fails when they are stale or the map disagrees with the tree.
+#
+# layer: the import layer from the root AGENTS.md; a component imports only from layers below.
+# owner: a GitHub login or team that reviews changes here.
+# card: the component's AGENTS.md; leave it out only for a single module or a component whose
+#       card is not written yet.
+
+[[component]]
+name = "cli"
+path = "office-agent/src/coscribe/cli.py"
+layer = "cli"
+owner = ["@OICWS"]
+
+[[component]]
+name = "web"
+path = "office-agent/src/coscribe/web"
+layer = "web"
+owner = ["@OICWS"]
+card = "office-agent/src/coscribe/web/AGENTS.md"
+
+[[component]]
+name = "conversation"
+path = "office-agent/src/coscribe/conversation"
+layer = "conversation"
+owner = ["@OICWS"]
+card = "office-agent/src/coscribe/conversation/AGENTS.md"
+
+[[component]]
+name = "coordinator"
+path = "office-agent/src/coscribe/coordinator.py"
+layer = "coordinator | runtime_lg"
+owner = ["@OICWS"]
+
+[[component]]
+name = "runtime_lg"
+path = "office-agent/src/coscribe/runtime_lg"
+layer = "coordinator | runtime_lg"
+owner = ["@OICWS"]
+card = "office-agent/src/coscribe/runtime_lg/AGENTS.md"
+
+[[component]]
+name = "workflows"
+path = "office-agent/src/coscribe/workflows"
+layer = "workflows | code_runtime"
+owner = ["@OICWS"]
+card = "office-agent/src/coscribe/workflows/AGENTS.md"
+
+[[component]]
+name = "code_runtime"
+path = "office-agent/src/coscribe/code_runtime"
+layer = "workflows | code_runtime"
+owner = ["@OICWS"]
+card = "office-agent/src/coscribe/code_runtime/AGENTS.md"
+
+[[component]]
+name = "tools"
+path = "office-agent/src/coscribe/tools"
+layer = "tools"
+owner = ["@OICWS"]
+card = "office-agent/src/coscribe/tools/AGENTS.md"
+
+[[component]]
+name = "runtime"
+path = "office-agent/src/coscribe/runtime"
+layer = "runtime | config"
+owner = ["@OICWS"]
+card = "office-agent/src/coscribe/runtime/AGENTS.md"
+
+[[component]]
+name = "config"
+path = "office-agent/src/coscribe/config.py"
+layer = "runtime | config"
+owner = ["@OICWS"]
+
+[[component]]
+name = "needs_permission"
+path = "office-agent/src/coscribe/needs_permission.py"
+layer = "runtime | config"
+owner = ["@OICWS"]
+
+[[component]]
+name = "frontend"
+path = "office-agent/frontend"
+layer = "ui"
+owner = ["@OICWS"]
+
+[[component]]
+name = "desktop"
+path = "office-agent-desktop"
+layer = "ui"
+owner = ["@OICWS"]
