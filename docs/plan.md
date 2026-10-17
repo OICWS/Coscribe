@@ -135,8 +135,10 @@ Last reviewed: 2026-10-15.
    `docs/assessments/2026-10-17-file-viewers.md`): the Word review tools and routes (done, #343),
    the Word panel (read-only, merged #346). Any panel can open in a window of its own (desktop).
    Direction changed 2026-10-17: what coscribe makes becomes an artifact (Slides first, then
-   Docs, Design/Dashboard, Sheets last), edited in the app and exported to the Office format; a
-   Slides design checklist is being written with the maintainer before any editor code. The
+   Docs, Design/Dashboard, Sheets last), edited in the app and exported to the Office format; the
+   Slides design is settled (decision 0015, `docs/assessments/2026-10-17-slides-artifact.md`):
+   positioned HTML sections. Next: step 1, the format, validator and HTML → PPTX compiler with
+   no UI, measured on the deck evaluation against the SVG pages. The
    docx-preview actions are paused. A name for the user's own review actions in Settings is open;
    until then they carry the computer's user name.
 
