@@ -120,7 +120,7 @@ Last reviewed: 2026-10-15.
    switches moved into the title bar (done), several panels open at once, arranged by
    dragging (#334, done), then the viewers as panels (decision 0014,
    `docs/assessments/2026-10-17-file-viewers.md`): the Word review tools and routes (done, #343),
-   the Word panel next, then PowerPoint, Excel. A name for the user's own review actions in
+   the Word panel (read-only preview up for review; actions next), then PowerPoint, Excel. A name for the user's own review actions in
    Settings is open; until then they carry the computer's user name.
 
 1. **Make the repository easy to join** (governance review, 2026-10-08).

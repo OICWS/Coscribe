@@ -39,6 +39,8 @@ interface TaskPanelProps {
   onSaveAsWorkflow?: () => void;
   /** A reply is still being written, so the conversation isn't settled. */
   busy?: boolean;
+  /** Shows a file in the viewer panel; files it can't show open in their own app. */
+  onView?: (path: string) => boolean;
 }
 
 function readCollapsed(): Set<SectionId> {
@@ -57,6 +59,7 @@ export function TaskPanel({
   onOpenTask,
   onSaveAsWorkflow,
   busy = false,
+  onView,
 }: TaskPanelProps) {
   const [activity, setActivity] = useState<ThreadActivity | null>(null);
   const [collapsed, setCollapsed] = useState<Set<SectionId>>(readCollapsed);
@@ -99,9 +102,10 @@ export function TaskPanel({
 
   const openFile = useCallback(
     async (file: ActivityFile, reveal: boolean) => {
+      if (!reveal && onView?.(file.path)) return;
       setFileError(await openThreadFile(threadId, file.path, reveal));
     },
-    [threadId],
+    [threadId, onView],
   );
 
   const dock = useDockPanel();

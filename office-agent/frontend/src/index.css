@@ -488,3 +488,40 @@ body {
 :root[data-theme="dark"] .effort-ultra-text {
   color: #a98ff5;
 }
+
+/* The Word viewer: docx-preview draws the pages; the comment rail is ours. */
+.docx-viewer .docx-wrapper {
+  background: transparent;
+  padding: 0;
+  align-items: flex-start;
+}
+.docx-viewer .docx-wrapper > section.docx {
+  margin-bottom: 16px;
+  box-shadow: var(--panel-shadow);
+}
+.docx-viewer .docx-comment-ref,
+.docx-viewer .docx-comment-popover {
+  display: none;
+}
+.docx-viewer ins {
+  color: #1f6f43;
+  text-decoration: underline;
+}
+.docx-viewer del {
+  color: #b42318;
+  text-decoration: line-through;
+}
+.docx-viewer .docx-flash {
+  animation: docx-flash 1.2s ease-out;
+}
+@keyframes docx-flash {
+  from {
+    background: var(--find-current-bg);
+  }
+}
+::highlight(docx-comments) {
+  background: color-mix(in srgb, #f5c542 30%, transparent);
+}
+::highlight(docx-active) {
+  background: color-mix(in srgb, #f5c542 60%, transparent);
+}

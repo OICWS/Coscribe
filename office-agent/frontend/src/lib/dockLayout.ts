@@ -2,8 +2,8 @@
  * splits, each a row or a column of children with their shares of its
  * length. Pure functions only. */
 
-export type PanelId = "task" | "browser" | "background";
-export const PANEL_IDS: readonly PanelId[] = ["task", "browser", "background"];
+export type PanelId = "task" | "browser" | "background" | "viewer";
+export const PANEL_IDS: readonly PanelId[] = ["task", "browser", "background", "viewer"];
 
 export type Direction = "row" | "col";
 export type Edge = "left" | "right" | "top" | "bottom";
