@@ -38,7 +38,9 @@ Last reviewed: 2026-10-15.
       (issue #89): 18 decks so far, images, charts, icons, shapes and every layout directive added (issue #93: the canonicaliser opens
       the workbook embedded with a chart and blanks its build time); the master, layouts and theme
       are kept once in a shared golden. Next: templates and SmartArt edits, then audio and CJK
-      text; then docx and xlsx the same way.
+      text. Part 3 (issue #402 item 7): docx has 16 goldens (structure edits and comment
+      threads added), xlsx 11 workbooks (`tests/test_xlsx_golden.py`, `tests/xlsx_canonical.py`);
+      more tools (pdf, `recalc_xlsx`) the same way.
    10. Approval decision table (issue #103): part 1, the precedence of the standing approvals,
        plan mode, the exec policy and asking, is in `tests/test_approval_decisions.py`. Next:
        Auto mode's reviewer, the code module's allowances, the question and draft tools.

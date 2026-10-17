@@ -23,6 +23,10 @@ _EMBEDDINGS = "word/embeddings/"
 _W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 _W14 = "http://schemas.microsoft.com/office/word/2010/wordml"
 # paraId is random per paragraph; w:date is the time of the edit or comment.
+_W15 = "http://schemas.microsoft.com/office/word/2012/wordml"
+# A comment thread names its paragraphs with random ids and points a reply at its parent by
+# them. They are renumbered in order of appearance so the link stays visible.
+_THREAD_IDS = (f"{{{_W15}}}paraId", f"{{{_W15}}}paraIdParent")
 _VOLATILE_ATTRIBUTES = {f"{{{_W14}}}paraId", f"{{{_W14}}}textId", f"{{{_W}}}date"}
 
 
@@ -32,6 +36,13 @@ def _blank_volatile_attributes(root: etree._Element) -> None:
             continue
         for key in _VOLATILE_ATTRIBUTES.intersection(node.attrib):
             node.set(key, "<normalised>")
+    numbered: dict[str, str] = {}
+    for node in root.iter():
+        if not isinstance(node.tag, str):
+            continue
+        for key in _THREAD_IDS:
+            if key in node.attrib:
+                node.set(key, numbered.setdefault(node.get(key, ""), f"<id{len(numbered) + 1}>"))
 
 
 def canonical_part(name: str, data: bytes) -> str:

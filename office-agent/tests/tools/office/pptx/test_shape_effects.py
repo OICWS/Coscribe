@@ -2,6 +2,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.libreoffice_probe import convert_with_libreoffice
+
 from .helpers import (
     _libreoffice_actually_works,
     _tools_by_name,
@@ -270,7 +272,6 @@ def test_add_pptx_shape_effect_survives_libreoffice_conversion(tmp_path: Path) -
     """Real, non-mocked round trip -- catches OOXML corruption from the
     hand-built <a:outerShdw>/<a:glow>/<a:softEdge> elements that a pure
     structural check could miss."""
-    import subprocess
 
     tools = _tools_by_name(tmp_path)
     tools["write_pptx"](path="deck.pptx", content="# Title\n- body")
@@ -282,19 +283,6 @@ def test_add_pptx_shape_effect_survives_libreoffice_conversion(tmp_path: Path) -
         path="deck.pptx", slide=1, shape_index=shape_index, effect="glow"
     )
 
-    result = subprocess.run(
-        [
-            "soffice",
-            "--headless",
-            "--convert-to",
-            "pdf",
-            "--outdir",
-            str(tmp_path),
-            str(tmp_path / "deck.pptx"),
-        ],
-        capture_output=True,
-        timeout=30,
-    )
-    assert result.returncode == 0
+    convert_with_libreoffice(tmp_path / "deck.pptx", tmp_path)
     assert (tmp_path / "deck.pdf").is_file()
     assert (tmp_path / "deck.pdf").stat().st_size > 0

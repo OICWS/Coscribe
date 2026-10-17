@@ -3,6 +3,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.libreoffice_probe import convert_with_libreoffice
+
 from .helpers import (
     _A_NS,
     _P14_NS,
@@ -286,7 +288,6 @@ def test_add_pptx_audio_survives_libreoffice_conversion_in_both_orders(
     real PowerPoint/LibreOffice), but a real subprocess conversion
     succeeding, plus a warnings-as-errors python-pptx round-trip, is the
     strongest automated check available."""
-    import subprocess
     import warnings
 
     from pptx import Presentation
@@ -307,19 +308,5 @@ def test_add_pptx_audio_survives_libreoffice_conversion_in_both_orders(
         prs = Presentation(tmp_path / "deck.pptx")
         assert len(prs.slides) == 2
 
-    result = subprocess.run(
-        [
-            "soffice",
-            "--headless",
-            "--convert-to",
-            "pdf",
-            "--outdir",
-            str(tmp_path),
-            str(tmp_path / "deck.pptx"),
-        ],
-        capture_output=True,
-        timeout=30,
-        check=True,
-    )
-    assert result.returncode == 0
+    convert_with_libreoffice(tmp_path / "deck.pptx", tmp_path)
     assert (tmp_path / "deck.pdf").is_file()

@@ -38,3 +38,15 @@ def libreoffice_as_office(source: Path, target: Path, to_format: str, timeout: f
     if produced != target:
         produced.replace(target)
     return "LibreOffice (test stand-in)"
+
+
+def convert_with_libreoffice(source: Path, out_dir: Path, timeout: float = 120.0) -> Path:
+    """`source` as a PDF in `out_dir`, through a LibreOffice profile no other worker holds.
+
+    A test that runs `soffice` itself uses the shared default profile: parallel pytest workers
+    then hand each other their jobs and some convert nothing (#399)."""
+    from evals.libreoffice import convert_to_pdf
+
+    produced = convert_to_pdf(source, out_dir, timeout)
+    assert produced is not None, f"LibreOffice could not convert {source.name}"
+    return produced

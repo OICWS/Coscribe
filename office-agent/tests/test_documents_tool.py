@@ -10,6 +10,7 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate
 from coscribe.runtime import get_tool_metadata
 from coscribe.tools.office.document_tools import DocumentToolkit, build_document_tools
 from coscribe.tools.office.markdown_blocks import parse_inline_runs
+from tests.libreoffice_probe import convert_with_libreoffice
 
 from .libreoffice_probe import libreoffice_works
 
@@ -1214,24 +1215,10 @@ def test_write_docx_sizes_tables_for_the_page_it_sets(tmp_path: Path) -> None:
 @pytest.mark.real_libreoffice
 @pytest.mark.skipif(not _libreoffice_actually_works(), reason="LibreOffice not usable here")
 def test_write_docx_amounts_stay_on_one_line_when_rendered(tmp_path: Path) -> None:
-    import subprocess
 
     tools = _tools_by_name(tmp_path)
     tools["write_docx"](path="r.docx", content=_REGION_TABLE)
-    subprocess.run(
-        [
-            "soffice",
-            "--headless",
-            "--convert-to",
-            "pdf",
-            "--outdir",
-            str(tmp_path),
-            str(tmp_path / "r.docx"),
-        ],
-        check=True,
-        capture_output=True,
-        timeout=120,
-    )
+    convert_with_libreoffice(tmp_path / "r.docx", tmp_path)
     text = tools["read_pdf"](path="r.pdf")
 
     for amount in ("6,985,328.30", "23,457,888.42", "24,350,000.00", "112.09%"):
