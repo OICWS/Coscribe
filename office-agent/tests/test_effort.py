@@ -65,8 +65,8 @@ def test_an_unknown_level_is_refused() -> None:
         ("kimi:kimi-k2", None),
         ("openai:gpt-5.5", ("low", "medium", "high")),
         ("openai:gpt-4o", None),
-        ("gemini:gemini-3.5-flash", ("low", "medium", "high")),
-        ("gemini:gemini-3-pro-preview", ("low", "high")),
+        ("gemini:gemini-3.5-flash", None),
+        ("gemini:gemini-3-pro-preview", None),
         ("gemini:gemini-2.0-flash", None),
     ],
 )
@@ -94,11 +94,14 @@ def test_openai_sends_reasoning_effort() -> None:
     assert model._get_request_payload("hi")["reasoning_effort"] == "high"
 
 
-def test_gemini_sets_its_thinking_level_medium_included() -> None:
-    model, level = with_effort(_model("gemini:gemini-3.5-flash"), "medium")
+def test_gemini_is_left_alone_because_its_library_cannot_send_a_level() -> None:
+    original = _model("gemini:gemini-3.5-flash")
 
-    assert level == "medium"
-    assert model.thinking_level == "medium"
+    model, level = with_effort(original, "medium")
+
+    assert model is original and level is None
+    # The request is built into langchain-google-genai's protobuf, which refused `thinking_level`.
+    model._prepare_params(None)
 
 
 def test_a_model_without_effort_is_returned_unchanged() -> None:

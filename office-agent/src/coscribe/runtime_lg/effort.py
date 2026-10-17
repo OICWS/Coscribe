@@ -1,7 +1,7 @@
 """How hard the model thinks: one scale for every model, mapped to what each one supports.
 
 The user picks one of six levels. Providers offer fewer and name them differently (Anthropic's
-`output_config.effort`, OpenAI's and DeepSeek's `reasoning_effort`, Gemini's `thinking_level`), so a
+`output_config.effort`, OpenAI's and DeepSeek's `reasoning_effort`), so a
 level runs as the nearest one the model supports at or below it: above a model's top it runs as
 the top, in a gap it runs as the level below (cheaper), and below a model's lowest as its lowest.
 A model whose levels are not known gets nothing: an unknown request field can be refused.
@@ -29,9 +29,6 @@ _RANK = {"low": 0, "medium": 1, "high": 2, "extra": 3, "xhigh": 3, "max": 4, "ul
 _DEEPSEEK_LEVELS = ("low", "medium", "high", "xhigh", "max")
 _OPENAI_REASONING = re.compile(r"^(o[1-9]|gpt-5|gpt-6)")
 _OPENAI_LEVELS = ("low", "medium", "high")
-_GEMINI_THINKING = re.compile(r"^gemini-(2\.5|[3-9])")
-_GEMINI_LEVELS = ("low", "medium", "high")
-_GEMINI_EXCEPTIONS = {"gemini-3-pro-preview": ("low", "high")}
 
 
 def effort_levels(model: Any) -> tuple[str, ...] | None:
@@ -51,10 +48,11 @@ def effort_levels(model: Any) -> tuple[str, ...] | None:
             return _OPENAI_LEVELS
         return None
     if kind == "ChatGoogleGenerativeAI":
-        name = name.removeprefix("models/")
-        if name in _GEMINI_EXCEPTIONS:
-            return _GEMINI_EXCEPTIONS[name]
-        return _GEMINI_LEVELS if _GEMINI_THINKING.match(name) else None
+        # langchain-google-genai 3.x builds the request through a protobuf that has no
+        # `thinking_level`: every level fails live with "Unknown field for ThinkingConfig"
+        # (measured 2026-10-17, #315). Gemini thinks at its own default until 4.x, which takes
+        # `thinking_config`.
+        return None
     return None
 
 
@@ -74,12 +72,7 @@ def with_effort(model: Any, level: str) -> tuple[Any, str | None]:
     effective = runs_as(level, effort_levels(model))
     if effective is None:
         return model, None
-    field = (
-        "thinking_level" if type(model).__name__ == "ChatGoogleGenerativeAI" else "reasoning_effort"
-    )
-    # model_copy does not validate: langchain-google-genai types thinking_level as low | high
-    # only, while the API and google-genai (ThinkingLevel.MEDIUM) take medium too.
-    return model.model_copy(update={field: effective}), effective
+    return model.model_copy(update={"reasoning_effort": effective}), effective
 
 
 def _ordered(levels: Any) -> tuple[str, ...]:
