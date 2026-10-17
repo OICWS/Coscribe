@@ -38,6 +38,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 
 from ..needs_permission import NeedsPermission
+from .loop_labels import item_labels as _item_labels
 from .refs import evaluate, render_text, render_value, resolve
 from .spec import (
     ApprovalStep,
@@ -465,59 +466,34 @@ def _supersteps(steps: list[Step]) -> int:
     return total
 
 
-_ITEM_LABEL_CHARS = 60
-_LABEL_KEYS = ("name", "title", "path", "file", "id", "text")
-
-
-def _short(text: str) -> str:
-    text = " ".join(text.split())
-    return text if len(text) <= _ITEM_LABEL_CHARS else text[: _ITEM_LABEL_CHARS - 1] + "…"
-
-
-def _item_labels(items: list[Any]) -> list[str]:
-    """A few words naming each of a loop's items, for picking a pass in the
-    run view -- the items themselves can be large. For records, the first
-    field that tells them apart (search hits all share their `path`)."""
-    records = [item for item in items if isinstance(item, dict)]
-    key = None
-    if records and len(records) == len(items):
-        present = [k for k in _LABEL_KEYS if all(isinstance(r.get(k), str) for r in records)]
-        key = next((k for k in present if len({r[k] for r in records}) == len(records)), None)
-        key = key or next(iter(present), None)
-    labels = []
-    for item in items:
-        if key is not None:
-            labels.append(_short(item[key]))
-        elif isinstance(item, str):
-            labels.append(_short(item))
-        else:
-            labels.append(_short(json.dumps(item, ensure_ascii=False, default=str)))
-    return labels
-
-
 def _loop_progress(loop: dict[str, Any]) -> dict[str, Any]:
     return {"done": loop["index"], "total": len(loop["items"]), "items": loop["labels"]}
 
 
-def build_graph(workflow: Workflow, ctx: StepContext, on_step: OnStep, checkpointer: Any) -> Any:
-    placed = {p.step.id: p for p in walk(workflow.steps)}
+class _GraphBuilder:
+    def __init__(self, workflow: Workflow, ctx: StepContext, on_step: OnStep) -> None:
+        self.workflow = workflow
+        self.ctx = ctx
+        self.on_step = on_step
+        self.placed = {p.step.id: p for p in walk(workflow.steps)}
+        self.graph = StateGraph(_State)
 
-    async def emit(record: StepRecord) -> None:
-        result = on_step(record)
+    async def emit(self, record: StepRecord) -> None:
+        result = self.on_step(record)
         if inspect.isawaitable(result):
             await result
 
-    def iteration(state: _State, step: Step) -> list[int]:
+    def iteration(self, state: _State, step: Step) -> list[int]:
         loops = state.get("loops") or {}
-        return [loops[loop_id]["index"] for loop_id in placed[step.id].loops]
+        return [loops[loop_id]["index"] for loop_id in self.placed[step.id].loops]
 
-    async def fail(step: Step, it: list[int], started: str, exc: Exception) -> StepFailed:
+    async def fail(self, step: Step, it: list[int], started: str, exc: Exception) -> StepFailed:
         if isinstance(exc, StepFailed):
             failure = exc
         else:
             failure = StepFailed(str(exc) or type(exc).__name__)
         failure.step_id = step.id
-        await emit(
+        await self.emit(
             StepRecord(
                 step.id,
                 "failed",
@@ -530,25 +506,25 @@ def build_graph(workflow: Workflow, ctx: StepContext, on_step: OnStep, checkpoin
         )
         return failure
 
-    def make_node(step: Step) -> Callable[[_State], Awaitable[dict[str, Any]]]:
+    def make_node(self, step: Step) -> Callable[[_State], Awaitable[dict[str, Any]]]:
         async def run(state: _State) -> dict[str, Any]:
             values = state["values"]
-            it = iteration(state, step)
+            it = self.iteration(state, step)
             started = _now()
             if isinstance(step, ApprovalStep):
-                return await _approval(step, values, started, it)
-            await emit(StepRecord(step.id, "running", started_at=started, iteration=it))
+                return await self._approval(step, values, started, it)
+            await self.emit(StepRecord(step.id, "running", started_at=started, iteration=it))
             checks = None
             output: Any = None
 
             async def attempt() -> None:
                 nonlocal checks, output
                 if isinstance(step, ToolStep):
-                    output = await _run_tool(step, values, ctx)
+                    output = await _run_tool(step, values, self.ctx)
                 elif isinstance(step, ScriptStep):
-                    output = await _run_script(step, values, ctx)
+                    output = await _run_script(step, values, self.ctx)
                 elif isinstance(step, LLMStep):
-                    output = await _run_llm(step, values, ctx)
+                    output = await _run_llm(step, values, self.ctx)
                 elif isinstance(step, CheckStep):
                     checks = _run_check(step, values)
                 elif isinstance(step, BranchStep):
@@ -562,17 +538,17 @@ def build_graph(workflow: Workflow, ctx: StepContext, on_step: OnStep, checkpoin
                         await attempt()
                         break
                     except NeedsPermission as need:
-                        if not ctx.ask_permission:
+                        if not self.ctx.ask_permission:
                             raise
-                        await _permission(step, need, started, it)
+                        await self._permission(step, need, started, it)
             except GraphBubbleUp:
                 raise
             except Exception as exc:  # noqa: BLE001 -- any step error stops the run, recorded
-                failure = await fail(step, it, started, exc)
+                failure = await self.fail(step, it, started, exc)
                 if failure is exc:
                     raise
                 raise failure from exc
-            await emit(
+            await self.emit(
                 StepRecord(
                     step.id,
                     "done",
@@ -589,13 +565,13 @@ def build_graph(workflow: Workflow, ctx: StepContext, on_step: OnStep, checkpoin
         return run
 
     async def _permission(
-        step: Step, need: NeedsPermission, started: str, it: list[int]
+        self, step: Step, need: NeedsPermission, started: str, it: list[int]
     ) -> None:
         """Stop at a step that needs something the person hasn't allowed,
         and go on once they say yes. The step runs again from its start
         when the run resumes, so the allowance is recorded before that."""
         request = need.to_dict()
-        await emit(
+        await self.emit(
             StepRecord(
                 step.id,
                 "waiting",
@@ -615,22 +591,22 @@ def build_graph(workflow: Workflow, ctx: StepContext, on_step: OnStep, checkpoin
         )
         if not (isinstance(answer, dict) and answer.get("approved") is True):
             raise StepFailed(f"Not allowed: {need.message}", step_id=step.id)
-        await emit(StepRecord(step.id, "running", started_at=started, iteration=it))
+        await self.emit(StepRecord(step.id, "running", started_at=started, iteration=it))
 
     async def _approval(
-        step: ApprovalStep, values: dict[str, Any], started: str, it: list[int]
+        self, step: ApprovalStep, values: dict[str, Any], started: str, it: list[int]
     ) -> dict[str, Any]:
         checks = None
         if step.when is not None:
             held, left, right = evaluate(step.when, values)
             checks = [{"held": held, "left": preview(left), "right": preview(right)}]
             if not held:
-                await emit(
+                await self.emit(
                     StepRecord(step.id, "skipped", started, _now(), checks=checks, iteration=it)
                 )
                 return {"values": {}}
         message = render_text(step.message, values)
-        await emit(
+        await self.emit(
             StepRecord(step.id, "waiting", started, output=message, checks=checks, iteration=it)
         )
         answer = interrupt({"step_id": step.id, "title": step.title, "message": message})
@@ -638,7 +614,7 @@ def build_graph(workflow: Workflow, ctx: StepContext, on_step: OnStep, checkpoin
         note = str(answer.get("note") or "") if isinstance(answer, dict) else ""
         if not approved:
             error = "Not approved" + (f": {note}" if note else "")
-            await emit(
+            await self.emit(
                 StepRecord(
                     step.id,
                     "failed",
@@ -651,7 +627,7 @@ def build_graph(workflow: Workflow, ctx: StepContext, on_step: OnStep, checkpoin
                 )
             )
             raise StepFailed(error, step_id=step.id)
-        await emit(
+        await self.emit(
             StepRecord(
                 step.id,
                 "done",
@@ -664,9 +640,9 @@ def build_graph(workflow: Workflow, ctx: StepContext, on_step: OnStep, checkpoin
         )
         return {"values": {}}
 
-    def loop_start(step: LoopStep) -> Callable[[_State], Awaitable[dict[str, Any]]]:
+    def loop_start(self, step: LoopStep) -> Callable[[_State], Awaitable[dict[str, Any]]]:
         async def run(state: _State) -> dict[str, Any]:
-            it = iteration(state, step)
+            it = self.iteration(state, step)
             started = _now()
             try:
                 items = resolve(step.over, state["values"])
@@ -680,7 +656,7 @@ def build_graph(workflow: Workflow, ctx: StepContext, on_step: OnStep, checkpoin
                         f"{step.max_items}"
                     )
             except Exception as exc:  # noqa: BLE001 -- recorded like any step's failure
-                failure = await fail(step, it, started, exc)
+                failure = await self.fail(step, it, started, exc)
                 if failure is exc:
                     raise
                 raise failure from exc
@@ -691,46 +667,46 @@ def build_graph(workflow: Workflow, ctx: StepContext, on_step: OnStep, checkpoin
                 "results": [],
                 "started_at": started,
             }
-            await emit(
+            await self.emit(
                 StepRecord(step.id, "running", started, output=_loop_progress(loop), iteration=it)
             )
             return {"loops": {step.id: loop}}
 
         return run
 
-    def loop_next(step: LoopStep) -> Callable[[_State], Awaitable[dict[str, Any]]]:
+    def loop_next(self, step: LoopStep) -> Callable[[_State], Awaitable[dict[str, Any]]]:
         async def run(state: _State) -> dict[str, Any]:
             loop = state["loops"][step.id]
             if loop["index"] < len(loop["items"]):
                 return {"values": {step.item: loop["items"][loop["index"]]}}
             output = {**_loop_progress(loop), "collected": preview(loop["results"])}
-            await emit(
+            await self.emit(
                 StepRecord(
                     step.id,
                     "done",
                     loop["started_at"],
                     _now(),
                     output=output,
-                    iteration=iteration(state, step),
+                    iteration=self.iteration(state, step),
                 )
             )
             return {"values": {step.save_as: loop["results"]}} if step.save_as else {"values": {}}
 
         return run
 
-    def loop_collect(step: LoopStep) -> Callable[[_State], Awaitable[dict[str, Any]]]:
+    def loop_collect(self, step: LoopStep) -> Callable[[_State], Awaitable[dict[str, Any]]]:
         async def run(state: _State) -> dict[str, Any]:
             loop = state["loops"][step.id]
-            it = iteration(state, step)
+            it = self.iteration(state, step)
             try:
                 value = resolve(step.collect, state["values"]) if step.collect else None
             except Exception as exc:  # noqa: BLE001 -- recorded like any step's failure
-                failure = await fail(step, it, loop["started_at"], exc)
+                failure = await self.fail(step, it, loop["started_at"], exc)
                 if failure is exc:
                     raise
                 raise failure from exc
             loop = {**loop, "index": loop["index"] + 1, "results": [*loop["results"], value]}
-            await emit(
+            await self.emit(
                 StepRecord(
                     step.id,
                     "running",
@@ -743,15 +719,13 @@ def build_graph(workflow: Workflow, ctx: StepContext, on_step: OnStep, checkpoin
 
         return run
 
-    graph = StateGraph(_State)
-
-    def wire(steps: list[Step], after: str) -> None:
+    def wire(self, steps: list[Step], after: str) -> None:
         for index, step in enumerate(steps):
             following = _node_name(steps[index + 1]) if index + 1 < len(steps) else after
             node = _node_name(step)
             if isinstance(step, BranchStep):
-                graph.add_node(node, cast(Any, make_node(step)))
-                graph.add_conditional_edges(
+                self.graph.add_node(node, cast(Any, self.make_node(step)))
+                self.graph.add_conditional_edges(
                     node,
                     _branch_router(step),
                     {
@@ -759,15 +733,15 @@ def build_graph(workflow: Workflow, ctx: StepContext, on_step: OnStep, checkpoin
                         "otherwise": _node_name(step.otherwise[0]) if step.otherwise else following,
                     },
                 )
-                wire(step.then, following)
-                wire(step.otherwise, following)
+                self.wire(step.then, following)
+                self.wire(step.otherwise, following)
             elif isinstance(step, LoopStep):
                 next_node, collect_node = f"next__{step.id}", f"collect__{step.id}"
-                graph.add_node(node, cast(Any, loop_start(step)))
-                graph.add_node(next_node, cast(Any, loop_next(step)))
-                graph.add_node(collect_node, cast(Any, loop_collect(step)))
-                graph.add_edge(node, next_node)
-                graph.add_conditional_edges(
+                self.graph.add_node(node, cast(Any, self.loop_start(step)))
+                self.graph.add_node(next_node, cast(Any, self.loop_next(step)))
+                self.graph.add_node(collect_node, cast(Any, self.loop_collect(step)))
+                self.graph.add_edge(node, next_node)
+                self.graph.add_conditional_edges(
                     next_node,
                     _loop_router(step),
                     {
@@ -775,15 +749,20 @@ def build_graph(workflow: Workflow, ctx: StepContext, on_step: OnStep, checkpoin
                         "done": following,
                     },
                 )
-                wire(step.steps, collect_node)
-                graph.add_edge(collect_node, next_node)
+                self.wire(step.steps, collect_node)
+                self.graph.add_edge(collect_node, next_node)
             else:
-                graph.add_node(node, cast(Any, make_node(step)))
-                graph.add_edge(node, following)
+                self.graph.add_node(node, cast(Any, self.make_node(step)))
+                self.graph.add_edge(node, following)
 
-    wire(workflow.steps, END)
-    graph.add_edge(START, _node_name(workflow.steps[0]))
-    return graph.compile(checkpointer=checkpointer)
+    def build(self, checkpointer: Any) -> Any:
+        self.wire(self.workflow.steps, END)
+        self.graph.add_edge(START, _node_name(self.workflow.steps[0]))
+        return self.graph.compile(checkpointer=checkpointer)
+
+
+def build_graph(workflow: Workflow, ctx: StepContext, on_step: OnStep, checkpointer: Any) -> Any:
+    return _GraphBuilder(workflow, ctx, on_step).build(checkpointer)
 
 
 def _branch_router(step: BranchStep) -> Callable[[_State], str]:
