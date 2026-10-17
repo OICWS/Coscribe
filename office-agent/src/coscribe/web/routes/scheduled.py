@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from collections.abc import Callable
 from datetime import datetime
 from typing import Annotated, Any, cast
 
@@ -50,16 +51,18 @@ class _NoSocket:
         return None
 
 
-def router(state: AppState) -> APIRouter:
-    router = APIRouter()
+def _waiting_permission(run: Any) -> dict[str, Any] | None:
+    """What the run's waiting step asks to be allowed, if it is asking."""
+    for record in reversed(run.steps):
+        if record.get("status") == "waiting":
+            asked = record.get("permission")
+            return asked if isinstance(asked, dict) else None
+    return None
+
+
+def _workflow_routes(router: APIRouter, state: AppState) -> None:
     settings = state.settings
-    _get_session_async = state.get_session_async
     _session_extra_tools = state.session_extra_tools
-    _delete_run_threads = state.delete_run_threads
-    _execute_and_announce = state.execute_and_announce
-    _track_background = state.track_background
-    _announce_run = state.announce_run
-    _write_workspace_sidecar = state.thread_files.write_workspace_sidecar
 
     @router.post("/api/workflows/validate")
     async def validate_workflow(body: WorkflowCheck) -> JSONResponse:
@@ -112,6 +115,10 @@ def router(state: AppState) -> APIRouter:
                 ],
             }
         return JSONResponse({"permissions": summary, "added": added})
+
+
+def _task_routes(router: APIRouter, state: AppState) -> None:
+    settings = state.settings
 
     # -- /api/scheduled-tasks -- the Settings > Scheduled Tasks panel's
     # create-without-a-conversation entry point; direct ScheduledTriggerStore
@@ -191,6 +198,14 @@ def router(state: AppState) -> APIRouter:
             return JSONResponse({"error": str(exc)}, status_code=400)
         return JSONResponse(trigger.to_dict())
 
+
+def _run_control_routes(router: APIRouter, state: AppState) -> None:
+    settings = state.settings
+    _get_session_async = state.get_session_async
+    _delete_run_threads = state.delete_run_threads
+    _execute_and_announce = state.execute_and_announce
+    _track_background = state.track_background
+
     @router.post("/api/scheduled-tasks/{trigger_id}/run")
     async def run_scheduled_task_now_endpoint(
         trigger_id: str, payload: RunNowRequest | None = None
@@ -209,29 +224,6 @@ def router(state: AppState) -> APIRouter:
         await _delete_run_threads(pruned)
         _track_background(asyncio.create_task(_execute_and_announce(trigger_id, run.run_id)))
         return JSONResponse({"task": trigger.to_dict(), "run": run.to_dict()})
-
-    def _reopen_workflow_run(trigger_id: str, run_id: str) -> tuple[Any, Any] | JSONResponse:
-        store = ScheduledTriggerStore(settings.state_dir)
-        trigger = store.load(trigger_id)
-        if trigger is None or trigger.workflow is None:
-            return JSONResponse({"error": f"No workflow task {trigger_id!r}"}, status_code=404)
-        existing = trigger.find_run(run_id)
-        if existing is None:
-            return JSONResponse({"error": f"No run {run_id!r}"}, status_code=404)
-        try:
-            run = store.reopen_run(trigger_id, run_id)
-        except ValueError as exc:
-            return JSONResponse({"error": str(exc)}, status_code=409)
-        return existing, run
-
-    def _continue_in_background(trigger_id: str, run_id: str, action: Any) -> None:
-        async def go() -> None:
-            run = await continue_workflow_run(
-                settings.state_dir, trigger_id, run_id, _get_session_async, action
-            )
-            await _announce_run(trigger_id, run)
-
-        _track_background(asyncio.create_task(go()))
 
     @router.post("/api/scheduled-tasks/{trigger_id}/runs/{run_id}/stop")
     async def stop_workflow_run(trigger_id: str, run_id: str) -> JSONResponse:
@@ -271,13 +263,44 @@ def router(state: AppState) -> APIRouter:
         )
         return JSONResponse({"thread_id": thread_id})
 
-    def _waiting_permission(run: Any) -> dict[str, Any] | None:
-        """What the run's waiting step asks to be allowed, if it is asking."""
-        for record in reversed(run.steps):
-            if record.get("status") == "waiting":
-                asked = record.get("permission")
-                return asked if isinstance(asked, dict) else None
-        return None
+
+def _run_reopeners(state: AppState) -> tuple[Callable[..., Any], Callable[..., None]]:
+    settings = state.settings
+    _get_session_async = state.get_session_async
+    _track_background = state.track_background
+    _announce_run = state.announce_run
+
+    def _reopen_workflow_run(trigger_id: str, run_id: str) -> tuple[Any, Any] | JSONResponse:
+        store = ScheduledTriggerStore(settings.state_dir)
+        trigger = store.load(trigger_id)
+        if trigger is None or trigger.workflow is None:
+            return JSONResponse({"error": f"No workflow task {trigger_id!r}"}, status_code=404)
+        existing = trigger.find_run(run_id)
+        if existing is None:
+            return JSONResponse({"error": f"No run {run_id!r}"}, status_code=404)
+        try:
+            run = store.reopen_run(trigger_id, run_id)
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=409)
+        return existing, run
+
+    def _continue_in_background(trigger_id: str, run_id: str, action: Any) -> None:
+        async def go() -> None:
+            run = await continue_workflow_run(
+                settings.state_dir, trigger_id, run_id, _get_session_async, action
+            )
+            await _announce_run(trigger_id, run)
+
+        _track_background(asyncio.create_task(go()))
+
+    return _reopen_workflow_run, _continue_in_background
+
+
+def _approval_routes(router: APIRouter, state: AppState) -> None:
+    settings = state.settings
+    _get_session_async = state.get_session_async
+    _write_workspace_sidecar = state.thread_files.write_workspace_sidecar
+    _reopen_workflow_run, _continue_in_background = _run_reopeners(state)
 
     async def _allow_for_run(
         store: ScheduledTriggerStore, trigger_id: str, thread_id: str, permission: dict[str, Any]
@@ -317,6 +340,11 @@ def router(state: AppState) -> APIRouter:
         )
         return JSONResponse({"run": reopened[1].to_dict()})
 
+
+def _retry_routes(router: APIRouter, state: AppState) -> None:
+    settings = state.settings
+    _reopen_workflow_run, _continue_in_background = _run_reopeners(state)
+
     @router.post("/api/scheduled-tasks/{trigger_id}/runs/{run_id}/retry")
     async def retry_workflow_run(
         trigger_id: str, run_id: str, payload: WorkflowRetry
@@ -347,6 +375,11 @@ def router(state: AppState) -> APIRouter:
         else:
             _continue_in_background(trigger_id, run_id, lambda wf: wf.retry_from(step_id))
         return JSONResponse({"run": run.to_dict()})
+
+
+def _note_and_lifecycle_routes(router: APIRouter, state: AppState) -> None:
+    settings = state.settings
+    _delete_run_threads = state.delete_run_threads
 
     @router.get("/api/scheduled-tasks/{trigger_id}/notes")
     async def get_scheduled_task_notes(trigger_id: str) -> JSONResponse:
@@ -396,4 +429,13 @@ def router(state: AppState) -> APIRouter:
         await _delete_run_threads(trigger.runs)
         return JSONResponse({"deleted": trigger_id})
 
+
+def router(state: AppState) -> APIRouter:
+    router = APIRouter()
+    _workflow_routes(router, state)
+    _task_routes(router, state)
+    _run_control_routes(router, state)
+    _approval_routes(router, state)
+    _retry_routes(router, state)
+    _note_and_lifecycle_routes(router, state)
     return router
