@@ -52,7 +52,7 @@ def test_a_listed_card_exists_and_every_package_card_is_listed() -> None:
     listed = {c["card"] for c in COMPONENTS if c.get("card")}
     for card in listed:
         assert (ROOT / card).is_file(), card
-    on_disk = {str(p.relative_to(ROOT)) for p in SRC.glob("*/AGENTS.md")}
+    on_disk = {p.relative_to(ROOT).as_posix() for p in SRC.glob("*/AGENTS.md")}
     assert on_disk <= listed, f"a card with no component: {sorted(on_disk - listed)}"
 
 
@@ -63,7 +63,7 @@ def test_every_top_level_package_and_module_is_a_component() -> None:
             entry.suffix == ".py" or (entry / "__init__.py").exists()
         ):
             continue
-        assert str(entry.relative_to(ROOT)) in paths, f"not in components.toml: {entry.name}"
+        assert entry.relative_to(ROOT).as_posix() in paths, f"not in components.toml: {entry.name}"
 
 
 def test_generated_files_are_not_stale(capsys: pytest.CaptureFixture[str]) -> None:

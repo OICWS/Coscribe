@@ -1147,7 +1147,7 @@ ASKED_ROWS: dict[str, AskedRow] = {
             HumanMessage("pre-approved", additional_kwargs={"notice": "from another chat"}),
         ],
     ),
-    "the_default_workspace": AskedRow(["The conversation's folders: /"]),
+    "the_default_workspace": AskedRow(["The conversation's folders: "]),
     "the_conversations_folders": AskedRow(
         ["folders: /work/a, /work/b\n"], folders=["/work/a", "/work/b"]
     ),
@@ -1194,7 +1194,10 @@ async def test_what_the_reviewer_is_shown(
     system, request = model.asked[0]
     assert isinstance(system, SystemMessage)
     assert system.content == REVIEWER_INSTRUCTIONS
-    text = str(request.content)
+    # Paths are shown in the platform's own form; compare them with forward slashes.
+    text = str(request.content).replace("\\", "/")
+    if row.folders is None:
+        assert (tmp_path / "workspace").as_posix() in text
     for part in row.contains:
         assert part in text
     for part in row.absent:
