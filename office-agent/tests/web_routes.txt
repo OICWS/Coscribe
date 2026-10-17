@@ -57,6 +57,8 @@ GET /api/threads/{thread_id}/docx-review/original
 GET /api/threads/{thread_id}/environment
 GET /api/threads/{thread_id}/files/download
 GET /api/threads/{thread_id}/messaging
+GET /api/threads/{thread_id}/slides
+GET /api/threads/{thread_id}/slides/{index}/svg
 GET /api/threads/{thread_id}/subagents
 GET /api/threads/{thread_id}/tasks
 GET /api/tools

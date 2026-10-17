@@ -11,14 +11,18 @@ from typing import Any
 
 from .engine.instructions import NEW_DECK_INSTRUCTIONS
 from .engine.tool import build_engine_tools
+from .engine.view import NotBuiltFromPages, read_deck, slide_svg
 from .tool_wrappers import build_presentation_tools as build_legacy_presentation_tools
 from .toolkit import PresentationToolkit
 
 __all__ = [
     "NEW_DECK_INSTRUCTIONS",
+    "NotBuiltFromPages",
     "PresentationToolkit",
     "build_legacy_presentation_tools",
     "build_presentation_tools",
+    "read_deck",
+    "slide_svg",
 ]
 
 
