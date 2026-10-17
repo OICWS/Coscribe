@@ -8,7 +8,7 @@ from typing import Any, Optional
 from .toolkit import PresentationToolkit
 
 
-def build_shapes_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
+def _slide_and_shape_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
     def delete_pptx_slide(path: str, slide: int) -> dict[str, object]:
         """Remove one slide from an existing PowerPoint (.pptx) file --
         every other slide, and their order, is untouched.
@@ -20,7 +20,9 @@ def build_shapes_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., 
         return toolkit.delete_pptx_slide(path=path, slide=slide)
 
     def duplicate_pptx_slide(
-        path: str, slide: int, insert_at: Optional[int] = None  # noqa: UP045
+        path: str,
+        slide: int,
+        insert_at: Optional[int] = None,  # noqa: UP045
     ) -> dict[str, object]:
         """Duplicate one slide in an existing PowerPoint (.pptx) file --
         every shape, its exact position/size/formatting, and every image
@@ -271,6 +273,20 @@ def build_shapes_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., 
             display=display,
         )
 
+    return {
+        "delete_pptx_slide": delete_pptx_slide,
+        "duplicate_pptx_slide": duplicate_pptx_slide,
+        "reorder_pptx_slide": reorder_pptx_slide,
+        "list_pptx_shapes": list_pptx_shapes,
+        "delete_pptx_shape": delete_pptx_shape,
+        "edit_pptx_shape": edit_pptx_shape,
+        "list_pptx_shape_types": list_pptx_shape_types,
+        "add_pptx_shape": add_pptx_shape,
+        "add_pptx_formula": add_pptx_formula,
+    }
+
+
+def _table_chart_link_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
     def edit_pptx_table_cell(
         path: str, slide: int, shape_index: str, row: int, col: int, text: str
     ) -> dict[str, object]:
@@ -372,7 +388,11 @@ def build_shapes_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., 
         )
 
     def add_pptx_hyperlink(
-        path: str, slide: int, shape_index: str, url: str, text: Optional[str] = None  # noqa: UP045
+        path: str,
+        slide: int,
+        shape_index: str,
+        url: str,
+        text: Optional[str] = None,  # noqa: UP045
     ) -> dict[str, object]:
         """Add a clickable hyperlink to an external URL, either on a
         specific run of text or on a whole shape.
@@ -417,17 +437,12 @@ def build_shapes_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., 
         )
 
     return {
-        "delete_pptx_slide": delete_pptx_slide,
-        "duplicate_pptx_slide": duplicate_pptx_slide,
-        "reorder_pptx_slide": reorder_pptx_slide,
-        "list_pptx_shapes": list_pptx_shapes,
-        "delete_pptx_shape": delete_pptx_shape,
-        "edit_pptx_shape": edit_pptx_shape,
-        "list_pptx_shape_types": list_pptx_shape_types,
-        "add_pptx_shape": add_pptx_shape,
-        "add_pptx_formula": add_pptx_formula,
         "edit_pptx_table_cell": edit_pptx_table_cell,
         "merge_pptx_table_cells": merge_pptx_table_cells,
         "add_pptx_chart": add_pptx_chart,
         "add_pptx_hyperlink": add_pptx_hyperlink,
     }
+
+
+def build_shapes_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
+    return {**_slide_and_shape_tools(toolkit), **_table_chart_link_tools(toolkit)}
