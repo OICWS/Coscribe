@@ -23,5 +23,5 @@ its card, then the interface the card lists, then only that component's implemen
 | `runtime` | `office-agent/src/coscribe/runtime` | runtime \| config | @OICWS | [AGENTS.md](../office-agent/src/coscribe/runtime/AGENTS.md) |
 | `config` | `office-agent/src/coscribe/config.py` | runtime \| config | @OICWS | none |
 | `needs_permission` | `office-agent/src/coscribe/needs_permission.py` | runtime \| config | @OICWS | none |
-| `frontend` | `office-agent/frontend` | ui | @OICWS | none |
+| `frontend` | `office-agent/frontend` | ui | @OICWS | [AGENTS.md](../office-agent/frontend/AGENTS.md) |
 | `desktop` | `office-agent-desktop` | ui | @OICWS | none |
