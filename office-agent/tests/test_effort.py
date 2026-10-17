@@ -65,8 +65,11 @@ def test_an_unknown_level_is_refused() -> None:
         ("kimi:kimi-k2", None),
         ("openai:gpt-5.5", ("low", "medium", "high")),
         ("openai:gpt-4o", None),
-        ("gemini:gemini-3.5-flash", None),
-        ("gemini:gemini-3-pro-preview", None),
+        # `minimal` is not on our scale; Gemini 3 Pro lists only low and high.
+        ("gemini:gemini-3.5-flash", ("low", "medium", "high")),
+        ("gemini:gemini-3-pro-preview", ("low", "high")),
+        # 2.x takes a token budget, not a level.
+        ("gemini:gemini-2.5-flash", None),
         ("gemini:gemini-2.0-flash", None),
     ],
 )
@@ -94,14 +97,27 @@ def test_openai_sends_reasoning_effort() -> None:
     assert model._get_request_payload("hi")["reasoning_effort"] == "high"
 
 
-def test_gemini_is_left_alone_because_its_library_cannot_send_a_level() -> None:
-    original = _model("gemini:gemini-3.5-flash")
+def test_gemini_sends_the_level_as_thinking_level() -> None:
+    model, level = with_effort(_model("gemini:gemini-3.5-flash"), "extra")
+
+    assert level == "high"
+    assert model._prepare_params(None).thinking_config.thinking_level.value == "HIGH"
+
+
+def test_gemini_pro_runs_a_gap_as_the_level_below() -> None:
+    model, level = with_effort(_model("gemini:gemini-3-pro-preview"), "medium")
+
+    assert level == "low"
+    assert model._prepare_params(None).thinking_config.thinking_level.value == "LOW"
+
+
+def test_gemini_without_levels_is_left_alone() -> None:
+    original = _model("gemini:gemini-2.5-flash")
 
     model, level = with_effort(original, "medium")
 
     assert model is original and level is None
-    # The request is built into langchain-google-genai's protobuf, which refused `thinking_level`.
-    model._prepare_params(None)
+    assert model._prepare_params(None).thinking_config is None
 
 
 def test_a_model_without_effort_is_returned_unchanged() -> None:
