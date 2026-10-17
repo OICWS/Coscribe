@@ -3,6 +3,8 @@ from typing import Any
 
 import pytest
 
+from tests.libreoffice_probe import convert_with_libreoffice
+
 from .helpers import (
     _P_NS,
     _libreoffice_actually_works,
@@ -384,28 +386,13 @@ def test_add_pptx_animation_is_medium_risk_and_requires_approval(tmp_path: Path)
     reason="LibreOffice not installed or not functional in this environment",
 )
 def test_add_pptx_animation_survives_libreoffice_conversion(tmp_path: Path) -> None:
-    import subprocess
 
     tools = _tools_by_name(tmp_path)
     tools["write_pptx"](path="deck.pptx", content="# Title\n- body")
     tools["add_pptx_animation"](path="deck.pptx", slide=1, shape_index=0, animation="fade")
     tools["add_pptx_animation"](path="deck.pptx", slide=1, shape_index=1, animation="fly-in")
 
-    result = subprocess.run(
-        [
-            "soffice",
-            "--headless",
-            "--convert-to",
-            "pdf",
-            "--outdir",
-            str(tmp_path),
-            str(tmp_path / "deck.pptx"),
-        ],
-        capture_output=True,
-        timeout=30,
-        check=True,
-    )
-    assert result.returncode == 0
+    convert_with_libreoffice(tmp_path / "deck.pptx", tmp_path)
     assert (tmp_path / "deck.pdf").is_file()
 
 
@@ -594,7 +581,6 @@ def test_add_pptx_animation_all_four_categories_survive_libreoffice_conversion(
     needs a human watching real PowerPoint/LibreOffice), but a real
     subprocess conversion succeeding, plus a warnings-as-errors
     python-pptx round-trip, is the strongest automated check available."""
-    import subprocess
     import warnings
 
     from pptx import Presentation
@@ -636,19 +622,5 @@ def test_add_pptx_animation_all_four_categories_survive_libreoffice_conversion(
         prs = Presentation(tmp_path / "deck.pptx")
         assert len(prs.slides) == 1
 
-    result = subprocess.run(
-        [
-            "soffice",
-            "--headless",
-            "--convert-to",
-            "pdf",
-            "--outdir",
-            str(tmp_path),
-            str(tmp_path / "deck.pptx"),
-        ],
-        capture_output=True,
-        timeout=30,
-        check=True,
-    )
-    assert result.returncode == 0
+    convert_with_libreoffice(tmp_path / "deck.pptx", tmp_path)
     assert (tmp_path / "deck.pdf").is_file()

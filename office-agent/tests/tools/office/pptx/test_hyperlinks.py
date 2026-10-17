@@ -2,6 +2,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.libreoffice_probe import convert_with_libreoffice
+
 from .helpers import (
     _libreoffice_actually_works,
     _tools_by_name,
@@ -232,7 +234,6 @@ def test_add_pptx_hyperlink_slide_jump_survives_libreoffice_conversion(
     python-pptx round-trip, is the strongest automated check available --
     same discipline as every other hand-touched-XML feature in this file,
     even though this one is pure python-pptx public API under the hood."""
-    import subprocess
     import warnings
 
     from pptx import Presentation
@@ -247,19 +248,5 @@ def test_add_pptx_hyperlink_slide_jump_survives_libreoffice_conversion(
         prs = Presentation(tmp_path / "deck.pptx")
         assert len(prs.slides) == 3
 
-    result = subprocess.run(
-        [
-            "soffice",
-            "--headless",
-            "--convert-to",
-            "pdf",
-            "--outdir",
-            str(tmp_path),
-            str(tmp_path / "deck.pptx"),
-        ],
-        capture_output=True,
-        timeout=30,
-        check=True,
-    )
-    assert result.returncode == 0
+    convert_with_libreoffice(tmp_path / "deck.pptx", tmp_path)
     assert (tmp_path / "deck.pdf").is_file()
