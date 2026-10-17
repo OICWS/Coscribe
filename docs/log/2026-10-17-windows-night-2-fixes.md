@@ -18,6 +18,10 @@ restarted.
   write and the conversation came back. The helper waits up to 30 s and the test asserts the run
   ended. Not reproduced on Linux (it passed every time); the cause is inferred from the helper
   returning on timeout without a check.
+- `test_a_background_sub_agent_waits_for_approval_after_the_tab_closes` (first seen on this PR's
+  Windows run): the sub-agent task store replaced its `.tmp` file with a bare `os.replace` while
+  `list_for_thread` had the file open, and Windows answered "Access is denied", failing the run.
+  It now uses `replace_with_retry`, as the task store already did.
 
 ## Not verified
 - All of it on Windows until this PR's Windows run (the workflow file carries a comment change
