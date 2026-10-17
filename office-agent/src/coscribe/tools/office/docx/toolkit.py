@@ -7,6 +7,7 @@ from ..._file_locks import locked_by_path
 from ..._ooxml_validate import assert_wml_valid
 from ..._thumbnail import render_thumbnail
 from ..toolkit import WorkspaceToolkit
+from ._review import edit_review, read_review, write_atomically
 from ._structure import add_blocks, apply_operations, describe, finish_tocs, summary
 from ._style import TITLE_STYLE, apply_house_style, has_cjk
 from ._xml import (
@@ -381,3 +382,26 @@ class DocxToolkit(WorkspaceToolkit):
         result = host.reject_changes(author=author or None)
         result.update(self._save_tracked_edit(file_path, document))
         return result
+
+    @locked_by_path
+    def read_docx_review(self, path: str) -> dict[str, object]:
+        file_path = self._check_readable(path)
+        return {"path": self._scope.relative(file_path), **read_review(file_path.read_bytes())}
+
+    @locked_by_path
+    def edit_docx_review(
+        self, path: str, operations: list[dict[str, Any]], author: str = "Coscribe"
+    ) -> dict[str, object]:
+        file_path = self._check_editable(path)
+        data, done = edit_review(file_path.read_bytes(), operations, author)
+        write_atomically(file_path, data)
+        review = read_review(data)
+        preview_path, preview_skipped_reason = render_thumbnail(file_path, self._state_dir)
+        return {
+            "path": self._scope.relative(file_path),
+            "done": done,
+            "changes_left": len(review["changes"]),
+            "open_comments": sum(1 for c in review["comments"] if not c["done"]),
+            "preview_path": preview_path,
+            "preview_skipped_reason": preview_skipped_reason,
+        }

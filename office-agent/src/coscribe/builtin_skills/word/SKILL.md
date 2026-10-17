@@ -73,6 +73,10 @@ Don't reach for `track_changes=True` when what's actually wanted is a
 comment on unchanged text, or vice versa -- they produce visibly different
 documents and Word review workflows expect the right one.
 
+To review a document that already has changes or comments -- accept or
+reject a change, answer or resolve a comment, comment on some words -- use
+`read_docx_review` for the ids, then `edit_docx_review`, rather than a script.
+
 ## Templates
 
 `template_path` carries over an existing document's styles and page setup
