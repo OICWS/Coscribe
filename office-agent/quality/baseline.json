@@ -307,7 +307,6 @@
   "src/coscribe/tools/office/pptx/wrappers_images.py::build_images_tools": 298,
   "src/coscribe/tools/office/pptx/wrappers_review.py::build_review_tools": 178,
   "src/coscribe/tools/office/pptx/wrappers_templates.py::build_templates_tools": 224,
-  "src/coscribe/tools/office/pptx/wrappers_xml_animation.py::build_xml_animation_tools": 328,
   "src/coscribe/tools/office/pptx/xml_animation.py::XmlAnimationMixin.add_pptx_audio": 103,
   "src/coscribe/tools/office/pptx/xml_animation.py::XmlAnimationMixin.edit_pptx_xml": 108,
   "src/coscribe/tools/office/xlsx/tools.py::build_spreadsheet_tools": 144,

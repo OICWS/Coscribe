@@ -8,7 +8,9 @@ from typing import Any, Optional
 from .toolkit import PresentationToolkit
 
 
-def build_xml_animation_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
+# The tools are grouped into builders under 100 lines; `build_xml_animation_tools` merges them in
+# the original order, which is the tool-list order the schema snapshot pins.
+def _xml_animation_tools_1(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
     def read_pptx_xml(
         path: str, slide: int, shape_index: str, part: str = "auto"
     ) -> dict[str, object]:
@@ -39,6 +41,12 @@ def build_xml_animation_tools(toolkit: PresentationToolkit) -> dict[str, Callabl
         """
         return toolkit.read_pptx_xml(path=path, slide=slide, shape_index=shape_index, part=part)
 
+    return {
+        "read_pptx_xml": read_pptx_xml,
+    }
+
+
+def _xml_animation_tools_2(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
     def edit_pptx_xml(
         path: str,
         slide: int,
@@ -122,6 +130,13 @@ def build_xml_animation_tools(toolkit: PresentationToolkit) -> dict[str, Callabl
         """
         return toolkit.set_pptx_notes(path=path, slide=slide, notes=notes)
 
+    return {
+        "edit_pptx_xml": edit_pptx_xml,
+        "set_pptx_notes": set_pptx_notes,
+    }
+
+
+def _xml_animation_tools_3(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
     def set_pptx_transition(
         path: str, slide: int, transition: str, duration: float = 1.0
     ) -> dict[str, object]:
@@ -162,6 +177,14 @@ def build_xml_animation_tools(toolkit: PresentationToolkit) -> dict[str, Callabl
         file."""
         return toolkit.list_pptx_animation_types()
 
+    return {
+        "set_pptx_transition": set_pptx_transition,
+        "list_pptx_transition_types": list_pptx_transition_types,
+        "list_pptx_animation_types": list_pptx_animation_types,
+    }
+
+
+def _xml_animation_tools_4(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
     def add_pptx_animation(
         path: str,
         slide: int,
@@ -251,16 +274,13 @@ def build_xml_animation_tools(toolkit: PresentationToolkit) -> dict[str, Callabl
                 text frame as its own step, instead of the whole shape
         """
         return toolkit.add_pptx_animation(
-            path=path,
-            slide=slide,
-            shape_index=shape_index,
-            animation=animation,
-            duration=duration,
-            trigger=trigger,
-            delay=delay,
-            by_paragraph=by_paragraph,
+            path, slide, shape_index, animation, duration, trigger, delay, by_paragraph
         )
 
+    return {"add_pptx_animation": add_pptx_animation}
+
+
+def _xml_animation_tools_5(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
     def add_pptx_audio(
         path: str,
         slide: int,
@@ -327,12 +347,15 @@ def build_xml_animation_tools(toolkit: PresentationToolkit) -> dict[str, Callabl
         )
 
     return {
-        "read_pptx_xml": read_pptx_xml,
-        "edit_pptx_xml": edit_pptx_xml,
-        "set_pptx_notes": set_pptx_notes,
-        "set_pptx_transition": set_pptx_transition,
-        "list_pptx_transition_types": list_pptx_transition_types,
-        "list_pptx_animation_types": list_pptx_animation_types,
-        "add_pptx_animation": add_pptx_animation,
         "add_pptx_audio": add_pptx_audio,
+    }
+
+
+def build_xml_animation_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., Any]]:
+    return {
+        **_xml_animation_tools_1(toolkit),
+        **_xml_animation_tools_2(toolkit),
+        **_xml_animation_tools_3(toolkit),
+        **_xml_animation_tools_4(toolkit),
+        **_xml_animation_tools_5(toolkit),
     }
