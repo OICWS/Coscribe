@@ -121,6 +121,7 @@ def test_reviewer_tools_are_exactly_the_read_only_documents_and_file_tools(
         "list_pptx_shapes",
         "list_pptx_transition_types",
         "read_docx",
+        "read_docx_review",
         "read_file",
         "read_pdf",
         "read_pptx",
