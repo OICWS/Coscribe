@@ -72,8 +72,12 @@ Last reviewed: 2026-10-15.
    (#350), `tools.exec` (#351), `tools.web` (#352) and `tools.bookkeeping` (item 1); a generated
    `protected` contract per package and a `layers` contract for the office formats, with 42 ignored
    imports to shrink (item 2); `scripts/slice.py` and the discovery protocol in `AGENTS.md` (item 3,
-   the measured sample changes are still open). Next: long functions, tests by path,
-   frontend guardrails, security follow-through, review and metrics (the issue has the order).
+   the measured sample changes are still open). Also done: long functions and fan-out split
+   (item 4), `web/tests` split by path (item 5), frontend ratchet and knip guardrails (item 6),
+   `docs/security/review-pack.md` (item 7), `scripts/review_pack.py` and
+   `scripts/weekly_metrics.py` (item 8). Open: the fresh-session measurement of three sample
+   changes (item 3), reading the first `audit.yml` run and the CodeQL alerts after 2026-10-19
+   (item 7), and Origin/Host validation on the local server.
 
 0b. **The office route** (decision 0010, `docs/assessments/2026-10-13-office-route.md`):
    new decks compiled from whole-page SVG sources, edits through the page source and upgraded
