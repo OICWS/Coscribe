@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { SlideChangedError, getSlideParts, saveSlideSource, type SavedSlide, type SlidePart, type SlideParts } from "../../lib/slideEditing";
 import type { CommentStart } from "./SlideComments";
-import { HANDLES, labelOf, boxOf, dragBox, elementIndexAt, elementsOf, parseSection, setBox, sourceColours, writeSection, type Box } from "../../lib/slideSource";
+import { HANDLES, accentOf, labelOf, newElement, boxOf, type Insert, dragBox, elementIndexAt, elementsOf, parseSection, setBox, sourceColours, writeSection, type Box } from "../../lib/slideSource";
 import { drawSection, placeNode } from "./sectionDom";
 import { SlideFormatBar } from "./SlideFormatBar";
 import { SlideMenu } from "./SlideMenu";
@@ -34,6 +34,8 @@ export function SlideEditor({
   onSaved,
   onProblem,
   onComment,
+  insert,
+  onInserted,
   onExit,
 }: {
   threadId: string;
@@ -48,6 +50,9 @@ export function SlideEditor({
   onProblem: (message: string | null) => void;
   /** Opens a new comment on an element, at its centre. */
   onComment: (at: CommentStart) => void;
+  /** An element to add from the toolbar; each new object is added once. */
+  insert: { what: Insert } | null;
+  onInserted: () => void;
   onExit: () => void;
 }) {
   const slide = useEditedSlide(threadId, path, index, refreshKey, onSaved, onProblem);
@@ -57,6 +62,8 @@ export function SlideEditor({
   const input = useEditorInput(slide, nodes, zoom, layerRef, onExit, text.start);
   const { boxes, selected, drag, point, startDrag } = input;
 
+  // Keys go to the editor, not to the button that started an insert.
+  const focusLayer = useCallback(() => layerRef.current?.focus(), []);
   const applied = useRef<object | null>(null);
   useEffect(() => {
     if (!slide.doc || !firstPoint || applied.current === firstPoint) return;
@@ -64,6 +71,8 @@ export function SlideEditor({
     startDrag(null, elementIndexAt(elementsOf(slide.doc).map(boxOf), firstPoint.x, firstPoint.y), [0, 0]);
     layerRef.current?.focus();
   }, [slide.doc, firstPoint, startDrag]);
+
+  useInsert(insert, slide, input.select, text.start, onInserted, focusLayer);
 
   const shown = drag ? drag.box : selected !== null ? boxes[selected] : null;
   return (
@@ -92,6 +101,43 @@ export function SlideEditor({
       )}
     </div>
   );
+}
+
+/** Adds the toolbar's element to the slide, selected; a text box with its text ready to type over. */
+function useInsert(
+  insert: { what: Insert } | null,
+  slide: ReturnType<typeof useEditedSlide>,
+  select: (at: number) => void,
+  startText: (at: number) => void,
+  onInserted: () => void,
+  focus: () => void,
+) {
+  const done = useRef<object | null>(null);
+  useEffect(() => {
+    if (!insert || !slide.doc || done.current === insert) return;
+    done.current = insert;
+    onInserted();
+    const doc = slide.doc;
+    const el = newElement(doc, insert.what, accentOf(doc));
+    const at = elementsOf(doc).length;
+    const isText = insert.what.kind === "text";
+    slide.change(
+      () => doc.documentElement.append(el),
+      !isText,
+      (parts) => [...parts, { kind: isText ? "text" : "drawing", box: boxOf(el), picture: null }],
+    );
+    select(at);
+    if (isText) setTypeInto(at);
+    else focus();
+  }, [insert, slide, select, onInserted, focus]);
+
+  // Typing starts once the new text box is drawn, which is after the change above renders.
+  const [typeInto, setTypeInto] = useState<number | null>(null);
+  useEffect(() => {
+    if (typeInto === null) return;
+    setTypeInto(null);
+    startText(typeInto);
+  }, [typeInto, startText]);
 }
 
 /** The format bar over the selection, and its More menu. */

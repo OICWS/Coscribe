@@ -92,3 +92,22 @@ def test_a_save_that_would_lose_work_or_is_not_a_section_is_refused(tmp_path: Pa
     with pytest.raises(DeckChangedError):
         save_slide(deck, 0, source=SECTION, version=version, resource_root=tmp_path)
     assert (tmp_path / "pages" / "01.html").read_text(encoding="utf-8") == SECTION
+
+
+def test_an_inserted_picture_is_kept_in_the_decks_assets(tmp_path: Path) -> None:
+    import io
+
+    from coscribe.tools.office.pptx import add_slide_asset
+
+    deck = _deck(tmp_path, ("01.html", SECTION))
+    png = io.BytesIO()
+    Image.new("RGB", (40, 20)).save(png, "PNG")
+    first = add_slide_asset(deck, "My photo!.png", png.getvalue())
+    second = add_slide_asset(deck, "My photo!.png", png.getvalue())
+    assert first == {"src": "assets/My-photo.png", "width": 40, "height": 20}
+    assert second["src"] == "assets/My-photo-2.png"
+    assert (tmp_path / "pages" / "assets" / "My-photo-2.png").is_file()
+    with pytest.raises(ValueError):
+        add_slide_asset(deck, "x.png", b"<svg/>")
+    with pytest.raises(ValueError):
+        add_slide_asset(deck, "../../x.png", b"\x89PNG" + b"0" * 100)

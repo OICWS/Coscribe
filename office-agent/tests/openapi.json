@@ -1,6 +1,25 @@
 {
   "components": {
     "schemas": {
+      "Body_post_asset_api_threads__thread_id__slides_assets_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "path"
+        ],
+        "title": "Body_post_asset_api_threads__thread_id__slides_assets_post",
+        "type": "object"
+      },
       "Body_upload_file_api_upload_post": {
         "properties": {
           "file": {
@@ -4628,6 +4647,55 @@
           }
         },
         "summary": "Get Slides"
+      }
+    },
+    "/api/threads/{thread_id}/slides/assets": {
+      "post": {
+        "operationId": "post_asset_api_threads__thread_id__slides_assets_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_post_asset_api_threads__thread_id__slides_assets_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Post Asset Api Threads  Thread Id  Slides Assets Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Asset"
       }
     },
     "/api/threads/{thread_id}/slides/comments": {

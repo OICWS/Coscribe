@@ -177,3 +177,56 @@ export function labelOf(el: Element): string {
   const kind = el.getAttribute("id") === "title" ? "Title" : "Text";
   return snippet ? `${kind} "${snippet}"` : kind;
 }
+
+/** What the insert buttons add. */
+export type Insert =
+  | { kind: "text" }
+  | { kind: "table" }
+  | { kind: "shape"; shape: "rect" | "round-rect" | "ellipse" | "triangle" | "arrow" | "line" }
+  | { kind: "picture"; src: string; width: number; height: number };
+
+const SIZES: Record<Insert["kind"], [number, number]> = { text: [600, 80], table: [960, 240], shape: [400, 240], picture: [800, 600] };
+
+/** The section element an insert adds, centred on the slide in `colour` where it has one. */
+export function newElement(doc: Document, insert: Insert, colour: string): Element {
+  let [w, h] = SIZES[insert.kind];
+  if (insert.kind === "picture") {
+    const scale = Math.min(w / insert.width, h / insert.height, 1);
+    [w, h] = [Math.round(insert.width * scale), Math.round(insert.height * scale)];
+  }
+  if (insert.kind === "shape" && insert.shape === "line") h = 1;
+  const box: Box = [Math.round((1920 - w) / 2), Math.round((1080 - h) / 2), w, h];
+  const style = withBox(new Map(), box);
+  const el = doc.createElement({ text: "p", table: "table", shape: "x-shape", picture: "img" }[insert.kind]);
+  if (insert.kind === "text") el.textContent = "Text";
+  if (insert.kind === "table") {
+    style.set("font-size", "28px");
+    style.set("border-color", "#CBD2DC");
+    for (let row = 0; row < 3; row++) {
+      const tr = el.appendChild(doc.createElement("tr"));
+      for (let col = 0; col < 3; col++) {
+        const cell = tr.appendChild(doc.createElement(row ? "td" : "th"));
+        if (row) continue;
+        cell.textContent = "Column";
+        cell.setAttribute("style", `background:${colour};color:#FFFFFF`);
+      }
+    }
+  }
+  if (insert.kind === "shape") {
+    el.setAttribute("data-shape", insert.shape);
+    style.set(insert.shape === "line" ? "border" : "background", insert.shape === "line" ? `4px solid ${colour}` : colour);
+  }
+  if (insert.kind === "picture") {
+    el.setAttribute("src", insert.src);
+    style.set("object-fit", "contain");
+  }
+  el.setAttribute("style", styleText(style));
+  return el;
+}
+
+/** A colour for a new shape: the slide's most used one that is not its background or white. */
+export function accentOf(doc: Document): string {
+  const background = hexColour(styleOf(doc.documentElement, "background") ?? "") ?? "";
+  const colours = sourceColours(writeSection(doc)).filter((c) => c !== background && c !== "#FFFFFF");
+  return colours.find((c) => c !== hexColour(styleOf(doc.documentElement, "color") ?? "")) ?? "#4472C4";
+}

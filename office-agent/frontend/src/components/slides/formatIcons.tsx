@@ -56,3 +56,25 @@ export const CommentPlusIcon = (props: Icon) => (
     <path d="M12 8.5v6M9 11.5h6" />
   </svg>
 );
+
+export const PictureIcon = (props: Icon) => (
+  <svg {...stroke} {...props}>
+    <rect x="4" y="5" width="16" height="14" rx="1.5" />
+    <circle cx="9" cy="10" r="1.5" />
+    <path d="M20 16l-5-5-8 8" />
+  </svg>
+);
+
+export const TableIcon = (props: Icon) => (
+  <svg {...stroke} {...props}>
+    <rect x="4" y="5" width="16" height="14" rx="1" />
+    <path d="M4 10h16M4 14.5h16M9.5 5v14M14.5 5v14" />
+  </svg>
+);
+
+export const ShapesIcon = (props: Icon) => (
+  <svg {...stroke} {...props}>
+    <rect x="4" y="4" width="10" height="10" rx="1" />
+    <circle cx="15" cy="15" r="5" />
+  </svg>
+);

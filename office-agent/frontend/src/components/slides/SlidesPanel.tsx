@@ -19,6 +19,8 @@ import { BookOpenIcon, ChevronDownIcon, ExternalLinkIcon, FolderIcon, MessageCir
 import type { CommentLink } from "../../lib/slideComments";
 import { SlideComments, useSlideComments, type CommentStart } from "./SlideComments";
 import { SlideEditor } from "./SlideEditor";
+import { SlideInsertBar } from "./SlideInsertBar";
+import type { Insert } from "../../lib/slideSource";
 import { SlideMenu, type MenuEntry } from "./SlideMenu";
 import { SlidePresenter } from "./SlidePresenter";
 import { SlideProperties } from "./SlideProperties";
@@ -105,14 +107,8 @@ export function SlidesPanel({
                 )
               }
             >
-              <StageControls
-                ui={ui}
-                count={slides.length}
-                zoom={shownZoom}
-                beside={beside}
-                busy={downloads.busy}
-                onMenu={(kind, anchor) => setMenu({ kind, anchor })}
-              />
+              <StageControls ui={ui} count={slides.length} zoom={shownZoom} beside={beside} busy={downloads.busy}
+                onMenu={(kind, anchor) => setMenu({ kind, anchor })} deck={{ threadId, path, onProblem: edits.setProblem }} />
             </SlideStage>
             <BelowStage ui={ui} slides={slides} srcOf={srcOf} />
             {!beside && properties}
@@ -206,6 +202,8 @@ function SlideEditing({
       onSaved={onSaved}
       onProblem={onProblem}
       onComment={ui.setCommentAt}
+      insert={ui.insert}
+      onInserted={ui.clearInsert}
       onExit={ui.stopEditing}
     />
   );
@@ -219,6 +217,7 @@ function StageControls({
   beside,
   busy,
   onMenu,
+  deck,
 }: {
   ui: ReturnType<typeof useSlidesUi>;
   count: number;
@@ -226,9 +225,13 @@ function StageControls({
   beside: boolean;
   busy: boolean;
   onMenu: (kind: Menu["kind"], anchor: DOMRect) => void;
+  deck: { threadId: string; path: string; onProblem: (message: string | null) => void };
 }) {
   return (
     <>
+      {ui.view === "slide" && (
+        <SlideInsertBar {...deck} disabled={count === 0 || ui.commenting} onInsert={ui.requestInsert} />
+      )}
       <SlideToolbar
         zoom={zoom}
         propertiesShown={ui.propertiesShown}
@@ -383,7 +386,9 @@ function useSlidesUi(count: number) {
   const [commenting, setCommenting] = useState(false);
   const [showResolved, setShowResolved] = useState(false);
   // The slide where editing started and the click that started it, to select what was clicked.
-  const [editing, setEditing] = useState<{ index: number; point: { x: number; y: number } } | null>(null);
+  const [editing, setEditing] = useState<{ index: number; point: { x: number; y: number } | null } | null>(null);
+  // An insert asked for from the toolbar, for the editor to add once the slide is read.
+  const [insert, setInsert] = useState<{ what: Insert } | null>(null);
   const [commentAt, setCommentAt] = useState<CommentStart | null>(null);
   const index = Math.min(current, Math.max(count - 1, 0));
   const go = (delta: number) => setCurrent(Math.max(0, Math.min(count - 1, index + delta)));
@@ -418,6 +423,12 @@ function useSlidesUi(count: number) {
     showView("slide");
   };
   return {
+    insert,
+    requestInsert: (what: Insert) => {
+      if (!editing) setEditing({ index, point: null });
+      setInsert({ what });
+    },
+    clearInsert: () => setInsert(null),
     commentAt,
     setCommentAt,
     editing,

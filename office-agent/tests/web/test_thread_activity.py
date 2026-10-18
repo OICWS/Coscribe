@@ -1,6 +1,7 @@
 # ruff: noqa: E402
 """Web tests: the activity panel, opening files and the Word review routes."""
 
+import io
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,7 @@ from docx import Document
 from langchain_core.messages import (
     AIMessage,
 )
+from PIL import Image
 
 from coscribe.tools.office.document_tools import DocumentToolkit
 from coscribe.web.routes import threads as threads_routes
@@ -316,6 +318,13 @@ def test_the_slides_edit_routes_read_parts_and_save_a_section_lg(
         fresh = {**body, "version": saved.json()["version"]}
         refused = client.put(f"{url}/source", json={**fresh, "source": "<section><b/></section>"})
         past_end = client.put("/api/threads/t_edit/slides/3/source", json=fresh)
+        png = io.BytesIO()
+        Image.new("RGB", (8, 4)).save(png, "PNG")
+        assets = "/api/threads/t_edit/slides/assets"
+        picture = client.post(
+            assets, data={"path": "q3.pptx"}, files={"file": ("a.png", png.getvalue())}
+        )
+        not_one = client.post(assets, data={"path": "q3.pptx"}, files={"file": ("a.png", b"hi")})
 
     assert parts["kind"] == "page" and parts["parts"]
     assert saved.status_code == 200 and saved.json()["name"] == "01.html"
@@ -323,6 +332,8 @@ def test_the_slides_edit_routes_read_parts_and_save_a_section_lg(
     assert stale.status_code == 409 and stale.json()["changed"] == "slide"
     assert refused.status_code == 400 and "<b" not in refused.text
     assert past_end.status_code == 404
+    assert picture.json() == {"src": "assets/a.png", "width": 8, "height": 4}
+    assert not_one.status_code == 400
 
 
 def test_the_slides_comment_routes_add_reply_resolve_and_delete_lg(

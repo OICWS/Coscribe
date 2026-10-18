@@ -57,3 +57,12 @@ export const saveSlideSource = async (threadId: string, path: string, index: num
       body: JSON.stringify({ path, source, version }),
     }),
   );
+
+/** Stores a picture in the deck's assets; returns its `src` and size in px. */
+export async function uploadSlidePicture(threadId: string, path: string, file: File) {
+  const form = new FormData();
+  form.append("path", path);
+  form.append("file", file);
+  const response = await fetch(`/api/threads/${encodeURIComponent(threadId)}/slides/assets`, { method: "POST", body: form });
+  return json<{ src: string; width: number; height: number }>(response);
+}
