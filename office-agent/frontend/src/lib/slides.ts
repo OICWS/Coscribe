@@ -1,3 +1,5 @@
+import type { SlideElement } from "./slideComments";
+
 /** A deck built from pages, as the server reads it (`GET /api/threads/{id}/slides`). */
 export interface SlideInfo {
   name: string;
@@ -8,6 +10,8 @@ export interface SlideInfo {
   transition: string | null;
   /** "#RRGGBB", or null when the slide has no background of its own. */
   background: string | null;
+  /** What a comment can be put on. */
+  elements: SlideElement[];
 }
 
 export interface SlideDeck {

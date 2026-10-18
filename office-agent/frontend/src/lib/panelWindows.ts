@@ -3,6 +3,7 @@
  * socket, so it sends each panel's data across, and the panel's window
  * sends back what the user does there. */
 
+import type { CommentLink } from "./slideComments";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { BrowserCapture } from "./browserCapture";
 import type { ScheduledRun, ScheduledTask } from "../types/settings";
@@ -32,6 +33,7 @@ export type PanelWindowAction =
   | { type: "saveAsWorkflow" }
   | { type: "view"; path: string }
   | { type: "sendToChat"; capture: BrowserCapture }
+  | { type: "sendComment"; text: string; link: CommentLink }
   | { type: "stopAgent" }
   | { type: "approve"; id: string; approved: boolean; scope?: "task" };
 
