@@ -199,6 +199,28 @@
    plain `bg-[var(--bg)]` utility class that would otherwise show
    through. Reduced motion gets a static gradient ring instead of
    the sweep -- still communicates "different state," no motion. */
+/* The Slides panel's presenter: PowerPoint's Fade and Push as a slide comes in. */
+.slide-enter-fade {
+  animation: slide-enter-fade 0.6s ease-out;
+}
+.slide-enter-push {
+  animation: slide-enter-push 0.6s ease-out;
+}
+@keyframes slide-enter-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes slide-enter-push {
+  from {
+    transform: translateX(100%);
+  }
+}
+:root[data-motion="reduced"] .slide-enter-fade,
+:root[data-motion="reduced"] .slide-enter-push {
+  animation: none;
+}
+
 @keyframes wave-flow {
   0% {
     background-position:

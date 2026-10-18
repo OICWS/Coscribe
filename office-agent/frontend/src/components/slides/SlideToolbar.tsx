@@ -1,26 +1,39 @@
 import { zoomLabel } from "../../lib/slides";
-import { ChevronDownIcon } from "../icons";
+import { ChevronDownIcon, PlayIcon } from "../icons";
 import { PropertiesBelowIcon, PropertiesBesideIcon } from "./slideIcons";
 
 const toolButton = "flex h-8 w-8 items-center justify-center rounded-lg text-[var(--fg)] hover:bg-[var(--card-bg)]";
 const toolButtonOn = "flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-ink)]";
 
-/** The card at the stage's top right: the properties panel and the zoom menu. */
+/** The card at the stage's top right: Present, the properties panel and the zoom menu. */
 export function SlideToolbar({
   zoom,
   propertiesShown,
   beside,
   onToggleProperties,
   onZoomMenu,
+  onPresentMenu,
 }: {
   zoom: number;
   propertiesShown: boolean;
   beside: boolean;
   onToggleProperties: () => void;
   onZoomMenu: (anchor: DOMRect) => void;
+  onPresentMenu: (anchor: DOMRect) => void;
 }) {
   return (
     <div className="absolute right-4 top-4 z-10 flex h-11 items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-1.5 shadow-[var(--panel-shadow)]">
+      <button
+        type="button"
+        title="Present"
+        aria-label="Present"
+        aria-haspopup="menu"
+        className={toolButton}
+        onClick={(e) => onPresentMenu(e.currentTarget.getBoundingClientRect())}
+      >
+        <PlayIcon className="h-[16px] w-[16px]" />
+      </button>
+      <span className="mx-1 h-5 border-l border-[var(--border)]" />
       <button
         type="button"
         title={propertiesShown ? "Hide the properties panel" : "Show the properties panel"}
