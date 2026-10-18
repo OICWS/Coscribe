@@ -22,6 +22,11 @@ _SVG_HEADERS = {
     "Cache-Control": "no-store",
 }
 
+# Fixed messages: a parser's own text can carry paths and internals, and the panel only needs to
+# say what to do.
+_NOT_BUILT = "This presentation was not built from slide pages"
+_UNREADABLE = "This presentation or one of its pages could not be read"
+
 
 def router(state: AppState) -> APIRouter:
     router = APIRouter()
@@ -43,10 +48,10 @@ def router(state: AppState) -> APIRouter:
             return JSONResponse({"error": f"No deck {path!r}"}, status_code=404)
         try:
             return await asyncio.to_thread(read_deck, found[0])
-        except NotBuiltFromPages as exc:
-            return JSONResponse({"error": str(exc), "built": False}, status_code=409)
-        except (ValueError, zipfile.BadZipFile) as exc:
-            return JSONResponse({"error": str(exc)}, status_code=400)
+        except NotBuiltFromPages:
+            return JSONResponse({"error": _NOT_BUILT, "built": False}, status_code=409)
+        except (ValueError, zipfile.BadZipFile):
+            return JSONResponse({"error": _UNREADABLE}, status_code=400)
 
     async def get_slide_svg(thread_id: str, index: int, path: str) -> Response:
         found = deck_file(thread_id, path)
@@ -54,12 +59,12 @@ def router(state: AppState) -> APIRouter:
             return JSONResponse({"error": f"No deck {path!r}"}, status_code=404)
         try:
             svg = await asyncio.to_thread(slide_svg, found[0], index, found[1])
-        except IndexError as exc:
-            return JSONResponse({"error": str(exc)}, status_code=404)
-        except NotBuiltFromPages as exc:
-            return JSONResponse({"error": str(exc), "built": False}, status_code=409)
-        except (ValueError, SyntaxError, zipfile.BadZipFile) as exc:
-            return JSONResponse({"error": str(exc)}, status_code=400)
+        except IndexError:
+            return JSONResponse({"error": f"No slide {index + 1}"}, status_code=404)
+        except NotBuiltFromPages:
+            return JSONResponse({"error": _NOT_BUILT, "built": False}, status_code=409)
+        except (ValueError, SyntaxError, zipfile.BadZipFile):
+            return JSONResponse({"error": _UNREADABLE}, status_code=400)
         return Response(svg, media_type="image/svg+xml", headers=_SVG_HEADERS)
 
     router.add_api_route("/api/threads/{thread_id}/slides", get_slides, methods=["GET"])
