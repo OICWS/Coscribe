@@ -4,8 +4,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+from coscribe.workflow_spec import parse_workflow
 from coscribe.workflows.engine import StepContext, StepRecord
-from coscribe.workflows.spec import parse_workflow
 from coscribe.workflows.testing import run_test, uses_browser
 
 

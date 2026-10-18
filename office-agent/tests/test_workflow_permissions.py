@@ -9,9 +9,9 @@ pytest.importorskip("langgraph", reason="needs the langgraph_spike extra install
 from langgraph.checkpoint.memory import InMemorySaver
 
 from coscribe.needs_permission import NeedsPermission
+from coscribe.workflow_spec import parse_workflow
 from coscribe.workflows.engine import StepContext, StepRecord, WorkflowRun
 from coscribe.workflows.permissions import granted_by, site_of, summarize
-from coscribe.workflows.spec import parse_workflow
 
 
 def _workflow(steps: list[dict[str, Any]], inputs: list[dict[str, Any]] | None = None) -> Any:

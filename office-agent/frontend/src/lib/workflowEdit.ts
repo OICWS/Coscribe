@@ -4,7 +4,7 @@ import { toolLabel } from "./toolLabels";
 import { stepOutput } from "./workflowLabels";
 import { allSteps, listAt, mapSteps, placeSteps, withList, type ListRef } from "./workflowTree";
 
-// Mirrors workflows/spec.py's IDENTIFIER.
+// Mirrors workflow_spec/spec.py's IDENTIFIER.
 export const IDENTIFIER = /^[a-z][a-z0-9_]{0,39}$/;
 
 // A workflow asks through an approval step instead (engine.py's

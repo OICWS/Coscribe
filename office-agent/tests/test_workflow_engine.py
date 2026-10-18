@@ -14,6 +14,7 @@ from langchain_core.outputs import ChatGeneration, ChatResult
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
+from coscribe.workflow_spec import parse_workflow
 from coscribe.workflows.engine import (
     StepContext,
     StepRecord,
@@ -22,7 +23,6 @@ from coscribe.workflows.engine import (
     fields_schema,
     resolve_inputs,
 )
-from coscribe.workflows.spec import parse_workflow
 
 FIXTURE = Path(__file__).parent / "fixtures" / "pdf_error_audit_workflow.json"
 

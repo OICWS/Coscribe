@@ -109,7 +109,7 @@ function outputNames(step: WorkflowStep): string[] {
 }
 
 /** Names readable at each position of each list ("<listKey>#<index>"),
- * scoped like workflows/spec.py: a loop's item and body results only
+ * scoped like workflow_spec/spec.py: a loop's item and body results only
  * inside it, a branch's results after it only when both arms make them.
  * Model steps' fields are listed too, for pickers. */
 export function scopes(workflow: Workflow): Map<string, string[]> {
