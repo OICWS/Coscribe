@@ -14,6 +14,7 @@ from .engine.instructions import NEW_DECK_INSTRUCTIONS
 from .engine.section_format import SectionError
 from .engine.tool import build_engine_tools
 from .engine.view import NotBuiltFromPages, read_deck, slide_svg
+from .engine.view_arrange import delete_slide, duplicate_slide, insert_slide, move_slide
 from .engine.view_comments import (
     CommentNotFound,
     add_comment,
@@ -43,6 +44,10 @@ __all__ = [
     "deck_html",
     "deck_pdf",
     "delete_comment",
+    "delete_slide",
+    "duplicate_slide",
+    "insert_slide",
+    "move_slide",
     "read_comments",
     "read_deck",
     "reply_to_comment",

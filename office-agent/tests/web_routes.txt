@@ -105,6 +105,7 @@ POST /api/threads/{thread_id}/docx-review
 POST /api/threads/{thread_id}/files/open
 POST /api/threads/{thread_id}/meta
 POST /api/threads/{thread_id}/rename
+POST /api/threads/{thread_id}/slides/arrange
 POST /api/threads/{thread_id}/slides/assets
 POST /api/threads/{thread_id}/slides/comments
 POST /api/threads/{thread_id}/slides/comments/{comment_id}

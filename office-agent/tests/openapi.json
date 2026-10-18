@@ -617,6 +617,50 @@
         "title": "SkillEnabledUpdate",
         "type": "object"
       },
+      "SlideArrange": {
+        "properties": {
+          "action": {
+            "enum": [
+              "insert",
+              "duplicate",
+              "move",
+              "delete"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "index": {
+            "maximum": 10000.0,
+            "minimum": -1.0,
+            "title": "Index",
+            "type": "integer"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "source": {
+            "default": "<section></section>",
+            "maxLength": 400000,
+            "title": "Source",
+            "type": "string"
+          },
+          "to": {
+            "default": 0,
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "To",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path",
+          "action",
+          "index"
+        ],
+        "title": "SlideArrange",
+        "type": "object"
+      },
       "SlideCommentNew": {
         "properties": {
           "element": {
@@ -4647,6 +4691,55 @@
           }
         },
         "summary": "Get Slides"
+      }
+    },
+    "/api/threads/{thread_id}/slides/arrange": {
+      "post": {
+        "operationId": "post_arrange_api_threads__thread_id__slides_arrange_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SlideArrange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Post Arrange Api Threads  Thread Id  Slides Arrange Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Arrange"
       }
     },
     "/api/threads/{thread_id}/slides/assets": {

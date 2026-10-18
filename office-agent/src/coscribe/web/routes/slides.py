@@ -26,6 +26,10 @@ from ...tools import (
     deck_html,
     deck_pdf,
     delete_comment,
+    delete_slide,
+    duplicate_slide,
+    insert_slide,
+    move_slide,
     read_comments,
     read_deck,
     reply_to_comment,
@@ -34,7 +38,13 @@ from ...tools import (
     slide_parts,
     slide_svg,
 )
-from ..schemas import SlideCommentNew, SlideCommentReply, SlideCommentState, SlideSave
+from ..schemas import (
+    SlideArrange,
+    SlideCommentNew,
+    SlideCommentReply,
+    SlideCommentState,
+    SlideSave,
+)
 from ..state import AppState
 
 # The SVG is drawn by the panel as an image, which runs nothing; this keeps it inert too when
@@ -192,6 +202,21 @@ def _edit_routes(router: APIRouter, state: AppState) -> None:
         except ValueError:
             return JSONResponse({"error": _NOT_A_PICTURE}, status_code=400)
 
+    async def post_arrange(thread_id: str, body: SlideArrange) -> Any:
+        found = _deck_file(state, thread_id, body.path)
+        if found is None:
+            return _no_deck(body.path)
+        deck, root = found
+        jobs = {
+            "insert": lambda: insert_slide(deck, body.index, body.source, resource_root=root),
+            "duplicate": lambda: duplicate_slide(deck, body.index, resource_root=root),
+            "move": lambda: move_slide(deck, body.index, body.to, resource_root=root),
+            "delete": lambda: delete_slide(deck, body.index, resource_root=root),
+        }
+        index = await _run(jobs[body.action])
+        return index if isinstance(index, Response) else {"index": index}
+
+    router.add_api_route("/api/threads/{thread_id}/slides/arrange", post_arrange, methods=["POST"])
     router.add_api_route("/api/threads/{thread_id}/slides/assets", post_asset, methods=["POST"])
     router.add_api_route(f"{base}/parts", get_parts, methods=["GET"])
     router.add_api_route(f"{base}/source", put_source, methods=["PUT"])

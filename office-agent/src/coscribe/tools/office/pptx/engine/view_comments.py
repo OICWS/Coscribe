@@ -125,3 +125,23 @@ def _text(text: str) -> str:
 
 def _now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
+
+
+def move_comments(deck: Path, renamed: dict[str, str | None]) -> None:
+    """Keeps comments on their slides when slides are renamed: `renamed` maps an old slide name to
+    its new one, or to None for a slide that was deleted, whose comments go with it."""
+    if not (pages_folder(deck) or Path()).joinpath(COMMENTS).is_file():
+        return
+
+    def follow(comments: list[dict[str, Any]]) -> None:
+        kept = []
+        for comment in comments:
+            slide = comment.get("slide")
+            if slide in renamed:
+                if renamed[slide] is None:
+                    continue
+                comment["slide"] = renamed[slide]
+            kept.append(comment)
+        comments[:] = kept
+
+    _change(deck, follow)
