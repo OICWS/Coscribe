@@ -25,7 +25,7 @@ const INLINE_TAGS = new Set(["b", "strong", "i", "em", "u", "span", "br", "li"])
 const JUSTIFY: Record<string, string> = { top: "flex-start", middle: "center", bottom: "flex-end" };
 
 /** Draws `doc` into `root` and returns each element's node, in the section's order. */
-export function drawSection(root: ShadowRoot, doc: Document, parts: SlidePart[]): (HTMLElement | null)[] {
+export function drawSection(root: ShadowRoot, doc: Document, parts: SlidePart[], editing: number | null = null): (HTMLElement | null)[] {
   const sheet = document.createElement("style");
   sheet.textContent = SHEET;
   const slide = document.createElement("div");
@@ -34,7 +34,7 @@ export function drawSection(root: ShadowRoot, doc: Document, parts: SlidePart[])
   applyStyle(slide, new Map([...section].filter(([name]) => ["background", "font-family", "color"].includes(name))));
   if (!section.has("background")) slide.style.background = "#ffffff";
   const nodes = elementsOf(doc).map((el, i) => {
-    const node = drawElement(el, parts[i]);
+    const node = drawElement(el, parts[i], i === editing);
     if (node) slide.append(node);
     return node;
   });
@@ -42,7 +42,8 @@ export function drawSection(root: ShadowRoot, doc: Document, parts: SlidePart[])
   return nodes;
 }
 
-function drawElement(el: Element, part: SlidePart | undefined): HTMLElement | null {
+/** `editable`: a table drawn here, with typeable cells, in place of the server's picture of it. */
+function drawElement(el: Element, part: SlidePart | undefined, editable: boolean): HTMLElement | null {
   const style = parseStyle(el.getAttribute("style") ?? "");
   const box = boxIn(style);
   if (!box) return null;
@@ -56,7 +57,7 @@ function drawElement(el: Element, part: SlidePart | undefined): HTMLElement | nu
     outer.append(inner);
     return outer;
   }
-  if (!part?.picture) return drawnHere(el, style, box);
+  if (!part?.picture || (editable && el.localName === "table")) return drawnHere(el, style, box, editable);
   const image = document.createElement("img");
   image.src = part.picture;
   image.alt = "";
@@ -67,7 +68,7 @@ function drawElement(el: Element, part: SlidePart | undefined): HTMLElement | nu
 
 /** A shape or table the server has not drawn yet (a layout's preview, an element just added),
  * drawn here as near as the browser can; anything else waits for the server's picture. */
-function drawnHere(el: Element, style: Map<string, string>, [x, y, w, h]: Box): HTMLElement | null {
+function drawnHere(el: Element, style: Map<string, string>, [x, y, w, h]: Box, editable = false): HTMLElement | null {
   const node = document.createElement(el.localName === "table" ? "table" : "div");
   Object.assign(node.style, { position: "absolute", left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px` });
   if (el.localName === "x-shape") {
@@ -79,17 +80,30 @@ function drawnHere(el: Element, style: Map<string, string>, [x, y, w, h]: Box): 
   }
   if (el.localName !== "table") return null;
   Object.assign(node.style, { borderCollapse: "collapse", fontSize: style.get("font-size") ?? "28px", tableLayout: "fixed" });
+  applyStyle(node, new Map([...style].filter(([name]) => ["font-family", "color"].includes(name))));
+  const widths = Array.from(el.querySelectorAll("col"));
+  if (widths.length) {
+    const group = node.appendChild(document.createElement("colgroup"));
+    for (const col of widths) group.append(Object.assign(document.createElement("col"), { style: `width:${parseStyle(col.getAttribute("style") ?? "").get("width") ?? "auto"}` }));
+  }
   for (const row of Array.from(el.querySelectorAll("tr"))) {
     const tr = node.appendChild(document.createElement("tr"));
-    for (const cell of Array.from(row.children)) {
-      const td = tr.appendChild(document.createElement(cell.localName === "th" ? "th" : "td"));
-      td.textContent = cell.textContent;
-      td.style.border = `1px solid ${style.get("border-color") ?? "#CBD2DC"}`;
-      td.style.padding = "0.3em 0.5em";
-      applyStyle(td, new Map([...parseStyle(cell.getAttribute("style") ?? "")].filter(([name]) => ["background", "color"].includes(name))));
-    }
+    for (const cell of Array.from(row.children)) tr.append(drawCell(cell, style, editable));
   }
   return node;
+}
+
+/** A table cell with its inline formatting; the cell's own colour, fill, weight and alignment. */
+function drawCell(cell: Element, table: Map<string, string>, editable: boolean): HTMLElement {
+  const td = document.createElement(cell.localName === "th" ? "th" : "td");
+  td.append(...Array.from(copyText(cell).childNodes));
+  td.style.border = `1px solid ${table.get("border-color") ?? "#CBD2DC"}`;
+  td.style.padding = "0.3em 0.5em";
+  td.style.textAlign = "left";
+  if (cell.localName === "th") td.style.fontWeight = "700";
+  applyStyle(td, new Map([...parseStyle(cell.getAttribute("style") ?? "")].filter(([name]) => ["background", "color", "text-align", "font-weight"].includes(name))));
+  if (editable) td.contentEditable = "true";
+  return td;
 }
 
 /** Moves or resizes an element's node while it is dragged; a picture stretches until the
