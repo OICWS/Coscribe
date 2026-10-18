@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { transitionLabel, type SlideInfo } from "../../lib/slides";
 import { setBackground, setTransition, sourceColours } from "../../lib/slideSource";
+import type { DesignSystem } from "../../lib/slideText";
 import { ChevronDownIcon, CloseIcon } from "../icons";
+import { Row, field } from "./PropertyRows";
 import { ColourPicker } from "./SlideFormatBar";
 import { SlideMenu } from "./SlideMenu";
-
-const field =
-  "flex h-8 min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--field-bg)] px-2.5 text-sm text-[var(--fg)] hover:border-[var(--muted)]";
+import { TableProperties } from "./SlideTableProperties";
+import { TextProperties, type EditorSelection } from "./SlideTextProperties";
 
 /** The transitions a section can name, by PowerPoint's name for each (as the deck reports it). */
 const TRANSITIONS: [string | null, string | null][] = [
@@ -19,24 +20,26 @@ const TRANSITIONS: [string | null, string | null][] = [
 /** A change to the slide's section, saved by the panel. */
 export type SlideEdit = (edit: (doc: Document) => void) => void;
 
-/** The current slide's transition and background, changed here; the slide's own colours come
- * first in the background picker. */
+/** The selected text's or table's properties, or else the current slide's transition and background. */
 export function SlideProperties({
   slide,
   beside,
+  selection,
+  design,
   onEdit,
   loadSource,
   onClose,
 }: {
   slide: SlideInfo;
   beside: boolean;
+  /** The text or table selected in the editor, if one is. */
+  selection: EditorSelection | null;
+  design: DesignSystem | null;
   onEdit: SlideEdit;
   /** The slide's section source, for its colours. */
   loadSource: () => Promise<string>;
   onClose: () => void;
 }) {
-  const background = slide.background?.toUpperCase() ?? null;
-  const [open, setOpen] = useState<{ kind: "transition" | "background"; anchor: DOMRect; colours?: string[] } | null>(null);
   return (
     <aside
       aria-label="Slide properties"
@@ -53,6 +56,20 @@ export function SlideProperties({
           <CloseIcon className="h-4 w-4" />
         </button>
       </div>
+      {selection?.kind === "text" && <TextProperties selection={selection} design={design} />}
+      {selection?.kind === "table" && <TableProperties selection={selection} design={design} />}
+      {!selection && <SlideSettings slide={slide} onEdit={onEdit} loadSource={loadSource} />}
+    </aside>
+  );
+}
+
+/** The current slide's transition and background; the slide's own colours come first in the
+ * background picker. */
+function SlideSettings({ slide, onEdit, loadSource }: { slide: SlideInfo; onEdit: SlideEdit; loadSource: () => Promise<string> }) {
+  const background = slide.background?.toUpperCase() ?? null;
+  const [open, setOpen] = useState<{ kind: "transition" | "background"; anchor: DOMRect; colours?: string[] } | null>(null);
+  return (
+    <>
       <section className="border-b border-[var(--border)] px-3 pb-3">
         <h3 className="pb-2.5 text-[15px] font-semibold text-[var(--fg)]">Slide</h3>
         <Row label="Transition">
@@ -110,15 +127,6 @@ export function SlideProperties({
           onClose={() => setOpen(null)}
         />
       )}
-    </aside>
-  );
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="w-[84px] shrink-0 text-sm text-[var(--muted)]">{label}</span>
-      {children}
-    </div>
+    </>
   );
 }

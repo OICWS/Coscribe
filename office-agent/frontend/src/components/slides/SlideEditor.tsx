@@ -5,7 +5,9 @@ import { HANDLES, accentOf, labelOf, newElement, boxOf, type Insert, dragBox, el
 import { drawSection, placeNode } from "./sectionDom";
 import { SlideFormatBar } from "./SlideFormatBar";
 import { SlideMenu } from "./SlideMenu";
+import type { EditorSelection } from "./SlideTextProperties";
 import { useFormatting } from "./useFormatting";
+import { useTableEditing } from "./useTableEditing";
 import { useTextEditing } from "./useTextEditing";
 
 /** A move shorter than this (canvas px) is a click, not a drag. */
@@ -34,6 +36,7 @@ export function SlideEditor({
   onSaved,
   onProblem,
   onComment,
+  onSelection,
   insert,
   onInserted,
   onExit,
@@ -50,6 +53,8 @@ export function SlideEditor({
   onProblem: (message: string | null) => void;
   /** Opens a new comment on an element, at its centre. */
   onComment: (at: CommentStart) => void;
+  /** The selected text element, for the properties panel; null when nothing or no text is. */
+  onSelection: (selection: EditorSelection | null) => void;
   /** An element to add from the toolbar; each new object is added once. */
   insert: { what: Insert } | null;
   onInserted: () => void;
@@ -57,10 +62,16 @@ export function SlideEditor({
 }) {
   const slide = useEditedSlide(threadId, path, index, refreshKey, onSaved, onProblem);
   const layerRef = useRef<HTMLDivElement>(null);
-  const { hostRef, nodes } = useSectionDom(slide.doc, slide.parts, slide.drawn);
+  const tableAt = useState<number | null>(null);
+  const { hostRef, nodes } = useSectionDom(slide.doc, slide.parts, slide.drawn, tableAt[0]);
   const text = useTextEditing(slide.doc, nodes, slide.change);
-  const input = useEditorInput(slide, nodes, zoom, layerRef, onExit, text.start);
+  const table = useTableEditing(slide.doc, nodes, slide.change, tableAt);
+  const startTyping = (at: number, point?: { x: number; y: number }) =>
+    isTable(slide.doc, at) ? table.start(at, point) : text.start(at, point);
+  const input = useEditorInput(slide, nodes, zoom, layerRef, onExit, startTyping);
   const { boxes, selected, drag, point, startDrag } = input;
+
+  usePublishedSelection(slide, selected, () => (text.stop(), table.stop()), onSelection);
 
   // Keys go to the editor, not to the button that started an insert.
   const focusLayer = useCallback(() => layerRef.current?.focus(), []);
@@ -76,7 +87,11 @@ export function SlideEditor({
 
   const shown = drag ? drag.box : selected !== null ? boxes[selected] : null;
   return (
-    <div className="absolute inset-0" onKeyDown={text.onKey} onPaste={text.onPaste}>
+    <div
+      className="absolute inset-0"
+      onKeyDown={(e) => (text.onKey(e), table.onKey(e))}
+      onPaste={(e) => (text.onPaste(e), table.onPaste(e))}
+    >
       <div className="absolute inset-0 overflow-hidden">
         <div ref={hostRef} className="absolute left-0 top-0 origin-top-left" style={{ width: 1920, height: 1080, transform: `scale(${zoom})` }} />
       </div>
@@ -84,13 +99,13 @@ export function SlideEditor({
         ref={layerRef}
         tabIndex={0}
         aria-label="Slide editor"
-        className={`absolute inset-0 cursor-default outline-none ${text.typing !== null ? "pointer-events-none" : ""}`}
+        className={`absolute inset-0 cursor-default outline-none ${text.typing !== null || table.editing !== null ? "pointer-events-none" : ""}`}
         onPointerDown={(e) => startDrag(e, elementIndexAt(boxes, point(e).x, point(e).y), [0, 0])}
         onPointerMove={input.onMove}
         onPointerUp={input.onUp}
         onDoubleClick={(e) => {
           const at = elementIndexAt(boxes, point(e).x, point(e).y);
-          if (at !== null && slide.parts[at]?.kind === "text") text.start(at, { x: e.clientX, y: e.clientY });
+          if (at !== null && (slide.parts[at]?.kind === "text" || isTable(slide.doc, at))) startTyping(at, { x: e.clientX, y: e.clientY });
         }}
         onKeyDown={input.onKey}
       >
@@ -101,6 +116,40 @@ export function SlideEditor({
       )}
     </div>
   );
+}
+
+const isTable = (doc: Document | null, at: number) => !!doc && elementsOf(doc)[at]?.localName === "table";
+
+/** Tells the properties panel which text element is selected, after every change to it; a change
+ * made there ends any typing first, so what was typed is written back. */
+function usePublishedSelection(
+  slide: ReturnType<typeof useEditedSlide>,
+  selected: number | null,
+  stopTyping: () => void,
+  publish: (selection: EditorSelection | null) => void,
+) {
+  const { doc, drawn } = slide;
+  // The latest functions, so a render alone does not publish a new selection.
+  const latest = useRef({ change: slide.change, stop: stopTyping, publish });
+  latest.current = { change: slide.change, stop: stopTyping, publish };
+  useEffect(() => {
+    const element = doc && selected !== null ? elementsOf(doc)[selected] : null;
+    const kind = element && (["h1", "h2", "h3", "p", "ul", "ol"].includes(element.localName) ? "text" : element.localName === "table" ? "table" : null);
+    latest.current.publish(
+      element && kind && selected !== null
+        ? {
+            kind,
+            element,
+            edit: (edit) => {
+              latest.current.stop();
+              latest.current.change((els) => edit(els[selected]), false);
+            },
+          }
+        : null,
+    );
+    // `drawn` counts the changes, which edit the element in place.
+  }, [doc, drawn, selected]);
+  useEffect(() => () => latest.current.publish(null), []);
 }
 
 /** Adds the toolbar's element to the slide, selected; a text box with its text ready to type over. */
@@ -283,7 +332,7 @@ function useEditorInput(
     e.stopPropagation();
     if (action === "exit") return selected === null ? onExit() : setSelected(null);
     if (selected === null) return;
-    if (action === "type") return slide.parts[selected]?.kind === "text" && startText(selected);
+    if (action === "type") return (slide.parts[selected]?.kind === "text" || isTable(slide.doc, selected)) && startText(selected);
     if (action === "delete") {
       slide.change((els) => els[selected].remove(), false, (parts) => parts.filter((_, i) => i !== selected));
       return setSelected(null);
@@ -337,15 +386,15 @@ function editKey(e: KeyboardEvent): EditKey | null {
 }
 
 /** The section drawn into a shadow root on the host; its nodes, for moving them while dragged. */
-function useSectionDom(doc: Document | null, parts: SlideParts["parts"], drawn: number) {
+function useSectionDom(doc: Document | null, parts: SlideParts["parts"], drawn: number, editing: number | null) {
   const hostRef = useRef<HTMLDivElement>(null);
   const nodes = useRef<(HTMLElement | null)[]>([]);
   useLayoutEffect(() => {
     const host = hostRef.current;
     if (!host || !doc) return;
     const root = host.shadowRoot ?? host.attachShadow({ mode: "open" });
-    nodes.current = drawSection(root, doc, parts);
-  }, [doc, parts, drawn]);
+    nodes.current = drawSection(root, doc, parts, editing);
+  }, [doc, parts, drawn, editing]);
   return { hostRef, nodes };
 }
 

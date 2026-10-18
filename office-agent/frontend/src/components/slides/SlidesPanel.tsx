@@ -28,6 +28,8 @@ import { editSlide, getSlideParts } from "../../lib/slideEditing";
 import { SlideMenu, type MenuEntry } from "./SlideMenu";
 import { SlidePresenter } from "./SlidePresenter";
 import { SlideProperties } from "./SlideProperties";
+import type { EditorSelection } from "./SlideTextProperties";
+import { useDesignSystem } from "./useDesignSystem";
 import { CANVAS_GAP, MARGIN, SlideStage, TOOLBAR_ROOM } from "./SlideStage";
 import { SlideToolbar } from "./SlideToolbar";
 import { SlideFooter, SlideMiniBar, SlideThumbnails, type SlidesView } from "./SlideStrip";
@@ -54,6 +56,7 @@ export function SlidesPanel({
   const edits = useEdits(threadId, path);
   const { deck, error, notBuilt, open, srcOf } = useSlideDeck(threadId, path, `${refreshKey}.${edits.count}`);
   const comments = useSlideComments(threadId, path, refreshKey);
+  const design = useDesignSystem(threadId, path);
   const [menu, setMenu] = useState<Menu | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -70,7 +73,7 @@ export function SlidesPanel({
   const slide = slides[index];
   const beside = panelWidth >= PROPERTIES_BESIDE_FROM;
   const properties = ui.propertiesShown && slide && (
-    <SlideProperties slide={slide} beside={beside} onEdit={(change) => edits.edit(index, change)} loadSource={() => edits.loadSource(index)} onClose={() => ui.setPropertiesShown(false)} />
+    <SlideProperties slide={slide} beside={beside} selection={ui.selection} design={design} onEdit={(change) => edits.edit(index, change)} loadSource={() => edits.loadSource(index)} onClose={() => ui.setPropertiesShown(false)} />
   );
 
   return (
@@ -228,6 +231,7 @@ function SlideEditing({
       onSaved={onSaved}
       onProblem={onProblem}
       onComment={ui.setCommentAt}
+      onSelection={ui.setSelection}
       insert={ui.insert}
       onInserted={ui.clearInsert}
       onExit={ui.stopEditing}
@@ -454,6 +458,7 @@ function useSlidesUi(count: number) {
   // An insert asked for from the toolbar, for the editor to add once the slide is read.
   const [insert, setInsert] = useState<{ what: Insert } | null>(null);
   const [commentAt, setCommentAt] = useState<CommentStart | null>(null);
+  const [selection, setSelection] = useState<EditorSelection | null>(null);
   const index = Math.min(current, Math.max(count - 1, 0));
   const go = (delta: number) => setCurrent(Math.max(0, Math.min(count - 1, index + delta)));
   const showView = (next: SlidesView) => {
@@ -512,6 +517,8 @@ function useSlidesUi(count: number) {
     stripShown,
     notesShown,
     propertiesShown,
+    selection,
+    setSelection,
     setCurrent,
     setZoom,
     setStripShown,

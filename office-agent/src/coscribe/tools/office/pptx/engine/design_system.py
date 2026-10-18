@@ -18,7 +18,7 @@ from .view import NotBuiltFromPages, pages_folder
 
 DESIGN_SYSTEM = "design-system.json"
 _COLOUR = re.compile(r"#[0-9a-fA-F]{6}\b")
-_FONT = re.compile(r"font-family:\s*([^;\"]+)")
+_FONT = re.compile(r"font-family(?::\s*|=\")([^;\"]+)")
 _PALETTE_SIZE = 10
 _FALLBACK_PALETTE = ["#1F2937", "#4B5563", "#9CA3AF", "#E5E7EB", "#FFFFFF", "#2563EB"]
 # The text styles every deck starts with: id, name, size (px on the 1920 canvas), weight, line

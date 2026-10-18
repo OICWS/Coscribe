@@ -1,5 +1,6 @@
 /** One slide as the editor reads and saves it (`/api/threads/{id}/slides/{index}/parts|source`). */
 import { parseSection, writeSection, type Box } from "./slideSource";
+import type { DesignSystem } from "./slideText";
 
 export interface SlidePart {
   kind: "text" | "drawing" | "refused";
@@ -110,3 +111,6 @@ export const stepSlideHistory = async (threadId: string, path: string, action: "
       body: JSON.stringify({ path, action }),
     }),
   );
+
+export const getDesignSystem = async (threadId: string, path: string) =>
+  json<DesignSystem>(await fetch(`/api/threads/${encodeURIComponent(threadId)}/slides/design-system?path=${encodeURIComponent(path)}`));
