@@ -54,6 +54,13 @@ class SlideCommentState(BaseModel):
     resolved: bool
 
 
+class SlideSave(BaseModel):
+    path: str
+    source: str = Field(min_length=1, max_length=400_000)
+    # The slide's version as the editor read it: a save over a newer file is refused.
+    version: str = Field(min_length=1, max_length=128)
+
+
 class MemoryUpdate(BaseModel):
     content: str
 

@@ -9,7 +9,9 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
+from .engine.build import DeckChangedError
 from .engine.instructions import NEW_DECK_INSTRUCTIONS
+from .engine.section_format import SectionError
 from .engine.tool import build_engine_tools
 from .engine.view import NotBuiltFromPages, read_deck, slide_svg
 from .engine.view_comments import (
@@ -20,15 +22,19 @@ from .engine.view_comments import (
     reply_to_comment,
     resolve_comment,
 )
+from .engine.view_edit import SlideChanged, save_slide, slide_parts
 from .engine.view_export import deck_basic_fonts, deck_html, deck_pdf
 from .tool_wrappers import build_presentation_tools as build_legacy_presentation_tools
 from .toolkit import PresentationToolkit
 
 __all__ = [
     "CommentNotFound",
+    "DeckChangedError",
     "NEW_DECK_INSTRUCTIONS",
     "NotBuiltFromPages",
     "PresentationToolkit",
+    "SectionError",
+    "SlideChanged",
     "add_comment",
     "build_legacy_presentation_tools",
     "build_presentation_tools",
@@ -40,6 +46,8 @@ __all__ = [
     "read_deck",
     "reply_to_comment",
     "resolve_comment",
+    "save_slide",
+    "slide_parts",
     "slide_svg",
 ]
 

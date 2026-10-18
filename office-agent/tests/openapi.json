@@ -686,6 +686,33 @@
         "title": "SlideCommentState",
         "type": "object"
       },
+      "SlideSave": {
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "source": {
+            "maxLength": 400000,
+            "minLength": 1,
+            "title": "Source",
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "source",
+          "version"
+        ],
+        "title": "SlideSave",
+        "type": "object"
+      },
       "TaskNotesUpdate": {
         "properties": {
           "notes": {
@@ -4922,6 +4949,121 @@
           }
         },
         "summary": "Export Slides"
+      }
+    },
+    "/api/threads/{thread_id}/slides/{index}/parts": {
+      "get": {
+        "operationId": "get_parts_api_threads__thread_id__slides__index__parts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "index",
+            "required": true,
+            "schema": {
+              "title": "Index",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Get Parts Api Threads  Thread Id  Slides  Index  Parts Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Parts"
+      }
+    },
+    "/api/threads/{thread_id}/slides/{index}/source": {
+      "put": {
+        "operationId": "put_source_api_threads__thread_id__slides__index__source_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "index",
+            "required": true,
+            "schema": {
+              "title": "Index",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SlideSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Put Source Api Threads  Thread Id  Slides  Index  Source Put"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Source"
       }
     },
     "/api/threads/{thread_id}/slides/{index}/svg": {
