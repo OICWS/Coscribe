@@ -15,7 +15,9 @@ import {
   type SlideInfo,
 } from "../../lib/slides";
 import { useDockPanel } from "../dock/dockContext";
-import { BookOpenIcon, ChevronDownIcon, ExternalLinkIcon, FolderIcon, PlayIcon } from "../icons";
+import { BookOpenIcon, ChevronDownIcon, ExternalLinkIcon, FolderIcon, MessageCircleIcon, PlayIcon } from "../icons";
+import type { CommentLink } from "../../lib/slideComments";
+import { SlideComments, useSlideComments } from "./SlideComments";
 import { SlideMenu, type MenuEntry } from "./SlideMenu";
 import { SlidePresenter } from "./SlidePresenter";
 import { SlideProperties } from "./SlideProperties";
@@ -26,12 +28,24 @@ import { SlideFooter, SlideMiniBar, SlideThumbnails, type SlidesView } from "./S
 /** From this panel width the properties sit beside the slide instead of below it. */
 const PROPERTIES_BESIDE_FROM = 880;
 
-type Menu = { kind: "zoom" | "title" | "present" | "download"; anchor: DOMRect };
+type Menu = { kind: "zoom" | "title" | "present" | "download" | "comments"; anchor: DOMRect };
 
 /** A deck coscribe built, beside the conversation: the slide, its thumbnails, its notes and
  * properties, and all slides at once in Canvas view. Read only for now. */
-export function SlidesPanel({ threadId, path, refreshKey }: { threadId: string; path: string; refreshKey: string }) {
+export function SlidesPanel({
+  threadId,
+  path,
+  refreshKey,
+  onSendComment,
+}: {
+  threadId: string;
+  path: string;
+  refreshKey: string;
+  /** Sends a comment to coscribe as a message; absent where there is no conversation. */
+  onSendComment?: (text: string, link: CommentLink) => void;
+}) {
   const { deck, error, notBuilt, open, srcOf } = useSlideDeck(threadId, path, refreshKey);
+  const comments = useSlideComments(threadId, path, refreshKey);
   const [menu, setMenu] = useState<Menu | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -40,7 +54,7 @@ export function SlidesPanel({ threadId, path, refreshKey }: { threadId: string; 
 
   const slides = deck?.slides ?? [];
   const ui = useSlidesUi(slides.length);
-  const { index, view, setCurrent, showView, toggleNotes } = ui;
+  const { index, view, setCurrent } = ui;
   const shownZoom = ui.zoom ?? fitFor(view, stage);
   const name = path.split(/[\\/]/).pop() ?? path;
   const slide = slides[index];
@@ -56,8 +70,8 @@ export function SlidesPanel({ threadId, path, refreshKey }: { threadId: string; 
       className="relative flex h-full min-h-0 flex-col outline-none"
       onKeyDown={(e) => ui.onKey(e, shownZoom)}
     >
-      <PanelTop title={deck?.title ?? name} path={path} onMenu={(anchor) => setMenu({ kind: "title", anchor })} />
-      <DeckNotices changed={deck?.changed ?? false} error={error ?? downloads.failed} />
+      <PanelTop title={deck?.title ?? name} path={path} ui={ui} onMenu={(kind, anchor) => setMenu({ kind, anchor })} />
+      <DeckNotices changed={deck?.changed ?? false} error={error ?? downloads.failed ?? comments.failed} />
       {notBuilt ? (
         <NotBuilt name={name} onOpen={() => open(false)} />
       ) : (
@@ -72,40 +86,32 @@ export function SlidesPanel({ threadId, path, refreshKey }: { threadId: string; 
               srcOf={srcOf}
               onSelect={setCurrent}
               onOpen={ui.openSlide}
+              overlay={
+                slide && (
+                  <SlideComments
+                    threadId={threadId}
+                    path={path}
+                    deckName={name}
+                    slide={slide}
+                    slideNumber={index + 1}
+                    store={comments}
+                    commenting={ui.commenting}
+                    showResolved={ui.showResolved}
+                    onSend={onSendComment}
+                  />
+                )
+              }
             >
-              <SlideToolbar
+              <StageControls
+                ui={ui}
+                count={slides.length}
                 zoom={shownZoom}
-                propertiesShown={ui.propertiesShown}
                 beside={beside}
-                onToggleProperties={() => ui.setPropertiesShown((shown) => !shown)}
-                onZoomMenu={(anchor) => setMenu({ kind: "zoom", anchor })}
-                onPresentMenu={(anchor) => setMenu({ kind: "present", anchor })}
-                onDownloadMenu={(anchor) => setMenu({ kind: "download", anchor })}
                 busy={downloads.busy}
+                onMenu={(kind, anchor) => setMenu({ kind, anchor })}
               />
-              {view === "slide" && !ui.stripShown && slides.length > 0 && (
-                <SlideMiniBar
-                  current={index}
-                  count={slides.length}
-                  notesShown={ui.notesShown}
-                  onGo={ui.go}
-                  onToggleNotes={toggleNotes}
-                  onShowStrip={() => ui.setStripShown(true)}
-                />
-              )}
             </SlideStage>
-            {ui.notesShown && view === "slide" && slide && <SpeakerNotes notes={slide.notes} />}
-            {(view === "canvas" || ui.stripShown) && (
-              <SlideFooter
-                view={view}
-                notesShown={ui.notesShown}
-                onView={showView}
-                onToggleNotes={toggleNotes}
-                onHideStrip={() => ui.setStripShown(false)}
-              >
-                {view === "slide" && <SlideThumbnails slides={slides} current={index} srcOf={srcOf} onSelect={setCurrent} />}
-              </SlideFooter>
-            )}
+            <BelowStage ui={ui} slides={slides} srcOf={srcOf} />
             {!beside && properties}
           </div>
           {beside && properties}
@@ -122,6 +128,48 @@ export function SlidesPanel({ threadId, path, refreshKey }: { threadId: string; 
         onStopped={() => rootRef.current?.focus()}
       />
     </div>
+  );
+}
+
+/** What floats over the stage: the toolbar, and the mini bar when the strip is hidden. */
+function StageControls({
+  ui,
+  count,
+  zoom,
+  beside,
+  busy,
+  onMenu,
+}: {
+  ui: ReturnType<typeof useSlidesUi>;
+  count: number;
+  zoom: number;
+  beside: boolean;
+  busy: boolean;
+  onMenu: (kind: Menu["kind"], anchor: DOMRect) => void;
+}) {
+  return (
+    <>
+      <SlideToolbar
+        zoom={zoom}
+        propertiesShown={ui.propertiesShown}
+        beside={beside}
+        onToggleProperties={() => ui.setPropertiesShown((shown) => !shown)}
+        onZoomMenu={(anchor) => onMenu("zoom", anchor)}
+        onPresentMenu={(anchor) => onMenu("present", anchor)}
+        onDownloadMenu={(anchor) => onMenu("download", anchor)}
+        busy={busy}
+      />
+      {ui.view === "slide" && !ui.stripShown && count > 0 && (
+        <SlideMiniBar
+          current={ui.index}
+          count={count}
+          notesShown={ui.notesShown}
+          onGo={ui.go}
+          onToggleNotes={ui.toggleNotes}
+          onShowStrip={() => ui.setStripShown(true)}
+        />
+      )}
+    </>
   );
 }
 
@@ -145,12 +193,71 @@ function DeckNotices({ changed, error }: { changed: boolean; error: string | nul
 }
 
 /** The panel's header, which the dock drags it by: the deck's name and menu, then the dock's controls. */
-function PanelTop({ title, path, onMenu }: { title: string; path: string; onMenu: (anchor: DOMRect) => void }) {
+/** Under the stage: the slide's notes, then the bar and the thumbnail strip. */
+function BelowStage({ ui, slides, srcOf }: { ui: ReturnType<typeof useSlidesUi>; slides: SlideInfo[]; srcOf: (index: number) => string }) {
+  const slide = slides[ui.index];
+  return (
+    <>
+      {ui.notesShown && ui.view === "slide" && slide && <SpeakerNotes notes={slide.notes} />}
+      {(ui.view === "canvas" || ui.stripShown) && (
+        <SlideFooter
+          view={ui.view}
+          notesShown={ui.notesShown}
+          onView={ui.showView}
+          onToggleNotes={ui.toggleNotes}
+          onHideStrip={() => ui.setStripShown(false)}
+        >
+          {ui.view === "slide" && <SlideThumbnails slides={slides} current={ui.index} srcOf={srcOf} onSelect={ui.setCurrent} />}
+        </SlideFooter>
+      )}
+    </>
+  );
+}
+
+function PanelTop({
+  title,
+  path,
+  ui,
+  onMenu,
+}: {
+  title: string;
+  path: string;
+  ui: ReturnType<typeof useSlidesUi>;
+  onMenu: (kind: "title" | "comments", anchor: DOMRect) => void;
+}) {
+  const { commenting, toggleCommenting: onToggleComments } = ui;
   const dock = useDockPanel();
+  const half = "flex h-7 items-center justify-center hover:bg-[var(--card-bg)]";
   return (
     <div className="flex h-12 shrink-0 items-center gap-2 px-3" {...dock.headerProps}>
-      <TitleButton title={title} path={path} onMenu={onMenu} />
+      <TitleButton title={title} path={path} onMenu={(anchor) => onMenu("title", anchor)} />
       <div className="flex-1" />
+      <div
+        className="flex items-center overflow-hidden rounded-lg border border-[var(--border)]"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          title={commenting ? "Stop commenting (Esc)" : "Comment: click anything on the slide"}
+          aria-label="Comment"
+          aria-pressed={commenting}
+          className={`${half} w-8 ${commenting ? "bg-[var(--accent-soft)] text-[var(--accent-ink)]" : "text-[var(--fg)]"}`}
+          onClick={onToggleComments}
+        >
+          <MessageCircleIcon className="h-4 w-4" />
+        </button>
+        <span className="h-4 border-l border-[var(--border)]" />
+        <button
+          type="button"
+          title="Comment options"
+          aria-label="Comment options"
+          aria-haspopup="menu"
+          className={`${half} w-6 text-[var(--muted)]`}
+          onClick={(e) => onMenu("comments", e.currentTarget.getBoundingClientRect())}
+        >
+          <ChevronDownIcon className="h-3.5 w-3.5" />
+        </button>
+      </div>
       {dock.controls}
     </div>
   );
@@ -193,6 +300,8 @@ function useSlidesUi(count: number) {
   const [propertiesShown, setPropertiesShown] = useState(false);
   const [zoom, setZoom] = useState<number | null>(null);
   const [presenting, setPresenting] = useState<{ withNotes: boolean } | null>(null);
+  const [commenting, setCommenting] = useState(false);
+  const [showResolved, setShowResolved] = useState(false);
   const index = Math.min(current, Math.max(count - 1, 0));
   const go = (delta: number) => setCurrent(Math.max(0, Math.min(count - 1, index + delta)));
   const showView = (next: SlidesView) => {
@@ -204,6 +313,7 @@ function useSlidesUi(count: number) {
     showView("slide");
   };
   const onKey = (e: KeyboardEvent<HTMLDivElement>, shownZoom: number) => {
+    if (e.key === "Escape" && commenting) return setCommenting(false);
     const key = slideKey(e, view);
     if (key === null) return;
     e.preventDefault();
@@ -218,7 +328,15 @@ function useSlidesUi(count: number) {
     setPresenting(null);
     setCurrent(last);
   };
+  const toggleCommenting = () => {
+    setCommenting((on) => !on);
+    showView("slide");
+  };
   return {
+    commenting,
+    toggleCommenting,
+    showResolved,
+    setShowResolved,
     presenting,
     setPresenting,
     stopPresenting,
@@ -355,7 +473,7 @@ function SlidesOverlays({
 }) {
   const { presenting, index } = ui;
   const menuEntries = (kind: Menu["kind"]) =>
-    entriesFor(kind, zoom, ui.view, { ...actions, setZoom: ui.setZoom, present: (withNotes) => ui.setPresenting({ withNotes }) });
+    entriesFor(kind, zoom, ui.view, { ...actions, ui, setZoom: ui.setZoom, present: (withNotes) => ui.setPresenting({ withNotes }) });
   const onStopPresenting = (last: number) => {
     ui.stopPresenting(last);
     onStopped();
@@ -383,15 +501,30 @@ interface MenuActions {
   present: (withNotes: boolean) => void;
   open: (reveal: boolean) => void;
   download: (format: SlideExport) => void;
+  ui: ReturnType<typeof useSlidesUi>;
 }
 
 function entriesFor(kind: Menu["kind"], zoom: number, view: SlidesView, actions: MenuActions): MenuEntry[] {
   if (kind === "zoom") return zoomEntries(zoom, view, actions.setZoom);
   if (kind === "download") return downloadEntries(actions.download);
+  if (kind === "comments") return commentEntries(actions.ui);
   return kind === "present" ? presentEntries(actions.present) : titleEntries(actions.open);
 }
 
-const MENU_LABELS: Record<Menu["kind"], string> = { zoom: "Zoom", title: "Presentation", present: "Present", download: "Download" };
+function commentEntries(ui: ReturnType<typeof useSlidesUi>): MenuEntry[] {
+  return [
+    { label: ui.commenting ? "Stop commenting" : "Comment on the slide", onSelect: ui.toggleCommenting },
+    { label: "Show resolved comments", checked: ui.showResolved, onSelect: () => ui.setShowResolved((shown) => !shown) },
+  ];
+}
+
+const MENU_LABELS: Record<Menu["kind"], string> = {
+  zoom: "Zoom",
+  title: "Presentation",
+  present: "Present",
+  download: "Download",
+  comments: "Comments",
+};
 
 function downloadEntries(download: (format: SlideExport) => void): MenuEntry[] {
   return [

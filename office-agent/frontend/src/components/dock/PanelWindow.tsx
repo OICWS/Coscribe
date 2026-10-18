@@ -141,6 +141,7 @@ function PanelContent({ state }: { state: PanelWindowState }) {
   if (state.path) {
     return (
       <ViewerPanel
+        onSendComment={(text, link) => sendPanelWindowAction({ type: "sendComment", text, link })}
         key={`${state.threadId}:${state.path}`}
         threadId={state.threadId}
         path={state.path}

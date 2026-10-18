@@ -36,6 +36,7 @@ import { PanelDock } from "./components/dock/PanelDock";
 import { PanelToggles } from "./components/dock/PanelToggles";
 import type { PanelId } from "./lib/dockLayout";
 import { isViewable } from "./lib/viewers";
+import { useCommentSender } from "./lib/commentReplies";
 import { canOpenPanelWindows, focusPanelWindow, usePanelWindows } from "./lib/panelWindows";
 import { WorkflowDraftPage } from "./components/workflow/WorkflowDraftPage";
 import { WorkflowRunView } from "./components/workflow/WorkflowRunView";
@@ -650,6 +651,8 @@ function App() {
     });
   };
 
+  const onSendComment = useCommentSender(threadId, state.items, state.turnInFlight, (text) => onSend({ displayText: text, outgoingText: text, isInstant: false }));
+
   const onSteer = (text: string) => {
     const id = `steer-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     dispatch({ type: "local_steer", id, text });
@@ -674,11 +677,8 @@ function App() {
     socketRef.current?.send({ type: "edit_message", index: turnIndex, text });
   };
 
-  /** Undo, not regenerate -- truncates the turn like onEditMessage does,
-   * but hands the original question text back to the composer
-   * (pendingComposerText/Composer's externalText prop, same mechanism
-   * onCreateSkill below uses) instead of resubmitting it. No turn runs
-   * afterward, unlike edit. */
+  /** Undo, not regenerate: the question goes back to the composer instead of being sent again,
+   * so no turn runs, unlike edit. */
   const onRewindMessage = (turnIndex: number, text: string) => {
     dispatch({ type: "local_rewind_message", turnIndex });
     setPendingComposerText(text);
@@ -730,10 +730,8 @@ function App() {
   const onBrowserPanelCapture = (capture: BrowserCapture) => setPendingBrowserCapture(capture);
   const onPptxShapePicked = (capture: PptxShapeCapture) => setPendingPptxCapture(capture);
 
-  /** Settings > Skills > Add > Create a skill -- closes Settings, switches
-   * to Create mode (Composer only renders there), and prefills
-   * "/skill-creator " into the composer via pendingComposerText -- not
-   * sent, so the user can review or add context before hitting Enter. */
+  /** Create mode, because the composer only renders there; the command is prefilled, not sent,
+   * so the user can add context before sending. */
   const onCreateSkill = () => {
     setSettingsOpen(false);
     showChat();
@@ -768,6 +766,7 @@ function App() {
       else if (action.type === "saveAsWorkflow") startWorkflowDraft("");
       else if (action.type === "view") viewFile(action.path);
       else if (action.type === "sendToChat") onBrowserPanelCapture(action.capture);
+      else if (action.type === "sendComment") onSendComment(action.text, action.link);
       else if (action.type === "stopAgent") onStop();
       else onApprove(action.id, action.approved, action.scope);
     },
@@ -851,7 +850,7 @@ function App() {
     }
     if (panel === "viewer" && viewerFile) {
       return (
-        <ViewerPanel key={`${threadId}:${viewerFile}`} threadId={threadId} path={viewerFile} refreshKey={refreshKey} />
+        <ViewerPanel key={`${threadId}:${viewerFile}`} threadId={threadId} path={viewerFile} refreshKey={refreshKey} onSendComment={onSendComment} />
       );
     }
     if (panel === "browser") {
