@@ -321,6 +321,19 @@ def test_enforce_fails_only_when_something_got_worse(
     assert ratchet.main(["--enforce"]) == 0
 
 
+def test_the_checks_every_pull_request_runs_enforce_the_ratchet() -> None:
+    """The ratchet only counts if a worse number stops the merge: `check.sh` is what CI and a
+    contributor both run, and the Windows job has its own copy of the step."""
+    root = Path(__file__).resolve().parents[2]
+    assert "python scripts/ratchet.py --enforce" in (
+        root / "office-agent/scripts/check.sh"
+    ).read_text(encoding="utf-8")
+    ci = (root / ".github/workflows/office-agent-ci.yml").read_text(encoding="utf-8")
+    assert "run: bash scripts/check.sh" in ci
+    windows = (root / ".github/workflows/windows-checks.yml").read_text(encoding="utf-8")
+    assert "python scripts/ratchet.py --enforce" in windows
+
+
 def _frontend_installed() -> bool:
     return (
         Path(__file__).resolve().parents[1] / "frontend" / "node_modules" / "typescript"
