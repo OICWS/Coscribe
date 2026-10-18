@@ -29,6 +29,9 @@ _XLINK = "{http://www.w3.org/1999/xlink}href"
 # Elements that could fetch or run something if the SVG were ever opened as a document; an
 # image never runs them, but the route serves the SVG on the app's own origin.
 _UNSAFE = {"script", "foreignObject", "iframe", "object", "embed"}
+_SHAPES = {"sp", "pic", "graphicFrame", "grpSp", "cxnSp"}
+# A comment's anchor names its element by the start of its words; past this it stops being a name.
+_SNIPPET = 32
 _IMAGE_TYPES = {"image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml"}
 
 
@@ -67,6 +70,7 @@ def read_deck(deck: Path) -> dict[str, Any]:
                 "notes": _notes(slide),
                 "transition": _transition(slide),
                 "background": _background(slide),
+                "elements": slide_elements(slide, prs.slide_width or 1, prs.slide_height or 1),
             }
         )
     return {"title": deck.stem, "folder": folder.name, "changed": changed, "slides": slides}
@@ -95,6 +99,87 @@ def slide_svg(deck: Path, index: int, resource_root: Path) -> str:
     if index < len(slides):
         _draw_natives(root, slides[index])
     return ET.tostring(root, encoding="unicode")
+
+
+def slide_elements(slide: Any, width: int, height: int) -> list[dict[str, Any]]:
+    """What a comment can be put on: every shape, inside groups too, with its box as fractions of
+    the slide and a label that names it ("Title", 'Text "Q3 at a glance"', "Chart")."""
+    found: list[dict[str, Any]] = []
+    _collect(slide.shapes._spTree, (0.0, 0.0, 1.0, 1.0), width, height, found)
+    return found
+
+
+def _collect(
+    tree: Any, place: tuple[float, float, float, float], width: int, height: int, found: list[Any]
+) -> None:
+    """`place` maps the tree's child coordinates to the slide: (offset x, offset y, scale x,
+    scale y), in EMU, as a group's chOff/chExt to off/ext says."""
+    ox, oy, sx, sy = place
+    for el in tree:
+        tag = el.tag.rsplit("}", 1)[-1] if isinstance(el.tag, str) else ""
+        if tag not in _SHAPES:
+            continue
+        xfrm = el.find(f"{_P}grpSpPr/{_A}xfrm") if tag == "grpSp" else _xfrm(el)
+        if xfrm is None:
+            continue
+        x, y, w, h = _rect(xfrm)
+        box = (ox + x * sx, oy + y * sy, w * sx, h * sy)
+        if tag == "grpSp":
+            ch_off, ch_ext = xfrm.find(f"{_A}chOff"), xfrm.find(f"{_A}chExt")
+            if ch_off is None or ch_ext is None:
+                continue
+            cx, cy = int(ch_off.get("x", 0)), int(ch_off.get("y", 0))
+            cw, ch = int(ch_ext.get("cx", 1)) or 1, int(ch_ext.get("cy", 1)) or 1
+            gx, gy = box[2] / cw, box[3] / ch
+            _collect(el, (box[0] - cx * gx, box[1] - cy * gy, gx, gy), width, height, found)
+            continue
+        cnv = el.find(f".//{_P}cNvPr")
+        found.append(
+            {
+                "id": cnv.get("id") if cnv is not None else "",
+                "label": _label(el, tag),
+                "box": [box[0] / width, box[1] / height, box[2] / width, box[3] / height],
+            }
+        )
+
+
+def _xfrm(el: Any) -> Any:
+    found = el.find(f"{_P}spPr/{_A}xfrm")
+    if found is None:
+        found = el.find(f"{_P}xfrm")
+    return found
+
+
+def _rect(xfrm: Any) -> tuple[float, float, float, float]:
+    off, ext = xfrm.find(f"{_A}off"), xfrm.find(f"{_A}ext")
+    if off is None or ext is None:
+        return 0.0, 0.0, 0.0, 0.0
+    return (
+        float(off.get("x", 0)),
+        float(off.get("y", 0)),
+        float(ext.get("cx", 0)),
+        float(ext.get("cy", 0)),
+    )
+
+
+def _label(el: Any, tag: str) -> str:
+    if tag == "pic":
+        return "Picture"
+    if tag == "cxnSp":
+        return "Line"
+    if tag == "graphicFrame":
+        uri = el.find(f".//{_A}graphicData")
+        kind = (uri.get("uri", "") if uri is not None else "").rsplit("/", 1)[-1]
+        return {"chart": "Chart", "table": "Table"}.get(kind, "Object")
+    words = " ".join("".join(t.text or "" for t in p.iter(f"{_A}t")) for p in el.iter(f"{_A}p"))
+    words = " ".join(words.split())
+    if el.find(f".//{_P}ph[@type='title']") is not None:
+        return f'Title "{_snippet(words)}"' if words else "Title"
+    return f'Text "{_snippet(words)}"' if words else "Shape"
+
+
+def _snippet(words: str) -> str:
+    return words if len(words) <= _SNIPPET else words[: _SNIPPET - 1] + "…"
 
 
 def _make_safe(root: ET.Element) -> None:

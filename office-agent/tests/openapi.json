@@ -598,6 +598,94 @@
         "title": "SkillEnabledUpdate",
         "type": "object"
       },
+      "SlideCommentNew": {
+        "properties": {
+          "element": {
+            "title": "Element",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "sent": {
+            "default": false,
+            "title": "Sent",
+            "type": "boolean"
+          },
+          "slide": {
+            "title": "Slide",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "x": {
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "title": "Y",
+            "type": "number"
+          }
+        },
+        "required": [
+          "path",
+          "slide",
+          "x",
+          "y",
+          "element",
+          "text"
+        ],
+        "title": "SlideCommentNew",
+        "type": "object"
+      },
+      "SlideCommentReply": {
+        "properties": {
+          "from_coscribe": {
+            "default": false,
+            "title": "From Coscribe",
+            "type": "boolean"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "text"
+        ],
+        "title": "SlideCommentReply",
+        "type": "object"
+      },
+      "SlideCommentState": {
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "resolved": {
+            "title": "Resolved",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "resolved"
+        ],
+        "title": "SlideCommentState",
+        "type": "object"
+      },
       "TaskNotesUpdate": {
         "properties": {
           "notes": {
@@ -4513,6 +4601,272 @@
           }
         },
         "summary": "Get Slides"
+      }
+    },
+    "/api/threads/{thread_id}/slides/comments": {
+      "get": {
+        "operationId": "get_comments_api_threads__thread_id__slides_comments_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Get Comments Api Threads  Thread Id  Slides Comments Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Comments"
+      },
+      "post": {
+        "operationId": "post_comment_api_threads__thread_id__slides_comments_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SlideCommentNew"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Post Comment Api Threads  Thread Id  Slides Comments Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Comment"
+      }
+    },
+    "/api/threads/{thread_id}/slides/comments/{comment_id}": {
+      "delete": {
+        "operationId": "remove_comment_api_threads__thread_id__slides_comments__comment_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "comment_id",
+            "required": true,
+            "schema": {
+              "title": "Comment Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Remove Comment Api Threads  Thread Id  Slides Comments  Comment Id  Delete"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Comment"
+      },
+      "post": {
+        "operationId": "post_state_api_threads__thread_id__slides_comments__comment_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "comment_id",
+            "required": true,
+            "schema": {
+              "title": "Comment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SlideCommentState"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Post State Api Threads  Thread Id  Slides Comments  Comment Id  Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post State"
+      }
+    },
+    "/api/threads/{thread_id}/slides/comments/{comment_id}/replies": {
+      "post": {
+        "operationId": "post_reply_api_threads__thread_id__slides_comments__comment_id__replies_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "comment_id",
+            "required": true,
+            "schema": {
+              "title": "Comment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SlideCommentReply"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Post Reply Api Threads  Thread Id  Slides Comments  Comment Id  Replies Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Reply"
       }
     },
     "/api/threads/{thread_id}/slides/export": {

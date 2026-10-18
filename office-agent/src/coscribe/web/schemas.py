@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ConfigUpdate(BaseModel):
@@ -30,6 +30,28 @@ class OpenFileRequest(BaseModel):
 class DocxReviewEdit(BaseModel):
     path: str
     operations: list[dict[str, str]]
+
+
+class SlideCommentNew(BaseModel):
+    path: str
+    slide: str
+    x: float
+    y: float
+    element: str
+    text: str = Field(min_length=1, max_length=4000)
+    sent: bool = False
+
+
+class SlideCommentReply(BaseModel):
+    path: str
+    text: str = Field(min_length=1, max_length=4000)
+    # The reply carries coscribe's answer to a comment sent to it, rather than the user's words.
+    from_coscribe: bool = False
+
+
+class SlideCommentState(BaseModel):
+    path: str
+    resolved: bool
 
 
 class MemoryUpdate(BaseModel):

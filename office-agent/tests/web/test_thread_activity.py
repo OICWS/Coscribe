@@ -295,6 +295,42 @@ def test_the_slides_routes_read_a_built_deck_and_draw_its_slides_lg(
     assert broken.status_code == 400 and "01.svg" not in broken.text
 
 
+def test_the_slides_comment_routes_add_reply_resolve_and_delete_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.tools.office.pptx.engine import build_deck
+    from coscribe.web.routes import slides as slides_routes
+
+    from ..test_deck_engine import COVER
+
+    monkeypatch.setattr(slides_routes.getpass, "getuser", lambda: "ana")
+    pages = tmp_path / "workspace" / "q3"
+    pages.mkdir(parents=True)
+    (pages / "01.svg").write_text(COVER, encoding="utf-8")
+    assert build_deck(pages, pages.parent / "q3.pptx").ok
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        url = "/api/threads/t_comments/slides/comments"
+        new = {"path": "q3.pptx", "slide": "01", "x": 0.2, "y": 0.3, "element": "Title"}
+        made = client.post(url, json={**new, "text": "Shorter title?", "sent": True}).json()
+        empty = client.post(url, json={**new, "text": ""})
+        reply = client.post(
+            f"{url}/{made['id']}/replies",
+            json={"path": "q3.pptx", "text": "Done.", "from_coscribe": True},
+        )
+        resolved = client.post(f"{url}/{made['id']}", json={"path": "q3.pptx", "resolved": True})
+        listed = client.get(url, params={"path": "q3.pptx"}).json()
+        deleted = client.delete(f"{url}/{made['id']}", params={"path": "q3.pptx"})
+        gone = client.post(f"{url}/{made['id']}", json={"path": "q3.pptx", "resolved": False})
+        after = client.get(url, params={"path": "q3.pptx"}).json()
+
+    assert made["author"] == "ana" and made["sent"] is True
+    assert empty.status_code == 422
+    assert reply.json()["author"] == "coscribe" and resolved.json() == {"resolved": True}
+    assert listed[0]["resolved"] and listed[0]["replies"][0]["text"] == "Done."
+    assert deleted.status_code == 200 and gone.status_code == 404 and after == []
+
+
 def test_a_saved_run_waits_for_a_folder_it_hasnt_been_allowed_then_carries_on_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

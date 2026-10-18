@@ -12,20 +12,34 @@ from typing import Any
 from .engine.instructions import NEW_DECK_INSTRUCTIONS
 from .engine.tool import build_engine_tools
 from .engine.view import NotBuiltFromPages, read_deck, slide_svg
+from .engine.view_comments import (
+    CommentNotFound,
+    add_comment,
+    delete_comment,
+    read_comments,
+    reply_to_comment,
+    resolve_comment,
+)
 from .engine.view_export import deck_basic_fonts, deck_html, deck_pdf
 from .tool_wrappers import build_presentation_tools as build_legacy_presentation_tools
 from .toolkit import PresentationToolkit
 
 __all__ = [
+    "CommentNotFound",
     "NEW_DECK_INSTRUCTIONS",
     "NotBuiltFromPages",
     "PresentationToolkit",
+    "add_comment",
     "build_legacy_presentation_tools",
     "build_presentation_tools",
     "deck_basic_fonts",
     "deck_html",
     "deck_pdf",
+    "delete_comment",
+    "read_comments",
     "read_deck",
+    "reply_to_comment",
+    "resolve_comment",
     "slide_svg",
 ]
 

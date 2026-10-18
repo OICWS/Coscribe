@@ -10,6 +10,7 @@ DELETE /api/skills/{name}
 DELETE /api/thread-groups/{name}
 DELETE /api/threads/{thread_id}
 DELETE /api/threads/{thread_id}/background-tasks
+DELETE /api/threads/{thread_id}/slides/comments/{comment_id}
 DELETE /api/threads/{thread_id}/subagents
 GET /
 GET /api/attachment/pdf
@@ -58,6 +59,7 @@ GET /api/threads/{thread_id}/environment
 GET /api/threads/{thread_id}/files/download
 GET /api/threads/{thread_id}/messaging
 GET /api/threads/{thread_id}/slides
+GET /api/threads/{thread_id}/slides/comments
 GET /api/threads/{thread_id}/slides/export
 GET /api/threads/{thread_id}/slides/{index}/svg
 GET /api/threads/{thread_id}/subagents
@@ -102,6 +104,9 @@ POST /api/threads/{thread_id}/docx-review
 POST /api/threads/{thread_id}/files/open
 POST /api/threads/{thread_id}/meta
 POST /api/threads/{thread_id}/rename
+POST /api/threads/{thread_id}/slides/comments
+POST /api/threads/{thread_id}/slides/comments/{comment_id}
+POST /api/threads/{thread_id}/slides/comments/{comment_id}/replies
 POST /api/threads/{thread_id}/workflow-draft
 POST /api/upload
 POST /api/workflows/permissions
