@@ -56,13 +56,40 @@ function drawElement(el: Element, part: SlidePart | undefined): HTMLElement | nu
     outer.append(inner);
     return outer;
   }
-  if (!part?.picture) return null;
+  if (!part?.picture) return drawnHere(el, style, box);
   const image = document.createElement("img");
   image.src = part.picture;
   image.alt = "";
   image.draggable = false;
   placePicture(image, box);
   return image;
+}
+
+/** A shape or table the server has not drawn yet (a layout's preview, an element just added),
+ * drawn here as near as the browser can; anything else waits for the server's picture. */
+function drawnHere(el: Element, style: Map<string, string>, [x, y, w, h]: Box): HTMLElement | null {
+  const node = document.createElement(el.localName === "table" ? "table" : "div");
+  Object.assign(node.style, { position: "absolute", left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px` });
+  if (el.localName === "x-shape") {
+    const shape = el.getAttribute("data-shape") ?? "rect";
+    applyStyle(node, new Map([...style].filter(([name]) => ["background", "border", "opacity"].includes(name))));
+    if (shape === "ellipse") node.style.borderRadius = "50%";
+    if (shape === "round-rect") node.style.borderRadius = style.get("border-radius") ?? `${Math.round(Math.min(w, h) * 0.12)}px`;
+    return node;
+  }
+  if (el.localName !== "table") return null;
+  Object.assign(node.style, { borderCollapse: "collapse", fontSize: style.get("font-size") ?? "28px", tableLayout: "fixed" });
+  for (const row of Array.from(el.querySelectorAll("tr"))) {
+    const tr = node.appendChild(document.createElement("tr"));
+    for (const cell of Array.from(row.children)) {
+      const td = tr.appendChild(document.createElement(cell.localName === "th" ? "th" : "td"));
+      td.textContent = cell.textContent;
+      td.style.border = `1px solid ${style.get("border-color") ?? "#CBD2DC"}`;
+      td.style.padding = "0.3em 0.5em";
+      applyStyle(td, new Map([...parseStyle(cell.getAttribute("style") ?? "")].filter(([name]) => ["background", "color"].includes(name))));
+    }
+  }
+  return node;
 }
 
 /** Moves or resizes an element's node while it is dragged; a picture stretches until the
