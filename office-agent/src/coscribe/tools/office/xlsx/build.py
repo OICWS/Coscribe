@@ -52,9 +52,14 @@ def _place(temporary: Path, path: Path, existed: bool, lost: list[str]) -> Path:
     return target
 
 
+def _is_formula(cell: Any) -> bool:
+    """By the cell's type, not its text: a `text: true` cell may read `=001` and is no formula."""
+    return bool(cell.data_type == "f")
+
+
 def _formula_cells(workbook: Any, written: Written) -> dict[str, list[str]]:
     return {
-        name: [c for c, _ in cells if str(workbook[name][c].value).startswith("=")]
+        name: [c for c, _ in cells if _is_formula(workbook[name][c])]
         for name, cells in written.cells.items()
         if name in workbook.sheetnames
     }
@@ -73,9 +78,7 @@ def _results(workbook: Any, values: Any, written: Written) -> dict[str, Any]:
     total = 0
     for name, cells in written.cells.items():
         for coordinate, _ in cells:
-            if name in workbook.sheetnames and str(workbook[name][coordinate].value).startswith(
-                "="
-            ):
+            if name in workbook.sheetnames and _is_formula(workbook[name][coordinate]):
                 total += 1
                 if len(listed) < _RESULTS_LISTED:
                     listed[f"{name}!{coordinate}"] = values[name][coordinate].value
