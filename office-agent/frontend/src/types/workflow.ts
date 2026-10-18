@@ -1,4 +1,4 @@
-// Mirrors src/coscribe/workflows/spec.py (the definition) and
+// Mirrors src/coscribe/workflow_spec/spec.py (the definition) and
 // engine.py's StepRecord (one step of one run), which comes from wire.gen.ts.
 
 import type { WorkflowCheck, WorkflowStepRecord } from "./wire.gen";

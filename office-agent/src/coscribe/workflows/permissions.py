@@ -17,8 +17,7 @@ from pathlib import Path, PureWindowsPath
 from typing import Any
 from urllib.parse import urlparse
 
-from .refs import render_text
-from .spec import ScriptStep, ToolStep, Workflow, walk
+from ..workflow_spec import ScriptStep, ToolStep, Workflow, render_text, walk
 
 URL_TOOLS = frozenset({"browser_navigate", "browser_tabs"})
 SCRIPT_TOOLS = frozenset({"run_python_script", "run_node_script", "run_background_script"})

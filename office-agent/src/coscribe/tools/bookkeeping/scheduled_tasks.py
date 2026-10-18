@@ -41,7 +41,7 @@ from typing import Any, Optional
 from pydantic import ValidationError
 
 from ...runtime import tool_metadata
-from ...workflows.spec import parse_workflow, workflow_error
+from ...workflow_spec import parse_workflow, workflow_error
 
 VALID_KINDS = ("manual", "once", "hourly", "daily", "weekdays", "weekly", "monthly")
 VALID_APPROVAL_MODES = ("manual", "auto", "skip")
@@ -340,7 +340,7 @@ class ScheduledTrigger:
     # change its real behavior.
     notes_enabled: bool = True
     runs: list[ScheduledRun] = field(default_factory=list)  # oldest first
-    # A workflows/spec.py Workflow as JSON: when set, a run executes these
+    # A workflow_spec Workflow as JSON: when set, a run executes these
     # steps instead of handing `prompt` to the model.
     workflow: dict[str, Any] | None = None
     # The folder a run reads and writes in; None is the app's default.

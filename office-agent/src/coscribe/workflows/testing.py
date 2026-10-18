@@ -21,8 +21,8 @@ from typing import Any
 from langgraph.checkpoint.memory import InMemorySaver
 
 from ..tools import BROWSER_RUNS
+from ..workflow_spec import ToolStep, Workflow, walk
 from .engine import StepContext, StepRecord, WorkflowNotRunnable, WorkflowRun, preview
-from .spec import ToolStep, Workflow, walk
 
 _OUTPUT_CHARS = 400
 _MAX_FILES = 10

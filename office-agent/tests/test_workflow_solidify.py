@@ -10,6 +10,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMe
 from langchain_core.outputs import ChatGeneration, ChatResult
 
 from coscribe.runtime_lg.messages import serialize_history_for_ws_lg
+from coscribe.workflow_spec import parse_workflow
 from coscribe.workflows.solidify import (
     DraftFailed,
     check_draft,
@@ -17,7 +18,6 @@ from coscribe.workflows.solidify import (
     render_conversation,
     revise_workflow,
 )
-from coscribe.workflows.spec import parse_workflow
 
 
 class ScriptedModel(BaseChatModel):

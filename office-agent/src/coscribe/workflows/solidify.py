@@ -18,9 +18,17 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.constants import TAG_NOSTREAM
 from pydantic import ValidationError
 
+from ..workflow_spec import (
+    LLMStep,
+    LoopStep,
+    ToolStep,
+    Workflow,
+    parse_workflow,
+    walk,
+    workflow_error,
+)
 from .catalog import describe_params, tool_description
 from .engine import UNAVAILABLE_TOOLS
-from .spec import LLMStep, LoopStep, ToolStep, Workflow, parse_workflow, walk, workflow_error
 
 SCRIPT_TOOL = "run_python_script"
 MAX_ATTEMPTS = 3

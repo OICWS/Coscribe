@@ -57,7 +57,8 @@ Last reviewed: 2026-10-15.
    - Done: aisuite is no longer a dependency (#299): one `pip install` resolves, the hand-run
      google-genai step is gone from CI and the session hook. Gemini 3.x has effort levels
      again on langchain-google-genai 4.3 (`<4.4` until the google-genai pin can move, #402).
-     Open: Gemini 2.x levels via `thinking_budget`.
+     Gemini 2.x levels via `thinking_budget` are not built: Google no longer serves 2.x to new keys
+     (see `docs/log/2026-10-18-gemini-2x-and-libreoffice-inventory.md`).
    - Done: `tools/presentations.py` is a 83-line entry point (parts 1 to 11 of its split; the
      toolkit is `office/pptx/toolkit.py` and the topic mixins, the tool wrappers are
      `office/pptx/tool_wrappers.py`, 88 lines, plus five `wrappers_*.py` topic modules). It was one
@@ -78,8 +79,8 @@ Last reviewed: 2026-10-15.
    in (card, `__init__.py` interface, tests by path; slice <= 15 files, 150k tokens). Done: the
    component map and generated `CODEOWNERS` (#349); `tools` cut into `tools.office.{docx,xlsx,pdf,pptx}`
    (#350), `tools.exec` (#351), `tools.web` (#352) and `tools.bookkeeping` (item 1); a generated
-   `protected` contract per package and a `layers` contract for the office formats, with 4 imports
-   (8 of 42 lines) left to shrink (item 2, 6b: the workflow spec and the pptx engine); `scripts/slice.py`
+   `protected` contract per package and a `layers` contract for the office formats, with 3 imports
+   (3 of 42 lines) left to shrink (item 2, 6b: the pptx engine); `scripts/slice.py`
    and the discovery protocol in `AGENTS.md` (item 3,
    the measured sample changes are still open). Also done: long functions and fan-out split
    (item 4), `web/tests` split by path (item 5), frontend ratchet and knip guardrails (item 6),
@@ -91,7 +92,7 @@ Last reviewed: 2026-10-15.
    20 checks for a person), the fresh-session measurement, prompt-injection tests, small items.
 
    Batch 10 (#425, the last structure batch): item 1 done (a workbook with a cell note now gets its
-   formula values), item 3 done (the ratchet was already enforced; now a test keeps it wired). Open: items 2 and 4 to 6, and item 7 (the closing report) last.
+   formula values), item 3 done (the ratchet was already enforced; now a test keeps it wired), item 4 done (the workflow spec lives in `workflow_spec`, below `tools`; the layers contract ignores nothing). item 5 closed with a reason and item 6 done (the inventory found no product call). Open: item 2, and item 7 (the closing report) last.
 0b. **The office route** (decision 0010, `docs/assessments/2026-10-13-office-route.md`):
    new decks compiled from whole-page SVG sources, edits through the page source and upgraded
    object tools; open-source code reused as owned copies. Done: the evaluation and the baseline
