@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { openThreadFile } from "../../lib/rest";
 import {
   DeckNotBuilt,
@@ -18,6 +18,7 @@ import { useDockPanel } from "../dock/dockContext";
 import { BookOpenIcon, ChevronDownIcon, ExternalLinkIcon, FolderIcon, MessageCircleIcon, PlayIcon } from "../icons";
 import type { CommentLink } from "../../lib/slideComments";
 import { SlideComments, useSlideComments } from "./SlideComments";
+import { SlideEditor } from "./SlideEditor";
 import { SlideMenu, type MenuEntry } from "./SlideMenu";
 import { SlidePresenter } from "./SlidePresenter";
 import { SlideProperties } from "./SlideProperties";
@@ -31,7 +32,7 @@ const PROPERTIES_BESIDE_FROM = 880;
 type Menu = { kind: "zoom" | "title" | "present" | "download" | "comments"; anchor: DOMRect };
 
 /** A deck coscribe built, beside the conversation: the slide, its thumbnails, its notes and
- * properties, and all slides at once in Canvas view. Read only for now. */
+ * properties, and all slides at once in Canvas view. A click on the slide starts editing it. */
 export function SlidesPanel({
   threadId,
   path,
@@ -44,7 +45,8 @@ export function SlidesPanel({
   /** Sends a comment to coscribe as a message; absent where there is no conversation. */
   onSendComment?: (text: string, link: CommentLink) => void;
 }) {
-  const { deck, error, notBuilt, open, srcOf } = useSlideDeck(threadId, path, refreshKey);
+  const edits = useEdits();
+  const { deck, error, notBuilt, open, srcOf } = useSlideDeck(threadId, path, `${refreshKey}.${edits.count}`);
   const comments = useSlideComments(threadId, path, refreshKey);
   const [menu, setMenu] = useState<Menu | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -59,9 +61,7 @@ export function SlidesPanel({
   const name = path.split(/[\\/]/).pop() ?? path;
   const slide = slides[index];
   const beside = panelWidth >= PROPERTIES_BESIDE_FROM;
-  const properties = ui.propertiesShown && slide && (
-    <SlideProperties slide={slide} beside={beside} onClose={() => ui.setPropertiesShown(false)} />
-  );
+  const properties = ui.propertiesShown && slide && <SlideProperties slide={slide} beside={beside} onClose={() => ui.setPropertiesShown(false)} />;
 
   return (
     <div
@@ -71,7 +71,7 @@ export function SlidesPanel({
       onKeyDown={(e) => ui.onKey(e, shownZoom)}
     >
       <PanelTop title={deck?.title ?? name} path={path} ui={ui} onMenu={(kind, anchor) => setMenu({ kind, anchor })} />
-      <DeckNotices changed={deck?.changed ?? false} error={error ?? downloads.failed ?? comments.failed} />
+      <DeckNotices changed={deck?.changed ?? false} error={error ?? edits.problem ?? downloads.failed ?? comments.failed} />
       {notBuilt ? (
         <NotBuilt name={name} onOpen={() => open(false)} />
       ) : (
@@ -88,17 +88,19 @@ export function SlidesPanel({
               onOpen={ui.openSlide}
               overlay={
                 slide && (
-                  <SlideComments
-                    threadId={threadId}
-                    path={path}
-                    deckName={name}
-                    slide={slide}
-                    slideNumber={index + 1}
-                    store={comments}
-                    commenting={ui.commenting}
-                    showResolved={ui.showResolved}
-                    onSend={onSendComment}
-                  />
+                  <SlideLayers at={{ threadId, path, ui, zoom: shownZoom }} edits={edits} refreshKey={refreshKey}>
+                    <SlideComments
+                      threadId={threadId}
+                      path={path}
+                      deckName={name}
+                      slide={slide}
+                      slideNumber={index + 1}
+                      store={comments}
+                      commenting={ui.commenting}
+                      showResolved={ui.showResolved}
+                      onSend={onSendComment}
+                    />
+                  </SlideLayers>
                 )
               }
             >
@@ -128,6 +130,82 @@ export function SlidesPanel({
         onStopped={() => rootRef.current?.focus()}
       />
     </div>
+  );
+}
+
+/** Saves made in the panel, which redraw the deck, and what the last one found. */
+function useEdits() {
+  const [count, setCount] = useState(0);
+  const [problem, setProblem] = useState<string | null>(null);
+  const saved = useCallback(() => setCount((n) => n + 1), []);
+  return { count, problem, setProblem, saved };
+}
+
+/** Over the slide: the editor, then the comments (`children`) above it. */
+function SlideLayers({
+  at,
+  edits,
+  refreshKey,
+  children,
+}: {
+  at: { threadId: string; path: string; ui: ReturnType<typeof useSlidesUi>; zoom: number };
+  edits: ReturnType<typeof useEdits>;
+  refreshKey: string;
+  children: ReactNode;
+}) {
+  return (
+    <>
+      {!at.ui.commenting && (
+        <SlideEditing {...at} refreshKey={refreshKey} onSaved={edits.saved} onProblem={edits.setProblem} />
+      )}
+      {children}
+    </>
+  );
+}
+
+/** The slide's editor once the slide is clicked; before that, the click that starts it. */
+function SlideEditing({
+  threadId,
+  path,
+  ui,
+  zoom,
+  refreshKey,
+  onSaved,
+  onProblem,
+}: {
+  threadId: string;
+  path: string;
+  ui: ReturnType<typeof useSlidesUi>;
+  zoom: number;
+  refreshKey: string;
+  onSaved: () => void;
+  onProblem: (message: string | null) => void;
+}) {
+  if (!ui.editing) {
+    return (
+      <div
+        aria-label="Edit the slide"
+        className="absolute inset-0"
+        onPointerDown={(e) => {
+          const box = e.currentTarget.getBoundingClientRect();
+          ui.startEditing({ x: (e.clientX - box.left) / zoom, y: (e.clientY - box.top) / zoom });
+        }}
+      />
+    );
+  }
+  return (
+    <SlideEditor
+      key={ui.index}
+      threadId={threadId}
+      path={path}
+      index={ui.index}
+      zoom={zoom}
+      refreshKey={refreshKey}
+      firstPoint={ui.editing.index === ui.index ? ui.editing.point : null}
+      onSaved={onSaved}
+      onProblem={onProblem}
+      onExit={ui.stopEditing}
+    />
   );
 }
 
@@ -302,11 +380,14 @@ function useSlidesUi(count: number) {
   const [presenting, setPresenting] = useState<{ withNotes: boolean } | null>(null);
   const [commenting, setCommenting] = useState(false);
   const [showResolved, setShowResolved] = useState(false);
+  // The slide where editing started and the click that started it, to select what was clicked.
+  const [editing, setEditing] = useState<{ index: number; point: { x: number; y: number } } | null>(null);
   const index = Math.min(current, Math.max(count - 1, 0));
   const go = (delta: number) => setCurrent(Math.max(0, Math.min(count - 1, index + delta)));
   const showView = (next: SlidesView) => {
     setView(next);
     setZoom(null);
+    if (next !== "slide") setEditing(null);
   };
   const openSlide = (i: number) => {
     setCurrent(i);
@@ -330,9 +411,13 @@ function useSlidesUi(count: number) {
   };
   const toggleCommenting = () => {
     setCommenting((on) => !on);
+    setEditing(null);
     showView("slide");
   };
   return {
+    editing,
+    startEditing: (point: { x: number; y: number }) => setEditing({ index, point }),
+    stopEditing: () => setEditing(null),
     commenting,
     toggleCommenting,
     showResolved,

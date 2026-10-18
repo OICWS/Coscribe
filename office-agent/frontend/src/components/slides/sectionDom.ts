@@ -1,0 +1,102 @@
+import { PICTURE_MARGIN, type SlidePart } from "../../lib/slideEditing";
+import { boxIn, elementsOf, parseStyle, type Box } from "../../lib/slideSource";
+
+/** A section drawn as the browser's own elements, the way the compiler lays it out: each
+ * element in its box, text in its own tag, everything else as the server's picture of it. Drawn
+ * in a shadow root, so neither the app's styles nor the slide's reach the other. */
+
+const SHEET = `
+.slide { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+.box { position: absolute; box-sizing: border-box; display: flex; flex-direction: column; }
+.box > * { margin: 0; padding: 0; overflow-wrap: break-word; }
+h1 { font-size: 64px; font-weight: 700; line-height: 1.15; }
+h2 { font-size: 48px; font-weight: 700; line-height: 1.15; }
+h3 { font-size: 36px; font-weight: 700; line-height: 1.2; }
+p, ul, ol { font-size: 28px; font-weight: 400; line-height: 1.35; }
+li { margin-left: 1.1em; }
+li + li { margin-top: 0.35em; }
+img { position: absolute; display: block; }
+`;
+
+/** Styles that place and fill an element's box; the rest style its text. */
+const BOX_STYLES = new Set(["left", "top", "width", "height", "padding", "background"]);
+const TEXT_TAGS = new Set(["h1", "h2", "h3", "p", "ul", "ol"]);
+const INLINE_TAGS = new Set(["b", "strong", "i", "em", "u", "span", "br", "li"]);
+const JUSTIFY: Record<string, string> = { top: "flex-start", middle: "center", bottom: "flex-end" };
+
+/** Draws `doc` into `root` and returns each element's node, in the section's order. */
+export function drawSection(root: ShadowRoot, doc: Document, parts: SlidePart[]): (HTMLElement | null)[] {
+  const sheet = document.createElement("style");
+  sheet.textContent = SHEET;
+  const slide = document.createElement("div");
+  slide.className = "slide";
+  const section = parseStyle(doc.documentElement.getAttribute("style") ?? "");
+  applyStyle(slide, new Map([...section].filter(([name]) => ["background", "font-family", "color"].includes(name))));
+  if (!section.has("background")) slide.style.background = "#ffffff";
+  const nodes = elementsOf(doc).map((el, i) => {
+    const node = drawElement(el, parts[i]);
+    if (node) slide.append(node);
+    return node;
+  });
+  root.replaceChildren(sheet, slide);
+  return nodes;
+}
+
+function drawElement(el: Element, part: SlidePart | undefined): HTMLElement | null {
+  const style = parseStyle(el.getAttribute("style") ?? "");
+  const box = boxIn(style);
+  if (!box) return null;
+  if (TEXT_TAGS.has(el.localName)) {
+    const outer = document.createElement("div");
+    outer.className = "box";
+    applyStyle(outer, new Map([...style].filter(([name]) => BOX_STYLES.has(name))));
+    outer.style.justifyContent = JUSTIFY[style.get("vertical-align") ?? "top"] ?? "flex-start";
+    const inner = copyText(el);
+    applyStyle(inner, new Map([...style].filter(([name]) => !BOX_STYLES.has(name) && name !== "vertical-align")));
+    outer.append(inner);
+    return outer;
+  }
+  if (!part?.picture) return null;
+  const image = document.createElement("img");
+  image.src = part.picture;
+  image.alt = "";
+  image.draggable = false;
+  placePicture(image, box);
+  return image;
+}
+
+/** Moves or resizes an element's node while it is dragged; a picture stretches until the
+ * server draws it again at its new size. */
+export function placeNode(node: HTMLElement, box: Box) {
+  if (node instanceof HTMLImageElement) return placePicture(node, box);
+  const [x, y, w, h] = box;
+  Object.assign(node.style, { left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px` });
+}
+
+function placePicture(image: HTMLImageElement, [x, y, w, h]: Box) {
+  const m = PICTURE_MARGIN;
+  Object.assign(image.style, { left: `${x - m}px`, top: `${y - m}px`, width: `${w + 2 * m}px`, height: `${h + 2 * m}px` });
+}
+
+/** The text element rebuilt from the section's own tags; anything else in it is left out. */
+function copyText(el: Element): HTMLElement {
+  const node = document.createElement(el.localName);
+  for (const child of Array.from(el.childNodes)) {
+    if (child.nodeType === Node.TEXT_NODE) node.append(child.textContent ?? "");
+    else if (child instanceof Element && INLINE_TAGS.has(child.localName)) {
+      const copy = copyText(child);
+      if (child.localName === "span") applyStyle(copy, parseStyle(child.getAttribute("style") ?? ""));
+      node.append(copy);
+    }
+  }
+  return node;
+}
+
+/** Sets each declaration that is a plain value: one that calls a CSS function (`url()`) could
+ * fetch from elsewhere, which a section never needs. */
+function applyStyle(node: HTMLElement, style: Map<string, string>) {
+  for (const [name, value] of style) {
+    if (/[()\\]/.test(value)) continue;
+    node.style.setProperty(name, value);
+  }
+}
