@@ -8,7 +8,10 @@ the file keeps `fullCalcOnLoad`, so Excel still recalculates on open."""
 from __future__ import annotations
 
 import re
+import tempfile
 import zipfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -136,16 +139,49 @@ def _split(address: str) -> tuple[int, int]:
     return row, column_index_from_string(letters)
 
 
+@contextmanager
+def _engine_readable(path: Path) -> Iterator[Path]:
+    """`path`, or a copy IronCalc can open. openpyxl writes a sheet's comments part with an
+    absolute target (`/xl/comments/comment1.xml`) that IronCalc joins onto the sheet's folder
+    and then fails to find ("Zip Error"), so every workbook with a note got no values. Only
+    the copy is changed; the values are written into the real file."""
+    with zipfile.ZipFile(path) as archive:
+        rels = [
+            n for n in archive.namelist() if re.fullmatch(r"xl/worksheets/_rels/[^/]+\.rels", n)
+        ]
+        absolute = [n for n in rels if b'Target="/xl/' in archive.read(n)]
+        if not absolute:
+            yield path
+            return
+        with tempfile.TemporaryDirectory(prefix="coscribe_calc_") as folder:
+            copy = Path(folder) / path.name
+            with zipfile.ZipFile(copy, "w", zipfile.ZIP_DEFLATED) as out:
+                for info in archive.infolist():
+                    data = archive.read(info.filename)
+                    if info.filename in absolute:
+                        data = data.replace(b'Target="/xl/', b'Target="../')
+                    out.writestr(info, data)
+            yield copy
+
+
 def evaluate(path: Path) -> tuple[dict[str, dict[str, Any]], list[str], str | None]:
     """`{sheet: {address: value}}` for every formula cell the engine could compute, the cells it
     could not (`Sheet!A1`), or no values and why."""
     import ironcalc
 
     try:
-        model = ironcalc.load_from_xlsx(str(path), "en", "UTC")
+        with _engine_readable(path) as readable:
+            model = ironcalc.load_from_xlsx(str(readable), "en", "UTC")
         model.evaluate()
         cells, defined = _formula_cells(path)
-    except (ironcalc.WorkbookError, OSError, ValueError, RuntimeError, KeyError) as exc:
+    except (
+        ironcalc.WorkbookError,
+        zipfile.BadZipFile,
+        OSError,
+        ValueError,
+        RuntimeError,
+        KeyError,
+    ) as exc:
         return {}, [], f"the formula engine could not read this workbook: {exc}"
     sheets = [s["name"] for s in model.get_worksheets_properties()]
     values: dict[str, dict[str, Any]] = {}

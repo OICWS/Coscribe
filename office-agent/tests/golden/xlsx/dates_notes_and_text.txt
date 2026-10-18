@@ -1,5 +1,5 @@
 ===== <cells>
-[Log] state=visible dimensions=A1:C3
+[Log] state=visible dimensions=A1:C4
 A1 'Date' | fmt='General' bold font=Calibri,11.0 border=bottom:medium
 B1 'Code' | fmt='General' bold font=Calibri,11.0 border=bottom:medium
 C1 'Hours' | fmt='General' bold font=Calibri,11.0 border=bottom:medium
@@ -9,6 +9,9 @@ C2 7.5 | fmt='General' font=Calibri,11.0 border=left:thin,right:thin,top:thin,bo
 A3 datetime.datetime(2026, 1, 6, 14, 30) | fmt='yyyy-mm-dd h:mm:ss' font=Calibri,11.0 border=left:thin,right:thin,top:thin,bottom:thin
 B3 'A-2' | fmt='General' font=Calibri,11.0 border=left:thin,right:thin,top:thin,bottom:thin
 C3 8 note='Includes overtime' | fmt='General' font=Calibri,11.0 border=left:thin,right:thin,top:thin,bottom:thin
+A4 'Total' | fmt='General' font=Calibri,11.0 border=left:thin,right:thin,top:thin,bottom:thin
+B4 None | fmt='General' font=Calibri,11.0 border=left:thin,right:thin,top:thin,bottom:thin
+C4 '=SUM(C2:C3)' -> 15.5 | fmt='General' font=Calibri,11.0 border=left:thin,right:thin,top:thin,bottom:thin
 ===== [Content_Types].xml
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default ContentType="application/vnd.openxmlformats-package.relationships+xml" Extension="rels"/>
@@ -229,7 +232,7 @@ C3 8 note='Includes overtime' | fmt='General' font=Calibri,11.0 border=left:thin
     <outlinePr summaryBelow="1" summaryRight="1"/>
     <pageSetUpPr/>
   </sheetPr>
-  <dimension ref="A1:C3"/>
+  <dimension ref="A1:C4"/>
   <sheetViews>
     <sheetView workbookViewId="0">
       <selection activeCell="A1" sqref="A1"/>
@@ -281,6 +284,18 @@ C3 8 note='Includes overtime' | fmt='General' font=Calibri,11.0 border=left:thin
       </c>
       <c r="C3" s="3" t="n">
         <v>8</v>
+      </c>
+    </row>
+    <row r="4">
+      <c r="A4" s="3" t="inlineStr">
+        <is>
+          <t>Total</t>
+        </is>
+      </c>
+      <c r="B4" s="3" t="n"/>
+      <c r="C4" s="3">
+        <f>SUM(C2:C3)</f>
+        <v>15.5</v>
       </c>
     </row>
   </sheetData>
