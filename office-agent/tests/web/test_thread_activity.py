@@ -275,6 +275,8 @@ def test_the_slides_routes_read_a_built_deck_and_draw_its_slides_lg(
         past_end = client.get(f"{url}/1/svg", params={"path": "q3.pptx"})
         not_a_deck = client.get(url, params={"path": "notes.txt"})
         outside = client.get(url, params={"path": "../q3.pptx"})
+        (pages / "01.svg").write_text("<svg", encoding="utf-8")
+        broken = client.get(f"{url}/0/svg", params={"path": "q3.pptx"})
 
     assert deck.status_code == 200 and [s["name"] for s in deck.json()["slides"]] == ["01.svg"]
     assert svg.headers["content-type"] == "image/svg+xml"
@@ -282,6 +284,8 @@ def test_the_slides_routes_read_a_built_deck_and_draw_its_slides_lg(
     assert svg.text.startswith("<svg")
     assert past_end.status_code == 404
     assert not_a_deck.status_code == 404 and outside.status_code == 404
+    # The parser's own message (with the page's path) stays on the server.
+    assert broken.status_code == 400 and "01.svg" not in broken.text
 
 
 def test_a_saved_run_waits_for_a_folder_it_hasnt_been_allowed_then_carries_on_lg(
