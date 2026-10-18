@@ -6,6 +6,7 @@ import { ChevronDownIcon, CloseIcon } from "../icons";
 import { Row, field } from "./PropertyRows";
 import { ColourPicker } from "./SlideFormatBar";
 import { SlideMenu } from "./SlideMenu";
+import { ImageProperties, ShapeProperties } from "./SlideObjectProperties";
 import { TableProperties } from "./SlideTableProperties";
 import { TextProperties, type EditorSelection } from "./SlideTextProperties";
 
@@ -20,7 +21,7 @@ const TRANSITIONS: [string | null, string | null][] = [
 /** A change to the slide's section, saved by the panel. */
 export type SlideEdit = (edit: (doc: Document) => void) => void;
 
-/** The selected text's or table's properties, or else the current slide's transition and background. */
+/** The selected object's properties, or else the current slide's transition and background. */
 export function SlideProperties({
   slide,
   beside,
@@ -32,7 +33,7 @@ export function SlideProperties({
 }: {
   slide: SlideInfo;
   beside: boolean;
-  /** The text or table selected in the editor, if one is. */
+  /** The text, table, picture or shape selected in the editor, if one is. */
   selection: EditorSelection | null;
   design: DesignSystem | null;
   onEdit: SlideEdit;
@@ -58,6 +59,8 @@ export function SlideProperties({
       </div>
       {selection?.kind === "text" && <TextProperties selection={selection} design={design} />}
       {selection?.kind === "table" && <TableProperties selection={selection} design={design} />}
+      {selection?.kind === "image" && <ImageProperties selection={selection} />}
+      {selection?.kind === "shape" && <ShapeProperties selection={selection} design={design} />}
       {!selection && <SlideSettings slide={slide} onEdit={onEdit} loadSource={loadSource} />}
     </aside>
   );
