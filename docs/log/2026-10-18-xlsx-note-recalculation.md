@@ -20,5 +20,5 @@ Why: batch 10 item 1 (#425). A workbook with a note made the formula engine skip
   they were.
 
 ## Follow-ups
-- Other places still decide "is a formula" by `startswith("=")` (`findings.py`, `overview.py`); they
-  look at cells that were not written as text, so nothing is known to go wrong there.
+- Other places still decide "is a formula" by `startswith("=")` (`findings.py`, `overview.py`); whether a
+  `text: true` cell is mistaken for a formula there was not checked.
