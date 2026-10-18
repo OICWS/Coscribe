@@ -1,9 +1,20 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { openThreadFile } from "../../lib/rest";
-import { DeckNotBuilt, ZOOM_STEPS, fitZoom, getSlideDeck, slideImageUrl, stepZoom, zoomLabel, type SlideDeck } from "../../lib/slides";
+import {
+  DeckNotBuilt,
+  ZOOM_STEPS,
+  fitZoom,
+  getSlideDeck,
+  slideImageUrl,
+  stepZoom,
+  zoomLabel,
+  type SlideDeck,
+  type SlideInfo,
+} from "../../lib/slides";
 import { useDockPanel } from "../dock/dockContext";
-import { ChevronDownIcon, ExternalLinkIcon, FolderIcon } from "../icons";
+import { BookOpenIcon, ChevronDownIcon, ExternalLinkIcon, FolderIcon, PlayIcon } from "../icons";
 import { SlideMenu, type MenuEntry } from "./SlideMenu";
+import { SlidePresenter } from "./SlidePresenter";
 import { SlideProperties } from "./SlideProperties";
 import { CANVAS_GAP, MARGIN, SlideStage, TOOLBAR_ROOM } from "./SlideStage";
 import { SlideToolbar } from "./SlideToolbar";
@@ -12,13 +23,13 @@ import { SlideFooter, SlideMiniBar, SlideThumbnails, type SlidesView } from "./S
 /** From this panel width the properties sit beside the slide instead of below it. */
 const PROPERTIES_BESIDE_FROM = 880;
 
-type Menu = { kind: "zoom" | "title"; anchor: DOMRect };
+type Menu = { kind: "zoom" | "title" | "present"; anchor: DOMRect };
 
 /** A deck coscribe built, beside the conversation: the slide, its thumbnails, its notes and
  * properties, and all slides at once in Canvas view. Read only for now. */
 export function SlidesPanel({ threadId, path, refreshKey }: { threadId: string; path: string; refreshKey: string }) {
   const dock = useDockPanel();
-  const { deck, error, notBuilt, setError } = useSlideDeck(threadId, path, refreshKey);
+  const { deck, error, notBuilt, open, srcOf } = useSlideDeck(threadId, path, refreshKey);
   const [menu, setMenu] = useState<Menu | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -28,8 +39,6 @@ export function SlidesPanel({ threadId, path, refreshKey }: { threadId: string; 
   const ui = useSlidesUi(slides.length);
   const { index, view, setCurrent, showView, toggleNotes } = ui;
   const shownZoom = ui.zoom ?? fitFor(view, stage);
-  const srcOf = useCallback((i: number) => slideImageUrl(threadId, path, i, refreshKey), [threadId, path, refreshKey]);
-  const open = (reveal: boolean) => void openThreadFile(threadId, path, reveal).then((e) => e && setError(e));
   const name = path.split(/[\\/]/).pop() ?? path;
   const slide = slides[index];
   const beside = panelWidth >= PROPERTIES_BESIDE_FROM;
@@ -38,7 +47,12 @@ export function SlidesPanel({ threadId, path, refreshKey }: { threadId: string; 
   );
 
   return (
-    <div ref={rootRef} tabIndex={-1} className="flex h-full min-h-0 flex-col outline-none" onKeyDown={(e) => ui.onKey(e, shownZoom)}>
+    <div
+      ref={rootRef}
+      tabIndex={-1}
+      className="relative flex h-full min-h-0 flex-col outline-none"
+      onKeyDown={(e) => ui.onKey(e, shownZoom)}
+    >
       <div className="flex h-12 shrink-0 items-center gap-2 px-3" {...dock.headerProps}>
         <TitleButton title={deck?.title ?? name} path={path} onMenu={(anchor) => setMenu({ kind: "title", anchor })} />
         <div className="flex-1" />
@@ -66,6 +80,7 @@ export function SlidesPanel({ threadId, path, refreshKey }: { threadId: string; 
                 beside={beside}
                 onToggleProperties={() => ui.setPropertiesShown((shown) => !shown)}
                 onZoomMenu={(anchor) => setMenu({ kind: "zoom", anchor })}
+                onPresentMenu={(anchor) => setMenu({ kind: "present", anchor })}
               />
               {view === "slide" && !ui.stripShown && slides.length > 0 && (
                 <SlideMiniBar
@@ -95,15 +110,19 @@ export function SlidesPanel({ threadId, path, refreshKey }: { threadId: string; 
           {beside && properties}
         </div>
       )}
-      {menu && (
-        <SlideMenu
-          anchor={menu.anchor}
-          label={menu.kind === "zoom" ? "Zoom" : "Presentation"}
-          width={menu.kind === "zoom" ? 210 : 220}
-          entries={menu.kind === "zoom" ? zoomEntries(shownZoom, view, ui.setZoom) : titleEntries(open)}
-          onClose={() => setMenu(null)}
-        />
-      )}
+      <SlidesOverlays
+        menu={menu}
+        presenting={ui.presenting}
+        slides={slides}
+        index={index}
+        srcOf={srcOf}
+        menuEntries={(kind) => entriesFor(kind, shownZoom, view, ui.setZoom, (withNotes) => ui.setPresenting({ withNotes }), open)}
+        onCloseMenu={() => setMenu(null)}
+        onStopPresenting={(last) => {
+          ui.stopPresenting(last);
+          rootRef.current?.focus();
+        }}
+      />
     </div>
   );
 }
@@ -163,6 +182,7 @@ function useSlidesUi(count: number) {
   const [notesShown, setNotesShown] = useState(false);
   const [propertiesShown, setPropertiesShown] = useState(false);
   const [zoom, setZoom] = useState<number | null>(null);
+  const [presenting, setPresenting] = useState<{ withNotes: boolean } | null>(null);
   const index = Math.min(current, Math.max(count - 1, 0));
   const go = (delta: number) => setCurrent(Math.max(0, Math.min(count - 1, index + delta)));
   const showView = (next: SlidesView) => {
@@ -184,7 +204,14 @@ function useSlidesUi(count: number) {
     else setCurrent(key === "first" ? 0 : count - 1);
   };
   const toggleNotes = () => setNotesShown((shown) => !shown);
+  const stopPresenting = (last: number) => {
+    setPresenting(null);
+    setCurrent(last);
+  };
   return {
+    presenting,
+    setPresenting,
+    stopPresenting,
     index,
     view,
     zoom,
@@ -225,7 +252,9 @@ function useSlideDeck(threadId: string, path: string, refreshKey: string) {
       live = false;
     };
   }, [threadId, path, refreshKey]);
-  return { deck, error, notBuilt, setError };
+  const open = (reveal: boolean) => void openThreadFile(threadId, path, reveal).then((e) => e && setError(e));
+  const srcOf = useCallback((i: number) => slideImageUrl(threadId, path, i, refreshKey), [threadId, path, refreshKey]);
+  return { deck, error, notBuilt, open, srcOf };
 }
 
 function useSizes(rootRef: React.RefObject<HTMLDivElement | null>, stageRef: React.RefObject<HTMLDivElement | null>, ready: boolean) {
@@ -290,6 +319,65 @@ function zoomEntries(zoom: number, view: SlidesView, setZoom: (zoom: number | nu
     "divider",
     { label: "Undo", hint: "Ctrl+Z", disabled: true },
     { label: "Redo", hint: "Ctrl+Shift+Z", disabled: true },
+  ];
+}
+
+/** The open menu, and the presenter over the whole panel. */
+function SlidesOverlays({
+  menu,
+  presenting,
+  slides,
+  index,
+  srcOf,
+  menuEntries,
+  onCloseMenu,
+  onStopPresenting,
+}: {
+  menu: Menu | null;
+  presenting: { withNotes: boolean } | null;
+  slides: SlideInfo[];
+  index: number;
+  srcOf: (index: number) => string;
+  menuEntries: (kind: Menu["kind"]) => MenuEntry[];
+  onCloseMenu: () => void;
+  onStopPresenting: (last: number) => void;
+}) {
+  return (
+    <>
+      {menu && (
+        <SlideMenu
+          anchor={menu.anchor}
+          label={MENU_LABELS[menu.kind]}
+          width={menu.kind === "zoom" ? 210 : 240}
+          entries={menuEntries(menu.kind)}
+          onClose={onCloseMenu}
+        />
+      )}
+      {presenting && slides.length > 0 && (
+        <SlidePresenter slides={slides} start={index} withNotes={presenting.withNotes} srcOf={srcOf} onExit={onStopPresenting} />
+      )}
+    </>
+  );
+}
+
+function entriesFor(
+  kind: Menu["kind"],
+  zoom: number,
+  view: SlidesView,
+  setZoom: (zoom: number | null) => void,
+  present: (withNotes: boolean) => void,
+  open: (reveal: boolean) => void,
+): MenuEntry[] {
+  if (kind === "zoom") return zoomEntries(zoom, view, setZoom);
+  return kind === "present" ? presentEntries(present) : titleEntries(open);
+}
+
+const MENU_LABELS: Record<Menu["kind"], string> = { zoom: "Zoom", title: "Presentation", present: "Present" };
+
+function presentEntries(present: (withNotes: boolean) => void): MenuEntry[] {
+  return [
+    { label: "Present", icon: <PlayIcon className="h-4 w-4" />, onSelect: () => present(false) },
+    { label: "Present with speaker notes", icon: <BookOpenIcon className="h-4 w-4" />, onSelect: () => present(true) },
   ];
 }
 
