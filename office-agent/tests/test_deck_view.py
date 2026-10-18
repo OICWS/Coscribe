@@ -37,7 +37,9 @@ def test_the_deck_lists_its_slides_as_built(tmp_path: Path) -> None:
     assert third["notes"] == "先讲收入。\n再讲区域。" and third["background"] == "#F7F5F0"
 
     page = tmp_path / "pages" / "02.svg"
-    page.write_text(page.read_text(encoding="utf-8").replace("</svg>", "<rect/></svg>"))
+    page.write_text(
+        page.read_text(encoding="utf-8").replace("</svg>", "<rect/></svg>"), encoding="utf-8"
+    )
     assert read_deck(deck)["changed"]
 
 
