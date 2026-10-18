@@ -295,6 +295,36 @@ def test_the_slides_routes_read_a_built_deck_and_draw_its_slides_lg(
     assert broken.status_code == 400 and "01.svg" not in broken.text
 
 
+def test_the_slides_edit_routes_read_parts_and_save_a_section_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.tools.office.pptx.engine import build_deck
+
+    from ..test_deck_engine import COVER
+
+    pages = tmp_path / "workspace" / "q3"
+    pages.mkdir(parents=True)
+    (pages / "01.svg").write_text(COVER, encoding="utf-8")
+    assert build_deck(pages, pages.parent / "q3.pptx").ok
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        url = "/api/threads/t_edit/slides/0"
+        parts = client.get(f"{url}/parts", params={"path": "q3.pptx"}).json()
+        body = {"path": "q3.pptx", "source": parts["source"], "version": parts["version"]}
+        saved = client.put(f"{url}/source", json=body)
+        stale = client.put(f"{url}/source", json=body)
+        fresh = {**body, "version": saved.json()["version"]}
+        refused = client.put(f"{url}/source", json={**fresh, "source": "<section><b/></section>"})
+        past_end = client.put("/api/threads/t_edit/slides/3/source", json=fresh)
+
+    assert parts["kind"] == "page" and parts["parts"]
+    assert saved.status_code == 200 and saved.json()["name"] == "01.html"
+    assert (pages / "01.html").is_file() and not (pages / "01.svg").exists()
+    assert stale.status_code == 409 and stale.json()["changed"] == "slide"
+    assert refused.status_code == 400 and "<b" not in refused.text
+    assert past_end.status_code == 404
+
+
 def test_the_slides_comment_routes_add_reply_resolve_and_delete_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

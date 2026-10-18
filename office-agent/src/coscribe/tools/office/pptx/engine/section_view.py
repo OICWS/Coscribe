@@ -8,6 +8,7 @@ draws the slide being edited with the browser's own text instead.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 from xml.etree import ElementTree as ET
 
@@ -25,11 +26,20 @@ _ANCHOR = {"l": "start", "just": "start", "ctr": "middle", "r": "end"}
 _SHIFT = {"t": 0.0, "ctr": 0.5, "b": 1.0}
 
 
-def section_drawing(text: str) -> ET.Element:
+@dataclass
+class Part:
+    kind: str  # "text", "drawing", or "refused" for one the compiler would refuse
+    drawn: list[ET.Element]
+
+
+def section_drawing(text: str, parts: list[Part] | None = None) -> ET.Element:
     """The section `text` as an SVG element on the 1920 x 1080 canvas, in the section's order.
     Charts and tables are left as their native markers and icons as `<use>`, for the caller to
     draw from the built slide; an element the compiler would refuse is left out. Raises
-    `SectionError` for a section that cannot be read at all."""
+    `SectionError` for a section that cannot be read at all.
+
+    `parts`, when given, gets one entry per element of the section (its `<aside>` aside): what
+    kind it is and the drawing's elements that draw it, for the editor to place one by one."""
     section = parse_section(text)
     root = ET.Element(
         f"{_S}svg",
@@ -47,15 +57,18 @@ def section_drawing(text: str) -> ET.Element:
     )
     report = PageReport("view")
     for elem, style in section.elements:
+        before = len(root)
         try:
             kind, item = _plan(elem, style, section, root, report)
         except SectionError:
-            continue
+            kind = "refused"
         if kind == "text":
             root.append(_text_group(item))
-        elif item[1] != 1.0:
+        elif kind == "drawing" and item[1] != 1.0:
             svg, scale = item
             svg.set("transform", f"scale({scale:g}) {svg.get('transform', '')}".strip())
+        if parts is not None:
+            parts.append(Part(kind, list(root)[before:]))
     return root
 
 

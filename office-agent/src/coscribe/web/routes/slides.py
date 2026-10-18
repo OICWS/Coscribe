@@ -1,5 +1,5 @@
-"""The Slides panel's reads: a deck built from pages, one slide of it as an SVG (decision 0016),
-and its downloads. Read only; the panel's edits come with the section editor."""
+"""The Slides panel's routes: a deck built from pages, one slide of it as an SVG (decision 0016),
+its downloads, its comments, and the editor's reads and saves of one slide."""
 
 from __future__ import annotations
 
@@ -16,7 +16,10 @@ from fastapi.responses import JSONResponse, Response
 
 from ...tools import (
     CommentNotFound,
+    DeckChangedError,
     NotBuiltFromPages,
+    SectionError,
+    SlideChanged,
     add_comment,
     deck_basic_fonts,
     deck_html,
@@ -26,9 +29,11 @@ from ...tools import (
     read_deck,
     reply_to_comment,
     resolve_comment,
+    save_slide,
+    slide_parts,
     slide_svg,
 )
-from ..schemas import SlideCommentNew, SlideCommentReply, SlideCommentState
+from ..schemas import SlideCommentNew, SlideCommentReply, SlideCommentState, SlideSave
 from ..state import AppState
 
 # The SVG is drawn by the panel as an image, which runs nothing; this keeps it inert too when
@@ -43,6 +48,12 @@ _SVG_HEADERS = {
 # say what to do.
 _NOT_BUILT = "This presentation was not built from slide pages"
 _UNREADABLE = "This presentation or one of its pages could not be read"
+_CHANGED = "This slide changed since it was opened; it has been read again"
+_DECK_CHANGED = (
+    "The .pptx was changed outside coscribe since it was built; saving would replace those "
+    "changes, so the slide was not saved"
+)
+_REFUSED = "The slide could not be saved as it is"
 
 
 _PPTX = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
@@ -90,6 +101,7 @@ def router(state: AppState) -> APIRouter:
         )
 
     _comment_routes(router, state)
+    _edit_routes(router, state)
     router.add_api_route("/api/threads/{thread_id}/slides", get_slides, methods=["GET"])
     router.add_api_route("/api/threads/{thread_id}/slides/export", export_slides, methods=["GET"])
     router.add_api_route(
@@ -143,6 +155,31 @@ def _comment_routes(router: APIRouter, state: AppState) -> None:
     router.add_api_route(f"{base}/{{comment_id}}", remove_comment, methods=["DELETE"])
 
 
+def _edit_routes(router: APIRouter, state: AppState) -> None:
+    """One slide as the editor's parts, and a slide saved back as a section."""
+    base = "/api/threads/{thread_id}/slides/{index}"
+
+    async def get_parts(thread_id: str, index: int, path: str) -> Any:
+        found = _deck_file(state, thread_id, path)
+        return (
+            _no_deck(path) if found is None else await _run(slide_parts, found[0], index, found[1])
+        )
+
+    async def put_source(thread_id: str, index: int, body: SlideSave) -> Any:
+        found = _deck_file(state, thread_id, body.path)
+        if found is None:
+            return _no_deck(body.path)
+        deck, root = found
+        return await _run(
+            lambda: save_slide(
+                deck, index, source=body.source, version=body.version, resource_root=root
+            )
+        )
+
+    router.add_api_route(f"{base}/parts", get_parts, methods=["GET"])
+    router.add_api_route(f"{base}/source", put_source, methods=["PUT"])
+
+
 def _author() -> str:
     # Word names a reviewer after the computer's user until one is set; comments do the same.
     return getpass.getuser()
@@ -174,5 +211,11 @@ async def _run(job: Callable[..., Any], *args: Any) -> Any:
         return JSONResponse({"error": "No such slide"}, status_code=404)
     except NotBuiltFromPages:
         return JSONResponse({"error": _NOT_BUILT, "built": False}, status_code=409)
+    except SlideChanged:
+        return JSONResponse({"error": _CHANGED, "changed": "slide"}, status_code=409)
+    except DeckChangedError:
+        return JSONResponse({"error": _DECK_CHANGED, "changed": "deck"}, status_code=409)
+    except SectionError:
+        return JSONResponse({"error": _REFUSED}, status_code=400)
     except (ValueError, SyntaxError, zipfile.BadZipFile):
         return JSONResponse({"error": _UNREADABLE}, status_code=400)

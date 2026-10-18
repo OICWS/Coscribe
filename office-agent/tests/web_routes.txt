@@ -61,6 +61,7 @@ GET /api/threads/{thread_id}/messaging
 GET /api/threads/{thread_id}/slides
 GET /api/threads/{thread_id}/slides/comments
 GET /api/threads/{thread_id}/slides/export
+GET /api/threads/{thread_id}/slides/{index}/parts
 GET /api/threads/{thread_id}/slides/{index}/svg
 GET /api/threads/{thread_id}/subagents
 GET /api/threads/{thread_id}/tasks
@@ -120,5 +121,6 @@ PUT /api/scheduled-tasks/{trigger_id}/notes
 PUT /api/secrets/{name}
 PUT /api/threads/{thread_id}/environment
 PUT /api/threads/{thread_id}/messaging
+PUT /api/threads/{thread_id}/slides/{index}/source
 WS /ws/browser
 WS /ws/{thread_id}
