@@ -29,13 +29,14 @@ defaults:
 env:
   # The specs that pass against the stub model. This is the one list; a spec that is not
   # here is left out for the reason given:
-  #   approval.spec.ts  needs a model that calls a tool (the stub never does)
+  #   approval.spec.ts  needs a model that decides on its own to call a tool that asks first
+  #                     (the stub only calls the tool a message names, see slides.spec.ts)
   #   chat.spec.ts      checks the model's answer ("4"); the stub only says "OK"
   # A spec file in neither list fails the run, so a new spec is never skipped unnoticed.
   EXCLUDED: approval chat
   SPECS: >-
     attachment code composer-drop-paste connector-setup connectors find labels navigation
-    panel-windows panels permissions rail-dialog secrets settings sidebar skill-plugins titlebar
+    panel-windows panels permissions rail-dialog secrets settings sidebar skill-plugins slides titlebar
 
 jobs:
   playwright:
@@ -56,9 +57,10 @@ jobs:
           cache: npm
           cache-dependency-path: office-agent/frontend/package-lock.json
 
-      # keyrings.alt gives secrets.spec.ts a keychain; a Linux runner has none.
+      # keyrings.alt gives secrets.spec.ts a keychain; a Linux runner has none. pytest is imported
+      # by tests/test_deck_engine.py, whose pages slides.spec.ts builds its deck from.
       - name: Install coscribe
-        run: pip install -e ".[web]" keyrings.alt
+        run: pip install -e ".[web]" keyrings.alt pytest
 
       # The server serves web/static/, a build output.
       - name: Build the frontend and install Chromium
@@ -96,6 +98,7 @@ jobs:
           PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-report.json
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
           COSCRIBE_BACKEND: http://127.0.0.1:8000
+          COSCRIBE_E2E_WORKSPACE: ${{ runner.temp }}/e2e/workspace
         run: |
           export PLAYWRIGHT_CHROMIUM_PATH="$(node -e 'console.log(require("@playwright/test").chromium.executablePath())')"
           for f in tests/e2e/*.spec.ts; do

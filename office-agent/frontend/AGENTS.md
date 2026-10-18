@@ -41,9 +41,11 @@ the preload object `coscribeDesktop` of `office-agent-desktop/`. `npm run build`
 Unit tests (vitest, `npm test`) sit next to the file as `x.test.ts`: `src/state/reducer.test.ts`,
 `src/lib/launchToken.test.ts`, `src/lib/dockLayout.test.ts`, `src/lib/dockArrangement.test.ts`,
 `src/lib/docxReview.test.ts`, `src/lib/slides.test.ts`, `src/lib/transcriptGrouping.test.ts`,
-`src/components/chatlog/helpers.test.ts`. `tests/e2e/*.spec.ts` (Playwright, `npm run test:e2e`)
+`src/components/chatlog/helpers.test.ts`, `src/components/slides/sectionDom.test.ts` (jsdom, for that
+file only). `tests/e2e/*.spec.ts` (Playwright, `npm run test:e2e`)
 runs against a live `coscribe-web` and `npm run dev` (nightly in `.github/workflows/e2e.yml` with
-a stub model, not a required check). `office-agent/tests/test_wire_ts.py` covers the generator.
+a stub model, not a required check; `slides.spec.ts` builds a deck into the server's workspace
+(`COSCRIBE_E2E_WORKSPACE`) and has the stub model read it). `office-agent/tests/test_wire_ts.py` covers the generator.
 
 ## Verify by hand
 The desktop-only paths (native folder picker, browser panel bounds, detached panel windows) in
