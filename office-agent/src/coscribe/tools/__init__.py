@@ -102,13 +102,19 @@ from .mcp import (
 from .office.document_tools import DocumentToolkit, build_document_tools
 from .office.pptx import (
     NEW_DECK_INSTRUCTIONS,
+    CommentNotFound,
     NotBuiltFromPages,
     PresentationToolkit,
+    add_comment,
     build_presentation_tools,
     deck_basic_fonts,
     deck_html,
     deck_pdf,
+    delete_comment,
+    read_comments,
     read_deck,
+    reply_to_comment,
+    resolve_comment,
     slide_svg,
 )
 from .office.xlsx import SpreadsheetToolkit, build_spreadsheet_tools
@@ -184,6 +190,12 @@ __all__ = [
     "plugin_file",
     "remove_skill",
     "render_pdf_page",
+    "CommentNotFound",
+    "add_comment",
+    "delete_comment",
+    "read_comments",
+    "reply_to_comment",
+    "resolve_comment",
     "deck_basic_fonts",
     "deck_html",
     "deck_pdf",

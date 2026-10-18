@@ -4,6 +4,7 @@ and its downloads. Read only; the panel's edits come with the section editor."""
 from __future__ import annotations
 
 import asyncio
+import getpass
 import zipfile
 from collections.abc import Callable
 from pathlib import Path
@@ -13,7 +14,21 @@ from urllib.parse import quote
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse, Response
 
-from ...tools import NotBuiltFromPages, deck_basic_fonts, deck_html, deck_pdf, read_deck, slide_svg
+from ...tools import (
+    CommentNotFound,
+    NotBuiltFromPages,
+    add_comment,
+    deck_basic_fonts,
+    deck_html,
+    deck_pdf,
+    delete_comment,
+    read_comments,
+    read_deck,
+    reply_to_comment,
+    resolve_comment,
+    slide_svg,
+)
+from ..schemas import SlideCommentNew, SlideCommentReply, SlideCommentState
 from ..state import AppState
 
 # The SVG is drawn by the panel as an image, which runs nothing; this keeps it inert too when
@@ -74,12 +89,63 @@ def router(state: AppState) -> APIRouter:
             headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}"},
         )
 
+    _comment_routes(router, state)
     router.add_api_route("/api/threads/{thread_id}/slides", get_slides, methods=["GET"])
     router.add_api_route("/api/threads/{thread_id}/slides/export", export_slides, methods=["GET"])
     router.add_api_route(
         "/api/threads/{thread_id}/slides/{index}/svg", get_slide_svg, methods=["GET"]
     )
     return router
+
+
+def _comment_routes(router: APIRouter, state: AppState) -> None:
+    """The deck's comments: read them, add one, reply, resolve or reopen, delete."""
+    base = "/api/threads/{thread_id}/slides/comments"
+
+    async def get_comments(thread_id: str, path: str) -> Any:
+        found = _deck_file(state, thread_id, path)
+        return _no_deck(path) if found is None else await _run(read_comments, found[0])
+
+    async def post_comment(thread_id: str, body: SlideCommentNew) -> Any:
+        found = _deck_file(state, thread_id, body.path)
+        if found is None:
+            return _no_deck(body.path)
+        fields = body.model_dump(exclude={"path"})
+        return await _run(lambda: add_comment(found[0], author=_author(), **fields))
+
+    async def post_reply(thread_id: str, comment_id: str, body: SlideCommentReply) -> Any:
+        found = _deck_file(state, thread_id, body.path)
+        if found is None:
+            return _no_deck(body.path)
+        author = "coscribe" if body.from_coscribe else _author()
+        return await _run(
+            lambda: reply_to_comment(found[0], comment_id, text=body.text, author=author)
+        )
+
+    async def post_state(thread_id: str, comment_id: str, body: SlideCommentState) -> Any:
+        found = _deck_file(state, thread_id, body.path)
+        if found is None:
+            return _no_deck(body.path)
+        done = await _run(resolve_comment, found[0], comment_id, body.resolved)
+        return done if isinstance(done, Response) else {"resolved": body.resolved}
+
+    async def remove_comment(thread_id: str, comment_id: str, path: str) -> Any:
+        found = _deck_file(state, thread_id, path)
+        if found is None:
+            return _no_deck(path)
+        done = await _run(delete_comment, found[0], comment_id)
+        return done if isinstance(done, Response) else {"deleted": comment_id}
+
+    router.add_api_route(base, get_comments, methods=["GET"])
+    router.add_api_route(base, post_comment, methods=["POST"])
+    router.add_api_route(f"{base}/{{comment_id}}/replies", post_reply, methods=["POST"])
+    router.add_api_route(f"{base}/{{comment_id}}", post_state, methods=["POST"])
+    router.add_api_route(f"{base}/{{comment_id}}", remove_comment, methods=["DELETE"])
+
+
+def _author() -> str:
+    # Word names a reviewer after the computer's user until one is set; comments do the same.
+    return getpass.getuser()
 
 
 def _deck_file(state: AppState, thread_id: str, path: str) -> tuple[Path, Path] | None:
@@ -102,6 +168,8 @@ async def _run(job: Callable[..., Any], *args: Any) -> Any:
     """`job` off the event loop, or the response its failure gets."""
     try:
         return await asyncio.to_thread(job, *args)
+    except CommentNotFound:
+        return JSONResponse({"error": "No such comment"}, status_code=404)
     except IndexError:
         return JSONResponse({"error": "No such slide"}, status_code=404)
     except NotBuiltFromPages:

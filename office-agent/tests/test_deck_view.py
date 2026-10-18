@@ -129,3 +129,46 @@ def test_basic_fonts_swap_only_the_faces_a_computer_may_lack(tmp_path: Path) -> 
     from pptx import Presentation
 
     assert len(Presentation(str(out)).slides) == 2
+
+
+def test_each_slide_names_the_elements_a_comment_can_be_put_on(tmp_path: Path) -> None:
+    slides = read_deck(_deck(tmp_path, OBJECTS))["slides"]
+    labels = [e["label"] for e in slides[0]["elements"]]
+    assert 'Title "区域表现"' in labels
+    assert {"Chart", "Table", "Picture"} <= set(labels)
+    chart = next(e for e in slides[0]["elements"] if e["label"] == "Chart")
+    # The page's chart frame: x 640, y 160, 560 × 400 on a 1280 × 720 page.
+    assert [round(v, 3) for v in chart["box"]] == [0.5, 0.222, 0.438, 0.556]
+
+
+def test_comments_are_kept_beside_the_pages(tmp_path: Path) -> None:
+    from coscribe.tools.office.pptx import (
+        CommentNotFound,
+        add_comment,
+        delete_comment,
+        read_comments,
+        reply_to_comment,
+        resolve_comment,
+    )
+
+    deck = _deck(tmp_path, COVER, CARDS)
+    first = add_comment(
+        deck, slide="01", x=0.2, y=1.4, element="Title", text=" 换个标题 ", author="ana", sent=True
+    )
+    second = add_comment(
+        deck, slide="02", x=0.5, y=0.5, element="Shape", text="ok", author="ana", sent=False
+    )
+    reply_to_comment(deck, first["id"], text="Changed it.", author="coscribe")
+    resolve_comment(deck, first["id"], True)
+    delete_comment(deck, second["id"])
+
+    (comment,) = read_comments(deck)
+    assert comment["text"] == "换个标题" and comment["y"] == 1.0 and comment["resolved"]
+    assert comment["replies"][0]["author"] == "coscribe"
+    assert (tmp_path / "pages" / "comments.json").is_file()
+    with pytest.raises(CommentNotFound):
+        resolve_comment(deck, second["id"], True)
+    with pytest.raises(ValueError):
+        add_comment(deck, slide="01", x=0, y=0, element="", text="  ", author="a", sent=False)
+    (tmp_path / "pages" / "comments.json").write_text("{not json", encoding="utf-8")
+    assert read_comments(deck) == []
