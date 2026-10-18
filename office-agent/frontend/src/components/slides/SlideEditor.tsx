@@ -5,6 +5,7 @@ import { HANDLES, accentOf, labelOf, newElement, boxOf, type Insert, dragBox, el
 import { drawSection, placeNode } from "./sectionDom";
 import { SlideFormatBar } from "./SlideFormatBar";
 import { SlideMenu } from "./SlideMenu";
+import type { EditorSelection } from "./SlideTextProperties";
 import { useFormatting } from "./useFormatting";
 import { useTextEditing } from "./useTextEditing";
 
@@ -34,6 +35,7 @@ export function SlideEditor({
   onSaved,
   onProblem,
   onComment,
+  onSelection,
   insert,
   onInserted,
   onExit,
@@ -50,6 +52,8 @@ export function SlideEditor({
   onProblem: (message: string | null) => void;
   /** Opens a new comment on an element, at its centre. */
   onComment: (at: CommentStart) => void;
+  /** The selected text element, for the properties panel; null when nothing or no text is. */
+  onSelection: (selection: EditorSelection | null) => void;
   /** An element to add from the toolbar; each new object is added once. */
   insert: { what: Insert } | null;
   onInserted: () => void;
@@ -61,6 +65,8 @@ export function SlideEditor({
   const text = useTextEditing(slide.doc, nodes, slide.change);
   const input = useEditorInput(slide, nodes, zoom, layerRef, onExit, text.start);
   const { boxes, selected, drag, point, startDrag } = input;
+
+  usePublishedSelection(slide, selected, text, onSelection);
 
   // Keys go to the editor, not to the button that started an insert.
   const focusLayer = useCallback(() => layerRef.current?.focus(), []);
@@ -101,6 +107,37 @@ export function SlideEditor({
       )}
     </div>
   );
+}
+
+/** Tells the properties panel which text element is selected, after every change to it; a change
+ * made there ends any typing first, so what was typed is written back. */
+function usePublishedSelection(
+  slide: ReturnType<typeof useEditedSlide>,
+  selected: number | null,
+  text: ReturnType<typeof useTextEditing>,
+  publish: (selection: EditorSelection | null) => void,
+) {
+  const { doc, drawn } = slide;
+  // The latest functions, so a render alone does not publish a new selection.
+  const latest = useRef({ change: slide.change, stop: text.stop, publish });
+  latest.current = { change: slide.change, stop: text.stop, publish };
+  useEffect(() => {
+    const element = doc && selected !== null ? elementsOf(doc)[selected] : null;
+    const isText = element && ["h1", "h2", "h3", "p", "ul", "ol"].includes(element.localName);
+    latest.current.publish(
+      isText && selected !== null
+        ? {
+            element,
+            edit: (edit) => {
+              latest.current.stop();
+              latest.current.change((els) => edit(els[selected]), false);
+            },
+          }
+        : null,
+    );
+    // `drawn` counts the changes, which edit the element in place.
+  }, [doc, drawn, selected]);
+  useEffect(() => () => latest.current.publish(null), []);
 }
 
 /** Adds the toolbar's element to the slide, selected; a text box with its text ready to type over. */

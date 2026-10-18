@@ -73,3 +73,14 @@ def test_a_section_may_name_a_text_style_by_its_id() -> None:
     assert parse_section(marked)
     with pytest.raises(SectionError):
         parse_section(marked.replace("heading-1", "Heading 1"))
+
+
+def test_the_fonts_are_read_from_svg_attributes_and_section_styles(tmp_path: Path) -> None:
+    folder = tmp_path / "pages"
+    folder.mkdir()
+    (folder / "01-cover.svg").write_text(
+        COVER.replace("Microsoft YaHei, Arial", "Georgia"), encoding="utf-8"
+    )
+    deck = tmp_path / "deck.pptx"
+    assert build_deck(folder, deck, resource_root=tmp_path).ok
+    assert design_system(deck)["fonts"][0] == "Georgia"

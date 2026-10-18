@@ -38,10 +38,17 @@ export const ListIcon = (props: Icon) => (
   </svg>
 );
 
+export const NumberedListIcon = (props: Icon) => (
+  <svg {...stroke} {...props}>
+    <path d="M10 6h10M10 12h10M10 18h10M4 5l1-.8V9M3.5 14.5c0-1 2.5-1 2.5 0 0 1.2-2.5 1.8-2.5 3H6" />
+  </svg>
+);
+
 const ALIGN_LINES = {
   left: "M4 6h16M4 10h10M4 14h16M4 18h10",
   center: "M4 6h16M7 10h10M4 14h16M7 18h10",
   right: "M4 6h16M10 10h10M4 14h16M10 18h10",
+  justify: "M4 6h16M4 10h16M4 14h16M4 18h16",
 };
 
 export const AlignIcon = ({ align, ...props }: Icon & { align: keyof typeof ALIGN_LINES }) => (

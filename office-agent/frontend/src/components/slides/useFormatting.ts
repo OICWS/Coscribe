@@ -1,4 +1,5 @@
 import { PRESETS, elementsOf, hexColour, presetOf, retag, setStyle, styleOf, type Preset } from "../../lib/slideSource";
+import { setUnderline } from "../../lib/slideText";
 import type { Align, TextFormat } from "./SlideFormatBar";
 
 type Change = (edit: (elements: Element[]) => void, redraw: boolean) => void;
@@ -52,21 +53,7 @@ function toggled(target: Element, what: "bold" | "italic" | "underline" | "list"
   if (what === "bold") setStyle(target, "font-weight", format.bold ? "400" : "700");
   else if (what === "italic") setStyle(target, "font-style", format.italic ? "normal" : "italic");
   else if (what === "list") retag(target, format.list ? "p" : "ul");
-  else underline(target, !format.underline);
-}
-
-/** Underlines all of the element's text, or takes its underline off; a list item by item. */
-function underline(target: Element, on: boolean) {
-  const holders = target.localName === "ul" || target.localName === "ol" ? Array.from(target.children) : [target];
-  for (const holder of holders) {
-    const only = holder.children.length === 1 && holder.firstElementChild?.localName === "u" ? holder.firstElementChild : null;
-    if (!on && only) only.replaceWith(...Array.from(only.childNodes));
-    if (on && !only) {
-      const u = target.ownerDocument.createElement("u");
-      u.append(...Array.from(holder.childNodes));
-      holder.append(u);
-    }
-  }
+  else setUnderline(target, !format.underline);
 }
 
 function formatOf(el: Element, typing: boolean): TextFormat {
