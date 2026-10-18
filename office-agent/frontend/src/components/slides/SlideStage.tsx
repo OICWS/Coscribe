@@ -38,7 +38,7 @@ export const SlideStage = forwardRef<
                   background: slide.background ?? "#ffffff",
                 }}
               >
-                <SlideThumb slide={slide} src={srcOf(current)} />
+                <SlideThumb src={srcOf(current)} />
               </div>
             )}
           </div>
@@ -86,7 +86,7 @@ function CanvasGrid({
             className={`block overflow-hidden rounded-md border-2 bg-white shadow-sm ${i === current ? "border-[var(--accent)]" : "border-transparent"}`}
             style={{ width: SLIDE_WIDTH * zoom, height: SLIDE_HEIGHT * zoom }}
           >
-            <SlideThumb slide={s} src={srcOf(i)} />
+            <SlideThumb src={srcOf(i)} />
           </span>
         </button>
       ))}

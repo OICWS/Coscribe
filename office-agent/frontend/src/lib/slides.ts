@@ -1,7 +1,7 @@
 /** A deck built from pages, as the server reads it (`GET /api/threads/{id}/slides`). */
 export interface SlideInfo {
   name: string;
-  /** "page": an unedited SVG page, drawn as an image. "section": an edited slide. */
+  /** "page": an unedited SVG page. "section": a slide that was edited. Both are drawn as images. */
   kind: "page" | "section";
   notes: string;
   /** PowerPoint's name for the transition ("fade", "push", "morph", ...), or null. */
