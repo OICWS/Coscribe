@@ -16,12 +16,11 @@ never calls one, so it exercises the UI around a turn, not the agent.
 
 import argparse
 import json
-import re
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
-_TOOL_REQUEST = re.compile(r"\[\[stub-tool (\w+) (\{.*?\})\]\]")
+_MARKER = "[[stub-tool "
 
 
 def _requested_call(messages: list[dict[str, Any]]) -> tuple[str, str] | None:
@@ -30,8 +29,18 @@ def _requested_call(messages: list[dict[str, Any]]) -> tuple[str, str] | None:
         return None
     content = messages[-1].get("content")
     text = content if isinstance(content, str) else json.dumps(content)
-    found = _TOOL_REQUEST.search(text)
-    return (found.group(1), found.group(2)) if found else None
+    # Not a regex: the text is whatever the user typed, and a lazy match over it can go quadratic.
+    start = text.find(_MARKER)
+    if start < 0:
+        return None
+    name, _, rest = text[start + len(_MARKER) :].partition(" ")
+    try:
+        args, end = json.JSONDecoder().raw_decode(rest)
+    except ValueError:
+        return None
+    if not name.isidentifier() or not isinstance(args, dict) or not rest[end:].startswith("]]"):
+        return None
+    return name, json.dumps(args)
 
 
 class _Handler(BaseHTTPRequestHandler):
