@@ -13,12 +13,8 @@ const segment = (on: boolean) =>
   `flex h-7 w-8 items-center justify-center rounded-md ${on ? "bg-[var(--bg)] text-[var(--fg)] shadow-sm" : "text-[var(--muted)] hover:text-[var(--fg)]"}`;
 
 /** A slide drawn small: its picture, or for an edited slide its background until the editor draws it. */
-export function SlideThumb({ slide, src }: { slide: SlideInfo; src: string }) {
-  return slide.kind === "page" ? (
-    <img src={src} alt="" draggable={false} className="block h-full w-full object-contain" />
-  ) : (
-    <div className="h-full w-full" style={{ background: slide.background ?? "#ffffff" }} />
-  );
+export function SlideThumb({ src }: { src: string }) {
+  return <img src={src} alt="" draggable={false} className="block h-full w-full object-contain" />;
 }
 
 /** Notes, the Slide and Canvas views, and hiding the strip, above the thumbnails (`children`). */
@@ -121,7 +117,7 @@ export function SlideThumbnails({
           className={`relative aspect-video w-[156px] shrink-0 overflow-hidden rounded-lg border-2 bg-white ${i === current ? "border-[var(--accent)]" : "border-transparent hover:border-[var(--border-hover)]"}`}
           onClick={() => onSelect(i)}
         >
-          <SlideThumb slide={slide} src={srcOf(i)} />
+          <SlideThumb src={srcOf(i)} />
           <span className="absolute bottom-1.5 left-1.5 flex h-5 min-w-5 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg)] px-1 text-[11px] text-[var(--fg)]">
             {i + 1}
           </span>

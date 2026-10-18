@@ -1,5 +1,5 @@
-"""A built deck as the Slides panel shows it (decision 0016): its slides in order, each unedited
-slide as one self-contained SVG the panel draws as an image.
+"""A built deck as the Slides panel shows it (decision 0016): its slides in order, each one a
+self-contained SVG the panel draws as an image (a section is drawn by `section_view`).
 
 The slides come from the pages folder whose last build wrote the deck. What PowerPoint would show
 beyond the page (notes, transition, background, the native charts and tables) is read from the
@@ -21,6 +21,8 @@ from .build import MANIFEST, _read_manifest, _source_hash, slide_hashes
 from .compiler import EMU_PER_PX, SVG_NS
 from .icons import expand_icons
 from .native import native_kind
+from .section_view import section_drawing
+from .text_box import EMU_PER_PX as SECTION_EMU_PER_PX
 from .view_native import native_drawings
 
 _P = "{http://schemas.openxmlformats.org/presentationml/2006/main}"
@@ -78,8 +80,8 @@ def read_deck(deck: Path) -> dict[str, Any]:
 
 def slide_svg(deck: Path, index: int, resource_root: Path) -> str:
     """Slide `index` (from 0) as one SVG with nothing outside it: icons drawn, pictures inlined,
-    native charts and tables drawn from the built deck. Raises IndexError for no such slide and
-    NotBuiltFromPages; a slide that is a section raises ValueError (the panel draws those)."""
+    native charts and tables drawn from the built deck. Raises IndexError for no such slide,
+    NotBuiltFromPages, and SectionError for a section that cannot be read."""
     folder = pages_folder(deck)
     if folder is None:
         raise NotBuiltFromPages(f"{deck.name} was not built from pages")
@@ -87,17 +89,17 @@ def slide_svg(deck: Path, index: int, resource_root: Path) -> str:
     if not 0 <= index < len(entries):
         raise IndexError(f"no slide {index + 1}")
     page = folder / entries[index]["page"]
-    if page.suffix.lower() != ".svg":
-        raise ValueError(f"{page.name} is a section, not an SVG page")
     ET.register_namespace("", SVG_NS)
     ET.register_namespace("xlink", "http://www.w3.org/1999/xlink")
-    root = ET.fromstring(page.read_text(encoding="utf-8"))
+    text = page.read_text(encoding="utf-8")
+    section = page.suffix.lower() != ".svg"
+    root = section_drawing(text) if section else ET.fromstring(text)
     _make_safe(root)
     expand_icons(root)
     _inline_images(root, page.parent, resource_root.resolve())
     slides = Presentation(str(deck)).slides
     if index < len(slides):
-        _draw_natives(root, slides[index])
+        _draw_natives(root, slides[index], SECTION_EMU_PER_PX if section else EMU_PER_PX)
     return ET.tostring(root, encoding="unicode")
 
 
@@ -220,10 +222,10 @@ def _image_uri(href: str, folder: Path, resource_root: Path) -> str | None:
     return f"data:{kind};base64,{base64.b64encode(path.read_bytes()).decode()}"
 
 
-def _draw_natives(root: ET.Element, slide: Any) -> None:
+def _draw_natives(root: ET.Element, slide: Any, emu_per_px: float) -> None:
     font = root.get("font-family", "Microsoft YaHei, Arial")
     groups = [g for g in root.iter(f"{{{SVG_NS}}}g") if native_kind(g)]
-    drawings = native_drawings(slide, EMU_PER_PX, font)
+    drawings = native_drawings(slide, emu_per_px, font)
     for group, markup in zip(groups, drawings, strict=False):
         for child in list(group):
             group.remove(child)

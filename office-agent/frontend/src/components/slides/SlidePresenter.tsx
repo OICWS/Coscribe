@@ -77,7 +77,7 @@ export function SlidePresenter({
       <div className="relative min-h-0 flex-1" onClick={() => go(1)}>
         {slide && (
           <div key={index} className={`absolute inset-0 ${ENTRANCE[slide.transition ?? ""] ?? ""}`}>
-            <SlideThumb slide={slide} src={srcOf(index)} />
+            <SlideThumb src={srcOf(index)} />
           </div>
         )}
       </div>

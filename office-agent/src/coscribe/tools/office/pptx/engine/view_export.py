@@ -58,8 +58,7 @@ def deck_html(deck: Path, workspace: Path) -> str:
     images = [
         "data:image/svg+xml;base64,"
         + base64.b64encode(slide_svg(deck, i, workspace).encode("utf-8")).decode()
-        for i, slide in enumerate(view["slides"])
-        if slide["kind"] == "page"
+        for i in range(len(view["slides"]))
     ]
     return _PLAYER.replace("__TITLE__", escape(view["title"])).replace(
         "__SLIDES__", json.dumps(images)
@@ -99,12 +98,9 @@ def _drawn_pdf(deck: Path, workspace: Path) -> bytes:
     out = io.BytesIO()
     pdf = canvas.Canvas(out, pagesize=_PDF_PAGE)
     pdf.setTitle(deck.stem)
-    for i, slide in enumerate(read_deck(deck)["slides"]):
-        if slide["kind"] == "page":
-            png = resvg_py.svg_to_bytes(
-                svg_string=slide_svg(deck, i, workspace), width=_RASTER_WIDTH
-            )
-            pdf.drawImage(ImageReader(io.BytesIO(bytes(png))), 0, 0, *_PDF_PAGE)
+    for i in range(len(read_deck(deck)["slides"])):
+        png = resvg_py.svg_to_bytes(svg_string=slide_svg(deck, i, workspace), width=_RASTER_WIDTH)
+        pdf.drawImage(ImageReader(io.BytesIO(bytes(png))), 0, 0, *_PDF_PAGE)
         pdf.showPage()
     pdf.save()
     return out.getvalue()
