@@ -141,7 +141,7 @@ export function SlideComments({
         <CommentPin key={comment.id} comment={comment} onOpen={(at) => setOpened({ kind: "thread", id: comment.id, slide: at })} />
       ))}
       {opened?.kind === "new" && (
-        <Popover x={opened.x} y={opened.y} slide={opened.slide}>
+        <Popover x={opened.x} y={opened.y} slide={opened.slide} onClose={() => setOpened(null)}>
           <NewComment
             place={commentPlace(slideNumber, opened.element?.label ?? "")}
             canSend={onSend !== undefined}
@@ -160,7 +160,7 @@ export function SlideComments({
         </Popover>
       )}
       {thread && opened && (
-        <Popover x={thread.x} y={thread.y} slide={opened.slide}>
+        <Popover x={thread.x} y={thread.y} slide={opened.slide} onClose={() => setOpened(null)}>
           <Thread
             comment={thread}
             place={commentPlace(slideNumber, thread.element)}
@@ -213,7 +213,21 @@ function ElementOutline({ element }: { element: SlideElement }) {
 
 /** A card beside the point, on whichever side has room, kept inside the window: the panel can
  * be narrower than the card, so it is drawn above everything rather than inside the slide. */
-function Popover({ x, y, slide, children }: { x: number; y: number; slide: DOMRect; children: React.ReactNode }) {
+function Popover({ x, y, slide, onClose, children }: { x: number; y: number; slide: DOMRect; onClose: () => void; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  // A click anywhere outside the card, or Escape, closes it.
+  useEffect(() => {
+    const away = (e: Event) => {
+      if (e.target instanceof Node && !ref.current?.contains(e.target)) onClose();
+    };
+    const escape = (e: globalThis.KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [onClose]);
   const px = slide.left + x * slide.width;
   const py = slide.top + y * slide.height;
   const room = window.innerWidth - 8;
@@ -222,6 +236,7 @@ function Popover({ x, y, slide, children }: { x: number; y: number; slide: DOMRe
   const top = Math.max(8, Math.min(window.innerHeight - POPOVER_HEIGHT, py));
   return createPortal(
     <div
+      ref={ref}
       className="fixed z-50 rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-3.5 shadow-[0_8px_28px_rgba(0,0,0,0.16)]"
       style={{ left, top, width: Math.min(POPOVER_WIDTH, room - 8) }}
       onClick={(e) => e.stopPropagation()}
