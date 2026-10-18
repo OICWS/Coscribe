@@ -19,7 +19,7 @@ ALLOWED = {
         "generated animation preset data"
     ),
     "site/index.html": "generated project site page",
-    "office-agent/frontend/package-lock.json": "npm's lockfile, generated (jsdom for the DOM tests)",
+    "office-agent/frontend/package-lock.json": "npm's generated lockfile",
     "office-agent/tests/test_presentations_tool.py": "tests of presentations.py, split with it",
     "office-agent/src/coscribe/tools/_ooxml_schemas/transitional/sml.xsd": (
         "vendored ECMA-376 schema"
