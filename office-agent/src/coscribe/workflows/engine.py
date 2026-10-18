@@ -38,9 +38,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 
 from ..needs_permission import NeedsPermission
-from .loop_labels import item_labels as _item_labels
-from .refs import evaluate, render_text, render_value, resolve
-from .spec import (
+from ..workflow_spec import (
     ApprovalStep,
     BranchStep,
     CheckStep,
@@ -52,9 +50,14 @@ from .spec import (
     Step,
     ToolStep,
     Workflow,
+    evaluate,
+    render_text,
+    render_value,
+    resolve,
     step_output,
     walk,
 )
+from .loop_labels import item_labels as _item_labels
 
 logger = logging.getLogger(__name__)
 
@@ -183,9 +186,6 @@ def preview(value: Any, depth: int = 0) -> Any:
             items.append(f"... [{len(value) - _PREVIEW_LIST_ITEMS} more items]")
         return items
     return str(value)
-
-
-# -- Step executors -----------------------------------------------------------
 
 
 _SECTION_HEADING = re.compile(r"^### (.+?)\s*$", re.MULTILINE)
@@ -414,9 +414,6 @@ def _run_check(step: CheckStep, values: dict[str, Any]) -> list[dict[str, Any]]:
     if failed:
         raise StepFailed(f"{len(failed)} of {len(results)} checks failed", checks=results)
     return results
-
-
-# -- The graph ---------------------------------------------------------------
 
 
 _NO_STEPS = "This workflow has no steps yet -- add some on its task page."

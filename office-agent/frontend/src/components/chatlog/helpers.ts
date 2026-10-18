@@ -1,8 +1,8 @@
 import { type SummaryParts } from "../../lib/transcriptGrouping";
 
 /** write_docx/write_xlsx/write_pptx's tool result carries a `preview_path`
- * (a bare filename under GET /api/previews/) when LibreOffice rendered a
- * thumbnail -- other tools' results never have this shape. */
+ * (a bare filename under GET /api/previews/) when a thumbnail was
+ * rendered -- other tools' results never have this shape. */
 export function previewPathOf(result: unknown): string | null {
   if (!result || typeof result !== "object" || !("preview_path" in result)) return null;
   const value = (result as Record<string, unknown>).preview_path;

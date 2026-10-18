@@ -264,10 +264,7 @@ layers = [
     "coscribe.coordinator | coscribe.runtime_lg",
     "coscribe.workflows | coscribe.code_runtime",
     "coscribe.tools",
-    "coscribe.runtime | coscribe.config | coscribe.needs_permission",
-]
-ignore_imports = [
-    "coscribe.tools.bookkeeping.scheduled_tasks -> coscribe.workflows.spec",
+    "coscribe.runtime | coscribe.config | coscribe.needs_permission | coscribe.workflow_spec",
 ]
 broken_contract_guidance = "A package may import only from the layers below it (see the root AGENTS.md). Move the shared code down into a lower layer, or pass the value in as an argument. Do not add an ignore line without a decision record."
 
@@ -305,8 +302,8 @@ broken_contract_guidance = "coscribe.tools and coscribe.runtime must not import 
 name = "A fixed workflow run never reaches an autonomous agent"
 type = "forbidden"
 source_modules = [
-    "coscribe.workflows.engine", "coscribe.workflows.spec",
-    "coscribe.workflows.refs", "coscribe.workflows.permissions",
+    "coscribe.workflows.engine", "coscribe.workflow_spec",
+    "coscribe.workflows.permissions",
 ]
 forbidden_modules = ["coscribe.code_runtime", "coscribe.runtime_lg", "coscribe.coordinator"]
 broken_contract_guidance = "A fixed workflow run must not import code_runtime, runtime_lg or the coordinator: a workflow step never starts an agent that can choose its own actions."
@@ -357,9 +354,6 @@ name = "coscribe.workflows is entered through its package"
 type = "protected"
 protected_modules = ["coscribe.workflows.*"]
 allowed_importers = ["coscribe.workflows"]
-ignore_imports = [
-    "coscribe.tools.bookkeeping.scheduled_tasks -> coscribe.workflows.spec",
-]
 broken_contract_guidance = "Import from coscribe.workflows (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.workflows/__init__.py and put it on the card. Do not add an ignore line."
 
 [[tool.importlinter.contracts]]
@@ -438,4 +432,11 @@ type = "protected"
 protected_modules = ["coscribe.runtime.*"]
 allowed_importers = ["coscribe.runtime"]
 broken_contract_guidance = "Import from coscribe.runtime (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.runtime/__init__.py and put it on the card. Do not add an ignore line."
+
+[[tool.importlinter.contracts]]
+name = "coscribe.workflow_spec is entered through its package"
+type = "protected"
+protected_modules = ["coscribe.workflow_spec.*"]
+allowed_importers = ["coscribe.workflow_spec"]
+broken_contract_guidance = "Import from coscribe.workflow_spec (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.workflow_spec/__init__.py and put it on the card. Do not add an ignore line."
 # END generated

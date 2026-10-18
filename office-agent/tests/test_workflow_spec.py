@@ -5,14 +5,14 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from coscribe.workflows.refs import (
+from coscribe.workflow_spec.refs import (
     UnresolvedReference,
     evaluate,
     render_text,
     render_value,
     resolve,
 )
-from coscribe.workflows.spec import (
+from coscribe.workflow_spec.spec import (
     BranchStep,
     Condition,
     LoopStep,

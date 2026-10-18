@@ -64,8 +64,7 @@ Never read a file over 1,500 lines whole, and never read `docs/history/`, the fr
   `workflows | code_runtime`, `tools`, `runtime | config`; a
   package imports only from below. Only `web` imports FastAPI, only
   `runtime.secrets` imports the keychain, `tools` and `runtime` never import
-  LangChain. Two known upward imports are listed in `pyproject.toml`
-  (`[tool.importlinter]`); fix them to shrink the list, never add one without a
+  LangChain. The layers contract has no ignored import; never add one without a
   decision record.
 - **UI text is English only.** Code comments explain WHY, never WHAT or history
   (history goes in the commit message).

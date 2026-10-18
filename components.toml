@@ -55,9 +55,6 @@ path = "office-agent/src/coscribe/workflows"
 layer = "workflows | code_runtime"
 owner = ["@OICWS"]
 card = "office-agent/src/coscribe/workflows/AGENTS.md"
-ignore_imports = [
-    "coscribe.tools.bookkeeping.scheduled_tasks -> coscribe.workflows.spec",
-]
 
 [[component]]
 name = "code_runtime"
@@ -163,6 +160,13 @@ path = "office-agent/src/coscribe/runtime"
 layer = "runtime | config"
 owner = ["@OICWS"]
 card = "office-agent/src/coscribe/runtime/AGENTS.md"
+
+[[component]]
+name = "workflow_spec"
+path = "office-agent/src/coscribe/workflow_spec"
+layer = "runtime | config"
+owner = ["@OICWS"]
+card = "office-agent/src/coscribe/workflow_spec/AGENTS.md"
 
 [[component]]
 name = "config"
