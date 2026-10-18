@@ -1,5 +1,5 @@
 /** One slide as the editor reads and saves it (`/api/threads/{id}/slides/{index}/parts|source`). */
-import type { Box } from "./slideSource";
+import { parseSection, writeSection, type Box } from "./slideSource";
 
 export interface SlidePart {
   kind: "text" | "drawing" | "refused";
@@ -65,4 +65,13 @@ export async function uploadSlidePicture(threadId: string, path: string, file: F
   form.append("file", file);
   const response = await fetch(`/api/threads/${encodeURIComponent(threadId)}/slides/assets`, { method: "POST", body: form });
   return json<{ src: string; width: number; height: number }>(response);
+}
+
+/** One change to a slide made outside the editor (its notes, transition, background): the
+ * slide is read, changed and saved in one go. */
+export async function editSlide(threadId: string, path: string, index: number, edit: (doc: Document) => void) {
+  const read = await getSlideParts(threadId, path, index);
+  const doc = parseSection(read.source);
+  edit(doc);
+  return saveSlideSource(threadId, path, index, writeSection(doc), read.version);
 }
