@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -59,6 +59,17 @@ class SlideSave(BaseModel):
     source: str = Field(min_length=1, max_length=400_000)
     # The slide's version as the editor read it: a save over a newer file is refused.
     version: str = Field(min_length=1, max_length=128)
+
+
+class SlideArrange(BaseModel):
+    path: str
+    action: Literal["insert", "duplicate", "move", "delete"]
+    # The slide acted on; for "insert", the one the new slide follows (-1: first).
+    index: int = Field(ge=-1, le=10_000)
+    # "move": where the slide goes.
+    to: int = Field(default=0, ge=0, le=10_000)
+    # "insert": the new slide's section.
+    source: str = Field(default="<section></section>", max_length=400_000)
 
 
 class MemoryUpdate(BaseModel):

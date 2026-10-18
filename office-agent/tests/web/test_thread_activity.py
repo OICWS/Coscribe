@@ -325,15 +325,22 @@ def test_the_slides_edit_routes_read_parts_and_save_a_section_lg(
             assets, data={"path": "q3.pptx"}, files={"file": ("a.png", png.getvalue())}
         )
         not_one = client.post(assets, data={"path": "q3.pptx"}, files={"file": ("a.png", b"hi")})
+        arrange = "/api/threads/t_edit/slides/arrange"
+        copied = client.post(arrange, json={"path": "q3.pptx", "action": "duplicate", "index": 0})
+        last = client.post(arrange, json={"path": "q3.pptx", "action": "delete", "index": 1})
+        only = client.post(arrange, json={"path": "q3.pptx", "action": "delete", "index": 0})
 
     assert parts["kind"] == "page" and parts["parts"]
     assert saved.status_code == 200 and saved.json()["name"] == "01.html"
-    assert (pages / "01.html").is_file() and not (pages / "01.svg").exists()
+    # Renumbered by the copy and the delete below.
+    assert (pages / "01-slide.html").is_file() and not (pages / "01.svg").exists()
     assert stale.status_code == 409 and stale.json()["changed"] == "slide"
     assert refused.status_code == 400 and "<b" not in refused.text
     assert past_end.status_code == 404
     assert picture.json() == {"src": "assets/a.png", "width": 8, "height": 4}
     assert not_one.status_code == 400
+    assert copied.json() == {"index": 1} and last.json() == {"index": 0}
+    assert only.status_code == 400
 
 
 def test_the_slides_comment_routes_add_reply_resolve_and_delete_lg(
