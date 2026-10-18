@@ -86,3 +86,94 @@ export function dragBox(box: Box, handle: [number, number], dx: number, dy: numb
   }
   return [hx < 0 ? x + w - width : x, hy < 0 ? y + h - height : y, width, height];
 }
+
+/** The text styles the format bar offers, as the section language writes them. */
+export const PRESETS = {
+  Title: { tag: "h1", size: null },
+  Heading: { tag: "h2", size: null },
+  Lead: { tag: "p", size: 32 },
+  Body: { tag: "p", size: null },
+  Caption: { tag: "p", size: 22 },
+} as const;
+export type Preset = keyof typeof PRESETS;
+
+/** The preset a text element is closest to. */
+export function presetOf(tag: string, size: number | null): Preset {
+  if (tag === "h1") return "Title";
+  if (tag === "h2" || tag === "h3") return "Heading";
+  if (size !== null && size >= 32) return "Lead";
+  if (size !== null && size <= 22) return "Caption";
+  return "Body";
+}
+
+/** Every colour the source names, most used first: the slide's own palette. */
+export function sourceColours(source: string): string[] {
+  const counts = new Map<string, number>();
+  for (const match of source.matchAll(/#[0-9a-fA-F]{6}\b/g)) {
+    const colour = match[0].toUpperCase();
+    counts.set(colour, (counts.get(colour) ?? 0) + 1);
+  }
+  return [...counts].sort((a, b) => b[1] - a[1]).map(([colour]) => colour);
+}
+
+/** `rgb(r, g, b)` (what the browser reports) as `#RRGGBB`; a hex colour as it is. */
+export function hexColour(css: string): string | null {
+  const hex = /^#([0-9a-f]{6})$/i.exec(css.trim());
+  if (hex) return `#${hex[1].toUpperCase()}`;
+  const rgb = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(css.trim());
+  if (!rgb) return null;
+  return `#${rgb.slice(1, 4).map((v) => Number(v).toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+}
+
+export function setStyle(el: Element, name: string, value: string | null) {
+  const style = readStyle(el);
+  if (value === null) style.delete(name);
+  else style.set(name, value);
+  el.setAttribute("style", styleText(style));
+}
+
+export const styleOf = (el: Element, name: string) => readStyle(el).get(name) ?? null;
+
+/** `el` as a `tag` element with the same attributes and content, in its place. */
+export function retag(el: Element, tag: string): Element {
+  if (el.localName === tag) return el;
+  const next = el.ownerDocument.createElement(tag);
+  for (const attr of Array.from(el.attributes)) next.setAttribute(attr.name, attr.value);
+  if (tag === "ul" || tag === "ol") {
+    for (const line of lines(el)) next.append(item(el.ownerDocument, line));
+  } else if (el.localName === "ul" || el.localName === "ol") {
+    Array.from(el.children).forEach((li, i) => {
+      if (i) next.append(el.ownerDocument.createElement("br"));
+      next.append(...Array.from(li.childNodes));
+    });
+  } else next.append(...Array.from(el.childNodes));
+  el.replaceWith(next);
+  return next;
+}
+
+/** A paragraph's content split at its line breaks. */
+function lines(el: Element): Node[][] {
+  const found: Node[][] = [[]];
+  for (const node of Array.from(el.childNodes)) {
+    if (node instanceof Element && node.localName === "br") found.push([]);
+    else found[found.length - 1].push(node);
+  }
+  return found.filter((line) => line.some((node) => (node.textContent ?? "").trim()));
+}
+
+function item(doc: Document, nodes: Node[]): Element {
+  const li = doc.createElement("li");
+  li.append(...nodes);
+  return li;
+}
+
+const KIND_LABELS: Record<string, string> = { "x-chart": "Chart", table: "Table", img: "Picture", "x-shape": "Shape", "x-icon": "Icon", svg: "Drawing" };
+
+/** How a comment names a section's element, as the server names a slide's shapes: `Title "Q3"`. */
+export function labelOf(el: Element): string {
+  if (KIND_LABELS[el.localName]) return KIND_LABELS[el.localName];
+  const words = (el.textContent ?? "").replace(/\s+/g, " ").trim();
+  const snippet = words.length <= 32 ? words : `${words.slice(0, 31)}…`;
+  const kind = el.getAttribute("id") === "title" ? "Title" : "Text";
+  return snippet ? `${kind} "${snippet}"` : kind;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boxIn, dragBox, elementIndexAt, parseStyle, styleText, withBox, type Box } from "./slideSource";
+import { boxIn, dragBox, elementIndexAt, hexColour, parseStyle, presetOf, sourceColours, styleText, withBox, type Box } from "./slideSource";
 
 describe("slide source", () => {
   it("reads and writes a style with its box in whole px", () => {
@@ -23,5 +23,28 @@ describe("slide source", () => {
     expect(dragBox(box, [-1, -1], 20, 10)).toEqual([120, 110, 180, 90]);
     expect(dragBox(box, [1, 1], 200, 0, true)).toEqual([100, 100, 400, 200]);
     expect(dragBox(box, [1, 0], -500, 0)[2]).toBe(8);
+  });
+});
+
+describe("the format bar's choices", () => {
+  it("names the preset a text element is closest to", () => {
+    expect(presetOf("h1", null)).toBe("Title");
+    expect(presetOf("p", 32)).toBe("Lead");
+    expect(presetOf("p", 28)).toBe("Body");
+    expect(presetOf("p", 20)).toBe("Caption");
+    expect(presetOf("ul", null)).toBe("Body");
+  });
+
+  it("offers the slide's own colours, most used first", () => {
+    expect(sourceColours('<p style="color:#1f2937">a</p><b style="color:#C2410C"/><i style="color:#1F2937"/>')).toEqual([
+      "#1F2937",
+      "#C2410C",
+    ]);
+  });
+
+  it("writes the browser's colours as hex", () => {
+    expect(hexColour("rgb(194, 65, 12)")).toBe("#C2410C");
+    expect(hexColour("#c2410c")).toBe("#C2410C");
+    expect(hexColour("red")).toBeNull();
   });
 });

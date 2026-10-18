@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { createPortal } from "react-dom";
 import {
   addComment,
@@ -57,6 +57,27 @@ export function useSlideComments(threadId: string, path: string, refreshKey: str
 type Opened =
   { kind: "new"; x: number; y: number; element: SlideElement | null; slide: DOMRect } | { kind: "thread"; id: string; slide: DOMRect };
 
+/** Opens the new comment the editor's bar asks for; the returned ref goes on an element inside
+ * the slide, which gives the slide's place on screen. */
+function useOpenFromBar(startAt: CommentStart | null | undefined, setOpened: (opened: Opened) => void) {
+  const layerRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const slideBox = layerRef.current?.parentElement?.getBoundingClientRect();
+    if (!startAt || !slideBox) return;
+    const { x, y, element, box } = startAt;
+    setOpened({ kind: "new", x, y, element: { id: "", label: element, box }, slide: slideBox });
+  }, [startAt, setOpened]);
+  return layerRef;
+}
+
+/** A new comment on an element: where (fractions of the slide) and its label. */
+export interface CommentStart {
+  x: number;
+  y: number;
+  element: string;
+  box: [number, number, number, number];
+}
+
 /** Over the slide: the element under the pointer in comment mode, a marker per comment, the box
  * for a new one and an opened thread. */
 export function SlideComments({
@@ -69,6 +90,7 @@ export function SlideComments({
   commenting,
   showResolved,
   onSend,
+  startAt,
 }: {
   threadId: string;
   path: string;
@@ -80,9 +102,12 @@ export function SlideComments({
   showResolved: boolean;
   /** Absent where there is no conversation to send to. */
   onSend?: (text: string, link: CommentLink) => void;
+  /** A new comment to open, from the editor's bar. */
+  startAt?: CommentStart | null;
 }) {
   const [hover, setHover] = useState<SlideElement | null>(null);
   const [opened, setOpened] = useState<Opened | null>(null);
+  const layerRef = useOpenFromBar(startAt, setOpened);
   const here = store.comments.filter((c) => c.slide === slideId(slide) && (showResolved || !c.resolved));
   useEffect(() => setOpened(null), [slide.name]);
 
@@ -94,6 +119,7 @@ export function SlideComments({
 
   return (
     <>
+      <span ref={layerRef} hidden />
       {commenting && (
         <div
           aria-label="Click to comment"

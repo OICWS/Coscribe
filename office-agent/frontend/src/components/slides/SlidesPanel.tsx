@@ -17,7 +17,7 @@ import {
 import { useDockPanel } from "../dock/dockContext";
 import { BookOpenIcon, ChevronDownIcon, ExternalLinkIcon, FolderIcon, MessageCircleIcon, PlayIcon } from "../icons";
 import type { CommentLink } from "../../lib/slideComments";
-import { SlideComments, useSlideComments } from "./SlideComments";
+import { SlideComments, useSlideComments, type CommentStart } from "./SlideComments";
 import { SlideEditor } from "./SlideEditor";
 import { SlideMenu, type MenuEntry } from "./SlideMenu";
 import { SlidePresenter } from "./SlidePresenter";
@@ -99,6 +99,7 @@ export function SlidesPanel({
                       commenting={ui.commenting}
                       showResolved={ui.showResolved}
                       onSend={onSendComment}
+                      startAt={ui.commentAt}
                     />
                   </SlideLayers>
                 )
@@ -204,6 +205,7 @@ function SlideEditing({
       firstPoint={ui.editing.index === ui.index ? ui.editing.point : null}
       onSaved={onSaved}
       onProblem={onProblem}
+      onComment={ui.setCommentAt}
       onExit={ui.stopEditing}
     />
   );
@@ -382,6 +384,7 @@ function useSlidesUi(count: number) {
   const [showResolved, setShowResolved] = useState(false);
   // The slide where editing started and the click that started it, to select what was clicked.
   const [editing, setEditing] = useState<{ index: number; point: { x: number; y: number } } | null>(null);
+  const [commentAt, setCommentAt] = useState<CommentStart | null>(null);
   const index = Math.min(current, Math.max(count - 1, 0));
   const go = (delta: number) => setCurrent(Math.max(0, Math.min(count - 1, index + delta)));
   const showView = (next: SlidesView) => {
@@ -415,6 +418,8 @@ function useSlidesUi(count: number) {
     showView("slide");
   };
   return {
+    commentAt,
+    setCommentAt,
     editing,
     startEditing: (point: { x: number; y: number }) => setEditing({ index, point }),
     stopEditing: () => setEditing(null),
