@@ -20,6 +20,8 @@ import type { CommentLink } from "../../lib/slideComments";
 import { SlideComments, useSlideComments, type CommentStart } from "./SlideComments";
 import { SlideEditor } from "./SlideEditor";
 import { SlideInsertBar } from "./SlideInsertBar";
+import { NewSlideDialog } from "./NewSlideDialog";
+import { useSlideArranging } from "./useSlideArranging";
 import { setNotes, type Insert } from "../../lib/slideSource";
 import { editSlide, getSlideParts } from "../../lib/slideEditing";
 import { SlideMenu, type MenuEntry } from "./SlideMenu";
@@ -60,6 +62,7 @@ export function SlidesPanel({
   const slides = deck?.slides ?? [];
   const ui = useSlidesUi(slides.length);
   const { index, view, setCurrent } = ui;
+  const arranging = useSlideArranging({ threadId, path, loadSource: edits.loadSource, onDone: (at) => edits.changed(() => setCurrent(at)), onProblem: edits.setProblem });
   const shownZoom = ui.zoom ?? fitFor(view, stage);
   const name = path.split(/[\\/]/).pop() ?? path;
   const slide = slides[index];
@@ -113,7 +116,7 @@ export function SlidesPanel({
               <StageControls ui={ui} count={slides.length} zoom={shownZoom} beside={beside} busy={downloads.busy}
                 onMenu={(kind, anchor) => setMenu({ kind, anchor })} deck={{ threadId, path, onProblem: edits.setProblem }} />
             </SlideStage>
-            <BelowStage ui={ui} slides={slides} srcOf={srcOf} onNotes={(text) => edits.edit(index, (doc) => setNotes(doc, text))} />
+            <BelowStage ui={ui} slides={slides} srcOf={srcOf} edits={edits} arranging={arranging} />
             {!beside && properties}
           </div>
           {beside && properties}
@@ -150,7 +153,13 @@ function useEdits(threadId: string, path: string) {
       (e: unknown) => setProblem(e instanceof Error ? e.message : String(e)),
     );
   const loadSource = (index: number) => getSlideParts(threadId, path, index).then((read) => read.source);
-  return { count, outside, problem, setProblem, saved, edit, loadSource };
+  /** The deck changed as a whole (a slide added, moved, deleted): read it and its slides again. */
+  const changed = (then: () => void) => {
+    setCount((n) => n + 1);
+    setOutside((n) => n + 1);
+    then();
+  };
+  return { count, outside, problem, setProblem, saved, edit, loadSource, changed };
 }
 
 /** Over the slide: the editor, then the comments (`children`) above it. */
@@ -296,16 +305,30 @@ function BelowStage({
   ui,
   slides,
   srcOf,
-  onNotes,
+  edits,
+  arranging,
 }: {
   ui: ReturnType<typeof useSlidesUi>;
   slides: SlideInfo[];
   srcOf: (index: number) => string;
-  onNotes: (text: string) => void;
+  edits: ReturnType<typeof useEdits>;
+  arranging: ReturnType<typeof useSlideArranging>;
 }) {
   const slide = slides[ui.index];
+  const onNotes = (text: string) => edits.edit(ui.index, (doc) => setNotes(doc, text));
   return (
     <>
+      {arranging.dialog && <NewSlideDialog layouts={arranging.dialog.layouts} onPick={arranging.pick} onClose={arranging.closeDialog} />}
+      {arranging.menu && (
+        <SlideMenu
+          anchor={arranging.menu.anchor}
+          label="Slide"
+          width={210}
+          align="left"
+          entries={arranging.menuEntries(arranging.menu.index, slides.length)}
+          onClose={() => arranging.setMenu(null)}
+        />
+      )}
       {ui.notesShown && ui.view === "slide" && slide && <SpeakerNotes key={`${slide.name}:${slide.notes}`} notes={slide.notes} onSave={onNotes} />}
       {(ui.view === "canvas" || ui.stripShown) && (
         <SlideFooter
@@ -314,8 +337,18 @@ function BelowStage({
           onView={ui.showView}
           onToggleNotes={ui.toggleNotes}
           onHideStrip={() => ui.setStripShown(false)}
+          onNewSlide={() => arranging.openNew(ui.index)}
         >
-          {ui.view === "slide" && <SlideThumbnails slides={slides} current={ui.index} srcOf={srcOf} onSelect={ui.setCurrent} />}
+          {ui.view === "slide" && (
+            <SlideThumbnails
+              slides={slides}
+              current={ui.index}
+              srcOf={srcOf}
+              onSelect={ui.setCurrent}
+              onMenu={(at, anchor) => arranging.setMenu({ index: at, anchor })}
+              onMove={arranging.move}
+            />
+          )}
         </SlideFooter>
       )}
     </>

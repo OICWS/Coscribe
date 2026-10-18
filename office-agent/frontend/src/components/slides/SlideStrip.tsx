@@ -1,6 +1,6 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { SlideInfo } from "../../lib/slides";
-import { BookOpenIcon, ChevronDownIcon, ChevronRightIcon } from "../icons";
+import { BookOpenIcon, ChevronDownIcon, ChevronRightIcon, PlusIcon } from "../icons";
 import { CanvasViewIcon, ChevronLeftIcon, SlideViewIcon, ThumbnailsIcon } from "./slideIcons";
 
 export type SlidesView = "slide" | "canvas";
@@ -24,6 +24,7 @@ export function SlideFooter({
   onView,
   onToggleNotes,
   onHideStrip,
+  onNewSlide,
   children,
 }: {
   view: SlidesView;
@@ -31,11 +32,15 @@ export function SlideFooter({
   onView: (view: SlidesView) => void;
   onToggleNotes: () => void;
   onHideStrip: () => void;
+  onNewSlide: () => void;
   children: ReactNode;
 }) {
   return (
     <div className="shrink-0 border-t border-[var(--border)] bg-[var(--bg)]">
       <div className="flex h-11 shrink-0 items-center gap-1 px-3">
+        <button type="button" title="New slide" aria-label="New slide" className={barButton} onClick={onNewSlide}>
+          <PlusIcon className="h-[18px] w-[18px]" />
+        </button>
         <button
           type="button"
           title={notesShown ? "Hide speaker notes" : "Speaker notes"}
@@ -93,13 +98,20 @@ export function SlideThumbnails({
   current,
   srcOf,
   onSelect,
+  onMenu,
+  onMove,
 }: {
   slides: SlideInfo[];
   current: number;
   srcOf: (index: number) => string;
   onSelect: (index: number) => void;
+  /** Right-click on a thumbnail: its menu. */
+  onMenu: (index: number, anchor: DOMRect) => void;
+  /** A thumbnail dragged to another place in the row. */
+  onMove: (index: number, to: number) => void;
 }) {
   const rowRef = useRef<HTMLDivElement>(null);
+  const [dragged, setDragged] = useState<number | null>(null);
   useEffect(() => {
     rowRef.current?.children[current]?.scrollIntoView({
       block: "nearest",
@@ -116,6 +128,23 @@ export function SlideThumbnails({
           aria-current={i === current}
           className={`relative aspect-video w-[156px] shrink-0 overflow-hidden rounded-lg border-2 bg-white ${i === current ? "border-[var(--accent)]" : "border-transparent hover:border-[var(--border-hover)]"}`}
           onClick={() => onSelect(i)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            onSelect(i);
+            onMenu(i, new DOMRect(e.clientX, e.clientY, 0, 0));
+          }}
+          draggable
+          onDragStart={(e) => {
+            setDragged(i);
+            e.dataTransfer.effectAllowed = "move";
+          }}
+          onDragOver={(e) => dragged !== null && e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            if (dragged !== null) onMove(dragged, i);
+            setDragged(null);
+          }}
+          onDragEnd={() => setDragged(null)}
         >
           <SlideThumb src={srcOf(i)} />
           <span className="absolute bottom-1.5 left-1.5 flex h-5 min-w-5 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--bg)] px-1 text-[11px] text-[var(--fg)]">

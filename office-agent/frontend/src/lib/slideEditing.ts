@@ -75,3 +75,18 @@ export async function editSlide(threadId: string, path: string, index: number, e
   edit(doc);
   return saveSlideSource(threadId, path, index, writeSection(doc), read.version);
 }
+
+export type Arrange =
+  | { action: "insert"; index: number; source: string }
+  | { action: "duplicate" | "delete"; index: number }
+  | { action: "move"; index: number; to: number };
+
+/** A new, copied, moved or deleted slide; returns the index of the slide to show. */
+export const arrangeSlides = async (threadId: string, path: string, change: Arrange) =>
+  json<{ index: number }>(
+    await fetch(`/api/threads/${encodeURIComponent(threadId)}/slides/arrange`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, ...change }),
+    }),
+  );
