@@ -10,7 +10,7 @@ a deck.
 
 ## Public interface
 `NEW_DECK_INSTRUCTIONS`, `PresentationToolkit`, `build_legacy_presentation_tools` (the tools that still live in
-`tool_wrappers.py`, for `tools/presentations.py`), `build_presentation_tools`; for the Slides panel, `read_deck`, `slide_svg` and `NotBuiltFromPages`. Import them from `coscribe.tools.office.pptx`.
+`tool_wrappers.py`, for `tools/presentations.py`), `build_presentation_tools`; for the Slides panel, `read_deck`, `slide_svg`, `NotBuiltFromPages` and its downloads `deck_pdf`, `deck_html`, `deck_basic_fonts`. Import them from `coscribe.tools.office.pptx`.
 
 ## Depends on
 `coscribe.runtime`, `coscribe.tools._chart_data`, `coscribe.tools._file_locks`,
