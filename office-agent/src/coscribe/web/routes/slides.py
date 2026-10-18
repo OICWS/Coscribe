@@ -28,6 +28,7 @@ from ...tools import (
     deck_pdf,
     delete_comment,
     delete_slide,
+    design_system,
     duplicate_slide,
     insert_slide,
     move_slide,
@@ -231,6 +232,13 @@ def _edit_routes(router: APIRouter, state: AppState) -> None:
         direction = -1 if body.action == "undo" else 1
         return await _run(lambda: step_history(deck, direction, resource_root=root))
 
+    async def get_design_system(thread_id: str, path: str) -> Any:
+        found = _deck_file(state, thread_id, path)
+        return _no_deck(path) if found is None else await _run(design_system, found[0])
+
+    router.add_api_route(
+        "/api/threads/{thread_id}/slides/design-system", get_design_system, methods=["GET"]
+    )
     history = "/api/threads/{thread_id}/slides/history"
     router.add_api_route(history, get_history, methods=["GET"])
     router.add_api_route(history, post_history, methods=["POST"])

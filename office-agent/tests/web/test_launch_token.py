@@ -201,6 +201,7 @@ AUDITED_READ_ONLY_GETS = {
     "/api/threads/{thread_id}/messaging",
     "/api/threads/{thread_id}/slides",
     "/api/threads/{thread_id}/slides/comments",
+    "/api/threads/{thread_id}/slides/design-system",
     "/api/threads/{thread_id}/slides/export",
     "/api/threads/{thread_id}/slides/history",
     "/api/threads/{thread_id}/slides/{index}/parts",

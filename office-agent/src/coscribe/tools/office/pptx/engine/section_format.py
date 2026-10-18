@@ -57,7 +57,7 @@ _STYLES = {
 }
 _ATTRIBUTES = {
     "section": {"id", "style", "data-transition"},
-    "text": {"data-build-in", "id", "style"},
+    "text": {"data-build-in", "id", "style", "data-text-style"},
     "x-shape": {"data-build-in", "id", "style", "data-shape"},
     "img": {"data-build-in", "id", "style", "src", "alt"},
     "svg": {"data-build-in", "id", "style", "viewBox", "preserveAspectRatio"},
@@ -68,6 +68,7 @@ _ATTRIBUTES = {
 _EMPTY_TAGS = frozenset({"img", "x-icon", "x-chart", "x-shape"})
 _ALIGN = {"left": "l", "center": "ctr", "right": "r", "justify": "just"}
 _ANCHOR = {"top": "t", "middle": "ctr", "bottom": "b"}
+_STYLE_NAME = re.compile(r"[a-z][a-z0-9-]{0,39}")
 _COLOUR = re.compile(r"#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})")
 _PX = re.compile(r"(-?\d+(?:\.\d+)?)(px)?")
 _SAFE_PATH = re.compile(r"(?![a-zA-Z][a-zA-Z0-9+.-]*:)(?!/)(?!\\)(?!.*\.\.)[^\s]+")
@@ -199,6 +200,7 @@ def _read_child(section: Section, child: ET.Element) -> None:
     if tag in _EMPTY_TAGS and len(child):
         raise SectionError(f"{label(child)} holds no elements")
     _named(child, "data-build-in", BUILD_INS)
+    _check_text_style(child)
     if tag == "svg":
         _check_svg(child)
     section.elements.append((child, read_style(child, kind)))
@@ -231,6 +233,12 @@ def _named(elem: ET.Element, name: str, effects: dict[str, str]) -> str | None:
 def read_cell_style(elem: ET.Element) -> Style:
     """A table cell's or column's own style: its colours, alignment, weight and width."""
     return read_style(elem, "cell")
+
+
+def _check_text_style(elem: ET.Element) -> None:
+    name = elem.get("data-text-style")
+    if name is not None and not _STYLE_NAME.fullmatch(name):
+        raise SectionError(f"{label(elem)}: data-text-style is a style's id such as heading-1")
 
 
 def _check_attributes(elem: ET.Element, kind: str) -> None:

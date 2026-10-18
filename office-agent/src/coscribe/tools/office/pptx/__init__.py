@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .engine.build import DeckChangedError
+from .engine.design_system import design_system
 from .engine.instructions import NEW_DECK_INSTRUCTIONS
 from .engine.section_format import SectionError
 from .engine.tool import build_engine_tools
@@ -45,6 +46,7 @@ __all__ = [
     "deck_history",
     "deck_html",
     "deck_pdf",
+    "design_system",
     "delete_comment",
     "delete_slide",
     "duplicate_slide",

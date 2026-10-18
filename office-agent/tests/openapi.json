@@ -5079,6 +5079,54 @@
         "summary": "Post Reply"
       }
     },
+    "/api/threads/{thread_id}/slides/design-system": {
+      "get": {
+        "operationId": "get_design_system_api_threads__thread_id__slides_design_system_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Get Design System Api Threads  Thread Id  Slides Design System Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Design System"
+      }
+    },
     "/api/threads/{thread_id}/slides/export": {
       "get": {
         "operationId": "export_slides_api_threads__thread_id__slides_export_get",
