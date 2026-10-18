@@ -8,10 +8,10 @@ import getpass
 import zipfile
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 from urllib.parse import quote
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Form, UploadFile
 from fastapi.responses import JSONResponse, Response
 
 from ...tools import (
@@ -21,6 +21,7 @@ from ...tools import (
     SectionError,
     SlideChanged,
     add_comment,
+    add_slide_asset,
     deck_basic_fonts,
     deck_html,
     deck_pdf,
@@ -54,6 +55,9 @@ _DECK_CHANGED = (
     "changes, so the slide was not saved"
 )
 _REFUSED = "The slide could not be saved as it is"
+# Read one byte past the engine's limit, so a larger file is refused without being read whole.
+_MAX_PICTURE = 15 * 1024 * 1024
+_NOT_A_PICTURE = "Pictures are PNG, JPEG, GIF or WebP files of 15 MB at most"
 
 
 _PPTX = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
@@ -176,6 +180,19 @@ def _edit_routes(router: APIRouter, state: AppState) -> None:
             )
         )
 
+    async def post_asset(thread_id: str, file: UploadFile, path: Annotated[str, Form()]) -> Any:
+        found = _deck_file(state, thread_id, path)
+        if found is None:
+            return _no_deck(path)
+        data = await file.read(_MAX_PICTURE + 1)
+        try:
+            return await asyncio.to_thread(add_slide_asset, found[0], file.filename or "", data)
+        except NotBuiltFromPages:
+            return JSONResponse({"error": _NOT_BUILT, "built": False}, status_code=409)
+        except ValueError:
+            return JSONResponse({"error": _NOT_A_PICTURE}, status_code=400)
+
+    router.add_api_route("/api/threads/{thread_id}/slides/assets", post_asset, methods=["POST"])
     router.add_api_route(f"{base}/parts", get_parts, methods=["GET"])
     router.add_api_route(f"{base}/source", put_source, methods=["PUT"])
 

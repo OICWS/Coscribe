@@ -14,18 +14,21 @@ interface MenuItem {
 /** A divider, or a muted line of text that is not an item. */
 export type MenuEntry = MenuItem | "divider" | { note: string };
 
-/** A menu under `anchor`, aligned to its right edge; closes on a pick, Escape or a click outside. */
+/** A menu under `anchor`, aligned to its right edge (or `align` left); closes on a pick, Escape
+ * or a click outside. */
 export function SlideMenu({
   anchor,
   entries,
   label,
   width = 200,
+  align = "right",
   onClose,
 }: {
   anchor: DOMRect;
   entries: MenuEntry[];
   label: string;
   width?: number;
+  align?: "left" | "right";
   onClose: () => void;
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
@@ -52,7 +55,7 @@ export function SlideMenu({
       className="fixed z-50 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.12)]"
       style={{
         top: anchor.bottom + 6,
-        left: Math.max(8, Math.min(window.innerWidth - width - 8, anchor.right - width)),
+        left: Math.max(8, Math.min(window.innerWidth - width - 8, align === "left" ? anchor.left : anchor.right - width)),
         width,
       }}
     >

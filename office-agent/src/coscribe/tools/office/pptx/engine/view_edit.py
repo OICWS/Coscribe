@@ -11,11 +11,14 @@ from __future__ import annotations
 
 import base64
 import copy
+import io
 import os
+import re
 from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
 
+from PIL import Image
 from pptx import Presentation
 
 from ...._file_locks import file_lock, replace_with_retry
@@ -28,6 +31,8 @@ from .svg_to_section import convert_page
 from .text_box import EMU_PER_PX
 from .view import NotBuiltFromPages, _draw_natives, _inline_images, _make_safe, pages_folder
 
+_ASSET_FORMATS = {"PNG": ".png", "JPEG": ".jpg", "GIF": ".gif", "WEBP": ".webp"}
+MAX_ASSET_BYTES = 15 * 1024 * 1024
 # Room around an element's own box in its picture: strokes, a chart's labels and an icon's
 # lines are drawn a little past the box and would be cut off at it.
 MARGIN = 24
@@ -105,6 +110,34 @@ def save_slide(
     }
 
 
+def add_slide_asset(deck: Path, name: str, data: bytes) -> dict[str, Any]:
+    """Stores a picture the user inserts in the deck's `assets/` folder, under a free name, and
+    returns its path as a section's `src` names it, with its size in px. Raises ValueError for
+    anything that is not a PNG, JPEG, GIF or WebP picture, or one over 15 MB."""
+    folder = pages_folder(deck)
+    if folder is None:
+        raise NotBuiltFromPages(f"{deck.name} was not built from pages")
+    if len(data) > MAX_ASSET_BYTES:
+        raise ValueError("the picture is larger than 15 MB")
+    try:
+        with Image.open(io.BytesIO(data)) as image:
+            kind, (width, height) = image.format, image.size
+    except (OSError, Image.DecompressionBombError) as e:
+        raise ValueError("not a picture") from e
+    if kind not in _ASSET_FORMATS:
+        raise ValueError("pictures are PNG, JPEG, GIF or WebP")
+    assets = folder / "assets"
+    assets.mkdir(exist_ok=True)
+    stem = re.sub(r"[^\w-]+", "-", Path(name).stem).strip("-")[:60] or "picture"
+    target = assets / f"{stem}{_ASSET_FORMATS[kind]}"
+    n = 1
+    while target.exists():
+        n += 1
+        target = assets / f"{stem}-{n}{_ASSET_FORMATS[kind]}"
+    target.write_bytes(data)
+    return {"src": f"assets/{target.name}", "width": width, "height": height}
+
+
 def _page(deck: Path, index: int) -> tuple[Path, Path]:
     folder = pages_folder(deck)
     if folder is None:
@@ -115,9 +148,7 @@ def _page(deck: Path, index: int) -> tuple[Path, Path]:
     return folder, folder / entries[index]["page"]
 
 
-def _picture(
-    box: list[float], font: str, defs: list[ET.Element], drawn: list[ET.Element]
-) -> str:
+def _picture(box: list[float], font: str, defs: list[ET.Element], drawn: list[ET.Element]) -> str:
     x, y, width, height = box
     svg = ET.Element(
         f"{{{SVG_NS}}}svg",

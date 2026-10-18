@@ -22,7 +22,7 @@ from .engine.view_comments import (
     reply_to_comment,
     resolve_comment,
 )
-from .engine.view_edit import SlideChanged, save_slide, slide_parts
+from .engine.view_edit import SlideChanged, add_slide_asset, save_slide, slide_parts
 from .engine.view_export import deck_basic_fonts, deck_html, deck_pdf
 from .tool_wrappers import build_presentation_tools as build_legacy_presentation_tools
 from .toolkit import PresentationToolkit
@@ -36,6 +36,7 @@ __all__ = [
     "SectionError",
     "SlideChanged",
     "add_comment",
+    "add_slide_asset",
     "build_legacy_presentation_tools",
     "build_presentation_tools",
     "deck_basic_fonts",
