@@ -80,7 +80,8 @@ def save_slide(
 ) -> dict[str, Any]:
     """Write `source` as slide `index`'s section and build the deck again. Raises SectionError
     for a section the language refuses, SlideChanged and DeckChangedError as the module says.
-    Returns the slide's new file name and version, and what the build found on it."""
+    Returns the slide's new file name and version, and the build's errors on it (text that no
+    longer fits its box, ...): its advice to the model on style is not for the user."""
     if len(source) > _MAX_SOURCE:
         raise SectionError("the slide is too large")
     parse_section(source)
@@ -100,7 +101,7 @@ def save_slide(
     return {
         "name": target.name,
         "version": _source_hash(target.read_text(encoding="utf-8")),
-        "problems": (built.errors + built.warnings) if built else [],
+        "problems": built.errors if built else [],
     }
 
 
