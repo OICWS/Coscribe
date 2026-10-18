@@ -19,9 +19,11 @@ export const SlideStage = forwardRef<
     srcOf: (index: number) => string;
     onSelect: (index: number) => void;
     onOpen: (index: number) => void;
+    /** Drawn over the slide in Slide view, not clipped by it: the comments. */
+    overlay?: ReactNode;
     children: ReactNode;
   }
->(function SlideStage({ view, slides, current, zoom, srcOf, onSelect, onOpen, children }, ref) {
+>(function SlideStage({ view, slides, current, zoom, srcOf, onSelect, onOpen, overlay, children }, ref) {
   const slide = slides[current];
   const padding = `${TOOLBAR_ROOM}px ${MARGIN}px ${MARGIN}px`;
   return (
@@ -30,15 +32,14 @@ export const SlideStage = forwardRef<
         {view === "slide" ? (
           <div className="flex min-h-full min-w-full" style={{ padding }}>
             {slide && (
-              <div
-                className="m-auto shrink-0 overflow-hidden shadow-[0_2px_14px_rgba(0,0,0,0.12)]"
-                style={{
-                  width: SLIDE_WIDTH * zoom,
-                  height: SLIDE_HEIGHT * zoom,
-                  background: slide.background ?? "#ffffff",
-                }}
-              >
-                <SlideThumb src={srcOf(current)} />
+              <div className="relative m-auto shrink-0" style={{ width: SLIDE_WIDTH * zoom, height: SLIDE_HEIGHT * zoom }}>
+                <div
+                  className="h-full w-full overflow-hidden shadow-[0_2px_14px_rgba(0,0,0,0.12)]"
+                  style={{ background: slide.background ?? "#ffffff" }}
+                >
+                  <SlideThumb src={srcOf(current)} />
+                </div>
+                {overlay}
               </div>
             )}
           </div>
