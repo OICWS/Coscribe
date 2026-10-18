@@ -61,6 +61,7 @@ GET /api/threads/{thread_id}/messaging
 GET /api/threads/{thread_id}/slides
 GET /api/threads/{thread_id}/slides/comments
 GET /api/threads/{thread_id}/slides/export
+GET /api/threads/{thread_id}/slides/history
 GET /api/threads/{thread_id}/slides/{index}/parts
 GET /api/threads/{thread_id}/slides/{index}/svg
 GET /api/threads/{thread_id}/subagents
@@ -110,6 +111,7 @@ POST /api/threads/{thread_id}/slides/assets
 POST /api/threads/{thread_id}/slides/comments
 POST /api/threads/{thread_id}/slides/comments/{comment_id}
 POST /api/threads/{thread_id}/slides/comments/{comment_id}/replies
+POST /api/threads/{thread_id}/slides/history
 POST /api/threads/{thread_id}/workflow-draft
 POST /api/upload
 POST /api/workflows/permissions

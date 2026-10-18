@@ -23,6 +23,7 @@ from ...tools import (
     add_comment,
     add_slide_asset,
     deck_basic_fonts,
+    deck_history,
     deck_html,
     deck_pdf,
     delete_comment,
@@ -37,12 +38,14 @@ from ...tools import (
     save_slide,
     slide_parts,
     slide_svg,
+    step_history,
 )
 from ..schemas import (
     SlideArrange,
     SlideCommentNew,
     SlideCommentReply,
     SlideCommentState,
+    SlideHistoryStep,
     SlideSave,
 )
 from ..state import AppState
@@ -216,6 +219,21 @@ def _edit_routes(router: APIRouter, state: AppState) -> None:
         index = await _run(jobs[body.action])
         return index if isinstance(index, Response) else {"index": index}
 
+    async def get_history(thread_id: str, path: str) -> Any:
+        found = _deck_file(state, thread_id, path)
+        return _no_deck(path) if found is None else await _run(deck_history, found[0])
+
+    async def post_history(thread_id: str, body: SlideHistoryStep) -> Any:
+        found = _deck_file(state, thread_id, body.path)
+        if found is None:
+            return _no_deck(body.path)
+        deck, root = found
+        direction = -1 if body.action == "undo" else 1
+        return await _run(lambda: step_history(deck, direction, resource_root=root))
+
+    history = "/api/threads/{thread_id}/slides/history"
+    router.add_api_route(history, get_history, methods=["GET"])
+    router.add_api_route(history, post_history, methods=["POST"])
     router.add_api_route("/api/threads/{thread_id}/slides/arrange", post_arrange, methods=["POST"])
     router.add_api_route("/api/threads/{thread_id}/slides/assets", post_asset, methods=["POST"])
     router.add_api_route(f"{base}/parts", get_parts, methods=["GET"])

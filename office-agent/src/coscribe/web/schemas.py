@@ -72,6 +72,11 @@ class SlideArrange(BaseModel):
     source: str = Field(default="<section></section>", max_length=400_000)
 
 
+class SlideHistoryStep(BaseModel):
+    path: str
+    action: Literal["undo", "redo"]
+
+
 class MemoryUpdate(BaseModel):
     content: str
 

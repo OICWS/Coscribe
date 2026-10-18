@@ -90,3 +90,23 @@ export const arrangeSlides = async (threadId: string, path: string, change: Arra
       body: JSON.stringify({ path, ...change }),
     }),
   );
+
+/** Who made the change an undo or a redo would take back or bring back; null where none. */
+export interface SlideHistory {
+  undo: "coscribe" | "you" | null;
+  redo: "coscribe" | "you" | null;
+}
+
+const historyUrl = (threadId: string) => `/api/threads/${encodeURIComponent(threadId)}/slides/history`;
+
+export const getSlideHistory = async (threadId: string, path: string) =>
+  json<SlideHistory>(await fetch(`${historyUrl(threadId)}?path=${encodeURIComponent(path)}`));
+
+export const stepSlideHistory = async (threadId: string, path: string, action: "undo" | "redo") =>
+  json<SlideHistory>(
+    await fetch(historyUrl(threadId), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, action }),
+    }),
+  );

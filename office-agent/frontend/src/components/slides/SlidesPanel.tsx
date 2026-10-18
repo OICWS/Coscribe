@@ -22,6 +22,7 @@ import { SlideEditor } from "./SlideEditor";
 import { SlideInsertBar } from "./SlideInsertBar";
 import { NewSlideDialog } from "./NewSlideDialog";
 import { useSlideArranging } from "./useSlideArranging";
+import { useSlideHistory } from "./useSlideHistory";
 import { setNotes, type Insert } from "../../lib/slideSource";
 import { editSlide, getSlideParts } from "../../lib/slideEditing";
 import { SlideMenu, type MenuEntry } from "./SlideMenu";
@@ -62,6 +63,7 @@ export function SlidesPanel({
   const slides = deck?.slides ?? [];
   const ui = useSlidesUi(slides.length);
   const { index, view, setCurrent } = ui;
+  const history = useSlideHistory(threadId, path, `${refreshKey}.${edits.count}`, () => edits.changed(() => undefined), edits.setProblem);
   const arranging = useSlideArranging({ threadId, path, loadSource: edits.loadSource, onDone: (at) => edits.changed(() => setCurrent(at)), onProblem: edits.setProblem });
   const shownZoom = ui.zoom ?? fitFor(view, stage);
   const name = path.split(/[\\/]/).pop() ?? path;
@@ -76,7 +78,7 @@ export function SlidesPanel({
       ref={rootRef}
       tabIndex={-1}
       className="relative flex h-full min-h-0 flex-col outline-none"
-      onKeyDown={(e) => ui.onKey(e, shownZoom)}
+      onKeyDown={(e) => ui.onKey(e, shownZoom, history.step)}
     >
       <PanelTop title={deck?.title ?? name} path={path} ui={ui} onMenu={(kind, anchor) => setMenu({ kind, anchor })} />
       <DeckNotices changed={deck?.changed ?? false} error={error ?? edits.problem ?? downloads.failed ?? comments.failed} />
@@ -128,7 +130,7 @@ export function SlidesPanel({
         slides={slides}
         zoom={shownZoom}
         srcOf={srcOf}
-        actions={{ open, download: (format) => downloads.download(format, index) }}
+        actions={{ open, download: (format) => downloads.download(format, index), history }}
         onCloseMenu={() => setMenu(null)}
         onStopped={() => rootRef.current?.focus()}
       />
@@ -463,12 +465,13 @@ function useSlidesUi(count: number) {
     setCurrent(i);
     showView("slide");
   };
-  const onKey = (e: KeyboardEvent<HTMLDivElement>, shownZoom: number) => {
+  const onKey = (e: KeyboardEvent<HTMLDivElement>, shownZoom: number, step: (action: "undo" | "redo") => void) => {
     if (e.key === "Escape" && commenting) return setCommenting(false);
     const key = slideKey(e, view);
     if (key === null) return;
     e.preventDefault();
-    if (typeof key === "number") go(key);
+    if (key === "undo" || key === "redo") step(key);
+    else if (typeof key === "number") go(key);
     else if (key === "fit") setZoom(null);
     else if (key === "in" || key === "out") setZoom(stepZoom(shownZoom, key === "in" ? 1 : -1));
     else if (key === "open") openSlide(index);
@@ -564,12 +567,15 @@ function useSizes(rootRef: React.RefObject<HTMLDivElement | null>, stageRef: Rea
   return { stage, panelWidth };
 }
 
-type SlideKey = "in" | "out" | "fit" | "first" | "last" | "open" | 1 | -1;
+type SlideKey = "in" | "out" | "fit" | "first" | "last" | "open" | "undo" | "redo" | 1 | -1;
 
 /** What a key does in the panel; nothing while typing in a field. */
 function slideKey(e: KeyboardEvent<HTMLDivElement>, view: SlidesView): SlideKey | null {
   if ((e.target as HTMLElement).closest("input, textarea, [contenteditable]")) return null;
   if (e.ctrlKey || e.metaKey) {
+    const letter = e.key.toLowerCase();
+    if (letter === "z") return e.shiftKey ? "redo" : "undo";
+    if (letter === "y") return "redo";
     return ({ "=": "in", "+": "in", "-": "out", "0": "fit" } as const)[e.key as "=" | "+" | "-" | "0"] ?? null;
   }
   if (["ArrowRight", "ArrowDown", "PageDown"].includes(e.key)) return 1;
@@ -580,7 +586,12 @@ function slideKey(e: KeyboardEvent<HTMLDivElement>, view: SlidesView): SlideKey 
   return null;
 }
 
-function zoomEntries(zoom: number, view: SlidesView, setZoom: (zoom: number | null) => void): MenuEntry[] {
+function zoomEntries(
+  zoom: number,
+  view: SlidesView,
+  setZoom: (zoom: number | null) => void,
+  history: ReturnType<typeof useSlideHistory>,
+): MenuEntry[] {
   const now = (step: number) => Math.abs(step - zoom) < 1e-6;
   return [
     {
@@ -608,8 +619,18 @@ function zoomEntries(zoom: number, view: SlidesView, setZoom: (zoom: number | nu
       onSelect: () => setZoom(step),
     })),
     "divider",
-    { label: "Undo", hint: "Ctrl+Z", disabled: true },
-    { label: "Redo", hint: "Ctrl+Shift+Z", disabled: true },
+    {
+      label: history.history.undo === "coscribe" ? "Undo coscribe's change" : "Undo",
+      hint: "Ctrl+Z",
+      disabled: !history.history.undo,
+      onSelect: () => history.step("undo"),
+    },
+    {
+      label: history.history.redo === "coscribe" ? "Redo coscribe's change" : "Redo",
+      hint: "Ctrl+Shift+Z",
+      disabled: !history.history.redo,
+      onSelect: () => history.step("redo"),
+    },
   ];
 }
 
@@ -629,7 +650,7 @@ function SlidesOverlays({
   slides: SlideInfo[];
   zoom: number;
   srcOf: (index: number) => string;
-  actions: Pick<MenuActions, "open" | "download">;
+  actions: Pick<MenuActions, "open" | "download" | "history">;
   onCloseMenu: () => void;
   /** Presenting ended, back on the panel. */
   onStopped: () => void;
@@ -661,6 +682,7 @@ function SlidesOverlays({
 
 interface MenuActions {
   setZoom: (zoom: number | null) => void;
+  history: ReturnType<typeof useSlideHistory>;
   present: (withNotes: boolean) => void;
   open: (reveal: boolean) => void;
   download: (format: SlideExport) => void;
@@ -668,7 +690,7 @@ interface MenuActions {
 }
 
 function entriesFor(kind: Menu["kind"], zoom: number, view: SlidesView, actions: MenuActions): MenuEntry[] {
-  if (kind === "zoom") return zoomEntries(zoom, view, actions.setZoom);
+  if (kind === "zoom") return zoomEntries(zoom, view, actions.setZoom, actions.history);
   if (kind === "download") return downloadEntries(actions.download);
   if (kind === "comments") return commentEntries(actions.ui);
   return kind === "present" ? presentEntries(actions.present) : titleEntries(actions.open);

@@ -14,6 +14,7 @@ from typing import Any
 
 from ...._file_locks import file_lock
 from .build import MANIFEST, _read_manifest, _refuse_if_changed, build_deck, page_files
+from .history import record_state
 from .section_format import parse_section
 from .view import NotBuiltFromPages, pages_folder
 from .view_comments import move_comments
@@ -75,13 +76,14 @@ def _arrange(deck: Path, resource_root: Path, change: Any) -> int:
             raise NotBuiltFromPages(f"{deck.name} was not built from pages")
         _refuse_if_changed(deck, _read_manifest(folder / MANIFEST))
         before = page_files(folder, (".svg", ".html"))
+        record_state(folder, before, "coscribe")
         pages: list[Path | New] = list(before)
         index = change(pages)
         if len(pages) > _MAX_SLIDES:
             raise ValueError(f"a deck holds {_MAX_SLIDES} slides at most")
         renamed = _write(folder, pages, before)
         move_comments(deck, renamed)
-        build_deck(folder, deck, resource_root=resource_root)
+        build_deck(folder, deck, resource_root=resource_root, recorded_as="you")
     return int(index)
 
 

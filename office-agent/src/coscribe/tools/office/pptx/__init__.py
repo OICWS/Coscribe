@@ -25,6 +25,7 @@ from .engine.view_comments import (
 )
 from .engine.view_edit import SlideChanged, add_slide_asset, save_slide, slide_parts
 from .engine.view_export import deck_basic_fonts, deck_html, deck_pdf
+from .engine.view_history import deck_history, step_history
 from .tool_wrappers import build_presentation_tools as build_legacy_presentation_tools
 from .toolkit import PresentationToolkit
 
@@ -41,6 +42,7 @@ __all__ = [
     "build_legacy_presentation_tools",
     "build_presentation_tools",
     "deck_basic_fonts",
+    "deck_history",
     "deck_html",
     "deck_pdf",
     "delete_comment",
@@ -55,6 +57,7 @@ __all__ = [
     "save_slide",
     "slide_parts",
     "slide_svg",
+    "step_history",
 ]
 
 
