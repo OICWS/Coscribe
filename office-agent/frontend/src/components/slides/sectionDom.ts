@@ -1,5 +1,5 @@
 import { PICTURE_MARGIN, type SlidePart } from "../../lib/slideEditing";
-import { boxIn, elementsOf, parseStyle, type Box } from "../../lib/slideSource";
+import { boxIn, elementsOf, hexColour, parseStyle, type Box } from "../../lib/slideSource";
 
 /** A section drawn as the browser's own elements, the way the compiler lays it out: each
  * element in its box, text in its own tag, everything else as the server's picture of it. Drawn
@@ -98,5 +98,54 @@ function applyStyle(node: HTMLElement, style: Map<string, string>) {
   for (const [name, value] of style) {
     if (/[()\\]/.test(value)) continue;
     node.style.setProperty(name, value);
+  }
+}
+
+/** The text node of a drawn text element: what becomes editable. */
+export const textNode = (node: HTMLElement | null) => (node?.firstElementChild as HTMLElement | null) ?? null;
+
+const BACK: Record<string, string> = { b: "b", strong: "b", i: "i", em: "i", u: "u", br: "br", span: "span", font: "span" };
+
+/** The edited text written back into the section's element `el`, in the section language's own
+ * tags: what the browser adds while typing (`div`s, `font`, styles) is turned into those or left
+ * out, and a list keeps one `li` per item. */
+export function writeTextBack(edited: HTMLElement, el: Element) {
+  el.replaceChildren();
+  if (el.localName === "ul" || el.localName === "ol") {
+    for (const child of Array.from(edited.childNodes)) {
+      const li = el.ownerDocument.createElement("li");
+      const holder = document.createElement("span");
+      holder.append(child.cloneNode(true));
+      copyBack(child instanceof HTMLElement && child.localName === "li" ? child : holder, li);
+      if ((li.textContent ?? "").trim()) el.append(li);
+    }
+    return;
+  }
+  copyBack(edited, el);
+  while (el.lastChild instanceof Element && el.lastChild.localName === "br") el.lastChild.remove();
+}
+
+function copyBack(from: Node, to: Element) {
+  const doc = to.ownerDocument;
+  for (const child of Array.from(from.childNodes)) {
+    if (child.nodeType === Node.TEXT_NODE) {
+      to.append((child.textContent ?? "").replace(/\u200b/g, ""));
+      continue;
+    }
+    if (!(child instanceof HTMLElement)) continue;
+    const tag = BACK[child.localName];
+    const colour = hexColour(child.getAttribute("color") ?? child.style.color ?? "");
+    if (["div", "p", "li"].includes(child.localName)) {
+      const last = to.lastChild;
+      if (to.childNodes.length && !(last instanceof Element && last.localName === "br")) to.append(doc.createElement("br"));
+      copyBack(child, to);
+    } else if (!tag || (tag === "span" && !colour)) {
+      copyBack(child, to);
+    } else {
+      const copy = doc.createElement(tag);
+      if (tag === "span") copy.setAttribute("style", `color:${colour}`);
+      copyBack(child, copy);
+      to.append(copy);
+    }
   }
 }
