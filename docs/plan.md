@@ -90,6 +90,8 @@ Last reviewed: 2026-10-15.
    CodeQL read, the 281 "Not verified" items sorted (`docs/metrics/2026-10-17-not-verified-triage.md`:
    20 checks for a person), the fresh-session measurement, prompt-injection tests, small items.
 
+   Batch 10 (#425, the last structure batch): item 1 done (a workbook with a cell note now gets its
+   formula values). Open: items 2 to 6, and item 7 (the closing report) last.
 0b. **The office route** (decision 0010, `docs/assessments/2026-10-13-office-route.md`):
    new decks compiled from whole-page SVG sources, edits through the page source and upgraded
    object tools; open-source code reused as owned copies. Done: the evaluation and the baseline

@@ -70,6 +70,7 @@ def _dates_notes_and_text(tools: Tools) -> None:
                     ["Date", "Code", "Hours"],
                     ["2026-01-05", {"v": "=001", "text": True}, 7.5],
                     ["2026-01-06 14:30", "A-2", {"v": 8, "note": "Includes overtime"}],
+                    ["Total", None, "=SUM(C2:C3)"],
                 ],
                 "style": {"border": "thin"},
                 "row_styles": {"0": {"bold": True, "border": {"bottom": "medium"}}},

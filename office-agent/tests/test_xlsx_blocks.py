@@ -149,6 +149,35 @@ def test_a_new_workbook_gets_its_values_styles_and_notes(tmp_path: Path) -> None
     assert sheet["B2"].value == 1200 and sheet["B2"].comment.text == "From the ERP"
 
 
+def test_a_workbook_with_a_note_still_gets_its_formula_values(tmp_path: Path) -> None:
+    path = tmp_path / "noted.xlsx"
+
+    report = write_cells(
+        path,
+        [
+            {
+                "sheet": "S",
+                "rows": [[{"v": 2, "note": "a note"}, 3, "=A1+B1"]],
+            }
+        ],
+    )
+
+    assert report["formula_results"] == {"S!C1": 5}
+    assert load_workbook(path, data_only=True)["S"]["C1"].value == 5
+    assert load_workbook(path)["S"]["A1"].comment.text == "a note"
+
+
+def test_a_text_cell_that_reads_like_a_formula_is_not_listed_as_one(tmp_path: Path) -> None:
+    path = tmp_path / "text.xlsx"
+
+    report = write_cells(
+        path, [{"sheet": "S", "rows": [[{"v": "=001", "text": True}, 4, "=B1*2"]]}]
+    )
+
+    assert report["formula_results"] == {"S!C1": 8}
+    assert report["formulas_not_listed"] == 0
+
+
 def test_cells_that_hold_something_else_are_not_overwritten_unless_asked(tmp_path: Path) -> None:
     path = _table(tmp_path / "t.xlsx")
     block = [{"sheet": "Data", "at": "B2", "rows": [[1600]]}]
