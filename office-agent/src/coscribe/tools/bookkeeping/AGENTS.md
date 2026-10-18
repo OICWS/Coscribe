@@ -27,13 +27,13 @@ Also exported: `FINISHED_STATUSES`, `MessagingError`, `TaskToolkit`, `register_s
 `tools` reach all of these through `coscribe.tools`.
 
 ## Depends on
-`coscribe.runtime`, `coscribe.tools._file_locks`, `coscribe.tools.exec`, `coscribe.workflows`.
+`coscribe.runtime`, `coscribe.tools._file_locks`, `coscribe.tools.exec`, `coscribe.workflow_spec`.
 
 ## Invariants
 - A store is a file under the state directory written through `_file_locks`; an id that comes
   from a URL must never name a path outside its store.
-- `scheduled_tasks` reads the workflow spec (`coscribe.workflows.spec`), the one upward import
-  from `tools` (listed in `pyproject.toml`); a fixed workflow run never reaches an agent.
+- `scheduled_tasks` validates a workflow against `coscribe.workflow_spec`, a package below `tools`,
+  so nothing in `tools` imports `workflows`; a fixed workflow run never reaches an agent.
 - Tool schemas are fixed and snapshotted (`tests/tool_schemas.txt`).
 
 ## Tests

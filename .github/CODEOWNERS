@@ -15,6 +15,7 @@
 /office-agent/src/coscribe/tools/web/ @OICWS
 /office-agent/src/coscribe/tools/bookkeeping/ @OICWS
 /office-agent/src/coscribe/runtime/ @OICWS
+/office-agent/src/coscribe/workflow_spec/ @OICWS
 /office-agent/src/coscribe/config.py @OICWS
 /office-agent/src/coscribe/needs_permission.py @OICWS
 /office-agent/frontend/ @OICWS

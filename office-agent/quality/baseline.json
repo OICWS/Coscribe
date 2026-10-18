@@ -212,18 +212,17 @@
   "coscribe/web/routes/threads.py::function threads_status": 1,
   "coscribe/web/routes/ws.py::function browser_panel_ws": 1,
   "coscribe/web/routes/ws.py::function ws_endpoint": 1,
-  "coscribe/workflows/spec.py::method _a_reference": 1,
-  "coscribe/workflows/spec.py::method _collects_what_it_saves": 1,
-  "coscribe/workflows/spec.py::method _exactly_one": 1,
-  "coscribe/workflows/spec.py::method _names_resolve_in_order": 1,
-  "coscribe/workflows/spec.py::method _only_the_one_set": 1,
-  "coscribe/workflows/spec.py::method _right_unless_unary": 1,
-  "coscribe/workflows/spec.py::variable BlockStep": 1,
-  "coscribe/workflows/spec.py::variable model_config": 1
+  "coscribe/workflow_spec/spec.py::method _a_reference": 1,
+  "coscribe/workflow_spec/spec.py::method _collects_what_it_saves": 1,
+  "coscribe/workflow_spec/spec.py::method _exactly_one": 1,
+  "coscribe/workflow_spec/spec.py::method _names_resolve_in_order": 1,
+  "coscribe/workflow_spec/spec.py::method _only_the_one_set": 1,
+  "coscribe/workflow_spec/spec.py::method _right_unless_unary": 1,
+  "coscribe/workflow_spec/spec.py::variable BlockStep": 1,
+  "coscribe/workflow_spec/spec.py::variable model_config": 1
  },
  "deep_imports": {
   "coscribe.conversation.agent_assembly -> coscribe.tools.web": 1,
-  "coscribe.tools.bookkeeping.scheduled_tasks -> coscribe.workflows.spec": 1,
   "coscribe.web.routes.files -> coscribe.tools.web": 1
  },
  "fan_out": {},
@@ -234,7 +233,7 @@
   "src/coscribe/tools/bookkeeping/scheduled_tasks.py": 1054,
   "src/coscribe/web/browser_panel.py": 813,
   "src/coscribe/web/connector_catalog.py": 948,
-  "src/coscribe/workflows/engine.py": 901
+  "src/coscribe/workflows/engine.py": 898
  },
  "frontend_file_lines": {
   "office-agent-desktop/src/main/browserAgent.ts": 934,
