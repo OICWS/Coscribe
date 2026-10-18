@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
@@ -42,6 +42,11 @@ const api = async (page: Page, path: string) => {
   const response = await page.request.get(`/api/threads/${threadOf(page)}${path}`);
   expect(response.ok(), path).toBe(true);
   return response.json();
+};
+// A read that lands while the server is rewriting the deck can fail for a moment; polling retries.
+const tryApi = async (page: Page, path: string) => {
+  const response = await page.request.get(`/api/threads/${threadOf(page)}${path}`);
+  return response.ok() ? response.json() : null;
 };
 const deckOf = (page: Page, name: string): Promise<{ slides: Slide[]; changed: boolean }> =>
   api(page, `/slides?path=${name}.pptx`);
@@ -99,8 +104,7 @@ test("the Slides panel: view, comment, edit, arrange and undo, each checked on t
     await page.mouse.move(to.x, to.y, { steps: 4 });
     await page.mouse.up();
     await expect.poll(() => sources(name)).toEqual(["01-cover.html", "02-cards.svg"]);
-    const parsed = await api(page, `/slides/0/parts?path=${name}.pptx`);
-    expect(parsed.name).toBe("01-cover.html");
+    await expect.poll(async () => (await tryApi(page, `/slides/0/parts?path=${name}.pptx`))?.name).toBe("01-cover.html");
     const [, left] = /id="title" style="left:([\d.]+)px/.exec(source("01-cover.html")) ?? [];
     expect(Number(left)).toBeGreaterThan(162.12 + 100);
   });
@@ -111,8 +115,9 @@ test("the Slides panel: view, comment, edit, arrange and undo, each checked on t
     const empty = await slideAt(1700, 1000);
     await page.mouse.click(empty.x, empty.y);
     await expect.poll(() => source("01-cover.html")).toContain("Hello from the e2e");
-    const parsed = await api(page, `/slides/0/parts?path=${name}.pptx`);
-    expect(parsed.parts).toHaveLength(4);
+    await expect
+      .poll(async () => (await tryApi(page, `/slides/0/parts?path=${name}.pptx`))?.parts.length)
+      .toBe(4);
   });
 
   const slideNames = async () => {
