@@ -1,6 +1,6 @@
 # 0017: A deck has a design system; its slides name text styles from it
 
-Status: proposed (2026-10-18), for the maintainer to accept. Auto layout (containers that lay out
+Status: accepted (2026-10-18, by the maintainer). Auto layout (containers that lay out
 their children) is a separate decision, 0018, and is not decided here.
 
 ## Context
