@@ -22,6 +22,7 @@ from pptx import Presentation
 
 from .checker import check_deck, source_text
 from .compiler import PageReport, compile_pages
+from .history import record_state
 from .sections import check_sections, compile_sections
 from .svg_to_section import convert_page
 
@@ -125,12 +126,14 @@ def build_deck(
     resource_root: Path | None = None,
     replace_changes: bool = False,
     template: Path | None = None,
+    recorded_as: str | None = "coscribe",
 ) -> BuildReport:
     """Compile every page in `pages_dir` into `out`, check it and record the build.
 
     `sources` are the files the deck's content comes from (for the number check); without any,
     that check is skipped. Raises `DeckChangedError` when `out` exists and is not exactly what
-    these pages last built, unless `replace_changes`."""
+    these pages last built, unless `replace_changes`. The pages are recorded for undo as made
+    by `recorded_as` ("coscribe", "you"); None records nothing (an undo itself)."""
     files, sections = _sources(pages_dir, template)
     manifest_path = pages_dir / MANIFEST
     previous = _read_manifest(manifest_path)
@@ -168,6 +171,8 @@ def build_deck(
         ],
     }
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    if recorded_as is not None:
+        record_state(pages_dir, files, recorded_as)
     return report
 
 

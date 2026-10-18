@@ -112,6 +112,7 @@ from .office.pptx import (
     add_slide_asset,
     build_presentation_tools,
     deck_basic_fonts,
+    deck_history,
     deck_html,
     deck_pdf,
     delete_comment,
@@ -126,6 +127,7 @@ from .office.pptx import (
     save_slide,
     slide_parts,
     slide_svg,
+    step_history,
 )
 from .office.xlsx import SpreadsheetToolkit, build_spreadsheet_tools
 from .pdf_pages import pdf_page_count, render_pdf_page
@@ -215,6 +217,7 @@ __all__ = [
     "reply_to_comment",
     "resolve_comment",
     "deck_basic_fonts",
+    "deck_history",
     "deck_html",
     "deck_pdf",
     "read_deck",
@@ -222,6 +225,7 @@ __all__ = [
     "save_slide",
     "slide_parts",
     "slide_svg",
+    "step_history",
     "secret_names_used",
     "set_skill_enabled",
     "skill_source",

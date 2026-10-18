@@ -22,8 +22,16 @@ from PIL import Image
 from pptx import Presentation
 
 from ...._file_locks import file_lock, replace_with_retry
-from .build import MANIFEST, _read_manifest, _refuse_if_changed, _source_hash, build_deck
+from .build import (
+    MANIFEST,
+    _read_manifest,
+    _refuse_if_changed,
+    _source_hash,
+    build_deck,
+    page_files,
+)
 from .compiler import SVG_NS
+from .history import record_state
 from .icons import expand_icons
 from .section_format import SectionError, parse_section
 from .section_view import Part, section_drawing
@@ -95,13 +103,16 @@ def save_slide(
         if _source_hash(page.read_text(encoding="utf-8")) != version:
             raise SlideChanged(page.name)
         _refuse_if_changed(deck, _read_manifest(folder / MANIFEST))
+        # The pages as they are before the change, so it can be undone even when no build was
+        # recorded since they were written.
+        record_state(folder, page_files(folder, (".svg", ".html")), "coscribe")
         target = page.with_suffix(".html")
         tmp = target.with_name(f".{target.name}.{os.getpid()}.tmp")
         tmp.write_text(source, encoding="utf-8")
         replace_with_retry(tmp, target)
         if page != target:
             page.unlink()
-        report = build_deck(folder, deck, resource_root=resource_root)
+        report = build_deck(folder, deck, resource_root=resource_root, recorded_as="you")
     built = next((p for p in report.pages if p.name == target.name), None)
     return {
         "name": target.name,

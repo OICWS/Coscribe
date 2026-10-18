@@ -157,9 +157,11 @@ Last reviewed: 2026-10-15.
    becomes a section when the user first edits it. Step 2 (#414, done): the SVG page → section
    converter (content unchanged) and decks that mix the two. The Slides panel, as the
    maintainer's mockups of 2026-10-17 draw it: read-only view, Present, Download and comments
-   sent to coscribe (done, #420). Now step 4, editing (#431): sections drawn by the server
-   (part 1), then the edit API, select/move/resize, text and the format bar, inserting, new
-   slides and reorder, undo. The
+   sent to coscribe (done, #420). Step 4, editing (#431): sections drawn by the server, the edit
+   API, select/move/resize, text and the format bar, inserting, notes and properties, new slides
+   and reorder, undo including coscribe's builds. Open from it: the user's edits and undos told to
+   coscribe at the start of its next turn (design §12), and a human edit refused to be overwritten.
+   Next: step 5, opening the user's own .pptx. The
    docx-preview actions are paused. A name for the user's own review actions in Settings is open;
    until then they carry the computer's user name.
 

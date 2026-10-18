@@ -749,6 +749,28 @@
         "title": "SlideCommentState",
         "type": "object"
       },
+      "SlideHistoryStep": {
+        "properties": {
+          "action": {
+            "enum": [
+              "undo",
+              "redo"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "action"
+        ],
+        "title": "SlideHistoryStep",
+        "type": "object"
+      },
       "SlideSave": {
         "properties": {
           "path": {
@@ -5110,6 +5132,101 @@
           }
         },
         "summary": "Export Slides"
+      }
+    },
+    "/api/threads/{thread_id}/slides/history": {
+      "get": {
+        "operationId": "get_history_api_threads__thread_id__slides_history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Get History Api Threads  Thread Id  Slides History Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get History"
+      },
+      "post": {
+        "operationId": "post_history_api_threads__thread_id__slides_history_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SlideHistoryStep"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Post History Api Threads  Thread Id  Slides History Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post History"
       }
     },
     "/api/threads/{thread_id}/slides/{index}/parts": {
