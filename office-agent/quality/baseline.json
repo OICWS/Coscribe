@@ -21,7 +21,6 @@
  },
  "dead_code": {
   "coscribe/cli.py::function chat": 1,
-  "coscribe/code_runtime/install.py::method readable": 1,
   "coscribe/code_runtime/install.py::method readinto": 1,
   "coscribe/code_runtime/install.py::method seekable": 1,
   "coscribe/code_runtime/thread.py::attribute cached_input_tokens": 1,

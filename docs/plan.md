@@ -12,7 +12,7 @@ Last reviewed: 2026-10-15.
 
 0. **Structure period** (record 0009; features paused 2 to 3 weeks from 2026-10-11).
    Steps, each one PR or less, from `docs/assessments/2026-10-11-scale-to-1m-lines.md`:
-   1. Done: a report-only ratchet and the encoding lint rule; next, `--enforce` after a week.
+   1. Done: the ratchet and the encoding lint rule; `check.sh` and CI enforce the ratchet (a worse number fails; `tests/test_ratchet.py` keeps that wired).
    2. Done: coverage measured in CI and the two 60-second tests fixed; pytest in parallel
       waits until the tests are shown independent. The coverage floor is 88 (CI: 88.58).
    3. Done: the stale references fixed and `tests/test_doc_references.py` keeps them fixed.
@@ -91,7 +91,7 @@ Last reviewed: 2026-10-15.
    20 checks for a person), the fresh-session measurement, prompt-injection tests, small items.
 
    Batch 10 (#425, the last structure batch): item 1 done (a workbook with a cell note now gets its
-   formula values). Open: items 2 to 6, and item 7 (the closing report) last.
+   formula values), item 3 done (the ratchet was already enforced; now a test keeps it wired). Open: items 2 and 4 to 6, and item 7 (the closing report) last.
 0b. **The office route** (decision 0010, `docs/assessments/2026-10-13-office-route.md`):
    new decks compiled from whole-page SVG sources, edits through the page source and upgraded
    object tools; open-source code reused as owned copies. Done: the evaluation and the baseline
