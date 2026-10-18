@@ -183,7 +183,7 @@ function Toggle({
 }
 
 /** The slide's own colours first (Theme), or any as hex (Custom). */
-function ColourPicker({
+export function ColourPicker({
   anchor,
   current,
   colours,
@@ -205,7 +205,11 @@ function ColourPicker({
       role="dialog"
       aria-label="Colour"
       className="fixed z-50 w-[300px] rounded-xl border border-[var(--border)] bg-[var(--bg)] p-2 shadow-[0_8px_28px_rgba(0,0,0,0.16)]"
-      style={{ left: Math.min(anchor.left, window.innerWidth - 308), top: anchor.bottom + 6 }}
+      style={{
+        left: Math.min(anchor.left, window.innerWidth - 308),
+        // Above the field when there is no room for it below, as by the properties panel.
+        ...(anchor.bottom + 360 > window.innerHeight ? { bottom: window.innerHeight - anchor.top + 6 } : { top: anchor.bottom + 6 }),
+      }}
     >
       <div className="mb-1 flex items-center gap-1">
         <button type="button" className={tabClass(tab === "theme")} onClick={() => setTab("theme")}>

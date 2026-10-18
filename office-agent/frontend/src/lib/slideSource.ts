@@ -230,3 +230,20 @@ export function accentOf(doc: Document): string {
   const colours = sourceColours(writeSection(doc)).filter((c) => c !== background && c !== "#FFFFFF");
   return colours.find((c) => c !== hexColour(styleOf(doc.documentElement, "color") ?? "")) ?? "#4472C4";
 }
+
+/** The section's speaker notes, its `<aside>`; empty text removes them. */
+export function setNotes(doc: Document, text: string) {
+  const section = doc.documentElement;
+  let aside = Array.from(section.children).find((el) => el.localName === "aside") ?? null;
+  if (!text.trim()) return aside?.remove();
+  if (!aside) aside = section.appendChild(doc.createElement("aside"));
+  aside.textContent = text;
+}
+
+/** The slide's transition as the section names it ("fade", "push", "magic"), or none. */
+export function setTransition(doc: Document, name: string | null) {
+  if (name) doc.documentElement.setAttribute("data-transition", name);
+  else doc.documentElement.removeAttribute("data-transition");
+}
+
+export const setBackground = (doc: Document, colour: string) => setStyle(doc.documentElement, "background", colour);

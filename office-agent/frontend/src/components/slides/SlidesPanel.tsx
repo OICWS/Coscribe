@@ -20,7 +20,8 @@ import type { CommentLink } from "../../lib/slideComments";
 import { SlideComments, useSlideComments, type CommentStart } from "./SlideComments";
 import { SlideEditor } from "./SlideEditor";
 import { SlideInsertBar } from "./SlideInsertBar";
-import type { Insert } from "../../lib/slideSource";
+import { setNotes, type Insert } from "../../lib/slideSource";
+import { editSlide, getSlideParts } from "../../lib/slideEditing";
 import { SlideMenu, type MenuEntry } from "./SlideMenu";
 import { SlidePresenter } from "./SlidePresenter";
 import { SlideProperties } from "./SlideProperties";
@@ -47,7 +48,7 @@ export function SlidesPanel({
   /** Sends a comment to coscribe as a message; absent where there is no conversation. */
   onSendComment?: (text: string, link: CommentLink) => void;
 }) {
-  const edits = useEdits();
+  const edits = useEdits(threadId, path);
   const { deck, error, notBuilt, open, srcOf } = useSlideDeck(threadId, path, `${refreshKey}.${edits.count}`);
   const comments = useSlideComments(threadId, path, refreshKey);
   const [menu, setMenu] = useState<Menu | null>(null);
@@ -63,7 +64,9 @@ export function SlidesPanel({
   const name = path.split(/[\\/]/).pop() ?? path;
   const slide = slides[index];
   const beside = panelWidth >= PROPERTIES_BESIDE_FROM;
-  const properties = ui.propertiesShown && slide && <SlideProperties slide={slide} beside={beside} onClose={() => ui.setPropertiesShown(false)} />;
+  const properties = ui.propertiesShown && slide && (
+    <SlideProperties slide={slide} beside={beside} onEdit={(change) => edits.edit(index, change)} loadSource={() => edits.loadSource(index)} onClose={() => ui.setPropertiesShown(false)} />
+  );
 
   return (
     <div
@@ -110,7 +113,7 @@ export function SlidesPanel({
               <StageControls ui={ui} count={slides.length} zoom={shownZoom} beside={beside} busy={downloads.busy}
                 onMenu={(kind, anchor) => setMenu({ kind, anchor })} deck={{ threadId, path, onProblem: edits.setProblem }} />
             </SlideStage>
-            <BelowStage ui={ui} slides={slides} srcOf={srcOf} />
+            <BelowStage ui={ui} slides={slides} srcOf={srcOf} onNotes={(text) => edits.edit(index, (doc) => setNotes(doc, text))} />
             {!beside && properties}
           </div>
           {beside && properties}
@@ -131,11 +134,23 @@ export function SlidesPanel({
 }
 
 /** Saves made in the panel, which redraw the deck, and what the last one found. */
-function useEdits() {
+function useEdits(threadId: string, path: string) {
   const [count, setCount] = useState(0);
+  // Saves made outside the editor (notes, properties), after which it reads its slide again.
+  const [outside, setOutside] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
   const saved = useCallback(() => setCount((n) => n + 1), []);
-  return { count, problem, setProblem, saved };
+  const edit = (index: number, change: (doc: Document) => void) =>
+    void editSlide(threadId, path, index, change).then(
+      (done) => {
+        setProblem(done.problems[0] ?? null);
+        setCount((n) => n + 1);
+        setOutside((n) => n + 1);
+      },
+      (e: unknown) => setProblem(e instanceof Error ? e.message : String(e)),
+    );
+  const loadSource = (index: number) => getSlideParts(threadId, path, index).then((read) => read.source);
+  return { count, outside, problem, setProblem, saved, edit, loadSource };
 }
 
 /** Over the slide: the editor, then the comments (`children`) above it. */
@@ -153,7 +168,7 @@ function SlideLayers({
   return (
     <>
       {!at.ui.commenting && (
-        <SlideEditing {...at} refreshKey={refreshKey} onSaved={edits.saved} onProblem={edits.setProblem} />
+        <SlideEditing {...at} refreshKey={`${refreshKey}.${edits.outside}`} onSaved={edits.saved} onProblem={edits.setProblem} />
       )}
       {children}
     </>
@@ -277,11 +292,21 @@ function DeckNotices({ changed, error }: { changed: boolean; error: string | nul
 
 /** The panel's header, which the dock drags it by: the deck's name and menu, then the dock's controls. */
 /** Under the stage: the slide's notes, then the bar and the thumbnail strip. */
-function BelowStage({ ui, slides, srcOf }: { ui: ReturnType<typeof useSlidesUi>; slides: SlideInfo[]; srcOf: (index: number) => string }) {
+function BelowStage({
+  ui,
+  slides,
+  srcOf,
+  onNotes,
+}: {
+  ui: ReturnType<typeof useSlidesUi>;
+  slides: SlideInfo[];
+  srcOf: (index: number) => string;
+  onNotes: (text: string) => void;
+}) {
   const slide = slides[ui.index];
   return (
     <>
-      {ui.notesShown && ui.view === "slide" && slide && <SpeakerNotes notes={slide.notes} />}
+      {ui.notesShown && ui.view === "slide" && slide && <SpeakerNotes key={`${slide.name}:${slide.notes}`} notes={slide.notes} onSave={onNotes} />}
       {(ui.view === "canvas" || ui.stripShown) && (
         <SlideFooter
           view={ui.view}
@@ -362,15 +387,19 @@ function TitleButton({ title, path, onMenu }: { title: string; path: string; onM
   );
 }
 
-/** The slide's speaker notes under it; written by the editor later, read here. */
-function SpeakerNotes({ notes }: { notes: string }) {
+/** The slide's speaker notes under it, written here; saved when the box loses focus. */
+function SpeakerNotes({ notes, onSave }: { notes: string; onSave: (text: string) => void }) {
+  const [text, setText] = useState(notes);
   return (
-    <div
+    <textarea
       aria-label="Speaker notes"
-      className="h-[120px] shrink-0 overflow-auto whitespace-pre-wrap border-t border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-[15px] text-[var(--fg)]"
-    >
-      {notes || <span className="text-[var(--muted)]">No speaker notes on this slide.</span>}
-    </div>
+      placeholder="Add speaker notes"
+      maxLength={4000}
+      value={text}
+      className="h-[120px] w-full shrink-0 resize-none border-t border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-[15px] text-[var(--fg)] outline-none placeholder:text-[var(--muted)]"
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => text.trim() !== notes.trim() && onSave(text)}
+    />
   );
 }
 
