@@ -5,10 +5,13 @@ import {
   ZOOM_STEPS,
   fitZoom,
   getSlideDeck,
+  saveBlob,
+  slideExport,
   slideImageUrl,
   stepZoom,
   zoomLabel,
   type SlideDeck,
+  type SlideExport,
   type SlideInfo,
 } from "../../lib/slides";
 import { useDockPanel } from "../dock/dockContext";
@@ -23,17 +26,17 @@ import { SlideFooter, SlideMiniBar, SlideThumbnails, type SlidesView } from "./S
 /** From this panel width the properties sit beside the slide instead of below it. */
 const PROPERTIES_BESIDE_FROM = 880;
 
-type Menu = { kind: "zoom" | "title" | "present"; anchor: DOMRect };
+type Menu = { kind: "zoom" | "title" | "present" | "download"; anchor: DOMRect };
 
 /** A deck coscribe built, beside the conversation: the slide, its thumbnails, its notes and
  * properties, and all slides at once in Canvas view. Read only for now. */
 export function SlidesPanel({ threadId, path, refreshKey }: { threadId: string; path: string; refreshKey: string }) {
-  const dock = useDockPanel();
   const { deck, error, notBuilt, open, srcOf } = useSlideDeck(threadId, path, refreshKey);
   const [menu, setMenu] = useState<Menu | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const { stage, panelWidth } = useSizes(rootRef, stageRef, deck !== null);
+  const downloads = useSlideDownloads(threadId, path, srcOf);
 
   const slides = deck?.slides ?? [];
   const ui = useSlidesUi(slides.length);
@@ -53,12 +56,8 @@ export function SlidesPanel({ threadId, path, refreshKey }: { threadId: string; 
       className="relative flex h-full min-h-0 flex-col outline-none"
       onKeyDown={(e) => ui.onKey(e, shownZoom)}
     >
-      <div className="flex h-12 shrink-0 items-center gap-2 px-3" {...dock.headerProps}>
-        <TitleButton title={deck?.title ?? name} path={path} onMenu={(anchor) => setMenu({ kind: "title", anchor })} />
-        <div className="flex-1" />
-        {dock.controls}
-      </div>
-      <DeckNotices changed={deck?.changed ?? false} error={error} />
+      <PanelTop title={deck?.title ?? name} path={path} onMenu={(anchor) => setMenu({ kind: "title", anchor })} />
+      <DeckNotices changed={deck?.changed ?? false} error={error ?? downloads.failed} />
       {notBuilt ? (
         <NotBuilt name={name} onOpen={() => open(false)} />
       ) : (
@@ -81,6 +80,8 @@ export function SlidesPanel({ threadId, path, refreshKey }: { threadId: string; 
                 onToggleProperties={() => ui.setPropertiesShown((shown) => !shown)}
                 onZoomMenu={(anchor) => setMenu({ kind: "zoom", anchor })}
                 onPresentMenu={(anchor) => setMenu({ kind: "present", anchor })}
+                onDownloadMenu={(anchor) => setMenu({ kind: "download", anchor })}
+                busy={downloads.busy}
               />
               {view === "slide" && !ui.stripShown && slides.length > 0 && (
                 <SlideMiniBar
@@ -112,16 +113,13 @@ export function SlidesPanel({ threadId, path, refreshKey }: { threadId: string; 
       )}
       <SlidesOverlays
         menu={menu}
-        presenting={ui.presenting}
+        ui={ui}
         slides={slides}
-        index={index}
+        zoom={shownZoom}
         srcOf={srcOf}
-        menuEntries={(kind) => entriesFor(kind, shownZoom, view, ui.setZoom, (withNotes) => ui.setPresenting({ withNotes }), open)}
+        actions={{ open, download: (format) => downloads.download(format, index) }}
         onCloseMenu={() => setMenu(null)}
-        onStopPresenting={(last) => {
-          ui.stopPresenting(last);
-          rootRef.current?.focus();
-        }}
+        onStopped={() => rootRef.current?.focus()}
       />
     </div>
   );
@@ -143,6 +141,18 @@ function DeckNotices({ changed, error }: { changed: boolean; error: string | nul
       )}
       {error && <div className="shrink-0 px-4 py-2 text-xs text-[var(--danger)]">{error}</div>}
     </>
+  );
+}
+
+/** The panel's header, which the dock drags it by: the deck's name and menu, then the dock's controls. */
+function PanelTop({ title, path, onMenu }: { title: string; path: string; onMenu: (anchor: DOMRect) => void }) {
+  const dock = useDockPanel();
+  return (
+    <div className="flex h-12 shrink-0 items-center gap-2 px-3" {...dock.headerProps}>
+      <TitleButton title={title} path={path} onMenu={onMenu} />
+      <div className="flex-1" />
+      {dock.controls}
+    </div>
   );
 }
 
@@ -325,30 +335,38 @@ function zoomEntries(zoom: number, view: SlidesView, setZoom: (zoom: number | nu
 /** The open menu, and the presenter over the whole panel. */
 function SlidesOverlays({
   menu,
-  presenting,
+  ui,
   slides,
-  index,
+  zoom,
   srcOf,
-  menuEntries,
+  actions,
   onCloseMenu,
-  onStopPresenting,
+  onStopped,
 }: {
   menu: Menu | null;
-  presenting: { withNotes: boolean } | null;
+  ui: ReturnType<typeof useSlidesUi>;
   slides: SlideInfo[];
-  index: number;
+  zoom: number;
   srcOf: (index: number) => string;
-  menuEntries: (kind: Menu["kind"]) => MenuEntry[];
+  actions: Pick<MenuActions, "open" | "download">;
   onCloseMenu: () => void;
-  onStopPresenting: (last: number) => void;
+  /** Presenting ended, back on the panel. */
+  onStopped: () => void;
 }) {
+  const { presenting, index } = ui;
+  const menuEntries = (kind: Menu["kind"]) =>
+    entriesFor(kind, zoom, ui.view, { ...actions, setZoom: ui.setZoom, present: (withNotes) => ui.setPresenting({ withNotes }) });
+  const onStopPresenting = (last: number) => {
+    ui.stopPresenting(last);
+    onStopped();
+  };
   return (
     <>
       {menu && (
         <SlideMenu
           anchor={menu.anchor}
           label={MENU_LABELS[menu.kind]}
-          width={menu.kind === "zoom" ? 210 : 240}
+          width={menu.kind === "zoom" ? 210 : menu.kind === "download" ? 280 : 240}
           entries={menuEntries(menu.kind)}
           onClose={onCloseMenu}
         />
@@ -360,19 +378,47 @@ function SlidesOverlays({
   );
 }
 
-function entriesFor(
-  kind: Menu["kind"],
-  zoom: number,
-  view: SlidesView,
-  setZoom: (zoom: number | null) => void,
-  present: (withNotes: boolean) => void,
-  open: (reveal: boolean) => void,
-): MenuEntry[] {
-  if (kind === "zoom") return zoomEntries(zoom, view, setZoom);
-  return kind === "present" ? presentEntries(present) : titleEntries(open);
+interface MenuActions {
+  setZoom: (zoom: number | null) => void;
+  present: (withNotes: boolean) => void;
+  open: (reveal: boolean) => void;
+  download: (format: SlideExport) => void;
 }
 
-const MENU_LABELS: Record<Menu["kind"], string> = { zoom: "Zoom", title: "Presentation", present: "Present" };
+function entriesFor(kind: Menu["kind"], zoom: number, view: SlidesView, actions: MenuActions): MenuEntry[] {
+  if (kind === "zoom") return zoomEntries(zoom, view, actions.setZoom);
+  if (kind === "download") return downloadEntries(actions.download);
+  return kind === "present" ? presentEntries(actions.present) : titleEntries(actions.open);
+}
+
+const MENU_LABELS: Record<Menu["kind"], string> = { zoom: "Zoom", title: "Presentation", present: "Present", download: "Download" };
+
+function downloadEntries(download: (format: SlideExport) => void): MenuEntry[] {
+  return [
+    { label: "PDF (.pdf)", onSelect: () => download("pdf") },
+    { label: "Web page (.html)", onSelect: () => download("html") },
+    { label: "Current slide as an image (.png)", onSelect: () => download("png") },
+    "divider",
+    { label: "PowerPoint, current fonts (.pptx)", onSelect: () => download("pptx") },
+    { label: "PowerPoint, basic fonts (.pptx)", onSelect: () => download("pptx-basic") },
+    { note: "Basic fonts work on any computer" },
+  ];
+}
+
+/** One download at a time: made (on the server, or drawn here for a PNG), then saved. */
+function useSlideDownloads(threadId: string, path: string, srcOf: (index: number) => string) {
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  const download = (format: SlideExport, index: number) => {
+    setBusy(true);
+    setFailed(null);
+    slideExport(threadId, path, format, index, srcOf(index))
+      .then(({ blob, name }) => saveBlob(blob, name))
+      .catch((e: unknown) => setFailed(`The download failed: ${e instanceof Error ? e.message : String(e)}`))
+      .finally(() => setBusy(false));
+  };
+  return { busy, failed, download };
+}
 
 function presentEntries(present: (withNotes: boolean) => void): MenuEntry[] {
   return [

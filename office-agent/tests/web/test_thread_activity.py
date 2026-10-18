@@ -273,6 +273,9 @@ def test_the_slides_routes_read_a_built_deck_and_draw_its_slides_lg(
         deck = client.get(url, params={"path": "q3.pptx"})
         svg = client.get(f"{url}/0/svg", params={"path": "q3.pptx"})
         past_end = client.get(f"{url}/1/svg", params={"path": "q3.pptx"})
+        page = client.get(f"{url}/export", params={"path": "q3.pptx", "format": "html"})
+        basic = client.get(f"{url}/export", params={"path": "q3.pptx", "format": "pptx-basic"})
+        unknown = client.get(f"{url}/export", params={"path": "q3.pptx", "format": "key"})
         not_a_deck = client.get(url, params={"path": "notes.txt"})
         outside = client.get(url, params={"path": "../q3.pptx"})
         (pages / "01.svg").write_text("<svg", encoding="utf-8")
@@ -283,6 +286,10 @@ def test_the_slides_routes_read_a_built_deck_and_draw_its_slides_lg(
     assert "default-src 'none'" in svg.headers["content-security-policy"]
     assert svg.text.startswith("<svg")
     assert past_end.status_code == 404
+    assert page.status_code == 200 and page.text.count("data:image/svg+xml") == 1
+    assert "attachment; filename*=UTF-8''q3.html" == page.headers["content-disposition"]
+    assert basic.status_code == 200 and basic.content[:2] == b"PK"
+    assert unknown.status_code == 400
     assert not_a_deck.status_code == 404 and outside.status_code == 404
     # The parser's own message (with the page's path) stays on the server.
     assert broken.status_code == 400 and "01.svg" not in broken.text

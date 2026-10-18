@@ -68,3 +68,52 @@ export function transitionLabel(name: string | null): string {
   if (name === "morph") return "Magic move";
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
+
+/** What the Download menu offers; "png" is the current slide, drawn here. */
+export type SlideExport = "pdf" | "html" | "png" | "pptx" | "pptx-basic";
+
+/** The file for a download: from the server, or for "png" the slide `index` drawn at 1920 × 1080. */
+export async function slideExport(
+  threadId: string,
+  path: string,
+  kind: SlideExport,
+  index: number,
+  slideUrl: string,
+): Promise<{ blob: Blob; name: string }> {
+  const stem = (path.split(/[\\/]/).pop() ?? path).replace(/\.pptx$/i, "");
+  if (kind === "png") return { blob: await drawSlide(slideUrl), name: `${stem} - slide ${index + 1}.png` };
+  const url =
+    kind === "pptx"
+      ? `/api/threads/${encodeURIComponent(threadId)}/files/download?path=${encodeURIComponent(path)}`
+      : `${base(threadId)}/export?path=${encodeURIComponent(path)}&format=${kind}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `HTTP ${response.status}`);
+  }
+  const name = { pdf: ".pdf", html: ".html", pptx: ".pptx", "pptx-basic": " (basic fonts).pptx" }[kind];
+  return { blob: await response.blob(), name: `${stem}${name}` };
+}
+
+async function drawSlide(url: string): Promise<Blob> {
+  const image = new Image();
+  image.src = url;
+  await image.decode();
+  const canvas = document.createElement("canvas");
+  canvas.width = SLIDE_WIDTH;
+  canvas.height = SLIDE_HEIGHT;
+  canvas.getContext("2d")?.drawImage(image, 0, 0, SLIDE_WIDTH, SLIDE_HEIGHT);
+  return new Promise((resolve, reject) =>
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("The slide could not be drawn"))), "image/png"),
+  );
+}
+
+/** Hands `blob` to the browser (or the desktop app) as a file named `name`. */
+export function saveBlob(blob: Blob, name: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}

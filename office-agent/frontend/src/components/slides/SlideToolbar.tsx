@@ -1,11 +1,11 @@
 import { zoomLabel } from "../../lib/slides";
-import { ChevronDownIcon, PlayIcon } from "../icons";
+import { ChevronDownIcon, DownloadIcon, PlayIcon } from "../icons";
 import { PropertiesBelowIcon, PropertiesBesideIcon } from "./slideIcons";
 
 const toolButton = "flex h-8 w-8 items-center justify-center rounded-lg text-[var(--fg)] hover:bg-[var(--card-bg)]";
 const toolButtonOn = "flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-ink)]";
 
-/** The card at the stage's top right: Present, the properties panel and the zoom menu. */
+/** The card at the stage's top right: Download, Present, the properties panel and the zoom menu. */
 export function SlideToolbar({
   zoom,
   propertiesShown,
@@ -13,6 +13,8 @@ export function SlideToolbar({
   onToggleProperties,
   onZoomMenu,
   onPresentMenu,
+  onDownloadMenu,
+  busy,
 }: {
   zoom: number;
   propertiesShown: boolean;
@@ -20,9 +22,24 @@ export function SlideToolbar({
   onToggleProperties: () => void;
   onZoomMenu: (anchor: DOMRect) => void;
   onPresentMenu: (anchor: DOMRect) => void;
+  onDownloadMenu: (anchor: DOMRect) => void;
+  /** A download being made: the button shows it is working. */
+  busy: boolean;
 }) {
   return (
     <div className="absolute right-4 top-4 z-10 flex h-11 items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-1.5 shadow-[var(--panel-shadow)]">
+      <button
+        type="button"
+        title={busy ? "Preparing the download" : "Download"}
+        aria-label="Download"
+        aria-haspopup="menu"
+        aria-busy={busy}
+        disabled={busy}
+        className={`${toolButton} disabled:animate-pulse`}
+        onClick={(e) => onDownloadMenu(e.currentTarget.getBoundingClientRect())}
+      >
+        <DownloadIcon className="h-[17px] w-[17px]" />
+      </button>
       <button
         type="button"
         title="Present"

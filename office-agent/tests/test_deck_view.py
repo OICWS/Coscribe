@@ -10,7 +10,14 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from coscribe.tools.office.pptx import NotBuiltFromPages, read_deck, slide_svg
+from coscribe.tools.office.pptx import (
+    NotBuiltFromPages,
+    deck_basic_fonts,
+    deck_html,
+    deck_pdf,
+    read_deck,
+    slide_svg,
+)
 from coscribe.tools.office.pptx.engine import build_deck
 
 from .test_deck_engine import CARDS, COVER
@@ -82,3 +89,43 @@ def test_a_deck_not_built_from_pages_is_named_so(tmp_path: Path) -> None:
     Presentation().save(str(tmp_path / "own.pptx"))
     with pytest.raises(NotBuiltFromPages):
         read_deck(tmp_path / "own.pptx")
+
+
+def test_the_web_page_holds_every_slide_and_fetches_nothing(tmp_path: Path) -> None:
+    page = deck_html(_deck(tmp_path, COVER, CARDS, OBJECTS), tmp_path)
+    assert page.count("data:image/svg+xml;base64,") == 3
+    assert "<title>deck</title>" in page
+    assert not re.search(r"""(src|href)=["']?https?:""", page)
+
+
+def test_the_pdf_has_a_page_per_slide(tmp_path: Path) -> None:
+    import pypdfium2
+
+    data = deck_pdf(_deck(tmp_path, COVER, OBJECTS), tmp_path)
+    pdf = pypdfium2.PdfDocument(data)
+    assert len(pdf) == 2
+    width, height = pdf[0].get_size()
+    assert (round(width), round(height)) == (960, 540)
+
+
+def test_basic_fonts_swap_only_the_faces_a_computer_may_lack(tmp_path: Path) -> None:
+    import zipfile
+
+    page = COVER.replace('font-family="', 'font-family="Noto Serif SC, ', 1)
+    deck = _deck(tmp_path, page, CARDS)
+    out = tmp_path / "basic.pptx"
+    out.write_bytes(deck_basic_fonts(deck))
+    faces = set()
+    with zipfile.ZipFile(out) as package:
+        for name in package.namelist():
+            if name.endswith(".xml"):
+                xml = package.read(name).decode()
+                faces |= set(re.findall(r'<a:(?:latin|ea|cs)\b[^>]*?typeface="([^"]*)"', xml))
+    assert faces and not any("Noto" in f for f in faces)
+    # The theme's per-script faces (<a:font script="Jpan">) ship with Office and stay.
+    assert {f for f in faces if f and not f.startswith("+")} <= {
+        "Arial", "Calibri", "Calibri Light", "Times New Roman", "Microsoft YaHei", "SimSun",
+    }  # fmt: skip
+    from pptx import Presentation
+
+    assert len(Presentation(str(out)).slides) == 2
