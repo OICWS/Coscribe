@@ -10,7 +10,7 @@ Last reviewed: 2026-10-15.
 
 ## Next, in order
 
-0. **Structure period** (record 0009; features paused 2 to 3 weeks from 2026-10-11).
+0. **Structure period: done** (record 0009; features paused from 2026-10-11, only the maintainer lifts it; closing report `docs/metrics/2026-10-19-structure-period-close.md`; what stays open is listed there).
    Steps, each one PR or less, from `docs/assessments/2026-10-11-scale-to-1m-lines.md`:
    1. Done: the ratchet and the encoding lint rule; `check.sh` and CI enforce the ratchet (a worse number fails; `tests/test_ratchet.py` keeps that wired).
    2. Done: coverage measured in CI and the two 60-second tests fixed; pytest in parallel
@@ -93,7 +93,7 @@ Last reviewed: 2026-10-15.
    20 checks for a person), the fresh-session measurement, prompt-injection tests, small items.
 
    Batch 10 (#425, the last structure batch): item 1 done (a workbook with a cell note now gets its
-   formula values), item 3 done (the ratchet was already enforced; now a test keeps it wired), item 4 done (the workflow spec lives in `workflow_spec`, below `tools`; the layers contract ignores nothing). item 5 closed with a reason and item 6 done (the inventory found no product call). Items 8 to 10 (Slides tests, added 10-18): item 8 done (a Playwright spec for the Slides panel, nightly in `e2e.yml`), item 9 done (a property test for arranging and undo), item 10 done (the editor's source functions tested in jsdom, judged by the server's parser). Open: item 2 and item 7 (the closing report) last.
+   formula values), item 3 done (the ratchet was already enforced; now a test keeps it wired), item 4 done (the workflow spec lives in `workflow_spec`, below `tools`; the layers contract ignores nothing). item 5 closed with a reason and item 6 done (the inventory found no product call). Items 8 to 10 (Slides tests, added 10-18): item 8 done (a Playwright spec for the Slides panel, nightly in `e2e.yml`), item 9 done (a property test for arranging and undo), item 10 done (the editor's source functions tested in jsdom, judged by the server's parser). Item 2 done except the CodeQL alerts, which the maintainer reads; item 7 done (the closing report).
 0b. **The office route** (decision 0010, `docs/assessments/2026-10-13-office-route.md`):
    new decks compiled from whole-page SVG sources, edits through the page source and upgraded
    object tools; open-source code reused as owned copies. Done: the evaluation and the baseline
