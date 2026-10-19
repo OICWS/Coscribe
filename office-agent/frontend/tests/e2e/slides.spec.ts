@@ -111,6 +111,8 @@ test("the Slides panel: view, comment, edit, arrange and undo, each checked on t
 
   await test.step("a text box is inserted and typed into", async () => {
     await page.getByRole("button", { name: "Add a text box" }).click();
+    // Typing before the new box takes focus would go nowhere.
+    await expect(page.locator('[contenteditable="true"]')).toBeFocused();
     await page.keyboard.type("Hello from the e2e");
     const empty = await slideAt(1700, 1000);
     await page.mouse.click(empty.x, empty.y);
