@@ -2,6 +2,7 @@
 """Web tests: scheduled tasks and workflows."""
 
 import json
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -167,10 +168,11 @@ def test_script_env_package_install_does_not_block_the_event_loop(
     app looked dead -- Settings' other tabs came back empty, and a chat
     message sent over the WebSocket got no response at all.
 
-    Proven here by making install_package artificially slow (a plain
-    time.sleep, standing in for a real multi-minute pip subprocess) and
-    confirming a concurrent, unrelated request still completes quickly
-    instead of queuing behind it -- only possible if the slow call is
+    Proven here by making install_package block on an event (standing in
+    for a real multi-minute pip subprocess) and confirming a concurrent,
+    unrelated request still completes while it is blocked instead of
+    queuing behind it -- no wall-clock bound, so a slow runner cannot fail
+    it. Only possible if the slow call is
     actually offloaded to a thread (asyncio.to_thread) rather than
     awaited inline on the same loop. Uses client.portal (the anyio
     BlockingPortal TestClient itself runs the app's event loop through --
@@ -179,8 +181,15 @@ def test_script_env_package_install_does_not_block_the_event_loop(
     call concurrently with a normal client.get, rather than TestClient's
     usual one-request-at-a-time synchronous dispatch."""
 
+    started = threading.Event()
+    release = threading.Event()
+    install_timed_out: list[bool] = []
+
     def _slow_install(state_dir: Path, name: str) -> dict[str, object]:
-        time.sleep(0.5)
+        started.set()
+        # If the loop were blocked, the unrelated request below could only finish after this
+        # times out, which the flag then shows.
+        install_timed_out.append(not release.wait(timeout=3))
         return {"success": True, "error": None}
 
     monkeypatch.setattr(settings_routes, "install_package", _slow_install)
@@ -192,17 +201,16 @@ def test_script_env_package_install_does_not_block_the_event_loop(
             if getattr(r, "path", None) == "/api/script-env/packages"
             and "POST" in (r.methods or set())
         )
-        start = time.monotonic()
         slow_future = client.portal.start_task_soon(
             route.endpoint, ScriptEnvPackageInstall(package="six")
         )
-        time.sleep(0.05)  # let the slow call actually start before racing it
+        assert started.wait(timeout=5)
         fast_response = client.get("/api/tools")
-        fast_elapsed = time.monotonic() - start
+        release.set()
         slow_result = slow_future.result(timeout=5)
 
     assert fast_response.status_code == 200
-    assert fast_elapsed < 0.4  # well under the 0.5s sleep -- it wasn't queued behind it
+    assert install_timed_out == [False]  # the request finished while the install still waited
     assert slow_result == {"success": True, "error": None}
 
 
