@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import { SlideChangedError, getSlideParts, saveSlideSource, type SavedSlide, type SlidePart, type SlideParts } from "../../lib/slideEditing";
+import { SlideChangedError, getSlideParts, saveSlideSource, uploadSlidePicture, type SavedSlide, type SlidePart, type SlideParts } from "../../lib/slideEditing";
 import type { CommentStart } from "./SlideComments";
 import { HANDLES, accentOf, labelOf, newElement, boxOf, type Insert, dragBox, elementIndexAt, elementsOf, parseSection, setBox, sourceColours, writeSection, type Box } from "../../lib/slideSource";
 import { drawSection, placeNode } from "./sectionDom";
@@ -71,7 +71,7 @@ export function SlideEditor({
   const input = useEditorInput(slide, nodes, zoom, layerRef, onExit, startTyping);
   const { boxes, selected, drag, point, startDrag } = input;
 
-  usePublishedSelection(slide, selected, () => (text.stop(), table.stop()), onSelection);
+  usePublishedSelection(slide, selected, () => (text.stop(), table.stop()), (file) => uploadSlidePicture(threadId, path, file), onSelection);
 
   // Keys go to the editor, not to the button that started an insert.
   const focusLayer = useCallback(() => layerRef.current?.focus(), []);
@@ -118,6 +118,8 @@ export function SlideEditor({
   );
 }
 
+const KINDS: Record<string, EditorSelection["kind"]> = { h1: "text", h2: "text", h3: "text", p: "text", ul: "text", ol: "text", table: "table", img: "image", "x-shape": "shape" };
+
 const isTable = (doc: Document | null, at: number) => !!doc && elementsOf(doc)[at]?.localName === "table";
 
 /** Tells the properties panel which text element is selected, after every change to it; a change
@@ -126,24 +128,26 @@ function usePublishedSelection(
   slide: ReturnType<typeof useEditedSlide>,
   selected: number | null,
   stopTyping: () => void,
+  upload: NonNullable<EditorSelection["upload"]>,
   publish: (selection: EditorSelection | null) => void,
 ) {
   const { doc, drawn } = slide;
   // The latest functions, so a render alone does not publish a new selection.
-  const latest = useRef({ change: slide.change, stop: stopTyping, publish });
-  latest.current = { change: slide.change, stop: stopTyping, publish };
+  const latest = useRef({ change: slide.change, stop: stopTyping, upload, publish });
+  latest.current = { change: slide.change, stop: stopTyping, upload, publish };
   useEffect(() => {
     const element = doc && selected !== null ? elementsOf(doc)[selected] : null;
-    const kind = element && (["h1", "h2", "h3", "p", "ul", "ol"].includes(element.localName) ? "text" : element.localName === "table" ? "table" : null);
+    const kind = element && KINDS[element.localName];
     latest.current.publish(
       element && kind && selected !== null
         ? {
             kind,
             element,
-            edit: (edit) => {
+            edit: (edit, redraw = false) => {
               latest.current.stop();
-              latest.current.change((els) => edit(els[selected]), false);
+              latest.current.change((els) => edit(els[selected]), redraw || kind === "table");
             },
+            upload: latest.current.upload,
           }
         : null,
     );

@@ -24,9 +24,12 @@ import { setStyle } from "../../lib/slideSource";
 /** The element selected in the editor, and the way to change it: `edit` runs on the element in the
  * editor's section, which draws and saves it. */
 export interface EditorSelection {
-  kind: "text" | "table";
+  kind: "text" | "table" | "image" | "shape";
   element: Element;
-  edit: (change: (element: Element) => void) => void;
+  /** `redraw` for what the server draws as a picture: the slide is read again after the save. */
+  edit: (change: (element: Element) => void, redraw?: boolean) => void;
+  /** Saves a picture into the deck, for an image to take. */
+  upload?: (file: File) => Promise<{ src: string; width: number; height: number }>;
 }
 
 const ALIGNS: TextAlign[] = ["left", "center", "right", "justify"];
