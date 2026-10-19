@@ -247,6 +247,12 @@ def test_the_word_review_routes_read_act_on_and_show_the_original_lg(
         not_word = client.get(url, params={"path": "notes.txt"})
         missing = client.get(url, params={"path": "nope.docx"})
 
+        def locked(*args: object, **kwargs: object) -> None:
+            raise PermissionError(13, "Permission denied", str(workspace / "c.docx"))
+
+        monkeypatch.setattr(DocumentToolkit, "edit_docx_review", locked)
+        refused = client.post(url, json={"path": "c.docx", "operations": [{"op": "accept"}]})
+
     assert [c["kind"] for c in review["changes"]] == ["delete", "insert"]
     assert edited.status_code == 200 and edited.json()["changes_left"] == 1
     assert failed.status_code == 400 and "unknown op" in failed.json()["error"]
@@ -255,6 +261,10 @@ def test_the_word_review_routes_read_act_on_and_show_the_original_lg(
     (tmp_path / "o.docx").write_bytes(original.content)
     assert Document(tmp_path / "o.docx").paragraphs[0].text == "Pay 100 dollars."
     assert not_word.status_code == 400 and missing.status_code == 404
+    # The library's and the OS's messages (with the file's path) stay on the server.
+    assert not_word.json()["error"] == threads_routes.NOT_A_WORD_FILE
+    assert refused.status_code == 400
+    assert refused.json()["error"] == threads_routes.CANNOT_CHANGE_FILE
 
 
 def test_the_slides_routes_read_a_built_deck_and_draw_its_slides_lg(

@@ -67,6 +67,15 @@ async def _threads_waiting_for_input(state: AppState) -> set[str]:
     return {row[0] for row in await cursor.fetchall()}
 
 
+# The standard library's and the OS's own messages carry paths and internals, so the Word review
+# routes answer with these instead; a ValueError is the review code's own message and stays.
+NOT_A_WORD_FILE = "That file is not a valid Word document."
+CANNOT_CHANGE_FILE = (
+    "Coscribe cannot change that file. "
+    "It may be open in Word, or outside the folders it may write to."
+)
+
+
 def _thread_status(state: AppState, thread_id: str, waiting: set[str], meta: dict[str, Any]) -> str:
     """ "needs_input" | "working" | "ready" | "idle"."""
     session = state.sessions.get(thread_id)
@@ -455,8 +464,10 @@ def _with_docx_review_routes(
             return JSONResponse(
                 await asyncio.to_thread(_documents(thread_id).read_docx_review, path)
             )
-        except (ValueError, zipfile.BadZipFile) as exc:
+        except ValueError as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
+        except zipfile.BadZipFile:
+            return JSONResponse({"error": NOT_A_WORD_FILE}, status_code=400)
 
     @router.post("/api/threads/{thread_id}/docx-review")
     async def edit_docx_review(thread_id: str, body: DocxReviewEdit) -> JSONResponse:
@@ -468,8 +479,12 @@ def _with_docx_review_routes(
             result = await asyncio.to_thread(
                 _documents(thread_id).edit_docx_review, body.path, body.operations, author
             )
-        except (ValueError, PermissionError, zipfile.BadZipFile) as exc:
+        except ValueError as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
+        except zipfile.BadZipFile:
+            return JSONResponse({"error": NOT_A_WORD_FILE}, status_code=400)
+        except PermissionError:
+            return JSONResponse({"error": CANNOT_CHANGE_FILE}, status_code=400)
         return JSONResponse(result)
 
     @router.get("/api/threads/{thread_id}/docx-review/original")
@@ -478,8 +493,10 @@ def _with_docx_review_routes(
             return JSONResponse({"error": f"No file {path!r}"}, status_code=404)
         try:
             data = await asyncio.to_thread(_documents(thread_id).docx_original, path)
-        except (ValueError, zipfile.BadZipFile) as exc:
+        except ValueError as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
+        except zipfile.BadZipFile:
+            return JSONResponse({"error": NOT_A_WORD_FILE}, status_code=400)
         return Response(
             data,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
