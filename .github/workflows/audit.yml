@@ -48,7 +48,9 @@ jobs:
       - name: Install the dependencies
         run: |
           pip install ".[dev,web]"
-          pip install pip-audit pip-licenses
+          # setuptools is not a dependency of ours: it comes with the runner's Python, and the
+          # one that ships with it is old enough to carry known advisories.
+          pip install --upgrade setuptools pip-audit pip-licenses
 
       # pip-audit exits 1 on a finding; the report is what matters, so the step keeps going.
       - name: Vulnerabilities
