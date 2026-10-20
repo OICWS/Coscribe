@@ -1,0 +1,70 @@
+name: Desktop smoke (Windows)
+
+# The Electron shell on a Windows runner: the sidecar server comes up, the window loads the UI and
+# draws its title bar, and closing the window quits the app and the sidecar. No model, no sign-in.
+# It runs the shell as `electron .` after `tsc`, with the repository's coscribe-web as the sidecar;
+# the PyInstaller build and the installer are desktop-build.yml's (manual, heavy), so this runs
+# nightly and on a pull request that touches the shell. Report only, like windows.yml.
+"on":
+  schedule:
+    - cron: "37 19 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/desktop-smoke.yml"
+      - "office-agent-desktop/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  smoke:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: office-agent/pyproject.toml
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: |
+            office-agent/frontend/package-lock.json
+            office-agent-desktop/package-lock.json
+
+      # The server serves web/static/, a build output; the frontend's packages also give the smoke
+      # script Playwright's Electron driver.
+      - name: Build the frontend
+        working-directory: office-agent/frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install coscribe
+        working-directory: office-agent
+        run: pip install -e ".[web]"
+
+      - name: Build the shell
+        working-directory: office-agent-desktop
+        run: |
+          npm ci
+          npm run build
+
+      - name: Smoke test
+        working-directory: office-agent-desktop
+        run: |
+          COSCRIBE_SERVER_BIN="$(python -c 'import shutil; print(shutil.which("coscribe-web"))')" node scripts/smoke.mjs
