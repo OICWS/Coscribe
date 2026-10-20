@@ -61,11 +61,7 @@ from ..runtime import (
     load_custom_providers,
 )
 from ..runtime_lg import (
-    ACCEPT_EDITS_MODE_NOTE,
-    AUTO_MODE_NOTE,
-    NORMAL_MODE_NOTE,
     ORPHANED_TOOL_CALL_NOTE,
-    PLAN_MODE_NOTE,
     AutoApproveReason,
     ExecPolicy,
     SilentSocket,
@@ -101,6 +97,7 @@ from .activity import summarize_activity, summarize_workflow_run
 from .agent_assembly import AgentAssembly, risks_of_gated_tools
 from .approval_resume import ApprovalResumer
 from .approvals import ApprovalDecider, can_resolve_approvals
+from .deck_edits import deck_edits_note
 from .edit_preview import build_document_edit_preview
 from .events import EventSink
 from .history import ConversationHistory
@@ -116,6 +113,7 @@ from .turn_text import (
     TITLE_INSTRUCTIONS,
     clean_title,
     format_reply,
+    turn_mode_note,
     usage_event,
 )
 from .workflow_drafting import WorkflowDrafting
@@ -823,11 +821,14 @@ class ChatSessionLG:
         trigger = ScheduledTriggerStore(self.settings.state_dir).load(parsed[0])
         return trigger is not None and trigger.workflow is not None
 
-    async def get_activity(self) -> dict[str, Any]:
-        catalog = {
+    def _tool_catalog(self) -> dict[str, Any]:
+        return {
             tool_name(t): get_tool_metadata(cast(Any, t))
             for t in [*self._base_tools, *self._extra_tools]
         }
+
+    async def get_activity(self) -> dict[str, Any]:
+        catalog = self._tool_catalog()
         parsed = parse_run_thread_id(self.thread_id)
         if parsed is not None:
             trigger = ScheduledTriggerStore(self.settings.state_dir).load(parsed[0])
@@ -1139,14 +1140,7 @@ class ChatSessionLG:
                 )
                 return
 
-        if self.plan_mode:
-            mode_note = PLAN_MODE_NOTE
-        elif self.accept_edits:
-            mode_note = ACCEPT_EDITS_MODE_NOTE
-        elif self.auto_mode:
-            mode_note = AUTO_MODE_NOTE
-        else:
-            mode_note = NORMAL_MODE_NOTE
+        mode_note = turn_mode_note(self.plan_mode, self.accept_edits, self.auto_mode)
         # current_date_note() lives here, not in the system prompt --
         # see its own docstring in runtime_lg/messages.py for why that
         # matters for caching across every provider, not just Anthropic.
@@ -1154,10 +1148,15 @@ class ChatSessionLG:
         state = await self.lg_agent.aget_state(self.config)
         history = list(state.values.get("messages", [])) if state.values else []
         told = last_conversation_context(history) == context
+        # What the user changed in a deck in the app, told once, with the turn's other notes.
+        deck_note = await asyncio.to_thread(
+            deck_edits_note, history, self._tool_catalog(), self.workspace_scope()
+        )
         model_input = (
             current_date_note()
             + mode_note
             + language_note(text)
+            + deck_note
             + ("" if told else context_note(context))
             + user_input
         )

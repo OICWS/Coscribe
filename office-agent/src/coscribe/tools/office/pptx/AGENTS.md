@@ -10,7 +10,7 @@ a deck.
 
 ## Public interface
 `NEW_DECK_INSTRUCTIONS`, `PresentationToolkit`, `build_legacy_presentation_tools` (the tools that still live in
-`tool_wrappers.py`, for `tools/presentations.py`), `build_presentation_tools`; for the Slides panel, `read_deck`, `slide_svg`, `NotBuiltFromPages` its downloads `deck_pdf`, `deck_html`, `deck_basic_fonts`, and its comments `read_comments`, `add_comment`, `reply_to_comment`, `resolve_comment`, `delete_comment`, `CommentNotFound`; its edits `slide_parts`, `save_slide`, `add_slide_asset`, `insert_slide`, `duplicate_slide`, `move_slide`, `delete_slide`, `deck_history`, `step_history`, `design_system`, `SlideChanged`, `SectionError`, `DeckChangedError`. Import them from `coscribe.tools.office.pptx`.
+`tool_wrappers.py`, for `tools/presentations.py`), `build_presentation_tools`; for the Slides panel, `read_deck`, `slide_svg`, `NotBuiltFromPages` its downloads `deck_pdf`, `deck_html`, `deck_basic_fonts`, `deck_edits_since_coscribe`, and its comments `read_comments`, `add_comment`, `reply_to_comment`, `resolve_comment`, `delete_comment`, `CommentNotFound`; its edits `slide_parts`, `save_slide`, `add_slide_asset`, `insert_slide`, `duplicate_slide`, `move_slide`, `delete_slide`, `deck_history`, `step_history`, `design_system`, `SlideChanged`, `SectionError`, `DeckChangedError`. Import them from `coscribe.tools.office.pptx`.
 
 ## Depends on
 `coscribe.runtime`, `coscribe.tools._chart_data`, `coscribe.tools._file_locks`,
