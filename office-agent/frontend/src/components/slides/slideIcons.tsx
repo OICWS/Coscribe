@@ -34,8 +34,8 @@ export function CanvasViewIcon(props: SVGProps<SVGSVGElement>) {
 export function ThumbnailsIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...stroke} {...props}>
-      <rect x="8" y="9" width="12" height="9" rx="1.5" />
-      <path d="M5 15V7.5A1.5 1.5 0 0 1 6.5 6H16" />
+      <rect x="8" y="9" width="14" height="11" rx="1.5" />
+      <path d="M3 16V6.5A1.5 1.5 0 0 1 4.5 5H16" />
     </svg>
   );
 }

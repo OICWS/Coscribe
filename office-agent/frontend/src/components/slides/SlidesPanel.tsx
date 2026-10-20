@@ -118,7 +118,7 @@ export function SlidesPanel({
                 )
               }
             >
-              <StageControls ui={ui} count={slides.length} zoom={shownZoom} beside={beside} busy={downloads.busy}
+              <StageControls ui={ui} count={slides.length} zoom={shownZoom} beside={beside} busy={downloads.busy} history={history}
                 onMenu={(kind, anchor) => setMenu({ kind, anchor })} deck={{ threadId, path, onProblem: edits.setProblem }} />
             </SlideStage>
             <BelowStage ui={ui} slides={slides} srcOf={srcOf} edits={edits} arranging={arranging} />
@@ -232,6 +232,7 @@ function SlideEditing({
       onProblem={onProblem}
       onComment={ui.setCommentAt}
       onSelection={ui.setSelection}
+      onMore={() => ui.setPropertiesShown(true)}
       insert={ui.insert}
       onInserted={ui.clearInsert}
       onExit={ui.stopEditing}
@@ -246,6 +247,7 @@ function StageControls({
   zoom,
   beside,
   busy,
+  history,
   onMenu,
   deck,
 }: {
@@ -254,6 +256,7 @@ function StageControls({
   zoom: number;
   beside: boolean;
   busy: boolean;
+  history: ReturnType<typeof useSlideHistory>;
   onMenu: (kind: Menu["kind"], anchor: DOMRect) => void;
   deck: { threadId: string; path: string; onProblem: (message: string | null) => void };
 }) {
@@ -267,6 +270,9 @@ function StageControls({
         propertiesShown={ui.propertiesShown}
         beside={beside}
         onToggleProperties={() => ui.setPropertiesShown((shown) => !shown)}
+        canUndo={!!history.history.undo}
+        canRedo={!!history.history.redo}
+        onStep={history.step}
         onZoomMenu={(anchor) => onMenu("zoom", anchor)}
         onPresentMenu={(anchor) => onMenu("present", anchor)}
         onDownloadMenu={(anchor) => onMenu("download", anchor)}
@@ -300,7 +306,13 @@ function DeckNotices({ changed, error }: { changed: boolean; error: string | nul
           Shown as coscribe last built it; the file has changed since.
         </div>
       )}
-      {error && <div className="shrink-0 px-4 py-2 text-xs text-[var(--danger)]">{error}</div>}
+      {error && (
+        <div className="relative h-0 shrink-0">
+          <div role="alert" className="absolute inset-x-3 top-1 z-20 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs text-[var(--danger)] shadow-md">
+            {error}
+          </div>
+        </div>
+      )}
     </>
   );
 }

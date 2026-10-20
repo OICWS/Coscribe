@@ -103,6 +103,21 @@ def test_deep_and_private_cross_package_imports_are_found_and_own_package_ones_a
     }
 
 
+def test_a_heavy_library_imported_at_the_top_of_a_startup_module_is_listed(
+    ratchet: ModuleType, tmp_path: Path
+) -> None:
+    package = tmp_path / "startupfixture"
+    package.mkdir()
+    (package / "__init__.py").write_text("from . import tool\n", encoding="utf-8")
+    (package / "tool.py").write_text(
+        "import colorsys\n\ndef run():\n    import wave\n    return wave\n", encoding="utf-8"
+    )
+
+    found = ratchet.startup_imports("startupfixture", ("colorsys", "wave"), tmp_path)
+
+    assert found == {"colorsys": 1}
+
+
 def test_a_test_with_no_assert_is_listed_and_one_with_raises_is_not(
     ratchet: ModuleType, tmp_path: Path
 ) -> None:

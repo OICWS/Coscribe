@@ -18,11 +18,6 @@ from pptx.opc.package import Part
 from pptx.opc.packuri import PackURI
 
 from ...._native_svg.svg_to_pptx.drawingml.context import ShapeResult
-from ...._native_svg.svg_to_pptx.native_objects import convert_native_object
-from ...._native_svg.svg_to_pptx.native_objects.marker_attributes import (
-    NATIVE_AUTHORITY_ATTR as AUTHORITY_ATTR,
-)
-from ...._native_svg.svg_to_pptx.native_objects.marker_attributes import native_replacement_kind
 
 _RELS_NS = "{http://schemas.openxmlformats.org/package/2006/relationships}"
 _XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -31,6 +26,12 @@ KINDS = ("chart", "table")
 
 def native_kind(elem: ET.Element) -> str | None:
     """`chart` or `table` when the element asks to be one, else None."""
+    # The converter's package pulls in openpyxl and xlsxwriter; the server should not load them
+    # until a page actually carries a chart or table.
+    from ...._native_svg.svg_to_pptx.native_objects.marker_attributes import (
+        native_replacement_kind,
+    )
+
     try:
         kind = native_replacement_kind(elem)
     except Exception:  # an unusable marker is reported by the conversion itself
@@ -41,8 +42,13 @@ def native_kind(elem: ET.Element) -> str | None:
 def convert(elem: ET.Element, ctx: Any) -> ShapeResult | None:
     """The chart or table as a graphic frame. A page writes the data only, never a drawn copy
     of the chart beside it, so the JSON is the authority."""
+    from ...._native_svg.svg_to_pptx.native_objects import convert_native_object
+    from ...._native_svg.svg_to_pptx.native_objects.marker_attributes import (
+        NATIVE_AUTHORITY_ATTR,
+    )
+
     ctx.native_objects_enabled = True
-    elem.set(AUTHORITY_ATTR, "json")
+    elem.set(NATIVE_AUTHORITY_ATTR, "json")
     return convert_native_object(elem, ctx)
 
 

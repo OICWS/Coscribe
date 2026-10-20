@@ -2,7 +2,7 @@ name: Windows more checks
 
 # The checks that used to wait for a person on a Windows machine and can be scripted on a runner:
 # the real Credential Manager, cmd and PowerShell hooks, Format-Hex, taskkill on a process tree,
-# the Store python stub, YaHei in resvg. Kept in its own workflow so a failure here does not reset
+# the Store python stub, YaHei in resvg, and the Slides editor's e2e specs. Kept in its own workflow so a failure here does not reset
 # windows.yml's run of green nights (decision 0009) or block windows-checks.yml.
 "on":
   schedule:
@@ -11,6 +11,9 @@ name: Windows more checks
   pull_request:
     paths:
       - ".github/workflows/windows-more-checks.yml"
+      - "office-agent/frontend/tests/e2e/slides*.ts"
+      - "office-agent/frontend/tests/e2e/fixtures/build_*deck.py"
+      - "office-agent/scripts/stub_llm.py"
       - "office-agent/tests/test_windows_real.py"
       - ".github/CODEOWNERS"
 
@@ -49,6 +52,78 @@ jobs:
         run: |
           python -m pytest tests/test_windows_real.py -v -rs -n0 | tee pytest.out
           if grep -q SKIPPED pytest.out; then echo "a check was skipped"; exit 1; fi
+
+  # slides.spec.ts and slides-panels.spec.ts against the stub model, as in e2e.yml, on a
+  # Windows runner. Here and not in e2e.yml: a red run on this machine must not turn the Linux
+  # E2E night red, and this workflow already runs on Windows with the paths it watches. The
+  # servers and the specs share one step, so a process started by bash is still alive for them.
+  slides-e2e:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: office-agent/pyproject.toml
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: office-agent/frontend/package-lock.json
+
+      # pytest is imported by tests/test_deck_engine.py, whose pages slides.spec.ts builds its
+      # deck from.
+      - name: Install coscribe
+        run: pip install -e ".[dev,web]"
+
+      - name: Build the frontend and install Chromium
+        working-directory: office-agent/frontend
+        run: |
+          npm ci
+          npm run build
+          npx playwright install chromium
+
+      - name: Servers and the Slides specs
+        working-directory: office-agent/frontend
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
+          COSCRIBE_BACKEND: http://127.0.0.1:8000
+        run: |
+          # Forward slashes: the server's .env and the specs both read these paths.
+          scratch="$(cygpath -m "$RUNNER_TEMP")/e2e"
+          mkdir -p "$scratch/workspace"
+          cat > "$scratch/providers.json" <<JSON
+          {"providers": {"stub": {"base_url": "http://127.0.0.1:9999/v1", "api_key": "x"}}}
+          JSON
+          cat > "$scratch/.env" <<ENV
+          COSCRIBE_PROVIDERS_CONFIG_PATH=$scratch/providers.json
+          COSCRIBE_DEFAULT_MODEL=stub:fake
+          COSCRIBE_WORKSPACE_ROOT=$scratch/workspace
+          COSCRIBE_STATE_DIR=$scratch/state
+          ENV
+          (cd .. && nohup python scripts/stub_llm.py > "$scratch/stub.log" 2>&1 &)
+          (cd "$scratch" && COSCRIBE_LAUNCH_TOKEN=e2e-launch-token nohup coscribe-web > "$scratch/web.log" 2>&1 &)
+          (COSCRIBE_LAUNCH_TOKEN=e2e-launch-token nohup npx vite --host 127.0.0.1 > "$scratch/vite.log" 2>&1 &)
+          for url in http://127.0.0.1:9999/v1/models http://127.0.0.1:8000/ http://127.0.0.1:5173/static/; do
+            for _ in $(seq 90); do curl -sf "$url" > /dev/null && continue 2; sleep 1; done
+            echo "$url did not come up"; tail -n 30 "$scratch"/*.log; exit 1
+          done
+          export COSCRIBE_E2E_WORKSPACE="$scratch/workspace"
+          export PLAYWRIGHT_CHROMIUM_PATH="$(node -e 'console.log(require("@playwright/test").chromium.executablePath())')"
+          npx playwright test tests/e2e/slides.spec.ts tests/e2e/slides-panels.spec.ts --reporter=list,html --trace=retain-on-failure
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: slides-e2e-windows
+          path: |
+            office-agent/frontend/playwright-report/
+            office-agent/frontend/test-results/
+            ${{ runner.temp }}/e2e/*.log
 
   codeowners:
     runs-on: ubuntu-latest

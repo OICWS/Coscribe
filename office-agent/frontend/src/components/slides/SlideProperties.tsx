@@ -3,9 +3,9 @@ import { transitionLabel, type SlideInfo } from "../../lib/slides";
 import { setBackground, setTransition, sourceColours } from "../../lib/slideSource";
 import type { DesignSystem } from "../../lib/slideText";
 import { ChevronDownIcon, CloseIcon } from "../icons";
-import { Row, field } from "./PropertyRows";
+import { Row, Section, field } from "./PropertyRows";
 import { ColourPicker } from "./SlideFormatBar";
-import { SlideMenu } from "./SlideMenu";
+import { SlideMenu, type MenuEntry } from "./SlideMenu";
 import { ContainerProperties, ChildSizing } from "./SlideContainerProperties";
 import { ChartProperties } from "./SlideChartProperties";
 import { ImageProperties, ShadowProperties, ShapeProperties } from "./SlideObjectProperties";
@@ -82,8 +82,32 @@ export function SlideProperties({
         </>
       )}
       {selection && <ChildSizing selection={selection} />}
+      {selection && <Arrange entries={selection.arrange} />}
       {!selection && <SlideSettings slide={slide} onEdit={onEdit} loadSource={loadSource} />}
     </aside>
+  );
+}
+
+/** The selected object's place in the stack, a copy of it, and removing it. */
+function Arrange({ entries }: { entries: MenuEntry[] }) {
+  return (
+    <Section title="Arrange">
+      <div className="grid grid-cols-2 gap-2">
+        {entries.map((entry) =>
+          typeof entry === "string" || "note" in entry ? null : (
+            <button
+              key={entry.label}
+              type="button"
+              disabled={entry.disabled}
+              className={`${field} justify-center disabled:opacity-40`}
+              onClick={entry.onSelect}
+            >
+              {entry.label}
+            </button>
+          ),
+        )}
+      </div>
+    </Section>
   );
 }
 

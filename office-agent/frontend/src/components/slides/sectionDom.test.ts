@@ -7,7 +7,7 @@ import { dirname } from "node:path";
 import { describe, expect, it } from "vitest";
 import { drawSection, textNode, writeTextBack } from "./sectionDom";
 import { slideLayouts, type SlideLook } from "../../lib/slideLayouts";
-import { elementsOf, newElement, parseSection, retag, setNotes, writeSection, type Insert } from "../../lib/slideSource";
+import { boxOf, elementsOf, newElement, parseSection, retag, setNotes, writeSection, type Insert } from "../../lib/slideSource";
 
 const LOOK: SlideLook = { background: "#FFFFFF", text: "#1F2937", muted: "#4B5563", accent: "#C2410C", font: "Calibri" };
 const INSERTS: Insert[] = [
@@ -67,6 +67,19 @@ describe("inserts", () => {
       const name = insert.kind === "shape" ? `shape ${insert.shape}` : insert.kind;
       expect(parseSection(keep(`insert ${name}`, doc))).toBeTruthy();
     }
+  });
+});
+
+describe("a second insert", () => {
+  it("does not start where the first one did", () => {
+    const doc = parseSection(slideLayouts(LOOK)[0].source);
+    const starts = new Set<string>();
+    for (let i = 0; i < 3; i++) {
+      const el = newElement(doc, { kind: "text" }, "#C2410C");
+      doc.documentElement.append(el);
+      starts.add(boxOf(el)!.slice(0, 2).join(","));
+    }
+    expect(starts.size).toBe(3);
   });
 });
 

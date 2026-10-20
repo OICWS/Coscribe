@@ -209,6 +209,17 @@ export type Insert =
 
 const SIZES: Record<Insert["kind"], [number, number]> = { text: [600, 80], table: [960, 240], shape: [400, 240], picture: [800, 600], container: [1200, 360] };
 
+/** The centre of the slide, or the nearest step down and right of it that no element starts at,
+ * so a second new object does not land exactly on the first. */
+function freeSpot(doc: Document, [x, y, w, h]: Box): Box {
+  const taken = elementsOf(doc).map((el) => boxOf(el));
+  while (taken.some((b) => b && Math.abs(b[0] - x) < 8 && Math.abs(b[1] - y) < 8)) {
+    x += 48;
+    y += 64;
+  }
+  return [x, y, w, h];
+}
+
 /** The section element an insert adds, centred on the slide in `colour` where it has one. */
 export function newElement(doc: Document, insert: Insert, colour: string): Element {
   let [w, h] = SIZES[insert.kind];
@@ -217,7 +228,7 @@ export function newElement(doc: Document, insert: Insert, colour: string): Eleme
     [w, h] = [Math.round(insert.width * scale), Math.round(insert.height * scale)];
   }
   if (insert.kind === "shape" && insert.shape === "line") h = 1;
-  const box: Box = [Math.round((1920 - w) / 2), Math.round((1080 - h) / 2), w, h];
+  const box = freeSpot(doc, [Math.round((1920 - w) / 2), Math.round((1080 - h) / 2), w, h]);
   const style = withBox(new Map(), box);
   const el = doc.createElement({ text: "p", table: "table", shape: "x-shape", picture: "img", container: STACK }[insert.kind]);
   if (insert.kind === "text") el.textContent = "Text";

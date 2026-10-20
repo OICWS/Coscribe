@@ -353,6 +353,11 @@
   "src/coscribe/web/routes/ws.py::router.ws_endpoint": 120
  },
  "patch_by_string": {},
+ "startup_imports": {
+  "PIL": 1,
+  "lxml": 1,
+  "pptx": 1
+ },
  "suppressions": {
   "noqa": 140,
   "pragma_no_cover": 2,

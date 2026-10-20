@@ -20,6 +20,7 @@ import {
 import { AlignIcon, ItalicIcon, ListIcon, NumberedListIcon, UnderlineIcon } from "./formatIcons";
 import { ColourField, MenuField, NumberField, Row, Section, Segmented } from "./PropertyRows";
 import { setStyle } from "../../lib/slideSource";
+import type { MenuEntry } from "./SlideMenu";
 
 /** The element selected in the editor, and the way to change it: `edit` runs on the element in the
  * editor's section, which draws and saves it. */
@@ -30,6 +31,8 @@ export interface EditorSelection {
   edit: (change: (element: Element) => void, redraw?: boolean) => void;
   /** Saves a picture into the deck, for an image to take. */
   upload?: (file: File) => Promise<{ src: string; width: number; height: number }>;
+  /** Its place in the stack, a copy of it, removing it: the panel's Arrange section. */
+  arrange: MenuEntry[];
 }
 
 const ALIGNS: TextAlign[] = ["left", "center", "right", "justify"];
