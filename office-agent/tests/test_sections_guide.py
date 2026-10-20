@@ -33,7 +33,7 @@ def test_the_guide_loads_as_the_slides_skill(tmp_path: Path) -> None:
 
 def test_every_example_in_the_guide_builds_cleanly(tmp_path: Path) -> None:
     examples = _examples()
-    assert len(examples) == 3
+    assert len(examples) == 4
     pages = [(f"{i:02d}.html", text) for i, text in enumerate(examples, start=1)]
     report = compile_sections(pages, tmp_path / "deck.pptx", resource_root=tmp_path)
     check_sections(report)
