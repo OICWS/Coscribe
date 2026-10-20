@@ -754,7 +754,8 @@
           "action": {
             "enum": [
               "undo",
-              "redo"
+              "redo",
+              "discard"
             ],
             "title": "Action",
             "type": "string"

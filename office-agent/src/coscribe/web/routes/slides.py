@@ -229,8 +229,11 @@ def _edit_routes(router: APIRouter, state: AppState) -> None:
         if found is None:
             return _no_deck(body.path)
         deck, root = found
-        direction = -1 if body.action == "undo" else 1
-        return await _run(lambda: step_history(deck, direction, resource_root=root))
+        direction = 1 if body.action == "redo" else -1
+        discard = body.action == "discard"
+        return await _run(
+            lambda: step_history(deck, direction, resource_root=root, discard=discard)
+        )
 
     async def get_design_system(thread_id: str, path: str) -> Any:
         found = _deck_file(state, thread_id, path)

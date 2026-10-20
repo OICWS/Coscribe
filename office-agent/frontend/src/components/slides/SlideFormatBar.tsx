@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { PRESETS, type Preset } from "../../lib/slideSource";
 import { CheckIcon, ChevronDownIcon, CloseIcon, LinkIcon, MoreIcon } from "../icons";
 import { SlideMenu } from "./SlideMenu";
@@ -26,6 +26,9 @@ interface FormatActions {
   more: () => void;
 }
 
+/** The bar's height (h-10), to know whether it fits above the selection. */
+const BAR_HEIGHT = 40;
+
 const NEXT_ALIGN: Record<Align, Align> = { left: "center", center: "right", right: "left" };
 
 /** The floating bar over the selected element (design §3): for text its style, colour, bold,
@@ -34,24 +37,36 @@ const NEXT_ALIGN: Record<Align, Align> = { left: "center", center: "right", righ
 export function SlideFormatBar({
   x,
   y,
+  bottom,
+  width,
   text,
   colours,
   actions,
 }: {
-  /** The bar's bottom-left corner, in the editor's px. */
+  /** The selection's top-left and its bottom edge, and the editor's width, in the editor's px:
+   * the bar sits above the selection, under it when there is no room above, and inside the
+   * editor either way (the stage scrolls when something pokes out of it). */
   x: number;
   y: number;
+  bottom: number;
+  width: number;
   /** Null when the element is not text. */
   text: TextFormat | null;
   colours: string[];
   actions: FormatActions;
 }) {
   const [open, setOpen] = useState<{ kind: "preset" | "colour"; anchor: DOMRect } | null>(null);
+  const bar = useRef<HTMLDivElement>(null);
+  const [barWidth, setBarWidth] = useState(0);
+  useLayoutEffect(() => setBarWidth(bar.current?.offsetWidth ?? 0), [text, colours]);
+  const above = y - 8 - BAR_HEIGHT >= 0;
+  const top = above ? y - 8 : Math.min(bottom + 8, Math.max(y + 8, 0));
   return (
     <div
+      ref={bar}
       data-format-bar
-      className="absolute z-20 flex h-10 -translate-y-full items-center gap-0.5 whitespace-nowrap rounded-xl border border-[var(--border)] bg-[var(--bg)] px-1.5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
-      style={{ left: Math.max(4, x), top: y - 8 }}
+      className={`absolute z-20 flex h-10 ${above ? "-translate-y-full" : ""} items-center gap-0.5 whitespace-nowrap rounded-xl border border-[var(--border)] bg-[var(--bg)] px-1.5 shadow-[0_4px_16px_rgba(0,0,0,0.12)]`}
+      style={{ left: Math.max(4, Math.min(x, width - barWidth - 4)), top }}
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.preventDefault()}
     >

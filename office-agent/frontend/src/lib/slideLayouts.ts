@@ -21,22 +21,23 @@ const escape = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;
 export function slideLayouts(look: SlideLook): SlideLayout[] {
   const section = (body: string) =>
     `<section style="background:${look.background};color:${look.text};font-family:${escape(look.font)}">${body}</section>`;
-  const heading = (text: string) => `<h2 id="title" style="${box(160, 110, 1600, 80)}">${text}</h2>`;
-  const body = (text: string, x = 160, y = 240, w = 1600, h = 120) => `<p style="${box(x, y, w, h)};color:${look.muted}">${text}</p>`;
+  const heading = (text: string) => `<h2 id="title" style="${box(160, 110, 1600, 110)};font-size:72px">${text}</h2>`;
+  const body = (text: string, x = 160, y = 280, w = 1600, h = 200, size = 40) =>
+    `<p style="${box(x, y, w, h)};font-size:${size}px;color:${look.muted}">${text}</p>`;
   return [
     { name: "Blank", source: section("") },
     {
       name: "Title",
       source: section(
-        `<h1 id="title" style="${box(160, 400, 1600, 110)};font-size:80px">Presentation title</h1>` +
-          body("A one-line subtitle for the presentation.", 160, 530, 1600, 60),
+        `<h1 id="title" style="${box(160, 360, 1600, 160)};font-size:112px">Presentation title</h1>` +
+          body("A one-line subtitle for the presentation.", 160, 550, 1600, 70, 44),
       ),
     },
     {
       name: "Section",
       source: section(
-        `<p style="${box(160, 420, 800, 40)};font-size:24px;letter-spacing:3px;color:${look.accent};font-weight:700">SECTION 01</p>` +
-          `<h1 id="title" style="${box(160, 470, 1600, 110)};font-size:72px">Section title</h1>`,
+        `<p style="${box(160, 380, 800, 50)};font-size:30px;letter-spacing:4px;color:${look.accent};font-weight:700">SECTION 01</p>` +
+          `<h1 id="title" style="${box(160, 440, 1600, 150)};font-size:104px">Section title</h1>`,
       ),
     },
     { name: "Title + body", source: section(heading("Heading") + body("Body copy goes here. Double-click any text to edit it in place.")) },
@@ -44,40 +45,40 @@ export function slideLayouts(look: SlideLook): SlideLayout[] {
       name: "Bullets",
       source: section(
         heading("Key points") +
-          `<ul style="${box(160, 250, 1600, 400)};color:${look.muted}"><li>First point</li><li>Second point</li><li>Third point</li></ul>`,
+          `<ul style="${box(160, 280, 1600, 520)};font-size:44px;color:${look.muted}"><li>First point</li><li>Second point</li><li>Third point</li></ul>`,
       ),
     },
     {
       name: "Two columns",
       source: section(
         heading("Compare") +
-          `<h3 style="${box(160, 260, 760, 50)}">Left</h3>` +
-          body("Left column copy.", 160, 330, 760, 200) +
-          `<h3 style="${box(1000, 260, 760, 50)}">Right</h3>` +
-          body("Right column copy.", 1000, 330, 760, 200),
+          `<h3 style="${box(160, 280, 760, 70)};font-size:52px">Left</h3>` +
+          body("Left column copy.", 160, 370, 760, 300, 38) +
+          `<h3 style="${box(1000, 280, 760, 70)};font-size:52px">Right</h3>` +
+          body("Right column copy.", 1000, 370, 760, 300, 38),
       ),
     },
     { name: "Table", source: section(heading("Summary") + table(look)) },
     {
       name: "Quote",
       source: section(
-        `<h2 id="title" style="${box(260, 380, 1400, 200)};font-size:56px;text-align:center">“A memorable line worth a whole slide.”</h2>` +
-          `<p style="${box(260, 620, 1400, 50)};font-size:24px;text-align:center;color:${look.muted}">— Attribution</p>`,
+        `<h2 id="title" style="${box(260, 340, 1400, 260)};font-size:72px;text-align:center">“A memorable line worth a whole slide.”</h2>` +
+          `<p style="${box(260, 640, 1400, 60)};font-size:32px;text-align:center;color:${look.muted}">— Attribution</p>`,
       ),
     },
     {
       name: "Image + caption",
       source: section(
-        `<x-shape data-shape="rect" style="${box(560, 150, 800, 560)};background:#E5E7EB"/>` +
-          `<p id="title" style="${box(560, 740, 800, 50)};font-size:24px;text-align:center;color:${look.muted}">Caption for the image.</p>`,
+        `<x-shape data-shape="rect" style="${box(480, 120, 960, 600)};background:#E5E7EB"/>` +
+          `<p id="title" style="${box(480, 750, 960, 60)};font-size:32px;text-align:center;color:${look.muted}">Caption for the image.</p>`,
       ),
     },
-    { name: "Closing", source: section(`<h1 id="title" style="${box(160, 460, 1600, 110)};font-size:80px">Thank you</h1>`) },
+    { name: "Closing", source: section(`<h1 id="title" style="${box(160, 430, 1600, 160)};font-size:112px">Thank you</h1>`) },
   ];
 }
 
 function table(look: SlideLook): string {
   const header = ["Item", "Status", "Owner"].map((text) => `<th style="background:${look.accent};color:#FFFFFF">${text}</th>`).join("");
   const row = "<tr><td></td><td></td><td></td></tr>";
-  return `<table style="${box(160, 250, 1600, 240)};font-size:28px;border-color:#CBD2DC"><tr>${header}</tr>${row}${row}</table>`;
+  return `<table style="${box(160, 280, 1600, 360)};font-size:36px;border-color:#CBD2DC"><tr>${header}</tr>${row}${row}</table>`;
 }

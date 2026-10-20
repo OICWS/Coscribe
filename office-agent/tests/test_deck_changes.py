@@ -9,6 +9,7 @@ import pytest
 
 from coscribe.tools.office.pptx import (
     deck_edits_since_coscribe,
+    deck_history,
     save_slide,
     slide_parts,
     step_history,
@@ -97,3 +98,23 @@ def test_a_deck_with_no_build_of_coscribes_has_nothing_to_compare_with(
     log = tmp_path / "pages" / ".history" / "states.json"
     log.write_text(log.read_text(encoding="utf-8").replace('"coscribe"', f'"{by}"'), "utf-8")
     assert deck_edits_since_coscribe(deck) is None
+
+
+def test_discarding_takes_back_every_edit_since_coscribes_version(tmp_path: Path) -> None:
+    deck = _deck(tmp_path)
+    folder = tmp_path / "pages"
+    before = sorted(p.name for p in folder.iterdir() if p.is_file())
+    _edit(deck, tmp_path)
+    read = slide_parts(deck, 0, tmp_path)
+    save_slide(
+        deck,
+        0,
+        source=read["source"].replace('data-transition="fade"', 'data-transition="push"'),
+        version=read["version"],
+        resource_root=tmp_path,
+    )
+    step_history(deck, -1, resource_root=tmp_path, discard=True)
+    assert sorted(p.name for p in folder.iterdir() if p.is_file()) == before
+    assert deck_history(deck)["redo"] == "you"
+    with pytest.raises(ValueError, match="not changed anything"):
+        step_history(deck, -1, resource_root=tmp_path, discard=True)
