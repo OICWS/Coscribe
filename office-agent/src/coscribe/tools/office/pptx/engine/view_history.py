@@ -25,13 +25,25 @@ def deck_history(deck: Path) -> dict[str, Any]:
     }
 
 
-def step_history(deck: Path, direction: int, *, resource_root: Path) -> dict[str, Any]:
-    """Undo (`direction` -1) or redo (+1) one change. Raises ValueError when there is none."""
+def step_history(
+    deck: Path, direction: int, *, resource_root: Path, discard: bool = False
+) -> dict[str, Any]:
+    """Undo (`direction` -1) or redo (+1) one change, or with `discard` take back every change
+    the user made since coscribe's last (a redo brings them back). Raises ValueError when there
+    is none."""
     folder = _folder(deck)
     with file_lock(deck):
         log = read_log(folder)
-        target = log["at"] + direction
-        if log["at"] < 0 or not 0 <= target < len(log["states"]):
+        states = log["states"]
+        if discard:
+            target = log["at"]
+            while target > 0 and states[target]["by"] == "you":
+                target -= 1
+            if log["at"] < 0 or target == log["at"]:
+                raise ValueError("you have not changed anything since coscribe's last version")
+        else:
+            target = log["at"] + direction
+        if log["at"] < 0 or not 0 <= target < len(states):
             raise ValueError("nothing to undo" if direction < 0 else "nothing to redo")
         _refuse_if_changed(deck, _read_manifest(folder / MANIFEST))
         restore_state(folder, log["states"][target], page_files(folder, (".svg", ".html")))

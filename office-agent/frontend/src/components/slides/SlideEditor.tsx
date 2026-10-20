@@ -230,6 +230,8 @@ function EditorBar({
       <SlideFormatBar
         x={x * zoom}
         y={y * zoom}
+        bottom={(y + h) * zoom}
+        width={1920 * zoom}
         text={format}
         colours={colours}
         actions={{

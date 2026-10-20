@@ -23,8 +23,8 @@ export function useSlideHistory(
       live = false;
     };
   }, [threadId, path, version]);
-  const step = (action: "undo" | "redo") => {
-    if (!history[action]) return;
+  const step = (action: "undo" | "redo" | "discard") => {
+    if (!history[action === "redo" ? "redo" : "undo"]) return;
     stepSlideHistory(threadId, path, action).then(
       (read) => {
         setHistory(read);

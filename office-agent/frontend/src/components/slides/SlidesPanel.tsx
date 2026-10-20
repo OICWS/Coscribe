@@ -98,6 +98,7 @@ export function SlidesPanel({
               zoom={shownZoom}
               srcOf={srcOf}
               onSelect={setCurrent}
+              onWheelZoom={(direction) => ui.setZoom(stepZoom(shownZoom, direction))}
               onOpen={ui.openSlide}
               overlay={
                 slide && (
@@ -118,7 +119,7 @@ export function SlidesPanel({
                 )
               }
             >
-              <StageControls ui={ui} count={slides.length} zoom={shownZoom} beside={beside} busy={downloads.busy} history={history}
+              <StageControls ui={ui} count={slides.length} zoom={shownZoom} beside={beside} busy={downloads.busy} 
                 onMenu={(kind, anchor) => setMenu({ kind, anchor })} deck={{ threadId, path, onProblem: edits.setProblem }} />
             </SlideStage>
             <BelowStage ui={ui} slides={slides} srcOf={srcOf} edits={edits} arranging={arranging} />
@@ -247,7 +248,6 @@ function StageControls({
   zoom,
   beside,
   busy,
-  history,
   onMenu,
   deck,
 }: {
@@ -256,7 +256,6 @@ function StageControls({
   zoom: number;
   beside: boolean;
   busy: boolean;
-  history: ReturnType<typeof useSlideHistory>;
   onMenu: (kind: Menu["kind"], anchor: DOMRect) => void;
   deck: { threadId: string; path: string; onProblem: (message: string | null) => void };
 }) {
@@ -270,9 +269,6 @@ function StageControls({
         propertiesShown={ui.propertiesShown}
         beside={beside}
         onToggleProperties={() => ui.setPropertiesShown((shown) => !shown)}
-        canUndo={!!history.history.undo}
-        canRedo={!!history.history.redo}
-        onStep={history.step}
         onZoomMenu={(anchor) => onMenu("zoom", anchor)}
         onPresentMenu={(anchor) => onMenu("present", anchor)}
         onDownloadMenu={(anchor) => onMenu("download", anchor)}
@@ -712,7 +708,7 @@ function entriesFor(kind: Menu["kind"], zoom: number, view: SlidesView, actions:
   if (kind === "zoom") return zoomEntries(zoom, view, actions.setZoom, actions.history);
   if (kind === "download") return downloadEntries(actions.download);
   if (kind === "comments") return commentEntries(actions.ui);
-  return kind === "present" ? presentEntries(actions.present) : titleEntries(actions.open);
+  return kind === "present" ? presentEntries(actions.present) : titleEntries(actions.open, actions.history);
 }
 
 function commentEntries(ui: ReturnType<typeof useSlidesUi>): MenuEntry[] {
@@ -764,7 +760,7 @@ function presentEntries(present: (withNotes: boolean) => void): MenuEntry[] {
   ];
 }
 
-function titleEntries(open: (reveal: boolean) => void): MenuEntry[] {
+function titleEntries(open: (reveal: boolean) => void, history: ReturnType<typeof useSlideHistory>): MenuEntry[] {
   return [
     {
       label: "Open in PowerPoint",
@@ -775,6 +771,14 @@ function titleEntries(open: (reveal: boolean) => void): MenuEntry[] {
       label: "Show in folder",
       icon: <FolderIcon className="h-4 w-4" />,
       onSelect: () => open(true),
+    },
+    "divider",
+    {
+      label: "Discard my edits",
+      disabled: history.history.undo !== "you",
+      onSelect: () => {
+        if (window.confirm("Take back every change you made since coscribe's last version of this presentation?")) history.step("discard");
+      },
     },
   ];
 }

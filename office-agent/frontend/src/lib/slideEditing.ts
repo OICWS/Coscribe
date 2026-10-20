@@ -103,7 +103,7 @@ const historyUrl = (threadId: string) => `/api/threads/${encodeURIComponent(thre
 export const getSlideHistory = async (threadId: string, path: string) =>
   json<SlideHistory>(await fetch(`${historyUrl(threadId)}?path=${encodeURIComponent(path)}`));
 
-export const stepSlideHistory = async (threadId: string, path: string, action: "undo" | "redo") =>
+export const stepSlideHistory = async (threadId: string, path: string, action: "undo" | "redo" | "discard") =>
   json<SlideHistory>(
     await fetch(historyUrl(threadId), {
       method: "POST",
