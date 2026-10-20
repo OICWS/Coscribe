@@ -194,8 +194,6 @@ def router(state: AppState) -> APIRouter:
                         live_value = value == "true"
                     elif key == "COSCRIBE_CODE_MODEL":
                         live_value = value.strip() or None
-                    elif key == "COSCRIBE_REVIEWER_NAME":
-                        live_value = value.strip()
                     setattr(settings, LIVE_SETTINGS[key], live_value)
             applied.add(key)
         restart_required = any(

@@ -110,10 +110,32 @@ function AppearanceSection() {
   );
 }
 
+function ReviewSection({ values, onChange }: GeneralTabProps) {
+  const reviewer = GENERAL_FIELDS.find((f) => f.key === REVIEWER_NAME_KEY)!;
+  return (
+    <SettingsSection title="Review">
+      <SettingRows>
+        <SettingRow
+          label={reviewer.label}
+          description={reviewer.description}
+          control={
+            <input
+              aria-label={reviewer.label}
+              className={`${fieldClass} w-48`}
+              value={values[REVIEWER_NAME_KEY] ?? ""}
+              placeholder={reviewer.placeholder}
+              onChange={(e) => onChange(REVIEWER_NAME_KEY, e.target.value)}
+            />
+          }
+        />
+      </SettingRows>
+    </SettingsSection>
+  );
+}
+
 export function GeneralTab({ values, onChange }: GeneralTabProps) {
   const field = (key: string) => GENERAL_FIELDS.find((f) => f.key === key)!;
   const maxTurns = field(MAX_TURNS_KEY);
-  const reviewer = field(REVIEWER_NAME_KEY);
   return (
     <div className="flex flex-col gap-10">
       <AppearanceSection />
@@ -153,23 +175,7 @@ export function GeneralTab({ values, onChange }: GeneralTabProps) {
         </SettingRows>
       </SettingsSection>
 
-      <SettingsSection title="Review">
-        <SettingRows>
-          <SettingRow
-            label={reviewer.label}
-            description={reviewer.description}
-            control={
-              <input
-                aria-label={reviewer.label}
-                className={`${fieldClass} w-48`}
-                value={values[REVIEWER_NAME_KEY] ?? ""}
-                placeholder={reviewer.placeholder}
-                onChange={(e) => onChange(REVIEWER_NAME_KEY, e.target.value)}
-              />
-            }
-          />
-        </SettingRows>
-      </SettingsSection>
+      <ReviewSection values={values} onChange={onChange} />
 
       <SettingsSection title="Instructions">
         <GlobalInstructionsSection active />
