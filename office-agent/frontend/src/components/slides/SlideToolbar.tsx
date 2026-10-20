@@ -1,16 +1,19 @@
 import { zoomLabel } from "../../lib/slides";
-import { ChevronDownIcon, DownloadIcon, PlayIcon } from "../icons";
+import { ChevronDownIcon, DownloadIcon, PlayIcon, RedoIcon, UndoIcon } from "../icons";
 import { PropertiesBelowIcon, PropertiesBesideIcon } from "./slideIcons";
 
 const toolButton = "flex h-8 w-8 items-center justify-center rounded-lg text-[var(--fg)] hover:bg-[var(--card-bg)]";
 const toolButtonOn = "flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-ink)]";
 
-/** The card at the stage's top right: Download, Present, the properties panel and the zoom menu. */
+/** The card at the stage's top right: Download, Present, the properties panel and the zoom menu, with undo and redo first. */
 export function SlideToolbar({
   zoom,
   propertiesShown,
   beside,
   onToggleProperties,
+  canUndo,
+  canRedo,
+  onStep,
   onZoomMenu,
   onPresentMenu,
   onDownloadMenu,
@@ -20,6 +23,9 @@ export function SlideToolbar({
   propertiesShown: boolean;
   beside: boolean;
   onToggleProperties: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  onStep: (action: "undo" | "redo") => void;
   onZoomMenu: (anchor: DOMRect) => void;
   onPresentMenu: (anchor: DOMRect) => void;
   onDownloadMenu: (anchor: DOMRect) => void;
@@ -28,6 +34,13 @@ export function SlideToolbar({
 }) {
   return (
     <div className="absolute right-4 top-4 z-10 flex h-11 items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-1.5 shadow-[var(--panel-shadow)]">
+      <button type="button" title="Undo (Ctrl+Z)" aria-label="Undo" disabled={!canUndo} className={`${toolButton} disabled:opacity-40`} onClick={() => onStep("undo")}>
+        <UndoIcon className="h-[17px] w-[17px]" />
+      </button>
+      <button type="button" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" disabled={!canRedo} className={`${toolButton} disabled:opacity-40`} onClick={() => onStep("redo")}>
+        <RedoIcon className="h-[17px] w-[17px]" />
+      </button>
+      <span className="mx-1 h-5 border-l border-[var(--border)]" />
       <button
         type="button"
         title={busy ? "Preparing the download" : "Download"}
