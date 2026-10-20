@@ -26,3 +26,4 @@ old one; the old one stays, marked "Superseded by".
 | [0015](0015-what-coscribe-makes-is-an-artifact.md) | What coscribe makes is an artifact; Slides are positioned HTML sections (partly superseded by 0016) |
 | [0016](0016-new-slides-are-svg-pages-edited-slides-become-sections.md) | New slides are written as SVG pages; a slide becomes an HTML section when it is first edited |
 | [0017](0017-a-deck-has-a-design-system-its-slides-name-styles-from.md) | A deck has a design system; its slides name text styles from it |
+| [0018](0018-sections-may-hold-containers-that-lay-out-their-children.md) | Sections may hold containers that lay out their children |
