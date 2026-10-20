@@ -58,7 +58,7 @@ function drawElement(el: Element, part: SlidePart | undefined, editable: boolean
     outer.append(inner);
     return outer;
   }
-  if (!part?.picture || (editable && el.localName === "table")) return drawnHere(el, style, box, editable);
+  if (!part?.picture || (editable && el.localName === "table") || isLine(el)) return drawnHere(el, style, box, editable);
   const image = document.createElement("img");
   image.src = part.picture;
   image.alt = "";
@@ -67,6 +67,10 @@ function drawElement(el: Element, part: SlidePart | undefined, editable: boolean
   return image;
 }
 
+/** A line is always drawn here: it has two ends the editor moves one at a time, which the server's
+ * picture of a box cannot follow. */
+export const isLine = (el: Element) => el.localName === "x-shape" && el.getAttribute("data-shape") === "line";
+
 /** A shape or table the server has not drawn yet (a layout's preview, an element just added),
  * drawn here as near as the browser can; anything else waits for the server's picture. */
 function drawnHere(el: Element, style: Map<string, string>, [x, y, w, h]: Box, editable = false): HTMLElement | null {
@@ -74,7 +78,7 @@ function drawnHere(el: Element, style: Map<string, string>, [x, y, w, h]: Box, e
   Object.assign(node.style, { position: "absolute", left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px` });
   if (el.localName === "x-shape") {
     const shape = el.getAttribute("data-shape") ?? "rect";
-    if (shape === "line") return lineNode(node, w, h, style);
+    if (shape === "line") return lineNode(node, [w, h], style, el.getAttribute("data-direction") === "up");
     applyStyle(node, new Map([...style].filter(([name]) => ["background", "border", "opacity"].includes(name))));
     if (shape === "ellipse") node.style.borderRadius = "50%";
     if (shape === "round-rect") node.style.borderRadius = style.get("border-radius") ?? `${Math.round(Math.min(w, h) * 0.12)}px`;
@@ -104,19 +108,32 @@ function arrowPoints(w: number, h: number): [number, number][] {
   return [[0, shaft], [w - head, shaft], [w - head, 0], [w, h / 2], [w - head, h], [w - head, h - shaft], [0, h - shaft]];
 }
 
-/** A line from the box's top left to its bottom right, in the border's colour and width. */
-function lineNode(node: HTMLElement, w: number, h: number, style: Map<string, string>): HTMLElement {
-  const border = /^(\d+(?:\.\d+)?)px\s+\w+\s+(#\w+)/.exec(style.get("border") ?? "");
-  const [width, colour] = border ? [border[1], border[2]] : ["4", "#000000"];
+/** A line between two corners of its box, in the border's colour and width. */
+function lineNode(node: HTMLElement, [w, h]: [number, number], style: Map<string, string>, rises: boolean): HTMLElement {
+  const border = /^(\d+(?:\.\d+)?)px\s+(\w+)\s+(#\w+)/.exec(style.get("border") ?? "");
+  const [width, dash, colour] = border ? [border[1], border[2], border[3]] : ["4", "solid", "#000000"];
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("width", String(w));
-  svg.setAttribute("height", String(h));
   svg.style.overflow = "visible";
   const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-  for (const [name, value] of Object.entries({ x1: "0", y1: "0", x2: String(w), y2: String(h), stroke: colour, "stroke-width": width })) line.setAttribute(name, value);
+  line.setAttribute("stroke", colour);
+  line.setAttribute("stroke-width", width);
+  if (dash === "dashed") line.setAttribute("stroke-dasharray", `${Number(width) * 3} ${Number(width) * 2}`);
   svg.append(line);
   node.append(svg);
+  node.dataset.line = "";
+  drawLine(node, w, h, rises);
   return node;
+}
+
+/** Sets the size of a line node's drawing and which diagonal it runs along. */
+function drawLine(node: HTMLElement, w: number, h: number, rises: boolean) {
+  const svg = node.querySelector("svg");
+  const line = node.querySelector("line");
+  if (!svg || !line) return;
+  svg.setAttribute("width", String(w));
+  svg.setAttribute("height", String(h));
+  for (const [name, value] of Object.entries({ x1: "0", y1: rises ? String(h) : "0", x2: String(w), y2: rises ? "0" : String(h) })) line.setAttribute(name, value);
+  node.dataset.line = rises ? "up" : "down";
 }
 
 /** A table cell with its inline formatting; the cell's own colour, fill, weight and alignment. */
@@ -134,10 +151,11 @@ function drawCell(cell: Element, table: Map<string, string>, editable: boolean):
 
 /** Moves or resizes an element's node while it is dragged; a picture stretches until the
  * server draws it again at its new size. */
-export function placeNode(node: HTMLElement, box: Box) {
+export function placeNode(node: HTMLElement, box: Box, rises?: boolean) {
   if (node instanceof HTMLImageElement) return placePicture(node, box);
   const [x, y, w, h] = box;
   Object.assign(node.style, { left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px` });
+  if (node.dataset.line !== undefined) drawLine(node, w, h, rises ?? node.dataset.line === "up");
 }
 
 function placePicture(image: HTMLImageElement, [x, y, w, h]: Box) {
