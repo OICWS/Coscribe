@@ -5,9 +5,12 @@ pull request tool appended "Generated with Claude Code" to each description, so 
 red until its body was edited.
 
 ## Shipped
-- `.claude/settings.json` sets `attribution.commit` and `attribution.pr` to empty, so Claude Code
-  does not add a `Co-Authored-By` trailer or a "Generated with" line.
+- `.claude/settings.json` sets `attribution.commit` and `attribution.pr` to empty and
+  `attribution.sessionUrl` to false, so Claude Code adds no `Co-Authored-By` trailer, no
+  "Generated with" line and no claude.ai session link (the `Claude-Session` trailer and the link
+  in a pull request description). A cloud session with one repository reads this file; it reads
+  settings when it starts, so the next session shows the effect.
 
 ## Not verified
-- Whether a cloud session's pull request tool honours the setting; the next PR a session opens
-  shows it. If the line still appears, the footer comes from the GitHub tool, not this setting.
+- Whether a session started after this is merged opens its pull requests without the line; if it
+  does not, the footer comes from the GitHub tool, not from these settings.
