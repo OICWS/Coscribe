@@ -3,16 +3,16 @@ import {
   getDocxBytes,
   getDocxReview,
   stackCards,
-  type DocxComment,
   type DocxReview,
   type DocxView,
 } from "../lib/docxReview";
 import { openThreadFile } from "../lib/rest";
-import { formatRunTime } from "../lib/runLabels";
 import { DocxChangeBar } from "./DocxChangeBar";
+import { DocxCommentCard } from "./DocxCommentCard";
+import { DocxNewComment } from "./DocxNewComment";
 import { useChangeSelection, useDocxActions } from "./docxActions";
 import { useDockPanel } from "./dock/dockContext";
-import { ArrowDownIcon, ArrowUpIcon, CheckIcon, ExternalLinkIcon, MessageCircleIcon } from "./icons";
+import { ArrowDownIcon, ArrowUpIcon, ExternalLinkIcon, MessageCircleIcon } from "./icons";
 
 const RAIL_WIDTH = 248;
 const CARD_GAP = 8;
@@ -68,6 +68,25 @@ function stops(content: HTMLElement | null, page: HTMLElement | null, anchors: A
   }));
   const comments = anchors.map((a) => ({ top: a.top, comment: a.id }));
   return [...changes, ...comments].sort((a, b) => a.top - b.top);
+}
+
+function ViewSwitch({ view, onPick }: { view: DocxView; onPick: (view: DocxView) => void }) {
+  return (
+    <div role="radiogroup" aria-label="View" className="flex rounded-lg bg-[var(--card-bg)] p-0.5 text-xs">
+      {VIEWS.map((v) => (
+        <button
+          key={v.id}
+          type="button"
+          role="radio"
+          aria-checked={view === v.id}
+          className={`rounded-md px-2 py-1 ${view === v.id ? "bg-[var(--bg)] text-[var(--fg)] shadow-sm" : "text-[var(--muted)] hover:text-[var(--fg)]"}`}
+          onClick={() => onPick(v.id)}
+        >
+          {v.label}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 /** A Word file beside the conversation: its pages, its tracked changes in place,
@@ -243,23 +262,13 @@ export function DocxViewerPanel({
         {dock.controls}
       </div>
       <div className="flex h-10 shrink-0 items-center gap-2 border-y border-[var(--border)] px-3 text-xs text-[var(--muted)]">
-        <div role="radiogroup" aria-label="View" className="flex rounded-lg bg-[var(--card-bg)] p-0.5 text-xs">
-          {VIEWS.map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              role="radio"
-              aria-checked={view === v.id}
-              className={`rounded-md px-2 py-1 ${view === v.id ? "bg-[var(--bg)] text-[var(--fg)] shadow-sm" : "text-[var(--muted)] hover:text-[var(--fg)]"}`}
-              onClick={() => {
-                setView(v.id);
-                setStep(-1);
-              }}
-            >
-              {v.label}
-            </button>
-          ))}
-        </div>
+        <ViewSwitch
+          view={view}
+          onPick={(next) => {
+            setView(next);
+            setStep(-1);
+          }}
+        />
         <span className="flex-1 truncate pl-1">
           {changeCount} {changeCount === 1 ? "change" : "changes"}
           {!compact && ` · ${commentCount} ${commentCount === 1 ? "comment" : "comments"}`}
@@ -287,13 +296,16 @@ export function DocxViewerPanel({
       {view === "review" && changeCount > 0 && (
         <DocxChangeBar selected={selectedChange} count={changeCount} busy={busy} onAct={act} />
       )}
+      <DocxNewComment page={pageRef} busy={busy} onAct={act} />
       {error && <div className="px-4 py-2 text-xs text-[var(--danger)]">{error}</div>}
       <div className="relative flex min-h-0 flex-1 flex-col">
         {compact && drawer && (
           <div className="absolute inset-y-0 right-0 z-20 w-[min(300px,85%)] overflow-auto border-l border-[var(--border)] bg-[var(--panel-bg)] p-3 shadow-[var(--panel-shadow)]">
             {(review?.comments ?? []).map((comment) => (
-              <CommentCard
+              <DocxCommentCard
                 key={comment.id}
+                busy={busy}
+                onAct={act}
                 comment={comment}
                 active={active === comment.id}
                 onActivate={() => {
@@ -317,8 +329,10 @@ export function DocxViewerPanel({
             <div ref={pageRef} className="docx-page" style={{ zoom }} />
             <div ref={railRef} className={`relative shrink-0 ${compact ? "hidden" : ""}`} style={{ width: RAIL_WIDTH }}>
               {ordered.map((comment) => (
-                <CommentCard
+                <DocxCommentCard
                   key={comment.id}
+                  busy={busy}
+                  onAct={act}
                   comment={comment}
                   top={cardTops[comment.id] ?? 0}
                   active={active === comment.id}
@@ -332,7 +346,7 @@ export function DocxViewerPanel({
               {unanchored.length > 0 && (
                 <div className="absolute inset-x-0" style={{ top: Math.max(0, ...Object.values(cardTops)) + 96 }}>
                   {unanchored.map((comment) => (
-                    <CommentCard key={comment.id} comment={comment} active={false} onActivate={() => {}} />
+                    <DocxCommentCard key={comment.id} comment={comment} active={false} busy={busy} onAct={act} onActivate={() => {}} />
                   ))}
                 </div>
               )}
@@ -360,79 +374,6 @@ export function DocxViewerPanel({
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function CommentCard({
-  comment,
-  top,
-  active,
-  onActivate,
-  cardRef,
-}: {
-  comment: DocxComment;
-  top?: number;
-  active: boolean;
-  onActivate: () => void;
-  cardRef?: (el: HTMLElement | null) => void;
-}) {
-  const placed = top !== undefined;
-  const base = `${placed ? "absolute inset-x-0" : "mb-2"} rounded-xl border bg-[var(--card-bg)] text-[13px] transition-[top,box-shadow] duration-150 motion-reduce:transition-none`;
-  const look = active
-    ? "z-10 border-[var(--accent)] shadow-[var(--panel-shadow)]"
-    : "border-[var(--border)] hover:border-[var(--border-hover)]";
-  if (comment.done && !active) {
-    return (
-      <button
-        ref={cardRef}
-        type="button"
-        style={placed ? { top } : undefined}
-        className={`${base} ${look} flex w-full items-center gap-2 px-3 py-1.5 text-left text-[var(--muted)]`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onActivate();
-        }}
-      >
-        <CheckIcon className="h-3.5 w-3.5 shrink-0" />
-        <span className="truncate">
-          {comment.author}: {comment.text}
-        </span>
-      </button>
-    );
-  }
-  return (
-    <article
-      ref={cardRef}
-      style={placed ? { top } : undefined}
-      className={`${base} ${look} cursor-default px-3 py-2.5`}
-      onClick={(e) => {
-        e.stopPropagation();
-        onActivate();
-      }}
-    >
-      <Entry author={comment.author} initials={comment.initials} date={comment.date} text={comment.text} />
-      {comment.done && <div className="mt-1 text-xs text-[var(--muted)]">Resolved</div>}
-      {comment.replies.map((reply) => (
-        <div key={reply.id} className="mt-2.5 border-t border-[var(--border)] pt-2.5">
-          <Entry author={reply.author} initials={reply.initials} date={reply.date} text={reply.text} />
-        </div>
-      ))}
-    </article>
-  );
-}
-
-function Entry({ author, initials, date, text }: { author: string; initials: string; date: string; text: string }) {
-  return (
-    <div>
-      <div className="flex items-center gap-2">
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[10px] font-medium text-[var(--accent-ink)]">
-          {(initials || author.slice(0, 1)).slice(0, 2)}
-        </span>
-        <span className="min-w-0 flex-1 truncate font-medium">{author}</span>
-        {date && <span className="shrink-0 text-xs text-[var(--muted)]">{formatRunTime(date)}</span>}
-      </div>
-      <p className="mt-1 whitespace-pre-wrap break-words">{text}</p>
     </div>
   );
 }

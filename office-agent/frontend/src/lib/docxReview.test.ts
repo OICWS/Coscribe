@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { settleAllChanges, settleChange, stackCards } from "./docxReview";
+import { commentOn, replyTo, setResolved, settleAllChanges, settleChange, stackCards } from "./docxReview";
 
 const cards = [
   { id: "a", anchor: 100, height: 80 },
@@ -31,5 +31,20 @@ describe("review actions as operations", () => {
   it("accepts or rejects every change", () => {
     expect(settleAllChanges(true)).toEqual([{ op: "accept_all" }]);
     expect(settleAllChanges(false)).toEqual([{ op: "reject_all" }]);
+  });
+});
+
+describe("comment actions as operations", () => {
+  it("replies to a thread with the trimmed text", () => {
+    expect(replyTo("3", "  Agreed \n")).toEqual([{ op: "reply", comment: "3", text: "Agreed" }]);
+  });
+
+  it("resolves or reopens a thread", () => {
+    expect(setResolved("3", true)).toEqual([{ op: "resolve", comment: "3" }]);
+    expect(setResolved("3", false)).toEqual([{ op: "reopen", comment: "3" }]);
+  });
+
+  it("comments on the selected words with line breaks folded", () => {
+    expect(commentOn(" the total\n  price ", "Check")).toEqual([{ op: "comment", on: "the total price", text: "Check" }]);
   });
 });

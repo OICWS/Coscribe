@@ -169,7 +169,7 @@ Last reviewed: 2026-10-15.
    with a note in the panel (user editing is for what is easy to edit, the rest goes through comments and the conversation).
    Lines going up to the right and dragging a line's ends are open.
    Next: step 5, opening the user's own .pptx. The
-   docx-preview actions: accept and reject are in the panel (#473); comments, the reviewer name in
+   docx-preview actions: accept, reject, reply, resolve and comment are in the panel (#473); the reviewer name in
    Settings and "Ask coscribe" are open there. Until the name is set, actions carry the computer's
    user name.
 
