@@ -161,7 +161,8 @@ Last reviewed: 2026-10-15.
    sent to coscribe (done, #420). Step 4, editing (#431): sections drawn by the server, the edit
    API, select/move/resize, text and the format bar, inserting, notes and properties, new slides
    and reorder, undo including coscribe's builds. The user's edits and undos are told to coscribe at
-   the start of its next turn (#462, done). Open from it: a human edit refused to be overwritten.
+   the start of its next turn (#462, done). Containers (decision 0018) are in the model's Slides guide, so coscribe writes rows and
+   columns of cards the user can then edit. Open from it: a human edit refused to be overwritten.
    Next: step 5, opening the user's own .pptx. The
    docx-preview actions are paused. A name for the user's own review actions in Settings is open;
    until then they carry the computer's user name.

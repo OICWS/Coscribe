@@ -99,6 +99,17 @@ A slide is one `<section>` of well-formed XHTML on a 1920 x 1080 canvas. Close e
   `class` inside it.
 - **Tables** and **charts** (below) and **icons**: `<x-icon data-icon="ship" style="...;
   color:#0E3A66"/>`, the names in read_skill_file("PPTX Pages", "icons.md").
+- **Containers**: `<x-stack data-layout="row|column" style="left;top;width;height; gap:24px;
+  padding:32px; align:stretch; justify:start">` holds elements and places them, so a row of
+  cards or a column of points needs no coordinates and survives an edit. Its children have no
+  `left` or `top`: along the container they take a `width` (row) or `height` (column), or a share
+  of the room with `flex-grow` (and `flex-shrink`, `flex-basis`); across it a size, or the
+  container's whole room with `align` `stretch`. `align` is `start|center|end|stretch`, `justify`
+  is `start|center|end|between`. Text in a column takes the height its words need. The container
+  can look like a card: `background`, `border`, `border-radius` and `opacity` draw a surface
+  behind its children, so a card needs no separate `x-shape`. Containers nest (up to 6 deep).
+  Use one for what the user is likely to edit, such as cards, columns and lists of parallel points;
+  keep free-placed boxes for hero numbers, overlays and anything laid by hand.
 - **Background**: the section's `background`. Its `font-family` and `color` are every text's
   default.
 - **Speaker notes**: `<aside>`, one paragraph per line.
@@ -192,10 +203,33 @@ Blocks side by side share their top and bottom edges: a table or chart beside a 
 is given the cards' full height (a table's rows share its box height evenly), and nothing leaves a
 hollow under one block that the next block fills.
 
-A card is an `x-shape` surface with its texts placed over it, inside the card's padding. A card
+A card is an `x-stack` with the card's look (`background`, `border-radius`), or an `x-shape` surface with its texts placed over it, inside the card's padding. A card
 that stands for a finding gets a 6 px accent bar down its left edge (a second `x-shape` in the
 accent or the alert colour), a small label above its headline at annotation size in that colour
 ("需要解释的偏差", "新市场"), then the headline figure, then one or two lines of explanation.
+
+Three cards that share a row, as containers:
+
+```html
+<x-stack id="cards" data-layout="row"
+         style="left:120px;top:260px;width:1680px;height:520px;gap:40px">
+  <x-stack style="flex-grow:1;gap:12px;padding:32px;background:#FFFFFF;border-radius:16px">
+    <p style="font-size:24px;color:#C2410C">New market</p>
+    <h3>华东</h3>
+    <p style="font-size:28px">收入同比增长 23.5%。</p>
+  </x-stack>
+  <x-stack style="flex-grow:1;gap:12px;padding:32px;background:#FFFFFF;border-radius:16px">
+    <p style="font-size:24px;color:#C2410C">Retention</p>
+    <h3>续约率</h3>
+    <p style="font-size:28px">升至 91%。</p>
+  </x-stack>
+  <x-stack style="flex-grow:1;gap:12px;padding:32px;background:#FFFFFF;border-radius:16px">
+    <p style="font-size:24px;color:#C2410C">Customers</p>
+    <h3>新签</h3>
+    <p style="font-size:28px">42 家。</p>
+  </x-stack>
+</x-stack>
+```
 
 ## Type and colour
 
