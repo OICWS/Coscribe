@@ -1,6 +1,6 @@
 # 0018: Sections may hold containers that lay out their children
 
-Status: proposed (2026-10-20), for the maintainer to accept.
+Status: accepted (2026-10-20, by the maintainer).
 
 ## Context
 Every element of a section is placed by `left`, `top`, `width` and `height`. The maintainer wants
