@@ -9,6 +9,8 @@ import {
 } from "../lib/docxReview";
 import { openThreadFile } from "../lib/rest";
 import { formatRunTime } from "../lib/runLabels";
+import { DocxChangeBar } from "./DocxChangeBar";
+import { useChangeSelection, useDocxActions } from "./docxActions";
 import { useDockPanel } from "./dock/dockContext";
 import { ArrowDownIcon, ArrowUpIcon, CheckIcon, ExternalLinkIcon, MessageCircleIcon } from "./icons";
 
@@ -50,8 +52,26 @@ function commentRanges(root: HTMLElement): Map<string, Range> {
   return ranges;
 }
 
+interface Stop {
+  top: number;
+  comment?: string;
+  el?: Element;
+}
+
+/** Each tracked change and each comment's words, with its height on the page. */
+function stops(content: HTMLElement | null, page: HTMLElement | null, anchors: Anchor[]): Stop[] {
+  if (!content || !page) return [];
+  const origin = content.getBoundingClientRect().top;
+  const changes = [...page.querySelectorAll("ins, del")].map((el) => ({
+    top: el.getBoundingClientRect().top - origin,
+    el,
+  }));
+  const comments = anchors.map((a) => ({ top: a.top, comment: a.id }));
+  return [...changes, ...comments].sort((a, b) => a.top - b.top);
+}
+
 /** A Word file beside the conversation: its pages, its tracked changes in place,
- * and its comment threads in a rail beside the page. Read only for now. */
+ * and its comment threads in a rail beside the page. Tracked changes are accepted or rejected from the bar above the page. */
 export function DocxViewerPanel({
   threadId,
   path,
@@ -78,6 +98,8 @@ export function DocxViewerPanel({
   const contentRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef(new Map<string, HTMLElement>());
   const railRef = useRef<HTMLDivElement>(null);
+  const { busy, reloads, keepScroll, act } = useDocxActions(threadId, path, scrollerRef, setError);
+  const { pick, selectedChange } = useChangeSelection(pageRef, review, matched);
   const name = path.split(/[\\/]/).pop() ?? path;
 
   const measure = useCallback(() => {
@@ -129,12 +151,14 @@ export function DocxViewerPanel({
         setMatched(marks === expected && commentRanges(page).size >= nextReview.comments.length);
         fit();
         measure();
+        if (keepScroll.current !== null) scrollerRef.current?.scrollTo({ top: keepScroll.current });
+        keepScroll.current = null;
       })
       .catch((e: unknown) => !cancelled && setError(e instanceof Error ? e.message : String(e)));
     return () => {
       cancelled = true;
     };
-  }, [threadId, path, view, refreshKey, fit, measure]);
+  }, [threadId, path, view, refreshKey, reloads, keepScroll, fit, measure]);
 
   useEffect(() => {
     const scroller = scrollerRef.current;
@@ -177,25 +201,14 @@ export function DocxViewerPanel({
   }, [active, anchors]);
 
   // Previous and next walk the changes and the comments in page order.
-  const stops = (): { top: number; comment?: string; el?: Element }[] => {
-    const content = contentRef.current;
-    const page = pageRef.current;
-    if (!content || !page) return [];
-    const origin = content.getBoundingClientRect().top;
-    const changes = [...page.querySelectorAll("ins, del")].map((el) => ({
-      top: el.getBoundingClientRect().top - origin,
-      el,
-    }));
-    const comments = anchors.map((a) => ({ top: a.top, comment: a.id }));
-    return [...changes, ...comments].sort((a, b) => a.top - b.top);
-  };
   const go = (delta: number) => {
-    const list = stops();
+    const list = stops(contentRef.current, pageRef.current, anchors);
     if (list.length === 0) return;
     const next = (step + delta + list.length) % list.length;
     setStep(next);
     const stop = list[next];
     setActive(stop.comment ?? null);
+    pick(stop.el);
     contentRef.current?.parentElement?.scrollTo({
       top: Math.max(0, stop.top - 120),
       behavior: "smooth",
@@ -271,6 +284,9 @@ export function DocxViewerPanel({
           <ArrowDownIcon className="h-3.5 w-3.5" />
         </button>
       </div>
+      {view === "review" && changeCount > 0 && (
+        <DocxChangeBar selected={selectedChange} count={changeCount} busy={busy} onAct={act} />
+      )}
       {error && <div className="px-4 py-2 text-xs text-[var(--danger)]">{error}</div>}
       <div className="relative flex min-h-0 flex-1 flex-col">
         {compact && drawer && (
@@ -292,7 +308,10 @@ export function DocxViewerPanel({
         <div
           ref={scrollerRef}
           className="docx-viewer min-h-0 flex-1 overflow-auto bg-[var(--bg)]"
-          onClick={() => setActive(null)}
+          onClick={(e) => {
+            setActive(null);
+            pick(e.target as Element);
+          }}
         >
           <div ref={contentRef} className="relative mx-auto flex w-max gap-4 p-4">
             <div ref={pageRef} className="docx-page" style={{ zoom }} />
