@@ -17,6 +17,10 @@ be turned to another direction.
 - Tests: `tests/test_deck_lines.py`, `lib/slideLine.test.ts`, and the "line" case of
   `slides-panels.spec.ts` (drag the right end down, then the left end past it).
 
+- Reading a slide for the editor is tried once more when the request never reached the server.
+  The Windows e2e run failed the table case once because Chromium reported
+  `net::ERR_NO_BUFFER_SPACE` on that read, which left the editor without its slide.
+
 ## Not verified
 - Not opened in PowerPoint. The e2e case passes against a live server with the stub model.
 
