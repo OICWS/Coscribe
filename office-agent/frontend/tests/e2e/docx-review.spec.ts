@@ -131,4 +131,14 @@ test("the Word panel replies to, resolves, reopens and adds comments, checked on
     await expect(page.getByText("those words appear twice")).toBeVisible();
     await page.unroute("**/docx-review");
   });
+
+  await test.step("Ask coscribe sends the selected words with their file and page to the conversation", async () => {
+    await page.evaluate(() => {
+      const para = [...document.querySelectorAll(".docx-page p")].find((p) => p.textContent?.includes("Service agreement"));
+      document.getSelection()?.selectAllChildren(para as Element);
+    });
+    await page.getByRole("button", { name: "Ask coscribe" }).click();
+    // The expanded viewer covers the chat, so the bubble is in the page but not visible.
+    await expect(page.getByText(`Question about ${name}.docx, page 1:`)).toContainText("> Service agreement");
+  });
 });

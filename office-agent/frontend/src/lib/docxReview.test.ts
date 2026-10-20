@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commentOn, replyTo, setResolved, settleAllChanges, settleChange, stackCards } from "./docxReview";
+import { askMessage, commentOn, replyTo, setResolved, settleAllChanges, settleChange, stackCards } from "./docxReview";
 
 const cards = [
   { id: "a", anchor: 100, height: 80 },
@@ -46,5 +46,13 @@ describe("comment actions as operations", () => {
 
   it("comments on the selected words with line breaks folded", () => {
     expect(commentOn(" the total\n  price ", "Check")).toEqual([{ op: "comment", on: "the total price", text: "Check" }]);
+  });
+});
+
+describe("askMessage", () => {
+  it("names the file and page and quotes every line of the selection", () => {
+    expect(askMessage("report.docx", 2, "Total price\nis 100")).toBe(
+      "Question about report.docx, page 2:\n> Total price\n> is 100",
+    );
   });
 });

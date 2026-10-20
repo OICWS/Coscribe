@@ -13,11 +13,11 @@ export function ViewerPanel({
   threadId: string;
   path: string;
   refreshKey: string;
-  onSendComment?: (text: string, link: CommentLink) => void;
+  onSendComment?: (text: string, link?: CommentLink) => void;
 }) {
   return isPptx(path) ? (
     <SlidesPanel threadId={threadId} path={path} refreshKey={refreshKey} onSendComment={onSendComment} />
   ) : (
-    <DocxViewerPanel threadId={threadId} path={path} refreshKey={refreshKey} />
+    <DocxViewerPanel threadId={threadId} path={path} refreshKey={refreshKey} onAsk={onSendComment} />
   );
 }

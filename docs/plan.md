@@ -169,9 +169,8 @@ Last reviewed: 2026-10-15.
    with a note in the panel (user editing is for what is easy to edit, the rest goes through comments and the conversation).
    A line is dragged by its ends and may rise to the right (`data-direction="up"`).
    Next: step 5, opening the user's own .pptx. The
-   docx-preview actions: accept, reject, reply, resolve, comment and the reviewer name are in the
-   panel (#473); "Ask coscribe" is open there. Without a reviewer name, actions carry the
-   computer's user name.
+   docx-preview actions: accept, reject, reply, resolve, comment, "Ask coscribe" on a selection and the reviewer
+   name are in the panel (#473). Without a reviewer name, actions carry the computer's user name.
 
 1. **Make the repository easy to join** (governance review, 2026-10-08).
    - Done: `main` protected by a ruleset (PR only, squash, `test` required),
