@@ -1,4 +1,4 @@
-import { forwardRef, type ReactNode } from "react";
+import { forwardRef, useEffect, useRef, type ReactNode } from "react";
 import { SLIDE_HEIGHT, SLIDE_WIDTH, type SlideInfo } from "../../lib/slides";
 import { SlideThumb, type SlidesView } from "./SlideStrip";
 
@@ -19,16 +19,33 @@ export const SlideStage = forwardRef<
     srcOf: (index: number) => string;
     onSelect: (index: number) => void;
     onOpen: (index: number) => void;
+    /** Ctrl and the wheel: a step in or out. */
+    onWheelZoom: (direction: 1 | -1) => void;
     /** Drawn over the slide in Slide view, not clipped by it: the comments. */
     overlay?: ReactNode;
     children: ReactNode;
   }
->(function SlideStage({ view, slides, current, zoom, srcOf, onSelect, onOpen, overlay, children }, ref) {
+>(function SlideStage({ view, slides, current, zoom, srcOf, onSelect, onOpen, onWheelZoom, overlay, children }, ref) {
   const slide = slides[current];
   const padding = `${TOOLBAR_ROOM}px ${MARGIN}px ${MARGIN}px`;
+  const scroller = useRef<HTMLDivElement>(null);
+  const zoomBy = useRef(onWheelZoom);
+  zoomBy.current = onWheelZoom;
+  // A listener of its own: React's wheel handlers are passive, and the page must not zoom too.
+  useEffect(() => {
+    const node = scroller.current;
+    if (!node) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey || e.deltaY === 0) return;
+      e.preventDefault();
+      zoomBy.current(e.deltaY < 0 ? 1 : -1);
+    };
+    node.addEventListener("wheel", onWheel, { passive: false });
+    return () => node.removeEventListener("wheel", onWheel);
+  }, []);
   return (
     <div ref={ref} className="relative min-h-0 flex-1 bg-[var(--stage-bg)]">
-      <div className="absolute inset-0 overflow-auto">
+      <div ref={scroller} className="absolute inset-0 overflow-auto">
         {view === "slide" ? (
           <div className="flex min-h-full min-w-full" style={{ padding }}>
             {slide && (

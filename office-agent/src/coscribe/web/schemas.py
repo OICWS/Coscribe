@@ -74,7 +74,7 @@ class SlideArrange(BaseModel):
 
 class SlideHistoryStep(BaseModel):
     path: str
-    action: Literal["undo", "redo"]
+    action: Literal["undo", "redo", "discard"]
 
 
 class MemoryUpdate(BaseModel):
