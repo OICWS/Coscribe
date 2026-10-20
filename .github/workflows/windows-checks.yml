@@ -10,6 +10,7 @@ name: Windows checks
   pull_request:
     paths:
       - ".github/workflows/windows-checks.yml"
+      - "office-agent/scripts/check_deck_export.py"
 
 permissions:
   contents: read
@@ -60,3 +61,7 @@ jobs:
       # Also runs the frontend metrics: file sizes, long functions and knip's unused exports.
       - name: Ratchet
         run: python scripts/ratchet.py --enforce
+
+      # A deck built from section pages: what the Slides panel offers must be in the file's XML.
+      - name: Exported deck
+        run: python scripts/check_deck_export.py
