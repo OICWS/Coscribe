@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import type { Drop } from "../../lib/slideStacks";
 import { SlideChangedError, getSlideParts, saveSlideSource, uploadSlidePicture, type SavedSlide, type SlidePart, type SlideParts } from "../../lib/slideEditing";
 import type { CommentStart } from "./SlideComments";
 import { HANDLES, STACK, accentOf, boxOf, boxOnSlide, dragBox, elementIndexAt, elementsOf, inStack, labelOf, newElement, parseSection, setBox, type Insert, sourceColours, writeSection, type Box } from "../../lib/slideSource";
@@ -7,6 +8,7 @@ import { SlideFormatBar } from "./SlideFormatBar";
 import { SlideMenu } from "./SlideMenu";
 import type { EditorSelection } from "./SlideTextProperties";
 import { useFormatting } from "./useFormatting";
+import { useStackDrop } from "./useStackDrop";
 import { useTableEditing } from "./useTableEditing";
 import { useTextEditing } from "./useTextEditing";
 
@@ -69,7 +71,7 @@ export function SlideEditor({
   const startTyping = (at: number, point?: { x: number; y: number }) =>
     isTable(slide.doc, at) ? table.start(at, point) : text.start(at, point);
   const input = useEditorInput(slide, nodes, zoom, layerRef, onExit, startTyping);
-  const { boxes, selected, drag, point, startDrag } = input;
+  const { boxes, selected, drag, drop, point, startDrag } = input;
 
   usePublishedSelection(slide, selected, () => (text.stop(), table.stop()), (file) => uploadSlidePicture(threadId, path, file), onSelection);
 
@@ -110,6 +112,7 @@ export function SlideEditor({
         }}
         onKeyDown={input.onKey}
       >
+        {drop && <DropMark drop={drop} zoom={zoom} />}
         {shown && <Selection box={shown} zoom={zoom} handles={!placedByLayout} onHandle={(e, handle) => startDrag(e, selected, handle)} />}
       </div>
       {shown && !drag && selected !== null && (
@@ -306,6 +309,7 @@ function useEditorInput(
   const [selected, setSelected] = useState<number | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const boxes = slide.doc ? nodeBoxes(slide.doc, slide.parts) : [];
+  const stackDrop = useStackDrop(slide.doc, boxes, slide.change, setSelected);
   const place = (at: number, box: Box) => {
     const node = nodes.current[at];
     if (node) placeNode(node, box);
@@ -320,8 +324,8 @@ function useEditorInput(
       setSelected(at);
       const el = at === null ? null : elementsOf(slide.doc!)[at];
       const box = el ? boxOnSlide(el, slide.parts[at!]?.box) : null;
-      // What a container places is moved and resized through its container, not by hand.
-      if (!e || !el || !box || inStack(el)) return;
+      // What a container places can be moved (into, within or out of containers) but not resized by hand.
+      if (!e || !el || !box || (inStack(el) && (handle[0] !== 0 || handle[1] !== 0))) return;
       e.currentTarget.setPointerCapture(e.pointerId);
       const rect = layerRef.current!.getBoundingClientRect();
       setDrag({ index: at as number, handle, start: box, box, x: (e.clientX - rect.left) / zoom, y: (e.clientY - rect.top) / zoom });
@@ -334,11 +338,14 @@ function useEditorInput(
     const box = dragBox(drag.start, drag.handle, now.x - drag.x, now.y - drag.y, e.shiftKey);
     place(drag.index, box);
     setDrag({ ...drag, box });
+    if (drag.handle[0] === 0 && drag.handle[1] === 0) stackDrop.track(drag.index, now.x, now.y);
   };
   const onUp = () => {
     if (!drag) return;
     setDrag(null);
     const moved = drag.box.some((v, i) => Math.abs(v - drag.start[i]) >= DRAG_FROM);
+    if (moved && drag.handle[0] === 0 && drag.handle[1] === 0 && stackDrop.finish(drag.index, drag.box)) return;
+    stackDrop.clear();
     if (moved) slide.change((els) => setBox(els[drag.index], drag.box), drag.handle[0] !== 0 || drag.handle[1] !== 0);
     else place(drag.index, drag.start);
   };
@@ -359,7 +366,18 @@ function useEditorInput(
     place(selected, box);
     slide.change((els) => setBox(els[selected], box), false);
   };
-  return { boxes, selected, select: setSelected, drag, point, startDrag, onMove, onUp, onKey };
+  return { boxes, selected, select: setSelected, drag, drop: stackDrop.drop, point, startDrag, onMove, onUp, onKey };
+}
+
+/** The container an element would drop into, and the line where it would go. */
+function DropMark({ drop, zoom }: { drop: Drop; zoom: number }) {
+  const place = ([x, y, w, h]: Box) => ({ left: x * zoom, top: y * zoom, width: w * zoom, height: h * zoom });
+  return (
+    <>
+      <div className="pointer-events-none absolute rounded border-2 border-dashed border-[var(--accent)]" style={place(drop.box)} />
+      <div className="pointer-events-none absolute rounded bg-[var(--accent)]" style={place(drop.line)} />
+    </>
+  );
 }
 
 function Selection({ box, zoom, handles, onHandle }: { box: Box; zoom: number; handles: boolean; onHandle: (e: PointerEvent, handle: [number, number]) => void }) {
