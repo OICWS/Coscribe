@@ -177,7 +177,7 @@ def _plan(
     if tag == "x-shape":
         svg = _shape(elem, style)
     elif tag == "img":
-        svg = _picture(elem, style)
+        svg = _picture(elem, style, drawing)
     elif tag == "table":
         svg = section_objects.table(elem, style, _SCALE)
     elif tag == "x-chart":
@@ -275,19 +275,32 @@ def _shape(elem: ET.Element, style: Style) -> ET.Element:
     return _svg("polygon", paint)
 
 
+def _border(elem: ET.Element, style: Style) -> tuple[str, str, str] | None:
+    """The border as (width, dash, colour), or None for `none`."""
+    border = style.values.get("border", "none").strip()
+    if border == "none":
+        return None
+    match = re.fullmatch(r"(\d+(?:\.\d+)?)px\s+(solid|dashed)\s+(#\w+)", border)
+    if match is None:
+        raise SectionError(f'{label(elem)}: border is "2px solid #RRGGBB" or "none"')
+    width, dash, stroke = match.groups()
+    return width, dash, f"#{colour(stroke, f'{label(elem)}: border')}"
+
+
+def _stroke(border: tuple[str, str, str]) -> dict[str, str]:
+    width, dash, stroke = border
+    attrs = {"stroke": stroke, "stroke-width": width}
+    if dash == "dashed":
+        attrs["stroke-dasharray"] = f"{float(width) * 3:g} {float(width) * 2:g}"
+    return attrs
+
+
 def _paint(elem: ET.Element, style: Style, line: bool) -> dict[str, str]:
     fill = None if line else style.colour("background")
     paint = {"fill": f"#{fill}" if fill else "none"}
-    border = style.values.get("border", "none").strip()
-    if border != "none":
-        match = re.fullmatch(r"(\d+(?:\.\d+)?)px\s+(solid|dashed)\s+(#\w+)", border)
-        if match is None:
-            raise SectionError(f'{label(elem)}: border is "2px solid #RRGGBB" or "none"')
-        width, dash, stroke = match.groups()
-        paint["stroke"] = f"#{colour(stroke, f'{label(elem)}: border')}"
-        paint["stroke-width"] = width
-        if dash == "dashed":
-            paint["stroke-dasharray"] = f"{float(width) * 3:g} {float(width) * 2:g}"
+    border = _border(elem, style)
+    if border is not None:
+        paint |= _stroke(border)
     elif line:
         raise SectionError(f"{label(elem)}: a line needs a border, which draws it")
     if "opacity" in style.values:
@@ -297,7 +310,7 @@ def _paint(elem: ET.Element, style: Style, line: bool) -> dict[str, str]:
     return paint
 
 
-def _picture(elem: ET.Element, style: Style) -> ET.Element:
+def _picture(elem: ET.Element, style: Style, drawing: ET.Element) -> ET.Element:
     x, y, w, h = style.box()
     fit = style.values.get("object-fit", "cover")
     if fit not in _FIT:
@@ -305,6 +318,20 @@ def _picture(elem: ET.Element, style: Style) -> ET.Element:
     attrs = {"href": elem.get("src", ""), "preserveAspectRatio": _FIT[fit]}
     if elem.get("id"):
         attrs["id"] = elem.get("id", "")
+    if "opacity" in style.values:
+        attrs["opacity"] = style.values["opacity"]
+    radius = style.px("border-radius", 0)
+    if radius > 0:
+        # Rounded corners are the picture's own geometry in the deck: a clip the converter maps to
+        # a rounded rectangle.
+        clip = f"picture-clip-{len(drawing)}"
+        defs = ET.SubElement(drawing, f"{{{SVG_NS}}}defs")
+        path = ET.SubElement(defs, f"{{{SVG_NS}}}clipPath", id=clip)
+        path.append(_svg("rect", {}, x=x, y=y, width=w, height=h, rx=min(radius, w / 2, h / 2)))
+        attrs["clip-path"] = f"url(#{clip})"
+    border = _border(elem, style)
+    if border is not None:
+        attrs |= _stroke(border)
     return _svg("image", attrs, x=x, y=y, width=w, height=h)
 
 
