@@ -14,7 +14,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from xml.etree import ElementTree as ET
 
-from .text_layout import Font, Paragraph, Run
+from .section_layout import LayoutError, expand_stacks
+from .text_layout import Font, Paragraph, Run, text_height
 
 CANVAS = (1920, 1080)
 DEFAULT_FONT = "Microsoft YaHei, Arial"
@@ -181,9 +182,27 @@ def parse_section(text: str) -> Section:
         colour=style.colour("color", "000000") or "000000",
         transition=_named(root, "data-transition", TRANSITIONS),
     )
+    try:
+        expand_stacks(root, _text_measure(section))
+    except LayoutError as e:
+        raise SectionError(str(e)) from None
     for child in root:
         _read_child(section, child)
     return section
+
+
+def _text_measure(section: Section) -> Callable[[ET.Element, dict[str, str], float], float]:
+    """How tall a container's text child is at a width, for the container to place it."""
+    skip = {"left", "top", "width", "height", "flex-grow", "flex-shrink", "flex-basis"}
+
+    def measure(elem: ET.Element, decl: dict[str, str], width: float) -> float:
+        values = {n: v for n, v in decl.items() if n not in skip}
+        values.update(left="0px", top="0px", width=f"{width:g}px", height="1px")
+        text = text_element(elem, Style(values, label(elem)), section)
+        inner = float("inf") if text.nowrap else width - 2 * text.padding
+        return text_height(text.paragraphs, inner, text.line_height) + 2 * text.padding
+
+    return measure
 
 
 def _read_child(section: Section, child: ET.Element) -> None:
