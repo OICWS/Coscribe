@@ -284,7 +284,8 @@ def test_the_word_review_actions_carry_the_reviewer_name_from_settings_lg(
             ops = [{"op": "reply", "comment": comment, "text": text}]
             assert client.post(url, json={"path": "c.docx", "operations": ops}).status_code == 200
 
-        set_name = client.post("/api/config", json={"updates": {"COSCRIBE_REVIEWER_NAME": " Dana Lee "}})
+        name_update = {"COSCRIBE_REVIEWER_NAME": " Dana Lee "}
+        set_name = client.post("/api/config", json={"updates": name_update})
         reply("one")
         client.post("/api/config", json={"updates": {"COSCRIBE_REVIEWER_NAME": ""}})
         reply("two")
