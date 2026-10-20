@@ -33,7 +33,7 @@ export type PanelWindowAction =
   | { type: "saveAsWorkflow" }
   | { type: "view"; path: string }
   | { type: "sendToChat"; capture: BrowserCapture }
-  | { type: "sendComment"; text: string; link: CommentLink }
+  | { type: "sendComment"; text: string; link?: CommentLink }
   | { type: "stopAgent" }
   | { type: "approve"; id: string; approved: boolean; scope?: "task" };
 

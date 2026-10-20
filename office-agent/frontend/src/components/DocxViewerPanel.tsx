@@ -95,10 +95,12 @@ export function DocxViewerPanel({
   threadId,
   path,
   refreshKey,
+  onAsk,
 }: {
   threadId: string;
   path: string;
   refreshKey: string;
+  onAsk?: (text: string) => void;
 }) {
   const dock = useDockPanel();
   const [view, setView] = useState<DocxView>("review");
@@ -296,7 +298,7 @@ export function DocxViewerPanel({
       {view === "review" && changeCount > 0 && (
         <DocxChangeBar selected={selectedChange} count={changeCount} busy={busy} onAct={act} />
       )}
-      <DocxNewComment page={pageRef} busy={busy} onAct={act} />
+      <DocxNewComment page={pageRef} file={name} busy={busy} onAct={act} onAsk={onAsk} />
       {error && <div className="px-4 py-2 text-xs text-[var(--danger)]">{error}</div>}
       <div className="relative flex min-h-0 flex-1 flex-col">
         {compact && drawer && (

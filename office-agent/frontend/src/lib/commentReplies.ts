@@ -42,7 +42,9 @@ export function useCommentSender(threadId: string, items: LogItem[], turnInFligh
       return false;
     });
   }, [threadId, items, turnInFlight]);
-  return (text: string, link: CommentLink) => {
+  // A message without a link is a question about the file, not a comment waiting for an answer.
+  return (text: string, link?: CommentLink) => {
+    if (!link) return send(text);
     waiting.current.push({ threadId, text, from: items.length, link });
     send(text);
   };

@@ -1,32 +1,41 @@
 import { useEffect, useState, type RefObject } from "react";
-import { commentOn, type DocxOperation } from "../lib/docxReview";
+import { askMessage, commentOn, type DocxOperation } from "../lib/docxReview";
 
 /** The words selected on the page, kept after the selection is lost to a click in the comment box. */
 function useSelectedWords(page: RefObject<HTMLDivElement | null>) {
   const [words, setWords] = useState("");
+  const [pageNo, setPageNo] = useState(1);
   useEffect(() => {
     const onChange = () => {
       const selection = document.getSelection();
       const text = selection?.toString().trim() ?? "";
-      if (text && selection?.anchorNode && page.current?.contains(selection.anchorNode)) setWords(text);
+      if (text && selection?.anchorNode && page.current?.contains(selection.anchorNode)) {
+        setWords(text);
+        const section = (selection.anchorNode instanceof Element ? selection.anchorNode : selection.anchorNode.parentElement)?.closest("section.docx");
+        setPageNo(Math.max(0, Array.from(page.current.querySelectorAll("section.docx")).indexOf(section as Element)) + 1);
+      }
     };
     document.addEventListener("selectionchange", onChange);
     return () => document.removeEventListener("selectionchange", onChange);
   }, [page]);
-  return [words, setWords] as const;
+  return [words, setWords, pageNo] as const;
 }
 
 /** A bar for a new comment on the words selected on the page. */
 export function DocxNewComment({
   page,
+  file,
   busy,
   onAct,
+  onAsk,
 }: {
   page: RefObject<HTMLDivElement | null>;
+  file: string;
   busy: boolean;
   onAct: (operations: DocxOperation[]) => void;
+  onAsk?: (text: string) => void;
 }) {
-  const [words, setWords] = useSelectedWords(page);
+  const [words, setWords, pageNo] = useSelectedWords(page);
   const [text, setText] = useState("");
   if (!words) return null;
   const send = () => {
@@ -57,6 +66,18 @@ export function DocxNewComment({
       >
         Comment
       </button>
+      {onAsk && (
+        <button
+          type="button"
+          className="shrink-0 rounded-md border border-[var(--border)] px-2 py-0.5 hover:bg-[var(--card-bg)]"
+          onClick={() => {
+            onAsk(askMessage(file, pageNo, words));
+            setWords("");
+          }}
+        >
+          Ask coscribe
+        </button>
+      )}
       <button
         type="button"
         className="shrink-0 rounded-md border border-[var(--border)] px-2 py-0.5 hover:bg-[var(--card-bg)]"

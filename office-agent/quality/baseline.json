@@ -2,7 +2,7 @@
  "complex_functions": {
   "src/coscribe/cli.py::send_json": 19,
   "src/coscribe/conversation/activity.py::summarize_activity": 18,
-  "src/coscribe/conversation/session.py::_handle_user_message_locked": 30,
+  "src/coscribe/conversation/session.py::_handle_user_message_locked": 27,
   "src/coscribe/conversation/turn_stream.py::stream_turn": 17,
   "src/coscribe/tools/_svg_slide.py::add_svg_slide": 16,
   "src/coscribe/tools/bookkeeping/scheduled_tasks.py::compute_next_run_at": 18,
@@ -227,7 +227,7 @@
  },
  "fan_out": {},
  "file_lines": {
-  "src/coscribe/conversation/session.py": 1277,
+  "src/coscribe/conversation/session.py": 1276,
   "src/coscribe/coordinator.py": 845,
   "src/coscribe/runtime_lg/subagents.py": 836,
   "src/coscribe/tools/bookkeeping/scheduled_tasks.py": 1054,
@@ -237,7 +237,7 @@
  },
  "frontend_file_lines": {
   "office-agent-desktop/src/main/browserAgent.ts": 934,
-  "office-agent/frontend/src/App.tsx": 1112,
+  "office-agent/frontend/src/App.tsx": 1111,
   "office-agent/frontend/src/components/icons.tsx": 803,
   "office-agent/frontend/src/components/workflow/WorkflowRunView.tsx": 860
  },
@@ -245,7 +245,7 @@
   "office-agent-desktop/src/main/browserAgent.ts::act": 156,
   "office-agent-desktop/src/main/browserAgent.ts::startBrowserAgent": 140,
   "office-agent-desktop/src/main/browserAgentPage.ts::pageAgent": 343,
-  "office-agent/frontend/src/App.tsx::App": 1021,
+  "office-agent/frontend/src/App.tsx::App": 1019,
   "office-agent/frontend/src/components/AllowedSitesDialog.tsx::AllowedSitesDialog": 132,
   "office-agent/frontend/src/components/Attachments.tsx::AttachmentDialog": 106,
   "office-agent/frontend/src/components/BackgroundTasksPanel.tsx::BackgroundTasksPanel": 162,
@@ -254,7 +254,7 @@
   "office-agent/frontend/src/components/ChatLog.tsx::ChatLog": 175,
   "office-agent/frontend/src/components/Composer.tsx::Composer": 500,
   "office-agent/frontend/src/components/DesktopBrowserPanel.tsx::DesktopBrowserPanel": 386,
-  "office-agent/frontend/src/components/DocxViewerPanel.tsx::DocxViewerPanel": 292,
+  "office-agent/frontend/src/components/DocxViewerPanel.tsx::DocxViewerPanel": 288,
   "office-agent/frontend/src/components/EffortPicker.tsx::EffortPicker": 144,
   "office-agent/frontend/src/components/EnvironmentDialog.tsx::EnvironmentDialog": 292,
   "office-agent/frontend/src/components/FindInPage.tsx::FindInPage": 102,
@@ -305,7 +305,7 @@
   "office-agent/frontend/src/lib/desktop.ts": 2,
   "office-agent/frontend/src/lib/dockArrangement.ts": 3,
   "office-agent/frontend/src/lib/dockLayout.ts": 2,
-  "office-agent/frontend/src/lib/docxReview.ts": 2,
+  "office-agent/frontend/src/lib/docxReview.ts": 1,
   "office-agent/frontend/src/lib/rest.ts": 1,
   "office-agent/frontend/src/lib/titleBar.ts": 1,
   "office-agent/frontend/src/lib/transcriptGrouping.ts": 4,
@@ -319,7 +319,7 @@
  "long_functions": {
   "src/coscribe/cli.py::_chat_async": 108,
   "src/coscribe/conversation/session.py::ChatSessionLG.__init__": 206,
-  "src/coscribe/conversation/session.py::ChatSessionLG._handle_user_message_locked": 212,
+  "src/coscribe/conversation/session.py::ChatSessionLG._handle_user_message_locked": 210,
   "src/coscribe/conversation/turn_stream.py::TurnStreamer.stream_turn": 115,
   "src/coscribe/coordinator.py::build_coordinator_agent": 152,
   "src/coscribe/runtime_lg/agent.py::build_langgraph_agent": 184,
