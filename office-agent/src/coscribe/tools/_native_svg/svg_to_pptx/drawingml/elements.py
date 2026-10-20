@@ -4997,6 +4997,8 @@ def convert_image(elem: ET.Element, ctx: ConvertContext) -> ShapeResult | None:
     # Resolve clip-path → DrawingML geometry
     clip_geom = _resolve_clip_geometry(elem, ctx, raw_x, raw_y, raw_w, raw_h)
     effect_xml = _element_effect_xml(elem, ctx)
+    # A border is the picture's own outline: it follows the geometry, rounded corners included.
+    line_xml = build_stroke_xml(elem, ctx) if elem.get('stroke') else ''
 
     # Resolve preserveAspectRatio="<align> slice" as DrawingML crop metadata.
     # Image optimization only downscales the full source image; it never crops
@@ -5066,7 +5068,7 @@ def convert_image(elem: ET.Element, ctx: ConvertContext) -> ShapeResult | None:
 <a:xfrm{xfrm_attr}><a:off x="{off_x}" y="{off_y}"/>
 <a:ext cx="{ext_cx}" cy="{ext_cy}"/></a:xfrm>
 {clip_geom}
-{effect_xml}
+{line_xml}{effect_xml}
 </p:spPr>
 </p:pic>''', bounds_emu=bounds_emu)
 

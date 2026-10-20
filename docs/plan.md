@@ -162,7 +162,7 @@ Last reviewed: 2026-10-15.
    API, select/move/resize, text and the format bar, inserting, notes and properties, new slides
    and reorder, undo including coscribe's builds. The user's edits and undos are told to coscribe at
    the start of its next turn (#462, done). Containers (decision 0018) are in the model's Slides guide, so coscribe writes rows and
-   columns of cards the user can then edit. The chart panel offers type, stacking, title, legend, labels and series colours (axes, range and
+   columns of cards the user can then edit. A picture takes radius, border and opacity. The chart panel offers type, stacking, title, legend, labels and series colours (axes, range and
    number format are open). A human edit refused to be overwritten was judged not worth its code
    (a narrow window: an edit made while a turn runs).
    Next: step 5, opening the user's own .pptx. The

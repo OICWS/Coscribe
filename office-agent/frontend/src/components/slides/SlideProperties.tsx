@@ -67,7 +67,7 @@ export function SlideProperties({
         </>
       )}
       {selection?.kind === "table" && <TableProperties selection={selection} design={design} />}
-      {selection?.kind === "image" && <ImageProperties selection={selection} />}
+      {selection?.kind === "image" && <ImageProperties selection={selection} design={design} />}
       {selection?.kind === "chart" && <ChartProperties selection={selection} design={design} />}
       {selection?.kind === "shape" && <ShapeProperties selection={selection} design={design} />}
       {selection && <ChildSizing selection={selection} />}

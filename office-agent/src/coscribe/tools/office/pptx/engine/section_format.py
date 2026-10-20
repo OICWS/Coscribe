@@ -48,7 +48,7 @@ _STYLES = {
     "section": {"background", "font-family", "color"},
     "text": set(_BOX) | _TEXT_STYLES,
     "x-shape": set(_BOX) | {"background", "border", "border-radius", "opacity"},
-    "img": set(_BOX) | {"object-fit"},
+    "img": set(_BOX) | {"object-fit", "border", "border-radius", "opacity"},
     "svg": set(_BOX),
     "table": set(_BOX) | {"font-size", "font-family", "color", "background", "border-color"},
     "x-chart": set(_BOX),

@@ -67,9 +67,24 @@ def section_drawing(text: str, parts: list[Part] | None = None) -> ET.Element:
         elif kind == "drawing" and item[1] != 1.0:
             svg, scale = item
             svg.set("transform", f"scale({scale:g}) {svg.get('transform', '')}".strip())
+        if kind == "drawing" and item[0].get("stroke") and item[0].tag == f"{_S}image":
+            root.append(_outline(item[0], root))
         if parts is not None:
             parts.append(Part(kind, list(root)[before:]))
     return root
+
+
+def _outline(image: ET.Element, root: ET.Element) -> ET.Element:
+    """A picture's border, drawn over it (the browser does not stroke an `<image>`), with the
+    corners of the clip that rounds the picture."""
+    box = {k: image.attrib[k] for k in ("x", "y", "width", "height")}
+    stroke = {k: v for k, v in image.attrib.items() if k.startswith("stroke")}
+    outline = ET.Element(f"{_S}rect", {**box, "fill": "none", **stroke})
+    clip = (image.get("clip-path") or "")[5:-1]
+    for path in root.iter(f"{_S}clipPath"):
+        if path.get("id") == clip and (corner := path.find(f"{_S}rect")) is not None:
+            outline.set("rx", corner.get("rx", "0"))
+    return outline
 
 
 def _text_group(box: TextBox) -> ET.Element:
