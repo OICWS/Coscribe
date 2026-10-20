@@ -167,7 +167,7 @@ Last reviewed: 2026-10-15.
    (a narrow window: an edit made while a turn runs). Plain shapes of an SVG page (rectangles, circles, lines) become the
    section's own shapes when the slide is first edited, so the user can select and style them; anything else stays a drawing
    with a note in the panel (user editing is for what is easy to edit, the rest goes through comments and the conversation).
-   Lines going up to the right and dragging a line's ends are open.
+   A line is dragged by its ends and may rise to the right (`data-direction="up"`).
    Next: step 5, opening the user's own .pptx. The
    docx-preview actions: accept, reject, reply, resolve and comment are in the panel (#473); the reviewer name in
    Settings and "Ask coscribe" are open there. Until the name is set, actions carry the computer's

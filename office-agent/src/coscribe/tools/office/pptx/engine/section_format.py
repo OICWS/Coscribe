@@ -59,7 +59,7 @@ _STYLES = {
 _ATTRIBUTES = {
     "section": {"id", "style", "data-transition"},
     "text": {"data-build-in", "id", "style", "data-text-style"},
-    "x-shape": {"data-build-in", "id", "style", "data-shape"},
+    "x-shape": {"data-build-in", "id", "style", "data-shape", "data-direction"},
     "img": {"data-build-in", "id", "style", "src", "alt"},
     "svg": {"data-build-in", "id", "style", "viewBox", "preserveAspectRatio"},
     "table": {"data-build-in", "id", "style"},

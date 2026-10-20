@@ -248,6 +248,9 @@ def _shape(elem: ET.Element, style: Style, drawing: ET.Element) -> ET.Element:
     if len(elem) or (elem.text or "").strip():
         raise SectionError(f"{label(elem)} holds no text; put a <p> over it")
     x, y, w, h = style.box(flat=kind == "line")
+    direction = elem.get("data-direction")
+    if direction is not None and (direction != "up" or kind != "line"):
+        raise SectionError(f'{label(elem)}: data-direction is "up", only on a line')
     paint = _paint(elem, style, kind == "line")
     _shadow(elem, style, drawing, paint)
     if kind == "rect":
@@ -258,7 +261,9 @@ def _shape(elem: ET.Element, style: Style, drawing: ET.Element) -> ET.Element:
     if kind == "ellipse":
         return _svg("ellipse", paint, cx=x + w / 2, cy=y + h / 2, rx=w / 2, ry=h / 2)
     if kind == "line":
-        return _svg("line", paint, x1=x, y1=y, x2=x + w, y2=y + h)
+        # Down to the right unless it rises: the box alone cannot tell the two diagonals apart.
+        up = direction == "up"
+        return _svg("line", paint, x1=x, y1=y + h if up else y, x2=x + w, y2=y if up else y + h)
     if kind == "triangle":
         points = [(x + w / 2, y), (x + w, y + h), (x, y + h)]
     else:

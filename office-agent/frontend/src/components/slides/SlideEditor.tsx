@@ -3,7 +3,8 @@ import { siblingOf, type Drop } from "../../lib/slideStacks";
 import { SlideChangedError, getSlideParts, saveSlideSource, uploadSlidePicture, type SavedSlide, type SlidePart, type SlideParts } from "../../lib/slideEditing";
 import type { CommentStart } from "./SlideComments";
 import { HANDLES, STACK, accentOf, boxOf, boxOnSlide, dragBox, elementIndexAt, elementsOf, inStack, labelOf, newElement, parseSection, setBox, type Insert, sourceColours, writeSection, type Box } from "../../lib/slideSource";
-import { drawSection, placeNode } from "./sectionDom";
+import { lineBetween, lineEnds, type Point } from "../../lib/slideLine";
+import { drawSection, isLine, placeNode } from "./sectionDom";
 import { SlideFormatBar } from "./SlideFormatBar";
 import type { MenuEntry } from "./SlideMenu";
 import type { EditorSelection } from "./SlideTextProperties";
@@ -18,6 +19,9 @@ const DRAG_FROM = 2;
 interface Drag {
   index: number;
   handle: [number, number];
+  /** A line's end being dragged: the end that stays, and which way the line then runs. */
+  fixed?: Point;
+  rises?: boolean;
   start: Box;
   x: number;
   y: number;
@@ -92,6 +96,7 @@ export function SlideEditor({
 
   const shown = drag ? drag.box : selected !== null ? boxes[selected] : null;
   const placedByLayout = selected !== null && !!slide.doc && inStack(elementsOf(slide.doc)[selected] ?? slide.doc.documentElement);
+  const selectedLine = lineAt(slide.doc, selected);
   return (
     <div
       className="absolute inset-0"
@@ -116,7 +121,9 @@ export function SlideEditor({
         onKeyDown={input.onKey}
       >
         {drop && <DropMark drop={drop} zoom={zoom} />}
-        {shown && <Selection box={shown} zoom={zoom} handles={!placedByLayout} onHandle={(e, handle) => startDrag(e, selected, handle)} />}
+        {shown && (
+          <Selection box={shown} zoom={zoom} handles={!placedByLayout} line={selectedLine && { rises: drag?.rises ?? selectedLine.rises }} onHandle={(e, handle) => startDrag(e, selected, handle)} onEnd={(e, fixed) => startDrag(e, selected, [1, 1], fixed)} />
+        )}
       </div>
       {shown && !drag && selected !== null && (
         <EditorBar slide={slide} at={selected} box={shown} zoom={zoom} text={text} onComment={onComment} onMore={onMore} />
@@ -126,6 +133,14 @@ export function SlideEditor({
 }
 
 const KINDS: Record<string, EditorSelection["kind"]> = { h1: "text", h2: "text", h3: "text", p: "text", ul: "text", ol: "text", table: "table", img: "image", "x-shape": "shape", "x-chart": "chart", svg: "drawing", [STACK]: "container" };
+
+const nodeRises = (doc: Document | null, at: number) => !!doc && elementsOf(doc)[at]?.getAttribute("data-direction") === "up";
+
+/** The selected element's direction when it is a line, else null. */
+const lineAt = (doc: Document | null, at: number | null) => {
+  const el = doc && at !== null ? elementsOf(doc)[at] : null;
+  return el && isLine(el) ? { rises: nodeRises(doc, at!) } : null;
+};
 
 const isTable = (doc: Document | null, at: number) => !!doc && elementsOf(doc)[at]?.localName === "table";
 
@@ -312,9 +327,9 @@ function useEditorInput(
   const [drag, setDrag] = useState<Drag | null>(null);
   const boxes = slide.doc ? nodeBoxes(slide.doc, slide.parts) : [];
   const stackDrop = useStackDrop(slide.doc, boxes, slide.change, setSelected);
-  const place = (at: number, box: Box) => {
+  const place = (at: number, box: Box, rises?: boolean) => {
     const node = nodes.current[at];
-    if (node) placeNode(node, box);
+    if (node) placeNode(node, box, rises);
   };
   const point = (e: { clientX: number; clientY: number }) => {
     const rect = layerRef.current!.getBoundingClientRect();
@@ -322,7 +337,7 @@ function useEditorInput(
   };
   /** Selects `at`; with a pointer down, also starts dragging it by `handle`. */
   const startDrag = useCallback(
-    (e: PointerEvent | null, at: number | null, handle: [number, number]) => {
+    (e: PointerEvent | null, at: number | null, handle: [number, number], fixed?: Point) => {
       setSelected(at);
       const el = at === null ? null : elementsOf(slide.doc!)[at];
       const box = el ? boxOnSlide(el, slide.parts[at!]?.box) : null;
@@ -331,13 +346,21 @@ function useEditorInput(
       e.currentTarget.setPointerCapture(e.pointerId);
       layerRef.current?.focus({ preventScroll: true });
       const rect = layerRef.current!.getBoundingClientRect();
-      setDrag({ index: at as number, handle, start: box, box, x: (e.clientX - rect.left) / zoom, y: (e.clientY - rect.top) / zoom });
+      const rises = el.getAttribute("data-direction") === "up";
+      setDrag({ index: at as number, handle, fixed, rises, start: box, box, x: (e.clientX - rect.left) / zoom, y: (e.clientY - rect.top) / zoom });
     },
     [slide.doc, slide.parts, zoom, layerRef],
   );
   const onMove = (e: PointerEvent) => {
     if (!drag) return;
     const now = point(e);
+    if (drag.fixed) {
+      // A line's end follows the pointer; the other end stays, and the line turns when they cross.
+      const { box, rises } = lineBetween(drag.fixed, [now.x, now.y]);
+      place(drag.index, box, rises);
+      setDrag({ ...drag, box, rises });
+      return;
+    }
     const box = dragBox(drag.start, drag.handle, now.x - drag.x, now.y - drag.y, e.shiftKey);
     place(drag.index, box);
     setDrag({ ...drag, box });
@@ -354,6 +377,16 @@ function useEditorInput(
       if (!active || active === document.body) layerRef.current?.focus({ preventScroll: true });
     });
     const moved = drag.box.some((v, i) => Math.abs(v - drag.start[i]) >= DRAG_FROM);
+    if (drag.fixed) {
+      const rises = drag.rises;
+      // Both ends on one point is no line: it goes back to where it was.
+      if (!moved || (Math.round(drag.box[2]) === 0 && Math.round(drag.box[3]) === 0)) return place(drag.index, drag.start, nodeRises(slide.doc, drag.index));
+      return slide.change((els) => {
+        setBox(els[drag.index], drag.box);
+        if (rises) els[drag.index].setAttribute("data-direction", "up");
+        else els[drag.index].removeAttribute("data-direction");
+      }, false);
+    }
     if (moved && drag.handle[0] === 0 && drag.handle[1] === 0 && stackDrop.finish(drag.index, drag.box)) return;
     stackDrop.clear();
     if (moved) slide.change((els) => setBox(els[drag.index], drag.box), drag.handle[0] !== 0 || drag.handle[1] !== 0);
@@ -390,11 +423,45 @@ function DropMark({ drop, zoom }: { drop: Drop; zoom: number }) {
   );
 }
 
-function Selection({ box, zoom, handles, onHandle }: { box: Box; zoom: number; handles: boolean; onHandle: (e: PointerEvent, handle: [number, number]) => void }) {
+function Selection({
+  box,
+  zoom,
+  handles,
+  line,
+  onHandle,
+  onEnd,
+}: {
+  box: Box;
+  zoom: number;
+  handles: boolean;
+  /** A line is selected by its two ends, not by a frame with eight handles. */
+  line: { rises: boolean } | null;
+  onHandle: (e: PointerEvent, handle: [number, number]) => void;
+  onEnd: (e: PointerEvent, fixed: Point) => void;
+}) {
   const [x, y, w, h] = box.map((v) => v * zoom);
+  const ends = line ? lineEnds(box, line.rises) : null;
   return (
-    <div className="pointer-events-none absolute border-2 border-[var(--accent)]" style={{ left: x - 1, top: y - 1, width: w + 2, height: h + 2 }}>
-      {(handles ? HANDLES : []).map(([hx, hy]) => (
+    <div
+      className={`pointer-events-none absolute ${line ? "" : "border-2 border-[var(--accent)]"}`}
+      style={{ left: x - 1, top: y - 1, width: w + 2, height: h + 2 }}
+    >
+      {line &&
+        handles &&
+        ends?.map(([ex, ey], k) => (
+          <span
+            key={k}
+            aria-hidden
+            data-line-end={k}
+            className="pointer-events-auto absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 cursor-move rounded-full border-2 border-[var(--accent)] bg-white"
+            style={{ left: (ex - box[0]) * zoom + 1, top: (ey - box[1]) * zoom + 1 }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              onEnd(e, ends[1 - k]);
+            }}
+          />
+        ))}
+      {(handles && !line ? HANDLES : []).map(([hx, hy]) => (
         <span
           key={`${hx}${hy}`}
           aria-hidden
