@@ -146,3 +146,33 @@ def test_the_editor_is_given_the_laid_out_elements(tmp_path: Path) -> None:
     parts = slide_parts(tmp_path / "deck.pptx", 0, tmp_path)["parts"]
     assert [p["kind"] for p in parts].count("text") == 4
     assert all(p["box"] is not None for p in parts)
+
+
+def test_the_editor_is_given_one_part_per_element_in_document_order(tmp_path: Path) -> None:
+    from coscribe.tools.office.pptx import slide_parts
+
+    folder = tmp_path / "pages"
+    folder.mkdir()
+    (folder / "01-cards.html").write_text(
+        '<section><p style="left:0px;top:0px;width:300px;height:40px">Free</p>'
+        + _row(CARD.format("A", "Short."), CARD.format("B", "Short."), extra="background:#EEEEEE;")[
+            len("<section>") :
+        ],
+        encoding="utf-8",
+    )
+    assert build_deck(folder, tmp_path / "deck.pptx", resource_root=tmp_path).ok
+    parts = slide_parts(tmp_path / "deck.pptx", 0, tmp_path)["parts"]
+    # The free text, the row (with its card), then each card (with its card) and its two texts.
+    assert [p["kind"] for p in parts] == [
+        "text",
+        "drawing",
+        "drawing",
+        "text",
+        "text",
+        "drawing",
+        "text",
+        "text",
+    ]
+    assert parts[1]["picture"] is not None and all(p["box"] for p in parts)
+    row, card = parts[1]["box"], parts[2]["box"]
+    assert card[0] > row[0] and card[2] < row[2]  # the card sits inside the row

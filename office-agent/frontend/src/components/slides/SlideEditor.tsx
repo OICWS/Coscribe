@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { SlideChangedError, getSlideParts, saveSlideSource, uploadSlidePicture, type SavedSlide, type SlidePart, type SlideParts } from "../../lib/slideEditing";
 import type { CommentStart } from "./SlideComments";
-import { HANDLES, accentOf, labelOf, newElement, boxOf, type Insert, dragBox, elementIndexAt, elementsOf, parseSection, setBox, sourceColours, writeSection, type Box } from "../../lib/slideSource";
+import { HANDLES, STACK, accentOf, boxOf, boxOnSlide, dragBox, elementIndexAt, elementsOf, inStack, labelOf, newElement, parseSection, setBox, type Insert, sourceColours, writeSection, type Box } from "../../lib/slideSource";
 import { drawSection, placeNode } from "./sectionDom";
 import { SlideFormatBar } from "./SlideFormatBar";
 import { SlideMenu } from "./SlideMenu";
@@ -79,13 +79,14 @@ export function SlideEditor({
   useEffect(() => {
     if (!slide.doc || !firstPoint || applied.current === firstPoint) return;
     applied.current = firstPoint;
-    startDrag(null, elementIndexAt(elementsOf(slide.doc).map(boxOf), firstPoint.x, firstPoint.y), [0, 0]);
+    startDrag(null, elementIndexAt(nodeBoxes(slide.doc, slide.parts), firstPoint.x, firstPoint.y), [0, 0]);
     layerRef.current?.focus();
   }, [slide.doc, firstPoint, startDrag]);
 
   useInsert(insert, slide, input.select, text.start, onInserted, focusLayer);
 
   const shown = drag ? drag.box : selected !== null ? boxes[selected] : null;
+  const placedByLayout = selected !== null && !!slide.doc && inStack(elementsOf(slide.doc)[selected] ?? slide.doc.documentElement);
   return (
     <div
       className="absolute inset-0"
@@ -109,7 +110,7 @@ export function SlideEditor({
         }}
         onKeyDown={input.onKey}
       >
-        {shown && <Selection box={shown} zoom={zoom} onHandle={(e, handle) => startDrag(e, selected, handle)} />}
+        {shown && <Selection box={shown} zoom={zoom} handles={!placedByLayout} onHandle={(e, handle) => startDrag(e, selected, handle)} />}
       </div>
       {shown && !drag && selected !== null && (
         <EditorBar slide={slide} at={selected} box={shown} zoom={zoom} text={text} onComment={onComment} onRemoved={() => input.select(null)} />
@@ -248,6 +249,9 @@ function EditorBar({
 /** The More menu: the element's place in the stack, a copy of it, and removing it. */
 function arrangeEntries(slide: ReturnType<typeof useEditedSlide>, at: number, onRemoved: () => void) {
   const count = slide.parts.length;
+  // The order of what a container holds is its layout; the stacking order of a slide with
+  // containers is not offered until the order can be changed by dragging.
+  const inContainers = !!slide.doc && hasStack(slide.doc);
   const swap = (other: number) =>
     slide.change(
       (els) => (other > at ? els[other].after(els[at]) : els[other].before(els[at])),
@@ -255,8 +259,8 @@ function arrangeEntries(slide: ReturnType<typeof useEditedSlide>, at: number, on
       (parts) => parts.map((part, i) => (i === at ? parts[other] : i === other ? parts[at] : part)),
     );
   return [
-    { label: "Bring forward", disabled: at >= count - 1, onSelect: () => swap(at + 1) },
-    { label: "Send backward", disabled: at <= 0, onSelect: () => swap(at - 1) },
+    { label: "Bring forward", disabled: at >= count - 1 || inContainers, onSelect: () => swap(at + 1) },
+    { label: "Send backward", disabled: at <= 0 || inContainers, onSelect: () => swap(at - 1) },
     {
       label: "Duplicate",
       onSelect: () =>
@@ -265,7 +269,7 @@ function arrangeEntries(slide: ReturnType<typeof useEditedSlide>, at: number, on
             const copy = els[at].cloneNode(true) as Element;
             copy.removeAttribute("id");
             const box = boxOf(copy);
-            if (box) setBox(copy, [box[0] + 24, box[1] + 24, box[2], box[3]]);
+            if (box && !inStack(els[at])) setBox(copy, [box[0] + 24, box[1] + 24, box[2], box[3]]);
             els[at].after(copy);
           },
           false,
@@ -283,6 +287,13 @@ function arrangeEntries(slide: ReturnType<typeof useEditedSlide>, at: number, on
   ];
 }
 
+const hasStack = (doc: Document) => elementsOf(doc).some((el) => el.localName === STACK);
+
+/** Every element's box on the slide, in the section's order. */
+function nodeBoxes(doc: Document, parts: SlidePart[]): (Box | null)[] {
+  return elementsOf(doc).map((el, i) => boxOnSlide(el, parts[i]?.box));
+}
+
 /** Selecting, dragging and the keys, over the slide's elements in canvas px. */
 function useEditorInput(
   slide: ReturnType<typeof useEditedSlide>,
@@ -294,7 +305,7 @@ function useEditorInput(
 ) {
   const [selected, setSelected] = useState<number | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
-  const boxes = slide.doc ? elementsOf(slide.doc).map(boxOf) : [];
+  const boxes = slide.doc ? nodeBoxes(slide.doc, slide.parts) : [];
   const place = (at: number, box: Box) => {
     const node = nodes.current[at];
     if (node) placeNode(node, box);
@@ -307,13 +318,15 @@ function useEditorInput(
   const startDrag = useCallback(
     (e: PointerEvent | null, at: number | null, handle: [number, number]) => {
       setSelected(at);
-      const box = at === null ? null : boxOf(elementsOf(slide.doc!)[at]);
-      if (!e || at === null || !box) return;
+      const el = at === null ? null : elementsOf(slide.doc!)[at];
+      const box = el ? boxOnSlide(el, slide.parts[at!]?.box) : null;
+      // What a container places is moved and resized through its container, not by hand.
+      if (!e || !el || !box || inStack(el)) return;
       e.currentTarget.setPointerCapture(e.pointerId);
       const rect = layerRef.current!.getBoundingClientRect();
-      setDrag({ index: at, handle, start: box, box, x: (e.clientX - rect.left) / zoom, y: (e.clientY - rect.top) / zoom });
+      setDrag({ index: at as number, handle, start: box, box, x: (e.clientX - rect.left) / zoom, y: (e.clientY - rect.top) / zoom });
     },
-    [slide.doc, zoom, layerRef],
+    [slide.doc, slide.parts, zoom, layerRef],
   );
   const onMove = (e: PointerEvent) => {
     if (!drag) return;
@@ -342,18 +355,18 @@ function useEditorInput(
       return setSelected(null);
     }
     const box = boxes[selected] && dragBox(boxes[selected], [0, 0], action[0], action[1]);
-    if (!box) return;
+    if (!box || inStack(elementsOf(slide.doc!)[selected])) return;
     place(selected, box);
     slide.change((els) => setBox(els[selected], box), false);
   };
   return { boxes, selected, select: setSelected, drag, point, startDrag, onMove, onUp, onKey };
 }
 
-function Selection({ box, zoom, onHandle }: { box: Box; zoom: number; onHandle: (e: PointerEvent, handle: [number, number]) => void }) {
+function Selection({ box, zoom, handles, onHandle }: { box: Box; zoom: number; handles: boolean; onHandle: (e: PointerEvent, handle: [number, number]) => void }) {
   const [x, y, w, h] = box.map((v) => v * zoom);
   return (
     <div className="pointer-events-none absolute border-2 border-[var(--accent)]" style={{ left: x - 1, top: y - 1, width: w + 2, height: h + 2 }}>
-      {HANDLES.map(([hx, hy]) => (
+      {(handles ? HANDLES : []).map(([hx, hy]) => (
         <span
           key={`${hx}${hy}`}
           aria-hidden
@@ -436,9 +449,13 @@ function useEditedSlide(
    * keeps the parts in step with elements the edit added, took out or moved in the stack. */
   const change = (edit: (elements: Element[]) => void, redraw: boolean, reorder?: (parts: SlidePart[]) => SlidePart[]) => {
     if (!loaded) return;
+    const hadStack = hasStack(loaded.doc);
     edit(elementsOf(loaded.doc));
     const source = writeSection(loaded.doc);
-    setLoaded({ doc: loaded.doc, parts: reorder ? reorder(loaded.parts) : loaded.parts, drawn: loaded.drawn + 1 });
+    // Where a container puts what it holds is the server's layout: the slide is read again.
+    const laidOut = hadStack || hasStack(loaded.doc);
+    redraw = redraw || laidOut;
+    setLoaded({ doc: loaded.doc, parts: reorder && !laidOut ? reorder(loaded.parts) : loaded.parts, drawn: loaded.drawn + 1 });
     queue.current = queue.current.then(() =>
       saveSlideSource(threadId, path, index, source, version.current).then(
         (saved) => {

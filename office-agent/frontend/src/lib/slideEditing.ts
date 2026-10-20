@@ -3,7 +3,7 @@ import { parseSection, writeSection, type Box } from "./slideSource";
 import type { DesignSystem } from "./slideText";
 
 export interface SlidePart {
-  kind: "text" | "drawing" | "refused";
+  kind: "text" | "drawing" | "stack" | "refused";
   box: Box | null;
   /** An SVG data URI of the element alone, `PICTURE_MARGIN` px past its box; null for text. */
   picture: string | null;

@@ -14,7 +14,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from xml.etree import ElementTree as ET
 
-from .section_layout import LayoutError, expand_stacks
+from .section_layout import Laid, LayoutError, expand_stacks
 from .text_layout import Font, Paragraph, Run, text_height
 
 CANVAS = (1920, 1080)
@@ -139,11 +139,24 @@ class TextElement:
 
 
 @dataclass
+class Node:
+    """An element of the section as written: a container or what it holds, in document order.
+    `index` is its place in `Section.elements` (a container's is its card, when it has one) and
+    `box` where the layout put it."""
+
+    path: tuple[int, ...]
+    stack: bool
+    index: int | None
+    box: tuple[float, float, float, float] | None
+
+
+@dataclass
 class Section:
     background: str | None
     font: str
     colour: str
     elements: list[tuple[ET.Element, Style]] = field(default_factory=list)
+    nodes: list[Node] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
     transition: str | None = None
 
@@ -183,12 +196,33 @@ def parse_section(text: str) -> Section:
         transition=_named(root, "data-transition", TRANSITIONS),
     )
     try:
-        expand_stacks(root, _text_measure(section))
+        laid = expand_stacks(root, _text_measure(section))
     except LayoutError as e:
         raise SectionError(str(e)) from None
+    placed: dict[int, int] = {}
     for child in root:
+        before = len(section.elements)
         _read_child(section, child)
+        if len(section.elements) > before:
+            placed[id(child)] = before
+    section.nodes = _nodes(section, laid, placed)
     return section
+
+
+def _nodes(section: Section, laid: Laid, placed: dict[int, int]) -> list[Node]:
+    nodes = []
+    for path in sorted({*laid.leaf, *laid.boxes}):
+        stack = path in laid.boxes
+        elem = laid.looks.get(path) if stack else laid.leaf[path]
+        index = None if elem is None else placed.get(id(elem))
+        box = laid.boxes.get(path)
+        if box is None and index is not None:
+            try:
+                box = section.elements[index][1].box()
+            except SectionError:
+                box = None
+        nodes.append(Node(path, stack, index, box))
+    return nodes
 
 
 def _text_measure(section: Section) -> Callable[[ET.Element, dict[str, str], float], float]:
