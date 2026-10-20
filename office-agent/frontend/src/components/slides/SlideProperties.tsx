@@ -8,7 +8,7 @@ import { ColourPicker } from "./SlideFormatBar";
 import { SlideMenu } from "./SlideMenu";
 import { ContainerProperties, ChildSizing } from "./SlideContainerProperties";
 import { ChartProperties } from "./SlideChartProperties";
-import { ImageProperties, ShapeProperties } from "./SlideObjectProperties";
+import { ImageProperties, ShadowProperties, ShapeProperties } from "./SlideObjectProperties";
 import { TableProperties } from "./SlideTableProperties";
 import { TextProperties, type EditorSelection } from "./SlideTextProperties";
 
@@ -64,12 +64,23 @@ export function SlideProperties({
         <>
           <ContainerProperties selection={selection} />
           <ShapeProperties selection={selection} design={design} />
+          <ShadowProperties selection={selection} design={design} />
         </>
       )}
       {selection?.kind === "table" && <TableProperties selection={selection} design={design} />}
-      {selection?.kind === "image" && <ImageProperties selection={selection} design={design} />}
+      {selection?.kind === "image" && (
+        <>
+          <ImageProperties selection={selection} design={design} />
+          <ShadowProperties selection={selection} design={design} />
+        </>
+      )}
       {selection?.kind === "chart" && <ChartProperties selection={selection} design={design} />}
-      {selection?.kind === "shape" && <ShapeProperties selection={selection} design={design} />}
+      {selection?.kind === "shape" && (
+        <>
+          <ShapeProperties selection={selection} design={design} />
+          {selection.element.getAttribute("data-shape") !== "line" && <ShadowProperties selection={selection} design={design} />}
+        </>
+      )}
       {selection && <ChildSizing selection={selection} />}
       {!selection && <SlideSettings slide={slide} onEdit={onEdit} loadSource={loadSource} />}
     </aside>

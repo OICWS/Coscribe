@@ -89,3 +89,42 @@ def test_a_bad_border_is_refused_with_what_to_write(tmp_path: Path) -> None:
     report = build_deck(pages, tmp_path / "o.pptx", resource_root=tmp_path)
     assert not report.ok
     assert any("border is" in e for page in report.pages for e in page.errors)
+
+
+def test_a_shadow_reaches_a_picture_and_a_shape_as_their_own_effect(tmp_path: Path) -> None:
+    xml = _slide_xml(tmp_path, "box-shadow:0px 8px 24px #112233 0.4")
+    shadow = re.search(r"<a:outerShdw[^>]*>.*?</a:outerShdw>", xml, re.S)
+    assert shadow is not None
+    # 24px of blur is 152400 EMU (6350 a px), an 8px drop 50800; the converter takes a quarter
+    # off the opacity because PowerPoint draws a shadow heavier than the preview does.
+    assert 'blurRad="152400"' in shadow[0] and 'dist="50800"' in shadow[0]
+    assert 'srgbClr val="112233"' in shadow[0] and 'alpha val="30000"' in shadow[0]
+
+
+def test_a_container_card_and_a_shape_take_the_same_shadow(tmp_path: Path) -> None:
+    source = (
+        '<section><x-shape data-shape="rect" style="left:100px;top:100px;width:300px;height:200px;'
+        'background:#FFFFFF;box-shadow:0px 6px 18px #000000"/>'
+        '<x-stack data-layout="row" style="left:600px;top:100px;width:600px;height:200px;'
+        'padding:20px;background:#FFFFFF;box-shadow:0px 6px 18px #000000">'
+        '<p style="flex-grow:1">Text</p></x-stack></section>'
+    )
+    pages = tmp_path / "pages"
+    pages.mkdir()
+    (pages / "01.html").write_text(source, encoding="utf-8")
+    report = build_deck(pages, tmp_path / "o.pptx", resource_root=tmp_path)
+    assert report.ok, [e for page in report.pages for e in page.errors]
+    with zipfile.ZipFile(tmp_path / "o.pptx") as pptx:
+        xml = pptx.read("ppt/slides/slide1.xml").decode()
+    assert xml.count("<a:outerShdw") == 2
+
+
+def test_a_shadow_that_is_not_one_is_refused_with_what_to_write(tmp_path: Path) -> None:
+    pages = tmp_path / "pages"
+    pages.mkdir()
+    _png(pages / "a.png")
+    (pages / "01.html").write_text(
+        f'<section><img src="a.png" style="{BOX};box-shadow:big"/></section>', encoding="utf-8"
+    )
+    report = build_deck(pages, tmp_path / "o.pptx", resource_root=tmp_path)
+    assert any("box-shadow is" in e for page in report.pages for e in page.errors)
