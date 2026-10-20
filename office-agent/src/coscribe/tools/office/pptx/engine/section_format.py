@@ -111,8 +111,11 @@ class Style:
             raise SectionError(f"{self.label}: {name} must be a number of px, got {raw!r}")
         return float(match.group(1))
 
-    def box(self) -> tuple[float, float, float, float]:
+    def box(self, *, flat: bool = False) -> tuple[float, float, float, float]:
+        """The element's box; `flat` lets one side be zero, for a horizontal or vertical line."""
         x, y, w, h = (self.px(name) for name in _BOX)
+        if flat and w >= 0 and h >= 0 and (w > 0 or h > 0):
+            return x, y, w, h
         if w <= 0 or h <= 0:
             raise SectionError(f"{self.label}: width and height must be positive")
         return x, y, w, h
