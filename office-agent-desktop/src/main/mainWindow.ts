@@ -30,7 +30,8 @@ import { titleBarWindowOptions } from "./windowChrome";
 import { sidecarProcess, shouldKeepRunningInBackground } from "./sidecar";
 
 const STARTUP_TIMEOUT_MS = 180_000;
-const POLL_INTERVAL_MS = 300;
+// A local TCP connect is cheap, and the poll's period is added to the wait on average by half.
+const POLL_INTERVAL_MS = 50;
 
 let mainWindow: BrowserWindow | undefined;
 
