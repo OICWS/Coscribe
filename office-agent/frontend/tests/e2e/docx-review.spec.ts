@@ -16,7 +16,7 @@ test.use({ viewport: { width: 1600, height: 1200 } });
 
 interface Review {
   changes: { id: string; kind: string }[];
-  comments: { id: string; text: string }[];
+  comments: { id: string; text: string; done: boolean; replies: { text: string }[] }[];
 }
 
 const threadOf = (page: Page) => new URL(page.url()).searchParams.get("thread") ?? "";
@@ -78,5 +78,57 @@ test("the Word panel accepts and rejects tracked changes, checked on the server"
     await expect.poll(async () => (await reviewOf(page, name)).changes).toEqual([]);
     await expect(page.locator(".docx-page del")).toHaveCount(0);
     await expect(page.locator(".docx-page")).toContainText("The total price is 100 dollars");
+  });
+});
+
+test("the Word panel replies to, resolves, reopens and adds comments, checked on the server", async ({ page }) => {
+  const name = `redline-${Math.random().toString(36).slice(2, 8)}`;
+  await openRedline(page, name);
+  const card = page.locator("article.absolute").filter({ hasText: "Final price?" });
+
+  await test.step("a reply is added to the thread", async () => {
+    await card.click();
+    await card.getByLabel("Reply").fill("It is 120 dollars");
+    await card.getByRole("button", { name: "Reply", exact: true }).click();
+    await expect.poll(async () => (await reviewOf(page, name)).comments[0].replies.map((r) => r.text)).toEqual([
+      "It is 120 dollars",
+    ]);
+    await expect(card).toContainText("It is 120 dollars");
+  });
+
+  await test.step("the thread is resolved and then reopened", async () => {
+    await card.click();
+    await card.getByRole("button", { name: "Resolve" }).click();
+    await expect.poll(async () => (await reviewOf(page, name)).comments[0].done).toBe(true);
+    await card.getByRole("button", { name: "Reopen" }).click();
+    await expect.poll(async () => (await reviewOf(page, name)).comments[0].done).toBe(false);
+  });
+
+  await test.step("a comment is added on selected words", async () => {
+    await page.evaluate(() => {
+      const para = [...document.querySelectorAll(".docx-page p")].find((p) =>
+        p.textContent?.includes("The agreement runs for one year."),
+      );
+      document.getSelection()?.selectAllChildren(para as Element);
+    });
+    await page.getByLabel("New comment").fill("Make it two years");
+    await page.getByRole("button", { name: "Comment", exact: true }).click();
+    await expect.poll(async () => (await reviewOf(page, name)).comments.map((c) => c.text)).toContain("Make it two years");
+  });
+
+  await test.step("a refused comment shows the server's reason", async () => {
+    await page.evaluate(() => {
+      const para = [...document.querySelectorAll(".docx-page p")].find((p) => p.textContent?.includes("Service agreement"));
+      document.getSelection()?.selectAllChildren(para as Element);
+    });
+    await page.route("**/docx-review", (route) =>
+      route.request().method() === "POST"
+        ? route.fulfill({ status: 400, json: { error: "those words appear twice" } })
+        : route.continue(),
+    );
+    await page.getByLabel("New comment").fill("Nope");
+    await page.getByRole("button", { name: "Comment", exact: true }).click();
+    await expect(page.getByText("those words appear twice")).toBeVisible();
+    await page.unroute("**/docx-review");
   });
 });
