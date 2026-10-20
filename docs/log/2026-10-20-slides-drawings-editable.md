@@ -21,8 +21,13 @@ could not be selected, and a table or a new shape changed look half a second aft
 - The editor draws a triangle, an arrow and a line as such before the server's picture arrives,
   not as a rectangle.
 
+- The editor takes keyboard focus back after a drag only when focus was dropped. #481's version
+  also ran after a click or double-click and took the focus from the table cell being typed
+  into, which failed `slides-panels.spec.ts` "table" on main.
+
 ## Not verified
-- Not run in a live server or the app, nor opened in PowerPoint.
+- Not opened in PowerPoint. The Slides e2e specs (`slides-panels`, `slides`) pass against a live
+  server with the stub model; the table spec fails without the focus change and passes with it.
 
 ## Follow-ups
 - Lines cannot yet be dragged by their ends to any direction; a line going up to the right stays a
