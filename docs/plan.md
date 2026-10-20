@@ -166,8 +166,9 @@ Last reviewed: 2026-10-15.
    number format are open). A human edit refused to be overwritten was judged not worth its code
    (a narrow window: an edit made while a turn runs).
    Next: step 5, opening the user's own .pptx. The
-   docx-preview actions are paused. A name for the user's own review actions in Settings is open;
-   until then they carry the computer's user name.
+   docx-preview actions: accept and reject are in the panel (#473); comments, the reviewer name in
+   Settings and "Ask coscribe" are open there. Until the name is set, actions carry the computer's
+   user name.
 
 1. **Make the repository easy to join** (governance review, 2026-10-08).
    - Done: `main` protected by a ruleset (PR only, squash, `test` required),

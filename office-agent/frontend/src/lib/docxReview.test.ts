@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { stackCards } from "./docxReview";
+import { settleAllChanges, settleChange, stackCards } from "./docxReview";
 
 const cards = [
   { id: "a", anchor: 100, height: 80 },
@@ -19,5 +19,17 @@ describe("stackCards", () => {
   it("pushes the cards after the active one down when they would overlap it", () => {
     const close = [...cards.slice(0, 2), { id: "c", anchor: 130, height: 40 }];
     expect(stackCards(close, "b", 8)).toEqual({ a: 32, b: 120, c: 188 });
+  });
+});
+
+describe("review actions as operations", () => {
+  it("accepts or rejects one change by its id", () => {
+    expect(settleChange("7", true)).toEqual([{ op: "accept", change: "7" }]);
+    expect(settleChange("7", false)).toEqual([{ op: "reject", change: "7" }]);
+  });
+
+  it("accepts or rejects every change", () => {
+    expect(settleAllChanges(true)).toEqual([{ op: "accept_all" }]);
+    expect(settleAllChanges(false)).toEqual([{ op: "reject_all" }]);
   });
 });

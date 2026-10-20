@@ -544,6 +544,10 @@ body {
   color: #b42318;
   text-decoration: line-through;
 }
+.docx-viewer .docx-selected {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 1px;
+}
 .docx-viewer .docx-flash {
   animation: docx-flash 1.2s ease-out;
 }

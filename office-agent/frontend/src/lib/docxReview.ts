@@ -30,6 +30,19 @@ export interface DocxReview {
   comments: DocxComment[];
 }
 
+/** One operation of `POST /api/threads/{id}/docx-review`, the shapes of `tools/office/docx/_review.py`. */
+export type DocxOperation =
+  | { op: "accept" | "reject"; change: string }
+  | { op: "accept_all" | "reject_all" };
+
+export const settleChange = (changeId: string, accept: boolean): DocxOperation[] => [
+  { op: accept ? "accept" : "reject", change: changeId },
+];
+
+export const settleAllChanges = (accept: boolean): DocxOperation[] => [
+  { op: accept ? "accept_all" : "reject_all" },
+];
+
 export type DocxView = "review" | "final" | "original";
 
 const base = (threadId: string, path: string, suffix = "") =>
@@ -43,6 +56,17 @@ async function ok(res: Response): Promise<Response> {
 
 export async function getDocxReview(threadId: string, path: string): Promise<DocxReview> {
   return (await ok(await fetch(base(threadId, path)))).json() as Promise<DocxReview>;
+}
+
+/** Applies `operations` all or nothing; a refusal throws with the server's reason. */
+export async function editDocxReview(threadId: string, path: string, operations: DocxOperation[]): Promise<void> {
+  await ok(
+    await fetch(`/api/threads/${encodeURIComponent(threadId)}/docx-review`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, operations }),
+    }),
+  );
 }
 
 /** The file's bytes for `view`: the Original view is a copy with every change rejected. */
