@@ -125,7 +125,7 @@ export function SlideEditor({
   );
 }
 
-const KINDS: Record<string, EditorSelection["kind"]> = { h1: "text", h2: "text", h3: "text", p: "text", ul: "text", ol: "text", table: "table", img: "image", "x-shape": "shape", "x-chart": "chart", [STACK]: "container" };
+const KINDS: Record<string, EditorSelection["kind"]> = { h1: "text", h2: "text", h3: "text", p: "text", ul: "text", ol: "text", table: "table", img: "image", "x-shape": "shape", "x-chart": "chart", svg: "drawing", [STACK]: "container" };
 
 const isTable = (doc: Document | null, at: number) => !!doc && elementsOf(doc)[at]?.localName === "table";
 

@@ -247,7 +247,7 @@ def _shape(elem: ET.Element, style: Style, drawing: ET.Element) -> ET.Element:
         raise SectionError(f"{label(elem)}: data-shape is one of {', '.join(SHAPES)}")
     if len(elem) or (elem.text or "").strip():
         raise SectionError(f"{label(elem)} holds no text; put a <p> over it")
-    x, y, w, h = style.box()
+    x, y, w, h = style.box(flat=kind == "line")
     paint = _paint(elem, style, kind == "line")
     _shadow(elem, style, drawing, paint)
     if kind == "rect":

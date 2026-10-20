@@ -74,6 +74,7 @@ export function SlideProperties({
           <ShadowProperties selection={selection} design={design} />
         </>
       )}
+      {selection?.kind === "drawing" && <DrawingNote />}
       {selection?.kind === "chart" && <ChartProperties selection={selection} design={design} />}
       {selection?.kind === "shape" && (
         <>
@@ -85,6 +86,18 @@ export function SlideProperties({
       {selection && <Arrange entries={selection.arrange} />}
       {!selection && <SlideSettings slide={slide} onEdit={onEdit} loadSource={loadSource} />}
     </aside>
+  );
+}
+
+/** What a drawing is, since it has nothing to edit here: its shapes are the slide's own artwork. */
+function DrawingNote() {
+  return (
+    <Section title="Drawing">
+      <p className="text-sm leading-relaxed text-[var(--muted)]">
+        Artwork that came with the slide. Move or resize it on the slide; to change what it shows, leave a comment on it or ask
+        coscribe.
+      </p>
+    </Section>
   );
 }
 

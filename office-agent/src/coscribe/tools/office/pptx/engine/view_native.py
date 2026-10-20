@@ -24,7 +24,7 @@ _P = "{http://schemas.openxmlformats.org/presentationml/2006/main}"
 _R = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
 _CHART_URI = "http://schemas.openxmlformats.org/drawingml/2006/chart"
 _TABLE_URI = "http://schemas.openxmlformats.org/drawingml/2006/table"
-_PX_PER_PT = 96 / 72
+_EMU_PER_PT = 12700
 # PowerPoint's defaults where the XML says nothing.
 _CELL_MARGIN_X, _CELL_MARGIN_Y = 91440, 45720
 _CHART_TEXT = "595959"
@@ -56,7 +56,7 @@ def native_drawings(slide: Any, emu_per_px: float, font: str) -> list[str]:
             ref = data.find(f"{_C}chart")
             part = slide.part.related_part(ref.get(f"{_R}id")) if ref is not None else None
             space = etree.fromstring(part.blob) if part is not None else None
-            drawings.append(_chart(space, box, font) if space is not None else "")
+            drawings.append(_chart(space, box, font, emu_per_px) if space is not None else "")
     return drawings
 
 
@@ -145,8 +145,8 @@ def _cell_lines(tc: Any, width: float, emu: float, font: str) -> tuple[list[Any]
     for p in tc.iter(f"{_A}p"):
         ppr = p.find(f"{_A}pPr")
         align = ppr.get("algn", "l") if ppr is not None else "l"
-        runs = [(r.findtext(f"{_A}t") or "", _run_style(r, font)) for r in p.iter(f"{_A}r")]
-        size = max((s["size"] for _t, s in runs), default=18 * _PX_PER_PT)
+        runs = [(r.findtext(f"{_A}t") or "", _run_style(r, font, emu)) for r in p.iter(f"{_A}r")]
+        size = max((s["size"] for _t, s in runs), default=18 * _EMU_PER_PT / emu)
         lines.extend((align, line, size) for line in _wrap(runs, inner))
     return lines, sum(size * _LINE_HEIGHT for _a, _l, size in lines)
 
@@ -181,7 +181,7 @@ def _text_line(runs: list[Any], align: str, x: float, w: float, baseline: float,
     return f'<text x="{at:.2f}" y="{baseline:.2f}" text-anchor="{anchor}">{spans}</text>'
 
 
-def _run_style(run: Any, font: str) -> dict[str, Any]:
+def _run_style(run: Any, font: str, emu: float) -> dict[str, Any]:
     rpr = run.find(f"{_A}rPr")
     get = rpr.get if rpr is not None else (lambda _k, d=None: d)
     face = None
@@ -192,7 +192,7 @@ def _run_style(run: Any, font: str) -> dict[str, Any]:
                 face = el.get("typeface")
                 break
     return {
-        "size": int(get("sz", 1800)) / 100 * _PX_PER_PT,
+        "size": int(get("sz", 1800)) / 100 * _EMU_PER_PT / emu,
         "weight": "bold" if get("b") == "1" else "normal",
         "style": "italic" if get("i") == "1" else "normal",
         "colour": (_solid(rpr) if rpr is not None else None) or "000000",
@@ -247,12 +247,12 @@ def _width(text: str, style: dict[str, Any]) -> float:
 # Charts
 
 
-def _chart(space: Any, box: tuple[float, float, float, float], font: str) -> str:
+def _chart(space: Any, box: tuple[float, float, float, float], font: str, emu: float) -> str:
     x, y, w, h = box
     plot = space.find(f"{_C}chart/{_C}plotArea")
     kinds = [etree.QName(el).localname for el in plot] if plot is not None else []
     kind = next((k for k in kinds if k.endswith("Chart")), None)
-    size = _text_size(space)
+    size = _text_size(space, emu)
     colour = _text_colour(space)
     out: list[str] = []
     title = _title(space)
@@ -556,10 +556,10 @@ def _title(space: Any) -> str:
     return "".join(t.text or "" for t in title.iter(f"{_A}t"))
 
 
-def _text_size(space: Any) -> float:
+def _text_size(space: Any, emu: float) -> float:
     defrpr = space.find(f".//{_C}txPr//{_A}defRPr[@sz]")
     pt = int(defrpr.get("sz")) / 100 if defrpr is not None else _CHART_SIZE_PT
-    return pt * _PX_PER_PT
+    return pt * _EMU_PER_PT / emu
 
 
 def _text_colour(space: Any) -> str:

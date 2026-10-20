@@ -56,6 +56,16 @@ def test_a_sections_chart_table_and_icon_are_drawn_as_built(tmp_path: Path) -> N
     assert 'data-native="chart"' in chart and "data-icon" not in chart and "metadata" not in chart
 
 
+def test_a_sections_table_text_is_drawn_at_the_size_the_section_says(tmp_path: Path) -> None:
+    section = (
+        '<section><table style="left:160px;top:250px;width:1600px;height:240px;font-size:28px">'
+        "<tr><th>Item</th><th>Status</th></tr><tr><td>One</td><td>Done</td></tr></table></section>"
+    )
+    svg = slide_svg(_deck(tmp_path, ("01.html", section)), 0, tmp_path)
+    sizes = set(re.findall(r'font-size="([\d.]+)"', svg[svg.index('data-native="table"') :]))
+    assert sizes == {"28.00"}
+
+
 def test_long_text_wraps_inside_its_box(tmp_path: Path) -> None:
     words = "Revenue grew in every region this quarter " * 4
     section = (

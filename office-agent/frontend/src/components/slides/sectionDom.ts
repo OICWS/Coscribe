@@ -74,9 +74,11 @@ function drawnHere(el: Element, style: Map<string, string>, [x, y, w, h]: Box, e
   Object.assign(node.style, { position: "absolute", left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px` });
   if (el.localName === "x-shape") {
     const shape = el.getAttribute("data-shape") ?? "rect";
+    if (shape === "line") return lineNode(node, w, h, style);
     applyStyle(node, new Map([...style].filter(([name]) => ["background", "border", "opacity"].includes(name))));
     if (shape === "ellipse") node.style.borderRadius = "50%";
     if (shape === "round-rect") node.style.borderRadius = style.get("border-radius") ?? `${Math.round(Math.min(w, h) * 0.12)}px`;
+    if (shape === "triangle" || shape === "arrow") node.style.clipPath = `polygon(${(shape === "triangle" ? trianglePoints(w, h) : arrowPoints(w, h)).map(([px, py]) => `${px}px ${py}px`).join(",")})`;
     return node;
   }
   if (el.localName !== "table") return null;
@@ -91,6 +93,29 @@ function drawnHere(el: Element, style: Map<string, string>, [x, y, w, h]: Box, e
     const tr = node.appendChild(document.createElement("tr"));
     for (const cell of Array.from(row.children)) tr.append(drawCell(cell, style, editable));
   }
+  return node;
+}
+
+/** The corners the compiler gives a triangle and an arrow in a `w` by `h` box. */
+const trianglePoints = (w: number, h: number): [number, number][] => [[w / 2, 0], [w, h], [0, h]];
+function arrowPoints(w: number, h: number): [number, number][] {
+  const head = Math.min(h, w / 2);
+  const shaft = h * 0.3;
+  return [[0, shaft], [w - head, shaft], [w - head, 0], [w, h / 2], [w - head, h], [w - head, h - shaft], [0, h - shaft]];
+}
+
+/** A line from the box's top left to its bottom right, in the border's colour and width. */
+function lineNode(node: HTMLElement, w: number, h: number, style: Map<string, string>): HTMLElement {
+  const border = /^(\d+(?:\.\d+)?)px\s+\w+\s+(#\w+)/.exec(style.get("border") ?? "");
+  const [width, colour] = border ? [border[1], border[2]] : ["4", "#000000"];
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("width", String(w));
+  svg.setAttribute("height", String(h));
+  svg.style.overflow = "visible";
+  const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  for (const [name, value] of Object.entries({ x1: "0", y1: "0", x2: String(w), y2: String(h), stroke: colour, "stroke-width": width })) line.setAttribute(name, value);
+  svg.append(line);
+  node.append(svg);
   return node;
 }
 
