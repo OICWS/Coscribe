@@ -15,6 +15,8 @@ const INSERTS: Insert[] = [
   { kind: "table" },
   ...(["rect", "round-rect", "ellipse", "triangle", "arrow", "line"] as const).map((shape) => ({ kind: "shape" as const, shape })),
   { kind: "picture", src: "assets/picture.png", width: 400, height: 300 },
+  { kind: "container", layout: "row" },
+  { kind: "container", layout: "column" },
 ];
 
 /** Every source these functions produce, by a name that says how; `tests/test_slide_sources.py`

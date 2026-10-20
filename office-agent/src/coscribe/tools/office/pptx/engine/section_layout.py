@@ -139,6 +139,8 @@ class _Child:
             self.basis = self.fixed_main
         self.main = 0.0
         self.cross = 0.0
+        # Sized by its content (text, a container with no height): it never shrinks below it.
+        self.hug = False
 
 
 def _place(
@@ -226,6 +228,7 @@ class _Context:
                 raise LayoutError(f"{_name(k.elem)}: in a row it needs a width or flex-grow")
             else:
                 k.main = self._content_height(k, k.cross)
+                k.hug = True
         self._share_room(kids)
         for k in kids:
             if self.row:
@@ -269,10 +272,11 @@ class _Context:
                     k.main += free * k.grow / weight
                 free = 0.0
         elif free < 0:
-            weight = sum(k.shrink * k.main for k in kids)
+            weight = sum(k.shrink * k.main for k in kids if not k.hug)
             if weight > 0:
                 for k in kids:
-                    k.main = max(0.0, k.main + free * k.shrink * k.main / weight)
+                    if not k.hug:
+                        k.main = max(0.0, k.main + free * k.shrink * k.main / weight)
                 free = 0.0
         self.leftover = max(free, 0.0)
 

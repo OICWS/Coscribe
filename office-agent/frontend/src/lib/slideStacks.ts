@@ -70,15 +70,39 @@ export function moveInto(node: Element, stack: Element, at: number) {
   const from = node.parentElement;
   const fromRow = from?.localName === STACK ? isRow(from) : null;
   if (fromRow !== row) {
-    for (const name of ["left", "top", ...FLEX]) setStyle(node, name, null);
-    if (FLOWS.has(node.localName)) {
-      setStyle(node, "height", null);
-      if (!row) setStyle(node, "width", null);
-    }
-  }
-  if (row && FLOWS.has(node.localName) && !styleOf(node, "width") && !styleOf(node, "flex-grow")) setStyle(node, "flex-grow", "1");
+    for (const name of ["left", "top"]) setStyle(node, name, null);
+    refit(node, row);
+  } else shareRoom(node, row);
   const others = Array.from(stack.children).filter((child) => child !== node && child.localName !== "aside");
   stack.insertBefore(node, others[at] ?? null);
+}
+
+/** What a child sizes by its content has no height of its own (and in a column no width); in a
+ * row, text with no width takes a share of the room. The sizes of the old direction go. */
+function refit(node: Element, row: boolean) {
+  for (const name of FLEX) setStyle(node, name, null);
+  if (FLOWS.has(node.localName)) {
+    setStyle(node, "height", null);
+    if (!row) setStyle(node, "width", null);
+  }
+  shareRoom(node, row);
+}
+
+function shareRoom(node: Element, row: boolean) {
+  if (row && FLOWS.has(node.localName) && !styleOf(node, "width") && !styleOf(node, "flex-grow")) setStyle(node, "flex-grow", "1");
+}
+
+/** The container as a row or a column, with what it holds fitted to the new direction. */
+export function setDirection(stack: Element, row: boolean) {
+  stack.setAttribute("data-layout", row ? "row" : "column");
+  for (const child of Array.from(stack.children)) if (child.localName !== "aside") refit(child, row);
+}
+
+/** The element after (1) or before (-1) `el` among what its parent holds, leaving notes out. */
+export function siblingOf(el: Element, step: 1 | -1): Element | null {
+  let other = step > 0 ? el.nextElementSibling : el.previousElementSibling;
+  while (other && other.localName === "aside") other = step > 0 ? other.nextElementSibling : other.previousElementSibling;
+  return other;
 }
 
 /** `node`, out of its container, onto the slide at `box`, above everything else. */
