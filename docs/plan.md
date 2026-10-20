@@ -185,6 +185,11 @@ Last reviewed: 2026-10-15.
    collaborator and an owner on every `.github/CODEOWNERS` line. Left: an admin turns on
    "require code owner review" in the repository ruleset (a settings change, not a PR).
 
+3. **Startup and idle cost of the server** (#478): measured in `docs/metrics/2026-10-20-startup-cost.md`
+   (about 1.9 s to ready, 135 MiB idle; the Office libraries are ~0.2 s and ~25 MiB of it). Next: lazy
+   imports of those libraries with an import budget in the ratchet; the sidecar started earlier in the
+   Electron shell.
+
 ## Needs the maintainer's testing (could not be verified here)
 
 - Sign-in of the 13 connectors added for the skill plugins (only the
