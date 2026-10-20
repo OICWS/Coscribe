@@ -208,8 +208,8 @@ test("bring forward on a child of a container swaps it with its sibling", async 
   await settled(page);
 
   await clickSlide(page, first[0] + first[2] / 2, first[1] + first[3] / 2);
-  await page.getByRole("button", { name: "More" }).click();
-  await page.getByRole("menuitem", { name: /^Bring forward/ }).click();
+  await page.getByRole("button", { name: "Properties", exact: true }).click();
+  await page.getByRole("complementary", { name: "Slide properties" }).getByRole("button", { name: "Bring forward" }).click();
 
   await expect.poll(async () => (await describeSource(page, pageSource(name, "03-row.html"))).stack).toEqual(["second", "first"]);
   // The layout puts "First" where "Second" was, and "Second" where "First" was.

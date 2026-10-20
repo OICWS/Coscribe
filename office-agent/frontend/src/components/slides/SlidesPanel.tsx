@@ -232,6 +232,7 @@ function SlideEditing({
       onProblem={onProblem}
       onComment={ui.setCommentAt}
       onSelection={ui.setSelection}
+      onMore={() => ui.setPropertiesShown(true)}
       insert={ui.insert}
       onInserted={ui.clearInsert}
       onExit={ui.stopEditing}

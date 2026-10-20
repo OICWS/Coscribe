@@ -23,13 +23,13 @@ interface FormatActions {
   toggle: (what: "bold" | "italic" | "underline" | "list") => void;
   align: (align: Align) => void;
   comment: () => void;
-  more: (anchor: DOMRect) => void;
+  more: () => void;
 }
 
 const NEXT_ALIGN: Record<Align, Align> = { left: "center", center: "right", right: "left" };
 
 /** The floating bar over the selected element (design §3): for text its style, colour, bold,
- * italic, underline, list and alignment; for anything, a comment and the More menu. Pressing
+ * italic, underline, list and alignment; for anything, a comment and the properties panel. Pressing
  * one keeps the text's own selection, so a change applies to the words selected. */
 export function SlideFormatBar({
   x,
@@ -101,7 +101,7 @@ export function SlideFormatBar({
       <Toggle label="Comment" on={false} onClick={actions.comment}>
         <CommentPlusIcon className="h-4 w-4" />
       </Toggle>
-      <Toggle label="More" on={false} onClick={(e) => actions.more(e.currentTarget.getBoundingClientRect())}>
+      <Toggle label="Properties" on={false} onClick={actions.more}>
         <MoreIcon className="h-4 w-4" />
       </Toggle>
       {open && text && <BarPopup open={open} text={text} colours={colours} actions={actions} onClose={() => setOpen(null)} />}
