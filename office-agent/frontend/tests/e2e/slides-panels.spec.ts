@@ -217,6 +217,28 @@ test("bring forward on a child of a container swaps it with its sibling", async 
   expect((await partsOf(page, name, 2))?.parts[1].box?.[0]).toBe(first[0]);
 });
 
+test("line: its ends are dragged to any direction, and the line turns when they cross", async ({ page }) => {
+  const name = freshDeckName();
+  await openSectionDeck(page, name);
+  await goToSlide(page, 4);
+  const LINE = "04-line.html";
+  await clickSlide(page, 700, 300);
+  await expect(page.locator("[data-line-end]")).toHaveCount(2);
+
+  await test.step("the right end is pulled down: the line slopes down to the right", async () => {
+    await dragOnSlide(page, [1000, 300], [1000, 500]);
+    await expect.poll(() => pageSource(name, LINE)).toMatch(/left:400px;top:300px;width:600px;height:200px/);
+    expect(pageSource(name, LINE)).not.toContain("data-direction");
+  });
+
+  await test.step("the left end is pulled below the right one: the line rises to the right", async () => {
+    await settled(page);
+    await dragOnSlide(page, [400, 300], [400, 700]);
+    await expect.poll(() => pageSource(name, LINE)).toContain('data-direction="up"');
+    expect(pageSource(name, LINE)).toMatch(/left:400px;top:500px;width:600px;height:200px/);
+  });
+});
+
 test("the comments card closes on a click outside and on Escape", async ({ page }) => {
   const name = freshDeckName();
   await openSectionDeck(page, name);

@@ -47,8 +47,20 @@ async function json<T>(response: Response): Promise<T> {
   throw body.changed ? new SlideChangedError(message, body.changed) : new Error(message);
 }
 
+/** A read that never reached the server (a dropped connection, Windows out of socket buffers) is
+ * tried once more; an answer from the server, an error too, is not. */
+async function fetchAgain(input: string): Promise<Response> {
+  try {
+    return await fetch(input);
+  } catch (e) {
+    if (!(e instanceof TypeError)) throw e;
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    return fetch(input);
+  }
+}
+
 export const getSlideParts = async (threadId: string, path: string, index: number) =>
-  json<SlideParts>(await fetch(`${url(threadId, index, "parts")}?path=${encodeURIComponent(path)}`));
+  json<SlideParts>(await fetchAgain(`${url(threadId, index, "parts")}?path=${encodeURIComponent(path)}`));
 
 export const saveSlideSource = async (threadId: string, path: string, index: number, source: string, version: string) =>
   json<SavedSlide>(

@@ -231,11 +231,12 @@ def test_plain_shapes_become_the_sections_own_shapes_in_the_same_place(tmp_path:
     section = convert_page(SHAPES)[0]
     tags = [el.tag for el, _style in parse_section(section).elements]
     kinds = re.findall(r'data-shape="([\w-]+)"', section)
-    # The ring, the ellipse, the card, three lines (the one going up stays a drawing), the card
-    # group's two shapes: everything but the up-going line, the shadowed and the gradient shape.
-    assert kinds == ["ellipse", "ellipse", "round-rect", "line", "line", "round-rect", "rect"]
+    # The ring, the ellipse, the card, the three lines (one rises to the right), the card group's
+    # two shapes: everything but the shadowed and the gradient shape.
+    assert kinds == ["ellipse", "ellipse", "round-rect"] + ["line"] * 3 + ["round-rect", "rect"]
+    assert section.count('data-direction="up"') == 1
     drawings = [t for t in tags if t.endswith("}svg")]
-    assert len(drawings) == 4  # the defs, the up-going line, the shadowed group, the gradient shape
+    assert len(drawings) == 3  # the defs, the shadowed group, the gradient shape
     page, converted, _kept = _both(tmp_path, SHAPES)
     assert _shapes(converted) == _shapes(page)
     assert _texts(converted) == _texts(page)
@@ -267,3 +268,20 @@ def _paints(deck: Path) -> list[list[tuple[str, str, str, str]]]:
 def test_converted_shapes_keep_their_paint(tmp_path: Path) -> None:
     page, converted, _kept = _both(tmp_path, SHAPES)
     assert sorted(_paints(converted)[0]) == sorted(_paints(page)[0])
+
+
+def test_a_line_rising_to_the_right_keeps_its_direction(tmp_path: Path) -> None:
+    page, converted, _kept = _both(tmp_path, SHAPES)
+
+    def paths(deck: Path) -> list[tuple[tuple[str, str], ...]]:
+        """Each line's drawn points, from its geometry: a rising line starts low and ends high."""
+        found = []
+        for root in _slides(deck):
+            for geom in root.iter(f"{_A}custGeom"):
+                points = tuple((p.get("x", ""), p.get("y", "")) for p in geom.iter(f"{_A}pt"))
+                found.append(points)
+        return sorted(found)
+
+    assert paths(converted) == paths(page)
+    rising = [p for p in paths(page) if len(p) == 2 and int(p[0][1]) > int(p[1][1])]
+    assert len(rising) == 1

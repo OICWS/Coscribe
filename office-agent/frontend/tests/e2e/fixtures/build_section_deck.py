@@ -2,7 +2,7 @@
 the properties-panel and container specs: `python build_section_deck.py <workspace> <name>` writes
 `<name>.pptx` and its pages folder. The first slide holds a text box, a table and a shape; the
 second only a title, with room for a container to be inserted; the third has a row container of two
-texts and a loose text below it."""
+texts and a loose text below it; the fourth a flat line."""
 
 import shutil
 import sys
@@ -32,6 +32,10 @@ ROW = """<section>
   <p id="loose" style="left:160px;top:800px;width:600px;height:80px;font-size:36px">Loose</p>
 </section>"""
 
+LINE = """<section>
+  <x-shape id="rule" data-shape="line" style="left:400px;top:300px;width:600px;height:0px;border:6px solid #C2410C"/>
+</section>"""
+
 workspace, name = Path(sys.argv[1]), sys.argv[2]
 folder = workspace / f"{name}-pages"
 shutil.rmtree(folder, ignore_errors=True)
@@ -39,6 +43,7 @@ folder.mkdir(parents=True)
 (folder / "01-panels.html").write_text(PANELS, encoding="utf-8")
 (folder / "02-empty.html").write_text(EMPTY, encoding="utf-8")
 (folder / "03-row.html").write_text(ROW, encoding="utf-8")
+(folder / "04-line.html").write_text(LINE, encoding="utf-8")
 report = build_deck(folder, workspace / f"{name}.pptx", resource_root=workspace)
 if not report.ok:
     sys.exit(f"the deck did not build: {report}")

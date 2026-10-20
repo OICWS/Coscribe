@@ -90,7 +90,8 @@ A slide is one `<section>` of well-formed XHTML on a 1920 x 1080 canvas. Close e
 - **Shapes**: `<x-shape data-shape="rect|round-rect|ellipse|triangle|arrow|line">` with
   `background`, `border` ("2px solid #RRGGBB" or "dashed"), `border-radius` (round-rect) and
   `opacity`. A shape holds no text: put a `p` over it. A `line` is drawn by its border, from the
-  box's top-left to its bottom-right corner.
+  box's top-left to its bottom-right corner, or from the bottom-left to the top-right with
+  `data-direction="up"`; a horizontal line has `height:0px`, a vertical one `width:0px`.
 - **Pictures**: `<img src="photo.jpg" style="...; object-fit:cover"/>`, the file in the deck
   folder; `cover` crops to fill the box, `contain` fits it whole.
   A picture takes `border-radius` (rounded corners), `border` (as for a shape) and `opacity`; all

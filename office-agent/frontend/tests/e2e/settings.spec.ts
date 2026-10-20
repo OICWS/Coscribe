@@ -29,6 +29,23 @@ test("General tab: a change saves itself", async ({ page }) => {
   await expect(page.getByRole("status")).toHaveText(/^Saved/);
 });
 
+test("General tab: the reviewer name saves and is cleared again", async ({ page }) => {
+  await page.goto(freshThreadPath("settings"));
+  await waitForConnected(page);
+  const configLoaded = page.waitForResponse((r) => r.url().includes("/api/config") && r.status() === 200);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await configLoaded;
+
+  const field = page.getByLabel("Reviewer name");
+  await field.fill("Dana Lee");
+  await expect(page.getByRole("status")).toHaveText(/^Saved/);
+  const reviewer = () => page.evaluate(() => fetch("/api/config").then((r) => r.json())).then((c) => c.COSCRIBE_REVIEWER_NAME);
+  expect(await reviewer()).toBe("Dana Lee");
+
+  await field.fill("");
+  await expect.poll(reviewer).toBeNull();
+});
+
 test("General tab: Default Mode saves", async ({ page }) => {
   await page.goto(freshThreadPath("settings-mode"));
   await waitForConnected(page);

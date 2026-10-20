@@ -405,7 +405,7 @@ def _shape(elem: ET.Element, scale: float, dx: float = 0.0, dy: float = 0.0) -> 
     tag = _local(elem)
     if set(elem.attrib) - _SHAPE_ATTRS[tag]:
         raise _Unsupported("")
-    kind, extra = "rect", ""
+    kind, extra, attrs = "rect", "", ""
     if tag == "rect":
         x, y = _number(elem, "x", 0.0) + dx, _number(elem, "y", 0.0) + dy
         w, h = _number(elem, "width"), _number(elem, "height")
@@ -420,9 +420,11 @@ def _shape(elem: ET.Element, scale: float, dx: float = 0.0, dy: float = 0.0) -> 
             (_number(elem, "x2") + dx, _number(elem, "y2") + dy),
         ]
         (x, y), (x2, y2) = sorted(ends)
-        if y2 < y:
-            raise _Unsupported("")
+        rises = y2 < y
+        if rises:
+            y, y2 = y2, y
         w, h, kind = x2 - x, y2 - y, "line"
+        attrs = ' data-direction="up"' if rises else ""
     else:
         cx, cy = _number(elem, "cx") + dx, _number(elem, "cy") + dy
         rx = _number(elem, "r") if tag == "circle" else _number(elem, "rx")
@@ -433,7 +435,7 @@ def _shape(elem: ET.Element, scale: float, dx: float = 0.0, dy: float = 0.0) -> 
     css = _paint(elem, scale, fill=kind != "line")
     box = f"left:{x * scale:g}px;top:{y * scale:g}px;width:{w * scale:g}px;height:{h * scale:g}px"
     ident = f' id="{_attr(elem.get("id", ""))}"' if elem.get("id") else ""
-    return f'<x-shape{ident} data-shape="{kind}" style="{box};{css}{extra}"/>'
+    return f'<x-shape{ident} data-shape="{kind}"{attrs} style="{box};{css}{extra}"/>'
 
 
 def _group_shapes(group: ET.Element, scale: float) -> list[str] | None:

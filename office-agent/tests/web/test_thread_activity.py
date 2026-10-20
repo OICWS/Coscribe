@@ -267,6 +267,34 @@ def test_the_word_review_routes_read_act_on_and_show_the_original_lg(
     assert refused.json()["error"] == threads_routes.CANNOT_CHANGE_FILE
 
 
+def test_the_word_review_actions_carry_the_reviewer_name_from_settings_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(threads_routes.getpass, "getuser", lambda: "ana")
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    DocumentToolkit(workspace).write_docx(path="c.docx", content="Pay. {{comment: Final?}}")
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        url = "/api/threads/t_name/docx-review"
+        comment = client.get(url, params={"path": "c.docx"}).json()["comments"][0]["id"]
+
+        def reply(text: str) -> None:
+            ops = [{"op": "reply", "comment": comment, "text": text}]
+            assert client.post(url, json={"path": "c.docx", "operations": ops}).status_code == 200
+
+        name_update = {"COSCRIBE_REVIEWER_NAME": " Dana Lee "}
+        set_name = client.post("/api/config", json={"updates": name_update})
+        reply("one")
+        client.post("/api/config", json={"updates": {"COSCRIBE_REVIEWER_NAME": ""}})
+        reply("two")
+        replies = client.get(url, params={"path": "c.docx"}).json()["comments"][0]["replies"]
+
+    assert set_name.json() == {"restart_required": False, "rejected": {}}
+    assert [(r["text"], r["author"]) for r in replies] == [("one", "Dana Lee"), ("two", "ana")]
+
+
 def test_the_slides_routes_read_a_built_deck_and_draw_its_slides_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
