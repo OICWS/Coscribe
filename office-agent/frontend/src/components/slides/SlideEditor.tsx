@@ -5,7 +5,7 @@ import type { CommentStart } from "./SlideComments";
 import { HANDLES, STACK, accentOf, boxOf, boxOnSlide, dragBox, elementIndexAt, elementsOf, inStack, labelOf, newElement, parseSection, setBox, type Insert, sourceColours, writeSection, type Box } from "../../lib/slideSource";
 import { drawSection, placeNode } from "./sectionDom";
 import { SlideFormatBar } from "./SlideFormatBar";
-import { SlideMenu } from "./SlideMenu";
+import type { MenuEntry } from "./SlideMenu";
 import type { EditorSelection } from "./SlideTextProperties";
 import { useFormatting } from "./useFormatting";
 import { useStackDrop } from "./useStackDrop";
@@ -39,6 +39,7 @@ export function SlideEditor({
   onProblem,
   onComment,
   onSelection,
+  onMore,
   insert,
   onInserted,
   onExit,
@@ -57,6 +58,8 @@ export function SlideEditor({
   onComment: (at: CommentStart) => void;
   /** The selected text element, for the properties panel; null when nothing or no text is. */
   onSelection: (selection: EditorSelection | null) => void;
+  /** The format bar's ⋮: shows the properties panel. */
+  onMore: () => void;
   /** An element to add from the toolbar; each new object is added once. */
   insert: { what: Insert } | null;
   onInserted: () => void;
@@ -73,7 +76,7 @@ export function SlideEditor({
   const input = useEditorInput(slide, nodes, zoom, layerRef, onExit, startTyping);
   const { boxes, selected, drag, drop, point, startDrag } = input;
 
-  usePublishedSelection(slide, selected, () => (text.stop(), table.stop()), (file) => uploadSlidePicture(threadId, path, file), onSelection);
+  usePublishedSelection(slide, selected, () => (text.stop(), table.stop()), (file) => uploadSlidePicture(threadId, path, file), () => input.select(null), onSelection);
 
   // Keys go to the editor, not to the button that started an insert.
   const focusLayer = useCallback(() => layerRef.current?.focus(), []);
@@ -116,7 +119,7 @@ export function SlideEditor({
         {shown && <Selection box={shown} zoom={zoom} handles={!placedByLayout} onHandle={(e, handle) => startDrag(e, selected, handle)} />}
       </div>
       {shown && !drag && selected !== null && (
-        <EditorBar slide={slide} at={selected} box={shown} zoom={zoom} text={text} onComment={onComment} onRemoved={() => input.select(null)} />
+        <EditorBar slide={slide} at={selected} box={shown} zoom={zoom} text={text} onComment={onComment} onMore={onMore} />
       )}
     </div>
   );
@@ -133,12 +136,15 @@ function usePublishedSelection(
   selected: number | null,
   stopTyping: () => void,
   upload: NonNullable<EditorSelection["upload"]>,
+  onRemoved: () => void,
   publish: (selection: EditorSelection | null) => void,
 ) {
   const { doc, drawn } = slide;
   // The latest functions, so a render alone does not publish a new selection.
   const latest = useRef({ change: slide.change, stop: stopTyping, upload, publish });
   latest.current = { change: slide.change, stop: stopTyping, upload, publish };
+  const removed = useRef(onRemoved);
+  removed.current = onRemoved;
   useEffect(() => {
     const element = doc && selected !== null ? elementsOf(doc)[selected] : null;
     const kind = element && KINDS[element.localName];
@@ -152,6 +158,7 @@ function usePublishedSelection(
               latest.current.change((els) => edit(els[selected]), redraw || kind === "table" || kind === "chart");
             },
             upload: latest.current.upload,
+            arrange: arrangeEntries(slide, selected, () => removed.current()),
           }
         : null,
     );
@@ -205,7 +212,7 @@ function EditorBar({
   zoom,
   text,
   onComment,
-  onRemoved,
+  onMore,
 }: {
   slide: ReturnType<typeof useEditedSlide>;
   at: number;
@@ -213,9 +220,8 @@ function EditorBar({
   zoom: number;
   text: ReturnType<typeof useTextEditing>;
   onComment: (at: CommentStart) => void;
-  onRemoved: () => void;
+  onMore: () => void;
 }) {
-  const [more, setMore] = useState<DOMRect | null>(null);
   const { format, actions } = useFormatting(slide.doc, at, text.typing === at, text.stop, slide.change);
   const colours = slide.doc ? sourceColours(writeSection(slide.doc)) : [];
   const [x, y, w, h] = box;
@@ -233,24 +239,15 @@ function EditorBar({
             const box: CommentStart["box"] = [x / 1920, y / 1080, w / 1920, h / 1080];
             onComment({ x: box[0] + box[2] / 2, y: box[1] + box[3] / 2, element: el ? labelOf(el) : "", box });
           },
-          more: setMore,
+          more: onMore,
         }}
       />
-      {more && (
-        <SlideMenu
-          anchor={more}
-          label="More"
-          width={200}
-          entries={arrangeEntries(slide, at, onRemoved)}
-          onClose={() => setMore(null)}
-        />
-      )}
     </>
   );
 }
 
-/** The More menu: the element's place in the stack, a copy of it, and removing it. */
-function arrangeEntries(slide: ReturnType<typeof useEditedSlide>, at: number, onRemoved: () => void) {
+/** The properties panel's Arrange section: the element's place in the stack, a copy of it, and removing it. */
+function arrangeEntries(slide: ReturnType<typeof useEditedSlide>, at: number, onRemoved: () => void): MenuEntry[] {
   const el = slide.doc ? elementsOf(slide.doc)[at] : null;
   // The next or previous element among those of the same parent: on the slide, its stacking
   // order; in a container, its place in the layout.
