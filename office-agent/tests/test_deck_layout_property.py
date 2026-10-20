@@ -6,6 +6,7 @@ that are fixed, growing, shrinking or sized by their content, is laid out so tha
   room (the engine lets it overflow rather than squeeze its text);
 - siblings follow one another along the main axis, a gap apart;
 - growing children share out all the free room in proportion to their `flex-grow`;
+- the room left over is placed by `justify`;
 - laying the same tree out twice gives the same boxes.
 
 The tree is built as data first and written to a section after, so the checks read what the
@@ -194,6 +195,17 @@ def _check_container(item: Item, path: Path, boxes: dict[Path, Box]) -> None:
         if j:
             before = spans[j - 1][0]
             assert main[0] >= before[0] + before[1] + item.gap - EPS, (j, before, main)
+
+    leftover = room - used
+    if leftover > EPS:
+        # Nothing grew into the free room, so `justify` places it.
+        first, last = spans[0][0], spans[-1][0]
+        if item.justify == "between" and len(spans) > 1:
+            assert first[0] == pytest.approx(main0, abs=EPS)
+            assert last[0] + last[1] == pytest.approx(main0 + room, abs=EPS * len(spans))
+        else:
+            start = {"start": 0.0, "center": leftover / 2, "end": leftover, "between": 0.0}
+            assert first[0] - main0 == pytest.approx(start[item.justify], abs=EPS), item.justify
 
     growing = [(main[1], k) for (main, _), k in zip(spans, item.kids, strict=True) if k.grow]
     if growing:

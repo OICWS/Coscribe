@@ -24,6 +24,9 @@ test.skip(!WORKSPACE, "COSCRIBE_E2E_WORKSPACE names the server's workspace folde
 test.use({ viewport: { width: 1600, height: 1200 } });
 
 const PANELS = "01-panels.html";
+// The gap and padding of a container from Insert > Shapes (newElement in lib/slideSource.ts).
+const INSERTED_GAP = 24;
+const INSERTED_PADDING = 24;
 
 test("text panel: a size change shows on the stage, and changing it by hand clears the text style", async ({ page }) => {
   const name = freshDeckName();
@@ -141,7 +144,7 @@ test("container: a row of two texts, a gap from the panel, and deleting one give
   await test.step("a gap set in the panel moves them apart", async () => {
     const [, one, two] = await laidOut();
     const before = two[0] - (one[0] + one[2]);
-    expect(before).toBe(24);
+    expect(before).toBe(INSERTED_GAP);
     await setNumber(panel, "Gap", 100);
     await expect.poll(async () => {
       const now = await laid();
@@ -160,8 +163,7 @@ test("container: a row of two texts, a gap from the panel, and deleting one give
     });
     const [container, rest] = read.parts.slice(1).map((p) => p.box as number[]);
     expect(container).toEqual(row);
-    // Padding is 24px each side of the container.
-    expect(rest[2]).toBeCloseTo(row[2] - 48, 0);
+    expect(rest[2]).toBeCloseTo(row[2] - 2 * INSERTED_PADDING, 0);
   });
 });
 
