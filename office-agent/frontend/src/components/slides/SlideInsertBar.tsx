@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import type { Insert } from "../../lib/slideSource";
 import { uploadSlidePicture } from "../../lib/slideEditing";
 import { ChevronDownIcon, TextToolIcon } from "../icons";
-import { SlideMenu } from "./SlideMenu";
+import { SlideMenu, type MenuEntry } from "./SlideMenu";
 import { PictureIcon, ShapesIcon, TableIcon } from "./formatIcons";
 
 const button = "flex h-8 w-8 items-center justify-center rounded-lg text-[var(--fg)] hover:bg-[var(--card-bg)] disabled:opacity-40";
@@ -78,7 +78,12 @@ export function SlideInsertBar({
           label="Shapes"
           width={200}
           align="left"
-          entries={SHAPES.map(([label, shape]) => ({ label, onSelect: () => onInsert({ kind: "shape", shape }) }))}
+          entries={[
+            ...SHAPES.map(([label, shape]): MenuEntry => ({ label, onSelect: () => onInsert({ kind: "shape", shape }) })),
+            "divider",
+            { label: "Row container", onSelect: () => onInsert({ kind: "container", layout: "row" }) },
+            { label: "Column container", onSelect: () => onInsert({ kind: "container", layout: "column" }) },
+          ]}
           onClose={() => setShapes(null)}
         />
       )}

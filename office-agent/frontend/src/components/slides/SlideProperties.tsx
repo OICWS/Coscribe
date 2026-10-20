@@ -6,6 +6,7 @@ import { ChevronDownIcon, CloseIcon } from "../icons";
 import { Row, field } from "./PropertyRows";
 import { ColourPicker } from "./SlideFormatBar";
 import { SlideMenu } from "./SlideMenu";
+import { ContainerProperties, ChildSizing } from "./SlideContainerProperties";
 import { ImageProperties, ShapeProperties } from "./SlideObjectProperties";
 import { TableProperties } from "./SlideTableProperties";
 import { TextProperties, type EditorSelection } from "./SlideTextProperties";
@@ -58,9 +59,16 @@ export function SlideProperties({
         </button>
       </div>
       {selection?.kind === "text" && <TextProperties selection={selection} design={design} />}
+      {selection?.kind === "container" && (
+        <>
+          <ContainerProperties selection={selection} />
+          <ShapeProperties selection={selection} design={design} />
+        </>
+      )}
       {selection?.kind === "table" && <TableProperties selection={selection} design={design} />}
       {selection?.kind === "image" && <ImageProperties selection={selection} />}
       {selection?.kind === "shape" && <ShapeProperties selection={selection} design={design} />}
+      {selection && <ChildSizing selection={selection} />}
       {!selection && <SlideSettings slide={slide} onEdit={onEdit} loadSource={loadSource} />}
     </aside>
   );

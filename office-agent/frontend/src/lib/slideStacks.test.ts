@@ -2,7 +2,7 @@
 // jsdom for this file only: these functions read and change DOM nodes.
 import { describe, expect, it } from "vitest";
 import { elementsOf, inStack, parseSection, styleOf, type Box } from "./slideSource";
-import { dropTarget, moveInto, moveOut, stackSlots } from "./slideStacks";
+import { dropTarget, moveInto, moveOut, setDirection, siblingOf, stackSlots } from "./slideStacks";
 
 const SECTION = `<section>
 <p style="left:0px;top:0px;width:300px;height:40px">Free</p>
@@ -80,5 +80,31 @@ describe("moving an element", () => {
     expect(els[3].parentElement).toBe(doc.documentElement);
     expect(styleOf(els[3], "left")).toBe("40px");
     expect(elementsOf(doc).at(-1)).toBe(els[3]);
+  });
+});
+
+describe("changing a container", () => {
+  it("fits what it holds to its new direction", () => {
+    const doc = parseSection(SECTION);
+    const els = elementsOf(doc);
+    // card 1 holds a column of text; as a row, the text takes a share of the room
+    setDirection(els[2], true);
+    expect(els[2].getAttribute("data-layout")).toBe("row");
+    expect(styleOf(els[3], "flex-grow")).toBe("1");
+    setDirection(els[2], false);
+    expect(els[2].getAttribute("data-layout")).toBe("column");
+    expect(styleOf(els[3], "flex-grow")).toBeNull();
+    expect(styleOf(els[3], "width")).toBeNull();
+  });
+
+  it("finds the element after or before another among its parent's, leaving notes out", () => {
+    const doc = parseSection(
+      '<section><p style="left:0px;top:0px;width:9px;height:9px">A</p><aside>n</aside><p style="left:0px;top:0px;width:9px;height:9px">B</p></section>',
+    );
+    const [a, b] = elementsOf(doc);
+    expect(siblingOf(a, 1)).toBe(b);
+    expect(siblingOf(b, -1)).toBe(a);
+    expect(siblingOf(a, -1)).toBeNull();
+    expect(siblingOf(b, 1)).toBeNull();
   });
 });

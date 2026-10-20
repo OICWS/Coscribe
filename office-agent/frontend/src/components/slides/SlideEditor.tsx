@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import type { Drop } from "../../lib/slideStacks";
+import { siblingOf, type Drop } from "../../lib/slideStacks";
 import { SlideChangedError, getSlideParts, saveSlideSource, uploadSlidePicture, type SavedSlide, type SlidePart, type SlideParts } from "../../lib/slideEditing";
 import type { CommentStart } from "./SlideComments";
 import { HANDLES, STACK, accentOf, boxOf, boxOnSlide, dragBox, elementIndexAt, elementsOf, inStack, labelOf, newElement, parseSection, setBox, type Insert, sourceColours, writeSection, type Box } from "../../lib/slideSource";
@@ -122,7 +122,7 @@ export function SlideEditor({
   );
 }
 
-const KINDS: Record<string, EditorSelection["kind"]> = { h1: "text", h2: "text", h3: "text", p: "text", ul: "text", ol: "text", table: "table", img: "image", "x-shape": "shape" };
+const KINDS: Record<string, EditorSelection["kind"]> = { h1: "text", h2: "text", h3: "text", p: "text", ul: "text", ol: "text", table: "table", img: "image", "x-shape": "shape", [STACK]: "container" };
 
 const isTable = (doc: Document | null, at: number) => !!doc && elementsOf(doc)[at]?.localName === "table";
 
@@ -251,19 +251,22 @@ function EditorBar({
 
 /** The More menu: the element's place in the stack, a copy of it, and removing it. */
 function arrangeEntries(slide: ReturnType<typeof useEditedSlide>, at: number, onRemoved: () => void) {
-  const count = slide.parts.length;
-  // The order of what a container holds is its layout; the stacking order of a slide with
-  // containers is not offered until the order can be changed by dragging.
-  const inContainers = !!slide.doc && hasStack(slide.doc);
-  const swap = (other: number) =>
+  const el = slide.doc ? elementsOf(slide.doc)[at] : null;
+  // The next or previous element among those of the same parent: on the slide, its stacking
+  // order; in a container, its place in the layout.
+  const swap = (step: 1 | -1) =>
     slide.change(
-      (els) => (other > at ? els[other].after(els[at]) : els[other].before(els[at])),
+      (els) => {
+        const other = siblingOf(els[at], step);
+        if (other) step > 0 ? other.after(els[at]) : other.before(els[at]);
+      },
       false,
-      (parts) => parts.map((part, i) => (i === at ? parts[other] : i === other ? parts[at] : part)),
+      // Parts follow by position when nothing is nested (the editor reads the slide again otherwise).
+      (parts) => parts.map((part, i) => (i === at ? parts[at + step] : i === at + step ? parts[at] : part)),
     );
   return [
-    { label: "Bring forward", disabled: at >= count - 1 || inContainers, onSelect: () => swap(at + 1) },
-    { label: "Send backward", disabled: at <= 0 || inContainers, onSelect: () => swap(at - 1) },
+    { label: "Bring forward", disabled: !el || !siblingOf(el, 1), onSelect: () => swap(1) },
+    { label: "Send backward", disabled: !el || !siblingOf(el, -1), onSelect: () => swap(-1) },
     {
       label: "Duplicate",
       onSelect: () =>

@@ -204,9 +204,10 @@ export type Insert =
   | { kind: "text" }
   | { kind: "table" }
   | { kind: "shape"; shape: "rect" | "round-rect" | "ellipse" | "triangle" | "arrow" | "line" }
-  | { kind: "picture"; src: string; width: number; height: number };
+  | { kind: "picture"; src: string; width: number; height: number }
+  | { kind: "container"; layout: "row" | "column" };
 
-const SIZES: Record<Insert["kind"], [number, number]> = { text: [600, 80], table: [960, 240], shape: [400, 240], picture: [800, 600] };
+const SIZES: Record<Insert["kind"], [number, number]> = { text: [600, 80], table: [960, 240], shape: [400, 240], picture: [800, 600], container: [1200, 360] };
 
 /** The section element an insert adds, centred on the slide in `colour` where it has one. */
 export function newElement(doc: Document, insert: Insert, colour: string): Element {
@@ -218,7 +219,7 @@ export function newElement(doc: Document, insert: Insert, colour: string): Eleme
   if (insert.kind === "shape" && insert.shape === "line") h = 1;
   const box: Box = [Math.round((1920 - w) / 2), Math.round((1080 - h) / 2), w, h];
   const style = withBox(new Map(), box);
-  const el = doc.createElement({ text: "p", table: "table", shape: "x-shape", picture: "img" }[insert.kind]);
+  const el = doc.createElement({ text: "p", table: "table", shape: "x-shape", picture: "img", container: STACK }[insert.kind]);
   if (insert.kind === "text") el.textContent = "Text";
   if (insert.kind === "table") {
     style.set("font-size", "28px");
@@ -236,6 +237,15 @@ export function newElement(doc: Document, insert: Insert, colour: string): Eleme
   if (insert.kind === "shape") {
     el.setAttribute("data-shape", insert.shape);
     style.set(insert.shape === "line" ? "border" : "background", insert.shape === "line" ? `4px solid ${colour}` : colour);
+  }
+  if (insert.kind === "container") {
+    el.setAttribute("data-layout", insert.layout);
+    for (const [name, value] of [["gap", "24px"], ["padding", "24px"], ["background", "#F3F4F6"], ["border-radius", "16px"]]) style.set(name, value);
+    for (let i = 0; i < 2; i++) {
+      const text = el.appendChild(doc.createElement("p"));
+      text.textContent = "Text";
+      if (insert.layout === "row") text.setAttribute("style", "flex-grow:1");
+    }
   }
   if (insert.kind === "picture") {
     el.setAttribute("src", insert.src);

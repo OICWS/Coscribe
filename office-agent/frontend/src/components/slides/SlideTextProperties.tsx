@@ -24,7 +24,7 @@ import { setStyle } from "../../lib/slideSource";
 /** The element selected in the editor, and the way to change it: `edit` runs on the element in the
  * editor's section, which draws and saves it. */
 export interface EditorSelection {
-  kind: "text" | "table" | "image" | "shape";
+  kind: "text" | "table" | "image" | "shape" | "container";
   element: Element;
   /** `redraw` for what the server draws as a picture: the slide is read again after the save. */
   edit: (change: (element: Element) => void, redraw?: boolean) => void;

@@ -58,7 +58,8 @@ const BORDERS = ["none", "solid", "dashed"] as const;
 /** A shape's appearance: fill, opacity, corner radius (a rounded rectangle) and border. */
 export function ShapeProperties({ selection, design }: { selection: EditorSelection; design: DesignSystem | null }) {
   const { element: shape, edit } = selection;
-  const kind = shape.getAttribute("data-shape") ?? "rect";
+  // A container's card is a rounded rectangle whose radius is its own.
+  const kind = selection.kind === "container" ? "round-rect" : (shape.getAttribute("data-shape") ?? "rect");
   const border = readBorder(shape);
   const colours = design?.palette ?? [];
   const redraw = (change: (el: Element) => void) => edit(change, true);

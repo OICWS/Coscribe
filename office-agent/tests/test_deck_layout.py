@@ -176,3 +176,12 @@ def test_the_editor_is_given_one_part_per_element_in_document_order(tmp_path: Pa
     assert parts[1]["picture"] is not None and all(p["box"] for p in parts)
     row, card = parts[1]["box"], parts[2]["box"]
     assert card[0] > row[0] and card[2] < row[2]  # the card sits inside the row
+
+
+def test_what_is_sized_by_its_content_does_not_shrink_below_it() -> None:
+    source = (
+        '<section><x-stack style="left:0px;top:0px;width:800px;height:100px;gap:10px">'
+        "<p>One line of text.</p><p>Another line of text.</p></x-stack></section>"
+    )
+    heights = [b["h"] for tag, b in _boxes(source) if tag == "p"]
+    assert heights == [pytest.approx(28 * 1.35)] * 2  # as tall as their text, past the box
