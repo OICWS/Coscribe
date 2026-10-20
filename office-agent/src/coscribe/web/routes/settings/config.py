@@ -45,6 +45,7 @@ COSCRIBE_ENV_VARS = [
     "COSCRIBE_DEFAULT_PERMISSION_MODE",
     "COSCRIBE_CODE_MODEL",
     "COSCRIBE_CODE_MODULE_ENABLED",
+    "COSCRIBE_REVIEWER_NAME",
 ]
 
 
@@ -55,6 +56,7 @@ LIVE_SETTINGS = {
     "COSCRIBE_DEFAULT_PERMISSION_MODE": "default_permission_mode",
     "COSCRIBE_CODE_MODEL": "code_model",
     "COSCRIBE_CODE_MODULE_ENABLED": "code_module_enabled",
+    "COSCRIBE_REVIEWER_NAME": "reviewer_name",
 }
 
 

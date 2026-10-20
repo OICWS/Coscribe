@@ -199,6 +199,11 @@ class Settings(BaseSettings):
     code_runtime/) as a sub-agent. Off by default; the module downloads ~111 MB
     on first use and only works with models served over the Responses API."""
 
+    reviewer_name: str = ""
+    """The name the user's own review actions in the Word panel carry (replies,
+    comments); empty, the computer's user name, as Word does. coscribe's own
+    review tools keep their own author argument and are not affected."""
+
     code_model: str | None = None
     """The model Codex uses for a chat's code tasks ("provider:model"); unset,
     the chat's own model. Codex can't use every model the chat can (Claude and

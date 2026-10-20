@@ -28,6 +28,13 @@ export const GENERAL_FIELDS: SettingsField[] = [
     description:
       "The most model calls one reply can make before it stops, approvals included. Raise it if long tasks stop before they finish.",
   },
+  {
+    key: "COSCRIBE_REVIEWER_NAME",
+    label: "Reviewer name",
+    placeholder: "Your computer's user name",
+    description:
+      "The name on your replies and comments in a Word file's review panel. Empty uses your computer's user name, as Word does.",
+  },
 ];
 
 // Log Level's real values are this fixed, small set (Python's own logging

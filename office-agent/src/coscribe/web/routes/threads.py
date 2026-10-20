@@ -474,7 +474,7 @@ def _with_docx_review_routes(
         if thread_file(thread_id, body.path) is None:
             return JSONResponse({"error": f"No file {body.path!r}"}, status_code=404)
         # Word itself names a reviewer after the computer's user until one is set.
-        author = getpass.getuser()
+        author = state.settings.reviewer_name.strip() or getpass.getuser()
         try:
             result = await asyncio.to_thread(
                 _documents(thread_id).edit_docx_review, body.path, body.operations, author
