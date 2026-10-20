@@ -125,7 +125,7 @@ export function SlideEditor({
   );
 }
 
-const KINDS: Record<string, EditorSelection["kind"]> = { h1: "text", h2: "text", h3: "text", p: "text", ul: "text", ol: "text", table: "table", img: "image", "x-shape": "shape", "x-chart": "chart", [STACK]: "container" };
+const KINDS: Record<string, EditorSelection["kind"]> = { h1: "text", h2: "text", h3: "text", p: "text", ul: "text", ol: "text", table: "table", img: "image", "x-shape": "shape", "x-chart": "chart", svg: "drawing", [STACK]: "container" };
 
 const isTable = (doc: Document | null, at: number) => !!doc && elementsOf(doc)[at]?.localName === "table";
 
@@ -347,7 +347,12 @@ function useEditorInput(
     if (!drag) return;
     setDrag(null);
     // A change redraws the slide, which drops focus; the keys (Ctrl+Z, arrows, Delete) need it back.
-    requestAnimationFrame(() => layerRef.current?.focus({ preventScroll: true }));
+    // Only when it was dropped: a cell or a text box being typed into holds it, inside the shadow
+    // root, where the page's active element is the root's host, not the body.
+    requestAnimationFrame(() => {
+      const active = document.activeElement;
+      if (!active || active === document.body) layerRef.current?.focus({ preventScroll: true });
+    });
     const moved = drag.box.some((v, i) => Math.abs(v - drag.start[i]) >= DRAG_FROM);
     if (moved && drag.handle[0] === 0 && drag.handle[1] === 0 && stackDrop.finish(drag.index, drag.box)) return;
     stackDrop.clear();

@@ -68,6 +68,17 @@ _TABLE_STYLE_KEYS = {
     "border_color",
 }
 _CELL_KEYS = {"text", "align", "color", "fill", "bold", "col_span", "row_span"}
+# The attributes of a plain shape the section language says exactly; any other (a filter, a
+# gradient, a dash, a transform) keeps the shape a drawing.
+_PAINT_ATTRS = {"id", "fill", "stroke", "stroke-width", "opacity"}
+_SHAPE_ATTRS = {
+    "rect": _PAINT_ATTRS | {"x", "y", "width", "height", "rx", "ry"},
+    "ellipse": _PAINT_ATTRS | {"cx", "cy", "rx", "ry"},
+    "circle": _PAINT_ATTRS | {"cx", "cy", "r"},
+    "line": _PAINT_ATTRS | {"x1", "y1", "x2", "y2"},
+}
+_HEX = re.compile(r"#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})")
+_TRANSLATE = re.compile(r"\s*translate\(\s*(-?[\d.]+)(?:[\s,]+(-?[\d.]+))?\s*\)\s*")
 
 
 class _Unsupported(Exception):
@@ -151,13 +162,14 @@ class _Writer:
         except _Unsupported as why:
             if str(why):
                 self.kept.append(f"{_label(elem)}: {why}")
-        if (
-            tag == "g"
-            and any(_local(d) == "text" for d in elem.iter())
-            and not native.native_kind(elem)
-        ):
-            self._split_group(elem, ctx)
-            return
+        if tag == "g" and not native.native_kind(elem):
+            if any(_local(d) == "text" for d in elem.iter()):
+                self._split_group(elem, ctx)
+                return
+            shapes = _group_shapes(elem, self.scale)
+            if shapes is not None:
+                self.parts.extend(shapes)
+                return
         self._drawing(elem)
 
     def _editable(self, elem: ET.Element, tag: str, ctx: ConvertContext) -> str:
@@ -165,6 +177,8 @@ class _Writer:
             return _text(elem, ctx, self.scale)
         if tag == "image":
             return _image(elem, self.scale)
+        if tag in _SHAPE_ATTRS:
+            return _shape(elem, self.scale)
         if tag == "use" and elem.get("data-icon"):
             return _icon(elem, self.scale)
         if tag == "g" and native.native_kind(elem) == "chart":
@@ -181,6 +195,11 @@ class _Writer:
         except _Unsupported as why:
             self.kept.append(f"{_label(group)}: {why}")
             self._drawing(group)
+            return
+        flat = _group_shapes(group, self.scale)
+        if flat is not None:
+            self.parts.extend(flat)
+            self.parts.extend(boxes)
             return
         shapes = copy.deepcopy(group)
         _remove_texts(shapes)
@@ -338,6 +357,108 @@ def _image(elem: ET.Element, scale: float) -> str:
         raise _Unsupported("an embedded picture")
     ident = f' id="{_attr(elem.get("id", ""))}"' if elem.get("id") else ""
     return f'<img{ident} src="{_attr(href)}" style="{_box(elem, scale)};object-fit:{fit}"/>'
+
+
+def _number(elem: ET.Element, name: str, default: float | None = None) -> float:
+    raw = elem.get(name)
+    if raw is None:
+        if default is None:
+            raise _Unsupported("")
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        raise _Unsupported("") from None
+
+
+def _paint(elem: ET.Element, scale: float, *, fill: bool) -> str:
+    """The style declarations that paint a plain shape, or _Unsupported for a paint the section
+    language has no word for (a named colour, a gradient, a shape with neither fill nor line)."""
+    declared = [
+        ("fill", elem.get("fill", "#000000" if fill else "none")),
+        ("stroke", elem.get("stroke", "none")),
+    ]
+    values = {}
+    for name, raw in declared:
+        raw = raw.strip()
+        if raw != "none" and not _HEX.fullmatch(raw):
+            raise _Unsupported("")
+        values[name] = raw
+    if values["fill"] == "none" and values["stroke"] == "none":
+        raise _Unsupported("")
+    css = []
+    if values["fill"] != "none":
+        css.append(f"background:{values['fill']}")
+    if values["stroke"] != "none":
+        width = _number(elem, "stroke-width", 1.0) * scale
+        if width <= 0:
+            raise _Unsupported("")
+        css.append(f"border:{width:g}px solid {values['stroke']}")
+    if elem.get("opacity") is not None:
+        css.append(f"opacity:{_number(elem, 'opacity'):g}")
+    return ";".join(css)
+
+
+def _shape(elem: ET.Element, scale: float, dx: float = 0.0, dy: float = 0.0) -> str:
+    """A plain rectangle, ellipse or line as the section's own shape, in the same place with the
+    same paint; `dx`, `dy` are the translate of the group it sits in."""
+    tag = _local(elem)
+    if set(elem.attrib) - _SHAPE_ATTRS[tag]:
+        raise _Unsupported("")
+    kind, extra = "rect", ""
+    if tag == "rect":
+        x, y = _number(elem, "x", 0.0) + dx, _number(elem, "y", 0.0) + dy
+        w, h = _number(elem, "width"), _number(elem, "height")
+        rx = _number(elem, "rx", _number(elem, "ry", 0.0))
+        if rx != _number(elem, "ry", rx) or rx < 0 or rx > min(w, h) / 2:
+            raise _Unsupported("")
+        if rx:
+            kind, extra = "round-rect", f";border-radius:{rx * scale:g}px"
+    elif tag == "line":
+        ends = [
+            (_number(elem, "x1") + dx, _number(elem, "y1") + dy),
+            (_number(elem, "x2") + dx, _number(elem, "y2") + dy),
+        ]
+        (x, y), (x2, y2) = sorted(ends)
+        if y2 < y:
+            raise _Unsupported("")
+        w, h, kind = x2 - x, y2 - y, "line"
+    else:
+        cx, cy = _number(elem, "cx") + dx, _number(elem, "cy") + dy
+        rx = _number(elem, "r") if tag == "circle" else _number(elem, "rx")
+        ry = rx if tag == "circle" else _number(elem, "ry")
+        x, y, w, h, kind = cx - rx, cy - ry, 2 * rx, 2 * ry, "ellipse"
+    if (w < 0 or h < 0) or (kind != "line" and (w == 0 or h == 0)):
+        raise _Unsupported("")
+    css = _paint(elem, scale, fill=kind != "line")
+    box = f"left:{x * scale:g}px;top:{y * scale:g}px;width:{w * scale:g}px;height:{h * scale:g}px"
+    ident = f' id="{_attr(elem.get("id", ""))}"' if elem.get("id") else ""
+    return f'<x-shape{ident} data-shape="{kind}" style="{box};{css}{extra}"/>'
+
+
+def _group_shapes(group: ET.Element, scale: float) -> list[str] | None:
+    """A group that only moves (a translate) and holds nothing but plain shapes and texts, as
+    its shapes one by one; None when anything in it needs the drawing."""
+    if set(group.attrib) - {"id", "transform"}:
+        return None
+    dx = dy = 0.0
+    if group.get("transform"):
+        moved = _TRANSLATE.fullmatch(group.get("transform", ""))
+        if moved is None:
+            return None
+        dx, dy = float(moved.group(1)), float(moved.group(2) or 0)
+    shapes = []
+    for child in group:
+        tag = _local(child)
+        if tag in _NON_VISUAL or tag == "text":
+            continue
+        if tag not in _SHAPE_ATTRS:
+            return None
+        try:
+            shapes.append(_shape(child, scale, dx, dy))
+        except _Unsupported:
+            return None
+    return shapes or None
 
 
 def _icon(elem: ET.Element, scale: float) -> str:

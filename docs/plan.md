@@ -164,7 +164,10 @@ Last reviewed: 2026-10-15.
    the start of its next turn (#462, done). Containers (decision 0018) are in the model's Slides guide, so coscribe writes rows and
    columns of cards the user can then edit. A picture takes radius, border and opacity; pictures, shapes and cards take an outer shadow (Effects). The chart panel offers type, stacking, title, legend, labels and series colours (axes, range and
    number format are open). A human edit refused to be overwritten was judged not worth its code
-   (a narrow window: an edit made while a turn runs).
+   (a narrow window: an edit made while a turn runs). Plain shapes of an SVG page (rectangles, circles, lines) become the
+   section's own shapes when the slide is first edited, so the user can select and style them; anything else stays a drawing
+   with a note in the panel (user editing is for what is easy to edit, the rest goes through comments and the conversation).
+   Lines going up to the right and dragging a line's ends are open.
    Next: step 5, opening the user's own .pptx. The
    docx-preview actions: accept and reject are in the panel (#473); comments, the reviewer name in
    Settings and "Ask coscribe" are open there. Until the name is set, actions carry the computer's

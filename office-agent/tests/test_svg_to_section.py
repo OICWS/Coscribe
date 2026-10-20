@@ -202,3 +202,68 @@ def test_a_slide_is_one_file_in_a_mixed_folder(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="exists already"):
         convert_slide(tmp_path / "01.svg")
     assert (tmp_path / "01.svg").exists()
+
+
+SHAPES = f"""<svg {_SVG}>
+  <rect x="0" y="0" width="1280" height="720" fill="#0F3D3E"/>
+  <circle cx="640" cy="360" r="200" fill="none" stroke="#B45F3A" stroke-width="2"/>
+  <ellipse cx="300" cy="500" rx="120" ry="60" fill="#1D4ED8" opacity="0.5"/>
+  <rect x="64" y="120" width="300" height="160" rx="16" fill="#FFFFFF" stroke="#E5E7EB"
+    stroke-width="2"/>
+  <line x1="64" y1="300" x2="500" y2="300" stroke="#F59E0B" stroke-width="4"/>
+  <line x1="700" y1="100" x2="900" y2="250" stroke="#F59E0B" stroke-width="3"/>
+  <line x1="700" y1="600" x2="900" y2="450" stroke="#F59E0B" stroke-width="3"/>
+  <g id="card" transform="translate(800, 400)">
+    <rect x="0" y="0" width="360" height="200" rx="12" fill="#FFFFFF"/>
+    <rect x="24" y="24" width="8" height="48" fill="#C2410C"/>
+    <text x="48" y="60" font-size="24" fill="#1E2A36">被保护的一天</text>
+  </g>
+  <g id="shadowed"><rect x="64" y="400" width="200" height="100" fill="#FFFFFF" filter="url(#s)"/>
+    <defs><filter id="s"><feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000"
+      flood-opacity="0.3"/></filter></defs></g>
+  <rect x="10" y="10" width="100" height="40" fill="url(#g)"/>
+  <defs><linearGradient id="g"><stop offset="0" stop-color="#000"/>
+    <stop offset="1" stop-color="#FFF"/></linearGradient></defs>
+</svg>"""
+
+
+def test_plain_shapes_become_the_sections_own_shapes_in_the_same_place(tmp_path: Path) -> None:
+    section = convert_page(SHAPES)[0]
+    tags = [el.tag for el, _style in parse_section(section).elements]
+    kinds = re.findall(r'data-shape="([\w-]+)"', section)
+    # The ring, the ellipse, the card, three lines (the one going up stays a drawing), the card
+    # group's two shapes: everything but the up-going line, the shadowed and the gradient shape.
+    assert kinds == ["ellipse", "ellipse", "round-rect", "line", "line", "round-rect", "rect"]
+    drawings = [t for t in tags if t.endswith("}svg")]
+    assert len(drawings) == 4  # the defs, the up-going line, the shadowed group, the gradient shape
+    page, converted, _kept = _both(tmp_path, SHAPES)
+    assert _shapes(converted) == _shapes(page)
+    assert _texts(converted) == _texts(page)
+
+
+def _paints(deck: Path) -> list[list[tuple[str, str, str, str]]]:
+    """Per slide: each shape's geometry, fill and line (colour, width) and alpha, in order."""
+    slides = []
+    for root in _slides(deck):
+        found = []
+        for el in root.iter(f"{_P}sp", f"{_P}cxnSp"):
+            if "".join(t.text or "" for t in el.iter(f"{_A}t")).strip():
+                continue
+            sp_pr = el.find(f"{_P}spPr")
+            geom = sp_pr.find(f"{_A}prstGeom")
+            ln = sp_pr.find(f"{_A}ln")
+            fill = "".join(
+                c.get("val", "") for c in sp_pr.findall(f"{_A}solidFill/{_A}srgbClr")
+            ) or ("none" if sp_pr.find(f"{_A}noFill") is not None else "")
+            alpha = ",".join(a.get("val", "") for a in sp_pr.iter(f"{_A}alpha"))
+            line = "" if ln is None else f"{ln.get('w')}:" + "".join(
+                c.get("val", "") for c in ln.iter(f"{_A}srgbClr")
+            )
+            found.append((geom.get("prst") if geom is not None else "", fill, line, alpha))
+        slides.append(found)
+    return slides
+
+
+def test_converted_shapes_keep_their_paint(tmp_path: Path) -> None:
+    page, converted, _kept = _both(tmp_path, SHAPES)
+    assert sorted(_paints(converted)[0]) == sorted(_paints(page)[0])
