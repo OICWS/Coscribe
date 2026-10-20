@@ -33,7 +33,10 @@ export interface DocxReview {
 /** One operation of `POST /api/threads/{id}/docx-review`, the shapes of `tools/office/docx/_review.py`. */
 export type DocxOperation =
   | { op: "accept" | "reject"; change: string }
-  | { op: "accept_all" | "reject_all" };
+  | { op: "accept_all" | "reject_all" }
+  | { op: "reply"; comment: string; text: string }
+  | { op: "resolve" | "reopen"; comment: string }
+  | { op: "comment"; on: string; text: string };
 
 export const settleChange = (changeId: string, accept: boolean): DocxOperation[] => [
   { op: accept ? "accept" : "reject", change: changeId },
@@ -41,6 +44,20 @@ export const settleChange = (changeId: string, accept: boolean): DocxOperation[]
 
 export const settleAllChanges = (accept: boolean): DocxOperation[] => [
   { op: accept ? "accept_all" : "reject_all" },
+];
+
+export const replyTo = (commentId: string, text: string): DocxOperation[] => [
+  { op: "reply", comment: commentId, text: text.trim() },
+];
+
+export const setResolved = (commentId: string, resolved: boolean): DocxOperation[] => [
+  { op: resolved ? "resolve" : "reopen", comment: commentId },
+];
+
+/** `words` is what the reader selected: the server anchors on text that occurs once, so the
+ * selection's line breaks and runs of spaces are folded the way Word's text is. */
+export const commentOn = (words: string, text: string): DocxOperation[] => [
+  { op: "comment", on: words.replace(/\s+/g, " ").trim(), text: text.trim() },
 ];
 
 export type DocxView = "review" | "final" | "original";
