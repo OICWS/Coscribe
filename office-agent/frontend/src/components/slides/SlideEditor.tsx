@@ -122,7 +122,7 @@ export function SlideEditor({
   );
 }
 
-const KINDS: Record<string, EditorSelection["kind"]> = { h1: "text", h2: "text", h3: "text", p: "text", ul: "text", ol: "text", table: "table", img: "image", "x-shape": "shape", [STACK]: "container" };
+const KINDS: Record<string, EditorSelection["kind"]> = { h1: "text", h2: "text", h3: "text", p: "text", ul: "text", ol: "text", table: "table", img: "image", "x-shape": "shape", "x-chart": "chart", [STACK]: "container" };
 
 const isTable = (doc: Document | null, at: number) => !!doc && elementsOf(doc)[at]?.localName === "table";
 
@@ -149,7 +149,7 @@ function usePublishedSelection(
             element,
             edit: (edit, redraw = false) => {
               latest.current.stop();
-              latest.current.change((els) => edit(els[selected]), redraw || kind === "table");
+              latest.current.change((els) => edit(els[selected]), redraw || kind === "table" || kind === "chart");
             },
             upload: latest.current.upload,
           }
