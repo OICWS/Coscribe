@@ -29,6 +29,7 @@ import functools
 import importlib
 import importlib.util
 import json
+import os
 import re
 import subprocess
 import sys
@@ -356,6 +357,47 @@ def dead_code(src: Path = SRC, confidence: int = DEAD_CODE_CONFIDENCE) -> dict[s
     return found
 
 
+# Libraries only an Office tool needs. Importing one at the top of a module the server loads on
+# startup costs every launch its time and memory (docs/metrics/2026-10-20-startup-cost.md).
+STARTUP_HEAVY = (
+    "pptx",
+    "docx",
+    "openpyxl",
+    "xlsxwriter",
+    "lxml",
+    "PIL",
+    "pypdfium2",
+    "pdfplumber",
+    "reportlab",
+    "mammoth",
+    "markdownify",
+    "bs4",
+    "ironcalc",
+    "resvg_py",
+)
+STARTUP_MODULE = "coscribe.web.app"
+
+
+def startup_imports(
+    module: str = STARTUP_MODULE,
+    heavy: tuple[str, ...] = STARTUP_HEAVY,
+    path: Path = SRC.parent,
+) -> dict[str, int]:
+    """The heavy libraries that importing `module` loads, measured in a fresh interpreter. A new
+    name is worse: someone put an Office library back on the startup path. Moving an import into
+    the function that needs it makes the number better."""
+    code = (
+        "import json, sys\n"
+        f"import {module}\n"
+        f"print(json.dumps([n for n in {list(heavy)!r} if n in sys.modules]))"
+    )
+    environment = {**os.environ, "PYTHONPATH": str(path)}
+    done = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=True, env=environment
+    )
+    return {name: 1 for name in json.loads(done.stdout.splitlines()[-1])}
+
+
 METRICS = {
     "file_lines": file_lines,
     "long_functions": long_functions,
@@ -369,6 +411,7 @@ METRICS = {
     "patch_by_string": patch_by_string,
     "fan_out": fan_out,
     "dead_code": dead_code,
+    "startup_imports": startup_imports,
 }
 
 
