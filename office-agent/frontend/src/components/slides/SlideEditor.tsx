@@ -327,6 +327,7 @@ function useEditorInput(
       // What a container places can be moved (into, within or out of containers) but not resized by hand.
       if (!e || !el || !box || (inStack(el) && (handle[0] !== 0 || handle[1] !== 0))) return;
       e.currentTarget.setPointerCapture(e.pointerId);
+      layerRef.current?.focus({ preventScroll: true });
       const rect = layerRef.current!.getBoundingClientRect();
       setDrag({ index: at as number, handle, start: box, box, x: (e.clientX - rect.left) / zoom, y: (e.clientY - rect.top) / zoom });
     },
@@ -343,6 +344,8 @@ function useEditorInput(
   const onUp = () => {
     if (!drag) return;
     setDrag(null);
+    // A change redraws the slide, which drops focus; the keys (Ctrl+Z, arrows, Delete) need it back.
+    requestAnimationFrame(() => layerRef.current?.focus({ preventScroll: true }));
     const moved = drag.box.some((v, i) => Math.abs(v - drag.start[i]) >= DRAG_FROM);
     if (moved && drag.handle[0] === 0 && drag.handle[1] === 0 && stackDrop.finish(drag.index, drag.box)) return;
     stackDrop.clear();
