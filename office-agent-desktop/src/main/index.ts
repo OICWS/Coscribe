@@ -32,11 +32,17 @@ if (!gotLock) {
     showMainWindow();
   });
 
-  app.whenReady().then(async () => {
+  // The server takes seconds to answer and needs nothing from Electron, so it starts now and
+  // runs alongside Electron's own initialization instead of after it.
+  const sidecarStarted = (async () => {
     const port = await freePort();
-
     const browserHostToken = randomBytes(32).toString("hex");
     startSidecar(port, browserHostToken);
+    return { port, browserHostToken };
+  })();
+
+  app.whenReady().then(async () => {
+    const { port, browserHostToken } = await sidecarStarted;
     void watchBackgroundEvents(port, (threadId) => {
       showMainWindow();
       void getMainWindow()
