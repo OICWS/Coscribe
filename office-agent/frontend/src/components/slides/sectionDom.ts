@@ -1,5 +1,5 @@
 import { PICTURE_MARGIN, type SlidePart } from "../../lib/slideEditing";
-import { boxIn, elementsOf, hexColour, parseStyle, type Box } from "../../lib/slideSource";
+import { boxOnSlide, elementsOf, hexColour, parseStyle, type Box } from "../../lib/slideSource";
 
 /** A section drawn as the browser's own elements, the way the compiler lays it out: each
  * element in its box, text in its own tag, everything else as the server's picture of it. Drawn
@@ -45,12 +45,13 @@ export function drawSection(root: ShadowRoot, doc: Document, parts: SlidePart[],
 /** `editable`: a table drawn here, with typeable cells, in place of the server's picture of it. */
 function drawElement(el: Element, part: SlidePart | undefined, editable: boolean): HTMLElement | null {
   const style = parseStyle(el.getAttribute("style") ?? "");
-  const box = boxIn(style);
+  const box = boxOnSlide(el, part?.box);
   if (!box) return null;
   if (TEXT_TAGS.has(el.localName)) {
     const outer = document.createElement("div");
     outer.className = "box";
     applyStyle(outer, new Map([...style].filter(([name]) => BOX_STYLES.has(name))));
+    placeNode(outer, box);
     outer.style.justifyContent = JUSTIFY[style.get("vertical-align") ?? "top"] ?? "flex-start";
     const inner = copyText(el);
     applyStyle(inner, new Map([...style].filter(([name]) => !BOX_STYLES.has(name) && name !== "vertical-align")));

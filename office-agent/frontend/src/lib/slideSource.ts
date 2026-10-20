@@ -19,8 +19,29 @@ export function parseSection(source: string): Document {
 
 export const writeSection = (doc: Document) => new XMLSerializer().serializeToString(doc);
 
-/** The section's elements in order, as the server numbers its parts: all but the notes. */
-export const elementsOf = (doc: Document) => Array.from(doc.documentElement.children).filter((el) => el.localName !== "aside");
+export const STACK = "x-stack";
+
+/** The section's elements in document order, a container before what it holds, as the server
+ * numbers its parts: all but the notes. */
+export function elementsOf(doc: Document): Element[] {
+  const found: Element[] = [];
+  const walk = (parent: Element) => {
+    for (const el of Array.from(parent.children)) {
+      if (el.localName === "aside") continue;
+      found.push(el);
+      if (el.localName === STACK) walk(el);
+    }
+  };
+  walk(doc.documentElement);
+  return found;
+}
+
+/** Inside a container: its place comes from the layout, not from its own `left` and `top`. */
+export const inStack = (el: Element) => el.parentElement?.localName === STACK;
+
+/** Where an element is on the slide: its own box, or for what a container places, the server's. */
+export const boxOnSlide = (el: Element, placed: Box | null | undefined): Box | null =>
+  (inStack(el) ? null : boxOf(el)) ?? placed ?? null;
 
 export function parseStyle(text: string): Map<string, string> {
   const style = new Map<string, string>();
@@ -167,7 +188,7 @@ function item(doc: Document, nodes: Node[]): Element {
   return li;
 }
 
-const KIND_LABELS: Record<string, string> = { "x-chart": "Chart", table: "Table", img: "Picture", "x-shape": "Shape", "x-icon": "Icon", svg: "Drawing" };
+const KIND_LABELS: Record<string, string> = { "x-stack": "Container", "x-chart": "Chart", table: "Table", img: "Picture", "x-shape": "Shape", "x-icon": "Icon", svg: "Drawing" };
 
 /** How a comment names a section's element, as the server names a slide's shapes: `Title "Q3"`. */
 export function labelOf(el: Element): string {

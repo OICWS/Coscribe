@@ -13,6 +13,7 @@ from __future__ import annotations
 import copy
 import re
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from xml.etree import ElementTree as ET
 
 STACK = "x-stack"
@@ -43,10 +44,27 @@ def _name(elem: ET.Element) -> str:
     return f'<{local(elem)} id="{elem.get("id")}">' if elem.get("id") else f"<{local(elem)}>"
 
 
-def expand_stacks(root: ET.Element, measure: Measure) -> None:
+Path = tuple[int, ...]
+
+
+@dataclass
+class Laid:
+    """What the layout made of the section's tree, by each element's path: its index among its
+    parent's elements (the section's, notes left out), then down through the containers."""
+
+    leaf: dict[Path, ET.Element] = field(default_factory=dict)
+    # A container's box, and the rectangle of its look when it has one.
+    boxes: dict[Path, tuple[float, float, float, float]] = field(default_factory=dict)
+    looks: dict[Path, ET.Element] = field(default_factory=dict)
+
+
+def expand_stacks(root: ET.Element, measure: Measure) -> Laid:
     """Replaces each `<x-stack>` child of the section by the elements it lays out, in place."""
-    for child in list(root):
+    laid = Laid()
+    tops = [c for c in root if isinstance(c.tag, str) and local(c) != "aside"]
+    for index, child in enumerate(tops):
         if local(child) != STACK:
+            laid.leaf[(index,)] = child
             continue
         decl = _declarations(child, _STACK_STYLES)
         box = [_px(child, decl, name) for name in ("left", "top", "width", "height")]
@@ -55,11 +73,12 @@ def expand_stacks(root: ET.Element, measure: Measure) -> None:
             raise LayoutError(
                 f"{_name(child)}: a container on the slide needs left, top, width and height"
             )
-        _, placed = _place(child, x, y, w, h, measure, 0)
+        _, placed = _place(child, x, y, w, h, measure, 0, (index,), laid)
         at = list(root).index(child)
         root.remove(child)
         for offset, elem in enumerate(placed):
             root.insert(at + offset, elem)
+    return laid
 
 
 def _declarations(elem: ET.Element, allowed: set[str] | None = None) -> dict[str, str]:
@@ -123,7 +142,15 @@ class _Child:
 
 
 def _place(
-    stack: ET.Element, x: float, y: float, w: float, h: float | None, measure: Measure, depth: int
+    stack: ET.Element,
+    x: float,
+    y: float,
+    w: float,
+    h: float | None,
+    measure: Measure,
+    depth: int,
+    path: Path = (),
+    laid: Laid | None = None,
 ) -> tuple[float, list[ET.Element]]:
     """The container at (x, y), `w` wide and `h` tall (None: as tall as its content needs):
     its height, and the elements it comes to, its own look first so the children sit over it."""
@@ -146,9 +173,14 @@ def _place(
     inner_w = w - 2 * pad
     inner_h = None if h is None else h - 2 * pad
     ctx = _Context(stack, row, align, justify, gap, inner_w, inner_h, measure, depth)
+    ctx.path, ctx.laid = path, laid
     ctx.resolve(kids)
     height = h if h is not None else ctx.content_cross_or_main(kids) + 2 * pad
     out = _look(stack, decl, x, y, w, height)
+    if laid is not None:
+        laid.boxes[path] = (x, y, w, height)
+        if out:
+            laid.looks[path] = out[0]
     out += ctx.emit(kids, x + pad, y + pad)
     return height, out
 
@@ -169,6 +201,8 @@ class _Context:
         self.stack, self.row, self.align, self.justify, self.gap = stack, row, align, justify, gap
         self.inner_w, self.inner_h, self.measure, self.depth = inner_w, inner_h, measure, depth
         self.leftover = 0.0
+        self.path: Path = ()
+        self.laid: Laid | None = None
 
     @property
     def main_room(self) -> float | None:
@@ -260,7 +294,7 @@ class _Context:
                 spacing += self.leftover / (len(kids) - 1)
         out: list[ET.Element] = []
         at = offset
-        for k in kids:
+        for j, k in enumerate(kids):
             span = k.cross
             if room_cross is None:
                 room = max((c.cross for c in kids), default=0.0)
@@ -271,17 +305,21 @@ class _Context:
             ]
             cx, cy = (x + at, y + shift) if self.row else (x + shift, y + at)
             cw, ch = (k.main, span) if self.row else (span, k.main)
-            out += self._element(k, cx, cy, cw, ch)
+            out += self._element(k, cx, cy, cw, ch, self.path + (j,))
             at += k.main + spacing
         return out
 
-    def _element(self, k: _Child, x: float, y: float, w: float, h: float) -> list[ET.Element]:
+    def _element(
+        self, k: _Child, x: float, y: float, w: float, h: float, path: Path
+    ) -> list[ET.Element]:
         if k.stack:
-            return _place(k.elem, x, y, w, h, self.measure, self.depth + 1)[1]
+            return _place(k.elem, x, y, w, h, self.measure, self.depth + 1, path, self.laid)[1]
         copy_ = copy.deepcopy(k.elem)
         copy_.set(
             "style", _style({n: v for n, v in k.decl.items() if n not in _PLACED}, x, y, w, h)
         )
+        if self.laid is not None:
+            self.laid.leaf[path] = copy_
         return [copy_]
 
 

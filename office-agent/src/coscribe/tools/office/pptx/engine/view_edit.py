@@ -53,8 +53,9 @@ class SlideChanged(Exception):
 
 def slide_parts(deck: Path, index: int, resource_root: Path) -> dict[str, Any]:
     """Slide `index` (from 0) for the editor: its section source, the version a save must name,
-    and per element of the section its box (canvas px) and, for all but text, a picture of it
-    alone (an SVG data URI covering the box plus `MARGIN`). Text is drawn by the editor itself."""
+    and per element of the section, in document order with a container before what it holds, its
+    box (canvas px, where the layout put it) and, for all but text, a picture of it alone (an SVG
+    data URI covering the box plus `MARGIN`). Text is drawn by the editor itself."""
     folder, page = _page(deck, index)
     text = page.read_text(encoding="utf-8")
     source = text if page.suffix.lower() == ".html" else convert_page(text)[0]
@@ -70,15 +71,14 @@ def slide_parts(deck: Path, index: int, resource_root: Path) -> dict[str, Any]:
     defs = [child for child in root if child.tag == f"{{{SVG_NS}}}defs"]
     section = parse_section(source)
     parts = []
-    for (_elem, style), part in zip(section.elements, found, strict=True):
-        try:
-            box = list(style.box())
-        except SectionError:
-            box = None
+    for node in section.nodes:
+        part = found[node.index] if node.index is not None else None
+        box = list(node.box) if node.box is not None else None
         picture = None
-        if part.kind == "drawing" and box is not None:
+        if part is not None and part.kind == "drawing" and box is not None:
             picture = _picture(box, root.get("font-family", ""), defs, part.drawn)
-        parts.append({"kind": part.kind, "box": box, "picture": picture})
+        # A container with no card of its own draws nothing.
+        parts.append({"kind": part.kind if part else "stack", "box": box, "picture": picture})
     return {
         "name": page.name,
         "kind": "section" if page.suffix.lower() == ".html" else "page",
