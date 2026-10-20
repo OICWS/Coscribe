@@ -175,7 +175,7 @@ def _plan(
         return "text", _text(text_element(elem, style, section), report)
     scale = 1.0
     if tag == "x-shape":
-        svg = _shape(elem, style)
+        svg = _shape(elem, style, drawing)
     elif tag == "img":
         svg = _picture(elem, style, drawing)
     elif tag == "table":
@@ -241,7 +241,7 @@ def _text(element: TextElement, report: PageReport) -> TextBox:
     )
 
 
-def _shape(elem: ET.Element, style: Style) -> ET.Element:
+def _shape(elem: ET.Element, style: Style, drawing: ET.Element) -> ET.Element:
     kind = elem.get("data-shape", "rect")
     if kind not in SHAPES:
         raise SectionError(f"{label(elem)}: data-shape is one of {', '.join(SHAPES)}")
@@ -249,6 +249,7 @@ def _shape(elem: ET.Element, style: Style) -> ET.Element:
         raise SectionError(f"{label(elem)} holds no text; put a <p> over it")
     x, y, w, h = style.box()
     paint = _paint(elem, style, kind == "line")
+    _shadow(elem, style, drawing, paint)
     if kind == "rect":
         return _svg("rect", paint, x=x, y=y, width=w, height=h)
     if kind == "round-rect":
@@ -285,6 +286,43 @@ def _border(elem: ET.Element, style: Style) -> tuple[str, str, str] | None:
         raise SectionError(f'{label(elem)}: border is "2px solid #RRGGBB" or "none"')
     width, dash, stroke = match.groups()
     return width, dash, f"#{colour(stroke, f'{label(elem)}: border')}"
+
+
+_SHADOW = re.compile(
+    r"(-?\d+(?:\.\d+)?)px\s+(-?\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px\s+(#\w+)(?:\s+(\d(?:\.\d+)?))?"
+)
+
+
+def _shadow(elem: ET.Element, style: Style, drawing: ET.Element, attrs: dict[str, str]) -> None:
+    """`box-shadow: 0px 8px 24px #000000 0.3` (x, y, blur, colour, opacity) as the outer shadow the
+    converter maps to the object's own effect; `none` or no property is no shadow."""
+    raw = style.values.get("box-shadow", "none").strip()
+    if raw == "none":
+        return
+    match = _SHADOW.fullmatch(raw)
+    if match is None:
+        raise SectionError(
+            f'{label(elem)}: box-shadow is "Xpx Ypx BLURpx #RRGGBB" (then an opacity, optional) '
+            'or "none"'
+        )
+    dx, dy, blur, hex_colour, opacity = match.groups()
+    shade = colour(hex_colour, f"{label(elem)}: box-shadow")
+    ident = f"shadow-{len(drawing)}"
+    defs = ET.SubElement(drawing, f"{{{SVG_NS}}}defs")
+    effect = ET.SubElement(defs, f"{{{SVG_NS}}}filter", id=ident)
+    ET.SubElement(
+        effect,
+        f"{{{SVG_NS}}}feDropShadow",
+        {
+            # The converter reads these as the SVG pages' px, as it does a drawing's filter.
+            "dx": f"{float(dx) * _SCALE:g}",
+            "dy": f"{float(dy) * _SCALE:g}",
+            "stdDeviation": f"{float(blur) / 2 * _SCALE:g}",
+            "flood-color": f"#{shade}",
+            "flood-opacity": opacity or "0.35",
+        },
+    )
+    attrs["filter"] = f"url(#{ident})"
 
 
 def _stroke(border: tuple[str, str, str]) -> dict[str, str]:
@@ -332,6 +370,7 @@ def _picture(elem: ET.Element, style: Style, drawing: ET.Element) -> ET.Element:
     border = _border(elem, style)
     if border is not None:
         attrs |= _stroke(border)
+    _shadow(elem, style, drawing, attrs)
     return _svg("image", attrs, x=x, y=y, width=w, height=h)
 
 

@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { DEFAULT_BORDER, readBorder, readFill, readFit, readOpacity, readRadius, setBorder, setFit, setOpacity, setRadius, type Fit } from "../../lib/slideShape";
+import { DEFAULT_BORDER, DEFAULT_SHADOW, readBorder, readFill, readFit, readOpacity, readRadius, readShadow, setBorder, setFit, setOpacity, setRadius, setShadow, type Fit } from "../../lib/slideShape";
 import { setFill, type DesignSystem } from "../../lib/slideText";
 import { ColourField, NumberField, Row, Section, Segmented, field } from "./PropertyRows";
 import type { EditorSelection } from "./SlideTextProperties";
@@ -109,6 +109,48 @@ function BorderRows({ shape, redraw, colours, allowNone }: { shape: Element; red
         </>
       )}
     </>
+  );
+}
+
+/** The outer shadow, which the deck carries as the object's own effect. */
+export function ShadowProperties({ selection, design }: { selection: EditorSelection; design: DesignSystem | null }) {
+  const { element, edit } = selection;
+  const shadow = readShadow(element);
+  const redraw = (change: (el: Element) => void) => edit(change, true);
+  const change = (next: Partial<typeof DEFAULT_SHADOW>) => redraw((el) => setShadow(el, { ...(shadow ?? DEFAULT_SHADOW), ...next }));
+  return (
+    <Section title="Effects">
+      <Row label="Shadow">
+        <Segmented
+          label="Shadow"
+          value={shadow ? "on" : "off"}
+          choices={[
+            { value: "off", title: "No shadow", icon: <span className="text-xs">None</span> },
+            { value: "on", title: "Shadow", icon: <span className="text-xs">Outer</span> },
+          ]}
+          onChange={(v) => redraw((el) => setShadow(el, v === "on" ? DEFAULT_SHADOW : null))}
+        />
+      </Row>
+      {shadow && (
+        <>
+          <Row label="Offset X">
+            <NumberField label="Shadow X" unit="px" value={shadow.x} onCommit={(n) => change({ x: n })} />
+          </Row>
+          <Row label="Offset Y">
+            <NumberField label="Shadow Y" unit="px" value={shadow.y} onCommit={(n) => change({ y: n })} />
+          </Row>
+          <Row label="Blur">
+            <NumberField label="Shadow blur" unit="px" value={shadow.blur} onCommit={(n) => change({ blur: Math.max(0, n) })} />
+          </Row>
+          <Row label="Color">
+            <ColourField label="Shadow colour" value={shadow.colour} colours={design?.palette ?? []} onPick={(c) => change({ colour: c })} />
+          </Row>
+          <Row label="Opacity">
+            <NumberField label="Shadow opacity" value={shadow.opacity} onCommit={(n) => change({ opacity: Math.min(1, Math.max(0, n)) })} />
+          </Row>
+        </>
+      )}
+    </Section>
   );
 }
 

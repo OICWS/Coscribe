@@ -95,6 +95,8 @@ A slide is one `<section>` of well-formed XHTML on a 1920 x 1080 canvas. Close e
   folder; `cover` crops to fill the box, `contain` fits it whole.
   A picture takes `border-radius` (rounded corners), `border` (as for a shape) and `opacity`; all
   three are the picture's own properties in the deck, so the user can change them in PowerPoint.
+  A picture, a shape and a container's card also take `box-shadow: 0px 8px 24px #000000 0.3` (x, y,
+  blur, colour, opacity), an outer shadow that is the object's own effect in the deck.
 - **Drawings**: `<svg viewBox="0 0 W H" style="left;top;width;height">` holds an illustration in
   SVG (rect, circle, ellipse, line, polyline, polygon, path, text, g, gradients, a drop-shadow
   filter), drawn into its box whole. Presentation attributes only (`fill="#..."`), no `style` or
