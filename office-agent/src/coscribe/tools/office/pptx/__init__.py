@@ -16,6 +16,7 @@ from .engine.section_format import SectionError
 from .engine.tool import build_engine_tools
 from .engine.view import NotBuiltFromPages, read_deck, slide_svg
 from .engine.view_arrange import delete_slide, duplicate_slide, insert_slide, move_slide
+from .engine.view_changes import deck_edits_since_coscribe
 from .engine.view_comments import (
     CommentNotFound,
     add_comment,
@@ -43,6 +44,7 @@ __all__ = [
     "build_legacy_presentation_tools",
     "build_presentation_tools",
     "deck_basic_fonts",
+    "deck_edits_since_coscribe",
     "deck_history",
     "deck_html",
     "deck_pdf",

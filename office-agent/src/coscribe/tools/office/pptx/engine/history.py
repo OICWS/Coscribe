@@ -37,18 +37,21 @@ def record_state(folder: Path, pages: list[Path], by: str) -> None:
     for dropped in [s for s in log["states"] if s not in states] + states[:-_KEEP]:
         shutil.rmtree(root / dropped["dir"], ignore_errors=True)
     states = states[-_KEEP:]
-    _write_log(folder, {"states": states, "at": len(states) - 1})
+    _write_log(folder, {**log, "states": states, "at": len(states) - 1})
 
 
 def read_log(folder: Path) -> dict[str, Any]:
-    """The recorded states and which one the pages are now; empty when nothing was recorded or
-    the record is not in the shape this module writes."""
+    """The recorded states and which one the pages are now, and `told`, the state coscribe was
+    last told the user's changes up to; empty when nothing was recorded or the record is not in
+    the shape this module writes."""
     try:
         log: Any = json.loads((folder / HISTORY / _STATES).read_text(encoding="utf-8"))
         states = log["states"]
         at = int(log["at"])
         if isinstance(states, list) and all(isinstance(s, dict) and "dir" in s for s in states):
-            return {"states": states, "at": min(at, len(states) - 1)}
+            told = log.get("told")
+            found = {"states": states, "at": min(at, len(states) - 1)}
+            return {**found, "told": told} if isinstance(told, str) else found
     except (OSError, ValueError, KeyError, TypeError):
         pass
     return {"states": [], "at": -1}
@@ -66,8 +69,12 @@ def restore_state(folder: Path, state: dict[str, Any], pages: list[Path]) -> Non
 
 
 def set_position(folder: Path, at: int) -> None:
-    log = read_log(folder)
-    _write_log(folder, {"states": log["states"], "at": at})
+    _write_log(folder, {**read_log(folder), "at": at})
+
+
+def mark_told(folder: Path, state: str) -> None:
+    """Notes that coscribe was told about the pages as of `state` (a state's `dir`)."""
+    _write_log(folder, {**read_log(folder), "told": state})
 
 
 def _write_log(folder: Path, log: dict[str, Any]) -> None:

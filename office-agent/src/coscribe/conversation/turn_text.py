@@ -7,6 +7,13 @@ from typing import Any
 
 from langchain_core.messages.ai import UsageMetadata
 
+from ..runtime_lg import (
+    ACCEPT_EDITS_MODE_NOTE,
+    AUTO_MODE_NOTE,
+    NORMAL_MODE_NOTE,
+    PLAN_MODE_NOTE,
+)
+
 
 def format_reply(text: str) -> str:
     if not text.strip():
@@ -26,6 +33,15 @@ def build_instructions(agent_instructions: str | None, *, defer_tools: bool) -> 
     if not agent_instructions:
         return "\n\n".join(notes)
     return "\n\n".join([agent_instructions, *notes])
+
+
+def turn_mode_note(plan_mode: bool, accept_edits: bool, auto_mode: bool) -> str:
+    """The note in front of a turn's message that says how risky tool calls are handled."""
+    if plan_mode:
+        return PLAN_MODE_NOTE
+    if accept_edits:
+        return ACCEPT_EDITS_MODE_NOTE
+    return AUTO_MODE_NOTE if auto_mode else NORMAL_MODE_NOTE
 
 
 def usage_event(usage: UsageMetadata) -> dict[str, Any]:
