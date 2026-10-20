@@ -31,10 +31,8 @@ from collections.abc import Callable
 from typing import Any
 
 import httpx
-from bs4 import BeautifulSoup
 from ddgs import DDGS
 from ddgs.exceptions import DDGSException
-from markdownify import markdownify
 
 from ...runtime import configured_proxy, tool_metadata
 
@@ -98,6 +96,11 @@ _USER_AGENT = "Mozilla/5.0 (compatible; coscribe)"
 
 def _page_text(html: str) -> tuple[str, str]:
     """(title, the page's main text as markdown)."""
+    # Imported here: bs4 (and the lxml it prefers) and markdownify are only needed once a page is
+    # read, not for every server start.
+    from bs4 import BeautifulSoup
+    from markdownify import markdownify
+
     soup = BeautifulSoup(html, "html.parser")
     title = soup.title.get_text(" ", strip=True) if soup.title else ""
     for tag in soup(_CHROME_TAGS):
