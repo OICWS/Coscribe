@@ -26,6 +26,7 @@ type PermissionMode = (typeof PERMISSION_MODES)[number]["value"];
 
 const DEFAULT_MODEL_KEY = "COSCRIBE_DEFAULT_MODEL";
 const MAX_TURNS_KEY = "COSCRIBE_MAX_TURNS";
+const REVIEWER_NAME_KEY = "COSCRIBE_REVIEWER_NAME";
 
 function DefaultModelSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const models = useConfiguredModels();
@@ -112,6 +113,7 @@ function AppearanceSection() {
 export function GeneralTab({ values, onChange }: GeneralTabProps) {
   const field = (key: string) => GENERAL_FIELDS.find((f) => f.key === key)!;
   const maxTurns = field(MAX_TURNS_KEY);
+  const reviewer = field(REVIEWER_NAME_KEY);
   return (
     <div className="flex flex-col gap-10">
       <AppearanceSection />
@@ -145,6 +147,24 @@ export function GeneralTab({ values, onChange }: GeneralTabProps) {
                 value={values[MAX_TURNS_KEY] ?? ""}
                 placeholder={maxTurns.placeholder}
                 onChange={(e) => onChange(MAX_TURNS_KEY, e.target.value)}
+              />
+            }
+          />
+        </SettingRows>
+      </SettingsSection>
+
+      <SettingsSection title="Review">
+        <SettingRows>
+          <SettingRow
+            label={reviewer.label}
+            description={reviewer.description}
+            control={
+              <input
+                aria-label={reviewer.label}
+                className={`${fieldClass} w-48`}
+                value={values[REVIEWER_NAME_KEY] ?? ""}
+                placeholder={reviewer.placeholder}
+                onChange={(e) => onChange(REVIEWER_NAME_KEY, e.target.value)}
               />
             }
           />

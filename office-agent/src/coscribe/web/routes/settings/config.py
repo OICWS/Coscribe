@@ -45,6 +45,7 @@ COSCRIBE_ENV_VARS = [
     "COSCRIBE_DEFAULT_PERMISSION_MODE",
     "COSCRIBE_CODE_MODEL",
     "COSCRIBE_CODE_MODULE_ENABLED",
+    "COSCRIBE_REVIEWER_NAME",
 ]
 
 
@@ -55,6 +56,7 @@ LIVE_SETTINGS = {
     "COSCRIBE_DEFAULT_PERMISSION_MODE": "default_permission_mode",
     "COSCRIBE_CODE_MODEL": "code_model",
     "COSCRIBE_CODE_MODULE_ENABLED": "code_module_enabled",
+    "COSCRIBE_REVIEWER_NAME": "reviewer_name",
 }
 
 
@@ -192,6 +194,8 @@ def router(state: AppState) -> APIRouter:
                         live_value = value == "true"
                     elif key == "COSCRIBE_CODE_MODEL":
                         live_value = value.strip() or None
+                    elif key == "COSCRIBE_REVIEWER_NAME":
+                        live_value = value.strip()
                     setattr(settings, LIVE_SETTINGS[key], live_value)
             applied.add(key)
         restart_required = any(
