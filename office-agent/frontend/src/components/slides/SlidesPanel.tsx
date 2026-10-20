@@ -2,20 +2,18 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type Reac
 import { openThreadFile } from "../../lib/rest";
 import {
   DeckNotBuilt,
-  ZOOM_STEPS,
   fitZoom,
   getSlideDeck,
   saveBlob,
   slideExport,
   slideImageUrl,
   stepZoom,
-  zoomLabel,
   type SlideDeck,
   type SlideExport,
   type SlideInfo,
 } from "../../lib/slides";
 import { useDockPanel } from "../dock/dockContext";
-import { BookOpenIcon, ChevronDownIcon, ExternalLinkIcon, FolderIcon, MessageCircleIcon, PlayIcon } from "../icons";
+import { ChevronDownIcon, ExternalLinkIcon, MessageCircleIcon } from "../icons";
 import type { CommentLink } from "../../lib/slideComments";
 import { SlideComments, useSlideComments, type CommentStart } from "./SlideComments";
 import { SlideEditor } from "./SlideEditor";
@@ -23,6 +21,7 @@ import { SlideInsertBar } from "./SlideInsertBar";
 import { NewSlideDialog } from "./NewSlideDialog";
 import { useSlideArranging } from "./useSlideArranging";
 import { useSlideHistory } from "./useSlideHistory";
+import { downloadEntries, presentEntries, titleEntries, zoomEntries } from "./slideMenus";
 import { setNotes, type Insert } from "../../lib/slideSource";
 import { editSlide, getSlideParts } from "../../lib/slideEditing";
 import { SlideMenu, type MenuEntry } from "./SlideMenu";
@@ -601,54 +600,6 @@ function slideKey(e: KeyboardEvent<HTMLDivElement>, view: SlidesView): SlideKey 
   return null;
 }
 
-function zoomEntries(
-  zoom: number,
-  view: SlidesView,
-  setZoom: (zoom: number | null) => void,
-  history: ReturnType<typeof useSlideHistory>,
-): MenuEntry[] {
-  const now = (step: number) => Math.abs(step - zoom) < 1e-6;
-  return [
-    {
-      label: "Zoom in",
-      hint: "Ctrl +",
-      disabled: stepZoom(zoom, 1) === zoom,
-      onSelect: () => setZoom(stepZoom(zoom, 1)),
-    },
-    {
-      label: "Zoom out",
-      hint: "Ctrl −",
-      disabled: stepZoom(zoom, -1) === zoom,
-      onSelect: () => setZoom(stepZoom(zoom, -1)),
-    },
-    {
-      label: view === "slide" ? "Fit the slide" : "Fit the slides",
-      onSelect: () => setZoom(null),
-    },
-    "divider",
-    { note: `Now ${zoomLabel(zoom)}` },
-    ...ZOOM_STEPS.map((step) => ({
-      label: zoomLabel(step),
-      checked: now(step),
-      disabled: now(step),
-      onSelect: () => setZoom(step),
-    })),
-    "divider",
-    {
-      label: history.history.undo === "coscribe" ? "Undo coscribe's change" : "Undo",
-      hint: "Ctrl+Z",
-      disabled: !history.history.undo,
-      onSelect: () => history.step("undo"),
-    },
-    {
-      label: history.history.redo === "coscribe" ? "Redo coscribe's change" : "Redo",
-      hint: "Ctrl+Shift+Z",
-      disabled: !history.history.redo,
-      onSelect: () => history.step("redo"),
-    },
-  ];
-}
-
 /** The open menu, and the presenter over the whole panel. */
 function SlidesOverlays({
   menu,
@@ -726,18 +677,6 @@ const MENU_LABELS: Record<Menu["kind"], string> = {
   comments: "Comments",
 };
 
-function downloadEntries(download: (format: SlideExport) => void): MenuEntry[] {
-  return [
-    { label: "PDF (.pdf)", onSelect: () => download("pdf") },
-    { label: "Web page (.html)", onSelect: () => download("html") },
-    { label: "Current slide as an image (.png)", onSelect: () => download("png") },
-    "divider",
-    { label: "PowerPoint, current fonts (.pptx)", onSelect: () => download("pptx") },
-    { label: "PowerPoint, basic fonts (.pptx)", onSelect: () => download("pptx-basic") },
-    { note: "Basic fonts work on any computer" },
-  ];
-}
-
 /** One download at a time: made (on the server, or drawn here for a PNG), then saved. */
 function useSlideDownloads(threadId: string, path: string, srcOf: (index: number) => string) {
   const [busy, setBusy] = useState(false);
@@ -751,36 +690,6 @@ function useSlideDownloads(threadId: string, path: string, srcOf: (index: number
       .finally(() => setBusy(false));
   };
   return { busy, failed, download };
-}
-
-function presentEntries(present: (withNotes: boolean) => void): MenuEntry[] {
-  return [
-    { label: "Present", icon: <PlayIcon className="h-4 w-4" />, onSelect: () => present(false) },
-    { label: "Present with speaker notes", icon: <BookOpenIcon className="h-4 w-4" />, onSelect: () => present(true) },
-  ];
-}
-
-function titleEntries(open: (reveal: boolean) => void, history: ReturnType<typeof useSlideHistory>): MenuEntry[] {
-  return [
-    {
-      label: "Open in PowerPoint",
-      icon: <ExternalLinkIcon className="h-4 w-4" />,
-      onSelect: () => open(false),
-    },
-    {
-      label: "Show in folder",
-      icon: <FolderIcon className="h-4 w-4" />,
-      onSelect: () => open(true),
-    },
-    "divider",
-    {
-      label: "Discard my edits",
-      disabled: history.history.undo !== "you",
-      onSelect: () => {
-        if (window.confirm("Take back every change you made since coscribe's last version of this presentation?")) history.step("discard");
-      },
-    },
-  ];
 }
 
 function NotBuilt({ name, onOpen }: { name: string; onOpen: () => void }) {
