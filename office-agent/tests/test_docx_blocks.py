@@ -3,6 +3,7 @@ only the blocks the person changed, leaving comments, tracked changes and the re
 
 from __future__ import annotations
 
+import re
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,7 @@ from coscribe.tools.office.docx import (
     BlocksRefused,
     DocChanged,
     read_doc_blocks,
+    read_doc_image,
     save_doc_blocks,
 )
 
@@ -266,6 +268,12 @@ def test_contents_pictures_and_charts_are_locked_and_a_save_leaves_them_alone(
     version, blocks = _blocks(path)
     locked = {b["what"] for b in blocks if b["kind"] == "locked"}
     assert {"field", "image or drawing"} <= locked
+    pictured = [b for b in blocks if b["kind"] == "locked" and b.get("images")]
+    assert len(pictured) == 1 and re.fullmatch(r"rId\d+", pictured[0]["images"][0])
+    found = read_doc_image(path, pictured[0]["images"][0])
+    assert found is not None and found[1] == "image/png" and found[0].startswith(b"\x89PNG")
+    assert read_doc_image(path, "rId999") is None
+    assert read_doc_image(path, "rId1") is None  # a part that is not a picture
     save_doc_blocks(path, version, blocks)
     assert _paragraphs(path) == before
     assert Document(path).paragraphs  # still opens

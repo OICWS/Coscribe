@@ -1,6 +1,6 @@
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { askAboutWords, blocksToDoc, getDocBlocks, type DocBlocks } from "../../lib/docsEditor";
+import { askAboutWords, blocksToDoc, docImageUrl, getDocBlocks, type DocBlocks } from "../../lib/docsEditor";
 import { DocxPanelHeader } from "../DocxPanelHeader";
 import { DocsBubble } from "./DocsBubble";
 import { DocsToolbar } from "./DocsToolbar";
@@ -82,7 +82,7 @@ function DocsEditor({
   const slash = useSlashMenu();
   const editor = useEditor({
     extensions: [...docsExtensions, slash.extension],
-    content: blocksToDoc(doc.blocks),
+    content: blocksToDoc(doc.blocks, docImageUrl(threadId, path, doc.version)),
     editorProps: { attributes: { class: "docs-editor", "aria-label": "Document" } },
   });
   const { state } = useDocsSave(editor, threadId, path, version, onReload);
