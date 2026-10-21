@@ -1,7 +1,6 @@
 import { useState } from "react";
 import type { LogItem } from "../state/reducer";
 import { Disclosure } from "./chatlog/SummaryLabel";
-import { MoreIcon } from "./icons";
 
 export type PlanItem = Extract<LogItem, { kind: "plan" }>;
 export type PlanChoice = "auto" | "manual" | "revise" | "reject";
@@ -94,21 +93,18 @@ export function PlanCard({
           </form>
         )}
       </div>
-      <div>
+      <div className="w-full text-sm">
         <button
           type="button"
           aria-expanded={source}
-          className="flex items-center gap-3 text-[15px] text-[var(--muted)] hover:text-[var(--fg)]"
+          className="inline-flex max-w-full items-center gap-1 text-left text-[var(--muted)] hover:text-[var(--fg)]"
           onClick={() => setSource(!source)}
         >
-          <MoreIcon className="h-4 w-4 shrink-0 rotate-90" />
-          <span className="flex items-center gap-1">
-            Proposing plan
-            <Disclosure open={source} />
-          </span>
+          Proposing plan
+          <Disclosure open={source} />
         </button>
         {source && (
-          <pre className="ml-7 mt-2 max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 font-sans text-[15px] leading-relaxed">
+          <pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 font-sans text-[15px] leading-relaxed">
             {item.plan}
           </pre>
         )}
