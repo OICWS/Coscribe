@@ -6,13 +6,14 @@ import {
   type DocxReview,
   type DocxView,
 } from "../lib/docxReview";
-import { openThreadFile } from "../lib/rest";
 import { DocxChangeBar } from "./DocxChangeBar";
 import { DocxCommentCard } from "./DocxCommentCard";
 import { DocxNewComment } from "./DocxNewComment";
 import { useChangeSelection, useDocxActions } from "./docxActions";
 import { useDockPanel } from "./dock/dockContext";
-import { ArrowDownIcon, ArrowUpIcon, ExternalLinkIcon, MessageCircleIcon } from "./icons";
+import { PanelFileMenu } from "./artifacts/PanelFileMenu";
+import { PanelTitleButton } from "./artifacts/PanelTitleButton";
+import { ArrowDownIcon, ArrowUpIcon, MessageCircleIcon } from "./icons";
 
 const RAIL_WIDTH = 248;
 const CARD_GAP = 8;
@@ -96,11 +97,14 @@ export function DocxViewerPanel({
   path,
   refreshKey,
   onAsk,
+  onFileChanged,
 }: {
   threadId: string;
   path: string;
   refreshKey: string;
   onAsk?: (text: string) => void;
+  /** The file was renamed (its new path) or deleted (null) from its menu. */
+  onFileChanged?: (path: string | null) => void;
 }) {
   const dock = useDockPanel();
   const [view, setView] = useState<DocxView>("review");
@@ -114,6 +118,7 @@ export function DocxViewerPanel({
   const [zoom, setZoom] = useState(1);
   const [compact, setCompact] = useState(false);
   const [drawer, setDrawer] = useState(false);
+  const [fileMenu, setFileMenu] = useState<DOMRect | null>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -248,19 +253,10 @@ export function DocxViewerPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {fileMenu && <PanelFileMenu anchor={fileMenu} threadId={threadId} path={path} onFileChanged={onFileChanged} onClose={() => setFileMenu(null)} />}
       <div className="flex h-12 shrink-0 items-center gap-2 px-3" {...dock.headerProps}>
-        <span className="min-w-0 flex-1 truncate px-1 text-[15px]" title={path}>
-          {name}
-        </span>
-        <button
-          type="button"
-          className={iconButton}
-          title="Open in Word"
-          aria-label="Open in Word"
-          onClick={() => void openThreadFile(threadId, path, false).then((e) => e && setError(e))}
-        >
-          <ExternalLinkIcon className="h-4 w-4" />
-        </button>
+        <PanelTitleButton title={name} path={path} onMenu={setFileMenu} />
+        <div className="flex-1" />
         {dock.controls}
       </div>
       <div className="flex h-10 shrink-0 items-center gap-2 border-y border-[var(--border)] px-3 text-xs text-[var(--muted)]">

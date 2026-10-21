@@ -844,7 +844,7 @@ function App() {
     }
     if (panel === "viewer" && viewerFile) {
       return (
-        <ViewerPanel key={`${threadId}:${viewerFile}`} threadId={threadId} path={viewerFile} refreshKey={refreshKey} onSendComment={onSendComment} />
+        <ViewerPanel key={`${threadId}:${viewerFile}`} threadId={threadId} path={viewerFile} refreshKey={refreshKey} onSendComment={onSendComment} onFileChanged={(changed) => (changed ? viewFile(changed) : closePanel("viewer"))} />
       );
     }
     if (panel === "browser") {

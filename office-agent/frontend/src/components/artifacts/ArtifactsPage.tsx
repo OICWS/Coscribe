@@ -6,6 +6,7 @@ import {
   countsByKind,
   dayGroups,
   readLayout,
+  showArtifact,
   visibleArtifacts,
   writeLayout,
   type ArtifactKind,
@@ -13,11 +14,12 @@ import {
   type Filters,
   type Layout,
 } from "../../lib/artifacts";
-import { CopyIcon, FilterIcon, LinkIcon, PencilIcon, SearchIcon, TrashIcon } from "../icons";
+import { FilterIcon, SearchIcon } from "../icons";
 import { SlideMenu, type MenuEntry } from "../slides/SlideMenu";
 import { ArtifactCard, ArtifactRow } from "./ArtifactItems";
+import { ArtifactMenu } from "./ArtifactMenu";
 import { KindTile } from "./ArtifactThumb";
-import { ArtifactsIcon, GridViewIcon, ListViewIcon, PinIcon } from "./artifactIcons";
+import { ArtifactsIcon, GridViewIcon, ListViewIcon } from "./artifactIcons";
 import { NewTiles } from "./NewTiles";
 import { useArtifacts } from "./useArtifacts";
 
@@ -73,12 +75,23 @@ export function ArtifactsPage({ onOpen, onMake }: { onOpen: (item: ArtifactSumma
           />
         </div>
       </div>
-      {menu && (
+      {menu?.kind === "filter" && (
         <SlideMenu
           anchor={menu.anchor}
-          label={menu.kind === "filter" ? "Filter by type" : `Options for ${menu.item.name}`}
-          width={menu.kind === "filter" ? 230 : 220}
-          entries={menu.kind === "filter" ? filterEntries(filters.kind, countsByKind(items ?? []), (kind) => change({ kind })) : itemEntries(menu.item, pins.has(artifactId(menu.item)), togglePin)}
+          label="Filter by type"
+          width={230}
+          entries={filterEntries(filters.kind, countsByKind(items ?? []), (kind) => change({ kind }))}
+          onClose={() => setMenu(null)}
+        />
+      )}
+      {menu?.kind === "item" && (
+        <ArtifactMenu
+          anchor={menu.anchor}
+          item={menu.item}
+          pinned={pins.has(artifactId(menu.item))}
+          onPin={() => togglePin(menu.item)}
+          open={(reveal) => void showArtifact(menu.item.id, reveal).catch(() => undefined)}
+          onChanged={reload}
           onClose={() => setMenu(null)}
         />
       )}
@@ -229,20 +242,6 @@ function filterEntries(selected: ArtifactKind | null, counts: Record<ArtifactKin
       checked: selected === kind,
       onSelect: () => pick(kind),
     })),
-  ];
-}
-
-/** Renaming, duplicating, copying a link and deleting touch the file or its links, which is
- * decided with the maintainer before any of it is done. */
-function itemEntries(item: ArtifactSummary, pinned: boolean, togglePin: (item: ArtifactSummary) => void): MenuEntry[] {
-  const later = { disabled: true, hint: "Soon" };
-  return [
-    { label: pinned ? "Unpin" : "Pin", icon: <PinIcon className="h-4 w-4" />, accel: "p", hint: "P", onSelect: () => togglePin(item) },
-    { label: "Rename", icon: <PencilIcon className="h-4 w-4" />, ...later },
-    { label: "Duplicate", icon: <CopyIcon className="h-4 w-4" />, ...later },
-    { label: "Copy link", icon: <LinkIcon className="h-4 w-4" />, ...later },
-    "divider",
-    { label: "Delete", icon: <TrashIcon className="h-4 w-4" />, danger: true, ...later },
   ];
 }
 

@@ -9,15 +9,18 @@ export function ViewerPanel({
   path,
   refreshKey,
   onSendComment,
+  onFileChanged,
 }: {
   threadId: string;
   path: string;
   refreshKey: string;
   onSendComment?: (text: string, link?: CommentLink) => void;
+  /** The file was renamed (its new path) or deleted (null) from the menu under its name. */
+  onFileChanged?: (path: string | null) => void;
 }) {
   return isPptx(path) ? (
-    <SlidesPanel threadId={threadId} path={path} refreshKey={refreshKey} onSendComment={onSendComment} />
+    <SlidesPanel threadId={threadId} path={path} refreshKey={refreshKey} onSendComment={onSendComment} onFileChanged={onFileChanged} />
   ) : (
-    <DocxViewerPanel threadId={threadId} path={path} refreshKey={refreshKey} onAsk={onSendComment} />
+    <DocxViewerPanel threadId={threadId} path={path} refreshKey={refreshKey} onAsk={onSendComment} onFileChanged={onFileChanged} />
   );
 }

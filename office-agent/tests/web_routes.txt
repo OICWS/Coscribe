@@ -1,3 +1,4 @@
+DELETE /api/artifacts/{artifact}
 DELETE /api/code/install
 DELETE /api/mcp/oauth-apps/{group}
 DELETE /api/mcp/servers/{name}
@@ -14,6 +15,7 @@ DELETE /api/threads/{thread_id}/slides/comments/{comment_id}
 DELETE /api/threads/{thread_id}/subagents
 GET /
 GET /api/artifacts
+GET /api/artifacts/lookup
 GET /api/artifacts/{artifact}/thumbnail
 GET /api/attachment/pdf
 GET /api/attachment/pdf/page
@@ -78,7 +80,10 @@ GET,HEAD /openapi.json
 GET,HEAD /redoc
 MOUNT /static
 PATCH /api/scheduled-tasks/{trigger_id}
+POST /api/artifacts/{artifact}/duplicate
 POST /api/artifacts/{artifact}/open
+POST /api/artifacts/{artifact}/rename
+POST /api/artifacts/{artifact}/show
 POST /api/background-tasks/{task_id}/stop
 POST /api/code/install
 POST /api/config

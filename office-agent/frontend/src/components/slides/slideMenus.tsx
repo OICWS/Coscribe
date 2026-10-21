@@ -1,5 +1,5 @@
 import { ZOOM_STEPS, stepZoom, zoomLabel, type SlideExport } from "../../lib/slides";
-import { BookOpenIcon, ExternalLinkIcon, FolderIcon, PlayIcon } from "../icons";
+import { BookOpenIcon, PlayIcon } from "../icons";
 import type { MenuEntry } from "./SlideMenu";
 import type { SlidesView } from "./SlideStrip";
 import type { useSlideHistory } from "./useSlideHistory";
@@ -73,24 +73,8 @@ export function presentEntries(present: (withNotes: boolean) => void): MenuEntry
   ];
 }
 
-export function titleEntries(open: (reveal: boolean) => void, history: ReturnType<typeof useSlideHistory>, askDiscard: () => void): MenuEntry[] {
-  return [
-    {
-      label: "Open in PowerPoint",
-      icon: <ExternalLinkIcon className="h-4 w-4" />,
-      onSelect: () => open(false),
-    },
-    {
-      label: "Show in folder",
-      icon: <FolderIcon className="h-4 w-4" />,
-      onSelect: () => open(true),
-    },
-    "divider",
-    {
-      label: "Discard my edits",
-      disabled: history.history.undo !== "you",
-      onSelect: askDiscard,
-    },
-  ];
+/** What only a deck's menu has, after the entries every artifact's menu has. */
+export function deckEntries(history: ReturnType<typeof useSlideHistory>, askDiscard: () => void): MenuEntry[] {
+  return [{ label: "Discard my edits", disabled: history.history.undo !== "you", onSelect: askDiscard }];
 }
 

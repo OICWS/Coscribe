@@ -5,9 +5,9 @@ import { freshThreadPath, waitForConnected } from "./helpers";
 // the list is the one thing answered here; the page, the sidebar and the navigation are real.
 const hoursAgo = (h: number) => new Date(Date.now() - h * 3600e3).toISOString();
 const LISTED = [
-  { id: "a1", path: "q3.pptx", name: "Q3 review", kind: "slides", modified_at: hoursAgo(3), excerpt: null },
-  { id: "b1", path: "plan.docx", name: "Project plan", kind: "docs", modified_at: hoursAgo(30), excerpt: { heading: "Project plan", text: "Goals and dates." } },
-  { id: "c1", path: "costs.xlsx", name: "Costs", kind: "sheets", modified_at: hoursAgo(31), excerpt: null },
+  { id: "a1", path: "q3.pptx", location: "/w/q3.pptx", name: "Q3 review", kind: "slides", modified_at: hoursAgo(3), excerpt: null },
+  { id: "b1", path: "plan.docx", location: "/w/plan.docx", name: "Project plan", kind: "docs", modified_at: hoursAgo(30), excerpt: { heading: "Project plan", text: "Goals and dates." } },
+  { id: "c1", path: "costs.xlsx", location: "/w/costs.xlsx", name: "Costs", kind: "sheets", modified_at: hoursAgo(31), excerpt: null },
 ];
 
 async function openPage(page: Page) {
@@ -68,4 +68,32 @@ test("a card opens its conversation, and a kind starts a new one with its first 
   await page.getByRole("button", { name: /^Slides/ }).click();
   await expect(page).not.toHaveURL(/view=artifacts/);
   await expect(page.getByPlaceholder("Type / for commands")).toHaveValue("Make a presentation about ");
+});
+
+test("a card's menu renames, copies and deletes through the app's own dialogs", async ({ page }) => {
+  const calls: string[] = [];
+  await page.route("**/api/artifacts/b1/rename", (route) => {
+    calls.push(`rename ${route.request().postData()}`);
+    return route.fulfill({ json: { ...LISTED[1], name: "Roadmap", path: "Roadmap.docx" } });
+  });
+  await page.route("**/api/artifacts/b1", (route) => {
+    calls.push(route.request().method());
+    return route.fulfill({ json: { deleted: "b1" } });
+  });
+  await openPage(page);
+
+  await page.getByRole("button", { name: "Options for Project plan" }).click({ force: true });
+  const menu = page.getByRole("menu", { name: "Options for Project plan" });
+  await expect(menu).toContainText("Document");
+  await expect(menu.getByRole("menuitem", { name: "Open in Word" })).toBeVisible();
+  await menu.getByRole("menuitem", { name: "Rename" }).click();
+  await page.getByLabel("Name").fill("Roadmap");
+  await page.getByRole("button", { name: "Rename", exact: true }).click();
+  await expect.poll(() => calls).toContain('rename {"name":"Roadmap"}');
+
+  await page.getByRole("button", { name: "Options for Project plan" }).click({ force: true });
+  await page.getByRole("menuitem", { name: "Delete" }).click();
+  await expect(page.getByText("moves Project plan to the Recycle Bin")).toBeVisible();
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect.poll(() => calls).toContain("DELETE");
 });

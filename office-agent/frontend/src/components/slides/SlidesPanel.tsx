@@ -22,7 +22,9 @@ import { ConfirmDialog } from "../ConfirmDialog";
 import { NewSlideDialog } from "./NewSlideDialog";
 import { useSlideArranging } from "./useSlideArranging";
 import { useSlideHistory } from "./useSlideHistory";
-import { downloadEntries, presentEntries, titleEntries, zoomEntries } from "./slideMenus";
+import { deckEntries, downloadEntries, presentEntries, zoomEntries } from "./slideMenus";
+import { PanelFileMenu } from "../artifacts/PanelFileMenu";
+import { PanelTitleButton } from "../artifacts/PanelTitleButton";
 import { setNotes, type Insert } from "../../lib/slideSource";
 import { editSlide, getSlideParts } from "../../lib/slideEditing";
 import { SlideMenu, type MenuEntry } from "./SlideMenu";
@@ -46,10 +48,13 @@ export function SlidesPanel({
   path,
   refreshKey,
   onSendComment,
+  onFileChanged,
 }: {
   threadId: string;
   path: string;
   refreshKey: string;
+  /** The deck was renamed (its new path) or deleted (null) from its menu. */
+  onFileChanged?: (path: string | null) => void;
   /** Sends a comment to coscribe as a message; absent where there is no conversation. */
   onSendComment?: (text: string, link: CommentLink) => void;
 }) {
@@ -128,16 +133,8 @@ export function SlidesPanel({
           {beside && properties}
         </div>
       )}
-      <SlidesOverlays
-        menu={menu}
-        ui={ui}
-        slides={slides}
-        zoom={shownZoom}
-        srcOf={srcOf}
-        actions={{ open, download: (format) => downloads.download(format, index), history }}
-        onCloseMenu={() => setMenu(null)}
-        onStopped={() => rootRef.current?.focus()}
-      />
+      <SlidesOverlays menu={menu} ui={ui} slides={slides} zoom={shownZoom} srcOf={srcOf} onCloseMenu={() => setMenu(null)} onStopped={() => rootRef.current?.focus()}
+        actions={{ download: (format) => downloads.download(format, index), history }} file={{ threadId, path, onChanged: onFileChanged }} />
     </div>
   );
 }
@@ -392,7 +389,7 @@ function PanelTop({
   const half = "flex h-7 items-center justify-center hover:bg-[var(--card-bg)]";
   return (
     <div className="flex h-12 shrink-0 items-center gap-2 px-3" {...dock.headerProps}>
-      <TitleButton title={title} path={path} onMenu={(anchor) => onMenu("title", anchor)} />
+      <PanelTitleButton title={title} path={path} onMenu={(anchor) => onMenu("title", anchor)} />
       <div className="flex-1" />
       <div
         className="flex items-center overflow-hidden rounded-lg border border-[var(--border)]"
@@ -422,22 +419,6 @@ function PanelTop({
       </div>
       {dock.controls}
     </div>
-  );
-}
-
-function TitleButton({ title, path, onMenu }: { title: string; path: string; onMenu: (anchor: DOMRect) => void }) {
-  return (
-    <button
-      type="button"
-      className="flex min-w-0 items-center gap-1 rounded-md px-1 py-0.5 text-[15px] hover:bg-[var(--card-bg)]"
-      title={path}
-      aria-haspopup="menu"
-      onPointerDown={(e) => e.stopPropagation()}
-      onClick={(e) => onMenu(e.currentTarget.getBoundingClientRect())}
-    >
-      <span className="truncate">{title}</span>
-      <ChevronDownIcon className="h-3.5 w-3.5 shrink-0 text-[var(--muted)]" />
-    </button>
   );
 }
 
@@ -616,6 +597,7 @@ function SlidesOverlays({
   zoom,
   srcOf,
   actions,
+  file,
   onCloseMenu,
   onStopped,
 }: {
@@ -624,7 +606,9 @@ function SlidesOverlays({
   slides: SlideInfo[];
   zoom: number;
   srcOf: (index: number) => string;
-  actions: Pick<MenuActions, "open" | "download" | "history">;
+  actions: Pick<MenuActions, "download" | "history">;
+  /** The deck's file, for the menu under its name. */
+  file: { threadId: string; path: string; onChanged?: (path: string | null) => void };
   onCloseMenu: () => void;
   /** Presenting ended, back on the panel. */
   onStopped: () => void;
@@ -645,7 +629,17 @@ function SlidesOverlays({
   };
   return (
     <>
-      {menu && (
+      {menu?.kind === "title" && (
+        <PanelFileMenu
+          anchor={menu.anchor}
+          threadId={file.threadId}
+          path={file.path}
+          extra={deckEntries(actions.history, () => setAskingDiscard(true))}
+          onFileChanged={file.onChanged}
+          onClose={onCloseMenu}
+        />
+      )}
+      {menu && menu.kind !== "title" && (
         <SlideMenu
           anchor={menu.anchor}
           label={MENU_LABELS[menu.kind]}
@@ -677,7 +671,6 @@ interface MenuActions {
   setZoom: (zoom: number | null) => void;
   history: ReturnType<typeof useSlideHistory>;
   present: (withNotes: boolean) => void;
-  open: (reveal: boolean) => void;
   download: (format: SlideExport) => void;
   ui: ReturnType<typeof useSlidesUi>;
   askDiscard: () => void;
@@ -687,7 +680,7 @@ function entriesFor(kind: Menu["kind"], zoom: number, view: SlidesView, actions:
   if (kind === "zoom") return zoomEntries(zoom, view, actions.setZoom, actions.history);
   if (kind === "download") return downloadEntries(actions.download);
   if (kind === "comments") return commentEntries(actions.ui);
-  return kind === "present" ? presentEntries(actions.present) : titleEntries(actions.open, actions.history, actions.askDiscard);
+  return presentEntries(actions.present);
 }
 
 function commentEntries(ui: ReturnType<typeof useSlidesUi>): MenuEntry[] {
