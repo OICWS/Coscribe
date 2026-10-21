@@ -1,0 +1,32 @@
+name: Alerts export
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/alerts-export.yml
+
+permissions:
+  contents: read
+  security-events: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summarise open code scanning alerts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/code-scanning/alerts?state=open&per_page=100" --paginate > alerts.json
+          python3 - <<'PY'
+          import json, collections
+          a = json.load(open("alerts.json"))
+          print("open alerts:", len(a))
+          c = collections.Counter((x["rule"]["severity"], x["rule"]["security_severity_level"], x["rule"]["id"]) for x in a)
+          for k, v in sorted(c.items(), key=lambda kv: (str(kv[0][1]), -kv[1])):
+              print(v, *k)
+          print("--- locations")
+          for x in a:
+              loc = x["most_recent_instance"]["location"]
+              print(x["rule"]["id"], x["rule"]["security_severity_level"], loc["path"], loc.get("start_line"))
+          PY
