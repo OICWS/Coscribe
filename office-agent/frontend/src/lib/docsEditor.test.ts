@@ -2,7 +2,7 @@ import { getSchema } from "@tiptap/core";
 import { Node as PMNode } from "@tiptap/pm/model";
 import { describe, expect, it } from "vitest";
 import { docsExtensions } from "./docsExtensions";
-import { blocksToDoc, docToBlocks, type Block } from "./docsEditor";
+import { blocksToDoc, docImageUrl, docToBlocks, type Block } from "./docsEditor";
 
 const schema = getSchema(docsExtensions);
 const roundTrip = (blocks: Block[]) => docToBlocks(PMNode.fromJSON(schema, blocksToDoc(blocks)));
@@ -45,6 +45,13 @@ describe("blocks and the editor's document", () => {
     const bullets = doc.content?.[4];
     expect(bullets?.content).toHaveLength(2);
     expect(bullets?.content?.[0].content?.[1].type).toBe("bulletList");
+  });
+
+  it("shows the pictures of a locked block from where the document serves them, and sends only its id back", () => {
+    const picture: Block = { id: "b7", kind: "locked", what: "image or drawing", text: "", images: ["rId4"] };
+    const doc = blocksToDoc([picture], docImageUrl("t1", "a b.docx", "v9"));
+    expect(doc.content?.[0].attrs?.images).toEqual(["/api/threads/t1/docs/image?path=a%20b.docx&rid=rId4&v=v9"]);
+    expect(roundTrip([picture]).blocks[0]).toEqual({ id: "b7", kind: "locked" });
   });
 
   it("gives a table's first row header cells only when the file has a header row", () => {

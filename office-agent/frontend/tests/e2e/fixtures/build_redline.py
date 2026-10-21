@@ -1,5 +1,5 @@
 """Builds a Word file with two tracked changes and a comment, for the Word panel spec:
-`python build_redline.py <workspace> <name>` writes `<name>.docx`."""
+`python build_redline.py <workspace> <name> [picture]` writes `<name>.docx`, with a picture when asked."""
 
 import sys
 from pathlib import Path
@@ -23,3 +23,9 @@ tools = {tool.__name__: tool for tool in build_document_tools(workspace)}  # typ
 tools["write_docx"](path=f"{name}.docx", content=CONTRACT, comment_author="Ana Lee")
 tools["insert_docx_text"](path=f"{name}.docx", text=" (extended)", context_before="30 days")
 tools["delete_docx_text"](path=f"{name}.docx", text="100 dollars")
+
+if len(sys.argv) > 3 and sys.argv[3] == "picture":
+    from PIL import Image
+
+    Image.new("RGB", (120, 60), "tomato").save(workspace / f"{name}.png")
+    tools["add_docx_image"](path=f"{name}.docx", image_path=f"{name}.png", after_text="runs for one year")

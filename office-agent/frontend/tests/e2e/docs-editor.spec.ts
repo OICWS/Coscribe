@@ -21,8 +21,8 @@ interface Blocks {
 const threadOf = (page: Page) => new URL(page.url()).searchParams.get("thread") ?? "";
 const textOf = (block: Blocks["blocks"][number]) => (block.runs ?? []).map((r) => r.t).join("");
 
-async function openEditor(page: Page, name: string) {
-  execFileSync("python", [join("frontend", "tests", "e2e", "fixtures", "build_redline.py"), WORKSPACE ?? "", name], {
+async function openEditor(page: Page, name: string, extra: string[] = []) {
+  execFileSync("python", [join("frontend", "tests", "e2e", "fixtures", "build_redline.py"), WORKSPACE ?? "", name, ...extra], {
     cwd: AGENT,
     env: { ...process.env, PYTHONPATH: AGENT },
   });
@@ -172,4 +172,21 @@ test("a turn that ends does not rebuild the editor or move the caret", async ({ 
   await page.keyboard.type(" Kept.");
   await expect(page.getByRole("status")).toHaveText("Saved");
   expect((await blocksOf(page, name)).blocks.map(textOf).some((t) => t.includes("The agreement runs for one year. Kept."))).toBe(true);
+});
+
+test("a picture in the document is shown in the editor and survives an edit beside it", async ({ page }) => {
+  const name = `edit-${Math.random().toString(36).slice(2, 8)}`;
+  await openEditor(page, name, ["picture"]);
+  const editor = page.locator(".docs-editor");
+  const picture = editor.locator(".docs-locked-image");
+  await expect(picture).toBeVisible();
+  expect(await picture.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(120);
+
+  await clickParagraph(page, "The agreement runs");
+  await page.keyboard.press("End");
+  await page.keyboard.type(" Beside the picture.");
+  await expect(page.getByRole("status")).toHaveText("Saved");
+  const saved = await blocksOf(page, name);
+  expect(saved.blocks.some((b) => b.kind === "locked" && b.what === "image or drawing")).toBe(true);
+  await expect(picture).toBeVisible();
 });

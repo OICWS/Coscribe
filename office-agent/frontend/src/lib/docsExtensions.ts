@@ -45,15 +45,19 @@ const LockedBlock = Node.create({
   selectable: true,
   draggable: false,
   addAttributes() {
-    return { what: { default: "" }, text: { default: "" } };
+    return { what: { default: "" }, text: { default: "" }, images: { default: [] as string[] } };
   },
   parseHTML: () => [{ tag: "div.docs-locked" }],
-  renderHTML: ({ node }) => [
-    "div",
-    { class: "docs-locked", contenteditable: "false" },
-    ["span", { class: "docs-locked-what" }, LOCKED_LABELS[String(node.attrs.what)] ?? "Kept as it is"],
-    ["span", { class: "docs-locked-text" }, String(node.attrs.text)],
-  ],
+  renderHTML: ({ node }) => {
+    const images = node.attrs.images as string[];
+    return [
+      "div",
+      { class: images.length ? "docs-locked docs-locked-pictured" : "docs-locked", contenteditable: "false" },
+      ["span", { class: "docs-locked-what" }, LOCKED_LABELS[String(node.attrs.what)] ?? "Kept as it is"],
+      ...images.map((src) => ["img", { class: "docs-locked-image", src, alt: "" }] as const),
+      ["span", { class: "docs-locked-text" }, String(node.attrs.text)],
+    ];
+  },
 });
 
 /** Exactly what the Word file can hold through the editor (decision 0019): headings 1 to 3, a title,

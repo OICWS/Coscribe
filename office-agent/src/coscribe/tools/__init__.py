@@ -105,6 +105,7 @@ from .office.docx import (
     DocChanged,
     edits_since_told,
     read_doc_blocks,
+    read_doc_image,
     remember_before_edit,
     save_doc_blocks,
 )
@@ -244,6 +245,7 @@ __all__ = [
     "edits_since_told",
     "remember_before_edit",
     "read_doc_blocks",
+    "read_doc_image",
     "save_doc_blocks",
     "copy_deck",
     "deck_files",

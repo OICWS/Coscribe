@@ -20,6 +20,7 @@ from ..._file_locks import file_lock
 from ..._ooxml_validate import assert_wml_valid
 from ..markdown_blocks import Block
 from ._review import write_atomically
+from .block_images import images_of
 
 _W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 _R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
@@ -230,7 +231,7 @@ class _Context:
 def _paragraph_block(paragraph: Any, context: _Context) -> dict[str, Any]:
     reason = _lock_reason(paragraph)
     if reason is not None:
-        return _locked(reason, _plain(paragraph))
+        return _locked(reason, _plain(paragraph), images_of(paragraph))
     name = context.style_of(paragraph)
     block: dict[str, Any]
     heading, listed = _HEADING_STYLE.match(name), _LIST_STYLE.match(name)
@@ -257,8 +258,8 @@ def _plain(element: Any) -> str:
     return text[:_PREVIEW]
 
 
-def _locked(what: str, text: str = "") -> dict[str, Any]:
-    return {"kind": "locked", "what": what, "text": text}
+def _locked(what: str, text: str = "", images: list[str] | None = None) -> dict[str, Any]:
+    return {"kind": "locked", "what": what, "text": text, **({"images": images} if images else {})}
 
 
 def _table_block(table: Any, context: _Context) -> dict[str, Any]:
