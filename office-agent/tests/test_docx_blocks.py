@@ -11,6 +11,7 @@ from typing import Any
 
 import pytest
 from docx import Document
+from docx.enum.text import WD_BREAK
 from lxml import etree
 
 from coscribe.tools.office.document_tools import build_document_tools
@@ -325,3 +326,50 @@ def test_a_wide_picture_is_scaled_to_the_page_and_a_bad_one_is_refused(doc: Path
     big = "A" * (4 * (8 * 1024 * 1024 // 3 + 10))
     with pytest.raises(BlocksRefused, match="8 MB"):
         save_doc_blocks(doc, version, [*blocks, {"kind": "image", "data": big}])
+
+
+def test_a_divider_and_a_page_break_are_written_read_back_and_kept(doc: Path) -> None:
+    version, blocks = _blocks(doc)
+    blocks.insert(3, {"kind": "divider"})
+    blocks.insert(5, {"kind": "pagebreak"})
+    saved = save_doc_blocks(doc, version, blocks)["blocks"]
+    assert [b["kind"] for b in saved[3:6]] == ["divider", saved[4]["kind"], "pagebreak"]
+    assert saved[4]["kind"] != "locked"
+
+    version, blocks = _blocks(doc)
+    before = _paragraphs(doc)
+    save_doc_blocks(doc, version, blocks)  # sending back what was read changes nothing
+    assert _paragraphs(doc) == before
+    assert [b["kind"] for b in blocks].count("divider") == 1
+    assert [b["kind"] for b in blocks].count("pagebreak") == 1
+
+    blocks = [b for b in blocks if b["kind"] not in ("divider", "pagebreak")]
+    version = read_doc_blocks(doc)["version"]
+    removed = save_doc_blocks(doc, version, blocks)["blocks"]
+    assert not {"divider", "pagebreak"} & {b["kind"] for b in removed}
+
+
+def test_a_page_break_inside_text_and_a_ruled_paragraph_with_text_are_not_breaks(
+    tmp_path: Path,
+) -> None:
+    from docx import Document as Open
+
+    document = Open()
+    document.add_paragraph("before the break").add_run().add_break(WD_BREAK.PAGE)
+    ruled = document.add_paragraph("ruled text")
+    border = ruled._p.get_or_add_pPr()
+    from docx.oxml import parse_xml
+
+    border.append(
+        parse_xml(
+            '<w:pBdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            '<w:bottom w:val="single" w:sz="6" w:space="1" w:color="auto"/></w:pBdr>'
+        )
+    )
+    document.add_page_break()
+    path = tmp_path / "b.docx"
+    document.save(path)
+    kinds = [(b["kind"], b.get("what")) for b in _blocks(path)[1]]
+    assert kinds[0] == ("locked", "page break")
+    assert kinds[1][0] == "paragraph"
+    assert kinds[2] == ("pagebreak", None)

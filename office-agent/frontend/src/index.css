@@ -671,6 +671,31 @@ body {
   max-height: 420px;
   border-radius: 6px;
 }
+.docs-editor .docs-divider {
+  margin: 14px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+.docs-editor .docs-divider.ProseMirror-selectednode,
+.docs-editor .docs-page-break.ProseMirror-selectednode {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 4px;
+}
+.docs-editor .docs-page-break {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  margin: 14px 0;
+  font-size: 12px;
+  color: var(--muted);
+  user-select: none;
+}
+.docs-editor .docs-page-break::before,
+.docs-editor .docs-page-break::after {
+  content: "";
+  flex: 1;
+  border-top: 1px dashed var(--border);
+}
 .docs-editor .docs-locked-what {
   flex-shrink: 0;
   font-weight: 600;

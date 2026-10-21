@@ -20,6 +20,7 @@ from ..._file_locks import file_lock
 from ..._ooxml_validate import assert_wml_valid
 from ..markdown_blocks import Block
 from ._review import write_atomically
+from .block_breaks import BREAK_KINDS, break_kind, new_break_paragraph
 from .block_images import decode_picture, images_of, new_picture_paragraph
 
 _W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -229,6 +230,8 @@ class _Context:
 
 
 def _paragraph_block(paragraph: Any, context: _Context) -> dict[str, Any]:
+    if (rule := break_kind(paragraph)) is not None:
+        return {"kind": rule}
     reason = _lock_reason(paragraph)
     if reason is not None:
         return _locked(reason, _plain(paragraph), images_of(paragraph))
@@ -365,8 +368,8 @@ def _clean(block: Any) -> dict[str, Any]:
             "header": bool(block.get("header")),
             "rows": [[_clean_runs(c) for c in r] for r in rows],
         }
-    if kind == "locked":
-        return {"kind": "locked"}
+    if kind == "locked" or kind in BREAK_KINDS:
+        return {"kind": kind}
     if kind == "image":
         try:
             return {"kind": "image", "blob": decode_picture(block.get("data"))}
@@ -535,6 +538,8 @@ def _update(
 ) -> Any:
     if old["kind"] == "locked":
         return element
+    if old["kind"] in BREAK_KINDS or block["kind"] in BREAK_KINDS:
+        return element if old["kind"] == block["kind"] else _create(document, block, after_number)
     if (old["kind"] == "table") != (block["kind"] == "table"):
         return _create(document, block, after_number)
     if block["kind"] == "table":
@@ -555,6 +560,8 @@ def _update(
 def _create(document: Any, block: dict[str, Any], after_number: bool) -> Any:
     if block["kind"] == "image":
         return new_picture_paragraph(document, block["blob"])
+    if block["kind"] in BREAK_KINDS:
+        return new_break_paragraph(block["kind"])
     if block["kind"] == "table":
         return _new_table(document, block)
     from docx.oxml import OxmlElement

@@ -6,7 +6,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { Pictures } from "./docsPictures";
 
 /** Nodes that stand for one block of the Word file: the id the server gave it rides on them. */
-const BLOCK_NODES = ["paragraph", "title", "heading", "blockquote", "listItem", "table", "lockedBlock"];
+const BLOCK_NODES = ["paragraph", "title", "heading", "blockquote", "listItem", "table", "lockedBlock", "divider", "pageBreak"];
 
 const BlockId = Extension.create({
   name: "blockId",
@@ -61,6 +61,25 @@ const LockedBlock = Node.create({
   },
 });
 
+/** A rule across the page, and a break to the next page: blocks with no text of their own. */
+const Divider = Node.create({
+  name: "divider",
+  group: "block",
+  atom: true,
+  selectable: true,
+  parseHTML: () => [{ tag: "hr.docs-divider" }],
+  renderHTML: () => ["hr", { class: "docs-divider" }],
+});
+
+const PageBreak = Node.create({
+  name: "pageBreak",
+  group: "block",
+  atom: true,
+  selectable: true,
+  parseHTML: () => [{ tag: "div.docs-page-break" }],
+  renderHTML: () => ["div", { class: "docs-page-break", contenteditable: "false" }, ["span", {}, "Page break"]],
+});
+
 /** Exactly what the Word file can hold through the editor (decision 0019): headings 1 to 3, a title,
  * quotes, lists, tables with one paragraph per cell, bold, italic, underline and links. */
 export const docsExtensions: AnyExtension[] = [
@@ -79,6 +98,8 @@ export const docsExtensions: AnyExtension[] = [
   BlockId,
   Title,
   LockedBlock,
+  Divider,
+  PageBreak,
   Pictures,
   Table.configure({ resizable: false }),
   TableRow,

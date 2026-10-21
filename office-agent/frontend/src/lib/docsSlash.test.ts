@@ -10,6 +10,8 @@ describe("the '/' menu's lines", () => {
     expect(matchingItems("list").map((i) => i.id)).toEqual(["bullets", "numbers"]);
     expect(matchingItems("GRID").map((i) => i.id)).toEqual(["table"]);
     expect(matchingItems("photo").map((i) => i.id)).toEqual(["picture"]);
+    expect(matchingItems("separator").map((i) => i.id)).toEqual(["divider"]);
+    expect(matchingItems("new page").map((i) => i.id)).toEqual(["pagebreak"]);
   });
 
   it("are none for words that match nothing, so the menu closes", () => {
