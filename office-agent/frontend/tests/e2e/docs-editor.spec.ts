@@ -106,3 +106,42 @@ test("a file changed meanwhile is not overwritten: the editor says so and reads 
   await expect(page.getByText("This document changed since you opened it")).toHaveCount(0);
   expect((await blocksOf(page, name)).blocks.map(textOf).join("\n")).not.toContain("!");
 });
+
+test("'/' inserts a block and the bar over selected words formats them, both written to the file", async ({ page }) => {
+  const name = `edit-${Math.random().toString(36).slice(2, 8)}`;
+  await openEditor(page, name);
+  const editor = page.locator(".docs-editor");
+
+  await test.step("'/' narrows as it is typed and Enter makes a heading", async () => {
+    await editor.locator("p", { hasText: "The agreement runs" }).click();
+    await page.keyboard.press("End");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("/head");
+    await expect(page.getByRole("option")).toHaveText([/Heading 1/, /Heading 2/, /Heading 3/]);
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("Appendix");
+    await expect(page.getByRole("status")).toHaveText("Saved");
+    expect((await blocksOf(page, name)).blocks.map((b) => `${b.kind}:${textOf(b)}`)).toContain("heading:Appendix");
+  });
+
+  await test.step("a table comes from '/' too, and a table's cells take no menu", async () => {
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("/table");
+    await page.getByRole("option", { name: /Table/ }).click();
+    await expect(editor.locator("table")).toHaveCount(1);
+    await editor.locator("td").first().click();
+    await page.keyboard.type("/");
+    await expect(page.getByRole("option")).toHaveCount(0);
+  });
+
+  await test.step("selected words get a bar: bold is written to the file", async () => {
+    await editor.locator("p", { hasText: "The agreement runs" }).click({ clickCount: 3 });
+    const bar = page.getByRole("toolbar", { name: "Format selected text" });
+    await expect(bar).toBeVisible();
+    await bar.getByRole("button", { name: "Bold" }).click();
+    await expect(page.getByRole("status")).toHaveText("Saved");
+    const term = (await blocksOf(page, name)).blocks.find((b) => textOf(b).startsWith("The agreement runs"));
+    expect(term?.runs?.every((r) => r.b)).toBe(true);
+  });
+});

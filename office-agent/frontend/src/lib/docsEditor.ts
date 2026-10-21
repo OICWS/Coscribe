@@ -45,6 +45,11 @@ export async function saveDocBlocks(threadId: string, path: string, version: str
   throw new Error(failure?.error ?? `HTTP ${response.status}`);
 }
 
+/** The message "Ask coscribe" sends for selected words: the file, then the words quoted. */
+export function askAboutWords(file: string, words: string): string {
+  return `Question about ${file}:\n${words.split("\n").map((line) => `> ${line}`).join("\n")}`;
+}
+
 // -- Blocks to the editor's document -------------------------------------------------------------
 
 const MAX_LEVEL = 3;
