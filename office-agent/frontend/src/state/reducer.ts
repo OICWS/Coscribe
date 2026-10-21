@@ -67,7 +67,7 @@ export type LogItem =
       plan: string;
       /** How the user answered: approved into auto or manual mode, or sent
        * back to keep planning. */
-      status: "pending" | "auto" | "manual" | "revise";
+      status: "pending" | "auto" | "manual" | "revise" | "reject";
     }
   | {
       id: string;
@@ -191,7 +191,7 @@ export type LocalAction =
   | { type: "local_rewind_message"; turnIndex: number }
   | { type: "local_approval_resolved"; id: string; approved: boolean }
   | { type: "local_question_answered"; id: string; answers: (string | null)[] | null }
-  | { type: "local_plan_answered"; id: string; status: "auto" | "manual" | "revise" }
+  | { type: "local_plan_answered"; id: string; status: "auto" | "manual" | "revise" | "reject" }
   | { type: "local_task_draft_resolved"; id: string; status: "saved" | "dismissed"; savedName?: string }
   | { type: "local_connection_reset" }
   | { type: "local_switch_thread" }
@@ -236,7 +236,8 @@ function closeStreamingBubble(items: LogItem[]): LogItem[] {
 
 /** How the user answered a plan, read back from exit_plan_mode's result
  * (conversation/session.py's _decide_plan_request writes these sentences). */
-function planStatusOf(result: string): "auto" | "manual" | "revise" {
+function planStatusOf(result: string): "auto" | "manual" | "revise" | "reject" {
+  if (result.includes("rejected the plan")) return "reject";
   if (result.includes("switched to auto mode")) return "auto";
   if (result.includes("approved the plan")) return "manual";
   return "revise";

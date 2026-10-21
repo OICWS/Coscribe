@@ -39,6 +39,7 @@ QUESTION_TOOL_NAMES: frozenset[str] = frozenset({"ask_user_question", "exit_plan
 PLAN_CHOICE_AUTO = "auto"
 PLAN_CHOICE_MANUAL = "manual"
 PLAN_CHOICE_REVISE = "revise:"
+PLAN_CHOICE_REJECT = "reject"
 
 
 class QuestionOption(TypedDict):

@@ -21,6 +21,7 @@ interface ChatLogProps {
   connectorTools?: ReadonlySet<string>;
   onApprove: (id: string, approved: boolean, scope?: "task") => void;
   onAnswerPlan?: (item: PlanItem, choice: PlanChoice, feedback: string) => void;
+  onOpenPlan?: () => void;
   /** Undefined while a turn is in flight -- editing mid-turn would race
    * the very history the edit is about to truncate, so the affordance is
    * hidden entirely rather than left clickable-but-erroring. */
@@ -68,6 +69,7 @@ export function ChatLog({
   items,
   onApprove,
   onAnswerPlan,
+  onOpenPlan,
   onEditMessage,
   onRewindMessage,
   loading,
@@ -222,6 +224,7 @@ export function ChatLog({
             isLastTurn={i === turns.length - 1}
             onApprove={onApprove}
             onAnswerPlan={onAnswerPlan}
+            onOpenPlan={onOpenPlan}
             onEditMessage={onEditMessage}
             onRewindMessage={onRewindMessage}
             onReviewTaskDraft={onReviewTaskDraft}

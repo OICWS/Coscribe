@@ -67,6 +67,7 @@ export function TurnView({
   isLastTurn = false,
   onApprove,
   onAnswerPlan,
+  onOpenPlan,
   onEditMessage,
   onRewindMessage,
   onReviewTaskDraft,
@@ -80,6 +81,7 @@ export function TurnView({
   live?: boolean;
   onApprove: (id: string, approved: boolean, scope?: "task") => void;
   onAnswerPlan?: (item: PlanItem, choice: PlanChoice, feedback: string) => void;
+  onOpenPlan?: () => void;
   onEditMessage?: (turnIndex: number, text: string) => void;
   onRewindMessage?: (turnIndex: number, text: string) => void;
   onReviewTaskDraft?: (item: TaskDraftItem) => void;
@@ -112,7 +114,7 @@ export function TurnView({
         ) : entry.kind === "question" ? (
           entry.status === "answered" ? <QuestionRecord key={entry.id} item={entry} /> : null
         ) : entry.kind === "plan" ? (
-          <PlanCard key={entry.id} item={entry} onAnswer={onAnswerPlan} />
+          <PlanCard key={entry.id} item={entry} onAnswer={onAnswerPlan} onOpenPlan={onOpenPlan} />
         ) : entry.kind === "task_draft" ? (
           <TaskDraftCard key={entry.id} item={entry} onReview={onReviewTaskDraft} onDismiss={onDismissTaskDraft} />
         ) : entry.kind === "workflow_draft" ? (

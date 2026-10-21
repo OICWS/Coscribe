@@ -22,6 +22,7 @@ from .conversations import (
 from .interaction import (
     PLAN_CHOICE_AUTO,
     PLAN_CHOICE_MANUAL,
+    PLAN_CHOICE_REJECT,
     PLAN_CHOICE_REVISE,
     QUESTION_TOOL_NAMES,
     build_interaction_tools,
@@ -78,6 +79,7 @@ __all__ = [
     "take_stop_requester",
     "PLAN_CHOICE_AUTO",
     "PLAN_CHOICE_MANUAL",
+    "PLAN_CHOICE_REJECT",
     "PLAN_CHOICE_REVISE",
     "QUESTION_TOOL_NAMES",
     "SCHEDULED_THREAD_PREFIX",
