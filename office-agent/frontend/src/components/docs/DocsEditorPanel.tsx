@@ -41,7 +41,10 @@ export function DocsEditorPanel(props: PanelProps) {
     setError(null);
     getDocBlocks(threadId, path).then(
       (doc) => {
-        if (doc.version !== version.current) setLoaded((now) => ({ round: (now?.round ?? 0) + 1, doc }));
+        if (doc.version === version.current) return;
+        // Set here, not once the editor mounts: two reads in flight together must not both build one.
+        version.current = doc.version;
+        setLoaded((now) => ({ round: (now?.round ?? 0) + 1, doc }));
       },
       (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
     );
@@ -79,9 +82,6 @@ function DocsEditor({
     content: blocksToDoc(doc.blocks),
     editorProps: { attributes: { class: "docs-editor", "aria-label": "Document" } },
   });
-  useEffect(() => {
-    version.current = doc.version;
-  }, [doc, version]);
   const { state } = useDocsSave(editor, threadId, path, version, onReload);
   useEffect(() => {
     unsaved.current = state.kind !== "saved";
