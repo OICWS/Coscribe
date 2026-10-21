@@ -3,6 +3,7 @@ deck that mixes sections and SVG pages (decision 0016)."""
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -95,3 +96,25 @@ def test_downloads_take_a_deck_with_sections(tmp_path: Path) -> None:
     deck = _deck(tmp_path, ("01.html", SECTION), ("02.html", TABLE), ("03.svg", COVER))
     assert len(pypdfium2.PdfDocument(deck_pdf(deck, tmp_path))) == 3
     assert deck_html(deck, tmp_path).count("data:image/svg+xml;base64,") == 3
+
+
+def test_a_charts_axis_titles_range_and_number_format_are_drawn(tmp_path: Path) -> None:
+    spec = json.dumps(
+        {
+            "type": "column",
+            "categories": ["A", "B"],
+            "series": [{"name": "S", "values": [10, 40]}],
+            "font_size": 27,
+            "axis_titles": {"category": "Region", "value": "Revenue"},
+            "axes": {"value": {"minimum": 0, "maximum": 100, "number_format": '#,##0 "k"'}},
+        }
+    )
+    source = (
+        '<section><x-chart id="c" style="left:96px;top:200px;width:900px;height:600px">'
+        f"{spec}</x-chart></section>"
+    )
+    deck = _deck(tmp_path, ("01.html", source))
+    texts = _texts(slide_svg(deck, 0, tmp_path))
+    assert "Region" in texts and "Revenue" in texts
+    # Fixed at 0 to 100, labelled in the chosen format.
+    assert "100 k" in texts and "120 k" not in texts

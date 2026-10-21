@@ -270,6 +270,9 @@ its data in PowerPoint.
   without the unit. A caveat about the data ("西南、东南亚为本季度新进入市场，不计算环比") is a
   footnote line under it.
 - The JSON holds the data and its look; the box is the element's style, never in the JSON.
+- The user can give a chart axis titles (`axis_titles`: `category`, `value`) and a value axis range and
+  number format (`axes.value`: `minimum`, `maximum`, `number_format`) in the panel; keep them when
+  you edit the chart, and add them only when asked.
 - `type`: column, bar (horizontal; categories top-down), line, area, pie, doughnut. Several
   series for a comparison, with `"show_legend": true`; `point_colors` on a column or bar series
   marks the bar the point is about.

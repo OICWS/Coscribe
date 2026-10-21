@@ -53,3 +53,13 @@ def test_the_panels_chart_types_become_the_matching_chart(tmp_path: Path) -> Non
     for chart_type, element in (("bar", "barChart"), ("line", "lineChart"), ("area", "areaChart")):
         assert f"<c:{element}>" in _chart_xml(tmp_path, type=chart_type)
     assert '<c:barDir val="bar"' in _chart_xml(tmp_path, type="bar")
+
+
+def test_the_panels_axis_keys_are_written_into_the_chart(tmp_path: Path) -> None:
+    xml = _chart_xml(
+        tmp_path,
+        axis_titles={"category": "Region", "value": "Revenue"},
+        axes={"value": {"minimum": 0, "maximum": 100, "number_format": "0%"}},
+    )
+    assert "Region" in xml and "Revenue" in xml
+    assert '<c:max val="100"' in xml and '<c:min val="0"' in xml and 'formatCode="0%"' in xml

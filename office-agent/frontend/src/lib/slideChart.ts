@@ -108,3 +108,48 @@ export const setSeriesColour = (el: Element, index: number, colour: string) => {
     spec.style = style;
   });
 };
+
+export type Axis = "category" | "value";
+
+const record = (value: unknown): Spec => (value && typeof value === "object" && !Array.isArray(value) ? (value as Spec) : {});
+
+export const axisTitle = (el: Element, axis: Axis) => {
+  const title = record(readSpec(el)?.axis_titles)[axis];
+  return typeof title === "string" ? title : "";
+};
+
+export const setAxisTitle = (el: Element, axis: Axis, title: string) =>
+  update(el, (spec) => {
+    const titles = { ...record(spec.axis_titles) };
+    if (title.trim()) titles[axis] = title;
+    else delete titles[axis];
+    if (Object.keys(titles).length > 0) spec.axis_titles = titles;
+    else delete spec.axis_titles;
+  });
+
+/** Number formats the value axis offers, as Excel writes them; the chart may carry another one. */
+export const NUMBER_FORMATS: { value: string | null; label: string }[] = [
+  { value: null, label: "Automatic" },
+  { value: "#,##0", label: "1,234" },
+  { value: "#,##0.0", label: "1,234.5" },
+  { value: "0%", label: "12%" },
+  { value: "0.0%", label: "12.3%" },
+];
+
+export type ValueAxisKey = "minimum" | "maximum" | "number_format";
+
+export const valueAxisSetting = (el: Element, key: ValueAxisKey) => record(record(readSpec(el)?.axes).value)[key] ?? null;
+
+/** Sets one of the value axis's keys, or drops it (back to automatic) for null; an axes block left
+ * empty goes too, and axes of other roles stay. */
+export const setValueAxisSetting = (el: Element, key: ValueAxisKey, value: number | string | null) =>
+  update(el, (spec) => {
+    const axes = { ...record(spec.axes) };
+    const axis = { ...record(axes.value) };
+    if (value === null) delete axis[key];
+    else axis[key] = value;
+    if (Object.keys(axis).length > 0) axes.value = axis;
+    else delete axes.value;
+    if (Object.keys(axes).length > 0) spec.axes = axes;
+    else delete spec.axes;
+  });

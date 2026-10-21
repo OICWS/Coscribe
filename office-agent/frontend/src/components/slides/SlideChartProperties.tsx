@@ -1,4 +1,25 @@
-import { CHART_TYPES, chartTitle, chartType, isStacked, seriesOf, setChartTitle, setChartType, setLabels, setLegend, setSeriesColour, setStacked, showsLabels, showsLegend } from "../../lib/slideChart";
+import {
+  CHART_TYPES,
+  NUMBER_FORMATS,
+  axisTitle,
+  chartTitle,
+  chartType,
+  isStacked,
+  seriesOf,
+  setAxisTitle,
+  setChartTitle,
+  setChartType,
+  setLabels,
+  setLegend,
+  setSeriesColour,
+  setStacked,
+  setValueAxisSetting,
+  showsLabels,
+  showsLegend,
+  valueAxisSetting,
+  type Axis,
+  type ValueAxisKey,
+} from "../../lib/slideChart";
 import type { DesignSystem } from "../../lib/slideText";
 import { ColourField, MenuField, Row, Section, Segmented, field } from "./PropertyRows";
 import type { EditorSelection } from "./SlideTextProperties";
@@ -14,6 +35,30 @@ export function ChartProperties({ selection, design }: { selection: EditorSelect
   const type = chartType(chart);
   const title = chartTitle(chart);
   const redraw = (change: (el: Element) => void) => edit(change, true);
+  /** A text field applied on Enter or blur; empty clears the setting. */
+  const text = (label: string, value: string, apply: (el: Element, value: string) => void, placeholder?: string) => (
+    <label className={field}>
+      <input
+        aria-label={label}
+        className="h-full min-w-0 flex-1 bg-transparent outline-none"
+        defaultValue={value}
+        key={value}
+        placeholder={placeholder}
+        onBlur={(e) => e.target.value !== value && redraw((el) => apply(el, e.target.value))}
+        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+      />
+    </label>
+  );
+  const setting = (key: ValueAxisKey) => {
+    const value = valueAxisSetting(chart, key);
+    return typeof value === "number" || typeof value === "string" ? String(value) : "";
+  };
+  const bound = (key: "minimum" | "maximum", label: string) =>
+    text(label, setting(key), (el, v) => setValueAxisSetting(el, key, v.trim() !== "" && Number.isFinite(Number(v)) ? Number(v) : null), "Auto");
+  const axisTitleRow = (axis: Axis, label: string) => (
+    <Row label={label}>{text(`${label} title`, axisTitle(chart, axis), (el, v) => setAxisTitle(el, axis, v))}</Row>
+  );
+  const format = setting("number_format");
   const toggle = (label: string, on: boolean, apply: (el: Element, on: boolean) => void) => (
     <Segmented label={label} value={on ? "on" : "off"} choices={ON_OFF} onChange={(v) => redraw((el) => apply(el, v === "on"))} />
   );
@@ -30,21 +75,25 @@ export function ChartProperties({ selection, design }: { selection: EditorSelect
           </Row>
         )}
         {(type === "column" || type === "bar") && <Row label="Stacked">{toggle("Stacked", isStacked(chart), setStacked)}</Row>}
-        <Row label="Title">
-          <label className={field}>
-            <input
-              aria-label="Chart title"
-              className="h-full min-w-0 flex-1 bg-transparent outline-none"
-              defaultValue={title}
-              key={title}
-              onBlur={(e) => e.target.value !== title && redraw((el) => setChartTitle(el, e.target.value))}
-              onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-            />
-          </label>
-        </Row>
+        <Row label="Title">{text("Chart title", title, (el, v) => setChartTitle(el, v))}</Row>
         <Row label="Legend">{toggle("Legend", showsLegend(chart), setLegend)}</Row>
         <Row label="Data labels">{toggle("Data labels", showsLabels(chart), setLabels)}</Row>
       </Section>
+      {type !== null && (
+        <Section title="Axes">
+          {axisTitleRow("category", "Category")}
+          {axisTitleRow("value", "Value")}
+          <Row label="Min">{bound("minimum", "Minimum")}</Row>
+          <Row label="Max">{bound("maximum", "Maximum")}</Row>
+          <Row label="Format">
+            <MenuField
+              label="Number format"
+              value={NUMBER_FORMATS.find((f) => f.value === (format || null))?.label ?? format}
+              entries={NUMBER_FORMATS.map((f) => ({ label: f.label, checked: f.value === (format || null), onSelect: () => redraw((el) => setValueAxisSetting(el, "number_format", f.value)) }))}
+            />
+          </Row>
+        </Section>
+      )}
       <Section title="Series colours">
         {seriesOf(chart).map((s, i) => (
           <Row key={i} label={s.name.length > 10 ? `${s.name.slice(0, 9)}…` : s.name}>
