@@ -18,6 +18,9 @@ defaults:
   run:
     working-directory: office-agent
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest

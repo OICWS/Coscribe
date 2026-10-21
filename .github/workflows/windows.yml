@@ -23,6 +23,9 @@ defaults:
     shell: bash
     working-directory: office-agent
 
+permissions:
+  contents: read
+
 jobs:
   pytest:
     runs-on: windows-latest
