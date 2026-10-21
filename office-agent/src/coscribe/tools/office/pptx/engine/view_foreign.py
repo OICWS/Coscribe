@@ -46,14 +46,6 @@ def _pdf(deck: Path, state_dir: Path) -> Path:
                 f"{deck.name} was not built from pages and cannot be drawn here"
             )
     return target
-    target.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        written = convert(deck, target, "pdf", _OFFICE_TIMEOUT)
-    except ValueError as error:
-        raise NotBuiltFromPages(str(error)) from None
-    if written is None or not target.is_file():
-        raise NotBuiltFromPages(f"{deck.name} was not built from pages and cannot be drawn here")
-    return target
 
 
 def foreign_deck(deck: Path, state_dir: Path) -> dict[str, Any]:
