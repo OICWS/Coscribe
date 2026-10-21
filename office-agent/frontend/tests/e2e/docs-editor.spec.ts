@@ -163,7 +163,8 @@ test("a turn that ends does not rebuild the editor or move the caret", async ({ 
 
   await page.locator("textarea").fill("hello again");
   await page.keyboard.press("Enter");
-  await expect(page.getByText("OK", { exact: true })).toBeVisible();
+  // The stub answers "OK" to each message: the second reply is the end of this turn.
+  await expect(page.getByText("OK", { exact: true })).toHaveCount(2);
   await page.waitForTimeout(1500);
 
   await expect(editor).toHaveAttribute("data-same-editor", "yes");
