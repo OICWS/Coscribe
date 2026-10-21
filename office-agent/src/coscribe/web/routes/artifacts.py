@@ -26,6 +26,7 @@ from ..schemas import ArtifactRename, ArtifactShow
 from ..state import AppState
 from .slides import _SVG_HEADERS
 
+_NOT_DONE = "The file could not be changed; it may be open in another program"
 _LISTED = ("path", "location", "name", "kind", "modified_at", "excerpt")
 # The registry's entry, the file as it is now and the scope it is read through.
 _Found = tuple[dict[str, Any], dict[str, Any], WorkspaceScope]
@@ -106,7 +107,9 @@ def _summary(state: AppState, adoption: ArtifactAdoption, artifact: str) -> dict
 
 
 def _refused(error: Exception) -> JSONResponse:
-    return JSONResponse({"error": str(error)}, status_code=409)
+    # A system error's text can carry paths and internals; only our own refusals are shown.
+    text = str(error) if isinstance(error, ArtifactFileError) else _NOT_DONE
+    return JSONResponse({"error": text}, status_code=409)
 
 
 def _missing() -> JSONResponse:
