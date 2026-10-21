@@ -74,7 +74,8 @@ function giveIds(editor: Editor, slots: ReturnType<typeof docToBlocks>["slots"],
     if (slot.pos < 0 || !id) return;
     const moved = mapping.mapResult(slot.pos);
     const node = moved.deleted ? null : tr.doc.nodeAt(moved.pos);
-    if (node && node.type.name === slot.type && node.attrs.blockId !== id) tr.setNodeMarkup(moved.pos, undefined, { ...node.attrs, blockId: id });
+    // A picture the file now holds no longer travels with the block.
+    if (node && node.type.name === slot.type && (node.attrs.blockId !== id || node.attrs.upload)) tr.setNodeMarkup(moved.pos, undefined, { ...node.attrs, blockId: id, upload: "" });
   });
   if (!tr.docChanged) return;
   tr.setMeta(IDS_META, true).setMeta("addToHistory", false).setMeta("preventUpdate", true);

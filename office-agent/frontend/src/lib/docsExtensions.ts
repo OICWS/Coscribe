@@ -3,6 +3,7 @@ import { Blockquote } from "@tiptap/extension-blockquote";
 import { ListItem } from "@tiptap/extension-list";
 import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import StarterKit from "@tiptap/starter-kit";
+import { Pictures } from "./docsPictures";
 
 /** Nodes that stand for one block of the Word file: the id the server gave it rides on them. */
 const BLOCK_NODES = ["paragraph", "title", "heading", "blockquote", "listItem", "table", "lockedBlock"];
@@ -45,7 +46,7 @@ const LockedBlock = Node.create({
   selectable: true,
   draggable: false,
   addAttributes() {
-    return { what: { default: "" }, text: { default: "" }, images: { default: [] as string[] } };
+    return { what: { default: "" }, text: { default: "" }, images: { default: [] as string[] }, upload: { default: "" } };
   },
   parseHTML: () => [{ tag: "div.docs-locked" }],
   renderHTML: ({ node }) => {
@@ -78,6 +79,7 @@ export const docsExtensions: AnyExtension[] = [
   BlockId,
   Title,
   LockedBlock,
+  Pictures,
   Table.configure({ resizable: false }),
   TableRow,
   TableHeader.extend({ content: "paragraph" }),

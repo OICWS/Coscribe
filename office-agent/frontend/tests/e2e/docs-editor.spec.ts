@@ -190,3 +190,27 @@ test("a picture in the document is shown in the editor and survives an edit besi
   expect(saved.blocks.some((b) => b.kind === "locked" && b.what === "image or drawing")).toBe(true);
   await expect(picture).toBeVisible();
 });
+
+test("a picture is added from the toolbar and written to the file; a file that is not a picture is refused", async ({ page }) => {
+  const name = `edit-${Math.random().toString(36).slice(2, 8)}`;
+  await openEditor(page, name);
+  const editor = page.locator(".docs-editor");
+  await clickParagraph(page, "The agreement runs");
+  await page.keyboard.press("End");
+
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+  const chooser = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Picture" }).click();
+  await (await chooser).setFiles({ name: "dot.png", mimeType: "image/png", buffer: png });
+  await expect(editor.locator(".docs-locked-image")).toHaveCount(1);
+  await expect(page.getByRole("status")).toHaveText("Saved");
+  const saved = await blocksOf(page, name);
+  expect(saved.blocks.filter((b) => b.kind === "locked" && b.what === "image or drawing")).toHaveLength(1);
+  await expect(editor.locator(".docs-locked-image")).toBeVisible();
+
+  const refused = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Picture" }).click();
+  await (await refused).setFiles({ name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("hello") });
+  await expect(page.getByRole("alert")).toHaveText(/Only PNG, JPEG, GIF and WebP/);
+  await expect(editor.locator(".docs-locked-image")).toHaveCount(1);
+});

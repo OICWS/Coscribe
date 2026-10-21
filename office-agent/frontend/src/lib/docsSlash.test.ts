@@ -9,6 +9,7 @@ describe("the '/' menu's lines", () => {
     expect(matchingItems("ordered").map((i) => i.id)).toEqual(["numbers"]);
     expect(matchingItems("list").map((i) => i.id)).toEqual(["bullets", "numbers"]);
     expect(matchingItems("GRID").map((i) => i.id)).toEqual(["table"]);
+    expect(matchingItems("photo").map((i) => i.id)).toEqual(["picture"]);
   });
 
   it("are none for words that match nothing, so the menu closes", () => {

@@ -3,6 +3,7 @@ only the blocks the person changed, leaving comments, tracked changes and the re
 
 from __future__ import annotations
 
+import base64
 import re
 import zipfile
 from pathlib import Path
@@ -277,3 +278,50 @@ def test_contents_pictures_and_charts_are_locked_and_a_save_leaves_them_alone(
     save_doc_blocks(path, version, blocks)
     assert _paragraphs(path) == before
     assert Document(path).paragraphs  # still opens
+
+
+def _png(width: int = 40, height: int = 20) -> str:
+    import io
+
+    from PIL import Image
+
+    out = io.BytesIO()
+    Image.new("RGB", (width, height), "blue").save(out, format="PNG")
+    return base64.b64encode(out.getvalue()).decode()
+
+
+def test_a_picture_the_person_adds_is_written_as_a_paragraph_and_read_back_locked(
+    doc: Path,
+) -> None:
+    version, blocks = _blocks(doc)
+    before = _paragraphs(doc)
+    blocks.insert(2, {"kind": "image", "data": f"data:image/png;base64,{_png()}"})
+    saved = save_doc_blocks(doc, version, blocks)["blocks"]
+    assert len(saved) == len(blocks)
+    added = saved[2]
+    assert added["kind"] == "locked" and added["what"] == "image or drawing" and added["images"]
+    assert read_doc_image(doc, added["images"][0]) is not None
+    assert _paragraphs(doc)[:2] == before[:2]  # what was not touched stays as it was
+
+
+def test_a_wide_picture_is_scaled_to_the_page_and_a_bad_one_is_refused(doc: Path) -> None:
+    version, blocks = _blocks(doc)
+    blocks.append({"kind": "image", "data": _png(3000, 1000)})
+    save_doc_blocks(doc, version, blocks)
+    extent = next(
+        iter(
+            Document(doc).element.body.iter(
+                "{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}extent"
+            )
+        )
+    )
+    assert int(extent.get("cx")) == 914400 * 6 and int(extent.get("cy")) == 914400 * 2
+
+    version, blocks = _blocks(doc)
+    broken = base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"\xae" * 40).decode()
+    for bad in ("not base64 !!", "aGVsbG8=", broken, 5, None):
+        with pytest.raises(BlocksRefused):
+            save_doc_blocks(doc, version, [*blocks, {"kind": "image", "data": bad}])
+    big = "A" * (4 * (8 * 1024 * 1024 // 3 + 10))
+    with pytest.raises(BlocksRefused, match="8 MB"):
+        save_doc_blocks(doc, version, [*blocks, {"kind": "image", "data": big}])
