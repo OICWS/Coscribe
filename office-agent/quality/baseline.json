@@ -237,7 +237,7 @@
  },
  "frontend_file_lines": {
   "office-agent-desktop/src/main/browserAgent.ts": 934,
-  "office-agent/frontend/src/App.tsx": 1097,
+  "office-agent/frontend/src/App.tsx": 1067,
   "office-agent/frontend/src/components/icons.tsx": 803,
   "office-agent/frontend/src/components/workflow/WorkflowRunView.tsx": 860
  },
@@ -245,7 +245,7 @@
   "office-agent-desktop/src/main/browserAgent.ts::act": 156,
   "office-agent-desktop/src/main/browserAgent.ts::startBrowserAgent": 140,
   "office-agent-desktop/src/main/browserAgentPage.ts::pageAgent": 343,
-  "office-agent/frontend/src/App.tsx::App": 1003,
+  "office-agent/frontend/src/App.tsx::App": 971,
   "office-agent/frontend/src/components/AllowedSitesDialog.tsx::AllowedSitesDialog": 132,
   "office-agent/frontend/src/components/Attachments.tsx::AttachmentDialog": 106,
   "office-agent/frontend/src/components/BackgroundTasksPanel.tsx::BackgroundTasksPanel": 162,
@@ -258,7 +258,7 @@
   "office-agent/frontend/src/components/EffortPicker.tsx::EffortPicker": 144,
   "office-agent/frontend/src/components/EnvironmentDialog.tsx::EnvironmentDialog": 292,
   "office-agent/frontend/src/components/FindInPage.tsx::FindInPage": 102,
-  "office-agent/frontend/src/components/NavRail.tsx::NavRail": 216,
+  "office-agent/frontend/src/components/NavRail.tsx::NavRail": 204,
   "office-agent/frontend/src/components/PptxShapeOverlay.tsx::PptxShapeOverlay": 105,
   "office-agent/frontend/src/components/RunPanel.tsx::RunPanel": 253,
   "office-agent/frontend/src/components/ScheduledTaskDetail.tsx::ScheduledTaskDetail": 158,

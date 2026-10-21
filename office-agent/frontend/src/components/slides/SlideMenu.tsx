@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { CheckIcon } from "../icons";
 
 interface MenuItem {
   label: string;
@@ -8,6 +9,10 @@ interface MenuItem {
   icon?: ReactNode;
   disabled?: boolean;
   checked?: boolean;
+  /** Drawn red: removes something. */
+  danger?: boolean;
+  /** A lower-case key that picks it while the menu is open. */
+  accel?: string;
   onSelect?: () => void;
 }
 
@@ -35,6 +40,12 @@ export function SlideMenu({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
+      const bare = !(e.ctrlKey || e.metaKey || e.altKey);
+      const hit = entries.find((entry): entry is MenuItem => typeof entry === "object" && "label" in entry && bare && entry.accel === e.key.toLowerCase() && !entry.disabled);
+      if (hit) {
+        onClose();
+        hit.onSelect?.();
+      }
     };
     const onDown = (e: PointerEvent) => {
       if (!menuRef.current?.contains(e.target as Node)) onClose();
@@ -45,7 +56,7 @@ export function SlideMenu({
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("pointerdown", onDown, true);
     };
-  }, [onClose]);
+  }, [entries, onClose]);
 
   return createPortal(
     <div
@@ -75,7 +86,7 @@ export function SlideMenu({
             role={entry.checked === undefined ? "menuitem" : "menuitemradio"}
             aria-checked={entry.checked}
             disabled={entry.disabled}
-            className="flex h-8 w-full items-center gap-2 rounded-lg px-2.5 text-left text-sm text-[var(--fg)] hover:bg-[var(--card-bg)] disabled:text-[var(--muted)] disabled:opacity-60 disabled:hover:bg-transparent"
+            className={`flex h-8 w-full items-center gap-2 rounded-lg px-2.5 text-left text-sm hover:bg-[var(--card-bg)] disabled:text-[var(--muted)] disabled:opacity-60 disabled:hover:bg-transparent ${entry.danger ? "text-[var(--danger)]" : "text-[var(--fg)]"}`}
             onClick={() => {
               onClose();
               entry.onSelect?.();
@@ -84,6 +95,7 @@ export function SlideMenu({
             {entry.icon}
             <span className="flex-1 truncate">{entry.label}</span>
             {entry.hint && <span className="text-xs text-[var(--muted)]">{entry.hint}</span>}
+            {entry.checked && <CheckIcon className="h-4 w-4 shrink-0" />}
           </button>
         );
       })}

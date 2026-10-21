@@ -15,7 +15,7 @@ import {
   requestFindStep,
 } from "./lib/menuCommands";
 import { FindInPage } from "./components/FindInPage";
-import { COLLAPSED_CLUSTER_WIDTH, DRAWS_TITLE_BAR, TITLE_BAR_ICON, useTitleBarColors } from "./lib/titleBar";
+import { DRAWS_TITLE_BAR, useTitleBarColors } from "./lib/titleBar";
 import type { PlanChoice, PlanItem } from "./components/PlanCard";
 import { EffortPicker } from "./components/EffortPicker";
 import type { Effort } from "./components/EffortPicker";
@@ -37,12 +37,14 @@ import { PanelToggles } from "./components/dock/PanelToggles";
 import type { PanelId } from "./lib/dockLayout";
 import { isViewable } from "./lib/viewers";
 import { useCommentSender } from "./lib/commentReplies";
+import { artifactActions } from "./lib/artifacts";
+import { ArtifactsPage } from "./components/artifacts/ArtifactsPage";
 import { useSteerNotes } from "./lib/steerNotes";
 import { SteerActionsContext, ViewFile } from "./components/chatlog/contexts";
 import { canOpenPanelWindows, focusPanelWindow, usePanelWindows } from "./lib/panelWindows";
 import { WorkflowDraftPage } from "./components/workflow/WorkflowDraftPage";
 import { WorkflowRunView } from "./components/workflow/WorkflowRunView";
-import { HelpIcon, MoreIcon, SettingsIcon } from "./components/icons";
+import { PageHeader, TitleBar } from "./components/AppHeader";
 import { ThreadHeader } from "./components/ThreadHeader";
 import {
   answerWorkflowStep,
@@ -140,6 +142,7 @@ function App() {
   // composer's own text (not an image) -- see onCreateSkill below.
   const [pendingComposerText, setPendingComposerText] = useState<string | null>(null);
   const [navMode, setNavMode] = useState<NavMode>(() => (readPage().view === "scheduled" ? "run" : "create"));
+  const [artifactsOpen, setArtifactsOpen] = useState(() => readPage().view === "artifacts");
   // Not persisted -- a per-page-load convenience, not a remembered
   // setting. Pinned, the rail takes layout space instead of overlaying
   // the header (see the column's paddingLeft below); hover-expanded it
@@ -269,6 +272,7 @@ function App() {
       const id = resolveThreadId();
       const page = readPage();
       setNavMode(page.view === "scheduled" ? "run" : "create");
+      setArtifactsOpen(page.view === "artifacts");
       setSelectedTaskId(page.task);
       setWorkflowDraft(null);
       setFocusStepId(null);
@@ -408,7 +412,7 @@ function App() {
   };
   const selectedTask = scheduledTasks.find((t) => t.trigger_id === selectedTaskId) ?? null;
   // Browser and Background tasks belong to a conversation, not the Scheduled pages.
-  const inConversation = navMode === "create" && !onHome;
+  const inConversation = navMode === "create" && !onHome && !artifactsOpen;
   const subAgents = useRunningBackgroundTasks(threadId, subAgentsTick, inConversation);
   let subAgentsTitle = "Background tasks";
   if (subAgents.running > 0) {
@@ -760,6 +764,10 @@ function App() {
       if (!dock) closePanel(panel);
     },
   });
+  const artifacts = artifactActions((id, path) => {
+    setViewerFiles((files) => ({ ...files, [id]: path }));
+    setPanelOpen("viewer", true);
+  }, setPendingComposerText);
   const viewFile = (path: string) => {
     if (!isViewable(path)) return false;
     setViewerFiles((files) => ({ ...files, [threadIdRef.current]: path }));
@@ -849,7 +857,9 @@ function App() {
 
   // The page's title: the conversation's name, or where in Scheduled this is.
   const pageTitle =
-    navMode === "create" && isScheduledTaskThread ? (
+    artifactsOpen ? (
+      <div className="min-w-0 flex-1" />
+    ) : navMode === "create" && isScheduledTaskThread ? (
       <RunBreadcrumb
         task={threadTask}
         threadId={threadId}
@@ -886,28 +896,7 @@ function App() {
   return (
     <ThreadIdContext.Provider value={threadId}>
     <div className="relative flex h-full flex-col">
-      {DRAWS_TITLE_BAR && (
-        // The window's title bar: the sidebar's top row covers its left
-        // end, the OS window buttons its right end.
-        <div className="flex h-10 shrink-0 items-center">
-          <div className="shrink-0" style={{ width: navPinned ? NAV_RAIL_EXPANDED_WIDTH : COLLAPSED_CLUSTER_WIDTH }} />
-          <div className="titlebar-drag flex h-full min-w-0 flex-1 items-center pl-2 pr-4">{pageTitle}</div>
-          {inConversation && <div className="mr-1 flex shrink-0 items-center gap-1">{panelToggles}</div>}
-          <button
-            type="button"
-            title="Settings"
-            aria-label="Settings"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--fg)] hover:bg-[var(--card-bg)]"
-            onClick={() => setSettingsOpen(true)}
-          >
-            <MoreIcon {...TITLE_BAR_ICON} />
-          </button>
-          {/* Keeps Settings apart from the OS minimize button, so the two
-           * aren't mistaken for one group. */}
-          <div className="w-3 shrink-0" />
-          <div className="titlebar-controls-space" />
-        </div>
-      )}
+      {DRAWS_TITLE_BAR && <TitleBar navPinned={navPinned} title={pageTitle} toggles={inConversation && panelToggles} onSettings={() => setSettingsOpen(true)} />}
       <div className="relative flex min-h-0 flex-1">
         <PanelDock
           visible={inConversation ? visiblePanels : []}
@@ -919,37 +908,17 @@ function App() {
           chat={
             <div className="relative flex h-full min-w-0 flex-1 flex-col">
               {inConversation && findKey !== null && <FindInPage focusKey={findKey} onClose={() => setFindKey(null)} />}
-              {/* Outside the desktop shell, which has a title bar for all of this.
-               * pl-12 clears NavRail's collapsed 48px toggle, absolutely placed
-               * over this row's left end; rows below don't need it. */}
               {!DRAWS_TITLE_BAR && (
-                <div className={`flex h-12 shrink-0 items-center gap-1 pr-4 ${navPinned ? "pl-4" : "pl-12"}`}>
-                  {pageTitle}
-                  {inConversation && panelToggles}
-                  <button
-                    type="button"
-                    title="Keyboard shortcuts (?)"
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
-                    onClick={() => setShortcutsOpen(true)}
-                  >
-                    <HelpIcon className="h-[18px] w-[18px]" />
-                  </button>
-                  <button
-                    type="button"
-                    title="Settings"
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
-                    onClick={() => setSettingsOpen(true)}
-                  >
-                    <SettingsIcon className="h-[18px] w-[18px]" />
-                  </button>
-                </div>
+                <PageHeader navPinned={navPinned} title={pageTitle} toggles={inConversation && panelToggles} onSettings={() => setSettingsOpen(true)} onShortcuts={() => setShortcutsOpen(true)} />
               )}
               {connectionStatus === "reconnecting" && (
                 <div className="bg-yellow-500/20 px-4 py-1 text-center text-sm text-yellow-700 dark:text-yellow-300">
                   Connection lost -- reconnecting...
                 </div>
               )}
-              {navMode === "create" && threadWorkflow && threadTask && threadRun ? (
+              {artifactsOpen ? (
+                <ArtifactsPage onOpen={artifacts.open} onMake={artifacts.make} />
+              ) : navMode === "create" && threadWorkflow && threadTask && threadRun ? (
                 <WorkflowRunView
                   task={threadTask}
                   run={threadRun}
@@ -1081,6 +1050,7 @@ function App() {
         onThreadRenamed={renameThreadLocally}
         mode={showingScheduled ? "run" : "create"}
         onModeChange={onNavModeChange}
+        artifactsOpen={artifactsOpen}
         scheduledTasks={scheduledTasks}
         onScheduledTasksChanged={refreshScheduledTasks}
         activeTaskId={navMode === "run" ? selectedTaskId : (threadTask?.trigger_id ?? null)}
