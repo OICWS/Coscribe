@@ -1,4 +1,5 @@
 import { Extension, type Editor, type Range } from "@tiptap/core";
+import { choosePicture } from "./docsPictures";
 import Suggestion, { type SuggestionKeyDownProps, type SuggestionProps } from "@tiptap/suggestion";
 
 /** One line of the menu that "/" opens in the editor: what it makes, and how. */
@@ -19,6 +20,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   { id: "bullets", label: "Bulleted list", hint: "A list with dots", words: "bullet list dots", run: (e, r) => block(e, r).toggleBulletList().run() },
   { id: "numbers", label: "Numbered list", hint: "A list with numbers", words: "numbered ordered list", run: (e, r) => block(e, r).toggleOrderedList().run() },
   { id: "quote", label: "Quote", hint: "Set a passage apart", words: "quote blockquote", run: (e, r) => block(e, r).setParagraph().setBlockquote().run() },
+  { id: "picture", label: "Picture", hint: "From a file on this computer", words: "picture image photo", run: (e, r) => { block(e, r).run(); choosePicture(e); } },
   { id: "table", label: "Table", hint: "Rows and columns, 3 × 3", words: "table grid", run: (e, r) => block(e, r).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
 ];
 

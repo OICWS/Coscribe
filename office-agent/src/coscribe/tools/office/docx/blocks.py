@@ -20,7 +20,7 @@ from ..._file_locks import file_lock
 from ..._ooxml_validate import assert_wml_valid
 from ..markdown_blocks import Block
 from ._review import write_atomically
-from .block_images import images_of
+from .block_images import decode_picture, images_of, new_picture_paragraph
 
 _W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 _R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
@@ -367,6 +367,11 @@ def _clean(block: Any) -> dict[str, Any]:
         }
     if kind == "locked":
         return {"kind": "locked"}
+    if kind == "image":
+        try:
+            return {"kind": "image", "blob": decode_picture(block.get("data"))}
+        except ValueError as refused:
+            raise BlocksRefused(str(refused)) from None
     raise BlocksRefused("A block of an unknown kind cannot be saved")
 
 
@@ -548,6 +553,8 @@ def _update(
 
 
 def _create(document: Any, block: dict[str, Any], after_number: bool) -> Any:
+    if block["kind"] == "image":
+        return new_picture_paragraph(document, block["blob"])
     if block["kind"] == "table":
         return _new_table(document, block)
     from docx.oxml import OxmlElement
@@ -578,7 +585,12 @@ def save_doc_blocks(path: Path, version: str, submitted: list[Any]) -> dict[str,
         previous = ""
         for block_id, block in cleaned:
             after_number = previous == "number"
-            if isinstance(block_id, str) and block_id in by_id and block_id not in used:
+            if (
+                block["kind"] != "image"
+                and isinstance(block_id, str)
+                and block_id in by_id
+                and block_id not in used
+            ):
                 used.add(block_id)
                 old, element = by_id[block_id]
                 ordered.append(_update(document, old, element, block, after_number))

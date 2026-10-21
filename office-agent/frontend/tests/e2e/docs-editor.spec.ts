@@ -21,7 +21,7 @@ interface Blocks {
 const threadOf = (page: Page) => new URL(page.url()).searchParams.get("thread") ?? "";
 const textOf = (block: Blocks["blocks"][number]) => (block.runs ?? []).map((r) => r.t).join("");
 
-async function openEditor(page: Page, name: string, extra: string[] = []) {
+async function openEditor(page: Page, name: string, extra: string[] = [], expand = true) {
   execFileSync("python", [join("frontend", "tests", "e2e", "fixtures", "build_redline.py"), WORKSPACE ?? "", name, ...extra], {
     cwd: AGENT,
     env: { ...process.env, PYTHONPATH: AGENT },
@@ -32,7 +32,7 @@ async function openEditor(page: Page, name: string, extra: string[] = []) {
   await page.keyboard.press("Enter");
   await page.getByTitle("Show task details").click();
   await page.getByRole("button", { name: `${name}.docx Read` }).click();
-  await page.getByRole("button", { name: "Expand Viewer" }).click();
+  if (expand) await page.getByRole("button", { name: "Expand Viewer" }).click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(page.locator(".docs-editor")).toBeVisible();
 }
@@ -154,13 +154,13 @@ test("'/' inserts a block and the bar over selected words formats them, both wri
 
 test("a turn that ends does not rebuild the editor or move the caret", async ({ page }) => {
   const name = `edit-${Math.random().toString(36).slice(2, 8)}`;
-  await openEditor(page, name);
+  // Not expanded: restoring the viewer re-docks the panel, which builds it again whatever the editor does.
+  await openEditor(page, name, [], false);
   const editor = page.locator(".docs-editor");
   await editor.evaluate((el) => el.setAttribute("data-same-editor", "yes"));
   await clickParagraph(page, "The agreement runs");
   await page.keyboard.press("End");
 
-  await page.getByRole("button", { name: "Restore Viewer" }).click();
   await page.locator("textarea").fill("hello again");
   await page.keyboard.press("Enter");
   await expect(page.getByText("OK", { exact: true })).toBeVisible();
@@ -189,4 +189,28 @@ test("a picture in the document is shown in the editor and survives an edit besi
   const saved = await blocksOf(page, name);
   expect(saved.blocks.some((b) => b.kind === "locked" && b.what === "image or drawing")).toBe(true);
   await expect(picture).toBeVisible();
+});
+
+test("a picture is added from the toolbar and written to the file; a file that is not a picture is refused", async ({ page }) => {
+  const name = `edit-${Math.random().toString(36).slice(2, 8)}`;
+  await openEditor(page, name);
+  const editor = page.locator(".docs-editor");
+  await clickParagraph(page, "The agreement runs");
+  await page.keyboard.press("End");
+
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+  const chooser = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Picture" }).click();
+  await (await chooser).setFiles({ name: "dot.png", mimeType: "image/png", buffer: png });
+  await expect(editor.locator(".docs-locked-image")).toHaveCount(1);
+  await expect(page.getByRole("status")).toHaveText("Saved");
+  const saved = await blocksOf(page, name);
+  expect(saved.blocks.filter((b) => b.kind === "locked" && b.what === "image or drawing")).toHaveLength(1);
+  await expect(editor.locator(".docs-locked-image")).toBeVisible();
+
+  const refused = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Picture" }).click();
+  await (await refused).setFiles({ name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("hello") });
+  await expect(page.getByRole("alert")).toHaveText(/Only PNG, JPEG, GIF and WebP/);
+  await expect(editor.locator(".docs-locked-image")).toHaveCount(1);
 });

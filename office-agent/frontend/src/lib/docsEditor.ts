@@ -15,7 +15,8 @@ export type Block =
   | { id?: string; kind: "heading"; level: number; runs: Run[] }
   | { id?: string; kind: "bullet" | "number"; level: number; runs: Run[] }
   | { id?: string; kind: "table"; header: boolean; rows: Run[][][] }
-  | { id?: string; kind: "locked"; what?: string; text?: string; images?: string[] };
+  | { id?: string; kind: "locked"; what?: string; text?: string; images?: string[] }
+  | { id?: string; kind: "image"; data: string };
 
 export interface DocBlocks {
   version: string;
@@ -126,7 +127,7 @@ export function blocksToDoc(blocks: Block[], imageUrl: (rid: string) => string =
       content.push({ type: "table", attrs: identified(block.id), content: rows });
     } else if (block.kind === "locked") {
       content.push({ type: "lockedBlock", attrs: { what: block.what ?? "", text: block.text ?? "", images: (block.images ?? []).map(imageUrl), ...identified(block.id) } });
-    } else {
+    } else if (block.kind !== "image") {
       content.push(paragraph(block.runs, block.id));
     }
   }
@@ -209,7 +210,10 @@ export function docToBlocks(doc: PMNode): { blocks: Block[]; slots: Slot[] } {
         rows.push(cells);
       });
       emit({ id: idOf(node), kind: "table", header, rows }, node, offset);
-    } else if (name === "lockedBlock") emit({ id: idOf(node), kind: "locked" }, node, offset);
+    } else if (name === "lockedBlock") {
+      const upload = String(node.attrs.upload ?? "");
+      emit(upload ? { kind: "image", data: upload } : { id: idOf(node), kind: "locked" }, node, offset);
+    }
     else emit({ id: idOf(node), kind: "paragraph", runs: runs(node) }, node, offset);
   });
   return { blocks, slots };

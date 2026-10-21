@@ -54,6 +54,14 @@ describe("blocks and the editor's document", () => {
     expect(roundTrip([picture]).blocks[0]).toEqual({ id: "b7", kind: "locked" });
   });
 
+  it("sends a picture the person added as its data once, and only the id after the file holds it", () => {
+    const added: Block = { kind: "locked", what: "image or drawing", text: "" };
+    const pending = blocksToDoc([added]);
+    (pending.content?.[0].attrs as Record<string, unknown>).upload = "data:image/png;base64,AAAA";
+    expect(docToBlocks(PMNode.fromJSON(schema, pending)).blocks[0]).toEqual({ kind: "image", data: "data:image/png;base64,AAAA" });
+    expect(roundTrip([{ ...added, id: "b3" }]).blocks[0]).toEqual({ id: "b3", kind: "locked" });
+  });
+
   it("gives a table's first row header cells only when the file has a header row", () => {
     const table = (header: boolean): Block => ({ kind: "table", header, rows: [[[{ t: "x" }]], [[{ t: "y" }]]] });
     const first = (header: boolean) => blocksToDoc([table(header)]).content?.[0].content?.[0].content?.[0].type;

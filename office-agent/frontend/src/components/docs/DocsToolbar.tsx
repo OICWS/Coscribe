@@ -4,7 +4,8 @@ import { useState } from "react";
 import { ChevronDownIcon, LinkIcon, RedoIcon, UndoIcon } from "../icons";
 import { SlideMenu, type MenuEntry } from "../slides/SlideMenu";
 import { BoldIcon, ItalicIcon, ListIcon, UnderlineIcon } from "../slides/formatIcons";
-import { OrderedListIcon, QuoteIcon, TableIcon } from "./docsIcons";
+import { choosePicture } from "../../lib/docsPictures";
+import { ImageIcon, OrderedListIcon, QuoteIcon, TableIcon } from "./docsIcons";
 import { LinkDialog } from "./LinkDialog";
 
 const STYLES = ["Normal", "Title", "Heading 1", "Heading 2", "Heading 3", "Quote"] as const;
@@ -97,6 +98,9 @@ export function DocsToolbar({ editor }: { editor: Editor }) {
       <span className="mx-1 h-5 border-l border-[var(--border)]" />
       <button type="button" title="Link" aria-label="Link" aria-pressed={now.link} className={button(now.link)} onClick={() => setLinking(true)}>
         <LinkIcon className="h-4 w-4" />
+      </button>
+      <button type="button" title="Picture" aria-label="Picture" className={button(false)} onClick={() => choosePicture(editor)}>
+        <ImageIcon className="h-4 w-4" />
       </button>
       <button
         type="button"

@@ -6,6 +6,7 @@ import { DocsBubble } from "./DocsBubble";
 import { DocsToolbar } from "./DocsToolbar";
 import { SlashMenu, useSlashMenu } from "./SlashMenu";
 import { docsExtensions } from "../../lib/docsExtensions";
+import { PROBLEM_EVENT } from "../../lib/docsPictures";
 import { useDocsSave, type SaveState } from "./useDocsSave";
 
 interface PanelProps {
@@ -86,6 +87,14 @@ function DocsEditor({
     editorProps: { attributes: { class: "docs-editor", "aria-label": "Document" } },
   });
   const { state } = useDocsSave(editor, threadId, path, version, onReload);
+  const [notice, setNotice] = useState<string | null>(null);
+  const page = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const element = page.current;
+    const show = (event: Event) => setNotice(String((event as CustomEvent).detail));
+    element?.addEventListener(PROBLEM_EVENT, show);
+    return () => element?.removeEventListener(PROBLEM_EVENT, show);
+  }, []);
   useEffect(() => {
     unsaved.current = state.kind !== "saved";
   }, [state, unsaved]);
@@ -114,8 +123,16 @@ function DocsEditor({
           )}
         </div>
       )}
+      {notice && (
+        <div className="flex items-center gap-3 border-b border-[var(--border)] px-4 py-2 text-xs text-[var(--danger)]" role="alert">
+          <span className="flex-1">{notice}</span>
+          <button type="button" className="rounded-md border border-[var(--border)] px-2 py-1 text-[var(--fg)] hover:bg-[var(--card-bg)]" onClick={() => setNotice(null)}>
+            Dismiss
+          </button>
+        </div>
+      )}
       <div className="min-h-0 flex-1 overflow-auto bg-[var(--bg)]" onClick={() => editor?.commands.focus()}>
-        <div className="mx-auto max-w-[760px] px-10 pb-24 pt-8" onClick={(e) => e.stopPropagation()}>
+        <div ref={page} className="mx-auto max-w-[760px] px-10 pb-24 pt-8" onClick={(e) => e.stopPropagation()}>
           <EditorContent editor={editor} />
         </div>
       </div>
