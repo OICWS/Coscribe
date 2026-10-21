@@ -21,8 +21,8 @@ interface Blocks {
 const threadOf = (page: Page) => new URL(page.url()).searchParams.get("thread") ?? "";
 const textOf = (block: Blocks["blocks"][number]) => (block.runs ?? []).map((r) => r.t).join("");
 
-async function openEditor(page: Page, name: string) {
-  execFileSync("python", [join("frontend", "tests", "e2e", "fixtures", "build_redline.py"), WORKSPACE ?? "", name], {
+async function openEditor(page: Page, name: string, extra: string[] = []) {
+  execFileSync("python", [join("frontend", "tests", "e2e", "fixtures", "build_redline.py"), WORKSPACE ?? "", name, ...extra], {
     cwd: AGENT,
     env: { ...process.env, PYTHONPATH: AGENT },
   });
@@ -35,6 +35,13 @@ async function openEditor(page: Page, name: string) {
   await page.getByRole("button", { name: "Expand Viewer" }).click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(page.locator(".docs-editor")).toBeVisible();
+}
+
+// The editor takes the caret from the page a moment after a click; the toolbar naming the style of the
+// clicked paragraph is the sign that it has, and keys pressed before it land at the start of the document.
+async function clickParagraph(page: Page, text: string) {
+  await page.locator(".docs-editor p", { hasText: text }).click();
+  await expect(page.getByTitle("Paragraph style")).toHaveText(/Normal/);
 }
 
 const blocksOf = async (page: Page, name: string): Promise<Blocks> => {
@@ -51,8 +58,7 @@ test("an edit in the editor reaches the Word file and leaves its comment and cha
   await expect(editor.locator(".docs-locked")).toHaveCount(1); // the price line, which holds the comment and both changes
 
   await test.step("typing in a paragraph is saved to the file", async () => {
-    const term = editor.locator("p", { hasText: "The agreement runs" });
-    await term.click();
+    await clickParagraph(page, "The agreement runs");
     await page.keyboard.press("End");
     await page.keyboard.type(" Renewal is by letter.");
     await expect(page.getByRole("status")).toHaveText("Saved");
@@ -105,4 +111,82 @@ test("a file changed meanwhile is not overwritten: the editor says so and reads 
   await expect(editor).toContainText("Changed elsewhere.");
   await expect(page.getByText("This document changed since you opened it")).toHaveCount(0);
   expect((await blocksOf(page, name)).blocks.map(textOf).join("\n")).not.toContain("!");
+});
+
+test("'/' inserts a block and the bar over selected words formats them, both written to the file", async ({ page }) => {
+  const name = `edit-${Math.random().toString(36).slice(2, 8)}`;
+  await openEditor(page, name);
+  const editor = page.locator(".docs-editor");
+
+  await test.step("'/' narrows as it is typed and Enter makes a heading", async () => {
+    await clickParagraph(page, "The agreement runs");
+    await page.keyboard.press("End");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("/head");
+    await expect(page.getByRole("option")).toHaveText([/Heading 1/, /Heading 2/, /Heading 3/]);
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("Appendix");
+    await expect(page.getByRole("status")).toHaveText("Saved");
+    expect((await blocksOf(page, name)).blocks.map((b) => `${b.kind}:${textOf(b)}`)).toContain("heading:Appendix");
+  });
+
+  await test.step("a table comes from '/' too, and a table's cells take no menu", async () => {
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("/table");
+    await page.getByRole("option", { name: /Table/ }).click();
+    await expect(editor.locator("table")).toHaveCount(1);
+    await editor.locator("td").first().click();
+    await page.keyboard.type("/");
+    await expect(page.getByRole("option")).toHaveCount(0);
+  });
+
+  await test.step("selected words get a bar: bold is written to the file", async () => {
+    await editor.locator("p", { hasText: "The agreement runs" }).click({ clickCount: 3 });
+    const bar = page.getByRole("toolbar", { name: "Format selected text" });
+    await expect(bar).toBeVisible();
+    await bar.getByRole("button", { name: "Bold" }).click();
+    await expect(page.getByRole("status")).toHaveText("Saved");
+    const term = (await blocksOf(page, name)).blocks.find((b) => textOf(b).startsWith("The agreement runs"));
+    expect(term?.runs?.every((r) => r.b)).toBe(true);
+  });
+});
+
+test("a turn that ends does not rebuild the editor or move the caret", async ({ page }) => {
+  const name = `edit-${Math.random().toString(36).slice(2, 8)}`;
+  await openEditor(page, name);
+  const editor = page.locator(".docs-editor");
+  await editor.evaluate((el) => el.setAttribute("data-same-editor", "yes"));
+  await clickParagraph(page, "The agreement runs");
+  await page.keyboard.press("End");
+
+  await page.getByRole("button", { name: "Restore Viewer" }).click();
+  await page.locator("textarea").fill("hello again");
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("OK", { exact: true })).toBeVisible();
+  await page.waitForTimeout(1500);
+
+  await expect(editor).toHaveAttribute("data-same-editor", "yes");
+  await clickParagraph(page, "The agreement runs");
+  await page.keyboard.press("End");
+  await page.keyboard.type(" Kept.");
+  await expect(page.getByRole("status")).toHaveText("Saved");
+  expect((await blocksOf(page, name)).blocks.map(textOf).some((t) => t.includes("The agreement runs for one year. Kept."))).toBe(true);
+});
+
+test("a picture in the document is shown in the editor and survives an edit beside it", async ({ page }) => {
+  const name = `edit-${Math.random().toString(36).slice(2, 8)}`;
+  await openEditor(page, name, ["picture"]);
+  const editor = page.locator(".docs-editor");
+  const picture = editor.locator(".docs-locked-image");
+  await expect(picture).toBeVisible();
+  expect(await picture.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(120);
+
+  await clickParagraph(page, "The agreement runs");
+  await page.keyboard.press("End");
+  await page.keyboard.type(" Beside the picture.");
+  await expect(page.getByRole("status")).toHaveText("Saved");
+  const saved = await blocksOf(page, name);
+  expect(saved.blocks.some((b) => b.kind === "locked" && b.what === "image or drawing")).toBe(true);
+  await expect(picture).toBeVisible();
 });

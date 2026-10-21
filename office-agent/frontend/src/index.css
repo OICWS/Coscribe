@@ -655,6 +655,22 @@ body {
 .docs-editor .docs-locked.ProseMirror-selectednode {
   outline: 1.5px solid var(--accent);
 }
+.docs-editor .docs-locked-pictured {
+  display: block;
+  background: none;
+  padding: 0;
+}
+.docs-editor .docs-locked-pictured .docs-locked-what,
+.docs-editor .docs-locked-text:empty {
+  display: none;
+}
+.docs-editor .docs-locked-image {
+  display: block;
+  margin: 4px 0;
+  max-width: 100%;
+  max-height: 420px;
+  border-radius: 6px;
+}
 .docs-editor .docs-locked-what {
   flex-shrink: 0;
   font-weight: 600;

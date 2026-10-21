@@ -71,3 +71,28 @@ def test_what_is_not_a_word_document_or_cannot_be_saved_is_refused_lg(
     assert [missing.status_code, text.status_code, outside.status_code] == [404, 404, 404]
     assert broken.status_code == 422 and "zip" not in broken.json()["error"].lower()
     assert bad.status_code == 400 and "http" in bad.json()["error"]
+
+
+def test_a_picture_of_the_document_is_served_and_nothing_else_is_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from PIL import Image
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    Image.new("RGB", (40, 20), "red").save(workspace / "pic.png")
+    tools = {t.__name__: t for t in build_document_tools(workspace)}  # type: ignore[attr-defined]
+    tools["write_docx"](path="pic.docx", content="# T\n\nhere\n")
+    tools["add_docx_image"](path="pic.docx", image_path="pic.png", after_text="here")
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        blocks = client.get("/api/threads/t_one/docs/blocks", params={"path": "pic.docx"}).json()
+        rid = next(b["images"][0] for b in blocks["blocks"] if b.get("images"))
+        url = "/api/threads/t_one/docs/image"
+        shown = client.get(url, params={"path": "pic.docx", "rid": rid})
+        odd = client.get(url, params={"path": "pic.docx", "rid": "../x"})
+        none = client.get(url, params={"path": "pic.docx", "rid": "rId999"})
+        outside = client.get(url, params={"path": "../pic.docx", "rid": rid})
+
+    assert shown.status_code == 200 and shown.headers["content-type"] == "image/png"
+    assert shown.headers["x-content-type-options"] == "nosniff"
+    assert [odd.status_code, none.status_code, outside.status_code] == [404, 404, 404]

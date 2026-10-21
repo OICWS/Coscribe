@@ -15,7 +15,7 @@ export type Block =
   | { id?: string; kind: "heading"; level: number; runs: Run[] }
   | { id?: string; kind: "bullet" | "number"; level: number; runs: Run[] }
   | { id?: string; kind: "table"; header: boolean; rows: Run[][][] }
-  | { id?: string; kind: "locked"; what?: string; text?: string };
+  | { id?: string; kind: "locked"; what?: string; text?: string; images?: string[] };
 
 export interface DocBlocks {
   version: string;
@@ -43,6 +43,11 @@ export async function saveDocBlocks(threadId: string, path: string, version: str
   const failure = (await response.json().catch(() => null)) as { error?: string } | null;
   if (response.status === 409) throw new DocChangedError(failure?.error);
   throw new Error(failure?.error ?? `HTTP ${response.status}`);
+}
+
+/** The message "Ask coscribe" sends for selected words: the file, then the words quoted. */
+export function askAboutWords(file: string, words: string): string {
+  return `Question about ${file}:\n${words.split("\n").map((line) => `> ${line}`).join("\n")}`;
 }
 
 // -- Blocks to the editor's document -------------------------------------------------------------
@@ -94,7 +99,11 @@ function lists(items: ListBlock[]): JSONContent[] {
   return roots;
 }
 
-export function blocksToDoc(blocks: Block[]): JSONContent {
+/** Where a picture of the document is read from; the version in the url makes a changed file a new picture. */
+export const docImageUrl = (threadId: string, path: string, version: string) => (rid: string) =>
+  `/api/threads/${encodeURIComponent(threadId)}/docs/image?path=${encodeURIComponent(path)}&rid=${encodeURIComponent(rid)}&v=${version}`;
+
+export function blocksToDoc(blocks: Block[], imageUrl: (rid: string) => string = (rid) => rid): JSONContent {
   const content: JSONContent[] = [];
   for (let at = 0; at < blocks.length; at += 1) {
     const block = blocks[at];
@@ -116,7 +125,7 @@ export function blocksToDoc(blocks: Block[]): JSONContent {
       }));
       content.push({ type: "table", attrs: identified(block.id), content: rows });
     } else if (block.kind === "locked") {
-      content.push({ type: "lockedBlock", attrs: { what: block.what ?? "", text: block.text ?? "", ...identified(block.id) } });
+      content.push({ type: "lockedBlock", attrs: { what: block.what ?? "", text: block.text ?? "", images: (block.images ?? []).map(imageUrl), ...identified(block.id) } });
     } else {
       content.push(paragraph(block.runs, block.id));
     }

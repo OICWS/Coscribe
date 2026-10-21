@@ -4,12 +4,12 @@
 Owns the Word tools and their toolkit: reading a document as markdown, writing one from the
 shared markdown subset, structure edits (headings, tables, styles, TOC; `_structure.py`,
 `_style.py`), tracked-change edits and the review tools (`_review.py`), and the raw XML helpers
-(`_xml.py`), and a document as blocks for the Docs editor with a save that rewrites only the changed blocks (`blocks.py`). The tool wrappers (names, parameters, docstrings the model sees) are in `tools.py`, the
+(`_xml.py`), and a document as blocks for the Docs editor with a save that rewrites only the changed blocks (`blocks.py`), and the pictures it shows (`block_images.py`). The tool wrappers (names, parameters, docstrings the model sees) are in `tools.py`, the
 implementation in `toolkit.py`; a changed signature also changes `tests/tool_schemas.txt`. Does not own PDF, Excel or PowerPoint, the shared markdown blocks and table
 layout (`tools/office/`), or how the viewer panel draws a document (`web/`, `frontend/`).
 
 ## Public interface
-`DocxToolkit`, `build_docx_tools`, and for the Docs editor (decision 0019, `blocks.py`) `read_doc_blocks`, `save_doc_blocks`, `DocChanged`, `BlocksRefused`. Import them from `coscribe.tools.office.docx`; the coordinator
+`DocxToolkit`, `build_docx_tools`, and for the Docs editor (decision 0019, `blocks.py`) `read_doc_blocks`, `read_doc_image`, `save_doc_blocks`, `DocChanged`, `BlocksRefused`, and what the person changed since coscribe was told (`user_edits.py`) `remember_before_edit`, `edits_since_told`. Import them from `coscribe.tools.office.docx`; the coordinator
 reaches them through `coscribe.tools.office.document_tools`.
 
 ## Depends on
@@ -29,7 +29,7 @@ reaches them through `coscribe.tools.office.document_tools`.
 
 ## Tests
 `tests/test_documents_tool.py`, `tests/test_docx_structure_tool.py`, `tests/test_docx_review_tool.py`,
-`tests/test_docx_golden.py` (canonical XML goldens), `tests/test_docx_blocks.py` (the editor's reader and writer), `tests/test_evals_docx.py`.
+`tests/test_docx_golden.py` (canonical XML goldens), `tests/test_docx_blocks.py` (the editor's reader and writer), `tests/test_docs_edits_note.py` (what the person changed, told once), `tests/test_evals_docx.py`.
 
 ## Verify by hand
 A written and an edited document opened in the real Word on Windows, tracked changes shown and

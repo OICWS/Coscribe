@@ -28,7 +28,7 @@ export function ViewerPanel({
   }
   return editing ? (
     <Suspense fallback={null}>
-      <DocsEditorPanel threadId={threadId} path={path} refreshKey={refreshKey} onFileChanged={onFileChanged} onPreview={() => setEditing(false)} />
+      <DocsEditorPanel threadId={threadId} path={path} refreshKey={refreshKey} onFileChanged={onFileChanged} onAsk={onSendComment} onPreview={() => setEditing(false)} />
     </Suspense>
   ) : (
     <DocxViewerPanel threadId={threadId} path={path} refreshKey={refreshKey} onAsk={onSendComment} onFileChanged={onFileChanged} onEdit={() => setEditing(true)} />
