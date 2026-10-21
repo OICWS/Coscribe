@@ -54,6 +54,18 @@ export async function saveDocBlocks(threadId: string, path: string, version: str
   throw new Error(failure?.error ?? `HTTP ${response.status}`);
 }
 
+/** Puts a version the editor once held back over the one it holds. */
+export async function restoreDocVersion(threadId: string, path: string, version: string, to: string): Promise<DocBlocks> {
+  const response = await fetch(`/api/threads/${encodeURIComponent(threadId)}/docs/restore`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path, version, to }),
+  });
+  if (response.ok) return (await response.json()) as DocBlocks;
+  const failure = (await response.json().catch(() => null)) as { error?: string } | null;
+  throw new Error(failure?.error ?? `HTTP ${response.status}`);
+}
+
 /** The message "Ask coscribe" sends for selected words: the file, then the words quoted. */
 export function askAboutWords(file: string, words: string): string {
   return `Question about ${file}:\n${words.split("\n").map((line) => `> ${line}`).join("\n")}`;
