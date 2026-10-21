@@ -38,7 +38,7 @@ import type { PanelId } from "./lib/dockLayout";
 import { isViewable } from "./lib/viewers";
 import { useCommentSender } from "./lib/commentReplies";
 import { useSteerNotes } from "./lib/steerNotes";
-import { SteerActionsContext } from "./components/chatlog/contexts";
+import { SteerActionsContext, ViewFile } from "./components/chatlog/contexts";
 import { canOpenPanelWindows, focusPanelWindow, usePanelWindows } from "./lib/panelWindows";
 import { WorkflowDraftPage } from "./components/workflow/WorkflowDraftPage";
 import { WorkflowRunView } from "./components/workflow/WorkflowRunView";
@@ -970,7 +970,7 @@ function App() {
                   {composer}
                 </div>
               ) : navMode === "create" ? (
-                <SteerActionsContext.Provider value={steers.actions}>
+                <SteerActionsContext.Provider value={steers.actions}><ViewFile.Provider value={viewFile}>
                   <ChatLog
                     items={state.items}
                     turnInFlight={state.turnInFlight}
@@ -1010,7 +1010,7 @@ function App() {
                     <QuestionPanel key={pendingQuestion.id} item={pendingQuestion} onAnswer={onAnswerQuestion} />
                   )}
                   {composer}
-                </SteerActionsContext.Provider>
+                </ViewFile.Provider></SteerActionsContext.Provider>
               ) : workflowDraft ? (
                 <WorkflowDraftPage
                   threadId={workflowDraft.threadId}

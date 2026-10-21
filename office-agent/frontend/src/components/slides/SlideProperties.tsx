@@ -46,7 +46,7 @@ export function SlideProperties({
   return (
     <aside
       aria-label="Slide properties"
-      className={`shrink-0 overflow-auto bg-[var(--bg)] ${beside ? "w-[280px] border-l" : "max-h-[45%] border-t"} border-[var(--border)]`}
+      className={`shrink-0 overflow-auto bg-[var(--bg)] [&>div+section]:pt-0 ${beside ? "w-[280px] border-l" : "max-h-[45%] border-t"} border-[var(--border)]`}
     >
       <div className="flex h-10 items-center justify-end px-2">
         <button

@@ -24,7 +24,7 @@
         --bg: #fcfcfb;
         --fg: #201e1d;
         --muted: #7d7979;
-        --accent: #de6f90;
+        --accent: #2a78d6;
         --danger: #dd2b0f;
       }
       @media (prefers-color-scheme: dark) {
@@ -32,7 +32,7 @@
           --bg: #232120;
           --fg: #f7f5f3;
           --muted: #a19d9b;
-          --accent: #ef92ab;
+          --accent: #4b8fe3;
           --danger: #ff6b52;
         }
       }
@@ -90,8 +90,8 @@
   <body>
     <div class="wrap">
       <div class="spinner" id="spinner"></div>
-      <div class="title" id="title">Starting coscribe&hellip;</div>
-      <div class="status" id="status">Still starting up&hellip;</div>
+      <div class="title" id="title" hidden></div>
+      <div class="status" id="status" hidden></div>
     </div>
     <script>
       const spinnerEl = document.getElementById("spinner");
@@ -101,6 +101,8 @@
 
       window.coscribeDesktop.onSidecarStatus((reason) => {
         spinnerEl.style.display = "none";
+        titleEl.hidden = false;
+        statusEl.hidden = false;
         titleEl.textContent = "coscribe couldn't start";
         titleEl.style.color = "var(--danger)";
         statusEl.textContent =

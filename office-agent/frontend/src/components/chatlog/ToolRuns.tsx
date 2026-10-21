@@ -8,6 +8,7 @@ import { pptxOverlayTargetOf, inSentence } from "./helpers";
 import { ConnectorTools } from "./contexts";
 import { SummaryLabel, Disclosure } from "./SummaryLabel";
 import { ToolPreview } from "./ToolPreview";
+import { OpenFileChips } from "./OpenFileChips";
 import { ApprovalPreview } from "./ApprovalPreview";
 
 /** A run of tool calls: one sentence-like summary with a chevron after
@@ -83,6 +84,7 @@ export function ToolRunGroupView({
         <Disclosure open={open} />
       </button>
       {single && <ToolPreview item={single} onPptxShapePicked={onPptxShapePicked} />}
+      <OpenFileChips items={group.items} />
       {group.items.map((item) => {
         const blocked = blockedWriteOf(item);
         return blocked ? <BlockedFolderCard key={item.id} blocked={blocked} /> : null;
