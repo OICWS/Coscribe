@@ -68,8 +68,7 @@ const SCROLL_LOAD_OLDER_THRESHOLD_PX = 150;
 export function ChatLog({
   items,
   onApprove,
-  onAnswerPlan,
-  onOpenPlan,
+  onAnswerPlan, onOpenPlan,
   onEditMessage,
   onRewindMessage,
   loading,
@@ -223,8 +222,7 @@ export function ChatLog({
             turn={turn}
             isLastTurn={i === turns.length - 1}
             onApprove={onApprove}
-            onAnswerPlan={onAnswerPlan}
-            onOpenPlan={onOpenPlan}
+            onAnswerPlan={onAnswerPlan} onOpenPlan={onOpenPlan}
             onEditMessage={onEditMessage}
             onRewindMessage={onRewindMessage}
             onReviewTaskDraft={onReviewTaskDraft}
