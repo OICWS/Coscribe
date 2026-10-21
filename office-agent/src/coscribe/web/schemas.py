@@ -118,6 +118,14 @@ class ConnectorPermissionsUpdate(BaseModel):
     tools: dict[str, str]
 
 
+class ArtifactRename(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+
+
+class ArtifactShow(BaseModel):
+    reveal: bool = False
+
+
 class ThreadRename(BaseModel):
     title: str
 
@@ -190,8 +198,6 @@ class WorkflowRetry(BaseModel):
 
 class TaskNotesUpdate(BaseModel):
     notes: str
-
-
 
 
 class ProviderUpdate(BaseModel):

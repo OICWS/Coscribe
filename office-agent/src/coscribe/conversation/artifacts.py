@@ -69,11 +69,17 @@ class ArtifactRegistry:
     def get(self, artifact: str) -> dict[str, Any] | None:
         return next((e for e in self.entries() if e["id"] == artifact), None)
 
+    def _save(self, entries: list[dict[str, Any]]) -> None:
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = self._path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(entries, ensure_ascii=False), encoding="utf-8")
+        os.replace(tmp, self._path)
+
     def adopt(self, locations: list[str], folders: list[str], thread_id: str) -> None:
         # Called on the event loop with no await between the read and the write, so two
         # adoptions cannot interleave.
         known = self.entries()
-        have = {e["id"] for e in known}
+        have = {os.path.normcase(e["location"]) for e in known}
         added = [
             {
                 "id": artifact_id(location),
@@ -83,14 +89,17 @@ class ArtifactRegistry:
                 "created_at": datetime.now().isoformat(),
             }
             for location in dict.fromkeys(locations)
-            if artifact_id(location) not in have
+            if os.path.normcase(location) not in have
         ]
-        if not added:
-            return
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = self._path.with_suffix(".tmp")
-        tmp.write_text(json.dumps([*known, *added], ensure_ascii=False), encoding="utf-8")
-        os.replace(tmp, self._path)
+        if added:
+            self._save([*known, *added])
+
+    def update(self, artifact: str, **fields: Any) -> None:
+        """Changes an entry's fields, the id being the one thing that stays."""
+        self._save([{**e, **fields} if e["id"] == artifact else e for e in self.entries()])
+
+    def remove(self, artifact: str) -> None:
+        self._save([e for e in self.entries() if e["id"] != artifact])
 
 
 async def adopt_thread(

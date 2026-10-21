@@ -9,6 +9,8 @@ pytest.importorskip("langgraph", reason="needs the langgraph_spike extra install
 
 from langchain_core.messages import AIMessage
 
+from coscribe.web.routes import artifacts as artifact_routes
+
 from .helpers import FakeToolCallingChatModel, _client_lg, _run_turn, _tool_call
 
 
@@ -93,3 +95,57 @@ def test_an_artifact_outlives_its_conversation_and_opens_in_a_new_one_lg(
     assert {a["name"] for a in after} == {"report", "deck"}
     assert unknown.status_code == 404
     assert no_thumb.status_code == 404
+
+
+def test_the_menu_renames_copies_and_deletes_an_artifact_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "workspace").mkdir()
+    sent: list[str] = []
+    monkeypatch.setattr("send2trash.send2trash", lambda path: (sent.append(path), None)[1])
+    fake_model = FakeToolCallingChatModel(
+        responses=[_made("report.docx", "plan.docx"), AIMessage(content="done")]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        _run_turn(client, "t_one", "make things")
+        ids = {a["name"]: a["id"] for a in client.get("/api/artifacts").json()}
+        renamed = client.post(f"/api/artifacts/{ids['report']}/rename", json={"name": "Q3 report"})
+        taken = client.post(f"/api/artifacts/{ids['report']}/rename", json={"name": "plan"})
+        copied = client.post(f"/api/artifacts/{ids['report']}/duplicate")
+        found = client.get(
+            "/api/artifacts/lookup", params={"thread_id": "t_one", "path": "Q3 report.docx"}
+        )
+        other = client.get(
+            "/api/artifacts/lookup", params={"thread_id": "t_one", "path": "nothing.docx"}
+        )
+        deleted = client.delete(f"/api/artifacts/{ids['plan']}")
+        names = {a["name"] for a in client.get("/api/artifacts").json()}
+        missing = client.delete("/api/artifacts/nope")
+
+    assert renamed.json()["name"] == "Q3 report" and renamed.json()["id"] == ids["report"]
+    assert (tmp_path / "workspace" / "Q3 report.docx").is_file()
+    assert found.json()["id"] == ids["report"] and other.status_code == 404
+    assert taken.status_code == 409
+    assert copied.json()["name"] == "Q3 report copy"
+    assert deleted.status_code == 200 and sent == [str(tmp_path / "workspace" / "plan.docx")]
+    assert names == {"Q3 report", "Q3 report copy"}
+    assert missing.status_code == 404
+
+
+def test_a_system_error_is_not_shown_to_the_page_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "workspace").mkdir()
+
+    def locked(*_: object) -> None:
+        raise PermissionError(13, "denied", str(tmp_path / "workspace" / "report.docx"))
+
+    monkeypatch.setattr(artifact_routes, "rename_file", locked)
+    fake_model = FakeToolCallingChatModel(responses=[_made("report.docx"), AIMessage(content="d")])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        _run_turn(client, "t_one", "make")
+        artifact = client.get("/api/artifacts").json()[0]["id"]
+        refused = client.post(f"/api/artifacts/{artifact}/rename", json={"name": "x"})
+
+    assert refused.status_code == 409
+    assert "report.docx" not in refused.json()["error"] and "denied" not in refused.json()["error"]

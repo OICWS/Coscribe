@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { CheckIcon } from "../icons";
 
@@ -37,6 +37,12 @@ export function SlideMenu({
   onClose: () => void;
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
+  // Under the anchor, or higher up when a long menu would run off the window.
+  const [top, setTop] = useState(anchor.bottom + 6);
+  useLayoutEffect(() => {
+    const height = menuRef.current?.offsetHeight ?? 0;
+    setTop(Math.max(8, Math.min(anchor.bottom + 6, window.innerHeight - height - 8)));
+  }, [anchor, entries.length]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -63,9 +69,10 @@ export function SlideMenu({
       ref={menuRef}
       role="menu"
       aria-label={label}
-      className="fixed z-50 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.12)]"
+      className="fixed z-50 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--bg)] p-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.12)]"
       style={{
-        top: anchor.bottom + 6,
+        top,
+        maxHeight: window.innerHeight - 16,
         left: Math.max(8, Math.min(window.innerWidth - width - 8, align === "left" ? anchor.left : anchor.right - width)),
         width,
       }}

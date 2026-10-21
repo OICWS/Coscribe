@@ -1,6 +1,32 @@
 {
   "components": {
     "schemas": {
+      "ArtifactRename": {
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ArtifactRename",
+        "type": "object"
+      },
+      "ArtifactShow": {
+        "properties": {
+          "reveal": {
+            "default": false,
+            "title": "Reveal",
+            "type": "boolean"
+          }
+        },
+        "title": "ArtifactShow",
+        "type": "object"
+      },
       "Body_post_asset_api_threads__thread_id__slides_assets_post": {
         "properties": {
           "file": {
@@ -1000,6 +1026,127 @@
         "summary": "List Artifacts"
       }
     },
+    "/api/artifacts/lookup": {
+      "get": {
+        "description": "The artifact a panel is showing, when coscribe made the file it shows.",
+        "operationId": "lookup_api_artifacts_lookup_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Lookup"
+      }
+    },
+    "/api/artifacts/{artifact}": {
+      "delete": {
+        "operationId": "delete_api_artifacts__artifact__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "artifact",
+            "required": true,
+            "schema": {
+              "title": "Artifact",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete"
+      }
+    },
+    "/api/artifacts/{artifact}/duplicate": {
+      "post": {
+        "operationId": "duplicate_api_artifacts__artifact__duplicate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "artifact",
+            "required": true,
+            "schema": {
+              "title": "Artifact",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Duplicate"
+      }
+    },
     "/api/artifacts/{artifact}/open": {
       "post": {
         "description": "The conversation to show the artifact in and its path there: the one that made it\nwhile it exists, else a new one working in the folders that one did.",
@@ -1036,6 +1183,100 @@
           }
         },
         "summary": "Open Artifact"
+      }
+    },
+    "/api/artifacts/{artifact}/rename": {
+      "post": {
+        "operationId": "rename_api_artifacts__artifact__rename_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "artifact",
+            "required": true,
+            "schema": {
+              "title": "Artifact",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArtifactRename"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rename"
+      }
+    },
+    "/api/artifacts/{artifact}/show": {
+      "post": {
+        "operationId": "show_api_artifacts__artifact__show_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "artifact",
+            "required": true,
+            "schema": {
+              "title": "Artifact",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArtifactShow"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Show"
       }
     },
     "/api/artifacts/{artifact}/thumbnail": {

@@ -45,6 +45,8 @@ dependencies = [
     "pyyaml>=6.0",
     "typer>=0.12.0",
     "python-docx>=1.1.0",
+    # artifact delete: to the recycle bin, never a permanent removal; pure Python.
+    "send2trash>=1.8.3,<3",
     "reportlab>=4.0.0",
     # read_docx/read_pdf reuse the same well-established libraries
     # microsoft/markitdown itself builds on for docx/pdf -> markdown
@@ -133,6 +135,7 @@ dev = [
     "types-PyYAML>=6.0",
     "types-reportlab>=4.0.0",
     "types-openpyxl>=3.1.0",
+    "types-Send2Trash>=1.8.0",
     "import-linter>=2.15",
     # scripts/ratchet.py reads the import graph directly (also pulled in by import-linter).
     "grimp>=3.0",

@@ -8,6 +8,8 @@ export type ArtifactKind = "slides" | "docs" | "sheets" | "dashboard";
 export interface ArtifactSummary {
   id: string;
   path: string;
+  /** Where the file is on disk. */
+  location: string;
   name: string;
   kind: ArtifactKind;
   modified_at: string;
@@ -33,6 +35,32 @@ export const KINDS: Record<ArtifactKind, KindInfo> = {
   sheets: { label: "Sheets", colour: "var(--file-sheet)", starter: "Make a spreadsheet that ", badge: null },
   dashboard: { label: "Dashboard", colour: "var(--file-dashboard)", starter: null, badge: "Soon" },
 };
+
+async function send<T>(url: string, method: string, body?: unknown): Promise<T> {
+  const response = await fetch(url, {
+    method,
+    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const failure = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(failure?.error ?? `HTTP ${response.status}`);
+  }
+  return (await response.json()) as T;
+}
+
+const artifactUrl = (id: string, action = "") => `/api/artifacts/${encodeURIComponent(id)}${action}`;
+
+export const renameArtifact = (id: string, name: string) => send<ArtifactSummary>(artifactUrl(id, "/rename"), "POST", { name });
+export const duplicateArtifact = (id: string) => send<ArtifactSummary>(artifactUrl(id, "/duplicate"), "POST");
+export const deleteArtifact = (id: string) => send<unknown>(artifactUrl(id), "DELETE");
+export const showArtifact = (id: string, reveal: boolean) => send<unknown>(artifactUrl(id, "/show"), "POST", { reveal });
+
+/** The artifact a panel shows, or null when the file is not one coscribe made. */
+export async function lookupArtifact(threadId: string, path: string): Promise<ArtifactSummary | null> {
+  const response = await fetch(`/api/artifacts/lookup?thread_id=${encodeURIComponent(threadId)}&path=${encodeURIComponent(path)}`);
+  return response.ok ? ((await response.json()) as ArtifactSummary) : null;
+}
 
 export async function listArtifacts(): Promise<ArtifactSummary[]> {
   const response = await fetch("/api/artifacts");

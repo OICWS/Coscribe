@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .engine.build import DeckChangedError
+from .engine.deck_files import copy_deck, deck_files, move_deck
 from .engine.design_system import design_system
 from .engine.instructions import NEW_DECK_INSTRUCTIONS
 from .engine.section_format import SectionError
@@ -42,6 +43,9 @@ __all__ = [
     "SlideChanged",
     "add_comment",
     "add_slide_asset",
+    "copy_deck",
+    "deck_files",
+    "move_deck",
     "build_legacy_presentation_tools",
     "build_presentation_tools",
     "deck_basic_fonts",

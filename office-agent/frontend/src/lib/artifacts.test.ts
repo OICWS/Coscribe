@@ -6,6 +6,7 @@ const ago = (hours: number) => new Date(NOW.getTime() - hours * 3600e3).toISOStr
 const make = (name: string, kind: ArtifactSummary["kind"], hours: number): ArtifactSummary => ({
   id: `id-${name}`,
   path: `${name}.x`,
+  location: `/w/${name}.x`,
   name,
   kind,
   modified_at: ago(hours),

@@ -155,6 +155,7 @@ def test_the_real_app_hands_its_page_the_token_and_refuses_a_post_without_it(
 AUDITED_READ_ONLY_GETS = {
     "/",
     "/api/artifacts",
+    "/api/artifacts/lookup",
     "/api/artifacts/{artifact}/thumbnail",
     "/api/attachment/pdf",
     "/api/attachment/pdf/page",
