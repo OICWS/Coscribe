@@ -8,7 +8,6 @@ import { pptxOverlayTargetOf, inSentence } from "./helpers";
 import { ConnectorTools } from "./contexts";
 import { SummaryLabel, Disclosure } from "./SummaryLabel";
 import { ToolPreview } from "./ToolPreview";
-import { OpenFileChips } from "./OpenFileChips";
 import { ApprovalPreview } from "./ApprovalPreview";
 
 /** A run of tool calls: one sentence-like summary with a chevron after
@@ -43,7 +42,7 @@ export function ToolRunGroupView({
 
   if (groupHasPendingApproval(group)) {
     return (
-      <div className="flex max-w-full flex-col gap-1.5 self-start">
+      <div className="flex w-full flex-col gap-1.5">
         {group.items.map((item) => (
           <ToolCallRow key={item.id} item={item} onApprove={onApprove} onPptxShapePicked={onPptxShapePicked} />
         ))}
@@ -54,7 +53,7 @@ export function ToolRunGroupView({
   const header = summarizeGroupParts(group.items, live, connectorTools);
   const single = group.items.length === 1 ? group.items[0] : null;
   return (
-    <div className="w-full max-w-[92%] self-start text-sm">
+    <div className="w-full text-sm">
       <button
         type="button"
         aria-expanded={open}
@@ -84,7 +83,6 @@ export function ToolRunGroupView({
         <Disclosure open={open} />
       </button>
       {single && <ToolPreview item={single} onPptxShapePicked={onPptxShapePicked} />}
-      <OpenFileChips items={group.items} />
       {group.items.map((item) => {
         const blocked = blockedWriteOf(item);
         return blocked ? <BlockedFolderCard key={item.id} blocked={blocked} /> : null;
@@ -225,7 +223,7 @@ function ToolCallRow({
 
   return (
     <div
-      className={`max-w-[92%] self-start rounded-xl border px-3 py-2 text-sm ${
+      className={`w-full rounded-xl border px-3 py-2 text-sm ${
         isPendingApproval ? "border-[var(--accent)] bg-[var(--bg)]" : "border-[var(--border)] bg-[var(--card-bg)] hover:bg-[var(--panel-bg)]"
       }`}
     >

@@ -14,6 +14,7 @@ import { WorkflowDraftCard } from "../workflow/WorkflowDraftCard";
 import { type TaskDraftItem } from "./types";
 import { ToolRunGroupView } from "./ToolRuns";
 import { UserMessageView, SteerView } from "./UserMessageView";
+import { OpenFileChips } from "./OpenFileChips";
 
 /** react-markdown + remark/rehype + katex is the single biggest dependency
  * added to this app (roughly triples the production bundle) -- code-split
@@ -118,6 +119,7 @@ export function TurnView({
           <LogItemView key={entry.id} item={entry} onEditMessage={isLastTurn ? onEditMessage : undefined} />
         ),
       )}
+      <OpenFileChips items={entries.flatMap((entry) => (entry.kind === "tool_run" ? entry.items : []))} />
       {canFooter && (
         <div className="-mt-2 flex items-center gap-0.5 self-start opacity-0 transition-opacity group-hover/turn:opacity-100">
           <CopyButton
