@@ -269,7 +269,7 @@ export class TabCdp {
     const handle = await this.evaluate(
       frame,
       `(() => { const el = window.__coscribeAgent?.refs.get(${JSON.stringify(ref)})?.deref();
-        if (!el || !el.isConnected) throw new Error("No element with ref ${ref} on this page any more -- take a new browser_snapshot.");
+        if (!el || !el.isConnected) throw new Error("No element with that ref on this page any more -- take a new browser_snapshot.");
         return el; })()`,
       true,
     );
