@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeArgs, describeResult, rawJson } from "./toolFields";
+import { commandOf, commandOutput, describeArgs, describeResult, rawJson } from "./toolFields";
 
 describe("describeArgs", () => {
   it("makes a line per argument with scalars as plain text", () => {
@@ -43,6 +43,13 @@ describe("describeArgs", () => {
     expect(line.value).toContain("next");
   });
 
+  it("shows an empty list or object as none", () => {
+    expect(describeArgs({ files: [], extra: {} })).toEqual([
+      { name: "files", value: "none", children: [] },
+      { name: "extra", value: "none", children: [] },
+    ]);
+  });
+
   it("has no lines for no arguments", () => {
     expect(describeArgs({})).toEqual([]);
   });
@@ -80,5 +87,37 @@ describe("rawJson", () => {
   it("prints a value as JSON and a string as it is", () => {
     expect(rawJson({ a: 1 })).toBe('{\n  "a": 1\n}');
     expect(rawJson("text")).toBe("text");
+  });
+});
+
+describe("commandOf", () => {
+  it("reads the script of a script tool and the command of a shell tool", () => {
+    expect(commandOf("run_python_script", { script: "print(1)", description: "x" })).toBe("print(1)");
+    expect(commandOf("run_code_command", { script: "ls" })).toBe("ls");
+    expect(commandOf("run_background_command", { command: "npm test" })).toBe("npm test");
+  });
+
+  it("is null for any other tool or a missing text", () => {
+    expect(commandOf("read_file", { script: "x" })).toBeNull();
+    expect(commandOf("run_python_script", {})).toBeNull();
+  });
+});
+
+describe("commandOutput", () => {
+  it("takes the output and exit code of a record, and a string as it is", () => {
+    expect(commandOutput({ output: "hi\n", exit_code: 2 })).toEqual({ output: "hi\n", exitCode: 2 });
+    expect(commandOutput("plain")).toEqual({ output: "plain", exitCode: null });
+  });
+
+  it("joins the stdout and stderr of a script", () => {
+    expect(commandOutput({ exit_code: 1, stdout: "a\n", stderr: "boom", timed_out: false })).toEqual({
+      output: "a\nboom",
+      exitCode: 1,
+    });
+    expect(commandOutput({ exit_code: 0, stdout: "", stderr: "" }).output).toBe("");
+  });
+
+  it("shows any other record as its fields", () => {
+    expect(commandOutput({ status: "started", task: { id: 3 } }).output).toBe("status: started\ntask:\n  id: 3");
   });
 });

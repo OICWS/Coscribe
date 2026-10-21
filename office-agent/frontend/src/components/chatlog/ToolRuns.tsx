@@ -9,7 +9,8 @@ import { ConnectorTools } from "./contexts";
 import { SummaryLabel, Disclosure } from "./SummaryLabel";
 import { ToolPreview } from "./ToolPreview";
 import { ApprovalPreview } from "./ApprovalPreview";
-import { ArgLines, RawFold, ResultText } from "./ToolFields";
+import { commandOf } from "../../lib/toolFields";
+import { ArgLines, CommandBox, CommandOutput, RawFold, ResultText } from "./ToolFields";
 
 /** A run of tool calls: one sentence-like summary with a chevron after
  * it; opened, a bordered list with a row per call, each opening to its
@@ -175,7 +176,8 @@ function ToolDetail({
       </div>
     );
   }
-  if (item.toolName === "run_code_command") return <CodeCommandDetail item={item} />;
+  const command = commandOf(item.toolName, item.arguments);
+  if (command !== null) return <CommandDetail item={item} command={command} />;
   return (
     <div className="flex flex-col">
       <ArgLines args={item.arguments} />
@@ -189,24 +191,17 @@ function ToolDetail({
   );
 }
 
-/** A code-module command opened: the command, then what it printed. */
-function CodeCommandDetail({ item }: { item: Extract<ToolOrApprovalItem, { kind: "tool" }> }) {
-  const script = typeof item.arguments.script === "string" ? item.arguments.script : "";
-  const result = item.result;
-  const record = result !== null && typeof result === "object" ? (result as Record<string, unknown>) : null;
-  const output = record ? String(record.output ?? "") : result === undefined ? "" : String(result);
-  const exitCode = record && typeof record.exit_code === "number" ? record.exit_code : null;
+/** A command opened: the command as a terminal line, then what it printed. */
+function CommandDetail({ item, command }: { item: Extract<ToolOrApprovalItem, { kind: "tool" }>; command: string }) {
   return (
-    <div className="flex flex-col font-mono text-xs leading-relaxed">
-      <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-all px-3 py-2">{script}</pre>
-      {result === undefined ? (
-        <p className="border-t border-[var(--border)] px-3 py-2 font-sans text-[var(--muted)]">No result yet.</p>
+    <div className="flex flex-col gap-1.5 px-3 py-2">
+      <CommandBox command={command} maxHeight="max-h-40" />
+      {item.result === undefined ? (
+        <p className="text-[var(--muted)]">No result yet.</p>
       ) : (
-        <pre className="max-h-60 overflow-auto whitespace-pre-wrap break-all border-t border-[var(--border)] bg-[var(--bg)] px-3 py-2">
-          {output || "(no output)"}
-          {exitCode ? `\n(exit code ${exitCode})` : ""}
-        </pre>
+        <CommandOutput result={item.result} />
       )}
+      <RawFold args={item.arguments} result={item.result} pad={false} />
     </div>
   );
 }
@@ -307,9 +302,7 @@ function ApprovalDetail({
           {typeof scriptArgs.description === "string" && scriptArgs.description && (
             <div className="text-xs text-[var(--muted)]">{scriptArgs.description}</div>
           )}
-          <pre className="max-h-64 overflow-y-auto whitespace-pre-wrap break-all rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 font-mono text-xs leading-normal">
-            {typeof scriptText === "string" ? scriptText : JSON.stringify(scriptText)}
-          </pre>
+          <CommandBox command={typeof scriptText === "string" ? scriptText : JSON.stringify(scriptText)} />
           <div className="text-xs text-[var(--muted)]">
             {item.toolName === "run_code_command"
               ? "The code module runs this with this app's own access and no sandbox: it can read and change any file this app can and use the network. Review it before approving."
@@ -352,7 +345,7 @@ function ApprovalDetail({
           <div className="mt-1 text-xs text-[var(--muted)]">{item.status === "approved" ? "Approved" : "Denied"}</div>
           {item.result !== undefined && (
             <div className="mt-1">
-              <ResultText result={item.result} pad={false} />
+              {isScript ? <CommandOutput result={item.result} /> : <ResultText result={item.result} pad={false} />}
             </div>
           )}
           <RawFold args={item.arguments} result={item.result} pad={false} />

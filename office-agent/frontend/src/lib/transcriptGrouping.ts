@@ -415,7 +415,10 @@ const TOOL_SUMMARIES: Record<string, (args: ArgRecord) => SummaryParts> = {
   read_xlsx: (a) => ({ verb: "Read", object: fileArg(a) ?? "a spreadsheet" }),
   read_pptx: (a) => ({ verb: "Read", object: fileArg(a) ?? "a deck" }),
   read_file: (a) => ({ verb: "Read", object: fileArg(a) ?? "a file" }),
-  list_files: () => ({ verb: "Listed files", object: null }),
+  list_files: (a) => {
+    const path = str(a, "path");
+    return path && path !== "." ? { verb: "Listed", object: basename(path) } : { verb: "Listed files", object: null };
+  },
   search_files: (a) => ({ verb: "Searched files", object: str(a, "query") ?? null, glue: ": " }),
   search_pdf: (a) => ({ verb: "Searched PDF", object: str(a, "query") ?? null, glue: ": " }),
   search_images: (a) => ({ verb: "Searched images", object: str(a, "query") ?? null, glue: ": " }),
