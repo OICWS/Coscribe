@@ -46,16 +46,17 @@ const LockedBlock = Node.create({
   selectable: true,
   draggable: false,
   addAttributes() {
-    return { what: { default: "" }, text: { default: "" }, images: { default: [] as string[] }, upload: { default: "" } };
+    return { what: { default: "" }, text: { default: "" }, images: { default: [] as string[] }, upload: { default: "" }, picture: { default: null } };
   },
   parseHTML: () => [{ tag: "div.docs-locked" }],
   renderHTML: ({ node }) => {
     const images = node.attrs.images as string[];
+    const width = (node.attrs.picture as { width: number } | null)?.width;
     return [
       "div",
       { class: images.length ? "docs-locked docs-locked-pictured" : "docs-locked", contenteditable: "false" },
       ["span", { class: "docs-locked-what" }, LOCKED_LABELS[String(node.attrs.what)] ?? "Kept as it is"],
-      ...images.map((src) => ["img", { class: "docs-locked-image", src, alt: "" }] as const),
+      ...images.map((src) => ["img", { class: "docs-locked-image", src, alt: String((node.attrs.picture as { alt?: string } | null)?.alt ?? ""), ...(width ? { style: `width:${width}%` } : {}) }] as const),
       ["span", { class: "docs-locked-text" }, String(node.attrs.text)],
     ];
   },

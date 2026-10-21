@@ -668,7 +668,7 @@ body {
   display: block;
   margin: 4px 0;
   max-width: 100%;
-  max-height: 420px;
+  height: auto;
   border-radius: 6px;
 }
 .docs-editor .docs-divider {

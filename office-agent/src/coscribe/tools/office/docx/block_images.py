@@ -11,6 +11,8 @@ from typing import Any
 
 _R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 _A = "http://schemas.openxmlformats.org/drawingml/2006/main"
+_WP = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+_W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 _MAX_SHOWN = 4
 _MAX_BYTES = 8 * 1024 * 1024
 _MAX_WIDTH = 914400 * 6  # six inches in EMU: what fits a page with ordinary margins
@@ -80,3 +82,59 @@ def _native_width(stream: io.BytesIO) -> int:
     width = int(Image.from_file(stream).width)
     stream.seek(0)
     return width
+
+
+def _the_drawing(paragraph: Any) -> tuple[Any, Any, Any] | None:
+    """The drawing, its extent and its description element, when the paragraph holds exactly one
+    picture; sizing and describing are offered for that case only."""
+    drawings = list(paragraph.iter(f"{{{_W}}}drawing"))
+    if len(drawings) != 1:
+        return None
+    extent = drawings[0].find(f".//{{{_WP}}}extent")
+    described = drawings[0].find(f".//{{{_WP}}}docPr")
+    if extent is None or described is None or drawings[0].find(f".//{{{_A}}}blip") is None:
+        return None
+    return drawings[0], extent, described
+
+
+def picture_of(paragraph: Any) -> dict[str, Any] | None:
+    """The picture's width as a percent of six inches, and its description."""
+    found = _the_drawing(paragraph)
+    if found is None:
+        return None
+    _, extent, described = found
+    try:
+        width = round(int(extent.get("cx", "0")) * 100 / _MAX_WIDTH)
+    except ValueError:
+        return None
+    return {"width": width, "alt": described.get("descr", "")}
+
+
+def clean_picture(raw: Any) -> dict[str, Any]:
+    """What the editor may ask for: a width of 5 to 100 percent and a description."""
+    width = raw.get("width") if isinstance(raw, dict) else None
+    alt = raw.get("alt") if isinstance(raw, dict) else None
+    if not isinstance(width, int) or isinstance(width, bool) or not 5 <= width <= 100:
+        raise ValueError("A picture's width is 5 to 100 percent")
+    if not isinstance(alt, str) or len(alt) > 500:
+        raise ValueError("A picture's description can be at most 500 characters")
+    return {"width": width, "alt": alt}
+
+
+def set_picture(paragraph: Any, picture: dict[str, Any]) -> None:
+    """Sets the width (proportions kept) and the description of the paragraph's one picture."""
+    found = _the_drawing(paragraph)
+    if found is None:
+        return
+    drawing, extent, described = found
+    old_cx, old_cy = int(extent.get("cx", "0")), int(extent.get("cy", "0"))
+    if old_cx <= 0:
+        return
+    cx = round(picture["width"] * _MAX_WIDTH / 100)
+    cy = round(old_cy * cx / old_cx)
+    extent.set("cx", str(cx))
+    extent.set("cy", str(cy))
+    for size in drawing.iterfind(f".//{{{_A}}}xfrm/{{{_A}}}ext"):
+        size.set("cx", str(cx))
+        size.set("cy", str(cy))
+    described.set("descr", picture["alt"])

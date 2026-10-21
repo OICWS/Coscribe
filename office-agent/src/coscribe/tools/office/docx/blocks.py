@@ -21,7 +21,14 @@ from ..._ooxml_validate import assert_wml_valid
 from ..markdown_blocks import Block
 from ._review import write_atomically
 from .block_breaks import BREAK_KINDS, break_kind, new_break_paragraph
-from .block_images import decode_picture, images_of, new_picture_paragraph
+from .block_images import (
+    clean_picture,
+    decode_picture,
+    images_of,
+    new_picture_paragraph,
+    picture_of,
+    set_picture,
+)
 
 _W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 _R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
@@ -234,7 +241,7 @@ def _paragraph_block(paragraph: Any, context: _Context) -> dict[str, Any]:
         return {"kind": rule}
     reason = _lock_reason(paragraph)
     if reason is not None:
-        return _locked(reason, _plain(paragraph), images_of(paragraph))
+        return _locked(reason, _plain(paragraph), images_of(paragraph), picture_of(paragraph))
     name = context.style_of(paragraph)
     block: dict[str, Any]
     heading, listed = _HEADING_STYLE.match(name), _LIST_STYLE.match(name)
@@ -261,8 +268,19 @@ def _plain(element: Any) -> str:
     return text[:_PREVIEW]
 
 
-def _locked(what: str, text: str = "", images: list[str] | None = None) -> dict[str, Any]:
-    return {"kind": "locked", "what": what, "text": text, **({"images": images} if images else {})}
+def _locked(
+    what: str,
+    text: str = "",
+    images: list[str] | None = None,
+    picture: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    return {
+        "kind": "locked",
+        "what": what,
+        "text": text,
+        **({"images": images} if images else {}),
+        **({"picture": picture} if picture else {}),
+    }
 
 
 def _table_block(table: Any, context: _Context) -> dict[str, Any]:
@@ -368,6 +386,11 @@ def _clean(block: Any) -> dict[str, Any]:
             "header": bool(block.get("header")),
             "rows": [[_clean_runs(c) for c in r] for r in rows],
         }
+    if kind == "locked" and isinstance(block.get("picture"), dict):
+        try:
+            return {"kind": "locked", "picture": clean_picture(block["picture"])}
+        except ValueError as refused:
+            raise BlocksRefused(str(refused)) from None
     if kind == "locked" or kind in BREAK_KINDS:
         return {"kind": kind}
     if kind == "image":
@@ -537,6 +560,8 @@ def _update(
     document: Any, old: dict[str, Any], element: Any, block: dict[str, Any], after_number: bool
 ) -> Any:
     if old["kind"] == "locked":
+        if block.get("picture") and block["picture"] != old.get("picture"):
+            set_picture(element, block["picture"])
         return element
     if old["kind"] in BREAK_KINDS or block["kind"] in BREAK_KINDS:
         return element if old["kind"] == block["kind"] else _create(document, block, after_number)

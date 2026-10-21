@@ -236,3 +236,23 @@ test("'/' adds a divider and a page break, written to the file as a rule and a p
   await page.getByRole("button", { name: "Word layout" }).click();
   await expect(page.locator(".docx-page")).toBeVisible();
 });
+
+test("a selected picture is resized and described from the bar over it, written to the file", async ({ page }) => {
+  const name = `edit-${Math.random().toString(36).slice(2, 8)}`;
+  await openEditor(page, name, ["picture"]);
+  const picture = page.locator(".docs-editor .docs-locked-image");
+  await picture.click();
+  const bar = page.getByRole("toolbar", { name: "Picture" });
+  await expect(bar).toBeVisible();
+
+  await bar.getByRole("button", { name: "50%" }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved");
+  await bar.getByLabel("Description").fill("A red box");
+  await bar.getByLabel("Description").press("Enter");
+  await expect(page.getByRole("status")).toHaveText("Saved");
+
+  const saved = (await blocksOf(page, name)).blocks.find((b) => b.kind === "locked" && b.what === "image or drawing") as unknown as { picture?: { width: number; alt: string } };
+  expect(saved.picture).toEqual({ width: 50, alt: "A red box" });
+  await expect(picture).toHaveAttribute("alt", "A red box");
+  await expect(picture).toHaveAttribute("style", /width:\s*50%/);
+});
