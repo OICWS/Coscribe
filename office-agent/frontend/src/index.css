@@ -711,3 +711,29 @@ body {
 ::highlight(docx-active) {
   background: color-mix(in srgb, #f5c542 60%, transparent);
 }
+
+/* The plan as a document in the Plan panel: a title a step above its headings,
+   body at the size of the conversation, not the article scale of .prose-sm. */
+.plan-doc .md-prose h1 {
+  font-size: 1.375rem;
+  line-height: 1.35;
+  margin: 0 0 0.6em;
+}
+.plan-doc .md-prose h2 {
+  font-size: 1.125rem;
+  line-height: 1.4;
+  margin: 1.6em 0 0.5em;
+}
+.plan-doc .md-prose,
+.plan-doc .md-prose p,
+.plan-doc .md-prose li {
+  font-size: 15px;
+  line-height: 1.6;
+}
+.plan-doc .md-prose ul,
+.plan-doc .md-prose ol {
+  margin: 0.4em 0;
+}
+.plan-doc .md-prose li {
+  margin: 0.25em 0;
+}
