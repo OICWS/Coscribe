@@ -214,3 +214,25 @@ test("a picture is added from the toolbar and written to the file; a file that i
   await expect(page.getByRole("alert")).toHaveText(/Only PNG, JPEG, GIF and WebP/);
   await expect(editor.locator(".docs-locked-image")).toHaveCount(1);
 });
+
+test("'/' adds a divider and a page break, written to the file as a rule and a page break", async ({ page }) => {
+  const name = `edit-${Math.random().toString(36).slice(2, 8)}`;
+  await openEditor(page, name);
+  const editor = page.locator(".docs-editor");
+  await clickParagraph(page, "The agreement runs");
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("/divider");
+  await page.keyboard.press("Enter");
+  await expect(editor.locator("hr.docs-divider")).toHaveCount(1);
+  await page.keyboard.type("/page");
+  await page.keyboard.press("Enter");
+  await expect(editor.locator(".docs-page-break")).toHaveCount(1);
+  await expect(page.getByRole("status")).toHaveText("Saved");
+  const kinds = (await blocksOf(page, name)).blocks.map((b) => b.kind);
+  expect(kinds).toContain("divider");
+  expect(kinds).toContain("pagebreak");
+
+  await page.getByRole("button", { name: "Word layout" }).click();
+  await expect(page.locator(".docx-page")).toBeVisible();
+});

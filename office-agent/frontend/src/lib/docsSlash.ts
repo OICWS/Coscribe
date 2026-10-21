@@ -21,6 +21,8 @@ export const SLASH_ITEMS: SlashItem[] = [
   { id: "numbers", label: "Numbered list", hint: "A list with numbers", words: "numbered ordered list", run: (e, r) => block(e, r).toggleOrderedList().run() },
   { id: "quote", label: "Quote", hint: "Set a passage apart", words: "quote blockquote", run: (e, r) => block(e, r).setParagraph().setBlockquote().run() },
   { id: "picture", label: "Picture", hint: "From a file on this computer", words: "picture image photo", run: (e, r) => { block(e, r).run(); choosePicture(e); } },
+  { id: "divider", label: "Divider", hint: "A line across the page", words: "divider line rule hr separator", run: (e, r) => block(e, r).insertContent([{ type: "divider" }, { type: "paragraph" }]).run() },
+  { id: "pagebreak", label: "Page break", hint: "Start the next page here", words: "page break new page", run: (e, r) => block(e, r).insertContent([{ type: "pageBreak" }, { type: "paragraph" }]).run() },
   { id: "table", label: "Table", hint: "Rows and columns, 3 × 3", words: "table grid", run: (e, r) => block(e, r).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
 ];
 

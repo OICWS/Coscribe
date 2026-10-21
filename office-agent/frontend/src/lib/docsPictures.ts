@@ -29,7 +29,7 @@ async function addPictureFile(editor: Editor, file: File) {
   } catch {
     return problem(editor, "That picture could not be read");
   }
-  editor.chain().focus().insertContent({ type: "lockedBlock", attrs: { what: "image or drawing", text: "", images: [url], upload: url } }).run();
+  editor.chain().focus().insertContent([{ type: "lockedBlock", attrs: { what: "image or drawing", text: "", images: [url], upload: url } }, { type: "paragraph" }]).run();
 }
 
 /** Asks for a picture file in the system's own picker and adds it. */

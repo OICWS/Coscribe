@@ -62,6 +62,12 @@ describe("blocks and the editor's document", () => {
     expect(roundTrip([{ ...added, id: "b3" }]).blocks[0]).toEqual({ id: "b3", kind: "locked" });
   });
 
+  it("keeps a divider and a page break as blocks of their own, with their ids", () => {
+    const blocks: Block[] = [{ id: "b1", kind: "divider" }, { kind: "paragraph", runs: [{ t: "x" }] }, { id: "b3", kind: "pagebreak" }];
+    expect(roundTrip(blocks).blocks).toEqual([{ id: "b1", kind: "divider" }, { id: undefined, kind: "paragraph", runs: [{ t: "x" }] }, { id: "b3", kind: "pagebreak" }]);
+    expect(blocksToDoc(blocks).content?.map((n) => n.type)).toEqual(["divider", "paragraph", "pageBreak"]);
+  });
+
   it("gives a table's first row header cells only when the file has a header row", () => {
     const table = (header: boolean): Block => ({ kind: "table", header, rows: [[[{ t: "x" }]], [[{ t: "y" }]]] });
     const first = (header: boolean) => blocksToDoc([table(header)]).content?.[0].content?.[0].content?.[0].type;
