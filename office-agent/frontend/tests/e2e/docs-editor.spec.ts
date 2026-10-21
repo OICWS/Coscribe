@@ -35,6 +35,9 @@ async function openEditor(page: Page, name: string) {
   await page.getByRole("button", { name: "Expand Viewer" }).click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(page.locator(".docs-editor")).toBeVisible();
+  // A click in the first moments after the editor appears sometimes lands the caret at the start of
+  // the document (seen 2 runs in 8, never after half a second); the cause is not found yet (#507).
+  await page.waitForTimeout(500);
 }
 
 const blocksOf = async (page: Page, name: string): Promise<Blocks> => {
