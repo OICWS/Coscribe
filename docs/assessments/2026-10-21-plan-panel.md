@@ -1,7 +1,7 @@
 # Design note: the Plan panel and the live task card (#506, with #505) (2026-10-21)
 
 Design before code, as #506 asks. Reference screenshots are the maintainer's, from Claude's own app;
-the front end is meant to look the same as them. Status: **for the maintainer's decision**.
+the front end is meant to look the same as them. Status: **accepted by the maintainer (2026-10-21)**, with the three answers at the end.
 
 ## 摘要（中文）
 - Plan 是一个和 Browser、Background tasks 并列的**独立右侧面板**，入口是任务清单图标加 "Plan"。
@@ -54,9 +54,14 @@ the plan text alone is still shown in the Plan panel.
   mode always asks), and a question from `ask_user_question`.
 - Done: the card collapses to a one-line summary and stays in the transcript. The model's final
   message and the person's messages are shown as usual.
-- Failure, a stop, a changed plan: the model updates the list (edit, add, change a status) and the
-  card follows. The front end adds no error logic. On a stop, the in-progress item stops spinning
-  and keeps its state.
+- A changed plan, a stop: the model updates the list (edit, add, change a status) and the card
+  follows. On a stop, the in-progress item stops spinning and keeps its state.
+- **A failed command is marked on the item it ran under** (a failure mark on the item, from the
+  call's own error status, the same signal as `isFailure` in `transcriptGrouping.ts`), even when the
+  model has not updated the list yet, so a failure is never hidden by the replacement. A failure
+  among calls under no item is marked on the card.
+- "Replaced" only means not drawn: the narration and the calls stay in the history, and a reload
+  rebuilds the card by the same rule.
 - After a reload the card is rebuilt from the saved history the same way (the calls are in it).
 
 ### The Plan panel
@@ -64,8 +69,10 @@ A new panel beside Browser and Background tasks (`App.tsx` switch, `dock/`), ope
 the `Open plan` link, or the header icon. Two parts: the plan (markdown, rendered) and TASKS (the same
 component as the card). It can be enlarged. Narrow window: the panel takes the whole width, as the
 other panels do, and the card is a single column.
-**Open:** `TaskPanel`'s Progress section shows the same list; proposal is to keep `TaskPanel` for
-Outputs and Context and have Progress open the Plan panel instead.
+`TaskPanel` keeps Outputs and Context. Its Progress section becomes an "Open plan" entry, **only
+while the conversation has a task list**; with no list, Progress is as it is today and no empty
+panel is offered. The list is shown in one place at a time (the panel), not twice, so the two cannot
+disagree.
 
 ### The plan as a markdown document
 Shown as `.md`: the transcript row "Proposing plan" opens to the source; the panel renders it. A
@@ -73,8 +80,9 @@ revised plan is diffed in the browser from the two versions of the text (no new 
 change). `Reject` ends planning and tells the model the user rejected it; `Revise…` sends the typed
 text back (today's `revise` choice). Comments on selected text are sent back inside the `Revise`
 feedback as quoted text plus the comment, so `wire.py` does not change.
-**Open:** whether the plan is also saved as a real `.md` file in the thread's workspace, as Claude Code
-does (`plan-….md`). Not needed for any of the above; it would give the person a file to keep.
+The plan is **not** saved as a file in the workspace: that would put one more file in the person's
+folder per plan and list it among the Artifacts as an output. A "Save plan as…" button, the person's
+own action, can be added later.
 
 ### Wire and invariants
 No new event is needed for any of this, and no tool schema changes (decision 0001: the tool list is
@@ -98,8 +106,8 @@ fixed and provider-cached). If a missing event shows up, it is added to `convers
   before the first command is to be checked against the stub model in PR 1.
 - Behaviour on Windows and in the desktop shell is not tested.
 
-## Questions for the maintainer
-1. Is replacing the stretch (narration and commands) by the card what is wanted, with approvals and
-   questions still drawn?
-2. Should Progress in `TaskPanel` hand over to the Plan panel?
-3. Is a saved `plan-….md` file wanted, or only the in-app document?
+## Answers from the maintainer
+1. The card replaces the narration and command rows; approvals and questions are drawn as usual;
+   a failed command is marked on its item (added above).
+2. Progress in `TaskPanel` hands over to the Plan panel, only while a task list exists.
+3. No saved `plan-….md`; the in-app document only.
