@@ -1,5 +1,6 @@
+import type { PanelId } from "../../lib/dockLayout";
 import { DRAWS_TITLE_BAR, TITLE_BAR_ICON } from "../../lib/titleBar";
-import { BrowserIcon, PanelRightIcon, SubAgentsIcon } from "../icons";
+import { BrowserIcon, ListChecksIcon, PanelRightIcon, SubAgentsIcon } from "../icons";
 
 const on = "bg-[var(--accent-soft)] text-[var(--accent-ink)]";
 
@@ -7,26 +8,23 @@ const on = "bg-[var(--accent-soft)] text-[var(--accent-ink)]";
  * the right end of the conversation's header. A panel in a window of its
  * own counts as open; its switch brings that window to the front. */
 export function PanelToggles({
-  task,
-  browser,
-  background,
-  onTask,
-  onBrowser,
-  onBackground,
+  open,
+  onToggle,
+  hasPlan,
   backgroundTitle,
   running,
   waiting,
 }: {
-  task: boolean;
-  browser: boolean;
-  background: boolean;
-  onTask: () => void;
-  onBrowser: () => void;
-  onBackground: () => void;
+  open: (panel: PanelId) => boolean;
+  onToggle: (panel: PanelId) => void;
+  /** The Plan switch is shown only while the conversation has a plan or a task list. */
+  hasPlan: boolean;
   backgroundTitle: string;
   running: number;
   waiting: number;
 }) {
+  const task = open("task");
+  const background = open("background");
   const icon = DRAWS_TITLE_BAR ? TITLE_BAR_ICON : { className: "h-[18px] w-[18px]" };
   const off = DRAWS_TITLE_BAR
     ? "text-[var(--fg)] hover:bg-[var(--card-bg)]"
@@ -38,15 +36,26 @@ export function PanelToggles({
         title={task ? "Hide task details" : "Show task details"}
         aria-pressed={task}
         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${task ? on : off}`}
-        onClick={onTask}
+        onClick={() => onToggle("task")}
       >
         <PanelRightIcon {...icon} />
       </button>
+      {hasPlan && (
+        <button
+          type="button"
+          title="Plan"
+          aria-pressed={open("plan")}
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${open("plan") ? on : off}`}
+          onClick={() => onToggle("plan")}
+        >
+          <ListChecksIcon {...icon} />
+        </button>
+      )}
       <button
         type="button"
         title="Browser"
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${browser ? on : off}`}
-        onClick={onBrowser}
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${open("browser") ? on : off}`}
+        onClick={() => onToggle("browser")}
       >
         <BrowserIcon {...icon} />
       </button>
@@ -54,7 +63,7 @@ export function PanelToggles({
         type="button"
         title={backgroundTitle}
         className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${background ? on : off}`}
-        onClick={onBackground}
+        onClick={() => onToggle("background")}
       >
         <SubAgentsIcon {...icon} />
         {running > 0 && (

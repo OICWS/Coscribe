@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import { foldTaskCard } from "../../lib/taskCard";
 import { groupToolRuns, type Turn } from "../../lib/transcriptGrouping";
 import { type LogItem } from "../../state/reducer";
 import { CopyButton } from "../CopyButton";
@@ -10,6 +11,7 @@ import { INVESTIGATION_PREFIX, InvestigationCard, RUN_PROMPT_PREFIX, ScheduledRu
 import { CONVERSATION_MESSAGE_PREFIX, ConversationMessageCard } from "../ConversationMessageCard";
 import { SUBAGENT_REPORT_PREFIX, SubAgentReportCard } from "../SubAgentReportCard";
 import { TaskDraftCard } from "../TaskDraftCard";
+import { TaskCard } from "./TaskCard";
 import { WorkflowDraftCard } from "../workflow/WorkflowDraftCard";
 import { type TaskDraftItem } from "./types";
 import { ToolRunGroupView } from "./ToolRuns";
@@ -84,7 +86,7 @@ export function TurnView({
   onDismissTaskDraft?: (item: TaskDraftItem) => void;
   onPptxShapePicked: (capture: PptxShapeCapture) => void;
 }) {
-  const entries = groupToolRuns(turn.items);
+  const entries = foldTaskCard(groupToolRuns(turn.items), live, turn.tasksBefore);
   const finalAgentItem = turn.finalAgentItem;
   const userItem = turn.userItem;
   const canFooter =
@@ -105,6 +107,8 @@ export function TurnView({
             onApprove={onApprove}
             onPptxShapePicked={onPptxShapePicked}
           />
+        ) : entry.kind === "task_card" ? (
+          <TaskCard key={entry.id} entry={entry} live={live} onApprove={onApprove} onPptxShapePicked={onPptxShapePicked} />
         ) : entry.kind === "question" ? (
           entry.status === "answered" ? <QuestionRecord key={entry.id} item={entry} /> : null
         ) : entry.kind === "plan" ? (
@@ -119,7 +123,11 @@ export function TurnView({
           <LogItemView key={entry.id} item={entry} onEditMessage={isLastTurn ? onEditMessage : undefined} />
         ),
       )}
-      <OpenFileChips items={entries.flatMap((entry) => (entry.kind === "tool_run" ? entry.items : []))} />
+      <OpenFileChips
+        items={entries.flatMap((entry) =>
+          entry.kind === "tool_run" ? entry.items : entry.kind === "task_card" ? Object.values(entry.calls).flat() : [],
+        )}
+      />
       {canFooter && (
         <div className="-mt-2 flex items-center gap-0.5 self-start opacity-0 transition-opacity group-hover/turn:opacity-100">
           <CopyButton

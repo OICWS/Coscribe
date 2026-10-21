@@ -31,10 +31,12 @@ import { StartupSplash } from "./components/StartupSplash";
 import { ShortcutsDialog } from "./components/ShortcutsDialog";
 import { BackgroundTasksPanel } from "./components/BackgroundTasksPanel";
 import { ViewerPanel } from "./components/ViewerPanel";
+import { PlanPanel } from "./components/PlanPanel";
 import { TaskPanel } from "./components/TaskPanel";
+import { planPanelData } from "./lib/taskCard";
 import { PanelDock } from "./components/dock/PanelDock";
 import { PanelToggles } from "./components/dock/PanelToggles";
-import type { PanelId } from "./lib/dockLayout";
+import { PANEL_IDS, PANEL_TITLES, type PanelId } from "./lib/dockLayout";
 import { isViewable } from "./lib/viewers";
 import { useCommentSender } from "./lib/commentReplies";
 import { artifactActions } from "./lib/artifacts";
@@ -85,13 +87,6 @@ type TaskDraftItem = Extract<LogItem, { kind: "task_draft" }>;
 
 type ConversationPanel = Exclude<PanelId, "task">;
 
-const PANEL_TITLES: Record<PanelId, string> = {
-  task: "Task details",
-  browser: "Browser",
-  background: "Background tasks",
-  viewer: "Viewer",
-};
-
 function App() {
   const [state, dispatch] = useReducer(chatReducer, initialChatState);
   const socketRef = useRef<AgentSocket | null>(null);
@@ -105,8 +100,6 @@ function App() {
   // sub-agents and browsing are its own. Where they sit is PanelDock's.
   const [panelsByThread, setPanelsByThread] = useState<Record<string, ConversationPanel[]>>({});
   const openPanels = panelsByThread[threadId] ?? [];
-  const browserPanelOpen = openPanels.includes("browser");
-  const subAgentsPanelOpen = openPanels.includes("background");
   // The file each conversation's viewer shows.
   const [viewerFiles, setViewerFiles] = useState<Record<string, string>>({});
   const viewerFile = openPanels.includes("viewer") ? viewerFiles[threadId] : undefined;
@@ -388,7 +381,8 @@ function App() {
   const threadTask = isScheduledTaskThread ? taskForThread(scheduledTasks, threadId) : null;
   const threadRun = threadTask?.runs.find((r) => r.thread_id === threadId) ?? null;
   const threadWorkflow = threadRun ? (threadTask?.workflow ?? null) : null;
-  const hasPlan = state.items.some((item) => item.kind === "tool" && item.toolName === "task_create");
+  const planData = planPanelData(state.items);
+  const hasPlan = planData.tasks.length > 0;
   const taskPanelWanted = taskPanelChoice[threadId] ?? (threadWorkflow !== null || isScheduledTaskThread || hasPlan);
   const onHome =
     state.historyReceived &&
@@ -748,6 +742,7 @@ function App() {
       browser: { panel: "browser", threadId },
       background: { panel: "background", ...backgroundProps },
       viewer: { panel: "viewer", threadId, path: viewerFiles[threadId] ?? null, refreshKey },
+      plan: { panel: "plan", threadId, ...planData, busy: state.turnInFlight },
     },
     titles: PANEL_TITLES,
     threadId,
@@ -822,14 +817,9 @@ function App() {
     />
   );
 
-  const visiblePanels = (
-    [
-      ...(taskPanelShown ? (["task"] as const) : []),
-      ...(browserPanelOpen ? (["browser"] as const) : []),
-      ...(subAgentsPanelOpen ? (["background"] as const) : []),
-      ...(viewerFile ? (["viewer"] as const) : []),
-    ] as PanelId[]
-  ).filter((panel) => !poppedOut.includes(panel));
+  const panelOpen = (panel: PanelId) =>
+    panel === "task" ? taskPanelShown : panel === "viewer" ? Boolean(viewerFile) : openPanels.includes(panel);
+  const visiblePanels = PANEL_IDS.filter((panel) => panelOpen(panel) && !poppedOut.includes(panel));
   const renderPanel = (panel: PanelId) => {
     if (panel === "task") {
       return (
@@ -839,6 +829,7 @@ function App() {
           onSaveAsWorkflow={threadTask ? undefined : () => startWorkflowDraft("")}
           busy={state.turnInFlight}
           onView={viewFile}
+          onOpenPlan={() => setPanelOpen("plan", true)}
         />
       );
     }
@@ -850,6 +841,7 @@ function App() {
     if (panel === "browser") {
       return <BrowserPanel threadId={threadId} onSendToChat={onBrowserPanelCapture} onStopAgent={onStop} />;
     }
+    if (panel === "plan") return <PlanPanel {...planData} busy={state.turnInFlight} />;
     return (
       <BackgroundTasksPanel key={threadId} {...backgroundProps} onApprove={onApprove} />
     );
@@ -875,18 +867,15 @@ function App() {
       <div className="min-w-0 flex-1" />
     );
 
-  const togglePanelOrWindow = (panel: "browser" | "background") => {
+  const togglePanelOrWindow = (panel: Exclude<PanelId, "task">) => {
     if (poppedOut.includes(panel)) focusPanelWindow(panel);
     else togglePanel(panel);
   };
   const panelToggles = (
     <PanelToggles
-      task={taskPanelShown || poppedOut.includes("task")}
-      browser={browserPanelOpen || poppedOut.includes("browser")}
-      background={subAgentsPanelOpen || poppedOut.includes("background")}
-      onTask={toggleTaskPanel}
-      onBrowser={() => togglePanelOrWindow("browser")}
-      onBackground={() => togglePanelOrWindow("background")}
+      open={(panel) => panelOpen(panel) || poppedOut.includes(panel)}
+      onToggle={(panel) => (panel === "task" ? toggleTaskPanel() : togglePanelOrWindow(panel))}
+      hasPlan={hasPlan || planData.plan !== null}
       backgroundTitle={subAgentsTitle}
       running={subAgents.running}
       waiting={subAgents.waiting}

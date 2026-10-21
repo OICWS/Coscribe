@@ -38,7 +38,7 @@ import { DockPanelContext, type DockPanelApi } from "./dockContext";
 const CHAT_MIN = 380;
 const CHAT_ROOMY = 560;
 const PANEL_MIN = 140;
-const PREFERRED_WIDTH: Record<PanelId, number> = { task: 320, browser: 440, background: 440, viewer: 720 };
+const PREFERRED_WIDTH: Record<PanelId, number> = { task: 320, browser: 440, background: 440, viewer: 720, plan: 440 };
 const DRAG_THRESHOLD = 5;
 const NO_PANELS: Arrangement = { left: [], right: [] };
 
