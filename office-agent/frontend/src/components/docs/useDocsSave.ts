@@ -12,9 +12,8 @@ const IDS_META = "docsIds";
 /** The editor saves itself a moment after the person stops typing, and when the panel closes. A save
  * sends every block with the id the file gave it; the answer carries the ids of the blocks made since,
  * which are put on their nodes through whatever the person typed meanwhile. */
-export function useDocsSave(editor: Editor | null, threadId: string, path: string, firstVersion: string, onLost: () => void) {
+export function useDocsSave(editor: Editor | null, threadId: string, path: string, version: { current: string }, onLost: () => void) {
   const [state, setState] = useState<SaveState>({ kind: "saved" });
-  const version = useRef(firstVersion);
   const timer = useRef<number | undefined>(undefined);
   const flight = useRef<Mapping | null>(null);
   const dirty = useRef(false);
