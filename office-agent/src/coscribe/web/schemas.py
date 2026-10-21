@@ -32,6 +32,13 @@ class DocxReviewEdit(BaseModel):
     operations: list[dict[str, str]]
 
 
+class DocBlocksSave(BaseModel):
+    path: str
+    # The file version the editor read: a save over a newer file is refused.
+    version: str = Field(min_length=1, max_length=128)
+    blocks: list[Any] = Field(max_length=20_000)
+
+
 class SlideCommentNew(BaseModel):
     path: str
     slide: str

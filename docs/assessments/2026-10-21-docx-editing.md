@@ -10,7 +10,7 @@ unless marked "measured here" or "checked on npm".
 - **没有现成的开源方案可以直接用**：SuperDoc 是 AGPL（商用另购授权）；eigenpal 的核心是 Apache-2.0，
   但评论、修订和 editor-api 属于 Pro（商用协议）；Tiptap 的 docx 导入导出是付费云服务；OnlyOffice 是 AGPL。
 - **我们的方案有依据**：这些项目里做得最好的几个，做法都是「未建模的内容原样保留」「用 round-trip 审计测试守住保真」。
-  我在本地实测：用 python-docx 改一个段落再保存，其余 8 个段落逐字节相同，评论和修订都在，除 document.xml 外的所有部分不变。
+  我在本地实测：用 python-docx 改一个段落再保存，其余 8 个段落完全相同，评论和修订都在，除 document.xml 外的所有部分内容不变。
 - **前端用 Tiptap 3**（MIT；React 19 可用；标题、列表、引用、分隔线、下划线、链接、表格、图片、斜线菜单、浮条全是 MIT 扩展），
   schema 限定为我们的子集；docx 的读写自己写，不用任何「编辑器到 docx」的转换器。
 
@@ -42,8 +42,8 @@ unless marked "measured here" or "checked on npm".
 
 ## Measured here
 python-docx opened a document written by our tools (a comment, an insertion and a deletion, a table), one paragraph was
-changed by replacing its runs, and it was saved: every part but `word/document.xml` is byte-identical, `comments.xml` is
-unchanged, the `w:ins`, `w:del` and `commentRangeStart` markers are still there, and of 9 paragraphs only the edited one
+changed by replacing its runs, and it was saved: every part but `word/document.xml` is byte-identical (a part python-docx did not write itself
+is re-serialised as equivalent XML, as the editor's own test shows), `comments.xml` is unchanged, the `w:ins`, `w:del` and `commentRangeStart` markers are still there, and of 9 paragraphs only the edited one
 differs (c14n). So the surgical writer of 0019 is sound for what python-docx models; run-level formatting of an edited
 paragraph is rebuilt, which 0019 accepts.
 

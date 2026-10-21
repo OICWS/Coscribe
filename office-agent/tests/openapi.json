@@ -152,6 +152,33 @@
         "title": "ConnectorPermissionsUpdate",
         "type": "object"
       },
+      "DocBlocksSave": {
+        "properties": {
+          "blocks": {
+            "items": {},
+            "maxItems": 20000,
+            "title": "Blocks",
+            "type": "array"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "version",
+          "blocks"
+        ],
+        "title": "DocBlocksSave",
+        "type": "object"
+      },
       "DocxReviewEdit": {
         "properties": {
           "operations": {
@@ -4501,6 +4528,97 @@
           }
         },
         "summary": "Get Context Breakdown Endpoint"
+      }
+    },
+    "/api/threads/{thread_id}/docs/blocks": {
+      "get": {
+        "operationId": "get_blocks_api_threads__thread_id__docs_blocks_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Blocks"
+      },
+      "put": {
+        "operationId": "put_blocks_api_threads__thread_id__docs_blocks_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocBlocksSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Blocks"
       }
     },
     "/api/threads/{thread_id}/docx-review": {

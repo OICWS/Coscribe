@@ -78,7 +78,15 @@ way any other Word 2010+ extension already does (see
 
 from __future__ import annotations
 
+from .blocks import BlocksRefused, DocChanged, read_doc_blocks, save_doc_blocks
 from .toolkit import DocxToolkit
 from .tools import build_docx_tools
 
-__all__ = ["DocxToolkit", "build_docx_tools"]
+__all__ = [
+    "BlocksRefused",
+    "DocChanged",
+    "DocxToolkit",
+    "build_docx_tools",
+    "read_doc_blocks",
+    "save_doc_blocks",
+]
