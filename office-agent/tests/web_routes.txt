@@ -13,6 +13,7 @@ DELETE /api/threads/{thread_id}/background-tasks
 DELETE /api/threads/{thread_id}/slides/comments/{comment_id}
 DELETE /api/threads/{thread_id}/subagents
 GET /
+GET /api/artifacts
 GET /api/attachment/pdf
 GET /api/attachment/pdf/page
 GET /api/background-tasks/{task_id}/log

@@ -820,14 +820,14 @@ class ChatSessionLG:
         trigger = ScheduledTriggerStore(self.settings.state_dir).load(parsed[0])
         return trigger is not None and trigger.workflow is not None
 
-    def _tool_catalog(self) -> dict[str, Any]:
+    def tool_catalog(self) -> dict[str, Any]:
         return {
             tool_name(t): get_tool_metadata(cast(Any, t))
             for t in [*self._base_tools, *self._extra_tools]
         }
 
     async def get_activity(self) -> dict[str, Any]:
-        catalog = self._tool_catalog()
+        catalog = self.tool_catalog()
         parsed = parse_run_thread_id(self.thread_id)
         if parsed is not None:
             trigger = ScheduledTriggerStore(self.settings.state_dir).load(parsed[0])
@@ -1149,7 +1149,7 @@ class ChatSessionLG:
         told = last_conversation_context(history) == context
         # What the user changed in a deck in the app, told once, with the turn's other notes.
         deck_note = await asyncio.to_thread(
-            deck_edits_note, history, self._tool_catalog(), self.workspace_scope()
+            deck_edits_note, history, self.tool_catalog(), self.workspace_scope()
         )
         model_input = (
             current_date_note()
