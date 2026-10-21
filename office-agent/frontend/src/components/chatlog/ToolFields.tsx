@@ -1,4 +1,4 @@
-import { describeArgs, describeResult, rawJson, type FieldLine } from "../../lib/toolFields";
+import { commandOutput, describeArgs, describeResult, rawJson, type FieldLine } from "../../lib/toolFields";
 
 function Lines({ lines }: { lines: FieldLine[] }) {
   return (
@@ -50,5 +50,29 @@ export function RawFold({ args, result, pad = true }: { args: Record<string, unk
         {rawJson(result === undefined ? { arguments: args } : { arguments: args, result })}
       </pre>
     </details>
+  );
+}
+
+/** A command as a terminal line in a white box: the text a script or shell
+ * command runs, `$` before it, long lines wrapped. */
+export function CommandBox({ command, maxHeight = "max-h-64" }: { command: string; maxHeight?: string }) {
+  return (
+    <pre
+      className={`${maxHeight} overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 font-mono text-xs leading-normal`}
+    >
+      <span aria-hidden="true" className="select-none text-[var(--muted)]">$ </span>
+      {command}
+    </pre>
+  );
+}
+
+/** What a command printed, in monospace and wrapped, in a box of bounded height. */
+export function CommandOutput({ result }: { result: unknown }) {
+  const { output, exitCode } = commandOutput(result);
+  return (
+    <pre className="max-h-60 overflow-y-auto whitespace-pre-wrap break-words font-mono text-xs leading-relaxed">
+      {output || "(no output)"}
+      {exitCode ? `\n(exit code ${exitCode})` : ""}
+    </pre>
   );
 }

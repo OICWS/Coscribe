@@ -10,6 +10,7 @@ import {
   isRunning,
   latestWorkflowDraft,
   latestWorkflowDraftId,
+  summarizeItem,
   workflowTests,
   type ToolRunGroup,
 } from "./transcriptGrouping";
@@ -384,5 +385,18 @@ describe("latestWorkflowDraftId", () => {
     const newer = tool("revise_workflow", { result: draftResult() });
     expect(latestWorkflowDraftId([older, newer])).toBe(newer.id);
     expect(latestWorkflowDraftId([tool("read_file")])).toBeNull();
+  });
+});
+
+describe("summarizeItem for the file tools", () => {
+  it("reads as one human line", () => {
+    expect(summarizeItem(tool("read_file", { arguments: { path: "notes/plan.md" } }))).toBe("Read plan.md");
+    expect(summarizeItem(tool("write_docx", { arguments: { path: "out/report.docx" } }))).toBe("Wrote report.docx");
+    expect(summarizeItem(tool("list_files", { arguments: { path: "docs/notes" } }))).toBe("Listed notes");
+  });
+
+  it("lists the workspace itself without a name", () => {
+    expect(summarizeItem(tool("list_files", { arguments: { path: "." } }))).toBe("Listed files");
+    expect(summarizeItem(tool("list_files"))).toBe("Listed files");
   });
 });
