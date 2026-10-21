@@ -9,6 +9,7 @@ import { ConnectorTools } from "./contexts";
 import { SummaryLabel, Disclosure } from "./SummaryLabel";
 import { ToolPreview } from "./ToolPreview";
 import { ApprovalPreview } from "./ApprovalPreview";
+import { ArgLines, RawFold, ResultText } from "./ToolFields";
 
 /** A run of tool calls: one sentence-like summary with a chevron after
  * it; opened, a bordered list with a row per call, each opening to its
@@ -175,13 +176,16 @@ function ToolDetail({
     );
   }
   if (item.toolName === "run_code_command") return <CodeCommandDetail item={item} />;
-  if (item.result === undefined) {
-    return <p className="px-3 py-2 text-[var(--muted)]">No result yet.</p>;
-  }
   return (
-    <pre className="max-h-60 overflow-auto whitespace-pre-wrap break-all bg-[var(--bg)] px-3 py-2 font-mono text-xs leading-relaxed">
-      {typeof item.result === "string" ? item.result : JSON.stringify(item.result, null, 2)}
-    </pre>
+    <div className="flex flex-col">
+      <ArgLines args={item.arguments} />
+      {item.result === undefined ? (
+        <p className="px-3 py-2 text-[var(--muted)]">No result yet.</p>
+      ) : (
+        <ResultText result={item.result} />
+      )}
+      <RawFold args={item.arguments} result={item.result} />
+    </div>
   );
 }
 
@@ -244,11 +248,9 @@ function ToolCallRow({
       {open && (
         <div className="mt-1.5">
           {item.kind === "tool" ? (
-            item.result !== undefined && (
-              <pre className="max-h-40 overflow-y-auto whitespace-pre-wrap break-all">
-                {typeof item.result === "string" ? item.result : JSON.stringify(item.result, null, 2)}
-              </pre>
-            )
+            <div className="-mx-3">
+              <ToolDetail item={item} onApprove={onApprove} onPptxShapePicked={onPptxShapePicked} />
+            </div>
           ) : (
             <ApprovalDetail item={item} onApprove={onApprove} onPptxShapePicked={onPptxShapePicked} />
           )}
@@ -317,9 +319,7 @@ function ApprovalDetail({
           </div>
         </div>
       ) : (
-        Object.keys(item.arguments).length > 0 && (
-          <pre className="max-h-32 overflow-y-auto whitespace-pre-wrap break-all text-xs text-[var(--muted)]">{JSON.stringify(item.arguments, null, 2)}</pre>
-        )
+        <ArgLines args={item.arguments} pad={false} />
       )}
       {item.status === "pending" ? (
         <div className="mt-2 flex gap-2">
@@ -351,10 +351,11 @@ function ApprovalDetail({
         <>
           <div className="mt-1 text-xs text-[var(--muted)]">{item.status === "approved" ? "Approved" : "Denied"}</div>
           {item.result !== undefined && (
-            <pre className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap break-all text-xs text-[var(--muted)]">
-              {typeof item.result === "string" ? item.result : JSON.stringify(item.result, null, 2)}
-            </pre>
+            <div className="mt-1">
+              <ResultText result={item.result} pad={false} />
+            </div>
           )}
+          <RawFold args={item.arguments} result={item.result} pad={false} />
         </>
       )}
     </>
