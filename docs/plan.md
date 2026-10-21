@@ -175,6 +175,13 @@ Last reviewed: 2026-10-15.
    day, with All and Pinned, search, a type filter, "Make something new" for Docs, Slides, Sheets and Dashboard (not yet
    makeable), and one file menu (card and panel name: Rename, Duplicate, Pin, Copy path, Delete to the recycle bin). Open: Version history for documents (the maintainer finds it useful; not yet),
    tools for a conversation to list and read existing artifacts (next), scheduled runs' files, dashboards, and pins kept on the server (now in the browser).
+   Docs (2026-10-21, decision 0019 accepted; research in docs/assessments/2026-10-21-docx-editing.md; editor library Tiptap 3, built first then evaluated): the .docx itself, previewed and edited in the Word panel by styles (headings,
+   bold, italic, lists, links, tables, images), only the changed blocks rewritten, the person's Word edits never overwritten. Order:
+   block reader and writer, editor panel, hand-offs to coscribe. Version history is wanted, not in v1.
+   Chat (maintainer, 2026-10-21, agreed, not started): (1) a tool row opens to plain "name: value" lines, `$ command` and its
+   output for a command, a sentence for a file read or write, and a "Raw" fold for the JSON; (2) a Plan card: in Plan mode the
+   conversation shows one live card (items ticking off, the commands folded inside it) that goes when the plan is done,
+   beside the full view in the Plan page; design first, then build.
    Slides (2026-10-21): dashboard (HTML, CSS and JS with the data as an attachment), a plain single-file HTML artifact,
    a slides artifact edited online and exported to .pptx or PDF, a document artifact exported to Word, PDF or Markdown;
    the .pptx, .docx and .xlsx skills stay the way native Office files are made. The
