@@ -97,7 +97,6 @@ from .activity import summarize_activity, summarize_workflow_run
 from .agent_assembly import AgentAssembly, risks_of_gated_tools
 from .approval_resume import ApprovalResumer
 from .approvals import ApprovalDecider, can_resolve_approvals
-from .deck_edits import deck_edits_note
 from .edit_preview import build_document_edit_preview
 from .events import EventSink
 from .history import ConversationHistory
@@ -116,6 +115,7 @@ from .turn_text import (
     turn_mode_note,
     usage_event,
 )
+from .user_edits import user_edits_note
 from .workflow_drafting import WorkflowDrafting
 
 logger = logging.getLogger(__name__)
@@ -1147,10 +1147,8 @@ class ChatSessionLG:
         state = await self.lg_agent.aget_state(self.config)
         history = list(state.values.get("messages", [])) if state.values else []
         told = last_conversation_context(history) == context
-        # What the user changed in a deck in the app, told once, with the turn's other notes.
-        deck_note = await asyncio.to_thread(
-            deck_edits_note, history, self.tool_catalog(), self.workspace_scope()
-        )
+        # What the user changed in a deck or a document in the app, told once, with the other notes.
+        deck_note = await asyncio.to_thread(user_edits_note, self, history)
         model_input = (
             current_date_note()
             + mode_note

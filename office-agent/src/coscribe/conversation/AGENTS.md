@@ -5,7 +5,7 @@ Owns `ChatSessionLG` (`session.py`: runs a thread's turns, holds the pending app
 turn counters; being split into smaller modules, so check
 the directory before assuming a piece is still in it), the turn text helpers (`turn_text.py`), the approval card's before and after picture of a document edit (`edit_preview.py`), the hook commands run around tool calls (`tool_hooks.py`), the folder and skill changes between turns (`reconfigure.py`), the stream of one run to the tab (`turn_stream.py`), the tools and agent a conversation is built with (`agent_assembly.py`), the approval decision (`approvals.py`: what
 runs without asking, what is refused, what waits for a person) and its resolution and resume after a reconnect (`approval_resume.py`), sub-agent and inbox reports as
-turns (`subagents.py`), the line that tells it the user changed slides in the app (`deck_edits.py`), workflow drafting for the chat model and the save button
+turns (`subagents.py`), the line that tells it the user changed slides in the app (`deck_edits.py`) or a Word document (`docs_edits.py`, joined with it in `user_edits.py`), workflow drafting for the chat model and the save button
 (`workflow_drafting.py`), the checkpointed history: replay, paging back, /compact, /clear, edit and
 rewind (`history.py`), the /saveskill dialogue (`skill_save.py`), what the side panel shows
 (`activity.py`, `context_usage.py`), the registry of the decks, documents and spreadsheets coscribe made, which outlives the conversation that made each one, for the Artifacts page (`artifacts.py`), the sidebar's per-thread state (`thread_meta.py`), the turn lock (`turn_lock.py`), the chat
