@@ -10,9 +10,7 @@ import { DocxChangeBar } from "./DocxChangeBar";
 import { DocxCommentCard } from "./DocxCommentCard";
 import { DocxNewComment } from "./DocxNewComment";
 import { useChangeSelection, useDocxActions } from "./docxActions";
-import { useDockPanel } from "./dock/dockContext";
-import { PanelFileMenu } from "./artifacts/PanelFileMenu";
-import { PanelTitleButton } from "./artifacts/PanelTitleButton";
+import { DocxPanelHeader } from "./DocxPanelHeader";
 import { ArrowDownIcon, ArrowUpIcon, MessageCircleIcon } from "./icons";
 
 const RAIL_WIDTH = 248;
@@ -98,15 +96,17 @@ export function DocxViewerPanel({
   refreshKey,
   onAsk,
   onFileChanged,
+  onEdit,
 }: {
   threadId: string;
   path: string;
   refreshKey: string;
+  /** Switches the panel to the editor; absent where the file cannot be edited. */
+  onEdit?: () => void;
   onAsk?: (text: string) => void;
   /** The file was renamed (its new path) or deleted (null) from its menu. */
   onFileChanged?: (path: string | null) => void;
 }) {
-  const dock = useDockPanel();
   const [view, setView] = useState<DocxView>("review");
   const [review, setReview] = useState<DocxReview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -118,7 +118,6 @@ export function DocxViewerPanel({
   const [zoom, setZoom] = useState(1);
   const [compact, setCompact] = useState(false);
   const [drawer, setDrawer] = useState(false);
-  const [fileMenu, setFileMenu] = useState<DOMRect | null>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -253,12 +252,7 @@ export function DocxViewerPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {fileMenu && <PanelFileMenu anchor={fileMenu} threadId={threadId} path={path} onFileChanged={onFileChanged} onClose={() => setFileMenu(null)} />}
-      <div className="flex h-12 shrink-0 items-center gap-2 px-3" {...dock.headerProps}>
-        <PanelTitleButton title={name} path={path} onMenu={setFileMenu} />
-        <div className="flex-1" />
-        {dock.controls}
-      </div>
+      <DocxPanelHeader threadId={threadId} path={path} onFileChanged={onFileChanged} onEdit={onEdit} />
       <div className="flex h-10 shrink-0 items-center gap-2 border-y border-[var(--border)] px-3 text-xs text-[var(--muted)]">
         <ViewSwitch
           view={view}

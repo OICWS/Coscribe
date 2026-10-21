@@ -561,6 +561,109 @@ body {
     background: var(--find-current-bg);
   }
 }
+/* The Docs editor (decision 0019): styles, not fonts. The page is the document's own look in one
+   column; headings, lists, tables and the locked lines follow the app's colours. */
+.docs-editor {
+  outline: none;
+  min-height: 60vh;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--fg);
+}
+.docs-editor > * + * {
+  margin-top: 0.75em;
+}
+.docs-editor .docs-title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1.2;
+}
+.docs-editor h1,
+.docs-editor h2,
+.docs-editor h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  line-height: 1.25;
+  margin-top: 1.4em;
+}
+.docs-editor h1 {
+  font-size: 1.7rem;
+}
+.docs-editor h2 {
+  font-size: 1.4rem;
+}
+.docs-editor h3 {
+  font-size: 1.15rem;
+}
+.docs-editor ul,
+.docs-editor ol {
+  padding-left: 1.5em;
+}
+.docs-editor ul {
+  list-style: disc;
+}
+.docs-editor ol {
+  list-style: decimal;
+}
+.docs-editor li > p {
+  margin: 0;
+}
+.docs-editor blockquote {
+  border-left: 3px solid var(--border-hover);
+  padding-left: 1em;
+  color: var(--muted);
+}
+.docs-editor a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.docs-editor table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.docs-editor th,
+.docs-editor td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  vertical-align: top;
+  min-width: 3em;
+}
+.docs-editor th {
+  background: var(--card-bg);
+  text-align: left;
+  font-weight: 600;
+}
+.docs-editor td > p,
+.docs-editor th > p {
+  margin: 0;
+}
+.docs-editor .selectedCell {
+  background: var(--accent-soft);
+}
+.docs-editor .docs-locked {
+  display: flex;
+  gap: 0.75em;
+  align-items: baseline;
+  border-radius: 8px;
+  background: var(--card-bg);
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--muted);
+  user-select: none;
+}
+.docs-editor .docs-locked.ProseMirror-selectednode {
+  outline: 1.5px solid var(--accent);
+}
+.docs-editor .docs-locked-what {
+  flex-shrink: 0;
+  font-weight: 600;
+}
+.docs-editor .docs-locked-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 ::highlight(docx-comments) {
   background: color-mix(in srgb, #f5c542 30%, transparent);
 }
