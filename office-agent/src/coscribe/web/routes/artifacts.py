@@ -108,7 +108,7 @@ def _summary(state: AppState, adoption: ArtifactAdoption, artifact: str) -> dict
 
 def _refused(error: Exception) -> JSONResponse:
     # A system error's text can carry paths and internals; only our own refusals are shown.
-    text = str(error) if isinstance(error, ArtifactFileError) else _NOT_DONE
+    text = error.reason if isinstance(error, ArtifactFileError) else _NOT_DONE
     return JSONResponse({"error": text}, status_code=409)
 
 

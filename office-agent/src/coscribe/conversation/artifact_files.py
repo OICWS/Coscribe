@@ -11,7 +11,11 @@ from ..tools import copy_deck, deck_files, move_deck
 
 
 class ArtifactFileError(Exception):
-    """A refusal whose text is safe to show the person."""
+    """A refusal; `reason` is its text for the person, written here and never a system error's."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
 
 
 _FORBIDDEN = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
