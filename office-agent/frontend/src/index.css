@@ -456,7 +456,7 @@ body {
   margin: 1em 0;
   border: 1px solid var(--border);
   border-radius: 0.5rem;
-  background: var(--code-bg);
+  background: var(--bg);
   overflow: hidden;
 }
 .md-prose .code-block pre {
@@ -465,6 +465,9 @@ body {
   border-radius: 0;
   background: transparent;
   padding-top: 0.25rem;
+  /* Long lines (a formula, a path) wrap, so a block only ever scrolls up and down. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 /* The message wrapper's overflow-wrap:anywhere lets min-content sizing
