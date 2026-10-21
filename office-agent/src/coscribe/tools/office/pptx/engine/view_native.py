@@ -9,6 +9,7 @@ draw stay a labelled box; the .pptx is the authority either way.
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any
@@ -351,9 +352,10 @@ def _axes_chart(
         values = [v for s in series for v in s.values if v is not None]
         peak = max(totals) if stacked else max(values, default=0.0)
         low, high = min(min(values, default=0.0), 0.0), max(peak, 0.0)
-    ticks = _ticks(low, high)
-    low, high = ticks[0], ticks[-1]
-    labels = [_tick_label(t, grouping == "percentStacked") for t in ticks]
+    plot = group.getparent()
+    ticks, low, high = _scale(plot, low, high)
+    number_format = _number_format(plot)
+    labels = [_tick_label(t, grouping == "percentStacked", number_format) for t in ticks]
     label_room = max((_width(t, _plain(size, font)) for t in labels), default=0) + size * 0.6
     out = []
     if horizontal:
@@ -366,6 +368,14 @@ def _axes_chart(
             x + w - size * 0.6,
             y + h - size * 2,
         )
+    category_title, value_title = _axis_title(plot, "catAx"), _axis_title(plot, "valAx")
+    bottom_title, left_title = (
+        (value_title, category_title) if horizontal else (category_title, value_title)
+    )
+    if left_title:
+        left += size * 1.8
+    if bottom_title:
+        bottom -= size * 1.8
     span = high - low or 1.0
 
     def at(value: float) -> float:
@@ -401,6 +411,13 @@ def _axes_chart(
         if horizontal
         else _line(left, zero, right, zero, "BFBFBF")
     )
+    if bottom_title:
+        middle = (left + right) / 2
+        out.append(_label(middle, y + h - size * 0.25, bottom_title, size, colour, font, "middle"))
+    if left_title:
+        cx, cy = x + size * 0.8, (top + bottom) / 2
+        turned = _label(cx, cy, left_title, size, colour, font, "middle")
+        out.append(f'<g transform="rotate(-90 {cx:.2f} {cy:.2f})">{turned}</g>')
     return "".join(out)
 
 
@@ -544,7 +561,61 @@ def _ticks(low: float, high: float) -> list[float]:
     return ticks
 
 
-def _tick_label(value: float, percent: bool) -> str:
+def _fixed_range(plot: Any) -> tuple[float | None, float | None]:
+    """The value axis's own minimum and maximum, when the chart sets them."""
+    scaling = plot.find(f"{_C}valAx/{_C}scaling")
+    if scaling is None:
+        return None, None
+    return _number(_val(scaling, "min") or ""), _number(_val(scaling, "max") or "")
+
+
+def _scale(plot: Any, low: float, high: float) -> tuple[list[float], float, float]:
+    """The ticks and the ends of the value axis: the chart's own minimum and maximum, else as
+    PowerPoint rounds them."""
+    fixed_low, fixed_high = _fixed_range(plot)
+    ticks = _ticks(
+        low if fixed_low is None else fixed_low, high if fixed_high is None else fixed_high
+    )
+    if fixed_low is not None:
+        ticks = [t for t in ticks if t >= fixed_low - 1e-9]
+    if fixed_high is not None:
+        ticks = [t for t in ticks if t <= fixed_high + 1e-9]
+    ticks = ticks or [low, high]
+    return (
+        ticks,
+        ticks[0] if fixed_low is None else fixed_low,
+        ticks[-1] if fixed_high is None else fixed_high,
+    )
+
+
+def _number_format(plot: Any) -> str | None:
+    fmt = plot.find(f"{_C}valAx/{_C}numFmt")
+    return fmt.get("formatCode") if fmt is not None else None
+
+
+def _axis_title(plot: Any, axis: str) -> str:
+    title = plot.find(f"{_C}{axis}/{_C}title")
+    return "".join(t.text or "" for t in title.iter(f"{_A}t")) if title is not None else ""
+
+
+_FORMAT = re.compile(r"([^0#]*)([#,]*0(?:\.(0+))?)(%?)([^0#]*)")
+
+
+def _formatted(value: float, fmt: str) -> str | None:
+    """A number in the simple Excel formats the panel offers ("#,##0", "0.0", "0%", "$#,##0")."""
+    match = _FORMAT.fullmatch(fmt.split(";")[0])
+    if match is None:
+        return None
+    prefix, number, decimals, percent, suffix = match.groups()
+    shown = value * 100 if percent else value
+    digits = len(decimals or "")
+    text = f"{shown:,.{digits}f}" if "," in number else f"{shown:.{digits}f}"
+    return f"{prefix}{text}{percent}{suffix}".replace('"', "")
+
+
+def _tick_label(value: float, percent: bool, fmt: str | None = None) -> str:
+    if fmt and fmt != "General" and (formatted := _formatted(value, fmt)) is not None:
+        return formatted
     text = f"{value:,.0f}" if abs(value) >= 1 or value == 0 else f"{value:g}"
     return f"{text}%" if percent else text
 

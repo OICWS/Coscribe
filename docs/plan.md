@@ -162,15 +162,14 @@ Last reviewed: 2026-10-15.
    API, select/move/resize, text and the format bar, inserting, notes and properties, new slides
    and reorder, undo including coscribe's builds. The user's edits and undos are told to coscribe at
    the start of its next turn (#462, done). Containers (decision 0018) are in the model's Slides guide, so coscribe writes rows and
-   columns of cards the user can then edit. A picture takes radius, border and opacity; pictures, shapes and cards take an outer shadow (Effects). The chart panel offers type, stacking, title, legend, labels and series colours (axes, range and
-   number format are open). A human edit refused to be overwritten was judged not worth its code
+   columns of cards the user can then edit. A picture takes radius, border and opacity; pictures, shapes, text boxes and cards take an outer shadow (Effects). The chart panel offers type, stacking, title, legend, labels and series colours (and, since 2026-10-21, axis titles, the value range and number format). A human edit refused to be overwritten was judged not worth its code
    (a narrow window: an edit made while a turn runs). Plain shapes of an SVG page (rectangles, circles, lines) become the
    section's own shapes when the slide is first edited, so the user can select and style them; anything else stays a drawing
    with a note in the panel (user editing is for what is easy to edit, the rest goes through comments and the conversation).
    A line is dragged by its ends and may rise to the right (`data-direction="up"`).
    Step 5, opening the user's own .pptx for editing in the panel, is not planned (maintainer, 2026-10-21): a template
-   is changed through the conversation, and the panel shows only decks coscribe built. A read-only preview of any
-   .pptx, drawn by the server's SVG preview, is the open smaller step. Artifact kinds the maintainer listed to come after
+   is changed through the conversation, and the panel shows only decks coscribe built. A read-only view of any
+   .pptx (through the office program's PDF) is done; its New slide, reorder and comment controls are not yet hidden. Artifact kinds the maintainer listed to come after
    Slides (2026-10-21): dashboard (HTML, CSS and JS with the data as an attachment), a plain single-file HTML artifact,
    a slides artifact edited online and exported to .pptx or PDF, a document artifact exported to Word, PDF or Markdown;
    the .pptx, .docx and .xlsx skills stay the way native Office files are made. The

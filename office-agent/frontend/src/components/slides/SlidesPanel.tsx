@@ -72,7 +72,7 @@ export function SlidesPanel({
   const name = path.split(/[\\/]/).pop() ?? path;
   const slide = slides[index];
   const beside = panelWidth >= PROPERTIES_BESIDE_FROM;
-  const properties = ui.propertiesShown && slide && (
+  const properties = ui.propertiesShown && slide && !deck?.readOnly && (
     <SlideProperties slide={slide} beside={beside} selection={ui.selection} design={design} onEdit={(change) => edits.edit(index, change)} loadSource={() => edits.loadSource(index)} onClose={() => ui.setPropertiesShown(false)} />
   );
 
@@ -84,7 +84,7 @@ export function SlidesPanel({
       onKeyDown={(e) => ui.onKey(e, shownZoom, history.step)}
     >
       <PanelTop title={deck?.title ?? name} path={path} ui={ui} onMenu={(kind, anchor) => setMenu({ kind, anchor })} />
-      <DeckNotices changed={deck?.changed ?? false} error={error ?? edits.problem ?? downloads.failed ?? comments.failed} />
+      <DeckNotices changed={deck?.changed ?? false} readOnly={deck?.readOnly ?? false} error={error ?? edits.problem ?? downloads.failed ?? comments.failed} />
       {notBuilt ? (
         <NotBuilt name={name} onOpen={() => open(false)} />
       ) : (
@@ -102,7 +102,7 @@ export function SlidesPanel({
               onOpen={ui.openSlide}
               overlay={
                 slide && (
-                  <SlideLayers at={{ threadId, path, ui, zoom: shownZoom }} edits={edits} refreshKey={refreshKey}>
+                  <SlideLayers at={{ threadId, path, ui, zoom: shownZoom }} edits={edits} refreshKey={refreshKey} readOnly={deck?.readOnly ?? false}>
                     <SlideComments
                       threadId={threadId}
                       path={path}
@@ -173,16 +173,18 @@ function SlideLayers({
   at,
   edits,
   refreshKey,
+  readOnly,
   children,
 }: {
   at: { threadId: string; path: string; ui: ReturnType<typeof useSlidesUi>; zoom: number };
   edits: ReturnType<typeof useEdits>;
   refreshKey: string;
+  readOnly: boolean;
   children: ReactNode;
 }) {
   return (
     <>
-      {!at.ui.commenting && (
+      {!at.ui.commenting && !readOnly && (
         <SlideEditing {...at} refreshKey={`${refreshKey}.${edits.outside}`} onSaved={edits.saved} onProblem={edits.setProblem} />
       )}
       {children}
@@ -294,9 +296,14 @@ function fitFor(view: SlidesView, stage: { width: number; height: number }): num
   return fitZoom((stage.width - 2 * MARGIN - (columns - 1) * CANVAS_GAP) / columns, Infinity);
 }
 
-function DeckNotices({ changed, error }: { changed: boolean; error: string | null }) {
+function DeckNotices({ changed, readOnly, error }: { changed: boolean; readOnly: boolean; error: string | null }) {
   return (
     <>
+      {readOnly && (
+        <div className="shrink-0 border-t border-[var(--border)] px-4 py-1.5 text-xs text-[var(--muted)]">
+          Read-only: coscribe did not build this presentation. Ask coscribe to change it, or open it in PowerPoint.
+        </div>
+      )}
       {changed && (
         <div className="shrink-0 border-t border-[var(--border)] px-4 py-1.5 text-xs text-[var(--warning)]">
           Shown as coscribe last built it; the file has changed since.

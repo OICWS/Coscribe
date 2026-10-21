@@ -335,6 +335,46 @@ def test_the_slides_routes_read_a_built_deck_and_draw_its_slides_lg(
     assert broken.status_code == 400 and "01.svg" not in broken.text
 
 
+def test_the_slides_routes_show_a_deck_coscribe_did_not_build_read_only_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import pypdfium2 as pdfium
+    from pptx import Presentation
+
+    from coscribe.tools.office.pptx.engine import view_foreign
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    prs = Presentation()
+    prs.slides.add_slide(prs.slide_layouts[6])
+    prs.save(str(workspace / "theirs.pptx"))
+
+    def office(source: Path, target: Path, to_format: str, timeout: float) -> str | None:
+        if not drawn:
+            return None
+        pdf = pdfium.PdfDocument.new()
+        pdf.new_page(960, 540)
+        pdf.save(str(target))
+        return "PowerPoint.Application"
+
+    monkeypatch.setattr(view_foreign, "convert", office)
+    fake_model = FakeToolCallingChatModel(responses=[])
+    drawn = False
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        url = "/api/threads/t_foreign/slides"
+        without_program = client.get(url, params={"path": "theirs.pptx"})
+        drawn = True
+        deck = client.get(url, params={"path": "theirs.pptx"})
+        svg = client.get(f"{url}/0/svg", params={"path": "theirs.pptx"})
+        edit = client.get(f"{url}/0/parts", params={"path": "theirs.pptx"})
+
+    # Without an office program the panel keeps saying it was not built by coscribe.
+    assert without_program.status_code == 409 and without_program.json()["built"] is False
+    assert deck.status_code == 200 and deck.json()["readOnly"] is True
+    assert svg.status_code == 200 and "data:image/png;base64," in svg.text
+    assert edit.status_code == 409
+
+
 def test_the_slides_edit_routes_read_parts_and_save_a_section_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

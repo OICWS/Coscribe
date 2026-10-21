@@ -96,7 +96,7 @@ A slide is one `<section>` of well-formed XHTML on a 1920 x 1080 canvas. Close e
   folder; `cover` crops to fill the box, `contain` fits it whole.
   A picture takes `border-radius` (rounded corners), `border` (as for a shape) and `opacity`; all
   three are the picture's own properties in the deck, so the user can change them in PowerPoint.
-  A picture, a shape and a container's card also take `box-shadow: 0px 8px 24px #000000 0.3` (x, y,
+  A picture, a shape, a text box (the shadow falls behind its letters unless it has a background) and a container's card also take `box-shadow: 0px 8px 24px #000000 0.3` (x, y,
   blur, colour, opacity), an outer shadow that is the object's own effect in the deck.
 - **Drawings**: `<svg viewBox="0 0 W H" style="left;top;width;height">` holds an illustration in
   SVG (rect, circle, ellipse, line, polyline, polygon, path, text, g, gradients, a drop-shadow
@@ -270,6 +270,9 @@ its data in PowerPoint.
   without the unit. A caveat about the data ("西南、东南亚为本季度新进入市场，不计算环比") is a
   footnote line under it.
 - The JSON holds the data and its look; the box is the element's style, never in the JSON.
+- The user can give a chart axis titles (`axis_titles`: `category`, `value`) and a value axis range and
+  number format (`axes.value`: `minimum`, `maximum`, `number_format`) in the panel; keep them when
+  you edit the chart, and add them only when asked.
 - `type`: column, bar (horizontal; categories top-down), line, area, pie, doughnut. Several
   series for a comparison, with `"show_legend": true`; `point_colors` on a column or bar series
   marks the bar the point is about.

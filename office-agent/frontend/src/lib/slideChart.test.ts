@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // jsdom for this file only: these functions change DOM nodes.
 import { describe, expect, it } from "vitest";
-import { chartTitle, chartType, isStacked, readSpec, seriesOf, setChartTitle, setChartType, setLabels, setLegend, setSeriesColour, setStacked, showsLabels, showsLegend } from "./slideChart";
+import { chartTitle, chartType, isStacked, readSpec, seriesOf, setChartTitle, setChartType, setLabels, setLegend, setSeriesColour, setAxisTitle, setStacked, setValueAxisSetting, showsLabels, showsLegend, valueAxisSetting } from "./slideChart";
 import { elementsOf, parseSection } from "./slideSource";
 
 const SPEC = { type: "column", categories: ["A", "B"], series: [{ name: "Q2", values: [1, 2] }, { name: "Q3", values: [3, 4] }], font_size: 27 };
@@ -57,5 +57,34 @@ describe("a section's chart", () => {
     const c = elementsOf(parseSection('<section><x-chart style="left:0px;top:0px;width:9px;height:9px">not json</x-chart></section>'))[0];
     setChartTitle(c, "x");
     expect(c.textContent).toBe("not json");
+  });
+});
+
+describe("axes", () => {
+  const chart = () => {
+    const el = document.createElement("x-chart");
+    el.textContent = JSON.stringify({ type: "column", categories: ["A"], series: [{ name: "S", values: [1] }] });
+    return el;
+  };
+
+  it("keeps the axis titles in the chart's own JSON and drops an emptied one", () => {
+    const el = chart();
+    setAxisTitle(el, "category", "Region");
+    setAxisTitle(el, "value", "Revenue");
+    expect(readSpec(el)?.axis_titles).toEqual({ category: "Region", value: "Revenue" });
+    setAxisTitle(el, "category", " ");
+    setAxisTitle(el, "value", "");
+    expect(readSpec(el)).not.toHaveProperty("axis_titles");
+  });
+
+  it("sets the value axis range and format, and clears them back to automatic", () => {
+    const el = chart();
+    setValueAxisSetting(el, "minimum", 0);
+    setValueAxisSetting(el, "number_format", "0%");
+    expect(readSpec(el)?.axes).toEqual({ value: { minimum: 0, number_format: "0%" } });
+    expect(valueAxisSetting(el, "minimum")).toBe(0);
+    setValueAxisSetting(el, "minimum", null);
+    setValueAxisSetting(el, "number_format", null);
+    expect(readSpec(el)).not.toHaveProperty("axes");
   });
 });

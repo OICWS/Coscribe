@@ -30,6 +30,8 @@ from ...tools import (
     delete_slide,
     design_system,
     duplicate_slide,
+    foreign_deck,
+    foreign_slide_svg,
     insert_slide,
     move_slide,
     read_comments,
@@ -90,13 +92,19 @@ def router(state: AppState) -> APIRouter:
         found = _deck_file(state, thread_id, path)
         if found is None:
             return _no_deck(path)
-        return await _run(read_deck, found[0])
+        deck = await _run(read_deck, found[0])
+        if isinstance(deck, Response) and deck.status_code == 409:
+            # Not built by coscribe: shown read-only when an office program can draw it.
+            return await _run(foreign_deck, found[0], state.settings.state_dir) or deck
+        return deck
 
     async def get_slide_svg(thread_id: str, index: int, path: str) -> Response:
         found = _deck_file(state, thread_id, path)
         if found is None:
             return _no_deck(path)
         svg = await _run(slide_svg, found[0], index, found[1])
+        if isinstance(svg, Response) and svg.status_code == 409:
+            svg = await _run(foreign_slide_svg, found[0], index, state.settings.state_dir)
         if isinstance(svg, Response):
             return svg
         return Response(svg, media_type="image/svg+xml", headers=_SVG_HEADERS)
