@@ -977,6 +977,29 @@
         "summary": "Index"
       }
     },
+    "/api/artifacts": {
+      "get": {
+        "operationId": "list_artifacts_api_artifacts_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Artifacts Api Artifacts Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Artifacts"
+      }
+    },
     "/api/attachment/pdf": {
       "get": {
         "description": "How many pages an attached PDF has, for the preview dialog.",
