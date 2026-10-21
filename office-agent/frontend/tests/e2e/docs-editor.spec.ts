@@ -35,9 +35,13 @@ async function openEditor(page: Page, name: string) {
   await page.getByRole("button", { name: "Expand Viewer" }).click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(page.locator(".docs-editor")).toBeVisible();
-  // A click in the first moments after the editor appears sometimes lands the caret at the start of
-  // the document (seen 2 runs in 8, never after half a second); the cause is not found yet (#507).
-  await page.waitForTimeout(500);
+}
+
+// The editor takes the caret from the page a moment after a click; the toolbar naming the style of the
+// clicked paragraph is the sign that it has, and keys pressed before it land at the start of the document.
+async function clickParagraph(page: Page, text: string) {
+  await page.locator(".docs-editor p", { hasText: text }).click();
+  await expect(page.getByTitle("Paragraph style")).toHaveText(/Normal/);
 }
 
 const blocksOf = async (page: Page, name: string): Promise<Blocks> => {
@@ -54,8 +58,7 @@ test("an edit in the editor reaches the Word file and leaves its comment and cha
   await expect(editor.locator(".docs-locked")).toHaveCount(1); // the price line, which holds the comment and both changes
 
   await test.step("typing in a paragraph is saved to the file", async () => {
-    const term = editor.locator("p", { hasText: "The agreement runs" });
-    await term.click();
+    await clickParagraph(page, "The agreement runs");
     await page.keyboard.press("End");
     await page.keyboard.type(" Renewal is by letter.");
     await expect(page.getByRole("status")).toHaveText("Saved");
@@ -116,7 +119,7 @@ test("'/' inserts a block and the bar over selected words formats them, both wri
   const editor = page.locator(".docs-editor");
 
   await test.step("'/' narrows as it is typed and Enter makes a heading", async () => {
-    await editor.locator("p", { hasText: "The agreement runs" }).click();
+    await clickParagraph(page, "The agreement runs");
     await page.keyboard.press("End");
     await page.keyboard.press("Enter");
     await page.keyboard.type("/head");
@@ -154,7 +157,7 @@ test("a turn that ends does not rebuild the editor or move the caret", async ({ 
   await openEditor(page, name);
   const editor = page.locator(".docs-editor");
   await editor.evaluate((el) => el.setAttribute("data-same-editor", "yes"));
-  await editor.locator("p", { hasText: "The agreement runs" }).click();
+  await clickParagraph(page, "The agreement runs");
   await page.keyboard.press("End");
 
   await page.getByRole("button", { name: "Restore Viewer" }).click();
@@ -164,7 +167,7 @@ test("a turn that ends does not rebuild the editor or move the caret", async ({ 
   await page.waitForTimeout(1500);
 
   await expect(editor).toHaveAttribute("data-same-editor", "yes");
-  await editor.locator("p", { hasText: "The agreement runs" }).click();
+  await clickParagraph(page, "The agreement runs");
   await page.keyboard.press("End");
   await page.keyboard.type(" Kept.");
   await expect(page.getByRole("status")).toHaveText("Saved");

@@ -37,11 +37,13 @@ export function DocsEditorPanel(props: PanelProps) {
   // The version of the file the editor holds, kept up to date by its saves: a re-read that finds the
   // same one changes nothing, so the editor is not rebuilt (and its caret not lost) when nothing changed.
   const version = useRef("");
-  const load = useCallback(() => {
+  const load = useCallback((force: boolean) => {
     setError(null);
     getDocBlocks(threadId, path).then(
       (doc) => {
-        if (doc.version === version.current) return;
+        // A background read never replaces edits waiting to be saved, and finding the same version it
+        // changes nothing; the person's own Reload (and a save that lost the blocks) takes the file as it is.
+        if (!force && (doc.version === version.current || unsaved.current)) return;
         // Set here, not once the editor mounts: two reads in flight together must not both build one.
         version.current = doc.version;
         setLoaded((now) => ({ round: (now?.round ?? 0) + 1, doc }));
@@ -51,13 +53,14 @@ export function DocsEditorPanel(props: PanelProps) {
   }, [threadId, path]);
   // The file changed under the editor (coscribe's turn): read it again unless the person has edits waiting.
   useEffect(() => {
-    if (!unsaved.current) load();
+    if (!unsaved.current) load(false);
   }, [load, refreshKey]);
+  const reload = useCallback(() => load(true), [load]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       {loaded ? (
-        <DocsEditor key={loaded.round} {...props} doc={loaded.doc} unsaved={unsaved} version={version} onReload={load} />
+        <DocsEditor key={loaded.round} {...props} doc={loaded.doc} unsaved={unsaved} version={version} onReload={reload} />
       ) : (
         <>
           <DocxPanelHeader threadId={threadId} path={path} onFileChanged={props.onFileChanged} />
