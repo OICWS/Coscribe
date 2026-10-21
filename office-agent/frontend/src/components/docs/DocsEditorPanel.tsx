@@ -1,6 +1,6 @@
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { askAboutWords, blocksToDoc, docImageUrl, getDocBlocks, type DocBlocks } from "../../lib/docsEditor";
+import { askAboutWords, blocksToDoc, docImageUrl, getDocBlocks, restoreDocVersion, type DocBlocks } from "../../lib/docsEditor";
 import { DocxPanelHeader } from "../DocxPanelHeader";
 import { DocsBubble } from "./DocsBubble";
 import { PictureBar } from "./PictureBar";
@@ -21,6 +21,10 @@ interface PanelProps {
   onPreview: () => void;
 }
 
+/** What the person is offered after the file changed under the editor: to take that change back, to
+ * do it again, or what went wrong. */
+export type Step = { kind: "undo" | "redo"; to: string } | { kind: "failed"; message: string };
+
 const SAVE_LABELS: Record<SaveState["kind"], string> = {
   saved: "Saved",
   unsaved: "Unsaved changes",
@@ -36,6 +40,7 @@ export function DocsEditorPanel(props: PanelProps) {
   const [loaded, setLoaded] = useState<{ round: number; doc: DocBlocks } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const unsaved = useRef(false);
+  const [step, setStep] = useState<Step | null>(null);
   // The version of the file the editor holds, kept up to date by its saves: a re-read that finds the
   // same one changes nothing, so the editor is not rebuilt (and its caret not lost) when nothing changed.
   const version = useRef("");
@@ -47,7 +52,9 @@ export function DocsEditorPanel(props: PanelProps) {
         // changes nothing; the person's own Reload (and a save that lost the blocks) takes the file as it is.
         if (!force && (doc.version === version.current || unsaved.current)) return;
         // Set here, not once the editor mounts: two reads in flight together must not both build one.
+        const held = version.current;
         version.current = doc.version;
+        if (held) setStep({ kind: "undo", to: held });
         setLoaded((now) => ({ round: (now?.round ?? 0) + 1, doc }));
       },
       (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
@@ -58,11 +65,26 @@ export function DocsEditorPanel(props: PanelProps) {
     if (!unsaved.current) load(false);
   }, [load, refreshKey]);
   const reload = useCallback(() => load(true), [load]);
+  const takeStep = useCallback(
+    (taken: { kind: "undo" | "redo"; to: string }) => {
+      const held = version.current;
+      restoreDocVersion(threadId, path, held, taken.to).then(
+        (restored) => {
+          version.current = restored.version;
+          setLoaded((now) => ({ round: (now?.round ?? 0) + 1, doc: restored }));
+          setStep(taken.kind === "undo" ? { kind: "redo", to: held } : null);
+        },
+        (e: unknown) => setStep({ kind: "failed", message: e instanceof Error ? e.message : String(e) }),
+      );
+    },
+    [threadId, path],
+  );
+  const dismissStep = useCallback(() => setStep(null), []);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       {loaded ? (
-        <DocsEditor key={loaded.round} {...props} doc={loaded.doc} unsaved={unsaved} version={version} onReload={reload} />
+        <DocsEditor key={loaded.round} {...props} doc={loaded.doc} unsaved={unsaved} version={version} onReload={reload} step={step} onStep={takeStep} onDismissStep={dismissStep} />
       ) : (
         <>
           <DocxPanelHeader threadId={threadId} path={path} onFileChanged={props.onFileChanged} />
@@ -78,8 +100,19 @@ function DocsEditor({
   unsaved,
   version,
   onReload,
+  step,
+  onStep,
+  onDismissStep,
   ...panel
-}: PanelProps & { doc: DocBlocks; unsaved: { current: boolean }; version: { current: string }; onReload: () => void }) {
+}: PanelProps & {
+  doc: DocBlocks;
+  unsaved: { current: boolean };
+  version: { current: string };
+  onReload: () => void;
+  step: Step | null;
+  onStep: (taken: { kind: "undo" | "redo"; to: string }) => void;
+  onDismissStep: () => void;
+}) {
   const { threadId, path } = panel;
   const slash = useSlashMenu();
   const editor = useEditor({
@@ -98,7 +131,9 @@ function DocsEditor({
   }, []);
   useEffect(() => {
     unsaved.current = state.kind !== "saved";
-  }, [state, unsaved]);
+    // Typing after the change ends the offer: taking it back would take the typing back with it.
+    if (state.kind === "unsaved" || state.kind === "saving") onDismissStep();
+  }, [state, unsaved, onDismissStep]);
 
   return (
     <>
@@ -123,6 +158,23 @@ function DocsEditor({
               Reload
             </button>
           )}
+        </div>
+      )}
+      {step && (
+        <div className="flex items-center gap-3 border-b border-[var(--border)] px-4 py-2 text-xs text-[var(--muted)]" role="group" aria-label="Change to this document">
+          <span className="flex-1">
+            {step.kind === "undo" && "This document was changed by coscribe or another program."}
+            {step.kind === "redo" && "The earlier version is back."}
+            {step.kind === "failed" && step.message}
+          </span>
+          {step.kind !== "failed" && (
+            <button type="button" className="rounded-md border border-[var(--border)] px-2 py-1 text-[var(--fg)] hover:bg-[var(--card-bg)]" onClick={() => onStep(step)}>
+              {step.kind === "undo" ? "Undo" : "Redo"}
+            </button>
+          )}
+          <button type="button" className="rounded-md px-2 py-1 hover:bg-[var(--card-bg)]" onClick={onDismissStep}>
+            Dismiss
+          </button>
         </div>
       )}
       {notice && (

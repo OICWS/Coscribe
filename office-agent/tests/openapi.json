@@ -179,6 +179,33 @@
         "title": "DocBlocksSave",
         "type": "object"
       },
+      "DocRestore": {
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "to": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "To",
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "version",
+          "to"
+        ],
+        "title": "DocRestore",
+        "type": "object"
+      },
       "DocxReviewEdit": {
         "properties": {
           "operations": {
@@ -4674,6 +4701,53 @@
           }
         },
         "summary": "Get Image"
+      }
+    },
+    "/api/threads/{thread_id}/docs/restore": {
+      "post": {
+        "operationId": "restore_api_threads__thread_id__docs_restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocRestore"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore"
       }
     },
     "/api/threads/{thread_id}/docx-review": {

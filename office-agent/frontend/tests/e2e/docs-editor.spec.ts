@@ -257,3 +257,30 @@ test("a selected picture is resized and described from the bar over it, written 
   await expect(picture).toHaveAttribute("alt", "A red box");
   await expect(picture).toHaveAttribute("style", /width:\s*50%/);
 });
+
+test("a change made behind the editor is offered back: Undo puts the earlier version in, Redo the change", async ({ page }) => {
+  const name = `edit-${Math.random().toString(36).slice(2, 8)}`;
+  await openEditor(page, name, [], false);
+  const editor = page.locator(".docs-editor");
+  const read = await blocksOf(page, name);
+  const behind = read.blocks.map((b) => (b.runs?.[0]?.t === "The agreement runs for one year." ? { ...b, runs: [{ t: "Changed elsewhere." }] } : b));
+  const put = await page.request.put(`/api/threads/${threadOf(page)}/docs/blocks`, { data: { path: `${name}.docx`, version: read.version, blocks: behind } });
+  expect(put.ok()).toBe(true);
+
+  // The end of a turn is when the editor reads the file again.
+  await page.locator("textarea").fill("hello again");
+  await page.keyboard.press("Enter");
+  const offer = page.getByRole("group", { name: "Change to this document" });
+  await expect(offer).toContainText("changed by coscribe or another program");
+  await expect(editor).toContainText("Changed elsewhere.");
+
+  await offer.getByRole("button", { name: "Undo" }).click();
+  await expect(editor).toContainText("The agreement runs for one year.");
+  await expect(offer).toContainText("The earlier version is back");
+  expect((await blocksOf(page, name)).blocks.map(textOf).join("\n")).toContain("The agreement runs for one year.");
+
+  await offer.getByRole("button", { name: "Redo" }).click();
+  await expect(editor).toContainText("Changed elsewhere.");
+  await expect(offer).toHaveCount(0);
+  expect((await blocksOf(page, name)).blocks.map(textOf).join("\n")).toContain("Changed elsewhere.");
+});

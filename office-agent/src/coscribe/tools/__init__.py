@@ -103,10 +103,13 @@ from .office.document_tools import DocumentToolkit, build_document_tools
 from .office.docx import (
     BlocksRefused,
     DocChanged,
+    VersionGone,
     edits_since_told,
     read_doc_blocks,
     read_doc_image,
     remember_before_edit,
+    remember_version,
+    restore_version,
     save_doc_blocks,
 )
 from .office.pptx import (
@@ -244,6 +247,9 @@ __all__ = [
     "DocChanged",
     "edits_since_told",
     "remember_before_edit",
+    "remember_version",
+    "restore_version",
+    "VersionGone",
     "read_doc_blocks",
     "read_doc_image",
     "save_doc_blocks",

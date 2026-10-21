@@ -96,3 +96,51 @@ def test_a_picture_of_the_document_is_served_and_nothing_else_is_lg(
     assert shown.status_code == 200 and shown.headers["content-type"] == "image/png"
     assert shown.headers["x-content-type-options"] == "nosniff"
     assert [odd.status_code, none.status_code, outside.status_code] == [404, 404, 404]
+
+
+def test_a_change_made_behind_the_editor_can_be_undone_and_done_again_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    _write(workspace)
+    url = "/api/threads/t_one/docs"
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        mine = client.get(f"{url}/blocks", params={"path": "plan.docx"}).json()
+        # Something else (coscribe, Word) rewrites the file behind the editor.
+        tools = {t.__name__: t for t in build_document_tools(workspace)}  # type: ignore[attr-defined]
+        tools["write_docx"](path="plan.docx", content="# Plan\n\nChanged behind.\n")
+        theirs = client.get(f"{url}/blocks", params={"path": "plan.docx"}).json()
+        undone = client.post(
+            f"{url}/restore",
+            json={"path": "plan.docx", "version": theirs["version"], "to": mine["version"]},
+        )
+        stale = client.post(
+            f"{url}/restore",
+            json={"path": "plan.docx", "version": theirs["version"], "to": mine["version"]},
+        )
+        redone = client.post(
+            f"{url}/restore",
+            json={
+                "path": "plan.docx",
+                "version": undone.json()["version"],
+                "to": theirs["version"],
+            },
+        )
+        gone = client.post(
+            f"{url}/restore",
+            json={"path": "plan.docx", "version": redone.json()["version"], "to": "f" * 32},
+        )
+        odd = client.post(
+            f"{url}/restore",
+            json={"path": "plan.docx", "version": redone.json()["version"], "to": "../../x"},
+        )
+
+    texts = lambda response: [  # noqa: E731
+        "".join(r["t"] for r in b.get("runs", [])) for b in response.json()["blocks"]
+    ]
+    assert undone.status_code == 200 and texts(undone)[1] == "First paragraph."
+    assert undone.json()["version"] == mine["version"]
+    assert stale.status_code == 409 and stale.json()["changed"] is True
+    assert redone.status_code == 200 and texts(redone)[1] == "Changed behind."
+    assert gone.status_code == 404 and odd.status_code == 404

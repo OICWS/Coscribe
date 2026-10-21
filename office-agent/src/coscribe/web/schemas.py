@@ -39,6 +39,13 @@ class DocBlocksSave(BaseModel):
     blocks: list[Any] = Field(max_length=20_000)
 
 
+class DocRestore(BaseModel):
+    path: str
+    # The version the editor holds, and the kept version to put back over it.
+    version: str = Field(min_length=1, max_length=128)
+    to: str = Field(min_length=1, max_length=128)
+
+
 class SlideCommentNew(BaseModel):
     path: str
     slide: str

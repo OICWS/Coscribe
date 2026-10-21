@@ -9,7 +9,7 @@ implementation in `toolkit.py`; a changed signature also changes `tests/tool_sch
 layout (`tools/office/`), or how the viewer panel draws a document (`web/`, `frontend/`).
 
 ## Public interface
-`DocxToolkit`, `build_docx_tools`, and for the Docs editor (decision 0019, `blocks.py`) `read_doc_blocks`, `read_doc_image`, `save_doc_blocks`, `DocChanged`, `BlocksRefused`, and what the person changed since coscribe was told (`user_edits.py`) `remember_before_edit`, `edits_since_told`. Import them from `coscribe.tools.office.docx`; the coordinator
+`DocxToolkit`, `build_docx_tools`, and for the Docs editor (decision 0019, `blocks.py`) `read_doc_blocks`, `read_doc_image`, `save_doc_blocks`, `DocChanged`, `BlocksRefused`, and what the person changed since coscribe was told (`user_edits.py`) `remember_before_edit`, `edits_since_told`, and the versions the editor has held, to undo a change made behind it (`history.py`) `remember_version`, `restore_version`, `VersionGone`. Import them from `coscribe.tools.office.docx`; the coordinator
 reaches them through `coscribe.tools.office.document_tools`.
 
 ## Depends on
@@ -29,7 +29,7 @@ reaches them through `coscribe.tools.office.document_tools`.
 
 ## Tests
 `tests/test_documents_tool.py`, `tests/test_docx_structure_tool.py`, `tests/test_docx_review_tool.py`,
-`tests/test_docx_golden.py` (canonical XML goldens), `tests/test_docx_blocks.py` (the editor's reader and writer), `tests/test_docs_edits_note.py` (what the person changed, told once), `tests/test_evals_docx.py`.
+`tests/test_docx_golden.py` (canonical XML goldens), `tests/test_docx_blocks.py` (the editor's reader and writer), `tests/test_docs_edits_note.py` (what the person changed, told once), `tests/test_docx_history.py` (the kept versions and the undo), `tests/test_evals_docx.py`.
 
 ## Verify by hand
 A written and an edited document opened in the real Word on Windows, tracked changes shown and
