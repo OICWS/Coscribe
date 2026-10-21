@@ -62,6 +62,13 @@ describe("blocks and the editor's document", () => {
     expect(roundTrip([{ ...added, id: "b3" }]).blocks[0]).toEqual({ id: "b3", kind: "locked" });
   });
 
+  it("carries a picture's width and description to the editor and back, with only the id otherwise", () => {
+    const picture: Block = { id: "b4", kind: "locked", what: "image or drawing", text: "", images: ["rId4"], picture: { width: 50, alt: "A box" } };
+    const doc = blocksToDoc([picture]);
+    expect(doc.content?.[0].attrs?.picture).toEqual({ width: 50, alt: "A box" });
+    expect(roundTrip([picture]).blocks[0]).toEqual({ id: "b4", kind: "locked", picture: { width: 50, alt: "A box" } });
+  });
+
   it("keeps a divider and a page break as blocks of their own, with their ids", () => {
     const blocks: Block[] = [{ id: "b1", kind: "divider" }, { kind: "paragraph", runs: [{ t: "x" }] }, { id: "b3", kind: "pagebreak" }];
     expect(roundTrip(blocks).blocks).toEqual([{ id: "b1", kind: "divider" }, { id: undefined, kind: "paragraph", runs: [{ t: "x" }] }, { id: "b3", kind: "pagebreak" }]);

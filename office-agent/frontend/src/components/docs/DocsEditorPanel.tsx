@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { askAboutWords, blocksToDoc, docImageUrl, getDocBlocks, type DocBlocks } from "../../lib/docsEditor";
 import { DocxPanelHeader } from "../DocxPanelHeader";
 import { DocsBubble } from "./DocsBubble";
+import { PictureBar } from "./PictureBar";
 import { DocsToolbar } from "./DocsToolbar";
 import { SlashMenu, useSlashMenu } from "./SlashMenu";
 import { docsExtensions } from "../../lib/docsExtensions";
@@ -110,6 +111,7 @@ function DocsEditor({
         </button>
       </DocxPanelHeader>
       {editor && <DocsToolbar editor={editor} />}
+      {editor && <PictureBar editor={editor} />}
       {editor && <DocsBubble editor={editor} onAsk={panel.onAsk && ((words) => panel.onAsk?.(askAboutWords(path, words)))} />}
       {(state.kind === "conflict" || state.kind === "error") && (
         <div className="flex items-center gap-3 border-b border-[var(--border)] px-4 py-2 text-xs text-[var(--danger)]">

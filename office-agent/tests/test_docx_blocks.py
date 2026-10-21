@@ -373,3 +373,47 @@ def test_a_page_break_inside_text_and_a_ruled_paragraph_with_text_are_not_breaks
     assert kinds[0] == ("locked", "page break")
     assert kinds[1][0] == "paragraph"
     assert kinds[2] == ("pagebreak", None)
+
+
+def test_a_picture_is_resized_and_described_and_nothing_else_changes(doc: Path) -> None:
+    version, blocks = _blocks(doc)
+    blocks.insert(3, {"kind": "image", "data": _png(400, 200)})
+    version = save_doc_blocks(doc, version, blocks)["version"]
+    version, blocks = _blocks(doc)
+    pictured = next(b for b in blocks if b.get("picture"))
+    assert pictured["picture"]["alt"] != "x" and pictured["picture"]["width"] > 0
+    before = _paragraphs(doc)
+
+    pictured["picture"] = {"width": 50, "alt": "A blue box"}
+    saved = save_doc_blocks(doc, version, blocks)["blocks"]
+    again = next(b for b in saved if b.get("picture"))
+    assert again["picture"] == {"width": 50, "alt": "A blue box"}
+    tree = etree.fromstring(zipfile.ZipFile(doc).read("word/document.xml"))
+    wp = "{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}"
+    extent = next(tree.iter(f"{wp}extent"))
+    assert (int(extent.get("cx")), int(extent.get("cy"))) == (914400 * 3, 914400 * 3 // 2)
+    assert next(tree.iter(f"{wp}docPr")).get("descr") == "A blue box"
+    assert len(_paragraphs(doc)) == len(before)
+    assert [p for p in _paragraphs(doc) if b"drawing" not in p] == [
+        p for p in before if b"drawing" not in p
+    ]
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"width": 2, "alt": ""},
+        {"width": 101, "alt": ""},
+        {"width": "5", "alt": ""},
+        {"width": 50, "alt": "x" * 501},
+        {"width": 50},
+    ],
+)
+def test_a_picture_size_or_description_out_of_range_is_refused(doc: Path, bad: Any) -> None:
+    version, blocks = _blocks(doc)
+    blocks.insert(3, {"kind": "image", "data": _png()})
+    save_doc_blocks(doc, version, blocks)
+    version, blocks = _blocks(doc)
+    next(b for b in blocks if b.get("picture"))["picture"] = bad
+    with pytest.raises(BlocksRefused):
+        save_doc_blocks(doc, version, blocks)
