@@ -8,11 +8,13 @@ spacing whose height can be known here, and so checked against the box.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 from xml.sax.saxutils import escape
 
 from ...._native_svg.svg_to_pptx.drawingml.utils import is_cjk_char, parse_font_family
+from .section_format import Shadow
 from .text_layout import Paragraph, Run
 
 # The section canvas is 1920 px wide on a 13.333 in (12,192,000 EMU) slide.
@@ -32,6 +34,7 @@ class TextBox:
     line_height: float | None  # None: the font's own single spacing
     padding: float = 0.0
     fill: str | None = None
+    shadow: Shadow | None = None
     # A box drawn to its text's height grows with its text when edited in PowerPoint.
     fits_text: bool = False
     # Lines break only where the text says (a converted SVG page's text), never at the width.
@@ -52,10 +55,25 @@ def text_box_xml(box: TextBox) -> str:
         f'<p:sp><p:nvSpPr><p:cNvPr id="{box.shape_id}" name="{_attr(box.name)}"/>'
         '<p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>'
         f'<p:spPr><a:xfrm><a:off x="{x}" y="{y}"/><a:ext cx="{w}" cy="{h}"/></a:xfrm>'
-        f'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>{fill}</p:spPr>'
+        f'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>{fill}{_effect(box.shadow)}</p:spPr>'
         f'<p:txBody><a:bodyPr wrap="{wrap}" lIns="{inset}" tIns="{inset}" rIns="{inset}" '
         f'bIns="{inset}" anchor="{box.anchor}" rtlCol="0">{autofit}</a:bodyPr>'
         f"<a:lstStyle/>{paragraphs}</p:txBody></p:sp>"
+    )
+
+
+def _effect(shadow: Shadow | None) -> str:
+    """The outer shadow as the SVG pages' converter writes one (its blur is twice the sigma, its
+    alpha a quarter lighter than the SVG's, as PowerPoint blends it heavier). With no fill
+    PowerPoint draws it behind the letters."""
+    if shadow is None:
+        return ""
+    angle = round(math.degrees(math.atan2(shadow.dy, shadow.dx)) % 360 * 60000)
+    return (
+        f'<a:effectLst><a:outerShdw blurRad="{round(shadow.blur * EMU_PER_PX)}" '
+        f'dist="{round(math.hypot(shadow.dx, shadow.dy) * EMU_PER_PX)}" dir="{angle}" algn="ctr" '
+        f'rotWithShape="0"><a:srgbClr val="{shadow.colour}">'
+        f'<a:alpha val="{round(shadow.opacity * 75000)}"/></a:srgbClr></a:outerShdw></a:effectLst>'
     )
 
 

@@ -90,6 +90,21 @@ def _outline(image: ET.Element, root: ET.Element) -> ET.Element:
 def _text_group(box: TextBox) -> ET.Element:
     x, y, width, height = box.box
     group = ET.Element(f"{_S}g")
+    if box.shadow:
+        ident = f"shadow-{x:g}-{y:g}"
+        effect = ET.SubElement(ET.SubElement(group, f"{_S}defs"), f"{_S}filter", id=ident)
+        ET.SubElement(
+            effect,
+            f"{_S}feDropShadow",
+            {
+                "dx": f"{box.shadow.dx:g}",
+                "dy": f"{box.shadow.dy:g}",
+                "stdDeviation": f"{box.shadow.blur / 2:g}",
+                "flood-color": f"#{box.shadow.colour}",
+                "flood-opacity": f"{box.shadow.opacity:g}",
+            },
+        )
+        group.set("filter", f"url(#{ident})")
     if box.fill:
         ET.SubElement(
             group,

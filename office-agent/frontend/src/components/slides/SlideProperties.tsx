@@ -59,7 +59,12 @@ export function SlideProperties({
           <CloseIcon className="h-4 w-4" />
         </button>
       </div>
-      {selection?.kind === "text" && <TextProperties selection={selection} design={design} />}
+      {selection?.kind === "text" && (
+        <>
+          <TextProperties selection={selection} design={design} />
+          <ShadowProperties selection={selection} design={design} />
+        </>
+      )}
       {selection?.kind === "container" && (
         <>
           <ContainerProperties selection={selection} />

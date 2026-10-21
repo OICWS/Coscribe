@@ -46,7 +46,7 @@ _TEXT_STYLES = {
 }
 _STYLES = {
     "section": {"background", "font-family", "color"},
-    "text": set(_BOX) | _TEXT_STYLES,
+    "text": set(_BOX) | _TEXT_STYLES | {"box-shadow"},
     "x-shape": set(_BOX) | {"background", "border", "border-radius", "opacity", "box-shadow"},
     "img": set(_BOX) | {"object-fit", "border", "border-radius", "opacity", "box-shadow"},
     "svg": set(_BOX),
@@ -125,6 +125,38 @@ class Style:
         return default if raw is None else colour(raw, f"{self.label}: {name}")
 
 
+@dataclass(frozen=True)
+class Shadow:
+    """An outer shadow: offset and blur in px, a colour and its opacity."""
+
+    dx: float
+    dy: float
+    blur: float
+    colour: str
+    opacity: float
+
+
+_SHADOW = re.compile(
+    r"(-?\d+(?:\.\d+)?)px\s+(-?\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px\s+(#\w+)(?:\s+(\d(?:\.\d+)?))?"
+)
+
+
+def shadow_of(style: Style) -> Shadow | None:
+    """`box-shadow: 0px 8px 24px #000000 0.3` (x, y, blur, colour, opacity optional), or none."""
+    raw = style.values.get("box-shadow", "none").strip()
+    if raw == "none":
+        return None
+    match = _SHADOW.fullmatch(raw)
+    if match is None:
+        raise SectionError(
+            f'{style.label}: box-shadow is "Xpx Ypx BLURpx #RRGGBB" (then an opacity, optional) '
+            'or "none"'
+        )
+    dx, dy, blur, hex_colour, opacity = match.groups()
+    shade = colour(hex_colour, f"{style.label}: box-shadow")
+    return Shadow(float(dx), float(dy), float(blur), shade, float(opacity or 0.35))
+
+
 @dataclass
 class TextElement:
     tag: str
@@ -139,6 +171,7 @@ class TextElement:
     nowrap: bool
     padding: float
     fill: str | None
+    shadow: Shadow | None
 
 
 @dataclass
@@ -363,6 +396,7 @@ def text_element(elem: ET.Element, style: Style, section: Section) -> TextElemen
         nowrap=_choice(style, "white-space", {"normal": "", "nowrap": "nowrap"}, "normal") != "",
         padding=style.px("padding", 0.0),
         fill=style.colour("background"),
+        shadow=shadow_of(style),
     )
 
 

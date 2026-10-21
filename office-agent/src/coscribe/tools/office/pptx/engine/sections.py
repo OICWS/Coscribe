@@ -55,6 +55,7 @@ from .section_format import (
     label,
     local,
     parse_section,
+    shadow_of,
     text_element,
 )
 from .template import layout
@@ -236,6 +237,7 @@ def _text(element: TextElement, report: PageReport) -> TextBox:
         line_height=element.line_height,
         padding=element.padding,
         fill=element.fill,
+        shadow=element.shadow,
         fits_text=fits,
         nowrap=element.nowrap,
     )
@@ -293,25 +295,11 @@ def _border(elem: ET.Element, style: Style) -> tuple[str, str, str] | None:
     return width, dash, f"#{colour(stroke, f'{label(elem)}: border')}"
 
 
-_SHADOW = re.compile(
-    r"(-?\d+(?:\.\d+)?)px\s+(-?\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px\s+(#\w+)(?:\s+(\d(?:\.\d+)?))?"
-)
-
-
 def _shadow(elem: ET.Element, style: Style, drawing: ET.Element, attrs: dict[str, str]) -> None:
-    """`box-shadow: 0px 8px 24px #000000 0.3` (x, y, blur, colour, opacity) as the outer shadow the
-    converter maps to the object's own effect; `none` or no property is no shadow."""
-    raw = style.values.get("box-shadow", "none").strip()
-    if raw == "none":
+    """The `box-shadow` as the outer shadow the converter maps to the object's own effect."""
+    found = shadow_of(style)
+    if found is None:
         return
-    match = _SHADOW.fullmatch(raw)
-    if match is None:
-        raise SectionError(
-            f'{label(elem)}: box-shadow is "Xpx Ypx BLURpx #RRGGBB" (then an opacity, optional) '
-            'or "none"'
-        )
-    dx, dy, blur, hex_colour, opacity = match.groups()
-    shade = colour(hex_colour, f"{label(elem)}: box-shadow")
     ident = f"shadow-{len(drawing)}"
     defs = ET.SubElement(drawing, f"{{{SVG_NS}}}defs")
     effect = ET.SubElement(defs, f"{{{SVG_NS}}}filter", id=ident)
@@ -320,11 +308,11 @@ def _shadow(elem: ET.Element, style: Style, drawing: ET.Element, attrs: dict[str
         f"{{{SVG_NS}}}feDropShadow",
         {
             # The converter reads these as the SVG pages' px, as it does a drawing's filter.
-            "dx": f"{float(dx) * _SCALE:g}",
-            "dy": f"{float(dy) * _SCALE:g}",
-            "stdDeviation": f"{float(blur) / 2 * _SCALE:g}",
-            "flood-color": f"#{shade}",
-            "flood-opacity": opacity or "0.35",
+            "dx": f"{found.dx * _SCALE:g}",
+            "dy": f"{found.dy * _SCALE:g}",
+            "stdDeviation": f"{found.blur / 2 * _SCALE:g}",
+            "flood-color": f"#{found.colour}",
+            "flood-opacity": f"{found.opacity:g}",
         },
     )
     attrs["filter"] = f"url(#{ident})"
