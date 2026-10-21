@@ -31,6 +31,11 @@ export function useSteerNotes(
 
   const unread = () => state.items.filter((item): item is Note => item.kind === "steer" && item.status === "pending");
   const drop = (notes: Note[]) => dispatch({ type: "local_steers_withdrawn", ids: notes.map((note) => note.id) });
+  // A stop denies what is waiting for approval on the server; the cards follow at once.
+  const denyApprovals = () =>
+    state.items.forEach((item) => {
+      if (item.kind === "approval" && item.status === "pending") dispatch({ type: "local_approval_resolved", id: item.id, approved: false });
+    });
   const joined = (notes: Note[]) => notes.map((note) => note.text).join("\n\n");
 
   const actions: SteerActions = {
@@ -52,6 +57,7 @@ export function useSteerNotes(
         return;
       }
       afterStop.current = text;
+      denyApprovals();
       send({ type: "stop" });
     },
   };
@@ -68,6 +74,7 @@ export function useSteerNotes(
         drop(notes);
         toComposer(joined(notes));
       }
+      denyApprovals();
       send({ type: "stop" });
     },
   };
