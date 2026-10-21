@@ -85,6 +85,7 @@
   --file-slides: #c4561f;
   --file-pdf: #c23b3b;
   --file-image: #7a5bc4;
+  --file-dashboard: #6a4db3;
   --kind-tool: #5f5a57;
   --kind-script: #2d62b8;
   --kind-llm: #b8456a;
@@ -141,6 +142,7 @@
   --file-slides: #f0a076;
   --file-pdf: #f09a9a;
   --file-image: #b9a3ee;
+  --file-dashboard: #b9a3ee;
   --kind-tool: #cbc5c2;
   --kind-script: #8cb4f0;
   --kind-llm: #ef92ab;

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { deleteScheduledTask, deleteThread } from "../lib/rest";
 import { useClickOutside } from "../lib/useClickOutside";
-import { SCHEDULED_THREAD_PREFIX, startNewThread } from "../lib/nav";
+import { SCHEDULED_THREAD_PREFIX, showArtifacts, startNewThread } from "../lib/nav";
 import { threadLabel } from "../lib/threadStatus";
 import { latestRun, RUN_STATUS_LABEL } from "../lib/runLabels";
 import { scheduleKindLabel } from "../lib/scheduleLabels";
@@ -11,6 +11,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { EnvironmentDialog } from "./EnvironmentDialog";
 import { RunStatusIcon } from "./RunStatusIcon";
 import { ThreadList } from "./ThreadList";
+import { ArtifactsIcon } from "./artifacts/artifactIcons";
 import { COLLAPSED_CLUSTER_WIDTH, DRAWS_TITLE_BAR, TITLE_BAR_ICON } from "../lib/titleBar";
 import { AppMenuButton, HistoryButtons } from "./WindowControls";
 import {
@@ -157,6 +158,39 @@ function ScheduledTaskRow({ task, active, onSelect, onEdit, onRunNow, onChanged 
 
 export const NAV_RAIL_EXPANDED_WIDTH = 272;
 
+/** Under the mode switch: a new conversation, and the page of what coscribe has made. */
+function SessionLinks({ artifactsOpen }: { artifactsOpen: boolean }) {
+  return (
+    <>
+      <button
+        type="button"
+        className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm font-medium hover:bg-[var(--card-bg)]"
+        onClick={startNewThread}
+      >
+        {/* Solid black "add" treatment (see index.css's palette
+         * comment) -- a filled --primary badge stays visible on
+         * any surface and reads as the one clearly primary
+         * action here, apart from the two lighter accent hues. */}
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--primary)] text-[var(--primary-fg)]">
+          <PlusIcon className="h-3 w-3" />
+        </span>
+        New session
+      </button>
+      <button
+        type="button"
+        aria-current={artifactsOpen ? "page" : undefined}
+        className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-[var(--card-bg)] ${artifactsOpen ? "bg-[var(--card-bg)] font-medium" : ""}`}
+        onClick={showArtifacts}
+      >
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+          <ArtifactsIcon className="h-[18px] w-[18px]" />
+        </span>
+        Artifacts
+      </button>
+    </>
+  );
+}
+
 /** How long a hover-opened panel stays once the pointer is out of it. */
 const HOVER_CLOSE_DELAY_MS = 600;
 
@@ -172,6 +206,8 @@ interface NavRailProps {
   onThreadRenamed: (threadId: string, title: string) => void;
   mode: NavMode;
   onModeChange: (mode: NavMode) => void;
+  /** The Artifacts page is the one open. */
+  artifactsOpen: boolean;
   scheduledTasks: ScheduledTask[];
   onScheduledTasksChanged: () => void;
   /** The task whose page or run is currently open, highlighted. */
@@ -195,6 +231,7 @@ export function NavRail({
   onThreadRenamed,
   mode,
   onModeChange,
+  artifactsOpen,
   scheduledTasks,
   onScheduledTasksChanged,
   activeTaskId,
@@ -320,20 +357,7 @@ export function NavRail({
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2 pb-2">
             {mode === "create" && (
               <div className="flex min-h-0 flex-1 flex-col gap-0.5">
-                <button
-                  type="button"
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm font-medium hover:bg-[var(--card-bg)]"
-                  onClick={startNewThread}
-                >
-                  {/* Solid black "add" treatment (see index.css's palette
-                   * comment) -- a filled --primary badge stays visible on
-                   * any surface and reads as the one clearly primary
-                   * action here, apart from the two lighter accent hues. */}
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--primary)] text-[var(--primary-fg)]">
-                    <PlusIcon className="h-3 w-3" />
-                  </span>
-                  New session
-                </button>
+                <SessionLinks artifactsOpen={artifactsOpen} />
                 <ThreadList
                   threads={threads}
                   currentId={threadId}
