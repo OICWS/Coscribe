@@ -30,18 +30,18 @@ export function TaskCard({
   const rows = [...entry.tasks.map((task) => ({ id: task.id, text: task.content, status: task.status })), ...(entry.calls[""] ? [{ id: "", text: "Other steps", status: null }] : [])];
 
   return (
-    <div className="w-full overflow-hidden rounded-xl border border-[var(--border)] text-[15px]">
-      {rows.map((row, index) => {
+    <div className="w-full rounded-2xl border border-[var(--border)] px-2 py-2.5 text-[15px]">
+      {rows.map((row) => {
         const calls = entry.calls[row.id] ?? [];
         const open = opened.has(row.id);
         const failed = entry.failed.includes(row.id);
         return (
-          <div key={row.id || "other"} className={index > 0 ? "border-t border-[var(--border)]" : ""}>
+          <div key={row.id || "other"}>
             <button
               type="button"
               aria-expanded={calls.length > 0 ? open : undefined}
               disabled={calls.length === 0}
-              className="flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left enabled:hover:bg-[var(--card-bg)]"
+              className="flex w-full items-start gap-2.5 rounded-lg px-2 py-1.5 text-left"
               onClick={() => toggle(row.id)}
             >
               <span className="mt-[3px]">{row.status && <TaskStatusIcon status={row.status} live={live} />}</span>
@@ -56,7 +56,7 @@ export function TaskCard({
               )}
             </button>
             {open && (
-              <div className="px-3.5 pb-3">
+              <div className="px-2 pb-2 pt-1">
                 <ToolRunGroupView
                   group={{ kind: "tool_run", id: `calls-${entry.id}-${row.id}`, items: calls }}
                   live={live}
