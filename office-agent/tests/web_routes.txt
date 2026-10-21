@@ -14,6 +14,7 @@ DELETE /api/threads/{thread_id}/slides/comments/{comment_id}
 DELETE /api/threads/{thread_id}/subagents
 GET /
 GET /api/artifacts
+GET /api/artifacts/{artifact}/thumbnail
 GET /api/attachment/pdf
 GET /api/attachment/pdf/page
 GET /api/background-tasks/{task_id}/log
@@ -77,6 +78,7 @@ GET,HEAD /openapi.json
 GET,HEAD /redoc
 MOUNT /static
 PATCH /api/scheduled-tasks/{trigger_id}
+POST /api/artifacts/{artifact}/open
 POST /api/background-tasks/{task_id}/stop
 POST /api/code/install
 POST /api/config

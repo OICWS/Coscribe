@@ -1,12 +1,19 @@
-"""The decks, documents and spreadsheets a conversation made, for the Artifacts page: each one's
-kind, name, time and, for a document, its opening lines.
+"""The decks, documents and spreadsheets coscribe made, for the Artifacts page: a registry of
+them that outlives the conversation that made each one, and each one's kind, name, time and, for
+a document, its opening lines.
 
-What counts is what the conversation's Outputs list says it made or changed
-(`activity.summarize_activity`); the files themselves are read fresh, so a deck edited in the
-Slides panel shows its new time."""
+A conversation's Outputs list says what it made (`activity.summarize_activity`); the registry
+adopts those files, and from then on an artifact is the file, not the conversation. Only files
+the conversation created are adopted: one it merely edited, or one the person brought, is not
+made by coscribe. The files themselves are read fresh, so a deck edited in the Slides panel
+shows its new time."""
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
+import json
+import os
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -29,11 +36,77 @@ def _kind(name: str) -> str | None:
 
 def artifact_paths(
     messages: list[BaseMessage], catalog: dict[str, ToolMetadata], scope: WorkspaceScope
-) -> list[tuple[str, str]]:
-    """`(path, action)` of each artifact the messages made or changed, action being "created" or
-    "edited", most recently touched first."""
+) -> list[str]:
+    """The artifacts the messages created, most recently touched first."""
     outputs = summarize_activity(messages, catalog, scope)["outputs"]
-    return [(o["path"], o["action"]) for o in outputs if o["exists"] and _kind(o["name"])]
+    return [
+        o["path"] for o in outputs if o["exists"] and o["action"] == "created" and _kind(o["name"])
+    ]
+
+
+def artifact_id(location: str) -> str:
+    """The same file is the same artifact however it was reached."""
+    return hashlib.sha1(os.path.normcase(location).encode("utf-8")).hexdigest()[:16]
+
+
+class ArtifactRegistry:
+    """The artifacts coscribe made: one JSON file under the state dir, each entry the file's
+    location, the folders its conversation worked in (to open it again in a new one) and the
+    conversation that made it."""
+
+    def __init__(self, state_dir: str | Path) -> None:
+        self._path = Path(state_dir) / "artifacts.json"
+
+    def entries(self) -> list[dict[str, Any]]:
+        try:
+            data = json.loads(self._path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return []
+        return (
+            [e for e in data if isinstance(e, dict) and "id" in e] if isinstance(data, list) else []
+        )
+
+    def get(self, artifact: str) -> dict[str, Any] | None:
+        return next((e for e in self.entries() if e["id"] == artifact), None)
+
+    def adopt(self, locations: list[str], folders: list[str], thread_id: str) -> None:
+        # Called on the event loop with no await between the read and the write, so two
+        # adoptions cannot interleave.
+        known = self.entries()
+        have = {e["id"] for e in known}
+        added = [
+            {
+                "id": artifact_id(location),
+                "location": location,
+                "folders": folders,
+                "thread_id": thread_id,
+                "created_at": datetime.now().isoformat(),
+            }
+            for location in dict.fromkeys(locations)
+            if artifact_id(location) not in have
+        ]
+        if not added:
+            return
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = self._path.with_suffix(".tmp")
+        tmp.write_text(json.dumps([*known, *added], ensure_ascii=False), encoding="utf-8")
+        os.replace(tmp, self._path)
+
+
+async def adopt_thread(
+    registry: ArtifactRegistry,
+    checkpointer: Any,
+    thread_id: str,
+    catalog: dict[str, ToolMetadata],
+    scope: WorkspaceScope,
+    folders: list[str],
+) -> None:
+    """Register what the conversation created, read from its checkpoint."""
+    state = await checkpointer.aget_tuple({"configurable": {"thread_id": thread_id}})
+    messages = list(state.checkpoint["channel_values"].get("messages", [])) if state else []
+    paths = await asyncio.to_thread(artifact_paths, messages, catalog, scope)
+    found = [d["location"] for path in paths if (d := describe_artifact(scope, path))]
+    registry.adopt(found, folders, thread_id)
 
 
 def describe_artifact(scope: WorkspaceScope, path: str) -> dict[str, Any] | None:

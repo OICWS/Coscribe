@@ -171,10 +171,10 @@ Last reviewed: 2026-10-15.
    is changed through the conversation, and the panel shows only decks coscribe built. A read-only view of any
    .pptx (through the office program's PDF) is done; its New slide, reorder and comment controls are not yet hidden. Artifact kinds the maintainer listed to come after
    Artifacts page (2026-10-21, issue 497): an Artifacts entry under New session opens a gallery of what the conversations
-   made (.pptx, .docx and .xlsx, listed from each conversation's Outputs by `GET /api/artifacts`), as cards or as rows by
+   made (.pptx, .docx and .xlsx, from a registry of what conversations created, `GET /api/artifacts`; an artifact outlives its conversation and opens in a new one rooted at its folder), as cards or as rows by
    day, with All and Pinned, search, a type filter, "Make something new" for Docs, Slides, Sheets and Dashboard (not yet
    makeable), and a card menu. Open: Rename, Duplicate, Copy link and Delete (shown as Soon: they touch files and links),
-   what an artifact is as a stored object, scheduled runs' files, dashboards, and pins kept on the server (now in the browser).
+   tools for a conversation to list and read existing artifacts (next), scheduled runs' files, dashboards, and pins kept on the server (now in the browser).
    Slides (2026-10-21): dashboard (HTML, CSS and JS with the data as an attachment), a plain single-file HTML artifact,
    a slides artifact edited online and exported to .pptx or PDF, a document artifact exported to Word, PDF or Markdown;
    the .pptx, .docx and .xlsx skills stay the way native Office files are made. The

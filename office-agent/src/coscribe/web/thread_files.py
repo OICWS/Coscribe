@@ -9,7 +9,7 @@ from pathlib import Path
 
 from ..config import Settings
 from ..runtime import SessionEnvironments
-from ..tools import MessagingStore, ScheduledTriggerStore, parse_run_thread_id
+from ..tools import MessagingStore, ScheduledTriggerStore, WorkspaceScope, parse_run_thread_id
 from ..workflows import granted_by, parse_workflow
 
 
@@ -51,6 +51,23 @@ class ThreadFiles:
         except json.JSONDecodeError:
             return []
         return [str(folder) for folder in saved if isinstance(folder, str) and folder]
+
+    def workspace_folders(self, thread_id: str) -> list[Path]:
+        """The folders a conversation works in, the first being its root."""
+        folders = [Path(f) for f in self.read_workspace_sidecar(thread_id)]
+        return folders or [self._settings.workspace_root]
+
+    def workspace_scope(self, thread_id: str) -> WorkspaceScope:
+        """What a conversation may read and write, without starting its session."""
+        root, *extra = self.workspace_folders(thread_id)
+        return self.scope_of_folders(root, extra)
+
+    def scope_of_folders(self, root: Path, extra: list[Path]) -> WorkspaceScope:
+        return WorkspaceScope(
+            root,
+            extra_readable=[*self._settings.extra_readable_dirs, *extra],
+            extra_writable=[*self._settings.extra_writable_dirs, *extra],
+        )
 
     def delete(self, thread_id: str) -> None:
         """Every file that belongs to a thread -- otherwise a new thread later

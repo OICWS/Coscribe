@@ -40,6 +40,7 @@ from ...tools import (
     stop_subagent_task,
 )
 from ...workflows import DraftFailed
+from ..artifact_adoption import ArtifactAdoption
 from ..schemas import (
     DocxReviewEdit,
     GroupRename,
@@ -235,9 +236,11 @@ def _delete_and_rename_routes(router: APIRouter, state: AppState) -> None:
     _title_sidecar_path = state.thread_files.title_sidecar_path
     checkpointer_holder = state.checkpointer_holder
     _delete_thread_data = state.delete_thread_data
+    adoption = ArtifactAdoption(settings, state.thread_files, state.sessions, checkpointer_holder)
 
     @router.delete("/api/threads/{thread_id}")
     async def delete_thread(thread_id: str) -> JSONResponse:
+        await adoption.adopt([thread_id])  # what it made stays
         existed = await _delete_thread_data(thread_id)
         if not existed:
             return JSONResponse({"error": f"No thread {thread_id!r}"}, status_code=404)

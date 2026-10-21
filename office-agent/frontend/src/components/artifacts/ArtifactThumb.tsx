@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { slideImageUrl } from "../../lib/slides";
-import { KINDS, type ArtifactKind, type ArtifactSummary } from "../../lib/artifacts";
+import { KINDS, thumbnailUrl, type ArtifactKind, type ArtifactSummary } from "../../lib/artifacts";
 import { KindIcon } from "./artifactIcons";
 
 /** A kind's colour at `percent`, over the page's own background. */
@@ -27,7 +26,7 @@ export function Thumbnail({ item }: { item: ArtifactSummary }) {
     return (
       <div className={`${base} bg-white`}>
         <img
-          src={slideImageUrl(item.thread_id, item.path, 0, item.modified_at)}
+          src={thumbnailUrl(item)}
           alt=""
           loading="lazy"
           className="h-full w-full object-cover"

@@ -19,7 +19,7 @@ def _made(*paths: str) -> AIMessage:
     return AIMessage(content="", tool_calls=calls)
 
 
-def test_the_artifacts_route_lists_the_decks_documents_and_sheets_the_conversations_made_lg(
+def test_the_artifacts_route_lists_what_the_conversations_created_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     (tmp_path / "workspace").mkdir()
@@ -40,12 +40,56 @@ def test_the_artifacts_route_lists_the_decks_documents_and_sheets_the_conversati
         (tmp_path / "workspace" / "deck.pptx").unlink()
         second = client.get("/api/artifacts").json()
 
-    kinds = {a["name"]: (a["kind"], a["thread_id"]) for a in first}
-    assert kinds == {
-        "deck": ("slides", "t_one"),
-        "report": ("docs", "t_one"),
-        "numbers": ("sheets", "t_one"),
+    assert {a["name"]: a["kind"] for a in first} == {
+        "deck": "slides",
+        "report": "docs",
+        "numbers": "sheets",
     }
-    assert all(a["modified_at"] and a["path"].startswith(a["name"]) for a in first)
+    assert all(a["id"] and a["modified_at"] and a["path"].startswith(a["name"]) for a in first)
     # The new conversation's file is listed, and the deck taken from the disk is not.
     assert {a["name"] for a in second} == {"report", "numbers", "later"}
+
+
+def test_a_file_a_conversation_only_edited_is_not_an_artifact_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "workspace").mkdir()
+    (tmp_path / "workspace" / "theirs.docx").write_bytes(b"x")
+    fake_model = FakeToolCallingChatModel(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[
+                    _tool_call("c1", "replace_docx_text", {"path": "theirs.docx", "old": "a"})
+                ],
+            ),
+            AIMessage(content="done"),
+        ]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        _run_turn(client, "t_one", "fix their file")
+        assert client.get("/api/artifacts").json() == []
+
+
+def test_an_artifact_outlives_its_conversation_and_opens_in_a_new_one_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "workspace").mkdir()
+    fake_model = FakeToolCallingChatModel(
+        responses=[_made("report.docx", "deck.pptx"), AIMessage(content="done")]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        _run_turn(client, "t_one", "make things")
+        listed = {a["name"]: a["id"] for a in client.get("/api/artifacts").json()}
+        alive = client.post(f"/api/artifacts/{listed['report']}/open").json()
+        assert client.delete("/api/threads/t_one").status_code == 200
+        gone = client.post(f"/api/artifacts/{listed['report']}/open").json()
+        after = client.get("/api/artifacts").json()
+        unknown = client.post("/api/artifacts/nope/open")
+        no_thumb = client.get(f"/api/artifacts/{listed['report']}/thumbnail")
+
+    assert alive == {"thread_id": "t_one", "path": "report.docx"}
+    assert gone["thread_id"] not in ("t_one", "") and gone["path"] == "report.docx"
+    assert {a["name"] for a in after} == {"report", "deck"}
+    assert unknown.status_code == 404
+    assert no_thumb.status_code == 404
