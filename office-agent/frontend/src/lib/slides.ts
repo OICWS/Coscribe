@@ -19,6 +19,8 @@ export interface SlideDeck {
   folder: string;
   /** The .pptx or a page changed since the last build: what is shown may differ from the file. */
   changed: boolean;
+  /** A deck coscribe did not build: drawn by the office program, not editable here. */
+  readOnly?: boolean;
   slides: SlideInfo[];
 }
 

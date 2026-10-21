@@ -172,3 +172,47 @@ def test_comments_are_kept_beside_the_pages(tmp_path: Path) -> None:
         add_comment(deck, slide="01", x=0, y=0, element="", text="  ", author="a", sent=False)
     (tmp_path / "pages" / "comments.json").write_text("{not json", encoding="utf-8")
     assert read_comments(deck) == []
+
+
+def test_a_deck_coscribe_did_not_build_is_drawn_read_only_through_the_office_program(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The office program writes the PDF once per version of the file; each slide is its page."""
+    import pypdfium2 as pdfium
+    from pptx import Presentation
+
+    from coscribe.tools.office.pptx import NotBuiltFromPages, foreign_deck, foreign_slide_svg
+    from coscribe.tools.office.pptx.engine import view_foreign
+
+    deck = tmp_path / "theirs.pptx"
+    prs = Presentation()
+    prs.slides.add_slide(prs.slide_layouts[6])
+    prs.slides.add_slide(prs.slide_layouts[6])
+    prs.save(str(deck))
+    calls: list[Path] = []
+
+    def office(source: Path, target: Path, to_format: str, timeout: float) -> str:
+        calls.append(source)
+        pdf = pdfium.PdfDocument.new()
+        for _ in range(2):
+            pdf.new_page(960, 540)
+        pdf.save(str(target))
+        return "PowerPoint.Application"
+
+    monkeypatch.setattr(view_foreign, "convert", office)
+    state = tmp_path / "state"
+    read = foreign_deck(deck, state)
+    assert read["readOnly"] is True and [s["name"] for s in read["slides"]] == [
+        "slide 1",
+        "slide 2",
+    ]
+    svg = foreign_slide_svg(deck, 1, state)
+    assert 'viewBox="0 0 1280 720"' in svg and "data:image/png;base64," in svg
+    assert len(calls) == 1  # the second read found the PDF made for this version of the file
+    with pytest.raises(IndexError):
+        foreign_slide_svg(deck, 2, state)
+
+    monkeypatch.setattr(view_foreign, "convert", lambda *a: None)
+    (tmp_path / "other.pptx").write_bytes(deck.read_bytes())
+    with pytest.raises(NotBuiltFromPages):
+        foreign_deck(tmp_path / "other.pptx", state)
