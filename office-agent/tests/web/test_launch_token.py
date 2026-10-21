@@ -156,6 +156,7 @@ AUDITED_READ_ONLY_GETS = {
     "/",
     "/api/artifacts",
     "/api/artifacts/lookup",
+    "/api/threads/{thread_id}/docs/blocks",
     "/api/artifacts/{artifact}/thumbnail",
     "/api/attachment/pdf",
     "/api/attachment/pdf/page",

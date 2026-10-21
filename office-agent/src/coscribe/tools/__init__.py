@@ -100,6 +100,7 @@ from .mcp import (
     with_secrets,
 )
 from .office.document_tools import DocumentToolkit, build_document_tools
+from .office.docx import BlocksRefused, DocChanged, read_doc_blocks, save_doc_blocks
 from .office.pptx import (
     NEW_DECK_INSTRUCTIONS,
     CommentNotFound,
@@ -231,6 +232,10 @@ __all__ = [
     "design_system",
     "deck_html",
     "deck_pdf",
+    "BlocksRefused",
+    "DocChanged",
+    "read_doc_blocks",
+    "save_doc_blocks",
     "copy_deck",
     "deck_files",
     "move_deck",
