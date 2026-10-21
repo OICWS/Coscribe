@@ -461,7 +461,7 @@ export function Composer({
           </div>
         )}
         {autocompleteOpen && (
-          <div className="absolute bottom-full left-3 right-3 mb-1 max-h-60 overflow-y-auto rounded-[10px] border border-[var(--border)] bg-[var(--bg)] shadow-[var(--shadow)]">
+          <div className="absolute bottom-full left-0 right-0 mb-1 max-h-60 overflow-y-auto rounded-[10px] border border-[var(--border)] bg-[var(--bg)] shadow-[var(--shadow)]">
             {autocompleteMatches.map((cmd, i) => (
               <div
                 key={cmd.name}

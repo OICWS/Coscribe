@@ -168,7 +168,12 @@ Last reviewed: 2026-10-15.
    section's own shapes when the slide is first edited, so the user can select and style them; anything else stays a drawing
    with a note in the panel (user editing is for what is easy to edit, the rest goes through comments and the conversation).
    A line is dragged by its ends and may rise to the right (`data-direction="up"`).
-   Next: step 5, opening the user's own .pptx. The
+   Step 5, opening the user's own .pptx for editing in the panel, is not planned (maintainer, 2026-10-21): a template
+   is changed through the conversation, and the panel shows only decks coscribe built. A read-only preview of any
+   .pptx, drawn by the server's SVG preview, is the open smaller step. Artifact kinds the maintainer listed to come after
+   Slides (2026-10-21): dashboard (HTML, CSS and JS with the data as an attachment), a plain single-file HTML artifact,
+   a slides artifact edited online and exported to .pptx or PDF, a document artifact exported to Word, PDF or Markdown;
+   the .pptx, .docx and .xlsx skills stay the way native Office files are made. The
    docx-preview actions: accept, reject, reply, resolve, comment, "Ask coscribe" on a selection and the reviewer
    name are in the panel (#473). Without a reviewer name, actions carry the computer's user name.
 

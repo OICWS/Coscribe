@@ -73,7 +73,7 @@ export function presentEntries(present: (withNotes: boolean) => void): MenuEntry
   ];
 }
 
-export function titleEntries(open: (reveal: boolean) => void, history: ReturnType<typeof useSlideHistory>): MenuEntry[] {
+export function titleEntries(open: (reveal: boolean) => void, history: ReturnType<typeof useSlideHistory>, askDiscard: () => void): MenuEntry[] {
   return [
     {
       label: "Open in PowerPoint",
@@ -89,9 +89,7 @@ export function titleEntries(open: (reveal: boolean) => void, history: ReturnTyp
     {
       label: "Discard my edits",
       disabled: history.history.undo !== "you",
-      onSelect: () => {
-        if (window.confirm("Take back every change you made since coscribe's last version of this presentation?")) history.step("discard");
-      },
+      onSelect: askDiscard,
     },
   ];
 }

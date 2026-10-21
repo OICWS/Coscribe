@@ -8,6 +8,7 @@ import { pptxOverlayTargetOf, inSentence } from "./helpers";
 import { ConnectorTools } from "./contexts";
 import { SummaryLabel, Disclosure } from "./SummaryLabel";
 import { ToolPreview } from "./ToolPreview";
+import { OpenFileChips } from "./OpenFileChips";
 import { ApprovalPreview } from "./ApprovalPreview";
 
 /** A run of tool calls: one sentence-like summary with a chevron after
@@ -83,6 +84,7 @@ export function ToolRunGroupView({
         <Disclosure open={open} />
       </button>
       {single && <ToolPreview item={single} onPptxShapePicked={onPptxShapePicked} />}
+      <OpenFileChips items={group.items} />
       {group.items.map((item) => {
         const blocked = blockedWriteOf(item);
         return blocked ? <BlockedFolderCard key={item.id} blocked={blocked} /> : null;
@@ -223,8 +225,8 @@ function ToolCallRow({
 
   return (
     <div
-      className={`max-w-[92%] self-start rounded-xl border bg-[var(--card-bg)] px-3 py-2 text-sm ${
-        isPendingApproval ? "border-[var(--accent)]" : "border-[var(--border)] hover:bg-[var(--panel-bg)]"
+      className={`max-w-[92%] self-start rounded-xl border px-3 py-2 text-sm ${
+        isPendingApproval ? "border-[var(--accent)] bg-[var(--bg)]" : "border-[var(--border)] bg-[var(--card-bg)] hover:bg-[var(--panel-bg)]"
       }`}
     >
       <button

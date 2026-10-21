@@ -490,11 +490,14 @@ export interface LoadOlderMessagesOut {
   type: "load_older_messages";
 }
 
-/** A note for the turn in progress: the model reads it before its next step. */
+/**
+ * A note for the turn in progress: the model reads it before its next step. A null text
+ * takes the note back.
+ */
 export interface SteerOut {
   type: "steer";
   id: string;
-  text: string;
+  text: string | null;
 }
 
 export type ClientMessage =
