@@ -1,4 +1,4 @@
-# 0019: A Docs artifact is the .docx itself, edited in the app by styles, not fonts
+# 0019: A Docs artifact is the .docx itself, edited in the app block by block, by styles not fonts
 
 Status: proposed (2026-10-21). The maintainer agreed the direction in conversation; this record
 waits for acceptance. Builds on 0013 (house style) and 0015 (what coscribe makes is an artifact).
@@ -7,30 +7,33 @@ waits for acceptance. Builds on 0013 (house style) and 0015 (what coscribe makes
 Claude has two things: an online Docs object (rich text in the cloud, exported to Word on demand)
 and a .docx from a skill (a download with no preview or editing). It needs both because the cloud
 has no folder of the user's. coscribe runs on the user's computer, so the artifact can be the
-real file and the app can edit it.
+real file and the app can edit it. A source file beside the .docx (as a deck has its pages) was
+considered and dropped: the Word panel's comments and tracked changes, and the person's own edits
+in Word, change the .docx directly and would leave such a source stale.
 
 ## Decision
-- **A Docs artifact is the `.docx` in the workspace.** There is no second, in-app document format.
-  Word opens it; the app previews, comments on and edits it.
-- **A source folder sits next to it**, as a deck's pages folder does: the document in the markdown
-  subset `write_docx` takes (headings 1–3, paragraphs, bold, italic, lists, tables, `[TOC]`), later
-  with underline, links, images and page breaks. Its record names the .docx by path and holds the
-  hash coscribe last wrote. Edits change the source and compile it with the house style (0013).
-- **The person's Word edits are never overwritten.** If the .docx no longer matches the recorded
-  hash, the editor does not save: coscribe offers to change it through the conversation, or to start
-  from the Word version (read back into the source; what the subset cannot hold is lost, and the
-  person is told so first). A document coscribe did not write has no source and is shown read-only.
+- **A Docs artifact is the `.docx` in the workspace**, nothing beside it. Word opens it; the app
+  previews, comments on and edits it.
+- **The editor reads the file as blocks** (Heading 1–3, paragraph, quote, list item, table, image,
+  divider, page break, contents) with bold, italic, underline and links inside them. Anything else
+  (text boxes, fields, equations, section breaks) is a locked block the editor shows and keeps as it is.
+- **A save rewrites only the blocks the person changed**, in the file, by style. Untouched blocks,
+  comments and tracked changes stay byte for byte (0015: only what was edited can lose anything). A
+  block holding a comment anchor or a tracked change is locked; it changes through the review actions.
+  Direct formatting in an edited paragraph (a font, a colour) gives way to the style.
+- **The person's Word edits are never overwritten**: a save carries the file version the editor read,
+  and one made over a newer file is refused and the editor reads it again, as a slide save is.
 - **The app offers styles, not fonts**: Normal, Heading 1–3, Quote; bold, italic, underline; lists;
-  links; tables with add and remove of rows and columns; images; divider, page break, contents. No
+  links; tables with rows and columns added and removed; images; divider, page break, contents. No
   font, size, colour, margin, column or header editing in v1; Open in Word covers those.
-- **The editor is a rich-text editor whose schema is exactly that subset** (a ProseMirror-based
-  library; chosen and checked live when it is added). Saves go through the backend (0014).
-  The person's edits and undos reach coscribe at the start of its next turn, never through a tool
-  schema (0001), and undo covers coscribe's turns, as in Slides.
+- **The editor is a rich-text editor whose schema is exactly that set** (a ProseMirror-based library,
+  chosen and checked live when it is added). Saves go through the backend (0014). The person's edits
+  and undos reach coscribe at the start of its next turn, never through a tool schema (0001), and
+  undo covers coscribe's turns, as in Slides.
 
 ## Consequences
-- Extending the markdown subset changes `write_docx`'s description: its own reviewed PR (0001).
-- A Word-made or Word-edited document is read-only in the editor; comments and tracked changes on
-  it keep working in the Word panel.
+- No change to `write_docx` or any tool schema: the editor uses its own routes.
+- A document made in Word can be edited the same way; whether the app offers it for files that are
+  not artifacts is a product choice, as it was for decks (they stay read-only).
 - Version history for documents is wanted and not in v1.
-- Order: the source and its compiler, then the editor panel, then comments and the AI hand-offs.
+- Order: the block reader and writer (backend), then the editor panel, then the hand-offs to coscribe.
