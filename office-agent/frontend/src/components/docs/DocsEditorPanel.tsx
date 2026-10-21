@@ -34,10 +34,15 @@ export function DocsEditorPanel(props: PanelProps) {
   const [loaded, setLoaded] = useState<{ round: number; doc: DocBlocks } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const unsaved = useRef(false);
+  // The version of the file the editor holds, kept up to date by its saves: a re-read that finds the
+  // same one changes nothing, so the editor is not rebuilt (and its caret not lost) when nothing changed.
+  const version = useRef("");
   const load = useCallback(() => {
     setError(null);
     getDocBlocks(threadId, path).then(
-      (doc) => setLoaded((now) => ({ round: (now?.round ?? 0) + 1, doc })),
+      (doc) => {
+        if (doc.version !== version.current) setLoaded((now) => ({ round: (now?.round ?? 0) + 1, doc }));
+      },
       (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
     );
   }, [threadId, path]);
@@ -49,7 +54,7 @@ export function DocsEditorPanel(props: PanelProps) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       {loaded ? (
-        <DocsEditor key={loaded.round} {...props} doc={loaded.doc} unsaved={unsaved} onReload={load} />
+        <DocsEditor key={loaded.round} {...props} doc={loaded.doc} unsaved={unsaved} version={version} onReload={load} />
       ) : (
         <>
           <DocxPanelHeader threadId={threadId} path={path} onFileChanged={props.onFileChanged} />
@@ -60,7 +65,13 @@ export function DocsEditorPanel(props: PanelProps) {
   );
 }
 
-function DocsEditor({ doc, unsaved, onReload, ...panel }: PanelProps & { doc: DocBlocks; unsaved: { current: boolean }; onReload: () => void }) {
+function DocsEditor({
+  doc,
+  unsaved,
+  version,
+  onReload,
+  ...panel
+}: PanelProps & { doc: DocBlocks; unsaved: { current: boolean }; version: { current: string }; onReload: () => void }) {
   const { threadId, path } = panel;
   const slash = useSlashMenu();
   const editor = useEditor({
@@ -68,7 +79,10 @@ function DocsEditor({ doc, unsaved, onReload, ...panel }: PanelProps & { doc: Do
     content: blocksToDoc(doc.blocks),
     editorProps: { attributes: { class: "docs-editor", "aria-label": "Document" } },
   });
-  const { state } = useDocsSave(editor, threadId, path, doc.version, onReload);
+  useEffect(() => {
+    version.current = doc.version;
+  }, [doc, version]);
+  const { state } = useDocsSave(editor, threadId, path, version, onReload);
   useEffect(() => {
     unsaved.current = state.kind !== "saved";
   }, [state, unsaved]);

@@ -145,3 +145,25 @@ test("'/' inserts a block and the bar over selected words formats them, both wri
     expect(term?.runs?.every((r) => r.b)).toBe(true);
   });
 });
+
+test("a turn that ends does not rebuild the editor or move the caret", async ({ page }) => {
+  const name = `edit-${Math.random().toString(36).slice(2, 8)}`;
+  await openEditor(page, name);
+  const editor = page.locator(".docs-editor");
+  await editor.evaluate((el) => el.setAttribute("data-same-editor", "yes"));
+  await editor.locator("p", { hasText: "The agreement runs" }).click();
+  await page.keyboard.press("End");
+
+  await page.getByRole("button", { name: "Restore Viewer" }).click();
+  await page.locator("textarea").fill("hello again");
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("OK", { exact: true })).toBeVisible();
+  await page.waitForTimeout(1500);
+
+  await expect(editor).toHaveAttribute("data-same-editor", "yes");
+  await editor.locator("p", { hasText: "The agreement runs" }).click();
+  await page.keyboard.press("End");
+  await page.keyboard.type(" Kept.");
+  await expect(page.getByRole("status")).toHaveText("Saved");
+  expect((await blocksOf(page, name)).blocks.map(textOf).some((t) => t.includes("The agreement runs for one year. Kept."))).toBe(true);
+});
