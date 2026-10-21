@@ -6,7 +6,7 @@ export type ArtifactKind = "slides" | "docs" | "sheets" | "dashboard";
 
 /** One artifact as the server lists it (`GET /api/artifacts`). */
 export interface ArtifactSummary {
-  thread_id: string;
+  id: string;
   path: string;
   name: string;
   kind: ArtifactKind;
@@ -40,9 +40,18 @@ export async function listArtifacts(): Promise<ArtifactSummary[]> {
   return (await response.json()) as ArtifactSummary[];
 }
 
-/** The same file from two conversations is one artifact, so the id is the conversation it is
- * listed under and its path. */
-export const artifactId = (item: ArtifactSummary) => `${item.thread_id}\n${item.path}`;
+export const artifactId = (item: ArtifactSummary) => item.id;
+
+/** The first slide of a deck, drawn by the server; the time keeps a changed deck from showing stale. */
+export const thumbnailUrl = (item: ArtifactSummary) => `/api/artifacts/${item.id}/thumbnail?v=${encodeURIComponent(item.modified_at)}`;
+
+/** The conversation to show an artifact in and its path there: the one that made it while it
+ * exists, else a new one in the folders that one worked in. */
+async function placeOf(item: ArtifactSummary): Promise<{ thread_id: string; path: string }> {
+  const response = await fetch(`/api/artifacts/${item.id}/open`, { method: "POST" });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return (await response.json()) as { thread_id: string; path: string };
+}
 
 // -- Pins and layout: kept in the browser, per person, not in the deck ---------------------------
 
@@ -133,10 +142,16 @@ export function editedLabel(iso: string, now: Date): string {
  * `setComposerText` fills the message box of the conversation that starts. */
 export function artifactActions(showFile: (threadId: string, path: string) => void, setComposerText: (text: string) => void) {
   return {
-    /** Opens the conversation that made it, with the file in its panel. */
+    /** Opens it in a conversation, with the file in its panel. */
     open: (item: ArtifactSummary) => {
-      showFile(item.thread_id, item.path);
-      goToThread(item.thread_id);
+      // A file that has gone since the list was read has nothing to open; the next visit drops it.
+      placeOf(item).then(
+        (place) => {
+          showFile(place.thread_id, place.path);
+          goToThread(place.thread_id);
+        },
+        () => undefined,
+      );
     },
     /** A new conversation, its message box started for the kind. */
     make: (kind: ArtifactKind) => {

@@ -134,7 +134,7 @@ def summarize_activity(
         if isinstance(path, str) and path:
             if metadata is None or metadata.risk_category not in _OUTPUT_RISKS:
                 touches.append((path, "read"))
-            elif name.startswith("write_") and _lines_removed(call["result"]) == 0:
+            elif name.startswith(("write_", "build_")) and _lines_removed(call["result"]) == 0:
                 touches.append((path, "write"))
             else:
                 touches.append((path, "edit"))

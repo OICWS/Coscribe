@@ -4,7 +4,7 @@ import { artifactId, countsByKind, dayGroups, editedLabel, visibleArtifacts, typ
 const NOW = new Date("2026-10-21T15:00:00");
 const ago = (hours: number) => new Date(NOW.getTime() - hours * 3600e3).toISOString();
 const make = (name: string, kind: ArtifactSummary["kind"], hours: number): ArtifactSummary => ({
-  thread_id: "t1",
+  id: `id-${name}`,
   path: `${name}.x`,
   name,
   kind,

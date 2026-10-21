@@ -1000,6 +1000,81 @@
         "summary": "List Artifacts"
       }
     },
+    "/api/artifacts/{artifact}/open": {
+      "post": {
+        "description": "The conversation to show the artifact in and its path there: the one that made it\nwhile it exists, else a new one working in the folders that one did.",
+        "operationId": "open_artifact_api_artifacts__artifact__open_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "artifact",
+            "required": true,
+            "schema": {
+              "title": "Artifact",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Open Artifact"
+      }
+    },
+    "/api/artifacts/{artifact}/thumbnail": {
+      "get": {
+        "operationId": "thumbnail_api_artifacts__artifact__thumbnail_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "artifact",
+            "required": true,
+            "schema": {
+              "title": "Artifact",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Thumbnail"
+      }
+    },
     "/api/attachment/pdf": {
       "get": {
         "description": "How many pages an attached PDF has, for the preview dialog.",

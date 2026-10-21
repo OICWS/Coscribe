@@ -5,13 +5,14 @@ import { freshThreadPath, waitForConnected } from "./helpers";
 // the list is the one thing answered here; the page, the sidebar and the navigation are real.
 const hoursAgo = (h: number) => new Date(Date.now() - h * 3600e3).toISOString();
 const LISTED = [
-  { thread_id: "listed-a", path: "q3.pptx", name: "Q3 review", kind: "slides", modified_at: hoursAgo(3), excerpt: null },
-  { thread_id: "listed-b", path: "plan.docx", name: "Project plan", kind: "docs", modified_at: hoursAgo(30), excerpt: { heading: "Project plan", text: "Goals and dates." } },
-  { thread_id: "listed-b", path: "costs.xlsx", name: "Costs", kind: "sheets", modified_at: hoursAgo(31), excerpt: null },
+  { id: "a1", path: "q3.pptx", name: "Q3 review", kind: "slides", modified_at: hoursAgo(3), excerpt: null },
+  { id: "b1", path: "plan.docx", name: "Project plan", kind: "docs", modified_at: hoursAgo(30), excerpt: { heading: "Project plan", text: "Goals and dates." } },
+  { id: "c1", path: "costs.xlsx", name: "Costs", kind: "sheets", modified_at: hoursAgo(31), excerpt: null },
 ];
 
 async function openPage(page: Page) {
   await page.route("**/api/artifacts", (route) => route.fulfill({ json: LISTED }));
+  await page.route("**/api/artifacts/*/open", (route) => route.fulfill({ json: { thread_id: "listed-a", path: "q3.pptx" } }));
   await page.addInitScript(() => localStorage.removeItem("coscribe.pinnedArtifacts"));
   await page.goto(freshThreadPath("art"));
   await waitForConnected(page);
