@@ -37,7 +37,7 @@ env:
   # A spec file in neither list fails the run, so a new spec is never skipped unnoticed.
   EXCLUDED: approval chat
   SPECS: >-
-    attachment code composer-drop-paste connector-setup connectors find labels navigation
+    artifacts attachment code composer-drop-paste connector-setup connectors find labels navigation
     docx-review panel-windows panels permissions rail-dialog secrets settings sidebar skill-plugins slides slides-panels titlebar
 
 jobs:
