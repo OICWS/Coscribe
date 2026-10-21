@@ -18,6 +18,7 @@ import type { CommentLink } from "../../lib/slideComments";
 import { SlideComments, useSlideComments, type CommentStart } from "./SlideComments";
 import { SlideEditor } from "./SlideEditor";
 import { SlideInsertBar } from "./SlideInsertBar";
+import { ConfirmDialog } from "../ConfirmDialog";
 import { NewSlideDialog } from "./NewSlideDialog";
 import { useSlideArranging } from "./useSlideArranging";
 import { useSlideHistory } from "./useSlideHistory";
@@ -622,8 +623,15 @@ function SlidesOverlays({
   onStopped: () => void;
 }) {
   const { presenting, index } = ui;
+  const [askingDiscard, setAskingDiscard] = useState(false);
   const menuEntries = (kind: Menu["kind"]) =>
-    entriesFor(kind, zoom, ui.view, { ...actions, ui, setZoom: ui.setZoom, present: (withNotes) => ui.setPresenting({ withNotes }) });
+    entriesFor(kind, zoom, ui.view, {
+      ...actions,
+      ui,
+      setZoom: ui.setZoom,
+      present: (withNotes) => ui.setPresenting({ withNotes }),
+      askDiscard: () => setAskingDiscard(true),
+    });
   const onStopPresenting = (last: number) => {
     ui.stopPresenting(last);
     onStopped();
@@ -637,6 +645,18 @@ function SlidesOverlays({
           width={menu.kind === "zoom" ? 210 : menu.kind === "download" ? 280 : 240}
           entries={menuEntries(menu.kind)}
           onClose={onCloseMenu}
+        />
+      )}
+      {askingDiscard && (
+        <ConfirmDialog
+          title="Discard my edits?"
+          description="Every change you made since coscribe's last version of this presentation is taken back."
+          confirmLabel="Discard"
+          onCancel={() => setAskingDiscard(false)}
+          onConfirm={() => {
+            setAskingDiscard(false);
+            actions.history.step("discard");
+          }}
         />
       )}
       {presenting && slides.length > 0 && (
@@ -653,13 +673,14 @@ interface MenuActions {
   open: (reveal: boolean) => void;
   download: (format: SlideExport) => void;
   ui: ReturnType<typeof useSlidesUi>;
+  askDiscard: () => void;
 }
 
 function entriesFor(kind: Menu["kind"], zoom: number, view: SlidesView, actions: MenuActions): MenuEntry[] {
   if (kind === "zoom") return zoomEntries(zoom, view, actions.setZoom, actions.history);
   if (kind === "download") return downloadEntries(actions.download);
   if (kind === "comments") return commentEntries(actions.ui);
-  return kind === "present" ? presentEntries(actions.present) : titleEntries(actions.open, actions.history);
+  return kind === "present" ? presentEntries(actions.present) : titleEntries(actions.open, actions.history, actions.askDiscard);
 }
 
 function commentEntries(ui: ReturnType<typeof useSlidesUi>): MenuEntry[] {

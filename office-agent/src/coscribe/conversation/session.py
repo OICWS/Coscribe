@@ -502,13 +502,14 @@ class ChatSessionLG:
         if future is not None and not future.done():
             future.set_result(answer)
 
-    def add_steer(self, steer_id: str, text: str) -> None:
-        """A note for the turn in progress, read before the model's next
-        step. With no turn running (it ended as the note was sent), it is
-        sent as a message instead."""
-        self._steers.append((steer_id, text))
-        if not self._turn_lock.locked():
-            asyncio.get_running_loop().create_task(self._send_unread_steers())
+    def add_steer(self, steer_id: str, text: str | None) -> None:
+        """A note for the turn in progress, read before its next step; `None` takes it back. With
+        no turn running (it ended as the note was sent), it is sent as a message instead."""
+        self._steers = [s for s in self._steers if s[0] != steer_id]
+        if text is not None:
+            self._steers.append((steer_id, text))
+            if not self._turn_lock.locked():
+                asyncio.get_running_loop().create_task(self._send_unread_steers())
 
     async def _take_steers(self) -> list[str]:
         if not self._steers:
@@ -516,10 +517,8 @@ class ChatSessionLG:
         steers, self._steers = self._steers, []
         socket = self._live_websocket or self._turn_websocket
         if socket is not None:
-            try:
+            with contextlib.suppress(Exception):  # the tab went away; the model still has them
                 await socket.send_json({"type": "steers_delivered", "ids": [i for i, _ in steers]})
-            except Exception:  # noqa: BLE001 -- the tab went away; the model still has them
-                pass
         return [text for _, text in steers]
 
     def _turn_lock_changed(self, active: bool) -> None:

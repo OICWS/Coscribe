@@ -1,6 +1,7 @@
 import { useContext, useState } from "react";
 import { type LogItem } from "../../state/reducer";
-import { PencilIcon } from "../icons";
+import { CloseIcon, PencilIcon } from "../icons";
+import { SteerActionsContext } from "./contexts";
 import { AttachmentDialog } from "../Attachments";
 import { ThreadIdContext } from "../threadContext";
 
@@ -23,6 +24,7 @@ const LONG_MESSAGE_COLLAPSE_CHARS = 1000;
 /** A note added while the reply was being worked on: a user bubble, with
  * whether the model has read it yet. */
 export function SteerView({ item }: { item: Extract<LogItem, { kind: "steer" }> }) {
+  const actions = useContext(SteerActionsContext);
   return (
     <div className="ml-auto flex max-w-[96%] flex-col items-end gap-1">
       <div
@@ -32,9 +34,31 @@ export function SteerView({ item }: { item: Extract<LogItem, { kind: "steer" }> 
       >
         {item.text}
       </div>
-      <span className="text-xs text-[var(--muted)]">
-        {item.status === "pending" ? "Will be read at the next step" : "Added while working"}
-      </span>
+      {item.status === "pending" && actions ? (
+        <div className="flex items-center gap-1 text-xs text-[var(--muted)]">
+          <button
+            type="button"
+            title="Cancel"
+            aria-label="Cancel"
+            className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
+            onClick={() => actions.withdraw(item.id)}
+          >
+            <CloseIcon className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            title="Interrupt the reply and send this now"
+            className="rounded-md px-1.5 py-0.5 hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
+            onClick={actions.sendNow}
+          >
+            Send now
+          </button>
+        </div>
+      ) : (
+        <span className="text-xs text-[var(--muted)]">
+          {item.status === "pending" ? "Will be read at the next step" : "Added while working"}
+        </span>
+      )}
     </div>
   );
 }

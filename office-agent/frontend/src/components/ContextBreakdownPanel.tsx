@@ -32,8 +32,11 @@ interface ContextBreakdownPanelProps {
   refreshKey: number;
 }
 
+/** The last breakdown read per thread: the popover shows it at once on opening and swaps in the fresh one. */
+const lastBreakdown = new Map<string, ContextBreakdown>();
+
 export function ContextBreakdownPanel({ threadId, refreshKey }: ContextBreakdownPanelProps) {
-  const [breakdown, setBreakdown] = useState<ContextBreakdown | null>(null);
+  const [breakdown, setBreakdown] = useState<ContextBreakdown | null>(lastBreakdown.get(threadId) ?? null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -41,6 +44,7 @@ export function ContextBreakdownPanel({ threadId, refreshKey }: ContextBreakdown
     setError(false);
     getContextBreakdown(threadId)
       .then((result) => {
+        lastBreakdown.set(threadId, result);
         if (!cancelled) setBreakdown(result);
       })
       .catch(() => {

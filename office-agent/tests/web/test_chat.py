@@ -269,6 +269,29 @@ def test_stop_drops_the_notes_the_model_has_not_read_lg(
     assert len(fake_model.received) == 1
 
 
+def test_a_withdrawn_note_is_never_read_by_the_model_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    call = _tool_call("call_1", "write_file", {"path": "note.txt", "content": "hi"})
+    fake_model = FakeToolCallingChatModel(
+        responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="done")]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_steer4") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "write hi to note.txt"})
+            approval = ws.receive_json()
+            assert approval["type"] == "approval_required"
+            ws.send_json({"type": "steer", "id": "s1", "text": "and make it a list"})
+            ws.send_json({"type": "steer", "id": "s1", "text": None})
+            ws.send_json({"type": "approval_response", "id": approval["id"], "approved": True})
+            messages = _receive_until(ws, "tasks_changed")
+
+    assert not any(m["type"] in ("steers_delivered", "steers_requeued") for m in messages)
+    assert "make it a list" not in str(fake_model.received[-1][-1].content)
+
+
 def test_the_sidebar_status_follows_a_conversation_from_waiting_to_ready_to_seen_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

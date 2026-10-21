@@ -164,7 +164,7 @@ def router(state: AppState) -> APIRouter:
                     else:
                         session.resolve_question(data["id"], str(data.get("answer", "")))
                 elif message_type == "steer":
-                    session.add_steer(str(data.get("id", "")), str(data.get("text", "")))
+                    session.add_steer(str(data.get("id", "")), data.get("text"))
                 elif message_type == "stop":
                     session.request_stop()
                     await session.run_interrupt_hooks()

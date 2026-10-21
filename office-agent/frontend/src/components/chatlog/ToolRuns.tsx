@@ -223,8 +223,8 @@ function ToolCallRow({
 
   return (
     <div
-      className={`max-w-[92%] self-start rounded-xl border bg-[var(--card-bg)] px-3 py-2 text-sm ${
-        isPendingApproval ? "border-[var(--accent)]" : "border-[var(--border)] hover:bg-[var(--panel-bg)]"
+      className={`max-w-[92%] self-start rounded-xl border px-3 py-2 text-sm ${
+        isPendingApproval ? "border-[var(--accent)] bg-[var(--bg)]" : "border-[var(--border)] bg-[var(--card-bg)] hover:bg-[var(--panel-bg)]"
       }`}
     >
       <button

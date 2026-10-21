@@ -508,11 +508,12 @@ class LoadOlderMessagesOut(TypedDict):
 
 
 class SteerOut(TypedDict):
-    """A note for the turn in progress: the model reads it before its next step."""
+    """A note for the turn in progress: the model reads it before its next step. A null text
+    takes the note back."""
 
     type: Literal["steer"]
     id: str
-    text: str
+    text: str | None
 
 
 ClientMessage = (

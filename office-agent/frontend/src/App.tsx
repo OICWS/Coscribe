@@ -37,6 +37,8 @@ import { PanelToggles } from "./components/dock/PanelToggles";
 import type { PanelId } from "./lib/dockLayout";
 import { isViewable } from "./lib/viewers";
 import { useCommentSender } from "./lib/commentReplies";
+import { useSteerNotes } from "./lib/steerNotes";
+import { SteerActionsContext } from "./components/chatlog/contexts";
 import { canOpenPanelWindows, focusPanelWindow, usePanelWindows } from "./lib/panelWindows";
 import { WorkflowDraftPage } from "./components/workflow/WorkflowDraftPage";
 import { WorkflowRunView } from "./components/workflow/WorkflowRunView";
@@ -653,24 +655,8 @@ function App() {
 
   const onSendComment = useCommentSender(threadId, state.items, state.turnInFlight, (text) => onSend({ displayText: text, outgoingText: text, isInstant: false }));
 
-  const onSteer = (text: string) => {
-    const id = `steer-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    dispatch({ type: "local_steer", id, text });
-    socketRef.current?.send({ type: "steer", id, text });
-  };
-
-  // A stop drops the notes the model hasn't read yet; their text goes back
-  // into the composer rather than being lost.
-  const onStop = () => {
-    const unread = state.items.filter(
-      (item): item is Extract<LogItem, { kind: "steer" }> => item.kind === "steer" && item.status === "pending",
-    );
-    if (unread.length > 0) {
-      dispatch({ type: "local_steers_withdrawn", ids: unread.map((item) => item.id) });
-      setPendingComposerText(unread.map((item) => item.text).join("\n\n"));
-    }
-    socketRef.current?.send({ type: "stop" });
-  };
+  const steers = useSteerNotes(state, dispatch, (message) => socketRef.current?.send(message), setPendingComposerText, onSend);
+  const { steer: onSteer, stop: onStop } = steers;
 
   const onEditMessage = (turnIndex: number, text: string) => {
     dispatch({ type: "local_edit_message", turnIndex, text });
@@ -984,7 +970,7 @@ function App() {
                   {composer}
                 </div>
               ) : navMode === "create" ? (
-                <>
+                <SteerActionsContext.Provider value={steers.actions}>
                   <ChatLog
                     items={state.items}
                     turnInFlight={state.turnInFlight}
@@ -1024,7 +1010,7 @@ function App() {
                     <QuestionPanel key={pendingQuestion.id} item={pendingQuestion} onAnswer={onAnswerQuestion} />
                   )}
                   {composer}
-                </>
+                </SteerActionsContext.Provider>
               ) : workflowDraft ? (
                 <WorkflowDraftPage
                   threadId={workflowDraft.threadId}
