@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { isViewable } from "../../lib/viewers";
-import type { PanelId } from "../../lib/dockLayout";
+import { PANEL_TITLES, type PanelId } from "../../lib/dockLayout";
 import {
   dockPanelWindow,
   onPanelWindowState,
@@ -12,17 +12,12 @@ import {
 import { useTitleBarColors } from "../../lib/titleBar";
 import { BackgroundTasksPanel } from "../BackgroundTasksPanel";
 import { BrowserPanel } from "../BrowserPanel";
+import { PlanPanel } from "../PlanPanel";
 import { ViewerPanel } from "../ViewerPanel";
 import { DockBackIcon, PinIcon } from "./windowIcons";
 import { TaskPanel } from "../TaskPanel";
 import { DockPanelContext, type DockPanelApi } from "./dockContext";
 
-const TITLES: Record<PanelId, string> = {
-  task: "Task details",
-  browser: "Browser",
-  background: "Background tasks",
-  viewer: "Viewer",
-};
 
 const button =
   "flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]";
@@ -44,7 +39,7 @@ export function PanelWindow({ panel }: { panel: PanelId }) {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  const title = state?.panel === "viewer" && state.path ? (state.path.split(/[\\/]/).pop() ?? TITLES.viewer) : TITLES[panel];
+  const title = state?.panel === "viewer" && state.path ? (state.path.split(/[\\/]/).pop() ?? PANEL_TITLES.viewer) : PANEL_TITLES[panel];
   useEffect(() => {
     document.title = `${title} · coscribe`;
   }, [title]);
@@ -138,6 +133,7 @@ function PanelContent({ state }: { state: PanelWindowState }) {
       />
     );
   }
+  if (state.panel === "plan") return <PlanPanel tasks={state.tasks} plan={state.plan} busy={state.busy} />;
   if (state.path) {
     return (
       <ViewerPanel
@@ -168,7 +164,7 @@ function ViewerHeader({ children }: { children: React.ReactNode }) {
       {(dock) => (
         <div className="flex h-full min-h-0 flex-col">
           <div className="flex h-12 shrink-0 items-center gap-2 px-3" {...dock.headerProps}>
-            <span className="min-w-0 flex-1 truncate px-1 text-[15px]">{TITLES.viewer}</span>
+            <span className="min-w-0 flex-1 truncate px-1 text-[15px]">{PANEL_TITLES.viewer}</span>
             {dock.controls}
           </div>
           {children}

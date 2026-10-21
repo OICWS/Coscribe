@@ -1,0 +1,54 @@
+import type { ProgressItem, ProgressStatus } from "../lib/workflowProgress";
+
+const RING = "h-[18px] w-[18px] shrink-0";
+
+/** One item's state: a filled tick when done, dots while it is being worked,
+ * a dashed circle when it waits. */
+export function TaskStatusIcon({ status, live = false }: { status: ProgressStatus; live?: boolean }) {
+  if (status === "completed") {
+    return (
+      <svg viewBox="0 0 18 18" className={`${RING} text-[var(--muted)]`} aria-label="Done" role="img">
+        <circle cx="9" cy="9" r="8" fill="currentColor" />
+        <path d="M5.5 9.2l2.4 2.4 4.6-5" fill="none" stroke="var(--bg)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (status === "in_progress") {
+    return (
+      <svg viewBox="0 0 18 18" className={`${RING} text-[var(--fg)] ${live ? "motion-safe:animate-pulse" : ""}`} aria-label="In progress" role="img">
+        <circle cx="9" cy="9" r="7.4" fill="none" stroke="currentColor" strokeWidth="1.4" />
+        <circle cx="5.6" cy="9" r="1" fill="currentColor" />
+        <circle cx="9" cy="9" r="1" fill="currentColor" />
+        <circle cx="12.4" cy="9" r="1" fill="currentColor" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 18 18" className={`${RING} text-[var(--muted)]`} aria-label="To do" role="img">
+      <circle cx="9" cy="9" r="7.4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeDasharray="2.6 2.6" />
+    </svg>
+  );
+}
+
+/** The items of a task list, one per line; a finished one is struck through
+ * in the Plan panel and only greyed in the conversation. */
+export function TaskList({ tasks, strike = false, live = false }: { tasks: ProgressItem[]; strike?: boolean; live?: boolean }) {
+  return (
+    <ol className="flex flex-col gap-2.5">
+      {tasks.map((task) => (
+        <li key={task.id} className="flex items-start gap-2.5 text-[15px] leading-6">
+          <span className="mt-[3px]">
+            <TaskStatusIcon status={task.status} live={live} />
+          </span>
+          <span
+            className={`min-w-0 [overflow-wrap:anywhere] ${
+              task.status === "completed" ? `text-[var(--muted)] ${strike ? "line-through" : ""}` : ""
+            }`}
+          >
+            {task.content}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}

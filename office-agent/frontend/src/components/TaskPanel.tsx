@@ -41,6 +41,8 @@ interface TaskPanelProps {
   busy?: boolean;
   /** Shows a file in the viewer panel; files it can't show open in their own app. */
   onView?: (path: string) => boolean;
+  /** Opens the Plan panel, which then shows the task list instead of Progress here. */
+  onOpenPlan?: () => void;
 }
 
 function readCollapsed(): Set<SectionId> {
@@ -60,6 +62,7 @@ export function TaskPanel({
   onSaveAsWorkflow,
   busy = false,
   onView,
+  onOpenPlan,
 }: TaskPanelProps) {
   const [activity, setActivity] = useState<ThreadActivity | null>(null);
   const [collapsed, setCollapsed] = useState<Set<SectionId>>(readCollapsed);
@@ -152,11 +155,7 @@ export function TaskPanel({
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <Section id="progress" title="Progress" collapsed={collapsed} onToggle={toggle}>
-          {progressItems ? (
-            <ProgressView tasks={progressItems} unit={workflowSteps ? "steps" : undefined} />
-          ) : (
-            <EmptyState art={<ProgressArt />} text="See task progress for longer tasks." />
-          )}
+          <ProgressSection tasks={progressItems} steps={workflowSteps} onOpenPlan={onOpenPlan} />
         </Section>
 
         <Section id="outputs" title="Outputs" count={activity?.outputs.length} collapsed={collapsed} onToggle={toggle}>
@@ -295,6 +294,26 @@ const STEP_TEXT_CLASS: Record<ProgressStatus, string> = {
   completed: "text-[var(--muted)]",
   failed: "font-medium text-[var(--danger)]",
 };
+
+/** Progress: the task list's summary and a way into the Plan panel, which shows the list itself. */
+function ProgressSection({ tasks, steps, onOpenPlan }: { tasks: ProgressItem[] | null; steps: ProgressItem[] | null; onOpenPlan?: () => void }) {
+  if (tasks && !steps && onOpenPlan) {
+    return (
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-left text-[13px] hover:bg-[var(--card-bg)]"
+        onClick={onOpenPlan}
+      >
+        <span className="tabular-nums text-[var(--muted)]">
+          {tasks.filter((t) => t.status === "completed").length} of {tasks.length} done
+        </span>
+        <span>Open plan</span>
+      </button>
+    );
+  }
+  if (tasks) return <ProgressView tasks={tasks} unit={steps ? "steps" : undefined} />;
+  return <EmptyState art={<ProgressArt />} text="See task progress for longer tasks." />;
+}
 
 function ProgressView({ tasks, unit }: { tasks: ProgressItem[]; unit?: string }) {
   const done = tasks.filter((t) => t.status === "completed").length;
