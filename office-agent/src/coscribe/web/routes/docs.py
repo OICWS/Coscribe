@@ -9,7 +9,13 @@ from pathlib import Path
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from ...tools import BlocksRefused, DocChanged, read_doc_blocks, save_doc_blocks
+from ...tools import (
+    BlocksRefused,
+    DocChanged,
+    read_doc_blocks,
+    remember_before_edit,
+    save_doc_blocks,
+)
 from ..schemas import DocBlocksSave
 from ..state import AppState
 
@@ -43,6 +49,8 @@ def router(state: AppState) -> APIRouter:
         if file is None:
             return JSONResponse({"error": _NO_DOC}, status_code=404)
         try:
+            # The file as it is before the first save since coscribe was told, to tell it later.
+            await asyncio.to_thread(remember_before_edit, file, state.settings.state_dir)
             saved = await asyncio.to_thread(save_doc_blocks, file, body.version, body.blocks)
         except DocChanged:
             return JSONResponse({"error": _CHANGED, "changed": True}, status_code=409)

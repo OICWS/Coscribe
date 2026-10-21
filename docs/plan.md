@@ -177,7 +177,7 @@ Last reviewed: 2026-10-15.
    tools for a conversation to list and read existing artifacts (next), scheduled runs' files, dashboards, and pins kept on the server (now in the browser).
    Docs (2026-10-21, decision 0019 accepted; research in docs/assessments/2026-10-21-docx-editing.md; editor library Tiptap 3, built first then evaluated): the .docx itself, previewed and edited in the Word panel by styles (headings,
    bold, italic, lists, links, tables, images), only the changed blocks rewritten, the person's Word edits never overwritten. Order:
-   block reader and writer, editor panel, hand-offs to coscribe. Version history is wanted, not in v1.
+   block reader and writer, editor panel (done), the person's edits told to coscribe (done), then images, divider, page break, undo across coscribe's turns. Version history is wanted, not in v1.
    Chat (maintainer, 2026-10-21, agreed, not started): (1) a tool row opens to plain "name: value" lines, `$ command` and its
    output for a command, a sentence for a file read or write, and a "Raw" fold for the JSON; (2) a Plan card: in Plan mode the
    conversation shows one live card (items ticking off, the commands folded inside it) that goes when the plan is done,

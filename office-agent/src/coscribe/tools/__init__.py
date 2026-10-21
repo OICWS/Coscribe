@@ -100,7 +100,14 @@ from .mcp import (
     with_secrets,
 )
 from .office.document_tools import DocumentToolkit, build_document_tools
-from .office.docx import BlocksRefused, DocChanged, read_doc_blocks, save_doc_blocks
+from .office.docx import (
+    BlocksRefused,
+    DocChanged,
+    edits_since_told,
+    read_doc_blocks,
+    remember_before_edit,
+    save_doc_blocks,
+)
 from .office.pptx import (
     NEW_DECK_INSTRUCTIONS,
     CommentNotFound,
@@ -234,6 +241,8 @@ __all__ = [
     "deck_pdf",
     "BlocksRefused",
     "DocChanged",
+    "edits_since_told",
+    "remember_before_edit",
     "read_doc_blocks",
     "save_doc_blocks",
     "copy_deck",
