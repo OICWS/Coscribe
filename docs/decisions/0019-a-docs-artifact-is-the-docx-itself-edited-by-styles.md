@@ -1,7 +1,8 @@
 # 0019: A Docs artifact is the .docx itself, edited in the app block by block, by styles not fonts
 
-Status: proposed (2026-10-21). The maintainer agreed the direction in conversation; this record
-waits for acceptance. Builds on 0013 (house style) and 0015 (what coscribe makes is an artifact).
+Status: accepted (2026-10-21, by the maintainer, with the research in
+`docs/assessments/2026-10-21-docx-editing.md`: Tiptap 3 for the editor, the block reader and writer
+our own). Builds on 0013 (house style) and 0015 (what coscribe makes is an artifact).
 
 ## Context
 Claude has two things: an online Docs object (rich text in the cloud, exported to Word on demand)
