@@ -84,6 +84,7 @@ class HistoryHost(Protocol):
         images: list[str] | None = None,
         *,
         notice: bool = False,
+        artifact: str | None = None,
     ) -> None: ...
 
 

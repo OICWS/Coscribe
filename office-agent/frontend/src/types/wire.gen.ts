@@ -394,6 +394,11 @@ export interface UserMessageOut {
   type: "user_message";
   text: string;
   images?: string[];
+  /**
+   * The first message of a conversation started from the Artifacts page: what it is
+   * to make.
+   */
+  artifact?: "docs" | "slides" | "sheets";
 }
 
 /**

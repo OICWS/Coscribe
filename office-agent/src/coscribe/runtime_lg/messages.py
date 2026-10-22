@@ -106,6 +106,33 @@ def current_date_note() -> str:
     )
 
 
+_ARTIFACTS = {
+    "docs": (
+        "a new Word document the app opens in its editor. Make one .docx file with write_docx "
+        "and say its name when it is done"
+    ),
+    "slides": (
+        "a new presentation the app opens in its Slides panel. Build it from pages, as your "
+        "instructions for new decks say"
+    ),
+    "sheets": (
+        "a new Excel workbook the app opens in its viewer. Build it with write_xlsx_cells, "
+        "after loading the Excel Spreadsheets skill"
+    ),
+}
+_ARTIFACT_NOTE_RE = re.compile(
+    r"^\[The user is starting a (?:Docs|Slides|Sheets) artifact: [^\]]*\] "
+)
+
+
+def artifact_note(kind: str | None) -> str:
+    """What the conversation's first message is to make, when it started from the Artifacts page;
+    it goes with the message, never in the system prompt or a tool schema."""
+    if kind not in _ARTIFACTS:
+        return ""
+    return f"[The user is starting a {kind.capitalize()} artifact: {_ARTIFACTS[kind]}.] "
+
+
 _LANGUAGE_NOTE_RE = re.compile(r"^\[The user writes in [^:\]]+: [^\]]*\] ")
 
 
@@ -165,7 +192,7 @@ def _strip_turn_notes(text: str) -> str:
         if text.startswith(note):
             text = text[len(note) :]
             break
-    return _LANGUAGE_NOTE_RE.sub("", text, count=1)
+    return _LANGUAGE_NOTE_RE.sub("", _ARTIFACT_NOTE_RE.sub("", text, count=1), count=1)
 
 
 def strip_mode_note(text: str) -> str:

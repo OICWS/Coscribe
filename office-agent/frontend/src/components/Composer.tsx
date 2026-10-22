@@ -1,5 +1,7 @@
 import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { KINDS, type ArtifactKind } from "../lib/artifacts";
 import { useComposerAction } from "../lib/menuCommands";
+import { ArtifactChip } from "./ArtifactChip";
 import { uploadFile } from "../lib/rest";
 import { ThreadIdContext } from "./threadContext";
 import type { CommandInfo } from "../types/session";
@@ -110,6 +112,10 @@ interface ComposerProps {
    * review/edit before hitting Enter themselves. */
   externalText: string | null;
   onExternalTextConsumed: () => void;
+  /** The kind this conversation's first message is to make, when it started from the Artifacts
+   * page: shown as a chip, and the box asks for it. */
+  artifact: ArtifactKind | null;
+  onArtifactRemoved: () => void;
 }
 
 export function Composer({
@@ -132,6 +138,8 @@ export function Composer({
   onExternalPptxCaptureConsumed,
   externalText,
   onExternalTextConsumed,
+  artifact,
+  onArtifactRemoved,
 }: ComposerProps) {
   const threadId = useContext(ThreadIdContext);
   const [value, setValue] = useState("");
@@ -530,12 +538,13 @@ export function Composer({
           </div>
         )}
 
+        {artifact && <ArtifactChip kind={artifact} onRemove={onArtifactRemoved} />}
         <textarea
           ref={textareaRef}
           className="max-h-40 w-full resize-none bg-transparent px-0.5 pr-9 text-[0.9rem] leading-normal outline-none"
           rows={1}
           value={value}
-          placeholder="Type / for commands"
+          placeholder={(artifact && KINDS[artifact].placeholder) || "Type / for commands"}
           onChange={(event) => {
             setValue(event.target.value);
             updateAutocomplete(event.target.value);

@@ -229,7 +229,7 @@
  },
  "fan_out": {},
  "file_lines": {
-  "src/coscribe/conversation/session.py": 1273,
+  "src/coscribe/conversation/session.py": 1279,
   "src/coscribe/coordinator.py": 845,
   "src/coscribe/runtime_lg/subagents.py": 836,
   "src/coscribe/tools/bookkeeping/scheduled_tasks.py": 1054,
@@ -239,7 +239,7 @@
  },
  "frontend_file_lines": {
   "office-agent-desktop/src/main/browserAgent.ts": 934,
-  "office-agent/frontend/src/App.tsx": 1060,
+  "office-agent/frontend/src/App.tsx": 1064,
   "office-agent/frontend/src/components/icons.tsx": 803,
   "office-agent/frontend/src/components/workflow/WorkflowRunView.tsx": 860
  },
@@ -247,14 +247,14 @@
   "office-agent-desktop/src/main/browserAgent.ts::act": 156,
   "office-agent-desktop/src/main/browserAgent.ts::startBrowserAgent": 140,
   "office-agent-desktop/src/main/browserAgentPage.ts::pageAgent": 343,
-  "office-agent/frontend/src/App.tsx::App": 968,
+  "office-agent/frontend/src/App.tsx::App": 971,
   "office-agent/frontend/src/components/AllowedSitesDialog.tsx::AllowedSitesDialog": 132,
   "office-agent/frontend/src/components/Attachments.tsx::AttachmentDialog": 106,
   "office-agent/frontend/src/components/BackgroundTasksPanel.tsx::BackgroundTasksPanel": 162,
   "office-agent/frontend/src/components/BrowserAnnotator.tsx::BrowserAnnotator": 229,
   "office-agent/frontend/src/components/BrowserPanel.tsx::ScreencastBrowserPanel": 536,
-  "office-agent/frontend/src/components/ChatLog.tsx::ChatLog": 175,
-  "office-agent/frontend/src/components/Composer.tsx::Composer": 500,
+  "office-agent/frontend/src/components/ChatLog.tsx::ChatLog": 171,
+  "office-agent/frontend/src/components/Composer.tsx::Composer": 503,
   "office-agent/frontend/src/components/DesktopBrowserPanel.tsx::DesktopBrowserPanel": 386,
   "office-agent/frontend/src/components/DocxViewerPanel.tsx::DocxViewerPanel": 279,
   "office-agent/frontend/src/components/EffortPicker.tsx::EffortPicker": 144,
@@ -321,7 +321,7 @@
  "long_functions": {
   "src/coscribe/cli.py::_chat_async": 108,
   "src/coscribe/conversation/session.py::ChatSessionLG.__init__": 206,
-  "src/coscribe/conversation/session.py::ChatSessionLG._handle_user_message_locked": 208,
+  "src/coscribe/conversation/session.py::ChatSessionLG._handle_user_message_locked": 210,
   "src/coscribe/conversation/turn_stream.py::TurnStreamer.stream_turn": 115,
   "src/coscribe/coordinator.py::build_coordinator_agent": 152,
   "src/coscribe/runtime_lg/agent.py::build_langgraph_agent": 187,
@@ -351,8 +351,8 @@
   "src/coscribe/web/routes/files.py::router": 163,
   "src/coscribe/web/routes/settings/providers.py::router": 138,
   "src/coscribe/web/routes/skills.py::router": 220,
-  "src/coscribe/web/routes/ws.py::router": 205,
-  "src/coscribe/web/routes/ws.py::router.ws_endpoint": 120
+  "src/coscribe/web/routes/ws.py::router": 208,
+  "src/coscribe/web/routes/ws.py::router.ws_endpoint": 123
  },
  "patch_by_string": {},
  "startup_imports": {

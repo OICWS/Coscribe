@@ -63,6 +63,24 @@ def test_reconnect_replays_a_sent_images_data_urls_lg(
     }
 
 
+def test_a_message_that_starts_an_artifact_keeps_the_note_out_of_the_replayed_history(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="on it")])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_artifact") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history -- empty, brand new thread
+            ws.send_json({"type": "user_message", "text": "a deck about tea", "artifact": "slides"})
+            _receive_until(ws, "tasks_changed")
+
+        with client.websocket_connect("/ws/t_artifact") as ws:
+            ws.receive_json()  # state
+            history = ws.receive_json()
+
+    assert history["entries"][0] == {"kind": "user", "text": "a deck about tea"}
+
+
 class _SlowSecondReplyModel(FakeToolCallingChatModel):
     """The second reply takes a while, so a test can open and close a tab
     while that turn is still going."""

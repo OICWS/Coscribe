@@ -66,6 +66,8 @@ export function showArtifacts(): void {
   });
 }
 
-export function startNewThread(): void {
-  goToThread(crypto.randomUUID().slice(0, 8));
+export function startNewThread(): string {
+  const id = crypto.randomUUID().slice(0, 8);
+  goToThread(id);
+  return id;
 }

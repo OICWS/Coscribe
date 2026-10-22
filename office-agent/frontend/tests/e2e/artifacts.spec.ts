@@ -63,7 +63,7 @@ test("the sidebar opens the Artifacts page, which lists, searches, filters and p
   await page.evaluate(() => localStorage.removeItem("coscribe.artifactsLayout"));
 });
 
-test("a card opens its conversation, and a kind starts a new one with its first words typed", async ({ page }) => {
+test("a card opens its conversation, and a kind starts a new one with a chip and a prompt for it", async ({ page }) => {
   await openPage(page);
   await page.getByRole("button", { name: /^Open Q3 review/ }).click();
   await expect(page).toHaveURL(/thread=listed-a/);
@@ -73,7 +73,25 @@ test("a card opens its conversation, and a kind starts a new one with its first 
   await page.getByRole("button", { name: "Artifacts" }).click();
   await page.getByRole("button", { name: /^Slides/ }).click();
   await expect(page).not.toHaveURL(/view=artifacts/);
-  await expect(page.getByPlaceholder("Type / for commands")).toHaveValue("Make a presentation about ");
+  const box = page.getByPlaceholder("Describe the presentation you want");
+  await expect(box).toHaveValue("");
+  await expect(page.getByRole("button", { name: "Remove Slides mode" })).toBeVisible();
+
+  // The kind is only a request: the chip goes away, and the ordinary box is back.
+  await page.getByRole("button", { name: "Remove Slides mode" }).click();
+  await expect(page.getByPlaceholder("Type / for commands")).toBeVisible();
+});
+
+test("the first message of a kind is sent as what to make, and the replayed history shows only what was typed", async ({ page }) => {
+  await openPage(page);
+  await page.getByRole("button", { name: /^Docs/ }).click();
+  await page.getByPlaceholder("Describe the document you want").fill("a one-page note on tea");
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("a one-page note on tea")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Remove Docs mode" })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText("a one-page note on tea")).toBeVisible();
+  await expect(page.getByText("starting a Docs artifact")).toHaveCount(0);
 });
 
 test("a card's menu renames, copies and deletes through the app's own dialogs", async ({ page }) => {

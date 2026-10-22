@@ -129,7 +129,10 @@ def router(state: AppState) -> APIRouter:
                 if message_type == "user_message":
                     asyncio.create_task(
                         session.handle_user_message(
-                            data["text"], websocket, images=data.get("images")
+                            data["text"],
+                            websocket,
+                            images=data.get("images"),
+                            artifact=data.get("artifact"),
                         )
                     )
                 elif message_type == "edit_message":

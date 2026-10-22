@@ -67,6 +67,7 @@ from ..runtime_lg import (
     SilentSocket,
     SubAgentHost,
     Verdict,
+    artifact_note,
     context_note,
     current_date_note,
     for_conversation,
@@ -1034,6 +1035,7 @@ class ChatSessionLG:
         text: str,
         websocket: EventSink,
         images: list[str] | None = None,
+        artifact: str | None = None,
     ) -> None:
         # See _turn_lock's docstring in __init__: this serializes turns so a
         # message sent while one is still running waits its turn instead of
@@ -1052,7 +1054,9 @@ class ChatSessionLG:
                 self._current_turn_task = asyncio.current_task()
                 self._report_turns_in_row = 0
                 self.turn_running = True
-                await self._handle_user_message_locked(text, websocket, images=images)
+                await self._handle_user_message_locked(
+                    text, websocket, images=images, artifact=artifact
+                )
         finally:
             self.turn_running = False
             # Worth a look in the sidebar unless someone had the
@@ -1070,6 +1074,7 @@ class ChatSessionLG:
         images: list[str] | None = None,
         *,
         notice: bool = False,
+        artifact: str | None = None,
     ) -> None:
         await self._run_observational_hooks(
             "UserPromptSubmit",
@@ -1152,6 +1157,7 @@ class ChatSessionLG:
         model_input = (
             current_date_note()
             + mode_note
+            + artifact_note(artifact)
             + language_note(text)
             + deck_note
             + ("" if told else context_note(context))
