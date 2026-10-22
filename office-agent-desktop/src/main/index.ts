@@ -18,6 +18,7 @@ import { registerBrowserPanelHandlers, destroyBrowserPanel } from "./browserPane
 import { startBrowserAgent } from "./browserAgent";
 import { registerBrowserPermissionHandlers } from "./browserPermissions";
 import { registerPanelWindowHandlers } from "./panelWindows";
+import { registerSessionActivityHandlers } from "./sessionActivity";
 
 // MUST run before anything else touches the window: a second launch
 // fires the 'second-instance' handler below in the ALREADY-running
@@ -51,6 +52,7 @@ if (!gotLock) {
     });
 
     registerWindowChromeHandlers();
+    registerSessionActivityHandlers();
     const win = createMainWindow(port, preloadPath());
     registerDialogHandlers(win);
     registerBrowserPanelHandlers(win);

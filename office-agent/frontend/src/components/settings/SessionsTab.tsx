@@ -1,5 +1,11 @@
 import { ToggleSwitch } from "../ToggleSwitch";
-import { PROMPT_SUGGESTIONS_KEY } from "./fields";
+import { isElectron } from "../../lib/electron";
+import {
+  FLASH_ON_ATTENTION_KEY,
+  KEEP_AWAKE_KEY,
+  KEEP_AWAKE_ON_BATTERY_KEY,
+  PROMPT_SUGGESTIONS_KEY,
+} from "./fields";
 import { SettingRow, SettingRows, SettingsSection } from "./SettingRow";
 
 interface SessionsTabProps {
@@ -8,7 +14,9 @@ interface SessionsTabProps {
 }
 
 export function SessionsTab({ values, onChange }: SessionsTabProps) {
-  const suggestions = values[PROMPT_SUGGESTIONS_KEY] !== "false";
+  const on = (key: string) => values[key] !== "false";
+  const toggle = (key: string) => onChange(key, on(key) ? "false" : "true");
+  const suggestions = on(PROMPT_SUGGESTIONS_KEY);
   return (
     <SettingsSection title="Sessions">
       <SettingRows>
@@ -23,6 +31,44 @@ export function SessionsTab({ values, onChange }: SessionsTabProps) {
             />
           }
         />
+        {isElectron() && (
+          <>
+            <SettingRow
+              label="Draw attention when coscribe needs you"
+              description="Flash the taskbar button when a reply finishes or coscribe is waiting for you, and the window isn't in front."
+              control={
+                <ToggleSwitch
+                  label="Draw attention when coscribe needs you"
+                  on={on(FLASH_ON_ATTENTION_KEY)}
+                  onClick={() => toggle(FLASH_ON_ATTENTION_KEY)}
+                />
+              }
+            />
+            <SettingRow
+              label="Keep computer awake while coscribe works"
+              description="Stop your computer from sleeping while a reply is being worked on, so long tasks can finish. The display can still turn off, and closing the laptop lid still sleeps it."
+              control={
+                <ToggleSwitch
+                  label="Keep computer awake while coscribe works"
+                  on={on(KEEP_AWAKE_KEY)}
+                  onClick={() => toggle(KEEP_AWAKE_KEY)}
+                />
+              }
+            />
+            {on(KEEP_AWAKE_KEY) && (
+              <SettingRow
+                label="Keep awake on battery power"
+                control={
+                  <ToggleSwitch
+                    label="Keep awake on battery power"
+                    on={on(KEEP_AWAKE_ON_BATTERY_KEY)}
+                    onClick={() => toggle(KEEP_AWAKE_ON_BATTERY_KEY)}
+                  />
+                }
+              />
+            )}
+          </>
+        )}
       </SettingRows>
     </SettingsSection>
   );

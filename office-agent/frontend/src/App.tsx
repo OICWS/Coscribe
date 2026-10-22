@@ -75,6 +75,7 @@ import {
 } from "./lib/nav";
 import { latestRun, taskForThread } from "./lib/runLabels";
 import { describeSchedule } from "./lib/scheduleLabels";
+import { useSessionSignals } from "./lib/sessionSignals";
 import type { WorkflowDraftEntry } from "./lib/transcriptGrouping";
 import { EMPTY_WORKFLOW } from "./lib/workflowEdit";
 import { recordKey, workflowProgress, workflowRunLabel } from "./lib/workflowProgress";
@@ -93,6 +94,7 @@ function App() {
   const [state, dispatch] = useReducer(chatReducer, initialChatState);
   const socketRef = useRef<AgentSocket | null>(null);
   const [threadId, setThreadId] = useState(resolveThreadId);
+  useSessionSignals(threadId, state.turnInFlight, state.items);
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Find in page: null while closed; bumped to refocus an open one.
   const [findKey, setFindKey] = useState<number | null>(null);

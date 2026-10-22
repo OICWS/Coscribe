@@ -38,6 +38,9 @@ export interface ConfigResponse {
   COSCRIBE_CODE_MODEL: string | null;
   COSCRIBE_CODE_MODULE_ENABLED: string | null;
   COSCRIBE_PROMPT_SUGGESTIONS: string | null;
+  COSCRIBE_FLASH_ON_ATTENTION: string | null;
+  COSCRIBE_KEEP_AWAKE: string | null;
+  COSCRIBE_KEEP_AWAKE_ON_BATTERY: string | null;
   COSCRIBE_REVIEWER_NAME: string | null;
   /** Desktop-shell-only, Rust-consumed (see office-agent-desktop's
    * lib.rs) -- "false" opts out of the default hide-on-close/keep-

@@ -105,6 +105,18 @@ export function shouldKeepRunningInBackground(): boolean {
   return value.trim().toLowerCase() !== "false";
 }
 
+/** An absent setting means on; only "false" turns these Sessions settings off. */
+function onUnlessFalse(name: string): boolean {
+  return readEnvFile()[name]?.trim().toLowerCase() !== "false";
+}
+
+/** Flash the taskbar button when coscribe needs the person and the window is not focused. */
+export const flashOnAttention = (): boolean => onUnlessFalse("COSCRIBE_FLASH_ON_ATTENTION");
+/** Keep the computer from sleeping while a turn runs. */
+export const keepAwake = (): boolean => onUnlessFalse("COSCRIBE_KEEP_AWAKE");
+/** Keep it awake on battery power too. */
+export const keepAwakeOnBattery = (): boolean => onUnlessFalse("COSCRIBE_KEEP_AWAKE_ON_BATTERY");
+
 export type NotificationLevel = "all" | "problems" | "off";
 
 /** Which finished runs get a notification (`COSCRIBE_NOTIFICATIONS`, set

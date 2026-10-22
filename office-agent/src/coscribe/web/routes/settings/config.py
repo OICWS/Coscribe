@@ -72,7 +72,13 @@ LIVE_SETTINGS = {
 # restart_required computation is keyed off COSCRIBE_ENV_VARS membership,
 # and this one needs no coscribe-web restart to take effect (the desktop
 # shell just re-reads the file at the next window-close, live).
-DESKTOP_ENV_VARS = ["COSCRIBE_BACKGROUND_ON_CLOSE", "COSCRIBE_NOTIFICATIONS"]
+DESKTOP_ENV_VARS = [
+    "COSCRIBE_BACKGROUND_ON_CLOSE",
+    "COSCRIBE_NOTIFICATIONS",
+    "COSCRIBE_FLASH_ON_ATTENTION",
+    "COSCRIBE_KEEP_AWAKE",
+    "COSCRIBE_KEEP_AWAKE_ON_BATTERY",
+]
 
 
 # Kept in .env rather than the browser's own storage: the desktop app

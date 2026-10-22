@@ -55,6 +55,11 @@ export const CODE_MODULE_ENABLED_KEY = "COSCRIBE_CODE_MODULE_ENABLED";
 /** Absent means on; only "false" turns it off. */
 export const PROMPT_SUGGESTIONS_KEY = "COSCRIBE_PROMPT_SUGGESTIONS";
 
+/** Desktop-shell-only, like NOTIFICATIONS_KEY; absent means on. */
+export const FLASH_ON_ATTENTION_KEY = "COSCRIBE_FLASH_ON_ATTENTION";
+export const KEEP_AWAKE_KEY = "COSCRIBE_KEEP_AWAKE";
+export const KEEP_AWAKE_ON_BATTERY_KEY = "COSCRIBE_KEEP_AWAKE_ON_BATTERY";
+
 export const PERMISSION_MODE_KEY = "COSCRIBE_DEFAULT_PERMISSION_MODE";
 export const PERMISSION_MODES = [
   { value: "manual", label: "Manual" },

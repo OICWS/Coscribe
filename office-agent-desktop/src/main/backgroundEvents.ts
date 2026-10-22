@@ -10,6 +10,7 @@
 
 import { Notification } from "electron";
 import { Readable } from "node:stream";
+import { requestAttention } from "./sessionActivity";
 import { notificationLevel } from "./sidecar";
 
 const RECONNECT_DELAY_MS = 2000;
@@ -51,6 +52,7 @@ function notify(event: BackgroundEvent, open: (threadId: string) => void): void 
   const threadId = event.thread_id;
   if (threadId) notification.on("click", () => open(threadId));
   notification.show();
+  if (event.status !== "completed") requestAttention();
 }
 
 /** Runs for the life of the app -- an outer loop that reconnects, and an

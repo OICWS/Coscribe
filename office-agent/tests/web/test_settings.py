@@ -246,6 +246,25 @@ def test_post_config_can_set_background_on_close_without_requiring_restart(
     assert dotenv_values(tmp_path / ".env")["COSCRIBE_BACKGROUND_ON_CLOSE"] == "false"
 
 
+def test_post_config_saves_the_desktop_session_settings_without_a_restart(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("", encoding="utf-8")
+    fake_model = FakeToolCallingChatModel(responses=[])
+    updates = {
+        "COSCRIBE_FLASH_ON_ATTENTION": "false",
+        "COSCRIBE_KEEP_AWAKE": "false",
+        "COSCRIBE_KEEP_AWAKE_ON_BATTERY": "false",
+    }
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        response = client.post("/api/config", json={"updates": updates})
+        shown = client.get("/api/config").json()
+
+    assert response.json() == {"restart_required": False, "rejected": {}}
+    assert {key: shown[key] for key in updates} == updates
+
+
 def test_get_and_post_memory_round_trip_the_global_instructions_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
