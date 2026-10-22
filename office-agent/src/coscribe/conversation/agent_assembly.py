@@ -35,6 +35,7 @@ from ..runtime_lg import (
 from ..tools import (
     QUESTION_TOOL_NAMES,
     TASK_DRAFT_TOOL_NAMES,
+    WorkspaceScope,
     format_skill_listing,
     load_builtin_skills,
     load_skills,
@@ -61,6 +62,8 @@ class AssemblyHost(Protocol):
     _last_usage_metadata: UsageMetadata | None
     _base_tools: list[Callable[..., Any] | BaseTool]
     _extra_tools: list[Callable[..., Any] | BaseTool]
+
+    def workspace_scope(self) -> WorkspaceScope: ...
 
     def _subagent_host(self, model: Any) -> SubAgentHost: ...
 
@@ -178,6 +181,7 @@ class AgentAssembly:
             core_tool_names=core_names,
             take_steers=self._host._take_steers,
             redact=redactor(self._host.settings.state_dir),
+            resolve_file=lambda path: self._host.workspace_scope().resolve(path),
         )
 
     def tool_binding(
