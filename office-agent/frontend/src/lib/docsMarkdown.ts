@@ -2,16 +2,17 @@ import type { Block } from "./docsEditor";
 
 type Runs = Extract<Block, { runs: unknown }>["runs"];
 
-const escaped = (text: string) => text.replace(/([\\`*_[\]])/g, "\\$1");
+// A table cell also escapes the bar, in the same pass as the backslash it is escaped with.
+const escaped = (text: string, inCell: boolean) => text.replace(inCell ? /([\\`*_[\]|])/g : /([\\`*_[\]])/g, "\\$1");
 
-function inline(runs: Runs): string {
+function inline(runs: Runs, inCell = false): string {
   return runs
     .map((run) => {
       const lead = run.t.match(/^\s*/)?.[0] ?? "";
       const trail = run.t.match(/\s*$/)?.[0] ?? "";
       const core = run.t.trim();
       if (!core) return run.t;
-      let text = escaped(core).replace(/\n/g, "  \n");
+      let text = escaped(core, inCell).replace(/\n/g, "  \n");
       if (run.b) text = `**${text}**`;
       if (run.i) text = `*${text}*`;
       if (run.link) text = `[${text}](${run.link})`;
@@ -20,7 +21,7 @@ function inline(runs: Runs): string {
     .join("");
 }
 
-const cell = (runs: Runs) => inline(runs).replace(/\|/g, "\\|").replace(/\s*\n\s*/g, "<br>");
+const cell = (runs: Runs) => inline(runs, true).replace(/\s*\n\s*/g, "<br>");
 
 function table(rows: Runs[][], header: boolean): string {
   const width = rows[0]?.length ?? 0;
