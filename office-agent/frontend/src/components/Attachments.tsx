@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { AnnotateEntry } from "./ImageAnnotator";
 import { CloseIcon } from "./icons";
 
 import { type AttachmentView } from "../lib/attachments";
@@ -172,10 +173,13 @@ export function AttachmentDialog({
   view,
   threadId,
   onClose,
+  onAnnotated,
 }: {
   view: AttachmentView;
   threadId: string;
   onClose: () => void;
+  /** Given where a picture about to be sent can be drawn on: the marked copy is handed here. */
+  onAnnotated?: (dataUrl: string) => void;
 }) {
   const [pages, setPages] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -228,6 +232,7 @@ export function AttachmentDialog({
       >
         <div className="flex items-start justify-between gap-4 px-7 pb-3 pt-6">
           <h2 className="min-w-0 break-words text-2xl font-semibold leading-tight">{view.name}</h2>
+          {view.kind === "image" && onAnnotated && <AnnotateEntry src={view.src} onSaved={(dataUrl) => { onAnnotated(dataUrl); onClose(); }} />}
           <button
             type="button"
             aria-label="Close"
