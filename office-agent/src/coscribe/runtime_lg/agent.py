@@ -28,6 +28,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.errors import GraphBubbleUp
 
 from ..runtime import get_tool_metadata
+from .edit_guard import EditGuardMiddleware
 from .messages import starts_a_turn, steer_message
 from .tool_calls import answer_every_tool_call
 from .tool_deferral import (
@@ -315,6 +316,14 @@ class _SteerMiddleware(AgentMiddleware):
         return {"messages": [steer_message(note) for note in notes]} if notes else None
 
 
+def _writer_names(tools: Sequence[Callable[..., Any] | BaseTool]) -> set[str]:
+    return {
+        tool_name(t)
+        for t in tools
+        if get_tool_metadata(cast(Callable[..., Any], t)).risk_category == "WRITE_LOCAL"
+    }
+
+
 def build_langgraph_agent(
     model: Any,
     tools: Sequence[Callable[..., Any] | BaseTool],
@@ -329,6 +338,7 @@ def build_langgraph_agent(
     core_tool_names: Iterable[str] = (),
     take_steers: Callable[[], Awaitable[list[str]]] | None = None,
     redact: Callable[[str], str] | None = None,
+    resolve_file: Callable[[str], Path] | None = None,
 ) -> Any:
     """Build a LangGraph agent reusing coscribe's own ToolMetadata.
 
@@ -442,6 +452,8 @@ def build_langgraph_agent(
     # (it re-raises GraphBubbleUp untouched either way), but outermost is
     # the natural place for a catch-all.
     middleware: list[Any] = [_catch_tool_errors]
+    if resolve_file is not None:
+        middleware.append(EditGuardMiddleware(resolve_file, _writer_names(tools)))
     if redact is not None:
         middleware.insert(0, _RedactToolResultsMiddleware(redact))
     # Only for an Anthropic model: importing langchain_anthropic pulls in the
