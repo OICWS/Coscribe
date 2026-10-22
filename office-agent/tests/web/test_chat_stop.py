@@ -270,3 +270,28 @@ def test_close_orphaned_tool_calls_commits_a_finished_tools_uncommitted_write() 
         "HumanMessage",
     ]
     assert history[2].content == "real result"
+
+
+def test_detach_command_reaches_the_command_waiting_on_that_script(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.tools.exec import running
+
+    heard: list[asyncio.AbstractEventLoop | None] = []
+
+    class _Waiting:
+        def detach(self, loop: asyncio.AbstractEventLoop | None) -> None:
+            heard.append(loop)
+
+    monkeypatch.setitem(running._RUNNING, ("t_detach", "print(1)"), _Waiting())  # type: ignore[arg-type]
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="ok")])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_detach") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "detach_command", "script": "print(1)"})
+            ws.send_json({"type": "detach_command", "script": "print(2)"})
+            # A later message answered proves the two above were taken off the socket.
+            ws.send_json({"type": "user_message", "text": "hi"})
+            _receive_until(ws, "tasks_changed")
+    assert len(heard) == 1 and heard[0] is not None

@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import os
 import shutil
-import subprocess
 import tempfile
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
@@ -34,6 +33,7 @@ from ...runtime import tool_metadata
 from .._files_written import snapshot_workspace, with_files_written
 from .._output_truncation import truncate_script_output
 from .node_env import ensure_node_env
+from .running import Detachable, run_to_end
 from .script_env import overlay_env
 from .script_guard import (
     blocked_write,
@@ -59,6 +59,8 @@ def _run_node_script(
     timeout: float,
     extra_writable: Sequence[Path] = (),
     session_env: Mapping[str, str] | None = None,
+    detachable: Detachable | None = None,
+    description: str = "",
 ) -> dict[str, object]:
     timeout = min(max(timeout, 1.0), _MAX_TIMEOUT)
     node_env_dir = ensure_node_env(state_dir)
@@ -79,38 +81,41 @@ def _run_node_script(
     node = shutil.which("node") or "node"
     guard = node_guard_args(node, writable_roots(workspace_root, list(extra_writable)))
     before = snapshot_workspace(workspace_root)
+    # A command let go on in the background owns the scratch directory from then on.
+    handed_over = False
     try:
-        try:
-            result = subprocess.run(
-                # Resolved via shutil.which -- same Windows PATHEXT bug
-                # runtime_lg/mcp.py's _to_lg_connection already documents;
-                # `node` is a real .exe on Windows (not a .cmd like npm/
-                # npx), but the same PATH-search gap still applies to
-                # locating it via a bare name through CreateProcess.
-                [node, *(guard or []), str(script_path)],
-                cwd=str(workspace_root),
-                env=env,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=timeout,
-            )
-        except subprocess.TimeoutExpired as exc:
-            partial_stdout = exc.stdout.decode() if isinstance(exc.stdout, bytes) else exc.stdout
-            partial_stderr = exc.stderr.decode() if isinstance(exc.stderr, bytes) else exc.stderr
+        ran = run_to_end(
+            # Resolved via shutil.which -- same Windows PATHEXT bug
+            # runtime_lg/mcp.py's _to_lg_connection already documents;
+            # `node` is a real .exe on Windows (not a .cmd like npm/
+            # npx), but the same PATH-search gap still applies to
+            # locating it via a bare name through CreateProcess.
+            [node, *(guard or []), str(script_path)],
+            str(workspace_root),
+            env,
+            timeout,
+            language="node",
+            description=description,
+            script=script,
+            scratch_dir=scratch_dir,
+            detachable=detachable,
+        )
+        if ran.detached is not None:
+            handed_over = True
+            return ran.detached
+        if ran.timed_out:
             timeout_note = f"\n[timed out after {timeout}s]"
             timed_out: dict[str, object] = {
                 "exit_code": None,
-                "stdout": truncate_script_output(partial_stdout or ""),
-                "stderr": truncate_script_output(partial_stderr or "") + timeout_note,
+                "stdout": truncate_script_output(ran.stdout),
+                "stderr": truncate_script_output(ran.stderr) + timeout_note,
                 "timed_out": True,
             }
             return with_files_written(timed_out, before, workspace_root)
-        blocked, stderr = blocked_write(without_guard_warnings(result.stderr))
+        blocked, stderr = blocked_write(without_guard_warnings(ran.stderr))
         finished: dict[str, object] = {
-            "exit_code": result.returncode,
-            "stdout": truncate_script_output(result.stdout),
+            "exit_code": ran.returncode,
+            "stdout": truncate_script_output(ran.stdout),
             "stderr": truncate_script_output(stderr + (refusal_note(blocked) if blocked else "")),
             "timed_out": False,
         }
@@ -123,7 +128,8 @@ def _run_node_script(
             finished["folder_guard"] = "off: this Node is too old (22 or newer needed)"
         return with_files_written(finished, before, workspace_root)
     finally:
-        shutil.rmtree(scratch_dir, ignore_errors=True)
+        if not handed_over:
+            shutil.rmtree(scratch_dir, ignore_errors=True)
 
 
 def build_node_script_tools(
@@ -132,6 +138,7 @@ def build_node_script_tools(
     *,
     extra_writable: Sequence[str | Path] = (),
     session_env: Callable[[], Mapping[str, str]] | None = None,
+    detachable: Detachable | None = None,
 ) -> list[Callable[..., Any]]:
     """Return the tool callables the Coordinator agent can call. `state_dir`
     is required for the same reason run_python_script's is -- the node-env
@@ -179,7 +186,14 @@ def build_node_script_tools(
             timeout: seconds to allow before killing the script (capped at 600)
         """
         return _run_node_script(
-            root, state, script, timeout, folders, session_env() if session_env else None
+            root,
+            state,
+            script,
+            timeout,
+            folders,
+            session_env() if session_env else None,
+            detachable,
+            description,
         )
 
     return [

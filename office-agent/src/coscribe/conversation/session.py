@@ -91,6 +91,7 @@ from ..tools import (
     load_builtin_skills,
     load_skills,
     parse_run_thread_id,
+    request_detach,
 )
 from ..workflows import StepContext, WorkflowDraft
 from . import tool_hooks
@@ -560,6 +561,11 @@ class ChatSessionLG:
                 websocket = None
         socket: Any = websocket or SilentSocket()
         await self.handle_user_message(text, socket)
+
+    def detach_command(self, script: str) -> bool:
+        """From the running loop: the background task announces itself to this loop from the
+        tool's worker thread."""
+        return request_detach(self.thread_id, script, asyncio.get_running_loop())
 
     def request_stop(self) -> None:
         """Called directly from ws_endpoint on a "stop" message, not
