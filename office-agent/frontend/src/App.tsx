@@ -41,6 +41,7 @@ import { PANEL_IDS, PANEL_TITLES, type PanelId } from "./lib/dockLayout";
 import { isViewable } from "./lib/viewers";
 import { useCommentSender } from "./lib/commentReplies";
 import { artifactActions } from "./lib/artifacts";
+import { useArtifactStart } from "./lib/useArtifactStart";
 import { ArtifactsPage } from "./components/artifacts/ArtifactsPage";
 import { useSteerNotes } from "./lib/steerNotes";
 import { SteerActionsContext, ViewFile } from "./components/chatlog/contexts";
@@ -135,6 +136,7 @@ function App() {
   // Same pattern again, for SkillsTab's "Create a skill" prefilling the
   // composer's own text (not an image) -- see onCreateSkill below.
   const [pendingComposerText, setPendingComposerText] = useState<string | null>(null);
+  const artifactStart = useArtifactStart(threadId);
   const [navMode, setNavMode] = useState<NavMode>(() => (readPage().view === "scheduled" ? "run" : "create"));
   const [artifactsOpen, setArtifactsOpen] = useState(() => readPage().view === "artifacts");
   // Not persisted -- a per-page-load convenience, not a remembered
@@ -649,7 +651,7 @@ function App() {
         instant: payload.isInstant,
         images: payload.images,
       });
-      socketRef.current?.send({ type: "user_message", text: payload.outgoingText, images: payload.images });
+      socketRef.current?.send({ type: "user_message", text: payload.outgoingText, images: payload.images, artifact: artifactStart.take(payload.displayText) });
     });
   };
 
@@ -765,7 +767,7 @@ function App() {
   const artifacts = artifactActions((id, path) => {
     setViewerFiles((files) => ({ ...files, [id]: path }));
     setPanelOpen("viewer", true);
-  }, setPendingComposerText);
+  }, artifactStart.start);
   const viewFile = (path: string) => {
     if (!isViewable(path)) return false;
     setViewerFiles((files) => ({ ...files, [threadIdRef.current]: path }));
@@ -815,6 +817,8 @@ function App() {
       onExternalImageConsumed={() => setPendingBrowserCapture(null)}
       externalPptxCapture={pendingPptxCapture}
       onExternalPptxCaptureConsumed={() => setPendingPptxCapture(null)}
+      artifact={artifactStart.kind}
+      onArtifactRemoved={artifactStart.clear}
       externalText={pendingComposerText}
       onExternalTextConsumed={() => setPendingComposerText(null)}
     />

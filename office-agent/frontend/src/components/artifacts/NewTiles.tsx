@@ -60,7 +60,7 @@ export function NewTiles({ onMake }: { onMake: (kind: ArtifactKind) => void }) {
             <button
               key={kind}
               type="button"
-              disabled={info.starter === null}
+              disabled={info.placeholder === null}
               className="group w-[170px] text-left disabled:cursor-default"
               onClick={() => onMake(kind)}
             >
