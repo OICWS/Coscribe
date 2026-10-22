@@ -1,5 +1,6 @@
 import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { KINDS, type ArtifactKind } from "../lib/artifacts";
+import { withAnnotatedCopy } from "../lib/annotation";
 import { useComposerAction } from "../lib/menuCommands";
 import { ArtifactChip } from "./ArtifactChip";
 import { uploadFile } from "../lib/rest";
@@ -642,7 +643,7 @@ export function Composer({
       </div>
     </div>
     {openAttachment && (
-      <AttachmentDialog view={openAttachment} threadId={threadId} onClose={() => setOpenAttachment(null)} />
+      <AttachmentDialog view={openAttachment} threadId={threadId} onClose={() => setOpenAttachment(null)} onAnnotated={(url) => setPendingImages((prev) => withAnnotatedCopy(prev, openAttachment.name, url))} />
     )}
     {pastePreview !== null && (
       <TextLightbox text={pastePreview} onClose={() => setPastePreview(null)} />

@@ -175,6 +175,12 @@ Last reviewed: 2026-10-15.
    day, with All and Pinned, search, a type filter, "Make something new" for Docs, Slides, Sheets and Dashboard (not yet
    makeable), and one file menu (card and panel name: Rename, Duplicate, Pin, Copy path, Delete to the recycle bin). Open: Version history for documents (the maintainer finds it useful; not yet),
    tools for a conversation to list and read existing artifacts (next), scheduled runs' files, dashboards, and pins kept on the server (now in the browser).
+   New-conversation box in Artifacts (maintainer, 2026-10-22, agreed): choosing Docs, Slides, Sheets or Dashboard opens the conversation with a mode chip
+   in the composer and a placeholder for that kind; the kind goes to coscribe as an instruction in the first message (what the user wants made and what coscribe
+   should do), replacing the bare jump. Three steps: (1) the chips, placeholders and the first-message instruction, no design systems yet; (2) the design-system library
+   (decision 0020, accepted: Settings > Design systems, Colors, Typography, Spacing, Corner radius, Assets, Overview; per user, a deck gets a copy; a checker flags what is
+   off-system; made from a blank form, a "describe it" conversation of type Design System, or from a .pptx), with Design System as the fifth kind in Artifacts;
+   (3) the Slides chip's choice of a system, "Make a new design system first" and "Manage design systems".
    Docs (2026-10-21, decision 0019 accepted; research in docs/assessments/2026-10-21-docx-editing.md; editor library Tiptap 3, built first then evaluated): the .docx itself, previewed and edited in the Word panel by styles (headings,
    bold, italic, lists, links, tables, images), only the changed blocks rewritten, the person's Word edits never overwritten. Order:
    block reader and writer, editor panel (done), the person's edits told to coscribe (done), pictures shown in the text and added from a file or paste (done), then divider and page break (done), picture size and alt text (done), undo of a change made behind the editor (done), Export as Word, PDF and Markdown (done; PDF through the print dialog, to check in the desktop app), the chat's end-of-turn file card and the chip with a hover card in a reply (done), undo across coscribe's turns. Version history is wanted, not in v1.
