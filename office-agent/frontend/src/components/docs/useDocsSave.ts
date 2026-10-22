@@ -22,6 +22,9 @@ export function useDocsSave(editor: Editor | null, threadId: string, path: strin
   const flight = useRef<Mapping | null>(null);
   const dirty = useRef(false);
   const base = useRef(initial);
+  // A refused save stops this editor's saving for good: its retry or its save as it closes would, after
+  // a Reload has taken the file's new version, be accepted and write the old text over the file.
+  const stopped = useRef(false);
 
   const join = useCallback(async (target: Editor) => {
     try {
@@ -39,7 +42,7 @@ export function useDocsSave(editor: Editor | null, threadId: string, path: strin
 
   const save = useCallback(async () => {
     window.clearTimeout(timer.current);
-    if (!editor || editor.isDestroyed || flight.current || !dirty.current) return;
+    if (!editor || editor.isDestroyed || flight.current || !dirty.current || stopped.current) return;
     const sent = docToBlocks(editor.state.doc);
     const mapping = new Mapping();
     flight.current = mapping;
@@ -56,7 +59,10 @@ export function useDocsSave(editor: Editor | null, threadId: string, path: strin
       dirty.current = true;
       if (error instanceof DocChangedError && (await join(editor))) return setState({ kind: "unsaved" });
       setState(error instanceof DocChangedError ? { kind: "conflict" } : { kind: "error", message: error instanceof Error ? error.message : String(error) });
-      if (error instanceof DocChangedError) editor.setEditable(false);
+      if (error instanceof DocChangedError) {
+        stopped.current = true;
+        editor.setEditable(false);
+      }
     } finally {
       flight.current = null;
       if (dirty.current && !timer.current) timer.current = window.setTimeout(() => void save(), IDLE_MS);

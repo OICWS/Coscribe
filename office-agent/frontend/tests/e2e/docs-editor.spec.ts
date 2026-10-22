@@ -111,6 +111,8 @@ test("a file changed meanwhile is not overwritten: the editor says so and reads 
   await page.getByRole("button", { name: "Reload" }).click();
   await expect(editor).toContainText("Changed elsewhere.");
   await expect(page.getByText("This document changed since you opened it")).toHaveCount(0);
+  // The editor that was refused must not save again, not on its retry timer nor as it closes.
+  await page.waitForTimeout(2500);
   expect((await blocksOf(page, name)).blocks.map(textOf).join("\n")).not.toContain("!");
 });
 
