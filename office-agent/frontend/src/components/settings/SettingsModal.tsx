@@ -5,7 +5,7 @@ import type { ConfigResponse } from "../../types/settings";
 import {
   BookOpenIcon,
   CloseIcon,
-  CodeIcon,
+  BriefcaseIcon,
   FolderIcon,
   KeyIcon,
   LockIcon,
@@ -57,7 +57,7 @@ export type SettingsCategory =
   | "secrets"
   | "environment"
   | "sessions"
-  | "code";
+  | "capabilities";
 
 interface CategoryDef {
   id: SettingsCategory;
@@ -85,11 +85,11 @@ const GROUPS: { label: string; categories: CategoryDef[] }[] = [
       { id: "general", label: "General", icon: SettingsIcon },
       { id: "workspace", label: "Workspace", icon: FolderIcon },
       { id: "providers", label: "Providers", icon: KeyIcon },
+      { id: "capabilities", label: "Capabilities", icon: BriefcaseIcon },
       { id: "tools", label: "Tools", icon: ToolIcon },
       { id: "environment", label: "Environment", icon: TerminalIcon },
       { id: "sessions", label: "Sessions", icon: MessageCircleIcon },
       { id: "secrets", label: "Secrets", icon: LockIcon },
-      { id: "code", label: "Code", icon: CodeIcon },
     ],
   },
   {
@@ -313,10 +313,10 @@ export function SettingsModal({
             {category === "secrets" && <SecretsTab active={category === "secrets"} />}
             {category === "environment" && <EnvironmentTab active={category === "environment"} />}
             {category === "sessions" && <SessionsTab values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} />}
-            {category === "code" && <CodeTab values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} />}
+            {category === "capabilities" && <CodeTab values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} />}
             </div>
           </div>
-          {status && (category === "general" || category === "workspace" || category === "sessions" || category === "code") && (
+          {status && (category === "general" || category === "workspace" || category === "sessions" || category === "capabilities") && (
             <div
               role="status"
               className={`pointer-events-none absolute bottom-4 right-6 rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-1.5 text-sm shadow-[var(--shadow)] ${status.error ? "text-[var(--danger)]" : "text-[var(--muted)]"}`}
