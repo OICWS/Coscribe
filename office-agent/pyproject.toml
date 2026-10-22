@@ -87,7 +87,7 @@ dependencies = [
     # (3.x sent an unknown protobuf field), and its model profile lists the levels per model
     # (runtime_lg/effort.py). Below 4.4: 4.4 requires google-genai>=2.20, past the
     # thought_signature range pinned above.
-    "langchain-google-genai>=4.3.0,<4.4",
+    "langchain-google-genai>=4.3.0,<4.5",
     "langchain-openai>=0.2.0",
     # coscribe's persistent checkpointer (cli.py) -- lets --thread
     # survive a process restart. Also used by web/session.py's async
