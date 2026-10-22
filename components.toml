@@ -75,6 +75,7 @@ protected_modules = [
     "coscribe.tools.pdf_pages",
     "coscribe.tools.mcp",
     "coscribe.tools.connector_permissions",
+    "coscribe.tools.design_systems",
     "coscribe.tools.skills",
     "coscribe.tools.skill_catalog",
     "coscribe.tools.pptx_templates",

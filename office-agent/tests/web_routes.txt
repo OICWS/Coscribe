@@ -1,5 +1,6 @@
 DELETE /api/artifacts/{artifact}
 DELETE /api/code/install
+DELETE /api/design-systems/{system_id}
 DELETE /api/mcp/oauth-apps/{group}
 DELETE /api/mcp/servers/{name}
 DELETE /api/node-env/packages/{name}
@@ -26,6 +27,8 @@ GET /api/code
 GET /api/code/permissions
 GET /api/commands
 GET /api/config
+GET /api/design-systems
+GET /api/design-systems/{system_id}
 GET /api/mcp/catalog
 GET /api/mcp/npm-latest-version
 GET /api/mcp/oauth-apps
@@ -91,6 +94,7 @@ POST /api/artifacts/{artifact}/show
 POST /api/background-tasks/{task_id}/stop
 POST /api/code/install
 POST /api/config
+POST /api/design-systems
 POST /api/mcp/oauth-apps/import
 POST /api/mcp/servers
 POST /api/mcp/servers/{name}/bump-version
@@ -132,6 +136,7 @@ POST /api/workflows/permissions
 POST /api/workflows/validate
 POST /internal/browser-host/result
 PUT /api/code/permissions
+PUT /api/design-systems/{system_id}
 PUT /api/mcp/oauth-apps/{group}
 PUT /api/mcp/servers/{name}/permissions
 PUT /api/scheduled-tasks/{trigger_id}

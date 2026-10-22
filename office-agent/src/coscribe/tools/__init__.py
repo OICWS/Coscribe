@@ -76,6 +76,7 @@ from .connector_permissions import (
     name_of,
 )
 from .convert import build_convert_tools
+from .design_systems import DesignSystemError, DesignSystemStore
 from .exec import (
     Detachable,
     HandOff,
@@ -92,6 +93,7 @@ from .exec import (
     request_detach,
     run_python_script,
     set_interpreter_override,
+    stop_commands,
     uninstall_node_package,
     uninstall_python_package,
     venv_python,
@@ -190,6 +192,8 @@ from .skills import (
 )
 
 __all__ = [
+    "DesignSystemError",
+    "DesignSystemStore",
     "fallbacks_for_platform",
     "get_interpreter_override",
     "install_node_package",
@@ -282,6 +286,7 @@ __all__ = [
     "enabled_skill_names",
     "ensure_script_env",
     "request_detach",
+    "stop_commands",
     "adopt_running_command",
     "Detachable",
     "HandOff",
