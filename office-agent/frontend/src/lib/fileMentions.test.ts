@@ -1,0 +1,53 @@
+import { describe, expect, it } from "vitest";
+import { FILE_LINK, filesByName, remarkFileChips, touchedFiles } from "./fileMentions";
+
+const call = (toolName: string, path: string, extra: object = {}) => ({ toolName, arguments: { path }, result: "ok", ...extra });
+
+describe("touchedFiles", () => {
+  it("lists the documents and decks a finished call made or changed, once each, and not reads or failures", () => {
+    const calls = [
+      call("write_docx", "a.docx"),
+      call("read_docx", "b.docx"),
+      call("edit_docx", "a.docx"),
+      call("write_docx", "c.docx", { isError: true }),
+      call("write_docx", "d.docx", { result: undefined }),
+      call("write_xlsx", "e.xlsx"),
+      call("build_pptx", "deck.pptx"),
+    ];
+    expect(touchedFiles(calls)).toEqual(["a.docx", "deck.pptx"]);
+  });
+
+  it("maps a file name to its path", () => {
+    expect([...filesByName([call("write_docx", "reports/SDD.docx")])]).toEqual([["SDD.docx", "reports/SDD.docx"]]);
+  });
+});
+
+describe("remarkFileChips", () => {
+  const files = new Map([["SDD.docx", "reports/SDD.docx"], ["SDD.docx.bak.docx", "x/SDD.docx.bak.docx"]]);
+  const run = (tree: object) => {
+    remarkFileChips(files)()(tree as never);
+    return tree;
+  };
+  const paragraph = (...children: object[]) => ({ type: "root", children: [{ type: "paragraph", children }] });
+
+  it("turns a name in running text and in backticks into a link, and keeps the words around it", () => {
+    const tree = run(paragraph({ type: "text", value: "I wrote SDD.docx, see " }, { type: "inlineCode", value: "SDD.docx" }, { type: "text", value: "." })) as {
+      children: { children: { type: string; value?: string; url?: string }[] }[];
+    };
+    const kinds = tree.children[0].children.map((n) => `${n.type}:${n.value ?? n.url}`);
+    expect(kinds).toEqual(["text:I wrote ", `link:${FILE_LINK}reports/SDD.docx`, "text:, see ", `link:${FILE_LINK}reports/SDD.docx`, "text:."]);
+  });
+
+  it("leaves a name that is part of a longer word or path, one inside a link and one in a code block", () => {
+    const tree = run({
+      type: "root",
+      children: [
+        { type: "paragraph", children: [{ type: "text", value: "MySDD.docx and old/SDD.docx and SDD.docxx" }] },
+        { type: "paragraph", children: [{ type: "link", url: "https://x.test", children: [{ type: "text", value: "SDD.docx" }] }] },
+        { type: "code", value: "SDD.docx" },
+      ],
+    }) as { children: { children?: { type: string }[] }[] };
+    expect(tree.children[0].children?.map((n) => n.type)).toEqual(["text"]);
+    expect(tree.children[1].children?.[0].type).toBe("link");
+  });
+});

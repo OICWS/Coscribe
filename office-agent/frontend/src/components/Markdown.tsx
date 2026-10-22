@@ -1,9 +1,12 @@
-import { isValidElement, useRef, type ClipboardEvent, type ComponentPropsWithoutRef, type ReactNode } from "react";
-import ReactMarkdown from "react-markdown";
+import { isValidElement, useContext, useMemo, useRef, type ClipboardEvent, type ComponentPropsWithoutRef, type ReactNode } from "react";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
+import { FILE_LINK, remarkFileChips } from "../lib/fileMentions";
+import { FileChip } from "./chatlog/FileChip";
+import { ThreadFiles } from "./chatlog/contexts";
 import { CopyButton } from "./CopyButton";
 
 const hoverCopy =
@@ -46,6 +49,7 @@ function tableAsTsv(table: HTMLTableElement): string {
 /** Opens outside the conversation: a new browser tab, or in the desktop
  * app a tab of its Browser panel -- never replacing the app page. */
 function Link({ node: _node, ...props }: ComponentPropsWithoutRef<"a"> & { node?: unknown }) {
+  if (props.href?.startsWith(FILE_LINK)) return <FileChip path={props.href.slice(FILE_LINK.length)} />;
   return <a {...props} target="_blank" rel="noopener noreferrer" />;
 }
 
@@ -116,10 +120,13 @@ function copyWithTex(event: ClipboardEvent<HTMLDivElement>) {
 /** Assistant text as GitHub-flavored markdown plus LaTeX math. No
  * rehype-raw: raw HTML in a message is never rendered as markup. */
 export function Markdown({ text }: { text: string }) {
+  const files = useContext(ThreadFiles);
+  const chips = useMemo(() => remarkFileChips(files), [files]);
   return (
     <div className="prose prose-sm md-prose max-w-none" onCopy={copyWithTex}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath]}
+        remarkPlugins={[remarkGfm, remarkMath, chips]}
+        urlTransform={(url) => (url.startsWith(FILE_LINK) ? url : defaultUrlTransform(url))}
         rehypePlugins={[rehypeKatex]}
         components={{ pre: CodeBlock, table: Table, span: MathSpan, a: Link }}
       >
