@@ -142,3 +142,20 @@ def test_without_a_way_to_hand_over_there_is_nothing_to_detach(tmp_path: Path) -
     assert not request_detach("t4", code, None)
     worker.join(10)
     assert box[0].returncode == 0
+
+
+def test_stopping_a_conversation_ends_the_script_its_tool_call_waits_on(tmp_path: Path) -> None:
+    from coscribe.tools import stop_commands
+
+    detachable = Detachable("t5", partial(adopt_running_command, tmp_path / "state"))
+    code = _SLOW.format(seconds=60)
+    worker, box = _in_thread(code, 120, detachable, tmp_path)
+    _until(lambda: _printed_first("t5", code))
+    stop_commands("another-conversation")
+    assert worker.is_alive()  # only the stopped conversation's scripts end
+    started = time.monotonic()
+    stop_commands("t5")
+    worker.join(15)
+    assert not worker.is_alive() and time.monotonic() - started < 15
+    assert box[0].detached is None and box[0].returncode != 0
+    assert box[0].stdout == "first\n"

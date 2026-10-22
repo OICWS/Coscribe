@@ -92,6 +92,7 @@ from ..tools import (
     load_skills,
     parse_run_thread_id,
     request_detach,
+    stop_commands,
 )
 from ..workflows import StepContext, WorkflowDraft
 from . import tool_hooks
@@ -610,6 +611,7 @@ class ChatSessionLG:
         # A browser step can be waiting out a slow page for an hour, in the
         # desktop app where cancelling this turn doesn't reach.
         BROWSER_HOST.cancel(self.thread_id)
+        stop_commands(self.thread_id)
         has_pending_interrupt = False
         for request_id, future in list(self._pending_approvals.items()):
             if request_id in self._subagent_request_ids:

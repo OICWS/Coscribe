@@ -44,6 +44,16 @@ def request_detach(thread_id: str, script: str, loop: asyncio.AbstractEventLoop 
     return True
 
 
+def stop_commands(thread_id: str) -> None:
+    """Ends the scripts a conversation's tool calls are still waiting on: stopping the turn
+    cannot reach a tool's worker thread, which would sit on its process until it ended. Their
+    tool calls then return, with the output so far. A script let go on in the background is
+    no longer waited on and is stopped from its own panel."""
+    for (owner, _script), command in list(_RUNNING.items()):
+        if owner == thread_id:
+            command.kill()
+
+
 class RunningCommand:
     def __init__(self, argv: Sequence[str], cwd: str, env: Mapping[str, str]) -> None:
         self._proc = subprocess.Popen(  # noqa: S603 -- the argv the approved script was given
