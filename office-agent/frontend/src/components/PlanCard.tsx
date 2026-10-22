@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { LogItem } from "../state/reducer";
 import { Disclosure } from "./chatlog/SummaryLabel";
+import { PlanDiff } from "./PlanDiff";
 
 export type PlanItem = Extract<LogItem, { kind: "plan" }>;
 export type PlanChoice = "auto" | "manual" | "revise" | "reject";
@@ -35,6 +36,7 @@ export function PlanCard({
 
   return (
     <div className="flex flex-col gap-3">
+      {item.previous !== undefined && <PlanDiff before={item.previous} after={item.plan} />}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3.5">
         <div className="flex items-baseline justify-between gap-3">
           <p className="text-[15px] font-medium">Claude proposed a plan</p>

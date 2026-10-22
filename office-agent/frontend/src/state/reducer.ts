@@ -65,6 +65,8 @@ export type LogItem =
       id: string;
       kind: "plan";
       plan: string;
+      /** The plan proposed before this one in the conversation; "" for the first. */
+      previous?: string;
       /** How the user answered: approved into auto or manual mode, or sent
        * back to keep planning. */
       status: "pending" | "auto" | "manual" | "revise" | "reject";
@@ -234,6 +236,12 @@ function closeStreamingBubble(items: LogItem[]): LogItem[] {
   return closed;
 }
 
+/** The plan last proposed in the conversation, "" when there is none. */
+function lastPlanOf(items: LogItem[]): string {
+  const last = items.findLast((item): item is Extract<LogItem, { kind: "plan" }> => item.kind === "plan");
+  return last ? last.plan : "";
+}
+
 /** How the user answered a plan, read back from exit_plan_mode's result
  * (conversation/session.py's _decide_plan_request writes these sentences). */
 function planStatusOf(result: string): "auto" | "manual" | "revise" | "reject" {
@@ -247,6 +255,7 @@ function planStatusOf(result: string): "auto" | "manual" | "revise" | "reject" {
  * history, and a sub-agent's in the Background tasks panel. */
 export function historyToItems(entries: HistoryEntry[]): LogItem[] {
   let userTurnIndex = 0;
+  let lastPlan = "";
   return entries.map((entry): LogItem => {
     if (entry.kind === "user") {
       return { id: genId(), kind: "user", text: entry.text, turnIndex: userTurnIndex++, images: entry.images };
@@ -259,7 +268,10 @@ export function historyToItems(entries: HistoryEntry[]): LogItem[] {
     }
     if (entry.tool_name === "exit_plan_mode") {
       const status = planStatusOf(typeof entry.result === "string" ? entry.result : "");
-      return { id: genId(), kind: "plan", plan: String(entry.arguments.plan ?? ""), status };
+      const plan = String(entry.arguments.plan ?? "");
+      const previous = lastPlan;
+      lastPlan = plan;
+      return { id: genId(), kind: "plan", plan, previous, status };
     }
     if (entry.tool_name === "create_scheduled_task" || entry.tool_name === "edit_scheduled_task") {
       const saved = typeof entry.result === "string" && entry.result.startsWith(TASK_DRAFT_SAVED_PREFIX);
@@ -396,7 +408,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         items: [
           ...closeStreamingBubble(state.items),
-          { id: action.id, kind: "plan", plan: action.plan, status: "pending" },
+          { id: action.id, kind: "plan", plan: action.plan, previous: lastPlanOf(state.items), status: "pending" },
         ],
       };
 
