@@ -88,6 +88,7 @@ def _session(
         skills_dir=tmp_path / "skills",
         memory_path=tmp_path / "MEMORY.md",
         auto_title_threads=False,
+        prompt_suggestions=False,
     )
     folder.mkdir(parents=True, exist_ok=True)
     return ChatSessionLG(

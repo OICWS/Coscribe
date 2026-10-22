@@ -504,6 +504,7 @@ async def _first_request_tools(
         skills_dir=tmp_path / "skills",
         memory_path=tmp_path / "MEMORY.md",
         auto_title_threads=False,
+        prompt_suggestions=False,
     )
     session = ChatSessionLG(
         thread_id="t",

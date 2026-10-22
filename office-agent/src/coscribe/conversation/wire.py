@@ -315,6 +315,13 @@ class ThreadTitledEvent(TypedDict):
     title: str
 
 
+class PromptSuggestionEvent(TypedDict):
+    """The message the person is most likely to send next, for the message box."""
+
+    type: Literal["prompt_suggestion"]
+    text: str
+
+
 class ErrorEvent(TypedDict):
     type: Literal["error"]
     message: str
@@ -390,6 +397,7 @@ ServerEvent = (
     | TasksChangedEvent
     | TurnStartedEvent
     | ThreadTitledEvent
+    | PromptSuggestionEvent
     | ErrorEvent
     | AgentMessageEvent
     | CompactedEvent

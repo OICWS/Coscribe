@@ -303,6 +303,12 @@ export interface ThreadTitledEvent {
   title: string;
 }
 
+/** The message the person is most likely to send next, for the message box. */
+export interface PromptSuggestionEvent {
+  type: "prompt_suggestion";
+  text: string;
+}
+
 export interface ErrorEvent {
   type: "error";
   message: string;
@@ -377,6 +383,7 @@ export type ServerEvent =
   | TasksChangedEvent
   | TurnStartedEvent
   | ThreadTitledEvent
+  | PromptSuggestionEvent
   | ErrorEvent
   | AgentMessageEvent
   | CompactedEvent

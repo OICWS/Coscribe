@@ -116,6 +116,8 @@ export interface ChatState {
    * Codex CLI's own per-call cache_hit_rate metric this was modeled on. */
   cacheStats: { cacheReadTokens: number; inputTokens: number; hitRate: number } | null;
   turnInFlight: boolean;
+  /** The message the person will probably send next, offered in the message box after a reply. */
+  suggestion: string | null;
   error: string | null;
   /** Bumped on every tasks_changed (the end of each turn) -- a cheap
    * "something may have changed server-side, refetch if you care"
@@ -173,6 +175,7 @@ export const initialChatState: ChatState = {
   totalTokens: 0,
   cacheStats: null,
   turnInFlight: false,
+  suggestion: null,
   error: null,
   turnTick: 0,
   workflowTest: null,
@@ -189,6 +192,7 @@ export type LocalAction =
   | { type: "local_user_message"; text: string; instant: boolean; images?: string[] }
   | { type: "local_steer"; id: string; text: string }
   | { type: "local_steers_withdrawn"; ids: string[] }
+  | { type: "local_suggestion_dismissed" }
   | { type: "local_edit_message"; turnIndex: number; text: string }
   | { type: "local_rewind_message"; turnIndex: number }
   | { type: "local_approval_resolved"; id: string; approved: boolean }
@@ -333,6 +337,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         // there's nothing for a Stop button to interrupt -- mirrors
         // app.js's own INSTANT_COMMANDS guard around setTurnInFlight.
         turnInFlight: action.instant ? state.turnInFlight : true,
+        suggestion: null,
         error: null,
         items: [
           ...state.items,
@@ -712,6 +717,12 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "local_steer":
       return { ...state, items: [...state.items, { id: action.id, kind: "steer", text: action.text, status: "pending" }] };
 
+    case "prompt_suggestion":
+      return state.turnInFlight ? state : { ...state, suggestion: action.text };
+
+    case "local_suggestion_dismissed":
+      return state.suggestion === null ? state : { ...state, suggestion: null };
+
     case "local_steers_withdrawn":
       return { ...state, items: state.items.filter((item) => !(item.kind === "steer" && action.ids.includes(item.id))) };
 
@@ -737,6 +748,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...state,
         turnInFlight: true,
+        suggestion: null,
         error: null,
         items: [
           ...state.items,

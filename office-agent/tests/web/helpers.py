@@ -336,6 +336,7 @@ def _settings(tmp_path: Path, **overrides: object) -> Settings:
         # Its extra model call would take scripted responses meant for
         # the test's own turns.
         "auto_title_threads": False,
+        "prompt_suggestions": False,
     }
     values.update(overrides)
     return Settings(_env_file=None, **values)  # type: ignore[call-arg, arg-type]
