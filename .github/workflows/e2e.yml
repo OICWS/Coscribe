@@ -38,7 +38,7 @@ env:
   EXCLUDED: approval chat
   SPECS: >-
     artifacts attachment code composer-drop-paste connector-setup connectors find labels navigation
-    docs-editor docx-review panel-windows panels permissions rail-dialog secrets settings sidebar skill-plugins slides slides-panels titlebar tool-rows plan-panel plan-proposal
+    docs-editor docx-review panel-windows panels permissions rail-dialog secrets settings sidebar skill-plugins slides slides-panels titlebar tool-rows plan-panel plan-proposal plan-comments
 
 jobs:
   playwright:

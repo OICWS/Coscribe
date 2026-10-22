@@ -33,6 +33,7 @@ import { BackgroundTasksPanel } from "./components/BackgroundTasksPanel";
 import { ViewerPanel } from "./components/ViewerPanel";
 import { PlanPanel } from "./components/PlanPanel";
 import { TaskPanel } from "./components/TaskPanel";
+import { setPlanComments, usePlanComments, withPlanComments } from "./lib/planComments";
 import { planPanelData } from "./lib/taskCard";
 import { PanelDock } from "./components/dock/PanelDock";
 import { PanelToggles } from "./components/dock/PanelToggles";
@@ -383,6 +384,7 @@ function App() {
   const threadWorkflow = threadRun ? (threadTask?.workflow ?? null) : null;
   const planData = planPanelData(state.items);
   const hasPlan = planData.tasks.length > 0;
+  const planComments = usePlanComments(planData.plan);
   const taskPanelWanted = taskPanelChoice[threadId] ?? (threadWorkflow !== null || isScheduledTaskThread || hasPlan);
   const onHome =
     state.historyReceived &&
@@ -681,7 +683,7 @@ function App() {
     socketRef.current?.send({
       type: "question_response",
       id: item.id,
-      answer: choice === "revise" ? `revise:${feedback}` : choice,
+      answer: choice === "revise" ? `revise:${withPlanComments(item.plan, feedback)}` : choice,
     });
   };
 
@@ -742,7 +744,7 @@ function App() {
       browser: { panel: "browser", threadId },
       background: { panel: "background", ...backgroundProps },
       viewer: { panel: "viewer", threadId, path: viewerFiles[threadId] ?? null, refreshKey },
-      plan: { panel: "plan", threadId, ...planData, busy: state.turnInFlight },
+      plan: { panel: "plan", threadId, ...planData, comments: planComments, busy: state.turnInFlight },
     },
     titles: PANEL_TITLES,
     threadId,
@@ -752,6 +754,7 @@ function App() {
       else if (action.type === "view") viewFile(action.path);
       else if (action.type === "sendToChat") onBrowserPanelCapture(action.capture);
       else if (action.type === "sendComment") onSendComment(action.text, action.link);
+      else if (action.type === "planComments") setPlanComments(action.plan, action.comments);
       else if (action.type === "stopAgent") onStop();
       else onApprove(action.id, action.approved, action.scope);
     },
@@ -841,7 +844,7 @@ function App() {
     if (panel === "browser") {
       return <BrowserPanel threadId={threadId} onSendToChat={onBrowserPanelCapture} onStopAgent={onStop} />;
     }
-    if (panel === "plan") return <PlanPanel {...planData} busy={state.turnInFlight} />;
+    if (panel === "plan") return <PlanPanel {...planData} comments={planComments} onComments={(c) => setPlanComments(planData.plan ?? "", c)} busy={state.turnInFlight} />;
     return (
       <BackgroundTasksPanel key={threadId} {...backgroundProps} onApprove={onApprove} />
     );

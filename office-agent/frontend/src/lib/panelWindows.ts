@@ -10,6 +10,7 @@ import type { ScheduledRun, ScheduledTask } from "../types/settings";
 import type { PanelId, Rect } from "./dockLayout";
 import { PANEL_IDS } from "./dockLayout";
 import { isElectron } from "./electron";
+import type { PlanComment } from "./planComments";
 import type { ProgressItem } from "./workflowProgress";
 
 export type PanelWindowState =
@@ -27,7 +28,7 @@ export type PanelWindowState =
   | { panel: "browser"; threadId: string }
   | { panel: "background"; threadId: string; refreshKey: number; focusTaskId: string | null }
   | { panel: "viewer"; threadId: string; path: string | null; refreshKey: string }
-  | { panel: "plan"; threadId: string; tasks: ProgressItem[]; plan: string | null; busy: boolean };
+  | { panel: "plan"; threadId: string; tasks: ProgressItem[]; plan: string | null; busy: boolean; comments: PlanComment[] };
 
 export type PanelWindowAction =
   | { type: "openTask"; task: ScheduledTask }
@@ -35,6 +36,7 @@ export type PanelWindowAction =
   | { type: "view"; path: string }
   | { type: "sendToChat"; capture: BrowserCapture }
   | { type: "sendComment"; text: string; link?: CommentLink }
+  | { type: "planComments"; plan: string; comments: PlanComment[] }
   | { type: "stopAgent" }
   | { type: "approve"; id: string; approved: boolean; scope?: "task" };
 

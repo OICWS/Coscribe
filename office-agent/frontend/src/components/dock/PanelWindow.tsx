@@ -133,7 +133,18 @@ function PanelContent({ state }: { state: PanelWindowState }) {
       />
     );
   }
-  if (state.panel === "plan") return <PlanPanel tasks={state.tasks} plan={state.plan} busy={state.busy} />;
+  if (state.panel === "plan") {
+    const plan = state.plan ?? "";
+    return (
+      <PlanPanel
+        tasks={state.tasks}
+        plan={state.plan}
+        busy={state.busy}
+        comments={state.comments}
+        onComments={(comments) => sendPanelWindowAction({ type: "planComments", plan, comments })}
+      />
+    );
+  }
   if (state.path) {
     return (
       <ViewerPanel
