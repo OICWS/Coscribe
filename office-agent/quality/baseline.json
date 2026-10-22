@@ -240,7 +240,7 @@
  "frontend_file_lines": {
   "office-agent-desktop/src/main/browserAgent.ts": 934,
   "office-agent/frontend/src/App.tsx": 1066,
-  "office-agent/frontend/src/components/icons.tsx": 803,
+  "office-agent/frontend/src/components/icons.tsx": 813,
   "office-agent/frontend/src/components/workflow/WorkflowRunView.tsx": 860
  },
  "frontend_long_functions": {
