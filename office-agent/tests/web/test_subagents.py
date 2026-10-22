@@ -391,3 +391,20 @@ def test_the_sub_agent_endpoints_refuse_an_id_that_is_a_path_lg(
 
     assert transcript.status_code == 404
     assert stop.status_code == 404
+
+
+def test_a_background_sub_agent_is_refused_when_the_setting_is_off(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with _client_lg(
+        tmp_path, monkeypatch, _BackgroundDelegationModel(), background_agents=False
+    ) as client:
+        with client.websocket_connect("/ws/t_no_bg") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "delegate it in the background"})
+            events = _receive_until(ws, "tasks_changed")
+
+    refused = [e for e in events if e["type"] == "tool_result" and "turned off" in str(e)]
+    assert refused
+    assert SubAgentTaskStore(tmp_path / "state").list_for_thread("t_no_bg") == []

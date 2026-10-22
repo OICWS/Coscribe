@@ -38,6 +38,8 @@ export interface ConfigResponse {
   COSCRIBE_CODE_MODEL: string | null;
   COSCRIBE_CODE_MODULE_ENABLED: string | null;
   COSCRIBE_PROMPT_SUGGESTIONS: string | null;
+  COSCRIBE_BACKGROUND_AGENTS: string | null;
+  COSCRIBE_ARCHIVE_INACTIVE_DAYS: string | null;
   COSCRIBE_FLASH_ON_ATTENTION: string | null;
   COSCRIBE_KEEP_AWAKE: string | null;
   COSCRIBE_KEEP_AWAKE_ON_BATTERY: string | null;

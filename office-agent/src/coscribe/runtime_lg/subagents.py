@@ -139,6 +139,7 @@ class SubAgentHost:
     # hook needs to see them all).
     interrupt_all: bool = False
     max_turns: int | None = None
+    background_allowed: Callable[[], bool] = lambda: True
     model_stall_seconds: float = MODEL_STALL_SECONDS
 
 
@@ -488,6 +489,11 @@ def build_delegation_tools(
             tool_names: comma-separated names of your tools to give it; empty
                 gives it all of them.
         """
+        if not host.background_allowed():
+            raise ValueError(
+                "Background sub-agents are turned off in Settings > Sessions; use spawn_agent, "
+                "which waits for the report, or do the work in this conversation."
+            )
         task, _runner = start(description, prompt, instructions, model, tool_names, True)
         await host.changed(task)
         return {"task_id": task.task_id, "status": task.status, "description": task.description}
