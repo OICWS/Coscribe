@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { copyFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
@@ -141,4 +142,23 @@ test("the Word panel replies to, resolves, reopens and adds comments, checked on
     // The expanded viewer covers the chat, so the bubble is in the page but not visible.
     await expect(page.getByText(`Question about ${name}.docx, page 1:`)).toContainText("> Service agreement");
   });
+});
+
+test("a document with no comments sits in the middle of the panel, with no empty rail beside it", async ({ page }) => {
+  const name = `plain-${Math.random().toString(36).slice(2, 8)}`;
+  copyFileSync(join(AGENT, "frontend", "tests", "e2e", "fixtures", "sample.docx"), join(WORKSPACE ?? "", `${name}.docx`));
+  await page.goto(freshThreadPath("docx-plain"));
+  await waitForConnected(page);
+  await page.locator("textarea").fill(`open it [[stub-tool read_docx {"path":"${name}.docx"}]]`);
+  await page.keyboard.press("Enter");
+  await page.getByTitle("Show task details").click();
+  await page.getByRole("button", { name: `${name}.docx Read` }).click();
+  await page.getByRole("button", { name: "Expand Viewer" }).click();
+  const sheet = page.locator(".docx-page section.docx");
+  await expect(sheet).toBeVisible();
+  const scroller = (await page.locator(".docx-viewer").boundingBox())!;
+  const box = (await sheet.boundingBox())!;
+  const left = box.x - scroller.x;
+  const right = scroller.x + scroller.width - (box.x + box.width);
+  expect(Math.abs(left - right)).toBeLessThan(40);
 });

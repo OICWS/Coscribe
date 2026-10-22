@@ -56,6 +56,18 @@ describe("the ten layouts", () => {
     }
   });
 
+  it("draws a table being edited with its header cells centred, as the server draws them", () => {
+    const doc = parseSection(
+      '<section><table style="left:100px;top:100px;width:800px;height:300px"><tr><th>Month</th><th>Orders</th></tr><tr><td>2026-07</td><td style="text-align:right">50</td></tr></table></section>',
+    );
+    const root = document.createElement("div").attachShadow({ mode: "open" });
+    drawSection(root, doc, [{ kind: "drawing", box: null, picture: null }], 0);
+    const align = (selector: string) => (root.querySelector(selector) as HTMLElement).style.textAlign;
+    expect(align("th")).toBe("center");
+    expect(align("tr:nth-child(2) td:first-child")).toBe("left");
+    expect(align("tr:nth-child(2) td:last-child")).toBe("right");
+  });
+
   it("draws a flat line in an svg the browser will paint, which has no zero side", () => {
     const doc = parseSection('<section><x-shape data-shape="line" style="left:120px;top:954px;width:1680px;height:0px;border:1.5px solid #1E2C42"/></section>');
     const root = document.createElement("div").attachShadow({ mode: "open" });
