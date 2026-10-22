@@ -935,6 +935,7 @@ function App() {
                     connectorTools={state.connectorTools}
                     onApprove={onApprove}
                     onAnswerPlan={onAnswerPlan}
+                    onOpenPlan={() => setPanelOpen("plan", true)}
                     onEditMessage={state.turnInFlight ? undefined : onEditMessage}
                     onRewindMessage={state.turnInFlight ? undefined : onRewindMessage}
                     loading={!state.historyReceived}

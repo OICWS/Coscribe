@@ -34,6 +34,7 @@ from ..runtime_lg import extract_text as _extract_text
 from ..tools import (
     PLAN_CHOICE_AUTO,
     PLAN_CHOICE_MANUAL,
+    PLAN_CHOICE_REJECT,
     PLAN_CHOICE_REVISE,
     QUESTION_TOOL_NAMES,
     TASK_DRAFT_TOOL_NAMES,
@@ -461,6 +462,12 @@ class ApprovalDecider:
             return {
                 "type": "respond",
                 "message": f"The user approved the plan and {how}. Carry it out now.",
+            }
+        if answer == PLAN_CHOICE_REJECT:
+            return {
+                "type": "respond",
+                "message": "The user rejected the plan. Don't carry it out and don't propose "
+                "another one; stop and wait for their next message.",
             }
         if answer.startswith(PLAN_CHOICE_REVISE):
             feedback = answer[len(PLAN_CHOICE_REVISE) :].strip() or "(no details)"

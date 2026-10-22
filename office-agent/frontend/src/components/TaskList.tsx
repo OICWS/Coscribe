@@ -4,7 +4,14 @@ const RING = "h-[18px] w-[18px] shrink-0";
 
 /** One item's state: a filled tick when done, dots while it is being worked,
  * a dashed circle when it waits. */
-export function TaskStatusIcon({ status, live = false }: { status: ProgressStatus; live?: boolean }) {
+export function TaskStatusIcon({ status, live = false, plain = false }: { status: ProgressStatus; live?: boolean; plain?: boolean }) {
+  if (status === "completed" && plain) {
+    return (
+      <svg viewBox="0 0 18 18" className={`${RING} text-[var(--fg)]`} aria-label="Done" role="img">
+        <path d="M3.5 9.4l3.6 3.6 7.4-8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
   if (status === "completed") {
     return (
       <svg viewBox="0 0 18 18" className={`${RING} text-[var(--muted)]`} aria-label="Done" role="img">
@@ -30,19 +37,20 @@ export function TaskStatusIcon({ status, live = false }: { status: ProgressStatu
   );
 }
 
-/** The items of a task list, one per line; a finished one is struck through
- * in the Plan panel and only greyed in the conversation. */
+/** The items of a task list, one per line. In the Plan panel (`strike`) a
+ * finished one has a plain tick and is struck through; in the conversation it
+ * is a filled tick and only greyed. */
 export function TaskList({ tasks, strike = false, live = false }: { tasks: ProgressItem[]; strike?: boolean; live?: boolean }) {
   return (
     <ol className="flex flex-col gap-2.5">
       {tasks.map((task) => (
         <li key={task.id} className="flex items-start gap-2.5 text-[15px] leading-6">
           <span className="mt-[3px]">
-            <TaskStatusIcon status={task.status} live={live} />
+            <TaskStatusIcon status={task.status} live={live} plain={strike} />
           </span>
           <span
             className={`min-w-0 [overflow-wrap:anywhere] ${
-              task.status === "completed" ? `text-[var(--muted)] ${strike ? "line-through" : ""}` : ""
+              task.status === "completed" ? (strike ? "line-through" : "text-[var(--muted)]") : ""
             }`}
           >
             {task.content}

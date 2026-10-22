@@ -889,6 +889,15 @@ QUESTION_ROWS: dict[str, QuestionRow] = {
         sent="plan_ready",
         plan_after=True,
     ),
+    "rejecting_a_plan_ends_planning_without_a_new_plan": QuestionRow(
+        PLAN,
+        "The user rejected the plan",
+        plan=True,
+        answer="reject",
+        args={"plan": "step 1"},
+        sent="plan_ready",
+        plan_after=True,
+    ),
     "feedback_without_details": QuestionRow(
         PLAN,
         "keep planning: (no details).",

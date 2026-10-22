@@ -19,7 +19,9 @@ export function PlanPanel({ tasks, plan, busy }: { tasks: ProgressItem[]; plan: 
         {plan !== null && (
           <section className="mb-6">
             <Suspense fallback={<p className="whitespace-pre-wrap text-sm">{plan}</p>}>
-              <Markdown text={plan} />
+              <div className="plan-doc">
+                <Markdown text={plan} />
+              </div>
             </Suspense>
           </section>
         )}

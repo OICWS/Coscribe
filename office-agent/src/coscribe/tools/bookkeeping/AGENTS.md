@@ -19,7 +19,7 @@ triggers: `SCHEDULED_THREAD_PREFIX`, `TASK_DRAFT_TOOL_NAMES`, `compute_next_run_
 `parse_run_thread_id`, `create_trigger`, `update_trigger`, `patch_trigger`, `record_draft`,
 `edit_draft`. Sub-agents: `running_subagent`, `get_subagent_transcript`, `stop_subagent_task`,
 `forget_finished_subagents`. Questions, plans and messages: `QUESTION_TOOL_NAMES`,
-`PLAN_CHOICE_AUTO`, `PLAN_CHOICE_MANUAL`, `PLAN_CHOICE_REVISE`, `format_question_answers`,
+`PLAN_CHOICE_AUTO`, `PLAN_CHOICE_MANUAL`, `PLAN_CHOICE_REVISE`, `PLAN_CHOICE_REJECT`, `format_question_answers`,
 `normalize_questions`, `format_incoming`. Memory: `load_memory`, `format_memory_section`.
 Also exported: `FINISHED_STATUSES`, `MessagingError`, `TaskToolkit`, `register_subagent_run`,
 `take_stop_requester`, `set_change_listener`, `set_inbox_listener`,
