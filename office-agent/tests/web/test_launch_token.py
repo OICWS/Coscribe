@@ -167,6 +167,8 @@ AUDITED_READ_ONLY_GETS = {
     "/api/code/permissions",
     "/api/commands",
     "/api/config",
+    "/api/design-systems",
+    "/api/design-systems/{system_id}",
     "/api/mcp/catalog",
     "/api/mcp/npm-latest-version",
     "/api/mcp/oauth-apps",
