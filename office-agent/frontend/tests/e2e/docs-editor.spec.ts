@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
@@ -283,4 +284,26 @@ test("a change made behind the editor is offered back: Undo puts the earlier ver
   await expect(editor).toContainText("Changed elsewhere.");
   await expect(offer).toHaveCount(0);
   expect((await blocksOf(page, name)).blocks.map(textOf).join("\n")).toContain("Changed elsewhere.");
+});
+
+test("the title menu exports the document as Word and as Markdown", async ({ page }) => {
+  const name = `edit-${Math.random().toString(36).slice(2, 8)}`;
+  await openEditor(page, name);
+  const title = page.getByRole("button", { name: `${name}.docx`, exact: false }).first();
+
+  await title.click();
+  const word = page.waitForEvent("download");
+  await page.getByRole("menuitem", { name: /Export as Word/ }).click();
+  const docx = await word;
+  expect(docx.suggestedFilename()).toBe(`${name}.docx`);
+
+  await title.click();
+  const markdown = page.waitForEvent("download");
+  await page.getByRole("menuitem", { name: /Export as Markdown/ }).click();
+  const md = await markdown;
+  expect(md.suggestedFilename()).toBe(`${name}.md`);
+  const text = (await readFile((await md.path()) ?? "", "utf8")).split("\n");
+  expect(text).toContain("# Service agreement");
+  expect(text).toContain("### Term"); // the file's Heading 2, one level below the title
+  expect(text).toContain("The agreement runs for one year.");
 });
