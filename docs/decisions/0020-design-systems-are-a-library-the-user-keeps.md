@@ -1,8 +1,7 @@
 # 0020: Design systems are a library the user keeps; a deck gets a copy
 
-Status: draft (2026-10-22, for the maintainer's acceptance; the five choices below were agreed in
-conversation, the record is what he accepts or changes before step 2 is built). Builds on 0017 (a
-deck has a design system) and 0015 (what coscribe makes is an artifact).
+Status: accepted (2026-10-22, by the maintainer). Builds on 0017 (a deck has a design system) and
+0015 (what coscribe makes is an artifact).
 
 ## Context
 0017 gave each deck one `design-system.json`, made when the deck is first read, and left out the
