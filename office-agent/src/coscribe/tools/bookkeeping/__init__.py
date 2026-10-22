@@ -6,6 +6,7 @@ from __future__ import annotations
 from .background_tasks import (
     BackgroundTask,
     BackgroundTaskStore,
+    adopt_running_command,
     build_background_task_tools,
     forget_finished_background_tasks,
     read_background_log,
@@ -86,6 +87,7 @@ __all__ = [
     "TASK_DRAFT_TOOL_NAMES",
     "BackgroundTask",
     "BackgroundTaskStore",
+    "adopt_running_command",
     "MessagingStore",
     "ScheduleRule",
     "ScheduledRun",

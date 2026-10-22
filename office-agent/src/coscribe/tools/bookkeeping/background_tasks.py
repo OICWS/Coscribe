@@ -51,6 +51,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import uuid
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -60,6 +61,7 @@ from typing import Any
 
 from ...runtime import tool_metadata
 from ..exec import (
+    RunningCommand,
     blocked_write,
     ensure_node_env,
     ensure_script_env,
@@ -103,6 +105,9 @@ _MAX_TAIL_BYTES = 200_000
 # Read chunk size for the supervisor's incremental log-writing loop.
 _READ_CHUNK_BYTES = 65536
 
+# How long a killed process may take to be gone before its task is settled anyway.
+_KILL_GRACE_SECONDS = 10.0
+
 # Holds a strong reference to every in-flight supervisor task so it can't
 # be garbage-collected mid-run (asyncio only weakly tracks a Task once
 # nothing else references it -- see asyncio.create_task's own warning).
@@ -122,7 +127,7 @@ _RUNNING_SUPERVISORS: set[asyncio.Task[None]] = set()
 # process's exit code looks like any other failure). Populated when a task
 # starts, popped by the supervisor's own finally block -- see this
 # module's docstring for why this doesn't survive a server restart.
-_LIVE: dict[str, tuple[BackgroundTask, asyncio.subprocess.Process]] = {}
+_LIVE: dict[str, tuple[BackgroundTask, asyncio.subprocess.Process | RunningCommand]] = {}
 
 
 # One listener per conversation: the open tab's session, so the Background
@@ -135,10 +140,18 @@ def set_change_listener(thread_id: str, listener: Callable[[BackgroundTask], Non
     _LISTENERS[thread_id] = listener
 
 
-def _announce(task: BackgroundTask) -> None:
+def _announce(task: BackgroundTask, loop: asyncio.AbstractEventLoop | None = None) -> None:
+    """`loop` is the event loop the listener belongs to, when this runs on another thread."""
     listener = _LISTENERS.get(task.thread_id)
-    if listener is not None:
+    if listener is None:
+        return
+    if loop is None:
         listener(task)
+        return
+    try:
+        loop.call_soon_threadsafe(listener, task)
+    except RuntimeError:  # the loop is closed: the app is shutting down
+        pass
 
 
 def _now_iso() -> str:
@@ -271,7 +284,7 @@ class BackgroundTaskStore:
         return text
 
 
-def _kill(task: BackgroundTask, proc: asyncio.subprocess.Process) -> None:
+def _kill(task: BackgroundTask, proc: asyncio.subprocess.Process | RunningCommand) -> None:
     """A shell command's children outlive a kill of the shell alone, so a command
     is stopped as a whole tree; a script has no children worth chasing."""
     if task.language != "shell":
@@ -332,6 +345,16 @@ async def _supervise(
         if scratch_dir is not None:
             shutil.rmtree(scratch_dir, ignore_errors=True)
 
+    _settle(store, task, exit_code, timed_out)
+
+
+def _settle(
+    store: BackgroundTaskStore,
+    task: BackgroundTask,
+    exit_code: int,
+    timed_out: bool,
+    loop: asyncio.AbstractEventLoop | None = None,
+) -> None:
     task.finished_at = _now_iso()
     task.exit_code = exit_code
     if timed_out:
@@ -346,7 +369,63 @@ async def _supervise(
     else:
         task.status = "succeeded" if exit_code == 0 else "failed"
     store.save(task)
-    _announce(task)
+    _announce(task, loop)
+
+
+def adopt_running_command(
+    state_dir: str | Path,
+    thread_id: str,
+    command: RunningCommand,
+    language: str,
+    description: str,
+    scratch_dir: Path,
+) -> str:
+    """Takes over a script the person let go on in the background from a tool call that was
+    waiting for it, and returns the new task's id. Runs on the tool's worker thread, so what
+    must reach the event loop goes through `command.loop`."""
+    store = BackgroundTaskStore(state_dir)
+    task = BackgroundTask(
+        task_id=uuid.uuid4().hex[:12],
+        thread_id=thread_id,
+        language=language,
+        description=description,
+        status="running",
+        started_at=_now_iso(),
+        pid=command.pid,
+    )
+    store.save(task)
+    _LIVE[task.task_id] = (task, command)
+    command.adopt(store.log_path(task.task_id))
+    _announce(task, command.loop)
+    threading.Thread(
+        target=_watch,
+        args=(store, task, command, scratch_dir),
+        name="background-watch",
+        daemon=True,
+    ).start()
+    return task.task_id
+
+
+def _watch(
+    store: BackgroundTaskStore, task: BackgroundTask, command: RunningCommand, scratch_dir: Path
+) -> None:
+    """`_supervise` for a process that is not an asyncio one. The time limit counts from the
+    hand-over: the person chose to let it go on."""
+    timed_out = False
+    try:
+        try:
+            exit_code = command.wait_exit(_DEFAULT_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            _kill(task, command)
+            try:
+                exit_code = command.wait_exit(_KILL_GRACE_SECONDS)
+            except subprocess.TimeoutExpired:
+                exit_code = -1
+    finally:
+        _LIVE.pop(task.task_id, None)
+        shutil.rmtree(scratch_dir, ignore_errors=True)
+    _settle(store, task, exit_code, timed_out, command.loop)
 
 
 def stop_background_task(
