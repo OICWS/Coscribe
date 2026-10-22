@@ -13,4 +13,4 @@ Why: the person types in the Word editor while coscribe edits the same document.
 - Two changes to the same paragraph still stop at the banner; they are not joined inside the text.
 
 ## Follow-ups
-- Keeping the caret where it was across a join.
+- Done in the next change: the caret stays across a join.

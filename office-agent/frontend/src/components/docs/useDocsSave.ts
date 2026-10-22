@@ -2,6 +2,7 @@ import type { Editor, JSONContent } from "@tiptap/core";
 import { Mapping } from "@tiptap/pm/transform";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DocChangedError, docToBlocks, getDocBlocks, saveDocBlocks, type Block } from "../../lib/docsEditor";
+import { caretIn, caretOf } from "../../lib/docsCaret";
 import { mergeBlocks } from "../../lib/docsMerge";
 
 export type SaveState = { kind: "saved" } | { kind: "unsaved" } | { kind: "saving" } | { kind: "conflict" } | { kind: "error"; message: string };
@@ -33,7 +34,12 @@ export function useDocsSave(editor: Editor | null, threadId: string, path: strin
       if (!merged) return false;
       version.current = theirs.version;
       base.current = theirs.blocks;
+      const caret = caretOf(target.state.doc, target.state.selection.head);
+      const focused = target.isFocused;
       target.commands.setContent(toContent(merged, theirs.version), { emitUpdate: true });
+      const back = caret && caretIn(target.state.doc, caret);
+      if (back != null) target.commands.setTextSelection(back);
+      if (focused) target.commands.focus();
       return true;
     } catch {
       return false;

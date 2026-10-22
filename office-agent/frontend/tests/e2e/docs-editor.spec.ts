@@ -125,12 +125,15 @@ test("a change made meanwhile to another block is joined with the person's typin
   const behind = await page.request.put(`/api/threads/${threadOf(page)}/docs/blocks`, { data: { path: `${name}.docx`, version: read.version, blocks: changed } });
   expect(behind.ok()).toBe(true);
 
-  await editor.locator("p", { hasText: "The agreement runs" }).click();
+  await editor.locator("h2", { hasText: "Price" }).click();
   await page.keyboard.press("End");
   await page.keyboard.type("!");
   await expect(editor).toContainText("Service agreement, version 2");
+  // The caret is still where the person was typing: the next key lands after the "!", not at the end of the document.
+  await page.keyboard.type("x");
+  await expect(editor.locator("h2", { hasText: "Price" })).toContainText("Price!x");
   await expect(page.getByText("This document changed since you opened it")).toHaveCount(0);
-  await expect.poll(async () => (await blocksOf(page, name)).blocks.map(textOf).join("\n")).toContain("The agreement runs for one year.!");
+  await expect.poll(async () => (await blocksOf(page, name)).blocks.map(textOf).join("\n")).toContain("Price!x");
   expect((await blocksOf(page, name)).blocks.map(textOf).join("\n")).toContain("Service agreement, version 2");
 });
 
