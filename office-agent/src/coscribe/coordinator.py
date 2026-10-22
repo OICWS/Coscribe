@@ -11,14 +11,17 @@ fit a given sub-task, not a hardcoded per-domain agent roster.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from functools import partial
 from pathlib import Path
 
 from .config import Settings
 from .runtime import Agent, SessionEnvironments
 from .tools import (
     NEW_DECK_INSTRUCTIONS,
+    Detachable,
     ScheduledTriggerStore,
     WorkspaceScope,
+    adopt_running_command,
     build_background_task_tools,
     build_browser_tools,
     build_conversation_tools,
@@ -740,6 +743,8 @@ def build_coordinator_agent(
         ]
         return variables
 
+    detachable = Detachable(thread_id, partial(adopt_running_command, settings.state_dir))
+
     tools = (
         build_file_tools(root, file_tool_readable, file_tool_writable, settings.protected_paths())
         + build_document_tools(
@@ -778,10 +783,18 @@ def build_coordinator_agent(
         + build_scheduled_task_tools(settings.state_dir, thread_id)
         + build_websearch_tools()
         + build_script_tools(
-            root, settings.state_dir, extra_writable=extra_writable, session_env=session_env
+            root,
+            settings.state_dir,
+            extra_writable=extra_writable,
+            session_env=session_env,
+            detachable=detachable,
         )
         + build_node_script_tools(
-            root, settings.state_dir, extra_writable=extra_writable, session_env=session_env
+            root,
+            settings.state_dir,
+            extra_writable=extra_writable,
+            session_env=session_env,
+            detachable=detachable,
         )
         + build_background_task_tools(
             thread_id,

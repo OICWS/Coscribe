@@ -16,8 +16,8 @@
   "src/coscribe/web/routes/settings/config.py::update_config": 18,
   "src/coscribe/web/routes/skills.py::router": 35,
   "src/coscribe/web/routes/ws.py::browser_panel_ws": 16,
-  "src/coscribe/web/routes/ws.py::router": 36,
-  "src/coscribe/web/routes/ws.py::ws_endpoint": 19
+  "src/coscribe/web/routes/ws.py::router": 37,
+  "src/coscribe/web/routes/ws.py::ws_endpoint": 20
  },
  "dead_code": {
   "coscribe/cli.py::function chat": 1,
@@ -229,8 +229,8 @@
  },
  "fan_out": {},
  "file_lines": {
-  "src/coscribe/conversation/session.py": 1299,
-  "src/coscribe/coordinator.py": 845,
+  "src/coscribe/conversation/session.py": 1305,
+  "src/coscribe/coordinator.py": 858,
   "src/coscribe/runtime_lg/subagents.py": 842,
   "src/coscribe/tools/bookkeeping/scheduled_tasks.py": 1054,
   "src/coscribe/web/browser_panel.py": 813,
@@ -322,7 +322,7 @@
   "src/coscribe/conversation/session.py::ChatSessionLG.__init__": 207,
   "src/coscribe/conversation/session.py::ChatSessionLG._handle_user_message_locked": 211,
   "src/coscribe/conversation/turn_stream.py::TurnStreamer.stream_turn": 115,
-  "src/coscribe/coordinator.py::build_coordinator_agent": 152,
+  "src/coscribe/coordinator.py::build_coordinator_agent": 162,
   "src/coscribe/runtime_lg/agent.py::build_langgraph_agent": 187,
   "src/coscribe/runtime_lg/messages.py::serialize_history_for_ws_lg": 115,
   "src/coscribe/runtime_lg/providers.py::resolve_chat_model": 107,
@@ -351,8 +351,8 @@
   "src/coscribe/web/routes/settings/config.py::router": 103,
   "src/coscribe/web/routes/settings/providers.py::router": 138,
   "src/coscribe/web/routes/skills.py::router": 220,
-  "src/coscribe/web/routes/ws.py::router": 208,
-  "src/coscribe/web/routes/ws.py::router.ws_endpoint": 123
+  "src/coscribe/web/routes/ws.py::router": 210,
+  "src/coscribe/web/routes/ws.py::router.ws_endpoint": 125
  },
  "patch_by_string": {},
  "startup_imports": {
@@ -361,7 +361,7 @@
   "pptx": 1
  },
  "suppressions": {
-  "noqa": 139,
+  "noqa": 141,
   "pragma_no_cover": 2,
   "type_ignore": 36
  },

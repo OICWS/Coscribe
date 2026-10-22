@@ -35,6 +35,7 @@ from .bookkeeping import (
     TaskToolkit,
     WakeRequest,
     WakeStore,
+    adopt_running_command,
     build_background_task_tools,
     build_conversation_tools,
     build_interaction_tools,
@@ -76,6 +77,9 @@ from .connector_permissions import (
 )
 from .convert import build_convert_tools
 from .exec import (
+    Detachable,
+    HandOff,
+    RunningCommand,
     build_node_script_tools,
     build_script_tools,
     ensure_script_env,
@@ -85,6 +89,7 @@ from .exec import (
     install_python_package,
     list_node_packages,
     list_python_packages,
+    request_detach,
     run_python_script,
     set_interpreter_override,
     uninstall_node_package,
@@ -276,6 +281,11 @@ __all__ = [
     "update_trigger",
     "enabled_skill_names",
     "ensure_script_env",
+    "request_detach",
+    "adopt_running_command",
+    "Detachable",
+    "HandOff",
+    "RunningCommand",
     "venv_python",
     "page_screenshot",
     "format_incoming",

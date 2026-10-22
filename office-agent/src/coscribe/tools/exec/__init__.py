@@ -8,6 +8,7 @@ from .node_env import install_package as install_node_package
 from .node_env import list_packages as list_node_packages
 from .node_env import uninstall_package as uninstall_node_package
 from .node_scripts import build_node_script_tools
+from .running import Detachable, HandOff, RunningCommand, request_detach
 from .script_env import (
     ensure_script_env,
     fallbacks_for_platform,
@@ -34,6 +35,9 @@ from .scripts import _run_python_script as run_python_script
 from .scripts import build_script_tools
 
 __all__ = [
+    "Detachable",
+    "HandOff",
+    "RunningCommand",
     "blocked_write",
     "build_node_script_tools",
     "build_script_tools",
@@ -48,6 +52,7 @@ __all__ = [
     "node_guard_args",
     "overlay_env",
     "refusal_note",
+    "request_detach",
     "resolve_python_command",
     "run_python_script",
     "set_interpreter_override",
