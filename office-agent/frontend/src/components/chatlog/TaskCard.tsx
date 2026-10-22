@@ -56,7 +56,7 @@ export function TaskCard({
               )}
             </button>
             {open && (
-              <div className="px-2 pb-2 pt-1">
+              <div className="pb-2 pl-9 pr-2 pt-1">
                 <ToolRunGroupView
                   group={{ kind: "tool_run", id: `calls-${entry.id}-${row.id}`, items: calls }}
                   live={live}
