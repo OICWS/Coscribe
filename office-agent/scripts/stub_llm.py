@@ -11,7 +11,8 @@ model at it.
 
 It calls a tool only when asked to: a user message holding `[[stub-tool NAME {"arg": ...}]]`
 makes the first reply a call to that tool, and the reply after its result is "OK". Otherwise it
-never calls one, so it exercises the UI around a turn, not the agent.
+never calls one, so it exercises the UI around a turn, not the agent. A user message holding
+`[[stub-say TEXT]]` makes the final reply TEXT instead of "OK".
 """
 
 import argparse
@@ -21,6 +22,20 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
 _MARKER = "[[stub-tool "
+_SAY = "[[stub-say "
+
+
+def _final_reply(messages: list[dict[str, Any]]) -> str:
+    """What the last user message asks the model to say, else "OK"."""
+    for message in reversed(messages):
+        if message.get("role") != "user":
+            continue
+        content = message.get("content")
+        text = content if isinstance(content, str) else json.dumps(content)
+        start = text.find(_SAY)
+        end = text.find("]]", start + len(_SAY)) if start >= 0 else -1
+        return text[start + len(_SAY) : end] if end >= 0 else "OK"
+    return "OK"
 
 
 def _requested_call(messages: list[dict[str, Any]]) -> tuple[str, str] | None:
@@ -63,8 +78,9 @@ class _Handler(BaseHTTPRequestHandler):
         call = _requested_call(body.get("messages", []))
         function = {"name": call[0], "arguments": call[1]} if call else None
         tool_call = {"id": "call_stub", "type": "function", "function": function}
+        reply = _final_reply(body.get("messages", []))
         if not body.get("stream"):
-            message: dict[str, Any] = {"role": "assistant", "content": "OK"}
+            message: dict[str, Any] = {"role": "assistant", "content": reply}
             if function:
                 message = {"role": "assistant", "content": None, "tool_calls": [tool_call]}
             self._json(
@@ -85,7 +101,7 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.end_headers()
-        first = {"role": "assistant", "content": "OK"}
+        first = {"role": "assistant", "content": reply}
         if function:
             first = {"role": "assistant", "tool_calls": [{"index": 0, **tool_call}]}
         chunks: list[dict[str, Any]] = [

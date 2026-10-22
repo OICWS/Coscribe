@@ -4,11 +4,12 @@ import { type LogItem } from "../state/reducer";
 import { EmptyState } from "./EmptyState";
 import { type PptxShapeCapture } from "./PptxShapeOverlay";
 import { type PlanChoice, type PlanItem } from "./PlanCard";
-import { FolderActionsContext, type FolderActions } from "./folderActions";
-import { DraftCardsContext, type DraftCards } from "./workflow/draftCards";
+import { type FolderActions } from "./folderActions";
+import { type DraftCards } from "./workflow/draftCards";
 import { PinnedDraftBar } from "./workflow/WorkflowDraftCard";
 import { type TaskDraftItem } from "./chatlog/types";
-import { ShowDiffStats, NO_CONNECTOR_TOOLS, ConnectorTools } from "./chatlog/contexts";
+import { ShowDiffStats, NO_CONNECTOR_TOOLS } from "./chatlog/contexts";
+import { ChatContexts } from "./chatlog/ChatContexts";
 import { ToolRunGroupView } from "./chatlog/ToolRuns";
 import { TurnView, LogItemView } from "./chatlog/TurnView";
 
@@ -194,9 +195,7 @@ export function ChatLog({
   }
 
   return (
-    <ConnectorTools.Provider value={connectorTools}>
-    <FolderActionsContext.Provider value={folderActions ?? null}>
-    <DraftCardsContext.Provider value={cards}>
+    <ChatContexts connectorTools={connectorTools} folderActions={folderActions ?? null} cards={cards} items={items} olderItems={olderItems}>
     <div data-testid="chat-log" className="flex-1 overflow-y-auto" ref={scrollRef}>
       <div className="mx-auto flex w-full max-w-[880px] flex-col gap-3 px-4 py-4">
         {olderStatus === "loading" && (
@@ -235,9 +234,7 @@ export function ChatLog({
         {pinnable && !latestCardVisible && <PinnedDraftBar entry={latestDraft} onShow={showLatestCard} />}
       </div>
     </div>
-    </DraftCardsContext.Provider>
-    </FolderActionsContext.Provider>
-    </ConnectorTools.Provider>
+    </ChatContexts>
   );
 }
 
