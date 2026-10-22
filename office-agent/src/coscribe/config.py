@@ -173,6 +173,16 @@ class Settings(BaseSettings):
     most likely to send next and offer it in the message box. One extra short
     model call per turn."""
 
+    background_agents: bool = True
+    """Whether the model may start sub-agents that run in the background, in parallel with the
+    conversation (`spawn_agent_background`). Off, the tool stays bound (the tool list is cached
+    by the provider) and answers that it is turned off."""
+
+    archive_inactive_days: int | None = None
+    """Conversations idle for this many days are archived when the sidebar lists them; None
+    never archives. A conversation that is open in the server, so one with a turn or background
+    work running, is left alone."""
+
     defer_tools: bool = True
     """When True, only `coordinator.CORE_TOOL_NAMES` stay bound to the
     top-level conversation's model by default -- everything else (most

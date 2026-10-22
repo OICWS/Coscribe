@@ -1,12 +1,15 @@
 import { ToggleSwitch } from "../ToggleSwitch";
 import { isElectron } from "../../lib/electron";
 import {
+  ARCHIVE_INACTIVE_DAYS_KEY,
+  ARCHIVE_INACTIVE_OPTIONS,
+  BACKGROUND_AGENTS_KEY,
   FLASH_ON_ATTENTION_KEY,
   KEEP_AWAKE_KEY,
   KEEP_AWAKE_ON_BATTERY_KEY,
   PROMPT_SUGGESTIONS_KEY,
 } from "./fields";
-import { SettingRow, SettingRows, SettingsSection } from "./SettingRow";
+import { SettingRow, SettingRows, SettingsSection, fieldClass } from "./SettingRow";
 
 interface SessionsTabProps {
   values: Record<string, string>;
@@ -29,6 +32,35 @@ export function SessionsTab({ values, onChange }: SessionsTabProps) {
               on={suggestions}
               onClick={() => onChange(PROMPT_SUGGESTIONS_KEY, suggestions ? "false" : "true")}
             />
+          }
+        />
+        <SettingRow
+          label="Background agents"
+          description="Let coscribe hand work to sub-agents that run in the background while you keep chatting. They can use a lot of your usage."
+          control={
+            <ToggleSwitch
+              label="Background agents"
+              on={on(BACKGROUND_AGENTS_KEY)}
+              onClick={() => toggle(BACKGROUND_AGENTS_KEY)}
+            />
+          }
+        />
+        <SettingRow
+          label="Archive inactive conversations"
+          description="Archive conversations after a period of no activity. A conversation that is open or has work running is never archived, and one you take out of the archive stays out."
+          control={
+            <select
+              aria-label="Archive inactive conversations"
+              className={`${fieldClass} w-40`}
+              value={values[ARCHIVE_INACTIVE_DAYS_KEY] ?? ""}
+              onChange={(e) => onChange(ARCHIVE_INACTIVE_DAYS_KEY, e.target.value)}
+            >
+              {ARCHIVE_INACTIVE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           }
         />
         {isElectron() && (

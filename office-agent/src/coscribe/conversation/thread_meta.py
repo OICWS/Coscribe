@@ -40,12 +40,14 @@ class ThreadMetaStore:
             "group": data.get("group") or None,
             "archived": bool(data.get("archived", False)),
             "unseen": bool(data.get("unseen", False)),
+            # Taken out of the archive by hand: archiving for inactivity leaves it alone.
+            "kept": bool(data.get("kept", False)),
         }
 
     def update(self, thread_id: str, **fields: Any) -> dict[str, Any]:
         meta = self.get(thread_id)
         meta.update(fields)
-        if meta == {"group": None, "archived": False, "unseen": False}:
+        if meta == {"group": None, "archived": False, "unseen": False, "kept": False}:
             self._path(thread_id).unlink(missing_ok=True)
         else:
             self._write(self._path(thread_id), meta)

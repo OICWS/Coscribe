@@ -6,6 +6,7 @@ import asyncio
 import getpass
 import zipfile
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -173,6 +174,7 @@ def _listing_routes(router: APIRouter, state: AppState) -> None:
                     "status": _thread_status(state, thread_id, waiting, meta),
                 }
             )
+        _archive_inactive(state, summaries)
         summaries.sort(key=lambda s: s["updated_at"] or "", reverse=True)
         return summaries
 
@@ -189,6 +191,31 @@ def _listing_routes(router: APIRouter, state: AppState) -> None:
                 if not thread_id.startswith(SCHEDULED_THREAD_PREFIX)
             }
         }
+
+
+def _archive_inactive(state: AppState, summaries: list[dict[str, Any]]) -> None:
+    """Archives the conversations idle past the setting, as the sidebar lists them. One open in
+    the server is left alone: it may have a turn or background work running."""
+    days = state.settings.archive_inactive_days
+    if not days:
+        return
+    cutoff = datetime.now(UTC) - timedelta(days=days)
+    for summary in summaries:
+        thread_id = summary["thread_id"]
+        if (
+            summary["archived"]
+            or thread_id in state.sessions
+            or summary["status"] != "idle"
+            or state.meta_store.get(thread_id)["kept"]
+        ):
+            continue
+        try:
+            idle = datetime.fromisoformat(summary["updated_at"]) < cutoff
+        except (TypeError, ValueError):
+            continue
+        if idle:
+            state.meta_store.update(thread_id, archived=True)
+            summary["archived"] = True
 
 
 def _group_and_lifecycle_routes(router: APIRouter, state: AppState) -> None:
@@ -209,6 +236,7 @@ def _group_and_lifecycle_routes(router: APIRouter, state: AppState) -> None:
                 return JSONResponse({"error": str(exc)}, status_code=400)
         if payload.archived is not None:
             fields["archived"] = payload.archived
+            fields["kept"] = not payload.archived
         meta = meta_store.update(thread_id, **fields)
         return JSONResponse({"thread_id": thread_id, **meta, "groups": meta_store.groups()})
 

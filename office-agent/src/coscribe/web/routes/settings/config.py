@@ -46,6 +46,8 @@ COSCRIBE_ENV_VARS = [
     "COSCRIBE_CODE_MODEL",
     "COSCRIBE_CODE_MODULE_ENABLED",
     "COSCRIBE_PROMPT_SUGGESTIONS",
+    "COSCRIBE_BACKGROUND_AGENTS",
+    "COSCRIBE_ARCHIVE_INACTIVE_DAYS",
     "COSCRIBE_REVIEWER_NAME",
 ]
 
@@ -58,6 +60,8 @@ LIVE_SETTINGS = {
     "COSCRIBE_CODE_MODEL": "code_model",
     "COSCRIBE_CODE_MODULE_ENABLED": "code_module_enabled",
     "COSCRIBE_PROMPT_SUGGESTIONS": "prompt_suggestions",
+    "COSCRIBE_BACKGROUND_AGENTS": "background_agents",
+    "COSCRIBE_ARCHIVE_INACTIVE_DAYS": "archive_inactive_days",
     "COSCRIBE_REVIEWER_NAME": "reviewer_name",
 }
 
@@ -109,7 +113,11 @@ BLANK_UNSAFE_ENV_VARS = {
 }
 
 
-_BOOLEAN_CODE_KEYS = {"COSCRIBE_CODE_MODULE_ENABLED", "COSCRIBE_PROMPT_SUGGESTIONS"}
+_BOOLEAN_CODE_KEYS = {
+    "COSCRIBE_CODE_MODULE_ENABLED",
+    "COSCRIBE_PROMPT_SUGGESTIONS",
+    "COSCRIBE_BACKGROUND_AGENTS",
+}
 
 
 def router(state: AppState) -> APIRouter:
@@ -167,6 +175,9 @@ def router(state: AppState) -> APIRouter:
             if key == "COSCRIBE_MAX_TURNS" and not (value.strip().isdigit() and int(value) > 0):
                 rejected[key] = "must be a positive integer"
                 continue
+            if key == "COSCRIBE_ARCHIVE_INACTIVE_DAYS" and value and not value.isdigit():
+                rejected[key] = "must be a number of days, or blank to never archive"
+                continue
             if key == "COSCRIBE_DEFAULT_PERMISSION_MODE" and value not in get_args(PermissionMode):
                 rejected[key] = f"must be one of {', '.join(get_args(PermissionMode))}"
                 continue
@@ -202,6 +213,8 @@ def router(state: AppState) -> APIRouter:
                         live_value = value == "true"
                     elif key == "COSCRIBE_CODE_MODEL":
                         live_value = value.strip() or None
+                    elif key == "COSCRIBE_ARCHIVE_INACTIVE_DAYS":
+                        live_value = int(value) if value.strip() and int(value) > 0 else None
                     setattr(settings, LIVE_SETTINGS[key], live_value)
             applied.add(key)
         restart_required = any(

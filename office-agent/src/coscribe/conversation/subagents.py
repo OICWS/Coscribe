@@ -189,6 +189,7 @@ class SubAgentReporter:
             ),
             interrupt_all=bool(self._host.hooks_config["PreToolUse"]),
             max_turns=SUBAGENT_MAX_STEPS,
+            background_allowed=lambda: self._host.settings.background_agents,
         )
 
     async def _subagent_changed(self, task: SubAgentTask) -> None:
