@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FILE_LINK, filesByName, remarkFileChips, touchedFiles } from "./fileMentions";
+import { FILE_LINK, fileLinkPath, filesByName, remarkFileChips, touchedFiles } from "./fileMentions";
 
 const call = (toolName: string, path: string, extra: object = {}) => ({ toolName, arguments: { path }, result: "ok", ...extra });
 
@@ -49,5 +49,13 @@ describe("remarkFileChips", () => {
     }) as { children: { children?: { type: string }[] }[] };
     expect(tree.children[0].children?.map((n) => n.type)).toEqual(["text"]);
     expect(tree.children[1].children?.[0].type).toBe("link");
+  });
+});
+
+describe("fileLinkPath", () => {
+  it("gives back a path the markdown pipeline percent-encoded, and leaves a plain or odd one alone", () => {
+    expect(fileLinkPath(`${FILE_LINK}docs/AI%E6%96%B0%E9%97%BB.pptx`)).toBe("docs/AI新闻.pptx");
+    expect(fileLinkPath(`${FILE_LINK}made.docx`)).toBe("made.docx");
+    expect(fileLinkPath(`${FILE_LINK}100%.docx`)).toBe("100%.docx");
   });
 });
