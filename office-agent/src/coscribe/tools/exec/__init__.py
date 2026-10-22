@@ -8,7 +8,7 @@ from .node_env import install_package as install_node_package
 from .node_env import list_packages as list_node_packages
 from .node_env import uninstall_package as uninstall_node_package
 from .node_scripts import build_node_script_tools
-from .running import Detachable, HandOff, RunningCommand, request_detach
+from .running import Detachable, HandOff, RunningCommand, request_detach, stop_commands
 from .script_env import (
     ensure_script_env,
     fallbacks_for_platform,
@@ -56,6 +56,7 @@ __all__ = [
     "resolve_python_command",
     "run_python_script",
     "set_interpreter_override",
+    "stop_commands",
     "suggested_folder",
     "uninstall_node_package",
     "uninstall_python_package",

@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test } from "@playwright/test";
 import { freshThreadPath, waitForConnected } from "./helpers";
 
@@ -35,6 +37,32 @@ test("a running script can be moved to the background and keeps running", async 
     const [task] = (await tasks.json()) as { status: string; description: string }[];
     expect(task.description).toBe("A slow script");
     expect(task.status).toBe("running");
+  } finally {
+    await page.request.post("/api/config", { data: { updates: { COSCRIBE_DEFAULT_PERMISSION_MODE: "auto" } } });
+  }
+});
+
+// Stop ends the script its tool call is still waiting on; it does not run to the end unseen.
+test("stopping a turn ends the script it waits on", async ({ page }) => {
+  test.setTimeout(240_000);
+  const threadPath = freshThreadPath("run-stop");
+  const workspace = process.env.COSCRIBE_E2E_WORKSPACE;
+  test.skip(!workspace, "needs COSCRIBE_E2E_WORKSPACE, the server's workspace folder");
+  await page.request.post("/api/config", { data: { updates: { COSCRIBE_DEFAULT_PERMISSION_MODE: "manual" } } });
+  try {
+    await page.goto(threadPath);
+    await waitForConnected(page);
+    const marker = `stop-${Math.random().toString(36).slice(2, 8)}.txt`;
+    const script = `import time\\nprint('started', flush=True)\\ntime.sleep(20)\\nopen('${marker}', 'w').write('late')`;
+    await page.locator("textarea").fill(`slow [[stub-tool run_python_script {"script":"${script}","description":"A slow script"}]]`);
+    await page.keyboard.press("Enter");
+    await page.getByRole("button", { name: "Approve", exact: true }).click({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Run in background" })).toBeVisible({ timeout: 180_000 });
+    await page.getByRole("button", { name: "Stop", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Send" })).toBeVisible({ timeout: 30_000 });
+    // Past the script's own sleep: had it kept going it would have written the file.
+    await page.waitForTimeout(23_000);
+    expect(existsSync(join(workspace ?? "", marker))).toBe(false);
   } finally {
     await page.request.post("/api/config", { data: { updates: { COSCRIBE_DEFAULT_PERMISSION_MODE: "auto" } } });
   }
