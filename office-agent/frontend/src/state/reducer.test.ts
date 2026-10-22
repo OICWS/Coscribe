@@ -140,6 +140,21 @@ describe("history and older messages", () => {
     expect(status("The user rejected the plan. Stop.")).toMatchObject({ kind: "plan", status: "reject" });
   });
 
+  it("remembers the plan before each one, so a revision can be shown as a diff", () => {
+    const entry = (plan: string): HistoryEntry => ({
+      kind: "tool",
+      tool_name: "exit_plan_mode",
+      arguments: { plan },
+      result: "The user wants changes",
+      is_error: false,
+    });
+    const items = historyToItems([entry("one"), entry("two")]);
+    expect(items.map((item) => (item.kind === "plan" ? item.previous : null))).toEqual(["", "one"]);
+
+    const live = run(stateWith(), { type: "plan_ready", id: "a", plan: "one" }, { type: "plan_ready", id: "b", plan: "two" });
+    expect(live.items.map((item) => (item.kind === "plan" ? item.previous : null))).toEqual(["", "one"]);
+  });
+
   it("restores a scheduled-task draft as saved only when the result starts with the saved prefix", () => {
     const draftEntry = (result: unknown): HistoryEntry => ({
       kind: "tool",
@@ -587,7 +602,7 @@ describe("questions, plans and task drafts", () => {
       plan: "Step 1",
     });
     expect(pending.items[0]).toMatchObject({ streaming: false });
-    expect(pending.items[1]).toEqual({ id: "p1", kind: "plan", plan: "Step 1", status: "pending" });
+    expect(pending.items[1]).toEqual({ id: "p1", kind: "plan", plan: "Step 1", previous: "", status: "pending" });
     const answered = run(pending, { type: "local_plan_answered", id: "p1", status: "auto" });
     expect(answered.items[1]).toMatchObject({ status: "auto" });
     expect(run(pending, { type: "local_plan_answered", id: "other", status: "auto" }).items[1]).toMatchObject({
