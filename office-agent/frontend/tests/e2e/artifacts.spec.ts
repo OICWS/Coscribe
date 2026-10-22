@@ -4,8 +4,14 @@ import { freshThreadPath, waitForConnected } from "./helpers";
 // What the server lists comes from what conversations wrote, which a stub model cannot make, so
 // the list is the one thing answered here; the page, the sidebar and the navigation are real.
 const hoursAgo = (h: number) => new Date(Date.now() - h * 3600e3).toISOString();
+// Earlier today whatever the hour: three hours ago is yesterday in the first hours after midnight.
+const earlierToday = () => {
+  const midnight = new Date();
+  midnight.setHours(0, 0, 0, 0);
+  return new Date(Math.max(Date.now() - 3 * 3600e3, midnight.getTime())).toISOString();
+};
 const LISTED = [
-  { id: "a1", path: "q3.pptx", location: "/w/q3.pptx", name: "Q3 review", kind: "slides", modified_at: hoursAgo(3), excerpt: null },
+  { id: "a1", path: "q3.pptx", location: "/w/q3.pptx", name: "Q3 review", kind: "slides", modified_at: earlierToday(), excerpt: null },
   { id: "b1", path: "plan.docx", location: "/w/plan.docx", name: "Project plan", kind: "docs", modified_at: hoursAgo(30), excerpt: { heading: "Project plan", text: "Goals and dates." } },
   { id: "c1", path: "costs.xlsx", location: "/w/costs.xlsx", name: "Costs", kind: "sheets", modified_at: hoursAgo(31), excerpt: null },
 ];
