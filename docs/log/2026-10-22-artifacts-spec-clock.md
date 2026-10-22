@@ -4,6 +4,8 @@ Why: `artifacts.spec.ts` listed its newest artifact as "3 hours ago" and expecte
 
 ## Shipped
 - The fixture is three hours ago or midnight, whichever is later, so it is always today.
+- The delete step waits for the rename dialog to be gone and retries opening the card's menu: on a loaded CI runner the second open timed out waiting for the Delete item (twice in a row on #524, never locally).
 
 ## Not verified
+- The delete-step retry is a guess at the cause (a click landing while the dialog hands focus back); the failure was never reproduced locally, so only a green CI run shows it helps.
 - Run only in the 01:00 hour, where the old fixture fails and the new one passes; not in a time zone with a half-hour offset.

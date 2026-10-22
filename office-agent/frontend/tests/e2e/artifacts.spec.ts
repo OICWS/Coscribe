@@ -97,7 +97,12 @@ test("a card's menu renames, copies and deletes through the app's own dialogs", 
   await page.getByRole("button", { name: "Rename", exact: true }).click();
   await expect.poll(() => calls).toContain('rename {"name":"Roadmap"}');
 
-  await page.getByRole("button", { name: "Options for Project plan" }).click({ force: true });
+  // The rename dialog is still handing focus back; a click that lands in that moment closes the menu again.
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(async () => {
+    await page.getByRole("button", { name: "Options for Project plan" }).click({ force: true });
+    await expect(page.getByRole("menuitem", { name: "Delete" })).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 15000 });
   await page.getByRole("menuitem", { name: "Delete" }).click();
   await expect(page.getByText("moves Project plan to the Recycle Bin")).toBeVisible();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
