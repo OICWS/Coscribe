@@ -36,7 +36,7 @@ describe("visibleArtifacts", () => {
   });
 
   it("counts the kinds over everything, whatever is shown", () => {
-    expect(countsByKind(ALL)).toEqual({ docs: 2, slides: 1, sheets: 1, dashboard: 0 });
+    expect(countsByKind(ALL)).toEqual({ docs: 2, slides: 1, sheets: 1, design: 0, dashboard: 0 });
   });
 });
 

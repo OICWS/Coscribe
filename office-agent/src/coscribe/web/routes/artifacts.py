@@ -24,6 +24,7 @@ from ...tools import WorkspaceScope, foreign_slide_svg, slide_svg
 from ..artifact_adoption import ArtifactAdoption
 from ..schemas import ArtifactRename, ArtifactShow
 from ..state import AppState
+from .design import design_response
 from .slides import _SVG_HEADERS
 
 _NOT_DONE = "The file could not be changed; it may be open in another program"
@@ -64,6 +65,12 @@ def router(state: AppState) -> APIRouter:
             return svg
         return Response(svg, media_type="image/svg+xml", headers=_SVG_HEADERS)
 
+    async def content(artifact: str) -> Response:
+        found = described(artifact)
+        if found is None or found[1]["kind"] != "design":
+            return JSONResponse({"error": "No such design"}, status_code=404)
+        return design_response(Path(found[0]["location"]))
+
     async def open_artifact(artifact: str) -> JSONResponse:
         """The conversation to show the artifact in and its path there: the one that made it
         while it exists, else a new one working in the folders that one did."""
@@ -86,6 +93,7 @@ def router(state: AppState) -> APIRouter:
     _open_routes(router, state, adoption)
     router.add_api_route("/api/artifacts", list_artifacts, methods=["GET"])
     router.add_api_route("/api/artifacts/{artifact}/thumbnail", thumbnail, methods=["GET"])
+    router.add_api_route("/api/artifacts/{artifact}/content", content, methods=["GET"])
     router.add_api_route("/api/artifacts/{artifact}/open", open_artifact, methods=["POST"])
     return router
 

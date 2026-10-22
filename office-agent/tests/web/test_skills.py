@@ -86,6 +86,7 @@ def test_get_skills_lists_the_builtin_skills(
         "Excel Spreadsheets",
         "Word Documents",
         "Skill Creator",
+        "SVG and HTML Design",
     }
 
 
@@ -298,6 +299,7 @@ def test_new_thread_defaults_to_the_builtin_skills_enabled(
         "Excel Spreadsheets",
         "PPTX Pages",
         "PPTX Slides",
+        "SVG and HTML Design",
         "Skill Creator",
         "Word Documents",
     ]

@@ -1,6 +1,6 @@
-"""The decks, documents and spreadsheets coscribe made, for the Artifacts page: a registry of
-them that outlives the conversation that made each one, and each one's kind, name, time and, for
-a document, its opening lines.
+"""The decks, documents, spreadsheets and designs coscribe made, for the Artifacts page: a
+registry of them that outlives the conversation that made each one, and each one's kind, name,
+time and, for a document, its opening lines.
 
 A conversation's Outputs list says what it made (`activity.summarize_activity`); the registry
 adopts those files, and from then on an artifact is the file, not the conversation. Only files
@@ -25,7 +25,12 @@ from ..runtime import ToolMetadata
 from ..tools import WorkspaceScope
 from .activity import summarize_activity
 
-ARTIFACT_KINDS = {".pptx": "slides", ".docx": "docs", ".xlsx": "sheets"}
+ARTIFACT_KINDS = {
+    ".pptx": "slides",
+    ".docx": "docs",
+    ".xlsx": "sheets",
+    ".html": "design",
+}
 _EXCERPT_CHARS = 280
 
 
