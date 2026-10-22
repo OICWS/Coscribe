@@ -13,6 +13,7 @@ import {
   MessageCircleIcon,
   SearchIcon,
   SettingsIcon,
+  SparkIcon,
   TerminalIcon,
   ToolIcon,
 } from "../icons";
@@ -39,6 +40,7 @@ import {
   syncDirsToStrings,
   type DirEntry,
 } from "./fields";
+import { DesignSystemsTab } from "./DesignSystemsTab";
 import { EnvironmentTab } from "./EnvironmentTab";
 import { GeneralTab } from "./GeneralTab";
 import { DRAWS_TITLE_BAR, openBackdrops } from "../../lib/titleBar";
@@ -58,6 +60,7 @@ export type SettingsCategory =
   | "connectors"
   | "secrets"
   | "environment"
+  | "design-systems"
   | "sessions"
   | "capabilities";
 
@@ -99,6 +102,7 @@ const GROUPS: { label: string; categories: CategoryDef[] }[] = [
     categories: [
       { id: "skills", label: "Skills", icon: BookOpenIcon },
       { id: "connectors", label: "Connectors", icon: LinkIcon },
+      { id: "design-systems", label: "Design systems", icon: SparkIcon },
     ],
   },
 ];
@@ -314,6 +318,7 @@ export function SettingsModal({
               />
             )}
             {category === "connectors" && <ConnectorsTab active={category === "connectors"} />}
+            {category === "design-systems" && <DesignSystemsTab active={category === "design-systems"} />}
             {category === "secrets" && <SecretsTab active={category === "secrets"} />}
             {category === "environment" && <EnvironmentTab active={category === "environment"} />}
             {category === "sessions" && <SessionsTab values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} />}
