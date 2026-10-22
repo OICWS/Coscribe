@@ -130,8 +130,9 @@ function drawLine(node: HTMLElement, w: number, h: number, rises: boolean) {
   const svg = node.querySelector("svg");
   const line = node.querySelector("line");
   if (!svg || !line) return;
-  svg.setAttribute("width", String(w));
-  svg.setAttribute("height", String(h));
+  // A flat line's box has one side 0, and the browser draws no svg of zero size, overflow or not.
+  svg.setAttribute("width", String(Math.max(w, 1)));
+  svg.setAttribute("height", String(Math.max(h, 1)));
   for (const [name, value] of Object.entries({ x1: "0", y1: rises ? String(h) : "0", x2: String(w), y2: rises ? "0" : String(h) })) line.setAttribute(name, value);
   node.dataset.line = rises ? "up" : "down";
 }
