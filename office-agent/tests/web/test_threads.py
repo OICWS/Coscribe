@@ -576,3 +576,52 @@ def test_deleting_a_conversation_forgets_who_may_message_it(
         client.delete("/api/threads/b")
 
         assert client.get("/api/threads/b/messaging").json()["mode"] == "off"
+
+
+class _SuggestingModel(FakeToolCallingChatModel):
+    """Answers the prediction request on its own, like _TitlingModel does for naming."""
+
+    def _generate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: Any = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        if "predict what the user will type next" in str(messages[0].content):
+            self.received.append(list(messages))
+            return ChatResult(
+                generations=[ChatGeneration(message=AIMessage(content="“把第二张也补回来”"))]
+            )
+        return super()._generate(messages, stop, run_manager, **kwargs)
+
+
+def test_a_finished_turn_offers_the_next_message_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = _SuggestingModel(responses=[AIMessage(content="第一张已经补回来了。")])
+    with _client_lg(tmp_path, monkeypatch, fake_model, prompt_suggestions=True) as client:
+        with client.websocket_connect("/ws/t_suggest") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "把第一张补回来"})
+            suggestion = _receive_until(ws, "prompt_suggestion")[-1]
+
+    assert suggestion == {"type": "prompt_suggestion", "text": "把第二张也补回来"}
+    [request] = [m for m in fake_model.received if "predict what" in str(m[0].content)]
+    assert "把第一张补回来" in str(request[-1].content)
+    assert "第一张已经补回来了" in str(request[-1].content)
+
+
+def test_no_suggestion_is_made_when_the_setting_is_off_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = _SuggestingModel(responses=[AIMessage(content="Done.")])
+    with _client_lg(tmp_path, monkeypatch, fake_model, prompt_suggestions=False) as client:
+        with client.websocket_connect("/ws/t_nosuggest") as ws:
+            ws.receive_json()
+            ws.receive_json()
+            ws.send_json({"type": "user_message", "text": "hi"})
+            _receive_until(ws, "tasks_changed")
+
+    assert not [m for m in fake_model.received if "predict what" in str(m[0].content)]

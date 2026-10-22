@@ -52,6 +52,9 @@ export const LOG_LEVELS = [
 export const CODE_MODEL_KEY = "COSCRIBE_CODE_MODEL";
 export const CODE_MODULE_ENABLED_KEY = "COSCRIBE_CODE_MODULE_ENABLED";
 
+/** Absent means on; only "false" turns it off. */
+export const PROMPT_SUGGESTIONS_KEY = "COSCRIBE_PROMPT_SUGGESTIONS";
+
 export const PERMISSION_MODE_KEY = "COSCRIBE_DEFAULT_PERMISSION_MODE";
 export const PERMISSION_MODES = [
   { value: "manual", label: "Manual" },
