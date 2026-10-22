@@ -28,3 +28,4 @@ old one; the old one stays, marked "Superseded by".
 | [0017](0017-a-deck-has-a-design-system-its-slides-name-styles-from.md) | A deck has a design system; its slides name text styles from it |
 | [0018](0018-sections-may-hold-containers-that-lay-out-their-children.md) | Sections may hold containers that lay out their children |
 | [0019](0019-a-docs-artifact-is-the-docx-itself-edited-by-styles.md) | A Docs artifact is the .docx itself, edited in the app block by block, by styles not fonts |
+| [0020](0020-design-systems-are-a-library-the-user-keeps.md) | Design systems are a library the user keeps; a deck gets a copy (draft) |
