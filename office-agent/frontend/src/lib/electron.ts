@@ -201,6 +201,14 @@ export function setTitleBarColors(color: string, symbolColor: string): void {
   window.coscribeDesktop?.setTitleBarColors?.(color, symbolColor);
 }
 
+export function setSessionBusy(busy: boolean): void {
+  window.coscribeDesktop?.setSessionBusy?.(busy);
+}
+
+export function requestAttention(): void {
+  window.coscribeDesktop?.requestAttention?.();
+}
+
 export function onShowShortcuts(callback: () => void): void {
   window.coscribeDesktop?.onShowShortcuts?.(callback);
 }
@@ -212,6 +220,8 @@ declare global {
       showAppMenu?(x: number, y: number): void;
       setTitleBarColors?(color: string, symbolColor: string): void;
       setThemeSource?(theme: string): void;
+      setSessionBusy?(busy: boolean): void;
+      requestAttention?(): void;
       setTitleBarHeight?(height: number): void;
       openPanelWindow?(request: unknown): Promise<void>;
       focusPanelWindow?(panel: string): Promise<void>;

@@ -239,7 +239,7 @@
  },
  "frontend_file_lines": {
   "office-agent-desktop/src/main/browserAgent.ts": 934,
-  "office-agent/frontend/src/App.tsx": 1066,
+  "office-agent/frontend/src/App.tsx": 1068,
   "office-agent/frontend/src/components/icons.tsx": 803,
   "office-agent/frontend/src/components/workflow/WorkflowRunView.tsx": 860
  },
@@ -247,7 +247,7 @@
   "office-agent-desktop/src/main/browserAgent.ts::act": 156,
   "office-agent-desktop/src/main/browserAgent.ts::startBrowserAgent": 140,
   "office-agent-desktop/src/main/browserAgentPage.ts::pageAgent": 343,
-  "office-agent/frontend/src/App.tsx::App": 973,
+  "office-agent/frontend/src/App.tsx::App": 974,
   "office-agent/frontend/src/components/AllowedSitesDialog.tsx::AllowedSitesDialog": 132,
   "office-agent/frontend/src/components/Attachments.tsx::AttachmentDialog": 106,
   "office-agent/frontend/src/components/BackgroundTasksPanel.tsx::BackgroundTasksPanel": 162,

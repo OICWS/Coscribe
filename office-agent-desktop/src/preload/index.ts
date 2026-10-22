@@ -100,6 +100,9 @@ const PANEL_WINDOW_ACTION_CHANNEL = "panel-window:action";
 const PANEL_WINDOW_DOCK_CHANNEL = "panel-window:dock";
 const PANEL_WINDOW_PIN_CHANNEL = "panel-window:pin";
 const PANEL_WINDOW_CLOSED_EVENT = "panel-window:closed";
+// sessionActivity.ts's channels.
+const SESSION_SET_BUSY_CHANNEL = "session:set-busy";
+const SESSION_ATTENTION_CHANNEL = "session:attention";
 
 contextBridge.exposeInMainWorld("coscribeDesktop", {
   /** The page draws the window's top bar (see main/windowChrome.ts). */
@@ -108,6 +111,16 @@ contextBridge.exposeInMainWorld("coscribeDesktop", {
   /** Opens the application menu at a point in the window, in CSS pixels. */
   showAppMenu(x: number, y: number): void {
     ipcRenderer.send(SHOW_APP_MENU_CHANNEL, { x, y });
+  },
+
+  /** Whether a turn is running, so the computer can be kept awake for it. */
+  setSessionBusy(busy: boolean): void {
+    ipcRenderer.send(SESSION_SET_BUSY_CHANNEL, busy);
+  },
+
+  /** coscribe needs the person: flashes the taskbar button if the window is not in front. */
+  requestAttention(): void {
+    ipcRenderer.send(SESSION_ATTENTION_CHANNEL);
   },
 
   setThemeSource(theme: string): void {

@@ -259,6 +259,6 @@ Last reviewed: 2026-10-15.
 - A terminal UI.
 - Settings in Claude's grouping (2026-10-22): the code module under Capabilities (#537), and a
   Sessions category. Sessions has Prompt suggestions; next are a bypass-permissions gate, a
-  dynamic-workflows switch, and archiving inactive conversations; desktop only: flash on
-  notification and keep the computer awake while a turn runs. Capabilities items that are not
+  dynamic-workflows switch, and archiving inactive conversations. Desktop only, built: flash on
+  attention and keep the computer awake while a turn runs (only the open conversation counts). Capabilities items that are not
   built: AI-powered artifacts, inline charts, a domain allowlist for the web tools.
