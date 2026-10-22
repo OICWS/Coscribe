@@ -106,6 +106,7 @@ from .reconfigure import SessionReconfigurer
 from .skill_save import SkillSave
 from .subagents import _MAX_REPORT_TURNS_IN_ROW as _MAX_REPORT_TURNS_IN_ROW
 from .subagents import SubAgentApprovalChannel, SubAgentReporter
+from .suggestions import offer_next_prompt
 from .thread_meta import ThreadMetaStore
 from .turn_lock import TurnLock
 from .turn_stream import TurnStreamer
@@ -323,6 +324,7 @@ class ChatSessionLG:
         # spawn_agent/review_work already get).
         self._extra_tools: list[Callable[..., Any] | BaseTool] = list(extra_tools)
         self._title_task: asyncio.Task[None] | None = None
+        self._suggestion_task: asyncio.Task[None] | None = None
         self._instructions = agent.instructions or ""
         self._model_string = settings.default_model
         self._effort: str = settings.default_effort
@@ -415,6 +417,21 @@ class ChatSessionLG:
             and not self._title_path().exists()
             and (self._title_task is None or self._title_task.done())
         )
+
+    def _offer_suggestion(self, websocket: EventSink, user_text: str, reply_text: str) -> None:
+        if (
+            self.settings.prompt_suggestions
+            and reply_text.strip()
+            and not self._stop_requested
+            and parse_run_thread_id(self.thread_id) is None
+            and not self._pending_approvals
+            and not self._pending_questions
+            and not self._steers
+            and self._report_turns_in_row == 0
+        ):
+            self._suggestion_task = asyncio.create_task(
+                offer_next_prompt(self.model, websocket, user_text, reply_text)
+            )
 
     async def _name_thread(self, websocket: EventSink, first_message: str | None = None) -> None:
         """A short title from the conversation's first message, asked for as
@@ -1052,6 +1069,8 @@ class ChatSessionLG:
         try:
             async with self._turn_lock:
                 self._current_turn_task = asyncio.current_task()
+                if self._suggestion_task is not None:
+                    self._suggestion_task.cancel()
                 self._report_turns_in_row = 0
                 self.turn_running = True
                 await self._handle_user_message_locked(
@@ -1274,6 +1293,7 @@ class ChatSessionLG:
         if self._last_usage_metadata is not None:
             await websocket.send_json(usage_event(self._last_usage_metadata))
         await websocket.send_json({"type": "tasks_changed"})
+        self._offer_suggestion(websocket, text, reply_text)
         if self._wants_title():
             # Off the turn's own path: the reply is done, the title can lag.
             self._title_task = asyncio.create_task(self._name_thread(websocket))

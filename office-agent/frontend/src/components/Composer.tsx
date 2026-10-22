@@ -112,6 +112,9 @@ interface ComposerProps {
    * review/edit before hitting Enter themselves. */
   externalText: string | null;
   onExternalTextConsumed: () => void;
+  /** The server's guess at the next message; shown as gray text in the empty box. */
+  suggestion: string | null;
+  onSuggestionDismiss: () => void;
   /** The kind this conversation's first message is to make, when it started from the Artifacts
    * page: shown as a chip, and the box asks for it. */
   artifact: ArtifactKind | null;
@@ -138,6 +141,8 @@ export function Composer({
   onExternalPptxCaptureConsumed,
   externalText,
   onExternalTextConsumed,
+  suggestion,
+  onSuggestionDismiss,
   artifact,
   onArtifactRemoved,
 }: ComposerProps) {
@@ -227,8 +232,10 @@ export function Composer({
 
   const hasAttachments = pendingImages.length > 0 || pendingFiles.length > 0 || pendingPastes.length > 0;
 
-  const submit = () => {
-    const text = value;
+  const ghost = suggestion && !value && !turnInFlight && !hasAttachments && !artifact && !autocompleteOpen ? suggestion : null;
+
+  const submit = (override?: string) => {
+    const text = override ?? value;
     if (
       !text.trim() &&
       pendingImages.length === 0 &&
@@ -336,6 +343,27 @@ export function Composer({
         hideAutocomplete();
         return;
       }
+    }
+
+    if (ghost && !event.nativeEvent.isComposing) {
+      const plain = !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey;
+      if (event.key === "Tab" && plain) {
+        event.preventDefault();
+        setValue(ghost);
+        onSuggestionDismiss();
+        const el = event.currentTarget;
+        requestAnimationFrame(() => {
+          el.selectionStart = el.selectionEnd = ghost.length;
+          resize();
+        });
+        return;
+      }
+      if (event.key === "Enter" && plain) {
+        event.preventDefault();
+        submit(ghost);
+        return;
+      }
+      if (event.key === "Escape") onSuggestionDismiss();
     }
 
     if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
@@ -544,8 +572,9 @@ export function Composer({
           className="max-h-40 w-full resize-none bg-transparent px-0.5 pr-9 text-[0.9rem] leading-normal outline-none"
           rows={1}
           value={value}
-          placeholder={(artifact && KINDS[artifact].placeholder) || "Type / for commands"}
+          placeholder={ghost ?? ((artifact && KINDS[artifact].placeholder) || "Type / for commands")}
           onChange={(event) => {
+            if (suggestion) onSuggestionDismiss();
             setValue(event.target.value);
             updateAutocomplete(event.target.value);
             resize();

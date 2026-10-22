@@ -168,6 +168,11 @@ class Settings(BaseSettings):
     the background after the first finished turn), unless it already has
     a title. Off keeps the first message as the sidebar's label."""
 
+    prompt_suggestions: bool = True
+    """After a finished turn, ask the model once for the message the person is
+    most likely to send next and offer it in the message box. One extra short
+    model call per turn."""
+
     defer_tools: bool = True
     """When True, only `coordinator.CORE_TOOL_NAMES` stay bound to the
     top-level conversation's model by default -- everything else (most

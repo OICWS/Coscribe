@@ -10,6 +10,7 @@ import {
   KeyIcon,
   LockIcon,
   LinkIcon,
+  MessageCircleIcon,
   SearchIcon,
   SettingsIcon,
   TerminalIcon,
@@ -24,6 +25,7 @@ import {
   GENERAL_FIELDS,
   LOG_LEVEL_KEY,
   PERMISSION_MODE_KEY,
+  PROMPT_SUGGESTIONS_KEY,
   READABLE_DIRS_KEY,
   WORKSPACE_FIELDS,
   WORKSPACE_ROOT_KEY,
@@ -37,6 +39,7 @@ import { GeneralTab } from "./GeneralTab";
 import { DRAWS_TITLE_BAR, openBackdrops } from "../../lib/titleBar";
 import { ProvidersTab } from "./ProvidersTab";
 import { SecretsTab } from "./SecretsTab";
+import { SessionsTab } from "./SessionsTab";
 import { SkillsTab } from "./SkillsTab";
 import { ToolsTab } from "./ToolsTab";
 import { WorkspaceTab } from "./WorkspaceTab";
@@ -50,6 +53,7 @@ export type SettingsCategory =
   | "connectors"
   | "secrets"
   | "environment"
+  | "sessions"
   | "code";
 
 interface CategoryDef {
@@ -80,6 +84,7 @@ const GROUPS: { label: string; categories: CategoryDef[] }[] = [
       { id: "providers", label: "Providers", icon: KeyIcon },
       { id: "tools", label: "Tools", icon: ToolIcon },
       { id: "environment", label: "Environment", icon: TerminalIcon },
+      { id: "sessions", label: "Sessions", icon: MessageCircleIcon },
       { id: "secrets", label: "Secrets", icon: LockIcon },
       { id: "code", label: "Code", icon: CodeIcon },
     ],
@@ -103,6 +108,7 @@ const CONFIG_KEYS = [
   BACKGROUND_ON_CLOSE_KEY,
   CODE_MODEL_KEY,
   CODE_MODULE_ENABLED_KEY,
+  PROMPT_SUGGESTIONS_KEY,
 ];
 
 interface SettingsModalProps {
@@ -300,10 +306,11 @@ export function SettingsModal({
             {category === "connectors" && <ConnectorsTab active={category === "connectors"} />}
             {category === "secrets" && <SecretsTab active={category === "secrets"} />}
             {category === "environment" && <EnvironmentTab active={category === "environment"} />}
+            {category === "sessions" && <SessionsTab values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} />}
             {category === "code" && <CodeTab values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} />}
             </div>
           </div>
-          {status && (category === "general" || category === "workspace" || category === "code") && (
+          {status && (category === "general" || category === "workspace" || category === "sessions" || category === "code") && (
             <div
               role="status"
               className={`pointer-events-none absolute bottom-4 right-6 rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-1.5 text-sm shadow-[var(--shadow)] ${status.error ? "text-[var(--danger)]" : "text-[var(--muted)]"}`}

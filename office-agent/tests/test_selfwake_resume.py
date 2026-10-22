@@ -88,6 +88,7 @@ def _settings(tmp_path: Path) -> Settings:
         memory_path=tmp_path / "MEMORY.md",
         # A naming call would take one of the scripted replies these tests count.
         auto_title_threads=False,
+        prompt_suggestions=False,
     )  # type: ignore[arg-type]
 
 

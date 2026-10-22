@@ -748,3 +748,17 @@ describe("steering notes", () => {
     expect(next.items[2]).toMatchObject({ kind: "user", text: "a\nb", turnIndex: 1 });
   });
 });
+
+describe("prompt suggestion", () => {
+  it("is kept until the person sends something", () => {
+    const offered = run(stateWith({}), { type: "prompt_suggestion", text: "next" });
+    expect(offered.suggestion).toBe("next");
+    expect(run(offered, { type: "local_user_message", text: "x", instant: false }).suggestion).toBeNull();
+    expect(run(offered, { type: "local_suggestion_dismissed" }).suggestion).toBeNull();
+  });
+
+  it("is not shown while a turn is running", () => {
+    const running = stateWith({ turnInFlight: true });
+    expect(run(running, { type: "prompt_suggestion", text: "late" })).toBe(running);
+  });
+});

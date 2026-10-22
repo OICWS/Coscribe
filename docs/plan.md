@@ -257,3 +257,8 @@ Last reviewed: 2026-10-15.
 - A callback helper so a script can use a secret (needs its own local
   authentication).
 - A terminal UI.
+- Settings in Claude's grouping (2026-10-22): the code module under Capabilities (#537), and a
+  Sessions category. Sessions has Prompt suggestions; next are a bypass-permissions gate, a
+  dynamic-workflows switch, and archiving inactive conversations; desktop only: flash on
+  notification and keep the computer awake while a turn runs. Capabilities items that are not
+  built: AI-powered artifacts, inline charts, a domain allowlist for the web tools.
