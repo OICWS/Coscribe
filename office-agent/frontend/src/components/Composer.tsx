@@ -8,7 +8,7 @@ import type { CommandInfo } from "../types/session";
 import type { BrowserCapture } from "./BrowserPanel";
 import { attachmentKind, type AttachmentView } from "../lib/attachments";
 import { AttachmentCard, AttachmentDialog } from "./Attachments";
-import { PlusIcon, ReturnIcon, StopIcon } from "./icons";
+import { PlusIcon, ReturnIcon, StopRingIcon } from "./icons";
 import type { PptxShapeCapture } from "./PptxShapeOverlay";
 import { RunStatus } from "./RunStatus";
 import { TextLightbox } from "./TextLightbox";
@@ -562,10 +562,10 @@ export function Composer({
           <button
             type="button"
             title="Stop"
-            className="absolute bottom-3 right-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--fg)] text-[var(--bg)]"
+            className="absolute bottom-3 right-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--fg)] hover:bg-[var(--card-bg)]"
             onClick={onStop}
           >
-            <StopIcon className="h-[13px] w-[13px]" />
+            <StopRingIcon className="h-5 w-5" />
           </button>
         ) : (
           <button
