@@ -38,6 +38,17 @@ export function filesByName(calls: Iterable<Call>): Map<string, string> {
 /** What a mention's link carries, so the renderer can tell it from a web link. */
 export const FILE_LINK = "coscribe-file:";
 
+/** The path in a mention's link. The markdown pipeline percent-encodes what is not ASCII in a link,
+ * so a file named in Chinese arrives as `%E6%96...`. */
+export function fileLinkPath(href: string): string {
+  const path = href.slice(FILE_LINK.length);
+  try {
+    return decodeURIComponent(path);
+  } catch {
+    return path;
+  }
+}
+
 interface Node {
   type: string;
   value?: string;

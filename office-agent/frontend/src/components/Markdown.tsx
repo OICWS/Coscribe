@@ -4,7 +4,7 @@ import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
-import { FILE_LINK, remarkFileChips } from "../lib/fileMentions";
+import { FILE_LINK, fileLinkPath, remarkFileChips } from "../lib/fileMentions";
 import { FileChip } from "./chatlog/FileChip";
 import { ThreadFiles } from "./chatlog/contexts";
 import { CopyButton } from "./CopyButton";
@@ -49,7 +49,7 @@ function tableAsTsv(table: HTMLTableElement): string {
 /** Opens outside the conversation: a new browser tab, or in the desktop
  * app a tab of its Browser panel -- never replacing the app page. */
 function Link({ node: _node, ...props }: ComponentPropsWithoutRef<"a"> & { node?: unknown }) {
-  if (props.href?.startsWith(FILE_LINK)) return <FileChip path={props.href.slice(FILE_LINK.length)} />;
+  if (props.href?.startsWith(FILE_LINK)) return <FileChip path={fileLinkPath(props.href)} />;
   return <a {...props} target="_blank" rel="noopener noreferrer" />;
 }
 
