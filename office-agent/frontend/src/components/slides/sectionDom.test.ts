@@ -55,6 +55,16 @@ describe("the ten layouts", () => {
       expect(root.querySelectorAll(".slide")).toHaveLength(1);
     }
   });
+
+  it("draws a flat line in an svg the browser will paint, which has no zero side", () => {
+    const doc = parseSection('<section><x-shape data-shape="line" style="left:120px;top:954px;width:1680px;height:0px;border:1.5px solid #1E2C42"/></section>');
+    const root = document.createElement("div").attachShadow({ mode: "open" });
+    drawSection(root, doc, [{ kind: "drawing", box: null, picture: null }]);
+    const svg = root.querySelector("[data-line] svg");
+    expect(svg?.getAttribute("width")).toBe("1680");
+    expect(svg?.getAttribute("height")).toBe("1");
+    expect(root.querySelector("line")?.getAttribute("y2")).toBe("0");
+  });
 });
 
 describe("inserts", () => {
