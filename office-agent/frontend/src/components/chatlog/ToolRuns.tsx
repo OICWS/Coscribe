@@ -10,6 +10,7 @@ import { SummaryLabel, Disclosure } from "./SummaryLabel";
 import { ToolPreview } from "./ToolPreview";
 import { ApprovalPreview } from "./ApprovalPreview";
 import { commandOf } from "../../lib/toolFields";
+import { RunInBackground } from "./RunInBackground";
 import { ArgLines, CommandBox, CommandOutput, RawFold, ResultText } from "./ToolFields";
 
 /** A run of tool calls: one sentence-like summary with a chevron after
@@ -85,6 +86,7 @@ export function ToolRunGroupView({
         <Disclosure open={open} />
       </button>
       {single && <ToolPreview item={single} onPptxShapePicked={onPptxShapePicked} />}
+      {single && <RunInBackground item={single} live={live} />}
       {group.items.map((item) => {
         const blocked = blockedWriteOf(item);
         return blocked ? <BlockedFolderCard key={item.id} blocked={blocked} /> : null;
@@ -148,6 +150,7 @@ function ToolStepRow({
       </button>
       <div className="px-3">
         <ToolPreview item={item} onPptxShapePicked={onPptxShapePicked} />
+        {running && <RunInBackground item={item} live />}
       </div>
       {open && (
         <div className="border-t border-[var(--border)]">

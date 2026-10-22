@@ -11,6 +11,9 @@ export const ConnectorTools = createContext(NO_CONNECTOR_TOOLS);
 /** Opens a deck or document in its panel; false for a file the panels do not show. */
 export const ViewFile = createContext<((path: string) => boolean) | null>(null);
 
+/** Lets the script a running tool call waits on carry on as a background task; null where it cannot. */
+export const DetachScript = createContext<((script: string) => void) | null>(null);
+
 export const SteerActionsContext = createContext<SteerActions | null>(null);
 
 /** The files this conversation made or changed, by file name: a reply that names one shows a chip. */

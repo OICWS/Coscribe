@@ -44,7 +44,7 @@ import { artifactActions } from "./lib/artifacts";
 import { useArtifactStart } from "./lib/useArtifactStart";
 import { ArtifactsPage } from "./components/artifacts/ArtifactsPage";
 import { useSteerNotes } from "./lib/steerNotes";
-import { SteerActionsContext, ViewFile } from "./components/chatlog/contexts";
+import { DetachScript, SteerActionsContext, ViewFile } from "./components/chatlog/contexts";
 import { canOpenPanelWindows, focusPanelWindow, usePanelWindows } from "./lib/panelWindows";
 import { WorkflowDraftPage } from "./components/workflow/WorkflowDraftPage";
 import { WorkflowRunView } from "./components/workflow/WorkflowRunView";
@@ -682,6 +682,8 @@ function App() {
     socketRef.current?.send({ type: "approval_response", id, approved, ...(scope ? { scope } : {}) });
   };
 
+  const onDetachScript = (script: string) => socketRef.current?.send({ type: "detach_command", script });
+
   const onAnswerPlan = (item: PlanItem, choice: PlanChoice, feedback: string) => {
     dispatch({ type: "local_plan_answered", id: item.id, status: choice });
     socketRef.current?.send({
@@ -939,7 +941,7 @@ function App() {
                   {composer}
                 </div>
               ) : navMode === "create" ? (
-                <SteerActionsContext.Provider value={steers.actions}><ViewFile.Provider value={viewFile}>
+                <SteerActionsContext.Provider value={steers.actions}><ViewFile.Provider value={viewFile}><DetachScript.Provider value={onDetachScript}>
                   <ChatLog
                     items={state.items}
                     turnInFlight={state.turnInFlight}
@@ -980,7 +982,7 @@ function App() {
                     <QuestionPanel key={pendingQuestion.id} item={pendingQuestion} onAnswer={onAnswerQuestion} />
                   )}
                   {composer}
-                </ViewFile.Provider></SteerActionsContext.Provider>
+                </DetachScript.Provider></ViewFile.Provider></SteerActionsContext.Provider>
               ) : workflowDraft ? (
                 <WorkflowDraftPage
                   threadId={workflowDraft.threadId}
