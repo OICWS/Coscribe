@@ -2,10 +2,11 @@
 
 `subprocess.run` cannot be handed over half way, so the two script tools start the process
 here instead and pump its output into memory. While a tool call waits, the chat's "Run in
-background" button reaches it by the call's id (`request_detach`); the tool then gives the
-process to the background-task store (`tools/bookkeeping/background_tasks.py`) and returns at
-once. A tool function does not know its call id (its schema is fixed, decision 0001), so the
-runtime binds it in a context variable around the call.
+background" button reaches it by the conversation and the script's text (`request_detach`):
+the page has no id of the call (an approved call is announced without one), and two equal
+scripts running at once in one conversation is not a case worth telling apart. The tool then
+gives the process to the background-task store (`tools/bookkeeping/background_tasks.py`) and
+returns at once.
 """
 
 from __future__ import annotations
@@ -18,8 +19,7 @@ import subprocess
 import sys
 import threading
 import time
-from collections.abc import Callable, Iterator, Mapping, Sequence
-from contextvars import ContextVar
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, BinaryIO
@@ -31,23 +31,13 @@ _CHUNK = 65536
 _PIPE_GRACE_SECONDS = 5.0
 _POLL_SECONDS = 0.1
 
-_CALL_ID: ContextVar[str | None] = ContextVar("coscribe_tool_call_id", default=None)
-_RUNNING: dict[str, RunningCommand] = {}
+_RUNNING: dict[tuple[str, str], RunningCommand] = {}
 
 
-@contextlib.contextmanager
-def tool_call_id(call_id: str) -> Iterator[None]:
-    token = _CALL_ID.set(call_id)
-    try:
-        yield
-    finally:
-        _CALL_ID.reset(token)
-
-
-def request_detach(call_id: str, loop: asyncio.AbstractEventLoop | None) -> bool:
-    """Whether a command is waiting under this call id. `loop` is the one that must hear about
-    the background task later, from the watcher's thread."""
-    command = _RUNNING.get(call_id)
+def request_detach(thread_id: str, script: str, loop: asyncio.AbstractEventLoop | None) -> bool:
+    """Whether a command of this conversation is waiting on this script. `loop` is the one that
+    must hear about the background task later, from the watcher's thread."""
+    command = _RUNNING.get((thread_id, script))
     if command is None:
         return False
     command.detach(loop)
@@ -172,9 +162,18 @@ class RunningCommand:
             os.killpg(self._proc.pid, signal.SIGKILL)
 
 
-# (command, language, description, scratch directory) -> the new background task's id. The
-# scratch directory goes with the process: it is removed when the process ends.
-HandOff = Callable[[RunningCommand, str, str, Path], str]
+# (conversation, command, language, description, scratch directory) -> the new background
+# task's id. The scratch directory goes with the process: it is removed when the process ends.
+HandOff = Callable[[str, RunningCommand, str, str, Path], str]
+
+
+@dataclass(frozen=True)
+class Detachable:
+    """What a script tool needs to let a command go on in the background: the conversation it
+    belongs to and the way to give it to that conversation's background tasks."""
+
+    thread_id: str
+    hand_off: HandOff
 
 
 @dataclass
@@ -195,22 +194,25 @@ def run_to_end(
     *,
     language: str,
     description: str,
+    script: str,
     scratch_dir: Path,
-    hand_off: HandOff | None,
+    detachable: Detachable | None,
 ) -> Ran:
     command = RunningCommand(argv, cwd, env)
-    call_id = _CALL_ID.get()
     # Without a way to hand it over there is nothing for a button to do.
-    if call_id is not None and hand_off is not None:
-        _RUNNING[call_id] = command
+    key = (detachable.thread_id, script) if detachable is not None else None
+    if key is not None:
+        _RUNNING[key] = command
     try:
         outcome = command.wait(timeout)
     finally:
-        if call_id is not None:
-            _RUNNING.pop(call_id, None)
+        if key is not None and _RUNNING.get(key) is command:
+            del _RUNNING[key]
     if outcome == "detached":
-        assert hand_off is not None  # only registered with one
-        task_id = hand_off(command, language, description, scratch_dir)
+        assert detachable is not None  # only registered with one
+        task_id = detachable.hand_off(
+            detachable.thread_id, command, language, description, scratch_dir
+        )
         so_far = command.output_so_far
         return Ran(
             None,

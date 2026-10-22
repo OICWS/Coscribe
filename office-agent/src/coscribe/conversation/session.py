@@ -545,10 +545,10 @@ class ChatSessionLG:
         socket: Any = websocket or SilentSocket()
         await self.handle_user_message(text, socket)
 
-    def detach_command(self, call_id: str) -> bool:
+    def detach_command(self, script: str) -> bool:
         """From the running loop: the background task announces itself to this loop from the
         tool's worker thread."""
-        return request_detach(call_id, asyncio.get_running_loop())
+        return request_detach(self.thread_id, script, asyncio.get_running_loop())
 
     def request_stop(self) -> None:
         """Called directly from ws_endpoint on a "stop" message, not

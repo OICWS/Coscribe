@@ -62,8 +62,6 @@
   "coscribe/runtime_lg/mcp_oauth.py::method get_tokens": 1,
   "coscribe/runtime_lg/mcp_oauth.py::method has_credentials": 1,
   "coscribe/runtime_lg/mcp_oauth.py::method set_tokens": 1,
-  "coscribe/runtime_lg/tool_call_id.py::method awrap_tool_call": 1,
-  "coscribe/runtime_lg/tool_call_id.py::method wrap_tool_call": 1,
   "coscribe/runtime_lg/tool_deferral.py::method awrap_model_call": 1,
   "coscribe/runtime_lg/tool_deferral.py::method wrap_model_call": 1,
   "coscribe/tools/_docx_chart.py::attribute _blob": 1,
@@ -232,7 +230,7 @@
  "fan_out": {},
  "file_lines": {
   "src/coscribe/conversation/session.py": 1285,
-  "src/coscribe/coordinator.py": 857,
+  "src/coscribe/coordinator.py": 858,
   "src/coscribe/runtime_lg/subagents.py": 836,
   "src/coscribe/tools/bookkeeping/scheduled_tasks.py": 1054,
   "src/coscribe/web/browser_panel.py": 813,

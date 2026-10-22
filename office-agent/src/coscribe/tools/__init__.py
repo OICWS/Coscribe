@@ -77,6 +77,7 @@ from .connector_permissions import (
 )
 from .convert import build_convert_tools
 from .exec import (
+    Detachable,
     HandOff,
     RunningCommand,
     build_node_script_tools,
@@ -91,7 +92,6 @@ from .exec import (
     request_detach,
     run_python_script,
     set_interpreter_override,
-    tool_call_id,
     uninstall_node_package,
     uninstall_python_package,
     venv_python,
@@ -282,8 +282,8 @@ __all__ = [
     "enabled_skill_names",
     "ensure_script_env",
     "request_detach",
-    "tool_call_id",
     "adopt_running_command",
+    "Detachable",
     "HandOff",
     "RunningCommand",
     "venv_python",

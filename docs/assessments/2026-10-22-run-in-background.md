@@ -19,6 +19,9 @@ Design before code: the change crosses the tools, the runtime, the session, the 
 4. **A watcher thread** keeps pumping the process into the log, waits for exit, settles the record and announces it with `loop.call_soon_threadsafe` (the listener is written for the event loop). The conversation is told as for any finished background task.
 5. **The UI**: a running row of one of these two tools shows **Run in background**; any other running tool shows no button. After the click the row settles with the tool's result, and the task is in the panel.
 
+## Changed in the build
+Point 2 above keys the registry by the tool call's id. The page does not have it: `tool_started` carries no id and an approved call is announced without one (the approval id is another value). The registry is keyed by the conversation and the script's text instead, and `detach_command` carries the script; no context variable or middleware is needed.
+
 ## Constraints kept
 - No tool schema change; the detach is a client action, not a model-visible tool (0001).
 - Approvals and the folder guard are untouched: the same process, started the same way, was approved as it was.

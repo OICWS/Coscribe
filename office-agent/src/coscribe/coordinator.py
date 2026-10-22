@@ -18,6 +18,7 @@ from .config import Settings
 from .runtime import Agent, SessionEnvironments
 from .tools import (
     NEW_DECK_INSTRUCTIONS,
+    Detachable,
     ScheduledTriggerStore,
     WorkspaceScope,
     adopt_running_command,
@@ -742,7 +743,7 @@ def build_coordinator_agent(
         ]
         return variables
 
-    hand_off = partial(adopt_running_command, settings.state_dir, thread_id)
+    detachable = Detachable(thread_id, partial(adopt_running_command, settings.state_dir))
 
     tools = (
         build_file_tools(root, file_tool_readable, file_tool_writable, settings.protected_paths())
@@ -786,14 +787,14 @@ def build_coordinator_agent(
             settings.state_dir,
             extra_writable=extra_writable,
             session_env=session_env,
-            hand_off=hand_off,
+            detachable=detachable,
         )
         + build_node_script_tools(
             root,
             settings.state_dir,
             extra_writable=extra_writable,
             session_env=session_env,
-            hand_off=hand_off,
+            detachable=detachable,
         )
         + build_background_task_tools(
             thread_id,

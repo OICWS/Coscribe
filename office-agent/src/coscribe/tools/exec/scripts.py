@@ -40,7 +40,7 @@ from typing import Any
 from ...runtime import tool_metadata
 from .._files_written import snapshot_workspace, with_files_written
 from .._output_truncation import truncate_script_output
-from .running import HandOff, run_to_end
+from .running import Detachable, run_to_end
 from .script_env import ensure_script_env, overlay_env, venv_python
 from .script_guard import (
     blocked_write,
@@ -67,7 +67,7 @@ def _run_python_script(
     timeout: float,
     extra_writable: Sequence[Path] = (),
     session_env: Mapping[str, str] | None = None,
-    hand_off: HandOff | None = None,
+    detachable: Detachable | None = None,
     description: str = "",
 ) -> dict[str, object]:
     timeout = min(max(timeout, 1.0), _MAX_TIMEOUT)
@@ -110,8 +110,9 @@ def _run_python_script(
             timeout,
             language="python",
             description=description,
+            script=script,
             scratch_dir=scratch_dir,
-            hand_off=hand_off,
+            detachable=detachable,
         )
         if ran.detached is not None:
             handed_over = True
@@ -151,7 +152,7 @@ def build_script_tools(
     *,
     extra_writable: Sequence[str | Path] = (),
     session_env: Callable[[], Mapping[str, str]] | None = None,
-    hand_off: HandOff | None = None,
+    detachable: Detachable | None = None,
 ) -> list[Callable[..., Any]]:
     """Return the tool callables the Coordinator agent can call. `state_dir`
     is required (not optional like other tools' preview support) -- the
@@ -207,7 +208,7 @@ def build_script_tools(
             timeout,
             folders,
             session_env() if session_env else None,
-            hand_off,
+            detachable,
             description,
         )
 

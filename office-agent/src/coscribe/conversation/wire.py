@@ -519,11 +519,11 @@ class SteerOut(TypedDict):
 
 
 class DetachCommandOut(TypedDict):
-    """The person lets a running script go on in the background: the tool call `id` returns at
-    once and its process becomes a background task."""
+    """The person lets a running script go on in the background: the tool call waiting on this
+    script text returns at once and its process becomes a background task."""
 
     type: Literal["detach_command"]
-    id: str
+    script: str
 
 
 ClientMessage = (

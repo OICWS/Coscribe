@@ -506,12 +506,12 @@ export interface SteerOut {
 }
 
 /**
- * The person lets a running script go on in the background: the tool call `id` returns at
- * once and its process becomes a background task.
+ * The person lets a running script go on in the background: the tool call waiting on this
+ * script text returns at once and its process becomes a background task.
  */
 export interface DetachCommandOut {
   type: "detach_command";
-  id: string;
+  script: string;
 }
 
 export type ClientMessage =

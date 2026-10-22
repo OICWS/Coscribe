@@ -30,7 +30,6 @@ from langgraph.errors import GraphBubbleUp
 from ..runtime import get_tool_metadata
 from .edit_guard import EditGuardMiddleware
 from .messages import starts_a_turn, steer_message
-from .tool_call_id import ToolCallIdMiddleware
 from .tool_calls import answer_every_tool_call
 from .tool_deferral import (
     DeferredToolMiddleware,
@@ -452,7 +451,7 @@ def build_langgraph_agent(
     # so it's the outermost wrapper; order doesn't change correctness here
     # (it re-raises GraphBubbleUp untouched either way), but outermost is
     # the natural place for a catch-all.
-    middleware: list[Any] = [_catch_tool_errors, ToolCallIdMiddleware()]
+    middleware: list[Any] = [_catch_tool_errors]
     if resolve_file is not None:
         middleware.append(EditGuardMiddleware(resolve_file, _writer_names(tools)))
     if redact is not None:

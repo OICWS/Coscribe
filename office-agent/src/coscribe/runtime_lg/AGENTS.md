@@ -7,7 +7,7 @@ it thinks (`providers.py`, `effort.py`), approvals' helpers (`audit.py`, `auto_r
 `exec_policy.py`), delegated sub-agents (`subagents.py`), the code module's entry point
 (`code_agent.py`), hosted and local MCP connectors and their sign-in (`mcp.py`, `mcp_oauth.py`),
 the run side of scheduled tasks and self-wakes (`scheduled_tasks.py`, `selfwake.py`), turning a
-conversation into a skill (`skill_authoring.py`), the guard that keeps a write from using a Word, Excel or PowerPoint copy the person has since edited (`edit_guard.py`), the binding of the running tool call's id (`tool_call_id.py`) and message-shape helpers (`messages.py`,
+conversation into a skill (`skill_authoring.py`), the guard that keeps a write from using a Word, Excel or PowerPoint copy the person has since edited (`edit_guard.py`) and message-shape helpers (`messages.py`,
 `tool_calls.py`). Does not own the turn itself, the approval cards or history
 (`conversation/session.py`), the routes (`web/`), the tools (`tools/`) or the coordinator's
 prompt (`coordinator.py`).

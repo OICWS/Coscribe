@@ -15,7 +15,7 @@ or the Settings routes that install packages (`web/routes/settings/environments.
 twins), the interpreter overrides (`get_interpreter_override`, `set_interpreter_override`,
 `working_interpreters`, `fallbacks_for_platform`), the folder-guard helpers (`suggested_folder`,
 `blocked_write`, `refusal_note`, `node_guard_args`, `writable_roots`, `write_python_wrapper`,
-`without_guard_warnings`) and `run_python_script`, and for letting a running script go on in the background (`running.py`) `RunningCommand`, `HandOff`, `request_detach`, `tool_call_id`. Import them from `coscribe.tools.exec`.
+`without_guard_warnings`) and `run_python_script`, and for letting a running script go on in the background (`running.py`) `RunningCommand`, `Detachable`, `HandOff`, `request_detach`. Import them from `coscribe.tools.exec`.
 
 ## Depends on
 `coscribe.runtime`, `coscribe.tools._files_written`, `coscribe.tools._output_truncation`.
