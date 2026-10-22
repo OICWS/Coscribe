@@ -1,6 +1,6 @@
 # Design note: "Run in background" for a running command (#510) (2026-10-22)
 
-Design before code: the change crosses the tools, the runtime, the session, the chat socket and the UI, and one choice (how a live process is handed over) shapes the rest. Status: **for the maintainer's decision**; nothing is built.
+Design before code: the change crosses the tools, the runtime, the session, the chat socket and the UI, and one choice (how a live process is handed over) shapes the rest. Status: **decided** (2026-10-22, the maintainer took the recommendations of the three questions below); built in two pull requests.
 
 ## 摘要（中文）
 - 现在一个正在跑的命令（`run_python_script`、`run_node_script`）只能等它结束或超时，停止会连整轮对话一起停。要的是命令行上的 **Run in background** 按钮：按下后这次工具调用立刻返回，模型继续下一步，命令作为后台任务接着跑，跑完像别的后台任务一样回到对话。
@@ -32,7 +32,7 @@ About 450 lines in two PRs: (1) the runner, the registry, the middleware, the so
 - That a worker thread of the tool node really inherits the context variable on this LangGraph version: PR 1 starts by proving it with a test; if it does not, the middleware passes the id another way.
 - Windows: killing a process group and the pump threads need a run on the packaged app.
 
-## Questions for the maintainer
+## Questions for the maintainer (answered: all three as recommended)
 1. **Scope.** Only the two script tools (the commands the model runs through coscribe), not Codex tasks, connector calls or the background-script tools themselves? Recommended: yes.
 2. **After detaching, how long may it run?** The foreground limit was 600 s at most; the background tool allows 30 minutes by default and 6 hours at most. Recommended: the background default of 30 minutes, since the person chose to let it go on.
 3. **Output order.** stdout and stderr are kept apart in a foreground result but are one stream in a background log. Recommended: after a detach, one log in the order it was written, and `output_so_far` in the result as that log's tail.
