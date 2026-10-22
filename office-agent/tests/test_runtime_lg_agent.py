@@ -412,3 +412,34 @@ def test_a_file_that_will_not_open_says_what_to_do_instead_of_a_library_error() 
     assert "damaged" in damaged and "convert_office_file" not in damaged
     other = ValueError("File does not exist: a.txt")
     assert message("a.txt", other) == "File does not exist: a.txt"
+
+
+def test_the_agent_builds_with_the_edit_guard_and_runs_a_tool_through_it(tmp_path) -> None:
+    (tmp_path / "a.docx").write_bytes(b"one")
+    calls: list[str] = []
+
+    def read_doc(path: str) -> str:
+        """Reads a document."""
+        calls.append(path)
+        return "text"
+
+    model = _FakeModel(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[{"id": "c1", "name": "read_doc", "args": {"path": "a.docx"}}],
+            ),
+            AIMessage(content="done"),
+        ]
+    )
+    agent = build_langgraph_agent(
+        model,
+        [read_doc],
+        "be helpful",
+        checkpointer=InMemorySaver(),
+        resolve_file=lambda path: tmp_path / path,
+    )
+    result = agent.invoke(
+        {"messages": [HumanMessage(content="hi")]}, config={"configurable": {"thread_id": "g1"}}
+    )
+    assert calls == ["a.docx"] and result["messages"][-1].content == "done"
