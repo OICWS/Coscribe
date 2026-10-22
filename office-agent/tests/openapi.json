@@ -1164,6 +1164,43 @@
         "summary": "Delete"
       }
     },
+    "/api/artifacts/{artifact}/content": {
+      "get": {
+        "operationId": "content_api_artifacts__artifact__content_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "artifact",
+            "required": true,
+            "schema": {
+              "title": "Artifact",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Content"
+      }
+    },
     "/api/artifacts/{artifact}/duplicate": {
       "post": {
         "operationId": "duplicate_api_artifacts__artifact__duplicate_post",
@@ -4751,6 +4788,62 @@
           }
         },
         "summary": "Get Context Breakdown Endpoint"
+      }
+    },
+    "/api/threads/{thread_id}/design": {
+      "get": {
+        "operationId": "get_design_api_threads__thread_id__design_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "print",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Print",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Design"
       }
     },
     "/api/threads/{thread_id}/docs/blocks": {

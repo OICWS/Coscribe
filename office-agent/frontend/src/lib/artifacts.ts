@@ -2,7 +2,7 @@ import { goToThread, startNewThread } from "./nav";
 import { readStored, writeStored } from "./storage";
 
 /** What coscribe makes that the Artifacts page lists. */
-export type ArtifactKind = "slides" | "docs" | "sheets" | "dashboard";
+export type ArtifactKind = "slides" | "docs" | "sheets" | "design" | "dashboard";
 
 /** One artifact as the server lists it (`GET /api/artifacts`). */
 export interface ArtifactSummary {
@@ -24,15 +24,16 @@ interface KindInfo {
   /** What the message box asks for when "Make something new" picks this kind; null where
    * nothing can be made yet. */
   placeholder: string | null;
-  badge: "Beta" | "Soon" | null;
+  badge: "Beta" | "New" | "Soon" | null;
 }
 
-export const KIND_ORDER: ArtifactKind[] = ["docs", "slides", "sheets", "dashboard"];
+export const KIND_ORDER: ArtifactKind[] = ["docs", "slides", "sheets", "design", "dashboard"];
 
 export const KINDS: Record<ArtifactKind, KindInfo> = {
   docs: { label: "Docs", colour: "var(--file-doc)", placeholder: "Describe the document you want", badge: null },
   slides: { label: "Slides", colour: "var(--file-slides)", placeholder: "Describe the presentation you want", badge: "Beta" },
   sheets: { label: "Sheets", colour: "var(--file-sheet)", placeholder: "Describe the spreadsheet you want", badge: null },
+  design: { label: "Design", colour: "var(--file-design)", placeholder: "Describe the icon, logo or page you want designed", badge: "New" },
   dashboard: { label: "Dashboard", colour: "var(--file-dashboard)", placeholder: null, badge: "Soon" },
 };
 
@@ -69,6 +70,13 @@ export async function listArtifacts(): Promise<ArtifactSummary[]> {
 }
 
 export const artifactId = (item: ArtifactSummary) => item.id;
+
+/** A design page, served inside a sandbox; the time keeps a changed page from showing stale. */
+export const designUrl = (item: ArtifactSummary) => `/api/artifacts/${item.id}/content?v=${encodeURIComponent(item.modified_at)}`;
+
+/** The same page by the conversation and path a panel shows it with. */
+export const designFileUrl = (threadId: string, path: string, version: string) =>
+  `/api/threads/${encodeURIComponent(threadId)}/design?path=${encodeURIComponent(path)}&v=${encodeURIComponent(version)}`;
 
 /** The first slide of a deck, drawn by the server; the time keeps a changed deck from showing stale. */
 export const thumbnailUrl = (item: ArtifactSummary) => `/api/artifacts/${item.id}/thumbnail?v=${encodeURIComponent(item.modified_at)}`;
@@ -123,7 +131,7 @@ export function visibleArtifacts(items: ArtifactSummary[], pins: ReadonlySet<str
 }
 
 export function countsByKind(items: ArtifactSummary[]): Record<ArtifactKind, number> {
-  const counts: Record<ArtifactKind, number> = { docs: 0, slides: 0, sheets: 0, dashboard: 0 };
+  const counts: Record<ArtifactKind, number> = { docs: 0, slides: 0, sheets: 0, design: 0, dashboard: 0 };
   for (const item of items) counts[item.kind] += 1;
   return counts;
 }

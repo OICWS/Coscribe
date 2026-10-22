@@ -37,6 +37,13 @@ function Illustration({ kind }: { kind: ArtifactKind }) {
           ))}
         </div>
       )}
+      {kind === "design" && (
+        <div className="relative h-[68%] w-[72%] overflow-hidden rounded-lg border border-white bg-white shadow-sm">
+          <span className="absolute left-[12%] top-[18%] h-[46%] w-[34%] rounded-full" style={{ background: `color-mix(in srgb, ${colour} 55%, white)` }} />
+          <span className="absolute left-[40%] top-[34%] h-[46%] w-[34%] rotate-12 rounded-md" style={{ background: `color-mix(in srgb, ${colour} 28%, white)` }} />
+          <span className="absolute bottom-[14%] right-[12%] h-[22%] w-[22%] rotate-45 rounded-sm" style={{ background: colour }} />
+        </div>
+      )}
       {kind === "dashboard" && (
         <div className="flex h-[68%] w-[72%] items-end gap-2 rounded-lg border border-white bg-white px-3 pb-3 shadow-sm">
           {[40, 70, 100, 55].map((height, i) => (

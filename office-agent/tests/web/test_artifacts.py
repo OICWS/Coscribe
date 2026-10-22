@@ -149,3 +149,25 @@ def test_a_system_error_is_not_shown_to_the_page_lg(
 
     assert refused.status_code == 409
     assert "report.docx" not in refused.json()["error"] and "denied" not in refused.json()["error"]
+
+
+def test_an_html_design_is_an_artifact_and_a_lone_svg_is_not_and_it_is_served_inside_a_sandbox_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "workspace").mkdir()
+    fake_model = FakeToolCallingChatModel(
+        responses=[_made("icons.html", "mark.svg", "page.htm"), AIMessage(content="done")]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        _run_turn(client, "t_design", "design icons")
+        items = {a["name"]: a for a in client.get("/api/artifacts").json()}
+        assert {n: items[n]["kind"] for n in items} == {"icons": "design"}
+        page = client.get(f"/api/artifacts/{items['icons']['id']}/content")
+        assert page.status_code == 200
+        assert page.headers["content-type"].startswith("text/html")
+        assert page.headers["content-security-policy"].startswith("sandbox allow-scripts;")
+        assert "default-src 'none'" in page.headers["content-security-policy"]
+        by_path = client.get("/api/threads/t_design/design", params={"path": "icons.html"})
+        assert by_path.status_code == 200
+        outside = client.get("/api/threads/t_design/design", params={"path": "../x.html"})
+        assert outside.status_code == 404

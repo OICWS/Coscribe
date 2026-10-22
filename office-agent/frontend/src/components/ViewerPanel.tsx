@@ -1,6 +1,8 @@
 import { lazy, Suspense, useState } from "react";
 import type { CommentLink } from "../lib/slideComments";
 import { isPptx } from "../lib/slides";
+import { isDesign } from "../lib/viewers";
+import { DesignPanel } from "./DesignPanel";
 import { DocxViewerPanel } from "./DocxViewerPanel";
 import { SlidesPanel } from "./slides/SlidesPanel";
 
@@ -25,6 +27,9 @@ export function ViewerPanel({
   const [editing, setEditing] = useState(false);
   if (isPptx(path)) {
     return <SlidesPanel threadId={threadId} path={path} refreshKey={refreshKey} onSendComment={onSendComment} onFileChanged={onFileChanged} />;
+  }
+  if (isDesign(path)) {
+    return <DesignPanel threadId={threadId} path={path} refreshKey={refreshKey} onFileChanged={onFileChanged} />;
   }
   return editing ? (
     <Suspense fallback={null}>

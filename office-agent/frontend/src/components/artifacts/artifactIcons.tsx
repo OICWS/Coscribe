@@ -78,6 +78,14 @@ const KIND_ICONS: Record<ArtifactKind, (props: SVGProps<SVGSVGElement>) => React
       <path d="M10 10v10" />
     </Icon>
   ),
+  design: (props) => (
+    <Icon {...props}>
+      <path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.4-.5-.8-.5-1.3 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3Z" />
+      <path d="M7.5 11h.01" />
+      <path d="M10 7.5h.01" />
+      <path d="M14.5 7.5h.01" />
+    </Icon>
+  ),
   dashboard: (props) => (
     <Icon {...props}>
       <path d="M4 4v16h16" />
