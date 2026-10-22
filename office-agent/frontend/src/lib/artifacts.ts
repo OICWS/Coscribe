@@ -21,19 +21,19 @@ interface KindInfo {
   label: string;
   /** The kind's colour: its tile, its icon, its thumbnail's tint. */
   colour: string;
-  /** What the message box starts with when "Make something new" picks this kind; null where
+  /** What the message box asks for when "Make something new" picks this kind; null where
    * nothing can be made yet. */
-  starter: string | null;
+  placeholder: string | null;
   badge: "Beta" | "Soon" | null;
 }
 
 export const KIND_ORDER: ArtifactKind[] = ["docs", "slides", "sheets", "dashboard"];
 
 export const KINDS: Record<ArtifactKind, KindInfo> = {
-  docs: { label: "Docs", colour: "var(--file-doc)", starter: "Write a document about ", badge: null },
-  slides: { label: "Slides", colour: "var(--file-slides)", starter: "Make a presentation about ", badge: "Beta" },
-  sheets: { label: "Sheets", colour: "var(--file-sheet)", starter: "Make a spreadsheet that ", badge: null },
-  dashboard: { label: "Dashboard", colour: "var(--file-dashboard)", starter: null, badge: "Soon" },
+  docs: { label: "Docs", colour: "var(--file-doc)", placeholder: "Describe the document you want", badge: null },
+  slides: { label: "Slides", colour: "var(--file-slides)", placeholder: "Describe the presentation you want", badge: "Beta" },
+  sheets: { label: "Sheets", colour: "var(--file-sheet)", placeholder: "Describe the spreadsheet you want", badge: null },
+  dashboard: { label: "Dashboard", colour: "var(--file-dashboard)", placeholder: null, badge: "Soon" },
 };
 
 async function send<T>(url: string, method: string, body?: unknown): Promise<T> {
@@ -167,8 +167,8 @@ export function editedLabel(iso: string, now: Date): string {
 }
 
 /** What the page does with an artifact or a kind: `showFile` shows a file in its panel and
- * `setComposerText` fills the message box of the conversation that starts. */
-export function artifactActions(showFile: (threadId: string, path: string) => void, setComposerText: (text: string) => void) {
+ * `startMade` is told the conversation that starts for a kind, whose first message makes one. */
+export function artifactActions(showFile: (threadId: string, path: string) => void, startMade: (threadId: string, kind: ArtifactKind) => void) {
   return {
     /** Opens it in a conversation, with the file in its panel. */
     open: (item: ArtifactSummary) => {
@@ -181,10 +181,7 @@ export function artifactActions(showFile: (threadId: string, path: string) => vo
         () => undefined,
       );
     },
-    /** A new conversation, its message box started for the kind. */
-    make: (kind: ArtifactKind) => {
-      startNewThread();
-      setComposerText(KINDS[kind].starter ?? "");
-    },
+    /** A new conversation whose first message is to make the kind. */
+    make: (kind: ArtifactKind) => startMade(startNewThread(), kind),
   };
 }

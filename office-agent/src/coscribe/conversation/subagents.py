@@ -147,6 +147,7 @@ class SubAgentSessionHost(SubAgentChannelHost, Protocol):
         images: list[str] | None = None,
         *,
         notice: bool = False,
+        artifact: str | None = None,
     ) -> None: ...
 
 

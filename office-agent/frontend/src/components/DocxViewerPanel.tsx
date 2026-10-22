@@ -117,6 +117,7 @@ export function DocxViewerPanel({
   const [step, setStep] = useState(-1);
   const [zoom, setZoom] = useState(1);
   const [compact, setCompact] = useState(false);
+  const railWanted = useRef(false);
   const [drawer, setDrawer] = useState(false);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -148,11 +149,11 @@ export function DocxViewerPanel({
     const scroller = scrollerRef.current;
     const section = pageRef.current?.querySelector<HTMLElement>("section.docx");
     if (!scroller || !section) return;
-    const besideRail = (scroller.clientWidth - RAIL_WIDTH - 3 * 16) / section.offsetWidth;
-    const narrow = besideRail < MIN_ZOOM_BESIDE_RAIL;
+    const rail = railWanted.current ? RAIL_WIDTH + 16 : 0;
+    const besideRail = (scroller.clientWidth - rail - 2 * 16) / section.offsetWidth;
+    const narrow = rail > 0 && besideRail < MIN_ZOOM_BESIDE_RAIL;
     setCompact(narrow);
-    const alone = (scroller.clientWidth - 2 * 16) / section.offsetWidth;
-    setZoom(Math.max(0.3, Math.min(1, narrow ? alone : besideRail)));
+    setZoom(Math.max(0.3, Math.min(1, narrow ? (scroller.clientWidth - 2 * 16) / section.offsetWidth : besideRail)));
   }, []);
 
   useEffect(() => {
@@ -171,6 +172,7 @@ export function DocxViewerPanel({
         });
         if (cancelled) return;
         setReview(nextReview);
+        railWanted.current = nextReview.comments.length > 0;
         const marks = page.querySelectorAll("ins, del").length;
         const expected = view === "review" ? nextReview.changes.length : 0;
         setMatched(marks === expected && commentRanges(page).size >= nextReview.comments.length);
@@ -319,7 +321,7 @@ export function DocxViewerPanel({
         >
           <div ref={contentRef} className="relative mx-auto flex w-max gap-4 p-4">
             <div ref={pageRef} className="docx-page" style={{ zoom }} />
-            <div ref={railRef} className={`relative shrink-0 ${compact ? "hidden" : ""}`} style={{ width: RAIL_WIDTH }}>
+            <div ref={railRef} className={`relative shrink-0 ${compact || ordered.length === 0 ? "hidden" : ""}`} style={{ width: RAIL_WIDTH }}>
               {ordered.map((comment) => (
                 <DocxCommentCard
                   key={comment.id}

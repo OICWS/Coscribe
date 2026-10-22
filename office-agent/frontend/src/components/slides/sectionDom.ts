@@ -143,7 +143,8 @@ function drawCell(cell: Element, table: Map<string, string>, editable: boolean):
   td.append(...Array.from(copyText(cell).childNodes));
   td.style.border = `1px solid ${table.get("border-color") ?? "#CBD2DC"}`;
   td.style.padding = "0.3em 0.5em";
-  td.style.textAlign = "left";
+  // A header cell is centred unless it says otherwise, as the server draws it.
+  td.style.textAlign = cell.localName === "th" ? "center" : "left";
   if (cell.localName === "th") td.style.fontWeight = "700";
   applyStyle(td, new Map([...parseStyle(cell.getAttribute("style") ?? "")].filter(([name]) => ["background", "color", "text-align", "font-weight"].includes(name))));
   if (editable) td.contentEditable = "true";

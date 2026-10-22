@@ -6,6 +6,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 from coscribe.runtime_lg.messages import (
     AUTO_MODE_NOTE,
+    artifact_note,
     extract_images,
     language_note,
     serialize_history_for_ws_lg,
@@ -86,3 +87,17 @@ def test_strip_mode_note_also_removes_the_language_note() -> None:
     sent += AUTO_MODE_NOTE + language_note("帮我做 Q3 经营回顾") + "帮我做 Q3 经营回顾"
 
     assert strip_mode_note(sent) == "帮我做 Q3 经营回顾"
+
+
+def test_artifact_note_names_what_is_made_and_is_stripped_from_history() -> None:
+    note = artifact_note("slides")
+    assert "Slides artifact" in note and "instructions for new decks" in note
+    assert artifact_note("docs").startswith("[The user is starting a Docs artifact: ")
+    assert (
+        artifact_note("sheets") and artifact_note(None) == "" and artifact_note("dashboard") == ""
+    )
+    assert strip_mode_note(note + "a deck about tea") == "a deck about tea"
+    # After the date and mode notes, ahead of the language note, as the session writes them.
+    asked = "做一个关于茶的演示"
+    full = f"Today's real date is 2026-10-22. {AUTO_MODE_NOTE}{note}{language_note(asked)}{asked}"
+    assert strip_mode_note(full) == asked

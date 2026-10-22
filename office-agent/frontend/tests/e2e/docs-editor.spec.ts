@@ -111,7 +111,30 @@ test("a file changed meanwhile is not overwritten: the editor says so and reads 
   await page.getByRole("button", { name: "Reload" }).click();
   await expect(editor).toContainText("Changed elsewhere.");
   await expect(page.getByText("This document changed since you opened it")).toHaveCount(0);
+  // The editor that was refused must not save again, not on its retry timer nor as it closes.
+  await page.waitForTimeout(2500);
   expect((await blocksOf(page, name)).blocks.map(textOf).join("\n")).not.toContain("!");
+});
+
+test("a change made meanwhile to another block is joined with the person's typing, not offered as a conflict", async ({ page }) => {
+  const name = `edit-${Math.random().toString(36).slice(2, 8)}`;
+  await openEditor(page, name);
+  const editor = page.locator(".docs-editor");
+  const read = await blocksOf(page, name);
+  const changed = read.blocks.map((b) => (b.runs?.[0]?.t === "Service agreement" ? { ...b, runs: [{ t: "Service agreement, version 2" }] } : b));
+  const behind = await page.request.put(`/api/threads/${threadOf(page)}/docs/blocks`, { data: { path: `${name}.docx`, version: read.version, blocks: changed } });
+  expect(behind.ok()).toBe(true);
+
+  await editor.locator("h2", { hasText: "Price" }).click();
+  await page.keyboard.press("End");
+  await page.keyboard.type("!");
+  await expect(editor).toContainText("Service agreement, version 2");
+  // The caret is still where the person was typing: the next key lands after the "!", not at the end of the document.
+  await page.keyboard.type("x");
+  await expect(editor.locator("h2", { hasText: "Price" })).toContainText("Price!x");
+  await expect(page.getByText("This document changed since you opened it")).toHaveCount(0);
+  await expect.poll(async () => (await blocksOf(page, name)).blocks.map(textOf).join("\n")).toContain("Price!x");
+  expect((await blocksOf(page, name)).blocks.map(textOf).join("\n")).toContain("Service agreement, version 2");
 });
 
 test("'/' inserts a block and the bar over selected words formats them, both written to the file", async ({ page }) => {
