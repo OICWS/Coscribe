@@ -76,6 +76,7 @@ from .connector_permissions import (
     name_of,
 )
 from .convert import build_convert_tools
+from .design_systems import DesignSystemError, DesignSystemStore
 from .exec import (
     Detachable,
     HandOff,
@@ -191,6 +192,8 @@ from .skills import (
 )
 
 __all__ = [
+    "DesignSystemError",
+    "DesignSystemStore",
     "fallbacks_for_platform",
     "get_interpreter_override",
     "install_node_package",
