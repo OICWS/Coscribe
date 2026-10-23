@@ -53,11 +53,15 @@ test("a secret is added, kept write-only, given to a conversation and deleted", 
     await page.getByRole("menuitem", { name: "Edit environment" }).click();
 
     const dialog = page.getByRole("dialog", { name: "Edit environment" });
+    await dialog.getByRole("button", { name: /Environment variables/ }).click();
     await dialog.getByRole("button", { name: "Add variable" }).click();
     await dialog.getByLabel("Variable name").fill("MODE");
     await dialog.getByLabel("Variable value").fill("fast");
+    await dialog.getByRole("button", { name: "Back" }).click();
+    await expect(dialog.getByRole("button", { name: /Environment variables/ })).toContainText("1 variable");
+    await dialog.getByRole("button", { name: /Secrets/ }).click();
     await dialog.getByRole("checkbox").first().check();
-    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await dialog.getByRole("button", { name: "Save changes" }).click();
     await expect(dialog).toHaveCount(0);
 
     const saved = await (await request.get(`/api/threads/${threadId}/environment`)).json();

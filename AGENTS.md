@@ -53,9 +53,10 @@ Never read a file over 1,500 lines whole, and never read `docs/history/`, the fr
   through `search_tools` / `use_tool`. Never put per-session or changing data
   (names, hosts, settings) into a tool schema or the system prompt; deliver it
   through a tool result or a message.
-- **No OS sandbox.** Scripts and Codex commands run as the user. Do not claim a
-  guarantee the code can't keep. For secrets the promise is only: the model
-  cannot SEE a value, not that code which digs can't find it.
+- **Scripts run in an AppContainer only where the self-test passed** (decision 0021).
+  Elsewhere, and for Codex's commands, code runs as the user. Do not claim a guarantee
+  the code can't keep. For secrets the promise is only: the model cannot SEE a value,
+  not that code which digs can't find it.
 - **Hosted connectors sign in once, in the user's own browser** (OAuth 2.1 with
   PKCE). Services that need a registered app get the guided setup page; never
   ship a shared client secret.

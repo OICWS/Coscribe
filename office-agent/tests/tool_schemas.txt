@@ -27,7 +27,7 @@ bound to the model: 22 tools, ~4936 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 116 tools, ~36163 tokens (the ones not bound are found through search_tools)
+registered: 116 tools, ~36337 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -52,7 +52,7 @@ registered: 116 tools, ~36163 tokens (the ones not bound are found through searc
   create_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 cc7745e488
   crop_pptx_image | WRITE_LOCAL | documents | deferred | sha256 45b8d754c3
   delete_docx_text | WRITE_LOCAL | documents | deferred | sha256 881c546c7c
-  delete_file | WRITE_LOCAL | filesystem | deferred | sha256 86460e1389
+  delete_file | WRITE_LOCAL | filesystem | deferred | sha256 d37d397af0
   delete_pptx_shape | WRITE_LOCAL | documents | deferred | sha256 0878db543c
   delete_pptx_slide | WRITE_LOCAL | documents | deferred | sha256 576e07dfa9
   delete_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 a0c002e459
@@ -91,7 +91,7 @@ registered: 116 tools, ~36163 tokens (the ones not bound are found through searc
   load_skill | READ | skills | deferred | sha256 7b0c5ee61e
   merge_pptx_table_cells | WRITE_LOCAL | documents | deferred | sha256 2ab446f2a5
   modify_xlsx | WRITE_LOCAL | documents | deferred | sha256 3e15498c5f
-  move_file | WRITE_LOCAL | filesystem | deferred | sha256 5dfd1f570c
+  move_file | WRITE_LOCAL | filesystem | deferred | sha256 75892076be
   pause_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 53a449b0cb
   read_docx | READ | documents | core | sha256 dbcba018fc
   read_docx_review | READ | documents | deferred | sha256 a86f850225
@@ -113,10 +113,10 @@ registered: 116 tools, ~36163 tokens (the ones not bound are found through searc
   resume_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 3d546c3215
   review_work | READ | - | deferred | sha256 3d07d2b688
   revise_workflow | READ | - | core | sha256 bb65f01516
-  run_background_command | EXEC | background_tasks | deferred | sha256 ab3fa6162e
-  run_background_script | EXEC | background_tasks | deferred | sha256 db65d529c7
-  run_node_script | EXEC | scripts | deferred | sha256 a026ed9e1d
-  run_python_script | EXEC | scripts | deferred | sha256 107c5debcf
+  run_background_command | EXEC | background_tasks | deferred | sha256 f24230b645
+  run_background_script | EXEC | background_tasks | deferred | sha256 70f81f8088
+  run_node_script | EXEC | scripts | deferred | sha256 5c717dde3b
+  run_python_script | EXEC | scripts | deferred | sha256 d52e93fb2f
   save_design_system | WRITE_LOCAL | documents | deferred | sha256 d18de047b0
   search_files | READ | filesystem | core | sha256 4c823f409b
   search_images | READ | web | deferred | sha256 4a88b5659a

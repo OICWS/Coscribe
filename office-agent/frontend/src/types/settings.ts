@@ -34,6 +34,7 @@ export interface ConfigResponse {
   COSCRIBE_LOG_LEVEL: string | null;
   COSCRIBE_EXTRA_READABLE_DIRS: string | null;
   COSCRIBE_EXTRA_WRITABLE_DIRS: string | null;
+  COSCRIBE_EXTRA_DELETABLE_DIRS: string | null;
   COSCRIBE_MAX_TURNS: string | null;
   COSCRIBE_CODE_MODEL: string | null;
   COSCRIBE_CODE_MODULE_ENABLED: string | null;
@@ -505,12 +506,6 @@ export interface DesignSystem {
   spacing: DesignNamedValue[];
   radius: DesignNamedValue[];
   updated_at: string;
-}
-
-/** Who may message a conversation: nobody (the default), every other one, or the named ones. */
-export interface MessagingPolicy {
-  mode: "off" | "any" | "selected";
-  senders: string[];
 }
 
 /** What one conversation is given: variables the model can read, and the names of the secrets it may use. */

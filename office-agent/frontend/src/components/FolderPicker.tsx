@@ -1,36 +1,14 @@
 import { useRef, useState } from "react";
 import { useComposerAction } from "../lib/menuCommands";
-import { readStored, writeStored } from "../lib/storage";
+import { folderName, readRecent, remember } from "../lib/recentFolders";
 import { useClickOutside } from "../lib/useClickOutside";
 import { CheckIcon, FolderIcon, PlusIcon } from "./icons";
 import { DirBrowserModal } from "./settings/DirBrowserModal";
-
-const RECENT_KEY = "coscribe.recentFolders";
-const MAX_RECENT = 6;
-
-function folderName(path: string): string {
-  const parts = path.split(/[\\/]/).filter(Boolean);
-  return parts[parts.length - 1] ?? path;
-}
 
 function buttonLabel(folders: string[]): string {
   if (folders.length === 0) return "Add folder";
   const main = folderName(folders[0]);
   return folders.length === 1 ? main : `${main} +${folders.length - 1}`;
-}
-
-function readRecent(): string[] {
-  try {
-    const saved: unknown = JSON.parse(readStored(RECENT_KEY) ?? "[]");
-    return Array.isArray(saved) ? saved.filter((p): p is string => typeof p === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
-function remember(paths: string[]) {
-  const merged = [...paths, ...readRecent().filter((p) => !paths.includes(p))];
-  writeStored(RECENT_KEY, JSON.stringify(merged.slice(0, MAX_RECENT)));
 }
 
 interface FolderPickerProps {

@@ -604,17 +604,14 @@ anything that sends, buys, posts, deletes or submits on the user's behalf, \
 say what you're about to do and get their go-ahead."""
 
 
-def _describe_extra_dirs(extra_readable: Sequence[Path], extra_writable: Sequence[Path]) -> str:
-    """Extra INSTRUCTIONS paragraph naming the user's configured
-    extra_readable_dirs/extra_writable_dirs by their real paths. Without
-    this, the model has no way to know these directories exist: the base
-    INSTRUCTIONS text is static and per-tool docstrings only describe the
-    *rule* ("an absolute path under a configured extra directory is also
-    allowed"), not *which* paths are actually configured for this user --
-    so a request like "save the file the browser just downloaded" fails
-    even when e.g. Downloads is configured as writable, because the model
-    never thinks to pass that absolute path instead of a workspace-relative
-    one, or to list_files/search_files against it before giving up."""
+def _describe_extra_dirs(
+    extra_readable: Sequence[Path],
+    extra_writable: Sequence[Path],
+    extra_deletable: Sequence[Path] = (),
+) -> str:
+    """Extra INSTRUCTIONS paragraph naming the user's configured folders by their real paths. The
+    tool docstrings give only the rule, so without the paths the model never thinks to pass e.g.
+    the Downloads folder's absolute path before telling the user a download can't be found."""
     if not extra_readable and not extra_writable:
         return ""
     writable_set = set(extra_writable)
@@ -624,7 +621,8 @@ def _describe_extra_dirs(extra_readable: Sequence[Path], extra_writable: Sequenc
         "their absolute path instead of a workspace-relative one:"
     ]
     for path in extra_writable:
-        lines.append(f"- {path} (read and write)")
+        access = "read, write and delete" if path in extra_deletable else "read and write"
+        lines.append(f"- {path} ({access})")
     for path in extra_readable:
         if path not in writable_set:
             lines.append(f"- {path} (read only)")
@@ -723,19 +721,11 @@ def build_coordinator_agent(
     # extra directories, and described to the model the same way.
     extra_readable = [*settings.extra_readable_dirs, *extra_folders]
     extra_writable = [*settings.extra_writable_dirs, *extra_folders]
-    # skills_dir is reachable via the file tools -- but only those, not
-    # document/spreadsheet/etc. below -- so the skill-creator skill (see
-    # builtin_skills/skill-creator/SKILL.md) can write_file a new SKILL.md
-    # there, and list_files/read_file it to check for existing skills
-    # first. Deliberately not folded into settings.extra_readable_dirs/
-    # extra_writable_dirs themselves (those are user-configured, described
-    # to the model as "directories outside the workspace" via
-    # _describe_extra_dirs below) -- skills_dir is coscribe's own fixed
-    # concept, not something the user opted into, so it gets its own
-    # always-present instruction line instead (below) rather than being
-    # folded into that user-facing listing.
+    # Only the file tools reach skills_dir, so the skill-creator skill can write a SKILL.md there.
+    # It isn't one of the user's folders, so it gets its own instruction line, not that listing.
     file_tool_readable = [*extra_readable, settings.skills_dir]
     file_tool_writable = [*extra_writable, settings.skills_dir]
+    file_tool_deletable = [*settings.extra_deletable_dirs, settings.skills_dir]
 
     def session_env() -> dict[str, str]:
         # Read at each run: the user can change them in Edit environment mid-conversation.
@@ -747,7 +737,10 @@ def build_coordinator_agent(
     detachable = Detachable(thread_id, partial(adopt_running_command, settings.state_dir))
 
     tools = (
-        build_file_tools(root, file_tool_readable, file_tool_writable, settings.protected_paths())
+        build_file_tools(
+            root, file_tool_readable, file_tool_writable, settings.protected_paths(),
+            file_tool_deletable,
+        )
         + build_document_tools(
             root,
             state_dir=settings.state_dir,
@@ -785,25 +778,16 @@ def build_coordinator_agent(
         + build_scheduled_task_tools(settings.state_dir, thread_id)
         + build_websearch_tools()
         + build_script_tools(
-            root,
-            settings.state_dir,
-            extra_writable=extra_writable,
-            session_env=session_env,
-            detachable=detachable,
+            root, settings.state_dir, extra_writable=extra_writable, extra_readable=extra_readable,
+            session_env=session_env, detachable=detachable,
         )
         + build_node_script_tools(
-            root,
-            settings.state_dir,
-            extra_writable=extra_writable,
-            session_env=session_env,
-            detachable=detachable,
+            root, settings.state_dir, extra_writable=extra_writable, extra_readable=extra_readable,
+            session_env=session_env, detachable=detachable,
         )
         + build_background_task_tools(
-            thread_id,
-            root,
-            settings.state_dir,
-            extra_writable=extra_writable,
-            session_env=session_env,
+            thread_id, root, settings.state_dir, extra_writable=extra_writable,
+            extra_readable=extra_readable, session_env=session_env,
         )
         + build_subagent_task_tools(thread_id, settings.state_dir)
     )
@@ -827,7 +811,7 @@ def build_coordinator_agent(
         instructions = f"{instructions}\n\n{CODE_MODULE_INSTRUCTIONS}"
     instructions = f"{instructions}\n\n{SECRETS_INSTRUCTIONS}"
     extra_dirs_note = _describe_extra_dirs(
-        settings.extra_readable_dirs, settings.extra_writable_dirs
+        settings.extra_readable_dirs, settings.extra_writable_dirs, settings.extra_deletable_dirs
     )
     if extra_dirs_note:
         instructions = f"{instructions}\n\n{extra_dirs_note}"

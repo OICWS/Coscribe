@@ -136,15 +136,25 @@ export const NOTIFICATION_LEVELS = [
 ] as const;
 
 export const WORKSPACE_ROOT_KEY = "COSCRIBE_WORKSPACE_ROOT";
-export const READABLE_DIRS_KEY = "COSCRIBE_EXTRA_READABLE_DIRS";
-export const WRITABLE_DIRS_KEY = "COSCRIBE_EXTRA_WRITABLE_DIRS";
+const READABLE_DIRS_KEY = "COSCRIBE_EXTRA_READABLE_DIRS";
+const WRITABLE_DIRS_KEY = "COSCRIBE_EXTRA_WRITABLE_DIRS";
+const DELETABLE_DIRS_KEY = "COSCRIBE_EXTRA_DELETABLE_DIRS";
 
-export type DirPermission = "read" | "read-write";
+export type DirPermission = "read" | "read-write" | "read-write-delete";
+
+/** The .env key each permission is stored under. */
+const DIR_KEYS: Record<DirPermission, string> = {
+  read: READABLE_DIRS_KEY,
+  "read-write": WRITABLE_DIRS_KEY,
+  "read-write-delete": DELETABLE_DIRS_KEY,
+};
 
 export interface DirEntry {
   path: string;
   permission: DirPermission;
 }
+
+type DirsConfig = Partial<Record<string, string | null>>;
 
 function parseDirsList(value: string | null | undefined): string[] {
   return (value ?? "")
@@ -153,20 +163,27 @@ function parseDirsList(value: string | null | undefined): string[] {
     .filter((entry) => entry.length > 0);
 }
 
-/** A writable directory takes precedence over a readable one with the same
- * path, matching app.js's initDirsField dedup. */
-export function buildDirEntries(readable: string | null, writable: string | null): DirEntry[] {
-  const writableSet = new Set(parseDirsList(writable));
+/** The widest permission wins when a path is listed under several keys. */
+export function buildDirEntries(config: DirsConfig): DirEntry[] {
   const entries = new Map<string, DirPermission>();
-  for (const path of parseDirsList(readable)) entries.set(path, "read");
-  for (const path of writableSet) entries.set(path, "read-write");
+  for (const permission of Object.keys(DIR_KEYS) as DirPermission[]) {
+    for (const path of parseDirsList(config[DIR_KEYS[permission]])) entries.set(path, permission);
+  }
   return [...entries.entries()].map(([path, permission]) => ({ path, permission }));
 }
 
-/** Comma+space join -- must exactly match buildDirEntries' parse format or
- * every settings-open shows a spurious "dirty" diff. */
-export function syncDirsToStrings(entries: DirEntry[]): { readable: string; writable: string } {
-  const readable = entries.filter((e) => e.permission === "read").map((e) => e.path);
-  const writable = entries.filter((e) => e.permission === "read-write").map((e) => e.path);
-  return { readable: readable.join(", "), writable: writable.join(", ") };
+/** The .env values that differ from `config`. Comma+space join must match
+ * buildDirEntries' parse format or every settings-open shows a spurious diff. */
+export function changedDirs(entries: DirEntry[], config: DirsConfig): Record<string, string> {
+  const changed: Record<string, string> = {};
+  for (const permission of Object.keys(DIR_KEYS) as DirPermission[]) {
+    const key = DIR_KEYS[permission];
+    // A deletable folder is listed as writable too: the server writes wherever it lists one.
+    const value = entries
+      .filter((e) => e.permission === permission || (permission === "read-write" && e.permission === "read-write-delete"))
+      .map((e) => e.path)
+      .join(", ");
+    if (value !== (config[key] ?? "")) changed[key] = value;
+  }
+  return changed;
 }

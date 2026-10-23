@@ -220,8 +220,9 @@ def run_to_end(
     script: str,
     scratch_dir: Path,
     detachable: Detachable | None,
+    isolation: Isolation | None = None,
 ) -> Ran:
-    command = RunningCommand(argv, cwd, env)
+    command = RunningCommand(argv, cwd, env, isolation)
     # Without a way to hand it over there is nothing for a button to do.
     key = (detachable.thread_id, script) if detachable is not None else None
     if key is not None:

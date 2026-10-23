@@ -10,7 +10,7 @@ old one; the old one stays, marked "Superseded by".
 | # | Decision |
 |---|---|
 | [0001](0001-fixed-cached-tool-list.md) | The agent's tool list is fixed; tools are deferred |
-| [0002](0002-approvals-not-a-sandbox.md) | Approvals and risk tiers, not an OS sandbox |
+| [0002](0002-approvals-not-a-sandbox.md) | Approvals and risk tiers, not an OS sandbox (sandbox part superseded by 0021) |
 | [0003](0003-secrets-promise.md) | Secrets: the model cannot see a value; nothing more is promised |
 | [0004](0004-connectors-sign-in-once-in-the-browser.md) | Connectors sign in once, in the user's own browser |
 | [0005](0005-code-is-a-second-runtime.md) | Code is a second runtime, never inside a fixed workflow |
@@ -29,3 +29,4 @@ old one; the old one stays, marked "Superseded by".
 | [0018](0018-sections-may-hold-containers-that-lay-out-their-children.md) | Sections may hold containers that lay out their children |
 | [0019](0019-a-docs-artifact-is-the-docx-itself-edited-by-styles.md) | A Docs artifact is the .docx itself, edited in the app block by block, by styles not fonts |
 | [0020](0020-design-systems-are-a-library-the-user-keeps.md) | Design systems are a library the user keeps; a deck gets a copy |
+| [0021](0021-scripts-run-in-an-appcontainer-held-to-the-folder-settings.md) | Scripts run in an AppContainer held to the folder settings |

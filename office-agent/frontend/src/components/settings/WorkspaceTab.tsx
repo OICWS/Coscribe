@@ -78,7 +78,7 @@ export function WorkspaceTab({ values, onChange, dirEntries, onDirEntriesChange 
 
       <SettingsSection
         title="Other folders"
-        description="coscribe can always read and change the workspace. Give it more folders here, each read-only or read and write."
+        description="coscribe can always read and change the workspace. Give it more folders here. Only folders set to read, write and delete let it delete, move or rename files; deleted files go to the Recycle Bin."
       >
         {dirEntries.length === 0 ? (
           <p className="mt-3 text-sm text-[var(--muted)]">No other folders yet.</p>
@@ -90,12 +90,12 @@ export function WorkspaceTab({ values, onChange, dirEntries, onDirEntriesChange 
                 <span className="min-w-0 flex-1 truncate">{entry.path}</span>
                 <select
                   aria-label={`Access to ${entry.path}`}
-                  className={`${fieldClass} h-8 px-2 text-[13px]`}
-                  value={entry.permission}
+                  className={`${fieldClass} h-8 px-2 text-[13px]`} value={entry.permission}
                   onChange={(e) => setPermission(entry.path, e.target.value as DirPermission)}
                 >
                   <option value="read">Read only</option>
                   <option value="read-write">Read and write</option>
+                  <option value="read-write-delete">Read, write and delete</option>
                 </select>
                 <button
                   type="button"

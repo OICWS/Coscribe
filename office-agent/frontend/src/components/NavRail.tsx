@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { deleteScheduledTask, deleteThread } from "../lib/rest";
 import { useClickOutside } from "../lib/useClickOutside";
-import { SCHEDULED_THREAD_PREFIX, showArtifacts, startNewThread } from "../lib/nav";
+import { showArtifacts, startNewThread } from "../lib/nav";
 import { threadLabel } from "../lib/threadStatus";
 import { latestRun, RUN_STATUS_LABEL } from "../lib/runLabels";
 import { scheduleKindLabel } from "../lib/scheduleLabels";
 import type { RunStatus, ScheduledTask } from "../types/settings";
 import type { ThreadSummary } from "../types/session";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { EnvironmentDialog } from "./EnvironmentDialog";
+import { EnvironmentDialog, type OpenConversationFolders } from "./EnvironmentDialog";
 import { RunStatusIcon } from "./RunStatusIcon";
 import { ThreadList } from "./ThreadList";
 import { ArtifactsIcon } from "./artifacts/artifactIcons";
@@ -218,6 +218,8 @@ interface NavRailProps {
   onEditScheduledTask: (task: ScheduledTask | null) => void;
   onRunScheduledTaskNow: (task: ScheduledTask) => void;
   onNewScheduledTask: () => void;
+  /** The open conversation's folders, for Edit environment on it. */
+  openFolders: OpenConversationFolders;
 }
 
 /** A narrow icon-only rail that expands into a full nav panel on hover
@@ -241,7 +243,7 @@ export function NavRail({
   onOpenScheduledTask,
   onEditScheduledTask,
   onRunScheduledTaskNow,
-  onNewScheduledTask,
+  onNewScheduledTask, openFolders,
 }: NavRailProps) {
   const [hovering, setHovering] = useState(false);
   const expanded = pinned || hovering;
@@ -410,9 +412,9 @@ export function NavRail({
         <EnvironmentDialog
           threadId={environmentOf.thread_id}
           title={threadLabel(environmentOf)}
-          others={threads
-            .filter((t) => t.thread_id !== environmentOf.thread_id && !t.thread_id.startsWith(SCHEDULED_THREAD_PREFIX))
-            .map((t) => ({ id: t.thread_id, label: threadLabel(t) }))}
+          archived={environmentOf.archived}
+          openFolders={environmentOf.thread_id === threadId ? openFolders : null}
+          onArchiveChanged={onThreadsChanged}
           onClose={() => setEnvironmentOf(null)}
         />
       )}

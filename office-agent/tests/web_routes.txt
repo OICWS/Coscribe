@@ -68,6 +68,7 @@ GET /api/threads/{thread_id}/docx-review
 GET /api/threads/{thread_id}/docx-review/original
 GET /api/threads/{thread_id}/environment
 GET /api/threads/{thread_id}/files/download
+GET /api/threads/{thread_id}/folders
 GET /api/threads/{thread_id}/messaging
 GET /api/threads/{thread_id}/slides
 GET /api/threads/{thread_id}/slides/comments
@@ -144,6 +145,7 @@ PUT /api/scheduled-tasks/{trigger_id}/notes
 PUT /api/secrets/{name}
 PUT /api/threads/{thread_id}/docs/blocks
 PUT /api/threads/{thread_id}/environment
+PUT /api/threads/{thread_id}/folders
 PUT /api/threads/{thread_id}/messaging
 PUT /api/threads/{thread_id}/slides/{index}/source
 WS /ws/browser
