@@ -84,3 +84,31 @@ def test_the_fonts_are_read_from_svg_attributes_and_section_styles(tmp_path: Pat
     deck = tmp_path / "deck.pptx"
     assert build_deck(folder, deck, resource_root=tmp_path).ok
     assert design_system(deck)["fonts"][0] == "Georgia"
+
+
+def test_a_seed_is_the_decks_first_design_system_and_then_the_decks_own(tmp_path: Path) -> None:
+    deck = _deck(tmp_path)
+    seed = {
+        "name": "Acme",
+        "palette": ["#112233"],
+        "fonts": ["Inter"],
+        "styles": [
+            {
+                "id": "body",
+                "name": "Body",
+                "size": 30,
+                "weight": 400,
+                "line_height": 1.4,
+                "letter_spacing": 0,
+            }
+        ],
+        "overview": "Calm.",
+    }
+    made = design_system(deck, seed)
+    assert made["palette"] == ["#112233"] and made["overview"] == "Calm."
+    # Once saved, a different seed does not replace it.
+    assert design_system(deck, {**seed, "palette": ["#ffffff"]})["palette"] == ["#112233"]
+    # A seed that is not a design system is ignored, not saved.
+    other = tmp_path / "other"
+    other.mkdir()
+    assert design_system(_deck(other), {"name": "bad"})["palette"] != []

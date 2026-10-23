@@ -104,3 +104,27 @@ def test_artifact_note_names_what_is_made_and_is_stripped_from_history() -> None
     asked = "做一个关于茶的演示"
     full = f"Today's real date is 2026-10-22. {AUTO_MODE_NOTE}{note}{language_note(asked)}{asked}"
     assert strip_mode_note(full) == asked
+
+
+def test_a_slides_note_carries_the_chosen_design_system_in_one_stripped_sentence() -> None:
+    system = {
+        "name": "Acme [draft]",
+        "overview": "Calm\nand technical.",
+        "colors": [{"name": "Brand", "value": "#112233", "note": "Logo and key figures"}],
+        "typography": {
+            "fonts": ["Inter"],
+            "styles": [{"name": "Body", "size": 32, "weight": 400}],
+        },
+        "spacing": [{"name": "Gap", "value": "24"}],
+        "radius": [],
+    }
+    note = artifact_note("slides", system)
+    assert 'Follow their design system "Acme [draft)".' in note
+    assert "Overview: Calm and technical." in note
+    assert "Brand #112233 (Logo and key figures)" in note and "Fonts: Inter." in note
+    assert "Body 32px weight 400" in note and "Spacing: Gap 24." in note
+    assert "Corner radius" not in note
+    assert strip_mode_note(note + "a deck about tea") == "a deck about tea"
+    # Only a Slides conversation takes one, and none changes the note.
+    assert artifact_note("docs", system) == artifact_note("docs")
+    assert artifact_note("slides", None) == artifact_note("slides")

@@ -236,3 +236,69 @@ def test_each_tool_result_carries_its_own_arguments_across_responses_lg(
 
     results = [m["arguments"] for m in messages if m["type"] == "tool_result"]
     assert results == [{"path": "a.txt"}, {"path": "b.txt"}]
+
+
+def test_a_slides_conversation_started_with_a_design_system_gets_it_and_its_deck_a_copy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="on it")])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        made = client.post("/api/design-systems", json={"name": "Acme"}).json()
+        client.put(
+            f"/api/design-systems/{made['id']}",
+            json={**made, "colors": [{"name": "Brand", "value": "#112233", "note": ""}]},
+        )
+        with client.websocket_connect("/ws/t_design") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json(
+                {
+                    "type": "user_message",
+                    "text": "a deck about tea",
+                    "artifact": "slides",
+                    "design_system": made["id"],
+                }
+            )
+            _receive_until(ws, "tasks_changed")
+        sent = str(fake_model.received[0][-1].content)
+        # Changing the library afterwards does not move what the conversation was told.
+        client.put(f"/api/design-systems/{made['id']}", json={**made, "name": "Renamed"})
+    assert 'Follow their design system "Acme".' in sent and "Brand #112233" in sent
+    from coscribe.tools import DesignSystemStore
+
+    kept = DesignSystemStore(tmp_path / "state").chosen_for_thread("t_design")
+    assert kept is not None and kept["name"] == "Acme"
+
+
+def test_a_design_system_that_is_not_in_the_library_or_not_for_slides_is_left_out(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="ok")] * 2)
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        made = client.post("/api/design-systems", json={"name": "Acme"}).json()
+        with client.websocket_connect("/ws/t_nodesign") as ws:
+            ws.receive_json()
+            ws.receive_json()
+            ws.send_json(
+                {
+                    "type": "user_message",
+                    "text": "x",
+                    "artifact": "slides",
+                    "design_system": "aaaaaaaaaa",
+                }
+            )
+            _receive_until(ws, "tasks_changed")
+        with client.websocket_connect("/ws/t_docs") as ws:
+            ws.receive_json()
+            ws.receive_json()
+            ws.send_json(
+                {
+                    "type": "user_message",
+                    "text": "y",
+                    "artifact": "docs",
+                    "design_system": made["id"],
+                }
+            )
+            _receive_until(ws, "tasks_changed")
+    assert "design system" not in str(fake_model.received[0][-1].content)
+    assert "design system" not in str(fake_model.received[1][-1].content)

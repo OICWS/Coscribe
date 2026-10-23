@@ -133,6 +133,7 @@ def router(state: AppState) -> APIRouter:
                             websocket,
                             images=data.get("images"),
                             artifact=data.get("artifact"),
+                            design_system=data.get("design_system"),
                         )
                     )
                 elif message_type == "edit_message":

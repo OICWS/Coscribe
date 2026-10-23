@@ -17,11 +17,13 @@ from fastapi.responses import JSONResponse, Response
 from ...tools import (
     CommentNotFound,
     DeckChangedError,
+    DesignSystemStore,
     NotBuiltFromPages,
     SectionError,
     SlideChanged,
     add_comment,
     add_slide_asset,
+    as_deck_design_system,
     deck_basic_fonts,
     deck_history,
     deck_html,
@@ -245,7 +247,12 @@ def _edit_routes(router: APIRouter, state: AppState) -> None:
 
     async def get_design_system(thread_id: str, path: str) -> Any:
         found = _deck_file(state, thread_id, path)
-        return _no_deck(path) if found is None else await _run(design_system, found[0])
+        if found is None:
+            return _no_deck(path)
+        # The deck of a conversation that started with a library system begins as a copy of it.
+        chosen = DesignSystemStore(state.settings.state_dir).chosen_for_thread(thread_id)
+        seed = as_deck_design_system(chosen) if chosen else None
+        return await _run(design_system, found[0], seed)
 
     router.add_api_route(
         "/api/threads/{thread_id}/slides/design-system", get_design_system, methods=["GET"]

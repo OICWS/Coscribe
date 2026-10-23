@@ -148,6 +148,7 @@ class SubAgentSessionHost(SubAgentChannelHost, Protocol):
         *,
         notice: bool = False,
         artifact: str | None = None,
+        design_system: dict[str, Any] | None = None,
     ) -> None: ...
 
 

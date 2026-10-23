@@ -1,8 +1,10 @@
-"""Small pure helpers of a conversation's turns: reply and title text, the usage event."""
+"""Small helpers of a conversation's turns: reply and title text, the usage event, and the design
+system a Slides conversation starts with."""
 
 from __future__ import annotations
 
 import unicodedata
+from pathlib import Path
 from typing import Any
 
 from langchain_core.messages.ai import UsageMetadata
@@ -13,6 +15,18 @@ from ..runtime_lg import (
     NORMAL_MODE_NOTE,
     PLAN_MODE_NOTE,
 )
+from ..tools import DesignSystemStore
+
+
+def design_system_for_start(
+    state_dir: str | Path, thread_id: str, artifact: str | None, system_id: str | None
+) -> dict[str, Any] | None:
+    """The library system a Slides conversation's first message names, kept as a copy for the
+    conversation (its deck begins as that copy, whatever happens to the library later). None for
+    anything but a Slides start, and for a system that is no longer in the library."""
+    if artifact != "slides" or not system_id:
+        return None
+    return DesignSystemStore(state_dir).choose_for_thread(thread_id, system_id)
 
 
 def format_reply(text: str) -> str:
