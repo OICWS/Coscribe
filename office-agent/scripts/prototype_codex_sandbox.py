@@ -158,7 +158,9 @@ def main() -> int:
             (outside / "secret.txt").write_text("secret", encoding="utf-8")
             write_config(home, impl, rw, ro, readable)
             if impl == "elevated":
-                setup = codex(exe, home, "sandbox", "setup", "--elevated", timeout=300)
+                setup = codex(
+                    exe, home, "sandbox", "setup", "--elevated", "--current-user", timeout=300
+                )
                 print(
                     f"setup --elevated: exit {setup.returncode}\n{(setup.stdout + setup.stderr).strip()[-1200:]}"
                 )
@@ -185,7 +187,17 @@ def main() -> int:
                     )
                 continue
             run = codex(
-                exe, home, "sandbox", "-C", str(rw), "--", str(py), str(probe), json.dumps(cfg)
+                exe,
+                home,
+                "sandbox",
+                "-P",
+                "coscribe",
+                "-C",
+                str(rw),
+                "--",
+                str(py),
+                str(probe),
+                json.dumps(cfg),
             )
             print(f"probe: exit {run.returncode}")
             seen, differ = table(run.stdout + "\n" + run.stderr)
