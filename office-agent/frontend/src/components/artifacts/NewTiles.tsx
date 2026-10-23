@@ -1,9 +1,9 @@
-import { KIND_ORDER, KINDS, type ArtifactKind } from "../../lib/artifacts";
+import { PAGE_KINDS, PAGE_ORDER, type PageKind } from "../../lib/artifacts";
 import { tinted } from "./ArtifactThumb";
 
 /** A small drawing of each kind, on the kind's colour. */
-function Illustration({ kind }: { kind: ArtifactKind }) {
-  const colour = KINDS[kind].colour;
+function Illustration({ kind }: { kind: PageKind }) {
+  const colour = PAGE_KINDS[kind].colour;
   const bar = (width: string, strong = false) => (
     <span className="block h-1.5 rounded-full" style={{ width, background: strong ? colour : `color-mix(in srgb, ${colour} 28%, white)` }} />
   );
@@ -44,6 +44,13 @@ function Illustration({ kind }: { kind: ArtifactKind }) {
           <span className="absolute bottom-[14%] right-[12%] h-[22%] w-[22%] rotate-45 rounded-sm" style={{ background: colour }} />
         </div>
       )}
+      {kind === "design-system" && (
+        <div className="flex h-[62%] w-[72%] overflow-hidden rounded-lg border border-white bg-white shadow-sm">
+          {[100, 70, 45, 22].map((share) => (
+            <span key={share} className="flex-1" style={{ background: `color-mix(in srgb, ${colour} ${share}%, white)` }} />
+          ))}
+        </div>
+      )}
       {kind === "dashboard" && (
         <div className="flex h-[68%] w-[72%] items-end gap-2 rounded-lg border border-white bg-white px-3 pb-3 shadow-sm">
           {[40, 70, 100, 55].map((height, i) => (
@@ -56,18 +63,18 @@ function Illustration({ kind }: { kind: ArtifactKind }) {
 }
 
 /** "Make something new": one tile per kind. A kind that cannot be made yet shows why and does nothing. */
-export function NewTiles({ onMake }: { onMake: (kind: ArtifactKind) => void }) {
+export function NewTiles({ onMake }: { onMake: (kind: PageKind) => void }) {
   return (
     <section aria-label="Make something new">
       <h2 className="text-sm text-[var(--muted)]">Make something new</h2>
       <div className="mt-3 flex flex-wrap gap-4">
-        {KIND_ORDER.map((kind) => {
-          const info = KINDS[kind];
+        {PAGE_ORDER.map((kind) => {
+          const info = PAGE_KINDS[kind];
           return (
             <button
               key={kind}
               type="button"
-              disabled={info.placeholder === null}
+              disabled={info.badge === "Soon"}
               className="group w-[170px] text-left disabled:cursor-default"
               onClick={() => onMake(kind)}
             >

@@ -185,3 +185,59 @@ test("the design-system menu leads to the page that manages them, or to making a
   await chooseFromDesignMenu(page, "Make a new design system first");
   await expect(page.getByLabel("New design system name")).toBeVisible();
 });
+
+test("a design system is a card of its own: it opens its editor, and its menu renames, copies, pins and deletes", async ({ page }) => {
+  const name = `Brand ${Math.random().toString(36).slice(2, 7)}`;
+  const made = (await (await page.request.post("/api/design-systems", { data: { name } })).json()) as { id: string };
+  const listed = async () => ((await (await page.request.get("/api/design-systems")).json()) as { id: string; name: string }[]).map((s) => s.name);
+  try {
+    await openPage(page);
+    const card = page.getByRole("button", { name: `Open ${name}` });
+    await expect(card).toBeVisible();
+
+    await card.click();
+    await expect(page.getByRole("button", { name: "Back to design systems" })).toBeVisible();
+    await expect(page.getByLabel("Overview", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Close settings" }).click();
+
+    const options = async (item: string) => {
+      await expect(async () => {
+        await page.getByRole("button", { name: `Options for ${item}` }).click({ force: true });
+        await expect(page.getByRole("menu", { name: `Options for ${item}` })).toBeVisible({ timeout: 2000 });
+      }).toPass({ timeout: 15000 });
+    };
+    await options(name);
+    const menu = page.getByRole("menu", { name: `Options for ${name}` });
+    await expect(menu).toContainText("Design system");
+    await expect(menu.getByRole("menuitem", { name: "Show in folder" })).toHaveCount(0);
+    await menu.getByRole("menuitem", { name: "Pin" }).click();
+    await options(name);
+    await expect(page.getByRole("menuitem", { name: "Unpin" })).toBeVisible();
+    await page.getByRole("menuitem", { name: "Duplicate" }).click();
+    await expect.poll(listed).toContain(`${name} copy`);
+
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Artifacts" })).toBeVisible();
+    await options(`${name} copy`);
+    await page.getByRole("menuitem", { name: "Rename" }).click();
+    await page.getByLabel("Name").fill(`${name} v2`);
+    await page.getByRole("button", { name: "Rename", exact: true }).click();
+    await expect.poll(listed).toContain(`${name} v2`);
+
+    await options(`${name} v2`);
+    await page.getByRole("menuitem", { name: "Delete" }).click();
+    await expect(page.getByText("Decks already made from it keep their own copy")).toBeVisible();
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    await expect.poll(listed).not.toContain(`${name} v2`);
+  } finally {
+    for (const system of (await (await page.request.get("/api/design-systems")).json()) as { id: string; name: string }[]) {
+      if (system.name.startsWith(name) || system.id === made.id) await page.request.delete(`/api/design-systems/${system.id}`, { timeout: 5000 });
+    }
+  }
+});
+
+test("the design-system tile opens Settings on its new-system form", async ({ page }) => {
+  await openPage(page);
+  await page.getByRole("button", { name: /^Design system/ }).click();
+  await expect(page.getByLabel("New design system name")).toBeVisible();
+});

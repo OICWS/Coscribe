@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createDesignSystem, deleteDesignSystem, getDesignSystem, getDesignSystems } from "../../lib/rest";
 import { useFetchOnActive } from "../../lib/useFetchOnActive";
 import type { DesignSystem, DesignSystemSummary } from "../../types/settings";
@@ -43,10 +43,10 @@ function NewSystemForm({ name, onName, onCreate }: { name: string; onName: (name
 }
 
 /** Settings > Design systems: the person's library (decision 0020). */
-export function DesignSystemsTab({ active, startNew = false }: { active: boolean; startNew?: boolean }) {
+export function DesignSystemsTab({ active, start = null }: { active: boolean; start?: string | null }) {
   const { data, status, error, retry } = useFetchOnActive(active, getDesignSystems, NONE);
   const [open, setOpen] = useState<DesignSystem | null>(null);
-  const [naming, setNaming] = useState<string | null>(startNew ? "" : null);
+  const [naming, setNaming] = useState<string | null>(start === "new" ? "" : null);
   const [removing, setRemoving] = useState<DesignSystemSummary | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -58,6 +58,9 @@ export function DesignSystemsTab({ active, startNew = false }: { active: boolean
       setActionError("Couldn't open that design system.");
     }
   };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- once per place it is opened from
+  useEffect(() => void (start && start !== "new" && openSystem(start)), [start]);
 
   const create = async () => {
     if (naming === null) return;

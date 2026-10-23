@@ -1,5 +1,5 @@
 import type { SVGProps } from "react";
-import type { ArtifactKind } from "../../lib/artifacts";
+import type { PageKind } from "../../lib/artifacts";
 
 function Icon({ children, ...props }: SVGProps<SVGSVGElement>) {
   return (
@@ -55,7 +55,7 @@ export function GridViewIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-const KIND_ICONS: Record<ArtifactKind, (props: SVGProps<SVGSVGElement>) => React.JSX.Element> = {
+const KIND_ICONS: Record<PageKind, (props: SVGProps<SVGSVGElement>) => React.JSX.Element> = {
   slides: (props) => (
     <Icon {...props}>
       <rect x="8" y="4" width="13" height="10" rx="2" />
@@ -92,8 +92,16 @@ const KIND_ICONS: Record<ArtifactKind, (props: SVGProps<SVGSVGElement>) => React
       <path d="m8 15 3-4 3 2 5-6" />
     </Icon>
   ),
+  "design-system": (props) => (
+    <Icon {...props}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <circle cx="8" cy="12" r="1.6" />
+      <circle cx="12" cy="12" r="1.6" />
+      <circle cx="16" cy="12" r="1.6" />
+    </Icon>
+  ),
 };
 
-export function KindIcon({ kind, ...props }: SVGProps<SVGSVGElement> & { kind: ArtifactKind }) {
+export function KindIcon({ kind, ...props }: SVGProps<SVGSVGElement> & { kind: PageKind }) {
   return KIND_ICONS[kind](props);
 }

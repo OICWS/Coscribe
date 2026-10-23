@@ -81,3 +81,14 @@ def test_delete_removes_the_folder_and_an_id_never_names_another_path(tmp_path: 
     assert store.delete(made["id"])
     assert store.get(made["id"]) is None and not store.delete(made["id"])
     assert (tmp_path / "outside").is_dir()
+
+
+def test_a_listing_carries_each_systems_first_colors(tmp_path: Path) -> None:
+    store = DesignSystemStore(tmp_path)
+    made = store.create("Acme")
+    colors = [{"name": f"c{i}", "value": f"#0000{i:02X}", "note": ""} for i in range(12)]
+    store.update(made["id"], {**store.get(made["id"]), "colors": colors})
+
+    [listed] = store.list_systems()
+
+    assert listed["palette"] == [f"#0000{i:02X}" for i in range(8)]

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { deleteArtifact, duplicateArtifact, editedLabel, renameArtifact, type ArtifactSummary } from "../../lib/artifacts";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { CopyIcon, ExternalLinkIcon, FolderIcon, LinkIcon, PencilIcon, TrashIcon } from "../icons";
 import { SlideMenu, type MenuEntry } from "../slides/SlideMenu";
 import { PinIcon } from "./artifactIcons";
+import { RenameDialog } from "./RenameDialog";
 
 export interface ArtifactMenuProps {
   anchor: DOMRect;
@@ -72,7 +72,7 @@ export function ArtifactMenu(props: ArtifactMenuProps) {
   return (
     <>
       {menuOpen && <SlideMenu anchor={props.anchor} label={`Options for ${item.name}`} width={240} entries={entries} onClose={() => setMenuOpen(false)} />}
-      {dialog === "rename" && <RenameDialog item={item} onCancel={() => setDialog(null)} onDone={(next) => settle("renamed", next)} />}
+      {dialog === "rename" && <RenameDialog current={item.name} rename={(name) => renameArtifact(item.id, name)} onCancel={() => setDialog(null)} onDone={(next) => settle("renamed", next)} />}
       {dialog === "delete" && (
         <ConfirmDialog
           title={`Delete ${item.name}?`}
@@ -85,58 +85,5 @@ export function ArtifactMenu(props: ArtifactMenuProps) {
         <ConfirmDialog title="That did not work" description={failure} confirmLabel="OK" tone="neutral" onCancel={() => setFailure(null)} onConfirm={() => setFailure(null)} />
       )}
     </>
-  );
-}
-
-/** A name for the file, asked in the app's own dialog; the ending stays. */
-function RenameDialog({ item, onCancel, onDone }: { item: ArtifactSummary; onCancel: () => void; onDone: (next: ArtifactSummary) => void }) {
-  const [name, setName] = useState(item.name);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const submit = () => {
-    if (!name.trim() || busy) return;
-    setBusy(true);
-    renameArtifact(item.id, name).then(onDone, (e: unknown) => {
-      setBusy(false);
-      setError(e instanceof Error ? e.message : String(e));
-    });
-  };
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onCancel}>
-      <form
-        className="w-[min(380px,100vw-2rem)] rounded-[14px] border border-[var(--border)] bg-[var(--panel-bg)] p-4 shadow-[var(--shadow)]"
-        onClick={(e) => e.stopPropagation()}
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit();
-        }}
-      >
-        <div className="mb-3 text-sm font-medium">Rename</div>
-        <input
-          autoFocus
-          aria-label="Name"
-          value={name}
-          maxLength={200}
-          className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--field-bg)] px-3 text-sm outline-none focus:border-[var(--focus)]"
-          onFocus={(e) => e.currentTarget.select()}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === "Escape" && onCancel()}
-        />
-        {error && <div className="mt-2 text-sm text-[var(--danger)]">{error}</div>}
-        <div className="mt-4 flex justify-end gap-2">
-          <button type="button" className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--card-bg)]" onClick={onCancel}>
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={!name.trim() || busy}
-            className="rounded-md bg-[var(--primary)] px-3 py-1.5 text-sm text-[var(--primary-fg)] hover:bg-[var(--primary-hover)] disabled:opacity-50"
-          >
-            Rename
-          </button>
-        </div>
-      </form>
-    </div>,
-    document.body,
   );
 }

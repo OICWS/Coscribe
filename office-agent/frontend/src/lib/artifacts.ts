@@ -4,6 +4,9 @@ import { readStored, writeStored } from "./storage";
 /** What coscribe makes that the Artifacts page lists. */
 export type ArtifactKind = "slides" | "docs" | "sheets" | "design" | "dashboard";
 
+/** What the Artifacts page lists: the kinds of file, and the person's design systems. */
+export type PageKind = ArtifactKind | "design-system";
+
 /** One artifact as the server lists it (`GET /api/artifacts`). */
 export interface ArtifactSummary {
   id: string;
@@ -17,6 +20,19 @@ export interface ArtifactSummary {
   excerpt: { heading: string; text: string } | null;
 }
 
+/** A design system of the person's library, as the page shows it beside the files. It is a record,
+ * not a file, so it has no path and the file actions do not apply to it. */
+export interface SystemItem {
+  id: string;
+  name: string;
+  kind: "design-system";
+  modified_at: string;
+  /** Its first colors, for the card to draw. */
+  palette: string[];
+}
+
+export type PageItem = ArtifactSummary | SystemItem;
+
 interface KindInfo {
   label: string;
   /** The kind's colour: its tile, its icon, its thumbnail's tint. */
@@ -27,7 +43,7 @@ interface KindInfo {
   badge: "Beta" | "New" | "Soon" | null;
 }
 
-export const KIND_ORDER: ArtifactKind[] = ["docs", "slides", "sheets", "design", "dashboard"];
+const KIND_ORDER: ArtifactKind[] = ["docs", "slides", "sheets", "design", "dashboard"];
 
 export const KINDS: Record<ArtifactKind, KindInfo> = {
   docs: { label: "Docs", colour: "var(--file-doc)", placeholder: "What should this document be about?", badge: null },
@@ -35,6 +51,14 @@ export const KINDS: Record<ArtifactKind, KindInfo> = {
   sheets: { label: "Sheets", colour: "var(--file-sheet)", placeholder: "What should this workbook be about?", badge: null },
   design: { label: "Design", colour: "var(--file-design)", placeholder: "What should this design be about?", badge: "New" },
   dashboard: { label: "Dashboard", colour: "var(--file-dashboard)", placeholder: null, badge: "Soon" },
+};
+
+/** Every kind the page offers, the design system last. */
+export const PAGE_ORDER: PageKind[] = [...KIND_ORDER, "design-system"];
+
+export const PAGE_KINDS: Record<PageKind, KindInfo> = {
+  ...KINDS,
+  "design-system": { label: "Design system", colour: "var(--file-design-system)", placeholder: null, badge: null },
 };
 
 async function send<T>(url: string, method: string, body?: unknown): Promise<T> {
@@ -69,7 +93,7 @@ export async function listArtifacts(): Promise<ArtifactSummary[]> {
   return (await response.json()) as ArtifactSummary[];
 }
 
-export const artifactId = (item: ArtifactSummary) => item.id;
+export const artifactId = (item: PageItem) => item.id;
 
 /** A design page, served inside a sandbox; the time keeps a changed page from showing stale. */
 export const designUrl = (item: ArtifactSummary) => `/api/artifacts/${item.id}/content?v=${encodeURIComponent(item.modified_at)}`;
@@ -116,22 +140,22 @@ export const writeLayout = (layout: Layout): void => writeStored(LAYOUT_KEY, lay
 
 export interface Filters {
   tab: "all" | "pinned";
-  kind: ArtifactKind | null;
+  kind: PageKind | null;
   query: string;
 }
 
 /** The artifacts to show: pinned ones first, then the newest. */
-export function visibleArtifacts(items: ArtifactSummary[], pins: ReadonlySet<string>, filters: Filters): ArtifactSummary[] {
+export function visibleArtifacts(items: PageItem[], pins: ReadonlySet<string>, filters: Filters): PageItem[] {
   const query = filters.query.trim().toLowerCase();
-  const pinned = (item: ArtifactSummary) => pins.has(artifactId(item));
+  const pinned = (item: PageItem) => pins.has(artifactId(item));
   return items
     .filter((item) => (filters.tab === "all" || pinned(item)) && (!filters.kind || item.kind === filters.kind))
     .filter((item) => !query || item.name.toLowerCase().includes(query))
     .sort((a, b) => Number(pinned(b)) - Number(pinned(a)) || b.modified_at.localeCompare(a.modified_at));
 }
 
-export function countsByKind(items: ArtifactSummary[]): Record<ArtifactKind, number> {
-  const counts: Record<ArtifactKind, number> = { docs: 0, slides: 0, sheets: 0, design: 0, dashboard: 0 };
+export function countsByKind(items: PageItem[]): Record<PageKind, number> {
+  const counts: Record<PageKind, number> = { docs: 0, slides: 0, sheets: 0, design: 0, dashboard: 0, "design-system": 0 };
   for (const item of items) counts[item.kind] += 1;
   return counts;
 }
@@ -152,8 +176,8 @@ function dayTitle(date: Date, now: Date): string {
 
 /** The list layout's sections, in the order `visibleArtifacts` sorted them: the pinned ones, then
  * a section per day. */
-export function dayGroups(items: ArtifactSummary[], pins: ReadonlySet<string>, now: Date): { title: string; items: ArtifactSummary[] }[] {
-  const groups: { title: string; items: ArtifactSummary[] }[] = [];
+export function dayGroups(items: PageItem[], pins: ReadonlySet<string>, now: Date): { title: string; items: PageItem[] }[] {
+  const groups: { title: string; items: PageItem[] }[] = [];
   for (const item of items) {
     const title = pins.has(artifactId(item)) ? "Pinned" : dayTitle(new Date(item.modified_at), now);
     const last = groups[groups.length - 1];
@@ -174,12 +198,18 @@ export function editedLabel(iso: string, now: Date): string {
   return `Edited ${day === "Yesterday" ? "yesterday" : day}`;
 }
 
-/** What the page does with an artifact or a kind: `showFile` shows a file in its panel and
- * `startMade` is told the conversation that starts for a kind, whose first message makes one. */
-export function artifactActions(showFile: (threadId: string, path: string) => void, startMade: (threadId: string, kind: ArtifactKind) => void) {
+/** What the page does with an artifact or a kind: `showFile` shows a file in its panel,
+ * `startMade` is told the conversation that starts for a kind, whose first message makes one, and
+ * `openSystem` shows the design systems in Settings (a system to edit, or null for a new one). */
+export function artifactActions(
+  showFile: (threadId: string, path: string) => void,
+  startMade: (threadId: string, kind: ArtifactKind) => void,
+  openSystem: (id: string | null) => void,
+) {
   return {
-    /** Opens it in a conversation, with the file in its panel. */
-    open: (item: ArtifactSummary) => {
+    /** Opens it in a conversation, with the file in its panel; a design system in Settings. */
+    open: (item: PageItem) => {
+      if (item.kind === "design-system") return openSystem(item.id);
       // A file that has gone since the list was read has nothing to open; the next visit drops it.
       placeOf(item).then(
         (place) => {
@@ -189,7 +219,7 @@ export function artifactActions(showFile: (threadId: string, path: string) => vo
         () => undefined,
       );
     },
-    /** A new conversation whose first message is to make the kind. */
-    make: (kind: ArtifactKind) => startMade(startNewThread(), kind),
+    /** A new conversation whose first message is to make the kind; for a design system, the form. */
+    make: (kind: PageKind) => (kind === "design-system" ? openSystem(null) : startMade(startNewThread(), kind)),
   };
 }
