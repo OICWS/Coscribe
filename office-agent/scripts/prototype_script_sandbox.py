@@ -421,6 +421,23 @@ def alive(pid: int) -> bool:
     return str(pid) in out.stdout
 
 
+def base_interpreter(base: Path) -> tuple[Path, Path]:
+    """(python.exe, its prefix) to build the venv from, on a prefix this account may grant.
+
+    A standard user cannot change the ACL of a Python installed by an administrator, and the venv's
+    python.exe starts its base interpreter, which the container must read. A per-user install
+    (python.org's default, under %LOCALAPPDATA%) is the user's own; a copy stands in for it here.
+    """
+    prefix = Path(sys.base_prefix)
+    if ctypes.windll.shell32.IsUserAnAdmin():
+        return Path(sys.executable), prefix
+    copy = base / "python-base"
+    shutil.copytree(prefix, copy, ignore=shutil.ignore_patterns("site-packages", "__pycache__"))
+    (copy / "Lib" / "site-packages").mkdir(exist_ok=True)
+    print(f"standard user: interpreter copied to {copy}")
+    return copy / "python.exe", copy
+
+
 # ---- The run -----------------------------------------------------------------------------------
 
 
@@ -431,7 +448,8 @@ def main() -> int:
     venv = base / "script-env"
     print(f"Python {sys.version.split()[0]} at {sys.base_prefix}")
     t0 = time.monotonic()
-    subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True)
+    interpreter, prefix = base_interpreter(base)
+    subprocess.run([str(interpreter), "-m", "venv", str(venv)], check=True)
     py = venv / "Scripts" / "python.exe"
     subprocess.run([str(py), "-m", "pip", "install", "-q", "openpyxl", "pandas"], check=True)
     print(f"venv ready in {time.monotonic() - t0:.0f}s")
@@ -451,7 +469,7 @@ def main() -> int:
 
     sid_ptr, sid = container_sid()
     print(f"AppContainer SID {sid}")
-    grants = [(rw, "M"), (scratch, "M"), (ro, "RX"), (venv, "RX"), (Path(sys.base_prefix), "RX")]
+    grants = [(rw, "M"), (scratch, "M"), (ro, "RX"), (venv, "RX"), (prefix, "RX")]
     t0 = time.monotonic()
     for folder, rights in grants:
         grant(folder, sid, rights)

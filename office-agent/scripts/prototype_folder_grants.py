@@ -200,7 +200,8 @@ def detach_exfat(base: Path) -> None:
 def main() -> int:
     base = Path(tempfile.mkdtemp(prefix="coscribe-grants-")).resolve()
     venv = base / "script-env"
-    subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True)
+    interpreter, prefix = box.base_interpreter(base)
+    subprocess.run([str(interpreter), "-m", "venv", str(venv)], check=True)
     py = venv / "Scripts" / "python.exe"
     subprocess.run([str(py), "-m", "pip", "install", "-q", "openpyxl", "pandas"], check=True)
 
@@ -225,7 +226,7 @@ def main() -> int:
     rights = {"nodelete": "RX,W", "delete": "M", "other": "M", "ro": "RX", "scratch": "M"}
     grants: list[tuple[Path, str]] = [
         (venv, caps["runtime"][1]),
-        (Path(sys.base_prefix), caps["runtime"][1]),
+        (prefix, caps["runtime"][1]),
     ]
     for path, sid in grants:
         icacls(str(path), "/grant", f"*{sid}:(OI)(CI)(RX)", "/Q")
