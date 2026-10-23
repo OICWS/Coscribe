@@ -421,21 +421,36 @@ def alive(pid: int) -> bool:
     return str(pid) in out.stdout
 
 
+STANDALONE = (
+    "https://github.com/astral-sh/python-build-standalone/releases/download/20261021/"
+    "cpython-3.13.17+20261021-x86_64-pc-windows-msvc-install_only_stripped.tar.gz"
+)
+
+
 def base_interpreter(base: Path) -> tuple[Path, Path]:
     """(python.exe, its prefix) to build the venv from, on a prefix this account may grant.
 
-    A standard user cannot change the ACL of a Python installed by an administrator, and the venv's
-    python.exe starts its base interpreter, which the container must read. A per-user install
-    (python.org's default, under %LOCALAPPDATA%) is the user's own; a copy stands in for it here.
+    A standard user cannot change the ACL of a Python an administrator installed, and the venv's
+    python.exe starts its base interpreter, which the container must read. So a standard user's
+    run downloads python-build-standalone into its own folder: what coscribe would ship on
+    first use, as it does with Codex.
     """
-    prefix = Path(sys.base_prefix)
     if ctypes.windll.shell32.IsUserAnAdmin():
-        return Path(sys.executable), prefix
-    copy = base / "python-base"
-    shutil.copytree(prefix, copy, ignore=shutil.ignore_patterns("site-packages", "__pycache__"))
-    (copy / "Lib" / "site-packages").mkdir(exist_ok=True)
-    print(f"standard user: interpreter copied to {copy}")
-    return copy / "python.exe", copy
+        return Path(sys.executable), Path(sys.base_prefix)
+    import tarfile
+    import urllib.request
+
+    t0 = time.monotonic()
+    archive = base / "python.tar.gz"
+    urllib.request.urlretrieve(STANDALONE, archive)
+    with tarfile.open(archive) as tar:
+        tar.extractall(base, filter="data")
+    prefix = base / "python"
+    print(
+        f"standard user: python-build-standalone ({archive.stat().st_size / 1e6:.1f} MB) "
+        f"in {time.monotonic() - t0:.1f}s at {prefix}"
+    )
+    return prefix / "python.exe", prefix
 
 
 # ---- The run -----------------------------------------------------------------------------------
