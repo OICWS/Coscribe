@@ -95,8 +95,68 @@ def pandas_save():
     return pd.read_excel(p(nd, "frame.xlsx"))["a"][0]
 
 
+def docx_save():
+    import docx
+    doc = docx.Document()
+    doc.add_paragraph("one")
+    doc.save(p(nd, "doc.docx"))
+    doc.add_paragraph("two")
+    doc.save(p(nd, "doc.docx"))
+    return len(docx.Document(p(nd, "doc.docx")).paragraphs)
+
+
+def pptx_save():
+    import pptx
+    deck = pptx.Presentation()
+    deck.slides.add_slide(deck.slide_layouts[6])
+    deck.save(p(nd, "deck.pptx"))
+    deck.slides.add_slide(deck.slide_layouts[6])
+    deck.save(p(nd, "deck.pptx"))
+    return len(pptx.Presentation(p(nd, "deck.pptx")).slides)
+
+
+def pypdf_save():
+    import pypdf
+    for pages in (1, 2):
+        writer = pypdf.PdfWriter()
+        for _ in range(pages):
+            writer.add_blank_page(100, 100)
+        with open(p(nd, "out.pdf"), "wb") as fh:
+            writer.write(fh)
+    writer = pypdf.PdfWriter()
+    writer.add_blank_page(100, 100)
+    writer.write(p(nd, "out2.pdf"))
+    writer.write(p(nd, "out2.pdf"))
+    return len(pypdf.PdfReader(p(nd, "out.pdf")).pages)
+
+
+def pillow_save():
+    from PIL import Image
+    for color in ("red", "blue"):
+        Image.new("RGB", (8, 8), color).save(p(nd, "img.png"))
+        Image.new("RGB", (8, 8), color).save(p(nd, "img.jpg"))
+    return Image.open(p(nd, "img.png")).getpixel((0, 0))
+
+
+def matplotlib_save():
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    for n in (1, 2):
+        plt.plot(range(n + 1))
+        plt.savefig(p(nd, "chart.png"))
+        plt.savefig(p(nd, "chart.pdf"))
+        plt.close()
+    return os.path.getsize(p(nd, "chart.png"))
+
+
 run("no-delete: openpyxl save twice", openpyxl_save)
 run("no-delete: pandas to_excel twice + csv", pandas_save)
+run("no-delete: python-docx save twice", docx_save)
+run("no-delete: python-pptx save twice", pptx_save)
+run("no-delete: pypdf write twice (handle and path)", pypdf_save)
+run("no-delete: Pillow png and jpg twice", pillow_save)
+run("no-delete: matplotlib savefig png and pdf twice", matplotlib_save)
 
 run("delete-allowed: remove file", lambda: os.remove(p(dl, "existing.txt")))
 run("delete-allowed: rmtree", lambda: (os.makedirs(p(dl, "a/b")), write(p(dl, "a/b/c.txt")), shutil.rmtree(p(dl, "a"))))
@@ -105,6 +165,8 @@ for name, target in cfg.get("extra", {}).items():
     run(f"{name}: write", lambda t=target: write(os.path.join(t, "from-container.txt")))
     run(f"{name}: list", lambda t=target: os.listdir(t))
 """
+
+LIBRARIES = ("openpyxl", "pandas", "python-docx", "python-pptx", "pypdf", "Pillow", "matplotlib")
 
 # Contract rows: True must succeed, False must fail. Rows not here are recorded only.
 EXPECTED = {
@@ -132,15 +194,16 @@ def powershell(command: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def large_folder_timing(base: Path, sid: str) -> None:
+def large_folder_timing(base: Path, sid: str, folders: int) -> None:
     tree = base / "large"
     t0 = time.monotonic()
-    for d in range(200):
-        sub = tree / f"d{d:03}"
+    for d in range(folders):
+        sub = tree / f"d{d:04}"
         sub.mkdir(parents=True)
         for f in range(100):
             (sub / f"f{f:03}.txt").write_bytes(b"x")
-    print(f"\n20,000 files in 200 folders created in {time.monotonic() - t0:.1f}s")
+    took = time.monotonic() - t0
+    print(f"\n{folders * 100:,} files in {folders} folders created in {took:.1f}s")
     t0 = time.monotonic()
     out = icacls(str(tree), "/grant", f"*{sid}:(OI)(CI)(M)", "/Q")
     print(f"grant on the tree: {time.monotonic() - t0:.1f}s, exit {out.returncode}")
@@ -203,7 +266,7 @@ def main() -> int:
     interpreter, prefix = box.base_interpreter(base)
     subprocess.run([str(interpreter), "-m", "venv", str(venv)], check=True)
     py = venv / "Scripts" / "python.exe"
-    subprocess.run([str(py), "-m", "pip", "install", "-q", "openpyxl", "pandas"], check=True)
+    subprocess.run([str(py), "-m", "pip", "install", "-q", *LIBRARIES], check=True)
 
     folders = {name: base / name for name in ("nodelete", "delete", "other", "ro", "scratch")}
     for folder in folders.values():
@@ -272,7 +335,9 @@ def main() -> int:
             print(f"BAD {check:48} (no result)")
         if exfat:
             print(f"\nfiles on the exFAT volume: {os.listdir(exfat)}")
-        large_folder_timing(base, caps["other"][1])
+        # Desktop and OneDrive folders can hold hundreds of thousands of files.
+        for count in (200, 2000):
+            large_folder_timing(base, caps["other"][1], count)
     finally:
         if share:
             powershell("Remove-SmbShare -Name coscribeproto -Force")
