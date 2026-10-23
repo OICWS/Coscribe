@@ -96,11 +96,10 @@ check clicks with real input (xdotool under Xvfb, or Windows itself).
 - `office-agent`'s own venv, with `pyinstaller` installed on top of its
   normal dependencies (`pip install pyinstaller` inside
   `office-agent/.venv`) -- needed to freeze the sidecar.
-- Icons were copied from the original Tauri shell's own `src-tauri/
-  icons/` (since removed) -- if that placeholder branding ever
-  gets replaced with real artwork, regenerate from whatever the real
-  source becomes; there is no separate icon generation step for this
-  package.
+- Icons: `icons/icon.svg` is the source (a paper plane). `icon.png`,
+  the sized PNGs, `icon.ico` and `icon.icns` are rendered from it with a
+  transparent background; there is no generation script, so re-render
+  them all when the SVG changes.
 
 ## Dev loop
 
