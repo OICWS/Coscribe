@@ -1077,7 +1077,7 @@ function App() {
         onOpenScheduledTask={openScheduledTask}
         onEditScheduledTask={(task) => setScheduledTaskModal({ task })}
         onRunScheduledTaskNow={runTaskNow}
-        onNewScheduledTask={createTaskWithCoscribe}
+        onNewScheduledTask={createTaskWithCoscribe} openFolders={{ folders: state.folders, onChange: onSetFolders }}
       />
     </div>
     </ThreadIdContext.Provider>

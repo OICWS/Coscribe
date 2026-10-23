@@ -51,9 +51,38 @@ test("a click beside the Edit environment dialog keeps what was typed", async ({
 
   await page.getByTestId("thread-row").first().click({ button: "right" });
   await page.getByRole("menuitem", { name: "Edit environment" }).click();
+  await dialog.getByRole("button", { name: /Environment variables/ }).click();
   await dialog.getByRole("button", { name: "Add variable" }).click();
   await dialog.getByLabel("Variable name").fill("MODE");
   await page.mouse.click(1270, 650);
   await expect(dialog).toBeVisible();
   await expect(dialog.getByLabel("Variable name")).toHaveValue("MODE");
+});
+
+test("Edit environment lists its pages and archives the conversation", async ({ page, request }) => {
+  const path = freshThreadPath("env-archive");
+  const threadId = path.split("=")[1];
+  await page.goto(path);
+  await waitForConnected(page);
+  await page.locator("textarea").fill("Reply with just OK.");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("button", { name: "Send" })).toBeVisible({ timeout: 30_000 });
+  await page.getByTitle("Pin navigation open").click();
+  await page.getByTestId("thread-row").first().click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Edit environment" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit environment" });
+  for (const name of ["Folders", "Secrets", "Environment variables"]) {
+    await expect(dialog.getByRole("button", { name: new RegExp(name) })).toBeVisible();
+  }
+  await expect(dialog.getByText("Messages from other conversations")).toHaveCount(0);
+
+  await dialog.getByRole("button", { name: /Folders/ }).click();
+  await expect(dialog.getByRole("heading", { name: "Folders" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Back" }).click();
+
+  await dialog.getByRole("button", { name: "Archive conversation" }).click();
+  await expect(dialog).toHaveCount(0);
+  const threads: { thread_id: string; archived: boolean }[] = await (await request.get("/api/threads")).json();
+  expect(threads.find((t) => t.thread_id === threadId)?.archived).toBe(true);
+  await request.delete(`/api/threads/${threadId}`);
 });

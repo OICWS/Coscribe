@@ -229,3 +229,49 @@ def test_write_file_lands_in_the_threads_own_workspace_not_the_global_default(
 
     assert (custom_workspace / "note.txt").read_text() == "hi"
     assert not (tmp_path / "workspace" / "note.txt").exists()
+
+
+def test_edit_environment_changes_the_folders_of_a_conversation_that_is_not_open(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    first, second = tmp_path / "one", tmp_path / "two"
+    first.mkdir()
+    second.mkdir()
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        assert client.get("/api/threads/t_env_closed/folders").json() == {"folders": []}
+        saved = client.put(
+            "/api/threads/t_env_closed/folders",
+            json={"folders": [str(first), str(second), str(first)]},
+        )
+        assert saved.json() == {"folders": [str(first), str(second)]}
+        assert client.get("/api/threads/t_env_closed/folders").json() == saved.json()
+        refused = client.put(
+            "/api/threads/t_env_closed/folders", json={"folders": [str(tmp_path / "gone")]}
+        )
+        assert refused.status_code == 422
+        with client.websocket_connect("/ws/t_env_closed") as ws:
+            state = ws.receive_json()
+    assert state["folders"] == [str(first), str(second)]
+
+
+def test_edit_environment_changes_a_live_conversations_agent_too(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    chosen = tmp_path / "live"
+    chosen.mkdir()
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_env_live") as ws:
+            ws.receive_json()
+            ws.receive_json()  # history
+        saved = client.put("/api/threads/t_env_live/folders", json={"folders": [str(chosen)]})
+        assert saved.json() == {"folders": [str(chosen)]}
+        refused = client.put(
+            "/api/threads/t_env_live/folders", json={"folders": [str(tmp_path / "gone")]}
+        )
+        assert refused.status_code == 422
+        assert "isn't an existing folder" in refused.json()["error"]
+        with client.websocket_connect("/ws/t_env_live") as ws:
+            state = ws.receive_json()
+    assert state["workspace_root"] == str(chosen)

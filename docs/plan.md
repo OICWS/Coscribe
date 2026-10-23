@@ -222,7 +222,9 @@ Last reviewed: 2026-10-15.
 
 4. **The folder settings as the real limit for scripts** (#560, kurtosisOC, all of it including
    the UI). Prototype in #561. Part 1 shipped: the AppContainer launcher, folder grants with
-   clean-up and the self-test (`tools/exec/isolation.py`), not applied to any tool yet. Next, one
+   clean-up and the self-test (`tools/exec/isolation.py`), not applied to any tool yet. Edit
+   environment is a list of pages with the conversation's folders; its Scripts and Network access
+   pages come with their backends. Next, one
    PR each: the script tools and background tasks in the container (fail closed when the self-test
    fails, a per-conversation opt-in to run without isolation, a decision record superseding the
    "no sandbox" part of 0002); the settings screens; `delete_file` to the recycle bin and the

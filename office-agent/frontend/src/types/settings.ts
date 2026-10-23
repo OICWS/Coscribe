@@ -507,12 +507,6 @@ export interface DesignSystem {
   updated_at: string;
 }
 
-/** Who may message a conversation: nobody (the default), every other one, or the named ones. */
-export interface MessagingPolicy {
-  mode: "off" | "any" | "selected";
-  senders: string[];
-}
-
 /** What one conversation is given: variables the model can read, and the names of the secrets it may use. */
 export interface SessionEnvironment {
   variables: Record<string, string>;
