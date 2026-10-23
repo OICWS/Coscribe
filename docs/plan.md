@@ -182,7 +182,7 @@ Last reviewed: 2026-10-15.
    off-system; made from a blank form, a "describe it" conversation of type Design System, or from a .pptx), with Design System as the fifth kind in Artifacts;
    (3) the Slides chip's choice of a system, "Make a new design system first" and "Manage design systems".
    Step 2 so far: the store and its routes (`tools/design_systems.py`, `/api/design-systems`) and Settings > Design systems with the blank form (list, new, edit, delete) are in; next assets, the "describe it" conversation, the .pptx extraction and the Design System kind in Artifacts.
-   Step 3 is in: a Slides start can name a design system (the chip's menu, a note in the first message, a copy kept for the conversation, the deck beginning as that copy). Next: assets, the "describe it" conversation, the .pptx extraction, the Design System kind in Artifacts, and the checker that flags what is off-system (the checker is in, 2026-10-23: a build of a deck that began from a library system warns, page by page, of colors, fonts and text styles the system does not have; the rest is still next). Design systems are also cards on the Artifacts page (2026-10-23, issue 569): a kind of their own, opening Settings on the system, with their own menu (Rename, Duplicate, Pin, Delete) and a tile that opens the new-system form.
+   Step 3 is in: a Slides start can name a design system (the chip's menu, a note in the first message, a copy kept for the conversation, the deck beginning as that copy). Next: assets, the "describe it" conversation, the .pptx extraction, the Design System kind in Artifacts, and the checker that flags what is off-system (the checker is in, 2026-10-23: a build of a deck that began from a library system warns, page by page, of colors, fonts and text styles the system does not have; the rest is still next). Design systems are also cards on the Artifacts page (2026-10-23, issue 569): a kind of their own, opening Settings on the system, with their own menu (Rename, Duplicate, Pin, Delete) and a tile that opens the new-system form. Next, the "describe it" conversation: design note `docs/assessments/2026-10-23-describe-a-design-system.md`, waiting for the maintainer's answers.
    Design (2026-10-22, issue 551, done: log `2026-10-22-design-artifact.md`): an `.html` page written by a conversation is a Design artifact, drawn in a sandboxed frame (card, panel, Export menu with HTML and PDF); a lone `.svg` is not an artifact. Open: Dashboard on the same sandbox, PNG/.ico export, a theme toggle in the panel.
    Docs (2026-10-21, decision 0019 accepted; research in docs/assessments/2026-10-21-docx-editing.md; editor library Tiptap 3, built first then evaluated): the .docx itself, previewed and edited in the Word panel by styles (headings,
    bold, italic, lists, links, tables, images), only the changed blocks rewritten, the person's Word edits never overwritten. Order:
@@ -221,13 +221,12 @@ Last reviewed: 2026-10-15.
    Electron shell.
 
 4. **The folder settings as the real limit for scripts** (#560, kurtosisOC, all of it including
-   the UI). Prototype in #561. Part 1 shipped: the AppContainer launcher, folder grants with
-   clean-up and the self-test (`tools/exec/isolation.py`), not applied to any tool yet. Edit
-   environment is a list of pages with the conversation's folders; its Scripts and Network access
-   pages come with their backends. Next, one
-   PR each: the script tools and background tasks in the container (fail closed when the self-test
-   fails, a per-conversation opt-in to run without isolation, a decision record superseding the
-   "no sandbox" part of 0002); the settings screens; `delete_file` to the recycle bin and the
+   the UI; decision 0021). Prototype in #561. Shipped: the AppContainer launcher, folder grants
+   and the self-test (part 1), every script tool and background task running in it where the
+   self-test passed (part 2), and Edit environment as a list of pages with the conversation's
+   folders. Next, one PR each: the Scripts page in Edit environment with fail closed, the
+   per-conversation opt-in to run without isolation, the self-test result and re-test, and the
+   sweep of grants at start and at uninstall; `delete_file` to the recycle bin and the
    per-folder delete switch, and coscribe's own Python download; read limits and the network
    switch per conversation with the web tools' host allowlist; Codex's commands off.
 

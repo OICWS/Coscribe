@@ -1,11 +1,13 @@
 """Running the user's own Python and Node scripts: the tools, their isolated environments and
 the folder guard, and the AppContainer that holds a script to its folders on Windows
-(`isolation.py`, issue #560; not applied to the tools yet)."""
+(`isolation.py`, decision 0021)."""
 
 from __future__ import annotations
 
 from .isolation import FolderGrants, Isolation, SelfTest, self_test
 from .isolation import available as isolation_available
+from .isolation import for_scripts as isolation_for_scripts
+from .isolation import scratch_root as script_scratch_root
 from .node_env import ensure_node_env
 from .node_env import install_package as install_node_package
 from .node_env import list_packages as list_node_packages
@@ -54,6 +56,7 @@ __all__ = [
     "install_node_package",
     "install_python_package",
     "isolation_available",
+    "isolation_for_scripts",
     "list_node_packages",
     "list_python_packages",
     "node_guard_args",
@@ -62,6 +65,7 @@ __all__ = [
     "request_detach",
     "resolve_python_command",
     "run_python_script",
+    "script_scratch_root",
     "self_test",
     "set_interpreter_override",
     "stop_commands",
