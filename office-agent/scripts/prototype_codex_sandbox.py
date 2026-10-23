@@ -168,6 +168,8 @@ def main() -> int:
                 exe,
                 home,
                 "sandbox",
+                "-P",
+                "coscribe",
                 "-C",
                 str(rw),
                 "--",
