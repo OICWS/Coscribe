@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { KINDS, type ArtifactKind } from "../lib/artifacts";
+import { PAGE_KINDS, type PageKind } from "../lib/artifacts";
 import { getDesignSystems } from "../lib/rest";
 import { useClickOutside } from "../lib/useClickOutside";
 import type { DesignSystemSummary } from "../types/settings";
 import { CheckIcon, ChevronDownIcon, CloseIcon, ExternalLinkIcon, PlusIcon } from "./icons";
 
-const NOUNS: Record<ArtifactKind, string> = { docs: "document", slides: "deck", sheets: "workbook", design: "design", dashboard: "dashboard" };
+const NOUNS: Record<PageKind, string> = { docs: "document", slides: "deck", sheets: "workbook", design: "design", dashboard: "dashboard", "design-system": "design system" };
 const item = "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--card-bg)]";
 const menu = "absolute bottom-full left-0 z-20 mb-2 min-w-72 max-w-96 rounded-[14px] border border-[var(--border)] bg-[var(--panel-bg)] p-1.5 shadow-[var(--shadow)]";
 
@@ -83,13 +83,13 @@ export function ArtifactChip({
   onManageDesignSystems,
   onRemove,
 }: {
-  kind: ArtifactKind;
+  kind: PageKind;
   designSystem: string | null;
   onDesignSystem: (id: string | null) => void;
   onManageDesignSystems: (startNew: boolean) => void;
   onRemove: () => void;
 }) {
-  const { colour, label } = KINDS[kind];
+  const { colour, label } = PAGE_KINDS[kind];
   return (
     <div className="mr-2 flex shrink-0 items-center gap-1.5">
       <PillMenu

@@ -236,8 +236,15 @@ test("a design system is a card of its own: it opens its editor, and its menu re
   }
 });
 
-test("the design-system tile opens Settings on its new-system form", async ({ page }) => {
+test("the design-system tile asks how: the blank form, or a conversation that describes it", async ({ page }) => {
   await openPage(page);
   await page.getByRole("button", { name: /^Design system/ }).click();
+  await page.getByRole("menuitem", { name: "Blank form" }).click();
   await expect(page.getByLabel("New design system name")).toBeVisible();
+  await page.getByRole("button", { name: "Close settings" }).click();
+
+  await page.getByRole("button", { name: /^Design system/ }).click();
+  await page.getByRole("menuitem", { name: "Describe it" }).click();
+  await expect(page.getByRole("button", { name: "Design system mode" })).toBeVisible();
+  await expect(page.getByPlaceholder("Describe the brand or the look you want…")).toBeVisible();
 });

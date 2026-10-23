@@ -407,7 +407,7 @@ export interface UserMessageOut {
    * The first message of a conversation started from the Artifacts page: what it is
    * to make.
    */
-  artifact?: "docs" | "slides" | "sheets" | "design";
+  artifact?: "docs" | "slides" | "sheets" | "design" | "design-system";
   /** With `artifact: "slides"`: the library design system the deck is to follow. */
   design_system?: string;
 }
