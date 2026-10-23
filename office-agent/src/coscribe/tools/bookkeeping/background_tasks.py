@@ -511,11 +511,13 @@ def _watch(
                 exit_code = command.wait_exit(_KILL_GRACE_SECONDS)
             except subprocess.TimeoutExpired:
                 exit_code = -1
+        # Settled before it leaves _LIVE: this runs off the event loop, and a status check in
+        # between would take the task for an orphan and write the same record at once.
+        _settle(store, task, exit_code, timed_out, command.loop)
     finally:
         _LIVE.pop(task.task_id, None)
         if scratch_dir is not None:
             shutil.rmtree(scratch_dir, ignore_errors=True)
-    _settle(store, task, exit_code, timed_out, command.loop)
 
 
 def stop_background_task(
