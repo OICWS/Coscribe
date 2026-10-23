@@ -92,12 +92,13 @@ interrupt events) let a user add their own checks.
 Scripts (`run_python_script`, `run_node_script`, background scripts and
 commands) are approved like any other action, and on Windows they also run in
 an AppContainer when the machine passed coscribe's self-test (decision 0021):
-they reach only the conversation's folders, read-only or read-write without
-delete, and their children inherit that. coscribe's own process and its
+they reach only the conversation's folders (read only, read and write, or read,
+write and delete) and what their interpreter needs, and their children inherit
+that; to let a script read another place, the person adds it as a read-only folder. coscribe's own process and its
 trusted tools stay outside. Where the self-test failed, scripts are refused
 unless the person lets that one conversation run them without isolation
-(audited). Then, off Windows, and for Codex's commands, only a folder guard
-remains; it refuses writes outside the folders and is not a security boundary. The UI and docs say which one holds. No
+(audited). Then, and off Windows, only a folder guard
+remains (Codex runs no commands); it refuses writes outside the folders and is not a security boundary. The UI and docs say which one holds. No
 import allow/deny lists: they are easy to bypass and only look like safety.
 
 ### Office formats are built in, not MCP

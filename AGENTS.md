@@ -55,7 +55,7 @@ Never read a file over 1,500 lines whole, and never read `docs/history/`, the fr
   through a tool result or a message.
 - **Scripts run in an AppContainer only where the self-test passed** (decision 0021).
   Where it failed, scripts are off unless the person opts a conversation out of isolation
-  (audited); then, off Windows, and for Codex's commands, code runs as the user. Do not
+  (audited); then, and off Windows, code runs as the user. Codex runs no commands. Do not
   claim a guarantee the code can't keep. For secrets the promise is only: the model cannot SEE a value,
   not that code which digs can't find it.
 - **Hosted connectors sign in once, in the user's own browser** (OAuth 2.1 with

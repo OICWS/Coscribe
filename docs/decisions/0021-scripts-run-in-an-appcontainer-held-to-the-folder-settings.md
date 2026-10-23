@@ -26,4 +26,7 @@ that Codex's own Windows sandbox cannot hold our folders on most machines.
 - What cannot be closed is said in the UI: FAT/exFAT volumes have no ACLs; SMB shares are
   unreachable from the container; a read-write folder is fully usable by an approved script.
 - Codex's commands are turned off (edits only) until a code agent runs them in this container.
+- A script reads only its conversation's folders and its interpreter. There is no switch to read
+  the whole user profile: granting it means an ACE on every file there, slow the first time and
+  to take back; a read-only folder covers the need with a smaller grant (2026-10-23).
 - Prompt injection is not removed; the aim is least privilege plus approvals.

@@ -78,7 +78,7 @@ export function WorkspaceTab({ values, onChange, dirEntries, onDirEntriesChange 
 
       <SettingsSection
         title="Other folders"
-        description="coscribe can always read and change the workspace. Give it more folders here. Only folders set to read, write and delete let it delete, move or rename files; deleted files go to the Recycle Bin."
+        description="coscribe can always read and change the workspace. Give it more folders here. Only folders set to read, write and delete let it delete, move or rename files; deleted files go to the Recycle Bin. On Windows, scripts read nothing outside these folders, so add a folder as read only for a script to read it."
       >
         {dirEntries.length === 0 ? (
           <p className="mt-3 text-sm text-[var(--muted)]">No other folders yet.</p>
