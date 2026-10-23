@@ -18,8 +18,10 @@ Limited (allowed domains) and Full.
 - Scripts in the container get the network only with Full (`Isolation.network`); the container
   can only grant the network whole, so Limited means offline. The script tools say so.
 - The browser panel: the backend sends the list with each step as `network_sites`, and the
-  desktop app checks the site of every step against it (`browserAgent.ts`), as a click can leave
-  the page; no site permission widens it.
+  desktop app checks the site of every step against it (`browserAgent.ts`), and again where the
+  step ended up, as a redirect or a clicked link can leave the list: such a page is replaced by a
+  blank one and the step fails, so its content never reaches the model (the backend checks the
+  returned tab too). No site permission widens it.
 - `GET`/`PUT /api/threads/{id}/network`; a change is written to the audit log as
   `set_network_access`.
 - Edit environment > **Network**: the three options and, for Limited, the allowed domains, one

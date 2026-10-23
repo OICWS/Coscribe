@@ -62,7 +62,7 @@ export function NetworkPage({ draft }: { draft: NetworkDraft }) {
             onChange={(e) => draft.setDomains(e.target.value)}
           />
           <span className="text-xs text-[var(--muted)]">
-            One per line. A domain covers its subdomains. * allows every site.
+            One per line. A domain covers its subdomains, so www.example.com allows all of example.com. * allows every site.
           </span>
         </label>
       )}

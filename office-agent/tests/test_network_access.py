@@ -174,3 +174,35 @@ def test_an_isolated_script_has_the_network_only_with_full_access(
     assert network() is True
     NetworkAccess(state).set("t1", "limited", ["*"])
     assert network() is False
+
+
+def test_a_browser_step_that_lands_off_the_list_is_refused(tmp_path: Path) -> None:
+    class _Redirected(_Host):
+        def call(self, *a: Any, **k: Any) -> dict[str, Any]:
+            super().call(*a, **k)
+            return {"tab": {"id": 1, "title": "elsewhere", "url": "https://evil.net/x"}}
+
+    guard = _guard(tmp_path, "limited", ["example.com"])
+    with pytest.raises(PermissionError, match="evil.net"):
+        _navigate(_Redirected(), guard)("https://example.com")
+    _navigate(_Redirected(), _guard(tmp_path, "full", []))("https://example.com")
+
+
+def test_download_image_does_not_follow_a_redirect_off_the_list(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: list[str] = []
+    real_client = httpx.Client
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url))
+        return _redirect_to_elsewhere(request)
+
+    monkeypatch.setattr(
+        httpx, "Client", lambda **kw: real_client(transport=httpx.MockTransport(answer), **kw)
+    )
+    guard = _guard(tmp_path, "limited", ["example.com"])
+    images = {tool.__name__: tool for tool in build_image_tools(tmp_path, network=guard)}
+    with pytest.raises(PermissionError, match="evil.net"):
+        images["download_image"]("https://example.com/cat.png", "cat.png")
+    assert seen == ["https://example.com/cat.png"]

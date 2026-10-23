@@ -277,6 +277,11 @@ def _browser_call(
             if allowed_sites is not None:
                 args["allowed_sites"] = allowed_sites()
         result = host.call(action, args, thread_id, limit + _PERMISSION_WAIT)
+        tab = result.get("tab")
+        if "network_sites" in args and isinstance(tab, dict) and network is not None:
+            # Where the step ended up: a redirect or a clicked link can leave the list.
+            if str(tab.get("url") or "").startswith(("http://", "https://")):
+                network.check_url(str(tab["url"]))
         if scope is not None:
             # As the file tools take them: relative to the workspace.
             for download in result.get("downloads") or []:

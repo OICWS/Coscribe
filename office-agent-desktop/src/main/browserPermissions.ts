@@ -8,7 +8,7 @@
  * sites is how an unattended scheduled task gets through without one.
  */
 
-import { app, ipcMain, type BrowserWindow } from "electron";
+import { app, ipcMain, type BrowserWindow, type WebContents } from "electron";
 import { readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -102,6 +102,25 @@ export function checkNetworkSites(host: string, networkSites: unknown): void {
   throw new Error(
     `${normalizeSite(host) ?? host} is outside the domains this conversation may reach. The user can add it under Edit environment > Network.`,
   );
+}
+
+/** Where a step ended up: a redirect or a clicked link can leave the list. The page is left for
+ * a blank one, and the step fails, so its result never reaches the model. */
+export function checkNetworkLanding(page: WebContents | undefined, networkSites: unknown): void {
+  let host: string;
+  try {
+    const url = new URL(page?.getURL() ?? "");
+    if (url.protocol !== "http:" && url.protocol !== "https:") return;
+    host = url.hostname;
+  } catch {
+    return;
+  }
+  try {
+    checkNetworkSites(host, networkSites);
+  } catch (err) {
+    void page?.loadURL("about:blank").catch(() => undefined);
+    throw err;
+  }
 }
 
 export function isAllowed(host: string, threadId: string): boolean {
