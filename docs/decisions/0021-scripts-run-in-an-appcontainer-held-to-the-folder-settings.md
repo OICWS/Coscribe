@@ -18,8 +18,7 @@ that Codex's own Windows sandbox cannot hold our folders on most machines.
   trusted tool (to the recycle bin), renames through `move_file`.
 - A self-test per machine (cached per Windows version and interpreter) decides whether the
   container is used. Where it fails, scripts are off unless the person opts in, per conversation,
-  to run without isolation; that choice is audited (the opt-in lands with its settings screen;
-  until then a failed test leaves the run as before, with the folder guard only).
+  to run without isolation (Edit environment > Scripts); that choice is audited.
 - Network for scripts is a capability per run: on by default now, off by default once the
   per-conversation switch exists.
 

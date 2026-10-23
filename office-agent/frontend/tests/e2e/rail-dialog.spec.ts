@@ -71,13 +71,17 @@ test("Edit environment lists its pages and archives the conversation", async ({ 
   await page.getByTestId("thread-row").first().click({ button: "right" });
   await page.getByRole("menuitem", { name: "Edit environment" }).click();
   const dialog = page.getByRole("dialog", { name: "Edit environment" });
-  for (const name of ["Folders", "Secrets", "Environment variables"]) {
+  for (const name of ["Folders", "Scripts", "Secrets", "Environment variables"]) {
     await expect(dialog.getByRole("button", { name: new RegExp(name) })).toBeVisible();
   }
   await expect(dialog.getByText("Messages from other conversations")).toHaveCount(0);
 
   await dialog.getByRole("button", { name: /Folders/ }).click();
   await expect(dialog.getByRole("heading", { name: "Folders" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Back" }).click();
+  // The runner is Linux, where there is no container to check.
+  await dialog.getByRole("button", { name: /Scripts/ }).click();
+  await expect(dialog.getByText("Isolation is only available on Windows")).toBeVisible();
   await dialog.getByRole("button", { name: "Back" }).click();
 
   await dialog.getByRole("button", { name: "Archive conversation" }).click();

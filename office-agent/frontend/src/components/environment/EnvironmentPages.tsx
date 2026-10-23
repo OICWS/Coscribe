@@ -4,11 +4,7 @@ import { folderName, readRecent } from "../../lib/recentFolders";
 import { ChevronRightIcon, CloseIcon, PlusIcon } from "../icons";
 import { DirBrowserModal } from "../settings/DirBrowserModal";
 import { fieldClass } from "../settings/SettingRow";
-
-export interface VariableRow {
-  key: string;
-  value: string;
-}
+import type { VariableRow } from "./drafts";
 
 const emptyClass =
   "rounded-xl border border-dashed border-[var(--border)] px-4 py-4 text-center text-sm text-[var(--muted)]";

@@ -27,7 +27,7 @@ bound to the model: 22 tools, ~4936 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 116 tools, ~36337 tokens (the ones not bound are found through search_tools)
+registered: 116 tools, ~36339 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -113,10 +113,10 @@ registered: 116 tools, ~36337 tokens (the ones not bound are found through searc
   resume_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 3d546c3215
   review_work | READ | - | deferred | sha256 3d07d2b688
   revise_workflow | READ | - | core | sha256 bb65f01516
-  run_background_command | EXEC | background_tasks | deferred | sha256 f24230b645
-  run_background_script | EXEC | background_tasks | deferred | sha256 70f81f8088
-  run_node_script | EXEC | scripts | deferred | sha256 5c717dde3b
-  run_python_script | EXEC | scripts | deferred | sha256 d52e93fb2f
+  run_background_command | EXEC | background_tasks | deferred | sha256 7676ad8fb0
+  run_background_script | EXEC | background_tasks | deferred | sha256 c13499866e
+  run_node_script | EXEC | scripts | deferred | sha256 0d83a15787
+  run_python_script | EXEC | scripts | deferred | sha256 63323c0b35
   save_design_system | WRITE_LOCAL | documents | deferred | sha256 d18de047b0
   search_files | READ | filesystem | core | sha256 4c823f409b
   search_images | READ | web | deferred | sha256 4a88b5659a

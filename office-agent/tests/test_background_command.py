@@ -7,8 +7,16 @@ from typing import Any
 import pytest
 
 from coscribe.tools.bookkeeping.background_tasks import build_background_task_tools
+from coscribe.tools.exec import isolation
 
 posix_only = pytest.mark.skipif(sys.platform == "win32", reason="uses sh syntax")
+
+
+@pytest.fixture(autouse=True)
+def unisolated(monkeypatch: pytest.MonkeyPatch) -> None:
+    """How a command line runs where nothing isolates it; where something does, it is refused
+    (tests/test_isolation.py)."""
+    monkeypatch.setattr(isolation, "available", lambda: False)
 
 
 def _tools(tmp_path: Path, thread_id: str = "t1") -> dict[str, Any]:

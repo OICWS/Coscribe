@@ -15,16 +15,18 @@ import {
   FoldersPage,
   SecretsPage,
   VariablesPage,
-  type VariableRow,
 } from "./environment/EnvironmentPages";
+import { toVariables, useScriptsDraft, type VariableRow } from "./environment/drafts";
 import { ArrowLeftIcon, CloseIcon } from "./icons";
+import { ScriptsPage } from "./environment/ScriptsPage";
 import { primaryButtonClass, secondaryButtonClass } from "./settings/SettingRow";
 
-type Page = "main" | "folders" | "secrets" | "variables";
+type Page = "main" | "folders" | "scripts" | "secrets" | "variables";
 
 const PAGE_TITLES: Record<Page, string> = {
   main: "Edit environment",
   folders: "Folders",
+  scripts: "Scripts",
   secrets: "Secrets",
   variables: "Environment variables",
 };
@@ -64,10 +66,11 @@ export function EnvironmentDialog({
   const [loaded, setLoaded] = useState("");
   // Read once: a change of the open conversation's folders while this is open must not undo edits here.
   const [initialOpenFolders] = useState(() => openFolders?.folders ?? null);
+  const scripts = useScriptsDraft(threadId);
 
   const snapshot = (current: VariableRow[], picked: Set<string>, chosenFolders: string[]) =>
     JSON.stringify([current, [...picked].sort(), chosenFolders]);
-  const dirty = rows !== null && snapshot(rows, chosen, folders) !== loaded;
+  const dirty = rows !== null && (snapshot(rows, chosen, folders) !== loaded || scripts.dirty);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,22 +101,17 @@ export function EnvironmentDialog({
   }, [onClose]);
 
   const save = async () => {
-    if (!rows) return;
-    const variables: Record<string, string> = {};
-    for (const row of rows) {
-      const key = row.key.trim();
-      if (!key) continue;
-      if (key in variables) {
-        setError(`${key} appears twice.`);
-        setPage("variables");
-        return;
-      }
-      variables[key] = row.value;
+    const variables = rows && toVariables(rows);
+    if (!variables) return;
+    if (typeof variables === "string") {
+      setError(`${variables} appears twice.`);
+      setPage("variables");
+      return;
     }
     setSaving(true);
     setError(null);
     const result = await saveSessionEnvironment(threadId, { variables, secrets: [...chosen] });
-    let failure = "error" in result ? result.error : null;
+    let failure = "error" in result ? result.error : await scripts.save();
     if (!failure && JSON.stringify(folders) !== JSON.stringify(loadedFolders)) {
       remember(folders);
       if (openFolders) openFolders.onChange(folders);
@@ -146,6 +144,7 @@ export function EnvironmentDialog({
   const countOf = (n: number, noun: string) => (n === 0 ? "None" : `${n} ${noun}${n === 1 ? "" : "s"}`);
   const summaries: [Exclude<Page, "main">, string][] = [
     ["folders", folders.length === 0 ? "The default workspace" : folders.map(folderName).join(", ")],
+    ["scripts", scripts.summary],
     ["secrets", chosen.size === 0 ? "None" : `${chosen.size} of ${secrets.length}`],
     ["variables", countOf(rows?.filter((row) => row.key.trim()).length ?? 0, "variable")],
   ];
@@ -195,6 +194,7 @@ export function EnvironmentDialog({
             </div>
           )}
           {rows !== null && page === "folders" && <FoldersPage folders={folders} onChange={setFolders} />}
+          {rows !== null && page === "scripts" && <ScriptsPage draft={scripts} />}
           {rows !== null && page === "secrets" && <SecretsPage secrets={secrets} chosen={chosen} onChange={setChosen} />}
           {rows !== null && page === "variables" && <VariablesPage rows={rows} onChange={setRows} />}
           {error && (

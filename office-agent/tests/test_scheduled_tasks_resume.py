@@ -553,11 +553,14 @@ async def test_approval_mode_auto_is_restored_after_the_run(
 
 def _stub_script_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Runs scripts with the Python running pytest instead of provisioning
-    the dedicated script venv."""
+    the dedicated script venv, outside the container (which can't start that Python)."""
     import sys
+
+    from coscribe.tools.exec import isolation
 
     monkeypatch.setattr(scripts, "ensure_script_env", lambda state_dir: Path(sys.executable).parent)
     monkeypatch.setattr(scripts, "venv_python", lambda venv_dir: Path(sys.executable))
+    monkeypatch.setattr(isolation, "available", lambda: False)
 
 
 def _script_call(call_id: str, script: str) -> Any:

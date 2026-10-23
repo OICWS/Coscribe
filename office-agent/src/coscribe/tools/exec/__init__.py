@@ -4,7 +4,15 @@ the folder guard, and the AppContainer that holds a script to its folders on Win
 
 from __future__ import annotations
 
-from .isolation import FolderGrants, Isolation, SelfTest, self_test
+from .isolation import (
+    FolderGrants,
+    Isolation,
+    IsolationRefused,
+    SelfTest,
+    UnisolatedConversations,
+    isolation_status,
+    self_test,
+)
 from .isolation import available as isolation_available
 from .isolation import for_scripts as isolation_for_scripts
 from .isolation import scratch_root as script_scratch_root
@@ -44,6 +52,9 @@ __all__ = [
     "FolderGrants",
     "HandOff",
     "Isolation",
+    "IsolationRefused",
+    "UnisolatedConversations",
+    "isolation_status",
     "RunningCommand",
     "SelfTest",
     "blocked_write",

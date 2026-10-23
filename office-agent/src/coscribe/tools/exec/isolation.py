@@ -28,12 +28,12 @@ import tempfile
 import threading
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Literal
 
 from . import _appcontainer
 from ._appcontainer import NETWORK_CAPABILITIES, ContainerProcess, ContainerUnavailable
-from .script_env import venv_python
+from .script_env import ensure_script_env, venv_python
 
 Access = Literal["read", "write"]
 
@@ -197,9 +197,24 @@ def capabilities_for(isolation: Isolation) -> tuple[list[str], list[Path]]:
     return names, failed
 
 
+# Node looks up a script's real path through every folder above it, and the container may not
+# look at C:\ (seen on the Windows runner); these flags keep the path it was given.
+_NODE_CONTAINED = ("--preserve-symlinks", "--preserve-symlinks-main")
+
+
 def start(
-    argv: Sequence[str], cwd: str, env: Mapping[str, str], isolation: Isolation
+    argv: Sequence[str] | str, cwd: str, env: Mapping[str, str], isolation: Isolation
 ) -> ContainerProcess:
+    if isinstance(argv, str):
+        # cmd in the container can echo but not list a folder (`dir` is denied even in a
+        # granted one, seen on the Windows runner), so a command line would fail at random.
+        raise IsolationRefused(
+            "Commands don't run on this computer: in the isolated space Windows' shell can't "
+            "use the folders. Run the work as a Python or Node script instead "
+            "(run_background_script, run_python_script or run_node_script)."
+        )
+    if argv and PureWindowsPath(argv[0]).stem.lower() == "node":
+        argv = [argv[0], *_NODE_CONTAINED, *argv[1:]]
     capabilities, _failed = capabilities_for(isolation)
     return _appcontainer.start(argv, str(Path(cwd).resolve()), env, capabilities)
 
@@ -263,23 +278,33 @@ def self_test(
     Windows, the interpreter or coscribe changes; `fresh` runs it again (Settings' re-test)."""
     if not available():
         return SelfTest(False, "not Windows")
-    cache = state_dir / _SELF_TEST
+    if not fresh:
+        cached = _cached_self_test(state_dir, python)
+        if cached is not None:
+            return cached
+    key = _machine_key(python)
+    result = _run_self_test(state_dir, python, runtime)
+    (state_dir / _SELF_TEST).write_text(
+        json.dumps({"key": key, "result": vars(result)}), encoding="utf-8"
+    )
+    _tested[json.dumps(key, sort_keys=True)] = result
+    return result
+
+
+def _cached_self_test(state_dir: Path, python: Path) -> SelfTest | None:
+    """The last result for this Windows, interpreter and probe, without running anything."""
     key = _machine_key(python)
     memo = json.dumps(key, sort_keys=True)
-    if not fresh:
-        if memo in _tested:
+    if memo in _tested:
+        return _tested[memo]
+    try:
+        saved = json.loads((state_dir / _SELF_TEST).read_text(encoding="utf-8"))
+        if saved.get("key") == key:
+            _tested[memo] = SelfTest(**saved["result"])
             return _tested[memo]
-        try:
-            saved = json.loads(cache.read_text(encoding="utf-8"))
-            if saved.get("key") == key:
-                _tested[memo] = SelfTest(**saved["result"])
-                return _tested[memo]
-        except (OSError, ValueError, TypeError, KeyError):
-            pass
-    result = _run_self_test(state_dir, python, runtime)
-    cache.write_text(json.dumps({"key": key, "result": vars(result)}), encoding="utf-8")
-    _tested[memo] = result
-    return result
+    except (OSError, ValueError, TypeError, KeyError):
+        pass
+    return None
 
 
 def venv_runtime(venv_dir: Path) -> list[Path]:
@@ -304,29 +329,96 @@ def scratch_root(state_dir: Path) -> Path:
     return root
 
 
+class IsolationRefused(ValueError):
+    """A script was not started: this machine failed the self-test and the person has not let
+    this conversation run scripts without isolation."""
+
+
+_UNISOLATED = "unisolated-conversations.json"
+
+
+class UnisolatedConversations:
+    """The conversations whose person chose, in Edit environment, to run scripts without isolation
+    on a machine that failed the self-test. The choice itself is audited by its caller."""
+
+    def __init__(self, state_dir: Path) -> None:
+        self._path = Path(state_dir) / _UNISOLATED
+
+    def _read(self) -> dict[str, str]:
+        try:
+            raw = json.loads(self._path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+        return {str(k): str(v) for k, v in raw.items()} if isinstance(raw, dict) else {}
+
+    def allowed(self, thread_id: str | None) -> bool:
+        return thread_id is not None and thread_id in self._read()
+
+    def set(self, thread_id: str, allowed: bool, when: str) -> None:
+        with _lock:
+            data = self._read()
+            if allowed:
+                data[thread_id] = when
+            else:
+                data.pop(thread_id, None)
+            self._path.parent.mkdir(parents=True, exist_ok=True)
+            self._path.write_text(json.dumps(data), encoding="utf-8")
+
+
 def for_scripts(
     state_dir: Path,
     *,
     writable: Sequence[Path],
     readable: Sequence[Path] = (),
     runtime: Sequence[Path] = (),
+    thread_id: str | None = None,
 ) -> Isolation | None:
-    """The isolation for one run, or None when this machine cannot hold a script (not Windows,
-    no script venv yet to test with, or its self-test failed): the run then goes on as before,
-    with the folder guard only. The test runs on the venv's Python for Node runs too."""
+    """The isolation for one run, or None when the run goes on as before, with the folder guard
+    only: not Windows, or a failed self-test in a conversation allowed to run without isolation.
+    A failed self-test otherwise refuses the run. The test runs on the script venv's Python, so a
+    Node run makes that venv first if it is not there yet."""
+    if not available():
+        return None
     venv = state_dir / "script-env"
     python = venv_python(venv)
-    if not available() or not python.is_file():
-        return None
+    if not python.is_file():
+        ensure_script_env(state_dir)
     python_runtime = venv_runtime(venv)
     if not self_test(state_dir, python, python_runtime).ok:
-        return None
+        if UnisolatedConversations(state_dir).allowed(thread_id):
+            return None
+        raise IsolationRefused(
+            "Scripts are off on this computer: coscribe's isolation check failed, so a script "
+            "could reach more than this conversation's folders. Tell the person; they can see "
+            "the check, test again, or allow scripts without isolation for this conversation "
+            "under Edit environment > Scripts. Use the built-in tools meanwhile."
+        )
     return Isolation(
         state_dir,
         writable=(*writable, scratch_root(state_dir)),
         readable=tuple(readable),
         runtime=(*python_runtime, *runtime),
     )
+
+
+def isolation_status(state_dir: Path, *, run: bool = False) -> dict[str, str]:
+    """What Edit environment > Scripts shows: `passed`, `failed` (with the check that differed),
+    `untested` (no result for this machine yet, or no script venv to test with) or `unsupported`
+    (not Windows). Only `run` starts the test, so reading the status changes nothing."""
+    venv = state_dir / "script-env"
+    python = venv_python(venv)
+    if not available():
+        return {"state": "unsupported", "failed": "", "detail": ""}
+    if not python.is_file():
+        return {"state": "untested", "failed": "", "detail": ""}
+    if run:
+        result: SelfTest | None = self_test(state_dir, python, venv_runtime(venv), fresh=True)
+    else:
+        result = _cached_self_test(state_dir, python)
+    if result is None:
+        return {"state": "untested", "failed": "", "detail": ""}
+    state = "passed" if result.ok else "failed"
+    return {"state": state, "failed": result.failed, "detail": result.detail}
 
 
 _DENIED = ("PermissionError", "Access is denied", "EPERM", "EACCES")

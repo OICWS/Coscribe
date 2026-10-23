@@ -508,6 +508,14 @@ export interface DesignSystem {
   updated_at: string;
 }
 
+/** Whether this machine holds a script to its folders (Edit environment > Scripts). */
+export interface ScriptIsolation {
+  state: "passed" | "failed" | "untested" | "unsupported";
+  /** The check that differed, when failed. */
+  failed: string;
+  detail: string;
+}
+
 /** What one conversation is given: variables the model can read, and the names of the secrets it may use. */
 export interface SessionEnvironment {
   variables: Record<string, string>;

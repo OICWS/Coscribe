@@ -1,7 +1,6 @@
 """The AppContainer a script runs in (`tools/exec/isolation.py`). The registry tests run
 everywhere with `icacls` faked; the `windows` ones start real containers."""
 
-import asyncio
 import json
 import os
 import subprocess
@@ -12,7 +11,17 @@ from pathlib import Path
 
 import pytest
 
-from coscribe.tools.exec import FolderGrants, Isolation, RunningCommand, isolation, self_test
+from coscribe.tools.exec import (
+    FolderGrants,
+    Isolation,
+    IsolationRefused,
+    RunningCommand,
+    SelfTest,
+    UnisolatedConversations,
+    isolation,
+    isolation_status,
+    self_test,
+)
 from coscribe.tools.exec._appcontainer import NETWORK_CAPABILITIES, ContainerUnavailable
 
 windows = pytest.mark.skipif(sys.platform != "win32", reason="AppContainer is Windows only")
@@ -152,10 +161,53 @@ def test_a_run_holds_its_folders_and_the_network_only_when_on(
     assert names[1:] == list(NETWORK_CAPABILITIES)
 
 
+@pytest.fixture
+def failed_machine(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """A Windows machine whose self-test failed, as seen by `for_scripts`."""
+    state = tmp_path / "state"
+    python = isolation.venv_python(state / "script-env")
+    python.parent.mkdir(parents=True)
+    python.write_text("", encoding="utf-8")
+    monkeypatch.setattr(isolation, "available", lambda: True)
+    monkeypatch.setattr(
+        isolation, "self_test", lambda *a, **k: SelfTest(False, "read outside", "read it")
+    )
+    return state
+
+
+def test_a_failed_self_test_refuses_scripts_unless_the_conversation_allows_it(
+    failed_machine: Path, tmp_path: Path
+) -> None:
+    def run(thread_id: str | None) -> Isolation | None:
+        return isolation.for_scripts(failed_machine, writable=[tmp_path], thread_id=thread_id)
+
+    with pytest.raises(IsolationRefused, match="Edit environment > Scripts"):
+        run("t1")
+    with pytest.raises(IsolationRefused):
+        run(None)
+    UnisolatedConversations(failed_machine).set("t1", True, "now")
+    assert run("t1") is None
+    with pytest.raises(IsolationRefused):
+        run("t2")
+    UnisolatedConversations(failed_machine).set("t1", False, "later")
+    with pytest.raises(IsolationRefused):
+        run("t1")
+
+
+def test_the_status_runs_the_check_only_when_asked(failed_machine: Path) -> None:
+    assert isolation_status(failed_machine)["state"] == "untested"
+    assert isolation_status(failed_machine, run=True) == {
+        "state": "failed",
+        "failed": "read outside",
+        "detail": "read it",
+    }
+
+
 @pytest.mark.skipif(sys.platform == "win32", reason="the fallback off Windows")
 def test_off_windows_isolation_is_unavailable(tmp_path: Path) -> None:
     assert not isolation.available()
     assert self_test(tmp_path, Path(sys.executable), ()).failed == "not Windows"
+    assert isolation_status(tmp_path)["state"] == "unsupported"
     with pytest.raises(ContainerUnavailable):
         RunningCommand([sys.executable, "-c", "pass"], str(tmp_path), {}, Isolation(tmp_path))
 
@@ -338,13 +390,33 @@ async def test_the_script_tools_run_contained(tmp_path: Path) -> None:
         tools = {
             tool.__name__: tool for tool in build_background_task_tools("t1", workspace, state)
         }
-        started = await tools["run_background_command"](
-            command=f'echo x > "{outside / "shell.txt"}"', description="write outside"
-        )
-        deadline = time.monotonic() + 60
-        while tools["check_background_task"](started["task_id"])["status"] == "running":
-            assert time.monotonic() < deadline
-            await asyncio.sleep(0.2)
+        with pytest.raises(IsolationRefused):
+            await tools["run_background_command"](
+                command=f'echo x > "{outside / "shell.txt"}"', description="write outside"
+            )
         assert not (outside / "shell.txt").exists()
     finally:
         _revoke_all(state)
+
+
+def test_a_command_line_is_refused_in_the_container(tmp_path: Path) -> None:
+    with pytest.raises(IsolationRefused, match="run_background_script"):
+        isolation.start("dir /b", str(tmp_path), {}, Isolation(tmp_path))
+
+
+def test_node_keeps_the_script_path_it_was_given_in_the_container(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    started: list[list[str]] = []
+    monkeypatch.setattr(isolation, "capabilities_for", lambda iso: ([], []))
+    monkeypatch.setattr(
+        isolation._appcontainer, "start", lambda argv, cwd, env, caps: started.append(list(argv))
+    )
+
+    isolation.start([r"C:\node\node.exe", "s.js"], str(tmp_path), {}, Isolation(tmp_path))
+    isolation.start(["python.exe", "s.py"], str(tmp_path), {}, Isolation(tmp_path))
+
+    assert started == [
+        [r"C:\node\node.exe", "--preserve-symlinks", "--preserve-symlinks-main", "s.js"],
+        ["python.exe", "s.py"],
+    ]

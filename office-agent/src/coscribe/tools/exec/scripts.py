@@ -70,7 +70,10 @@ def _run_python_script(
     venv_dir = ensure_script_env(state_dir)
     python = venv_python(venv_dir)
     isolation = for_scripts(
-        state_dir, writable=[workspace_root, *extra_writable], readable=extra_readable
+        state_dir,
+        writable=[workspace_root, *extra_writable],
+        readable=extra_readable,
+        thread_id=detachable.thread_id if detachable else None,
     )
 
     scratch_dir = Path(tempfile.mkdtemp(prefix="coscribe_script_", dir=scratch_root(state_dir)))
@@ -178,8 +181,8 @@ def build_script_tools(
         workspace and the folders added to this conversation, and write in the
         workspace and the read-write ones, but cannot delete, rename or move
         files there, nor reach any other folder; use delete_file or move_file
-        for those. Elsewhere, or when the check failed, writes outside those
-        folders are refused and the script can still read other files. A refused
+        for those. If the check failed, the run is refused unless the user allowed
+        it; unisolated, only writes outside those folders are refused. A refused
         write is named in the result's `blocked_write` -- then write inside the
         workspace, or ask the user to add that folder. It runs with its working
         directory set to the workspace root, so relative paths land there.
