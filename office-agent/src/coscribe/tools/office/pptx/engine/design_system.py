@@ -7,18 +7,15 @@ from __future__ import annotations
 
 import json
 import os
-import re
 from collections import Counter
 from pathlib import Path
 from typing import Any
 
 from ...._file_locks import file_lock, replace_with_retry
+from .design_check import COLOUR, DESIGN_SYSTEM, FONT
 from .section_format import DEFAULT_FONT
 from .view import NotBuiltFromPages, pages_folder
 
-DESIGN_SYSTEM = "design-system.json"
-_COLOUR = re.compile(r"#[0-9a-fA-F]{6}\b")
-_FONT = re.compile(r"font-family(?::\s*|=\")([^;\"]+)")
 _PALETTE_SIZE = 10
 _FALLBACK_PALETTE = ["#1F2937", "#4B5563", "#9CA3AF", "#E5E7EB", "#FFFFFF", "#2563EB"]
 # The text styles every deck starts with: id, name, size (px on the 1920 canvas), weight, line
@@ -80,9 +77,9 @@ def _load_dict(data: Any) -> dict[str, Any] | None:
 def _default(folder: Path, name: str) -> dict[str, Any]:
     texts = [p.read_text(encoding="utf-8", errors="replace") for p in sorted(folder.glob("*.html"))]
     texts += [p.read_text(encoding="utf-8", errors="replace") for p in sorted(folder.glob("*.svg"))]
-    counts = Counter(c.upper() for text in texts for c in _COLOUR.findall(text))
+    counts = Counter(c.upper() for text in texts for c in COLOUR.findall(text))
     palette = [colour for colour, _ in counts.most_common(_PALETTE_SIZE)] or _FALLBACK_PALETTE
-    fonts = Counter(f.strip().strip("'\"") for text in texts for f in _FONT.findall(text))
+    fonts = Counter(f.strip().strip("'\"") for text in texts for f in FONT.findall(text))
     return {
         "name": name,
         "palette": palette,
