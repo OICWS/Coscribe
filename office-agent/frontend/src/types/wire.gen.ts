@@ -46,6 +46,8 @@ export interface UserEntry {
   kind: "user";
   text: string;
   images?: string[];
+  /** Workspace paths of the files sent with the message: shown as cards, not as text. */
+  files?: string[];
 }
 
 /** A note the user added while a reply was being worked on. */

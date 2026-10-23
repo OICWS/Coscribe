@@ -654,6 +654,7 @@ function App() {
         text: payload.displayText,
         instant: payload.isInstant,
         images: payload.images,
+        files: payload.files,
       });
       socketRef.current?.send({ type: "user_message", text: payload.outgoingText, images: payload.images, ...artifactStart.take(payload.displayText) });
     });

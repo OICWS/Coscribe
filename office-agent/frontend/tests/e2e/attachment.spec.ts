@@ -19,8 +19,38 @@ test("attaching a file shows a chip and folds a workspace-note into the outgoing
   await page.getByRole("button", { name: "Send" }).click();
 
   await expect(page.getByText("please summarize this")).toBeVisible();
-  // Chip clears once the message actually sends.
-  await expect(page.getByText("sample.txt")).not.toBeVisible();
+  // The tray empties once the message sends; what was sent stays in the conversation as a card.
+  // (A name the workspace already has is made unique, as "sample (2).txt".)
+  await expect(page.getByRole("button", { name: /^Remove sample/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Open sample.*\.txt$/ })).toHaveCount(1);
+  // The note that tells the model about the file is not text in the bubble.
+  await expect(page.getByText("Attached files, now in the workspace")).toHaveCount(0);
+});
+
+test("a sent PDF and a sent file stay in the conversation as cards, also after a reload, and the PDF opens", async ({ page }) => {
+  await page.goto(freshThreadPath("attach-sent"));
+  await waitForConnected(page);
+  const fixtures = path.join(__dirname, "fixtures");
+  await page.locator("input[type=file]").setInputFiles(path.join(fixtures, "sample.pdf"));
+  await expect(page.getByRole("button", { name: /^Remove sample.*\.pdf$/ })).toBeAttached();
+  await page.locator("input[type=file]").setInputFiles(path.join(fixtures, "sample.docx"));
+  await expect(page.getByRole("button", { name: /^Remove sample.*\.docx$/ })).toBeAttached();
+  await page.getByRole("button", { name: "Send" }).click();
+  // Only attachments: no bubble of text, just the cards.
+  const pdf = page.getByRole("button", { name: /^Open sample.*\.pdf$/ });
+  const docx = page.getByRole("button", { name: /^Open sample.*\.docx$/ });
+  await expect(pdf.locator("img")).toBeVisible();
+  await expect(docx.getByText("DOCX", { exact: true })).toBeVisible();
+  await expect(page.getByText("(attachment sent)")).toHaveCount(0);
+
+  await page.reload();
+  await waitForConnected(page);
+  await expect(pdf.locator("img")).toBeVisible();
+  await expect(docx).toBeVisible();
+  await expect(page.getByText("Attached files, now in the workspace")).toHaveCount(0);
+
+  await pdf.click();
+  await expect(page.getByRole("dialog").getByText("2 pages")).toBeVisible();
 });
 
 test("a PDF shows its first page, opens with all pages, and a file that can't be shown says so", async ({ page }) => {

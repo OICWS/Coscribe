@@ -1,8 +1,9 @@
 import { useContext, useState } from "react";
 import { type LogItem } from "../../state/reducer";
 import { CloseIcon, PencilIcon } from "../icons";
-import { SteerActionsContext } from "./contexts";
-import { AttachmentDialog } from "../Attachments";
+import { attachedFilesNote, attachmentKind, type AttachmentView } from "../../lib/attachments";
+import { SteerActionsContext, ViewFile } from "./contexts";
+import { AttachmentCard, AttachmentDialog } from "../Attachments";
 import { ThreadIdContext } from "../threadContext";
 
 /** A user bubble with a hover-revealed edit affordance -- clicking it
@@ -74,6 +75,10 @@ export function UserMessageView({
   const [draft, setDraft] = useState(item.text);
   const threadId = useContext(ThreadIdContext);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [openFile, setOpenFile] = useState<AttachmentView | null>(null);
+  const viewFile = useContext(ViewFile);
+  const files = item.files ?? [];
+  const hasAttachments = files.length > 0 || (item.images?.length ?? 0) > 0;
   const [textExpanded, setTextExpanded] = useState(false);
   const isLongText = item.text.length > LONG_MESSAGE_COLLAPSE_CHARS;
   const shownText =
@@ -86,7 +91,8 @@ export function UserMessageView({
 
   const submit = () => {
     if (!draft.trim() || !onEditMessage) return;
-    onEditMessage(item.turnIndex, draft);
+    // The note naming the files goes back with the text: it is how the model knows them.
+    onEditMessage(item.turnIndex, files.length > 0 ? `${draft}\n\n${attachedFilesNote(files)}` : draft);
     setEditing(false);
   };
 
@@ -131,6 +137,16 @@ export function UserMessageView({
 
   return (
     <div className="ml-auto flex max-w-[96%] flex-col items-end gap-1.5">
+      {files.length > 0 && (
+        <div className="flex flex-wrap justify-end gap-1.5">
+          {files.map((path) => {
+            const name = path.split(/[\\/]/).pop() ?? path;
+            const view: AttachmentView = { kind: attachmentKind(name), name, path };
+            // A Word, Excel or PowerPoint file opens in its panel; the rest in the preview.
+            return <AttachmentCard key={path} view={view} threadId={threadId} onOpen={() => { if (!viewFile?.(path)) setOpenFile(view); }} />;
+          })}
+        </div>
+      )}
       {item.images && item.images.length > 0 && (
         <div className="flex flex-wrap justify-end gap-1.5">
           {item.images.map((src, i) => (
@@ -157,9 +173,11 @@ export function UserMessageView({
             <PencilIcon className="h-3.5 w-3.5" />
           </button>
         )}
-        <div className="rounded-2xl bg-[var(--user-bubble)] px-4 py-2 text-[var(--user-bubble-fg)] whitespace-pre-wrap">
-          {shownText}
-        </div>
+        {(item.text.trim() !== "" || !hasAttachments) && (
+          <div className="rounded-2xl bg-[var(--user-bubble)] px-4 py-2 text-[var(--user-bubble-fg)] whitespace-pre-wrap">
+            {shownText}
+          </div>
+        )}
       </div>
       {isLongText && (
         <button
@@ -170,6 +188,7 @@ export function UserMessageView({
           {textExpanded ? "Show less" : "Show more"}
         </button>
       )}
+      {openFile && <AttachmentDialog view={openFile} threadId={threadId} onClose={() => setOpenFile(null)} />}
       {lightboxSrc && (
         <AttachmentDialog
           view={{ kind: "image", name: "Attachment", src: lightboxSrc }}

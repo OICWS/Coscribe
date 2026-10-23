@@ -243,7 +243,7 @@
  },
  "frontend_file_lines": {
   "office-agent-desktop/src/main/browserAgent.ts": 934,
-  "office-agent/frontend/src/App.tsx": 1077,
+  "office-agent/frontend/src/App.tsx": 1078,
   "office-agent/frontend/src/components/icons.tsx": 813,
   "office-agent/frontend/src/components/workflow/WorkflowRunView.tsx": 860
  },
@@ -251,13 +251,13 @@
   "office-agent-desktop/src/main/browserAgent.ts::act": 156,
   "office-agent-desktop/src/main/browserAgent.ts::startBrowserAgent": 140,
   "office-agent-desktop/src/main/browserAgentPage.ts::pageAgent": 343,
-  "office-agent/frontend/src/App.tsx::App": 983,
+  "office-agent/frontend/src/App.tsx::App": 984,
   "office-agent/frontend/src/components/AllowedSitesDialog.tsx::AllowedSitesDialog": 132,
   "office-agent/frontend/src/components/Attachments.tsx::AttachmentDialog": 110,
   "office-agent/frontend/src/components/BackgroundTasksPanel.tsx::BackgroundTasksPanel": 162,
   "office-agent/frontend/src/components/BrowserPanel.tsx::ScreencastBrowserPanel": 536,
   "office-agent/frontend/src/components/ChatLog.tsx::ChatLog": 171,
-  "office-agent/frontend/src/components/Composer.tsx::Composer": 534,
+  "office-agent/frontend/src/components/Composer.tsx::Composer": 536,
   "office-agent/frontend/src/components/DesktopBrowserPanel.tsx::DesktopBrowserPanel": 386,
   "office-agent/frontend/src/components/DocxViewerPanel.tsx::DocxViewerPanel": 281,
   "office-agent/frontend/src/components/EffortPicker.tsx::EffortPicker": 144,
@@ -273,7 +273,7 @@
   "office-agent/frontend/src/components/ThreadList.tsx::GroupHeader": 116,
   "office-agent/frontend/src/components/ThreadList.tsx::ThreadList": 256,
   "office-agent/frontend/src/components/ThreadList.tsx::ThreadMenu": 151,
-  "office-agent/frontend/src/components/chatlog/UserMessageView.tsx::UserMessageView": 117,
+  "office-agent/frontend/src/components/chatlog/UserMessageView.tsx::UserMessageView": 135,
   "office-agent/frontend/src/components/dock/DockControls.tsx::DockControls": 140,
   "office-agent/frontend/src/components/dock/PanelDock.tsx::PanelDock": 267,
   "office-agent/frontend/src/components/settings/ConnectorSetup.tsx::ConnectorSetup": 224,
@@ -300,7 +300,7 @@
   "office-agent/frontend/src/components/workflow/WorkflowEditor.tsx::StepCard": 163,
   "office-agent/frontend/src/components/workflow/WorkflowEditor.tsx::WorkflowEditor": 143,
   "office-agent/frontend/src/components/workflow/WorkflowRunView.tsx::RunBanner": 151,
-  "office-agent/frontend/src/state/reducer.ts::chatReducer": 468
+  "office-agent/frontend/src/state/reducer.ts::chatReducer": 469
  },
  "frontend_unused_exports": {
   "office-agent/frontend/src/components/icons.tsx": 3,
@@ -328,7 +328,7 @@
   "src/coscribe/conversation/turn_stream.py::TurnStreamer.stream_turn": 115,
   "src/coscribe/coordinator.py::build_coordinator_agent": 162,
   "src/coscribe/runtime_lg/agent.py::build_langgraph_agent": 187,
-  "src/coscribe/runtime_lg/messages.py::serialize_history_for_ws_lg": 115,
+  "src/coscribe/runtime_lg/messages.py::serialize_history_for_ws_lg": 118,
   "src/coscribe/runtime_lg/providers.py::resolve_chat_model": 107,
   "src/coscribe/runtime_lg/subagents.py::build_delegation_tools": 154,
   "src/coscribe/runtime_lg/subagents.py::build_review_work_tool": 133,

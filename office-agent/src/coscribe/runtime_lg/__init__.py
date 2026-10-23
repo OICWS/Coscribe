@@ -33,6 +33,7 @@ from .messages import (
     last_conversation_context,
     render_transcript_lg,
     serialize_history_for_ws_lg,
+    split_attached_files,
     strip_mode_note,
     tool_result_value,
 )
@@ -133,6 +134,7 @@ __all__ = [
     "subagent_report",
     "review_action",
     "serialize_history_for_ws_lg",
+    "split_attached_files",
     "strip_mode_note",
     "tool_name",
     "tool_result_value",

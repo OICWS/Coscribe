@@ -163,18 +163,25 @@ test("only a Slides start offers a design system", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Choose design system…" })).toHaveCount(0);
 });
 
+// The message box is laid out again as the new conversation loads, which closes an open menu: open it until the item holds.
+async function chooseFromDesignMenu(page: Page, item: string) {
+  await expect(async () => {
+    if (!(await page.getByRole("menuitem", { name: item }).isVisible())) await page.getByRole("button", { name: "Choose design system…" }).click();
+    await expect(page.getByRole("menuitem", { name: item })).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 20_000 });
+  await page.getByRole("menuitem", { name: item }).click();
+}
+
 test("the design-system menu leads to the page that manages them, or to making a new one", async ({ page }) => {
   await openPage(page);
   await page.getByRole("button", { name: /^Slides/ }).click();
   await waitForConnected(page);
   await expect(page.getByPlaceholder("What should this deck be about?")).toBeVisible();
-  await page.getByRole("button", { name: "Choose design system…" }).click();
-  await page.getByRole("menuitem", { name: "Manage design systems" }).click();
+  await chooseFromDesignMenu(page, "Manage design systems");
   await expect(page.getByRole("button", { name: "New design system" })).toBeVisible();
   await expect(page.getByLabel("New design system name")).toHaveCount(0);
   await page.getByRole("button", { name: "Close settings" }).click();
 
-  await page.getByRole("button", { name: "Choose design system…" }).click();
-  await page.getByRole("menuitem", { name: "Make a new design system first" }).click();
+  await chooseFromDesignMenu(page, "Make a new design system first");
   await expect(page.getByLabel("New design system name")).toBeVisible();
 });
