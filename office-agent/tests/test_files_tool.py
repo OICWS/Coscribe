@@ -385,14 +385,67 @@ def test_path_cannot_escape_workspace_root(tmp_path: Path) -> None:
         tools["read_file"](path="../outside.txt")
 
 
-def test_delete_file_removes_it(tmp_path: Path) -> None:
+@pytest.fixture
+def recycled(monkeypatch: pytest.MonkeyPatch) -> list[Path]:
+    """Stands in for the Recycle Bin, which a test machine may not have for its temp folder."""
+    import send2trash
+
+    sent: list[Path] = []
+
+    def fake_send2trash(path: str) -> None:
+        sent.append(Path(path))
+        Path(path).unlink()
+
+    monkeypatch.setattr(send2trash, "send2trash", fake_send2trash)
+    return sent
+
+
+def test_delete_file_sends_it_to_the_recycle_bin(tmp_path: Path, recycled: list[Path]) -> None:
     tools = _tools_by_name(tmp_path)
     tools["write_file"](path="a.txt", content="gone soon")
 
     result = tools["delete_file"](path="a.txt")
 
-    assert result == {"path": "a.txt", "deleted": True}
+    assert result == {"path": "a.txt", "deleted": True, "recycle_bin": True}
+    assert recycled == [(tmp_path / "a.txt").resolve()]
     assert not (tmp_path / "a.txt").exists()
+
+
+def _with_folders(tmp_path: Path) -> tuple[dict[str, object], Path, Path]:
+    writable = tmp_path / "shared"
+    deletable = tmp_path / "scratch"
+    for folder in (writable, deletable):
+        folder.mkdir()
+        (folder / "a.txt").write_text("hi")
+    tools = {
+        tool.__name__: tool  # type: ignore[attr-defined]
+        for tool in build_file_tools(
+            tmp_path / "workspace", extra_writable=[writable], extra_deletable=[deletable]
+        )
+    }
+    return tools, writable, deletable
+
+
+def test_a_read_and_write_folder_refuses_deletes_and_renames(tmp_path: Path) -> None:
+    tools, writable, _ = _with_folders(tmp_path)
+
+    tools["write_file"](path=str(writable / "b.txt"), content="new")
+    with pytest.raises(PermissionError, match="Read, write and delete"):
+        tools["delete_file"](path=str(writable / "a.txt"))
+    with pytest.raises(PermissionError, match="Read, write and delete"):
+        tools["move_file"](source=str(writable / "a.txt"), destination=str(writable / "c.txt"))
+    assert (writable / "a.txt").exists()
+
+
+def test_a_read_write_and_delete_folder_allows_both(tmp_path: Path, recycled: list[Path]) -> None:
+    tools, writable, deletable = _with_folders(tmp_path)
+
+    tools["move_file"](source=str(deletable / "a.txt"), destination=str(writable / "moved.txt"))
+    (deletable / "b.txt").write_text("bye")
+    tools["delete_file"](path=str(deletable / "b.txt"))
+
+    assert (writable / "moved.txt").read_text() == "hi"
+    assert recycled == [(deletable / "b.txt").resolve()]
 
 
 def test_delete_file_on_missing_file_raises(tmp_path: Path) -> None:

@@ -84,12 +84,14 @@ class FileToolkit:
         *,
         extra_readable: Sequence[str | Path] = (),
         extra_writable: Sequence[str | Path] = (),
+        extra_deletable: Sequence[str | Path] = (),
         protected: Sequence[str | Path] = (),
     ) -> None:
         self._scope = WorkspaceScope(
             root,
             extra_readable=extra_readable,
             extra_writable=extra_writable,
+            extra_deletable=extra_deletable,
             protected=protected,
         )
 
@@ -97,8 +99,8 @@ class FileToolkit:
     def root(self) -> Path:
         return self._scope.root
 
-    def _resolve(self, path: str, *, write: bool = False) -> Path:
-        return self._scope.resolve(path, write=write)
+    def _resolve(self, path: str, *, write: bool = False, delete: bool = False) -> Path:
+        return self._scope.resolve(path, write=write, delete=delete)
 
     def _relative(self, path: Path) -> str:
         return self._scope.relative(path)
@@ -377,10 +379,9 @@ class FileToolkit:
         }
 
     def delete_file(self, path: str) -> dict[str, object]:
-        """Permanently delete one file under the workspace. Directories are
-        rejected -- not the "rm -rf" this tool sounds like -- use
-        run_python_script (shutil.rmtree) for a whole directory."""
-        file_path = self._resolve(path, write=True)
+        """Send one file to the Recycle Bin. Directories are rejected -- not
+        the "rm -rf" this tool sounds like."""
+        file_path = self._resolve(path, delete=True)
         if not file_path.exists():
             raise ValueError(f"File does not exist: {path}")
         if file_path.is_dir():
@@ -388,14 +389,17 @@ class FileToolkit:
                 f"Path is a directory: {path} -- delete_file only removes a single "
                 "file; use run_python_script for a whole directory."
             )
-        file_path.unlink()
-        return {"path": self._relative(file_path), "deleted": True}
+        # Loaded on first use: only a delete needs it.
+        from send2trash import send2trash
+
+        send2trash(str(file_path))
+        return {"path": self._relative(file_path), "deleted": True, "recycle_bin": True}
 
     def move_file(
         self, source: str, destination: str, overwrite: bool = False
     ) -> dict[str, object]:
         """Move or rename a file or directory under the workspace."""
-        source_path = self._resolve(source, write=True)
+        source_path = self._resolve(source, delete=True)
         dest_path = self._resolve(destination, write=True)
         if not source_path.exists():
             raise ValueError(f"Source does not exist: {source}")
@@ -452,10 +456,11 @@ def build_file_tools(
     extra_readable: Sequence[str | Path] = (),
     extra_writable: Sequence[str | Path] = (),
     protected: Sequence[str | Path] = (),
+    extra_deletable: Sequence[str | Path] = (),
 ) -> list[Callable[..., Any]]:
     """The Coordinator's file tools; `protected` paths are never written."""
     kept = {"extra_readable": extra_readable, "extra_writable": extra_writable}
-    toolkit = FileToolkit(root, protected=protected, **kept)
+    toolkit = FileToolkit(root, protected=protected, extra_deletable=extra_deletable, **kept)
 
     def list_files(
         path: str = ".", pattern: str = "*", recursive: bool = True
@@ -638,10 +643,9 @@ def build_file_tools(
         return toolkit.edit_file_batch(path=path, edits=edits)
 
     def delete_file(path: str) -> dict[str, object]:
-        """Permanently delete one file under the workspace (or a configured
-        extra-writable directory). There is no undo. Directories are
-        rejected -- this is not "rm -rf": reach for run_python_script
-        (shutil.rmtree) for a whole directory.
+        """Send one file to the Recycle Bin, from the workspace or a folder the
+        user set to "Read, write and delete"; a read-and-write folder refuses
+        it. Directories are rejected -- this is not "rm -rf".
 
         Args:
             path: file to delete, relative to the workspace root (or an
@@ -650,9 +654,9 @@ def build_file_tools(
         return toolkit.delete_file(path=path)
 
     def move_file(source: str, destination: str, overwrite: bool = False) -> dict[str, object]:
-        """Move or rename a file or directory under the workspace (or a
-        configured extra-writable directory). Works across directories, not
-        just a rename in place. `destination` must not already exist unless
+        """Move or rename a file or directory, also across directories. The
+        source must be in the workspace or a folder set to "Read, write and
+        delete"; the destination in any writable folder. `destination` must not already exist unless
         `overwrite=True` -- and even then, an existing *directory* at
         `destination` is always rejected (moving into vs. replacing it is
         ambiguous either way overwrite is set); use run_python_script for
