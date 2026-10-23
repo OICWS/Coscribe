@@ -201,6 +201,8 @@ interface NavRailProps {
   threadId: string;
   pinned: boolean;
   onPinnedChange: (pinned: boolean) => void;
+  /** The sidebar's own button; the person can move it into the toolbar's menu. */
+  showToggle?: boolean;
   threads: ThreadSummary[];
   onThreadsChanged: () => void;
   onThreadRenamed: (threadId: string, title: string) => void;
@@ -226,6 +228,7 @@ export function NavRail({
   threadId,
   pinned,
   onPinnedChange,
+  showToggle = true,
   threads,
   onThreadsChanged,
   onThreadRenamed,
@@ -311,19 +314,21 @@ export function NavRail({
         >
           <div className="flex items-center gap-0.5">
             {DRAWS_TITLE_BAR && <AppMenuButton />}
-            <button
-              type="button"
-              title={pinned ? "Unpin navigation" : "Pin navigation open"}
-              className={`flex items-center justify-center rounded-md hover:bg-[var(--card-bg)] ${
-                DRAWS_TITLE_BAR ? "h-8 w-8" : "h-9 w-9"
-              } ${pinned || DRAWS_TITLE_BAR ? "text-[var(--fg)]" : "text-[var(--muted)] hover:text-[var(--fg)]"}`}
-              onClick={() => onPinnedChange(!pinned)}
-              // The desktop row also holds the menu and Back/Forward, which
-              // mustn't pop the panel open; only this button does.
-              onMouseEnter={DRAWS_TITLE_BAR ? () => setHovering(true) : undefined}
-            >
-              <SidebarIcon {...(DRAWS_TITLE_BAR ? TITLE_BAR_ICON : { className: "h-[18px] w-[18px]" })} />
-            </button>
+            {showToggle && (
+              <button
+                type="button"
+                title={pinned ? "Unpin navigation" : "Pin navigation open"}
+                className={`flex items-center justify-center rounded-md hover:bg-[var(--card-bg)] ${
+                  DRAWS_TITLE_BAR ? "h-8 w-8" : "h-9 w-9"
+                } ${pinned || DRAWS_TITLE_BAR ? "text-[var(--fg)]" : "text-[var(--muted)] hover:text-[var(--fg)]"}`}
+                onClick={() => onPinnedChange(!pinned)}
+                // The desktop row also holds the menu and Back/Forward, which
+                // mustn't pop the panel open; only this button does.
+                onMouseEnter={DRAWS_TITLE_BAR ? () => setHovering(true) : undefined}
+              >
+                <SidebarIcon {...(DRAWS_TITLE_BAR ? TITLE_BAR_ICON : { className: "h-[18px] w-[18px]" })} />
+              </button>
+            )}
             {DRAWS_TITLE_BAR && <HistoryButtons />}
           </div>
           {expanded && (

@@ -37,6 +37,7 @@ import { setPlanComments, usePlanComments, withPlanComments } from "./lib/planCo
 import { planPanelData } from "./lib/taskCard";
 import { PanelDock } from "./components/dock/PanelDock";
 import { PanelToggles } from "./components/dock/PanelToggles";
+import { usePinnedItems } from "./lib/toolbarItems";
 import { PANEL_IDS, PANEL_TITLES, type PanelId } from "./lib/dockLayout";
 import { isViewable } from "./lib/viewers";
 import { useCommentSender } from "./lib/commentReplies";
@@ -148,6 +149,7 @@ function App() {
   // the header (see the column's paddingLeft below); hover-expanded it
   // still floats over the content.
   const [navPinned, setNavPinned] = useState(false);
+  const [pinnedItems, setPinnedItems] = usePinnedItems();
   // Which task Scheduled mode shows the page for (null = the portal) --
   // an id, not a copy of the task, so it always reads the latest list.
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(() => readPage().task);
@@ -894,7 +896,11 @@ function App() {
     <PanelToggles
       open={(panel) => panelOpen(panel) || poppedOut.includes(panel)}
       onToggle={(panel) => (panel === "task" ? toggleTaskPanel() : togglePanelOrWindow(panel))}
-      hasPlan={hasPlan || planData.plan !== null}
+      inConversation={inConversation}
+      pinned={pinnedItems}
+      onPinnedChange={setPinnedItems}
+      sidebar={{ open: navPinned, toggle: () => setNavPinned(!navPinned) }}
+      artifactsOpen={artifactsOpen}
       backgroundTitle={subAgentsTitle}
       running={subAgents.running}
       waiting={subAgents.waiting}
@@ -904,7 +910,7 @@ function App() {
   return (
     <ThreadIdContext.Provider value={threadId}>
     <div className="relative flex h-full flex-col">
-      {DRAWS_TITLE_BAR && <TitleBar navPinned={navPinned} title={pageTitle} toggles={inConversation && panelToggles} onSettings={() => setSettingsOpen(true)} />}
+      {DRAWS_TITLE_BAR && <TitleBar navPinned={navPinned} title={pageTitle} toggles={panelToggles} onSettings={() => setSettingsOpen(true)} />}
       <div className="relative flex min-h-0 flex-1">
         <PanelDock
           visible={inConversation ? visiblePanels : []}
@@ -917,7 +923,7 @@ function App() {
             <div className="relative flex h-full min-w-0 flex-1 flex-col">
               {inConversation && findKey !== null && <FindInPage focusKey={findKey} onClose={() => setFindKey(null)} />}
               {!DRAWS_TITLE_BAR && (
-                <PageHeader navPinned={navPinned} title={pageTitle} toggles={inConversation && panelToggles} onSettings={() => setSettingsOpen(true)} onShortcuts={() => setShortcutsOpen(true)} />
+                <PageHeader navPinned={navPinned} title={pageTitle} toggles={panelToggles} onSettings={() => setSettingsOpen(true)} onShortcuts={() => setShortcutsOpen(true)} />
               )}
               {connectionStatus === "reconnecting" && (
                 <div className="bg-yellow-500/20 px-4 py-1 text-center text-sm text-yellow-700 dark:text-yellow-300">
@@ -1056,6 +1062,7 @@ function App() {
         threadId={threadId}
         pinned={navPinned}
         onPinnedChange={setNavPinned}
+        showToggle={pinnedItems.includes("sidebar")}
         threads={threads ?? []}
         onThreadsChanged={refreshThreads}
         onThreadRenamed={renameThreadLocally}
