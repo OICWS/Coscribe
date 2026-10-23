@@ -90,13 +90,13 @@ export function WorkspaceTab({ values, onChange, dirEntries, onDirEntriesChange 
                 <span className="min-w-0 flex-1 truncate">{entry.path}</span>
                 <select
                   aria-label={`Access to ${entry.path}`}
-                  className={`${fieldClass} h-8 px-2 text-[13px]`}
-                  value={entry.permission}
+                  className={`${fieldClass} h-8 px-2 text-[13px]`} value={entry.permission}
                   onChange={(e) => setPermission(entry.path, e.target.value as DirPermission)}
                 >
                   <option value="read">Read only</option>
                   <option value="read-write">Read and write</option>
-                  <option value="read-write-delete">Read, write and delete</option></select>
+                  <option value="read-write-delete">Read, write and delete</option>
+                </select>
                 <button
                   type="button"
                   aria-label={`Remove ${entry.path}`}

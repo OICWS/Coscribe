@@ -69,9 +69,9 @@ class WorkspaceScope:
             if self._under(resolved, extra_root):
                 if delete and not any(self._under(resolved, p) for p in self._extra_deletable):
                     raise PermissionError(
-                        f"{path} is in a folder set to read and write, which allows no deleting, "
-                        "moving or renaming. The user can set it to \"Read, write and delete\" in "
-                        "Settings > Workspace."
+                        f"{path} is in a folder that allows reading and writing but no deleting, "
+                        "moving or renaming. The user can allow those by adding the folder in "
+                        "Settings > Workspace as \"Read, write and delete\"."
                     )
                 return resolved
         verb = "written to" if write else "read"
