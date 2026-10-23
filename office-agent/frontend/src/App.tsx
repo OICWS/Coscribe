@@ -97,6 +97,7 @@ function App() {
   useSessionSignals(threadId, state.turnInFlight, state.items);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsCategory, setSettingsCategory] = useState<SettingsCategory | undefined>(undefined);
+  const [settingsNewDesign, setSettingsNewDesign] = useState(false);
   // Find in page: null while closed; bumped to refocus an open one.
   const [findKey, setFindKey] = useState<number | null>(null);
   const [pendingComposerAction, setPendingComposerAction] = useState<ComposerAction | null>(null);
@@ -828,7 +829,7 @@ function App() {
       onArtifactRemoved={artifactStart.clear}
       designSystem={artifactStart.designSystem}
       onDesignSystem={artifactStart.chooseDesignSystem}
-      onManageDesignSystems={() => { setSettingsCategory("design-systems"); setSettingsOpen(true); }}
+      onManageDesignSystems={(startNew) => { setSettingsCategory("design-systems"); setSettingsNewDesign(startNew); setSettingsOpen(true); }}
       externalText={pendingComposerText}
       onExternalTextConsumed={() => setPendingComposerText(null)}
     />
@@ -1038,8 +1039,9 @@ function App() {
               <SettingsModal
                 open={settingsOpen}
                 initialCategory={settingsCategory}
+                startNewDesignSystem={settingsNewDesign}
                 onCreateSkill={onCreateSkill}
-                onClose={() => { setSettingsOpen(false); setSettingsCategory(undefined); }}
+                onClose={() => { setSettingsOpen(false); setSettingsCategory(undefined); setSettingsNewDesign(false); }}
               />
               {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
             </div>

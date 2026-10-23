@@ -43,10 +43,10 @@ function NewSystemForm({ name, onName, onCreate }: { name: string; onName: (name
 }
 
 /** Settings > Design systems: the person's library (decision 0020). */
-export function DesignSystemsTab({ active }: { active: boolean }) {
+export function DesignSystemsTab({ active, startNew = false }: { active: boolean; startNew?: boolean }) {
   const { data, status, error, retry } = useFetchOnActive(active, getDesignSystems, NONE);
   const [open, setOpen] = useState<DesignSystem | null>(null);
-  const [naming, setNaming] = useState<string | null>(null);
+  const [naming, setNaming] = useState<string | null>(startNew ? "" : null);
   const [removing, setRemoving] = useState<DesignSystemSummary | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
