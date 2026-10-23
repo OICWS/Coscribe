@@ -29,8 +29,6 @@ from ...tools import (
     SCHEDULED_THREAD_PREFIX,
     BackgroundTaskStore,
     DocumentToolkit,
-    MessagingError,
-    MessagingStore,
     SubAgentTaskStore,
     TaskToolkit,
     forget_finished_background_tasks,
@@ -427,7 +425,7 @@ def _background_task_routes(router: APIRouter, state: AppState) -> None:
         return {"removed": forget_finished_background_tasks(settings.state_dir, thread_id)}
 
 
-def _environment_and_messaging_routes(router: APIRouter, state: AppState) -> None:
+def _environment_routes(router: APIRouter, state: AppState) -> None:
     settings = state.settings
 
     @router.get("/api/threads/{thread_id}/environment")
@@ -444,19 +442,6 @@ def _environment_and_messaging_routes(router: APIRouter, state: AppState) -> Non
                 SecretStore(settings.state_dir).names(),
             )
         except SecretError as exc:
-            return JSONResponse({"error": str(exc)}, status_code=422)
-
-    @router.get("/api/threads/{thread_id}/messaging")
-    async def get_messaging(thread_id: str) -> dict[str, Any]:
-        return MessagingStore(settings.state_dir).get_policy(thread_id)
-
-    @router.put("/api/threads/{thread_id}/messaging")
-    async def put_messaging(thread_id: str, payload: dict[str, Any]) -> Any:
-        try:
-            return MessagingStore(settings.state_dir).set_policy(
-                thread_id, payload.get("mode"), payload.get("senders", [])
-            )
-        except MessagingError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
 
 
@@ -515,7 +500,7 @@ def router(state: AppState) -> APIRouter:
     _file_and_context_routes(router, state)
     _subagent_routes(router, state)
     _background_task_routes(router, state)
-    _environment_and_messaging_routes(router, state)
+    _environment_routes(router, state)
     _folder_routes(router, state)
     return _with_docx_review_routes(router, state, lambda t, p: _thread_file(state, t, p))
 

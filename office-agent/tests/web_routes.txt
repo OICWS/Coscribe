@@ -70,7 +70,6 @@ GET /api/threads/{thread_id}/docx-review/original
 GET /api/threads/{thread_id}/environment
 GET /api/threads/{thread_id}/files/download
 GET /api/threads/{thread_id}/folders
-GET /api/threads/{thread_id}/messaging
 GET /api/threads/{thread_id}/network
 GET /api/threads/{thread_id}/scripts
 GET /api/threads/{thread_id}/slides
@@ -150,7 +149,6 @@ PUT /api/secrets/{name}
 PUT /api/threads/{thread_id}/docs/blocks
 PUT /api/threads/{thread_id}/environment
 PUT /api/threads/{thread_id}/folders
-PUT /api/threads/{thread_id}/messaging
 PUT /api/threads/{thread_id}/network
 PUT /api/threads/{thread_id}/scripts
 PUT /api/threads/{thread_id}/slides/{index}/source
