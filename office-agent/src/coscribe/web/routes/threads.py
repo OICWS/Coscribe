@@ -460,6 +460,52 @@ def _environment_and_messaging_routes(router: APIRouter, state: AppState) -> Non
             return JSONResponse({"error": str(exc)}, status_code=422)
 
 
+class _ErrorSink:
+    """Keeps what a session would have sent its socket, so a refusal reaches the caller."""
+
+    def __init__(self) -> None:
+        self.errors: list[str] = []
+
+    async def send_json(self, data: Any) -> None:
+        if data.get("type") == "error":
+            self.errors.append(str(data.get("message", "")))
+
+
+def _folder_routes(router: APIRouter, state: AppState) -> None:
+    """A conversation's folders from Edit environment, for a conversation that is not the open
+    one (the open one changes them over its socket, so its page sees the change)."""
+    files = state.thread_files
+
+    async def get_thread_folders(thread_id: str) -> dict[str, Any]:
+        session = state.sessions.get(thread_id)
+        if session is not None:
+            return {"folders": [str(folder) for folder in session.folders]}
+        return {"folders": files.read_workspace_sidecar(thread_id)}
+
+    async def put_thread_folders(thread_id: str, payload: dict[str, Any]) -> Any:
+        asked = payload.get("folders", [])
+        paths = list(dict.fromkeys(str(p) for p in asked if isinstance(p, str)))
+        session = state.sessions.get(thread_id)
+        if session is not None:
+            sink = _ErrorSink()
+            if not await session.set_folders(paths, sink):
+                return JSONResponse({"error": " ".join(sink.errors)}, status_code=422)
+            paths = [str(folder) for folder in session.folders]
+        else:
+            missing = [p for p in paths if not Path(p).is_absolute() or not Path(p).is_dir()]
+            if missing:
+                return JSONResponse(
+                    {"error": f"{missing[0]!r} isn't an existing folder."}, status_code=422
+                )
+        files.write_workspace_sidecar(thread_id, paths)
+        return {"folders": paths}
+
+    # Registered by reference rather than decorated, so the dead-code check sees them used.
+    path = "/api/threads/{thread_id}/folders"
+    router.add_api_route(path, get_thread_folders, methods=["GET"])
+    router.add_api_route(path, put_thread_folders, methods=["PUT"])
+
+
 def router(state: AppState) -> APIRouter:
     router = APIRouter()
     _listing_routes(router, state)
@@ -470,6 +516,7 @@ def router(state: AppState) -> APIRouter:
     _subagent_routes(router, state)
     _background_task_routes(router, state)
     _environment_and_messaging_routes(router, state)
+    _folder_routes(router, state)
     return _with_docx_review_routes(router, state, lambda t, p: _thread_file(state, t, p))
 
 

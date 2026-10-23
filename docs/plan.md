@@ -222,8 +222,9 @@ Last reviewed: 2026-10-15.
 
 4. **The folder settings as the real limit for scripts** (#560, kurtosisOC, all of it including
    the UI; decision 0021). Prototype in #561. Shipped: the AppContainer launcher, folder grants
-   and the self-test (part 1), and every script tool and background task running in it where the
-   self-test passed (part 2). Next, one PR each: the settings screens with fail closed, the
+   and the self-test (part 1), every script tool and background task running in it where the
+   self-test passed (part 2), and Edit environment as a list of pages with the conversation's
+   folders. Next, one PR each: the Scripts page in Edit environment with fail closed, the
    per-conversation opt-in to run without isolation, the self-test result and re-test, and the
    sweep of grants at start and at uninstall; `delete_file` to the recycle bin and the
    per-folder delete switch, and coscribe's own Python download; read limits and the network

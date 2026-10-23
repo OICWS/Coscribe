@@ -3,7 +3,6 @@ import type {
   DesignSystemSummary,
   SecretInfo,
   SecretsResponse,
-  MessagingPolicy,
   SessionEnvironment,
   BrowseDirsResponse,
   ConfigResponse,
@@ -499,8 +498,9 @@ export const getSessionEnvironment = (threadId: string) =>
 export const saveSessionEnvironment = (threadId: string, environment: SessionEnvironment) =>
   sendForResult<SessionEnvironment>(`/api/threads/${encodeURIComponent(threadId)}/environment`, "PUT", environment);
 
-export const getMessagingPolicy = (threadId: string) =>
-  getJson<MessagingPolicy>(`/api/threads/${encodeURIComponent(threadId)}/messaging`);
+/** The folders of a conversation that is not the open one; the open one changes them over its socket. */
+export const getThreadFolders = (threadId: string) =>
+  getJson<{ folders: string[] }>(`/api/threads/${encodeURIComponent(threadId)}/folders`);
 
-export const saveMessagingPolicy = (threadId: string, policy: MessagingPolicy) =>
-  sendForResult<MessagingPolicy>(`/api/threads/${encodeURIComponent(threadId)}/messaging`, "PUT", policy);
+export const saveThreadFolders = (threadId: string, folders: string[]) =>
+  sendForResult<{ folders: string[] }>(`/api/threads/${encodeURIComponent(threadId)}/folders`, "PUT", { folders });
