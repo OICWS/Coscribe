@@ -1,0 +1,37 @@
+name: Windows sandbox prototype
+
+# Issue #560, step 1: does a script venv's python.exe run under an AppContainer, reach only the
+# folders granted to it, and stay off the network? Runs on a pull request that changes the
+# prototype or this file, and by hand. Kept apart from windows.yml (decision 0009).
+"on":
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/windows-sandbox-prototype.yml"
+      - "office-agent/scripts/prototype_script_sandbox.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-sandbox-prototype-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+    working-directory: office-agent
+
+jobs:
+  appcontainer:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: AppContainer probe
+        run: python scripts/prototype_script_sandbox.py
