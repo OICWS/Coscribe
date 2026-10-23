@@ -49,10 +49,13 @@ export function SlidesPanel({
   refreshKey,
   onSendComment,
   onFileChanged,
+  busy = false,
 }: {
   threadId: string;
   path: string;
   refreshKey: string;
+  /** A turn is running: the file may be half written. */
+  busy?: boolean;
   /** The deck was renamed (its new path) or deleted (null) from its menu. */
   onFileChanged?: (path: string | null) => void;
   /** Sends a comment to coscribe as a message; absent where there is no conversation. */
@@ -89,8 +92,10 @@ export function SlidesPanel({
       onKeyDown={(e) => ui.onKey(e, shownZoom, history.step)}
     >
       <PanelTop title={deck?.title ?? name} path={path} ui={ui} onMenu={(kind, anchor) => setMenu({ kind, anchor })} />
-      <DeckNotices changed={deck?.changed ?? false} readOnly={deck?.readOnly ?? false} error={error ?? edits.problem ?? downloads.failed ?? comments.failed} />
-      {notBuilt ? (
+      <DeckNotices changed={deck?.changed ?? false} readOnly={deck?.readOnly ?? false} error={shownError(busy, deck, [error, edits.problem, downloads.failed, comments.failed])} />
+      {(notBuilt || !deck) && busy ? (
+        <Building name={name} />
+      ) : notBuilt ? (
         <NotBuilt name={name} onOpen={() => open(false)} />
       ) : (
         <div className="flex min-h-0 flex-1">
@@ -711,6 +716,20 @@ function useSlideDownloads(threadId: string, path: string, srcOf: (index: number
       .finally(() => setBusy(false));
   };
   return { busy, failed, download };
+}
+
+/** The first problem to show. While coscribe works on the file nothing is, and comments are not
+ * read from a deck coscribe did not build, which has none. */
+function shownError(busy: boolean, deck: SlideDeck | null, [error, edit, download, comment]: (string | null)[]): string | null {
+  return busy ? null : (error ?? edit ?? download ?? (deck && !deck.readOnly ? comment : null));
+}
+
+function Building({ name }: { name: string }) {
+  return (
+    <div className="flex flex-1 items-center justify-center bg-[var(--stage-bg)] p-6 text-center text-sm text-[var(--muted)]" role="status">
+      coscribe is working on {name}…
+    </div>
+  );
 }
 
 function NotBuilt({ name, onOpen }: { name: string; onOpen: () => void }) {

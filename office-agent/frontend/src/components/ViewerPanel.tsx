@@ -16,6 +16,7 @@ export function ViewerPanel({
   refreshKey,
   onSendComment,
   onFileChanged,
+  busy = false,
 }: {
   threadId: string;
   path: string;
@@ -23,10 +24,12 @@ export function ViewerPanel({
   onSendComment?: (text: string, link?: CommentLink) => void;
   /** The file was renamed (its new path) or deleted (null) from the menu under its name. */
   onFileChanged?: (path: string | null) => void;
+  /** coscribe is in the middle of a turn, so the file may be half written. */
+  busy?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   if (isPptx(path)) {
-    return <SlidesPanel threadId={threadId} path={path} refreshKey={refreshKey} onSendComment={onSendComment} onFileChanged={onFileChanged} />;
+    return <SlidesPanel threadId={threadId} path={path} refreshKey={refreshKey} onSendComment={onSendComment} onFileChanged={onFileChanged} busy={busy} />;
   }
   if (isDesign(path)) {
     return <DesignPanel threadId={threadId} path={path} refreshKey={refreshKey} onFileChanged={onFileChanged} />;

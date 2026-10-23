@@ -30,10 +30,10 @@ interface KindInfo {
 export const KIND_ORDER: ArtifactKind[] = ["docs", "slides", "sheets", "design", "dashboard"];
 
 export const KINDS: Record<ArtifactKind, KindInfo> = {
-  docs: { label: "Docs", colour: "var(--file-doc)", placeholder: "Describe the document you want", badge: null },
-  slides: { label: "Slides", colour: "var(--file-slides)", placeholder: "Describe the presentation you want", badge: "Beta" },
-  sheets: { label: "Sheets", colour: "var(--file-sheet)", placeholder: "Describe the spreadsheet you want", badge: null },
-  design: { label: "Design", colour: "var(--file-design)", placeholder: "Describe the icon, logo or page you want designed", badge: "New" },
+  docs: { label: "Docs", colour: "var(--file-doc)", placeholder: "What should this document be about?", badge: null },
+  slides: { label: "Slides", colour: "var(--file-slides)", placeholder: "What should this deck be about?", badge: "Beta" },
+  sheets: { label: "Sheets", colour: "var(--file-sheet)", placeholder: "What should this workbook be about?", badge: null },
+  design: { label: "Design", colour: "var(--file-design)", placeholder: "What should this design be about?", badge: "New" },
   dashboard: { label: "Dashboard", colour: "var(--file-dashboard)", placeholder: null, badge: "Soon" },
 };
 
