@@ -26,7 +26,7 @@ import type { PptxShapeCapture } from "./components/PptxShapeOverlay";
 import { RunBreadcrumb, TaskPageBreadcrumb } from "./components/RunBreadcrumb";
 import { RunPanel } from "./components/RunPanel";
 import { ScheduledTaskModal } from "./components/ScheduledTaskModal";
-import { SettingsModal } from "./components/settings/SettingsModal";
+import { SettingsModal, type SettingsCategory } from "./components/settings/SettingsModal";
 import { StartupSplash } from "./components/StartupSplash";
 import { ShortcutsDialog } from "./components/ShortcutsDialog";
 import { BackgroundTasksPanel } from "./components/BackgroundTasksPanel";
@@ -96,6 +96,7 @@ function App() {
   const [threadId, setThreadId] = useState(resolveThreadId);
   useSessionSignals(threadId, state.turnInFlight, state.items);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsCategory, setSettingsCategory] = useState<SettingsCategory | undefined>(undefined);
   // Find in page: null while closed; bumped to refocus an open one.
   const [findKey, setFindKey] = useState<number | null>(null);
   const [pendingComposerAction, setPendingComposerAction] = useState<ComposerAction | null>(null);
@@ -653,7 +654,7 @@ function App() {
         instant: payload.isInstant,
         images: payload.images,
       });
-      socketRef.current?.send({ type: "user_message", text: payload.outgoingText, images: payload.images, artifact: artifactStart.take(payload.displayText) });
+      socketRef.current?.send({ type: "user_message", text: payload.outgoingText, images: payload.images, ...artifactStart.take(payload.displayText) });
     });
   };
 
@@ -825,6 +826,9 @@ function App() {
       onExternalPptxCaptureConsumed={() => setPendingPptxCapture(null)}
       artifact={artifactStart.kind}
       onArtifactRemoved={artifactStart.clear}
+      designSystem={artifactStart.designSystem}
+      onDesignSystem={artifactStart.chooseDesignSystem}
+      onManageDesignSystems={() => { setSettingsCategory("design-systems"); setSettingsOpen(true); }}
       externalText={pendingComposerText}
       onExternalTextConsumed={() => setPendingComposerText(null)}
     />
@@ -1033,8 +1037,9 @@ function App() {
               )}
               <SettingsModal
                 open={settingsOpen}
+                initialCategory={settingsCategory}
                 onCreateSkill={onCreateSkill}
-                onClose={() => setSettingsOpen(false)}
+                onClose={() => { setSettingsOpen(false); setSettingsCategory(undefined); }}
               />
               {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
             </div>

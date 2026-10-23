@@ -126,3 +126,47 @@ test("a card's menu renames, copies and deletes through the app's own dialogs", 
   await page.getByRole("button", { name: "Delete", exact: true }).click();
   await expect.poll(() => calls).toContain("DELETE");
 });
+
+test("a Slides start offers the design-system library, and the first message names the one chosen", async ({ page }) => {
+  const sent: string[] = [];
+  page.on("websocket", (socket) => socket.on("framesent", (frame) => sent.push(String(frame.payload))));
+  const made = await page.request.post("/api/design-systems", { data: { name: "Chip test" } });
+  const system = (await made.json()) as { id: string };
+  try {
+    await openPage(page);
+    await page.getByRole("button", { name: /^Slides/ }).click();
+    await waitForConnected(page);
+    await expect(page.getByRole("button", { name: /^Design system: none/ })).toBeVisible();
+    // The message box is laid out again as the new conversation loads, which closes an open menu: open it until it holds.
+    await expect(async () => {
+      if (!(await page.getByRole("menuitem", { name: /design system/i }).isVisible())) await page.getByRole("button", { name: /^Design system: none/ }).click();
+      await expect(page.getByRole("menuitemradio", { name: "Chip test" })).toBeVisible({ timeout: 2000 });
+    }).toPass({ timeout: 20_000 });
+    await expect(page.getByRole("menuitem", { name: /Manage design systems/ })).toBeVisible();
+    await page.getByRole("menuitemradio", { name: "Chip test" }).click();
+    await expect(page.getByRole("button", { name: "Design system: Chip test" })).toBeVisible();
+
+    await page.getByPlaceholder("Describe the presentation you want").fill("a deck about tea");
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("a deck about tea")).toBeVisible();
+    await expect.poll(() => sent.some((payload) => payload.includes('"design_system"') && payload.includes(system.id) && payload.includes('"artifact":"slides"'))).toBe(true);
+  } finally {
+    await page.request.delete(`/api/design-systems/${system.id}`, { timeout: 5000 });
+  }
+});
+
+test("only a Slides start offers a design system", async ({ page }) => {
+  await openPage(page);
+  await page.getByRole("button", { name: /^Docs/ }).click();
+  await expect(page.getByRole("button", { name: "Remove Docs mode" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Design system/ })).toHaveCount(0);
+});
+
+test("the design-system menu leads to the page that manages them", async ({ page }) => {
+  await openPage(page);
+  await page.getByRole("button", { name: /^Slides/ }).click();
+  await waitForConnected(page);
+  await page.getByRole("button", { name: /^Design system: none/ }).click();
+  await page.getByRole("menuitem", { name: /design system/i }).click();
+  await expect(page.getByRole("button", { name: "New design system" })).toBeVisible();
+});
