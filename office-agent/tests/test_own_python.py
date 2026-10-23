@@ -77,7 +77,7 @@ def test_off_windows_there_is_no_download(tmp_path: Path) -> None:
 def test_the_download_is_unpacked_once(tmp_path: Path, windows: _Windows) -> None:
     windows.serve(_archive())
     python = own_python.ensure_own_python(tmp_path)
-    assert python == (tmp_path / "python" / "python.exe").resolve() and python.is_file()
+    assert python == tmp_path / "python" / "python.exe" and python.is_file()
     assert own_python.ensure_own_python(tmp_path) == python
     assert len(windows.fetched) == 1
     assert "x86_64-pc-windows-msvc-install_only.tar.gz" in windows.fetched[0]

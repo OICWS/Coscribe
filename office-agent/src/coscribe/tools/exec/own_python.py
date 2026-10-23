@@ -23,13 +23,15 @@ import httpx
 from ...runtime import configured_proxy
 
 # From the release's SHA256SUMS (astral-sh/python-build-standalone, tag 20261021); a new build
-# means a new tag, version and hashes together.
+# means a new tag, version and hashes together. 3.12, not 3.13: from 3.13 on, Python resolves its
+# own path with GetFinalPathNameByHandleW as it starts, which the scripts' container is denied
+# (seen on the Windows runner), so every script printed "Failed to find real location" on stderr.
 _RELEASE = "20261021"
-_VERSION = "3.13.17"
+_VERSION = "3.12.15"
 _BUILDS = {
-    "AMD64": ("x86_64", "e10b46d9b03a3a494297f336770f55f86474d683061137b1cf595e12e47bcef5"),
-    "ARM64": ("aarch64", "dd7f2c489a30356b02dc0aca8c210400a09952b06a955d432313d605f8850765"),
-    "x86": ("i686", "3229c099ee4608e2388444f539d9574d19e3fd65e26528545f5781ed83d7784c"),
+    "AMD64": ("x86_64", "be7f14464d1d66f84429ad27e01f6d1482963afff64a2fb5256b2a51c7b5d398"),
+    "ARM64": ("aarch64", "c0660992e1907a8dc31e9069676b1415d585b53f17d0aa7e9075f4b06f38fd65"),
+    "x86": ("i686", "490fd9caa3ed15db752379d6fdd0d9a8e8e44e392c3c9c0f274eface439c03ae"),
 }
 _URL = (
     "https://github.com/astral-sh/python-build-standalone/releases/download/"
@@ -58,10 +60,7 @@ def download_url() -> tuple[str, str] | None:
 def ensure_own_python(state_dir: Path) -> Path | None:
     """coscribe's own python.exe, downloaded on first use; None off Windows. Raises
     RuntimeError when the download or its check fails, so the caller can say why."""
-    # The long form of the path: Python resolves its base installation's real location as it
-    # starts, and expanding a short (8.3) name such as RUNNER~1 needs a listing of parent folders
-    # the scripts' container can't read, so every script would warn on stderr.
-    python = own_python_path(state_dir).resolve()
+    python = own_python_path(state_dir)
     if python.is_file():
         return python
     build = download_url()

@@ -7,7 +7,9 @@ be granted read (Program Files, another user's AppData).
 ## Shipped
 - `tools/exec/own_python.py` downloads python-build-standalone's `install_only` build into
   `<state>/python` on first need, and checks it against the SHA-256 pinned there:
-  - release `20261021`, CPython 3.13.17, for x86_64, ARM64 and x86 Windows;
+  - release `20261021`, CPython 3.12.15, for x86_64, ARM64 and x86 Windows. Not 3.13: from 3.13 on
+    Python resolves its own path with `GetFinalPathNameByHandleW` at start, which the container is
+    denied, so every script warned "Failed to find real location" on stderr (seen on the runner);
   - the hashes were taken from the release's `SHA256SUMS`, and the x86_64 archive was downloaded
     and checked against its hash.
 - The download is unpacked into a temporary folder and moved in whole, so a cut-short download
