@@ -58,7 +58,7 @@ export const PAGE_ORDER: PageKind[] = [...KIND_ORDER, "design-system"];
 
 export const PAGE_KINDS: Record<PageKind, KindInfo> = {
   ...KINDS,
-  "design-system": { label: "Design system", colour: "var(--file-design-system)", placeholder: null, badge: null },
+  "design-system": { label: "Design system", colour: "var(--file-design-system)", placeholder: "Describe the brand or the look you want…", badge: null },
 };
 
 async function send<T>(url: string, method: string, body?: unknown): Promise<T> {
@@ -203,7 +203,7 @@ export function editedLabel(iso: string, now: Date): string {
  * `openSystem` shows the design systems in Settings (a system to edit, or null for a new one). */
 export function artifactActions(
   showFile: (threadId: string, path: string) => void,
-  startMade: (threadId: string, kind: ArtifactKind) => void,
+  startMade: (threadId: string, kind: PageKind) => void,
   openSystem: (id: string | null) => void,
 ) {
   return {
@@ -219,7 +219,8 @@ export function artifactActions(
         () => undefined,
       );
     },
-    /** A new conversation whose first message is to make the kind; for a design system, the form. */
-    make: (kind: PageKind) => (kind === "design-system" ? openSystem(null) : startMade(startNewThread(), kind)),
+    /** A new conversation whose first message is to make the kind; a design system opens the blank
+     * form unless the person asked to describe it. */
+    make: (kind: PageKind, describe = false) => (kind === "design-system" && !describe ? openSystem(null) : startMade(startNewThread(), kind)),
   };
 }
