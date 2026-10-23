@@ -227,8 +227,8 @@ Last reviewed: 2026-10-15.
    folders, its Scripts page (fail closed, the audited per-conversation opt-in to run without
    isolation, the self-test result and re-test), and "Read, write and delete" as a third folder
    setting with `delete_file` to the Recycle Bin. Codex's commands are off (2026-10-23). A script's
-   approval card says whether it runs isolated. Next, one PR each: the sweep of grants at start
-   and at uninstall;
+   approval card says whether it runs isolated. Grants on folders no longer in use are taken off
+   at start, and all of them at uninstall. Next, one PR each:
    coscribe's own Python download; read limits and the network switch per conversation with the
    web tools' host allowlist.
 

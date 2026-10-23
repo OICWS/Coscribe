@@ -17,7 +17,7 @@ twins), the interpreter overrides (`get_interpreter_override`, `set_interpreter_
 `working_interpreters`, `fallbacks_for_platform`), the folder-guard helpers (`suggested_folder`,
 `blocked_write`, `refusal_note`, `node_guard_args`, `writable_roots`, `write_python_wrapper`,
 `without_guard_warnings`) and `run_python_script`, and for letting a running script go on in the background (`running.py`) `RunningCommand`, `Detachable`, `HandOff`, `request_detach`, `stop_commands`, and for the container `Isolation`,
-`FolderGrants`, `self_test`, `SelfTest`, `isolation_available`, `isolation_for_scripts`,
+`FolderGrants`, `sweep_folder_grants`, `self_test`, `SelfTest`, `isolation_available`, `isolation_for_scripts`,
 `script_scratch_root`. Import them from
 `coscribe.tools.exec`.
 
@@ -39,7 +39,9 @@ twins), the interpreter overrides (`get_interpreter_override`, `set_interpreter_
   background hand-over and Stop use it.
 - A folder's grant is recorded in `folder-grants.json` before `icacls` writes it, so an ACE is
   never on a folder without an entry to remove it by. Read-write grants carry no DELETE: a
-  container cannot remove or rename, only a trusted tool can.
+  container cannot remove or rename, only a trusted tool can. At each start the server takes
+  the grants off folders no longer in Settings or any conversation (`sweep_folder_grants`), and
+  the uninstaller takes all of them off (`coscribe-server --revoke-folder-grants`).
 
 ## Tests
 `tests/test_scripts_tool.py`, `tests/test_node_scripts_tool.py`, `tests/test_script_guard.py`,
