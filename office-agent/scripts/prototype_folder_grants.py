@@ -175,7 +175,12 @@ def exfat_volume(base: Path) -> str | None:
         "assign letter=X\n",
         encoding="ascii",
     )
-    out = subprocess.run(["diskpart", "/s", str(script)], capture_output=True, text=True)
+    try:
+        out = subprocess.run(["diskpart", "/s", str(script)], capture_output=True, text=True)
+    except OSError as exc:
+        # diskpart needs an administrator; a standard user's run skips the volume.
+        print(f"exFAT volume not created: {exc}")
+        return None
     if out.returncode or not Path("X:\\").exists():
         print(f"exFAT volume not created: {out.stdout.strip()[-400:]}")
         return None

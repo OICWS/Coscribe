@@ -65,12 +65,12 @@ jobs:
           Copy-Item scripts/prototype_folder_grants.py $out
           $cred = New-Object System.Management.Automation.PSCredential("csproto", (ConvertTo-SecureString $password -AsPlainText -Force))
           $p = Start-Process -FilePath $python -ArgumentList "$out\prototype_script_sandbox.py" `
-            -Credential $cred -LoadUserProfile -WorkingDirectory $out -Wait -PassThru `
+            -Credential $cred -LoadUserProfile -UseNewEnvironment -WorkingDirectory $out -Wait -PassThru `
             -RedirectStandardOutput "$out\stdout.txt" -RedirectStandardError "$out\stderr.txt"
           Get-Content "$out\stdout.txt", "$out\stderr.txt" -ErrorAction SilentlyContinue
           Write-Output "script probe as csproto: exit $($p.ExitCode)"
           $p = Start-Process -FilePath $python -ArgumentList "$out\prototype_folder_grants.py" `
-            -Credential $cred -LoadUserProfile -WorkingDirectory $out -Wait -PassThru `
+            -Credential $cred -LoadUserProfile -UseNewEnvironment -WorkingDirectory $out -Wait -PassThru `
             -RedirectStandardOutput "$out\stdout2.txt" -RedirectStandardError "$out\stderr2.txt"
           Get-Content "$out\stdout2.txt", "$out\stderr2.txt" -ErrorAction SilentlyContinue
           Write-Output "folder grants as csproto: exit $($p.ExitCode)"
