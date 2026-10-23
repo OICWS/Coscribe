@@ -150,7 +150,6 @@ kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
 PSID = ctypes.c_void_p
 HRESULT_ALREADY_EXISTS = ctypes.c_long(0x800700B7).value
 EXTENDED_STARTUPINFO_PRESENT = 0x00080000
-CREATE_UNICODE_ENVIRONMENT = 0x00000400
 STARTF_USESTDHANDLES = 0x00000100
 PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES = 0x00020009
 INFINITE = 0xFFFFFFFF
@@ -325,8 +324,9 @@ def run_in_container(
     info.StartupInfo.hStdOutput = handle
     info.StartupInfo.hStdError = handle
     info.lpAttributeList = ctypes.cast(attrs, ctypes.c_void_p)
-    block = "".join(f"{k}={v}\0" for k, v in sorted(env.items())) + "\0"
-    env_buf = ctypes.create_unicode_buffer(block, len(block))
+    # The child inherits this process's environment: an explicit block made CreateProcessW fail
+    # with ERROR_ENVVAR_NOT_FOUND for the container on the runner.
+    os.environ.update(env)
     proc = PROCESS_INFORMATION()
     cmdline = ctypes.create_unicode_buffer(subprocess.list2cmdline(argv))
     if not kernel32.CreateProcessW(
@@ -335,8 +335,8 @@ def run_in_container(
         None,
         None,
         True,
-        EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT,
-        env_buf,
+        EXTENDED_STARTUPINFO_PRESENT,
+        None,
         str(cwd),
         ctypes.byref(info),
         ctypes.byref(proc),
@@ -410,13 +410,7 @@ def main() -> int:
         "profile": os.environ["USERPROFILE"],
         "loopback_port": listener.getsockname()[1],
     }
-    env = {
-        k: v
-        for k, v in os.environ.items()
-        if k.upper()
-        in {"SYSTEMROOT", "WINDIR", "PATH", "USERPROFILE", "PATHEXT", "COMSPEC", "SYSTEMDRIVE"}
-    }
-    env.update(TEMP=str(scratch), TMP=str(scratch), PYTHONIOENCODING="utf-8")
+    env = {"TEMP": str(scratch), "TMP": str(scratch), "PYTHONIOENCODING": "utf-8"}
 
     failed = 0
     try:
