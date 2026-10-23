@@ -225,13 +225,11 @@ Last reviewed: 2026-10-15.
    and the self-test (part 1), every script tool and background task running in it where the
    self-test passed (part 2), Edit environment as a list of pages with the conversation's
    folders, its Scripts page (fail closed, the audited per-conversation opt-in to run without
-   isolation, the self-test result and re-test), and "Read, write and delete" as a third folder
-   folders, its Scripts page (fail closed, the audited per-conversation opt-in to run without
    isolation, the self-test result and re-test), "Read, write and delete" as a third folder
    setting with `delete_file` to the Recycle Bin, and Edit environment > Network (none, limited
-   to listed domains, or full). Codex's commands are off (2026-10-23). Next, one PR each: a "Not
-   isolated" mark on approvals and the sweep of grants at start and at uninstall; coscribe's own
-   Python download; read limits.
+   to listed domains, or full). Codex's commands are off (2026-10-23). A script's approval card
+   says whether it runs isolated. Next, one PR each: the sweep of grants at start and at
+   uninstall; coscribe's own Python download; read limits.
 
 ## Needs the maintainer's testing (could not be verified here)
 
