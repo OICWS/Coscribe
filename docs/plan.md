@@ -181,7 +181,7 @@ Last reviewed: 2026-10-15.
    (decision 0020, accepted: Settings > Design systems, Colors, Typography, Spacing, Corner radius, Assets, Overview; per user, a deck gets a copy; a checker flags what is
    off-system; made from a blank form, a "describe it" conversation of type Design System, or from a .pptx), with Design System as the fifth kind in Artifacts;
    (3) the Slides chip's choice of a system, "Make a new design system first" and "Manage design systems".
-   Step 2 so far: the store and its routes are in (`tools/design_systems.py`, `/api/design-systems`); next the Settings module with a blank form, then assets, the "describe it" conversation and the .pptx extraction.
+   Step 2 so far: the store and its routes (`tools/design_systems.py`, `/api/design-systems`) and Settings > Design systems with the blank form (list, new, edit, delete) are in; next assets, the "describe it" conversation, the .pptx extraction and the Design System kind in Artifacts.
    Design (2026-10-22, issue 551, done: log `2026-10-22-design-artifact.md`): an `.html` page written by a conversation is a Design artifact, drawn in a sandboxed frame (card, panel, Export menu with HTML and PDF); a lone `.svg` is not an artifact. Open: Dashboard on the same sandbox, PNG/.ico export, a theme toggle in the panel.
    Docs (2026-10-21, decision 0019 accepted; research in docs/assessments/2026-10-21-docx-editing.md; editor library Tiptap 3, built first then evaluated): the .docx itself, previewed and edited in the Word panel by styles (headings,
    bold, italic, lists, links, tables, images), only the changed blocks rewritten, the person's Word edits never overwritten. Order:

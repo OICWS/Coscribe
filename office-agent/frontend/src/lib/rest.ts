@@ -1,4 +1,6 @@
 import type {
+  DesignSystem,
+  DesignSystemSummary,
   SecretInfo,
   SecretsResponse,
   MessagingPolicy,
@@ -102,8 +104,9 @@ async function sendForResult<T>(url: string, method: string, body: unknown): Pro
   }).catch(() => null);
   if (!res) return { error: "Couldn't reach coscribe. Check that it's still running." };
   if (res.ok) return res.json() as Promise<T>;
-  const parsed = (await res.json().catch(() => null)) as { error?: string } | null;
-  return { error: parsed?.error ?? `Request failed (${res.status})` };
+  const parsed = (await res.json().catch(() => null)) as { error?: string; detail?: unknown } | null;
+  // FastAPI's own refusals carry the reason as `detail`.
+  return { error: parsed?.error ?? (typeof parsed?.detail === "string" ? parsed.detail : `Request failed (${res.status})`) };
 }
 
 async function del<T>(url: string): Promise<T> {
@@ -479,6 +482,16 @@ export const saveSecret = (name: string, body: { value?: string; hosts: string[]
 
 export const deleteSecret = (name: string) =>
   sendForResult<{ deleted: string }>(`/api/secrets/${encodeURIComponent(name)}`, "DELETE", undefined);
+
+// -- Design systems -------------------------------------------------------
+
+export const getDesignSystems = () => getJson<DesignSystemSummary[]>("/api/design-systems");
+export const getDesignSystem = (id: string) => getJson<DesignSystem>(`/api/design-systems/${encodeURIComponent(id)}`);
+export const createDesignSystem = (name: string) => sendForResult<DesignSystem>("/api/design-systems", "POST", { name });
+export const saveDesignSystem = (system: DesignSystem) =>
+  sendForResult<DesignSystem>(`/api/design-systems/${encodeURIComponent(system.id)}`, "PUT", system);
+export const deleteDesignSystem = (id: string) =>
+  sendForResult<{ status: string }>(`/api/design-systems/${encodeURIComponent(id)}`, "DELETE", undefined);
 
 export const getSessionEnvironment = (threadId: string) =>
   getJson<SessionEnvironment>(`/api/threads/${encodeURIComponent(threadId)}/environment`);
