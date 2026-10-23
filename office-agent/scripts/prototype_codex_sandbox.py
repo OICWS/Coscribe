@@ -29,7 +29,17 @@ sys.path.insert(0, str(Path(__file__).parent))
 import prototype_script_sandbox as box  # noqa: E402
 
 CODEX_VERSION = "0.163.0"
-IMPLEMENTATIONS = ("mxc", "elevated", "unelevated")
+# (implementation, root rule). The first run refused ":root" = "deny" on elevated ("requires
+# effective `:root` read access") and any read-only carve-out on unelevated, so the second rule
+# reads the disk, denies the user profile and opens the folders inside it again.
+RUNS = (
+    ("mxc", "deny"),
+    ("elevated", "deny"),
+    ("unelevated", "deny"),
+    ("elevated", "read, profile denied"),
+    ("unelevated", "read, profile denied"),
+    ("unelevated", "read, all folders write"),
+)
 
 
 def toml_key(path: Path) -> str:
@@ -37,7 +47,15 @@ def toml_key(path: Path) -> str:
     return f"'{path}'"
 
 
-def write_config(home: Path, impl: str, rw: Path, ro: Path, readable: list[Path]) -> None:
+def write_config(
+    home: Path, impl: str, root: str, rw: Path, ro: Path, readable: list[Path]
+) -> None:
+    profile = Path(os.environ["USERPROFILE"])
+    if root == "deny":
+        roots = ['":root" = "deny"', '":minimal" = "read"']
+    else:
+        roots = ['":root" = "read"', f'{toml_key(profile)} = "deny"']
+    ro_access = "write" if root == "read, all folders write" else "read"
     lines = [
         'default_permissions = "coscribe"',
         "",
@@ -45,10 +63,9 @@ def write_config(home: Path, impl: str, rw: Path, ro: Path, readable: list[Path]
         f'sandbox = "{impl}"',
         "",
         "[permissions.coscribe.filesystem]",
-        '":root" = "deny"',
-        '":minimal" = "read"',
+        *roots,
         f'{toml_key(rw)} = "write"',
-        f'{toml_key(ro)} = "read"',
+        f'{toml_key(ro)} = "{ro_access}"',
         *(f'{toml_key(p)} = "read"' for p in readable),
         "",
         "[permissions.coscribe.network]",
@@ -152,12 +169,15 @@ def main() -> int:
     readable = [venv, Path(sys.base_prefix), scratch]
 
     summary = {}
+    elevated_ready = False
     try:
-        for impl in IMPLEMENTATIONS:
-            print(f"\n===== windows.sandbox = {impl} =====")
+        for impl, root in RUNS:
+            run_name = f"{impl} / root {root}"
+            print(f"\n===== windows.sandbox = {impl}, :root {root} =====")
             (outside / "secret.txt").write_text("secret", encoding="utf-8")
-            write_config(home, impl, rw, ro, readable)
-            if impl == "elevated":
+            write_config(home, impl, root, rw, ro, readable)
+            if impl == "elevated" and not elevated_ready:
+                elevated_ready = True
                 setup = codex(
                     exe, home, "sandbox", "setup", "--elevated", "--current-user", timeout=300
                 )
@@ -181,7 +201,7 @@ def main() -> int:
             )
             print(f"smoke: exit {smoke.returncode} {(smoke.stdout + smoke.stderr).strip()[-600:]}")
             if "SANDBOX_OK" not in smoke.stdout:
-                summary[impl] = "did not run a command"
+                summary[run_name] = "did not run a command"
                 log = home / ".sandbox" / "sandbox.log"
                 if log.exists():
                     print(
@@ -207,21 +227,21 @@ def main() -> int:
             print(
                 f"secret.txt still outside: {(outside / 'secret.txt').exists()}; files left outside: {stray}"
             )
-            summary[impl] = f"{seen} checks ran, {differ} differ from the contract"
+            summary[run_name] = f"{seen} checks ran, {differ} differ from the contract"
             for p in list(rw.iterdir()):
                 shutil.rmtree(p, ignore_errors=True) if p.is_dir() else p.unlink(missing_ok=True)
             for p in outside.iterdir():
                 p.unlink(missing_ok=True)
     finally:
         listener.close()
-        if any(impl == "elevated" for impl in summary):
+        if elevated_ready:
             print(codex(exe, home, "sandbox", "uninstall", timeout=120).stdout[-400:])
         shutil.rmtree(outside, ignore_errors=True)
         shutil.rmtree(base, ignore_errors=True)
 
     print("\n===== summary =====")
     for impl, text in summary.items():
-        print(f"{impl:11} {text}")
+        print(f"{impl:40} {text}")
     # Recording, not gating: which implementation holds is the question, not a pass/fail.
     return 0
 
