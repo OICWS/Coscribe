@@ -620,9 +620,9 @@ export function Composer({
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-2 pt-2">
+      <div className="flex items-center justify-between gap-2 whitespace-nowrap pt-2">
         {/* ml-1.5 puts the + under the first letter typed in the box above. */}
-        <div className="ml-1.5 flex items-center gap-0.5">
+        <div className="ml-1.5 flex shrink-0 items-center gap-0.5">
           <input
             ref={fileInputRef}
             type="file"
@@ -645,7 +645,7 @@ export function Composer({
           {modePill}
         </div>
         <RunStatus turnInFlight={turnInFlight} totalTokens={totalTokens} workflowTest={workflowTest} />
-        <div className="flex items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5">
           {modelPicker}
           {effortPicker}
           {usageRing}
