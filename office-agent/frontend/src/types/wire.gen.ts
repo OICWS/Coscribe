@@ -406,6 +406,8 @@ export interface UserMessageOut {
    * to make.
    */
   artifact?: "docs" | "slides" | "sheets" | "design";
+  /** With `artifact: "slides"`: the library design system the deck is to follow. */
+  design_system?: string;
 }
 
 /**

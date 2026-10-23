@@ -129,12 +129,58 @@ _ARTIFACT_NOTE_RE = re.compile(
 )
 
 
-def artifact_note(kind: str | None) -> str:
+_OVERVIEW_LIMIT = 2000
+
+
+def _inline(text: object) -> str:
+    """One line with no `]`: the note is one bracketed sentence, and `strip_mode_note` ends it
+    at the first one."""
+    return " ".join(str(text).replace("]", ")").split())
+
+
+def design_system_text(system: dict[str, Any]) -> str:
+    """A library design system as the sentence the model reads: what to follow, and where it may
+    not apply. It guides; the person may ask for anything else."""
+    parts = [f'Follow their design system "{_inline(system.get("name", ""))}".']
+    overview = _inline(system.get("overview", ""))[:_OVERVIEW_LIMIT]
+    if overview:
+        parts.append(f"Overview: {overview}.")
+    colors = [
+        f"{_inline(c.get('name', ''))} {_inline(c.get('value', ''))}"
+        + (f" ({_inline(c['note'])})" if c.get("note") else "")
+        for c in system.get("colors", [])
+    ]
+    if colors:
+        parts.append(f"Colors: {'; '.join(colors)}.")
+    typography = system.get("typography", {})
+    if typography.get("fonts"):
+        parts.append(f"Fonts: {', '.join(_inline(f) for f in typography['fonts'])}.")
+    styles = [
+        f"{_inline(s.get('name', ''))} {s.get('size')}px weight {s.get('weight')}"
+        for s in typography.get("styles", [])
+    ]
+    if styles:
+        parts.append(f"Text styles: {'; '.join(styles)}.")
+    for label, key in (("Spacing", "spacing"), ("Corner radius", "radius")):
+        rows = [
+            f"{_inline(r.get('name', ''))} {_inline(r.get('value', ''))}"
+            for r in system.get(key, [])
+        ]
+        if rows:
+            parts.append(f"{label}: {'; '.join(rows)}.")
+    return " ".join(parts)
+
+
+def artifact_note(kind: str | None, design_system: dict[str, Any] | None = None) -> str:
     """What the conversation's first message is to make, when it started from the Artifacts page;
-    it goes with the message, never in the system prompt or a tool schema."""
+    it goes with the message, never in the system prompt or a tool schema. A Slides conversation
+    started with a library design system carries it in the same sentence."""
     if kind not in _ARTIFACTS:
         return ""
-    return f"[The user is starting a {kind.capitalize()} artifact: {_ARTIFACTS[kind]}.] "
+    sentence = f"{_ARTIFACTS[kind]}."
+    if kind == "slides" and design_system:
+        sentence += f" {design_system_text(design_system)}"
+    return f"[The user is starting a {kind.capitalize()} artifact: {sentence}] "
 
 
 _LANGUAGE_NOTE_RE = re.compile(r"^\[The user writes in [^:\]]+: [^\]]*\] ")

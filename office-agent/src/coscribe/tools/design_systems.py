@@ -8,6 +8,7 @@ spacing, corner radius, and an overview in free text that the model reads.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -232,6 +233,28 @@ class DesignSystemStore:
             self._write(path, system)
         return {**system, "id": system_id}
 
+    def _thread_path(self, thread_id: str) -> Path:
+        # A thread id is whatever the page sent; its hash is always a safe file name.
+        return (
+            self.root.parent
+            / "thread_design_systems"
+            / f"{hashlib.sha256(thread_id.encode()).hexdigest()[:32]}.json"
+        )
+
+    def choose_for_thread(self, thread_id: str, system_id: str) -> dict[str, Any] | None:
+        """A conversation that starts a deck with a system keeps a copy of it as it was then
+        (decision 0020: the deck never refers back). None when there is no such system."""
+        system = self.get(system_id)
+        if system is None:
+            return None
+        path = self._thread_path(thread_id)
+        with file_lock(path):
+            self._write(path, system)
+        return system
+
+    def chosen_for_thread(self, thread_id: str) -> dict[str, Any] | None:
+        return self._read(self._thread_path(thread_id))
+
     def delete(self, system_id: str) -> bool:
         path = self._path(system_id)
         if path is None or not path.parent.is_dir():
@@ -239,3 +262,15 @@ class DesignSystemStore:
         with file_lock(path):
             shutil.rmtree(path.parent, ignore_errors=True)
         return True
+
+
+def as_deck_design_system(system: dict[str, Any]) -> dict[str, Any]:
+    """A library system in the shape a deck keeps as `design-system.json`: the palette, fonts and
+    text styles the Slides panel offers, with the rest of the system kept beside them."""
+    return {
+        **{key: value for key, value in system.items() if key != "typography"},
+        "palette": [color["value"] for color in system.get("colors", [])],
+        "fonts": list(system.get("typography", {}).get("fonts", [])),
+        "styles": list(system.get("typography", {}).get("styles", [])),
+        "source": system.get("id"),
+    }

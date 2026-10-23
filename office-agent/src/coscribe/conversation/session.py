@@ -115,6 +115,7 @@ from .turn_stream import TurnStreamer
 from .turn_text import (
     TITLE_INSTRUCTIONS,
     clean_title,
+    design_system_for_start,
     format_reply,
     turn_mode_note,
     usage_event,
@@ -1061,6 +1062,7 @@ class ChatSessionLG:
         websocket: EventSink,
         images: list[str] | None = None,
         artifact: str | None = None,
+        design_system: str | None = None,
     ) -> None:
         # See _turn_lock's docstring in __init__: this serializes turns so a
         # message sent while one is still running waits its turn instead of
@@ -1082,7 +1084,13 @@ class ChatSessionLG:
                 self._report_turns_in_row = 0
                 self.turn_running = True
                 await self._handle_user_message_locked(
-                    text, websocket, images=images, artifact=artifact
+                    text,
+                    websocket,
+                    images=images,
+                    artifact=artifact,
+                    design_system=design_system_for_start(
+                        self.settings.state_dir, self.thread_id, artifact, design_system
+                    ),
                 )
         finally:
             self.turn_running = False
@@ -1102,6 +1110,7 @@ class ChatSessionLG:
         *,
         notice: bool = False,
         artifact: str | None = None,
+        design_system: dict[str, Any] | None = None,
     ) -> None:
         await self._run_observational_hooks(
             "UserPromptSubmit",
@@ -1184,7 +1193,7 @@ class ChatSessionLG:
         model_input = (
             current_date_note()
             + mode_note
-            + artifact_note(artifact)
+            + artifact_note(artifact, design_system)
             + language_note(text)
             + deck_note
             + ("" if told else context_note(context))

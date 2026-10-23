@@ -33,11 +33,13 @@ _STYLES = [
 ]
 
 
-def design_system(deck: Path) -> dict[str, Any]:
+def design_system(deck: Path, seed: dict[str, Any] | None = None) -> dict[str, Any]:
     """The deck's design system: `name`, `palette` (#RRGGBB, most used first), `fonts` and
     `styles` (each `id`, `name`, `size`, `weight`, `line_height`, `letter_spacing`). It is made
     from the deck's own pages and saved the first time it is read; a file the user or the app
-    changed is kept. A damaged file is replaced in memory by the default, not overwritten."""
+    changed is kept. A damaged file is replaced in memory by the default, not overwritten. A
+    `seed` (a library system the conversation started with, already in this shape) takes the
+    place of the default the first time."""
     folder = pages_folder(deck)
     if folder is None:
         raise NotBuiltFromPages(f"{deck.name} was not built from pages")
@@ -46,7 +48,7 @@ def design_system(deck: Path) -> dict[str, Any]:
         found = _load(path)
         if found is not None:
             return found
-        made = _default(folder, deck.stem)
+        made = seed if seed is not None and _load_dict(seed) else _default(folder, deck.stem)
         if not path.exists():
             tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
             tmp.write_text(json.dumps(made, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -59,6 +61,10 @@ def _load(path: Path) -> dict[str, Any] | None:
         data: Any = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
+    return _load_dict(data)
+
+
+def _load_dict(data: Any) -> dict[str, Any] | None:
     if not isinstance(data, dict):
         return None
     styles = data.get("styles")
