@@ -9,6 +9,7 @@ name: Windows sandbox prototype
     paths:
       - ".github/workflows/windows-sandbox-prototype.yml"
       - "office-agent/scripts/prototype_script_sandbox.py"
+      - "office-agent/scripts/prototype_folder_grants.py"
 
 permissions:
   contents: read
@@ -35,3 +36,8 @@ jobs:
 
       - name: AppContainer probe
         run: python scripts/prototype_script_sandbox.py
+
+      # Runs even when the probe above fails: the two answer separate questions.
+      - name: Folder grants by capability, no-delete folders, large folders, SMB and exFAT
+        if: always()
+        run: python scripts/prototype_folder_grants.py

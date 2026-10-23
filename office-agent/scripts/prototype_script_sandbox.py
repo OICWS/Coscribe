@@ -166,6 +166,7 @@ EXTENDED_STARTUPINFO_PRESENT = 0x00080000
 STARTF_USESTDHANDLES = 0x00000100
 PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES = 0x00020009
 INFINITE = 0xFFFFFFFF
+SE_GROUP_ENABLED = 0x00000004
 
 
 class SID_AND_ATTRIBUTES(ctypes.Structure):  # noqa: N801 -- the Win32 name
@@ -271,21 +272,54 @@ kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
 kernel32.LocalFree.argtypes = [ctypes.c_void_p]
 
 
-def container_sid() -> tuple[PSID, str]:
-    sid = PSID()
-    hr = userenv.CreateAppContainerProfile(
-        PROFILE, PROFILE, "coscribe prototype", None, 0, ctypes.byref(sid)
-    )
-    if hr == HRESULT_ALREADY_EXISTS:
-        hr = userenv.DeriveAppContainerSidFromAppContainerName(PROFILE, ctypes.byref(sid))
-    if hr != 0:
-        raise OSError(f"AppContainer profile: HRESULT {hr & 0xFFFFFFFF:#010x}")
+def sid_text(sid: PSID) -> str:
     text = wintypes.LPWSTR()
     if not advapi32.ConvertSidToStringSidW(sid, ctypes.byref(text)):
         raise ctypes.WinError(ctypes.get_last_error())
     value = text.value or ""
     kernel32.LocalFree(text)
-    return sid, value
+    return value
+
+
+def container_sid(name: str = PROFILE) -> tuple[PSID, str]:
+    sid = PSID()
+    hr = userenv.CreateAppContainerProfile(
+        name, name, "coscribe prototype", None, 0, ctypes.byref(sid)
+    )
+    if hr == HRESULT_ALREADY_EXISTS:
+        hr = userenv.DeriveAppContainerSidFromAppContainerName(name, ctypes.byref(sid))
+    if hr != 0:
+        raise OSError(f"AppContainer profile: HRESULT {hr & 0xFFFFFFFF:#010x}")
+    return sid, sid_text(sid)
+
+
+kernelbase = ctypes.WinDLL("kernelbase", use_last_error=True)
+kernelbase.DeriveCapabilitySidsFromName.argtypes = [
+    wintypes.LPCWSTR,
+    ctypes.POINTER(ctypes.POINTER(PSID)),
+    ctypes.POINTER(wintypes.DWORD),
+    ctypes.POINTER(ctypes.POINTER(PSID)),
+    ctypes.POINTER(wintypes.DWORD),
+]
+kernelbase.DeriveCapabilitySidsFromName.restype = wintypes.BOOL
+
+
+def capability_sid(name: str) -> tuple[PSID, str]:
+    """The S-1-15-3-1024-... SID Windows derives for a custom capability name."""
+    groups = ctypes.POINTER(PSID)()
+    group_count = wintypes.DWORD()
+    sids = ctypes.POINTER(PSID)()
+    sid_count = wintypes.DWORD()
+    if not kernelbase.DeriveCapabilitySidsFromName(
+        name,
+        ctypes.byref(groups),
+        ctypes.byref(group_count),
+        ctypes.byref(sids),
+        ctypes.byref(sid_count),
+    ):
+        raise ctypes.WinError(ctypes.get_last_error())
+    sid = PSID(sids[0])
+    return sid, sid_text(sid)
 
 
 def grant(path: Path, sid: str, rights: str) -> None:
@@ -305,10 +339,20 @@ def revoke(path: Path, sid: str) -> None:
 
 
 def run_in_container(
-    sid: PSID, argv: list[str], cwd: Path, env: dict[str, str], log: Path
+    sid: PSID,
+    argv: list[str],
+    cwd: Path,
+    env: dict[str, str],
+    log: Path,
+    capabilities: list[PSID] | None = None,
 ) -> tuple[int, int]:
     """Start argv in the container, stdout and stderr to `log`. Returns (pid, process handle)."""
-    caps = SECURITY_CAPABILITIES(sid, None, 0, 0)
+    granted = capabilities or []
+    cap_array = (SID_AND_ATTRIBUTES * max(1, len(granted)))()
+    for i, cap in enumerate(granted):
+        cap_array[i].Sid = cap
+        cap_array[i].Attributes = SE_GROUP_ENABLED
+    caps = SECURITY_CAPABILITIES(sid, cap_array if granted else None, len(granted), 0)
     size = ctypes.c_size_t()
     kernel32.InitializeProcThreadAttributeList(None, 1, 0, ctypes.byref(size))
     attrs = ctypes.create_string_buffer(size.value)
