@@ -739,3 +739,9 @@ body {
 .plan-doc .md-prose li {
   margin: 0.25em 0;
 }
+
+/* The slide stage keeps its scrollbars even with nothing to scroll (see SlideStage): the arrows of
+   an unused one would show, and there is nothing to press. */
+.slide-stage::-webkit-scrollbar-button:disabled {
+  display: none;
+}
