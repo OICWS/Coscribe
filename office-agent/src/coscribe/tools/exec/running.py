@@ -25,6 +25,9 @@ from pathlib import Path
 from typing import Any, BinaryIO
 
 from .._output_truncation import truncate_script_output
+from . import isolation as _isolation
+from ._appcontainer import ContainerProcess
+from .isolation import Isolation
 
 _CHUNK = 65536
 # How long a finished process may keep its pipes open through a child it left running.
@@ -55,17 +58,27 @@ def stop_commands(thread_id: str) -> None:
 
 
 class RunningCommand:
-    def __init__(self, argv: Sequence[str], cwd: str, env: Mapping[str, str]) -> None:
-        self._proc = subprocess.Popen(  # noqa: S603 -- the argv the approved script was given
-            list(argv),
-            cwd=cwd,
-            env=dict(env),
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            # Its own process group on POSIX, so a stop reaches what the script started.
-            start_new_session=sys.platform != "win32",
-        )
+    def __init__(
+        self,
+        argv: Sequence[str],
+        cwd: str,
+        env: Mapping[str, str],
+        isolation: Isolation | None = None,
+    ) -> None:
+        self._proc: subprocess.Popen[bytes] | ContainerProcess
+        if isolation is not None:
+            self._proc = _isolation.start(argv, cwd, env, isolation)
+        else:
+            self._proc = subprocess.Popen(  # noqa: S603 -- the argv the approved script was given
+                list(argv),
+                cwd=cwd,
+                env=dict(env),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                # Its own process group on POSIX, so a stop reaches what the script started.
+                start_new_session=sys.platform != "win32",
+            )
         self.loop: asyncio.AbstractEventLoop | None = None
         self.output_so_far = ""
         self._lock = threading.Lock()

@@ -220,6 +220,15 @@ Last reviewed: 2026-10-15.
    imports of those libraries with an import budget in the ratchet; the sidecar started earlier in the
    Electron shell.
 
+4. **The folder settings as the real limit for scripts** (#560, kurtosisOC, all of it including
+   the UI). Prototype in #561. Part 1 shipped: the AppContainer launcher, folder grants with
+   clean-up and the self-test (`tools/exec/isolation.py`), not applied to any tool yet. Next, one
+   PR each: the script tools and background tasks in the container (fail closed when the self-test
+   fails, a per-conversation opt-in to run without isolation, a decision record superseding the
+   "no sandbox" part of 0002); the settings screens; `delete_file` to the recycle bin and the
+   per-folder delete switch, and coscribe's own Python download; read limits and the network
+   switch per conversation with the web tools' host allowlist; Codex's commands off.
+
 ## Needs the maintainer's testing (could not be verified here)
 
 - Sign-in of the 13 connectors added for the skill plugins (only the
@@ -262,8 +271,6 @@ Last reviewed: 2026-10-15.
 
 - Conversations messaging each other (record 0008, accepted and built; see its record).
 
-- Network access per session (an Edit environment setting). Without a sandbox it
-  could only switch off coscribe's own web tools; it must say so on its face.
 - A callback helper so a script can use a secret (needs its own local
   authentication).
 - A terminal UI.

@@ -4,7 +4,8 @@
 Owns `run_python_script` and `run_node_script` (`scripts.py`, `node_scripts.py`), the process they wait on, which the person can hand to the background tasks (`running.py`), the dedicated
 Python venv and the npm directory the scripts run in (`script_env.py`, `node_env.py`) and the
 guard that catches a script's mistaken writes outside the conversation's folders
-(`script_guard.py`). Does not own the background-command tool (`tools/bookkeeping/background_tasks.py`,
+(`script_guard.py`), and the Windows AppContainer that will hold a script to its folders
+(`isolation.py`, `_appcontainer.py`; issue #560, not applied to any tool yet). Does not own the background-command tool (`tools/bookkeeping/background_tasks.py`,
 which uses the same environments), the approval policy for scripts (`runtime_lg/exec_policy.py`)
 or the Settings routes that install packages (`web/routes/settings/environments.py`).
 
@@ -15,7 +16,9 @@ or the Settings routes that install packages (`web/routes/settings/environments.
 twins), the interpreter overrides (`get_interpreter_override`, `set_interpreter_override`,
 `working_interpreters`, `fallbacks_for_platform`), the folder-guard helpers (`suggested_folder`,
 `blocked_write`, `refusal_note`, `node_guard_args`, `writable_roots`, `write_python_wrapper`,
-`without_guard_warnings`) and `run_python_script`, and for letting a running script go on in the background (`running.py`) `RunningCommand`, `Detachable`, `HandOff`, `request_detach`, `stop_commands`. Import them from `coscribe.tools.exec`.
+`without_guard_warnings`) and `run_python_script`, and for letting a running script go on in the background (`running.py`) `RunningCommand`, `Detachable`, `HandOff`, `request_detach`, `stop_commands`, and for the container `Isolation`,
+`FolderGrants`, `self_test`, `SelfTest`, `isolation_available`. Import them from
+`coscribe.tools.exec`.
 
 ## Depends on
 `coscribe.runtime`, `coscribe.tools._files_written`, `coscribe.tools._output_truncation`.
@@ -25,13 +28,20 @@ twins), the interpreter overrides (`get_interpreter_override`, `set_interpreter_
   mistake catcher, not a security boundary (`docs/decisions/0002-approvals-not-a-sandbox.md`).
 - Both script tools carry the `EXEC` risk tier; approvals read it.
 - Tool schemas are fixed and snapshotted (`tests/tool_schemas.txt`).
+- `RunningCommand` keeps one interface whether or not it runs in the container: the
+  background hand-over and Stop use it.
+- A folder's grant is recorded in `folder-grants.json` before `icacls` writes it, so an ACE is
+  never on a folder without an entry to remove it by. Read-write grants carry no DELETE: a
+  container cannot remove or rename, only a trusted tool can.
 
 ## Tests
 `tests/test_scripts_tool.py`, `tests/test_node_scripts_tool.py`, `tests/test_script_guard.py`,
-`tests/test_script_env.py`, `tests/test_node_env.py`, `tests/test_env_lock.py`.
+`tests/test_script_env.py`, `tests/test_node_env.py`, `tests/test_env_lock.py`,
+`tests/test_isolation.py` (its container tests run in the Windows CI job).
 
 ## Verify by hand
-A script run on Windows with no Python or Node installed; a package install from Settings.
+A script run on Windows with no Python or Node installed; a package install from Settings;
+the self-test on a standard-user Windows 11 laptop and in a OneDrive folder.
 
 ## Reviewed
 2026-10-17 (first card).
