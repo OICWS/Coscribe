@@ -92,9 +92,11 @@ from ..tools import (
     enabled_skill_names,
     load_builtin_skills,
     load_skills,
+    sweep_folder_grants,
 )
 from .background_events import BackgroundEventBus
 from .connector_manager import ConnectorManager
+from .folder_grants import sweep_unused_folder_grants
 from .local_guard import ALLOWED_HOSTS_ENV, LocalOnlyGuard, launch_token, page_with_token
 from .provider_catalog import (
     BUILTIN_PROVIDERS,
@@ -270,6 +272,8 @@ def _make_lifespan(
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         remove_stale_code_sidecars(settings.state_dir)
+        # icacls on a large folder takes a while, and nothing waits on it.
+        sweep = asyncio.create_task(asyncio.to_thread(sweep_unused_folder_grants, settings))
         async with AsyncSqliteSaver.from_conn_string(str(checkpoint_path)) as checkpointer:
             checkpointer_holder["checkpointer"] = checkpointer
             mcp_connect_task = await _start_mcp_connect(settings, mcp_oauth, connectors)
@@ -305,6 +309,7 @@ def _make_lifespan(
                 task.cancel()
             await app_callback.stop()
             await shutdown_code_services()
+            await asyncio.gather(sweep, return_exceptions=True)
 
     return lifespan
 
@@ -732,7 +737,14 @@ def main() -> None:
     # office-agent-desktop-electron/build/installer.nsh, which is what
     # actually calls this.
     parser.add_argument("--version", action="version", version=f"coscribe {__version__}")
+    # Run by the uninstaller: the ACEs scripts' isolation wrote on the person's folders go too.
+    parser.add_argument("--revoke-folder-grants", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.revoke_folder_grants:
+        settings = _load_settings_or_none()
+        if settings is not None:
+            sweep_folder_grants(settings.state_dir, None)
+        return
 
     _exit_when_orphaned()
     if args.host not in ("127.0.0.1", "localhost", "::1", "0.0.0.0", "::"):

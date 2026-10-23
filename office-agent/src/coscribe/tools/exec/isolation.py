@@ -173,6 +173,18 @@ class FolderGrants:
                     del self._grants[(key, access)]
             self._save()
 
+    def sweep(self, keep: Sequence[Path] | None) -> list[str]:
+        """Revokes every grant on a folder not in `keep` (None: every grant, at uninstall), and
+        returns the folders swept. A folder kept by a conversation that isn't open stays granted,
+        so its next run doesn't walk the tree again."""
+        kept = {os.path.normcase(str(p.resolve())) for p in keep or ()}
+        gone = sorted(
+            {g.path for g in self._grants.values() if os.path.normcase(g.path) not in kept}
+        )
+        for path in gone:
+            self.revoke(Path(path))
+        return gone
+
 
 def capabilities_for(isolation: Isolation) -> tuple[list[str], list[Path]]:
     """The capabilities a run holds, and the folders whose grant failed (the run cannot reach
@@ -319,6 +331,23 @@ def venv_runtime(venv_dir: Path) -> list[Path]:
     except OSError:
         pass
     return folders
+
+
+def sweep_folder_grants(state_dir: Path, folders: Sequence[Path] | None) -> list[str]:
+    """Takes coscribe's ACEs off folders no longer in use: `folders` are the person's folders
+    still configured or used by a conversation (None at uninstall: every grant goes). What the
+    interpreters read is kept, and a self-test's folder, deleted after the test, is dropped."""
+    keep: list[Path] | None = None
+    if folders is not None:
+        node = shutil.which("node")
+        keep = [
+            *folders,
+            *venv_runtime(state_dir / "script-env"),
+            state_dir / "node-env",
+            state_dir / "script-scratch",
+            *([Path(node).resolve().parent] if node else []),
+        ]
+    return FolderGrants(state_dir).sweep(keep)
 
 
 def scratch_root(state_dir: Path) -> Path:

@@ -119,6 +119,26 @@ def test_revoke_takes_both_accesses_off_one_folder_only(
     assert [c[1] for c in fake_icacls[3:]] == ["/remove:g", "/remove:g"]
 
 
+def test_the_sweep_keeps_the_folders_in_use_and_what_interpreters_read(
+    tmp_path: Path, fake_icacls: list[tuple[str, ...]]
+) -> None:
+    state = tmp_path / "state"
+    used, removed, venv = tmp_path / "used", tmp_path / "removed", state / "script-env"
+    for folder in (used, removed, venv):
+        folder.mkdir(parents=True)
+    grants = FolderGrants(state)
+    for folder, access in ((used, "write"), (removed, "write"), (venv, "read")):
+        grants.ensure(folder, access)
+    assert isolation.sweep_folder_grants(state, [used]) == [str(removed.resolve())]
+    assert sorted(p for p, _ in FolderGrants(state).entries()) == sorted(
+        [str(used.resolve()), str(venv.resolve())]
+    )
+    assert isolation.sweep_folder_grants(state, [used]) == []
+    # At uninstall every grant goes.
+    assert len(isolation.sweep_folder_grants(state, None)) == 2
+    assert FolderGrants(state).entries() == []
+
+
 def test_a_folder_that_is_gone_leaves_the_registry(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
