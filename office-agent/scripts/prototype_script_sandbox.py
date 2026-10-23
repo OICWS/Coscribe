@@ -378,7 +378,9 @@ def alive(pid: int) -> bool:
 
 
 def main() -> int:
-    base = Path(tempfile.mkdtemp(prefix="coscribe-sandbox-"))
+    # Long names: TEMP on the runner is the 8.3 form (RUNNER~1), and expanding it means listing
+    # C:\Users, which the container may not do. PowerShell expands its working folder at start.
+    base = Path(tempfile.mkdtemp(prefix="coscribe-sandbox-")).resolve()
     venv = base / "script-env"
     print(f"Python {sys.version.split()[0]} at {sys.base_prefix}")
     t0 = time.monotonic()
