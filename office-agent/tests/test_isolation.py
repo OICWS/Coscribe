@@ -88,12 +88,13 @@ def test_a_crash_during_the_grant_leaves_an_entry_to_revoke(
     monkeypatch.setattr(isolation, "_icacls", lambda *args: removed.append(args) or True)
     after_restart = FolderGrants(tmp_path / "state")
     assert after_restart.entries() == [(str(tmp_path.resolve()), "write")]
-    after_restart.revoke_all()
+    for path, _access in after_restart.entries():
+        after_restart.revoke(Path(path))
     assert removed == [(str(tmp_path.resolve()), "/remove:g", "*S-x")]
     assert FolderGrants(tmp_path / "state").entries() == []
 
 
-def test_prune_revokes_only_the_folders_no_longer_named(
+def test_revoke_takes_both_accesses_off_one_folder_only(
     tmp_path: Path, fake_icacls: list[tuple[str, ...]]
 ) -> None:
     kept, dropped = tmp_path / "kept", tmp_path / "dropped"
@@ -103,7 +104,7 @@ def test_prune_revokes_only_the_folders_no_longer_named(
     grants.ensure(kept, "write")
     grants.ensure(dropped, "read")
     grants.ensure(dropped, "write")
-    grants.prune([kept])
+    grants.revoke(dropped)
     assert FolderGrants(tmp_path / "state").entries() == [(str(kept.resolve()), "write")]
     assert [c[1] for c in fake_icacls[3:]] == ["/remove:g", "/remove:g"]
 
@@ -205,7 +206,13 @@ def folders(tmp_path: Path) -> Iterator[tuple[Path, Path, Path, Path]]:
     (tmp_path / "probe").mkdir()
     (tmp_path / "probe" / "probe.py").write_text(_PROBE, encoding="utf-8")
     yield state, work, ref, outside
-    FolderGrants(state).revoke_all()
+    _revoke_all(state)
+
+
+def _revoke_all(state: Path) -> None:
+    grants = FolderGrants(state)
+    for path in {path for path, _access in grants.entries()}:
+        grants.revoke(Path(path))
 
 
 def _runtime() -> tuple[Path, ...]:
@@ -279,7 +286,7 @@ def test_the_self_test_passes_and_is_cached(tmp_path: Path) -> None:
         # Only the runtime folders stay granted; the test's own folders are revoked.
         assert {access for _path, access in FolderGrants(state).entries()} == {"read"}
     finally:
-        FolderGrants(state).revoke_all()
+        _revoke_all(state)
 
 
 @windows

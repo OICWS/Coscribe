@@ -10,8 +10,8 @@ the contract. This is part 1: the mechanism, not yet applied to any tool.
   SIDs from names, and a process object with the parts of `Popen` that `RunningCommand` uses.
 - `tools/exec/isolation.py`: `Isolation` (writable, readable and runtime folders, network on or
   off), `FolderGrants` (one ACE per folder and access, recorded before it is written, granted
-  again when a folder is made anew, `revoke`, `prune` for folders no longer named, `revoke_all`
-  for uninstall), and `self_test`, cached per Windows version and interpreter. Read-write is
+  again when a folder is made anew, `revoke` for a folder taken away; the sweep at start and at
+  uninstall comes with its callers in part 2), and `self_test`, cached per Windows version and interpreter. Read-write is
   `RX,W`: no delete or rename from a container.
 - `RunningCommand(..., isolation=...)` starts in the container; without it, nothing changes.
 - `tests/test_isolation.py`: the registry everywhere; on Windows, a real container (writes,

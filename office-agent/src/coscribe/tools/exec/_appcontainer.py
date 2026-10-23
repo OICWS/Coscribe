@@ -266,10 +266,9 @@ if sys.platform == "win32":
         stderr on pipes and stdin on NUL."""
         container = _container_sid()
         caps = [_capability(name) for name in capabilities]
-        cap_array = (_SidAndAttributes * max(1, len(caps)))()
-        for i, sid in enumerate(caps):
-            cap_array[i].Sid = sid
-            cap_array[i].Attributes = _SE_GROUP_ENABLED
+        cap_array = (_SidAndAttributes * max(1, len(caps)))(
+            *(_SidAndAttributes(sid, _SE_GROUP_ENABLED) for sid in caps)
+        )
         security = _SecurityCapabilities(container, cap_array if caps else None, len(caps), 0)
 
         out_read, out_write = os.pipe()
@@ -303,12 +302,16 @@ if sys.platform == "win32":
                         attributes, 0, attribute, value, value_size, None, None
                     ):
                         raise ctypes.WinError(ctypes.get_last_error())
-                info = _StartupInfoEx()
-                info.StartupInfo.cb = ctypes.sizeof(_StartupInfoEx)
-                info.StartupInfo.dwFlags = _STARTF_USESTDHANDLES
-                info.StartupInfo.hStdInput, info.StartupInfo.hStdOutput = handles[0], handles[1]
-                info.StartupInfo.hStdError = handles[2]
-                info.lpAttributeList = ctypes.cast(attributes, ctypes.c_void_p)
+                info = _StartupInfoEx(
+                    _StartupInfo(
+                        cb=ctypes.sizeof(_StartupInfoEx),
+                        dwFlags=_STARTF_USESTDHANDLES,
+                        hStdInput=handles[0],
+                        hStdOutput=handles[1],
+                        hStdError=handles[2],
+                    ),
+                    ctypes.cast(attributes, ctypes.c_void_p),
+                )
                 process = _ProcessInformation()
                 command_line = ctypes.create_unicode_buffer(subprocess.list2cmdline(list(argv)))
                 block = _environment_block(env)

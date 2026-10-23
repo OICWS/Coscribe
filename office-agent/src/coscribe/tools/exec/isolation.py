@@ -11,7 +11,7 @@ Rights, per folder:
   replace-by-rename are refused by Windows, so a delete can only go through a trusted tool.
 
 Every grant is recorded in `folder-grants.json` before `icacls` writes it, so a crash between the
-two leaves an entry that `revoke_all` still removes. Volumes without ACLs (FAT, exFAT) cannot be
+two leaves an entry that `revoke` still removes. Volumes without ACLs (FAT, exFAT) cannot be
 closed this way; SMB shares are not reachable from a container at all.
 """
 
@@ -26,7 +26,7 @@ import subprocess
 import sys
 import tempfile
 import threading
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -73,7 +73,7 @@ def _folder_id(path: Path) -> float | None:
 
 
 def _icacls(*args: str) -> bool:
-    done = subprocess.run(  # noqa: S603 -- fixed program, paths and SIDs we made
+    done = subprocess.run(
         ["icacls", *args, "/Q"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -86,7 +86,6 @@ def _icacls(*args: str) -> bool:
 class _Grant:
     path: str
     access: Access
-    capability: str
     sid: str
     folder_id: float | None = None
 
@@ -133,7 +132,7 @@ class FolderGrants:
             if known is not None and known.folder_id == folder_id:
                 return name, True
             sid = _appcontainer.capability_sid(name)
-            grant = _Grant(str(resolved), access, name, sid, folder_id)
+            grant = _Grant(str(resolved), access, sid, folder_id)
             self._grants[grant.key()] = grant
             self._save()
             ok = _icacls(str(resolved), "/grant", f"*{sid}:(OI)(CI)({_RIGHTS[access]})")
@@ -157,18 +156,6 @@ class FolderGrants:
                 ):
                     del self._grants[(key, access)]
             self._save()
-
-    def prune(self, keep: Iterable[Path]) -> None:
-        """Revokes every folder not in `keep`: the folders some conversation or the settings
-        still name. Called at start, it also covers a folder removed while coscribe was off."""
-        kept = {os.path.normcase(str(Path(p).resolve())) for p in keep}
-        for path in {g.path for g in self._grants.values()}:
-            if os.path.normcase(path) not in kept:
-                self.revoke(Path(path))
-
-    def revoke_all(self) -> None:
-        """For uninstall: leaves no ACE of coscribe's on the person's folders."""
-        self.prune(())
 
 
 def capabilities_for(isolation: Isolation) -> tuple[list[str], list[Path]]:
