@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from . import _office_com
+from ._pdfium import PDFIUM_LOCK
 
 # The first start of Word or PowerPoint after a login can take half a minute.
 OFFICE_TIMEOUT = 60.0
@@ -125,6 +126,11 @@ def measure_page_words(pdf_path: Path, max_pages: int) -> list[dict[str, Any]]:
     (inherited sizes, autofit). The loose box is the font's own ascent to
     descent, about 1.2x the size, the same box poppler's word boxes gave.
     Empty on any failure: a measurement is never worth failing a preview."""
+    with PDFIUM_LOCK:
+        return _measure_page_words(pdf_path, max_pages)
+
+
+def _measure_page_words(pdf_path: Path, max_pages: int) -> list[dict[str, Any]]:
     try:
         import pypdfium2 as pdfium
 
@@ -171,6 +177,11 @@ def _render_pdf_pages(pdf_path: Path, out_dir: Path, first: int, last: int) -> l
     """PNG files for pages first..last (1-based, clipped to the document).
     PDFium renders them, so nothing outside Python is needed -- poppler is
     not something a Windows machine has."""
+    with PDFIUM_LOCK:
+        return _render_locked(pdf_path, out_dir, first, last)
+
+
+def _render_locked(pdf_path: Path, out_dir: Path, first: int, last: int) -> list[Path]:
     import pypdfium2 as pdfium
 
     document = pdfium.PdfDocument(str(pdf_path))

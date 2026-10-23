@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import threading
 from pathlib import Path
 
-_PDFIUM_LOCK = threading.Lock()
+from ..._pdfium import PDFIUM_LOCK as _PDFIUM_LOCK
 
 
 def _pdf_page_texts(
