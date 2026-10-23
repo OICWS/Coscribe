@@ -5,7 +5,7 @@ Owns `run_python_script` and `run_node_script` (`scripts.py`, `node_scripts.py`)
 Python venv and the npm directory the scripts run in (`script_env.py`, `node_env.py`) and the
 guard that catches a script's mistaken writes outside the conversation's folders
 (`script_guard.py`), and the Windows AppContainer that will hold a script to its folders
-(`isolation.py`, `_appcontainer.py`; issue #560, not applied to any tool yet). Does not own the background-command tool (`tools/bookkeeping/background_tasks.py`,
+(`isolation.py`, `_appcontainer.py`; decision 0021). Does not own the background-command tool (`tools/bookkeeping/background_tasks.py`,
 which uses the same environments), the approval policy for scripts (`runtime_lg/exec_policy.py`)
 or the Settings routes that install packages (`web/routes/settings/environments.py`).
 
@@ -17,15 +17,18 @@ twins), the interpreter overrides (`get_interpreter_override`, `set_interpreter_
 `working_interpreters`, `fallbacks_for_platform`), the folder-guard helpers (`suggested_folder`,
 `blocked_write`, `refusal_note`, `node_guard_args`, `writable_roots`, `write_python_wrapper`,
 `without_guard_warnings`) and `run_python_script`, and for letting a running script go on in the background (`running.py`) `RunningCommand`, `Detachable`, `HandOff`, `request_detach`, `stop_commands`, and for the container `Isolation`,
-`FolderGrants`, `self_test`, `SelfTest`, `isolation_available`. Import them from
+`FolderGrants`, `self_test`, `SelfTest`, `isolation_available`, `isolation_for_scripts`,
+`script_scratch_root`. Import them from
 `coscribe.tools.exec`.
 
 ## Depends on
 `coscribe.runtime`, `coscribe.tools._files_written`, `coscribe.tools._output_truncation`.
 
 ## Invariants
-- No sandbox: scripts run as the user, with the user's files and network. The folder guard is a
-  mistake catcher, not a security boundary (`docs/decisions/0002-approvals-not-a-sandbox.md`).
+- On Windows, where the self-test passed, every script run (the two tools and the background
+  ones in `tools/bookkeeping/background_tasks.py`) starts in the AppContainer with only its
+  conversation's folders (decision 0021). Elsewhere it runs as the user, and the folder guard is
+  a mistake catcher, not a security boundary. Text for the model or the person says which.
 - Both script tools carry the `EXEC` risk tier; approvals read it.
 - Tool schemas are fixed and snapshotted (`tests/tool_schemas.txt`).
 - `RunningCommand` keeps one interface whether or not it runs in the container: the

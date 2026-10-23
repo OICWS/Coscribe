@@ -22,10 +22,10 @@ already gives for "come back when it's done" -- see tools/bookkeeping/selfwake.p
 a second kind of "background thing that eventually finishes," this
 module's `BackgroundTaskStore` as its new backing.
 
-**Same no-sandbox posture as the synchronous scripts** (see tools/exec/scripts.py's
-own docstring for the full reasoning) -- the approval prompt before a
-background script starts is the only safety mechanism, same as the
-synchronous tools' approval prompt before they run.
+**Same isolation as the synchronous scripts** (see tools/exec/scripts.py's own
+docstring): in the AppContainer where the machine passed the self-test, and
+watched like a script let go on in the background, since a container process
+is not an asyncio one; otherwise the approval prompt is the safety mechanism.
 
 **Known v1 limitation, not fixed (documented, not silently ignored, same
 posture as Phase 4's "poller-triggered resume doesn't stream into an open
@@ -65,9 +65,11 @@ from ..exec import (
     blocked_write,
     ensure_node_env,
     ensure_script_env,
+    isolation_for_scripts,
     node_guard_args,
     overlay_env,
     refusal_note,
+    script_scratch_root,
     suggested_folder,
     venv_python,
     without_guard_warnings,
@@ -378,11 +380,12 @@ def adopt_running_command(
     command: RunningCommand,
     language: str,
     description: str,
-    scratch_dir: Path,
+    scratch_dir: Path | None,
+    timeout: float = _DEFAULT_TIMEOUT,
 ) -> str:
     """Takes over a script the person let go on in the background from a tool call that was
-    waiting for it, and returns the new task's id. Runs on the tool's worker thread, so what
-    must reach the event loop goes through `command.loop`."""
+    waiting for it, or one started contained, and returns the new task's id. Runs on the tool's
+    worker thread, so what must reach the event loop goes through `command.loop`."""
     store = BackgroundTaskStore(state_dir)
     task = BackgroundTask(
         task_id=uuid.uuid4().hex[:12],
@@ -399,22 +402,108 @@ def adopt_running_command(
     _announce(task, command.loop)
     threading.Thread(
         target=_watch,
-        args=(store, task, command, scratch_dir),
+        args=(store, task, command, scratch_dir, timeout),
         name="background-watch",
         daemon=True,
     ).start()
     return task.task_id
 
 
+def _prepare_script(
+    language: str,
+    script: str,
+    state: Path,
+    scratch_root: Path,
+    write_roots: list[str],
+    base_env: dict[str, str],
+) -> tuple[list[str], dict[str, str], Path, list[Path]]:
+    """The argv, environment, scratch folder and runtime folders of a background script, with
+    the script written into its scratch folder."""
+    if language == "python":
+        interpreter = str(venv_python(ensure_script_env(state)))
+        scratch_dir = Path(tempfile.mkdtemp(prefix="coscribe_bg_script_", dir=scratch_root))
+        script_path = scratch_dir / "script.py"
+        # PYTHONIOENCODING/PYTHONUTF8 forced for the same reason
+        # tools/exec/scripts.py's _run_python_script does -- without them, a
+        # background script's own print() of non-Latin1 text (Chinese,
+        # routine for this codebase's users) can crash inside the child
+        # itself on a Windows machine with a non-UTF-8 locale, the
+        # 'charmap' codec can't encode characters bug documented in
+        # PPTX_DESIGN.md §23.
+        env = {
+            **base_env,
+            "PYTHONIOENCODING": "utf-8",
+            "PYTHONUTF8": "1",
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "MPLCONFIGDIR": str(scratch_dir),
+        }
+        wrapper, guard_config = write_python_wrapper(scratch_dir, [*write_roots, str(scratch_dir)])
+        guard_args = [str(wrapper), str(guard_config)]
+        runtime: list[Path] = []
+    else:
+        node_env_dir = ensure_node_env(state)
+        interpreter = shutil.which("node") or "node"
+        scratch_dir = Path(tempfile.mkdtemp(prefix="coscribe_bg_node_", dir=scratch_root))
+        script_path = scratch_dir / "script.js"
+        env = {**base_env, "NODE_PATH": str(node_env_dir / "node_modules")}
+        guard_args = node_guard_args(interpreter, [*write_roots, str(scratch_dir)]) or []
+        runtime = [node_env_dir, Path(interpreter).resolve().parent]
+    # encoding="utf-8": Path.write_text has no UTF-8 default on Windows.
+    script_path.write_text(script, encoding="utf-8")
+    return [interpreter, *guard_args, str(script_path)], env, scratch_dir, runtime
+
+
+async def _start_contained(
+    state: Path,
+    thread_id: str,
+    root: Path,
+    argv: Sequence[str] | str,
+    env: dict[str, str],
+    folders: dict[str, list[Path]],
+    runtime: Sequence[Path],
+    language: str,
+    description: str,
+    scratch_dir: Path | None,
+    timeout: float,
+) -> dict[str, Any] | None:
+    """Starts the run in the container and hands it to `_watch`, or returns None when this
+    machine cannot hold it (then the caller starts it as before)."""
+    isolation = await asyncio.to_thread(
+        isolation_for_scripts, state, runtime=runtime, **folders
+    )
+    if isolation is None:
+        return None
+    if scratch_dir is not None:
+        env = env | {"TEMP": str(scratch_dir), "TMP": str(scratch_dir)}
+    loop = asyncio.get_running_loop()
+
+    def start() -> str:
+        # A container process is not an asyncio one: it is watched the way a script let go on
+        # in the background is.
+        command = RunningCommand(argv, str(root), env, isolation)
+        command.loop = loop
+        return adopt_running_command(
+            state, thread_id, command, language, description, scratch_dir, timeout
+        )
+
+    task_id = await asyncio.to_thread(start)
+    status = {"task_id": task_id, "status": "running"}
+    return {**status, "language": language, "description": description}
+
+
 def _watch(
-    store: BackgroundTaskStore, task: BackgroundTask, command: RunningCommand, scratch_dir: Path
+    store: BackgroundTaskStore,
+    task: BackgroundTask,
+    command: RunningCommand,
+    scratch_dir: Path | None,
+    timeout: float,
 ) -> None:
     """`_supervise` for a process that is not an asyncio one. The time limit counts from the
     hand-over: the person chose to let it go on."""
     timed_out = False
     try:
         try:
-            exit_code = command.wait_exit(_DEFAULT_TIMEOUT)
+            exit_code = command.wait_exit(timeout)
         except subprocess.TimeoutExpired:
             timed_out = True
             _kill(task, command)
@@ -422,10 +511,13 @@ def _watch(
                 exit_code = command.wait_exit(_KILL_GRACE_SECONDS)
             except subprocess.TimeoutExpired:
                 exit_code = -1
+        # Settled before it leaves _LIVE: this runs off the event loop, and a status check in
+        # between would take the task for an orphan and write the same record at once.
+        _settle(store, task, exit_code, timed_out, command.loop)
     finally:
         _LIVE.pop(task.task_id, None)
-        shutil.rmtree(scratch_dir, ignore_errors=True)
-    _settle(store, task, exit_code, timed_out, command.loop)
+        if scratch_dir is not None:
+            shutil.rmtree(scratch_dir, ignore_errors=True)
 
 
 def stop_background_task(
@@ -485,6 +577,7 @@ def build_background_task_tools(
     state_dir: str | Path,
     *,
     extra_writable: Sequence[str | Path] = (),
+    extra_readable: Sequence[str | Path] = (),
     session_env: Callable[[], Mapping[str, str]] | None = None,
 ) -> list[Callable[..., Any]]:
     """Return the tool callables the Coordinator agent can call. `state_dir`
@@ -495,23 +588,31 @@ def build_background_task_tools(
     state = Path(state_dir)
     store = BackgroundTaskStore(state)
     write_roots = writable_roots(root, [Path(p) for p in extra_writable])
+    folders = {
+        "writable": [root, *(Path(p) for p in extra_writable)],
+        "readable": [Path(p) for p in extra_readable],
+    }
+    scratch_root = script_scratch_root(state)
 
     async def run_background_script(
         language: str, script: str, description: str, timeout_seconds: float = _DEFAULT_TIMEOUT
     ) -> dict[str, Any]:
-        """Start a Python or Node.js script running in the background and
-        return immediately -- for a script expected to take longer than
-        run_python_script/run_node_script's own 600-second hard cap (a
-        big OCR/data-processing job, a long batch pipeline), where waiting
-        synchronously would tie up the whole conversation. Like those two
-        tools, there is no sandbox around it (see this module's docstring):
-        the script can read any file the coscribe process can reach and
-        make any network call; writes outside the workspace and the
-        folders added to this conversation are refused. Runs with its working directory set to
-        the workspace root and against the exact same dedicated Python/
-        Node environment run_python_script/run_node_script use (same
-        pre-installed packages, same "you manage extra packages from the
-        Environment settings tab" rule).
+        """Start a Python or Node.js script running in the background and return
+        immediately -- for a script expected to take longer than
+        run_python_script/run_node_script's own 600-second hard cap (a big
+        OCR/data-processing job, a long batch pipeline), where waiting
+        synchronously would tie up the whole conversation. It is held to the
+        same folders as those two tools: on Windows, when this computer passed
+        coscribe's isolation check, the script runs isolated: it can read the
+        workspace and the folders added to this conversation, and write in the
+        workspace and the read-write ones, but cannot delete, rename or move
+        files there, nor reach any other folder; use delete_file or move_file
+        for those. Elsewhere, or when the check failed, writes outside those
+        folders are refused and the script can still read other files. Runs with
+        its working directory set to the workspace root and against the exact
+        same dedicated Python/Node environment
+        run_python_script/run_node_script use (same pre-installed packages, same
+        "you manage extra packages from the Environment settings tab" rule).
 
         This call does NOT return the script's output -- only a task_id
         confirming it started. Use check_background_task(task_id) to read
@@ -535,45 +636,18 @@ def build_background_task_tools(
             raise ValueError(f"language must be one of {VALID_LANGUAGES}, got {language!r}")
         timeout = min(max(timeout_seconds, 1.0), _MAX_TIMEOUT)
 
-        if language == "python":
-            venv_dir = await asyncio.to_thread(ensure_script_env, state)
-            interpreter = str(venv_python(venv_dir))
-            scratch_dir = Path(tempfile.mkdtemp(prefix="coscribe_bg_script_"))
-            script_path = scratch_dir / "script.py"
-            # PYTHONIOENCODING/PYTHONUTF8 forced for the same reason
-            # tools/exec/scripts.py's _run_python_script does -- without them, a
-            # background script's own print() of non-Latin1 text (Chinese,
-            # routine for this codebase's users) can crash inside the child
-            # itself on a Windows machine with a non-UTF-8 locale, the
-            # 'charmap' codec can't encode characters bug documented in
-            # PPTX_DESIGN.md §23.
-            env = {
-                **overlay_env(os.environ, session_env() if session_env else None),
-                "PYTHONIOENCODING": "utf-8",
-                "PYTHONUTF8": "1",
-                "PYTHONDONTWRITEBYTECODE": "1",
-                "MPLCONFIGDIR": str(scratch_dir),
-            }
-            wrapper, guard_config = write_python_wrapper(scratch_dir, write_roots)
-            guard_args = [str(wrapper), str(guard_config)]
-        else:
-            node_env_dir = await asyncio.to_thread(ensure_node_env, state)
-            interpreter = shutil.which("node") or "node"
-            scratch_dir = Path(tempfile.mkdtemp(prefix="coscribe_bg_node_script_"))
-            script_path = scratch_dir / "script.js"
-            env = {
-                **overlay_env(os.environ, session_env() if session_env else None),
-                "NODE_PATH": str(node_env_dir / "node_modules"),
-            }
-            guard_args = node_guard_args(interpreter, write_roots) or []
-        # encoding="utf-8" for the same reason as the write above's own
-        # comment: Path.write_text has no UTF-8 default on Windows.
-        script_path.write_text(script, encoding="utf-8")
-
+        base_env = overlay_env(os.environ, session_env() if session_env else None)
+        argv, env, scratch_dir, runtime = await asyncio.to_thread(
+            _prepare_script, language, script, state, scratch_root, write_roots, base_env
+        )
+        started = await _start_contained(
+            state, thread_id, root, argv, env, folders, runtime, language, description,
+            scratch_dir, timeout,
+        )
+        if started is not None:
+            return started
         proc = await asyncio.create_subprocess_exec(
-            interpreter,
-            *guard_args,
-            str(script_path),
+            *argv,
             cwd=str(root),
             env=env,
             stdout=asyncio.subprocess.PIPE,
@@ -594,10 +668,11 @@ def build_background_task_tools(
         download, a sync, a long-running tool) where waiting would tie up the
         whole conversation, or that should keep going while you do other work.
         It runs through the machine's own shell (sh, or cmd on Windows) with
-        the workspace root as its working directory, as the user, with no
-        sandbox: unlike run_background_script it has no write safeguard either,
-        so it can change any file this app can. Prefer run_background_script
-        for anything a Python or Node script can do.
+        the workspace root as its working directory. On Windows, when this
+        computer passed coscribe's isolation check, it is held to the same
+        folders as run_background_script; otherwise it runs as the user with
+        no write safeguard and can change any file this app can. Prefer
+        run_background_script for anything a Python or Node script can do.
 
         This call does NOT return the command's output -- only a task_id
         confirming it started. Use check_background_task(task_id) to read its
@@ -616,10 +691,18 @@ def build_background_task_tools(
         if not command.strip():
             raise ValueError("command must not be empty")
         timeout = min(max(timeout_seconds, 1.0), _MAX_TIMEOUT)
+        env = overlay_env(os.environ, session_env() if session_env else None)
+        # One command line as cmd reads it: list2cmdline would quote the user's own quotes.
+        line = f'"{os.environ.get("COMSPEC", "cmd.exe")}" /d /s /c "{command}"'
+        started = await _start_contained(
+            state, thread_id, root, line, env, folders, [], "shell", description, None, timeout
+        )
+        if started is not None:
+            return started
         proc = await asyncio.create_subprocess_shell(
             command,
             cwd=str(root),
-            env=overlay_env(os.environ, session_env() if session_env else None),
+            env=env,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
             # Its own process group, so a kill reaches what the shell started.

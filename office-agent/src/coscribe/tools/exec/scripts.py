@@ -1,20 +1,14 @@
 """``run_python_script`` -- one of two tools in this package classified
 ``risk_category="EXEC"`` (see ``tools/exec/node_scripts.py`` for the other).
 
-**No sandbox.** coscribe runs on the local desktop as a normal OS
-process, with no OS-level sandbox (Seatbelt/bubblewrap/container/VM) around
-it -- the same real-world posture Claude Code itself has on a native
-Windows host with no WSL2 configured (its own docs: "This option does not
-support native Windows. On Windows hosts, use WSL2 or one of the container
-or VM approaches"). **The approval prompt showing the full script text
-before it runs is the safety mechanism.**
-
-What is checked, by `tools/exec/script_guard.py`: writes outside the workspace
-and the folders the conversation added are refused, so a script lands
-files where the file tools can see them. That is a guard rail against a
-model's mistakes, not a boundary: a script can still read any file the OS
-user can, launch programs, make network calls, and code calling the
-operating system directly gets past the write check.
+**Isolation where the machine allows it** (decision 0021). On Windows, when
+the self-test passed, the script runs in an AppContainer (`isolation.py`)
+that reaches only the conversation's folders: read-only ones `RX`, read-write
+ones without delete or rename, and a child process inherits that. Elsewhere,
+or when the self-test failed, the approval prompt showing the full script
+text is the safety mechanism, and `script_guard.py` refuses writes outside
+the folders: a guard rail against a model's mistakes, not a boundary, since
+code calling the operating system directly gets past it.
 
 Deliberately no import/library allowlist either, for the same reason
 Claude Code's own Bash tool doesn't restrict what commands can run: any such
@@ -40,6 +34,7 @@ from typing import Any
 from ...runtime import tool_metadata
 from .._files_written import snapshot_workspace, with_files_written
 from .._output_truncation import truncate_script_output
+from .isolation import denied_note, for_scripts, scratch_root
 from .running import Detachable, run_to_end
 from .script_env import ensure_script_env, overlay_env, venv_python
 from .script_guard import (
@@ -69,12 +64,16 @@ def _run_python_script(
     session_env: Mapping[str, str] | None = None,
     detachable: Detachable | None = None,
     description: str = "",
+    extra_readable: Sequence[Path] = (),
 ) -> dict[str, object]:
     timeout = min(max(timeout, 1.0), _MAX_TIMEOUT)
     venv_dir = ensure_script_env(state_dir)
     python = venv_python(venv_dir)
+    isolation = for_scripts(
+        state_dir, writable=[workspace_root, *extra_writable], readable=extra_readable
+    )
 
-    scratch_dir = Path(tempfile.mkdtemp(prefix="coscribe_script_"))
+    scratch_dir = Path(tempfile.mkdtemp(prefix="coscribe_script_", dir=scratch_root(state_dir)))
     script_path = scratch_dir / "script.py"
     script_path.write_text(script, encoding="utf-8")
     # Windows has no UTF-8-by-default here: neither Path.write_text nor a
@@ -96,8 +95,11 @@ def _run_python_script(
         "PYTHONDONTWRITEBYTECODE": "1",
         "MPLCONFIGDIR": str(scratch_dir),
     }
+    if isolation is not None:
+        # The system temp folder is outside what the container may reach.
+        child_env |= {"TEMP": str(scratch_dir), "TMP": str(scratch_dir)}
     wrapper, guard_config = write_python_wrapper(
-        scratch_dir, writable_roots(workspace_root, list(extra_writable))
+        scratch_dir, writable_roots(workspace_root, [*extra_writable, scratch_dir])
     )
     before = snapshot_workspace(workspace_root)
     # A command let go on in the background owns the scratch directory from then on.
@@ -113,6 +115,7 @@ def _run_python_script(
             script=script,
             scratch_dir=scratch_dir,
             detachable=detachable,
+            isolation=isolation,
         )
         if ran.detached is not None:
             handed_over = True
@@ -131,7 +134,10 @@ def _run_python_script(
             "exit_code": ran.returncode,
             "stdout": truncate_script_output(ran.stdout),
             "stderr": truncate_script_output(
-                stderr + (refusal_note(blocked) if blocked else "") + locked_file_note(stderr)
+                stderr
+                + (refusal_note(blocked) if blocked else "")
+                + locked_file_note(stderr)
+                + (denied_note(stderr) if isolation is not None else "")
             ),
             "timed_out": False,
         }
@@ -151,6 +157,7 @@ def build_script_tools(
     state_dir: str | Path,
     *,
     extra_writable: Sequence[str | Path] = (),
+    extra_readable: Sequence[str | Path] = (),
     session_env: Callable[[], Mapping[str, str]] | None = None,
     detachable: Detachable | None = None,
 ) -> list[Callable[..., Any]]:
@@ -160,19 +167,22 @@ def build_script_tools(
     root = Path(workspace_root)
     state = Path(state_dir)
     folders = [Path(p) for p in extra_writable]
+    readable = [Path(p) for p in extra_readable]
 
     def run_python_script(
         script: str, description: str, timeout: float = _DEFAULT_TIMEOUT
     ) -> dict[str, object]:
         """Run a Python script and return its output. The ONLY tool that
-        executes arbitrary code -- there is no sandbox around it (see this
-        module's docstring): the script can read any file the coscribe
-        process can reach and make any network call. Writes are limited to
-        the workspace and the folders added to this conversation; a write
-        anywhere else is refused, and the result's `blocked_write` names
-        the path -- then write inside the workspace, or ask the user to add
-        that folder. It runs with its working directory set to the
-        workspace root, so relative paths land there.
+        executes arbitrary code. On Windows, when this computer passed
+        coscribe's isolation check, the script runs isolated: it can read the
+        workspace and the folders added to this conversation, and write in the
+        workspace and the read-write ones, but cannot delete, rename or move
+        files there, nor reach any other folder; use delete_file or move_file
+        for those. Elsewhere, or when the check failed, writes outside those
+        folders are refused and the script can still read other files. A refused
+        write is named in the result's `blocked_write` -- then write inside the
+        workspace, or ask the user to add that folder. It runs with its working
+        directory set to the workspace root, so relative paths land there.
 
         Runs against a dedicated Python environment (not the one
         coscribe itself runs on) that already has openpyxl, python-docx,
@@ -210,6 +220,7 @@ def build_script_tools(
             session_env() if session_env else None,
             detachable,
             description,
+            readable,
         )
 
     return [

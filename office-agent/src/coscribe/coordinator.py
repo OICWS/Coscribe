@@ -783,25 +783,16 @@ def build_coordinator_agent(
         + build_scheduled_task_tools(settings.state_dir, thread_id)
         + build_websearch_tools()
         + build_script_tools(
-            root,
-            settings.state_dir,
-            extra_writable=extra_writable,
-            session_env=session_env,
-            detachable=detachable,
+            root, settings.state_dir, extra_writable=extra_writable, extra_readable=extra_readable,
+            session_env=session_env, detachable=detachable,
         )
         + build_node_script_tools(
-            root,
-            settings.state_dir,
-            extra_writable=extra_writable,
-            session_env=session_env,
-            detachable=detachable,
+            root, settings.state_dir, extra_writable=extra_writable, extra_readable=extra_readable,
+            session_env=session_env, detachable=detachable,
         )
         + build_background_task_tools(
-            thread_id,
-            root,
-            settings.state_dir,
-            extra_writable=extra_writable,
-            session_env=session_env,
+            thread_id, root, settings.state_dir, extra_writable=extra_writable,
+            extra_readable=extra_readable, session_env=session_env,
         )
         + build_subagent_task_tools(thread_id, settings.state_dir)
     )

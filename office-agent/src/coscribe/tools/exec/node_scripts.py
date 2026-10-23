@@ -7,8 +7,8 @@ approach Anthropic's own pptx Skill uses.
 
 Same safety posture as ``run_python_script``, restated here rather than
 just cross-referenced since it's the whole justification for this tool's
-existence: **no sandbox**, the approval prompt showing the full script
-text before it runs is the safety mechanism -- plus the write guard of
+existence: the AppContainer where the machine passed the self-test, the
+approval prompt showing the full script text, and the write guard of
 ``tools/exec/script_guard.py`` (Node's ``--permission``, when the installed Node
 has it), a guard rail rather than a boundary -- and deliberately no
 import/library allowlist (trivially bypassable, same reasoning as Claude
@@ -32,6 +32,7 @@ from typing import Any
 from ...runtime import tool_metadata
 from .._files_written import snapshot_workspace, with_files_written
 from .._output_truncation import truncate_script_output
+from .isolation import denied_note, for_scripts, scratch_root
 from .node_env import ensure_node_env
 from .running import Detachable, run_to_end
 from .script_env import overlay_env
@@ -61,11 +62,18 @@ def _run_node_script(
     session_env: Mapping[str, str] | None = None,
     detachable: Detachable | None = None,
     description: str = "",
+    extra_readable: Sequence[Path] = (),
 ) -> dict[str, object]:
     timeout = min(max(timeout, 1.0), _MAX_TIMEOUT)
     node_env_dir = ensure_node_env(state_dir)
-
-    scratch_dir = Path(tempfile.mkdtemp(prefix="coscribe_node_script_"))
+    node = shutil.which("node") or "node"
+    isolation = for_scripts(
+        state_dir,
+        writable=[workspace_root, *extra_writable],
+        readable=extra_readable,
+        runtime=(node_env_dir, Path(node).resolve().parent),
+    )
+    scratch_dir = Path(tempfile.mkdtemp(prefix="coscribe_node_", dir=scratch_root(state_dir)))
     script_path = scratch_dir / "script.js"
     script_path.write_text(script, encoding="utf-8")
     # Same Windows charmap bug as tools/exec/scripts.py's _run_python_script --
@@ -78,8 +86,9 @@ def _run_node_script(
         **overlay_env(os.environ, session_env),
         "NODE_PATH": str(node_env_dir / "node_modules"),
     }
-    node = shutil.which("node") or "node"
-    guard = node_guard_args(node, writable_roots(workspace_root, list(extra_writable)))
+    if isolation is not None:
+        env |= {"TEMP": str(scratch_dir), "TMP": str(scratch_dir)}
+    guard = node_guard_args(node, writable_roots(workspace_root, [*extra_writable, scratch_dir]))
     before = snapshot_workspace(workspace_root)
     # A command let go on in the background owns the scratch directory from then on.
     handed_over = False
@@ -99,6 +108,7 @@ def _run_node_script(
             script=script,
             scratch_dir=scratch_dir,
             detachable=detachable,
+            isolation=isolation,
         )
         if ran.detached is not None:
             handed_over = True
@@ -116,7 +126,11 @@ def _run_node_script(
         finished: dict[str, object] = {
             "exit_code": ran.returncode,
             "stdout": truncate_script_output(ran.stdout),
-            "stderr": truncate_script_output(stderr + (refusal_note(blocked) if blocked else "")),
+            "stderr": truncate_script_output(
+                stderr
+                + (refusal_note(blocked) if blocked else "")
+                + (denied_note(stderr) if isolation is not None else "")
+            ),
             "timed_out": False,
         }
         if blocked:
@@ -137,6 +151,7 @@ def build_node_script_tools(
     state_dir: str | Path,
     *,
     extra_writable: Sequence[str | Path] = (),
+    extra_readable: Sequence[str | Path] = (),
     session_env: Callable[[], Mapping[str, str]] | None = None,
     detachable: Detachable | None = None,
 ) -> list[Callable[..., Any]]:
@@ -146,21 +161,23 @@ def build_node_script_tools(
     root = Path(workspace_root)
     state = Path(state_dir)
     folders = [Path(p) for p in extra_writable]
+    readable = [Path(p) for p in extra_readable]
 
     def run_node_script(
         script: str, description: str, timeout: float = _DEFAULT_TIMEOUT
     ) -> dict[str, object]:
-        """Run a Node.js script and return its output -- reach for this,
-        instead of write_pptx, when a slide needs something write_pptx's
-        markdown-to-fixed-layout model can't express: custom shapes,
-        multi-column layouts, precise positioning, icons. Like
-        run_python_script, there is no sandbox around it (see this
-        module's docstring): the script can read any file the coscribe
-        process can reach and make any network call. Writes are limited to
-        the workspace and the folders added to this conversation; a write
-        anywhere else is refused, and the result's `blocked_write` names
-        the path. It runs with its working directory set to the workspace
-        root, so relative paths land there.
+        """Run a Node.js script and return its output -- reach for this, instead
+        of write_pptx, when a slide needs something write_pptx's markdown-to-
+        fixed-layout model can't express: custom shapes, multi-column layouts,
+        precise positioning, icons. On Windows, when this computer passed
+        coscribe's isolation check, the script runs isolated: it can read the
+        workspace and the folders added to this conversation, and write in the
+        workspace and the read-write ones, but cannot delete, rename or move
+        files there, nor reach any other folder; use delete_file or move_file
+        for those. Elsewhere, or when the check failed, writes outside those
+        folders are refused and the script can still read other files. A refused
+        write is named in the result's `blocked_write`. It runs with its working
+        directory set to the workspace root, so relative paths land there.
 
         Runs against a dedicated Node.js environment (not connected to
         this project's own frontend/ build) that already has pptxgenjs
@@ -194,6 +211,7 @@ def build_node_script_tools(
             session_env() if session_env else None,
             detachable,
             description,
+            readable,
         )
 
     return [

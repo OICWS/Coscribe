@@ -1,6 +1,7 @@
 """The AppContainer a script runs in (`tools/exec/isolation.py`). The registry tests run
 everywhere with `icacls` faked; the `windows` ones start real containers."""
 
+import asyncio
 import json
 import os
 import subprocess
@@ -301,3 +302,49 @@ def test_revoking_takes_the_ace_off(folders: tuple[Path, ...]) -> None:
     grants.revoke(work)
     acl = subprocess.run(["icacls", str(work)], capture_output=True, text=True, check=False)
     assert sid not in acl.stdout
+
+
+# ---- The tools ---------------------------------------------------------------------------
+
+
+@windows
+async def test_the_script_tools_run_contained(tmp_path: Path) -> None:
+    from coscribe.tools.bookkeeping.background_tasks import build_background_task_tools
+    from coscribe.tools.exec import build_script_tools
+
+    workspace, reference, outside = tmp_path / "ws", tmp_path / "ref", tmp_path / "outside"
+    for folder in (workspace, reference, outside):
+        folder.mkdir()
+    (workspace / "old.txt").write_text("old", encoding="utf-8")
+    (reference / "input.txt").write_text("ref", encoding="utf-8")
+    state = tmp_path / "state"
+    try:
+        (run,) = build_script_tools(workspace, state, extra_readable=[reference])
+        script = (
+            "import os\n"
+            f"print(open({str(reference / 'input.txt')!r}).read())\n"
+            "open('new.txt', 'w').write('x')\n"
+            f"open({str(outside / 'x.txt')!r}, 'w').write('x')\n"
+        )
+        result = run(script=script, description="probe")
+        assert "ref" in str(result["stdout"])
+        assert (workspace / "new.txt").exists() and not (outside / "x.txt").exists()
+        assert "ran isolated" in str(result["stderr"]), result
+
+        removed = run(script="import os\nos.remove('old.txt')\n", description="delete")
+        assert (workspace / "old.txt").exists()
+        assert "delete_file" in str(removed["stderr"]), removed
+
+        tools = {
+            tool.__name__: tool for tool in build_background_task_tools("t1", workspace, state)
+        }
+        started = await tools["run_background_command"](
+            command=f'echo x > "{outside / "shell.txt"}"', description="write outside"
+        )
+        deadline = time.monotonic() + 60
+        while tools["check_background_task"](started["task_id"])["status"] == "running":
+            assert time.monotonic() < deadline
+            await asyncio.sleep(0.2)
+        assert not (outside / "shell.txt").exists()
+    finally:
+        _revoke_all(state)
