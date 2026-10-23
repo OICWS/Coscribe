@@ -13,6 +13,11 @@ name: Windows
   pull_request:
     paths:
       - ".github/workflows/windows.yml"
+      # The AppContainer is only real on Windows: its tests skip everywhere else.
+      - "office-agent/src/coscribe/tools/exec/_appcontainer.py"
+      - "office-agent/src/coscribe/tools/exec/isolation.py"
+      - "office-agent/src/coscribe/tools/exec/running.py"
+      - "office-agent/tests/test_isolation.py"
 
 concurrency:
   group: windows-${{ github.ref }}

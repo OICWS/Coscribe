@@ -1,8 +1,11 @@
 """Running the user's own Python and Node scripts: the tools, their isolated environments and
-the folder guard. Not a sandbox (decision 0002)."""
+the folder guard, and the AppContainer that holds a script to its folders on Windows
+(`isolation.py`, issue #560; not applied to the tools yet)."""
 
 from __future__ import annotations
 
+from .isolation import FolderGrants, Isolation, SelfTest, self_test
+from .isolation import available as isolation_available
 from .node_env import ensure_node_env
 from .node_env import install_package as install_node_package
 from .node_env import list_packages as list_node_packages
@@ -36,8 +39,11 @@ from .scripts import build_script_tools
 
 __all__ = [
     "Detachable",
+    "FolderGrants",
     "HandOff",
+    "Isolation",
     "RunningCommand",
+    "SelfTest",
     "blocked_write",
     "build_node_script_tools",
     "build_script_tools",
@@ -47,6 +53,7 @@ __all__ = [
     "get_interpreter_override",
     "install_node_package",
     "install_python_package",
+    "isolation_available",
     "list_node_packages",
     "list_python_packages",
     "node_guard_args",
@@ -55,6 +62,7 @@ __all__ = [
     "request_detach",
     "resolve_python_command",
     "run_python_script",
+    "self_test",
     "set_interpreter_override",
     "stop_commands",
     "suggested_folder",
