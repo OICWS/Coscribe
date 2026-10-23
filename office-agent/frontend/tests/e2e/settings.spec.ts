@@ -71,6 +71,28 @@ test("General tab: Default Mode saves", async ({ page }) => {
   expect(after.COSCRIBE_DEFAULT_PERMISSION_MODE).toBe("auto");
 });
 
+test("Workspace tab: a folder can be set to read, write and delete", async ({ page }) => {
+  await page.goto(freshThreadPath("settings-folders"));
+  await waitForConnected(page);
+  const configLoaded = page.waitForResponse((r) => r.url().includes("/api/config") && r.status() === 200);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await configLoaded;
+  await page.getByRole("button", { name: "Workspace" }).click();
+
+  const folder = "/tmp/coscribe-e2e-deletable";
+  await page.getByLabel("Folder to add").fill(folder);
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  const access = page.getByLabel(`Access to ${folder}`);
+  await expect(access.locator("option")).toHaveText(["Read only", "Read and write", "Read, write and delete"]);
+  await access.selectOption("read-write-delete");
+  const deletable = () =>
+    page.evaluate(() => fetch("/api/config").then((r) => r.json())).then((c) => c.COSCRIBE_EXTRA_DELETABLE_DIRS);
+  await expect.poll(deletable).toBe(folder);
+
+  await page.getByRole("button", { name: `Remove ${folder}` }).click();
+  await expect.poll(deletable).toBeNull();
+});
+
 test("Tools tab: categories start collapsed and open to list their tools", async ({ page }) => {
   await page.goto(freshThreadPath("settings-tools"));
   await waitForConnected(page);

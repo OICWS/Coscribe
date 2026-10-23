@@ -34,6 +34,7 @@ export interface ConfigResponse {
   COSCRIBE_LOG_LEVEL: string | null;
   COSCRIBE_EXTRA_READABLE_DIRS: string | null;
   COSCRIBE_EXTRA_WRITABLE_DIRS: string | null;
+  COSCRIBE_EXTRA_DELETABLE_DIRS: string | null;
   COSCRIBE_MAX_TURNS: string | null;
   COSCRIBE_CODE_MODEL: string | null;
   COSCRIBE_CODE_MODULE_ENABLED: string | null;
