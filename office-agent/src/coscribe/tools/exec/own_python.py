@@ -58,7 +58,10 @@ def download_url() -> tuple[str, str] | None:
 def ensure_own_python(state_dir: Path) -> Path | None:
     """coscribe's own python.exe, downloaded on first use; None off Windows. Raises
     RuntimeError when the download or its check fails, so the caller can say why."""
-    python = own_python_path(state_dir)
+    # The long form of the path: Python resolves its base installation's real location as it
+    # starts, and expanding a short (8.3) name such as RUNNER~1 needs a listing of parent folders
+    # the scripts' container can't read, so every script would warn on stderr.
+    python = own_python_path(state_dir).resolve()
     if python.is_file():
         return python
     build = download_url()

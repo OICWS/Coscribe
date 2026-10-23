@@ -1,4 +1,6 @@
+import sys
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 
@@ -27,6 +29,23 @@ def _no_office_program(request: pytest.FixtureRequest, monkeypatch: pytest.Monke
         from .libreoffice_probe import libreoffice_as_office
 
         monkeypatch.setattr(_office_com, "convert", libreoffice_as_office)
+
+
+@pytest.fixture(scope="session")
+def _shared_own_python(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    return tmp_path_factory.mktemp("own-python") / "python" / "python.exe"
+
+
+@pytest.fixture(autouse=True)
+def _one_python_download(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """On Windows each state folder's first script downloads coscribe's own Python (about 30 MB);
+    the tests share one download per worker instead. test_own_python checks the path itself."""
+    if sys.platform != "win32" or request.module.__name__.endswith("test_own_python"):
+        return
+    from coscribe.tools.exec import own_python
+
+    shared = request.getfixturevalue("_shared_own_python")
+    monkeypatch.setattr(own_python, "own_python_path", lambda state_dir: shared)
 
 
 @pytest.fixture(autouse=True)
