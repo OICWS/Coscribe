@@ -44,9 +44,9 @@ rw, ro, outside = cfg["rw"], cfg["ro"], cfg["outside"]
 def run(name, fn):
     try:
         detail = fn()
-        print(json.dumps({"check": name, "ok": True, "detail": str(detail)[:200]}), flush=True)
+        print(json.dumps({"check": name, "ok": True, "detail": str(detail)[:600]}), flush=True)
     except BaseException as exc:
-        print(json.dumps({"check": name, "ok": False, "detail": f"{type(exc).__name__}: {exc}"[:200]}), flush=True)
+        print(json.dumps({"check": name, "ok": False, "detail": f"{type(exc).__name__}: {exc}"[:600]}), flush=True)
 
 
 def write(path, text="x"):
@@ -78,7 +78,7 @@ def cmd(line):
 def ps(command):
     out = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command], capture_output=True, text=True, timeout=120)
     if out.returncode != 0:
-        raise RuntimeError(f"exit {out.returncode}: {(out.stderr or out.stdout).strip().splitlines()[0]}")
+        raise RuntimeError(f"exit {out.returncode}: {' '.join((out.stderr or out.stdout).split())}")
     return out.stdout.strip()
 
 
@@ -110,8 +110,10 @@ run("child python read outside", lambda: child(f"print(open({os.path.join(outsid
 run("cmd echo > rw", lambda: cmd(f'echo x> "{os.path.join(rw, "cmd.txt")}"'))
 run("cmd echo > outside", lambda: cmd(f'echo x> "{os.path.join(outside, "cmd.txt")}"'))
 run("cmd del outside", lambda: cmd(f'del /f /q "{os.path.join(outside, "secret.txt")}" && if exist "{os.path.join(outside, "secret.txt")}" exit 5'))
-run("powershell write rw", lambda: ps(f"Set-Content -Path '{os.path.join(rw, 'ps.txt')}' -Value x -ErrorAction Stop"))
-run("powershell write outside", lambda: ps(f"Set-Content -Path '{os.path.join(outside, 'ps.txt')}' -Value x -ErrorAction Stop"))
+run("powershell .NET write rw", lambda: ps(f"[IO.File]::WriteAllText('{os.path.join(rw, 'ps.txt')}', 'x')"))
+run("powershell .NET write outside", lambda: ps(f"[IO.File]::WriteAllText('{os.path.join(outside, 'ps.txt')}', 'x')"))
+run("powershell cmdlet write rw", lambda: ps(f"Import-Module Microsoft.PowerShell.Management -ErrorAction Stop; Set-Content -Path '{os.path.join(rw, 'ps2.txt')}' -Value x -ErrorAction Stop"))
+run("powershell PSModulePath", lambda: ps("$env:PSModulePath"))
 run("tcp 1.1.1.1:443", lambda: tcp("1.1.1.1", 443))
 run("https example.com", lambda: urllib.request.urlopen("https://example.com", timeout=10).status)
 run("dns resolve", lambda: socket.gethostbyname("example.com"))
@@ -143,8 +145,9 @@ EXPECTED = {
     "cmd echo > rw": True,
     "cmd echo > outside": False,
     "cmd del outside": False,
-    "powershell write rw": True,
-    "powershell write outside": False,
+    "powershell .NET write rw": True,
+    "powershell .NET write outside": False,
+    "powershell cmdlet write rw": True,
     "tcp 1.1.1.1:443": False,
     "https example.com": False,
     "dns resolve": False,
