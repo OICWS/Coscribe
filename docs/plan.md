@@ -229,7 +229,8 @@ Last reviewed: 2026-10-15.
    setting with `delete_file` to the Recycle Bin, and Edit environment > Network (none, limited
    to listed domains, or full). Codex's commands are off (2026-10-23). A script's approval card
    says whether it runs isolated. Grants on folders no longer in use are taken off at start, and
-   all of them at uninstall. Next, one PR each: coscribe's own Python download; read limits.
+   all of them at uninstall. The script venv on Windows is made from coscribe's own Python
+   (3.12). Next: read limits.
 
 ## Needs the maintainer's testing (could not be verified here)
 

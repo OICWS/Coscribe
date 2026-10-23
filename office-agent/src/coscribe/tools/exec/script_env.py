@@ -35,6 +35,8 @@ import threading
 from collections.abc import Mapping
 from pathlib import Path
 
+from .own_python import ensure_own_python
+
 _VENV_TIMEOUT = 120.0
 _SETUP_TIMEOUT = 300.0
 
@@ -155,6 +157,18 @@ def _venv_create_candidates(state_dir: Path) -> list[str]:
     return auto_detected
 
 
+def _own_python_first(state_dir: Path, candidates: list[str]) -> tuple[list[str], str]:
+    """coscribe's own Python ahead of the detected ones, unless the person chose one; and why
+    it isn't there, for the error when nothing works."""
+    if get_interpreter_override(state_dir):
+        return candidates, ""
+    try:
+        own = ensure_own_python(state_dir)
+    except RuntimeError as exc:
+        return candidates, f" {exc}"
+    return ([str(own), *candidates] if own else candidates), ""
+
+
 def fallbacks_for_platform() -> list[str]:
     """The auto-detected candidates below sys.executable, exposed on its
     own for the Environment tab's "detected" list in the interpreter API --
@@ -239,7 +253,7 @@ def _ensure_script_env(state_dir: Path) -> Path:
     if venv_python(venv_dir).is_file():
         return venv_dir
     venv_dir.parent.mkdir(parents=True, exist_ok=True)
-    candidates = _venv_create_candidates(state_dir)
+    candidates, download_error = _own_python_first(state_dir, _venv_create_candidates(state_dir))
     result = subprocess.run(
         [candidates[0], "-m", "venv", str(venv_dir)],
         capture_output=True,
@@ -263,7 +277,7 @@ def _ensure_script_env(state_dir: Path) -> Path:
         raise RuntimeError(
             "Could not create the script environment (tried: "
             + ", ".join(candidates)
-            + f"). Last error: {result.stderr.strip()}. If this machine has no "
+            + f"). Last error: {result.stderr.strip()}.{download_error} If this machine has no "
             "system Python installed, install Python 3 from python.org -- the "
             '"Add python.exe to PATH" checkbox doesn\'t need to be checked, the '
             '"py" launcher it also installs is enough -- then try again.'
