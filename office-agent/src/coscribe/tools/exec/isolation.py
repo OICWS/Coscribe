@@ -253,12 +253,12 @@ def self_test(
         except (OSError, ValueError, TypeError, KeyError):
             pass
     result = _run_self_test(state_dir, python, runtime)
-    state_dir.mkdir(parents=True, exist_ok=True)
     cache.write_text(json.dumps({"key": key, "result": vars(result)}), encoding="utf-8")
     return result
 
 
 def _run_self_test(state_dir: Path, python: Path, runtime: Sequence[Path]) -> SelfTest:
+    state_dir.mkdir(parents=True, exist_ok=True)
     base = Path(tempfile.mkdtemp(prefix="isolation-test-", dir=state_dir)).resolve()
     inside, outside = base / "inside", base / "outside"
     inside.mkdir()
