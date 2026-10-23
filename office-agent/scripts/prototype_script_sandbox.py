@@ -491,6 +491,35 @@ def main() -> int:
 
     failed = 0
     try:
+        # The self-test a first run would do: one write in, one write out, one connect.
+        selftest = scratch / "selftest.py"
+        selftest.write_text(
+            "import os, socket, sys\n"
+            "rw, outside = sys.argv[1], sys.argv[2]\n"
+            "open(os.path.join(rw, 'selftest.txt'), 'w').write('x')\n"
+            "try:\n"
+            "    open(os.path.join(outside, 'selftest.txt'), 'w').write('x')\n"
+            "    sys.exit(2)\n"
+            "except PermissionError:\n"
+            "    pass\n"
+            "try:\n"
+            "    socket.create_connection(('1.1.1.1', 443), timeout=3).close()\n"
+            "    sys.exit(3)\n"
+            "except OSError:\n"
+            "    pass\n",
+            encoding="utf-8",
+        )
+        for attempt in (1, 2, 3):
+            t0 = time.monotonic()
+            _, handle = run_in_container(
+                sid_ptr,
+                [str(py), "-I", str(selftest), str(rw), str(outside)],
+                rw,
+                env,
+                base / "selftest.log",
+            )
+            code = wait(handle, 60)
+            print(f"self-test {attempt}: exit {code} in {time.monotonic() - t0:.2f}s")
         log = base / "probe.log"
         pid, handle = run_in_container(
             sid_ptr, [str(py), str(probe), json.dumps(cfg)], rw, env, log
