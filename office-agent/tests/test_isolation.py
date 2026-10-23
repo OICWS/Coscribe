@@ -401,3 +401,26 @@ async def test_the_script_tools_run_contained(tmp_path: Path) -> None:
         assert not (outside / "shell.txt").exists()
     finally:
         _revoke_all(state)
+
+
+def test_a_command_line_is_refused_in_the_container(tmp_path: Path) -> None:
+    with pytest.raises(IsolationRefused, match="run_background_script"):
+        isolation.start("dir /b", str(tmp_path), {}, Isolation(tmp_path))
+
+
+def test_node_keeps_the_script_path_it_was_given_in_the_container(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    started: list[list[str]] = []
+    monkeypatch.setattr(isolation, "capabilities_for", lambda iso: ([], []))
+    monkeypatch.setattr(
+        isolation._appcontainer, "start", lambda argv, cwd, env, caps: started.append(list(argv))
+    )
+
+    isolation.start([r"C:\node\node.exe", "s.js"], str(tmp_path), {}, Isolation(tmp_path))
+    isolation.start(["python.exe", "s.py"], str(tmp_path), {}, Isolation(tmp_path))
+
+    assert started == [
+        [r"C:\node\node.exe", "--preserve-symlinks", "--preserve-symlinks-main", "s.js"],
+        ["python.exe", "s.py"],
+    ]

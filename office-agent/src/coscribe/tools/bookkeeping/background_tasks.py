@@ -669,9 +669,9 @@ def build_background_task_tools(
         whole conversation, or that should keep going while you do other work.
         It runs through the machine's own shell (sh, or cmd on Windows) with
         the workspace root as its working directory. On Windows, when this
-        computer passed coscribe's isolation check, it is held to the same
-        folders as run_background_script; otherwise it runs as the user with
-        no write safeguard and can change any file this app can. Prefer
+        computer passed coscribe's isolation check, it is refused, as the
+        shell can't work isolated; otherwise it runs as the user with no
+        write safeguard and can change any file this app can. Prefer
         run_background_script for anything a Python or Node script can do.
 
         This call does NOT return the command's output -- only a task_id

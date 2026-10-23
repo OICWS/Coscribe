@@ -15,6 +15,11 @@ run without isolation.
   audit log as `run_scripts_without_isolation`, approved or rejected by a human.
 - Edit environment > **Scripts**: the result, Test now / Test again, and only where the check
   failed, the "Run scripts without isolation" switch, saved with Save changes.
+- In the container, Node starts with `--preserve-symlinks --preserve-symlinks-main`: without them
+  it looks up the script's real path through `C:\`, which the container may not read (seen on the
+  Windows runner; extra grants on the folders above did not help). A background command line is
+  refused there: cmd in the container can `echo` but `dir` is denied even in a granted folder, so
+  the model is told to use a script instead.
 
 ## Not verified
 - On a Windows machine whose check fails (the CI runner passes it): the refusal and the switch are

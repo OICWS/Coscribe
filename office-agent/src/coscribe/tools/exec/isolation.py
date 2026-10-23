@@ -28,7 +28,7 @@ import tempfile
 import threading
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Literal
 
 from . import _appcontainer
@@ -197,9 +197,24 @@ def capabilities_for(isolation: Isolation) -> tuple[list[str], list[Path]]:
     return names, failed
 
 
+# Node looks up a script's real path through every folder above it, and the container may not
+# look at C:\ (seen on the Windows runner); these flags keep the path it was given.
+_NODE_CONTAINED = ("--preserve-symlinks", "--preserve-symlinks-main")
+
+
 def start(
-    argv: Sequence[str], cwd: str, env: Mapping[str, str], isolation: Isolation
+    argv: Sequence[str] | str, cwd: str, env: Mapping[str, str], isolation: Isolation
 ) -> ContainerProcess:
+    if isinstance(argv, str):
+        # cmd in the container can echo but not list a folder (`dir` is denied even in a
+        # granted one, seen on the Windows runner), so a command line would fail at random.
+        raise IsolationRefused(
+            "Commands don't run on this computer: in the isolated space Windows' shell can't "
+            "use the folders. Run the work as a Python or Node script instead "
+            "(run_background_script, run_python_script or run_node_script)."
+        )
+    if argv and PureWindowsPath(argv[0]).stem.lower() == "node":
+        argv = [argv[0], *_NODE_CONTAINED, *argv[1:]]
     capabilities, _failed = capabilities_for(isolation)
     return _appcontainer.start(argv, str(Path(cwd).resolve()), env, capabilities)
 
