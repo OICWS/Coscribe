@@ -11,6 +11,7 @@ import { ToolPreview } from "./ToolPreview";
 import { ApprovalPreview } from "./ApprovalPreview";
 import { commandOf } from "../../lib/toolFields";
 import { RunInBackground } from "./RunInBackground";
+import { ScriptIsolationNote } from "./ScriptIsolationNote";
 import { ArgLines, CommandBox, CommandOutput, RawFold, ResultText } from "./ToolFields";
 
 /** A run of tool calls: one sentence-like summary with a chevron after
@@ -311,7 +312,7 @@ function ApprovalDetail({
               ? "The code module runs this with this app's own access and no sandbox: it can read and change any file this app can and use the network. Review it before approving."
               : isShellCommand
                 ? "This command runs through your shell with this app's own access and no sandbox: it can read and change any file this app can and use the network. Unlike a script, nothing limits where it writes. Review it before approving."
-                : "This script isn’t sandboxed: it can read any file this app can and use the network. It can write only in the workspace and folders you added -- a safeguard against mistakes, not a security boundary. Review it before approving."}
+                : <ScriptIsolationNote />}
           </div>
         </div>
       ) : (
