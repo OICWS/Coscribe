@@ -38,3 +38,20 @@ test("approval-gated tool call: approve card appears, approving runs the tool an
   await expect(page.getByRole("button", { name: "Manual", exact: true })).toBeVisible();
   await setDefaultMode("auto");
 });
+
+test("a script's approval card says whether the script will run isolated", async ({ page }) => {
+  await page.request.post("/api/config", { data: { updates: { COSCRIBE_DEFAULT_PERMISSION_MODE: "manual" } } });
+  try {
+    await page.goto(freshThreadPath("approval-isolation"));
+    await waitForConnected(page);
+    await page.locator("textarea").fill('[[stub-tool run_python_script {"script":"print(1)","description":"Print one"}]]');
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("button", { name: "Approve", exact: true })).toBeVisible({ timeout: 30_000 });
+    // The runner is Linux, where there is no container: the card must not promise one.
+    await expect(page.getByText("Not isolated", { exact: true })).toBeVisible();
+    await expect(page.getByText("Isolation needs Windows")).toBeVisible();
+    await page.getByRole("button", { name: "Deny", exact: true }).click();
+  } finally {
+    await page.request.post("/api/config", { data: { updates: { COSCRIBE_DEFAULT_PERMISSION_MODE: "auto" } } });
+  }
+});

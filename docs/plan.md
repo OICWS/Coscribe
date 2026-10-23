@@ -182,7 +182,7 @@ Last reviewed: 2026-10-15.
    off-system; made from a blank form, a "describe it" conversation of type Design System, or from a .pptx), with Design System as the fifth kind in Artifacts;
    (3) the Slides chip's choice of a system, "Make a new design system first" and "Manage design systems".
    Step 2 so far: the store and its routes (`tools/design_systems.py`, `/api/design-systems`) and Settings > Design systems with the blank form (list, new, edit, delete) are in; next assets, the "describe it" conversation, the .pptx extraction and the Design System kind in Artifacts.
-   Step 3 is in: a Slides start can name a design system (the chip's menu, a note in the first message, a copy kept for the conversation, the deck beginning as that copy). Next: assets, the "describe it" conversation, the .pptx extraction, the Design System kind in Artifacts, and the checker that flags what is off-system (the checker is in, 2026-10-23: a build of a deck that began from a library system warns, page by page, of colors, fonts and text styles the system does not have; the rest is still next). Design systems are also cards on the Artifacts page (2026-10-23, issue 569): a kind of their own, opening Settings on the system, with their own menu (Rename, Duplicate, Pin, Delete) and a tile that opens the new-system form. Next, the "describe it" conversation: design note `docs/assessments/2026-10-23-describe-a-design-system.md`, accepted 2026-10-23; both parts are in (2026-10-23): the deferred tool `save_design_system` with its first-message note, the tile's Blank form / Describe it menu, the chip and the end-of-turn card. Next: "Describe it" in Settings, assets (logos) and the .pptx extraction.
+   Step 3 is in: a Slides start can name a design system (the chip's menu, a note in the first message, a copy kept for the conversation, the deck beginning as that copy). Next: assets, the "describe it" conversation, the .pptx extraction, the Design System kind in Artifacts, and the checker that flags what is off-system (the checker is in, 2026-10-23: a build of a deck that began from a library system warns, page by page, of colors, fonts and text styles the system does not have; the rest is still next). Design systems are also cards on the Artifacts page (2026-10-23, issue 569): a kind of their own, opening Settings on the system, with their own menu (Rename, Duplicate, Pin, Delete) and a tile that opens the new-system form. Next, the "describe it" conversation: design note `docs/assessments/2026-10-23-describe-a-design-system.md`, accepted 2026-10-23; part 1 (the deferred tool `save_design_system` and the first-message note) is in, part 2 (the chip, the tile menu, the end-of-turn card) is next.
    Design (2026-10-22, issue 551, done: log `2026-10-22-design-artifact.md`): an `.html` page written by a conversation is a Design artifact, drawn in a sandboxed frame (card, panel, Export menu with HTML and PDF); a lone `.svg` is not an artifact. Open: Dashboard on the same sandbox, PNG/.ico export, a theme toggle in the panel.
    Docs (2026-10-21, decision 0019 accepted; research in docs/assessments/2026-10-21-docx-editing.md; editor library Tiptap 3, built first then evaluated): the .docx itself, previewed and edited in the Word panel by styles (headings,
    bold, italic, lists, links, tables, images), only the changed blocks rewritten, the person's Word edits never overwritten. Order:
@@ -226,9 +226,10 @@ Last reviewed: 2026-10-15.
    self-test passed (part 2), Edit environment as a list of pages with the conversation's
    folders, its Scripts page (fail closed, the audited per-conversation opt-in to run without
    isolation, the self-test result and re-test), and "Read, write and delete" as a third folder
-   setting with `delete_file` to the Recycle Bin. Codex's commands are off (2026-10-23). Grants on folders no longer in use are
-   taken off at start, and all of them at uninstall. Next, one PR each: a "Not isolated" mark on
-   approvals; coscribe's own Python download; read limits and the network switch per conversation with the
+   setting with `delete_file` to the Recycle Bin. Codex's commands are off (2026-10-23). A script's
+   approval card says whether it runs isolated. Grants on folders no longer in use are taken off
+   at start, and all of them at uninstall. Next, one PR each:
+   coscribe's own Python download; read limits and the network switch per conversation with the
    web tools' host allowlist.
 
 ## Needs the maintainer's testing (could not be verified here)
