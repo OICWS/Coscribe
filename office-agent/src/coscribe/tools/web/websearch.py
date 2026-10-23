@@ -25,6 +25,7 @@ escape hatch for exactly this, not a fallback that needs building later.
 
 from __future__ import annotations
 
+import functools
 import re
 import time
 from collections.abc import Callable
@@ -34,7 +35,8 @@ import httpx
 from ddgs import DDGS
 from ddgs.exceptions import DDGSException
 
-from ...runtime import configured_proxy, tool_metadata
+from ...runtime import NetworkGuard, configured_proxy, tool_metadata
+from ._network import online_only, request_hooks
 
 # `from ddgs import DDGS` above is actually `ddgs`'s own `_DDGSProxy` (a
 # lazy-loading metaclass-based stand-in, see ddgs/__init__.py) -- calling
@@ -122,6 +124,12 @@ def read_web_page(url: str, start: int = 0, max_chars: int = DEFAULT_PAGE_CHARS)
             call's next_start
         max_chars: how much text to return at most (default 20000)
     """
+    return _read_web_page(url, start, max_chars, None)
+
+
+def _read_web_page(
+    url: str, start: int, max_chars: int, network: NetworkGuard | None
+) -> dict[str, Any]:
     if not url.startswith(("http://", "https://")):
         raise ValueError(f"{url!r} isn't an http(s) address")
     with httpx.Client(
@@ -129,6 +137,7 @@ def read_web_page(url: str, start: int = 0, max_chars: int = DEFAULT_PAGE_CHARS)
         follow_redirects=True,
         timeout=_PAGE_TIMEOUT_SECONDS,
         headers={"User-Agent": _USER_AGENT},
+        event_hooks=request_hooks(network),
     ) as client:
         response = client.get(url)
     response.raise_for_status()
@@ -152,8 +161,16 @@ def read_web_page(url: str, start: int = 0, max_chars: int = DEFAULT_PAGE_CHARS)
     }
 
 
-def build_websearch_tools() -> list[Callable[..., Any]]:
+def build_websearch_tools(network: NetworkGuard | None = None) -> list[Callable[..., Any]]:
+    """`network`: the conversation's setting, checked at each call and at each redirect."""
+
+    @functools.wraps(read_web_page)
+    def read_web_page_within(
+        url: str, start: int = 0, max_chars: int = DEFAULT_PAGE_CHARS
+    ) -> dict[str, Any]:
+        return _read_web_page(url, start, max_chars, network)
+
     return [
-        tool_metadata(web_search, risk_category="READ", category="web"),
-        tool_metadata(read_web_page, risk_category="READ", category="web"),
+        tool_metadata(online_only(web_search, network), risk_category="READ", category="web"),
+        tool_metadata(read_web_page_within, risk_category="READ", category="web"),
     ]

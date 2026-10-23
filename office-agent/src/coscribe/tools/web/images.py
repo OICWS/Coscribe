@@ -34,7 +34,7 @@ from urllib.parse import urlsplit
 
 from ddgs import DDGS
 
-from ...runtime import tool_metadata
+from ...runtime import NetworkGuard, tool_metadata
 from .._workspace import WorkspaceScope
 from ._licensed_image_search import (
     AssetCandidate,
@@ -44,6 +44,7 @@ from ._licensed_image_search import (
     search_openverse,
     search_wikimedia,
 )
+from ._network import online_only, request_hooks
 
 # See websearch.py's own comment on the same subject: `from ddgs import
 # DDGS` is `ddgs`'s lazy `_DDGSProxy`, so tests must monkeypatch
@@ -194,10 +195,12 @@ class ImageToolkit:
         *,
         extra_readable: Sequence[str | Path] = (),
         extra_writable: Sequence[str | Path] = (),
+        network: NetworkGuard | None = None,
     ) -> None:
         self._scope = WorkspaceScope(
             root, extra_readable=extra_readable, extra_writable=extra_writable
         )
+        self._network = network
 
     def download_image(self, url: str, path: str, overwrite: bool = True) -> dict[str, object]:
         import httpx
@@ -216,7 +219,10 @@ class ImageToolkit:
         buffer = io.BytesIO()
         content_type = ""
         with httpx.Client(
-            timeout=_DOWNLOAD_TIMEOUT, follow_redirects=True, headers=_DOWNLOAD_HEADERS
+            timeout=_DOWNLOAD_TIMEOUT,
+            follow_redirects=True,
+            headers=_DOWNLOAD_HEADERS,
+            event_hooks=request_hooks(self._network),
         ) as client:
             with client.stream("GET", url) as response:
                 response.raise_for_status()
@@ -258,10 +264,13 @@ def build_image_tools(
     *,
     extra_readable: Sequence[str | Path] = (),
     extra_writable: Sequence[str | Path] = (),
+    network: NetworkGuard | None = None,
 ) -> list[Callable[..., Any]]:
     """Return the tool callables the Coordinator agent can call, bound to `root`
     (plus any user-configured extra_readable/extra_writable directories)."""
-    toolkit = ImageToolkit(root, extra_readable=extra_readable, extra_writable=extra_writable)
+    toolkit = ImageToolkit(
+        root, extra_readable=extra_readable, extra_writable=extra_writable, network=network
+    )
 
     def download_image(url: str, path: str, overwrite: bool = True) -> dict[str, object]:
         """Download an image from a URL (e.g. one returned by search_images)
@@ -277,7 +286,9 @@ def build_image_tools(
         return toolkit.download_image(url=url, path=path, overwrite=overwrite)
 
     return [
-        tool_metadata(search_images, risk_category="READ", category="web"),
-        tool_metadata(search_licensed_images, risk_category="READ", category="web"),
+        tool_metadata(online_only(search_images, network), risk_category="READ", category="web"),
+        tool_metadata(
+            online_only(search_licensed_images, network), risk_category="READ", category="web"
+        ),
         tool_metadata(download_image, risk_category="EXTERNAL", category="web"),
     ]

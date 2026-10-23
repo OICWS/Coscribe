@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from ...needs_permission import SITE_MARK, NeedsPermission
-from ...runtime import tool_metadata
+from ...runtime import NetworkGuard, tool_metadata
 from .._workspace import WorkspaceScope
 
 _DEFAULT_TIMEOUT = 30.0
@@ -261,8 +261,15 @@ def _browser_call(
     scope: WorkspaceScope | None,
     saved_workflow: bool,
     allowed_sites: Callable[[], list[str]] | None,
+    network: NetworkGuard | None,
 ) -> Callable[..., dict[str, Any]]:
     def call(action: str, limit: float = _DEFAULT_TIMEOUT, **args: Any) -> dict[str, Any]:
+        if network is not None:
+            network.check_online()
+            # The desktop app checks every step against these, as a click can leave the page.
+            sites = network.sites()
+            if sites is not None:
+                args["network_sites"] = sites
         if scope is not None:
             args["download_dir"] = str(scope.root / _DOWNLOADS_FOLDER)
         if saved_workflow:
@@ -270,6 +277,11 @@ def _browser_call(
             if allowed_sites is not None:
                 args["allowed_sites"] = allowed_sites()
         result = host.call(action, args, thread_id, limit + _PERMISSION_WAIT)
+        tab = result.get("tab")
+        if "network_sites" in args and isinstance(tab, dict) and network is not None:
+            # Where the step ended up: a redirect or a clicked link can leave the list.
+            if str(tab.get("url") or "").startswith(("http://", "https://")):
+                network.check_url(str(tab["url"]))
         if scope is not None:
             # As the file tools take them: relative to the workspace.
             for download in result.get("downloads") or []:
@@ -621,15 +633,17 @@ def build_browser_tools(
     scope: WorkspaceScope | None = None,
     saved_workflow: bool = False,
     allowed_sites: Callable[[], list[str]] | None = None,
+    network: NetworkGuard | None = None,
 ) -> list[Callable[..., Any]]:
     """`saved_workflow`: these tools run a saved workflow's steps, which
     the user reviewed and saved -- consent to the sites they visit -- so
     the desktop app doesn't stop an unattended run to ask. `allowed_sites`
     (read at each call, since a run may be allowed one more while it waits)
     is what that consent covers: a site outside it is refused with
-    NeedsPermission instead."""
+    NeedsPermission instead. `network`: the conversation's network setting,
+    which no consent widens."""
 
-    call = _browser_call(thread_id, host, scope, saved_workflow, allowed_sites)
+    call = _browser_call(thread_id, host, scope, saved_workflow, allowed_sites, network)
     fns = {
         **_navigation_tools(call),
         **_input_tools(call),
