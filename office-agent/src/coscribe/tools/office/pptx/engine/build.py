@@ -22,6 +22,7 @@ from pptx import Presentation
 
 from .checker import check_deck, source_text
 from .compiler import PageReport, compile_pages
+from .design_check import library_system, off_system
 from .history import record_state
 from .sections import check_sections, compile_sections
 from .svg_to_section import convert_page
@@ -150,6 +151,10 @@ def build_deck(
     report = BuildReport(out, compiled.pages)
     source_texts, report.warnings = _source_texts(sources)
     (check_sections if sections else check_deck)(compiled, source_texts if sources else None)
+    if (system := library_system(pages_dir)) is not None:
+        strays = off_system(system, texts)
+        for page in report.pages:
+            page.warnings.extend(strays.get(page.name, []))
 
     before = {entry["page"]: entry["source"] for entry in previous.get("pages", [])}
     hashes = [_source_hash(text) for _name, text in texts]
