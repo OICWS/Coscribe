@@ -405,7 +405,7 @@ export interface UserMessageOut {
    * The first message of a conversation started from the Artifacts page: what it is
    * to make.
    */
-  artifact?: "docs" | "slides" | "sheets";
+  artifact?: "docs" | "slides" | "sheets" | "design";
 }
 
 /**

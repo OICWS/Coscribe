@@ -97,6 +97,9 @@ def test_artifact_note_names_what_is_made_and_is_stripped_from_history() -> None
         artifact_note("sheets") and artifact_note(None) == "" and artifact_note("dashboard") == ""
     )
     assert strip_mode_note(note + "a deck about tea") == "a deck about tea"
+    design = artifact_note("design")
+    assert "SVG and HTML Design skill" in design
+    assert strip_mode_note(design + "an icon for tea") == "an icon for tea"
     # After the date and mode notes, ahead of the language note, as the session writes them.
     asked = "做一个关于茶的演示"
     full = f"Today's real date is 2026-10-22. {AUTO_MODE_NOTE}{note}{language_note(asked)}{asked}"

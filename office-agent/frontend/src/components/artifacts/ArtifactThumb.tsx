@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { KINDS, thumbnailUrl, type ArtifactKind, type ArtifactSummary } from "../../lib/artifacts";
+import { useEffect, useRef, useState } from "react";
+import { KINDS, designUrl, thumbnailUrl, type ArtifactKind, type ArtifactSummary } from "../../lib/artifacts";
 import { KindIcon } from "./artifactIcons";
 
 /** A kind's colour at `percent`, over the page's own background. */
@@ -35,6 +35,9 @@ export function Thumbnail({ item }: { item: ArtifactSummary }) {
       </div>
     );
   }
+  if (item.kind === "design" && !failed) {
+    return <DesignThumb item={item} base={base} />;
+  }
   if (item.kind === "docs") {
     return (
       <div className={base} style={{ background: tinted("docs", 8) }}>
@@ -62,6 +65,40 @@ export function Thumbnail({ item }: { item: ArtifactSummary }) {
   return (
     <div className={`${base} flex items-center justify-center`} style={{ background: tinted(item.kind, 10), color: colour }}>
       <KindIcon kind={item.kind} className="h-9 w-9" />
+    </div>
+  );
+}
+
+/** The page's own width and height when the thumbnail draws it, scaled down to the card. */
+const DESIGN_VIEW = { width: 1280, height: 720 };
+
+/** A design card shows the page itself, drawn small in the same sandbox the panel uses. */
+function DesignThumb({ item, base }: { item: ArtifactSummary; base: string }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0);
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const fit = () => setScale(el.clientWidth / DESIGN_VIEW.width);
+    fit();
+    const watcher = new ResizeObserver(fit);
+    watcher.observe(el);
+    return () => watcher.disconnect();
+  }, []);
+  return (
+    <div ref={box} className={`${base} bg-white`}>
+      {scale > 0 && (
+        <iframe
+          title={item.name}
+          src={designUrl(item)}
+          sandbox="allow-scripts"
+          loading="lazy"
+          tabIndex={-1}
+          aria-hidden="true"
+          className="pointer-events-none absolute left-0 top-0 origin-top-left border-0"
+          style={{ width: DESIGN_VIEW.width, height: DESIGN_VIEW.height, transform: `scale(${scale})` }}
+        />
+      )}
     </div>
   );
 }

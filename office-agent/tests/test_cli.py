@@ -349,6 +349,7 @@ def test_builtin_skills_are_enabled_by_default(
         "Excel Spreadsheets",
         "Word Documents",
         "Skill Creator",
+        "SVG and HTML Design",
     }
 
 
