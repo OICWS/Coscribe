@@ -166,6 +166,23 @@ def command(
     message(thread_id, turn_id, "ran it" if accepted else "was declined")
 
 
+def patch(
+    thread_id: str, turn_id: str, cwd: str, item_id: str = "patch-1", path: str = "notes.md"
+) -> None:
+    base = {"threadId": thread_id, "turnId": turn_id}
+    item = {"type": "fileChange", "id": item_id, "changes": [{"path": path}]}
+    notify("item/started", {**base, "item": {**item, "status": "inProgress"}})
+    reply = ask(
+        "item/fileChange/requestApproval",
+        {**base, "itemId": item_id, "startedAtMs": 0, "reason": "edit notes"},
+    )
+    accepted = reply.get("result", {}).get("decision") == "accept"
+    if accepted:
+        Path(cwd, path).write_text("notes\n", encoding="utf-8")
+    status = "completed" if accepted else "declined"
+    notify("item/completed", {**base, "item": {**item, "status": status}})
+
+
 def run_turn(thread_id: str, turn_id: str, prompt: str, cwd: str) -> None:
     scenario = prompt.split()[0] if prompt.split() else "basic"
     base = {"threadId": thread_id, "turnId": turn_id}
@@ -188,17 +205,11 @@ def run_turn(thread_id: str, turn_id: str, prompt: str, cwd: str) -> None:
     elif scenario == "readout":
         command(thread_id, turn_id, cwd, "cat ../x.txt")
     elif scenario == "file":
-        item = {"type": "fileChange", "id": "patch-1", "changes": [{"path": "notes.md"}]}
-        notify("item/started", {**base, "item": {**item, "status": "inProgress"}})
-        reply = ask(
-            "item/fileChange/requestApproval",
-            {**base, "itemId": "patch-1", "startedAtMs": 0, "reason": "edit notes"},
-        )
-        accepted = reply.get("result", {}).get("decision") == "accept"
-        if accepted:
-            Path(cwd, "notes.md").write_text("notes\n", encoding="utf-8")
-        status = "completed" if accepted else "declined"
-        notify("item/completed", {**base, "item": {**item, "status": status}})
+        patch(thread_id, turn_id, cwd)
+        message(thread_id, turn_id, "patched")
+    elif scenario == "files":
+        patch(thread_id, turn_id, cwd)
+        patch(thread_id, turn_id, cwd, "patch-2", "notes2.md")
         message(thread_id, turn_id, "patched")
     elif scenario in ("hang", "child"):
         if scenario == "child":

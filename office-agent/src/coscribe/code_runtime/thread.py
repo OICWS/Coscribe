@@ -1,14 +1,14 @@
 """One Codex thread driven a turn at a time.
 
-Every command and file change Codex wants comes back as an approval and is
-settled by the caller's `decide`; the thread runs with no sandbox
-(`danger-full-access`, by decision -- see ROADMAP), so that answer is the
-only gate. The one exception: a plain read of the thread's folder runs
-without asking -- the user opened that folder for this work, so reading it
-needs no further permission. "Plain read" is decided here, from a short
-list of read-only programs and no shell syntax at all, not from Codex's own
-`commandActions`: that parse is for display, and live it called
-`find . -delete` and `cat x | tee y` reads.
+The thread runs with no sandbox (`danger-full-access`), so nothing would hold
+a command to the conversation's folders: commands are refused (decision 0021).
+The one exception is a plain read of the thread's folder, which runs without
+asking -- the user opened that folder for this work. "Plain read" is decided
+here, from a short list of read-only programs and no shell syntax at all, not
+from Codex's own `commandActions`: that parse is for display, and live it
+called `find . -delete` and `cat x | tee y` reads. A file change Codex makes
+with its own patch tool comes back as an approval settled by the caller's
+`decide`.
 
 Files written are found by comparing the folder before and after a turn:
 Codex mostly writes through the shell, which reports no file-change item.
@@ -108,7 +108,8 @@ class CodexEvent:
     """What a watcher sees of a turn: "text" (a piece of a reply),
     "message" (a reply, whole), "command_started"/"command_finished",
     "file_change", "usage", and
-    "auto_approved" for a read-only command that ran without asking."""
+    "auto_approved" for a read-only command that ran without asking, and
+    "command_refused" for any other command."""
 
     kind: str
     data: dict[str, Any]
@@ -454,14 +455,9 @@ class _Turn:
             if reads_only(command, str(params.get("cwd") or ""), self.folder):
                 await self._emit("auto_approved", {"command": command})
                 return {"decision": "accept"}
-            request = ApprovalRequest(
-                kind="command",
-                item_id=str(params.get("itemId", "")),
-                command=str(params.get("command") or ""),
-                cwd=str(params.get("cwd") or ""),
-                reason=str(params.get("reason") or ""),
-            )
-        elif method == "item/fileChange/requestApproval":
+            await self._emit("command_refused", {"command": command})
+            return {"decision": "decline"}
+        if method == "item/fileChange/requestApproval":
             item_id = str(params.get("itemId", ""))
             request = ApprovalRequest(
                 kind="file_change",
