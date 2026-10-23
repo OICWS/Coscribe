@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 
 from ..config import Settings
-from ..runtime import SessionEnvironments
+from ..runtime import NetworkAccess, SessionEnvironments
 from ..tools import MessagingStore, ScheduledTriggerStore, WorkspaceScope, parse_run_thread_id
 from ..workflows import granted_by, parse_workflow
 
@@ -77,6 +77,7 @@ class ThreadFiles:
         self.workspace_sidecar_path(thread_id).unlink(missing_ok=True)
         self.title_sidecar_path(thread_id).unlink(missing_ok=True)
         SessionEnvironments(self._settings.state_dir).delete(thread_id)
+        NetworkAccess(self._settings.state_dir).delete(thread_id)
         MessagingStore(self._settings.state_dir).delete(thread_id)
 
     def run_workspace(self, thread_id: str) -> str | None:

@@ -21,10 +21,15 @@ or its routes (`web/`), the proxy setting (`runtime/proxy.py`) or secret storage
 - Browser commands go to the desktop app's own browser through the internal route; there is no
   remote-debugging port.
 - Tool schemas are fixed and snapshotted (`tests/tool_schemas.txt`).
+- A conversation's network setting (`runtime.NetworkGuard`, Edit environment > Network) is checked
+  at each call, and on every request of `read_web_page`, `download_image` and `http_request`, so a
+  redirect can't leave the allowed domains; the browser's steps are checked by the desktop app
+  against `network_sites` (`tests/test_network_access.py`).
 
 ## Tests
 `tests/test_browser_tool.py`, `tests/test_websearch_tool.py`, `tests/test_http_request.py`,
-`tests/test_images_tool.py`, `tests/test_licensed_image_search.py`, `tests/test_proxy.py`.
+`tests/test_images_tool.py`, `tests/test_licensed_image_search.py`, `tests/test_proxy.py`,
+`tests/test_network_access.py`.
 
 ## Verify by hand
 The browser tools against a real page in the desktop app; a web search and an image download

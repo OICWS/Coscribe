@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from coscribe.tools import DesignSystemError, DesignSystemStore
+from coscribe.tools import DesignSystemError, DesignSystemStore, design_systems
 
 
 def test_a_new_system_starts_with_colors_and_text_styles(tmp_path: Path) -> None:
@@ -18,7 +18,10 @@ def test_a_new_system_starts_with_colors_and_text_styles(tmp_path: Path) -> None
     assert (tmp_path / "design_systems" / made["id"] / "system.json").is_file()
 
 
-def test_the_list_is_newest_change_first(tmp_path: Path) -> None:
+def test_the_list_is_newest_change_first(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Windows' clock moves in steps of about 15 ms, so three quick writes can share one time.
+    ticks = iter(f"2026-01-01T00:00:0{n}+00:00" for n in range(10))
+    monkeypatch.setattr(design_systems, "_now", lambda: next(ticks))
     store = DesignSystemStore(tmp_path)
     first = store.create("First")
     second = store.create("Second")

@@ -17,7 +17,7 @@ import { Readable } from "node:stream";
 import { type BrowserWindow, type DownloadItem, type WebContents, app, webContents } from "electron";
 import { pageAgent } from "./browserAgentPage";
 import { type AgentFrame, type Download, type PageDialog, type TabCdp, cdpFor, existingCdp } from "./browserCdp";
-import { inSites, isAllowed, normalizeSite, requestPermission } from "./browserPermissions";
+import { checkNetworkLanding, checkNetworkSites, inSites, isAllowed, normalizeSite, requestPermission } from "./browserPermissions";
 import {
   sendAgentEvent,
   MAX_TABS,
@@ -835,10 +835,10 @@ export function startBrowserAgent(port: number, token: string, getWindow: () => 
     }
     try {
       const site = siteFor(command);
-      // A saved workflow's steps were reviewed and saved by the user --
-      // that's consent to the sites they name -- and a prompt would stall a
-      // run no one is watching. Any other site is refused, and the run
-      // stops to ask the person instead.
+      if (site) checkNetworkSites(site, command.args?.network_sites);
+      // A saved workflow's steps were reviewed and saved by the user -- that's consent to the
+      // sites they name -- and a prompt would stall a run no one is watching. Any other site is
+      // refused, and the run stops to ask the person instead.
       const savedWorkflow = command.args?.saved_workflow === true;
       const allowedSites = Array.isArray(command.args?.allowed_sites) ? command.args.allowed_sites.map(String) : null;
       if (site && savedWorkflow && allowedSites) {
@@ -852,8 +852,7 @@ export function startBrowserAgent(port: number, token: string, getWindow: () => 
       await reply(command.id, { ok: false, error: err instanceof Error ? err.message : String(err) });
       return;
     }
-    // The AI's steps land on the live page, so an annotation in progress
-    // gives way (the panel drops its drawing when it sees "busy").
+    // The AI's steps land on the live page, so an annotation in progress gives way (the panel drops its drawing).
     setViewHidden(false);
     sendAgentEvent({ busy: true, threadId: command.thread_id, action: command.action });
     clearTimeout(frameOffTimer);
@@ -862,6 +861,7 @@ export function startBrowserAgent(port: number, token: string, getWindow: () => 
     running = { threadId: command.thread_id, stop: false };
     try {
       const result = await run(command);
+      checkNetworkLanding(activeTab()?.view.webContents, command.args?.network_sites);
       await reply(command.id, { ok: true, result });
     } catch (err) {
       await reply(command.id, { ok: false, error: err instanceof Error ? err.message : String(err) });

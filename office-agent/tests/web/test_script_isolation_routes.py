@@ -1,6 +1,6 @@
 # ruff: noqa: E402
 """Web tests: Edit environment > Scripts, the machine's isolation check and a conversation's
-choice to run scripts without it."""
+choice to run scripts without it; and Network, how far a conversation may reach."""
 
 import sys
 from pathlib import Path
@@ -41,4 +41,29 @@ def test_running_without_isolation_is_per_conversation_and_audited(
     assert [(e.thread_id, e.tool_name, e.decision) for e in entries] == [
         ("t1", "run_scripts_without_isolation", "approve"),
         ("t1", "run_scripts_without_isolation", "reject"),
+    ]
+
+
+def test_network_access_is_per_conversation_checked_and_audited(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        before = client.get("/api/threads/t1/network").json()
+        limited = client.put(
+            "/api/threads/t1/network",
+            json={"mode": "limited", "domains": ["https://www.Example.com/a", "*.wiki.org", ""]},
+        ).json()
+        bad = client.put("/api/threads/t1/network", json={"mode": "limited", "domains": ["a b"]})
+        empty = client.put("/api/threads/t1/network", json={"mode": "limited", "domains": []})
+        other = client.get("/api/threads/t2/network").json()
+        none = client.put("/api/threads/t1/network", json={"mode": "none", "domains": []}).json()
+        again = client.put("/api/threads/t1/network", json={"mode": "none", "domains": []}).json()
+    assert before == other == {"mode": "limited", "domains": ["*"]}
+    assert limited == {"mode": "limited", "domains": ["example.com", "wiki.org"]}
+    assert bad.status_code == empty.status_code == 422
+    assert none == again == {"mode": "none", "domains": []}
+    entries = AuditLog(tmp_path / "state").read_all()
+    assert [(e.thread_id, e.tool_name, e.arguments["mode"]) for e in entries] == [
+        ("t1", "set_network_access", "limited"),
+        ("t1", "set_network_access", "none"),
     ]
