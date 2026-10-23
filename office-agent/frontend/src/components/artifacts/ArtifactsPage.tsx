@@ -35,7 +35,7 @@ const toolButton = "flex h-9 w-9 items-center justify-center rounded-lg text-[va
 
 /** Everything coscribe has made, as cards or as a list by day, with a way to make something new.
  * Opening one goes to the conversation that made it. */
-export function ArtifactsPage({ onOpen, onMake }: { onOpen: (item: PageItem) => void; onMake: (kind: PageKind) => void }) {
+export function ArtifactsPage({ onOpen, onMake }: { onOpen: (item: PageItem) => void; onMake: (kind: PageKind, describe?: boolean) => void }) {
   const { items, error, reload, pins, togglePin } = useArtifacts();
   const [filters, setFilters] = useState<Filters>({ tab: "all", kind: null, query: "" });
   const [layout, setLayout] = useState<Layout>(readLayout);

@@ -17,6 +17,7 @@ import { type TaskDraftItem } from "./types";
 import { ToolRunGroupView } from "./ToolRuns";
 import { UserMessageView, SteerView } from "./UserMessageView";
 import { FileCards } from "./FileCards";
+import { SystemCards } from "./SystemCards";
 
 /** react-markdown + remark/rehype + katex is the single biggest dependency
  * added to this app (roughly triples the production bundle) -- code-split
@@ -89,6 +90,9 @@ export function TurnView({
   onPptxShapePicked: (capture: PptxShapeCapture) => void;
 }) {
   const entries = foldTaskCard(groupToolRuns(turn.items), live, turn.tasksBefore);
+  const calls = entries.flatMap((entry) =>
+    entry.kind === "tool_run" ? entry.items : entry.kind === "task_card" ? Object.values(entry.calls).flat() : [],
+  );
   const finalAgentItem = turn.finalAgentItem;
   const userItem = turn.userItem;
   const canFooter =
@@ -125,11 +129,8 @@ export function TurnView({
           <LogItemView key={entry.id} item={entry} onEditMessage={isLastTurn ? onEditMessage : undefined} />
         ),
       )}
-      <FileCards
-        items={entries.flatMap((entry) =>
-          entry.kind === "tool_run" ? entry.items : entry.kind === "task_card" ? Object.values(entry.calls).flat() : [],
-        )}
-      />
+      <FileCards items={calls} />
+      <SystemCards items={calls} />
       {canFooter && (
         <div className="-mt-2 flex items-center gap-0.5 self-start opacity-0 transition-opacity group-hover/turn:opacity-100">
           <CopyButton
