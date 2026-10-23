@@ -32,12 +32,10 @@ import {
   KEEP_AWAKE_KEY,
   KEEP_AWAKE_ON_BATTERY_KEY,
   PROMPT_SUGGESTIONS_KEY,
-  READABLE_DIRS_KEY,
   WORKSPACE_FIELDS,
   WORKSPACE_ROOT_KEY,
-  WRITABLE_DIRS_KEY,
   buildDirEntries,
-  syncDirsToStrings,
+  changedDirs,
   type DirEntry,
 } from "./fields";
 import { DesignSystemsTab } from "./DesignSystemsTab";
@@ -171,7 +169,7 @@ export function SettingsModal({
       const initial: Record<string, string> = {};
       for (const key of CONFIG_KEYS) initial[key] = (cfg as unknown as Record<string, string | null>)[key] ?? "";
       setValues(initial);
-      setDirEntries(buildDirEntries(cfg.COSCRIBE_EXTRA_READABLE_DIRS, cfg.COSCRIBE_EXTRA_WRITABLE_DIRS));
+      setDirEntries(buildDirEntries(cfg as unknown as Record<string, string | null>));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -183,10 +181,7 @@ export function SettingsModal({
       const original = (config as unknown as Record<string, string | null>)[key] ?? "";
       if (values[key] !== original) changed[key] = values[key];
     }
-    const dirs = syncDirsToStrings(dirEntries);
-    if (dirs.readable !== (config.COSCRIBE_EXTRA_READABLE_DIRS ?? "")) changed[READABLE_DIRS_KEY] = dirs.readable;
-    if (dirs.writable !== (config.COSCRIBE_EXTRA_WRITABLE_DIRS ?? "")) changed[WRITABLE_DIRS_KEY] = dirs.writable;
-    return changed;
+    return { ...changed, ...changedDirs(dirEntries, config as unknown as Record<string, string | null>) };
   }, [config, values, dirEntries]);
 
   // Saved as you go, once typing pauses, rather than on a button.

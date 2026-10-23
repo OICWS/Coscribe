@@ -124,6 +124,13 @@ def test_extra_dirs_parse_as_comma_separated_paths(monkeypatch: pytest.MonkeyPat
     assert settings.extra_writable_dirs == [Path("/tmp/c")]
 
 
+def test_deletable_dirs_parse_like_the_others(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COSCRIBE_DEFAULT_MODEL", "anthropic:claude-sonnet-4-5")
+    monkeypatch.setenv("COSCRIBE_EXTRA_DELETABLE_DIRS", "/tmp/d, /tmp/c")
+    settings = Settings(_env_file=None)  # type: ignore[call-arg]
+    assert settings.extra_deletable_dirs == [Path("/tmp/d"), Path("/tmp/c")]
+
+
 def test_max_turns_defaults_to_150(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("COSCRIBE_DEFAULT_MODEL", "anthropic:claude-sonnet-4-5")
     monkeypatch.delenv("COSCRIBE_MAX_TURNS", raising=False)

@@ -27,7 +27,7 @@ bound to the model: 22 tools, ~4936 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 115 tools, ~35756 tokens (the ones not bound are found through search_tools)
+registered: 115 tools, ~35754 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -52,7 +52,7 @@ registered: 115 tools, ~35756 tokens (the ones not bound are found through searc
   create_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 cc7745e488
   crop_pptx_image | WRITE_LOCAL | documents | deferred | sha256 45b8d754c3
   delete_docx_text | WRITE_LOCAL | documents | deferred | sha256 881c546c7c
-  delete_file | WRITE_LOCAL | filesystem | deferred | sha256 86460e1389
+  delete_file | WRITE_LOCAL | filesystem | deferred | sha256 d37d397af0
   delete_pptx_shape | WRITE_LOCAL | documents | deferred | sha256 0878db543c
   delete_pptx_slide | WRITE_LOCAL | documents | deferred | sha256 576e07dfa9
   delete_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 a0c002e459
@@ -91,7 +91,7 @@ registered: 115 tools, ~35756 tokens (the ones not bound are found through searc
   load_skill | READ | skills | deferred | sha256 7b0c5ee61e
   merge_pptx_table_cells | WRITE_LOCAL | documents | deferred | sha256 2ab446f2a5
   modify_xlsx | WRITE_LOCAL | documents | deferred | sha256 3e15498c5f
-  move_file | WRITE_LOCAL | filesystem | deferred | sha256 5dfd1f570c
+  move_file | WRITE_LOCAL | filesystem | deferred | sha256 75892076be
   pause_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 53a449b0cb
   read_docx | READ | documents | core | sha256 dbcba018fc
   read_docx_review | READ | documents | deferred | sha256 a86f850225

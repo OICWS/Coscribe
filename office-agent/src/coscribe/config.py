@@ -59,6 +59,12 @@ class Settings(BaseSettings):
     the Coordinator to modify.
     """
 
+    extra_deletable_dirs: Annotated[list[Path], NoDecode] = []
+    """Folders in extra_writable_dirs where the file tools may also delete files (to the Recycle
+    Bin) and move or rename them; Settings lists such a folder under both keys. A folder only in
+    extra_writable_dirs refuses deletes and renames.
+    """
+
     state_dir: Path = Path(".coscribe/state")
     """Directory task/scheduled-task state and (via runtime_lg's own checkpointer)
     conversation history are persisted to."""
@@ -271,7 +277,9 @@ class Settings(BaseSettings):
             return None
         return value
 
-    @field_validator("extra_readable_dirs", "extra_writable_dirs", mode="before")
+    @field_validator(
+        "extra_readable_dirs", "extra_writable_dirs", "extra_deletable_dirs", mode="before"
+    )
     @classmethod
     def _comma_separated_paths(cls, value: object) -> object:
         # pydantic-settings would otherwise expect a JSON array string for a
