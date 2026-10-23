@@ -78,7 +78,7 @@ export function WorkspaceTab({ values, onChange, dirEntries, onDirEntriesChange 
 
       <SettingsSection
         title="Other folders"
-        description="coscribe can always read and change the workspace. Give it more folders here, each read-only or read and write."
+        description="coscribe can always read and change the workspace. Give it more folders here. Only folders set to read, write and delete let it delete, move or rename files; deleted files go to the Recycle Bin."
       >
         {dirEntries.length === 0 ? (
           <p className="mt-3 text-sm text-[var(--muted)]">No other folders yet.</p>
@@ -96,7 +96,7 @@ export function WorkspaceTab({ values, onChange, dirEntries, onDirEntriesChange 
                 >
                   <option value="read">Read only</option>
                   <option value="read-write">Read and write</option>
-                </select>
+                  <option value="read-write-delete">Read, write and delete</option></select>
                 <button
                   type="button"
                   aria-label={`Remove ${entry.path}`}

@@ -25,12 +25,16 @@ class WorkspaceScope:
         *,
         extra_readable: Sequence[str | Path] = (),
         extra_writable: Sequence[str | Path] = (),
+        extra_deletable: Sequence[str | Path] = (),
         protected: Sequence[str | Path] = (),
     ) -> None:
         self.root = Path(root).expanduser().resolve()
         self._protected = [Path(p).expanduser().resolve() for p in protected]
         self.root.mkdir(parents=True, exist_ok=True)
-        self._extra_writable = [Path(p).expanduser().resolve() for p in extra_writable]
+        self._extra_deletable = [Path(p).expanduser().resolve() for p in extra_deletable]
+        self._extra_writable = [
+            Path(p).expanduser().resolve() for p in extra_writable
+        ] + self._extra_deletable
         self._extra_readable = [
             Path(p).expanduser().resolve() for p in extra_readable
         ] + self._extra_writable
@@ -43,11 +47,14 @@ class WorkspaceScope:
     def extra_writable(self) -> list[Path]:
         return list(self._extra_writable)
 
-    def resolve(self, path: str, *, write: bool = False) -> Path:
+    def resolve(self, path: str, *, write: bool = False, delete: bool = False) -> Path:
+        """`delete` covers removing, moving or renaming: only the root and the folders set to
+        "Read, write and delete" allow it."""
         candidate = Path(path).expanduser()
         resolved = (
             candidate.resolve() if candidate.is_absolute() else (self.root / candidate).resolve()
         )
+        write = write or delete
         if write and any(self._under(resolved, p) for p in self._protected):
             # The model writes files in Accept Edits without asking, so a settings file it could
             # reach (a policy, a hook, a connector list) would be changed with nobody asked.
@@ -60,6 +67,12 @@ class WorkspaceScope:
         allowed = self._extra_writable if write else self._extra_readable
         for extra_root in allowed:
             if self._under(resolved, extra_root):
+                if delete and not any(self._under(resolved, p) for p in self._extra_deletable):
+                    raise PermissionError(
+                        f"{path} is in a folder set to read and write, which allows no deleting, "
+                        "moving or renaming. The user can set it to \"Read, write and delete\" in "
+                        "Settings > Workspace."
+                    )
                 return resolved
         verb = "written to" if write else "read"
         message = f"Path cannot be {verb} -- outside any allowed directory: {path}"
