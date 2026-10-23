@@ -54,7 +54,8 @@ jobs:
         shell: pwsh
         run: |
           $password = "Cs-" + [guid]::NewGuid().ToString("N").Substring(0, 16) + "!a1"
-          net user csproto $password /add | Out-Null
+          # New-LocalUser, not net user: net asks a Y/N question for passwords over 14 characters.
+          New-LocalUser -Name csproto -Password (ConvertTo-SecureString $password -AsPlainText -Force) | Out-Null
           $out = "C:\csproto-out"
           New-Item -ItemType Directory -Force $out | Out-Null
           icacls $out /grant "Everyone:(OI)(CI)(M)" | Out-Null
@@ -73,4 +74,4 @@ jobs:
             -RedirectStandardOutput "$out\stdout2.txt" -RedirectStandardError "$out\stderr2.txt"
           Get-Content "$out\stdout2.txt", "$out\stderr2.txt" -ErrorAction SilentlyContinue
           Write-Output "folder grants as csproto: exit $($p.ExitCode)"
-          net user csproto /delete | Out-Null
+          Remove-LocalUser -Name csproto
