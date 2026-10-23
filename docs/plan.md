@@ -226,9 +226,9 @@ Last reviewed: 2026-10-15.
    self-test passed (part 2), Edit environment as a list of pages with the conversation's
    folders, its Scripts page (fail closed, the audited per-conversation opt-in to run without
    isolation, the self-test result and re-test), and "Read, write and delete" as a third folder
-   setting with `delete_file` to the Recycle Bin. Codex's commands are off (2026-10-23). Next, one
-   PR each: a "Not isolated" mark on approvals and the sweep of grants at start and at uninstall;
-   coscribe's own Python download; read limits and the network switch per conversation with the
+   setting with `delete_file` to the Recycle Bin. Codex's commands are off (2026-10-23). Grants on folders no longer in use are
+   taken off at start, and all of them at uninstall. Next, one PR each: a "Not isolated" mark on
+   approvals; coscribe's own Python download; read limits and the network switch per conversation with the
    web tools' host allowlist.
 
 ## Needs the maintainer's testing (could not be verified here)

@@ -24,3 +24,11 @@
 !macro customInstall
   ExecWait '"$INSTDIR\resources\sidecar\coscribe-server.exe" --version'
 !macroend
+
+; Uninstalling (not the uninstall step of an update) takes off the ACEs that scripts' isolation
+; wrote on the person's folders (tools/exec/isolation.py), while the sidecar is still there.
+!macro customUnInstall
+  ${ifNot} ${isUpdated}
+    ExecWait '"$INSTDIR\resources\sidecar\coscribe-server.exe" --revoke-folder-grants'
+  ${endIf}
+!macroend
