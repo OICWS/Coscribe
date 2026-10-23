@@ -578,9 +578,11 @@ def main() -> int:
         grandchild = 0
         for _ in range(60):
             time.sleep(0.5)
-            first = tree_log.read_text(encoding="utf-8", errors="replace").strip().splitlines()
-            if first and first[0].isdigit():
-                grandchild = int(first[0])
+            # A venv launcher can write a warning to the shared log before the pid line.
+            lines = tree_log.read_text(encoding="utf-8", errors="replace").splitlines()
+            pids = [line.strip() for line in lines if line.strip().isdigit()]
+            if pids:
+                grandchild = int(pids[0])
                 break
         subprocess.run(["taskkill", "/T", "/F", "/PID", str(pid)], capture_output=True)
         wait(handle, 10)
