@@ -762,3 +762,22 @@ describe("prompt suggestion", () => {
     expect(run(running, { type: "prompt_suggestion", text: "late" })).toBe(running);
   });
 });
+
+
+describe("files sent with a message", () => {
+  it("a replayed message shows its files and no note", () => {
+    const entries: HistoryEntry[] = [{ kind: "user", text: "look at these", files: ["a.xlsx", "b.pdf"] }];
+    expect(historyToItems(entries)).toMatchObject([{ kind: "user", text: "look at these", files: ["a.xlsx", "b.pdf"] }]);
+  });
+
+  it("a sent message keeps its files, and an edit that carries the note keeps them too", () => {
+    const sent = run(stateWith(), { type: "local_user_message", text: "", instant: false, files: ["a.xlsx"] });
+    expect(sent.items).toMatchObject([{ kind: "user", text: "", files: ["a.xlsx"] }]);
+    const edited = run(sent, {
+      type: "local_edit_message",
+      turnIndex: 0,
+      text: "now a table\n\n(Attached files, now in the workspace: a.xlsx, b.pdf)",
+    });
+    expect(edited.items).toMatchObject([{ kind: "user", text: "now a table", files: ["a.xlsx", "b.pdf"] }]);
+  });
+});

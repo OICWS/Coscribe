@@ -7,7 +7,7 @@ import { uploadFile } from "../lib/rest";
 import { ThreadIdContext } from "./threadContext";
 import type { CommandInfo } from "../types/session";
 import type { BrowserCapture } from "./BrowserPanel";
-import { attachmentKind, type AttachmentView } from "../lib/attachments";
+import { attachedFilesNote, attachmentKind, type AttachmentView } from "../lib/attachments";
 import { AttachmentCard, AttachmentDialog } from "./Attachments";
 import { PlusIcon, ReturnIcon } from "./icons";
 import { StopRingIcon } from "./StopRingIcon";
@@ -32,6 +32,8 @@ export interface ComposerSendPayload {
    * workspace attachment note, if any. */
   outgoingText: string;
   images?: string[];
+  /** Workspace paths of the files sent along, shown as cards in the conversation. */
+  files?: string[];
   isInstant: boolean;
 }
 
@@ -262,7 +264,7 @@ export function Composer({
     // displayText for this, same as it already does for the Stop button.
     let outgoingText = text;
     if (pendingFiles.length > 0) {
-      const note = `(Attached files, now in the workspace: ${pendingFiles.map((f) => f.path).join(", ")})`;
+      const note = attachedFilesNote(pendingFiles.map((f) => f.path));
       outgoingText = text ? `${text}\n\n${note}` : note;
     }
     // Unlike pendingFiles above, a paste has no workspace path to point
@@ -303,9 +305,11 @@ export function Composer({
     }
     const commandWord = text.trim().split(/\s+/, 1)[0]?.toLowerCase();
     onSend({
-      displayText: displayText || "(attachment sent)",
+      // With only attachments the bubble has no text: the cards say what was sent.
+      displayText: displayText || (pendingImages.length > 0 || pendingFiles.length > 0 ? "" : "(attachment sent)"),
       outgoingText,
       images: pendingImages.length > 0 ? pendingImages.map((f) => f.dataUrl) : undefined,
+      files: pendingFiles.length > 0 ? pendingFiles.map((f) => f.path) : undefined,
       isInstant: INSTANT_COMMANDS.has(commandWord ?? ""),
     });
     setValue("");

@@ -128,3 +128,23 @@ def test_a_slides_note_carries_the_chosen_design_system_in_one_stripped_sentence
     # Only a Slides conversation takes one, and none changes the note.
     assert artifact_note("docs", system) == artifact_note("docs")
     assert artifact_note("slides", None) == artifact_note("slides")
+
+
+def test_the_note_naming_attached_files_becomes_the_entrys_files_not_its_text() -> None:
+    from coscribe.runtime_lg import split_attached_files
+
+    note = "(Attached files, now in the workspace: a.xlsx, notes/b.py)"
+    assert split_attached_files(f"look at these\n\n{note}") == (
+        "look at these",
+        ["a.xlsx", "notes/b.py"],
+    )
+    assert split_attached_files(note) == ("", ["a.xlsx", "notes/b.py"])
+    assert split_attached_files("no files (Attached files, now in the workspace) here") == (
+        "no files (Attached files, now in the workspace) here",
+        [],
+    )
+    messages = [HumanMessage(content=f"look at these\n\n{note}"), HumanMessage(content=note)]
+    assert serialize_history_for_ws_lg(messages) == [
+        {"kind": "user", "text": "look at these", "files": ["a.xlsx", "notes/b.py"]},
+        {"kind": "user", "text": "", "files": ["a.xlsx", "notes/b.py"]},
+    ]

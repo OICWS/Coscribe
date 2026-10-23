@@ -245,6 +245,22 @@ def _strip_turn_notes(text: str) -> str:
     return _LANGUAGE_NOTE_RE.sub("", _ARTIFACT_NOTE_RE.sub("", text, count=1), count=1)
 
 
+_ATTACHED_FILES_RE = re.compile(
+    r"\n*\(Attached files, now in the workspace: (?P<paths>.+)\)\s*$", re.DOTALL
+)
+
+
+def split_attached_files(text: str) -> tuple[str, list[str]]:
+    """A user message's text without the note that names the files it came with, and those
+    files' workspace paths. The note stays in what the model reads; the page shows the files as
+    cards instead (the composer joins the paths with ", ")."""
+    found = _ATTACHED_FILES_RE.search(text)
+    if found is None:
+        return text, []
+    paths = [path for path in found.group("paths").split(", ") if path]
+    return text[: found.start()], paths
+
+
 def strip_mode_note(text: str) -> str:
     text = text.removeprefix(STEER_NOTE)
     return _CONTEXT_NOTE_RE.sub("", _strip_turn_notes(text), count=1)
@@ -432,9 +448,12 @@ def serialize_history_for_ws_lg(messages: list[Any]) -> list[dict[str, Any]]:
             if not text and not images:
                 continue
             kind = "steer" if is_steer(message) else "user"
-            entry: dict[str, Any] = {"kind": kind, "text": strip_mode_note(text)}
+            shown, files = split_attached_files(strip_mode_note(text))
+            entry: dict[str, Any] = {"kind": kind, "text": shown}
             if images:
                 entry["images"] = images
+            if files and kind == "user":
+                entry["files"] = files
             entries.append(entry)
             continue
         if not text:

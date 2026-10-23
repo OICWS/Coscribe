@@ -1,3 +1,4 @@
+import { splitAttachedFiles } from "../lib/attachments";
 import type { HistoryEntry, QuestionSpec, StateEvent, TaskDraft, WsServerEvent } from "../types/wire";
 
 /** The answer the frontend sends for a saved draft starts with this --
@@ -12,7 +13,7 @@ export type LogItem =
   // way over its own checkpointed HumanMessages (see conversation/session.py's
   // handle_edit_message). Assigned once at creation (below), not derived
   // at render time, so it stays stable even as later items are appended.
-  | { id: string; kind: "user"; text: string; turnIndex: number; images?: string[] }
+  | { id: string; kind: "user"; text: string; turnIndex: number; images?: string[]; files?: string[] }
   /** A note added while a reply was being worked on; part of that turn,
    * not a turn of its own. Pending until the model reads it. */
   | { id: string; kind: "steer"; text: string; status: "pending" | "delivered" }
@@ -189,7 +190,7 @@ export const initialChatState: ChatState = {
  * (optimistic user bubble on send, approval-button feedback before the
  * server round-trip completes). */
 export type LocalAction =
-  | { type: "local_user_message"; text: string; instant: boolean; images?: string[] }
+  | { type: "local_user_message"; text: string; instant: boolean; images?: string[]; files?: string[] }
   | { type: "local_steer"; id: string; text: string }
   | { type: "local_steers_withdrawn"; ids: string[] }
   | { type: "local_suggestion_dismissed" }
@@ -213,6 +214,12 @@ function genId(): string {
 
 function formatDuration(elapsedMs: number): string {
   return elapsedMs < 1000 ? `${elapsedMs}ms` : `${(elapsedMs / 1000).toFixed(1)}s`;
+}
+
+/** A message's text and, when it came with files, their paths (the note naming them is not shown). */
+function splitText(text: string): { text: string; files?: string[] } {
+  const { text: shown, files } = splitAttachedFiles(text);
+  return files.length > 0 ? { text: shown, files } : { text };
 }
 
 function countUserItems(items: LogItem[]): number {
@@ -262,7 +269,7 @@ export function historyToItems(entries: HistoryEntry[]): LogItem[] {
   let lastPlan = "";
   return entries.map((entry): LogItem => {
     if (entry.kind === "user") {
-      return { id: genId(), kind: "user", text: entry.text, turnIndex: userTurnIndex++, images: entry.images };
+      return { id: genId(), kind: "user", text: entry.text, turnIndex: userTurnIndex++, images: entry.images, files: entry.files };
     }
     if (entry.kind === "agent") {
       return { id: genId(), kind: "agent", text: entry.text, streaming: false };
@@ -347,6 +354,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
             text: action.text,
             turnIndex: countUserItems(state.items),
             images: action.images,
+            files: action.files,
           },
         ],
       };
@@ -367,7 +375,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         turnInFlight: true,
         error: null,
-        items: [...kept, { id: genId(), kind: "user", text: action.text, turnIndex: action.turnIndex }],
+        items: [...kept, { id: genId(), kind: "user", ...splitText(action.text), turnIndex: action.turnIndex }],
       };
     }
 
@@ -466,7 +474,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       // plausible-looking.
       const revealed: LogItem[] = action.entries.map((entry) => {
         if (entry.kind === "user") {
-          return { id: genId(), kind: "user", text: entry.text, turnIndex: -1, images: entry.images } as const;
+          return { id: genId(), kind: "user", text: entry.text, turnIndex: -1, images: entry.images, files: entry.files } as const;
         }
         if (entry.kind === "steer") {
           return { id: genId(), kind: "steer", text: entry.text, status: "delivered" } as const;

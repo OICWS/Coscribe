@@ -59,6 +59,8 @@ class UserEntry(TypedDict):
     kind: Literal["user"]
     text: str
     images: NotRequired[list[str]]
+    # Workspace paths of the files sent with the message: shown as cards, not as text.
+    files: NotRequired[list[str]]
 
 
 class SteerEntry(TypedDict):
