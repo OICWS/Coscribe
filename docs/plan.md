@@ -230,7 +230,8 @@ Last reviewed: 2026-10-15.
    to listed domains, or full). Codex's commands are off (2026-10-23). A script's approval card
    says whether it runs isolated. Grants on folders no longer in use are taken off at start, and
    all of them at uninstall. The script venv on Windows is made from coscribe's own Python
-   (3.12). Next: read limits.
+   (3.12). Reads stay limited to the conversation's folders: no whole-profile switch, a
+   read-only folder instead (2026-10-23). Left: close #560.
 
 ## Needs the maintainer's testing (could not be verified here)
 
