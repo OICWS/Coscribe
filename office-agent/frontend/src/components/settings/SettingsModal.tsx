@@ -128,6 +128,8 @@ const CONFIG_KEYS = [
 interface SettingsModalProps {
   open: boolean;
   initialCategory?: SettingsCategory;
+  /** Open Design systems with its New design system form ready. */
+  startNewDesignSystem?: boolean;
   onCreateSkill: () => void;
   onClose: () => void;
 }
@@ -135,6 +137,7 @@ interface SettingsModalProps {
 export function SettingsModal({
   open,
   initialCategory,
+  startNewDesignSystem,
   onCreateSkill,
   onClose,
 }: SettingsModalProps) {
@@ -318,7 +321,7 @@ export function SettingsModal({
               />
             )}
             {category === "connectors" && <ConnectorsTab active={category === "connectors"} />}
-            {category === "design-systems" && <DesignSystemsTab active={category === "design-systems"} />}
+            {category === "design-systems" && <DesignSystemsTab active={category === "design-systems"} startNew={startNewDesignSystem} />}
             {category === "secrets" && <SecretsTab active={category === "secrets"} />}
             {category === "environment" && <EnvironmentTab active={category === "environment"} />}
             {category === "sessions" && <SessionsTab values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} />}

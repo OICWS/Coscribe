@@ -121,6 +121,10 @@ interface ComposerProps {
    * page: shown as a chip, and the box asks for it. */
   artifact: ArtifactKind | null;
   onArtifactRemoved: () => void;
+  /** A Slides start's choice from the design-system library, and the way to the page that manages it. */
+  designSystem: string | null;
+  onDesignSystem: (id: string | null) => void;
+  onManageDesignSystems: (startNew: boolean) => void;
 }
 
 export function Composer({
@@ -146,6 +150,9 @@ export function Composer({
   suggestion,
   onSuggestionDismiss,
   artifact,
+  designSystem,
+  onDesignSystem,
+  onManageDesignSystems,
   onArtifactRemoved,
 }: ComposerProps) {
   const threadId = useContext(ThreadIdContext);
@@ -568,10 +575,11 @@ export function Composer({
           </div>
         )}
 
-        {artifact && <ArtifactChip kind={artifact} onRemove={onArtifactRemoved} />}
-        <textarea
+        <div className="flex items-start">
+          {artifact && <ArtifactChip kind={artifact} designSystem={designSystem} onDesignSystem={onDesignSystem} onManageDesignSystems={onManageDesignSystems} onRemove={onArtifactRemoved} />}
+          <textarea
           ref={textareaRef}
-          className="max-h-40 w-full resize-none bg-transparent px-0.5 pr-9 text-[0.9rem] leading-normal outline-none"
+          className={`max-h-40 min-w-0 flex-1 resize-none bg-transparent px-0.5 pr-9 text-[0.9rem] leading-normal outline-none ${artifact ? "mt-[3px]" : ""}`}
           rows={1}
           value={value}
           placeholder={ghost ?? ((artifact && KINDS[artifact].placeholder) || "Type / for commands")}
@@ -584,6 +592,7 @@ export function Composer({
           onKeyDown={onKeyDown}
           onPaste={onPaste}
         />
+        </div>
 
         {/* Send/Stop lives inside the input box itself, bottom-right --
          * a small bordered icon button (feather's corner-down-left
