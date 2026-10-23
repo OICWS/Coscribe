@@ -10,14 +10,34 @@ interface Call {
   isError?: boolean;
 }
 
-/** The decks and documents a run of calls made or changed: a finished call on a file the viewer
- * shows that is not a read (an approved call carries its result too), each path once, in the order
- * it was first touched. */
+// Tools that only look at a file. Listing the shapes of a deck says nothing about it being made.
+const LOOKS_ONLY = /^(read|list|inspect|get|check|render|preview|search|find|describe|count)_/;
+
+/** The files a script reported writing: scripts name no path of their own. */
+function scriptFiles(result: unknown): string[] {
+  let parsed = result;
+  if (typeof result === "string") {
+    try {
+      parsed = JSON.parse(result);
+    } catch {
+      return [];
+    }
+  }
+  const written = (parsed as { files_written?: unknown } | null)?.files_written;
+  return Array.isArray(written) ? written.filter((p): p is string => typeof p === "string") : [];
+}
+
+/** The decks and documents a run of calls made or changed: a finished call that wrote a file the
+ * viewer shows (an approved call carries its result too), each path once, in the order it was
+ * first touched. A call that only looked at a file does not count, nor does one that is still
+ * waiting for approval. */
 export function touchedFiles(calls: Iterable<Call>): string[] {
   const paths = new Set<string>();
   for (const call of calls) {
+    if (call.result === undefined || call.isError) continue;
     const path = call.arguments.path;
-    if (call.result !== undefined && !call.isError && typeof path === "string" && isViewable(path) && !call.toolName.startsWith("read_")) paths.add(path);
+    if (typeof path === "string" && isViewable(path) && !LOOKS_ONLY.test(call.toolName)) paths.add(path);
+    for (const written of scriptFiles(call.result)) if (isViewable(written)) paths.add(written);
   }
   return [...paths];
 }

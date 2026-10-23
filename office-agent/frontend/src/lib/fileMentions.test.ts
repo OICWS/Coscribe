@@ -17,6 +17,16 @@ describe("touchedFiles", () => {
     expect(touchedFiles(calls)).toEqual(["a.docx", "deck.pptx"]);
   });
 
+  it("does not count a call that only looks at a file, and counts what a script wrote", () => {
+    const calls = [
+      call("list_pptx_shapes", "deck.pptx"),
+      call("inspect_docx", "a.docx"),
+      { toolName: "run_python_script", arguments: { script: "x" }, result: JSON.stringify({ files_written: ["out/deck.pptx", "notes.txt"] }) },
+      { toolName: "run_python_script", arguments: { script: "x" }, result: JSON.stringify({ stdout: "hi" }) },
+    ];
+    expect(touchedFiles(calls)).toEqual(["out/deck.pptx"]);
+  });
+
   it("maps a file name to its path", () => {
     expect([...filesByName([call("write_docx", "reports/SDD.docx")])]).toEqual([["SDD.docx", "reports/SDD.docx"]]);
   });
