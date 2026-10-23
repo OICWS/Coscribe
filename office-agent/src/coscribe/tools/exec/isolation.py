@@ -33,6 +33,7 @@ from typing import Literal
 
 from . import _appcontainer
 from ._appcontainer import NETWORK_CAPABILITIES, ContainerProcess, ContainerUnavailable
+from .script_env import venv_python
 
 Access = Literal["read", "write"]
 
@@ -80,6 +81,17 @@ def _icacls(*args: str) -> bool:
         check=False,
     )
     return done.returncode == 0
+
+
+def _has_ace(path: Path, sid: str) -> bool:
+    try:
+        listed = subprocess.run(
+            ["icacls", str(path)], capture_output=True, text=True, errors="replace", check=False
+        )
+    except OSError:
+        return False
+    # icacls prints a capability SID it cannot name as the SID itself.
+    return listed.returncode == 0 and f"{sid}:" in listed.stdout
 
 
 @dataclass
@@ -135,7 +147,11 @@ class FolderGrants:
             grant = _Grant(str(resolved), access, sid, folder_id)
             self._grants[grant.key()] = grant
             self._save()
-            ok = _icacls(str(resolved), "/grant", f"*{sid}:(OI)(CI)({_RIGHTS[access]})")
+            # The ACE outlives a lost registry (a test's fresh state folder, a reinstall):
+            # reading the ACL costs far less than walking a large tree again.
+            ok = _has_ace(resolved, sid) or _icacls(
+                str(resolved), "/grant", f"*{sid}:(OI)(CI)({_RIGHTS[access]})"
+            )
             if not ok:
                 del self._grants[grant.key()]
                 self._save()
@@ -236,6 +252,10 @@ def _machine_key(python: Path) -> dict[str, str]:
     return {"windows": platform.version(), "python": str(python), "probe": _PROBE_REVISION}
 
 
+# The answer is about the machine, not the state folder: one test per process at most.
+_tested: dict[str, SelfTest] = {}
+
+
 def self_test(
     state_dir: Path, python: Path, runtime: Sequence[Path], *, fresh: bool = False
 ) -> SelfTest:
@@ -245,16 +265,82 @@ def self_test(
         return SelfTest(False, "not Windows")
     cache = state_dir / _SELF_TEST
     key = _machine_key(python)
+    memo = json.dumps(key, sort_keys=True)
     if not fresh:
+        if memo in _tested:
+            return _tested[memo]
         try:
             saved = json.loads(cache.read_text(encoding="utf-8"))
             if saved.get("key") == key:
-                return SelfTest(**saved["result"])
+                _tested[memo] = SelfTest(**saved["result"])
+                return _tested[memo]
         except (OSError, ValueError, TypeError, KeyError):
             pass
     result = _run_self_test(state_dir, python, runtime)
     cache.write_text(json.dumps({"key": key, "result": vars(result)}), encoding="utf-8")
+    _tested[memo] = result
     return result
+
+
+def venv_runtime(venv_dir: Path) -> list[Path]:
+    """What a venv's python.exe reads to start: the venv and the installation it was made from
+    (`home` in pyvenv.cfg), whose DLLs and standard library the launcher loads."""
+    folders = [venv_dir]
+    try:
+        for line in (venv_dir / "pyvenv.cfg").read_text(encoding="utf-8").splitlines():
+            key, _, value = line.partition("=")
+            if key.strip() == "home" and value.strip():
+                folders.append(Path(value.strip()))
+    except OSError:
+        pass
+    return folders
+
+
+def scratch_root(state_dir: Path) -> Path:
+    """Where a run's own files go (the script text, TEMP): one folder granted once, instead of
+    the system temp folder, which a container cannot reach."""
+    root = state_dir / "script-scratch"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def for_scripts(
+    state_dir: Path,
+    *,
+    writable: Sequence[Path],
+    readable: Sequence[Path] = (),
+    runtime: Sequence[Path] = (),
+) -> Isolation | None:
+    """The isolation for one run, or None when this machine cannot hold a script (not Windows,
+    no script venv yet to test with, or its self-test failed): the run then goes on as before,
+    with the folder guard only. The test runs on the venv's Python for Node runs too."""
+    venv = state_dir / "script-env"
+    python = venv_python(venv)
+    if not available() or not python.is_file():
+        return None
+    python_runtime = venv_runtime(venv)
+    if not self_test(state_dir, python, python_runtime).ok:
+        return None
+    return Isolation(
+        state_dir,
+        writable=(*writable, scratch_root(state_dir)),
+        readable=tuple(readable),
+        runtime=(*python_runtime, *runtime),
+    )
+
+
+_DENIED = ("PermissionError", "Access is denied", "EPERM", "EACCES")
+
+
+def denied_note(stderr: str) -> str:
+    """Said when a contained script was refused, so the model reaches for the tool that can."""
+    if not any(mark in stderr for mark in _DENIED):
+        return ""
+    return (
+        "\n[This script ran isolated: it can write in the workspace and the read-write folders "
+        "but cannot delete, rename or move files, and cannot reach folders not added to this "
+        "conversation. Use delete_file or move_file, or ask the user to add the folder.]"
+    )
 
 
 def _run_self_test(state_dir: Path, python: Path, runtime: Sequence[Path]) -> SelfTest:

@@ -1,6 +1,7 @@
 # 0002: Approvals and risk tiers, not an OS sandbox
 
-Status: accepted (recorded 2026-10-08). See `ARCHITECTURE.md`, "Approvals instead of a sandbox".
+Status: accepted (recorded 2026-10-08); the "no OS sandbox" part superseded by
+[0021](0021-scripts-run-in-an-appcontainer-held-to-the-folder-settings.md). See `ARCHITECTURE.md`, "Approvals instead of a sandbox".
 
 ## Context
 coscribe runs scripts the model writes (`run_python_script`, `run_node_script`,

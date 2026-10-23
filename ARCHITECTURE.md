@@ -89,11 +89,14 @@ Every decision goes to an audit log, and Hooks (`PreToolUse`,
 `PostToolUse`, `SessionStart`/`End`, `UserPromptSubmit`, compaction and
 interrupt events) let a user add their own checks.
 
-There is no OS sandbox. Scripts (`run_python_script`, `run_node_script`)
-are approved like any other action; the only extra layer is a folder guard
-that refuses writes outside the conversation's folders. It catches the
-model's mistakes and is not a security boundary: scripts can still read
-anywhere, use the network, or bypass it. The UI and docs say so. No
+Scripts (`run_python_script`, `run_node_script`, background scripts and
+commands) are approved like any other action, and on Windows they also run in
+an AppContainer when the machine passed coscribe's self-test (decision 0021):
+they reach only the conversation's folders, read-only or read-write without
+delete, and their children inherit that. coscribe's own process and its
+trusted tools stay outside. Where the self-test failed, and for Codex's
+commands, only a folder guard remains; it refuses writes outside the folders
+and is not a security boundary. The UI and docs say which one holds. No
 import allow/deny lists: they are easy to bypass and only look like safety.
 
 ### Office formats are built in, not MCP

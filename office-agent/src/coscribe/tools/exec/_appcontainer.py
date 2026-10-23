@@ -313,7 +313,9 @@ if sys.platform == "win32":
                     ctypes.cast(attributes, ctypes.c_void_p),
                 )
                 process = _ProcessInformation()
-                command_line = ctypes.create_unicode_buffer(subprocess.list2cmdline(list(argv)))
+                # A string is a command line already, for a shell whose quoting is not argv's.
+                line = argv if isinstance(argv, str) else subprocess.list2cmdline(list(argv))
+                command_line = ctypes.create_unicode_buffer(line)
                 block = _environment_block(env)
                 if not _kernel32.CreateProcessW(
                     None,
