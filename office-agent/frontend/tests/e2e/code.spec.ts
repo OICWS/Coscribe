@@ -22,17 +22,19 @@ test("The nav rail has no Code mode", async ({ page }) => {
   await expect(page.getByTitle("Code", { exact: true })).toHaveCount(0);
 });
 
-test("Settings > Capabilities can allow commands and file changes for good", async ({ page }) => {
+test("Settings > Capabilities can allow file changes for good, and offers no switch for commands", async ({ page }) => {
   await page.goto(freshThreadPath("code-approvals"));
   await waitForConnected(page);
 
   await page.getByTitle("Settings").click();
   await page.getByRole("button", { name: "Capabilities", exact: true }).click();
 
-  const commands = page.getByRole("switch", { name: "Run commands without asking" });
-  await expect(commands).toHaveAttribute("aria-checked", "false");
-  await commands.click();
-  await expect(commands).toHaveAttribute("aria-checked", "true");
-  await commands.click();
-  await expect(commands).toHaveAttribute("aria-checked", "false");
+  await expect(page.getByRole("switch", { name: "Run commands without asking" })).toHaveCount(0);
+  await expect(page.getByText("Codex can't run commands")).toBeVisible();
+  const changes = page.getByRole("switch", { name: "Change files without asking" });
+  await expect(changes).toHaveAttribute("aria-checked", "false");
+  await changes.click();
+  await expect(changes).toHaveAttribute("aria-checked", "true");
+  await changes.click();
+  await expect(changes).toHaveAttribute("aria-checked", "false");
 });

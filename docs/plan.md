@@ -228,7 +228,7 @@ Last reviewed: 2026-10-15.
    Recycle Bin. Next, one PR each: the Scripts page in Edit environment with fail closed, the
    per-conversation opt-in to run without isolation, the self-test result and re-test, and the
    sweep of grants at start and at uninstall; coscribe's own Python download; read limits and the network
-   switch per conversation with the web tools' host allowlist; Codex's commands off.
+   switch per conversation with the web tools' host allowlist. Codex's commands are off (2026-10-23).
 
 ## Needs the maintainer's testing (could not be verified here)
 
