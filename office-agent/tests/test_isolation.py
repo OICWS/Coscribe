@@ -1,7 +1,6 @@
 """The AppContainer a script runs in (`tools/exec/isolation.py`). The registry tests run
 everywhere with `icacls` faked; the `windows` ones start real containers."""
 
-import asyncio
 import json
 import os
 import subprocess
@@ -391,13 +390,10 @@ async def test_the_script_tools_run_contained(tmp_path: Path) -> None:
         tools = {
             tool.__name__: tool for tool in build_background_task_tools("t1", workspace, state)
         }
-        started = await tools["run_background_command"](
-            command=f'echo x > "{outside / "shell.txt"}"', description="write outside"
-        )
-        deadline = time.monotonic() + 60
-        while tools["check_background_task"](started["task_id"])["status"] == "running":
-            assert time.monotonic() < deadline
-            await asyncio.sleep(0.2)
+        with pytest.raises(IsolationRefused):
+            await tools["run_background_command"](
+                command=f'echo x > "{outside / "shell.txt"}"', description="write outside"
+            )
         assert not (outside / "shell.txt").exists()
     finally:
         _revoke_all(state)
