@@ -12,6 +12,7 @@ from .isolation import (
     UnisolatedConversations,
     isolation_status,
     self_test,
+    sweep_folder_grants,
 )
 from .isolation import available as isolation_available
 from .isolation import for_scripts as isolation_for_scripts
@@ -50,6 +51,7 @@ from .scripts import build_script_tools
 __all__ = [
     "Detachable",
     "FolderGrants",
+    "sweep_folder_grants",
     "HandOff",
     "Isolation",
     "IsolationRefused",
