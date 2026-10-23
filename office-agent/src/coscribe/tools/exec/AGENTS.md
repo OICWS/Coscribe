@@ -2,7 +2,7 @@
 
 ## Purpose
 Owns `run_python_script` and `run_node_script` (`scripts.py`, `node_scripts.py`), the process they wait on, which the person can hand to the background tasks (`running.py`), the dedicated
-Python venv and the npm directory the scripts run in (`script_env.py`, `node_env.py`) and the
+Python venv and the npm directory the scripts run in (`script_env.py`, `node_env.py`; on Windows the venv is made from coscribe's own Python, `own_python.py`) and the
 guard that catches a script's mistaken writes outside the conversation's folders
 (`script_guard.py`), and the Windows AppContainer that will hold a script to its folders
 (`isolation.py`, `_appcontainer.py`; decision 0021). Does not own the background-command tool (`tools/bookkeeping/background_tasks.py`,
@@ -43,7 +43,7 @@ twins), the interpreter overrides (`get_interpreter_override`, `set_interpreter_
 
 ## Tests
 `tests/test_scripts_tool.py`, `tests/test_node_scripts_tool.py`, `tests/test_script_guard.py`,
-`tests/test_script_env.py`, `tests/test_node_env.py`, `tests/test_env_lock.py`,
+`tests/test_script_env.py`, `tests/test_own_python.py`, `tests/test_node_env.py`, `tests/test_env_lock.py`,
 `tests/test_isolation.py` (its container tests run in the Windows CI job).
 
 ## Verify by hand
