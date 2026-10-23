@@ -19,6 +19,7 @@ from xml.sax.saxutils import escape
 from pptx import Presentation
 
 from ...._office_com import convert
+from ...._pdfium import PDFIUM_LOCK
 from .view import NotBuiltFromPages, _notes, _transition, slide_elements
 
 _OFFICE_TIMEOUT = 60.0
@@ -77,15 +78,17 @@ def foreign_slide_svg(deck: Path, index: int, state_dir: Path) -> str:
     """Slide `index` (from 0) as an SVG holding its picture. Raises IndexError for no such slide."""
     import pypdfium2 as pdfium
 
-    document = pdfium.PdfDocument(str(_pdf(deck, state_dir)))
-    try:
-        if not 0 <= index < len(document):
-            raise IndexError(f"no slide {index + 1}")
-        page = document[index]
-        page_width, page_height = page.get_size()
-        image = page.render(scale=_RENDER_SCALE).to_pil()
-    finally:
-        document.close()
+    pdf = _pdf(deck, state_dir)
+    with PDFIUM_LOCK:
+        document = pdfium.PdfDocument(str(pdf))
+        try:
+            if not 0 <= index < len(document):
+                raise IndexError(f"no slide {index + 1}")
+            page = document[index]
+            page_width, page_height = page.get_size()
+            image = page.render(scale=_RENDER_SCALE).to_pil()
+        finally:
+            document.close()
     height = round(_WIDTH * page_height / page_width)
     png = io.BytesIO()
     image.save(png, format="PNG")

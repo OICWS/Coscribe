@@ -91,6 +91,7 @@ protected_modules = [
     "coscribe.tools._office_com",
     "coscribe.tools._ooxml_validate",
     "coscribe.tools._output_truncation",
+    "coscribe.tools._pdfium",
     "coscribe.tools._pptx_shapes",
     "coscribe.tools._pptx_text",
     "coscribe.tools._svg_preview",

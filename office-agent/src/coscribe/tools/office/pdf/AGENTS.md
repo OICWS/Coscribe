@@ -11,7 +11,7 @@ PowerPoint.
 reaches them through `coscribe.tools.office.document_tools`.
 
 ## Depends on
-`coscribe.runtime`, `coscribe.tools._output_truncation`, `coscribe.tools._thumbnail`,
+`coscribe.runtime`, `coscribe.tools._output_truncation`, `coscribe.tools._pdfium`, `coscribe.tools._thumbnail`,
 `coscribe.tools.files`, `coscribe.tools.office.markdown_blocks`, `coscribe.tools.office.table_layout`,
 `coscribe.tools.office.toolkit`.
 
