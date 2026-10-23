@@ -28,6 +28,8 @@ _MAX_NAME = 80
 _MAX_OVERVIEW = 20_000
 _MAX_ROWS = 60
 _MAX_TEXT = 200
+# How many colors a listing carries for a card to draw.
+_SWATCHES = 8
 
 # What a new system starts with, so its form is not empty: a neutral palette and the six text
 # styles a deck needs (size in px on the 1920 canvas, weight, line height, letter spacing in px).
@@ -151,6 +153,14 @@ def _clean(data: Any) -> dict[str, Any]:
     }
 
 
+def _palette_of(data: dict[str, Any]) -> list[str]:
+    """The system's colors as #RRGGBB, for a card to draw; what a damaged file holds is skipped."""
+    colors = data.get("colors")
+    rows = colors if isinstance(colors, list) else []
+    values = [row.get("value") for row in rows if isinstance(row, dict)]
+    return [v for v in values if isinstance(v, str) and _COLOUR.fullmatch(v)][:_SWATCHES]
+
+
 class DesignSystemStore:
     def __init__(self, state_dir: str | Path) -> None:
         self.root = Path(state_dir) / "design_systems"
@@ -172,7 +182,7 @@ class DesignSystemStore:
         replace_with_retry(tmp, path)
 
     def list_systems(self) -> list[dict[str, Any]]:
-        """Id, name and last change of each system, newest change first."""
+        """Id, name, first colors and last change of each system, newest change first."""
         found = []
         for path in self.root.glob(f"*/{SYSTEM_FILE}") if self.root.is_dir() else []:
             data = self._read(path)
@@ -181,6 +191,7 @@ class DesignSystemStore:
                     {
                         "id": path.parent.name,
                         "name": str(data.get("name", "")),
+                        "palette": _palette_of(data),
                         "updated_at": str(data.get("updated_at", "")),
                     }
                 )

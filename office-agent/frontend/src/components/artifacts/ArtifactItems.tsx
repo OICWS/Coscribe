@@ -1,11 +1,11 @@
 import type { KeyboardEvent, MouseEvent } from "react";
-import { editedLabel, type ArtifactSummary } from "../../lib/artifacts";
+import { editedLabel, type PageItem } from "../../lib/artifacts";
 import { MoreIcon } from "../icons";
 import { PinIcon } from "./artifactIcons";
 import { KindTile, Thumbnail } from "./ArtifactThumb";
 
 interface ItemProps {
-  item: ArtifactSummary;
+  item: PageItem;
   pinned: boolean;
   now: Date;
   onOpen: () => void;
@@ -14,7 +14,7 @@ interface ItemProps {
 }
 
 /** A card or row opens on a click or Enter; its menu button is a control of its own inside it. */
-const asLink = (item: ArtifactSummary, onOpen: () => void) => ({
+const asLink = (item: PageItem, onOpen: () => void) => ({
   role: "button",
   tabIndex: 0,
   "aria-label": `Open ${item.name}`,
@@ -24,7 +24,7 @@ const asLink = (item: ArtifactSummary, onOpen: () => void) => ({
   },
 });
 
-function MenuButton({ item, onMenu, className }: { item: ArtifactSummary; onMenu: (anchor: DOMRect) => void; className: string }) {
+function MenuButton({ item, onMenu, className }: { item: PageItem; onMenu: (anchor: DOMRect) => void; className: string }) {
   return (
     <button
       type="button"

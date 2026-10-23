@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
-  KIND_ORDER,
-  KINDS,
+  PAGE_KINDS,
+  PAGE_ORDER,
   artifactId,
   countsByKind,
   dayGroups,
@@ -9,21 +9,22 @@ import {
   showArtifact,
   visibleArtifacts,
   writeLayout,
-  type ArtifactKind,
-  type ArtifactSummary,
   type Filters,
   type Layout,
+  type PageItem,
+  type PageKind,
 } from "../../lib/artifacts";
 import { FilterIcon, SearchIcon } from "../icons";
 import { SlideMenu, type MenuEntry } from "../slides/SlideMenu";
 import { ArtifactCard, ArtifactRow } from "./ArtifactItems";
 import { ArtifactMenu } from "./ArtifactMenu";
+import { DesignSystemMenu } from "./DesignSystemMenu";
 import { KindTile } from "./ArtifactThumb";
 import { ArtifactsIcon, GridViewIcon, ListViewIcon } from "./artifactIcons";
 import { NewTiles } from "./NewTiles";
 import { useArtifacts } from "./useArtifacts";
 
-type Menu = { kind: "filter"; anchor: DOMRect } | { kind: "item"; anchor: DOMRect; item: ArtifactSummary };
+type Menu = { kind: "filter"; anchor: DOMRect } | { kind: "item"; anchor: DOMRect; item: PageItem };
 
 const TABS: { value: Filters["tab"]; label: string }[] = [
   { value: "all", label: "All" },
@@ -34,7 +35,7 @@ const toolButton = "flex h-9 w-9 items-center justify-center rounded-lg text-[va
 
 /** Everything coscribe has made, as cards or as a list by day, with a way to make something new.
  * Opening one goes to the conversation that made it. */
-export function ArtifactsPage({ onOpen, onMake }: { onOpen: (item: ArtifactSummary) => void; onMake: (kind: ArtifactKind) => void }) {
+export function ArtifactsPage({ onOpen, onMake }: { onOpen: (item: PageItem) => void; onMake: (kind: PageKind) => void }) {
   const { items, error, reload, pins, togglePin } = useArtifacts();
   const [filters, setFilters] = useState<Filters>({ tab: "all", kind: null, query: "" });
   const [layout, setLayout] = useState<Layout>(readLayout);
@@ -84,7 +85,17 @@ export function ArtifactsPage({ onOpen, onMake }: { onOpen: (item: ArtifactSumma
           onClose={() => setMenu(null)}
         />
       )}
-      {menu?.kind === "item" && (
+      {menu?.kind === "item" && menu.item.kind === "design-system" && (
+        <DesignSystemMenu
+          anchor={menu.anchor}
+          item={menu.item}
+          pinned={pins.has(artifactId(menu.item))}
+          onPin={() => togglePin(menu.item)}
+          onChanged={reload}
+          onClose={() => setMenu(null)}
+        />
+      )}
+      {menu?.kind === "item" && menu.item.kind !== "design-system" && (
         <ArtifactMenu
           anchor={menu.anchor}
           item={menu.item}
@@ -179,18 +190,18 @@ function Results({
   onOpen,
   onMenu,
 }: {
-  items: ArtifactSummary[] | null;
+  items: PageItem[] | null;
   error: string | null;
   filters: Filters;
   layout: Layout;
   pins: ReadonlySet<string>;
   onReload: () => void;
-  onOpen: (item: ArtifactSummary) => void;
-  onMenu: (item: ArtifactSummary, anchor: DOMRect) => void;
+  onOpen: (item: PageItem) => void;
+  onMenu: (item: PageItem, anchor: DOMRect) => void;
 }) {
   const now = new Date();
   const shown = visibleArtifacts(items ?? [], pins, filters);
-  const rowProps = (item: ArtifactSummary) => ({
+  const rowProps = (item: PageItem) => ({
     item,
     now,
     pinned: pins.has(artifactId(item)),
@@ -232,11 +243,11 @@ function Results({
   );
 }
 
-function filterEntries(selected: ArtifactKind | null, counts: Record<ArtifactKind, number>, pick: (kind: ArtifactKind | null) => void): MenuEntry[] {
+function filterEntries(selected: PageKind | null, counts: Record<PageKind, number>, pick: (kind: PageKind | null) => void): MenuEntry[] {
   return [
     { label: "All types", icon: <ArtifactsIcon className="h-4 w-4" />, checked: selected === null, onSelect: () => pick(null) },
-    ...KIND_ORDER.map((kind) => ({
-      label: KINDS[kind].label,
+    ...PAGE_ORDER.map((kind) => ({
+      label: PAGE_KINDS[kind].label,
       icon: <KindTile kind={kind} size="sm" />,
       hint: String(counts[kind]),
       checked: selected === kind,

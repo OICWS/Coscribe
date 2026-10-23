@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { artifactId, countsByKind, dayGroups, editedLabel, visibleArtifacts, type ArtifactSummary } from "./artifacts";
+import { artifactId, countsByKind, dayGroups, editedLabel, visibleArtifacts, type ArtifactSummary, type SystemItem } from "./artifacts";
 
 const NOW = new Date("2026-10-21T15:00:00");
 const ago = (hours: number) => new Date(NOW.getTime() - hours * 3600e3).toISOString();
@@ -36,7 +36,7 @@ describe("visibleArtifacts", () => {
   });
 
   it("counts the kinds over everything, whatever is shown", () => {
-    expect(countsByKind(ALL)).toEqual({ docs: 2, slides: 1, sheets: 1, design: 0, dashboard: 0 });
+    expect(countsByKind(ALL)).toEqual({ docs: 2, slides: 1, sheets: 1, design: 0, dashboard: 0, "design-system": 0 });
   });
 });
 
@@ -65,5 +65,21 @@ describe("editedLabel", () => {
     expect(editedLabel(ago(17), NOW)).toBe("Edited 17h ago");
     expect(editedLabel(ago(30), NOW)).toBe("Edited yesterday");
     expect(editedLabel(ago(24 * 400), NOW)).toMatch(/^Edited .*2025/);
+  });
+});
+
+describe("design systems beside the files", () => {
+  const SYSTEM: SystemItem = { id: "ab12cd34ef", name: "Acme brand", kind: "design-system", modified_at: ago(2), palette: ["#112233"] };
+  const BOTH = [...ALL, SYSTEM];
+
+  it("is listed with the files, by its own time, and counted as a kind of its own", () => {
+    expect(visibleArtifacts(BOTH, new Set(), ALL_TYPES).map((a) => a.name)).toEqual(["Report", "Acme brand", "Deck", "Figures", "Rag notes"]);
+    expect(countsByKind(BOTH)["design-system"]).toBe(1);
+  });
+
+  it("can be filtered to, searched and pinned like a file", () => {
+    expect(visibleArtifacts(BOTH, new Set(), { tab: "all", kind: "design-system", query: "" })).toEqual([SYSTEM]);
+    expect(visibleArtifacts(BOTH, new Set(), { tab: "all", kind: null, query: "acme" })).toEqual([SYSTEM]);
+    expect(visibleArtifacts(BOTH, new Set([SYSTEM.id]), { tab: "pinned", kind: null, query: "" })).toEqual([SYSTEM]);
   });
 });

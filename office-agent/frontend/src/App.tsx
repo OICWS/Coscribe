@@ -98,7 +98,9 @@ function App() {
   useSessionSignals(threadId, state.turnInFlight, state.items);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsCategory, setSettingsCategory] = useState<SettingsCategory | undefined>(undefined);
-  const [settingsNewDesign, setSettingsNewDesign] = useState(false);
+  // What Design systems opens on: its new-system form ("new"), one system (its id) or the list.
+  const [settingsDesign, setSettingsDesign] = useState<string | null>(null);
+  const showDesignSystems = (start: string | null) => { setSettingsCategory("design-systems"); setSettingsDesign(start); setSettingsOpen(true); };
   // Find in page: null while closed; bumped to refocus an open one.
   const [findKey, setFindKey] = useState<number | null>(null);
   const [pendingComposerAction, setPendingComposerAction] = useState<ComposerAction | null>(null);
@@ -776,7 +778,7 @@ function App() {
   const artifacts = artifactActions((id, path) => {
     setViewerFiles((files) => ({ ...files, [id]: path }));
     setPanelOpen("viewer", true);
-  }, artifactStart.start);
+  }, artifactStart.start, (id) => showDesignSystems(id ?? "new"));
   const viewFile = (path: string) => {
     if (!isViewable(path)) return false;
     setViewerFiles((files) => ({ ...files, [threadIdRef.current]: path }));
@@ -832,7 +834,7 @@ function App() {
       onArtifactRemoved={artifactStart.clear}
       designSystem={artifactStart.designSystem}
       onDesignSystem={artifactStart.chooseDesignSystem}
-      onManageDesignSystems={(startNew) => { setSettingsCategory("design-systems"); setSettingsNewDesign(startNew); setSettingsOpen(true); }}
+      onManageDesignSystems={(startNew) => showDesignSystems(startNew ? "new" : null)}
       externalText={pendingComposerText}
       onExternalTextConsumed={() => setPendingComposerText(null)}
     />
@@ -1046,9 +1048,9 @@ function App() {
               <SettingsModal
                 open={settingsOpen}
                 initialCategory={settingsCategory}
-                startNewDesignSystem={settingsNewDesign}
+                startDesignSystem={settingsDesign}
                 onCreateSkill={onCreateSkill}
-                onClose={() => { setSettingsOpen(false); setSettingsCategory(undefined); setSettingsNewDesign(false); }}
+                onClose={() => { setSettingsOpen(false); setSettingsCategory(undefined); setSettingsDesign(null); }}
               />
               {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
             </div>

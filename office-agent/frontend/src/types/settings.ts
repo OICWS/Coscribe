@@ -470,6 +470,8 @@ export interface SecretsResponse {
 export interface DesignSystemSummary {
   id: string;
   name: string;
+  /** Its first colors, #RRGGBB. */
+  palette: string[];
   updated_at: string;
 }
 
