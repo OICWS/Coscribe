@@ -27,8 +27,10 @@ twins), the interpreter overrides (`get_interpreter_override`, `set_interpreter_
 ## Invariants
 - On Windows, where the self-test passed, every script run (the two tools and the background
   ones in `tools/bookkeeping/background_tasks.py`) starts in the AppContainer with only its
-  conversation's folders (decision 0021). Elsewhere it runs as the user, and the folder guard is
-  a mistake catcher, not a security boundary. Text for the model or the person says which.
+  conversation's folders (decision 0021). Where the self-test failed, `for_scripts` refuses the
+  run (`IsolationRefused`) unless the conversation is in `UnisolatedConversations`. Off Windows,
+  or so allowed, it runs as the user, and the folder guard is a mistake catcher, not a security
+  boundary. Text for the model or the person says which.
 - Both script tools carry the `EXEC` risk tier; approvals read it.
 - Tool schemas are fixed and snapshotted (`tests/tool_schemas.txt`).
 - `RunningCommand` keeps one interface whether or not it runs in the container: the

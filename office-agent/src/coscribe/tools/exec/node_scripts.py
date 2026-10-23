@@ -72,6 +72,7 @@ def _run_node_script(
         writable=[workspace_root, *extra_writable],
         readable=extra_readable,
         runtime=(node_env_dir, Path(node).resolve().parent),
+        thread_id=detachable.thread_id if detachable else None,
     )
     scratch_dir = Path(tempfile.mkdtemp(prefix="coscribe_node_", dir=scratch_root(state_dir)))
     script_path = scratch_dir / "script.js"
@@ -174,8 +175,8 @@ def build_node_script_tools(
         workspace and the folders added to this conversation, and write in the
         workspace and the read-write ones, but cannot delete, rename or move
         files there, nor reach any other folder; use delete_file or move_file
-        for those. Elsewhere, or when the check failed, writes outside those
-        folders are refused and the script can still read other files. A refused
+        for those. If the check failed, the run is refused unless the user allowed
+        it; unisolated, only writes outside those folders are refused. A refused
         write is named in the result's `blocked_write`. It runs with its working
         directory set to the workspace root, so relative paths land there.
 

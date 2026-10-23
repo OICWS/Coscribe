@@ -261,7 +261,7 @@
   "office-agent/frontend/src/components/DesktopBrowserPanel.tsx::DesktopBrowserPanel": 386,
   "office-agent/frontend/src/components/DocxViewerPanel.tsx::DocxViewerPanel": 281,
   "office-agent/frontend/src/components/EffortPicker.tsx::EffortPicker": 144,
-  "office-agent/frontend/src/components/EnvironmentDialog.tsx::EnvironmentDialog": 187,
+  "office-agent/frontend/src/components/EnvironmentDialog.tsx::EnvironmentDialog": 185,
   "office-agent/frontend/src/components/FindInPage.tsx::FindInPage": 102,
   "office-agent/frontend/src/components/ImageAnnotator.tsx::ImageAnnotator": 197,
   "office-agent/frontend/src/components/NavRail.tsx::NavRail": 207,

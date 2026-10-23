@@ -12,7 +12,17 @@ from pathlib import Path
 
 import pytest
 
-from coscribe.tools.exec import FolderGrants, Isolation, RunningCommand, isolation, self_test
+from coscribe.tools.exec import (
+    FolderGrants,
+    Isolation,
+    IsolationRefused,
+    RunningCommand,
+    SelfTest,
+    UnisolatedConversations,
+    isolation,
+    isolation_status,
+    self_test,
+)
 from coscribe.tools.exec._appcontainer import NETWORK_CAPABILITIES, ContainerUnavailable
 
 windows = pytest.mark.skipif(sys.platform != "win32", reason="AppContainer is Windows only")
@@ -152,10 +162,53 @@ def test_a_run_holds_its_folders_and_the_network_only_when_on(
     assert names[1:] == list(NETWORK_CAPABILITIES)
 
 
+@pytest.fixture
+def failed_machine(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """A Windows machine whose self-test failed, as seen by `for_scripts`."""
+    state = tmp_path / "state"
+    python = isolation.venv_python(state / "script-env")
+    python.parent.mkdir(parents=True)
+    python.write_text("", encoding="utf-8")
+    monkeypatch.setattr(isolation, "available", lambda: True)
+    monkeypatch.setattr(
+        isolation, "self_test", lambda *a, **k: SelfTest(False, "read outside", "read it")
+    )
+    return state
+
+
+def test_a_failed_self_test_refuses_scripts_unless_the_conversation_allows_it(
+    failed_machine: Path, tmp_path: Path
+) -> None:
+    def run(thread_id: str | None) -> Isolation | None:
+        return isolation.for_scripts(failed_machine, writable=[tmp_path], thread_id=thread_id)
+
+    with pytest.raises(IsolationRefused, match="Edit environment > Scripts"):
+        run("t1")
+    with pytest.raises(IsolationRefused):
+        run(None)
+    UnisolatedConversations(failed_machine).set("t1", True, "now")
+    assert run("t1") is None
+    with pytest.raises(IsolationRefused):
+        run("t2")
+    UnisolatedConversations(failed_machine).set("t1", False, "later")
+    with pytest.raises(IsolationRefused):
+        run("t1")
+
+
+def test_the_status_runs_the_check_only_when_asked(failed_machine: Path) -> None:
+    assert isolation_status(failed_machine)["state"] == "untested"
+    assert isolation_status(failed_machine, run=True) == {
+        "state": "failed",
+        "failed": "read outside",
+        "detail": "read it",
+    }
+
+
 @pytest.mark.skipif(sys.platform == "win32", reason="the fallback off Windows")
 def test_off_windows_isolation_is_unavailable(tmp_path: Path) -> None:
     assert not isolation.available()
     assert self_test(tmp_path, Path(sys.executable), ()).failed == "not Windows"
+    assert isolation_status(tmp_path)["state"] == "unsupported"
     with pytest.raises(ContainerUnavailable):
         RunningCommand([sys.executable, "-c", "pass"], str(tmp_path), {}, Isolation(tmp_path))
 

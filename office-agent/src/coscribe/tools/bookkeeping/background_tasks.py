@@ -469,7 +469,7 @@ async def _start_contained(
     """Starts the run in the container and hands it to `_watch`, or returns None when this
     machine cannot hold it (then the caller starts it as before)."""
     isolation = await asyncio.to_thread(
-        isolation_for_scripts, state, runtime=runtime, **folders
+        isolation_for_scripts, state, runtime=runtime, thread_id=thread_id, **folders
     )
     if isolation is None:
         return None
@@ -607,8 +607,8 @@ def build_background_task_tools(
         workspace and the folders added to this conversation, and write in the
         workspace and the read-write ones, but cannot delete, rename or move
         files there, nor reach any other folder; use delete_file or move_file
-        for those. Elsewhere, or when the check failed, writes outside those
-        folders are refused and the script can still read other files. Runs with
+        for those. If the check failed, the run is refused unless the user allowed
+        it; unisolated, only writes outside those folders are refused. Runs with
         its working directory set to the workspace root and against the exact
         same dedicated Python/Node environment
         run_python_script/run_node_script use (same pre-installed packages, same

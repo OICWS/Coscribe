@@ -94,9 +94,10 @@ commands) are approved like any other action, and on Windows they also run in
 an AppContainer when the machine passed coscribe's self-test (decision 0021):
 they reach only the conversation's folders, read-only or read-write without
 delete, and their children inherit that. coscribe's own process and its
-trusted tools stay outside. Where the self-test failed, and for Codex's
-commands, only a folder guard remains; it refuses writes outside the folders
-and is not a security boundary. The UI and docs say which one holds. No
+trusted tools stay outside. Where the self-test failed, scripts are refused
+unless the person lets that one conversation run them without isolation
+(audited). Then, off Windows, and for Codex's commands, only a folder guard
+remains; it refuses writes outside the folders and is not a security boundary. The UI and docs say which one holds. No
 import allow/deny lists: they are easy to bypass and only look like safety.
 
 ### Office formats are built in, not MCP

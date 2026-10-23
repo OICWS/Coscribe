@@ -4,15 +4,20 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import (
     APIRouter,
 )
 
+from ....runtime_lg import AuditLog, record_decision
 from ....tools import (
+    UnisolatedConversations,
     fallbacks_for_platform,
     get_interpreter_override,
     install_node_package,
+    isolation_status,
     list_node_packages,
     set_interpreter_override,
     uninstall_node_package,
@@ -28,9 +33,47 @@ from ...schemas import (
 from ...state import AppState
 
 
+def _isolation_routes(router: APIRouter, state: AppState) -> None:
+    """Edit environment > Scripts: whether this machine holds a script to its folders, and a
+    conversation's choice to run scripts without isolation where it does not."""
+    state_dir = state.settings.state_dir
+
+    async def get_script_isolation() -> dict[str, str]:
+        return await asyncio.to_thread(isolation_status, state_dir)
+
+    async def retest_script_isolation() -> dict[str, str]:
+        # A few seconds: it starts a script in the container and tries each limit.
+        return await asyncio.to_thread(isolation_status, state_dir, run=True)
+
+    async def get_thread_scripts(thread_id: str) -> dict[str, bool]:
+        return {"unisolated": UnisolatedConversations(state_dir).allowed(thread_id)}
+
+    async def put_thread_scripts(thread_id: str, payload: dict[str, Any]) -> dict[str, bool]:
+        allowed = payload.get("unisolated") is True
+        chosen = UnisolatedConversations(state_dir)
+        if chosen.allowed(thread_id) != allowed:
+            chosen.set(thread_id, allowed, datetime.now(UTC).isoformat())
+            record_decision(
+                AuditLog(state_dir),
+                thread_id=thread_id,
+                tool_name="run_scripts_without_isolation",
+                arguments={"allowed": allowed},
+                decision="approve" if allowed else "reject",
+                reason="human",
+            )
+        return {"unisolated": allowed}
+
+    # Registered by reference rather than decorated, so the dead-code check sees them used.
+    router.add_api_route("/api/script-isolation", get_script_isolation, methods=["GET"])
+    router.add_api_route("/api/script-isolation/test", retest_script_isolation, methods=["POST"])
+    router.add_api_route("/api/threads/{thread_id}/scripts", get_thread_scripts, methods=["GET"])
+    router.add_api_route("/api/threads/{thread_id}/scripts", put_thread_scripts, methods=["PUT"])
+
+
 def router(state: AppState) -> APIRouter:
     router = APIRouter()
     settings = state.settings
+    _isolation_routes(router, state)
 
     # Every handler below wraps its real work in asyncio.to_thread --
     # list_packages/install_package/uninstall_package/set_interpreter_override

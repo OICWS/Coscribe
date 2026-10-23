@@ -3829,6 +3829,50 @@
         "summary": "Remove Script Env Package"
       }
     },
+    "/api/script-isolation": {
+      "get": {
+        "operationId": "get_script_isolation_api_script_isolation_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Get Script Isolation Api Script Isolation Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Script Isolation"
+      }
+    },
+    "/api/script-isolation/test": {
+      "post": {
+        "operationId": "retest_script_isolation_api_script_isolation_test_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Retest Script Isolation Api Script Isolation Test Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Retest Script Isolation"
+      }
+    },
     "/api/secrets": {
       "get": {
         "operationId": "list_secrets_api_secrets_get",
@@ -5631,6 +5675,102 @@
           }
         },
         "summary": "Rename Thread"
+      }
+    },
+    "/api/threads/{thread_id}/scripts": {
+      "get": {
+        "operationId": "get_thread_scripts_api_threads__thread_id__scripts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Get Thread Scripts Api Threads  Thread Id  Scripts Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Thread Scripts"
+      },
+      "put": {
+        "operationId": "put_thread_scripts_api_threads__thread_id__scripts_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Put Thread Scripts Api Threads  Thread Id  Scripts Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Thread Scripts"
       }
     },
     "/api/threads/{thread_id}/slides": {

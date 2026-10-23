@@ -3,6 +3,7 @@ import type {
   DesignSystemSummary,
   SecretInfo,
   SecretsResponse,
+  ScriptIsolation,
   SessionEnvironment,
   BrowseDirsResponse,
   ConfigResponse,
@@ -504,3 +505,12 @@ export const getThreadFolders = (threadId: string) =>
 
 export const saveThreadFolders = (threadId: string, folders: string[]) =>
   sendForResult<{ folders: string[] }>(`/api/threads/${encodeURIComponent(threadId)}/folders`, "PUT", { folders });
+
+export const getScriptIsolation = () => getJson<ScriptIsolation>("/api/script-isolation");
+export const retestScriptIsolation = () => postJson<ScriptIsolation>("/api/script-isolation/test", {});
+
+export const getThreadScripts = (threadId: string) =>
+  getJson<{ unisolated: boolean }>(`/api/threads/${encodeURIComponent(threadId)}/scripts`);
+
+export const saveThreadScripts = (threadId: string, unisolated: boolean) =>
+  sendForResult<{ unisolated: boolean }>(`/api/threads/${encodeURIComponent(threadId)}/scripts`, "PUT", { unisolated });
