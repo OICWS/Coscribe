@@ -20,6 +20,7 @@ import httpx
 
 from ...runtime import (
     MIN_VALUE,
+    NetworkGuard,
     SecretError,
     SecretStore,
     SessionEnvironments,
@@ -38,8 +39,7 @@ _USER_AGENT = "coscribe/1 (+http_request)"
 
 
 def build_http_tools(state_dir: str | Path, thread_id: str) -> list[Callable[..., Any]]:
-    store = SecretStore(state_dir)
-    environments = SessionEnvironments(state_dir)
+    store, environments = SecretStore(state_dir), SessionEnvironments(state_dir)
     redact = redactor(state_dir)
 
     def list_secrets() -> list[dict[str, Any]]:
@@ -98,6 +98,7 @@ def build_http_tools(state_dir: str | Path, thread_id: str) -> list[Callable[...
             proxy=configured_proxy(),
             follow_redirects=not values,
             timeout=min(max(float(timeout), 1.0), 120.0),
+            event_hooks=NetworkGuard(state_dir, thread_id).request_hooks(),
         ) as client:
             response = client.request(
                 method,

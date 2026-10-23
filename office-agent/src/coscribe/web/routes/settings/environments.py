@@ -10,7 +10,9 @@ from typing import Any
 from fastapi import (
     APIRouter,
 )
+from fastapi.responses import JSONResponse
 
+from ....runtime import NetworkAccess, NetworkError
 from ....runtime_lg import AuditLog, record_decision
 from ....tools import (
     UnisolatedConversations,
@@ -34,8 +36,9 @@ from ...state import AppState
 
 
 def _isolation_routes(router: APIRouter, state: AppState) -> None:
-    """Edit environment > Scripts: whether this machine holds a script to its folders, and a
-    conversation's choice to run scripts without isolation where it does not."""
+    """Edit environment > Scripts and Network: whether this machine holds a script to its
+    folders, a conversation's choice to run scripts without isolation where it does not, and
+    how far the conversation may reach the internet."""
     state_dir = state.settings.state_dir
 
     async def get_script_isolation() -> dict[str, str]:
@@ -63,7 +66,31 @@ def _isolation_routes(router: APIRouter, state: AppState) -> None:
             )
         return {"unisolated": allowed}
 
+    async def get_thread_network(thread_id: str) -> dict[str, Any]:
+        return NetworkAccess(state_dir).get(thread_id)
+
+    async def put_thread_network(thread_id: str, payload: dict[str, Any]) -> Any:
+        access = NetworkAccess(state_dir)
+        before = access.get(thread_id)
+        try:
+            saved = access.set(thread_id, payload.get("mode"), payload.get("domains", []))
+        except NetworkError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=422)
+        if saved != before:
+            # What the conversation may reach is a security setting: kept like an approval.
+            record_decision(
+                AuditLog(state_dir),
+                thread_id=thread_id,
+                tool_name="set_network_access",
+                arguments=saved,
+                decision="approve",
+                reason="human",
+            )
+        return saved
+
     # Registered by reference rather than decorated, so the dead-code check sees them used.
+    router.add_api_route("/api/threads/{thread_id}/network", get_thread_network, methods=["GET"])
+    router.add_api_route("/api/threads/{thread_id}/network", put_thread_network, methods=["PUT"])
     router.add_api_route("/api/script-isolation", get_script_isolation, methods=["GET"])
     router.add_api_route("/api/script-isolation/test", retest_script_isolation, methods=["POST"])
     router.add_api_route("/api/threads/{thread_id}/scripts", get_thread_scripts, methods=["GET"])

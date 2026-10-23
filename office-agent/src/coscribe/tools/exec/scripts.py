@@ -181,8 +181,10 @@ def build_script_tools(
         workspace and the folders added to this conversation, and write in the
         workspace and the read-write ones, but cannot delete, rename or move
         files there, nor reach any other folder; use delete_file or move_file
-        for those. If the check failed, the run is refused unless the user allowed
-        it; unisolated, only writes outside those folders are refused. A refused
+        for those. It has the network only if the user gave this conversation
+        full network access; fetch with the web tools otherwise. If the check
+        failed, the run is refused unless the user allowed it; unisolated, only
+        writes outside those folders are refused. A refused
         write is named in the result's `blocked_write` -- then write inside the
         workspace, or ask the user to add that folder. It runs with its working
         directory set to the workspace root, so relative paths land there.

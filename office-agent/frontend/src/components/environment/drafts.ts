@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
-import { getScriptIsolation, getThreadScripts, retestScriptIsolation, saveThreadScripts } from "../../lib/rest";
-import type { ScriptIsolation } from "../../types/settings";
+import {
+  getScriptIsolation,
+  getThreadNetwork,
+  getThreadScripts,
+  retestScriptIsolation,
+  saveThreadNetwork,
+  saveThreadScripts,
+} from "../../lib/rest";
+import type { NetworkAccess, ScriptIsolation } from "../../types/settings";
 
 export interface VariableRow {
   key: string;
@@ -76,3 +83,54 @@ export function useScriptsDraft(threadId: string) {
 }
 
 export type ScriptsDraft = ReturnType<typeof useScriptsDraft>;
+
+const DEFAULT_NETWORK: NetworkAccess = { mode: "limited", domains: ["*"] };
+
+/** How far this conversation may reach the internet; the domains are edited as lines of text. */
+export function useNetworkDraft(threadId: string) {
+  const [mode, setMode] = useState<NetworkAccess["mode"]>(DEFAULT_NETWORK.mode);
+  const [domains, setDomains] = useState(DEFAULT_NETWORK.domains.join("\n"));
+  const [loaded, setLoaded] = useState<NetworkAccess>(DEFAULT_NETWORK);
+
+  useEffect(() => {
+    let cancelled = false;
+    getThreadNetwork(threadId)
+      .then((result) => {
+        if (cancelled) return;
+        setMode(result.mode);
+        setDomains(result.domains.join("\n"));
+        setLoaded(result);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [threadId]);
+
+  const list = domains
+    .split(/[\s,]+/)
+    .map((domain) => domain.trim())
+    .filter(Boolean);
+  // Only limited keeps a list; switching away and back should not lose what was typed.
+  const current: NetworkAccess = { mode, domains: mode === "limited" ? list : [] };
+  const dirty = JSON.stringify(current) !== JSON.stringify({ ...loaded, domains: loaded.mode === "limited" ? loaded.domains : [] });
+
+  const save = async (): Promise<string | null> => {
+    if (!dirty) return null;
+    const result = await saveThreadNetwork(threadId, current);
+    return "error" in result ? result.error : null;
+  };
+
+  const summary =
+    mode === "none"
+      ? "None"
+      : mode === "full"
+        ? "Full"
+        : list.includes("*")
+          ? "Limited: any site, scripts offline"
+          : `Limited: ${list.length} domain${list.length === 1 ? "" : "s"}`;
+
+  return { mode, setMode, domains, setDomains, dirty, save, summary };
+}
+
+export type NetworkDraft = ReturnType<typeof useNetworkDraft>;

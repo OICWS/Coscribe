@@ -31,6 +31,7 @@ from dataclasses import dataclass, field
 from pathlib import Path, PureWindowsPath
 from typing import Literal
 
+from ...runtime import NetworkGuard
 from . import _appcontainer
 from ._appcontainer import NETWORK_CAPABILITIES, ContainerProcess, ContainerUnavailable
 from .script_env import ensure_script_env, venv_python
@@ -375,8 +376,9 @@ def for_scripts(
 ) -> Isolation | None:
     """The isolation for one run, or None when the run goes on as before, with the folder guard
     only: not Windows, or a failed self-test in a conversation allowed to run without isolation.
-    A failed self-test otherwise refuses the run. The test runs on the script venv's Python, so a
-    Node run makes that venv first if it is not there yet."""
+    A failed self-test otherwise refuses the run. The run has the network only when the
+    conversation allows full access (Edit environment > Network). The test runs on the script
+    venv's Python, so a Node run makes that venv first if it is not there yet."""
     if not available():
         return None
     venv = state_dir / "script-env"
@@ -398,6 +400,7 @@ def for_scripts(
         writable=(*writable, scratch_root(state_dir)),
         readable=tuple(readable),
         runtime=(*python_runtime, *runtime),
+        network=NetworkGuard(state_dir, thread_id).scripts_online(),
     )
 
 

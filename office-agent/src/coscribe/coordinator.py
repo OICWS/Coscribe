@@ -15,7 +15,7 @@ from functools import partial
 from pathlib import Path
 
 from .config import Settings
-from .runtime import Agent, SessionEnvironments
+from .runtime import Agent, NetworkGuard, SessionEnvironments
 from .tools import (
     NEW_DECK_INSTRUCTIONS,
     Detachable,
@@ -734,6 +734,7 @@ def build_coordinator_agent(
         return variables
 
     detachable = Detachable(thread_id, partial(adopt_running_command, settings.state_dir))
+    network = NetworkGuard(settings.state_dir, thread_id)
 
     tools = (
         build_file_tools(
@@ -765,16 +766,14 @@ def build_coordinator_agent(
             extra_writable=extra_writable,
         )
         + build_image_tools(
-            root,
-            extra_readable=extra_readable,
-            extra_writable=extra_writable,
+            root, extra_readable=extra_readable, extra_writable=extra_writable, network=network
         )
         + build_task_tools(thread_id, settings.state_dir)
         + build_interaction_tools()
         + build_conversation_tools(thread_id, settings.state_dir)
         + build_selfwake_tools(thread_id, settings.state_dir)
         + build_scheduled_task_tools(settings.state_dir, thread_id)
-        + build_websearch_tools()
+        + build_websearch_tools(network)
         + build_script_tools(
             root, settings.state_dir, extra_writable=extra_writable, extra_readable=extra_readable,
             session_env=session_env, detachable=detachable,
@@ -803,6 +802,7 @@ def build_coordinator_agent(
             ),
             saved_workflow=_is_saved_workflow_run(settings, thread_id),
             allowed_sites=lambda: _sites_allowed_to_run(settings, thread_id),
+            network=network,
         )
         instructions = f"{instructions}\n\n{BROWSER_INSTRUCTIONS}"
     if settings.code_module_enabled:

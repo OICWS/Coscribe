@@ -3,6 +3,7 @@ import type {
   DesignSystemSummary,
   SecretInfo,
   SecretsResponse,
+  NetworkAccess,
   ScriptIsolation,
   SessionEnvironment,
   BrowseDirsResponse,
@@ -514,3 +515,9 @@ export const getThreadScripts = (threadId: string) =>
 
 export const saveThreadScripts = (threadId: string, unisolated: boolean) =>
   sendForResult<{ unisolated: boolean }>(`/api/threads/${encodeURIComponent(threadId)}/scripts`, "PUT", { unisolated });
+
+export const getThreadNetwork = (threadId: string) =>
+  getJson<NetworkAccess>(`/api/threads/${encodeURIComponent(threadId)}/network`);
+
+export const saveThreadNetwork = (threadId: string, network: NetworkAccess) =>
+  sendForResult<NetworkAccess>(`/api/threads/${encodeURIComponent(threadId)}/network`, "PUT", network);

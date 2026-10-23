@@ -95,6 +95,15 @@ export function inSites(host: string, sites: string[]): boolean {
   });
 }
 
+/** The conversation's network setting (Edit environment > Network), sent with each step when it
+ * limits the domains: no site permission widens it. */
+export function checkNetworkSites(host: string, networkSites: unknown): void {
+  if (!Array.isArray(networkSites) || inSites(host, networkSites.map(String))) return;
+  throw new Error(
+    `${normalizeSite(host) ?? host} is outside the domains this conversation may reach. The user can add it under Edit environment > Network.`,
+  );
+}
+
 export function isAllowed(host: string, threadId: string): boolean {
   const site = normalizeSite(host);
   if (!site) return false;

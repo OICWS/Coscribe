@@ -509,6 +509,12 @@ export interface DesignSystem {
 }
 
 /** Whether this machine holds a script to its folders (Edit environment > Scripts). */
+export interface NetworkAccess {
+  mode: "none" | "limited" | "full";
+  /** For limited: a domain covers its subdomains; "*" is every site. */
+  domains: string[];
+}
+
 export interface ScriptIsolation {
   state: "passed" | "failed" | "untested" | "unsupported";
   /** The check that differed, when failed. */
