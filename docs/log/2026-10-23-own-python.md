@@ -22,6 +22,8 @@ be granted read (Program Files, another user's AppData).
   the state folder.
 - The Windows CI job now also runs on changes to `own_python.py` and `script_env.py`. There the
   script venv is made, so it runs the real download.
+- `tests/web/helpers.py`: the stub that runs scripts on pytest's own Python also gives the
+  isolation that Python, so the container is granted the interpreter that actually starts.
 
 ## Not verified
 - On a Windows machine without a system Python (CI's runner has one, but the own Python goes

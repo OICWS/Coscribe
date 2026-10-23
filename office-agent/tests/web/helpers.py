@@ -30,7 +30,7 @@ from coscribe.config import Settings
 from coscribe.conversation import session as conversation_session
 from coscribe.runtime import secrets as secrets_module
 from coscribe.runtime_lg import mcp as lg_mcp
-from coscribe.tools.exec import scripts
+from coscribe.tools.exec import isolation, scripts
 from coscribe.web import app as web_app
 from coscribe.web.app import create_app_lg
 
@@ -435,6 +435,13 @@ def _stub_script_env(monkeypatch: pytest.MonkeyPatch) -> None:
     whatever Python is already running pytest instead."""
     monkeypatch.setattr(scripts, "ensure_script_env", lambda state_dir: Path(sys.executable).parent)
     monkeypatch.setattr(scripts, "venv_python", lambda venv_dir: Path(sys.executable))
+    # The Windows isolation tests and grants this same Python, not a venv made from coscribe's own
+    # one, which the container would let the script read while it starts a different interpreter.
+    python = Path(sys.executable)
+    runtime = sorted({Path(sys.prefix), Path(sys.base_prefix)})
+    monkeypatch.setattr(isolation, "ensure_script_env", lambda state_dir: python.parent)
+    monkeypatch.setattr(isolation, "venv_python", lambda venv_dir: python)
+    monkeypatch.setattr(isolation, "venv_runtime", lambda venv_dir: list(runtime))
 
 
 def _run_turn(client: Any, thread_id: str, text: str, accept_edits: bool = True) -> None:
