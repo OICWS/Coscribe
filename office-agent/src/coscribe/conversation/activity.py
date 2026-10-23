@@ -79,6 +79,18 @@ def _script_files(result: Any) -> list[str]:
 _SCRATCH_FOLDERS = frozenset({"qa", "tmp", "temp", "scratch", "__pycache__", "node_modules"})
 
 
+def _written_whole(call: dict[str, Any], metadata: ToolMetadata | None) -> list[str]:
+    """The files a call replaced whole: what a script reports writing, or the path a write_ or
+    build_ tool was given."""
+    name, path = call["name"], call["args"].get("path")
+    if name in _SCRIPT_TOOLS:
+        return _script_files(call["result"])
+    whole = metadata is not None and metadata.risk_category in _OUTPUT_RISKS
+    return (
+        [path] if whole and name.startswith(("write_", "build_")) and isinstance(path, str) else []
+    )
+
+
 def _is_scratch(relative: str) -> bool:
     parts = Path(relative.replace("\\", "/")).parts[:-1]
     return any(part.lower() in _SCRATCH_FOLDERS or part.startswith(".") for part in parts)
@@ -109,6 +121,9 @@ def summarize_activity(
     # (path, action) in call order; action is "write" (produces a whole
     # file), "edit" (changes one in place) or "read".
     touches: list[tuple[str, str]] = []
+    # Paths a call wrote whole (a script, or a write_/build_ tool, over what was there): their
+    # content is what coscribe made, whether or not the file existed before.
+    written_whole: set[str] = set()
     tool_counts: dict[str, int] = {}
     connectors: dict[str, dict[str, int]] = {}
     skills: list[str] = []
@@ -130,6 +145,7 @@ def summarize_activity(
             tool_counts[name] = tool_counts.get(name, 0) + 1
         if name in _SCRIPT_TOOLS:
             touches.extend((p, "write") for p in _script_files(call["result"]))
+        written_whole.update(_written_whole(call, metadata))
         path = args.get("path")
         if isinstance(path, str) and path:
             if metadata is None or metadata.risk_category not in _OUTPUT_RISKS:
@@ -162,6 +178,9 @@ def summarize_activity(
             actions[key] = "created" if touch == "write" else "edited"
         elif previous == "read":
             actions[key] = "edited"
+    whole_keys = {
+        entry["path"] for p in written_whole if (entry := _file_entry(scope, p)) is not None
+    }
     outputs: list[dict[str, Any]] = []
     for key in dict.fromkeys(reversed(last_touched)):  # most recently touched first
         if actions[key] == "read" or _is_scratch(key):
@@ -171,7 +190,13 @@ def summarize_activity(
         # something to hand the person.
         if actions[key] == "created" and not entries[key]["exists"]:
             continue
-        outputs.append({**entries[key], "action": actions[key]})
+        outputs.append(
+            {
+                **entries[key],
+                "action": actions[key],
+                "rewritten": actions[key] == "created" or key in whole_keys,
+            }
+        )
     references = [
         {**entries[key], "action": "read"}
         for key in dict.fromkeys(last_touched)  # in the order first read

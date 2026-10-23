@@ -4,8 +4,9 @@ time and, for a document, its opening lines.
 
 A conversation's Outputs list says what it made (`activity.summarize_activity`); the registry
 adopts those files, and from then on an artifact is the file, not the conversation. Only files
-the conversation created are adopted: one it merely edited, or one the person brought, is not
-made by coscribe. The files themselves are read fresh, so a deck edited in the Slides panel
+whose content the conversation made are adopted: one created here, or one the person brought
+that a script or a write tool replaced whole. One it only changed in place (an edit tool) is
+not made by coscribe. The files themselves are read fresh, so a deck edited in the Slides panel
 shows its new time."""
 
 from __future__ import annotations
@@ -42,11 +43,10 @@ def _kind(name: str) -> str | None:
 def artifact_paths(
     messages: list[BaseMessage], catalog: dict[str, ToolMetadata], scope: WorkspaceScope
 ) -> list[str]:
-    """The artifacts the messages created, most recently touched first."""
+    """The artifacts the messages made, most recently touched first: files created, and files
+    that were there but whose content a script or a write tool replaced whole."""
     outputs = summarize_activity(messages, catalog, scope)["outputs"]
-    return [
-        o["path"] for o in outputs if o["exists"] and o["action"] == "created" and _kind(o["name"])
-    ]
+    return [o["path"] for o in outputs if o["exists"] and o["rewritten"] and _kind(o["name"])]
 
 
 def artifact_id(location: str) -> str:
