@@ -1,4 +1,6 @@
+import { useRef, useState } from "react";
 import { PAGE_KINDS, PAGE_ORDER, type PageKind } from "../../lib/artifacts";
+import { useClickOutside } from "../../lib/useClickOutside";
 import { tinted } from "./ArtifactThumb";
 
 /** A small drawing of each kind, on the kind's colour. */
@@ -62,32 +64,51 @@ function Illustration({ kind }: { kind: PageKind }) {
   );
 }
 
-/** "Make something new": one tile per kind. A kind that cannot be made yet shows why and does nothing. */
-export function NewTiles({ onMake }: { onMake: (kind: PageKind) => void }) {
+/** "Make something new": one tile per kind. A kind that cannot be made yet shows why and does nothing;
+ * a design system can be made two ways, so its tile asks which. */
+export function NewTiles({ onMake }: { onMake: (kind: PageKind, describe?: boolean) => void }) {
+  const [asking, setAsking] = useState(false);
+  const askRef = useRef<HTMLDivElement>(null);
+  useClickOutside(askRef, () => setAsking(false), asking);
+  const choice = "flex w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--card-bg)]";
   return (
     <section aria-label="Make something new">
       <h2 className="text-sm text-[var(--muted)]">Make something new</h2>
       <div className="mt-3 flex flex-wrap gap-4">
         {PAGE_ORDER.map((kind) => {
           const info = PAGE_KINDS[kind];
+          const asks = kind === "design-system";
           return (
-            <button
-              key={kind}
-              type="button"
-              disabled={info.badge === "Soon"}
-              className="group w-[170px] text-left disabled:cursor-default"
-              onClick={() => onMake(kind)}
-            >
-              <span className="block rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-1 shadow-sm transition-colors group-enabled:group-hover:border-[var(--border-hover)] group-disabled:opacity-60">
-                <span className="block overflow-hidden rounded-xl">
-                  <Illustration kind={kind} />
+            <div key={kind} className="relative" ref={asks ? askRef : undefined}>
+              <button
+                type="button"
+                disabled={info.badge === "Soon"}
+                aria-haspopup={asks ? "menu" : undefined}
+                aria-expanded={asks ? asking : undefined}
+                className="group w-[170px] text-left disabled:cursor-default"
+                onClick={() => (asks ? setAsking((open) => !open) : onMake(kind))}
+              >
+                <span className="block rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-1 shadow-sm transition-colors group-enabled:group-hover:border-[var(--border-hover)] group-disabled:opacity-60">
+                  <span className="block overflow-hidden rounded-xl">
+                    <Illustration kind={kind} />
+                  </span>
                 </span>
-              </span>
-              <span className="mt-2 flex items-center gap-2 px-0.5">
-                <span className="font-medium">{info.label}</span>
-                {info.badge && <span className="rounded-md bg-[var(--card-bg)] px-1.5 py-0.5 text-xs font-medium text-[var(--muted)]">{info.badge}</span>}
-              </span>
-            </button>
+                <span className="mt-2 flex items-center gap-2 px-0.5">
+                  <span className="font-medium">{info.label}</span>
+                  {info.badge && <span className="rounded-md bg-[var(--card-bg)] px-1.5 py-0.5 text-xs font-medium text-[var(--muted)]">{info.badge}</span>}
+                </span>
+              </button>
+              {asks && asking && (
+                <div role="menu" className="absolute left-0 top-full z-20 mt-1 w-56 rounded-[14px] border border-[var(--border)] bg-[var(--panel-bg)] p-1.5 shadow-[var(--shadow)]">
+                  <button type="button" role="menuitem" className={choice} onClick={() => { setAsking(false); onMake(kind); }}>
+                    Blank form
+                  </button>
+                  <button type="button" role="menuitem" className={choice} onClick={() => { setAsking(false); onMake(kind, true); }}>
+                    Describe it
+                  </button>
+                </div>
+              )}
+            </div>
           );
         })}
       </div>

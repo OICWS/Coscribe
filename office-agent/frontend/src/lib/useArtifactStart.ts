@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
-import type { ArtifactKind } from "./artifacts";
+import type { PageKind } from "./artifacts";
 
 interface Started {
   thread: string;
-  kind: ArtifactKind;
+  kind: PageKind;
   /** The library design system a Slides conversation is to follow, by id. */
   designSystem: string | null;
 }
@@ -14,11 +14,11 @@ export function useArtifactStart(threadId: string) {
   const here = made?.thread === threadId ? made : null;
   const kind = here?.kind ?? null;
   const designSystem = here?.designSystem ?? null;
-  const start = useCallback((thread: string, started: ArtifactKind) => setMade({ thread, kind: started, designSystem: null }), []);
+  const start = useCallback((thread: string, started: PageKind) => setMade({ thread, kind: started, designSystem: null }), []);
   const clear = useCallback(() => setMade(null), []);
   const chooseDesignSystem = useCallback((id: string | null) => setMade((current) => (current ? { ...current, designSystem: id } : current)), []);
   /** The fields to send with a message, once: not for a slash command, and not for what cannot be made yet. */
-  const take = (text: string): { artifact?: Exclude<ArtifactKind, "dashboard">; design_system?: string } => {
+  const take = (text: string): { artifact?: Exclude<PageKind, "dashboard">; design_system?: string } => {
     if (!kind || kind === "dashboard" || text.trimStart().startsWith("/")) return {};
     setMade(null);
     return kind === "slides" && designSystem ? { artifact: kind, design_system: designSystem } : { artifact: kind };

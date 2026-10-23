@@ -45,7 +45,7 @@ import { artifactActions } from "./lib/artifacts";
 import { useArtifactStart } from "./lib/useArtifactStart";
 import { ArtifactsPage } from "./components/artifacts/ArtifactsPage";
 import { useSteerNotes } from "./lib/steerNotes";
-import { DetachScript, SteerActionsContext, ViewFile } from "./components/chatlog/contexts";
+import { DetachScript, OpenDesignSystem, SteerActionsContext, ViewFile } from "./components/chatlog/contexts";
 import { canOpenPanelWindows, focusPanelWindow, usePanelWindows } from "./lib/panelWindows";
 import { WorkflowDraftPage } from "./components/workflow/WorkflowDraftPage";
 import { WorkflowRunView } from "./components/workflow/WorkflowRunView";
@@ -955,7 +955,7 @@ function App() {
                   {composer}
                 </div>
               ) : navMode === "create" ? (
-                <SteerActionsContext.Provider value={steers.actions}><ViewFile.Provider value={viewFile}><DetachScript.Provider value={onDetachScript}>
+                <SteerActionsContext.Provider value={steers.actions}><ViewFile.Provider value={viewFile}><OpenDesignSystem.Provider value={showDesignSystems}><DetachScript.Provider value={onDetachScript}>
                   <ChatLog
                     items={state.items}
                     turnInFlight={state.turnInFlight}
@@ -996,7 +996,7 @@ function App() {
                     <QuestionPanel key={pendingQuestion.id} item={pendingQuestion} onAnswer={onAnswerQuestion} />
                   )}
                   {composer}
-                </DetachScript.Provider></ViewFile.Provider></SteerActionsContext.Provider>
+                </DetachScript.Provider></OpenDesignSystem.Provider></ViewFile.Provider></SteerActionsContext.Provider>
               ) : workflowDraft ? (
                 <WorkflowDraftPage
                   threadId={workflowDraft.threadId}

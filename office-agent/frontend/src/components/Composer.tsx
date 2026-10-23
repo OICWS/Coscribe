@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { KINDS, type ArtifactKind } from "../lib/artifacts";
+import { PAGE_KINDS, type PageKind } from "../lib/artifacts";
 import { withAnnotatedCopy } from "../lib/annotation";
 import { useComposerAction } from "../lib/menuCommands";
 import { ArtifactChip } from "./ArtifactChip";
@@ -121,7 +121,7 @@ interface ComposerProps {
   onSuggestionDismiss: () => void;
   /** The kind this conversation's first message is to make, when it started from the Artifacts
    * page: shown as a chip, and the box asks for it. */
-  artifact: ArtifactKind | null;
+  artifact: PageKind | null;
   onArtifactRemoved: () => void;
   /** A Slides start's choice from the design-system library, and the way to the page that manages it. */
   designSystem: string | null;
@@ -586,7 +586,7 @@ export function Composer({
           className={`max-h-40 min-w-0 flex-1 resize-none bg-transparent px-0.5 pr-9 text-[0.9rem] leading-normal outline-none ${artifact ? "mt-[3px]" : ""}`}
           rows={1}
           value={value}
-          placeholder={ghost ?? ((artifact && KINDS[artifact].placeholder) || "Type / for commands")}
+          placeholder={ghost ?? ((artifact && PAGE_KINDS[artifact].placeholder) || "Type / for commands")}
           onChange={(event) => {
             if (suggestion) onSuggestionDismiss();
             setValue(event.target.value);
