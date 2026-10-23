@@ -37,7 +37,7 @@ RUNS = (
     ("elevated", "deny"),
     ("unelevated", "deny"),
     ("elevated", "read, profile denied"),
-    ("unelevated", "read, profile denied"),
+    ("elevated", "read"),
     ("unelevated", "read, all folders write"),
 )
 
@@ -53,8 +53,10 @@ def write_config(
     profile = Path(os.environ["USERPROFILE"])
     if root == "deny":
         roots = ['":root" = "deny"', '":minimal" = "read"']
-    else:
+    elif root == "read, profile denied":
         roots = ['":root" = "read"', f'{toml_key(profile)} = "deny"']
+    else:
+        roots = ['":root" = "read"']
     ro_access = "write" if root == "read, all folders write" else "read"
     lines = [
         'default_permissions = "coscribe"',
