@@ -45,11 +45,13 @@ export const SlideStage = forwardRef<
   }, []);
   return (
     <div ref={ref} className="relative min-h-0 flex-1 bg-[var(--stage-bg)]">
-      <div ref={scroller} className="absolute inset-0 overflow-auto">
+      {/* Both scrollbars are always there, so one appearing for an element that reaches past the slide
+          does not shrink the stage and move the slide; unused, a track draws nothing. */}
+      <div ref={scroller} data-slide-stage className="slide-stage absolute inset-0 overflow-scroll">
         {view === "slide" ? (
           <div className="flex min-h-full min-w-full" style={{ padding }}>
             {slide && (
-              <div className="relative m-auto shrink-0" style={{ width: SLIDE_WIDTH * zoom, height: SLIDE_HEIGHT * zoom }}>
+              <div data-slide className="relative m-auto shrink-0" style={{ width: SLIDE_WIDTH * zoom, height: SLIDE_HEIGHT * zoom }}>
                 <div
                   className="h-full w-full overflow-hidden shadow-[0_2px_14px_rgba(0,0,0,0.12)]"
                   style={{ background: slide.background ?? "#ffffff" }}

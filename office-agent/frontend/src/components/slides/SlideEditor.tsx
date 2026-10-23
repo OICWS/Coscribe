@@ -132,6 +132,23 @@ export function SlideEditor({
   );
 }
 
+/** A press on the stage's own grey, beside the slide, clears the selection as a press on an empty
+ * part of the slide does. Its scrollbars are the stage too: a press there is not a click away. */
+function useDeselectOnStageClick(layerRef: { current: HTMLDivElement | null }, deselect: () => void) {
+  const latest = useRef(deselect);
+  latest.current = deselect;
+  useEffect(() => {
+    const stage = layerRef.current?.closest<HTMLElement>("[data-slide-stage]");
+    if (!stage) return;
+    const onDown = (e: MouseEvent) => {
+      const onScrollbar = e.offsetX >= stage.clientWidth || e.offsetY >= stage.clientHeight;
+      if (!onScrollbar && !(e.target as Element).closest("[data-slide]")) latest.current();
+    };
+    stage.addEventListener("pointerdown", onDown);
+    return () => stage.removeEventListener("pointerdown", onDown);
+  }, [layerRef]);
+}
+
 const KINDS: Record<string, EditorSelection["kind"]> = { h1: "text", h2: "text", h3: "text", p: "text", ul: "text", ol: "text", table: "table", img: "image", "x-shape": "shape", "x-chart": "chart", svg: "drawing", [STACK]: "container" };
 
 const nodeRises = (doc: Document | null, at: number) => !!doc && elementsOf(doc)[at]?.getAttribute("data-direction") === "up";
@@ -327,6 +344,7 @@ function useEditorInput(
   const [drag, setDrag] = useState<Drag | null>(null);
   const boxes = slide.doc ? nodeBoxes(slide.doc, slide.parts) : [];
   const stackDrop = useStackDrop(slide.doc, boxes, slide.change, setSelected);
+  useDeselectOnStageClick(layerRef, () => setSelected(null));
   const place = (at: number, box: Box, rises?: boolean) => {
     const node = nodes.current[at];
     if (node) placeNode(node, box, rises);
@@ -443,6 +461,7 @@ function Selection({
   const ends = line ? lineEnds(box, line.rises) : null;
   return (
     <div
+      data-selection
       className={`pointer-events-none absolute ${line ? "" : "border-2 border-[var(--accent)]"}`}
       style={{ left: x - 1, top: y - 1, width: w + 2, height: h + 2 }}
     >
