@@ -10,6 +10,7 @@ name: Windows sandbox prototype
       - ".github/workflows/windows-sandbox-prototype.yml"
       - "office-agent/scripts/prototype_script_sandbox.py"
       - "office-agent/scripts/prototype_folder_grants.py"
+      - "office-agent/scripts/prototype_codex_sandbox.py"
 
 permissions:
   contents: read
@@ -41,3 +42,7 @@ jobs:
       - name: Folder grants by capability, no-delete folders, large folders, SMB and exFAT
         if: always()
         run: python scripts/prototype_folder_grants.py
+
+      - name: Codex's own sandbox (mxc, elevated, unelevated) with coscribe's folders
+        if: always()
+        run: python scripts/prototype_codex_sandbox.py
