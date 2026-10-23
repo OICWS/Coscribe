@@ -46,3 +46,31 @@ jobs:
       - name: Codex's own sandbox (mxc, elevated, unelevated) with coscribe's folders
         if: always()
         run: python scripts/prototype_codex_sandbox.py
+
+      # The runner's account is an elevated admin; a user's laptop often is not. The same probe
+      # as a fresh standard user shows whether AppContainer and the folder ACLs need admin.
+      - name: Script probe as a standard user
+        if: always()
+        shell: pwsh
+        run: |
+          $password = "Cs-" + [guid]::NewGuid().ToString("N").Substring(0, 16) + "!a1"
+          net user csproto $password /add | Out-Null
+          $out = "C:\csproto-out"
+          New-Item -ItemType Directory -Force $out | Out-Null
+          icacls $out /grant "Everyone:(OI)(CI)(M)" | Out-Null
+          $python = (Get-Command python).Source
+          $script = (Resolve-Path scripts/prototype_script_sandbox.py).Path
+          Copy-Item $script $out
+          Copy-Item scripts/prototype_folder_grants.py $out
+          $cred = New-Object System.Management.Automation.PSCredential("csproto", (ConvertTo-SecureString $password -AsPlainText -Force))
+          $p = Start-Process -FilePath $python -ArgumentList "$out\prototype_script_sandbox.py" `
+            -Credential $cred -LoadUserProfile -WorkingDirectory $out -Wait -PassThru `
+            -RedirectStandardOutput "$out\stdout.txt" -RedirectStandardError "$out\stderr.txt"
+          Get-Content "$out\stdout.txt", "$out\stderr.txt" -ErrorAction SilentlyContinue
+          Write-Output "script probe as csproto: exit $($p.ExitCode)"
+          $p = Start-Process -FilePath $python -ArgumentList "$out\prototype_folder_grants.py" `
+            -Credential $cred -LoadUserProfile -WorkingDirectory $out -Wait -PassThru `
+            -RedirectStandardOutput "$out\stdout2.txt" -RedirectStandardError "$out\stderr2.txt"
+          Get-Content "$out\stdout2.txt", "$out\stderr2.txt" -ErrorAction SilentlyContinue
+          Write-Output "folder grants as csproto: exit $($p.ExitCode)"
+          net user csproto /delete | Out-Null
