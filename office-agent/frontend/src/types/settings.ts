@@ -466,6 +466,45 @@ export interface SecretsResponse {
   secrets: SecretInfo[];
 }
 
+/** One row of the design-system library. */
+export interface DesignSystemSummary {
+  id: string;
+  name: string;
+  updated_at: string;
+}
+
+export interface DesignColor {
+  name: string;
+  value: string;
+  note: string;
+}
+
+export interface DesignTextStyle {
+  id: string;
+  name: string;
+  size: number;
+  weight: number;
+  line_height: number;
+  letter_spacing: number;
+}
+
+export interface DesignNamedValue {
+  name: string;
+  value: string;
+}
+
+/** A design system (decision 0020): what a deck made with it follows. */
+export interface DesignSystem {
+  id: string;
+  name: string;
+  overview: string;
+  colors: DesignColor[];
+  typography: { fonts: string[]; styles: DesignTextStyle[] };
+  spacing: DesignNamedValue[];
+  radius: DesignNamedValue[];
+  updated_at: string;
+}
+
 /** Who may message a conversation: nobody (the default), every other one, or the named ones. */
 export interface MessagingPolicy {
   mode: "off" | "any" | "selected";

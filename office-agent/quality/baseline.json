@@ -284,7 +284,7 @@
   "office-agent/frontend/src/components/settings/PythonInterpreterSection.tsx::PythonInterpreterSection": 101,
   "office-agent/frontend/src/components/settings/SecretsTab.tsx::SecretForm": 104,
   "office-agent/frontend/src/components/settings/SecretsTab.tsx::SecretsTab": 121,
-  "office-agent/frontend/src/components/settings/SettingsModal.tsx::SettingsModal": 206,
+  "office-agent/frontend/src/components/settings/SettingsModal.tsx::SettingsModal": 207,
   "office-agent/frontend/src/components/settings/SkillsTab.tsx::SkillsTab": 238,
   "office-agent/frontend/src/components/settings/WorkspaceTab.tsx::WorkspaceTab": 148,
   "office-agent/frontend/src/components/settings/connectors/AddCustomConnectorDialog.tsx::AddCustomConnectorDialog": 185,
