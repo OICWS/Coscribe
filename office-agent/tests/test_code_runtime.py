@@ -157,20 +157,22 @@ async def test_the_thread_runs_unsandboxed_with_every_action_coming_back(
     assert started["config"] == {"model_context_window": 1048576}
 
 
-async def test_an_approved_command_runs_and_its_file_is_reported(
-    host: CodexHost, workdir: Path
-) -> None:
+async def test_a_command_is_refused_without_asking(host: CodexHost, workdir: Path) -> None:
     approvals = _Approvals(True)
-    result = await _thread(host, workdir).run_turn("approve", approvals)
+    events: list[CodexEvent] = []
 
-    [request] = approvals.seen
-    assert request.kind == "command"
-    assert request.command == "/bin/bash -lc 'echo made > made.txt'"
-    assert request.cwd == str(workdir)
-    assert request.reason == "writes made.txt"
-    assert result.text == "ran it"
-    assert result.files_changed == ["made.txt"]
-    assert result.commands == 1
+    async def on_event(event: CodexEvent) -> None:
+        events.append(event)
+
+    result = await _thread(host, workdir).run_turn("approve", approvals, on_event)
+
+    assert approvals.seen == []
+    assert result.text == "was declined"
+    assert not (workdir / "made.txt").exists()
+    assert result.files_changed == []
+    assert [e.data["command"] for e in events if e.kind == "command_refused"] == [
+        "/bin/bash -lc 'echo made > made.txt'"
+    ]
 
 
 async def test_a_declined_command_does_not_run(host: CodexHost, workdir: Path) -> None:
@@ -197,12 +199,12 @@ async def test_a_read_inside_the_folder_runs_without_asking(host: CodexHost, wor
     ]
 
 
-async def test_a_read_outside_the_folder_still_asks(host: CodexHost, workdir: Path) -> None:
-    approvals = _Approvals(False)
+async def test_a_read_outside_the_folder_is_refused(host: CodexHost, workdir: Path) -> None:
+    approvals = _Approvals(True)
 
     result = await _thread(host, workdir).run_turn("readout", approvals)
 
-    assert [r.command for r in approvals.seen] == ["/bin/bash -lc 'cat ../x.txt'"]
+    assert approvals.seen == []
     assert result.text == "was declined"
 
 

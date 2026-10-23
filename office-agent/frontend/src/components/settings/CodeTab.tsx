@@ -82,22 +82,9 @@ export function CodeTab({ values, onChange }: CodeTabProps) {
       {approvals.permissions && (
         <SettingsSection
           title="Approvals"
-          description="Codex asks before each command and file change, under the permission mode; plain reads of your folder never ask. Allowing here skips the question for good, except in Plan mode. An Approve card can also allow it for one task only."
+          description="Codex can't run commands: nothing would keep them inside your folder, so only plain reads of the folder run. It asks before each file change, under the permission mode. Allowing here skips the question for good, except in Plan mode. An Approve card can also allow it for one task only."
         >
           <SettingRows>
-            <SettingRow
-              label="Run commands without asking"
-              description="Commands can do anything this app can, and nothing keeps them inside your folder."
-              control={
-                <ToggleSwitch
-                  label="Run commands without asking"
-                  on={approvals.permissions.run_code_command === "allow"}
-                  onClick={() =>
-                    approvals.set("run_code_command", approvals.permissions?.run_code_command === "allow" ? "ask" : "allow")
-                  }
-                />
-              }
-            />
             <SettingRow
               label="Change files without asking"
               description="Edits Codex makes with its own patch tool. Accept-edits mode already allows these."
