@@ -5,7 +5,7 @@ Owns getting Codex onto the machine (`install.py`: a pinned build fetched on fir
 bundled; `_pins.py`: the versions and hashes), starting it (`launch.py`: its config and
 environment, one shared `codex app-server` per state folder that stops when idle), talking to it
 (`client.py`: JSON-RPC over stdio), one conversation's Codex thread (`thread.py`: a turn at a
-time, every command and file change coming back as an approval), the app's handle on all of it
+time, every file change coming back as an approval and commands refused), the app's handle on all of it
 (`service.py`) and the Settings > Code policy (`permissions.py`). Does not own the approval cards
 or the decision of what to allow (`conversation/approvals.py`, `runtime_lg/code_agent.py`) or the
 settings routes (`web/routes/settings/code.py`).
@@ -24,11 +24,11 @@ policy). Callers import these from `coscribe.code_runtime`, not a submodule. Tes
 ## Invariants
 - `permissions.py` is an invariant path (`office-agent/CLAUDE.md`): a change to it needs an
   independent review.
-- The thread runs with no sandbox (`danger-full-access`, `docs/decisions/0002-approvals-not-a-sandbox.md`),
-  so the caller's approval answer is the only gate; every action comes back to it
-  (`tests/test_code_runtime.py::test_the_thread_runs_unsandboxed_with_every_action_coming_back`).
-  The one exception is a plain read inside the thread's own folder, which runs without asking;
-  a read outside it still asks (same file).
+- The thread runs with no sandbox (`danger-full-access`), so nothing holds a command to the
+  folder settings: commands are refused without a card (decision 0021,
+  `tests/test_code_runtime.py::test_a_command_is_refused_without_asking`). The one exception is
+  a plain read inside the thread's own folder, which runs without asking; a read outside it is
+  refused too (same file). File changes from Codex's patch tool come back as approvals.
 - A downloaded Codex member or wheel that does not match its pinned sha256 is not installed
   (`tests/test_code_runtime_install.py`).
 - A fixed workflow run never reaches this package (import contract, `docs/decisions/0005-code-is-a-second-runtime.md`).

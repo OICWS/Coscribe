@@ -18,7 +18,7 @@ Factories: `build_file_tools`, `build_document_tools`, `build_spreadsheet_tools`
 `build_conversation_tools`. Toolkits and stores: `DocumentToolkit`, `SpreadsheetToolkit`,
 `BackgroundTask`, `BackgroundTaskStore`, `ScheduleRule`, `ScheduledTrigger`,
 `ScheduledTriggerStore`, `ScheduledRun`, `SubAgentTask`, `SubAgentTaskStore`, `WakeRequest`,
-`WakeStore`, `SignalStore`, `MessagingStore`, `DesignSystemStore`, `DesignSystemError`, `as_deck_design_system` (the person's design-system library, decision 0020). Connectors: `validate_mcp_config`,
+`WakeStore`, `SignalStore`, `MessagingStore`, `DesignSystemStore`, `DesignSystemError`, `as_deck_design_system`, `build_design_system_tools` (the person's design-system library, decision 0020). Connectors: `validate_mcp_config`,
 `load_mcp_server_configs`, `prepare_for_connect`, `name_of`, `is_read_only`, `connector_of`,
 `apply_connector_permissions`, `ConnectorPermissions`. Skills and templates: `SkillInfo`,
 `SkillUploadError`, `TemplateInfo`, `load_skills`, `load_builtin_skills`, `load_builtin_templates`,

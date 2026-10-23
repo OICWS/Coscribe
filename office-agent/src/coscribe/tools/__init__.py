@@ -76,7 +76,12 @@ from .connector_permissions import (
     name_of,
 )
 from .convert import build_convert_tools
-from .design_systems import DesignSystemError, DesignSystemStore, as_deck_design_system
+from .design_systems import (
+    DesignSystemError,
+    DesignSystemStore,
+    as_deck_design_system,
+    build_design_system_tools,
+)
 from .exec import (
     Detachable,
     HandOff,
@@ -331,6 +336,7 @@ __all__ = [
     "WakeStore",
     "build_background_task_tools",
     "build_conversation_tools",
+    "build_design_system_tools",
     "build_convert_tools",
     "DocumentToolkit",
     "SpreadsheetToolkit",

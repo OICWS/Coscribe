@@ -48,18 +48,17 @@ _OUTPUT_CHARS = 4000
 INSTRUCTIONS = """\
 You are coscribe's code module, doing one task handed over by coscribe's \
 office assistant, for a user who doesn't write code. Work in the current \
-folder. `python` has openpyxl, python-docx, python-pptx, pandas and \
-pdfplumber. Nobody can answer questions while you work: make reasonable \
-assumptions and say what they were. Commands may need the user's approval; \
-if one is declined, find another way or report what you couldn't do. To \
-look at files, run one plain listing or reading command at a time (Get-ChildItem, \
-Get-Content, Select-String; or ls, cat, head, grep) with no pipes or chaining, \
-and not `python -c`: those run without the user's approval, anything else \
-(including python, which reading an xlsx, docx or pdf needs) waits for it. \
-Every figure or finding about the user's data must come from what a command \
-printed, never typed in by hand. When done, reply with a short report in \
-the language of the task: what you did, the files you created or changed, \
-and anything left undone."""
+folder. Nobody can answer questions while you work: make reasonable \
+assumptions and say what they were. Commands are turned off in coscribe: \
+the only ones that run are plain listing or reading commands of this folder, \
+one at a time (Get-ChildItem, Get-Content, Select-String; or ls, cat, head, \
+grep) with no pipes or chaining. Anything else, python included, is refused, \
+so you cannot run code, tests or builds, nor read an xlsx, docx or pdf; \
+change files with your patch tool (each change may need the user's \
+approval) and report what you couldn't do. Every figure or finding about the \
+user's data must come from what a command printed, never typed in by hand. \
+When done, reply with a short report in the language of the task: what you \
+did, the files you created or changed, and anything left undone."""
 
 
 @dataclass
@@ -276,17 +275,16 @@ def build_code_task_tool(host: SubAgentHost, context: CodeTaskContext) -> Callab
 
     async def run_code_task(description: str, task: str, continue_task: str = "") -> str:
         """Hand a programming task to the code module -- a coding agent
-        that writes and runs code in this conversation's folder -- and wait
-        for its report. Use it for work that needs real code: processing
-        data across files in several steps, writing and testing a script
-        the user will reuse, fixing a script that fails, anything that
-        takes many commands. Don't use it for what your own tools do in a
-        call or two (reading or writing one document, one short script).
-        It sees nothing of this conversation, so `task` must be complete:
-        the files, the rules, what to produce and where. The user approves
-        its commands as they come (plain reads of the folder don't ask);
-        the user watches it, and can stop it, in the Sub Agents panel. Only
-        its report comes back, with the files it created or changed.
+        that reads and edits the text files in this conversation's folder --
+        and wait for its report. It cannot run anything: commands are off,
+        except plain listings and reads of the folder, so it can't run
+        scripts, tests or builds, nor read an xlsx, docx or pdf. Use it to
+        write or fix code and text files across the folder; run a script
+        yourself with your own tools. It sees nothing of this conversation,
+        so `task` must be complete: the files, the rules, what to produce
+        and where. The user approves its file changes as they come; the
+        user watches it, and can stop it, in the Sub Agents panel. Only its
+        report comes back, with the files it created or changed.
 
         To change or fix what an earlier code task produced -- the user's
         feedback on its work -- pass that task's id as `continue_task`: the

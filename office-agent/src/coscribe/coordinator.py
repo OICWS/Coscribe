@@ -26,6 +26,7 @@ from .tools import (
     build_browser_tools,
     build_conversation_tools,
     build_convert_tools,
+    build_design_system_tools,
     build_document_tools,
     build_file_tools,
     build_image_tools,
@@ -771,6 +772,7 @@ def build_coordinator_agent(
         + build_task_tools(thread_id, settings.state_dir)
         + build_interaction_tools()
         + build_conversation_tools(thread_id, settings.state_dir)
+        + build_design_system_tools(settings.state_dir)
         + build_selfwake_tools(thread_id, settings.state_dir)
         + build_scheduled_task_tools(settings.state_dir, thread_id)
         + build_websearch_tools(network)
