@@ -14,10 +14,12 @@ import os
 import re
 import shutil
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from ..runtime import tool_metadata
 from ._file_locks import file_lock, replace_with_retry
 
 SYSTEM_FILE = "system.json"
@@ -285,3 +287,84 @@ def as_deck_design_system(system: dict[str, Any]) -> dict[str, Any]:
         "styles": list(system.get("typography", {}).get("styles", [])),
         "source": system.get("id"),
     }
+
+
+def _summary(system: dict[str, Any]) -> str:
+    typography = system["typography"]
+    return (
+        f"{len(system['colors'])} colors, {len(typography['fonts'])} fonts, "
+        f"{len(typography['styles'])} text styles, {len(system['spacing'])} spacing and "
+        f"{len(system['radius'])} corner radius values"
+    )
+
+
+def build_design_system_tools(state_dir: str | Path) -> list[Callable[..., Any]]:
+    """The tool that saves a design system to the person's library. Deferred like the other
+    non-core tools, so the fixed tool list (0001) is unchanged."""
+    store = DesignSystemStore(state_dir)
+
+    def save_design_system(
+        name: str | None = None,
+        overview: str | None = None,
+        colors: list[dict[str, str]] | None = None,
+        fonts: list[str] | None = None,
+        text_styles: list[dict[str, Any]] | None = None,
+        spacing: list[dict[str, str]] | None = None,
+        radius: list[dict[str, str]] | None = None,
+        system_id: str | None = None,
+    ) -> dict[str, str]:
+        """Save a design system to the user's library, where it shows on the Artifacts page and
+        can be chosen for a new presentation. Without system_id it makes a new system (name is
+        required) that starts from a neutral palette and six text styles; with the id of an
+        existing system it changes only the fields you pass. A list you pass replaces the whole
+        list. A value the library cannot accept comes back as an error to repair.
+
+        Args:
+            name: the system's name, up to 80 characters.
+            overview: free text the model reads when it builds with the system: the brand, tone,
+                and how the parts are meant to be used.
+            colors: rows of {"name", "value", "note"}; value is #RRGGBB, note says what it is for.
+            fonts: installed font family names.
+            text_styles: rows of {"id", "name", "size", "weight", "line_height",
+                "letter_spacing"}; size in px on a 1920 px wide slide, weight 100 to 900, line
+                height as a multiple of size, letter spacing in px. A deck uses the ids
+                heading-1, heading-3, lead, eyebrow, body and caption.
+            spacing: rows of {"name", "value"}, for example {"name": "Margin", "value": "96px"}.
+            radius: rows of {"name", "value"}, for example {"name": "Card", "value": "16px"}.
+            system_id: the id returned when it was saved, to change that system.
+        """
+        if system_id is None:
+            if not name:
+                raise DesignSystemError("a new system needs a name")
+            current: dict[str, Any] | None = store.create(name)
+        else:
+            current = store.get(system_id)
+            if current is None:
+                raise DesignSystemError("there is no design system with that id")
+        assert current is not None
+        typography = current["typography"]
+        given = {
+            "name": name,
+            "overview": overview,
+            "colors": colors,
+            "spacing": spacing,
+            "radius": radius,
+        }
+        data = {
+            **{key: value for key, value in current.items() if key != "id"},
+            **{key: value for key, value in given.items() if value is not None},
+            "typography": {
+                "fonts": typography["fonts"] if fonts is None else fonts,
+                "styles": typography["styles"] if text_styles is None else text_styles,
+            },
+        }
+        try:
+            saved = store.update(current["id"], data)
+        except DesignSystemError:
+            if system_id is None:
+                store.delete(current["id"])  # a half-made system must not stay in the library
+            raise
+        assert saved is not None
+        return {"id": saved["id"], "name": saved["name"], "summary": _summary(saved)}
+
+    return [tool_metadata(save_design_system, risk_category="WRITE_LOCAL", category="documents")]
