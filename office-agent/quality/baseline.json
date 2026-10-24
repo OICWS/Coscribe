@@ -257,7 +257,7 @@
   "office-agent/frontend/src/components/BackgroundTasksPanel.tsx::BackgroundTasksPanel": 162,
   "office-agent/frontend/src/components/BrowserPanel.tsx::ScreencastBrowserPanel": 536,
   "office-agent/frontend/src/components/ChatLog.tsx::ChatLog": 171,
-  "office-agent/frontend/src/components/Composer.tsx::Composer": 536,
+  "office-agent/frontend/src/components/Composer.tsx::Composer": 500,
   "office-agent/frontend/src/components/DesktopBrowserPanel.tsx::DesktopBrowserPanel": 386,
   "office-agent/frontend/src/components/DocxViewerPanel.tsx::DocxViewerPanel": 281,
   "office-agent/frontend/src/components/EffortPicker.tsx::EffortPicker": 144,
