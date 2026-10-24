@@ -297,6 +297,9 @@ async def test_a_sandboxed_command_writes_only_its_workspace_and_cannot_read_pri
     tag = uuid.uuid4().hex
     desktop = profile / "Desktop" / f"coscribe-secret-{tag}.txt"
     roaming = Path(os.environ["APPDATA"]) / f"coscribe-secret-{tag}.txt"
+    # Like .git-credentials or .netrc: a file at the profile's top, which Codex never opens.
+    top = profile / f".coscribe-secret-{tag}"
+    top.write_text("TOP-SECRET")
     desktop.parent.mkdir(exist_ok=True)
     desktop.write_text("DESKTOP-SECRET")
     roaming.write_text("ROAMING-SECRET")
@@ -305,7 +308,7 @@ async def test_a_sandboxed_command_writes_only_its_workspace_and_cannot_read_pri
         "import tempfile; tempfile.TemporaryFile().close(); print('PY-RAN'); import socket; "
         "socket.create_connection(('1.1.1.1', 443), 5); print('NET-OPEN')"
     )
-    reads = f'type "{beside}" & type "{desktop}" & type "{roaming}"'
+    reads = f'type "{beside}" & type "{desktop}" & type "{roaming}" & type "{top}"'
     command = (
         f"whoami & echo inside> made.txt & {reads} & "
         f'echo outside> "{made}" & "{sys.executable}" -c "{connect}"'
@@ -320,7 +323,7 @@ async def test_a_sandboxed_command_writes_only_its_workspace_and_cannot_read_pri
         acls = _icacls(beside.parent, desktop.parent, roaming.parent)
         assert (base / "workspace" / "made.txt").read_text().strip() == "inside", output
         assert not made.exists(), output
-        for secret in ("BESIDE-SECRET", "DESKTOP-SECRET", "ROAMING-SECRET"):
+        for secret in ("BESIDE-SECRET", "DESKTOP-SECRET", "ROAMING-SECRET", "TOP-SECRET"):
             assert secret not in output, output + acls
         assert "codexsandbox" in output.lower(), output
         # Its Temp is its own, so Python's tempfile works; the network is not Full, so offline.
@@ -335,6 +338,7 @@ async def test_a_sandboxed_command_writes_only_its_workspace_and_cannot_read_pri
         Capabilities(sandboxed_state).set("commands_hide_private_folders", True)
         desktop.unlink(missing_ok=True)
         roaming.unlink(missing_ok=True)
+        top.unlink(missing_ok=True)
         shutil.rmtree(base, ignore_errors=True)
 
 

@@ -12,7 +12,8 @@ names for writing: it runs as a local sandbox user that writes only those folder
 network unless the profile allows it. Reading is wider: elevated mode needs the whole disk
 readable (`":root" = "read"`), and setup gives the sandbox users read access to every folder of
 the person's profile, Documents, Desktop, Downloads and AppData among them (checked with icacls
-on the runner); only the files at the top of the profile stayed closed. It needs `codex sandbox setup --elevated` once, which an
+on the runner); only the files at the top of the profile stayed closed, among them
+`.git-credentials`, `.netrc` and `.npmrc`. It needs `codex sandbox setup --elevated` once, which an
 administrator approves.
 
 ## Decision
