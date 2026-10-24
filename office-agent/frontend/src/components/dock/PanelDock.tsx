@@ -34,9 +34,11 @@ import { DockControls, type DockActions } from "./DockControls";
 import { DockPanelContext, type DockPanelApi } from "./dockContext";
 
 /** The conversation keeps at least CHAT_MIN beside the panels, else they lie
- * over it; a newly opened panel gets its own column while it keeps CHAT_ROOMY. */
-const CHAT_MIN = 380;
-const CHAT_ROOMY = 560;
+ * over it; a newly opened panel gets its own column while it keeps CHAT_ROOMY.
+ * CHAT_MIN is what the composer's toolbar needs to fit on one row (pickers, status, context
+ * ring); narrower, the toolbar is clipped and the ring leaves the stop button's column. */
+const CHAT_MIN = 640;
+const CHAT_ROOMY = 720;
 const PANEL_MIN = 140;
 const PREFERRED_WIDTH: Record<PanelId, number> = { task: 320, browser: 440, background: 440, viewer: 720, plan: 440 };
 const DRAG_THRESHOLD = 5;
