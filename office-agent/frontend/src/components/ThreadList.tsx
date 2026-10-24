@@ -111,7 +111,7 @@ function ThreadMenu({
   return createPortal(
     <div
       ref={ref}
-      role="menu"
+      role="menu" data-nav-menu
       aria-label={`Options for ${threadLabel(menu.thread)}`}
       className={`${menuClass} fixed`}
       style={{ left, top, width: MENU_WIDTH }}

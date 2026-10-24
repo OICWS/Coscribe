@@ -46,6 +46,7 @@ from ..tools import (
     normalize_questions,
     parse_run_thread_id,
     sandbox_codex,
+    sandbox_mode,
 )
 from .events import EventSink
 
@@ -323,9 +324,10 @@ class ApprovalDecider:
     def _command_needs_the_person(self) -> bool:
         """Outside the sandbox a command runs as the person; inside it, it still reads most of
         their files, which an online command could send out. Either way only the person approves
-        it, in every mode (decision 0022)."""
+        it, in every mode (decision 0022). The unelevated sandbox reads everything and keeps a
+        command offline only by its environment, so it never counts as holding one."""
         state_dir = self._host.settings.state_dir
-        if sandbox_codex(state_dir) is None:
+        if sandbox_codex(state_dir) is None or sandbox_mode(state_dir) != "elevated":
             return True
         return NetworkGuard(state_dir, self._host.thread_id).scripts_online()
 

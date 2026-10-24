@@ -570,9 +570,23 @@ export interface Capabilities {
 }
 
 /** Codex's Windows sandbox for commands (decision 0022). */
+export type CommandSandboxMode = "elevated" | "unelevated";
+
 export interface CommandSandbox {
-  state: "ready" | "off" | "failed" | "unsupported";
+  state: "ready" | "off" | "failed" | "unsupported" | "working";
+  /** Why it failed; while working, the step: "download", "approve" or "check". */
   detail: string;
+  /** The mode it is (or was last) set up in; absent off Windows. */
+  mode?: CommandSandboxMode;
+  /** 0..1 while Codex downloads. */
+  progress?: number | null;
   /** Set when removing it failed. */
   error?: string;
+}
+
+/** Where what Settings › Capabilities downloads lives. */
+export interface CapabilityFolders {
+  codex: string;
+  python_packages: string;
+  node_packages: string;
 }

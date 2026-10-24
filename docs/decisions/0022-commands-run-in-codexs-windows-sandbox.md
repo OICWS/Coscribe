@@ -49,6 +49,15 @@ administrator approves.
   also confirms "Run commands without the sandbox". Then a command runs as the user and every
   one is approved by the person in every mode (pre-approved, Accept Edits, Auto, a scheduled
   run that skips approval); the Auto reviewer is never asked, and an unattended run refuses it.
+- Codex's setup and uninstall refuse to run unelevated and don't ask Windows themselves
+  (`orchestrator_elevation_required`), so unless coscribe is elevated it starts them through
+  RunAs, which shows the administrator prompt. Setup names the person (`--user`, with their
+  `USERPROFILE`), since a standard user's prompt runs it as the administrator who approved it.
+- Without an administrator, the person can pick the unelevated mode instead (Codex's
+  `[windows] sandbox = "unelevated"`): no setup, the person's own restricted token. It still
+  writes only the given folders, but it can't deny a read (so private folders are not hidden)
+  and is offline only by its environment, so every command in it is approved by the person, as
+  an unsandboxed one is. Setting it up runs a test command, the only proof it works.
 - Scripts stay in the AppContainer (0021).
 
 ## Consequences
@@ -77,7 +86,7 @@ administrator approves.
   does every gated call; a run that resolves approvals itself refuses it.
 - A limited network list can't be held by the sandbox, so a command is offline unless the
   network is Full.
-- Setting up needs an administrator once per machine; a standard user without one keeps the
-  unsandboxed path with its approvals.
+- The elevated mode needs an administrator once per machine; a standard user without one has
+  the unelevated mode, or the unsandboxed path, each with the person's approval of every command.
 - Codex's own commands in the code module are still off; running them in this sandbox is the
   next step (4b).

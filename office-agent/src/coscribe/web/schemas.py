@@ -227,5 +227,10 @@ class ScriptEnvPackageInstall(BaseModel):
     package: str
 
 
+class CommandSandboxSetup(BaseModel):
+    # "unelevated" needs no administrator and holds less (decision 0022).
+    mode: Literal["elevated", "unelevated"] = "elevated"
+
+
 class ScriptEnvInterpreterUpdate(BaseModel):
     path: str  # blank clears the override, reverting to auto-detection

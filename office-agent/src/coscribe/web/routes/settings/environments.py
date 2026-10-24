@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-import os
-import subprocess
+from pathlib import Path
 from typing import Any
 
 from fastapi import (
@@ -25,8 +24,9 @@ from ....tools import (
     own_python_offer,
     record_sandbox_setup,
     release_private_folders,
+    run_as_administrator,
     sandbox_codex,
-    sandbox_home,
+    sandbox_mode,
     sandbox_setup_argv,
     sandbox_status,
     sandbox_uninstall_argv,
@@ -38,6 +38,7 @@ from ....tools import install_python_package as install_package
 from ....tools import list_python_packages as list_packages
 from ....tools import uninstall_python_package as uninstall_package
 from ...schemas import (
+    CommandSandboxSetup,
     ScriptEnvInterpreterUpdate,
     ScriptEnvPackageInstall,
 )
@@ -99,27 +100,20 @@ def _capability_routes(router: APIRouter, state: AppState) -> None:
             )  # fmt: skip
         return current
 
+    async def get_folders() -> dict[str, str]:
+        """Where what this page downloads lives, so the person can find it."""
+        return {
+            "codex": str(Path(state_dir) / "codex"),
+            "python_packages": str(Path(state_dir) / "script-env"),
+            "node_packages": str(Path(state_dir) / "node-env"),
+        }
+
     router.add_api_route("/api/capabilities", get_capabilities, methods=["GET"])
+    router.add_api_route("/api/capabilities/folders", get_folders, methods=["GET"])
     router.add_api_route("/api/capabilities/{name}", put_capability, methods=["PUT"])
 
 
 _SANDBOX_SETUP_SECONDS = 600
-
-
-def _run_codex(argv: list[str], state_dir: Any) -> str:
-    """Runs a `codex sandbox` admin command; the error to show, or "" when it worked."""
-    env = {**os.environ, "CODEX_HOME": str(sandbox_home(state_dir))}
-    sandbox_home(state_dir).mkdir(parents=True, exist_ok=True)
-    try:
-        done = subprocess.run(
-            argv, env=env, capture_output=True, text=True, timeout=_SANDBOX_SETUP_SECONDS
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return f"Codex didn't finish: {exc}"
-    if done.returncode == 0:
-        return ""
-    output = (done.stderr or done.stdout).strip().splitlines()
-    return output[-1] if output else f"Codex exited with {done.returncode}."
 
 
 def _sandbox_routes(router: APIRouter, state: AppState) -> None:
@@ -137,25 +131,50 @@ def _sandbox_routes(router: APIRouter, state: AppState) -> None:
             reason="human",
         )
 
-    async def get_sandbox() -> dict[str, str]:
+    # The step setup is on, so the row can say what it waits for: "download" (Codex, with its
+    # progress), "approve" (the administrator prompt, then Codex's setup) or "check".
+    step = {"now": ""}
+
+    async def get_sandbox() -> dict[str, Any]:
+        if step["now"]:
+            progress = code_service(state.settings).status()["progress"]
+            return {"state": "working", "detail": step["now"], "progress": progress}
         return sandbox_status(state_dir)
 
-    async def set_up_sandbox() -> dict[str, str]:
-        if sandbox_status(state_dir)["state"] == "unsupported":
-            return sandbox_status(state_dir)
+    async def set_up_sandbox(body: CommandSandboxSetup | None = None) -> dict[str, Any]:
+        mode = body.mode if body else "elevated"
+        if sandbox_status(state_dir)["state"] == "unsupported" or step["now"]:
+            return await get_sandbox()
         try:
-            codex = await code_service(state.settings).download()
-        except CodexUnavailable as exc:
-            error = exc.args[0] if exc.args else "Codex couldn't be downloaded."
-            record_sandbox_setup(state_dir, None, error)
-            audit("setup", error)
+            step["now"] = "download"
+            try:
+                codex = await code_service(state.settings).download()
+            except CodexUnavailable as exc:
+                error = exc.args[0] if exc.args else "Codex couldn't be downloaded."
+                record_sandbox_setup(state_dir, None, error)
+                audit("setup", error)
+                return sandbox_status(state_dir)
+            error = ""
+            if mode == "elevated":
+                step["now"] = "approve"
+                error = await asyncio.to_thread(
+                    run_as_administrator,
+                    sandbox_setup_argv(codex, state_dir),
+                    state_dir,
+                    _SANDBOX_SETUP_SECONDS,
+                )
+            record_sandbox_setup(state_dir, None if error else codex, error, mode)
+            if not error:
+                step["now"] = "check"
+                tried = await asyncio.to_thread(warm_up_sandbox, state_dir)
+                # Elevated setup proved itself; without it, the test command is the only proof.
+                if tried and mode == "unelevated":
+                    error = f"A test command didn't run in it: {tried}"
+                    record_sandbox_setup(state_dir, None, error, mode)
+            audit(f"setup_{mode}" if mode == "unelevated" else "setup", error)
             return sandbox_status(state_dir)
-        error = await asyncio.to_thread(_run_codex, sandbox_setup_argv(codex), state_dir)
-        record_sandbox_setup(state_dir, None if error else codex, error)
-        if not error:
-            await asyncio.to_thread(warm_up_sandbox, state_dir)
-        audit("setup", error)
-        return sandbox_status(state_dir)
+        finally:
+            step["now"] = ""
 
     async def remove_sandbox() -> dict[str, str]:
         codex = sandbox_codex(state_dir)
@@ -165,9 +184,15 @@ def _sandbox_routes(router: APIRouter, state: AppState) -> None:
         error = ""
         if left:
             error = "Some folders still hide from commands: " + ", ".join(left)
-        elif codex is not None:
-            error = await asyncio.to_thread(_run_codex, sandbox_uninstall_argv(codex), state_dir)
-        record_sandbox_setup(state_dir, codex if error else None)
+        elif codex is not None and sandbox_mode(state_dir) == "elevated":
+            # Only the elevated mode made users and firewall rules to take away.
+            error = await asyncio.to_thread(
+                run_as_administrator,
+                sandbox_uninstall_argv(codex),
+                state_dir,
+                _SANDBOX_SETUP_SECONDS,
+            )
+        record_sandbox_setup(state_dir, codex if error else None, mode=sandbox_mode(state_dir))
         audit("uninstall", error)
         return {**sandbox_status(state_dir), "error": error}
 

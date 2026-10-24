@@ -4,6 +4,7 @@ permission profile and command line a command gets. The sandbox itself runs only
 
 from __future__ import annotations
 
+import base64
 import sys
 from pathlib import Path
 
@@ -44,9 +45,13 @@ def test_off_windows_it_is_unsupported_and_commands_are_not_wrapped(tmp_path: Pa
 
 @pytest.mark.usefixtures("on_windows")
 def test_it_is_ready_only_while_the_codex_that_set_it_up_is_still_there(tmp_path: Path) -> None:
-    assert sandbox_status(tmp_path) == {"state": "off", "detail": ""}
+    assert sandbox_status(tmp_path) == {"state": "off", "detail": "", "mode": "elevated"}
     record_sandbox_setup(tmp_path, None, "The administrator said no.")
-    assert sandbox_status(tmp_path) == {"state": "failed", "detail": "The administrator said no."}
+    assert sandbox_status(tmp_path) == {
+        "state": "failed",
+        "detail": "The administrator said no.",
+        "mode": "elevated",
+    }
     codex = _codex(tmp_path)
     record_sandbox_setup(tmp_path, codex)
     assert sandbox_status(tmp_path)["state"] == "ready"
@@ -249,3 +254,68 @@ def test_a_deny_that_icacls_still_lists_is_reported_and_kept(
 
     assert release_private_folders(tmp_path) == [str(documents)]
     assert release_private_folders(tmp_path) == [str(documents)]
+
+
+def _decoded(encoded: str) -> str:
+    return base64.b64decode(encoded).decode("utf-16-le")
+
+
+def test_unless_coscribe_is_elevated_setup_goes_through_run_as_with_its_environment(
+    tmp_path: Path,
+) -> None:
+    """Codex's setup refuses to run unelevated and doesn't ask Windows itself; the elevated
+    process doesn't inherit coscribe's environment and can't pipe its output back."""
+    log = tmp_path / "it's" / "administrator.log"
+    argv = ["C:\\Codex\\codex.exe", "sandbox", "setup", "--user", "O'Neil"]
+
+    wrapped = command_sandbox._through_run_as(argv, {"CODEX_HOME": "C:\\h"}, log)
+
+    assert wrapped[:-1] == ["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand"]
+    outer = _decoded(wrapped[-1])
+    assert "Start-Process -FilePath powershell.exe -Verb RunAs -Wait -PassThru" in outer
+    assert f"exit {command_sandbox.DECLINED}" in outer
+    inner = _decoded(outer.split("-EncodedCommand ")[1].split("'")[0])
+    assert inner.splitlines() == [
+        "$env:CODEX_HOME = 'C:\\h'",
+        "$a = @('sandbox', 'setup', '--user', 'O''Neil')",
+        "& 'C:\\Codex\\codex.exe' @a 2>&1 | ForEach-Object { \"$_\" } | "
+        f"Set-Content -Encoding UTF8 -LiteralPath '{str(log).replace(chr(39), chr(39) * 2)}'",
+        "exit $LASTEXITCODE",
+    ]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="off Windows coscribe counts as elevated")
+@pytest.mark.parametrize(("exit_code", "error"), [(0, ""), (2, "It went wrong.")])
+def test_an_administrator_command_reports_codexs_last_line(
+    exit_code: int, error: str, tmp_path: Path
+) -> None:
+    codex = tmp_path / "codex"
+    codex.write_text(f'#!/bin/sh\necho "It went wrong." >&2\nexit {exit_code}\n')
+    codex.chmod(0o755)
+    assert command_sandbox.run_as_administrator([str(codex)], tmp_path, 10) == error
+
+
+@pytest.mark.usefixtures("on_windows")
+def test_the_unelevated_sandbox_has_its_own_profile_and_denies_no_read(
+    tmp_path: Path, icacls: list[tuple[str, ...]]
+) -> None:
+    """Codex can't deny a read without the elevated sandbox's users, so private folders stay
+    readable there and coscribe changes no folder's permissions for it."""
+    record_sandbox_setup(tmp_path, _codex(tmp_path))
+    root, private = tmp_path / "work", tmp_path / "Documents"
+    elevated = sandboxed_command(tmp_path, "dir", root, [root], [], False, hidden=[private])
+    record_sandbox_setup(tmp_path, _codex(tmp_path), mode="unelevated")
+    icacls.clear()
+
+    argv, _ = sandboxed_command(tmp_path, "dir", root, [root], [], False, hidden=[private]) or (
+        [],
+        {},
+    )
+
+    assert sandbox_status(tmp_path) == {"state": "ready", "detail": "", "mode": "unelevated"}
+    assert elevated is not None and argv[3] != elevated[0][3]
+    config = (sandbox_home(tmp_path) / "config.toml").read_text(encoding="utf-8")
+    assert '[windows]\nsandbox = "unelevated"\n' in config
+    section = config.split(f"[permissions.{argv[3]}.filesystem]\n")[1].split("[")[0]
+    assert '"deny"' not in section
+    assert icacls == []
