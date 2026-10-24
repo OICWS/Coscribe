@@ -85,7 +85,7 @@ interface ComposerProps {
   workflowTest?: { done: number; total: number } | null;
   commands: CommandInfo[];
   modePill: ReactNode;
-  folderPicker: ReactNode;
+  environmentPicker: ReactNode;
   modelPicker: ReactNode;
   effortPicker: ReactNode;
   usageRing: ReactNode;
@@ -135,7 +135,7 @@ export function Composer({
   workflowTest = null,
   commands,
   modePill,
-  folderPicker,
+  environmentPicker,
   modelPicker,
   effortPicker,
   usageRing,
@@ -645,7 +645,7 @@ export function Composer({
           >
             <PlusIcon className="h-[18px] w-[18px]" />
           </button>
-          {folderPicker}
+          {environmentPicker}
           {modePill}
         </div>
         <RunStatus turnInFlight={turnInFlight} totalTokens={totalTokens} workflowTest={workflowTest} />

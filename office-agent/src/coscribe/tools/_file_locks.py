@@ -72,6 +72,19 @@ def replace_with_retry(src: Path, dst: Path, *, attempts: int = 5, delay: float 
             time.sleep(delay * (attempt + 1))
 
 
+def read_text_with_retry(path: Path, *, attempts: int = 5, delay: float = 0.02) -> str:
+    """``read_text`` that waits out a writer's ``os.replace`` of the same file: Windows refuses
+    to open a file while it is being replaced. Other platforms get the plain call."""
+    for attempt in range(attempts):
+        try:
+            return path.read_text(encoding="utf-8")
+        except PermissionError:
+            if sys.platform != "win32" or attempt == attempts - 1:
+                raise
+            time.sleep(delay * (attempt + 1))
+    raise AssertionError("unreachable")
+
+
 def locked_by_path(method: _F) -> _F:
     """Serializes calls to a ``WorkspaceScope``-backed toolkit method
     whose first real argument is ``path`` (a str, relative to the

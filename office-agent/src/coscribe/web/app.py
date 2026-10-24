@@ -96,6 +96,7 @@ from ..tools import (
 )
 from .background_events import BackgroundEventBus
 from .connector_manager import ConnectorManager
+from .environment_migration import migrate_to_environments
 from .folder_grants import sweep_unused_folder_grants
 from .local_guard import ALLOWED_HOSTS_ENV, LocalOnlyGuard, launch_token, page_with_token
 from .provider_catalog import (
@@ -276,6 +277,7 @@ def _make_lifespan(
         sweep = asyncio.create_task(asyncio.to_thread(sweep_unused_folder_grants, settings))
         async with AsyncSqliteSaver.from_conn_string(str(checkpoint_path)) as checkpointer:
             checkpointer_holder["checkpointer"] = checkpointer
+            await migrate_to_environments(settings, checkpointer)
             mcp_connect_task = await _start_mcp_connect(settings, mcp_oauth, connectors)
             interrupted = reconcile_interrupted_runs(settings.state_dir)
             if interrupted:
@@ -466,10 +468,7 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
         # toggle applies to the next session without a restart.
         return enabled_skill_names(settings.skills_dir, settings.state_dir)
 
-    def _get_session(
-        thread_id: str,
-        workspace_param: str | None = None,
-    ) -> ChatSessionLG:
+    def _get_session(thread_id: str) -> ChatSessionLG:
         if thread_id not in sessions:
             # Re-read providers.json fresh for every *new* session (unlike
             # context_window_client's fixed custom_providers above) -- the
@@ -489,7 +488,7 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
             }
             for command in hooks_config["SessionStart"]:
                 run_hook(command, session_start_payload)
-            folders = thread_files.resolve_folders(thread_id, workspace_param)
+            folders = thread_files.resolve_folders(thread_id)
             sessions[thread_id] = ChatSessionLG(
                 thread_id=thread_id,
                 settings=settings,

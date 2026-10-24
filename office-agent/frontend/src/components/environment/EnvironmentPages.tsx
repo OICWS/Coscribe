@@ -141,8 +141,8 @@ export function SecretsPage({
   );
 }
 
-/** The conversation's own folders, the main one first. Which folders exist and how far they may
- * be used is managed in Settings > Workspace; this only picks this conversation's. */
+/** The environment's folders, the main one first. Which folders exist and how far they may
+ * be used is managed in Settings > Workspace; this only picks this environment's. */
 export function FoldersPage({ folders, onChange }: { folders: string[]; onChange: (folders: string[]) => void }) {
   const [browsing, setBrowsing] = useState(false);
   // Fixed when the page opens, so a folder unticked here stays listed to tick again.
@@ -154,7 +154,7 @@ export function FoldersPage({ folders, onChange }: { folders: string[]; onChange
   return (
     <section className="flex flex-col gap-3">
       <p className={introClass}>
-        The folders this conversation works in. New files go to the main one. With none ticked it uses the default
+        The folders this environment's conversations work in. New files go to the main one. With none ticked they use the default
         workspace. Which other folders it may read or change is set in Settings &gt; Workspace.
       </p>
       {rows.length === 0 ? (

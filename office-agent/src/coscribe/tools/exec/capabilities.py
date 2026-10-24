@@ -1,7 +1,8 @@
 """What coscribe may run on this computer, set in Settings › Capabilities (#588): scripts (on
-unless turned off) and commands (off unless turned on). An environment or a mode can only narrow
-these. The agent's tools stay in its list either way, since that list is cached by the provider;
-a tool whose capability is off refuses the call and says where to turn it on."""
+unless turned off) and commands (off unless turned on). A conversation's environment can only
+narrow these, and its mode decides whether the person is asked. The agent's tools stay in its
+list either way, since that list is cached by the provider; a tool whose capability is off
+refuses the call and says where to turn it on."""
 
 from __future__ import annotations
 
@@ -9,6 +10,8 @@ import json
 import threading
 from pathlib import Path
 from typing import Literal
+
+from ...runtime import Environments
 
 Capability = Literal["scripts", "commands"]
 
@@ -57,7 +60,15 @@ _REFUSALS: dict[Capability, str] = {
 }
 
 
-def require_capability(state_dir: Path, name: Capability) -> None:
-    """Raises CapabilityOff, which the model reads, when `name` is turned off."""
+def require_capability(state_dir: Path, name: Capability, thread_id: str | None = None) -> None:
+    """Raises CapabilityOff, which the model reads, when `name` is turned off on this computer or
+    in the environment of `thread_id`'s conversation."""
     if not Capabilities(state_dir).get()[name]:
         raise CapabilityOff(_REFUSALS[name])
+    env = Environments(state_dir).for_thread(thread_id)
+    if not env[name]:
+        raise CapabilityOff(
+            f"This conversation's environment ({env['name']}) doesn't allow {name}. Tell the "
+            "person; they can allow them in the environment's settings, from the environment "
+            "picker below the message box. Use the built-in tools meanwhile."
+        )

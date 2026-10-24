@@ -33,6 +33,8 @@ export interface StateEvent {
    * the default workspace.
    */
   folders: string[];
+  /** The id of the environment this conversation uses ("default" for Default). */
+  environment: string;
   /** The connected connectors' tool names. */
   connector_tools: string[];
   /**
@@ -487,15 +489,18 @@ export interface SwitchModelOut {
 }
 
 /**
- * Replaces the conversation's folders, the main one first; empty goes back to the default
- * workspace. Answered with `state`, or `error` leaving them as they were.
+ * Moves the conversation to another environment and into its folders, between turns.
+ * Answered with `state`, or `error` leaving it where it was.
  */
-export interface SetFoldersOut {
-  type: "set_folders";
-  folders: string[];
+export interface SetEnvironmentOut {
+  type: "set_environment";
+  environment: string;
 }
 
-/** One more folder, keeping the ones the conversation has. */
+/**
+ * One more folder, keeping the ones the conversation has. Kept in its environment; one on
+ * Default gets an environment of its own.
+ */
 export interface AddFolderOut {
   type: "add_folder";
   folder: string;
@@ -537,6 +542,6 @@ export type ClientMessage =
   | QuestionDismissedOut
   | StopOut
   | SwitchModelOut
-  | SetFoldersOut
+  | SetEnvironmentOut
   | AddFolderOut
   | LoadOlderMessagesOut;

@@ -60,6 +60,7 @@ from pathlib import Path
 from typing import Any
 
 from ...runtime import tool_metadata
+from .._file_locks import read_text_with_retry, replace_with_retry
 from ..exec import (
     RunningCommand,
     blocked_write,
@@ -221,7 +222,7 @@ class BackgroundTaskStore:
         tmp_path = path.with_suffix(".tmp")
         with tmp_path.open("w", encoding="utf-8") as handle:
             json.dump(task.to_dict(), handle, ensure_ascii=False, indent=2)
-        os.replace(tmp_path, path)
+        replace_with_retry(tmp_path, path)
 
     def load(self, task_id: str) -> BackgroundTask | None:
         if not _SAFE_ID.fullmatch(task_id):
@@ -229,15 +230,14 @@ class BackgroundTaskStore:
         path = self._json_path(task_id)
         if not path.exists():
             return None
-        return self._settle_if_orphaned(
-            BackgroundTask.from_dict(json.loads(path.read_text(encoding="utf-8")))
-        )
+        task = BackgroundTask.from_dict(json.loads(read_text_with_retry(path)))
+        return self._settle_if_orphaned(task)
 
     def list_for_thread(self, thread_id: str) -> list[BackgroundTask]:
         if not self.root.is_dir():
             return []
         tasks = [
-            BackgroundTask.from_dict(json.loads(p.read_text(encoding="utf-8")))
+            BackgroundTask.from_dict(json.loads(read_text_with_retry(p)))
             for p in sorted(self.root.glob("*.json"))
         ]
         mine = sorted((t for t in tasks if t.thread_id == thread_id), key=lambda t: t.started_at)
@@ -470,7 +470,7 @@ async def _start_contained(
 ) -> dict[str, Any] | None:
     """Starts the run in the container and hands it to `_watch`, or returns None when this
     machine cannot hold it (then the caller starts it as before)."""
-    require_capability(state, "commands" if language == "shell" else "scripts")
+    require_capability(state, "commands" if language == "shell" else "scripts", thread_id)
     isolation = await asyncio.to_thread(
         isolation_for_scripts, state, runtime=runtime, thread_id=thread_id, **folders
     )

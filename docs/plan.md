@@ -234,6 +234,12 @@ Last reviewed: 2026-10-15.
    Environment from the ones found on the computer; coscribe's own (3.12) is downloaded only on
    request (#586). #560 is closed. Open: a PyPI mirror setting for networks that block PyPI.
 
+5. **One place for what coscribe may run** (#588, kurtosisOC). Shipped: deleting the open
+   conversation (#589), Settings › Capabilities (#590), named environments with the picker below
+   the message box and the move of each conversation's own settings into them. Open: scheduled
+   tasks choosing an environment, and commands in Codex's Windows sandbox (with a decision record
+   that changes 0021's "Codex runs no commands").
+
 ## Needs the maintainer's testing (could not be verified here)
 
 - Sign-in of the 13 connectors added for the skill plugins (only the

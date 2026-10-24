@@ -1,5 +1,7 @@
 from .compaction import COMPACT_INSTRUCTIONS
 from .dotenv_file import app_data_dir, dotenv_path, prepare_env
+from .environments import DEFAULT_ID as DEFAULT_ENVIRONMENT
+from .environments import EnvironmentRefused, Environments
 from .hooks import HookResult, empty_hooks_config, load_hooks_config, run_hook
 from .llm_client import LLMClient
 from .network_access import NetworkAccess, NetworkError, NetworkGuard
@@ -39,6 +41,9 @@ __all__ = [
     "dotenv_path",
     "prepare_env",
     "COMPACT_INSTRUCTIONS",
+    "DEFAULT_ENVIRONMENT",
+    "EnvironmentRefused",
+    "Environments",
     "MIN_VALUE",
     "Agent",
     "HookResult",
