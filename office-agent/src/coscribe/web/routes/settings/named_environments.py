@@ -95,7 +95,7 @@ def router(state: AppState) -> APIRouter:
         try:
             env = Environments(state_dir).create(payload, SecretStore(state_dir).names())
         except EnvironmentRefused as exc:
-            return _refused(str(exc))
+            return _refused(exc.reason)
         _audit(state_dir, env["id"], None, env)
         return env
 
@@ -113,7 +113,7 @@ def router(state: AppState) -> APIRouter:
         try:
             env = environments.update(env_id, payload, SecretStore(state_dir).names())
         except EnvironmentRefused as exc:
-            return _refused(str(exc))
+            return _refused(exc.reason)
         _audit(state_dir, env_id, before, env)
         problem = await _move_folders(state_dir, sessions)
         return {**env, "warning": problem} if problem else env
@@ -132,7 +132,7 @@ def router(state: AppState) -> APIRouter:
         except KeyError:
             return _refused("No such environment.", 404)
         except EnvironmentRefused as exc:
-            return _refused(str(exc))
+            return _refused(exc.reason)
         await _move_folders(state_dir, sessions)
         return {"moved": len(moved)}
 

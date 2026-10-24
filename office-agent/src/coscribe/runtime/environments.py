@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import json
 import os
-import secrets as _random
 import threading
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +27,10 @@ _LOCK = threading.Lock()
 
 class EnvironmentRefused(ValueError):
     """A change the store refuses, worded for the person who made it."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
 
 
 def blank(name: str) -> dict[str, Any]:
@@ -211,7 +215,7 @@ class Environments:
             data = self._read()
             env = _clean({"name": "", **fields}, blank(""), known)
             self._check_unique(data, env["name"], None)
-            env_id = f"env_{_random.token_hex(6)}"
+            env_id = f"env_{uuid.uuid4().hex[:12]}"
             data["environments"][env_id] = env
             self._write(data)
         return {"id": env_id, **env}
@@ -268,7 +272,7 @@ class Environments:
             data = self._read()
             env_id = data["threads"].get(thread_id, DEFAULT_ID)
             if env_id == DEFAULT_ID:
-                env_id = f"env_{_random.token_hex(6)}"
+                env_id = f"env_{uuid.uuid4().hex[:12]}"
                 own = {**data["environments"][DEFAULT_ID], "name": self._free_name(data, name)}
                 data["environments"][env_id] = own
                 data["threads"][thread_id] = env_id
@@ -303,7 +307,7 @@ class Environments:
                 if key == _settings_key(blank("")):
                     continue
                 if key not in by_settings:
-                    env_id = f"env_{_random.token_hex(6)}"
+                    env_id = f"env_{uuid.uuid4().hex[:12]}"
                     env["name"] = self._free_name(data, titles.get(thread_id) or "Conversation")
                     data["environments"][env_id] = env
                     by_settings[key] = env_id
