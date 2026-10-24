@@ -134,6 +134,28 @@ def test_save_retries_a_replace_that_windows_refuses_for_a_moment(tmp_path, monk
     assert (tmp_path / "a.json").read_text() == "x"
 
 
+def test_a_read_waits_out_a_replace_that_windows_refuses_for_a_moment(tmp_path, monkeypatch):
+    from pathlib import Path
+
+    from coscribe.tools import _file_locks
+
+    real_read = Path.read_text
+    calls = {"n": 0}
+
+    def flaky(self, *args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise PermissionError("being replaced")
+        return real_read(self, *args, **kwargs)
+
+    monkeypatch.setattr(_file_locks.sys, "platform", "win32")
+    monkeypatch.setattr(_file_locks.time, "sleep", lambda _s: None)
+    monkeypatch.setattr(Path, "read_text", flaky)
+    (tmp_path / "a.json").write_bytes(b"x")
+    assert _file_locks.read_text_with_retry(tmp_path / "a.json") == "x"
+    assert calls["n"] == 3
+
+
 def test_a_permission_error_off_windows_is_not_retried(tmp_path, monkeypatch):
     import pytest
 

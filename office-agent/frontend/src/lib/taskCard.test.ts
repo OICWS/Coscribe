@@ -139,4 +139,53 @@ describe("a later turn that only updates the list", () => {
       ["Write", "pending"],
     ]);
   });
+
+  it("draws a call under the item that started last when several run at once", () => {
+    const read = tool("read_file");
+    const write = tool("write_file");
+    const items = [
+      create("1", "A"),
+      create("2", "B"),
+      update("1", "A", "in_progress"),
+      read,
+      update("2", "B", "in_progress"),
+      write,
+      update("2", "B", "completed"),
+    ];
+    const card = cardOf(fold(items));
+    expect(card?.calls["1"]).toEqual([read]);
+    expect(card?.calls["2"]).toEqual([write]);
+    expect(card?.tasks.map((t) => t.status)).toEqual(["in_progress", "completed"]);
+  });
+
+  it("marks an item waiting while an approval for it is pending", () => {
+    const items = [create("1", "A"), create("2", "B"), update("1", "A", "in_progress"), update("2", "B", "in_progress"), approval("pending")];
+    expect(cardOf(fold(items, true))?.waiting).toEqual(["2"]);
+    expect(cardOf(fold([create("1", "A"), update("1", "A", "in_progress"), approval("pending"), update("1", "A", "completed")], true))?.waiting).toEqual([]);
+  });
+
+  it("marks an item waiting while a question for the person is pending", () => {
+    const question: LogItem = { id: id(), kind: "question", questions: [], status: "pending" };
+    const items = [create("1", "A"), update("1", "A", "in_progress"), tool("read_file"), question];
+    expect(cardOf(fold(items, true))?.waiting).toEqual(["1"]);
+  });
+
+  it("binds a started background task to the item in progress, from the saved history too", () => {
+    const items = [
+      create("1", "A"),
+      create("2", "B"),
+      update("1", "A", "in_progress"),
+      tool("spawn_agent_background", {}, { task_id: "agent-1", status: "running" }),
+      update("2", "B", "in_progress"),
+      tool("run_background_script", {}, JSON.stringify({ task_id: "script-1" })),
+      tool("run_background_command", {}, { task_id: "cmd-1" }),
+      tool("run_background_script", {}),
+    ];
+    expect(cardOf(fold(items))?.bound).toEqual({ "1": ["agent-1"], "2": ["script-1", "cmd-1"] });
+  });
+
+  it("binds nothing started while no item is in progress", () => {
+    const items = [create("1", "A"), tool("run_background_script", {}, { task_id: "script-1" }), update("1", "A", "in_progress")];
+    expect(cardOf(fold(items))?.bound).toEqual({});
+  });
 });

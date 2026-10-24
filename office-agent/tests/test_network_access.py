@@ -1,4 +1,4 @@
-"""Edit environment > Network as the tools apply it (runtime/network_access.py): no web tool
+"""An environment's Network setting as the tools apply it (runtime/network_access.py): no web tool
 runs with none, the web tools reach only the listed domains with limited, redirects included,
 and scripts get the network only with full."""
 
@@ -10,17 +10,18 @@ from typing import Any
 import httpx
 import pytest
 
-from coscribe.runtime import NetworkAccess, NetworkGuard
+from coscribe.runtime import NetworkGuard
 from coscribe.tools.exec import isolation
 from coscribe.tools.exec.isolation import SelfTest
 from coscribe.tools.web import websearch
 from coscribe.tools.web.browser import BrowserHost, build_browser_tools
 from coscribe.tools.web.http_request import build_http_tools
 from coscribe.tools.web.images import build_image_tools
+from tests.environment_helpers import in_environment
 
 
 def _guard(tmp_path: Path, mode: str, domains: list[str]) -> NetworkGuard:
-    NetworkAccess(tmp_path).set("t1", mode, domains)
+    in_environment(tmp_path, "t1", network={"mode": mode, "domains": domains})
     return NetworkGuard(tmp_path, "t1")
 
 
@@ -37,7 +38,7 @@ def test_limited_covers_the_listed_domains_and_their_subdomains(tmp_path: Path) 
     guard.check_url("https://example.com/a")
     guard.check_url("https://docs.example.com/a")
     for url in ("https://notexample.com", "https://example.com.evil.net", "evil.net"):
-        with pytest.raises(PermissionError, match="Edit environment > Network"):
+        with pytest.raises(PermissionError, match="environment's Network settings"):
             guard.check_url(url)
     assert guard.sites() == ["example.com"]
 
@@ -170,9 +171,9 @@ def test_an_isolated_script_has_the_network_only_with_full_access(
         return run.network
 
     assert network() is False
-    NetworkAccess(state).set("t1", "full", [])
+    in_environment(state, "t1", network={"mode": "full", "domains": []})
     assert network() is True
-    NetworkAccess(state).set("t1", "limited", ["*"])
+    in_environment(state, "t1", network={"mode": "limited", "domains": ["*"]})
     assert network() is False
 
 

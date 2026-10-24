@@ -1,5 +1,5 @@
-"""Changing what a live conversation works with -- its folders and its enabled skills --
-between turns. Both rebuild the tools and the agent against the new setting and put the
+"""Changing what a live conversation works with -- its environment, its folders and its enabled
+skills -- between turns. Both rebuild the tools and the agent against the new setting and put the
 session back exactly as it was if the rebuild fails, so a bad folder or skill never leaves a
 half-changed session."""
 
@@ -13,7 +13,8 @@ from typing import Any, Protocol
 from langchain_core.tools import BaseTool
 
 from ..config import Settings
-from ..tools import load_builtin_skills, load_skills
+from ..runtime import Environments
+from ..tools import SCHEDULED_THREAD_PREFIX, load_builtin_skills, load_skills
 from .events import EventSink
 from .turn_lock import TurnLock
 
@@ -22,6 +23,7 @@ class ReconfigureHost(Protocol):
     """What the folder and skill changes read and rewrite on the session they belong to."""
 
     settings: Settings
+    thread_id: str
     model: Any
     lg_agent: Any
     workspace_root: Path
@@ -46,11 +48,7 @@ class SessionReconfigurer:
     def __init__(self, host: ReconfigureHost) -> None:
         self._host = host
 
-    async def set_folders(self, paths: list[str], websocket: EventSink) -> bool:
-        """Replace the folders -- any time between turns. The first is the main one
-        (relative paths resolve there); none means the app's default workspace. Returns
-        whether it took effect, so the caller persists only what is in use."""
-        host = self._host
+    async def _wait_idle(self, websocket: EventSink, refusal: str) -> bool:
         # A short wait, not an immediate refusal: resume_after_reconnect holds the lock
         # for a moment right after every connect. Waiting for a real turn instead would
         # stall this socket's receive loop, and with it the approval that turn may be
@@ -58,24 +56,60 @@ class SessionReconfigurer:
         # the acquire can leave the lock held with nobody to release it.
         loop = asyncio.get_running_loop()
         deadline = loop.time() + 2
-        while host._turn_lock.locked():
+        while self._host._turn_lock.locked():
             if loop.time() >= deadline:
-                message = "Wait for the reply to finish, then change folders."
-                await websocket.send_json({"type": "error", "message": message})
+                await websocket.send_json({"type": "error", "message": refusal})
                 return False
             await asyncio.sleep(0.05)
-        async with host._turn_lock:
+        return True
+
+    async def set_folders(self, paths: list[str], websocket: EventSink) -> bool:
+        """Replace the folders -- any time between turns. The first is the main one
+        (relative paths resolve there); none means the app's default workspace. Returns
+        whether it took effect, so the caller persists only what is in use."""
+        if not await self._wait_idle(
+            websocket, "Wait for the reply to finish, then change folders."
+        ):
+            return False
+        async with self._host._turn_lock:
             return await self._apply_folders(paths, websocket)
+
+    async def set_environment(self, env_id: str, websocket: EventSink) -> bool:
+        """Moves the conversation to another environment and into its folders. Only between
+        turns: a running turn keeps the environment it started with."""
+        host = self._host
+        environments = Environments(host.settings.state_dir)
+        env = environments.get(env_id)
+        if env is None:
+            await websocket.send_json({"type": "error", "message": "That environment is gone."})
+            return False
+        refusal = "Wait for the reply to finish, then switch environments."
+        if not await self._wait_idle(websocket, refusal):
+            return False
+        async with host._turn_lock:
+            previous = environments.environment_of(host.thread_id)
+            environments.assign(host.thread_id, env_id)
+            if await self._apply_folders(env["folders"], websocket):
+                return True
+            environments.assign(host.thread_id, previous)
+            return False
 
     async def add_folder(self, path: str, websocket: EventSink) -> bool:
         """One more folder, keeping the ones there are -- the default workspace stays the
-        main one when none were chosen."""
+        main one when none were chosen. Kept in the conversation's environment, except a
+        scheduled run's, whose caller keeps it with the run."""
         host = self._host
         folder = Path(path).expanduser()
         current = [Path(host.workspace_root).resolve(), *host.extra_folders]
         if folder in current:
             return True
-        return await self.set_folders([str(p) for p in current] + [str(folder)], websocket)
+        paths = [str(p) for p in current] + [str(folder)]
+        if not await self.set_folders(paths, websocket):
+            return False
+        if not host.thread_id.startswith(SCHEDULED_THREAD_PREFIX):
+            Environments(host.settings.state_dir).add_folders(host.thread_id, paths, folder.name)
+            await host.send_state(websocket)
+        return True
 
     async def _apply_folders(self, paths: list[str], websocket: EventSink) -> bool:
         host = self._host

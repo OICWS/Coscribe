@@ -21,3 +21,9 @@ export const SteerActionsContext = createContext<SteerActions | null>(null);
 
 /** The files this conversation made or changed, by file name: a reply that names one shows a chip. */
 export const ThreadFiles = createContext<ReadonlyMap<string, string>>(new Map());
+
+/** The state of this conversation's background tasks by task_id, and how to open one in its panel. */
+export const BackgroundTasks = createContext<{ statuses: Readonly<Record<string, string>>; open: (taskId: string) => void }>({
+  statuses: {},
+  open: () => {},
+});

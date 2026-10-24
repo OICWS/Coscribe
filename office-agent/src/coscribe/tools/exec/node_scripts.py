@@ -32,6 +32,7 @@ from typing import Any
 from ...runtime import tool_metadata
 from .._files_written import snapshot_workspace, with_files_written
 from .._output_truncation import truncate_script_output
+from .capabilities import require_capability
 from .isolation import denied_note, for_scripts, scratch_root
 from .node_env import ensure_node_env
 from .running import Detachable, run_to_end
@@ -64,6 +65,7 @@ def _run_node_script(
     description: str = "",
     extra_readable: Sequence[Path] = (),
 ) -> dict[str, object]:
+    require_capability(state_dir, "scripts", detachable.thread_id if detachable else None)
     timeout = min(max(timeout, 1.0), _MAX_TIMEOUT)
     node_env_dir = ensure_node_env(state_dir)
     node = shutil.which("node") or "node"
@@ -189,7 +191,7 @@ def build_node_script_tools(
         `pres.writeFile({ fileName: "..." })` to save the deck under the
         workspace. Any other npm package the script needs (e.g. for
         rendering icons) must already be installed in that environment
-        (the user manages this from the Environment settings tab) --
+        (the user manages this from the Capabilities settings tab) --
         `require()` a package that isn't there and the script will fail
         with the normal Node.js "Cannot find module" error; this tool
         cannot install packages on its own.

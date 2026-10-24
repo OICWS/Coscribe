@@ -4,6 +4,19 @@ the folder guard, and the AppContainer that holds a script to its folders on Win
 
 from __future__ import annotations
 
+from ._private_folders import private_folders, release_private_folders
+from .capabilities import Capabilities, CapabilityOff, require_capability
+from .command_sandbox import (
+    record_sandbox_setup,
+    sandbox_codex,
+    sandbox_home,
+    sandbox_setup_argv,
+    sandbox_status,
+    sandbox_uninstall_argv,
+    sandboxed_command,
+    warm_up_sandbox,
+)
+from .commands import expect_sandbox, start_command
 from .find_python import find_pythons
 from .isolation import (
     FolderGrants,
@@ -51,6 +64,21 @@ from .scripts import _run_python_script as run_python_script
 from .scripts import build_script_tools
 
 __all__ = [
+    "Capabilities",
+    "CapabilityOff",
+    "require_capability",
+    "record_sandbox_setup",
+    "sandbox_codex",
+    "private_folders",
+    "release_private_folders",
+    "sandbox_home",
+    "sandbox_setup_argv",
+    "sandbox_status",
+    "sandbox_uninstall_argv",
+    "sandboxed_command",
+    "start_command",
+    "expect_sandbox",
+    "warm_up_sandbox",
     "Detachable",
     "FolderGrants",
     "sweep_folder_grants",

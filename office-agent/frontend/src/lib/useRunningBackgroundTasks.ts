@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { type BackgroundEntry, isEntryActive, loadBackgroundEntries } from "./backgroundTasks";
 
 // A backstop: the server says when the list changes.
@@ -36,7 +36,10 @@ export function useRunningBackgroundTasks(threadId: string, tick: number, enable
     };
   }, [threadId, tick, enabled, anyActive]);
 
+  const statuses = useMemo(() => Object.fromEntries(tasks.map((entry) => [entry.task.task_id, entry.task.status])), [tasks]);
+
   return {
+    statuses,
     running: enabled ? active.length : 0,
     waiting: enabled ? active.filter((t) => t.task.status === "needs_approval").length : 0,
   };

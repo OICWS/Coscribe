@@ -1,13 +1,6 @@
 import { useEffect, useState } from "react";
-import {
-  getScriptIsolation,
-  getThreadNetwork,
-  getThreadScripts,
-  retestScriptIsolation,
-  saveThreadNetwork,
-  saveThreadScripts,
-} from "../../lib/rest";
-import type { NetworkAccess, ScriptIsolation } from "../../types/settings";
+import { getCapabilities, getScriptIsolation } from "../../lib/rest";
+import type { Capabilities, NetworkAccess, ScriptIsolation } from "../../types/settings";
 
 export interface VariableRow {
   key: string;
@@ -26,88 +19,33 @@ export function toVariables(rows: VariableRow[]): Record<string, string> | strin
   return variables;
 }
 
-/** The machine's isolation check and this conversation's choice to run without it, kept until
- * Save changes like the dialog's other pages. */
-export function useScriptsDraft(threadId: string) {
-  const [status, setStatus] = useState<ScriptIsolation | null>(null);
-  const [testing, setTesting] = useState(false);
-  const [unisolated, setUnisolated] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-
+/** What this computer allows (Settings › Capabilities) and whether its isolation check passed:
+ * an environment can only narrow these. */
+export function useMachineLimits() {
+  const [isolation, setIsolation] = useState<ScriptIsolation | null>(null);
+  const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
   useEffect(() => {
     let cancelled = false;
     getScriptIsolation()
-      .then((result) => !cancelled && setStatus(result))
-      .catch(() => !cancelled && setStatus({ state: "failed", failed: "start a script in isolation", detail: "" }));
-    getThreadScripts(threadId)
-      .then((result) => {
-        if (cancelled) return;
-        setUnisolated(result.unisolated);
-        setLoaded(result.unisolated);
-      })
+      .then((result) => !cancelled && setIsolation(result))
+      .catch(() => !cancelled && setIsolation({ state: "failed", failed: "start a script in isolation", detail: "" }));
+    getCapabilities()
+      .then((result) => !cancelled && setCapabilities(result))
       .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [threadId]);
-
-  const retest = async () => {
-    setTesting(true);
-    try {
-      setStatus(await retestScriptIsolation());
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  const save = async (): Promise<string | null> => {
-    if (unisolated === loaded) return null;
-    const result = await saveThreadScripts(threadId, unisolated);
-    return "error" in result ? result.error : null;
-  };
-
-  const summary =
-    status === null
-      ? "Checking…"
-      : status.state === "passed"
-        ? "Isolated"
-        : status.state === "unsupported"
-          ? "Isolation needs Windows"
-          : status.state === "untested"
-            ? "Not checked yet"
-            : status.state === "setup_failed"
-              ? "No Python yet"
-            : unisolated
-              ? "Run without isolation"
-              : "Off: the isolation check failed";
-
-  return { status, testing, retest, unisolated, setUnisolated, dirty: unisolated !== loaded, save, summary };
+  }, []);
+  return { isolation, capabilities };
 }
 
-export type ScriptsDraft = ReturnType<typeof useScriptsDraft>;
+export type MachineLimits = ReturnType<typeof useMachineLimits>;
 
-const DEFAULT_NETWORK: NetworkAccess = { mode: "limited", domains: ["*"] };
-
-/** How far this conversation may reach the internet; the domains are edited as lines of text. */
-export function useNetworkDraft(threadId: string) {
-  const [mode, setMode] = useState<NetworkAccess["mode"]>(DEFAULT_NETWORK.mode);
-  const [domains, setDomains] = useState(DEFAULT_NETWORK.domains.join("\n"));
-  const [loaded, setLoaded] = useState<NetworkAccess>(DEFAULT_NETWORK);
-
-  useEffect(() => {
-    let cancelled = false;
-    getThreadNetwork(threadId)
-      .then((result) => {
-        if (cancelled) return;
-        setMode(result.mode);
-        setDomains(result.domains.join("\n"));
-        setLoaded(result);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [threadId]);
+/** How far the environment's conversations may reach the internet; the domains are edited as
+ * lines of text. */
+export function useNetworkDraft(initial: NetworkAccess) {
+  const [mode, setMode] = useState<NetworkAccess["mode"]>(initial.mode);
+  const [domains, setDomains] = useState(initial.domains.join("\n"));
 
   const list = domains
     .split(/[\s,]+/)
@@ -115,13 +53,6 @@ export function useNetworkDraft(threadId: string) {
     .filter(Boolean);
   // Only limited keeps a list; switching away and back should not lose what was typed.
   const current: NetworkAccess = { mode, domains: mode === "limited" ? list : [] };
-  const dirty = JSON.stringify(current) !== JSON.stringify({ ...loaded, domains: loaded.mode === "limited" ? loaded.domains : [] });
-
-  const save = async (): Promise<string | null> => {
-    if (!dirty) return null;
-    const result = await saveThreadNetwork(threadId, current);
-    return "error" in result ? result.error : null;
-  };
 
   const summary =
     mode === "none"
@@ -132,7 +63,28 @@ export function useNetworkDraft(threadId: string) {
           ? "Limited: any site, scripts offline"
           : `Limited: ${list.length} domain${list.length === 1 ? "" : "s"}`;
 
-  return { mode, setMode, domains, setDomains, dirty, save, summary };
+  return { mode, setMode, domains, setDomains, current, summary };
 }
 
 export type NetworkDraft = ReturnType<typeof useNetworkDraft>;
+
+export interface RunSwitches {
+  scripts: boolean;
+  commands: boolean;
+  unisolated: boolean;
+}
+
+/** One line for the Scripts and commands row: what this environment's conversations may run. */
+export function runSummary(run: RunSwitches, limits: MachineLimits): string {
+  const scriptsOn = run.scripts && limits.capabilities?.scripts !== false;
+  const commandsOn = run.commands && limits.capabilities?.commands === true;
+  const failed = limits.isolation?.state === "failed";
+  const scripts = !scriptsOn
+    ? "No scripts"
+    : failed
+      ? run.unisolated
+        ? "Scripts without isolation"
+        : "No scripts: the isolation check failed"
+      : "Scripts";
+  return `${scripts}, ${commandsOn ? "commands" : "no commands"}`;
+}

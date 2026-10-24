@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { PAGE_KINDS, type PageKind } from "../lib/artifacts";
 import { withAnnotatedCopy } from "../lib/annotation";
 import { useComposerAction } from "../lib/menuCommands";
+import { useWindowFileDrop } from "../lib/useWindowFileDrop";
 import { ArtifactChip } from "./ArtifactChip";
 import { uploadFile } from "../lib/rest";
 import { ThreadIdContext } from "./threadContext";
@@ -85,7 +86,7 @@ interface ComposerProps {
   workflowTest?: { done: number; total: number } | null;
   commands: CommandInfo[];
   modePill: ReactNode;
-  folderPicker: ReactNode;
+  environmentPicker: ReactNode;
   modelPicker: ReactNode;
   effortPicker: ReactNode;
   usageRing: ReactNode;
@@ -135,7 +136,7 @@ export function Composer({
   workflowTest = null,
   commands,
   modePill,
-  folderPicker,
+  environmentPicker,
   modelPicker,
   effortPicker,
   usageRing,
@@ -166,15 +167,9 @@ export function Composer({
   const [pastePreview, setPastePreview] = useState<string | null>(null);
   const [autocompleteMatches, setAutocompleteMatches] = useState<CommandInfo[]>([]);
   const [autocompleteIndex, setAutocompleteIndex] = useState(-1);
-  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   useComposerAction("open-file", () => fileInputRef.current?.click());
-  // Counts nested dragenter/dragleave pairs (they fire once per child
-  // element the pointer crosses, not just once for the whole drop zone) --
-  // a plain boolean flickers off every time the pointer passes over a
-  // child during the drag, which reads as the highlight randomly blinking.
-  const dragCounterRef = useRef(0);
 
   const autocompleteOpen = autocompleteMatches.length > 0;
 
@@ -421,35 +416,6 @@ export function Composer({
     setPendingPastes((prev) => [...prev, { text, charCount: text.length }]);
   };
 
-  const onDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    if (!event.dataTransfer.types.includes("Files")) return;
-    dragCounterRef.current += 1;
-    setIsDraggingOver(true);
-  };
-
-  const onDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    dragCounterRef.current = Math.max(0, dragCounterRef.current - 1);
-    if (dragCounterRef.current === 0) setIsDraggingOver(false);
-  };
-
-  const onDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    // Required for onDrop to fire at all -- a plain drag target rejects
-    // the drop by default unless dragover is explicitly prevented.
-    event.preventDefault();
-  };
-
-  const onDrop = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    dragCounterRef.current = 0;
-    setIsDraggingOver(false);
-    const files = Array.from(event.dataTransfer.files);
-    for (const file of files) {
-      void onFileChosen(file);
-    }
-  };
-
   const onFileChosen = async (file: File) => {
     if (pendingImages.length + pendingFiles.length >= MAX_ATTACHED_FILES) {
       onLocalError(`Up to ${MAX_ATTACHED_FILES} attachments at a time -- remove one first.`);
@@ -473,6 +439,8 @@ export function Composer({
     setPendingFiles((prev) => [...prev, { name: file.name, path: result.path }]);
   };
 
+  const dropping = useWindowFileDrop((files) => files.forEach((file) => void onFileChosen(file)), true);
+
   let sendTitle = "Send";
   if (turnInFlight) {
     sendTitle = hasAttachments ? "Attachments can be sent once this reply is done" : "Add to the reply in progress";
@@ -483,13 +451,17 @@ export function Composer({
 
   return (
     <>
+    {dropping && (
+      <div
+        data-testid="drop-overlay"
+        className="pointer-events-none fixed inset-1 z-[60] flex items-center justify-center rounded-xl border-2 border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] text-sm font-medium text-[var(--accent)]"
+      >
+        Drop files to attach
+      </div>
+    )}
     <div
       data-testid="composer"
       className="mx-auto w-full max-w-[880px] px-4 pb-4"
-      onDragEnter={onDragEnter}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
     >
       <div
         className={`relative rounded-2xl p-3 shadow-sm transition-colors ${
@@ -499,16 +471,9 @@ export function Composer({
               // explicit correction, see index.css's .running-wave-ring
               // for the animated-gradient-border technique itself.
               "running-wave-ring bg-[var(--bg)]"
-            : isDraggingOver
-              ? "border border-[var(--accent)] bg-[var(--card-bg)]"
-              : "border border-[var(--border)] bg-[var(--bg)] hover:border-[var(--border-hover)] focus-within:border-[var(--border-hover)]"
+            : "border border-[var(--border)] bg-[var(--bg)] hover:border-[var(--border-hover)] focus-within:border-[var(--border-hover)]"
         }`}
       >
-        {isDraggingOver && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl text-sm text-[var(--accent)]">
-            Drop to attach
-          </div>
-        )}
         {autocompleteOpen && (
           <div className="absolute bottom-full left-0 right-0 mb-1 max-h-60 overflow-y-auto rounded-[10px] border border-[var(--border)] bg-[var(--bg)] shadow-[var(--shadow)]">
             {autocompleteMatches.map((cmd, i) => (
@@ -645,7 +610,7 @@ export function Composer({
           >
             <PlusIcon className="h-[18px] w-[18px]" />
           </button>
-          {folderPicker}
+          {environmentPicker}
           {modePill}
         </div>
         <RunStatus turnInFlight={turnInFlight} totalTokens={totalTokens} workflowTest={workflowTest} />

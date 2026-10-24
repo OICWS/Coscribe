@@ -20,6 +20,7 @@ from ...conversation import (
     rename_file,
     trash_file,
 )
+from ...runtime import Environments
 from ...tools import WorkspaceScope, foreign_slide_svg, slide_svg
 from ..artifact_adoption import ArtifactAdoption
 from ..schemas import ArtifactRename, ArtifactShow
@@ -73,7 +74,7 @@ def router(state: AppState) -> APIRouter:
 
     async def open_artifact(artifact: str) -> JSONResponse:
         """The conversation to show the artifact in and its path there: the one that made it
-        while it exists, else a new one working in the folders that one did."""
+        while it exists, else a new one in an environment with the folders that one had."""
         found = described(artifact)
         if found is None:
             return JSONResponse({"error": "No such artifact"}, status_code=404)
@@ -86,7 +87,11 @@ def router(state: AppState) -> APIRouter:
         )
         if await cursor.fetchone() is None:
             thread_id = uuid.uuid4().hex[:8]
-            state.thread_files.write_workspace_sidecar(thread_id, entry["folders"])
+            # The environment working in those folders, if one still does; else Default.
+            environments = Environments(state.settings.state_dir)
+            same = [e["id"] for e in environments.all() if e["folders"] == entry["folders"]]
+            if same:
+                environments.assign(thread_id, same[0])
         return JSONResponse({"thread_id": thread_id, "path": file["path"]})
 
     _file_routes(router, state, adoption)

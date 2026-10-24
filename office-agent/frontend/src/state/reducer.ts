@@ -105,6 +105,8 @@ export interface ChatState {
   workspaceExplicit: boolean;
   /** See wire.ts's StateEvent.folders. */
   folders: string[];
+  /** See wire.ts's StateEvent.environment. */
+  environment: string;
   items: LogItem[];
   /** The workflow test running in this turn, if any. */
   workflowTest: { done: number; total: number } | null;
@@ -172,6 +174,7 @@ export const initialChatState: ChatState = {
   workspaceRoot: "",
   workspaceExplicit: false,
   folders: [],
+  environment: "default",
   items: [],
   totalTokens: 0,
   cacheStats: null,
@@ -317,8 +320,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return { ...state, historyReceived: false, olderItems: [], olderStatus: "none" };
 
     case "local_switch_thread":
-      // model/workspace stay on screen until the new thread's own "state"
-      // event replaces them, instead of flashing blank in between.
+      // model/workspace stay on screen until the new thread's "state" replaces them, not blank.
       return {
         ...initialChatState,
         model: state.model,
@@ -329,7 +331,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         connectorTools: state.connectorTools,
         workspaceRoot: state.workspaceRoot,
         workspaceExplicit: state.workspaceExplicit,
-        folders: state.folders,
+        folders: state.folders, environment: state.environment,
         turnTick: state.turnTick,
       };
 
@@ -451,6 +453,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         workspaceRoot: action.workspace_root,
         workspaceExplicit: action.workspace_explicit,
         folders: action.folders,
+        environment: action.environment,
       };
 
     case "history": {

@@ -12,6 +12,8 @@ export interface ThreadSummary {
   message_count: number;
   preview: string;
   workspace_root: string;
+  /** The id of the environment it uses ("default" for Default). */
+  environment: string;
   /** The sidebar group it sits in; null is ungrouped. */
   group: string | null;
   archived: boolean;
