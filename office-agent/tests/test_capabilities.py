@@ -10,7 +10,12 @@ from coscribe.tools.exec import Capabilities, CapabilityOff, build_script_tools,
 
 
 def test_scripts_are_on_and_commands_off_until_the_person_changes_them(tmp_path: Path) -> None:
-    off = {"scripts": True, "commands": False, "commands_without_sandbox": False}
+    off = {
+        "scripts": True,
+        "commands": False,
+        "commands_without_sandbox": False,
+        "commands_hide_private_folders": True,
+    }
     assert Capabilities(tmp_path).get() == off
     Capabilities(tmp_path).set("commands", True)
     Capabilities(tmp_path).set("scripts", False)

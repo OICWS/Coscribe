@@ -563,6 +563,8 @@ export interface Capabilities {
   commands: boolean;
   /** The second confirmation: commands may run as the person where the sandbox isn't set up. */
   commands_without_sandbox: boolean;
+  /** A sandboxed command can't read the person's private folders (#601). */
+  commands_hide_private_folders: boolean;
 }
 
 /** Codex's Windows sandbox for commands (decision 0022). */

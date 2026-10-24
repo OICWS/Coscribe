@@ -4,6 +4,7 @@ the folder guard, and the AppContainer that holds a script to its folders on Win
 
 from __future__ import annotations
 
+from ._private_folders import private_folders, release_private_folders
 from .capabilities import Capabilities, CapabilityOff, require_capability
 from .command_sandbox import (
     record_sandbox_setup,
@@ -68,6 +69,8 @@ __all__ = [
     "require_capability",
     "record_sandbox_setup",
     "sandbox_codex",
+    "private_folders",
+    "release_private_folders",
     "sandbox_home",
     "sandbox_setup_argv",
     "sandbox_status",

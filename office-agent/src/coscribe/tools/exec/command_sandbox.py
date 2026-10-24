@@ -3,8 +3,9 @@
 `codex sandbox` runs a command as a local sandbox user that Codex creates once
 (`codex sandbox setup --elevated`, which needs an administrator). That user may write only the
 conversation's folders; network is off unless the environment's is Full. It reads what Codex
-grants its users, which is most of the disk and of the person's folders (Documents among them),
-so an online command still goes to the person (`conversation/approvals.py`). Settings ›
+grants its users, the whole disk, less the person's private folders while Settings ›
+Capabilities hides them (`_private_folders.py`); other drives stay readable, so an online command
+still goes to the person (`conversation/approvals.py`). Settings ›
 Capabilities sets the sandbox up and records here which Codex did it; this module reads that
 record and builds the command line, so the tools need nothing from the code module. Elsewhere,
 or until it is set up, a command runs as the person."""
@@ -23,6 +24,8 @@ import uuid
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
+
+from ._private_folders import inside_any, prepare_folders
 
 _RECORD = "command-sandbox.json"
 # Codex reads permission profiles from config.toml only; each set of folders gets its own,
@@ -88,6 +91,7 @@ def _toml_key(path: str) -> str:
 def _section(name: str, profile: dict[str, Any]) -> str:
     # The elevated sandbox needs ":root" readable.
     lines = [f"[permissions.{name}.filesystem]", '":root" = "read"']
+    lines += [f'{_toml_key(p)} = "deny"' for p in profile.get("denied", [])]
     lines += [f'{_toml_key(p)} = "read"' for p in profile["readable"]]
     lines += [f'{_toml_key(p)} = "write"' for p in profile["writable"]]
     lines += ["", f"[permissions.{name}.network]", f"enabled = {json.dumps(profile['network'])}"]
@@ -133,23 +137,42 @@ def sandboxed_command(
     writable: Sequence[Path],
     readable: Sequence[Path],
     network: bool,
+    hidden: Sequence[Path] = (),
+    programs: Sequence[Path] = (),
 ) -> tuple[list[str], dict[str, str]] | None:
     """The argv and environment that run `command` through cmd in the sandbox, in `root`, able
-    to write only `writable`; None while the sandbox is not set up."""
+    to write only `writable` and not to read `hidden`, less what it is given and the `programs`
+    folders (PATH); None while the sandbox is not set up. Runs icacls the first time a folder
+    needs a grant, so call it off the event loop; raises GrantFailed when a grant fails."""
     codex = sandbox_codex(state_dir)
     if codex is None:
         return None
     home = sandbox_home(state_dir)
     script = _command_file(state_dir, command)
+    # The person's Temp is in AppData; a command gets its own, apart for each set of folders.
+    temp = _temp_folder(state_dir, writable)
+    given = [*writable, *readable, script.parent, temp]
+    # A folder the environment was given stays readable even when it holds a private one.
+    denied = [h for h in hidden if not any(inside_any(h, [g]) for g in given)]
+    if hidden:
+        prepare_folders(state_dir, denied, given, [*readable, script.parent, *programs])
     folders = {
-        "writable": [str(p) for p in writable],
+        "writable": [*(str(p) for p in writable), str(temp)],
         "readable": [*(str(p) for p in readable), str(script.parent)],
         "network": network,
+        "denied": [str(p) for p in denied],
     }
     profile = _ensure_profile(home, folders)
     argv = [str(codex), "sandbox", "--permission-profile", profile, "-C", str(root), "--"]
     argv += ["cmd.exe", "/d", "/c", str(script)]
-    return argv, {"CODEX_HOME": str(home)}
+    return argv, {"CODEX_HOME": str(home), "TEMP": str(temp), "TMP": str(temp)}
+
+
+def _temp_folder(state_dir: Path, writable: Sequence[Path]) -> Path:
+    key = hashlib.sha256(json.dumps(sorted(str(p) for p in writable)).encode()).hexdigest()[:16]
+    folder = Path(state_dir) / "command-sandbox" / "temp" / key
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder
 
 
 def _command_file(state_dir: Path, command: str) -> Path:
