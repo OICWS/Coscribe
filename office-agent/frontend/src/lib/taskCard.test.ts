@@ -139,4 +139,34 @@ describe("a later turn that only updates the list", () => {
       ["Write", "pending"],
     ]);
   });
+
+  it("draws a call under the item that started last when several run at once", () => {
+    const read = tool("read_file");
+    const write = tool("write_file");
+    const items = [
+      create("1", "A"),
+      create("2", "B"),
+      update("1", "A", "in_progress"),
+      read,
+      update("2", "B", "in_progress"),
+      write,
+      update("2", "B", "completed"),
+    ];
+    const card = cardOf(fold(items));
+    expect(card?.calls["1"]).toEqual([read]);
+    expect(card?.calls["2"]).toEqual([write]);
+    expect(card?.tasks.map((t) => t.status)).toEqual(["in_progress", "completed"]);
+  });
+
+  it("marks an item waiting while an approval for it is pending", () => {
+    const items = [create("1", "A"), create("2", "B"), update("1", "A", "in_progress"), update("2", "B", "in_progress"), approval("pending")];
+    expect(cardOf(fold(items, true))?.waiting).toEqual(["2"]);
+    expect(cardOf(fold([create("1", "A"), update("1", "A", "in_progress"), approval("pending"), update("1", "A", "completed")], true))?.waiting).toEqual([]);
+  });
+
+  it("marks an item waiting while a question for the person is pending", () => {
+    const question: LogItem = { id: id(), kind: "question", questions: [], status: "pending" };
+    const items = [create("1", "A"), update("1", "A", "in_progress"), tool("read_file"), question];
+    expect(cardOf(fold(items, true))?.waiting).toEqual(["1"]);
+  });
 });

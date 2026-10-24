@@ -44,7 +44,7 @@ export function TaskCard({
               className="flex w-full items-start gap-2.5 rounded-lg px-2 py-1.5 text-left"
               onClick={() => toggle(row.id)}
             >
-              <span className="mt-[3px]">{row.status && <TaskStatusIcon status={row.status} live={live} />}</span>
+              <span className="mt-[3px]">{row.status && <TaskStatusIcon status={row.status} live={live} waiting={entry.waiting.includes(row.id)} />}</span>
               <span className={`min-w-0 flex-1 leading-6 [overflow-wrap:anywhere] ${row.status === "completed" || row.status === null ? "text-[var(--muted)]" : ""}`}>
                 {row.text}
                 {failed && <span className="ml-2 text-[13px] text-[var(--danger)]">A command failed</span>}

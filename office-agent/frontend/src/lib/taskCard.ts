@@ -19,6 +19,9 @@ export interface TaskCardEntry {
   /** Items (or "" for the card) with a failed call, shown even when the model
    * has not updated the list yet. */
   failed: string[];
+  /** In-progress items stopped on an approval or a question the person has to
+   * answer: they show as waiting, not as running. */
+  waiting: string[];
 }
 
 export type TurnEntry = TranscriptEntry | TaskCardEntry;
@@ -92,7 +95,7 @@ function staysVisible(entry: TranscriptEntry): boolean {
 
 /** Replaces the stretch of a turn from its first task call to its last call
  * with one card: the narration and the calls of that stretch are not drawn,
- * the calls open under the item that was in progress. An approval waiting on
+ * the calls open under the item that was in progress (the latest one to start, when several run at once). An approval waiting on
  * the person and the person's own questions stay in the transcript. A reply
  * after the last call stays too, once the turn is over or the list is done. */
 export function foldTaskCard(entries: TranscriptEntry[], live: boolean, tasksBefore: ProgressItem[] = []): TurnEntry[] {
@@ -111,6 +114,10 @@ export function foldTaskCard(entries: TranscriptEntry[], live: boolean, tasksBef
   const calls: Record<string, ToolOrApprovalItem[]> = {};
   const failed = new Set<string>();
   const kept: TurnEntry[] = [];
+  const waitingIds = new Set<string>();
+  // Several items can be in progress at once; a call is drawn under the one
+  // that started last, the likeliest to be what the model is doing now.
+  const startedOrder: string[] = [];
   let active = "";
 
   for (let i = first; i <= lastCall; i++) {
@@ -123,11 +130,15 @@ export function foldTaskCard(entries: TranscriptEntry[], live: boolean, tasksBef
     for (const item of i === first ? entry.items.slice(split) : entry.items) {
       if (item.kind === "approval" && item.status === "pending") {
         waiting.push(item);
+        if (active) waitingIds.add(active);
         continue;
       }
       if (item.kind === "tool" && isTaskTool(item.toolName)) {
+        const before = new Set(tasks.filter((task) => task.status === "in_progress").map((task) => task.id));
         tasks = applyTaskCall(tasks, item);
-        active = tasks.find((task) => task.status === "in_progress")?.id ?? "";
+        const running = tasks.filter((task) => task.status === "in_progress").map((task) => task.id);
+        for (const taskId of running) if (!before.has(taskId)) startedOrder.push(taskId);
+        active = [...startedOrder].reverse().find((taskId) => running.includes(taskId)) ?? "";
         continue;
       }
       (calls[active] ??= []).push(item);
@@ -136,7 +147,10 @@ export function foldTaskCard(entries: TranscriptEntry[], live: boolean, tasksBef
     if (waiting.length > 0) kept.push({ kind: "tool_run", id: `run-${waiting[0].id}`, items: waiting });
   }
 
-  const card: TaskCardEntry = { kind: "task_card", id: `taskcard-${startGroup.items[split].id}`, tasks, calls, failed: [...failed] };
+  // The question usually comes after the last call, so look past the stretch too.
+  if (active && entries.slice(first).some((entry) => entry.kind === "question" && entry.status === "pending")) waitingIds.add(active);
+
+  const card: TaskCardEntry = { kind: "task_card", id: `taskcard-${startGroup.items[split].id}`, tasks, calls, failed: [...failed], waiting: [...waitingIds].filter((taskId) => tasks.some((task) => task.id === taskId && task.status === "in_progress")) };
   out.push(card, ...kept);
   const trailing = entries.slice(lastCall + 1);
   return out.concat(live && !allDone(tasks) ? trailing.filter(staysVisible) : trailing);
