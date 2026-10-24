@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import json
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -38,6 +39,7 @@ from coscribe.runtime import empty_hooks_config
 from coscribe.runtime_lg.audit import AuditLog
 from coscribe.runtime_lg.auto_review import REVIEWER_INSTRUCTIONS, Verdict
 from coscribe.tools.bookkeeping.subagent_tasks import SubAgentTask
+from coscribe.tools.exec import commands as commands_module
 from tests.environment_helpers import in_environment
 
 from .wire_check import check_event
@@ -232,6 +234,9 @@ ROWS: dict[str, Row] = {
     "a_sandboxed_command_follows_the_standing_approvals": Row(
         COMMAND, "approve", "preapproved", preapproved=True, sandboxed=True, announced=True
     ),
+    "a_sandboxed_command_the_person_refuses": Row(
+        COMMAND, "reject", "human", sandboxed=True, human=False, asked=True
+    ),
     # -- the sandbox reads most files, so online it could send them out: the person approves
     "an_online_sandboxed_command_asks_even_when_preapproved": Row(
         COMMAND, "reject", "human", preapproved=True, sandboxed=True, online=True, asked=True
@@ -307,6 +312,8 @@ async def test_the_decision_for_one_situation(
     _veto(monkeypatch, session, row.veto)
     sandbox = Path("codex.exe") if row.sandboxed else None
     monkeypatch.setattr(approvals_module, "sandbox_codex", lambda state_dir: sandbox)
+    assumed: Counter[str] = Counter()
+    monkeypatch.setattr(commands_module, "_SANDBOX_ASSUMED", assumed)
     if row.online:
         in_environment(session.settings.state_dir, "t1", network={"mode": "full", "domains": []})
     socket = _Socket(row.attended)
@@ -321,6 +328,10 @@ async def test_the_decision_for_one_situation(
     assert ("tool_started" in sent) is row.announced
     assert ("approval_required" in sent) is row.asked
     assert not session._pending_approvals
+    # Only a command approved without the person counts on the sandbox; a rejected one or one
+    # the person approved leaves nothing for a later command to inherit.
+    by_sandbox = row.tool == COMMAND and row.decision == "approve" and row.reason != "human"
+    assert assumed["t1"] == (1 if by_sandbox else 0)
 
 
 async def test_a_refusal_carries_the_reason_the_model_is_told(

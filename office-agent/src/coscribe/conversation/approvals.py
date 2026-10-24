@@ -269,6 +269,10 @@ class ApprovalDecider:
         detail: str | None = None,
     ) -> dict[str, Any]:
         self._audit(audit_log, name, args, "approve", reason, detail)
+        if name == _COMMAND_TOOL:
+            # Approved without the person, on the ground that the sandbox holds it; counted only
+            # here, so a rejected command leaves nothing for a later one to inherit.
+            expect_sandbox(self._host.thread_id)
         await self._host._send_tool_started(name, args, websocket)
         return {"type": "approve"}
 
@@ -298,7 +302,6 @@ class ApprovalDecider:
         if name == _COMMAND_TOOL:
             if self._command_needs_the_person():
                 return await self._ask_person_only(audit_log, name, args, websocket)
-            expect_sandbox(self._host.thread_id)
         if exec_policy_decision == "allow":
             return await self._approved(
                 audit_log, name, args, websocket, "exec_policy", exec_policy_detail
