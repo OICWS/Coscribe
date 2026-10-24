@@ -22,6 +22,9 @@ export interface TaskCardEntry {
   /** In-progress items stopped on an approval or a question the person has to
    * answer: they show as waiting, not as running. */
   waiting: string[];
+  /** Background tasks (task_id) started while an item was in progress, by item
+   * id, in the order they were started. Inferred from time order, like `calls`. */
+  bound: Record<string, string[]>;
 }
 
 export type TurnEntry = TranscriptEntry | TaskCardEntry;
@@ -45,6 +48,15 @@ function taskOf(value: unknown): ProgressItem | null {
   if (!record || record.id === undefined || typeof record.content !== "string") return null;
   const status = STATUSES.includes(String(record.status)) ? (record.status as ProgressStatus) : "pending";
   return { id: String(record.id), content: record.content, status };
+}
+
+const BACKGROUND_STARTERS: readonly string[] = ["spawn_agent_background", "run_background_script", "run_background_command"];
+
+/** The task_id a background starter returned; not there until its result is in. */
+function startedTaskId(item: ToolOrApprovalItem): string | null {
+  if (item.kind !== "tool" || !BACKGROUND_STARTERS.includes(item.toolName)) return null;
+  const id = recordOf(item.result)?.task_id;
+  return typeof id === "string" && id !== "" ? id : null;
 }
 
 const isTaskTool = (name: string) => name === "task_create" || name === "task_update" || name === "task_list";
@@ -115,6 +127,7 @@ export function foldTaskCard(entries: TranscriptEntry[], live: boolean, tasksBef
   const failed = new Set<string>();
   const kept: TurnEntry[] = [];
   const waitingIds = new Set<string>();
+  const bound: Record<string, string[]> = {};
   // Several items can be in progress at once; a call is drawn under the one
   // that started last, the likeliest to be what the model is doing now.
   const startedOrder: string[] = [];
@@ -141,6 +154,8 @@ export function foldTaskCard(entries: TranscriptEntry[], live: boolean, tasksBef
         active = [...startedOrder].reverse().find((taskId) => running.includes(taskId)) ?? "";
         continue;
       }
+      const startedId = startedTaskId(item);
+      if (startedId && active) (bound[active] ??= []).push(startedId);
       (calls[active] ??= []).push(item);
       if (item.isError) failed.add(active);
     }
@@ -150,7 +165,7 @@ export function foldTaskCard(entries: TranscriptEntry[], live: boolean, tasksBef
   // The question usually comes after the last call, so look past the stretch too.
   if (active && entries.slice(first).some((entry) => entry.kind === "question" && entry.status === "pending")) waitingIds.add(active);
 
-  const card: TaskCardEntry = { kind: "task_card", id: `taskcard-${startGroup.items[split].id}`, tasks, calls, failed: [...failed], waiting: [...waitingIds].filter((taskId) => tasks.some((task) => task.id === taskId && task.status === "in_progress")) };
+  const card: TaskCardEntry = { kind: "task_card", id: `taskcard-${startGroup.items[split].id}`, tasks, calls, failed: [...failed], bound, waiting: [...waitingIds].filter((taskId) => tasks.some((task) => task.id === taskId && task.status === "in_progress")) };
   out.push(card, ...kept);
   const trailing = entries.slice(lastCall + 1);
   return out.concat(live && !allDone(tasks) ? trailing.filter(staysVisible) : trailing);

@@ -169,4 +169,23 @@ describe("a later turn that only updates the list", () => {
     const items = [create("1", "A"), update("1", "A", "in_progress"), tool("read_file"), question];
     expect(cardOf(fold(items, true))?.waiting).toEqual(["1"]);
   });
+
+  it("binds a started background task to the item in progress, from the saved history too", () => {
+    const items = [
+      create("1", "A"),
+      create("2", "B"),
+      update("1", "A", "in_progress"),
+      tool("spawn_agent_background", {}, { task_id: "agent-1", status: "running" }),
+      update("2", "B", "in_progress"),
+      tool("run_background_script", {}, JSON.stringify({ task_id: "script-1" })),
+      tool("run_background_command", {}, { task_id: "cmd-1" }),
+      tool("run_background_script", {}),
+    ];
+    expect(cardOf(fold(items))?.bound).toEqual({ "1": ["agent-1"], "2": ["script-1", "cmd-1"] });
+  });
+
+  it("binds nothing started while no item is in progress", () => {
+    const items = [create("1", "A"), tool("run_background_script", {}, { task_id: "script-1" }), update("1", "A", "in_progress")];
+    expect(cardOf(fold(items))?.bound).toEqual({});
+  });
 });
