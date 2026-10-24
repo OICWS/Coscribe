@@ -22,7 +22,7 @@ from coscribe.code_runtime.launch import CodexHost, LaunchSpec
 from coscribe.config import Settings
 from coscribe.conversation import ChatSessionLG, agent_assembly
 from coscribe.conversation import session as conversation_session
-from coscribe.runtime import SessionEnvironments, empty_hooks_config
+from coscribe.runtime import empty_hooks_config
 from coscribe.runtime_lg.code_agent import CODE_APPROVAL_RISKS, CODE_TASK_TOOL
 from coscribe.tools.bookkeeping import subagent_tasks
 from coscribe.tools.bookkeeping.subagent_tasks import (
@@ -31,6 +31,7 @@ from coscribe.tools.bookkeeping.subagent_tasks import (
     get_subagent_transcript,
     stop_subagent_task,
 )
+from tests.environment_helpers import in_environment
 
 from .wire_check import check_event
 
@@ -597,7 +598,7 @@ def _thread_configs(tmp_path: Path) -> list[dict[str, Any]]:
 async def test_the_conversations_variables_are_set_for_codexs_commands(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, codex: CodexHost
 ) -> None:
-    SessionEnvironments(tmp_path / "state").set("t1", {"REPORT_REGION": "north"}, [], set())
+    in_environment(tmp_path / "state", "t1", variables={"REPORT_REGION": "north"})
     session = _session(tmp_path, monkeypatch, codex, _Model(responses=_replies("approve")))
 
     await _run(session, _Socket(answer=lambda payload: True))

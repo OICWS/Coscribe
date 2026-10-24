@@ -16,6 +16,7 @@ from langchain_core.messages import HumanMessage
 
 from ..code_runtime import CodePermissions
 from ..config import Settings
+from ..runtime import NetworkGuard
 from ..runtime_lg import (
     CODE_APPROVAL_RISKS,
     EXEC_POLICY_TOOL_NAMES,
@@ -40,11 +41,15 @@ from ..tools import (
     TASK_DRAFT_TOOL_NAMES,
     ScheduledTriggerStore,
     edit_draft,
+    expect_sandbox,
     format_question_answers,
     normalize_questions,
     parse_run_thread_id,
+    sandbox_codex,
 )
 from .events import EventSink
+
+_COMMAND_TOOL = "run_background_command"
 
 
 def can_resolve_approvals(websocket: Any) -> bool:
@@ -264,6 +269,10 @@ class ApprovalDecider:
         detail: str | None = None,
     ) -> dict[str, Any]:
         self._audit(audit_log, name, args, "approve", reason, detail)
+        if name == _COMMAND_TOOL:
+            # Approved without the person, on the ground that the sandbox holds it; counted only
+            # here, so a rejected command leaves nothing for a later one to inherit.
+            expect_sandbox(self._host.thread_id)
         await self._host._send_tool_started(name, args, websocket)
         return {"type": "approve"}
 
@@ -290,6 +299,9 @@ class ApprovalDecider:
             )
             self._audit(audit_log, name, args, "reject", "plan_mode", message)
             return {"type": "reject", "message": message}
+        if name == _COMMAND_TOOL:
+            if self._command_needs_the_person():
+                return await self._ask_person_only(audit_log, name, args, websocket)
         if exec_policy_decision == "allow":
             return await self._approved(
                 audit_log, name, args, websocket, "exec_policy", exec_policy_detail
@@ -306,6 +318,25 @@ class ApprovalDecider:
             )
             if decision is not None:
                 return decision
+        return await self._ask_person_only(audit_log, name, args, websocket, reviewer_note)
+
+    def _command_needs_the_person(self) -> bool:
+        """Outside the sandbox a command runs as the person; inside it, it still reads most of
+        their files, which an online command could send out. Either way only the person approves
+        it, in every mode (decision 0022)."""
+        state_dir = self._host.settings.state_dir
+        if sandbox_codex(state_dir) is None:
+            return True
+        return NetworkGuard(state_dir, self._host.thread_id).scripts_online()
+
+    async def _ask_person_only(
+        self,
+        audit_log: AuditLog,
+        name: str,
+        args: dict[str, Any],
+        websocket: Any,
+        reviewer_note: str | None = None,
+    ) -> Any:
         if not can_resolve_approvals(websocket):
             # Reached only when this call is genuinely gated and neither
             # exec_policy nor accept_edits already decided it above --

@@ -227,10 +227,14 @@ def test_get_threads_endpoint_includes_workspace_root(
     fake_model = FakeToolCallingChatModel(
         responses=[AIMessage(content="hi"), AIMessage(content="hi again")]
     )
+    chosen.mkdir()
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
-        with client.websocket_connect(f"/ws/t_ws_list_a?workspace={chosen}") as ws:
+        env = client.post("/api/environments", json={"name": "E", "folders": [str(chosen)]})
+        with client.websocket_connect("/ws/t_ws_list_a") as ws:
             ws.receive_json()  # state
             ws.receive_json()  # history
+            ws.send_json({"type": "set_environment", "environment": env.json()["id"]})
+            ws.receive_json()  # state
             ws.send_json({"type": "user_message", "text": "hello"})
             _receive_until(ws, "tasks_changed")
 
@@ -330,6 +334,34 @@ def test_delete_thread_endpoint_removes_checkpoints_and_tasks_sidecar_lg(
         assert not (tmp_path / "state" / "t_del1.tasks.json").exists()
         thread_ids = {t["thread_id"] for t in client.get("/api/threads").json()}
         assert "t_del1" not in thread_ids
+
+
+def test_deleting_the_open_conversation_stops_its_turn_first(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A turn still waiting on an approval would write its checkpoint after the delete and bring
+    the conversation back."""
+    call = _tool_call("call_1", "write_file", {"path": "note.txt", "content": "hi"})
+    fake_model = FakeToolCallingChatModel(
+        responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="stopped")]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_del_open") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "write hi to note.txt"})
+            approval = ws.receive_json()
+            assert approval["type"] == "approval_required"
+
+            response = client.delete("/api/threads/t_del_open")
+            # Too late: the delete already ended the turn.
+            ws.send_json({"type": "approval_response", "id": approval["id"], "approved": True})
+            _receive_until(ws, "tasks_changed")
+
+            assert response.status_code == 200
+        thread_ids = {t["thread_id"] for t in client.get("/api/threads").json()}
+        assert "t_del_open" not in thread_ids
+    assert not (tmp_path / "workspace" / "note.txt").exists()
 
 
 def test_delete_thread_endpoint_unknown_thread_404s_lg(
@@ -526,24 +558,26 @@ def test_a_conversation_is_named_from_its_first_message_lg(
     assert title_request == "User: 帮我汇总一下第三季度的销售数据"
 
 
-def test_deleting_a_conversation_removes_its_environment_lg(
+def test_deleting_a_conversation_lets_go_of_its_environment_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.chdir(tmp_path)
     (tmp_path / ".env").write_text("", encoding="utf-8")
     fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="hi")])
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        env = client.post("/api/environments", json={"name": "Reports"}).json()
         with client.websocket_connect("/ws/envthread") as ws:
             _receive_until(ws, "history")
+            ws.send_json({"type": "set_environment", "environment": env["id"]})
+            assert _receive_until(ws, "state")[-1]["environment"] == env["id"]
             ws.send_json({"type": "user_message", "text": "hello"})
             _receive_until(ws, "agent_message")
-        client.put(
-            "/api/threads/envthread/environment", json={"variables": {"A": "1"}, "secrets": []}
-        )
-        assert (tmp_path / "state" / "envthread.env.json").exists()
+        used = client.get("/api/environments").json()["environments"]
         client.delete("/api/threads/envthread")
+        after = client.get("/api/environments").json()["environments"]
 
-    assert not (tmp_path / "state" / "envthread.env.json").exists()
+    assert [e["used_by"] for e in used if e["id"] == env["id"]] == [1]
+    assert [e["used_by"] for e in after if e["id"] == env["id"]] == [0]
 
 
 def test_deleting_a_conversation_forgets_its_waiting_messages(

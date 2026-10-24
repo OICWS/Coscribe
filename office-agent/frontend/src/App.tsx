@@ -4,7 +4,7 @@ import { HomeGreeting } from "./components/EmptyState";
 import { ChatLog } from "./components/ChatLog";
 import { Composer, type ComposerSendPayload } from "./components/Composer";
 import { ContextRing } from "./components/ContextRing";
-import { FolderPicker } from "./components/FolderPicker";
+import { EnvironmentPicker } from "./components/EnvironmentPicker";
 import { ModePill } from "./components/ModePill";
 import { isElectron, onBrowserAgent, onShowShortcuts } from "./lib/electron";
 import {
@@ -45,7 +45,7 @@ import { artifactActions } from "./lib/artifacts";
 import { useArtifactStart } from "./lib/useArtifactStart";
 import { ArtifactsPage } from "./components/artifacts/ArtifactsPage";
 import { useSteerNotes } from "./lib/steerNotes";
-import { DetachScript, OpenDesignSystem, SteerActionsContext, ViewFile } from "./components/chatlog/contexts";
+import { BackgroundTasks, DetachScript, OpenDesignSystem, SteerActionsContext, ViewFile } from "./components/chatlog/contexts";
 import { canOpenPanelWindows, focusPanelWindow, usePanelWindows } from "./lib/panelWindows";
 import { WorkflowDraftPage } from "./components/workflow/WorkflowDraftPage";
 import { WorkflowRunView } from "./components/workflow/WorkflowRunView";
@@ -165,7 +165,7 @@ function App() {
     draft?: TaskDraftItem;
     newWorkflow?: Workflow;
     initialName?: string;
-    initialWorkspace?: string | null;
+    initialEnvironment?: string | null;
     fromDraft?: string;
     fromThread?: string;
   } | null>(null);
@@ -176,7 +176,7 @@ function App() {
     threadTitle: string;
     nameHint: string;
     initial?: WorkflowDraftResult;
-    workspace: string | null;
+    environment: string | null;
     /** Proposed changes to this saved task's workflow. */
     revision?: { triggerId: string; changes: string[] };
     /** The conversation draft under review. */
@@ -480,10 +480,10 @@ function App() {
   };
 
   // A task made from this conversation works in the conversation's folder.
-  const threadWorkspace = state.folders[0] ?? null;
+  const threadEnvironment = state.environment;
 
   const startWorkflowDraft = (nameHint: string) => {
-    setWorkflowDraft({ threadId, threadTitle: sessionLabel, nameHint, workspace: threadWorkspace });
+    setWorkflowDraft({ threadId, threadTitle: sessionLabel, nameHint, environment: threadEnvironment });
     setScheduledTaskModal(null);
     setNavMode("run");
   };
@@ -494,7 +494,7 @@ function App() {
       threadTitle: sessionLabel,
       nameHint: entry.name,
       initial: { name: entry.name, workflow: entry.workflow, notes: entry.notes },
-      workspace: entry.workspace ?? threadWorkspace,
+      environment: entry.environment ?? threadEnvironment,
       revision: entry.triggerId ? { triggerId: entry.triggerId, changes: entry.changes } : undefined,
       draftId: entry.draftId ?? undefined,
     });
@@ -579,7 +579,7 @@ function App() {
     const existing = item.draft.trigger_id
       ? (scheduledTasks.find((task) => task.trigger_id === item.draft.trigger_id) ?? null)
       : null;
-    setScheduledTaskModal({ task: existing, draft: item, initialWorkspace: threadWorkspace });
+    setScheduledTaskModal({ task: existing, draft: item, initialEnvironment: threadEnvironment });
   };
 
   const saveWorkflowRevision = async (triggerId: string, workflow: Workflow) => {
@@ -725,7 +725,7 @@ function App() {
     socketRef.current?.send({ type: "load_older_messages" });
   };
 
-  const onSetFolders = (folders: string[]) => socketRef.current?.send({ type: "set_folders", folders });
+  const onSetEnvironment = (environment: string) => socketRef.current?.send({ type: "set_environment", environment });
   const onBrowserPanelCapture = (capture: BrowserCapture) => setPendingBrowserCapture(capture);
   const onPptxShapePicked = (capture: PptxShapeCapture) => setPendingPptxCapture(capture);
 
@@ -807,8 +807,8 @@ function App() {
           />
         )
       }
-      folderPicker={
-        <FolderPicker folders={state.folders} disabled={state.turnInFlight} onChange={onSetFolders} />
+      environmentPicker={
+        <EnvironmentPicker current={state.environment} disabled={state.turnInFlight} onPick={onSetEnvironment} />
       }
       modelPicker={<ModelPicker currentModel={state.model} onSwitch={onSwitchModel} />}
       effortPicker={<EffortPicker effort={state.effort} runsAs={state.effortRunsAs} onChange={onSetEffort} />}
@@ -955,7 +955,7 @@ function App() {
                   {composer}
                 </div>
               ) : navMode === "create" ? (
-                <SteerActionsContext.Provider value={steers.actions}><ViewFile.Provider value={viewFile}><OpenDesignSystem.Provider value={showDesignSystems}><DetachScript.Provider value={onDetachScript}>
+                <SteerActionsContext.Provider value={steers.actions}><ViewFile.Provider value={viewFile}><OpenDesignSystem.Provider value={showDesignSystems}><DetachScript.Provider value={onDetachScript}><BackgroundTasks.Provider value={{ statuses: subAgents.statuses, open: (taskId) => { setSubAgentFocus({ threadId, taskId }); setPanelOpen("background", true); } }}>
                   <ChatLog
                     items={state.items}
                     turnInFlight={state.turnInFlight}
@@ -996,7 +996,7 @@ function App() {
                     <QuestionPanel key={pendingQuestion.id} item={pendingQuestion} onAnswer={onAnswerQuestion} />
                   )}
                   {composer}
-                </DetachScript.Provider></OpenDesignSystem.Provider></ViewFile.Provider></SteerActionsContext.Provider>
+                </BackgroundTasks.Provider></DetachScript.Provider></OpenDesignSystem.Provider></ViewFile.Provider></SteerActionsContext.Provider>
               ) : workflowDraft ? (
                 <WorkflowDraftPage
                   threadId={workflowDraft.threadId}
@@ -1012,7 +1012,7 @@ function App() {
                       task: null,
                       newWorkflow: workflow,
                       initialName: name,
-                      initialWorkspace: workflowDraft.workspace,
+                      initialEnvironment: workflowDraft.environment,
                       fromDraft: workflowDraft.draftId,
                       fromThread: workflowDraft.threadId,
                     })
@@ -1038,7 +1038,7 @@ function App() {
                   draft={scheduledTaskModal.draft?.draft}
                   newWorkflow={scheduledTaskModal.newWorkflow}
                   initialName={scheduledTaskModal.initialName}
-                  initialWorkspace={scheduledTaskModal.initialWorkspace}
+                  initialEnvironment={scheduledTaskModal.initialEnvironment}
                   fromDraft={scheduledTaskModal.fromDraft}
                   fromThread={scheduledTaskModal.fromThread}
                   onClose={() => setScheduledTaskModal(null)}
@@ -1077,7 +1077,7 @@ function App() {
         onOpenScheduledTask={openScheduledTask}
         onEditScheduledTask={(task) => setScheduledTaskModal({ task })}
         onRunScheduledTaskNow={runTaskNow}
-        onNewScheduledTask={createTaskWithCoscribe} openFolders={{ folders: state.folders, onChange: onSetFolders }}
+        onNewScheduledTask={createTaskWithCoscribe}
       />
     </div>
     </ThreadIdContext.Provider>

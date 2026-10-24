@@ -1,11 +1,10 @@
-"""coscribe's own Python, which the script venv is made from on Windows (issue #560).
+"""coscribe's own Python, offered for the script venv on Windows (issues #560, #586).
 
 A system Python can be missing, a Store alias that only opens the Store, or installed where the
-scripts' container then has to be granted read (Program Files, another user's AppData). So the
-first script venv on Windows is made from python-build-standalone's `install_only` build,
-downloaded once into `<state>/python` and checked against the SHA-256 pinned here. An
-interpreter the person chose in Settings > Environment still comes first, and a failed download
-falls back to the Pythons found on this computer.
+scripts' container then has to be granted read (Program Files, another user's AppData). So
+Settings > Capabilities offers python-build-standalone's `install_only` build, downloaded into
+`<state>/python` and checked against the SHA-256 pinned here, but only when the person asks:
+a download nobody chose fails on networks that block GitHub (#586).
 """
 
 from __future__ import annotations
@@ -46,6 +45,16 @@ def _on_windows() -> bool:
 
 def own_python_path(state_dir: Path) -> Path:
     return state_dir / "python" / "python.exe"
+
+
+def own_python_offer(state_dir: Path) -> dict[str, object]:
+    """What Settings > Capabilities offers: whether this machine has a build, its version, and
+    whether it is already here."""
+    return {
+        "available": download_url() is not None,
+        "version": _VERSION,
+        "downloaded": own_python_path(state_dir).is_file(),
+    }
 
 
 def download_url() -> tuple[str, str] | None:

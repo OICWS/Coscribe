@@ -1,10 +1,10 @@
-"""Script (Python) and Node package environments."""
+"""Settings › Capabilities: scripts (isolation, Python, packages) and commands."""
 
 from __future__ import annotations
 
 import asyncio
-import sys
-from datetime import UTC, datetime
+import os
+import subprocess
 from typing import Any
 
 from fastapi import (
@@ -12,18 +12,27 @@ from fastapi import (
 )
 from fastapi.responses import JSONResponse
 
-from ....runtime import NetworkAccess, NetworkError
+from ....code_runtime import CodexUnavailable, code_service
 from ....runtime_lg import AuditLog, record_decision
 from ....tools import (
-    UnisolatedConversations,
-    fallbacks_for_platform,
+    Capabilities,
+    ensure_own_python,
+    find_pythons,
     get_interpreter_override,
     install_node_package,
     isolation_status,
     list_node_packages,
+    own_python_offer,
+    record_sandbox_setup,
+    release_private_folders,
+    sandbox_codex,
+    sandbox_home,
+    sandbox_setup_argv,
+    sandbox_status,
+    sandbox_uninstall_argv,
     set_interpreter_override,
     uninstall_node_package,
-    working_interpreters,
+    warm_up_sandbox,
 )
 from ....tools import install_python_package as install_package
 from ....tools import list_python_packages as list_packages
@@ -36,9 +45,7 @@ from ...state import AppState
 
 
 def _isolation_routes(router: APIRouter, state: AppState) -> None:
-    """Edit environment > Scripts and Network: whether this machine holds a script to its
-    folders, a conversation's choice to run scripts without isolation where it does not, and
-    how far the conversation may reach the internet."""
+    """Settings › Capabilities: whether this machine holds a script to its folders."""
     state_dir = state.settings.state_dir
 
     async def get_script_isolation() -> dict[str, str]:
@@ -48,59 +55,133 @@ def _isolation_routes(router: APIRouter, state: AppState) -> None:
         # A few seconds: it starts a script in the container and tries each limit.
         return await asyncio.to_thread(isolation_status, state_dir, run=True)
 
-    async def get_thread_scripts(thread_id: str) -> dict[str, bool]:
-        return {"unisolated": UnisolatedConversations(state_dir).allowed(thread_id)}
-
-    async def put_thread_scripts(thread_id: str, payload: dict[str, Any]) -> dict[str, bool]:
-        allowed = payload.get("unisolated") is True
-        chosen = UnisolatedConversations(state_dir)
-        if chosen.allowed(thread_id) != allowed:
-            chosen.set(thread_id, allowed, datetime.now(UTC).isoformat())
-            record_decision(
-                AuditLog(state_dir),
-                thread_id=thread_id,
-                tool_name="run_scripts_without_isolation",
-                arguments={"allowed": allowed},
-                decision="approve" if allowed else "reject",
-                reason="human",
-            )
-        return {"unisolated": allowed}
-
-    async def get_thread_network(thread_id: str) -> dict[str, Any]:
-        return NetworkAccess(state_dir).get(thread_id)
-
-    async def put_thread_network(thread_id: str, payload: dict[str, Any]) -> Any:
-        access = NetworkAccess(state_dir)
-        before = access.get(thread_id)
-        try:
-            saved = access.set(thread_id, payload.get("mode"), payload.get("domains", []))
-        except NetworkError as exc:
-            return JSONResponse({"error": str(exc)}, status_code=422)
-        if saved != before:
-            # What the conversation may reach is a security setting: kept like an approval.
-            record_decision(
-                AuditLog(state_dir),
-                thread_id=thread_id,
-                tool_name="set_network_access",
-                arguments=saved,
-                decision="approve",
-                reason="human",
-            )
-        return saved
-
     # Registered by reference rather than decorated, so the dead-code check sees them used.
-    router.add_api_route("/api/threads/{thread_id}/network", get_thread_network, methods=["GET"])
-    router.add_api_route("/api/threads/{thread_id}/network", put_thread_network, methods=["PUT"])
     router.add_api_route("/api/script-isolation", get_script_isolation, methods=["GET"])
     router.add_api_route("/api/script-isolation/test", retest_script_isolation, methods=["POST"])
-    router.add_api_route("/api/threads/{thread_id}/scripts", get_thread_scripts, methods=["GET"])
-    router.add_api_route("/api/threads/{thread_id}/scripts", put_thread_scripts, methods=["PUT"])
+
+
+def _capability_routes(router: APIRouter, state: AppState) -> None:
+    """Settings › Capabilities: whether scripts and commands may run on this computer."""
+    state_dir = state.settings.state_dir
+
+    async def get_capabilities() -> dict[str, bool]:
+        return Capabilities(state_dir).get()
+
+    async def put_capability(name: str, payload: dict[str, Any]) -> Any:
+        capabilities = Capabilities(state_dir)
+        current = capabilities.get()
+        if name not in current:
+            return JSONResponse({"error": f"No capability {name!r}"}, status_code=404)
+        on = payload.get("on") is True
+        changed = current[name] != on
+        if changed:
+            current = capabilities.set(name, on)
+        left: list[str] = []
+        if name == "commands_hide_private_folders" and not on:
+            # Codex leaves some of its deny entries behind (#601); also when already off, so
+            # turning it off again retries what was left.
+            left = await asyncio.to_thread(release_private_folders, state_dir)
+        if changed or left:
+            # What coscribe may run is a security setting: kept like an approval.
+            record_decision(
+                AuditLog(state_dir),
+                thread_id="",
+                tool_name=f"capability_{name}",
+                arguments={"on": on, **({"not_cleared": left} if left else {})},
+                decision="approve" if on else "reject",
+                reason="human",
+            )
+        if left:
+            return JSONResponse(
+                {"error": "Turned off, but these folders still hide from commands: "
+                 + ", ".join(left) + ". Turning it off again retries."},
+                status_code=500,
+            )  # fmt: skip
+        return current
+
+    router.add_api_route("/api/capabilities", get_capabilities, methods=["GET"])
+    router.add_api_route("/api/capabilities/{name}", put_capability, methods=["PUT"])
+
+
+_SANDBOX_SETUP_SECONDS = 600
+
+
+def _run_codex(argv: list[str], state_dir: Any) -> str:
+    """Runs a `codex sandbox` admin command; the error to show, or "" when it worked."""
+    env = {**os.environ, "CODEX_HOME": str(sandbox_home(state_dir))}
+    sandbox_home(state_dir).mkdir(parents=True, exist_ok=True)
+    try:
+        done = subprocess.run(
+            argv, env=env, capture_output=True, text=True, timeout=_SANDBOX_SETUP_SECONDS
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return f"Codex didn't finish: {exc}"
+    if done.returncode == 0:
+        return ""
+    output = (done.stderr or done.stdout).strip().splitlines()
+    return output[-1] if output else f"Codex exited with {done.returncode}."
+
+
+def _sandbox_routes(router: APIRouter, state: AppState) -> None:
+    """Settings › Capabilities: the command sandbox (decision 0022), set up once by an
+    administrator and removed from here."""
+    state_dir = state.settings.state_dir
+
+    def audit(action: str, error: str) -> None:
+        record_decision(
+            AuditLog(state_dir),
+            thread_id="",
+            tool_name=f"command_sandbox_{action}",
+            arguments={"error": error} if error else {},
+            decision="reject" if error else "approve",
+            reason="human",
+        )
+
+    async def get_sandbox() -> dict[str, str]:
+        return sandbox_status(state_dir)
+
+    async def set_up_sandbox() -> dict[str, str]:
+        if sandbox_status(state_dir)["state"] == "unsupported":
+            return sandbox_status(state_dir)
+        try:
+            codex = await code_service(state.settings).download()
+        except CodexUnavailable as exc:
+            error = exc.args[0] if exc.args else "Codex couldn't be downloaded."
+            record_sandbox_setup(state_dir, None, error)
+            audit("setup", error)
+            return sandbox_status(state_dir)
+        error = await asyncio.to_thread(_run_codex, sandbox_setup_argv(codex), state_dir)
+        record_sandbox_setup(state_dir, None if error else codex, error)
+        if not error:
+            await asyncio.to_thread(warm_up_sandbox, state_dir)
+        audit("setup", error)
+        return sandbox_status(state_dir)
+
+    async def remove_sandbox() -> dict[str, str]:
+        codex = sandbox_codex(state_dir)
+        # First, while the group still exists so its entries can be named; also when this
+        # Codex is gone, since the entries outlive it.
+        left = await asyncio.to_thread(release_private_folders, state_dir)
+        error = ""
+        if left:
+            error = "Some folders still hide from commands: " + ", ".join(left)
+        elif codex is not None:
+            error = await asyncio.to_thread(_run_codex, sandbox_uninstall_argv(codex), state_dir)
+        record_sandbox_setup(state_dir, codex if error else None)
+        audit("uninstall", error)
+        return {**sandbox_status(state_dir), "error": error}
+
+    router.add_api_route("/api/command-sandbox", get_sandbox, methods=["GET"])
+    router.add_api_route("/api/command-sandbox", set_up_sandbox, methods=["POST"])
+    router.add_api_route("/api/command-sandbox", remove_sandbox, methods=["DELETE"])
 
 
 def router(state: AppState) -> APIRouter:
     router = APIRouter()
     settings = state.settings
     _isolation_routes(router, state)
+    _capability_routes(router, state)
+    _sandbox_routes(router, state)
 
     # Every handler below wraps its real work in asyncio.to_thread --
     # list_packages/install_package/uninstall_package/set_interpreter_override
@@ -141,20 +222,28 @@ def router(state: AppState) -> APIRouter:
 
     @router.get("/api/script-env/interpreter")
     async def get_script_env_interpreter() -> dict[str, object]:
-        """What ensure_script_env would try, in order, right now -- the
-        Environment tab's manual override (if any) is already reflected
-        first in `candidates` since the override changes what
-        auto-detection itself returns; `auto_detected` is the plain
-        fallback list on its own, filtered to candidates that actually
-        run (see working_interpreters' docstring for why sys.executable
-        specifically needs this on a packaged build) so the UI never
-        offers a chip that's guaranteed to fail validation if clicked."""
-        override = get_interpreter_override(settings.state_dir)
-        candidates = [sys.executable, *fallbacks_for_platform()]
+        """The chosen interpreter (None: the first one found), every Python 3 on this computer
+        that runs, and coscribe's own Python on offer (#586)."""
+        state_dir = settings.state_dir
         return {
-            "configured": override,
-            "auto_detected": await asyncio.to_thread(working_interpreters, candidates),
+            "configured": get_interpreter_override(state_dir),
+            "found": await asyncio.to_thread(find_pythons, state_dir),
+            "own_python": own_python_offer(state_dir),
         }
+
+    async def download_own_python() -> dict[str, object]:
+        """Downloads coscribe's own Python (about 30 MB) and chooses it; only ever on request."""
+        try:
+            python = await asyncio.to_thread(ensure_own_python, settings.state_dir)
+        except RuntimeError as exc:
+            return {"success": False, "error": str(exc)}
+        if python is None:
+            return {"success": False, "error": "coscribe's own Python is only offered on Windows."}
+        chosen = await asyncio.to_thread(set_interpreter_override, settings.state_dir, str(python))
+        return {**chosen, "path": str(python)}
+
+    # Registered by reference rather than decorated, so the dead-code check sees it used.
+    router.add_api_route("/api/script-env/own-python", download_own_python, methods=["POST"])
 
     @router.post("/api/script-env/interpreter")
     async def set_script_env_interpreter(payload: ScriptEnvInterpreterUpdate) -> dict[str, object]:

@@ -1,7 +1,7 @@
 # Every conversation can list, read and message the others unless archived (shipped)
 
 Why: the opt-in switch of 0008 was a per-conversation setting nobody wanted, and a model
-could send but not read. See 0022.
+could send but not read. See 0023.
 
 ## Shipped
 - `tools/bookkeeping/conversations.py`: `list_conversations` shows all other conversations

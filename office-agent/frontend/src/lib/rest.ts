@@ -3,9 +3,11 @@ import type {
   DesignSystemSummary,
   SecretInfo,
   SecretsResponse,
-  NetworkAccess,
   ScriptIsolation,
-  SessionEnvironment,
+  Capabilities,
+  CommandSandbox,
+  Environment,
+  EnvironmentFields,
   BrowseDirsResponse,
   ConfigResponse,
   ConfigUpdateResult,
@@ -31,6 +33,7 @@ import type {
   TaskNotesResult,
   ScriptEnvInstallResult,
   ScriptEnvInterpreterInfo,
+  OwnPythonDownload,
   ScriptEnvPackage,
   SkillPlugin,
   SkillPluginDetail,
@@ -291,6 +294,8 @@ export const getScriptEnvInterpreter = () => getJson<ScriptEnvInterpreterInfo>("
 // `path: ""` clears the override server-side, reverting to auto-detection.
 export const setScriptEnvInterpreter = (path: string) =>
   postJson<ScriptEnvInstallResult>("/api/script-env/interpreter", { path });
+// Only on the person's click: about 30 MB from GitHub, then chosen as the interpreter.
+export const downloadOwnPython = () => postJson<OwnPythonDownload>("/api/script-env/own-python", {});
 
 // Mirrors the script-env functions above exactly -- backed by
 // run_node_script's node-env directory instead (see tools/exec/node_env.py).
@@ -494,30 +499,25 @@ export const saveDesignSystem = (system: DesignSystem) =>
 export const deleteDesignSystem = (id: string) =>
   sendForResult<{ status: string }>(`/api/design-systems/${encodeURIComponent(id)}`, "DELETE", undefined);
 
-export const getSessionEnvironment = (threadId: string) =>
-  getJson<SessionEnvironment>(`/api/threads/${encodeURIComponent(threadId)}/environment`);
+/** Named environments: where a conversation works and what it may reach. */
+export const getEnvironments = () => getJson<{ environments: Environment[] }>("/api/environments");
+export const createEnvironment = (fields: EnvironmentFields) =>
+  sendForResult<Environment>("/api/environments", "POST", fields);
+export const updateEnvironment = (id: string, fields: EnvironmentFields) =>
+  sendForResult<Environment & { warning?: string }>(`/api/environments/${encodeURIComponent(id)}`, "PUT", fields);
+export const deleteEnvironment = (id: string) =>
+  sendForResult<{ moved: number }>(`/api/environments/${encodeURIComponent(id)}`, "DELETE", undefined);
 
-export const saveSessionEnvironment = (threadId: string, environment: SessionEnvironment) =>
-  sendForResult<SessionEnvironment>(`/api/threads/${encodeURIComponent(threadId)}/environment`, "PUT", environment);
+/** Settings › Capabilities: what coscribe may run on this computer. */
+export const getCapabilities = () => getJson<Capabilities>("/api/capabilities");
+export const setCapability = (name: keyof Capabilities, on: boolean) =>
+  putJson<Capabilities>(`/api/capabilities/${name}`, { on });
 
-/** The folders of a conversation that is not the open one; the open one changes them over its socket. */
-export const getThreadFolders = (threadId: string) =>
-  getJson<{ folders: string[] }>(`/api/threads/${encodeURIComponent(threadId)}/folders`);
-
-export const saveThreadFolders = (threadId: string, folders: string[]) =>
-  sendForResult<{ folders: string[] }>(`/api/threads/${encodeURIComponent(threadId)}/folders`, "PUT", { folders });
+export const getCommandSandbox = () => getJson<CommandSandbox>("/api/command-sandbox");
+/** Needs an administrator once; Windows asks. */
+export const setUpCommandSandbox = () => postJson<CommandSandbox>("/api/command-sandbox", {});
+export const removeCommandSandbox = () =>
+  sendForResult<CommandSandbox>("/api/command-sandbox", "DELETE", undefined);
 
 export const getScriptIsolation = () => getJson<ScriptIsolation>("/api/script-isolation");
 export const retestScriptIsolation = () => postJson<ScriptIsolation>("/api/script-isolation/test", {});
-
-export const getThreadScripts = (threadId: string) =>
-  getJson<{ unisolated: boolean }>(`/api/threads/${encodeURIComponent(threadId)}/scripts`);
-
-export const saveThreadScripts = (threadId: string, unisolated: boolean) =>
-  sendForResult<{ unisolated: boolean }>(`/api/threads/${encodeURIComponent(threadId)}/scripts`, "PUT", { unisolated });
-
-export const getThreadNetwork = (threadId: string) =>
-  getJson<NetworkAccess>(`/api/threads/${encodeURIComponent(threadId)}/network`);
-
-export const saveThreadNetwork = (threadId: string, network: NetworkAccess) =>
-  sendForResult<NetworkAccess>(`/api/threads/${encodeURIComponent(threadId)}/network`, "PUT", network);

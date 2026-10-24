@@ -229,9 +229,18 @@ Last reviewed: 2026-10-15.
    setting with `delete_file` to the Recycle Bin, and Edit environment > Network (none, limited
    to listed domains, or full). Codex's commands are off (2026-10-23). A script's approval card
    says whether it runs isolated. Grants on folders no longer in use are taken off at start, and
-   all of them at uninstall. The script venv on Windows is made from coscribe's own Python
-   (3.12). Reads stay limited to the conversation's folders: no whole-profile switch, a
-   read-only folder instead (2026-10-23). Left: close #560.
+   all of them at uninstall. Reads stay limited to the conversation's folders: no whole-profile
+   switch, a read-only folder instead (2026-10-23). The scripts' Python is chosen in Settings >
+   Environment from the ones found on the computer; coscribe's own (3.12) is downloaded only on
+   request (#586). #560 is closed. Open: a PyPI mirror setting for networks that block PyPI.
+
+5. **One place for what coscribe may run** (#588, kurtosisOC). Shipped: deleting the open
+   conversation (#589), Settings › Capabilities (#590), named environments with the picker below
+   the message box and the move of each conversation's own settings into them, scheduled tasks
+   choosing an environment, commands in Codex's Windows sandbox (decision 0022, proposed: needs
+   the maintainer's independent review), with the person's private folders hidden from it (#601).
+   Open: Codex's own commands in the code module through the same sandbox (4b); hiding other
+   drives' user folders.
 
 ## Needs the maintainer's testing (could not be verified here)
 
@@ -273,7 +282,7 @@ Last reviewed: 2026-10-15.
 - A second model family (Codex) reviewing invariant paths: when the second maintainer
   joins (decision 0009).
 
-- Conversations reading and messaging each other (records 0008 and 0022, built: every non-archived conversation is reachable; the Edit environment dialog still has its old messages section until the redesign in issue 560 lands).
+- Conversations reading and messaging each other (records 0008 and 0023, built: every non-archived conversation is reachable; the Edit environment dialog still has its old messages section until the redesign in issue 560 lands).
 
 - A callback helper so a script can use a secret (needs its own local
   authentication).

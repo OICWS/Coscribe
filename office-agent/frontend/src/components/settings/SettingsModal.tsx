@@ -14,11 +14,10 @@ import {
   SearchIcon,
   SettingsIcon,
   SparkIcon,
-  TerminalIcon,
   ToolIcon,
 } from "../icons";
 import { ConnectorsTab } from "./ConnectorsTab";
-import { CodeTab } from "./CodeTab";
+import { CapabilitiesTab } from "./CapabilitiesTab";
 import {
   BACKGROUND_ON_CLOSE_KEY,
   CODE_MODEL_KEY,
@@ -39,7 +38,6 @@ import {
   type DirEntry,
 } from "./fields";
 import { DesignSystemsTab } from "./DesignSystemsTab";
-import { EnvironmentTab } from "./EnvironmentTab";
 import { GeneralTab } from "./GeneralTab";
 import { DRAWS_TITLE_BAR, openBackdrops } from "../../lib/titleBar";
 import { ProvidersTab } from "./ProvidersTab";
@@ -57,7 +55,6 @@ export type SettingsCategory =
   | "skills"
   | "connectors"
   | "secrets"
-  | "environment"
   | "design-systems"
   | "sessions"
   | "capabilities";
@@ -90,7 +87,6 @@ const GROUPS: { label: string; categories: CategoryDef[] }[] = [
       { id: "providers", label: "Providers", icon: KeyIcon },
       { id: "capabilities", label: "Capabilities", icon: BriefcaseIcon },
       { id: "tools", label: "Tools", icon: ToolIcon },
-      { id: "environment", label: "Environment", icon: TerminalIcon },
       { id: "sessions", label: "Sessions", icon: MessageCircleIcon },
       { id: "secrets", label: "Secrets", icon: LockIcon },
     ],
@@ -319,9 +315,8 @@ export function SettingsModal({
             {category === "connectors" && <ConnectorsTab active={category === "connectors"} />}
             {category === "design-systems" && <DesignSystemsTab active={category === "design-systems"} start={startDesignSystem} />}
             {category === "secrets" && <SecretsTab active={category === "secrets"} />}
-            {category === "environment" && <EnvironmentTab active={category === "environment"} />}
             {category === "sessions" && <SessionsTab values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} />}
-            {category === "capabilities" && <CodeTab values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} />}
+            {category === "capabilities" && <CapabilitiesTab active values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} />}
             </div>
           </div>
           {status && (category === "general" || category === "workspace" || category === "sessions" || category === "capabilities") && (

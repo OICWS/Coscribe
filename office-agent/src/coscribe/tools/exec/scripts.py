@@ -34,7 +34,8 @@ from typing import Any
 from ...runtime import tool_metadata
 from .._files_written import snapshot_workspace, with_files_written
 from .._output_truncation import truncate_script_output
-from .isolation import denied_note, for_scripts, scratch_root
+from .capabilities import require_capability
+from .isolation import denied_note, for_scripts, quiet_stderr, scratch_root
 from .running import Detachable, run_to_end
 from .script_env import ensure_script_env, overlay_env, venv_python
 from .script_guard import (
@@ -66,9 +67,9 @@ def _run_python_script(
     description: str = "",
     extra_readable: Sequence[Path] = (),
 ) -> dict[str, object]:
+    require_capability(state_dir, "scripts", detachable.thread_id if detachable else None)
     timeout = min(max(timeout, 1.0), _MAX_TIMEOUT)
-    venv_dir = ensure_script_env(state_dir)
-    python = venv_python(venv_dir)
+    python = venv_python(ensure_script_env(state_dir))
     isolation = for_scripts(
         state_dir,
         writable=[workspace_root, *extra_writable],
@@ -123,6 +124,8 @@ def _run_python_script(
         if ran.detached is not None:
             handed_over = True
             return ran.detached
+        if isolation is not None:
+            ran.stderr = quiet_stderr(ran.stderr)
         if ran.timed_out:
             timeout_note = f"\n[timed out after {timeout}s]"
             timed_out: dict[str, object] = {
@@ -200,7 +203,7 @@ def build_script_tools(
         tools' shape -- e.g. processing thousands of rows, or a multi-step
         transformation those tools can't express in one call. Any other
         package the script needs must already be installed in that
-        environment (the user manages this from the Environment settings
+        environment (the user manages this from the Capabilities settings
         tab) -- `import` a package that isn't there and the script will
         fail with the normal Python ModuleNotFoundError; this tool cannot
         install packages on its own.

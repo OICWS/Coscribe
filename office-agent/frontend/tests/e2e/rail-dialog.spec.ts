@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { freshThreadPath, waitForConnected } from "./helpers";
+import { editEnvironment, environmentNamed, freshThreadPath, newEnvironment, waitForConnected } from "./helpers";
 
 test("a dialog opened from a hover-opened sidebar is not closed with the sidebar", async ({ page }) => {
   await page.goto(freshThreadPath("rail-dialog"));
@@ -59,76 +59,72 @@ test("a click beside the Edit environment dialog keeps what was typed", async ({
   await expect(dialog.getByLabel("Variable name")).toHaveValue("MODE");
 });
 
-test("Edit environment lists its pages and archives the conversation", async ({ page, request }) => {
-  const path = freshThreadPath("env-archive");
+test("the environment picker makes, chooses, edits and deletes an environment", async ({ page, request }) => {
+  const path = freshThreadPath("env-picker");
   const threadId = path.split("=")[1];
+  const name = `E2E env ${Math.random().toString(36).slice(2, 7)}`;
   await page.goto(path);
   await waitForConnected(page);
-  await page.locator("textarea").fill("Reply with just OK.");
-  await page.keyboard.press("Enter");
-  await expect(page.getByRole("button", { name: "Send" })).toBeVisible({ timeout: 30_000 });
-  await page.getByTitle("Pin navigation open").click();
-  await page.getByTestId("thread-row").first().click({ button: "right" });
-  await page.getByRole("menuitem", { name: "Edit environment" }).click();
+  const picker = page.getByTitle("Choose this conversation's environment");
+  await expect(picker).toHaveText("Default");
+  await newEnvironment(page, name);
+
+  await editEnvironment(page, name);
   const dialog = page.getByRole("dialog", { name: "Edit environment" });
-  for (const name of ["Folders", "Network", "Scripts", "Secrets", "Environment variables"]) {
-    await expect(dialog.getByRole("button", { name: new RegExp(name) })).toBeVisible();
+  await expect(dialog.getByText("Used by 1 conversation")).toBeVisible();
+  for (const page_ of ["Folders", "Network", "Scripts and commands", "Secrets", "Environment variables"]) {
+    await expect(dialog.getByRole("button", { name: new RegExp(page_) })).toBeVisible();
   }
-  await expect(dialog.getByText("Messages from other conversations")).toHaveCount(0);
-
-  await dialog.getByRole("button", { name: /Folders/ }).click();
-  await expect(dialog.getByRole("heading", { name: "Folders" })).toBeVisible();
-  await dialog.getByRole("button", { name: "Back" }).click();
-  // The runner is Linux, where there is no container to check.
-  await dialog.getByRole("button", { name: /Scripts/ }).click();
-  await expect(dialog.getByText("Isolation is only available on Windows")).toBeVisible();
+  // Commands are off in Settings › Capabilities, so an environment can't turn them on.
+  await dialog.getByRole("button", { name: /Scripts and commands/ }).click();
+  await expect(dialog.getByRole("switch", { name: "Commands" })).toBeDisabled();
   await dialog.getByRole("button", { name: "Back" }).click();
 
-  await dialog.getByRole("button", { name: "Archive conversation" }).click();
+  await dialog.getByRole("button", { name: "Delete environment" }).click();
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  const threads: { thread_id: string; archived: boolean }[] = await (await request.get("/api/threads")).json();
-  expect(threads.find((t) => t.thread_id === threadId)?.archived).toBe(true);
+  await expect(picker).toHaveText("Default");
+  expect(await environmentNamed(request, name)).toBeUndefined();
   await request.delete(`/api/threads/${threadId}`);
 });
 
-test("Edit environment > Network limits a conversation to the domains given", async ({ page, request }) => {
+test("an environment's Network page limits its conversations to the domains given", async ({ page, request }) => {
   const path = freshThreadPath("env-network");
   const threadId = path.split("=")[1];
+  const name = `E2E net ${Math.random().toString(36).slice(2, 7)}`;
   await page.goto(path);
   await waitForConnected(page);
-  await page.locator("textarea").fill("Reply with just OK.");
-  await page.keyboard.press("Enter");
-  await expect(page.getByRole("button", { name: "Send" })).toBeVisible({ timeout: 30_000 });
-  await page.getByTitle("Pin navigation open").click();
-  const open = async () => {
-    await page.getByTestId("thread-row").first().click({ button: "right" });
-    await page.getByRole("menuitem", { name: "Edit environment" }).click();
-  };
-  await open();
-  const dialog = page.getByRole("dialog", { name: "Edit environment" });
-  await expect(dialog.getByRole("button", { name: /Network/ })).toContainText("Limited: any site, scripts offline");
-  await dialog.getByRole("button", { name: /Network/ }).click();
-  await expect(dialog.getByRole("radio", { name: /Limited/ })).toBeChecked();
+  await newEnvironment(page, name);
+  try {
+    await editEnvironment(page, name);
+    const dialog = page.getByRole("dialog", { name: "Edit environment" });
+    await expect(dialog.getByRole("button", { name: /Network/ })).toContainText("Limited: any site, scripts offline");
+    await dialog.getByRole("button", { name: /Network/ }).click();
+    await expect(dialog.getByRole("radio", { name: /Limited/ })).toBeChecked();
 
-  await dialog.getByLabel("Allowed domains").fill("not a domain");
-  await dialog.getByRole("button", { name: "Save changes" }).click();
-  await expect(dialog.getByText("isn't a domain")).toBeVisible();
+    await dialog.getByLabel("Allowed domains").fill("not a domain");
+    await dialog.getByRole("button", { name: "Save changes" }).click();
+    await expect(dialog.getByText("isn't a domain")).toBeVisible();
 
-  await dialog.getByLabel("Allowed domains").fill("https://www.example.com/page\ndocs.python.org");
-  await dialog.getByRole("button", { name: "Save changes" }).click();
-  await expect(dialog).toHaveCount(0);
-  expect(await (await request.get(`/api/threads/${threadId}/network`)).json()).toEqual({
-    mode: "limited",
-    domains: ["example.com", "docs.python.org"],
-  });
+    await dialog.getByLabel("Allowed domains").fill("https://www.example.com/page\ndocs.python.org");
+    await dialog.getByRole("button", { name: "Save changes" }).click();
+    await expect(dialog).toHaveCount(0);
+    expect((await environmentNamed(request, name))?.network).toEqual({
+      mode: "limited",
+      domains: ["example.com", "docs.python.org"],
+    });
 
-  await open();
-  await expect(dialog.getByRole("button", { name: /Network/ })).toContainText("Limited: 2 domains");
-  await dialog.getByRole("button", { name: /Network/ }).click();
-  await dialog.getByRole("radio", { name: /None/ }).check();
-  await expect(dialog.getByLabel("Allowed domains")).toHaveCount(0);
-  await dialog.getByRole("button", { name: "Save changes" }).click();
-  await expect(dialog).toHaveCount(0);
-  expect(await (await request.get(`/api/threads/${threadId}/network`)).json()).toEqual({ mode: "none", domains: [] });
-  await request.delete(`/api/threads/${threadId}`);
+    await editEnvironment(page, name);
+    await expect(dialog.getByRole("button", { name: /Network/ })).toContainText("Limited: 2 domains");
+    await dialog.getByRole("button", { name: /Network/ }).click();
+    await dialog.getByRole("radio", { name: /None/ }).check();
+    await expect(dialog.getByLabel("Allowed domains")).toHaveCount(0);
+    await dialog.getByRole("button", { name: "Save changes" }).click();
+    await expect(dialog).toHaveCount(0);
+    expect((await environmentNamed(request, name))?.network).toEqual({ mode: "none", domains: [] });
+  } finally {
+    const env = await environmentNamed(request, name);
+    if (env) await request.delete(`/api/environments/${env.id}`);
+    await request.delete(`/api/threads/${threadId}`);
+  }
 });

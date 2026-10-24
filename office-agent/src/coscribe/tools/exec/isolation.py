@@ -21,6 +21,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -31,7 +32,7 @@ from dataclasses import dataclass, field
 from pathlib import Path, PureWindowsPath
 from typing import Literal
 
-from ...runtime import NetworkGuard
+from ...runtime import Environments, NetworkGuard
 from . import _appcontainer
 from ._appcontainer import NETWORK_CAPABILITIES, ContainerProcess, ContainerUnavailable
 from .script_env import ensure_script_env, venv_python
@@ -277,7 +278,15 @@ _PROBE_REVISION = "1"
 
 
 def _machine_key(python: Path) -> dict[str, str]:
-    return {"windows": platform.version(), "python": str(python), "probe": _PROBE_REVISION}
+    # The venv's python.exe keeps its path when the person chooses another Python to make it
+    # from, so the installation it was made from is part of the key too.
+    made_from = [str(p) for p in venv_runtime(python.parent.parent)[1:]]
+    return {
+        "windows": platform.version(),
+        "python": str(python),
+        "home": ";".join(made_from),
+        "probe": _PROBE_REVISION,
+    }
 
 
 # The answer is about the machine, not the state folder: one test per process at most.
@@ -364,35 +373,15 @@ class IsolationRefused(ValueError):
     this conversation run scripts without isolation."""
 
 
-_UNISOLATED = "unisolated-conversations.json"
-
-
 class UnisolatedConversations:
-    """The conversations whose person chose, in Edit environment, to run scripts without isolation
-    on a machine that failed the self-test. The choice itself is audited by its caller."""
+    """Whether a conversation's environment runs scripts without isolation on a machine that
+    failed the self-test. The choice itself is audited where it is made."""
 
     def __init__(self, state_dir: Path) -> None:
-        self._path = Path(state_dir) / _UNISOLATED
-
-    def _read(self) -> dict[str, str]:
-        try:
-            raw = json.loads(self._path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            return {}
-        return {str(k): str(v) for k, v in raw.items()} if isinstance(raw, dict) else {}
+        self._state_dir = Path(state_dir)
 
     def allowed(self, thread_id: str | None) -> bool:
-        return thread_id is not None and thread_id in self._read()
-
-    def set(self, thread_id: str, allowed: bool, when: str) -> None:
-        with _lock:
-            data = self._read()
-            if allowed:
-                data[thread_id] = when
-            else:
-                data.pop(thread_id, None)
-            self._path.parent.mkdir(parents=True, exist_ok=True)
-            self._path.write_text(json.dumps(data), encoding="utf-8")
+        return bool(Environments(self._state_dir).for_thread(thread_id)["unisolated"])
 
 
 def for_scripts(
@@ -421,8 +410,8 @@ def for_scripts(
         raise IsolationRefused(
             "Scripts are off on this computer: coscribe's isolation check failed, so a script "
             "could reach more than this conversation's folders. Tell the person; they can see "
-            "the check, test again, or allow scripts without isolation for this conversation "
-            "under Edit environment > Scripts. Use the built-in tools meanwhile."
+            "the check and test again in Settings › Capabilities, or allow scripts without "
+            "isolation in this conversation's environment. Use the built-in tools meanwhile."
         )
     return Isolation(
         state_dir,
@@ -435,14 +424,21 @@ def for_scripts(
 
 def isolation_status(state_dir: Path, *, run: bool = False) -> dict[str, str]:
     """What Edit environment > Scripts shows: `passed`, `failed` (with the check that differed),
-    `untested` (no result for this machine yet, or no script venv to test with) or `unsupported`
-    (not Windows). Only `run` starts the test, so reading the status changes nothing."""
+    `untested` (no result for this machine yet, or no script venv to test with), `setup_failed`
+    (the venv to test with could not be made, and why) or `unsupported` (not Windows). Only `run`
+    starts the test, making the venv first when there is none, so reading the status changes
+    nothing."""
     venv = state_dir / "script-env"
     python = venv_python(venv)
     if not available():
         return {"state": "unsupported", "failed": "", "detail": ""}
     if not python.is_file():
-        return {"state": "untested", "failed": "", "detail": ""}
+        if not run:
+            return {"state": "untested", "failed": "", "detail": ""}
+        try:
+            ensure_script_env(state_dir)
+        except RuntimeError as exc:
+            return {"state": "setup_failed", "failed": "", "detail": str(exc)[-600:]}
     if run:
         result: SelfTest | None = self_test(state_dir, python, venv_runtime(venv), fresh=True)
     else:
@@ -454,6 +450,15 @@ def isolation_status(state_dir: Path, *, run: bool = False) -> dict[str, str]:
 
 
 _DENIED = ("PermissionError", "Access is denied", "EPERM", "EACCES")
+
+# From 3.13 on Python resolves its own path as it starts, a call the container is denied; it runs
+# on regardless, so the line it prints would only make the model think the script failed.
+_REALPATH_WARNING = re.compile(r"^Failed to find real location of [^\n]*\n?", re.MULTILINE)
+
+
+def quiet_stderr(stderr: str) -> str:
+    """A contained script's stderr without the line every Python from 3.13 on prints there."""
+    return _REALPATH_WARNING.sub("", stderr)
 
 
 def denied_note(stderr: str) -> str:

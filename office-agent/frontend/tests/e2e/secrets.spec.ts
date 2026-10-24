@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { freshThreadPath, waitForConnected } from "./helpers";
+import { editEnvironment, environmentNamed, freshThreadPath, newEnvironment, waitForConnected } from "./helpers";
 
 // Needs a backend with a working keychain (CI and dev machines have one; the
 // live-test setup points keyring at a file backend).
@@ -11,6 +11,7 @@ async function openSecrets(page: Page) {
 
 test("a secret is added, kept write-only, given to a conversation and deleted", async ({ page, request }) => {
   const name = `E2E_KEY_${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+  const envName = `E2E secrets ${name}`;
   const threadPath = freshThreadPath("secrets");
   const threadId = new URL(threadPath, "http://x").searchParams.get("thread") ?? "";
   await page.goto(threadPath);
@@ -48,9 +49,8 @@ test("a secret is added, kept write-only, given to a conversation and deleted", 
     await expect(row.getByText("*.cdn.example.com")).toHaveCount(0);
 
     await page.keyboard.press("Escape");
-    await page.getByTitle("Pin navigation open").click();
-    await page.getByTestId("thread-row").first().click({ button: "right" });
-    await page.getByRole("menuitem", { name: "Edit environment" }).click();
+    await newEnvironment(page, envName);
+    await editEnvironment(page, envName);
 
     const dialog = page.getByRole("dialog", { name: "Edit environment" });
     await dialog.getByRole("button", { name: /Environment variables/ }).click();
@@ -64,18 +64,19 @@ test("a secret is added, kept write-only, given to a conversation and deleted", 
     await dialog.getByRole("button", { name: "Save changes" }).click();
     await expect(dialog).toHaveCount(0);
 
-    const saved = await (await request.get(`/api/threads/${threadId}/environment`)).json();
-    expect(saved).toEqual({ variables: { MODE: "fast" }, secrets: [name] });
+    const saved = await environmentNamed(request, envName);
+    expect([saved?.variables, saved?.secrets]).toEqual([{ MODE: "fast" }, [name]]);
 
-    // Deleting the secret also takes it out of the conversation.
+    // Deleting the secret also takes it out of the environment.
     await openSecrets(page);
     await row.getByRole("button", { name: "Delete" }).click();
     await page.getByRole("button", { name: "Delete", exact: true }).last().click();
     await expect(row).toHaveCount(0);
-    const after = await (await request.get(`/api/threads/${threadId}/environment`)).json();
-    expect(after.secrets).toEqual([]);
+    expect((await environmentNamed(request, envName))?.secrets).toEqual([]);
   } finally {
     await request.delete(`/api/secrets/${name}`);
+    const env = await environmentNamed(request, envName);
+    if (env) await request.delete(`/api/environments/${env.id}`);
     await request.delete(`/api/threads/${threadId}`);
   }
 });

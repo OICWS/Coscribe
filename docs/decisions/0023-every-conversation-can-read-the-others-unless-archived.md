@@ -1,4 +1,4 @@
-# 0022: Every conversation can read the others unless they are archived
+# 0023: Every conversation can read the others unless they are archived
 
 Status: accepted (2026-10-23). Replaces the opt-in of [0008](0008-conversations-can-message-each-other.md).
 

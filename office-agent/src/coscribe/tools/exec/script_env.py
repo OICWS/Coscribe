@@ -10,7 +10,7 @@ project's own development sandbox has hit real, repeated dependency
 breakage this session, so treating "packages a user script wants" and
 "packages coscribe itself needs to run" as two separate installations
 isn't theoretical caution. (2) it gives users an honest, inspectable place
-("what's installed") to manage via the Environment settings tab, mirroring
+("what's installed") to manage via the Capabilities settings tab, mirroring
 Claude Code's own cloud-environment setup step -- but as a simple installed-
 package list a non-technical user can point-and-click, not a freeform shell
 script (see EnvironmentTab.tsx's docstring for why that UI choice was made
@@ -35,7 +35,7 @@ import threading
 from collections.abc import Mapping
 from pathlib import Path
 
-from .own_python import ensure_own_python
+from .own_python import own_python_path
 
 _VENV_TIMEOUT = 120.0
 _SETUP_TIMEOUT = 300.0
@@ -45,7 +45,7 @@ _SETUP_TIMEOUT = 300.0
 # pdfplumber) plus pandas for bulk tabular work, without the user having to
 # know to add these themselves first -- tools/exec/scripts.py's own docstring
 # promises this. Anything else the user wants is on them to add from the
-# Environment settings tab.
+# Capabilities settings tab.
 _BASELINE_PACKAGES = ("openpyxl", "python-docx", "python-pptx", "pandas", "pdfplumber")
 
 # A plain text file (not JSON -- one value, no reason for the ceremony)
@@ -92,7 +92,10 @@ def set_interpreter_override(state_dir: Path, python_path: str | None) -> dict[s
     it, not just to influence some future from-scratch install."""
     override_path = state_dir / _INTERPRETER_OVERRIDE_FILE
     if not python_path:
-        override_path.unlink(missing_ok=True)
+        if override_path.is_file():
+            override_path.unlink()
+            # Back to the first one found, which may not be what the venv was made from.
+            shutil.rmtree(state_dir / "script-env", ignore_errors=True)
         return {"success": True, "error": None}
     try:
         result = subprocess.run(
@@ -143,7 +146,7 @@ def _venv_create_candidates(state_dir: Path) -> list[str]:
     a synonym for "python".
 
     A user-configured override (get_interpreter_override, set from the
-    Environment settings tab) always goes first, ahead of even
+    Capabilities settings tab) always goes first, ahead of even
     sys.executable -- once someone has explicitly picked an interpreter,
     auto-detection's guesses shouldn't outrank it, and this is also the
     escape hatch for machines where every auto-detected candidate is
@@ -157,16 +160,13 @@ def _venv_create_candidates(state_dir: Path) -> list[str]:
     return auto_detected
 
 
-def _own_python_first(state_dir: Path, candidates: list[str]) -> tuple[list[str], str]:
-    """coscribe's own Python ahead of the detected ones, unless the person chose one; and why
-    it isn't there, for the error when nothing works."""
-    if get_interpreter_override(state_dir):
-        return candidates, ""
-    try:
-        own = ensure_own_python(state_dir)
-    except RuntimeError as exc:
-        return candidates, f" {exc}"
-    return ([str(own), *candidates] if own else candidates), ""
+def _own_python_first(state_dir: Path, candidates: list[str]) -> list[str]:
+    """coscribe's own Python ahead of the detected ones once the person downloaded it, unless
+    they chose another. Never downloaded here: that is the person's call (#586)."""
+    own = own_python_path(state_dir)
+    if get_interpreter_override(state_dir) or not own.is_file():
+        return candidates
+    return [str(own), *candidates]
 
 
 def fallbacks_for_platform() -> list[str]:
@@ -253,7 +253,7 @@ def _ensure_script_env(state_dir: Path) -> Path:
     if venv_python(venv_dir).is_file():
         return venv_dir
     venv_dir.parent.mkdir(parents=True, exist_ok=True)
-    candidates, download_error = _own_python_first(state_dir, _venv_create_candidates(state_dir))
+    candidates = _own_python_first(state_dir, _venv_create_candidates(state_dir))
     result = subprocess.run(
         [candidates[0], "-m", "venv", str(venv_dir)],
         capture_output=True,
@@ -277,10 +277,9 @@ def _ensure_script_env(state_dir: Path) -> Path:
         raise RuntimeError(
             "Could not create the script environment (tried: "
             + ", ".join(candidates)
-            + f"). Last error: {result.stderr.strip()}.{download_error} If this machine has no "
-            "system Python installed, install Python 3 from python.org -- the "
-            '"Add python.exe to PATH" checkbox doesn\'t need to be checked, the '
-            '"py" launcher it also installs is enough -- then try again.'
+            + f"). Last error: {result.stderr.strip()}. Choose a Python in Settings > "
+            "Capabilities, or download coscribe's own there; with none on this computer, "
+            "install Python 3 from python.org and choose it."
         )
     seed_result = subprocess.run(
         [str(venv_python(venv_dir)), "-m", "pip", "install", *_BASELINE_PACKAGES],
@@ -291,6 +290,8 @@ def _ensure_script_env(state_dir: Path) -> Path:
         timeout=_SETUP_TIMEOUT,
     )
     if seed_result.returncode != 0:
+        # Otherwise the next run would find the venv and use it without these packages.
+        shutil.rmtree(venv_dir, ignore_errors=True)
         raise RuntimeError(
             f"Could not install the default script packages: {seed_result.stderr.strip()}"
         )
@@ -389,7 +390,7 @@ def resolve_python_command(command: str, state_dir: Path | None) -> str:
     or finds the Windows Store stub that exits at once, which showed up as
     "Connection closed" with nothing to act on. A name that already runs is
     left alone; only a broken one is replaced, by the interpreter chosen in
-    Settings > Environment if it works, else the first one detected."""
+    Settings > Capabilities if it works, else the first one detected."""
     if command.lower().removesuffix(".exe") not in _PYTHON_COMMANDS:
         return command
     found = shutil.which(command)

@@ -24,6 +24,38 @@ test("dropping a file onto the composer attaches it like the file picker does", 
   await expect(page.getByText("dropped.txt")).toBeVisible();
 });
 
+test("a file dragged anywhere over the window shows a drop frame, and a drop beside the message box attaches it", async ({ page }) => {
+  await page.goto(freshThreadPath("window-drop"));
+  await waitForConnected(page);
+
+  const drag = (type: string, selector: string) =>
+    page.locator(selector).first().evaluate(
+      (el, kind) => {
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(new File(["from the window"], "window-dropped.txt", { type: "text/plain" }));
+        el.dispatchEvent(new DragEvent(kind, { bubbles: true, cancelable: true, dataTransfer }));
+      },
+      type,
+    );
+
+  await drag("dragenter", "body");
+  await expect(page.getByTestId("drop-overlay")).toBeVisible();
+  await drag("drop", "body");
+  await expect(page.getByTestId("drop-overlay")).toHaveCount(0);
+  await expect(page.getByText("window-dropped.txt")).toBeVisible();
+});
+
+test("a drag that carries no file shows no drop frame", async ({ page }) => {
+  await page.goto(freshThreadPath("window-drag-text"));
+  await waitForConnected(page);
+  await page.locator("body").evaluate((el) => {
+    const dataTransfer = new DataTransfer();
+    dataTransfer.setData("text/plain", "just text");
+    el.dispatchEvent(new DragEvent("dragenter", { bubbles: true, cancelable: true, dataTransfer }));
+  });
+  await expect(page.getByTestId("drop-overlay")).toHaveCount(0);
+});
+
 test("pasting a large block of text collapses into a removable pill instead of filling the textarea", async ({
   page,
 }) => {

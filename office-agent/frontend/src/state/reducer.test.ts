@@ -64,6 +64,7 @@ describe("state", () => {
     folders: ["C:\\work", "C:\\other"],
     connector_tools: ["gmail_send"],
     workspace_explicit: true,
+    environment: "env_1",
   };
 
   it("replaces every thread setting at once", () => {
@@ -80,6 +81,7 @@ describe("state", () => {
       workspaceRoot: "C:\\work",
       workspaceExplicit: true,
       folders: ["C:\\work", "C:\\other"],
+      environment: "env_1",
     });
     expect(next.connectorTools).toEqual(new Set(["gmail_send"]));
   });

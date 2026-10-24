@@ -553,6 +553,17 @@
             ],
             "title": "Day Of Month"
           },
+          "environment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Environment"
+          },
           "from_draft": {
             "anyOf": [
               {
@@ -637,17 +648,6 @@
               }
             ],
             "title": "Workflow"
-          },
-          "workspace": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Workspace"
           }
         },
         "required": [
@@ -1240,7 +1240,7 @@
     },
     "/api/artifacts/{artifact}/open": {
       "post": {
-        "description": "The conversation to show the artifact in and its path there: the one that made it\nwhile it exists, else a new one working in the folders that one did.",
+        "description": "The conversation to show the artifact in and its path there: the one that made it\nwhile it exists, else a new one in an environment with the folders that one had.",
         "operationId": "open_artifact_api_artifacts__artifact__open_post",
         "parameters": [
           {
@@ -1644,6 +1644,79 @@
         "summary": "Browse Dirs"
       }
     },
+    "/api/capabilities": {
+      "get": {
+        "operationId": "get_capabilities_api_capabilities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Get Capabilities Api Capabilities Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Capabilities"
+      }
+    },
+    "/api/capabilities/{name}": {
+      "put": {
+        "operationId": "put_capability_api_capabilities__name__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Put Capability Api Capabilities  Name  Put"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Capability"
+      }
+    },
     "/api/code": {
       "get": {
         "description": "The code module's download, and whether Codex can use the model\na chat's code task would run on (the chat's own, unless one is set).",
@@ -1757,6 +1830,68 @@
           }
         },
         "summary": "Put Code Permissions"
+      }
+    },
+    "/api/command-sandbox": {
+      "delete": {
+        "operationId": "remove_sandbox_api_command_sandbox_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Remove Sandbox Api Command Sandbox Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Remove Sandbox"
+      },
+      "get": {
+        "operationId": "get_sandbox_api_command_sandbox_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Get Sandbox Api Command Sandbox Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Sandbox"
+      },
+      "post": {
+        "operationId": "set_up_sandbox_api_command_sandbox_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Set Up Sandbox Api Command Sandbox Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Set Up Sandbox"
       }
     },
     "/api/commands": {
@@ -2036,6 +2171,152 @@
           }
         },
         "summary": "Update Design System"
+      }
+    },
+    "/api/environments": {
+      "get": {
+        "operationId": "list_environments_api_environments_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Environments Api Environments Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Environments"
+      },
+      "post": {
+        "operationId": "create_environment_api_environments_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Create Environment Api Environments Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Environment"
+      }
+    },
+    "/api/environments/{env_id}": {
+      "delete": {
+        "operationId": "delete_environment_api_environments__env_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "env_id",
+            "required": true,
+            "schema": {
+              "title": "Env Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Delete Environment Api Environments  Env Id  Delete"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Environment"
+      },
+      "put": {
+        "operationId": "update_environment_api_environments__env_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "env_id",
+            "required": true,
+            "schema": {
+              "title": "Env Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Update Environment Api Environments  Env Id  Put"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Environment"
       }
     },
     "/api/mcp/catalog": {
@@ -3668,7 +3949,7 @@
     },
     "/api/script-env/interpreter": {
       "get": {
-        "description": "What ensure_script_env would try, in order, right now -- the\nEnvironment tab's manual override (if any) is already reflected\nfirst in `candidates` since the override changes what\nauto-detection itself returns; `auto_detected` is the plain\nfallback list on its own, filtered to candidates that actually\nrun (see working_interpreters' docstring for why sys.executable\nspecifically needs this on a packaged build) so the UI never\noffers a chip that's guaranteed to fail validation if clicked.",
+        "description": "The chosen interpreter (None: the first one found), every Python 3 on this computer\nthat runs, and coscribe's own Python on offer (#586).",
         "operationId": "get_script_env_interpreter_api_script_env_interpreter_get",
         "responses": {
           "200": {
@@ -3723,6 +4004,27 @@
           }
         },
         "summary": "Set Script Env Interpreter"
+      }
+    },
+    "/api/script-env/own-python": {
+      "post": {
+        "description": "Downloads coscribe's own Python (about 30 MB) and chooses it; only ever on request.",
+        "operationId": "download_own_python_api_script_env_own_python_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Download Own Python Api Script Env Own Python Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Download Own Python"
       }
     },
     "/api/script-env/packages": {
@@ -5220,96 +5522,6 @@
         "summary": "Docx Original"
       }
     },
-    "/api/threads/{thread_id}/environment": {
-      "get": {
-        "operationId": "get_session_environment_api_threads__thread_id__environment_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "thread_id",
-            "required": true,
-            "schema": {
-              "title": "Thread Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Session Environment Api Threads  Thread Id  Environment Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Session Environment"
-      },
-      "put": {
-        "operationId": "put_session_environment_api_threads__thread_id__environment_put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "thread_id",
-            "required": true,
-            "schema": {
-              "title": "Thread Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "additionalProperties": true,
-                "title": "Payload",
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "title": "Response Put Session Environment Api Threads  Thread Id  Environment Put"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Put Session Environment"
-      }
-    },
     "/api/threads/{thread_id}/files/download": {
       "get": {
         "operationId": "download_thread_file_api_threads__thread_id__files_download_get",
@@ -5403,96 +5615,6 @@
         "summary": "Open Thread File"
       }
     },
-    "/api/threads/{thread_id}/folders": {
-      "get": {
-        "operationId": "get_thread_folders_api_threads__thread_id__folders_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "thread_id",
-            "required": true,
-            "schema": {
-              "title": "Thread Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Thread Folders Api Threads  Thread Id  Folders Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Thread Folders"
-      },
-      "put": {
-        "operationId": "put_thread_folders_api_threads__thread_id__folders_put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "thread_id",
-            "required": true,
-            "schema": {
-              "title": "Thread Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "additionalProperties": true,
-                "title": "Payload",
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "title": "Response Put Thread Folders Api Threads  Thread Id  Folders Put"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Put Thread Folders"
-      }
-    },
     "/api/threads/{thread_id}/meta": {
       "post": {
         "operationId": "patch_thread_meta_api_threads__thread_id__meta_post",
@@ -5540,96 +5662,6 @@
         "summary": "Patch Thread Meta"
       }
     },
-    "/api/threads/{thread_id}/network": {
-      "get": {
-        "operationId": "get_thread_network_api_threads__thread_id__network_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "thread_id",
-            "required": true,
-            "schema": {
-              "title": "Thread Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Thread Network Api Threads  Thread Id  Network Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Thread Network"
-      },
-      "put": {
-        "operationId": "put_thread_network_api_threads__thread_id__network_put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "thread_id",
-            "required": true,
-            "schema": {
-              "title": "Thread Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "additionalProperties": true,
-                "title": "Payload",
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "title": "Response Put Thread Network Api Threads  Thread Id  Network Put"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Put Thread Network"
-      }
-    },
     "/api/threads/{thread_id}/rename": {
       "post": {
         "operationId": "rename_thread_api_threads__thread_id__rename_post",
@@ -5675,102 +5707,6 @@
           }
         },
         "summary": "Rename Thread"
-      }
-    },
-    "/api/threads/{thread_id}/scripts": {
-      "get": {
-        "operationId": "get_thread_scripts_api_threads__thread_id__scripts_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "thread_id",
-            "required": true,
-            "schema": {
-              "title": "Thread Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "boolean"
-                  },
-                  "title": "Response Get Thread Scripts Api Threads  Thread Id  Scripts Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Thread Scripts"
-      },
-      "put": {
-        "operationId": "put_thread_scripts_api_threads__thread_id__scripts_put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "thread_id",
-            "required": true,
-            "schema": {
-              "title": "Thread Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "additionalProperties": true,
-                "title": "Payload",
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "boolean"
-                  },
-                  "title": "Response Put Thread Scripts Api Threads  Thread Id  Scripts Put",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Put Thread Scripts"
       }
     },
     "/api/threads/{thread_id}/slides": {

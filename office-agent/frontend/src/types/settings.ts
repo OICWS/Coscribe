@@ -317,14 +317,24 @@ export interface ScriptEnvInstallResult {
   error: string | null;
 }
 
+export interface FoundPython {
+  path: string;
+  version: string;
+}
+
 export interface ScriptEnvInterpreterInfo {
-  /** The user's manually-chosen interpreter path, or null if they haven't
-   * set one -- auto-detection (`auto_detected`) is what's actually used. */
+  /** The interpreter the person chose, or null: the first one found is used. */
   configured: string | null;
-  /** What auto-detection alone would try, in order (sys.executable first,
-   * then py/python3/python found on PATH) -- shown so the UI can tell
-   * "found automatically" apart from "your manual choice". */
-  auto_detected: string[];
+  /** Every Python 3 on this computer that runs, coscribe's own first once downloaded. */
+  found: FoundPython[];
+  /** coscribe's own Python, downloaded only when the person asks for it. */
+  own_python: { available: boolean; version: string; downloaded: boolean };
+}
+
+export interface OwnPythonDownload {
+  success: boolean;
+  error: string | null;
+  path?: string;
 }
 
 // ---------------------------------------------------------------------
@@ -388,8 +398,8 @@ export interface ScheduledTask {
   runs: ScheduledRun[];
   /** Set when the task runs fixed steps instead of `prompt`. */
   workflow: Workflow | null;
-  /** The folder runs work in; null is the app's default workspace. */
-  workspace?: string | null;
+  /** The id of the environment runs use ("default" for Default). */
+  environment?: string;
   /** Ids of the conversation drafts saved into this task. */
   drafts?: string[];
   /** The conversation the task was saved from. */
@@ -412,7 +422,7 @@ export interface CreateScheduledTaskPayload {
   approval_mode?: ApprovalMode;
   notes_enabled?: boolean;
   workflow?: Workflow | null;
-  workspace?: string | null;
+  environment?: string;
   /** The conversation draft this task is saved from, and that conversation. */
   from_draft?: string;
   from_thread?: string;
@@ -508,7 +518,7 @@ export interface DesignSystem {
   updated_at: string;
 }
 
-/** Whether this machine holds a script to its folders (Edit environment > Scripts). */
+/** How far an environment's conversations may reach the internet. */
 export interface NetworkAccess {
   mode: "none" | "limited" | "full";
   /** For limited: a domain covers its subdomains; "*" is every site. */
@@ -516,14 +526,51 @@ export interface NetworkAccess {
 }
 
 export interface ScriptIsolation {
-  state: "passed" | "failed" | "untested" | "unsupported";
+  state: "passed" | "failed" | "untested" | "unsupported" | "setup_failed";
   /** The check that differed, when failed. */
   failed: string;
   detail: string;
 }
 
-/** What one conversation is given: variables the model can read, and the names of the secrets it may use. */
-export interface SessionEnvironment {
-  variables: Record<string, string>;
+/** A named environment: where its conversations work and what they may reach. */
+export interface EnvironmentFields {
+  name: string;
+  /** The main folder first; none means the default workspace. */
+  folders: string[];
+  network: NetworkAccess;
+  /** The secrets its conversations may use in a web request. */
   secrets: string[];
+  /** Plain values the model can read; scripts get them as environment variables. */
+  variables: Record<string, string>;
+  /** Narrow Settings › Capabilities: off here refuses scripts or commands in this environment. */
+  scripts: boolean;
+  commands: boolean;
+  /** Run scripts without isolation where the isolation check failed. */
+  unisolated: boolean;
+}
+
+export interface Environment extends EnvironmentFields {
+  id: string;
+  /** How many conversations chose it; Default's count leaves out the ones that never chose. */
+  used_by: number;
+  /** How many scheduled tasks run in it. */
+  tasks: number;
+}
+
+/** What coscribe may run on this computer (Settings › Capabilities). */
+export interface Capabilities {
+  scripts: boolean;
+  commands: boolean;
+  /** The second confirmation: commands may run as the person where the sandbox isn't set up. */
+  commands_without_sandbox: boolean;
+  /** A sandboxed command can't read the person's private folders (#601). */
+  commands_hide_private_folders: boolean;
+}
+
+/** Codex's Windows sandbox for commands (decision 0022). */
+export interface CommandSandbox {
+  state: "ready" | "off" | "failed" | "unsupported";
+  detail: string;
+  /** Set when removing it failed. */
+  error?: string;
 }
