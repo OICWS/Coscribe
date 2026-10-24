@@ -4,7 +4,8 @@ function megabytes(bytes: number): string {
   return `${Math.round(bytes / 1_000_000)} MB`;
 }
 
-/** Whether Codex is downloaded, with Download or Remove. */
+/** Whether Codex is downloaded, with Download or Remove, and any older version still on disk
+ * (Remove takes every version). */
 export function CodeDownload({ code, compact = false }: { code: ReturnType<typeof useCodeStatus>; compact?: boolean }) {
   const { status, error, preparing } = code;
   if (!status) return null;
@@ -25,6 +26,16 @@ export function CodeDownload({ code, compact = false }: { code: ReturnType<typeo
   let action: string | null = null;
   if (!status.installed && status.size !== null) action = "Download now";
   else if (status.installed && !compact) action = "Remove";
+  const older = status.older ?? [];
+  const olderSize = older.reduce((sum, old) => sum + old.size, 0);
+  const olderText =
+    older.length === 0
+      ? null
+      : `An older Codex (${older.map((old) => old.version).join(", ")}) is still on disk, ${megabytes(olderSize)}${
+          older.some((old) => old.sandbox)
+            ? ": the command sandbox was set up with it, so removing it turns the sandbox off until it is set up again"
+            : ""
+        }.`;
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-3">
@@ -40,6 +51,21 @@ export function CodeDownload({ code, compact = false }: { code: ReturnType<typeo
           </button>
         )}
       </div>
+      {olderText && !compact && (
+        <div className="flex items-center gap-3">
+          <span className="min-w-0 flex-1 text-sm text-[var(--muted)]">{olderText}</span>
+          {!status.installed && (
+            <button
+              type="button"
+              disabled={preparing}
+              className="shrink-0 rounded-md border border-[var(--border)] px-3 py-1 text-sm hover:bg-[var(--card-bg)] disabled:opacity-50"
+              onClick={code.remove}
+            >
+              Remove
+            </button>
+          )}
+        </div>
+      )}
       {preparing && status.progress !== null && (
         <div className="h-1 overflow-hidden rounded-full bg-[var(--border)]">
           <div className="h-full bg-[var(--primary)]" style={{ width: `${Math.round(status.progress * 100)}%` }} />

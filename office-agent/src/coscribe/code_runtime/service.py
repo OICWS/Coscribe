@@ -16,7 +16,14 @@ from ..config import Settings
 from ..runtime import load_custom_providers
 from ..tools import ensure_script_env
 from ._pins import CODEX_VERSION
-from .install import codex_executable, ensure_codex, installed, installed_size, remove_codex
+from .install import (
+    codex_executable,
+    ensure_codex,
+    installed,
+    installed_size,
+    older_versions,
+    remove_codex,
+)
 from .launch import CodexHost, LaunchSpec, launch_spec, script_env_bin
 
 
@@ -80,10 +87,14 @@ class CodeService:
             "preparing": self._ready.locked(),
             "progress": None if progress is None else progress[0] / max(progress[1], 1),
             "size": installed_size(),
+            "older": [
+                {key: old[key] for key in ("version", "size", "sandbox")}
+                for old in older_versions(self.state_dir)
+            ],
         }
 
     async def remove(self) -> bool:
-        """Delete the downloaded Codex; False while it's working."""
+        """Delete the downloaded Codex, older versions too; False while it's working."""
         async with self._ready:
             await self.host.shutdown()
             if self.host.in_use:

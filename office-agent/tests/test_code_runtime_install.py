@@ -141,6 +141,33 @@ def test_only_the_two_needed_members_are_downloaded(
     assert _leftovers(tmp_path) == [install.CODEX_VERSION]
 
 
+def _old_version(state_dir: Path, version: str) -> Path:
+    folder = state_dir / "codex" / version / "bin"
+    folder.mkdir(parents=True)
+    (folder / f"codex{EXE}").write_bytes(b"old" * 100)
+    return folder / f"codex{EXE}"
+
+
+def test_a_new_version_clears_the_ones_before_it_but_the_sandboxs(
+    monkeypatch: pytest.MonkeyPatch, pinned: dict[str, Any], ranged: _Server, tmp_path: Path
+) -> None:
+    _old_version(tmp_path, "0.150.0")
+    sandboxed = _old_version(tmp_path, "0.160.0")
+    (tmp_path / "codex" / "home").mkdir()
+    monkeypatch.setattr(install, "sandbox_codex", lambda state_dir: sandboxed)
+    assert [old["version"] for old in install.older_versions(tmp_path)] == ["0.150.0", "0.160.0"]
+
+    ensure_codex(tmp_path, ranged.url)
+
+    # The command sandbox was set up with 0.160.0, so it stays until the person removes it.
+    assert install.older_versions(tmp_path) == [
+        {"version": "0.160.0", "size": 300, "sandbox": True, "path": sandboxed.parents[1]}
+    ]
+    install.remove_codex(tmp_path)
+    # Every version goes; Codex's own home, with its threads, stays.
+    assert _leftovers(tmp_path) == ["home"]
+
+
 def test_a_host_without_ranges_gets_the_whole_wheel_checked(
     pinned: dict[str, Any], unranged: _Server, tmp_path: Path
 ) -> None:
@@ -267,6 +294,7 @@ async def test_the_service_reports_downloads_and_removes_codex(
 
     assert (before["installed"], before["preparing"], before["progress"]) == (False, False, None)
     assert before["size"] == len(CODEX) + len(RG)
+    assert before["older"] == after["older"] == []
     assert after["installed"] is True
     assert (removed_while_working, removed) == (False, True)
     assert not install.installed(tmp_path)
