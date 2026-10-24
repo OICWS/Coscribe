@@ -31,6 +31,7 @@ from coscribe.tools.exec import (
     sandbox_setup_argv,
     sandbox_uninstall_argv,
     script_env,
+    start_command,
     warm_up_sandbox,
 )
 
@@ -342,6 +343,46 @@ def _icacls(*paths: Path) -> str:
         subprocess.run(["icacls", str(p)], capture_output=True, text=True, check=False).stdout
         for p in paths
     )
+
+
+@real
+async def test_a_read_only_folder_and_a_program_inside_private_folders_stay_usable(
+    tmp_path: Path, sandboxed_state: Path
+) -> None:
+    # The grants coscribe adds: a read-only folder in Documents and a program on PATH in
+    # LOCALAPPDATA, both inside folders the profile denies.
+    tag = uuid.uuid4().hex
+    base = Path(os.environ["USERPROFILE"]) / "Documents" / f"coscribe-{tag}"
+    workspace, reference = base / "workspace", base / "reference"
+    workspace.mkdir(parents=True)
+    reference.mkdir()
+    (reference / "r.txt").write_text("REF-READ")
+    program = Path(os.environ["LOCALAPPDATA"]) / f"coscribe-program-{tag}"
+    program.mkdir()
+    (program / "coscribe-hello.cmd").write_text("@echo HELLO-PROGRAM\r\n")
+    Capabilities(sandboxed_state).set("commands", True)
+    env = {**os.environ, "PATH": f"{program};{os.environ['PATH']}"}
+    folders = {"writable": [workspace], "readable": [reference]}
+
+    try:
+        proc = await start_command(
+            sandboxed_state, "t-grants", workspace, folders,
+            f'whoami & type "{reference / "r.txt"}" & coscribe-hello', env,
+        )  # fmt: skip
+        out, _ = await proc.communicate()
+        output = out.decode("utf-8", errors="replace")
+        assert "codexsandbox" in output.lower(), output
+        assert "REF-READ" in output, output + _icacls(base, reference)
+        assert "HELLO-PROGRAM" in output, output + _icacls(program)
+        # The deny entries name the sandbox's group, which the person is not in.
+        groups = subprocess.run(
+            ["whoami", "/groups"], capture_output=True, text=True, check=False
+        ).stdout
+        assert "codexsandboxusers" not in groups.lower(), groups
+        assert (reference / "r.txt").read_text() == "REF-READ"
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
+        shutil.rmtree(program, ignore_errors=True)
 
 
 # Last in the file: it removes the sandbox the tests above share.

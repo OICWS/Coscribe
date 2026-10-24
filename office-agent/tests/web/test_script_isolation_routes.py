@@ -90,12 +90,26 @@ def test_showing_private_folders_again_takes_the_sandboxs_entries_away(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     released: list[Path] = []
-    monkeypatch.setattr(environment_routes, "release_private_folders", released.append)
+    left = [["C:/Users/x/Documents"], []]
+
+    def release(state_dir: Path) -> list[str]:
+        released.append(state_dir)
+        return left.pop(0)
+
+    monkeypatch.setattr(environment_routes, "release_private_folders", release)
     with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
         client.put("/api/capabilities/commands_hide_private_folders", json={"on": True})
         assert released == []
-        client.put("/api/capabilities/commands_hide_private_folders", json={"on": False})
-    assert released == [tmp_path / "state"]
+        failed = client.put("/api/capabilities/commands_hide_private_folders", json={"on": False})
+        # Off already, but what was left is tried again.
+        retried = client.put("/api/capabilities/commands_hide_private_folders", json={"on": False})
+    assert failed.status_code == 500 and "C:/Users/x/Documents" in failed.json()["error"]
+    assert retried.status_code == 200
+    assert released == [tmp_path / "state"] * 2
+    entries = AuditLog(tmp_path / "state").read_all()
+    assert [e.arguments for e in entries] == [
+        {"on": False, "not_cleared": ["C:/Users/x/Documents"]}
+    ]
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="the answer off Windows")

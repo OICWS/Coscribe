@@ -5,8 +5,9 @@ profile. A "deny" entry in the permission profile makes Codex put a deny-read en
 on a folder, and that one holds: an entry coscribe adds itself is reset on the profile's own
 folders at each run. Codex grants nothing to a "read" folder inside a denied one, so coscribe
 grants its users read on those (an environment's read-only folders, the batch files, programs on
-PATH) and keeps a ledger of them. Codex leaves some of its deny entries behind when they leave the
-profile, so turning this off, or removing the sandbox, takes them away here."""
+PATH). Codex leaves some of its deny entries behind when they leave the profile, so a ledger
+holds every folder denied or granted, written before the change, and turning this off or removing
+the sandbox takes them away from what it lists, checking that they are gone."""
 
 from __future__ import annotations
 
@@ -20,7 +21,7 @@ from pathlib import Path
 
 # The local group `codex sandbox setup` creates for its sandbox users.
 SANDBOX_GROUP = "CodexSandboxUsers"
-_LEDGER = Path("command-sandbox") / "read-grants.json"
+_LEDGER = Path("command-sandbox") / "private-folders.json"
 _ICACLS_SECONDS = 600
 _lock = threading.Lock()
 
@@ -62,9 +63,17 @@ def _known_folder(name: str) -> Path | None:
         ctypes.windll.ole32.CoTaskMemFree(out)
 
 
+# Where credentials usually are; the profile's top only hides its own files, not its folders.
+_CREDENTIAL_FOLDERS = (".ssh", ".aws", ".azure", ".kube", ".docker", ".gnupg")
+
+
+class GrantFailed(OSError):
+    """The sandbox's users could not be let read a folder a command needs."""
+
+
 def private_folders() -> list[Path]:
     """The folders a sandboxed command may not read while this is on: the person's documents,
-    OneDrive and AppData. Never a drive's root, which Codex refuses to deny."""
+    OneDrive, AppData and credential folders. Never a drive's root, which Codex refuses."""
     if sys.platform != "win32":
         return []
     found: list[Path] = []
@@ -74,6 +83,8 @@ def private_folders() -> list[Path]:
     for var in ("OneDrive", "OneDriveConsumer", "OneDriveCommercial", "APPDATA", "LOCALAPPDATA"):
         if os.environ.get(var):
             found.append(Path(os.environ[var]))
+    if profile:
+        found += [Path(profile, name) for name in _CREDENTIAL_FOLDERS]
     unique: dict[str, Path] = {}
     for folder in found:
         if folder.is_dir() and folder.parent != folder:
@@ -90,55 +101,93 @@ def inside_any(path: Path, folders: Iterable[Path]) -> bool:
     return False
 
 
-def _ledger(state_dir: Path) -> list[str]:
+def _key(path: str | Path) -> str:
+    return os.path.normcase(str(path))
+
+
+def _ledger(state_dir: Path) -> dict[str, list[str]]:
     try:
         raw = json.loads((Path(state_dir) / _LEDGER).read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return []
-    return [str(p) for p in raw] if isinstance(raw, list) else []
+        raw = {}
+    raw = raw if isinstance(raw, dict) else {}
+    return {kind: [str(p) for p in raw.get(kind, [])] for kind in ("granted", "denied")}
 
 
-def _write_ledger(state_dir: Path, paths: list[str]) -> None:
+def _write_ledger(state_dir: Path, ledger: dict[str, list[str]]) -> None:
+    # Replaced whole: a torn ledger would forget entries that are still on the folders.
     path = Path(state_dir) / _LEDGER
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(paths), encoding="utf-8")
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(ledger), encoding="utf-8")
+    os.replace(tmp, path)
 
 
-def _icacls(*args: str) -> bool:
+def _icacls(*args: str) -> str | None:
+    """icacls's output, or None when it failed."""
     try:
         done = subprocess.run(
-            ["icacls", *args], capture_output=True, timeout=_ICACLS_SECONDS, check=False
+            ["icacls", *args], capture_output=True, text=True, timeout=_ICACLS_SECONDS, check=False
         )
     except (OSError, subprocess.TimeoutExpired):
-        return False
-    return done.returncode == 0
+        return None
+    return done.stdout if done.returncode == 0 else None
 
 
-def grant_reads(state_dir: Path, folders: Iterable[Path], hidden: Iterable[Path]) -> None:
-    """Lets the sandbox's users read each of `folders` that lies inside a `hidden` one. Once per
-    folder: the grant is inherited by what is made in it later."""
-    hidden = list(hidden)
+def prepare_folders(
+    state_dir: Path, denied: Iterable[Path], given: Iterable[Path], readable: Iterable[Path]
+) -> None:
+    """Before a command whose profile denies `denied`: records them, takes a deny Codex left on a
+    folder now `given` to the environment, and lets the sandbox's users read each of `readable`
+    inside a denied folder. Raises GrantFailed when one can't be granted."""
+    denied = list(denied)
     with _lock:
-        granted = _ledger(state_dir)
-        known = {os.path.normcase(p) for p in granted}
-        for folder in folders:
-            if not folder.is_dir() or not inside_any(folder, hidden):
-                continue
-            key = os.path.normcase(str(folder))
-            if key in known:
-                continue
-            if _icacls(str(folder), "/grant", f"{SANDBOX_GROUP}:(OI)(CI)(RX)"):
-                granted.append(str(folder))
-                known.add(key)
-        _write_ledger(state_dir, granted)
+        ledger = _ledger(state_dir)
+        now = {_key(d) for d in denied}
+        given = list(given)
+        # Codex's explicit deny would beat its explicit grant on a folder it now writes.
+        for before in ledger["denied"]:
+            if _key(before) not in now and inside_any(Path(before), given):
+                _icacls(before, "/remove:d", SANDBOX_GROUP)
+        known_denied = {_key(p) for p in ledger["denied"]}
+        ledger["denied"] += [str(d) for d in denied if _key(d) not in known_denied]
+        known = {_key(p) for p in ledger["granted"]}
+        wanted = [
+            f for f in readable if f.is_dir() and inside_any(f, denied) and _key(f) not in known
+        ]
+        # Written first: a grant cut short still leaves entries to take away.
+        ledger["granted"] += [str(f) for f in wanted]
+        _write_ledger(state_dir, ledger)
+        for folder in wanted:
+            if _icacls(str(folder), "/grant", f"{SANDBOX_GROUP}:(OI)(CI)(RX)") is None:
+                raise GrantFailed(
+                    f"Couldn't let the command sandbox read {folder}, which the command needs "
+                    "and which is inside a private folder."
+                )
 
 
-def release_private_folders(state_dir: Path) -> None:
-    """Takes away the grants in the ledger and every deny entry for the sandbox's users on the
-    private folders, so they read as before."""
+def _still_denied(output: str) -> bool:
+    return any(SANDBOX_GROUP.lower() in line.lower() and "(DENY)" in line and "(I)" not in line
+               for line in output.splitlines())  # fmt: skip
+
+
+def release_private_folders(state_dir: Path) -> list[str]:
+    """Takes away the grants and the sandbox users' deny entries on every folder in the ledger
+    and on today's private folders, so they read as before. The folders it couldn't clear stay
+    in the ledger and are returned."""
     with _lock:
-        for granted in _ledger(state_dir):
-            _icacls(granted, "/remove:g", SANDBOX_GROUP)
-        for folder in private_folders():
-            _icacls(str(folder), "/remove:d", SANDBOX_GROUP)
-        _write_ledger(state_dir, [])
+        ledger = _ledger(state_dir)
+        left: dict[str, list[str]] = {"granted": [], "denied": []}
+        for granted in ledger["granted"]:
+            if Path(granted).exists() and _icacls(granted, "/remove:g", SANDBOX_GROUP) is None:
+                left["granted"].append(granted)
+        folders = {_key(p): p for p in [*ledger["denied"], *map(str, private_folders())]}
+        for folder in folders.values():
+            if not Path(folder).exists():
+                continue
+            _icacls(folder, "/remove:d", SANDBOX_GROUP)
+            after = _icacls(folder)
+            if after is None or _still_denied(after):
+                left["denied"].append(folder)
+        _write_ledger(state_dir, left)
+    return [*left["granted"], *left["denied"]]

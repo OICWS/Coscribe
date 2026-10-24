@@ -11,7 +11,7 @@ from collections import Counter
 from pathlib import Path
 
 from ...runtime import NetworkGuard
-from ._private_folders import private_folders
+from ._private_folders import GrantFailed, private_folders
 from .capabilities import Capabilities, CapabilityOff, require_capability
 from .command_sandbox import sandboxed_command
 
@@ -50,16 +50,23 @@ async def start_command(
     online = NetworkGuard(state, thread_id).scripts_online()
     hide = Capabilities(state).get()["commands_hide_private_folders"]
     programs = [Path(p) for p in env.get("PATH", "").split(os.pathsep) if p]
-    sandboxed = sandboxed_command(
-        state,
-        command,
-        root,
-        folders["writable"],
-        folders["readable"],
-        online,
-        hidden=private_folders() if hide else [],
-        programs=programs,
-    )
+    try:
+        sandboxed = await asyncio.to_thread(
+            sandboxed_command,
+            state,
+            command,
+            root,
+            folders["writable"],
+            folders["readable"],
+            online,
+            hidden=private_folders() if hide else [],
+            programs=programs,
+        )
+    except GrantFailed as exc:
+        raise CapabilityOff(
+            f'{exc} Tell the person; they can turn off "Hide your private folders from '
+            'commands" in Settings › Capabilities, or move the folder.'
+        ) from exc
     if sandboxed is None and assumed:
         raise CapabilityOff(
             "The command sandbox was removed after this command was approved, so it did not "

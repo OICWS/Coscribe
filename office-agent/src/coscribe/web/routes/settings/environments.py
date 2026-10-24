@@ -73,20 +73,30 @@ def _capability_routes(router: APIRouter, state: AppState) -> None:
         if name not in current:
             return JSONResponse({"error": f"No capability {name!r}"}, status_code=404)
         on = payload.get("on") is True
-        if current[name] != on:
+        changed = current[name] != on
+        if changed:
             current = capabilities.set(name, on)
-            if name == "commands_hide_private_folders" and not on:
-                # Codex leaves some of its deny entries behind (#601).
-                await asyncio.to_thread(release_private_folders, state_dir)
+        left: list[str] = []
+        if name == "commands_hide_private_folders" and not on:
+            # Codex leaves some of its deny entries behind (#601); also when already off, so
+            # turning it off again retries what was left.
+            left = await asyncio.to_thread(release_private_folders, state_dir)
+        if changed or left:
             # What coscribe may run is a security setting: kept like an approval.
             record_decision(
                 AuditLog(state_dir),
                 thread_id="",
                 tool_name=f"capability_{name}",
-                arguments={"on": on},
+                arguments={"on": on, **({"not_cleared": left} if left else {})},
                 decision="approve" if on else "reject",
                 reason="human",
             )
+        if left:
+            return JSONResponse(
+                {"error": "Turned off, but these folders still hide from commands: "
+                 + ", ".join(left) + ". Turning it off again retries."},
+                status_code=500,
+            )  # fmt: skip
         return current
 
     router.add_api_route("/api/capabilities", get_capabilities, methods=["GET"])
@@ -149,10 +159,13 @@ def _sandbox_routes(router: APIRouter, state: AppState) -> None:
 
     async def remove_sandbox() -> dict[str, str]:
         codex = sandbox_codex(state_dir)
+        # First, while the group still exists so its entries can be named; also when this
+        # Codex is gone, since the entries outlive it.
+        left = await asyncio.to_thread(release_private_folders, state_dir)
         error = ""
-        if codex is not None:
-            # While the group still exists, so its entries can be named.
-            await asyncio.to_thread(release_private_folders, state_dir)
+        if left:
+            error = "Some folders still hide from commands: " + ", ".join(left)
+        elif codex is not None:
             error = await asyncio.to_thread(_run_codex, sandbox_uninstall_argv(codex), state_dir)
         record_sandbox_setup(state_dir, codex if error else None)
         audit("uninstall", error)

@@ -127,14 +127,18 @@ async def test_a_command_approved_for_the_sandbox_does_not_run_once_it_is_gone(
 
 @pytest.fixture
 def icacls(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, ...]]:
+    """Records icacls calls; a call on a path containing "fails" fails."""
     calls: list[tuple[str, ...]] = []
 
-    def fake(*args: str) -> bool:
+    def fake(*args: str) -> str | None:
         calls.append(args)
-        return True
+        return None if "fails" in args[0] else ""
 
     monkeypatch.setattr(private_folders_module, "_icacls", fake)
     return calls
+
+
+_GRANT = "CodexSandboxUsers:(OI)(CI)(RX)"
 
 
 @pytest.mark.usefixtures("on_windows")
@@ -172,41 +176,76 @@ def test_private_folders_are_denied_and_what_the_command_needs_in_them_is_let_ba
     assert f'"{temp.as_posix()}" = "write"' in section
     # Codex grants the folders it writes; the ones it only reads inside a denied folder are
     # coscribe's to grant, once each. The batch files are in the state dir, outside both.
-    grant = "CodexSandboxUsers:(OI)(CI)(RX)"
-    assert icacls == [(str(reference), "/grant", grant), (str(program), "/grant", grant)]
+    assert icacls == [(str(reference), "/grant", _GRANT), (str(program), "/grant", _GRANT)]
 
 
 @pytest.mark.usefixtures("on_windows")
-def test_a_private_folder_given_to_the_environment_is_not_denied(
+def test_a_private_folder_given_to_the_environment_is_not_denied_and_loses_an_old_deny(
     tmp_path: Path, icacls: list[tuple[str, ...]]
 ) -> None:
     record_sandbox_setup(tmp_path, _codex(tmp_path))
     documents = tmp_path / "Documents"
-    documents.mkdir()
+    (documents / "work").mkdir(parents=True)
+    sandboxed_command(
+        tmp_path, "dir", documents / "work", [documents / "work"], [], False, hidden=[documents]
+    )
+    icacls.clear()
 
-    argv, _ = sandboxed_command(
-        tmp_path, "dir", tmp_path, [tmp_path], [], False, hidden=[documents]
-    ) or ([], {})
+    sandboxed_command(tmp_path, "dir", documents, [documents], [], False, hidden=[documents])
 
     config = (sandbox_home(tmp_path) / "config.toml").read_text(encoding="utf-8")
-    assert '"deny"' not in config
-    assert icacls == []
+    assert config.count('"deny"') == 1  # the first profile's, kept with the profiles
+    # Codex's deny entry would beat its grant on the folder it now writes.
+    assert icacls == [(str(documents), "/remove:d", "CodexSandboxUsers")]
 
 
-def test_showing_them_again_takes_away_the_grants_and_every_deny_entry(
+def test_a_failed_grant_stops_the_command_and_stays_in_the_ledger(
+    tmp_path: Path, icacls: list[tuple[str, ...]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    documents = tmp_path / "Documents"
+    reference = documents / "fails"
+    reference.mkdir(parents=True)
+
+    with pytest.raises(private_folders_module.GrantFailed, match="fails"):
+        private_folders_module.prepare_folders(tmp_path, [documents], [], [reference])
+
+    monkeypatch.setattr(private_folders_module, "private_folders", lambda: [])
+    icacls.clear()
+    left = release_private_folders(tmp_path)
+    assert (str(reference), "/remove:g", "CodexSandboxUsers") in icacls
+    assert left == [str(reference)]
+
+
+def test_showing_them_again_takes_away_the_grants_and_denies_it_recorded(
     tmp_path: Path, icacls: list[tuple[str, ...]], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     documents, reference = tmp_path / "Documents", tmp_path / "Documents" / "reference"
     reference.mkdir(parents=True)
-    private_folders_module.grant_reads(tmp_path, [reference], [documents])
-    monkeypatch.setattr(private_folders_module, "private_folders", lambda: [documents])
+    private_folders_module.prepare_folders(tmp_path, [documents], [], [reference])
+    # Documents moved since: the recorded one is cleared all the same.
+    monkeypatch.setattr(private_folders_module, "private_folders", lambda: [])
     icacls.clear()
 
-    release_private_folders(tmp_path)
-    release_private_folders(tmp_path)
+    assert release_private_folders(tmp_path) == []
+    assert release_private_folders(tmp_path) == []
 
     assert icacls == [
         (str(reference), "/remove:g", "CodexSandboxUsers"),
         (str(documents), "/remove:d", "CodexSandboxUsers"),
-        (str(documents), "/remove:d", "CodexSandboxUsers"),
+        (str(documents),),
     ]
+
+
+def test_a_deny_that_icacls_still_lists_is_reported_and_kept(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    documents = tmp_path / "Documents"
+    documents.mkdir()
+    listing = f"{documents} HOST\\CodexSandboxUsers:(OI)(CI)(IO)(DENY)(R,GR)\n"
+    monkeypatch.setattr(
+        private_folders_module, "_icacls", lambda *a: listing if len(a) == 1 else ""
+    )
+    monkeypatch.setattr(private_folders_module, "private_folders", lambda: [documents])
+
+    assert release_private_folders(tmp_path) == [str(documents)]
+    assert release_private_folders(tmp_path) == [str(documents)]

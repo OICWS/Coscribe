@@ -25,7 +25,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from ._private_folders import grant_reads, inside_any
+from ._private_folders import inside_any, prepare_folders
 
 _RECORD = "command-sandbox.json"
 # Codex reads permission profiles from config.toml only; each set of folders gets its own,
@@ -142,7 +142,8 @@ def sandboxed_command(
 ) -> tuple[list[str], dict[str, str]] | None:
     """The argv and environment that run `command` through cmd in the sandbox, in `root`, able
     to write only `writable` and not to read `hidden`, less what it is given and the `programs`
-    folders (PATH); None while the sandbox is not set up."""
+    folders (PATH); None while the sandbox is not set up. Runs icacls the first time a folder
+    needs a grant, so call it off the event loop; raises GrantFailed when a grant fails."""
     codex = sandbox_codex(state_dir)
     if codex is None:
         return None
@@ -153,8 +154,8 @@ def sandboxed_command(
     given = [*writable, *readable, script.parent, temp]
     # A folder the environment was given stays readable even when it holds a private one.
     denied = [h for h in hidden if not any(inside_any(h, [g]) for g in given)]
-    if denied:
-        grant_reads(state_dir, [*readable, script.parent, *programs], denied)
+    if hidden:
+        prepare_folders(state_dir, denied, given, [*readable, script.parent, *programs])
     folders = {
         "writable": [*(str(p) for p in writable), str(temp)],
         "readable": [*(str(p) for p in readable), str(script.parent)],
