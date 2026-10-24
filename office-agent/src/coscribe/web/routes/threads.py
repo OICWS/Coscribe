@@ -268,6 +268,9 @@ def _delete_and_rename_routes(router: APIRouter, state: AppState) -> None:
 
     @router.delete("/api/threads/{thread_id}")
     async def delete_thread(thread_id: str) -> JSONResponse:
+        session = state.sessions.get(thread_id)
+        if session is not None:
+            await session.stop_and_wait()
         await adoption.adopt([thread_id])  # what it made stays
         existed = await _delete_thread_data(thread_id)
         if not existed:

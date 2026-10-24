@@ -72,7 +72,6 @@ interface MenuState {
 function ThreadMenu({
   menu,
   groups,
-  isCurrent,
   onClose,
   onRename,
   onEnvironment,
@@ -82,7 +81,6 @@ function ThreadMenu({
 }: {
   menu: MenuState;
   groups: string[];
-  isCurrent: boolean;
   onClose: () => void;
   onRename: () => void;
   onEnvironment: () => void;
@@ -205,17 +203,15 @@ function ThreadMenu({
       >
         <ArchiveIcon className="h-3.5 w-3.5" /> {menu.thread.archived ? "Unarchive" : "Archive"}
       </button>
-      {!isCurrent && (
-        <button
-          type="button"
-          role="menuitem"
-          className={`${itemClass} text-red-500`}
-          onMouseEnter={() => setSubmenu(false)}
-          onClick={onDelete}
-        >
-          <TrashIcon className="h-3.5 w-3.5" /> Delete
-        </button>
-      )}
+      <button
+        type="button"
+        role="menuitem"
+        className={`${itemClass} text-red-500`}
+        onMouseEnter={() => setSubmenu(false)}
+        onClick={onDelete}
+      >
+        <TrashIcon className="h-3.5 w-3.5" /> Delete
+      </button>
     </div>,
     document.body,
   );
@@ -676,7 +672,6 @@ export function ThreadList({
         <ThreadMenu
           menu={menu}
           groups={groups}
-          isCurrent={menu.thread.thread_id === currentId}
           onClose={() => setMenu(null)}
           onRename={() => {
             setRenamingId(menu.thread.thread_id);

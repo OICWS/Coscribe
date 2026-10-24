@@ -332,6 +332,34 @@ def test_delete_thread_endpoint_removes_checkpoints_and_tasks_sidecar_lg(
         assert "t_del1" not in thread_ids
 
 
+def test_deleting_the_open_conversation_stops_its_turn_first(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A turn still waiting on an approval would write its checkpoint after the delete and bring
+    the conversation back."""
+    call = _tool_call("call_1", "write_file", {"path": "note.txt", "content": "hi"})
+    fake_model = FakeToolCallingChatModel(
+        responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="stopped")]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_del_open") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "write hi to note.txt"})
+            approval = ws.receive_json()
+            assert approval["type"] == "approval_required"
+
+            response = client.delete("/api/threads/t_del_open")
+            # Too late: the delete already ended the turn.
+            ws.send_json({"type": "approval_response", "id": approval["id"], "approved": True})
+            _receive_until(ws, "tasks_changed")
+
+            assert response.status_code == 200
+        thread_ids = {t["thread_id"] for t in client.get("/api/threads").json()}
+        assert "t_del_open" not in thread_ids
+    assert not (tmp_path / "workspace" / "note.txt").exists()
+
+
 def test_delete_thread_endpoint_unknown_thread_404s_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
