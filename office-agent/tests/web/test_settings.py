@@ -536,7 +536,9 @@ def test_get_script_env_interpreter_starts_unconfigured(
     assert response.status_code == 200
     body = response.json()
     assert body["configured"] is None
-    assert sys.executable in [found["path"] for found in body["found"]]
+    # python and python3 are often one file; the list names it once.
+    found = [os.path.realpath(python["path"]) for python in body["found"]]
+    assert os.path.realpath(sys.executable) in found
     assert body["own_python"]["downloaded"] is False
 
 
