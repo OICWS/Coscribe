@@ -691,14 +691,16 @@ def test_a_failed_run_of_a_task_set_to_is_looked_into_and_announced_lg(
         queue = client.portal.call(bus.subscribe)
         run = client.post(f"/api/scheduled-tasks/{task['trigger_id']}/run", json={}).json()["run"]
         event = client.portal.call(queue.get)
-        deadline = time.time() + 5
+        deadline = time.time() + 30
         while len(fake_model.received) < 3 and time.time() < deadline:
             time.sleep(0.05)
         failed = _wait_for_run_status(client, task["trigger_id"], run["run_id"])
         # The model's third call starting doesn't mean its reply is saved
-        # yet: read the history again until it is.
+        # yet: read the history again until it is. The limit only stops a
+        # hang; a slow runner gets its own full allowance.
         history: list[dict[str, Any]] = []
-        while time.time() < deadline + 5:
+        history_deadline = time.time() + 30
+        while time.time() < history_deadline:
             with client.websocket_connect(f"/ws/{event['thread_id']}") as ws:
                 # The conversation may still be finishing its reply, so live
                 # events can come before the history does.
