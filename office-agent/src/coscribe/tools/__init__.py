@@ -103,6 +103,7 @@ from .exec import (
     list_python_packages,
     own_python_offer,
     record_sandbox_setup,
+    release_private_folders,
     request_detach,
     run_python_script,
     sandbox_codex,
@@ -400,5 +401,6 @@ __all__ = [
     "sandbox_status",
     "sandbox_uninstall_argv",
     "expect_sandbox",
+    "release_private_folders",
     "warm_up_sandbox",
 ]

@@ -25,11 +25,13 @@ from coscribe.tools.bookkeeping.background_tasks import build_background_task_to
 from coscribe.tools.exec import (
     Capabilities,
     record_sandbox_setup,
+    release_private_folders,
     sandbox_codex,
     sandbox_home,
     sandbox_setup_argv,
     sandbox_uninstall_argv,
     script_env,
+    start_command,
     warm_up_sandbox,
 )
 
@@ -278,49 +280,113 @@ def test_a_script_without_node_installed_says_what_is_missing(
 
 
 @real
-async def test_a_sandboxed_command_writes_only_its_workspace_and_cannot_read_the_profile(
+async def test_a_sandboxed_command_writes_only_its_workspace_and_cannot_read_private_folders(
     tmp_path: Path, sandboxed_state: Path
 ) -> None:
-    # A workspace in Documents, as a person's would be, with a file beside it and one at the
-    # profile's top. Codex's setup lets its users read Documents, so the one beside it is
-    # readable (decision 0022 says so); the top of the profile is not.
-    base = Path(os.environ["USERPROFILE"]) / "Documents" / f"coscribe-{uuid.uuid4().hex}"
+    # A workspace in Documents, as a person's would be, with a file beside it, one on the
+    # Desktop and one in AppData. Codex's setup lets its users read all of them; coscribe hides
+    # them while Settings › Capabilities says so (the default), and shows them again when not.
+    profile = Path(os.environ["USERPROFILE"])
+    base = profile / "Documents" / f"coscribe-{uuid.uuid4().hex}"
     base.mkdir(parents=True)
     tools = _tools(base, sandboxed_state)
     outside = base / "outside"
     outside.mkdir()
     beside = outside / "secret.txt"
     beside.write_text("BESIDE-SECRET")
-    top = Path(os.environ["USERPROFILE"]) / f"coscribe-secret-{uuid.uuid4().hex}.txt"
+    tag = uuid.uuid4().hex
+    desktop = profile / "Desktop" / f"coscribe-secret-{tag}.txt"
+    roaming = Path(os.environ["APPDATA"]) / f"coscribe-secret-{tag}.txt"
+    # Like .git-credentials or .netrc: a file at the profile's top, which Codex never opens.
+    top = profile / f".coscribe-secret-{tag}"
     top.write_text("TOP-SECRET")
+    desktop.parent.mkdir(exist_ok=True)
+    desktop.write_text("DESKTOP-SECRET")
+    roaming.write_text("ROAMING-SECRET")
     made = outside / "made.txt"
     connect = (
-        "print('PY-RAN'); import socket; "
+        "import tempfile; tempfile.TemporaryFile().close(); print('PY-RAN'); import socket; "
         "socket.create_connection(('1.1.1.1', 443), 5); print('NET-OPEN')"
     )
+    reads = f'type "{beside}" & type "{desktop}" & type "{roaming}" & type "{top}"'
     command = (
-        f'whoami & echo inside> made.txt & type "{beside}" & type "{top}" & '
+        f"whoami & echo inside> made.txt & {reads} & "
         f'echo outside> "{made}" & "{sys.executable}" -c "{connect}"'
     )
 
+    async def run(line: str) -> str:
+        started = await tools["run_background_command"](command=line, description="probe")
+        return str((await _finished(tools, started["task_id"])).get("output", ""))
+
     try:
-        started = await tools["run_background_command"](command=command, description="probe")
-        result = await _finished(tools, started["task_id"])
-        output = result.get("output", "")
-        acls = "\n".join(
-            subprocess.run(["icacls", str(p)], capture_output=True, text=True, check=False).stdout
-            for p in (*reversed(beside.parents[:4]), beside, tmp_path.parents[2], tmp_path)
-        )
-        assert (base / "workspace" / "made.txt").read_text().strip() == "inside"
+        output = await run(command)
+        acls = _icacls(beside.parent, desktop.parent, roaming.parent)
+        assert (base / "workspace" / "made.txt").read_text().strip() == "inside", output
         assert not made.exists(), output
-        assert "TOP-SECRET" not in output, output
-        assert "BESIDE-SECRET" in output, output + acls
+        for secret in ("BESIDE-SECRET", "DESKTOP-SECRET", "ROAMING-SECRET", "TOP-SECRET"):
+            assert secret not in output, output + acls
         assert "codexsandbox" in output.lower(), output
-        # Default's network is not Full, so the command is offline.
+        # Its Temp is its own, so Python's tempfile works; the network is not Full, so offline.
         assert "PY-RAN" in output and "NET-OPEN" not in output, output
+
+        Capabilities(sandboxed_state).set("commands_hide_private_folders", False)
+        release_private_folders(sandboxed_state)
+        shown = await run(reads)
+        for secret in ("BESIDE-SECRET", "DESKTOP-SECRET", "ROAMING-SECRET"):
+            assert secret in shown, shown + _icacls(beside.parent, desktop.parent, roaming.parent)
     finally:
-        top.unlink()
+        Capabilities(sandboxed_state).set("commands_hide_private_folders", True)
+        desktop.unlink(missing_ok=True)
+        roaming.unlink(missing_ok=True)
+        top.unlink(missing_ok=True)
         shutil.rmtree(base, ignore_errors=True)
+
+
+def _icacls(*paths: Path) -> str:
+    return "\n".join(
+        subprocess.run(["icacls", str(p)], capture_output=True, text=True, check=False).stdout
+        for p in paths
+    )
+
+
+@real
+async def test_a_read_only_folder_and_a_program_inside_private_folders_stay_usable(
+    tmp_path: Path, sandboxed_state: Path
+) -> None:
+    # The grants coscribe adds: a read-only folder in Documents and a program on PATH in
+    # LOCALAPPDATA, both inside folders the profile denies.
+    tag = uuid.uuid4().hex
+    base = Path(os.environ["USERPROFILE"]) / "Documents" / f"coscribe-{tag}"
+    workspace, reference = base / "workspace", base / "reference"
+    workspace.mkdir(parents=True)
+    reference.mkdir()
+    (reference / "r.txt").write_text("REF-READ")
+    program = Path(os.environ["LOCALAPPDATA"]) / f"coscribe-program-{tag}"
+    program.mkdir()
+    (program / "coscribe-hello.cmd").write_text("@echo HELLO-PROGRAM\r\n")
+    Capabilities(sandboxed_state).set("commands", True)
+    env = {**os.environ, "PATH": f"{program};{os.environ['PATH']}"}
+    folders = {"writable": [workspace], "readable": [reference]}
+
+    try:
+        proc = await start_command(
+            sandboxed_state, "t-grants", workspace, folders,
+            f'whoami & type "{reference / "r.txt"}" & coscribe-hello', env,
+        )  # fmt: skip
+        out, _ = await proc.communicate()
+        output = out.decode("utf-8", errors="replace")
+        assert "codexsandbox" in output.lower(), output
+        assert "REF-READ" in output, output + _icacls(base, reference)
+        assert "HELLO-PROGRAM" in output, output + _icacls(program)
+        # The deny entries name the sandbox's group, which the person is not in.
+        groups = subprocess.run(
+            ["whoami", "/groups"], capture_output=True, text=True, check=False
+        ).stdout
+        assert "codexsandboxusers" not in groups.lower(), groups
+        assert (reference / "r.txt").read_text() == "REF-READ"
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
+        shutil.rmtree(program, ignore_errors=True)
 
 
 # Last in the file: it removes the sandbox the tests above share.

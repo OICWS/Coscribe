@@ -70,7 +70,12 @@ def test_capabilities_change_only_by_name_and_each_change_is_audited(
         again = client.put("/api/capabilities/commands", json={"on": True}).json()
         unknown = client.put("/api/capabilities/everything", json={"on": True})
         off = client.put("/api/capabilities/commands", json={"on": False}).json()
-    none = {"scripts": True, "commands": False, "commands_without_sandbox": False}
+    none = {
+        "scripts": True,
+        "commands": False,
+        "commands_without_sandbox": False,
+        "commands_hide_private_folders": True,
+    }
     assert before == off == none
     assert on == again == {**none, "commands": True}
     assert unknown.status_code == 404
@@ -78,6 +83,32 @@ def test_capabilities_change_only_by_name_and_each_change_is_audited(
     assert [(e.tool_name, e.decision) for e in entries] == [
         ("capability_commands", "approve"),
         ("capability_commands", "reject"),
+    ]
+
+
+def test_showing_private_folders_again_takes_the_sandboxs_entries_away(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    released: list[Path] = []
+    left = [["C:/Users/x/Documents"], []]
+
+    def release(state_dir: Path) -> list[str]:
+        released.append(state_dir)
+        return left.pop(0)
+
+    monkeypatch.setattr(environment_routes, "release_private_folders", release)
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        client.put("/api/capabilities/commands_hide_private_folders", json={"on": True})
+        assert released == []
+        failed = client.put("/api/capabilities/commands_hide_private_folders", json={"on": False})
+        # Off already, but what was left is tried again.
+        retried = client.put("/api/capabilities/commands_hide_private_folders", json={"on": False})
+    assert failed.status_code == 500 and "C:/Users/x/Documents" in failed.json()["error"]
+    assert retried.status_code == 200
+    assert released == [tmp_path / "state"] * 2
+    entries = AuditLog(tmp_path / "state").read_all()
+    assert [e.arguments for e in entries] == [
+        {"on": False, "not_cleared": ["C:/Users/x/Documents"]}
     ]
 
 
