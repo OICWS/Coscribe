@@ -8,10 +8,15 @@ Capabilities hides them (`_private_folders.py`); other drives stay readable, so 
 still goes to the person (`conversation/approvals.py`). Settings ›
 Capabilities sets the sandbox up and records here which Codex did it; this module reads that
 record and builds the command line, so the tools need nothing from the code module. Elsewhere,
-or until it is set up, a command runs as the person."""
+or until it is set up, a command runs as the person.
+
+Without an administrator, the unelevated mode runs a command under the person's own restricted
+token: it still writes only the conversation's folders, but reads everything the person can and
+is offline only by its environment, so every command in it goes to the person."""
 
 from __future__ import annotations
 
+import base64
 import contextlib
 import hashlib
 import json
@@ -35,6 +40,7 @@ _DEFAULT = "coscribe-default"
 # A command's batch file outlives its start only so a slow sandbox can read it.
 _COMMAND_FILES_KEPT_SECONDS = 3600
 _lock = threading.Lock()
+ELEVATED, UNELEVATED = "elevated", "unelevated"
 
 
 def supported() -> bool:
@@ -58,11 +64,13 @@ def _read_record(state_dir: Path) -> dict[str, Any]:
     return raw if isinstance(raw, dict) else {}
 
 
-def record_sandbox_setup(state_dir: Path, codex: Path | None, error: str = "") -> None:
+def record_sandbox_setup(
+    state_dir: Path, codex: Path | None, error: str = "", mode: str = ELEVATED
+) -> None:
     """What Settings › Capabilities found when it set the sandbox up (or removed it: None)."""
     path = _record_path(state_dir)
     path.parent.mkdir(parents=True, exist_ok=True)
-    record = {"codex": str(codex) if codex else "", "error": error}
+    record = {"codex": str(codex) if codex else "", "error": error, "mode": mode}
     path.write_text(json.dumps(record), encoding="utf-8")
 
 
@@ -74,14 +82,23 @@ def sandbox_codex(state_dir: Path) -> Path | None:
     return Path(codex) if codex and Path(codex).is_file() else None
 
 
+def sandbox_mode(state_dir: Path) -> str:
+    """ELEVATED (its own users, set up by an administrator) or UNELEVATED (no administrator:
+    the person's own restricted token, no denied reads, and offline only by its environment)."""
+    return UNELEVATED if _read_record(state_dir).get("mode") == UNELEVATED else ELEVATED
+
+
 def sandbox_status(state_dir: Path) -> dict[str, str]:
-    """ "ready", "off" (never set up, or removed), "failed" (with why) or "unsupported"."""
+    """ "ready", "off" (never set up, or removed), "failed" (with why) or "unsupported", with
+    the mode it was (last) set up in."""
     if not supported():
         return {"state": "unsupported", "detail": "The command sandbox needs Windows."}
+    mode = sandbox_mode(state_dir)
     if sandbox_codex(state_dir) is not None:
-        return {"state": "ready", "detail": ""}
+        return {"state": "ready", "detail": "", "mode": mode}
     error = str(_read_record(state_dir).get("error") or "")
-    return {"state": "failed", "detail": error} if error else {"state": "off", "detail": ""}
+    state = "failed" if error else "off"
+    return {"state": state, "detail": error, "mode": mode}
 
 
 def _toml_key(path: str) -> str:
@@ -120,7 +137,9 @@ def _ensure_profile(home: Path, profile: dict[str, Any]) -> str:
         # Codex refuses a config with profiles and no default (`codex sandbox uninstall` among
         # others); the default may read and write nothing it isn't given.
         none = {"readable": [], "writable": [], "network": False}
-        config = f'default_permissions = "{_DEFAULT}"\n\n[windows]\nsandbox = "elevated"\n\n'
+        # The mode is part of each profile's name, so a change of mode writes this line anew.
+        mode = profile.get("mode", ELEVATED)
+        config = f'default_permissions = "{_DEFAULT}"\n\n[windows]\nsandbox = "{mode}"\n\n'
         config += "\n".join(
             _section(key, value) for key, value in {_DEFAULT: none, **profiles}.items()
         )
@@ -147,6 +166,10 @@ def sandboxed_command(
     codex = sandbox_codex(state_dir)
     if codex is None:
         return None
+    mode = sandbox_mode(state_dir)
+    if mode == UNELEVATED:
+        # Codex can't deny a read without its own users.
+        hidden = ()
     home = sandbox_home(state_dir)
     script = _command_file(state_dir, command)
     # The person's Temp is in AppData; a command gets its own, apart for each set of folders.
@@ -161,6 +184,7 @@ def sandboxed_command(
         "readable": [*(str(p) for p in readable), str(script.parent)],
         "network": network,
         "denied": [str(p) for p in denied],
+        **({"mode": mode} if mode == UNELEVATED else {}),
     }
     profile = _ensure_profile(home, folders)
     argv = [str(codex), "sandbox", "--permission-profile", profile, "-C", str(root), "--"]
@@ -194,25 +218,104 @@ def _command_file(state_dir: Path, command: str) -> Path:
     return script
 
 
-def warm_up_sandbox(state_dir: Path) -> None:
-    """Runs one empty command: the first command after setup is refused ("Access is denied")
-    while Codex finishes granting its users (seen on the Windows runner), so it is not the
-    person's."""
+def warm_up_sandbox(state_dir: Path) -> str:
+    """Runs an empty command until one works, at most twice: the first command after setup is
+    refused ("Access is denied") while Codex finishes granting its users (seen on the Windows
+    runner), so it is not the person's. The error of the last try, or "" once one worked."""
     commands = Path(state_dir) / "command-sandbox" / "commands"
-    sandboxed = sandboxed_command(state_dir, "rem", commands, [], [], False)
-    if sandboxed is None:
-        return
-    argv, env = sandboxed
-    with contextlib.suppress(OSError, subprocess.TimeoutExpired):
-        subprocess.run(
-            argv, env={**os.environ, **env}, capture_output=True, timeout=120, check=False
-        )
+    error = "The command sandbox is not set up."
+    for _ in range(2):
+        sandboxed = sandboxed_command(state_dir, "rem", commands, [], [], False)
+        if sandboxed is None:
+            return error
+        argv, env = sandboxed
+        try:
+            done = subprocess.run(
+                argv, env={**os.environ, **env}, capture_output=True, text=True, timeout=120
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            error = f"A test command didn't finish: {exc}"
+            continue
+        if done.returncode == 0:
+            return ""
+        lines = (done.stderr or done.stdout).strip().splitlines()
+        error = lines[-1] if lines else f"A test command exited with {done.returncode}."
+    return error
 
 
-def sandbox_setup_argv(codex: Path) -> list[str]:
-    """Creates the sandbox users once; Windows asks an administrator to approve it."""
-    return [str(codex), "sandbox", "setup", "--elevated", "--current-user"]
+def sandbox_setup_argv(codex: Path, state_dir: Path) -> list[str]:
+    """Creates the sandbox users once. Names the person rather than `--current-user`: when a
+    standard user's administrator approves the prompt, setup runs as that administrator."""
+    user = os.environ.get("USERNAME", "")
+    home = str(sandbox_home(state_dir))
+    return [str(codex), "sandbox", "setup", "--elevated", "--user", user, "--codex-home", home]
 
 
 def sandbox_uninstall_argv(codex: Path) -> list[str]:
     return [str(codex), "sandbox", "uninstall"]
+
+
+# ERROR_CANCELLED: the administrator prompt was declined.
+DECLINED = 1223
+
+
+def run_as_administrator(argv: list[str], state_dir: Path, timeout: float) -> str:
+    """Runs a `codex sandbox` setup or uninstall, which must already run elevated (Codex doesn't
+    ask Windows itself); the error to show, or "" when it worked. Unless coscribe runs elevated,
+    it goes through RunAs, which shows the administrator prompt; an elevated child's output can't
+    be piped back, so it writes a log."""
+    home = sandbox_home(state_dir)
+    home.mkdir(parents=True, exist_ok=True)
+    # The approving administrator's own profile would otherwise be the one Codex sets up.
+    env = {"CODEX_HOME": str(home), "USERPROFILE": os.environ.get("USERPROFILE", "")}
+    log = home / "administrator.log"
+    log.unlink(missing_ok=True)
+    if not _elevated():
+        argv = _through_run_as(argv, env, log)
+    try:
+        done = subprocess.run(
+            argv, env={**os.environ, **env}, capture_output=True, text=True, timeout=timeout
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return f"Codex didn't finish: {exc}"
+    if done.returncode == 0:
+        return ""
+    if done.returncode == DECLINED:
+        why = done.stderr.strip()
+        return "Windows didn't run it as an administrator" + (f": {why}" if why else ".")
+    logged = log.read_text(encoding="utf-8-sig", errors="replace") if log.is_file() else ""
+    output = (logged or done.stderr or done.stdout).strip().splitlines()
+    return output[-1] if output else f"Codex exited with {done.returncode}."
+
+
+def _elevated() -> bool:
+    if sys.platform != "win32":
+        return True
+    import ctypes
+
+    return bool(ctypes.windll.shell32.IsUserAnAdmin())
+
+
+def _ps(text: str) -> str:
+    return "'" + text.replace("'", "''") + "'"
+
+
+def _encoded(script: str) -> str:
+    return base64.b64encode(script.encode("utf-16-le")).decode("ascii")
+
+
+def _through_run_as(argv: list[str], env: dict[str, str], log: Path) -> list[str]:
+    """`argv` in an elevated PowerShell started with RunAs. The elevated process doesn't inherit
+    this one's environment, so `env` is set inside it; its output goes to `log`."""
+    inner = "".join(f"$env:{key} = {_ps(value)}\n" for key, value in env.items())
+    inner += f"$a = @({', '.join(_ps(a) for a in argv[1:])})\n"
+    inner += f'& {_ps(argv[0])} @a 2>&1 | ForEach-Object {{ "$_" }} | '
+    inner += f"Set-Content -Encoding UTF8 -LiteralPath {_ps(str(log))}\nexit $LASTEXITCODE\n"
+    elevated = f"-NoProfile -NonInteractive -EncodedCommand {_encoded(inner)}"
+    outer = (
+        "try { $p = Start-Process -FilePath powershell.exe -Verb RunAs -Wait -PassThru "
+        f"-WindowStyle Hidden -ArgumentList {_ps(elevated)} }} "
+        f"catch {{ [Console]::Error.WriteLine($_.Exception.Message); exit {DECLINED} }}\n"
+        "exit $p.ExitCode\n"
+    )
+    return ["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand", _encoded(outer)]

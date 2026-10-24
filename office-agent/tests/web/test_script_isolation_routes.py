@@ -151,6 +151,7 @@ def test_setting_the_sandbox_up_records_which_codex_did_it_and_removing_it_forge
 
     monkeypatch.setattr(command_sandbox, "supported", lambda: True)
     monkeypatch.setattr(environment_routes, "code_service", service)
+    monkeypatch.setenv("USERNAME", "ada")
     with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
         before = client.get("/api/command-sandbox").json()
         set_up = client.post("/api/command-sandbox").json()
@@ -162,7 +163,7 @@ def test_setting_the_sandbox_up_records_which_codex_did_it_and_removing_it_forge
     if exit_code == 0:
         assert set_up["state"] == "ready"
         # Setup, then one empty command so the person's first isn't the one Codex refuses.
-        assert calls[0] == f"{home} sandbox setup --elevated --current-user"
+        assert calls[0] == f"{home} sandbox setup --elevated --user ada --codex-home {home}"
         assert calls[1].startswith(f"{home} sandbox --permission-profile coscribe-")
         assert calls[1].endswith(".cmd")
         assert calls[2:] == [f"{home} sandbox uninstall"]
@@ -171,9 +172,40 @@ def test_setting_the_sandbox_up_records_which_codex_did_it_and_removing_it_forge
             ("command_sandbox_uninstall", "approve"),
         ]
     else:
-        assert set_up == {"state": "failed", "detail": "The administrator said no."}
-        assert calls == [f"{home} sandbox setup --elevated --current-user"]
+        assert set_up == {
+            "state": "failed",
+            "detail": "The administrator said no.",
+            "mode": "elevated",
+        }
+        assert calls == [f"{home} sandbox setup --elevated --user ada --codex-home {home}"]
         assert entries == [
             ("command_sandbox_setup", "reject"),
             ("command_sandbox_uninstall", "approve"),
         ]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the fake Codex is a shell script")
+def test_the_unelevated_sandbox_asks_no_administrator_and_proves_itself_with_a_command(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    codex = _fake_codex(tmp_path, 0)
+
+    class _Service:
+        async def download(self) -> Path:
+            return codex
+
+    monkeypatch.setattr(command_sandbox, "supported", lambda: True)
+    monkeypatch.setattr(environment_routes, "code_service", lambda settings: _Service())
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        set_up = client.post("/api/command-sandbox", json={"mode": "unelevated"}).json()
+        removed = client.delete("/api/command-sandbox").json()
+    calls = (tmp_path / "codex-calls.txt").read_text().splitlines()
+    assert set_up == {"state": "ready", "detail": "", "mode": "unelevated"}
+    assert removed["state"] == "off"
+    # No setup and no uninstall: it made no users or firewall rules.
+    assert len(calls) == 1 and " sandbox --permission-profile coscribe-" in calls[0]
+    entries = [(e.tool_name, e.decision) for e in AuditLog(tmp_path / "state").read_all()]
+    assert entries == [
+        ("command_sandbox_setup_unelevated", "approve"),
+        ("command_sandbox_uninstall", "approve"),
+    ]

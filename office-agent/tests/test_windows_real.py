@@ -24,8 +24,10 @@ from coscribe.runtime.secrets import SERVICE_NAME, resolve_secret, store_secret
 from coscribe.tools.bookkeeping.background_tasks import build_background_task_tools
 from coscribe.tools.exec import (
     Capabilities,
+    command_sandbox,
     record_sandbox_setup,
     release_private_folders,
+    run_as_administrator,
     sandbox_codex,
     sandbox_home,
     sandbox_setup_argv,
@@ -138,23 +140,28 @@ def _tools(tmp_path: Path, state: Path | None = None) -> dict[str, Any]:
     return {t.__name__: t for t in build_background_task_tools("t1", workspace, state)}
 
 
+@real
+def test_run_as_starts_the_command_elevated_with_its_environment_and_keeps_its_output(
+    tmp_path: Path,
+) -> None:
+    """The path a standard user's setup takes (the runner is an administrator, so setup itself
+    skips it): the exit code, the environment and the output all come back."""
+    log = tmp_path / "it's here" / "administrator.log"
+    log.parent.mkdir()
+    argv = ["cmd.exe", "/d", "/c", "echo home=%CODEX_HOME%& exit /b 3"]
+    wrapped = command_sandbox._through_run_as(argv, {"CODEX_HOME": str(tmp_path)}, log)
+    done = subprocess.run(wrapped, capture_output=True, text=True, timeout=120, check=False)
+    assert done.returncode == 3, done.stdout + done.stderr
+    assert log.read_text(encoding="utf-8-sig").strip() == f"home={tmp_path}"
+
+
 @pytest.fixture(scope="module")
 def sandboxed_state(tmp_path_factory: pytest.TempPathFactory) -> Path:
     """A state dir whose command sandbox is set up as Settings › Capabilities does it; the
     runner is an administrator, so Windows asks nobody."""
     state = tmp_path_factory.mktemp("sandbox-state")
     codex = ensure_codex(state)
-    home = sandbox_home(state)
-    home.mkdir(parents=True)
-    done = subprocess.run(
-        sandbox_setup_argv(codex),
-        env={**os.environ, "CODEX_HOME": str(home)},
-        capture_output=True,
-        text=True,
-        timeout=600,
-        check=False,
-    )
-    assert done.returncode == 0, done.stdout + done.stderr
+    assert run_as_administrator(sandbox_setup_argv(codex, state), state, 600) == ""
     record_sandbox_setup(state, codex)
     warm_up_sandbox(state)
     return state
@@ -387,6 +394,37 @@ async def test_a_read_only_folder_and_a_program_inside_private_folders_stay_usab
     finally:
         shutil.rmtree(base, ignore_errors=True)
         shutil.rmtree(program, ignore_errors=True)
+
+
+@real
+async def test_the_unelevated_sandbox_needs_no_administrator_and_holds_writes(
+    tmp_path: Path,
+) -> None:
+    """The mode a person without an administrator picks: no `codex sandbox setup`, and a
+    command still writes only its workspace. Its network is held only by its environment, so
+    this prints what a connection did rather than asserting it."""
+    state = tmp_path / "state"
+    codex = ensure_codex(state)
+    record_sandbox_setup(state, codex, mode="unelevated")
+    assert warm_up_sandbox(state) == ""
+    tools = _tools(tmp_path, state)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    made = outside / "made.txt"
+    connect = (
+        "import tempfile; tempfile.TemporaryFile().close(); print('PY-RAN'); import socket; "
+        "socket.create_connection(('1.1.1.1', 443), 5); print('NET-OPEN')"
+    )
+    command = (
+        f'whoami & echo inside> made.txt & echo outside> "{made}" & '
+        f'"{sys.executable}" -c "{connect}"'
+    )
+    started = await tools["run_background_command"](command=command, description="probe")
+    output = str((await _finished(tools, started["task_id"])).get("output", ""))
+    print("unelevated sandbox output:", output)
+    assert (tmp_path / "workspace" / "made.txt").read_text().strip() == "inside", output
+    assert not made.exists(), output
+    assert "PY-RAN" in output, output
 
 
 # Last in the file: it removes the sandbox the tests above share.

@@ -137,6 +137,7 @@ class Row:
     announced: bool = False  # a `tool_started` message goes to the client
     asked: bool = False  # an `approval_required` message goes to the client
     sandboxed: bool = False  # the command sandbox is set up
+    unelevated: bool = False  # ... in the mode without an administrator
     online: bool = False  # the conversation's environment has Full network
 
 
@@ -241,6 +242,10 @@ ROWS: dict[str, Row] = {
     "an_online_sandboxed_command_asks_even_when_preapproved": Row(
         COMMAND, "reject", "human", preapproved=True, sandboxed=True, online=True, asked=True
     ),
+    # -- the unelevated sandbox reads everything and is offline only by its environment
+    "an_unelevated_sandboxed_command_asks_even_when_preapproved": Row(
+        COMMAND, "reject", "human", preapproved=True, sandboxed=True, unelevated=True, asked=True
+    ),
 }
 
 
@@ -312,6 +317,8 @@ async def test_the_decision_for_one_situation(
     _veto(monkeypatch, session, row.veto)
     sandbox = Path("codex.exe") if row.sandboxed else None
     monkeypatch.setattr(approvals_module, "sandbox_codex", lambda state_dir: sandbox)
+    mode = "unelevated" if row.unelevated else "elevated"
+    monkeypatch.setattr(approvals_module, "sandbox_mode", lambda state_dir: mode)
     assumed: Counter[str] = Counter()
     monkeypatch.setattr(commands_module, "_SANDBOX_ASSUMED", assumed)
     if row.online:
