@@ -15,11 +15,13 @@ from coscribe.tools.exec import (
     command_sandbox,
     expect_sandbox,
     record_sandbox_setup,
+    release_private_folders,
     sandbox_home,
     sandbox_status,
     sandboxed_command,
     start_command,
 )
+from coscribe.tools.exec import _private_folders as private_folders_module
 
 
 @pytest.fixture
@@ -61,7 +63,8 @@ def test_a_command_runs_through_cmd_in_a_profile_for_exactly_its_folders(tmp_pat
     argv, env = sandboxed_command(tmp_path, 'echo "hi"', root, [root], [extra], False) or ([], {})
 
     home = sandbox_home(tmp_path)
-    assert env == {"CODEX_HOME": str(home)}
+    temp = Path(env["TEMP"])
+    assert env == {"CODEX_HOME": str(home), "TEMP": str(temp), "TMP": str(temp)}
     profile = argv[3]
     script = Path(argv[-1])
     assert argv == [
@@ -80,7 +83,8 @@ def test_a_command_runs_through_cmd_in_a_profile_for_exactly_its_folders(tmp_pat
         '":root" = "read"\n'
         f'"{extra.as_posix()}" = "read"\n'
         f'"{script.parent.as_posix()}" = "read"\n'
-        f'"{root.as_posix()}" = "write"\n\n'
+        f'"{root.as_posix()}" = "write"\n'
+        f'"{temp.as_posix()}" = "write"\n\n'
         f"[permissions.{profile}.network]\n"
         "enabled = false\n"
     ) in config
@@ -119,3 +123,90 @@ async def test_a_command_approved_for_the_sandbox_does_not_run_once_it_is_gone(
     # The next one was not approved on that ground, so it runs as before.
     proc = await start_command(tmp_path, "t1", tmp_path, folders, "exit 0", {})
     assert await proc.wait() == 0
+
+
+@pytest.fixture
+def icacls(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, ...]]:
+    calls: list[tuple[str, ...]] = []
+
+    def fake(*args: str) -> bool:
+        calls.append(args)
+        return True
+
+    monkeypatch.setattr(private_folders_module, "_icacls", fake)
+    return calls
+
+
+@pytest.mark.usefixtures("on_windows")
+def test_private_folders_are_denied_and_what_the_command_needs_in_them_is_let_back(
+    tmp_path: Path, icacls: list[tuple[str, ...]]
+) -> None:
+    record_sandbox_setup(tmp_path, _codex(tmp_path))
+    documents, appdata = tmp_path / "Documents", tmp_path / "AppData"
+    root, reference, program = documents / "work", documents / "reference", appdata / "Python"
+    for folder in (root, reference, program):
+        folder.mkdir(parents=True)
+
+    def run() -> tuple[list[str], dict[str, str]]:
+        sandboxed = sandboxed_command(
+            tmp_path, "dir", root, [root], [reference], False,
+            hidden=[documents, appdata], programs=[program, tmp_path / "elsewhere"],
+        )  # fmt: skip
+        assert sandboxed is not None
+        return sandboxed
+
+    argv, env = run()
+    run()
+
+    config = (sandbox_home(tmp_path) / "config.toml").read_text(encoding="utf-8")
+    section = config[config.index(f"[permissions.{argv[3]}.filesystem]") :]
+    assert section.startswith(
+        f"[permissions.{argv[3]}.filesystem]\n"
+        '":root" = "read"\n'
+        f'"{documents.as_posix()}" = "deny"\n'
+        f'"{appdata.as_posix()}" = "deny"\n'
+    )
+    # Its own Temp, which it may write: the person's is in AppData.
+    temp = Path(env["TEMP"])
+    assert env["TMP"] == env["TEMP"] and temp.is_dir()
+    assert f'"{temp.as_posix()}" = "write"' in section
+    # Codex grants the folders it writes; the ones it only reads inside a denied folder are
+    # coscribe's to grant, once each. The batch files are in the state dir, outside both.
+    grant = "CodexSandboxUsers:(OI)(CI)(RX)"
+    assert icacls == [(str(reference), "/grant", grant), (str(program), "/grant", grant)]
+
+
+@pytest.mark.usefixtures("on_windows")
+def test_a_private_folder_given_to_the_environment_is_not_denied(
+    tmp_path: Path, icacls: list[tuple[str, ...]]
+) -> None:
+    record_sandbox_setup(tmp_path, _codex(tmp_path))
+    documents = tmp_path / "Documents"
+    documents.mkdir()
+
+    argv, _ = sandboxed_command(
+        tmp_path, "dir", tmp_path, [tmp_path], [], False, hidden=[documents]
+    ) or ([], {})
+
+    config = (sandbox_home(tmp_path) / "config.toml").read_text(encoding="utf-8")
+    assert '"deny"' not in config
+    assert icacls == []
+
+
+def test_showing_them_again_takes_away_the_grants_and_every_deny_entry(
+    tmp_path: Path, icacls: list[tuple[str, ...]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    documents, reference = tmp_path / "Documents", tmp_path / "Documents" / "reference"
+    reference.mkdir(parents=True)
+    private_folders_module.grant_reads(tmp_path, [reference], [documents])
+    monkeypatch.setattr(private_folders_module, "private_folders", lambda: [documents])
+    icacls.clear()
+
+    release_private_folders(tmp_path)
+    release_private_folders(tmp_path)
+
+    assert icacls == [
+        (str(reference), "/remove:g", "CodexSandboxUsers"),
+        (str(documents), "/remove:d", "CodexSandboxUsers"),
+        (str(documents), "/remove:d", "CodexSandboxUsers"),
+    ]

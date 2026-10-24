@@ -80,11 +80,13 @@ function CommandsSection({
   capabilities,
   onToggle,
   onToggleWithoutSandbox,
+  onToggleHidePrivate,
 }: {
   active: boolean;
   capabilities: Capabilities;
   onToggle: () => void;
   onToggleWithoutSandbox: () => void;
+  onToggleHidePrivate: () => void;
 }) {
   const [sandboxReady, setSandboxReady] = useState(false);
   return (
@@ -99,6 +101,23 @@ function CommandsSection({
           control={<ToggleSwitch label="Run commands" on={capabilities.commands} onClick={onToggle} />}
         />
         <CommandSandboxRow active={active} onChange={setSandboxReady} />
+        {sandboxReady && (
+          <SettingRow
+            label="Hide your private folders from commands"
+            description={
+              capabilities.commands_hide_private_folders
+                ? "On: a command can't read Documents, Desktop, Downloads, Pictures, Videos, Music, OneDrive or AppData, except the folders of its environment and the programs on your PATH. Other drives and Windows' own folders stay readable."
+                : "Off: a command can read most of your files, though it still writes only its environment's folders."
+            }
+            control={
+              <ToggleSwitch
+                label="Hide your private folders from commands"
+                on={capabilities.commands_hide_private_folders}
+                onClick={onToggleHidePrivate}
+              />
+            }
+          />
+        )}
         {!sandboxReady && (
           <SettingRow
             label="Run commands without the sandbox"
@@ -160,6 +179,9 @@ export function CapabilitiesTab({ active, values, onChange }: CapabilitiesTabPro
           capabilities.commands_without_sandbox
             ? set("commands_without_sandbox", false)
             : setConfirm("commands_without_sandbox")
+        }
+        onToggleHidePrivate={() =>
+          set("commands_hide_private_folders", !capabilities.commands_hide_private_folders)
         }
       />
       <CodeTab values={values} onChange={onChange} />

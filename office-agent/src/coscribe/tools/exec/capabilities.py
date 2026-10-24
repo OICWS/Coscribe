@@ -19,7 +19,13 @@ Capability = Literal["scripts", "commands"]
 _FILE = "capabilities.json"
 # "commands_without_sandbox" is the second confirmation (decision 0022): where the command
 # sandbox is not set up, a command runs as the person only once they accepted that too.
-_DEFAULTS: dict[str, bool] = {"scripts": True, "commands": False, "commands_without_sandbox": False}
+# "commands_hide_private_folders": a sandboxed command can't read them (#601).
+_DEFAULTS: dict[str, bool] = {
+    "scripts": True,
+    "commands": False,
+    "commands_without_sandbox": False,
+    "commands_hide_private_folders": True,
+}
 _lock = threading.Lock()
 
 

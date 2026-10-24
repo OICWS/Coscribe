@@ -24,6 +24,7 @@ from ....tools import (
     list_node_packages,
     own_python_offer,
     record_sandbox_setup,
+    release_private_folders,
     sandbox_codex,
     sandbox_home,
     sandbox_setup_argv,
@@ -74,6 +75,9 @@ def _capability_routes(router: APIRouter, state: AppState) -> None:
         on = payload.get("on") is True
         if current[name] != on:
             current = capabilities.set(name, on)
+            if name == "commands_hide_private_folders" and not on:
+                # Codex leaves some of its deny entries behind (#601).
+                await asyncio.to_thread(release_private_folders, state_dir)
             # What coscribe may run is a security setting: kept like an approval.
             record_decision(
                 AuditLog(state_dir),
@@ -147,6 +151,8 @@ def _sandbox_routes(router: APIRouter, state: AppState) -> None:
         codex = sandbox_codex(state_dir)
         error = ""
         if codex is not None:
+            # While the group still exists, so its entries can be named.
+            await asyncio.to_thread(release_private_folders, state_dir)
             error = await asyncio.to_thread(_run_codex, sandbox_uninstall_argv(codex), state_dir)
         record_sandbox_setup(state_dir, codex if error else None)
         audit("uninstall", error)

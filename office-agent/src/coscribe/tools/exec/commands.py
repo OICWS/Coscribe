@@ -4,13 +4,15 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 import threading
 from collections import Counter
 from pathlib import Path
 
 from ...runtime import NetworkGuard
-from .capabilities import CapabilityOff, require_capability
+from ._private_folders import private_folders
+from .capabilities import Capabilities, CapabilityOff, require_capability
 from .command_sandbox import sandboxed_command
 
 # Commands approved without the person because the sandbox was set up, per conversation; one that
@@ -46,8 +48,17 @@ async def start_command(
     assumed = _took_sandbox_for_granted(thread_id)
     require_capability(state, "commands", thread_id)
     online = NetworkGuard(state, thread_id).scripts_online()
+    hide = Capabilities(state).get()["commands_hide_private_folders"]
+    programs = [Path(p) for p in env.get("PATH", "").split(os.pathsep) if p]
     sandboxed = sandboxed_command(
-        state, command, root, folders["writable"], folders["readable"], online
+        state,
+        command,
+        root,
+        folders["writable"],
+        folders["readable"],
+        online,
+        hidden=private_folders() if hide else [],
+        programs=programs,
     )
     if sandboxed is None and assumed:
         raise CapabilityOff(

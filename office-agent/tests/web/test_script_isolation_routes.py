@@ -70,7 +70,12 @@ def test_capabilities_change_only_by_name_and_each_change_is_audited(
         again = client.put("/api/capabilities/commands", json={"on": True}).json()
         unknown = client.put("/api/capabilities/everything", json={"on": True})
         off = client.put("/api/capabilities/commands", json={"on": False}).json()
-    none = {"scripts": True, "commands": False, "commands_without_sandbox": False}
+    none = {
+        "scripts": True,
+        "commands": False,
+        "commands_without_sandbox": False,
+        "commands_hide_private_folders": True,
+    }
     assert before == off == none
     assert on == again == {**none, "commands": True}
     assert unknown.status_code == 404
@@ -79,6 +84,18 @@ def test_capabilities_change_only_by_name_and_each_change_is_audited(
         ("capability_commands", "approve"),
         ("capability_commands", "reject"),
     ]
+
+
+def test_showing_private_folders_again_takes_the_sandboxs_entries_away(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    released: list[Path] = []
+    monkeypatch.setattr(environment_routes, "release_private_folders", released.append)
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        client.put("/api/capabilities/commands_hide_private_folders", json={"on": True})
+        assert released == []
+        client.put("/api/capabilities/commands_hide_private_folders", json={"on": False})
+    assert released == [tmp_path / "state"]
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="the answer off Windows")
