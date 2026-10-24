@@ -8,8 +8,14 @@ import json
 from pathlib import Path
 
 from ..config import Settings
-from ..runtime import NetworkAccess, SessionEnvironments
-from ..tools import MessagingStore, ScheduledTriggerStore, WorkspaceScope, parse_run_thread_id
+from ..runtime import Environments
+from ..tools import (
+    SCHEDULED_THREAD_PREFIX,
+    MessagingStore,
+    ScheduledTriggerStore,
+    WorkspaceScope,
+    parse_run_thread_id,
+)
 from ..workflows import granted_by, parse_workflow
 
 
@@ -32,13 +38,24 @@ class ThreadFiles:
         return self._settings.state_dir / f"{thread_id}.workspace"
 
     def write_workspace_sidecar(self, thread_id: str, folders: list[str]) -> None:
+        """Keeps a scheduled run's folders; any other conversation's are its environment's."""
+        if not thread_id.startswith(SCHEDULED_THREAD_PREFIX):
+            return
         if not folders:
             self.workspace_sidecar_path(thread_id).unlink(missing_ok=True)
             return
         self._settings.state_dir.mkdir(parents=True, exist_ok=True)
         self.workspace_sidecar_path(thread_id).write_text(json.dumps(folders), encoding="utf-8")
 
-    def read_workspace_sidecar(self, thread_id: str) -> list[str]:
+    def folders_of(self, thread_id: str) -> list[str]:
+        """The folders a conversation works in, the main one first; none means the default
+        workspace. Its environment's, except a scheduled task's conversations, which keep their
+        own in a sidecar."""
+        if not thread_id.startswith(SCHEDULED_THREAD_PREFIX):
+            return list(Environments(self._settings.state_dir).for_thread(thread_id)["folders"])
+        return self._read_sidecar(thread_id)
+
+    def _read_sidecar(self, thread_id: str) -> list[str]:
         sidecar = self.workspace_sidecar_path(thread_id)
         if not sidecar.is_file():
             return []
@@ -52,9 +69,13 @@ class ThreadFiles:
             return []
         return [str(folder) for folder in saved if isinstance(folder, str) and folder]
 
+    def legacy_folders(self, thread_id: str) -> list[str]:
+        """A conversation's own folders from before environments, for the migration."""
+        return self._read_sidecar(thread_id)
+
     def workspace_folders(self, thread_id: str) -> list[Path]:
         """The folders a conversation works in, the first being its root."""
-        folders = [Path(f) for f in self.read_workspace_sidecar(thread_id)]
+        folders = [Path(f) for f in self.folders_of(thread_id)]
         return folders or [self._settings.workspace_root]
 
     def workspace_scope(self, thread_id: str) -> WorkspaceScope:
@@ -76,8 +97,7 @@ class ThreadFiles:
         (self._settings.state_dir / f"{thread_id}.tasks.json").unlink(missing_ok=True)
         self.workspace_sidecar_path(thread_id).unlink(missing_ok=True)
         self.title_sidecar_path(thread_id).unlink(missing_ok=True)
-        SessionEnvironments(self._settings.state_dir).delete(thread_id)
-        NetworkAccess(self._settings.state_dir).delete(thread_id)
+        Environments(self._settings.state_dir).forget_thread(thread_id)
         MessagingStore(self._settings.state_dir).delete(thread_id)
 
     def run_workspace(self, thread_id: str) -> str | None:
@@ -105,20 +125,16 @@ class ThreadFiles:
             return [trigger.workspace] if trigger.workspace else []
         return [trigger.workspace or str(self._settings.workspace_root), *extra]
 
-    def resolve_folders(self, thread_id: str, workspace_param: str | None) -> list[Path]:
-        """The ?workspace= query param only counts the first time a thread
-        is seen; after that the sidecar (changed through set_folders) wins.
-        Empty means the app's default workspace -- kept distinct from an
-        explicit choice of that same folder, which the UI shows as chosen."""
+    def resolve_folders(self, thread_id: str) -> list[Path]:
+        """The folders a session opens in. A scheduled run's come from its task the first time
+        it is seen; after that its sidecar (changed by a folder allowed during a run) wins."""
+        if not thread_id.startswith(SCHEDULED_THREAD_PREFIX):
+            return [Path(folder) for folder in self.folders_of(thread_id)]
         if self.workspace_sidecar_path(thread_id).is_file():
-            return [Path(folder) for folder in self.read_workspace_sidecar(thread_id)]
+            return [Path(folder) for folder in self._read_sidecar(thread_id)]
         run_folders = self.run_folders(thread_id)
-        if run_folders and workspace_param is None:
-            self.write_workspace_sidecar(thread_id, run_folders)
-            return [Path(folder) for folder in run_folders]
-        if workspace_param is None:
-            workspace_param = self.run_workspace(thread_id)
-        if not workspace_param:
-            return []
-        self.write_workspace_sidecar(thread_id, [workspace_param])
-        return [Path(workspace_param)]
+        if not run_folders:
+            workspace = self.run_workspace(thread_id)
+            run_folders = [workspace] if workspace else []
+        self.write_workspace_sidecar(thread_id, run_folders)
+        return [Path(folder) for folder in run_folders]

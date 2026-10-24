@@ -32,3 +32,37 @@ export async function waitForConnected(page: Page): Promise<void> {
   await page.getByRole("button", { name: /navigation/i }).waitFor();
   await expect(page.getByTestId("model-pill")).not.toHaveText("Select model", { timeout: 10_000 });
 }
+
+/** Makes an environment from the picker below the message box; the conversation then uses it. */
+export async function newEnvironment(page: Page, name: string): Promise<void> {
+  await page.getByTitle("Choose this conversation's environment").click();
+  await page.getByRole("button", { name: "New environment" }).click();
+  const dialog = page.getByRole("dialog", { name: "New environment" });
+  await dialog.getByLabel("Environment name").fill(name);
+  await dialog.getByRole("button", { name: "Create" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTitle("Choose this conversation's environment")).toHaveText(name);
+}
+
+/** Opens an environment's dialog with its gear in the picker. */
+export async function editEnvironment(page: Page, name: string): Promise<void> {
+  await page.getByTitle("Choose this conversation's environment").click();
+  await page.getByRole("button", { name: `Edit ${name}` }).click();
+}
+
+export interface EnvironmentRecord {
+  id: string;
+  name: string;
+  network: { mode: string; domains: string[] };
+  secrets: string[];
+  variables: Record<string, string>;
+  used_by: number;
+}
+
+export async function environmentNamed(
+  request: { get: (url: string) => Promise<{ json: () => Promise<unknown> }> },
+  name: string,
+): Promise<EnvironmentRecord | undefined> {
+  const listed = (await (await request.get("/api/environments")).json()) as { environments: EnvironmentRecord[] };
+  return listed.environments.find((e) => e.name === name);
+}

@@ -11,14 +11,17 @@ pytest.importorskip("langgraph", reason="needs the langgraph_spike extra install
 from coscribe.web import app as app_module
 from coscribe.web import folder_grants
 from coscribe.web.thread_files import ThreadFiles
+from tests.environment_helpers import in_environment
 
 from .helpers import _settings
 
 
-def test_the_folders_in_use_are_the_settings_and_every_conversations(tmp_path: Path) -> None:
+def test_the_folders_in_use_are_every_environments_and_scheduled_runs(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
-    ThreadFiles(settings).write_workspace_sidecar("t1", [str(tmp_path / "a"), str(tmp_path / "b")])
-    ThreadFiles(settings).write_workspace_sidecar("t2", [str(tmp_path / "c")])
+    for folder in ("a", "b", "c"):
+        (tmp_path / folder).mkdir()
+    in_environment(settings.state_dir, "t1", folders=[str(tmp_path / "a"), str(tmp_path / "b")])
+    ThreadFiles(settings).write_workspace_sidecar("scheduled-x-r1", [str(tmp_path / "c")])
     used = folder_grants.folders_in_use(settings)
     assert settings.workspace_root in used
     assert {tmp_path / "a", tmp_path / "b", tmp_path / "c"} <= set(used)

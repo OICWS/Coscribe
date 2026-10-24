@@ -55,6 +55,7 @@ from langgraph.constants import TAG_NOSTREAM
 from ..config import Settings
 from ..coordinator import build_coordinator_agent, conversation_context
 from ..runtime import (
+    Environments,
     LLMClient,
     empty_hooks_config,
     get_tool_metadata,
@@ -252,24 +253,11 @@ class ChatSessionLG:
         # finishes, not checked mid-turn. None until the first real segment
         # completes, or if the active model never populates usage_metadata.
         self._last_usage_metadata: UsageMetadata | None = None
-        # conversation/session.py's ws_endpoint dispatches each incoming
-        # "user_message" via asyncio.create_task without awaiting it, so it
-        # can go straight back to receiving the next one -- otherwise a
-        # turn blocked on approval would freeze the whole socket, including
-        # approval_response messages for that same turn (app.py's
-        # ws_endpoint does the identical thing). Without this lock, a
-        # second message sent while the first is still running would start
-        # a fully concurrent second handle_user_message call against the
-        # same self.lg_agent/self.config -- each mutating the same shared
-        # instance state (_pending_tool_args, _stop_requested) and issuing
-        # concurrent astream()/aget_state() calls against the identical
-        # checkpointed thread, racing and interleaving their output. Same
-        # lock ChatSession already has for the exact same reason; this
-        # runtime just never had it ported over until a concurrency review
-        # caught the gap. resolve_approval/request_stop are deliberately
-        # NOT gated by this lock, same as ChatSession's identical methods
-        # -- they have to be able to reach whichever turn is *currently*
-        # in flight, not queue behind it.
+        # The socket starts each "user_message" as a task without awaiting it, so a turn
+        # waiting on an approval can't freeze the socket. Without this lock a second message
+        # would start a concurrent turn on the same agent and checkpointed thread, racing on
+        # shared state (_pending_tool_args, _stop_requested). resolve_approval/request_stop
+        # stay outside it: they must reach the turn in flight, not queue behind it.
         self._turn_lock = TurnLock(self._turn_lock_changed)
         # Notes the user sent during a turn, (id, text), not yet read by
         # the model.
@@ -783,6 +771,13 @@ class ChatSessionLG:
     async def add_folder(self, path: str, websocket: EventSink) -> bool:
         return await self._reconfigurer.add_folder(path, websocket)
 
+    async def set_environment(self, env_id: str, websocket: EventSink) -> bool:
+        return await self._reconfigurer.set_environment(env_id, websocket)
+
+    @property
+    def environment(self) -> str:
+        return Environments(self.settings.state_dir).environment_of(self.thread_id)
+
     async def set_enabled_skills(
         self, skill_names: set[str], websocket: EventSink, *, announce: bool = True
     ) -> None:
@@ -806,6 +801,7 @@ class ChatSessionLG:
             "workspace_root": str(self.workspace_root),
             "workspace_explicit": self._workspace_explicit,
             "folders": [str(folder) for folder in self.folders],
+            "environment": self.environment,
             "connector_tools": sorted(
                 tool_name(t)
                 for t in self._extra_tools

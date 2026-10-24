@@ -4,7 +4,7 @@ import { HomeGreeting } from "./components/EmptyState";
 import { ChatLog } from "./components/ChatLog";
 import { Composer, type ComposerSendPayload } from "./components/Composer";
 import { ContextRing } from "./components/ContextRing";
-import { FolderPicker } from "./components/FolderPicker";
+import { EnvironmentPicker } from "./components/EnvironmentPicker";
 import { ModePill } from "./components/ModePill";
 import { isElectron, onBrowserAgent, onShowShortcuts } from "./lib/electron";
 import {
@@ -725,7 +725,7 @@ function App() {
     socketRef.current?.send({ type: "load_older_messages" });
   };
 
-  const onSetFolders = (folders: string[]) => socketRef.current?.send({ type: "set_folders", folders });
+  const onSetEnvironment = (environment: string) => socketRef.current?.send({ type: "set_environment", environment });
   const onBrowserPanelCapture = (capture: BrowserCapture) => setPendingBrowserCapture(capture);
   const onPptxShapePicked = (capture: PptxShapeCapture) => setPendingPptxCapture(capture);
 
@@ -807,8 +807,8 @@ function App() {
           />
         )
       }
-      folderPicker={
-        <FolderPicker folders={state.folders} disabled={state.turnInFlight} onChange={onSetFolders} />
+      environmentPicker={
+        <EnvironmentPicker current={state.environment} disabled={state.turnInFlight} onPick={onSetEnvironment} />
       }
       modelPicker={<ModelPicker currentModel={state.model} onSwitch={onSwitchModel} />}
       effortPicker={<EffortPicker effort={state.effort} runsAs={state.effortRunsAs} onChange={onSetEffort} />}
@@ -1077,7 +1077,7 @@ function App() {
         onOpenScheduledTask={openScheduledTask}
         onEditScheduledTask={(task) => setScheduledTaskModal({ task })}
         onRunScheduledTaskNow={runTaskNow}
-        onNewScheduledTask={createTaskWithCoscribe} openFolders={{ folders: state.folders, onChange: onSetFolders }}
+        onNewScheduledTask={createTaskWithCoscribe}
       />
     </div>
     </ThreadIdContext.Provider>
