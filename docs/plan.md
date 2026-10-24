@@ -69,8 +69,9 @@ Last reviewed: 2026-10-15.
      nightly after the fix was run 23 on 10-15 (main at 8a08b0d), but 10-16 (5 tests, #339, fixed in #340)
      and 10-17 (5 tests, three of them in tests other sessions added that day; fixed in the PR that
      links it) and 10-18 (one test that bounded wall-clock time, 0.84 s against 0.4 s on the runner;
-     fixed to wait on events) were red, so the clock starts again from the next green night. A red
-     night restarts it.
+     fixed to wait on events) were red. Green nights followed on 10-19 to 10-23; 10-24 was red
+     (a test waited 10 s for a reply on a slow runner; the wait is now 30 s), so the clock starts
+     again from the next green night. A red night restarts it.
    - Done: `test_tool_schema_snapshot` is skipped on Python 3.13 (cloud containers), where docstring
      indentation changes every tool description; CI runs 3.11 and is the check (#252).
    - For the maintainer: switch on Dependabot security updates, secret scanning and push
