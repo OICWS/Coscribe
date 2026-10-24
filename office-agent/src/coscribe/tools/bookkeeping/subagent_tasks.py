@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from ...runtime import tool_metadata
-from .._file_locks import replace_with_retry
+from .._file_locks import read_text_with_retry, replace_with_retry
 
 VALID_STATUSES = ("running", "needs_approval", "succeeded", "failed", "stopped")
 FINISHED_STATUSES = ("succeeded", "failed", "stopped")
@@ -149,14 +149,14 @@ class SubAgentTaskStore:
         path = self._path_for(task_id)
         if not path.exists():
             return None
-        task = SubAgentTask.from_dict(json.loads(path.read_text(encoding="utf-8")))
+        task = SubAgentTask.from_dict(json.loads(read_text_with_retry(path)))
         return self._settle_if_orphaned(task)
 
     def list_for_thread(self, thread_id: str) -> list[SubAgentTask]:
         if not self.root.is_dir():
             return []
         tasks = [
-            SubAgentTask.from_dict(json.loads(p.read_text(encoding="utf-8")))
+            SubAgentTask.from_dict(json.loads(read_text_with_retry(p)))
             for p in self.root.glob("*.json")
         ]
         mine = sorted((t for t in tasks if t.thread_id == thread_id), key=lambda t: t.started_at)
@@ -173,7 +173,7 @@ class SubAgentTaskStore:
             path = self._path_for(task.task_id)
             if not path.exists():
                 return task
-            fresh = SubAgentTask.from_dict(json.loads(path.read_text(encoding="utf-8")))
+            fresh = SubAgentTask.from_dict(json.loads(read_text_with_retry(path)))
             if fresh.status in FINISHED_STATUSES or fresh.task_id in _RUNNING:
                 return fresh
             fresh.status = "stopped"
