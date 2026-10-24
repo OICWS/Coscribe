@@ -281,7 +281,6 @@
   "office-agent/frontend/src/components/settings/DirBrowserModal.tsx::DirBrowserModal": 107,
   "office-agent/frontend/src/components/settings/PackageListSection.tsx::PackageListSection": 125,
   "office-agent/frontend/src/components/settings/ProvidersTab.tsx::ProvidersTab": 181,
-  "office-agent/frontend/src/components/settings/PythonInterpreterSection.tsx::PythonInterpreterSection": 101,
   "office-agent/frontend/src/components/settings/SecretsTab.tsx::SecretForm": 104,
   "office-agent/frontend/src/components/settings/SecretsTab.tsx::SecretsTab": 121,
   "office-agent/frontend/src/components/settings/SettingsModal.tsx::SettingsModal": 205,

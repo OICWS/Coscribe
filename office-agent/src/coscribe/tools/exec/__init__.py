@@ -4,6 +4,7 @@ the folder guard, and the AppContainer that holds a script to its folders on Win
 
 from __future__ import annotations
 
+from .find_python import find_pythons
 from .isolation import (
     FolderGrants,
     Isolation,
@@ -22,6 +23,7 @@ from .node_env import install_package as install_node_package
 from .node_env import list_packages as list_node_packages
 from .node_env import uninstall_package as uninstall_node_package
 from .node_scripts import build_node_script_tools
+from .own_python import ensure_own_python, own_python_offer
 from .running import Detachable, HandOff, RunningCommand, request_detach, stop_commands
 from .script_env import (
     ensure_script_env,
@@ -64,6 +66,9 @@ __all__ = [
     "build_script_tools",
     "ensure_node_env",
     "ensure_script_env",
+    "ensure_own_python",
+    "find_pythons",
+    "own_python_offer",
     "fallbacks_for_platform",
     "get_interpreter_override",
     "install_node_package",

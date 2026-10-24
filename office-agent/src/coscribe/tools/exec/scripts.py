@@ -34,7 +34,7 @@ from typing import Any
 from ...runtime import tool_metadata
 from .._files_written import snapshot_workspace, with_files_written
 from .._output_truncation import truncate_script_output
-from .isolation import denied_note, for_scripts, scratch_root
+from .isolation import denied_note, for_scripts, quiet_stderr, scratch_root
 from .running import Detachable, run_to_end
 from .script_env import ensure_script_env, overlay_env, venv_python
 from .script_guard import (
@@ -123,6 +123,8 @@ def _run_python_script(
         if ran.detached is not None:
             handed_over = True
             return ran.detached
+        if isolation is not None:
+            ran.stderr = quiet_stderr(ran.stderr)
         if ran.timed_out:
             timeout_note = f"\n[timed out after {timeout}s]"
             timed_out: dict[str, object] = {

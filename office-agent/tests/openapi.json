@@ -3668,7 +3668,7 @@
     },
     "/api/script-env/interpreter": {
       "get": {
-        "description": "What ensure_script_env would try, in order, right now -- the\nEnvironment tab's manual override (if any) is already reflected\nfirst in `candidates` since the override changes what\nauto-detection itself returns; `auto_detected` is the plain\nfallback list on its own, filtered to candidates that actually\nrun (see working_interpreters' docstring for why sys.executable\nspecifically needs this on a packaged build) so the UI never\noffers a chip that's guaranteed to fail validation if clicked.",
+        "description": "The chosen interpreter (None: the first one found), every Python 3 on this computer\nthat runs, and coscribe's own Python on offer (#586).",
         "operationId": "get_script_env_interpreter_api_script_env_interpreter_get",
         "responses": {
           "200": {
@@ -3723,6 +3723,27 @@
           }
         },
         "summary": "Set Script Env Interpreter"
+      }
+    },
+    "/api/script-env/own-python": {
+      "post": {
+        "description": "Downloads coscribe's own Python (about 30 MB) and chooses it; only ever on request.",
+        "operationId": "download_own_python_api_script_env_own_python_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Download Own Python Api Script Env Own Python Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Download Own Python"
       }
     },
     "/api/script-env/packages": {

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import sys
 from datetime import UTC, datetime
 from typing import Any
 
@@ -16,14 +15,15 @@ from ....runtime import NetworkAccess, NetworkError
 from ....runtime_lg import AuditLog, record_decision
 from ....tools import (
     UnisolatedConversations,
-    fallbacks_for_platform,
+    ensure_own_python,
+    find_pythons,
     get_interpreter_override,
     install_node_package,
     isolation_status,
     list_node_packages,
+    own_python_offer,
     set_interpreter_override,
     uninstall_node_package,
-    working_interpreters,
 )
 from ....tools import install_python_package as install_package
 from ....tools import list_python_packages as list_packages
@@ -141,20 +141,28 @@ def router(state: AppState) -> APIRouter:
 
     @router.get("/api/script-env/interpreter")
     async def get_script_env_interpreter() -> dict[str, object]:
-        """What ensure_script_env would try, in order, right now -- the
-        Environment tab's manual override (if any) is already reflected
-        first in `candidates` since the override changes what
-        auto-detection itself returns; `auto_detected` is the plain
-        fallback list on its own, filtered to candidates that actually
-        run (see working_interpreters' docstring for why sys.executable
-        specifically needs this on a packaged build) so the UI never
-        offers a chip that's guaranteed to fail validation if clicked."""
-        override = get_interpreter_override(settings.state_dir)
-        candidates = [sys.executable, *fallbacks_for_platform()]
+        """The chosen interpreter (None: the first one found), every Python 3 on this computer
+        that runs, and coscribe's own Python on offer (#586)."""
+        state_dir = settings.state_dir
         return {
-            "configured": override,
-            "auto_detected": await asyncio.to_thread(working_interpreters, candidates),
+            "configured": get_interpreter_override(state_dir),
+            "found": await asyncio.to_thread(find_pythons, state_dir),
+            "own_python": own_python_offer(state_dir),
         }
+
+    async def download_own_python() -> dict[str, object]:
+        """Downloads coscribe's own Python (about 30 MB) and chooses it; only ever on request."""
+        try:
+            python = await asyncio.to_thread(ensure_own_python, settings.state_dir)
+        except RuntimeError as exc:
+            return {"success": False, "error": str(exc)}
+        if python is None:
+            return {"success": False, "error": "coscribe's own Python is only offered on Windows."}
+        chosen = await asyncio.to_thread(set_interpreter_override, settings.state_dir, str(python))
+        return {**chosen, "path": str(python)}
+
+    # Registered by reference rather than decorated, so the dead-code check sees it used.
+    router.add_api_route("/api/script-env/own-python", download_own_python, methods=["POST"])
 
     @router.post("/api/script-env/interpreter")
     async def set_script_env_interpreter(payload: ScriptEnvInterpreterUpdate) -> dict[str, object]:

@@ -100,22 +100,22 @@ def test_an_archive_without_python_installs_nothing(tmp_path: Path, windows: _Wi
     assert not (tmp_path / "python").exists()
 
 
-def test_the_own_python_goes_first_unless_the_person_chose_one(
+def test_the_own_python_goes_first_once_downloaded_unless_the_person_chose_one(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    own = tmp_path / "python" / "python.exe"
-    monkeypatch.setattr(script_env, "ensure_own_python", lambda state: own)
-    assert script_env._own_python_first(tmp_path, ["sys"]) == ([str(own), "sys"], "")
+    def download(state: Path) -> Path:
+        raise AssertionError("a script venv never downloads Python by itself")
+
+    monkeypatch.setattr(own_python, "ensure_own_python", download)
+    assert script_env._own_python_first(tmp_path, ["sys"]) == ["sys"]
+    own = own_python.own_python_path(tmp_path)
+    own.parent.mkdir(parents=True)
+    own.write_bytes(b"")
+    assert script_env._own_python_first(tmp_path, ["sys"]) == [str(own), "sys"]
     (tmp_path / "script_env_interpreter.txt").write_text("C:/chosen/python.exe", encoding="utf-8")
-    assert script_env._own_python_first(tmp_path, ["sys"]) == (["sys"], "")
+    assert script_env._own_python_first(tmp_path, ["sys"]) == ["sys"]
 
 
-def test_a_failed_download_falls_back_and_says_why(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    def fail(state: Path) -> Path:
-        raise RuntimeError("Could not download Python from x: offline")
-
-    monkeypatch.setattr(script_env, "ensure_own_python", fail)
-    candidates, why = script_env._own_python_first(tmp_path, ["sys"])
-    assert candidates == ["sys"] and "offline" in why
+def test_the_offer_says_whether_it_is_here(tmp_path: Path, windows: _Windows) -> None:
+    offer = own_python.own_python_offer(tmp_path)
+    assert offer == {"available": True, "version": own_python._VERSION, "downloaded": False}

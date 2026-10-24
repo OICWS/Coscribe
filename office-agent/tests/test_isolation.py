@@ -440,3 +440,38 @@ def test_node_keeps_the_script_path_it_was_given_in_the_container(
         [r"C:\node\node.exe", "--preserve-symlinks", "--preserve-symlinks-main", "s.js"],
         ["python.exe", "s.py"],
     ]
+
+
+def test_the_test_makes_the_script_venv_first_and_says_when_it_cannot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def no_python(state_dir: Path) -> Path:
+        raise RuntimeError("Could not create the script environment (tried: py).")
+
+    monkeypatch.setattr(isolation, "available", lambda: True)
+    monkeypatch.setattr(isolation, "ensure_script_env", no_python)
+    assert isolation_status(tmp_path)["state"] == "untested"
+    assert isolation_status(tmp_path, run=True) == {
+        "state": "setup_failed",
+        "failed": "",
+        "detail": "Could not create the script environment (tried: py).",
+    }
+
+
+def test_a_venv_made_from_another_python_is_tested_again(tmp_path: Path) -> None:
+    python = isolation.venv_python(tmp_path / "script-env")
+    python.parent.mkdir(parents=True)
+    config = tmp_path / "script-env" / "pyvenv.cfg"
+    config.write_text("home = C:\\Python312\n", encoding="utf-8")
+    first = isolation._machine_key(python)
+    config.write_text("home = C:\\Users\\a\\miniconda3\n", encoding="utf-8")
+    assert isolation._machine_key(python) != first
+
+
+def test_the_line_python_3_13_prints_in_the_container_is_dropped() -> None:
+    stderr = (
+        "Failed to find real location of C:\\coscribe\\script-env\\Scripts\\python.exe\r\n"
+        "Traceback (most recent call last):\n  ValueError: bad\n"
+    )
+    traceback = "Traceback (most recent call last):\n  ValueError: bad\n"
+    assert isolation.quiet_stderr(stderr) == traceback

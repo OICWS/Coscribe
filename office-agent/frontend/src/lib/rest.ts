@@ -31,6 +31,7 @@ import type {
   TaskNotesResult,
   ScriptEnvInstallResult,
   ScriptEnvInterpreterInfo,
+  OwnPythonDownload,
   ScriptEnvPackage,
   SkillPlugin,
   SkillPluginDetail,
@@ -291,6 +292,8 @@ export const getScriptEnvInterpreter = () => getJson<ScriptEnvInterpreterInfo>("
 // `path: ""` clears the override server-side, reverting to auto-detection.
 export const setScriptEnvInterpreter = (path: string) =>
   postJson<ScriptEnvInstallResult>("/api/script-env/interpreter", { path });
+// Only on the person's click: about 30 MB from GitHub, then chosen as the interpreter.
+export const downloadOwnPython = () => postJson<OwnPythonDownload>("/api/script-env/own-python", {});
 
 // Mirrors the script-env functions above exactly -- backed by
 // run_node_script's node-env directory instead (see tools/exec/node_env.py).
