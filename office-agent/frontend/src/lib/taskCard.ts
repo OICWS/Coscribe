@@ -19,8 +19,8 @@ export interface TaskCardEntry {
   /** Items (or "" for the card) with a failed call, shown even when the model
    * has not updated the list yet. */
   failed: string[];
-  /** In-progress items stopped on an approval the person has to answer: they
-   * show as waiting, not as running. */
+  /** In-progress items stopped on an approval or a question the person has to
+   * answer: they show as waiting, not as running. */
   waiting: string[];
 }
 
@@ -146,6 +146,9 @@ export function foldTaskCard(entries: TranscriptEntry[], live: boolean, tasksBef
     }
     if (waiting.length > 0) kept.push({ kind: "tool_run", id: `run-${waiting[0].id}`, items: waiting });
   }
+
+  // The question usually comes after the last call, so look past the stretch too.
+  if (active && entries.slice(first).some((entry) => entry.kind === "question" && entry.status === "pending")) waitingIds.add(active);
 
   const card: TaskCardEntry = { kind: "task_card", id: `taskcard-${startGroup.items[split].id}`, tasks, calls, failed: [...failed], waiting: [...waitingIds].filter((taskId) => tasks.some((task) => task.id === taskId && task.status === "in_progress")) };
   out.push(card, ...kept);

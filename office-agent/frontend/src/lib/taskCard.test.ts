@@ -163,4 +163,10 @@ describe("a later turn that only updates the list", () => {
     expect(cardOf(fold(items, true))?.waiting).toEqual(["2"]);
     expect(cardOf(fold([create("1", "A"), update("1", "A", "in_progress"), approval("pending"), update("1", "A", "completed")], true))?.waiting).toEqual([]);
   });
+
+  it("marks an item waiting while a question for the person is pending", () => {
+    const question: LogItem = { id: id(), kind: "question", questions: [], status: "pending" };
+    const items = [create("1", "A"), update("1", "A", "in_progress"), tool("read_file"), question];
+    expect(cardOf(fold(items, true))?.waiting).toEqual(["1"]);
+  });
 });

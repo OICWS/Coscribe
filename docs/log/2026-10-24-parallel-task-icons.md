@@ -5,9 +5,9 @@ runs side by side (a background agent beside a script) looked like a strict 1-2-
 
 ## Shipped
 - `TaskStatusIcon`: a spinner means running, so two spinners are two items in parallel; a ring with
-  three dots means stopped on the person's approval; a dashed circle means not started.
+  three dots means stopped on the person (an approval or an `ask_user_question` answer); a dashed circle means not started.
 - `foldTaskCard`: calls are drawn under the in-progress item that started last (it used the first);
-  `TaskCardEntry.waiting` lists in-progress items with a pending approval.
+  `TaskCardEntry.waiting` lists in-progress items with a pending approval or question. Which item a call belongs to is inferred from time order, not a fact.
 - No tool schema or prompt change, so the provider cache is untouched. Unit tests in `taskCard.test.ts`.
 
 ## Not verified
