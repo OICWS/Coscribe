@@ -67,3 +67,22 @@ def test_network_access_is_per_conversation_checked_and_audited(
         ("t1", "set_network_access", "limited"),
         ("t1", "set_network_access", "none"),
     ]
+
+
+def test_capabilities_change_only_by_name_and_each_change_is_audited(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        before = client.get("/api/capabilities").json()
+        on = client.put("/api/capabilities/commands", json={"on": True}).json()
+        again = client.put("/api/capabilities/commands", json={"on": True}).json()
+        unknown = client.put("/api/capabilities/everything", json={"on": True})
+        off = client.put("/api/capabilities/commands", json={"on": False}).json()
+    assert before == off == {"scripts": True, "commands": False}
+    assert on == again == {"scripts": True, "commands": True}
+    assert unknown.status_code == 404
+    entries = AuditLog(tmp_path / "state").read_all()
+    assert [(e.tool_name, e.decision) for e in entries] == [
+        ("capability_commands", "approve"),
+        ("capability_commands", "reject"),
+    ]

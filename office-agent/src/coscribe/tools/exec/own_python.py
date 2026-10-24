@@ -2,7 +2,7 @@
 
 A system Python can be missing, a Store alias that only opens the Store, or installed where the
 scripts' container then has to be granted read (Program Files, another user's AppData). So
-Settings > Environment offers python-build-standalone's `install_only` build, downloaded into
+Settings > Capabilities offers python-build-standalone's `install_only` build, downloaded into
 `<state>/python` and checked against the SHA-256 pinned here, but only when the person asks:
 a download nobody chose fails on networks that block GitHub (#586).
 """
@@ -48,7 +48,7 @@ def own_python_path(state_dir: Path) -> Path:
 
 
 def own_python_offer(state_dir: Path) -> dict[str, object]:
-    """What Settings > Environment offers: whether this machine has a build, its version, and
+    """What Settings > Capabilities offers: whether this machine has a build, its version, and
     whether it is already here."""
     return {
         "available": download_url() is not None,

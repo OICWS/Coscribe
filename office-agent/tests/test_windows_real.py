@@ -20,7 +20,7 @@ from coscribe.code_runtime.thread import reads_only
 from coscribe.runtime.hooks import run_hook
 from coscribe.runtime.secrets import SERVICE_NAME, resolve_secret, store_secret
 from coscribe.tools.bookkeeping.background_tasks import build_background_task_tools
-from coscribe.tools.exec import script_env
+from coscribe.tools.exec import Capabilities, script_env
 
 real = pytest.mark.skipif(
     sys.platform != "win32" or os.environ.get("COSCRIBE_WINDOWS_REAL") != "1",
@@ -118,6 +118,7 @@ def test_format_hex_returns_the_bytes_unscrambled_and_counts_as_a_read(tmp_path:
 def _tools(tmp_path: Path) -> dict[str, Any]:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
+    Capabilities(tmp_path / "state").set("commands", True)
     return {t.__name__: t for t in build_background_task_tools("t1", workspace, tmp_path / "state")}
 
 

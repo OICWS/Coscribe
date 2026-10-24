@@ -3,7 +3,6 @@ import {
   getScriptIsolation,
   getThreadNetwork,
   getThreadScripts,
-  retestScriptIsolation,
   saveThreadNetwork,
   saveThreadScripts,
 } from "../../lib/rest";
@@ -26,11 +25,10 @@ export function toVariables(rows: VariableRow[]): Record<string, string> | strin
   return variables;
 }
 
-/** The machine's isolation check and this conversation's choice to run without it, kept until
+/** The machine's isolation result and this conversation's choice to run without it, kept until
  * Save changes like the dialog's other pages. */
 export function useScriptsDraft(threadId: string) {
   const [status, setStatus] = useState<ScriptIsolation | null>(null);
-  const [testing, setTesting] = useState(false);
   const [unisolated, setUnisolated] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -50,15 +48,6 @@ export function useScriptsDraft(threadId: string) {
       cancelled = true;
     };
   }, [threadId]);
-
-  const retest = async () => {
-    setTesting(true);
-    try {
-      setStatus(await retestScriptIsolation());
-    } finally {
-      setTesting(false);
-    }
-  };
 
   const save = async (): Promise<string | null> => {
     if (unisolated === loaded) return null;
@@ -81,7 +70,7 @@ export function useScriptsDraft(threadId: string) {
               ? "Run without isolation"
               : "Off: the isolation check failed";
 
-  return { status, testing, retest, unisolated, setUnisolated, dirty: unisolated !== loaded, save, summary };
+  return { status, unisolated, setUnisolated, dirty: unisolated !== loaded, save, summary };
 }
 
 export type ScriptsDraft = ReturnType<typeof useScriptsDraft>;

@@ -1,53 +1,13 @@
 import type { ScriptsDraft } from "./drafts";
-import { secondaryButtonClass } from "../settings/SettingRow";
-import { CHECK_WORDS } from "./checkWords";
 
 export function ScriptsPage({ draft }: { draft: ScriptsDraft }) {
-  const { status, testing } = draft;
-  const failed = status?.state === "failed";
+  const failed = draft.status?.state === "failed";
   return (
     <section className="flex flex-col gap-3">
       <p className="text-[13px] leading-relaxed text-[var(--muted)]">
-        Scripts coscribe writes run in a locked-down space on Windows: they can use only this conversation's folders,
-        can't delete or rename files there, and can't reach the rest of this computer. A check on this computer decides
-        whether that holds.
+        Whether scripts run at all, the Python they use and the isolation check on this computer are in Settings ›
+        Capabilities. {draft.summary === "Isolated" ? "Here, scripts run isolated to this conversation's folders." : ""}
       </p>
-      <div
-        className={`flex flex-col gap-2 rounded-xl border px-4 py-3 ${
-          failed ? "border-[var(--warning)] bg-[var(--card-bg)]" : "border-[var(--border)]"
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <span className="flex-1 text-[15px] font-medium">
-            {status === null || testing
-              ? "Checking isolation on this computer…"
-              : status.state === "passed"
-                ? "Scripts run isolated on this computer"
-                : status.state === "unsupported"
-                  ? "Isolation is only available on Windows"
-                  : status.state === "untested"
-                    ? "Not checked on this computer yet"
-                    : status.state === "setup_failed"
-                      ? "Scripts have no Python to run with yet"
-                      : "Isolation doesn't work on this computer, so scripts are off"}
-          </span>
-          {status !== null && status.state !== "unsupported" && (
-            <button type="button" className={secondaryButtonClass} disabled={testing} onClick={() => void draft.retest()}>
-              {status.state === "untested" ? "Test now" : "Test again"}
-            </button>
-          )}
-        </div>
-        {status?.state === "setup_failed" && !testing && (
-          <p className="text-[13px] leading-relaxed">
-            Choose a Python, or download coscribe's own, in Settings › Environment, then test again. {status.detail}
-          </p>
-        )}
-        {failed && !testing && (
-          <p className="text-[13px] leading-relaxed">
-            {CHECK_WORDS[status.failed] ?? status.failed}. Security software or a company policy can cause this.
-          </p>
-        )}
-      </div>
       {failed && (
         <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--border)] px-4 py-3">
           <input
@@ -60,8 +20,9 @@ export function ScriptsPage({ draft }: { draft: ScriptsDraft }) {
           <span className="flex flex-col gap-1">
             <span className="text-[15px] font-medium">Run scripts without isolation</span>
             <span className="text-[13px] leading-relaxed text-[var(--muted)]">
-              In this conversation only. A script then runs as you and can reach anything you can. You still approve
-              each one, and turning this on is recorded in the audit log.
+              The isolation check failed on this computer, so scripts are off. This turns them on in this conversation
+              only: a script then runs as you and can reach anything you can. You still approve each one, and turning
+              this on is recorded in the audit log.
             </span>
           </span>
         </label>

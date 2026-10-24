@@ -537,3 +537,9 @@ export interface SessionEnvironment {
   variables: Record<string, string>;
   secrets: string[];
 }
+
+/** What coscribe may run on this computer (Settings › Capabilities). */
+export interface Capabilities {
+  scripts: boolean;
+  commands: boolean;
+}

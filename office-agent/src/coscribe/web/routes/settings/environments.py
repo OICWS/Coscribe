@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 from ....runtime import NetworkAccess, NetworkError
 from ....runtime_lg import AuditLog, record_decision
 from ....tools import (
+    Capabilities,
     UnisolatedConversations,
     ensure_own_python,
     find_pythons,
@@ -97,10 +98,41 @@ def _isolation_routes(router: APIRouter, state: AppState) -> None:
     router.add_api_route("/api/threads/{thread_id}/scripts", put_thread_scripts, methods=["PUT"])
 
 
+def _capability_routes(router: APIRouter, state: AppState) -> None:
+    """Settings › Capabilities: whether scripts and commands may run on this computer."""
+    state_dir = state.settings.state_dir
+
+    async def get_capabilities() -> dict[str, bool]:
+        return Capabilities(state_dir).get()
+
+    async def put_capability(name: str, payload: dict[str, Any]) -> Any:
+        capabilities = Capabilities(state_dir)
+        current = capabilities.get()
+        if name not in current:
+            return JSONResponse({"error": f"No capability {name!r}"}, status_code=404)
+        on = payload.get("on") is True
+        if current[name] != on:
+            current = capabilities.set(name, on)
+            # What coscribe may run is a security setting: kept like an approval.
+            record_decision(
+                AuditLog(state_dir),
+                thread_id="",
+                tool_name=f"capability_{name}",
+                arguments={"on": on},
+                decision="approve" if on else "reject",
+                reason="human",
+            )
+        return current
+
+    router.add_api_route("/api/capabilities", get_capabilities, methods=["GET"])
+    router.add_api_route("/api/capabilities/{name}", put_capability, methods=["PUT"])
+
+
 def router(state: AppState) -> APIRouter:
     router = APIRouter()
     settings = state.settings
     _isolation_routes(router, state)
+    _capability_routes(router, state)
 
     # Every handler below wraps its real work in asyncio.to_thread --
     # list_packages/install_package/uninstall_package/set_interpreter_override

@@ -79,9 +79,9 @@ test("Edit environment lists its pages and archives the conversation", async ({ 
   await dialog.getByRole("button", { name: /Folders/ }).click();
   await expect(dialog.getByRole("heading", { name: "Folders" })).toBeVisible();
   await dialog.getByRole("button", { name: "Back" }).click();
-  // The runner is Linux, where there is no container to check.
+  // The isolation check itself lives in Settings › Capabilities now.
   await dialog.getByRole("button", { name: /Scripts/ }).click();
-  await expect(dialog.getByText("Isolation is only available on Windows")).toBeVisible();
+  await expect(dialog.getByText(/Settings › Capabilities/)).toBeVisible();
   await dialog.getByRole("button", { name: "Back" }).click();
 
   await dialog.getByRole("button", { name: "Archive conversation" }).click();
