@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import Any
 
 from fastapi import (
@@ -99,7 +100,16 @@ def _capability_routes(router: APIRouter, state: AppState) -> None:
             )  # fmt: skip
         return current
 
+    async def get_folders() -> dict[str, str]:
+        """Where what this page downloads lives, so the person can find it."""
+        return {
+            "codex": str(Path(state_dir) / "codex"),
+            "python_packages": str(Path(state_dir) / "script-env"),
+            "node_packages": str(Path(state_dir) / "node-env"),
+        }
+
     router.add_api_route("/api/capabilities", get_capabilities, methods=["GET"])
+    router.add_api_route("/api/capabilities/folders", get_folders, methods=["GET"])
     router.add_api_route("/api/capabilities/{name}", put_capability, methods=["PUT"])
 
 

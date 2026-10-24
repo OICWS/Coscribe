@@ -194,6 +194,13 @@ function SessionLinks({ artifactsOpen }: { artifactsOpen: boolean }) {
 /** How long a hover-opened panel stays once the pointer is out of it. */
 const HOVER_CLOSE_DELAY_MS = 600;
 
+/** A conversation's menu, or a dialog opened from it (Edit environment), is open. The menu sits
+ * partly beside the panel and goes with it, so while either is open the panel stays, however far
+ * the pointer moves to use them. */
+function inUse(): boolean {
+  return document.querySelector("[data-nav-menu], .fixed.inset-0") !== null;
+}
+
 // In the desktop shell the top row is the title bar's left end.
 const TOP_ROW_HEIGHT = DRAWS_TITLE_BAR ? "h-10" : "h-12";
 
@@ -255,20 +262,18 @@ export function NavRail({
     if (!hovering || pinned) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const onMove = (event: MouseEvent) => {
-      if (event.clientX <= NAV_RAIL_EXPANDED_WIDTH) {
+      if (event.clientX <= NAV_RAIL_EXPANDED_WIDTH || inUse()) {
         clearTimeout(timer);
         timer = undefined;
       } else if (timer === undefined) {
         timer = setTimeout(() => {
           timer = undefined;
-          // A dialog opened from the panel (Edit environment) is mounted in it:
-          // closing the panel would take the dialog away mid-use. The next
-          // move, once it is closed, starts the delay again.
-          if (!document.querySelector(".fixed.inset-0")) setHovering(false);
+          // The next move, once the menu or dialog is closed, starts the delay again.
+          if (!inUse()) setHovering(false);
         }, HOVER_CLOSE_DELAY_MS);
       }
     };
-    const onBlur = () => setHovering(false);
+    const onBlur = () => !inUse() && setHovering(false);
     document.addEventListener("mousemove", onMove);
     window.addEventListener("blur", onBlur);
     return () => {

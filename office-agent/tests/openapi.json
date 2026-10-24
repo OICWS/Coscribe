@@ -1681,6 +1681,29 @@
         "summary": "Get Capabilities"
       }
     },
+    "/api/capabilities/folders": {
+      "get": {
+        "description": "Where what this page downloads lives, so the person can find it.",
+        "operationId": "get_folders_api_capabilities_folders_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Get Folders Api Capabilities Folders Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Folders"
+      }
+    },
     "/api/capabilities/{name}": {
       "put": {
         "operationId": "put_capability_api_capabilities__name__put",

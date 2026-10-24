@@ -26,6 +26,7 @@ GET /api/attachment/pdf/page
 GET /api/background-tasks/{task_id}/log
 GET /api/browse-dirs
 GET /api/capabilities
+GET /api/capabilities/folders
 GET /api/code
 GET /api/code/permissions
 GET /api/command-sandbox

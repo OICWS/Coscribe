@@ -209,3 +209,16 @@ def test_the_unelevated_sandbox_asks_no_administrator_and_proves_itself_with_a_c
         ("command_sandbox_setup_unelevated", "approve"),
         ("command_sandbox_uninstall", "approve"),
     ]
+
+
+def test_the_page_says_where_codex_and_the_packages_live(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        folders = client.get("/api/capabilities/folders").json()
+    state = tmp_path / "state"
+    assert folders == {
+        "codex": str(state / "codex"),
+        "python_packages": str(state / "script-env"),
+        "node_packages": str(state / "node-env"),
+    }
