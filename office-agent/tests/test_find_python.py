@@ -1,4 +1,4 @@
-"""The Pythons offered in Settings > Environment (tools/exec/find_python.py, #586)."""
+"""The Pythons offered in Settings > Capabilities (tools/exec/find_python.py, #586)."""
 
 from __future__ import annotations
 

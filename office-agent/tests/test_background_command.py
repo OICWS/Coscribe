@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from coscribe.tools.bookkeeping.background_tasks import build_background_task_tools
-from coscribe.tools.exec import isolation
+from coscribe.tools.exec import Capabilities, CapabilityOff, isolation
 
 posix_only = pytest.mark.skipif(sys.platform == "win32", reason="uses sh syntax")
 
@@ -23,6 +23,7 @@ def _tools(tmp_path: Path, thread_id: str = "t1") -> dict[str, Any]:
     workspace = tmp_path / "workspace"
     workspace.mkdir(exist_ok=True)
     state = tmp_path / "state"
+    Capabilities(state).set("commands", True)
     return {
         tool.__name__: tool for tool in build_background_task_tools(thread_id, workspace, state)
     }
@@ -131,3 +132,10 @@ async def test_a_command_past_its_timeout_is_killed_with_its_children(tmp_path: 
     finished = await _finished(tools, started["task_id"])
 
     assert finished["status"] == "timed_out"
+
+
+async def test_a_command_is_refused_until_commands_are_turned_on(tmp_path: Path) -> None:
+    tools = _tools(tmp_path)
+    Capabilities(tmp_path / "state").set("commands", False)
+    with pytest.raises(CapabilityOff, match="Settings › Capabilities"):
+        await tools["run_background_command"](command="echo hi", description="say hi")

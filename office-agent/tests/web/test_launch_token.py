@@ -165,6 +165,7 @@ AUDITED_READ_ONLY_GETS = {
     "/api/attachment/pdf/page",
     "/api/background-tasks/{task_id}/log",
     "/api/browse-dirs",
+    "/api/capabilities",
     "/api/code",
     "/api/code/permissions",
     "/api/commands",

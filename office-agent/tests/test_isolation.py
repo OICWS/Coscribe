@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from coscribe.tools.exec import (
+    Capabilities,
     FolderGrants,
     Isolation,
     IsolationRefused,
@@ -411,6 +412,7 @@ async def test_the_script_tools_run_contained(tmp_path: Path) -> None:
         assert (workspace / "old.txt").exists()
         assert "delete_file" in str(removed["stderr"]), removed
 
+        Capabilities(state).set("commands", True)
         tools = {
             tool.__name__: tool for tool in build_background_task_tools("t1", workspace, state)
         }

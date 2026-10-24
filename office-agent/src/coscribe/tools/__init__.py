@@ -83,6 +83,7 @@ from .design_systems import (
     build_design_system_tools,
 )
 from .exec import (
+    Capabilities,
     Detachable,
     HandOff,
     RunningCommand,
@@ -303,6 +304,7 @@ __all__ = [
     "ensure_own_python",
     "find_pythons",
     "own_python_offer",
+    "Capabilities",
     "request_detach",
     "stop_commands",
     "adopt_running_command",

@@ -10,7 +10,7 @@ project's own development sandbox has hit real, repeated dependency
 breakage this session, so treating "packages a user script wants" and
 "packages coscribe itself needs to run" as two separate installations
 isn't theoretical caution. (2) it gives users an honest, inspectable place
-("what's installed") to manage via the Environment settings tab, mirroring
+("what's installed") to manage via the Capabilities settings tab, mirroring
 Claude Code's own cloud-environment setup step -- but as a simple installed-
 package list a non-technical user can point-and-click, not a freeform shell
 script (see EnvironmentTab.tsx's docstring for why that UI choice was made
@@ -45,7 +45,7 @@ _SETUP_TIMEOUT = 300.0
 # pdfplumber) plus pandas for bulk tabular work, without the user having to
 # know to add these themselves first -- tools/exec/scripts.py's own docstring
 # promises this. Anything else the user wants is on them to add from the
-# Environment settings tab.
+# Capabilities settings tab.
 _BASELINE_PACKAGES = ("openpyxl", "python-docx", "python-pptx", "pandas", "pdfplumber")
 
 # A plain text file (not JSON -- one value, no reason for the ceremony)
@@ -146,7 +146,7 @@ def _venv_create_candidates(state_dir: Path) -> list[str]:
     a synonym for "python".
 
     A user-configured override (get_interpreter_override, set from the
-    Environment settings tab) always goes first, ahead of even
+    Capabilities settings tab) always goes first, ahead of even
     sys.executable -- once someone has explicitly picked an interpreter,
     auto-detection's guesses shouldn't outrank it, and this is also the
     escape hatch for machines where every auto-detected candidate is
@@ -278,7 +278,7 @@ def _ensure_script_env(state_dir: Path) -> Path:
             "Could not create the script environment (tried: "
             + ", ".join(candidates)
             + f"). Last error: {result.stderr.strip()}. Choose a Python in Settings > "
-            "Environment, or download coscribe's own there; with none on this computer, "
+            "Capabilities, or download coscribe's own there; with none on this computer, "
             "install Python 3 from python.org and choose it."
         )
     seed_result = subprocess.run(
@@ -390,7 +390,7 @@ def resolve_python_command(command: str, state_dir: Path | None) -> str:
     or finds the Windows Store stub that exits at once, which showed up as
     "Connection closed" with nothing to act on. A name that already runs is
     left alone; only a broken one is replaced, by the interpreter chosen in
-    Settings > Environment if it works, else the first one detected."""
+    Settings > Capabilities if it works, else the first one detected."""
     if command.lower().removesuffix(".exe") not in _PYTHON_COMMANDS:
         return command
     found = shutil.which(command)

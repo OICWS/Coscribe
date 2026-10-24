@@ -23,6 +23,7 @@ GET /api/attachment/pdf
 GET /api/attachment/pdf/page
 GET /api/background-tasks/{task_id}/log
 GET /api/browse-dirs
+GET /api/capabilities
 GET /api/code
 GET /api/code/permissions
 GET /api/commands
@@ -141,6 +142,7 @@ POST /api/upload
 POST /api/workflows/permissions
 POST /api/workflows/validate
 POST /internal/browser-host/result
+PUT /api/capabilities/{name}
 PUT /api/code/permissions
 PUT /api/design-systems/{system_id}
 PUT /api/mcp/oauth-apps/{group}

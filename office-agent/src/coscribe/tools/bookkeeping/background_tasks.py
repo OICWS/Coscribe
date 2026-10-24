@@ -69,6 +69,7 @@ from ..exec import (
     node_guard_args,
     overlay_env,
     refusal_note,
+    require_capability,
     script_scratch_root,
     suggested_folder,
     venv_python,
@@ -419,6 +420,7 @@ def _prepare_script(
 ) -> tuple[list[str], dict[str, str], Path, list[Path]]:
     """The argv, environment, scratch folder and runtime folders of a background script, with
     the script written into its scratch folder."""
+    require_capability(state, "scripts")
     if language == "python":
         interpreter = str(venv_python(ensure_script_env(state)))
         scratch_dir = Path(tempfile.mkdtemp(prefix="coscribe_bg_script_", dir=scratch_root))
@@ -468,6 +470,7 @@ async def _start_contained(
 ) -> dict[str, Any] | None:
     """Starts the run in the container and hands it to `_watch`, or returns None when this
     machine cannot hold it (then the caller starts it as before)."""
+    require_capability(state, "commands" if language == "shell" else "scripts")
     isolation = await asyncio.to_thread(
         isolation_for_scripts, state, runtime=runtime, thread_id=thread_id, **folders
     )
@@ -612,7 +615,7 @@ def build_background_task_tools(
         its working directory set to the workspace root and against the exact
         same dedicated Python/Node environment
         run_python_script/run_node_script use (same pre-installed packages, same
-        "you manage extra packages from the Environment settings tab" rule).
+        "you manage extra packages from the Capabilities settings tab" rule).
 
         This call does NOT return the script's output -- only a task_id
         confirming it started. Use check_background_task(task_id) to read
@@ -664,15 +667,13 @@ def build_background_task_tools(
         command: str, description: str, timeout_seconds: float = _DEFAULT_TIMEOUT
     ) -> dict[str, Any]:
         """Start a shell command line running in the background and return
-        immediately -- for a command expected to take long (a build, a
-        download, a sync, a long-running tool) where waiting would tie up the
-        whole conversation, or that should keep going while you do other work.
-        It runs through the machine's own shell (sh, or cmd on Windows) with
-        the workspace root as its working directory. On Windows, when this
-        computer passed coscribe's isolation check, it is refused, as the
-        shell can't work isolated; otherwise it runs as the user with no
-        write safeguard and can change any file this app can. Prefer
-        run_background_script for anything a Python or Node script can do.
+        immediately -- for a long command (a build, a download, a sync) that
+        would tie up the conversation, or should run while you do other work.
+        It runs through the machine's shell (sh, or cmd on Windows) in the
+        workspace root, once the person turned commands on in Settings ›
+        Capabilities. Where coscribe's isolation check passed on Windows it is
+        refused (the shell can't work isolated); otherwise it runs as the user
+        and can change any file. Prefer run_background_script when you can.
 
         This call does NOT return the command's output -- only a task_id
         confirming it started. Use check_background_task(task_id) to read its

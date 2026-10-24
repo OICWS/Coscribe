@@ -5,6 +5,7 @@ import type {
   SecretsResponse,
   NetworkAccess,
   ScriptIsolation,
+  Capabilities,
   SessionEnvironment,
   BrowseDirsResponse,
   ConfigResponse,
@@ -509,6 +510,11 @@ export const getThreadFolders = (threadId: string) =>
 
 export const saveThreadFolders = (threadId: string, folders: string[]) =>
   sendForResult<{ folders: string[] }>(`/api/threads/${encodeURIComponent(threadId)}/folders`, "PUT", { folders });
+
+/** Settings › Capabilities: what coscribe may run on this computer. */
+export const getCapabilities = () => getJson<Capabilities>("/api/capabilities");
+export const setCapability = (name: keyof Capabilities, on: boolean) =>
+  putJson<Capabilities>(`/api/capabilities/${name}`, { on });
 
 export const getScriptIsolation = () => getJson<ScriptIsolation>("/api/script-isolation");
 export const retestScriptIsolation = () => postJson<ScriptIsolation>("/api/script-isolation/test", {});
