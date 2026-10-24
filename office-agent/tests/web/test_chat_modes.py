@@ -117,6 +117,7 @@ def test_plan_mode_toggle_updates_state(tmp_path: Path, monkeypatch: pytest.Monk
                 "workspace_root": str(tmp_path / "workspace"),
                 "workspace_explicit": False,
                 "folders": [],
+                "environment": "default",
                 "connector_tools": [],
                 "auto_mode": False,
             }

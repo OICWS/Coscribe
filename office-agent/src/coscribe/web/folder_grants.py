@@ -8,7 +8,8 @@ import logging
 from pathlib import Path
 
 from ..config import Settings
-from ..tools import sweep_folder_grants
+from ..runtime import Environments
+from ..tools import SCHEDULED_THREAD_PREFIX, sweep_folder_grants
 from .thread_files import ThreadFiles
 
 
@@ -21,8 +22,10 @@ def folders_in_use(settings: Settings) -> list[Path]:
         *settings.extra_writable_dirs,
         *settings.extra_deletable_dirs,
     ]
-    for sidecar in settings.state_dir.glob("*.workspace"):
-        folders.extend(Path(f) for f in threads.read_workspace_sidecar(sidecar.stem))
+    for env in Environments(settings.state_dir).all():
+        folders.extend(Path(f) for f in env["folders"])
+    for sidecar in settings.state_dir.glob(f"{SCHEDULED_THREAD_PREFIX}*.workspace"):
+        folders.extend(Path(f) for f in threads.folders_of(sidecar.stem))
     return folders
 
 

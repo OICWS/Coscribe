@@ -16,8 +16,8 @@
   "src/coscribe/web/routes/settings/config.py::update_config": 18,
   "src/coscribe/web/routes/skills.py::router": 35,
   "src/coscribe/web/routes/ws.py::browser_panel_ws": 16,
-  "src/coscribe/web/routes/ws.py::router": 37,
-  "src/coscribe/web/routes/ws.py::ws_endpoint": 20
+  "src/coscribe/web/routes/ws.py::router": 36,
+  "src/coscribe/web/routes/ws.py::ws_endpoint": 19
  },
  "dead_code": {
   "coscribe/cli.py::function chat": 1,
@@ -199,7 +199,6 @@
   "coscribe/web/routes/threads.py::function get_background_task_log_endpoint": 1,
   "coscribe/web/routes/threads.py::function get_context_breakdown_endpoint": 1,
   "coscribe/web/routes/threads.py::function get_messaging": 1,
-  "coscribe/web/routes/threads.py::function get_session_environment": 1,
   "coscribe/web/routes/threads.py::function get_subagent_transcript_endpoint": 1,
   "coscribe/web/routes/threads.py::function get_tasks": 1,
   "coscribe/web/routes/threads.py::function get_thread_activity": 1,
@@ -209,7 +208,6 @@
   "coscribe/web/routes/threads.py::function open_thread_file": 1,
   "coscribe/web/routes/threads.py::function patch_thread_meta": 1,
   "coscribe/web/routes/threads.py::function put_messaging": 1,
-  "coscribe/web/routes/threads.py::function put_session_environment": 1,
   "coscribe/web/routes/threads.py::function rename_thread": 1,
   "coscribe/web/routes/threads.py::function rename_thread_group": 1,
   "coscribe/web/routes/threads.py::function stop_background_task_endpoint": 1,
@@ -233,7 +231,7 @@
  },
  "fan_out": {},
  "file_lines": {
-  "src/coscribe/conversation/session.py": 1316,
+  "src/coscribe/conversation/session.py": 1312,
   "src/coscribe/coordinator.py": 844,
   "src/coscribe/runtime_lg/subagents.py": 842,
   "src/coscribe/tools/bookkeeping/scheduled_tasks.py": 1054,
@@ -261,10 +259,9 @@
   "office-agent/frontend/src/components/DesktopBrowserPanel.tsx::DesktopBrowserPanel": 386,
   "office-agent/frontend/src/components/DocxViewerPanel.tsx::DocxViewerPanel": 281,
   "office-agent/frontend/src/components/EffortPicker.tsx::EffortPicker": 144,
-  "office-agent/frontend/src/components/EnvironmentDialog.tsx::EnvironmentDialog": 184,
   "office-agent/frontend/src/components/FindInPage.tsx::FindInPage": 102,
   "office-agent/frontend/src/components/ImageAnnotator.tsx::ImageAnnotator": 197,
-  "office-agent/frontend/src/components/NavRail.tsx::NavRail": 207,
+  "office-agent/frontend/src/components/NavRail.tsx::NavRail": 205,
   "office-agent/frontend/src/components/PptxShapeOverlay.tsx::PptxShapeOverlay": 105,
   "office-agent/frontend/src/components/RunPanel.tsx::RunPanel": 253,
   "office-agent/frontend/src/components/ScheduledTaskDetail.tsx::ScheduledTaskDetail": 158,
@@ -322,7 +319,7 @@
  },
  "long_functions": {
   "src/coscribe/cli.py::_chat_async": 108,
-  "src/coscribe/conversation/session.py::ChatSessionLG.__init__": 207,
+  "src/coscribe/conversation/session.py::ChatSessionLG.__init__": 194,
   "src/coscribe/conversation/session.py::ChatSessionLG._handle_user_message_locked": 212,
   "src/coscribe/conversation/turn_stream.py::TurnStreamer.stream_turn": 115,
   "src/coscribe/coordinator.py::build_coordinator_agent": 149,
@@ -348,14 +345,14 @@
   "src/coscribe/tools/office/pptx/xml_animation.py::XmlAnimationMixin.edit_pptx_xml": 108,
   "src/coscribe/tools/office/xlsx/tools.py::build_spreadsheet_tools": 144,
   "src/coscribe/tools/web/http_request.py::build_http_tools": 116,
-  "src/coscribe/web/app.py::create_app_lg": 232,
+  "src/coscribe/web/app.py::create_app_lg": 229,
   "src/coscribe/web/routes/connectors/servers.py::router": 142,
   "src/coscribe/web/routes/files.py::router": 163,
   "src/coscribe/web/routes/settings/config.py::router": 103,
   "src/coscribe/web/routes/settings/providers.py::router": 138,
   "src/coscribe/web/routes/skills.py::router": 220,
-  "src/coscribe/web/routes/ws.py::router": 211,
-  "src/coscribe/web/routes/ws.py::router.ws_endpoint": 126
+  "src/coscribe/web/routes/ws.py::router": 203,
+  "src/coscribe/web/routes/ws.py::router.ws_endpoint": 118
  },
  "patch_by_string": {},
  "startup_imports": {

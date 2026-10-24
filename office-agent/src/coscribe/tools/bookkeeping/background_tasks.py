@@ -470,7 +470,7 @@ async def _start_contained(
 ) -> dict[str, Any] | None:
     """Starts the run in the container and hands it to `_watch`, or returns None when this
     machine cannot hold it (then the caller starts it as before)."""
-    require_capability(state, "commands" if language == "shell" else "scripts")
+    require_capability(state, "commands" if language == "shell" else "scripts", thread_id)
     isolation = await asyncio.to_thread(
         isolation_for_scripts, state, runtime=runtime, thread_id=thread_id, **folders
     )

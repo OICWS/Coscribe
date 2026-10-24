@@ -51,8 +51,11 @@ def test_an_upload_and_a_slide_overlay_use_the_conversations_own_folder_lg(
     prs.save(str(chosen / "deck.pptx"))
     fake_model = FakeToolCallingChatModel(responses=[])
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
-        with client.websocket_connect(f"/ws/t_own_folder?workspace={chosen}") as ws:
+        env = client.post("/api/environments", json={"name": "Own", "folders": [str(chosen)]})
+        with client.websocket_connect("/ws/t_own_folder") as ws:
             ws.receive_json()
+            ws.receive_json()
+            ws.send_json({"type": "set_environment", "environment": env.json()["id"]})
             ws.receive_json()
             uploaded = client.post(
                 "/api/upload",

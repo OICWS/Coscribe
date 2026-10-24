@@ -518,7 +518,7 @@ export interface DesignSystem {
   updated_at: string;
 }
 
-/** Whether this machine holds a script to its folders (Edit environment > Scripts). */
+/** How far an environment's conversations may reach the internet. */
 export interface NetworkAccess {
   mode: "none" | "limited" | "full";
   /** For limited: a domain covers its subdomains; "*" is every site. */
@@ -532,10 +532,27 @@ export interface ScriptIsolation {
   detail: string;
 }
 
-/** What one conversation is given: variables the model can read, and the names of the secrets it may use. */
-export interface SessionEnvironment {
-  variables: Record<string, string>;
+/** A named environment: where its conversations work and what they may reach. */
+export interface EnvironmentFields {
+  name: string;
+  /** The main folder first; none means the default workspace. */
+  folders: string[];
+  network: NetworkAccess;
+  /** The secrets its conversations may use in a web request. */
   secrets: string[];
+  /** Plain values the model can read; scripts get them as environment variables. */
+  variables: Record<string, string>;
+  /** Narrow Settings › Capabilities: off here refuses scripts or commands in this environment. */
+  scripts: boolean;
+  commands: boolean;
+  /** Run scripts without isolation where the isolation check failed. */
+  unisolated: boolean;
+}
+
+export interface Environment extends EnvironmentFields {
+  id: string;
+  /** How many conversations chose it; Default's count leaves out the ones that never chose. */
+  used_by: number;
 }
 
 /** What coscribe may run on this computer (Settings › Capabilities). */

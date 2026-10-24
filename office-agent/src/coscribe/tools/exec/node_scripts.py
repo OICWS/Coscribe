@@ -65,7 +65,7 @@ def _run_node_script(
     description: str = "",
     extra_readable: Sequence[Path] = (),
 ) -> dict[str, object]:
-    require_capability(state_dir, "scripts")
+    require_capability(state_dir, "scripts", detachable.thread_id if detachable else None)
     timeout = min(max(timeout, 1.0), _MAX_TIMEOUT)
     node_env_dir = ensure_node_env(state_dir)
     node = shutil.which("node") or "node"

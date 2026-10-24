@@ -22,6 +22,7 @@ from coscribe.runtime import (
     secrets,
 )
 from coscribe.runtime import secret_store as store_module
+from tests.environment_helpers import in_environment
 
 
 class _FakeKeyring:
@@ -175,15 +176,15 @@ def test_a_secret_missing_from_the_keychain_is_a_clear_error_naming_it(
         store.resolve("NOPE")
 
 
-def test_deleting_a_secret_removes_its_keychain_entry_and_every_sessions_use_of_it(
+def test_deleting_a_secret_removes_its_keychain_entry_and_every_environments_use_of_it(
     tmp_path: Path, keychain: _FakeKeyring
 ) -> None:
     store = SecretStore(tmp_path)
     store.save("A", "value-aaaa", ["a.com"])
     store.save("B", "value-bbbb", ["b.com"])
+    in_environment(tmp_path, "s1", secrets=["A", "B"])
+    in_environment(tmp_path, "s2", variables={"X": "1"}, secrets=["A"])
     environments = SessionEnvironments(tmp_path)
-    environments.set("s1", {}, ["A", "B"], store.names())
-    environments.set("s2", {"X": "1"}, ["A"], store.names())
 
     assert store.delete("A") is True
 
@@ -192,29 +193,6 @@ def test_deleting_a_secret_removes_its_keychain_entry_and_every_sessions_use_of_
     assert environments.get("s1")["secrets"] == ["B"]
     assert environments.get("s2") == {"variables": {"X": "1"}, "secrets": []}
     assert store.delete("A") is False
-
-
-def test_a_session_environment_is_checked(tmp_path: Path, keychain: _FakeKeyring) -> None:
-    store = SecretStore(tmp_path)
-    store.save("A", "value-aaaa", ["a.com"])
-    environments = SessionEnvironments(tmp_path)
-
-    saved = environments.set("s", {"MODE": "fast"}, ["A", "A"], store.names())
-    assert saved == {"variables": {"MODE": "fast"}, "secrets": ["A"]}
-    assert environments.get("s") == saved
-    assert environments.get("other") == {"variables": {}, "secrets": []}
-
-    for variables, secrets_, message in [
-        ({"bad name": "1"}, [], "variable name"),
-        ({"X": 1}, [], "text values"),
-        ({"X": "1"}, ["NOPE"], "No such secret"),
-        ({"A": "1"}, ["A"], "both a variable and a secret"),
-        ({"X": "y" * 5000}, [], "longer than"),
-        ({f"V{i}": "1" for i in range(101)}, [], "At most"),
-    ]:
-        with pytest.raises(SecretError, match=message):
-            environments.set("s", variables, secrets_, store.names())
-    assert environments.get("s") == saved
 
 
 # -- what the store says when it refuses --
@@ -443,108 +421,15 @@ def test_the_store_files_are_read_and_written_as_utf8_whatever_the_locale(
 ) -> None:
     seen = _record_text_encodings(monkeypatch)
     store = SecretStore(tmp_path)
-    environments = SessionEnvironments(tmp_path)
 
     store.save("K", "value-one-1", ["a.com"])
     store.names()
-    environments.set("t", {"LABEL": "名称"}, ["K"], store.names())
-    environments.get("t")
-    environments.detach_everywhere("K")
+    in_environment(tmp_path, "t", variables={"LABEL": "名称"}, secrets=["K"])
+    SessionEnvironments(tmp_path).get("t")
+    store.delete("K")
 
     assert seen
     assert all(e is not None and codecs.lookup(e).name == "utf-8" for e in seen), seen
-
-
-# -- a session's environment --
-
-
-def test_a_session_environment_keeps_non_ascii_text_as_written(
-    tmp_path: Path, keychain: _FakeKeyring
-) -> None:
-    environments = SessionEnvironments(tmp_path)
-
-    environments.set("t", {"LABEL": "名称"}, [], set())
-
-    assert "名称" in (tmp_path / "t.env.json").read_bytes().decode("utf-8")
-    assert environments.get("t")["variables"] == {"LABEL": "名称"}
-
-
-def test_a_session_environment_that_is_not_a_map_reads_as_empty(tmp_path: Path) -> None:
-    environments = SessionEnvironments(tmp_path)
-    (tmp_path / "list.env.json").write_text("[1, 2]")
-    (tmp_path / "broken.env.json").write_text("{not json")
-
-    assert environments.get("list") == {"variables": {}, "secrets": []}
-    assert environments.get("broken") == {"variables": {}, "secrets": []}
-
-
-def test_what_a_session_environment_says_when_it_refuses(tmp_path: Path) -> None:
-    environments = SessionEnvironments(tmp_path)
-
-    def attempt(variables: object, secrets_: object, known: set[str] | None = None) -> str:
-        return _refusal(lambda: environments.set("t", variables, secrets_, known or set()))
-
-    assert attempt([], []) == "variables must be a map of names to text values."
-    assert attempt({}, "AB") == "secrets must be a list of secret names."
-    assert attempt({}, [1]) == "secrets must be a list of secret names."
-    assert attempt({}, {"A": 1}) == "secrets must be a list of secret names."
-    assert attempt({f"V{i}": "1" for i in range(101)}, []) == "At most 100 variables per session."
-    assert attempt({"bad name": "1"}, []) == (
-        "'bad name' isn't a variable name: letters, digits and underscores."
-    )
-    assert attempt({"X": "y" * 4097}, []) == "The value of X is longer than 4096 characters."
-    assert attempt({}, ["A", "B", "C"], {"C"}) == "No such secret: A, B."
-    assert attempt({"A": "1", "B": "1"}, ["B", "A"], {"A", "B"}) == (
-        "A, B is both a variable and a secret; keep one."
-    )
-
-
-def test_a_session_may_have_a_hundred_variables_of_the_longest_allowed_value(
-    tmp_path: Path,
-) -> None:
-    environments = SessionEnvironments(tmp_path / "nested" / "state")
-    variables = {f"V{i}": "y" * 4096 for i in range(100)}
-
-    assert environments.set("t", variables, [], set())["variables"] == variables
-    assert environments.get("t")["variables"] == variables
-    assert not list((tmp_path / "nested" / "state").glob("*.tmp"))
-
-
-def test_deleting_a_session_environment_removes_its_file_and_tolerates_a_missing_one(
-    tmp_path: Path,
-) -> None:
-    environments = SessionEnvironments(tmp_path)
-    environments.set("t1", {"A": "1"}, [], set())
-    environments.set("t2", {"B": "2"}, [], set())
-
-    environments.delete("t1")
-    environments.delete("never-existed")
-
-    assert not (tmp_path / "t1.env.json").exists()
-    assert environments.get("t2")["variables"] == {"B": "2"}
-
-
-def test_detaching_a_secret_skips_unreadable_files_and_keeps_going(
-    tmp_path: Path, keychain: _FakeKeyring, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    environments = SessionEnvironments(tmp_path)
-    environments.set("z1", {"LABEL": "名称"}, ["K"], {"K"})
-    environments.set("z2", {}, ["K", "J"], {"K", "J"})
-    (tmp_path / "a-broken.env.json").write_text("{not json")
-    (tmp_path / "b-list.env.json").write_text('["K"]')
-    real_glob = Path.glob
-    with monkeypatch.context() as scoped:
-        # The broken files come first, so a `break` instead of a `continue` would show.
-        scoped.setattr(
-            Path, "glob", lambda self, pattern, **kw: iter(sorted(real_glob(self, pattern, **kw)))
-        )
-        environments.detach_everywhere("K")
-
-    assert environments.get("z1") == {"variables": {"LABEL": "名称"}, "secrets": []}
-    assert environments.get("z2")["secrets"] == ["J"]
-    assert "名称" in (tmp_path / "z1.env.json").read_bytes().decode("utf-8")
-    assert (tmp_path / "b-list.env.json").read_text() == '["K"]'
-    assert not list(tmp_path.glob("*.tmp"))
 
 
 # -- placeholders --

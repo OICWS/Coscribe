@@ -89,7 +89,7 @@ function buildAppMenu(): Menu {
         { label: "New Session", accelerator: "Ctrl+N", click: pageCommand("new-session") },
         { type: "separator" },
         { label: "Open File…", click: pageCommand("open-file") },
-        { label: "Open Folder…", accelerator: "Ctrl+Shift+O", click: pageCommand("open-folder") },
+        { label: "Choose Environment…", accelerator: "Ctrl+Shift+O", click: pageCommand("open-folder") },
         { type: "separator" },
         { label: "Settings…", accelerator: "Ctrl+,", click: pageCommand("settings") },
         { type: "separator" },

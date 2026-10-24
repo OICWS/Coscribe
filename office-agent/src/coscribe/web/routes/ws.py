@@ -93,13 +93,9 @@ def router(state: AppState) -> APIRouter:
             await session.close()
 
     @router.websocket("/ws/{thread_id}")
-    async def ws_endpoint(
-        websocket: WebSocket,
-        thread_id: str,
-        workspace: str | None = None,
-    ) -> None:
+    async def ws_endpoint(websocket: WebSocket, thread_id: str) -> None:
         await websocket.accept()
-        session = _get_session(thread_id, workspace)
+        session = _get_session(thread_id)
         # See ChatSessionLG.notify_resync's own docstring -- this is the
         # one place that knows "a real browser tab is watching this
         # thread right now," so it's the one place that sets/clears it.
@@ -182,12 +178,8 @@ def router(state: AppState) -> APIRouter:
                     # does, and Starlette's WebSocket.send() has no
                     # internal locking against concurrent callers.
                     await session.switch_model(data["model"], websocket, data.get("effort"))
-                elif message_type == "set_folders":
-                    folders = [str(folder) for folder in data.get("folders", [])]
-                    # Persisted only once the session took them, so the
-                    # sidecar never names folders the agent isn't using.
-                    if await session.set_folders(folders, websocket):
-                        _write_workspace_sidecar(thread_id, [str(f) for f in session.folders])
+                elif message_type == "set_environment":
+                    await session.set_environment(str(data.get("environment", "")), websocket)
                 elif message_type == "add_folder":
                     if await session.add_folder(str(data.get("folder", "")), websocket):
                         _write_workspace_sidecar(thread_id, [str(f) for f in session.folders])
