@@ -450,6 +450,8 @@ export interface CodeStatus {
   progress: number | null;
   /** Bytes on disk once downloaded; null where there's no build. */
   size: number | null;
+  /** Versions an earlier pin left on disk; `sandbox` when the command sandbox was set up with it. */
+  older: { version: string; size: number; sandbox: boolean }[];
   /** What a chat's code task runs on. */
   model: string;
   /** Why the code module can't use that model; null when it can. */

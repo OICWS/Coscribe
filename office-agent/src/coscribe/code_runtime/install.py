@@ -16,6 +16,7 @@ import hashlib
 import io
 import os
 import platform
+import re
 import shutil
 import sys
 import tempfile
@@ -25,8 +26,11 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, BinaryIO
 
+from ..tools import sandbox_codex
 from ._pins import CODEX_VERSION, WHEELS
 
+# Each version installs beside the last (codex/<version>), next to Codex's own home.
+_VERSION_DIR = re.compile(r"\d+\.\d+\.\d+")
 _TIMEOUT = 60.0
 _CHUNK = 1 << 20
 
@@ -91,9 +95,38 @@ def installed_size() -> int | None:
     return sum(int(member["size"]) for member in members.values())
 
 
+def older_versions(state_dir: Path) -> list[dict[str, Any]]:
+    """The Codex versions an earlier pin left on disk, with their size and whether the command
+    sandbox was set up with it (removing that one turns the sandbox off)."""
+    root = Path(state_dir) / "codex"
+    if not root.is_dir():
+        return []
+    sandbox = sandbox_codex(state_dir)
+    found = []
+    for folder in sorted(root.iterdir()):
+        if not folder.is_dir() or folder.name == CODEX_VERSION:
+            continue
+        if not _VERSION_DIR.fullmatch(folder.name):
+            continue
+        size = sum(f.stat().st_size for f in folder.rglob("*") if f.is_file())
+        used = sandbox is not None and folder in sandbox.parents
+        found.append({"version": folder.name, "size": size, "sandbox": used, "path": folder})
+    return found
+
+
+def remove_older_versions(state_dir: Path) -> None:
+    """Once the pinned version is in, the ones before it go, but for the command sandbox's,
+    which would otherwise stop working until it is set up again."""
+    for old in older_versions(state_dir):
+        if not old["sandbox"]:
+            shutil.rmtree(old["path"], ignore_errors=True)
+
+
 def remove_codex(state_dir: Path) -> None:
-    """Delete the downloaded Codex. Its threads (in CODEX_HOME) stay, so
+    """Delete the downloaded Codex, every version of it. Its threads (in CODEX_HOME) stay, so
     code conversations carry on once it's downloaded again."""
+    for old in older_versions(state_dir):
+        shutil.rmtree(old["path"], ignore_errors=True)
     shutil.rmtree(install_dir(state_dir), ignore_errors=True)
 
 
@@ -249,4 +282,5 @@ def ensure_codex(
             ) from exc
     finally:
         shutil.rmtree(staging, ignore_errors=True)
+    remove_older_versions(state_dir)
     return codex_executable(state_dir)
