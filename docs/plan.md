@@ -229,9 +229,10 @@ Last reviewed: 2026-10-15.
    setting with `delete_file` to the Recycle Bin, and Edit environment > Network (none, limited
    to listed domains, or full). Codex's commands are off (2026-10-23). A script's approval card
    says whether it runs isolated. Grants on folders no longer in use are taken off at start, and
-   all of them at uninstall. The script venv on Windows is made from coscribe's own Python
-   (3.12). Reads stay limited to the conversation's folders: no whole-profile switch, a
-   read-only folder instead (2026-10-23). Left: close #560.
+   all of them at uninstall. Reads stay limited to the conversation's folders: no whole-profile
+   switch, a read-only folder instead (2026-10-23). The scripts' Python is chosen in Settings >
+   Environment from the ones found on the computer; coscribe's own (3.12) is downloaded only on
+   request (#586). #560 is closed. Open: a PyPI mirror setting for networks that block PyPI.
 
 ## Needs the maintainer's testing (could not be verified here)
 

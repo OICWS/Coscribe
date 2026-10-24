@@ -116,6 +116,7 @@ POST /api/scheduled-tasks/{trigger_id}/runs/{run_id}/investigate
 POST /api/scheduled-tasks/{trigger_id}/runs/{run_id}/retry
 POST /api/scheduled-tasks/{trigger_id}/runs/{run_id}/stop
 POST /api/script-env/interpreter
+POST /api/script-env/own-python
 POST /api/script-env/packages
 POST /api/script-isolation/test
 POST /api/skills/catalog/{name}

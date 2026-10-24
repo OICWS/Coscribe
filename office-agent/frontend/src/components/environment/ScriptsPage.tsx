@@ -1,15 +1,6 @@
 import type { ScriptsDraft } from "./drafts";
 import { secondaryButtonClass } from "../settings/SettingRow";
-
-/** The check that differed, as the person reads it. */
-const CHECK_WORDS: Record<string, string> = {
-  "write inside": "Couldn't write inside its own folders",
-  "delete inside": "Could delete a file",
-  "write outside": "Could change a file outside its folders",
-  "read outside": "Could read a file outside its folders",
-  network: "Reached the network with it turned off",
-  "start a script in isolation": "The check couldn't start a script in isolation",
-};
+import { CHECK_WORDS } from "./checkWords";
 
 export function ScriptsPage({ draft }: { draft: ScriptsDraft }) {
   const { status, testing } = draft;
@@ -36,7 +27,9 @@ export function ScriptsPage({ draft }: { draft: ScriptsDraft }) {
                   ? "Isolation is only available on Windows"
                   : status.state === "untested"
                     ? "Not checked on this computer yet"
-                    : "Isolation doesn't work on this computer, so scripts are off"}
+                    : status.state === "setup_failed"
+                      ? "Scripts have no Python to run with yet"
+                      : "Isolation doesn't work on this computer, so scripts are off"}
           </span>
           {status !== null && status.state !== "unsupported" && (
             <button type="button" className={secondaryButtonClass} disabled={testing} onClick={() => void draft.retest()}>
@@ -44,6 +37,11 @@ export function ScriptsPage({ draft }: { draft: ScriptsDraft }) {
             </button>
           )}
         </div>
+        {status?.state === "setup_failed" && !testing && (
+          <p className="text-[13px] leading-relaxed">
+            Choose a Python, or download coscribe's own, in Settings › Environment, then test again. {status.detail}
+          </p>
+        )}
         {failed && !testing && (
           <p className="text-[13px] leading-relaxed">
             {CHECK_WORDS[status.failed] ?? status.failed}. Security software or a company policy can cause this.

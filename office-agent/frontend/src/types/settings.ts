@@ -317,14 +317,24 @@ export interface ScriptEnvInstallResult {
   error: string | null;
 }
 
+export interface FoundPython {
+  path: string;
+  version: string;
+}
+
 export interface ScriptEnvInterpreterInfo {
-  /** The user's manually-chosen interpreter path, or null if they haven't
-   * set one -- auto-detection (`auto_detected`) is what's actually used. */
+  /** The interpreter the person chose, or null: the first one found is used. */
   configured: string | null;
-  /** What auto-detection alone would try, in order (sys.executable first,
-   * then py/python3/python found on PATH) -- shown so the UI can tell
-   * "found automatically" apart from "your manual choice". */
-  auto_detected: string[];
+  /** Every Python 3 on this computer that runs, coscribe's own first once downloaded. */
+  found: FoundPython[];
+  /** coscribe's own Python, downloaded only when the person asks for it. */
+  own_python: { available: boolean; version: string; downloaded: boolean };
+}
+
+export interface OwnPythonDownload {
+  success: boolean;
+  error: string | null;
+  path?: string;
 }
 
 // ---------------------------------------------------------------------
@@ -516,7 +526,7 @@ export interface NetworkAccess {
 }
 
 export interface ScriptIsolation {
-  state: "passed" | "failed" | "untested" | "unsupported";
+  state: "passed" | "failed" | "untested" | "unsupported" | "setup_failed";
   /** The check that differed, when failed. */
   failed: string;
   detail: string;

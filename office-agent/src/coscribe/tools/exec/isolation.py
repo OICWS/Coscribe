@@ -21,6 +21,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -277,7 +278,15 @@ _PROBE_REVISION = "1"
 
 
 def _machine_key(python: Path) -> dict[str, str]:
-    return {"windows": platform.version(), "python": str(python), "probe": _PROBE_REVISION}
+    # The venv's python.exe keeps its path when the person chooses another Python to make it
+    # from, so the installation it was made from is part of the key too.
+    made_from = [str(p) for p in venv_runtime(python.parent.parent)[1:]]
+    return {
+        "windows": platform.version(),
+        "python": str(python),
+        "home": ";".join(made_from),
+        "probe": _PROBE_REVISION,
+    }
 
 
 # The answer is about the machine, not the state folder: one test per process at most.
@@ -435,14 +444,21 @@ def for_scripts(
 
 def isolation_status(state_dir: Path, *, run: bool = False) -> dict[str, str]:
     """What Edit environment > Scripts shows: `passed`, `failed` (with the check that differed),
-    `untested` (no result for this machine yet, or no script venv to test with) or `unsupported`
-    (not Windows). Only `run` starts the test, so reading the status changes nothing."""
+    `untested` (no result for this machine yet, or no script venv to test with), `setup_failed`
+    (the venv to test with could not be made, and why) or `unsupported` (not Windows). Only `run`
+    starts the test, making the venv first when there is none, so reading the status changes
+    nothing."""
     venv = state_dir / "script-env"
     python = venv_python(venv)
     if not available():
         return {"state": "unsupported", "failed": "", "detail": ""}
     if not python.is_file():
-        return {"state": "untested", "failed": "", "detail": ""}
+        if not run:
+            return {"state": "untested", "failed": "", "detail": ""}
+        try:
+            ensure_script_env(state_dir)
+        except RuntimeError as exc:
+            return {"state": "setup_failed", "failed": "", "detail": str(exc)[-600:]}
     if run:
         result: SelfTest | None = self_test(state_dir, python, venv_runtime(venv), fresh=True)
     else:
@@ -454,6 +470,15 @@ def isolation_status(state_dir: Path, *, run: bool = False) -> dict[str, str]:
 
 
 _DENIED = ("PermissionError", "Access is denied", "EPERM", "EACCES")
+
+# From 3.13 on Python resolves its own path as it starts, a call the container is denied; it runs
+# on regardless, so the line it prints would only make the model think the script failed.
+_REALPATH_WARNING = re.compile(r"^Failed to find real location of [^\n]*\n?", re.MULTILINE)
+
+
+def quiet_stderr(stderr: str) -> str:
+    """A contained script's stderr without the line every Python from 3.13 on prints there."""
+    return _REALPATH_WARNING.sub("", stderr)
 
 
 def denied_note(stderr: str) -> str:

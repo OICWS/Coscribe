@@ -75,6 +75,8 @@ export function useScriptsDraft(threadId: string) {
           ? "Isolation needs Windows"
           : status.state === "untested"
             ? "Not checked yet"
+            : status.state === "setup_failed"
+              ? "No Python yet"
             : unisolated
               ? "Run without isolation"
               : "Off: the isolation check failed";

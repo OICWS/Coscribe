@@ -536,7 +536,10 @@ def test_get_script_env_interpreter_starts_unconfigured(
     assert response.status_code == 200
     body = response.json()
     assert body["configured"] is None
-    assert sys.executable in body["auto_detected"]
+    # python and python3 are often one file; the list names it once.
+    found = [os.path.realpath(python["path"]) for python in body["found"]]
+    assert os.path.realpath(sys.executable) in found
+    assert body["own_python"]["downloaded"] is False
 
 
 def test_set_script_env_interpreter_round_trip(
@@ -768,3 +771,44 @@ def test_secrets_api_never_returns_a_value_and_refuses_without_a_keychain_lg(
     assert deleted.json() == {"deleted": "STRIPE_KEY"}
     assert after_delete.json() == {"variables": {"MODE": "fast"}, "secrets": []}
     assert missing.status_code == 404
+
+
+def test_coscribe_s_own_python_downloads_only_when_asked_and_is_then_chosen(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.web.routes.settings import environments
+
+    asked: list[Path] = []
+
+    def download(state_dir: Path) -> Path:
+        asked.append(state_dir)
+        return Path(sys.executable)
+
+    monkeypatch.setattr(environments, "ensure_own_python", download)
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        client.get("/api/script-env/interpreter")
+        assert asked == []
+        result = client.post("/api/script-env/own-python").json()
+        configured = client.get("/api/script-env/interpreter").json()["configured"]
+
+    assert result == {"success": True, "error": None, "path": sys.executable}
+    assert configured == sys.executable
+
+
+def test_a_failed_own_python_download_says_why(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.web.routes.settings import environments
+
+    def offline(state_dir: Path) -> Path:
+        raise RuntimeError("Could not download Python from x: offline")
+
+    monkeypatch.setattr(environments, "ensure_own_python", offline)
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        result = client.post("/api/script-env/own-python").json()
+        configured = client.get("/api/script-env/interpreter").json()["configured"]
+
+    assert result == {"success": False, "error": "Could not download Python from x: offline"}
+    assert configured is None
