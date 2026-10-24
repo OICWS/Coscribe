@@ -283,9 +283,13 @@ def folders(tmp_path: Path) -> Iterator[tuple[Path, Path, Path, Path]]:
 
 
 def _revoke_all(state: Path) -> None:
+    # The interpreter's folders stay granted: their ACE belongs to the folder, not to this
+    # state, and the script tools in other workers make their venvs from the same Python.
+    shared = {os.path.normcase(str(p)) for p in _runtime()}
     grants = FolderGrants(state)
     for path in {path for path, _access in grants.entries()}:
-        grants.revoke(Path(path))
+        if os.path.normcase(path) not in shared:
+            grants.revoke(Path(path))
 
 
 def _runtime() -> tuple[Path, ...]:
