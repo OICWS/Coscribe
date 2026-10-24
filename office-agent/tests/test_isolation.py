@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from coscribe.runtime import Environments
 from coscribe.tools.exec import (
     Capabilities,
     FolderGrants,
@@ -18,12 +19,12 @@ from coscribe.tools.exec import (
     IsolationRefused,
     RunningCommand,
     SelfTest,
-    UnisolatedConversations,
     isolation,
     isolation_status,
     self_test,
 )
 from coscribe.tools.exec._appcontainer import NETWORK_CAPABILITIES, ContainerUnavailable
+from tests.environment_helpers import in_environment
 
 windows = pytest.mark.skipif(sys.platform != "win32", reason="AppContainer is Windows only")
 
@@ -202,15 +203,15 @@ def test_a_failed_self_test_refuses_scripts_unless_the_conversation_allows_it(
     def run(thread_id: str | None) -> Isolation | None:
         return isolation.for_scripts(failed_machine, writable=[tmp_path], thread_id=thread_id)
 
-    with pytest.raises(IsolationRefused, match="Edit environment > Scripts"):
+    with pytest.raises(IsolationRefused, match="this conversation's environment"):
         run("t1")
     with pytest.raises(IsolationRefused):
         run(None)
-    UnisolatedConversations(failed_machine).set("t1", True, "now")
+    env_id = in_environment(failed_machine, "t1", unisolated=True)
     assert run("t1") is None
     with pytest.raises(IsolationRefused):
         run("t2")
-    UnisolatedConversations(failed_machine).set("t1", False, "later")
+    Environments(failed_machine).update(env_id, {"unisolated": False}, set())
     with pytest.raises(IsolationRefused):
         run("t1")
 

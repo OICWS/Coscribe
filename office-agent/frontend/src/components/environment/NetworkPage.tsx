@@ -25,7 +25,7 @@ export function NetworkPage({ draft }: { draft: NetworkDraft }) {
   return (
     <section className="flex flex-col gap-3">
       <p className="text-[13px] leading-relaxed text-[var(--muted)]">
-        How far this conversation may reach the internet. Connectors are set in Settings &gt; Connectors. A script that
+        How far this environment's conversations may reach the internet. Connectors are set in Settings &gt; Connectors. A script that
         runs without isolation is not held to this.
       </p>
       <div role="radiogroup" aria-label="Network access" className="flex flex-col gap-2">

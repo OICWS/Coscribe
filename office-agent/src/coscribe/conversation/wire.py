@@ -47,6 +47,8 @@ class StateEvent(TypedDict):
     # The folders this conversation works in, the main one first; empty while it uses
     # the default workspace.
     folders: list[str]
+    # The id of the environment this conversation uses ("default" for Default).
+    environment: str
     # The connected connectors' tool names.
     connector_tools: list[str]
     # Only on the state sent right after connecting: whether a turn is already
@@ -499,17 +501,17 @@ class SwitchModelOut(TypedDict):
     effort: NotRequired[Effort]
 
 
-class SetFoldersOut(TypedDict):
-    """Replaces the conversation's folders, the main one first; empty goes back to
-    the default workspace. Answered with `state`, or `error` leaving them as they
-    were."""
+class SetEnvironmentOut(TypedDict):
+    """Moves the conversation to another environment and into its folders, between turns.
+    Answered with `state`, or `error` leaving it where it was."""
 
-    type: Literal["set_folders"]
-    folders: list[str]
+    type: Literal["set_environment"]
+    environment: str
 
 
 class AddFolderOut(TypedDict):
-    """One more folder, keeping the ones the conversation has."""
+    """One more folder, keeping the ones the conversation has. Kept in its environment; one on
+    Default gets an environment of its own."""
 
     type: Literal["add_folder"]
     folder: str
@@ -550,7 +552,7 @@ ClientMessage = (
     | QuestionDismissedOut
     | StopOut
     | SwitchModelOut
-    | SetFoldersOut
+    | SetEnvironmentOut
     | AddFolderOut
     | LoadOlderMessagesOut
 )

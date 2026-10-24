@@ -51,7 +51,8 @@ export function BlockedFolderCard({ blocked }: { blocked: BlockedWrite }) {
             Add “{shortName(folder)}”
           </button>
           <span className="text-[13px] text-[var(--muted)]">
-            The AI can then read and change files in it. Anything you don’t add stays out of reach of scripts’ writes.
+            It joins this conversation’s environment, so its conversations can read and change files there. On Default,
+            this conversation gets an environment of its own.
           </span>
         </div>
       )}

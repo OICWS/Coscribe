@@ -5,7 +5,7 @@ Owns where secret values live (`secrets.py`: the OS keychain behind `keyring` wi
 fallback for provider keys; `secret_store.py`: the global Settings > Secrets, the per-session
 choice of which may be used, and the `redactor` that blanks a value in output), lifecycle hooks
 (`hooks.py`), the risk metadata every tool carries and the agent definition (`types.py`), custom
-provider files (`provider_config.py`), a conversation's network setting (`network_access.py`), the proxy setting (`proxy.py`), the `/compact` prompt
+provider files (`provider_config.py`), named environments and which conversation uses which (`environments.py`), a conversation's network setting (`network_access.py`), the proxy setting (`proxy.py`), the `/compact` prompt
 (`compaction.py`) and a context-window lookup (`llm_client.py`). Does not own any agent loop,
 approval, tool or route: those are `runtime_lg`, `tools` and `web`.
 
@@ -14,7 +14,7 @@ Secrets: `store_secret`, `resolve_secret`, `delete_secret`, `harden_file_permiss
 `env_value_for_storage`, `env_resolve_secret_for_display`, `env_delete_secret_if_ref`,
 `resolve_env_keyring_refs`; the secret store: `SecretStore`, `SessionEnvironments`, `SecretError`,
 `KeychainUnavailable`, `keychain_available`, `MIN_VALUE`, `host_allowed`, `placeholders_in`,
-`substitute`, `redactor`. Network: `NetworkAccess`, `NetworkGuard`, `NetworkError`. Hooks: `HookResult`, `empty_hooks_config`, `load_hooks_config`,
+`substitute`, `redactor`. Environments: `Environments`, `EnvironmentRefused`, `DEFAULT_ENVIRONMENT`. Network: `NetworkAccess`, `NetworkGuard`, `NetworkError`. Hooks: `HookResult`, `empty_hooks_config`, `load_hooks_config`,
 `run_hook`. Types: `Agent`, `ToolMetadata`, `tool_metadata`, `get_tool_metadata`. Other:
 `LLMClient`, `load_custom_providers`, `configured_proxy`, `COMPACT_INSTRUCTIONS`, and where `.env`
 lives and is loaded (`dotenv_file.py`): `dotenv_path`, `app_data_dir`, `prepare_env`.
@@ -38,7 +38,7 @@ No other coscribe package.
 ## Tests
 `tests/test_secrets.py`, `tests/test_secret_store.py`, `tests/test_secret_redaction_properties.py`,
 `tests/test_connector_secrets.py`, `tests/test_hooks.py`, `tests/test_provider_config.py`,
-`tests/test_proxy.py`, `tests/test_llm_client.py`, `tests/test_network_access.py`; the secrets routes through the server are in
+`tests/test_proxy.py`, `tests/test_llm_client.py`, `tests/test_network_access.py`, `tests/test_environments.py`; the secrets routes through the server are in
 `tests/web/test_settings.py`.
 
 ## Verify by hand

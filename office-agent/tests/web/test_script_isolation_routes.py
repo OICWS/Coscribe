@@ -1,6 +1,6 @@
 # ruff: noqa: E402
-"""Web tests: Edit environment > Scripts, the machine's isolation check and a conversation's
-choice to run scripts without it; and Network, how far a conversation may reach."""
+"""Web tests: the machine's isolation check and Settings › Capabilities, and what an environment
+may reach: its network, its switches and running scripts without isolation."""
 
 import sys
 from pathlib import Path
@@ -24,48 +24,37 @@ def test_the_check_says_unsupported_off_windows(
     assert status["state"] == retest["state"] == "unsupported"
 
 
-def test_running_without_isolation_is_per_conversation_and_audited(
+def test_what_an_environment_may_reach_is_checked_and_each_change_audited(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
-        before = client.get("/api/threads/t1/scripts").json()
-        on = client.put("/api/threads/t1/scripts", json={"unisolated": True}).json()
-        again = client.put("/api/threads/t1/scripts", json={"unisolated": True}).json()
-        other = client.get("/api/threads/t2/scripts").json()
-        off = client.put("/api/threads/t1/scripts", json={"unisolated": False}).json()
-    assert before == {"unisolated": False}
-    assert on == again == {"unisolated": True}
-    assert other == {"unisolated": False}
-    assert off == {"unisolated": False}
-    entries = AuditLog(tmp_path / "state").read_all()
-    assert [(e.thread_id, e.tool_name, e.decision) for e in entries] == [
-        ("t1", "run_scripts_without_isolation", "approve"),
-        ("t1", "run_scripts_without_isolation", "reject"),
-    ]
-
-
-def test_network_access_is_per_conversation_checked_and_audited(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
-        before = client.get("/api/threads/t1/network").json()
+        made = client.post("/api/environments", json={"name": "Web"}).json()
+        url = f"/api/environments/{made['id']}"
         limited = client.put(
-            "/api/threads/t1/network",
-            json={"mode": "limited", "domains": ["https://www.Example.com/a", "*.wiki.org", ""]},
+            url,
+            json={
+                "network": {
+                    "mode": "limited",
+                    "domains": ["https://www.Example.com/a", "*.wiki.org", ""],
+                }
+            },
         ).json()
-        bad = client.put("/api/threads/t1/network", json={"mode": "limited", "domains": ["a b"]})
-        empty = client.put("/api/threads/t1/network", json={"mode": "limited", "domains": []})
-        other = client.get("/api/threads/t2/network").json()
-        none = client.put("/api/threads/t1/network", json={"mode": "none", "domains": []}).json()
-        again = client.put("/api/threads/t1/network", json={"mode": "none", "domains": []}).json()
-    assert before == other == {"mode": "limited", "domains": ["*"]}
-    assert limited == {"mode": "limited", "domains": ["example.com", "wiki.org"]}
-    assert bad.status_code == empty.status_code == 422
-    assert none == again == {"mode": "none", "domains": []}
+        bad = client.put(url, json={"network": {"mode": "limited", "domains": ["a b"]}})
+        empty = client.put(url, json={"network": {"mode": "limited", "domains": []}})
+        unisolated = client.put(url, json={"unisolated": True}).json()
+        renamed = client.put(url, json={"name": "Web pages"}).json()
+        not_a_switch = client.put(url, json={"commands": "yes"})
+    assert made["network"] == {"mode": "limited", "domains": ["*"]}
+    assert made["scripts"] is made["commands"] is True and made["unisolated"] is False
+    assert limited["network"] == {"mode": "limited", "domains": ["example.com", "wiki.org"]}
+    assert bad.status_code == empty.status_code == not_a_switch.status_code == 422
+    assert unisolated["unisolated"] is True and renamed["name"] == "Web pages"
     entries = AuditLog(tmp_path / "state").read_all()
-    assert [(e.thread_id, e.tool_name, e.arguments["mode"]) for e in entries] == [
-        ("t1", "set_network_access", "limited"),
-        ("t1", "set_network_access", "none"),
+    created = ["commands", "environment", "name", "network", "scripts", "unisolated"]
+    assert [(e.tool_name, sorted(e.arguments)) for e in entries] == [
+        ("set_environment", created),
+        ("set_environment", ["environment", "name", "network"]),
+        ("set_environment", ["environment", "name", "unisolated"]),
     ]
 
 

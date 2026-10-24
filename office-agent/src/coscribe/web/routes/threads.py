@@ -16,11 +16,7 @@ from fastapi import (
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 from ...conversation import OPENABLE_EXTENSIONS, open_in_os
-from ...runtime import (
-    SecretError,
-    SecretStore,
-    SessionEnvironments,
-)
+from ...runtime import DEFAULT_ENVIRONMENT, Environments
 from ...runtime_lg import (
     extract_text,
     strip_mode_note,
@@ -98,7 +94,7 @@ def _thread_file(state: AppState, thread_id: str, path: str) -> Path | None:
 
 def _listing_routes(router: APIRouter, state: AppState) -> None:
     settings = state.settings
-    _read_workspace_sidecar = state.thread_files.read_workspace_sidecar
+    _folders_of = state.thread_files.folders_of
     _title_sidecar_path = state.thread_files.title_sidecar_path
     checkpointer_holder = state.checkpointer_holder
     meta_store = state.meta_store
@@ -135,6 +131,7 @@ def _listing_routes(router: APIRouter, state: AppState) -> None:
         # a trigger's first turn writes a checkpoint under its thread_id.
         rows = [row for row in rows if not row[0].startswith(SCHEDULED_THREAD_PREFIX)]
         waiting = await _threads_waiting_for_input(state)
+        environment_of = Environments(settings.state_dir).assignments()
         # Real per-thread metadata (Phase 2 of ROADMAP.md), not just bare
         # ids -- aget_tuple(thread_id) fetches each thread's *latest*
         # checkpoint directly off the checkpointer, without needing a
@@ -155,9 +152,7 @@ def _listing_routes(router: APIRouter, state: AppState) -> None:
                 if getattr(message, "type", None) == "human":
                     preview = strip_mode_note(extract_text(message.content))
                     break
-            workspace_root = next(
-                iter(_read_workspace_sidecar(thread_id)), str(settings.workspace_root)
-            )
+            workspace_root = next(iter(_folders_of(thread_id)), str(settings.workspace_root))
             title_sidecar = _title_sidecar_path(thread_id)
             if title_sidecar.is_file():
                 preview = title_sidecar.read_text(encoding="utf-8").strip()
@@ -169,6 +164,7 @@ def _listing_routes(router: APIRouter, state: AppState) -> None:
                     "message_count": len(messages),
                     "preview": preview[:200],
                     "workspace_root": workspace_root,
+                    "environment": environment_of.get(thread_id, DEFAULT_ENVIRONMENT),
                     "group": meta["group"],
                     "archived": meta["archived"],
                     "status": _thread_status(state, thread_id, waiting, meta),
@@ -430,24 +426,8 @@ def _background_task_routes(router: APIRouter, state: AppState) -> None:
         return {"removed": forget_finished_background_tasks(settings.state_dir, thread_id)}
 
 
-def _environment_and_messaging_routes(router: APIRouter, state: AppState) -> None:
+def _messaging_routes(router: APIRouter, state: AppState) -> None:
     settings = state.settings
-
-    @router.get("/api/threads/{thread_id}/environment")
-    async def get_session_environment(thread_id: str) -> dict[str, Any]:
-        return SessionEnvironments(settings.state_dir).get(thread_id)
-
-    @router.put("/api/threads/{thread_id}/environment")
-    async def put_session_environment(thread_id: str, payload: dict[str, Any]) -> Any:
-        try:
-            return SessionEnvironments(settings.state_dir).set(
-                thread_id,
-                payload.get("variables", {}),
-                payload.get("secrets", []),
-                SecretStore(settings.state_dir).names(),
-            )
-        except SecretError as exc:
-            return JSONResponse({"error": str(exc)}, status_code=422)
 
     @router.get("/api/threads/{thread_id}/messaging")
     async def get_messaging(thread_id: str) -> dict[str, Any]:
@@ -463,52 +443,6 @@ def _environment_and_messaging_routes(router: APIRouter, state: AppState) -> Non
             return JSONResponse({"error": str(exc)}, status_code=422)
 
 
-class _ErrorSink:
-    """Keeps what a session would have sent its socket, so a refusal reaches the caller."""
-
-    def __init__(self) -> None:
-        self.errors: list[str] = []
-
-    async def send_json(self, data: Any) -> None:
-        if data.get("type") == "error":
-            self.errors.append(str(data.get("message", "")))
-
-
-def _folder_routes(router: APIRouter, state: AppState) -> None:
-    """A conversation's folders from Edit environment, for a conversation that is not the open
-    one (the open one changes them over its socket, so its page sees the change)."""
-    files = state.thread_files
-
-    async def get_thread_folders(thread_id: str) -> dict[str, Any]:
-        session = state.sessions.get(thread_id)
-        if session is not None:
-            return {"folders": [str(folder) for folder in session.folders]}
-        return {"folders": files.read_workspace_sidecar(thread_id)}
-
-    async def put_thread_folders(thread_id: str, payload: dict[str, Any]) -> Any:
-        asked = payload.get("folders", [])
-        paths = list(dict.fromkeys(str(p) for p in asked if isinstance(p, str)))
-        session = state.sessions.get(thread_id)
-        if session is not None:
-            sink = _ErrorSink()
-            if not await session.set_folders(paths, sink):
-                return JSONResponse({"error": " ".join(sink.errors)}, status_code=422)
-            paths = [str(folder) for folder in session.folders]
-        else:
-            missing = [p for p in paths if not Path(p).is_absolute() or not Path(p).is_dir()]
-            if missing:
-                return JSONResponse(
-                    {"error": f"{missing[0]!r} isn't an existing folder."}, status_code=422
-                )
-        files.write_workspace_sidecar(thread_id, paths)
-        return {"folders": paths}
-
-    # Registered by reference rather than decorated, so the dead-code check sees them used.
-    path = "/api/threads/{thread_id}/folders"
-    router.add_api_route(path, get_thread_folders, methods=["GET"])
-    router.add_api_route(path, put_thread_folders, methods=["PUT"])
-
-
 def router(state: AppState) -> APIRouter:
     router = APIRouter()
     _listing_routes(router, state)
@@ -518,8 +452,7 @@ def router(state: AppState) -> APIRouter:
     _file_and_context_routes(router, state)
     _subagent_routes(router, state)
     _background_task_routes(router, state)
-    _environment_and_messaging_routes(router, state)
-    _folder_routes(router, state)
+    _messaging_routes(router, state)
     return _with_docx_review_routes(router, state, lambda t, p: _thread_file(state, t, p))
 
 

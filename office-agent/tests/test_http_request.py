@@ -18,10 +18,11 @@ import keyring.errors
 import pytest
 from langchain_core.messages import AIMessage, ToolMessage
 
-from coscribe.runtime import SecretError, SecretStore, SessionEnvironments, redactor, secrets
+from coscribe.runtime import SecretError, SecretStore, redactor, secrets
 from coscribe.runtime_lg.agent import _RedactToolResultsMiddleware
 from coscribe.tools.web import http_request as http_module
 from coscribe.tools.web.http_request import build_http_tools
+from tests.environment_helpers import in_environment
 
 from .test_code_agent import (
     _Model,
@@ -92,7 +93,7 @@ def _tools(tmp_path: Path, *, attach: bool = True) -> dict[str, Callable[..., An
     store.save("API_KEY", KEY, ["api.example.com", "*.cdn.example.com"])
     store.save("OTHER_KEY", "other-secret-value", ["other.example.com"])
     if attach:
-        SessionEnvironments(tmp_path).set("t1", {}, ["API_KEY"], store.names())
+        in_environment(tmp_path, "t1", secrets=["API_KEY"])
     return {fn.__name__: fn for fn in build_http_tools(tmp_path, "t1")}
 
 
@@ -260,7 +261,7 @@ async def test_through_a_session_the_model_never_reads_the_value(
 ) -> None:
     store = SecretStore(tmp_path / "state")
     store.save("API_KEY", KEY, ["api.example.com"])
-    SessionEnvironments(tmp_path / "state").set("t1", {}, ["API_KEY"], store.names())
+    in_environment(tmp_path / "state", "t1", secrets=["API_KEY"])
     server.reply = lambda r: httpx.Response(200, text=f"hello {r.headers['x-key']}")
     model = _Model(
         responses=[
@@ -335,7 +336,7 @@ def test_what_the_provider_caches_is_the_same_whatever_secrets_a_conversation_ha
     with_secrets = _session(tmp_path / "a", monkeypatch, None, _Model(responses=[]))  # type: ignore[arg-type]
     store = SecretStore(tmp_path / "a" / "state")
     store.save("API_KEY", KEY, ["api.example.com"])
-    SessionEnvironments(tmp_path / "a" / "state").set("t1", {"X": "1"}, ["API_KEY"], store.names())
+    in_environment(tmp_path / "a" / "state", "t1", variables={"X": "1"}, secrets=["API_KEY"])
     without = _session(tmp_path / "b", monkeypatch, None, _Model(responses=[]))  # type: ignore[arg-type]
 
     assert _bound(with_secrets) == _bound(without)

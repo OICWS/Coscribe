@@ -8,7 +8,7 @@ import { scheduleKindLabel } from "../lib/scheduleLabels";
 import type { RunStatus, ScheduledTask } from "../types/settings";
 import type { ThreadSummary } from "../types/session";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { EnvironmentDialog, type OpenConversationFolders } from "./EnvironmentDialog";
+import { EnvironmentDialog } from "./EnvironmentDialog";
 import { RunStatusIcon } from "./RunStatusIcon";
 import { ThreadList } from "./ThreadList";
 import { ArtifactsIcon } from "./artifacts/artifactIcons";
@@ -218,8 +218,6 @@ interface NavRailProps {
   onEditScheduledTask: (task: ScheduledTask | null) => void;
   onRunScheduledTaskNow: (task: ScheduledTask) => void;
   onNewScheduledTask: () => void;
-  /** The open conversation's folders, for Edit environment on it. */
-  openFolders: OpenConversationFolders;
 }
 
 /** A narrow icon-only rail that expands into a full nav panel on hover
@@ -243,7 +241,7 @@ export function NavRail({
   onOpenScheduledTask,
   onEditScheduledTask,
   onRunScheduledTaskNow,
-  onNewScheduledTask, openFolders,
+  onNewScheduledTask,
 }: NavRailProps) {
   const [hovering, setHovering] = useState(false);
   const expanded = pinned || hovering;
@@ -410,11 +408,9 @@ export function NavRail({
       </div>
       {environmentOf && (
         <EnvironmentDialog
-          threadId={environmentOf.thread_id}
-          title={threadLabel(environmentOf)}
-          archived={environmentOf.archived}
-          openFolders={environmentOf.thread_id === threadId ? openFolders : null}
-          onArchiveChanged={onThreadsChanged}
+          environmentId={environmentOf.environment}
+          onSaved={onThreadsChanged}
+          onDeleted={onThreadsChanged}
           onClose={() => setEnvironmentOf(null)}
         />
       )}

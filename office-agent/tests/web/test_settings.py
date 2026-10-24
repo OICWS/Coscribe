@@ -742,16 +742,17 @@ def test_secrets_api_never_returns_a_value_and_refuses_without_a_keychain_lg(
         listed_without = client.get("/api/secrets")
         usable["yes"] = True
 
-        attached = client.put(
-            "/api/threads/t1/environment",
-            json={"variables": {"MODE": "fast"}, "secrets": ["STRIPE_KEY"]},
+        attached = client.post(
+            "/api/environments",
+            json={"name": "Billing", "variables": {"MODE": "fast"}, "secrets": ["STRIPE_KEY"]},
         )
-        unknown = client.put(
-            "/api/threads/t1/environment", json={"variables": {}, "secrets": ["NOPE"]}
-        )
-        read_back = client.get("/api/threads/t1/environment")
+        unknown = client.post("/api/environments", json={"name": "X", "secrets": ["NOPE"]})
         deleted = client.delete("/api/secrets/STRIPE_KEY")
-        after_delete = client.get("/api/threads/t1/environment")
+        [after_delete] = [
+            e
+            for e in client.get("/api/environments").json()["environments"]
+            if e["name"] == "Billing"
+        ]
         missing = client.delete("/api/secrets/STRIPE_KEY")
 
     assert created.status_code == 200
@@ -765,11 +766,10 @@ def test_secrets_api_never_returns_a_value_and_refuses_without_a_keychain_lg(
     assert no_keychain.status_code == 503
     assert no_keychain.json()["code"] == "keychain_unavailable"
     assert listed_without.json()["keychain"] is False
-    assert attached.json() == {"variables": {"MODE": "fast"}, "secrets": ["STRIPE_KEY"]}
+    assert attached.json()["secrets"] == ["STRIPE_KEY"]
     assert unknown.status_code == 422 and "NOPE" in unknown.json()["error"]
-    assert read_back.json() == attached.json()
     assert deleted.json() == {"deleted": "STRIPE_KEY"}
-    assert after_delete.json() == {"variables": {"MODE": "fast"}, "secrets": []}
+    assert after_delete["variables"] == {"MODE": "fast"} and after_delete["secrets"] == []
     assert missing.status_code == 404
 
 

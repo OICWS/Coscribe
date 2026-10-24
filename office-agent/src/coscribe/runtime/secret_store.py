@@ -188,7 +188,7 @@ class SecretStore:
         return value
 
     def delete(self, name: str) -> bool:
-        """Remove it, its keychain entry, and its place in every session's
+        """Remove it, its keychain entry, and its place in every environment's
         list."""
         with _LOCK:
             data = self._read()
@@ -198,85 +198,24 @@ class SecretStore:
             _secrets.delete_secret(entry.get("ref"))
             self._write(data)
             _FORMS_CACHE.pop(str(self.path), None)
-        SessionEnvironments(self.state_dir).detach_everywhere(name)
+        from .environments import Environments  # environments imports this module
+
+        Environments(self.state_dir).detach_secret(name)
         return True
 
 
 class SessionEnvironments:
-    """Per session: plain environment variables (the model can see them) and
-    which secrets it may use. `<thread>.env.json` in the state folder."""
+    """A conversation's plain variables (the model can see them) and the secrets it may use: its
+    environment's (`environments.py`)."""
 
     def __init__(self, state_dir: str | Path) -> None:
         self.state_dir = Path(state_dir)
 
-    def _path(self, thread_id: str) -> Path:
-        return self.state_dir / f"{thread_id}.env.json"
+    def get(self, thread_id: str | None) -> dict[str, Any]:
+        from .environments import Environments  # environments imports this module
 
-    def get(self, thread_id: str) -> dict[str, Any]:
-        try:
-            raw = json.loads(self._path(thread_id).read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            raw = {}
-        if not isinstance(raw, dict):
-            raw = {}
-        variables = raw.get("variables")
-        secrets = raw.get("secrets")
-        return {
-            "variables": variables if isinstance(variables, dict) else {},
-            "secrets": [s for s in secrets if isinstance(s, str)]
-            if isinstance(secrets, list)
-            else [],
-        }
-
-    def set(self, thread_id: str, variables: Any, secrets: Any, known: set[str]) -> dict[str, Any]:
-        if not isinstance(variables, dict) or not all(
-            isinstance(k, str) and isinstance(v, str) for k, v in variables.items()
-        ):
-            raise SecretError("variables must be a map of names to text values.")
-        if not isinstance(secrets, list) or not all(isinstance(s, str) for s in secrets):
-            raise SecretError("secrets must be a list of secret names.")
-        if len(variables) > MAX_VARIABLES:
-            raise SecretError(f"At most {MAX_VARIABLES} variables per session.")
-        for key, value in variables.items():
-            if not NAME.fullmatch(key):
-                raise SecretError(
-                    f"{key!r} isn't a variable name: letters, digits and underscores."
-                )
-            if len(value) > MAX_VARIABLE_VALUE:
-                raise SecretError(
-                    f"The value of {key} is longer than {MAX_VARIABLE_VALUE} characters."
-                )
-        chosen = list(dict.fromkeys(secrets))
-        missing = [s for s in chosen if s not in known]
-        if missing:
-            raise SecretError(f"No such secret: {', '.join(missing)}.")
-        clash = sorted(set(variables) & set(chosen))
-        if clash:
-            raise SecretError(f"{', '.join(clash)} is both a variable and a secret; keep one.")
-        data = {"variables": variables, "secrets": chosen}
-        with _LOCK:
-            self.state_dir.mkdir(parents=True, exist_ok=True)
-            path = self._path(thread_id)
-            tmp = path.with_suffix(".tmp")
-            tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-            os.replace(tmp, path)
-        return data
-
-    def delete(self, thread_id: str) -> None:
-        self._path(thread_id).unlink(missing_ok=True)
-
-    def detach_everywhere(self, name: str) -> None:
-        with _LOCK:
-            for path in self.state_dir.glob("*.env.json"):
-                try:
-                    raw = json.loads(path.read_text(encoding="utf-8"))
-                except (OSError, ValueError):
-                    continue
-                if isinstance(raw, dict) and name in (raw.get("secrets") or []):
-                    raw["secrets"] = [s for s in raw["secrets"] if s != name]
-                    tmp = path.with_suffix(".tmp")
-                    tmp.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
-                    os.replace(tmp, path)
+        env = Environments(self.state_dir).for_thread(thread_id)
+        return {"variables": dict(env["variables"]), "secrets": list(env["secrets"])}
 
 
 PLACEHOLDER = re.compile(r"\{\{secret:([A-Za-z_][A-Za-z0-9_]{0,63})\}\}")
