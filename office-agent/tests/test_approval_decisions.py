@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import json
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -31,23 +32,28 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from coscribe.code_runtime import CodePermissions
 from coscribe.config import Settings
+from coscribe.conversation import approvals as approvals_module
 from coscribe.conversation import session as session_module
 from coscribe.conversation.session import ChatSessionLG, _SubAgentApprovalChannel
 from coscribe.runtime import empty_hooks_config
 from coscribe.runtime_lg.audit import AuditLog
 from coscribe.runtime_lg.auto_review import REVIEWER_INSTRUCTIONS, Verdict
 from coscribe.tools.bookkeeping.subagent_tasks import SubAgentTask
+from coscribe.tools.exec import commands as commands_module
+from tests.environment_helpers import in_environment
 
 from .wire_check import check_event
 
 READ, LOCAL, EXEC, EXTERNAL = "read_file", "write_file", "run_python_script", "send_email"
 CODE_COMMAND, CODE_CHANGE = "run_code_command", "apply_code_change"
+COMMAND = "run_background_command"
 RISKS = {
     LOCAL: "WRITE_LOCAL",
     EXEC: "EXEC",
     EXTERNAL: "EXTERNAL",
     CODE_COMMAND: "EXEC",
     CODE_CHANGE: "WRITE_LOCAL",
+    COMMAND: "EXEC",
 }
 
 
@@ -130,6 +136,8 @@ class Row:
     human: bool | None = None  # the person's answer, when the conversation asks
     announced: bool = False  # a `tool_started` message goes to the client
     asked: bool = False  # an `approval_required` message goes to the client
+    sandboxed: bool = False  # the command sandbox is set up
+    online: bool = False  # the conversation's environment has Full network
 
 
 ROWS: dict[str, Row] = {
@@ -213,6 +221,26 @@ ROWS: dict[str, Row] = {
     "ask_and_the_person_approves": Row(LOCAL, "approve", "human", human=True, asked=True),
     "ask_and_the_person_refuses": Row(LOCAL, "reject", "human", human=False, asked=True),
     "unattended_refuses_instead_of_waiting": Row(LOCAL, "reject", "unattended", attended=False),
+    # -- a command outside the sandbox runs as the person, so only the person approves it
+    "a_command_outside_the_sandbox_asks_even_when_preapproved": Row(
+        COMMAND, "approve", "human", preapproved=True, human=True, asked=True
+    ),
+    "a_command_outside_the_sandbox_asks_under_accept_edits": Row(
+        COMMAND, "reject", "human", accept_edits=True, human=False, asked=True
+    ),
+    "a_command_outside_the_sandbox_is_refused_in_a_run_that_skips_approval": Row(
+        COMMAND, "reject", "unattended", run_mode="skip", attended=False
+    ),
+    "a_sandboxed_command_follows_the_standing_approvals": Row(
+        COMMAND, "approve", "preapproved", preapproved=True, sandboxed=True, announced=True
+    ),
+    "a_sandboxed_command_the_person_refuses": Row(
+        COMMAND, "reject", "human", sandboxed=True, human=False, asked=True
+    ),
+    # -- the sandbox reads most files, so online it could send them out: the person approves
+    "an_online_sandboxed_command_asks_even_when_preapproved": Row(
+        COMMAND, "reject", "human", preapproved=True, sandboxed=True, online=True, asked=True
+    ),
 }
 
 
@@ -282,6 +310,12 @@ async def test_the_decision_for_one_situation(
     session.preapproved_tools = frozenset({row.tool}) if row.preapproved else frozenset()
     _write_exec_rule(session, row.exec_rule)
     _veto(monkeypatch, session, row.veto)
+    sandbox = Path("codex.exe") if row.sandboxed else None
+    monkeypatch.setattr(approvals_module, "sandbox_codex", lambda state_dir: sandbox)
+    assumed: Counter[str] = Counter()
+    monkeypatch.setattr(commands_module, "_SANDBOX_ASSUMED", assumed)
+    if row.online:
+        in_environment(session.settings.state_dir, "t1", network={"mode": "full", "domains": []})
     socket = _Socket(row.attended)
 
     result = await _decide(session, row.tool, socket, answer=row.human)
@@ -294,6 +328,10 @@ async def test_the_decision_for_one_situation(
     assert ("tool_started" in sent) is row.announced
     assert ("approval_required" in sent) is row.asked
     assert not session._pending_approvals
+    # Only a command approved without the person counts on the sandbox; a rejected one or one
+    # the person approved leaves nothing for a later command to inherit.
+    by_sandbox = row.tool == COMMAND and row.decision == "approve" and row.reason != "human"
+    assert assumed["t1"] == (1 if by_sandbox else 0)
 
 
 async def test_a_refusal_carries_the_reason_the_model_is_told(

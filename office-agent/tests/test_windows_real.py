@@ -1,5 +1,5 @@
 """Checks that need the real Windows parts, not a fake of them: the Credential Manager, cmd and
-PowerShell, taskkill, the Store python stub, resvg's font lookup.
+PowerShell, taskkill, the Store python stub, resvg's font lookup, Codex's command sandbox.
 
 They run in `.github/workflows/windows-more-checks.yml` only (COSCRIBE_WINDOWS_REAL=1), so a
 failure here does not reset the nightly run of green nights in windows.yml (decision 0009)."""
@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import shutil
 import subprocess
 import sys
 import uuid
@@ -16,11 +17,21 @@ from typing import Any
 
 import pytest
 
+from coscribe.code_runtime.install import ensure_codex
 from coscribe.code_runtime.thread import reads_only
 from coscribe.runtime.hooks import run_hook
 from coscribe.runtime.secrets import SERVICE_NAME, resolve_secret, store_secret
 from coscribe.tools.bookkeeping.background_tasks import build_background_task_tools
-from coscribe.tools.exec import Capabilities, script_env
+from coscribe.tools.exec import (
+    Capabilities,
+    record_sandbox_setup,
+    sandbox_codex,
+    sandbox_home,
+    sandbox_setup_argv,
+    sandbox_uninstall_argv,
+    script_env,
+    warm_up_sandbox,
+)
 
 real = pytest.mark.skipif(
     sys.platform != "win32" or os.environ.get("COSCRIBE_WINDOWS_REAL") != "1",
@@ -115,11 +126,45 @@ def test_format_hex_returns_the_bytes_unscrambled_and_counts_as_a_read(tmp_path:
     assert reads_only(command, str(tmp_path), tmp_path)
 
 
-def _tools(tmp_path: Path) -> dict[str, Any]:
+def _tools(tmp_path: Path, state: Path | None = None) -> dict[str, Any]:
+    """The background tools; with `state`, one where the command sandbox is set up."""
     workspace = tmp_path / "workspace"
     workspace.mkdir()
-    Capabilities(tmp_path / "state").set("commands", True)
-    return {t.__name__: t for t in build_background_task_tools("t1", workspace, tmp_path / "state")}
+    state = state or tmp_path / "state"
+    Capabilities(state).set("commands", True)
+    Capabilities(state).set("commands_without_sandbox", True)
+    return {t.__name__: t for t in build_background_task_tools("t1", workspace, state)}
+
+
+@pytest.fixture(scope="module")
+def sandboxed_state(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """A state dir whose command sandbox is set up as Settings › Capabilities does it; the
+    runner is an administrator, so Windows asks nobody."""
+    state = tmp_path_factory.mktemp("sandbox-state")
+    codex = ensure_codex(state)
+    home = sandbox_home(state)
+    home.mkdir(parents=True)
+    done = subprocess.run(
+        sandbox_setup_argv(codex),
+        env={**os.environ, "CODEX_HOME": str(home)},
+        capture_output=True,
+        text=True,
+        timeout=600,
+        check=False,
+    )
+    assert done.returncode == 0, done.stdout + done.stderr
+    record_sandbox_setup(state, codex)
+    warm_up_sandbox(state)
+    return state
+
+
+async def _finished(tools: dict[str, Any], task_id: str) -> dict[str, Any]:
+    for _ in range(600):
+        result: dict[str, Any] = tools["check_background_task"](task_id)
+        if result["status"] != "running":
+            return result
+        await asyncio.sleep(0.1)
+    raise AssertionError("the command did not finish")
 
 
 def _alive(pid: int) -> bool:
@@ -130,22 +175,40 @@ def _alive(pid: int) -> bool:
 
 
 @real
-async def test_stopping_a_background_command_ends_its_whole_process_tree(tmp_path: Path) -> None:
-    tools = _tools(tmp_path)
-    pid_file = tmp_path / "child.pid"
+async def test_the_first_sandboxed_command_after_setup_runs(
+    tmp_path: Path, sandboxed_state: Path
+) -> None:
+    tools = _tools(tmp_path, sandboxed_state)
+    started = await tools["run_background_command"](command="whoami", description="first")
+    result = await _finished(tools, started["task_id"])
+    assert "codexsandbox" in result.get("output", "").lower(), result.get("output")
+
+
+@real
+@pytest.mark.parametrize("sandboxed", [False, True])
+async def test_stopping_a_background_command_ends_its_whole_process_tree(
+    sandboxed: bool, tmp_path: Path, request: pytest.FixtureRequest
+) -> None:
+    state = request.getfixturevalue("sandboxed_state") if sandboxed else None
+    tools = _tools(tmp_path, state)
+    # In the workspace, the one folder a sandboxed command may write.
+    pid_file = tmp_path / "workspace" / "child.pid"
     child = "import time; time.sleep(120)"
     parent = (
         "import subprocess, sys, time; "
         f"p = subprocess.Popen([sys.executable, '-c', '{child}']); "
         f"open(r'{pid_file}', 'w').write(str(p.pid)); time.sleep(120)"
     )
-    command = f'"{sys.executable}" -c "{parent}"'
+    command = f'whoami & "{sys.executable}" -c "{parent}"'
 
     started = await tools["run_background_command"](command=command, description="tree")
-    for _ in range(200):
+    # A sandboxed command's first run in a folder waits for Codex to grant it to the sandbox user.
+    for _ in range(600):
         if pid_file.exists() and pid_file.read_text().strip():
             break
         await asyncio.sleep(0.1)
+    task = tools["check_background_task"](started["task_id"])
+    assert pid_file.exists(), task.get("output")
     grandchild = int(pid_file.read_text())
     assert _alive(grandchild)
     assert tools["check_background_task"](started["task_id"])["status"] == "running"
@@ -212,3 +275,79 @@ def test_a_script_without_node_installed_says_what_is_missing(
 
     with pytest.raises(RuntimeError, match=r"node.*not found on PATH.*install Node\.js"):
         ensure_node_env(tmp_path / "state")
+
+
+@real
+async def test_a_sandboxed_command_writes_only_its_workspace_and_cannot_read_the_profile(
+    tmp_path: Path, sandboxed_state: Path
+) -> None:
+    # A workspace in Documents, as a person's would be, with a file beside it and one at the
+    # profile's top. Codex's setup lets its users read Documents, so the one beside it is
+    # readable (decision 0022 says so); the top of the profile is not.
+    base = Path(os.environ["USERPROFILE"]) / "Documents" / f"coscribe-{uuid.uuid4().hex}"
+    base.mkdir(parents=True)
+    tools = _tools(base, sandboxed_state)
+    outside = base / "outside"
+    outside.mkdir()
+    beside = outside / "secret.txt"
+    beside.write_text("BESIDE-SECRET")
+    top = Path(os.environ["USERPROFILE"]) / f"coscribe-secret-{uuid.uuid4().hex}.txt"
+    top.write_text("TOP-SECRET")
+    made = outside / "made.txt"
+    connect = (
+        "print('PY-RAN'); import socket; "
+        "socket.create_connection(('1.1.1.1', 443), 5); print('NET-OPEN')"
+    )
+    command = (
+        f'whoami & echo inside> made.txt & type "{beside}" & type "{top}" & '
+        f'echo outside> "{made}" & "{sys.executable}" -c "{connect}"'
+    )
+
+    try:
+        started = await tools["run_background_command"](command=command, description="probe")
+        result = await _finished(tools, started["task_id"])
+        output = result.get("output", "")
+        acls = "\n".join(
+            subprocess.run(["icacls", str(p)], capture_output=True, text=True, check=False).stdout
+            for p in (*reversed(beside.parents[:4]), beside, tmp_path.parents[2], tmp_path)
+        )
+        assert (base / "workspace" / "made.txt").read_text().strip() == "inside"
+        assert not made.exists(), output
+        assert "TOP-SECRET" not in output, output
+        assert "BESIDE-SECRET" in output, output + acls
+        assert "codexsandbox" in output.lower(), output
+        # Default's network is not Full, so the command is offline.
+        assert "PY-RAN" in output and "NET-OPEN" not in output, output
+    finally:
+        top.unlink()
+        shutil.rmtree(base, ignore_errors=True)
+
+
+# Last in the file: it removes the sandbox the tests above share.
+@real
+async def test_a_command_fails_closed_when_the_sandbox_was_removed_behind_the_apps_back(
+    tmp_path: Path, sandboxed_state: Path
+) -> None:
+    tools = _tools(tmp_path, sandboxed_state)
+    codex = sandbox_codex(sandboxed_state)
+    assert codex is not None
+    home = {**os.environ, "CODEX_HOME": str(sandbox_home(sandboxed_state))}
+    removed = subprocess.run(
+        sandbox_uninstall_argv(codex), env=home, capture_output=True, text=True, check=False
+    )
+    assert removed.returncode == 0, removed.stdout + removed.stderr
+
+    started = await tools["run_background_command"](
+        command="whoami & echo inside> made.txt", description="after removal"
+    )
+    result = await _finished(tools, started["task_id"])
+
+    # Codex either refuses or sets the sandbox up again (the runner is an administrator); never
+    # does the command run as the person.
+    output = result.get("output", "")
+    ran_as = output.splitlines()[0].lower() if output.strip() else ""
+    assert os.environ["USERNAME"].lower() not in ran_as, output
+    if result["status"] == "succeeded":
+        assert "codexsandbox" in ran_as, output
+    else:
+        assert not (tmp_path / "workspace" / "made.txt").exists(), output
