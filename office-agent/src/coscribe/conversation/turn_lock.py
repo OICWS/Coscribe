@@ -5,6 +5,7 @@ conversation's browser tab without asking only while one is under way."""
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from collections.abc import Callable
 from typing import Literal
 
@@ -22,3 +23,9 @@ class TurnLock(asyncio.Lock):
     def release(self) -> None:
         super().release()
         self._on_change(False)
+
+    async def wait_released(self, timeout: float) -> None:
+        """Returns once no turn holds the lock, or after `timeout` seconds."""
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(self.acquire(), timeout)
+            self.release()

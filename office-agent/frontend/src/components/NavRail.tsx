@@ -288,11 +288,11 @@ export function NavRail({
     if (expanded) onThreadsChanged();
   }, [expanded, onThreadsChanged]);
 
-
   const confirmDelete = () => {
     if (!deleteTarget) return;
     const id = deleteTarget.thread_id;
     setDeleteTarget(null);
+    if (id === threadId) startNewThread(); // leave it before it is gone
     deleteThread(id).then(onThreadsChanged);
   };
 

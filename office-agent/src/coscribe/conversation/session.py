@@ -585,18 +585,11 @@ class ChatSessionLG:
         it's a "respond" decision, not approve/reject (see
         _decide_action_request's own docstring).
 
-        Real, user-reported gap in the purely-cooperative design: none of
-        the above helps when the turn isn't blocked on an approval/
-        question at all, but stuck deep inside a single provider SDK call
-        -- e.g. langchain_google_genai's own internal retry/backoff loop on
-        a quota error, which can run for the better part of a minute
-        without ever yielding a chunk for _stream_turn's stop-flag check to
-        run against (see runtime_lg/providers.py's own comment on that same
-        bug). Every other agent tool's Stop button reaches for the same
-        fix in this situation -- bind directly to cancelling the actual
-        in-flight call (AbortController in a JS fetch-based client,
-        asyncio.Task.cancel() here) -- so this does too, but *only* when
-        there's nothing pending to resolve instead: a pending approval/
+        A turn stuck inside one provider SDK call (langchain_google_genai's
+        retry loop on a quota error can run for most of a minute, see
+        runtime_lg/providers.py) never reaches the flag check, so the
+        in-flight task is cancelled too, but *only* when there's nothing
+        pending to resolve instead: a pending approval/
         question means the turn is legitimately paused at a LangGraph
         interrupt() waiting on user input, and unblocking it via the
         futures above lets it unwind through its own normal
@@ -630,6 +623,13 @@ class ChatSessionLG:
             and not self._current_turn_task.done()
         ):
             self._current_turn_task.cancel()
+
+    async def stop_and_wait(self, timeout: float = 15.0) -> None:
+        """Stops the running turn and waits for it to end: one ending after its conversation was
+        deleted would write a checkpoint and bring the conversation back."""
+        if self._turn_lock.locked():
+            self.request_stop()
+            await self._turn_lock.wait_released(timeout)
 
     def abandon_orphaned_turn(self, websocket: Any) -> None:
         """Called from app.py's WebSocketDisconnect handler, not
