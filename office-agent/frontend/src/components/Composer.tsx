@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { PAGE_KINDS, type PageKind } from "../lib/artifacts";
 import { withAnnotatedCopy } from "../lib/annotation";
 import { useComposerAction } from "../lib/menuCommands";
+import { measureComposerToolbar } from "../lib/composerWidth";
 import { useWindowFileDrop } from "../lib/useWindowFileDrop";
 import { ArtifactChip } from "./ArtifactChip";
 import { uploadFile } from "../lib/rest";
@@ -589,7 +590,7 @@ export function Composer({
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-2 whitespace-nowrap pt-2">
+      <div ref={measureComposerToolbar} className="flex items-center justify-between gap-2 whitespace-nowrap pt-2">
         {/* ml-1.5 puts the + under the first letter typed in the box above. */}
         <div className="ml-1.5 flex shrink-0 items-center gap-0.5">
           <input
