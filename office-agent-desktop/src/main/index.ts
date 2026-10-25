@@ -6,7 +6,6 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { join } from "node:path";
 import { app, BrowserWindow } from "electron";
 import { freePort } from "./paths";
 import { startSidecar, killSidecar } from "./sidecar";
@@ -20,11 +19,6 @@ import { startBrowserAgent } from "./browserAgent";
 import { registerBrowserPermissionHandlers } from "./browserPermissions";
 import { registerPanelWindowHandlers } from "./panelWindows";
 import { registerSessionActivityHandlers } from "./sessionActivity";
-
-// The product name is capitalised for display, but Electron derives userData (and the
-// single-instance lock under it) from that name; pinning the old folder keeps the browser
-// panel's cookies and settings where existing installs left them. Must precede the lock.
-app.setPath("userData", join(app.getPath("appData"), "coscribe"));
 
 // MUST run before anything else touches the window: a second launch
 // fires the 'second-instance' handler below in the ALREADY-running

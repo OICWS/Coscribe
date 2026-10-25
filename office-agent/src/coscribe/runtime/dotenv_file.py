@@ -18,12 +18,12 @@ def app_data_dir() -> Path:
     (office-agent-desktop's Electron shell spawns the sidecar with no
     natural project dir to look for a `.env` in, and the same is true
     running the PyInstaller-packaged binary directly). Same convention
-    most desktop apps use: `%APPDATA%\\coscribe` on Windows,
+    most desktop apps use: `%APPDATA%\\Coscribe` on Windows,
     `~/Library/Application Support/coscribe` on macOS,
     `~/.config/coscribe` elsewhere."""
     if sys.platform == "win32":
         base = os.environ.get("APPDATA")
-        return Path(base) / "coscribe" if base else Path.home() / "coscribe"
+        return Path(base) / "Coscribe" if base else Path.home() / "coscribe"
     if sys.platform == "darwin":
         return Path.home() / "Library" / "Application Support" / "coscribe"
     return Path.home() / ".config" / "coscribe"
