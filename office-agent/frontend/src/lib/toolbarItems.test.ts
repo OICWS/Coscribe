@@ -9,10 +9,10 @@ describe("normalizePinned", () => {
   });
 
   it("keeps a stored choice, in the bar's order, without items it does not know", () => {
-    expect(normalizePinned('["browser","gone","plan"]')).toEqual(["plan", "browser"]);
+    expect(normalizePinned('["browser","gone","plan"]')).toEqual(["sidebar", "plan", "browser"]);
   });
 
-  it("keeps an empty list: the person unpinned everything", () => {
-    expect(normalizePinned("[]")).toEqual([]);
+  it("keeps an empty list empty, except for the sidebar button, which cannot be unpinned", () => {
+    expect(normalizePinned("[]")).toEqual(["sidebar"]);
   });
 });
