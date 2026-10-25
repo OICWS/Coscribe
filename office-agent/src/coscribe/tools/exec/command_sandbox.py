@@ -30,7 +30,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from ._private_folders import inside_any, prepare_folders
+from ._private_folders import hidden_around, inside_any, prepare_folders
 
 _RECORD = "command-sandbox.json"
 # Codex reads permission profiles from config.toml only; each set of folders gets its own,
@@ -216,6 +216,7 @@ def sandboxed_command(
     temp = _temp_folder(state_dir, writable)
     given = [*writable, *readable, script.parent, temp]
     # A folder the environment was given stays readable even when it holds a private one.
+    hidden = hidden_around(hidden, root)
     denied = [h for h in hidden if not any(inside_any(h, [g]) for g in given)]
     if hidden:
         prepare_folders(state_dir, denied, given, [*readable, script.parent, *programs])

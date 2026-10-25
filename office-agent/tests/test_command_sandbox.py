@@ -159,7 +159,7 @@ def test_private_folders_are_denied_and_what_the_command_needs_in_them_is_let_ba
 ) -> None:
     record_sandbox_setup(tmp_path, _codex(tmp_path))
     documents, appdata = tmp_path / "Documents", tmp_path / "AppData"
-    root, reference, program = documents / "work", documents / "reference", appdata / "Python"
+    root, reference, program = tmp_path / "work", documents / "reference", appdata / "Python"
     for folder in (root, reference, program):
         folder.mkdir(parents=True)
 
@@ -196,11 +196,10 @@ def test_a_private_folder_given_to_the_environment_is_not_denied_and_loses_an_ol
     tmp_path: Path, icacls: list[tuple[str, ...]]
 ) -> None:
     record_sandbox_setup(tmp_path, _codex(tmp_path))
-    documents = tmp_path / "Documents"
+    documents, elsewhere = tmp_path / "Documents", tmp_path / "elsewhere"
+    elsewhere.mkdir()
     (documents / "work").mkdir(parents=True)
-    sandboxed_command(
-        tmp_path, "dir", documents / "work", [documents / "work"], [], False, hidden=[documents]
-    )
+    sandboxed_command(tmp_path, "dir", elsewhere, [elsewhere], [], False, hidden=[documents])
     icacls.clear()
 
     sandboxed_command(tmp_path, "dir", documents, [documents], [], False, hidden=[documents])
@@ -209,6 +208,55 @@ def test_a_private_folder_given_to_the_environment_is_not_denied_and_loses_an_ol
     assert config.count('"deny"') == 1  # the first profile's, kept with the profiles
     # Codex's deny entry would beat its grant on the folder it now writes.
     assert icacls == [(str(documents), "/remove:d", "CodexSandboxUsers")]
+
+
+@pytest.mark.usefixtures("on_windows")
+def test_a_private_folder_holding_the_commands_folder_hides_what_is_beside_the_way_down(
+    tmp_path: Path, icacls: list[tuple[str, ...]]
+) -> None:
+    record_sandbox_setup(tmp_path, _codex(tmp_path))
+    desktop, appdata = tmp_path / "Desktop", tmp_path / "AppData"
+    root = desktop / "projects" / "app"
+    for folder in (root / "src", desktop / "photos", desktop / "projects" / "old", appdata):
+        folder.mkdir(parents=True)
+    for file in (desktop / "notes.txt", desktop / "projects" / "plan.md"):
+        file.write_text("x")
+    sandboxed_command(
+        tmp_path, "dir", elsewhere := tmp_path / "elsewhere", [elsewhere], [], False,
+        hidden=[desktop],
+    )  # fmt: skip
+    icacls.clear()
+
+    sandboxed = sandboxed_command(
+        tmp_path, "dir", root, [root], [], False, hidden=[desktop, appdata]
+    )
+    assert sandboxed is not None
+    argv = sandboxed[0]
+
+    config = (sandbox_home(tmp_path) / "config.toml").read_text(encoding="utf-8")
+    section = config[config.index(f"[permissions.{argv[3]}.filesystem]") :].split("\n\n")[0]
+    denied = {line.split(" = ")[0].strip('"') for line in section.splitlines() if "deny" in line}
+    beside = [
+        desktop / "notes.txt", desktop / "photos", desktop / "projects" / "old",
+        desktop / "projects" / "plan.md", appdata,
+    ]  # fmt: skip
+    assert denied == {p.as_posix() for p in beside}
+    # The Desktop's own deny, from the earlier profile, would keep PowerShell out of the folder.
+    assert icacls == [(str(desktop), "/remove:d", "CodexSandboxUsers")]
+
+
+def test_a_private_folder_that_does_not_hold_the_folder_stays_whole(tmp_path: Path) -> None:
+    documents = tmp_path / "Documents"
+    (documents / "a").mkdir(parents=True)
+    root = tmp_path / "work"
+
+    assert private_folders_module.hidden_around([documents], root) == [documents]
+    assert private_folders_module.hidden_around([documents], documents) == [documents]
+    assert private_folders_module.hidden_around([documents], documents / "a") == []
+    # Gone or unreadable: hidden whole, as before.
+    assert private_folders_module.hidden_around([tmp_path / "gone"], tmp_path / "gone" / "x") == [
+        tmp_path / "gone"
+    ]
 
 
 def test_a_failed_grant_stops_the_command_and_stays_in_the_ledger(
