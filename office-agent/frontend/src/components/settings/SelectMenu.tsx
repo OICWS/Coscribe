@@ -41,7 +41,7 @@ export function SelectMenu<T extends string>({
         aria-label={ariaLabel}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex h-8 min-w-[9rem] max-w-full items-center justify-between gap-2 rounded-lg bg-[var(--card-bg)] px-3 text-sm text-[var(--fg)] hover:bg-[var(--border)]"
+        className="flex h-8 max-w-full items-center gap-2 rounded-lg px-3 text-sm text-[var(--fg)] hover:bg-[var(--card-bg)] aria-expanded:bg-[var(--card-bg)]"
         onClick={() => setOpen((v) => !v)}
       >
         <span className="min-w-0 truncate">{current?.label ?? placeholder}</span>
