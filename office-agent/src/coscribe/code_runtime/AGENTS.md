@@ -26,7 +26,8 @@ policy). Callers import these from `coscribe.code_runtime`, not a submodule. Tes
   independent review.
 - Where the command sandbox is set up and commands are allowed, the thread runs under a
   permission profile in the sandbox's Codex home (`codex_home` is then that home, since the
-  sandbox users' passwords live there) with approval policy "never": Codex asks nothing, and
+  sandbox users' passwords live there) with approval policy "never", once the caller has
+  approved the task's commands: Codex asks nothing, and
   anything it still asks is declined, since an approved escalation would make the whole disk
   writable (issue #616). Elsewhere the thread runs with no sandbox (`danger-full-access`), so
   nothing holds a command to the folder settings: commands are refused without a card (decision

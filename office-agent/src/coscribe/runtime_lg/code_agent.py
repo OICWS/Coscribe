@@ -69,9 +69,14 @@ code, tests or builds, nor read an xlsx, docx or pdf; change files with your \
 patch tool (each change may need the user's approval) and report what you \
 couldn't do."""
 
+SANDBOX_REQUEST = (
+    "Any command the code module runs for this task, in the command sandbox: it writes only "
+    "{folder}, with this environment's network."
+)
+
 COMMANDS_SANDBOXED = """\
 Your commands and file changes run in a sandbox without asking anyone: they \
-can write only this folder and have no network. A request to run outside the \
+can write only this folder, and may be offline. A request to run outside the \
 sandbox is always refused, so don't make one; work within it, or report what \
 you couldn't do. Run the code and tests you write to check them."""
 
@@ -193,6 +198,17 @@ class _Run:
                 folder,
                 service.command_path(),
             )
+            # Codex asks nothing in the sandbox, so its commands are approved once, here, as a
+            # conversation's command is: by the person whenever the environment is online.
+            if sandbox is not None and not await self.decide(
+                ApprovalRequest(
+                    kind="command",
+                    item_id="sandbox",
+                    command=SANDBOX_REQUEST.format(folder=folder),
+                    reason=f"Code task: {record.description}",
+                )
+            ):
+                sandbox = None
             permissions, sandbox_env = sandbox if sandbox is not None else (None, {})
             commands = COMMANDS_SANDBOXED if permissions else COMMANDS_OFF
             previous = self.previous
@@ -303,8 +319,8 @@ def build_code_task_tool(host: SubAgentHost, context: CodeTaskContext) -> Callab
         """Hand a programming task to the code module -- a coding agent
         that reads and edits the text files in this conversation's folder --
         and wait for its report. Where the command sandbox is set up and
-        commands are allowed, it runs its code and tests in the sandbox,
-        offline and held to this folder, without asking. Elsewhere its
+        commands are allowed and the user approves that once per task, it
+        runs its code and tests in the sandbox, held to this folder. Elsewhere its
         commands are off, except plain listings and reads of the folder, so
         it can't run scripts, tests or builds, nor read an xlsx, docx or pdf;
         then run a script yourself with your own tools. Use it to write or fix

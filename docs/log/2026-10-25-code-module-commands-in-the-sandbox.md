@@ -6,9 +6,13 @@ couldn't run the code or tests it wrote (issue #616, step 4b of #588).
 ## Shipped
 - Where the full sandbox is set up and commands are allowed, a code task's Codex thread starts
   under a permission profile for its folder (`code_command_profile`, made as a command's profile
-  is, private folders hidden or not, but always offline) with approval policy "never". Codex
-  asks nothing; its commands and file changes run held to the folder, and it is told it can run
-  its code and tests.
+  is: the environment's network, private folders hidden or not) with approval policy "never".
+  Codex asks nothing; its commands and file changes run held to the folder, and it is told it
+  can run its code and tests.
+- Its commands are approved once per task, as a `run_code_command`, the way
+  `run_background_command` is (`conversation/approvals.py`): by the person whenever the
+  environment's network is Full, in every mode; otherwise by the mode and Settings › Code.
+  Declined, the task runs with commands off.
 - Why "never" (the maintainer's choice): the real-Windows run showed that an approved request to
   escalate makes Codex 0.163 grant the sandbox's group write on `C:\` and run the command with
   the whole disk writable, and the approval request doesn't say it is one. Under "never" Codex

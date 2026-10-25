@@ -116,6 +116,7 @@ def code_command_profile(
     loop."""
     if not code_commands_allowed(state, thread_id):
         return None
+    online = NetworkGuard(state, thread_id).scripts_online()
     hide = Capabilities(state).get()["commands_hide_private_folders"]
     try:
         return codex_profile(
@@ -123,8 +124,7 @@ def code_command_profile(
             folder,
             [folder],
             [],
-            # Offline always: nobody approves its commands one by one.
-            False,
+            online,
             hidden=private_folders() if hide else [],
             programs=programs,
         )

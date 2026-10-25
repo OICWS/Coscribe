@@ -23,6 +23,7 @@ from coscribe.config import Settings
 from coscribe.conversation import ChatSessionLG, agent_assembly
 from coscribe.conversation import session as conversation_session
 from coscribe.runtime import empty_hooks_config
+from coscribe.runtime_lg import code_agent as code_agent_module
 from coscribe.runtime_lg.code_agent import CODE_APPROVAL_RISKS, CODE_TASK_TOOL
 from coscribe.tools.bookkeeping import subagent_tasks
 from coscribe.tools.bookkeeping.subagent_tasks import (
@@ -619,3 +620,28 @@ async def test_a_conversation_with_no_variables_sets_none_for_codex(
 
     [config] = _thread_configs(tmp_path)
     assert "shell_environment_policy" not in config
+
+
+@pytest.mark.parametrize("approved", [True, False])
+async def test_the_sandboxs_commands_are_approved_once_for_the_task(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, codex: CodexHost, approved: bool
+) -> None:
+    monkeypatch.setattr(
+        code_agent_module, "code_command_profile", lambda *args: ("coscribe-x", {"TEMP": "t"})
+    )
+    session = _session(tmp_path, monkeypatch, codex, _Model(responses=_replies("twice")))
+    socket = _Socket(answer=lambda payload: approved)
+
+    await _run(session, socket)
+
+    [card] = socket.of("approval_required")
+    assert card["tool_name"] == "run_code_command"
+    [started] = [
+        json.loads(line)["params"]
+        for line in (tmp_path / "requests.jsonl").read_text().splitlines()
+        if '"thread/start"' in line
+    ]
+    # Approved, Codex runs both commands in the sandbox without asking; declined, it runs
+    # unsandboxed and its commands are refused.
+    assert started.get("permissions") == ("coscribe-x" if approved else None)
+    assert (tmp_path / "workspace" / "made2.txt").exists() is approved
