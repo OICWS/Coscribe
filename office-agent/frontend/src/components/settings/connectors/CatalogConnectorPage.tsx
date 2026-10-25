@@ -11,6 +11,10 @@ import type { Notice } from "./types";
 
 const TOOLS_SHOWN = 18;
 
+const PENDING_BUTTON = "inline-flex min-w-[5.5rem] items-center justify-center disabled:opacity-100 disabled:hover:bg-[var(--primary)]";
+const SPINNER =
+  "h-4 w-4 animate-spin rounded-full border-2 border-[color-mix(in_srgb,var(--primary-fg)_30%,transparent)] border-t-[var(--primary-fg)] motion-reduce:animate-none";
+
 const infoLabel = "text-xs font-medium uppercase tracking-wide text-[var(--muted)]";
 
 function ExternalLink({ href, children }: { href: string; children: string }) {
@@ -118,11 +122,11 @@ export function CatalogConnectorPage({
         ) : (
           <button
             type="button"
-            disabled={pending}
-            className={`${primaryButtonClass} ${pending ? "running-wave-ring" : ""}`}
+            disabled={pending} aria-busy={pending}
+            className={`${primaryButtonClass} ${pending ? PENDING_BUTTON : ""}`}
             onClick={onConnect}
           >
-            {pending ? "Connecting…" : "Connect"}
+            {pending ? <span aria-label="Connecting" className={SPINNER} /> : "Connect"}
           </button>
         )}
       </div>

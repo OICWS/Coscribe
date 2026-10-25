@@ -99,7 +99,7 @@ export function ConnectorsTab({ active }: { active: boolean }) {
 
   const performAdd = (name: string, server: LocalServerArgs | RemoteServerArgs) =>
     withPending(name, async () => {
-      setNotice({ text: "Connecting -- a first install can take a minute or more.", error: false });
+      setNotice(null);
       const result = await addMcpServer(name, server);
       const rejected = Object.values(result.rejected);
       if (rejected.length > 0) setNotice({ text: `Not added -- ${rejected[0]}`, error: true });
