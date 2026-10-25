@@ -14,7 +14,16 @@ const segment = (on: boolean) =>
 
 /** A slide drawn small: its picture, or for an edited slide its background until the editor draws it. */
 export function SlideThumb({ src }: { src: string }) {
-  return <img src={src} alt="" draggable={false} className="block h-full w-full object-contain" />;
+  const [failed, setFailed] = useState<string | null>(null);
+  // A slide the server cannot draw (a foreign deck's) would show the browser's broken-image mark.
+  if (failed === src) {
+    return (
+      <span className="flex h-full w-full items-center justify-center bg-[var(--card-bg)] px-2 text-center text-xs text-[var(--muted)]">
+        This slide can't be shown here
+      </span>
+    );
+  }
+  return <img src={src} alt="" draggable={false} className="block h-full w-full object-contain" onError={() => setFailed(src)} />;
 }
 
 /** Notes, the Slide and Canvas views, and hiding the strip, above the thumbnails (`children`). */
@@ -32,15 +41,18 @@ export function SlideFooter({
   onView: (view: SlidesView) => void;
   onToggleNotes: () => void;
   onHideStrip: () => void;
-  onNewSlide: () => void;
+  /** Absent where slides cannot be added (a deck coscribe did not build). */
+  onNewSlide?: () => void;
   children: ReactNode;
 }) {
   return (
     <div className="shrink-0 border-t border-[var(--border)] bg-[var(--bg)]">
       <div className="flex h-11 shrink-0 items-center gap-1 px-3">
-        <button type="button" title="New slide" aria-label="New slide" className={barButton} onClick={onNewSlide}>
-          <PlusIcon className="h-[18px] w-[18px]" />
-        </button>
+        {onNewSlide && (
+          <button type="button" title="New slide" aria-label="New slide" className={barButton} onClick={onNewSlide}>
+            <PlusIcon className="h-[18px] w-[18px]" />
+          </button>
+        )}
         <button
           type="button"
           title={notesShown ? "Hide speaker notes" : "Speaker notes"}
@@ -105,10 +117,10 @@ export function SlideThumbnails({
   current: number;
   srcOf: (index: number) => string;
   onSelect: (index: number) => void;
-  /** Right-click on a thumbnail: its menu. */
-  onMenu: (index: number, anchor: DOMRect) => void;
-  /** A thumbnail dragged to another place in the row. */
-  onMove: (index: number, to: number) => void;
+  /** Right-click on a thumbnail: its menu. Absent where slides cannot be changed. */
+  onMenu?: (index: number, anchor: DOMRect) => void;
+  /** A thumbnail dragged to another place in the row. Absent where slides cannot be changed. */
+  onMove?: (index: number, to: number) => void;
 }) {
   const rowRef = useRef<HTMLDivElement>(null);
   const [dragged, setDragged] = useState<number | null>(null);
@@ -129,11 +141,12 @@ export function SlideThumbnails({
           className={`relative aspect-video w-[156px] shrink-0 overflow-hidden rounded-lg border-2 bg-white ${i === current ? "border-[var(--accent)]" : "border-transparent hover:border-[var(--border-hover)]"}`}
           onClick={() => onSelect(i)}
           onContextMenu={(e) => {
+            if (!onMenu) return;
             e.preventDefault();
             onSelect(i);
             onMenu(i, new DOMRect(e.clientX, e.clientY, 0, 0));
           }}
-          draggable
+          draggable={onMove !== undefined}
           onDragStart={(e) => {
             setDragged(i);
             e.dataTransfer.effectAllowed = "move";
@@ -141,7 +154,7 @@ export function SlideThumbnails({
           onDragOver={(e) => dragged !== null && e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
-            if (dragged !== null) onMove(dragged, i);
+            if (dragged !== null) onMove?.(dragged, i);
             setDragged(null);
           }}
           onDragEnd={() => setDragged(null)}

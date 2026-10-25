@@ -19,7 +19,8 @@ export function SlideToolbar({
   zoom: number;
   propertiesShown: boolean;
   beside: boolean;
-  onToggleProperties: () => void;
+  /** Absent where the slide cannot be edited, so there is no panel to show. */
+  onToggleProperties?: () => void;
   onZoomMenu: (anchor: DOMRect) => void;
   onPresentMenu: (anchor: DOMRect) => void;
   onDownloadMenu: (anchor: DOMRect) => void;
@@ -50,8 +51,10 @@ export function SlideToolbar({
       >
         <PlayIcon className="h-[16px] w-[16px]" />
       </button>
-      <span className="mx-1 h-5 border-l border-[var(--border)]" />
-      <button
+      {onToggleProperties && (
+        <>
+          <span className="mx-1 h-5 border-l border-[var(--border)]" />
+          <button
         type="button"
         title={propertiesShown ? "Hide the properties panel" : "Show the properties panel"}
         aria-label="Properties panel"
@@ -61,6 +64,8 @@ export function SlideToolbar({
       >
         {beside ? <PropertiesBesideIcon className="h-[18px] w-[18px]" /> : <PropertiesBelowIcon className="h-[18px] w-[18px]" />}
       </button>
+        </>
+      )}
       <span className="mx-1 h-5 border-l border-[var(--border)]" />
       <button
         type="button"
