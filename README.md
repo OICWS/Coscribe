@@ -6,7 +6,7 @@ A local, user-friendly assistant for office work. It reads and writes your
 files, produces Word, Excel, PowerPoint and PDF documents, uses the web and
 your tools, and can repeat work on a schedule. It needs only a model API key.
 
-Website: https://oicws.github.io/coscribe/
+Website: https://oicws.github.io/Coscribe/
 
 - **Documents first.** High-quality `.pptx`, `.docx` and `.xlsx` output, checked
   by rendering the pages.
