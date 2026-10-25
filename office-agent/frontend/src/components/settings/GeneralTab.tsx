@@ -14,6 +14,7 @@ import {
 } from "./fields";
 import { GlobalInstructionsSection } from "./GlobalInstructionsSection";
 import { SegmentedControl } from "./SegmentedControl";
+import { SelectMenu } from "./SelectMenu";
 import { SettingRow, SettingRows, SettingsSection, fieldClass } from "./SettingRow";
 
 interface GeneralTabProps {
@@ -32,19 +33,16 @@ function DefaultModelSelect({ value, onChange }: { value: string; onChange: (val
   const models = useConfiguredModels();
   const options = value && !models.includes(value) ? [value, ...models] : models;
   return (
-    <select
-      aria-label="Default model"
-      className={`${fieldClass} w-64`}
+    <SelectMenu
+      ariaLabel="Default model"
       value={value}
-      onChange={(e) => onChange(e.target.value)}
-    >
-      {options.length === 0 && <option value="">Set up a provider first</option>}
-      {options.map((model) => (
-        <option key={model} value={model}>
-          {model.split(":").slice(1).join(":")} · {model.split(":")[0]}
-        </option>
-      ))}
-    </select>
+      placeholder="Set up a provider first"
+      options={options.map((model) => ({
+        value: model,
+        label: `${model.split(":").slice(1).join(":")} · ${model.split(":")[0]}`,
+      }))}
+      onChange={onChange}
+    />
   );
 }
 
@@ -93,7 +91,8 @@ function AppearanceSection() {
           label="Interface font"
           description="Font for the whole interface: menus, sidebars, panels and conversations. Figtree and OpenDyslexic are open-source (SIL Open Font License)."
           control={
-            <SegmentedControl
+            <SelectMenu
+              ariaLabel="Interface font"
               value={appearance.interfaceFont}
               options={INTERFACE_FONTS}
               onChange={(v) => void setAppearance("interfaceFont", v)}
@@ -103,7 +102,7 @@ function AppearanceSection() {
         <SettingRow
           label="Motion"
           description="Reduce animation in streaming responses and other parts of the interface."
-          control={<SegmentedControl value={appearance.motion} options={MOTION} onChange={(v) => void setAppearance("motion", v)} />}
+          control={<SelectMenu ariaLabel="Motion" value={appearance.motion} options={MOTION} onChange={(v) => void setAppearance("motion", v)} />}
         />
       </SettingRows>
     </SettingsSection>

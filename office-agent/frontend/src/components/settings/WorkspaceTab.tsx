@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { DirBrowserModal } from "./DirBrowserModal";
 import { CloseIcon, FolderIcon } from "../icons";
+import { SelectMenu } from "./SelectMenu";
 import { SettingRow, SettingRowInput, SettingRows, SettingsSection, fieldClass, secondaryButtonClass } from "./SettingRow";
 import { SKILLS_DIR_KEY, WORKSPACE_FIELDS, WORKSPACE_ROOT_KEY, type DirEntry, type DirPermission } from "./fields";
 
@@ -10,6 +11,12 @@ interface WorkspaceTabProps {
   dirEntries: DirEntry[];
   onDirEntriesChange: (entries: DirEntry[]) => void;
 }
+
+const DIR_PERMISSION_OPTIONS = [
+  { value: "read", label: "Read only" },
+  { value: "read-write", label: "Read and write" },
+  { value: "read-write-delete", label: "Read, write and delete" },
+] as const;
 
 export function WorkspaceTab({ values, onChange, dirEntries, onDirEntriesChange }: WorkspaceTabProps) {
   const [addValue, setAddValue] = useState("");
@@ -88,15 +95,12 @@ export function WorkspaceTab({ values, onChange, dirEntries, onDirEntriesChange 
               <div key={entry.path} className="flex items-center gap-3 px-4 py-2.5 text-sm">
                 <FolderIcon className="h-4 w-4 shrink-0 text-[var(--muted)]" />
                 <span className="min-w-0 flex-1 truncate">{entry.path}</span>
-                <select
-                  aria-label={`Access to ${entry.path}`}
-                  className={`${fieldClass} h-8 px-2 text-[13px]`} value={entry.permission}
-                  onChange={(e) => setPermission(entry.path, e.target.value as DirPermission)}
-                >
-                  <option value="read">Read only</option>
-                  <option value="read-write">Read and write</option>
-                  <option value="read-write-delete">Read, write and delete</option>
-                </select>
+                <SelectMenu
+                  ariaLabel={`Access to ${entry.path}`}
+                  value={entry.permission}
+                  options={DIR_PERMISSION_OPTIONS}
+                  onChange={(v) => setPermission(entry.path, v)}
+                />
                 <button
                   type="button"
                   aria-label={`Remove ${entry.path}`}
