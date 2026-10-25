@@ -7,6 +7,7 @@ from __future__ import annotations
 from ._private_folders import private_folders, release_private_folders
 from .capabilities import Capabilities, CapabilityOff, require_capability
 from .command_sandbox import (
+    bundled_sandbox,
     record_sandbox_setup,
     run_as_administrator,
     sandbox_codex,
@@ -69,6 +70,7 @@ __all__ = [
     "Capabilities",
     "CapabilityOff",
     "require_capability",
+    "bundled_sandbox",
     "record_sandbox_setup",
     "sandbox_codex",
     "sandbox_mode",

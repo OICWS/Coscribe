@@ -15,6 +15,7 @@ from ....code_runtime import CodexUnavailable, code_service
 from ....runtime_lg import AuditLog, record_decision
 from ....tools import (
     Capabilities,
+    bundled_sandbox,
     ensure_own_python,
     find_pythons,
     get_interpreter_override,
@@ -144,6 +145,7 @@ def _sandbox_routes(router: APIRouter, state: AppState) -> None:
                 "detail": step["now"],
                 "progress": progress,
                 "mode": step["mode"],
+                "source": "bundled" if bundled_sandbox() is not None else "codex",
             }
         return sandbox_status(state_dir)
 
@@ -153,8 +155,10 @@ def _sandbox_routes(router: APIRouter, state: AppState) -> None:
             return await get_sandbox()
         try:
             step["now"], step["mode"] = "download", mode
+            # The desktop app ships the sandbox; a checkout without it gets it with Codex.
+            codex = bundled_sandbox()
             try:
-                codex = await code_service(state.settings).download()
+                codex = codex or await code_service(state.settings).download()
             except CodexUnavailable as exc:
                 error = exc.args[0] if exc.args else "Codex couldn't be downloaded."
                 record_sandbox_setup(state_dir, None, error, mode)

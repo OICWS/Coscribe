@@ -72,10 +72,10 @@ export function useCommandSandbox(active: boolean) {
 
 type CommandSandboxControl = ReturnType<typeof useCommandSandbox>;
 
-type Step = { key: string; label: string; elevatedOnly?: boolean };
+type Step = { key: string; label: string; elevatedOnly?: boolean; codexOnly?: boolean };
 
 const SETUP_STEPS: Step[] = [
-  { key: "download", label: "Download Codex, which the sandbox is part of" },
+  { key: "download", label: "Download Codex, which the sandbox is part of", codexOnly: true },
   { key: "approve", label: "Wait for an administrator to approve, then create the sandbox's users", elevatedOnly: true },
   { key: "check", label: "Run a test command in it" },
 ];
@@ -92,7 +92,9 @@ const PROMPTS = new Set(["approve", "uninstall"]);
  * waits for. */
 function SetupSteps({ sandbox, mode }: { sandbox: CommandSandbox; mode: CommandSandboxMode }) {
   const removing = REMOVAL_STEPS.some((step) => step.key === sandbox.detail);
-  const steps = (removing ? REMOVAL_STEPS : SETUP_STEPS).filter((step) => mode === "elevated" || !step.elevatedOnly);
+  const steps = (removing ? REMOVAL_STEPS : SETUP_STEPS).filter(
+    (step) => (mode === "elevated" || !step.elevatedOnly) && (sandbox.source !== "bundled" || !step.codexOnly),
+  );
   const current = steps.findIndex((step) => step.key === sandbox.detail);
   return (
     <ol className="mt-2 flex flex-col gap-1 text-[13px]">
@@ -297,9 +299,10 @@ export function CommandModes({
         }
       />
       <p className="text-[13px] leading-relaxed text-[var(--muted)]">
-        Both sandboxes are part of Codex, so setting one up downloads Codex if it isn't there yet. That doesn't turn the
-        code module on, which has its own switch below. With no sandbox set up and "Without a sandbox" off, commands are
-        refused.
+        {sandbox.source === "bundled"
+          ? "Both sandboxes come with coscribe and need no download."
+          : "Both sandboxes are part of Codex, so setting one up downloads Codex if it isn't there yet. That doesn't turn the code module on, which has its own switch below."}{" "}
+        With no sandbox set up and "Without a sandbox" off, commands are refused.
       </p>
     </div>
   );
