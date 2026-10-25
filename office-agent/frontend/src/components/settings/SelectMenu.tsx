@@ -41,7 +41,7 @@ export function SelectMenu<T extends string>({
         aria-label={ariaLabel}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex h-8 max-w-full items-center gap-2 rounded-lg px-3 text-sm text-[var(--fg)] hover:bg-[var(--card-bg)] aria-expanded:bg-[var(--card-bg)]"
+        className="flex h-8 max-w-full items-center gap-2 rounded-lg px-3 text-sm text-[var(--fg)] hover:bg-[var(--border)] aria-expanded:bg-[var(--border)]"
         onClick={() => setOpen((v) => !v)}
       >
         <span className="min-w-0 truncate">{current?.label ?? placeholder}</span>
@@ -51,7 +51,7 @@ export function SelectMenu<T extends string>({
         <div
           role="menu"
           aria-label={ariaLabel}
-          className="absolute right-0 top-full z-20 mt-1 max-h-72 min-w-[17rem] overflow-y-auto rounded-[10px] border border-[var(--border)] bg-[var(--panel-bg)] p-1 shadow-[var(--shadow)]"
+          className="absolute right-0 top-full z-20 mt-1 max-h-72 min-w-[14rem] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-1 shadow-[var(--shadow)]"
         >
           {options.map((option) => (
             <button
@@ -59,8 +59,8 @@ export function SelectMenu<T extends string>({
               type="button"
               role="menuitemradio"
               aria-checked={option.value === value}
-              className={`flex w-full items-center gap-3 whitespace-nowrap rounded-md px-3 py-2 text-left text-sm hover:bg-[var(--card-bg)] ${
-                option.value === value ? "bg-[var(--card-bg)]" : ""
+              className={`flex w-full items-center gap-3 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--border)] ${
+                option.value === value ? "bg-[var(--border)]" : ""
               }`}
               onClick={() => {
                 setOpen(false);
