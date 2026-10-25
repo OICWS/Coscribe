@@ -101,6 +101,43 @@ def inside_any(path: Path, folders: Iterable[Path]) -> bool:
     return False
 
 
+def _reparse_point(path: Path) -> bool:
+    try:
+        return bool(getattr(os.lstat(path), "st_file_attributes", 0) & 0x400)
+    except OSError:
+        return True
+
+
+def hidden_around(hidden: Iterable[Path], root: Path) -> list[Path]:
+    """`hidden`, except that a folder holding `root` gives way to everything inside it that is
+    not on the way down to `root`. PowerShell can't start in a folder whose parents its user
+    can't list, so it would fall back to C:\\. A junction or link in there is not denied, since a
+    deny on it may not reach what it points to; a folder that can't be listed stays whole."""
+    out: list[Path] = []
+    for folder in hidden:
+        if not inside_any(root, [folder]) or _key(os.path.abspath(root)) == _key(
+            os.path.abspath(folder)
+        ):
+            out.append(folder)
+            continue
+        found: list[Path] = []
+        here = Path(os.path.abspath(folder))
+        target = Path(os.path.abspath(root))
+        try:
+            while _key(here) != _key(target):
+                step = here / target.relative_to(here).parts[0]
+                found += [
+                    entry
+                    for entry in here.iterdir()
+                    if _key(entry) != _key(step) and not _reparse_point(entry)
+                ]
+                here = step
+        except (OSError, ValueError):
+            found = [folder]
+        out += found
+    return out
+
+
 def _key(path: str | Path) -> str:
     return os.path.normcase(str(path))
 
@@ -147,7 +184,8 @@ def prepare_folders(
         given = list(given)
         # Codex's explicit deny would beat its explicit grant on a folder it now writes.
         for before in ledger["denied"]:
-            if _key(before) not in now and inside_any(Path(before), given):
+            on_the_way = any(inside_any(g, [Path(before)]) for g in given)
+            if _key(before) not in now and (inside_any(Path(before), given) or on_the_way):
                 _icacls(before, "/remove:d", SANDBOX_GROUP)
         known_denied = {_key(p) for p in ledger["denied"]}
         ledger["denied"] += [str(d) for d in denied if _key(d) not in known_denied]

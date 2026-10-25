@@ -32,6 +32,10 @@ administrator approves.
   the profile's own folders at each run, so an entry coscribe added itself would not hold). The
   entries name the sandbox's group, which the person is not in (checked on the runner). A folder
   the environment was given is never denied, and a deny Codex left on it earlier is taken off.
+  A private folder that holds the command's own folder is not denied whole: PowerShell can't
+  start in a folder whose parents its user can't list and falls back to `C:\`. Instead every
+  file and folder beside the way down to the command's folder is denied (the maintainer's
+  choice), and a deny Codex left on a folder on that way is taken off.
   Codex grants the folders a command writes, but not those it only reads, so coscribe grants its
   users read on each read-only folder, the batch files and the PATH folders that lie inside a
   denied one; a grant that fails stops the command and says why. A command gets its own Temp in
@@ -77,6 +81,10 @@ administrator approves.
 - A grant is to the sandbox's group, not to one environment: once a folder is granted, every
   sandboxed command can read it, until the setting is turned off. Giving an environment a folder
   that holds private ones (the whole profile) un-hides those for its commands.
+- With the command's folder inside a private one (a project on the Desktop), the names of what
+  lies beside the way down can be listed, though not opened; what is added there later is hidden
+  from the next command on. A junction or link there is not denied, since a deny on it may not
+  reach what it points to.
 - APPDATA, LOCALAPPDATA and USERPROFILE still point at hidden folders, so a tool's own cache or
   settings there (pip, npm, git) can't be read; the command fails rather than reads them.
 - Another private place (a folder elsewhere, a dot-folder not listed) stays readable.
