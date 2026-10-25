@@ -119,10 +119,15 @@ export function CatalogConnectorPage({
           <button
             type="button"
             disabled={pending}
-            className={`${primaryButtonClass} ${pending ? "running-wave-ring" : ""}`}
+            aria-label={pending ? "Connecting" : undefined}
+            className={`${primaryButtonClass} ${pending ? "inline-flex min-w-[5.5rem] items-center justify-center disabled:opacity-100" : ""}`}
             onClick={onConnect}
           >
-            {pending ? "Connecting…" : "Connect"}
+            {pending ? (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-[color-mix(in_srgb,var(--primary-fg)_30%,transparent)] border-t-[var(--primary-fg)] motion-reduce:animate-none" />
+            ) : (
+              "Connect"
+            )}
           </button>
         )}
       </div>
