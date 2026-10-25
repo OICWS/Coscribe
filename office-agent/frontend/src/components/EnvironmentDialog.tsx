@@ -7,13 +7,12 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { EnvironmentRow, FoldersPage, SecretsPage, VariablesPage } from "./environment/EnvironmentPages";
 import {
   runSummary,
-  toVariables,
   useMachineLimits,
   useNetworkDraft,
   type MachineLimits,
   type RunSwitches,
-  type VariableRow,
 } from "./environment/drafts";
+import { formatEnvText, parseEnvText } from "./environment/envText";
 import { ArrowLeftIcon, CloseIcon } from "./icons";
 import { NetworkPage } from "./environment/NetworkPage";
 import { ScriptsPage } from "./environment/ScriptsPage";
@@ -113,16 +112,14 @@ function useEnvironmentDraft(start: EnvironmentFields) {
   const [name, setName] = useState(start.name);
   const [folders, setFolders] = useState(start.folders);
   const [chosen, setChosen] = useState(new Set(start.secrets));
-  const [rows, setRows] = useState<VariableRow[]>(() =>
-    Object.entries(start.variables).map(([key, value]) => ({ key, value })),
-  );
+  const [variablesText, setVariablesText] = useState(() => formatEnvText(start.variables));
   const [run, setRun] = useState<RunSwitches>({
     scripts: start.scripts,
     commands: start.commands,
     unisolated: start.unisolated,
   });
   const network = useNetworkDraft(start.network);
-  const snapshot = () => JSON.stringify([name, folders, network.current, [...chosen].sort(), rows, run]);
+  const snapshot = () => JSON.stringify([name, folders, network.current, [...chosen].sort(), variablesText, run]);
   const [initialSnapshot] = useState(snapshot);
   const fields = (variables: Record<string, string>): EnvironmentFields => ({
     name: name.trim(),
@@ -133,7 +130,7 @@ function useEnvironmentDraft(start: EnvironmentFields) {
     ...run,
   });
   const dirty = snapshot() !== initialSnapshot;
-  return { name, setName, folders, setFolders, chosen, setChosen, rows, setRows, run, setRun, network, fields, dirty };
+  return { name, setName, folders, setFolders, chosen, setChosen, variablesText, setVariablesText, run, setRun, network, fields, dirty };
 }
 
 type EnvironmentDraft = ReturnType<typeof useEnvironmentDraft>;
@@ -182,8 +179,9 @@ function MainPage({
   limits: MachineLimits;
   onOpen: (page: Exclude<Page, "main">) => void;
 }) {
-  const { folders, chosen, rows } = draft;
-  const variableCount = rows.filter((row) => row.key.trim()).length;
+  const { folders, chosen } = draft;
+  const parsed = parseEnvText(draft.variablesText);
+  const variableCount = "variables" in parsed ? Object.keys(parsed.variables).length : 0;
   const summaries: [Exclude<Page, "main">, string][] = [
     ["folders", folders.length === 0 ? "The default workspace" : folders.map(folderName).join(", ")],
     ["network", draft.network.summary],
@@ -263,12 +261,13 @@ function EnvironmentEditor({
   const deletable = environment !== null && environment.id !== DEFAULT_ENVIRONMENT;
 
   const save = async () => {
-    const variables = toVariables(draft.rows);
-    if (typeof variables === "string") {
-      setError(`${variables} appears twice.`);
+    const parsed = parseEnvText(draft.variablesText);
+    if ("error" in parsed) {
+      setError(parsed.error);
       setPage("variables");
       return;
     }
+    const variables = parsed.variables;
     if (!draft.name.trim()) {
       setError("Give the environment a name.");
       setPage("main");
@@ -317,7 +316,7 @@ function EnvironmentEditor({
           {page === "network" && <NetworkPage draft={draft.network} />}
           {page === "scripts" && <ScriptsPage run={draft.run} limits={limits} onChange={draft.setRun} />}
           {page === "secrets" && <SecretsPage secrets={secrets} chosen={draft.chosen} onChange={draft.setChosen} />}
-          {page === "variables" && <VariablesPage rows={draft.rows} onChange={draft.setRows} />}
+          {page === "variables" && <VariablesPage text={draft.variablesText} onChange={draft.setVariablesText} />}
           {error && (
             <p role="alert" className="pt-4 text-sm text-[var(--danger)]">
               {error}

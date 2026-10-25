@@ -1,10 +1,9 @@
 import { useState } from "react";
 import type { SecretInfo } from "../../types/settings";
 import { folderName, readRecent } from "../../lib/recentFolders";
-import { ChevronRightIcon, CloseIcon, PlusIcon } from "../icons";
+import { ChevronRightIcon, PlusIcon } from "../icons";
 import { DirBrowserModal } from "../settings/DirBrowserModal";
 import { fieldClass } from "../settings/SettingRow";
-import type { VariableRow } from "./drafts";
 
 const emptyClass =
   "rounded-xl border border-dashed border-[var(--border)] px-4 py-4 text-center text-sm text-[var(--muted)]";
@@ -27,56 +26,32 @@ export function EnvironmentRow({ title, value, onOpen }: { title: string; value:
   );
 }
 
-export function VariablesPage({ rows, onChange }: { rows: VariableRow[]; onChange: (rows: VariableRow[]) => void }) {
-  const update = (index: number, patch: Partial<VariableRow>) =>
-    onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+const VARIABLES_PLACEHOLDER = `NODE_ENV=production
+GIT_AUTHOR_NAME=Your Name
+
+# Multiline values - wrap in quotes
+CONFIG="key1=val1
+key2=val2"`;
+
+export function VariablesPage({ text, onChange }: { text: string; onChange: (text: string) => void }) {
   return (
     <section className="flex flex-col gap-3">
+      <textarea
+        aria-label="Environment variables"
+        className={`${fieldClass} h-48 resize-y font-mono text-[13px] leading-relaxed`}
+        value={text}
+        placeholder={VARIABLES_PLACEHOLDER}
+        spellCheck={false}
+        autoCapitalize="off"
+        autoCorrect="off"
+        onChange={(e) => onChange(e.target.value)}
+      />
       <p className={introClass}>
-        Plain text the assistant can read, such as a mode or a project name. For a key, use a secret. Scripts and the
-        code module's commands get them as environment variables too, so a name such as PATH, PYTHONPATH, NODE_OPTIONS
-        or a proxy variable changes how they run.
+        One KEY=value per line, in .env format; # starts a comment and a quoted value may span lines. Plain text the
+        assistant can read, such as a mode or a project name. For a key, use a secret. Scripts and the code module's
+        commands get them as environment variables too, so a name such as PATH, PYTHONPATH, NODE_OPTIONS or a proxy
+        variable changes how they run.
       </p>
-      {rows.length === 0 ? (
-        <p className={emptyClass}>No variables.</p>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {rows.map((row, index) => (
-            <div key={index} className="flex gap-2">
-              <input
-                aria-label="Variable name"
-                className={`${fieldClass} w-40 font-mono text-[13px]`}
-                value={row.key}
-                placeholder="NAME"
-                spellCheck={false}
-                onChange={(e) => update(index, { key: e.target.value })}
-              />
-              <input
-                aria-label="Variable value"
-                className={`${fieldClass} min-w-0 flex-1`}
-                value={row.value}
-                placeholder="value"
-                onChange={(e) => update(index, { value: e.target.value })}
-              />
-              <button
-                type="button"
-                aria-label="Remove variable"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
-                onClick={() => onChange(rows.filter((_, i) => i !== index))}
-              >
-                <CloseIcon className="h-4 w-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-      <button
-        type="button"
-        className="flex w-fit items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--card-bg)]"
-        onClick={() => onChange([...rows, { key: "", value: "" }])}
-      >
-        <PlusIcon className="h-4 w-4" /> Add variable
-      </button>
     </section>
   );
 }

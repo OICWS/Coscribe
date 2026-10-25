@@ -2,23 +2,6 @@ import { useEffect, useState } from "react";
 import { getCapabilities, getScriptIsolation } from "../../lib/rest";
 import type { Capabilities, NetworkAccess, ScriptIsolation } from "../../types/settings";
 
-export interface VariableRow {
-  key: string;
-  value: string;
-}
-
-/** The variables to save, or the first name given twice. */
-export function toVariables(rows: VariableRow[]): Record<string, string> | string {
-  const variables: Record<string, string> = {};
-  for (const row of rows) {
-    const key = row.key.trim();
-    if (!key) continue;
-    if (key in variables) return key;
-    variables[key] = row.value;
-  }
-  return variables;
-}
-
 /** What this computer allows (Settings › Capabilities) and whether its isolation check passed:
  * an environment can only narrow these. */
 export function useMachineLimits() {
