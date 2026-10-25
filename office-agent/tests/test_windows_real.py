@@ -551,9 +551,11 @@ async def test_the_code_modules_commands_run_in_the_sandbox_and_stay_in_it(
     # Issue #616: Codex's own commands, run by the code module's real app-server against a stub
     # model, write the task's folder and nothing outside it, and a refused one is not run outside
     # the sandbox.
-    # Inside AppData, which is hidden: PowerShell still starts in it (what is beside it is denied).
-    work, outside = tmp_path / "work", tmp_path / "outside"
-    work.mkdir()
+    # In Documents, which is hidden, as a person's project would be: PowerShell still starts in
+    # it, since only what is beside the way down is denied.
+    base = Path(os.environ["USERPROFILE"]) / "Documents" / f"coscribe-{uuid.uuid4().hex}"
+    work, outside = base / "work", base / "outside"
+    work.mkdir(parents=True)
     outside.mkdir()
     Capabilities(sandboxed_state).set("commands", True)
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _StubResponses)
@@ -583,6 +585,8 @@ async def test_the_code_modules_commands_run_in_the_sandbox_and_stay_in_it(
             host, codex_model("stub:stub-model", providers), work, env=env, permissions=profile
         )
         result = await asyncio.wait_for(thread.run_turn("go", approve), 300)
+    except TimeoutError:
+        result = None
     finally:
         await host.shutdown(force=True)
         server.shutdown()
@@ -592,13 +596,17 @@ async def test_the_code_modules_commands_run_in_the_sandbox_and_stay_in_it(
         f"tools {_StubResponses.tools}, outputs {_StubResponses.outputs}, asked {asked}, "
         f"profile {profile}, config {(spec.home / 'config.toml').read_text()}, log {log}"
     )
-    assert result.status == "completed", (result.error, context)
-    assert f"WHERE:{work}".lower() in _StubResponses.outputs[0].lower(), context
-    assert (work / "inside.txt").exists(), context
-    assert (work / "inside.txt").read_text(encoding="utf-8-sig").strip() == "in", context
-    assert not (outside / "x.txt").exists(), context
-    assert not (outside / "y.txt").exists(), context
-    assert "codexsandbox" in _StubResponses.outputs[-1].lower(), context
-    assert all(r.kind in ("command", "read") for r in asked), context
-    # Codex's "retry without sandbox?" for the escalated command never reaches decide.
-    assert len([r for r in asked if "y.txt" in r.command]) == 1, context
+    try:
+        assert result is not None, f"the turn didn't end: {context}"
+        assert result.status == "completed", (result.error, context)
+        assert f"WHERE:{work}".lower() in _StubResponses.outputs[0].lower(), context
+        assert (work / "inside.txt").exists(), context
+        assert (work / "inside.txt").read_text(encoding="utf-8-sig").strip() == "in", context
+        assert not (outside / "x.txt").exists(), context
+        assert not (outside / "y.txt").exists(), context
+        assert "codexsandbox" in _StubResponses.outputs[-1].lower(), context
+        assert all(r.kind in ("command", "read") for r in asked), context
+        # Codex's "retry without sandbox?" for the escalated command never reaches decide.
+        assert len([r for r in asked if "y.txt" in r.command]) == 1, context
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
