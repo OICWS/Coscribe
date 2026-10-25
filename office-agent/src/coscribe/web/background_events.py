@@ -82,7 +82,7 @@ def run_event(
     elif run.status == "failed":
         body = f"Failed -- {run.error or 'it stopped before it finished'}"
         if investigation:
-            body = f"{body.rstrip('.')}. coscribe is looking into it."
+            body = f"{body.rstrip('.')}. Coscribe is looking into it."
     elif run.status == "needs_approval":
         waiting = next((s for s in reversed(run.steps) if s.get("status") == "waiting"), None)
         titles: dict[str, str] = {}

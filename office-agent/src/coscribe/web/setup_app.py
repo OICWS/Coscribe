@@ -56,7 +56,7 @@ _SETUP_PAGE_HTML = """<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Set up coscribe</title>
+    <title>Set up Coscribe</title>
     <style>
       :root {
         color-scheme: light dark;
@@ -178,7 +178,7 @@ _SETUP_PAGE_HTML = """<!doctype html>
     <main id="coscribe-setup-marker">
       <div class="brand">
         <div class="mark">c</div>
-        <h1>Welcome to coscribe</h1>
+        <h1>Welcome to Coscribe</h1>
       </div>
       <p class="lede">
         A local office assistant that reads and writes real Word, Excel,
@@ -288,7 +288,7 @@ _SETUP_PAGE_HTML = """<!doctype html>
           });
           result = await resp.json();
         } catch {
-          setStatus("Couldn't reach coscribe -- try again.", "error");
+          setStatus("Couldn't reach Coscribe -- try again.", "error");
           submitEl.disabled = false;
           return;
         }
@@ -403,7 +403,7 @@ def build_setup_app(
         if settings is None:
             return {
                 "success": False,
-                "error": "Saved, but coscribe still couldn't start -- double-check the model name.",
+                "error": "Saved, but Coscribe still couldn't start -- double-check the model name.",
             }
         configured.set_result(settings)
         return {"success": True}

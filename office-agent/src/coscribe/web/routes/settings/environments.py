@@ -281,7 +281,7 @@ def router(state: AppState) -> APIRouter:
         except RuntimeError as exc:
             return {"success": False, "error": str(exc)}
         if python is None:
-            return {"success": False, "error": "coscribe's own Python is only offered on Windows."}
+            return {"success": False, "error": "Coscribe's own Python is only offered on Windows."}
         chosen = await asyncio.to_thread(set_interpreter_override, settings.state_dir, str(python))
         return {**chosen, "path": str(python)}
 

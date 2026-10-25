@@ -121,7 +121,7 @@ async function waitForSidecarThenNavigate(win: BrowserWindow, port: number): Pro
 
 export function createMainWindow(port: number, preloadPath: string): BrowserWindow {
   mainWindow = new BrowserWindow({
-    title: "coscribe",
+    title: "Coscribe",
     width: 1280,
     height: 860,
     minWidth: 960,

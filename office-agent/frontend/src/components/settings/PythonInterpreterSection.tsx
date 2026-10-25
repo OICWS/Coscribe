@@ -86,7 +86,7 @@ function usePythonChoice(active: boolean) {
     void apply("Checking this Python…", "Could not use that Python.", () => setScriptEnvInterpreter(chosen));
   };
   const download = () =>
-    void apply("Downloading coscribe's Python (about 30 MB)…", "Could not download Python.", downloadOwnPython);
+    void apply("Downloading Coscribe's Python (about 30 MB)…", "Could not download Python.", downloadOwnPython);
 
   const configured = picked !== undefined ? picked : (info?.configured ?? null);
   return { info, path, setPath, busy, status, configured, choose, download };
@@ -125,7 +125,7 @@ function PythonChoices({ found, configured, disabled, onChoose }: PythonChoicesP
         configured === null,
         "",
         "Automatic",
-        found.length > 0 ? "coscribe picks one that works" : "No Python found on this computer",
+        found.length > 0 ? "Coscribe picks one that works" : "No Python found on this computer",
         false,
       )}
       {found.map((python) =>
@@ -144,7 +144,7 @@ export function PythonInterpreterSection({ active }: PythonInterpreterSectionPro
       <div>
         <div className="text-[15px]">Interpreter</div>
         <p className="mt-1 text-[13px] leading-snug text-[var(--muted)]">
-          Which Python runs scripts. coscribe makes its own environment from it, so nothing you installed is changed.
+          Which Python runs scripts. Coscribe makes its own environment from it, so nothing you installed is changed.
         </p>
       </div>
 
@@ -155,7 +155,7 @@ export function PythonInterpreterSection({ active }: PythonInterpreterSectionPro
       {own?.available && !own.downloaded && (
         <div className="flex items-center gap-3 text-[13px] text-[var(--muted)]">
           <span className="flex-1">
-            No suitable Python here? coscribe can download its own Python {own.version} from GitHub.
+            No suitable Python here? Coscribe can download its own Python {own.version} from GitHub.
           </span>
           <button type="button" className={secondaryButtonClass} disabled={busy !== null} onClick={download}>
             Download (about 30 MB)

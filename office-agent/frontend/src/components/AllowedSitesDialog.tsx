@@ -49,7 +49,7 @@ export function AllowedSitesDialog({ onClose }: { onClose: () => void }) {
               Allowed sites
             </h2>
             <p className="mt-1.5 text-[15px] leading-snug text-[var(--muted)]">
-              coscribe can use its browser tools on these sites without asking first. Remove a site and coscribe asks again
+              Coscribe can use its browser tools on these sites without asking first. Remove a site and Coscribe asks again
               the next time it needs that site.
             </p>
           </div>

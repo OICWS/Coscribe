@@ -37,7 +37,7 @@ export function ScriptIsolationNote() {
     <>
       {status?.state === "passed"
         ? "Runs isolated: it can use only this conversation's folders, can't delete or rename files there, and reaches the internet only if this conversation's Network setting is Full. Review it before approving."
-        : "coscribe checks isolation on this computer before the script runs, and doesn't run it if the check fails. Review it before approving."}
+        : "Coscribe checks isolation on this computer before the script runs, and doesn't run it if the check fails. Review it before approving."}
     </>
   );
 }

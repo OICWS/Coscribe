@@ -1,4 +1,4 @@
-# coscribe
+# Coscribe
 
 [![CI](https://github.com/OICWS/coscribe/actions/workflows/office-agent-ci.yml/badge.svg)](https://github.com/OICWS/coscribe/actions/workflows/office-agent-ci.yml)
 

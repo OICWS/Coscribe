@@ -41,7 +41,7 @@ export function PanelWindow({ panel }: { panel: PanelId }) {
 
   const title = state?.panel === "viewer" && state.path ? (state.path.split(/[\\/]/).pop() ?? PANEL_TITLES.viewer) : PANEL_TITLES[panel];
   useEffect(() => {
-    document.title = `${title} · coscribe`;
+    document.title = `${title} · Coscribe`;
   }, [title]);
 
   // The OS buttons sit centred on the panel's own header row.

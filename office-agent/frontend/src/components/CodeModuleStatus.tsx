@@ -36,7 +36,7 @@ export function CodeDownload({
   // A pin moved past what is on disk: coscribe uses only the version it was tested with.
   const updating = !status.installed && status.size !== null && older.length > 0;
   if (updating && !preparing) {
-    text = `This coscribe uses Codex ${status.version}, ${size} on disk; the one downloaded is older.`;
+    text = `This Coscribe uses Codex ${status.version}, ${size} on disk; the one downloaded is older.`;
   }
   let action: string | null = null;
   if (updating) action = `Update to ${status.version}`;

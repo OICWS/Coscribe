@@ -98,7 +98,7 @@ export function SkillDetailView({
           )}
           {mentionedTools.length > 0 && (
             <div>
-              <div className="mb-1.5 text-xs font-medium uppercase tracking-wide text-[var(--muted)]">coscribe tools it uses</div>
+              <div className="mb-1.5 text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Coscribe tools it uses</div>
               <div className="flex flex-wrap gap-1.5">
                 {mentionedTools.map((name) => (
                   <code key={name} className="rounded bg-[var(--card-bg)] px-1.5 py-0.5 font-mono text-xs">

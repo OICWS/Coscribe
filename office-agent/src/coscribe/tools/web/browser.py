@@ -43,7 +43,7 @@ _SNAPSHOT_CHARS = 12_000
 _EVALUATE_CHARS = 5_000
 
 _UNAVAILABLE = (
-    "coscribe's browser isn't reachable right now -- it runs inside the coscribe "
+    "Coscribe's browser isn't reachable right now -- it runs inside the Coscribe "
     "desktop app, which has to be open. Tell the user, or use read_web_page for a "
     "page that doesn't need a login or clicking."
 )

@@ -113,9 +113,9 @@ from .thread_files import ThreadFiles
 def _oauth_page(message: str) -> str:
     """The page a connector's sign-in redirects the browser to."""
     return (
-        "<!doctype html><meta charset=utf-8><title>coscribe</title>"
+        "<!doctype html><meta charset=utf-8><title>Coscribe</title>"
         '<body style="font-family:system-ui,sans-serif;max-width:32rem;margin:20vh auto;'
-        f'padding:0 1rem"><h2>coscribe</h2><p>{html.escape(message)}</p></body>'
+        f'padding:0 1rem"><h2>Coscribe</h2><p>{html.escape(message)}</p></body>'
     )
 
 
@@ -716,7 +716,7 @@ async def _run_web_server(host: str, port: int) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run coscribe's local web UI.")
+    parser = argparse.ArgumentParser(description="Run Coscribe's local web UI.")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     # Not used by anything at runtime -- exists so the packaged desktop

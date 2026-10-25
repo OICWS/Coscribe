@@ -63,7 +63,7 @@ _REFUSALS: dict[Capability, str] = {
     ),
     "commands": (
         "Commands are turned off on this computer (Settings › Capabilities): a command runs "
-        "outside coscribe's isolation. Tell the person if the task needs one; they can turn "
+        "outside Coscribe's isolation. Tell the person if the task needs one; they can turn "
         "commands on there. Prefer a Python or Node script, which runs isolated."
     ),
 }

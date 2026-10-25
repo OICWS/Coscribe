@@ -347,7 +347,7 @@ async def _chat_async(
                 return
 
             typer.echo(
-                f"coscribe -- thread '{thread_id}'. Type 'exit' to quit, "
+                f"Coscribe -- thread '{thread_id}'. Type 'exit' to quit, "
                 "/plan to toggle plan mode, /accept-edits to toggle auto-accept, "
                 "/compact to summarize this thread down and reclaim context, "
                 "/clear to wipe this thread's history and start fresh, "

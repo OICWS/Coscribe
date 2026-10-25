@@ -295,7 +295,7 @@ test("a change made behind the editor is offered back: Undo puts the earlier ver
   await page.locator("textarea").fill("hello again");
   await page.keyboard.press("Enter");
   const offer = page.getByRole("group", { name: "Change to this document" });
-  await expect(offer).toContainText("changed by coscribe or another program");
+  await expect(offer).toContainText("changed by Coscribe or another program");
   await expect(editor).toContainText("Changed elsewhere.");
 
   await offer.getByRole("button", { name: "Undo" }).click();

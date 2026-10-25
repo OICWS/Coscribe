@@ -188,7 +188,7 @@ export function SkillsTab({ active, onCreateSkill }: SkillsTabProps) {
                   onCreateSkill();
                 }}
               >
-                <PencilIcon className="h-3.5 w-3.5" /> Create with coscribe
+                <PencilIcon className="h-3.5 w-3.5" /> Create with Coscribe
               </button>
             </div>
           )}

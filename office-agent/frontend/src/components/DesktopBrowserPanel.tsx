@@ -427,7 +427,7 @@ export function DesktopBrowserPanel({
         <div className="mx-2 mb-1.5 flex items-center gap-2 rounded-lg bg-[var(--accent)]/10 px-2.5 py-1.5 text-xs text-[var(--fg)]">
           <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-[var(--accent)]" />
           <span className="min-w-0 flex-1 truncate">
-            {agent.threadId === threadId ? "coscribe is using the browser" : "coscribe is using the browser in another conversation"}
+            {agent.threadId === threadId ? "Coscribe is using the browser" : "Coscribe is using the browser in another conversation"}
           </span>
           {agent.threadId === threadId && (
             <button
@@ -451,7 +451,7 @@ export function DesktopBrowserPanel({
             <GlobeIcon className="mt-0.5 h-4 w-4 shrink-0 text-[var(--muted)]" />
             <div className="min-w-0 text-sm">
               <p className="font-medium">
-                Allow coscribe to use <span className="break-all">{permission.host}</span>?
+                Allow Coscribe to use <span className="break-all">{permission.host}</span>?
               </p>
               <p className="mt-0.5 text-[13px] text-[var(--muted)]">
                 {permission.threadId === threadId
@@ -497,11 +497,11 @@ export function DesktopBrowserPanel({
           {showEmptyState && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-6 text-center">
               <GlobeIcon className="mb-1 h-5 w-5 text-[var(--muted)]" />
-              <p className="text-[15px] text-[var(--fg)]">Browse with coscribe</p>
+              <p className="text-[15px] text-[var(--fg)]">Browse with Coscribe</p>
               <p className="text-sm leading-snug text-[var(--muted)]">
-                Type a URL or ask coscribe to open a site.
+                Type a URL or ask Coscribe to open a site.
                 <br />
-                coscribe can read, click, and type.
+                Coscribe can read, click, and type.
               </p>
             </div>
           )}

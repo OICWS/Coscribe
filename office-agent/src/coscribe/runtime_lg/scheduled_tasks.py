@@ -497,7 +497,7 @@ def reconcile_interrupted_runs(state_dir: str | Path) -> int:
                     trigger.trigger_id,
                     run.run_id,
                     "failed",
-                    "Interrupted -- coscribe closed while this run was in progress.",
+                    "Interrupted -- Coscribe closed while this run was in progress.",
                 )
                 fixed += 1
     return fixed

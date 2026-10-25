@@ -50,7 +50,7 @@ export function GlobalInstructionsSection({ active }: { active: boolean }) {
     <div className="flex flex-col">
       <SettingRow
         label="Global instructions"
-        description="Preferences, conventions or context coscribe should always know. Applies to every new conversation."
+        description="Preferences, conventions or context Coscribe should always know. Applies to every new conversation."
         control={
           <button type="button" className={secondaryButtonClass} onClick={editing ? stopEditing : startEditing}>
             {editing ? "Done" : "Edit"}
