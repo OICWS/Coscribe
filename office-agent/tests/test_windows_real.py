@@ -541,6 +541,7 @@ async def test_the_code_modules_commands_run_in_the_sandbox_and_stay_in_it(
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _StubResponses)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     _StubResponses.commands = [
+        "[Environment]::CurrentDirectory; (Get-Location).Path; cmd /d /c cd",
         "Set-Content -Path inside.txt -Value in",
         f"Set-Content -Path '{outside / 'x.txt'}' -Value out",
         # Asked to run outside the sandbox: Codex keeps it in while the profile denies a read.
