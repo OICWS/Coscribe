@@ -34,9 +34,9 @@ const APPROVAL_LABEL: Record<ScheduledTask["approval_mode"], string> = {
 };
 
 const APPROVAL_DESCRIPTION: Record<ScheduledTask["approval_mode"], string> = {
-  manual: "coscribe pauses and waits for your approval before any action that needs it.",
-  auto: "coscribe creates and edits files on its own, but pauses before running code or using connectors.",
-  skip: "coscribe never pauses for approval, including for running code and using connectors. Your blocking rules still apply.",
+  manual: "Coscribe pauses and waits for your approval before any action that needs it.",
+  auto: "Coscribe creates and edits files on its own, but pauses before running code or using connectors.",
+  skip: "Coscribe never pauses for approval, including for running code and using connectors. Your blocking rules still apply.",
 };
 
 function formatNextRun(task: ScheduledTask): string {
@@ -99,8 +99,8 @@ function FailuresSection({ task, onChanged }: { task: ScheduledTask; onChanged: 
       <div className="flex items-start justify-between gap-4">
         <div className="text-sm text-[var(--muted)]">
           {task.auto_investigate
-            ? "coscribe looks into it right away: it reproduces the failure and drafts a fix for you to review. It never saves the fix itself."
-            : "The run stops and you get a notification. You can ask coscribe to look into it from the run's page."}
+            ? "Coscribe looks into it right away: it reproduces the failure and drafts a fix for you to review. It never saves the fix itself."
+            : "The run stops and you get a notification. You can ask Coscribe to look into it from the run's page."}
         </div>
         <ToggleSwitch on={task.auto_investigate ?? false} onClick={toggle} label="Look into failures automatically" />
       </div>

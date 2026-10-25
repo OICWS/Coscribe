@@ -306,12 +306,12 @@ function DeckNotices({ changed, readOnly, error }: { changed: boolean; readOnly:
     <>
       {readOnly && (
         <div className="shrink-0 border-t border-[var(--border)] px-4 py-1.5 text-xs text-[var(--muted)]">
-          Read-only: coscribe did not build this presentation. Ask coscribe to change it, or open it in PowerPoint.
+          Read-only: Coscribe did not build this presentation. Ask Coscribe to change it, or open it in PowerPoint.
         </div>
       )}
       {changed && (
         <div className="shrink-0 border-t border-[var(--border)] px-4 py-1.5 text-xs text-[var(--warning)]">
-          Shown as coscribe last built it; the file has changed since.
+          Shown as Coscribe last built it; the file has changed since.
         </div>
       )}
       {error && (
@@ -668,7 +668,7 @@ function SlidesOverlays({
       {askingDiscard && (
         <ConfirmDialog
           title="Discard my edits?"
-          description="Every change you made since coscribe's last version of this presentation is taken back."
+          description="Every change you made since Coscribe's last version of this presentation is taken back."
           confirmLabel="Discard"
           onCancel={() => setAskingDiscard(false)}
           onConfirm={() => {
@@ -739,7 +739,7 @@ function shownError(busy: boolean, deck: SlideDeck | null, [error, edit, downloa
 function Building({ name }: { name: string }) {
   return (
     <div className="flex flex-1 items-center justify-center bg-[var(--stage-bg)] p-6 text-center text-sm text-[var(--muted)]" role="status">
-      coscribe is working on {name}…
+      Coscribe is working on {name}…
     </div>
   );
 }
@@ -748,7 +748,7 @@ function NotBuilt({ name, onOpen }: { name: string; onOpen: () => void }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-[var(--stage-bg)] p-6 text-center">
       <p className="max-w-[360px] text-sm text-[var(--muted)]">
-        {name} was not made by coscribe from slide pages, so it can't be shown here yet.
+        {name} was not made by Coscribe from slide pages, so it can't be shown here yet.
       </p>
       <button
         type="button"

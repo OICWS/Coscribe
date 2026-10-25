@@ -106,7 +106,7 @@ export function ProvidersTab({ active }: ProvidersTabProps) {
     <div className="flex flex-col gap-10">
       <FetchRetry status={loadStatus} error={loadError} onRetry={refresh} />
 
-      <SettingsSection title="Your providers" description="The services coscribe's models come from. Pick the default one on the General page.">
+      <SettingsSection title="Your providers" description="The services Coscribe's models come from. Pick the default one on the General page.">
         {loadStatus === "success" && Object.keys(configured).length === 0 ? (
           <p className="py-3 text-sm text-[var(--muted)]">No providers yet -- add one below.</p>
         ) : (

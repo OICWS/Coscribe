@@ -245,14 +245,14 @@ export async function importMcpOAuthApps(text: string): Promise<{ imported: stri
   try {
     parsed = JSON.parse(text);
   } catch {
-    return { error: "That file isn't a coscribe setup file." };
+    return { error: "That file isn't a Coscribe setup file." };
   }
   const res = await fetch("/api/mcp/oauth-apps/import", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(parsed),
   });
-  if (res.status === 422) return { error: "That file isn't a coscribe setup file." };
+  if (res.status === 422) return { error: "That file isn't a Coscribe setup file." };
   return res.json() as Promise<{ imported: string[] } | { error: string }>;
 }
 export const removeMcpServer = (name: string) => del<Record<string, never>>(`/api/mcp/servers/${encodeURIComponent(name)}`);

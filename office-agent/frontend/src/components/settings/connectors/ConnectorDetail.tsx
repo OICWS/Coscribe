@@ -101,7 +101,7 @@ export function ConnectorDetail({
         <section className="flex flex-col">
           <h3 className="text-[15px] font-semibold">Tool permissions</h3>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Choose when coscribe is allowed to use these tools. Needs approval follows the conversation's own mode.
+            Choose when Coscribe is allowed to use these tools. Needs approval follows the conversation's own mode.
           </p>
           <div className="mt-3 flex flex-col divide-y divide-[var(--border)]">
             <ToolGroup title="Read-only tools" tools={tools.filter((t) => t.read_only)} onChange={onPolicies} />

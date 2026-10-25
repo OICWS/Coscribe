@@ -61,7 +61,7 @@ test("a panel opens in its own window, keeps its switch on, and comes back where
   const own = await context.newPage();
   await own.goto(`/?panelWindow=${opened.panel}&thread=${opened.threadId}`);
   await expect(own.getByText("Context", { exact: true })).toBeVisible();
-  await expect(own).toHaveTitle("Task details · coscribe");
+  await expect(own).toHaveTitle("Task details · Coscribe");
   const pin = own.getByRole("button", { name: "Keep on top" });
   await pin.click();
   await expect(pin).toHaveAttribute("aria-pressed", "true");

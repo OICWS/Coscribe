@@ -184,7 +184,7 @@ export function GeneralTab({ values, onChange }: GeneralTabProps) {
         <SettingRows>
           <SettingRow
             label="Keep running in the background"
-            description="Closing the window keeps coscribe in the tray, so scheduled tasks still run. Turn off to quit when you close it."
+            description="Closing the window keeps Coscribe in the tray, so scheduled tasks still run. Turn off to quit when you close it."
             control={
               <ToggleSwitch
                 on={values[BACKGROUND_ON_CLOSE_KEY] !== "false"}
@@ -214,7 +214,7 @@ export function GeneralTab({ values, onChange }: GeneralTabProps) {
         <SettingRows>
           <SettingRow
             label="Log level"
-            description="How much detail goes into coscribe's log file. Use Debug only while troubleshooting. Takes effect after a restart."
+            description="How much detail goes into Coscribe's log file. Use Debug only while troubleshooting. Takes effect after a restart."
             control={
               <SegmentedControl
                 value={currentLogLevel(values[LOG_LEVEL_KEY])}

@@ -43,8 +43,8 @@ const WEEKDAY_OPTIONS: { label: string; value: number }[] = [
 // "Claude" -- this app's own product name, not a verbatim copy of the
 // reference's own wording (that screenshot is Claude Cowork's own UI).
 const APPROVAL_BANNER: Partial<Record<ApprovalMode, string>> = {
-  auto: "For this task, coscribe will create and edit files without asking, but pause before running code or using connectors.",
-  skip: "For this task, coscribe will never pause for approval -- it runs code and uses connectors on its own. Only your blocking rules still apply. Use with caution.",
+  auto: "For this task, Coscribe will create and edit files without asking, but pause before running code or using connectors.",
+  skip: "For this task, Coscribe will never pause for approval -- it runs code and uses connectors on its own. Only your blocking rules still apply. Use with caution.",
 };
 
 function todayIso(): string {

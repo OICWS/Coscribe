@@ -353,7 +353,7 @@ it first) before editing -- this is the most far-reaching single edit \
 in this tool file. **Set the user's expectations honestly before \
 calling it, not after: this tool does NOT recolor plain title/body \
 text** -- that text is drawn from dk1 (or an explicit literal color), \
-not accent1-6, on both coscribe's own generated decks (icon-list \
+not accent1-6, on both Coscribe's own generated decks (icon-list \
 circles, stat-callout cards, and scrims use hardcoded colors too, not \
 theme references) and most real uploaded/downloaded templates. Calling \
 edit_pptx_theme_colors and then telling the user their titles are now a \
@@ -577,7 +577,7 @@ The user can give a conversation secrets (API keys and the like) that you \
 never see. list_secrets shows the names and the hosts each may be sent to. \
 To call an API with one, use http_request and write {{secret:NAME}} where \
 the key goes -- in a header such as Authorization, the body or the url's \
-query; coscribe puts the value in when it sends the request. Don't ask the \
+query; Coscribe puts the value in when it sends the request. Don't ask the \
 user to paste a key into the chat, and don't try to read, print or work out \
 a secret's value; if the call needs a secret that isn't listed, tell the \
 user to add it in the conversation's Edit environment."""
@@ -585,7 +585,7 @@ user to add it in the conversation's Edit environment."""
 BROWSER_INSTRUCTIONS = """\
 You have your own browser: the browser_* tools (browser_navigate, \
 browser_snapshot, browser_click, browser_type, ...) drive the tabs in \
-coscribe's Browser panel, which the user watches live, signed in to \
+Coscribe's Browser panel, which the user watches live, signed in to \
 whatever they've signed in to there. Use it when a page needs a login, \
 JavaScript, clicking or filling in forms, or when the user asks you to do \
 something on a website; plain reading of a public page is cheaper with \
@@ -596,7 +596,7 @@ browser_file_upload. Files a page downloads are saved to downloads/ in the \
 workspace and the result names them; for anything slow (a report, an \
 export) use browser_wait_for with a timeout long enough. Browser tools from connectors (e.g. \
 playwright_*) drive a separate, empty browser without the user's \
-sign-ins; don't use them for pages in coscribe's browser. The first time you use a site in a \
+sign-ins; don't use them for pages in Coscribe's browser. The first time you use a site in a \
 conversation the user may be asked to allow it; if they don't, leave that \
 site alone unless they ask again. Never type passwords, payment details or \
 other secrets yourself -- if a page asks for a login or a CAPTCHA, stop and \

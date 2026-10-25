@@ -152,7 +152,7 @@ function DocsEditor({
       {(state.kind === "conflict" || state.kind === "error") && (
         <div className="flex items-center gap-3 border-b border-[var(--border)] px-4 py-2 text-xs text-[var(--danger)]">
           <span className="flex-1">
-            {state.kind === "conflict" ? "This document changed since you opened it (in Word or by coscribe). Your latest edits are not saved." : state.message}
+            {state.kind === "conflict" ? "This document changed since you opened it (in Word or by Coscribe). Your latest edits are not saved." : state.message}
           </span>
           {state.kind === "conflict" && (
             <button type="button" className="rounded-md border border-[var(--border)] px-2 py-1 text-[var(--fg)] hover:bg-[var(--card-bg)]" onClick={onReload}>
@@ -164,7 +164,7 @@ function DocsEditor({
       {step && (
         <div className="flex items-center gap-3 border-b border-[var(--border)] px-4 py-2 text-xs text-[var(--muted)]" role="group" aria-label="Change to this document">
           <span className="flex-1">
-            {step.kind === "undo" && "This document was changed by coscribe or another program."}
+            {step.kind === "undo" && "This document was changed by Coscribe or another program."}
             {step.kind === "redo" && "The earlier version is back."}
             {step.kind === "failed" && step.message}
           </span>

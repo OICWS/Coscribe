@@ -13,10 +13,10 @@ let tray: Tray | undefined;
 export function createTray(iconsDir: string, showMain: () => void, quit: () => void): void {
   const icon = nativeImage.createFromPath(join(iconsDir, "icon.png"));
   tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon);
-  tray.setToolTip("coscribe");
+  tray.setToolTip("Coscribe");
 
   const menu = Menu.buildFromTemplate([
-    { label: "Open coscribe", click: () => showMain() },
+    { label: "Open Coscribe", click: () => showMain() },
     { label: "Quit", click: () => quit() },
   ]);
   tray.setContextMenu(menu);

@@ -8,7 +8,7 @@ runs without asking, what is refused, what waits for a person) and its resolutio
 turns (`subagents.py`), the line that tells it the user changed slides in the app (`deck_edits.py`) or a Word document (`docs_edits.py`, joined with it in `user_edits.py`), workflow drafting for the chat model and the save button
 (`workflow_drafting.py`), the checkpointed history: replay, paging back, /compact, /clear, edit and
 rewind (`history.py`), the /saveskill dialogue (`skill_save.py`), what the side panel shows
-(`activity.py`, `context_usage.py`), the registry of the decks, documents and spreadsheets coscribe made, which outlives the conversation that made each one, for the Artifacts page (`artifacts.py`), the sidebar's per-thread state (`thread_meta.py`), the turn lock (`turn_lock.py`), the chat
+(`activity.py`, `context_usage.py`), the registry of the decks, documents and spreadsheets coscribe made, which outlives the conversation that made each one, for the Artifacts page (`artifacts.py`), and the read-only tool that lets a conversation list them (`artifact_tools.py`), the sidebar's per-thread state (`thread_meta.py`), the turn lock (`turn_lock.py`), the chat
 socket's message types (`wire.py`) and where events go (`events.EventSink`). Does not own the
 agent graph or its middleware (`runtime_lg`), the routes or the socket itself (`web`), or the
 coordinator's tools and prompt (`coordinator.py`).

@@ -611,8 +611,8 @@ async function clearBrowsingData(window: BrowserWindow): Promise<void> {
     buttons: ["Clear", "Cancel"],
     defaultId: 1,
     cancelId: 1,
-    message: "Clear coscribe's browsing data?",
-    detail: "This signs you out of every site in coscribe's browser by clearing its cookies and site data. Your own browser isn't affected.",
+    message: "Clear Coscribe's browsing data?",
+    detail: "This signs you out of every site in Coscribe's browser by clearing its cookies and site data. Your own browser isn't affected.",
   });
   if (response !== 0) return;
   await tabSession().clearStorageData();

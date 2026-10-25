@@ -75,7 +75,7 @@ export function DocxNewComment({
             setWords("");
           }}
         >
-          Ask coscribe
+          Ask Coscribe
         </button>
       )}
       <button

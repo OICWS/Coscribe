@@ -16,7 +16,7 @@ import { join } from "node:path";
 
 /** Per-user application-data directory. `COSCRIBE_APP_DATA_DIR` overrides
  * (this project's own dev/testing convention, shared with the Python
- * side's identical override). Otherwise: `%APPDATA%\coscribe` on Windows,
+ * side's identical override). Otherwise: `%APPDATA%\Coscribe` on Windows,
  * `~/Library/Application Support/coscribe` on macOS, `~/.config/coscribe`
  * elsewhere -- must stay byte-identical to `runtime/dotenv_file.py`'s `app_data_dir()`. */
 export function appDataDir(): string {
@@ -24,7 +24,7 @@ export function appDataDir(): string {
   if (override) return override;
   if (process.platform === "win32") {
     const appdata = process.env.APPDATA;
-    if (appdata) return join(appdata, "coscribe");
+    if (appdata) return join(appdata, "Coscribe");
   }
   if (process.platform === "darwin") {
     const home = process.env.HOME;

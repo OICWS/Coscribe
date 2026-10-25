@@ -715,7 +715,7 @@ def test_a_failed_run_of_a_task_set_to_is_looked_into_and_announced_lg(
     assert patched["auto_investigate"] is True
     assert event["status"] == "failed" and event["title"] == "Word count"
     assert event["body"] == (
-        "Failed -- Has words: 1 of 1 checks failed. coscribe is looking into it."
+        "Failed -- Has words: 1 of 1 checks failed. Coscribe is looking into it."
     )
     assert failed["investigation"] == event["thread_id"]
     assert '[Look into a failed run of "Word count"' in str(fake_model.received[1][-1].content)

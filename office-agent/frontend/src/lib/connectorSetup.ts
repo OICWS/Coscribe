@@ -4,9 +4,9 @@ import type { McpCatalogEntry, McpSetup } from "../types/settings";
 export function adminMessage(entry: McpCatalogEntry, setup: McpSetup, redirectUri: string): string {
   const title = entry.title ?? entry.name;
   const lines = [
-    `Hi, I'd like to connect ${title} to coscribe, the desktop assistant I use at work.`,
+    `Hi, I'd like to connect ${title} to Coscribe, the desktop assistant I use at work.`,
     `It needs an app registered with ${setup.provider} and your approval to let me sign in with it.`,
-    `App name: coscribe`,
+    `App name: Coscribe`,
     `Redirect address: ${redirectUri}`,
   ];
   if (setup.scopes?.length) lines.push(`Permissions requested:\n${setup.scopes.join("\n")}`);

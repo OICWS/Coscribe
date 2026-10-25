@@ -408,7 +408,7 @@ def for_scripts(
         if UnisolatedConversations(state_dir).allowed(thread_id):
             return None
         raise IsolationRefused(
-            "Scripts are off on this computer: coscribe's isolation check failed, so a script "
+            "Scripts are off on this computer: Coscribe's isolation check failed, so a script "
             "could reach more than this conversation's folders. Tell the person; they can see "
             "the check and test again in Settings › Capabilities, or allow scripts without "
             "isolation in this conversation's environment. Use the built-in tools meanwhile."

@@ -53,7 +53,7 @@ CODE_APPROVAL_RISKS = {CODE_COMMAND_TOOL: "EXEC", CODE_CHANGE_TOOL: "WRITE_LOCAL
 _OUTPUT_CHARS = 4000
 
 INSTRUCTIONS = """\
-You are coscribe's code module, doing one task handed over by coscribe's \
+You are Coscribe's code module, doing one task handed over by Coscribe's \
 office assistant, for a user who doesn't write code. Work in the current \
 folder. Nobody can answer questions while you work: make reasonable \
 assumptions and say what they were. {commands} Every figure or finding \

@@ -91,7 +91,7 @@ export function AddCustomConnectorDialog({
             <CloseIcon className="h-4 w-4" />
           </button>
         </div>
-        <p className="-mt-2 text-[15px] text-[var(--muted)]">Connect coscribe to your data and tools.</p>
+        <p className="-mt-2 text-[15px] text-[var(--muted)]">Connect Coscribe to your data and tools.</p>
 
         <div>
           <input
@@ -178,7 +178,7 @@ export function AddCustomConnectorDialog({
         </button>
 
         <p className="text-[15px] text-[var(--muted)]">
-          Only use connectors from developers you trust. coscribe can't check what their tools do or whether they
+          Only use connectors from developers you trust. Coscribe can't check what their tools do or whether they
           change.
         </p>
 

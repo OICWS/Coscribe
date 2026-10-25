@@ -184,7 +184,7 @@ export function PluginDetailView({
           ) : (
             <>
               <p className="pb-2 text-sm text-[var(--muted)]">
-                Services these skills work with. The ones coscribe has a connector for can be added under Connectors.
+                Services these skills work with. The ones Coscribe has a connector for can be added under Connectors.
               </p>
               {plugin.connectors.map((c) => {
                 const entry = catalog.find((e) => e.name === c.connector);
@@ -195,7 +195,7 @@ export function PluginDetailView({
                       <div className="truncate text-[15px]">{entry?.title ?? connectorTitle(c.name)}</div>
                       {entry && <div className="truncate text-sm text-[var(--muted)]">{entry.description}</div>}
                     </div>
-                    <span className="shrink-0 text-sm text-[var(--muted)]">{c.connector ? "In coscribe" : "Not in coscribe yet"}</span>
+                    <span className="shrink-0 text-sm text-[var(--muted)]">{c.connector ? "In Coscribe" : "Not in Coscribe yet"}</span>
                   </div>
                 );
               })}

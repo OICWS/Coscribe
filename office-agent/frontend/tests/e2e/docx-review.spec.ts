@@ -138,7 +138,7 @@ test("the Word panel replies to, resolves, reopens and adds comments, checked on
       const para = [...document.querySelectorAll(".docx-page p")].find((p) => p.textContent?.includes("Service agreement"));
       document.getSelection()?.selectAllChildren(para as Element);
     });
-    await page.getByRole("button", { name: "Ask coscribe" }).click();
+    await page.getByRole("button", { name: "Ask Coscribe" }).click();
     // The expanded viewer covers the chat, so the bubble is in the page but not visible.
     await expect(page.getByText(`Question about ${name}.docx, page 1:`)).toContainText("> Service agreement");
   });

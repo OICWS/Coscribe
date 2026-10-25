@@ -48,7 +48,7 @@ function notify(event: BackgroundEvent, open: (threadId: string) => void): void 
       : event.status === "needs_approval"
         ? `Waiting for you: ${event.title}`
         : `Finished: ${event.title}`);
-  const notification = new Notification({ title: event.body ? event.title : "coscribe", body });
+  const notification = new Notification({ title: event.body ? event.title : "Coscribe", body });
   const threadId = event.thread_id;
   if (threadId) notification.on("click", () => open(threadId));
   notification.show();

@@ -160,7 +160,7 @@ export async function requestPermission(host: string, threadId: string, win: Bro
     if (!sites.includes(site)) await updateBrowserSettings({ allowedSites: [...sites, site] });
   } else {
     throw new Error(
-      `The user didn't allow coscribe's browser to use ${site}. Don't use it again unless they ask; ` +
+      `The user didn't allow Coscribe's browser to use ${site}. Don't use it again unless they ask; ` +
         "they can allow it from the Browser panel.",
     );
   }

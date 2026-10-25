@@ -68,7 +68,7 @@ function open(main: BrowserWindow, request: OpenRequest, preloadPath: string): v
   const x = Math.min(Math.max(finite(request.x, area.x), area.x), area.x + area.width - width);
   const y = Math.min(Math.max(finite(request.y, area.y), area.y), area.y + area.height - height);
   const win = new BrowserWindow({
-    title: request.title || "coscribe",
+    title: request.title || "Coscribe",
     x,
     y,
     width,

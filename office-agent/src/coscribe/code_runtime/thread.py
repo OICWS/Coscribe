@@ -481,7 +481,7 @@ class _Turn:
         else:
             # Tool calls, user-input prompts, MCP elicitations, permission
             # grants: none is offered to this thread yet.
-            raise RequestFailed(method, {"message": f"coscribe doesn't handle {method}"})
+            raise RequestFailed(method, {"message": f"Coscribe doesn't handle {method}"})
         self._asking += 1
         task = asyncio.current_task()
         if task is not None:

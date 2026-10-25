@@ -198,7 +198,7 @@ export function SettingsModal({
         setStatus({ text: `Not saved -- ${rejected[0][1]}`, error: true });
         return;
       }
-      setStatus({ text: result.restart_required ? "Saved. Restart coscribe to apply." : "Saved", error: false });
+      setStatus({ text: result.restart_required ? "Saved. Restart Coscribe to apply." : "Saved", error: false });
       setConfig(await getConfig());
     }, 700);
     return () => window.clearTimeout(timer);

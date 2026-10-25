@@ -104,7 +104,7 @@ def remove_skill(skills_dir: Path, state_dir: Path, name: str) -> None:
     switched off."""
     builtin_names = {skill.name for skill in load_builtin_skills()}
     if name in builtin_names:
-        raise SkillCatalogError(f"{name!r} is built into coscribe -- switch it off instead")
+        raise SkillCatalogError(f"{name!r} is built into Coscribe -- switch it off instead")
     skill = next((s for s in load_skills(skills_dir) if s.name == name), None)
     if skill is None:
         raise SkillCatalogError(f"No skill named {name!r}")

@@ -140,7 +140,7 @@ function buildAppMenu(): Menu {
         },
         { type: "separator" },
         {
-          label: "coscribe on GitHub",
+          label: "Coscribe on GitHub",
           click: () => void shell.openExternal("https://github.com/OICWS/coscribe"),
         },
       ],

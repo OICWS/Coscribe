@@ -40,7 +40,7 @@ def step_history(
             while target > 0 and states[target]["by"] == "you":
                 target -= 1
             if log["at"] < 0 or target == log["at"]:
-                raise ValueError("you have not changed anything since coscribe's last version")
+                raise ValueError("you have not changed anything since Coscribe's last version")
         else:
             target = log["at"] + direction
         if log["at"] < 0 or not 0 <= target < len(states):
