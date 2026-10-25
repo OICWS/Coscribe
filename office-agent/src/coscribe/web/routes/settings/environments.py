@@ -15,6 +15,7 @@ from ....code_runtime import CodexUnavailable, code_service
 from ....runtime_lg import AuditLog, record_decision
 from ....tools import (
     Capabilities,
+    bundled_sandbox,
     ensure_own_python,
     find_pythons,
     get_interpreter_override,
@@ -131,14 +132,21 @@ def _sandbox_routes(router: APIRouter, state: AppState) -> None:
             reason="human",
         )
 
-    # The step setup is on, so the row can say what it waits for: "download" (Codex, with its
-    # progress), "approve" (the administrator prompt, then Codex's setup) or "check".
-    step = {"now": ""}
+    # The step setup or removal is on, so the row can say what it waits for. Setup: "download"
+    # (Codex, with its progress), "approve" (the administrator prompt, then Codex's setup) or
+    # "check"; removal: "release" (the private folders' permissions) or "uninstall".
+    step = {"now": "", "mode": ""}
 
     async def get_sandbox() -> dict[str, Any]:
         if step["now"]:
             progress = code_service(state.settings).status()["progress"]
-            return {"state": "working", "detail": step["now"], "progress": progress}
+            return {
+                "state": "working",
+                "detail": step["now"],
+                "progress": progress,
+                "mode": step["mode"],
+                "source": "bundled" if bundled_sandbox() is not None else "codex",
+            }
         return sandbox_status(state_dir)
 
     async def set_up_sandbox(body: CommandSandboxSetup | None = None) -> dict[str, Any]:
@@ -146,12 +154,14 @@ def _sandbox_routes(router: APIRouter, state: AppState) -> None:
         if sandbox_status(state_dir)["state"] == "unsupported" or step["now"]:
             return await get_sandbox()
         try:
-            step["now"] = "download"
+            step["now"], step["mode"] = "download", mode
+            # The desktop app ships the sandbox; a checkout without it gets it with Codex.
+            codex = bundled_sandbox()
             try:
-                codex = await code_service(state.settings).download()
+                codex = codex or await code_service(state.settings).download()
             except CodexUnavailable as exc:
                 error = exc.args[0] if exc.args else "Codex couldn't be downloaded."
-                record_sandbox_setup(state_dir, None, error)
+                record_sandbox_setup(state_dir, None, error, mode)
                 audit("setup", error)
                 return sandbox_status(state_dir)
             error = ""
@@ -176,25 +186,33 @@ def _sandbox_routes(router: APIRouter, state: AppState) -> None:
         finally:
             step["now"] = ""
 
-    async def remove_sandbox() -> dict[str, str]:
+    async def remove_sandbox() -> dict[str, Any]:
+        if step["now"]:
+            return await get_sandbox()
         codex = sandbox_codex(state_dir)
-        # First, while the group still exists so its entries can be named; also when this
-        # Codex is gone, since the entries outlive it.
-        left = await asyncio.to_thread(release_private_folders, state_dir)
-        error = ""
-        if left:
-            error = "Some folders still hide from commands: " + ", ".join(left)
-        elif codex is not None and sandbox_mode(state_dir) == "elevated":
-            # Only the elevated mode made users and firewall rules to take away.
-            error = await asyncio.to_thread(
-                run_as_administrator,
-                sandbox_uninstall_argv(codex),
-                state_dir,
-                _SANDBOX_SETUP_SECONDS,
-            )
-        record_sandbox_setup(state_dir, codex if error else None, mode=sandbox_mode(state_dir))
-        audit("uninstall", error)
-        return {**sandbox_status(state_dir), "error": error}
+        try:
+            # First, while the group still exists so its entries can be named; also when this
+            # Codex is gone, since the entries outlive it. icacls walks each folder, which takes a
+            # while before the administrator prompt, so the row says so.
+            step["now"], step["mode"] = "release", sandbox_mode(state_dir)
+            left = await asyncio.to_thread(release_private_folders, state_dir)
+            error = ""
+            if left:
+                error = "Some folders still hide from commands: " + ", ".join(left)
+            elif codex is not None and sandbox_mode(state_dir) == "elevated":
+                # Only the elevated mode made users and firewall rules to take away.
+                step["now"] = "uninstall"
+                error = await asyncio.to_thread(
+                    run_as_administrator,
+                    sandbox_uninstall_argv(codex),
+                    state_dir,
+                    _SANDBOX_SETUP_SECONDS,
+                )
+            record_sandbox_setup(state_dir, codex if error else None, mode=sandbox_mode(state_dir))
+            audit("uninstall", error)
+            return {**sandbox_status(state_dir), "error": error}
+        finally:
+            step["now"] = ""
 
     router.add_api_route("/api/command-sandbox", get_sandbox, methods=["GET"])
     router.add_api_route("/api/command-sandbox", set_up_sandbox, methods=["POST"])

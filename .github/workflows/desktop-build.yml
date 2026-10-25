@@ -52,6 +52,18 @@ jobs:
         working-directory: office-agent-desktop
         run: bash scripts/stage-sidecar.sh
 
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            office-agent-sandbox/target
+          key: sandbox-${{ hashFiles('office-agent-sandbox/CODEX_TAG', 'office-agent-sandbox/Cargo.toml') }}
+
+      # The command sandbox ships in the app, so it needs no Codex download (issue #607).
+      - name: Build the command sandbox
+        run: bash office-agent-sandbox/scripts/build.sh office-agent-desktop/resources/sandbox
+
       - name: npm ci (Electron + electron-builder)
         working-directory: office-agent-desktop
         run: npm ci

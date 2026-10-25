@@ -75,6 +75,13 @@ export function serverBin(): string {
   return join(__dirname, "..", "..", "..", "office-agent", ".venv", devSubdir, devExeName);
 }
 
+/** The folder of the built-in command sandbox (issue #607), or undefined when this build doesn't
+ * carry it; the server then downloads Codex for its sandbox instead. */
+export function sandboxDir(): string | undefined {
+  const dir = join(process.resourcesPath, "sandbox");
+  return existsSync(join(dir, "coscribe-sandbox.exe")) ? dir : undefined;
+}
+
 /** The sidecar's log file: `<app_data_dir>/logs/coscribe-server.log`,
  * fresh per launch, previous run kept as `.old` -- mirrors
  * `server_log_file()` (Rust side). Returns a raw file descriptor, not a

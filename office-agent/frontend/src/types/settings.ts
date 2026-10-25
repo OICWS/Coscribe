@@ -574,7 +574,8 @@ export type CommandSandboxMode = "elevated" | "unelevated";
 
 export interface CommandSandbox {
   state: "ready" | "off" | "failed" | "unsupported" | "working";
-  /** Why it failed; while working, the step: "download", "approve" or "check". */
+  /** Why it failed; while working, the step: "download", "approve" or "check" setting up,
+   * "release" or "uninstall" removing. */
   detail: string;
   /** The mode it is (or was last) set up in; absent off Windows. */
   mode?: CommandSandboxMode;
@@ -582,6 +583,8 @@ export interface CommandSandbox {
   progress?: number | null;
   /** Set when removing it failed. */
   error?: string;
+  /** Where setting it up gets the sandbox: built into the app, or with the Codex download. */
+  source?: "bundled" | "codex";
 }
 
 /** Where what Settings › Capabilities downloads lives. */

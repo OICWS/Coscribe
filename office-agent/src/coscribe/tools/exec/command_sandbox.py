@@ -40,6 +40,7 @@ _DEFAULT = "coscribe-default"
 # A command's batch file outlives its start only so a slow sandbox can read it.
 _COMMAND_FILES_KEPT_SECONDS = 3600
 _lock = threading.Lock()
+_BUNDLED = "coscribe-sandbox.exe"
 ELEVATED, UNELEVATED = "elevated", "unelevated"
 
 
@@ -74,8 +75,21 @@ def record_sandbox_setup(
     path.write_text(json.dumps(record), encoding="utf-8")
 
 
+def bundled_sandbox() -> Path | None:
+    """coscribe's own build of Codex's sandbox (#607), which the desktop app ships with its two
+    helpers; None in a checkout without it, where the sandbox comes with the Codex download."""
+    folder = os.environ.get("COSCRIBE_SANDBOX_DIR", "")
+    exe = Path(folder) / _BUNDLED if folder else None
+    return exe if exe is not None and exe.is_file() else None
+
+
+def _is_bundled(program: Path) -> bool:
+    return program.name.lower() == _BUNDLED
+
+
 def sandbox_codex(state_dir: Path) -> Path | None:
-    """The Codex that set the sandbox up, while it is set up and still there."""
+    """The program that set the sandbox up (coscribe's own sandbox, or the Codex it came with),
+    while it is set up and still there."""
     if not supported():
         return None
     codex = str(_read_record(state_dir).get("codex") or "")
@@ -94,11 +108,13 @@ def sandbox_status(state_dir: Path) -> dict[str, str]:
     if not supported():
         return {"state": "unsupported", "detail": "The command sandbox needs Windows."}
     mode = sandbox_mode(state_dir)
+    # Where a setup would get the sandbox: built in, or with the Codex download.
+    source = "bundled" if bundled_sandbox() is not None else "codex"
     if sandbox_codex(state_dir) is not None:
-        return {"state": "ready", "detail": "", "mode": mode}
+        return {"state": "ready", "detail": "", "mode": mode, "source": source}
     error = str(_read_record(state_dir).get("error") or "")
     state = "failed" if error else "off"
-    return {"state": state, "detail": error, "mode": mode}
+    return {"state": state, "detail": error, "mode": mode, "source": source}
 
 
 def _toml_key(path: str) -> str:
@@ -149,6 +165,30 @@ def _ensure_profile(home: Path, profile: dict[str, Any]) -> str:
     return name
 
 
+def _policy_file(home: Path, profile: dict[str, Any]) -> Path:
+    """These folders as the filesystem policy coscribe's own sandbox reads: Codex's serialized
+    `RawFileSystemSandboxPolicy`, with the entries a `config.toml` profile would have. One file per
+    set of folders, named after them, so commands running at once never share one."""
+    name = hashlib.sha256(json.dumps(profile).encode()).hexdigest()[:16]
+    path = home / "policies" / f"{name}.json"
+    if path.is_file():
+        return path
+
+    def entry(folder: str, access: str) -> dict[str, Any]:
+        return {"path": {"type": "path", "path": folder}, "access": access}
+
+    # The elevated sandbox needs the whole disk readable, as with `codex sandbox`.
+    root = {"path": {"type": "special", "value": {"kind": "root"}}, "access": "read"}
+    entries = [root, *(entry(p, "deny") for p in profile.get("denied", []))]
+    entries += [entry(p, "read") for p in profile["readable"]]
+    entries += [entry(p, "write") for p in profile["writable"]]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(f".{uuid.uuid4().hex}.tmp")
+    tmp.write_text(json.dumps({"kind": "restricted", "entries": entries}), encoding="utf-8")
+    os.replace(tmp, path)
+    return path
+
+
 def sandboxed_command(
     state_dir: Path,
     command: str,
@@ -186,8 +226,13 @@ def sandboxed_command(
         "denied": [str(p) for p in denied],
         **({"mode": mode} if mode == UNELEVATED else {}),
     }
-    profile = _ensure_profile(home, folders)
-    argv = [str(codex), "sandbox", "--permission-profile", profile, "-C", str(root), "--"]
+    if _is_bundled(codex):
+        argv = [str(codex), "run", "--codex-home", str(home), "--level", mode, "--cwd", str(root)]
+        argv += ["--policy", str(_policy_file(home, folders))]
+        argv += ["--network", "on" if network else "off", "--"]
+    else:
+        profile = _ensure_profile(home, folders)
+        argv = [str(codex), "sandbox", "--permission-profile", profile, "-C", str(root), "--"]
     argv += ["cmd.exe", "/d", "/c", str(script)]
     return argv, {"CODEX_HOME": str(home), "TEMP": str(temp), "TMP": str(temp)}
 
@@ -248,10 +293,14 @@ def sandbox_setup_argv(codex: Path, state_dir: Path) -> list[str]:
     standard user's administrator approves the prompt, setup runs as that administrator."""
     user = os.environ.get("USERNAME", "")
     home = str(sandbox_home(state_dir))
+    if _is_bundled(codex):
+        return [str(codex), "setup", "--user", user, "--codex-home", home]
     return [str(codex), "sandbox", "setup", "--elevated", "--user", user, "--codex-home", home]
 
 
 def sandbox_uninstall_argv(codex: Path) -> list[str]:
+    if _is_bundled(codex):
+        return [str(codex), "uninstall"]
     return [str(codex), "sandbox", "uninstall"]
 
 

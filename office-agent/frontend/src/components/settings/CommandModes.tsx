@@ -7,7 +7,7 @@ import { secondaryButtonClass } from "./SettingRow";
 
 const POLL_MS = 1000;
 
-/** The command sandbox's state, polled while it is being set up so each step shows. */
+/** The command sandbox's state, polled while it is being set up or removed so each step shows. */
 export function useCommandSandbox(active: boolean) {
   const [sandbox, setSandbox] = useState<CommandSandbox | null>(null);
   const [busy, setBusy] = useState(false);
@@ -66,21 +66,35 @@ export function useCommandSandbox(active: boolean) {
     sandbox,
     busy: busy || sandbox?.state === "working",
     setUp: (mode: CommandSandboxMode) => void run(() => setUpCommandSandbox(mode), true),
-    remove: () => void run(removeCommandSandbox, false),
+    remove: () => void run(removeCommandSandbox, true),
   };
 }
 
 type CommandSandboxControl = ReturnType<typeof useCommandSandbox>;
 
-const STEPS: { key: string; label: string; elevatedOnly?: boolean }[] = [
-  { key: "download", label: "Download Codex, which the sandbox is part of" },
+type Step = { key: string; label: string; elevatedOnly?: boolean; codexOnly?: boolean };
+
+const SETUP_STEPS: Step[] = [
+  { key: "download", label: "Download Codex, which the sandbox is part of", codexOnly: true },
   { key: "approve", label: "Wait for an administrator to approve, then create the sandbox's users", elevatedOnly: true },
   { key: "check", label: "Run a test command in it" },
 ];
 
-/** Where set up is: done steps ticked, the current one with its progress or what it waits for. */
+const REMOVAL_STEPS: Step[] = [
+  { key: "release", label: "Give your private folders their usual permissions back" },
+  { key: "uninstall", label: "Wait for an administrator to approve, then remove the sandbox's users", elevatedOnly: true },
+];
+
+// The steps that wait on the Windows prompt.
+const PROMPTS = new Set(["approve", "uninstall"]);
+
+/** Where set up or removal is: done steps ticked, the current one with its progress or what it
+ * waits for. */
 function SetupSteps({ sandbox, mode }: { sandbox: CommandSandbox; mode: CommandSandboxMode }) {
-  const steps = STEPS.filter((step) => mode === "elevated" || !step.elevatedOnly);
+  const removing = REMOVAL_STEPS.some((step) => step.key === sandbox.detail);
+  const steps = (removing ? REMOVAL_STEPS : SETUP_STEPS).filter(
+    (step) => (mode === "elevated" || !step.elevatedOnly) && (sandbox.source !== "bundled" || !step.codexOnly),
+  );
   const current = steps.findIndex((step) => step.key === sandbox.detail);
   return (
     <ol className="mt-2 flex flex-col gap-1 text-[13px]">
@@ -97,7 +111,7 @@ function SetupSteps({ sandbox, mode }: { sandbox: CommandSandbox; mode: CommandS
             </span>
             {step.label}
             {note}
-            {now && step.key === "approve" && (
+            {now && PROMPTS.has(step.key) && (
               <span className="mt-0.5 block pl-5 text-[var(--muted)]">
                 Look for the Windows prompt, which can open behind other windows; check the taskbar.
               </span>
@@ -211,7 +225,6 @@ export function CommandModes({
   onToggleHidePrivate,
 }: CommandModesProps) {
   const { sandbox, busy } = control;
-  const [settingUp, setSettingUp] = useState<CommandSandboxMode | null>(null);
   if (sandbox === null) return <p className="py-3 text-sm text-[var(--muted)]">Checking the command sandbox…</p>;
   if (sandbox.state === "unsupported") {
     return (
@@ -229,10 +242,7 @@ export function CommandModes({
       mode={mode}
       inUse={inUse ?? null}
       busy={busy}
-      onSetUp={(next) => {
-        setSettingUp(next);
-        control.setUp(next);
-      }}
+      onSetUp={control.setUp}
       onRemove={control.remove}
     />
   );
@@ -244,7 +254,7 @@ export function CommandModes({
     <p className="mt-2 text-[13px] text-[var(--danger)]">Removing it didn't work: {sandbox.error}</p>
   ) : null;
   const steps = (mode: CommandSandboxMode) =>
-    working && (settingUp ?? sandbox.mode ?? "elevated") === mode ? <SetupSteps sandbox={sandbox} mode={mode} /> : null;
+    working && (sandbox.mode ?? "elevated") === mode ? <SetupSteps sandbox={sandbox} mode={mode} /> : null;
 
   return (
     <div className="flex flex-col gap-3 pt-2">
@@ -289,9 +299,10 @@ export function CommandModes({
         }
       />
       <p className="text-[13px] leading-relaxed text-[var(--muted)]">
-        Both sandboxes are part of Codex, so setting one up downloads Codex if it isn't there yet. That doesn't turn the
-        code module on, which has its own switch below. With no sandbox set up and "Without a sandbox" off, commands are
-        refused.
+        {sandbox.source === "bundled"
+          ? "Both sandboxes come with coscribe and need no download."
+          : "Both sandboxes are part of Codex, so setting one up downloads Codex if it isn't there yet. That doesn't turn the code module on, which has its own switch below."}{" "}
+        With no sandbox set up and "Without a sandbox" off, commands are refused.
       </p>
     </div>
   );
