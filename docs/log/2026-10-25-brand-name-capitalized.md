@@ -15,7 +15,8 @@ a product. Only what a person reads changes; names other things depend on stay l
 Package name, the `coscribe` / `coscribe-web` commands, `appId`, `COSCRIBE_*` variables, the
 keychain service name, the app-data folder, the OAuth client name registered with providers, the
 `[coscribe]` log and script-guard prefixes, the HTTP user agent, `(coscribe)` in copied file names,
-the `"coscribe"` author value in wire data, URLs and storage keys.
+the `"coscribe"` author value in wire data, URLs and storage keys. The connector setup text that
+tells a person to name their own app "Coscribe" is a suggested name, not the registered client name.
 
 ## Not verified
 - A packaged Windows build: that the installer is named as above and that an existing install keeps
