@@ -9,7 +9,8 @@ tag="$(tr -d '[:space:]' < "$here/CODEX_TAG")"
 work="${CODEX_CHECKOUT:-$here/target/codex-$tag}"
 
 if [ ! -d "$work/codex-rs" ]; then
-  git clone --quiet --depth 1 --branch "$tag" https://github.com/openai/codex "$work"
+  # Codex has test snapshots past Windows' 260-character limit.
+  git -c core.longpaths=true clone --quiet --depth 1 --branch "$tag" https://github.com/openai/codex "$work"
 fi
 rs="$work/codex-rs"
 rm -rf "$rs/coscribe-sandbox"
