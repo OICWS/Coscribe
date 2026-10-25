@@ -41,6 +41,7 @@ from ..tools import (
     load_skills,
 )
 from ..tools.web import build_http_tools
+from .artifact_tools import build_artifact_tools
 from .context_usage import build_context_breakdown
 from .turn_text import build_instructions
 
@@ -136,6 +137,7 @@ class AgentAssembly:
             *delegation_tools,
             *code_tools,
             *build_http_tools(self._host.settings.state_dir, self._host.thread_id),
+            *build_artifact_tools(self._host.settings.state_dir, self._host.workspace_scope),
             review_work_tool,
             self._host._build_draft_workflow_tool(),
             self._host._build_revise_workflow_tool(),
