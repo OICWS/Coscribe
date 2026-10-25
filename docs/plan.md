@@ -243,7 +243,9 @@ Last reviewed: 2026-10-15.
    the message box and the move of each conversation's own settings into them, scheduled tasks
    choosing an environment, commands in Codex's Windows sandbox (decision 0022, proposed: needs
    the maintainer's independent review), with the person's private folders hidden from it (#601),
-   and the sandbox built into the desktop app, so it needs no Codex download (#607).
+   and the sandbox built into the desktop app, so it needs no Codex download (#607); a private
+   folder holding a command's folder hides what is beside it rather than itself, so PowerShell
+   starts there.
    Codex's own commands in the code module run in the same sandbox (#616).
    Open: hiding other
    drives' user folders.

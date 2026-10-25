@@ -121,6 +121,7 @@ def code_command_profile(
     try:
         return codex_profile(
             state,
+            folder,
             [folder],
             [],
             online,

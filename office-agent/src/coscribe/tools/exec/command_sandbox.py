@@ -30,7 +30,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from ._private_folders import inside_any, prepare_folders
+from ._private_folders import hidden_around, inside_any, prepare_folders
 
 _RECORD = "command-sandbox.json"
 # Codex reads permission profiles from config.toml only; each set of folders gets its own,
@@ -218,20 +218,23 @@ def _policy_file(home: Path, profile: dict[str, Any]) -> Path:
 
 def _held_folders(
     state_dir: Path,
+    root: Path,
     writable: Sequence[Path],
     readable: Sequence[Path],
     network: bool,
     hidden: Sequence[Path],
     programs: Sequence[Path],
 ) -> dict[str, Any]:
-    """The profile that writes `writable`, reads `readable` and denies `hidden` less what it is
-    given, after granting what lies inside a denied folder (icacls: call it off the event loop)."""
+    """The profile for commands started in `root` that writes `writable`, reads `readable` and
+    denies `hidden` less what it is given, after granting what lies inside a denied folder
+    (icacls: call it off the event loop)."""
     mode = sandbox_mode(state_dir)
     if mode == UNELEVATED:
         # Codex can't deny a read without its own users.
         hidden = ()
     given = [*writable, *readable]
     # A folder the environment was given stays readable even when it holds a private one.
+    hidden = hidden_around(hidden, root)
     denied = [h for h in hidden if not any(inside_any(h, [g]) for g in given)]
     if hidden:
         prepare_folders(state_dir, denied, given, [*readable, *programs])
@@ -246,6 +249,7 @@ def _held_folders(
 
 def codex_profile(
     state_dir: Path,
+    root: Path,
     writable: Sequence[Path],
     readable: Sequence[Path],
     network: bool,
@@ -260,7 +264,7 @@ def codex_profile(
     if sandbox_codex(state_dir) is None:
         return None
     temp = _temp_folder(state_dir, writable)
-    folders = _held_folders(state_dir, [*writable, temp], readable, network, hidden, programs)
+    folders = _held_folders(state_dir, root, [*writable, temp], readable, network, hidden, programs)
     # Codex runs a command the model asks to escalate outside the sandbox once approved, and the
     # approval request doesn't say so; it keeps one sandboxed while the profile denies a read.
     # This empty folder makes sure one always does.
@@ -293,7 +297,7 @@ def sandboxed_command(
     # The person's Temp is in AppData; a command gets its own, apart for each set of folders.
     temp = _temp_folder(state_dir, writable)
     folders = _held_folders(
-        state_dir, [*writable, temp], [*readable, script.parent], network, hidden, programs
+        state_dir, root, [*writable, temp], [*readable, script.parent], network, hidden, programs
     )
     if _is_bundled(codex):
         argv = [str(codex), "run", "--codex-home", str(home), "--level", mode, "--cwd", str(root)]

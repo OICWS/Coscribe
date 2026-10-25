@@ -311,6 +311,9 @@ async def test_a_sandboxed_command_writes_only_its_workspace_and_cannot_read_pri
     beside.write_text("BESIDE-SECRET")
     tag = uuid.uuid4().hex
     desktop = profile / "Desktop" / f"coscribe-secret-{tag}.txt"
+    # Beside the way down to the workspace: Documents itself is no longer denied whole.
+    documents = profile / "Documents" / f"coscribe-secret-{tag}.txt"
+    documents.write_text("DOCUMENTS-SECRET")
     roaming = Path(os.environ["APPDATA"]) / f"coscribe-secret-{tag}.txt"
     # Like .git-credentials or .netrc: a file at the profile's top, which Codex never opens.
     top = profile / f".coscribe-secret-{tag}"
@@ -323,9 +326,14 @@ async def test_a_sandboxed_command_writes_only_its_workspace_and_cannot_read_pri
         "import tempfile; tempfile.TemporaryFile().close(); print('PY-RAN'); import socket; "
         "socket.create_connection(('1.1.1.1', 443), 5); print('NET-OPEN')"
     )
-    reads = f'type "{beside}" & type "{desktop}" & type "{roaming}" & type "{top}"'
+    reads = (
+        f'type "{beside}" & type "{desktop}" & type "{roaming}" & type "{top}" & type "{documents}"'
+    )
+    # PowerShell can't start in a folder whose parents its user can't list (it falls back to C:\).
+    where = "pwsh -NoProfile -Command \"'PWSH:' + (Get-Location).Path\" & "
+    where += "powershell -NoProfile -Command \"'WINPS:' + (Get-Location).Path\""
     command = (
-        f"whoami & echo inside> made.txt & {reads} & "
+        f"whoami & echo inside> made.txt & {where} & {reads} & "
         f'echo outside> "{made}" & "{sys.executable}" -c "{connect}"'
     )
 
@@ -338,7 +346,12 @@ async def test_a_sandboxed_command_writes_only_its_workspace_and_cannot_read_pri
         acls = _icacls(beside.parent, desktop.parent, roaming.parent)
         assert (base / "workspace" / "made.txt").read_text().strip() == "inside", output
         assert not made.exists(), output
-        for secret in ("BESIDE-SECRET", "DESKTOP-SECRET", "ROAMING-SECRET", "TOP-SECRET"):
+        workspace = str(base / "workspace").lower()
+        assert f"pwsh:{workspace}" in output.lower(), output
+        assert f"winps:{workspace}" in output.lower(), output
+        for secret in (
+            "BESIDE-SECRET", "DESKTOP-SECRET", "ROAMING-SECRET", "TOP-SECRET", "DOCUMENTS-SECRET"
+        ):  # fmt: skip
             assert secret not in output, output + acls
         assert "codexsandbox" in output.lower(), output
         # Its Temp is its own, so Python's tempfile works; the network is not Full, so offline.
@@ -352,6 +365,7 @@ async def test_a_sandboxed_command_writes_only_its_workspace_and_cannot_read_pri
     finally:
         Capabilities(sandboxed_state).set("commands_hide_private_folders", True)
         desktop.unlink(missing_ok=True)
+        documents.unlink(missing_ok=True)
         roaming.unlink(missing_ok=True)
         top.unlink(missing_ok=True)
         shutil.rmtree(base, ignore_errors=True)
@@ -372,9 +386,11 @@ async def test_a_read_only_folder_and_a_program_inside_private_folders_stay_usab
     # LOCALAPPDATA, both inside folders the profile denies.
     tag = uuid.uuid4().hex
     base = Path(os.environ["USERPROFILE"]) / "Documents" / f"coscribe-{tag}"
-    workspace, reference = base / "workspace", base / "reference"
+    # In a folder beside the workspace's, which is denied as the rest of Documents is.
+    shelf = base.with_name(f"coscribe-shelf-{tag}")
+    workspace, reference = base / "workspace", shelf / "reference"
     workspace.mkdir(parents=True)
-    reference.mkdir()
+    reference.mkdir(parents=True)
     (reference / "r.txt").write_text("REF-READ")
     program = Path(os.environ["LOCALAPPDATA"]) / f"coscribe-program-{tag}"
     program.mkdir()
@@ -391,7 +407,7 @@ async def test_a_read_only_folder_and_a_program_inside_private_folders_stay_usab
         out, _ = await proc.communicate()
         output = out.decode("utf-8", errors="replace")
         assert "codexsandbox" in output.lower(), output
-        assert "REF-READ" in output, output + _icacls(base, reference)
+        assert "REF-READ" in output, output + _icacls(shelf, reference)
         assert "HELLO-PROGRAM" in output, output + _icacls(program)
         # The deny entries name the sandbox's group, which the person is not in.
         groups = subprocess.run(
@@ -401,6 +417,7 @@ async def test_a_read_only_folder_and_a_program_inside_private_folders_stay_usab
         assert (reference / "r.txt").read_text() == "REF-READ"
     finally:
         shutil.rmtree(base, ignore_errors=True)
+        shutil.rmtree(shelf, ignore_errors=True)
         shutil.rmtree(program, ignore_errors=True)
 
 
@@ -534,19 +551,15 @@ async def test_the_code_modules_commands_run_in_the_sandbox_and_stay_in_it(
     # Issue #616: Codex's own commands, run by the code module's real app-server against a stub
     # model, write the task's folder and nothing outside it, and a refused one is not run outside
     # the sandbox.
-    # PowerShell can't start in a folder below a hidden one (AppData holds tmp_path), so the
-    # task's folder is on the runner's work drive.
-    work = Path(os.environ.get("RUNNER_TEMP") or tmp_path) / f"code-{uuid.uuid4().hex[:8]}"
-    outside = tmp_path / "outside"
+    # Inside AppData, which is hidden: PowerShell still starts in it (what is beside it is denied).
+    work, outside = tmp_path / "work", tmp_path / "outside"
     work.mkdir()
     outside.mkdir()
     Capabilities(sandboxed_state).set("commands", True)
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _StubResponses)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     _StubResponses.commands = [
-        "[Environment]::CurrentDirectory; (Get-Location).Path",
-        # The command's Temp is granted but lies below AppData, which is hidden.
-        "Set-Location -LiteralPath $env:TEMP; (Get-Location).Path",
+        "'WHERE:' + (Get-Location).Path",
         "Set-Content -Path inside.txt -Value in",
         f"Set-Content -Path '{outside / 'x.txt'}' -Value out",
         # Asked to run outside the sandbox: Codex keeps it in while the profile denies a read.
@@ -580,6 +593,7 @@ async def test_the_code_modules_commands_run_in_the_sandbox_and_stay_in_it(
         f"profile {profile}, config {(spec.home / 'config.toml').read_text()}, log {log}"
     )
     assert result.status == "completed", (result.error, context)
+    assert f"WHERE:{work}".lower() in _StubResponses.outputs[0].lower(), context
     assert (work / "inside.txt").exists(), context
     assert (work / "inside.txt").read_text(encoding="utf-8-sig").strip() == "in", context
     assert not (outside / "x.txt").exists(), context
