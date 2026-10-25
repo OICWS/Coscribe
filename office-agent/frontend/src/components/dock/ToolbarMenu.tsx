@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { TOOLBAR_ITEMS, type ToolbarItem } from "../../lib/toolbarItems";
+import { ALWAYS_PINNED, TOOLBAR_ITEMS, type ToolbarItem } from "../../lib/toolbarItems";
 import { DRAWS_TITLE_BAR, TITLE_BAR_ICON } from "../../lib/titleBar";
 import { useClickOutside } from "../../lib/useClickOutside";
 import { CheckIcon, ChevronDownIcon, PencilIcon } from "../icons";
@@ -111,7 +111,7 @@ export function ToolbarDialog({
         <h2 className="text-base font-medium">Edit toolbar</h2>
         <p className="mt-2 text-sm text-[var(--muted)]">Choose which items appear in your toolbar. The rest are in the menu beside it.</p>
         <ul className="mt-4 flex flex-col gap-3">
-          {entries.map(({ id, label, Icon }) => {
+          {entries.filter((e) => !ALWAYS_PINNED.includes(e.id)).map(({ id, label, Icon }) => {
             const on = pinned.includes(id);
             return (
               <li key={id}>
