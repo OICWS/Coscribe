@@ -5,19 +5,16 @@ step is needed, so each works wherever the person can already open the
 service themselves.
 
 Every sign-in entry was checked against its live server (2026-10-07; the ones that
-plugins in Skills > Discover use, 2026-10-08): a
-client was really registered there (a listed registration address alone
-proved nothing: Dropbox lists one and refuses). Left out on purpose: servers
+plugins in Skills > Discover use, 2026-10-08): a client was really registered there (a
+listed registration address alone proved nothing: Dropbox lists one and refuses). Left out on purpose: servers
 that need a pre-registered app (Slack, Google Workspace, Box, HubSpot, Zoom,
 Asana's current server), ones that refuse a loopback sign-in address
 (Calendly, Gamma), and a company-approved app like Microsoft 365 in a tenant
 that doesn't allow third-party apps. Anything else is still addable by hand
-from Add > Add custom connector.
-
-`tools` is what the maker's own documentation (or, for the public servers,
-the live server) lists; the connected connector's own page, and the names a
-connection reported before, are authoritative when they differ. `links` holds
-only addresses that were found to exist.
+from Add > Add custom connector. `tools` is what the maker's own documentation (or, for
+the public servers, the live server) lists; the connected connector's own page, and the
+names a connection reported before, win when they differ. `links` holds only addresses
+that were found to exist.
 """
 
 from __future__ import annotations
@@ -25,6 +22,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+
+from coscribe.web.connector_catalog_more import EXTRA_CONNECTORS
 
 _CANVA_TOOLS = [
     "upload-asset-from-url", "get-assets", "create-upload-url", "autofill-design",
@@ -920,6 +919,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "server_url": "https://mcp.supermetrics.com/mcp",
         "auth": "oauth",
     },
+    *EXTRA_CONNECTORS,
 ]
 
 
