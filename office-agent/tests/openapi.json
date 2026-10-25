@@ -1878,9 +1878,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
+                  "additionalProperties": true,
                   "title": "Response Remove Sandbox Api Command Sandbox Delete",
                   "type": "object"
                 }
