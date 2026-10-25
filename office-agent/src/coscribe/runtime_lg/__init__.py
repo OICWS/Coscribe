@@ -16,6 +16,7 @@ from .code_agent import (
     CodeTaskContext,
     build_code_task_tool,
 )
+from .conversation_source import CheckpointConversations
 from .exec_policy import EXEC_POLICY_TOOL_NAMES, ExecPolicy, load_exec_policy
 from .mcp_oauth import (
     APP_REDIRECT_URI,
@@ -80,6 +81,7 @@ __all__ = [
     "AUTO_MODE_NOTE",
     "CODE_TASK_TOOL",
     "CallbackPortBusy",
+    "CheckpointConversations",
     "CodeTaskContext",
     "LoopbackCallback",
     "McpOAuth",

@@ -10,6 +10,8 @@ test("Settings > Capabilities lists the Pythons found, Automatic first", async (
   await page.getByTitle("Settings").click();
   await page.getByRole("button", { name: "Capabilities", exact: true }).click();
 
+  await page.getByRole("button", { name: /Show Python and packages/ }).click();
+
   await expect(page.getByRole("radio", { name: /^Automatic/ })).toBeChecked();
   await expect(page.getByRole("radio", { name: /^Python 3\.\d+/ }).first()).toBeVisible();
   // coscribe's own Python is a Windows build: nothing to offer on the Linux runner.
