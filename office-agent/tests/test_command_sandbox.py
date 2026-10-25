@@ -5,6 +5,7 @@ permission profile and command line a command gets. The sandbox itself runs only
 from __future__ import annotations
 
 import base64
+import json
 import sys
 from pathlib import Path
 
@@ -45,12 +46,18 @@ def test_off_windows_it_is_unsupported_and_commands_are_not_wrapped(tmp_path: Pa
 
 @pytest.mark.usefixtures("on_windows")
 def test_it_is_ready_only_while_the_codex_that_set_it_up_is_still_there(tmp_path: Path) -> None:
-    assert sandbox_status(tmp_path) == {"state": "off", "detail": "", "mode": "elevated"}
+    assert sandbox_status(tmp_path) == {
+        "state": "off",
+        "detail": "",
+        "mode": "elevated",
+        "source": "codex",
+    }
     record_sandbox_setup(tmp_path, None, "The administrator said no.")
     assert sandbox_status(tmp_path) == {
         "state": "failed",
         "detail": "The administrator said no.",
         "mode": "elevated",
+        "source": "codex",
     }
     codex = _codex(tmp_path)
     record_sandbox_setup(tmp_path, codex)
@@ -312,10 +319,59 @@ def test_the_unelevated_sandbox_has_its_own_profile_and_denies_no_read(
         {},
     )
 
-    assert sandbox_status(tmp_path) == {"state": "ready", "detail": "", "mode": "unelevated"}
+    assert sandbox_status(tmp_path) == {
+        "state": "ready",
+        "detail": "",
+        "mode": "unelevated",
+        "source": "codex",
+    }
     assert elevated is not None and argv[3] != elevated[0][3]
     config = (sandbox_home(tmp_path) / "config.toml").read_text(encoding="utf-8")
     assert '[windows]\nsandbox = "unelevated"\n' in config
     section = config.split(f"[permissions.{argv[3]}.filesystem]\n")[1].split("[")[0]
     assert '"deny"' not in section
     assert icacls == []
+
+
+@pytest.mark.usefixtures("on_windows")
+def test_the_bundled_sandbox_runs_a_command_with_a_policy_file_instead_of_codexs_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, icacls: list[tuple[str, ...]]
+) -> None:
+    """The desktop app ships coscribe's own build of Codex's sandbox (#607): the same folders,
+    as the policy Codex's sandbox reads, and no Codex download."""
+    shipped = tmp_path / "sandbox"
+    shipped.mkdir()
+    exe = shipped / "coscribe-sandbox.exe"
+    exe.write_text("")
+    monkeypatch.setenv("COSCRIBE_SANDBOX_DIR", str(shipped))
+    assert command_sandbox.bundled_sandbox() == exe
+    record_sandbox_setup(tmp_path, exe)
+    root, extra, private = tmp_path / "work", tmp_path / "reference", tmp_path / "Documents"
+
+    argv, env = sandboxed_command(
+        tmp_path, "dir", root, [root], [extra], True, hidden=[private]
+    ) or ([], {})
+
+    home = sandbox_home(tmp_path)
+    policy = Path(argv[argv.index("--policy") + 1])
+    script = Path(argv[-1])
+    assert argv == [
+        str(exe), "run", "--codex-home", str(home), "--level", "elevated", "--cwd", str(root),
+        "--policy", str(policy), "--network", "on", "--", "cmd.exe", "/d", "/c", str(script),
+    ]  # fmt: skip
+    assert policy.parent == home / "policies"
+    entries = json.loads(policy.read_text(encoding="utf-8"))
+    assert entries == {
+        "kind": "restricted",
+        "entries": [
+            {"path": {"type": "special", "value": {"kind": "root"}}, "access": "read"},
+            {"path": {"type": "path", "path": str(private)}, "access": "deny"},
+            {"path": {"type": "path", "path": str(extra)}, "access": "read"},
+            {"path": {"type": "path", "path": str(script.parent)}, "access": "read"},
+            {"path": {"type": "path", "path": str(root)}, "access": "write"},
+            {"path": {"type": "path", "path": env["TEMP"]}, "access": "write"},
+        ],
+    }
+    assert sandbox_status(tmp_path)["source"] == "bundled"
+    assert command_sandbox.sandbox_setup_argv(exe, tmp_path)[:3] == [str(exe), "setup", "--user"]
+    assert command_sandbox.sandbox_uninstall_argv(exe) == [str(exe), "uninstall"]

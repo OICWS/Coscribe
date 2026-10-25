@@ -24,6 +24,7 @@ from coscribe.runtime.secrets import SERVICE_NAME, resolve_secret, store_secret
 from coscribe.tools.bookkeeping.background_tasks import build_background_task_tools
 from coscribe.tools.exec import (
     Capabilities,
+    bundled_sandbox,
     command_sandbox,
     record_sandbox_setup,
     release_private_folders,
@@ -160,7 +161,8 @@ def sandboxed_state(tmp_path_factory: pytest.TempPathFactory) -> Path:
     """A state dir whose command sandbox is set up as Settings › Capabilities does it; the
     runner is an administrator, so Windows asks nobody."""
     state = tmp_path_factory.mktemp("sandbox-state")
-    codex = ensure_codex(state)
+    # The built-in sandbox where the job built it (#607), else the one that comes with Codex.
+    codex = bundled_sandbox() or ensure_codex(state)
     assert run_as_administrator(sandbox_setup_argv(codex, state), state, 600) == ""
     record_sandbox_setup(state, codex)
     warm_up_sandbox(state)
@@ -404,7 +406,8 @@ async def test_the_unelevated_sandbox_needs_no_administrator_and_holds_writes(
     command still writes only its workspace. Its network is held only by its environment, so
     this prints what a connection did rather than asserting it."""
     state = tmp_path / "state"
-    codex = ensure_codex(state)
+    # The built-in sandbox where the job built it (#607), else the one that comes with Codex.
+    codex = bundled_sandbox() or ensure_codex(state)
     record_sandbox_setup(state, codex, mode="unelevated")
     assert warm_up_sandbox(state) == ""
     tools = _tools(tmp_path, state)

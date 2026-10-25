@@ -583,6 +583,8 @@ export interface CommandSandbox {
   progress?: number | null;
   /** Set when removing it failed. */
   error?: string;
+  /** Where setting it up gets the sandbox: built into the app, or with the Codex download. */
+  source?: "bundled" | "codex";
 }
 
 /** Where what Settings › Capabilities downloads lives. */

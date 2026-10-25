@@ -239,7 +239,8 @@ Last reviewed: 2026-10-15.
    conversation (#589), Settings › Capabilities (#590), named environments with the picker below
    the message box and the move of each conversation's own settings into them, scheduled tasks
    choosing an environment, commands in Codex's Windows sandbox (decision 0022, proposed: needs
-   the maintainer's independent review), with the person's private folders hidden from it (#601).
+   the maintainer's independent review), with the person's private folders hidden from it (#601),
+   and the sandbox built into the desktop app, so it needs no Codex download (#607).
    Open: Codex's own commands in the code module through the same sandbox (4b); hiding other
    drives' user folders.
 

@@ -58,6 +58,14 @@ administrator approves.
   writes only the given folders, but it can't deny a read (so private folders are not hidden)
   and is offline only by its environment, so every command in it is approved by the person, as
   an unsandboxed one is. Setting it up runs a test command, the only proof it works.
+- The desktop app carries the sandbox itself (issue #607): `coscribe-sandbox.exe`, a small
+  program built from Codex's sandbox crate (`codex-windows-sandbox`, Apache-2.0) at the tag in
+  `office-agent-sandbox/CODEX_TAG`, inside Codex's own workspace so its Cargo.lock pins every
+  dependency, with the two helpers that crate launches. It does what `codex sandbox`, `sandbox
+  setup` and `sandbox uninstall` do, with the profile given as a JSON file instead of Codex's
+  config. The server finds it through `COSCRIBE_SANDBOX_DIR`, which the desktop app sets; without
+  it (a source checkout, an older build) setting up downloads Codex as before. The tag moves only
+  when a sandbox fix is wanted, and then the Windows checks run against the new build.
 - Scripts stay in the AppContainer (0021).
 
 ## Consequences

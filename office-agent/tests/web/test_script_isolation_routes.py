@@ -176,6 +176,7 @@ def test_setting_the_sandbox_up_records_which_codex_did_it_and_removing_it_forge
             "state": "failed",
             "detail": "The administrator said no.",
             "mode": "elevated",
+            "source": "codex",
         }
         assert calls == [f"{home} sandbox setup --elevated --user ada --codex-home {home}"]
         assert entries == [
@@ -200,7 +201,7 @@ def test_the_unelevated_sandbox_asks_no_administrator_and_proves_itself_with_a_c
         set_up = client.post("/api/command-sandbox", json={"mode": "unelevated"}).json()
         removed = client.delete("/api/command-sandbox").json()
     calls = (tmp_path / "codex-calls.txt").read_text().splitlines()
-    assert set_up == {"state": "ready", "detail": "", "mode": "unelevated"}
+    assert set_up == {"state": "ready", "detail": "", "mode": "unelevated", "source": "codex"}
     assert removed["state"] == "off"
     # No setup and no uninstall: it made no users or firewall rules.
     assert len(calls) == 1 and " sandbox --permission-profile coscribe-" in calls[0]
@@ -253,3 +254,31 @@ def test_removing_the_sandbox_reports_each_step_before_the_administrator_prompt(
         ("working", "uninstall", "elevated"),
     ]
     assert removed["state"] == after["state"] == "off"
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the fake sandbox is a shell script")
+def test_with_the_sandbox_built_in_setting_it_up_downloads_no_codex(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    shipped = tmp_path / "sandbox"
+    shipped.mkdir()
+    exe = shipped / "coscribe-sandbox.exe"
+    _fake_codex(tmp_path, 0).rename(exe)
+
+    class _NoDownload:
+        async def download(self) -> Path:
+            raise AssertionError("the built-in sandbox needs no Codex")
+
+    monkeypatch.setenv("COSCRIBE_SANDBOX_DIR", str(shipped))
+    monkeypatch.setenv("USERNAME", "ada")
+    monkeypatch.setattr(command_sandbox, "supported", lambda: True)
+    monkeypatch.setattr(environment_routes, "code_service", lambda settings: _NoDownload())
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        set_up = client.post("/api/command-sandbox").json()
+        client.delete("/api/command-sandbox")
+    home = tmp_path / "state" / "command-sandbox" / "codex-home"
+    calls = (tmp_path / "codex-calls.txt").read_text().splitlines()
+    assert set_up["state"] == "ready" and set_up["source"] == "bundled"
+    assert calls[0] == f"{home} setup --user ada --codex-home {home}"
+    assert calls[1].startswith(f"{home} run --codex-home {home} --level elevated --cwd ")
+    assert calls[2:] == [f"{home} uninstall"]
