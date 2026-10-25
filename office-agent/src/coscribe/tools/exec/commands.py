@@ -97,8 +97,8 @@ async def start_command(
 
 def code_commands_allowed(state: Path, thread_id: str) -> bool:
     """Whether the code module's commands may run for `thread_id`: commands are on for it and
-    the full sandbox is set up. Asked again for each command, so one turned off or removed
-    mid-task stops the next (issue #616)."""
+    the full sandbox is set up (issue #616). Checked when a code task starts: inside it, Codex
+    asks nothing."""
     try:
         require_capability(state, "commands", thread_id)
     except CapabilityOff:
@@ -116,7 +116,6 @@ def code_command_profile(
     loop."""
     if not code_commands_allowed(state, thread_id):
         return None
-    online = NetworkGuard(state, thread_id).scripts_online()
     hide = Capabilities(state).get()["commands_hide_private_folders"]
     try:
         return codex_profile(
@@ -124,7 +123,8 @@ def code_command_profile(
             folder,
             [folder],
             [],
-            online,
+            # Offline always: nobody approves its commands one by one.
+            False,
             hidden=private_folders() if hide else [],
             programs=programs,
         )

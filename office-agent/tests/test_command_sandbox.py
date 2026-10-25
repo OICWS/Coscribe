@@ -456,15 +456,11 @@ def test_the_code_modules_codex_shares_the_sandboxs_home_and_config(tmp_path: Pa
     assert parsed["windows"] == {"sandbox": "elevated"}
     temp = env["TEMP"]
     assert env == {"TEMP": temp, "TMP": temp}
-    sealed = tmp_path / "command-sandbox" / "sealed"
-    # A denied read keeps Codex from running an escalated command outside the sandbox.
     assert parsed["permissions"][profile]["filesystem"] == {
         ":root": "read",
-        sealed.as_posix(): "deny",
         work.as_posix(): "write",
         Path(temp).as_posix(): "write",
     }
-    assert sealed.is_dir()
     assert parsed["permissions"][profile]["network"] == {"enabled": False}
 
 
@@ -477,7 +473,7 @@ def test_the_code_modules_commands_stay_off_while_commands_are(tmp_path: Path) -
 
 @pytest.mark.usefixtures("on_windows")
 def test_the_code_modules_commands_need_the_full_sandbox(tmp_path: Path) -> None:
-    # The basic sandbox can't deny a read, so it can't keep an escalated command in.
+    # The basic sandbox can't hide private folders, so its commands need the person one by one.
     Capabilities(tmp_path).set("commands", True)
     record_sandbox_setup(tmp_path, _codex(tmp_path), mode="unelevated")
     assert code_command_profile(tmp_path, "t1", tmp_path / "work", []) is None

@@ -26,14 +26,13 @@ policy). Callers import these from `coscribe.code_runtime`, not a submodule. Tes
   independent review.
 - Where the command sandbox is set up and commands are allowed, the thread runs under a
   permission profile in the sandbox's Codex home (`codex_home` is then that home, since the
-  sandbox users' passwords live there), and each command goes to `decide` as a
-  `run_code_command`; a second ask for one command (Codex's "retry without sandbox?"), extra
-  permissions or a network host are declined (issue #616). Elsewhere the thread runs with no
-  sandbox (`danger-full-access`), so nothing holds a command to the folder settings: commands
-  are refused without a card (decision 0021,
-  `tests/test_code_runtime.py::test_a_command_is_refused_without_asking`). Either way a plain
-  read inside the thread's own folder runs without asking; a read outside it is refused (same
-  file). File changes from Codex's patch tool come back as approvals.
+  sandbox users' passwords live there) with approval policy "never": Codex asks nothing, and
+  anything it still asks is declined, since an approved escalation would make the whole disk
+  writable (issue #616). Elsewhere the thread runs with no sandbox (`danger-full-access`), so
+  nothing holds a command to the folder settings: commands are refused without a card (decision
+  0021, `tests/test_code_runtime.py::test_a_command_is_refused_without_asking`), except a plain
+  read inside the thread's own folder, which runs without asking; a read outside it is refused
+  (same file). There, file changes from Codex's patch tool come back as approvals.
 - A downloaded Codex member or wheel that does not match its pinned sha256 is not installed
   (`tests/test_code_runtime_install.py`).
 - A fixed workflow run never reaches this package (import contract, `docs/decisions/0005-code-is-a-second-runtime.md`).

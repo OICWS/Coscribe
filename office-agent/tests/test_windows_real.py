@@ -565,7 +565,8 @@ async def test_the_code_modules_commands_run_in_the_sandbox_and_stay_in_it(
         "'WHERE:' + (Get-Location).Path",
         "Set-Content -Path inside.txt -Value in",
         f"Set-Content -Path '{outside / 'x.txt'}' -Value out",
-        # Asked to run outside the sandbox: Codex keeps it in while the profile denies a read.
+        # A request to run outside the sandbox: approved, Codex would make the whole disk
+        # writable, so it runs where it never asks and refuses this.
         f"ESCALATE Set-Content -Path '{outside / 'y.txt'}' -Value out",
         "whoami",
     ]
@@ -610,8 +611,8 @@ async def test_the_code_modules_commands_run_in_the_sandbox_and_stay_in_it(
         assert not (outside / "x.txt").exists(), context
         assert not (outside / "y.txt").exists(), context
         assert "codexsandbox" in _StubResponses.outputs[-1].lower(), context
-        assert all(r.kind in ("command", "read") for r in asked), context
-        # Codex's "retry without sandbox?" for the escalated command never reaches decide.
-        assert len([r for r in asked if "y.txt" in r.command]) == 1, context
+        # Nothing is asked in the sandbox, and Codex itself refuses the request to leave it.
+        assert asked == [], context
+        assert "reject command" in _StubResponses.outputs[3], context
     finally:
         shutil.rmtree(base, ignore_errors=True)

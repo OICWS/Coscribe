@@ -1,17 +1,18 @@
 """One Codex thread driven a turn at a time.
 
 Where the command sandbox is set up, the thread runs under a permission
-profile that holds its commands to the conversation's folders, and each
-command is decided by the caller's `decide` as a conversation's own command
-is (issue #616). Elsewhere it runs with no sandbox (`danger-full-access`), so
-nothing would hold a command to the folders: commands are refused (decision
-0021). Either way a plain read of the thread's folder runs without asking --
-the user opened that folder for this work. "Plain read" is decided
+profile that holds its commands and file changes to the conversation's
+folder, and Codex asks nothing: it refuses a request to leave the sandbox
+only when it never asks (issue #616). Elsewhere it runs with no sandbox
+(`danger-full-access`), so nothing would hold a command to the folders:
+commands are refused (decision 0021), except a plain read of the thread's
+folder, which runs without asking -- the user opened that folder for this
+work. "Plain read" is decided
 here, from a short list of read-only programs and no shell syntax at all, not
 from Codex's own `commandActions`: that parse is for display, and live it
-called `find . -delete` and `cat x | tee y` reads. A file change Codex makes
-with its own patch tool comes back as an approval settled by the caller's
-`decide`.
+called `find . -delete` and `cat x | tee y` reads. Outside the sandbox, a file
+change Codex makes with its own patch tool comes back as an approval settled
+by the caller's `decide`.
 
 Files written are found by comparing the folder before and after a turn:
 Codex mostly writes through the shell, which reports no file-change item.
@@ -98,7 +99,7 @@ _STATUSES: dict[str, Literal["completed", "interrupted", "failed"]] = {
 
 @dataclass(frozen=True)
 class ApprovalRequest:
-    kind: Literal["command", "file_change", "read"]
+    kind: Literal["command", "file_change"]
     item_id: str
     command: str = ""
     cwd: str = ""
@@ -353,9 +354,6 @@ class _Turn:
     ) -> None:
         self.folder = folder
         self.sandboxed = sandboxed
-        # Commands already asked about: Codex asks again for one that failed in
-        # the sandbox, to run it outside, and that is always declined.
-        self._asked: set[tuple[str, str]] = set()
         self.decide = decide
         self.on_event = on_event
         self.turn_id: str | None = None
@@ -376,18 +374,6 @@ class _Turn:
         # A file change's approval names only the item; its files come with
         # the item, which starts first.
         self._change_paths: dict[str, tuple[str, ...]] = {}
-
-    def _sandbox_may_run(self, item_id: str, params: dict[str, Any]) -> bool:
-        """False for what would take a command out of the sandbox's hold: a second
-        ask for the same command (Codex's "retry without sandbox?"), more
-        permissions than the profile gives, or a network host it doesn't allow."""
-        if params.get("additionalPermissions") or params.get("networkApprovalContext"):
-            return False
-        key = (item_id, str(params.get("approvalId") or ""))
-        if not item_id or key in self._asked:
-            return False
-        self._asked.add(key)
-        return True
 
     def stalled(self, seconds: float) -> bool:
         quiet = self._loop.time() - self._last_heard
@@ -471,33 +457,19 @@ class _Turn:
             )
 
     async def server_request(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
+        if self.sandboxed and method.endswith("/requestApproval"):
+            # Codex never asks in the sandbox; what it would ask for is the one thing that could
+            # take a command out of it (an approved escalation makes the whole disk writable).
+            await self._emit("command_refused", {"command": str(params.get("command") or "")})
+            return {"decision": "decline"}
         if method == "item/commandExecution/requestApproval":
             command = str(params.get("command") or "")
-            item_id = str(params.get("itemId", ""))
-            if not self._sandbox_may_run(item_id, params):
-                await self._emit("command_refused", {"command": command})
-                return {"decision": "decline"}
             if reads_only(command, str(params.get("cwd") or ""), self.folder):
-                # Not the person's to approve, but commands may have been switched off
-                # since the turn began.
-                if self.sandboxed and not await self.decide(
-                    ApprovalRequest(kind="read", item_id=item_id, command=command)
-                ):
-                    await self._emit("command_refused", {"command": command})
-                    return {"decision": "decline"}
                 await self._emit("auto_approved", {"command": command})
                 return {"decision": "accept"}
-            if not self.sandboxed:
-                await self._emit("command_refused", {"command": command})
-                return {"decision": "decline"}
-            request = ApprovalRequest(
-                kind="command",
-                item_id=item_id,
-                command=command,
-                cwd=str(params.get("cwd") or ""),
-                reason=str(params.get("reason") or ""),
-            )
-        elif method == "item/fileChange/requestApproval":
+            await self._emit("command_refused", {"command": command})
+            return {"decision": "decline"}
+        if method == "item/fileChange/requestApproval":
             item_id = str(params.get("itemId", ""))
             request = ApprovalRequest(
                 kind="file_change",
@@ -569,7 +541,9 @@ class CodexThread:
             "model": self._model.model,
             "modelProvider": self._model.provider_id,
             "cwd": str(self._cwd),
-            "approvalPolicy": "untrusted",
+            # In the sandbox nothing is asked: an approved escalation would leave it, and Codex
+            # refuses one only when it never asks (issue #616).
+            "approvalPolicy": "never" if self._permissions else "untrusted",
         }
         if self._permissions:
             params["permissions"] = self._permissions

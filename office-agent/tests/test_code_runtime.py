@@ -14,7 +14,6 @@ import pytest
 
 from coscribe.code_runtime import client as client_module
 from coscribe.code_runtime import launch as launch_module
-from coscribe.code_runtime import thread as thread_module
 from coscribe.code_runtime.client import AppServerError
 from coscribe.code_runtime.install import CodexUnavailable, codex_path_dir
 from coscribe.code_runtime.launch import (
@@ -185,64 +184,39 @@ async def test_in_the_sandbox_the_thread_runs_under_its_profile(
     started = sent["thread/start"]
     assert started["permissions"] == "coscribe-abc"
     assert "sandbox" not in started
-    assert started["approvalPolicy"] == "untrusted"
+    assert started["approvalPolicy"] == "never"
 
 
-async def test_in_the_sandbox_a_command_is_asked_about_and_runs_once_approved(
+async def test_in_the_sandbox_commands_and_file_changes_run_without_asking(
     host: CodexHost, workdir: Path
 ) -> None:
-    approvals = _Approvals(True)
+    approvals = _Approvals(False)
 
-    result = await _thread(host, workdir, permissions="coscribe-abc").run_turn("approve", approvals)
+    for scenario in ("approve", "file"):
+        await _thread(host, workdir, permissions="coscribe-abc").run_turn(scenario, approvals)
 
-    assert [(r.kind, r.command, r.item_id) for r in approvals.seen] == [
-        ("command", "/bin/bash -lc 'echo made > made.txt'", "call-1")
-    ]
-    assert result.text == "ran it"
-    assert (workdir / "made.txt").exists()
+    assert approvals.seen == []
+    assert (workdir / "made.txt").exists() and (workdir / "notes.md").exists()
 
 
-async def test_in_the_sandbox_a_command_is_never_retried_outside_it(
+async def test_in_the_sandbox_whatever_codex_still_asks_is_declined_unasked(
     host: CodexHost, workdir: Path
 ) -> None:
+    # Codex asks nothing under "never"; an ask would be the request to leave the sandbox.
     approvals = _Approvals(True)
     events: list[CodexEvent] = []
 
     async def on_event(event: CodexEvent) -> None:
         events.append(event)
 
-    await _thread(host, workdir, permissions="coscribe-abc").run_turn("retry", approvals, on_event)
-
-    assert len(approvals.seen) == 1
-    assert (workdir / "made.txt").exists()
-    assert not (workdir / "outside.txt").exists()
-    assert [e.kind for e in events if e.kind == "command_refused"] == ["command_refused"]
-
-
-def test_in_the_sandbox_a_command_without_an_item_or_asked_twice_is_turned_away(
-    tmp_path: Path,
-) -> None:
-    async def check() -> None:
-        turn = thread_module._Turn(_Approvals(True), None, tmp_path, sandboxed=True)
-        first = {"itemId": "call-1"}
-        assert turn._sandbox_may_run("call-1", first)
-        assert not turn._sandbox_may_run("call-1", first)
-        # A distinct callback for the same item is its own ask.
-        assert turn._sandbox_may_run("call-1", {"itemId": "call-1", "approvalId": "a1"})
-        assert not turn._sandbox_may_run("", {})
-
-    asyncio.run(check())
-
-
-async def test_in_the_sandbox_a_command_asking_for_a_network_host_is_declined_unasked(
-    host: CodexHost, workdir: Path
-) -> None:
-    approvals = _Approvals(True)
-
-    result = await _thread(host, workdir, permissions="coscribe-abc").run_turn("network", approvals)
+    result = await _thread(host, workdir, permissions="coscribe-abc").run_turn(
+        "insist", approvals, on_event
+    )
 
     assert approvals.seen == []
     assert result.text == "was declined"
+    assert not (workdir / "made.txt").exists()
+    assert [e.kind for e in events if e.kind == "command_refused"] == ["command_refused"]
 
 
 async def test_a_declined_command_does_not_run(host: CodexHost, workdir: Path) -> None:
@@ -267,21 +241,6 @@ async def test_a_read_inside_the_folder_runs_without_asking(host: CodexHost, wor
     assert [e.data["command"] for e in events if e.kind == "auto_approved"] == [
         "/bin/bash -lc 'ls -la'"
     ]
-
-
-async def test_in_the_sandbox_a_read_is_rechecked_but_not_asked_about(
-    host: CodexHost, workdir: Path
-) -> None:
-    # The thread's decide stands for the per-command recheck: False is commands switched off.
-    for allowed, text in ((True, "ran it"), (False, "was declined")):
-        approvals = _Approvals(allowed)
-
-        result = await _thread(host, workdir, permissions="coscribe-abc").run_turn(
-            "read", approvals
-        )
-
-        assert [r.kind for r in approvals.seen] == ["read"]
-        assert result.text == text
 
 
 async def test_a_read_outside_the_folder_is_refused(host: CodexHost, workdir: Path) -> None:

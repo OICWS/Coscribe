@@ -37,7 +37,6 @@ from ..tools import (
     SubAgentTask,
     SubAgentTaskStore,
     code_command_profile,
-    code_commands_allowed,
     register_subagent_run,
     take_stop_requester,
 )
@@ -71,11 +70,10 @@ patch tool (each change may need the user's approval) and report what you \
 couldn't do."""
 
 COMMANDS_SANDBOXED = """\
-Your commands run in a sandbox: they can write only this folder, and \
-may be offline. Each one may need the user's approval, and one refused or \
-failing in the sandbox is not run outside it, so don't ask to escalate; work \
-within it, or report what you couldn't do. Run the code and tests you write \
-to check them."""
+Your commands and file changes run in a sandbox without asking anyone: they \
+can write only this folder and have no network. A request to run outside the \
+sandbox is always refused, so don't make one; work within it, or report what \
+you couldn't do. Run the code and tests you write to check them."""
 
 
 @dataclass
@@ -130,12 +128,6 @@ class _Run:
         await self.host.changed(self.record)
 
     async def decide(self, request: ApprovalRequest) -> bool:
-        if request.kind in ("command", "read") and not await asyncio.to_thread(
-            code_commands_allowed, self.host.state_dir, self.record.thread_id
-        ):
-            return False
-        if request.kind == "read":
-            return True
         decision = await self.host.decide(approval_call(request), self.record)
         if self.record.pending_approval is not None or self.record.status != "running":
             self.record.pending_approval = None
@@ -311,15 +303,16 @@ def build_code_task_tool(host: SubAgentHost, context: CodeTaskContext) -> Callab
         """Hand a programming task to the code module -- a coding agent
         that reads and edits the text files in this conversation's folder --
         and wait for its report. Where the command sandbox is set up and
-        commands are allowed, it runs its code and tests in the sandbox, held
-        to this folder, each command approved as yours are. Elsewhere its
+        commands are allowed, it runs its code and tests in the sandbox,
+        offline and held to this folder, without asking. Elsewhere its
         commands are off, except plain listings and reads of the folder, so
         it can't run scripts, tests or builds, nor read an xlsx, docx or pdf;
         then run a script yourself with your own tools. Use it to write or fix
         code and text files across the folder. It sees nothing of this conversation,
         so `task` must be complete: the files, the rules, what to produce
-        and where. The user approves its file changes as they come; the
-        user watches it, and can stop it, in the Sub Agents panel. Only its
+        and where. Outside the sandbox the user approves its file changes as
+        they come; the user watches it, and can stop it, in the Sub Agents
+        panel. Only its
         report comes back, with the files it created or changed.
 
         To change or fix what an earlier code task produced -- the user's
