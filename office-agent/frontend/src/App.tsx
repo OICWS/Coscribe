@@ -1064,7 +1064,7 @@ function App() {
         threadId={threadId}
         pinned={navPinned}
         onPinnedChange={setNavPinned}
-        showToggle={pinnedItems.includes("sidebar")}
+        showToggle
         threads={threads ?? []}
         onThreadsChanged={refreshThreads}
         onThreadRenamed={renameThreadLocally}
