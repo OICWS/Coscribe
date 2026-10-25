@@ -5,7 +5,8 @@ import { useConfiguredModels } from "../../lib/useConfiguredModels";
 import { CodeDownload } from "../CodeModuleStatus";
 import { ToggleSwitch } from "../ToggleSwitch";
 import { CODE_MODEL_KEY, CODE_MODULE_ENABLED_KEY } from "./fields";
-import { SettingRow, SettingRows, SettingsSection, fieldClass } from "./SettingRow";
+import { SelectMenu } from "./SelectMenu";
+import { SettingRow, SettingRows, SettingsSection } from "./SettingRow";
 
 interface CodeTabProps {
   values: Record<string, string>;
@@ -18,14 +19,18 @@ function CodeModelSelect({ value, onChange }: { value: string; onChange: (value:
   const models = useConfiguredModels();
   const options = value && !models.includes(value) ? [value, ...models] : models;
   return (
-    <select aria-label="Model for code" className={`${fieldClass} w-64`} value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">Same as the chat's model</option>
-      {options.map((model) => (
-        <option key={model} value={model}>
-          {model.split(":").slice(1).join(":")} · {model.split(":")[0]}
-        </option>
-      ))}
-    </select>
+    <SelectMenu
+      ariaLabel="Model for code"
+      value={value}
+      options={[
+        { value: "", label: "Same as the chat's model" },
+        ...options.map((model) => ({
+          value: model,
+          label: `${model.split(":").slice(1).join(":")} · ${model.split(":")[0]}`,
+        })),
+      ]}
+      onChange={onChange}
+    />
   );
 }
 

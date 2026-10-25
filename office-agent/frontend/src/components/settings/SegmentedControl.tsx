@@ -17,7 +17,7 @@ export function SegmentedControl<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="flex items-center gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--card-bg)] p-0.5">
+    <div className="flex items-center gap-0.5 rounded-lg bg-[var(--card-bg)] p-0.5">
       {options.map((option) => (
         <button
           key={option.value}

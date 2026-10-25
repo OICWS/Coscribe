@@ -63,7 +63,7 @@ def test_get_mcp_catalog_returns_curated_entries(
         assert all(link["url"].startswith("https://") for link in entry.get("links", []))
     # Public documentation servers need no sign-in; every other one signs in.
     public = {e["name"] for e in entries if "auth" not in e}
-    assert public == {"mslearn", "huggingface", "cloudflare"}
+    assert public == {"mslearn", "huggingface", "cloudflare", "exa"}
     assert all(e["auth"] == "oauth" for e in entries if e["name"] not in public)
 
 

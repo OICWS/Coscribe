@@ -9,7 +9,8 @@ import {
   KEEP_AWAKE_ON_BATTERY_KEY,
   PROMPT_SUGGESTIONS_KEY,
 } from "./fields";
-import { SettingRow, SettingRows, SettingsSection, fieldClass } from "./SettingRow";
+import { SelectMenu } from "./SelectMenu";
+import { SettingRow, SettingRows, SettingsSection } from "./SettingRow";
 
 interface SessionsTabProps {
   values: Record<string, string>;
@@ -49,18 +50,12 @@ export function SessionsTab({ values, onChange }: SessionsTabProps) {
           label="Archive inactive conversations"
           description="Archive conversations after a period of no activity. A conversation that is open or has work running is never archived, and one you take out of the archive stays out."
           control={
-            <select
-              aria-label="Archive inactive conversations"
-              className={`${fieldClass} w-40`}
+            <SelectMenu
+              ariaLabel="Archive inactive conversations"
               value={values[ARCHIVE_INACTIVE_DAYS_KEY] ?? ""}
-              onChange={(e) => onChange(ARCHIVE_INACTIVE_DAYS_KEY, e.target.value)}
-            >
-              {ARCHIVE_INACTIVE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              options={ARCHIVE_INACTIVE_OPTIONS}
+              onChange={(v) => onChange(ARCHIVE_INACTIVE_DAYS_KEY, v)}
+            />
           }
         />
         {isElectron() && (

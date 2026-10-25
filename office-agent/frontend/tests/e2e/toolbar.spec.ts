@@ -45,10 +45,9 @@ test("an unpinned item moves into the menu, works from there and stays so after 
   await expect(page.getByTitle("Browser", { exact: true })).toHaveCount(0);
 });
 
-test("the sidebar's button stays on the bar: Edit toolbar does not offer it", async ({ page }) => {
+test("the sidebar's button always stays on the bar: Edit toolbar does not list it", async ({ page }) => {
   await inAConversation(page);
   await expect(page.getByTitle("Pin navigation open")).toBeVisible();
-
   await page.getByRole("button", { name: "More", exact: true }).click();
   await page.getByRole("menuitem", { name: "Edit toolbar" }).click();
   await expect(page.getByRole("checkbox", { name: "Browser" })).toBeVisible();
