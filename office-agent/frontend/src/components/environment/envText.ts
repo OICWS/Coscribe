@@ -4,8 +4,8 @@
 export type EnvParse = { variables: Record<string, string> } | { error: string };
 
 const NAME = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
-export const MAX_VARIABLES = 100;
-export const MAX_VARIABLE_VALUE = 4096;
+const MAX_VARIABLES = 100;
+const MAX_VARIABLE_VALUE = 4096;
 
 /** Where a quoted value starting at `start` (just after the opening quote) ends, or -1. */
 function closingQuote(text: string, start: number, quote: string): number {
