@@ -7,6 +7,7 @@ failure here does not reset the nightly run of green nights in windows.yml (deci
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import http.server
 import json
 import os
@@ -570,6 +571,9 @@ async def test_the_code_modules_commands_run_in_the_sandbox_and_stay_in_it(
     ]
     providers = {"stub": {"base_url": f"http://127.0.0.1:{server.server_port}/v1", "api_key": "x"}}
     spec = launch_spec(ensure_codex(sandboxed_state), sandboxed_state, providers, None)
+    spec = dataclasses.replace(
+        spec, env={**spec.env, "RUST_LOG": "codex_windows_sandbox=debug,codex_core=debug"}
+    )
     host = CodexHost(lambda: spec)
     asked: list[ApprovalRequest] = []
 
@@ -591,7 +595,8 @@ async def test_the_code_modules_commands_run_in_the_sandbox_and_stay_in_it(
         await host.shutdown(force=True)
         server.shutdown()
 
-    log = spec.log_path.read_text(errors="replace")[-6000:] if spec.log_path.exists() else ""
+    logs = [spec.log_path, *spec.home.rglob("*.log")]
+    log = "\n".join(f"== {p}\n{p.read_text(errors='replace')[-6000:]}" for p in logs if p.is_file())
     context = (
         f"tools {_StubResponses.tools}, outputs {_StubResponses.outputs}, asked {asked}, "
         f"profile {profile}, config {(spec.home / 'config.toml').read_text()}, log {log}"
