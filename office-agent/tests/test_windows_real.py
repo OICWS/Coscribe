@@ -534,14 +534,19 @@ async def test_the_code_modules_commands_run_in_the_sandbox_and_stay_in_it(
     # Issue #616: Codex's own commands, run by the code module's real app-server against a stub
     # model, write the task's folder and nothing outside it, and a refused one is not run outside
     # the sandbox.
-    work, outside = tmp_path / "work", tmp_path / "outside"
+    # PowerShell can't start in a folder below a hidden one (AppData holds tmp_path), so the
+    # task's folder is on the runner's work drive.
+    work = Path(os.environ.get("RUNNER_TEMP") or tmp_path) / f"code-{uuid.uuid4().hex[:8]}"
+    outside = tmp_path / "outside"
     work.mkdir()
     outside.mkdir()
     Capabilities(sandboxed_state).set("commands", True)
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _StubResponses)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     _StubResponses.commands = [
-        "[Environment]::CurrentDirectory; (Get-Location).Path; cmd /d /c cd",
+        "[Environment]::CurrentDirectory; (Get-Location).Path",
+        # The command's Temp is granted but lies below AppData, which is hidden.
+        "Set-Location -LiteralPath $env:TEMP; (Get-Location).Path",
         "Set-Content -Path inside.txt -Value in",
         f"Set-Content -Path '{outside / 'x.txt'}' -Value out",
         # Asked to run outside the sandbox: Codex keeps it in while the profile denies a read.
