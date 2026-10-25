@@ -45,15 +45,14 @@ test("an unpinned item moves into the menu, works from there and stays so after 
   await expect(page.getByTitle("Browser", { exact: true })).toHaveCount(0);
 });
 
-test("the sidebar's button can move into the menu, which then shows and hides the sidebar", async ({ page }) => {
+test("the sidebar's button stays on the bar: Edit toolbar does not offer it", async ({ page }) => {
   await inAConversation(page);
   await expect(page.getByTitle("Pin navigation open")).toBeVisible();
-  await edit(page, "Sidebar");
-  await expect(page.getByTitle("Pin navigation open")).toHaveCount(0);
 
   await page.getByRole("button", { name: "More", exact: true }).click();
-  await page.getByRole("menuitem", { name: "Show sidebar" }).click();
-  await expect(page.getByRole("button", { name: "New session" })).toBeVisible();
-  await page.getByRole("button", { name: "More", exact: true }).click();
-  await expect(page.getByRole("menuitem", { name: "Hide sidebar" })).toBeVisible();
+  await page.getByRole("menuitem", { name: "Edit toolbar" }).click();
+  await expect(page.getByRole("checkbox", { name: "Browser" })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "Sidebar" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByTitle("Pin navigation open")).toBeVisible();
 });
