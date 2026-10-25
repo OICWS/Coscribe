@@ -548,9 +548,8 @@ async def test_the_code_modules_commands_run_in_the_sandbox_and_stay_in_it(
         "whoami",
     ]
     providers = {"stub": {"base_url": f"http://127.0.0.1:{server.server_port}/v1", "api_key": "x"}}
-    host = CodexHost(
-        lambda: launch_spec(ensure_codex(sandboxed_state), sandboxed_state, providers, None)
-    )
+    spec = launch_spec(ensure_codex(sandboxed_state), sandboxed_state, providers, None)
+    host = CodexHost(lambda: spec)
     asked: list[ApprovalRequest] = []
 
     async def approve(request: ApprovalRequest) -> bool:
@@ -569,8 +568,13 @@ async def test_the_code_modules_commands_run_in_the_sandbox_and_stay_in_it(
         await host.shutdown(force=True)
         server.shutdown()
 
-    context = f"tools {_StubResponses.tools}, outputs {_StubResponses.outputs}, asked {asked}"
+    log = spec.log_path.read_text(errors="replace")[-6000:] if spec.log_path.exists() else ""
+    context = (
+        f"tools {_StubResponses.tools}, outputs {_StubResponses.outputs}, asked {asked}, "
+        f"profile {profile}, config {(spec.home / 'config.toml').read_text()}, log {log}"
+    )
     assert result.status == "completed", (result.error, context)
+    assert (work / "inside.txt").exists(), context
     assert (work / "inside.txt").read_text(encoding="utf-8-sig").strip() == "in", context
     assert not (outside / "x.txt").exists(), context
     assert not (outside / "y.txt").exists(), context
