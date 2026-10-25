@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds coscribe-sandbox.exe with the two helpers Codex's sandbox launches beside it, inside a
+# Builds coscribe-sandbox.exe, with the two helpers Codex's sandbox launches beside it, inside a
 # checkout of openai/codex at CODEX_TAG: the crate joins Codex's workspace, so its dependencies
 # are the versions Codex's own Cargo.lock pins. Windows only (MSVC). Usage: build.sh OUT_DIR
 set -euo pipefail
@@ -20,12 +20,10 @@ if ! grep -q '"coscribe-sandbox"' "$rs/Cargo.toml"; then
   # The first line of the members list; the rest of Codex's Cargo.toml stays as it is.
   sed -i 's/^members = \[$/members = [\n    "coscribe-sandbox",/' "$rs/Cargo.toml"
 fi
-(cd "$rs" && cargo build --release -p coscribe-sandbox \
-  && cargo build --release -p codex-windows-sandbox \
-    --bin codex-windows-sandbox-setup --bin codex-command-runner)
-for exe in coscribe-sandbox codex-windows-sandbox-setup codex-command-runner; do
-  cp "$rs/target/release/$exe.exe" "$out/"
-done
+(cd "$rs" && cargo build --release -p coscribe-sandbox)
+cp "$rs/target/release/coscribe-sandbox.exe" "$out/"
+# The helpers are OpenAI's signed builds from the pinned Codex wheel, not built here.
+python "$here/scripts/signed_helpers.py" "$out"
 printf '%s\n' "$tag" > "$out/CODEX_TAG"
 # Apache-2.0 asks for the licence and notices to travel with the binaries.
 cp "$work/LICENSE" "$out/LICENSE-codex.txt"
