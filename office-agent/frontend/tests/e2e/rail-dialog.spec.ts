@@ -52,11 +52,10 @@ test("a click beside the Edit environment dialog keeps what was typed", async ({
   await page.getByTestId("thread-row").first().click({ button: "right" });
   await page.getByRole("menuitem", { name: "Edit environment" }).click();
   await dialog.getByRole("button", { name: /Environment variables/ }).click();
-  await dialog.getByRole("button", { name: "Add variable" }).click();
-  await dialog.getByLabel("Variable name").fill("MODE");
+  await dialog.getByLabel("Environment variables", { exact: true }).fill("MODE=fast");
   await page.mouse.click(1270, 650);
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByLabel("Variable name")).toHaveValue("MODE");
+  await expect(dialog.getByLabel("Environment variables", { exact: true })).toHaveValue("MODE=fast");
 });
 
 test("the environment picker makes, chooses, edits and deletes an environment", async ({ page, request }) => {
