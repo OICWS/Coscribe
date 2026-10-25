@@ -24,7 +24,7 @@ export function DiscoverCard({
       role="button"
       tabIndex={0}
       aria-label={`Open ${title}`}
-      className="relative flex cursor-pointer gap-4 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-4 outline-none hover:border-[var(--muted)] focus-visible:border-[var(--focus)]"
+      className="relative flex cursor-pointer gap-4 rounded-xl border border-transparent bg-[color-mix(in_srgb,var(--card-bg)_45%,var(--bg))] p-4 outline-none hover:border-[var(--border-hover)] focus-visible:border-[var(--focus)]"
       onClick={onOpen}
       onKeyDown={(e) => {
         if (e.target !== e.currentTarget) return;
@@ -39,7 +39,7 @@ export function DiscoverCard({
         <div className="text-[15px] font-medium">{title}</div>
         <div className="mt-0.5 line-clamp-2 text-sm text-[var(--fg)]">{entry.description}</div>
         {entry.made_by && (
-          <div className="mt-1.5 text-sm text-[var(--muted)]">
+          <div className="mt-1.5 text-sm text-[color-mix(in_srgb,var(--fg)_60%,var(--bg))]">
             by {entry.made_by}
             {needsSetup && <span className="ml-2 rounded-full bg-[var(--bg)] px-2 py-0.5 text-xs">Needs setup</span>}
           </div>
@@ -52,7 +52,7 @@ export function DiscoverCard({
           type="button"
           aria-label={`Add ${title}`}
           disabled={pending}
-          className={`absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg)] hover:bg-[var(--card-bg)] ${
+          className={`absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--fg)_8%,var(--bg))] text-[var(--fg)] hover:bg-[color-mix(in_srgb,var(--fg)_14%,var(--bg))] ${
             pending ? "running-wave-ring" : ""
           }`}
           onClick={(e) => {

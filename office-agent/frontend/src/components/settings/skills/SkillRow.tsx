@@ -36,11 +36,11 @@ export function SkillRow({
             <span className="shrink-0 rounded bg-[var(--card-bg)] px-1.5 py-0.5 text-[11px] text-[var(--muted)]">Off</span>
           )}
         </div>
-        <div className="truncate text-sm text-[var(--muted)]" title={skill.description}>
+        <div className="truncate text-sm text-[color-mix(in_srgb,var(--fg)_60%,var(--bg))]" title={skill.description}>
           {SOURCE_BYLINE[skill.source]} &middot; {skill.description}
         </div>
       </div>
-      <span className="shrink-0 text-sm tabular-nums text-[var(--muted)]">{shortDate(skill.updated)}</span>
+      <span className="shrink-0 text-sm tabular-nums text-[color-mix(in_srgb,var(--fg)_60%,var(--bg))]">{shortDate(skill.updated)}</span>
       <SkillMenu skill={skill} onToggle={onToggle} onRemove={onRemove} />
     </div>
   );
