@@ -80,7 +80,8 @@ export function SlidesPanel({
   const name = path.split(/[\\/]/).pop() ?? path;
   const slide = slides[index];
   const beside = panelWidth >= PROPERTIES_BESIDE_FROM;
-  const properties = ui.propertiesShown && slide && !deck?.readOnly && (
+  const locked = deck?.readOnly ?? false;
+  const properties = ui.propertiesShown && slide && !locked && (
     <SlideProperties slide={slide} beside={beside} selection={ui.selection} design={design} onEdit={(change) => edits.edit(index, change)} loadSource={() => edits.loadSource(index)} />
   );
 
@@ -91,8 +92,8 @@ export function SlidesPanel({
       className="relative flex h-full min-h-0 flex-col outline-none"
       onKeyDown={(e) => ui.onKey(e, shownZoom, history.step)}
     >
-      <PanelTop title={deck?.title ?? name} path={path} ui={ui} onMenu={(kind, anchor) => setMenu({ kind, anchor })} />
-      <DeckNotices changed={deck?.changed ?? false} readOnly={deck?.readOnly ?? false} error={shownError(busy, deck, [error, edits.problem, downloads.failed, comments.failed])} />
+      <PanelTop title={deck?.title ?? name} path={path} ui={ui} canComment={!locked} onMenu={(kind, anchor) => setMenu({ kind, anchor })} />
+      <DeckNotices changed={deck?.changed ?? false} readOnly={locked} error={shownError(busy, deck, [error, edits.problem, downloads.failed, comments.failed])} />
       {(notBuilt || !deck) && busy ? (
         <Building name={name} />
       ) : notBuilt ? (
@@ -112,7 +113,7 @@ export function SlidesPanel({
               onOpen={ui.openSlide}
               overlay={
                 slide && (
-                  <SlideLayers at={{ threadId, path, ui, zoom: shownZoom }} edits={edits} refreshKey={refreshKey} readOnly={deck?.readOnly ?? false}>
+                  <SlideLayers at={{ threadId, path, ui, zoom: shownZoom }} edits={edits} refreshKey={refreshKey} readOnly={locked}>
                     <SlideComments
                       threadId={threadId}
                       path={path}
@@ -129,10 +130,9 @@ export function SlidesPanel({
                 )
               }
             >
-              <StageControls ui={ui} count={slides.length} zoom={shownZoom} beside={beside} busy={downloads.busy} 
-                onMenu={(kind, anchor) => setMenu({ kind, anchor })} deck={{ threadId, path, onProblem: edits.setProblem }} />
+              <StageControls ui={ui} locked={locked} count={slides.length} zoom={shownZoom} beside={beside} busy={downloads.busy} onMenu={(kind, anchor) => setMenu({ kind, anchor })} deck={{ threadId, path, onProblem: edits.setProblem }} />
             </SlideStage>
-            <BelowStage ui={ui} slides={slides} srcOf={srcOf} edits={edits} arranging={arranging} />
+            <BelowStage ui={ui} locked={locked} slides={slides} srcOf={srcOf} edits={edits} arranging={arranging} />
             {!beside && properties}
           </div>
           {beside && properties}
@@ -248,6 +248,7 @@ function SlideEditing({
 /** What floats over the stage: the toolbar, and the mini bar when the strip is hidden. */
 function StageControls({
   ui,
+  locked,
   count,
   zoom,
   beside,
@@ -256,6 +257,8 @@ function StageControls({
   deck,
 }: {
   ui: ReturnType<typeof useSlidesUi>;
+  /** The deck is not coscribe's: nothing to insert, no panel of properties. */
+  locked: boolean;
   count: number;
   zoom: number;
   beside: boolean;
@@ -265,14 +268,14 @@ function StageControls({
 }) {
   return (
     <>
-      {ui.view === "slide" && (
+      {ui.view === "slide" && !locked && (
         <SlideInsertBar {...deck} disabled={count === 0 || ui.commenting} onInsert={ui.requestInsert} />
       )}
       <SlideToolbar
         zoom={zoom}
         propertiesShown={ui.propertiesShown}
         beside={beside}
-        onToggleProperties={() => ui.setPropertiesShown((shown) => !shown)}
+        onToggleProperties={locked ? undefined : () => ui.setPropertiesShown((shown) => !shown)}
         onZoomMenu={(anchor) => onMenu("zoom", anchor)}
         onPresentMenu={(anchor) => onMenu("present", anchor)}
         onDownloadMenu={(anchor) => onMenu("download", anchor)}
@@ -326,12 +329,15 @@ function DeckNotices({ changed, readOnly, error }: { changed: boolean; readOnly:
 /** Under the stage: the slide's notes, then the bar and the thumbnail strip. */
 function BelowStage({
   ui,
+  locked,
   slides,
   srcOf,
   edits,
   arranging,
 }: {
   ui: ReturnType<typeof useSlidesUi>;
+  /** The deck is not coscribe's: its slides and notes are only shown. */
+  locked: boolean;
   slides: SlideInfo[];
   srcOf: (index: number) => string;
   edits: ReturnType<typeof useEdits>;
@@ -352,7 +358,7 @@ function BelowStage({
           onClose={() => arranging.setMenu(null)}
         />
       )}
-      {ui.notesShown && ui.view === "slide" && slide && <SpeakerNotes key={`${slide.name}:${slide.notes}`} notes={slide.notes} onSave={onNotes} />}
+      {ui.notesShown && ui.view === "slide" && slide && <SpeakerNotes key={`${slide.name}:${slide.notes}`} notes={slide.notes} readOnly={locked} onSave={onNotes} />}
       {(ui.view === "canvas" || ui.stripShown) && (
         <SlideFooter
           view={ui.view}
@@ -360,7 +366,7 @@ function BelowStage({
           onView={ui.showView}
           onToggleNotes={ui.toggleNotes}
           onHideStrip={() => ui.setStripShown(false)}
-          onNewSlide={() => arranging.openNew(ui.index)}
+          onNewSlide={locked ? undefined : () => arranging.openNew(ui.index)}
         >
           {ui.view === "slide" && (
             <SlideThumbnails
@@ -368,8 +374,8 @@ function BelowStage({
               current={ui.index}
               srcOf={srcOf}
               onSelect={ui.setCurrent}
-              onMenu={(at, anchor) => arranging.setMenu({ index: at, anchor })}
-              onMove={arranging.move}
+              onMenu={locked ? undefined : (at, anchor) => arranging.setMenu({ index: at, anchor })}
+              onMove={locked ? undefined : arranging.move}
             />
           )}
         </SlideFooter>
@@ -382,11 +388,14 @@ function PanelTop({
   title,
   path,
   ui,
+  canComment,
   onMenu,
 }: {
   title: string;
   path: string;
   ui: ReturnType<typeof useSlidesUi>;
+  /** Comments are pinned to a slide coscribe built; a foreign deck has none. */
+  canComment: boolean;
   onMenu: (kind: "title" | "comments", anchor: DOMRect) => void;
 }) {
   const { commenting, toggleCommenting: onToggleComments } = ui;
@@ -396,6 +405,7 @@ function PanelTop({
     <div className="flex h-12 shrink-0 items-center gap-2 px-3" {...dock.headerProps}>
       <PanelTitleButton title={title} path={path} onMenu={(anchor) => onMenu("title", anchor)} />
       <div className="flex-1" />
+      {canComment && (
       <div
         className="flex items-center overflow-hidden rounded-lg border border-[var(--border)]"
         onPointerDown={(e) => e.stopPropagation()}
@@ -422,18 +432,20 @@ function PanelTop({
           <ChevronDownIcon className="h-3.5 w-3.5" />
         </button>
       </div>
+      )}
       {dock.controls}
     </div>
   );
 }
 
 /** The slide's speaker notes under it, written here; saved when the box loses focus. */
-function SpeakerNotes({ notes, onSave }: { notes: string; onSave: (text: string) => void }) {
+function SpeakerNotes({ notes, readOnly, onSave }: { notes: string; readOnly: boolean; onSave: (text: string) => void }) {
   const [text, setText] = useState(notes);
   return (
     <textarea
       aria-label="Speaker notes"
-      placeholder="Add speaker notes"
+      placeholder={readOnly ? "No speaker notes" : "Add speaker notes"}
+      readOnly={readOnly}
       maxLength={4000}
       value={text}
       className="h-[120px] w-full shrink-0 resize-none border-t border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-[15px] text-[var(--fg)] outline-none placeholder:text-[var(--muted)]"
