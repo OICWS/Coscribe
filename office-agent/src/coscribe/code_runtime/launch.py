@@ -24,7 +24,7 @@ from pathlib import Path
 
 from .. import __version__
 from ..runtime import configured_proxy
-from ..tools import venv_python
+from ..tools import sandbox_codex, sandbox_home, venv_python, write_codex_config
 from .client import AppServer
 from .install import CodexUnavailable, codex_path_dir
 
@@ -149,6 +149,11 @@ def _prepend_path(env: dict[str, str], dirs: list[Path]) -> None:
 
 
 def codex_home(state_dir: Path) -> Path:
+    """Where Codex keeps its settings and threads: the command sandbox's home once the sandbox is
+    set up, since its users' passwords live there and a second setup would draw new ones
+    (issue #616); the code module's own before that."""
+    if sandbox_codex(state_dir) is not None:
+        return sandbox_home(state_dir)
     return Path(state_dir) / "codex" / "home"
 
 
@@ -230,8 +235,7 @@ class CodexHost:
                 return server
         if server is not None:
             await server.close()
-        spec.home.mkdir(parents=True, exist_ok=True)
-        (spec.home / "config.toml").write_text(spec.config, encoding="utf-8")
+        await asyncio.to_thread(write_codex_config, spec.home, spec.config)
         server = AppServer(spec.argv, spec.env, spec.log_path)
         try:
             await server.start("coscribe", __version__)

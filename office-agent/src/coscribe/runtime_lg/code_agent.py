@@ -33,7 +33,13 @@ from ..code_runtime import (
     shell_script,
 )
 from ..runtime import redactor, tool_metadata
-from ..tools import SubAgentTask, SubAgentTaskStore, register_subagent_run, take_stop_requester
+from ..tools import (
+    SubAgentTask,
+    SubAgentTaskStore,
+    code_command_profile,
+    register_subagent_run,
+    take_stop_requester,
+)
 from .subagents import SubAgentHost, subagent_outcome
 
 logger = logging.getLogger(__name__)
@@ -49,16 +55,26 @@ INSTRUCTIONS = """\
 You are coscribe's code module, doing one task handed over by coscribe's \
 office assistant, for a user who doesn't write code. Work in the current \
 folder. Nobody can answer questions while you work: make reasonable \
-assumptions and say what they were. Commands are turned off in coscribe: \
-the only ones that run are plain listing or reading commands of this folder, \
-one at a time (Get-ChildItem, Get-Content, Select-String; or ls, cat, head, \
-grep) with no pipes or chaining. Anything else, python included, is refused, \
-so you cannot run code, tests or builds, nor read an xlsx, docx or pdf; \
-change files with your patch tool (each change may need the user's \
-approval) and report what you couldn't do. Every figure or finding about the \
-user's data must come from what a command printed, never typed in by hand. \
-When done, reply with a short report in the language of the task: what you \
-did, the files you created or changed, and anything left undone."""
+assumptions and say what they were. {commands} Every figure or finding \
+about the user's data must come from what a command printed, never typed in \
+by hand. When done, reply with a short report in the language of the task: \
+what you did, the files you created or changed, and anything left undone."""
+
+COMMANDS_OFF = """\
+Commands are turned off in coscribe: the only ones that run are plain \
+listing or reading commands of this folder, one at a time (Get-ChildItem, \
+Get-Content, Select-String; or ls, cat, head, grep) with no pipes or \
+chaining. Anything else, python included, is refused, so you cannot run \
+code, tests or builds, nor read an xlsx, docx or pdf; change files with your \
+patch tool (each change may need the user's approval) and report what you \
+couldn't do."""
+
+COMMANDS_SANDBOXED = """\
+Your commands run in a sandbox: they can write only this folder, and \
+may be offline. Each one may need the user's approval, and one refused or \
+failing in the sandbox is not run outside it, so don't ask to escalate; work \
+within it, or report what you couldn't do. Run the code and tests you write \
+to check them."""
 
 
 @dataclass
@@ -170,17 +186,28 @@ class _Run:
             model = codex_model(self.context.model(), service.custom_providers())
             codex = await service.prepare()
             folder = self.context.folder()
+            # Codex's commands run only where the sandbox can hold them (issue #616).
+            sandbox = await asyncio.to_thread(
+                code_command_profile,
+                self.host.state_dir,
+                record.thread_id,
+                folder,
+                service.command_path(),
+            )
+            permissions, sandbox_env = sandbox if sandbox is not None else (None, {})
+            commands = COMMANDS_SANDBOXED if permissions else COMMANDS_OFF
             previous = self.previous
             thread = CodexThread(
                 codex,
                 model,
                 folder,
                 thread_id=previous.codex_thread or None if previous else None,
-                developer_instructions=INSTRUCTIONS,
+                developer_instructions=INSTRUCTIONS.format(commands=commands),
                 context_window=await asyncio.to_thread(self.context.context_window),
                 fallback_context=_earlier_work(previous) if previous else "",
-                env=self.context.env(),
+                env={**self.context.env(), **sandbox_env},
                 on_open=self.opened,
+                permissions=permissions,
             )
             result = await thread.run_turn(record.prompt, self.decide, self.on_event)
         except asyncio.CancelledError:
@@ -276,11 +303,13 @@ def build_code_task_tool(host: SubAgentHost, context: CodeTaskContext) -> Callab
     async def run_code_task(description: str, task: str, continue_task: str = "") -> str:
         """Hand a programming task to the code module -- a coding agent
         that reads and edits the text files in this conversation's folder --
-        and wait for its report. It cannot run anything: commands are off,
-        except plain listings and reads of the folder, so it can't run
-        scripts, tests or builds, nor read an xlsx, docx or pdf. Use it to
-        write or fix code and text files across the folder; run a script
-        yourself with your own tools. It sees nothing of this conversation,
+        and wait for its report. Where the command sandbox is set up and
+        commands are allowed, it runs its code and tests in the sandbox, held
+        to this folder, each command approved as yours are. Elsewhere its
+        commands are off, except plain listings and reads of the folder, so
+        it can't run scripts, tests or builds, nor read an xlsx, docx or pdf;
+        then run a script yourself with your own tools. Use it to write or fix
+        code and text files across the folder. It sees nothing of this conversation,
         so `task` must be complete: the files, the rules, what to produce
         and where. The user approves its file changes as they come; the
         user watches it, and can stop it, in the Sub Agents panel. Only its

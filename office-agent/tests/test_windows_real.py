@@ -7,17 +7,22 @@ failure here does not reset the nightly run of green nights in windows.yml (deci
 from __future__ import annotations
 
 import asyncio
+import http.server
+import json
 import os
 import shutil
 import subprocess
 import sys
+import threading
 import uuid
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+from coscribe.code_runtime import ApprovalRequest, CodexThread, codex_model
 from coscribe.code_runtime.install import ensure_codex
+from coscribe.code_runtime.launch import CodexHost, launch_spec
 from coscribe.code_runtime.thread import reads_only
 from coscribe.runtime.hooks import run_hook
 from coscribe.runtime.secrets import SERVICE_NAME, resolve_secret, store_secret
@@ -25,6 +30,7 @@ from coscribe.tools.bookkeeping.background_tasks import build_background_task_to
 from coscribe.tools.exec import (
     Capabilities,
     bundled_sandbox,
+    code_command_profile,
     command_sandbox,
     record_sandbox_setup,
     release_private_folders,
@@ -458,3 +464,108 @@ async def test_a_command_fails_closed_when_the_sandbox_was_removed_behind_the_ap
         assert "codexsandbox" in ran_as, output
     else:
         assert not (tmp_path / "workspace" / "made.txt").exists(), output
+
+
+class _StubResponses(http.server.BaseHTTPRequestHandler):
+    """A Responses API that has Codex run `commands` one by one with whichever shell tool it
+    offers, then reply "done"; what came back from each is kept in `outputs`."""
+
+    commands: list[str] = []
+    outputs: list[str] = []
+    tools: list[str] = []
+
+    def log_message(self, *args: Any) -> None:
+        pass
+
+    def do_GET(self) -> None:
+        self._send(200, "application/json", b'{"object": "list", "data": []}')
+
+    def do_POST(self) -> None:
+        body = json.loads(self.rfile.read(int(self.headers["Content-Length"])) or b"{}")
+        offered = [str(t.get("name") or t.get("type")) for t in body.get("tools") or []]
+        type(self).tools = offered
+        done = [i for i in body.get("input") or [] if i.get("type") == "function_call_output"]
+        type(self).outputs = [str(i.get("output")) for i in done]
+        rid = f"resp-{len(done)}"
+        args: dict[str, Any]
+        item: dict[str, Any]
+        if len(done) < len(self.commands):
+            command = self.commands[len(done)]
+            if "shell_command" in offered:
+                name, args = "shell_command", {"command": command}
+            elif "exec_command" in offered:
+                name, args = "exec_command", {"cmd": command}
+            else:
+                name, args = (
+                    "shell",
+                    {"command": ["powershell.exe", "-NoProfile", "-Command", command]},
+                )
+            item = {"type": "function_call", "call_id": f"call-{len(done)}", "name": name,
+                    "arguments": json.dumps(args)}  # fmt: skip
+        else:
+            item = {"type": "message", "role": "assistant", "id": "m1",
+                    "content": [{"type": "output_text", "text": "done"}]}  # fmt: skip
+        usage = {"input_tokens": 1, "input_tokens_details": None, "output_tokens": 1,
+                 "output_tokens_details": None, "total_tokens": 2}  # fmt: skip
+        events = [
+            {"type": "response.created", "response": {"id": rid}},
+            {"type": "response.output_item.done", "item": item},
+            {"type": "response.completed", "response": {"id": rid, "usage": usage}},
+        ]
+        sse = "".join(f"event: {e['type']}\ndata: {json.dumps(e)}\n\n" for e in events)
+        self._send(200, "text/event-stream", sse.encode())
+
+    def _send(self, status: int, kind: str, body: bytes) -> None:
+        self.send_response(status)
+        self.send_header("Content-Type", kind)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+
+@real
+async def test_the_code_modules_commands_run_in_the_sandbox_and_stay_in_it(
+    tmp_path: Path, sandboxed_state: Path
+) -> None:
+    # Issue #616: Codex's own commands, run by the code module's real app-server against a stub
+    # model, write the task's folder and nothing outside it, and a refused one is not run outside
+    # the sandbox.
+    work, outside = tmp_path / "work", tmp_path / "outside"
+    work.mkdir()
+    outside.mkdir()
+    Capabilities(sandboxed_state).set("commands", True)
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _StubResponses)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    _StubResponses.commands = [
+        "Set-Content -Path inside.txt -Value in",
+        f"Set-Content -Path '{outside / 'x.txt'}' -Value out",
+        "whoami",
+    ]
+    providers = {"stub": {"base_url": f"http://127.0.0.1:{server.server_port}/v1", "api_key": "x"}}
+    host = CodexHost(
+        lambda: launch_spec(ensure_codex(sandboxed_state), sandboxed_state, providers, None)
+    )
+    asked: list[ApprovalRequest] = []
+
+    async def approve(request: ApprovalRequest) -> bool:
+        asked.append(request)
+        return True
+
+    try:
+        sandbox = code_command_profile(sandboxed_state, "t1", work, [])
+        assert sandbox is not None
+        profile, env = sandbox
+        thread = CodexThread(
+            host, codex_model("stub:stub-model", providers), work, env=env, permissions=profile
+        )
+        result = await asyncio.wait_for(thread.run_turn("go", approve), 300)
+    finally:
+        await host.shutdown(force=True)
+        server.shutdown()
+
+    context = f"tools {_StubResponses.tools}, outputs {_StubResponses.outputs}, asked {asked}"
+    assert result.status == "completed", (result.error, context)
+    assert (work / "inside.txt").read_text(encoding="utf-8-sig").strip() == "in", context
+    assert not (outside / "x.txt").exists(), context
+    assert "codexsandbox" in _StubResponses.outputs[-1].lower(), context
+    assert all(r.kind == "command" for r in asked) and len(asked) == 3, context

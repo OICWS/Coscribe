@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import sys
 import threading
@@ -13,7 +14,9 @@ from pathlib import Path
 from ...runtime import NetworkGuard
 from ._private_folders import GrantFailed, private_folders
 from .capabilities import Capabilities, CapabilityOff, require_capability
-from .command_sandbox import sandboxed_command
+from .command_sandbox import codex_profile, sandboxed_command
+
+logger = logging.getLogger(__name__)
 
 # Commands approved without the person because the sandbox was set up, per conversation; one that
 # finds the sandbox gone when it starts is refused instead of running as the person.
@@ -90,3 +93,33 @@ async def start_command(
         # Its own process group, so a kill reaches what the shell started.
         start_new_session=sys.platform != "win32",
     )
+
+
+def code_command_profile(
+    state: Path, thread_id: str, folder: Path, programs: list[Path]
+) -> tuple[str, dict[str, str]] | None:
+    """The Codex permission profile that holds the code module's commands to `folder`, as
+    `start_command` holds a conversation's, with the variables they need; None when commands are
+    off for this conversation, the sandbox isn't set up, or a folder couldn't be granted, and then
+    the code module's commands stay refused (issue #616). Runs icacls: call it off the event
+    loop."""
+    try:
+        require_capability(state, "commands", thread_id)
+    except CapabilityOff:
+        return None
+    online = NetworkGuard(state, thread_id).scripts_online()
+    hide = Capabilities(state).get()["commands_hide_private_folders"]
+    try:
+        return codex_profile(
+            state,
+            [folder],
+            [],
+            online,
+            hidden=private_folders() if hide else [],
+            programs=programs,
+        )
+    except GrantFailed:
+        logger.warning(
+            "the code module's commands stay off: a folder couldn't be granted", exc_info=True
+        )
+        return None

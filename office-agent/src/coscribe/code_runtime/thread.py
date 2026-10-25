@@ -1,9 +1,12 @@
 """One Codex thread driven a turn at a time.
 
-The thread runs with no sandbox (`danger-full-access`), so nothing would hold
-a command to the conversation's folders: commands are refused (decision 0021).
-The one exception is a plain read of the thread's folder, which runs without
-asking -- the user opened that folder for this work. "Plain read" is decided
+Where the command sandbox is set up, the thread runs under a permission
+profile that holds its commands to the conversation's folders, and each
+command is decided by the caller's `decide` as a conversation's own command
+is (issue #616). Elsewhere it runs with no sandbox (`danger-full-access`), so
+nothing would hold a command to the folders: commands are refused (decision
+0021). Either way a plain read of the thread's folder runs without asking --
+the user opened that folder for this work. "Plain read" is decided
 here, from a short list of read-only programs and no shell syntax at all, not
 from Codex's own `commandActions`: that parse is for display, and live it
 called `find . -delete` and `cat x | tee y` reads. A file change Codex makes
@@ -345,8 +348,14 @@ def reads_only(command: str, cwd: str, folder: Path) -> bool:
 class _Turn:
     """Listener for one turn's notifications and server requests."""
 
-    def __init__(self, decide: Decide, on_event: OnEvent | None, folder: Path) -> None:
+    def __init__(
+        self, decide: Decide, on_event: OnEvent | None, folder: Path, sandboxed: bool = False
+    ) -> None:
         self.folder = folder
+        self.sandboxed = sandboxed
+        # Commands already asked about: Codex asks again for one that failed in
+        # the sandbox, to run it outside, and that is always declined.
+        self._asked: set[str] = set()
         self.decide = decide
         self.on_event = on_event
         self.turn_id: str | None = None
@@ -367,6 +376,17 @@ class _Turn:
         # A file change's approval names only the item; its files come with
         # the item, which starts first.
         self._change_paths: dict[str, tuple[str, ...]] = {}
+
+    def _sandbox_may_run(self, item_id: str, params: dict[str, Any]) -> bool:
+        """False for what would take a command out of the sandbox's hold: a second
+        ask for the same command (Codex's "retry without sandbox?"), more
+        permissions than the profile gives, or a network host it doesn't allow."""
+        if params.get("additionalPermissions") or params.get("networkApprovalContext"):
+            return False
+        if item_id in self._asked:
+            return False
+        self._asked.add(item_id)
+        return True
 
     def stalled(self, seconds: float) -> bool:
         quiet = self._loop.time() - self._last_heard
@@ -452,12 +472,24 @@ class _Turn:
     async def server_request(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
         if method == "item/commandExecution/requestApproval":
             command = str(params.get("command") or "")
+            item_id = str(params.get("itemId", ""))
+            if not self._sandbox_may_run(item_id, params):
+                await self._emit("command_refused", {"command": command})
+                return {"decision": "decline"}
             if reads_only(command, str(params.get("cwd") or ""), self.folder):
                 await self._emit("auto_approved", {"command": command})
                 return {"decision": "accept"}
-            await self._emit("command_refused", {"command": command})
-            return {"decision": "decline"}
-        if method == "item/fileChange/requestApproval":
+            if not self.sandboxed:
+                await self._emit("command_refused", {"command": command})
+                return {"decision": "decline"}
+            request = ApprovalRequest(
+                kind="command",
+                item_id=item_id,
+                command=command,
+                cwd=str(params.get("cwd") or ""),
+                reason=str(params.get("reason") or ""),
+            )
+        elif method == "item/fileChange/requestApproval":
             item_id = str(params.get("itemId", ""))
             request = ApprovalRequest(
                 kind="file_change",
@@ -506,6 +538,7 @@ class CodexThread:
         fallback_context: str = "",
         env: Mapping[str, str] | None = None,
         on_open: Callable[[str], Awaitable[None]] | None = None,
+        permissions: str | None = None,
     ) -> None:
         self._host = host
         self._model = model
@@ -519,6 +552,8 @@ class CodexThread:
         self._fallback_context = fallback_context
         self._on_open = on_open
         self._env = dict(env or {})
+        # A profile in Codex's config.toml that holds commands in the sandbox.
+        self._permissions = permissions
         self.resumed = False
 
     def _thread_params(self) -> dict[str, Any]:
@@ -527,8 +562,11 @@ class CodexThread:
             "modelProvider": self._model.provider_id,
             "cwd": str(self._cwd),
             "approvalPolicy": "untrusted",
-            "sandbox": "danger-full-access",
         }
+        if self._permissions:
+            params["permissions"] = self._permissions
+        else:
+            params["sandbox"] = "danger-full-access"
         config: dict[str, Any] = {}
         if self._context_window:
             config["model_context_window"] = self._context_window
@@ -575,7 +613,7 @@ class CodexThread:
                 await self._on_open(thread_id)
             if self._fallback_context and not self.resumed:
                 prompt = f"{self._fallback_context}\n\n{prompt}"
-            turn = _Turn(decide, on_event, self._cwd)
+            turn = _Turn(decide, on_event, self._cwd, sandboxed=bool(self._permissions))
             server.listen(thread_id, turn)
             try:
                 start = asyncio.ensure_future(

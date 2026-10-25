@@ -175,6 +175,60 @@ async def test_a_command_is_refused_without_asking(host: CodexHost, workdir: Pat
     ]
 
 
+async def test_in_the_sandbox_the_thread_runs_under_its_profile(
+    host: CodexHost, workdir: Path, tmp_path: Path
+) -> None:
+    await _thread(host, workdir, permissions="coscribe-abc").run_turn("basic", _Approvals(True))
+
+    sent = {r["method"]: r["params"] for r in _requests(tmp_path) if "method" in r}
+    started = sent["thread/start"]
+    assert started["permissions"] == "coscribe-abc"
+    assert "sandbox" not in started
+    assert started["approvalPolicy"] == "untrusted"
+
+
+async def test_in_the_sandbox_a_command_is_asked_about_and_runs_once_approved(
+    host: CodexHost, workdir: Path
+) -> None:
+    approvals = _Approvals(True)
+
+    result = await _thread(host, workdir, permissions="coscribe-abc").run_turn("approve", approvals)
+
+    assert [(r.kind, r.command, r.item_id) for r in approvals.seen] == [
+        ("command", "/bin/bash -lc 'echo made > made.txt'", "call-1")
+    ]
+    assert result.text == "ran it"
+    assert (workdir / "made.txt").exists()
+
+
+async def test_in_the_sandbox_a_command_is_never_retried_outside_it(
+    host: CodexHost, workdir: Path
+) -> None:
+    approvals = _Approvals(True)
+    events: list[CodexEvent] = []
+
+    async def on_event(event: CodexEvent) -> None:
+        events.append(event)
+
+    await _thread(host, workdir, permissions="coscribe-abc").run_turn("retry", approvals, on_event)
+
+    assert len(approvals.seen) == 1
+    assert (workdir / "made.txt").exists()
+    assert not (workdir / "outside.txt").exists()
+    assert [e.kind for e in events if e.kind == "command_refused"] == ["command_refused"]
+
+
+async def test_in_the_sandbox_a_command_asking_for_a_network_host_is_declined_unasked(
+    host: CodexHost, workdir: Path
+) -> None:
+    approvals = _Approvals(True)
+
+    result = await _thread(host, workdir, permissions="coscribe-abc").run_turn("network", approvals)
+
+    assert approvals.seen == []
+    assert result.text == "was declined"
+
+
 async def test_a_declined_command_does_not_run(host: CodexHost, workdir: Path) -> None:
     result = await _thread(host, workdir).run_turn("approve", _Approvals(False))
 

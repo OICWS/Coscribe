@@ -104,6 +104,9 @@ class _Service:
     def custom_providers(self) -> dict[str, dict[str, str]]:
         return {"fake": {"base_url": "http://127.0.0.1:9/v1", "api_key": "k"}}
 
+    def command_path(self) -> list[Path]:
+        return []
+
     async def prepare(self) -> CodexHost:
         return self.host
 

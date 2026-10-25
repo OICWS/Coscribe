@@ -19,6 +19,7 @@ from ..config import Settings
 from ..runtime import NetworkGuard
 from ..runtime_lg import (
     CODE_APPROVAL_RISKS,
+    CODE_COMMAND_TOOL,
     EXEC_POLICY_TOOL_NAMES,
     AuditDecision,
     AuditLog,
@@ -300,7 +301,8 @@ class ApprovalDecider:
             )
             self._audit(audit_log, name, args, "reject", "plan_mode", message)
             return {"type": "reject", "message": message}
-        if name == _COMMAND_TOOL:
+        # The code module's commands run in the same sandbox (issue #616).
+        if name in (_COMMAND_TOOL, CODE_COMMAND_TOOL):
             if self._command_needs_the_person():
                 return await self._ask_person_only(audit_log, name, args, websocket)
         if exec_policy_decision == "allow":

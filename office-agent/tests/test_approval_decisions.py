@@ -661,6 +661,10 @@ class CodeRow:
     human: bool | None = None
     announced: bool = False
     asked: bool = False
+    # A code command reaches here only from a thread held in the sandbox (issue #616); it needs
+    # the person as run_background_command does when the sandbox reads too much to hold it.
+    online: bool = False
+    unelevated: bool = False
 
 
 # A hand-edited or half-written settings file: anything but exactly "allow" for the tool asks.
@@ -760,6 +764,21 @@ CODE_ROWS: dict[str, CodeRow] = {
     "a_hook_veto_beats_the_setting": CodeRow(
         CODE_COMMAND, "reject", ["hook_veto"], setting="allow", veto="no"
     ),
+    "an_online_code_command_asks_even_when_the_setting_allows": CodeRow(
+        CODE_COMMAND, "approve", ["human"], setting="allow", online=True, human=True, asked=True
+    ),
+    "a_code_command_in_the_basic_sandbox_asks_even_when_the_task_allowed_it": CodeRow(
+        CODE_COMMAND,
+        "approve",
+        ["human"],
+        task_allows=("task-1", CODE_COMMAND),
+        unelevated=True,
+        human=True,
+        asked=True,
+    ),
+    "an_online_code_file_change_follows_the_setting": CodeRow(
+        CODE_CHANGE, "approve", ["code_allowed"], setting="allow", online=True, announced=True
+    ),
 }
 
 
@@ -784,6 +803,11 @@ async def test_the_decision_for_a_code_module_call(
             DAMAGED_SETTINGS[row.setting], encoding="utf-8"
         )
     _veto(monkeypatch, session, row.veto)
+    monkeypatch.setattr(approvals_module, "sandbox_codex", lambda state_dir: Path("codex.exe"))
+    mode = "unelevated" if row.unelevated else "elevated"
+    monkeypatch.setattr(approvals_module, "sandbox_mode", lambda state_dir: mode)
+    if row.online:
+        in_environment(session.settings.state_dir, "t1", network={"mode": "full", "domains": []})
     socket = _Socket(row.attended)
     session._turn_websocket = socket
     task = SubAgentTask(

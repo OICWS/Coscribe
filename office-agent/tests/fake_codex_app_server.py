@@ -140,7 +140,8 @@ def command(
     script: str = "echo made > made.txt",
     call: str = "call-1",
     out: str = "made.txt",
-) -> None:
+    extra: dict[str, Any] | None = None,
+) -> bool:
     base = {"threadId": thread_id, "turnId": turn_id}
     item = {"type": "commandExecution", "id": call, "command": f"/bin/bash -lc '{script}'"}
     notify("item/started", {**base, "item": {**item, "status": "inProgress"}})
@@ -156,6 +157,7 @@ def command(
             "cwd": cwd,
             "reason": "writes made.txt",
             "commandActions": [{"type": "unknown", "command": script}],
+            **(extra or {}),
         },
     )
     accepted = reply.get("result", {}).get("decision") == "accept"
@@ -164,6 +166,7 @@ def command(
     status = "completed" if accepted else "declined"
     notify("item/completed", {**base, "item": {**item, "status": status, "exitCode": 0}})
     message(thread_id, turn_id, "ran it" if accepted else "was declined")
+    return accepted
 
 
 def patch(
@@ -192,8 +195,8 @@ def run_turn(thread_id: str, turn_id: str, prompt: str, cwd: str) -> None:
         command(thread_id, turn_id, cwd)
     elif scenario == "long":
         long = (
-            'python -c "import io,csv,sys; p=r\'C:\\Users\\Allen\\Desktop\\a-very-long-folder-name'
-            '\\orders-with-a-long-file-name-2026.csv\'; t=open(p,encoding=\'utf-8-sig\').read(); '
+            "python -c \"import io,csv,sys; p=r'C:\\Users\\Allen\\Desktop\\a-very-long-folder-name"
+            "\\orders-with-a-long-file-name-2026.csv'; t=open(p,encoding='utf-8-sig').read(); "
             'print(len(t.splitlines()), t.splitlines()[0], sorted(set(t.splitlines())))"'
         )
         command(thread_id, turn_id, cwd, long)
@@ -202,6 +205,14 @@ def run_turn(thread_id: str, turn_id: str, prompt: str, cwd: str) -> None:
         command(thread_id, turn_id, cwd, "echo more > made2.txt", "call-2", "made2.txt")
     elif scenario == "read":
         command(thread_id, turn_id, cwd, "ls -la")
+    elif scenario == "retry":
+        # As Codex does when a command fails in the sandbox: the same item, asked again.
+        if command(thread_id, turn_id, cwd):
+            again = {"reason": "command failed; retry without sandbox?"}
+            command(thread_id, turn_id, cwd, out="outside.txt", extra=again)
+    elif scenario == "network":
+        context = {"networkApprovalContext": {"host": "example.com", "protocol": "https"}}
+        command(thread_id, turn_id, cwd, extra=context)
     elif scenario == "readout":
         command(thread_id, turn_id, cwd, "cat ../x.txt")
     elif scenario == "file":

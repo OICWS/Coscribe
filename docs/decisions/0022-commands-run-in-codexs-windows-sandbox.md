@@ -96,5 +96,11 @@ administrator approves.
   network is Full.
 - The elevated mode needs an administrator once per machine; a standard user without one has
   the unelevated mode, or the unsandboxed path, each with the person's approval of every command.
-- Codex's own commands in the code module are still off; running them in this sandbox is the
-  next step (4b).
+- Codex's own commands in the code module run in this sandbox where it is set up and commands
+  are allowed (issue #616): the thread starts under a permission profile for its folder, made
+  as a command's is, and each command is decided as `run_background_command`'s. The code
+  module's Codex then keeps its settings and threads in the sandbox's home, because the sandbox
+  users' passwords live there and a second setup would draw new ones; its config.toml is the
+  code module's part with the profiles after it. Codex's "retry without sandbox?", a request
+  for more permissions and a network host are declined without asking. Without the sandbox,
+  Codex's commands stay refused (0021).

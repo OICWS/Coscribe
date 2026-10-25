@@ -9,7 +9,13 @@ from .audit import AuditLog, AutoApproveReason, record_decision, redact_secrets
 from .audit import Decision as AuditDecision
 from .audit import Reason as AuditReason
 from .auto_review import Verdict, recent_user_requests, review_action
-from .code_agent import CODE_APPROVAL_RISKS, CODE_TASK_TOOL, CodeTaskContext, build_code_task_tool
+from .code_agent import (
+    CODE_APPROVAL_RISKS,
+    CODE_COMMAND_TOOL,
+    CODE_TASK_TOOL,
+    CodeTaskContext,
+    build_code_task_tool,
+)
 from .exec_policy import EXEC_POLICY_TOOL_NAMES, ExecPolicy, load_exec_policy
 from .mcp_oauth import (
     APP_REDIRECT_URI,
@@ -102,6 +108,7 @@ __all__ = [
     "AuditReason",
     "AutoApproveReason",
     "CODE_APPROVAL_RISKS",
+    "CODE_COMMAND_TOOL",
     "EXEC_POLICY_TOOL_NAMES",
     "ExecPolicy",
     "build_langgraph_agent",

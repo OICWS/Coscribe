@@ -37,6 +37,8 @@ _RECORD = "command-sandbox.json"
 # named after them, so commands running at once in different environments never share one.
 _PROFILES_KEPT = 64
 _DEFAULT = "coscribe-default"
+# What the code module sets for Codex, when its Codex runs in the sandbox's home (issue #616).
+_BASE = "codex-base.toml"
 # A command's batch file outlives its start only so a slow sandbox can read it.
 _COMMAND_FILES_KEPT_SECONDS = 3600
 _lock = threading.Lock()
@@ -139,6 +141,42 @@ def _read_profiles(home: Path) -> dict[str, dict[str, Any]]:
     return raw if isinstance(raw, dict) else {}
 
 
+def _compose(home: Path) -> None:
+    """config.toml from what the code module set for Codex (`codex-base.toml`, when it shares
+    this home) and the profiles. Call with `_lock` held."""
+    try:
+        base = (home / _BASE).read_text(encoding="utf-8")
+    except OSError:
+        base = ""
+    profiles = _read_profiles(home)
+    config = base
+    if profiles:
+        # Codex refuses a config with profiles and no default (`codex sandbox uninstall` among
+        # others); the default may read and write nothing it isn't given.
+        none = {"readable": [], "writable": [], "network": False}
+        # The mode is part of each profile's name, so a change of mode writes this line anew.
+        mode = list(profiles.values())[-1].get("mode", ELEVATED)
+        # A top-level key has to come before the first table, the base's included.
+        config = f'default_permissions = "{_DEFAULT}"\n\n' + (f"{base}\n" if base else "")
+        config += f'[windows]\nsandbox = "{mode}"\n\n'
+        config += "\n".join(
+            _section(key, value) for key, value in {_DEFAULT: none, **profiles}.items()
+        )
+    home.mkdir(parents=True, exist_ok=True)
+    tmp = home / "config.toml.tmp"
+    tmp.write_text(config, encoding="utf-8")
+    os.replace(tmp, home / "config.toml")
+
+
+def write_codex_config(home: Path, base: str) -> None:
+    """Codex's config.toml in `home` from `base`, keeping the sandbox's profiles when the code
+    module and the sandbox share it."""
+    with _lock:
+        home.mkdir(parents=True, exist_ok=True)
+        (home / _BASE).write_text(base, encoding="utf-8")
+        _compose(home)
+
+
 def _ensure_profile(home: Path, profile: dict[str, Any]) -> str:
     """The name of a profile with exactly these folders and network in `home`'s config.toml,
     added if new."""
@@ -150,18 +188,7 @@ def _ensure_profile(home: Path, profile: dict[str, Any]) -> str:
         profiles = {**dict(list(profiles.items())[-(_PROFILES_KEPT - 1) :]), name: profile}
         home.mkdir(parents=True, exist_ok=True)
         (home / "profiles.json").write_text(json.dumps(profiles), encoding="utf-8")
-        # Codex refuses a config with profiles and no default (`codex sandbox uninstall` among
-        # others); the default may read and write nothing it isn't given.
-        none = {"readable": [], "writable": [], "network": False}
-        # The mode is part of each profile's name, so a change of mode writes this line anew.
-        mode = profile.get("mode", ELEVATED)
-        config = f'default_permissions = "{_DEFAULT}"\n\n[windows]\nsandbox = "{mode}"\n\n'
-        config += "\n".join(
-            _section(key, value) for key, value in {_DEFAULT: none, **profiles}.items()
-        )
-        tmp = home / "config.toml.tmp"
-        tmp.write_text(config, encoding="utf-8")
-        os.replace(tmp, home / "config.toml")
+        _compose(home)
     return name
 
 
@@ -189,6 +216,52 @@ def _policy_file(home: Path, profile: dict[str, Any]) -> Path:
     return path
 
 
+def _held_folders(
+    state_dir: Path,
+    writable: Sequence[Path],
+    readable: Sequence[Path],
+    network: bool,
+    hidden: Sequence[Path],
+    programs: Sequence[Path],
+) -> dict[str, Any]:
+    """The profile that writes `writable`, reads `readable` and denies `hidden` less what it is
+    given, after granting what lies inside a denied folder (icacls: call it off the event loop)."""
+    mode = sandbox_mode(state_dir)
+    if mode == UNELEVATED:
+        # Codex can't deny a read without its own users.
+        hidden = ()
+    given = [*writable, *readable]
+    # A folder the environment was given stays readable even when it holds a private one.
+    denied = [h for h in hidden if not any(inside_any(h, [g]) for g in given)]
+    if hidden:
+        prepare_folders(state_dir, denied, given, [*readable, *programs])
+    return {
+        "writable": [str(p) for p in writable],
+        "readable": [str(p) for p in readable],
+        "network": network,
+        "denied": [str(p) for p in denied],
+        **({"mode": mode} if mode == UNELEVATED else {}),
+    }
+
+
+def codex_profile(
+    state_dir: Path,
+    writable: Sequence[Path],
+    readable: Sequence[Path],
+    network: bool,
+    hidden: Sequence[Path] = (),
+    programs: Sequence[Path] = (),
+) -> tuple[str, dict[str, str]] | None:
+    """The permission profile in the sandbox's home that holds the code module's commands as
+    `sandboxed_command` holds one, with the variables they need; None while the sandbox is not
+    set up. Runs icacls as `sandboxed_command` does; raises GrantFailed when a grant fails."""
+    if sandbox_codex(state_dir) is None:
+        return None
+    temp = _temp_folder(state_dir, writable)
+    folders = _held_folders(state_dir, [*writable, temp], readable, network, hidden, programs)
+    return _ensure_profile(sandbox_home(state_dir), folders), {"TEMP": str(temp), "TMP": str(temp)}
+
+
 def sandboxed_command(
     state_dir: Path,
     command: str,
@@ -207,25 +280,13 @@ def sandboxed_command(
     if codex is None:
         return None
     mode = sandbox_mode(state_dir)
-    if mode == UNELEVATED:
-        # Codex can't deny a read without its own users.
-        hidden = ()
     home = sandbox_home(state_dir)
     script = _command_file(state_dir, command)
     # The person's Temp is in AppData; a command gets its own, apart for each set of folders.
     temp = _temp_folder(state_dir, writable)
-    given = [*writable, *readable, script.parent, temp]
-    # A folder the environment was given stays readable even when it holds a private one.
-    denied = [h for h in hidden if not any(inside_any(h, [g]) for g in given)]
-    if hidden:
-        prepare_folders(state_dir, denied, given, [*readable, script.parent, *programs])
-    folders = {
-        "writable": [*(str(p) for p in writable), str(temp)],
-        "readable": [*(str(p) for p in readable), str(script.parent)],
-        "network": network,
-        "denied": [str(p) for p in denied],
-        **({"mode": mode} if mode == UNELEVATED else {}),
-    }
+    folders = _held_folders(
+        state_dir, [*writable, temp], [*readable, script.parent], network, hidden, programs
+    )
     if _is_bundled(codex):
         argv = [str(codex), "run", "--codex-home", str(home), "--level", mode, "--cwd", str(root)]
         argv += ["--policy", str(_policy_file(home, folders))]

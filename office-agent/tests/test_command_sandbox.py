@@ -7,13 +7,17 @@ from __future__ import annotations
 import base64
 import json
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
 
+from coscribe.code_runtime._pins import CODEX_VERSION
+from coscribe.code_runtime.launch import codex_home
 from coscribe.tools.exec import (
     Capabilities,
     CapabilityOff,
+    code_command_profile,
     command_sandbox,
     expect_sandbox,
     record_sandbox_setup,
@@ -22,6 +26,7 @@ from coscribe.tools.exec import (
     sandbox_status,
     sandboxed_command,
     start_command,
+    write_codex_config,
 )
 from coscribe.tools.exec import _private_folders as private_folders_module
 
@@ -375,3 +380,48 @@ def test_the_bundled_sandbox_runs_a_command_with_a_policy_file_instead_of_codexs
     assert sandbox_status(tmp_path)["source"] == "bundled"
     assert command_sandbox.sandbox_setup_argv(exe, tmp_path)[:3] == [str(exe), "setup", "--user"]
     assert command_sandbox.sandbox_uninstall_argv(exe) == [str(exe), "uninstall"]
+
+
+@pytest.mark.usefixtures("on_windows")
+def test_the_code_modules_codex_shares_the_sandboxs_home_and_config(tmp_path: Path) -> None:
+    work = tmp_path / "work"
+    caps = Capabilities(tmp_path)
+    caps.set("commands", True)
+    caps.set("commands_hide_private_folders", False)
+    base = 'web_search = "disabled"\n\n[analytics]\nenabled = false\n'
+    assert code_command_profile(tmp_path, "t1", work, []) is None
+    assert codex_home(tmp_path) != sandbox_home(tmp_path)
+
+    record_sandbox_setup(tmp_path, _codex(tmp_path))
+    home = sandbox_home(tmp_path)
+    assert codex_home(tmp_path) == home
+    write_codex_config(home, base)
+    profile, env = code_command_profile(tmp_path, "t1", work, []) or ("", {})
+    # As the code module writes it again each time Codex starts.
+    write_codex_config(home, base)
+
+    config = (home / "config.toml").read_text(encoding="utf-8")
+    parsed = tomllib.loads(config)
+    assert parsed["default_permissions"] == "coscribe-default"
+    assert parsed["web_search"] == "disabled" and parsed["analytics"] == {"enabled": False}
+    assert parsed["windows"] == {"sandbox": "elevated"}
+    temp = env["TEMP"]
+    assert env == {"TEMP": temp, "TMP": temp}
+    assert parsed["permissions"][profile]["filesystem"] == {
+        ":root": "read",
+        work.as_posix(): "write",
+        Path(temp).as_posix(): "write",
+    }
+    assert parsed["permissions"][profile]["network"] == {"enabled": False}
+
+
+@pytest.mark.usefixtures("on_windows")
+def test_the_code_modules_commands_stay_off_while_commands_are(tmp_path: Path) -> None:
+    record_sandbox_setup(tmp_path, _codex(tmp_path))
+    assert code_command_profile(tmp_path, "t1", tmp_path / "work", []) is None
+
+
+def test_the_built_in_sandbox_is_the_codex_version_the_code_module_runs() -> None:
+    # One setup serves both, so the two must read its records the same way.
+    tag = Path(__file__).parents[2] / "office-agent-sandbox" / "CODEX_TAG"
+    assert tag.read_text(encoding="utf-8").strip() == f"rust-v{CODEX_VERSION}"

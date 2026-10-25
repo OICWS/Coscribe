@@ -241,7 +241,8 @@ Last reviewed: 2026-10-15.
    choosing an environment, commands in Codex's Windows sandbox (decision 0022, proposed: needs
    the maintainer's independent review), with the person's private folders hidden from it (#601),
    and the sandbox built into the desktop app, so it needs no Codex download (#607).
-   Open: Codex's own commands in the code module through the same sandbox (4b); hiding other
+   Codex's own commands in the code module run in the same sandbox (#616).
+   Open: hiding other
    drives' user folders.
 
 ## Needs the maintainer's testing (could not be verified here)
