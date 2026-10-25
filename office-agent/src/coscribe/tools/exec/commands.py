@@ -127,8 +127,6 @@ def code_command_profile(
             hidden=private_folders() if hide else [],
             programs=programs,
         )
-    except GrantFailed:
-        logger.warning(
-            "the code module's commands stay off: a folder couldn't be granted", exc_info=True
-        )
+    except (GrantFailed, OSError):
+        logger.warning("the code module's commands stay off", exc_info=True)
         return None

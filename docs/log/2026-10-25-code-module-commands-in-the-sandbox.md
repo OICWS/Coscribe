@@ -16,7 +16,9 @@ couldn't run the code or tests it wrote (issue #616, step 4b of #588).
 - The code module's Codex keeps its home in the sandbox's once the sandbox is set up. That is
   where the sandbox users' passwords are, and a second setup would replace them. Its
   config.toml is the code module's settings followed by the profiles (`write_codex_config`).
-- Without the sandbox nothing changes: Codex's commands are refused.
+- An escalated command stays in the sandbox: every code profile denies an empty folder, which is
+  what makes Codex keep one in, and the basic sandbox runs no Codex command.
+- Without the full sandbox nothing changes: Codex's commands are refused.
 - `test_windows_real.py` runs the code module's real Codex against a stub model on the runner:
   - A command writes the task's folder.
   - A write outside it is refused and not retried outside the sandbox.

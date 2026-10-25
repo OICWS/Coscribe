@@ -102,5 +102,10 @@ administrator approves.
   module's Codex then keeps its settings and threads in the sandbox's home, because the sandbox
   users' passwords live there and a second setup would draw new ones; its config.toml is the
   code module's part with the profiles after it. Codex's "retry without sandbox?", a request
-  for more permissions and a network host are declined without asking. Without the sandbox,
-  Codex's commands stay refused (0021).
+  for more permissions and a network host are declined without asking. A command the model asks
+  to escalate looks like any other in the approval request, and Codex runs it outside the
+  sandbox once approved unless the profile denies a read; so every code profile denies an empty
+  folder, and the basic sandbox, which can't deny a read, runs no Codex command. Whether
+  commands are on and the full sandbox is set up is checked again for each command. Exec policy
+  stays with Python and Node scripts, as for `run_background_command`: its rules match a
+  script, not a command line. Without the sandbox, Codex's commands stay refused (0021).
