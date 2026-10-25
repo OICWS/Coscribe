@@ -82,9 +82,9 @@ test("Workspace tab: a folder can be set to read, write and delete", async ({ pa
   const folder = "/tmp/coscribe-e2e-deletable";
   await page.getByLabel("Folder to add").fill(folder);
   await page.getByRole("button", { name: "Add", exact: true }).click();
-  const access = page.getByLabel(`Access to ${folder}`);
-  await expect(access.locator("option")).toHaveText(["Read only", "Read and write", "Read, write and delete"]);
-  await access.selectOption("read-write-delete");
+  await page.getByRole("button", { name: `Access to ${folder}` }).click();
+  await expect(page.getByRole("menuitemradio")).toHaveText(["Read only", "Read and write", "Read, write and delete"]);
+  await page.getByRole("menuitemradio", { name: "Read, write and delete" }).click();
   const deletable = () =>
     page.evaluate(() => fetch("/api/config").then((r) => r.json())).then((c) => c.COSCRIBE_EXTRA_DELETABLE_DIRS);
   await expect.poll(deletable).toBe(folder);
