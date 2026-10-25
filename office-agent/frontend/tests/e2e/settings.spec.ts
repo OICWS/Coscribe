@@ -138,13 +138,15 @@ test("General tab: the interface font changes the whole interface, not only the 
   const restore = { default: "Figtree", system: "The system's own font", dyslexic: "OpenDyslexic" }[original] ?? "Figtree";
 
   await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByTitle("OpenDyslexic", { exact: true }).click();
+  await page.getByRole("button", { name: "Interface font" }).click();
+  await page.getByRole("menuitemradio", { name: "OpenDyslexic" }).click();
   await page.getByRole("button", { name: "Close settings" }).click();
   try {
     expect(await fontOf("textarea")).toContain("OpenDyslexic");
     expect(await fontOf("body")).toContain("OpenDyslexic");
   } finally {
     await page.getByRole("button", { name: "Settings" }).click();
-    await page.getByTitle(restore, { exact: true }).click();
+    await page.getByRole("button", { name: "Interface font" }).click();
+    await page.getByRole("menuitemradio", { name: restore, exact: true }).click();
   }
 });
