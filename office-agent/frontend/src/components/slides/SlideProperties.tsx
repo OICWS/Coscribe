@@ -2,7 +2,7 @@ import { useState } from "react";
 import { transitionLabel, type SlideInfo } from "../../lib/slides";
 import { setBackground, setTransition, sourceColours } from "../../lib/slideSource";
 import type { DesignSystem } from "../../lib/slideText";
-import { ChevronDownIcon, CloseIcon } from "../icons";
+import { ChevronDownIcon } from "../icons";
 import { Row, Section, field } from "./PropertyRows";
 import { ColourPicker } from "./SlideFormatBar";
 import { SlideMenu, type MenuEntry } from "./SlideMenu";
@@ -31,7 +31,6 @@ export function SlideProperties({
   design,
   onEdit,
   loadSource,
-  onClose,
 }: {
   slide: SlideInfo;
   beside: boolean;
@@ -41,24 +40,12 @@ export function SlideProperties({
   onEdit: SlideEdit;
   /** The slide's section source, for its colours. */
   loadSource: () => Promise<string>;
-  onClose: () => void;
 }) {
   return (
     <aside
       aria-label="Slide properties"
-      className={`shrink-0 overflow-auto bg-[var(--bg)] [&>div+section]:pt-0 ${beside ? "w-[280px] border-l" : "max-h-[45%] border-t"} border-[var(--border)]`}
+      className={`shrink-0 overflow-auto bg-[var(--bg)] ${beside ? "w-[280px] border-l" : "max-h-[45%] border-t"} border-[var(--border)]`}
     >
-      <div className="flex h-10 items-center justify-end px-2">
-        <button
-          type="button"
-          title="Hide the properties panel"
-          aria-label="Hide the properties panel"
-          className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
-          onClick={onClose}
-        >
-          <CloseIcon className="h-4 w-4" />
-        </button>
-      </div>
       {selection?.kind === "text" && (
         <>
           <TextProperties selection={selection} design={design} />
