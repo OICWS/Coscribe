@@ -47,7 +47,7 @@ p.save(r"${WORKSPACE}/${name}.pptx")`,
 test("a deck coscribe did not build has no controls that change it", async ({ page }) => {
   await openForeignDeck(page, freshDeckName());
 
-  await expect(page.getByText(/Read-only: coscribe did not build this presentation/)).toBeVisible();
+  await expect(page.getByText(/Read-only: coscribe did not build this presentation/i)).toBeVisible();
   for (const name of ["New slide", "Comment", "Comment options", "Properties panel"]) {
     await expect(page.getByRole("button", { name, exact: true })).toHaveCount(0);
   }
