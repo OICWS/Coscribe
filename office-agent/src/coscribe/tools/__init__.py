@@ -93,6 +93,8 @@ from .exec import (
     build_node_script_tools,
     build_script_tools,
     bundled_sandbox,
+    code_command_profile,
+    code_commands_allowed,
     ensure_own_python,
     ensure_script_env,
     expect_sandbox,
@@ -124,6 +126,7 @@ from .exec import (
     venv_python,
     warm_up_sandbox,
     working_interpreters,
+    write_codex_config,
 )
 from .files import build_file_tools
 from .mcp import (
@@ -413,4 +416,7 @@ __all__ = [
     "expect_sandbox",
     "release_private_folders",
     "warm_up_sandbox",
+    "code_command_profile",
+    "code_commands_allowed",
+    "write_codex_config",
 ]

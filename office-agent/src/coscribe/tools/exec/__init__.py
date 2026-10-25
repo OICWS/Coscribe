@@ -18,8 +18,14 @@ from .command_sandbox import (
     sandbox_uninstall_argv,
     sandboxed_command,
     warm_up_sandbox,
+    write_codex_config,
 )
-from .commands import expect_sandbox, start_command
+from .commands import (
+    code_command_profile,
+    code_commands_allowed,
+    expect_sandbox,
+    start_command,
+)
 from .find_python import find_pythons
 from .isolation import (
     FolderGrants,
@@ -85,6 +91,9 @@ __all__ = [
     "start_command",
     "expect_sandbox",
     "warm_up_sandbox",
+    "code_command_profile",
+    "code_commands_allowed",
+    "write_codex_config",
     "Detachable",
     "FolderGrants",
     "sweep_folder_grants",

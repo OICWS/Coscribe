@@ -246,7 +246,8 @@ Last reviewed: 2026-10-15.
    and the sandbox built into the desktop app, so it needs no Codex download (#607); a private
    folder holding a command's folder hides what is beside it rather than itself, so PowerShell
    starts there.
-   Open: Codex's own commands in the code module through the same sandbox (4b); hiding other
+   Codex's own commands in the code module run in the same sandbox (#616).
+   Open: hiding other
    drives' user folders.
 
 ## Needs the maintainer's testing (could not be verified here)

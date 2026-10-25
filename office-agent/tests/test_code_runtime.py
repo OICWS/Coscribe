@@ -175,6 +175,50 @@ async def test_a_command_is_refused_without_asking(host: CodexHost, workdir: Pat
     ]
 
 
+async def test_in_the_sandbox_the_thread_runs_under_its_profile(
+    host: CodexHost, workdir: Path, tmp_path: Path
+) -> None:
+    await _thread(host, workdir, permissions="coscribe-abc").run_turn("basic", _Approvals(True))
+
+    sent = {r["method"]: r["params"] for r in _requests(tmp_path) if "method" in r}
+    started = sent["thread/start"]
+    assert started["permissions"] == "coscribe-abc"
+    assert "sandbox" not in started
+    assert started["approvalPolicy"] == "never"
+
+
+async def test_in_the_sandbox_commands_and_file_changes_run_without_asking(
+    host: CodexHost, workdir: Path
+) -> None:
+    approvals = _Approvals(False)
+
+    for scenario in ("approve", "file"):
+        await _thread(host, workdir, permissions="coscribe-abc").run_turn(scenario, approvals)
+
+    assert approvals.seen == []
+    assert (workdir / "made.txt").exists() and (workdir / "notes.md").exists()
+
+
+async def test_in_the_sandbox_whatever_codex_still_asks_is_declined_unasked(
+    host: CodexHost, workdir: Path
+) -> None:
+    # Codex asks nothing under "never"; an ask would be the request to leave the sandbox.
+    approvals = _Approvals(True)
+    events: list[CodexEvent] = []
+
+    async def on_event(event: CodexEvent) -> None:
+        events.append(event)
+
+    result = await _thread(host, workdir, permissions="coscribe-abc").run_turn(
+        "insist", approvals, on_event
+    )
+
+    assert approvals.seen == []
+    assert result.text == "was declined"
+    assert not (workdir / "made.txt").exists()
+    assert [e.kind for e in events if e.kind == "command_refused"] == ["command_refused"]
+
+
 async def test_a_declined_command_does_not_run(host: CodexHost, workdir: Path) -> None:
     result = await _thread(host, workdir).run_turn("approve", _Approvals(False))
 

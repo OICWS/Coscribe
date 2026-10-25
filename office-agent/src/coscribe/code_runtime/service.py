@@ -9,6 +9,7 @@ on the event loop every conversation shares.
 from __future__ import annotations
 
 import asyncio
+import os
 from pathlib import Path
 from typing import Any
 
@@ -51,6 +52,12 @@ class CodeService:
             _custom_providers(self.settings),
             script_env_bin(self.state_dir),
         )
+
+    def command_path(self) -> list[Path]:
+        """The folders on the PATH Codex's commands get."""
+        env = self._spec().env
+        path = next((value for key, value in env.items() if key.upper() == "PATH"), "")
+        return [Path(p) for p in path.split(os.pathsep) if p]
 
     def custom_providers(self) -> dict[str, dict[str, str]]:
         return _custom_providers(self.settings)

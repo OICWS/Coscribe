@@ -23,6 +23,7 @@ from coscribe.config import Settings
 from coscribe.conversation import ChatSessionLG, agent_assembly
 from coscribe.conversation import session as conversation_session
 from coscribe.runtime import empty_hooks_config
+from coscribe.runtime_lg import code_agent as code_agent_module
 from coscribe.runtime_lg.code_agent import CODE_APPROVAL_RISKS, CODE_TASK_TOOL
 from coscribe.tools.bookkeeping import subagent_tasks
 from coscribe.tools.bookkeeping.subagent_tasks import (
@@ -103,6 +104,9 @@ class _Service:
 
     def custom_providers(self) -> dict[str, dict[str, str]]:
         return {"fake": {"base_url": "http://127.0.0.1:9/v1", "api_key": "k"}}
+
+    def command_path(self) -> list[Path]:
+        return []
 
     async def prepare(self) -> CodexHost:
         return self.host
@@ -616,3 +620,55 @@ async def test_a_conversation_with_no_variables_sets_none_for_codex(
 
     [config] = _thread_configs(tmp_path)
     assert "shell_environment_policy" not in config
+
+
+def _sandbox_set_up(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(code_agent_module, "code_commands_allowed", lambda *args: True)
+    monkeypatch.setattr(
+        code_agent_module, "code_command_profile", lambda *args: ("coscribe-x", {"TEMP": "t"})
+    )
+
+
+def _started(tmp_path: Path) -> dict[str, Any]:
+    [started] = [
+        json.loads(line)["params"]
+        for line in (tmp_path / "requests.jsonl").read_text().splitlines()
+        if '"thread/start"' in line
+    ]
+    return started
+
+
+@pytest.mark.parametrize("approved", [True, False])
+async def test_the_sandboxs_commands_are_approved_once_for_the_task(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, codex: CodexHost, approved: bool
+) -> None:
+    _sandbox_set_up(monkeypatch)
+    session = _session(tmp_path, monkeypatch, codex, _Model(responses=_replies("twice")))
+    socket = _Socket(answer=lambda payload: approved)
+
+    await _run(session, socket)
+
+    [card] = socket.of("approval_required")
+    assert card["tool_name"] == "run_code_command"
+    started = _started(tmp_path)
+    # Approved, Codex runs both commands in the sandbox without asking; declined, it runs
+    # unsandboxed and its commands are refused.
+    assert started.get("permissions") == ("coscribe-x" if approved else None)
+    assert (tmp_path / "workspace" / "made2.txt").exists() is approved
+
+
+async def test_an_approval_given_before_the_network_changed_does_not_hold(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, codex: CodexHost
+) -> None:
+    _sandbox_set_up(monkeypatch)
+    session = _session(tmp_path, monkeypatch, codex, _Model(responses=_replies("approve")))
+
+    def answer(payload: Any) -> bool:
+        # While the card is open, the environment goes online.
+        in_environment(tmp_path / "state", "t1", network={"mode": "full", "domains": []})
+        return True
+
+    await _run(session, _Socket(answer=answer))
+
+    assert "permissions" not in _started(tmp_path)
+    assert not (tmp_path / "workspace" / "made.txt").exists()

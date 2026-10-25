@@ -44,6 +44,8 @@ _interrupted: dict[str, threading.Event] = {}
 _ids = itertools.count(1000)
 _threads: dict[str, str] = {}
 _turns: dict[str, int] = {}
+# Threads started with approvalPolicy "never": Codex asks nothing there.
+_never: set[str] = set()
 _children: dict[str, list[subprocess.Popen[bytes]]] = {}
 
 
@@ -140,24 +142,29 @@ def command(
     script: str = "echo made > made.txt",
     call: str = "call-1",
     out: str = "made.txt",
+    insist: bool = False,
 ) -> None:
     base = {"threadId": thread_id, "turnId": turn_id}
     item = {"type": "commandExecution", "id": call, "command": f"/bin/bash -lc '{script}'"}
     notify("item/started", {**base, "item": {**item, "status": "inProgress"}})
-    reply = ask(
-        "item/commandExecution/requestApproval",
-        {
-            **base,
-            "kind": "command",
-            "itemId": call,
-            "startedAtMs": 0,
-            "environmentId": "local",
-            "command": item["command"],
-            "cwd": cwd,
-            "reason": "writes made.txt",
-            "commandActions": [{"type": "unknown", "command": script}],
-        },
-    )
+    # `insist` asks even where Codex wouldn't, as a request to leave the sandbox would.
+    if thread_id in _never and not insist:
+        reply = {"result": {"decision": "accept"}}
+    else:
+        reply = ask(
+            "item/commandExecution/requestApproval",
+            {
+                **base,
+                "kind": "command",
+                "itemId": call,
+                "startedAtMs": 0,
+                "environmentId": "local",
+                "command": item["command"],
+                "cwd": cwd,
+                "reason": "writes made.txt",
+                "commandActions": [{"type": "unknown", "command": script}],
+            },
+        )
     accepted = reply.get("result", {}).get("decision") == "accept"
     if accepted:
         Path(cwd, out).write_text("made\n", encoding="utf-8")
@@ -172,10 +179,13 @@ def patch(
     base = {"threadId": thread_id, "turnId": turn_id}
     item = {"type": "fileChange", "id": item_id, "changes": [{"path": path}]}
     notify("item/started", {**base, "item": {**item, "status": "inProgress"}})
-    reply = ask(
-        "item/fileChange/requestApproval",
-        {**base, "itemId": item_id, "startedAtMs": 0, "reason": "edit notes"},
-    )
+    if thread_id in _never:
+        reply = {"result": {"decision": "accept"}}
+    else:
+        reply = ask(
+            "item/fileChange/requestApproval",
+            {**base, "itemId": item_id, "startedAtMs": 0, "reason": "edit notes"},
+        )
     accepted = reply.get("result", {}).get("decision") == "accept"
     if accepted:
         Path(cwd, path).write_text("notes\n", encoding="utf-8")
@@ -192,8 +202,8 @@ def run_turn(thread_id: str, turn_id: str, prompt: str, cwd: str) -> None:
         command(thread_id, turn_id, cwd)
     elif scenario == "long":
         long = (
-            'python -c "import io,csv,sys; p=r\'C:\\Users\\Allen\\Desktop\\a-very-long-folder-name'
-            '\\orders-with-a-long-file-name-2026.csv\'; t=open(p,encoding=\'utf-8-sig\').read(); '
+            "python -c \"import io,csv,sys; p=r'C:\\Users\\Allen\\Desktop\\a-very-long-folder-name"
+            "\\orders-with-a-long-file-name-2026.csv'; t=open(p,encoding='utf-8-sig').read(); "
             'print(len(t.splitlines()), t.splitlines()[0], sorted(set(t.splitlines())))"'
         )
         command(thread_id, turn_id, cwd, long)
@@ -202,6 +212,8 @@ def run_turn(thread_id: str, turn_id: str, prompt: str, cwd: str) -> None:
         command(thread_id, turn_id, cwd, "echo more > made2.txt", "call-2", "made2.txt")
     elif scenario == "read":
         command(thread_id, turn_id, cwd, "ls -la")
+    elif scenario == "insist":
+        command(thread_id, turn_id, cwd, insist=True)
     elif scenario == "readout":
         command(thread_id, turn_id, cwd, "cat ../x.txt")
     elif scenario == "file":
@@ -256,6 +268,8 @@ def handle(request: dict[str, Any]) -> None:
     elif method == "thread/start":
         thread_id = f"thr-{next(_ids)}"
         _threads[thread_id] = params.get("cwd") or os.getcwd()
+        if params.get("approvalPolicy") == "never":
+            _never.add(thread_id)
         send({"id": request_id, "result": {"thread": {"id": thread_id}}})
     elif method == "thread/resume":
         thread_id = params["threadId"]
