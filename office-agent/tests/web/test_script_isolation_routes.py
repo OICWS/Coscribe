@@ -151,6 +151,7 @@ def test_setting_the_sandbox_up_records_which_codex_did_it_and_removing_it_forge
 
     monkeypatch.setattr(command_sandbox, "supported", lambda: True)
     monkeypatch.setattr(environment_routes, "code_service", service)
+    monkeypatch.setenv("USERNAME", "ada")
     with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
         before = client.get("/api/command-sandbox").json()
         set_up = client.post("/api/command-sandbox").json()
@@ -162,7 +163,7 @@ def test_setting_the_sandbox_up_records_which_codex_did_it_and_removing_it_forge
     if exit_code == 0:
         assert set_up["state"] == "ready"
         # Setup, then one empty command so the person's first isn't the one Codex refuses.
-        assert calls[0] == f"{home} sandbox setup --elevated --current-user"
+        assert calls[0] == f"{home} sandbox setup --elevated --user ada --codex-home {home}"
         assert calls[1].startswith(f"{home} sandbox --permission-profile coscribe-")
         assert calls[1].endswith(".cmd")
         assert calls[2:] == [f"{home} sandbox uninstall"]
@@ -171,9 +172,113 @@ def test_setting_the_sandbox_up_records_which_codex_did_it_and_removing_it_forge
             ("command_sandbox_uninstall", "approve"),
         ]
     else:
-        assert set_up == {"state": "failed", "detail": "The administrator said no."}
-        assert calls == [f"{home} sandbox setup --elevated --current-user"]
+        assert set_up == {
+            "state": "failed",
+            "detail": "The administrator said no.",
+            "mode": "elevated",
+            "source": "codex",
+        }
+        assert calls == [f"{home} sandbox setup --elevated --user ada --codex-home {home}"]
         assert entries == [
             ("command_sandbox_setup", "reject"),
             ("command_sandbox_uninstall", "approve"),
         ]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the fake Codex is a shell script")
+def test_the_unelevated_sandbox_asks_no_administrator_and_proves_itself_with_a_command(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    codex = _fake_codex(tmp_path, 0)
+
+    class _Service:
+        async def download(self) -> Path:
+            return codex
+
+    monkeypatch.setattr(command_sandbox, "supported", lambda: True)
+    monkeypatch.setattr(environment_routes, "code_service", lambda settings: _Service())
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        set_up = client.post("/api/command-sandbox", json={"mode": "unelevated"}).json()
+        removed = client.delete("/api/command-sandbox").json()
+    calls = (tmp_path / "codex-calls.txt").read_text().splitlines()
+    assert set_up == {"state": "ready", "detail": "", "mode": "unelevated", "source": "codex"}
+    assert removed["state"] == "off"
+    # No setup and no uninstall: it made no users or firewall rules.
+    assert len(calls) == 1 and " sandbox --permission-profile coscribe-" in calls[0]
+    entries = [(e.tool_name, e.decision) for e in AuditLog(tmp_path / "state").read_all()]
+    assert entries == [
+        ("command_sandbox_setup_unelevated", "approve"),
+        ("command_sandbox_uninstall", "approve"),
+    ]
+
+
+def test_the_page_says_where_codex_and_the_packages_live(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        folders = client.get("/api/capabilities/folders").json()
+    state = tmp_path / "state"
+    assert folders == {
+        "codex": str(state / "codex"),
+        "python_packages": str(state / "script-env"),
+        "node_packages": str(state / "node-env"),
+    }
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the fake Codex is a shell script")
+def test_removing_the_sandbox_reports_each_step_before_the_administrator_prompt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Giving the private folders back runs icacls over each before the prompt shows, which
+    takes a while: the row says which step it is on."""
+    codex = _fake_codex(tmp_path, 0)
+    seen: list[dict[str, Any]] = []
+    monkeypatch.setattr(command_sandbox, "supported", lambda: True)
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+
+        def release(state_dir: Path) -> list[str]:
+            seen.append(client.get("/api/command-sandbox").json())
+            return []
+
+        def uninstall(argv: list[str], state_dir: Path, timeout: float) -> str:
+            seen.append(client.get("/api/command-sandbox").json())
+            return ""
+
+        monkeypatch.setattr(environment_routes, "release_private_folders", release)
+        monkeypatch.setattr(environment_routes, "run_as_administrator", uninstall)
+        command_sandbox.record_sandbox_setup(tmp_path / "state", codex)
+        removed = client.delete("/api/command-sandbox").json()
+        after = client.get("/api/command-sandbox").json()
+    assert [(s["state"], s["detail"], s["mode"]) for s in seen] == [
+        ("working", "release", "elevated"),
+        ("working", "uninstall", "elevated"),
+    ]
+    assert removed["state"] == after["state"] == "off"
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the fake sandbox is a shell script")
+def test_with_the_sandbox_built_in_setting_it_up_downloads_no_codex(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    shipped = tmp_path / "sandbox"
+    shipped.mkdir()
+    exe = shipped / "coscribe-sandbox.exe"
+    _fake_codex(tmp_path, 0).rename(exe)
+
+    class _NoDownload:
+        async def download(self) -> Path:
+            raise AssertionError("the built-in sandbox needs no Codex")
+
+    monkeypatch.setenv("COSCRIBE_SANDBOX_DIR", str(shipped))
+    monkeypatch.setenv("USERNAME", "ada")
+    monkeypatch.setattr(command_sandbox, "supported", lambda: True)
+    monkeypatch.setattr(environment_routes, "code_service", lambda settings: _NoDownload())
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        set_up = client.post("/api/command-sandbox").json()
+        client.delete("/api/command-sandbox")
+    home = tmp_path / "state" / "command-sandbox" / "codex-home"
+    calls = (tmp_path / "codex-calls.txt").read_text().splitlines()
+    assert set_up["state"] == "ready" and set_up["source"] == "bundled"
+    assert calls[0] == f"{home} setup --user ada --codex-home {home}"
+    assert calls[1].startswith(f"{home} run --codex-home {home} --level elevated --cwd ")
+    assert calls[2:] == [f"{home} uninstall"]

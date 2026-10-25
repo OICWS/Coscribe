@@ -167,6 +167,7 @@ AUDITED_READ_ONLY_GETS = {
     "/api/background-tasks/{task_id}/log",
     "/api/browse-dirs",
     "/api/capabilities",
+    "/api/capabilities/folders",
     "/api/code",
     "/api/environments",
     "/api/code/permissions",

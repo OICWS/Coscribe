@@ -16,6 +16,7 @@ name: Windows more checks
       - "office-agent/scripts/stub_llm.py"
       - "office-agent/tests/test_windows_real.py"
       - "office-agent/src/coscribe/tools/exec/command_sandbox.py"
+      - "office-agent-sandbox/**"
       - "office-agent/src/coscribe/code_runtime/_pins.py"
       - "office-agent/src/coscribe/tools/bookkeeping/background_tasks.py"
       - ".github/CODEOWNERS"
@@ -53,6 +54,42 @@ jobs:
       # -rs lists a skipped test: a check that silently skips would pass without checking.
       - name: Run the checks
         run: |
+          python -m pytest tests/test_windows_real.py -v -rs -n0 | tee pytest.out
+          if grep -q SKIPPED pytest.out; then echo "a check was skipped"; exit 1; fi
+
+  # The command sandbox again, through coscribe's own build of Codex's sandbox (#607) instead of
+  # the Codex download: the binary the desktop app ships, built here as desktop-build.yml does.
+  builtin-sandbox:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      COSCRIBE_WINDOWS_REAL: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: office-agent/pyproject.toml
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            office-agent-sandbox/target
+          key: sandbox-${{ hashFiles('office-agent-sandbox/CODEX_TAG', 'office-agent-sandbox/Cargo.toml') }}
+
+      - name: Build the sandbox
+        run: bash ../office-agent-sandbox/scripts/build.sh "$(cygpath -m "$RUNNER_TEMP")/sandbox"
+
+      - name: Install coscribe
+        run: pip install -e ".[dev,web]"
+
+      - name: Run the sandbox checks
+        run: |
+          export COSCRIBE_SANDBOX_DIR="$(cygpath -w "$RUNNER_TEMP")\sandbox"
           python -m pytest tests/test_windows_real.py -v -rs -n0 | tee pytest.out
           if grep -q SKIPPED pytest.out; then echo "a check was skipped"; exit 1; fi
 

@@ -81,7 +81,7 @@ export function SlidesPanel({
   const slide = slides[index];
   const beside = panelWidth >= PROPERTIES_BESIDE_FROM;
   const properties = ui.propertiesShown && slide && !deck?.readOnly && (
-    <SlideProperties slide={slide} beside={beside} selection={ui.selection} design={design} onEdit={(change) => edits.edit(index, change)} loadSource={() => edits.loadSource(index)} onClose={() => ui.setPropertiesShown(false)} />
+    <SlideProperties slide={slide} beside={beside} selection={ui.selection} design={design} onEdit={(change) => edits.edit(index, change)} loadSource={() => edits.loadSource(index)} />
   );
 
   return (

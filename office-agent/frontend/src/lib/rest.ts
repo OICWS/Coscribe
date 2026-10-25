@@ -5,7 +5,9 @@ import type {
   SecretsResponse,
   ScriptIsolation,
   Capabilities,
+  CapabilityFolders,
   CommandSandbox,
+  CommandSandboxMode,
   Environment,
   EnvironmentFields,
   BrowseDirsResponse,
@@ -513,9 +515,12 @@ export const getCapabilities = () => getJson<Capabilities>("/api/capabilities");
 export const setCapability = (name: keyof Capabilities, on: boolean) =>
   putJson<Capabilities>(`/api/capabilities/${name}`, { on });
 
+export const getCapabilityFolders = () => getJson<CapabilityFolders>("/api/capabilities/folders");
+
 export const getCommandSandbox = () => getJson<CommandSandbox>("/api/command-sandbox");
-/** Needs an administrator once; Windows asks. */
-export const setUpCommandSandbox = () => postJson<CommandSandbox>("/api/command-sandbox", {});
+/** "elevated" needs an administrator once, and Windows asks; "unelevated" needs none. */
+export const setUpCommandSandbox = (mode: CommandSandboxMode) =>
+  postJson<CommandSandbox>("/api/command-sandbox", { mode });
 export const removeCommandSandbox = () =>
   sendForResult<CommandSandbox>("/api/command-sandbox", "DELETE", undefined);
 

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useCodePermissions } from "../../lib/useCodePermissions";
-import { useCodeStatus } from "../../lib/useCodeStatus";
+import type { useCodeStatus } from "../../lib/useCodeStatus";
 import { useConfiguredModels } from "../../lib/useConfiguredModels";
 import { CodeDownload } from "../CodeModuleStatus";
 import { ToggleSwitch } from "../ToggleSwitch";
@@ -10,6 +10,8 @@ import { SettingRow, SettingRows, SettingsSection, fieldClass } from "./SettingR
 interface CodeTabProps {
   values: Record<string, string>;
   onChange: (key: string, value: string) => void;
+  code: ReturnType<typeof useCodeStatus>;
+  codexFolder?: string;
 }
 
 function CodeModelSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
@@ -27,10 +29,10 @@ function CodeModelSelect({ value, onChange }: { value: string; onChange: (value:
   );
 }
 
-/** The code module: Codex, which a chat hands programming tasks to when
- * allowed. How it may act follows the permission mode, as a chat's tools do. */
-export function CodeTab({ values, onChange }: CodeTabProps) {
-  const code = useCodeStatus();
+/** Codex, which both the command sandbox and the code module run on, then the code module: what
+ * a chat hands programming tasks to when allowed. How it may act follows the permission mode, as
+ * a chat's tools do. */
+export function CodeTab({ values, onChange, code, codexFolder }: CodeTabProps) {
   const approvals = useCodePermissions();
   const model = values[CODE_MODEL_KEY] ?? "";
   const { refresh } = code;
@@ -43,15 +45,18 @@ export function CodeTab({ values, onChange }: CodeTabProps) {
   return (
     <div className="flex flex-col gap-10">
       <SettingsSection
-        title="Code module"
-        description="Writes and runs code in your folder: scripts that process your files, tools you'll reuse, fixes for a script that fails. It runs on Codex, downloaded the first time it's needed."
+        title="Codex"
+        description="OpenAI's coding agent, downloaded once. The command sandbox and the code module both run on it. coscribe uses the one version it was tested with and checks the download; when an update moves to a newer one, Update replaces the old."
       >
         <div className="py-3.5">
-          <CodeDownload code={code} />
+          <CodeDownload code={code} folder={codexFolder} />
         </div>
       </SettingsSection>
 
-      <SettingsSection title="In chats">
+      <SettingsSection
+        title="Code module"
+        description="Writes and runs code in your folder: scripts that process your files, tools you'll reuse, fixes for a script that fails."
+      >
         <SettingRows>
           <SettingRow
             label="Chats can hand tasks to Code"

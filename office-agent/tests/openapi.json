@@ -120,6 +120,21 @@
         "title": "BrowserHostReply",
         "type": "object"
       },
+      "CommandSandboxSetup": {
+        "properties": {
+          "mode": {
+            "default": "elevated",
+            "enum": [
+              "elevated",
+              "unelevated"
+            ],
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "title": "CommandSandboxSetup",
+        "type": "object"
+      },
       "ConfigUpdate": {
         "properties": {
           "updates": {
@@ -1666,6 +1681,29 @@
         "summary": "Get Capabilities"
       }
     },
+    "/api/capabilities/folders": {
+      "get": {
+        "description": "Where what this page downloads lives, so the person can find it.",
+        "operationId": "get_folders_api_capabilities_folders_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Get Folders Api Capabilities Folders Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Folders"
+      }
+    },
     "/api/capabilities/{name}": {
       "put": {
         "operationId": "put_capability_api_capabilities__name__put",
@@ -1840,9 +1878,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
+                  "additionalProperties": true,
                   "title": "Response Remove Sandbox Api Command Sandbox Delete",
                   "type": "object"
                 }
@@ -1860,9 +1896,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
+                  "additionalProperties": true,
                   "title": "Response Get Sandbox Api Command Sandbox Get",
                   "type": "object"
                 }
@@ -1875,20 +1909,45 @@
       },
       "post": {
         "operationId": "set_up_sandbox_api_command_sandbox_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CommandSandboxSetup"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
+                  "additionalProperties": true,
                   "title": "Response Set Up Sandbox Api Command Sandbox Post",
                   "type": "object"
                 }
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Set Up Sandbox"

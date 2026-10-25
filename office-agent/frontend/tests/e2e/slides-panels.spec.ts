@@ -33,6 +33,8 @@ test("text panel: a size change shows on the stage, and changing it by hand clea
   await openSectionDeck(page, name);
   await clickSlide(page, 160 + 450, 140 + 60);
   const panel = await showProperties(page);
+  // The toolbar's toggle hides the panel; the panel carries no close button of its own.
+  await expect(panel.getByRole("button", { name: /Hide the properties panel/ })).toHaveCount(0);
   // A text style retags the box (p to h1, ...), so the box is found by its words.
   const text = page.getByText("Panel text", { exact: true });
 

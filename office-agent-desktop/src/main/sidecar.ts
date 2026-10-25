@@ -8,7 +8,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { parse as parseDotenv } from "dotenv";
-import { appDataDir, appDataSubpath, serverBin, serverLogFd } from "./paths";
+import { appDataDir, appDataSubpath, sandboxDir, serverBin, serverLogFd } from "./paths";
 
 let child: ChildProcess | undefined;
 
@@ -20,6 +20,7 @@ let child: ChildProcess | undefined;
 export function startSidecar(port: number, browserHostToken: string): void {
   const dataDir = appDataDir();
   const logFd = serverLogFd();
+  const sandbox = sandboxDir();
 
   child = spawn(
     serverBin(),
@@ -42,6 +43,7 @@ export function startSidecar(port: number, browserHostToken: string): void {
         // Lets this app's Browser panel take the AI's browser commands
         // (browserAgent.ts); nothing else on the machine knows it.
         COSCRIBE_BROWSER_HOST_TOKEN: browserHostToken,
+        ...(sandbox ? { COSCRIBE_SANDBOX_DIR: sandbox } : {}),
       },
       stdio: ["ignore", logFd ?? "ignore", logFd ?? "ignore"],
       // Built-in option, no raw CREATE_NO_WINDOW flag needed -- the

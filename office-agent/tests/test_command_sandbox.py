@@ -4,6 +4,8 @@ permission profile and command line a command gets. The sandbox itself runs only
 
 from __future__ import annotations
 
+import base64
+import json
 import sys
 from pathlib import Path
 
@@ -44,9 +46,19 @@ def test_off_windows_it_is_unsupported_and_commands_are_not_wrapped(tmp_path: Pa
 
 @pytest.mark.usefixtures("on_windows")
 def test_it_is_ready_only_while_the_codex_that_set_it_up_is_still_there(tmp_path: Path) -> None:
-    assert sandbox_status(tmp_path) == {"state": "off", "detail": ""}
+    assert sandbox_status(tmp_path) == {
+        "state": "off",
+        "detail": "",
+        "mode": "elevated",
+        "source": "codex",
+    }
     record_sandbox_setup(tmp_path, None, "The administrator said no.")
-    assert sandbox_status(tmp_path) == {"state": "failed", "detail": "The administrator said no."}
+    assert sandbox_status(tmp_path) == {
+        "state": "failed",
+        "detail": "The administrator said no.",
+        "mode": "elevated",
+        "source": "codex",
+    }
     codex = _codex(tmp_path)
     record_sandbox_setup(tmp_path, codex)
     assert sandbox_status(tmp_path)["state"] == "ready"
@@ -249,3 +261,117 @@ def test_a_deny_that_icacls_still_lists_is_reported_and_kept(
 
     assert release_private_folders(tmp_path) == [str(documents)]
     assert release_private_folders(tmp_path) == [str(documents)]
+
+
+def _decoded(encoded: str) -> str:
+    return base64.b64decode(encoded).decode("utf-16-le")
+
+
+def test_unless_coscribe_is_elevated_setup_goes_through_run_as_with_its_environment(
+    tmp_path: Path,
+) -> None:
+    """Codex's setup refuses to run unelevated and doesn't ask Windows itself; the elevated
+    process doesn't inherit coscribe's environment and can't pipe its output back."""
+    log = tmp_path / "it's" / "administrator.log"
+    argv = ["C:\\Codex\\codex.exe", "sandbox", "setup", "--user", "O'Neil"]
+
+    wrapped = command_sandbox._through_run_as(argv, {"CODEX_HOME": "C:\\h"}, log)
+
+    assert wrapped[:-1] == ["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand"]
+    outer = _decoded(wrapped[-1])
+    assert "Start-Process -FilePath powershell.exe -Verb RunAs -Wait -PassThru" in outer
+    assert f"exit {command_sandbox.DECLINED}" in outer
+    inner = _decoded(outer.split("-EncodedCommand ")[1].split("'")[0])
+    assert inner.splitlines() == [
+        "$env:CODEX_HOME = 'C:\\h'",
+        "$a = @('sandbox', 'setup', '--user', 'O''Neil')",
+        "& 'C:\\Codex\\codex.exe' @a 2>&1 | ForEach-Object { \"$_\" } | "
+        f"Set-Content -Encoding UTF8 -LiteralPath '{str(log).replace(chr(39), chr(39) * 2)}'",
+        "exit $LASTEXITCODE",
+    ]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="off Windows coscribe counts as elevated")
+@pytest.mark.parametrize(("exit_code", "error"), [(0, ""), (2, "It went wrong.")])
+def test_an_administrator_command_reports_codexs_last_line(
+    exit_code: int, error: str, tmp_path: Path
+) -> None:
+    codex = tmp_path / "codex"
+    codex.write_text(f'#!/bin/sh\necho "It went wrong." >&2\nexit {exit_code}\n')
+    codex.chmod(0o755)
+    assert command_sandbox.run_as_administrator([str(codex)], tmp_path, 10) == error
+
+
+@pytest.mark.usefixtures("on_windows")
+def test_the_unelevated_sandbox_has_its_own_profile_and_denies_no_read(
+    tmp_path: Path, icacls: list[tuple[str, ...]]
+) -> None:
+    """Codex can't deny a read without the elevated sandbox's users, so private folders stay
+    readable there and coscribe changes no folder's permissions for it."""
+    record_sandbox_setup(tmp_path, _codex(tmp_path))
+    root, private = tmp_path / "work", tmp_path / "Documents"
+    elevated = sandboxed_command(tmp_path, "dir", root, [root], [], False, hidden=[private])
+    record_sandbox_setup(tmp_path, _codex(tmp_path), mode="unelevated")
+    icacls.clear()
+
+    argv, _ = sandboxed_command(tmp_path, "dir", root, [root], [], False, hidden=[private]) or (
+        [],
+        {},
+    )
+
+    assert sandbox_status(tmp_path) == {
+        "state": "ready",
+        "detail": "",
+        "mode": "unelevated",
+        "source": "codex",
+    }
+    assert elevated is not None and argv[3] != elevated[0][3]
+    config = (sandbox_home(tmp_path) / "config.toml").read_text(encoding="utf-8")
+    assert '[windows]\nsandbox = "unelevated"\n' in config
+    section = config.split(f"[permissions.{argv[3]}.filesystem]\n")[1].split("[")[0]
+    assert '"deny"' not in section
+    assert icacls == []
+
+
+@pytest.mark.usefixtures("on_windows")
+def test_the_bundled_sandbox_runs_a_command_with_a_policy_file_instead_of_codexs_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, icacls: list[tuple[str, ...]]
+) -> None:
+    """The desktop app ships coscribe's own build of Codex's sandbox (#607): the same folders,
+    as the policy Codex's sandbox reads, and no Codex download."""
+    shipped = tmp_path / "sandbox"
+    shipped.mkdir()
+    exe = shipped / "coscribe-sandbox.exe"
+    exe.write_text("")
+    monkeypatch.setenv("COSCRIBE_SANDBOX_DIR", str(shipped))
+    assert command_sandbox.bundled_sandbox() == exe
+    record_sandbox_setup(tmp_path, exe)
+    root, extra, private = tmp_path / "work", tmp_path / "reference", tmp_path / "Documents"
+
+    argv, env = sandboxed_command(
+        tmp_path, "dir", root, [root], [extra], True, hidden=[private]
+    ) or ([], {})
+
+    home = sandbox_home(tmp_path)
+    policy = Path(argv[argv.index("--policy") + 1])
+    script = Path(argv[-1])
+    assert argv == [
+        str(exe), "run", "--codex-home", str(home), "--level", "elevated", "--cwd", str(root),
+        "--policy", str(policy), "--network", "on", "--", "cmd.exe", "/d", "/c", str(script),
+    ]  # fmt: skip
+    assert policy.parent == home / "policies"
+    entries = json.loads(policy.read_text(encoding="utf-8"))
+    assert entries == {
+        "kind": "restricted",
+        "entries": [
+            {"path": {"type": "special", "value": {"kind": "root"}}, "access": "read"},
+            {"path": {"type": "path", "path": str(private)}, "access": "deny"},
+            {"path": {"type": "path", "path": str(extra)}, "access": "read"},
+            {"path": {"type": "path", "path": str(script.parent)}, "access": "read"},
+            {"path": {"type": "path", "path": str(root)}, "access": "write"},
+            {"path": {"type": "path", "path": env["TEMP"]}, "access": "write"},
+        ],
+    }
+    assert sandbox_status(tmp_path)["source"] == "bundled"
+    assert command_sandbox.sandbox_setup_argv(exe, tmp_path)[:3] == [str(exe), "setup", "--user"]
+    assert command_sandbox.sandbox_uninstall_argv(exe) == [str(exe), "uninstall"]

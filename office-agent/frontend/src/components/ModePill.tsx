@@ -64,7 +64,7 @@ export function ModePill({ planMode, acceptEdits, autoMode, sendRaw }: ModePillP
       {open && (
         <div
           role="menu"
-          className="absolute bottom-full left-0 z-20 mb-1 w-80 rounded-[10px] border border-[var(--border)] bg-[var(--panel-bg)] p-1 shadow-[var(--shadow)]"
+          className="absolute bottom-full left-0 z-20 mb-1 w-80 whitespace-normal rounded-[10px] border border-[var(--border)] bg-[var(--panel-bg)] p-1 shadow-[var(--shadow)]"
         >
           {MODES.map(({ mode, label, description }) => (
             <button

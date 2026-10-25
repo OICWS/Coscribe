@@ -450,6 +450,8 @@ export interface CodeStatus {
   progress: number | null;
   /** Bytes on disk once downloaded; null where there's no build. */
   size: number | null;
+  /** Versions an earlier pin left on disk; `sandbox` when the command sandbox was set up with it. */
+  older: { version: string; size: number; sandbox: boolean }[];
   /** What a chat's code task runs on. */
   model: string;
   /** Why the code module can't use that model; null when it can. */
@@ -568,9 +570,26 @@ export interface Capabilities {
 }
 
 /** Codex's Windows sandbox for commands (decision 0022). */
+export type CommandSandboxMode = "elevated" | "unelevated";
+
 export interface CommandSandbox {
-  state: "ready" | "off" | "failed" | "unsupported";
+  state: "ready" | "off" | "failed" | "unsupported" | "working";
+  /** Why it failed; while working, the step: "download", "approve" or "check" setting up,
+   * "release" or "uninstall" removing. */
   detail: string;
+  /** The mode it is (or was last) set up in; absent off Windows. */
+  mode?: CommandSandboxMode;
+  /** 0..1 while Codex downloads. */
+  progress?: number | null;
   /** Set when removing it failed. */
   error?: string;
+  /** Where setting it up gets the sandbox: built into the app, or with the Codex download. */
+  source?: "bundled" | "codex";
+}
+
+/** Where what Settings › Capabilities downloads lives. */
+export interface CapabilityFolders {
+  codex: string;
+  python_packages: string;
+  node_packages: string;
 }

@@ -69,8 +69,12 @@ Last reviewed: 2026-10-15.
      nightly after the fix was run 23 on 10-15 (main at 8a08b0d), but 10-16 (5 tests, #339, fixed in #340)
      and 10-17 (5 tests, three of them in tests other sessions added that day; fixed in the PR that
      links it) and 10-18 (one test that bounded wall-clock time, 0.84 s against 0.4 s on the runner;
-     fixed to wait on events) were red, so the clock starts again from the next green night. A red
-     night restarts it.
+     fixed to wait on events) were red. Green nights followed on 10-19 to 10-23 (5 of 14). 10-24 was
+     red because a test waited 10 s for a reply on a slow runner (the wait is now 30 s; #610,
+     checked by a manual Windows run on the fix branch before it merged). The maintainer decided
+     on 2026-10-24 that this night does not restart the count: it stays at 5 of 14, 10-24 is
+     neither green nor red, and the next green scheduled night is the 6th. A red night otherwise
+     restarts it, and a failure after this fix is a product bug, not an exception.
    - Done: `test_tool_schema_snapshot` is skipped on Python 3.13 (cloud containers), where docstring
      indentation changes every tool description; CI runs 3.11 and is the check (#252).
    - For the maintainer: switch on Dependabot security updates, secret scanning and push
@@ -238,7 +242,8 @@ Last reviewed: 2026-10-15.
    conversation (#589), Settings › Capabilities (#590), named environments with the picker below
    the message box and the move of each conversation's own settings into them, scheduled tasks
    choosing an environment, commands in Codex's Windows sandbox (decision 0022, proposed: needs
-   the maintainer's independent review), with the person's private folders hidden from it (#601).
+   the maintainer's independent review), with the person's private folders hidden from it (#601),
+   and the sandbox built into the desktop app, so it needs no Codex download (#607).
    Open: Codex's own commands in the code module through the same sandbox (4b); hiding other
    drives' user folders.
 
