@@ -52,7 +52,7 @@ def slugify_skill_name(name: str) -> str:
 SKILL_SAVE_CURATOR_INSTRUCTIONS = """\
 You are deciding what to write when the user asks to save the
 conversation below as a reusable Skill named "<name>" (a SKILL.md
-coscribe can load again in a future, unrelated conversation). You are
+Coscribe can load again in a future, unrelated conversation). You are
 NOT executing anything -- only writing the skill's own description and
 body.
 

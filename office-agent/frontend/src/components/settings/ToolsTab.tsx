@@ -33,7 +33,7 @@ export function ToolsTab({ active }: ToolsTabProps) {
   return (
     <SettingsSection
       title="Tools"
-      description="What coscribe can do on its own. Tools marked Needs approval ask first, depending on the conversation's mode."
+      description="What Coscribe can do on its own. Tools marked Needs approval ask first, depending on the conversation's mode."
     >
       <FetchRetry status={status} onRetry={retry} />
       <div className="mt-3 flex flex-col divide-y divide-[var(--border)] border-y border-[var(--border)]">

@@ -40,13 +40,13 @@ export function zoomEntries(
     })),
     "divider",
     {
-      label: history.history.undo === "coscribe" ? "Undo coscribe's change" : "Undo",
+      label: history.history.undo === "coscribe" ? "Undo Coscribe's change" : "Undo",
       hint: "Ctrl+Z",
       disabled: !history.history.undo,
       onSelect: () => history.step("undo"),
     },
     {
-      label: history.history.redo === "coscribe" ? "Redo coscribe's change" : "Redo",
+      label: history.history.redo === "coscribe" ? "Redo Coscribe's change" : "Redo",
       hint: "Ctrl+Shift+Z",
       disabled: !history.history.redo,
       onSelect: () => history.step("redo"),

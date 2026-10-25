@@ -253,7 +253,7 @@ class BackgroundTaskStore:
             return task
         task.status = "interrupted"
         task.finished_at = task.finished_at or _now_iso()
-        task.note = "coscribe restarted while it was running; the script may still be running."
+        task.note = "Coscribe restarted while it was running; the script may still be running."
         self.save(task)
         return task
 

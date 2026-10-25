@@ -300,7 +300,7 @@ export function CommandModes({
       />
       <p className="text-[13px] leading-relaxed text-[var(--muted)]">
         {sandbox.source === "bundled"
-          ? "Both sandboxes come with coscribe and need no download."
+          ? "Both sandboxes come with Coscribe and need no download."
           : "Both sandboxes are part of Codex, so setting one up downloads Codex if it isn't there yet. That doesn't turn the code module on, which has its own switch below."}{" "}
         With no sandbox set up and "Without a sandbox" off, commands are refused.
       </p>

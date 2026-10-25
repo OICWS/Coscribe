@@ -278,7 +278,7 @@ def _ensure_script_env(state_dir: Path) -> Path:
             "Could not create the script environment (tried: "
             + ", ".join(candidates)
             + f"). Last error: {result.stderr.strip()}. Choose a Python in Settings > "
-            "Capabilities, or download coscribe's own there; with none on this computer, "
+            "Capabilities, or download Coscribe's own there; with none on this computer, "
             "install Python 3 from python.org and choose it."
         )
     seed_result = subprocess.run(

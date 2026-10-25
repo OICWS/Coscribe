@@ -36,7 +36,7 @@ export function SessionsTab({ values, onChange }: SessionsTabProps) {
         />
         <SettingRow
           label="Background agents"
-          description="Let coscribe hand work to sub-agents that run in the background while you keep chatting. They can use a lot of your usage."
+          description="Let Coscribe hand work to sub-agents that run in the background while you keep chatting. They can use a lot of your usage."
           control={
             <ToggleSwitch
               label="Background agents"
@@ -66,22 +66,22 @@ export function SessionsTab({ values, onChange }: SessionsTabProps) {
         {isElectron() && (
           <>
             <SettingRow
-              label="Draw attention when coscribe needs you"
-              description="Flash the taskbar button when a reply finishes or coscribe is waiting for you, and the window isn't in front."
+              label="Draw attention when Coscribe needs you"
+              description="Flash the taskbar button when a reply finishes or Coscribe is waiting for you, and the window isn't in front."
               control={
                 <ToggleSwitch
-                  label="Draw attention when coscribe needs you"
+                  label="Draw attention when Coscribe needs you"
                   on={on(FLASH_ON_ATTENTION_KEY)}
                   onClick={() => toggle(FLASH_ON_ATTENTION_KEY)}
                 />
               }
             />
             <SettingRow
-              label="Keep computer awake while coscribe works"
+              label="Keep computer awake while Coscribe works"
               description="Stop your computer from sleeping while a reply is being worked on, so long tasks can finish. The display can still turn off, and closing the laptop lid still sleeps it."
               control={
                 <ToggleSwitch
-                  label="Keep computer awake while coscribe works"
+                  label="Keep computer awake while Coscribe works"
                   on={on(KEEP_AWAKE_KEY)}
                   onClick={() => toggle(KEEP_AWAKE_KEY)}
                 />

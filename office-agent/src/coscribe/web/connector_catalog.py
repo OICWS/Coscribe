@@ -264,7 +264,7 @@ _HUBSPOT_SETUP: dict[str, Any] = {
         {
             "title": "Create an MCP connector in HubSpot",
             "body": "Go to Development > MCP Connectors and choose Create MCP connector. Name it "
-            "coscribe and add the redirect address below.",
+            "Coscribe and add the redirect address below.",
             "redirect": True,
             "link": {
                 "label": "Open MCP Connectors",
@@ -276,7 +276,7 @@ _HUBSPOT_SETUP: dict[str, Any] = {
             "body": "On the connector's page, copy the Client ID and Client secret.",
         },
     ],
-    "notes": "What coscribe can see follows the HubSpot account you sign in with.",
+    "notes": "What Coscribe can see follows the HubSpot account you sign in with.",
 }
 
 
@@ -289,7 +289,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "category": "Design",
         "description": "Search, create, autofill and export Canva designs.",
         "about": "Find and open your Canva designs, create new ones, fill brand templates, "
-        "export to PDF, PNG, PPTX and more, and read or add comments. coscribe sees only "
+        "export to PDF, PNG, PPTX and more, and read or add comments. Coscribe sees only "
         "what the Canva account you sign in with can see.",
         "tools": _CANVA_TOOLS,
         "links": [
@@ -311,7 +311,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "category": "Notes & docs",
         "description": "Search, read and edit your Notion workspace.",
         "about": "Search your workspace, read and edit pages and databases, create pages, "
-        "views and comments. coscribe sees only what the Notion account you sign in with "
+        "views and comments. Coscribe sees only what the Notion account you sign in with "
         "can see.",
         "tools": _NOTION_TOOLS,
         "links": [
@@ -328,7 +328,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/",
         "category": "Project management",
         "description": "Search and update Jira and Confluence.",
-        "about": "Search and summarize Jira work items and Confluence pages, create and update them, and work with Loom videos, goals and projects. coscribe sees only what the Atlassian account you sign in with can see.",
+        "about": "Search and summarize Jira work items and Confluence pages, create and update them, and work with Loom videos, goals and projects. Coscribe sees only what the Atlassian account you sign in with can see.",
         "tools": _ATLASSIAN_TOOLS,
         "links": [
             {
@@ -348,7 +348,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://developer.clickup.com/docs/connect-an-ai-assistant-to-clickups-mcp-server",
         "category": "Project management",
         "description": "Search, create and update ClickUp tasks, docs and time entries.",
-        "about": "Search your workspace, create and update tasks, comments, docs and lists, track time, and send chat messages. coscribe sees only what the ClickUp account you sign in with can see.",
+        "about": "Search your workspace, create and update tasks, comments, docs and lists, track time, and send chat messages. Coscribe sees only what the ClickUp account you sign in with can see.",
         "tools": _CLICKUP_TOOLS,
         "links": [
             {
@@ -369,7 +369,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "category": "Whiteboards",
         "description": "Read and search your Miro boards, build boards and diagrams.",
         "about": "Search and read boards, create boards, diagrams, docs and tables, lay out "
-        "items, and reply to or resolve comments. coscribe sees only what the Miro account "
+        "items, and reply to or resolve comments. Coscribe sees only what the Miro account "
         "you sign in with can see.",
         "tools": _MIRO_TOOLS,
         "links": [
@@ -388,7 +388,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "category": "Project management",
         "description": "Query your monday.com boards, create items and update columns.",
         "about": "Read boards and items, create and update items, docs, dashboards and "
-        "forms, post updates, and manage workspaces and automations. coscribe sees only "
+        "forms, post updates, and manage workspaces and automations. Coscribe sees only "
         "what the monday.com account you sign in with can see.",
         "tools": _MONDAY_TOOLS,
         "links": [
@@ -412,7 +412,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://airtable.com/developers/agents/mcp/getting-started",
         "category": "Databases",
         "description": "Search, create and update records in your Airtable bases.",
-        "about": "Find records across your bases and create or update them. coscribe sees only what the Airtable account you sign in with can see.",
+        "about": "Find records across your bases and create or update them. Coscribe sees only what the Airtable account you sign in with can see.",
         "links": [
             {
                 "label": "Documentation",
@@ -434,7 +434,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://developer.todoist.com/api/v1/",
         "category": "Tasks",
         "description": "Read, create and update your Todoist tasks and projects.",
-        "about": "Read, create and update the tasks and projects of your Todoist account. coscribe sees only what the Todoist account you sign in with can see.",
+        "about": "Read, create and update the tasks and projects of your Todoist account. Coscribe sees only what the Todoist account you sign in with can see.",
         "links": [
             {"label": "Documentation", "url": "https://developer.todoist.com/api/v1/"},
             {"label": "Privacy policy", "url": "https://www.todoist.com/privacy"},
@@ -464,7 +464,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://docs.granola.ai/help-center/sharing/integrations/mcp",
         "category": "Meetings",
         "description": "Search and read your Granola meeting notes.",
-        "about": "Search your meetings and read their notes and transcripts. coscribe sees only what the Granola account you sign in with can see.",
+        "about": "Search your meetings and read their notes and transcripts. Coscribe sees only what the Granola account you sign in with can see.",
         "links": [
             {
                 "label": "Documentation",
@@ -482,7 +482,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://coda.io",
         "category": "Notes & docs",
         "description": "Read and edit your Coda docs.",
-        "about": "Find, read and edit the docs of your Coda account. coscribe sees only what the Coda account you sign in with can see.",
+        "about": "Find, read and edit the docs of your Coda account. Coscribe sees only what the Coda account you sign in with can see.",
         "server_url": "https://coda.io/apis/mcp",
         "auth": "oauth",
     },
@@ -493,7 +493,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://docs.fireflies.ai/",
         "category": "Meetings",
         "description": "Search your meeting transcripts and notes in Fireflies.",
-        "about": "Search and read the transcripts and summaries of your recorded meetings. coscribe sees only what the Fireflies account you sign in with can see.",
+        "about": "Search and read the transcripts and summaries of your recorded meetings. Coscribe sees only what the Fireflies account you sign in with can see.",
         "links": [
             {"label": "Documentation", "url": "https://docs.fireflies.ai/"},
             {"label": "Privacy policy", "url": "https://fireflies.ai/privacy-policy"},
@@ -508,7 +508,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://linear.app/docs/mcp",
         "category": "Project management",
         "description": "Find, create and update Linear issues and projects.",
-        "about": "Search issues and projects, create and update them, and comment. coscribe sees only what the Linear account you sign in with can see.",
+        "about": "Search issues and projects, create and update them, and comment. Coscribe sees only what the Linear account you sign in with can see.",
         "links": [
             {"label": "Documentation", "url": "https://linear.app/docs/mcp"},
             {"label": "Privacy policy", "url": "https://linear.app/privacy"},
@@ -523,7 +523,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://docs.stripe.com/mcp",
         "category": "Finance",
         "description": "Work with your Stripe account: customers, payments, invoices and subscriptions.",
-        "about": "Look up and manage the data of your Stripe account. coscribe sees only what the Stripe account you sign in with can see.",
+        "about": "Look up and manage the data of your Stripe account. Coscribe sees only what the Stripe account you sign in with can see.",
         "links": [
             {"label": "Documentation", "url": "https://docs.stripe.com/mcp"},
             {"label": "Privacy policy", "url": "https://stripe.com/privacy"},
@@ -538,7 +538,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://developers.intercom.com/docs/guides/mcp",
         "category": "Customer support",
         "description": "Search conversations and contacts in your Intercom workspace.",
-        "about": "Search and read the conversations and contacts of your Intercom workspace. coscribe sees only what the Intercom account you sign in with can see.",
+        "about": "Search and read the conversations and contacts of your Intercom workspace. Coscribe sees only what the Intercom account you sign in with can see.",
         "links": [
             {"label": "Documentation", "url": "https://developers.intercom.com/docs/guides/mcp"},
             {"label": "Privacy policy", "url": "https://www.intercom.com/legal/privacy"},
@@ -553,7 +553,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://developer.paypal.com/tools/mcp-server/",
         "category": "Finance",
         "description": "Look up and manage payments and invoices in your PayPal account.",
-        "about": "Work with the payments and invoices of your PayPal account. coscribe sees only what the PayPal account you sign in with can see.",
+        "about": "Work with the payments and invoices of your PayPal account. Coscribe sees only what the PayPal account you sign in with can see.",
         "links": [
             {"label": "Documentation", "url": "https://developer.paypal.com/tools/mcp-server/"},
             {"label": "Privacy policy", "url": "https://www.paypal.com/us/legalhub/privacy-full"},
@@ -568,7 +568,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://developers.webflow.com/mcp/reference/overview",
         "category": "Websites",
         "description": "Work with your Webflow sites and their content.",
-        "about": "Read and edit the sites and content of your Webflow account. coscribe sees only what the Webflow account you sign in with can see.",
+        "about": "Read and edit the sites and content of your Webflow account. Coscribe sees only what the Webflow account you sign in with can see.",
         "links": [
             {
                 "label": "Documentation",
@@ -586,7 +586,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://www.wix.com",
         "category": "Websites",
         "description": "Work with your Wix sites.",
-        "about": "Work with the sites of your Wix account. coscribe sees only what the Wix account you sign in with can see.",
+        "about": "Work with the sites of your Wix account. Coscribe sees only what the Wix account you sign in with can see.",
         "links": [
             {"label": "Privacy policy", "url": "https://www.wix.com/about/privacy"},
         ],
@@ -600,7 +600,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://docs.mixpanel.com/docs/mcp",
         "category": "Analytics",
         "description": "Ask questions of your Mixpanel product analytics.",
-        "about": "Query the product analytics data of your Mixpanel projects. coscribe sees only what the Mixpanel account you sign in with can see.",
+        "about": "Query the product analytics data of your Mixpanel projects. Coscribe sees only what the Mixpanel account you sign in with can see.",
         "links": [
             {"label": "Documentation", "url": "https://docs.mixpanel.com/docs/mcp"},
             {"label": "Privacy policy", "url": "https://mixpanel.com/legal/privacy-policy/"},
@@ -615,7 +615,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://amplitude.com/docs/amplitude-ai/amplitude-mcp",
         "category": "Analytics",
         "description": "Ask questions of your Amplitude analytics.",
-        "about": "Query the analytics data of your Amplitude projects. coscribe sees only what the Amplitude account you sign in with can see.",
+        "about": "Query the analytics data of your Amplitude projects. Coscribe sees only what the Amplitude account you sign in with can see.",
         "links": [
             {
                 "label": "Documentation",
@@ -681,7 +681,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://developers.hubspot.com/docs/apps/developer-platform/build-apps/integrate-with-the-remote-hubspot-mcp-server",
         "category": "Sales",
         "description": "Work with your HubSpot CRM contacts, companies and deals.",
-        "about": "Search and read CRM records and activity in your HubSpot account. coscribe "
+        "about": "Search and read CRM records and activity in your HubSpot account. Coscribe "
         "sees only what the HubSpot user you sign in with can see. Needs a one-time setup: "
         "you register a small app in HubSpot.",
         "links": [
@@ -701,7 +701,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://developers.google.com/workspace/guides/configure-mcp-servers",
         "category": "Email & calendar",
         "description": "Read and draft email in your Gmail.",
-        "about": "Search and read your mail and write drafts. coscribe sees only the Google "
+        "about": "Search and read your mail and write drafts. Coscribe sees only the Google "
         "account you sign in with. Needs a one-time setup: you register an app in Google Cloud.",
         "links": [
             {
@@ -722,7 +722,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://developers.google.com/workspace/guides/configure-mcp-servers",
         "category": "Email & calendar",
         "description": "Look at your Google Calendar events and availability.",
-        "about": "Read your calendars and events and check free and busy times. coscribe sees "
+        "about": "Read your calendars and events and check free and busy times. Coscribe sees "
         "only the Google account you sign in with. Needs a one-time setup: you register an "
         "app in Google Cloud.",
         "links": [
@@ -750,7 +750,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://developers.google.com/workspace/guides/configure-mcp-servers",
         "category": "Files",
         "description": "Search and read files in your Google Drive.",
-        "about": "Find and read files in your Drive. coscribe sees only the Google account you "
+        "about": "Find and read files in your Drive. Coscribe sees only the Google account you "
         "sign in with. Needs a one-time setup: you register an app in Google Cloud.",
         "links": [
             {
@@ -771,7 +771,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://ahrefs.com",
         "category": "Marketing",
         "description": "Look up SEO data in Ahrefs.",
-        "about": "Ask about backlinks, keywords, rankings and site audits from your Ahrefs account. coscribe sees only what the Ahrefs account you sign in with can see.",
+        "about": "Ask about backlinks, keywords, rankings and site audits from your Ahrefs account. Coscribe sees only what the Ahrefs account you sign in with can see.",
         "links": [{"label": "Website", "url": "https://ahrefs.com"}],
         "server_url": "https://api.ahrefs.com/mcp/mcp",
         "auth": "oauth",
@@ -783,7 +783,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://www.apollo.io",
         "category": "Sales",
         "description": "Find and enrich people and companies in Apollo.",
-        "about": "Search Apollo's database of contacts and companies and enrich leads. coscribe sees only what the Apollo.io account you sign in with can see.",
+        "about": "Search Apollo's database of contacts and companies and enrich leads. Coscribe sees only what the Apollo.io account you sign in with can see.",
         "links": [{"label": "Website", "url": "https://www.apollo.io"}],
         "server_url": "https://mcp.apollo.io/mcp",
         "auth": "oauth",
@@ -795,7 +795,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://www.clay.com",
         "category": "Sales",
         "description": "Enrich leads and research companies with Clay.",
-        "about": "Look up and enrich people and companies through your Clay workspace. coscribe sees only what the Clay account you sign in with can see.",
+        "about": "Look up and enrich people and companies through your Clay workspace. Coscribe sees only what the Clay account you sign in with can see.",
         "links": [{"label": "Website", "url": "https://www.clay.com"}],
         "server_url": "https://api.clay.com/v3/mcp",
         "auth": "oauth",
@@ -807,7 +807,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://close.com",
         "category": "Sales",
         "description": "Work with your Close CRM leads and activity.",
-        "about": "Search leads, contacts and opportunities in your Close CRM and read their activity. coscribe sees only what the Close account you sign in with can see.",
+        "about": "Search leads, contacts and opportunities in your Close CRM and read their activity. Coscribe sees only what the Close account you sign in with can see.",
         "links": [{"label": "Website", "url": "https://close.com"}],
         "server_url": "https://mcp.close.com/mcp",
         "auth": "oauth",
@@ -819,7 +819,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://www.egnyte.com",
         "category": "Files",
         "description": "Search and read files in Egnyte.",
-        "about": "Find and read documents stored in your Egnyte file shares. coscribe sees only what the Egnyte account you sign in with can see.",
+        "about": "Find and read documents stored in your Egnyte file shares. Coscribe sees only what the Egnyte account you sign in with can see.",
         "links": [{"label": "Website", "url": "https://www.egnyte.com"}],
         "server_url": "https://mcp-server.egnyte.com/mcp",
         "auth": "oauth",
@@ -831,7 +831,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://www.getguru.com",
         "category": "Notes & docs",
         "description": "Search your company knowledge in Guru.",
-        "about": "Search and read the knowledge cards your team keeps in Guru. coscribe sees only what the Guru account you sign in with can see.",
+        "about": "Search and read the knowledge cards your team keeps in Guru. Coscribe sees only what the Guru account you sign in with can see.",
         "links": [{"label": "Website", "url": "https://www.getguru.com"}],
         "server_url": "https://mcp.api.getguru.com/mcp",
         "auth": "oauth",
@@ -843,7 +843,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://hex.tech",
         "category": "Analytics",
         "description": "Ask questions of your data in Hex.",
-        "about": "Query and explore the data projects in your Hex workspace. coscribe sees only what the Hex account you sign in with can see.",
+        "about": "Query and explore the data projects in your Hex workspace. Coscribe sees only what the Hex account you sign in with can see.",
         "links": [{"label": "Website", "url": "https://hex.tech"}],
         "server_url": "https://app.hex.tech/mcp",
         "auth": "oauth",
@@ -855,7 +855,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://www.klaviyo.com",
         "category": "Marketing",
         "description": "Read campaigns, flows and customer data in Klaviyo.",
-        "about": "Look at your Klaviyo campaigns, flows, segments and profiles. coscribe sees only what the Klaviyo account you sign in with can see.",
+        "about": "Look at your Klaviyo campaigns, flows, segments and profiles. Coscribe sees only what the Klaviyo account you sign in with can see.",
         "links": [{"label": "Website", "url": "https://www.klaviyo.com"}],
         "server_url": "https://mcp.klaviyo.com/mcp",
         "auth": "oauth",
@@ -867,7 +867,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://www.lusha.com",
         "category": "Sales",
         "description": "Find contact and company details with Lusha.",
-        "about": "Look up business contacts and companies in Lusha. coscribe sees only what the Lusha account you sign in with can see.",
+        "about": "Look up business contacts and companies in Lusha. Coscribe sees only what the Lusha account you sign in with can see.",
         "links": [{"label": "Website", "url": "https://www.lusha.com"}],
         "server_url": "https://mcp.lusha.com/mcp/claude",
         "auth": "oauth",
@@ -879,7 +879,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://otter.ai",
         "category": "Meetings",
         "description": "Search and read your Otter.ai meeting notes.",
-        "about": "Search your Otter meeting transcripts and summaries. coscribe sees only what the Otter.ai account you sign in with can see.",
+        "about": "Search your Otter meeting transcripts and summaries. Coscribe sees only what the Otter.ai account you sign in with can see.",
         "links": [{"label": "Website", "url": "https://otter.ai"}],
         "server_url": "https://mcp.otter.ai/mcp",
         "auth": "oauth",
@@ -891,7 +891,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://www.outreach.io",
         "category": "Sales",
         "description": "Work with your Outreach sales engagement data.",
-        "about": "Read prospects, sequences and activity from your Outreach account. coscribe sees only what the Outreach account you sign in with can see.",
+        "about": "Read prospects, sequences and activity from your Outreach account. Coscribe sees only what the Outreach account you sign in with can see.",
         "links": [{"label": "Website", "url": "https://www.outreach.io"}],
         "server_url": "https://api.outreach.io/mcp/",
         "auth": "oauth",
@@ -903,7 +903,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://www.pendo.io",
         "category": "Analytics",
         "description": "Explore product usage in Pendo.",
-        "about": "Ask about how people use your product, guides and feedback in Pendo. coscribe sees only what the Pendo account you sign in with can see.",
+        "about": "Ask about how people use your product, guides and feedback in Pendo. Coscribe sees only what the Pendo account you sign in with can see.",
         "links": [{"label": "Website", "url": "https://www.pendo.io"}],
         "server_url": "https://app.pendo.io/mcp/v0/shttp",
         "auth": "oauth",
@@ -915,7 +915,7 @@ MCP_CATALOG: list[dict[str, Any]] = [
         "homepage": "https://supermetrics.com",
         "category": "Marketing",
         "description": "Pull marketing data from your ad and analytics accounts.",
-        "about": "Fetch campaign and analytics data from the platforms connected to Supermetrics. coscribe sees only what the Supermetrics account you sign in with can see.",
+        "about": "Fetch campaign and analytics data from the platforms connected to Supermetrics. Coscribe sees only what the Supermetrics account you sign in with can see.",
         "links": [{"label": "Website", "url": "https://supermetrics.com"}],
         "server_url": "https://mcp.supermetrics.com/mcp",
         "auth": "oauth",

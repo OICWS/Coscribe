@@ -1,4 +1,4 @@
-# coscribe
+# Coscribe
 
 [![coscribe CI](https://github.com/OICWS/project/actions/workflows/office-agent-ci.yml/badge.svg)](https://github.com/OICWS/project/actions/workflows/office-agent-ci.yml)
 
@@ -31,7 +31,7 @@ cd frontend && npm install && npm run build && cd ..
 # yet. Needed for coscribe-web; not needed for the CLI-only `coscribe`.
 ```
 
-**In plain terms:** coscribe talks to three model makers directly --
+**In plain terms:** Coscribe talks to three model makers directly --
 Anthropic (Claude), Google (Gemini), and OpenAI (GPT). Beyond those
 three, it can also connect to any other service that offers an
 "OpenAI-compatible" API -- a specific, common interface format that
@@ -40,7 +40,7 @@ Ollama) choose to support, precisely so tools built for OpenAI work with
 them with no changes. This is *not* "compatible with any one of the
 three" -- it specifically means speaking OpenAI's own format; there's no
 equivalent "Anthropic-compatible" or "Gemini-compatible" API that other
-vendors offer today, so that's not a path into coscribe the way
+vendors offer today, so that's not a path into Coscribe the way
 OpenAI-compatible is.
 
 Supported model prefixes: `anthropic:`, `openai:`, `gemini:` (Gemini Developer
@@ -260,7 +260,7 @@ Tasks is the built-in alternative that needs neither -- a named,
 independently-managed trigger that runs once at a future time, or daily/
 weekly/monthly, entirely on its own.
 
-A scheduled task is also what coscribe calls a **workflow**: a name, a
+A scheduled task is also what Coscribe calls a **workflow**: a name, a
 standalone prompt describing the work, and a schedule -- hourly, daily,
 weekdays, weekly, monthly, or "manual" (runs only when you click **Run
 now**). There's no separate recording/replay format; the prompt *is* the
@@ -273,7 +273,7 @@ itself -- it drafts the task, and the web UI shows a review card that
 opens the task form prefilled with the model's draft: you edit any field,
 then save or dismiss, and the model is told which. An unattended turn
 (nobody to review) never creates a task. The Scheduled page's **New task**
-menu has the same two routes: **Create with coscribe** (a new chat,
+menu has the same two routes: **Create with Coscribe** (a new chat,
 prefilled to describe the task) or **Set up manually** (the blank form).
 
 - `create_scheduled_task(name, kind, at, prompt, weekday=None, day_of_month=None, start_date=None, model=None, approval_mode="manual")`
@@ -319,7 +319,7 @@ both check for due scheduled tasks in the same pass, no separate flag or
 server to run. A due task's schedule advances when its run *starts*, so a
 slow run is never started twice and a failed run isn't retried every poll
 (its failure is on the run record). Due runs execute concurrently. Times
-are the machine's own local wall-clock time -- coscribe is single-user,
+are the machine's own local wall-clock time -- Coscribe is single-user,
 local-first software with no per-user timezone concept.
 
 Each run ends with a status on its record: `completed`, `failed` (with
@@ -340,7 +340,7 @@ already watching it). Resolving it finishes the run under the same
 permissions and updates its record. Under every tier, your own blocking
 rules still win: a PreToolUse hook veto or an exec-policy `forbidden`
 rule rejects the call. Every automatic approval is recorded in the audit
-log (`approval_mode_auto` / `approval_mode_skip`). If coscribe exits
+log (`approval_mode_auto` / `approval_mode_skip`). If Coscribe exits
 mid-run, that run is marked `failed` on the next start.
 
 ### Workflows -- fixed steps instead of a prompt
@@ -760,7 +760,7 @@ scoped-down v1 of the much larger registry this is adapted from (see
 ...) resolve as aliases onto one of the 48 canonical ones.
 
 `fill_pptx_template(path, template_id, content, overwrite)` fills your
-title/bullets into one of coscribe's own bundled, hand-designed decks
+title/bullets into one of Coscribe's own bundled, hand-designed decks
 instead of building slides from scratch -- unlike `write_pptx`'s
 `template_path` above, it keeps every decorative shape/background in the
 template file exactly as designed rather than clearing the slides first.
@@ -813,7 +813,7 @@ user, since 16:9 is the expected default for a PowerPoint deck.
 `extract_pptx_template(source_path, template_id, name, description,
 overwrite=False)` distills a *new*, immediately-usable
 `fill_pptx_template` template from an arbitrary reference `.pptx` -- a
-user's own company-branded deck, say -- instead of coscribe's own
+user's own company-branded deck, say -- instead of Coscribe's own
 bundled four. It classifies the reference deck's real slides into the
 same title/content/closing roles the bundled templates use (first
 slide = title, last = closing, everything between = content) and
@@ -822,7 +822,7 @@ requires every slide already have a real title and/or body placeholder
 naming which one, rather than silently producing a broken template. The
 result is saved under `COSCRIBE_CUSTOM_TEMPLATES_DIR` (default
 `./templates`, auto-created, gitignored -- same convention as
-`COSCRIBE_SKILLS_DIR` above) alongside coscribe's own bundled set, so it
+`COSCRIBE_SKILLS_DIR` above) alongside Coscribe's own bundled set, so it
 shows up in the model's own template listing on future runs too, not
 just the turn it was created in. Only the reference deck's *design* is
 kept -- its own original wording is always overwritten by
@@ -831,7 +831,7 @@ clone is attempted, just what python-pptx can read/write directly.
 
 `edit_pptx_text(path, slide, title, content, placeholder_index)` edits one
 existing slide's title and/or one content placeholder's text in place, in
-any `.pptx` already in the workspace -- not just coscribe's own bundled
+any `.pptx` already in the workspace -- not just Coscribe's own bundled
 templates the way `fill_pptx_template` is restricted to, so this is the
 tool for a real file the user placed in the workspace or uploaded
 themselves (their own company template, a deck someone sent them) and
@@ -879,7 +879,7 @@ optional, only the ones given are changed, and nothing else on the slide
 shape_index)` removes one shape entirely, any type. Call `list_pptx_shapes`
 first to find the right `shape_index` rather than guessing it: this is
 the base set of tools for adjusting or removing one element of an
-already-designed deck (a real uploaded template, or one coscribe already
+already-designed deck (a real uploaded template, or one Coscribe already
 generated) instead of rebuilding the slide from scratch. For a SmartArt
 shape specifically, the practical path is: read its `smartart_text`,
 `delete_pptx_shape` it, then rebuild the same idea with this file's other
@@ -894,7 +894,7 @@ Raster formats only (PNG/JPEG/GIF/BMP/TIFF, same as `add_pptx_image`),
 not SVG. Use this to swap out a photo or an already-placed icon for a
 different one without disturbing its placement.
 
-`list_pptx_icons()` returns coscribe's bundled icon names -- a curated
+`list_pptx_icons()` returns Coscribe's bundled icon names -- a curated
 ~50-icon subset of [Lucide](https://lucide.dev) (ISC license) covering
 common business-deck needs (arrows/trend, status, org/business, charts,
 actions, common objects), rasterized to black-on-transparent PNGs at
@@ -983,7 +983,7 @@ every theme-color-referencing shape/placeholder across the whole deck
 draws from these same 12 shared slots, this is the single most
 far-reaching edit in this file -- call `read_pptx_theme_colors` first
 rather than guessing which slot maps to "the color in the title."
-**Scope note**: coscribe's own generated decorative shapes (`write_pptx`'s
+**Scope note**: Coscribe's own generated decorative shapes (`write_pptx`'s
 icon-list circles, stat-callout cards, scrims) use hardcoded RGB, not
 theme-color references, so this doesn't recolor those -- it's most
 useful against a real uploaded or downloaded template whose own design
@@ -1194,10 +1194,10 @@ contract as everything else here: a missing office program just means
 Coordinator write and run a real Python script for anything the built-in
 document/spreadsheet/presentation tools can't express in one call --
 processing thousands of rows, a multi-step transformation, custom logic.
-It's the highest-risk tool in coscribe (`risk_level="high"`, always
+It's the highest-risk tool in Coscribe (`risk_level="high"`, always
 requires approval) and the *only* one with no sandbox around it: **there is
 no `WorkspaceScope` path check here** -- a script can read or write any
-file the coscribe process's own OS user can reach, and make any
+file the Coscribe process's own OS user can reach, and make any
 network call. Approving a script call is full trust, not "runs in an
 isolated box" -- the same real-world posture Claude Code itself has on a
 native Windows host with no WSL2 configured (its own docs: "This option
@@ -1211,7 +1211,7 @@ Code's own Bash tool, any such restriction would be trivially bypassable
 (`__import__`, `subprocess.run(["pip", "install", ...])`) and would only
 give a false sense of security. What *is* controlled is which Python
 environment the script runs in: a dedicated virtual environment, kept
-completely separate from coscribe's own runtime dependencies, so a
+completely separate from Coscribe's own runtime dependencies, so a
 script installing a package can never destabilize the app itself. That
 environment ships pre-seeded with `openpyxl`/`python-docx`/`python-pptx`/
 `pandas`/`pdfplumber` -- the same libraries this package's own tools use --
@@ -1220,7 +1220,7 @@ Anything else (numpy, requests, whatever a task needs) is added from
 **Settings -> Environment**: a plain add/remove list of installed
 packages, no scripts or command-line knowledge required, deliberately
 simpler than Claude Code's own freeform "Setup script" field since
-coscribe is aimed at non-technical office users.
+Coscribe is aimed at non-technical office users.
 
 A script's result also lists the workspace files it created or modified
 (`files_written`, up to 50 -- found by comparing file timestamps before
@@ -1233,7 +1233,7 @@ same.
 There is currently no control over what network hosts a script can reach
 (Claude Code's own cloud environments offer a None/Trusted/Full/Custom
 dropdown for this, but that's enforced at the container/network-policy
-level -- coscribe is a local desktop app with no equivalent
+level -- Coscribe is a local desktop app with no equivalent
 infrastructure to enforce it against). Full script visibility at approval
 time is the only safeguard for now.
 
@@ -1265,7 +1265,7 @@ called, and the resulting file is built from real composed shapes, not
 stock placeholder layouts).
 
 **Optional: install Node.js** (https://nodejs.org) for this tool to work
-at all -- unlike Python (coscribe's own runtime, always present),
+at all -- unlike Python (Coscribe's own runtime, always present),
 Node.js/npm are a genuinely optional system dependency, the same way
 an office program is optional for preview thumbnails/overflow warnings above. A
 call to `run_node_script` before Node.js is installed fails with a clear
@@ -1277,7 +1277,7 @@ Isolation works differently here than the Python side's venv: Node has no
 equivalent of "bake a fixed interpreter+site-packages path into one
 binary," so packages installed via **Settings -> Environment**'s second
 list (kept separate from this project's own `frontend/` build, not just
-from coscribe's own runtime) are found via the `NODE_PATH` environment
+from Coscribe's own runtime) are found via the `NODE_PATH` environment
 variable rather than directory-tree `require()` resolution -- verified to
 actually work (a script file and working directory both outside that
 package directory can still `require("pptxgenjs")`) before this tool
@@ -1337,7 +1337,7 @@ means one engine's soft block no longer empties the whole search.
 
 ## The browser (desktop app)
 
-In the desktop app, coscribe has its own browser: the **Browser panel**
+In the desktop app, Coscribe has its own browser: the **Browser panel**
 (the globe button) holds real tabs, and the AI uses those same tabs
 through the `browser_*` tools -- `browser_navigate`, `browser_snapshot`,
 `browser_click`, `browser_type`, `browser_press_key`,
@@ -1347,7 +1347,7 @@ what a page throws up along the way `browser_handle_dialog`,
 `browser_file_upload` and `browser_evaluate`. The panel
 opens by itself when the AI starts, every step happens in front of you (a
 blue frame marks the page it's working in, a dot where it clicks, and a
-"coscribe is using the browser · Stop" bar), and you can take over at any
+"Coscribe is using the browser · Stop" bar), and you can take over at any
 moment -- sign in, solve a CAPTCHA, or point at something: **Select
 element** sends one element (a crop plus its text); the **pen** freezes
 the page into a screenshot you can mark up -- pen, line, arrow,
@@ -1447,7 +1447,7 @@ any words you wrote on it.
   connector catalog: it drove a separate browser window with none of the
   panel's sign-ins, and returned a full page snapshot after every action.
   If you still have one configured, the AI is told not to use it for
-  pages in coscribe's browser.
+  pages in Coscribe's browser.
 - How it's wired: the desktop app starts the server with a random token,
   connects to `/internal/browser-host` with it and carries out each
   command on its tabs (`office-agent-desktop/src/main/browserAgent.ts`);
@@ -1468,26 +1468,26 @@ reference files and scripts beside it -- the same format [Claude Code's
 Skills](https://code.claude.com/docs/en/skills) use. Settings → Skills
 lists them in three groups:
 
-- **Built into coscribe**: *PPTX Pages*, *PPTX Slides*, *Excel
+- **Built into Coscribe**: *PPTX Pages*, *PPTX Slides*, *Excel
   Spreadsheets*, *Word Documents* and *Skill Creator*. They can be switched off but not
   removed.
 - **From Anthropic** (the **Discover** tab): Apache-2.0 skills from
   [anthropics/skills](https://github.com/anthropics/skills) that work with
-  coscribe's own tools -- algorithmic-art, brand-guidelines,
+  Coscribe's own tools -- algorithmic-art, brand-guidelines,
   canvas-design, claude-api, frontend-design, internal-comms, mcp-builder,
   theme-factory. Nothing is bundled: **Add** downloads that one skill's
   files, pinned to one upstream commit, and checks each against a SHA-256
   in `src/coscribe/skill_catalog.json` before it lands (regenerate the
   catalog with `scripts/build_skill_catalog.py <clone>`). Anthropic's
   docx/pdf/pptx/xlsx skills aren't offered: their license forbids
-  redistribution, and coscribe's built-in skills cover those formats.
+  redistribution, and Coscribe's built-in skills cover those formats.
   A removed skill shows up in Discover again.
 - **Created by you**: folders in `COSCRIBE_SKILLS_DIR` (default
   `./skills`), whether dropped in by hand, uploaded (Add → Upload a
   skill, `.zip`/`.skill`/`.md`) or written with Add → Create with
   coscribe.
 
-Clicking a skill opens it: **Overview** (description, the coscribe tools
+Clicking a skill opens it: **Overview** (description, the Coscribe tools
 it mentions) and **Contents** (its file tree; Markdown renders with a
 preview/source toggle, other text files show with line numbers). The ⋮
 menu turns a skill off or removes it.
@@ -1631,7 +1631,7 @@ conversation.
 ## The code module (optional)
 
 A coding agent, [Codex](https://github.com/openai/codex) (Apache-2.0), as
-coscribe's second agent. It writes and runs code in your folder: scripts
+Coscribe's second agent. It writes and runs code in your folder: scripts
 that process your files, tools you'll reuse, fixes for a script that fails.
 It's an assistant to the chat, not a mode of its own: you talk to the chat,
 and the chat hands over what needs real code.
@@ -1660,7 +1660,7 @@ and the chat hands over what needs real code.
   comes to you as an approval, under the permission mode, except plain
   reads of the folder (`ls`, `cat`, `grep`, ... or on Windows
   `Get-ChildItem`, `Get-Content`, `Select-String`, ... with nothing that
-  writes, chains or leaves the folder; coscribe decides this itself, not
+  writes, chains or leaves the folder; Coscribe decides this itself, not
   Codex). *Approve* answers one card; *Allow for this task* answers that kind
   of action for the rest of the task. *Run commands without asking* and
   *Change files without asking* in Settings > Code allow it for good (Plan
@@ -1691,7 +1691,7 @@ see `../ARCHITECTURE.md`):
 Same schema Claude Desktop, Claude Code, and Cursor all use for local
 (stdio) MCP servers -- `command`/`args`/`env` per server, keyed by name --
 since it's the shape Anthropic's own MCP spec examples popularized, not
-something coscribe invented. A remote server is an entry with a
+something Coscribe invented. A remote server is an entry with a
 `server_url` (and optional `headers`) instead.
 
 **Settings → Connectors** lists the catalog and your own connectors
@@ -1729,7 +1729,7 @@ to check for a newer version.
 
 The built-in catalog no longer includes `git`/`github` entries (and the
 GitHub OAuth Device Flow sign-in button that used to come with the
-`github` one) -- coscribe is a general file/task automation assistant,
+`github` one) -- Coscribe is a general file/task automation assistant,
 not a developer coding tool, so a git/GitHub connector isn't relevant to
 its target audience by default. Either is still addable by hand as a
 custom connector for anyone who specifically wants one.
@@ -1798,7 +1798,7 @@ its exact model id.
 
 ## Secrets storage
 
-Every secret coscribe itself writes -- built-in provider API keys (`.env`),
+Every secret Coscribe itself writes -- built-in provider API keys (`.env`),
 custom providers' `api_key` (`providers.json`, above), and MCP server
 `env`/header values including a connected GitHub token (`mcp.json`, see
 [MCP servers](#mcp-servers)) -- goes through the same two-layer hardening:
@@ -1818,7 +1818,7 @@ This degrades the same way the office-program features do elsewhere in
 this project: best effort, never the reason an operation fails. One real
 tradeoff worth knowing: a keychain-backed secret doesn't travel with a
 copied `.env`/`state_dir` the way a plaintext one does -- if you move
-coscribe's config to a different machine (or the keychain becomes
+Coscribe's config to a different machine (or the keychain becomes
 unavailable for any other reason) and it can't read a secret back, it
 tells you plainly rather than silently breaking; just re-enter that key/
 token via Settings.

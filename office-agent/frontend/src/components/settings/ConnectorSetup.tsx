@@ -209,7 +209,7 @@ export function ConnectorSetup({
         <span className="text-xs text-[var(--muted)]">One time only</span>
       </div>
       <p className="mt-1 text-sm text-[var(--muted)]">
-        {setup.provider} doesn't let programs register themselves, so you create a small app there and give coscribe its
+        {setup.provider} doesn't let programs register themselves, so you create a small app there and give Coscribe its
         credentials. Nothing else leaves your computer.
       </p>
       <ol className="mt-4 flex flex-col gap-5">

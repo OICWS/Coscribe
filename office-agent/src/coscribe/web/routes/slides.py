@@ -69,7 +69,7 @@ _NOT_BUILT = "This presentation was not built from slide pages"
 _UNREADABLE = "This presentation or one of its pages could not be read"
 _CHANGED = "This slide changed since it was opened; it has been read again"
 _DECK_CHANGED = (
-    "The .pptx was changed outside coscribe since it was built; saving would replace those "
+    "The .pptx was changed outside Coscribe since it was built; saving would replace those "
     "changes, so the slide was not saved"
 )
 _REFUSED = "The slide could not be saved as it is"

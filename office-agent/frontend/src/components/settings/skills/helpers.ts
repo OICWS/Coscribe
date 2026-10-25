@@ -3,13 +3,13 @@ import type { SkillInfo } from "../../../types/settings";
 export const SOURCE_BYLINE: Record<SkillInfo["source"], string> = {
   custom: "by you",
   anthropic: "from Anthropic",
-  builtin: "built into coscribe",
+  builtin: "built into Coscribe",
 };
 
 export const SECTIONS: { source: SkillInfo["source"]; title: string }[] = [
   { source: "custom", title: "Created by you" },
   { source: "anthropic", title: "From Anthropic" },
-  { source: "builtin", title: "Built into coscribe" },
+  { source: "builtin", title: "Built into Coscribe" },
 ];
 
 // Plain text worth showing in the file viewer; anything else (HTML, fonts,

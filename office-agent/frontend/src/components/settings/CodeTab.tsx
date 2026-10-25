@@ -46,7 +46,7 @@ export function CodeTab({ values, onChange, code, codexFolder }: CodeTabProps) {
     <div className="flex flex-col gap-10">
       <SettingsSection
         title="Codex"
-        description="OpenAI's coding agent, downloaded once. The command sandbox and the code module both run on it. coscribe uses the one version it was tested with and checks the download; when an update moves to a newer one, Update replaces the old."
+        description="OpenAI's coding agent, downloaded once. The command sandbox and the code module both run on it. Coscribe uses the one version it was tested with and checks the download; when an update moves to a newer one, Update replaces the old."
       >
         <div className="py-3.5">
           <CodeDownload code={code} folder={codexFolder} />

@@ -63,7 +63,7 @@ export function ScriptIsolationCard({ active }: { active: boolean }) {
       </div>
       {status?.state === "setup_failed" && !testing && (
         <p className="text-[13px] leading-relaxed">
-          Choose a Python, or download coscribe's own, below, then test again. {status.detail}
+          Choose a Python, or download Coscribe's own, below, then test again. {status.detail}
         </p>
       )}
       {failed && !testing && (

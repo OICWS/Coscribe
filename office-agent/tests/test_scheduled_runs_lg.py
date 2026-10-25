@@ -114,7 +114,7 @@ def test_a_notification_says_what_the_run_produced_or_where_it_stopped() -> None
     assert failed_event is not None and failed_event.thread_id == "inv1"
     assert failed_event.body == (
         "Failed -- Open transaction FBL5N: No combobox appeared within 30s. "
-        "coscribe is looking into it."
+        "Coscribe is looking into it."
     )
     assert waiting_event is not None and waiting_event.body == "Waiting for you at Send the report?"
     assert run_event(_task([]), _run("stopped")) is None

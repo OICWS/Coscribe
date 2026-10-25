@@ -90,7 +90,7 @@ class Settings(BaseSettings):
     "justification"}]} list, deciding whether a run_python_script/
     run_node_script call can skip live approval -- see
     runtime_lg/exec_policy.py's own docstring for the rule shape and why
-    this is a human-authored allowlist, not something coscribe infers on
+    this is a human-authored allowlist, not something Coscribe infers on
     its own. Unset = every call still asks, same as before this setting
     existed.
     """
@@ -103,7 +103,7 @@ class Settings(BaseSettings):
 
     custom_templates_dir: Path = Path("./templates")
     """Directory of user/deployment-local PowerPoint templates -- same shape
-    as coscribe's own bundled ones (a subdirectory per template, each with
+    as Coscribe's own bundled ones (a subdirectory per template, each with
     template.pptx + template.yaml), populated either by hand or by
     extract_pptx_template distilling one from a reference deck the user
     provides. Auto-created like workspace_root/skills_dir; empty/missing =
@@ -192,7 +192,7 @@ class Settings(BaseSettings):
     defer_tools: bool = True
     """When True, only `coordinator.CORE_TOOL_NAMES` stay bound to the
     top-level conversation's model by default -- everything else (most
-    of coscribe's own 95 built-in tools, all MCP tools) is hidden until
+    of Coscribe's own 95 built-in tools, all MCP tools) is hidden until
     the model calls `search_tools(query)` to find it, and it runs the
     tool with `use_tool(name, arguments)`, so the tool list the provider
     caches never changes. See runtime_lg/
@@ -222,7 +222,7 @@ class Settings(BaseSettings):
 
     reviewer_name: str = ""
     """The name the user's own review actions in the Word panel carry (replies,
-    comments); empty, the computer's user name, as Word does. coscribe's own
+    comments); empty, the computer's user name, as Word does. Coscribe's own
     review tools keep their own author argument and are not affected."""
 
     code_model: str | None = None

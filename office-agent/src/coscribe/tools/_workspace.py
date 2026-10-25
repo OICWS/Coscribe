@@ -59,7 +59,7 @@ class WorkspaceScope:
             # The model writes files in Accept Edits without asking, so a settings file it could
             # reach (a policy, a hook, a connector list) would be changed with nobody asked.
             raise PermissionError(
-                f"Path is one of coscribe's own settings files; only the user changes it, in "
+                f"Path is one of Coscribe's own settings files; only the user changes it, in "
                 f"Settings: {path}"
             )
         if self._under(resolved, self.root):

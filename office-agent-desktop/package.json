@@ -23,7 +23,7 @@
   },
   "build": {
     "appId": "com.coscribe.desktop",
-    "productName": "coscribe",
+    "productName": "Coscribe",
     "directories": {
       "output": "release"
     },

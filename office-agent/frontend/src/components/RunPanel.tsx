@@ -337,7 +337,7 @@ export function RunPanel({
                       onCreateWithCoscribe();
                     }}
                   >
-                    <span className="text-sm">Create with coscribe</span>
+                    <span className="text-sm">Create with Coscribe</span>
                     <span className="text-xs text-[var(--muted)]">Describe it in a chat, or walk through it once</span>
                   </button>
                   <button
@@ -374,14 +374,14 @@ export function RunPanel({
             <p className="mx-auto mt-1 max-w-md text-sm text-[var(--muted)]">
               Do something once in a chat, then turn it into fixed steps with
               <code className="mx-1 rounded bg-[var(--code-bg)] px-1">/saveworkflow</code>
-              -- or ask coscribe to save it as a task.
+              -- or ask Coscribe to save it as a task.
             </p>
             <button
               type="button"
               className="mt-4 rounded-md border border-[var(--border)] px-3 py-1.5 text-sm hover:bg-[var(--card-bg)]"
               onClick={onCreateWithCoscribe}
             >
-              Create with coscribe
+              Create with Coscribe
             </button>
           </div>
         ) : shownTasks.length === 0 ? (

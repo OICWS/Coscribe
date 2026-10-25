@@ -40,7 +40,7 @@ export function DocsBubble({ editor, onAsk }: { editor: Editor; onAsk?: (words: 
               <span className="mx-0.5 h-5 border-l border-[var(--border)]" />
               <button type="button" className="flex h-8 items-center gap-1.5 rounded-md px-2 text-sm text-[var(--fg)] hover:bg-[var(--card-bg)]" onClick={() => onAsk(words())}>
                 <MessageCircleIcon className="h-4 w-4" />
-                Ask coscribe
+                Ask Coscribe
               </button>
             </>
           )}

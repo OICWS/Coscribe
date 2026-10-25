@@ -383,7 +383,7 @@ class McpServerConnection:
             auth = None
             if self._config.get("auth") == "oauth":
                 if self._auth_factory is None:
-                    raise RuntimeError(f"{self.name} signs in through the coscribe app.")
+                    raise RuntimeError(f"{self.name} signs in through the Coscribe app.")
                 auth = await self._auth_factory(self.name, self._config["server_url"])
             client = MultiServerMCPClient(
                 {self.name: _to_lg_connection(self._config, auth)}, tool_name_prefix=True

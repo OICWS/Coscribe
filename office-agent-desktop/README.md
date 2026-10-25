@@ -130,7 +130,7 @@ closes that gap -- see the script's own comment.
 ```bash
 bash scripts/stage-sidecar.sh
 npm run dist:portable   # release/win-unpacked/ (exe + resources, no installer)
-npm run dist:nsis        # release/coscribe-Setup-<version>.exe
+npm run dist:nsis        # release/Coscribe-Setup-<version>.exe
 ```
 
 **`dist:portable` deliberately does not use electron-builder's own

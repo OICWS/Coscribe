@@ -64,7 +64,7 @@ function codeSummary(status: CodeStatus | null, codeOn: boolean): string {
 function Overview({ rows }: { rows: { label: string; what: string; now: string; section?: string }[] }) {
   return (
     <SettingsSection
-      title="What coscribe can run on this computer"
+      title="What Coscribe can run on this computer"
       description="From the safest to the most powerful. A conversation's environment or permission mode can only narrow what is allowed here."
     >
       <div className="mt-2 flex flex-col divide-y divide-[var(--border)] rounded-xl border border-[var(--border)]">
@@ -115,12 +115,12 @@ function ScriptsSection({
     <div id={SECTIONS.scripts}>
       <SettingsSection
         title="Scripts"
-        description="When a task is too big or too specific for the built-in tools, coscribe writes a Python or Node.js script and runs it after you approve it. On Windows a script runs isolated: it can use only the folders of its environment, can't delete or rename files there, and can't reach the rest of this computer."
+        description="When a task is too big or too specific for the built-in tools, Coscribe writes a Python or Node.js script and runs it after you approve it. On Windows a script runs isolated: it can use only the folders of its environment, can't delete or rename files there, and can't reach the rest of this computer."
       >
         <SettingRows>
           <SettingRow
             label="Run scripts"
-            description="Off, scripts are refused and coscribe uses its built-in tools only."
+            description="Off, scripts are refused and Coscribe uses its built-in tools only."
             control={<ToggleSwitch label="Run scripts" on={on} onClick={onToggle} />}
           />
         </SettingRows>
@@ -181,7 +181,7 @@ const CONFIRMATIONS = {
   commands_without_sandbox: {
     title: "Run commands without the sandbox?",
     description:
-      "A command would run as you, with nothing to hold it to its folders: one you approve can change or delete any of your files and reach the internet. coscribe asks before each command, in every mode, and never lets Auto mode approve one.",
+      "A command would run as you, with nothing to hold it to its folders: one you approve can change or delete any of your files and reach the internet. Coscribe asks before each command, in every mode, and never lets Auto mode approve one.",
     confirmLabel: "Allow",
   },
 } as const;
@@ -217,7 +217,7 @@ export function CapabilitiesTab({ active, values, onChange }: CapabilitiesTabPro
           },
           {
             label: "Scripts",
-            what: "Python or Node.js that coscribe writes, isolated to the environment's folders",
+            what: "Python or Node.js that Coscribe writes, isolated to the environment's folders",
             now: capabilities.scripts ? "On" : "Off",
             section: SECTIONS.scripts,
           },

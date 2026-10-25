@@ -293,7 +293,7 @@ function NewComment({
         {canSend && (
           <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--fg)]">
             <input type="checkbox" checked={send} className="h-4 w-4 accent-[var(--accent)]" onChange={(e) => setSend(e.target.checked)} />
-            Send to coscribe
+            Send to Coscribe
           </label>
         )}
         <div className="flex-1" />
@@ -355,7 +355,7 @@ function Thread({
             <div className="whitespace-pre-wrap text-sm text-[var(--fg)]">{entry.text}</div>
           </div>
         ))}
-        {waiting && <div className="text-[13px] text-[var(--muted)]">Sent to coscribe; its answer appears here.</div>}
+        {waiting && <div className="text-[13px] text-[var(--muted)]">Sent to Coscribe; its answer appears here.</div>}
       </div>
       <input
         value={reply}

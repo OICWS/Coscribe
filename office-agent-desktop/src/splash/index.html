@@ -1,6 +1,6 @@
 <!doctype html>
 <!--
-  coscribe desktop's startup splash -- ported from office-agent-desktop's
+  Coscribe desktop's startup splash -- ported from office-agent-desktop's
   (Tauri) dist/index.html. There the page itself polled the sidecar via
   fetch() and redirected once it responded, because Rust had no cheap way
   to push "ready" into the page except a Tauri event. Here the main
@@ -17,7 +17,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>coscribe</title>
+    <title>Coscribe</title>
     <style>
       :root {
         color-scheme: light dark;
@@ -103,7 +103,7 @@
         spinnerEl.style.display = "none";
         titleEl.hidden = false;
         statusEl.hidden = false;
-        titleEl.textContent = "coscribe couldn't start";
+        titleEl.textContent = "Coscribe couldn't start";
         titleEl.style.color = "var(--danger)";
         statusEl.textContent =
           (reason === "timeout"

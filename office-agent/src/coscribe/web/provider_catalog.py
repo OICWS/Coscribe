@@ -53,7 +53,7 @@ PROVIDER_CATALOG = [
             'account. API key can be any placeholder text (e.g. "ollama"), '
             "it isn't actually checked. Fill in Default Model yourself with "
             "whatever you've already pulled via `ollama pull <model>` -- "
-            "coscribe can't see what's installed, so there's no safe guess "
+            "Coscribe can't see what's installed, so there's no safe guess "
             "to pre-fill here."
         ),
         "base_url": "http://localhost:11434/v1",
