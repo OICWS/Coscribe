@@ -575,4 +575,6 @@ async def test_the_code_modules_commands_run_in_the_sandbox_and_stay_in_it(
     assert not (outside / "x.txt").exists(), context
     assert not (outside / "y.txt").exists(), context
     assert "codexsandbox" in _StubResponses.outputs[-1].lower(), context
-    assert asked and all(r.kind == "command" for r in asked), context
+    assert all(r.kind in ("command", "read") for r in asked), context
+    # Codex's "retry without sandbox?" for the escalated command never reaches decide.
+    assert len([r for r in asked if "y.txt" in r.command]) == 1, context

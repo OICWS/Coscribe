@@ -98,7 +98,7 @@ _STATUSES: dict[str, Literal["completed", "interrupted", "failed"]] = {
 
 @dataclass(frozen=True)
 class ApprovalRequest:
-    kind: Literal["command", "file_change"]
+    kind: Literal["command", "file_change", "read"]
     item_id: str
     command: str = ""
     cwd: str = ""
@@ -478,6 +478,13 @@ class _Turn:
                 await self._emit("command_refused", {"command": command})
                 return {"decision": "decline"}
             if reads_only(command, str(params.get("cwd") or ""), self.folder):
+                # Not the person's to approve, but commands may have been switched off
+                # since the turn began.
+                if self.sandboxed and not await self.decide(
+                    ApprovalRequest(kind="read", item_id=item_id, command=command)
+                ):
+                    await self._emit("command_refused", {"command": command})
+                    return {"decision": "decline"}
                 await self._emit("auto_approved", {"command": command})
                 return {"decision": "accept"}
             if not self.sandboxed:

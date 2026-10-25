@@ -269,6 +269,21 @@ async def test_a_read_inside_the_folder_runs_without_asking(host: CodexHost, wor
     ]
 
 
+async def test_in_the_sandbox_a_read_is_rechecked_but_not_asked_about(
+    host: CodexHost, workdir: Path
+) -> None:
+    # The thread's decide stands for the per-command recheck: False is commands switched off.
+    for allowed, text in ((True, "ran it"), (False, "was declined")):
+        approvals = _Approvals(allowed)
+
+        result = await _thread(host, workdir, permissions="coscribe-abc").run_turn(
+            "read", approvals
+        )
+
+        assert [r.kind for r in approvals.seen] == ["read"]
+        assert result.text == text
+
+
 async def test_a_read_outside_the_folder_is_refused(host: CodexHost, workdir: Path) -> None:
     approvals = _Approvals(True)
 

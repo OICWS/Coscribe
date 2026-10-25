@@ -130,10 +130,12 @@ class _Run:
         await self.host.changed(self.record)
 
     async def decide(self, request: ApprovalRequest) -> bool:
-        if request.kind == "command" and not await asyncio.to_thread(
+        if request.kind in ("command", "read") and not await asyncio.to_thread(
             code_commands_allowed, self.host.state_dir, self.record.thread_id
         ):
             return False
+        if request.kind == "read":
+            return True
         decision = await self.host.decide(approval_call(request), self.record)
         if self.record.pending_approval is not None or self.record.status != "running":
             self.record.pending_approval = None
