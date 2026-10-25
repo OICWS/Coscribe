@@ -32,11 +32,12 @@ from ..code_runtime import (
     codex_model,
     shell_script,
 )
-from ..runtime import redactor, tool_metadata
+from ..runtime import NetworkGuard, redactor, tool_metadata
 from ..tools import (
     SubAgentTask,
     SubAgentTaskStore,
     code_command_profile,
+    code_commands_allowed,
     register_subagent_run,
     take_stop_requester,
 )
@@ -70,8 +71,8 @@ patch tool (each change may need the user's approval) and report what you \
 couldn't do."""
 
 SANDBOX_REQUEST = (
-    "Any command the code module runs for this task, in the command sandbox: it writes only "
-    "{folder}, with this environment's network."
+    "Any command and file change the code module makes for this task, in the command sandbox: "
+    "it writes only {folder}, with this environment's network."
 )
 
 COMMANDS_SANDBOXED = """\
@@ -183,6 +184,30 @@ class _Run:
         self.record.codex_thread = thread_id
         await self.save()
 
+    async def sandbox(
+        self, folder: Path, programs: list[Path]
+    ) -> tuple[str, dict[str, str]] | None:
+        """The profile Codex's commands run in, or None when they stay off (issue #616). Codex
+        asks nothing in the sandbox, so its commands are approved once, here, as a
+        conversation's command is: by the person whenever the environment is online."""
+        state, thread_id = self.host.state_dir, self.record.thread_id
+        if not await asyncio.to_thread(code_commands_allowed, state, thread_id):
+            return None
+        online = NetworkGuard(state, thread_id).scripts_online()
+        request = ApprovalRequest(
+            kind="command",
+            item_id="sandbox",
+            command=SANDBOX_REQUEST.format(folder=folder),
+            reason=f"Code task: {self.record.description}",
+        )
+        if not await self.decide(request):
+            return None
+        sandbox = await asyncio.to_thread(code_command_profile, state, thread_id, folder, programs)
+        # The approval was for the network as it was when asked; changed since, it doesn't hold.
+        if NetworkGuard(state, thread_id).scripts_online() != online:
+            return None
+        return sandbox
+
     async def drive(self) -> None:
         record = self.record
         try:
@@ -190,25 +215,7 @@ class _Run:
             model = codex_model(self.context.model(), service.custom_providers())
             codex = await service.prepare()
             folder = self.context.folder()
-            # Codex's commands run only where the sandbox can hold them (issue #616).
-            sandbox = await asyncio.to_thread(
-                code_command_profile,
-                self.host.state_dir,
-                record.thread_id,
-                folder,
-                service.command_path(),
-            )
-            # Codex asks nothing in the sandbox, so its commands are approved once, here, as a
-            # conversation's command is: by the person whenever the environment is online.
-            if sandbox is not None and not await self.decide(
-                ApprovalRequest(
-                    kind="command",
-                    item_id="sandbox",
-                    command=SANDBOX_REQUEST.format(folder=folder),
-                    reason=f"Code task: {record.description}",
-                )
-            ):
-                sandbox = None
+            sandbox = await self.sandbox(folder, service.command_path())
             permissions, sandbox_env = sandbox if sandbox is not None else (None, {})
             commands = COMMANDS_SANDBOXED if permissions else COMMANDS_OFF
             previous = self.previous

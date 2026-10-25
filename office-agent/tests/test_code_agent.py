@@ -622,13 +622,27 @@ async def test_a_conversation_with_no_variables_sets_none_for_codex(
     assert "shell_environment_policy" not in config
 
 
+def _sandbox_set_up(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(code_agent_module, "code_commands_allowed", lambda *args: True)
+    monkeypatch.setattr(
+        code_agent_module, "code_command_profile", lambda *args: ("coscribe-x", {"TEMP": "t"})
+    )
+
+
+def _started(tmp_path: Path) -> dict[str, Any]:
+    [started] = [
+        json.loads(line)["params"]
+        for line in (tmp_path / "requests.jsonl").read_text().splitlines()
+        if '"thread/start"' in line
+    ]
+    return started
+
+
 @pytest.mark.parametrize("approved", [True, False])
 async def test_the_sandboxs_commands_are_approved_once_for_the_task(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, codex: CodexHost, approved: bool
 ) -> None:
-    monkeypatch.setattr(
-        code_agent_module, "code_command_profile", lambda *args: ("coscribe-x", {"TEMP": "t"})
-    )
+    _sandbox_set_up(monkeypatch)
     session = _session(tmp_path, monkeypatch, codex, _Model(responses=_replies("twice")))
     socket = _Socket(answer=lambda payload: approved)
 
@@ -636,12 +650,25 @@ async def test_the_sandboxs_commands_are_approved_once_for_the_task(
 
     [card] = socket.of("approval_required")
     assert card["tool_name"] == "run_code_command"
-    [started] = [
-        json.loads(line)["params"]
-        for line in (tmp_path / "requests.jsonl").read_text().splitlines()
-        if '"thread/start"' in line
-    ]
+    started = _started(tmp_path)
     # Approved, Codex runs both commands in the sandbox without asking; declined, it runs
     # unsandboxed and its commands are refused.
     assert started.get("permissions") == ("coscribe-x" if approved else None)
     assert (tmp_path / "workspace" / "made2.txt").exists() is approved
+
+
+async def test_an_approval_given_before_the_network_changed_does_not_hold(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, codex: CodexHost
+) -> None:
+    _sandbox_set_up(monkeypatch)
+    session = _session(tmp_path, monkeypatch, codex, _Model(responses=_replies("approve")))
+
+    def answer(payload: Any) -> bool:
+        # While the card is open, the environment goes online.
+        in_environment(tmp_path / "state", "t1", network={"mode": "full", "domains": []})
+        return True
+
+    await _run(session, _Socket(answer=answer))
+
+    assert "permissions" not in _started(tmp_path)
+    assert not (tmp_path / "workspace" / "made.txt").exists()

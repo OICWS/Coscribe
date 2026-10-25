@@ -457,7 +457,8 @@ class _Turn:
             )
 
     async def server_request(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
-        if self.sandboxed and method.endswith("/requestApproval"):
+        approvals = ("item/commandExecution/requestApproval", "item/fileChange/requestApproval")
+        if self.sandboxed and method in approvals:
             # Codex never asks in the sandbox; what it would ask for is the one thing that could
             # take a command out of it (an approved escalation makes the whole disk writable).
             await self._emit("command_refused", {"command": str(params.get("command") or "")})
