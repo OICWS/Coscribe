@@ -92,6 +92,7 @@ from .exec import (
     build_script_tools,
     bundled_sandbox,
     code_command_profile,
+    code_commands_allowed,
     ensure_own_python,
     ensure_script_env,
     expect_sandbox,
@@ -412,5 +413,6 @@ __all__ = [
     "release_private_folders",
     "warm_up_sandbox",
     "code_command_profile",
+    "code_commands_allowed",
     "write_codex_config",
 ]

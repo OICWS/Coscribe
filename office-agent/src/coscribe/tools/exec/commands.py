@@ -14,7 +14,7 @@ from pathlib import Path
 from ...runtime import NetworkGuard
 from ._private_folders import GrantFailed, private_folders
 from .capabilities import Capabilities, CapabilityOff, require_capability
-from .command_sandbox import codex_profile, sandboxed_command
+from .command_sandbox import ELEVATED, codex_profile, sandbox_codex, sandbox_mode, sandboxed_command
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +95,17 @@ async def start_command(
     )
 
 
+def code_commands_allowed(state: Path, thread_id: str) -> bool:
+    """Whether the code module's commands may run for `thread_id`: commands are on for it and
+    the full sandbox is set up. Asked again for each command, so one turned off or removed
+    mid-task stops the next (issue #616)."""
+    try:
+        require_capability(state, "commands", thread_id)
+    except CapabilityOff:
+        return False
+    return sandbox_codex(state) is not None and sandbox_mode(state) == ELEVATED
+
+
 def code_command_profile(
     state: Path, thread_id: str, folder: Path, programs: list[Path]
 ) -> tuple[str, dict[str, str]] | None:
@@ -103,9 +114,7 @@ def code_command_profile(
     off for this conversation, the sandbox isn't set up, or a folder couldn't be granted, and then
     the code module's commands stay refused (issue #616). Runs icacls: call it off the event
     loop."""
-    try:
-        require_capability(state, "commands", thread_id)
-    except CapabilityOff:
+    if not code_commands_allowed(state, thread_id):
         return None
     online = NetworkGuard(state, thread_id).scripts_online()
     hide = Capabilities(state).get()["commands_hide_private_folders"]

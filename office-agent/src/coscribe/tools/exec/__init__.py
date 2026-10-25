@@ -20,7 +20,12 @@ from .command_sandbox import (
     warm_up_sandbox,
     write_codex_config,
 )
-from .commands import code_command_profile, expect_sandbox, start_command
+from .commands import (
+    code_command_profile,
+    code_commands_allowed,
+    expect_sandbox,
+    start_command,
+)
 from .find_python import find_pythons
 from .isolation import (
     FolderGrants,
@@ -87,6 +92,7 @@ __all__ = [
     "expect_sandbox",
     "warm_up_sandbox",
     "code_command_profile",
+    "code_commands_allowed",
     "write_codex_config",
     "Detachable",
     "FolderGrants",

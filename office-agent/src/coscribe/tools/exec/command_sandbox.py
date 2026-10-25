@@ -254,11 +254,19 @@ def codex_profile(
 ) -> tuple[str, dict[str, str]] | None:
     """The permission profile in the sandbox's home that holds the code module's commands as
     `sandboxed_command` holds one, with the variables they need; None while the sandbox is not
-    set up. Runs icacls as `sandboxed_command` does; raises GrantFailed when a grant fails."""
+    set up. For the full sandbox only: the basic one can't deny a read, which is what keeps
+    Codex from taking a command out of it. Runs icacls as `sandboxed_command` does; raises
+    GrantFailed when a grant fails."""
     if sandbox_codex(state_dir) is None:
         return None
     temp = _temp_folder(state_dir, writable)
     folders = _held_folders(state_dir, [*writable, temp], readable, network, hidden, programs)
+    # Codex runs a command the model asks to escalate outside the sandbox once approved, and the
+    # approval request doesn't say so; it keeps one sandboxed while the profile denies a read.
+    # This empty folder makes sure one always does.
+    sealed = Path(state_dir) / "command-sandbox" / "sealed"
+    sealed.mkdir(parents=True, exist_ok=True)
+    folders["denied"] = [*folders["denied"], str(sealed)]
     return _ensure_profile(sandbox_home(state_dir), folders), {"TEMP": str(temp), "TMP": str(temp)}
 
 

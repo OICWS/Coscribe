@@ -355,7 +355,7 @@ class _Turn:
         self.sandboxed = sandboxed
         # Commands already asked about: Codex asks again for one that failed in
         # the sandbox, to run it outside, and that is always declined.
-        self._asked: set[str] = set()
+        self._asked: set[tuple[str, str]] = set()
         self.decide = decide
         self.on_event = on_event
         self.turn_id: str | None = None
@@ -383,9 +383,10 @@ class _Turn:
         permissions than the profile gives, or a network host it doesn't allow."""
         if params.get("additionalPermissions") or params.get("networkApprovalContext"):
             return False
-        if item_id in self._asked:
+        key = (item_id, str(params.get("approvalId") or ""))
+        if not item_id or key in self._asked:
             return False
-        self._asked.add(item_id)
+        self._asked.add(key)
         return True
 
     def stalled(self, seconds: float) -> bool:

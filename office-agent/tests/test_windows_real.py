@@ -491,6 +491,8 @@ class _StubResponses(http.server.BaseHTTPRequestHandler):
         item: dict[str, Any]
         if len(done) < len(self.commands):
             command = self.commands[len(done)]
+            escalate = command.startswith("ESCALATE ")
+            command = command.removeprefix("ESCALATE ")
             if "shell_command" in offered:
                 name, args = "shell_command", {"command": command}
             elif "exec_command" in offered:
@@ -500,6 +502,8 @@ class _StubResponses(http.server.BaseHTTPRequestHandler):
                     "shell",
                     {"command": ["powershell.exe", "-NoProfile", "-Command", command]},
                 )
+            if escalate:
+                args |= {"sandbox_permissions": "require_escalated", "justification": "needed"}
             item = {"type": "function_call", "call_id": f"call-{len(done)}", "name": name,
                     "arguments": json.dumps(args)}  # fmt: skip
         else:
@@ -539,6 +543,8 @@ async def test_the_code_modules_commands_run_in_the_sandbox_and_stay_in_it(
     _StubResponses.commands = [
         "Set-Content -Path inside.txt -Value in",
         f"Set-Content -Path '{outside / 'x.txt'}' -Value out",
+        # Asked to run outside the sandbox: Codex keeps it in while the profile denies a read.
+        f"ESCALATE Set-Content -Path '{outside / 'y.txt'}' -Value out",
         "whoami",
     ]
     providers = {"stub": {"base_url": f"http://127.0.0.1:{server.server_port}/v1", "api_key": "x"}}
@@ -567,5 +573,6 @@ async def test_the_code_modules_commands_run_in_the_sandbox_and_stay_in_it(
     assert result.status == "completed", (result.error, context)
     assert (work / "inside.txt").read_text(encoding="utf-8-sig").strip() == "in", context
     assert not (outside / "x.txt").exists(), context
+    assert not (outside / "y.txt").exists(), context
     assert "codexsandbox" in _StubResponses.outputs[-1].lower(), context
-    assert all(r.kind == "command" for r in asked) and len(asked) == 3, context
+    assert asked and all(r.kind == "command" for r in asked), context

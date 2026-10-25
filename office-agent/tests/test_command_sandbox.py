@@ -18,6 +18,7 @@ from coscribe.tools.exec import (
     Capabilities,
     CapabilityOff,
     code_command_profile,
+    code_commands_allowed,
     command_sandbox,
     expect_sandbox,
     record_sandbox_setup,
@@ -407,11 +408,15 @@ def test_the_code_modules_codex_shares_the_sandboxs_home_and_config(tmp_path: Pa
     assert parsed["windows"] == {"sandbox": "elevated"}
     temp = env["TEMP"]
     assert env == {"TEMP": temp, "TMP": temp}
+    sealed = tmp_path / "command-sandbox" / "sealed"
+    # A denied read keeps Codex from running an escalated command outside the sandbox.
     assert parsed["permissions"][profile]["filesystem"] == {
         ":root": "read",
+        sealed.as_posix(): "deny",
         work.as_posix(): "write",
         Path(temp).as_posix(): "write",
     }
+    assert sealed.is_dir()
     assert parsed["permissions"][profile]["network"] == {"enabled": False}
 
 
@@ -419,6 +424,17 @@ def test_the_code_modules_codex_shares_the_sandboxs_home_and_config(tmp_path: Pa
 def test_the_code_modules_commands_stay_off_while_commands_are(tmp_path: Path) -> None:
     record_sandbox_setup(tmp_path, _codex(tmp_path))
     assert code_command_profile(tmp_path, "t1", tmp_path / "work", []) is None
+    assert not code_commands_allowed(tmp_path, "t1")
+
+
+@pytest.mark.usefixtures("on_windows")
+def test_the_code_modules_commands_need_the_full_sandbox(tmp_path: Path) -> None:
+    # The basic sandbox can't deny a read, so it can't keep an escalated command in.
+    Capabilities(tmp_path).set("commands", True)
+    record_sandbox_setup(tmp_path, _codex(tmp_path), mode="unelevated")
+    assert code_command_profile(tmp_path, "t1", tmp_path / "work", []) is None
+    record_sandbox_setup(tmp_path, _codex(tmp_path))
+    assert code_commands_allowed(tmp_path, "t1")
 
 
 def test_the_built_in_sandbox_is_the_codex_version_the_code_module_runs() -> None:

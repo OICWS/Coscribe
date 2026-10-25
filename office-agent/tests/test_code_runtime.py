@@ -14,6 +14,7 @@ import pytest
 
 from coscribe.code_runtime import client as client_module
 from coscribe.code_runtime import launch as launch_module
+from coscribe.code_runtime import thread as thread_module
 from coscribe.code_runtime.client import AppServerError
 from coscribe.code_runtime.install import CodexUnavailable, codex_path_dir
 from coscribe.code_runtime.launch import (
@@ -216,6 +217,21 @@ async def test_in_the_sandbox_a_command_is_never_retried_outside_it(
     assert (workdir / "made.txt").exists()
     assert not (workdir / "outside.txt").exists()
     assert [e.kind for e in events if e.kind == "command_refused"] == ["command_refused"]
+
+
+def test_in_the_sandbox_a_command_without_an_item_or_asked_twice_is_turned_away(
+    tmp_path: Path,
+) -> None:
+    async def check() -> None:
+        turn = thread_module._Turn(_Approvals(True), None, tmp_path, sandboxed=True)
+        first = {"itemId": "call-1"}
+        assert turn._sandbox_may_run("call-1", first)
+        assert not turn._sandbox_may_run("call-1", first)
+        # A distinct callback for the same item is its own ask.
+        assert turn._sandbox_may_run("call-1", {"itemId": "call-1", "approvalId": "a1"})
+        assert not turn._sandbox_may_run("", {})
+
+    asyncio.run(check())
 
 
 async def test_in_the_sandbox_a_command_asking_for_a_network_host_is_declined_unasked(
