@@ -13,6 +13,8 @@ _R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 _A = "http://schemas.openxmlformats.org/drawingml/2006/main"
 _WP = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
 _W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+_C = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+_MAX_CHART_BYTES = 512 * 1024
 _MAX_SHOWN = 4
 _MAX_BYTES = 8 * 1024 * 1024
 _MAX_WIDTH = 914400 * 6  # six inches in EMU: what fits a page with ordinary margins
@@ -24,6 +26,21 @@ def images_of(element: Any) -> list[str]:
     """Relationship ids of the pictures a paragraph embeds, in order."""
     ids = (blip.get(f"{{{_R}}}embed") for blip in element.iter(f"{{{_A}}}blip"))
     return [rid for rid in ids if rid][:_MAX_SHOWN]
+
+
+def chart_of(element: Any, document: Any) -> dict[str, Any] | None:
+    """The chart xml a paragraph draws and its printed size in points, for the editor to draw."""
+    for chart in element.iter(f"{{{_C}}}chart"):
+        part = document.part.related_parts.get(chart.get(f"{{{_R}}}id"))
+        extent = next(element.iter(f"{{{_WP}}}extent"), None)
+        if part is None or extent is None or len(part.blob) > _MAX_CHART_BYTES:
+            continue
+        return {
+            "xml": part.blob.decode("utf-8", "replace"),
+            "w": int(extent.get("cx", "0")) / 12700,
+            "h": int(extent.get("cy", "0")) / 12700,
+        }
+    return None
 
 
 def read_doc_image(path: Path, rid: str) -> tuple[bytes, str] | None:

@@ -8,7 +8,8 @@ interface Hunk {
   end: number;
 }
 
-const print = (block: Block) => JSON.stringify({ ...block, id: undefined });
+// What the file only draws (a block's look, a locked table's cells, a chart) is not something the editor sends back, so it is not what a block holds.
+const print = (block: Block) => JSON.stringify({ ...block, id: undefined, look: undefined, grid: undefined, chart: undefined });
 
 /** The stretches where `other` differs from `base`, by what the blocks hold (not their ids, which
  * the file numbers by position and so shift when a block is added). */
@@ -76,7 +77,12 @@ export function mergeBlocks(base: Block[], mine: Block[], theirs: Block[]): Bloc
     if (hunk.side === "theirs") merged.push(...theirs.slice(hunk.start, hunk.end));
     else {
       const replaced = hunk.to - hunk.from === hunk.end - hunk.start;
-      merged.push(...mine.slice(hunk.start, hunk.end).map((block, k) => ({ ...block, id: replaced ? kept.get(hunk.from + k)?.id : undefined }) as Block));
+      merged.push(
+        ...mine.slice(hunk.start, hunk.end).map((block, k) => {
+          const old = replaced ? base[hunk.from + k] : undefined;
+          return { ...block, ...(old && "look" in old ? { look: old.look } : {}), id: replaced ? kept.get(hunk.from + k)?.id : undefined } as Block;
+        }),
+      );
     }
     i = Math.max(i, hunk.to);
   }

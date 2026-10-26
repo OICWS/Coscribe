@@ -1,4 +1,4 @@
-import { EditorContent, useEditor } from "@tiptap/react";
+import { useEditor } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { askAboutWords, blocksToDoc, docImageUrl, getDocBlocks, restoreDocVersion, type Block, type DocBlocks } from "../../lib/docsEditor";
 import { DocxPanelHeader } from "../DocxPanelHeader";
@@ -8,6 +8,8 @@ import { DocsToolbar } from "./DocsToolbar";
 import { SlashMenu, useSlashMenu } from "./SlashMenu";
 import { docsExtensions } from "../../lib/docsExtensions";
 import { PROBLEM_EVENT } from "../../lib/docsPictures";
+import { baseStyle } from "../../lib/docsLook";
+import { DocsSheet } from "./DocsSheet";
 import { useDocsSave, type SaveState } from "./useDocsSave";
 
 interface PanelProps {
@@ -118,7 +120,7 @@ function DocsEditor({
   const editor = useEditor({
     extensions: [...docsExtensions, slash.extension],
     content: blocksToDoc(doc.blocks, docImageUrl(threadId, path, doc.version)),
-    editorProps: { attributes: { class: "docs-editor", "aria-label": "Document" } },
+    editorProps: { attributes: { class: doc.page ? "docs-editor word-look" : "docs-editor", "aria-label": "Document", ...(doc.page ? { style: baseStyle(doc.page) } : {}) } },
   });
   const toContent = useCallback((blocks: Block[], at: string) => blocksToDoc(blocks, docImageUrl(threadId, path, at)), [threadId, path]);
   const { state } = useDocsSave(editor, threadId, path, version, doc.blocks, toContent, onReload);
@@ -186,11 +188,7 @@ function DocsEditor({
           </button>
         </div>
       )}
-      <div className="min-h-0 flex-1 overflow-auto bg-[var(--bg)]" onClick={() => editor?.commands.focus()}>
-        <div ref={page} className="mx-auto max-w-[760px] px-10 pb-24 pt-8" onClick={(e) => e.stopPropagation()}>
-          <EditorContent editor={editor} />
-        </div>
-      </div>
+      <DocsSheet editor={editor} page={doc.page} pageRef={page} />
       {slash.open && <SlashMenu open={slash.open} selected={slash.selected} onHover={slash.setSelected} />}
     </>
   );

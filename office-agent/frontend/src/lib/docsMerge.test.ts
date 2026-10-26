@@ -43,4 +43,13 @@ describe("mergeBlocks", () => {
     expect(texts(mergeBlocks(BASE, mine, BASE))).toEqual(texts(mine));
     expect(texts(mergeBlocks(BASE, BASE, mine))).toEqual(texts(mine));
   });
+
+  it("does not count a block's look, which only the file holds, as a change of the person's", () => {
+    const looked = BASE.map((b) => ({ ...b, look: { size: 10.5 } }) as Block);
+    const mine = [BASE[0], para("b1", "two, edited"), BASE[2], BASE[3]];
+    const theirs = [looked[0], looked[1], looked[2], { ...para("b3", "four, by coscribe"), look: { size: 10.5 } } as Block];
+    const merged = mergeBlocks(looked, mine, theirs);
+    expect(texts(merged)).toEqual(["one", "two, edited", "three", "four, by coscribe"]);
+    expect(merged?.[1]).toMatchObject({ look: { size: 10.5 } });
+  });
 });

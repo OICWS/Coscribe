@@ -1,9 +1,11 @@
-import { Extension, Node, mergeAttributes, type AnyExtension } from "@tiptap/core";
+import { Extension, Mark, Node, mergeAttributes, type AnyExtension } from "@tiptap/core";
 import { Blockquote } from "@tiptap/extension-blockquote";
 import { ListItem } from "@tiptap/extension-list";
 import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import StarterKit from "@tiptap/starter-kit";
 import { Pictures } from "./docsPictures";
+import { Divider, LockedBlock } from "./docsLocked";
+import { lookStyle, runStyle, type Look } from "./docsLook";
 
 /** Nodes that stand for one block of the Word file: the id the server gave it rides on them. */
 const BLOCK_NODES = ["paragraph", "title", "heading", "blockquote", "listItem", "table", "lockedBlock", "divider", "pageBreak"];
@@ -16,6 +18,38 @@ const BlockId = Extension.create({
   },
 });
 
+/** What the file gives a paragraph (its font, spacing, rules, shading) and a table cell (fill, borders) is drawn,
+ * not edited: the new paragraph made by Enter starts from the document's ordinary look. */
+const LookAttributes = Extension.create({
+  name: "lookAttributes",
+  addGlobalAttributes() {
+    return [
+      {
+        types: ["paragraph", "heading", "title"],
+        attributes: {
+          look: { default: null, rendered: true, keepOnSplit: false, parseHTML: () => null, renderHTML: (attrs: Record<string, unknown>) => (attrs.look ? { style: lookStyle(attrs.look as Look) } : {}) },
+        },
+      },
+      {
+        types: ["tableCell", "tableHeader"],
+        attributes: {
+          css: { default: "", keepOnSplit: false, parseHTML: (element: HTMLElement) => element.getAttribute("style") ?? "", renderHTML: (attrs: Record<string, unknown>) => (attrs.css ? { style: String(attrs.css) } : {}) },
+        },
+      },
+    ];
+  },
+});
+
+/** A run's own colour, size and font; typing beside it carries them on, and a save writes them back. */
+const RunLook = Mark.create({
+  name: "runLook",
+  addAttributes() {
+    return { c: { default: null }, sz: { default: null }, f: { default: null } };
+  },
+  parseHTML: () => [{ tag: "span[data-run-look]" }],
+  renderHTML: ({ mark }) => ["span", { "data-run-look": "", style: runStyle({ t: "", c: mark.attrs.c ?? undefined, sz: mark.attrs.sz ?? undefined, f: mark.attrs.f ?? undefined }) }, 0],
+});
+
 const Title = Node.create({
   name: "title",
   group: "block",
@@ -23,53 +57,6 @@ const Title = Node.create({
   defining: true,
   parseHTML: () => [{ tag: "h1.docs-title" }],
   renderHTML: ({ HTMLAttributes }) => ["h1", mergeAttributes(HTMLAttributes, { class: "docs-title" }), 0],
-});
-
-const LOCKED_LABELS: Record<string, string> = {
-  comment: "Comment",
-  "tracked change": "Tracked change",
-  field: "Contents or field",
-  "image or drawing": "Picture or drawing",
-  note: "Footnote",
-  "page break": "Page break",
-  "section break": "Section break",
-  "internal link": "Link inside the document",
-  table: "Table",
-  "deep list": "List",
-};
-
-/** A block the editor cannot change: shown as a grey line, kept as it is, deleted only by the person. */
-const LockedBlock = Node.create({
-  name: "lockedBlock",
-  group: "block",
-  atom: true,
-  selectable: true,
-  draggable: false,
-  addAttributes() {
-    return { what: { default: "" }, text: { default: "" }, images: { default: [] as string[] }, upload: { default: "" }, picture: { default: null } };
-  },
-  parseHTML: () => [{ tag: "div.docs-locked" }],
-  renderHTML: ({ node }) => {
-    const images = node.attrs.images as string[];
-    const width = (node.attrs.picture as { width: number } | null)?.width;
-    return [
-      "div",
-      { class: images.length ? "docs-locked docs-locked-pictured" : "docs-locked", contenteditable: "false" },
-      ["span", { class: "docs-locked-what" }, LOCKED_LABELS[String(node.attrs.what)] ?? "Kept as it is"],
-      ...images.map((src) => ["img", { class: "docs-locked-image", src, alt: String((node.attrs.picture as { alt?: string } | null)?.alt ?? ""), ...(width ? { style: `width:${width}%` } : {}) }] as const),
-      ["span", { class: "docs-locked-text" }, String(node.attrs.text)],
-    ];
-  },
-});
-
-/** A rule across the page, and a break to the next page: blocks with no text of their own. */
-const Divider = Node.create({
-  name: "divider",
-  group: "block",
-  atom: true,
-  selectable: true,
-  parseHTML: () => [{ tag: "hr.docs-divider" }],
-  renderHTML: () => ["hr", { class: "docs-divider" }],
 });
 
 const PageBreak = Node.create({
@@ -97,6 +84,8 @@ export const docsExtensions: AnyExtension[] = [
   Blockquote.extend({ content: "paragraph+" }),
   ListItem.extend({ content: "paragraph (bulletList | orderedList)*" }),
   BlockId,
+  LookAttributes,
+  RunLook,
   Title,
   LockedBlock,
   Divider,

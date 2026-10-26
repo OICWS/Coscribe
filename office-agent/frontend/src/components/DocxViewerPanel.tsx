@@ -9,6 +9,7 @@ import {
 import { DocxChangeBar } from "./DocxChangeBar";
 import { DocxCommentCard } from "./DocxCommentCard";
 import { DocxNewComment } from "./DocxNewComment";
+import { drawCharts, withoutStaleStyles } from "../lib/docxChart";
 import { useChangeSelection, useDocxActions } from "./docxActions";
 import { DocxPanelHeader } from "./DocxPanelHeader";
 import { ArrowDownIcon, ArrowUpIcon, MessageCircleIcon } from "./icons";
@@ -163,19 +164,19 @@ export function DocxViewerPanel({
       .then(async ([nextReview, bytes, docx]) => {
         const page = pageRef.current;
         if (cancelled || !page) return;
-        await docx.renderAsync(bytes, page, undefined, {
+        await docx.renderAsync(await withoutStaleStyles(bytes), page, undefined, {
           className: "docx",
           inWrapper: true,
           renderChanges: view === "review",
           renderComments: true,
           experimental: true,
         });
+        await drawCharts(page, bytes).catch(() => undefined);
         if (cancelled) return;
         setReview(nextReview);
         railWanted.current = nextReview.comments.length > 0;
-        const marks = page.querySelectorAll("ins, del").length;
         const expected = view === "review" ? nextReview.changes.length : 0;
-        setMatched(marks === expected && commentRanges(page).size >= nextReview.comments.length);
+        setMatched(page.querySelectorAll("ins, del").length === expected && commentRanges(page).size >= nextReview.comments.length);
         fit();
         measure();
         if (keepScroll.current !== null) scrollerRef.current?.scrollTo({ top: keepScroll.current });

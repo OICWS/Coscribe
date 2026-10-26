@@ -1,5 +1,7 @@
 import type { JSONContent } from "@tiptap/core";
 import type { Node as PMNode } from "@tiptap/pm/model";
+import type { Grid } from "./docsLocked";
+import { cellStyle, type Look, type Page, type TableLook } from "./docsLook";
 
 /** The Word file as the server gives it (`GET /api/threads/{id}/docs/blocks`, decision 0019). */
 interface Run {
@@ -7,6 +9,10 @@ interface Run {
   b?: true;
   i?: true;
   u?: true;
+  /** Colour, size in points and font of the run when they differ from its paragraph's. */
+  c?: string;
+  sz?: number;
+  f?: string;
   link?: string;
 }
 
@@ -17,17 +23,19 @@ export interface PictureSetting {
 }
 
 export type Block =
-  | { id?: string; kind: "paragraph" | "title" | "quote"; style?: string; runs: Run[] }
-  | { id?: string; kind: "heading"; level: number; runs: Run[] }
-  | { id?: string; kind: "bullet" | "number"; level: number; runs: Run[] }
-  | { id?: string; kind: "table"; header: boolean; rows: Run[][][] }
-  | { id?: string; kind: "locked"; what?: string; text?: string; images?: string[]; picture?: PictureSetting }
+  | { id?: string; kind: "paragraph" | "title" | "quote"; style?: string; runs: Run[]; look?: Look }
+  | { id?: string; kind: "heading"; level: number; runs: Run[]; look?: Look }
+  | { id?: string; kind: "bullet" | "number"; level: number; runs: Run[]; look?: Look }
+  | { id?: string; kind: "table"; header: boolean; rows: Run[][][]; look?: TableLook }
+  | { id?: string; kind: "locked"; what?: string; text?: string; images?: string[]; picture?: PictureSetting; grid?: Grid; chart?: { xml: string; w: number; h: number }; look?: Look }
   | { id?: string; kind: "image"; data: string }
-  | { id?: string; kind: "divider" }
+  | { id?: string; kind: "divider"; look?: Look }
   | { id?: string; kind: "pagebreak" };
 
 export interface DocBlocks {
   version: string;
+  /** The page the file is laid out on and its ordinary text's look. */
+  page?: Page;
   blocks: Block[];
 }
 
@@ -74,6 +82,7 @@ export function askAboutWords(file: string, words: string): string {
 // -- Blocks to the editor's document -------------------------------------------------------------
 
 const MAX_LEVEL = 3;
+const PX_PER_PT = 96 / 72;
 
 function inline(runs: Run[]): JSONContent[] {
   const nodes: JSONContent[] = [];
@@ -82,6 +91,7 @@ function inline(runs: Run[]): JSONContent[] {
     if (run.b) marks.push({ type: "bold" });
     if (run.i) marks.push({ type: "italic" });
     if (run.u) marks.push({ type: "underline" });
+    if (run.c || run.sz || run.f) marks.push({ type: "runLook", attrs: { c: run.c ?? null, sz: run.sz ?? null, f: run.f ?? null } });
     if (run.link) marks.push({ type: "link", attrs: { href: run.link } });
     run.t.split("\n").forEach((piece, index) => {
       if (index > 0) nodes.push({ type: "hardBreak" });
@@ -93,7 +103,8 @@ function inline(runs: Run[]): JSONContent[] {
 
 const withContent = (node: JSONContent, content: JSONContent[]): JSONContent => (content.length ? { ...node, content } : node);
 const identified = (id?: string) => (id ? { blockId: id } : {});
-const paragraph = (runs: Run[], id?: string): JSONContent => withContent({ type: "paragraph", attrs: identified(id) }, inline(runs));
+const looked = (look?: Look) => (look ? { look } : {});
+const paragraph = (runs: Run[], id?: string, look?: Look): JSONContent => withContent({ type: "paragraph", attrs: { ...identified(id), ...looked(look) } }, inline(runs));
 
 type ListBlock = Extract<Block, { kind: "bullet" | "number" }>;
 
@@ -115,7 +126,7 @@ function lists(items: ListBlock[]): JSONContent[] {
       open[depth] = list;
       open.length = depth + 1;
     }
-    list.content = [...(list.content ?? []), { type: "listItem", attrs: identified(item.id), content: [paragraph(item.runs)] }];
+    list.content = [...(list.content ?? []), { type: "listItem", attrs: identified(item.id), content: [paragraph(item.runs, undefined, item.look)] }];
   }
   return roots;
 }
@@ -134,23 +145,32 @@ export function blocksToDoc(blocks: Block[], imageUrl: (rid: string) => string =
       content.push(...lists(blocks.slice(at, end + 1) as ListBlock[]));
       at = end;
     } else if (block.kind === "heading") {
-      content.push(withContent({ type: "heading", attrs: { level: block.level, ...identified(block.id) } }, inline(block.runs)));
+      content.push(withContent({ type: "heading", attrs: { level: block.level, ...identified(block.id), ...looked(block.look) } }, inline(block.runs)));
     } else if (block.kind === "title") {
-      content.push(withContent({ type: "title", attrs: identified(block.id) }, inline(block.runs)));
+      content.push(withContent({ type: "title", attrs: { ...identified(block.id), ...looked(block.look) } }, inline(block.runs)));
     } else if (block.kind === "quote") {
-      content.push({ type: "blockquote", attrs: identified(block.id), content: [paragraph(block.runs)] });
+      content.push({ type: "blockquote", attrs: identified(block.id), content: [paragraph(block.runs, undefined, block.look)] });
     } else if (block.kind === "table") {
       const rows = block.rows.map((row, r) => ({
         type: "tableRow",
-        content: row.map((cell) => ({ type: block.header && r === 0 ? "tableHeader" : "tableCell", content: [paragraph(cell)] })),
+        content: row.map((cell, c) => {
+          const given = block.look?.rows[r]?.cells[c];
+          const css = block.look ? cellStyle(given?.look, block.look, { r, c, rows: block.rows.length, cols: row.length }) : "";
+          const width = block.look?.widths?.[c];
+          return {
+            type: block.header && r === 0 ? "tableHeader" : "tableCell",
+            attrs: { css, ...(width ? { colwidth: [Math.round(width * PX_PER_PT)] } : {}) },
+            content: [paragraph(cell, undefined, given?.p)],
+          };
+        }),
       }));
       content.push({ type: "table", attrs: identified(block.id), content: rows });
     } else if (block.kind === "locked") {
-      content.push({ type: "lockedBlock", attrs: { what: block.what ?? "", text: block.text ?? "", images: (block.images ?? []).map(imageUrl), picture: block.picture ?? null, ...identified(block.id) } });
+      content.push({ type: "lockedBlock", attrs: { what: block.what ?? "", text: block.text ?? "", images: (block.images ?? []).map(imageUrl), picture: block.picture ?? null, grid: block.grid ?? null, chart: block.chart ?? null, look: block.look ?? null, ...identified(block.id) } });
     } else if (block.kind === "divider" || block.kind === "pagebreak") {
-      content.push({ type: block.kind === "divider" ? "divider" : "pageBreak", attrs: identified(block.id) });
+      content.push({ type: block.kind === "divider" ? "divider" : "pageBreak", attrs: { ...identified(block.id), ...(block.kind === "divider" ? looked(block.look) : {}) } });
     } else if (block.kind !== "image") {
-      content.push(paragraph(block.runs, block.id));
+      content.push(paragraph(block.runs, block.id, block.look));
     }
   }
   return { type: "doc", content: content.length ? content : [{ type: "paragraph" }] };
@@ -183,6 +203,12 @@ function runs(node: PMNode): Run[] {
     if (!child.isText || !child.text) return;
     const marks: Omit<Run, "t"> = {};
     for (const [name, key] of MARKS) if (child.marks.some((m) => m.type.name === name)) marks[key] = true;
+    const look = child.marks.find((m) => m.type.name === "runLook");
+    if (look) {
+      if (look.attrs.c) marks.c = String(look.attrs.c);
+      if (look.attrs.sz) marks.sz = Number(look.attrs.sz);
+      if (look.attrs.f) marks.f = String(look.attrs.f);
+    }
     const link = child.marks.find((m) => m.type.name === "link");
     if (link) marks.link = String(link.attrs.href);
     add(child.text, marks);
