@@ -289,7 +289,7 @@ _GRID_CELLS = 400
 
 
 def _table_grid(table: Any) -> list[list[dict[str, Any]]]:
-    """A table the editor cannot change, as text per cell, so it is shown rather than a grey line."""
+    """A table the editor cannot change, as text per cell, so it can be drawn."""
     grid: list[list[dict[str, Any]]] = []
     budget = _GRID_CELLS
     for row in table.findall(_q("tr")):
