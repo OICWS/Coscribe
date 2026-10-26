@@ -93,7 +93,10 @@ def _written_whole(call: dict[str, Any], metadata: ToolMetadata | None) -> list[
 
 def _is_scratch(relative: str) -> bool:
     parts = Path(relative.replace("\\", "/")).parts[:-1]
-    return any(part.lower() in _SCRATCH_FOLDERS or part.startswith(".") for part in parts)
+    # `_qa` is the same working folder as `qa`.
+    return any(
+        part.lower().strip("_-") in _SCRATCH_FOLDERS or part.startswith(".") for part in parts
+    )
 
 
 def _file_entry(scope: WorkspaceScope, path: str) -> dict[str, Any] | None:
@@ -162,6 +165,7 @@ def summarize_activity(
     # it was changed after; one it changed that already existed (touched
     # first by a read or an in-place edit) is "edited"; the rest were read.
     actions: dict[str, str] = {}
+    first_touch: dict[str, str] = {}
     entries: dict[str, dict[str, Any]] = {}
     last_touched: list[str] = []
     for path, touch in touches:
@@ -171,6 +175,7 @@ def summarize_activity(
         key = entry["path"]
         entries[key] = entry
         last_touched.append(key)
+        first_touch.setdefault(key, touch)
         previous = actions.get(key)
         if touch == "read":
             actions.setdefault(key, "read")
@@ -185,10 +190,10 @@ def summarize_activity(
     for key in dict.fromkeys(reversed(last_touched)):  # most recently touched first
         if actions[key] == "read" or _is_scratch(key):
             continue
-        # A file this conversation made that is gone again was a working
-        # file the assistant cleaned up (the instructions ask it to), not
-        # something to hand the person.
-        if actions[key] == "created" and not entries[key]["exists"]:
+        # A file gone again that the conversation did not start by reading was a working file
+        # the assistant made and cleaned up (the instructions ask it to), not something to hand
+        # the person; one it read first may be the person's own, and is listed as gone.
+        if not entries[key]["exists"] and first_touch[key] != "read":
             continue
         outputs.append(
             {

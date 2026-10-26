@@ -332,6 +332,8 @@ export function Composer({
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // The chip sits where the text would start, so Backspace in an empty box takes it off.
+    if (event.key === "Backspace" && artifact && !value && !event.nativeEvent.isComposing) return onArtifactRemoved();
     if (autocompleteOpen) {
       if (event.key === "ArrowDown") {
         event.preventDefault();
