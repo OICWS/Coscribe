@@ -5,6 +5,10 @@ import { useSyncExternalStore } from "react";
  * time and token count show); the dock reads it to stop squeezing the conversation there. */
 /** Room for a font that loads after the first measure and for subpixel rounding. */
 const SLACK = 8;
+/** Room kept for the running time and token count ("12m 34s · 128.5k tokens"), which only show
+ * while a turn runs: a turn that starts with the conversation already at its narrowest must
+ * not overflow the toolbar. */
+const STATUS_RESERVE = 150;
 let needed = 0;
 const listeners = new Set<() => void>();
 
@@ -23,7 +27,12 @@ export function measureComposerToolbar(bar: HTMLDivElement | null): (() => void)
   const measure = () => {
     const gap = parseFloat(getComputedStyle(bar).columnGap) || 0;
     const items = Array.from(bar.children) as HTMLElement[];
-    const content = items.reduce((sum, el) => sum + el.offsetWidth, 0) + gap * Math.max(0, items.length - 1);
+    const status = bar.querySelector<HTMLElement>('[data-testid="run-status"]');
+    const slots = items.length + (status ? 0 : 1);
+    const content =
+      items.reduce((sum, el) => sum + el.offsetWidth, 0) +
+      Math.max(0, STATUS_RESERVE - (status?.offsetWidth ?? 0)) +
+      gap * Math.max(0, slots - 1);
     setComposerNeededWidth(content + (root.getBoundingClientRect().width - bar.clientWidth));
   };
   const observer = new ResizeObserver(measure);
