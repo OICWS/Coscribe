@@ -135,3 +135,32 @@ def test_read_pptx_theme_colors_is_low_risk(tmp_path: Path) -> None:
     tools = _tools_by_name(tmp_path)
     metadata = get_tool_metadata(tools["read_pptx_theme_colors"])
     assert metadata.requires_approval is False
+
+
+def test_read_pptx_design_reports_colors_fonts_sizes_and_layouts(tmp_path: Path) -> None:
+    tools = _tools_by_name(tmp_path)
+    tools["write_pptx"](
+        path="deck.pptx",
+        content="# Title\n- body",
+        theme="bg=FFFFFF,text=111827,accent=0F6B5C,heading_font=Georgia,body_font=Calibri",
+    )
+
+    design = tools["read_pptx_design"](path="deck.pptx")
+
+    assert design["path"] == "deck.pptx"
+    colors = cast(dict[str, str], design["colors"])
+    assert colors["accent1"] == "0F6B5C" and colors["dk1"] == "111827"
+    fonts = cast(dict[str, dict[str, str]], design["fonts"])
+    assert fonts["heading"]["latin"] == "Georgia" and fonts["body"]["latin"] == "Calibri"
+    sizes = cast(dict[str, dict[str, object]], design["text_sizes"])
+    title = sizes["title"]
+    # A 13.33 in wide slide is 960 pt, so a point is two pixels on a 1920 px slide.
+    assert title["px_on_1920"] == round(cast(float, title["points"]) * 2)
+    assert "Title Slide" in cast(list[str], design["layouts"])
+    assert design["slide_size_inches"] == [13.33, 7.5]
+
+
+def test_read_pptx_design_refuses_a_path_outside_the_workspace(tmp_path: Path) -> None:
+    tools = _tools_by_name(tmp_path)
+    with pytest.raises((PermissionError, ValueError, FileNotFoundError)):
+        tools["read_pptx_design"](path="../elsewhere.pptx")

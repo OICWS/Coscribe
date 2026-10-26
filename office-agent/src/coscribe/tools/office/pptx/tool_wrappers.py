@@ -8,6 +8,7 @@ from typing import Any, Literal
 
 from ....runtime import tool_metadata
 from .toolkit import PresentationToolkit
+from .wrappers_design import build_design_tools
 from .wrappers_images import build_images_tools
 from .wrappers_review import build_review_tools
 from .wrappers_shapes import build_shapes_tools
@@ -55,6 +56,7 @@ _TOOLS: tuple[tuple[str, Literal["READ", "WRITE_LOCAL"]], ...] = (
     ("check_pptx_delivery", "READ"),
     ("read_pptx_theme_colors", "READ"),
     ("edit_pptx_theme_colors", "WRITE_LOCAL"),
+    ("read_pptx_design", "READ"),
 )
 
 
@@ -76,6 +78,7 @@ def build_presentation_tools(
         extra_writable=extra_writable,
     )
     tools = {
+        **build_design_tools(toolkit),
         **build_images_tools(toolkit),
         **build_review_tools(toolkit),
         **build_shapes_tools(toolkit),

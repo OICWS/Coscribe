@@ -24,9 +24,6 @@ if TYPE_CHECKING:
     pass
 
 
-
-
-
 class ReviewToolsMixin(ToolkitBase):
     @locked_by_path
     def check_pptx_delivery(self, path: str) -> dict[str, object]:
@@ -47,9 +44,7 @@ class ReviewToolsMixin(ToolkitBase):
             media_total_bytes = sum(info.file_size for info in media_infos)
             media_largest = [
                 {"part": info.filename, "bytes": info.file_size}
-                for info in sorted(media_infos, key=lambda info: info.file_size, reverse=True)[
-                    :5
-                ]
+                for info in sorted(media_infos, key=lambda info: info.file_size, reverse=True)[:5]
             ]
 
         try:
@@ -149,6 +144,59 @@ class ReviewToolsMixin(ToolkitBase):
                 colors[slot] = read_scheme_color(clr_scheme, slot)
         return {"path": self._scope.relative(file_path), "colors": colors}
 
+    def read_pptx_design(self, path: str) -> dict[str, object]:
+        from lxml import etree
+        from pptx import Presentation
+        from pptx.opc.constants import RELATIONSHIP_TYPE as RT
+        from pptx.oxml.ns import qn
+
+        file_path = self._check_readable(path)
+        prs = Presentation(str(file_path))
+        master = prs.slide_masters[0]
+        root = etree.fromstring(master.part.part_related_by(RT.THEME).blob)
+        clr_scheme = root.find(f".//{qn('a:clrScheme')}")
+        colors: dict[str, object] = dict.fromkeys(THEME_SCHEME_SLOTS)
+        if clr_scheme is not None:
+            for slot in THEME_SCHEME_SLOTS:
+                colors[slot] = read_scheme_color(clr_scheme, slot)
+        fonts: dict[str, object] = {}
+        for role, tag in (("heading", "majorFont"), ("body", "minorFont")):
+            face = root.find(f".//{qn('a:fontScheme')}/{qn('a:' + tag)}")
+            if face is None:
+                continue
+            fonts[role] = {
+                script: typeface
+                for script in ("latin", "ea", "cs")
+                if (element := face.find(qn(f"a:{script}"))) is not None
+                and (typeface := element.get("typeface"))
+            }
+        # 1920 px is the design systems' slide width; a point is that many pixels on this deck.
+        width_pt = (prs.slide_width or 12192000) / 12700
+        scale = 1920 / width_pt
+        sizes: dict[str, object] = {}
+        for role, tag in (("title", "titleStyle"), ("body", "bodyStyle"), ("other", "otherStyle")):
+            level = master.element.find(f".//{qn('p:txStyles')}/{qn('p:' + tag)}/{qn('a:lvl1pPr')}")
+            run = None if level is None else level.find(qn("a:defRPr"))
+            if run is None or run.get("sz") is None:
+                continue
+            points = int(run.get("sz", "0")) / 100
+            sizes[role] = {
+                "points": points,
+                "px_on_1920": round(points * scale),
+                "bold": run.get("b") == "1",
+            }
+        return {
+            "path": self._scope.relative(file_path),
+            "slide_size_inches": [
+                round((prs.slide_width or 0) / 914400, 2),
+                round((prs.slide_height or 0) / 914400, 2),
+            ],
+            "colors": colors,
+            "fonts": fonts,
+            "text_sizes": sizes,
+            "layouts": [layout.name for layout in master.slide_layouts],
+        }
+
     @locked_by_path
     def edit_pptx_theme_colors(self, path: str, colors: str) -> dict[str, object]:
         from lxml import etree
@@ -185,9 +233,7 @@ class ReviewToolsMixin(ToolkitBase):
             if not 1 <= slide <= slide_count:
                 raise ValueError(f"Slide {slide} out of range: deck has {slide_count} slides")
             return render_slide(prs.slides[slide - 1])
-        return "\n\n---\n\n".join(
-            render_slide(s, with_heading=True) for s in prs.slides
-        )
+        return "\n\n---\n\n".join(render_slide(s, with_heading=True) for s in prs.slides)
 
     @locked_by_path
     def render_pptx_preview(self, path: str, max_slides: int = 8) -> dict[str, object]:
