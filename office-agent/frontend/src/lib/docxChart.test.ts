@@ -27,4 +27,18 @@ describe("a Word chart as svg", () => {
   it("gives nothing for a chart it cannot draw", () => {
     expect(chartSvg(chart(`<c:radarChart>${series("R", [1])}</c:radarChart>`), 400, 200)).toBeNull();
   });
+
+  it("gives each bar of a single series its own colour unless the file turns that off", () => {
+    const fills = (plot: string) => [...(chartSvg(chart(plot), 400, 200) ?? "").matchAll(/<rect x="[^"]+" y="[^"]+" width="[^"]+" height="[^"]+" fill="(#[0-9a-f]{6})"\/>/g)].map((m) => m[1]);
+    const varied = fills(`<c:barChart><c:barDir val="col"/>${series("R", [1, 2, 3])}</c:barChart>`);
+    expect(new Set(varied).size).toBe(3);
+    const single = fills(`<c:barChart><c:barDir val="col"/><c:varyColors val="0"/>${series("R", [1, 2, 3])}</c:barChart>`);
+    expect(new Set(single).size).toBe(1);
+  });
+
+  it("stops the value axis at the first round step past the data, as Word does", () => {
+    const svg = chartSvg(chart(`<c:barChart><c:barDir val="col"/>${series("R", [28, 33, 41])}</c:barChart>`), 400, 200) ?? "";
+    expect(svg).toContain(">45</text>");
+    expect(svg).not.toContain(">50</text>");
+  });
 });
