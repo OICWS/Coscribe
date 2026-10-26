@@ -48,3 +48,16 @@ test("a design system is made, edited, saved and deleted from Settings", async (
   await page.getByRole("button", { name: "Delete", exact: true }).last().click();
   await expect(page.getByText(name, { exact: true })).toHaveCount(0);
 });
+
+test("Describe it in Settings closes it and starts the conversation that makes a design system", async ({ page }) => {
+  await page.goto(freshThreadPath("design-systems-describe"));
+  await waitForConnected(page);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Design systems" }).click();
+
+  await page.getByRole("button", { name: "Describe it" }).click();
+
+  await expect(page.getByRole("button", { name: "Close settings" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Design system mode" })).toBeVisible();
+  await expect(page.getByPlaceholder("Describe the brand or the look you want…")).toBeVisible();
+});

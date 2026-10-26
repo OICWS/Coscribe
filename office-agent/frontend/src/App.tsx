@@ -1049,6 +1049,7 @@ function App() {
                 open={settingsOpen}
                 initialCategory={settingsCategory}
                 startDesignSystem={settingsDesign}
+                onDescribeDesignSystem={() => artifacts.make("design-system", true)}
                 onCreateSkill={onCreateSkill}
                 onClose={() => { setSettingsOpen(false); setSettingsCategory(undefined); setSettingsDesign(null); }}
               />

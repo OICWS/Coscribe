@@ -43,7 +43,7 @@ function NewSystemForm({ name, onName, onCreate }: { name: string; onName: (name
 }
 
 /** Settings > Design systems: the person's library (decision 0020). */
-export function DesignSystemsTab({ active, start = null }: { active: boolean; start?: string | null }) {
+export function DesignSystemsTab({ active, start = null, onDescribe }: { active: boolean; start?: string | null; onDescribe: () => void }) {
   const { data, status, error, retry } = useFetchOnActive(active, getDesignSystems, NONE);
   const [open, setOpen] = useState<DesignSystem | null>(null);
   const [naming, setNaming] = useState<string | null>(start === "new" ? "" : null);
@@ -102,6 +102,7 @@ export function DesignSystemsTab({ active, start = null }: { active: boolean; st
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-3">
         <h2 className="mr-1 flex-1 text-[22px] font-semibold">Design systems</h2>
+        <button type="button" className={`${secondaryButtonClass} flex items-center gap-1.5`} onClick={onDescribe}>Describe it</button>
         <button type="button" className={`${primaryButtonClass} flex items-center gap-1.5`} disabled={naming !== null} onClick={() => setNaming("")}>
           <PlusIcon className="h-4 w-4" /> New design system
         </button>

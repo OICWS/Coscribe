@@ -238,7 +238,7 @@
  },
  "frontend_file_lines": {
   "office-agent-desktop/src/main/browserAgent.ts": 934,
-  "office-agent/frontend/src/App.tsx": 1087,
+  "office-agent/frontend/src/App.tsx": 1088,
   "office-agent/frontend/src/components/icons.tsx": 813,
   "office-agent/frontend/src/components/workflow/WorkflowRunView.tsx": 860
  },
@@ -246,7 +246,7 @@
   "office-agent-desktop/src/main/browserAgent.ts::act": 156,
   "office-agent-desktop/src/main/browserAgent.ts::startBrowserAgent": 140,
   "office-agent-desktop/src/main/browserAgentPage.ts::pageAgent": 343,
-  "office-agent/frontend/src/App.tsx::App": 992,
+  "office-agent/frontend/src/App.tsx::App": 993,
   "office-agent/frontend/src/components/AllowedSitesDialog.tsx::AllowedSitesDialog": 132,
   "office-agent/frontend/src/components/Attachments.tsx::AttachmentDialog": 110,
   "office-agent/frontend/src/components/BackgroundTasksPanel.tsx::BackgroundTasksPanel": 162,
@@ -277,7 +277,7 @@
   "office-agent/frontend/src/components/settings/ProvidersTab.tsx::ProvidersTab": 181,
   "office-agent/frontend/src/components/settings/SecretsTab.tsx::SecretForm": 104,
   "office-agent/frontend/src/components/settings/SecretsTab.tsx::SecretsTab": 121,
-  "office-agent/frontend/src/components/settings/SettingsModal.tsx::SettingsModal": 204,
+  "office-agent/frontend/src/components/settings/SettingsModal.tsx::SettingsModal": 205,
   "office-agent/frontend/src/components/settings/SkillsTab.tsx::SkillsTab": 238,
   "office-agent/frontend/src/components/settings/WorkspaceTab.tsx::WorkspaceTab": 145,
   "office-agent/frontend/src/components/settings/connectors/AddCustomConnectorDialog.tsx::AddCustomConnectorDialog": 185,
