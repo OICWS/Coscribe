@@ -1,12 +1,16 @@
 /** A Word chart part (DrawingML chart xml) drawn as an SVG, for the places a browser cannot show it. */
 
-type ChartSeries = { name: string; values: number[]; color: string | null };
+type ChartSeries = { name: string; values: number[]; color: string | null; pointColors: (string | null)[] };
 type ChartModel = {
   kind: "bar" | "column" | "line" | "area" | "pie";
   stacked: boolean;
   title: string;
   categories: string[];
   series: ChartSeries[];
+  /** A single series drawn with one colour per point, as Word does unless the file says otherwise. */
+  varyColors: boolean;
+  /** The value axis range the file fixes, if it does. */
+  axis: { min?: number; max?: number; step?: number };
 };
 
 const PALETTE = ["#4f81bd", "#c0504d", "#9bbb59", "#8064a2", "#4bacc6", "#f79646", "#2c4d75", "#772c2a"];
@@ -40,12 +44,20 @@ function parseChart(xml: string): ChartModel | null {
   const kind: ChartModel["kind"] = name.startsWith("bar") ? (horizontal ? "bar" : "column") : name.startsWith("line") ? "line" : name.startsWith("area") ? "area" : "pie";
   const series = kids(type, "ser").map((ser, i): ChartSeries => {
     const color = within(first(ser, "spPr"), "srgbClr")?.getAttribute("val");
+    const pointColors: (string | null)[] = [];
+    for (const point of kids(ser, "dPt")) {
+      const own = within(first(point, "spPr"), "srgbClr")?.getAttribute("val");
+      pointColors[Number(first(point, "idx")?.getAttribute("val"))] = own ? `#${own}` : null;
+    }
     return {
       name: within(first(ser, "tx"), "v")?.textContent ?? `Series ${i + 1}`,
       values: points(within(first(ser, "val"), "numCache")).map((v) => Number(v) || 0),
       color: color ? `#${color}` : null,
+      pointColors,
     };
   });
+  const scaling = first(first(plot, "valAx"), "scaling");
+  const number = (el: Element | null | undefined) => (el?.getAttribute("val") != null ? Number(el.getAttribute("val")) : undefined);
   const catRef = first(first(type, "ser"), "cat");
   const categories = points(within(catRef, "strCache") ?? within(catRef, "numCache"));
   const hasTitle = first(within(doc.documentElement, "chart"), "autoTitleDeleted")?.getAttribute("val") !== "1";
@@ -55,20 +67,25 @@ function parseChart(xml: string): ChartModel | null {
     title: hasTitle ? textOf(first(within(doc.documentElement, "chart"), "title")) : "",
     categories,
     series,
+    varyColors: series.length === 1 && first(type, "varyColors")?.getAttribute("val") !== "0",
+    axis: { min: number(first(scaling, "min")), max: number(first(scaling, "max")), step: number(first(first(plot, "valAx"), "majorUnit")) },
   };
 }
 
-function niceMax(max: number): { top: number; step: number } {
+function niceMax(max: number, fixed: ChartModel["axis"]): { top: number; step: number } {
+  if (fixed.max !== undefined && fixed.step) return { top: fixed.max, step: fixed.step };
   if (max <= 0) return { top: 1, step: 0.2 };
-  const raw = max / 5;
-  const power = 10 ** Math.floor(Math.log10(raw));
-  const step = ([1, 2, 2.5, 5, 10].find((m) => m * power >= raw) ?? 10) * power;
-  return { top: Math.ceil(max / step) * step, step };
+  const power = 10 ** Math.floor(Math.log10(max / 10));
+  const step = ([1, 2, 5, 10].map((m) => m * power).find((candidate) => Math.ceil(max / candidate) <= 10) ?? max) * 1;
+  return { top: fixed.max ?? Math.ceil(max / step) * step, step };
 }
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const fmt = (n: number) => (Math.abs(n) >= 1000 ? n.toLocaleString("en-US") : String(Math.round(n * 100) / 100));
 const colorOf = (s: ChartSeries, i: number) => s.color ?? PALETTE[i % PALETTE.length]!;
+/** The colour of one bar or slice: its own, else the series' (or the palette's, a colour per point). */
+const pointColor = (model: ChartModel, s: ChartSeries, series: number, point: number) =>
+  s.pointColors[point] ?? (model.varyColors ? PALETTE[point % PALETTE.length]! : colorOf(s, series));
 
 function pie(model: ChartModel, w: number, h: number, top: number): string {
   const values = model.series[0]?.values ?? [];
@@ -83,7 +100,7 @@ function pie(model: ChartModel, w: number, h: number, top: number): string {
     const large = sweep > Math.PI ? 1 : 0;
     const d = `M${cx},${cy} L${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)} A${r},${r} 0 ${large} 1 ${cx + r * Math.cos(a1)},${cy + r * Math.sin(a1)} Z`;
     angle = a1;
-    return `<path d="${d}" fill="${PALETTE[i % PALETTE.length]}" stroke="#fff"/>`;
+    return `<path d="${d}" fill="${model.series[0] ? pointColor(model, model.series[0], 0, i) : PALETTE[0]}" stroke="#fff"/>`;
   });
   const legend = (model.categories.length ? model.categories : values.map((_, i) => `${i + 1}`)).map(
     (c, i) => `<rect x="${w * 0.72}" y="${top + 12 + i * 20}" width="10" height="10" fill="${PALETTE[i % PALETTE.length]}"/><text x="${w * 0.72 + 16}" y="${top + 21 + i * 20}" font-size="11" fill="${INK}">${esc(c)}</text>`,
@@ -97,7 +114,7 @@ function axes(model: ChartModel, w: number, h: number, top: number): string {
   const sums = Array.from({ length: count }, (_, i) =>
     model.stacked ? model.series.reduce((a, s) => a + Math.max(0, s.values[i] ?? 0), 0) : Math.max(0, ...model.series.map((s) => s.values[i] ?? 0)),
   );
-  const { top: max, step } = niceMax(Math.max(...sums));
+  const { top: max, step } = niceMax(Math.max(...sums), model.axis);
   const left = 52;
   const right = 12;
   const legendH = model.series.length > 1 ? 24 : 0;
@@ -140,7 +157,7 @@ function axes(model: ChartModel, w: number, h: number, top: number): string {
         const centre = (i + 0.5) * slot + (model.stacked ? 0 : (j - (model.series.length - 1) / 2) * bar);
         const from = model.stacked ? base : 0;
         const to = model.stacked ? base + along(v) : along(v);
-        out.push(place(centre, from, to, bar, colorOf(s, j)));
+        out.push(place(centre, from, to, bar, pointColor(model, s, j, i)));
         base = to;
       });
     }
