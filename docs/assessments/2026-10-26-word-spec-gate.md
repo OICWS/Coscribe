@@ -2,7 +2,8 @@
 
 Decision 0024 says the spec route becomes the default only if it passes the gate in section 4 of
 `2026-10-26-word-documents-from-a-spec.md`. This is that run. **It did not pass. `write_docx` keeps
-its behaviour and the Word skill is unchanged.**
+its behaviour and the Word skill is unchanged.** The maintainer then chose to stay on markdown and
+the spec code was removed (decision 0024, not adopted); section 5 is left as written, not followed.
 
 ## 中文摘要
 

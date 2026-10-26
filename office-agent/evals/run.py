@@ -168,7 +168,6 @@ def _build_session(
     thread_id: str,
     effort: str = DEFAULT_EFFORT,
     language: str = "pages",
-    design_system: Path | None = None,
 ) -> Any:
     from langgraph.checkpoint.memory import InMemorySaver
 
@@ -200,8 +199,6 @@ def _build_session(
         target = settings.skills_dir / "word"
         target.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(word_skill, target / "SKILL.md")
-    if design_system is not None:
-        _install_design_system(settings.state_dir, design_system)
     providers = {"deepseek": {"base_url": DEEPSEEK_URL, "api_key": os.environ["DEEPSEEK_API_KEY"]}}
     session = ChatSessionLG(
         thread_id=thread_id,
@@ -217,15 +214,6 @@ def _build_session(
     # A scheduled run's tier: every gated call goes ahead, nobody is asked.
     session.run_approval_mode = "skip"
     return session
-
-
-def _install_design_system(state_dir: Path, source: Path) -> None:
-    """The person's library holds the system a task's brief names."""
-    from coscribe.tools.design_systems import DesignSystemStore
-
-    data = json.loads(source.read_text(encoding="utf-8"))
-    store = DesignSystemStore(state_dir)
-    store.update(store.create(data["name"])["id"], data)
 
 
 def _find_output(
@@ -312,16 +300,7 @@ async def run_task(
     status, error = "ok", None
     started = time.monotonic()
     try:
-        library = task.directory / "design_system.json"
-        session = _build_session(
-            task_out,
-            workspace,
-            model,
-            task.name,
-            effort,
-            language,
-            library if library.is_file() else None,
-        )
+        session = _build_session(task_out, workspace, model, task.name, effort, language)
         recorder.session = session
         await asyncio.wait_for(session.handle_user_message(task.brief, recorder), timeout)
         if recorder.errors:
@@ -426,7 +405,6 @@ def _kind_columns(kind: str, report: dict[str, Any]) -> dict[str, Any]:
             "tables": _ok(report, "tables"),
             "images": _ok(report, "images"),
             "charts": _ok(report, "charts"),
-            "theme": _ok(report, "theme"),
             "captions": _ok(report, "captions"),
             "tracked": _ok(report, "tracked"),
             "template": _ok(report, "template"),
@@ -475,7 +453,6 @@ SUMMARY_COLUMNS = {
         "tables",
         "images",
         "charts",
-        "theme",
         "captions",
         "tracked",
         "template",

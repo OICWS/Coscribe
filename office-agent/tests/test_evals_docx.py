@@ -904,38 +904,10 @@ def test_a_chart_that_draws_other_numbers_fails_the_chart_check(tmp_path: Path) 
     assert docx_checks.check_charts(output, 1, [1200.0, 9999.0])["missing"] == [9999.0]
 
 
-def test_a_document_without_the_theme_fails_the_theme_check(tmp_path: Path) -> None:
-    default = _save(Document(), tmp_path)
-
-    report = docx_checks.check_theme(default, {"font": "Noto Sans CJK SC", "accent": "B00020"})
-
-    assert report["ok"] is False
-
-
-def test_the_themed_reference_solution_passes_the_theme_check(tmp_path: Path) -> None:
-    workspace = tmp_path / "ws"
-    workspace.mkdir()
-    output = SOLUTIONS["14-brand-report-zh"](_task("14").directory / "inputs", workspace)
-
-    report = docx_checks.check_theme(output, {"font": "Noto Sans CJK SC", "accent": "B00020"})
-
-    assert report["ok"] is True
-
-
 # --- the routes' skills -----------------------------------------------------------------
 
 
-def test_the_spec_skill_names_every_component_and_head_key_the_compiler_knows() -> None:
-    from coscribe.tools.office.docx.spec import COMPONENTS, HEAD_KEYS
-    from evals.docx import routes
-
-    spec = routes.build_routes(routes.BUILTIN.read_text(encoding="utf-8"))["spec"]
-
-    assert all(f":::{name}" in spec or f"`{name}`" in spec for name in COMPONENTS)
-    assert all(f"`{key}`" in spec for key in HEAD_KEYS)
-
-
-def test_the_three_routes_differ_only_in_the_new_document_part() -> None:
+def test_the_routes_differ_only_in_the_new_document_part() -> None:
     from evals.docx import routes
 
     builtin = routes.BUILTIN.read_text(encoding="utf-8")
@@ -944,6 +916,5 @@ def test_the_three_routes_differ_only_in_the_new_document_part() -> None:
 
     assert found["current"] == builtin
     assert found["script"].endswith(routes._END + tail)
-    assert "run_python_script" in found["script"] and ":::chart" not in found["script"]
-    assert found["spec"].startswith(builtin.partition(routes._START)[0])
-    assert ":::chart" in found["spec"] and "no syntax for them" not in found["spec"]
+    assert "run_python_script" in found["script"]
+    assert set(found) == {"current", "script"}

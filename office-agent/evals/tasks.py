@@ -90,8 +90,7 @@ class DocxExpect:
     `tracked`: `{"min_ins", "min_del", "rejected_equals_original"}`: the edit is a redline, and
     rejecting all of it gives the input back.
     `charts_min`: native charts in the file; `chart_values`: numbers every one of which some chart
-    draws. `theme`: `{"font", "accent"}`: the document's default font and its first-level heading
-    colour are the design system's.
+    draws.
     `original` with `styles` / `header_has` / `footer_has` / `style_uses`: the user's template or
     document: its styles are still defined, its header and footer text are still there, and
     paragraphs use the named styles at least that often. `keep_styles`: every style the original
@@ -117,7 +116,6 @@ class DocxExpect:
     keep_styles: bool = False
     charts_min: int = 0
     chart_values: list[float] = field(default_factory=list)
-    theme: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -324,7 +322,6 @@ def _parse_docx_expect(raw: dict[str, object], where: Path) -> DocxExpect:
         raw.get("images_min"),
         raw.get("image_fit"),
         raw.get("charts_min"),
-        raw.get("theme"),
         raw.get("toc"),
         *(raw.get(key) for key in template_keys),
     )
@@ -350,7 +347,6 @@ def _parse_docx_expect(raw: dict[str, object], where: Path) -> DocxExpect:
         keep_styles=bool(raw.get("keep_styles", False)),
         charts_min=int(raw.get("charts_min", 0)),  # type: ignore[call-overload]
         chart_values=[float(v) for v in raw.get("chart_values", [])],  # type: ignore[attr-defined]
-        theme={str(k): str(v) for k, v in dict(raw.get("theme", {})).items()},  # type: ignore[call-overload]
     )
 
 
