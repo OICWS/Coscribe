@@ -104,3 +104,13 @@ def locked_grid(table: Any, looks: Looks, links: Any, read_runs: ReadRuns) -> di
         height = _height(row)
         rows.append({**({"h": height} if height else {}), "cells": cells})
     return {**_shape(table, looks), "rows": rows}
+
+
+def component_of(element: Any) -> str | None:
+    """The spec component that wrote a block (decision 0024), from the `cs_` bookmark the compiler
+    leaves in it: `stats`, `callout_warn`, `chart`... None for anything else."""
+    for start in element.iter(_q("bookmarkStart")):
+        name = start.get(_q("name")) or ""
+        if name.startswith("cs_"):
+            return name[3:]
+    return None

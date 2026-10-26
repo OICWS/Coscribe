@@ -91,6 +91,13 @@ def _bookmark(document: Any, name: str) -> str:
     return f'<w:bookmarkStart w:id="{ident}" w:name="cs_{name}"/><w:bookmarkEnd w:id="{ident}"/>'
 
 
+def _mark_run(document: Any, run: Any, name: str) -> None:
+    """A bookmark around a run that is not made of the paragraph XML above (a picture, a chart)."""
+    start, end = (_element(tag) for tag in re.findall(r"<[^>]+/>", _bookmark(document, name)))
+    run.addprevious(start)
+    run.addnext(end)
+
+
 def _cell(
     width_pt: float,
     paragraphs: str,
@@ -218,10 +225,7 @@ def add_figure(document: Any, args: str, caption: str, resolve: Callable[[str], 
     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     width = Pt(_docx_text_width_pt(document) * 0.85)
     paragraph.add_run().add_picture(str(resolve(args)), width=width)
-    picture = paragraph.runs[0].element
-    start, end = (_element(tag) for tag in re.findall(r"<[^>]+/>", _bookmark(document, "figure")))
-    picture.addprevious(start)
-    picture.addnext(end)
+    _mark_run(document, paragraph.runs[0].element, "figure")
     if caption:
         text = _paragraph(_inline(caption, size=9, colour=GREY), style="Caption", centre=True)
         _add(document, _element(text))
@@ -241,3 +245,42 @@ def add_contents_title(document: Any, cjk: bool) -> None:
         )
     label = _run("目录" if cjk else "Contents", size=16, colour=ACCENT, bold=True)
     _add(document, _element(_paragraph(label, style=_TOC_HEADING_ID, after=10)))
+
+
+def add_chart(document: Any, args: str, body: str) -> None:
+    """A native Word chart: `:::chart bar Title`, then the data as a pipe table (a category column
+    and one column per series), then an optional `caption: ...` line."""
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Inches
+
+    from ..._chart_data import CHART_TYPES, parse_chart_table
+    from ..._docx_chart import add_chart_paragraph
+    from ._xml import _text_column_emu
+
+    kind, _, title = args.partition(" ")
+    if kind not in CHART_TYPES:
+        raise ValueError(
+            f"chart is `chart <type> <title>`, the type one of: {', '.join(sorted(CHART_TYPES))}"
+        )
+    lines = body.splitlines()
+    caption = next(
+        (line.partition(":")[2].strip() for line in lines if line.startswith("caption:")), ""
+    )
+    data = "\n".join(line for line in lines if not line.startswith("caption:"))
+    categories, series = parse_chart_table(data, "chart")
+    if kind == "pie" and len(series) > 1:
+        raise ValueError("a pie chart takes one data column besides the category column")
+    paragraph = add_chart_paragraph(
+        document,
+        kind,
+        categories,
+        series,
+        title.strip(),
+        _text_column_emu(document),
+        int(Inches(3.2)),
+    )
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _mark_run(document, paragraph.runs[0].element, "chart")
+    if caption:
+        text = _paragraph(_inline(caption, size=9, colour=GREY), style="Caption", centre=True)
+        _add(document, _element(text))

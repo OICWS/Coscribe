@@ -14,6 +14,7 @@ from ._xml import _add_toc, _ChangeIdCounter
 from .components import (
     GREY,
     add_callout,
+    add_chart,
     add_contents_title,
     add_cover,
     add_figure,
@@ -72,6 +73,8 @@ def _component(document: Any, component: Component, resolve: Callable[[str], Pat
         elif component.name == "callout":
             kind, _, rest = component.args.partition(" ")
             add_callout(document, kind or "info", component.body or rest)
+        elif component.name == "chart":
+            add_chart(document, component.args, component.body)
         elif component.name == "figure":
             add_figure(document, component.args, component.body, resolve)
         elif component.name == "pagebreak":
