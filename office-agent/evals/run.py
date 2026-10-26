@@ -362,6 +362,8 @@ async def run_task(
         json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     check_task(task, task_out)
+    # The interpreter a script task installs is hundreds of MB, and nothing reads it afterwards.
+    shutil.rmtree(task_out / "state" / "script-env", ignore_errors=True)
     return result
 
 
