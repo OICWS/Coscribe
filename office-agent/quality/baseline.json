@@ -269,7 +269,7 @@
   "office-agent/frontend/src/components/ThreadList.tsx::ThreadMenu": 147,
   "office-agent/frontend/src/components/chatlog/UserMessageView.tsx::UserMessageView": 135,
   "office-agent/frontend/src/components/dock/DockControls.tsx::DockControls": 140,
-  "office-agent/frontend/src/components/dock/PanelDock.tsx::PanelDock": 267,
+  "office-agent/frontend/src/components/dock/PanelDock.tsx::PanelDock": 266,
   "office-agent/frontend/src/components/settings/ConnectorSetup.tsx::ConnectorSetup": 224,
   "office-agent/frontend/src/components/settings/ConnectorsTab.tsx::ConnectorsTab": 364,
   "office-agent/frontend/src/components/settings/DirBrowserModal.tsx::DirBrowserModal": 107,
