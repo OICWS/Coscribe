@@ -86,7 +86,7 @@ def test_a_fact_is_defined_once_and_expanded_everywhere_it_is_used() -> None:
         ("---\ncover: fancy\n---\ntext", "cover is one of"),
         ("---\ntitle: x", "no closing ---"),
         ("text {fact:missing}", "not defined in the head's facts"),
-        (":::chart\n:::", "Unknown component 'chart'"),
+        (":::radar\n:::", "Unknown component 'radar'"),
         (":::stats\na | 1", "no closing :::"),
         (":::callout loud\ntext\n:::", "A callout is one of"),
     ],
@@ -160,3 +160,52 @@ def test_a_cover_needs_a_title_and_components_cannot_be_tracked_changes(tmp_path
 def test_a_stats_row_has_two_to_four_cards(tmp_path: Path) -> None:
     with pytest.raises(SpecError, match="two to four lines"):
         _write(tmp_path, ":::stats\nOnly | one\n:::")
+
+
+CHART = """\
+:::chart bar Revenue by quarter
+| Quarter | Revenue |
+| --- | --- |
+| Q1 | 8.6 |
+| Q2 | 10.9 |
+| Q3 | 12.8 |
+caption: Figure 1: **Revenue** by quarter
+:::
+"""
+
+
+def test_a_chart_is_a_native_chart_with_its_caption(tmp_path: Path) -> None:
+    document = _write(tmp_path, CHART)
+
+    parts = [str(part.partname) for part in document.part.package.iter_parts()]
+    assert "/word/charts/chart1.xml" in parts
+    caption = next(p for p in document.paragraphs if p.style.name == "Caption")
+    assert caption.text == "Figure 1: Revenue by quarter"
+
+
+@pytest.mark.parametrize(
+    ("content", "message"),
+    [
+        (":::chart radar T\n| a | b |\n| --- | --- |\n| x | 1 |\n:::", "the type one of"),
+        (":::chart bar T\n| a | b |\n| --- | --- |\n| x | many |\n:::", "not numeric"),
+        (":::chart pie T\n| a | b | c |\n| --- | --- | --- |\n| x | 1 | 2 |\n:::", "one data column"),
+    ],
+)
+def test_a_chart_that_cannot_be_drawn_is_refused_with_what_to_change(
+    tmp_path: Path, content: str, message: str
+) -> None:
+    with pytest.raises(SpecError, match=message):
+        _write(tmp_path, content)
+
+
+def test_every_component_is_found_again_when_the_file_is_read_as_blocks(tmp_path: Path) -> None:
+    from PIL import Image
+
+    Image.new("RGB", (120, 60), "tomato").save(tmp_path / "pic.png")
+    content = SPEC + "\n" + CHART + "\n:::figure pic.png\nA picture\n:::\n"
+    _write(tmp_path, content)
+
+    blocks = read_doc_blocks(tmp_path / "out.docx")["blocks"]
+    components = {b["component"] for b in blocks if "component" in b}
+
+    assert components == {"cover", "stats", "callout_warn", "chart", "figure"}

@@ -22,7 +22,7 @@ HEAD_KEYS = (
     "design_system",
 )
 COVER_STYLES = ("band", "rule", "none")
-COMPONENTS = ("stats", "callout", "figure", "pagebreak")
+COMPONENTS = ("stats", "callout", "chart", "figure", "pagebreak")
 CALLOUT_KINDS = ("info", "success", "warn", "danger")
 
 _FENCE_OPEN = re.compile(r"^:::\s*([a-z]+)\s*(.*)$")
