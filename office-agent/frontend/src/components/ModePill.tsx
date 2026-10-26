@@ -51,15 +51,15 @@ export function ModePill({ planMode, acceptEdits, autoMode, sendRaw }: ModePillP
   };
 
   return (
-    <div className="relative" ref={rootRef}>
+    <div className="relative min-w-0" ref={rootRef}>
       <button
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex h-8 items-center rounded-lg px-2 text-sm text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
+        className="flex h-8 max-w-full items-center rounded-lg px-2 text-sm text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
         onClick={() => setOpen((v) => !v)}
       >
-        {MODES.find((m) => m.mode === current)?.label}
+        <span className="truncate">{MODES.find((m) => m.mode === current)?.label}</span>
       </button>
       {open && (
         <div

@@ -78,7 +78,7 @@ export function EffortPicker({ effort: confirmed, runsAs, onChange }: EffortPick
   const at = (i: number) => `calc(10px + (100% - 20px) * ${i / (EFFORTS.length - 1)})`;
 
   return (
-    <div className="relative" ref={rootRef}>
+    <div className="relative shrink-0" ref={rootRef}>
       <button
         type="button"
         data-testid="effort-pill"

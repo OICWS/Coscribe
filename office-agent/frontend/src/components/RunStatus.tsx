@@ -46,7 +46,7 @@ export function RunStatus({ turnInFlight, totalTokens, workflowTest = null }: Ru
   const tokenDelta = Math.max(0, totalTokens - startTokens);
 
   return (
-    <span className="shrink-0 text-xs tabular-nums text-[var(--muted)]" data-testid="run-status">
+    <span className="hidden shrink-0 text-xs @[600px]:inline tabular-nums text-[var(--muted)]" data-testid="run-status">
       {workflowTest && (
         <span data-testid="workflow-test-progress">
           Testing workflow {workflowTest.done}/{workflowTest.total} ·{" "}
