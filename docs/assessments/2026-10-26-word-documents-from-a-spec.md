@@ -1,7 +1,7 @@
 # Design note: Word documents written from a spec, compiled onto a theme and checked (2026-10-26)
 
 Design before code: it changes how every new Word document is written and read back. Status:
-**proposed**, waiting for the maintainer's answers at the end. It rests on 0001 (a fixed, cached tool
+**accepted** (2026-10-26, by the maintainer, with the recommended answer to all five questions at the end). It rests on 0001 (a fixed, cached tool
 list), 0012 (no LibreOffice), 0013 (a document style, not a script route), 0019 (the .docx is the
 artifact) and 0020 (design systems are a library). It extends 0013 and 0019; it replaces neither.
 
@@ -149,13 +149,9 @@ reading and editing a user's own file. The components replace what the scripts w
 - Whether Word keeps the component markers across a save; how the cheaper models write the grammar;
   the cost of the plan step; whether the design reaches 4.2 with eight components.
 
-## Questions for the maintainer
-1. **Grammar form.** Markdown with a YAML head and `:::` blocks (recommended: the model's usual surface,
-   small review, `write_docx` unchanged) or a JSON spec (stricter, longer for the model to write)?
-2. **Plan step.** A plan before documents of more than three sections, approved in the plan UI
-   (recommended), or never required, only offered?
-3. **Order.** Compiler and checker first with the editor unchanged (recommended), or the editor's
-   component editing in the same pass?
-4. **Design systems for Docs** in step 4 (recommended) or later, with the house style until then?
-5. **Charts in the flow** as a native Word chart (recommended; the editor and Review draw it) or as an
-   image (always drawn, not editable in Word)?
+## Answers (2026-10-26, the maintainer: all five as recommended)
+1. **Grammar form**: markdown with a YAML head and `:::` blocks; `write_docx` unchanged.
+2. **Plan step**: required before documents of more than about three sections, approved in the plan UI; short ones skip it.
+3. **Order**: compiler and checker first, the editor unchanged; component editing last.
+4. **Design systems for Docs** in step 4.
+5. **Charts in the flow**: a native Word chart, drawn by the editor and Review.

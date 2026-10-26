@@ -1,7 +1,7 @@
-# 0024: Word documents are written from a spec, compiled onto a theme and checked (proposed)
+# 0024: Word documents are written from a spec, compiled onto a theme and checked
 
-Status: proposed (2026-10-26); accepted once the maintainer answers the questions in
-`docs/assessments/2026-10-26-word-documents-from-a-spec.md`. Extends 0013 (a document style, not a
+Status: accepted (2026-10-26, by the maintainer, with the answers in
+`docs/assessments/2026-10-26-word-documents-from-a-spec.md`). Extends 0013 (a document style, not a
 script route) and 0019 (the .docx is the artifact); changes neither.
 
 ## Context
