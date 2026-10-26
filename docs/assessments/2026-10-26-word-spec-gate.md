@@ -19,7 +19,7 @@ its behaviour and the Word skill is unchanged.**
 5. **建议**：不翻转默认。先改这六处，只重跑 spec 路线的 08、09、12、13 四个任务，和已有的 current、
    script 一起重新盲评；不过再决定是否继续。script 路线分最高，但需要用户电脑装 Python 且每次要批准，
    不能做产品默认（2026-10-16 已定）。
-6. 成本说明：评测的 `cost` 是美元；三路合计 0.69 美元，约 4.6 元。
+6. 成本说明：评测的 `cost` 是美元；三路合计 0.68 美元，约 4.6 元。
 
 ## 1. What was run
 
