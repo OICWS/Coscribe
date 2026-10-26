@@ -126,7 +126,7 @@ def router(state: AppState) -> APIRouter:
                     asyncio.create_task(
                         session.handle_user_message(
                             data["text"],
-                            websocket,
+                            session.via(websocket),
                             images=data.get("images"),
                             artifact=data.get("artifact"),
                             design_system=data.get("design_system"),
@@ -140,7 +140,7 @@ def router(state: AppState) -> APIRouter:
                     # the approval_response that would unblock it.
                     asyncio.create_task(
                         session.handle_edit_message(
-                            data["index"], data["text"], websocket, images=data.get("images")
+                            data["index"], data["text"], session.via(websocket), data.get("images")
                         )
                     )
                 elif message_type == "rewind_message":
