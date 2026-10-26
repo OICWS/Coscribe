@@ -32,6 +32,15 @@ _DOWN = ("-", "−", "▼", "↓")
 _TOC_HEADING_ID = "TOCHeading"
 
 
+def accent_of(document: Any) -> str:
+    """The document's accent: the colour of its first-level headings, so a theme sets it once and
+    every component follows."""
+    try:
+        return str(document.styles["Heading 1"].font.color.rgb) or ACCENT
+    except (KeyError, AttributeError):
+        return ACCENT
+
+
 def _tint(hex6: str, strength: float = 0.9) -> str:
     """The colour mixed towards white; `strength` is how much white."""
     channels = [int(hex6[i : i + 2], 16) for i in (0, 2, 4)]
@@ -151,13 +160,14 @@ def add_cover(document: Any, head: dict[str, Any], style: str) -> None:
     """The cover page: a colour band (style `band`), the title, an accent rule, the subtitle and
     the author and date, then a page break."""
     width = _docx_text_width_pt(document)
+    accent = accent_of(document)
     if style == "band":
         band = _paragraph(mark=_bookmark(document, "cover"))
-        _table(document, [_cell(width, band, fill=ACCENT)], [width], height_pt=22)
+        _table(document, [_cell(width, band, fill=accent)], [width], height_pt=22)
     top = 110 if style == "band" else 90
-    title = _run(str(head["title"]), size=22, colour=ACCENT)
+    title = _run(str(head["title"]), size=22, colour=accent)
     _add(document, _element(_paragraph(title, style="Title", before=top)))
-    line = f'<w:pBdr><w:bottom w:val="single" w:sz="18" w:space="6" w:color="{ACCENT}"/></w:pBdr>'
+    line = f'<w:pBdr><w:bottom w:val="single" w:sz="18" w:space="6" w:color="{accent}"/></w:pBdr>'
     _add(document, _element(_paragraph(after=8, border=line, right_indent=width * 0.6)))
     if head.get("subtitle"):
         subtitle = _run(str(head["subtitle"]), size=14, colour=GREY)
@@ -185,16 +195,17 @@ def add_stats(document: Any, body: str) -> None:
             "stats has two to four lines, each `label | value | change` (change optional)"
         )
     width = _docx_text_width_pt(document)
+    accent = accent_of(document)
     cells = []
     for index, parts in enumerate(rows):
         label, value = parts[0], parts[1]
         change = parts[2] if len(parts) > 2 else ""
         mark = _bookmark(document, "stats") if index == 0 else ""
         content = _paragraph(_run(label, size=9, colour=GREY), after=2, mark=mark)
-        content += _paragraph(_run(value, size=20, colour=ACCENT, bold=True), after=2)
+        content += _paragraph(_run(value, size=20, colour=accent, bold=True), after=2)
         if change:
             content += _paragraph(_run(change, size=9, colour=_delta_colour(change)))
-        cells.append(_cell(width / len(rows), content, fill=_tint(ACCENT), sides=("FFFFFF", 36)))
+        cells.append(_cell(width / len(rows), content, fill=_tint(accent), sides=("FFFFFF", 36)))
     _table(document, cells, [width / len(rows)] * len(rows))
     _spacer(document)
 
@@ -234,16 +245,17 @@ def add_figure(document: Any, args: str, caption: str, resolve: Callable[[str], 
 def add_contents_title(document: Any, cjk: bool) -> None:
     """The word above a contents list, in a style of its own so the list does not hold it."""
     styles = document.styles.element
+    accent = accent_of(document)
     if not styles.xpath(f'w:style[@w:styleId="{_TOC_HEADING_ID}"]'):
         styles.append(
             _element(
                 f'<w:style w:type="paragraph" w:customStyle="1" w:styleId="{_TOC_HEADING_ID}">'
                 '<w:name w:val="TOC Heading"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/>'
                 '<w:uiPriority w:val="39"/><w:qFormat/><w:pPr><w:spacing w:after="200"/></w:pPr>'
-                f'<w:rPr><w:b/><w:color w:val="{ACCENT}"/><w:sz w:val="32"/></w:rPr></w:style>'
+                f'<w:rPr><w:b/><w:color w:val="{accent}"/><w:sz w:val="32"/></w:rPr></w:style>'
             )
         )
-    label = _run("目录" if cjk else "Contents", size=16, colour=ACCENT, bold=True)
+    label = _run("目录" if cjk else "Contents", size=16, colour=accent, bold=True)
     _add(document, _element(_paragraph(label, style=_TOC_HEADING_ID, after=10)))
 
 
