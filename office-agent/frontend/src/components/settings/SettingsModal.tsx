@@ -125,6 +125,8 @@ interface SettingsModalProps {
   /** What Design systems opens on: "new" for its New design system form, a system's id for that
    * system, nothing for the list. */
   startDesignSystem?: string | null;
+  /** Starts the conversation that makes a design system from a description (Settings closes first). */
+  onDescribeDesignSystem: () => void;
   onCreateSkill: () => void;
   onClose: () => void;
 }
@@ -133,6 +135,7 @@ export function SettingsModal({
   open,
   initialCategory,
   startDesignSystem,
+  onDescribeDesignSystem,
   onCreateSkill,
   onClose,
 }: SettingsModalProps) {
@@ -313,7 +316,7 @@ export function SettingsModal({
               />
             )}
             {category === "connectors" && <ConnectorsTab active={category === "connectors"} />}
-            {category === "design-systems" && <DesignSystemsTab active={category === "design-systems"} start={startDesignSystem} />}
+            {category === "design-systems" && <DesignSystemsTab active={category === "design-systems"} start={startDesignSystem} onDescribe={() => { onClose(); onDescribeDesignSystem(); }} />}
             {category === "secrets" && <SecretsTab active={category === "secrets"} />}
             {category === "sessions" && <SessionsTab values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} />}
             {category === "capabilities" && <CapabilitiesTab active values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} />}
