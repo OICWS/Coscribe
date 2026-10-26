@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { groupToolRuns, groupTurns, latestWorkflowDraft, latestWorkflowDraftId, workflowTests, type WorkflowDraftEntry } from "../lib/transcriptGrouping";
 import { type LogItem } from "../state/reducer";
+import { useFollowEnd } from "../lib/useFollowEnd";
 import { EmptyState } from "./EmptyState";
 import { type PptxShapeCapture } from "./PptxShapeOverlay";
 import { type PlanChoice, type PlanItem } from "./PlanCard";
@@ -123,14 +124,9 @@ export function ChatLog({
     card?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
-    // Deliberately not [items, olderItems] -- appending a live item
-    // should always jump to the bottom, but revealing older history
-    // above should never move the viewport at all (see the scroll-
-    // anchoring effect below, which handles that case on its own terms
-    // instead of fighting this one for the same scroll position).
-  }, [items]);
+  const onScroll = useFollowEnd(scrollRef, endRef, items, items[items.length - 1]?.kind === "user");
+  // Revealing older history above never moves the viewport (see the scroll-anchoring effect
+  // below, which handles that case on its own terms).
 
   // Keeps whatever the user was already looking at pinned in place when
   // a new batch of older messages is prepended above it -- without this,
@@ -196,7 +192,7 @@ export function ChatLog({
 
   return (
     <ChatContexts connectorTools={connectorTools} folderActions={folderActions ?? null} cards={cards} items={items} olderItems={olderItems}>
-    <div data-testid="chat-log" className="flex-1 overflow-y-auto" ref={scrollRef}>
+    <div data-testid="chat-log" className="flex-1 overflow-y-auto" ref={scrollRef} onScroll={onScroll}>
       <div className="mx-auto flex w-full max-w-[880px] flex-col gap-3 px-4 py-4">
         {olderStatus === "loading" && (
           <p className="self-center text-xs text-[var(--muted)]">Loading earlier messages...</p>

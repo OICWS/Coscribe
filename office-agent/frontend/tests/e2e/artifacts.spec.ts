@@ -248,3 +248,18 @@ test("the design-system tile asks how: the blank form, or a conversation that de
   await expect(page.getByRole("button", { name: "Design system mode" })).toBeVisible();
   await expect(page.getByPlaceholder("Describe the brand or the look you want…")).toBeVisible();
 });
+
+test("Backspace in the empty message box takes the kind chip off, and only then", async ({ page }) => {
+  await openPage(page);
+  await page.getByRole("button", { name: /^Slides/ }).click();
+  const box = page.getByPlaceholder("What should this deck be about?");
+  await expect(page.getByRole("button", { name: "Slides mode" })).toBeVisible();
+
+  await box.fill("a");
+  await box.press("Backspace");
+  await expect(page.getByRole("button", { name: "Slides mode" })).toBeVisible();
+
+  await box.press("Backspace");
+  await expect(page.getByRole("button", { name: "Slides mode" })).toHaveCount(0);
+  await expect(page.getByPlaceholder("Type / for commands")).toBeVisible();
+});
