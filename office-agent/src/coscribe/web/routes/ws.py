@@ -3,11 +3,36 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from ...conversation import ChatSessionLG
 from ..browser_panel import BrowserPanelError, BrowserPanelSession
 from ..state import AppState
+
+
+class _TurnSocket:
+    """What a turn writes to. A turn outlives the connection that started it (the person opens
+    another conversation, which closes this one's socket), so its events go to whichever tab has
+    the conversation open now, or nowhere, and it can ask for an approval only while one is open."""
+
+    def __init__(self, session: ChatSessionLG, origin: WebSocket) -> None:
+        self._session = session
+        self.origin = origin
+
+    @property
+    def can_resolve_approvals(self) -> bool:
+        return self._session._live_websocket is not None
+
+    async def send_json(self, data: Any) -> None:
+        target = self._session._live_websocket
+        if target is None:
+            return
+        try:
+            await target.send_json(data)
+        except Exception:  # noqa: BLE001 -- the tab closed between the check and the send
+            return
 
 
 def router(state: AppState) -> APIRouter:
@@ -126,7 +151,7 @@ def router(state: AppState) -> APIRouter:
                     asyncio.create_task(
                         session.handle_user_message(
                             data["text"],
-                            websocket,
+                            _TurnSocket(session, websocket),
                             images=data.get("images"),
                             artifact=data.get("artifact"),
                             design_system=data.get("design_system"),
@@ -140,7 +165,10 @@ def router(state: AppState) -> APIRouter:
                     # the approval_response that would unblock it.
                     asyncio.create_task(
                         session.handle_edit_message(
-                            data["index"], data["text"], websocket, images=data.get("images")
+                            data["index"],
+                            data["text"],
+                            _TurnSocket(session, websocket),
+                            images=data.get("images"),
                         )
                     )
                 elif message_type == "rewind_message":
@@ -202,6 +230,10 @@ def router(state: AppState) -> APIRouter:
             # cancels that task without ever resolving the approval or
             # resuming the graph, so the checkpointer's real pending state
             # is untouched and a genuine reconnect still redelivers it.
+            # Before the abandon check: a turn deciding at this moment whether anyone can answer
+            # an approval must find the tab gone.
+            if session._live_websocket is websocket:
+                session._live_websocket = None
             session.abandon_orphaned_turn(websocket)
             await session.run_session_end_hooks()
         finally:

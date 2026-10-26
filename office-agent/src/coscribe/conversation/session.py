@@ -645,11 +645,32 @@ class ChatSessionLG:
 
         Only a turn driven by `websocket`, the connection that went away: a
         background turn (a scheduled run, a run being looked into) only
-        shows in whichever tab is open, and must outlive one closing."""
-        if self._turn_websocket is not websocket:
+        shows in whichever tab is open, and must outlive one closing.
+
+        A turn started by a tab (its socket is a relay with an `origin`) outlives that tab
+        too, since opening another conversation closes this one's socket: it is cancelled
+        only when it is parked on a person's answer and no tab is left to give it."""
+        turn_socket = self._turn_websocket
+        origin = getattr(turn_socket, "origin", None)
+        if origin is None:
+            if turn_socket is not websocket:
+                return
+        elif (
+            origin is not websocket
+            or self._live_websocket is not None
+            or not self._waits_on_person()
+        ):
             return
         if self._current_turn_task is not None and not self._current_turn_task.done():
             self._current_turn_task.cancel()
+
+    def _waits_on_person(self) -> bool:
+        pending: list[Future[Any]] = [
+            f
+            for request_id, f in self._pending_approvals.items()
+            if request_id not in self._subagent_request_ids
+        ]
+        return any(not f.done() for f in [*pending, *self._pending_questions.values()])
 
     async def switch_model(
         self, model: str, websocket: EventSink, effort: str | None = None
