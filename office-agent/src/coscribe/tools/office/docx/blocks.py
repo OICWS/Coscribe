@@ -22,6 +22,7 @@ from ..markdown_blocks import Block
 from ._review import write_atomically
 from .block_breaks import BREAK_KINDS, break_kind, new_break_paragraph
 from .block_images import (
+    chart_of,
     clean_picture,
     decode_picture,
     images_of,
@@ -29,6 +30,8 @@ from .block_images import (
     picture_of,
     set_picture,
 )
+from .block_tables import editable_look, locked_grid
+from .look import Looks, page_of
 
 _W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 _R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
@@ -173,12 +176,17 @@ def _merged(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return merged
 
 
-def _read_runs(paragraph: Any, links: Any) -> list[dict[str, Any]]:
+def _read_runs(
+    paragraph: Any, links: Any, looks: Looks | None = None, base: dict[str, Any] | None = None
+) -> list[dict[str, Any]]:
+    def seen(run: Any) -> dict[str, Any]:
+        return looks.run(run, base or {}, _run_text(run)) if looks else {}
+
     runs: list[dict[str, Any]] = []
     for child in paragraph:
         name = _local(child)
         if name == "r":
-            runs.append({"t": _run_text(child), **_marks(child)})
+            runs.append({"t": _run_text(child), **_marks(child), **seen(child)})
         elif name == "hyperlink":
             relation = links.get(child.get(f"{{{_R}}}id"))
             url = getattr(relation, "target_ref", None)
@@ -186,7 +194,10 @@ def _read_runs(paragraph: Any, links: Any) -> list[dict[str, Any]]:
                 if _local(run) == "r":
                     # A link is drawn underlined and coloured: its look, not a mark of the text.
                     marks = {k: v for k, v in _marks(run).items() if k != "u" or not url}
-                    runs.append({"t": _run_text(run), **marks, **({"link": url} if url else {})})
+                    look = {} if url else seen(run)
+                    runs.append(
+                        {"t": _run_text(run), **marks, **look, **({"link": url} if url else {})}
+                    )
     return _merged(runs)
 
 
@@ -199,6 +210,7 @@ class _Context:
         self.document = document
         self.style_names = {s.style_id: (s.name or "") for s in document.styles}
         self.links = document.part.rels
+        self.looks = Looks(document)
 
     def style_of(self, paragraph: Any) -> str:
         style = paragraph.find(f"{_q('pPr')}/{_q('pStyle')}")
@@ -237,11 +249,19 @@ class _Context:
 
 
 def _paragraph_block(paragraph: Any, context: _Context) -> dict[str, Any]:
+    look = context.looks.paragraph(paragraph)
     if (rule := break_kind(paragraph)) is not None:
-        return {"kind": rule}
+        return {"kind": rule, **({"look": look} if rule == "divider" else {})}
     reason = _lock_reason(paragraph)
     if reason is not None:
-        return _locked(reason, _plain(paragraph), images_of(paragraph), picture_of(paragraph))
+        return _locked(
+            reason,
+            _plain(paragraph),
+            images_of(paragraph),
+            picture_of(paragraph),
+            chart=chart_of(paragraph, context.document),
+            look=look,
+        )
     name = context.style_of(paragraph)
     block: dict[str, Any]
     heading, listed = _HEADING_STYLE.match(name), _LIST_STYLE.match(name)
@@ -259,13 +279,17 @@ def _paragraph_block(paragraph: Any, context: _Context) -> dict[str, Any]:
         block = {"kind": own[0], "level": own[1]}
     else:
         block = {"kind": "paragraph", **({"style": name} if name != "Normal" else {})}
-    block["runs"] = _read_runs(paragraph, context.links)
-    return block
+    block["runs"] = _read_runs(paragraph, context.links, context.looks, look)
+    return {**block, "look": look} if look else block
 
 
 def _plain(element: Any) -> str:
-    text = "".join(t.text or "" for t in element.iter(_q("t"), _q("delText")))
-    return text[:_PREVIEW]
+    parts = (
+        "\t" if part.tag == _q("tab") else part.text or ""
+        for part in element.iter(_q("t"), _q("delText"), _q("tab"))
+        if part.tag != _q("tab") or part.getparent().tag == _q("r")
+    )
+    return "".join(parts)[:_PREVIEW]
 
 
 def _locked(
@@ -273,45 +297,20 @@ def _locked(
     text: str = "",
     images: list[str] | None = None,
     picture: dict[str, Any] | None = None,
-    grid: list[list[dict[str, Any]]] | None = None,
+    grid: dict[str, Any] | None = None,
+    chart: dict[str, Any] | None = None,
+    look: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
         "kind": "locked",
         "what": what,
         "text": text,
         **({"grid": grid} if grid else {}),
+        **({"chart": chart} if chart else {}),
+        **({"look": look} if look else {}),
         **({"images": images} if images else {}),
         **({"picture": picture} if picture else {}),
     }
-
-
-_GRID_CELLS = 400
-
-
-def _table_grid(table: Any) -> list[list[dict[str, Any]]]:
-    """A table the editor cannot change, as text per cell, so it can be drawn."""
-    grid: list[list[dict[str, Any]]] = []
-    budget = _GRID_CELLS
-    for row in table.findall(_q("tr")):
-        line: list[dict[str, Any]] = []
-        for cell in row.findall(_q("tc")):
-            if budget <= 0:
-                return grid
-            budget -= 1
-            properties = cell.find(_q("tcPr"))
-            span = properties.find(_q("gridSpan")) if properties is not None else None
-            shade = properties.find(_q("shd")) if properties is not None else None
-            fill = shade.get(_q("fill")) if shade is not None else None
-            entry: dict[str, Any] = {
-                "t": "\n".join(_plain(p) for p in cell.iter(_q("p")) if _plain(p))
-            }
-            if span is not None and (value := span.get(_q("val"))) and value.isdigit():
-                entry["span"] = int(value)
-            if fill and re.fullmatch(r"[0-9A-Fa-f]{6}", fill):
-                entry["fill"] = fill
-            line.append(entry)
-        grid.append(line)
-    return grid
 
 
 def _table_block(table: Any, context: _Context) -> dict[str, Any]:
@@ -331,13 +330,29 @@ def _table_block(table: Any, context: _Context) -> dict[str, Any]:
                 or merged is not None
                 or _lock_reason(paragraphs[0]) is not None
             ):
-                return _locked("table", _plain(table), grid=_table_grid(table))
-            line.append(_read_runs(paragraphs[0], context.links))
+                return _locked(
+                    "table",
+                    _plain(table),
+                    grid=locked_grid(table, context.looks, context.links, _read_runs),
+                )
+            line.append(
+                _read_runs(
+                    paragraphs[0],
+                    context.links,
+                    context.looks,
+                    context.looks.paragraph(paragraphs[0]),
+                )
+            )
         grid.append(line)
     if not grid or len({len(line) for line in grid}) != 1:
-        return _locked("table", _plain(table), grid=_table_grid(table))
+        return _locked(
+            "table",
+            _plain(table),
+            grid=locked_grid(table, context.looks, context.links, _read_runs),
+        )
     header = rows[0].find(f"{_q('trPr')}/{_q('tblHeader')}") is not None
-    return {"kind": "table", "header": header, "rows": grid}
+    look = editable_look(table, context.looks, context.links, _read_runs)
+    return {"kind": "table", "header": header, "rows": grid, "look": look}
 
 
 def _body_blocks(document: Any) -> list[tuple[dict[str, Any], Any]]:
@@ -365,7 +380,11 @@ def read_doc_blocks(path: Path) -> dict[str, Any]:
 
     data = path.read_bytes()
     document = Document(io.BytesIO(data))
-    return {"version": version_of(data), "blocks": [block for block, _ in _body_blocks(document)]}
+    return {
+        "version": version_of(data),
+        "page": page_of(document, Looks(document)),
+        "blocks": [block for block, _ in _body_blocks(document)],
+    }
 
 
 # -- Writing ---------------------------------------------------------------------------------------
@@ -382,6 +401,13 @@ def _clean_runs(raw: Any) -> list[dict[str, Any]]:
         for mark in ("b", "i", "u"):
             if item.get(mark):
                 run[mark] = True
+        colour, size, font = item.get("c"), item.get("sz"), item.get("f")
+        if isinstance(colour, str) and re.fullmatch(r"[0-9A-Fa-f]{6}", colour):
+            run["c"] = colour.upper()
+        if isinstance(size, int | float) and not isinstance(size, bool) and 1 <= size <= 400:
+            run["sz"] = size
+        if isinstance(font, str) and 0 < len(font) <= 64 and font.isprintable():
+            run["f"] = font
         link = item.get("link")
         if link:
             if not isinstance(link, str) or not link.lower().startswith(_LINK_SCHEMES):
@@ -460,14 +486,23 @@ def _run_element(run: dict[str, Any], *, linked: bool = False) -> Any:
 
     element = OxmlElement("w:r")
     props = OxmlElement("w:rPr")
+    if run.get("f"):
+        fonts = OxmlElement("w:rFonts")
+        for attribute in ("ascii", "hAnsi", "eastAsia", "cs"):
+            fonts.set(_q(attribute), run["f"])
+        props.append(fonts)
     if run.get("b"):
         props.append(OxmlElement("w:b"))
     if run.get("i"):
         props.append(OxmlElement("w:i"))
-    if linked:
+    if linked or run.get("c"):
         colour = OxmlElement("w:color")
-        colour.set(_q("val"), _LINK_COLOUR)
+        colour.set(_q("val"), _LINK_COLOUR if linked else run["c"])
         props.append(colour)
+    if run.get("sz"):
+        size = OxmlElement("w:sz")
+        size.set(_q("val"), str(round(run["sz"] * 2)))
+        props.append(size)
     if run.get("u") or linked:
         underline = OxmlElement("w:u")
         underline.set(_q("val"), "single")

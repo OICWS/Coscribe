@@ -431,5 +431,99 @@ def test_a_table_the_editor_cannot_change_carries_its_cells_to_be_shown(tmp_path
     block = read_doc_blocks(path)["blocks"][0]
 
     assert block["what"] == "table"
-    assert block["grid"][0] == [{"t": "Revenue", "span": 2}]
-    assert [cell["t"] for cell in block["grid"][1]] == ["12", "+3%"]
+    first, second = block["grid"]["rows"]
+    assert first["cells"][0]["span"] == 2
+    assert first["cells"][0]["paras"][0]["runs"][0]["t"] == "Revenue"
+    assert [c["paras"][0]["runs"][0]["t"] for c in second["cells"]] == ["12", "+3%"]
+
+
+def test_a_chart_is_a_locked_block_that_carries_its_xml_and_printed_size(tmp_path: Path) -> None:
+    from coscribe.tools._docx_chart import add_chart_paragraph
+
+    path = tmp_path / "chart.docx"
+    document = Document()
+    document.add_paragraph("Before")
+    add_chart_paragraph(
+        document, "bar", ["Q1", "Q2"], {"Revenue": [1.0, 2.0]}, "Revenue", 5000000, 2500000
+    )
+    document.save(path)
+
+    block = next(b for b in read_doc_blocks(path)["blocks"] if b["kind"] == "locked")
+
+    assert block["what"] == "image or drawing"
+    assert "<c:barChart" in block["chart"]["xml"] and "Revenue" in block["chart"]["xml"]
+    assert round(block["chart"]["w"]) == round(5000000 / 12700)
+
+
+def test_a_paragraph_and_its_runs_carry_the_look_the_styles_and_direct_formatting_give(
+    tmp_path: Path,
+) -> None:
+    from docx.shared import Pt, RGBColor
+
+    path = tmp_path / "look.docx"
+    document = Document()
+    heading = document.add_heading("Plan", level=1)
+    heading.paragraph_format.space_before = Pt(18)
+    paragraph = document.add_paragraph()
+    paragraph.add_run("plain ")
+    big = paragraph.add_run("big")
+    big.font.size = Pt(20)
+    big.font.color.rgb = RGBColor(0x12, 0x34, 0x56)
+    document.save(path)
+
+    result = read_doc_blocks(path)
+    head, body = result["blocks"][0], result["blocks"][1]
+
+    assert head["look"]["before"] == 18.0 and head["look"]["size"] > 12
+    assert body["runs"] == [{"t": "plain "}, {"t": "big", "c": "123456", "sz": 20.0}]
+    assert result["page"]["w"] > 400 and result["page"]["base"]["size"] > 0
+
+
+def test_a_table_the_editor_can_change_carries_widths_and_cell_fills(tmp_path: Path) -> None:
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    path = tmp_path / "plain-table.docx"
+    document = Document()
+    table = document.add_table(rows=1, cols=2)
+    table.cell(0, 0).text = "a"
+    table.cell(0, 1).text = "b"
+    shade = OxmlElement("w:shd")
+    shade.set(qn("w:fill"), "E4F6EF")
+    table.cell(0, 0)._tc.get_or_add_tcPr().append(shade)
+    document.save(path)
+
+    block = read_doc_blocks(path)["blocks"][0]
+
+    assert block["kind"] == "table"
+    assert block["look"]["rows"][0]["cells"][0]["look"]["fill"] == "E4F6EF"
+    assert len(block["look"]["widths"]) == 2
+
+
+def test_a_runs_colour_size_and_font_survive_an_edit_of_its_paragraph(tmp_path: Path) -> None:
+    path = tmp_path / "keep-look.docx"
+    document = Document()
+    document.add_paragraph("old")
+    document.save(path)
+    read = read_doc_blocks(path)
+    block = {
+        **read["blocks"][0],
+        "runs": [{"t": "new", "b": True, "c": "147f68", "sz": 20, "f": "Noto Sans"}],
+    }
+
+    saved = save_doc_blocks(path, read["version"], [block])
+
+    assert saved["blocks"][0]["runs"] == [
+        {"t": "new", "b": True, "c": "147F68", "sz": 20.0, "f": "Noto Sans"}
+    ]
+
+
+def test_a_run_look_that_is_not_a_colour_size_or_font_is_dropped(tmp_path: Path) -> None:
+    path = tmp_path / "bad-look.docx"
+    Document().save(path)
+    read = read_doc_blocks(path)
+    block = {"kind": "paragraph", "runs": [{"t": "x", "c": "red;", "sz": 9000, "f": "A\u0007B"}]}
+
+    saved = save_doc_blocks(path, read["version"], [block])
+
+    assert saved["blocks"][-1]["runs"] == [{"t": "x"}]

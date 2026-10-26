@@ -700,6 +700,43 @@ body {
   flex: 1;
   border-top: 1px dashed var(--border);
 }
+/* A document drawn on the page it is laid out on: its own fonts, spacing and colours, not the app's. */
+.docs-sheet {
+  background: #fff;
+  box-shadow: 0 1px 6px rgb(0 0 0 / 0.18);
+  box-sizing: border-box;
+}
+.docs-editor.word-look {
+  min-height: 0;
+}
+.docs-editor.word-look > * + * {
+  margin-top: 0;
+}
+.docs-editor.word-look p {
+  margin: 0 0 var(--p-after);
+}
+.docs-editor.word-look h1,
+.docs-editor.word-look h2,
+.docs-editor.word-look h3,
+.docs-editor.word-look .docs-title {
+  margin: 0.6em 0 0.3em;
+  font-family: inherit;
+  font-weight: 700;
+  line-height: inherit;
+}
+.docs-editor.word-look td[style],
+.docs-editor.word-look th[style] {
+  padding: 0 5.4pt;
+  font-weight: normal;
+}
+.docs-editor.word-look table {
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.docs-editor.word-look td > p,
+.docs-editor.word-look th > p {
+  min-height: 1em;
+}
 .docs-editor .docs-locked-grid {
   display: block;
   background: none;
@@ -715,6 +752,21 @@ body {
   padding: 4px 8px;
   white-space: pre-line;
   vertical-align: top;
+}
+.docs-editor .docs-locked-empty {
+  height: 2px;
+}
+.docs-editor .docs-locked-leader {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.docs-editor .docs-leader {
+  flex: 1;
+  min-width: 12px;
+  border-bottom: 1px dotted currentColor;
+  opacity: 0.6;
+  transform: translateY(-3px);
 }
 .docs-editor .docs-locked-line {
   background: none;

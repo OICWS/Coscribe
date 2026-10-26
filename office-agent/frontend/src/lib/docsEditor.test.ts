@@ -2,6 +2,7 @@ import { getSchema } from "@tiptap/core";
 import { Node as PMNode } from "@tiptap/pm/model";
 import { describe, expect, it } from "vitest";
 import { docsExtensions } from "./docsExtensions";
+import { lookStyle } from "./docsLook";
 import { blocksToDoc, docImageUrl, docToBlocks, type Block } from "./docsEditor";
 
 const schema = getSchema(docsExtensions);
@@ -117,5 +118,22 @@ describe("blocks and the editor's document", () => {
     const { blocks } = docToBlocks(doc);
     expect(blocks[0]).toEqual({ id: undefined, kind: "paragraph", runs: [{ t: "new" }] });
     expect(blocks.map((b) => ("level" in b ? b.level : 0))).toEqual([0, 1, 2, 3, 3]);
+  });
+});
+
+describe("the look a Word file gives its text", () => {
+  it("keeps a run's colour, size and font through the editor, and draws a paragraph with its own spacing", () => {
+    const blocks: Block[] = [
+      { id: "b0", kind: "paragraph", look: { size: 10.5, before: 76, after: 4, align: "left" }, runs: [{ t: "big ", c: "147F68", sz: 20, f: "Noto Sans" }, { t: "plain" }] },
+    ];
+    expect(roundTrip(blocks).blocks).toEqual([{ id: "b0", kind: "paragraph", runs: blocks[0] && "runs" in blocks[0] ? blocks[0].runs : [] }]);
+    const doc = blocksToDoc(blocks);
+    expect(doc.content?.[0]?.attrs?.look).toMatchObject({ before: 76 });
+  });
+
+  it("turns a look into css", () => {
+    expect(lookStyle({ size: 10.5, color: "23343C", before: 4, line: { m: 1.6 }, border: { bottom: { c: "FF7A59", w: 2.25 } } })).toBe(
+      "font-size:10.5pt;color:#23343C;margin-top:4pt;line-height:1.6;border-bottom:2.25pt solid #FF7A59;padding-bottom:3pt",
+    );
   });
 });
