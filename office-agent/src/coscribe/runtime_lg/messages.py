@@ -125,7 +125,8 @@ _ARTIFACTS = {
     ),
     "design-system": (
         "a new design system for their library. Ask for what is missing (brand colors, fonts, "
-        "tone, who it is for), read what they attached with the file and image tools, say the "
+        "tone, who it is for), read what they attached with the file and image tools (for a "
+        ".pptx template, read_pptx_design gives its colors, fonts and text sizes), say the "
         "system you propose in words, and when they agree save it with save_design_system "
         "(find it with search_tools)"
     ),
