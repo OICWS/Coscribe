@@ -74,6 +74,13 @@ test("the environment picker makes, chooses, edits and deletes an environment", 
   for (const page_ of ["Folders", "Network", "Scripts and commands", "Secrets", "Environment variables"]) {
     await expect(dialog.getByRole("button", { name: new RegExp(page_) })).toBeVisible();
   }
+  // Every page keeps the main page's size, so the dialog does not jump while moving between them.
+  const mainHeight = (await dialog.boundingBox())?.height;
+  for (const page_ of ["Folders", "Network", "Scripts and commands", "Secrets", "Environment variables"]) {
+    await dialog.getByRole("button", { name: new RegExp(page_) }).click();
+    expect((await dialog.boundingBox())?.height).toBe(mainHeight);
+    await dialog.getByRole("button", { name: "Back" }).click();
+  }
   // Commands are off in Settings › Capabilities, so an environment can't turn them on.
   await dialog.getByRole("button", { name: /Scripts and commands/ }).click();
   await expect(dialog.getByRole("switch", { name: "Commands" })).toBeDisabled();

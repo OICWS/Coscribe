@@ -245,6 +245,11 @@ function EditorFooter({
   );
 }
 
+// One height on every page (a floor as tall as the tallest, Network) so moving between pages does not
+// make the dialog jump; only a long list grows it, up to the viewport, then the body scrolls.
+const dialogClass =
+  "flex max-h-full min-h-[min(43rem,100%)] w-full max-w-[36rem] flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow)]";
+
 function EnvironmentEditor({
   environment,
   secrets,
@@ -306,7 +311,7 @@ function EnvironmentEditor({
       <div
         role="dialog"
         aria-label={environment ? "Edit environment" : "New environment"}
-        className="flex max-h-full w-full max-w-[36rem] flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow)]"
+        className={dialogClass}
         onClick={(e) => e.stopPropagation()}
       >
         <EditorHeader page={page} environment={environment} onBack={() => setPage("main")} onClose={onClose} />
