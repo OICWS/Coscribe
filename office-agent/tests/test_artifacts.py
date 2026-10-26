@@ -95,3 +95,33 @@ def test_a_file_the_person_brought_is_an_artifact_once_a_script_or_write_tool_re
 
     # A deck only read, or only changed in place by an edit tool, is not coscribe's.
     assert sorted(found) == ["brought.pptx", "made.pptx", "report.docx"]
+
+
+def test_outputs_leave_out_working_files_that_are_gone_and_underscore_scratch_folders(
+    tmp_path: Path,
+) -> None:
+    from coscribe.conversation.activity import summarize_activity
+
+    (tmp_path / "_qa").mkdir()
+    for name in ("report.docx", "_qa/preview.pdf", "mine.docx"):
+        (tmp_path / name).write_bytes(b"x")
+    catalog = {
+        **_CATALOG,
+        "convert_office_file": ToolMetadata("WRITE_LOCAL"),
+        "read_docx": ToolMetadata("READ"),
+        "edit_docx": ToolMetadata("WRITE_LOCAL"),
+    }
+    messages = _calls(
+        ("write_docx", {"path": "report.docx"}, {"lines_removed": 0}),
+        # A render a conversion made, then removed again, in a folder that is not listed.
+        ("convert_office_file", {"path": "cache/v3.pdf"}, {"ok": True}),
+        ("convert_office_file", {"path": "_qa/preview.pdf"}, {"ok": True}),
+        # The person's own file: read first, changed, then gone.
+        ("read_docx", {"path": "mine.docx"}, "ok"),
+        ("edit_docx", {"path": "mine.docx"}, {"lines_removed": 1}),
+    )
+    (tmp_path / "mine.docx").unlink()
+
+    outputs = summarize_activity(messages, catalog, WorkspaceScope(tmp_path))["outputs"]
+
+    assert {o["path"]: o["exists"] for o in outputs} == {"report.docx": True, "mine.docx": False}
