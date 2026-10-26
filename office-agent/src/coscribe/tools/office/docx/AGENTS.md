@@ -4,7 +4,7 @@
 Owns the Word tools and their toolkit: reading a document as markdown, writing one from the
 shared markdown subset, structure edits (headings, tables, styles, TOC; `_structure.py`,
 `_style.py`), tracked-change edits and the review tools (`_review.py`), and the raw XML helpers
-(`_xml.py`), and a document as blocks for the Docs editor with a save that rewrites only the changed blocks (`blocks.py`), the pictures it shows and adds (`block_images.py`), divider and page-break paragraphs (`block_breaks.py`), how a paragraph, run and table cell look once styles and direct formatting are resolved (`look.py`, `block_tables.py`: display only, a save never writes a paragraph's look back). The tool wrappers (names, parameters, docstrings the model sees) are in `tools.py`, the
+(`_xml.py`), and a document as blocks for the Docs editor with a save that rewrites only the changed blocks (`blocks.py`), the pictures it shows and adds (`block_images.py`), divider and page-break paragraphs (`block_breaks.py`), how a paragraph, run and table cell look once styles and direct formatting are resolved (`look.py`, `block_tables.py`: display only, a save never writes a paragraph's look back), and the spec a new document is written from (decision 0024: a YAML head and `:::` components parsed in `spec.py`, written by `spec_compile.py` and `components.py`; a content with neither is the plain markdown subset, as before). The tool wrappers (names, parameters, docstrings the model sees) are in `tools.py`, the
 implementation in `toolkit.py`; a changed signature also changes `tests/tool_schemas.txt`. Does not own PDF, Excel or PowerPoint, the shared markdown blocks and table
 layout (`tools/office/`), or how the viewer panel draws a document (`web/`, `frontend/`).
 
@@ -29,7 +29,7 @@ reaches them through `coscribe.tools.office.document_tools`.
 
 ## Tests
 `tests/test_documents_tool.py`, `tests/test_docx_structure_tool.py`, `tests/test_docx_review_tool.py`,
-`tests/test_docx_golden.py` (canonical XML goldens), `tests/test_docx_blocks.py` (the editor's reader and writer), `tests/test_docs_edits_note.py` (what the person changed, told once), `tests/test_docx_history.py` (the kept versions and the undo), `tests/test_evals_docx.py`.
+`tests/test_docx_golden.py` (canonical XML goldens), `tests/test_docx_blocks.py` (the editor's reader and writer), `tests/test_docx_spec.py` (the spec's head, facts and components), `tests/test_docs_edits_note.py` (what the person changed, told once), `tests/test_docx_history.py` (the kept versions and the undo), `tests/test_evals_docx.py`.
 
 ## Verify by hand
 A written and an edited document opened in the real Word on Windows, tracked changes shown and
