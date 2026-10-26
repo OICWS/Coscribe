@@ -23,9 +23,10 @@ from ._xml import (
     _TrackedDocxHost,
     _write_comments_part,
 )
-from .spec import parse_spec
+from .spec import SpecError, parse_spec
 from .spec_check import check_document, check_spec
 from .spec_compile import add_spec
+from .theme import Theme, load_theme
 
 
 def _title_first_heading(document: Any, written: Any) -> None:
@@ -78,6 +79,11 @@ class DocxToolkit(WorkspaceToolkit):
 
         file_path = self._check_writable(path, overwrite)
         change_ids = _ChangeIdCounter()
+        spec = parse_spec(content)
+        named = spec.head.get("design_system")
+        if named and template_path:
+            raise SpecError("design_system cannot be used with a template: it has its own look")
+        theme = load_theme(str(named), self._state_dir) if named else Theme()
         if template_path:
             template_file = self._check_readable(template_path)
             document = Document(str(template_file))
@@ -87,12 +93,11 @@ class DocxToolkit(WorkspaceToolkit):
                 _clear_body(document)
         else:
             document = Document()
-            apply_house_style(document, cjk=has_cjk(content))
+            apply_house_style(document, cjk=has_cjk(content), accent=theme.accent, font=theme.font)
 
         if page_size or orientation:
             _apply_page_setup(document, page_size, orientation)
         author = change_author if track_changes else None
-        spec = parse_spec(content)
         if spec.is_plain:
             written = add_blocks(document, content, author, change_ids)
         else:

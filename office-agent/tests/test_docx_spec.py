@@ -266,3 +266,68 @@ def test_a_document_missing_a_component_is_reported(tmp_path: Path) -> None:
     document = _write(tmp_path, "---\ntitle: T\n---\n\n# A")
     asked = parse_spec("---\ntitle: T\n---\n\n:::callout info\nx\n:::")
     assert [f.code for f in check_document(document, asked)] == ["components-lost"]
+
+
+def _brand(tmp_path: Path, name: str = "Brand", font: str = "Georgia") -> None:
+    from coscribe.tools.design_systems import DesignSystemStore
+
+    store = DesignSystemStore(tmp_path / "state")
+    system = store.create(name)
+    store.update(
+        system["id"],
+        {
+            "name": name,
+            "colors": [
+                {"name": "Background", "value": "#FFFFFF", "note": ""},
+                {"name": "Brand red", "value": "#B00020", "note": ""},
+            ],
+            "typography": {"fonts": [font], "styles": []},
+        },
+    )
+
+
+def _themed(tmp_path: Path, content: str) -> Document:
+    tools = {
+        t.__name__: t  # type: ignore[attr-defined]
+        for t in build_document_tools(tmp_path, state_dir=tmp_path / "state")
+    }
+    tools["write_docx"](path="out.docx", content=content)
+    return Document(str(tmp_path / "out.docx"))
+
+
+def test_a_design_system_sets_the_accent_and_the_font(tmp_path: Path) -> None:
+    _brand(tmp_path)
+    document = _themed(
+        tmp_path,
+        "---\ntitle: T\ncover: band\ndesign_system: brand\n---\n\n# A\n\n"
+        ":::stats\nA | 1\nB | 2\n:::",
+    )
+    xml = _xml(document)
+    assert str(document.styles["Heading 1"].font.color.rgb) == "B00020"
+    assert "B00020" in xml and "1F4E79" not in xml
+    assert 'w:ascii="Georgia"' in document.styles.element.xml
+
+
+def test_an_unknown_design_system_names_the_ones_there_are(tmp_path: Path) -> None:
+    _brand(tmp_path)
+    with pytest.raises(SpecError, match="Brand"):
+        _themed(tmp_path, "---\ndesign_system: missing\n---\n\ntext")
+
+
+def test_a_design_system_is_refused_with_a_template(tmp_path: Path) -> None:
+    _brand(tmp_path)
+    Document().save(str(tmp_path / "t.docx"))
+    tools = {
+        t.__name__: t  # type: ignore[attr-defined]
+        for t in build_document_tools(tmp_path, state_dir=tmp_path / "state")
+    }
+    with pytest.raises(SpecError, match="template"):
+        tools["write_docx"](
+            path="o.docx", content="---\ndesign_system: brand\n---\n\ntext", template_path="t.docx"
+        )
+
+
+def test_a_cjk_face_sets_the_east_asian_font_too(tmp_path: Path) -> None:
+    _brand(tmp_path, font="Noto Sans CJK SC")
+    document = _themed(tmp_path, "---\ntitle: T\ndesign_system: Brand\n---\n\ntext")
+    assert 'w:eastAsia="Noto Sans CJK SC"' in document.styles.element.xml

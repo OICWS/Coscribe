@@ -4,7 +4,7 @@
 Owns the Word tools and their toolkit: reading a document as markdown, writing one from the
 shared markdown subset, structure edits (headings, tables, styles, TOC; `_structure.py`,
 `_style.py`), tracked-change edits and the review tools (`_review.py`), and the raw XML helpers
-(`_xml.py`), and a document as blocks for the Docs editor with a save that rewrites only the changed blocks (`blocks.py`), the pictures it shows and adds (`block_images.py`), divider and page-break paragraphs (`block_breaks.py`), how a paragraph, run and table cell look once styles and direct formatting are resolved (`look.py`, `block_tables.py`: display only, a save never writes a paragraph's look back), and the spec a new document is written from (decision 0024: a YAML head and `:::` components parsed in `spec.py`, written by `spec_compile.py` and `components.py`, then checked by `spec_check.py`: findings with a code, a place and a fix, returned as `check` in the write result; a content with neither is the plain markdown subset, as before). The tool wrappers (names, parameters, docstrings the model sees) are in `tools.py`, the
+(`_xml.py`), and a document as blocks for the Docs editor with a save that rewrites only the changed blocks (`blocks.py`), the pictures it shows and adds (`block_images.py`), divider and page-break paragraphs (`block_breaks.py`), how a paragraph, run and table cell look once styles and direct formatting are resolved (`look.py`, `block_tables.py`: display only, a save never writes a paragraph's look back), and the spec a new document is written from (decision 0024: a YAML head and `:::` components parsed in `spec.py`, written by `spec_compile.py` and `components.py`, given the accent and font of a library design system by `theme.py` (`design_system: <name>` in the head), then checked by `spec_check.py`: findings with a code, a place and a fix, returned as `check` in the write result; a content with neither is the plain markdown subset, as before). The tool wrappers (names, parameters, docstrings the model sees) are in `tools.py`, the
 implementation in `toolkit.py`; a changed signature also changes `tests/tool_schemas.txt`. Does not own PDF, Excel or PowerPoint, the shared markdown blocks and table
 layout (`tools/office/`), or how the viewer panel draws a document (`web/`, `frontend/`).
 
@@ -13,7 +13,7 @@ layout (`tools/office/`), or how the viewer panel draws a document (`web/`, `fro
 reaches them through `coscribe.tools.office.document_tools`.
 
 ## Depends on
-`coscribe.runtime`, `coscribe.tools._chart_data`, `coscribe.tools._docx_chart`,
+`coscribe.runtime`, `coscribe.tools._chart_data`, `coscribe.tools._docx_chart`, `coscribe.tools.design_systems`,
 `coscribe.tools._file_locks`, `coscribe.tools._native_docx_tracks`, `coscribe.tools._ooxml_validate`,
 `coscribe.tools._output_truncation`, `coscribe.tools._thumbnail`, `coscribe.tools.office.markdown_blocks`,
 `coscribe.tools.office.table_layout`, `coscribe.tools.office.toolkit`.
