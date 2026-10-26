@@ -228,7 +228,7 @@
  },
  "fan_out": {},
  "file_lines": {
-  "src/coscribe/conversation/session.py": 1312,
+  "src/coscribe/conversation/session.py": 1308,
   "src/coscribe/coordinator.py": 844,
   "src/coscribe/runtime_lg/subagents.py": 842,
   "src/coscribe/tools/bookkeeping/scheduled_tasks.py": 1052,

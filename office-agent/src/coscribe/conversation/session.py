@@ -103,7 +103,7 @@ from .agent_assembly import AgentAssembly, risks_of_gated_tools
 from .approval_resume import ApprovalResumer
 from .approvals import ApprovalDecider, can_resolve_approvals
 from .edit_preview import build_document_edit_preview
-from .events import EventSink
+from .events import EventSink, TurnSocket, keeps_running
 from .history import ConversationHistory
 from .prompts import INIT_PROMPT
 from .reconfigure import SessionReconfigurer
@@ -619,58 +619,33 @@ class ChatSessionLG:
             await self._turn_lock.wait_released(timeout)
 
     def abandon_orphaned_turn(self, websocket: Any) -> None:
-        """Called from app.py's WebSocketDisconnect handler, not
-        request_stop -- a real, previously-unhandled deadlock a concurrency
-        review caught: _turn_lock (see __init__) means any turn still
-        blocked on an approval when its websocket dies would otherwise hang
-        onto that lock forever, since nothing can ever resolve a pending
-        Future once the socket that would carry its approval_response is
-        gone -- silently blocking every future turn on this thread_id too,
-        including a genuine reconnect's own resume_after_reconnect trying
-        to redeliver that exact same pending approval to a fresh
-        connection.
+        """Called from ws_endpoint's WebSocketDisconnect handler, not request_stop: a turn blocked
+        on an approval when its websocket dies would otherwise hold `_turn_lock` forever, since
+        nothing can resolve a pending Future once the socket that would carry its approval_response
+        is gone, which also blocks a reconnect's own resume_after_reconnect from redelivering that
+        very approval to a fresh connection.
 
-        Deliberately does NOT call request_stop(): that denies the pending
-        approval (a real decision, resumed against the checkpointer via
-        Command(resume=...)) and would consume the very interrupt a
-        reconnect is supposed to redeliver *untouched* -- see
-        runtime_lg/README.md's reconnect/restart verdict, the whole reason
-        a persistent checkpointer was chosen over InMemorySaver in the
-        first place. Hard-cancels whichever task currently holds
-        _turn_lock instead: cancellation unwinds that task without ever
-        reaching a Command(resume=...) call, so the checkpointer's real
-        pending state is left exactly as it was. The lock still gets
-        released correctly either way, since `async with` releases on
-        cancellation the same as on any other exception.
+        Deliberately does NOT call request_stop(): that denies the pending approval (a real
+        decision, resumed against the checkpointer via Command(resume=...)) and would consume the
+        interrupt a reconnect is supposed to redeliver untouched (runtime_lg/README.md's
+        reconnect/restart verdict). Hard-cancels the task holding `_turn_lock` instead:
+        cancellation unwinds it without ever reaching a Command(resume=...) call, so the
+        checkpointer's pending state stays exactly as it was; the lock is released either way.
 
-        Only a turn driven by `websocket`, the connection that went away: a
-        background turn (a scheduled run, a run being looked into) only
-        shows in whichever tab is open, and must outlive one closing.
-
-        A turn started by a tab (its socket is a relay with an `origin`) outlives that tab
-        too, since opening another conversation closes this one's socket: it is cancelled
-        only when it is parked on a person's answer and no tab is left to give it."""
-        turn_socket = self._turn_websocket
-        origin = getattr(turn_socket, "origin", None)
-        if origin is None:
-            if turn_socket is not websocket:
-                return
-        elif (
-            origin is not websocket
-            or self._live_websocket is not None
-            or not self._waits_on_person()
-        ):
+        Only a turn driven by `websocket` (a background turn, a scheduled run or one being looked
+        into, shows in whichever tab is open and outlives one closing), and a turn started by a tab
+        goes on running too unless it is parked on a person's answer with no tab left to give it
+        (`keeps_running`): opening another conversation closes this one's socket."""
+        if self._live_websocket is websocket:
+            self._live_websocket = None
+        if keeps_running(self, websocket):
             return
         if self._current_turn_task is not None and not self._current_turn_task.done():
             self._current_turn_task.cancel()
 
-    def _waits_on_person(self) -> bool:
-        pending: list[Future[Any]] = [
-            f
-            for request_id, f in self._pending_approvals.items()
-            if request_id not in self._subagent_request_ids
-        ]
-        return any(not f.done() for f in [*pending, *self._pending_questions.values()])
+    def via(self, websocket: Any) -> EventSink:
+        """The sink a turn started by this tab writes to (see `TurnSocket`)."""
+        return TurnSocket(self, websocket)
 
     async def switch_model(
         self, model: str, websocket: EventSink, effort: str | None = None
