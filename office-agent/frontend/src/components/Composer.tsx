@@ -2,7 +2,6 @@ import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { PAGE_KINDS, type PageKind } from "../lib/artifacts";
 import { withAnnotatedCopy } from "../lib/annotation";
 import { useComposerAction } from "../lib/menuCommands";
-import { measureComposerToolbar } from "../lib/composerWidth";
 import { useWindowFileDrop } from "../lib/useWindowFileDrop";
 import { ArtifactChip } from "./ArtifactChip";
 import { uploadFile } from "../lib/rest";
@@ -464,7 +463,7 @@ export function Composer({
     )}
     <div
       data-testid="composer"
-      className="mx-auto w-full max-w-[880px] px-4 pb-4"
+      className="@container mx-auto w-full max-w-[880px] px-4 pb-4"
     >
       <div
         className={`relative rounded-2xl p-3 shadow-sm transition-colors ${
@@ -592,9 +591,9 @@ export function Composer({
         )}
       </div>
 
-      <div ref={measureComposerToolbar} className="flex items-center justify-between gap-2 whitespace-nowrap pt-2">
+      <div className="flex items-center justify-between gap-2 whitespace-nowrap pt-2">
         {/* ml-1.5 puts the + under the first letter typed in the box above. */}
-        <div className="ml-1.5 flex shrink-0 items-center gap-0.5">
+        <div className="ml-1.5 flex min-w-0 items-center gap-0.5">
           <input
             ref={fileInputRef}
             type="file"
@@ -608,7 +607,7 @@ export function Composer({
           <button
             type="button"
             title="Attach a file or photo"
-            className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
             onClick={() => fileInputRef.current?.click()}
           >
             <PlusIcon className="h-[18px] w-[18px]" />
@@ -617,7 +616,7 @@ export function Composer({
           {modePill}
         </div>
         <RunStatus turnInFlight={turnInFlight} totalTokens={totalTokens} workflowTest={workflowTest} />
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex min-w-0 items-center gap-1.5">
           {modelPicker}
           {effortPicker}
           {usageRing}

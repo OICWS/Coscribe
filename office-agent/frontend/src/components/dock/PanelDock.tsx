@@ -29,17 +29,15 @@ import {
   type Drop,
 } from "../../lib/dockArrangement";
 import { dragGutter, GAP, nodeAt, PANEL_IDS, withSizes, type Gutter, type PanelId, type Rect } from "../../lib/dockLayout";
-import { useComposerNeededWidth } from "../../lib/composerWidth";
 import { useDockLayout, type DockState } from "../../lib/useDockLayout";
 import { DockControls, type DockActions } from "./DockControls";
 import { DockPanelContext, type DockPanelApi } from "./dockContext";
 
-/** The conversation keeps at least chatMin beside the panels, else they lie over it; a newly
- * opened panel gets its own column while it keeps chatMin plus CHAT_SLACK. chatMin is what the
- * composer's toolbar needs to fit on one row, never less than CHAT_FLOOR or more than CHAT_CEIL. */
-const CHAT_FLOOR = 380;
-const CHAT_CEIL = 900;
-const CHAT_SLACK = 80;
+/** The conversation keeps at least CHAT_MIN beside the panels, else they lie
+ * over it; a newly opened panel gets its own column while it keeps CHAT_ROOMY. The composer's
+ * toolbar shortens its labels and drops the running time and tokens to fit, so CHAT_MIN can be small. */
+const CHAT_MIN = 320;
+const CHAT_ROOMY = 560;
 const PANEL_MIN = 140;
 const PREFERRED_WIDTH: Record<PanelId, number> = { task: 320, browser: 440, background: 440, viewer: 720, plan: 440 };
 const DRAG_THRESHOLD = 5;
@@ -121,7 +119,6 @@ export function PanelDock({
   const [drag, setDrag] = useState<Drag | null>(null);
   const [menuFor, setMenuFor] = useState<PanelId | null>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
-  const chatMin = useComposerNeededWidth(CHAT_FLOOR, CHAT_CEIL);
   const rootRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<Drag | null>(null);
   const shown = useMemo(() => PANEL_IDS.filter((id) => visible.includes(id)), [visible]);
@@ -142,7 +139,7 @@ export function PanelDock({
   useLayoutEffect(() => {
     if (area.w <= 0) return;
     const ids = visibleKey ? (visibleKey.split(",") as PanelId[]) : [];
-    setDock((prev) => sync(prev, ids, area.w, chatMin + CHAT_SLACK));
+    setDock((prev) => sync(prev, ids, area.w, CHAT_ROOMY));
     // Only a change in which panels show re-places them, not every resize.
   }, [visibleKey, area.w > 0, setDock]); // oxlint-disable-line react-hooks/exhaustive-deps
 
@@ -151,10 +148,10 @@ export function PanelDock({
   }, [filled, visible]);
 
   const arrangement = shown.length > 0 ? dock.arrangement : NO_PANELS;
-  const placed: ArrangementLayout = arrangementLayout(arrangement, area, chatMin);
+  const placed: ArrangementLayout = arrangementLayout(arrangement, area, CHAT_MIN);
   const preview =
     drag?.live && drag.drop
-      ? arrangementLayout(applyDrop(arrangement, drag.id, drag.drop, widthIn(arrangement, drag.id)), area, chatMin)
+      ? arrangementLayout(applyDrop(arrangement, drag.id, drag.drop, widthIn(arrangement, drag.id)), area, CHAT_MIN)
       : null;
   const shownLayout = preview ?? placed;
 
@@ -268,7 +265,7 @@ export function PanelDock({
     const start = arrangement[ref.side][ref.index]?.width ?? COLUMN_MIN;
     const from = e.clientX;
     const others = [...arrangement.left, ...arrangement.right].reduce((sum, c) => sum + c.width + GAP, GAP) - start;
-    const max = Math.max(COLUMN_MIN, area.w - others - GAP - chatMin);
+    const max = Math.max(COLUMN_MIN, area.w - others - GAP - CHAT_MIN);
     track(e, (ev) => {
       const delta = (ev.clientX - from) * (ref.side === "left" ? 1 : -1);
       setArrangement((a) => withColumnWidth(a, ref, Math.max(COLUMN_MIN, Math.min(max, start + delta))));

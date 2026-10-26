@@ -52,11 +52,11 @@ export function ModelPicker({ currentModel, onSwitch }: ModelPickerProps) {
   const shortLabel = currentModel.includes(":") ? currentModel.split(":", 2)[1] : currentModel || "Select model";
 
   return (
-    <div className="relative" ref={rootRef}>
+    <div className="relative min-w-0 max-w-[9rem]" ref={rootRef}>
       <button
         type="button"
         data-testid="model-pill"
-        className="flex h-8 max-w-[9rem] items-center gap-1 rounded-lg px-2 text-sm text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
+        className="flex h-8 max-w-full items-center gap-1 rounded-lg px-2 text-sm text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
         onClick={() => setOpen((v) => !v)}
       >
         <span className="truncate">{shortLabel}</span>

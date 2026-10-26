@@ -118,7 +118,7 @@ export function EnvironmentPicker({ current, disabled, onPick, forTask = false }
   };
 
   return (
-    <div className="relative" ref={rootRef}>
+    <div className="relative min-w-0 max-w-48" ref={rootRef}>
       <button
         type="button"
         disabled={disabled}
@@ -130,7 +130,7 @@ export function EnvironmentPicker({ current, disabled, onPick, forTask = false }
               : "Choose this conversation's environment"
         }
         aria-expanded={open}
-        className="flex h-8 max-w-48 items-center rounded-lg px-2 text-sm text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)] disabled:opacity-50 disabled:hover:bg-transparent"
+        className="flex h-8 max-w-full items-center rounded-lg px-2 text-sm text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)] disabled:opacity-50 disabled:hover:bg-transparent"
         onClick={() => {
           if (!open) reload();
           setOpen((v) => !v);

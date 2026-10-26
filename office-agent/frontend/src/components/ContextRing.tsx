@@ -40,7 +40,7 @@ export function ContextRing({ threadId, totalTokens, contextWindow, cacheStats }
   return (
     // mr-2.5 puts the ring's centre under the Send button's, which sits inside
     // the input box above.
-    <div className="relative mr-2.5" ref={rootRef}>
+    <div className="relative mr-2.5 shrink-0" ref={rootRef}>
       <button
         type="button"
         title="Context window"
