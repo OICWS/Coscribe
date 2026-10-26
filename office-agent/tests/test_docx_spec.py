@@ -212,3 +212,57 @@ def test_every_component_is_found_again_when_the_file_is_read_as_blocks(tmp_path
     components = {b["component"] for b in blocks if "component" in b}
 
     assert components == {"cover", "stats", "callout_warn", "chart", "figure"}
+
+
+def _check(tmp_path: Path, content: str) -> list[dict[str, str]]:
+    result = _tools(tmp_path)["write_docx"](path="out.docx", content=content)
+    return list(result.get("check", []))
+
+
+def test_a_clean_spec_has_no_findings(tmp_path: Path) -> None:
+    assert _check(tmp_path, SPEC) == []
+
+
+def test_plain_markdown_is_not_checked(tmp_path: Path) -> None:
+    assert _check(tmp_path, "Text without a title\n\n### deep") == []
+
+
+@pytest.mark.parametrize(
+    ("content", "code"),
+    [
+        ("---\ntitle: T\n---\n\n# A\n\n### C", "heading-skip"),
+        ("---\ntitle: T\nfacts:\n  a: 1\n---\n\n# A", "unused-fact"),
+        ("---\ntitle: T\n---\n\n:::callout info\n:::", "empty-callout"),
+        (
+            "---\ntitle: T\n---\n\n:::chart bar\n| a | b |\n| --- | --- |\n| x | 1 |\n:::",
+            "chart-untitled",
+        ),
+        ("---\ntoc: true\n---\n\ntext", "no-title"),
+        ("---\ntitle: T\ntoc: true\n---\n\ntext", "empty-contents"),
+    ],
+)
+def test_each_finding_has_a_code_a_place_and_a_fix(tmp_path: Path, content: str, code: str) -> None:
+    found = {f["code"]: f for f in _check(tmp_path, content)}
+    assert code in found
+    assert found[code]["where"] and found[code]["fix"]
+
+
+def test_a_chart_is_read_back_against_its_table(tmp_path: Path) -> None:
+    from coscribe.tools.office.docx.spec_check import check_document
+
+    content = (
+        "---\ntitle: T\n---\n\n:::chart bar Sales\n"
+        "| q | s |\n| --- | --- |\n| Q1 | 3 |\n| Q2 | 5 |\n:::"
+    )
+    document = _write(tmp_path, content)
+    assert check_document(document, parse_spec(content)) == []
+    changed = parse_spec(content.replace("| Q2 | 5 |", "| Q2 | 6 |"))
+    assert [f.code for f in check_document(document, changed)] == ["chart-data"]
+
+
+def test_a_document_missing_a_component_is_reported(tmp_path: Path) -> None:
+    from coscribe.tools.office.docx.spec_check import check_document
+
+    document = _write(tmp_path, "---\ntitle: T\n---\n\n# A")
+    asked = parse_spec("---\ntitle: T\n---\n\n:::callout info\nx\n:::")
+    assert [f.code for f in check_document(document, asked)] == ["components-lost"]

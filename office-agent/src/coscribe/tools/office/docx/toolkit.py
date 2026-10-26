@@ -24,6 +24,7 @@ from ._xml import (
     _write_comments_part,
 )
 from .spec import parse_spec
+from .spec_check import check_document, check_spec
 from .spec_compile import add_spec
 
 
@@ -105,6 +106,9 @@ class DocxToolkit(WorkspaceToolkit):
             _new_comment_anchor(paragraph_element, str(index))
 
         assert_wml_valid(document.element, "write_docx")
+        findings = (
+            [] if spec.is_plain else check_spec(content, spec) + check_document(document, spec)
+        )
         document.save(str(file_path))
 
         if pending_comments:
@@ -125,6 +129,7 @@ class DocxToolkit(WorkspaceToolkit):
             "has_toc": has_toc,
             "comments_added": len(pending_comments),
             "tracked_changes": track_changes,
+            **({"check": [f.as_dict() for f in findings]} if findings else {}),
         }
 
     def _open_for_tracked_edit(self, path: str) -> tuple[Path, Any, _TrackedDocxHost]:
