@@ -30,7 +30,7 @@ from .block_images import (
     picture_of,
     set_picture,
 )
-from .block_tables import component_of, editable_look, locked_grid
+from .block_tables import editable_look, locked_grid
 from .look import Looks, page_of
 
 _W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -369,10 +369,7 @@ def _body_blocks(document: Any) -> list[tuple[dict[str, Any], Any]]:
             block = _table_block(child, context)
         else:
             block = _locked("other content", _plain(child))
-        component = component_of(child)
-        found.append(
-            ({"id": f"b{index}", **block, **({"component": component} if component else {})}, child)
-        )
+        found.append(({"id": f"b{index}", **block}, child))
         index += 1
     return found
 

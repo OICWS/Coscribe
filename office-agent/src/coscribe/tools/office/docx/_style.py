@@ -14,13 +14,12 @@ TABLE_STYLE_ID = "ReportTable"
 _TABLE_STYLE_NAME = "Report Table"
 
 _CJK = re.compile(r"[\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff\uff00-\uffef]")
-_CJK_FACE = re.compile(r"cjk|yahei|sim(sun|hei)|pingfang|heiti|songti|\b(sc|tc)\b", re.IGNORECASE)
 _TOTAL_LABEL = re.compile(
     r"^\s*(\*\*)?\s*(grand total|totals?|sum|合计|总计|小计|总额|共计)\b", re.IGNORECASE
 )
 
-# (level, size in pt, space before in pt, colour; None: the accent)
-_HEADINGS = ((1, 16.0, 12.0, None), (2, 13.0, 10.0, None), (3, 11.5, 8.0, _HEADING_GREY))
+# (level, size in pt, space before in pt, colour)
+_HEADINGS = ((1, 16.0, 12.0, ACCENT), (2, 13.0, 10.0, ACCENT), (3, 11.5, 8.0, _HEADING_GREY))
 
 A4_EMU = (7560310, 10692130)
 
@@ -42,21 +41,18 @@ def is_total_row(row: list[str]) -> bool:
     return bool(row) and bool(_TOTAL_LABEL.match(row[0]))
 
 
-def apply_house_style(
-    document: Any, *, cjk: bool, accent: str = ACCENT, font: str | None = None
-) -> None:
+def apply_house_style(document: Any, *, cjk: bool) -> None:
     """Restyle a blank python-docx document: fonts, spacing, headings, a
     table style, A4 paper and a page-number footer. Spacing and fonts go into the
     document defaults rather than Normal, because a table style overrides
     the defaults but not a paragraph style: set on Normal, the body spacing
-    would leak into every table cell. A theme (decision 0024) changes only the accent and the
-    Latin font; sizes and spacing stay, because a deck's sizes are pixels on a slide."""
+    would leak into every table cell."""
     from docx.oxml.ns import qn
 
     styles_element = document.styles.element
     defaults = styles_element.find(qn("w:docDefaults"))
     run_defaults = defaults.find(qn("w:rPrDefault")).find(qn("w:rPr"))
-    _set_fonts(run_defaults, font)
+    _set_fonts(run_defaults)
     size = "21" if cjk else "22"
     for tag in ("w:sz", "w:szCs"):
         run_defaults.find(qn(tag)).set(qn("w:val"), size)
@@ -67,18 +63,16 @@ def apply_house_style(
     spacing.set(qn("w:lineRule"), "auto")
 
     for level, size_pt, before_pt, colour in _HEADINGS:
-        _style_heading(
-            document.styles[f"Heading {level}"], size_pt, before_pt, colour or accent, font
-        )
-    _style_heading(document.styles["Title"], 22.0, 0.0, accent, font)
-    styles_element.append(_table_style_element(accent))
+        _style_heading(document.styles[f"Heading {level}"], size_pt, before_pt, colour)
+    _style_heading(document.styles["Title"], 22.0, 0.0, ACCENT)
+    styles_element.append(_table_style_element())
     for section in document.sections:
         # python-docx's blank document is US Letter; A4 is the paper nearly everywhere else.
         section.page_width, section.page_height = A4_EMU
     _add_page_number_footer(document)
 
 
-def _set_fonts(r_pr: Any, font: str | None = None) -> None:
+def _set_fonts(r_pr: Any) -> None:
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
 
@@ -89,24 +83,17 @@ def _set_fonts(r_pr: Any, font: str | None = None) -> None:
     # A theme attribute wins over the explicit font on the same element.
     for theme in ("w:asciiTheme", "w:hAnsiTheme", "w:eastAsiaTheme", "w:cstheme"):
         fonts.attrib.pop(qn(theme), None)
-    latin = font or LATIN_FONT
-    fonts.set(qn("w:ascii"), latin)
-    fonts.set(qn("w:hAnsi"), latin)
-    fonts.set(qn("w:cs"), latin)
-    # A font with Chinese glyphs in its name (or the brand's own CJK face) sets both scripts.
-    fonts.set(
-        qn("w:eastAsia"),
-        latin if font and (has_cjk(font) or _CJK_FACE.search(font)) else EAST_ASIAN_FONT,
-    )
+    fonts.set(qn("w:ascii"), LATIN_FONT)
+    fonts.set(qn("w:hAnsi"), LATIN_FONT)
+    fonts.set(qn("w:cs"), LATIN_FONT)
+    fonts.set(qn("w:eastAsia"), EAST_ASIAN_FONT)
 
 
-def _style_heading(
-    style: Any, size_pt: float, before_pt: float, colour: str, font: str | None = None
-) -> None:
+def _style_heading(style: Any, size_pt: float, before_pt: float, colour: str) -> None:
     from docx.oxml.ns import qn
     from docx.shared import Pt, RGBColor
 
-    _set_fonts(style.element.get_or_add_rPr(), font)
+    _set_fonts(style.element.get_or_add_rPr())
     style.font.size = Pt(size_pt)
     style.font.bold = True
     style.font.color.rgb = RGBColor.from_string(colour)
@@ -121,7 +108,7 @@ def _style_heading(
     spacing.set(qn("w:after"), "80")
 
 
-def _table_style_element(accent: str = ACCENT) -> Any:
+def _table_style_element() -> Any:
     from docx.oxml import parse_xml
     from docx.oxml.ns import nsdecls
 
@@ -138,9 +125,9 @@ def _table_style_element(accent: str = ACCENT) -> Any:
         '<w:left w:w="100" w:type="dxa"/><w:bottom w:w="20" w:type="dxa"/>'
         '<w:right w:w="100" w:type="dxa"/></w:tblCellMar></w:tblPr>'
         '<w:tblStylePr w:type="firstRow"><w:rPr><w:b/><w:bCs/><w:color w:val="FFFFFF"/></w:rPr>'
-        f'<w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="{accent}"/></w:tcPr></w:tblStylePr>'
+        f'<w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="{ACCENT}"/></w:tcPr></w:tblStylePr>'
         '<w:tblStylePr w:type="lastRow"><w:rPr><w:b/><w:bCs/></w:rPr>'
-        f'<w:tcPr><w:tcBorders><w:top w:val="single" w:sz="8" w:space="0" w:color="{accent}"/>'
+        f'<w:tcPr><w:tcBorders><w:top w:val="single" w:sz="8" w:space="0" w:color="{ACCENT}"/>'
         "</w:tcBorders></w:tcPr></w:tblStylePr>"
         "</w:style>"
     )

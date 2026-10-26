@@ -23,10 +23,6 @@ from ._xml import (
     _TrackedDocxHost,
     _write_comments_part,
 )
-from .spec import SpecError, parse_spec
-from .spec_check import check_document, check_spec
-from .spec_compile import add_spec
-from .theme import Theme, load_theme
 
 
 def _title_first_heading(document: Any, written: Any) -> None:
@@ -79,11 +75,6 @@ class DocxToolkit(WorkspaceToolkit):
 
         file_path = self._check_writable(path, overwrite)
         change_ids = _ChangeIdCounter()
-        spec = parse_spec(content)
-        named = spec.head.get("design_system")
-        if named and template_path:
-            raise SpecError("design_system cannot be used with a template: it has its own look")
-        theme = load_theme(str(named), self._state_dir) if named else Theme()
         if template_path:
             template_file = self._check_readable(template_path)
             document = Document(str(template_file))
@@ -93,16 +84,13 @@ class DocxToolkit(WorkspaceToolkit):
                 _clear_body(document)
         else:
             document = Document()
-            apply_house_style(document, cjk=has_cjk(content), accent=theme.accent, font=theme.font)
+            apply_house_style(document, cjk=has_cjk(content))
 
         if page_size or orientation:
             _apply_page_setup(document, page_size, orientation)
         author = change_author if track_changes else None
-        if spec.is_plain:
-            written = add_blocks(document, content, author, change_ids)
-        else:
-            written = add_spec(document, spec, self._check_readable, author, change_ids)
-        if not template_path and not spec.head.get("title"):
+        written = add_blocks(document, content, author, change_ids)
+        if not template_path:
             _title_first_heading(document, written)
         # Written only now, so the TOC also lists the headings after its marker.
         has_toc = finish_tocs(document, written.tocs, written.headings, author, change_ids)
@@ -111,9 +99,6 @@ class DocxToolkit(WorkspaceToolkit):
             _new_comment_anchor(paragraph_element, str(index))
 
         assert_wml_valid(document.element, "write_docx")
-        findings = (
-            [] if spec.is_plain else check_spec(content, spec) + check_document(document, spec)
-        )
         document.save(str(file_path))
 
         if pending_comments:
@@ -134,7 +119,6 @@ class DocxToolkit(WorkspaceToolkit):
             "has_toc": has_toc,
             "comments_added": len(pending_comments),
             "tracked_changes": track_changes,
-            **({"check": [f.as_dict() for f in findings]} if findings else {}),
         }
 
     def _open_for_tracked_edit(self, path: str) -> tuple[Path, Any, _TrackedDocxHost]:

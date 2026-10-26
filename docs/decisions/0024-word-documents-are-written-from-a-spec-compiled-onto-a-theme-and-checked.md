@@ -1,7 +1,11 @@
 # 0024: Word documents are written from a spec, compiled onto a theme and checked
 
-Status: accepted (2026-10-26, by the maintainer, with the answers in
-`docs/assessments/2026-10-26-word-documents-from-a-spec.md`). Extends 0013 (a document style, not a
+Status: **not adopted** (2026-10-26, by the maintainer, after the run in
+`docs/assessments/2026-10-26-word-spec-gate.md`: design 3.68 against 3.76 for markdown, the gate was
+4.2). It was accepted earlier the same day (answers in
+`docs/assessments/2026-10-26-word-documents-from-a-spec.md`). `write_docx` stays markdown; the code
+built for it (steps 1 to 4, #640 to #643) was removed. The text below is kept as the reasoning of
+the time. Extends 0013 (a document style, not a
 script route) and 0019 (the .docx is the artifact); changes neither.
 
 ## Context
@@ -31,3 +35,15 @@ contradict each other.
 - Ships only if the gate in the note passes: design at least 4.2 on average and above current on
   05, 06, 08, 10 and 12; checker 0 violations; figures agree; cost within 15%.
 - `write_docx`'s description and the schema snapshot change once, in the last step.
+
+## Outcome
+Steps 1 to 4 were built and the gate was run on 14 tasks, blind, three rounds, against the
+markdown route and the script route. The spec route was cheaper (14%) and faster (25%) than markdown
+and passed every exact check, but did not raise the design score: it won where tables, mixed
+languages or a design system mattered (05, 06, 10, 14) and lost on short documents that got a
+cover and a contents page they did not need (09, 12, 13). The maintainer's call was to stay on
+markdown. What stays from the work: Word tasks 12 to 14 and the chart check in the evaluation, and
+the rendered-page findings (stat-card wrapping, a chart axis that does not start at zero, a serif
+chart font, an empty contents page) as a list of what a future change must avoid. A design system
+in a Word document is the one clear gain given up; if it is wanted, it is a parameter of
+`write_docx`, not a grammar.

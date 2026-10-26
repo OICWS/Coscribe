@@ -1,7 +1,7 @@
 # Design note: Word documents written from a spec, compiled onto a theme and checked (2026-10-26)
 
 Design before code: it changes how every new Word document is written and read back. Status:
-**accepted** (2026-10-26, by the maintainer, with the recommended answer to all five questions at the end). It rests on 0001 (a fixed, cached tool
+**not adopted** (2026-10-26: accepted, built to step 4 and measured; the gate did not pass, see `2026-10-26-word-spec-gate.md`, and the code was removed). It rests on 0001 (a fixed, cached tool
 list), 0012 (no LibreOffice), 0013 (a document style, not a script route), 0019 (the .docx is the
 artifact) and 0020 (design systems are a library). It extends 0013 and 0019; it replaces neither.
 
