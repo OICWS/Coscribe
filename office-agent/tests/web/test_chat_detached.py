@@ -14,7 +14,7 @@ pytest.importorskip("langgraph", reason="needs the langgraph_spike extra install
 
 from langchain_core.messages import AIMessage
 
-from .helpers import FakeToolCallingChatModel, _client_lg, _tool_call
+from .helpers import FakeToolCallingChatModel, _client_lg, _receive_until, _tool_call
 
 
 class GatedModel(FakeToolCallingChatModel):
@@ -86,3 +86,27 @@ def test_a_turn_that_reaches_an_approval_after_the_person_left_waits_for_them(
             while ws.receive_json()["type"] != "tasks_changed":
                 pass
     assert (tmp_path / "workspace" / "note.txt").read_text() == "hi"
+
+
+def test_the_reply_of_a_turn_still_running_reaches_the_tab_that_came_back(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    model = GatedModel(
+        responses=[AIMessage(content="the report is written")],
+        started=threading.Event(),
+        go=threading.Event(),
+    )
+    with _client_lg(tmp_path, monkeypatch, model) as client:
+        with client.websocket_connect("/ws/t_back") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "write the report"})
+            assert model.started.wait(10)
+
+        with client.websocket_connect("/ws/t_back") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            model.go.set()
+            reply = _receive_until(ws, "agent_message")[-1]
+
+    assert "the report is written" in reply["text"]

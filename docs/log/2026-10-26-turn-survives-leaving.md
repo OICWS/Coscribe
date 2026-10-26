@@ -14,5 +14,7 @@ parks the same way.
 The reply and the steps taken meanwhile are in the history when the person comes back; events sent
 while nobody watched are not replayed, so the live tool progress of that stretch is not shown.
 
-Not verified: the desktop app on Windows, and a person coming back while the turn is still running
-(the test reconnects after it finished).
+Tested with a model held mid-turn: the turn finishes after the socket closed, its reply reaches a tab
+that came back while it ran, and one parked on an approval offers it on return.
+
+Not verified: the desktop app on Windows.
