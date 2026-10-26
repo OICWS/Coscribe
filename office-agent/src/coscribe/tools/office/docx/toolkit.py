@@ -23,6 +23,8 @@ from ._xml import (
     _TrackedDocxHost,
     _write_comments_part,
 )
+from .spec import parse_spec
+from .spec_compile import add_spec
 
 
 def _title_first_heading(document: Any, written: Any) -> None:
@@ -89,8 +91,12 @@ class DocxToolkit(WorkspaceToolkit):
         if page_size or orientation:
             _apply_page_setup(document, page_size, orientation)
         author = change_author if track_changes else None
-        written = add_blocks(document, content, author, change_ids)
-        if not template_path:
+        spec = parse_spec(content)
+        if spec.is_plain:
+            written = add_blocks(document, content, author, change_ids)
+        else:
+            written = add_spec(document, spec, self._check_readable, author, change_ids)
+        if not template_path and not spec.head.get("title"):
             _title_first_heading(document, written)
         # Written only now, so the TOC also lists the headings after its marker.
         has_toc = finish_tocs(document, written.tocs, written.headings, author, change_ids)
