@@ -417,3 +417,19 @@ def test_a_picture_size_or_description_out_of_range_is_refused(doc: Path, bad: A
     next(b for b in blocks if b.get("picture"))["picture"] = bad
     with pytest.raises(BlocksRefused):
         save_doc_blocks(doc, version, blocks)
+
+
+def test_a_table_the_editor_cannot_change_carries_its_cells_to_be_shown(tmp_path: Path) -> None:
+    path = tmp_path / "merged.docx"
+    document = Document()
+    table = document.add_table(rows=2, cols=2)
+    table.cell(0, 0).merge(table.cell(0, 1)).text = "Revenue"
+    table.cell(1, 0).text = "12"
+    table.cell(1, 1).text = "+3%"
+    document.save(path)
+
+    block = read_doc_blocks(path)["blocks"][0]
+
+    assert block["what"] == "table"
+    assert block["grid"][0] == [{"t": "Revenue", "span": 2}]
+    assert [cell["t"] for cell in block["grid"][1]] == ["12", "+3%"]

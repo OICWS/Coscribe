@@ -273,14 +273,45 @@ def _locked(
     text: str = "",
     images: list[str] | None = None,
     picture: dict[str, Any] | None = None,
+    grid: list[list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     return {
         "kind": "locked",
         "what": what,
         "text": text,
+        **({"grid": grid} if grid else {}),
         **({"images": images} if images else {}),
         **({"picture": picture} if picture else {}),
     }
+
+
+_GRID_CELLS = 400
+
+
+def _table_grid(table: Any) -> list[list[dict[str, Any]]]:
+    """A table the editor cannot change, as text per cell, so it is shown rather than a grey line."""
+    grid: list[list[dict[str, Any]]] = []
+    budget = _GRID_CELLS
+    for row in table.findall(_q("tr")):
+        line: list[dict[str, Any]] = []
+        for cell in row.findall(_q("tc")):
+            if budget <= 0:
+                return grid
+            budget -= 1
+            properties = cell.find(_q("tcPr"))
+            span = properties.find(_q("gridSpan")) if properties is not None else None
+            shade = properties.find(_q("shd")) if properties is not None else None
+            fill = shade.get(_q("fill")) if shade is not None else None
+            entry: dict[str, Any] = {
+                "t": "\n".join(_plain(p) for p in cell.iter(_q("p")) if _plain(p))
+            }
+            if span is not None and (value := span.get(_q("val"))) and value.isdigit():
+                entry["span"] = int(value)
+            if fill and re.fullmatch(r"[0-9A-Fa-f]{6}", fill):
+                entry["fill"] = fill
+            line.append(entry)
+        grid.append(line)
+    return grid
 
 
 def _table_block(table: Any, context: _Context) -> dict[str, Any]:
@@ -300,11 +331,11 @@ def _table_block(table: Any, context: _Context) -> dict[str, Any]:
                 or merged is not None
                 or _lock_reason(paragraphs[0]) is not None
             ):
-                return _locked("table", _plain(table))
+                return _locked("table", _plain(table), grid=_table_grid(table))
             line.append(_read_runs(paragraphs[0], context.links))
         grid.append(line)
     if not grid or len({len(line) for line in grid}) != 1:
-        return _locked("table", _plain(table))
+        return _locked("table", _plain(table), grid=_table_grid(table))
     header = rows[0].find(f"{_q('trPr')}/{_q('tblHeader')}") is not None
     return {"kind": "table", "header": header, "rows": grid}
 

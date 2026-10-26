@@ -21,7 +21,7 @@ export type Block =
   | { id?: string; kind: "heading"; level: number; runs: Run[] }
   | { id?: string; kind: "bullet" | "number"; level: number; runs: Run[] }
   | { id?: string; kind: "table"; header: boolean; rows: Run[][][] }
-  | { id?: string; kind: "locked"; what?: string; text?: string; images?: string[]; picture?: PictureSetting }
+  | { id?: string; kind: "locked"; what?: string; text?: string; images?: string[]; picture?: PictureSetting; grid?: { t: string; span?: number; fill?: string }[][] }
   | { id?: string; kind: "image"; data: string }
   | { id?: string; kind: "divider" }
   | { id?: string; kind: "pagebreak" };
@@ -146,7 +146,7 @@ export function blocksToDoc(blocks: Block[], imageUrl: (rid: string) => string =
       }));
       content.push({ type: "table", attrs: identified(block.id), content: rows });
     } else if (block.kind === "locked") {
-      content.push({ type: "lockedBlock", attrs: { what: block.what ?? "", text: block.text ?? "", images: (block.images ?? []).map(imageUrl), picture: block.picture ?? null, ...identified(block.id) } });
+      content.push({ type: "lockedBlock", attrs: { what: block.what ?? "", text: block.text ?? "", images: (block.images ?? []).map(imageUrl), picture: block.picture ?? null, grid: block.grid ?? null, ...identified(block.id) } });
     } else if (block.kind === "divider" || block.kind === "pagebreak") {
       content.push({ type: block.kind === "divider" ? "divider" : "pageBreak", attrs: identified(block.id) });
     } else if (block.kind !== "image") {

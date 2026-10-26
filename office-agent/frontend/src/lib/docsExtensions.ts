@@ -38,6 +38,8 @@ const LOCKED_LABELS: Record<string, string> = {
   "deep list": "List",
 };
 
+type LockedCell = { t: string; span?: number; fill?: string };
+
 /** A block the editor cannot change: shown as a grey line, kept as it is, deleted only by the person. */
 const LockedBlock = Node.create({
   name: "lockedBlock",
@@ -46,15 +48,24 @@ const LockedBlock = Node.create({
   selectable: true,
   draggable: false,
   addAttributes() {
-    return { what: { default: "" }, text: { default: "" }, images: { default: [] as string[] }, upload: { default: "" }, picture: { default: null } };
+    return { what: { default: "" }, text: { default: "" }, images: { default: [] as string[] }, grid: { default: null }, upload: { default: "" }, picture: { default: null } };
   },
   parseHTML: () => [{ tag: "div.docs-locked" }],
   renderHTML: ({ node }) => {
     const images = node.attrs.images as string[];
     const width = (node.attrs.picture as { width: number } | null)?.width;
+    const grid = node.attrs.grid as LockedCell[][] | null;
+    if (grid?.length) {
+      return [
+        "div",
+        { class: "docs-locked docs-locked-grid", contenteditable: "false", title: "This table is kept as it is" },
+        ["table", {}, ["tbody", {}, ...grid.map((row) => ["tr", {}, ...row.map((cell) => ["td", { ...(cell.span ? { colspan: String(cell.span) } : {}), ...(cell.fill ? { style: `background:#${cell.fill}` } : {}) }, cell.t] as const)] as const)]],
+      ];
+    }
+    const text = String(node.attrs.what) === "field" && String(node.attrs.text) ? " docs-locked-line" : "";
     return [
       "div",
-      { class: images.length ? "docs-locked docs-locked-pictured" : "docs-locked", contenteditable: "false" },
+      { class: (images.length ? "docs-locked docs-locked-pictured" : "docs-locked") + text, contenteditable: "false" },
       ["span", { class: "docs-locked-what" }, LOCKED_LABELS[String(node.attrs.what)] ?? "Kept as it is"],
       ...images.map((src) => ["img", { class: "docs-locked-image", src, alt: String((node.attrs.picture as { alt?: string } | null)?.alt ?? ""), ...(width ? { style: `width:${width}%` } : {}) }] as const),
       ["span", { class: "docs-locked-text" }, String(node.attrs.text)],

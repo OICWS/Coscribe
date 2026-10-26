@@ -700,6 +700,34 @@ body {
   flex: 1;
   border-top: 1px dashed var(--border);
 }
+.docs-editor .docs-locked-grid {
+  display: block;
+  background: none;
+  padding: 0;
+  color: var(--fg);
+}
+.docs-editor .docs-locked-grid table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.docs-editor .docs-locked-grid td {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  white-space: pre-line;
+  vertical-align: top;
+}
+.docs-editor .docs-locked-line {
+  background: none;
+  padding: 0 10px;
+  color: inherit;
+  font-size: inherit;
+}
+.docs-editor .docs-locked-line .docs-locked-what {
+  display: none;
+}
+.docs-editor .docs-locked-line .docs-locked-text {
+  white-space: normal;
+}
 .docs-editor .docs-locked-what {
   flex-shrink: 0;
   font-weight: 600;
