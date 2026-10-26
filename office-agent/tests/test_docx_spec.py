@@ -188,7 +188,10 @@ def test_a_chart_is_a_native_chart_with_its_caption(tmp_path: Path) -> None:
     [
         (":::chart radar T\n| a | b |\n| --- | --- |\n| x | 1 |\n:::", "the type one of"),
         (":::chart bar T\n| a | b |\n| --- | --- |\n| x | many |\n:::", "not numeric"),
-        (":::chart pie T\n| a | b | c |\n| --- | --- | --- |\n| x | 1 | 2 |\n:::", "one data column"),
+        (
+            ":::chart pie T\n| a | b | c |\n| --- | --- | --- |\n| x | 1 | 2 |\n:::",
+            "one data column",
+        ),
     ],
 )
 def test_a_chart_that_cannot_be_drawn_is_refused_with_what_to_change(
