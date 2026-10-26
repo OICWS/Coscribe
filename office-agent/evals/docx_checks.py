@@ -268,6 +268,42 @@ def check_images(document: Document, minimum: int, fit: bool) -> dict[str, Any]:
     }
 
 
+def _read_part(path: Path, name: str) -> str:
+    with zipfile.ZipFile(path) as package:
+        return package.read(name).decode("utf-8")
+
+
+def check_charts(path: Path, minimum: int, values: list[float]) -> dict[str, Any]:
+    """Native charts are in the file and between them draw every number asked for."""
+    with zipfile.ZipFile(path) as package:
+        parts = [n for n in package.namelist() if re.fullmatch(r"word/charts/chart\d+\.xml", n)]
+        drawn: set[float] = set()
+        for name in parts:
+            root = etree.fromstring(package.read(name))
+            for node in root.iter("{http://schemas.openxmlformats.org/drawingml/2006/chart}v"):
+                try:
+                    drawn.add(float(node.text or ""))
+                except ValueError:
+                    continue
+    missing = [v for v in values if v not in drawn]
+    return {"ok": len(parts) >= minimum and not missing, "count": len(parts), "missing": missing}
+
+
+def check_theme(path: Path, theme: dict[str, str]) -> dict[str, Any]:
+    """The default font and the first-level heading colour are the theme's."""
+    root = etree.fromstring(_read_part(path, "word/styles.xml").encode("utf-8"))
+    fonts = root.find(".//w:docDefaults//w:rFonts", NS)
+    font = fonts.get(_q("ascii")) if fonts is not None else None
+    colour = None
+    for style in root.findall("w:style", NS):
+        if style.get(_q("styleId")) == "Heading1":
+            node = style.find("w:rPr/w:color", NS)
+            colour = node.get(_q("val")) if node is not None else None
+    found = {"font": font, "accent": (colour or "").upper()}
+    wanted = {"font": theme.get("font"), "accent": theme.get("accent", "").upper()}
+    return {"ok": all(wanted[k] in (None, "", found[k]) for k in wanted), "found": found}
+
+
 def check_captions(document: Document, wanted: list[dict[str, Any]]) -> dict[str, Any]:
     missing = []
     for spec in wanted:
@@ -389,6 +425,12 @@ def check_document(task: Task, path: Path, workspace: Path, out_dir: Path) -> di
         _guarded(
             report, "images", lambda: check_images(document, expect.images_min, expect.image_fit)
         )
+    if expect.charts_min or expect.chart_values:
+        _guarded(
+            report, "charts", lambda: check_charts(path, expect.charts_min, expect.chart_values)
+        )
+    if expect.theme:
+        _guarded(report, "theme", lambda: check_theme(path, expect.theme))
     if expect.captions:
         _guarded(report, "captions", lambda: check_captions(document, expect.captions))
     if expect.tracked is not None:

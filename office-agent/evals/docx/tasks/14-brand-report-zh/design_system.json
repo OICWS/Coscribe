@@ -1,0 +1,9 @@
+{
+ "name": "Brand",
+ "colors": [
+  {"name": "Background", "value": "#FFFFFF", "note": ""},
+  {"name": "Brand red", "value": "#B00020", "note": ""},
+  {"name": "Text", "value": "#1F2937", "note": ""}
+ ],
+ "typography": {"fonts": ["Noto Sans CJK SC"], "styles": []}
+}

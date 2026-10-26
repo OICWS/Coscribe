@@ -426,6 +426,92 @@ def restructure_report(inputs: Path, out: Path) -> Path:
     return out / "weekly_report_v2.docx"
 
 
+def _spec_tools(out: Path, state_dir: Path | None = None) -> dict:
+    from coscribe.tools.office.document_tools import build_document_tools
+
+    return {t.__name__: t for t in build_document_tools(out, state_dir=state_dir)}  # type: ignore[attr-defined]
+
+
+def quarterly_report(inputs: Path, out: Path) -> Path:
+    """Written from a spec (decision 0024), as the task means the new grammar to be used."""
+    _spec_tools(out)["write_docx"](
+        path="q3_report.docx",
+        content=(
+            "---\ntitle: Q3 operations report\nsubtitle: Harbor Freight Co.\n"
+            "author: Operations\ndate: 14 October 2026\ncover: band\ntoc: true\n---\n\n"
+            "# Headline figures\n\n"
+            ":::stats\nOn-time delivery | 96.5% | +1.4 pt on Q2 (95.1%)\n"
+            "Shipments | 128,400 | Q2: 117,900\n"
+            "Cost per shipment | 41.20 USD | Q2: 43.80 USD\n"
+            "Complaints | 212 | Q2: 268\n:::\n\n"
+            "# Monthly shipments\n\n"
+            ":::chart bar Shipments by month\n| Month | Shipments |\n| --- | --- |\n"
+            "| July | 41200 |\n| August | 42600 |\n| September | 44600 |\n:::\n\n"
+            "| Month | Shipments | On-time % | Cost per shipment (USD) |\n"
+            "| --- | --- | --- | --- |\n| July | 41,200 | 96.0 | 41.90 |\n"
+            "| August | 42,600 | 96.4 | 41.30 |\n| September | 44,600 | 97.1 | 40.40 |\n"
+            "| Total | 128,400 | | |\n\n"
+            "# Risk\n\n:::callout warn\nThe port strike expected in November could delay Q4 "
+            "inbound containers by up to 9 days.\n:::\n\n"
+            "# Next steps\n\n- Open the Rotterdam hub in January 2027.\n"
+            "- Renew the carrier contract with Meridian Lines by 30 November 2026.\n"
+        ),
+    )
+    return out / "q3_report.docx"
+
+
+def figures_agree(inputs: Path, out: Path) -> Path:
+    _spec_tools(out)["write_docx"](
+        path="q2_sales_summary.docx",
+        content=(
+            "---\ntitle: Q2 regional sales summary\nfacts:\n  q1: 4,370\n  q2: 4,820\n---\n\n"
+            "# Summary\n\nSales were {fact:q2} thousand USD in Q2 against {fact:q1} thousand in "
+            "Q1, growth of 10.3%. East is the largest region at 1,610 thousand.\n\n"
+            "| Region | Q1 | Q2 |\n| --- | --- | --- |\n| North | 1,200 | 1,350 |\n"
+            "| South | 980 | 1,020 |\n| East | 1,430 | 1,610 |\n| West | 760 | 840 |\n"
+            "| Total | 4,370 | 4,820 |\n\n"
+            ":::chart bar Q1 and Q2 by region\n| Region | Q1 | Q2 |\n| --- | --- | --- |\n"
+            "| North | 1200 | 1350 |\n| South | 980 | 1020 |\n| East | 1430 | 1610 |\n"
+            "| West | 760 | 840 |\n:::\n"
+        ),
+    )
+    return out / "q2_sales_summary.docx"
+
+
+def brand_report_zh(inputs: Path, out: Path) -> Path:
+    import tempfile
+
+    from coscribe.tools.design_systems import DesignSystemStore
+
+    state = Path(tempfile.mkdtemp())
+    store = DesignSystemStore(state)
+    store.update(
+        store.create("Brand")["id"],
+        {
+            "name": "Brand",
+            "colors": [{"name": "Brand red", "value": "#B00020", "note": ""}],
+            "typography": {"fonts": ["Noto Sans CJK SC"], "styles": []},
+        },
+    )
+    _spec_tools(out, state)["write_docx"](
+        path="华南品牌部2026年第二季度月报.docx",
+        content=(
+            "---\ntitle: 华南品牌部2026年第二季度月报\nauthor: 品牌部\ncover: rule\ntoc: true\n"
+            "design_system: Brand\n---\n\n# 销量\n\n"
+            "门店销量从4月的3,200件增长到6月的3,900件，线上销量从1,800件增长到2,600件，"
+            "6月线上销量首次占总销量的40%以上；满意度从92.5%提高到94.2%。\n\n"
+            ":::chart bar 月度销量\n| 月份 | 门店销量 | 线上销量 |\n| --- | --- | --- |\n"
+            "| 4月 | 3200 | 1800 |\n| 5月 | 3500 | 2100 |\n| 6月 | 3900 | 2600 |\n:::\n\n"
+            "| 月份 | 门店销量 | 线上销量 | 满意度(%) |\n| --- | --- | --- | --- |\n"
+            "| 4月 | 3,200 | 1,800 | 92.5 |\n| 5月 | 3,500 | 2,100 | 93.1 |\n"
+            "| 6月 | 3,900 | 2,600 | 94.2 |\n\n"
+            "# 风险\n\n:::callout warn\n7月起原材料涨价，预计单件成本上升约3%。\n:::\n\n"
+            "# 下一步\n\n- 2026年8月15日前完成广州旗舰店改造。\n- 9月30日前上线会员小程序。\n"
+        ),
+    )
+    return out / "华南品牌部2026年第二季度月报.docx"
+
+
 SOLUTIONS = {
     "01-report-from-notes": report_from_notes,
     "02-memo-from-pdf": memo_from_pdf,
@@ -438,4 +524,7 @@ SOLUTIONS = {
     "09-proposal": proposal,
     "10-half-year-summary": half_year_summary,
     "11-restructure-report": restructure_report,
+    "12-quarterly-report": quarterly_report,
+    "13-figures-agree": figures_agree,
+    "14-brand-report-zh": brand_report_zh,
 }

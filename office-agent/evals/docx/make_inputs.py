@@ -312,6 +312,61 @@ HALF_YEAR_NOTES_MD = """\
 """
 
 
+Q3_NOTES_MD = """\
+# Q3 operations notes: Harbor Freight Co.
+
+Prepared for the leadership team, 14 October 2026.
+
+- On-time delivery reached 96.5% in Q3, up from 95.1% in Q2.
+- Shipments handled: 128,400 (Q2: 117,900).
+- Average cost per shipment fell to 41.20 USD from 43.80 USD.
+- Customer complaints: 212 in Q3, down from 268 in Q2.
+- Main risk: the port strike expected in November could delay Q4 inbound containers by up to 9 days.
+- Next steps: open the Rotterdam hub in January 2027; renew the carrier contract with Meridian Lines by 30 November 2026.
+"""
+
+Q3_METRICS_CSV = """\
+Month,Shipments,On-time %,Cost per shipment (USD)
+July,41200,96.0,41.90
+August,42600,96.4,41.30
+September,44600,97.1,40.40
+"""
+
+REGION_SALES_CSV = """\
+Region,Q1,Q2
+North,1200,1350
+South,980,1020
+East,1430,1610
+West,760,840
+"""
+
+BOARD_EMAIL_MD = """\
+From: Dana Whitfield
+Subject: Q2 sales for the board pack
+
+Please write the Q2 regional sales summary from region_sales.csv (USD thousand).
+Last week's draft said Q2 sales were 4,950 thousand; the CSV is the source of truth where the two differ.
+The board wants the total for each quarter, the growth, and which region is largest.
+"""
+
+BRAND_NOTES_MD = """\
+# 华南品牌部2026年第二季度月报要点
+
+- 第二季度门店销量从4月的3,200件增长到6月的3,900件。
+- 线上销量从1,800件增长到2,600件，6月首次占总销量的40%以上。
+- 客户满意度从92.5%提高到94.2%。
+- 风险：7月起原材料涨价，预计单件成本上升约3%。
+- 下一步：2026年8月15日前完成广州旗舰店改造；9月30日前上线会员小程序。
+"""
+
+BRAND_DATA_CSV = """\
+月份,门店销量,线上销量,满意度(%)
+4月,3200,1800,92.5
+5月,3500,2100,93.1
+6月,3900,2600,94.2
+"""
+
+
 def main() -> None:
     def put(task: str, name: str) -> Path:
         folder = TASKS / task / "inputs"
@@ -330,6 +385,12 @@ def main() -> None:
     put("09-proposal", "pricing.csv").write_text(PRICING_CSV, encoding="utf-8")
     put("10-half-year-summary", "上半年数据.csv").write_text(HALF_YEAR_CSV, encoding="utf-8")
     put("10-half-year-summary", "上半年要点.md").write_text(HALF_YEAR_NOTES_MD, encoding="utf-8")
+    put("12-quarterly-report", "q3_notes.md").write_text(Q3_NOTES_MD, encoding="utf-8")
+    put("12-quarterly-report", "q3_metrics.csv").write_text(Q3_METRICS_CSV, encoding="utf-8")
+    put("13-figures-agree", "region_sales.csv").write_text(REGION_SALES_CSV, encoding="utf-8")
+    put("13-figures-agree", "board_email.md").write_text(BOARD_EMAIL_MD, encoding="utf-8")
+    put("14-brand-report-zh", "品牌月报要点.md").write_text(BRAND_NOTES_MD, encoding="utf-8")
+    put("14-brand-report-zh", "月度数据.csv").write_text(BRAND_DATA_CSV, encoding="utf-8")
     chart = put("11-restructure-report", "progress.png")
     _progress_chart(chart)
     _weekly_report(put("11-restructure-report", "weekly_report.docx"), chart)

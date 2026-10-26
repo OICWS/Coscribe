@@ -369,10 +369,10 @@ def _task(name: str) -> tasks.Task:
     return tasks.discover(name, kind="docx")[0]
 
 
-def test_there_are_eleven_word_tasks_each_with_its_inputs() -> None:
+def test_there_are_fourteen_word_tasks_each_with_its_inputs() -> None:
     found = tasks.discover("all", kind="docx")
 
-    assert [t.name[:2] for t in found] == [f"{n:02d}" for n in range(1, 12)]
+    assert [t.name[:2] for t in found] == [f"{n:02d}" for n in range(1, 15)]
     assert all(t.inputs and isinstance(t.expect, tasks.DocxExpect) for t in found)
 
 
@@ -873,3 +873,77 @@ def test_the_comparison_of_word_runs_shows_the_contents_pictures_and_captions(
     table = compare.compare(a, b, kind="docx")
 
     assert "| toc " in table and "| images " in table and "| captions " in table
+
+
+# --- charts and theme -------------------------------------------------------------------
+
+
+def test_a_document_without_the_chart_fails_the_chart_check(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        docx_checks, "render_pages", lambda path, out: {"ok": True, "pages": ["page-01.png"]}
+    )
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    plain = Document()
+    plain.add_paragraph("No chart here")
+    path = _save(plain, workspace)
+
+    report = docx_checks.check_charts(path, 1, [41200.0])
+
+    assert report["ok"] is False and report["count"] == 0 and report["missing"] == [41200.0]
+
+
+def test_a_chart_that_draws_other_numbers_fails_the_chart_check(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    output = SOLUTIONS["13-figures-agree"](_task("13").directory / "inputs", workspace)
+
+    assert docx_checks.check_charts(output, 1, [1200.0, 1610.0])["ok"] is True
+    assert docx_checks.check_charts(output, 1, [1200.0, 9999.0])["missing"] == [9999.0]
+
+
+def test_a_document_without_the_theme_fails_the_theme_check(tmp_path: Path) -> None:
+    default = _save(Document(), tmp_path)
+
+    report = docx_checks.check_theme(default, {"font": "Noto Sans CJK SC", "accent": "B00020"})
+
+    assert report["ok"] is False
+
+
+def test_the_themed_reference_solution_passes_the_theme_check(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    output = SOLUTIONS["14-brand-report-zh"](_task("14").directory / "inputs", workspace)
+
+    report = docx_checks.check_theme(output, {"font": "Noto Sans CJK SC", "accent": "B00020"})
+
+    assert report["ok"] is True
+
+
+# --- the routes' skills -----------------------------------------------------------------
+
+
+def test_the_spec_skill_names_every_component_and_head_key_the_compiler_knows() -> None:
+    from coscribe.tools.office.docx.spec import COMPONENTS, HEAD_KEYS
+    from evals.docx import routes
+
+    spec = routes.build_routes(routes.BUILTIN.read_text(encoding="utf-8"))["spec"]
+
+    assert all(f":::{name}" in spec or f"`{name}`" in spec for name in COMPONENTS)
+    assert all(f"`{key}`" in spec for key in HEAD_KEYS)
+
+
+def test_the_three_routes_differ_only_in_the_new_document_part() -> None:
+    from evals.docx import routes
+
+    builtin = routes.BUILTIN.read_text(encoding="utf-8")
+    found = routes.build_routes(builtin)
+    tail = builtin.partition(routes._END)[2]
+
+    assert found["current"] == builtin
+    assert found["script"].endswith(routes._END + tail)
+    assert "run_python_script" in found["script"] and ":::chart" not in found["script"]
+    assert found["spec"].startswith(builtin.partition(routes._START)[0])
+    assert ":::chart" in found["spec"] and "no syntax for them" not in found["spec"]
