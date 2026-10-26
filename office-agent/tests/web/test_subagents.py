@@ -89,7 +89,7 @@ def test_reviewer_tools_are_exactly_the_read_only_documents_and_file_tools(
     guesses file names and "reviews" files that don't exist) --
     read_docx/read_pdf/search_pdf/read_xlsx/read_pptx/render_pptx_preview/
     list_pptx_shapes/list_pptx_shape_types/list_pptx_transition_types/
-    list_pptx_animation_types/list_pptx_icons/read_pptx_theme_colors/
+    list_pptx_animation_types/list_pptx_icons/read_pptx_design/read_pptx_theme_colors/
     read_pptx_xml/check_pptx_delivery today. This is the contract that
     filter depends on: if a future "documents" tool is added without
     requires_approval=True, it would silently become reviewer-callable
@@ -125,6 +125,7 @@ def test_reviewer_tools_are_exactly_the_read_only_documents_and_file_tools(
         "read_file",
         "read_pdf",
         "read_pptx",
+        "read_pptx_design",
         "read_pptx_theme_colors",
         "read_pptx_xml",
         "read_xlsx",
