@@ -32,3 +32,4 @@ old one; the old one stays, marked "Superseded by".
 | [0021](0021-scripts-run-in-an-appcontainer-held-to-the-folder-settings.md) | Scripts run in an AppContainer held to the folder settings |
 | [0022](0022-commands-run-in-codexs-windows-sandbox.md) | Commands run in Codex's Windows sandbox (proposed) |
 | [0023](0023-every-conversation-can-read-the-others-unless-archived.md) | Every conversation can list, read and message the others unless they are archived |
+| [0024](0024-word-documents-are-written-from-a-spec-compiled-onto-a-theme-and-checked.md) | Word documents are written from a spec, compiled onto a theme and checked (proposed) |
