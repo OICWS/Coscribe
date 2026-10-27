@@ -13,7 +13,10 @@ decided to overturn 0012.
 - The unpack without elevation was tried once, on an administrator's account in a non-elevated
   shell (no UAC, Word to PDF worked, 1.5 GB unpacked). Not tried on a standard account or under
   a policy that blocks `msiexec`.
-- The checksum and what can be removed from the 1.5 GB: checked when the install button is built.
+- The checksum: checked when the install button is built.
+- The trim (1,524 to 587 MB) was tried once, on one Word, one Excel and one PowerPoint file; the
+  PDFs were not compared page by page with the untrimmed ones, and no file in another language
+  was tried.
 - The report that ChatGPT/Codex bundles LibreOffice (about 430 MB): only secondary sources.
 
 ## Follow-ups

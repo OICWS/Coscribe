@@ -57,8 +57,26 @@ runtime folder; commenters disagreed whether every install, Windows included, ge
   is an administrator's account, so a standard account under a group policy that blocks
   `msiexec` is not covered.
 - The download is 357.5 MB; the unpacked folder is **1,522.9 MB**. Bundling it is out of the
-  question, and the install button must say so before it downloads. What can be removed is not
-  measured yet.
+  question, and the install button must say so before it downloads.
+- Trimmed in a copy, each step followed by converting a file to PDF: Word after every step,
+  PowerPoint from the 678 MB state on, Excel only at the 678 MB and 587 MB states:
+
+  | removed | folder size after |
+  |---|---|
+  | nothing (copy of the unpack) | 1,524 MB |
+  | `share\extensions\dict-*` (spelling dictionaries) | 1,068 MB |
+  | `program\resource` folders not starting with `en` (UI translations) | 811 MB |
+  | `share\config\images_*` (icon themes) | 739 MB |
+  | `share\gallery`, `template`, `wizards`, `autotext`, `xpdfimport`, `help`, `readmes`, `extensions\nlpsolver`, `extensions\wiki-publisher` | 678 MB |
+  | `share\registry\res\fcfg_langpack_*` except English | **587 MB** |
+
+  At 587 MB the three formats still convert (Word 471,264, Excel 275,353, PowerPoint 226,968
+  bytes of PDF). **`share\config\soffice.cfg` cannot be removed**: without it Word and PowerPoint
+  files did not convert (Excel was not tried at that step). The `program` dlls (about 394 MB,
+  `mergedlo.dll` alone 145 MB) and the fonts (51 MB) were left alone.
+- What the trim costs is not measured: text in a language other than English (fonts, line
+  breaking, hyphenation), the layout of any file that used a removed template or gallery
+  item, and how the converted PDF compares with the untrimmed one beyond its size.
 - `soffice.exe --version` prints `LibreOffice 26.8.1.1` and converted a Word file to a 18 KB PDF
   with no installation. `soffice.exe` is a GUI-subsystem launcher: it returns at once and shows a
   console window for `--version`. coscribe calls `program\soffice.com`, which stays attached,
