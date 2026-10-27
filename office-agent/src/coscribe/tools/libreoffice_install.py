@@ -17,6 +17,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.request
 from collections.abc import Callable
 from pathlib import Path
@@ -190,27 +191,43 @@ def _launcher(folder: Path) -> Path:
     raise LibreOfficeUnavailable("The downloaded LibreOffice has no program in it.")
 
 
+_ATTEMPTS = 3
+
+
 def _download(url: str, pins: _Pin, target: Path, progress: Progress | None) -> None:
+    """A mirror or a connection that drops part-way is tried again; a file that arrives whole and
+    does not match the pin is not."""
+    for attempt in range(1, _ATTEMPTS + 1):
+        try:
+            digest, done = _fetch(url, pins["size"], target, progress)
+        except OSError as exc:
+            logger.warning("LibreOffice download attempt %d failed: %r", attempt, exc)
+            if attempt == _ATTEMPTS:
+                raise LibreOfficeUnavailable(
+                    "Could not download LibreOffice: the connection failed or the disk refused "
+                    "the file."
+                ) from exc
+            time.sleep(2.0 * attempt)
+            continue
+        if done != pins["size"] or digest != pins["sha256"]:
+            raise LibreOfficeUnavailable(
+                f"The downloaded LibreOffice {LIBREOFFICE_VERSION} does not match the pinned "
+                "release (size or sha256), so it was not installed."
+            )
+        return
+
+
+def _fetch(url: str, total: int, target: Path, progress: Progress | None) -> tuple[str, int]:
     digest = hashlib.sha256()
-    total = pins["size"]
     done = 0
-    try:
-        with urllib.request.urlopen(url, timeout=_TIMEOUT) as response, open(target, "wb") as sink:
-            while chunk := response.read(_CHUNK):
-                digest.update(chunk)
-                sink.write(chunk)
-                done += len(chunk)
-                if progress is not None:
-                    progress(done, total)
-    except OSError as exc:
-        raise LibreOfficeUnavailable(
-            "Could not download LibreOffice: the connection failed or the disk refused the file."
-        ) from exc
-    if done != total or digest.hexdigest() != pins["sha256"]:
-        raise LibreOfficeUnavailable(
-            f"The downloaded LibreOffice {LIBREOFFICE_VERSION} does not match the pinned release "
-            "(size or sha256), so it was not installed."
-        )
+    with urllib.request.urlopen(url, timeout=_TIMEOUT) as response, open(target, "wb") as sink:
+        while chunk := response.read(_CHUNK):
+            digest.update(chunk)
+            sink.write(chunk)
+            done += len(chunk)
+            if progress is not None:
+                progress(done, total)
+    return digest.hexdigest(), done
 
 
 def _unpack(package: Path, target: Path) -> None:

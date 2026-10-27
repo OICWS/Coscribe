@@ -191,3 +191,35 @@ def test_the_pinned_download_is_the_one_whose_signature_was_checked() -> None:
     assert pins["sha256"] == "c6298b10cfa1748bcbedad94c62ce771e240e5021bfd6d7a967cd571b04b5312"
     assert pins["size"] == 374870016
     assert install.LIBREOFFICE_VERSION in str(pins["url"])
+
+
+def test_a_download_that_drops_is_tried_again(
+    tmp_path: Path, served: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    real = install._fetch
+    calls: list[int] = []
+
+    def flaky(*args: object, **kwargs: object) -> tuple[str, int]:
+        calls.append(1)
+        if len(calls) < 3:
+            raise ConnectionResetError("dropped")
+        return real(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(install, "_fetch", flaky)
+    monkeypatch.setattr(install.time, "sleep", lambda _seconds: None)
+    install.install_libreoffice(tmp_path)
+    assert len(calls) == 3
+    assert install.installed(tmp_path)
+
+
+def test_a_download_that_keeps_failing_gives_up_with_a_fixed_text(
+    tmp_path: Path, served: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def always(*_args: object, **_kwargs: object) -> tuple[str, int]:
+        raise ConnectionResetError("C:\\Users\\someone\\secret")
+
+    monkeypatch.setattr(install, "_fetch", always)
+    monkeypatch.setattr(install.time, "sleep", lambda _seconds: None)
+    with pytest.raises(install.LibreOfficeUnavailable, match="connection failed") as caught:
+        install.install_libreoffice(tmp_path)
+    assert "secret" not in str(caught.value)
