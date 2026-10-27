@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { LogItem } from "../state/reducer";
+import { replyToDocComment } from "./docComments";
 import { replyToComment, type CommentLink } from "./slideComments";
 
 /** The longest reply the comment store takes. */
@@ -38,7 +39,11 @@ export function useCommentSender(threadId: string, items: LogItem[], turnInFligh
       if (entry.threadId !== threadId) return true;
       const answer = answerFor(items, entry.text, entry.from);
       if (answer === null) return true;
-      void replyToComment(threadId, entry.link.path, entry.link.commentId, answer, true).catch(() => undefined);
+      const { path, commentId, doc, alsoCommentIds = [] } = entry.link;
+      for (const id of [commentId, ...alsoCommentIds]) {
+        const reply = doc ? replyToDocComment : replyToComment;
+        void reply(threadId, path, id, answer, true).catch(() => undefined);
+      }
       return false;
     });
   }, [threadId, items, turnInFlight]);

@@ -1059,3 +1059,31 @@ body {
   color: var(--muted);
   font-size: 13px;
 }
+
+/* Comments on a Doc: the words a comment is on are shaded, and a block with comments has its count in the margin. */
+.doc-editor .doc-commented {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-radius: 2px;
+}
+.doc-editor .doc-comment-row {
+  position: relative;
+  height: 0;
+  margin: 0 !important;
+}
+.doc-editor .doc-comment-badge {
+  position: absolute;
+  right: -2.75rem;
+  top: 0.35rem;
+  min-width: 1.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  padding: 0 0.4rem;
+  font-size: 11px;
+  line-height: 1.4rem;
+  color: var(--accent);
+  cursor: pointer;
+}
+.doc-editor .doc-comment-badge:hover {
+  background: var(--accent-soft);
+}

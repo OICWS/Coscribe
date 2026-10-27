@@ -55,12 +55,7 @@ export const currentStyle = (editor: Editor): TextStyle => {
 export function styleEntries(editor: Editor): MenuEntry[] {
   const current = currentStyle(editor);
   const entry = (label: TextStyle, command: (chain: Chain) => { run: () => boolean }): MenuEntry => ({ label, checked: current === label, onSelect: run(editor, command) });
-  return [
-    entry("Text", (c) => c.setParagraph()),
-    entry("H1", (c) => c.setHeading({ level: 1 })),
-    entry("H2", (c) => c.setHeading({ level: 2 })),
-    entry("H3", (c) => c.setHeading({ level: 3 })),
-  ];
+  return [entry("Text", (c) => c.setParagraph()), entry("H1", (c) => c.setHeading({ level: 1 })), entry("H2", (c) => c.setHeading({ level: 2 })), entry("H3", (c) => c.setHeading({ level: 3 }))];
 }
 
 /** What the "…" of a table offers: rows and columns added or taken out, and the table itself. */

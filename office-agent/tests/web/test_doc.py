@@ -129,10 +129,31 @@ def test_a_comment_is_added_answered_resolved_and_deleted_lg(
     assert made["anchor"]["text"] == "First paragraph." and made["sent"] is True
     assert answered.status_code == 200 and answered.json()["author"] == "coscribe"
     assert mine.status_code == 200 and mine.json()["author"] != "coscribe"
-    assert resolved.json() == {"resolved": True}
+    assert resolved.json() == {"resolved": True, "sent": None}
     assert listed[0]["resolved"] is True and listed[0]["block"] == 1
     assert [r["text"] for r in listed[0]["replies"]] == ["Yes, checked.", "Thanks."]
     assert deleted.json() == {"deleted": made["id"]} and after == []
+
+
+def test_a_comment_keeps_its_quote_and_can_be_edited_and_sent_later_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _workspace(tmp_path)
+    base = "/api/threads/t_one/doc/comments"
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        made = client.post(
+            base, json={"path": "plan.md", "block": 1, "text": "Why?", "quote": "First"}
+        ).json()
+        edited = client.put(f"{base}/{made['id']}", json={"path": "plan.md", "text": "Why so?"})
+        sent = client.post(f"{base}/{made['id']}", json={"path": "plan.md", "sent": True})
+        blank = client.put(f"{base}/{made['id']}", json={"path": "plan.md", "text": " "})
+        missing = client.put(f"{base}/nope", json={"path": "plan.md", "text": "x"})
+        listed = client.get(base, params={"path": "plan.md"}).json()
+
+    assert edited.json() == {"text": "Why so?"} and sent.status_code == 200
+    assert blank.status_code == 400 and missing.status_code == 404
+    assert (listed[0]["quote"], listed[0]["text"]) == ("First", "Why so?")
+    assert (listed[0]["sent"], listed[0]["resolved"]) == (True, False)
 
 
 def test_what_cannot_be_commented_on_is_refused_lg(

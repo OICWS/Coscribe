@@ -58,6 +58,8 @@ class DocCommentNew(BaseModel):
     # The block the comment is on, by its index in the read the editor holds.
     block: int = Field(ge=0, le=100_000)
     text: str = Field(min_length=1, max_length=4000)
+    # The words of the block the comment was made on, when it was made on some.
+    quote: str = Field(default="", max_length=1000)
     sent: bool = False
 
 
@@ -70,7 +72,14 @@ class DocCommentReply(BaseModel):
 
 class DocCommentState(BaseModel):
     path: str
-    resolved: bool
+    # Each is set only when sent: resolve or reopen, and mark as sent to coscribe.
+    resolved: bool | None = None
+    sent: bool | None = None
+
+
+class DocCommentText(BaseModel):
+    path: str
+    text: str = Field(min_length=1, max_length=4000)
 
 
 class SlideCommentNew(BaseModel):

@@ -18,6 +18,7 @@ from .files import side_folder
 
 COMMENTS = "comments.json"
 _MAX_TEXT = 4000
+_MAX_QUOTE = 1000
 
 
 class DocCommentNotFound(KeyError):
@@ -55,11 +56,11 @@ def _where(anchor: Any, blocks: list[str]) -> dict[str, Any]:
 
 
 def add_doc_comment(
-    path: Path, *, block: int, text: str, author: str, sent: bool
+    path: Path, *, block: int, text: str, author: str, sent: bool, quote: str = ""
 ) -> dict[str, Any]:
-    """A new comment on block `block` of the Doc. `sent` says it went to coscribe as a message.
-    `DocCommentRefused` (a code, not a text) for a block that does not exist or an empty or too
-    long text."""
+    """A new comment on block `block` of the Doc. `sent` says it went to coscribe as a message;
+    `quote` is the words of the block it was made on, when it was made on some. `DocCommentRefused`
+    (a code, not a text) for a block that does not exist or an empty or too long text."""
     blocks = read_doc(path.read_text(encoding="utf-8")).blocks
     if not 0 <= block < len(blocks):
         raise DocCommentRefused("no_block")
@@ -70,6 +71,7 @@ def add_doc_comment(
             "nth": sum(b.text == blocks[block].text for b in blocks[:block]),
         },
         "text": _text(text),
+        "quote": quote.strip()[:_MAX_QUOTE],
         "author": author[:80],
         "created": _now(),
         "sent": sent,
@@ -88,6 +90,17 @@ def reply_to_doc_comment(path: Path, comment_id: str, *, text: str, author: str)
 
 def resolve_doc_comment(path: Path, comment_id: str, resolved: bool) -> None:
     _change(path, lambda comments: _find(comments, comment_id).update(resolved=resolved))
+
+
+def edit_doc_comment(path: Path, comment_id: str, text: str) -> None:
+    """Replaces the words of a comment; its replies and anchor stay."""
+    new = _text(text)
+    _change(path, lambda comments: _find(comments, comment_id).update(text=new))
+
+
+def mark_doc_comment_sent(path: Path, comment_id: str) -> None:
+    """A comment made without sending it, sent to coscribe afterwards."""
+    _change(path, lambda comments: _find(comments, comment_id).update(sent=True))
 
 
 def delete_doc_comment(path: Path, comment_id: str) -> None:

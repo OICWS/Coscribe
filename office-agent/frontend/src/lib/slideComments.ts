@@ -33,6 +33,10 @@ export interface SlideComment {
 export interface CommentLink {
   path: string;
   commentId: string;
+  /** The comment is on a Doc, not a deck: its answer goes to the Doc's comments. */
+  doc?: boolean;
+  /** Comments sent in the same message, which get the same answer. */
+  alsoCommentIds?: string[];
 }
 
 const base = (threadId: string) => `/api/threads/${encodeURIComponent(threadId)}/slides/comments`;
