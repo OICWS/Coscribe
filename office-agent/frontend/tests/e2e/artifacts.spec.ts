@@ -163,13 +163,13 @@ test("only a Slides start offers a design system", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Choose design system…" })).toHaveCount(0);
 });
 
-// The message box is laid out again as the new conversation loads, which closes an open menu: open it until the item holds.
+// The message box is laid out again as the new conversation loads, which closes an open menu, even between
+// seeing the item and clicking it: open it and click until the click lands.
 async function chooseFromDesignMenu(page: Page, item: string) {
   await expect(async () => {
     if (!(await page.getByRole("menuitem", { name: item }).isVisible())) await page.getByRole("button", { name: "Choose design system…" }).click();
-    await expect(page.getByRole("menuitem", { name: item })).toBeVisible({ timeout: 2000 });
+    await page.getByRole("menuitem", { name: item }).click({ timeout: 2000 });
   }).toPass({ timeout: 20_000 });
-  await page.getByRole("menuitem", { name: item }).click();
 }
 
 test("the design-system menu leads to the page that manages them, or to making a new one", async ({ page }) => {
