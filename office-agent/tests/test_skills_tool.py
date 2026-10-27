@@ -153,6 +153,7 @@ def test_load_builtin_skills_finds_the_four_shipped_skills() -> None:
         "PPTX Pages",
         "Excel Spreadsheets",
         "Word Documents",
+        "Docs",
         "Skill Creator",
         "SVG and HTML Design",
         "markdown",

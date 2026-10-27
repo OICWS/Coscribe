@@ -1,6 +1,6 @@
 ---
 name: Word Documents
-description: When and how to use write_docx's table-of-contents, comments, tracked-changes, and template features -- load before writing a substantial Word document.
+description: When and how to use write_docx's table-of-contents, comments, tracked-changes, and template features -- load before writing a Word (.docx) file the person asked for by name, built on their template, or with tracked changes; other documents are Docs.
 ---
 Deeper guidance for `write_docx`/`read_docx` -- on top of what's already in
 your base instructions (the markdown subset, and the "no partial editing,

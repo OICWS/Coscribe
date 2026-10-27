@@ -85,6 +85,7 @@ def test_get_skills_lists_the_builtin_skills(
         "PPTX Pages",
         "Excel Spreadsheets",
         "Word Documents",
+        "Docs",
         "Skill Creator",
         "SVG and HTML Design",
         "markdown",
@@ -297,6 +298,7 @@ def test_new_thread_defaults_to_the_builtin_skills_enabled(
             ws.receive_json()  # history
 
     assert sorted(state["enabled_skills"]) == [
+        "Docs",
         "Excel Spreadsheets",
         "PPTX Pages",
         "PPTX Slides",

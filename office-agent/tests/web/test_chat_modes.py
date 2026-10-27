@@ -107,6 +107,7 @@ def test_plan_mode_toggle_updates_state(tmp_path: Path, monkeypatch: pytest.Monk
                 "effort_runs_as": None,
                 "context_window": 128_000,
                 "enabled_skills": [
+                    "Docs",
                     "Excel Spreadsheets",
                     "PPTX Pages",
                     "PPTX Slides",
