@@ -2,6 +2,7 @@
 """Web tests: Settings › Capabilities, the optional LibreOffice found or downloaded on request."""
 
 import stat
+import sys
 import threading
 import time
 from pathlib import Path
@@ -17,7 +18,8 @@ from coscribe.web.routes.settings import libreoffice as routes
 
 from .helpers import FakeToolCallingChatModel, _client_lg
 
-_LAUNCHER = "soffice"
+# Windows runs a batch file given as the program; elsewhere a shell script stands in.
+_LAUNCHER = "soffice.cmd" if sys.platform == "win32" else "soffice"
 
 
 @pytest.fixture(autouse=True)
@@ -28,8 +30,11 @@ def _nothing_installed(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _put_a_copy_in(state_dir: Path) -> None:
-    launcher = state_dir / "libreoffice" / "26.8.1" / "program" / "soffice"
+    launcher = state_dir / "libreoffice" / "26.8.1" / "program" / _LAUNCHER
     launcher.parent.mkdir(parents=True)
+    if sys.platform == "win32":
+        launcher.write_text("@echo LibreOffice 26.8.1.1 abc\n")
+        return
     launcher.write_text('#!/bin/sh\necho "LibreOffice 26.8.1.1 abc"\n')
     launcher.chmod(launcher.stat().st_mode | stat.S_IXUSR)
 
