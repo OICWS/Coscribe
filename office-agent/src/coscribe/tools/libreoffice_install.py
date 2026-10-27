@@ -87,9 +87,10 @@ Step = Callable[[str], None]
 
 # Windows Installer's own words for the codes people hit.
 _MSI_CODES = {
-    1625: "A policy on this computer blocks installing programs.",
-    1619: "Windows could not open the downloaded package.",
-    1618: "Another installation is running. Try again when it is done.",
+    1625: "Windows refused to unpack LibreOffice (code 1625), usually because of a security "
+    "policy or security software.",
+    1619: "Windows could not open the downloaded package (code 1619).",
+    1618: "Another installation is running (code 1618). Try again when it is done.",
 }
 
 
