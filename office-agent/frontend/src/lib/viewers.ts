@@ -5,7 +5,7 @@ import { isPptx } from "./slides";
 export const isDesign = (path: string) => /\.html?$/i.test(path);
 
 /** A file the viewer panel opens instead of the program it belongs to. */
-export const isViewable = (path: string) => isDocx(path) || isPptx(path) || isDesign(path);
+export const isViewable = (path: string) => isDocx(path) || isPptx(path) || isDesign(path) || isDocMarkdown(path);
 
 /** A Markdown file the Doc editor opens. Whether it is a Doc (its front matter) only the server can say. */
 export const isDocMarkdown = (path: string) => /\.md$/i.test(path);

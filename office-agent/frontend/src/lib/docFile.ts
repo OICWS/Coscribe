@@ -16,6 +16,9 @@ export type DocEdit =
   | { op: "insert"; after: number; text: string }
   | { op: "delete"; index: number; expected: string };
 
+/** A Markdown file that is not a Doc: it has no `coscribe: doc` in its front matter. */
+export class NotADocError extends Error {}
+
 /** A save over a file that changed after the editor read it. */
 export class DocChangedError extends Error {}
 
@@ -24,7 +27,7 @@ const base = (threadId: string) => `/api/threads/${encodeURIComponent(threadId)}
 async function failure(response: Response): Promise<Error> {
   const body = (await response.json().catch(() => null)) as { error?: string; changed?: boolean } | null;
   const message = body?.error ?? `HTTP ${response.status}`;
-  return response.status === 409 ? new DocChangedError(message) : new Error(message);
+  return response.status === 409 ? new DocChangedError(message) : response.status === 404 ? new NotADocError(message) : new Error(message);
 }
 
 export async function getDoc(threadId: string, path: string): Promise<DocRead> {
