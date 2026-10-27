@@ -1,4 +1,4 @@
-# Three red checks on main turned green (shipped)
+# Red checks on main turned green (shipped)
 
 Why: the Windows `pytest` job and the E2E job were red on `main` for every PR (seen on #668
 and #672), and the maintainer merges only green PRs.
@@ -12,6 +12,7 @@ and #672), and the maintainer merges only green PRs.
   CRLF on any platform (`test_a_version_with_windows_line_endings_is_put_back_byte_for_byte`).
 - `tests/web/test_libreoffice_routes.py`: the fake LibreOffice is a batch file on Windows, where
   a shell script cannot run, so the download test reads its version there too.
+- `test_lifespan_backgrounds_a_slow_mcp_connect_instead_of_blocking_startup`: its fake connect gave up after 10 s, which a loaded Windows runner took just to start the app, so the connect "finished" before it was released. The limit is now 120 s; it only frees the thread when the test fails first.
 - `docx-review.spec.ts`: "Ask Coscribe" opens the ask box since #660, so the spec picks
   "Make it shorter" and checks that the instruction goes with the quoted words.
 
