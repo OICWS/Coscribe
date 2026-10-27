@@ -16,6 +16,9 @@ and #672), and the maintainer merges only green PRs.
 - `test_an_expired_oauth_sign_in_is_refreshed_without_the_browser`: the refreshed token lived 1 s
   as well, so a reconnect that took longer on a loaded runner had its token expire mid-way. Only
   the first token is short-lived now.
+- `artifacts.spec.ts` "the design-system menu leads to …" (also red on `main`'s nightly run): the
+  menu could close between the check that its item is shown and the click, which then waited out
+  the test's 45 s. The click is now inside the retry.
 - `docx-review.spec.ts`: "Ask Coscribe" opens the ask box since #660, so the spec picks
   "Make it shorter" and checks that the instruction goes with the quoted words.
 
