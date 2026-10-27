@@ -23,12 +23,14 @@ from typing import Any
 from langchain_core.messages import BaseMessage
 
 from ..runtime import ToolMetadata
-from ..tools import WorkspaceScope
+from ..tools import NotADoc, WorkspaceScope, read_doc_file
 from .activity import summarize_activity
 
 ARTIFACT_KINDS = {
     ".pptx": "slides",
     ".docx": "docs",
+    # Only a Doc (a Markdown file marked in its front matter) is one; `describe_artifact` checks.
+    ".md": "docs",
     ".xlsx": "sheets",
     ".html": "design",
 }
@@ -135,13 +137,16 @@ def describe_artifact(scope: WorkspaceScope, path: str) -> dict[str, Any] | None
     if not resolved.is_file():
         return None
     stat = resolved.stat()
+    excerpt = _excerpt(str(resolved), stat.st_mtime_ns) if kind == "docs" else None
+    if resolved.suffix.lower() == ".md" and excerpt is None:
+        return None
     return {
         "path": scope.relative(resolved),
         "location": str(resolved),
         "name": resolved.stem,
         "kind": kind,
         "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-        "excerpt": _excerpt(str(resolved), stat.st_mtime_ns) if kind == "docs" else None,
+        "excerpt": excerpt,
     }
 
 
@@ -158,8 +163,20 @@ def _excerpt(location: str, modified_ns: int) -> dict[str, str] | None:
     return _excerpts[key]
 
 
+def _read_doc_excerpt(location: str) -> dict[str, str] | None:
+    """A Doc's title and its first lines of text; None for a Markdown file that is not a Doc."""
+    try:
+        read = read_doc_file(Path(location))
+    except (NotADoc, OSError, ValueError):
+        return None
+    text = " ".join(b["text"] for b in read["blocks"] if b["kind"] == "paragraph")
+    return {"heading": str(read["title"])[:120], "text": text[:_EXCERPT_CHARS]}
+
+
 def _read_excerpt(location: str) -> dict[str, str] | None:
     """A document's first line and what follows it, None for a file that does not open."""
+    if location.lower().endswith(".md"):
+        return _read_doc_excerpt(location)
     # Loaded on first use: python-docx is slow to import and most runs never list a document.
     from docx import Document
     from docx.opc.exceptions import PackageNotFoundError

@@ -38,6 +38,25 @@ def _title_first_heading(document: Any, written: Any) -> None:
     written.headings.pop(0)
 
 
+def docx_from_markdown(content: str) -> bytes:
+    """A Word file made of `content` (the markdown subset `write_docx` takes) in the house style, as
+    bytes and without touching the workspace: for an export."""
+    import io
+
+    from docx import Document
+
+    document = Document()
+    apply_house_style(document, cjk=has_cjk(content))
+    change_ids = _ChangeIdCounter()
+    written = add_blocks(document, content, None, change_ids)
+    _title_first_heading(document, written)
+    finish_tocs(document, written.tocs, written.headings, None, change_ids)
+    assert_wml_valid(document.element, "docx_from_markdown")
+    out = io.BytesIO()
+    document.save(out)
+    return out.getvalue()
+
+
 class DocxToolkit(WorkspaceToolkit):
     @locked_by_path
     def read_docx(self, path: str, view: str = "text") -> str:

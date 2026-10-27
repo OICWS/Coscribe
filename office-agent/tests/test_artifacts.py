@@ -125,3 +125,18 @@ def test_outputs_leave_out_working_files_that_are_gone_and_underscore_scratch_fo
     outputs = summarize_activity(messages, catalog, WorkspaceScope(tmp_path))["outputs"]
 
     assert {o["path"]: o["exists"] for o in outputs} == {"report.docx": True, "mine.docx": False}
+
+
+def test_a_markdown_file_is_an_artifact_only_when_it_is_a_doc(tmp_path: Path) -> None:
+    (tmp_path / "plain.md").write_text("# Notes\n\nNot a Doc.\n", encoding="utf-8")
+    (tmp_path / "plan.md").write_text(
+        "---\ncoscribe: doc\n---\n\n# Launch plan\n\nWe ship in May.\n\nAfter review.\n",
+        encoding="utf-8",
+    )
+    scope = WorkspaceScope(tmp_path)
+
+    assert describe_artifact(scope, "plain.md") is None
+    doc = describe_artifact(scope, "plan.md")
+
+    assert doc is not None and (doc["kind"], doc["name"]) == ("docs", "plan")
+    assert doc["excerpt"] == {"heading": "Launch plan", "text": "We ship in May. After review."}
