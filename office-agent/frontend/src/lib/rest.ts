@@ -3,6 +3,7 @@ import type {
   DesignSystemSummary,
   SecretInfo,
   SecretsResponse,
+  LibreOfficeStatus,
   ScriptIsolation,
   Capabilities,
   CapabilityFolders,
@@ -523,6 +524,8 @@ export const setUpCommandSandbox = (mode: CommandSandboxMode) =>
   postJson<CommandSandbox>("/api/command-sandbox", { mode });
 export const removeCommandSandbox = () =>
   sendForResult<CommandSandbox>("/api/command-sandbox", "DELETE", undefined);
+
+export const getLibreOffice = () => getJson<LibreOfficeStatus>("/api/libreoffice");
 
 export const getScriptIsolation = () => getJson<ScriptIsolation>("/api/script-isolation");
 export const retestScriptIsolation = () => postJson<ScriptIsolation>("/api/script-isolation/test", {});

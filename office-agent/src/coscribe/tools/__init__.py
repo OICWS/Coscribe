@@ -129,6 +129,7 @@ from .exec import (
     write_codex_config,
 )
 from .files import build_file_tools
+from .libreoffice import LibreOfficeStatus, find_libreoffice, libreoffice_status
 from .mcp import (
     load_mcp_server_configs,
     prepare_for_connect,
@@ -421,6 +422,9 @@ __all__ = [
     "build_conversation_tools",
     "build_design_system_tools",
     "build_convert_tools",
+    "LibreOfficeStatus",
+    "find_libreoffice",
+    "libreoffice_status",
     "DocumentToolkit",
     "SpreadsheetToolkit",
     "build_document_tools",

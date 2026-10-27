@@ -73,6 +73,7 @@ protected_modules = [
     "coscribe.tools.files",
     "coscribe.tools.convert",
     "coscribe.tools.pdf_pages",
+    "coscribe.tools.libreoffice",
     "coscribe.tools.mcp",
     "coscribe.tools.connector_permissions",
     "coscribe.tools.design_systems",

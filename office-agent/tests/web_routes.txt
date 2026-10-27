@@ -36,6 +36,7 @@ GET /api/config
 GET /api/design-systems
 GET /api/design-systems/{system_id}
 GET /api/environments
+GET /api/libreoffice
 GET /api/mcp/catalog
 GET /api/mcp/npm-latest-version
 GET /api/mcp/oauth-apps
