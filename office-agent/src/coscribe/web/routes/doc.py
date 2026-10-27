@@ -24,6 +24,8 @@ from ...tools import (
     add_doc_asset,
     add_doc_comment,
     delete_doc_comment,
+    edit_doc_comment,
+    mark_doc_comment_sent,
     read_doc_asset,
     read_doc_comments,
     read_doc_file,
@@ -38,6 +40,7 @@ from ..schemas import (
     DocCommentNew,
     DocCommentReply,
     DocCommentState,
+    DocCommentText,
     DocFileSave,
     DocRestore,
 )
@@ -196,7 +199,12 @@ def _comment_routes(router: APIRouter, state: AppState) -> None:
             return file
         return await _run(
             lambda: add_doc_comment(
-                file, block=body.block, text=body.text, author=_author(), sent=body.sent
+                file,
+                block=body.block,
+                text=body.text,
+                author=_author(),
+                sent=body.sent,
+                quote=body.quote,
             )
         )
 
@@ -209,12 +217,39 @@ def _comment_routes(router: APIRouter, state: AppState) -> None:
             lambda: reply_to_doc_comment(file, comment_id, text=body.text, author=author)
         )
 
+    router.add_api_route(base, get_comments, methods=["GET"])
+    router.add_api_route(base, post_comment, methods=["POST"])
+    router.add_api_route(f"{base}/{{comment_id}}/replies", post_reply, methods=["POST"])
+
+
+def _comment_edit_routes(router: APIRouter, state: AppState) -> None:
+    """One comment: resolve, mark sent, change its words, delete."""
+    base = "/api/threads/{thread_id}/doc/comments/{comment_id}"
+
+    def _file(thread_id: str, path: str) -> Path | JSONResponse:
+        file = _doc_file(state, thread_id, path, write=True)
+        return JSONResponse({"error": _NO_DOC}, status_code=404) if file is None else file
+
     async def post_state(thread_id: str, comment_id: str, body: DocCommentState) -> Any:
         file = _file(thread_id, body.path)
         if isinstance(file, JSONResponse):
             return file
-        done = await _run(resolve_doc_comment, file, comment_id, body.resolved)
-        return done if isinstance(done, JSONResponse) else {"resolved": body.resolved}
+        if body.resolved is not None:
+            done = await _run(resolve_doc_comment, file, comment_id, body.resolved)
+            if isinstance(done, JSONResponse):
+                return done
+        if body.sent:
+            done = await _run(mark_doc_comment_sent, file, comment_id)
+            if isinstance(done, JSONResponse):
+                return done
+        return {"resolved": body.resolved, "sent": body.sent}
+
+    async def put_text(thread_id: str, comment_id: str, body: DocCommentText) -> Any:
+        file = _file(thread_id, body.path)
+        if isinstance(file, JSONResponse):
+            return file
+        done = await _run(edit_doc_comment, file, comment_id, body.text)
+        return done if isinstance(done, JSONResponse) else {"text": body.text}
 
     async def remove_comment(thread_id: str, comment_id: str, path: str) -> Any:
         file = _file(thread_id, path)
@@ -223,11 +258,9 @@ def _comment_routes(router: APIRouter, state: AppState) -> None:
         done = await _run(delete_doc_comment, file, comment_id)
         return done if isinstance(done, JSONResponse) else {"deleted": comment_id}
 
-    router.add_api_route(base, get_comments, methods=["GET"])
-    router.add_api_route(base, post_comment, methods=["POST"])
-    router.add_api_route(f"{base}/{{comment_id}}/replies", post_reply, methods=["POST"])
-    router.add_api_route(f"{base}/{{comment_id}}", post_state, methods=["POST"])
-    router.add_api_route(f"{base}/{{comment_id}}", remove_comment, methods=["DELETE"])
+    router.add_api_route(base, post_state, methods=["POST"])
+    router.add_api_route(base, put_text, methods=["PUT"])
+    router.add_api_route(base, remove_comment, methods=["DELETE"])
 
 
 def router(state: AppState) -> APIRouter:
@@ -237,4 +270,5 @@ def router(state: AppState) -> APIRouter:
     _restore_route(router, state)
     _asset_routes(router, state)
     _comment_routes(router, state)
+    _comment_edit_routes(router, state)
     return router

@@ -14,6 +14,8 @@ from coscribe.tools.office.doc import (
     add_doc_comment,
     apply_edits,
     delete_doc_comment,
+    edit_doc_comment,
+    mark_doc_comment_sent,
     read_doc_comments,
     reply_to_doc_comment,
     resolve_doc_comment,
@@ -140,3 +142,20 @@ def test_a_damaged_store_counts_as_no_comments_and_is_replaced_by_the_next_one(
         json.loads((folder / "comments.json").read_text(encoding="utf-8"))["comments"][0]["text"]
         == "Fresh"
     )
+
+
+def test_a_comment_is_edited_and_marked_sent_without_losing_its_replies(tmp_path: Path) -> None:
+    path = _doc(tmp_path)
+    made = add_doc_comment(path, block=1, text="First", author="Ana", sent=False, quote=" words ")
+    reply_to_doc_comment(path, made["id"], text="Noted", author="coscribe")
+
+    edit_doc_comment(path, made["id"], "  Second  ")
+    mark_doc_comment_sent(path, made["id"])
+    (read,) = read_doc_comments(path)
+
+    assert (read["text"], read["quote"], read["sent"]) == ("Second", "words", True)
+    assert [r["text"] for r in read["replies"]] == ["Noted"]
+    with pytest.raises(DocCommentRefused):
+        edit_doc_comment(path, made["id"], "   ")
+    with pytest.raises(DocCommentNotFound):
+        mark_doc_comment_sent(path, "nope")

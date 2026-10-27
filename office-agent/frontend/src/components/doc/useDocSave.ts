@@ -74,7 +74,7 @@ export function useDocSave(editor: Editor | null, threadId: string, path: string
     };
   }, [editor, save]);
 
-  return { state, loaded };
+  return { state, loaded, flush: save };
 }
 
 function giveIndexes(editor: Editor, slots: { pos: number; key: string }[], saved: DocRead, mapping: Mapping) {

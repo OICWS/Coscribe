@@ -163,6 +163,7 @@ PUT /api/scheduled-tasks/{trigger_id}
 PUT /api/scheduled-tasks/{trigger_id}/notes
 PUT /api/secrets/{name}
 PUT /api/threads/{thread_id}/doc/blocks
+PUT /api/threads/{thread_id}/doc/comments/{comment_id}
 PUT /api/threads/{thread_id}/docs/blocks
 PUT /api/threads/{thread_id}/slides/{index}/source
 WS /ws/browser

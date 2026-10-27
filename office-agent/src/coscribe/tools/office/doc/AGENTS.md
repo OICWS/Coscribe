@@ -15,7 +15,8 @@ the note to coscribe (`conversation/docs_edits.py`), the editor, the card or the
 `NotADoc`, `BlocksRefused`, `CALLOUTS`, `parse_chart`, `Chart`, and for the editor `read_doc_file`,
 `save_doc_edits`, `DocFileChanged`, `DocVersionGone`, `remember_doc_version`, `restore_doc_version`,
 `remember_doc_before_edit`, `doc_edits_since_told`, and for the comments `read_doc_comments`,
-`add_doc_comment`, `reply_to_doc_comment`, `resolve_doc_comment`, `delete_doc_comment`,
+`add_doc_comment`, `reply_to_doc_comment`, `resolve_doc_comment`, `edit_doc_comment`,
+`mark_doc_comment_sent`, `delete_doc_comment`,
 `DocCommentNotFound`, `DocCommentRefused`, and for the pictures `add_doc_asset`, `read_doc_asset`,
 `DocAssetRefused`. Import them from `coscribe.tools.office.doc`;
 the server and the conversation reach them through `coscribe.tools`.
