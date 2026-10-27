@@ -103,3 +103,61 @@ def test_a_change_made_behind_the_editor_can_be_undone_and_done_again_lg(
     assert "Added by coscribe." in (workspace / "plan.md").read_text(encoding="utf-8")
     assert stale.status_code == 409
     assert gone.status_code == 404
+
+
+def test_a_comment_is_added_answered_resolved_and_deleted_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _workspace(tmp_path)
+    base = "/api/threads/t_one/doc/comments"
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        made = client.post(
+            base, json={"path": "plan.md", "block": 1, "text": "Is this right?", "sent": True}
+        ).json()
+        answered = client.post(
+            f"{base}/{made['id']}/replies",
+            json={"path": "plan.md", "text": "Yes, checked.", "from_coscribe": True},
+        )
+        mine = client.post(
+            f"{base}/{made['id']}/replies", json={"path": "plan.md", "text": "Thanks."}
+        )
+        resolved = client.post(f"{base}/{made['id']}", json={"path": "plan.md", "resolved": True})
+        listed = client.get(base, params={"path": "plan.md"}).json()
+        deleted = client.delete(f"{base}/{made['id']}", params={"path": "plan.md"})
+        after = client.get(base, params={"path": "plan.md"}).json()
+
+    assert made["anchor"]["text"] == "First paragraph." and made["sent"] is True
+    assert answered.status_code == 200 and answered.json()["author"] == "coscribe"
+    assert mine.status_code == 200 and mine.json()["author"] != "coscribe"
+    assert resolved.json() == {"resolved": True}
+    assert listed[0]["resolved"] is True and listed[0]["block"] == 1
+    assert [r["text"] for r in listed[0]["replies"]] == ["Yes, checked.", "Thanks."]
+    assert deleted.json() == {"deleted": made["id"]} and after == []
+
+
+def test_what_cannot_be_commented_on_is_refused_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = _workspace(tmp_path)
+    (workspace / "notes.md").write_text("# Just notes\n", encoding="utf-8")
+    (workspace / "broken.md").write_bytes(b"\xff\xfe\x00 not text")
+    base = "/api/threads/t_one/doc/comments"
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        no_file = client.get(base, params={"path": "nope.md"})
+        no_marker = client.post(base, json={"path": "notes.md", "block": 0, "text": "x"})
+        outside = client.get(base, params={"path": "../secret.md"})
+        bad_block = client.post(base, json={"path": "plan.md", "block": 40, "text": "x"})
+        broken = client.get(base, params={"path": "broken.md"})
+        broken_add = client.post(base, json={"path": "broken.md", "block": 0, "text": "x"})
+        empty = client.post(base, json={"path": "plan.md", "block": 0, "text": ""})
+        unknown = client.post(f"{base}/nope", json={"path": "plan.md", "resolved": True})
+        unknown_reply = client.post(f"{base}/nope/replies", json={"path": "plan.md", "text": "x"})
+        unknown_delete = client.delete(f"{base}/nope", params={"path": "plan.md"})
+
+    assert [r.status_code for r in (no_file, no_marker, outside)] == [404, 404, 404]
+    assert bad_block.status_code == 400 and bad_block.json()["error"] == "There is no such block"
+    # What a parser says about a file that is not text is not shown.
+    assert [r.status_code for r in (broken, broken_add)] == [422, 422]
+    assert all("utf" not in r.text.lower() for r in (broken, broken_add))
+    assert empty.status_code == 422
+    assert [r.status_code for r in (unknown, unknown_reply, unknown_delete)] == [404] * 3

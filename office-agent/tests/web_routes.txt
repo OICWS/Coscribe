@@ -14,6 +14,7 @@ DELETE /api/skills/{name}
 DELETE /api/thread-groups/{name}
 DELETE /api/threads/{thread_id}
 DELETE /api/threads/{thread_id}/background-tasks
+DELETE /api/threads/{thread_id}/doc/comments/{comment_id}
 DELETE /api/threads/{thread_id}/slides/comments/{comment_id}
 DELETE /api/threads/{thread_id}/subagents
 GET /
@@ -70,6 +71,7 @@ GET /api/threads/{thread_id}/background-tasks
 GET /api/threads/{thread_id}/context-breakdown
 GET /api/threads/{thread_id}/design
 GET /api/threads/{thread_id}/doc/blocks
+GET /api/threads/{thread_id}/doc/comments
 GET /api/threads/{thread_id}/docs/blocks
 GET /api/threads/{thread_id}/docs/image
 GET /api/threads/{thread_id}/docx-review
@@ -129,6 +131,9 @@ POST /api/skills/upload
 POST /api/skills/{name}/enabled
 POST /api/subagents/{task_id}/stop
 POST /api/thread-groups/{name}/rename
+POST /api/threads/{thread_id}/doc/comments
+POST /api/threads/{thread_id}/doc/comments/{comment_id}
+POST /api/threads/{thread_id}/doc/comments/{comment_id}/replies
 POST /api/threads/{thread_id}/doc/restore
 POST /api/threads/{thread_id}/docs/restore
 POST /api/threads/{thread_id}/docx-review
