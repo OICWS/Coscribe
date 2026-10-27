@@ -52,6 +52,8 @@ def test_status_says_nothing_is_found_and_what_a_download_would_be(
         status = client.get("/api/libreoffice").json()
     assert status["found"] is False
     assert status["offer"] == offer
+    # The page tells a failed request ({"error": ...}) from a status by that key.
+    assert "error" not in status
     assert status["working"] is False
 
 
@@ -74,7 +76,7 @@ def test_a_download_runs_in_the_background_and_leaves_a_copy(
         done = _wait_until_done(client)
     assert seen == ["progress"]
     assert done["found"] and done["source"] == "own" and done["version"] == "26.8.1.1"
-    assert done["error"] == ""
+    assert done["problem"] == ""
 
 
 def test_a_second_download_while_one_runs_is_refused(
@@ -106,7 +108,7 @@ def test_a_failed_download_says_why_and_leaves_nothing(
         client.post("/api/libreoffice")
         done = _wait_until_done(client)
     assert done["found"] is False
-    assert done["error"] == "A policy on this computer blocks installing programs."
+    assert done["problem"] == "A policy on this computer blocks installing programs."
 
 
 def test_an_unexpected_failure_shows_a_fixed_text_not_the_exception(
@@ -119,7 +121,7 @@ def test_an_unexpected_failure_shows_a_fixed_text_not_the_exception(
     with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
         client.post("/api/libreoffice")
         done = _wait_until_done(client)
-    assert done["error"] == "LibreOffice could not be installed."
+    assert done["problem"] == "LibreOffice could not be installed."
 
 
 def test_remove_deletes_coscribes_copy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

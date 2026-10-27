@@ -541,8 +541,9 @@ export interface LibreOfficeStatus {
   step: string;
   done: number;
   total: number;
-  /** Why the last download failed, in words for the person. */
-  error: string;
+  /** Why the last download failed, in words for the person; named apart from `error`, which is
+   * what a failed request answers with. */
+  problem: string;
 }
 
 export interface ScriptIsolation {
