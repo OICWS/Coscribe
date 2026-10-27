@@ -34,7 +34,7 @@ def _no_office_program(request: pytest.FixtureRequest, monkeypatch: pytest.Monke
             shutil,
             "which",
             lambda name, *args, **kwargs: (
-                None if name in ("soffice", "libreoffice") else real_which(name, *args, **kwargs)
+                None if name in ("libreoffice", "soffice") else real_which(name, *args, **kwargs)
             ),
         )
     if real_libreoffice:
