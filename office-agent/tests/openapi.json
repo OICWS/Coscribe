@@ -27,6 +27,25 @@
         "title": "ArtifactShow",
         "type": "object"
       },
+      "Body_post_asset_api_threads__thread_id__doc_asset_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "path"
+        ],
+        "title": "Body_post_asset_api_threads__thread_id__doc_asset_post",
+        "type": "object"
+      },
       "Body_post_asset_api_threads__thread_id__slides_assets_post": {
         "properties": {
           "file": {
@@ -5394,6 +5413,110 @@
           }
         },
         "summary": "Get Design"
+      }
+    },
+    "/api/threads/{thread_id}/doc/asset": {
+      "get": {
+        "operationId": "get_asset_api_threads__thread_id__doc_asset_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "src",
+            "required": true,
+            "schema": {
+              "title": "Src",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Get Asset Api Threads  Thread Id  Doc Asset Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Asset"
+      },
+      "post": {
+        "operationId": "post_asset_api_threads__thread_id__doc_asset_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_post_asset_api_threads__thread_id__doc_asset_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Post Asset Api Threads  Thread Id  Doc Asset Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Asset"
       }
     },
     "/api/threads/{thread_id}/doc/blocks": {

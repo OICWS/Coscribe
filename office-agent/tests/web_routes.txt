@@ -70,6 +70,7 @@ GET /api/threads/{thread_id}/activity
 GET /api/threads/{thread_id}/background-tasks
 GET /api/threads/{thread_id}/context-breakdown
 GET /api/threads/{thread_id}/design
+GET /api/threads/{thread_id}/doc/asset
 GET /api/threads/{thread_id}/doc/blocks
 GET /api/threads/{thread_id}/doc/comments
 GET /api/threads/{thread_id}/docs/blocks
@@ -131,6 +132,7 @@ POST /api/skills/upload
 POST /api/skills/{name}/enabled
 POST /api/subagents/{task_id}/stop
 POST /api/thread-groups/{name}/rename
+POST /api/threads/{thread_id}/doc/asset
 POST /api/threads/{thread_id}/doc/comments
 POST /api/threads/{thread_id}/doc/comments/{comment_id}
 POST /api/threads/{thread_id}/doc/comments/{comment_id}/replies

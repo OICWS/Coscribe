@@ -135,6 +135,40 @@ def test_a_comment_is_added_answered_resolved_and_deleted_lg(
     assert deleted.json() == {"deleted": made["id"]} and after == []
 
 
+def test_a_picture_is_added_and_read_back_and_only_pictures_of_the_doc_are_served_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import io
+
+    from PIL import Image
+
+    workspace = _workspace(tmp_path)
+    (workspace / "secret.png").write_bytes(b"secret")
+    picture = io.BytesIO()
+    Image.new("RGB", (2, 2), "blue").save(picture, "PNG")
+    base = "/api/threads/t_one/doc/asset"
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        added = client.post(
+            base, data={"path": "plan.md"}, files={"file": ("dot.png", picture.getvalue())}
+        )
+        src = added.json()["src"]
+        got = client.get(base, params={"path": "plan.md", "src": src})
+        outside = client.get(base, params={"path": "plan.md", "src": "../secret.png"})
+        bad = client.post(
+            base, data={"path": "plan.md"}, files={"file": ("dot.png", b"not a picture")}
+        )
+        no_doc = client.post(
+            base, data={"path": "nope.md"}, files={"file": ("dot.png", picture.getvalue())}
+        )
+
+    assert added.status_code == 200 and src == "plan.doc/assets/dot.png"
+    assert got.status_code == 200 and got.headers["content-type"] == "image/png"
+    assert got.headers["x-content-type-options"] == "nosniff"
+    assert outside.status_code == 404
+    assert bad.status_code == 400 and bad.json()["error"] == "That file is not a picture"
+    assert no_doc.status_code == 404
+
+
 def test_a_comment_keeps_its_quote_and_can_be_edited_and_sent_later_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -8,22 +8,25 @@ import asyncio
 import getpass
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Form, UploadFile
+from fastapi.responses import JSONResponse, Response
 
 from ...tools import (
+    DocAssetRefused,
     DocBlocksRefused,
     DocCommentNotFound,
     DocCommentRefused,
     DocFileChanged,
     DocVersionGone,
     NotADoc,
+    add_doc_asset,
     add_doc_comment,
     delete_doc_comment,
     edit_doc_comment,
     mark_doc_comment_sent,
+    read_doc_asset,
     read_doc_comments,
     read_doc_file,
     remember_doc_before_edit,
@@ -47,6 +50,11 @@ from ..state import AppState
 _NO_DOC = "No Doc at that path"
 _UNREADABLE = "This Doc could not be read"
 _GONE = "That version is no longer kept"
+_REFUSED_ASSET = {
+    "too_big": "A picture is 8 MB at most",
+    "not_a_picture": "That file is not a picture",
+    "format": "Pictures are PNG, JPEG, GIF or WebP files",
+}
 _CHANGED = "This Doc changed since it was opened; it has been read again"
 # The texts of a refused comment: written here, so no exception's own text reaches the client.
 _REFUSED_COMMENT = {
@@ -145,6 +153,34 @@ async def _run(job: Callable[..., Any], *args: Any) -> Any:
         return JSONResponse({"error": _UNREADABLE}, status_code=422)
 
 
+def _asset_routes(router: APIRouter, state: AppState) -> None:
+    """The Doc's pictures: add one, and read one back for the editor to show."""
+    base = "/api/threads/{thread_id}/doc/asset"
+
+    async def post_asset(thread_id: str, file: UploadFile, path: Annotated[str, Form()]) -> Any:
+        found = _doc_file(state, thread_id, path, write=True)
+        if found is None:
+            return JSONResponse({"error": _NO_DOC}, status_code=404)
+        data = await file.read(8 * 1024 * 1024 + 1)
+        try:
+            return await asyncio.to_thread(add_doc_asset, found, file.filename or "", data)
+        except DocAssetRefused as refused:
+            text = _REFUSED_ASSET.get(refused.code, "That picture cannot be added")
+            return JSONResponse({"error": text}, status_code=400)
+
+    async def get_asset(thread_id: str, path: str, src: str) -> Any:
+        found = _doc_file(state, thread_id, path, write=False)
+        picture = None if found is None else await asyncio.to_thread(read_doc_asset, found, src)
+        if picture is None:
+            return JSONResponse({"error": "No such picture"}, status_code=404)
+        data, media_type = picture
+        headers = {"Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff"}
+        return Response(data, media_type=media_type, headers=headers)
+
+    router.add_api_route(base, post_asset, methods=["POST"])
+    router.add_api_route(base, get_asset, methods=["GET"])
+
+
 def _comment_routes(router: APIRouter, state: AppState) -> None:
     """The Doc's comments: read them, add one, reply, resolve or reopen, delete."""
     base = "/api/threads/{thread_id}/doc/comments"
@@ -232,6 +268,7 @@ def router(state: AppState) -> APIRouter:
     _read_route(router, state)
     _save_route(router, state)
     _restore_route(router, state)
+    _asset_routes(router, state)
     _comment_routes(router, state)
     _comment_edit_routes(router, state)
     return router
