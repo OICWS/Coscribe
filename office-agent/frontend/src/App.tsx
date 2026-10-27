@@ -652,8 +652,7 @@ function App() {
       onStop();
       return;
     }
-    // Typing in the composer instead of picking an option answers nothing, but leaves the card
-    // open and the turn waiting on it; closing it lets the message that follows run.
+    // A typed message leaves the card open and the turn waiting on it; dismissing it lets the message run.
     if (pendingQuestion) onAnswerQuestion(pendingQuestion.id, null);
     runOrQueueSend(() => {
       dispatch({
@@ -709,9 +708,7 @@ function App() {
       answers ? { type: "question_response", id, answers } : { type: "question_response", id, dismissed: true },
     );
   };
-  const pendingQuestion = state.items.findLast(
-    (item): item is Extract<LogItem, { kind: "question" }> => item.kind === "question" && item.status === "pending",
-  );
+  const pendingQuestion = state.items.findLast((item): item is Extract<LogItem, { kind: "question" }> => item.kind === "question" && item.status === "pending");
 
   const onSwitchModel = (model: string) => socketRef.current?.send({ type: "switch_model", model });
   const onSetEffort = (effort: Effort) =>
