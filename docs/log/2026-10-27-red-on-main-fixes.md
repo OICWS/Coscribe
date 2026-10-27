@@ -13,6 +13,9 @@ and #672), and the maintainer merges only green PRs.
 - `tests/web/test_libreoffice_routes.py`: the fake LibreOffice is a batch file on Windows, where
   a shell script cannot run, so the download test reads its version there too.
 - `test_lifespan_backgrounds_a_slow_mcp_connect_instead_of_blocking_startup`: its fake connect gave up after 10 s, which a loaded Windows runner took just to start the app, so the connect "finished" before it was released. The limit is now 120 s; it only frees the thread when the test fails first.
+- `test_an_expired_oauth_sign_in_is_refreshed_without_the_browser`: the refreshed token lived 1 s
+  as well, so a reconnect that took longer on a loaded runner had its token expire mid-way. Only
+  the first token is short-lived now.
 - `docx-review.spec.ts`: "Ask Coscribe" opens the ask box since #660, so the spec picks
   "Make it shorter" and checks that the instruction goes with the quoted words.
 
