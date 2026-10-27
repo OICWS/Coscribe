@@ -36,6 +36,8 @@ import {
   buildDirEntries,
   changedDirs,
   type DirEntry,
+  USER_NAME_KEY,
+  USER_ROLE_KEY,
 } from "./fields";
 import { DesignSystemsTab } from "./DesignSystemsTab";
 import { GeneralTab } from "./GeneralTab";
@@ -117,6 +119,8 @@ const CONFIG_KEYS = [
   KEEP_AWAKE_ON_BATTERY_KEY,
   BACKGROUND_AGENTS_KEY,
   ARCHIVE_INACTIVE_DAYS_KEY,
+  USER_NAME_KEY,
+  USER_ROLE_KEY,
 ];
 
 interface SettingsModalProps {
