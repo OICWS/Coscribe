@@ -8,6 +8,7 @@
 /office-agent/src/coscribe/code_runtime/ @OICWS
 /office-agent/src/coscribe/tools/ @OICWS
 /office-agent/src/coscribe/tools/office/docx/ @OICWS
+/office-agent/src/coscribe/tools/office/doc/ @OICWS
 /office-agent/src/coscribe/tools/office/xlsx/ @OICWS
 /office-agent/src/coscribe/tools/office/pdf/ @OICWS
 /office-agent/src/coscribe/tools/office/pptx/ @OICWS

@@ -1,7 +1,7 @@
 # Design note: the Doc artifact, a markdown document people and coscribe edit together (2026-10-26)
 
 Design before code: it adds a kind of artifact and changes where a written document lives. Status:
-**proposed**, for the maintainer to accept. It follows from `2026-10-26-word-spec-gate.md` (the spec
+**accepted** (2026-10-26, #646 merged by the maintainer). It follows from `2026-10-26-word-spec-gate.md` (the spec
 route for Word did not beat markdown) and from the maintainer's view that drawing any .docx
 faithfully is not a direction worth more work. It rests on 0001 (a fixed, cached tool list), 0012 (no
 LibreOffice), 0015 (comments live beside the file, not in it), 0019 (the .docx is the artifact: it

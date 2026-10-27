@@ -108,6 +108,13 @@ owner = ["@OICWS"]
 card = "office-agent/src/coscribe/tools/office/docx/AGENTS.md"
 
 [[component]]
+name = "tools.office.doc"
+path = "office-agent/src/coscribe/tools/office/doc"
+layer = "tools"
+owner = ["@OICWS"]
+card = "office-agent/src/coscribe/tools/office/doc/AGENTS.md"
+
+[[component]]
 name = "tools.office.xlsx"
 path = "office-agent/src/coscribe/tools/office/xlsx"
 layer = "tools"
