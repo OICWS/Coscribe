@@ -978,6 +978,9 @@ def test_an_expired_oauth_sign_in_is_refreshed_without_the_browser(
         server.provider.token_lifetime = 1
         _add_oauth_connector(client, server)
         _wait_until(lambda: client.get("/api/mcp/servers").json()["docs"]["connected"])
+        # Only the first token expires: the refreshed one must outlast a reconnect on a slow
+        # runner, which makes several requests with it.
+        server.provider.token_lifetime = 3600
         time.sleep(2)
 
         assert client.post("/api/mcp/servers/docs/reconnect").json()["connected"] is True
