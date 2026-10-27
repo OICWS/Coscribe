@@ -23,7 +23,13 @@ export function insertEntries(editor: Editor): MenuEntry[] {
     { label: "Table", onSelect: at((c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true })) },
     "divider",
     { label: "Callout", submenu: CALLOUT_TYPES.map((type) => ({ label: titled(type), onSelect: at((c) => c.insertContent({ type: "callout", attrs: { type }, content: [{ type: "paragraph" }] })) })) },
-    { label: "Chart", submenu: CHART_KINDS.map((kind) => ({ label: titled(kind), onSelect: at((c) => c.insertContent({ type: "rawBlock", attrs: { kind: "chart" }, content: [{ type: "text", text: chartSource(kind) }] })) })) },
+    {
+      label: "Chart",
+      submenu: CHART_KINDS.map((kind) => ({
+        label: titled(kind),
+        onSelect: at((c) => c.insertContent({ type: "rawBlock", attrs: { kind: "chart" }, content: [{ type: "text", text: chartSource(kind) }] })),
+      })),
+    },
   ];
 }
 
