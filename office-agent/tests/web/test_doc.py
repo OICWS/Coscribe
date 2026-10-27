@@ -140,12 +140,15 @@ def test_what_cannot_be_commented_on_is_refused_lg(
 ) -> None:
     workspace = _workspace(tmp_path)
     (workspace / "notes.md").write_text("# Just notes\n", encoding="utf-8")
+    (workspace / "broken.md").write_bytes(b"\xff\xfe\x00 not text")
     base = "/api/threads/t_one/doc/comments"
     with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
         no_file = client.get(base, params={"path": "nope.md"})
         no_marker = client.post(base, json={"path": "notes.md", "block": 0, "text": "x"})
         outside = client.get(base, params={"path": "../secret.md"})
         bad_block = client.post(base, json={"path": "plan.md", "block": 40, "text": "x"})
+        broken = client.get(base, params={"path": "broken.md"})
+        broken_add = client.post(base, json={"path": "broken.md", "block": 0, "text": "x"})
         empty = client.post(base, json={"path": "plan.md", "block": 0, "text": ""})
         unknown = client.post(f"{base}/nope", json={"path": "plan.md", "resolved": True})
         unknown_reply = client.post(f"{base}/nope/replies", json={"path": "plan.md", "text": "x"})
@@ -153,5 +156,8 @@ def test_what_cannot_be_commented_on_is_refused_lg(
 
     assert [r.status_code for r in (no_file, no_marker, outside)] == [404, 404, 404]
     assert bad_block.status_code == 400 and "no block 40" in bad_block.json()["error"]
+    # What a parser says about a file that is not text is not shown.
+    assert [r.status_code for r in (broken, broken_add)] == [422, 422]
+    assert all("utf" not in r.text.lower() for r in (broken, broken_add))
     assert empty.status_code == 422
     assert [r.status_code for r in (unknown, unknown_reply, unknown_delete)] == [404] * 3

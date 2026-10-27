@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse
 from ...tools import (
     DocBlocksRefused,
     DocCommentNotFound,
+    DocCommentRefused,
     DocFileChanged,
     DocVersionGone,
     NotADoc,
@@ -126,10 +127,9 @@ async def _run(job: Callable[..., Any], *args: Any) -> Any:
         return JSONResponse({"error": "No such comment"}, status_code=404)
     except NotADoc:
         return JSONResponse({"error": _NO_DOC}, status_code=404)
-    except ValueError as refused:
-        # Only this package's own checks put a text of their own here; they are safe to show.
+    except DocCommentRefused as refused:
         return JSONResponse({"error": str(refused)}, status_code=400)
-    except OSError:
+    except (ValueError, OSError):  # a file that is not text: its parser's message is not shown
         return JSONResponse({"error": _UNREADABLE}, status_code=422)
 
 

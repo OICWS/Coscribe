@@ -21,6 +21,7 @@ from .blocks import (
 from .chart import Chart, parse_chart
 from .comments import (
     DocCommentNotFound,
+    DocCommentRefused,
     add_doc_comment,
     delete_doc_comment,
     read_doc_comments,
@@ -37,6 +38,7 @@ from .told import remember_before_edit as remember_doc_before_edit
 __all__ = [
     "CALLOUTS",
     "DocCommentNotFound",
+    "DocCommentRefused",
     "DocFileChanged",
     "DocVersionGone",
     "Block",

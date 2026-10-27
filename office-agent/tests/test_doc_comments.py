@@ -9,6 +9,7 @@ import pytest
 
 from coscribe.tools.office.doc import (
     DocCommentNotFound,
+    DocCommentRefused,
     NotADoc,
     add_doc_comment,
     apply_edits,
@@ -106,7 +107,7 @@ def test_a_reply_a_resolve_and_a_delete(tmp_path: Path) -> None:
 def test_a_comment_that_cannot_be_made_says_why(
     tmp_path: Path, block: int, text: str, message: str
 ) -> None:
-    with pytest.raises(ValueError, match=message):
+    with pytest.raises(DocCommentRefused, match=message):
         add_doc_comment(_doc(tmp_path), block=block, text=text, author="Ana", sent=False)
 
 

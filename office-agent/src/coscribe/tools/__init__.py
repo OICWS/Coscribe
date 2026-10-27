@@ -141,6 +141,7 @@ from .office.doc import (
 )
 from .office.doc import (
     DocCommentNotFound,
+    DocCommentRefused,
     DocFileChanged,
     DocVersionGone,
     NotADoc,
@@ -310,6 +311,7 @@ __all__ = [
     "DocChanged",
     "DocBlocksRefused",
     "DocCommentNotFound",
+    "DocCommentRefused",
     "DocFileChanged",
     "DocVersionGone",
     "NotADoc",
