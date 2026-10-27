@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getDoc, restoreDoc, type DocRead } from "../../lib/docFile";
+import type { CommentLink } from "../../lib/slideComments";
 import { PanelFileMenu } from "../artifacts/PanelFileMenu";
 import { PanelTitleButton } from "../artifacts/PanelTitleButton";
 import { useDockPanel } from "../dock/dockContext";
@@ -11,7 +12,7 @@ interface PanelProps {
   refreshKey: string;
   onFileChanged?: (path: string | null) => void;
   /** Sends coscribe a message; absent where there is no conversation. */
-  onAsk?: (text: string) => void;
+  onAsk?: (text: string, link?: CommentLink) => void;
 }
 
 /** What the person is offered after the file changed under the editor: to take that change back, to
@@ -77,6 +78,7 @@ export function DocPanel(props: PanelProps) {
       <div className="flex h-12 shrink-0 items-center gap-2 px-3" {...dock.headerProps}>
         <PanelTitleButton title={name} path={path} onMenu={setMenu} />
         <div className="flex-1" />
+        <span id="doc-comments-toggle" />
         <span id="doc-save-state" className="text-xs text-[var(--muted)]" role="status" />
         {dock.controls}
       </div>
