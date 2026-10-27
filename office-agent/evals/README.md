@@ -153,3 +153,16 @@ the automatic checks, and cost, time, tool calls and tokens. A task only one run
 and total rows cover only the tasks both runs have, and say how many. Scores come from one judge
 (`--judge`, default DeepSeek) and one kind of request: each deck alone, or with `--joint` the two runs
 judged in one request; the two kinds are never averaged together. Run the same code twice first to see how far two runs of it differ.
+
+## Does a model write a Doc? (`doc_route.py`, decision 0025)
+
+Twelve briefs, not tasks with a checker per kind: seven that ask for writing with no format named
+(or only what the person will do with it), three that ask for Word by name, a template or tracked
+changes, two that want an answer in chat. It classifies what the agent left (a Doc, a `.docx`, plain
+Markdown, nothing), reads a Doc with the app's parsers (raw html, a chart that does not parse, facts
+missing) and reports whether the Docs skill was loaded:
+
+```bash
+python -m evals.doc_route --out evals/runs/doc-route     # run it off-peak
+python -m evals.doc_route --check-only --out evals/runs/doc-route
+```
