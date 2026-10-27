@@ -16,18 +16,29 @@ Why: a proxy could only be set by editing `.env` by hand (`HTTPS_PROXY`, `HTTP_P
   - System (the default): writes nothing, so an existing `.env` proxy and Windows' own keep
     working. Switching back to it from Manual or No proxy removes what those wrote.
   - Manual: `HTTP_PROXY`/`HTTPS_PROXY` hold the address with the percent-encoded user name and
-    password, `NO_PROXY` holds the "do not use for" list (default `localhost, 127.0.0.1`), and
-    `ALL_PROXY` is blanked.
+    password, `NO_PROXY` holds the "do not use for" list plus `localhost`, `127.0.0.1` and
+    `::1` whatever the person typed (coscribe's own loopback calls, such as the browser panel's
+    DevTools poll, must not go to the proxy), and `ALL_PROXY` is blanked.
   - No proxy: the proxy variables blank and `NO_PROXY=*`, which httpx, requests and urllib read
     as "bypass every host", so Windows' own proxy is not read either.
-- The password: with a user name, the proxy variables hold `__coscribe_keyring__:proxy`, and the
+- The password: with a user name, the proxy variables hold `__coscribe_keyring__:setting:proxy`, and the
   URL with the password is in the keychain through `env_value_for_storage`, the same helper as
   the provider keys. `resolve_env_keyring_refs` resolves it at start like theirs. With no
   keychain it falls back to the owner-only `.env`, as the provider keys do. It is never returned
-  by `GET /api/settings/proxy` or `GET /api/config`. Leaving Manual deletes it.
+  by `GET /api/settings/proxy` or `GET /api/config`. Leaving Manual deletes it. A saved password is
+  kept only while the address and user name stay the same, so Test connection and Save never
+  send it to a different (or mistyped) host; the panel asks for it again once the address
+  changes.
+- `configured_proxy(url)` returns None for a host on the bypass list, and `http_request`,
+  `read_web_page` and the own-Python download pass their URL, since a `proxy=` handed to httpx
+  wins over `NO_PROXY`. Web search (DDGS) still always uses the proxy: it only reaches public
+  search engines.
 - `runtime/proxy.py`: the address parser (HTTP only, host and port, no user info in the
   address), `proxy_env`, `try_connection`, `without_credentials`. The browser panel's Chromium
   gets the proxy without credentials, since `--proxy-server` takes only a host and port.
+- Independent review: https://github.com/OICWS/Coscribe/pull/672#pullrequestreview-5669105441
+  (the saved password following a changed address, the typed list dropping loopback, the
+  keychain name, and the bypass list ignored by `http_request` were fixed in this PR).
 - Checked live: a Manual proxy with a password, saved, then the server restarted. A chat turn
   to the stub model went through a local proxy that demands Basic authentication, and the proxy
   saw the right credentials on every request. The Settings e2e spec saves Manual, checks that
@@ -49,5 +60,3 @@ unchanged), because a connector behind an authenticating proxy needs it to conne
 - "Use setup script" (PAC) and SOCKS: out of scope by the maintainer's decision on #666.
 - One copy of `without_credentials` across `runtime`, `tools/exec` and `code_runtime` once #668
   and #670 are merged.
-- `http_request` passes `proxy=configured_proxy()` explicitly, so httpx then ignores `NO_PROXY`
-  for it (as it already did before this change).

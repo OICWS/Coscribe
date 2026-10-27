@@ -854,14 +854,41 @@ def test_a_manual_proxy_keeps_its_password_in_the_keychain_and_never_sends_it_ba
     assert saved["address"] == "http://proxy.corp:8080" and saved["username"] == "alice"
     assert "hunter2" not in fetched and "hunter2" not in config
     assert "hunter2" not in (tmp_path / ".env").read_text(encoding="utf-8")
-    assert env["HTTPS_PROXY"] == env["http_proxy"] == "__coscribe_keyring__:proxy"
-    assert env["NO_PROXY"] == "localhost,.corp" and env["ALL_PROXY"] == ""
-    assert kept[("coscribe", "proxy")] == "http://alice:hunter2@proxy.corp:8080"
+    assert env["HTTPS_PROXY"] == env["http_proxy"] == "__coscribe_keyring__:setting:proxy"
+    assert env["NO_PROXY"] == "localhost,.corp,127.0.0.1,::1" and env["ALL_PROXY"] == ""
+    assert kept[("coscribe", "setting:proxy")] == "http://alice:hunter2@proxy.corp:8080"
 
     # What the next start makes of it.
     monkeypatch.setattr(os, "environ", {k: v or "" for k, v in env.items()})
     secrets_module.resolve_env_keyring_refs()
     assert os.environ["HTTPS_PROXY"] == "http://alice:hunter2@proxy.corp:8080"
+
+
+def test_a_saved_password_is_not_sent_to_a_different_proxy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A mistyped host must not be handed the person's company credential."""
+    _install_fake_keyring(monkeypatch)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("", encoding="utf-8")
+    tried: list[str | None] = []
+
+    def fake_try(proxy: str | None, target: str) -> dict[str, Any]:
+        tried.append(proxy)
+        return {"ok": True, "target": "x", "status": 200, "error": None}
+
+    monkeypatch.setattr(settings_proxy_routes, "try_connection", fake_try)
+    manual = {"mode": "manual", "address": "proxy.corp:8080", "username": "alice"}
+    elsewhere = {**manual, "address": "elsewhere.example:3128"}
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        client.put("/api/settings/proxy", json={**manual, "password": "s3cret"})
+        client.post("/api/settings/proxy/test", json=manual)
+        client.post("/api/settings/proxy/test", json=elsewhere)
+        moved = client.put("/api/settings/proxy", json=elsewhere).json()
+
+    assert tried == ["http://alice:s3cret@proxy.corp:8080", "http://alice@elsewhere.example:3128"]
+    assert moved["password_set"] is False
+    assert "s3cret" not in str(dotenv_values(tmp_path / ".env"))
 
 
 def test_switching_back_to_system_removes_what_manual_wrote(
@@ -881,7 +908,7 @@ def test_switching_back_to_system_removes_what_manual_wrote(
     assert env["COSCRIBE_PROXY_MODE"] == "system"
     assert not any(name.upper().endswith("_PROXY") for name in env)
     assert env["COSCRIBE_DEFAULT_MODEL"] == "fake:model"
-    assert ("coscribe", "proxy") not in fake_keyring.store
+    assert ("coscribe", "setting:proxy") not in fake_keyring.store
 
 
 def test_no_proxy_overrides_the_proxy_variables(

@@ -79,6 +79,19 @@ def test_no_proxy_star_beats_a_proxy_variable(monkeypatch: pytest.MonkeyPatch) -
     assert configured_proxy() is None
 
 
+def test_configured_proxy_leaves_out_a_host_on_the_bypass_list(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`proxy=` given to httpx wins over `NO_PROXY`, so the tools ask for the proxy per address."""
+    _clear_proxy_env(monkeypatch)
+    monkeypatch.setenv("HTTPS_PROXY", "http://proxy.example.com:8080")
+    monkeypatch.setenv("NO_PROXY", "localhost,.corp.local")
+
+    assert configured_proxy("https://wiki.corp.local/page") is None
+    assert configured_proxy("http://localhost:8000/") is None
+    assert configured_proxy("https://example.com/") == "http://proxy.example.com:8080"
+
+
 @pytest.mark.parametrize(
     ("typed", "address"),
     [
@@ -126,15 +139,21 @@ def test_proxy_env_for_each_mode() -> None:
         "HTTP_PROXY": "URL",
         "HTTPS_PROXY": "URL",
         "ALL_PROXY": "",
-        "NO_PROXY": "localhost,.corp",
+        "NO_PROXY": "localhost,.corp,127.0.0.1,::1",
         "http_proxy": "URL",
         "https_proxy": "URL",
         "all_proxy": "",
-        "no_proxy": "localhost,.corp",
+        "no_proxy": "localhost,.corp,127.0.0.1,::1",
     }
     assert proxy_env(ProxySetting(mode="none"), "")["NO_PROXY"] == "*"
     assert proxy_env(ProxySetting(mode="none"), "")["https_proxy"] == ""
     assert proxy_env(ProxySetting(mode="system"), "") == {}
+
+
+def test_a_typed_bypass_list_never_sends_this_computer_to_the_proxy() -> None:
+    manual = ProxySetting(mode="manual", address="http://p:1", bypass="*.corp.local; 10.0.0.0/8")
+
+    assert proxy_env(manual, "URL")["NO_PROXY"] == "*.corp.local,10.0.0.0/8,localhost,127.0.0.1,::1"
 
 
 @pytest.mark.parametrize(

@@ -21,7 +21,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import quote, urlsplit
-from urllib.request import getproxies
+from urllib.request import getproxies, proxy_bypass
 
 import httpx
 
@@ -42,6 +42,10 @@ PROXY_ENV_VARS = (
 
 _SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://")
 
+# coscribe's calls to itself (the browser panel's DevTools poll, a connector served on this
+# computer) never go to the proxy, whatever list the person typed.
+_LOOPBACK = ("localhost", "127.0.0.1", "::1")
+
 
 class ProxyError(ValueError):
     """A proxy setting that can't be saved; the message is for the person."""
@@ -56,11 +60,16 @@ class ProxySetting:
     password: str = ""
 
 
-def configured_proxy() -> str | None:
+def configured_proxy(url: str | None = None) -> str | None:
     """HTTPS_PROXY (any case), falling back to HTTP_PROXY, if the user
     has one set -- via urllib's own getproxies() rather than a hand-
     rolled os.environ lookup so this also picks up Windows' system/
-    registry proxy setting, not just an env var."""
+    registry proxy setting, not just an env var. With `url`, None when its
+    host is on the "do not use the proxy for" list (`NO_PROXY`, or Windows'
+    own exceptions), which a `proxy=` argument would otherwise override."""
+    host = urlsplit(url).hostname if url else None
+    if host and proxy_bypass(host):
+        return None
     proxies = getproxies()
     return proxies.get("https") or proxies.get("http") or None
 
@@ -119,7 +128,9 @@ def proxy_env(setting: ProxySetting, url: str) -> dict[str, str]:
     """What the setting writes into `.env`; `url` is what the proxy variables hold (the proxy's
     URL, or the keychain reference standing for it). Empty for System, which writes nothing."""
     if setting.mode == "manual":
-        bypass = clean_bypass(setting.bypass)
+        bypass = ",".join(
+            dict.fromkeys([*filter(None, clean_bypass(setting.bypass).split(",")), *_LOOPBACK])
+        )
         values = {"HTTP_PROXY": url, "HTTPS_PROXY": url, "ALL_PROXY": "", "NO_PROXY": bypass}
     elif setting.mode == "none":
         values = {"HTTP_PROXY": "", "HTTPS_PROXY": "", "ALL_PROXY": "", "NO_PROXY": "*"}

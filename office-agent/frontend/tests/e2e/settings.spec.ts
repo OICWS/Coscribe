@@ -160,12 +160,12 @@ test("General tab: a manual proxy saves without sending its password back, and S
 
   await page.getByRole("button", { name: "Manual proxy" }).click();
   await page.getByLabel("Proxy address").fill("127.0.0.1:9");
-  // The stub model is on 127.0.0.1, which the default list would send around the proxy.
-  await page.getByLabel("Do not use the proxy for").fill("localhost");
+  await page.getByLabel("Do not use the proxy for").fill(".corp.local");
   await page.getByLabel("Proxy user name").fill("alice");
   await page.getByLabel("Proxy password").fill("hunter2");
+  // The stub model is on this computer, which never goes through the proxy whatever the list says.
   await page.getByRole("button", { name: "Test connection" }).click();
-  await expect(page.getByText(/^The proxy refused the connection|^Couldn't reach/)).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText("Reached 127.0.0.1 directly.")).toBeVisible({ timeout: 20_000 });
 
   await page.getByRole("button", { name: "Save proxy" }).click();
   await expect(page.getByText("Saved. Restart Coscribe to apply.")).toBeVisible();
@@ -173,6 +173,9 @@ test("General tab: a manual proxy saves without sending its password back, and S
   expect(saved).not.toContain("hunter2");
   expect(JSON.parse(saved)).toMatchObject({ mode: "manual", address: "http://127.0.0.1:9", username: "alice", password_set: true });
   await expect(page.getByLabel("Proxy password")).toHaveAttribute("placeholder", "Saved");
+  // The saved password stays with the address it was saved for.
+  await page.getByLabel("Proxy address").fill("127.0.0.1:10");
+  await expect(page.getByLabel("Proxy password")).toHaveAttribute("placeholder", "Enter it again for this proxy");
 
   await page.getByRole("button", { name: "System proxy" }).click();
   await page.getByRole("button", { name: "Save proxy" }).click();

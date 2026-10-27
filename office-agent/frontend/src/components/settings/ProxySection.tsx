@@ -68,7 +68,15 @@ function Field({
 }
 
 function ManualFields({ saved, draft, change }: { saved: ProxySettings; draft: Draft; change: (fields: Partial<Draft>) => void }) {
-  const passwordPlaceholder = draft.clearPassword ? "Removed when saved" : saved.password_set ? "Saved" : "Optional";
+  // The server keeps a saved password only for the address and user name it was saved with.
+  const keepsSaved = saved.password_set && draft.address.trim() === saved.address && draft.username.trim() === saved.username;
+  const passwordPlaceholder = draft.clearPassword
+    ? "Removed when saved"
+    : keepsSaved
+      ? "Saved"
+      : saved.password_set
+        ? "Enter it again for this proxy"
+        : "Optional";
   return (
     <>
       <SettingRow
@@ -78,7 +86,7 @@ function ManualFields({ saved, draft, change }: { saved: ProxySettings; draft: D
       />
       <SettingRow
         label="Do not use for"
-        description="Hosts reached directly, separated by commas. A leading dot covers a whole domain."
+        description="Hosts reached directly, separated by commas. A leading dot covers a whole domain. This computer itself always is."
         control={<Field label="Do not use the proxy for" value={draft.bypass} placeholder="localhost, 127.0.0.1" onChange={(bypass) => change({ bypass })} />}
       />
       <SettingRow
@@ -103,7 +111,7 @@ function ManualFields({ saved, draft, change }: { saved: ProxySettings; draft: D
                 placeholder={passwordPlaceholder}
                 onChange={(password) => change({ password, clearPassword: false })}
               />
-              {saved.password_set && !draft.clearPassword && (
+              {keepsSaved && !draft.clearPassword && (
                 <button type="button" className={secondaryButtonClass} onClick={() => change({ password: "", clearPassword: true })}>
                   Remove
                 </button>

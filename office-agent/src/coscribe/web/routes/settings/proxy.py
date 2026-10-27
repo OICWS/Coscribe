@@ -23,7 +23,6 @@ from ....runtime import (
     PROXY_MODES,
     ProxyError,
     ProxySetting,
-    clean_bypass,
     configured_proxy,
     env_delete_secret_if_ref,
     env_resolve_secret_for_display,
@@ -44,7 +43,7 @@ MODE_ENV = "COSCRIBE_PROXY_MODE"
 ADDRESS_ENV = "COSCRIBE_PROXY_ADDRESS"
 BYPASS_ENV = "COSCRIBE_PROXY_BYPASS"
 USERNAME_ENV = "COSCRIBE_PROXY_USERNAME"
-_KEYCHAIN_REF = "proxy"
+_KEYCHAIN_REF = "setting:proxy"
 
 # What "Test connection" reaches: the default model's provider, since that is what has to work.
 _BUILTIN_TARGETS = {
@@ -91,13 +90,18 @@ def _setting(payload: ProxyUpdate, values: dict[str, str | None]) -> ProxySettin
     if payload.mode != "manual":
         return ProxySetting(mode=payload.mode)
     username = payload.username.strip()
+    address = parse_address(payload.address)
     password = payload.password
     if password is None:
-        same_user = username == (values.get(USERNAME_ENV) or "")
-        password = _saved_password(values) if same_user else ""
+        # A saved password stays with the proxy it was saved for: a mistyped host must not be
+        # sent the person's company credential, by Test connection or by Save.
+        same_proxy = username == (values.get(USERNAME_ENV) or "") and address == values.get(
+            ADDRESS_ENV
+        )
+        password = _saved_password(values) if same_proxy else ""
     return ProxySetting(
         mode="manual",
-        address=parse_address(payload.address),
+        address=address,
         bypass=payload.bypass.strip() or DEFAULT_BYPASS,
         username=username,
         password=password if username else "",
@@ -117,7 +121,7 @@ def _system_proxy(values: dict[str, str | None]) -> str | None:
 
 def _bypassed(setting: ProxySetting, target: str) -> bool:
     host = (urlsplit(target).hostname or "").lower()
-    for entry in clean_bypass(setting.bypass).lower().split(","):
+    for entry in proxy_env(setting, "")["NO_PROXY"].lower().split(","):
         entry = entry.lstrip("*").lstrip(".")
         if entry and (host == entry or host.endswith("." + entry)):
             return True
