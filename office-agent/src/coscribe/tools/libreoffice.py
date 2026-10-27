@@ -50,12 +50,26 @@ def _in_program_folder(root: Path) -> Iterator[Path]:
             return
 
 
-def _own_copies(state_dir: Path) -> Iterator[Path]:
+_VERSION_FOLDER = re.compile(r"\d+\.\d+\.\d+")
+
+
+def version_folders(state_dir: Path) -> list[Path]:
+    """The copies on disk, newest first. Only a folder named like a version counts: beside them sit
+    a half-unpacked staging folder and the profile LibreOffice builds on its first start."""
     root = own_root(state_dir)
     if not root.is_dir():
-        return
-    # Version folders sort as text; the newest download is the one named last.
-    for folder in sorted((f for f in root.iterdir() if f.is_dir()), reverse=True):
+        return []
+    found = [f for f in root.iterdir() if f.is_dir() and _VERSION_FOLDER.fullmatch(f.name)]
+    return sorted(found, key=lambda f: tuple(int(part) for part in f.name.split(".")), reverse=True)
+
+
+def profile_argument(folder: Path) -> str:
+    """Runs use a profile of their own, so they leave the person's LibreOffice settings alone."""
+    return f"-env:UserInstallation={folder.resolve().as_uri()}"
+
+
+def _own_copies(state_dir: Path) -> Iterator[Path]:
+    for folder in version_folders(state_dir):
         yield from _in_program_folder(folder)
 
 

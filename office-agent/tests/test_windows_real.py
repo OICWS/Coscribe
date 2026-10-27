@@ -616,3 +616,59 @@ async def test_the_code_modules_commands_run_in_the_sandbox_and_stay_in_it(
         assert "reject command" in _StubResponses.outputs[3], context
     finally:
         shutil.rmtree(base, ignore_errors=True)
+
+
+@real
+def test_coscribes_own_libreoffice_is_downloaded_unpacked_and_converts_each_format(
+    tmp_path: Path,
+) -> None:
+    """The whole of decision 0026's download: the pinned MSI, `msiexec /a`, the trim, and a copy
+    that still turns Word, Excel and PowerPoint files into PDF. The runner is an administrator, so
+    that it needs none is checked by hand (log/2026-10-27-libreoffice-download.md)."""
+    from docx import Document
+    from openpyxl import Workbook
+    from pptx import Presentation
+
+    from coscribe.tools import find_libreoffice, libreoffice_status
+    from coscribe.tools.libreoffice import profile_argument
+    from coscribe.tools.libreoffice_install import install_libreoffice, remove_libreoffice
+
+    launcher = install_libreoffice(tmp_path)
+    assert find_libreoffice(tmp_path) == (launcher, "own")
+    status = libreoffice_status(tmp_path)
+    assert status["version"] is not None and status["version"].startswith("26.8")
+    size = sum(f.stat().st_size for f in launcher.parents[1].rglob("*") if f.is_file())
+    assert size < 700 * 1024 * 1024, size
+
+    word = tmp_path / "a.docx"
+    document = Document()
+    document.add_paragraph("Word")
+    document.save(str(word))
+    sheet = tmp_path / "b.xlsx"
+    workbook = Workbook()
+    workbook.active["A1"] = "Excel"
+    workbook.save(sheet)
+    deck = tmp_path / "c.pptx"
+    presentation = Presentation()
+    presentation.slides.add_slide(presentation.slide_layouts[0]).shapes.title.text = "PowerPoint"
+    presentation.save(str(deck))
+    for source in (word, sheet, deck):
+        subprocess.run(
+            [
+                str(launcher),
+                profile_argument(tmp_path / "profile"),
+                "--headless",
+                "--convert-to",
+                "pdf",
+                "--outdir",
+                str(tmp_path),
+                str(source),
+            ],
+            check=True,
+            capture_output=True,
+            timeout=180,
+        )
+        assert (tmp_path / f"{source.stem}.pdf").read_bytes().startswith(b"%PDF"), source.name
+
+    remove_libreoffice(tmp_path)
+    assert find_libreoffice(tmp_path) is None

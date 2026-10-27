@@ -526,6 +526,8 @@ export const removeCommandSandbox = () =>
   sendForResult<CommandSandbox>("/api/command-sandbox", "DELETE", undefined);
 
 export const getLibreOffice = () => getJson<LibreOfficeStatus>("/api/libreoffice");
+export const downloadLibreOffice = () => sendForResult<LibreOfficeStatus>("/api/libreoffice", "POST", {});
+export const removeLibreOffice = () => sendForResult<LibreOfficeStatus>("/api/libreoffice", "DELETE", {});
 
 export const getScriptIsolation = () => getJson<ScriptIsolation>("/api/script-isolation");
 export const retestScriptIsolation = () => postJson<ScriptIsolation>("/api/script-isolation/test", {});
