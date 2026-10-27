@@ -9,9 +9,12 @@ import type { DocBlock, DocEdit } from "./docFile";
 
 /** Blocks the editor shows as their own markdown until a step gives them a view: the text stays
  * exactly as it is, and typing in it is typing the source. */
-const RAW_KINDS = new Set(["html", "callout", "chart", "other"]);
+const RAW_KINDS = new Set(["html", "chart", "other"]);
 
-const BLOCK_NODES = ["paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "table", "codeBlock", "horizontalRule", "rawBlock"];
+export const CALLOUT_TYPES = ["NOTE", "TIP", "IMPORTANT", "WARNING", "CAUTION"] as const;
+const CALLOUT_HEAD = /^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/i;
+
+const BLOCK_NODES = ["paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "table", "codeBlock", "horizontalRule", "rawBlock", "callout"];
 
 /** Which block of the file a node is: the index the server gave it when the file was last read.
  * A node made since (Enter, a paste) has none, and is written as a new block. */
@@ -36,6 +39,19 @@ const RawBlock = Node.create({
   renderHTML: ({ node }) => ["pre", { "data-raw": node.attrs.kind, class: "doc-raw" }, ["code", 0]],
 });
 
+/** A GitHub alert quote (`> [!NOTE]`): a coloured box of paragraphs with a kind. */
+const Callout = Node.create({
+  name: "callout",
+  group: "block",
+  content: "paragraph+",
+  defining: true,
+  addAttributes() {
+    return { type: { default: "NOTE", rendered: false, parseHTML: (element: HTMLElement) => element.getAttribute("data-callout") ?? "NOTE" } };
+  },
+  parseHTML: () => [{ tag: "div[data-callout]" }],
+  renderHTML: ({ node }) => ["div", { "data-callout": node.attrs.type, class: "doc-callout" }, 0],
+});
+
 /** What a Doc holds, and no more: what Markdown can say (decision 0025). */
 export const docExtensions: AnyExtension[] = [
   StarterKit.configure({
@@ -53,6 +69,7 @@ export const docExtensions: AnyExtension[] = [
   TableCell,
   BlockIndex,
   RawBlock,
+  Callout,
 ];
 
 let manager: MarkdownManager | null = null;
@@ -70,10 +87,22 @@ function nodeKey(node: PMNode | JSONContent): string {
   return JSON.stringify(json, (key, value: unknown) => (key === "blockIndex" ? undefined : value));
 }
 
+/** A callout block as a node, or null when its body is more than paragraphs. */
+function calloutNode(text: string, index: number): JSONContent | null {
+  const [head, ...rest] = text.split("\n");
+  const type = CALLOUT_HEAD.exec(head.trim())?.[1]?.toUpperCase();
+  if (!type) return null;
+  const body = rest.map((line) => line.replace(/^\s{0,3}>\s?/, "")).join("\n");
+  const parsed = body.trim() ? (markdown().parse(body).content ?? []) : [{ type: "paragraph" }];
+  if (!parsed.length || parsed.some((node) => node.type !== "paragraph")) return null;
+  return { type: "callout", attrs: { type, blockIndex: index }, content: parsed };
+}
+
 function blockNode(block: DocBlock): JSONContent {
   const raw = (): JSONContent => ({ type: "rawBlock", attrs: { kind: block.kind, blockIndex: block.index }, content: [{ type: "text", text: block.text }] });
   if (RAW_KINDS.has(block.kind)) return raw();
   try {
+    if (block.kind === "callout") return calloutNode(block.text, block.index) ?? raw();
     const parsed = markdown().parse(block.text).content ?? [];
     // Anything but one node is something the editor would not write back as it is.
     if (parsed.length !== 1) return raw();
@@ -100,6 +129,10 @@ export function loadedOf(doc: PMNode, blocks: DocBlock[]): Map<number, Loaded> {
 /** A node's markdown with no blank line around it. */
 export function nodeMarkdown(node: PMNode): string {
   if (node.type.name === "rawBlock") return node.textContent;
+  if (node.type.name === "callout") {
+    const body = node.content.content.map((paragraph) => nodeMarkdown(paragraph)).filter(Boolean).join("\n\n");
+    return [`> [!${node.attrs.type as string}]`, ...(body ? body.split("\n").map((line) => (line ? `> ${line}` : ">")) : [])].join("\n");
+  }
   return markdown().serialize({ type: "doc", content: [node.toJSON() as JSONContent] }).replace(/^\n+/, "").trimEnd();
 }
 

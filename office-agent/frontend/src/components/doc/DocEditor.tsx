@@ -5,6 +5,7 @@ import { DocCommentMarks } from "../../lib/docCommentMarks";
 import { deleteDocComment, editDocComment, replyToDocComment, resolveDocComment } from "../../lib/docComments";
 import type { DocRead } from "../../lib/docFile";
 import { loadLook, saveLook, type DocLook } from "../../lib/docLook";
+import { DocChartPreview } from "../../lib/docChartPreview";
 import { docContent, docExtensions, loadedOf } from "../../lib/docModel";
 import { askAboutWords } from "../../lib/docsEditor";
 import type { CommentLink } from "../../lib/slideComments";
@@ -56,7 +57,7 @@ export function DocEditor({
   }, []);
   const content = useMemo(() => docContent(doc.blocks), [doc]);
   const editor = useEditor({
-    extensions: [...docExtensions, DocCommentMarks],
+    extensions: [...docExtensions, DocCommentMarks, DocChartPreview],
     content,
     editorProps: { attributes: { class: "doc-editor", "aria-label": "Document" } },
   });

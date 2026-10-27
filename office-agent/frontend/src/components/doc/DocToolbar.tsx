@@ -5,13 +5,13 @@ import type { DocLook, Face } from "../../lib/docLook";
 import { ChevronDownIcon, MoreIcon, PlusIcon, RedoIcon, UndoIcon } from "../icons";
 import { SlideMenu, type MenuEntry } from "../slides/SlideMenu";
 import { TableIcon } from "../slides/formatIcons";
-import { insertEntries, tableEntries } from "./docCommands";
+import { calloutEntries, insertEntries, tableEntries } from "./docCommands";
 import { ChecklistIcon, FontIcon, WidthIcon } from "./docIcons";
 
 const button = (active = false) =>
   `flex h-8 w-8 items-center justify-center rounded-md hover:bg-[var(--card-bg)] disabled:opacity-40 ${active ? "bg-[var(--accent-soft)] text-[var(--accent-ink)]" : "text-[var(--fg)]"}`;
 
-type Menu = "font" | "insert" | "table";
+type Menu = "font" | "insert" | "table" | "callout";
 
 function fontEntries(look: DocLook, onLook: (look: DocLook) => void): MenuEntry[] {
   const face = (group: "headings" | "text", name: Face): MenuEntry => ({
@@ -26,9 +26,9 @@ function fontEntries(look: DocLook, onLook: (look: DocLook) => void): MenuEntry[
  * a Doc looks like is the reader's choice, kept in the browser; the file holds only the words. */
 export function DocToolbar({ editor, look, onLook }: { editor: Editor; look: DocLook; onLook: (look: DocLook) => void }) {
   const [menu, setMenu] = useState<{ kind: Menu; anchor: DOMRect } | null>(null);
-  const now = useEditorState({ editor, selector: ({ editor: e }) => ({ inTable: e.isActive("table"), tasks: e.isActive("taskList"), undo: e.can().undo(), redo: e.can().redo() }) });
+  const now = useEditorState({ editor, selector: ({ editor: e }) => ({ inTable: e.isActive("table"), inCallout: e.isActive("callout"), tasks: e.isActive("taskList"), undo: e.can().undo(), redo: e.can().redo() }) });
   const open = (kind: Menu) => (e: React.MouseEvent<HTMLButtonElement>) => setMenu({ kind, anchor: e.currentTarget.getBoundingClientRect() });
-  const entries = menu?.kind === "font" ? fontEntries(look, onLook) : menu?.kind === "table" ? tableEntries(editor) : insertEntries(editor);
+  const entries = menu?.kind === "font" ? fontEntries(look, onLook) : menu?.kind === "table" ? tableEntries(editor) : menu?.kind === "callout" ? calloutEntries(editor) : insertEntries(editor);
   return (
     <div className="flex h-11 shrink-0 items-center gap-0.5 border-y border-[var(--border)] px-2" role="toolbar" aria-label="Document tools" onPointerDown={(e) => e.preventDefault()}>
       <button type="button" title="Undo" aria-label="Undo" className={button()} disabled={!now.undo} onClick={() => editor.chain().focus().undo().run()}>
@@ -65,6 +65,12 @@ export function DocToolbar({ editor, look, onLook }: { editor: Editor; look: Doc
       {now.inTable && (
         <button type="button" aria-haspopup="menu" title="Table options" aria-label="Table options" className={button()} onClick={open("table")}>
           <MoreIcon className="h-4 w-4" />
+        </button>
+      )}
+      {now.inCallout && (
+        <button type="button" aria-haspopup="menu" title="Callout kind" aria-label="Callout kind" className="flex h-8 items-center gap-1 rounded-md px-2 text-sm hover:bg-[var(--card-bg)]" onClick={open("callout")}>
+          Callout
+          <ChevronDownIcon className="h-3 w-3 text-[var(--muted)]" />
         </button>
       )}
       {menu && <SlideMenu anchor={menu.anchor} label={menu.kind} width={menu.kind === "table" ? 200 : 190} align="left" entries={entries} onClose={() => setMenu(null)} />}
