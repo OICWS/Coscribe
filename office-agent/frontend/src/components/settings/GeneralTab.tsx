@@ -13,6 +13,7 @@ import {
   PERMISSION_MODES,
 } from "./fields";
 import { GlobalInstructionsSection } from "./GlobalInstructionsSection";
+import { ProxySection } from "./ProxySection";
 import { SegmentedControl } from "./SegmentedControl";
 import { SelectMenu } from "./SelectMenu";
 import { SettingRow, SettingRows, SettingsSection, fieldClass } from "./SettingRow";
@@ -209,6 +210,8 @@ export function GeneralTab({ values, onChange }: GeneralTabProps) {
           />
         </SettingRows>
       </SettingsSection>
+
+      <ProxySection />
 
       <SettingsSection title="Advanced">
         <SettingRows>

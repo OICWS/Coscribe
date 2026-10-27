@@ -202,6 +202,7 @@ AUDITED_READ_ONLY_GETS = {
     "/api/scheduled-tasks",
     "/api/scheduled-tasks/{trigger_id}/notes",
     "/api/secrets",
+    "/api/settings/proxy",
     "/api/skills",
     "/api/skills/catalog",
     "/api/skills/plugins",

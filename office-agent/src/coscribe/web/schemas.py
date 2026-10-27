@@ -263,6 +263,15 @@ class ProviderUpdate(BaseModel):
     default_model: str = ""
 
 
+class ProxyUpdate(BaseModel):
+    mode: Literal["system", "manual", "none"]
+    address: str = ""
+    bypass: str = ""
+    username: str = ""
+    # None keeps the saved password; "" removes it.
+    password: str | None = None
+
+
 class ScriptEnvPackageInstall(BaseModel):
     package: str
 

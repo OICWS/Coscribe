@@ -150,3 +150,33 @@ test("General tab: the interface font changes the whole interface, not only the 
     await page.getByRole("menuitemradio", { name: restore, exact: true }).click();
   }
 });
+
+test("General tab: a manual proxy saves without sending its password back, and System restores", async ({ page }) => {
+  await page.goto(freshThreadPath("settings-proxy"));
+  await waitForConnected(page);
+  const proxyLoaded = page.waitForResponse((r) => r.url().includes("/api/settings/proxy") && r.status() === 200);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await proxyLoaded;
+
+  await page.getByRole("button", { name: "Manual proxy" }).click();
+  await page.getByLabel("Proxy address").fill("127.0.0.1:9");
+  // The stub model is on 127.0.0.1, which the default list would send around the proxy.
+  await page.getByLabel("Do not use the proxy for").fill("localhost");
+  await page.getByLabel("Proxy user name").fill("alice");
+  await page.getByLabel("Proxy password").fill("hunter2");
+  await page.getByRole("button", { name: "Test connection" }).click();
+  await expect(page.getByText(/^The proxy refused the connection|^Couldn't reach/)).toBeVisible({ timeout: 20_000 });
+
+  await page.getByRole("button", { name: "Save proxy" }).click();
+  await expect(page.getByText("Saved. Restart Coscribe to apply.")).toBeVisible();
+  const saved = await page.evaluate(() => fetch("/api/settings/proxy").then((r) => r.text()));
+  expect(saved).not.toContain("hunter2");
+  expect(JSON.parse(saved)).toMatchObject({ mode: "manual", address: "http://127.0.0.1:9", username: "alice", password_set: true });
+  await expect(page.getByLabel("Proxy password")).toHaveAttribute("placeholder", "Saved");
+
+  await page.getByRole("button", { name: "System proxy" }).click();
+  await page.getByRole("button", { name: "Save proxy" }).click();
+  await expect(page.getByText("Saved. Restart Coscribe to apply.")).toBeVisible();
+  const restored = await page.evaluate(() => fetch("/api/settings/proxy").then((r) => r.json()));
+  expect(restored).toMatchObject({ mode: "system", password_set: false });
+});
