@@ -374,14 +374,16 @@ def test_lifespan_backgrounds_a_slow_mcp_connect_instead_of_blocking_startup(
 
     # The connect finishes only when the test releases it, so "the session
     # opened before the connect finished" is a fact to check, not a race
-    # against how fast this machine opens a session.
+    # against how fast this machine opens a session. The wait's limit only
+    # frees the thread if the test fails first, so it is far longer than a
+    # loaded runner takes to start the app and open the session.
     release = threading.Event()
     finished = threading.Event()
 
     async def _slow_connect_mcp_tools_lg(
         config_path: Path, *args: Any, **kwargs: Any
     ) -> tuple[list[Any], dict[str, Any]]:
-        await asyncio.to_thread(release.wait, 10)
+        await asyncio.to_thread(release.wait, 120)
         finished.set()
         return [_fake_tool_fn], {"fetch": _FakeConnection()}
 
