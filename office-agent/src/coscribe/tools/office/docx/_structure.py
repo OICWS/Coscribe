@@ -12,7 +12,6 @@ from ._xml import (
     _add_inline_runs,
     _add_toc,
     _ChangeIdCounter,
-    _enable_update_fields,
     _fill_docx_table,
     _fill_toc,
     _mark_paragraph_deleted,
@@ -115,8 +114,6 @@ def finish_tocs(
         if change_author is not None:
             for entry in [toc_paragraph, *added]:
                 _mark_paragraph_inserted(entry._p, change_author, change_ids)
-    if toc_paragraphs:
-        _enable_update_fields(document)
     return bool(toc_paragraphs)
 
 

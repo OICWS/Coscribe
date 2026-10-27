@@ -228,8 +228,9 @@ def _toc_style(document: Any, level: int) -> Any:
 def _fill_toc(document: Any, toc_paragraph: Any, headings: list[tuple[int, str]]) -> list[Any]:
     """Write the result of an ``_add_toc`` field: one paragraph per heading in
     the field's ``\\o`` level range, without page numbers -- only Word can
-    paginate, and ``updateFields`` has it rebuild the result with numbers on
-    open, while LibreOffice, PDF export and previews show it as written.
+    paginate. Not ``updateFields``: it makes Word ask, on every open, whether
+    to update fields that may refer to other files. The result is shown as
+    written, and Word's own Update field adds the numbers.
     Returns the paragraphs added after ``toc_paragraph``."""
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
@@ -295,21 +296,6 @@ def _toc_result_paragraphs(body: Any) -> set[Any]:
             if paragraph is not None:
                 inside.add(paragraph)
     return inside
-
-
-def _enable_update_fields(document: Any) -> None:
-    """Set ``<w:updateFields w:val="true"/>`` in settings.xml so Word
-    recalculates every field (our TOC included) automatically on open,
-    adding the page numbers our written TOC result leaves out."""
-    from docx.oxml import OxmlElement
-    from docx.oxml.ns import qn
-
-    settings = document.settings.element
-    if settings.find(qn("w:updateFields")) is not None:
-        return
-    element = OxmlElement("w:updateFields")
-    element.set(qn("w:val"), "true")
-    settings.append(element)
 
 
 def _apply_page_setup(document: Any, page_size: str, orientation: str) -> None:

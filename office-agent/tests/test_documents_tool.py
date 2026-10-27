@@ -289,7 +289,7 @@ def test_write_docx_with_missing_template_path_raises(tmp_path: Path) -> None:
         tools["write_docx"](path="new.docx", content="# Hi", template_path="missing.docx")
 
 
-def test_write_docx_toc_marker_inserts_a_toc_field_and_enables_update_fields(
+def test_write_docx_toc_marker_inserts_a_toc_field_and_no_update_prompt(
     tmp_path: Path,
 ) -> None:
     from docx.oxml.ns import qn
@@ -304,9 +304,8 @@ def test_write_docx_toc_marker_inserts_a_toc_field_and_enables_update_fields(
     instr_texts = [el.text for el in doc.element.body.iter(qn("w:instrText")) if el.text]
     assert any("TOC" in text for text in instr_texts)
 
-    update_fields = doc.settings.element.find(qn("w:updateFields"))
-    assert update_fields is not None
-    assert update_fields.get(qn("w:val")) == "true"
+    # updateFields would make Word ask whether to update fields that may refer to other files.
+    assert doc.settings.element.find(qn("w:updateFields")) is None
 
 
 # The opening line keeps "# Handbook" a heading rather than the document's title.

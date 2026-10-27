@@ -172,12 +172,7 @@
 ===== word/numbering.xml
 <same as _shared.txt>
 ===== word/settings.xml
-<_shared.txt with this diff>
-@@ -50,3 +50,4 @@
-   <w14:docId w14:val="24062061"/>
-   <w14:defaultImageDpi w14:val="300"/>
-+  <w:updateFields w:val="true"/>
- </w:settings>
+<same as _shared.txt>
 ===== word/styles.xml
 <_shared.txt with this diff>
 @@ -11889,3 +11889,14 @@
