@@ -23,6 +23,7 @@ def _tree(root: Path) -> None:
         "program/resource/en-US/a.mo",
         "program/resource/de/a.mo",
         "program/resource/fr/a.mo",
+        "program/resource/top-level.res",
         "share/registry/res/fcfg_langpack_en-US.xcd",
         "share/registry/res/fcfg_langpack_de.xcd",
         "share/registry/main.xcd",
@@ -87,6 +88,7 @@ def test_the_trim_cuts_other_languages_and_keeps_what_conversion_needs(
     assert kept == {
         "program/soffice.com",
         "program/resource/en-US/a.mo",
+        "program/resource/top-level.res",
         "share/registry/res/fcfg_langpack_en-US.xcd",
         "share/registry/main.xcd",
         "share/config/soffice.cfg/writer.ui",

@@ -10,6 +10,7 @@ a small Word file, and only then moved into place in one rename. It lives in
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import platform
 import shutil
@@ -73,7 +74,12 @@ _REMOVE = (
     "*.msi",
 )
 # Folders whose entries are kept only when they are English.
-_ENGLISH_ONLY = (("program/resource", "*"), ("share/registry/res", "fcfg_langpack_*"))
+_ENGLISH_ONLY = (
+    ("program/resource", "*", True),
+    ("share/registry/res", "fcfg_langpack_*", False),
+)
+
+logger = logging.getLogger(__name__)
 
 Progress = Callable[[int, int], None]
 Step = Callable[[str], None]
@@ -227,9 +233,12 @@ def trim(folder: Path) -> None:
     for pattern in _REMOVE:
         for path in folder.glob(pattern):
             _delete(path)
-    for relative, pattern in _ENGLISH_ONLY:
+    # Only the entries of the kind that holds a language: files directly in `resource` are not one.
+    for relative, pattern, folders in _ENGLISH_ONLY:
         for path in (folder / relative).glob(pattern):
-            if not path.name.removeprefix("fcfg_langpack_").startswith("en"):
+            if path.is_dir() == folders and not path.name.removeprefix("fcfg_langpack_").startswith(
+                "en"
+            ):
                 _delete(path)
 
 
@@ -255,7 +264,7 @@ def _check(folder: Path, state_dir: Path) -> None:
         document.add_paragraph("LibreOffice check")
         document.save(str(source))
         try:
-            run_killable(
+            result = run_killable(
                 [
                     str(_launcher(folder)),
                     profile_argument(work / "profile"),
@@ -272,6 +281,13 @@ def _check(folder: Path, state_dir: Path) -> None:
             raise LibreOfficeUnavailable("The downloaded LibreOffice did not start.") from exc
         pdf = work / "check.pdf"
         if not pdf.is_file() or not pdf.read_bytes().startswith(_PDF):
+            # For the server log; the person gets the fixed text below.
+            logger.warning(
+                "LibreOffice check made no PDF: stdout=%r stderr=%r files=%s",
+                result.stdout[-2000:],
+                result.stderr[-2000:],
+                sorted(p.name for p in work.iterdir()),
+            )
             raise LibreOfficeUnavailable(
                 "The downloaded LibreOffice started but did not convert a test file."
             )
