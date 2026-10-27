@@ -373,14 +373,16 @@ async def test_a_background_script_is_not_handed_the_servers_keys_or_proxy_passw
     monkeypatch.setenv("GEMINI_API_KEY", "gemini-not-for-scripts")
     monkeypatch.setenv("https_proxy", "http://alice:hunter2@proxy.example:8080")
 
+    # The output is read back from its tail, which a whole Windows environment overflows.
+    script = (
+        "import os; everything = str(os.environ);"
+        "print('gemini-not-for-scripts' in everything, 'hunter2' in everything,"
+        " os.environ.get('https_proxy'))"
+    )
     started = await tools.run_background_script(
-        language="python",
-        script="import os; print(sorted(os.environ.items()))",
-        description="print the environment",
+        language="python", script=script, description="look for the server's secrets"
     )
     finished = await _wait_until_finished(tools, started["task_id"])
 
     assert finished["status"] == "succeeded", finished
-    assert "gemini-not-for-scripts" not in finished["output"]
-    assert "hunter2" not in finished["output"]
-    assert "proxy.example:8080" in finished["output"]
+    assert finished["output"].strip() == "False False http://proxy.example:8080"
