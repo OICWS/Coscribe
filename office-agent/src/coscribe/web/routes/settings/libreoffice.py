@@ -27,7 +27,7 @@ def router(state: AppState) -> APIRouter:
     state_dir = state.settings.state_dir
     # The step a download is on ("" when none), so the row can say what it waits for and the
     # page can poll: the download request itself returns at once.
-    job: dict[str, Any] = {"step": "", "done": 0, "total": 0, "error": ""}
+    job: dict[str, Any] = {"step": "", "done": 0, "total": 0, "problem": ""}
     running: set[asyncio.Task[None]] = set()
 
     def audit(action: str, error: str) -> None:
@@ -45,7 +45,7 @@ def router(state: AppState) -> APIRouter:
             **libreoffice_status(state_dir),
             "offer": libreoffice_offer(),
             "working": bool(job["step"]),
-            **{key: job[key] for key in ("step", "done", "total", "error")},
+            **{key: job[key] for key in ("step", "done", "total", "problem")},
         }
 
     def download() -> None:
@@ -62,7 +62,7 @@ def router(state: AppState) -> APIRouter:
             logger.exception("LibreOffice download failed")
             error = "LibreOffice could not be installed."
         audit("install", error)
-        job.update(step="", error=error)
+        job.update(step="", problem=error)
 
     async def get_libreoffice() -> dict[str, Any]:
         # Asking a copy for its version starts it, which can take seconds.
@@ -73,7 +73,7 @@ def router(state: AppState) -> APIRouter:
             return JSONResponse(
                 {"error": "LibreOffice is already being downloaded."}, status_code=409
             )
-        job.update(step="download", done=0, total=0, error="")
+        job.update(step="download", done=0, total=0, problem="")
         task = asyncio.create_task(asyncio.to_thread(download))
         running.add(task)
         task.add_done_callback(running.discard)
@@ -84,7 +84,7 @@ def router(state: AppState) -> APIRouter:
             return JSONResponse({"error": "LibreOffice is being downloaded."}, status_code=409)
         await asyncio.to_thread(remove_libreoffice, state_dir)
         audit("remove", "")
-        job.update(error="")
+        job.update(problem="")
         return await get_libreoffice()
 
     router.add_api_route("/api/libreoffice", get_libreoffice, methods=["GET"])
