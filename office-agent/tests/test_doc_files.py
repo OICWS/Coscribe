@@ -131,6 +131,19 @@ def test_versions_are_kept_in_the_side_folder_and_one_can_be_put_back(tmp_path: 
     assert again["version"] == second
 
 
+def test_a_version_with_windows_line_endings_is_put_back_byte_for_byte(tmp_path: Path) -> None:
+    """A Doc saved on Windows has CRLF; the version put back must be the very one asked for."""
+    path = tmp_path / "plan.md"
+    path.write_bytes(SOURCE.replace("\n", "\r\n").encode("utf-8"))
+    first = remember_doc_version(path, "seen")
+    path.write_bytes(path.read_bytes() + b"Behind the editor.\r\n")
+    second = remember_doc_version(path, "seen")
+
+    restored = restore_doc_version(path, second, first)
+
+    assert restored["version"] == first
+    assert path.read_bytes() == SOURCE.replace("\n", "\r\n").encode("utf-8")
+
 def test_a_restore_over_a_newer_file_or_to_a_forgotten_version_is_refused(tmp_path: Path) -> None:
     path = _doc(tmp_path)
     held = remember_doc_version(path, "seen")
