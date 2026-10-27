@@ -630,7 +630,7 @@ def test_coscribes_own_libreoffice_is_downloaded_unpacked_and_converts_each_form
     from pptx import Presentation
 
     from coscribe.tools import find_libreoffice, libreoffice_status
-    from coscribe.tools.libreoffice import profile_argument
+    from coscribe.tools.libreoffice import convert_to_pdf
     from coscribe.tools.libreoffice_install import install_libreoffice, remove_libreoffice
 
     launcher = install_libreoffice(tmp_path)
@@ -653,22 +653,8 @@ def test_coscribes_own_libreoffice_is_downloaded_unpacked_and_converts_each_form
     presentation.slides.add_slide(presentation.slide_layouts[0]).shapes.title.text = "PowerPoint"
     presentation.save(str(deck))
     for source in (word, sheet, deck):
-        subprocess.run(
-            [
-                str(launcher),
-                profile_argument(tmp_path / "profile"),
-                "--headless",
-                "--convert-to",
-                "pdf",
-                "--outdir",
-                str(tmp_path),
-                str(source),
-            ],
-            check=True,
-            capture_output=True,
-            timeout=180,
-        )
-        assert (tmp_path / f"{source.stem}.pdf").read_bytes().startswith(b"%PDF"), source.name
+        pdf = convert_to_pdf(launcher, source, tmp_path / "pdf", tmp_path / "profile", timeout=180)
+        assert pdf.read_bytes().startswith(b"%PDF"), source.name
 
     remove_libreoffice(tmp_path)
     assert find_libreoffice(tmp_path) is None

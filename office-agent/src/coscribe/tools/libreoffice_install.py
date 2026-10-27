@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import TypedDict
 
 from ._office_bins import run_killable
-from .libreoffice import own_root, profile_argument, version_folders
+from .libreoffice import convert_to_pdf, own_root, version_folders
 
 # The official release, signed by the LibreOffice Build Team key
 # C2839ECAD9408FBE9531C3E9F434A1EFAFEEAEA3; the hash is of the file that signature verified.
@@ -264,32 +264,21 @@ def _check(folder: Path, state_dir: Path) -> None:
         document.add_paragraph("LibreOffice check")
         document.save(str(source))
         try:
-            result = run_killable(
-                [
-                    str(_launcher(folder)),
-                    profile_argument(work / "profile"),
-                    "--headless",
-                    "--convert-to",
-                    "pdf",
-                    "--outdir",
-                    str(work),
-                    str(source),
-                ],
-                _CHECK_SECONDS,
-            )
-        except (subprocess.CalledProcessError, OSError, subprocess.TimeoutExpired) as exc:
-            raise LibreOfficeUnavailable("The downloaded LibreOffice did not start.") from exc
-        pdf = work / "check.pdf"
-        if not pdf.is_file() or not pdf.read_bytes().startswith(_PDF):
-            # For the server log; the person gets the fixed text below.
+            pdf = convert_to_pdf(_launcher(folder), source, work, work / "profile", _CHECK_SECONDS)
+        except (
+            subprocess.CalledProcessError,
+            OSError,
+            subprocess.TimeoutExpired,
+            TimeoutError,
+        ) as exc:
+            # For the server log; the person gets a fixed text.
             logger.warning(
-                "LibreOffice check made no PDF: stdout=%r stderr=%r files=%s",
-                result.stdout[-2000:],
-                result.stderr[-2000:],
-                sorted(p.name for p in work.iterdir()),
+                "LibreOffice check failed: %r files=%s", exc, sorted(p.name for p in work.iterdir())
             )
             raise LibreOfficeUnavailable(
-                "The downloaded LibreOffice started but did not convert a test file."
-            )
+                "The downloaded LibreOffice did not convert a test file."
+            ) from exc
+        if not pdf.read_bytes().startswith(_PDF):
+            raise LibreOfficeUnavailable("The downloaded LibreOffice did not convert a test file.")
     finally:
         shutil.rmtree(work, ignore_errors=True)

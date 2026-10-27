@@ -15,9 +15,12 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Literal, TypedDict
+
+from ._office_bins import run_killable
 
 _VERSION = re.compile(r"LibreOffice (\d+(?:\.\d+)+)")
 # A first start builds a user profile, which takes a while on a slow disk.
@@ -122,3 +125,39 @@ def libreoffice_status(state_dir: Path) -> LibreOfficeStatus:
     path, source = found
     version = _version_of(str(path), path.stat().st_mtime_ns)
     return {"found": True, "source": source, "path": str(path), "version": version}
+
+
+_LOCK_NAMES = (".lock", "user/.lock")
+
+
+def convert_to_pdf(
+    launcher: Path, source: Path, outdir: Path, profile: Path, timeout: float = 180.0
+) -> Path:
+    """Convert `source` to `outdir/<name>.pdf` and return it.
+
+    On Windows the launcher can return before LibreOffice has done the work (measured on a runner:
+    exit 0, no output, no PDF yet), so this waits for the PDF and for the profile's lock to go,
+    which is when the program has really exited and no longer holds files in its folder.
+    """
+    outdir.mkdir(parents=True, exist_ok=True)
+    started = time.monotonic()
+    run_killable(
+        [
+            str(launcher),
+            profile_argument(profile),
+            "--headless",
+            "--convert-to",
+            "pdf",
+            "--outdir",
+            str(outdir),
+            str(source),
+        ],
+        timeout,
+    )
+    target = outdir / f"{source.stem}.pdf"
+    while time.monotonic() - started < timeout:
+        locked = any((profile / name).exists() for name in _LOCK_NAMES)
+        if target.is_file() and not locked:
+            return target
+        time.sleep(0.25)
+    raise TimeoutError(f"LibreOffice made no {target.name}")

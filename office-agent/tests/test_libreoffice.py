@@ -78,3 +78,33 @@ def test_a_copy_that_does_not_start_is_found_without_a_version(tmp_path: Path) -
     _launcher(tmp_path / "libreoffice" / "26.8.1", text="not a version line")
     status = libreoffice_status(tmp_path)
     assert status["found"] and status["version"] is None
+
+
+def test_convert_waits_for_a_launcher_that_returns_before_it_has_written_the_pdf(
+    tmp_path: Path,
+) -> None:
+    """The Windows launcher does: the work finishes in a process it started, after it returned."""
+    launcher = tmp_path / "program" / "soffice"
+    launcher.parent.mkdir()
+    # Arguments: profile, --headless, --convert-to, pdf, --outdir, <dir>, <source>.
+    launcher.write_text(
+        "#!/bin/sh\n"
+        'nohup sh -c \'sleep 0.6; printf "%%PDF-1.7" > "$0/$1.pdf"\' "$6" "check" '
+        ">/dev/null 2>&1 &\n"
+    )
+    launcher.chmod(launcher.stat().st_mode | stat.S_IXUSR)
+    source = tmp_path / "check.docx"
+    source.write_text("x")
+    pdf = lo.convert_to_pdf(launcher, source, tmp_path / "out", tmp_path / "profile", timeout=10)
+    assert pdf.read_bytes().startswith(b"%PDF")
+
+
+def test_convert_gives_up_when_no_pdf_ever_appears(tmp_path: Path) -> None:
+    launcher = tmp_path / "program" / "soffice"
+    launcher.parent.mkdir()
+    launcher.write_text("#!/bin/sh\nexit 0\n")
+    launcher.chmod(launcher.stat().st_mode | stat.S_IXUSR)
+    source = tmp_path / "check.docx"
+    source.write_text("x")
+    with pytest.raises(TimeoutError):
+        lo.convert_to_pdf(launcher, source, tmp_path / "out", tmp_path / "profile", timeout=1.0)
