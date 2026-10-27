@@ -10,9 +10,10 @@ decided to overturn 0012.
   engines of 0012 stay as the floor. 0012 is marked superseded in what it forbids.
 
 ## Not verified
-- That the Document Foundation's MSI can be extracted without administrator rights on a clean
-  Windows machine, and the download address and checksum: both are checked when the install
-  button is built.
+- The unpack without elevation was tried once, on an administrator's account in a non-elevated
+  shell (no UAC, Word to PDF worked, 1.5 GB unpacked). Not tried on a standard account or under
+  a policy that blocks `msiexec`.
+- The checksum and what can be removed from the 1.5 GB: checked when the install button is built.
 - The report that ChatGPT/Codex bundles LibreOffice (about 430 MB): only secondary sources.
 
 ## Follow-ups

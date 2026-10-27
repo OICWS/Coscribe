@@ -50,6 +50,22 @@ runtime folder; commenters disagreed whether every install, Windows included, ge
 - LibreOffice stays MPL-2.0: coscribe calls it as a separate program and ships none of its
   code.
 
+## Measured on Windows (2026-10-27, the maintainer's machine, 26.8.1)
+- `msiexec /a LibreOffice_26.8.1_Win_x86-64.msi /qn TARGETDIR=<folder>` run from a non-elevated
+  PowerShell (`whoami /groups` showed Medium Mandatory Level) raised no UAC prompt, logged
+  `MainEngineThread is returning 0`, and left `program\soffice.exe` in the folder. The machine
+  is an administrator's account, so a standard account under a group policy that blocks
+  `msiexec` is not covered.
+- The download is 357.5 MB; the unpacked folder is **1,522.9 MB**. Bundling it is out of the
+  question, and the install button must say so before it downloads. What can be removed is not
+  measured yet.
+- `soffice.exe --version` prints `LibreOffice 26.8.1.1` and converted a Word file to a 18 KB PDF
+  with no installation. `soffice.exe` is a GUI-subsystem launcher: it returns at once and shows a
+  console window for `--version`. coscribe calls `program\soffice.com`, which stays attached,
+  prints and waits.
+- The first run printed "Could not find platform independent libraries <prefix>", a warning of
+  LibreOffice's own Python that did not stop the conversion.
+
 ## Consequences
 - 0012's "checks give the same result on every machine" no longer holds for page-level checks;
   they are extra, labelled with their engine, and the floor checks still run everywhere.
