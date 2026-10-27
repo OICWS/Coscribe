@@ -155,7 +155,7 @@ def test_what_cannot_be_commented_on_is_refused_lg(
         unknown_delete = client.delete(f"{base}/nope", params={"path": "plan.md"})
 
     assert [r.status_code for r in (no_file, no_marker, outside)] == [404, 404, 404]
-    assert bad_block.status_code == 400 and "no block 40" in bad_block.json()["error"]
+    assert bad_block.status_code == 400 and bad_block.json()["error"] == "There is no such block"
     # What a parser says about a file that is not text is not shown.
     assert [r.status_code for r in (broken, broken_add)] == [422, 422]
     assert all("utf" not in r.text.lower() for r in (broken, broken_add))

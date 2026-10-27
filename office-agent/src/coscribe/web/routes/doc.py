@@ -45,6 +45,12 @@ _NO_DOC = "No Doc at that path"
 _UNREADABLE = "This Doc could not be read"
 _GONE = "That version is no longer kept"
 _CHANGED = "This Doc changed since it was opened; it has been read again"
+# The texts of a refused comment: written here, so no exception's own text reaches the client.
+_REFUSED_COMMENT = {
+    "no_block": "There is no such block",
+    "empty": "A comment needs some text",
+    "too_long": "A comment holds 4000 characters at most",
+}
 
 
 def _doc_file(state: AppState, thread_id: str, path: str, *, write: bool) -> Path | None:
@@ -128,7 +134,10 @@ async def _run(job: Callable[..., Any], *args: Any) -> Any:
     except NotADoc:
         return JSONResponse({"error": _NO_DOC}, status_code=404)
     except DocCommentRefused as refused:
-        return JSONResponse({"error": str(refused)}, status_code=400)
+        return JSONResponse(
+            {"error": _REFUSED_COMMENT.get(refused.code, "That comment cannot be made")},
+            status_code=400,
+        )
     except (ValueError, OSError):  # a file that is not text: its parser's message is not shown
         return JSONResponse({"error": _UNREADABLE}, status_code=422)
 

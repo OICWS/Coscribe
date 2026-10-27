@@ -25,8 +25,12 @@ class DocCommentNotFound(KeyError):
 
 
 class DocCommentRefused(ValueError):
-    """A comment this module will not make; the text says why and is safe to show. Any other
-    `ValueError` (a file that is not text) is a parser's own and is not."""
+    """A comment this module will not make. `code` says why (`no_block`, `empty` or `too_long`);
+    the caller shows its own text for it, never this exception's."""
+
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
 
 
 def read_doc_comments(path: Path) -> list[dict[str, Any]]:
@@ -54,10 +58,11 @@ def add_doc_comment(
     path: Path, *, block: int, text: str, author: str, sent: bool
 ) -> dict[str, Any]:
     """A new comment on block `block` of the Doc. `sent` says it went to coscribe as a message.
-    `DocCommentRefused` for a block that does not exist or an empty or too long text."""
+    `DocCommentRefused` (a code, not a text) for a block that does not exist or an empty or too
+    long text."""
     blocks = read_doc(path.read_text(encoding="utf-8")).blocks
     if not 0 <= block < len(blocks):
-        raise DocCommentRefused(f"There is no block {block}")
+        raise DocCommentRefused("no_block")
     comment = {
         "id": uuid.uuid4().hex[:12],
         "anchor": {
@@ -132,9 +137,9 @@ def _find(comments: list[dict[str, Any]], comment_id: str) -> dict[str, Any]:
 def _text(text: str) -> str:
     text = text.strip()
     if not text:
-        raise DocCommentRefused("a comment needs some text")
+        raise DocCommentRefused("empty")
     if len(text) > _MAX_TEXT:
-        raise DocCommentRefused(f"a comment holds {_MAX_TEXT} characters at most")
+        raise DocCommentRefused("too_long")
     return text
 
 

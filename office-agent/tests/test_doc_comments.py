@@ -100,15 +100,16 @@ def test_a_reply_a_resolve_and_a_delete(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ("block", "text", "message"),
-    [(9, "x", "no block 9"), (-1, "x", "no block -1"), (0, "   ", "needs some text"),
-     (0, "x" * 4001, "4000")],
-)  # fmt: skip
-def test_a_comment_that_cannot_be_made_says_why(
-    tmp_path: Path, block: int, text: str, message: str
+    ("block", "text", "code"),
+    [(9, "x", "no_block"), (-1, "x", "no_block"), (0, "   ", "empty"), (0, "x" * 4001, "too_long")],
+)
+def test_a_comment_that_cannot_be_made_says_why_by_a_code(
+    tmp_path: Path, block: int, text: str, code: str
 ) -> None:
-    with pytest.raises(DocCommentRefused, match=message):
+    with pytest.raises(DocCommentRefused) as refused:
         add_doc_comment(_doc(tmp_path), block=block, text=text, author="Ana", sent=False)
+
+    assert refused.value.code == code
 
 
 def test_an_unknown_comment_and_a_file_that_is_not_a_doc(tmp_path: Path) -> None:
