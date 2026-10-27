@@ -1,6 +1,6 @@
 # 0025: The Doc artifact is a markdown document, and the Word panel is frozen
 
-Status: proposed (2026-10-26), for the maintainer to accept. Design and steps:
+Status: accepted (2026-10-26: the maintainer merged the design in #646). Design and steps:
 `docs/assessments/2026-10-26-doc-artifact.md`. Extends 0015 (comments live beside the file) and
 0019 (the .docx is the artifact, which stays true for Word files); changes neither for the files
 they cover. Follows 0024 (not adopted).

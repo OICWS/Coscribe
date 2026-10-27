@@ -43,6 +43,8 @@ dependencies = [
     # conditional deps, already handled by its installer per platform.
     "keyring>=25.0.0",
     "pyyaml>=6.0",
+    # The Doc artifact's source is read as blocks with their line ranges (tools/office/doc).
+    "markdown-it-py>=3.0.0",
     "typer>=0.12.0",
     "python-docx>=1.1.0",
     # artifact delete: to the recycle bin, never a permanent removal; pure Python.
@@ -312,12 +314,12 @@ forbidden_modules = ["coscribe.code_runtime", "coscribe.runtime_lg", "coscribe.c
 broken_contract_guidance = "A fixed workflow run must not import code_runtime, runtime_lg or the coordinator: a workflow step never starts an agent that can choose its own actions."
 
 [[tool.importlinter.contracts]]
-name = "Office formats: Word, Excel, PowerPoint and PDF do not know each other"
+name = "Office formats: Word, Excel, PowerPoint, PDF and Doc do not know each other"
 type = "layers"
 containers = ["coscribe.tools.office"]
 layers = [
     "document_tools",
-    "docx | pdf | pptx | xlsx",
+    "docx | doc | pdf | pptx | xlsx",
     "table_layout",
     "markdown_blocks | toolkit",
 ]
@@ -327,7 +329,7 @@ ignore_imports = [
     "coscribe.tools._thumbnail -> coscribe.tools.office.pptx.engine.build",
     "coscribe.tools._svg_preview -> coscribe.tools.office.pptx.engine.native",
 ]
-broken_contract_guidance = "A format (docx, pdf, pptx, xlsx) may use only the shared modules below it (table_layout, markdown_blocks, toolkit) and tools/ helpers that do not import a format. Move shared code down into one of those instead of importing a sibling format. Do not add an ignore line."
+broken_contract_guidance = "A format (docx, doc, pdf, pptx, xlsx) may use only the shared modules below it (table_layout, markdown_blocks, toolkit) and tools/ helpers that do not import a format. Move shared code down into one of those instead of importing a sibling format. Do not add an ignore line."
 
 # BEGIN generated from components.toml (python office-agent/scripts/gen_components.py)
 
@@ -379,6 +381,13 @@ type = "protected"
 protected_modules = ["coscribe.tools.office.docx.*"]
 allowed_importers = ["coscribe.tools.office.docx"]
 broken_contract_guidance = "Import from coscribe.tools.office.docx (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.tools.office.docx/__init__.py and put it on the card. Do not add an ignore line."
+
+[[tool.importlinter.contracts]]
+name = "coscribe.tools.office.doc is entered through its package"
+type = "protected"
+protected_modules = ["coscribe.tools.office.doc.*"]
+allowed_importers = ["coscribe.tools.office.doc"]
+broken_contract_guidance = "Import from coscribe.tools.office.doc (the names in its __all__, listed on its card), not from a submodule. If the name is missing, export it from coscribe.tools.office.doc/__init__.py and put it on the card. Do not add an ignore line."
 
 [[tool.importlinter.contracts]]
 name = "coscribe.tools.office.xlsx is entered through its package"
