@@ -8,7 +8,12 @@ export function useSettingTarget(category: SettingsCategory) {
   const [target, setTarget] = useState<{ category: SettingsCategory; label: string } | null>(null);
   const content = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!target || category !== target.category) return;
+    if (!target) return;
+    // Leaving the page drops the request, or coming back later would flash it unasked.
+    if (category !== target.category) {
+      setTarget(null);
+      return;
+    }
     let cancelled = false;
     // A page that loads its rows from the server renders them a moment later.
     const deadline = performance.now() + 2000;
