@@ -11,7 +11,6 @@ import {
   LockIcon,
   LinkIcon,
   MessageCircleIcon,
-  SearchIcon,
   SettingsIcon,
   SparkIcon,
   ToolIcon,
@@ -42,6 +41,8 @@ import { GeneralTab } from "./GeneralTab";
 import { DRAWS_TITLE_BAR, openBackdrops } from "../../lib/titleBar";
 import { ProvidersTab } from "./ProvidersTab";
 import { SecretsTab } from "./SecretsTab";
+import { SettingsSearch } from "./SettingsSearch";
+import { useSettingTarget } from "./useSettingTarget";
 import { SessionsTab } from "./SessionsTab";
 import { SkillsTab } from "./SkillsTab";
 import { ToolsTab } from "./ToolsTab";
@@ -144,25 +145,14 @@ export function SettingsModal({
   const [values, setValues] = useState<Record<string, string>>({});
   const [dirEntries, setDirEntries] = useState<DirEntry[]>([]);
   const [status, setStatus] = useState<{ text: string; error: boolean } | null>(null);
-  const [search, setSearch] = useState("");
 
-  // v1: filters by category label only (e.g. "skill" narrows the list to
-  // Skills) -- not a deep search into each tab's own field labels, which
-  // the reference screenshot's search bar may or may not do (can't tell
-  // from a static image, and it's a meaningfully bigger feature).
-  const filteredGroups = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return GROUPS;
-    return GROUPS.map((g) => ({ ...g, categories: g.categories.filter((c) => c.label.toLowerCase().includes(q)) })).filter(
-      (g) => g.categories.length > 0,
-    );
-  }, [search]);
+  const { setTarget, content } = useSettingTarget(category);
 
   useEffect(() => {
     if (!open) return;
     setCategory(initialCategory ?? "general");
     setStatus(null);
-    setSearch("");
+    setTarget(null);
     getConfig().then((cfg) => {
       setConfig(cfg);
       const initial: Record<string, string> = {};
@@ -255,22 +245,19 @@ export function SettingsModal({
         </button>
         <nav className="flex w-[240px] shrink-0 flex-col border-r border-[var(--border)]">
           <div className="p-4 pb-3">
-            <div className="flex h-10 items-center gap-2.5 rounded-xl border border-[var(--border)] bg-[var(--field-bg)] px-3 focus-within:border-[var(--focus)] focus-within:ring-2 focus-within:ring-[var(--focus)]/15">
-              <SearchIcon className="h-[18px] w-[18px] shrink-0 text-[var(--muted)]" />
-              <input
-                aria-label="Search settings"
-                className="w-full min-w-0 bg-transparent text-[15px] outline-none placeholder:text-[var(--muted)]"
-                placeholder="Search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
+            <SettingsSearch
+              categories={GROUPS.flatMap((g) => g.categories)}
+              onPickCategory={setCategory}
+              onPickSetting={(id, label) => {
+                setCategory(id);
+                setTarget({ category: id, label });
+              }}
+            />
           </div>
           {/* Scrolls on its own, below the search box, so its scrollbar
            * never runs up beside it. */}
           <div className="mb-3 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-2 pt-2">
-            {filteredGroups.length === 0 && <div className="px-3 py-1 text-sm text-[var(--muted)]">No matches.</div>}
-            {filteredGroups.map((group) => (
+            {GROUPS.map((group) => (
               <div key={group.label} className="flex flex-col gap-0.5">
                 <div className="mb-1 px-3 text-[13px] text-[var(--muted)]">{group.label}</div>
                 {group.categories.map((cat) => (
@@ -296,7 +283,7 @@ export function SettingsModal({
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Starts below the close button and stops short of the bottom
            * edge, so the scrollbar keeps clear of both. */}
-          <div className="mb-3 mr-1.5 mt-14 min-h-0 flex-1 overflow-y-auto pl-10 pr-8">
+          <div ref={content} className="mb-3 mr-1.5 mt-14 min-h-0 flex-1 overflow-y-auto pl-10 pr-8">
             <div className="pb-8">
             {category === "general" && <GeneralTab values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} />}
             {category === "workspace" && (

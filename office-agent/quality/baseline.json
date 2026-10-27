@@ -277,7 +277,7 @@
   "office-agent/frontend/src/components/settings/ProvidersTab.tsx::ProvidersTab": 181,
   "office-agent/frontend/src/components/settings/SecretsTab.tsx::SecretForm": 104,
   "office-agent/frontend/src/components/settings/SecretsTab.tsx::SecretsTab": 121,
-  "office-agent/frontend/src/components/settings/SettingsModal.tsx::SettingsModal": 205,
+  "office-agent/frontend/src/components/settings/SettingsModal.tsx::SettingsModal": 191,
   "office-agent/frontend/src/components/settings/SkillsTab.tsx::SkillsTab": 238,
   "office-agent/frontend/src/components/settings/WorkspaceTab.tsx::WorkspaceTab": 145,
   "office-agent/frontend/src/components/settings/connectors/AddCustomConnectorDialog.tsx::AddCustomConnectorDialog": 185,
