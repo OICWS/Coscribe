@@ -1,12 +1,13 @@
 import { EditorContent, useEditor } from "@tiptap/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { DocCommentMarks } from "../../lib/docCommentMarks";
 import { deleteDocComment, editDocComment, replyToDocComment, resolveDocComment } from "../../lib/docComments";
 import type { DocRead } from "../../lib/docFile";
 import { loadLook, saveLook, type DocLook } from "../../lib/docLook";
 import { DocChartPreview } from "../../lib/docChartPreview";
-import { docContent, docExtensions, loadedOf } from "../../lib/docModel";
+import { docContent, editorExtensions, loadedOf } from "../../lib/docModel";
+import { DocPictureDrop, choosePicture, pictureUrl } from "../../lib/docPictures";
 import { askAboutWords } from "../../lib/docsEditor";
 import type { CommentLink } from "../../lib/slideComments";
 import { DocBubble } from "./DocBubble";
@@ -15,6 +16,7 @@ import { DocNotices } from "./DocNotices";
 import type { Step } from "./DocPanel";
 import { DocToolbar } from "./DocToolbar";
 import { useDocCommentFlow } from "./useDocCommentFlow";
+import { useAddPicture } from "./useAddPicture";
 import { useDocSave, type SaveState } from "./useDocSave";
 
 const SAVE_LABELS: Record<SaveState["kind"], string> = {
@@ -56,8 +58,13 @@ export function DocEditor({
     saveLook(next);
   }, []);
   const content = useMemo(() => docContent(doc.blocks), [doc]);
+  const addPicture = useRef<(file: File) => void>(() => undefined);
+  const extensions = useMemo(
+    () => [...editorExtensions((src) => pictureUrl(threadId, path, src)), DocCommentMarks, DocChartPreview, DocPictureDrop.configure({ onFile: (file) => addPicture.current(file) })],
+    [threadId, path],
+  );
   const editor = useEditor({
-    extensions: [...docExtensions, DocCommentMarks, DocChartPreview],
+    extensions,
     content,
     editorProps: { attributes: { class: "doc-editor", "aria-label": "Document" } },
   });
@@ -65,6 +72,7 @@ export function DocEditor({
   const { state, loaded, flush } = useDocSave(editor, threadId, path, version, initial, onReload);
   const comments = useDocCommentFlow({ editor, threadId, path, refreshKey, saveState: state.kind, loaded, flush, onAsk });
   const { store } = comments;
+  useAddPicture(addPicture, editor, threadId, path, comments.setProblem);
   useEffect(() => {
     unsaved.current = state.kind !== "saved";
     // Typing after the change ends the offer: taking it back would take the typing back with it.
@@ -77,7 +85,7 @@ export function DocEditor({
     <>
       {slot && createPortal(SAVE_LABELS[state.kind], slot)}
       <CommentsToggle shown={comments.show} dot={comments.open.length > 0} onToggle={() => comments.setShow((now) => !now)} />
-      {editor && <DocToolbar editor={editor} look={look} onLook={changeLook} />}
+      {editor && <DocToolbar editor={editor} look={look} onLook={changeLook} onPicture={() => choosePicture((file) => addPicture.current(file))} />}
       {editor && (
         <DocBubble editor={editor} onAsk={onAsk && ((instruction, words) => onAsk(`${askAboutWords(path, words)}\n\n${instruction}`))} onComment={(text, send) => void comments.add(text, send)} />
       )}

@@ -1,11 +1,11 @@
 import { Extension, Node, type AnyExtension, type JSONContent } from "@tiptap/core";
-import { Image } from "@tiptap/extension-image";
 import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { MarkdownManager } from "@tiptap/markdown";
 import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import StarterKit from "@tiptap/starter-kit";
 import type { DocBlock, DocEdit } from "./docFile";
+import { DocImage } from "./docPictures";
 
 /** Blocks the editor shows as their own markdown until a step gives them a view: the text stays
  * exactly as it is, and typing in it is typing the source. */
@@ -62,7 +62,7 @@ export const docExtensions: AnyExtension[] = [
   }),
   TaskList,
   TaskItem.configure({ nested: true }),
-  Image.configure({ inline: true }),
+  DocImage.configure({ inline: true }),
   Table.configure({ resizable: false }),
   TableRow,
   TableHeader,
@@ -71,6 +71,11 @@ export const docExtensions: AnyExtension[] = [
   RawBlock,
   Callout,
 ];
+
+/** The extensions for an editor over one Doc: the same as `docExtensions`, with its pictures shown from `resolve(src)`. */
+export function editorExtensions(resolve: (src: string) => string): AnyExtension[] {
+  return docExtensions.map((extension) => (extension.name === "image" ? DocImage.configure({ inline: true, resolve }) : extension));
+}
 
 let manager: MarkdownManager | null = null;
 const markdown = () => (manager ??= new MarkdownManager({ extensions: docExtensions }));

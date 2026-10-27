@@ -6,6 +6,7 @@ import { ChevronDownIcon, MoreIcon, PlusIcon, RedoIcon, UndoIcon } from "../icon
 import { SlideMenu, type MenuEntry } from "../slides/SlideMenu";
 import { TableIcon } from "../slides/formatIcons";
 import { calloutEntries, insertEntries, tableEntries } from "./docCommands";
+import { ImageIcon } from "../docs/docsIcons";
 import { ChecklistIcon, FontIcon, WidthIcon } from "./docIcons";
 
 const button = (active = false) =>
@@ -24,9 +25,12 @@ function fontEntries(look: DocLook, onLook: (look: DocLook) => void): MenuEntry[
 
 /** The editor's one row of tools: the reading look (font, width), then the blocks a Doc can hold. What
  * a Doc looks like is the reader's choice, kept in the browser; the file holds only the words. */
-export function DocToolbar({ editor, look, onLook }: { editor: Editor; look: DocLook; onLook: (look: DocLook) => void }) {
+export function DocToolbar({ editor, look, onLook, onPicture }: { editor: Editor; look: DocLook; onLook: (look: DocLook) => void; onPicture: () => void }) {
   const [menu, setMenu] = useState<{ kind: Menu; anchor: DOMRect } | null>(null);
-  const now = useEditorState({ editor, selector: ({ editor: e }) => ({ inTable: e.isActive("table"), inCallout: e.isActive("callout"), tasks: e.isActive("taskList"), undo: e.can().undo(), redo: e.can().redo() }) });
+  const now = useEditorState({
+    editor,
+    selector: ({ editor: e }) => ({ inTable: e.isActive("table"), inCallout: e.isActive("callout"), tasks: e.isActive("taskList"), undo: e.can().undo(), redo: e.can().redo() }),
+  });
   const open = (kind: Menu) => (e: React.MouseEvent<HTMLButtonElement>) => setMenu({ kind, anchor: e.currentTarget.getBoundingClientRect() });
   const entries = menu?.kind === "font" ? fontEntries(look, onLook) : menu?.kind === "table" ? tableEntries(editor) : menu?.kind === "callout" ? calloutEntries(editor) : insertEntries(editor);
   return (
@@ -55,6 +59,9 @@ export function DocToolbar({ editor, look, onLook }: { editor: Editor; look: Doc
       <button type="button" title="Table" aria-label="Table" className={button(now.inTable)} onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>
         <TableIcon className="h-4 w-4" />
       </button>
+      <button type="button" title="Picture" aria-label="Picture" className={button()} onClick={onPicture}>
+        <ImageIcon className="h-4 w-4" />
+      </button>
       <button type="button" title="Checklist" aria-label="Checklist" aria-pressed={now.tasks} className={button(now.tasks)} onClick={() => editor.chain().focus().toggleTaskList().run()}>
         <ChecklistIcon className="h-4 w-4" />
       </button>
@@ -68,7 +75,14 @@ export function DocToolbar({ editor, look, onLook }: { editor: Editor; look: Doc
         </button>
       )}
       {now.inCallout && (
-        <button type="button" aria-haspopup="menu" title="Callout kind" aria-label="Callout kind" className="flex h-8 items-center gap-1 rounded-md px-2 text-sm hover:bg-[var(--card-bg)]" onClick={open("callout")}>
+        <button
+          type="button"
+          aria-haspopup="menu"
+          title="Callout kind"
+          aria-label="Callout kind"
+          className="flex h-8 items-center gap-1 rounded-md px-2 text-sm hover:bg-[var(--card-bg)]"
+          onClick={open("callout")}
+        >
           Callout
           <ChevronDownIcon className="h-3 w-3 text-[var(--muted)]" />
         </button>
