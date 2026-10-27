@@ -9,6 +9,7 @@ the model. A list of names to remove would miss the next key someone adds.
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Mapping
 
 from .script_env import overlay_env
@@ -76,14 +77,17 @@ _PASSED = frozenset(
 _PROXIES = frozenset({"ALL_PROXY", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"})
 
 
+# Only a real scheme counts as one: in `user:a://b@proxy` the `://` is part of the password.
+_SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://")
+
+
 def _without_credentials(url: str) -> str:
     """`url` with any `user:password@` taken out. Everything up to the last `@` goes, so a
     password holding an unescaped `/` or `@` does not survive either; a proxy address has no
     path for that to cut into."""
-    scheme, sep, rest = url.partition("://")
-    if not sep:
-        scheme, rest = "", url
-    return scheme + sep + rest.rpartition("@")[2]
+    scheme = _SCHEME.match(url)
+    prefix = scheme.group(0) if scheme else ""
+    return prefix + url[len(prefix) :].rpartition("@")[2]
 
 
 def child_env(

@@ -32,6 +32,7 @@ def test_windows_names_pass_whatever_their_case() -> None:
         ("http://alice@proxy.example:8080/", "http://proxy.example:8080/"),
         ("alice:hunter2@proxy.example:8080", "proxy.example:8080"),
         ("http://alice:pa/ss@word@proxy.example:8080", "http://proxy.example:8080"),
+        ("alice:a://b@proxy.example:8080", "proxy.example:8080"),
         ("http://proxy.example:8080", "http://proxy.example:8080"),
     ],
 )

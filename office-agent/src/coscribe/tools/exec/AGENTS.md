@@ -30,10 +30,12 @@ twins), the interpreter overrides (`get_interpreter_override`, `set_interpreter_
 `coscribe.runtime`, `coscribe.tools._files_written`, `coscribe.tools._output_truncation`.
 
 ## Invariants
-- A script or command the agent runs starts from `child_env` (`env_allowlist.py`): a list of the
-  names Windows and the usual tools need, the proxy addresses without a user name or password,
-  then the conversation's variables. Never from `os.environ`, which holds the provider keys
-  (issue #667). The container's self-test starts its probe the same way.
+- A script or command started through `tools.exec` starts from `child_env`
+  (`env_allowlist.py`): a list of the names Windows and the usual tools need, the proxy
+  addresses without a user name or password, then the conversation's variables. Never from
+  `os.environ`, which holds the provider keys (issue #667). The container's self-test starts
+  its probe the same way. The commands Codex runs in the code module are not covered here
+  (part 2 of #667).
 - On Windows, where the self-test passed, every script run (the two tools and the background
   ones in `tools/bookkeeping/background_tasks.py`) starts in the AppContainer with only its
   conversation's folders (decision 0021). Where the self-test failed, `for_scripts` refuses the

@@ -180,8 +180,10 @@ def resolve_env_keyring_refs() -> None:
     unmodified) sees the real value, never the sentinel. Call once, right
     after load_dotenv(...), in cli.py's _load_settings() and web/app.py's
     create_app_lg startup -- the same point .env already gets loaded into
-    the real process environment today. Scripts and commands the agent runs are
-    therefore never started with os.environ (tools/exec/env_allowlist.py)."""
+    the real process environment today. The agent's script and command tools
+    therefore never start a child with os.environ (tools/exec/env_allowlist.py);
+    the commands Codex runs in the code module are held to the same in part 2 of
+    issue #667."""
     for key, value in list(os.environ.items()):
         if not value.startswith(ENV_KEYRING_PREFIX):
             continue
