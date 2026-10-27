@@ -160,6 +160,9 @@ AUDITED_READ_ONLY_GETS = {
     "/api/artifacts/{artifact}/content",
     "/api/threads/{thread_id}/design",
     "/api/threads/{thread_id}/docs/blocks",
+    # Keeps a copy of the Doc it reads in `name.doc/versions` (as the Word route does in the state
+    # folder), so a change made behind the editor can be undone; nothing else is written.
+    "/api/threads/{thread_id}/doc/blocks",
     "/api/threads/{thread_id}/docs/image",
     "/api/artifacts/{artifact}/thumbnail",
     "/api/attachment/pdf",
