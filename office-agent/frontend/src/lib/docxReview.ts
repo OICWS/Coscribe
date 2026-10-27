@@ -124,10 +124,10 @@ export function stackCards(
 
 /** The message "Ask coscribe" sends for selected words: the file and page, so the model can find
  * the place, then the words quoted. */
-export function askMessage(file: string, page: number, words: string): string {
+export function askMessage(file: string, page: number, words: string, instruction?: string): string {
   const quoted = words
     .split("\n")
     .map((line) => `> ${line}`)
     .join("\n");
-  return `Question about ${file}, page ${page}:\n${quoted}`;
+  return `Question about ${file}, page ${page}:\n${quoted}${instruction ? `\n\n${instruction}` : ""}`;
 }

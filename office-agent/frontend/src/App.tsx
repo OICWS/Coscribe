@@ -652,6 +652,9 @@ function App() {
       onStop();
       return;
     }
+    // Typing in the composer instead of picking an option answers nothing, but leaves the card
+    // open and the turn waiting on it; closing it lets the message that follows run.
+    if (pendingQuestion) onAnswerQuestion(pendingQuestion.id, null);
     runOrQueueSend(() => {
       dispatch({
         type: "local_user_message",

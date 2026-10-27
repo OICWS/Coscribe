@@ -670,8 +670,8 @@ export function TextToolIcon(props: SVGProps<SVGSVGElement>) {
 export function UndoIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="M4 9v6h6" />
-      <path d="M4.5 15A8 8 0 1 0 7 7.3L4 10" />
+      <path d="M9 14 4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
     </Icon>
   );
 }
@@ -679,8 +679,8 @@ export function UndoIcon(props: SVGProps<SVGSVGElement>) {
 export function RedoIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="M20 9v6h-6" />
-      <path d="M19.5 15A8 8 0 1 1 17 7.3l3 2.7" />
+      <path d="m15 14 5-5-5-5" />
+      <path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />
     </Icon>
   );
 }
