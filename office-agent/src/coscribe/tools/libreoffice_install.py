@@ -153,18 +153,23 @@ def install_libreoffice(
             "it takes about 590 MB afterwards."
         )
     say = step or (lambda _name: None)
-    staging = Path(tempfile.mkdtemp(prefix=f".{LIBREOFFICE_VERSION}-", dir=root))
+    staging = Path(tempfile.mkdtemp(prefix=".s-", dir=root))
     try:
         say("download")
         package = staging / "LibreOffice.msi"
         _download(url or pins["url"], pins, package, progress)
         say("unpack")
-        unpacked = staging / "unpacked"
+        unpacked = staging / "u"
         _unpack(package, unpacked)
         package.unlink()
         say("trim")
         trim(unpacked)
         say("check")
+        if _too_deep(unpacked):
+            raise LibreOfficeUnavailable(
+                "The folder Coscribe keeps its data in has too long a path for LibreOffice to run "
+                "from. Move Coscribe's data folder somewhere with a shorter path and try again."
+            )
         _check(unpacked, state_dir)
         final = install_dir(state_dir)
         shutil.rmtree(final, ignore_errors=True)
@@ -267,6 +272,14 @@ def _delete(path: Path) -> None:
 
 
 _PDF = b"%PDF"
+# Windows stops at 260 characters, a terminating character included, and LibreOffice nests its
+# own files deeply: run from a long path (190 characters of test folder) it made no PDF at all.
+_MAX_PATH = 259
+
+
+def _too_deep(folder: Path) -> bool:
+    deepest = max((len(str(p.relative_to(folder))) for p in folder.rglob("*")), default=0)
+    return len(str(folder)) + 1 + deepest > _MAX_PATH
 
 
 def _check(folder: Path, state_dir: Path) -> None:

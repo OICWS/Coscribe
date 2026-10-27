@@ -21,10 +21,20 @@ usable at all.
 - `tests/test_windows_real.py` downloads for real on the Windows runner, converts a Word, an Excel
   and a PowerPoint file and removes it again; `windows-more-checks.yml` runs when these modules
   change.
+- A run measured on the Windows runner: from a 190-character folder (pytest's temporary path) the
+  trimmed copy started, built its profile and made no PDF in 180 s; from `C:\lot` it converted Word,
+  Excel and PowerPoint. The install now measures its own deepest file and stops with a plain message
+  when the folder's path plus that would pass Windows' 260 characters. Coscribe's default data
+  folder (`%APPDATA%\Coscribe\state`) is about 65 to 90 characters.
+- `convert_to_pdf` waits for the PDF and for the profile's lock to go, because the Windows launcher
+  can return before the work is done. A download is tried up to three times.
 - Runs use a profile of their own (`profile_argument`), so a person's LibreOffice settings are
   not touched.
 
 ## Not verified
+- That the path length is the cause: the same code passed with a short folder and failed with a
+  long one, and no other difference was tried. LibreOffice's deepest internal path was not
+  measured (the guard measures it on each install).
 - The download and unpack in the app: the tests fake the unpack. The real one is run only by the
   Windows job above, which is an administrator's runner, and by the maintainer's earlier manual
   unpack and conversion (decision 0026). It was not tried on a standard account or under a policy

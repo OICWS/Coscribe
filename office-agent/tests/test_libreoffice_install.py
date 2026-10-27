@@ -223,3 +223,22 @@ def test_a_download_that_keeps_failing_gives_up_with_a_fixed_text(
     with pytest.raises(install.LibreOfficeUnavailable, match="connection failed") as caught:
         install.install_libreoffice(tmp_path)
     assert "secret" not in str(caught.value)
+
+
+def test_a_data_folder_too_deep_for_windows_is_said_not_left_to_fail_silently(
+    tmp_path: Path, served: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(install, "_MAX_PATH", 20)
+    with pytest.raises(install.LibreOfficeUnavailable, match="too long a path"):
+        install.install_libreoffice(tmp_path)
+    assert not install.installed(tmp_path)
+    assert list((tmp_path / "libreoffice").iterdir()) == []
+
+
+def test_a_shallow_enough_tree_passes_the_depth_check(tmp_path: Path) -> None:
+    _tree(tmp_path)
+    assert not install._too_deep(tmp_path)
+    deep = tmp_path / "d"
+    deep.mkdir()
+    (deep / ("n" * 200)).write_text("x")
+    assert install._too_deep(deep) == (len(str(deep)) + 1 + 200 > install._MAX_PATH)
