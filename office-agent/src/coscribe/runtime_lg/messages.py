@@ -108,8 +108,8 @@ def current_date_note() -> str:
 
 _ARTIFACTS = {
     "docs": (
-        "a new Word document the app opens in its editor. Make one .docx file with write_docx "
-        "and say its name when it is done"
+        "a new Doc the app opens in its editor. Load the Docs skill, then write one .md file "
+        "with write_file as it says, and say its name when it is done"
     ),
     "slides": (
         "a new presentation the app opens in its Slides panel. Build it from pages, as your "

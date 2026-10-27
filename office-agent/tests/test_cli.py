@@ -348,6 +348,7 @@ def test_builtin_skills_are_enabled_by_default(
         "PPTX Pages",
         "Excel Spreadsheets",
         "Word Documents",
+        "Docs",
         "Skill Creator",
         "SVG and HTML Design",
     }
