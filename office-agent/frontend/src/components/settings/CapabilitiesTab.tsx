@@ -11,11 +11,13 @@ import {
   setCapability,
 } from "../../lib/rest";
 import { useCodeStatus } from "../../lib/useCodeStatus";
+import { libreOfficeSummary, useLibreOffice } from "../../lib/useLibreOffice";
 import type { Capabilities, CapabilityFolders, CommandSandbox, CodeStatus } from "../../types/settings";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { ToggleSwitch } from "../ToggleSwitch";
 import { CodeTab } from "./CodeTab";
 import { CommandModes, useCommandSandbox } from "./CommandModes";
+import { LibreOfficeSection } from "./LibreOfficeCard";
 import { CODE_MODULE_ENABLED_KEY } from "./fields";
 import { PackageListSection } from "./PackageListSection";
 import { PythonInterpreterSection } from "./PythonInterpreterSection";
@@ -45,7 +47,12 @@ function useFolders(active: boolean) {
   return folders;
 }
 
-const SECTIONS = { scripts: "capability-scripts", commands: "capability-commands", code: "capability-code" } as const;
+const SECTIONS = {
+  scripts: "capability-scripts",
+  commands: "capability-commands",
+  code: "capability-code",
+  office: "capability-office",
+} as const;
 
 function commandsSummary(capabilities: Capabilities, sandbox: CommandSandbox | null): string {
   if (!capabilities.commands) return "Off";
@@ -200,6 +207,7 @@ export function CapabilitiesTab({ active, values, onChange }: CapabilitiesTabPro
   const sandbox = useCommandSandbox(active);
   const code = useCodeStatus();
   const folders = useFolders(active);
+  const libreOffice = useLibreOffice(active);
   const [confirm, setConfirm] = useState<keyof typeof CONFIRMATIONS | null>(null);
   if (capabilities === null) {
     return <p className="text-sm text-[var(--muted)]">{error ?? "Loading…"}</p>;
@@ -233,6 +241,7 @@ export function CapabilitiesTab({ active, values, onChange }: CapabilitiesTabPro
             now: codeSummary(code.status, codeOn),
             section: SECTIONS.code,
           },
+          { label: "LibreOffice", what: "Optional: shows Office files as pages and checks their layout", now: libreOfficeSummary(libreOffice), section: SECTIONS.office },
         ]}
       />
       <ScriptsSection
@@ -275,6 +284,7 @@ export function CapabilitiesTab({ active, values, onChange }: CapabilitiesTabPro
       <div id={SECTIONS.code}>
         <CodeTab values={values} onChange={onChange} code={code} codexFolder={folders?.codex} />
       </div>
+      <LibreOfficeSection id={SECTIONS.office} status={libreOffice} />
       {confirm && (
         <ConfirmDialog
           {...CONFIRMATIONS[confirm]}

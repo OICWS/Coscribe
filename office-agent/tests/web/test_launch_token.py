@@ -189,6 +189,7 @@ AUDITED_READ_ONLY_GETS = {
     "/api/mcp/oauth-apps/{group}/export",
     "/api/mcp/oauth/callback",
     "/api/mcp/servers",
+    "/api/libreoffice",
     "/api/memory",
     "/api/node-env/packages",
     "/api/pptx-shapes",

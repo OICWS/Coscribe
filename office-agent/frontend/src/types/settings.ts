@@ -527,6 +527,15 @@ export interface NetworkAccess {
   domains: string[];
 }
 
+/** The optional LibreOffice (decision 0026): coscribe's own copy, one installed on the computer, or none. */
+export interface LibreOfficeStatus {
+  found: boolean;
+  source: "own" | "system" | null;
+  path: string | null;
+  /** Null when it was found but did not report one. */
+  version: string | null;
+}
+
 export interface ScriptIsolation {
   state: "passed" | "failed" | "untested" | "unsupported" | "setup_failed";
   /** The check that differed, when failed. */

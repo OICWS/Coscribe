@@ -2555,6 +2555,26 @@
         "summary": "Update Environment"
       }
     },
+    "/api/libreoffice": {
+      "get": {
+        "operationId": "get_libreoffice_api_libreoffice_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Libreoffice Api Libreoffice Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Libreoffice"
+      }
+    },
     "/api/mcp/catalog": {
       "get": {
         "description": "The catalog, each entry's tools being what the service reported\nwhen it was connected if that ever happened, else what the maker's\ndocumentation lists.",
