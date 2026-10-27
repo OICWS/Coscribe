@@ -24,6 +24,24 @@ const edit = (doc: PMNode, change: (json: Json) => void, loaded: Map<number, Loa
 const para = (text: string, blockIndex?: number) =>
   ({ type: "paragraph", attrs: { blockIndex: blockIndex ?? null }, content: [{ type: "text", text }] }) as unknown as Json;
 
+describe("callouts", () => {
+  it("shows a GitHub alert as a callout node and writes it back unchanged until it is edited", () => {
+    const { doc, loaded } = open(["> [!WARNING]\n> Mind the gap.\n>\n> And the step."], ["callout"]);
+    expect(doc.child(0).type.name).toBe("callout");
+    expect(doc.child(0).attrs.type).toBe("WARNING");
+    expect(doc.child(0).childCount).toBe(2);
+    expect(docEdits(doc, loaded).edits).toEqual([]);
+    expect(nodeMarkdown(doc.child(0))).toBe("> [!WARNING]\n> Mind the gap.\n>\n> And the step.");
+  });
+
+  it("writes a changed kind, and keeps a callout with more than paragraphs as its source", () => {
+    const { doc, loaded } = open(["> [!NOTE]\n> Careful", "> [!TIP]\n> - one\n> - two"], ["callout", "callout"]);
+    expect(doc.child(1).type.name).toBe("rawBlock");
+    const { edits } = edit(doc, (json) => ((json.content[0].attrs as { type: string }).type = "CAUTION"), loaded);
+    expect(edits).toEqual([{ op: "replace", index: 0, expected: "> [!NOTE]\n> Careful", text: "> [!CAUTION]\n> Careful" }]);
+  });
+});
+
 describe("docEdits", () => {
   it("names nothing for a document nobody changed, whatever the markdown's own spelling", () => {
     const { doc, loaded } = open(["# Title", "Some **bold** words", "* star item\n* second", "| a | b |\n|-|-|\n| 1 | 2 |", "- [ ] todo\n- [x] done", "![a picture](assets/a.png)"], ["heading", "paragraph", "list", "table", "list", "paragraph"]);
@@ -31,7 +49,7 @@ describe("docEdits", () => {
   });
 
   it("keeps the text of a block it cannot show", () => {
-    const { doc, loaded } = open(["> [!NOTE]\n> Careful", "```chart\nbar\n| a | b |\n| --- | --- |\n| x | 1 |\n```"], ["callout", "chart"]);
+    const { doc, loaded } = open(["<div class=\"x\">\nraw\n</div>", "```chart\nbar\n| a | b |\n| --- | --- |\n| x | 1 |\n```"], ["html", "chart"]);
     expect(doc.child(0).type.name).toBe("rawBlock");
     expect(nodeMarkdown(doc.child(1))).toContain("| x | 1 |");
     expect(docEdits(doc, loaded).edits).toEqual([]);

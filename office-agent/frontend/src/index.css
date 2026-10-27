@@ -951,3 +951,111 @@ body {
 .slide-stage::-webkit-scrollbar-button:disabled {
   display: none;
 }
+
+/* Callouts and charts of a Doc. */
+.doc-editor .doc-callout {
+  --callout: #4f6ef7;
+  border-left: 3px solid var(--callout);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--callout) 9%, transparent);
+  padding: 0.5rem 0.9rem;
+}
+.doc-editor .doc-callout::before {
+  content: attr(data-callout);
+  display: block;
+  margin-bottom: 0.15rem;
+  color: var(--callout);
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.doc-editor .doc-callout > p {
+  margin: 0;
+}
+.doc-editor .doc-callout > p + p {
+  margin-top: 0.5em;
+}
+.doc-editor .doc-callout[data-callout="TIP"] {
+  --callout: #12a88a;
+}
+.doc-editor .doc-callout[data-callout="IMPORTANT"] {
+  --callout: #8a63e8;
+}
+.doc-editor .doc-callout[data-callout="WARNING"] {
+  --callout: #d98a00;
+}
+.doc-editor .doc-callout[data-callout="CAUTION"] {
+  --callout: #d6443f;
+}
+.doc-editor .doc-chart {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem;
+  margin-bottom: 0.4em;
+  color: var(--fg);
+}
+.doc-editor .doc-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.doc-editor .doc-chart-bad {
+  border-style: dashed;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Callouts and charts of a Doc. */
+.doc-editor .doc-callout {
+  --callout: #4f6ef7;
+  border-left: 3px solid var(--callout);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--callout) 9%, transparent);
+  padding: 0.5rem 0.9rem;
+}
+.doc-editor .doc-callout::before {
+  content: attr(data-callout);
+  display: block;
+  margin-bottom: 0.15rem;
+  color: var(--callout);
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.doc-editor .doc-callout > p {
+  margin: 0;
+}
+.doc-editor .doc-callout > p + p {
+  margin-top: 0.5em;
+}
+.doc-editor .doc-callout[data-callout="TIP"] {
+  --callout: #12a88a;
+}
+.doc-editor .doc-callout[data-callout="IMPORTANT"] {
+  --callout: #8a63e8;
+}
+.doc-editor .doc-callout[data-callout="WARNING"] {
+  --callout: #d98a00;
+}
+.doc-editor .doc-callout[data-callout="CAUTION"] {
+  --callout: #d6443f;
+}
+.doc-editor .doc-chart {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem;
+  margin-bottom: 0.4em;
+  color: var(--fg);
+}
+.doc-editor .doc-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.doc-editor .doc-chart-bad {
+  border-style: dashed;
+  color: var(--muted);
+  font-size: 13px;
+}

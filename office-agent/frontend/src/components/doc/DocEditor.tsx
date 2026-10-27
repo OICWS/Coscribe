@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { DocRead } from "../../lib/docFile";
 import { loadLook, saveLook, type DocLook } from "../../lib/docLook";
+import { DocChartPreview } from "../../lib/docChartPreview";
 import { docContent, docExtensions, loadedOf } from "../../lib/docModel";
 import { askAboutWords } from "../../lib/docsEditor";
 import type { Step } from "./DocPanel";
@@ -45,7 +46,7 @@ export function DocEditor({
   }, []);
   const content = useMemo(() => docContent(doc.blocks), [doc]);
   const editor = useEditor({
-    extensions: docExtensions,
+    extensions: [...docExtensions, DocChartPreview],
     content,
     editorProps: { attributes: { class: "doc-editor", "aria-label": "Document" } },
   });

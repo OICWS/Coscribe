@@ -1,4 +1,5 @@
 import type { Editor } from "@tiptap/core";
+import { CALLOUT_TYPES } from "../../lib/docModel";
 import type { MenuEntry } from "../slides/SlideMenu";
 
 type Chain = ReturnType<Editor["chain"]>;
@@ -20,7 +21,20 @@ export function insertEntries(editor: Editor): MenuEntry[] {
     { label: "Code block", onSelect: at((c) => c.toggleCodeBlock()) },
     { label: "Divider", onSelect: at((c) => c.setHorizontalRule()) },
     { label: "Table", onSelect: at((c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true })) },
+    "divider",
+    { label: "Callout", submenu: CALLOUT_TYPES.map((type) => ({ label: titled(type), onSelect: at((c) => c.insertContent({ type: "callout", attrs: { type }, content: [{ type: "paragraph" }] })) })) },
+    { label: "Chart", submenu: CHART_KINDS.map((kind) => ({ label: titled(kind), onSelect: at((c) => c.insertContent({ type: "rawBlock", attrs: { kind: "chart" }, content: [{ type: "text", text: chartSource(kind) }] })) })) },
   ];
+}
+
+const titled = (word: string) => word[0].toUpperCase() + word.slice(1).toLowerCase();
+const CHART_KINDS = ["bar", "line", "pie"];
+const chartSource = (kind: string) => `\`\`\`chart\n${kind} Title\n| Category | Value |\n| --- | --- |\n| A | 3 |\n| B | 5 |\n\`\`\``;
+
+/** What changes a callout's kind, offered while the caret is in one. */
+export function calloutEntries(editor: Editor): MenuEntry[] {
+  const current = editor.getAttributes("callout").type as string;
+  return CALLOUT_TYPES.map((type) => ({ label: titled(type), checked: current === type, onSelect: () => void editor.chain().focus().updateAttributes("callout", { type }).run() }));
 }
 
 export function listEntries(editor: Editor): MenuEntry[] {
