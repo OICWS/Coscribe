@@ -17,7 +17,6 @@ from coscribe.web.routes.settings import libreoffice as routes
 
 from .helpers import FakeToolCallingChatModel, _client_lg
 
-
 _LAUNCHER = "soffice"
 
 
