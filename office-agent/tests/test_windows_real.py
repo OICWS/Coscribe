@@ -619,12 +619,22 @@ async def test_the_code_modules_commands_run_in_the_sandbox_and_stay_in_it(
 
 
 @real
-def test_coscribes_own_libreoffice_is_downloaded_unpacked_and_converts_each_format(
-    tmp_path: Path,
-) -> None:
+def test_coscribes_own_libreoffice_is_downloaded_unpacked_and_converts_each_format() -> None:
     """The whole of decision 0026's download: the pinned MSI, `msiexec /a`, the trim, and a copy
     that still turns Word, Excel and PowerPoint files into PDF. The runner is an administrator, so
     that it needs none is checked by hand (log/2026-10-27-libreoffice-download.md)."""
+    # A short folder: LibreOffice's own files nest deeply, and under pytest's long temporary path
+    # the conversion made no PDF; a path past Windows' 260 characters is the suspect.
+    tmp_path = Path(os.environ.get("SystemDrive", "C:") + "\\lot")
+    shutil.rmtree(tmp_path, ignore_errors=True)
+    tmp_path.mkdir()
+    try:
+        _libreoffice_in(tmp_path)
+    finally:
+        shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def _libreoffice_in(tmp_path: Path) -> None:
     from docx import Document
     from openpyxl import Workbook
     from pptx import Presentation

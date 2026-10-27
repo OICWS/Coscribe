@@ -289,8 +289,13 @@ def _check(folder: Path, state_dir: Path) -> None:
             TimeoutError,
         ) as exc:
             # For the server log; the person gets a fixed text.
+            deepest = max(len(str(p.relative_to(folder))) for p in folder.rglob("*"))
             logger.warning(
-                "LibreOffice check failed: %r files=%s", exc, sorted(p.name for p in work.iterdir())
+                "LibreOffice check failed: %r files=%s folder_chars=%d deepest_inside=%d",
+                exc,
+                sorted(p.name for p in work.iterdir()),
+                len(str(folder)),
+                deepest,
             )
             raise LibreOfficeUnavailable(
                 "The downloaded LibreOffice did not convert a test file."
