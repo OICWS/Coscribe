@@ -565,6 +565,130 @@ body {
     background: var(--find-current-bg);
   }
 }
+/* The Doc editor (decision 0025): one centred column; the reader picks serif or sans for headings and
+   for text, and the page's width. Nothing of this is in the file. */
+.doc-page {
+  --doc-serif: Georgia, "Times New Roman", serif;
+  --doc-sans: inherit;
+}
+.doc-page[data-text="serif"] .doc-editor {
+  font-family: var(--doc-serif);
+}
+.doc-page[data-headings="serif"] .doc-editor :is(h1, h2, h3) {
+  font-family: var(--doc-serif);
+}
+.doc-page[data-headings="sans"] .doc-editor :is(h1, h2, h3) {
+  font-family: inherit;
+  font-weight: 600;
+}
+.doc-editor {
+  outline: none;
+  min-height: 60vh;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--fg);
+}
+.doc-editor > * + * {
+  margin-top: 0.75em;
+}
+.doc-editor :is(h1, h2, h3) {
+  font-weight: 400;
+  line-height: 1.25;
+  margin-top: 1.4em;
+}
+.doc-editor h1 {
+  font-size: 2rem;
+}
+.doc-editor h2 {
+  font-size: 1.45rem;
+}
+.doc-editor h3 {
+  font-size: 1.2rem;
+}
+.doc-editor :is(ul, ol) {
+  padding-left: 1.5em;
+}
+.doc-editor ul {
+  list-style: disc;
+}
+.doc-editor ol {
+  list-style: decimal;
+}
+.doc-editor li > p {
+  margin: 0;
+}
+.doc-editor ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.25em;
+}
+.doc-editor ul[data-type="taskList"] li {
+  display: flex;
+  gap: 0.5em;
+  align-items: baseline;
+}
+.doc-editor ul[data-type="taskList"] li > div {
+  flex: 1;
+}
+.doc-editor blockquote {
+  border-left: 3px solid var(--border-hover);
+  padding-left: 1em;
+  color: var(--muted);
+}
+.doc-editor a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.doc-editor code {
+  border-radius: 4px;
+  background: var(--card-bg);
+  padding: 0.1em 0.35em;
+  font-size: 0.9em;
+}
+.doc-editor pre {
+  overflow-x: auto;
+  border-radius: 8px;
+  background: var(--card-bg);
+  padding: 10px 12px;
+  font-size: 13px;
+}
+.doc-editor pre code {
+  background: none;
+  padding: 0;
+}
+.doc-editor pre.doc-raw {
+  border: 1px dashed var(--border);
+  white-space: pre-wrap;
+}
+.doc-editor hr {
+  margin: 1.2em 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+.doc-editor img {
+  max-width: 100%;
+  border-radius: 6px;
+}
+.doc-editor table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.doc-editor :is(th, td) {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  vertical-align: top;
+  min-width: 3em;
+}
+.doc-editor th {
+  background: color-mix(in srgb, var(--accent-soft) 60%, var(--card-bg));
+  text-align: left;
+  font-weight: 600;
+}
+.doc-editor :is(td, th) > p {
+  margin: 0;
+}
+.doc-editor .selectedCell {
+  background: var(--accent-soft);
+}
 /* The Docs editor (decision 0019): styles, not fonts. The page is the document's own look in one
    column; headings, lists, tables and the locked lines follow the app's colours. */
 .docs-editor {
