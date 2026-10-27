@@ -1,6 +1,7 @@
 # 0012: The product does not depend on LibreOffice
 
-Status: accepted (2026-10-16, by the maintainer). Supersedes 0011's stage-1 engine
+Status: superseded by 0026 (2026-10-27) in what it forbids: LibreOffice may be an optional engine.
+The engines it chose stay. Accepted 2026-10-16, by the maintainer. Supersedes 0011's stage-1 engine
 ("openpyxl and LibreOffice"); the rest of 0011 stands.
 
 ## Context
