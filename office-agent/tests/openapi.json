@@ -206,6 +206,12 @@
             "title": "Path",
             "type": "string"
           },
+          "quote": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Quote",
+            "type": "string"
+          },
           "sent": {
             "default": false,
             "title": "Sent",
@@ -258,15 +264,52 @@
             "type": "string"
           },
           "resolved": {
-            "title": "Resolved",
-            "type": "boolean"
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved"
+          },
+          "sent": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sent"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "DocCommentState",
+        "type": "object"
+      },
+      "DocCommentText": {
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
           }
         },
         "required": [
           "path",
-          "resolved"
+          "text"
         ],
-        "title": "DocCommentState",
+        "title": "DocCommentText",
         "type": "object"
       },
       "DocFileSave": {
@@ -5650,6 +5693,62 @@
           }
         },
         "summary": "Post State"
+      },
+      "put": {
+        "operationId": "put_text_api_threads__thread_id__doc_comments__comment_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "comment_id",
+            "required": true,
+            "schema": {
+              "title": "Comment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocCommentText"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Put Text Api Threads  Thread Id  Doc Comments  Comment Id  Put"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Text"
       }
     },
     "/api/threads/{thread_id}/doc/comments/{comment_id}/replies": {
