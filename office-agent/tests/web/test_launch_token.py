@@ -164,6 +164,9 @@ AUDITED_READ_ONLY_GETS = {
     # folder), so a change made behind the editor can be undone; nothing else is written.
     "/api/threads/{thread_id}/doc/blocks",
     "/api/threads/{thread_id}/doc/comments",
+    # Reads one picture of the Doc from its side folder, as `docs/image` reads one of a Word file;
+    # an <img> cannot carry the token header.
+    "/api/threads/{thread_id}/doc/asset",
     "/api/threads/{thread_id}/docs/image",
     "/api/artifacts/{artifact}/thumbnail",
     "/api/attachment/pdf",

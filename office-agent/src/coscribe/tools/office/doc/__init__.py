@@ -4,6 +4,7 @@ versions and what the person changed since coscribe was told."""
 
 from __future__ import annotations
 
+from .assets import DocAssetRefused, add_doc_asset, read_doc_asset
 from .blocks import (
     CALLOUTS,
     Block,
@@ -37,6 +38,7 @@ from .told import remember_before_edit as remember_doc_before_edit
 
 __all__ = [
     "CALLOUTS",
+    "DocAssetRefused",
     "DocCommentNotFound",
     "DocCommentRefused",
     "DocFileChanged",
@@ -50,6 +52,7 @@ __all__ = [
     "Insert",
     "NotADoc",
     "Replace",
+    "add_doc_asset",
     "add_doc_comment",
     "apply_edits",
     "delete_doc_comment",
@@ -57,6 +60,7 @@ __all__ = [
     "is_doc",
     "parse_chart",
     "read_doc",
+    "read_doc_asset",
     "read_doc_comments",
     "read_doc_file",
     "remember_doc_before_edit",
