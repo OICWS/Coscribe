@@ -7,6 +7,7 @@ import json
 import os
 import shlex
 import sys
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -525,7 +526,6 @@ def test_config_turns_off_overlapping_features_and_uses_responses() -> None:
 
     assert text.startswith('web_search = "disabled"\n')
     assert "[analytics]\nenabled = false" in text
-    assert '[shell_environment_policy]\nexclude = ["COSCRIBE_CODEX_KEY_*"]' in text
     for feature in DISABLED_FEATURES:
         assert f"\n{feature} = false" in text
     assert "[model_providers.coscribe_deepseek]" in text
@@ -535,6 +535,36 @@ def test_config_turns_off_overlapping_features_and_uses_responses() -> None:
     assert "coscribe_openai" not in text
     assert 'env_key = "OPENAI_API_KEY"' in config_toml({}, openai_key=True)
     assert "sk-secret" not in text
+
+
+def test_codex_commands_get_no_keys_and_the_proxy_without_its_password() -> None:
+    proxy = "http://alice:hunter2@proxy.example:8080"
+
+    policy = tomllib.loads(
+        config_toml({}, openai_key=True, proxies={"HTTPS_PROXY": proxy, "http_proxy": proxy})
+    )["shell_environment_policy"]
+
+    # Codex then drops every name holding KEY, SECRET or TOKEN; checked against the real
+    # 0.163.0 binary with `codex sandbox -- env`.
+    assert policy["ignore_default_excludes"] is False
+    assert policy["exclude"] == ["COSCRIBE_CODEX_KEY_*", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY"]
+    assert policy["set"] == {
+        "HTTPS_PROXY": "http://proxy.example:8080",
+        "http_proxy": "http://proxy.example:8080",
+    }
+    assert "set" not in tomllib.loads(config_toml({}, openai_key=True))["shell_environment_policy"]
+
+
+def test_the_launch_hands_codex_the_proxy_it_started_with_for_its_commands(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("HTTPS_PROXY", "http://alice:hunter2@proxy.example:8080")
+
+    spec = launch_spec(tmp_path / "codex", tmp_path, {}, None)
+
+    assert spec.env["HTTPS_PROXY"] == "http://alice:hunter2@proxy.example:8080"
+    assert "hunter2" not in spec.config
+    assert '"HTTPS_PROXY" = "http://proxy.example:8080"' in spec.config
 
 
 def test_the_launch_puts_the_script_env_and_rg_first_and_keys_in_env(
