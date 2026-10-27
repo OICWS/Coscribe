@@ -1,4 +1,5 @@
 import { useEffect, useState, type RefObject } from "react";
+import { AskBox } from "./doc/DocBubbleBoxes";
 import { askMessage, commentOn, type DocxOperation } from "../lib/docxReview";
 
 /** The words selected on the page, kept after the selection is lost to a click in the comment box. */
@@ -37,6 +38,7 @@ export function DocxNewComment({
 }) {
   const [words, setWords, pageNo] = useSelectedWords(page);
   const [text, setText] = useState("");
+  const [asking, setAsking] = useState(false);
   if (!words) return null;
   const send = () => {
     onAct(commentOn(words, text));
@@ -44,7 +46,7 @@ export function DocxNewComment({
     setWords("");
   };
   return (
-    <div className="flex h-9 shrink-0 items-center gap-2 border-b border-[var(--border)] px-3 text-xs">
+    <div className="relative flex h-9 shrink-0 items-center gap-2 border-b border-[var(--border)] px-3 text-xs">
       <span className="max-w-[30%] shrink-0 truncate text-[var(--muted)]" title={words}>
         “{words}”
       </span>
@@ -58,31 +60,26 @@ export function DocxNewComment({
           if (e.key === "Enter" && text.trim()) send();
         }}
       />
-      <button
-        type="button"
-        className="shrink-0 rounded-md border border-[var(--border)] px-2 py-0.5 hover:bg-[var(--card-bg)] disabled:opacity-40"
-        disabled={busy || !text.trim()}
-        onClick={send}
-      >
+      <button type="button" className="shrink-0 rounded-md border border-[var(--border)] px-2 py-0.5 hover:bg-[var(--card-bg)] disabled:opacity-40" disabled={busy || !text.trim()} onClick={send}>
         Comment
       </button>
       {onAsk && (
-        <button
-          type="button"
-          className="shrink-0 rounded-md border border-[var(--border)] px-2 py-0.5 hover:bg-[var(--card-bg)]"
-          onClick={() => {
-            onAsk(askMessage(file, pageNo, words));
-            setWords("");
-          }}
-        >
+        <button type="button" className="shrink-0 rounded-md border border-[var(--border)] px-2 py-0.5 hover:bg-[var(--card-bg)]" onClick={() => setAsking(true)}>
           Ask Coscribe
         </button>
       )}
-      <button
-        type="button"
-        className="shrink-0 rounded-md border border-[var(--border)] px-2 py-0.5 hover:bg-[var(--card-bg)]"
-        onClick={() => setWords("")}
-      >
+      {asking && onAsk && (
+        <div className="absolute right-3 top-10 z-20">
+          <AskBox
+            onAsk={(instruction) => {
+              onAsk(askMessage(file, pageNo, words, instruction));
+              setWords("");
+            }}
+            onClose={() => setAsking(false)}
+          />
+        </div>
+      )}
+      <button type="button" className="shrink-0 rounded-md border border-[var(--border)] px-2 py-0.5 hover:bg-[var(--card-bg)]" onClick={() => setWords("")}>
         Cancel
       </button>
     </div>
