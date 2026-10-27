@@ -629,12 +629,12 @@ def test_coscribes_own_libreoffice_is_downloaded_unpacked_and_converts_each_form
     shutil.rmtree(tmp_path, ignore_errors=True)
     tmp_path.mkdir()
     try:
-        _libreoffice_in(tmp_path)
+        assert _libreoffice_in(tmp_path) == ["a.pdf", "b.pdf", "c.pdf"]
     finally:
         shutil.rmtree(tmp_path, ignore_errors=True)
 
 
-def _libreoffice_in(tmp_path: Path) -> None:
+def _libreoffice_in(tmp_path: Path) -> list[str]:
     from docx import Document
     from openpyxl import Workbook
     from pptx import Presentation
@@ -662,9 +662,12 @@ def _libreoffice_in(tmp_path: Path) -> None:
     presentation = Presentation()
     presentation.slides.add_slide(presentation.slide_layouts[0]).shapes.title.text = "PowerPoint"
     presentation.save(str(deck))
+    made = []
     for source in (word, sheet, deck):
         pdf = convert_to_pdf(launcher, source, tmp_path / "pdf", tmp_path / "profile", timeout=180)
         assert pdf.read_bytes().startswith(b"%PDF"), source.name
+        made.append(pdf.name)
 
     remove_libreoffice(tmp_path)
     assert find_libreoffice(tmp_path) is None
+    return made
