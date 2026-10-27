@@ -10,6 +10,7 @@ Last reviewed: 2026-10-15.
 
 ## Next, in order
 
+00. **LibreOffice as an optional engine** (record 0026, which supersedes 0012 in what it forbids). Built in this order, one PR each: detection and the Settings › Capabilities card; render to PDF and page images, the Word page-level check and the reviewer reading those pages; the install button; preview and conversion of Office files without Microsoft Office.
 0. **Structure period: done** (record 0009; features paused from 2026-10-11, only the maintainer lifts it; closing report `docs/metrics/2026-10-19-structure-period-close.md`; what stays open is listed there).
    Steps, each one PR or less, from `docs/assessments/2026-10-11-scale-to-1m-lines.md`:
    1. Done: the ratchet and the encoding lint rule; `check.sh` and CI enforce the ratchet (a worse number fails; `tests/test_ratchet.py` keeps that wired).
