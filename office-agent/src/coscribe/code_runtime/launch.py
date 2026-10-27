@@ -103,6 +103,16 @@ def _toml_str(value: str) -> str:
 
 # Codex matches these case-insensitively (checked against 0.163.0).
 _PROXY_NAMES = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY")
+# Codex's own filter already drops names holding KEY, SECRET or TOKEN. The suffixes also catch a
+# tool's own copy of the proxy (npm_config_https_proxy, YARN_HTTPS_PROXY), which may carry the
+# password; the standard names are set again below without it.
+_EXCLUDED = (
+    _KEY_ENV_PREFIX + "*",
+    "*PASSWORD*",
+    "*PASSWD*",
+    "*CREDENTIAL*",
+    *("*" + name for name in _PROXY_NAMES),
+)
 
 
 _SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://")
@@ -137,9 +147,7 @@ def config_toml(
         # keys this module adds and the proxy's password go as well.
         "[shell_environment_policy]",
         "ignore_default_excludes = false",
-        "exclude = ["
-        + ", ".join(_toml_str(n) for n in (_KEY_ENV_PREFIX + "*", *_PROXY_NAMES))
-        + "]",
+        "exclude = [" + ", ".join(_toml_str(n) for n in _EXCLUDED) + "]",
     ]
     if proxies:
         lines += ["", "[shell_environment_policy.set]"]

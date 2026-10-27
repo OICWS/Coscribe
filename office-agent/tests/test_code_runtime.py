@@ -547,7 +547,15 @@ def test_codex_commands_get_no_keys_and_the_proxy_without_its_password() -> None
     # Codex then drops every name holding KEY, SECRET or TOKEN; checked against the real
     # 0.163.0 binary with `codex sandbox -- env`.
     assert policy["ignore_default_excludes"] is False
-    assert policy["exclude"] == ["COSCRIBE_CODEX_KEY_*", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY"]
+    assert policy["exclude"] == [
+        "COSCRIBE_CODEX_KEY_*",
+        "*PASSWORD*",
+        "*PASSWD*",
+        "*CREDENTIAL*",
+        "*HTTP_PROXY",
+        "*HTTPS_PROXY",
+        "*ALL_PROXY",
+    ]
     assert policy["set"] == {
         "HTTPS_PROXY": "http://proxy.example:8080",
         "http_proxy": "http://proxy.example:8080",

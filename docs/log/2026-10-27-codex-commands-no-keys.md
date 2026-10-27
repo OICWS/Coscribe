@@ -8,8 +8,10 @@ did the same for the script and command tools.
 
 ## Shipped
 - `code_runtime/launch.py`'s `config_toml` writes `ignore_default_excludes = false`, excludes
-  `COSCRIBE_CODEX_KEY_*` and `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, and sets those proxies
-  again without their `user:password@`. Codex's own process still gets the full environment:
+  `COSCRIBE_CODEX_KEY_*`, `*PASSWORD*`, `*PASSWD*`, `*CREDENTIAL*` and every name ending in
+  `HTTP_PROXY`, `HTTPS_PROXY` or `ALL_PROXY` (a tool's own copy such as
+  `npm_config_https_proxy` too), and sets the standard proxies again without their
+  `user:password@`. Codex's own process still gets the full environment:
   it reads its key and the proxy there.
 - Checked against the real Codex 0.163.0 Linux binary with `codex sandbox -- env` and fake
   values: before, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` and the proxy with its password reached
@@ -23,6 +25,8 @@ did the same for the script and command tools.
 ## Not verified
 - The Windows build of Codex and its elevated sandbox; Codex's source applies the same policy
   there.
-- Variables that hold a secret under another name (`DATABASE_URL` with a password, a tool's own
-  proxy variable such as `npm_config_https_proxy`) still reach Codex's commands; the tools'
-  allow-list (part 1) does not have this gap.
+- Variables that hold a secret under a name none of these patterns match (`DATABASE_URL` with a
+  password in it) still reach Codex's commands; the tools' allow-list (part 1) does not have
+  this gap. An allow-list here would be `include_only` sent from `thread.py`, built from part
+  1's list and the conversation's variables: a follow-up once both parts are merged, together
+  with keeping one copy of the credential-stripping helper.
