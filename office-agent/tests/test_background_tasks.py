@@ -365,3 +365,22 @@ async def test_a_background_script_gets_the_conversations_variables(
     finished = await _wait_until_finished(tools, started["task_id"])
 
     assert finished["status"] == "succeeded" and "north" in finished["output"]
+
+
+async def test_a_background_script_is_not_handed_the_servers_keys_or_proxy_password(
+    tools: BgTools, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "gemini-not-for-scripts")
+    monkeypatch.setenv("https_proxy", "http://alice:hunter2@proxy.example:8080")
+
+    started = await tools.run_background_script(
+        language="python",
+        script="import os; print(sorted(os.environ.items()))",
+        description="print the environment",
+    )
+    finished = await _wait_until_finished(tools, started["task_id"])
+
+    assert finished["status"] == "succeeded", finished
+    assert "gemini-not-for-scripts" not in finished["output"]
+    assert "hunter2" not in finished["output"]
+    assert "proxy.example:8080" in finished["output"]

@@ -13,7 +13,7 @@ or the Settings routes that install packages (`web/routes/settings/environments.
 
 ## Public interface
 `build_script_tools`, `build_node_script_tools`, `ensure_script_env`, `ensure_node_env`,
-`venv_python`, `overlay_env`, `resolve_python_command`, the package-install functions
+`venv_python`, `child_env`, `resolve_python_command`, the package-install functions
 (`install_python_package`, `list_python_packages`, `uninstall_python_package` and the `_node_`
 twins), the interpreter overrides (`get_interpreter_override`, `set_interpreter_override`,
 `working_interpreters`, `fallbacks_for_platform`), the folder-guard helpers (`suggested_folder`,
@@ -30,6 +30,10 @@ twins), the interpreter overrides (`get_interpreter_override`, `set_interpreter_
 `coscribe.runtime`, `coscribe.tools._files_written`, `coscribe.tools._output_truncation`.
 
 ## Invariants
+- A script or command the agent runs starts from `child_env` (`env_allowlist.py`): a list of the
+  names Windows and the usual tools need, the proxy addresses without a user name or password,
+  then the conversation's variables. Never from `os.environ`, which holds the provider keys
+  (issue #667). The container's self-test starts its probe the same way.
 - On Windows, where the self-test passed, every script run (the two tools and the background
   ones in `tools/bookkeeping/background_tasks.py`) starts in the AppContainer with only its
   conversation's folders (decision 0021). Where the self-test failed, `for_scripts` refuses the
@@ -51,7 +55,7 @@ twins), the interpreter overrides (`get_interpreter_override`, `set_interpreter_
   the uninstaller takes all of them off (`coscribe-server --revoke-folder-grants`).
 
 ## Tests
-`tests/test_scripts_tool.py`, `tests/test_node_scripts_tool.py`, `tests/test_script_guard.py`,
+`tests/test_env_allowlist.py`, `tests/test_scripts_tool.py`, `tests/test_node_scripts_tool.py`, `tests/test_script_guard.py`,
 `tests/test_script_env.py`, `tests/test_own_python.py`, `tests/test_node_env.py`, `tests/test_env_lock.py`,
 `tests/test_isolation.py` (its container tests run in the Windows CI job),
 `tests/test_command_sandbox.py` (the real sandbox runs in `tests/test_windows_real.py`).
