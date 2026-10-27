@@ -1,6 +1,6 @@
-"""The line that tells coscribe the user changed a Word document in the app since its last turn
-(decision 0019, as `deck_edits.py` does for decks). It goes in front of the user's message with the
-turn's other notes, never into the system prompt or the tool list."""
+"""The line that tells coscribe the user changed a Word document or a Doc in the app since its last
+turn (decisions 0019 and 0025, as `deck_edits.py` does for decks). It goes in front of the user's
+message with the turn's other notes, never into the system prompt or the tool list."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 from langchain_core.messages import BaseMessage
 
 from ..runtime import ToolMetadata
-from ..tools import WorkspaceScope, edits_since_told
+from ..tools import WorkspaceScope, doc_edits_since_told, edits_since_told
 from .activity import summarize_activity
 
 
@@ -24,10 +24,12 @@ def docs_edits_note(
     activity = summarize_activity(messages, catalog, scope)
     lines = []
     for entry in [*activity["outputs"], *activity["references"]]:
-        if not entry["exists"] or not entry["path"].lower().endswith(".docx"):
+        path = entry["path"].lower()
+        if not entry["exists"] or not path.endswith((".docx", ".md")):
             continue
+        told = edits_since_told if path.endswith(".docx") else doc_edits_since_told
         try:
-            found = edits_since_told(scope.resolve(entry["path"]), state_dir)
+            found = told(scope.resolve(entry["path"]), state_dir)
         except (OSError, ValueError, KeyError):
             continue
         if found is not None:

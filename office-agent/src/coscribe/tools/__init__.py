@@ -136,6 +136,20 @@ from .mcp import (
     validate_mcp_config,
     with_secrets,
 )
+from .office.doc import (
+    BlocksRefused as DocBlocksRefused,
+)
+from .office.doc import (
+    DocFileChanged,
+    DocVersionGone,
+    NotADoc,
+    doc_edits_since_told,
+    read_doc_file,
+    remember_doc_before_edit,
+    remember_doc_version,
+    restore_doc_version,
+    save_doc_edits,
+)
 from .office.document_tools import DocumentToolkit, build_document_tools
 from .office.docx import (
     BlocksRefused,
@@ -288,6 +302,16 @@ __all__ = [
     "deck_pdf",
     "BlocksRefused",
     "DocChanged",
+    "DocBlocksRefused",
+    "DocFileChanged",
+    "DocVersionGone",
+    "NotADoc",
+    "doc_edits_since_told",
+    "read_doc_file",
+    "remember_doc_before_edit",
+    "remember_doc_version",
+    "restore_doc_version",
+    "save_doc_edits",
     "edits_since_told",
     "remember_before_edit",
     "remember_version",

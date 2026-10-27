@@ -46,6 +46,13 @@ class DocRestore(BaseModel):
     to: str = Field(min_length=1, max_length=128)
 
 
+class DocFileSave(BaseModel):
+    path: str
+    # The file version the editor read: a save over a newer file is refused.
+    version: str = Field(min_length=1, max_length=128)
+    edits: list[Any] = Field(max_length=2_000)
+
+
 class SlideCommentNew(BaseModel):
     path: str
     slide: str
