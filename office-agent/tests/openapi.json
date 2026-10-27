@@ -331,6 +331,19 @@
         "title": "DocCommentText",
         "type": "object"
       },
+      "DocExport": {
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "DocExport",
+        "type": "object"
+      },
       "DocFileSave": {
         "properties": {
           "edits": {
@@ -5930,6 +5943,53 @@
           }
         },
         "summary": "Post Reply"
+      }
+    },
+    "/api/threads/{thread_id}/doc/export": {
+      "post": {
+        "operationId": "export_api_threads__thread_id__doc_export_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocExport"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export"
       }
     },
     "/api/threads/{thread_id}/doc/restore": {

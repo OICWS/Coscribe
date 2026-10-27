@@ -31,7 +31,9 @@ from .comments import (
     reply_to_doc_comment,
     resolve_doc_comment,
 )
+from .export import docx_markdown
 from .files import DocFileChanged, read_doc_file, save_doc_edits
+from .files import side_folder as doc_side_folder
 from .history import VersionGone as DocVersionGone
 from .history import remember_version as remember_doc_version
 from .history import restore_version as restore_doc_version
@@ -58,6 +60,8 @@ __all__ = [
     "add_doc_comment",
     "apply_edits",
     "delete_doc_comment",
+    "doc_side_folder",
+    "docx_markdown",
     "edit_doc_comment",
     "doc_edits_since_told",
     "is_doc",
