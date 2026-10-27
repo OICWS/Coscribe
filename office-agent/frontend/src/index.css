@@ -66,6 +66,8 @@
   --panel-bg: var(--bg);
   --fg: #201e1d;
   --muted: #7d7979;
+  --flash-bg: #fdecc9;
+  --flash-ink: #f0a020;
   --border: color-mix(in srgb, var(--fg) 14%, transparent);
   --border-hover: color-mix(in srgb, var(--fg) 26%, transparent);
   --accent: #2a78d6;
@@ -127,6 +129,8 @@
   --panel-bg: var(--bg);
   --fg: #f7f5f3;
   --muted: #a19d9b;
+  --flash-bg: color-mix(in srgb, #e8a23c 24%, transparent);
+  --flash-ink: #f0b040;
   --border: color-mix(in srgb, var(--fg) 14%, transparent);
   --border-hover: color-mix(in srgb, var(--fg) 26%, transparent);
   --accent: #4b8fe3;
@@ -1086,4 +1090,66 @@ body {
 }
 .doc-editor .doc-comment-badge:hover {
   background: var(--accent-soft);
+}
+
+/* A found setting: the row lights up orange behind it and a hand-drawn wave is
+ * pencilled under its name, quickly, left to right (flashSetting.ts). */
+.setting-row::before {
+  content: "";
+  position: absolute;
+  inset: 0 -12px;
+  z-index: -1;
+  border-radius: 12px;
+  background: var(--flash-bg);
+  opacity: 0;
+  pointer-events: none;
+}
+.setting-row.setting-flash::before {
+  animation: setting-flash-bg 2.7s ease-out forwards;
+}
+.setting-underline {
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  overflow: visible;
+  pointer-events: none;
+  animation: setting-flash-line 2.7s ease-out forwards;
+}
+.setting-underline path {
+  fill: none;
+  stroke: var(--flash-ink);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: setting-draw 0.35s ease-out forwards;
+}
+@keyframes setting-draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes setting-flash-bg {
+  0%, 13% { opacity: 0; }
+  20%, 57% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes setting-flash-line {
+  0%, 57% { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* Reduced motion keeps the lit row but draws nothing: the line is simply there. The global rule
+ * above would cut every animation to nothing, so the fade is restated with more weight. */
+:root[data-motion="reduced"] .setting-underline path {
+  animation: none !important;
+  stroke-dashoffset: 0;
+}
+:root[data-motion="reduced"] .setting-underline {
+  animation-duration: 2.2s !important;
+}
+:root[data-motion="reduced"] .setting-row.setting-flash::before {
+  animation: setting-flash-bg-still 2.2s ease-out forwards !important;
+}
+@keyframes setting-flash-bg-still {
+  0%, 55% { opacity: 1; }
+  100% { opacity: 0; }
 }
