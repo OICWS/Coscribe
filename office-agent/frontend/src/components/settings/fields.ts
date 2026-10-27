@@ -41,6 +41,20 @@ export const GENERAL_FIELDS: SettingsField[] = [
 // module level names) -- rendered as a SegmentedControl instead of free
 // text, see GeneralTab.tsx. Not in GENERAL_FIELDS above: that array feeds
 // a generic free-text-field loop, and this isn't one.
+export const USER_NAME_KEY = "COSCRIBE_USER_NAME";
+export const USER_ROLE_KEY = "COSCRIBE_USER_ROLE";
+export const USER_ROLES = [
+  { value: "", label: "Not set" },
+  { value: "Student", label: "Student" },
+  { value: "Researcher", label: "Researcher" },
+  { value: "Engineer", label: "Engineer" },
+  { value: "Analyst", label: "Analyst" },
+  { value: "Manager", label: "Manager" },
+  { value: "Designer", label: "Designer" },
+  { value: "Writer", label: "Writer" },
+  { value: "Other", label: "Other" },
+] as const;
+
 export const LOG_LEVEL_KEY = "COSCRIBE_LOG_LEVEL";
 export const LOG_LEVELS = [
   { value: "DEBUG", label: "Debug" },
