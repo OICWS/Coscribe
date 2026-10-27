@@ -18,10 +18,13 @@ from coscribe.web.routes.settings import libreoffice as routes
 from .helpers import FakeToolCallingChatModel, _client_lg
 
 
+_LAUNCHER = "soffice"
+
+
 @pytest.fixture(autouse=True)
 def _nothing_installed(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(lo.shutil, "which", lambda _name: None)
-    monkeypatch.setattr(lo, "_launcher_names", lambda: ("soffice",))
+    monkeypatch.setattr(lo, "_launcher_names", lambda: (_LAUNCHER,))
     lo._version_of.cache_clear()
 
 
