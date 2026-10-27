@@ -68,10 +68,14 @@ the first PR checks whether Tiptap's own markdown extension does it and writes t
 coscribe last read is refused with a re-read; the versions are kept so a change made behind the
 person can be undone; coscribe is told once what the person changed at its next turn.
 
-**Comments for coscribe.** The same as a deck's (0015, `view_comments.py`): `comments.json`, a thread
-per comment anchored to a block and the words it quotes, reply, resolve, delete; four tools with the
-deck's names (deferred, so the tool list stays fixed, 0001) and a note at the next turn naming the
-open comments. A comment whose block was changed or removed is kept and shown as detached.
+**Comments for coscribe.** The same flow as a deck's (0015, `view_comments.py`), which has no comment
+tools for the model: the person adds a comment on a block, and when it is for coscribe the editor also
+sends it as a chat message that quotes the block; when the turn ends the editor writes coscribe's
+answer back as a reply to that comment. `comments.json` in the side folder holds each comment with
+its replies, resolved state and an anchor: the text of its block and which copy of that text it is,
+so it follows its block when blocks are added or removed and is kept, shown as detached, when the
+text is gone. (An earlier version of this note had four deferred tools and a next-turn note; the
+deck does neither, and no new tool keeps the tool list fixed, 0001.)
 
 **The card.** An artifact card like a deck's: title, a "Doc" badge, last change, and a thumbnail the
 frontend draws from the first blocks. Same menu (rename, delete to the recycle bin, duplicate,
@@ -104,7 +108,8 @@ file to edit.
    dependency).
 2. Routes and versions: read blocks, save changed blocks, the refused-after-save rule, kept
    versions, the note of what the person changed (about 400).
-3. Comments: `comments.json`, four deferred tools, the next-turn note (about 400; mirrors the deck).
+3. Comments: `comments.json` with anchored comments, replies, resolve and delete, and their routes
+   (about 400; mirrors the deck; the message to coscribe and the reply are the editor's, step 4).
 4. The editor: markdown blocks in the existing Tiptap panel, the Doc look, comments in the margin
    (about 600, frontend; the Word panel's code is reused, not changed).
 5. Artifacts: the card, the listing kind, the New Doc tile, the Export menu (about 400).

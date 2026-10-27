@@ -19,6 +19,14 @@ from .blocks import (
     read_doc,
 )
 from .chart import Chart, parse_chart
+from .comments import (
+    DocCommentNotFound,
+    add_doc_comment,
+    delete_doc_comment,
+    read_doc_comments,
+    reply_to_doc_comment,
+    resolve_doc_comment,
+)
 from .files import DocFileChanged, read_doc_file, save_doc_edits
 from .history import VersionGone as DocVersionGone
 from .history import remember_version as remember_doc_version
@@ -28,6 +36,7 @@ from .told import remember_before_edit as remember_doc_before_edit
 
 __all__ = [
     "CALLOUTS",
+    "DocCommentNotFound",
     "DocFileChanged",
     "DocVersionGone",
     "Block",
@@ -39,14 +48,19 @@ __all__ = [
     "Insert",
     "NotADoc",
     "Replace",
+    "add_doc_comment",
     "apply_edits",
+    "delete_doc_comment",
     "doc_edits_since_told",
     "is_doc",
     "parse_chart",
     "read_doc",
+    "read_doc_comments",
     "read_doc_file",
     "remember_doc_before_edit",
     "remember_doc_version",
+    "reply_to_doc_comment",
+    "resolve_doc_comment",
     "restore_doc_version",
     "save_doc_edits",
 ]

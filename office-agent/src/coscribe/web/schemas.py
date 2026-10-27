@@ -53,6 +53,26 @@ class DocFileSave(BaseModel):
     edits: list[Any] = Field(max_length=2_000)
 
 
+class DocCommentNew(BaseModel):
+    path: str
+    # The block the comment is on, by its index in the read the editor holds.
+    block: int = Field(ge=0, le=100_000)
+    text: str = Field(min_length=1, max_length=4000)
+    sent: bool = False
+
+
+class DocCommentReply(BaseModel):
+    path: str
+    text: str = Field(min_length=1, max_length=4000)
+    # The reply carries coscribe's answer to a comment sent to it, rather than the user's words.
+    from_coscribe: bool = False
+
+
+class DocCommentState(BaseModel):
+    path: str
+    resolved: bool
+
+
 class SlideCommentNew(BaseModel):
     path: str
     slide: str
