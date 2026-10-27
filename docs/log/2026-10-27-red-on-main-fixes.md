@@ -19,6 +19,9 @@ and #672), and the maintainer merges only green PRs.
 - `artifacts.spec.ts` "the design-system menu leads to …" (also red on `main`'s nightly run): the
   menu could close between the check that its item is shown and the click, which then waited out
   the test's 45 s. The click is now inside the retry.
+- Tab on a prompt suggestion put the caret at the suggestion's end one frame later, so a key
+  typed within that frame was left behind the caret (the e2e saw "backon page 2 "). The caret is
+  now set only while the box still holds the suggestion (`Composer.tsx`).
 - `docx-review.spec.ts`: "Ask Coscribe" opens the ask box since #660, so the spec picks
   "Make it shorter" and checks that the instruction goes with the quoted words.
 

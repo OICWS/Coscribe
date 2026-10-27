@@ -363,7 +363,7 @@ export function Composer({
         onSuggestionDismiss();
         const el = event.currentTarget;
         requestAnimationFrame(() => {
-          el.selectionStart = el.selectionEnd = ghost.length;
+          if (el.value === ghost) el.selectionStart = el.selectionEnd = ghost.length; // else a key typed meanwhile placed it
           resize();
         });
         return;
