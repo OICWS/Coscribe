@@ -3,6 +3,7 @@ DELETE /api/code/install
 DELETE /api/command-sandbox
 DELETE /api/design-systems/{system_id}
 DELETE /api/environments/{env_id}
+DELETE /api/libreoffice
 DELETE /api/mcp/oauth-apps/{group}
 DELETE /api/mcp/servers/{name}
 DELETE /api/node-env/packages/{name}
@@ -107,6 +108,7 @@ POST /api/command-sandbox
 POST /api/config
 POST /api/design-systems
 POST /api/environments
+POST /api/libreoffice
 POST /api/mcp/oauth-apps/import
 POST /api/mcp/servers
 POST /api/mcp/servers/{name}/bump-version

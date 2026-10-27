@@ -241,7 +241,7 @@ export function CapabilitiesTab({ active, values, onChange }: CapabilitiesTabPro
             now: codeSummary(code.status, codeOn),
             section: SECTIONS.code,
           },
-          { label: "LibreOffice", what: "Optional: shows Office files as pages and checks their layout", now: libreOfficeSummary(libreOffice), section: SECTIONS.office },
+          { label: "LibreOffice", what: "Optional: shows Office files as pages and checks their layout", now: libreOfficeSummary(libreOffice.status), section: SECTIONS.office },
         ]}
       />
       <ScriptsSection
@@ -284,7 +284,7 @@ export function CapabilitiesTab({ active, values, onChange }: CapabilitiesTabPro
       <div id={SECTIONS.code}>
         <CodeTab values={values} onChange={onChange} code={code} codexFolder={folders?.codex} />
       </div>
-      <LibreOfficeSection id={SECTIONS.office} status={libreOffice} />
+      <LibreOfficeSection id={SECTIONS.office} libreOffice={libreOffice} />
       {confirm && (
         <ConfirmDialog
           {...CONFIRMATIONS[confirm]}

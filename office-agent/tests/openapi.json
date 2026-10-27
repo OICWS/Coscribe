@@ -2556,6 +2556,22 @@
       }
     },
     "/api/libreoffice": {
+      "delete": {
+        "operationId": "delete_libreoffice_api_libreoffice_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Delete Libreoffice Api Libreoffice Delete"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Delete Libreoffice"
+      },
       "get": {
         "operationId": "get_libreoffice_api_libreoffice_get",
         "responses": {
@@ -2573,6 +2589,22 @@
           }
         },
         "summary": "Get Libreoffice"
+      },
+      "post": {
+        "operationId": "post_libreoffice_api_libreoffice_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Post Libreoffice Api Libreoffice Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Post Libreoffice"
       }
     },
     "/api/mcp/catalog": {

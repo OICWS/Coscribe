@@ -616,3 +616,58 @@ async def test_the_code_modules_commands_run_in_the_sandbox_and_stay_in_it(
         assert "reject command" in _StubResponses.outputs[3], context
     finally:
         shutil.rmtree(base, ignore_errors=True)
+
+
+@real
+def test_coscribes_own_libreoffice_is_downloaded_unpacked_and_converts_each_format() -> None:
+    """The whole of decision 0026's download: the pinned MSI, `msiexec /a`, the trim, and a copy
+    that still turns Word, Excel and PowerPoint files into PDF. The runner is an administrator, so
+    that it needs none is checked by hand (log/2026-10-27-libreoffice-download.md)."""
+    # A short folder: LibreOffice's own files nest deeply, and under pytest's long temporary path
+    # the conversion made no PDF; a path past Windows' 260 characters is the suspect.
+    tmp_path = Path(os.environ.get("SystemDrive", "C:") + "\\lot")
+    shutil.rmtree(tmp_path, ignore_errors=True)
+    tmp_path.mkdir()
+    try:
+        assert _libreoffice_in(tmp_path) == ["a.pdf", "b.pdf", "c.pdf"]
+    finally:
+        shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def _libreoffice_in(tmp_path: Path) -> list[str]:
+    from docx import Document
+    from openpyxl import Workbook
+    from pptx import Presentation
+
+    from coscribe.tools import find_libreoffice, libreoffice_status
+    from coscribe.tools.libreoffice import convert_to_pdf
+    from coscribe.tools.libreoffice_install import install_libreoffice, remove_libreoffice
+
+    launcher = install_libreoffice(tmp_path)
+    assert find_libreoffice(tmp_path) == (launcher, "own")
+    status = libreoffice_status(tmp_path)
+    assert status["version"] is not None and status["version"].startswith("26.8")
+    size = sum(f.stat().st_size for f in launcher.parents[1].rglob("*") if f.is_file())
+    assert size < 700 * 1024 * 1024, size
+
+    word = tmp_path / "a.docx"
+    document = Document()
+    document.add_paragraph("Word")
+    document.save(str(word))
+    sheet = tmp_path / "b.xlsx"
+    workbook = Workbook()
+    workbook.active["A1"] = "Excel"
+    workbook.save(sheet)
+    deck = tmp_path / "c.pptx"
+    presentation = Presentation()
+    presentation.slides.add_slide(presentation.slide_layouts[0]).shapes.title.text = "PowerPoint"
+    presentation.save(str(deck))
+    made = []
+    for source in (word, sheet, deck):
+        pdf = convert_to_pdf(launcher, source, tmp_path / "pdf", tmp_path / "profile", timeout=180)
+        assert pdf.read_bytes().startswith(b"%PDF"), source.name
+        made.append(pdf.name)
+
+    remove_libreoffice(tmp_path)
+    assert find_libreoffice(tmp_path) is None
+    return made

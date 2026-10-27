@@ -534,6 +534,15 @@ export interface LibreOfficeStatus {
   path: string | null;
   /** Null when it was found but did not report one. */
   version: string | null;
+  /** What a download would be here; null where there is none to offer. */
+  offer: { version: string; download_bytes: number; installed_bytes: number } | null;
+  working: boolean;
+  /** download, unpack, trim or check while working. */
+  step: string;
+  done: number;
+  total: number;
+  /** Why the last download failed, in words for the person. */
+  error: string;
 }
 
 export interface ScriptIsolation {

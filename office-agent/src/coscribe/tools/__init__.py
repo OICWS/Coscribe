@@ -130,6 +130,12 @@ from .exec import (
 )
 from .files import build_file_tools
 from .libreoffice import LibreOfficeStatus, find_libreoffice, libreoffice_status
+from .libreoffice_install import (
+    LibreOfficeUnavailable,
+    install_libreoffice,
+    libreoffice_offer,
+    remove_libreoffice,
+)
 from .mcp import (
     load_mcp_server_configs,
     prepare_for_connect,
@@ -425,6 +431,10 @@ __all__ = [
     "LibreOfficeStatus",
     "find_libreoffice",
     "libreoffice_status",
+    "LibreOfficeUnavailable",
+    "install_libreoffice",
+    "libreoffice_offer",
+    "remove_libreoffice",
     "DocumentToolkit",
     "SpreadsheetToolkit",
     "build_document_tools",

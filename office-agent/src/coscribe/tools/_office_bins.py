@@ -11,12 +11,13 @@ import sys
 
 
 def run_killable(
-    command: list[str], timeout: float, env: dict[str, str] | None = None
+    command: list[str] | str, timeout: float, env: dict[str, str] | None = None
 ) -> subprocess.CompletedProcess[bytes]:
     """`subprocess.run(command, capture_output=True, timeout=timeout,
     check=True)`, except that a timeout kills the whole process group, not
     only the launcher: a launcher (`soffice`, PowerShell) starts the real
-    program, and a plain timeout leaves that running."""
+    program, and a plain timeout leaves that running. A string is the command line as
+    Windows takes it, for a program like msiexec that reads a quoted `NAME="a b"` itself."""
     if sys.platform == "win32":
         group: dict[str, int | bool] = {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
     else:

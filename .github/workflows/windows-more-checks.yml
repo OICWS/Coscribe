@@ -19,6 +19,7 @@ name: Windows more checks
       - "office-agent-sandbox/**"
       - "office-agent/src/coscribe/code_runtime/_pins.py"
       - "office-agent/src/coscribe/tools/bookkeeping/background_tasks.py"
+      - "office-agent/src/coscribe/tools/libreoffice*.py"
       - ".github/CODEOWNERS"
 
 permissions:
