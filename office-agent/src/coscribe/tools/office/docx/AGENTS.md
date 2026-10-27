@@ -9,7 +9,7 @@ implementation in `toolkit.py`; a changed signature also changes `tests/tool_sch
 layout (`tools/office/`), or how the viewer panel draws a document (`web/`, `frontend/`).
 
 ## Public interface
-`DocxToolkit`, `build_docx_tools`, and for the Docs editor (decision 0019, `blocks.py`) `read_doc_blocks`, `read_doc_image`, `save_doc_blocks`, `DocChanged`, `BlocksRefused`, and what the person changed since coscribe was told (`user_edits.py`) `remember_before_edit`, `edits_since_told`, and the versions the editor has held, to undo a change made behind it (`history.py`) `remember_version`, `restore_version`, `VersionGone`. Import them from `coscribe.tools.office.docx`; the coordinator
+`DocxToolkit`, `build_docx_tools`, and for the Docs editor (decision 0019, `blocks.py`) `read_doc_blocks`, `read_doc_image`, `save_doc_blocks`, `DocChanged`, `BlocksRefused`, and what the person changed since coscribe was told (`user_edits.py`) `remember_before_edit`, `edits_since_told`, and the versions the editor has held, to undo a change made behind it (`history.py`) `remember_version`, `restore_version`, `VersionGone`, and `docx_from_markdown`, a Word file made of the writer's markdown as bytes, for an export. Import them from `coscribe.tools.office.docx`; the coordinator
 reaches them through `coscribe.tools.office.document_tools`.
 
 ## Depends on

@@ -46,6 +46,10 @@ class DocRestore(BaseModel):
     to: str = Field(min_length=1, max_length=128)
 
 
+class DocExport(BaseModel):
+    path: str
+
+
 class DocFileSave(BaseModel):
     path: str
     # The file version the editor read: a save over a newer file is refused.

@@ -7,7 +7,7 @@ import re
 import shutil
 from pathlib import Path
 
-from ..tools import copy_deck, deck_files, move_deck
+from ..tools import copy_deck, deck_files, doc_side_folder, move_deck
 
 
 class ArtifactFileError(Exception):
@@ -25,6 +25,14 @@ def _is_deck(path: Path) -> bool:
     return path.suffix.lower() == ".pptx"
 
 
+def _doc_folder(path: Path) -> Path | None:
+    """A Doc's side folder (versions, comments, pictures), when it has one."""
+    if path.suffix.lower() != ".md":
+        return None
+    folder = doc_side_folder(path)
+    return folder if folder.is_dir() else None
+
+
 def renamed_path(path: Path, name: str) -> Path:
     """Where `path` goes when it is named `name`: same folder and same ending."""
     stem = name.strip()
@@ -35,6 +43,8 @@ def renamed_path(path: Path, name: str) -> Path:
     target = path.with_name(stem + path.suffix)
     if target.exists() and not _same_file(target, path):
         raise ArtifactFileError(f"{target.name} already exists in that folder")
+    if _doc_folder(path) and doc_side_folder(target).exists():
+        raise ArtifactFileError(f"{doc_side_folder(target).name} already exists in that folder")
     return target
 
 
@@ -47,10 +57,13 @@ def _same_file(a: Path, b: Path) -> bool:
 
 def rename_file(path: Path, name: str) -> Path:
     target = renamed_path(path, name)
+    folder = _doc_folder(path)
     if _is_deck(path):
         move_deck(path, target)
     else:
         path.rename(target)
+    if folder:
+        folder.rename(doc_side_folder(target))
     return target
 
 
@@ -58,7 +71,7 @@ def free_copy_path(path: Path) -> Path:
     """`name copy.ext`, then `name copy 2.ext`, the first that is free."""
     candidate = path.with_name(f"{path.stem} copy{path.suffix}")
     n = 2
-    while candidate.exists():
+    while candidate.exists() or (path.suffix == ".md" and doc_side_folder(candidate).exists()):
         candidate = path.with_name(f"{path.stem} copy {n}{path.suffix}")
         n += 1
     return candidate
@@ -70,6 +83,13 @@ def copy_file(path: Path) -> Path:
         copy_deck(path, target)
     else:
         shutil.copy2(path, target)
+    if folder := _doc_folder(path):
+        # The copy starts with the original's pictures but not its comments or kept versions.
+        shutil.copytree(
+            folder,
+            doc_side_folder(target),
+            ignore=shutil.ignore_patterns("comments.json", "versions"),
+        )
     return target
 
 
@@ -79,5 +99,7 @@ def trash_file(path: Path) -> None:
     from send2trash import send2trash
 
     files = deck_files(path) if _is_deck(path) else [path]
+    if folder := _doc_folder(path):
+        files = [*files, folder]
     for file in files:
         send2trash(str(file))

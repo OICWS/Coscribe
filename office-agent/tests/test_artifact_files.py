@@ -83,3 +83,39 @@ def test_delete_sends_the_deck_and_its_pages_to_the_recycle_bin(
     monkeypatch.setattr("send2trash.send2trash", sent.append)
     trash_file(deck)
     assert sent == [str(deck), str(tmp_path / "pages")]
+
+
+def _doc(tmp_path: Path) -> Path:
+    path = tmp_path / "plan.md"
+    path.write_text("---\ncoscribe: doc\n---\n\nText.\n", encoding="utf-8")
+    side = tmp_path / "plan.doc"
+    (side / "assets").mkdir(parents=True)
+    (side / "assets" / "a.png").write_bytes(b"png")
+    (side / "versions").mkdir()
+    (side / "versions" / "1.md").write_text("old", encoding="utf-8")
+    (side / "comments.json").write_text('{"comments": []}', encoding="utf-8")
+    return path
+
+
+def test_a_renamed_doc_takes_its_side_folder_with_it(tmp_path: Path) -> None:
+    target = rename_file(_doc(tmp_path), "launch")
+
+    assert target.name == "launch.md" and not (tmp_path / "plan.doc").exists()
+    assert (tmp_path / "launch.doc" / "comments.json").is_file()
+    assert (tmp_path / "launch.doc" / "assets" / "a.png").is_file()
+
+
+def test_a_doc_is_not_renamed_over_another_docs_folder(tmp_path: Path) -> None:
+    (tmp_path / "launch.doc").mkdir()
+
+    with pytest.raises(ArtifactFileError):
+        renamed_path(_doc(tmp_path), "launch")
+
+
+def test_a_copied_doc_has_its_pictures_but_not_the_comments_or_versions(tmp_path: Path) -> None:
+    copy = copy_file(_doc(tmp_path))
+
+    side = tmp_path / "plan copy.doc"
+    assert copy.name == "plan copy.md" and (side / "assets" / "a.png").is_file()
+    assert not (side / "comments.json").exists() and not (side / "versions").exists()
+    assert (tmp_path / "plan.doc" / "comments.json").is_file()

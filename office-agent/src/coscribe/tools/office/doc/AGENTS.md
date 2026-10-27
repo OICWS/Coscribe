@@ -18,7 +18,7 @@ the note to coscribe (`conversation/docs_edits.py`), the editor, the card or the
 `add_doc_comment`, `reply_to_doc_comment`, `resolve_doc_comment`, `edit_doc_comment`,
 `mark_doc_comment_sent`, `delete_doc_comment`,
 `DocCommentNotFound`, `DocCommentRefused`, and for the pictures `add_doc_asset`, `read_doc_asset`,
-`DocAssetRefused`. Import them from `coscribe.tools.office.doc`;
+`DocAssetRefused`, `doc_side_folder`, and for the Word export `docx_markdown` (`export.py`). Import them from `coscribe.tools.office.doc`;
 the server and the conversation reach them through `coscribe.tools`.
 
 ## Depends on

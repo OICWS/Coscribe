@@ -24,6 +24,8 @@ from ...tools import (
     add_doc_asset,
     add_doc_comment,
     delete_doc_comment,
+    docx_from_markdown,
+    docx_markdown,
     edit_doc_comment,
     mark_doc_comment_sent,
     read_doc_asset,
@@ -41,6 +43,7 @@ from ..schemas import (
     DocCommentReply,
     DocCommentState,
     DocCommentText,
+    DocExport,
     DocFileSave,
     DocRestore,
 )
@@ -50,6 +53,7 @@ from ..state import AppState
 _NO_DOC = "No Doc at that path"
 _UNREADABLE = "This Doc could not be read"
 _GONE = "That version is no longer kept"
+_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 _REFUSED_ASSET = {
     "too_big": "A picture is 8 MB at most",
     "not_a_picture": "That file is not a picture",
@@ -151,6 +155,29 @@ async def _run(job: Callable[..., Any], *args: Any) -> Any:
         )
     except (ValueError, OSError):  # a file that is not text: its parser's message is not shown
         return JSONResponse({"error": _UNREADABLE}, status_code=422)
+
+
+def _export_route(router: APIRouter, state: AppState) -> None:
+    """The Doc as a Word file, made for the download and kept nowhere."""
+
+    async def export(thread_id: str, body: DocExport) -> Response:
+        file = _doc_file(state, thread_id, body.path, write=False)
+        if file is None:
+            return JSONResponse({"error": _NO_DOC}, status_code=404)
+        try:
+            await asyncio.to_thread(read_doc_file, file)
+            data = await asyncio.to_thread(_word_file, file)
+        except NotADoc:
+            return JSONResponse({"error": _NO_DOC}, status_code=404)
+        except Exception:
+            return JSONResponse({"error": _UNREADABLE}, status_code=422)
+        return Response(data, media_type=_DOCX, headers={"Cache-Control": "no-store"})
+
+    router.add_api_route("/api/threads/{thread_id}/doc/export", export, methods=["POST"])
+
+
+def _word_file(file: Path) -> bytes:
+    return docx_from_markdown(docx_markdown(file.read_text(encoding="utf-8")))
 
 
 def _asset_routes(router: APIRouter, state: AppState) -> None:
@@ -268,6 +295,7 @@ def router(state: AppState) -> APIRouter:
     _read_route(router, state)
     _save_route(router, state)
     _restore_route(router, state)
+    _export_route(router, state)
     _asset_routes(router, state)
     _comment_routes(router, state)
     _comment_edit_routes(router, state)

@@ -190,6 +190,23 @@ def test_a_comment_keeps_its_quote_and_can_be_edited_and_sent_later_lg(
     assert (listed[0]["sent"], listed[0]["resolved"]) == (True, False)
 
 
+def test_a_doc_is_exported_as_a_word_file_and_nothing_is_kept_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = _workspace(tmp_path)
+    (workspace / "notes.md").write_text("# Just notes\n", encoding="utf-8")
+    url = "/api/threads/t_one/doc/export"
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        made = client.post(url, json={"path": "plan.md"})
+        plain = client.post(url, json={"path": "notes.md"})
+        outside = client.post(url, json={"path": "../x.md"})
+
+    assert made.status_code == 200 and made.content[:2] == b"PK"
+    assert "wordprocessingml" in made.headers["content-type"]
+    assert (plain.status_code, outside.status_code) == (404, 404)
+    assert sorted(p.name for p in workspace.iterdir()) == ["notes.md", "plan.md"]
+
+
 def test_what_cannot_be_commented_on_is_refused_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
