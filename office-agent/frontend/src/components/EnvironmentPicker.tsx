@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { useComposerAction } from "../lib/menuCommands";
 import { getEnvironments } from "../lib/rest";
-import { useClickOutside } from "../lib/useClickOutside";
 import type { Environment } from "../types/settings";
 import { DEFAULT_ENVIRONMENT, EnvironmentDialog } from "./EnvironmentDialog";
 import { CheckIcon, PlusIcon, SearchIcon, SettingsIcon } from "./icons";
@@ -26,6 +26,8 @@ function EnvironmentMenu({
   onQuery,
   onPick,
   onEdit,
+  placement,
+  menuRef,
 }: {
   environments: Environment[];
   current: string;
@@ -33,10 +35,17 @@ function EnvironmentMenu({
   onQuery: (query: string) => void;
   onPick: (id: string) => void;
   onEdit: (id: string | null) => void;
+  /** Set when the menu is portaled out of a clipping dialog: fixed, below the button. */
+  placement?: CSSProperties;
+  menuRef: RefObject<HTMLDivElement | null>;
 }) {
   const shown = environments.filter((e) => e.name.toLowerCase().includes(query.trim().toLowerCase()));
   return (
-    <div className="absolute bottom-full left-0 z-20 mb-1 w-72 rounded-[10px] border border-[var(--border)] bg-[var(--panel-bg)] p-1 shadow-[var(--shadow)]">
+    <div
+      ref={menuRef}
+      style={placement}
+      className={`${placement ? "fixed z-[60]" : "absolute bottom-full left-0 z-20 mb-1"} w-72 rounded-[10px] border border-[var(--border)] bg-[var(--panel-bg)] p-1 shadow-[var(--shadow)]`}
+    >
       <div className="flex items-center gap-2 px-2.5 py-1.5">
         <SearchIcon className="h-4 w-4 shrink-0 text-[var(--muted)]" />
         <input
@@ -89,6 +98,22 @@ function EnvironmentMenu({
   );
 }
 
+/** Closes the open menu on a press outside the button's root and the (possibly portaled) menu. */
+function useCloseOnOutsidePress(
+  open: boolean,
+  roots: RefObject<HTMLElement | null>[],
+  close: () => void,
+) {
+  useEffect(() => {
+    if (!open) return;
+    const handler = (event: MouseEvent) => {
+      if (!roots.some((root) => root.current?.contains(event.target as Node))) close();
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open, roots, close]);
+}
+
 /** Which environment this conversation uses: search, pick, edit one with its gear, or make a new
  * one. An edit applies to every conversation using that environment. */
 export function EnvironmentPicker({ current, disabled, onPick, forTask = false }: EnvironmentPickerProps) {
@@ -96,8 +121,11 @@ export function EnvironmentPicker({ current, disabled, onPick, forTask = false }
   const [query, setQuery] = useState("");
   const [environments, setEnvironments] = useState<Environment[]>([]);
   const [editing, setEditing] = useState<string | null | undefined>(undefined);
+  const [placement, setPlacement] = useState<CSSProperties | undefined>(undefined);
   const rootRef = useRef<HTMLDivElement>(null);
-  useClickOutside(rootRef, () => setOpen(false), open);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const roots = useMemo(() => [rootRef, menuRef], []);
+  useCloseOnOutsidePress(open, roots, useCallback(() => setOpen(false), []));
 
   const reload = useCallback(() => {
     getEnvironments()
@@ -117,6 +145,8 @@ export function EnvironmentPicker({ current, disabled, onPick, forTask = false }
     if (id !== current) onPick(id);
   };
 
+  const wrapMenu = (menu: ReactElement) => (placement ? createPortal(menu, document.body) : menu);
+
   return (
     <div className="relative min-w-0 max-w-48" ref={rootRef}>
       <button
@@ -132,25 +162,33 @@ export function EnvironmentPicker({ current, disabled, onPick, forTask = false }
         aria-expanded={open}
         className="flex h-8 max-w-full items-center rounded-lg px-2 text-sm text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)] disabled:opacity-50 disabled:hover:bg-transparent"
         onClick={() => {
-          if (!open) reload();
+          if (!open) {
+            reload();
+            // The task form scrolls and clips, so its menu is portaled out and opens downward.
+            const rect = rootRef.current?.getBoundingClientRect();
+            setPlacement(forTask && rect ? { top: rect.bottom + 4, left: rect.left } : undefined);
+          }
           setOpen((v) => !v);
         }}
       >
         <span className="truncate">{label}</span>
       </button>
-      {open && (
-        <EnvironmentMenu
-          environments={environments}
-          current={current}
-          query={query}
-          onQuery={setQuery}
-          onPick={pick}
-          onEdit={(id) => {
-            setOpen(false);
-            setEditing(id);
-          }}
-        />
-      )}
+      {open &&
+        wrapMenu(
+          <EnvironmentMenu
+            placement={placement}
+            menuRef={menuRef}
+            environments={environments}
+            current={current}
+            query={query}
+            onQuery={setQuery}
+            onPick={pick}
+            onEdit={(id) => {
+              setOpen(false);
+              setEditing(id);
+            }}
+          />,
+        )}
       {editing !== undefined && (
         <EnvironmentDialog
           environmentId={editing}
