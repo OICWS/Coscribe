@@ -423,8 +423,13 @@ export const deleteThreadGroup = (name: string) =>
 
 // -- Background tasks: sub-agents and scripts --------------------
 
+/** What the conversation did. Its outputs leave out a file that is gone again: a scratch file the run
+ * made and removed is no output to show. */
 export const getThreadActivity = (threadId: string) =>
-  getJson<ThreadActivity>(`/api/threads/${encodeURIComponent(threadId)}/activity`);
+  getJson<ThreadActivity>(`/api/threads/${encodeURIComponent(threadId)}/activity`).then((activity) => ({
+    ...activity,
+    outputs: activity.outputs.filter((file) => file.exists),
+  }));
 
 /** Resolves to an error message, or null once the file was handed to the OS. */
 export async function openThreadFile(threadId: string, path: string, reveal: boolean): Promise<string | null> {

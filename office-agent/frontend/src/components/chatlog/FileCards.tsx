@@ -3,13 +3,15 @@ import { KINDS } from "../../lib/artifacts";
 import { baseName, KIND_WORDS, kindOfFile, touchedFiles } from "../../lib/fileMentions";
 import { ChevronRightIcon } from "../icons";
 import { KindIcon } from "../artifacts/artifactIcons";
-import { ViewFile } from "./contexts";
+import { ThreadIdContext } from "../threadContext";
+import { openMentioned, ViewFile } from "./contexts";
 import type { ToolOrApprovalItem } from "./types";
 
 /** The decks and documents a run of calls made or changed, each a card that opens it in its panel:
  * the end of a turn's answer points at what it made. */
 export function FileCards({ items }: { items: ToolOrApprovalItem[] }) {
   const view = useContext(ViewFile);
+  const threadId = useContext(ThreadIdContext);
   const paths = touchedFiles(items);
   if (!view || paths.length === 0) return null;
   return (
@@ -24,7 +26,7 @@ export function FileCards({ items }: { items: ToolOrApprovalItem[] }) {
             type="button"
             title={`Open ${name}`}
             className="flex w-full max-w-[460px] items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-left hover:bg-[var(--card-bg)]"
-            onClick={() => view(path)}
+            onClick={() => openMentioned(view, threadId, path)}
           >
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ color: KINDS[kind].colour, background: `color-mix(in srgb, ${KINDS[kind].colour} 14%, transparent)` }}>
               <KindIcon kind={kind} className="h-5 w-5" />
