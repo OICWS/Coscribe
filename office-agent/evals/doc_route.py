@@ -6,7 +6,8 @@ an answer in chat, and three that ask to be explained something, one of them in 
 send (decision 0027: the AI decides when an explanation becomes a Doc). Each is sent to coscribe's
 real agent with the built-in skills, in a throwaway workspace; the result is classified (a Doc, a
 .docx, plain Markdown or nothing) and a Doc is read by the app's own parsers. It calls a model, so
-it is run by hand, off-peak, and is not part of CI; only its deterministic parts are tested (`tests/test_evals_doc_route.py`).
+it is run by hand, off-peak, and is not part of CI; only its deterministic parts are tested
+(`tests/test_evals_doc_route.py`).
 
     python -m evals.doc_route --out evals/runs/doc-route
     python -m evals.doc_route --tasks 01,04 --out evals/runs/try
