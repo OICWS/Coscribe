@@ -31,7 +31,6 @@ type PermissionMode = (typeof PERMISSION_MODES)[number]["value"];
 
 const DEFAULT_MODEL_KEY = "COSCRIBE_DEFAULT_MODEL";
 const MAX_TURNS_KEY = "COSCRIBE_MAX_TURNS";
-const REVIEWER_NAME_KEY = "COSCRIBE_REVIEWER_NAME";
 
 function DefaultModelSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const models = useConfiguredModels();
@@ -146,29 +145,6 @@ function ProfileSection({ values, onChange }: GeneralTabProps) {
   );
 }
 
-function ReviewSection({ values, onChange }: GeneralTabProps) {
-  const reviewer = GENERAL_FIELDS.find((f) => f.key === REVIEWER_NAME_KEY)!;
-  return (
-    <SettingsSection title="Review">
-      <SettingRows>
-        <SettingRow
-          label={reviewer.label}
-          description={reviewer.description}
-          control={
-            <input
-              aria-label={reviewer.label}
-              className={`${fieldClass} w-48`}
-              value={values[REVIEWER_NAME_KEY] ?? ""}
-              placeholder={reviewer.placeholder}
-              onChange={(e) => onChange(REVIEWER_NAME_KEY, e.target.value)}
-            />
-          }
-        />
-      </SettingRows>
-    </SettingsSection>
-  );
-}
-
 export function GeneralTab({ values, onChange }: GeneralTabProps) {
   const field = (key: string) => GENERAL_FIELDS.find((f) => f.key === key)!;
   const maxTurns = field(MAX_TURNS_KEY);
@@ -212,8 +188,6 @@ export function GeneralTab({ values, onChange }: GeneralTabProps) {
           />
         </SettingRows>
       </SettingsSection>
-
-      <ReviewSection values={values} onChange={onChange} />
 
       <SettingsSection title="Instructions">
         <GlobalInstructionsSection active />

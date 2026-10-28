@@ -56,3 +56,11 @@ export const ChecklistIcon = (props: Icon) => (
     <path d="M11 15.5h10" />
   </Svg>
 );
+
+export const ImageIcon = (props: Icon) => (
+  <Svg {...props}>
+    <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+    <circle cx="9" cy="10" r="1.5" />
+    <path d="m4 17 5-5 4 4 2.5-2.5L20 18" />
+  </Svg>
+);
