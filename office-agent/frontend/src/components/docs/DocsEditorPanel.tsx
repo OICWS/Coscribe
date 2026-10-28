@@ -19,8 +19,6 @@ interface PanelProps {
   onFileChanged?: (path: string | null) => void;
   /** Sends coscribe a message about selected words; absent where there is no conversation. */
   onAsk?: (text: string) => void;
-  /** Back to the Word layout. */
-  onPreview: () => void;
 }
 
 /** What the person is offered after the file changed under the editor: to take that change back, to
@@ -144,9 +142,6 @@ function DocsEditor({
         <span className="text-xs text-[var(--muted)]" role="status">
           {SAVE_LABELS[state.kind]}
         </span>
-        <button type="button" className="flex h-7 items-center rounded-lg border border-[var(--border)] px-2.5 text-xs text-[var(--fg)] hover:bg-[var(--card-bg)]" onClick={panel.onPreview}>
-          Word layout
-        </button>
       </DocxPanelHeader>
       {editor && <DocsToolbar editor={editor} />}
       {editor && <PictureBar editor={editor} />}
