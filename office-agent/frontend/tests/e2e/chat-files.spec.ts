@@ -36,3 +36,22 @@ test(`a file named in a reply is a chip with a card on hover, and the turn ends 
   await expect(page.getByRole("region", { name: "Viewer" })).toBeVisible();
 });
 }
+
+test("a Word file's card opens it in Word, since the app has no panel for it", async ({ page }) => {
+  const name = `word-${Math.random().toString(36).slice(2, 8)}`;
+  const opened: string[] = [];
+  await page.route("**/files/open", async (route) => {
+    opened.push(route.request().postData() ?? "");
+    await route.fulfill({ json: { ok: true } });
+  });
+  await page.goto(freshThreadPath("chat-files-word"));
+  await waitForConnected(page);
+  await page.locator("textarea").fill(`write it [[stub-tool write_docx {"path":"${name}.docx","content":"# Title\\n\\nBody"}]] [[stub-say I wrote ${name}.docx for you.]]`);
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Approve", exact: true }).click();
+
+  await page.getByTitle(`Open ${name}.docx`).click();
+  await expect.poll(() => opened.length).toBe(1);
+  expect(JSON.parse(opened[0])).toEqual({ path: `${name}.docx`, reveal: false });
+  await expect(page.getByRole("region", { name: "Viewer" })).toHaveCount(0);
+});
