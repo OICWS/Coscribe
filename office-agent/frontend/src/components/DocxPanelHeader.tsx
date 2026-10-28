@@ -3,7 +3,7 @@ import { exportDocument, type DocsExport } from "../lib/docsExport";
 import { PanelFileMenu } from "./artifacts/PanelFileMenu";
 import { PanelTitleButton } from "./artifacts/PanelTitleButton";
 import { useDockPanel } from "./dock/dockContext";
-import { DownloadIcon, PencilIcon } from "./icons";
+import { DownloadIcon } from "./icons";
 import type { MenuEntry } from "./slides/SlideMenu";
 
 const EXPORTS: { kind: DocsExport; label: string; hint: string }[] = [
@@ -17,14 +17,11 @@ export function DocxPanelHeader({
   threadId,
   path,
   onFileChanged,
-  onEdit,
   children,
 }: {
   threadId: string;
   path: string;
   onFileChanged?: (path: string | null) => void;
-  /** Offers the editor: a button that calls this. */
-  onEdit?: () => void;
   children?: ReactNode;
 }) {
   const dock = useDockPanel();
@@ -52,12 +49,6 @@ export function DocxPanelHeader({
           </span>
         )}
         {children}
-        {onEdit && (
-          <button type="button" className="flex h-7 items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 text-xs text-[var(--fg)] hover:bg-[var(--card-bg)]" onClick={onEdit}>
-            <PencilIcon className="h-3.5 w-3.5" />
-            Edit
-          </button>
-        )}
         {dock.controls}
       </div>
     </>

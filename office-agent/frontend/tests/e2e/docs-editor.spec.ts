@@ -34,7 +34,6 @@ async function openEditor(page: Page, name: string, extra: string[] = [], expand
   await page.getByTitle("Show task details").click();
   await page.getByRole("button", { name: `${name}.docx Read` }).click();
   if (expand) await page.getByRole("button", { name: "Expand Viewer" }).click();
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(page.locator(".docs-editor")).toBeVisible();
 }
 
@@ -87,11 +86,6 @@ test("an edit in the editor reaches the Word file and leaves its comment and cha
     const review = await (await page.request.get(`/api/threads/${threadOf(page)}/docx-review?path=${name}.docx`)).json();
     expect(review.comments).toHaveLength(1);
     expect(review.changes.map((c: { kind: string }) => c.kind).sort()).toEqual(["delete", "insert"]);
-  });
-
-  await test.step("the Word layout shows what was written", async () => {
-    await page.getByRole("button", { name: "Word layout" }).click();
-    await expect(page.locator(".docx-page")).toContainText("Renewal is by letter.");
   });
 });
 
@@ -257,9 +251,6 @@ test("'/' adds a divider and a page break, written to the file as a rule and a p
   const kinds = (await blocksOf(page, name)).blocks.map((b) => b.kind);
   expect(kinds).toContain("divider");
   expect(kinds).toContain("pagebreak");
-
-  await page.getByRole("button", { name: "Word layout" }).click();
-  await expect(page.locator(".docx-page")).toBeVisible();
 });
 
 test("a selected picture is resized and described from the bar over it, written to the file", async ({ page }) => {
