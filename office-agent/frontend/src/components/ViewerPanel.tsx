@@ -7,9 +7,8 @@ import { SlidesPanel } from "./slides/SlidesPanel";
 
 // The editor and its library load when a document is first edited, not with the app.
 const DocPanel = lazy(() => import("./doc/DocPanel").then((m) => ({ default: m.DocPanel })));
-const DocsEditorPanel = lazy(() => import("./docs/DocsEditorPanel").then((m) => ({ default: m.DocsEditorPanel })));
 
-/** The viewer panel's content: a deck in the Slides panel, a Word file in the editor. */
+/** The viewer panel's content: a deck in the Slides panel, a Doc in the Doc editor. */
 export function ViewerPanel({
   threadId,
   path,
@@ -40,9 +39,5 @@ export function ViewerPanel({
   if (isDesign(path)) {
     return <DesignPanel threadId={threadId} path={path} refreshKey={refreshKey} onFileChanged={onFileChanged} />;
   }
-  return (
-    <Suspense fallback={null}>
-      <DocsEditorPanel threadId={threadId} path={path} refreshKey={refreshKey} onFileChanged={onFileChanged} onAsk={onSendComment} />
-    </Suspense>
-  );
+  return null;
 }

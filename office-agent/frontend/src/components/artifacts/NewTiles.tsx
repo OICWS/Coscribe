@@ -32,13 +32,6 @@ function Illustration({ kind }: { kind: PageKind }) {
           <span className="h-[70%] w-[26%] rounded-md" style={{ background: `color-mix(in srgb, ${colour} 30%, white)` }} />
         </div>
       )}
-      {kind === "sheets" && (
-        <div className="grid w-[66%] grid-cols-4 overflow-hidden rounded-lg border border-white bg-white shadow-sm">
-          {Array.from({ length: 16 }, (_, i) => (
-            <span key={i} className="h-3.5 border-b border-r border-[#e7e5e2]" style={i < 4 ? { background: `color-mix(in srgb, ${colour} 26%, white)` } : undefined} />
-          ))}
-        </div>
-      )}
       {kind === "design" && (
         <div className="relative h-[68%] w-[72%] overflow-hidden rounded-lg border border-white bg-white shadow-sm">
           <span className="absolute left-[12%] top-[18%] h-[46%] w-[34%] rounded-full" style={{ background: `color-mix(in srgb, ${colour} 55%, white)` }} />

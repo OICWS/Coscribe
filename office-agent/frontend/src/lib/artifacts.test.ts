@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { artifactId, countsByKind, dayGroups, editedLabel, visibleArtifacts, type ArtifactSummary, type SystemItem } from "./artifacts";
+import { artifactId, countsByKind, dayGroups, editedLabel, PAGE_ORDER, visibleArtifacts, type ArtifactSummary, type SystemItem } from "./artifacts";
 
 const NOW = new Date("2026-10-21T15:00:00");
 const ago = (hours: number) => new Date(NOW.getTime() - hours * 3600e3).toISOString();
@@ -15,7 +15,7 @@ const make = (name: string, kind: ArtifactSummary["kind"], hours: number): Artif
 
 const DECK = make("Deck", "slides", 17);
 const REPORT = make("Report", "docs", 0.1);
-const SHEET = make("Figures", "sheets", 80);
+const SHEET = make("Figures", "design", 80);
 const OLD = make("Rag notes", "docs", 24 * 400);
 const ALL = [DECK, SHEET, REPORT, OLD];
 const ALL_TYPES = { tab: "all", kind: null, query: "" } as const;
@@ -36,7 +36,7 @@ describe("visibleArtifacts", () => {
   });
 
   it("counts the kinds over everything, whatever is shown", () => {
-    expect(countsByKind(ALL)).toEqual({ docs: 2, slides: 1, sheets: 1, design: 0, dashboard: 0, "design-system": 0 });
+    expect(countsByKind(ALL)).toEqual({ docs: 2, slides: 1, design: 1, dashboard: 0, "design-system": 0 });
   });
 });
 
@@ -81,5 +81,11 @@ describe("design systems beside the files", () => {
     expect(visibleArtifacts(BOTH, new Set(), { tab: "all", kind: "design-system", query: "" })).toEqual([SYSTEM]);
     expect(visibleArtifacts(BOTH, new Set(), { tab: "all", kind: null, query: "acme" })).toEqual([SYSTEM]);
     expect(visibleArtifacts(BOTH, new Set([SYSTEM.id]), { tab: "pinned", kind: null, query: "" })).toEqual([SYSTEM]);
+  });
+});
+
+describe("what the page offers", () => {
+  it("has no Sheets: a workbook is made and opened in Excel", () => {
+    expect(PAGE_ORDER).toEqual(["docs", "slides", "design", "dashboard", "design-system"]);
   });
 });

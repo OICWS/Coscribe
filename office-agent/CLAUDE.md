@@ -171,6 +171,11 @@ the file of its domain, and fakes and builders shared by several files go into
 A new WebSocket event is added to `conversation/wire.py` first; every payload a test sends is
 checked against it.
 
+A changed tool signature or description edits `tests/tool_schemas.txt` in the same PR. The test
+that checks it is skipped on Python 3.13 (3.13 strips docstring indentation, so every hash
+differs), so regenerate it with `UPDATE_TOOL_SCHEMAS=1 pytest tests/test_tool_schema_snapshot.py`
+on 3.11, the version CI runs; without 3.11, say in the PR that the snapshot is not regenerated.
+
 A test that fails and then passes on the one rerun CI allows (`--reruns 1`) is a flake, not a
 pass: the run lists it at the end and in the job summary. Open an issue for it and mark it
 `@pytest.mark.quarantine(issue=N, until="YYYY-MM-DD")`, at most a week out. It keeps running and

@@ -10,25 +10,25 @@ HTTP and images in `web/`, the model's own state in `bookkeeping/`. Does not own
 or approvals (`runtime_lg/`), the routes (`web/`) or the coordinator's tool list (`coordinator.py`).
 
 ## Public interface
-Factories: `build_file_tools`, `build_document_tools`, `build_spreadsheet_tools`,
-`build_presentation_tools`, `build_convert_tools`, `build_image_tools`, `build_script_tools`,
-`build_node_script_tools`, `build_background_task_tools`, `build_browser_tools`,
-`build_websearch_tools`, `build_task_tools`, `build_skill_tools`, `build_interaction_tools`,
-`build_selfwake_tools`, `build_scheduled_task_tools`, `build_subagent_task_tools`,
-`build_conversation_tools`. Toolkits and stores: `DocumentToolkit`, `SpreadsheetToolkit`,
-`BackgroundTask`, `BackgroundTaskStore`, `ScheduleRule`, `ScheduledTrigger`,
-`ScheduledTriggerStore`, `ScheduledRun`, `SubAgentTask`, `SubAgentTaskStore`, `WakeRequest`,
-`WakeStore`, `SignalStore`, `MessagingStore`, `DesignSystemStore`, `DesignSystemError`, `as_deck_design_system`, `build_design_system_tools` (the person's design-system library, decision 0020). Connectors: `validate_mcp_config`,
-`load_mcp_server_configs`, `prepare_for_connect`, `name_of`, `is_read_only`, `connector_of`,
-`apply_connector_permissions`, `ConnectorPermissions`. Skills and templates: `SkillInfo`,
-`SkillUploadError`, `TemplateInfo`, `load_skills`, `load_builtin_skills`, `load_builtin_templates`,
-`load_pptx_templates`, `save_uploaded_skill`, `slugify_skill_name`, `format_skill_listing`,
-`format_template_listing`, `NEW_DECK_INSTRUCTIONS`. Memory, questions and plans: `load_memory`,
-`format_memory_section`, `QUESTION_TOOL_NAMES`, `TASK_DRAFT_TOOL_NAMES`, `PLAN_CHOICE_AUTO`,
-`PLAN_CHOICE_MANUAL`, `PLAN_CHOICE_REJECT`, `PLAN_CHOICE_REVISE`, `edit_draft`, `format_question_answers`,
-`normalize_questions`. Runs and browser: `compute_next_run_at`, `parse_run_thread_id`,
-`SCHEDULED_THREAD_PREFIX`, `format_incoming`, `running_subagent`, `get_subagent_transcript`,
-`stop_subagent_task`, `forget_finished_subagents`, `BROWSER_HOST`, `browser_run`, `page_screenshot`. Folders, skills and environments: `WorkspaceScope`, `enabled_skill_names`, `ensure_script_env`, `venv_python`. Scheduled-trigger writes: `create_trigger`, `update_trigger`, `patch_trigger`, `record_draft`. Bookkeeping hooks and stores: `FINISHED_STATUSES`, `ConversationSource`, `ConversationTranscript`, `MessagingError`, `TaskToolkit`, `register_subagent_run`, `take_stop_requester`, `set_change_listener`, `set_inbox_listener`, `adopt_running_command`, `forget_finished_background_tasks`, `read_background_log`, `stop_background_task`. Connectors and skill catalog: `POLICIES`, `with_secrets`, `secret_names_used`, `SKILL_SAVE_CURATOR_INSTRUCTIONS`, `SKILL_SOURCE_MARKER`, `SkillCatalogError`, `all_skills`, `disabled_skill_names`, `get_plugin`, `install_catalog_skill`, `install_plugin`, `load_catalog`, `plugin_file`, `remove_skill`, `set_skill_enabled`, `skill_source`. Script environments: `Detachable`, `HandOff`, `RunningCommand`, `request_detach`, `stop_commands`, `install_python_package`, `list_python_packages`, `uninstall_python_package`, `install_node_package`, `list_node_packages`, `uninstall_node_package`, `get_interpreter_override`, `set_interpreter_override`, `working_interpreters`, `fallbacks_for_platform`, `find_pythons`, `ensure_own_python`, `own_python_offer`, `Capabilities`, `run_python_script`, `isolation_status`, `UnisolatedConversations`, `sweep_folder_grants`. The command sandbox: `sandbox_status`, `bundled_sandbox`, `sandbox_codex`, `sandbox_mode`, `sandbox_home`, `record_sandbox_setup`, `sandbox_setup_argv`, `sandbox_uninstall_argv`, `run_as_administrator`, `warm_up_sandbox`, `expect_sandbox`, `release_private_folders`, `code_command_profile`, `code_commands_allowed`, `write_codex_config`. The optional LibreOffice (decision 0026): `LibreOfficeStatus`, `find_libreoffice`, `libreoffice_status`, and its download on request (`libreoffice_install.py`: a pinned release, checked, unpacked with `msiexec /a`, trimmed, moved in with one rename) `install_libreoffice`, `remove_libreoffice`, `libreoffice_offer`, `LibreOfficeUnavailable`. Previews and PDF: `PresentationToolkit`, `render_single_page_preview`, `pdf_page_count`, `render_pdf_page`. The Slides panel: `read_deck`, `slide_svg`, `NotBuiltFromPages`, `deck_pdf`, `deck_html`, `deck_basic_fonts`, `deck_edits_since_coscribe`, `read_comments`, `add_comment`, `reply_to_comment`, `resolve_comment`, `delete_comment`, `CommentNotFound`, `foreign_deck`, `foreign_slide_svg`, `slide_parts`, `save_slide`, `add_slide_asset`, `insert_slide`, `duplicate_slide`, `move_slide`, `delete_slide`, `deck_history`, `step_history`, `design_system`, `deck_files`, `move_deck`, `copy_deck`, `SlideChanged`, `SectionError`, `DeckChangedError`. The Docs editor: `read_doc_blocks`, `read_doc_image`, `save_doc_blocks`, `DocChanged`, `BlocksRefused`, `remember_before_edit`, `edits_since_told`, `remember_version`, `restore_version`, `VersionGone`. The Doc editor (decision 0025): `read_doc_file`, `save_doc_edits`, `DocFileChanged`, `DocBlocksRefused`, `NotADoc`, `DocVersionGone`, `remember_doc_before_edit`, `doc_edits_since_told`, `remember_doc_version`, `restore_doc_version`, and the Doc's comments `read_doc_comments`, `add_doc_comment`, `reply_to_doc_comment`, `resolve_doc_comment`, `edit_doc_comment`, `mark_doc_comment_sent`, `delete_doc_comment`, `DocCommentNotFound`, `DocCommentRefused`, and its pictures `add_doc_asset`, `read_doc_asset`, `DocAssetRefused`, its side folder `doc_side_folder` and the Word export `docx_markdown`, `docx_from_markdown`. Import these from `coscribe.tools`, not a submodule.
+`coscribe.tools` also re-exports the public names of its sub-components (`exec`, `bookkeeping`,
+`web`, `office.docx`, `office.doc`, `office.xlsx`, `office.pdf`, `office.pptx`) so older imports
+keep working; read those on the sub-component's own card, and import a new name from the
+sub-component. This card lists the names that belong to `tools` itself. Connectors and
+permissions: `validate_mcp_config`, `load_mcp_server_configs`, `prepare_for_connect`, `name_of`,
+`is_read_only`, `connector_of`, `apply_connector_permissions`, `ConnectorPermissions`, `POLICIES`,
+`with_secrets`, `secret_names_used`. Skills and templates: `SkillInfo`, `SkillUploadError`,
+`load_skills`, `load_builtin_skills`, `all_skills`, `enabled_skill_names`, `disabled_skill_names`,
+`set_skill_enabled`, `remove_skill`, `skill_source`, `save_uploaded_skill`, `slugify_skill_name`,
+`format_skill_listing`, `format_template_listing`, `load_pptx_templates`, `build_skill_tools`,
+`SKILL_SAVE_CURATOR_INSTRUCTIONS`, `SKILL_SOURCE_MARKER`; the skill catalog: `SkillCatalogError`,
+`load_catalog`, `get_plugin`, `plugin_file`, `install_catalog_skill`, `install_plugin`. Design
+systems (decision 0020): `DesignSystemStore`, `DesignSystemError`, `as_deck_design_system`,
+`build_design_system_tools`. Folders, files and conversions: `WorkspaceScope`, `build_file_tools`,
+`build_convert_tools`, `pdf_page_count`, `render_pdf_page`, `render_single_page_preview`. The
+Word document toolkit: `DocumentToolkit`, `build_document_tools`, `DocBlocksRefused`. The optional
+LibreOffice (decision 0026): `find_libreoffice`, `libreoffice_status`, `LibreOfficeUnavailable`,
+`install_libreoffice`, `libreoffice_offer`, `remove_libreoffice`. Import these from
+`coscribe.tools`, not a submodule.
 
 ## Depends on
 `coscribe.needs_permission`, `coscribe.runtime`, `coscribe.workflow_spec`.
