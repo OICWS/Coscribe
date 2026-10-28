@@ -45,3 +45,14 @@ def test_a_frontend_file_lists_its_sibling_unit_test(capsys: pytest.CaptureFixtu
 def test_a_path_outside_every_component_is_reported(capsys: pytest.CaptureFixture[str]) -> None:
     assert slice_script.main(["README.md"]) == 1
     assert "not in any component" in capsys.readouterr().out
+
+
+def test_a_packages_interface_leaves_out_what_its_sub_components_export() -> None:
+    items = slice_script.components()
+    tools = next(item for item in items if item["name"] == "tools")
+
+    own, reexported = slice_script.public_names(tools)
+
+    assert "build_file_tools" in own
+    assert "run_python_script" not in own
+    assert reexported > len(own)
