@@ -52,17 +52,6 @@ export function Thumbnail({ item }: { item: PageItem }) {
       </div>
     );
   }
-  if (item.kind === "sheets") {
-    return (
-      <div className={`${base} flex items-center justify-center`} style={{ background: tinted("sheets", 8) }}>
-        <div className="grid w-[62%] grid-cols-4 overflow-hidden rounded-lg border border-white bg-white shadow-sm">
-          {Array.from({ length: 20 }, (_, i) => (
-            <span key={i} className="h-[18px] border-b border-r border-[#e7e5e2]" style={i < 4 ? { background: `color-mix(in srgb, ${colour} 22%, white)` } : undefined} />
-          ))}
-        </div>
-      </div>
-    );
-  }
   return (
     <div className={`${base} flex items-center justify-center`} style={{ background: tinted(item.kind, 10), color: colour }}>
       <KindIcon kind={item.kind} className="h-9 w-9" />

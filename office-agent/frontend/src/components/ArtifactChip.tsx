@@ -5,7 +5,7 @@ import { useClickOutside } from "../lib/useClickOutside";
 import type { DesignSystemSummary } from "../types/settings";
 import { CheckIcon, ChevronDownIcon, CloseIcon, ExternalLinkIcon, PlusIcon } from "./icons";
 
-const NOUNS: Record<PageKind, string> = { docs: "document", slides: "deck", sheets: "workbook", design: "design", dashboard: "dashboard", "design-system": "design system" };
+const NOUNS: Record<PageKind, string> = { docs: "document", slides: "deck", design: "design", dashboard: "dashboard", "design-system": "design system" };
 const item = "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--card-bg)]";
 const menu = "absolute bottom-full left-0 z-20 mb-2 min-w-72 max-w-96 rounded-[14px] border border-[var(--border)] bg-[var(--panel-bg)] p-1.5 shadow-[var(--shadow)]";
 

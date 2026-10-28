@@ -12,7 +12,7 @@ from ..runtime import tool_metadata
 from ..tools import WorkspaceScope
 from .artifacts import ArtifactRegistry, describe_artifact
 
-_KINDS = ("docs", "slides", "sheets", "design")
+_KINDS = ("docs", "slides", "design")
 _MAX_LISTED = 50
 
 
@@ -26,7 +26,7 @@ def build_artifact_tools(
     def list_artifacts(
         kind: str | None = None, query: str | None = None, limit: int = 20
     ) -> list[dict[str, Any]]:
-        """List the Word documents, presentations, workbooks and designs the user has made with
+        """List the Docs, presentations and designs the user has made with
         coscribe in any conversation, newest first. Call it only when the user refers to
         something they made before and you do not have its path; never to look around, and not
         for files in this conversation's own folders (use list_files for those). A file with
@@ -34,7 +34,7 @@ def build_artifact_tools(
         lies in folders this conversation was not given, so say so instead of guessing.
 
         Args:
-            kind: only this kind: docs, slides, sheets or design.
+            kind: only this kind: docs, slides or design.
             query: only names containing this text, ignoring case.
             limit: how many to return, at most 50.
         """

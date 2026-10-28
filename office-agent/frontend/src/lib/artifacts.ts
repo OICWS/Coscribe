@@ -2,7 +2,7 @@ import { goToThread, startNewThread } from "./nav";
 import { readStored, writeStored } from "./storage";
 
 /** What coscribe makes that the Artifacts page lists. */
-export type ArtifactKind = "slides" | "docs" | "sheets" | "design" | "dashboard";
+export type ArtifactKind = "slides" | "docs" | "design" | "dashboard";
 
 /** What the Artifacts page lists: the kinds of file, and the person's design systems. */
 export type PageKind = ArtifactKind | "design-system";
@@ -43,23 +43,17 @@ interface KindInfo {
   badge: "Beta" | "New" | "Soon" | null;
 }
 
-const KIND_ORDER: ArtifactKind[] = ["docs", "slides", "sheets", "design", "dashboard"];
+const KIND_ORDER: ArtifactKind[] = ["docs", "slides", "design", "dashboard"];
 
 export const KINDS: Record<ArtifactKind, KindInfo> = {
   docs: { label: "Docs", colour: "var(--file-doc)", placeholder: "What should this document be about?", badge: null },
   slides: { label: "Slides", colour: "var(--file-slides)", placeholder: "What should this deck be about?", badge: "Beta" },
-  sheets: { label: "Sheets", colour: "var(--file-sheet)", placeholder: "What should this workbook be about?", badge: null },
   design: { label: "Design", colour: "var(--file-design)", placeholder: "What should this design be about?", badge: "New" },
   dashboard: { label: "Dashboard", colour: "var(--file-dashboard)", placeholder: null, badge: "Soon" },
 };
 
 /** Every kind the page offers, the design system last. */
 export const PAGE_ORDER: PageKind[] = [...KIND_ORDER, "design-system"];
-
-/** What "Make something new" offers. Sheets is not: a workbook is made and opened in Excel, the app
- * has no grid of its own, and a table to look at in the app is a Dashboard. Workbooks the
- * conversations made are still listed, under their kind. */
-export const TILE_ORDER: PageKind[] = PAGE_ORDER.filter((kind) => kind !== "sheets");
 
 export const PAGE_KINDS: Record<PageKind, KindInfo> = {
   ...KINDS,
@@ -160,7 +154,7 @@ export function visibleArtifacts(items: PageItem[], pins: ReadonlySet<string>, f
 }
 
 export function countsByKind(items: PageItem[]): Record<PageKind, number> {
-  const counts: Record<PageKind, number> = { docs: 0, slides: 0, sheets: 0, design: 0, dashboard: 0, "design-system": 0 };
+  const counts: Record<PageKind, number> = { docs: 0, slides: 0, design: 0, dashboard: 0, "design-system": 0 };
   for (const item of items) counts[item.kind] += 1;
   return counts;
 }

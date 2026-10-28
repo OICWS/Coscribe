@@ -257,7 +257,7 @@ function filterEntries(selected: PageKind | null, counts: Record<PageKind, numbe
 }
 
 function emptyText(total: number, filters: Filters): string {
-  if (total === 0) return "Nothing here yet. The decks, documents and spreadsheets Coscribe makes for you appear here.";
+  if (total === 0) return "Nothing here yet. The decks, documents and designs Coscribe makes for you appear here.";
   if (filters.tab === "pinned" && !filters.query && !filters.kind) return "Pin an artifact to keep it here.";
   return "No artifact matches.";
 }
