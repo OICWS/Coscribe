@@ -22,6 +22,7 @@ _HEADING_RE = re.compile(r"^(#{1,3})\s+(.*)$")
 _BULLET_RE = re.compile(r"^[-*]\s+(.*)$")
 _NUMBER_RE = re.compile(r"^\d+\.\s+(.*)$")
 _TOC_LINE_RE = re.compile(r"^\[TOC\]$", re.IGNORECASE)
+_PAGE_BREAK_RE = re.compile(r"^\[PAGE ?BREAK\]$", re.IGNORECASE)
 _COMMENT_MARKER_RE = re.compile(r"\s*\{\{comment:\s*(.+?)\}\}\s*$", re.IGNORECASE)
 
 
@@ -40,7 +41,7 @@ def _extract_comment(text: str) -> tuple[str, str | None]:
 
 @dataclass
 class Block:
-    kind: str  # "heading" | "paragraph" | "bullet" | "number" | "table" | "toc"
+    kind: str  # "heading" | "paragraph" | "bullet" | "number" | "table" | "toc" | "pagebreak"
     text: str = ""
     level: int = 1
     ordinal: int = 1
@@ -95,6 +96,12 @@ def parse_blocks(content: str) -> list[Block]:
             flush_paragraph()
             number_counter = 0
             blocks.append(Block(kind="toc"))
+            continue
+
+        if _PAGE_BREAK_RE.match(line):
+            flush_paragraph()
+            number_counter = 0
+            blocks.append(Block(kind="pagebreak"))
             continue
 
         heading_match = _HEADING_RE.match(line)

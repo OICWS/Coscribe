@@ -47,8 +47,19 @@ def add_blocks(
     written = Written()
     previous_kind = ""
     list_num: int | None = None
+    new_page = False
     for block in parse_blocks(content):
         paragraph = None
+        if block.kind == "pagebreak":
+            new_page = True
+            continue
+        if new_page and block.kind in ("toc", "table"):
+            # Neither is a paragraph that can start the page, so an empty one does.
+            starter = document.add_paragraph()
+            starter._p.get_or_add_pPr().get_or_add_pageBreakBefore()
+            if change_author is not None:
+                _mark_paragraph_inserted(starter._p, change_author, change_ids)
+            new_page = False
         if block.kind == "heading":
             paragraph = document.add_heading("", level=block.level)
             _add_inline_runs(paragraph, block.text)
@@ -82,6 +93,11 @@ def add_blocks(
         previous_kind = block.kind
         if paragraph is None:
             continue
+        if new_page:
+            # A break before the paragraph, not a break paragraph, which leaves an empty line
+            # at the top of the new page.
+            paragraph._p.get_or_add_pPr().get_or_add_pageBreakBefore()
+            new_page = False
         if change_author is not None:
             _mark_paragraph_inserted(paragraph._p, change_author, change_ids)
         if block.comment:

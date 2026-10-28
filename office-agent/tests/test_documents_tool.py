@@ -308,6 +308,45 @@ def test_write_docx_toc_marker_inserts_a_toc_field_and_no_update_prompt(
     assert doc.settings.element.find(qn("w:updateFields")) is None
 
 
+def test_a_pagebreak_line_starts_the_next_block_on_a_new_page(tmp_path: Path) -> None:
+    from docx.oxml.ns import qn
+
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](
+        path="cover.docx", content="# Title\n\nCover text.\n\n[PAGEBREAK]\n\n## Next\n\nBody."
+    )
+
+    paragraphs = {p.text: p for p in Document(tmp_path / "cover.docx").paragraphs}
+    assert paragraphs["Next"]._p.find(f"{qn('w:pPr')}/{qn('w:pageBreakBefore')}") is not None
+    assert paragraphs["Cover text."]._p.find(f"{qn('w:pPr')}/{qn('w:pageBreakBefore')}") is None
+    assert "[PAGEBREAK]" not in paragraphs
+
+
+def test_a_pagebreak_before_a_table_gets_a_paragraph_to_start_the_page(tmp_path: Path) -> None:
+    from docx.oxml.ns import qn
+
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](
+        path="t.docx", content="Intro.\n\n[PAGEBREAK]\n\n| a | b |\n| --- | --- |\n| 1 | 2 |"
+    )
+
+    document = Document(tmp_path / "t.docx")
+    starter = document.paragraphs[-1]
+    assert (
+        starter.text == ""
+        and starter._p.find(f"{qn('w:pPr')}/{qn('w:pageBreakBefore')}") is not None
+    )
+    assert len(document.tables) == 1
+
+
+def test_a_pagebreak_in_a_pdf_starts_a_new_page(tmp_path: Path) -> None:
+    tools = _tools_by_name(tmp_path)
+    tools["write_pdf"](path="two.pdf", content="First page.\n\n[PAGEBREAK]\n\nSecond page.")
+
+    second = tools["read_pdf"](path="two.pdf", start_page=2, end_page=2)
+    assert "Second page." in second and "First page." not in second
+
+
 # The opening line keeps "# Handbook" a heading rather than the document's title.
 TOC_CONTENT = (
     "Internal.\n\n# Handbook\n\n[TOC]\n\n## Setup\n\nInstall it.\n\n"
@@ -1159,10 +1198,13 @@ def test_table_layout_measures_a_header_row_bold_so_its_words_stay_whole() -> No
     _, plain = _table_layout(rows, total, [11], padding=12)
     _, bold = _table_layout(rows, total, [11], padding=12, header=True)
 
-    assert min(
-        width - (_cell_width_em(cell, pieces=True, bold=True) * 11 + 12)
-        for width, cell in zip(bold, rows[0], strict=True)
-    ) >= -0.01
+    assert (
+        min(
+            width - (_cell_width_em(cell, pieces=True, bold=True) * 11 + 12)
+            for width, cell in zip(bold, rows[0], strict=True)
+        )
+        >= -0.01
+    )
     assert plain != bold
 
 
