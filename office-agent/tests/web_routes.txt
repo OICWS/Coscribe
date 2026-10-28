@@ -57,6 +57,7 @@ GET /api/script-env/interpreter
 GET /api/script-env/packages
 GET /api/script-isolation
 GET /api/secrets
+GET /api/settings/proxy
 GET /api/skills
 GET /api/skills/catalog
 GET /api/skills/plugins
@@ -129,6 +130,7 @@ POST /api/script-env/interpreter
 POST /api/script-env/own-python
 POST /api/script-env/packages
 POST /api/script-isolation/test
+POST /api/settings/proxy/test
 POST /api/skills/catalog/{name}
 POST /api/skills/plugins/{plugin_id}
 POST /api/skills/upload
@@ -166,6 +168,7 @@ PUT /api/mcp/servers/{name}/permissions
 PUT /api/scheduled-tasks/{trigger_id}
 PUT /api/scheduled-tasks/{trigger_id}/notes
 PUT /api/secrets/{name}
+PUT /api/settings/proxy
 PUT /api/threads/{thread_id}/doc/blocks
 PUT /api/threads/{thread_id}/doc/comments/{comment_id}
 PUT /api/threads/{thread_id}/docs/blocks

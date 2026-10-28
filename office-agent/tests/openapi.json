@@ -705,6 +705,50 @@
         "title": "ProviderUpdate",
         "type": "object"
       },
+      "ProxyUpdate": {
+        "properties": {
+          "address": {
+            "default": "",
+            "title": "Address",
+            "type": "string"
+          },
+          "bypass": {
+            "default": "",
+            "title": "Bypass",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "system",
+              "manual",
+              "none"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "username": {
+            "default": "",
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "ProxyUpdate",
+        "type": "object"
+      },
       "RunNowRequest": {
         "properties": {
           "inputs": {
@@ -4569,6 +4613,100 @@
           }
         },
         "summary": "Put Secret"
+      }
+    },
+    "/api/settings/proxy": {
+      "get": {
+        "operationId": "get_proxy_api_settings_proxy_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Proxy Api Settings Proxy Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Proxy"
+      },
+      "put": {
+        "operationId": "put_proxy_api_settings_proxy_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProxyUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Put Proxy Api Settings Proxy Put"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Proxy"
+      }
+    },
+    "/api/settings/proxy/test": {
+      "post": {
+        "operationId": "test_proxy_api_settings_proxy_test_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProxyUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Test Proxy Api Settings Proxy Test Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Proxy"
       }
     },
     "/api/skills": {

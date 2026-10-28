@@ -82,7 +82,7 @@ def ensure_own_python(state_dir: Path) -> Path | None:
         digest = hashlib.sha256()
         try:
             with httpx.stream(
-                "GET", url, follow_redirects=True, timeout=_TIMEOUT, proxy=configured_proxy()
+                "GET", url, follow_redirects=True, timeout=_TIMEOUT, proxy=configured_proxy(url)
             ) as response:
                 response.raise_for_status()
                 with archive.open("wb") as out:

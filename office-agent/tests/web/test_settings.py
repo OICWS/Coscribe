@@ -23,6 +23,7 @@ from langchain_core.messages.ai import UsageMetadata
 
 from coscribe.conversation import session as conversation_session
 from coscribe.runtime import secrets as secrets_module
+from coscribe.web.routes.settings import proxy as settings_proxy_routes
 
 from .helpers import (
     FakeToolCallingChatModel,
@@ -828,3 +829,156 @@ def test_a_failed_own_python_download_says_why(
 
     assert result == {"success": False, "error": "Could not download Python from x: offline"}
     assert configured is None
+
+
+def test_the_proxy_setting_starts_as_system(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("", encoding="utf-8")
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        body = client.get("/api/settings/proxy").json()
+
+    assert body["mode"] == "system"
+    assert body["bypass"] == "localhost, 127.0.0.1"
+    assert body["password_set"] is False
+
+
+def test_a_manual_proxy_keeps_its_password_in_the_keychain_and_never_sends_it_back(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_keyring = _install_fake_keyring(monkeypatch)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("", encoding="utf-8")
+    manual = {
+        "mode": "manual",
+        "address": "proxy.corp:8080",
+        "bypass": "localhost, .corp",
+        "username": "alice",
+        "password": "hunter2",
+    }
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        saved = client.put("/api/settings/proxy", json=manual).json()
+        fetched = client.get("/api/settings/proxy").text
+        config = client.get("/api/config").text
+        # No password sent: the saved one stays.
+        client.put("/api/settings/proxy", json={**manual, "password": None})
+        kept = dict(fake_keyring.store)
+
+    env = dotenv_values(tmp_path / ".env")
+    assert saved["restart_required"] is True and saved["password_set"] is True
+    assert saved["address"] == "http://proxy.corp:8080" and saved["username"] == "alice"
+    assert "hunter2" not in fetched and "hunter2" not in config
+    assert "hunter2" not in (tmp_path / ".env").read_text(encoding="utf-8")
+    assert env["HTTPS_PROXY"] == env["http_proxy"] == "__coscribe_keyring__:setting:proxy"
+    assert env["NO_PROXY"] == "localhost,.corp,127.0.0.1,::1" and env["ALL_PROXY"] == ""
+    assert kept[("coscribe", "setting:proxy")] == "http://alice:hunter2@proxy.corp:8080"
+
+    # What the next start makes of it.
+    monkeypatch.setattr(os, "environ", {k: v or "" for k, v in env.items()})
+    secrets_module.resolve_env_keyring_refs()
+    assert os.environ["HTTPS_PROXY"] == "http://alice:hunter2@proxy.corp:8080"
+
+
+def test_a_saved_password_is_not_sent_to_a_different_proxy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A mistyped host must not be handed the person's company credential."""
+    _install_fake_keyring(monkeypatch)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("", encoding="utf-8")
+    tried: list[str | None] = []
+
+    def fake_try(proxy: str | None, target: str) -> dict[str, Any]:
+        tried.append(proxy)
+        return {"ok": True, "target": "x", "status": 200, "error": None}
+
+    monkeypatch.setattr(settings_proxy_routes, "try_connection", fake_try)
+    manual = {"mode": "manual", "address": "proxy.corp:8080", "username": "alice"}
+    elsewhere = {**manual, "address": "elsewhere.example:3128"}
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        client.put("/api/settings/proxy", json={**manual, "password": "s3cret"})
+        client.post("/api/settings/proxy/test", json=manual)
+        client.post("/api/settings/proxy/test", json=elsewhere)
+        moved = client.put("/api/settings/proxy", json=elsewhere).json()
+
+    assert tried == ["http://alice:s3cret@proxy.corp:8080", "http://alice@elsewhere.example:3128"]
+    assert moved["password_set"] is False
+    assert "s3cret" not in str(dotenv_values(tmp_path / ".env"))
+
+
+def test_switching_back_to_system_removes_what_manual_wrote(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_keyring = _install_fake_keyring(monkeypatch)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("COSCRIBE_DEFAULT_MODEL=fake:model\n", encoding="utf-8")
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        client.put(
+            "/api/settings/proxy",
+            json={"mode": "manual", "address": "proxy:8080", "username": "a", "password": "b"},
+        )
+        client.put("/api/settings/proxy", json={"mode": "system"})
+
+    env = dotenv_values(tmp_path / ".env")
+    assert env["COSCRIBE_PROXY_MODE"] == "system"
+    assert not any(name.upper().endswith("_PROXY") for name in env)
+    assert env["COSCRIBE_DEFAULT_MODEL"] == "fake:model"
+    assert ("coscribe", "setting:proxy") not in fake_keyring.store
+
+
+def test_no_proxy_overrides_the_proxy_variables(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("HTTPS_PROXY=http://old:3128\n", encoding="utf-8")
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        client.put("/api/settings/proxy", json={"mode": "none"})
+
+    env = dotenv_values(tmp_path / ".env")
+    assert env["HTTPS_PROXY"] == env["https_proxy"] == ""
+    assert env["NO_PROXY"] == env["no_proxy"] == "*"
+
+
+def test_a_proxy_address_that_cannot_work_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("", encoding="utf-8")
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        response = client.put(
+            "/api/settings/proxy", json={"mode": "manual", "address": "socks5://proxy:1080"}
+        )
+
+    assert response.status_code == 422
+    assert "Only HTTP proxies" in response.json()["error"]
+    assert "COSCRIBE_PROXY_MODE" not in dotenv_values(tmp_path / ".env")
+
+
+def test_test_connection_tries_the_unsaved_setting_against_the_default_models_provider(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("", encoding="utf-8")
+    tried: list[tuple[str | None, str]] = []
+
+    def fake_try(proxy: str | None, target: str) -> dict[str, Any]:
+        tried.append((proxy, target))
+        return {"ok": True, "target": "api.anthropic.com", "status": 404, "error": None}
+
+    monkeypatch.setattr(settings_proxy_routes, "try_connection", fake_try)
+    with _client_lg(
+        tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[]), default_model="anthropic:x"
+    ) as client:
+        body = client.post(
+            "/api/settings/proxy/test",
+            json={"mode": "manual", "address": "proxy:8080", "username": "a", "password": "pw"},
+        ).json()
+        client.post("/api/settings/proxy/test", json={"mode": "none"})
+
+    assert tried == [
+        ("http://a:pw@proxy:8080", "https://api.anthropic.com/"),
+        (None, "https://api.anthropic.com/"),
+    ]
+    assert body["ok"] is True and body["proxy"] == "http://proxy:8080"
+    assert "COSCRIBE_PROXY_MODE" not in dotenv_values(tmp_path / ".env")
