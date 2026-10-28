@@ -23,6 +23,7 @@ import { CheckIcon, ChevronDownIcon, ClockIcon, CloseIcon, SparkIcon, StopIcon }
 import { ConditionText, VarToken } from "./parts";
 import { Screenshot } from "./Screenshot";
 import { goToThread } from "../../lib/nav";
+import { InvestigationLink, WAITING_FOR_BROWSER } from "./InvestigationLink";
 import { StepOutput } from "./StepOutput";
 
 type RowStatus = StepRecord["status"] | "not_reached" | "stopped";
@@ -648,9 +649,7 @@ function RunBanner({
         <div className="flex items-center gap-3">
           <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] motion-reduce:animate-none" />
           <span className="min-w-0 flex-1 truncate">
-            {run.queued
-              ? "Waiting for the browser -- another run or test is using it"
-              : `Running${current ? ` · ${stepTitle(workflow, current.step_id)}` : ""}`}
+            {run.queued ? WAITING_FOR_BROWSER : `Running${current ? ` · ${stepTitle(workflow, current.step_id)}` : ""}`}
           </span>
           <button type="button" className={secondaryButton} disabled={busy} onClick={() => act(onStop)}>
             <span className="flex items-center gap-1.5">
@@ -830,17 +829,7 @@ export function WorkflowRunView({
         </div>
 
         <RunBanner run={run} workflow={workflow} onStop={onStop} onInvestigate={onInvestigate} />
-        {run.investigation && run.status !== "failed" && (
-          <div className="text-[13px] text-[var(--muted)]" data-testid="run-investigation">
-            <button
-              type="button"
-              className="underline hover:text-[var(--fg)]"
-              onClick={() => goToThread(run.investigation!)}
-            >
-              Open the conversation that looked into the earlier failure
-            </button>
-          </div>
-        )}
+        <InvestigationLink run={run} />
         {run.sites && run.sites.length > 0 && run.status !== "running" && (
           <div className="text-[13px] text-[var(--muted)]" data-testid="run-sites">
             Opened: <span className="text-[var(--fg)]">{run.sites.join(", ")}</span>

@@ -17,13 +17,9 @@ that); actually firing a due trigger lives in runtime_lg/scheduled_tasks.py
 instead, since that needs a live ChatSessionLG.
 
 Schedule times (`ScheduleRule.at`, "HH:MM" for recurring rules) are
-interpreted in the server's own local wall-clock time, not UTC -- coscribe
-is single-user, local-first software with no per-user timezone concept
-(see ROADMAP.md's "explicitly not adopting: any hosted component"),
-so "the machine coscribe runs on" and "the user" are assumed to share a
-timezone, the same assumption any local scheduled-task tool (cron, Windows
-Task Scheduler) already makes. This is a real limitation if coscribe is
-ever remotely hosted -- documented, not silently assumed away.
+interpreted in the server's own local wall-clock time, not UTC: coscribe
+is single-user, local-first software, so the machine and the user share a
+timezone (as with cron), a limitation if coscribe is ever remotely hosted.
 """
 
 from __future__ import annotations
@@ -277,8 +273,7 @@ class ScheduledRun:
     investigation: str | None = None
     # The sites a workflow run opened, as hosts.
     sites: list[str] = field(default_factory=list)
-    # Waiting for the browser, which one run or test uses at a time.
-    queued: bool = False
+    queued: bool = False  # waiting for the browser, which one run uses at a time
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -529,7 +524,6 @@ class ScheduledTriggerStore:
         run.status = status
         run.error = error
         run.finished_at = _now_iso()
-        run.queued = False
         if trigger.runs and trigger.runs[-1] is run:
             trigger.last_run_status = status
         self.save(trigger)
