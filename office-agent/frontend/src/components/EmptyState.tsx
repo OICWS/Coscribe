@@ -11,23 +11,28 @@ export function EmptyState() {
   );
 }
 
+// Module-level so it outlives the heading, which remounts each time home opens.
+let lastShown = "";
+
 /** The new-conversation heading above the centered message box. */
 export function HomeGreeting() {
-  const [name, setName] = useState<string | null>(null);
-  // Picked once per mount so a re-render doesn't swap the line under the reader.
-  const [random] = useState(() => Math.random());
+  // Picked once per mount, after the name is known, so the line doesn't change once shown.
+  const [greeting, setGreeting] = useState("");
   useEffect(() => {
     getConfig()
-      .then((config) => setName(config.COSCRIBE_USER_NAME ?? ""))
-      .catch(() => setName(""));
+      .then((config) => config.COSCRIBE_USER_NAME ?? "")
+      .catch(() => "")
+      .then((name) => {
+        lastShown = pickGreeting(new Date(), name, Math.random, lastShown);
+        setGreeting(lastShown);
+      });
   }, []);
   return (
     <h1
       className="mb-7 px-4 text-center text-[40px] font-normal leading-tight text-[var(--fg)]"
       style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
     >
-      {/* Held back until the name is known, so the line doesn't change after it shows. */}
-      {name !== null && pickGreeting(new Date(), name, () => random)}
+      {greeting}
     </h1>
   );
 }
