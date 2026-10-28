@@ -197,7 +197,7 @@ def gather(number: int, repo: str | None) -> str:
             str(component["name"]),
             {
                 "card": component.get("card"),
-                "interface": slicer.public_names(component),
+                "interface": slicer.public_names(component)[0],
                 "files": [],
             },
         )

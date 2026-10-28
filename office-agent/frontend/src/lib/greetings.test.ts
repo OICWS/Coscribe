@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { pickGreeting } from "./greetings";
+import { pickGreeting, poolForTime } from "./greetings";
 
 // 2026-10-26 is a Monday, 2026-10-28 a Wednesday.
-const at = (day: string, hour: number) => new Date(`2026-10-${day}T${String(hour).padStart(2, "0")}:00:00`);
+const at = (day: string, hour: number, month = "10") =>
+  new Date(`2026-${month}-${day}T${String(hour).padStart(2, "0")}:00:00`);
 const first = () => 0;
-const last = () => 0.999999;
 
 describe("pickGreeting", () => {
   it("starts each part of the day with its plain greeting", () => {
@@ -15,18 +15,31 @@ describe("pickGreeting", () => {
   });
 
   it("never leaves a placeholder when there is no name", () => {
-    for (let hour = 0; hour < 24; hour++) {
-      for (let i = 0; i < 20; i++) {
-        expect(pickGreeting(at("26", hour), " ", () => i / 20)).not.toContain("{name}");
+    for (const month of ["01", "04", "07", "10"]) {
+      for (const day of ["25", "26", "30"]) {
+        for (let hour = 0; hour < 24; hour++) {
+          for (let i = 0; i < 20; i++) {
+            expect(pickGreeting(at(day, hour, month), " ", () => i / 20)).not.toContain("{name}");
+          }
+        }
       }
     }
   });
 
   it("puts the name in lines that use it", () => {
-    expect(pickGreeting(at("28", 8), "Allen", () => 0.12)).toBe("Good morning, Allen");
+    expect(pickGreeting(at("28", 8), "Allen", () => 0.03)).toBe("Good morning, Allen");
   });
 
-  it("can pick a weekday line", () => {
-    expect(pickGreeting(at("26", 8), "", last)).toBe("Happy Monday");
+  it("draws from the weekday and season groups", () => {
+    const monday = poolForTime(at("26", 8));
+    const wednesday = poolForTime(at("28", 8));
+    expect(monday).toContain("Fresh week, fresh page");
+    expect(wednesday).not.toContain("Fresh week, fresh page");
+    expect(poolForTime(at("28", 8, "01"))).toContain("Cold outside, warm lamp inside");
+    expect(poolForTime(at("28", 8, "07"))).toContain("Long days, longer drafts");
+  });
+
+  it("does not repeat the line shown last", () => {
+    expect(pickGreeting(at("28", 8), "", first, "Good morning")).not.toBe("Good morning");
   });
 });

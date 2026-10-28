@@ -549,13 +549,6 @@ def edit_review(
     return review.finish(), done
 
 
-def rejected_copy(data: bytes) -> bytes:
-    """The file as it was before any tracked change: the viewer's Original view."""
-    pkg = _Package(data)
-    _settle_all(pkg.document, accept=False)
-    return pkg.to_bytes()
-
-
 def write_atomically(path: Path, data: bytes) -> None:
     fd, temp = tempfile.mkstemp(dir=path.parent, prefix=".coscribe-", suffix=path.suffix)
     try:

@@ -254,7 +254,6 @@
   "office-agent/frontend/src/components/ChatLog.tsx::ChatLog": 166,
   "office-agent/frontend/src/components/Composer.tsx::Composer": 502,
   "office-agent/frontend/src/components/DesktopBrowserPanel.tsx::DesktopBrowserPanel": 386,
-  "office-agent/frontend/src/components/DocxViewerPanel.tsx::DocxViewerPanel": 281,
   "office-agent/frontend/src/components/EffortPicker.tsx::EffortPicker": 144,
   "office-agent/frontend/src/components/FindInPage.tsx::FindInPage": 102,
   "office-agent/frontend/src/components/ImageAnnotator.tsx::ImageAnnotator": 197,
@@ -303,7 +302,6 @@
   "office-agent/frontend/src/lib/desktop.ts": 2,
   "office-agent/frontend/src/lib/dockArrangement.ts": 3,
   "office-agent/frontend/src/lib/dockLayout.ts": 2,
-  "office-agent/frontend/src/lib/docxReview.ts": 1,
   "office-agent/frontend/src/lib/rest.ts": 1,
   "office-agent/frontend/src/lib/titleBar.ts": 1,
   "office-agent/frontend/src/lib/transcriptGrouping.ts": 3,
@@ -313,6 +311,12 @@
   "office-agent/frontend/src/types/session.ts": 2,
   "office-agent/frontend/src/types/settings.ts": 3,
   "office-agent/frontend/src/types/workflow.ts": 1
+ },
+ "interface_size": {
+  "coscribe.runtime_lg": 72,
+  "coscribe.tools": 220,
+  "coscribe.tools.bookkeeping": 55,
+  "coscribe.tools.exec": 65
  },
  "long_functions": {
   "src/coscribe/cli.py::_chat_async": 108,

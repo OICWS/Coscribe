@@ -1,5 +1,5 @@
-"""The line that tells coscribe the user changed a Word document or a Doc in the app since its last
-turn (decisions 0019 and 0025, as `deck_edits.py` does for decks). It goes in front of the user's
+"""The line that tells coscribe the user changed a Doc in the app since its last turn (decision
+0025, as `deck_edits.py` does for decks). It goes in front of the user's
 message with the turn's other notes, never into the system prompt or the tool list."""
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ from pathlib import Path
 from langchain_core.messages import BaseMessage
 
 from ..runtime import ToolMetadata
-from ..tools import WorkspaceScope, doc_edits_since_told, edits_since_told
+from ..tools import WorkspaceScope, doc_edits_since_told
 from .activity import summarize_activity
 
 
@@ -25,11 +25,10 @@ def docs_edits_note(
     lines = []
     for entry in [*activity["outputs"], *activity["references"]]:
         path = entry["path"].lower()
-        if not entry["exists"] or not path.endswith((".docx", ".md")):
+        if not entry["exists"] or not path.endswith(".md"):
             continue
-        told = edits_since_told if path.endswith(".docx") else doc_edits_since_told
         try:
-            found = told(scope.resolve(entry["path"]), state_dir)
+            found = doc_edits_since_told(scope.resolve(entry["path"]), state_dir)
         except (OSError, ValueError, KeyError):
             continue
         if found is not None:

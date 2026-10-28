@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { PAGE_KINDS, PAGE_ORDER, type PageKind } from "../../lib/artifacts";
+import { PAGE_KINDS, TILE_ORDER, type PageKind } from "../../lib/artifacts";
 import { useClickOutside } from "../../lib/useClickOutside";
 import { tinted } from "./ArtifactThumb";
 
@@ -75,7 +75,7 @@ export function NewTiles({ onMake }: { onMake: (kind: PageKind, describe?: boole
     <section aria-label="Make something new">
       <h2 className="text-sm text-[var(--muted)]">Make something new</h2>
       <div className="mt-3 flex flex-wrap gap-4">
-        {PAGE_ORDER.map((kind) => {
+        {TILE_ORDER.map((kind) => {
           const info = PAGE_KINDS[kind];
           const asks = kind === "design-system";
           return (

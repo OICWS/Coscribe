@@ -2,7 +2,7 @@ import type { Editor } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { useState } from "react";
-import { LinkDialog } from "../docs/LinkDialog";
+import { LinkDialog } from "./LinkDialog";
 import { SlideMenu, type MenuEntry } from "../slides/SlideMenu";
 import { AskBox, Composer } from "./DocBubbleBoxes";
 import { DocFormatRow } from "./DocFormatRow";

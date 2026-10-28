@@ -1,13 +1,14 @@
-"""The decks, documents, spreadsheets and designs coscribe made, for the Artifacts page: a
-registry of them that outlives the conversation that made each one, and each one's kind, name,
-time and, for a document, its opening lines.
+"""The decks, documents and designs coscribe made, for the Artifacts page: a registry of them that
+outlives the conversation that made each one, and each one's kind, name, time and, for a
+document, its opening lines.
+
+An artifact is what coscribe made and the app can open and edit, from a source it owns: a Doc, a
+deck it built, a design. A Word or Excel file is a file for Word or Excel (decision 0027), and a
+deck the person brought and coscribe only changed is theirs.
 
 A conversation's Outputs list says what it made (`activity.summarize_activity`); the registry
-adopts those files, and from then on an artifact is the file, not the conversation. Only files
-whose content the conversation made are adopted: one created here, or one the person brought
-that a script or a write tool replaced whole. One it only changed in place (an edit tool) is
-not made by coscribe. The files themselves are read fresh, so a deck edited in the Slides panel
-shows its new time."""
+adopts those files, and from then on an artifact is the file, not the conversation. The files
+themselves are read fresh, so a deck edited in the Slides panel shows its new time."""
 
 from __future__ import annotations
 
@@ -15,7 +16,6 @@ import asyncio
 import hashlib
 import json
 import os
-import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -28,10 +28,8 @@ from .activity import summarize_activity
 
 ARTIFACT_KINDS = {
     ".pptx": "slides",
-    ".docx": "docs",
     # Only a Doc (a Markdown file marked in its front matter) is one; `describe_artifact` checks.
     ".md": "docs",
-    ".xlsx": "sheets",
     ".html": "design",
 }
 _EXCERPT_CHARS = 280
@@ -42,13 +40,22 @@ def _kind(name: str) -> str | None:
     return None if name.startswith("~$") else ARTIFACT_KINDS.get(Path(name).suffix.lower())
 
 
+def _made(output: dict[str, Any]) -> bool:
+    """A deck is coscribe's only if the conversation created it: one the person brought is theirs
+    however it was changed. A Doc or a design also counts when a script or a write tool replaced
+    it whole."""
+    kind = _kind(output["name"])
+    if kind == "slides":
+        return bool(output["action"] == "created")
+    return kind is not None and bool(output["rewritten"])
+
+
 def artifact_paths(
     messages: list[BaseMessage], catalog: dict[str, ToolMetadata], scope: WorkspaceScope
 ) -> list[str]:
-    """The artifacts the messages made, most recently touched first: files created, and files
-    that were there but whose content a script or a write tool replaced whole."""
+    """The artifacts the messages made, most recently touched first."""
     outputs = summarize_activity(messages, catalog, scope)["outputs"]
-    return [o["path"] for o in outputs if o["exists"] and o["rewritten"] and _kind(o["name"])]
+    return [o["path"] for o in outputs if o["exists"] and _made(o)]
 
 
 def artifact_id(location: str) -> str:
@@ -163,7 +170,7 @@ def _excerpt(location: str, modified_ns: int) -> dict[str, str] | None:
     return _excerpts[key]
 
 
-def _read_doc_excerpt(location: str) -> dict[str, str] | None:
+def _read_excerpt(location: str) -> dict[str, str] | None:
     """A Doc's title and its first lines of text; None for a Markdown file that is not a Doc."""
     try:
         read = read_doc_file(Path(location))
@@ -171,21 +178,3 @@ def _read_doc_excerpt(location: str) -> dict[str, str] | None:
         return None
     text = " ".join(b["text"] for b in read["blocks"] if b["kind"] == "paragraph")
     return {"heading": str(read["title"])[:120], "text": text[:_EXCERPT_CHARS]}
-
-
-def _read_excerpt(location: str) -> dict[str, str] | None:
-    """A document's first line and what follows it, None for a file that does not open."""
-    if location.lower().endswith(".md"):
-        return _read_doc_excerpt(location)
-    # Loaded on first use: python-docx is slow to import and most runs never list a document.
-    from docx import Document
-    from docx.opc.exceptions import PackageNotFoundError
-
-    try:
-        paragraphs = [p.text.strip() for p in Document(location).paragraphs]
-    except (OSError, ValueError, KeyError, zipfile.BadZipFile, PackageNotFoundError):
-        return None
-    lines = [text for text in paragraphs if text]
-    if not lines:
-        return None
-    return {"heading": lines[0][:120], "text": " ".join(lines[1:])[:_EXCERPT_CHARS]}

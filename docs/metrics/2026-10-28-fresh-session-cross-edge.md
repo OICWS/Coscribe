@@ -28,7 +28,8 @@ pytest). The Word sample passed 93 pytest but could not regenerate `tests/tool_s
   has, so the Word session changed a signature, could not regenerate `tests/tool_schemas.txt` and left it stale; the
   web-search session lost time finding out. Only a decorator in the test says why.
 - **The docx card sent no one wrong, but stops at the tool.** It had no pointer to the read path of the Word panel,
-  which the session found by grep (it was already complete there).
+  which the session found by grep (it was already complete there). The Word editor was removed afterwards (#693), so
+  no card line was added for it.
 - `docs/components.md` has no keywords, so a grep in it for `web_search` found nothing; sessions used it only to learn the
   component names.
 - `gen_wire_ts.py --help` regenerates the file silently; only `--check` verifies.
@@ -38,8 +39,7 @@ pytest). The Word sample passed 93 pytest but could not regenerate `tests/tool_s
 ## What changed (item D)
 - `frontend/AGENTS.md`: the chain a new state field goes through, the settings chain (allowlist, type, `CONFIG_KEYS`)
   and that `gen_wire_ts.py` writes on every run.
-- `conversation/AGENTS.md`, `web/AGENTS.md`, `tools/office/docx/AGENTS.md`: the state payload test, the settings
-  allowlists and the Word panel's read path.
+- `conversation/AGENTS.md`, `web/AGENTS.md`: the state payload test and the settings allowlists.
 - `office-agent/CLAUDE.md`: a signature change edits `tests/tool_schemas.txt`, the test is skipped on Python 3.13, how to
   regenerate it on 3.11.
 
