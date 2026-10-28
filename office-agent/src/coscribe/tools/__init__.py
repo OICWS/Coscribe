@@ -172,19 +172,7 @@ from .office.doc import (
     save_doc_edits,
 )
 from .office.document_tools import DocumentToolkit, build_document_tools
-from .office.docx import (
-    BlocksRefused,
-    DocChanged,
-    VersionGone,
-    docx_from_markdown,
-    edits_since_told,
-    read_doc_blocks,
-    read_doc_image,
-    remember_before_edit,
-    remember_version,
-    restore_version,
-    save_doc_blocks,
-)
+from .office.docx import docx_from_markdown
 from .office.pptx import (
     NEW_DECK_INSTRUCTIONS,
     CommentNotFound,
@@ -322,8 +310,6 @@ __all__ = [
     "design_system",
     "deck_html",
     "deck_pdf",
-    "BlocksRefused",
-    "DocChanged",
     "DocBlocksRefused",
     "DocAssetRefused",
     "DocCommentNotFound",
@@ -349,14 +335,6 @@ __all__ = [
     "resolve_doc_comment",
     "restore_doc_version",
     "save_doc_edits",
-    "edits_since_told",
-    "remember_before_edit",
-    "remember_version",
-    "restore_version",
-    "VersionGone",
-    "read_doc_blocks",
-    "read_doc_image",
-    "save_doc_blocks",
     "copy_deck",
     "deck_files",
     "move_deck",

@@ -44,7 +44,6 @@ export interface ConfigResponse {
   COSCRIBE_FLASH_ON_ATTENTION: string | null;
   COSCRIBE_KEEP_AWAKE: string | null;
   COSCRIBE_KEEP_AWAKE_ON_BATTERY: string | null;
-  COSCRIBE_REVIEWER_NAME: string | null;
   COSCRIBE_USER_NAME: string | null;
   COSCRIBE_USER_ROLE: string | null;
   /** Desktop-shell-only, Rust-consumed (see office-agent-desktop's

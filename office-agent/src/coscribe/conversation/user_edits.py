@@ -1,5 +1,5 @@
 """What the user changed in the app since coscribe's last turn, as one note for the next turn: the
-slides of a deck and the text of a Word document."""
+slides of a deck and the text of a Doc."""
 
 from __future__ import annotations
 
