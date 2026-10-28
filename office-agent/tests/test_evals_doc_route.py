@@ -29,7 +29,7 @@ bar Sales
 
 def test_the_briefs_cover_the_three_routes() -> None:
     assert sorted({b.expect for b in BRIEFS}) == ["chat", "doc", "docx"]
-    assert len({b.name for b in BRIEFS}) == len(BRIEFS) == 12
+    assert len({b.name for b in BRIEFS}) == len(BRIEFS) == 15
 
 
 def test_what_the_agent_left_is_classified_and_an_input_left_alone_is_not_counted(

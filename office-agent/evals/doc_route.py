@@ -1,11 +1,13 @@
 """Does a model write a Doc when it should, and a valid one? (decision 0025, step 6.)
 
-Twelve briefs a user might type: seven for writing with no format named (or only what the person
-will do with it), three that ask for Word by name, a template or tracked changes, and two that want
-an answer in chat. Each is sent to coscribe's real agent with the built-in skills, in a throwaway
-workspace; the result is classified (a Doc, a .docx, plain Markdown or nothing) and a Doc is read
-by the app's own parsers. It calls a model, so it is run by hand, off-peak, and is not part of CI;
-only its deterministic parts are tested (`tests/test_evals_doc_route.py`).
+Fifteen briefs a user might type: seven for writing with no format named (or only what the person
+will do with it), three that ask for Word by name, a template or tracked changes, two that want
+an answer in chat, and three that ask to be explained something, one of them in a form to keep or
+send (decision 0027: the AI decides when an explanation becomes a Doc). Each is sent to coscribe's
+real agent with the built-in skills, in a throwaway workspace; the result is classified (a Doc, a
+.docx, plain Markdown or nothing) and a Doc is read by the app's own parsers. It calls a model, so
+it is run by hand, off-peak, and is not part of CI; only its deterministic parts are tested
+(`tests/test_evals_doc_route.py`).
 
     python -m evals.doc_route --out evals/runs/doc-route
     python -m evals.doc_route --tasks 01,04 --out evals/runs/try
@@ -161,6 +163,26 @@ BRIEFS = [
         "12-compare",
         "Compare Python and Go for a small web service in a short table, a few rows.",
         "chat",
+    ),
+    Brief(
+        "13-explain-steps",
+        "Explain how OAuth 2.0 with PKCE works, step by step. I am just trying to understand it.",
+        "chat",
+    ),
+    Brief(
+        "14-explain-to-share",
+        "Our team offsite has a budget of 12,000 USD for 20 people. Explain how we could split "
+        "it between venue, travel and food, in a form I can send to the team afterwards.",
+        "doc",
+        ("12,000", "20"),
+    ),
+    Brief(
+        "15-explain-reread",
+        "Walk me through how a 300,000 USD loan at 4% over 25 years is paid off: the monthly "
+        "payment, what the first three years look like, and the total interest. I want to keep "
+        "it and come back to it.",
+        "doc",
+        ("300,000", "25"),
     ),
 ]
 
