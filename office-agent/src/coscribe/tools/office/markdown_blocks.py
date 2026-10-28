@@ -48,6 +48,7 @@ class Block:
     rows: list[list[str]] = field(default_factory=list)
     header: bool = False
     comment: str | None = None
+    new_page: bool = False
 
 
 def parse_blocks(content: str) -> list[Block]:
