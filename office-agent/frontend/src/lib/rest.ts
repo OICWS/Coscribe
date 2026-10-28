@@ -49,6 +49,7 @@ import type {
   ToolsResponse,
   UploadSkillResult,
 } from "../types/settings";
+import type { ProxySettings, ProxyTestResult, ProxyUpdate } from "../types/proxy";
 import type {
   CommandsResponse,
   ContextBreakdown,
@@ -528,6 +529,11 @@ export const removeCommandSandbox = () =>
 export const getLibreOffice = () => getJson<LibreOfficeStatus>("/api/libreoffice");
 export const downloadLibreOffice = () => sendForResult<LibreOfficeStatus>("/api/libreoffice", "POST", {});
 export const removeLibreOffice = () => sendForResult<LibreOfficeStatus>("/api/libreoffice", "DELETE", {});
+
+export const getProxySettings = () => getJson<ProxySettings>("/api/settings/proxy");
+export const saveProxySettings = (update: ProxyUpdate) => sendForResult<ProxySettings>("/api/settings/proxy", "PUT", update);
+export const testProxySettings = (update: ProxyUpdate) =>
+  sendForResult<ProxyTestResult>("/api/settings/proxy/test", "POST", update);
 
 export const getScriptIsolation = () => getJson<ScriptIsolation>("/api/script-isolation");
 export const retestScriptIsolation = () => postJson<ScriptIsolation>("/api/script-isolation/test", {});

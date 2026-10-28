@@ -101,7 +101,38 @@ def _toml_str(value: str) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
-def config_toml(custom_providers: dict[str, dict[str, str]], openai_key: bool) -> str:
+# Codex matches these case-insensitively (checked against 0.163.0).
+_PROXY_NAMES = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY")
+# Codex's own filter already drops names holding KEY, SECRET or TOKEN. The suffixes also catch a
+# tool's own copy of the proxy (npm_config_https_proxy, YARN_HTTPS_PROXY), which may carry the
+# password; the standard names are set again below without it.
+_EXCLUDED = (
+    _KEY_ENV_PREFIX + "*",
+    "*PASSWORD*",
+    "*PASSWD*",
+    "*CREDENTIAL*",
+    *("*" + name for name in _PROXY_NAMES),
+)
+
+
+_SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://")
+
+
+def _without_credentials(url: str) -> str:
+    """`url` with any `user:password@` taken out, up to the last `@` so a password holding an
+    unescaped `/`, `@` or `://` goes too."""
+    scheme = _SCHEME.match(url)
+    prefix = scheme.group(0) if scheme else ""
+    return prefix + url[len(prefix) :].rpartition("@")[2]
+
+
+def config_toml(
+    custom_providers: dict[str, dict[str, str]],
+    openai_key: bool,
+    proxies: dict[str, str] | None = None,
+) -> str:
+    """`proxies`: the proxy variables Codex starts with, which its commands get without a user
+    name or password."""
     lines = [
         # Codex's web search runs on OpenAI's servers yet is offered to
         # whichever provider is set; work on the user's files doesn't need it.
@@ -110,13 +141,21 @@ def config_toml(custom_providers: dict[str, dict[str, str]], openai_key: bool) -
         "[analytics]",
         "enabled = false",
         "",
-        # Codex hands its whole environment to the commands it runs; the
-        # keys this module adds for Codex itself stay with Codex.
+        # Codex hands its whole environment to the commands it runs, and the
+        # server's holds every provider key (issue #667). Its own filter of
+        # names holding KEY, SECRET or TOKEN is off unless asked for; the
+        # keys this module adds and the proxy's password go as well.
         "[shell_environment_policy]",
-        f"exclude = [{_toml_str(_KEY_ENV_PREFIX + '*')}]",
-        "",
-        "[features]",
+        "ignore_default_excludes = false",
+        "exclude = [" + ", ".join(_toml_str(n) for n in _EXCLUDED) + "]",
     ]
+    if proxies:
+        lines += ["", "[shell_environment_policy.set]"]
+        lines += [
+            f"{_toml_str(name)} = {_toml_str(_without_credentials(value))}"
+            for name, value in sorted(proxies.items())
+        ]
+    lines += ["", "[features]"]
     lines += [f"{feature} = false" for feature in DISABLED_FEATURES]
     providers = {name: config["base_url"] for name, config in sorted(custom_providers.items())}
     if openai_key:
@@ -196,7 +235,11 @@ def launch_spec(
     return LaunchSpec(
         argv=(str(executable), "app-server"),
         env=env,
-        config=config_toml(custom_providers, openai_key),
+        config=config_toml(
+            custom_providers,
+            openai_key,
+            {k: v for k, v in env.items() if k.upper() in _PROXY_NAMES},
+        ),
         home=home,
         log_path=Path(state_dir) / "codex" / "app-server.log",
     )

@@ -35,6 +35,7 @@ from typing import Literal
 from ...runtime import Environments, NetworkGuard
 from . import _appcontainer
 from ._appcontainer import NETWORK_CAPABILITIES, ContainerProcess, ContainerUnavailable
+from .env_allowlist import child_env
 from .script_env import ensure_script_env, venv_python
 
 Access = Literal["read", "write"]
@@ -487,7 +488,7 @@ def _run_self_test(state_dir: Path, python: Path, runtime: Sequence[Path]) -> Se
             proc = start(
                 [str(python), "-I", str(script), str(inside), str(outside)],
                 str(inside),
-                {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONDONTWRITEBYTECODE": "1"},
+                {**child_env(), "PYTHONIOENCODING": "utf-8", "PYTHONDONTWRITEBYTECODE": "1"},
                 isolation,
             )
             # Both pipes at once: a child blocked on a full stderr would never finish stdout.

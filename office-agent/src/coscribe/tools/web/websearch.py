@@ -133,7 +133,7 @@ def _read_web_page(
     if not url.startswith(("http://", "https://")):
         raise ValueError(f"{url!r} isn't an http(s) address")
     with httpx.Client(
-        proxy=configured_proxy(),
+        proxy=configured_proxy(url),
         follow_redirects=True,
         timeout=_PAGE_TIMEOUT_SECONDS,
         headers={"User-Agent": _USER_AGENT},

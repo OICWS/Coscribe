@@ -140,3 +140,20 @@ async def test_a_command_is_refused_until_commands_are_turned_on(tmp_path: Path)
     Capabilities(tmp_path / "state").set("commands", False)
     with pytest.raises(CapabilityOff, match="Settings › Capabilities"):
         await tools["run_background_command"](command="echo hi", description="say hi")
+
+
+@posix_only
+async def test_a_command_is_not_handed_the_servers_keys_or_proxy_password(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-not-for-commands")
+    monkeypatch.setenv("HTTPS_PROXY", "http://alice:hunter2@proxy.example:8080")
+    tools = _tools(tmp_path)
+
+    started = await tools["run_background_command"](command="env", description="list variables")
+    finished = await _finished(tools, started["task_id"])
+
+    assert finished["status"] == "succeeded", finished
+    assert "sk-ant-not-for-commands" not in finished["output"]
+    assert "hunter2" not in finished["output"]
+    assert "HTTPS_PROXY=http://proxy.example:8080" in finished["output"]

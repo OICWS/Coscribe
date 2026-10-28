@@ -266,3 +266,21 @@ def test_run_python_script_gets_the_conversations_variables_read_at_each_run(
     # Changed in between, and not able to undo what the runner itself needs.
     assert first["stdout"] == "north 1\n"
     assert second["stdout"] == "south 1\n"
+
+
+def test_run_python_script_is_not_handed_the_servers_keys_or_proxy_password(
+    tools: ScriptTools, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-not-for-scripts")
+    monkeypatch.setenv("HTTPS_PROXY", "http://alice:hunter2@proxy.example:8080")
+    script = (
+        "import os; print(sorted(os.environ.items()));"
+        "print(os.environ.get('ANTHROPIC_API_KEY'), os.environ.get('HTTPS_PROXY'))"
+    )
+
+    result = tools.run_python_script(script=script, description="print the environment")
+
+    assert result["exit_code"] == 0, result["stderr"]
+    assert "sk-ant-not-for-scripts" not in result["stdout"]
+    assert "hunter2" not in result["stdout"]
+    assert result["stdout"].endswith("None http://proxy.example:8080\n")

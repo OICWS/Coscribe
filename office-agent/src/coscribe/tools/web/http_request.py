@@ -95,7 +95,7 @@ def build_http_tools(state_dir: str | Path, thread_id: str) -> list[Callable[...
         sent_body = substitute(body, values) if body is not None else None
         sent_headers.setdefault("User-Agent", _USER_AGENT)
         with httpx.Client(
-            proxy=configured_proxy(),
+            proxy=configured_proxy(url),
             follow_redirects=not values,
             timeout=min(max(float(timeout), 1.0), 120.0),
             event_hooks=NetworkGuard(state_dir, thread_id).request_hooks(),
