@@ -312,6 +312,12 @@
   "office-agent/frontend/src/types/settings.ts": 3,
   "office-agent/frontend/src/types/workflow.ts": 1
  },
+ "interface_size": {
+  "coscribe.runtime_lg": 72,
+  "coscribe.tools": 220,
+  "coscribe.tools.bookkeeping": 55,
+  "coscribe.tools.exec": 65
+ },
  "long_functions": {
   "src/coscribe/cli.py::_chat_async": 108,
   "src/coscribe/conversation/session.py::ChatSessionLG.__init__": 192,

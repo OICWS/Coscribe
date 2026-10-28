@@ -25,7 +25,12 @@ the preload object `coscribeDesktop` of `office-agent-desktop/`. `npm run build`
 
 ## Invariants
 - A new or changed WebSocket event starts in `conversation/wire.py`; regenerate the types, then
-  fix the type errors. `check.sh` fails on a stale `wire.gen.ts`.
+  fix the type errors. `check.sh` fails on a stale `wire.gen.ts`. `gen_wire_ts.py` writes the
+  file on any run; `--check` only verifies. A new field of the state event also goes through
+  `state/reducer.ts` (initial state and its case), a prop in `App.tsx` and the component, and into
+  the full payload `tests/web/test_chat_modes.py` expects.
+- A new `.env` setting the UI edits: the allowlist in `web/routes/settings/config.py`, its type in
+  `types/settings.ts` and the `CONFIG_KEYS` list in `components/settings/SettingsModal.tsx`.
 - A WebSocket and every non-read request must carry the launch token: `ws.ts` builds its URL with
   `socketUrl`, `main.tsx` calls `sendTokenWithWrites` to wrap `fetch`. Do not call `fetch`
   against a write route another way. Dev against a token-guarded backend needs the same
@@ -40,7 +45,7 @@ the preload object `coscribeDesktop` of `office-agent-desktop/`. `npm run build`
 ## Tests
 Unit tests (vitest, `npm test`) sit next to the file as `x.test.ts`: `src/state/reducer.test.ts`,
 `src/lib/launchToken.test.ts`, `src/lib/dockLayout.test.ts`, `src/lib/dockArrangement.test.ts`,
-`src/lib/docsEditor.test.ts`, `src/lib/docModel.test.ts`, `docEditing.test.ts` and `docCommentMarks.test.ts` (jsdom, the Doc editor's blocks, edits and comment marks), `src/lib/slides.test.ts`, `src/lib/transcriptGrouping.test.ts`,
+`src/lib/docModel.test.ts`, `docEditing.test.ts` and `docCommentMarks.test.ts` (jsdom, the Doc editor's blocks, edits and comment marks), `src/lib/slides.test.ts`, `src/lib/transcriptGrouping.test.ts`,
 `src/components/chatlog/helpers.test.ts`, `src/components/slides/sectionDom.test.ts` (jsdom, for that
 file only). `tests/e2e/*.spec.ts` (Playwright, `npm run test:e2e`)
 runs against a live `coscribe-web` and `npm run dev` (nightly in `.github/workflows/e2e.yml` with

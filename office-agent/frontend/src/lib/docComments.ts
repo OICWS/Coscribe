@@ -66,3 +66,8 @@ export function docCommentsMessage(file: string, comments: { quote: string; bloc
   if (comments.length === 1) return `Comment on ${file}, ${entry(comments[0])}`;
   return `Comments on ${file}:\n\n${comments.map((c, i) => `${i + 1}. ${entry(c)}`).join("\n\n")}`;
 }
+
+/** The message "Ask coscribe" sends for selected words: the file, then the words quoted. */
+export function askAboutWords(file: string, words: string): string {
+  return `Question about ${file}:\n${words.split("\n").map((line) => `> ${line}`).join("\n")}`;
+}

@@ -51,11 +51,26 @@ def test_a_card_has_the_fixed_headings_and_stays_short(card: Path) -> None:
     assert card.with_name("CLAUDE.md").read_text(encoding="utf-8").strip() == "@AGENTS.md"
 
 
+def _reexported_from_sub_components(card: Path) -> set[str]:
+    """Names a package re-exports from a sub-package of its own: the sub-component's card lists
+    them (its own test), so the parent's card need not list them again (issue #677)."""
+    found: set[str] = set()
+    for init in card.parent.glob("**/__init__.py"):
+        if init.parent == card.parent:
+            continue
+        found |= set(getattr(importlib.import_module(_dotted_of(init.parent)), "__all__", []))
+    return found
+
+
+def _dotted_of(directory: Path) -> str:
+    return ".".join(["coscribe", *directory.relative_to(SRC).parts])
+
+
 @pytest.mark.parametrize("card", CARDS, ids=lambda p: _dotted(p))
 def test_a_cards_public_interface_is_the_packages_all(card: Path) -> None:
     package = importlib.import_module(_dotted(card))
     section = _section(card.read_text(encoding="utf-8"), "Public interface")
-    missing = set(package.__all__) - _names(section)
+    missing = set(package.__all__) - _names(section) - _reexported_from_sub_components(card)
     assert not missing, f"exported but not on the card: {sorted(missing)}"
 
 
