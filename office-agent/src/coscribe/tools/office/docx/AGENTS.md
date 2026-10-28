@@ -25,7 +25,10 @@ reaches them through `coscribe.tools.office.document_tools`.
   needs them, not at module level (startup time); tool signatures name no library type.
 - A Word document gains a document style, not a script route
   (`docs/decisions/0013-word-documents-gain-a-document-style-not-a-script-route.md`).
-- `_review.py` and the review tools are being changed by #343.
+- `_review.py` and the review tools are being changed by #343. What they read reaches the Word
+  panel through `web/routes/threads.py`'s read route, `frontend/src/lib/docxReview.ts` and
+  `components/DocxCommentCard.tsx`; a field the write side adds already travels it if `read_review`
+  returns it.
 
 ## Tests
 `tests/test_documents_tool.py`, `tests/test_docx_structure_tool.py`, `tests/test_docx_review_tool.py`,

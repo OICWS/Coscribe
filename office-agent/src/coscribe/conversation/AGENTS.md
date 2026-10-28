@@ -29,7 +29,8 @@ still reach into `session` for private helpers and to patch it; do not copy that
   (import contract, `lint-imports`); it talks to whoever is connected through `EventSink`.
 - `wire.py` is stdlib only, and the chat socket's payloads match it: `tests/wire_check.py`
   validates every payload the test suite sends, and the checked-in TypeScript types equal what
-  `scripts/gen_wire_ts.py` generates (`tests/test_wire_ts.py`).
+  `scripts/gen_wire_ts.py` generates (`tests/test_wire_ts.py`). A new field of the state event
+  also goes into the payload `tests/web/test_chat_modes.py` expects.
 - The approval precedence lives in `approvals.py` only; the session keeps the pending futures
   and their resolution (`tests/test_approval_decisions.py`).
 - Imports go downward: `conversation` sits under `web` and `cli` and above `coordinator` and
