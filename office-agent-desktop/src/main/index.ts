@@ -13,6 +13,7 @@ import { watchBackgroundEvents } from "./backgroundEvents";
 import { createMainWindow, getMainWindow, showMainWindow, preloadPath, iconsDirFromApp, markQuitting } from "./mainWindow";
 import { createTray } from "./tray";
 import { registerDialogHandlers } from "./dialog";
+import { registerDocPdfHandlers } from "./docPdf";
 import { registerWindowChromeHandlers } from "./windowChrome";
 import { registerBrowserPanelHandlers, destroyBrowserPanel } from "./browserPanel";
 import { startBrowserAgent } from "./browserAgent";
@@ -55,6 +56,7 @@ if (!gotLock) {
     registerSessionActivityHandlers();
     const win = createMainWindow(port, preloadPath());
     registerDialogHandlers(win);
+    registerDocPdfHandlers();
     registerBrowserPanelHandlers(win);
     registerBrowserPermissionHandlers(win);
     registerPanelWindowHandlers(win, preloadPath());

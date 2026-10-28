@@ -19,6 +19,7 @@ reaches them through `coscribe.tools.office.document_tools`.
 `coscribe.tools.office.table_layout`, `coscribe.tools.office.toolkit`.
 
 ## Invariants
+- An export may leave marker paragraphs (`§callout:…§`, `§chart:…§`) in the markdown it hands `docx_from_markdown`; `_markers.py` turns them into a framed callout and a native chart, and a `☐ `/`☑ ` list item into a box without a bullet. `write_docx` does not run it.
 - A write is validated against the ECMA-376 schema before the file is touched, so a bad edit
   raises instead of producing a file Word repairs (`_ooxml_validate`).
 - Heavy libraries (`mammoth`, `python-docx`, `markdownify`) are imported inside the method that
