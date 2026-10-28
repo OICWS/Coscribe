@@ -9,9 +9,9 @@ the model. A list of names to remove would miss the next key someone adds.
 from __future__ import annotations
 
 import os
-import re
 from collections.abc import Mapping
 
+from ...runtime import without_credentials
 from .script_env import overlay_env
 
 # Upper-cased: Windows' names are case-insensitive, and the proxy and certificate names are
@@ -77,19 +77,6 @@ _PASSED = frozenset(
 _PROXIES = frozenset({"ALL_PROXY", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY"})
 
 
-# Only a real scheme counts as one: in `user:a://b@proxy` the `://` is part of the password.
-_SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://")
-
-
-def _without_credentials(url: str) -> str:
-    """`url` with any `user:password@` taken out. Everything up to the last `@` goes, so a
-    password holding an unescaped `/` or `@` does not survive either; a proxy address has no
-    path for that to cut into."""
-    scheme = _SCHEME.match(url)
-    prefix = scheme.group(0) if scheme else ""
-    return prefix + url[len(prefix) :].rpartition("@")[2]
-
-
 def child_env(
     extra: Mapping[str, str] | None = None, base: Mapping[str, str] | None = None
 ) -> dict[str, str]:
@@ -101,7 +88,7 @@ def child_env(
     for name, value in source.items():
         upper = name.upper()
         if upper in _PROXIES:
-            passed[name] = _without_credentials(value)
+            passed[name] = without_credentials(value)
         elif upper in _PASSED or upper.startswith("LC_"):
             passed[name] = value
     return overlay_env(passed, extra)

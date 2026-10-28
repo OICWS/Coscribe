@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .. import __version__
-from ..runtime import configured_proxy
+from ..runtime import configured_proxy, without_credentials
 from ..tools import sandbox_codex, sandbox_home, venv_python, write_codex_config
 from .client import AppServer
 from .install import CodexUnavailable, codex_path_dir
@@ -115,17 +115,6 @@ _EXCLUDED = (
 )
 
 
-_SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://")
-
-
-def _without_credentials(url: str) -> str:
-    """`url` with any `user:password@` taken out, up to the last `@` so a password holding an
-    unescaped `/`, `@` or `://` goes too."""
-    scheme = _SCHEME.match(url)
-    prefix = scheme.group(0) if scheme else ""
-    return prefix + url[len(prefix) :].rpartition("@")[2]
-
-
 def config_toml(
     custom_providers: dict[str, dict[str, str]],
     openai_key: bool,
@@ -152,7 +141,7 @@ def config_toml(
     if proxies:
         lines += ["", "[shell_environment_policy.set]"]
         lines += [
-            f"{_toml_str(name)} = {_toml_str(_without_credentials(value))}"
+            f"{_toml_str(name)} = {_toml_str(without_credentials(value))}"
             for name, value in sorted(proxies.items())
         ]
     lines += ["", "[features]"]
