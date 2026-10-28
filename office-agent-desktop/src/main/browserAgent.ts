@@ -11,12 +11,12 @@
  * sent as real input events, which pages can't tell from the user's.
  */
 
-import { AsyncLocalStorage } from "node:async_hooks";
 import { existsSync, mkdirSync } from "node:fs";
 import { join, parse } from "node:path";
 import { Readable } from "node:stream";
 import { type BrowserWindow, type DownloadItem, type WebContents, app, webContents } from "electron";
 import { pageAgent } from "./browserAgentPage";
+import { type Step, cancelFrameOff, enqueue, running, runningSteps, scheduleFrameOff, stepContext } from "./browserAgentSteps";
 import { type AgentFrame, type Download, type PageDialog, type TabCdp, cdpFor, existingCdp } from "./browserCdp";
 import { checkNetworkLanding, checkNetworkSites, inSites, isAllowed, normalizeSite, requestPermission } from "./browserPermissions";
 import {
@@ -78,19 +78,7 @@ const DOWNLOAD_QUICK_MS = 10_000;
 // A finished download no wait has taken is kept this long for one.
 const UNCLAIMED_KEEP_MS = 30 * 60_000;
 
-/** A step under way, and whether its conversation was stopped. Conversations
- * run steps side by side, so each step finds its own through its async context. */
-interface Step {
-  threadId: string;
-  stop: boolean;
-}
-const stepContext = new AsyncLocalStorage<Step>();
-const runningSteps = new Map<string, Step>();
-const running = {
-  get stop(): boolean {
-    return stepContext.getStore()?.stop ?? false;
-  },
-};
+
 /** Conversations with a turn under way and workflow runs in progress, as
  * the server reports them. */
 const activeThreads = new Set<string>();
@@ -807,8 +795,6 @@ function siteFor(command: Command): string | null {
 export function startBrowserAgent(port: number, token: string, getWindow: () => BrowserWindow | undefined): void {
   const base = `http://127.0.0.1:${port}/internal/browser-host`;
   const headers = { "x-coscribe-browser-token": token };
-  const queues = new Map<string, Promise<void>>();
-  const frameOffTimers = new Map<string, ReturnType<typeof setTimeout>>();
   onTabDownload(onDownload);
 
 
@@ -867,7 +853,7 @@ export function startBrowserAgent(port: number, token: string, getWindow: () => 
     // The AI's steps land on the live page, so an annotation in progress gives way (the panel drops its drawing).
     setViewHidden(false);
     sendAgentEvent({ busy: true, threadId: command.thread_id, action: command.action });
-    clearTimeout(frameOffTimers.get(command.thread_id));
+    cancelFrameOff(command.thread_id);
     const frameTab = command.action === "tabs" ? undefined : ensureActiveTab(command.thread_id);
     if (frameTab && !frameTab.blank) void inPage(frameTab.view.webContents, "agent_frame", { on: true }).catch(() => undefined);
     const step: Step = { threadId: command.thread_id, stop: false };
@@ -883,14 +869,11 @@ export function startBrowserAgent(port: number, token: string, getWindow: () => 
       sendAgentEvent({ busy: false, threadId: command.thread_id });
       // Steps come a few seconds apart while the model thinks; the frame
       // stays up between them instead of flickering.
-      frameOffTimers.set(
-        command.thread_id,
-        setTimeout(() => {
-          for (const tab of allTabs(command.thread_id)) {
-            if (!tab.blank) void inPage(tab.view.webContents, "agent_frame", { on: false }).catch(() => undefined);
-          }
-        }, 8000),
-      );
+      scheduleFrameOff(command.thread_id, 8000, () => {
+        for (const tab of allTabs(command.thread_id)) {
+          if (!tab.blank) void inPage(tab.view.webContents, "agent_frame", { on: false }).catch(() => undefined);
+        }
+      });
     }
   };
 
@@ -936,15 +919,8 @@ export function startBrowserAgent(port: number, token: string, getWindow: () => 
                 continue;
               }
               command.receivedAt = Date.now();
-              // One step at a time per conversation, in order: two clicks
-              // racing on one page would land unpredictably. Conversations
-              // have tabs of their own, so they don't wait for each other.
-              const previous = queues.get(command.thread_id) ?? Promise.resolve();
-              const next = previous.then(() => execute(command));
-              queues.set(command.thread_id, next);
-              void next.finally(() => {
-                if (queues.get(command.thread_id) === next) queues.delete(command.thread_id);
-              });
+              // Two clicks racing on one page would land unpredictably.
+              enqueue(command.thread_id, () => execute(command));
             }
           }
         }

@@ -125,6 +125,19 @@ function TabButton({
   );
 }
 
+/** What the desktop app tells the panel: which conversation's tabs it shows
+ * (the others keep working unseen), a site asking for permission, and the
+ * allowed-sites menu entry. */
+function useHostEvents(
+  threadId: string,
+  setPermission: (r: BrowserPermissionRequest | null) => void,
+  setSitesOpen: (open: boolean) => void,
+) {
+  useEffect(() => void browserPanelViewGroup(threadId), [threadId]);
+  useEffect(() => onBrowserPermission(setPermission), [setPermission]);
+  useEffect(() => onShowAllowedSites(() => setSitesOpen(true)), [setSitesOpen]);
+}
+
 /** The desktop app's Browser panel: real tabs (native views the desktop
  * app lays over the content area below), shared with coscribe's AI,
  * which drives them through the browser_* tools while the user watches. */
@@ -160,11 +173,6 @@ export function DesktopBrowserPanel({
   useEffect(() => {
     if (!editingAddress) setAddress(active?.url ?? "");
   }, [active?.url, editingAddress]);
-
-  // The panel shows this conversation's tabs; the others keep working unseen.
-  useEffect(() => {
-    void browserPanelViewGroup(threadId);
-  }, [threadId]);
 
   // The native view is laid over containerRef's box; it moves whenever
   // that box does -- the window resizing, the panel being resized or moved,
@@ -280,8 +288,7 @@ export function DesktopBrowserPanel({
     if (agent?.busy) setAnnotation(null);
   }, [agent]);
 
-  useEffect(() => onBrowserPermission(setPermission), []);
-  useEffect(() => onShowAllowedSites(() => setAllowedSitesOpen(true)), []);
+  useHostEvents(threadId, setPermission, setAllowedSitesOpen);
 
   const answerPermission = (answer: BrowserPermissionAnswer) => {
     if (!permission) return;

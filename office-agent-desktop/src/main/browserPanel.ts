@@ -480,7 +480,8 @@ export function releaseBrowserPanelHost(window: BrowserWindow, mainWindow: Brows
 function openPanel(window: BrowserWindow, rect: PanelRect): void {
   setHost(window);
   panelRect = rect;
-  ensureActiveTab();
+  // Before the panel names its conversation there are no tabs to show.
+  if (viewedGroup) ensureActiveTab();
   layout();
   sendTabs();
   for (const done of openWaiters.splice(0)) done();
