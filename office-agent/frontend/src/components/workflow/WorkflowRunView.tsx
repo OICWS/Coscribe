@@ -22,7 +22,6 @@ import type { BranchStep, CheckResult, LoopStep, StepRecord, Workflow, WorkflowS
 import { CheckIcon, ChevronDownIcon, ClockIcon, CloseIcon, SparkIcon, StopIcon } from "../icons";
 import { ConditionText, VarToken } from "./parts";
 import { Screenshot } from "./Screenshot";
-import { goToThread } from "../../lib/nav";
 import { InvestigationLink, WAITING_FOR_BROWSER } from "./InvestigationLink";
 import { StepOutput } from "./StepOutput";
 
@@ -736,11 +735,7 @@ function RunBanner({
           {run.screenshot && <Screenshot name={run.screenshot} alt="The page when the step failed" />}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {run.investigation && (
-            <button type="button" className={primaryButton} onClick={() => goToThread(run.investigation!)}>
-              Open the conversation looking into it
-            </button>
-          )}
+          <InvestigationLink run={run} buttonClass={primaryButton} />
           <button
             type="button"
             className={run.investigation ? secondaryButton : primaryButton}
