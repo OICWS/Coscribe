@@ -36,6 +36,8 @@ def _block(block: Block) -> str | None:
         return _callout(text)
     if block.kind == "chart":
         return _chart(text)
+    if block.kind == "rule":
+        return "§rule§"
     if block.kind == "code":
         return "\n".join(line for line in text.splitlines() if not _FENCE.match(line))
     if block.kind == "quote":

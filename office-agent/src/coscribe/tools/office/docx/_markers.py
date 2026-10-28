@@ -15,6 +15,7 @@ from ._style import EAST_ASIAN_FONT, LATIN_FONT
 _CALLOUT = re.compile(r"§callout:(\w+):([^§]*)§")
 _END = "§/callout§"
 _CHART = re.compile(r"§chart:(\w+):([^§]*)§")
+_RULE = "§rule§"
 _BOXES = ("☐ ", "☑ ")
 
 # The colours the Doc editor draws a callout in (index.css), so a page and its Word file agree.
@@ -66,8 +67,11 @@ def _tint(colour: str) -> str:
     return "".join(f"{round(c * 0.09 + 255 * 0.91):02X}" for c in channels)
 
 
-def _frame(paragraph: Any, colour: str, *, before: int, after: int) -> None:
+def _frame(paragraph: Any, colour: str, *, before: int, after: int, last: bool) -> None:
     ppr = paragraph._p.get_or_add_pPr()
+    if not last:
+        # A callout is not split from its label, nor one paragraph from the next, across a page.
+        _put(ppr, _make("w:keepNext"))
     border = _make("w:pBdr")
     border.append(_make("w:left", val="single", sz="24", space="8", color=colour))
     _put(ppr, border)
@@ -104,9 +108,10 @@ def _callout(document: Any, start: Any, end: Any, kind: str, label: str) -> None
     run.bold = True
     run.font.size = Pt(8.5)
     run.font.color.rgb = RGBColor.from_string(colour)
-    _frame(head, colour, before=120, after=20)
+    _frame(head, colour, before=120, after=20, last=not inside)
     for index, paragraph in enumerate(inside):
-        _frame(paragraph, colour, before=0, after=120 if index == len(inside) - 1 else 60)
+        last = index == len(inside) - 1
+        _frame(paragraph, colour, before=0, after=120 if last else 60, last=last)
     end.getparent().remove(end)
 
 
@@ -152,6 +157,17 @@ def _title_only(document: Any, marker: Any, title: str) -> None:
     paragraph.add_run(title or "Chart").bold = True
 
 
+def _rule(paragraph: Any) -> None:
+    """A horizontal rule: an empty line with a hairline under it."""
+    for run in list(paragraph.runs):
+        run._r.getparent().remove(run._r)
+    ppr = paragraph._p.get_or_add_pPr()
+    border = _make("w:pBdr")
+    border.append(_make("w:bottom", val="single", sz="6", space="1", color="BFBFBF"))
+    _put(ppr, border)
+    _put(ppr, _make("w:spacing", before="60", after="120"))
+
+
 def _boxed(paragraph: Any) -> None:
     """A task item stands without a bullet, its box in front."""
     ppr = paragraph._p.get_or_add_pPr()
@@ -181,6 +197,8 @@ def apply_markers(document: Any) -> None:
                 element.getparent().remove(element)
             else:
                 _callout(document, element, end, callout[1], callout[2])
+        elif text == _RULE:
+            _rule(paragraph)
         elif chart := _CHART.fullmatch(text):
             table = element.getnext()
             is_table = table is not None and table.tag.endswith("}tbl")

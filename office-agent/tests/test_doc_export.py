@@ -26,6 +26,8 @@ We ship *first* in **May**.
 
 ![the chart](plan.doc/assets/chart.png)
 
+---
+
 - [ ] book the room
 - [x] send the invite
 
@@ -100,3 +102,18 @@ def test_a_chart_without_data_keeps_its_title_over_the_table() -> None:
     document = Document(io.BytesIO(docx_from_markdown(docx_markdown(source))))
 
     assert [p.text for p in document.paragraphs] == ["Empty"]
+
+
+def test_a_horizontal_rule_is_a_hairline_not_dashes() -> None:
+    source = "---\ncoscribe: doc\n---\n\nAbove\n\n---\n\nBelow\n"
+    document = Document(io.BytesIO(docx_from_markdown(docx_markdown(source))))
+
+    rule = next(p for p in document.paragraphs if "w:bottom" in p._p.xml)
+    assert rule.text == "" and not any("---" in p.text for p in document.paragraphs)
+
+
+def test_a_callout_is_kept_with_its_label_across_a_page() -> None:
+    label, body, last = (p for p in _word_file().paragraphs if "<w:left " in p._p.xml)
+
+    assert "w:keepNext" in label._p.xml and "w:keepNext" in body._p.xml
+    assert "w:keepNext" not in last._p.xml

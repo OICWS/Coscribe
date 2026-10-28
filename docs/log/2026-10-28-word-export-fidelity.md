@@ -15,3 +15,7 @@ its table, and `[ ]` text in a bullet. Word's own look was a stated goal of the 
 ## Not verified
 - How Word itself draws them; checked in LibreOffice's rendering of the file only (callout frame,
   chart, boxes all as intended).
+
+Found by reading seven real Docs the agent wrote, exported: a callout's label alone at the bottom of a
+page (a callout now stays with its label across a page break), and a Doc's `---` printed as dashes (it
+is a hairline now).
