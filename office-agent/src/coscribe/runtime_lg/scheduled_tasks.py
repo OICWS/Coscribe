@@ -216,8 +216,14 @@ async def _run_workflow(
         run.thread_id,
         on_step,
     )
-    # Tasks due together, or runs caught up after the computer was off.
-    async with browser_run(run.thread_id) if uses_browser(workflow) else contextlib.nullcontext():
+    # Tasks due together, or runs caught up after the computer was off, share
+    # this run's tabs; runs in other threads have tabs of their own.
+    needs_browser = uses_browser(workflow)
+    lock = browser_run(run.thread_id)
+    if needs_browser and lock.locked():
+        store.record_evidence(trigger.trigger_id, run.run_id, queued=True)
+    async with lock if needs_browser else contextlib.nullcontext():
+        store.record_evidence(trigger.trigger_id, run.run_id, queued=False)
         # Downloads from the run's tab, however late, are the run's.
         BROWSER_HOST.set_active(run.thread_id, True)
         try:

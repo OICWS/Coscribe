@@ -27,6 +27,6 @@ describe("pickGreeting", () => {
   });
 
   it("can pick a weekday line", () => {
-    expect(pickGreeting(at("26", 8), "", last)).toBe("Happy Monday");
+    expect(pickGreeting(at("26", 8), "", last)).toBe("A new week begins. Let's make it count");
   });
 });
