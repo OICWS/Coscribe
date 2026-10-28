@@ -118,6 +118,20 @@ def test_a_heavy_library_imported_at_the_top_of_a_startup_module_is_listed(
     assert found == {"colorsys": 1}
 
 
+def test_a_package_interface_over_the_limit_is_listed_by_its_size(
+    ratchet: ModuleType, tmp_path: Path
+) -> None:
+    src = tmp_path / "coscribe"
+    (src / "big").mkdir(parents=True)
+    (src / "big" / "__init__.py").write_text(
+        "__all__ = [{}]\n".format(", ".join(f'"n{i}"' for i in range(5))), encoding="utf-8"
+    )
+    (src / "small").mkdir()
+    (src / "small" / "__init__.py").write_text('__all__ = ["a", "b"]\n', encoding="utf-8")
+
+    assert ratchet.interface_size(src, listed=3) == {"coscribe.big": 5}
+
+
 def test_a_test_with_no_assert_is_listed_and_one_with_raises_is_not(
     ratchet: ModuleType, tmp_path: Path
 ) -> None:
