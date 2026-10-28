@@ -72,9 +72,8 @@ def _frame(paragraph: Any, colour: str, *, before: int, after: int) -> None:
     border.append(_make("w:left", val="single", sz="24", space="8", color=colour))
     _put(ppr, border)
     _put(ppr, _make("w:shd", val="clear", color="auto", fill=_tint(colour)))
-    paragraph.paragraph_format.left_indent = 170 * 635
-    paragraph.paragraph_format.space_before = before * 635
-    paragraph.paragraph_format.space_after = after * 635
+    _put(ppr, _make("w:spacing", before=str(before), after=str(after)))
+    _put(ppr, _make("w:ind", left="170"))
 
 
 def _paragraph(element: Any, document: Any) -> Any:
@@ -160,8 +159,7 @@ def _boxed(paragraph: Any) -> None:
     numbering.append(_make("w:ilvl", val="0"))
     numbering.append(_make("w:numId", val="0"))
     _put(ppr, numbering)
-    paragraph.paragraph_format.left_indent = 360 * 635
-    paragraph.paragraph_format.first_line_indent = -360 * 635
+    _put(ppr, _make("w:ind", left="360", hanging="360"))
 
 
 def apply_markers(document: Any) -> None:
