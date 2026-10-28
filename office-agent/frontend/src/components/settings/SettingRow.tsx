@@ -55,7 +55,7 @@ export function SettingRow({
   control: ReactNode;
 }) {
   return (
-    <div data-setting-label={label} className="setting-row relative isolate flex min-h-[64px] items-center justify-between gap-10 py-3.5">
+    <div data-setting-label={label} className="setting-row relative isolate has-[[aria-expanded=true]]:z-10 flex min-h-[64px] items-center justify-between gap-10 py-3.5">
       <div className="flex min-w-0 max-w-[480px] flex-col gap-1">
         <span data-setting-name className="relative text-[15px] text-[var(--fg)]">{label}</span>
         {description && <span className="text-[13px] leading-snug text-[var(--muted)]">{description}</span>}
