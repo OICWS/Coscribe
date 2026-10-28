@@ -111,7 +111,7 @@ export function DocEditor({
             onClose={() => comments.setShow(false)}
           />
         )}
-        <div className="h-full overflow-auto bg-[var(--bg)]" onClick={() => editor?.commands.focus()}>
+        <div data-doc-scroll className="h-full overflow-auto bg-[var(--bg)]" onClick={() => editor?.commands.focus()}>
           <div
             className={`doc-page mx-auto px-10 pb-24 pt-8 ${look.wide ? "max-w-[1100px]" : "max-w-[760px]"}`}
             data-headings={look.headings}

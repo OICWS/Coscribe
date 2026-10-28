@@ -13,7 +13,7 @@ import {
   type SlideInfo,
 } from "../../lib/slides";
 import { useDockPanel } from "../dock/dockContext";
-import { ChevronDownIcon, ExternalLinkIcon, MessageCircleIcon } from "../icons";
+import { ExternalLinkIcon } from "../icons";
 import type { CommentLink } from "../../lib/slideComments";
 import { SlideComments, useSlideComments, type CommentStart } from "./SlideComments";
 import { SlideEditor } from "./SlideEditor";
@@ -24,6 +24,7 @@ import { useSlideArranging } from "./useSlideArranging";
 import { useSlideHistory } from "./useSlideHistory";
 import { deckEntries, downloadEntries, presentEntries, zoomEntries } from "./slideMenus";
 import { PanelFileMenu } from "../artifacts/PanelFileMenu";
+import { PanelCommentButton } from "../artifacts/PanelCommentButton";
 import { PanelTitleButton } from "../artifacts/PanelTitleButton";
 import { setNotes, type Insert } from "../../lib/slideSource";
 import { editSlide, getSlideParts } from "../../lib/slideEditing";
@@ -400,38 +401,17 @@ function PanelTop({
 }) {
   const { commenting, toggleCommenting: onToggleComments } = ui;
   const dock = useDockPanel();
-  const half = "flex h-7 items-center justify-center hover:bg-[var(--card-bg)]";
   return (
     <div className="flex h-12 shrink-0 items-center gap-2 px-3" {...dock.headerProps}>
       <PanelTitleButton title={title} path={path} onMenu={(anchor) => onMenu("title", anchor)} />
       <div className="flex-1" />
       {canComment && (
-      <div
-        className="flex items-center overflow-hidden rounded-lg border border-[var(--border)]"
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        <button
-          type="button"
+        <PanelCommentButton
+          pressed={commenting}
           title={commenting ? "Stop commenting (Esc)" : "Comment: click anything on the slide"}
-          aria-label="Comment"
-          aria-pressed={commenting}
-          className={`${half} w-8 ${commenting ? "bg-[var(--accent-soft)] text-[var(--accent-ink)]" : "text-[var(--fg)]"}`}
-          onClick={onToggleComments}
-        >
-          <MessageCircleIcon className="h-4 w-4" />
-        </button>
-        <span className="h-4 border-l border-[var(--border)]" />
-        <button
-          type="button"
-          title="Comment options"
-          aria-label="Comment options"
-          aria-haspopup="menu"
-          className={`${half} w-6 text-[var(--muted)]`}
-          onClick={(e) => onMenu("comments", e.currentTarget.getBoundingClientRect())}
-        >
-          <ChevronDownIcon className="h-3.5 w-3.5" />
-        </button>
-      </div>
+          onToggle={onToggleComments}
+          onMenu={(anchor) => onMenu("comments", anchor)}
+        />
       )}
       {dock.controls}
     </div>
