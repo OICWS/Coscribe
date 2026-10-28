@@ -75,8 +75,12 @@ Last reviewed: 2026-10-15.
      red because a test waited 10 s for a reply on a slow runner (the wait is now 30 s; #610,
      checked by a manual Windows run on the fix branch before it merged). The maintainer decided
      on 2026-10-24 that this night does not restart the count: it stays at 5 of 14, 10-24 is
-     neither green nor red, and the next green scheduled night is the 6th. A red night otherwise
-     restarts it, and a failure after this fix is a product bug, not an exception.
+     neither green nor red, and the next green scheduled night is the 6th. Green nights followed on
+     10-25 and 10-26 (7 of 14). 10-27 was red on three tests added on 10-26 and 10-27: putting a
+     kept Doc version back turned a CRLF file into LF (a product bug, fixed), and a LibreOffice
+     route test ran a shell-script launcher (skipped on Windows like its sibling file). That failure
+     is after the 10-24 exception, so the count restarts at 0 and the next green scheduled night is
+     the 1st.
    - Done: `test_tool_schema_snapshot` is skipped on Python 3.13 (cloud containers), where docstring
      indentation changes every tool description; CI runs 3.11 and is the check (#252).
    - For the maintainer: switch on Dependabot security updates, secret scanning and push
