@@ -15,6 +15,7 @@ from . import (
     memory,
     named_environments,
     providers,
+    proxy,
     secrets,
 )
 
@@ -22,6 +23,6 @@ from . import (
 def router(state: AppState) -> APIRouter:
     router = APIRouter()
     modules = (catalog, config, code, secrets, memory, providers, environments, named_environments)
-    for module in (*modules, design_systems, libreoffice):
+    for module in (*modules, design_systems, libreoffice, proxy):
         router.include_router(module.router(state))
     return router

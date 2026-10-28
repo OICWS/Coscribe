@@ -59,7 +59,7 @@ import httpx
 import websockets
 from websockets.asyncio.client import ClientConnection
 
-from ..runtime import configured_proxy
+from ..runtime import configured_proxy, without_credentials
 from .browser_detect import find_windows_browser
 
 logger = logging.getLogger(__name__)
@@ -225,7 +225,7 @@ class BrowserPanelSession:
         # (see runtime/proxy.py, also used by tools/web/websearch.py).
         proxy = configured_proxy()
         if proxy:
-            args.append(f"--proxy-server={proxy}")
+            args.append(f"--proxy-server={without_credentials(proxy)}")
         args.append("about:blank")
         self._process = await asyncio.create_subprocess_exec(
             *args,

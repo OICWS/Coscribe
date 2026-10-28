@@ -258,6 +258,13 @@ Last reviewed: 2026-10-15.
    Open: hiding other
    drives' user folders.
 
+6. **Secrets out of what scripts and commands inherit** (#667, then the proxy setting #666,
+   kurtosisOC). Shipped: scripts and commands start from a list of names, the proxy without its
+   password, not from the server's environment (#668); the commands Codex runs in the code
+   module get no provider keys or proxy password (#670); the proxy setting in Settings, its
+   password in the keychain (#672). Open: a company proxy on a real Windows machine (NTLM or
+   Kerberos are not supported, Basic only).
+
 ## Needs the maintainer's testing (could not be verified here)
 
 - Sign-in of the 13 connectors added for the skill plugins (only the

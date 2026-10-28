@@ -26,6 +26,7 @@ from .commands import (
     expect_sandbox,
     start_command,
 )
+from .env_allowlist import child_env
 from .find_python import find_pythons
 from .isolation import (
     FolderGrants,
@@ -51,7 +52,6 @@ from .script_env import (
     ensure_script_env,
     fallbacks_for_platform,
     get_interpreter_override,
-    overlay_env,
     resolve_python_command,
     set_interpreter_override,
     venv_python,
@@ -107,6 +107,7 @@ __all__ = [
     "blocked_write",
     "build_node_script_tools",
     "build_script_tools",
+    "child_env",
     "ensure_node_env",
     "ensure_script_env",
     "ensure_own_python",
@@ -121,7 +122,6 @@ __all__ = [
     "list_node_packages",
     "list_python_packages",
     "node_guard_args",
-    "overlay_env",
     "refusal_note",
     "request_detach",
     "resolve_python_command",
