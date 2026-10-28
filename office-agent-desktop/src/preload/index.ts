@@ -32,6 +32,8 @@ import { contextBridge, ipcRenderer } from "electron";
 // Keep this in sync with dialog.ts's own PICK_FOLDER_CHANNEL -- cannot be
 // a shared import, see this file's own header comment above.
 const PICK_FOLDER_CHANNEL = "dialog:pick-folder";
+// Keep in sync with docPdf.ts.
+const DOC_PDF_CHANNEL = "doc:print-to-pdf";
 
 // Keep these in sync with browserPanel.ts's own exported channel/event
 // constants -- same "cannot be a shared import" constraint.
@@ -191,6 +193,11 @@ contextBridge.exposeInMainWorld("coscribeDesktop", {
    * the user cancelled. */
   pickFolder(): Promise<string | null> {
     return ipcRenderer.invoke(PICK_FOLDER_CHANNEL);
+  },
+
+  /** The page as it is now, printed to an A4 PDF: its bytes. */
+  printToPdf(): Promise<Uint8Array> {
+    return ipcRenderer.invoke(DOC_PDF_CHANNEL);
   },
 
   /** The Browser panel's tabs -- see browserPanel.ts. */
