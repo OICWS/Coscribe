@@ -18,7 +18,8 @@ from coscribe.web.routes.settings import libreoffice as routes
 
 from .helpers import FakeToolCallingChatModel, _client_lg
 
-_LAUNCHER = "soffice"
+# Windows runs a batch file given as the program; elsewhere a shell script stands in.
+_LAUNCHER = "soffice.cmd" if sys.platform == "win32" else "soffice"
 
 
 @pytest.fixture(autouse=True)
@@ -29,8 +30,11 @@ def _nothing_installed(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _put_a_copy_in(state_dir: Path) -> None:
-    launcher = state_dir / "libreoffice" / "26.8.1" / "program" / "soffice"
+    launcher = state_dir / "libreoffice" / "26.8.1" / "program" / _LAUNCHER
     launcher.parent.mkdir(parents=True)
+    if sys.platform == "win32":
+        launcher.write_text("@echo LibreOffice 26.8.1.1 abc\n")
+        return
     launcher.write_text('#!/bin/sh\necho "LibreOffice 26.8.1.1 abc"\n')
     launcher.chmod(launcher.stat().st_mode | stat.S_IXUSR)
 
@@ -58,7 +62,6 @@ def test_status_says_nothing_is_found_and_what_a_download_would_be(
     assert status["working"] is False
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="the fake launcher is a shell script")
 def test_a_download_runs_in_the_background_and_leaves_a_copy(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
