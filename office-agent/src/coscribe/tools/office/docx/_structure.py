@@ -4,10 +4,10 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
-from ..markdown_blocks import parse_blocks
+from ..markdown_blocks import Block, parse_blocks
 from ._xml import (
     _add_inline_runs,
     _add_toc,
@@ -35,6 +35,25 @@ class Written:
     comments: list[tuple[Any, str]] = field(default_factory=list)
 
 
+def _fold_page_breaks(blocks: list[Block]) -> list[Block]:
+    """Each `[PAGEBREAK]` becomes a flag on the block after it, so no empty line opens the new page.
+    A table or a contents list is no paragraph to carry it: an empty paragraph does, before it."""
+    folded: list[Block] = []
+    pending = False
+    for block in blocks:
+        if block.kind == "pagebreak":
+            pending = True
+            continue
+        if pending:
+            if block.kind in ("table", "toc"):
+                folded.append(Block(kind="paragraph", new_page=True))
+            else:
+                block = replace(block, new_page=True)
+            pending = False
+        folded.append(block)
+    return folded
+
+
 def add_blocks(
     document: Any, content: str, change_author: str | None, change_ids: _ChangeIdCounter
 ) -> Written:
@@ -47,7 +66,7 @@ def add_blocks(
     written = Written()
     previous_kind = ""
     list_num: int | None = None
-    for block in parse_blocks(content):
+    for block in _fold_page_breaks(parse_blocks(content)):
         paragraph = None
         if block.kind == "heading":
             paragraph = document.add_heading("", level=block.level)
@@ -80,14 +99,27 @@ def add_blocks(
                 paragraph.paragraph_format.space_before = Pt(6)
 
         previous_kind = block.kind
-        if paragraph is None:
-            continue
-        if change_author is not None:
-            _mark_paragraph_inserted(paragraph._p, change_author, change_ids)
-        if block.comment:
-            written.comments.append((paragraph._p, block.comment))
+        if paragraph is not None:
+            _finish_paragraph(paragraph, block, written, change_author, change_ids)
     written.elements = [child for child in body if child not in existing]
     return written
+
+
+def _finish_paragraph(
+    paragraph: Any,
+    block: Block,
+    written: Written,
+    change_author: str | None,
+    change_ids: _ChangeIdCounter,
+) -> None:
+    """What a written paragraph gets after its text: a page break before it, a tracked insertion,
+    a comment."""
+    if block.new_page:
+        paragraph._p.get_or_add_pPr().get_or_add_pageBreakBefore()
+    if change_author is not None:
+        _mark_paragraph_inserted(paragraph._p, change_author, change_ids)
+    if block.comment:
+        written.comments.append((paragraph._p, block.comment))
 
 
 def _restarted_numbering(document: Any, paragraph: Any) -> int | None:

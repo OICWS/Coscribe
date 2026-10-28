@@ -20,6 +20,14 @@ bold. Spend the effort on content and structure instead:
 - Every figure, date and name exactly as in the sources. Add nothing they
   do not contain: no attendees, roles or budget lines the notes don't give.
 
+## Page breaks and finishing
+
+A line that is exactly `[PAGEBREAK]` starts the next block on a new page (a cover page, a template
+that is to stand alone on its page). Layout the subset cannot say (a font size, an indent, a column)
+is not worth a script: write the document once, look at the rendered `preview_path` once, fix what the
+tools can fix, and tell the person what could not be done. Do not convert the file to PDF and read
+it page by page again and again, and do not patch the .docx with a script to polish it.
+
 ## Changing an existing document's structure
 
 To add a section, a list, a table or a contents list to a user's document,
