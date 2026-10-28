@@ -54,6 +54,10 @@ FAN_OUT_LISTED = 25
 # would also list every import.
 DEAD_CODE_CONFIDENCE = 60
 
+# A package whose `__all__` lists more names than this is listed: its card and `slice.py` open
+# every slice with that list (issue #677).
+INTERFACE_LISTED = 50
+
 # The TypeScript sources, measured with the same limits as the Python.
 FRONTEND_DIRS = ("office-agent/frontend/src", "office-agent-desktop/src")
 
@@ -282,6 +286,24 @@ def deep_imports(src: Path = SRC) -> dict[str, int]:
     return found
 
 
+def interface_size(src: Path = SRC, listed: int = INTERFACE_LISTED) -> dict[str, int]:
+    """Names in a package's `__all__`, for the packages over the limit."""
+    found: dict[str, int] = {}
+    for path in _python_files(src, skip_vendored=True):
+        tree = None if path.name != "__init__.py" else _parse(path)
+        if tree is None:
+            continue
+        for node in tree.body:
+            if (
+                isinstance(node, ast.Assign)
+                and any(isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets)
+                and isinstance(node.value, (ast.List, ast.Tuple))
+                and len(node.value.elts) > listed
+            ):
+                found[_module_name(path, src)] = len(node.value.elts)
+    return found
+
+
 def _has_check(function: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     for node in ast.walk(function):
         if isinstance(node, ast.Assert):
@@ -407,6 +429,7 @@ METRICS = {
     "frontend_unused_exports": frontend_unused_exports,
     "suppressions": suppressions,
     "deep_imports": deep_imports,
+    "interface_size": interface_size,
     "tests_without_a_check": tests_without_a_check,
     "patch_by_string": patch_by_string,
     "fan_out": fan_out,
