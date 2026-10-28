@@ -20,7 +20,7 @@ from typing import Any
 
 from langgraph.checkpoint.memory import InMemorySaver
 
-from ..tools import BROWSER_RUNS
+from ..tools import browser_run
 from ..workflow_spec import ToolStep, Workflow, walk
 from .engine import StepContext, StepRecord, WorkflowNotRunnable, WorkflowRun, preview
 
@@ -117,6 +117,7 @@ async def run_test(
     ctx: StepContext,
     inputs: dict[str, Any] | None = None,
     on_step: Callable[[StepRecord], Awaitable[None]] | None = None,
+    thread_id: str = "",
 ) -> dict[str, Any]:
     """{"status": "passed" | "failed" | "stopped_at_approval", "seconds",
     "steps": [{"id", "title", "status", "seconds", "output", "error"}],
@@ -134,7 +135,7 @@ async def run_test(
     started = time.monotonic()
     # Whole seconds: some file systems keep coarse modification times.
     started_at = int(time.time())
-    lock = BROWSER_RUNS if uses_browser(workflow) else contextlib.nullcontext()
+    lock = browser_run(thread_id) if uses_browser(workflow) else contextlib.nullcontext()
     async with lock:
         try:
             outcome = await run.start(inputs or {})

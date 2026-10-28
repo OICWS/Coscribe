@@ -30,6 +30,7 @@ import {
   browserPanelSetPickMode,
   browserPanelSetViewHidden,
   browserPanelShowMenu,
+  browserPanelViewGroup,
   onBrowserAgent,
   onBrowserPanelPicked,
   onBrowserPanelTabs,
@@ -122,6 +123,19 @@ function TabButton({
       </button>
     </div>
   );
+}
+
+/** What the desktop app tells the panel: which conversation's tabs it shows
+ * (the others keep working unseen), a site asking for permission, and the
+ * allowed-sites menu entry. */
+function useHostEvents(
+  threadId: string,
+  setPermission: (r: BrowserPermissionRequest | null) => void,
+  setSitesOpen: (open: boolean) => void,
+) {
+  useEffect(() => void browserPanelViewGroup(threadId), [threadId]);
+  useEffect(() => onBrowserPermission(setPermission), [setPermission]);
+  useEffect(() => onShowAllowedSites(() => setSitesOpen(true)), [setSitesOpen]);
 }
 
 /** The desktop app's Browser panel: real tabs (native views the desktop
@@ -274,8 +288,7 @@ export function DesktopBrowserPanel({
     if (agent?.busy) setAnnotation(null);
   }, [agent]);
 
-  useEffect(() => onBrowserPermission(setPermission), []);
-  useEffect(() => onShowAllowedSites(() => setAllowedSitesOpen(true)), []);
+  useHostEvents(threadId, setPermission, setAllowedSitesOpen);
 
   const answerPermission = (answer: BrowserPermissionAnswer) => {
     if (!permission) return;

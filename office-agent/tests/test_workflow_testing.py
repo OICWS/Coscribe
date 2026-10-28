@@ -114,3 +114,10 @@ def test_uses_browser_looks_inside_nested_steps() -> None:
 
     assert uses_browser(parse_workflow({"steps": [_read("a", "a.txt"), loop]}))
     assert not uses_browser(parse_workflow({"steps": [_read("a", "a.txt")]}))
+
+
+def test_browser_runs_lock_per_thread() -> None:
+    from coscribe.tools import browser_run
+
+    assert browser_run("a") is browser_run("a")
+    assert browser_run("a") is not browser_run("b")

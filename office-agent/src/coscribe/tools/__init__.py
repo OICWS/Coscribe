@@ -1,8 +1,8 @@
-# `workflows.testing` imports BROWSER_RUNS from this package while `scheduled_tasks` below is still
+# `workflows.testing` imports browser_run from this package while `scheduled_tasks` below is still
 # importing `workflows`, so `.web` has to be bound first.
 from .web import (
     BROWSER_HOST,
-    BROWSER_RUNS,
+    browser_run,
     build_browser_tools,
     build_image_tools,
     build_websearch_tools,
@@ -336,7 +336,7 @@ __all__ = [
     "skill_source",
     "with_secrets",
     "BROWSER_HOST",
-    "BROWSER_RUNS",
+    "browser_run",
     "WorkspaceScope",
     "create_trigger",
     "patch_trigger",
