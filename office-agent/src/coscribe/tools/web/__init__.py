@@ -5,10 +5,10 @@ from __future__ import annotations
 
 from .browser import (
     BROWSER_HOST,
-    BROWSER_RUNS,
     SCREENSHOT_FOLDER,
     BrowserHost,
     BrowserUnavailableError,
+    browser_run,
     build_browser_tools,
     page_screenshot,
 )
@@ -18,7 +18,7 @@ from .websearch import build_websearch_tools
 
 __all__ = [
     "BROWSER_HOST",
-    "BROWSER_RUNS",
+    "browser_run",
     "SCREENSHOT_FOLDER",
     "BrowserHost",
     "BrowserUnavailableError",

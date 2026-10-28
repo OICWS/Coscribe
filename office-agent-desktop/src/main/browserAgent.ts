@@ -11,6 +11,7 @@
  * sent as real input events, which pages can't tell from the user's.
  */
 
+import { AsyncLocalStorage } from "node:async_hooks";
 import { existsSync, mkdirSync } from "node:fs";
 import { join, parse } from "node:path";
 import { Readable } from "node:stream";
@@ -77,14 +78,25 @@ const DOWNLOAD_QUICK_MS = 10_000;
 // A finished download no wait has taken is kept this long for one.
 const UNCLAIMED_KEEP_MS = 30 * 60_000;
 
-/** The step running now, and whether its conversation was stopped. */
-let running: { threadId: string; stop: boolean } | null = null;
+/** A step under way, and whether its conversation was stopped. Conversations
+ * run steps side by side, so each step finds its own through its async context. */
+interface Step {
+  threadId: string;
+  stop: boolean;
+}
+const stepContext = new AsyncLocalStorage<Step>();
+const runningSteps = new Map<string, Step>();
+const running = {
+  get stop(): boolean {
+    return stepContext.getStore()?.stop ?? false;
+  },
+};
 /** Conversations with a turn under way and workflow runs in progress, as
  * the server reports them. */
 const activeThreads = new Set<string>();
 
 function checkStop(): void {
-  if (running?.stop) throw new Error("Stopped by the user.");
+  if (running.stop) throw new Error("Stopped by the user.");
 }
 
 function waitSeconds(args: Record<string, unknown>): number {
@@ -225,10 +237,10 @@ function withTab(tab: Tab, extra: Record<string, unknown> = {}): Record<string, 
   return { ...extra, tab: { id: info.id, title: info.title, url: info.url } };
 }
 
-function listTabs(): Record<string, unknown> {
-  const current = activeTab()?.id;
+function listTabs(group: string): Record<string, unknown> {
+  const current = activeTab(group)?.id;
   return {
-    tabs: allTabs().map((t) => {
+    tabs: allTabs(group).map((t) => {
       const info = tabInfo(t);
       return { id: info.id, title: info.title, url: info.url, active: info.id === current };
     }),
@@ -465,7 +477,7 @@ type DownloadReport = { path: string; name: string; state: string };
  * and newly started ones still going after `waitMs`. */
 async function newDownloads(cdp: TabCdp, waitMs: number): Promise<DownloadReport[]> {
   const deadline = Date.now() + waitMs;
-  while (cdp.downloads.some((d) => d.state === "progressing") && Date.now() < deadline && !running?.stop) await sleep(200);
+  while (cdp.downloads.some((d) => d.state === "progressing") && Date.now() < deadline && !running.stop) await sleep(200);
   const news: DownloadReport[] = [];
   for (const d of cdp.downloads) {
     if (d.reported) continue;
@@ -549,10 +561,10 @@ async function run(command: Command): Promise<Record<string, unknown>> {
   if (command.action === "tabs") {
     const op = String(args.op);
     if (op === "new") {
-      if (tabLimitReached()) {
+      if (tabLimitReached(command.thread_id)) {
         throw new Error(`All ${MAX_TABS} tabs are in use -- close one with browser_tabs("close") or reuse the current tab.`);
       }
-      const tab = createTab();
+      const tab = createTab(undefined, command.thread_id);
       selectTab(tab.id);
       if (args.url) {
         const cdp = cdpFor(tab.view.webContents);
@@ -567,15 +579,15 @@ async function run(command: Command): Promise<Record<string, unknown>> {
         cdp.stepEnded = Date.now();
       }
     } else if (op === "select") {
-      if (!selectTab(Number(args.tab_id))) throw new Error(`There's no tab ${args.tab_id}.`);
+      if (!allTabs(command.thread_id).some((t) => t.id === Number(args.tab_id)) || !selectTab(Number(args.tab_id))) throw new Error(`There's no tab ${args.tab_id}.`);
     } else if (op === "close") {
-      if (!allTabs().some((t) => t.id === Number(args.tab_id))) throw new Error(`There's no tab ${args.tab_id}.`);
+      if (!allTabs(command.thread_id).some((t) => t.id === Number(args.tab_id))) throw new Error(`There's no tab ${args.tab_id}.`);
       closeTab(Number(args.tab_id));
     }
-    return listTabs();
+    return listTabs(command.thread_id);
   }
 
-  const tab = ensureActiveTab();
+  const tab = ensureActiveTab(command.thread_id);
   const wc = tab.view.webContents;
   if (command.action !== "navigate" && tab.blank) {
     throw new Error("The current tab is empty -- open a page with browser_navigate first.");
@@ -779,7 +791,7 @@ function siteFor(command: Command): string | null {
   } else if (command.action === "tabs") {
     return null;
   } else {
-    const tab = activeTab();
+    const tab = activeTab(command.thread_id);
     if (!tab || tab.blank) return null;
     url = tab.view.webContents.getURL();
   }
@@ -795,8 +807,8 @@ function siteFor(command: Command): string | null {
 export function startBrowserAgent(port: number, token: string, getWindow: () => BrowserWindow | undefined): void {
   const base = `http://127.0.0.1:${port}/internal/browser-host`;
   const headers = { "x-coscribe-browser-token": token };
-  let queue: Promise<void> = Promise.resolve();
-  let frameOffTimer: ReturnType<typeof setTimeout> | undefined;
+  const queues = new Map<string, Promise<void>>();
+  const frameOffTimers = new Map<string, ReturnType<typeof setTimeout>>();
   onTabDownload(onDownload);
 
 
@@ -855,26 +867,30 @@ export function startBrowserAgent(port: number, token: string, getWindow: () => 
     // The AI's steps land on the live page, so an annotation in progress gives way (the panel drops its drawing).
     setViewHidden(false);
     sendAgentEvent({ busy: true, threadId: command.thread_id, action: command.action });
-    clearTimeout(frameOffTimer);
-    const frameTab = command.action === "tabs" ? undefined : ensureActiveTab();
+    clearTimeout(frameOffTimers.get(command.thread_id));
+    const frameTab = command.action === "tabs" ? undefined : ensureActiveTab(command.thread_id);
     if (frameTab && !frameTab.blank) void inPage(frameTab.view.webContents, "agent_frame", { on: true }).catch(() => undefined);
-    running = { threadId: command.thread_id, stop: false };
+    const step: Step = { threadId: command.thread_id, stop: false };
+    runningSteps.set(command.thread_id, step);
     try {
-      const result = await run(command);
-      checkNetworkLanding(activeTab()?.view.webContents, command.args?.network_sites);
+      const result = await stepContext.run(step, () => run(command));
+      checkNetworkLanding(activeTab(command.thread_id)?.view.webContents, command.args?.network_sites);
       await reply(command.id, { ok: true, result });
     } catch (err) {
       await reply(command.id, { ok: false, error: err instanceof Error ? err.message : String(err) });
     } finally {
-      running = null;
+      if (runningSteps.get(command.thread_id) === step) runningSteps.delete(command.thread_id);
       sendAgentEvent({ busy: false, threadId: command.thread_id });
       // Steps come a few seconds apart while the model thinks; the frame
       // stays up between them instead of flickering.
-      frameOffTimer = setTimeout(() => {
-        for (const tab of allTabs()) {
-          if (!tab.blank) void inPage(tab.view.webContents, "agent_frame", { on: false }).catch(() => undefined);
-        }
-      }, 8000);
+      frameOffTimers.set(
+        command.thread_id,
+        setTimeout(() => {
+          for (const tab of allTabs(command.thread_id)) {
+            if (!tab.blank) void inPage(tab.view.webContents, "agent_frame", { on: false }).catch(() => undefined);
+          }
+        }, 8000),
+      );
     }
   };
 
@@ -915,13 +931,20 @@ export function startBrowserAgent(port: number, token: string, getWindow: () => 
               }
               if (command.action === "cancel") {
                 stoppedAt.set(command.thread_id, Date.now());
-                if (running?.threadId === command.thread_id) running.stop = true;
+                const step = runningSteps.get(command.thread_id);
+                if (step) step.stop = true;
                 continue;
               }
               command.receivedAt = Date.now();
-              // One step at a time, in order: two clicks racing on one
-              // page would land unpredictably.
-              queue = queue.then(() => execute(command));
+              // One step at a time per conversation, in order: two clicks
+              // racing on one page would land unpredictably. Conversations
+              // have tabs of their own, so they don't wait for each other.
+              const previous = queues.get(command.thread_id) ?? Promise.resolve();
+              const next = previous.then(() => execute(command));
+              queues.set(command.thread_id, next);
+              void next.finally(() => {
+                if (queues.get(command.thread_id) === next) queues.delete(command.thread_id);
+              });
             }
           }
         }

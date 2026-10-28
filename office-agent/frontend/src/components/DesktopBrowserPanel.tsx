@@ -30,6 +30,7 @@ import {
   browserPanelSetPickMode,
   browserPanelSetViewHidden,
   browserPanelShowMenu,
+  browserPanelViewGroup,
   onBrowserAgent,
   onBrowserPanelPicked,
   onBrowserPanelTabs,
@@ -159,6 +160,11 @@ export function DesktopBrowserPanel({
   useEffect(() => {
     if (!editingAddress) setAddress(active?.url ?? "");
   }, [active?.url, editingAddress]);
+
+  // The panel shows this conversation's tabs; the others keep working unseen.
+  useEffect(() => {
+    void browserPanelViewGroup(threadId);
+  }, [threadId]);
 
   // The native view is laid over containerRef's box; it moves whenever
   // that box does -- the window resizing, the panel being resized or moved,

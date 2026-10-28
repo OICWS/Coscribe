@@ -51,6 +51,7 @@ const BROWSER_PANEL_TABS_EVENT = "browser-panel:tabs";
 const BROWSER_PANEL_SHOW_MENU_CHANNEL = "browser-panel:show-menu";
 const BROWSER_PANEL_CAPTURE_CHANNEL = "browser-panel:capture";
 const BROWSER_PANEL_SET_VIEW_HIDDEN_CHANNEL = "browser-panel:set-view-hidden";
+const BROWSER_PANEL_VIEW_GROUP_CHANNEL = "browser-panel:view-group";
 const BROWSER_PANEL_PICKED_EVENT = "browser-panel:picked";
 const BROWSER_PANEL_AGENT_EVENT = "browser-panel:agent";
 const BROWSER_PANEL_SHOW_ALLOWED_SITES_EVENT = "browser-panel:show-allowed-sites";
@@ -231,6 +232,10 @@ contextBridge.exposeInMainWorld("coscribeDesktop", {
   },
   browserPanelCapture(): Promise<unknown> {
     return ipcRenderer.invoke(BROWSER_PANEL_CAPTURE_CHANNEL);
+  },
+  /** Which conversation's tabs the panel shows; the others keep their own. */
+  browserPanelViewGroup(group: string): Promise<void> {
+    return ipcRenderer.invoke(BROWSER_PANEL_VIEW_GROUP_CHANNEL, group);
   },
   browserPanelSetViewHidden(hidden: boolean): Promise<void> {
     return ipcRenderer.invoke(BROWSER_PANEL_SET_VIEW_HIDDEN_CHANNEL, hidden);

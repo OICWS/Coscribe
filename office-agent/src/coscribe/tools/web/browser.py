@@ -169,9 +169,15 @@ class BrowserHost:
 
 BROWSER_HOST = BrowserHost()
 
-# Workflow runs and test runs that use the browser take turns: they share
-# its tabs, and two at once would navigate them out from under each other.
-BROWSER_RUNS = asyncio.Lock()
+# Each conversation and workflow run has tabs of its own in the desktop app, so
+# runs in different threads go side by side. Within one thread they share those
+# tabs, and two at once would navigate them out from under each other.
+_BROWSER_RUNS: dict[str, asyncio.Lock] = {}
+
+
+def browser_run(thread_id: str) -> asyncio.Lock:
+    """The lock a run that drives the browser holds in `thread_id`'s tabs."""
+    return _BROWSER_RUNS.setdefault(thread_id, asyncio.Lock())
 
 
 def _tab_line(tab: Any) -> str:

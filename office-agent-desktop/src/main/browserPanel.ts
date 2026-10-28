@@ -53,6 +53,7 @@ export const BROWSER_PANEL_OPEN_EXTERNAL_CHANNEL = "browser-panel:open-external"
 export const BROWSER_PANEL_SHOW_MENU_CHANNEL = "browser-panel:show-menu";
 export const BROWSER_PANEL_CAPTURE_CHANNEL = "browser-panel:capture";
 export const BROWSER_PANEL_SET_VIEW_HIDDEN_CHANNEL = "browser-panel:set-view-hidden";
+export const BROWSER_PANEL_VIEW_GROUP_CHANNEL = "browser-panel:view-group";
 export const BROWSER_PANEL_TABS_EVENT = "browser-panel:tabs";
 export const BROWSER_PANEL_PICKED_EVENT = "browser-panel:picked";
 // Asks the panel to open (the AI started, or a link is opening in it) and
@@ -87,6 +88,9 @@ interface PickedElementInfo {
 
 export interface Tab {
   id: number;
+  // The conversation or workflow run whose tabs these are. Groups share
+  // the cookie partition but never each other's tabs.
+  group: string;
   view: WebContentsView;
   // A tab that hasn't loaded anything shows the panel's own "new tab"
   // page, so its (blank white) view stays detached.
@@ -107,7 +111,10 @@ export interface TabInfo {
 
 const tabs: Tab[] = [];
 const favicons = new Map<number, string>();
-let activeId: number | null = null;
+// Each group has its own active tab; the panel shows `viewedGroup`'s
+// while the others keep working off-screen.
+const activeIds = new Map<string, number>();
+let viewedGroup = "";
 let nextId = 1;
 let win: BrowserWindow | undefined;
 let panelRect: PanelRect | null = null;
@@ -184,19 +191,40 @@ export function tabInfo(tab: Tab): TabInfo {
 
 export function sendTabs(): void {
   if (!win || win.isDestroyed()) return;
-  win.webContents.send(BROWSER_PANEL_TABS_EVENT, { tabs: tabs.map(tabInfo), activeId });
+  win.webContents.send(BROWSER_PANEL_TABS_EVENT, {
+    tabs: groupTabs(viewedGroup).map(tabInfo),
+    activeId: activeIds.get(viewedGroup) ?? null,
+  });
 }
 
 function tabFor(sender: WebContents): Tab | undefined {
   return tabs.find((t) => t.view.webContents === sender);
 }
 
-export function activeTab(): Tab | undefined {
-  return tabs.find((t) => t.id === activeId);
+export function groupTabs(group: string): Tab[] {
+  return tabs.filter((t) => t.group === group);
 }
 
-export function allTabs(): readonly Tab[] {
-  return tabs;
+/** `group`'s active tab; the panel's own group when none is named. */
+export function activeTab(group: string = viewedGroup): Tab | undefined {
+  const id = activeIds.get(group);
+  return tabs.find((t) => t.id === id);
+}
+
+export function allTabs(group: string = viewedGroup): readonly Tab[] {
+  return groupTabs(group);
+}
+
+/** The panel now shows `group`'s tabs. Pick mode belongs to the tab being
+ * looked at, so it ends with the switch. */
+export function viewGroup(group: string): void {
+  if (group === viewedGroup) return;
+  activeTab()?.view.webContents.send(CONTENT_SET_PICK_MODE_CHANNEL, false);
+  viewedGroup = group;
+  pickModeActive = false;
+  if (panelRect) ensureActiveTab(group);
+  layout();
+  sendTabs();
 }
 
 export function isPanelOpen(): boolean {
@@ -240,7 +268,8 @@ function layout(): void {
   if (!win || win.isDestroyed()) return;
   const children = win.contentView.children;
   for (const tab of tabs) {
-    const show = panelRect !== null && tab.id === activeId && !tab.blank && !viewHidden;
+    const isActive = activeIds.get(tab.group) === tab.id;
+    const show = panelRect !== null && tab.group === viewedGroup && isActive && !tab.blank && !viewHidden;
     const attached = children.includes(tab.view);
     if (show) {
       if (!attached) win.contentView.addChildView(tab.view);
@@ -249,7 +278,7 @@ function layout(): void {
       void existingCdp(tab.view.webContents)
         ?.sizeWhileHidden(false, 0, 0)
         .catch(() => undefined);
-    } else if (tab.id === activeId && !tab.blank) {
+    } else if (isActive && !tab.blank) {
       // The AI may be working in it with the panel closed. Detached, the
       // page takes no clicks; off-window it takes them but gets no
       // viewport, which the agent then sets (tabShown, hiddenTabSize).
@@ -263,15 +292,15 @@ function layout(): void {
 
 /** Whether the tab's page is on screen in the panel. */
 export function tabShown(tab: Tab): boolean {
-  return panelRect !== null && tab.id === activeId && !tab.blank && !viewHidden;
+  return panelRect !== null && tab.group === viewedGroup && activeIds.get(tab.group) === tab.id && !tab.blank && !viewHidden;
 }
 
 export function hiddenTabSize(): { width: number; height: number } {
   return lastPanelSize;
 }
 
-export function tabLimitReached(): boolean {
-  return tabs.length >= MAX_TABS;
+export function tabLimitReached(group: string = viewedGroup): boolean {
+  return groupTabs(group).length >= MAX_TABS;
 }
 
 // Chromium's default scrollbar is a wide, opaque bar with a track. This is the
@@ -292,7 +321,7 @@ const SCROLLBAR_CSS = `
   ::-webkit-scrollbar-corner { background: transparent; }
 `;
 
-export function createTab(url?: string): Tab {
+export function createTab(url?: string, group: string = viewedGroup): Tab {
   const view = new WebContentsView({
     webPreferences: {
       preload: join(__dirname, "..", "preload", "browserPanelContent.js"),
@@ -307,7 +336,7 @@ export function createTab(url?: string): Tab {
   });
   // Matches the rounded page area the panel draws (rounded-lg).
   view.setBorderRadius(8);
-  const tab: Tab = { id: nextId++, view, blank: true, loadError: null };
+  const tab: Tab = { id: nextId++, group, view, blank: true, loadError: null };
   const wc = view.webContents;
   wc.on("did-start-navigation", (details) => {
     if (details.isMainFrame && !details.isSameDocument && tab.blank && details.url !== "about:blank") {
@@ -317,7 +346,7 @@ export function createTab(url?: string): Tab {
   });
   wc.on("did-navigate", () => {
     tab.loadError = null;
-    if (pickModeActive && tab.id === activeId) wc.send(CONTENT_SET_PICK_MODE_CHANNEL, true);
+    if (pickModeActive && tab.group === viewedGroup && tab.id === activeIds.get(group)) wc.send(CONTENT_SET_PICK_MODE_CHANNEL, true);
     sendTabs();
   });
   // insertCSS lasts for one document, so every page gets it again.
@@ -343,10 +372,10 @@ export function createTab(url?: string): Tab {
   // separate native window without any browser chrome.
   wc.setWindowOpenHandler(({ url: target }) => {
     // With every tab in use, the link replaces this page instead.
-    if (tabLimitReached()) {
+    if (tabLimitReached(group)) {
       void wc.loadURL(normalizeUrl(target)).catch(() => undefined);
     } else {
-      const opened = createTab(target);
+      const opened = createTab(target, group);
       openers.set(opened.view.webContents, wc);
       selectTab(opened.id);
     }
@@ -359,7 +388,7 @@ export function createTab(url?: string): Tab {
     else if (input.key === "0") wc.setZoomFactor(1);
   });
   tabs.push(tab);
-  if (activeId === null) activeId = tab.id;
+  if (!activeIds.has(group)) activeIds.set(group, tab.id);
   // about:blank rather than nothing: a webContents that has never loaded
   // a document doesn't answer DevTools, which stalls tools attaching to
   // the app (and the page reads as "" either way).
@@ -371,9 +400,10 @@ export function createTab(url?: string): Tab {
 export function selectTab(id: number): Tab | undefined {
   const tab = tabs.find((t) => t.id === id);
   if (!tab) return undefined;
-  if (activeId !== null && activeId !== id) activeTab()?.view.webContents.send(CONTENT_SET_PICK_MODE_CHANNEL, false);
-  activeId = id;
-  if (pickModeActive) tab.view.webContents.send(CONTENT_SET_PICK_MODE_CHANNEL, true);
+  const viewed = tab.group === viewedGroup;
+  if (viewed && activeIds.get(tab.group) !== id) activeTab()?.view.webContents.send(CONTENT_SET_PICK_MODE_CHANNEL, false);
+  activeIds.set(tab.group, id);
+  if (viewed && pickModeActive) tab.view.webContents.send(CONTENT_SET_PICK_MODE_CHANNEL, true);
   layout();
   sendTabs();
   return tab;
@@ -382,22 +412,28 @@ export function selectTab(id: number): Tab | undefined {
 export function closeTab(id: number): void {
   const index = tabs.findIndex((t) => t.id === id);
   if (index < 0) return;
+  const position = groupTabs(tabs[index].group).findIndex((t) => t.id === id);
   const [tab] = tabs.splice(index, 1);
   if (win && !win.isDestroyed() && win.contentView.children.includes(tab.view)) {
     win.contentView.removeChildView(tab.view);
   }
   tab.view.webContents.close();
   favicons.delete(id);
-  if (activeId === id) activeId = tabs[Math.min(index, tabs.length - 1)]?.id ?? null;
+  if (activeIds.get(tab.group) === id) {
+    const rest = groupTabs(tab.group);
+    const next = rest[Math.min(position, rest.length - 1)];
+    if (next) activeIds.set(tab.group, next.id);
+    else activeIds.delete(tab.group);
+  }
   // The panel always has a tab to show, even after the last one closes.
-  if (!tabs.length) createTab();
+  if (tab.group === viewedGroup && !groupTabs(viewedGroup).length) createTab();
   layout();
   sendTabs();
 }
 
-/** The active tab, making one if there are none. */
-export function ensureActiveTab(): Tab {
-  return activeTab() ?? selectTab(createTab().id)!;
+/** The group's active tab, making one if there are none. */
+export function ensureActiveTab(group: string = viewedGroup): Tab {
+  return activeTab(group) ?? selectTab(createTab(undefined, group).id)!;
 }
 
 async function handlePicked(tab: Tab, info: PickedElementInfo): Promise<void> {
@@ -464,7 +500,7 @@ function closePanel(): void {
 export function destroyBrowserPanel(): void {
   closePanel();
   for (const tab of tabs.splice(0)) tab.view.webContents.close();
-  activeId = null;
+  activeIds.clear();
   win = undefined;
 }
 
@@ -515,6 +551,7 @@ export function registerBrowserPanelHandlers(window: BrowserWindow): void {
     pickModeActive = enabled;
     activeTab()?.view.webContents.send(CONTENT_SET_PICK_MODE_CHANNEL, enabled);
   });
+  ipcMain.handle(BROWSER_PANEL_VIEW_GROUP_CHANNEL, (_event, group: string) => viewGroup(String(group ?? "")));
   ipcMain.handle(BROWSER_PANEL_NEW_TAB_CHANNEL, () => {
     if (!tabLimitReached()) selectTab(createTab().id);
   });
@@ -540,9 +577,9 @@ export function registerBrowserPanelHandlers(window: BrowserWindow): void {
       { label: "Save screenshot…", enabled: Boolean(tab && !tab.blank), click: () => void saveScreenshot(menuWindow) },
       {
         label: "Close other tabs",
-        enabled: tabs.length > 1,
+        enabled: groupTabs(viewedGroup).length > 1,
         click: () => {
-          for (const other of [...tabs]) if (other.id !== activeId) closeTab(other.id);
+          for (const other of groupTabs(viewedGroup)) if (other.id !== activeIds.get(viewedGroup)) closeTab(other.id);
         },
       },
       { type: "separator" },

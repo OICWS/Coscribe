@@ -247,7 +247,7 @@ class WorkflowDrafting:
                 # The steps' own download waits must not take a file this
                 # conversation downloaded before the test.
                 BROWSER_HOST.set_active(self._host.thread_id, True)
-            result = await run_test(workflow, ctx, inputs, report)
+            result = await run_test(workflow, ctx, inputs, report, self._host.thread_id)
             if browser:
                 # For the reviewer, not the model: the page the test ended on.
                 result["screenshot"] = await asyncio.to_thread(

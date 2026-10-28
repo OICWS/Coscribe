@@ -9,7 +9,7 @@ or its routes (`web/`), the proxy setting (`runtime/proxy.py`) or secret storage
 
 ## Public interface
 `build_browser_tools`, `build_websearch_tools`, `build_http_tools`, `build_image_tools`,
-`BrowserHost`, `BrowserUnavailableError`, `BROWSER_HOST`, `BROWSER_RUNS`, `SCREENSHOT_FOLDER`,
+`BrowserHost`, `BrowserUnavailableError`, `BROWSER_HOST`, `browser_run`, `SCREENSHOT_FOLDER`,
 `page_screenshot`. Import them from `coscribe.tools.web`.
 
 ## Depends on

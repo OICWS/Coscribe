@@ -28,10 +28,10 @@ from typing import Any
 
 from ..tools import (
     BROWSER_HOST,
-    BROWSER_RUNS,
     ScheduledRun,
     ScheduledTrigger,
     ScheduledTriggerStore,
+    browser_run,
     compute_next_run_at,
     page_screenshot,
 )
@@ -217,7 +217,7 @@ async def _run_workflow(
         on_step,
     )
     # Tasks due together, or runs caught up after the computer was off.
-    async with BROWSER_RUNS if uses_browser(workflow) else contextlib.nullcontext():
+    async with browser_run(run.thread_id) if uses_browser(workflow) else contextlib.nullcontext():
         # Downloads from the run's tab, however late, are the run's.
         BROWSER_HOST.set_active(run.thread_id, True)
         try:
