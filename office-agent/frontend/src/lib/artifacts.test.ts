@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { artifactId, countsByKind, dayGroups, editedLabel, visibleArtifacts, type ArtifactSummary, type SystemItem } from "./artifacts";
+import { artifactId, countsByKind, dayGroups, editedLabel, TILE_ORDER, visibleArtifacts, type ArtifactSummary, type SystemItem } from "./artifacts";
 
 const NOW = new Date("2026-10-21T15:00:00");
 const ago = (hours: number) => new Date(NOW.getTime() - hours * 3600e3).toISOString();
@@ -81,5 +81,11 @@ describe("design systems beside the files", () => {
     expect(visibleArtifacts(BOTH, new Set(), { tab: "all", kind: "design-system", query: "" })).toEqual([SYSTEM]);
     expect(visibleArtifacts(BOTH, new Set(), { tab: "all", kind: null, query: "acme" })).toEqual([SYSTEM]);
     expect(visibleArtifacts(BOTH, new Set([SYSTEM.id]), { tab: "pinned", kind: null, query: "" })).toEqual([SYSTEM]);
+  });
+});
+
+describe("what Make something new offers", () => {
+  it("has no Sheets tile, and still the other kinds in the page's order", () => {
+    expect(TILE_ORDER).toEqual(["docs", "slides", "design", "dashboard", "design-system"]);
   });
 });

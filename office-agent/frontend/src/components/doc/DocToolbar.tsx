@@ -6,8 +6,7 @@ import { ChevronDownIcon, MoreIcon, PlusIcon, RedoIcon, UndoIcon } from "../icon
 import { SlideMenu, type MenuEntry } from "../slides/SlideMenu";
 import { TableIcon } from "../slides/formatIcons";
 import { calloutEntries, insertEntries, tableEntries } from "./docCommands";
-import { ImageIcon } from "../docs/docsIcons";
-import { ChecklistIcon, FontIcon, WidthIcon } from "./docIcons";
+import { ChecklistIcon, FontIcon, ImageIcon, WidthIcon } from "./docIcons";
 
 const button = (active = false) =>
   `flex h-8 w-8 items-center justify-center rounded-md hover:bg-[var(--card-bg)] disabled:opacity-40 ${active ? "bg-[var(--accent-soft)] text-[var(--accent-ink)]" : "text-[var(--fg)]"}`;

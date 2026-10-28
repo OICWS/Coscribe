@@ -7,7 +7,6 @@ from .artifacts import router as artifacts_router
 from .connectors import router as connectors_router
 from .design import router as design_router
 from .doc import router as doc_router
-from .docs import router as docs_router
 from .files import router as files_router
 from .internal import router as internal_router
 from .scheduled import router as scheduled_router
@@ -25,7 +24,6 @@ def include_routers(app: FastAPI, state: AppState) -> None:
         threads_router,
         slides_router,
         artifacts_router,
-        docs_router,
         doc_router,
         design_router,
         scheduled_router,

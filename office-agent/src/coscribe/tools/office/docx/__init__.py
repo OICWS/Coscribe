@@ -78,25 +78,7 @@ way any other Word 2010+ extension already does (see
 
 from __future__ import annotations
 
-from .block_images import read_doc_image
-from .blocks import BlocksRefused, DocChanged, read_doc_blocks, save_doc_blocks
-from .history import VersionGone, remember_version, restore_version
 from .toolkit import DocxToolkit, docx_from_markdown
 from .tools import build_docx_tools
-from .user_edits import edits_since_told, remember_before_edit
 
-__all__ = [
-    "BlocksRefused",
-    "DocChanged",
-    "DocxToolkit",
-    "VersionGone",
-    "build_docx_tools",
-    "docx_from_markdown",
-    "edits_since_told",
-    "read_doc_blocks",
-    "read_doc_image",
-    "remember_before_edit",
-    "remember_version",
-    "restore_version",
-    "save_doc_blocks",
-]
+__all__ = ["DocxToolkit", "build_docx_tools", "docx_from_markdown"]

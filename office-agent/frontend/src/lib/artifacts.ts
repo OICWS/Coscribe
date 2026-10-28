@@ -56,6 +56,11 @@ export const KINDS: Record<ArtifactKind, KindInfo> = {
 /** Every kind the page offers, the design system last. */
 export const PAGE_ORDER: PageKind[] = [...KIND_ORDER, "design-system"];
 
+/** What "Make something new" offers. Sheets is not: a workbook is made and opened in Excel, the app
+ * has no grid of its own, and a table to look at in the app is a Dashboard. Workbooks the
+ * conversations made are still listed, under their kind. */
+export const TILE_ORDER: PageKind[] = PAGE_ORDER.filter((kind) => kind !== "sheets");
+
 export const PAGE_KINDS: Record<PageKind, KindInfo> = {
   ...KINDS,
   "design-system": { label: "Design system", colour: "var(--file-design-system)", placeholder: "Describe the brand or the look you want…", badge: null },

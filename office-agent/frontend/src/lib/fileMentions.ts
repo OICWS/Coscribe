@@ -1,7 +1,11 @@
 import type { ArtifactKind } from "./artifacts";
-import { isDocx } from "./docxReview";
 import { isPptx } from "./slides";
 import { isDesign, isDocMarkdown, isViewable } from "./viewers";
+
+const isDocx = (path: string) => /\.docx$/i.test(path);
+
+/** What a message can mention: a file the app opens, or a Word file, which the person still names. */
+const isMentionable = (path: string) => isViewable(path) || isDocx(path);
 
 interface Call {
   toolName: string;
@@ -36,8 +40,8 @@ export function touchedFiles(calls: Iterable<Call>): string[] {
   for (const call of calls) {
     if (call.result === undefined || call.isError) continue;
     const path = call.arguments.path;
-    if (typeof path === "string" && isViewable(path) && !LOOKS_ONLY.test(call.toolName)) paths.add(path);
-    for (const written of scriptFiles(call.result)) if (isViewable(written)) paths.add(written);
+    if (typeof path === "string" && isMentionable(path) && !LOOKS_ONLY.test(call.toolName)) paths.add(path);
+    for (const written of scriptFiles(call.result)) if (isMentionable(written)) paths.add(written);
   }
   return [...paths];
 }
