@@ -260,8 +260,16 @@ Last reviewed: 2026-10-15.
 
 6. **Secrets out of what scripts and commands inherit** (#667, then the proxy setting #666,
    kurtosisOC). Shipped: scripts and commands start from a list of names, the proxy without its
-   password, not from the server's environment. Open: the commands Codex runs in the code
-   module (part 2 of #667), and the proxy setting in Settings (#666).
+   password, not from the server's environment (#668); the commands Codex runs in the code
+   module get no provider keys or proxy password (#670); the proxy setting in Settings, its
+   password in the keychain (#672). Open: a company proxy on a real Windows machine (NTLM or
+   Kerberos are not supported, Basic only).
+
+7. **The `tools` interface** (#677, record 0009). A done: who uses the 230 names
+   (`docs/metrics/2026-10-28-tools-interface-usage.md`). Open: drop the 10 unused names and
+   ratchet the size; B, one PR per sub-component after `deep_imports` counts a declared
+   sub-component as an entry; C, three fresh-session samples that cross a component edge, one of
+   them a likely wrong turn; a frontend card before C; D, fixes from C.
 
 ## Needs the maintainer's testing (could not be verified here)
 

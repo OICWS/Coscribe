@@ -27,7 +27,7 @@ export function HomeGreeting() {
       style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
     >
       {/* Held back until the name is known, so the line doesn't change after it shows. */}
-      {name !== null && `${pickGreeting(new Date(), name, () => random)}!`}
+      {name !== null && pickGreeting(new Date(), name, () => random)}
     </h1>
   );
 }

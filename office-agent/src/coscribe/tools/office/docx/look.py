@@ -291,14 +291,66 @@ class Looks:
         return [w for w in widths if w is not None]
 
     def table_edges(self, table: Any) -> dict[str, Any]:
-        """Borders a table draws around and between its cells."""
-        borders = table.find(f"{_q('tblPr')}/{_q('tblBorders')}")
-        if borders is None:
-            return {}
+        """Borders a table draws around and between its cells: its style's, then its own."""
         names = (*_SIDES, "insideH", "insideV")
-        return {
-            name: edge for name in names if (edge := self._edge(borders.find(_q(name)))) is not None
-        }
+        edges: dict[str, Any] = {}
+        for source in (*self._table_styles(table), table):
+            borders = source.find(f"{_q('tblPr')}/{_q('tblBorders')}")
+            if borders is None:
+                continue
+            for name in names:
+                if (edge := self._edge(borders.find(_q(name)))) is not None:
+                    edges[name] = edge
+        return edges
+
+    def _table_styles(self, table: Any) -> list[Any]:
+        return self._chain(_val(table.find(_q("tblPr")), "tblStyle"))
+
+    def table_row_look(self, table: Any, row: int, rows: int) -> dict[str, Any]:
+        """What the table's style gives a whole row: the first and the last row, when the table's
+        look turns them on. `fill` and `border` are the cell's, `color` and `b` its text's."""
+        flags = table.find(f"{_q('tblPr')}/{_q('tblLook')}")
+        kinds = []
+        if row == 0 and _table_flag(flags, "firstRow", 0x0020):
+            kinds.append("firstRow")
+        if row == rows - 1 and rows > 1 and _table_flag(flags, "lastRow", 0x0040):
+            kinds.append("lastRow")
+        look: dict[str, Any] = {}
+        for style in self._table_styles(table):
+            for part in style.findall(_q("tblStylePr")):
+                if part.get(_q("type")) not in kinds:
+                    continue
+                shading = part.find(f"{_q('tcPr')}/{_q('shd')}")
+                fill = shading.get(_q("fill")) if shading is not None else None
+                if fill and re.fullmatch(r"[0-9A-Fa-f]{6}", fill):
+                    look["fill"] = fill.upper()
+                borders = part.find(f"{_q('tcPr')}/{_q('tcBorders')}")
+                if borders is not None:
+                    look["border"] = {
+                        **look.get("border", {}),
+                        **{
+                            side: edge
+                            for side in _SIDES
+                            if (edge := self._edge(borders.find(_q(side)))) is not None
+                        },
+                    }
+                text = part.find(_q("rPr"))
+                if (colour := self._colour(text.find(_q("color"))) if text is not None else None):
+                    look["color"] = colour
+                if text is not None and text.find(_q("b")) is not None:
+                    look["b"] = True
+        return look
+
+
+def _table_flag(look: Any, name: str, bit: int) -> bool:
+    """Whether a table's `tblLook` turns a conditional part on: as an attribute, else in the
+    hexadecimal `val` of older files."""
+    if look is None:
+        return False
+    if (flag := look.get(_q(name))) is not None:
+        return flag in ("1", "true", "on")
+    value = look.get(_q("val"))
+    return bool(value and re.fullmatch(r"[0-9A-Fa-f]{1,4}", value) and int(value, 16) & bit)
 
 
 def _margin(margins: Any, side: str) -> str | None:

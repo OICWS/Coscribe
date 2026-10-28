@@ -898,7 +898,7 @@ body {
 }
 .docs-editor .docs-locked-line {
   background: none;
-  padding: 0 10px;
+  padding: 0;
   color: inherit;
   font-size: inherit;
 }
