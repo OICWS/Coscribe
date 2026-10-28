@@ -40,6 +40,8 @@ def add_blocks(
 ) -> Written:
     """Append `content` (the markdown subset) to the end of the body, as `write_docx` writes it.
     With `change_author`, every paragraph is a tracked insertion; tables never are."""
+    from docx.shared import Pt
+
     body = document.element.body
     existing = set(body)
     written = Written()
@@ -73,6 +75,9 @@ def add_blocks(
         else:
             paragraph = document.add_paragraph()
             _add_inline_runs(paragraph, block.text)
+            if previous_kind == "table":
+                # A table has no space of its own below it.
+                paragraph.paragraph_format.space_before = Pt(6)
 
         previous_kind = block.kind
         if paragraph is None:
@@ -228,9 +233,13 @@ def _match_table_style(document: Any, new_elements: list[Any]) -> None:
         return
 
 
-def _title_tocs(document: Any, written: Written) -> None:
+_CONTENTS_TITLES = {"contents", "table of contents", "目录", "目 录", "目錄"}
+
+
+def _title_tocs(document: Any, written: Written, *, named: bool = False) -> None:
     """A heading written right above a contents list is its title: Word's "TOC Heading" style
-    looks like a heading but stays out of the list."""
+    looks like a heading but stays out of the list. With `named`, only a heading that reads
+    like one ("Contents", "目录"); a document's own title can sit above its list too."""
     from docx.oxml.ns import qn
 
     title = next((s for s in document.styles if s.name == "TOC Heading"), None)
@@ -240,7 +249,13 @@ def _title_tocs(document: Any, written: Written) -> None:
     levels = _heading_levels(document)
     for element, following in zip(written.elements, written.elements[1:], strict=False):
         if element in levels and following in toc_elements:
+            text = "".join(t.text or "" for t in element.iter(qn("w:t")))
+            if named and text.strip().lower() not in _CONTENTS_TITLES:
+                continue
             element.find(f"{qn('w:pPr')}/{qn('w:pStyle')}").set(qn("w:val"), title.style_id)
+            entry = (levels[element], text)
+            if entry in written.headings:
+                written.headings.remove(entry)
 
 
 def summary(document: Any) -> dict[str, object]:

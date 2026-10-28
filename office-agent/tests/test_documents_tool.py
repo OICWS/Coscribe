@@ -351,6 +351,20 @@ def test_write_docx_toc_result_lists_the_headings_written_after_it(tmp_path: Pat
     ]
 
 
+def test_write_docx_contents_title_stays_out_of_its_own_list(tmp_path: Path) -> None:
+    """A new document has no "TOC Heading" style, so "# Contents" above [TOC] was a Heading 1
+    and the list opened with its own title."""
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](
+        path="report.docx", content="# Report\n\n# Contents\n\n[TOC]\n\n## Setup\n\nText."
+    )
+
+    document = Document(tmp_path / "report.docx")
+
+    assert _toc_field_result(document) == [("TOC2", "Setup")]
+    assert [p.style.name for p in document.paragraphs if p.text == "Contents"] == ["TOC Heading"]
+
+
 @pytest.mark.parametrize(
     ("levels", "expected"),
     [('"1-3"', ["One", "Two", "Three"]), ('"2-4"', ["Two", "Three", "Four"])],
@@ -1135,6 +1149,23 @@ def test_table_layout_steps_the_font_down_before_breaking_numbers() -> None:
     assert _table_layout(rows, 350, [11, 10, 9], padding=12)[0] == 9
 
 
+def test_table_layout_measures_a_header_row_bold_so_its_words_stay_whole() -> None:
+    """Writers set the header row bold without markup; measured plain, "Shipments" got a
+    column a little too narrow and broke as "Shipment" / "s"."""
+    from coscribe.tools.office.table_layout import _cell_width_em, _table_layout
+
+    rows = [["Measure", "On-time delivery", "Shipments", "Cost per shipment", "Complaints"]]
+    total = 451.0
+    _, plain = _table_layout(rows, total, [11], padding=12)
+    _, bold = _table_layout(rows, total, [11], padding=12, header=True)
+
+    assert min(
+        width - (_cell_width_em(cell, pieces=True, bold=True) * 11 + 12)
+        for width, cell in zip(bold, rows[0], strict=True)
+    ) >= -0.01
+    assert plain != bold
+
+
 _REGION_TABLE = """\
 | 区域 | 有效订单数 | 净收入(元) | 毛利(元) | 毛利率 | Q3 目标(元) | 达成率 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -1374,3 +1405,36 @@ def test_write_docx_fills_a_large_table_in_reasonable_time(tmp_path: Path) -> No
     assert len(table.rows) == 801
     assert [c.text for c in table.rows[800].cells] == ["r799", "部门1", "2508.86"]
     assert elapsed < 20
+
+
+def test_add_docx_chart_starts_a_column_axis_at_zero_and_uses_the_text_font(tmp_path: Path) -> None:
+    """Shipments of 41,200 to 44,600 drew on an axis from 39,000, and the chart's text fell
+    back to a serif font."""
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](path="c.docx", content="# Report\n\nText.")
+    data = (
+        "| Month | Shipments |\n| --- | --- |\n| July | 41200 |\n"
+        "| August | 42600 |\n| September | 44600 |"
+    )
+    tools["add_docx_chart"](path="c.docx", chart_type="bar", data=data, title="Shipments")
+    tools["add_docx_chart"](path="c.docx", chart_type="line", data=data, title="Trend")
+
+    with zipfile.ZipFile(tmp_path / "c.docx") as package:
+        bar, line = (package.read(f"word/charts/chart{n}.xml").decode() for n in (1, 2))
+
+    assert '<c:min val="0"/>' in bar
+    assert '<c:min val="0"/>' not in line
+    assert '<a:latin typeface="Calibri"/>' in bar
+
+
+def test_write_docx_paragraph_after_a_table_has_space_above(tmp_path: Path) -> None:
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](
+        path="t.docx", content="| a | b |\n| --- | --- |\n| 1 | 2 |\n\nThe budget is fixed.\n"
+    )
+
+    document = Document(tmp_path / "t.docx")
+    after = next(p for p in document.paragraphs if p.text == "The budget is fixed.")
+
+    assert after.paragraph_format.space_before is not None
+    assert after.paragraph_format.space_before.pt >= 6

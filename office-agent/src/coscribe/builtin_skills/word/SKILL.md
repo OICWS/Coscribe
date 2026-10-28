@@ -49,9 +49,16 @@ plain paragraphs with bold text standing in for headings produces an empty
 or missing TOC, since Word has no way to tell that text is structural. For
 any document long enough to want a TOC, use real `#`/`##`/`###` lines for
 every section and subsection, not just for the ones that happen to need
-one. The TOC shows placeholder page numbers until the user opens the file
-in Word, which recalculates it automatically on open -- don't describe it
-as broken or incomplete in your response.
+one. The list shows the headings without page numbers: only Word can
+paginate, and the person adds them with right-click, Update Field. Don't
+describe it as broken, and don't write page numbers or page breaks into it
+with a script. A heading written just above `[TOC]` reading "Contents" is
+the list's title and stays out of it.
+
+A cover page and a contents list suit a document of about six pages or more.
+A shorter one gets neither unless the person asks, since each takes a nearly
+empty page. Headline figures go in a short table or a list, not in large type
+in a table of many columns: the numbers break across lines.
 
 ## Comments vs. tracked changes -- pick the one that matches the ask
 
