@@ -15,6 +15,7 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from collections.abc import Iterator
 from pathlib import Path
@@ -130,13 +131,35 @@ def libreoffice_status(state_dir: Path) -> LibreOfficeStatus:
 _LOCK_NAMES = (".lock", "user/.lock")
 
 
+# The export filter for each format LibreOffice can be asked for; a bare name picks its default.
+_FILTERS = {
+    "pdf": "pdf",
+    "docx": "docx:MS Word 2007 XML",
+    "xlsx": "xlsx:Calc MS Excel 2007 XML",
+    "pptx": "pptx:Impress MS PowerPoint 2007 XML",
+}
+# Two runs sharing one profile hand each other their jobs and some convert nothing (#399), and
+# coscribe's runs all use one profile of its own.
+_RUN_LOCK = threading.Lock()
+
+
+def run_profile(state_dir: Path) -> Path:
+    return own_root(state_dir) / "profile"
+
+
 def convert_to_pdf(
     launcher: Path, source: Path, outdir: Path, profile: Path, timeout: float = 180.0
 ) -> Path:
-    """Convert `source` to `outdir/<name>.pdf` and return it.
+    return _convert(launcher, source, outdir, profile, "pdf", timeout)
+
+
+def _convert(
+    launcher: Path, source: Path, outdir: Path, profile: Path, to_format: str, timeout: float
+) -> Path:
+    """Convert `source` to `outdir/<name>.<to_format>` and return it.
 
     On Windows the launcher can return before LibreOffice has done the work (measured on a runner:
-    exit 0, no output, no PDF yet), so this waits for the PDF and for the profile's lock to go,
+    exit 0, no output, no file yet), so this waits for the file and for the profile's lock to go,
     which is when the program has really exited and no longer holds files in its folder.
     """
     outdir.mkdir(parents=True, exist_ok=True)
@@ -147,17 +170,38 @@ def convert_to_pdf(
             profile_argument(profile),
             "--headless",
             "--convert-to",
-            "pdf",
+            _FILTERS[to_format],
             "--outdir",
             str(outdir),
             str(source),
         ],
         timeout,
     )
-    target = outdir / f"{source.stem}.pdf"
+    target = outdir / f"{source.stem}.{to_format}"
     while time.monotonic() - started < timeout:
         locked = any((profile / name).exists() for name in _LOCK_NAMES)
         if target.is_file() and not locked:
             return target
         time.sleep(0.25)
     raise TimeoutError(f"LibreOffice made no {target.name}")
+
+
+def convert_with_libreoffice(
+    state_dir: Path, source: Path, target: Path, to_format: str, timeout: float
+) -> str | None:
+    """Write `source` as `to_format` ("pdf", "docx", "xlsx" or "pptx") to `target` with the
+    LibreOffice this computer has, in a profile of coscribe's own. Returns "LibreOffice", or None
+    when there is none or it cannot write that format. Raises ValueError when it fails."""
+    found = find_libreoffice(state_dir)
+    if found is None or to_format not in _FILTERS:
+        return None
+    launcher = found[0]
+    profile = run_profile(state_dir)
+    with _RUN_LOCK:
+        try:
+            made = _convert(launcher, source, target.parent, profile, to_format, timeout)
+        except (subprocess.CalledProcessError, OSError, subprocess.TimeoutExpired, TimeoutError):
+            raise ValueError("LibreOffice could not convert this file.") from None
+    if made != target:
+        os.replace(made, target)
+    return "LibreOffice"
