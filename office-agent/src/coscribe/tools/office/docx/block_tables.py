@@ -33,14 +33,27 @@ def _shape(table: Any, looks: Looks) -> dict[str, Any]:
 def editable_look(table: Any, looks: Looks, links: Any, read_runs: ReadRuns) -> dict[str, Any]:
     """The look of a table the editor can change, with each cell's own fill and text look."""
     rows = []
-    for row in table.findall(_q("tr")):
+    table_rows = table.findall(_q("tr"))
+    for index, row in enumerate(table_rows):
         cells = []
+        by_style = looks.table_row_look(table, index, len(table_rows))
         for cell in row.findall(_q("tc")):
             paragraph = cell.find(_q("p"))
-            cells.append({"look": looks.cell(cell), "p": looks.paragraph(paragraph)})
+            text = looks.paragraph(paragraph)
+            cells.append({"look": _with_row(looks.cell(cell), by_style), "p": _with_text(text, by_style)})
         height = _height(row)
         rows.append({**({"h": height} if height else {}), "cells": cells})
     return {**_shape(table, looks), "rows": rows}
+
+
+def _with_row(cell: dict[str, Any], by_style: dict[str, Any]) -> dict[str, Any]:
+    """The cell's own look over what its row gets from the table's style."""
+    own = {key: by_style[key] for key in ("fill", "border") if key in by_style}
+    return {**own, **cell}
+
+
+def _with_text(text: dict[str, Any], by_style: dict[str, Any]) -> dict[str, Any]:
+    return {**{key: by_style[key] for key in ("color", "b") if key in by_style}, **text}
 
 
 def _spans(table: Any) -> list[list[int | None]]:
@@ -74,8 +87,10 @@ def locked_grid(table: Any, looks: Looks, links: Any, read_runs: ReadRuns) -> di
     rows: list[dict[str, Any]] = []
     budget = _MAX_CELLS
     spans = _spans(table)
-    for r, row in enumerate(table.findall(_q("tr"))):
+    table_rows = table.findall(_q("tr"))
+    for r, row in enumerate(table_rows):
         cells: list[dict[str, Any]] = []
+        by_style = looks.table_row_look(table, r, len(table_rows))
         for c, cell in enumerate(row.findall(_q("tc"))):
             if budget <= 0:
                 break
@@ -84,7 +99,7 @@ def locked_grid(table: Any, looks: Looks, links: Any, read_runs: ReadRuns) -> di
                 continue
             paragraphs = []
             for paragraph in cell.findall(_q("p")):
-                look = looks.paragraph(paragraph)
+                look = _with_text(looks.paragraph(paragraph), by_style)
                 paragraphs.append(
                     {
                         "runs": read_runs(paragraph, links, looks, look),
@@ -92,7 +107,7 @@ def locked_grid(table: Any, looks: Looks, links: Any, read_runs: ReadRuns) -> di
                     }
                 )
             entry: dict[str, Any] = {"paras": paragraphs}
-            if look := looks.cell(cell):
+            if look := _with_row(looks.cell(cell), by_style):
                 entry["look"] = look
             span = cell.find(f"{_q('tcPr')}/{_q('gridSpan')}")
             value = span.get(_q("val")) if span is not None else None
