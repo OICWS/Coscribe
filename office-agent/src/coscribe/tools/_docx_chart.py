@@ -27,7 +27,11 @@ _CHART_TEXT_SIZE = "1000"
 
 
 def _chart_xml(
-    chart_type: str, categories: list[str], series: dict[str, list[float]], title: str
+    chart_type: str,
+    categories: list[str],
+    series: dict[str, list[float]],
+    title: str,
+    fonts: tuple[str, str] | None = None,
 ) -> tuple[bytes, bytes]:
     from pptx.chart.data import CategoryChartData
     from pptx.chart.xmlwriter import ChartXmlWriter
@@ -63,6 +67,20 @@ def _chart_xml(
     else:
         chart.find("c:autoTitleDeleted", ns).set("val", "1")
 
+    # Without a typeface a reader without the document's theme falls back to a serif font.
+    if fonts is not None:
+        for run_properties in root.iter(f"{{{_A}}}defRPr", f"{{{_A}}}rPr"):
+            for tag, face in (("latin", fonts[0]), ("ea", fonts[1])):
+                etree.SubElement(run_properties, f"{{{_A}}}{tag}").set("typeface", face)
+
+    # A column chart reads by the height of its bars; an axis that starts near the smallest value
+    # makes a 7% rise look like a tripling.
+    scaling = chart.find("c:plotArea/c:valAx/c:scaling", ns)
+    if chart_type == "bar" and scaling is not None and min(
+        (v for vs in series.values() for v in vs), default=0
+    ) >= 0:
+        etree.SubElement(scaling, f"{{{_C}}}min").set("val", "0")
+
     # Axis labels only; the values themselves keep every decimal.
     values = [abs(v) for vs in series.values() for v in vs]
     value_axis = chart.find("c:plotArea/c:valAx", ns)
@@ -93,9 +111,11 @@ def add_chart_paragraph(
     title: str,
     width_emu: int,
     height_emu: int,
+    fonts: tuple[str, str] | None = None,
 ) -> Any:
     """Append a paragraph holding a native chart; return the paragraph
-    (python-docx `Paragraph`) so the caller can move it."""
+    (python-docx `Paragraph`) so the caller can move it. `fonts` is the Latin and East Asian
+    typeface of the document's text."""
     from docx.opc.constants import RELATIONSHIP_TYPE as RT
     from docx.opc.packuri import PackURI
     from docx.opc.part import Part
@@ -106,7 +126,7 @@ def add_chart_paragraph(
     while f"/word/charts/chart{number}.xml" in existing:
         number += 1
 
-    xml_blob, workbook_blob = _chart_xml(chart_type, categories, series, title)
+    xml_blob, workbook_blob = _chart_xml(chart_type, categories, series, title, fonts)
     workbook_part = Part(
         PackURI(f"/word/embeddings/Microsoft_Excel_Sheet{number}.xlsx"),
         _XLSX_CT,

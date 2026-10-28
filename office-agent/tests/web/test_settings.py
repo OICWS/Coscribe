@@ -206,6 +206,22 @@ def test_post_config_updates_env_and_rejects_bad_values(
     assert os.environ["GEMINI_API_KEY"] == "sk-newkey"
 
 
+def test_profile_settings_round_trip_through_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("", encoding="utf-8")
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        update = {"COSCRIBE_USER_NAME": "Allen", "COSCRIBE_USER_ROLE": "Student"}
+        saved = client.post("/api/config", json={"updates": update})
+        body = client.get("/api/config").json()
+
+    assert saved.json() == {"restart_required": False, "rejected": {}}
+    assert (body["COSCRIBE_USER_NAME"], body["COSCRIBE_USER_ROLE"]) == ("Allen", "Student")
+    assert dotenv_values(tmp_path / ".env")["COSCRIBE_USER_NAME"] == "Allen"
+
+
 def test_get_config_includes_background_on_close_desktop_setting(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

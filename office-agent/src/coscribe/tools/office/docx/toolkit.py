@@ -8,8 +8,15 @@ from ..._ooxml_validate import assert_wml_valid
 from ..._thumbnail import render_thumbnail
 from ..toolkit import WorkspaceToolkit
 from ._review import edit_review, read_review, rejected_copy, write_atomically
-from ._structure import add_blocks, apply_operations, describe, finish_tocs, summary
-from ._style import TITLE_STYLE, apply_house_style, has_cjk
+from ._structure import (
+    _title_tocs,
+    add_blocks,
+    apply_operations,
+    describe,
+    finish_tocs,
+    summary,
+)
+from ._style import EAST_ASIAN_FONT, LATIN_FONT, TITLE_STYLE, apply_house_style, has_cjk
 from ._xml import (
     _apply_page_setup,
     _build_comments_xml,
@@ -50,6 +57,7 @@ def docx_from_markdown(content: str) -> bytes:
     change_ids = _ChangeIdCounter()
     written = add_blocks(document, content, None, change_ids)
     _title_first_heading(document, written)
+    _title_tocs(document, written, named=True)
     finish_tocs(document, written.tocs, written.headings, None, change_ids)
     assert_wml_valid(document.element, "docx_from_markdown")
     out = io.BytesIO()
@@ -111,6 +119,7 @@ class DocxToolkit(WorkspaceToolkit):
         written = add_blocks(document, content, author, change_ids)
         if not template_path:
             _title_first_heading(document, written)
+        _title_tocs(document, written, named=True)
         # Written only now, so the TOC also lists the headings after its marker.
         has_toc = finish_tocs(document, written.tocs, written.headings, author, change_ids)
         pending_comments = written.comments
@@ -231,6 +240,7 @@ class DocxToolkit(WorkspaceToolkit):
             title,
             width_emu,
             int(Emu(int(Inches(height)))),
+            (document.styles["Normal"].font.name or LATIN_FONT, EAST_ASIAN_FONT),
         )
         self._place_after(document, paragraph, after_text, caption)
         return self._save_tracked_edit(file_path, document)

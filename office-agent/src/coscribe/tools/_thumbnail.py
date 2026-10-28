@@ -3,8 +3,9 @@ and the approval card's slide preview (conversation/edit_preview.py).
 
 No office program is needed for a PDF (PDFium) or for a deck still as its SVG pages built it
 (resvg); any other Word, Excel or PowerPoint file is drawn through the office program installed,
-Microsoft Office or WPS, over COM (decision 0012). Without one there is no preview, and the
-reason says so: a preview is never an error, since the write has already succeeded.
+Microsoft Office or WPS over COM, else a LibreOffice the computer has (decisions 0012 and 0026).
+Without one there is no preview, and the reason says so: a preview is never an error, since the
+write has already succeeded.
 
 Previews are written under `<state_dir>/previews/`, not the user's workspace. Their names are
 fresh uuid4s, never derived from the source path, so `GET /api/previews/{name}` looks one up by
@@ -21,10 +22,13 @@ from typing import Any
 
 from . import _office_com
 from ._pdfium import PDFIUM_LOCK
+from .libreoffice import convert_with_libreoffice
 
 # The first start of Word or PowerPoint after a login can take half a minute.
 OFFICE_TIMEOUT = 60.0
-NO_OFFICE_PROGRAM = "drawing this file needs Microsoft Office or WPS Office, and neither was found"
+NO_OFFICE_PROGRAM = (
+    "drawing this file needs Microsoft Office, WPS Office or LibreOffice, and none was found"
+)
 
 _PREVIEW_DPI = 100
 # What drawing a page raises: resvg's ValueError, a malformed SVG, PDFium's RuntimeError, a file
@@ -39,6 +43,7 @@ def _draw(
     first: int,
     last: int,
     layout: list[dict[str, Any]] | None = None,
+    state_dir: Path | None = None,
 ) -> list[Path] | None:
     """Pages first..last as PNG files: a PDF with PDFium; a deck its SVG pages last built, deck
     and pages still as built, with resvg; any other Office file through the office program
@@ -49,7 +54,11 @@ def _draw(
     pages = _built_pages(file_path)
     if pages is None:
         pdf_path = out_dir / f"{file_path.stem}.pdf"
-        if _office_com.convert(file_path, pdf_path, "pdf", OFFICE_TIMEOUT) is None:
+        if _office_com.convert(file_path, pdf_path, "pdf", OFFICE_TIMEOUT) is None and (
+            state_dir is None
+            or convert_with_libreoffice(state_dir, file_path, pdf_path, "pdf", OFFICE_TIMEOUT)
+            is None
+        ):
             return None
         if layout is not None:
             layout.extend(measure_page_words(pdf_path, last))
@@ -95,7 +104,7 @@ def _previews(
     out_dir = Path(tempfile.mkdtemp(prefix="coscribe_thumbnail_"))
     try:
         try:
-            page_files = _draw(file_path, out_dir, first, last, layout)
+            page_files = _draw(file_path, out_dir, first, last, layout, state_dir)
         except _DRAW_ERRORS:
             return [], "page rendering failed"
         if page_files is None:

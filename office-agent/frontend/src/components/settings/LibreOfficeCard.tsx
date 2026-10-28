@@ -58,7 +58,7 @@ function Body({ status, error, download, remove }: { status: LibreOfficeStatus }
           </button>
         )}
       </div>
-      {(error || status.error) && <span className="text-sm text-[var(--danger)]">{error ?? status.error}</span>}
+      {(error || status.problem) && <span className="text-sm text-[var(--danger)]">{error ?? status.problem}</span>}
     </div>
   );
 }
