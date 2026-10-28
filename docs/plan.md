@@ -265,11 +265,13 @@ Last reviewed: 2026-10-15.
    password in the keychain (#672). Open: a company proxy on a real Windows machine (NTLM or
    Kerberos are not supported, Basic only).
 
-7. **The `tools` interface** (#677, record 0009). A done: who uses the 230 names
-   (`docs/metrics/2026-10-28-tools-interface-usage.md`). Open: drop the 10 unused names and
-   ratchet the size; B, one PR per sub-component after `deep_imports` counts a declared
-   sub-component as an entry; C, three fresh-session samples that cross a component edge, one of
-   them a likely wrong turn; a frontend card before C; D, fixes from C.
+7. **The `tools` interface** (#677, record 0009). Done: who uses the 230 names
+   (`docs/metrics/2026-10-28-tools-interface-usage.md`). In review: the 10 unused names dropped and
+   the size ratcheted (#680); the `tools` card and `slice.py` list only the names `tools` owns, the
+   maintainer-side choice for B (#692); four fresh-session samples across a component edge and the
+   card lines they missed (#681). Open: moving callers to import from the sub-components, which
+   makes `deep_imports`, `fan_out` and `coordinator.py`'s size worse today and needs the metric to
+   count a declared sub-component as an entry first.
 
 ## Needs the maintainer's testing (could not be verified here)
 
