@@ -7,6 +7,7 @@ from ..._file_locks import locked_by_path
 from ..._ooxml_validate import assert_wml_valid
 from ..._thumbnail import render_thumbnail
 from ..toolkit import WorkspaceToolkit
+from ._markers import apply_markers
 from ._review import edit_review, read_review, write_atomically
 from ._structure import (
     _title_tocs,
@@ -59,6 +60,7 @@ def docx_from_markdown(content: str) -> bytes:
     _title_first_heading(document, written)
     _title_tocs(document, written, named=True)
     finish_tocs(document, written.tocs, written.headings, None, change_ids)
+    apply_markers(document)
     assert_wml_valid(document.element, "docx_from_markdown")
     out = io.BytesIO()
     document.save(out)
