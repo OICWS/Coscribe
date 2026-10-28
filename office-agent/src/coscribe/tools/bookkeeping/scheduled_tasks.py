@@ -277,6 +277,8 @@ class ScheduledRun:
     investigation: str | None = None
     # The sites a workflow run opened, as hosts.
     sites: list[str] = field(default_factory=list)
+    # Waiting for the browser, which one run or test uses at a time.
+    queued: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -294,6 +296,7 @@ class ScheduledRun:
             "files": self.files,
             "investigation": self.investigation,
             "sites": self.sites,
+            "queued": self.queued,
         }
 
     @classmethod
@@ -313,6 +316,7 @@ class ScheduledRun:
             files=data.get("files") or [],
             investigation=data.get("investigation"),
             sites=list(data.get("sites") or []),
+            queued=bool(data.get("queued", False)),
         )
 
 
@@ -525,19 +529,20 @@ class ScheduledTriggerStore:
         run.status = status
         run.error = error
         run.finished_at = _now_iso()
+        run.queued = False
         if trigger.runs and trigger.runs[-1] is run:
             trigger.last_run_status = status
         self.save(trigger)
         return trigger
 
     def record_evidence(self, trigger_id: str, run_id: str, **fields: Any) -> None:
-        """Set a run's screenshot, page, files, sites or investigation."""
+        """Set a run's screenshot, page, files, sites, investigation or queued flag."""
         trigger = self.load(trigger_id)
         run = trigger.find_run(run_id) if trigger is not None else None
         if trigger is None or run is None:
             return
         for name, value in fields.items():
-            if name not in {"screenshot", "page", "files", "sites", "investigation"}:
+            if name not in {"screenshot", "page", "files", "sites", "investigation", "queued"}:
                 raise ValueError(f"{name!r} isn't run evidence")
             setattr(run, name, value)
         self.save(trigger)
@@ -571,6 +576,7 @@ class ScheduledTriggerStore:
         run.status = "running"
         run.error = None
         run.finished_at = None
+        run.queued = False
         run.screenshot = None
         run.page = None
         run.files = []
