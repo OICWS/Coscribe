@@ -1,6 +1,6 @@
 import type { ArtifactKind } from "./artifacts";
 import { isPptx } from "./slides";
-import { isDesign, isDocMarkdown, isViewable } from "./viewers";
+import { isDesign, isViewable } from "./viewers";
 
 const isDocx = (path: string) => /\.docx$/i.test(path);
 
@@ -49,9 +49,9 @@ export function touchedFiles(calls: Iterable<Call>): string[] {
 export const baseName = (path: string) => path.split(/[\\/]/).pop() ?? path;
 
 /** The artifact kind a file belongs to, for its icon and its words. */
-export const kindOfFile = (path: string): ArtifactKind => (isPptx(path) ? "slides" : isDocx(path) || isDocMarkdown(path) ? "docs" : isDesign(path) ? "design" : "sheets");
+export const kindOfFile = (path: string): ArtifactKind => (isPptx(path) ? "slides" : isDesign(path) ? "design" : "docs");
 
-export const KIND_WORDS: Record<ArtifactKind, string> = { docs: "Document", slides: "Presentation", sheets: "Spreadsheet", design: "Design", dashboard: "Dashboard" };
+export const KIND_WORDS: Record<ArtifactKind, string> = { docs: "Document", slides: "Presentation", design: "Design", dashboard: "Dashboard" };
 
 /** The files this conversation made or changed, by their file names, for turning a mention in a
  * reply into a chip. Two files with one name keep the later. */

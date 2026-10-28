@@ -21,8 +21,8 @@ export interface ArtifactMenuProps {
   onClose: () => void;
 }
 
-const NOUN = { slides: "Presentation", docs: "Document", sheets: "Spreadsheet", design: "Design", dashboard: "Dashboard" } as const;
-const PROGRAM = { slides: "PowerPoint", docs: "Word", sheets: "Excel", design: "browser", dashboard: "browser" } as const;
+const NOUN = { slides: "Presentation", docs: "Document", design: "Design", dashboard: "Dashboard" } as const;
+const PROGRAM = { slides: "PowerPoint", docs: "Word", design: "browser", dashboard: "browser" } as const;
 
 /** The menu every artifact has, from its card or from the name in its panel: what the file is,
  * open and show it, rename, copy, pin, delete (to the recycle bin). Kinds add their own entries. */

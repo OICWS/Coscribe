@@ -425,7 +425,7 @@ class UserMessageOut(TypedDict):
     text: str
     images: NotRequired[list[str]]
     # The first message of a conversation started from the Artifacts page: what it is to make.
-    artifact: NotRequired[Literal["docs", "slides", "sheets", "design", "design-system"]]
+    artifact: NotRequired[Literal["docs", "slides", "design", "design-system"]]
     # With `artifact: "slides"`: the library design system the deck is to follow.
     design_system: NotRequired[str]
 

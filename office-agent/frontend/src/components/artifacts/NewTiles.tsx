@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { PAGE_KINDS, TILE_ORDER, type PageKind } from "../../lib/artifacts";
+import { PAGE_KINDS, PAGE_ORDER, type PageKind } from "../../lib/artifacts";
 import { useClickOutside } from "../../lib/useClickOutside";
 import { tinted } from "./ArtifactThumb";
 
@@ -30,13 +30,6 @@ function Illustration({ kind }: { kind: PageKind }) {
             {bar("80%")}
           </div>
           <span className="h-[70%] w-[26%] rounded-md" style={{ background: `color-mix(in srgb, ${colour} 30%, white)` }} />
-        </div>
-      )}
-      {kind === "sheets" && (
-        <div className="grid w-[66%] grid-cols-4 overflow-hidden rounded-lg border border-white bg-white shadow-sm">
-          {Array.from({ length: 16 }, (_, i) => (
-            <span key={i} className="h-3.5 border-b border-r border-[#e7e5e2]" style={i < 4 ? { background: `color-mix(in srgb, ${colour} 26%, white)` } : undefined} />
-          ))}
         </div>
       )}
       {kind === "design" && (
@@ -75,7 +68,7 @@ export function NewTiles({ onMake }: { onMake: (kind: PageKind, describe?: boole
     <section aria-label="Make something new">
       <h2 className="text-sm text-[var(--muted)]">Make something new</h2>
       <div className="mt-3 flex flex-wrap gap-4">
-        {TILE_ORDER.map((kind) => {
+        {PAGE_ORDER.map((kind) => {
           const info = PAGE_KINDS[kind];
           const asks = kind === "design-system";
           return (

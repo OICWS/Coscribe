@@ -13,7 +13,7 @@ const earlierToday = () => {
 const LISTED = [
   { id: "a1", path: "q3.pptx", location: "/w/q3.pptx", name: "Q3 review", kind: "slides", modified_at: earlierToday(), excerpt: null },
   { id: "b1", path: "plan.docx", location: "/w/plan.docx", name: "Project plan", kind: "docs", modified_at: hoursAgo(30), excerpt: { heading: "Project plan", text: "Goals and dates." } },
-  { id: "c1", path: "costs.xlsx", location: "/w/costs.xlsx", name: "Costs", kind: "sheets", modified_at: hoursAgo(31), excerpt: null },
+  { id: "c1", path: "costs.html", location: "/w/costs.html", name: "Costs", kind: "design", modified_at: hoursAgo(31), excerpt: null },
 ];
 
 async function openPage(page: Page) {
@@ -40,8 +40,8 @@ test("the sidebar opens the Artifacts page, which lists, searches, filters and p
   await expect(cards).toHaveCount(3);
 
   await page.getByRole("button", { name: "Filter by type" }).click();
-  await expect(page.getByRole("menuitemradio", { name: /Sheets/ })).toContainText("1");
-  await page.getByRole("menuitemradio", { name: /Sheets/ }).click();
+  await expect(page.getByRole("menuitemradio", { name: /^Design(?! system)/ })).toContainText("1");
+  await page.getByRole("menuitemradio", { name: /^Design(?! system)/ }).click();
   await expect(cards).toHaveText([/Costs/]);
   await page.getByRole("button", { name: "Filter by type" }).click();
   await page.getByRole("menuitemradio", { name: "All types" }).click();
