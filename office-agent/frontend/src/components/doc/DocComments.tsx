@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { getDocComments, type DocComment } from "../../lib/docComments";
-import { CloseIcon, FilterIcon, MessageCircleIcon, MoreIcon } from "../icons";
+import { CloseIcon, FilterIcon, MoreIcon } from "../icons";
+import { PanelCommentButton } from "../artifacts/PanelCommentButton";
 import { SlideMenu, type MenuEntry } from "../slides/SlideMenu";
 
 /** While a sent comment waits for coscribe's answer, the panel looks for it this often. */
@@ -277,20 +278,22 @@ export function CommentsPopover({
 /** The toggle in the panel's header: all the Doc's comments, with a dot while some are open. */
 export function CommentsToggle({ shown, dot, onToggle }: { shown: boolean; dot: boolean; onToggle: () => void }) {
   const [slot, setSlot] = useState<HTMLElement | null>(null);
+  const [menu, setMenu] = useState<DOMRect | null>(null);
   useEffect(() => setSlot(document.getElementById("doc-comments-toggle")), []);
   return slot
     ? createPortal(
-        <button
-          type="button"
-          title="Show all comments"
-          aria-label="Show all comments"
-          aria-pressed={shown}
-          className={`relative flex h-7 w-7 items-center justify-center rounded-md hover:bg-[var(--card-bg)] ${shown ? "bg-[var(--accent-soft)]" : ""}`}
-          onClick={onToggle}
-        >
-          <MessageCircleIcon className="h-4 w-4" />
-          {dot && <span aria-hidden className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-[var(--accent)]" />}
-        </button>,
+        <>
+          <PanelCommentButton pressed={shown} dot={dot} title="Show all comments" onToggle={onToggle} onMenu={setMenu} />
+          {menu && (
+            <SlideMenu
+              anchor={menu}
+              label="Comments"
+              width={220}
+              entries={[{ label: "Show all comments", checked: shown, onSelect: onToggle }, { note: "To comment, select some words." }]}
+              onClose={() => setMenu(null)}
+            />
+          )}
+        </>,
         slot,
       )
     : null;
