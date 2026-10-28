@@ -527,3 +527,22 @@ def test_a_run_look_that_is_not_a_colour_size_or_font_is_dropped(tmp_path: Path)
     saved = save_doc_blocks(path, read["version"], [block])
 
     assert saved["blocks"][-1]["runs"] == [{"t": "x"}]
+
+
+def test_a_table_carries_what_its_style_gives_it_borders_and_a_header_row(tmp_path: Path) -> None:
+    """The house table style puts the borders and the header's fill and white bold text in the
+    style, not in each cell, so a reader of only the cells' own formatting drew a bare grid."""
+    target = tmp_path / "t.docx"
+    _tools(tmp_path)["write_docx"](
+        path="t.docx", content="# T\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n"
+    )
+
+    table = next(b for b in read_doc_blocks(target)["blocks"] if b["kind"] == "table")
+    look = table["look"]
+    first, body = look["rows"][0]["cells"][0], look["rows"][1]["cells"][0]
+
+    assert look["edges"]["insideH"]["c"] == "BFBFBF"
+    assert first["look"]["fill"] == "1F4E79"
+    assert first["p"]["color"] == "FFFFFF"
+    assert "fill" not in body["look"]
+    assert "color" not in body["p"]
