@@ -265,6 +265,12 @@ Last reviewed: 2026-10-15.
    password in the keychain (#672). Open: a company proxy on a real Windows machine (NTLM or
    Kerberos are not supported, Basic only).
 
+7. **The `tools` interface** (#677, record 0009). A done: who uses the 230 names
+   (`docs/metrics/2026-10-28-tools-interface-usage.md`). Open: drop the 10 unused names and
+   ratchet the size; B, one PR per sub-component after `deep_imports` counts a declared
+   sub-component as an entry; C, three fresh-session samples that cross a component edge, one of
+   them a likely wrong turn; a frontend card before C; D, fixes from C.
+
 ## Needs the maintainer's testing (could not be verified here)
 
 - Sign-in of the 13 connectors added for the skill plugins (only the

@@ -380,6 +380,8 @@ export interface ScheduledRun {
   investigation?: string | null;
   /** The sites the run opened. */
   sites?: string[];
+  /** Waiting for the browser, which another run or test is using. */
+  queued?: boolean;
 }
 
 export interface ScheduledTask {
