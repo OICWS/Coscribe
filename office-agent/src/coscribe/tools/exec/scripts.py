@@ -24,7 +24,6 @@ docstring.
 
 from __future__ import annotations
 
-import os
 import shutil
 import tempfile
 from collections.abc import Callable, Mapping, Sequence
@@ -35,9 +34,10 @@ from ...runtime import tool_metadata
 from .._files_written import snapshot_workspace, with_files_written
 from .._output_truncation import truncate_script_output
 from .capabilities import require_capability
+from .env_allowlist import child_env
 from .isolation import denied_note, for_scripts, quiet_stderr, scratch_root
 from .running import Detachable, run_to_end
-from .script_env import ensure_script_env, overlay_env, venv_python
+from .script_env import ensure_script_env, venv_python
 from .script_guard import (
     blocked_write,
     locked_file_note,
@@ -90,10 +90,10 @@ def _run_python_script(
     # the write above or the child's own stdout write raises. This was a
     # real, live-reported failure on the user's Windows test machine.
     # Bytecode and font caches would be writes outside the allowed folders.
-    child_env = {
+    env = {
         # The user's variables for this conversation come before what the
         # script runner itself needs, which they must not be able to undo.
-        **overlay_env(os.environ, session_env),
+        **child_env(session_env),
         "PYTHONIOENCODING": "utf-8",
         "PYTHONUTF8": "1",
         "PYTHONDONTWRITEBYTECODE": "1",
@@ -101,7 +101,7 @@ def _run_python_script(
     }
     if isolation is not None:
         # The system temp folder is outside what the container may reach.
-        child_env |= {"TEMP": str(scratch_dir), "TMP": str(scratch_dir)}
+        env |= {"TEMP": str(scratch_dir), "TMP": str(scratch_dir)}
     wrapper, guard_config = write_python_wrapper(
         scratch_dir, writable_roots(workspace_root, [*extra_writable, scratch_dir])
     )
@@ -112,7 +112,7 @@ def _run_python_script(
         ran = run_to_end(
             [str(python), str(wrapper), str(guard_config), str(script_path)],
             str(workspace_root),
-            child_env,
+            env,
             timeout,
             language="python",
             description=description,

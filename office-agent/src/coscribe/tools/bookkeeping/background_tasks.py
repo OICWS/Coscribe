@@ -64,11 +64,11 @@ from .._file_locks import read_text_with_retry, replace_with_retry
 from ..exec import (
     RunningCommand,
     blocked_write,
+    child_env,
     ensure_node_env,
     ensure_script_env,
     isolation_for_scripts,
     node_guard_args,
-    overlay_env,
     refusal_note,
     require_capability,
     script_scratch_root,
@@ -640,7 +640,7 @@ def build_background_task_tools(
             raise ValueError(f"language must be one of {VALID_LANGUAGES}, got {language!r}")
         timeout = min(max(timeout_seconds, 1.0), _MAX_TIMEOUT)
 
-        base_env = overlay_env(os.environ, session_env() if session_env else None)
+        base_env = child_env(session_env() if session_env else None)
         argv, env, scratch_dir, runtime = await asyncio.to_thread(
             _prepare_script, language, script, state, scratch_root, write_roots, base_env
         )
@@ -696,7 +696,7 @@ def build_background_task_tools(
         if not command.strip():
             raise ValueError("command must not be empty")
         timeout = min(max(timeout_seconds, 1.0), _MAX_TIMEOUT)
-        env = overlay_env(os.environ, session_env() if session_env else None)
+        env = child_env(session_env() if session_env else None)
         proc = await start_command(state, thread_id, root, folders, command, env)
         return _register(proc, "shell", description, None, timeout)
 

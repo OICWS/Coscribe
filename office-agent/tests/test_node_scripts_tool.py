@@ -209,3 +209,19 @@ def test_run_node_script_gets_the_conversations_variables(
     )
 
     assert result["stdout"] == "north true\n"
+
+
+def test_run_node_script_is_not_handed_the_servers_keys_or_proxy_password(
+    tools: NodeScriptTools, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-not-for-scripts")
+    monkeypatch.setenv("HTTP_PROXY", "http://alice:hunter2@proxy.example:8080")
+
+    result = tools.run_node_script(
+        script="console.log(JSON.stringify(process.env))", description="print the environment"
+    )
+
+    assert result["exit_code"] == 0, result["stderr"]
+    assert "sk-not-for-scripts" not in result["stdout"]
+    assert "hunter2" not in result["stdout"]
+    assert "proxy.example:8080" in result["stdout"]
