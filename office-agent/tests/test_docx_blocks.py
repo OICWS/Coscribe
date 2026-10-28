@@ -531,7 +531,7 @@ def test_a_run_look_that_is_not_a_colour_size_or_font_is_dropped(tmp_path: Path)
 
 def test_a_table_carries_what_its_style_gives_it_borders_and_a_header_row(tmp_path: Path) -> None:
     """The house table style puts the borders and the header's fill and white bold text in the
-    style, not in each cell, so a reader that took only the cells' own formatting drew a bare grid."""
+    style, not in each cell, so a reader of only the cells' own formatting drew a bare grid."""
     target = tmp_path / "t.docx"
     _tools(tmp_path)["write_docx"](
         path="t.docx", content="# T\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n"

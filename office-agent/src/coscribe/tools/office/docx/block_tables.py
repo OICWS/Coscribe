@@ -40,7 +40,9 @@ def editable_look(table: Any, looks: Looks, links: Any, read_runs: ReadRuns) -> 
         for cell in row.findall(_q("tc")):
             paragraph = cell.find(_q("p"))
             text = looks.paragraph(paragraph)
-            cells.append({"look": _with_row(looks.cell(cell), by_style), "p": _with_text(text, by_style)})
+            cells.append(
+                {"look": _with_row(looks.cell(cell), by_style), "p": _with_text(text, by_style)}
+            )
         height = _height(row)
         rows.append({**({"h": height} if height else {}), "cells": cells})
     return {**_shape(table, looks), "rows": rows}
@@ -48,12 +50,13 @@ def editable_look(table: Any, looks: Looks, links: Any, read_runs: ReadRuns) -> 
 
 def _with_row(cell: dict[str, Any], by_style: dict[str, Any]) -> dict[str, Any]:
     """The cell's own look over what its row gets from the table's style."""
-    own = {key: by_style[key] for key in ("fill", "border") if key in by_style}
+    own: dict[str, Any] = {key: by_style[key] for key in ("fill", "border") if key in by_style}
     return {**own, **cell}
 
 
 def _with_text(text: dict[str, Any], by_style: dict[str, Any]) -> dict[str, Any]:
-    return {**{key: by_style[key] for key in ("color", "b") if key in by_style}, **text}
+    own: dict[str, Any] = {key: by_style[key] for key in ("color", "b") if key in by_style}
+    return {**own, **text}
 
 
 def _spans(table: Any) -> list[list[int | None]]:
