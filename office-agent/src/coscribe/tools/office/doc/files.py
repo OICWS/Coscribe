@@ -65,9 +65,9 @@ def _edit_of(raw: Any) -> Edit:
     raise BlocksRefused("An edit is replace, insert or delete")
 
 
-def _write_atomically(path: Path, text: str) -> None:
+def _write_atomically(path: Path, data: bytes) -> None:
     tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    tmp.write_bytes(text.encode("utf-8"))
+    tmp.write_bytes(data)
     replace_with_retry(tmp, path)
 
 
@@ -80,5 +80,5 @@ def save_doc_edits(path: Path, version: str, edits: list[Any]) -> dict[str, Any]
         data, source = _read_text(path)
         if version_of(data) != version:
             raise DocFileChanged
-        _write_atomically(path, apply_edits(source, parsed))
+        _write_atomically(path, apply_edits(source, parsed).encode("utf-8"))
     return read_doc_file(path)

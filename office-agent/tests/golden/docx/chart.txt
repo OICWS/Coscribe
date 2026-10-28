@@ -70,10 +70,16 @@
           <a:bodyPr/>
           <a:p>
             <a:pPr>
-              <a:defRPr b="1" sz="1200"/>
+              <a:defRPr b="1" sz="1200">
+                <a:latin typeface="Calibri"/>
+                <a:ea typeface="Microsoft YaHei"/>
+              </a:defRPr>
             </a:pPr>
             <a:r>
-              <a:rPr b="1" lang="en-US" sz="1200"/>
+              <a:rPr b="1" lang="en-US" sz="1200">
+                <a:latin typeface="Calibri"/>
+                <a:ea typeface="Microsoft YaHei"/>
+              </a:rPr>
               <a:t>Results</a:t>
             </a:r>
           </a:p>
@@ -158,7 +164,9 @@
       </c:catAx>
       <c:valAx>
         <c:axId val="-2113994440"/>
-        <c:scaling/>
+        <c:scaling>
+          <c:min val="0"/>
+        </c:scaling>
         <c:delete val="0"/>
         <c:axPos val="l"/>
         <c:majorGridlines/>
@@ -176,7 +184,10 @@
     <a:lstStyle/>
     <a:p>
       <a:pPr>
-        <a:defRPr sz="1000"/>
+        <a:defRPr sz="1000">
+          <a:latin typeface="Calibri"/>
+          <a:ea typeface="Microsoft YaHei"/>
+        </a:defRPr>
       </a:pPr>
       <a:endParaRPr lang="en-US"/>
     </a:p>

@@ -71,9 +71,9 @@
         <w:tblLook w:firstColumn="0" w:firstRow="1" w:lastColumn="0" w:lastRow="0" w:noHBand="1" w:noVBand="1" w:val="0620"/>
       </w:tblPr>
       <w:tblGrid>
-        <w:gridCol w:w="2665"/>
-        <w:gridCol w:w="3168"/>
-        <w:gridCol w:w="2473"/>
+        <w:gridCol w:w="2663"/>
+        <w:gridCol w:w="3177"/>
+        <w:gridCol w:w="2467"/>
       </w:tblGrid>
       <w:tr>
         <w:trPr>
@@ -81,7 +81,7 @@
         </w:trPr>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="2665"/>
+            <w:tcW w:type="dxa" w:w="2663"/>
           </w:tcPr>
           <w:p>
             <w:r>
@@ -94,7 +94,7 @@
         </w:tc>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="3168"/>
+            <w:tcW w:type="dxa" w:w="3177"/>
           </w:tcPr>
           <w:p>
             <w:pPr>
@@ -110,7 +110,7 @@
         </w:tc>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="2473"/>
+            <w:tcW w:type="dxa" w:w="2467"/>
           </w:tcPr>
           <w:p>
             <w:pPr>
@@ -128,7 +128,7 @@
       <w:tr>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="2665"/>
+            <w:tcW w:type="dxa" w:w="2663"/>
           </w:tcPr>
           <w:p>
             <w:r>
@@ -138,7 +138,7 @@
         </w:tc>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="3168"/>
+            <w:tcW w:type="dxa" w:w="3177"/>
           </w:tcPr>
           <w:p>
             <w:pPr>
@@ -151,7 +151,7 @@
         </w:tc>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="2473"/>
+            <w:tcW w:type="dxa" w:w="2467"/>
           </w:tcPr>
           <w:p>
             <w:pPr>
@@ -166,7 +166,7 @@
       <w:tr>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="2665"/>
+            <w:tcW w:type="dxa" w:w="2663"/>
           </w:tcPr>
           <w:p>
             <w:r>
@@ -176,7 +176,7 @@
         </w:tc>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="3168"/>
+            <w:tcW w:type="dxa" w:w="3177"/>
           </w:tcPr>
           <w:p>
             <w:pPr>
@@ -189,7 +189,7 @@
         </w:tc>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="2473"/>
+            <w:tcW w:type="dxa" w:w="2467"/>
           </w:tcPr>
           <w:p>
             <w:pPr>
