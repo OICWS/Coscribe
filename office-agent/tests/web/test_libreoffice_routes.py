@@ -18,8 +18,7 @@ from coscribe.web.routes.settings import libreoffice as routes
 
 from .helpers import FakeToolCallingChatModel, _client_lg
 
-# Windows runs a batch file given as the program; elsewhere a shell script stands in.
-_LAUNCHER = "soffice.cmd" if sys.platform == "win32" else "soffice"
+_LAUNCHER = "soffice"
 
 
 @pytest.fixture(autouse=True)
@@ -30,11 +29,8 @@ def _nothing_installed(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _put_a_copy_in(state_dir: Path) -> None:
-    launcher = state_dir / "libreoffice" / "26.8.1" / "program" / _LAUNCHER
+    launcher = state_dir / "libreoffice" / "26.8.1" / "program" / "soffice"
     launcher.parent.mkdir(parents=True)
-    if sys.platform == "win32":
-        launcher.write_text("@echo LibreOffice 26.8.1.1 abc\n")
-        return
     launcher.write_text('#!/bin/sh\necho "LibreOffice 26.8.1.1 abc"\n')
     launcher.chmod(launcher.stat().st_mode | stat.S_IXUSR)
 
@@ -57,9 +53,12 @@ def test_status_says_nothing_is_found_and_what_a_download_would_be(
         status = client.get("/api/libreoffice").json()
     assert status["found"] is False
     assert status["offer"] == offer
+    # The page tells a failed request ({"error": ...}) from a status by that key.
+    assert "error" not in status
     assert status["working"] is False
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="the fake launcher is a shell script")
 def test_a_download_runs_in_the_background_and_leaves_a_copy(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -79,7 +78,7 @@ def test_a_download_runs_in_the_background_and_leaves_a_copy(
         done = _wait_until_done(client)
     assert seen == ["progress"]
     assert done["found"] and done["source"] == "own" and done["version"] == "26.8.1.1"
-    assert done["error"] == ""
+    assert done["problem"] == ""
 
 
 def test_a_second_download_while_one_runs_is_refused(
@@ -111,7 +110,7 @@ def test_a_failed_download_says_why_and_leaves_nothing(
         client.post("/api/libreoffice")
         done = _wait_until_done(client)
     assert done["found"] is False
-    assert done["error"] == "A policy on this computer blocks installing programs."
+    assert done["problem"] == "A policy on this computer blocks installing programs."
 
 
 def test_an_unexpected_failure_shows_a_fixed_text_not_the_exception(
@@ -124,7 +123,7 @@ def test_an_unexpected_failure_shows_a_fixed_text_not_the_exception(
     with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
         client.post("/api/libreoffice")
         done = _wait_until_done(client)
-    assert done["error"] == "LibreOffice could not be installed."
+    assert done["problem"] == "LibreOffice could not be installed."
 
 
 def test_remove_deletes_coscribes_copy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

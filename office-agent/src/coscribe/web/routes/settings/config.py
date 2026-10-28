@@ -67,6 +67,11 @@ LIVE_SETTINGS = {
 }
 
 
+# Read by the browser UI only (home greeting), so the server needs neither a
+# Settings field nor a restart for them.
+PROFILE_ENV_VARS = ["COSCRIBE_USER_NAME", "COSCRIBE_USER_ROLE"]
+
+
 # Desktop-shell-consumed, not Settings-backed (see office-agent-desktop's
 # sidecar.ts's shouldKeepRunningInBackground(), which reads this same
 # .env file directly -- this Python process never branches on it; the
@@ -139,7 +144,7 @@ def router(state: AppState) -> APIRouter:
             result[key] = {"set": bool(value), "masked": _mask(value) if value else None}
         for key in PROVIDER_DEFAULT_MODEL_ENV_VARS:
             result[key] = values.get(key) or None
-        for key in COSCRIBE_ENV_VARS:
+        for key in (*COSCRIBE_ENV_VARS, *PROFILE_ENV_VARS):
             result[key] = values.get(key) or None
         for key in DESKTOP_ENV_VARS:
             result[key] = values.get(key) or None
@@ -152,7 +157,7 @@ def router(state: AppState) -> APIRouter:
         allowed = (
             set(PROVIDER_KEY_ENV_VARS)
             | set(PROVIDER_DEFAULT_MODEL_ENV_VARS)
-            | set(COSCRIBE_ENV_VARS)
+            | set(COSCRIBE_ENV_VARS) | set(PROFILE_ENV_VARS)
             | set(DESKTOP_ENV_VARS)
             | set(APPEARANCE_ENV_VARS)
         )

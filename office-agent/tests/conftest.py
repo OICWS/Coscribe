@@ -1,3 +1,4 @@
+import shutil
 from collections.abc import Iterator
 
 import pytest
@@ -23,7 +24,20 @@ def _no_office_program(request: pytest.FixtureRequest, monkeypatch: pytest.Monke
     A test marked `real_libreoffice` gets LibreOffice standing in for the office program, so a
     preview or a conversion is checked end to end; it skips itself where LibreOffice is absent."""
     monkeypatch.setattr(_office_com, "_registered", lambda prog_id: False)
-    if request.node.get_closest_marker("real_libreoffice") is not None:
+    real_libreoffice = request.node.get_closest_marker("real_libreoffice") is not None
+    # Nor the LibreOffice the machine has (a cloud session and CI install one): a preview or a
+    # conversion would use it where the test expects no office program. A test that wants one puts a
+    # fake on `shutil.which` or in `<state_dir>/libreoffice`.
+    if not real_libreoffice:
+        real_which = shutil.which
+        monkeypatch.setattr(
+            shutil,
+            "which",
+            lambda name, *args, **kwargs: (
+                None if name in ("libreoffice", "soffice") else real_which(name, *args, **kwargs)
+            ),
+        )
+    if real_libreoffice:
         from .libreoffice_probe import libreoffice_as_office
 
         monkeypatch.setattr(_office_com, "convert", libreoffice_as_office)

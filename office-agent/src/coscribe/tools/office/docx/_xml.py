@@ -73,7 +73,9 @@ def _fill_docx_table(document: Any, block: Block) -> None:
     body_size = _docx_body_font_pt(document)
     # 10 and 9 pt are 五号/小五, the usual sizes of a Chinese report's tables.
     sizes = [body_size] + [size for size in (10.0, 9.0) if size < body_size]
-    font_size, widths = _table_layout(rows, _docx_text_width_pt(document), sizes, padding=12.0)
+    font_size, widths = _table_layout(
+        rows, _docx_text_width_pt(document), sizes, padding=12.0, header=block.header
+    )
     numeric = _numeric_columns(rows, block.header)
     for column, width in zip(table.columns, widths, strict=True):
         column.width = Pt(width)

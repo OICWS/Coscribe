@@ -93,8 +93,8 @@
         <w:tblLook w:firstColumn="0" w:firstRow="1" w:lastColumn="0" w:lastRow="0" w:noHBand="1" w:noVBand="1" w:val="0620"/>
       </w:tblPr>
       <w:tblGrid>
-        <w:gridCol w:w="3813"/>
-        <w:gridCol w:w="4493"/>
+        <w:gridCol w:w="3941"/>
+        <w:gridCol w:w="4365"/>
       </w:tblGrid>
       <w:tr>
         <w:trPr>
@@ -102,7 +102,7 @@
         </w:trPr>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="3813"/>
+            <w:tcW w:type="dxa" w:w="3941"/>
           </w:tcPr>
           <w:p>
             <w:r>
@@ -115,7 +115,7 @@
         </w:tc>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="4493"/>
+            <w:tcW w:type="dxa" w:w="4365"/>
           </w:tcPr>
           <w:p>
             <w:pPr>
@@ -133,7 +133,7 @@
       <w:tr>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="3813"/>
+            <w:tcW w:type="dxa" w:w="3941"/>
           </w:tcPr>
           <w:p>
             <w:r>
@@ -143,7 +143,7 @@
         </w:tc>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="4493"/>
+            <w:tcW w:type="dxa" w:w="4365"/>
           </w:tcPr>
           <w:p>
             <w:pPr>

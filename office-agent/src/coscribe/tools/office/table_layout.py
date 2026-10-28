@@ -38,12 +38,13 @@ def _text_width_em(text: str) -> float:
     return width
 
 
-def _cell_width_em(cell: str, pieces: bool = False) -> float:
+def _cell_width_em(cell: str, pieces: bool = False, bold: bool = False) -> float:
     """The cell's full width in ems, or with `pieces` its widest unbreakable
-    piece; bold text runs about a tenth wider."""
+    piece; bold text runs about a tenth wider. `bold` is for a cell the writer
+    makes bold without markup, a header row."""
     runs = parse_inline_runs(cell)
     text = "".join(run_text for run_text, _, _ in runs)
-    scale = 1.1 if any(bold for _, bold, _ in runs) else 1.0
+    scale = 1.1 if bold or any(run_bold for _, run_bold, _ in runs) else 1.0
     if pieces:
         return scale * max((_text_width_em(p) for p in _UNBREAKABLE_RE.findall(text)), default=0)
     return scale * _text_width_em(text)
@@ -84,6 +85,7 @@ def _table_layout(
     total: float,
     font_sizes: Sequence[float],
     padding: float,
+    header: bool = False,
 ) -> tuple[float, list[float]]:
     """(font size, column widths in points adding up to `total`).
 
@@ -92,13 +94,20 @@ def _table_layout(
     wraps mid-way; then short cells (a label like 控制器, a header) kept on
     one line; the rest goes to the columns whose long text wraps anyway.
     Uses the first of `font_sizes` (largest first) at which the short cells
-    fit, else the first at which the pieces fit, else the last."""
+    fit, else the first at which the pieces fit, else the last. With `header`
+    the first row is measured bold, as the writers set it."""
     columns = max(len(row) for row in rows)
     piece_em, full_em = [], []
     for index in range(columns):
-        cells = [row[index] for row in rows if index < len(row)]
-        piece_em.append(max((_cell_width_em(c, pieces=True) for c in cells), default=0.0))
-        full_em.append(max((_cell_width_em(c) for c in cells), default=0.0))
+        cells = [
+            (row_number == 0 and header, row[index])
+            for row_number, row in enumerate(rows)
+            if index < len(row)
+        ]
+        piece_em.append(
+            max((_cell_width_em(c, pieces=True, bold=b) for b, c in cells), default=0.0)
+        )
+        full_em.append(max((_cell_width_em(c, bold=b) for b, c in cells), default=0.0))
 
     def widths_at(font_size: float) -> tuple[list[float], list[float], list[float]]:
         floor = 2 * font_size + padding

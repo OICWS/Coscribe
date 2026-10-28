@@ -45,6 +45,8 @@ export interface ConfigResponse {
   COSCRIBE_KEEP_AWAKE: string | null;
   COSCRIBE_KEEP_AWAKE_ON_BATTERY: string | null;
   COSCRIBE_REVIEWER_NAME: string | null;
+  COSCRIBE_USER_NAME: string | null;
+  COSCRIBE_USER_ROLE: string | null;
   /** Desktop-shell-only, Rust-consumed (see office-agent-desktop's
    * lib.rs) -- "false" opts out of the default hide-on-close/keep-
    * running-in-background behavior. Absent/null/anything but exactly
@@ -541,8 +543,9 @@ export interface LibreOfficeStatus {
   step: string;
   done: number;
   total: number;
-  /** Why the last download failed, in words for the person. */
-  error: string;
+  /** Why the last download failed, in words for the person; named apart from `error`, which is
+   * what a failed request answers with. */
+  problem: string;
 }
 
 export interface ScriptIsolation {

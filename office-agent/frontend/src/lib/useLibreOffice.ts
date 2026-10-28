@@ -12,7 +12,7 @@ const NOT_FOUND: LibreOfficeStatus = {
   step: "",
   done: 0,
   total: 0,
-  error: "",
+  problem: "",
 };
 
 /** The LibreOffice on this computer, re-read each second while a download is under way (the

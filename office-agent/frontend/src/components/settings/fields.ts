@@ -37,6 +37,20 @@ export const GENERAL_FIELDS: SettingsField[] = [
   },
 ];
 
+export const USER_NAME_KEY = "COSCRIBE_USER_NAME";
+export const USER_ROLE_KEY = "COSCRIBE_USER_ROLE";
+export const USER_ROLES = [
+  { value: "", label: "Not set" },
+  { value: "Student", label: "Student" },
+  { value: "Researcher", label: "Researcher" },
+  { value: "Engineer", label: "Engineer" },
+  { value: "Analyst", label: "Analyst" },
+  { value: "Manager", label: "Manager" },
+  { value: "Designer", label: "Designer" },
+  { value: "Writer", label: "Writer" },
+  { value: "Other", label: "Other" },
+] as const;
+
 // Log Level's real values are this fixed, small set (Python's own logging
 // module level names) -- rendered as a SegmentedControl instead of free
 // text, see GeneralTab.tsx. Not in GENERAL_FIELDS above: that array feeds
