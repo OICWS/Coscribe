@@ -76,6 +76,8 @@ def restore_version(path: Path, expected: str, target: str) -> dict[str, Any]:
         if not target.isalnum() or not kept.is_file():
             raise VersionGone
         _keep(path, current, "seen")
-        _write_atomically(path, kept.read_text(encoding="utf-8"))
+        # Bytes, not text: reading as text turns a CRLF file into LF, so the version put back
+        # would not be the one that was kept.
+        _write_atomically(path, kept.read_bytes())
     remember_version(path, "restore")
     return read_doc_file(path)

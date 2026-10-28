@@ -2,6 +2,7 @@
 """Web tests: Settings › Capabilities, the optional LibreOffice found or downloaded on request."""
 
 import stat
+import sys
 import threading
 import time
 from pathlib import Path
@@ -57,6 +58,7 @@ def test_status_says_nothing_is_found_and_what_a_download_would_be(
     assert status["working"] is False
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="the fake launcher is a shell script")
 def test_a_download_runs_in_the_background_and_leaves_a_copy(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
