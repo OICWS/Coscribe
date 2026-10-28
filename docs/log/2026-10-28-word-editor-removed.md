@@ -32,3 +32,5 @@ the people who use coscribe have Word.
 - Remove the npm packages nothing imports.
 
 The "Reviewer name" setting (`COSCRIBE_REVIEWER_NAME`, `Settings.reviewer_name`) and `rejected_copy` went with it: only the Word review panel used them.
+
+`docx-preview` and `jszip` left `package.json`: only the removed editor imported them.
