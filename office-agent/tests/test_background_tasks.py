@@ -386,3 +386,14 @@ async def test_a_background_script_is_not_handed_the_servers_keys_or_proxy_passw
 
     assert finished["status"] == "succeeded", finished
     assert finished["output"].strip() == "False False http://proxy.example:8080"
+
+
+async def test_a_running_task_tells_the_model_to_wait_instead_of_polling(tools: BgTools) -> None:
+    started = await tools.run_background_script(
+        language="python", script="import time\ntime.sleep(2)\n", description="sleep"
+    )
+    assert "wake_on_task" in started["how_to_wait"]
+    assert "wake_on_task" in tools.check_background_task(started["task_id"])["how_to_wait"]
+
+    finished = await _wait_until_finished(tools, started["task_id"])
+    assert "how_to_wait" not in finished
