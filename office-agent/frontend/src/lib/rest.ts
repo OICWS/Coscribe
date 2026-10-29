@@ -91,6 +91,13 @@ async function getJson<T>(url: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/** The conversation as Markdown, for sending along with a bug report. */
+export async function exportThread(threadId: string): Promise<Blob> {
+  const res = await fetch(`/api/threads/${encodeURIComponent(threadId)}/export`);
+  await checkOk(res);
+  return res.blob();
+}
+
 async function postJson<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
     method: "POST",

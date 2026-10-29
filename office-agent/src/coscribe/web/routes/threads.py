@@ -292,6 +292,17 @@ def _task_and_draft_routes(router: APIRouter, state: AppState) -> None:
         activity = await session.get_activity()
         return {"tasks": TaskToolkit(thread_id, settings.state_dir).list_tasks(), **activity}
 
+    async def export_thread(thread_id: str) -> Response:
+        text = await (await _get_session_async(thread_id))._history.export_markdown()
+        name = f"conversation-{thread_id[:8]}.md"
+        return Response(
+            text,
+            media_type="text/markdown; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{name}"'},
+        )
+
+    router.add_api_route("/api/threads/{thread_id}/export", export_thread, methods=["GET"])
+
     @router.post("/api/threads/{thread_id}/workflow-draft")
     async def draft_thread_workflow(
         thread_id: str, body: WorkflowDraftRequest | None = None
