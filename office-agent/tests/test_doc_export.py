@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import zipfile
 
 from docx import Document
 
@@ -117,3 +118,44 @@ def test_a_callout_is_kept_with_its_label_across_a_page() -> None:
 
     assert "w:keepNext" in label._p.xml and "w:keepNext" in body._p.xml
     assert "w:keepNext" not in last._p.xml
+
+
+def test_chinese_italic_inline_code_and_links_are_formatting_not_markers() -> None:
+    source = (
+        "---\ncoscribe: doc\n---\n\n"
+        "语气轻一点用*斜体*，字段名用 `order_id`，引用加 [国家统计局](https://www.stats.gov.cn)。\n"
+    )
+    document = Document(io.BytesIO(docx_from_markdown(docx_markdown(source))))
+    (paragraph,) = document.paragraphs
+    xml = paragraph._p.xml
+
+    assert "*" not in paragraph.text and "`" not in paragraph.text and "](" not in xml
+    assert next(r for r in paragraph.runs if r.text == "斜体").italic
+    assert next(r for r in paragraph.runs if r.text == "order_id").font.name == "Consolas"
+    assert "<w:hyperlink" in xml and "国家统计局" in xml
+    assert "https://www.stats.gov.cn" in [rel.target_ref for rel in document.part.rels.values()]
+
+
+def test_a_paragraph_ending_in_a_colon_keeps_with_the_chart_it_introduces() -> None:
+    source = (
+        "---\ncoscribe: doc\n---\n\nAbove.\n\n构成比例用饼图：\n\n"
+        "```chart\npie Sources\n| s | n |\n| --- | --- |\n| A | 3 |\n| B | 5 |\n```\n"
+    )
+    document = Document(io.BytesIO(docx_from_markdown(docx_markdown(source))))
+    paragraphs = {p.text: p for p in document.paragraphs}
+
+    assert "w:keepNext" in paragraphs["构成比例用饼图："]._p.xml
+    assert "w:keepNext" not in paragraphs["Above."]._p.xml
+
+
+def test_a_chart_takes_the_doc_panels_colours_and_one_series_has_no_legend() -> None:
+    source = (
+        "---\ncoscribe: doc\n---\n\n"
+        "```chart\nline Orders\n| w | n |\n| --- | --- |\n| W1 | 3 |\n| W2 | 5 |\n```\n"
+    )
+    data = docx_from_markdown(docx_markdown(source))
+    with zipfile.ZipFile(io.BytesIO(data)) as package:
+        chart = package.read("word/charts/chart1.xml").decode()
+
+    assert 'val="4F6EF7"' in chart
+    assert "<c:legend>" not in chart

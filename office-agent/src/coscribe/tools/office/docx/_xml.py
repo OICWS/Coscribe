@@ -12,7 +12,7 @@ from xml.sax.saxutils import escape as _xml_escape
 
 from ..._native_docx_tracks import _constants as _tracks_constants
 from ..._native_docx_tracks.tracks import TracksMixin, _resolve
-from ..markdown_blocks import Block, parse_inline_runs
+from ..markdown_blocks import Block, parse_inline_spans
 from ..table_layout import _numeric_columns, _table_layout
 from ._style import TABLE_STYLE_ID, is_total_row, set_table_look
 
@@ -110,15 +110,59 @@ def _fill_docx_table(document: Any, block: Block) -> None:
 
 
 def _add_inline_runs(paragraph: Any, text: str) -> None:
-    """Add ``text`` to a python-docx paragraph as one run per
-    ``parse_inline_runs`` fragment, so ``**bold**``/``*italic*`` render as
-    real formatting instead of literal markup characters."""
-    for run_text, bold, italic in parse_inline_runs(text):
-        run = paragraph.add_run(run_text)
-        if bold:
+    """Add ``text`` to a python-docx paragraph as one run per ``parse_inline_spans`` piece:
+    bold and italic as such, code in a monospace font on a grey ground, a link as a link Word
+    opens."""
+    for span in parse_inline_spans(text):
+        if span.link is not None:
+            _add_hyperlink(paragraph, span.text, span.link)
+            continue
+        run = paragraph.add_run(span.text)
+        if span.bold:
             run.bold = True
-        if italic:
+        if span.italic:
             run.italic = True
+        if span.code:
+            _code_look(run)
+
+
+def _code_look(run: Any) -> None:
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    properties = run._r.get_or_add_rPr()  # noqa: SLF001
+    fonts = OxmlElement("w:rFonts")
+    for side in ("w:ascii", "w:hAnsi", "w:cs"):
+        fonts.set(qn(side), "Consolas")
+    properties.insert(0, fonts)
+    shading = OxmlElement("w:shd")
+    for name, value in (("w:val", "clear"), ("w:color", "auto"), ("w:fill", "F2F2F2")):
+        shading.set(qn(name), value)
+    # rPr is a sequence: shd comes after everything add_run or bold/italic put there.
+    properties.append(shading)
+
+
+def _add_hyperlink(paragraph: Any, text: str, url: str) -> None:
+    from docx.opc.constants import RELATIONSHIP_TYPE
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    link = OxmlElement("w:hyperlink")
+    target = paragraph.part.relate_to(url, RELATIONSHIP_TYPE.HYPERLINK, is_external=True)
+    link.set(qn("r:id"), target)
+    run = OxmlElement("w:r")
+    properties = OxmlElement("w:rPr")
+    color = OxmlElement("w:color")
+    color.set(qn("w:val"), "0563C1")
+    underline = OxmlElement("w:u")
+    underline.set(qn("w:val"), "single")
+    properties.extend([color, underline])
+    words = OxmlElement("w:t")
+    words.set(qn("xml:space"), "preserve")
+    words.text = text
+    run.extend([properties, words])
+    link.append(run)
+    paragraph._p.append(link)  # noqa: SLF001
 
 
 def _clear_body(document: Any) -> None:
