@@ -33,10 +33,15 @@ function Illustration({ kind }: { kind: PageKind }) {
         </div>
       )}
       {kind === "design" && (
-        <div className="relative h-[68%] w-[72%] overflow-hidden rounded-lg border border-white bg-white shadow-sm">
-          <span className="absolute left-[12%] top-[18%] h-[46%] w-[34%] rounded-full" style={{ background: `color-mix(in srgb, ${colour} 55%, white)` }} />
-          <span className="absolute left-[40%] top-[34%] h-[46%] w-[34%] rotate-12 rounded-md" style={{ background: `color-mix(in srgb, ${colour} 28%, white)` }} />
-          <span className="absolute bottom-[14%] right-[12%] h-[22%] w-[22%] rotate-45 rounded-sm" style={{ background: colour }} />
+        <div className="flex h-[68%] w-[72%] items-center justify-center rounded-lg border border-white bg-white shadow-sm">
+          <svg viewBox="12 10 76 65" className="h-[80%]" fill="none" stroke={colour} strokeWidth="4.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M53 14C30 14 17 28 17 42c0 16 15 29 31 29 12 0 19-5 19-13 0-6 1-9 7-12 6-3 9-8 9-14 0-11-13-18-30-18Z" />
+            <g fill={colour} stroke="none">
+              <circle cx="45" cy="31" r="5.3" />
+              <circle cx="61" cy="32.5" r="5.3" />
+              <circle cx="34.5" cy="43.8" r="5.3" />
+            </g>
+          </svg>
         </div>
       )}
       {kind === "design-system" && (
@@ -47,10 +52,16 @@ function Illustration({ kind }: { kind: PageKind }) {
         </div>
       )}
       {kind === "dashboard" && (
-        <div className="flex h-[68%] w-[72%] items-end gap-2 rounded-lg border border-white bg-white px-3 pb-3 shadow-sm">
-          {[40, 70, 100, 55].map((height, i) => (
-            <span key={i} className="flex-1 rounded-sm" style={{ height: `${height}%`, background: `color-mix(in srgb, ${colour} ${i === 2 ? 70 : 32}%, white)` }} />
-          ))}
+        <div className="flex h-[68%] w-[72%] items-center gap-3 rounded-lg border border-white bg-white px-3 shadow-sm">
+          <svg viewBox="0 0 40 40" className="h-[70%] shrink-0" aria-hidden>
+            <circle cx="20" cy="20" r="14" fill="none" strokeWidth="7" stroke={`color-mix(in srgb, ${colour} 18%, white)`} />
+            <circle cx="20" cy="20" r="14" fill="none" strokeWidth="7" stroke={colour} strokeDasharray="58 88" transform="rotate(-90 20 20)" />
+          </svg>
+          <div className="flex flex-1 flex-col gap-1.5">
+            {bar("60%", true)}
+            {bar("100%")}
+            {bar("75%")}
+          </div>
         </div>
       )}
     </div>

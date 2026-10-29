@@ -992,6 +992,14 @@ body {
 .doc-editor .doc-callout[data-callout="CAUTION"] {
   --callout: #d6443f;
 }
+.doc-editor :is(td, th).doc-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.doc-editor td.doc-total {
+  font-weight: 600;
+  border-top: 1.5px solid var(--fg);
+}
 .doc-editor .doc-chart {
   border: 1px solid var(--border);
   border-radius: 8px;

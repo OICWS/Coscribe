@@ -46,6 +46,21 @@ test("the Doc's header has the same comment control as a deck's", async ({ page 
   await expect(page.getByRole("menuitemradio", { name: "Show all comments" })).toBeVisible();
 });
 
+test("a table's number columns line up on the right and its total row is bold, as in Word", async ({ page }) => {
+  const name = "doc-table";
+  await page.goto(freshThreadPath(name));
+  await waitForConnected(page);
+  const body = "---\\ncoscribe: doc\\n---\\n\\n# Orders\\n\\n| 渠道 | 订单 |\\n| --- | --- |\\n| 自然搜索 | 1,240 |\\n| 信息流 | 860 |\\n| 合计 | 2,100 |\\n";
+  await page.locator("textarea").fill(`write it [[stub-tool write_file {"path":"${name}.md","content":"${body}"}]] [[stub-say done]]`);
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await page.getByTitle(`Open ${name}.md`).click();
+  const number = page.locator(".doc-editor td", { hasText: "1,240" });
+  await expect(number).toHaveCSS("text-align", "right");
+  await expect(page.locator(".doc-editor td", { hasText: "合计" })).toHaveCSS("font-weight", "600");
+  await expect(page.locator(".doc-editor td", { hasText: "自然搜索" })).not.toHaveCSS("text-align", "right");
+});
+
 test("a chart shows as a chart, and its numbers only once it is clicked", async ({ page }) => {
   const name = "doc-chart";
   const chart = "```chart\\nline Weekly orders\\n| Week | Orders |\\n| --- | --- |\\n| W1 | 2480 |\\n| W2 | 2710 |\\n```";

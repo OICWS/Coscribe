@@ -6,6 +6,7 @@ import { askAboutWords, deleteDocComment, editDocComment, replyToDocComment, res
 import type { DocRead } from "../../lib/docFile";
 import { loadLook, saveLook, type DocLook } from "../../lib/docLook";
 import { DocChartPreview } from "../../lib/docChartPreview";
+import { DocTableLook } from "../../lib/docTableLook";
 import { docContent, editorExtensions, loadedOf } from "../../lib/docModel";
 import { DocPictureDrop, choosePicture, pictureUrl } from "../../lib/docPictures";
 import type { CommentLink } from "../../lib/slideComments";
@@ -59,7 +60,7 @@ export function DocEditor({
   const content = useMemo(() => docContent(doc.blocks), [doc]);
   const addPicture = useRef<(file: File) => void>(() => undefined);
   const extensions = useMemo(
-    () => [...editorExtensions((src) => pictureUrl(threadId, path, src)), DocCommentMarks, DocChartPreview, DocPictureDrop.configure({ onFile: (file) => addPicture.current(file) })],
+    () => [...editorExtensions((src) => pictureUrl(threadId, path, src)), DocCommentMarks, DocChartPreview, DocTableLook, DocPictureDrop.configure({ onFile: (file) => addPicture.current(file) })],
     [threadId, path],
   );
   const editor = useEditor({
