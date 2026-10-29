@@ -468,3 +468,22 @@ def test_history_replay_includes_an_approved_calls_real_result_lg(
         "lines_removed": 0,
     }
     assert tool_entry["is_error"] is False
+
+
+def test_export_returns_the_conversation_as_a_markdown_download(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="hi there!")])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_export") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "hello"})
+            _receive_until(ws, "tasks_changed")
+        response = client.get("/api/threads/t_export/export")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/markdown")
+    assert 'filename="conversation-t_export.md"' in response.headers["content-disposition"]
+    assert "## You\n\nhello" in response.text
+    assert "## Coscribe\n\nhi there!" in response.text

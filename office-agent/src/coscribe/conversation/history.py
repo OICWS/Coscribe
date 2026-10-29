@@ -19,6 +19,7 @@ from ..runtime_lg import answer_every_tool_call, is_steer, serialize_history_for
 from ..runtime_lg import extract_text as _extract_text
 from ..runtime_lg import render_transcript_lg as _render_transcript_lg
 from .events import EventSink
+from .export_text import conversation_markdown
 from .turn_lock import TurnLock
 
 # Shared between _handle_compact (which writes it as the first message of
@@ -329,6 +330,10 @@ class ConversationHistory:
             self._host.config, {"messages": [RemoveMessage(id=REMOVE_ALL_MESSAGES)]}
         )
         await websocket.send_json({"type": "cleared"})
+
+    async def export_markdown(self) -> str:
+        entries = serialize_history_for_ws_lg(await self._current_messages())
+        return conversation_markdown(self._host.thread_id, entries)
 
     async def _current_messages(self) -> list[Any]:
         """This thread's checkpointed message history right now -- the

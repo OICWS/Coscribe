@@ -2,6 +2,7 @@ import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom";
 import {
   deleteThreadGroup,
+  exportThread,
   getThreadGroups,
   getThreadStatuses,
   renameThread,
@@ -9,6 +10,7 @@ import {
   setThreadMeta,
 } from "../lib/rest";
 import { goToThread } from "../lib/nav";
+import { saveBlob } from "../lib/slides";
 import { readStored, writeStored } from "../lib/storage";
 import {
   FILTERS,
@@ -27,6 +29,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   EyeIcon,
+  DownloadIcon,
   FilterIcon,
   FolderIcon,
   FolderPlusIcon,
@@ -67,6 +70,20 @@ interface MenuState {
   y: number;
 }
 
+function ExportItem({ thread, onDone }: { thread: ThreadSummary; onDone: () => void }) {
+  const save = () => {
+    onDone();
+    exportThread(thread.thread_id)
+      .then((blob) => saveBlob(blob, `conversation-${thread.thread_id.slice(0, 8)}.md`))
+      .catch(() => window.alert("The conversation could not be exported."));
+  };
+  return (
+    <button type="button" role="menuitem" className={itemClass} onClick={save}>
+      <DownloadIcon className="h-3.5 w-3.5" /> Export conversation
+    </button>
+  );
+}
+
 /** The menu for one conversation, at the pointer for a right-click or under
  * its "..." button. */
 function ThreadMenu({
@@ -103,10 +120,7 @@ function ThreadMenu({
   const top = Math.max(4, Math.min(menu.y, window.innerHeight - 220));
   const flip = left + MENU_WIDTH * 2 + 8 > window.innerWidth;
   const current = menu.thread.group;
-  const commitName = () => {
-    const trimmed = name.trim();
-    if (trimmed) onMove(trimmed);
-  };
+  const commitName = () => void (name.trim() && onMove(name.trim()));
 
   return createPortal(
     <div
@@ -123,6 +137,7 @@ function ThreadMenu({
       <button type="button" role="menuitem" className={itemClass} onClick={onEnvironment}>
         <LockIcon className="h-3.5 w-3.5" /> Edit environment
       </button>
+      <ExportItem thread={menu.thread} onDone={onClose} />
       <div className="relative" onMouseEnter={() => setSubmenu(true)}>
         <button
           type="button"

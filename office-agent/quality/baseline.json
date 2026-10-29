@@ -265,7 +265,7 @@
   "office-agent/frontend/src/components/TaskPanel.tsx::TaskPanel": 153,
   "office-agent/frontend/src/components/ThreadList.tsx::GroupHeader": 116,
   "office-agent/frontend/src/components/ThreadList.tsx::ThreadList": 255,
-  "office-agent/frontend/src/components/ThreadList.tsx::ThreadMenu": 147,
+  "office-agent/frontend/src/components/ThreadList.tsx::ThreadMenu": 145,
   "office-agent/frontend/src/components/chatlog/UserMessageView.tsx::UserMessageView": 135,
   "office-agent/frontend/src/components/dock/DockControls.tsx::DockControls": 140,
   "office-agent/frontend/src/components/dock/PanelDock.tsx::PanelDock": 266,

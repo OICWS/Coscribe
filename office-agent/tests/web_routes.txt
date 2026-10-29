@@ -76,6 +76,7 @@ GET /api/threads/{thread_id}/design
 GET /api/threads/{thread_id}/doc/asset
 GET /api/threads/{thread_id}/doc/blocks
 GET /api/threads/{thread_id}/doc/comments
+GET /api/threads/{thread_id}/export
 GET /api/threads/{thread_id}/files/download
 GET /api/threads/{thread_id}/slides
 GET /api/threads/{thread_id}/slides/comments
