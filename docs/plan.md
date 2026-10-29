@@ -273,6 +273,12 @@ Last reviewed: 2026-10-15.
    makes `deep_imports`, `fan_out` and `coordinator.py`'s size worse today and needs the metric to
    count a declared sub-component as an entry first.
 
+8. **Workflows whose steps choose their autonomy** (#719, kurtosisOC; decision 0028, proposed).
+   One PR per phase: P0 the record; P1 an agent step and an injected runner; P2 a read-only
+   canvas; P3 step-by-step drafting with test cases and dry runs; P4 the repair layers (a step's
+   exception handler, the run's investigation, a repair proposed as a fixed branch); P5 parallel
+   steps, sub-workflows, triggers on events, state across runs, versions.
+
 ## Needs the maintainer's testing (could not be verified here)
 
 - Sign-in of the 13 connectors added for the skill plugins (only the

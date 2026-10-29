@@ -133,24 +133,33 @@ WPS the user has, through COM. Without one, previews and conversion are
 skipped with a reason, never the write itself. LibreOffice stays in
 development and in the evaluation, as an independent reader of the files.
 
-### Repeated work becomes fixed steps; the AI stays outside the run
+### Repeated work becomes fixed steps; autonomy is chosen per step
 
 Day to day, the user just asks and the coordinator plans and acts. Work that
-repeats becomes a scheduled task, of one of two kinds:
+repeats becomes a scheduled task, a workflow compiled into a LangGraph
+`StateGraph` (branches, loops, approvals as interrupts, resumable from
+checkpoints). Decision 0028 (proposed; built in phases from #719) replaces
+the two kinds below with one: the graph stays fixed, and each step chooses
+its autonomy.
 
-- **A prompt task**: written instructions the model works out again each run.
-- **A fixed workflow**: the tool calls of a successful conversation turned
-  into fixed steps, compiled into a LangGraph `StateGraph` (branches, loops,
-  approvals as interrupts, resumable from checkpoints). Nothing is decided
-  by a model at run time except explicit model steps, so it is fast,
-  repeatable and cheap.
+- **L0 fixed** (tool, script, check) and **L1** one model call with no tools:
+  fast, repeatable, cheap. Until 0028 is built these are the only kinds a
+  fixed workflow has.
+- **L2 a bounded agent**: a tool allowlist and declared folders and sites
+  (what the person consents to when saving), caps, an output schema, a check
+  after it. **L3** an agent with the environment's tools, under the task's
+  approval mode. **L4** the whole task as one agent: today's prompt task,
+  written instructions a fresh assistant works out each run.
 
-The AI works only around a fixed workflow: it drafts one from a
-conversation and test-runs it (up to three repair rounds) before the user
-saves it, and after a failed run, which stops at the failing step, it
-reproduces, fixes and re-tests in a new conversation, again for the user to
-save. The step editor is for these workflows; there is no general graph
-canvas.
+The AI drafts a workflow from a conversation, picking the lowest level that
+works, and test-runs it before the user saves it. A failure climbs one
+capped layer at a time: the step's own exception handler, then the
+investigation of the run in a new conversation (which exists now), then the
+repair comes back as a fixed branch and a test case for the user to save, so
+a workflow hardens as it runs. The code module never runs inside a workflow
+(0005). `workflows` imports no agent runtime: an agent step runs through a
+runner `conversation` injects. The step editor edits workflows; a read-only
+canvas shows them; there is no general editable graph canvas.
 
 A conversation can also pause itself and resume later (`sleep_until`,
 `wake_on_task`), which is separate from scheduled tasks: a wake belongs to

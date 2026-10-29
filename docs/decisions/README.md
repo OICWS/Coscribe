@@ -13,7 +13,7 @@ old one; the old one stays, marked "Superseded by".
 | [0002](0002-approvals-not-a-sandbox.md) | Approvals and risk tiers, not an OS sandbox (sandbox part superseded by 0021) |
 | [0003](0003-secrets-promise.md) | Secrets: the model cannot see a value; nothing more is promised |
 | [0004](0004-connectors-sign-in-once-in-the-browser.md) | Connectors sign in once, in the user's own browser |
-| [0005](0005-code-is-a-second-runtime.md) | Code is a second runtime, never inside a fixed workflow |
+| [0005](0005-code-is-a-second-runtime.md) | Code is a second runtime, never inside a fixed workflow (agent part superseded by 0028) |
 | [0006](0006-changes-reach-main-through-pull-requests.md) | Changes reach `main` only through pull requests |
 | [0007](0007-working-with-more-than-one-human.md) | Working with more than one human and their AI sessions |
 | [0008](0008-conversations-can-message-each-other.md) | Conversations can message each other |
@@ -34,3 +34,6 @@ old one; the old one stays, marked "Superseded by".
 | [0023](0023-every-conversation-can-read-the-others-unless-archived.md) | Every conversation can list, read and message the others unless they are archived |
 | [0024](0024-word-documents-are-written-from-a-spec-compiled-onto-a-theme-and-checked.md) | Word documents are written from a spec, compiled onto a theme and checked (not adopted) |
 | [0025](0025-the-doc-artifact-is-a-markdown-document-and-the-word-panel-is-frozen.md) | The Doc artifact is a markdown document, and the Word panel is frozen |
+| [0026](0026-libreoffice-is-an-optional-engine-found-or-installed-on-request.md) | LibreOffice is an optional engine, found or installed on request |
+| [0027](0027-an-artifact-is-what-coscribe-made-from-a-source-it-owns.md) | An artifact is what coscribe made from a source it owns |
+| [0028](0028-a-workflow-step-chooses-its-autonomy.md) | A workflow step chooses its autonomy; the graph stays fixed (proposed) |
