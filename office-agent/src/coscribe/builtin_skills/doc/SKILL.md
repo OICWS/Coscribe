@@ -51,9 +51,23 @@ after another with a blank line between blocks:
 - A picture is `![what it shows](name.doc/assets/chart.png)`: copy the image into the folder
   `<file name without .md>.doc/assets/` first (`copy_file`; PNG, JPEG, GIF or WebP).
 
-Decide who reads it and what they must see first: the opening says what the document is and its
-point in two lines. Every figure, date and name exactly as in the sources; add nothing they do
-not contain. Say the file's name when it is done.
+## Writing it
+
+- Decide who reads it and what they must see first: the opening says what the document is and
+  its point in two lines.
+- Every figure, date and name exactly as in the sources; add nothing they do not contain. What
+  only the person knows and you were not told (a date, a name, an amount, what they did in a
+  job, a skill they have) is a placeholder in brackets, `[date]`, `[a result you achieved]`,
+  never a plausible guess: they will sign or send this.
+- Say each fact once, where it belongs; a later section points back instead of repeating it.
+- Write about the subject, never about the document: no "this note covers", "further detail can
+  be added on request" or a closing summary of what was said.
+- The length the brief asks for: a letter or memo fits on a page, with no `#` title (it opens
+  with the date or the greeting); a plan or report has the sections its content needs, not a
+  standard set.
+- A chart shows figures that are also in the text or a table, in the same order.
+
+Say the file's name when it is done, and list the placeholders the person must fill.
 
 ## Changing a Doc
 

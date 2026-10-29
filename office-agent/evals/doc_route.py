@@ -21,6 +21,7 @@ import asyncio
 import io
 import json
 import os
+import re
 import shutil
 import sys
 import time
@@ -212,9 +213,16 @@ def classify(workspace: Path, originals: dict[str, bytes]) -> dict[str, Any]:
     return {"got": got, "docs": docs, "docx": words, "plain_md": plain}
 
 
+# A bracketed blank for the person to fill: not a link's text, a checkbox or a callout's kind.
+_PLACEHOLDER = re.compile(r"\[(?!!)([^\]\n]{2,60})\](?!\()")
+# A CJK character reads as about one word.
+_WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9'.,-]*|[\u3400-\u9fff]")
+
+
 def doc_report(source: str, facts: tuple[str, ...]) -> dict[str, Any]:
     """A Doc as the app reads it: its blocks, the ones it cannot show as such, a chart that does not
-    parse, and the facts the brief gave that are missing."""
+    parse, and the facts the brief gave that are missing; and, for a reader judging it, its length
+    in words and the blanks it left for the person to fill."""
     from coscribe.tools.office.doc import parse_chart, read_doc
 
     blocks = read_doc(source).blocks
@@ -231,6 +239,8 @@ def doc_report(source: str, facts: tuple[str, ...]) -> dict[str, Any]:
         "raw_blocks": [b.kind for b in blocks if b.kind in ("html", "other")],
         "bad_charts": bad_charts,
         "missing_facts": [f for f in facts if f.lower() not in lowered],
+        "words": len(_WORD.findall(source.partition("\n---\n")[2] or source)),
+        "placeholders": _PLACEHOLDER.findall(source),
     }
 
 
@@ -300,14 +310,16 @@ async def run_brief(
 
 def summary(results: list[dict[str, Any]]) -> str:
     rows = [
-        "| task | expect | got | route | skill | valid | cost | calls |",
-        "|---|---|---|---|---|---|---|---|",
+        "| task | expect | got | route | skill | valid | words | blanks | cost | calls |",
+        "|---|---|---|---|---|---|---|---|---|---|",
     ]
     for r in results:
         valid = r.get("valid", "")
+        doc = r.get("doc", {})
         rows.append(
             f"| {r['task']} | {r['expect']} | {r['got']} | {'yes' if r['route_ok'] else 'NO'} "
-            f"| {'yes' if r['skill_loaded'] else 'no'} | {valid} | {r['cost'] or 0:.3f} "
+            f"| {'yes' if r['skill_loaded'] else 'no'} | {valid} | {doc.get('words', '')} "
+            f"| {len(doc.get('placeholders', [])) if doc else ''} | {r['cost'] or 0:.3f} "
             f"| {r['model_calls']} |"
         )
     right = sum(1 for r in results if r["route_ok"])
