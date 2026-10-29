@@ -5,6 +5,7 @@ import { baseName, KIND_WORDS, kindOfFile } from "../../lib/fileMentions";
 import { KindIcon } from "../artifacts/artifactIcons";
 import { ThreadIdContext } from "../threadContext";
 import { openMentioned, ViewFile } from "./contexts";
+import { useShownFile } from "./useShownFile";
 
 const CARD_WIDTH = 288;
 
@@ -19,7 +20,8 @@ export function FileChip({ path }: { path: string }) {
   const timer = useRef<number | undefined>(undefined);
   const kind = kindOfFile(path);
   const name = baseName(path);
-  if (!view) return <>{name}</>;
+  const shown = useShownFile(threadId, path);
+  if (!view || !shown) return <>{name}</>;
   const show = (event: MouseEvent<HTMLElement> | FocusEvent<HTMLElement>) => {
     window.clearTimeout(timer.current);
     setAnchor(event.currentTarget.getBoundingClientRect());

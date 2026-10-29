@@ -55,3 +55,18 @@ test("a Word file's card opens it in Word, since the app has no panel for it", a
   expect(JSON.parse(opened[0])).toEqual({ path: `${name}.docx`, reveal: false });
   await expect(page.getByRole("region", { name: "Viewer" })).toHaveCount(0);
 });
+
+test("a Markdown file that is not a Doc gets no card that leads nowhere", async ({ page }) => {
+  const name = `notes-${Math.random().toString(36).slice(2, 8)}`;
+  await page.goto(freshThreadPath("chat-files-notes"));
+  await waitForConnected(page);
+  await page.locator("textarea").fill(`write it [[stub-tool write_file {"path":"${name}.md","content":"# Notes\\n\\nJust notes."}]] [[stub-say I wrote ${name}.md for you.]]`);
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await expect(page.getByText(`I wrote ${name}.md for you.`, { exact: true })).toBeVisible();
+
+  // The lookups have long answered by now; no chip, no card.
+  await page.waitForTimeout(1500);
+  await expect(page.getByTitle(`Open ${name}.md`)).toHaveCount(0);
+  await expect(page.locator("p").getByRole("button", { name })).toHaveCount(0);
+});
