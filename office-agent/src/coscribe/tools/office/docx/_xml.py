@@ -82,7 +82,7 @@ def _fill_docx_table(document: Any, block: Block) -> None:
     # table.cell(r, c) rebuilds the whole cell grid on every call, so
     # filling a table that way is quadratic: 400 rows took 36 s and 1,500
     # never finished. Build the grid once.
-    cells = table._cells  # noqa: SLF001
+    cells = table._cells
     for row_index, row in enumerate(rows):
         is_header = block.header and row_index == 0
         for col_index in range(n_cols):
@@ -100,7 +100,7 @@ def _fill_docx_table(document: Any, block: Block) -> None:
                     run.font.size = Pt(font_size)
             if numeric[col_index]:
                 paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    first_tr = table.rows[0]._tr  # noqa: SLF001
+    first_tr = table.rows[0]._tr
     if house_style is not None:
         last_row = len(rows) > 2 and is_total_row(rows[-1])
         set_table_look(first_tr.getparent(), first_row=block.header, last_row=last_row)
@@ -130,7 +130,7 @@ def _code_look(run: Any) -> None:
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
 
-    properties = run._r.get_or_add_rPr()  # noqa: SLF001
+    properties = run._r.get_or_add_rPr()
     fonts = OxmlElement("w:rFonts")
     for side in ("w:ascii", "w:hAnsi", "w:cs"):
         fonts.set(qn(side), "Consolas")
@@ -162,7 +162,7 @@ def _add_hyperlink(paragraph: Any, text: str, url: str) -> None:
     words.text = text
     run.extend([properties, words])
     link.append(run)
-    paragraph._p.append(link)  # noqa: SLF001
+    paragraph._p.append(link)
 
 
 def _clear_body(document: Any) -> None:
