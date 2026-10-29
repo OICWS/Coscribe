@@ -1,4 +1,5 @@
-"""A Design artifact's file (an .html page, drawings inline as SVG), served for a frame to show."""
+"""A Design or Dashboard artifact's page (an .html file), served for a frame to show; a dashboard
+gets its datasets and chart library put into it, since the frame has no network."""
 
 from __future__ import annotations
 
@@ -7,6 +8,7 @@ from pathlib import Path
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse, Response
 
+from ...conversation import is_dashboard, render_dashboard
 from ..state import AppState
 
 _MEDIA = {".html": "text/html; charset=utf-8"}
@@ -42,6 +44,8 @@ def design_response(file: Path, *, for_print: bool = False) -> Response:
         if file.stat().st_size > _MAX_BYTES:
             return JSONResponse({"error": "This design is too large to show"}, status_code=413)
         body = file.read_bytes()
+        if is_dashboard(body):
+            body = render_dashboard(file, body)
     except OSError:
         return JSONResponse({"error": "This design could not be read"}, status_code=404)
     if for_print:

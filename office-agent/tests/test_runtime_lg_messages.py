@@ -93,7 +93,10 @@ def test_artifact_note_names_what_is_made_and_is_stripped_from_history() -> None
     note = artifact_note("slides")
     assert "Slides artifact" in note and "instructions for new decks" in note
     assert artifact_note("docs").startswith("[The user is starting a Docs artifact: ")
-    assert artifact_note("sheets") == artifact_note(None) == artifact_note("dashboard") == ""
+    assert artifact_note("sheets") == artifact_note(None) == ""
+    dashboard = artifact_note("dashboard")
+    assert "Dashboard skill" in dashboard
+    assert strip_mode_note(dashboard + "our test results") == "our test results"
     assert strip_mode_note(note + "a deck about tea") == "a deck about tea"
     design = artifact_note("design")
     assert "SVG and HTML Design skill" in design

@@ -36,7 +36,7 @@ export function Thumbnail({ item }: { item: PageItem }) {
       </div>
     );
   }
-  if (item.kind === "design" && !failed) {
+  if ((item.kind === "design" || item.kind === "dashboard") && !failed) {
     return <DesignThumb item={item} base={base} />;
   }
   if (item.kind === "docs") {

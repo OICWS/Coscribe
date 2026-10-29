@@ -119,6 +119,11 @@ _ARTIFACTS = {
         "a new design the app opens in its Design panel. Load the SVG and HTML Design skill, "
         "then write one self-contained .html file with the drawings inline as SVG"
     ),
+    "dashboard": (
+        "a new dashboard the app opens in its Dashboard panel: a page of their real data. Load "
+        "the Dashboard skill, find the data it is to show (ask where it is if they did not say), "
+        "and write the page and its datasets as the skill says"
+    ),
     "design-system": (
         "a new design system for their library. Ask for what is missing (brand colors, fonts, "
         "tone, who it is for), read what they attached with the file and image tools (for a "
@@ -129,7 +134,8 @@ _ARTIFACTS = {
 }
 # "Sheets" stays so a history saved before that kind was dropped still loses its note.
 _ARTIFACT_NOTE_RE = re.compile(
-    r"^\[The user is starting a (?:Docs|Slides|Sheets|Design-system|Design) artifact: [^\]]*\] "
+    r"^\[The user is starting a (?:Docs|Slides|Sheets|Design-system|Design|Dashboard) artifact: "
+    r"[^\]]*\] "
 )
 
 

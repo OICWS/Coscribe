@@ -414,7 +414,7 @@ export interface UserMessageOut {
    * The first message of a conversation started from the Artifacts page: what it is
    * to make.
    */
-  artifact?: "docs" | "slides" | "design" | "design-system";
+  artifact?: "docs" | "slides" | "design" | "dashboard" | "design-system";
   /** With `artifact: "slides"`: the library design system the deck is to follow. */
   design_system?: string;
 }

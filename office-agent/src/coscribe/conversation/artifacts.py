@@ -1,10 +1,10 @@
-"""The decks, documents and designs coscribe made, for the Artifacts page: a registry of them that
-outlives the conversation that made each one, and each one's kind, name, time and, for a
-document, its opening lines.
+"""The decks, documents, designs and dashboards coscribe made, for the Artifacts page: a registry
+of them that outlives the conversation that made each one, and each one's kind, name, time and,
+for a document, its opening lines.
 
 An artifact is what coscribe made and the app can open and edit, from a source it owns: a Doc, a
-deck it built, a design. A Word or Excel file is a file for Word or Excel (decision 0027), and a
-deck the person brought and coscribe only changed is theirs.
+deck it built, a design, a dashboard. A Word or Excel file is a file for Word or Excel (decision
+0027), and a deck the person brought and coscribe only changed is theirs.
 
 A conversation's Outputs list says what it made (`activity.summarize_activity`); the registry
 adopts those files, and from then on an artifact is the file, not the conversation. The files
@@ -25,11 +25,13 @@ from langchain_core.messages import BaseMessage
 from ..runtime import ToolMetadata
 from ..tools import NotADoc, WorkspaceScope, read_doc_file
 from .activity import summarize_activity
+from .dashboard import is_dashboard
 
 ARTIFACT_KINDS = {
     ".pptx": "slides",
     # Only a Doc (a Markdown file marked in its front matter) is one; `describe_artifact` checks.
     ".md": "docs",
+    # A page marked as a dashboard is one; `describe_artifact` checks.
     ".html": "design",
 }
 _EXCERPT_CHARS = 280
@@ -144,6 +146,8 @@ def describe_artifact(scope: WorkspaceScope, path: str) -> dict[str, Any] | None
     if not resolved.is_file():
         return None
     stat = resolved.stat()
+    if kind == "design" and _is_dashboard(str(resolved), stat.st_mtime_ns):
+        kind = "dashboard"
     excerpt = _excerpt(str(resolved), stat.st_mtime_ns) if kind == "docs" else None
     if resolved.suffix.lower() == ".md" and excerpt is None:
         return None
@@ -155,6 +159,23 @@ def describe_artifact(scope: WorkspaceScope, path: str) -> dict[str, Any] | None
         "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
         "excerpt": excerpt,
     }
+
+
+# A page's kind by file and version, as the excerpts below.
+_dashboards: dict[tuple[str, int], bool] = {}
+
+
+def _is_dashboard(location: str, modified_ns: int) -> bool:
+    key = (location, modified_ns)
+    if key not in _dashboards:
+        if len(_dashboards) >= 256:
+            _dashboards.clear()
+        try:
+            with open(location, "rb") as page:
+                _dashboards[key] = is_dashboard(page.read(8192))
+        except OSError:
+            _dashboards[key] = False
+    return _dashboards[key]
 
 
 # A document's excerpt by file and version; the whole table goes when it grows large.

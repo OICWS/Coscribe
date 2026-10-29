@@ -68,7 +68,7 @@ def router(state: AppState) -> APIRouter:
 
     async def content(artifact: str) -> Response:
         found = described(artifact)
-        if found is None or found[1]["kind"] != "design":
+        if found is None or found[1]["kind"] not in ("design", "dashboard"):
             return JSONResponse({"error": "No such design"}, status_code=404)
         return design_response(Path(found[0]["location"]))
 

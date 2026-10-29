@@ -168,3 +168,33 @@ def test_an_html_design_is_an_artifact_and_a_lone_svg_is_not_and_it_is_served_in
         assert by_path.status_code == 200
         outside = client.get("/api/threads/t_design/design", params={"path": "../x.html"})
         assert outside.status_code == 404
+
+
+def test_a_page_marked_as_a_dashboard_is_one_and_is_served_with_its_data_and_d3_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = tmp_path / "workspace"
+    (workspace / "sales.dashboard" / "data").mkdir(parents=True)
+    (workspace / "sales.dashboard" / "datasets.json").write_text(
+        '{"datasets": {"q3": {"source": "q3.csv"}}, "figures": {}}', encoding="utf-8"
+    )
+    (workspace / "sales.dashboard" / "data" / "q3.json").write_text(
+        '[{"region": "East", "sales": 515}]', encoding="utf-8"
+    )
+    page = (
+        '<html><head><meta name="coscribe" content="dashboard">'
+        '<script data-coscribe-lib="d3"></script></head><body></body></html>'
+    )
+    write = _tool_call("c0", "write_file", {"path": "sales.html", "content": page})
+    fake_model = FakeToolCallingChatModel(
+        responses=[AIMessage(content="", tool_calls=[write]), AIMessage(content="done")]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        _run_turn(client, "t_dash", "make a dashboard")
+        (item,) = client.get("/api/artifacts").json()
+        assert (item["name"], item["kind"]) == ("sales", "dashboard")
+        served = client.get(f"/api/artifacts/{item['id']}/content")
+        assert served.headers["content-security-policy"].startswith("sandbox allow-scripts;")
+        body = served.text
+        assert '"region": "East"' in body and "d3js.org v7.9.0" in body
+        assert "data-coscribe-lib" not in body

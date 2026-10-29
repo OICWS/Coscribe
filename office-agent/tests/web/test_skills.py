@@ -81,6 +81,7 @@ def test_get_skills_lists_the_builtin_skills(
     assert response.status_code == 200
     names = {s["name"] for s in response.json()}
     assert names == {
+        "Dashboard",
         "PPTX Slides",
         "PPTX Pages",
         "Excel Spreadsheets",
@@ -298,6 +299,7 @@ def test_new_thread_defaults_to_the_builtin_skills_enabled(
             ws.receive_json()  # history
 
     assert sorted(state["enabled_skills"]) == [
+        "Dashboard",
         "Docs",
         "Excel Spreadsheets",
         "PPTX Pages",
