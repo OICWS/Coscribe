@@ -6,6 +6,7 @@ import io
 import zipfile
 
 from docx import Document
+from docx.oxml.ns import qn
 
 from coscribe.tools import docx_from_markdown, docx_markdown
 
@@ -132,8 +133,9 @@ def test_chinese_italic_inline_code_and_links_are_formatting_not_markers() -> No
     assert "*" not in paragraph.text and "`" not in paragraph.text and "](" not in xml
     assert next(r for r in paragraph.runs if r.text == "斜体").italic
     assert next(r for r in paragraph.runs if r.text == "order_id").font.name == "Consolas"
-    assert "<w:hyperlink" in xml and "国家统计局" in xml
-    assert "https://www.stats.gov.cn" in [rel.target_ref for rel in document.part.rels.values()]
+    (link,) = paragraph._p.findall(qn("w:hyperlink"))
+    assert "国家统计局" in link.xml
+    assert document.part.rels[link.get(qn("r:id"))].target_ref == "https://www.stats.gov.cn"
 
 
 def test_a_paragraph_ending_in_a_colon_keeps_with_the_chart_it_introduces() -> None:
