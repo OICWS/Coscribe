@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Annotated, Any, Literal
 
 from pydantic import (
@@ -172,6 +173,10 @@ Autonomy = Literal["bounded", "high", "full"]
 AGENT_REPORT_FIELD = "report"
 
 
+def _is_absolute_path(text: str) -> bool:
+    return PurePosixPath(text).is_absolute() or PureWindowsPath(text).is_absolute()
+
+
 def _agent_is_consistent(step: AgentStep) -> AgentStep:
     if step.autonomy == "bounded" and not step.tools:
         raise ValueError("a bounded agent step lists the tools it may call")
@@ -186,6 +191,10 @@ def _agent_is_consistent(step: AgentStep) -> AgentStep:
         raise ValueError("a full agent step reports in prose; give it no fields")
     if len({f.name for f in step.fields}) != len(step.fields):
         raise ValueError("field names must be unique")
+    # A relative folder would resolve against wherever the server runs.
+    relative = [f for f in step.folders if not _is_absolute_path(f)]
+    if relative:
+        raise ValueError(f"folders must be full paths, not {', '.join(map(repr, relative))}")
     return step
 
 

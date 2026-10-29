@@ -152,8 +152,10 @@ def untrusted_agent_steps(workflow: Workflow, outside_tools: Collection[str]) ->
             if isinstance(step, LoopStep) and reads:
                 tainted.add(step.item)
             outside = isinstance(step, ToolStep) and step.tool in outside_tools
+            # A high or full agent has the environment's tools, the web among them.
             outside = outside or (
-                isinstance(step, AgentStep) and any(t in outside_tools for t in step.tools)
+                isinstance(step, AgentStep)
+                and (step.autonomy != "bounded" or any(t in outside_tools for t in step.tools))
             )
             for _arm, children in child_lists(step):
                 visit(children)

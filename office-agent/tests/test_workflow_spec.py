@@ -688,6 +688,8 @@ def test_an_agent_step_needs_version_2() -> None:
         ({"autonomy": "full", "fields": [{"name": "x"}]}, "reports in prose"),
         ({"tools": ["a"], "fields": [{"name": "x"}, {"name": "x"}]}, "field names must be unique"),
         ({"tools": ["a"], "max_steps": 61}, "less than or equal to 60"),
+        ({"tools": ["a"], "folders": ["Reports"]}, "folders must be full paths, not 'Reports'"),
+        ({"tools": ["a"], "folders": ["D:\\mail", ""]}, "full paths, not ''"),
     ],
 )
 def test_an_agent_step_is_checked_when_saved(step: dict[str, Any], message: str) -> None:

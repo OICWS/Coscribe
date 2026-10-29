@@ -309,6 +309,19 @@ def test_an_agent_step_that_reads_outside_content_is_marked_read_only() -> None:
     ]  # fmt: skip
 
 
+@pytest.mark.parametrize("autonomy", ["high", "full"])
+def test_what_an_agent_with_the_environments_tools_made_is_outside_content(autonomy: str) -> None:
+    workflow = _v2(
+        [
+            {"id": "a", "kind": "agent", "autonomy": autonomy, "title": "Find",
+             "goal": "Find today's prices on the web", "save_as": "prices"},
+            _agent_step("b", "Write {{prices.report}}", tools=["write_file"]),
+        ]
+    )  # fmt: skip
+
+    assert untrusted_agent_steps(workflow, {"web_search"}) == ["b"]
+
+
 def test_a_value_collected_from_outside_content_stays_outside_content() -> None:
     workflow = _v2(
         [
