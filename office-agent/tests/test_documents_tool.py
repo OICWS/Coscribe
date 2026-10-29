@@ -94,6 +94,13 @@ def test_parse_inline_runs_splits_bold_and_italic_markers() -> None:
         ("d", False, True),
         (" e", False, False),
     ]
+    assert parse_inline_runs("***both***") == [("both", True, True)]
+
+
+def test_a_long_run_of_open_markers_is_plain_text() -> None:
+    text = "[" * 5000 + "** " * 3000
+
+    assert parse_inline_runs(text) == [(text, False, False)]
 
 
 def test_parse_inline_runs_leaves_an_unterminated_marker_as_plain_text() -> None:

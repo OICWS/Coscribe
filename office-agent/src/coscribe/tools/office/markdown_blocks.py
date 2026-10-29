@@ -143,12 +143,14 @@ def parse_blocks(content: str) -> list[Block]:
 # and identifiers (sales_2025.csv, snake_case_name, 2*3*4) keep their
 # underscores and asterisks. A backslash makes one literal. Chinese has no
 # spaces between words, so beside an asterisk only a Latin letter or a digit
-# counts as a word: 用*斜体*；is italic.
+# counts as a word: 用*斜体*；is italic. No piece can contain its own opening
+# marker, so a long run of markers is read in linear time.
 _INLINE_MARKUP_RE = re.compile(
     r"\\(?P<escaped>[*_`\\])"
     r"|`(?P<code>[^`\n]+)`"
-    r"|\[(?P<link_text>[^\]\n]+)\]\((?P<link_url>[^)\s]+)\)"
-    r"|\*\*(?P<bold>\S(?:.*?\S)?)\*\*"
+    r"|\[(?P<link_text>[^\[\]\n]+)\]\((?P<link_url>[^()\s]+)\)"
+    r"|\*\*\*(?P<bold_italic>[^\s*](?:[^*\n]*[^\s*])?)\*\*\*"
+    r"|\*\*(?P<bold>[^\s*](?:[^*\n]*[^\s*])?)\*\*"
     r"|(?<![*A-Za-z0-9\\])\*(?P<italic1>[^\s*](?:[^*]*?[^\s*])?)\*(?![*A-Za-z0-9])"
     r"|(?<![_\w\\])_(?P<italic2>[^\s_](?:[^_]*?[^\s_])?)_(?![_\w])"
 )
@@ -172,6 +174,8 @@ def _span(match: re.Match[str]) -> InlineSpan:
         return InlineSpan(match.group("code"), code=True)
     if match.group("link_text") is not None:
         return InlineSpan(match.group("link_text"), link=match.group("link_url"))
+    if match.group("bold_italic") is not None:
+        return InlineSpan(match.group("bold_italic"), bold=True, italic=True)
     if match.group("bold") is not None:
         return InlineSpan(match.group("bold"), bold=True)
     return InlineSpan(match.group("italic1") or match.group("italic2") or "", italic=True)
