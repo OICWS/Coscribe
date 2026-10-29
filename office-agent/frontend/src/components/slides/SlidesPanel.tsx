@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { openThreadFile } from "../../lib/rest";
+import { useCallback, useContext, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { openThreadFile, threadFileDownloadUrl } from "../../lib/rest";
 import {
   DeckNotBuilt,
   fitZoom,
@@ -14,6 +14,7 @@ import {
 } from "../../lib/slides";
 import { useDockPanel } from "../dock/dockContext";
 import { ExternalLinkIcon } from "../icons";
+import { DraftPages } from "../../lib/draftPages";
 import type { CommentLink } from "../../lib/slideComments";
 import { SlideComments, useSlideComments, type CommentStart } from "./SlideComments";
 import { SlideEditor } from "./SlideEditor";
@@ -96,7 +97,7 @@ export function SlidesPanel({
       <PanelTop title={deck?.title ?? name} path={path} ui={ui} canComment={!locked} onMenu={(kind, anchor) => setMenu({ kind, anchor })} />
       <DeckNotices changed={deck?.changed ?? false} readOnly={locked} error={shownError(busy, deck, [error, edits.problem, downloads.failed, comments.failed])} />
       {(notBuilt || !deck) && busy ? (
-        <Building name={name} />
+        <Building name={name} threadId={threadId} />
       ) : notBuilt ? (
         <NotBuilt name={name} onOpen={() => open(false)} />
       ) : (
@@ -716,10 +717,32 @@ function shownError(busy: boolean, deck: SlideDeck | null, [error, edit, downloa
   return busy ? null : (error ?? edit ?? download ?? (deck && !deck.readOnly ? comment : null));
 }
 
-function Building({ name }: { name: string }) {
+function Building({ name, threadId }: { name: string; threadId: string }) {
+  const drafts = useContext(DraftPages);
+  if (drafts.length === 0) {
+    return (
+      <div className="flex flex-1 items-center justify-center bg-[var(--stage-bg)] p-6 text-center text-sm text-[var(--muted)]" role="status">
+        Coscribe is working on {name}…
+      </div>
+    );
+  }
   return (
-    <div className="flex flex-1 items-center justify-center bg-[var(--stage-bg)] p-6 text-center text-sm text-[var(--muted)]" role="status">
-      Coscribe is working on {name}…
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto bg-[var(--stage-bg)] p-4" role="status">
+      <p className="text-sm text-[var(--muted)]">
+        Coscribe is building {name}: {drafts.length} {drafts.length === 1 ? "page" : "pages"} so far
+      </p>
+      <ul className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
+        {drafts.map((page) => (
+          <li key={page.path} className="flex flex-col gap-1">
+            <img
+              alt={page.path.split("/").pop()}
+              src={`${threadFileDownloadUrl(threadId, page.path)}&v=${page.version}`}
+              className="aspect-video w-full rounded-md border border-[var(--border)] bg-white object-contain"
+            />
+            <span className="truncate text-xs text-[var(--muted)]">{page.path.split("/").pop()}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
