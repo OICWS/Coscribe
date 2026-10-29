@@ -1004,6 +1004,12 @@ body {
   width: 100%;
   height: auto;
 }
+.doc-editor pre.doc-chart-source-hidden {
+  display: none;
+}
+.doc-editor .doc-chart {
+  cursor: pointer;
+}
 .doc-editor .doc-chart-bad {
   border-style: dashed;
   color: var(--muted);

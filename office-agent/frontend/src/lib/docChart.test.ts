@@ -33,4 +33,11 @@ describe("chartSvg", () => {
     expect(svg).toContain("A&amp;B");
     expect(svg).not.toContain("<b>");
   });
+
+  it("fits a line chart's axis to its values in round steps, and stands bars on zero", () => {
+    const rows = "| w | n |\n| --- | --- |\n| W1 | 2480 |\n| W2 | 2710 |";
+    const ticks = (kind: string) => [...chartSvg(parseChart(block(kind, rows)) as Exclude<ReturnType<typeof parseChart>, string>).matchAll(/font-size="11">([^<]+)</g)].map((m) => m[1]);
+    expect(ticks("line")).toEqual(["2,400", "2,500", "2,600", "2,700", "2,800"]);
+    expect(ticks("bar")[0]).toBe("0");
+  });
 });

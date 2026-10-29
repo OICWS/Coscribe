@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ArrowUpIcon } from "../icons";
 
 const QUICK = ["Make it shorter", "Make it simpler", "Fix spelling and grammar"];
 
@@ -11,22 +12,30 @@ export function AskBox({ onAsk, onClose }: { onAsk: (instruction: string) => voi
     onClose();
   };
   return (
-    <div className="w-[min(380px,90vw)] rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3 shadow-[0_8px_28px_rgba(0,0,0,0.12)]" onMouseDown={(e) => e.stopPropagation()}>
-      <input
-        autoFocus
-        aria-label="Tell coscribe what to change"
-        placeholder="Tell coscribe what to change"
-        value={text}
-        className="h-9 w-full bg-transparent text-sm outline-none"
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") send(text);
-          if (e.key === "Escape") onClose();
-        }}
-      />
-      <div className="mt-2 flex flex-wrap gap-1.5">
+    <div className="w-[min(480px,90vw)] rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 pb-3 pt-2 shadow-[0_8px_28px_rgba(0,0,0,0.12)]" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="flex items-center gap-2">
+        <span className="shrink-0 rounded-md bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] px-1.5 py-0.5 text-sm text-[var(--accent)]">@Coscribe</span>
+        <input
+          autoFocus
+          aria-label="Tell coscribe what to change"
+          placeholder="Tell coscribe what to change"
+          value={text}
+          className="h-9 min-w-0 flex-1 bg-transparent text-sm outline-none"
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") send(text);
+            if (e.key === "Escape") onClose();
+          }}
+        />
+      </div>
+      <div className="flex justify-end">
+        <button type="button" aria-label="Send" title="Send" disabled={!text.trim()} className="rounded-md p-1 text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)] disabled:opacity-40 disabled:hover:bg-transparent" onClick={() => send(text)}>
+          <ArrowUpIcon className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="mt-1 flex flex-wrap gap-1.5">
         {QUICK.map((label) => (
-          <button key={label} type="button" className="rounded-full border border-[var(--border)] px-2.5 py-1 text-xs hover:bg-[var(--card-bg)]" onClick={() => send(label)}>
+          <button key={label} type="button" className="whitespace-nowrap rounded-lg border border-[var(--border)] px-2.5 py-1 text-sm hover:bg-[var(--card-bg)]" onClick={() => send(label)}>
             {label}
           </button>
         ))}

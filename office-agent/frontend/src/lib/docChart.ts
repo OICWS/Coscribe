@@ -45,24 +45,34 @@ function legend(names: string[]): string {
   return names.map((name, i) => `<g transform="translate(${70 + i * 130},${H - 10})"><rect width="10" height="10" y="-9" rx="2" fill="${COLORS[i % COLORS.length]}"/><text x="16" fill="currentColor" font-size="12">${esc(name)}</text></g>`).join("");
 }
 
-function axes(chart: Chart): { top: number; bottom: number; max: number; y: (v: number) => number; grid: string } {
+/** Five or so round ticks over `low`..`high`, as Word's own axis picks them. */
+function scale(low: number, high: number): { min: number; max: number; step: number } {
+  const span = high - low || Math.abs(high) || 1;
+  const rough = span / 4;
+  const power = 10 ** Math.floor(Math.log10(rough));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * power).find((s) => s >= rough) ?? 10 * power;
+  const min = Math.floor(low / step) * step;
+  return { min, max: Math.max(Math.ceil(high / step) * step, min + step), step };
+}
+
+function axes(chart: Chart, fromZero: boolean): { y: (v: number) => number; grid: string } {
   const values = chart.series.flatMap((s) => s.values);
-  const max = Math.max(0, ...values) || 1;
-  const min = Math.min(0, ...values);
+  // A bar's length is its value, so bars stand on zero; a line shows change, so its axis fits the data.
+  const low = fromZero ? Math.min(0, ...values) : Math.min(...values);
+  const high = fromZero ? Math.max(0, ...values) : Math.max(...values);
+  const { min, max, step } = scale(low, high);
   const top = 34;
   const bottom = H - 44;
-  const y = (v: number) => bottom - ((v - min) / (max - min || 1)) * (bottom - top);
-  const grid = [0, 0.25, 0.5, 0.75, 1]
-    .map((f) => {
-      const v = min + (max - min) * f;
-      return `<line x1="60" x2="${W - 10}" y1="${y(v)}" y2="${y(v)}" stroke="currentColor" stroke-opacity="0.12"/><text x="54" y="${y(v) + 4}" text-anchor="end" fill="currentColor" fill-opacity="0.6" font-size="11">${num(v)}</text>`;
-    })
+  const y = (v: number) => bottom - ((v - min) / (max - min)) * (bottom - top);
+  const ticks = Array.from({ length: Math.round((max - min) / step) + 1 }, (_, i) => min + step * i);
+  const grid = ticks
+    .map((v) => `<line x1="60" x2="${W - 10}" y1="${y(v)}" y2="${y(v)}" stroke="currentColor" stroke-opacity="0.12"/><text x="54" y="${y(v) + 4}" text-anchor="end" fill="currentColor" fill-opacity="0.6" font-size="11">${num(v)}</text>`)
     .join("");
-  return { top, bottom, max, y, grid };
+  return { y, grid };
 }
 
 function bars(chart: Chart): string {
-  const { y, grid } = axes(chart);
+  const { y, grid } = axes(chart, true);
   const slot = (W - 80) / chart.categories.length;
   const bar = Math.min(40, (slot * 0.7) / chart.series.length);
   const marks = chart.categories
@@ -76,7 +86,7 @@ function bars(chart: Chart): string {
 }
 
 function lines(chart: Chart): string {
-  const { y, grid } = axes(chart);
+  const { y, grid } = axes(chart, false);
   const step = (W - 80) / chart.categories.length;
   const x = (c: number) => 60 + step * c + step / 2;
   const paths = chart.series
