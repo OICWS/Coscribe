@@ -250,6 +250,10 @@ def _shape(shape: Any) -> dict[str, object]:
     paint = _paint(shape.element.find(f".//{_P}spPr"))
     if paint:
         info["fill"] = paint
+    # A page starting from this slide gets these words too and cannot take them off, so the
+    # model must see them to pick another slide or the bare layout.
+    if shape.has_text_frame and shape.text_frame.text.strip():
+        info["text"] = shape.text_frame.text.strip()[:60]
     return info
 
 
@@ -268,6 +272,8 @@ def _paint(properties: Any) -> str | list[str] | None:
 
 
 def _kind(shape: Any) -> str:
+    if getattr(shape, "has_table", False) and shape.has_table:
+        return "table"
     if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
         return "picture"
     if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
