@@ -21,6 +21,9 @@ LibreOffice, and the export differed:
 - Doc export: charts in the panel's colours (`_CHART_COLOURS`); no legend for one series. `write_docx`
   keeps the theme's colours.
 - The CJK golden changes: its `*持平*` is now italic, as intended.
+- `***x***` is bold italic; it was bold `*x` with a stray asterisk (every docx golden shows it).
+  Bold and link text no longer contain their own opening marker, so a line of markers is read in
+  linear time (CodeQL flagged the old bold pattern).
 
 ## Not verified
 - In the real Word on Windows; rendered with LibreOffice only.
