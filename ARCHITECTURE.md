@@ -152,6 +152,15 @@ reproduces, fixes and re-tests in a new conversation, again for the user to
 save. The step editor is for these workflows; there is no general graph
 canvas.
 
+Proposed in decision 0028 (not built yet): the two kinds become one. Each
+step chooses its autonomy, from fixed steps through a bounded agent to the
+whole task as one agent, while the graph itself stays fixed. A failure climbs
+from the step's own exception handler to the investigation of the run, and a
+repair comes back as a fixed branch the user saves, so a workflow hardens as
+it runs. Agents reach a run only through a runner `conversation` injects;
+`workflows` still imports no agent runtime. A read-only canvas shows the
+graph; editing stays with the AI and the step editor.
+
 A conversation can also pause itself and resume later (`sleep_until`,
 `wake_on_task`), which is separate from scheduled tasks: a wake belongs to
 one conversation, a task is a global record that starts its own.
