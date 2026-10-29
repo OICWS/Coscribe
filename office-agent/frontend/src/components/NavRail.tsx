@@ -227,6 +227,34 @@ interface NavRailProps {
   onNewScheduledTask: () => void;
 }
 
+function DeleteChatsDialog({
+  targets,
+  onCancel,
+  onConfirm,
+}: {
+  targets: ThreadSummary[];
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const many = targets.length > 1;
+  return (
+    <ConfirmDialog
+      title={many ? `Delete ${targets.length} chats?` : "Delete chat?"}
+      description={
+        many ? (
+          <span className="block">{targets.length} chats and their history will be permanently removed.</span>
+        ) : (
+          <span className="block truncate" title={threadLabel(targets[0])}>
+            "{threadLabel(targets[0])}" and its history will be permanently removed.
+          </span>
+        )
+      }
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+    />
+  );
+}
+
 /** A narrow icon-only rail that expands into a full nav panel on hover
  * or when pinned. Collapsed, it shows
  * the pin toggle and the two mode icons (chat / scheduled); expanded, it
@@ -282,7 +310,7 @@ export function NavRail({
       window.removeEventListener("blur", onBlur);
     };
   }, [hovering, pinned]);
-  const [deleteTarget, setDeleteTarget] = useState<ThreadSummary | null>(null);
+  const [deleteTargets, setDeleteTargets] = useState<ThreadSummary[]>([]);
   // Held here, not in the list: the list goes when the sidebar collapses, and a
   // dialog opened from it must outlive that (a window losing focus collapses it).
   const [environmentOf, setEnvironmentOf] = useState<ThreadSummary | null>(null);
@@ -292,11 +320,10 @@ export function NavRail({
   }, [expanded, onThreadsChanged]);
 
   const confirmDelete = () => {
-    if (!deleteTarget) return;
-    const id = deleteTarget.thread_id;
-    setDeleteTarget(null);
-    if (id === threadId) startNewThread(); // leave it before it is gone
-    deleteThread(id).then(onThreadsChanged);
+    const ids = deleteTargets.map((t) => t.thread_id);
+    setDeleteTargets([]);
+    if (ids.includes(threadId)) startNewThread(); // leave it before it is gone
+    Promise.all(ids.map((id) => deleteThread(id))).then(onThreadsChanged);
   };
 
   return (
@@ -373,7 +400,7 @@ export function NavRail({
                   currentId={threadId}
                   onChanged={onThreadsChanged}
                   onRenamed={onThreadRenamed}
-                  onDeleteRequest={setDeleteTarget}
+                  onDeleteRequest={setDeleteTargets}
                   onEditEnvironment={setEnvironmentOf}
                 />
               </div>
@@ -419,17 +446,8 @@ export function NavRail({
           onClose={() => setEnvironmentOf(null)}
         />
       )}
-      {deleteTarget && (
-        <ConfirmDialog
-          title="Delete chat?"
-          description={
-            <span className="block truncate" title={threadLabel(deleteTarget)}>
-              "{threadLabel(deleteTarget)}" and its history will be permanently removed.
-            </span>
-          }
-          onCancel={() => setDeleteTarget(null)}
-          onConfirm={confirmDelete}
-        />
+      {deleteTargets.length > 0 && (
+        <DeleteChatsDialog targets={deleteTargets} onCancel={() => setDeleteTargets([])} onConfirm={confirmDelete} />
       )}
     </>
   );
