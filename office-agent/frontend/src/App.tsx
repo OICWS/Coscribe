@@ -791,7 +791,7 @@ function App() {
 
   const composer = (
     <Composer
-      turnInFlight={state.turnInFlight}
+      turnInFlight={state.turnInFlight} turnStartedAt={state.turnStartedAt}
       suggestion={state.suggestion}
       onSuggestionDismiss={() => dispatch({ type: "local_suggestion_dismissed" })}
       totalTokens={state.totalTokens}

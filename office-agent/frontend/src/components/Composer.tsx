@@ -82,6 +82,7 @@ const MAX_ATTACHED_FILES = 5;
 
 interface ComposerProps {
   turnInFlight: boolean;
+  turnStartedAt: number | null;
   totalTokens: number;
   workflowTest?: { done: number; total: number } | null;
   commands: CommandInfo[];
@@ -132,7 +133,7 @@ interface ComposerProps {
 
 export function Composer({
   turnInFlight,
-  totalTokens,
+  turnStartedAt, totalTokens,
   workflowTest = null,
   commands,
   modePill,
@@ -615,7 +616,7 @@ export function Composer({
           {environmentPicker}
           {modePill}
         </div>
-        <RunStatus turnInFlight={turnInFlight} totalTokens={totalTokens} workflowTest={workflowTest} />
+        <RunStatus key={threadId} threadId={threadId} turnInFlight={turnInFlight} serverStartedAt={turnStartedAt} totalTokens={totalTokens} workflowTest={workflowTest} />
         <div className="flex min-w-0 items-center gap-1.5">
           {modelPicker}
           {effortPicker}
