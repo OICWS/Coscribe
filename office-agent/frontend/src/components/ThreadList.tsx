@@ -90,6 +90,7 @@ function ThreadMenu({
   menu,
   groups,
   onClose,
+  onSelect,
   onRename,
   onEnvironment,
   onMove,
@@ -99,6 +100,7 @@ function ThreadMenu({
   menu: MenuState;
   groups: string[];
   onClose: () => void;
+  onSelect: () => void;
   onRename: () => void;
   onEnvironment: () => void;
   onMove: (group: string) => void;
@@ -131,6 +133,10 @@ function ThreadMenu({
       style={{ left, top, width: MENU_WIDTH }}
       onClick={(e) => e.stopPropagation()}
     >
+      <button type="button" role="menuitem" className={itemClass} onClick={onSelect}>
+        <CheckCircleIcon className="h-3.5 w-3.5" /> Select
+      </button>
+      <div className="my-1 border-t border-[var(--border)]" />
       <button type="button" role="menuitem" className={itemClass} onClick={onRename}>
         <PencilIcon className="h-3.5 w-3.5" /> Rename
       </button>
@@ -237,6 +243,9 @@ function ThreadRow({
   isCurrent,
   renaming,
   draggable,
+  selecting,
+  selected,
+  onToggleSelect,
   onOpenMenu,
   onRenameDone,
   onDragStart,
@@ -246,6 +255,9 @@ function ThreadRow({
   isCurrent: boolean;
   renaming: boolean;
   draggable: boolean;
+  selecting: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
   onOpenMenu: (thread: ThreadSummary, x: number, y: number) => void;
   onRenameDone: (title: string | null) => void;
   onDragStart: () => void;
@@ -281,25 +293,37 @@ function ThreadRow({
       data-testid="thread-row"
       data-status={thread.status}
       className={`group flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-[var(--card-bg)] ${
-        isCurrent ? "bg-[var(--card-bg)] font-medium" : "cursor-pointer"
-      }`}
+        isCurrent && !selecting ? "bg-[var(--card-bg)] font-medium" : "cursor-pointer"
+      } ${selected ? "bg-[var(--card-bg)]" : ""}`}
       title={`${title} · ${STATUS_LABEL[thread.status]}`}
-      draggable={draggable}
+      draggable={draggable && !selecting}
+      aria-selected={selecting ? selected : undefined}
       onDragStart={(e) => {
         e.dataTransfer.setData(THREAD_DRAG_TYPE, thread.thread_id);
         e.dataTransfer.effectAllowed = "move";
         onDragStart();
       }}
       onDragEnd={onDragEnd}
-      onClick={() => !isCurrent && goToThread(thread.thread_id)}
+      onClick={() => (selecting ? onToggleSelect() : !isCurrent && goToThread(thread.thread_id))}
       onContextMenu={(e) => {
         e.preventDefault();
+        if (selecting) return;
         onOpenMenu(thread, e.clientX, e.clientY);
       }}
     >
+      {selecting && (
+        <input
+          type="checkbox"
+          aria-label={`Select ${title}`}
+          className="h-3.5 w-3.5 shrink-0 accent-[var(--accent)]"
+          checked={selected}
+          onChange={onToggleSelect}
+          onClick={(e) => e.stopPropagation()}
+        />
+      )}
       <ThreadStatusIcon status={thread.status} />
       <span className={`min-w-0 flex-1 truncate ${thread.archived ? "text-[var(--muted)]" : ""}`}>{title}</span>
-      <button
+      {!selecting && <button
         type="button"
         aria-label={`Options for ${title}`}
         className="rounded-md p-1 text-[var(--muted)] opacity-0 hover:bg-[var(--border)] focus-visible:opacity-100 group-hover:opacity-100"
@@ -310,7 +334,96 @@ function ThreadRow({
         }}
       >
         <MoreIcon className="h-3.5 w-3.5" />
-      </button>
+      </button>}
+    </div>
+  );
+}
+
+/** The actions for the selected conversations. Rename, environment and export
+ * are left out: each works on one conversation. */
+function BatchBar({
+  count,
+  total,
+  groups,
+  allArchived,
+  onSelectAll,
+  onMove,
+  onArchive,
+  onDelete,
+  onCancel,
+}: {
+  count: number;
+  total: number;
+  groups: string[];
+  allArchived: boolean;
+  onSelectAll: () => void;
+  onMove: (group: string) => void;
+  onArchive: () => void;
+  onDelete: () => void;
+  onCancel: () => void;
+}) {
+  const [picking, setPicking] = useState(false);
+  const [naming, setNaming] = useState(false);
+  const [name, setName] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+  useClickOutside(ref, () => setPicking(false), picking);
+  const none = count === 0;
+  const button = "flex items-center gap-1 rounded-md px-2 py-1 text-xs hover:bg-[var(--card-bg)] disabled:opacity-40";
+  return (
+    <div data-testid="batch-bar" className="mt-1 flex flex-col gap-1 border-t border-[var(--border)] px-1 pt-2">
+      <div className="flex items-center justify-between px-1 text-xs text-[var(--muted)]">
+        <span>{count} selected</span>
+        <span className="flex gap-2">
+          <button type="button" className="hover:text-[var(--fg)]" onClick={onSelectAll}>
+            {count === total ? "Clear" : "Select all"}
+          </button>
+          <button type="button" className="hover:text-[var(--fg)]" onClick={onCancel}>
+            Cancel
+          </button>
+        </span>
+      </div>
+      <div className="relative flex items-center gap-1" ref={ref}>
+        <button type="button" disabled={none} className={button} aria-haspopup="menu" onClick={() => setPicking((v) => !v)}>
+          <FolderIcon className="h-3.5 w-3.5" /> Move
+        </button>
+        <button type="button" disabled={none} className={button} onClick={onArchive}>
+          <ArchiveIcon className="h-3.5 w-3.5" /> {allArchived ? "Unarchive" : "Archive"}
+        </button>
+        <button type="button" disabled={none} className={`${button} text-red-500`} onClick={onDelete}>
+          <TrashIcon className="h-3.5 w-3.5" /> Delete
+        </button>
+        {picking && (
+          <div role="menu" aria-label="Move to group" className={`${menuClass} absolute bottom-full left-0 mb-1 w-48`}>
+            {groups.map((group) => (
+              <button key={group} type="button" role="menuitem" className={itemClass} onClick={() => onMove(group)}>
+                <span className="min-w-0 truncate">{group}</span>
+              </button>
+            ))}
+            {groups.length > 0 && <div className="my-1 border-t border-[var(--border)]" />}
+            <button type="button" role="menuitem" className={itemClass} onClick={() => onMove("")}>
+              Ungrouped
+            </button>
+            {naming ? (
+              <input
+                autoFocus
+                aria-label="New group name"
+                placeholder="Group name"
+                className="mx-2 my-1 w-[calc(100%-1rem)] rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-sm outline-none focus:border-[var(--accent)]"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && name.trim()) onMove(name.trim());
+                  else if (e.key === "Escape") setNaming(false);
+                }}
+              />
+            ) : (
+              <button type="button" role="menuitem" className={itemClass} onClick={() => setNaming(true)}>
+                <FolderPlusIcon className="h-3.5 w-3.5" /> New group…
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -446,7 +559,7 @@ export interface ThreadListProps {
   currentId: string;
   onChanged: () => void;
   onRenamed: (threadId: string, title: string) => void;
-  onDeleteRequest: (thread: ThreadSummary) => void;
+  onDeleteRequest: (threads: ThreadSummary[]) => void;
   onEditEnvironment: (thread: ThreadSummary) => void;
 }
 
@@ -469,6 +582,8 @@ export function ThreadList({
   const [collapsed, setCollapsed] = useState<Set<string>>(readCollapsed);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  // null is the normal list; a set is multi-select mode.
+  const [selected, setSelected] = useState<Set<string> | null>(null);
   const [dragging, setDragging] = useState<ThreadSummary | null>(null);
   const [dropKey, setDropKey] = useState<string | null>(null);
   const filterRef = useRef<HTMLDivElement>(null);
@@ -524,6 +639,33 @@ export function ThreadList({
     await setThreadMeta(thread.thread_id, { archived: !thread.archived });
     onChanged();
   };
+  const chosen = selected ? threads.filter((t) => selected.has(t.thread_id)) : [];
+  const toggleSelect = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  const batchMove = async (group: string) => {
+    const results = await Promise.all(chosen.map((t) => setThreadMeta(t.thread_id, { group })));
+    const last = results.reverse().find((r) => !("error" in r));
+    if (last && !("error" in last)) setGroups(last.groups);
+    setSelected(null);
+    onChanged();
+  };
+  const batchArchive = async () => {
+    const archived = !chosen.every((t) => t.archived);
+    await Promise.all(chosen.map((t) => setThreadMeta(t.thread_id, { archived })));
+    setSelected(null);
+    onChanged();
+  };
+  useEffect(() => {
+    if (!selected) return;
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && setSelected(null);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [selected !== null]);
+  const visibleIds = sections.flatMap((s) => s.threads.map((t) => t.thread_id));
   const finishRename = (thread: ThreadSummary, value: string | null) => {
     setRenamingId(null);
     const title = value?.trim();
@@ -667,6 +809,9 @@ export function ThreadList({
                     isCurrent={thread.thread_id === currentId}
                     renaming={renamingId === thread.thread_id}
                     draggable={hasGroups}
+                    selecting={selected !== null}
+                    selected={selected?.has(thread.thread_id) ?? false}
+                    onToggleSelect={() => toggleSelect(thread.thread_id)}
                     onOpenMenu={(t, x, y) => setMenu({ thread: t, x, y })}
                     onRenameDone={(value) => finishRename(thread, value)}
                     onDragStart={() => setDragging(thread)}
@@ -683,11 +828,31 @@ export function ThreadList({
           );
         })}
       </div>
+      {selected && (
+        <BatchBar
+          count={chosen.length}
+          total={visibleIds.length}
+          groups={groups}
+          allArchived={chosen.length > 0 && chosen.every((t) => t.archived)}
+          onSelectAll={() => setSelected(chosen.length === visibleIds.length ? new Set() : new Set(visibleIds))}
+          onMove={(group) => void batchMove(group)}
+          onArchive={() => void batchArchive()}
+          onDelete={() => {
+            onDeleteRequest(chosen);
+            setSelected(null);
+          }}
+          onCancel={() => setSelected(null)}
+        />
+      )}
       {menu && (
         <ThreadMenu
           menu={menu}
           groups={groups}
           onClose={() => setMenu(null)}
+          onSelect={() => {
+            setSelected(new Set([menu.thread.thread_id]));
+            setMenu(null);
+          }}
           onRename={() => {
             setRenamingId(menu.thread.thread_id);
             setMenu(null);
@@ -699,7 +864,7 @@ export function ThreadList({
           onMove={(group) => void move(menu.thread, group)}
           onArchive={() => void archive(menu.thread)}
           onDelete={() => {
-            onDeleteRequest(menu.thread);
+            onDeleteRequest([menu.thread]);
             setMenu(null);
           }}
         />

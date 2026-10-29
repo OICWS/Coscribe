@@ -282,7 +282,7 @@ export function NavRail({
       window.removeEventListener("blur", onBlur);
     };
   }, [hovering, pinned]);
-  const [deleteTarget, setDeleteTarget] = useState<ThreadSummary | null>(null);
+  const [deleteTargets, setDeleteTargets] = useState<ThreadSummary[]>([]);
   // Held here, not in the list: the list goes when the sidebar collapses, and a
   // dialog opened from it must outlive that (a window losing focus collapses it).
   const [environmentOf, setEnvironmentOf] = useState<ThreadSummary | null>(null);
@@ -292,11 +292,10 @@ export function NavRail({
   }, [expanded, onThreadsChanged]);
 
   const confirmDelete = () => {
-    if (!deleteTarget) return;
-    const id = deleteTarget.thread_id;
-    setDeleteTarget(null);
-    if (id === threadId) startNewThread(); // leave it before it is gone
-    deleteThread(id).then(onThreadsChanged);
+    const ids = deleteTargets.map((t) => t.thread_id);
+    setDeleteTargets([]);
+    if (ids.includes(threadId)) startNewThread(); // leave it before it is gone
+    Promise.all(ids.map((id) => deleteThread(id))).then(onThreadsChanged);
   };
 
   return (
@@ -373,7 +372,7 @@ export function NavRail({
                   currentId={threadId}
                   onChanged={onThreadsChanged}
                   onRenamed={onThreadRenamed}
-                  onDeleteRequest={setDeleteTarget}
+                  onDeleteRequest={setDeleteTargets}
                   onEditEnvironment={setEnvironmentOf}
                 />
               </div>
@@ -419,15 +418,19 @@ export function NavRail({
           onClose={() => setEnvironmentOf(null)}
         />
       )}
-      {deleteTarget && (
+      {deleteTargets.length > 0 && (
         <ConfirmDialog
-          title="Delete chat?"
+          title={deleteTargets.length > 1 ? `Delete ${deleteTargets.length} chats?` : "Delete chat?"}
           description={
-            <span className="block truncate" title={threadLabel(deleteTarget)}>
-              "{threadLabel(deleteTarget)}" and its history will be permanently removed.
-            </span>
+            deleteTargets.length > 1 ? (
+              <span className="block">{deleteTargets.length} chats and their history will be permanently removed.</span>
+            ) : (
+              <span className="block truncate" title={threadLabel(deleteTargets[0])}>
+                "{threadLabel(deleteTargets[0])}" and its history will be permanently removed.
+              </span>
+            )
           }
-          onCancel={() => setDeleteTarget(null)}
+          onCancel={() => setDeleteTargets([])}
           onConfirm={confirmDelete}
         />
       )}
