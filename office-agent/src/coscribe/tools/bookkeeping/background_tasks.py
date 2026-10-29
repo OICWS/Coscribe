@@ -491,8 +491,8 @@ async def _start_contained(
         )
 
     task_id = await asyncio.to_thread(start)
-    status = {"task_id": task_id, "status": "running"}
-    return {**status, "language": language, "description": description}
+    status = {"task_id": task_id, "status": "running", "language": language}
+    return {**status, "description": description, "how_to_wait": WAIT_NOTE}
 
 
 def _watch(
