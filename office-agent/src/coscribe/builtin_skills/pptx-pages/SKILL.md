@@ -48,8 +48,8 @@ replace_changes on your own: either make the change with the edit_pptx_* tools o
 or a number: edit_pptx_text with find, on every slide at once; a shape: list_pptx_shapes, then its
 name or path), or ask the user whether their changes may be replaced.
 
-Not for this way: changing a deck the user brought (use the edit tools), or a few words in an
-existing deck.
+Not for this way: a few words in a deck the user brought (use the edit tools); for their
+template, see "Changing the template's own slides".
 
 ## Design spec
 
@@ -142,7 +142,27 @@ When the user names their template (a .pptx or .potx), the deck is built on it:
    background and decoration, and the page draws only the content, around them and in colours
    that read on that background. A cover starts from the template's cover, a content page from
    a content slide, a closing page from its last slide. No page draws a full background.
+   Everything in the slide's `decoration` comes along, its `text` and any `table` too, and a
+   page cannot take it off: for a slide whose decoration holds sample words or a table you do not
+   want, start from its layout instead (`data-layout="<name>"`, the master's look without them).
 4. Build with the same `template`; every later build passes it too.
+
+### Changing the template's own slides, a little or a lot
+
+When the user wants their template's slides themselves changed ("改模板里的内容", "在模板上改"),
+pick the way by how much changes:
+
+- **A little** (the slides stay; words, numbers, a table's cells, a picture, a chart added):
+  copy_file the template to the new deck's name and edit the copy: read_pptx for what each slide
+  holds, duplicate_pptx_slide / delete_pptx_slide / reorder_pptx_slide for the slides you need,
+  edit_pptx_text, edit_pptx_table_cell, replace_pptx_image, add_pptx_chart. These tools add no
+  new table, and a table's rows stay as many as the template has.
+- **A lot** (new slides, a new table, another structure): build pages on the template as above,
+  each page starting from the template slide whose look it keeps (`data-template-slide`), with
+  native tables and charts ("Charts and tables" below) and your own text. Put the template
+  slide's useful content (its words, its table's rows) into the page yourself; read_pptx gives it.
+
+Never tell the user something cannot be done on their template before checking both ways.
 
 ## Layout
 

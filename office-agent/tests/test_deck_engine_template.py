@@ -4,6 +4,7 @@ can start from an example slide's decoration, and the build tool describes the t
 from __future__ import annotations
 
 import io
+import re
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -248,3 +249,61 @@ def test_copied_shapes_get_ids_of_their_own(tmp_path: Path) -> None:
     ids = [shape.shape_id for shape in Presentation(str(out)).slides[0].shapes]
     assert len(ids) == 4
     assert len(set(ids)) == len(ids)
+
+
+def test_the_description_names_a_table_and_the_words_a_copy_would_carry(tmp_path: Path) -> None:
+    _template(tmp_path / "t.pptx")
+    prs = Presentation(str(tmp_path / "t.pptx"))
+    content = prs.slides[1]
+    content.shapes.add_table(3, 2, Inches(1), Inches(2), Inches(6), Inches(2)).name = "history"
+    note = content.shapes.add_textbox(Inches(1), Inches(1), Inches(4), Inches(0.5))
+    note.text_frame.text = "Version history"
+    prs.save(str(tmp_path / "t.pptx"))
+
+    decoration = describe(tmp_path / "t.pptx")["example_slides"][1]["decoration"]  # type: ignore[index]
+
+    assert [d["kind"] for d in decoration] == ["shape", "table", "shape"]
+    assert decoration[2]["text"] == "Version history"
+    assert "text" not in decoration[0]
+
+
+def test_a_page_on_a_template_slide_adds_a_native_table_and_chart(tmp_path: Path) -> None:
+    _template(tmp_path / "t.pptx")
+    table = (
+        '<g id="risks" data-pptx-replace-with="table"><metadata type="application/json">'
+        '{"x": 64, "y": 160, "width": 560, "height": 200, "schema": "ppt-master.semantic-table.v2",'
+        ' "columns": ["风险", "负责人"], "rows": [["范围蔓延", "张明"], ["人力不足", "李华"]]}'
+        "</metadata></g>"
+    )
+    chart = (
+        '<g id="trend" data-pptx-replace-with="chart"><metadata type="application/json">'
+        '{"x": 680, "y": 160, "width": 536, "height": 400, "type": "column",'
+        ' "categories": ["7月", "8月", "9月"], "series": [{"name": "完成", "values": [3, 5, 8]}]}'
+        "</metadata></g>"
+    )
+    out = tmp_path / "deck.pptx"
+
+    report = compile_pages(
+        [("body", _page('data-template-slide="2"', table + chart))],
+        out,
+        template=tmp_path / "t.pptx",
+    )
+
+    assert report.ok, report.errors()
+    (slide,) = Presentation(str(out)).slides
+    assert "band" in [s.name for s in slide.shapes]
+    (grid,) = [s for s in slide.shapes if s.has_table]
+    assert grid.table.cell(1, 0).text == "范围蔓延"
+    assert [s for s in slide.shapes if s.has_chart]
+
+
+def test_the_skill_names_only_tools_that_exist_for_changing_a_template() -> None:
+    skill = (
+        Path(__file__).parents[1] / "src/coscribe/builtin_skills/pptx-pages/SKILL.md"
+    ).read_text(encoding="utf-8")
+    section = skill.split("### Changing the template's own slides", 1)[1].split("\n## ", 1)[0]
+    snapshot = (Path(__file__).parent / "tool_schemas.txt").read_text(encoding="utf-8")
+    tools = {line.split("|")[0].strip() for line in snapshot.splitlines() if "|" in line}
+    named = set(re.findall(r"\b(?:copy_file|[a-z]+_pptx(?:_[a-z]+)*)\b", section))
+    assert {"copy_file", "edit_pptx_table_cell", "duplicate_pptx_slide"} <= named
+    assert named <= tools, named - tools
