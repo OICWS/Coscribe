@@ -32,7 +32,6 @@ import {
   DownloadIcon,
   FilterIcon,
   FolderIcon,
-  FolderPlusIcon,
   LockIcon,
   HandIcon,
   ListChecksIcon,
@@ -42,6 +41,8 @@ import {
   SearchIcon,
   TrashIcon,
 } from "./icons";
+import { BatchBar, NewGroupItem } from "./BatchBar";
+import { itemClass, menuClass } from "./menuStyle";
 import { ThreadStatusIcon } from "./ThreadStatusIcon";
 
 const COLLAPSED_KEY = "coscribe.collapsedGroups";
@@ -51,9 +52,6 @@ const THREAD_DRAG_TYPE = "application/x-coscribe-thread";
 const STATUS_POLL_MS = 3000;
 const MENU_WIDTH = 208;
 
-const menuClass =
-  "z-50 rounded-[10px] border border-[var(--border)] bg-[var(--panel-bg)] py-1 text-sm shadow-[var(--shadow)]";
-const itemClass = "flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--card-bg)]";
 
 function readCollapsed(): Set<string> {
   try {
@@ -109,8 +107,6 @@ function ThreadMenu({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [submenu, setSubmenu] = useState(false);
-  const [naming, setNaming] = useState(false);
-  const [name, setName] = useState("");
   useClickOutside(ref, onClose, true);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => event.key === "Escape" && onClose();
@@ -122,7 +118,6 @@ function ThreadMenu({
   const top = Math.max(4, Math.min(menu.y, window.innerHeight - 220));
   const flip = left + MENU_WIDTH * 2 + 8 > window.innerWidth;
   const current = menu.thread.group;
-  const commitName = () => void (name.trim() && onMove(name.trim()));
 
   return createPortal(
     <div
@@ -189,28 +184,7 @@ function ThreadMenu({
               Ungrouped
               {!current && <CheckIcon className="h-3.5 w-3.5 shrink-0" />}
             </button>
-            {naming ? (
-              <div className="px-2 py-1">
-                <input
-                  autoFocus
-                  aria-label="New group name"
-                  placeholder="Group name"
-                  className="w-full rounded-md border border-[var(--accent)] bg-[var(--bg)] px-2 py-1 text-sm outline-none"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      commitName();
-                    }
-                  }}
-                />
-              </div>
-            ) : (
-              <button type="button" role="menuitem" className={itemClass} onClick={() => setNaming(true)}>
-                <FolderPlusIcon className="h-3.5 w-3.5" /> New group…
-              </button>
-            )}
+            <NewGroupItem onCreate={onMove} />
           </div>
         )}
       </div>
@@ -335,95 +309,6 @@ function ThreadRow({
       >
         <MoreIcon className="h-3.5 w-3.5" />
       </button>}
-    </div>
-  );
-}
-
-/** The actions for the selected conversations. Rename, environment and export
- * are left out: each works on one conversation. */
-function BatchBar({
-  count,
-  total,
-  groups,
-  allArchived,
-  onSelectAll,
-  onMove,
-  onArchive,
-  onDelete,
-  onCancel,
-}: {
-  count: number;
-  total: number;
-  groups: string[];
-  allArchived: boolean;
-  onSelectAll: () => void;
-  onMove: (group: string) => void;
-  onArchive: () => void;
-  onDelete: () => void;
-  onCancel: () => void;
-}) {
-  const [picking, setPicking] = useState(false);
-  const [naming, setNaming] = useState(false);
-  const [name, setName] = useState("");
-  const ref = useRef<HTMLDivElement>(null);
-  useClickOutside(ref, () => setPicking(false), picking);
-  const none = count === 0;
-  const button = "flex items-center gap-1 rounded-md px-2 py-1 text-xs hover:bg-[var(--card-bg)] disabled:opacity-40";
-  return (
-    <div data-testid="batch-bar" className="mt-1 flex flex-col gap-1 border-t border-[var(--border)] px-1 pt-2">
-      <div className="flex items-center justify-between px-1 text-xs text-[var(--muted)]">
-        <span>{count} selected</span>
-        <span className="flex gap-2">
-          <button type="button" className="hover:text-[var(--fg)]" onClick={onSelectAll}>
-            {count === total ? "Clear" : "Select all"}
-          </button>
-          <button type="button" className="hover:text-[var(--fg)]" onClick={onCancel}>
-            Cancel
-          </button>
-        </span>
-      </div>
-      <div className="relative flex items-center gap-1" ref={ref}>
-        <button type="button" disabled={none} className={button} aria-haspopup="menu" onClick={() => setPicking((v) => !v)}>
-          <FolderIcon className="h-3.5 w-3.5" /> Move
-        </button>
-        <button type="button" disabled={none} className={button} onClick={onArchive}>
-          <ArchiveIcon className="h-3.5 w-3.5" /> {allArchived ? "Unarchive" : "Archive"}
-        </button>
-        <button type="button" disabled={none} className={`${button} text-red-500`} onClick={onDelete}>
-          <TrashIcon className="h-3.5 w-3.5" /> Delete
-        </button>
-        {picking && (
-          <div role="menu" aria-label="Move to group" className={`${menuClass} absolute bottom-full left-0 mb-1 w-48`}>
-            {groups.map((group) => (
-              <button key={group} type="button" role="menuitem" className={itemClass} onClick={() => onMove(group)}>
-                <span className="min-w-0 truncate">{group}</span>
-              </button>
-            ))}
-            {groups.length > 0 && <div className="my-1 border-t border-[var(--border)]" />}
-            <button type="button" role="menuitem" className={itemClass} onClick={() => onMove("")}>
-              Ungrouped
-            </button>
-            {naming ? (
-              <input
-                autoFocus
-                aria-label="New group name"
-                placeholder="Group name"
-                className="mx-2 my-1 w-[calc(100%-1rem)] rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-sm outline-none focus:border-[var(--accent)]"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && name.trim()) onMove(name.trim());
-                  else if (e.key === "Escape") setNaming(false);
-                }}
-              />
-            ) : (
-              <button type="button" role="menuitem" className={itemClass} onClick={() => setNaming(true)}>
-                <FolderPlusIcon className="h-3.5 w-3.5" /> New group…
-              </button>
-            )}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
@@ -554,6 +439,89 @@ const FILTER_ICON: Record<ThreadFilter, ReactNode> = {
   archived: <ArchiveIcon className="h-4 w-4" />,
 };
 
+/** Multi-select mode: null is the normal list, a set is the picked conversations. */
+function useSelection(
+  threads: ThreadSummary[],
+  setGroups: (groups: string[]) => void,
+  onChanged: () => void,
+) {
+  const [selected, setSelected] = useState<Set<string> | null>(null);
+  const chosen = selected ? threads.filter((t) => selected.has(t.thread_id)) : [];
+  const toggleSelect = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  const batchMove = async (group: string) => {
+    const results = await Promise.all(chosen.map((t) => setThreadMeta(t.thread_id, { group })));
+    const last = results.reverse().find((r) => !("error" in r));
+    if (last && !("error" in last)) setGroups(last.groups);
+    setSelected(null);
+    onChanged();
+  };
+  const batchArchive = async () => {
+    const archived = !chosen.every((t) => t.archived);
+    await Promise.all(chosen.map((t) => setThreadMeta(t.thread_id, { archived })));
+    setSelected(null);
+    onChanged();
+  };
+  useEffect(() => {
+    if (!selected) return;
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && setSelected(null);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [selected !== null]);
+  return { selected, setSelected, chosen, toggleSelect, batchMove, batchArchive };
+}
+
+/** The status filter button and its menu. */
+function FilterMenu({ filter, onChange }: { filter: ThreadFilter; onChange: (value: ThreadFilter) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useClickOutside(ref, () => setOpen(false), open);
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        title="Filter sessions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={`relative rounded-md p-1 hover:bg-[var(--card-bg)] hover:text-[var(--fg)] ${
+          filter !== "all" ? "text-[var(--fg)]" : ""
+        }`}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <FilterIcon className="h-3.5 w-3.5" />
+        {filter !== "all" && (
+          <span className="absolute right-0 top-0 h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+        )}
+      </button>
+      {open && (
+        <div role="menu" aria-label="Filter sessions" className={`${menuClass} absolute right-0 top-full mt-1 w-48`}>
+          {FILTERS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              role="menuitemradio"
+              aria-checked={filter === value}
+              className={`${itemClass} text-[var(--fg)]`}
+              onClick={() => {
+                onChange(value);
+                setOpen(false);
+              }}
+            >
+              <span className="w-4 text-[var(--muted)]">{filter === value ? <CheckIcon className="h-4 w-4" /> : null}</span>
+              <span className="text-[var(--muted)]">{FILTER_ICON[value]}</span>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export interface ThreadListProps {
   threads: ThreadSummary[];
   currentId: string;
@@ -576,18 +544,14 @@ export function ThreadList({
   const [groups, setGroups] = useState<string[]>([]);
   const [statuses, setStatuses] = useState<Record<string, ThreadStatus>>({});
   const [filter, setFilter] = useState<ThreadFilter>("all");
-  const [filterOpen, setFilterOpen] = useState(false);
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Set<string>>(readCollapsed);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
-  // null is the normal list; a set is multi-select mode.
-  const [selected, setSelected] = useState<Set<string> | null>(null);
+  const { selected, setSelected, chosen, toggleSelect, batchMove, batchArchive } = useSelection(threads, setGroups, onChanged);
   const [dragging, setDragging] = useState<ThreadSummary | null>(null);
   const [dropKey, setDropKey] = useState<string | null>(null);
-  const filterRef = useRef<HTMLDivElement>(null);
-  useClickOutside(filterRef, () => setFilterOpen(false), filterOpen);
 
   const refreshGroups = useCallback(() => {
     getThreadGroups()
@@ -639,32 +603,6 @@ export function ThreadList({
     await setThreadMeta(thread.thread_id, { archived: !thread.archived });
     onChanged();
   };
-  const chosen = selected ? threads.filter((t) => selected.has(t.thread_id)) : [];
-  const toggleSelect = (id: string) =>
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (!next.delete(id)) next.add(id);
-      return next;
-    });
-  const batchMove = async (group: string) => {
-    const results = await Promise.all(chosen.map((t) => setThreadMeta(t.thread_id, { group })));
-    const last = results.reverse().find((r) => !("error" in r));
-    if (last && !("error" in last)) setGroups(last.groups);
-    setSelected(null);
-    onChanged();
-  };
-  const batchArchive = async () => {
-    const archived = !chosen.every((t) => t.archived);
-    await Promise.all(chosen.map((t) => setThreadMeta(t.thread_id, { archived })));
-    setSelected(null);
-    onChanged();
-  };
-  useEffect(() => {
-    if (!selected) return;
-    const onKey = (event: KeyboardEvent) => event.key === "Escape" && setSelected(null);
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [selected !== null]);
   const visibleIds = sections.flatMap((s) => s.threads.map((t) => t.thread_id));
   const finishRename = (thread: ThreadSummary, value: string | null) => {
     setRenamingId(null);
@@ -699,44 +637,7 @@ export function ThreadList({
           >
             <SearchIcon className="h-3.5 w-3.5" />
           </button>
-          <div className="relative" ref={filterRef}>
-            <button
-              type="button"
-              title="Filter sessions"
-              aria-haspopup="menu"
-              aria-expanded={filterOpen}
-              className={`relative rounded-md p-1 hover:bg-[var(--card-bg)] hover:text-[var(--fg)] ${
-                filter !== "all" ? "text-[var(--fg)]" : ""
-              }`}
-              onClick={() => setFilterOpen((v) => !v)}
-            >
-              <FilterIcon className="h-3.5 w-3.5" />
-              {filter !== "all" && (
-                <span className="absolute right-0 top-0 h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
-              )}
-            </button>
-            {filterOpen && (
-              <div role="menu" aria-label="Filter sessions" className={`${menuClass} absolute right-0 top-full mt-1 w-48`}>
-                {FILTERS.map(({ value, label }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    role="menuitemradio"
-                    aria-checked={filter === value}
-                    className={`${itemClass} text-[var(--fg)]`}
-                    onClick={() => {
-                      setFilter(value);
-                      setFilterOpen(false);
-                    }}
-                  >
-                    <span className="w-4 text-[var(--muted)]">{filter === value ? <CheckIcon className="h-4 w-4" /> : null}</span>
-                    <span className="text-[var(--muted)]">{FILTER_ICON[value]}</span>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <FilterMenu filter={filter} onChange={setFilter} />
         </div>
       </div>
       {searching && (

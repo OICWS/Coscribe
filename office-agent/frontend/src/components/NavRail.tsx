@@ -227,6 +227,34 @@ interface NavRailProps {
   onNewScheduledTask: () => void;
 }
 
+function DeleteChatsDialog({
+  targets,
+  onCancel,
+  onConfirm,
+}: {
+  targets: ThreadSummary[];
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const many = targets.length > 1;
+  return (
+    <ConfirmDialog
+      title={many ? `Delete ${targets.length} chats?` : "Delete chat?"}
+      description={
+        many ? (
+          <span className="block">{targets.length} chats and their history will be permanently removed.</span>
+        ) : (
+          <span className="block truncate" title={threadLabel(targets[0])}>
+            "{threadLabel(targets[0])}" and its history will be permanently removed.
+          </span>
+        )
+      }
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+    />
+  );
+}
+
 /** A narrow icon-only rail that expands into a full nav panel on hover
  * or when pinned. Collapsed, it shows
  * the pin toggle and the two mode icons (chat / scheduled); expanded, it
@@ -419,20 +447,7 @@ export function NavRail({
         />
       )}
       {deleteTargets.length > 0 && (
-        <ConfirmDialog
-          title={deleteTargets.length > 1 ? `Delete ${deleteTargets.length} chats?` : "Delete chat?"}
-          description={
-            deleteTargets.length > 1 ? (
-              <span className="block">{deleteTargets.length} chats and their history will be permanently removed.</span>
-            ) : (
-              <span className="block truncate" title={threadLabel(deleteTargets[0])}>
-                "{threadLabel(deleteTargets[0])}" and its history will be permanently removed.
-              </span>
-            )
-          }
-          onCancel={() => setDeleteTargets([])}
-          onConfirm={confirmDelete}
-        />
+        <DeleteChatsDialog targets={deleteTargets} onCancel={() => setDeleteTargets([])} onConfirm={confirmDelete} />
       )}
     </>
   );
