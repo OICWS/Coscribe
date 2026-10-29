@@ -76,7 +76,7 @@ dependencies = [
     "python-pptx>=1.0.0",
     # coscribe's real engine (runtime_lg/, cli.py, web/session.py, web/app.py).
     "langchain>=1.0.0",
-    "langgraph>=1.0.0",
+    "langgraph>=1.2.0",
     # >=1.0.0, not the old 0.3.0 floor -- runtime_lg/agent.py now imports
     # AnthropicPromptCachingMiddleware from langchain_anthropic.middleware,
     # part of the newer "agent middleware" architecture that shipped

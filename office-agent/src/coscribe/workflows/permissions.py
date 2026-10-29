@@ -146,7 +146,7 @@ def untrusted_agent_steps(workflow: Workflow, outside_tools: Collection[str]) ->
     def visit(steps: list[Step]) -> None:
         for step in steps:
             reads = _references_any(step, tainted)
-            if isinstance(step, AgentStep) and reads:
+            if isinstance(step, AgentStep) and reads and not step.trusted_input:
                 found.append(step.id)
             makes = step_output(step)
             if isinstance(step, LoopStep) and reads:

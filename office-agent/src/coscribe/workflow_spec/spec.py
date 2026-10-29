@@ -208,6 +208,9 @@ class AgentStep(_Step):
     max_steps: int = Field(default=20, ge=1, le=MAX_AGENT_STEPS)
     model: str | None = None
     save_as: str | None = None
+    # The person's word, given when saving, that what this step reads from
+    # outside may be acted on with its tools: it is then not read-only.
+    trusted_input: bool = False
 
     _check_save_as = field_validator("save_as")(lambda v: v if v is None else _identifier(v))
 

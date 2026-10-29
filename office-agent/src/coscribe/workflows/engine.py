@@ -35,6 +35,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import BaseTool
 from langgraph.errors import GraphBubbleUp
 from langgraph.graph import END, START, StateGraph
+from langgraph.runtime import get_runtime
 from langgraph.types import Command, interrupt
 
 from ..needs_permission import NeedsPermission
@@ -57,8 +58,10 @@ from ..workflow_spec import (
     step_output,
     walk,
 )
+from .agent_step import CODE_TOOLS, AgentCall, AgentRunner, answer_of, run_agent_step
 from .loop_labels import item_labels as _item_labels
 from .model_step import ask_model, field_problems
+from .permissions import untrusted_agent_steps
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +114,9 @@ class StepRecord:
     # A waiting step that is asking to be allowed something, not approved:
     # {"kind": "folder" | "site", "target", "message"}.
     permission: dict[str, Any] | None = None
+    # An agent step's work: {"tool_calls", "tokens", "tools_used"} once it
+    # ends, {"pending": {"tool", "args"}} while a call waits for a person.
+    agent: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -131,6 +137,14 @@ class StepContext:
     # A saved run waits for the person when a step needs a folder or site
     # it hasn't been allowed; anywhere else that is an ordinary failure.
     ask_permission: bool = False
+    # Runs agent steps (decision 0028); without one a workflow that has
+    # one is refused before it starts.
+    run_agent: AgentRunner | None = None
+    # The task's approval mode, which high and full agent steps run under.
+    approval_mode: str = "manual"
+    # Tools whose results come from outside: an agent step that reads one
+    # through its references gets read-only tools.
+    outside_tools: frozenset[str] = frozenset()
 
 
 @dataclass
@@ -358,13 +372,21 @@ def preflight(workflow: Workflow, ctx: StepContext) -> None:
             if step.tool not in ctx.tools:
                 raise WorkflowNotRunnable(f"{where}: there's no tool called {step.tool!r}")
         if isinstance(step, AgentStep):
-            # Decision 0028, part 1: the spec holds agent steps before the
-            # engine can run them.
-            raise WorkflowNotRunnable(f"{where}: agent steps can't run yet")
+            _agent_preflight(step, where, ctx)
         if isinstance(step, LoopStep) and not step.steps:
             raise WorkflowNotRunnable(f"{where}: the loop has no steps to repeat yet")
         if isinstance(step, BranchStep) and not (step.then or step.otherwise):
             raise WorkflowNotRunnable(f"{where}: the branch has no steps on either side yet")
+
+
+def _agent_preflight(step: AgentStep, where: str, ctx: StepContext) -> None:
+    if ctx.run_agent is None:
+        raise WorkflowNotRunnable(f"{where}: agent steps can't run here")
+    for tool in step.tools:
+        if tool in UNAVAILABLE_TOOLS or tool in CODE_TOOLS:
+            raise WorkflowNotRunnable(f"{where}: {tool} can't be used in a workflow")
+        if tool not in ctx.tools:
+            raise WorkflowNotRunnable(f"{where}: there's no tool called {tool!r}")
 
 
 def resolve_inputs(workflow: Workflow, given: dict[str, Any]) -> dict[str, Any]:
@@ -404,6 +426,7 @@ class _GraphBuilder:
         self.ctx = ctx
         self.on_step = on_step
         self.placed = {p.step.id: p for p in walk(workflow.steps)}
+        self.read_only = set(untrusted_agent_steps(workflow, ctx.outside_tools))
         self.graph = StateGraph(_State)
 
     async def emit(self, record: StepRecord) -> None:
@@ -442,28 +465,10 @@ class _GraphBuilder:
             if isinstance(step, ApprovalStep):
                 return await self._approval(step, values, started, it)
             await self.emit(StepRecord(step.id, "running", started_at=started, iteration=it))
-            checks = None
-            output: Any = None
-
-            async def attempt() -> None:
-                nonlocal checks, output
-                if isinstance(step, ToolStep):
-                    output = await _run_tool(step, values, self.ctx)
-                elif isinstance(step, ScriptStep):
-                    output = await _run_script(step, values, self.ctx)
-                elif isinstance(step, LLMStep):
-                    output = await _run_llm(step, values, self.ctx)
-                elif isinstance(step, CheckStep):
-                    checks = _run_check(step, values)
-                elif isinstance(step, BranchStep):
-                    held, left, right = evaluate(step.condition, values)
-                    checks = [{"held": held, "left": preview(left), "right": preview(right)}]
-                    output = {"arm": "then" if held else "otherwise"}
-
             try:
                 while True:
                     try:
-                        await attempt()
+                        output, checks, agent = await self._attempt(step, values, started, it)
                         break
                     except NeedsPermission as need:
                         if not self.ctx.ask_permission:
@@ -485,12 +490,69 @@ class _GraphBuilder:
                     output=preview(output),
                     checks=checks,
                     iteration=it,
+                    agent=agent,
                 )
             )
             save_as = None if isinstance(step, BranchStep) else step_output(step)
             return {"values": {save_as: output}} if save_as else {"values": {}}
 
         return run
+
+    async def _attempt(
+        self, step: Step, values: dict[str, Any], started: str, it: list[int]
+    ) -> tuple[Any, list[dict[str, Any]] | None, dict[str, Any] | None]:
+        """One try at a step: its output, its checks and its agent's activity."""
+        if isinstance(step, ToolStep):
+            return await _run_tool(step, values, self.ctx), None, None
+        if isinstance(step, ScriptStep):
+            return await _run_script(step, values, self.ctx), None, None
+        if isinstance(step, LLMStep):
+            return await _run_llm(step, values, self.ctx), None, None
+        if isinstance(step, AgentStep):
+            output, agent = await self._agent(step, values, started, it)
+            return output, None, agent
+        if isinstance(step, CheckStep):
+            return None, _run_check(step, values), None
+        if isinstance(step, BranchStep):
+            held, left, right = evaluate(step.condition, values)
+            checks = [{"held": held, "left": preview(left), "right": preview(right)}]
+            return {"arm": "then" if held else "otherwise"}, checks, None
+        return None, None, None
+
+    async def _agent(
+        self, step: AgentStep, values: dict[str, Any], started: str, it: list[int]
+    ) -> tuple[Any, dict[str, Any]]:
+        async def ask(call: AgentCall) -> dict[str, Any]:
+            message = f"{step.title}: the agent wants to use {call.tool}."
+            pending_call = {"pending": {"tool": call.tool, "args": preview(call.args)}}
+            await self.emit(
+                StepRecord(
+                    step.id, "waiting", started, output=message, iteration=it, agent=pending_call
+                )
+            )
+            answer = interrupt(
+                {"step_id": step.id, "title": step.title, "message": message,
+                 "call_id": call.call_id, **pending_call}
+            )  # fmt: skip
+            await self.emit(StepRecord(step.id, "running", started_at=started, iteration=it))
+            return answer_of(answer)
+
+        assert self.ctx.run_agent is not None  # preflight refuses a run without one
+        info = get_runtime().execution_info
+        assert info is not None  # set for every node LangGraph runs
+        result, reply = await run_agent_step(
+            step,
+            values,
+            self.ctx.run_agent,
+            # One agent per pass of the step: the same across a pause, a new
+            # one when the step is retried from an earlier checkpoint.
+            key=f"workflow-agent-{info.task_id}",
+            read_only=step.id in self.read_only,
+            approval_mode=self.ctx.approval_mode,
+            make_model=self.ctx.make_model,
+            ask=ask,
+        )
+        return result, reply.activity()
 
     async def _permission(
         self, step: Step, need: NeedsPermission, started: str, it: list[int]
@@ -743,7 +805,14 @@ class WorkflowRun:
         return await self._drive(None)
 
     async def answer(self, approved: bool, note: str = "") -> RunOutcome:
-        return await self._drive(Command(resume={"approved": approved, "note": note}))
+        # An agent step's answer names its call: resuming replays earlier
+        # answers by position, and the agent must not take one for another.
+        state = await self._compiled.aget_state(self.config)
+        asked = [i.value for t in state.tasks for i in t.interrupts if isinstance(i.value, dict)]
+        call_id = asked[0].get("call_id") if asked else None
+        return await self._drive(
+            Command(resume={"approved": approved, "note": note, "call_id": call_id})
+        )
 
     async def retry_from(self, step_id: str) -> RunOutcome:
         """Re-run from an earlier step, discarding what came after it --
