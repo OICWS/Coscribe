@@ -33,13 +33,15 @@ function Illustration({ kind }: { kind: PageKind }) {
         </div>
       )}
       {kind === "design" && (
-        <div className="relative h-[68%] w-[72%] overflow-hidden rounded-lg border border-white bg-white shadow-sm">
-          <span className="absolute left-[10%] top-[22%] h-[40%] w-[30%] rounded-full" style={{ background: `color-mix(in srgb, ${colour} 28%, white)` }} />
-          <span className="absolute left-[46%] top-[16%] h-[54%] w-[44%] rounded-md" style={{ background: `color-mix(in srgb, ${colour} 55%, white)` }} />
-          <span className="absolute left-[42%] top-[10%] h-[66%] w-[52%] rounded-sm border border-dashed" style={{ borderColor: colour }} />
-          {["left-[42%] top-[10%]", "left-[94%] top-[10%]", "left-[42%] top-[76%]", "left-[94%] top-[76%]"].map((at) => (
-            <span key={at} className={`absolute ${at} h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-[2px] border bg-white`} style={{ borderColor: colour }} />
-          ))}
+        <div className="flex h-[68%] w-[72%] items-center justify-center rounded-lg border border-white bg-white shadow-sm">
+          <svg viewBox="12 10 76 65" className="h-[80%]" fill="none" stroke={colour} strokeWidth="4.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M53 14C30 14 17 28 17 42c0 16 15 29 31 29 12 0 19-5 19-13 0-6 1-9 7-12 6-3 9-8 9-14 0-11-13-18-30-18Z" />
+            <g fill={colour} stroke="none">
+              <circle cx="45" cy="31" r="5.3" />
+              <circle cx="61" cy="32.5" r="5.3" />
+              <circle cx="34.5" cy="43.8" r="5.3" />
+            </g>
+          </svg>
         </div>
       )}
       {kind === "design-system" && (
@@ -50,19 +52,16 @@ function Illustration({ kind }: { kind: PageKind }) {
         </div>
       )}
       {kind === "dashboard" && (
-        <div className="flex h-[72%] w-[72%] flex-col gap-1.5 rounded-lg border border-white bg-white p-2 shadow-sm">
-          <div className="flex gap-2">
-            {[true, false].map((strong) => (
-              <div key={String(strong)} className="flex flex-1 flex-col gap-0.5 rounded-md px-1.5 py-1" style={{ background: `color-mix(in srgb, ${colour} 12%, white)` }}>
-                {bar("45%")}
-                <span className="block h-1.5 rounded-full" style={{ width: "70%", background: strong ? colour : `color-mix(in srgb, ${colour} 55%, white)` }} />
-              </div>
-            ))}
-          </div>
-          <svg viewBox="0 0 100 32" preserveAspectRatio="none" className="min-h-0 w-full flex-1" aria-hidden>
-            <path d="M0 26 L18 18 L36 22 L56 10 L78 14 L100 3 L100 32 L0 32 Z" fill={`color-mix(in srgb, ${colour} 18%, white)`} />
-            <path d="M0 26 L18 18 L36 22 L56 10 L78 14 L100 3" fill="none" stroke={colour} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        <div className="flex h-[68%] w-[72%] items-center gap-3 rounded-lg border border-white bg-white px-3 shadow-sm">
+          <svg viewBox="0 0 40 40" className="h-[70%] shrink-0" aria-hidden>
+            <circle cx="20" cy="20" r="14" fill="none" strokeWidth="7" stroke={`color-mix(in srgb, ${colour} 18%, white)`} />
+            <circle cx="20" cy="20" r="14" fill="none" strokeWidth="7" stroke={colour} strokeDasharray="58 88" transform="rotate(-90 20 20)" />
           </svg>
+          <div className="flex flex-1 flex-col gap-1.5">
+            {bar("60%", true)}
+            {bar("100%")}
+            {bar("75%")}
+          </div>
         </div>
       )}
     </div>
