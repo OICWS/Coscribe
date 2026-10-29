@@ -275,7 +275,8 @@ Last reviewed: 2026-10-15.
 
 8. **Workflows whose steps choose their autonomy** (#719, kurtosisOC; decision 0028). One PR
    per phase: P0 the record (done); P1 an agent step and an injected runner (P1a, the step in
-   the spec and on the review card, in review; P1b running it); P2 a read-only canvas; P3
+   the spec and on the review card, in review; P1b-1 the engine running it through a runner it
+   is given; P1b-2 the conversation's runner and live tests); P2 a read-only canvas; P3
    step-by-step drafting with test cases and dry runs; P4 the repair layers (a step's exception
    handler, the run's investigation, a repair proposed as a fixed branch); P5 parallel steps,
    sub-workflows, triggers on events, state across runs, versions.
