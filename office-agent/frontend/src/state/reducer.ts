@@ -119,6 +119,8 @@ export interface ChatState {
    * Codex CLI's own per-call cache_hit_rate metric this was modeled on. */
   cacheStats: { cacheReadTokens: number; inputTokens: number; hitRate: number } | null;
   turnInFlight: boolean;
+  /** When the running turn started (ms since the epoch), as the server said on connect. */
+  turnStartedAt: number | null;
   /** The message the person will probably send next, offered in the message box after a reply. */
   suggestion: string | null;
   error: string | null;
@@ -179,6 +181,7 @@ export const initialChatState: ChatState = {
   totalTokens: 0,
   cacheStats: null,
   turnInFlight: false,
+  turnStartedAt: null,
   suggestion: null,
   error: null,
   turnTick: 0,
@@ -440,7 +443,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "state":
       return {
         ...state,
-        turnInFlight: action.turn_in_flight ?? state.turnInFlight,
+        turnInFlight: action.turn_in_flight ?? state.turnInFlight, turnStartedAt: action.turn_started_at ?? null,
         planMode: action.plan_mode,
         acceptEdits: action.accept_edits,
         autoMode: action.auto_mode ?? false,

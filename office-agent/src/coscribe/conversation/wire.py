@@ -55,6 +55,9 @@ class StateEvent(TypedDict):
     # running on this thread (typically a scheduled run), so the page shows it as
     # running.
     turn_in_flight: NotRequired[bool]
+    # With turn_in_flight: when that turn started, in ms since the epoch, so a page that opens
+    # mid-turn times it from there.
+    turn_started_at: NotRequired[float]
 
 
 class UserEntry(TypedDict):
