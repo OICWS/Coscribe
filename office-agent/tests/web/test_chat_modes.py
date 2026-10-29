@@ -368,3 +368,27 @@ def test_modes_are_one_at_a_time_lg(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         False,
         False,
     )
+
+
+def test_a_page_opening_mid_turn_is_told_when_the_turn_started(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    call = _tool_call("call_1", "write_file", {"path": "note.txt", "content": "hi"})
+    fake_model = FakeToolCallingChatModel(
+        responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="done")]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_timer") as ws:
+            first = ws.receive_json()
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "write hi to note.txt"})
+            assert ws.receive_json()["type"] == "approval_required"
+            # The newest tab is the live one, so the turn is ended from it.
+            with client.websocket_connect("/ws/t_timer") as again:
+                mid_turn = again.receive_json()
+                again.send_json({"type": "stop"})
+                _receive_until(again, "tasks_changed")
+
+    assert "turn_started_at" not in first
+    assert mid_turn["turn_in_flight"] is True
+    assert mid_turn["turn_started_at"] > 1_700_000_000_000
