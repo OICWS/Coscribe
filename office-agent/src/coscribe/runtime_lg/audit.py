@@ -46,6 +46,9 @@ Reason = Literal[
     "human",
     "stopped",
     "unattended",
+    # A workflow's agent step: its allowlist, read-only rule or the task's
+    # approval mode decided (decision 0028).
+    "workflow_step",
 ]
 
 _REDACTED = "[REDACTED]"

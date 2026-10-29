@@ -304,14 +304,11 @@ forbidden_modules = ["langchain", "langchain_core", "langgraph"]
 broken_contract_guidance = "coscribe.tools and coscribe.runtime must not import langchain or langgraph; only runtime_lg and above know the agent loop. Return plain values from a tool and let runtime_lg adapt them."
 
 [[tool.importlinter.contracts]]
-name = "A fixed workflow run never reaches an autonomous agent"
+name = "Workflows depend on no agent runtime"
 type = "forbidden"
-source_modules = [
-    "coscribe.workflows.engine", "coscribe.workflow_spec",
-    "coscribe.workflows.permissions",
-]
+source_modules = ["coscribe.workflows", "coscribe.workflow_spec"]
 forbidden_modules = ["coscribe.code_runtime", "coscribe.runtime_lg", "coscribe.coordinator"]
-broken_contract_guidance = "A fixed workflow run must not import code_runtime, runtime_lg or the coordinator: a workflow step never starts an agent that can choose its own actions."
+broken_contract_guidance = "A workflow must not import code_runtime, runtime_lg or the coordinator (decision 0028): an agent step runs through the AgentRunner that StepContext.run_agent is given by the conversation, and the code module never runs inside a workflow."
 
 [[tool.importlinter.contracts]]
 name = "Office formats: Word, Excel, PowerPoint, PDF and Doc do not know each other"

@@ -134,6 +134,15 @@ def _references_any(step: Step, names: set[str]) -> bool:
     return any(ref.split(".", 1)[0] in names for ref in step_references(step))
 
 
+_OUTSIDE_CATEGORIES = frozenset({"browser", "web"})
+
+
+def brings_outside_content(category: str | None) -> bool:
+    """Whether a tool of this category returns what someone outside wrote:
+    the browser, the web tools and every connector."""
+    return category in _OUTSIDE_CATEGORIES or (category or "").startswith("mcp:")
+
+
 def untrusted_agent_steps(workflow: Workflow, outside_tools: Collection[str]) -> list[str]:
     """The agent steps that read what came from outside -- a page, a web
     response, a connector's data -- through their references: they get
