@@ -491,8 +491,8 @@ async def _start_contained(
         )
 
     task_id = await asyncio.to_thread(start)
-    status = {"task_id": task_id, "status": "running"}
-    return {**status, "language": language, "description": description}
+    status = {"task_id": task_id, "status": "running", "language": language}
+    return {**status, "description": description, "how_to_wait": WAIT_NOTE}
 
 
 def _watch(
@@ -573,6 +573,15 @@ def read_background_log(
     tail_bytes = min(max(tail_bytes, 1), _MAX_TAIL_BYTES)
     _blocked, output = blocked_write(without_guard_warnings(store.tail(task_id, tail_bytes)))
     return {"task": task.to_dict(), "output": output}
+
+
+# A model left to choose polls in a tight loop (the maintainer saw four checks in a few
+# seconds), so the result says how to wait instead.
+WAIT_NOTE = (
+    "Don't check it again and again. Go on with other work, or, if you need its result "
+    "before you can go on, end this turn with wake_on_task(task_id, reason) (through "
+    "use_tool) and you are resumed when it finishes."
+)
 
 
 def build_background_task_tools(
@@ -724,12 +733,8 @@ def build_background_task_tools(
         _RUNNING_SUPERVISORS.add(supervisor)
         supervisor.add_done_callback(_RUNNING_SUPERVISORS.discard)
 
-        return {
-            "task_id": task.task_id,
-            "status": "running",
-            "language": language,
-            "description": description,
-        }
+        started = {"task_id": task.task_id, "status": "running", "language": language}
+        return {**started, "description": description, "how_to_wait": WAIT_NOTE}
 
     def check_background_task(
         task_id: str, tail_bytes: int = _DEFAULT_TAIL_BYTES
@@ -754,6 +759,8 @@ def build_background_task_tools(
         result = task.to_dict()
         blocked, output = blocked_write(without_guard_warnings(store.tail(task_id, tail_bytes)))
         result["output"] = output + (refusal_note(blocked) if blocked else "")
+        if task.status == "running":
+            result["how_to_wait"] = WAIT_NOTE
         if blocked:
             result["blocked_write"] = blocked
             folder = suggested_folder(blocked)
