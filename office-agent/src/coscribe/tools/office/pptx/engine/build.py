@@ -172,7 +172,10 @@ def build_deck(
         "failing_builds": failing,
         "pages": [
             {"page": name, "source": source, "slide": slide}
-            for (name, _), source, slide in zip(texts, hashes, slide_hashes(out), strict=True)
+            | ({"template_shapes": page.template_shapes} if page.template_shapes else {})
+            for (name, _), source, slide, page in zip(
+                texts, hashes, slide_hashes(out), compiled.pages, strict=True
+            )
         ],
     }
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
