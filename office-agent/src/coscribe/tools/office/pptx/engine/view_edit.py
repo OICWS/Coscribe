@@ -67,7 +67,8 @@ def slide_parts(deck: Path, index: int, resource_root: Path) -> dict[str, Any]:
     _inline_images(root, folder, resource_root.resolve())
     slides = Presentation(str(deck)).slides
     if index < len(slides):
-        _draw_natives(root, slides[index], EMU_PER_PX)
+        # A section is never built on a template, so no shape came from a template slide.
+        _draw_natives(root, slides[index], EMU_PER_PX, [])
     defs = [child for child in root if child.tag == f"{{{SVG_NS}}}defs"]
     section = parse_section(source)
     parts = []

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import math
 import re
-from collections.abc import Iterator
+from collections.abc import Collection, Iterator
 from dataclasses import dataclass
 from typing import Any
 from xml.sax.saxutils import escape
@@ -42,11 +42,18 @@ class _Series:
     points: dict[int, str]
 
 
-def native_drawings(slide: Any, emu_per_px: float, font: str) -> list[str]:
+def native_drawings(
+    slide: Any, emu_per_px: float, font: str, skip: Collection[Any] = ()
+) -> list[str]:
     """The SVG markup of each chart and table on the python-pptx `slide`, in document order,
-    placed in page px. `font` is the page's font-family, for text the XML leaves to the theme."""
+    placed in page px, but for those inside the shapes in `skip`. `font` is the page's
+    font-family, for text the XML leaves to the theme."""
     drawings = []
     for frame in slide.shapes._spTree.iter(f"{_P}graphicFrame"):
+        if any(node is shape for node in frame.iterancestors() for shape in skip) or any(
+            frame is shape for shape in skip
+        ):
+            continue
         data = frame.find(f"{_A}graphic/{_A}graphicData")
         if data is None:
             continue
