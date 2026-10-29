@@ -12,6 +12,9 @@ from ..._chart_data import CHART_TYPES, parse_chart_table
 from ..._docx_chart import add_chart_paragraph
 from ._style import EAST_ASIAN_FONT, LATIN_FONT
 
+# The Doc panel's chart colours (frontend lib/docChart.ts), so the Word file looks like the Doc.
+_CHART_COLOURS = ("4F6EF7", "12A88A", "F59F00", "E0508A", "8A63E8", "6B7280")
+
 _CALLOUT = re.compile(r"§callout:(\w+):([^§]*)§")
 _END = "§/callout§"
 _CHART = re.compile(r"§chart:(\w+):([^§]*)§")
@@ -142,6 +145,7 @@ def _chart(document: Any, marker: Any, table: Any, kind: str, title: str) -> boo
         width,
         int(Inches(3.2)),
         (document.styles["Normal"].font.name or LATIN_FONT, EAST_ASIAN_FONT),
+        _CHART_COLOURS,
     )
     marker.addprevious(paragraph._p)
     marker.getparent().remove(marker)

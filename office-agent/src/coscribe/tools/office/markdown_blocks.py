@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 _SEPARATOR_CELL_RE = re.compile(r"^:?-{2,}:?$")
 
@@ -141,47 +141,75 @@ def parse_blocks(content: str) -> list[Block]:
 # Markers count as formatting only where Markdown says they do: touching
 # text on the inside and not glued to a word on the outside, so file names
 # and identifiers (sales_2025.csv, snake_case_name, 2*3*4) keep their
-# underscores and asterisks. A backslash makes one literal.
+# underscores and asterisks. A backslash makes one literal. Chinese has no
+# spaces between words, so beside an asterisk only a Latin letter or a digit
+# counts as a word: 用*斜体*；is italic. No piece can contain its own opening
+# marker, so a long run of markers is read in linear time.
 _INLINE_MARKUP_RE = re.compile(
-    r"\\(?P<escaped>[*_\\])"
-    r"|\*\*(?P<bold>\S(?:.*?\S)?)\*\*"
-    r"|(?<![*\w\\])\*(?P<italic1>[^\s*](?:[^*]*?[^\s*])?)\*(?![*\w])"
+    r"\\(?P<escaped>[*_`\\])"
+    r"|`(?P<code>[^`\n]+)`"
+    r"|\[(?P<link_text>[^\[\]\n]+)\]\((?P<link_url>[^()\s]+)\)"
+    r"|\*\*\*(?P<bold_italic>[^\s*](?:[^*\n]*[^\s*])?)\*\*\*"
+    r"|\*\*(?P<bold>[^\s*](?:[^*\n]*[^\s*])?)\*\*"
+    r"|(?<![*A-Za-z0-9\\])\*(?P<italic1>[^\s*](?:[^*]*?[^\s*])?)\*(?![*A-Za-z0-9])"
     r"|(?<![_\w\\])_(?P<italic2>[^\s_](?:[^_]*?[^\s_])?)_(?![_\w])"
 )
 
 
-def parse_inline_runs(text: str) -> list[tuple[str, bool, bool]]:
-    """Split ``**bold**``/``*italic*``/``_italic_`` markers out of a block's
-    text into ``(text, bold, italic)`` runs, so a writer can style each
-    fragment with its own run instead of emitting the literal asterisks/
-    underscores as visible text -- the model reaches for this markdown
-    convention constantly even though ``parse_blocks`` above never taught it
-    to the writers, so it used to come through as literal ``**bold**``
-    characters in generated docx/pptx. A lone, unterminated marker (e.g. a
-    bullet reading "the file *.txt") is left as plain text rather than
-    swallowed as unterminated markup, since the regex only matches when a
-    closing marker is also present."""
-    runs: list[tuple[str, bool, bool]] = []
+@dataclass(frozen=True)
+class InlineSpan:
+    """A piece of a block's text with the one style Markdown gave it."""
+
+    text: str
+    bold: bool = False
+    italic: bool = False
+    code: bool = False
+    link: str | None = None
+
+
+def _span(match: re.Match[str]) -> InlineSpan:
+    if match.group("escaped") is not None:
+        return InlineSpan(match.group("escaped"))
+    if match.group("code") is not None:
+        return InlineSpan(match.group("code"), code=True)
+    if match.group("link_text") is not None:
+        return InlineSpan(match.group("link_text"), link=match.group("link_url"))
+    if match.group("bold_italic") is not None:
+        return InlineSpan(match.group("bold_italic"), bold=True, italic=True)
+    if match.group("bold") is not None:
+        return InlineSpan(match.group("bold"), bold=True)
+    return InlineSpan(match.group("italic1") or match.group("italic2") or "", italic=True)
+
+
+def parse_inline_spans(text: str) -> list[InlineSpan]:
+    """Split ``**bold**``, ``*italic*``/``_italic_``, `` `code` `` and ``[text](url)`` out of a
+    block's text, so a writer styles each piece instead of printing the markers. A lone,
+    unterminated marker (a bullet reading "the file *.txt") stays plain text."""
+    spans: list[InlineSpan] = []
     pos = 0
     for match in _INLINE_MARKUP_RE.finditer(text):
         if match.start() > pos:
-            runs.append((text[pos : match.start()], False, False))
-        if match.group("escaped") is not None:
-            runs.append((match.group("escaped"), False, False))
-        elif match.group("bold") is not None:
-            runs.append((match.group("bold"), True, False))
-        else:
-            italic_text = match.group("italic1")
-            if italic_text is None:
-                italic_text = match.group("italic2")
-            runs.append((italic_text, False, True))
+            spans.append(InlineSpan(text[pos : match.start()]))
+        spans.append(_span(match))
         pos = match.end()
     if pos < len(text):
-        runs.append((text[pos:], False, False))
-    merged: list[tuple[str, bool, bool]] = []
-    for run in runs:
-        if merged and merged[-1][1:] == run[1:]:
-            merged[-1] = (merged[-1][0] + run[0], run[1], run[2])
+        spans.append(InlineSpan(text[pos:]))
+    merged: list[InlineSpan] = []
+    for span in spans:
+        if merged and replace(merged[-1], text="") == replace(span, text=""):
+            merged[-1] = replace(span, text=merged[-1].text + span.text)
         else:
-            merged.append(run)
-    return merged or [(text, False, False)]
+            merged.append(span)
+    return merged or [InlineSpan(text)]
+
+
+def parse_inline_runs(text: str) -> list[tuple[str, bool, bool]]:
+    """``parse_inline_spans`` as ``(text, bold, italic)`` runs, for a writer that has no code
+    font or links: a code span and a link's words are plain text there."""
+    runs: list[tuple[str, bool, bool]] = []
+    for span in parse_inline_spans(text):
+        if runs and runs[-1][1:] == (span.bold, span.italic):
+            runs[-1] = (runs[-1][0] + span.text, span.bold, span.italic)
+        else:
+            runs.append((span.text, span.bold, span.italic))
+    return runs

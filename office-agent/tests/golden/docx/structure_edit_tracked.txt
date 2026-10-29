@@ -193,13 +193,14 @@
         <w:r>
           <w:rPr>
             <w:b/>
+            <w:i/>
           </w:rPr>
-          <w:delText xml:space="preserve">*both</w:delText>
+          <w:delText xml:space="preserve">both</w:delText>
         </w:r>
       </w:del>
       <w:del w:author="Reviewer" w:date="&lt;normalised&gt;" w:id="6">
         <w:r>
-          <w:delText xml:space="preserve">* styles.</w:delText>
+          <w:delText xml:space="preserve"> styles.</w:delText>
         </w:r>
       </w:del>
     </w:p>

@@ -113,9 +113,12 @@ def _finish_paragraph(
     change_ids: _ChangeIdCounter,
 ) -> None:
     """What a written paragraph gets after its text: a page break before it, a tracked insertion,
-    a comment."""
+    a comment. A paragraph ending in a colon introduces what follows (a list, a table, a chart),
+    so it keeps with it rather than end a page alone."""
     if block.new_page:
         paragraph._p.get_or_add_pPr().get_or_add_pageBreakBefore()
+    if block.kind == "paragraph" and block.text.rstrip().endswith((":", "：")):
+        paragraph._p.get_or_add_pPr().get_or_add_keepNext()
     if change_author is not None:
         _mark_paragraph_inserted(paragraph._p, change_author, change_ids)
     if block.comment:
