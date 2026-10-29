@@ -24,6 +24,11 @@ def _docx_tools_1(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
     ) -> dict[str, object]:
         """Create a Word (.docx) file under the workspace from structured text.
 
+        Only when the person asked for Word or a .docx by name, gave a Word
+        template, or wants tracked changes. Any other document (a report,
+        resume, letter, plan, with tables and charts too) is a Doc: load the
+        "Docs" skill and write a .md file instead; it exports to Word itself.
+
         `content` uses a light markdown subset: `#`/`##`/`###` for headings,
         `-`/`*` for bullet items, `1.` for numbered items, and
         `| cell | cell |` rows for tables. Plain lines become paragraphs.
