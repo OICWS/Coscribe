@@ -57,6 +57,7 @@ GET /api/script-env/interpreter
 GET /api/script-env/packages
 GET /api/script-isolation
 GET /api/secrets
+GET /api/settings/proxy
 GET /api/skills
 GET /api/skills/catalog
 GET /api/skills/plugins
@@ -75,10 +76,7 @@ GET /api/threads/{thread_id}/design
 GET /api/threads/{thread_id}/doc/asset
 GET /api/threads/{thread_id}/doc/blocks
 GET /api/threads/{thread_id}/doc/comments
-GET /api/threads/{thread_id}/docs/blocks
-GET /api/threads/{thread_id}/docs/image
-GET /api/threads/{thread_id}/docx-review
-GET /api/threads/{thread_id}/docx-review/original
+GET /api/threads/{thread_id}/export
 GET /api/threads/{thread_id}/files/download
 GET /api/threads/{thread_id}/slides
 GET /api/threads/{thread_id}/slides/comments
@@ -129,6 +127,7 @@ POST /api/script-env/interpreter
 POST /api/script-env/own-python
 POST /api/script-env/packages
 POST /api/script-isolation/test
+POST /api/settings/proxy/test
 POST /api/skills/catalog/{name}
 POST /api/skills/plugins/{plugin_id}
 POST /api/skills/upload
@@ -141,8 +140,6 @@ POST /api/threads/{thread_id}/doc/comments/{comment_id}
 POST /api/threads/{thread_id}/doc/comments/{comment_id}/replies
 POST /api/threads/{thread_id}/doc/export
 POST /api/threads/{thread_id}/doc/restore
-POST /api/threads/{thread_id}/docs/restore
-POST /api/threads/{thread_id}/docx-review
 POST /api/threads/{thread_id}/files/open
 POST /api/threads/{thread_id}/meta
 POST /api/threads/{thread_id}/rename
@@ -166,9 +163,9 @@ PUT /api/mcp/servers/{name}/permissions
 PUT /api/scheduled-tasks/{trigger_id}
 PUT /api/scheduled-tasks/{trigger_id}/notes
 PUT /api/secrets/{name}
+PUT /api/settings/proxy
 PUT /api/threads/{thread_id}/doc/blocks
 PUT /api/threads/{thread_id}/doc/comments/{comment_id}
-PUT /api/threads/{thread_id}/docs/blocks
 PUT /api/threads/{thread_id}/slides/{index}/source
 WS /ws/browser
 WS /ws/{thread_id}

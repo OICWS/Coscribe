@@ -34,6 +34,10 @@ policy). Callers import these from `coscribe.code_runtime`, not a submodule. Tes
   0021, `tests/test_code_runtime.py::test_a_command_is_refused_without_asking`), except a plain
   read inside the thread's own folder, which runs without asking; a read outside it is refused
   (same file). There, file changes from Codex's patch tool come back as approvals.
+- The commands Codex runs get no variable whose name holds KEY, SECRET or TOKEN, none of the
+  keys `launch.py` adds, and the proxy without its user name or password; the conversation's
+  variables are set over that (`config_toml`'s `[shell_environment_policy]`, issue #667).
+  Codex's own process keeps the full environment, since it reads its key and proxy there.
 - A downloaded Codex member or wheel that does not match its pinned sha256 is not installed
   (`tests/test_code_runtime_install.py`).
 - A fixed workflow run never reaches this package (import contract, `docs/decisions/0005-code-is-a-second-runtime.md`).

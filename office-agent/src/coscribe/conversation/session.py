@@ -805,11 +805,11 @@ class ChatSessionLG:
             ),
         }
         if on_connect:
-            # A tab opening mid-turn (most often: a scheduled run executing
-            # in the background) needs to show that turn as running, with
-            # Stop available. Connect-time only: a state sent from *inside*
-            # a turn (/plan, a model switch) holds the lock itself.
+            # A tab opening mid-turn (a scheduled run, or a switch back) shows it running, with Stop
+            # and its time so far. Connect-time only: a state sent inside a turn holds the lock.
             state["turn_in_flight"] = self._turn_lock.locked()
+            if self._turn_lock.turn_started_at is not None:
+                state["turn_started_at"] = self._turn_lock.turn_started_at
         await websocket.send_json(state)
 
     def workspace_scope(self) -> WorkspaceScope:

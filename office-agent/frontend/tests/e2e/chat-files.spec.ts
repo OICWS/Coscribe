@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { freshThreadPath, waitForConnected } from "./helpers";
 
 // A reply that names a file the conversation made shows a chip with a hover card, and the end of the
-// turn a card that opens it (the stub model writes the document, then says its name).
+// turn a card that opens it (the stub model writes the Doc, then says its name).
 test.skip(!process.env.COSCRIBE_E2E_WORKSPACE, "COSCRIBE_E2E_WORKSPACE names the server's workspace folder");
 test.use({ viewport: { width: 1600, height: 1000 } });
 
@@ -12,7 +12,7 @@ test(`a file named in a reply is a chip with a card on hover, and the turn ends 
   const name = `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
   await page.goto(freshThreadPath("chat-files"));
   await waitForConnected(page);
-  await page.locator("textarea").fill(`write it [[stub-tool write_docx {"path":"${name}.docx","content":"# Title\\n\\nBody"}]] [[stub-say I wrote ${name}.docx for you.]]`);
+  await page.locator("textarea").fill(`write it [[stub-tool write_file {"path":"${name}.md","content":"---\\ncoscribe: doc\\n---\\n\\n# Title\\n\\nBody"}]] [[stub-say I wrote ${name}.md for you.]]`);
   await page.keyboard.press("Enter");
   await page.getByRole("button", { name: "Approve", exact: true }).click();
 
@@ -28,11 +28,45 @@ test(`a file named in a reply is a chip with a card on hover, and the turn ends 
   await chip.click();
   await expect(page.getByRole("region", { name: "Viewer" })).toBeVisible();
 
-  const end = page.getByTitle(`Open ${name}.docx`);
+  const end = page.getByTitle(`Open ${name}.md`);
   await expect(end).toBeVisible();
-  await expect(end).toContainText("Document · .docx");
+  await expect(end).toContainText("Document · .md");
   await page.mouse.move(5, 500);
   await end.click();
   await expect(page.getByRole("region", { name: "Viewer" })).toBeVisible();
 });
 }
+
+test("a Word file's card opens it in Word, since the app has no panel for it", async ({ page }) => {
+  const name = `word-${Math.random().toString(36).slice(2, 8)}`;
+  const opened: string[] = [];
+  await page.route("**/files/open", async (route) => {
+    opened.push(route.request().postData() ?? "");
+    await route.fulfill({ json: { ok: true } });
+  });
+  await page.goto(freshThreadPath("chat-files-word"));
+  await waitForConnected(page);
+  await page.locator("textarea").fill(`write it [[stub-tool write_docx {"path":"${name}.docx","content":"# Title\\n\\nBody"}]] [[stub-say I wrote ${name}.docx for you.]]`);
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Approve", exact: true }).click();
+
+  await page.getByTitle(`Open ${name}.docx`).click();
+  await expect.poll(() => opened.length).toBe(1);
+  expect(JSON.parse(opened[0])).toEqual({ path: `${name}.docx`, reveal: false });
+  await expect(page.getByRole("region", { name: "Viewer" })).toHaveCount(0);
+});
+
+test("a Markdown file that is not a Doc gets no card that leads nowhere", async ({ page }) => {
+  const name = `notes-${Math.random().toString(36).slice(2, 8)}`;
+  await page.goto(freshThreadPath("chat-files-notes"));
+  await waitForConnected(page);
+  await page.locator("textarea").fill(`write it [[stub-tool write_file {"path":"${name}.md","content":"# Notes\\n\\nJust notes."}]] [[stub-say I wrote ${name}.md for you.]]`);
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await expect(page.getByText(`I wrote ${name}.md for you.`, { exact: true })).toBeVisible();
+
+  // The lookups have long answered by now; no chip, no card.
+  await page.waitForTimeout(1500);
+  await expect(page.getByTitle(`Open ${name}.md`)).toHaveCount(0);
+  await expect(page.locator("p").getByRole("button", { name })).toHaveCount(0);
+});

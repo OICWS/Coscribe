@@ -365,3 +365,35 @@ async def test_a_background_script_gets_the_conversations_variables(
     finished = await _wait_until_finished(tools, started["task_id"])
 
     assert finished["status"] == "succeeded" and "north" in finished["output"]
+
+
+async def test_a_background_script_is_not_handed_the_servers_keys_or_proxy_password(
+    tools: BgTools, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "gemini-not-for-scripts")
+    monkeypatch.setenv("https_proxy", "http://alice:hunter2@proxy.example:8080")
+
+    # The output is read back from its tail, which a whole Windows environment overflows.
+    script = (
+        "import os; everything = str(os.environ);"
+        "print('gemini-not-for-scripts' in everything, 'hunter2' in everything,"
+        " os.environ.get('https_proxy'))"
+    )
+    started = await tools.run_background_script(
+        language="python", script=script, description="look for the server's secrets"
+    )
+    finished = await _wait_until_finished(tools, started["task_id"])
+
+    assert finished["status"] == "succeeded", finished
+    assert finished["output"].strip() == "False False http://proxy.example:8080"
+
+
+async def test_a_running_task_tells_the_model_to_wait_instead_of_polling(tools: BgTools) -> None:
+    started = await tools.run_background_script(
+        language="python", script="import time\ntime.sleep(2)\n", description="sleep"
+    )
+    assert "wake_on_task" in started["how_to_wait"]
+    assert "wake_on_task" in tools.check_background_task(started["task_id"])["how_to_wait"]
+
+    finished = await _wait_until_finished(tools, started["task_id"])
+    assert "how_to_wait" not in finished

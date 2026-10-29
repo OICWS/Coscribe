@@ -66,6 +66,7 @@ class PdfToolkit(WorkspaceToolkit):
         from reportlab.lib import colors
         from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
         from reportlab.platypus import (
+            PageBreak,
             Paragraph,
             SimpleDocTemplate,
             Spacer,
@@ -115,6 +116,9 @@ class PdfToolkit(WorkspaceToolkit):
             elif block.kind == "number":
                 numbered_text = f"{block.ordinal}. {rich(block.text)}"
                 flowables.append(Paragraph(numbered_text, bullet_style))
+            elif block.kind == "pagebreak":
+                flowables.append(PageBreak())
+                continue
             elif block.kind == "table" and block.rows:
                 # Paragraph cells wrap; a plain string cell runs off the page.
                 table = Table(

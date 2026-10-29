@@ -1,16 +1,17 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense } from "react";
+import { DraftPages, draftPages, type DraftPage } from "../lib/draftPages";
 import type { CommentLink } from "../lib/slideComments";
 import { isPptx } from "../lib/slides";
 import { isDesign, isDocMarkdown } from "../lib/viewers";
 import { DesignPanel } from "./DesignPanel";
-import { DocxViewerPanel } from "./DocxViewerPanel";
 import { SlidesPanel } from "./slides/SlidesPanel";
 
 // The editor and its library load when a document is first edited, not with the app.
 const DocPanel = lazy(() => import("./doc/DocPanel").then((m) => ({ default: m.DocPanel })));
-const DocsEditorPanel = lazy(() => import("./docs/DocsEditorPanel").then((m) => ({ default: m.DocsEditorPanel })));
 
-/** The viewer panel's content: a deck in the Slides panel, a Word file in the Word viewer. */
+const NO_DRAFTS: DraftPage[] = [];
+
+/** The viewer panel's content: a deck in the Slides panel, a Doc in the Doc editor. */
 export function ViewerPanel({
   threadId,
   path,
@@ -18,6 +19,7 @@ export function ViewerPanel({
   onSendComment,
   onFileChanged,
   busy = false,
+  items = [],
 }: {
   threadId: string;
   path: string;
@@ -27,10 +29,15 @@ export function ViewerPanel({
   onFileChanged?: (path: string | null) => void;
   /** coscribe is in the middle of a turn, so the file may be half written. */
   busy?: boolean;
+  /** The conversation's log: the slide pages written so far show until the deck is built from them. */
+  items?: Parameters<typeof draftPages>[0];
 }) {
-  const [editing, setEditing] = useState(false);
   if (isPptx(path)) {
-    return <SlidesPanel threadId={threadId} path={path} refreshKey={refreshKey} onSendComment={onSendComment} onFileChanged={onFileChanged} busy={busy} />;
+    return (
+      <DraftPages.Provider value={busy ? draftPages(items) : NO_DRAFTS}>
+        <SlidesPanel threadId={threadId} path={path} refreshKey={refreshKey} onSendComment={onSendComment} onFileChanged={onFileChanged} busy={busy} />
+      </DraftPages.Provider>
+    );
   }
   if (isDocMarkdown(path)) {
     return (
@@ -42,11 +49,5 @@ export function ViewerPanel({
   if (isDesign(path)) {
     return <DesignPanel threadId={threadId} path={path} refreshKey={refreshKey} onFileChanged={onFileChanged} />;
   }
-  return editing ? (
-    <Suspense fallback={null}>
-      <DocsEditorPanel threadId={threadId} path={path} refreshKey={refreshKey} onFileChanged={onFileChanged} onAsk={onSendComment} onPreview={() => setEditing(false)} />
-    </Suspense>
-  ) : (
-    <DocxViewerPanel threadId={threadId} path={path} refreshKey={refreshKey} onAsk={onSendComment} onFileChanged={onFileChanged} onEdit={() => setEditing(true)} />
-  );
+  return null;
 }

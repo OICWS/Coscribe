@@ -22,7 +22,6 @@ this was verified before being relied on here.
 
 from __future__ import annotations
 
-import os
 import shutil
 import tempfile
 from collections.abc import Callable, Mapping, Sequence
@@ -33,10 +32,10 @@ from ...runtime import tool_metadata
 from .._files_written import snapshot_workspace, with_files_written
 from .._output_truncation import truncate_script_output
 from .capabilities import require_capability
+from .env_allowlist import child_env
 from .isolation import denied_note, for_scripts, scratch_root
 from .node_env import ensure_node_env
 from .running import Detachable, run_to_end
-from .script_env import overlay_env
 from .script_guard import (
     blocked_write,
     node_guard_args,
@@ -86,7 +85,7 @@ def _run_node_script(
     # process writing script.js to disk) needs the explicit encoding here;
     # the subprocess.run encoding below still has to match on the read side.
     env = {
-        **overlay_env(os.environ, session_env),
+        **child_env(session_env),
         "NODE_PATH": str(node_env_dir / "node_modules"),
     }
     if isolation is not None:

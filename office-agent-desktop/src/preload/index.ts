@@ -32,6 +32,8 @@ import { contextBridge, ipcRenderer } from "electron";
 // Keep this in sync with dialog.ts's own PICK_FOLDER_CHANNEL -- cannot be
 // a shared import, see this file's own header comment above.
 const PICK_FOLDER_CHANNEL = "dialog:pick-folder";
+// Keep in sync with docPdf.ts.
+const DOC_PDF_CHANNEL = "doc:print-to-pdf";
 
 // Keep these in sync with browserPanel.ts's own exported channel/event
 // constants -- same "cannot be a shared import" constraint.
@@ -51,6 +53,7 @@ const BROWSER_PANEL_TABS_EVENT = "browser-panel:tabs";
 const BROWSER_PANEL_SHOW_MENU_CHANNEL = "browser-panel:show-menu";
 const BROWSER_PANEL_CAPTURE_CHANNEL = "browser-panel:capture";
 const BROWSER_PANEL_SET_VIEW_HIDDEN_CHANNEL = "browser-panel:set-view-hidden";
+const BROWSER_PANEL_VIEW_GROUP_CHANNEL = "browser-panel:view-group";
 const BROWSER_PANEL_PICKED_EVENT = "browser-panel:picked";
 const BROWSER_PANEL_AGENT_EVENT = "browser-panel:agent";
 const BROWSER_PANEL_SHOW_ALLOWED_SITES_EVENT = "browser-panel:show-allowed-sites";
@@ -192,6 +195,11 @@ contextBridge.exposeInMainWorld("coscribeDesktop", {
     return ipcRenderer.invoke(PICK_FOLDER_CHANNEL);
   },
 
+  /** The page as it is now, printed to an A4 PDF: its bytes. */
+  printToPdf(): Promise<Uint8Array> {
+    return ipcRenderer.invoke(DOC_PDF_CHANNEL);
+  },
+
   /** The Browser panel's tabs -- see browserPanel.ts. */
   browserPanelOpen(rect: BrowserPanelRect): Promise<void> {
     return ipcRenderer.invoke(BROWSER_PANEL_OPEN_CHANNEL, rect);
@@ -231,6 +239,10 @@ contextBridge.exposeInMainWorld("coscribeDesktop", {
   },
   browserPanelCapture(): Promise<unknown> {
     return ipcRenderer.invoke(BROWSER_PANEL_CAPTURE_CHANNEL);
+  },
+  /** Which conversation's tabs the panel shows; the others keep their own. */
+  browserPanelViewGroup(group: string): Promise<void> {
+    return ipcRenderer.invoke(BROWSER_PANEL_VIEW_GROUP_CHANNEL, group);
   },
   browserPanelSetViewHidden(hidden: boolean): Promise<void> {
     return ipcRenderer.invoke(BROWSER_PANEL_SET_VIEW_HIDDEN_CHANNEL, hidden);

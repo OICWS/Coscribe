@@ -136,7 +136,7 @@ def test_the_real_app_hands_its_page_the_token_and_refuses_a_post_without_it(
             assert page.headers["cache-control"] == "no-store"
             bare = TestClient(client.app, base_url="http://127.0.0.1:8000")
             local = {"Host": "127.0.0.1:8000"}
-            posted = bare.post("/api/threads/x/docs/blocks", json={}, headers=local)
+            posted = bare.post("/api/threads/x/doc/blocks", json={}, headers=local)
             assert posted.status_code == 403
             with pytest.raises(WebSocketDisconnect) as refused:
                 with bare.websocket_connect("/ws/some-thread", headers=local):
@@ -159,15 +159,12 @@ AUDITED_READ_ONLY_GETS = {
     "/api/artifacts/lookup",
     "/api/artifacts/{artifact}/content",
     "/api/threads/{thread_id}/design",
-    "/api/threads/{thread_id}/docs/blocks",
-    # Keeps a copy of the Doc it reads in `name.doc/versions` (as the Word route does in the state
-    # folder), so a change made behind the editor can be undone; nothing else is written.
+    # Keeps a copy of the Doc it reads in `name.doc/versions`, so a change made behind the editor
+    # can be undone; nothing else is written.
     "/api/threads/{thread_id}/doc/blocks",
     "/api/threads/{thread_id}/doc/comments",
-    # Reads one picture of the Doc from its side folder, as `docs/image` reads one of a Word file;
-    # an <img> cannot carry the token header.
+    # Reads one picture of the Doc from its side folder; an <img> cannot carry the token header.
     "/api/threads/{thread_id}/doc/asset",
-    "/api/threads/{thread_id}/docs/image",
     "/api/artifacts/{artifact}/thumbnail",
     "/api/attachment/pdf",
     "/api/attachment/pdf/page",
@@ -202,6 +199,7 @@ AUDITED_READ_ONLY_GETS = {
     "/api/scheduled-tasks",
     "/api/scheduled-tasks/{trigger_id}/notes",
     "/api/secrets",
+    "/api/settings/proxy",
     "/api/skills",
     "/api/skills/catalog",
     "/api/skills/plugins",
@@ -216,9 +214,8 @@ AUDITED_READ_ONLY_GETS = {
     "/api/threads/status",
     "/api/threads/{thread_id}/activity",
     "/api/threads/{thread_id}/background-tasks",
+    "/api/threads/{thread_id}/export",
     "/api/threads/{thread_id}/context-breakdown",
-    "/api/threads/{thread_id}/docx-review",
-    "/api/threads/{thread_id}/docx-review/original",
     "/api/threads/{thread_id}/files/download",
     "/api/threads/{thread_id}/slides",
     "/api/threads/{thread_id}/slides/comments",

@@ -152,11 +152,12 @@
       <w:r>
         <w:rPr>
           <w:b/>
+          <w:i/>
         </w:rPr>
-        <w:t>*both</w:t>
+        <w:t>both</w:t>
       </w:r>
       <w:r>
-        <w:t>* styles.</w:t>
+        <w:t xml:space="preserve"> styles.</w:t>
       </w:r>
     </w:p>
     <w:sectPr w:rsidR="00FC693F" w:rsidRPr="0006063C" w:rsidSect="00034616">

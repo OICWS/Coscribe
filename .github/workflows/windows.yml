@@ -20,6 +20,8 @@ name: Windows
       - "office-agent/src/coscribe/tools/exec/own_python.py"
       - "office-agent/src/coscribe/tools/exec/script_env.py"
       - "office-agent/tests/test_isolation.py"
+      # A Doc saved on Windows has CRLF line endings, which a restore must keep.
+      - "office-agent/src/coscribe/tools/office/doc/history.py"
 
 concurrency:
   group: windows-${{ github.ref }}

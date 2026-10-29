@@ -11,6 +11,7 @@ Last reviewed: 2026-10-15.
 ## Next, in order
 
 00. **LibreOffice as an optional engine** (record 0026, which supersedes 0012 in what it forbids). Built in this order, one PR each: detection and the Settings › Capabilities card; render to PDF and page images, the Word page-level check and the reviewer reading those pages; the install button; preview and conversion of Office files without Microsoft Office.
+000. **Settings search index guard.** Settings search lists its rows by hand in `frontend/src/components/settings/searchIndex.ts`; add a test that fails when a `SettingRow` label is missing from it.
 0. **Structure period: done** (record 0009; features paused from 2026-10-11, only the maintainer lifts it; closing report `docs/metrics/2026-10-19-structure-period-close.md`; what stays open is listed there).
    Steps, each one PR or less, from `docs/assessments/2026-10-11-scale-to-1m-lines.md`:
    1. Done: the ratchet and the encoding lint rule; `check.sh` and CI enforce the ratchet (a worse number fails; `tests/test_ratchet.py` keeps that wired).
@@ -74,8 +75,12 @@ Last reviewed: 2026-10-15.
      red because a test waited 10 s for a reply on a slow runner (the wait is now 30 s; #610,
      checked by a manual Windows run on the fix branch before it merged). The maintainer decided
      on 2026-10-24 that this night does not restart the count: it stays at 5 of 14, 10-24 is
-     neither green nor red, and the next green scheduled night is the 6th. A red night otherwise
-     restarts it, and a failure after this fix is a product bug, not an exception.
+     neither green nor red, and the next green scheduled night is the 6th. Green nights followed on
+     10-25 and 10-26 (7 of 14). 10-27 was red on three tests added on 10-26 and 10-27: putting a
+     kept Doc version back turned a CRLF file into LF (a product bug, fixed), and a LibreOffice
+     route test ran a shell-script launcher (skipped on Windows like its sibling file). That failure
+     is after the 10-24 exception, so the count restarts at 0 and the next green scheduled night is
+     the 1st.
    - Done: `test_tool_schema_snapshot` is skipped on Python 3.13 (cloud containers), where docstring
      indentation changes every tool description; CI runs 3.11 and is the check (#252).
    - For the maintainer: switch on Dependabot security updates, secret scanning and push
@@ -193,8 +198,8 @@ Last reviewed: 2026-10-15.
    bold, italic, lists, links, tables, images), only the changed blocks rewritten, the person's Word edits never overwritten. Order:
    block reader and writer, editor panel (done), the person's edits told to coscribe (done), pictures shown in the text and added from a file or paste (done), then divider and page break (done), picture size and alt text (done), undo of a change made behind the editor (done), Export as Word, PDF and Markdown (done; PDF through the print dialog, to check in the desktop app), the chat's end-of-turn file card and the chip with a hover card in a reply (done), undo across coscribe's turns. Version history is wanted, not in v1.
    Word documents are still written from markdown: a spec route (a head and components, decision 0024) was built, measured against markdown on 14 tasks and not adopted, `docs/assessments/2026-10-26-word-spec-gate.md`.
-   Doc artifact (design note `docs/assessments/2026-10-26-doc-artifact.md`, decision 0025 accepted 2026-10-26): a markdown document people and coscribe edit together, comments for coscribe as on a deck, export to Markdown, PDF and Word; the Word panel is frozen. Steps 1 to 4 of six are in (`tools/office/doc`: the format, blocks with line ranges, block-level edits, the routes, kept versions, the note of what the person changed, comments anchored to their block, pictures, the Word export; `frontend/src/components/doc`: the editor with comments, callouts, charts and pictures) and the artifact listing and side folder (step 5, server); opening a Doc from a chip and exporting it (step 5, frontend) is in review, then the Docs skill (step 6, in review) and its routing measurement (scheduled off-peak).
-   Editing at the same time as coscribe (2026-10-22): a write tool refuses a Word, Excel or PowerPoint file the person has saved in the app since the model last read it, and the result tells the model to read again (`runtime_lg/edit_guard.py`, done). The editor joins coscribe's change with the person's typing when they touch different blocks (`lib/docsMerge.ts`, done); the same paragraph edited by both still stops at the Reload banner. The caret stays across a join (done).
+   Doc artifact (design note `docs/assessments/2026-10-26-doc-artifact.md`, decision 0025 accepted 2026-10-26): a markdown document people and coscribe edit together, comments for coscribe as on a deck, export to Markdown, PDF and Word; the Word panel is frozen. Steps 1 to 4 of six are in (`tools/office/doc`: the format, blocks with line ranges, block-level edits, the routes, kept versions, the note of what the person changed, comments anchored to their block, pictures, the Word export; `frontend/src/components/doc`: the editor with comments, callouts, charts and pictures) and the artifact listing and side folder (step 5, server); opening a Doc from a chip and exporting it (step 5, frontend) is in review, then the Docs skill (step 6). Routing measured 2026-10-29 (`docs/log/2026-10-29-doc-writing-rules.md`): open, a Doc still fills in plans and steps the brief did not give (a proposal's migration phases).
+   Editing at the same time as coscribe (2026-10-22): a write tool refuses a Word, Excel or PowerPoint file the person has saved in the app since the model last read it, and the result tells the model to read again (`runtime_lg/edit_guard.py`, done). The Word editor that joined coscribe's change with the person's typing was removed (decision 0027); a Doc's editor does it its own way.
    Run in background (#510, 2026-10-22, design `docs/assessments/2026-10-22-run-in-background.md`, decided): a running `run_python_script` or `run_node_script` can be handed to the Background tasks panel. Done: the backend (`tools/exec/running.py`, `detach_command` on the socket), the button on the running row with its Playwright spec, and Stop ending the script a tool call waits on.
    Chat (maintainer, 2026-10-21, agreed, not started): (1) a tool row opens to plain "name: value" lines, `$ command` and its
    output for a command, a sentence for a file read or write, and a "Raw" fold for the JSON; (2) a Plan card: in Plan mode the
@@ -253,7 +258,22 @@ Last reviewed: 2026-10-15.
    Open: hiding other
    drives' user folders.
 
-6. **Workflows whose steps choose their autonomy** (#719, kurtosisOC; decision 0028, proposed).
+6. **Secrets out of what scripts and commands inherit** (#667, then the proxy setting #666,
+   kurtosisOC). Shipped: scripts and commands start from a list of names, the proxy without its
+   password, not from the server's environment (#668); the commands Codex runs in the code
+   module get no provider keys or proxy password (#670); the proxy setting in Settings, its
+   password in the keychain (#672). Open: a company proxy on a real Windows machine (NTLM or
+   Kerberos are not supported, Basic only).
+
+7. **The `tools` interface** (#677, record 0009). Done: who uses the 230 names
+   (`docs/metrics/2026-10-28-tools-interface-usage.md`). In review: the 10 unused names dropped and
+   the size ratcheted (#680); the `tools` card and `slice.py` list only the names `tools` owns, the
+   maintainer-side choice for B (#692); four fresh-session samples across a component edge and the
+   card lines they missed (#681). Open: moving callers to import from the sub-components, which
+   makes `deep_imports`, `fan_out` and `coordinator.py`'s size worse today and needs the metric to
+   count a declared sub-component as an entry first.
+
+8. **Workflows whose steps choose their autonomy** (#719, kurtosisOC; decision 0028, proposed).
    One PR per phase: P0 the record; P1 an agent step and an injected runner; P2 a read-only
    canvas; P3 step-by-step drafting with test cases and dry runs; P4 the repair layers (a step's
    exception handler, the run's investigation, a repair proposed as a fixed branch); P5 parallel

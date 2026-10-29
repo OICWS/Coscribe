@@ -58,18 +58,31 @@ def module_name(path: str) -> str | None:
     return ".".join(parts)
 
 
-def public_names(component: dict[str, object]) -> list[str]:
-    """`__all__` of a package, read from the source so nothing is imported."""
-    path = ROOT / str(component["path"])
-    init = path if path.suffix == ".py" else path / "__init__.py"
-    if not init.is_file():
-        return []
+def _all_of(init: Path) -> list[str]:
     for node in ast.parse(init.read_text(encoding="utf-8")).body:
         if isinstance(node, ast.Assign) and any(
             isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets
         ):
             return [str(ast.literal_eval(e)) for e in getattr(node.value, "elts", [])]
     return []
+
+
+def public_names(component: dict[str, object]) -> tuple[list[str], int]:
+    """`__all__` of a package, read from the source so nothing is imported: the names that are
+    its own, and how many more it re-exports from sub-components (their cards list them)."""
+    path = ROOT / str(component["path"])
+    init = path if path.suffix == ".py" else path / "__init__.py"
+    if not init.is_file():
+        return [], 0
+    names = _all_of(init)
+    if path.suffix == ".py":
+        return names, 0
+    reexported: set[str] = set()
+    for child in path.glob("**/__init__.py"):
+        if child.parent != path:
+            reexported.update(_all_of(child))
+    own = [name for name in names if name not in reexported]
+    return own, len(names) - len(own)
 
 
 def card_tests(card: Path) -> list[str]:
@@ -135,9 +148,11 @@ def main(argv: list[str]) -> int:
     print(f"component: {component['name']}  (layer {component['layer']}, owner {owners})")
     card = component.get("card")
     print(f"card:      {card or 'none'}")
-    names = public_names(component)
+    names, reexported = public_names(component)
     if names:
         print(f"interface: {', '.join(names)}")
+    if reexported:
+        print(f"           (+{reexported} names re-exported from sub-components: see their cards)")
     reading = [str(card)] if card else []
     tests: list[str] = []
     if card:

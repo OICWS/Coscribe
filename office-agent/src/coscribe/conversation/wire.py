@@ -55,6 +55,9 @@ class StateEvent(TypedDict):
     # running on this thread (typically a scheduled run), so the page shows it as
     # running.
     turn_in_flight: NotRequired[bool]
+    # With turn_in_flight: when that turn started, in ms since the epoch, so a page that opens
+    # mid-turn times it from there.
+    turn_started_at: NotRequired[float]
 
 
 class UserEntry(TypedDict):
@@ -425,7 +428,7 @@ class UserMessageOut(TypedDict):
     text: str
     images: NotRequired[list[str]]
     # The first message of a conversation started from the Artifacts page: what it is to make.
-    artifact: NotRequired[Literal["docs", "slides", "sheets", "design", "design-system"]]
+    artifact: NotRequired[Literal["docs", "slides", "design", "design-system"]]
     # With `artifact: "slides"`: the library design system the deck is to follow.
     design_system: NotRequired[str]
 

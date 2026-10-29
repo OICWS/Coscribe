@@ -29,7 +29,7 @@ bar Sales
 
 def test_the_briefs_cover_the_three_routes() -> None:
     assert sorted({b.expect for b in BRIEFS}) == ["chat", "doc", "docx"]
-    assert len({b.name for b in BRIEFS}) == len(BRIEFS) == 12
+    assert len({b.name for b in BRIEFS}) == len(BRIEFS) == 15
 
 
 def test_what_the_agent_left_is_classified_and_an_input_left_alone_is_not_counted(
@@ -76,3 +76,15 @@ def test_an_answer_in_chat_is_the_right_route_when_no_file_was_left(tmp_path: Pa
     assert judge(chat, tmp_path, {}, {})["route_ok"]
     (tmp_path / "plan.md").write_text(GOOD, encoding="utf-8")
     assert not judge(chat, tmp_path, {}, {})["route_ok"]
+
+
+def test_a_doc_report_counts_words_and_the_blanks_left_for_the_person() -> None:
+    source = (
+        "---\ncoscribe: doc\n---\n\n# Plan\n\n"
+        "- [ ] Book [venue] by [date], see [it](p.md).\n\n会议纪要\n"
+    )
+
+    report = doc_report(source, ())
+
+    assert report["placeholders"] == ["venue", "date"]
+    assert report["words"] == 1 + 1 + 6 + 4

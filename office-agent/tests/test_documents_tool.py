@@ -94,6 +94,13 @@ def test_parse_inline_runs_splits_bold_and_italic_markers() -> None:
         ("d", False, True),
         (" e", False, False),
     ]
+    assert parse_inline_runs("***both***") == [("both", True, True)]
+
+
+def test_a_long_run_of_open_markers_is_plain_text() -> None:
+    text = "[" * 5000 + "** " * 3000
+
+    assert parse_inline_runs(text) == [(text, False, False)]
 
 
 def test_parse_inline_runs_leaves_an_unterminated_marker_as_plain_text() -> None:
@@ -308,6 +315,45 @@ def test_write_docx_toc_marker_inserts_a_toc_field_and_no_update_prompt(
     assert doc.settings.element.find(qn("w:updateFields")) is None
 
 
+def test_a_pagebreak_line_starts_the_next_block_on_a_new_page(tmp_path: Path) -> None:
+    from docx.oxml.ns import qn
+
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](
+        path="cover.docx", content="# Title\n\nCover text.\n\n[PAGEBREAK]\n\n## Next\n\nBody."
+    )
+
+    paragraphs = {p.text: p for p in Document(tmp_path / "cover.docx").paragraphs}
+    assert paragraphs["Next"]._p.find(f"{qn('w:pPr')}/{qn('w:pageBreakBefore')}") is not None
+    assert paragraphs["Cover text."]._p.find(f"{qn('w:pPr')}/{qn('w:pageBreakBefore')}") is None
+    assert "[PAGEBREAK]" not in paragraphs
+
+
+def test_a_pagebreak_before_a_table_gets_a_paragraph_to_start_the_page(tmp_path: Path) -> None:
+    from docx.oxml.ns import qn
+
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](
+        path="t.docx", content="Intro.\n\n[PAGEBREAK]\n\n| a | b |\n| --- | --- |\n| 1 | 2 |"
+    )
+
+    document = Document(tmp_path / "t.docx")
+    starter = document.paragraphs[-1]
+    assert (
+        starter.text == ""
+        and starter._p.find(f"{qn('w:pPr')}/{qn('w:pageBreakBefore')}") is not None
+    )
+    assert len(document.tables) == 1
+
+
+def test_a_pagebreak_in_a_pdf_starts_a_new_page(tmp_path: Path) -> None:
+    tools = _tools_by_name(tmp_path)
+    tools["write_pdf"](path="two.pdf", content="First page.\n\n[PAGEBREAK]\n\nSecond page.")
+
+    second = tools["read_pdf"](path="two.pdf", start_page=2, end_page=2)
+    assert "Second page." in second and "First page." not in second
+
+
 # The opening line keeps "# Handbook" a heading rather than the document's title.
 TOC_CONTENT = (
     "Internal.\n\n# Handbook\n\n[TOC]\n\n## Setup\n\nInstall it.\n\n"
@@ -349,6 +395,20 @@ def test_write_docx_toc_result_lists_the_headings_written_after_it(tmp_path: Pat
         ("TOC3", "Windows"),
         ("TOC2", "Usage"),
     ]
+
+
+def test_write_docx_contents_title_stays_out_of_its_own_list(tmp_path: Path) -> None:
+    """A new document has no "TOC Heading" style, so "# Contents" above [TOC] was a Heading 1
+    and the list opened with its own title."""
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](
+        path="report.docx", content="# Report\n\n# Contents\n\n[TOC]\n\n## Setup\n\nText."
+    )
+
+    document = Document(tmp_path / "report.docx")
+
+    assert _toc_field_result(document) == [("TOC2", "Setup")]
+    assert [p.style.name for p in document.paragraphs if p.text == "Contents"] == ["TOC Heading"]
 
 
 @pytest.mark.parametrize(
@@ -1135,6 +1195,26 @@ def test_table_layout_steps_the_font_down_before_breaking_numbers() -> None:
     assert _table_layout(rows, 350, [11, 10, 9], padding=12)[0] == 9
 
 
+def test_table_layout_measures_a_header_row_bold_so_its_words_stay_whole() -> None:
+    """Writers set the header row bold without markup; measured plain, "Shipments" got a
+    column a little too narrow and broke as "Shipment" / "s"."""
+    from coscribe.tools.office.table_layout import _cell_width_em, _table_layout
+
+    rows = [["Measure", "On-time delivery", "Shipments", "Cost per shipment", "Complaints"]]
+    total = 451.0
+    _, plain = _table_layout(rows, total, [11], padding=12)
+    _, bold = _table_layout(rows, total, [11], padding=12, header=True)
+
+    assert (
+        min(
+            width - (_cell_width_em(cell, pieces=True, bold=True) * 11 + 12)
+            for width, cell in zip(bold, rows[0], strict=True)
+        )
+        >= -0.01
+    )
+    assert plain != bold
+
+
 _REGION_TABLE = """\
 | 区域 | 有效订单数 | 净收入(元) | 毛利(元) | 毛利率 | Q3 目标(元) | 达成率 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -1374,3 +1454,36 @@ def test_write_docx_fills_a_large_table_in_reasonable_time(tmp_path: Path) -> No
     assert len(table.rows) == 801
     assert [c.text for c in table.rows[800].cells] == ["r799", "部门1", "2508.86"]
     assert elapsed < 20
+
+
+def test_add_docx_chart_starts_a_column_axis_at_zero_and_uses_the_text_font(tmp_path: Path) -> None:
+    """Shipments of 41,200 to 44,600 drew on an axis from 39,000, and the chart's text fell
+    back to a serif font."""
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](path="c.docx", content="# Report\n\nText.")
+    data = (
+        "| Month | Shipments |\n| --- | --- |\n| July | 41200 |\n"
+        "| August | 42600 |\n| September | 44600 |"
+    )
+    tools["add_docx_chart"](path="c.docx", chart_type="bar", data=data, title="Shipments")
+    tools["add_docx_chart"](path="c.docx", chart_type="line", data=data, title="Trend")
+
+    with zipfile.ZipFile(tmp_path / "c.docx") as package:
+        bar, line = (package.read(f"word/charts/chart{n}.xml").decode() for n in (1, 2))
+
+    assert '<c:min val="0"/>' in bar
+    assert '<c:min val="0"/>' not in line
+    assert '<a:latin typeface="Calibri"/>' in bar
+
+
+def test_write_docx_paragraph_after_a_table_has_space_above(tmp_path: Path) -> None:
+    tools = _tools_by_name(tmp_path)
+    tools["write_docx"](
+        path="t.docx", content="| a | b |\n| --- | --- |\n| 1 | 2 |\n\nThe budget is fixed.\n"
+    )
+
+    document = Document(tmp_path / "t.docx")
+    after = next(p for p in document.paragraphs if p.text == "The budget is fixed.")
+
+    assert after.paragraph_format.space_before is not None
+    assert after.paragraph_format.space_before.pt >= 6

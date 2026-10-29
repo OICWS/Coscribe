@@ -237,14 +237,14 @@
   "src/coscribe/workflows/engine.py": 898
  },
  "frontend_file_lines": {
-  "office-agent-desktop/src/main/browserAgent.ts": 934,
+  "office-agent-desktop/src/main/browserAgent.ts": 933,
   "office-agent/frontend/src/App.tsx": 1088,
   "office-agent/frontend/src/components/icons.tsx": 813,
-  "office-agent/frontend/src/components/workflow/WorkflowRunView.tsx": 860
+  "office-agent/frontend/src/components/workflow/WorkflowRunView.tsx": 857
  },
  "frontend_long_functions": {
   "office-agent-desktop/src/main/browserAgent.ts::act": 156,
-  "office-agent-desktop/src/main/browserAgent.ts::startBrowserAgent": 140,
+  "office-agent-desktop/src/main/browserAgent.ts::startBrowserAgent": 139,
   "office-agent-desktop/src/main/browserAgentPage.ts::pageAgent": 343,
   "office-agent/frontend/src/App.tsx::App": 993,
   "office-agent/frontend/src/components/AllowedSitesDialog.tsx::AllowedSitesDialog": 132,
@@ -253,8 +253,7 @@
   "office-agent/frontend/src/components/BrowserPanel.tsx::ScreencastBrowserPanel": 536,
   "office-agent/frontend/src/components/ChatLog.tsx::ChatLog": 166,
   "office-agent/frontend/src/components/Composer.tsx::Composer": 502,
-  "office-agent/frontend/src/components/DesktopBrowserPanel.tsx::DesktopBrowserPanel": 386,
-  "office-agent/frontend/src/components/DocxViewerPanel.tsx::DocxViewerPanel": 281,
+  "office-agent/frontend/src/components/DesktopBrowserPanel.tsx::DesktopBrowserPanel": 385,
   "office-agent/frontend/src/components/EffortPicker.tsx::EffortPicker": 144,
   "office-agent/frontend/src/components/FindInPage.tsx::FindInPage": 102,
   "office-agent/frontend/src/components/ImageAnnotator.tsx::ImageAnnotator": 197,
@@ -266,7 +265,7 @@
   "office-agent/frontend/src/components/TaskPanel.tsx::TaskPanel": 153,
   "office-agent/frontend/src/components/ThreadList.tsx::GroupHeader": 116,
   "office-agent/frontend/src/components/ThreadList.tsx::ThreadList": 255,
-  "office-agent/frontend/src/components/ThreadList.tsx::ThreadMenu": 147,
+  "office-agent/frontend/src/components/ThreadList.tsx::ThreadMenu": 145,
   "office-agent/frontend/src/components/chatlog/UserMessageView.tsx::UserMessageView": 135,
   "office-agent/frontend/src/components/dock/DockControls.tsx::DockControls": 140,
   "office-agent/frontend/src/components/dock/PanelDock.tsx::PanelDock": 266,
@@ -277,7 +276,7 @@
   "office-agent/frontend/src/components/settings/ProvidersTab.tsx::ProvidersTab": 181,
   "office-agent/frontend/src/components/settings/SecretsTab.tsx::SecretForm": 104,
   "office-agent/frontend/src/components/settings/SecretsTab.tsx::SecretsTab": 121,
-  "office-agent/frontend/src/components/settings/SettingsModal.tsx::SettingsModal": 205,
+  "office-agent/frontend/src/components/settings/SettingsModal.tsx::SettingsModal": 191,
   "office-agent/frontend/src/components/settings/SkillsTab.tsx::SkillsTab": 238,
   "office-agent/frontend/src/components/settings/WorkspaceTab.tsx::WorkspaceTab": 145,
   "office-agent/frontend/src/components/settings/connectors/AddCustomConnectorDialog.tsx::AddCustomConnectorDialog": 185,
@@ -292,7 +291,7 @@
   "office-agent/frontend/src/components/workflow/WorkflowDraftPage.tsx::WorkflowDraftPage": 189,
   "office-agent/frontend/src/components/workflow/WorkflowEditor.tsx::StepCard": 163,
   "office-agent/frontend/src/components/workflow/WorkflowEditor.tsx::WorkflowEditor": 143,
-  "office-agent/frontend/src/components/workflow/WorkflowRunView.tsx::RunBanner": 151,
+  "office-agent/frontend/src/components/workflow/WorkflowRunView.tsx::RunBanner": 147,
   "office-agent/frontend/src/state/reducer.ts::chatReducer": 469
  },
  "frontend_unused_exports": {
@@ -303,7 +302,6 @@
   "office-agent/frontend/src/lib/desktop.ts": 2,
   "office-agent/frontend/src/lib/dockArrangement.ts": 3,
   "office-agent/frontend/src/lib/dockLayout.ts": 2,
-  "office-agent/frontend/src/lib/docxReview.ts": 1,
   "office-agent/frontend/src/lib/rest.ts": 1,
   "office-agent/frontend/src/lib/titleBar.ts": 1,
   "office-agent/frontend/src/lib/transcriptGrouping.ts": 3,
@@ -313,6 +311,12 @@
   "office-agent/frontend/src/types/session.ts": 2,
   "office-agent/frontend/src/types/settings.ts": 3,
   "office-agent/frontend/src/types/workflow.ts": 1
+ },
+ "interface_size": {
+  "coscribe.runtime_lg": 72,
+  "coscribe.tools": 210,
+  "coscribe.tools.bookkeeping": 55,
+  "coscribe.tools.exec": 65
  },
  "long_functions": {
   "src/coscribe/cli.py::_chat_async": 108,
@@ -326,7 +330,7 @@
   "src/coscribe/runtime_lg/subagents.py::build_delegation_tools": 154,
   "src/coscribe/runtime_lg/subagents.py::build_review_work_tool": 133,
   "src/coscribe/runtime_lg/subagents.py::build_review_work_tool.review_work": 103,
-  "src/coscribe/tools/bookkeeping/background_tasks.py::build_background_task_tools": 212,
+  "src/coscribe/tools/bookkeeping/background_tasks.py::build_background_task_tools": 210,
   "src/coscribe/tools/bookkeeping/scheduled_tasks.py::build_scheduled_task_tools": 225,
   "src/coscribe/tools/bookkeeping/selfwake.py::build_selfwake_tools": 151,
   "src/coscribe/tools/files.py::build_file_tools": 247,

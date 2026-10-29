@@ -1,11 +1,13 @@
 """Does a model write a Doc when it should, and a valid one? (decision 0025, step 6.)
 
-Twelve briefs a user might type: seven for writing with no format named (or only what the person
-will do with it), three that ask for Word by name, a template or tracked changes, and two that want
-an answer in chat. Each is sent to coscribe's real agent with the built-in skills, in a throwaway
-workspace; the result is classified (a Doc, a .docx, plain Markdown or nothing) and a Doc is read
-by the app's own parsers. It calls a model, so it is run by hand, off-peak, and is not part of CI;
-only its deterministic parts are tested (`tests/test_evals_doc_route.py`).
+Fifteen briefs a user might type: seven for writing with no format named (or only what the person
+will do with it), three that ask for Word by name, a template or tracked changes, two that want
+an answer in chat, and three that ask to be explained something, one of them in a form to keep or
+send (decision 0027: the AI decides when an explanation becomes a Doc). Each is sent to coscribe's
+real agent with the built-in skills, in a throwaway workspace; the result is classified (a Doc, a
+.docx, plain Markdown or nothing) and a Doc is read by the app's own parsers. It calls a model, so
+it is run by hand, off-peak, and is not part of CI; only its deterministic parts are tested
+(`tests/test_evals_doc_route.py`).
 
     python -m evals.doc_route --out evals/runs/doc-route
     python -m evals.doc_route --tasks 01,04 --out evals/runs/try
@@ -19,6 +21,7 @@ import asyncio
 import io
 import json
 import os
+import re
 import shutil
 import sys
 import time
@@ -162,6 +165,26 @@ BRIEFS = [
         "Compare Python and Go for a small web service in a short table, a few rows.",
         "chat",
     ),
+    Brief(
+        "13-explain-steps",
+        "Explain how OAuth 2.0 with PKCE works, step by step. I am just trying to understand it.",
+        "chat",
+    ),
+    Brief(
+        "14-explain-to-share",
+        "Our team offsite has a budget of 12,000 USD for 20 people. Explain how we could split "
+        "it between venue, travel and food, in a form I can send to the team afterwards.",
+        "doc",
+        ("12,000", "20"),
+    ),
+    Brief(
+        "15-explain-reread",
+        "Walk me through how a 300,000 USD loan at 4% over 25 years is paid off: the monthly "
+        "payment, what the first three years look like, and the total interest. I want to keep "
+        "it and come back to it.",
+        "doc",
+        ("300,000", "25"),
+    ),
 ]
 
 
@@ -190,9 +213,16 @@ def classify(workspace: Path, originals: dict[str, bytes]) -> dict[str, Any]:
     return {"got": got, "docs": docs, "docx": words, "plain_md": plain}
 
 
+# A bracketed blank for the person to fill: not a link's text, a checkbox or a callout's kind.
+_PLACEHOLDER = re.compile(r"\[(?!!)([^\]\n]{2,60})\](?!\()")
+# A CJK character reads as about one word.
+_WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9'.,-]*|[\u3400-\u9fff]")
+
+
 def doc_report(source: str, facts: tuple[str, ...]) -> dict[str, Any]:
     """A Doc as the app reads it: its blocks, the ones it cannot show as such, a chart that does not
-    parse, and the facts the brief gave that are missing."""
+    parse, and the facts the brief gave that are missing; and, for a reader judging it, its length
+    in words and the blanks it left for the person to fill."""
     from coscribe.tools.office.doc import parse_chart, read_doc
 
     blocks = read_doc(source).blocks
@@ -209,6 +239,8 @@ def doc_report(source: str, facts: tuple[str, ...]) -> dict[str, Any]:
         "raw_blocks": [b.kind for b in blocks if b.kind in ("html", "other")],
         "bad_charts": bad_charts,
         "missing_facts": [f for f in facts if f.lower() not in lowered],
+        "words": len(_WORD.findall(source.partition("\n---\n")[2] or source)),
+        "placeholders": _PLACEHOLDER.findall(source),
     }
 
 
@@ -278,14 +310,16 @@ async def run_brief(
 
 def summary(results: list[dict[str, Any]]) -> str:
     rows = [
-        "| task | expect | got | route | skill | valid | cost | calls |",
-        "|---|---|---|---|---|---|---|---|",
+        "| task | expect | got | route | skill | valid | words | blanks | cost | calls |",
+        "|---|---|---|---|---|---|---|---|---|---|",
     ]
     for r in results:
         valid = r.get("valid", "")
+        doc = r.get("doc", {})
         rows.append(
             f"| {r['task']} | {r['expect']} | {r['got']} | {'yes' if r['route_ok'] else 'NO'} "
-            f"| {'yes' if r['skill_loaded'] else 'no'} | {valid} | {r['cost'] or 0:.3f} "
+            f"| {'yes' if r['skill_loaded'] else 'no'} | {valid} | {doc.get('words', '')} "
+            f"| {len(doc.get('placeholders', [])) if doc else ''} | {r['cost'] or 0:.3f} "
             f"| {r['model_calls']} |"
         )
     right = sum(1 for r in results if r["route_ok"])

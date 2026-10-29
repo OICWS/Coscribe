@@ -791,7 +791,7 @@ function App() {
 
   const composer = (
     <Composer
-      turnInFlight={state.turnInFlight}
+      turnInFlight={state.turnInFlight} turnStartedAt={state.turnStartedAt}
       suggestion={state.suggestion}
       onSuggestionDismiss={() => dispatch({ type: "local_suggestion_dismissed" })}
       totalTokens={state.totalTokens}
@@ -858,7 +858,7 @@ function App() {
     }
     if (panel === "viewer" && viewerFile) {
       return (
-        <ViewerPanel key={`${threadId}:${viewerFile}`} threadId={threadId} path={viewerFile} refreshKey={refreshKey} busy={state.turnInFlight} onSendComment={onSendComment} onFileChanged={(changed) => (changed ? viewFile(changed) : closePanel("viewer"))} />
+        <ViewerPanel key={`${threadId}:${viewerFile}`} threadId={threadId} path={viewerFile} refreshKey={refreshKey} busy={state.turnInFlight} items={state.items} onSendComment={onSendComment} onFileChanged={(changed) => (changed ? viewFile(changed) : closePanel("viewer"))} />
       );
     }
     if (panel === "browser") {

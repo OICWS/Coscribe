@@ -1,8 +1,8 @@
 import type { Editor } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
 import { BubbleMenu } from "@tiptap/react/menus";
-import { useState } from "react";
-import { LinkDialog } from "../docs/LinkDialog";
+import { useEffect, useState } from "react";
+import { LinkDialog } from "./LinkDialog";
 import { SlideMenu, type MenuEntry } from "../slides/SlideMenu";
 import { AskBox, Composer } from "./DocBubbleBoxes";
 import { DocFormatRow } from "./DocFormatRow";
@@ -12,13 +12,16 @@ export function DocBubble({ editor, onAsk, onComment }: { editor: Editor; onAsk?
   const [linking, setLinking] = useState(false);
   const [mode, setMode] = useState<"tools" | "ask" | "comment">("tools");
   const [menu, setMenu] = useState<{ anchor: DOMRect; entries: MenuEntry[] } | null>(null);
+  // The page scrolls inside its own box, and the menu only follows what it is told scrolls.
+  const [scroller, setScroller] = useState<HTMLElement | null>(null);
+  useEffect(() => setScroller(editor.view.dom.closest<HTMLElement>("[data-doc-scroll]")), [editor]);
   const words = () => editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to, "\n");
   const tools = () => setMode("tools");
   return (
     <>
       <BubbleMenu
         editor={editor}
-        options={{ placement: "top", onHide: tools }}
+        options={{ placement: "top", onHide: tools, scrollTarget: scroller ?? window }}
         shouldShow={({ editor: e, state }) => e.isEditable && !state.selection.empty && state.selection instanceof TextSelection && !e.isActive("rawBlock") && !e.isActive("codeBlock")}
       >
         {mode === "comment" && <Composer canSend={!!onAsk} onComment={onComment} onClose={tools} />}

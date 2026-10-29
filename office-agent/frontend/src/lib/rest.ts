@@ -49,6 +49,7 @@ import type {
   ToolsResponse,
   UploadSkillResult,
 } from "../types/settings";
+import type { ProxySettings, ProxyTestResult, ProxyUpdate } from "../types/proxy";
 import type {
   CommandsResponse,
   ContextBreakdown,
@@ -88,6 +89,13 @@ async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
   await checkOk(res);
   return res.json() as Promise<T>;
+}
+
+/** The conversation as Markdown, for sending along with a bug report. */
+export async function exportThread(threadId: string): Promise<Blob> {
+  const res = await fetch(`/api/threads/${encodeURIComponent(threadId)}/export`);
+  await checkOk(res);
+  return res.blob();
 }
 
 async function postJson<T>(url: string, body: unknown): Promise<T> {
@@ -422,8 +430,13 @@ export const deleteThreadGroup = (name: string) =>
 
 // -- Background tasks: sub-agents and scripts --------------------
 
+/** What the conversation did. Its outputs leave out a file that is gone again: a scratch file the run
+ * made and removed is no output to show. */
 export const getThreadActivity = (threadId: string) =>
-  getJson<ThreadActivity>(`/api/threads/${encodeURIComponent(threadId)}/activity`);
+  getJson<ThreadActivity>(`/api/threads/${encodeURIComponent(threadId)}/activity`).then((activity) => ({
+    ...activity,
+    outputs: activity.outputs.filter((file) => file.exists),
+  }));
 
 /** Resolves to an error message, or null once the file was handed to the OS. */
 export async function openThreadFile(threadId: string, path: string, reveal: boolean): Promise<string | null> {
@@ -528,6 +541,11 @@ export const removeCommandSandbox = () =>
 export const getLibreOffice = () => getJson<LibreOfficeStatus>("/api/libreoffice");
 export const downloadLibreOffice = () => sendForResult<LibreOfficeStatus>("/api/libreoffice", "POST", {});
 export const removeLibreOffice = () => sendForResult<LibreOfficeStatus>("/api/libreoffice", "DELETE", {});
+
+export const getProxySettings = () => getJson<ProxySettings>("/api/settings/proxy");
+export const saveProxySettings = (update: ProxyUpdate) => sendForResult<ProxySettings>("/api/settings/proxy", "PUT", update);
+export const testProxySettings = (update: ProxyUpdate) =>
+  sendForResult<ProxyTestResult>("/api/settings/proxy/test", "POST", update);
 
 export const getScriptIsolation = () => getJson<ScriptIsolation>("/api/script-isolation");
 export const retestScriptIsolation = () => postJson<ScriptIsolation>("/api/script-isolation/test", {});

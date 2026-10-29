@@ -2,13 +2,13 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { DocCommentMarks } from "../../lib/docCommentMarks";
-import { deleteDocComment, editDocComment, replyToDocComment, resolveDocComment } from "../../lib/docComments";
+import { askAboutWords, deleteDocComment, editDocComment, replyToDocComment, resolveDocComment } from "../../lib/docComments";
 import type { DocRead } from "../../lib/docFile";
 import { loadLook, saveLook, type DocLook } from "../../lib/docLook";
 import { DocChartPreview } from "../../lib/docChartPreview";
+import { DocTableLook } from "../../lib/docTableLook";
 import { docContent, editorExtensions, loadedOf } from "../../lib/docModel";
 import { DocPictureDrop, choosePicture, pictureUrl } from "../../lib/docPictures";
-import { askAboutWords } from "../../lib/docsEditor";
 import type { CommentLink } from "../../lib/slideComments";
 import { DocBubble } from "./DocBubble";
 import { CommentsPopover, CommentsToggle } from "./DocComments";
@@ -60,7 +60,7 @@ export function DocEditor({
   const content = useMemo(() => docContent(doc.blocks), [doc]);
   const addPicture = useRef<(file: File) => void>(() => undefined);
   const extensions = useMemo(
-    () => [...editorExtensions((src) => pictureUrl(threadId, path, src)), DocCommentMarks, DocChartPreview, DocPictureDrop.configure({ onFile: (file) => addPicture.current(file) })],
+    () => [...editorExtensions((src) => pictureUrl(threadId, path, src)), DocCommentMarks, DocChartPreview, DocTableLook, DocPictureDrop.configure({ onFile: (file) => addPicture.current(file) })],
     [threadId, path],
   );
   const editor = useEditor({
@@ -112,7 +112,7 @@ export function DocEditor({
             onClose={() => comments.setShow(false)}
           />
         )}
-        <div className="h-full overflow-auto bg-[var(--bg)]" onClick={() => editor?.commands.focus()}>
+        <div data-doc-scroll className="h-full overflow-auto bg-[var(--bg)]" onClick={() => editor?.commands.focus()}>
           <div
             className={`doc-page mx-auto px-10 pb-24 pt-8 ${look.wide ? "max-w-[1100px]" : "max-w-[760px]"}`}
             data-headings={look.headings}

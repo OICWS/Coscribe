@@ -42,6 +42,11 @@ export interface StateEvent {
    * on this thread (typically a scheduled run), so the page shows it as running.
    */
   turn_in_flight?: boolean;
+  /**
+   * With turn_in_flight: when that turn started, in ms since the epoch, so a page
+   * that opens mid-turn times it from there.
+   */
+  turn_started_at?: number;
 }
 
 export interface UserEntry {
@@ -409,7 +414,7 @@ export interface UserMessageOut {
    * The first message of a conversation started from the Artifacts page: what it is
    * to make.
    */
-  artifact?: "docs" | "slides" | "sheets" | "design" | "design-system";
+  artifact?: "docs" | "slides" | "design" | "design-system";
   /** With `artifact: "slides"`: the library design system the deck is to follow. */
   design_system?: string;
 }

@@ -94,8 +94,8 @@
         <w:tblLook w:firstColumn="0" w:firstRow="1" w:lastColumn="0" w:lastRow="0" w:noHBand="1" w:noVBand="1" w:val="0620"/>
       </w:tblPr>
       <w:tblGrid>
-        <w:gridCol w:w="4359"/>
-        <w:gridCol w:w="3947"/>
+        <w:gridCol w:w="4364"/>
+        <w:gridCol w:w="3942"/>
       </w:tblGrid>
       <w:tr>
         <w:trPr>
@@ -103,7 +103,7 @@
         </w:trPr>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="4359"/>
+            <w:tcW w:type="dxa" w:w="4364"/>
           </w:tcPr>
           <w:p>
             <w:r>
@@ -116,7 +116,7 @@
         </w:tc>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="3947"/>
+            <w:tcW w:type="dxa" w:w="3942"/>
           </w:tcPr>
           <w:p>
             <w:pPr>
@@ -134,7 +134,7 @@
       <w:tr>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="4359"/>
+            <w:tcW w:type="dxa" w:w="4364"/>
           </w:tcPr>
           <w:p>
             <w:r>
@@ -144,7 +144,7 @@
         </w:tc>
         <w:tc>
           <w:tcPr>
-            <w:tcW w:type="dxa" w:w="3947"/>
+            <w:tcW w:type="dxa" w:w="3942"/>
           </w:tcPr>
           <w:p>
             <w:pPr>
@@ -193,13 +193,14 @@
         <w:r>
           <w:rPr>
             <w:b/>
+            <w:i/>
           </w:rPr>
-          <w:delText xml:space="preserve">*both</w:delText>
+          <w:delText xml:space="preserve">both</w:delText>
         </w:r>
       </w:del>
       <w:del w:author="Reviewer" w:date="&lt;normalised&gt;" w:id="6">
         <w:r>
-          <w:delText xml:space="preserve">* styles.</w:delText>
+          <w:delText xml:space="preserve"> styles.</w:delText>
         </w:r>
       </w:del>
     </w:p>

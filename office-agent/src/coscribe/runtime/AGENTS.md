@@ -16,7 +16,9 @@ Secrets: `store_secret`, `resolve_secret`, `delete_secret`, `harden_file_permiss
 `KeychainUnavailable`, `keychain_available`, `MIN_VALUE`, `host_allowed`, `placeholders_in`,
 `substitute`, `redactor`. Environments: `Environments`, `EnvironmentRefused`, `DEFAULT_ENVIRONMENT`. Network: `NetworkAccess`, `NetworkGuard`, `NetworkError`. Hooks: `HookResult`, `empty_hooks_config`, `load_hooks_config`,
 `run_hook`. Types: `Agent`, `ToolMetadata`, `tool_metadata`, `get_tool_metadata`. Other:
-`LLMClient`, `load_custom_providers`, `configured_proxy`, `COMPACT_INSTRUCTIONS`, and where `.env`
+`LLMClient`, `load_custom_providers`, `COMPACT_INSTRUCTIONS`; the proxy setting (`proxy.py`):
+`configured_proxy`, `ProxySetting`, `ProxyError`, `PROXY_MODES`, `PROXY_ENV_VARS`, `DEFAULT_BYPASS`,
+`parse_address`, `clean_bypass`, `proxy_url`, `proxy_env`, `try_connection`, `without_credentials`, and where `.env`
 lives and is loaded (`dotenv_file.py`): `dotenv_path`, `app_data_dir`, `prepare_env`.
 Callers import these from `coscribe.runtime`, not from a submodule; tests may still reach into
 a submodule for a private name or to patch it.
@@ -29,8 +31,8 @@ No other coscribe package.
   the OS keychain", checked by `lint-imports`).
 - `runtime` never imports LangChain, LangGraph, FastAPI, Starlette or uvicorn (import contracts).
 - A secret's value is stored in the keychain and nowhere else; a machine with no keychain
-  refuses to save one (`tests/test_secret_store.py`). Provider and connector keys may fall back
-  to a plaintext file with owner-only permissions (`tests/test_secrets.py`). The promise is only
+  refuses to save one (`tests/test_secret_store.py`). Provider and connector keys and the proxy
+  password may fall back to a plaintext file with owner-only permissions (`tests/test_secrets.py`). The promise is only
   that the model cannot see a value, not that code that digs cannot find it.
 - `redactor` blanks a stored value (and its common encodings) out of text, best effort
   (`tests/test_secret_redaction_properties.py`).

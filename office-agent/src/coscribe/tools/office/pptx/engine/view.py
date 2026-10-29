@@ -24,6 +24,7 @@ from .native import native_kind
 from .section_view import section_drawing
 from .text_box import EMU_PER_PX as SECTION_EMU_PER_PX
 from .view_native import native_drawings
+from .view_template import template_shapes, underlay
 
 _P = "{http://schemas.openxmlformats.org/presentationml/2006/main}"
 _A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
@@ -99,7 +100,12 @@ def slide_svg(deck: Path, index: int, resource_root: Path) -> str:
     _inline_images(root, page.parent, resource_root.resolve())
     slides = Presentation(str(deck)).slides
     if index < len(slides):
-        _draw_natives(root, slides[index], SECTION_EMU_PER_PX if section else EMU_PER_PX)
+        scale = SECTION_EMU_PER_PX if section else EMU_PER_PX
+        copied = template_shapes(slides[index], entries[index].get("template_shapes", 0))
+        _draw_natives(root, slides[index], scale, copied)
+        beneath = underlay(slides[index], copied, scale)
+        if beneath:
+            root.insert(0, ET.fromstring(f'<g xmlns="{SVG_NS}">{beneath}</g>'))
     return ET.tostring(root, encoding="unicode")
 
 
@@ -222,10 +228,12 @@ def _image_uri(href: str, folder: Path, resource_root: Path) -> str | None:
     return f"data:{kind};base64,{base64.b64encode(path.read_bytes()).decode()}"
 
 
-def _draw_natives(root: ET.Element, slide: Any, emu_per_px: float) -> None:
+def _draw_natives(root: ET.Element, slide: Any, emu_per_px: float, copied: list[Any]) -> None:
     font = root.get("font-family", "Microsoft YaHei, Arial")
     groups = [g for g in root.iter(f"{{{SVG_NS}}}g") if native_kind(g)]
-    drawings = native_drawings(slide, emu_per_px, font)
+    # A table the slide took over from a template slide has no group on the page; the underlay
+    # draws it.
+    drawings = native_drawings(slide, emu_per_px, font, skip=copied)
     for group, markup in zip(groups, drawings, strict=False):
         for child in list(group):
             group.remove(child)

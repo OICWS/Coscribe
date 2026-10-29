@@ -66,6 +66,8 @@
   --panel-bg: var(--bg);
   --fg: #201e1d;
   --muted: #7d7979;
+  --flash-bg: #fdecc9;
+  --flash-ink: #f0a020;
   --border: color-mix(in srgb, var(--fg) 14%, transparent);
   --border-hover: color-mix(in srgb, var(--fg) 26%, transparent);
   --accent: #2a78d6;
@@ -127,6 +129,8 @@
   --panel-bg: var(--bg);
   --fg: #f7f5f3;
   --muted: #a19d9b;
+  --flash-bg: color-mix(in srgb, #e8a23c 24%, transparent);
+  --flash-ink: #f0b040;
   --border: color-mix(in srgb, var(--fg) 14%, transparent);
   --border-hover: color-mix(in srgb, var(--fg) 26%, transparent);
   --accent: #4b8fe3;
@@ -894,7 +898,7 @@ body {
 }
 .docs-editor .docs-locked-line {
   background: none;
-  padding: 0 10px;
+  padding: 0;
   color: inherit;
   font-size: inherit;
 }
@@ -988,59 +992,13 @@ body {
 .doc-editor .doc-callout[data-callout="CAUTION"] {
   --callout: #d6443f;
 }
-.doc-editor .doc-chart {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.5rem;
-  margin-bottom: 0.4em;
-  color: var(--fg);
+.doc-editor :is(td, th).doc-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
-.doc-editor .doc-chart svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-.doc-editor .doc-chart-bad {
-  border-style: dashed;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-/* Callouts and charts of a Doc. */
-.doc-editor .doc-callout {
-  --callout: #4f6ef7;
-  border-left: 3px solid var(--callout);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--callout) 9%, transparent);
-  padding: 0.5rem 0.9rem;
-}
-.doc-editor .doc-callout::before {
-  content: attr(data-callout);
-  display: block;
-  margin-bottom: 0.15rem;
-  color: var(--callout);
-  font-family: system-ui, sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-}
-.doc-editor .doc-callout > p {
-  margin: 0;
-}
-.doc-editor .doc-callout > p + p {
-  margin-top: 0.5em;
-}
-.doc-editor .doc-callout[data-callout="TIP"] {
-  --callout: #12a88a;
-}
-.doc-editor .doc-callout[data-callout="IMPORTANT"] {
-  --callout: #8a63e8;
-}
-.doc-editor .doc-callout[data-callout="WARNING"] {
-  --callout: #d98a00;
-}
-.doc-editor .doc-callout[data-callout="CAUTION"] {
-  --callout: #d6443f;
+.doc-editor td.doc-total {
+  font-weight: 600;
+  border-top: 1.5px solid var(--fg);
 }
 .doc-editor .doc-chart {
   border: 1px solid var(--border);
@@ -1053,6 +1011,12 @@ body {
   display: block;
   width: 100%;
   height: auto;
+}
+.doc-editor pre.doc-chart-source-hidden {
+  display: none;
+}
+.doc-editor .doc-chart {
+  cursor: pointer;
 }
 .doc-editor .doc-chart-bad {
   border-style: dashed;
@@ -1086,4 +1050,90 @@ body {
 }
 .doc-editor .doc-comment-badge:hover {
   background: var(--accent-soft);
+}
+
+/* A found setting: the row lights up orange behind it and a hand-drawn wave is
+ * pencilled under its name, quickly, left to right (flashSetting.ts). */
+.setting-row::before {
+  content: "";
+  position: absolute;
+  inset: 0 -12px;
+  z-index: -1;
+  border-radius: 12px;
+  background: var(--flash-bg);
+  opacity: 0;
+  pointer-events: none;
+}
+.setting-row.setting-flash::before {
+  animation: setting-flash-bg 2.7s ease-out forwards;
+}
+.setting-underline {
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  overflow: visible;
+  pointer-events: none;
+  animation: setting-flash-line 2.7s ease-out forwards;
+}
+.setting-underline path {
+  fill: none;
+  stroke: var(--flash-ink);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: setting-draw 0.35s ease-out forwards;
+}
+@keyframes setting-draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes setting-flash-bg {
+  0%, 13% { opacity: 0; }
+  20%, 57% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes setting-flash-line {
+  0%, 57% { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* Reduced motion keeps the lit row but draws nothing: the line is simply there. The global rule
+ * above would cut every animation to nothing, so the fade is restated with more weight. */
+:root[data-motion="reduced"] .setting-underline path {
+  animation: none !important;
+  stroke-dashoffset: 0;
+}
+:root[data-motion="reduced"] .setting-underline {
+  animation-duration: 2.2s !important;
+}
+:root[data-motion="reduced"] .setting-row.setting-flash::before {
+  animation: setting-flash-bg-still 2.2s ease-out forwards !important;
+}
+@keyframes setting-flash-bg-still {
+  0%, 55% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* A Doc printed by the desktop app (lib/docExport.ts): the window holds only the page. */
+@media print {
+  body.doc-printing > *:not(#doc-print-root) {
+    display: none !important;
+  }
+  html:has(body.doc-printing),
+  body.doc-printing {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+  #doc-print-root .doc-page {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  #doc-print-root :is(h1, h2, h3, h4) {
+    break-after: avoid;
+  }
+  #doc-print-root :is(table, tr, li, .doc-callout, .doc-chart, pre, img, blockquote) {
+    break-inside: avoid;
+  }
 }

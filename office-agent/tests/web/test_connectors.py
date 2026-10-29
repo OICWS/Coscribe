@@ -374,14 +374,16 @@ def test_lifespan_backgrounds_a_slow_mcp_connect_instead_of_blocking_startup(
 
     # The connect finishes only when the test releases it, so "the session
     # opened before the connect finished" is a fact to check, not a race
-    # against how fast this machine opens a session.
+    # against how fast this machine opens a session. The wait's limit only
+    # frees the thread if the test fails first, so it is far longer than a
+    # loaded runner takes to start the app and open the session.
     release = threading.Event()
     finished = threading.Event()
 
     async def _slow_connect_mcp_tools_lg(
         config_path: Path, *args: Any, **kwargs: Any
     ) -> tuple[list[Any], dict[str, Any]]:
-        await asyncio.to_thread(release.wait, 10)
+        await asyncio.to_thread(release.wait, 120)
         finished.set()
         return [_fake_tool_fn], {"fetch": _FakeConnection()}
 
@@ -976,6 +978,9 @@ def test_an_expired_oauth_sign_in_is_refreshed_without_the_browser(
         server.provider.token_lifetime = 1
         _add_oauth_connector(client, server)
         _wait_until(lambda: client.get("/api/mcp/servers").json()["docs"]["connected"])
+        # Only the first token expires: the refreshed one must outlast a reconnect on a slow
+        # runner, which makes several requests with it.
+        server.provider.token_lifetime = 3600
         time.sleep(2)
 
         assert client.post("/api/mcp/servers/docs/reconnect").json()["connected"] is True

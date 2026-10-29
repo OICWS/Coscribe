@@ -448,6 +448,22 @@ def test_reconcile_interrupted_runs_marks_leftover_running_runs_failed(tmp_path:
     assert reconcile_interrupted_runs(tmp_path) == 0
 
 
+def test_queued_flag_is_stored_and_cleared_when_the_run_is_reopened(tmp_path: Path) -> None:
+    store = ScheduledTriggerStore(tmp_path)
+    store.save(_trigger("trig-queue"))
+    _, run, _ = store.start_run("trig-queue", "manual")
+
+    store.record_evidence("trig-queue", run.run_id, queued=True)
+    assert run.to_dict()["queued"] is False
+    stored = store.load("trig-queue")
+    assert stored is not None and stored.runs[0].queued is True
+
+    store.finish_run("trig-queue", run.run_id, "failed", "boom")
+    store.reopen_run("trig-queue", run.run_id)
+    reloaded = store.load("trig-queue")
+    assert reloaded is not None and reloaded.runs[0].queued is False
+
+
 # -- approval_mode / model threading --
 
 

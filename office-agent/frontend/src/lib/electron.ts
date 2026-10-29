@@ -7,6 +7,18 @@ export function isElectron(): boolean {
   return typeof window !== "undefined" && "coscribeDesktop" in window;
 }
 
+/** True where the shell can print a page to PDF itself, with no print dialog. */
+export function canPrintToPdf(): boolean {
+  return isElectron() && typeof window.coscribeDesktop.printToPdf === "function";
+}
+
+/** The page as it is now, printed to an A4 PDF. */
+export async function printToPdf(): Promise<Uint8Array> {
+  const print = window.coscribeDesktop.printToPdf;
+  if (!print) throw new Error("This app cannot save a PDF itself");
+  return print();
+}
+
 /** Native OS folder picker (Electron only). Returns the chosen absolute
  * path, or null if the user cancelled. See tauri.ts's pickFolderNative
  * for the equivalent Tauri call -- desktop.ts dispatches between the two
@@ -104,6 +116,11 @@ export interface BrowserPageCapture {
 /** A screenshot of the active tab, or null for an empty tab. */
 export async function browserPanelCapture(): Promise<BrowserPageCapture | null> {
   return (await window.coscribeDesktop.browserPanelCapture?.()) as BrowserPageCapture | null;
+}
+
+/** Shows `group`'s tabs (a conversation's) in the panel. */
+export async function browserPanelViewGroup(group: string): Promise<void> {
+  await window.coscribeDesktop.browserPanelViewGroup?.(group);
 }
 
 /** Hides the live page so the panel can show its own drawing layer there. */
@@ -235,6 +252,7 @@ declare global {
       setPanelWindowPinned?(pinned: boolean): Promise<boolean>;
       onShowShortcuts?(callback: () => void): void;
       pickFolder(): Promise<string | null>;
+      printToPdf?(): Promise<Uint8Array>;
       browserPanelOpen(rect: BrowserPanelRect): Promise<void>;
       browserPanelReposition(rect: BrowserPanelRect): Promise<void>;
       browserPanelClose(): Promise<void>;
@@ -255,6 +273,7 @@ declare global {
       setAllowedSites?(sites: string[]): Promise<string[]>;
       onShowAllowedSites?(callback: () => void): () => void;
       browserPanelSetViewHidden?(hidden: boolean): Promise<void>;
+      browserPanelViewGroup?(group: string): Promise<void>;
       onBrowserPanelTabs(callback: (payload: unknown) => void): () => void;
       onBrowserAgent?(callback: (payload: unknown) => void): () => void;
       browserPanelSetPickMode(enabled: boolean): Promise<void>;

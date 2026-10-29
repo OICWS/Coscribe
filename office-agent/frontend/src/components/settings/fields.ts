@@ -28,14 +28,21 @@ export const GENERAL_FIELDS: SettingsField[] = [
     description:
       "The most model calls one reply can make before it stops, approvals included. Raise it if long tasks stop before they finish.",
   },
-  {
-    key: "COSCRIBE_REVIEWER_NAME",
-    label: "Reviewer name",
-    placeholder: "Your computer's user name",
-    description:
-      "The name on your replies and comments in a Word file's review panel. Empty uses your computer's user name, as Word does.",
-  },
 ];
+
+export const USER_NAME_KEY = "COSCRIBE_USER_NAME";
+export const USER_ROLE_KEY = "COSCRIBE_USER_ROLE";
+export const USER_ROLES = [
+  { value: "", label: "Not set" },
+  { value: "Student", label: "Student" },
+  { value: "Researcher", label: "Researcher" },
+  { value: "Engineer", label: "Engineer" },
+  { value: "Analyst", label: "Analyst" },
+  { value: "Manager", label: "Manager" },
+  { value: "Designer", label: "Designer" },
+  { value: "Writer", label: "Writer" },
+  { value: "Other", label: "Other" },
+] as const;
 
 // Log Level's real values are this fixed, small set (Python's own logging
 // module level names) -- rendered as a SegmentedControl instead of free

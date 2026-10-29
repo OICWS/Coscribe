@@ -9,6 +9,7 @@ needs no plotting library, which the packaged app doesn't ship.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from lxml import etree
@@ -26,8 +27,46 @@ _XLSX_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 _CHART_TEXT_SIZE = "1000"
 
 
+def _paint_series(root: Any, chart_type: str, points: int, colors: Sequence[str]) -> None:
+    """Each series (each slice, on a pie) in `colors` (RRGGBB), in order."""
+
+    def fill(color: str) -> str:
+        return f'<a:solidFill xmlns:a="{_A}"><a:srgbClr val="{color}"/></a:solidFill>'
+
+    for index, series in enumerate(root.iter(f"{{{_C}}}ser")):
+        color = colors[index % len(colors)]
+        look = (
+            f'<a:ln xmlns:a="{_A}" w="28575" cap="rnd">{fill(color)}<a:round/></a:ln>'
+            if chart_type == "line"
+            else fill(color)
+        )
+        properties = etree.fromstring(f'<c:spPr xmlns:c="{_C}">{look}</c:spPr>')
+        anchor = series.find(f"{{{_C}}}tx")
+        if anchor is None:
+            anchor = series.find(f"{{{_C}}}order")
+        anchor.addnext(properties)
+        if chart_type != "pie":
+            continue
+        # Schema order: a slice's colour (dPt) goes before the labels and the categories.
+        before = series.find(f"{{{_C}}}dLbls")
+        if before is None:
+            before = series.find(f"{{{_C}}}cat")
+        for point in range(points):
+            before.addprevious(
+                etree.fromstring(
+                    f'<c:dPt xmlns:c="{_C}"><c:idx val="{point}"/><c:bubble3D val="0"/>'
+                    f"<c:spPr>{fill(colors[point % len(colors)])}</c:spPr></c:dPt>"
+                )
+            )
+
+
 def _chart_xml(
-    chart_type: str, categories: list[str], series: dict[str, list[float]], title: str
+    chart_type: str,
+    categories: list[str],
+    series: dict[str, list[float]],
+    title: str,
+    fonts: tuple[str, str] | None = None,
+    colors: Sequence[str] = (),
 ) -> tuple[bytes, bytes]:
     from pptx.chart.data import CategoryChartData
     from pptx.chart.xmlwriter import ChartXmlWriter
@@ -63,6 +102,20 @@ def _chart_xml(
     else:
         chart.find("c:autoTitleDeleted", ns).set("val", "1")
 
+    # Without a typeface a reader without the document's theme falls back to a serif font.
+    if fonts is not None:
+        for run_properties in root.iter(f"{{{_A}}}defRPr", f"{{{_A}}}rPr"):
+            for tag, face in (("latin", fonts[0]), ("ea", fonts[1])):
+                etree.SubElement(run_properties, f"{{{_A}}}{tag}").set("typeface", face)
+
+    # A column chart reads by the height of its bars; an axis that starts near the smallest value
+    # makes a 7% rise look like a tripling.
+    scaling = chart.find("c:plotArea/c:valAx/c:scaling", ns)
+    if chart_type == "bar" and scaling is not None and min(
+        (v for vs in series.values() for v in vs), default=0
+    ) >= 0:
+        etree.SubElement(scaling, f"{{{_C}}}min").set("val", "0")
+
     # Axis labels only; the values themselves keep every decimal.
     values = [abs(v) for vs in series.values() for v in vs]
     value_axis = chart.find("c:plotArea/c:valAx", ns)
@@ -72,8 +125,13 @@ def _chart_xml(
         )
         value_axis.find("c:majorTickMark", ns).addprevious(number_format)
 
+    if colors:
+        _paint_series(root, chart_type, len(categories), colors)
+
     # One series needs no legend (the title names it); a pie always does,
-    # since the slices are identified by category.
+    # since the slices are identified by category. The line template brings one of its own.
+    for existing in chart.findall("c:legend", ns):
+        chart.remove(existing)
     if len(series) > 1 or chart_type == "pie":
         legend = etree.fromstring(
             f'<c:legend xmlns:c="{_C}"><c:legendPos val="b"/><c:overlay val="0"/></c:legend>'
@@ -93,9 +151,13 @@ def add_chart_paragraph(
     title: str,
     width_emu: int,
     height_emu: int,
+    fonts: tuple[str, str] | None = None,
+    colors: Sequence[str] = (),
 ) -> Any:
     """Append a paragraph holding a native chart; return the paragraph
-    (python-docx `Paragraph`) so the caller can move it."""
+    (python-docx `Paragraph`) so the caller can move it. `fonts` is the Latin and East Asian
+    typeface of the document's text; `colors` (RRGGBB) paint the series in order, else the
+    theme's colours do."""
     from docx.opc.constants import RELATIONSHIP_TYPE as RT
     from docx.opc.packuri import PackURI
     from docx.opc.part import Part
@@ -106,7 +168,7 @@ def add_chart_paragraph(
     while f"/word/charts/chart{number}.xml" in existing:
         number += 1
 
-    xml_blob, workbook_blob = _chart_xml(chart_type, categories, series, title)
+    xml_blob, workbook_blob = _chart_xml(chart_type, categories, series, title, fonts, colors)
     workbook_part = Part(
         PackURI(f"/word/embeddings/Microsoft_Excel_Sheet{number}.xlsx"),
         _XLSX_CT,

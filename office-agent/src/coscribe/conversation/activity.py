@@ -226,7 +226,9 @@ def open_in_os(path: Path, *, reveal: bool) -> None:
     Linux box)."""
     if sys.platform == "win32":
         if reveal:
-            subprocess.Popen(["explorer", f"/select,{path}"])
+            # Explorer parses its own command line: given the list form, a path with a space
+            # becomes one quoted "/select,..." argument, which it ignores and opens Documents.
+            subprocess.Popen(f'explorer /select,"{path}"')
         else:
             os.startfile(path)  # type: ignore[attr-defined]  # noqa: S606 -- Windows-only
     elif sys.platform == "darwin":

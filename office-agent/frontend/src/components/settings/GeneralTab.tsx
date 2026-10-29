@@ -11,8 +11,12 @@ import {
   LOG_LEVELS,
   PERMISSION_MODE_KEY,
   PERMISSION_MODES,
+  USER_NAME_KEY,
+  USER_ROLE_KEY,
+  USER_ROLES,
 } from "./fields";
 import { GlobalInstructionsSection } from "./GlobalInstructionsSection";
+import { ProxySection } from "./ProxySection";
 import { SegmentedControl } from "./SegmentedControl";
 import { SelectMenu } from "./SelectMenu";
 import { SettingRow, SettingRows, SettingsSection, fieldClass } from "./SettingRow";
@@ -27,7 +31,6 @@ type PermissionMode = (typeof PERMISSION_MODES)[number]["value"];
 
 const DEFAULT_MODEL_KEY = "COSCRIBE_DEFAULT_MODEL";
 const MAX_TURNS_KEY = "COSCRIBE_MAX_TURNS";
-const REVIEWER_NAME_KEY = "COSCRIBE_REVIEWER_NAME";
 
 function DefaultModelSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const models = useConfiguredModels();
@@ -109,21 +112,31 @@ function AppearanceSection() {
   );
 }
 
-function ReviewSection({ values, onChange }: GeneralTabProps) {
-  const reviewer = GENERAL_FIELDS.find((f) => f.key === REVIEWER_NAME_KEY)!;
+function ProfileSection({ values, onChange }: GeneralTabProps) {
   return (
-    <SettingsSection title="Review">
+    <SettingsSection title="Profile">
       <SettingRows>
         <SettingRow
-          label={reviewer.label}
-          description={reviewer.description}
+          label="What should Coscribe call you?"
+          description="Used in the greeting on the home screen."
           control={
             <input
-              aria-label={reviewer.label}
+              aria-label="Your name"
               className={`${fieldClass} w-48`}
-              value={values[REVIEWER_NAME_KEY] ?? ""}
-              placeholder={reviewer.placeholder}
-              onChange={(e) => onChange(REVIEWER_NAME_KEY, e.target.value)}
+              value={values[USER_NAME_KEY] ?? ""}
+              placeholder="Your name"
+              onChange={(e) => onChange(USER_NAME_KEY, e.target.value)}
+            />
+          }
+        />
+        <SettingRow
+          label="What best describes your work?"
+          control={
+            <SelectMenu
+              ariaLabel="Your work"
+              value={values[USER_ROLE_KEY] ?? ""}
+              options={USER_ROLES}
+              onChange={(v) => onChange(USER_ROLE_KEY, v)}
             />
           }
         />
@@ -137,6 +150,8 @@ export function GeneralTab({ values, onChange }: GeneralTabProps) {
   const maxTurns = field(MAX_TURNS_KEY);
   return (
     <div className="flex flex-col gap-10">
+      <ProfileSection values={values} onChange={onChange} />
+
       <AppearanceSection />
 
       <SettingsSection title="Model">
@@ -174,8 +189,6 @@ export function GeneralTab({ values, onChange }: GeneralTabProps) {
         </SettingRows>
       </SettingsSection>
 
-      <ReviewSection values={values} onChange={onChange} />
-
       <SettingsSection title="Instructions">
         <GlobalInstructionsSection active />
       </SettingsSection>
@@ -209,6 +222,8 @@ export function GeneralTab({ values, onChange }: GeneralTabProps) {
           />
         </SettingRows>
       </SettingsSection>
+
+      <ProxySection />
 
       <SettingsSection title="Advanced">
         <SettingRows>

@@ -2,6 +2,7 @@ import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom";
 import {
   deleteThreadGroup,
+  exportThread,
   getThreadGroups,
   getThreadStatuses,
   renameThread,
@@ -9,6 +10,7 @@ import {
   setThreadMeta,
 } from "../lib/rest";
 import { goToThread } from "../lib/nav";
+import { saveBlob } from "../lib/slides";
 import { readStored, writeStored } from "../lib/storage";
 import {
   FILTERS,
@@ -27,9 +29,9 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   EyeIcon,
+  DownloadIcon,
   FilterIcon,
   FolderIcon,
-  FolderPlusIcon,
   LockIcon,
   HandIcon,
   ListChecksIcon,
@@ -39,6 +41,8 @@ import {
   SearchIcon,
   TrashIcon,
 } from "./icons";
+import { BatchBar, NewGroupItem } from "./BatchBar";
+import { itemClass, menuClass } from "./menuStyle";
 import { ThreadStatusIcon } from "./ThreadStatusIcon";
 
 const COLLAPSED_KEY = "coscribe.collapsedGroups";
@@ -48,9 +52,6 @@ const THREAD_DRAG_TYPE = "application/x-coscribe-thread";
 const STATUS_POLL_MS = 3000;
 const MENU_WIDTH = 208;
 
-const menuClass =
-  "z-50 rounded-[10px] border border-[var(--border)] bg-[var(--panel-bg)] py-1 text-sm shadow-[var(--shadow)]";
-const itemClass = "flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-[var(--card-bg)]";
 
 function readCollapsed(): Set<string> {
   try {
@@ -67,12 +68,27 @@ interface MenuState {
   y: number;
 }
 
+function ExportItem({ thread, onDone }: { thread: ThreadSummary; onDone: () => void }) {
+  const save = () => {
+    onDone();
+    exportThread(thread.thread_id)
+      .then((blob) => saveBlob(blob, `conversation-${thread.thread_id.slice(0, 8)}.md`))
+      .catch(() => window.alert("The conversation could not be exported."));
+  };
+  return (
+    <button type="button" role="menuitem" className={itemClass} onClick={save}>
+      <DownloadIcon className="h-3.5 w-3.5" /> Export conversation
+    </button>
+  );
+}
+
 /** The menu for one conversation, at the pointer for a right-click or under
  * its "..." button. */
 function ThreadMenu({
   menu,
   groups,
   onClose,
+  onSelect,
   onRename,
   onEnvironment,
   onMove,
@@ -82,6 +98,7 @@ function ThreadMenu({
   menu: MenuState;
   groups: string[];
   onClose: () => void;
+  onSelect: () => void;
   onRename: () => void;
   onEnvironment: () => void;
   onMove: (group: string) => void;
@@ -90,8 +107,6 @@ function ThreadMenu({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [submenu, setSubmenu] = useState(false);
-  const [naming, setNaming] = useState(false);
-  const [name, setName] = useState("");
   useClickOutside(ref, onClose, true);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => event.key === "Escape" && onClose();
@@ -103,10 +118,6 @@ function ThreadMenu({
   const top = Math.max(4, Math.min(menu.y, window.innerHeight - 220));
   const flip = left + MENU_WIDTH * 2 + 8 > window.innerWidth;
   const current = menu.thread.group;
-  const commitName = () => {
-    const trimmed = name.trim();
-    if (trimmed) onMove(trimmed);
-  };
 
   return createPortal(
     <div
@@ -117,12 +128,17 @@ function ThreadMenu({
       style={{ left, top, width: MENU_WIDTH }}
       onClick={(e) => e.stopPropagation()}
     >
+      <button type="button" role="menuitem" className={itemClass} onClick={onSelect}>
+        <CheckCircleIcon className="h-3.5 w-3.5" /> Select
+      </button>
+      <div className="my-1 border-t border-[var(--border)]" />
       <button type="button" role="menuitem" className={itemClass} onClick={onRename}>
         <PencilIcon className="h-3.5 w-3.5" /> Rename
       </button>
       <button type="button" role="menuitem" className={itemClass} onClick={onEnvironment}>
         <LockIcon className="h-3.5 w-3.5" /> Edit environment
       </button>
+      <ExportItem thread={menu.thread} onDone={onClose} />
       <div className="relative" onMouseEnter={() => setSubmenu(true)}>
         <button
           type="button"
@@ -168,28 +184,7 @@ function ThreadMenu({
               Ungrouped
               {!current && <CheckIcon className="h-3.5 w-3.5 shrink-0" />}
             </button>
-            {naming ? (
-              <div className="px-2 py-1">
-                <input
-                  autoFocus
-                  aria-label="New group name"
-                  placeholder="Group name"
-                  className="w-full rounded-md border border-[var(--accent)] bg-[var(--bg)] px-2 py-1 text-sm outline-none"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      commitName();
-                    }
-                  }}
-                />
-              </div>
-            ) : (
-              <button type="button" role="menuitem" className={itemClass} onClick={() => setNaming(true)}>
-                <FolderPlusIcon className="h-3.5 w-3.5" /> New group…
-              </button>
-            )}
+            <NewGroupItem onCreate={onMove} />
           </div>
         )}
       </div>
@@ -222,6 +217,9 @@ function ThreadRow({
   isCurrent,
   renaming,
   draggable,
+  selecting,
+  selected,
+  onToggleSelect,
   onOpenMenu,
   onRenameDone,
   onDragStart,
@@ -231,6 +229,9 @@ function ThreadRow({
   isCurrent: boolean;
   renaming: boolean;
   draggable: boolean;
+  selecting: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
   onOpenMenu: (thread: ThreadSummary, x: number, y: number) => void;
   onRenameDone: (title: string | null) => void;
   onDragStart: () => void;
@@ -266,25 +267,37 @@ function ThreadRow({
       data-testid="thread-row"
       data-status={thread.status}
       className={`group flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-[var(--card-bg)] ${
-        isCurrent ? "bg-[var(--card-bg)] font-medium" : "cursor-pointer"
-      }`}
+        isCurrent && !selecting ? "bg-[var(--card-bg)] font-medium" : "cursor-pointer"
+      } ${selected ? "bg-[var(--card-bg)]" : ""}`}
       title={`${title} · ${STATUS_LABEL[thread.status]}`}
-      draggable={draggable}
+      draggable={draggable && !selecting}
+      aria-selected={selecting ? selected : undefined}
       onDragStart={(e) => {
         e.dataTransfer.setData(THREAD_DRAG_TYPE, thread.thread_id);
         e.dataTransfer.effectAllowed = "move";
         onDragStart();
       }}
       onDragEnd={onDragEnd}
-      onClick={() => !isCurrent && goToThread(thread.thread_id)}
+      onClick={() => (selecting ? onToggleSelect() : !isCurrent && goToThread(thread.thread_id))}
       onContextMenu={(e) => {
         e.preventDefault();
+        if (selecting) return;
         onOpenMenu(thread, e.clientX, e.clientY);
       }}
     >
+      {selecting && (
+        <input
+          type="checkbox"
+          aria-label={`Select ${title}`}
+          className="h-3.5 w-3.5 shrink-0 accent-[var(--accent)]"
+          checked={selected}
+          onChange={onToggleSelect}
+          onClick={(e) => e.stopPropagation()}
+        />
+      )}
       <ThreadStatusIcon status={thread.status} />
       <span className={`min-w-0 flex-1 truncate ${thread.archived ? "text-[var(--muted)]" : ""}`}>{title}</span>
-      <button
+      {!selecting && <button
         type="button"
         aria-label={`Options for ${title}`}
         className="rounded-md p-1 text-[var(--muted)] opacity-0 hover:bg-[var(--border)] focus-visible:opacity-100 group-hover:opacity-100"
@@ -295,7 +308,7 @@ function ThreadRow({
         }}
       >
         <MoreIcon className="h-3.5 w-3.5" />
-      </button>
+      </button>}
     </div>
   );
 }
@@ -426,12 +439,95 @@ const FILTER_ICON: Record<ThreadFilter, ReactNode> = {
   archived: <ArchiveIcon className="h-4 w-4" />,
 };
 
+/** Multi-select mode: null is the normal list, a set is the picked conversations. */
+function useSelection(
+  threads: ThreadSummary[],
+  setGroups: (groups: string[]) => void,
+  onChanged: () => void,
+) {
+  const [selected, setSelected] = useState<Set<string> | null>(null);
+  const chosen = selected ? threads.filter((t) => selected.has(t.thread_id)) : [];
+  const toggleSelect = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  const batchMove = async (group: string) => {
+    const results = await Promise.all(chosen.map((t) => setThreadMeta(t.thread_id, { group })));
+    const last = results.reverse().find((r) => !("error" in r));
+    if (last && !("error" in last)) setGroups(last.groups);
+    setSelected(null);
+    onChanged();
+  };
+  const batchArchive = async () => {
+    const archived = !chosen.every((t) => t.archived);
+    await Promise.all(chosen.map((t) => setThreadMeta(t.thread_id, { archived })));
+    setSelected(null);
+    onChanged();
+  };
+  useEffect(() => {
+    if (!selected) return;
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && setSelected(null);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [selected !== null]);
+  return { selected, setSelected, chosen, toggleSelect, batchMove, batchArchive };
+}
+
+/** The status filter button and its menu. */
+function FilterMenu({ filter, onChange }: { filter: ThreadFilter; onChange: (value: ThreadFilter) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useClickOutside(ref, () => setOpen(false), open);
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        title="Filter sessions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={`relative rounded-md p-1 hover:bg-[var(--card-bg)] hover:text-[var(--fg)] ${
+          filter !== "all" ? "text-[var(--fg)]" : ""
+        }`}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <FilterIcon className="h-3.5 w-3.5" />
+        {filter !== "all" && (
+          <span className="absolute right-0 top-0 h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+        )}
+      </button>
+      {open && (
+        <div role="menu" aria-label="Filter sessions" className={`${menuClass} absolute right-0 top-full mt-1 w-48`}>
+          {FILTERS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              role="menuitemradio"
+              aria-checked={filter === value}
+              className={`${itemClass} text-[var(--fg)]`}
+              onClick={() => {
+                onChange(value);
+                setOpen(false);
+              }}
+            >
+              <span className="w-4 text-[var(--muted)]">{filter === value ? <CheckIcon className="h-4 w-4" /> : null}</span>
+              <span className="text-[var(--muted)]">{FILTER_ICON[value]}</span>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export interface ThreadListProps {
   threads: ThreadSummary[];
   currentId: string;
   onChanged: () => void;
   onRenamed: (threadId: string, title: string) => void;
-  onDeleteRequest: (thread: ThreadSummary) => void;
+  onDeleteRequest: (threads: ThreadSummary[]) => void;
   onEditEnvironment: (thread: ThreadSummary) => void;
 }
 
@@ -448,16 +544,14 @@ export function ThreadList({
   const [groups, setGroups] = useState<string[]>([]);
   const [statuses, setStatuses] = useState<Record<string, ThreadStatus>>({});
   const [filter, setFilter] = useState<ThreadFilter>("all");
-  const [filterOpen, setFilterOpen] = useState(false);
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Set<string>>(readCollapsed);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  const { selected, setSelected, chosen, toggleSelect, batchMove, batchArchive } = useSelection(threads, setGroups, onChanged);
   const [dragging, setDragging] = useState<ThreadSummary | null>(null);
   const [dropKey, setDropKey] = useState<string | null>(null);
-  const filterRef = useRef<HTMLDivElement>(null);
-  useClickOutside(filterRef, () => setFilterOpen(false), filterOpen);
 
   const refreshGroups = useCallback(() => {
     getThreadGroups()
@@ -509,6 +603,7 @@ export function ThreadList({
     await setThreadMeta(thread.thread_id, { archived: !thread.archived });
     onChanged();
   };
+  const visibleIds = sections.flatMap((s) => s.threads.map((t) => t.thread_id));
   const finishRename = (thread: ThreadSummary, value: string | null) => {
     setRenamingId(null);
     const title = value?.trim();
@@ -542,44 +637,7 @@ export function ThreadList({
           >
             <SearchIcon className="h-3.5 w-3.5" />
           </button>
-          <div className="relative" ref={filterRef}>
-            <button
-              type="button"
-              title="Filter sessions"
-              aria-haspopup="menu"
-              aria-expanded={filterOpen}
-              className={`relative rounded-md p-1 hover:bg-[var(--card-bg)] hover:text-[var(--fg)] ${
-                filter !== "all" ? "text-[var(--fg)]" : ""
-              }`}
-              onClick={() => setFilterOpen((v) => !v)}
-            >
-              <FilterIcon className="h-3.5 w-3.5" />
-              {filter !== "all" && (
-                <span className="absolute right-0 top-0 h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
-              )}
-            </button>
-            {filterOpen && (
-              <div role="menu" aria-label="Filter sessions" className={`${menuClass} absolute right-0 top-full mt-1 w-48`}>
-                {FILTERS.map(({ value, label }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    role="menuitemradio"
-                    aria-checked={filter === value}
-                    className={`${itemClass} text-[var(--fg)]`}
-                    onClick={() => {
-                      setFilter(value);
-                      setFilterOpen(false);
-                    }}
-                  >
-                    <span className="w-4 text-[var(--muted)]">{filter === value ? <CheckIcon className="h-4 w-4" /> : null}</span>
-                    <span className="text-[var(--muted)]">{FILTER_ICON[value]}</span>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <FilterMenu filter={filter} onChange={setFilter} />
         </div>
       </div>
       {searching && (
@@ -652,6 +710,9 @@ export function ThreadList({
                     isCurrent={thread.thread_id === currentId}
                     renaming={renamingId === thread.thread_id}
                     draggable={hasGroups}
+                    selecting={selected !== null}
+                    selected={selected?.has(thread.thread_id) ?? false}
+                    onToggleSelect={() => toggleSelect(thread.thread_id)}
                     onOpenMenu={(t, x, y) => setMenu({ thread: t, x, y })}
                     onRenameDone={(value) => finishRename(thread, value)}
                     onDragStart={() => setDragging(thread)}
@@ -668,11 +729,31 @@ export function ThreadList({
           );
         })}
       </div>
+      {selected && (
+        <BatchBar
+          count={chosen.length}
+          total={visibleIds.length}
+          groups={groups}
+          allArchived={chosen.length > 0 && chosen.every((t) => t.archived)}
+          onSelectAll={() => setSelected(chosen.length === visibleIds.length ? new Set() : new Set(visibleIds))}
+          onMove={(group) => void batchMove(group)}
+          onArchive={() => void batchArchive()}
+          onDelete={() => {
+            onDeleteRequest(chosen);
+            setSelected(null);
+          }}
+          onCancel={() => setSelected(null)}
+        />
+      )}
       {menu && (
         <ThreadMenu
           menu={menu}
           groups={groups}
           onClose={() => setMenu(null)}
+          onSelect={() => {
+            setSelected(new Set([menu.thread.thread_id]));
+            setMenu(null);
+          }}
           onRename={() => {
             setRenamingId(menu.thread.thread_id);
             setMenu(null);
@@ -684,7 +765,7 @@ export function ThreadList({
           onMove={(group) => void move(menu.thread, group)}
           onArchive={() => void archive(menu.thread)}
           onDelete={() => {
-            onDeleteRequest(menu.thread);
+            onDeleteRequest([menu.thread]);
             setMenu(null);
           }}
         />

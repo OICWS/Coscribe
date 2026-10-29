@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { openThreadFile } from "../../lib/rest";
+import { useCallback, useContext, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { openThreadFile, threadFileDownloadUrl } from "../../lib/rest";
 import {
   DeckNotBuilt,
   fitZoom,
@@ -13,7 +13,8 @@ import {
   type SlideInfo,
 } from "../../lib/slides";
 import { useDockPanel } from "../dock/dockContext";
-import { ChevronDownIcon, ExternalLinkIcon, MessageCircleIcon } from "../icons";
+import { ExternalLinkIcon } from "../icons";
+import { DraftPages } from "../../lib/draftPages";
 import type { CommentLink } from "../../lib/slideComments";
 import { SlideComments, useSlideComments, type CommentStart } from "./SlideComments";
 import { SlideEditor } from "./SlideEditor";
@@ -24,6 +25,7 @@ import { useSlideArranging } from "./useSlideArranging";
 import { useSlideHistory } from "./useSlideHistory";
 import { deckEntries, downloadEntries, presentEntries, zoomEntries } from "./slideMenus";
 import { PanelFileMenu } from "../artifacts/PanelFileMenu";
+import { PanelCommentButton } from "../artifacts/PanelCommentButton";
 import { PanelTitleButton } from "../artifacts/PanelTitleButton";
 import { setNotes, type Insert } from "../../lib/slideSource";
 import { editSlide, getSlideParts } from "../../lib/slideEditing";
@@ -95,7 +97,7 @@ export function SlidesPanel({
       <PanelTop title={deck?.title ?? name} path={path} ui={ui} canComment={!locked} onMenu={(kind, anchor) => setMenu({ kind, anchor })} />
       <DeckNotices changed={deck?.changed ?? false} readOnly={locked} error={shownError(busy, deck, [error, edits.problem, downloads.failed, comments.failed])} />
       {(notBuilt || !deck) && busy ? (
-        <Building name={name} />
+        <Building name={name} threadId={threadId} />
       ) : notBuilt ? (
         <NotBuilt name={name} onOpen={() => open(false)} />
       ) : (
@@ -400,38 +402,17 @@ function PanelTop({
 }) {
   const { commenting, toggleCommenting: onToggleComments } = ui;
   const dock = useDockPanel();
-  const half = "flex h-7 items-center justify-center hover:bg-[var(--card-bg)]";
   return (
     <div className="flex h-12 shrink-0 items-center gap-2 px-3" {...dock.headerProps}>
       <PanelTitleButton title={title} path={path} onMenu={(anchor) => onMenu("title", anchor)} />
       <div className="flex-1" />
       {canComment && (
-      <div
-        className="flex items-center overflow-hidden rounded-lg border border-[var(--border)]"
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        <button
-          type="button"
+        <PanelCommentButton
+          pressed={commenting}
           title={commenting ? "Stop commenting (Esc)" : "Comment: click anything on the slide"}
-          aria-label="Comment"
-          aria-pressed={commenting}
-          className={`${half} w-8 ${commenting ? "bg-[var(--accent-soft)] text-[var(--accent-ink)]" : "text-[var(--fg)]"}`}
-          onClick={onToggleComments}
-        >
-          <MessageCircleIcon className="h-4 w-4" />
-        </button>
-        <span className="h-4 border-l border-[var(--border)]" />
-        <button
-          type="button"
-          title="Comment options"
-          aria-label="Comment options"
-          aria-haspopup="menu"
-          className={`${half} w-6 text-[var(--muted)]`}
-          onClick={(e) => onMenu("comments", e.currentTarget.getBoundingClientRect())}
-        >
-          <ChevronDownIcon className="h-3.5 w-3.5" />
-        </button>
-      </div>
+          onToggle={onToggleComments}
+          onMenu={(anchor) => onMenu("comments", anchor)}
+        />
       )}
       {dock.controls}
     </div>
@@ -736,10 +717,32 @@ function shownError(busy: boolean, deck: SlideDeck | null, [error, edit, downloa
   return busy ? null : (error ?? edit ?? download ?? (deck && !deck.readOnly ? comment : null));
 }
 
-function Building({ name }: { name: string }) {
+function Building({ name, threadId }: { name: string; threadId: string }) {
+  const drafts = useContext(DraftPages);
+  if (drafts.length === 0) {
+    return (
+      <div className="flex flex-1 items-center justify-center bg-[var(--stage-bg)] p-6 text-center text-sm text-[var(--muted)]" role="status">
+        Coscribe is working on {name}…
+      </div>
+    );
+  }
   return (
-    <div className="flex flex-1 items-center justify-center bg-[var(--stage-bg)] p-6 text-center text-sm text-[var(--muted)]" role="status">
-      Coscribe is working on {name}…
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto bg-[var(--stage-bg)] p-4" role="status">
+      <p className="text-sm text-[var(--muted)]">
+        Coscribe is building {name}: {drafts.length} {drafts.length === 1 ? "page" : "pages"} so far
+      </p>
+      <ul className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
+        {drafts.map((page) => (
+          <li key={page.path} className="flex flex-col gap-1">
+            <img
+              alt={page.path.split("/").pop()}
+              src={`${threadFileDownloadUrl(threadId, page.path)}&v=${page.version}`}
+              className="aspect-video w-full rounded-md border border-[var(--border)] bg-white object-contain"
+            />
+            <span className="truncate text-xs text-[var(--muted)]">{page.path.split("/").pop()}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

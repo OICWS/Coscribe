@@ -27,18 +27,6 @@ class OpenFileRequest(BaseModel):
     reveal: bool = False
 
 
-class DocxReviewEdit(BaseModel):
-    path: str
-    operations: list[dict[str, str]]
-
-
-class DocBlocksSave(BaseModel):
-    path: str
-    # The file version the editor read: a save over a newer file is refused.
-    version: str = Field(min_length=1, max_length=128)
-    blocks: list[Any] = Field(max_length=20_000)
-
-
 class DocRestore(BaseModel):
     path: str
     # The version the editor holds, and the kept version to put back over it.
@@ -261,6 +249,15 @@ class ProviderUpdate(BaseModel):
     base_url: str = ""
     api_key: str
     default_model: str = ""
+
+
+class ProxyUpdate(BaseModel):
+    mode: Literal["system", "manual", "none"]
+    address: str = ""
+    bypass: str = ""
+    username: str = ""
+    # None keeps the saved password; "" removes it.
+    password: str | None = None
 
 
 class ScriptEnvPackageInstall(BaseModel):

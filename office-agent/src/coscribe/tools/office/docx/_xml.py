@@ -12,7 +12,7 @@ from xml.sax.saxutils import escape as _xml_escape
 
 from ..._native_docx_tracks import _constants as _tracks_constants
 from ..._native_docx_tracks.tracks import TracksMixin, _resolve
-from ..markdown_blocks import Block, parse_inline_runs
+from ..markdown_blocks import Block, parse_inline_spans
 from ..table_layout import _numeric_columns, _table_layout
 from ._style import TABLE_STYLE_ID, is_total_row, set_table_look
 
@@ -73,14 +73,16 @@ def _fill_docx_table(document: Any, block: Block) -> None:
     body_size = _docx_body_font_pt(document)
     # 10 and 9 pt are 五号/小五, the usual sizes of a Chinese report's tables.
     sizes = [body_size] + [size for size in (10.0, 9.0) if size < body_size]
-    font_size, widths = _table_layout(rows, _docx_text_width_pt(document), sizes, padding=12.0)
+    font_size, widths = _table_layout(
+        rows, _docx_text_width_pt(document), sizes, padding=12.0, header=block.header
+    )
     numeric = _numeric_columns(rows, block.header)
     for column, width in zip(table.columns, widths, strict=True):
         column.width = Pt(width)
     # table.cell(r, c) rebuilds the whole cell grid on every call, so
     # filling a table that way is quadratic: 400 rows took 36 s and 1,500
     # never finished. Build the grid once.
-    cells = table._cells  # noqa: SLF001
+    cells = table._cells
     for row_index, row in enumerate(rows):
         is_header = block.header and row_index == 0
         for col_index in range(n_cols):
@@ -98,7 +100,7 @@ def _fill_docx_table(document: Any, block: Block) -> None:
                     run.font.size = Pt(font_size)
             if numeric[col_index]:
                 paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    first_tr = table.rows[0]._tr  # noqa: SLF001
+    first_tr = table.rows[0]._tr
     if house_style is not None:
         last_row = len(rows) > 2 and is_total_row(rows[-1])
         set_table_look(first_tr.getparent(), first_row=block.header, last_row=last_row)
@@ -108,15 +110,59 @@ def _fill_docx_table(document: Any, block: Block) -> None:
 
 
 def _add_inline_runs(paragraph: Any, text: str) -> None:
-    """Add ``text`` to a python-docx paragraph as one run per
-    ``parse_inline_runs`` fragment, so ``**bold**``/``*italic*`` render as
-    real formatting instead of literal markup characters."""
-    for run_text, bold, italic in parse_inline_runs(text):
-        run = paragraph.add_run(run_text)
-        if bold:
+    """Add ``text`` to a python-docx paragraph as one run per ``parse_inline_spans`` piece:
+    bold and italic as such, code in a monospace font on a grey ground, a link as a link Word
+    opens."""
+    for span in parse_inline_spans(text):
+        if span.link is not None:
+            _add_hyperlink(paragraph, span.text, span.link)
+            continue
+        run = paragraph.add_run(span.text)
+        if span.bold:
             run.bold = True
-        if italic:
+        if span.italic:
             run.italic = True
+        if span.code:
+            _code_look(run)
+
+
+def _code_look(run: Any) -> None:
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    properties = run._r.get_or_add_rPr()
+    fonts = OxmlElement("w:rFonts")
+    for side in ("w:ascii", "w:hAnsi", "w:cs"):
+        fonts.set(qn(side), "Consolas")
+    properties.insert(0, fonts)
+    shading = OxmlElement("w:shd")
+    for name, value in (("w:val", "clear"), ("w:color", "auto"), ("w:fill", "F2F2F2")):
+        shading.set(qn(name), value)
+    # rPr is a sequence: shd comes after everything add_run or bold/italic put there.
+    properties.append(shading)
+
+
+def _add_hyperlink(paragraph: Any, text: str, url: str) -> None:
+    from docx.opc.constants import RELATIONSHIP_TYPE
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    link = OxmlElement("w:hyperlink")
+    target = paragraph.part.relate_to(url, RELATIONSHIP_TYPE.HYPERLINK, is_external=True)
+    link.set(qn("r:id"), target)
+    run = OxmlElement("w:r")
+    properties = OxmlElement("w:rPr")
+    color = OxmlElement("w:color")
+    color.set(qn("w:val"), "0563C1")
+    underline = OxmlElement("w:u")
+    underline.set(qn("w:val"), "single")
+    properties.extend([color, underline])
+    words = OxmlElement("w:t")
+    words.set(qn("xml:space"), "preserve")
+    words.text = text
+    run.extend([properties, words])
+    link.append(run)
+    paragraph._p.append(link)
 
 
 def _clear_body(document: Any) -> None:

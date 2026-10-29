@@ -115,10 +115,6 @@ _ARTIFACTS = {
         "a new presentation the app opens in its Slides panel. Build it from pages, as your "
         "instructions for new decks say"
     ),
-    "sheets": (
-        "a new Excel workbook the app opens in its viewer. Build it with write_xlsx_cells, "
-        "after loading the Excel Spreadsheets skill"
-    ),
     "design": (
         "a new design the app opens in its Design panel. Load the SVG and HTML Design skill, "
         "then write one self-contained .html file with the drawings inline as SVG"
@@ -131,6 +127,7 @@ _ARTIFACTS = {
         "(find it with search_tools)"
     ),
 }
+# "Sheets" stays so a history saved before that kind was dropped still loses its note.
 _ARTIFACT_NOTE_RE = re.compile(
     r"^\[The user is starting a (?:Docs|Slides|Sheets|Design-system|Design) artifact: [^\]]*\] "
 )

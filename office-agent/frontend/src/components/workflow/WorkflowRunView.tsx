@@ -22,7 +22,7 @@ import type { BranchStep, CheckResult, LoopStep, StepRecord, Workflow, WorkflowS
 import { CheckIcon, ChevronDownIcon, ClockIcon, CloseIcon, SparkIcon, StopIcon } from "../icons";
 import { ConditionText, VarToken } from "./parts";
 import { Screenshot } from "./Screenshot";
-import { goToThread } from "../../lib/nav";
+import { InvestigationLink, WAITING_FOR_BROWSER } from "./InvestigationLink";
 import { StepOutput } from "./StepOutput";
 
 type RowStatus = StepRecord["status"] | "not_reached" | "stopped";
@@ -648,7 +648,7 @@ function RunBanner({
         <div className="flex items-center gap-3">
           <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] motion-reduce:animate-none" />
           <span className="min-w-0 flex-1 truncate">
-            Running{current ? ` · ${stepTitle(workflow, current.step_id)}` : ""}
+            {run.queued ? WAITING_FOR_BROWSER : `Running${current ? ` · ${stepTitle(workflow, current.step_id)}` : ""}`}
           </span>
           <button type="button" className={secondaryButton} disabled={busy} onClick={() => act(onStop)}>
             <span className="flex items-center gap-1.5">
@@ -735,11 +735,7 @@ function RunBanner({
           {run.screenshot && <Screenshot name={run.screenshot} alt="The page when the step failed" />}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {run.investigation && (
-            <button type="button" className={primaryButton} onClick={() => goToThread(run.investigation!)}>
-              Open the conversation looking into it
-            </button>
-          )}
+          <InvestigationLink run={run} buttonClass={primaryButton} />
           <button
             type="button"
             className={run.investigation ? secondaryButton : primaryButton}
@@ -828,6 +824,7 @@ export function WorkflowRunView({
         </div>
 
         <RunBanner run={run} workflow={workflow} onStop={onStop} onInvestigate={onInvestigate} />
+        <InvestigationLink run={run} />
         {run.sites && run.sites.length > 0 && run.status !== "running" && (
           <div className="text-[13px] text-[var(--muted)]" data-testid="run-sites">
             Opened: <span className="text-[var(--fg)]">{run.sites.join(", ")}</span>

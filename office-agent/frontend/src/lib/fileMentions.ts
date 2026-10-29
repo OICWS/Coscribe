@@ -1,7 +1,11 @@
 import type { ArtifactKind } from "./artifacts";
-import { isDocx } from "./docxReview";
 import { isPptx } from "./slides";
-import { isDesign, isDocMarkdown, isViewable } from "./viewers";
+import { isDesign, isViewable } from "./viewers";
+
+const isDocx = (path: string) => /\.docx$/i.test(path);
+
+/** What a message can mention: a file the app opens, or a Word file, which the person still names. */
+const isMentionable = (path: string) => isViewable(path) || isDocx(path);
 
 interface Call {
   toolName: string;
@@ -36,8 +40,8 @@ export function touchedFiles(calls: Iterable<Call>): string[] {
   for (const call of calls) {
     if (call.result === undefined || call.isError) continue;
     const path = call.arguments.path;
-    if (typeof path === "string" && isViewable(path) && !LOOKS_ONLY.test(call.toolName)) paths.add(path);
-    for (const written of scriptFiles(call.result)) if (isViewable(written)) paths.add(written);
+    if (typeof path === "string" && isMentionable(path) && !LOOKS_ONLY.test(call.toolName)) paths.add(path);
+    for (const written of scriptFiles(call.result)) if (isMentionable(written)) paths.add(written);
   }
   return [...paths];
 }
@@ -45,9 +49,9 @@ export function touchedFiles(calls: Iterable<Call>): string[] {
 export const baseName = (path: string) => path.split(/[\\/]/).pop() ?? path;
 
 /** The artifact kind a file belongs to, for its icon and its words. */
-export const kindOfFile = (path: string): ArtifactKind => (isPptx(path) ? "slides" : isDocx(path) || isDocMarkdown(path) ? "docs" : isDesign(path) ? "design" : "sheets");
+export const kindOfFile = (path: string): ArtifactKind => (isPptx(path) ? "slides" : isDesign(path) ? "design" : "docs");
 
-export const KIND_WORDS: Record<ArtifactKind, string> = { docs: "Document", slides: "Presentation", sheets: "Spreadsheet", design: "Design", dashboard: "Dashboard" };
+export const KIND_WORDS: Record<ArtifactKind, string> = { docs: "Document", slides: "Presentation", design: "Design", dashboard: "Dashboard" };
 
 /** The files this conversation made or changed, by their file names, for turning a mention in a
  * reply into a chip. Two files with one name keep the later. */

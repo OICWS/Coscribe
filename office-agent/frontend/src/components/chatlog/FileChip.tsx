@@ -4,7 +4,8 @@ import { editedLabel, KINDS, lookupArtifact, type ArtifactSummary } from "../../
 import { baseName, KIND_WORDS, kindOfFile } from "../../lib/fileMentions";
 import { KindIcon } from "../artifacts/artifactIcons";
 import { ThreadIdContext } from "../threadContext";
-import { ViewFile } from "./contexts";
+import { openMentioned, ViewFile } from "./contexts";
+import { useShownFile } from "./useShownFile";
 
 const CARD_WIDTH = 288;
 
@@ -19,7 +20,8 @@ export function FileChip({ path }: { path: string }) {
   const timer = useRef<number | undefined>(undefined);
   const kind = kindOfFile(path);
   const name = baseName(path);
-  if (!view) return <>{name}</>;
+  const shown = useShownFile(threadId, path);
+  if (!view || !shown) return <>{name}</>;
   const show = (event: MouseEvent<HTMLElement> | FocusEvent<HTMLElement>) => {
     window.clearTimeout(timer.current);
     setAnchor(event.currentTarget.getBoundingClientRect());
@@ -41,7 +43,7 @@ export function FileChip({ path }: { path: string }) {
       <button
         type="button"
         className="mx-0.5 inline-flex max-w-full items-center gap-1 rounded-md bg-[var(--accent-soft)] px-1.5 py-px align-baseline text-[0.95em] text-[var(--accent-ink)] hover:brightness-95"
-        onClick={() => view(path)}
+        onClick={() => openMentioned(view, threadId, path)}
         onMouseEnter={show}
         onMouseLeave={hide}
         onFocus={show}

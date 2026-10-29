@@ -64,11 +64,11 @@ from .._file_locks import read_text_with_retry, replace_with_retry
 from ..exec import (
     RunningCommand,
     blocked_write,
+    child_env,
     ensure_node_env,
     ensure_script_env,
     isolation_for_scripts,
     node_guard_args,
-    overlay_env,
     refusal_note,
     require_capability,
     script_scratch_root,
@@ -491,8 +491,8 @@ async def _start_contained(
         )
 
     task_id = await asyncio.to_thread(start)
-    status = {"task_id": task_id, "status": "running"}
-    return {**status, "language": language, "description": description}
+    status = {"task_id": task_id, "status": "running", "language": language}
+    return {**status, "description": description, "how_to_wait": WAIT_NOTE}
 
 
 def _watch(
@@ -575,6 +575,15 @@ def read_background_log(
     return {"task": task.to_dict(), "output": output}
 
 
+# A model left to choose polls in a tight loop (the maintainer saw four checks in a few
+# seconds), so the result says how to wait instead.
+WAIT_NOTE = (
+    "Don't check it again and again. Go on with other work, or, if you need its result "
+    "before you can go on, end this turn with wake_on_task(task_id, reason) (through "
+    "use_tool) and you are resumed when it finishes."
+)
+
+
 def build_background_task_tools(
     thread_id: str,
     workspace_root: str | Path,
@@ -640,7 +649,7 @@ def build_background_task_tools(
             raise ValueError(f"language must be one of {VALID_LANGUAGES}, got {language!r}")
         timeout = min(max(timeout_seconds, 1.0), _MAX_TIMEOUT)
 
-        base_env = overlay_env(os.environ, session_env() if session_env else None)
+        base_env = child_env(session_env() if session_env else None)
         argv, env, scratch_dir, runtime = await asyncio.to_thread(
             _prepare_script, language, script, state, scratch_root, write_roots, base_env
         )
@@ -696,7 +705,7 @@ def build_background_task_tools(
         if not command.strip():
             raise ValueError("command must not be empty")
         timeout = min(max(timeout_seconds, 1.0), _MAX_TIMEOUT)
-        env = overlay_env(os.environ, session_env() if session_env else None)
+        env = child_env(session_env() if session_env else None)
         proc = await start_command(state, thread_id, root, folders, command, env)
         return _register(proc, "shell", description, None, timeout)
 
@@ -724,12 +733,8 @@ def build_background_task_tools(
         _RUNNING_SUPERVISORS.add(supervisor)
         supervisor.add_done_callback(_RUNNING_SUPERVISORS.discard)
 
-        return {
-            "task_id": task.task_id,
-            "status": "running",
-            "language": language,
-            "description": description,
-        }
+        started = {"task_id": task.task_id, "status": "running", "language": language}
+        return {**started, "description": description, "how_to_wait": WAIT_NOTE}
 
     def check_background_task(
         task_id: str, tail_bytes: int = _DEFAULT_TAIL_BYTES
@@ -754,6 +759,8 @@ def build_background_task_tools(
         result = task.to_dict()
         blocked, output = blocked_write(without_guard_warnings(store.tail(task_id, tail_bytes)))
         result["output"] = output + (refusal_note(blocked) if blocked else "")
+        if task.status == "running":
+            result["how_to_wait"] = WAIT_NOTE
         if blocked:
             result["blocked_write"] = blocked
             folder = suggested_folder(blocked)

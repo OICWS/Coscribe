@@ -29,23 +29,6 @@ test("General tab: a change saves itself", async ({ page }) => {
   await expect(page.getByRole("status")).toHaveText(/^Saved/);
 });
 
-test("General tab: the reviewer name saves and is cleared again", async ({ page }) => {
-  await page.goto(freshThreadPath("settings"));
-  await waitForConnected(page);
-  const configLoaded = page.waitForResponse((r) => r.url().includes("/api/config") && r.status() === 200);
-  await page.getByRole("button", { name: "Settings" }).click();
-  await configLoaded;
-
-  const field = page.getByLabel("Reviewer name");
-  await field.fill("Dana Lee");
-  await expect(page.getByRole("status")).toHaveText(/^Saved/);
-  const reviewer = () => page.evaluate(() => fetch("/api/config").then((r) => r.json())).then((c) => c.COSCRIBE_REVIEWER_NAME);
-  expect(await reviewer()).toBe("Dana Lee");
-
-  await field.fill("");
-  await expect.poll(reviewer).toBeNull();
-});
-
 test("General tab: Default Mode saves", async ({ page }) => {
   await page.goto(freshThreadPath("settings-mode"));
   await waitForConnected(page);
@@ -149,4 +132,37 @@ test("General tab: the interface font changes the whole interface, not only the 
     await page.getByRole("button", { name: "Interface font" }).click();
     await page.getByRole("menuitemradio", { name: restore, exact: true }).click();
   }
+});
+
+test("General tab: a manual proxy saves without sending its password back, and System restores", async ({ page }) => {
+  await page.goto(freshThreadPath("settings-proxy"));
+  await waitForConnected(page);
+  const proxyLoaded = page.waitForResponse((r) => r.url().includes("/api/settings/proxy") && r.status() === 200);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await proxyLoaded;
+
+  await page.getByRole("button", { name: "Manual proxy" }).click();
+  await page.getByLabel("Proxy address").fill("127.0.0.1:9");
+  await page.getByLabel("Do not use the proxy for").fill(".corp.local");
+  await page.getByLabel("Proxy user name").fill("alice");
+  await page.getByLabel("Proxy password").fill("hunter2");
+  // The stub model is on this computer, which never goes through the proxy whatever the list says.
+  await page.getByRole("button", { name: "Test connection" }).click();
+  await expect(page.getByText("Reached 127.0.0.1 directly.")).toBeVisible({ timeout: 20_000 });
+
+  await page.getByRole("button", { name: "Save proxy" }).click();
+  await expect(page.getByText("Saved. Restart Coscribe to apply.")).toBeVisible();
+  const saved = await page.evaluate(() => fetch("/api/settings/proxy").then((r) => r.text()));
+  expect(saved).not.toContain("hunter2");
+  expect(JSON.parse(saved)).toMatchObject({ mode: "manual", address: "http://127.0.0.1:9", username: "alice", password_set: true });
+  await expect(page.getByLabel("Proxy password")).toHaveAttribute("placeholder", "Saved");
+  // The saved password stays with the address it was saved for.
+  await page.getByLabel("Proxy address").fill("127.0.0.1:10");
+  await expect(page.getByLabel("Proxy password")).toHaveAttribute("placeholder", "Enter it again for this proxy");
+
+  await page.getByRole("button", { name: "System proxy" }).click();
+  await page.getByRole("button", { name: "Save proxy" }).click();
+  await expect(page.getByText("Saved. Restart Coscribe to apply.")).toBeVisible();
+  const restored = await page.evaluate(() => fetch("/api/settings/proxy").then((r) => r.json()));
+  expect(restored).toMatchObject({ mode: "system", password_set: false });
 });

@@ -6,7 +6,20 @@ from .hooks import HookResult, empty_hooks_config, load_hooks_config, run_hook
 from .llm_client import LLMClient
 from .network_access import NetworkAccess, NetworkError, NetworkGuard
 from .provider_config import load_custom_providers
-from .proxy import configured_proxy
+from .proxy import (
+    DEFAULT_BYPASS,
+    PROXY_ENV_VARS,
+    PROXY_MODES,
+    ProxyError,
+    ProxySetting,
+    clean_bypass,
+    configured_proxy,
+    parse_address,
+    proxy_env,
+    proxy_url,
+    try_connection,
+    without_credentials,
+)
 from .secret_store import (
     MIN_VALUE,
     KeychainUnavailable,
@@ -57,6 +70,17 @@ __all__ = [
     "SessionEnvironments",
     "ToolMetadata",
     "configured_proxy",
+    "DEFAULT_BYPASS",
+    "PROXY_ENV_VARS",
+    "PROXY_MODES",
+    "ProxyError",
+    "ProxySetting",
+    "clean_bypass",
+    "parse_address",
+    "proxy_env",
+    "proxy_url",
+    "try_connection",
+    "without_credentials",
     "delete_secret",
     "empty_hooks_config",
     "env_delete_secret_if_ref",

@@ -97,6 +97,8 @@ PAGE_CHECKS: tuple[Callable[[ET.Element], list[str]], ...] = (
 class PageReport:
     name: str
     shapes: int = 0
+    # The shapes the slide starts with from a template slide, first in its shape tree.
+    template_shapes: int = 0
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
@@ -201,6 +203,7 @@ def _compile_page(
     for placeholder in list(slide.placeholders):
         placeholder.element.getparent().remove(placeholder.element)
     copied = start_from(slide, example) if example is not None else []
+    report.template_shapes = len(copied)
     if example is not None and example.dropped:
         report.warnings.append(
             f"left out of example slide {root.get('data-template-slide')}: "

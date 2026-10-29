@@ -1,3 +1,4 @@
+import { openThreadFile } from "../../lib/rest";
 import { createContext } from "react";
 import type { SteerActions } from "../../lib/steerNotes";
 
@@ -27,3 +28,9 @@ export const BackgroundTasks = createContext<{ statuses: Readonly<Record<string,
   statuses: {},
   open: () => {},
 });
+
+/** A file a reply names or a turn ends with: shown in its panel when the app has one, else opened in
+ * the program the computer keeps for it (a Word file in Word). */
+export function openMentioned(view: (path: string) => boolean, threadId: string, path: string): void {
+  if (!view(path)) void openThreadFile(threadId, path, false);
+}
