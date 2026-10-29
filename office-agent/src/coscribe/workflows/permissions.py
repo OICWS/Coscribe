@@ -6,18 +6,32 @@ stops the run and waits for an answer.
 
 Only what the steps say outright can be listed. A site or folder that
 comes from an input, or that a script decides at run time, isn't known
-until then, which is why a run can still stop to ask."""
+until then, which is why a run can still stop to ask. An agent step
+(decision 0028) says outright what it may touch: its declared folders and
+sites are part of what saving allows."""
 
 from __future__ import annotations
 
 import json
 import re
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 from pathlib import Path, PureWindowsPath
 from typing import Any
 from urllib.parse import urlparse
 
-from ..workflow_spec import ScriptStep, ToolStep, Workflow, render_text, walk
+from ..workflow_spec import (
+    AgentStep,
+    LoopStep,
+    ScriptStep,
+    Step,
+    ToolStep,
+    Workflow,
+    child_lists,
+    render_text,
+    step_output,
+    step_references,
+    walk,
+)
 
 URL_TOOLS = frozenset({"browser_navigate", "browser_tabs"})
 SCRIPT_TOOLS = frozenset({"run_python_script", "run_node_script", "run_background_script"})
@@ -81,6 +95,13 @@ def granted_by(workflow: Workflow) -> dict[str, list[str]]:
     sites: list[str] = []
     for placed in walk(workflow.steps):
         step = placed.step
+        if isinstance(step, AgentStep):
+            folders += [f for f in step.folders if f not in folders]
+            for declared in step.sites:
+                site = site_of(declared)
+                if site and site not in sites:
+                    sites.append(site)
+            continue
         if not isinstance(step, ToolStep):
             continue
         if step.tool in URL_TOOLS:
@@ -109,13 +130,69 @@ def _unknown_sites(workflow: Workflow) -> list[str]:
     return titles
 
 
+def _references_any(step: Step, names: set[str]) -> bool:
+    return any(ref.split(".", 1)[0] in names for ref in step_references(step))
+
+
+def untrusted_agent_steps(workflow: Workflow, outside_tools: Collection[str]) -> list[str]:
+    """The agent steps that read what came from outside -- a page, a web
+    response, a connector's data -- through their references: they get
+    read-only tools unless the person grants more (decision 0028). A value
+    is from outside when a step calling one of `outside_tools` made it, or
+    a step that read such a value did, a loop's item over it included."""
+    tainted: set[str] = set()
+    found: list[str] = []
+
+    def visit(steps: list[Step]) -> None:
+        for step in steps:
+            reads = _references_any(step, tainted)
+            if isinstance(step, AgentStep) and reads:
+                found.append(step.id)
+            makes = step_output(step)
+            if isinstance(step, LoopStep) and reads:
+                tainted.add(step.item)
+            outside = isinstance(step, ToolStep) and step.tool in outside_tools
+            outside = outside or (
+                isinstance(step, AgentStep) and any(t in outside_tools for t in step.tools)
+            )
+            for _arm, children in child_lists(step):
+                visit(children)
+            if isinstance(step, LoopStep) and step.collect:
+                reads = reads or step.collect.split(".", 1)[0] in tainted
+            if makes and (reads or outside):
+                tainted.add(makes)
+
+    visit(workflow.steps)
+    return found
+
+
+def _agents(workflow: Workflow, untrusted: list[str]) -> list[dict[str, Any]]:
+    return [
+        {
+            "title": placed.step.title,
+            "autonomy": placed.step.autonomy,
+            "tools": list(placed.step.tools),
+            "folders": list(placed.step.folders),
+            "sites": list(placed.step.sites),
+            "max_steps": placed.step.max_steps,
+            "read_only": placed.step.id in untrusted,
+        }
+        for placed in walk(workflow.steps)
+        if isinstance(placed.step, AgentStep)
+    ]
+
+
 def summarize(
-    workflow: Workflow, risks: Mapping[str, str], granted: Mapping[str, list[str]] | None = None
+    workflow: Workflow,
+    risks: Mapping[str, str],
+    granted: Mapping[str, list[str]] | None = None,
+    outside_tools: Collection[str] = (),
 ) -> dict[str, Any]:
     """What the review card shows: the granted folders and sites (what the
     steps name, plus anything allowed since), the steps that run scripts,
-    the other tools that do something outside the workspace, and the
-    steps whose site is only known at run time."""
+    the other tools that do something outside the workspace, the steps
+    whose site is only known at run time, and each agent step with what it
+    may call and whether it reads outside content."""
     named = granted_by(workflow)
     folders = list(dict.fromkeys([*named["folders"], *((granted or {}).get("folders") or [])]))
     sites = list(dict.fromkeys([*named["sites"], *((granted or {}).get("sites") or [])]))
@@ -139,6 +216,7 @@ def summarize(
         "scripts": scripts,
         "notable": notable,
         "sites_at_run_time": _unknown_sites(workflow),
+        "agents": _agents(workflow, untrusted_agent_steps(workflow, outside_tools)),
     }
 
 

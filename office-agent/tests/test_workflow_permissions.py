@@ -11,7 +11,12 @@ from langgraph.checkpoint.memory import InMemorySaver
 from coscribe.needs_permission import NeedsPermission
 from coscribe.workflow_spec import parse_workflow
 from coscribe.workflows.engine import StepContext, StepRecord, WorkflowRun
-from coscribe.workflows.permissions import granted_by, site_of, summarize
+from coscribe.workflows.permissions import (
+    granted_by,
+    site_of,
+    summarize,
+    untrusted_agent_steps,
+)
 
 
 def _workflow(steps: list[dict[str, Any]], inputs: list[dict[str, Any]] | None = None) -> Any:
@@ -263,3 +268,59 @@ def test_a_task_keeps_what_its_runs_were_allowed(tmp_path: Path) -> None:
     loaded = store.load(created.trigger_id)
     assert loaded is not None
     assert loaded.permissions == {"folders": ["D:\\reports"], "sites": ["sap.example.com"]}
+
+
+def _v2(steps: list[dict[str, Any]], inputs: list[dict[str, Any]] | None = None) -> Any:
+    return parse_workflow({"version": 2, "inputs": inputs or [], "steps": steps})
+
+
+def _agent_step(step_id: str, goal: str, **extra: Any) -> dict[str, Any]:
+    return {"id": step_id, "kind": "agent", "title": step_id.title(), "goal": goal,
+            "tools": ["read_file"], **extra}  # fmt: skip
+
+
+def test_an_agent_steps_declared_folders_and_sites_are_what_saving_allows() -> None:
+    workflow = _v2(
+        [_agent_step("a", "Sort", folders=["D:\\mail"], sites=["https://www.crm.example.com/x"])]
+    )
+
+    assert granted_by(workflow) == {"folders": ["D:\\mail"], "sites": ["crm.example.com"]}
+
+
+def test_an_agent_step_that_reads_outside_content_is_marked_read_only() -> None:
+    workflow = _v2(
+        [
+            {"id": "page", "kind": "tool", "title": "Read the page", "tool": "browser_snapshot",
+             "save_as": "page"},
+            {"id": "gist", "kind": "llm", "title": "Gist", "prompt": "{{page}}",
+             "fields": [{"name": "rows", "type": "list"}], "save_as": "gist"},
+            {"id": "each", "kind": "loop", "title": "Each row", "over": "gist.rows",
+             "steps": [_agent_step("act", "Handle {{item}}")]},
+            _agent_step("clean", "Tidy the workspace"),
+            _agent_step("browse", "Look around", tools=["browser_snapshot"], save_as="seen"),
+            _agent_step("after", "Use {{seen.report}}"),
+        ]
+    )  # fmt: skip
+
+    assert untrusted_agent_steps(workflow, {"browser_snapshot"}) == ["act", "after"]
+    agents = summarize(workflow, {}, None, {"browser_snapshot"})["agents"]
+    assert [(a["title"], a["read_only"]) for a in agents] == [
+        ("Act", True), ("Clean", False), ("Browse", False), ("After", True),
+    ]  # fmt: skip
+
+
+def test_a_value_collected_from_outside_content_stays_outside_content() -> None:
+    workflow = _v2(
+        [
+            {"id": "files", "kind": "tool", "title": "List", "tool": "list_files",
+             "save_as": "files"},
+            {"id": "each", "kind": "loop", "title": "Each", "over": "files",
+             "collect": "body", "save_as": "bodies",
+             "steps": [{"id": "fetch", "kind": "tool", "title": "Fetch", "tool": "http_request",
+                        "args": {"url": "{{item}}"}, "save_as": "body"}]},
+            _agent_step("use", "Read {{bodies}}"),
+        ]
+    )  # fmt: skip
+
+    assert untrusted_agent_steps(workflow, {"http_request"}) == ["use"]
+    assert untrusted_agent_steps(workflow, set()) == []

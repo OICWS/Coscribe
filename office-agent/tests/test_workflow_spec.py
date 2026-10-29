@@ -90,7 +90,7 @@ def test_braces_in_tool_arguments_are_checked_too() -> None:
         (lambda d: d["steps"][0].update(id="Search Step"), "must start with a lowercase letter"),
         (lambda d: d["steps"][4].update(fields=[]), "at least 1 item"),
         (lambda d: d["steps"][4].pop("save_as"), "save_as"),
-        (lambda d: d["steps"][0].update(kind="agent"), "tag 'agent'"),
+        (lambda d: d["steps"][0].update(kind="code"), "tag 'code'"),
         (lambda d: d["steps"][0].update(surprise=1), "surprise"),
     ],
 )
@@ -643,3 +643,91 @@ def test_the_steps_of_a_nested_then_arm_are_counted_before_the_otherwise_arm() -
         4,
         ["title"],
     )
+
+
+def _agent(**step: Any) -> dict[str, Any]:
+    return {"id": "triage", "kind": "agent", "title": "Triage", "goal": "Sort the mail", **step}
+
+
+def test_an_agent_step_parses_in_a_version_2_workflow() -> None:
+    workflow = parse_workflow(
+        {
+            "version": 2,
+            "inputs": [{"name": "inbox", "default": "inbox"}],
+            "steps": [
+                _agent(
+                    goal="Sort {{inbox}}",
+                    tools=["read_file", "write_file"],
+                    folders=["D:\\mail"],
+                    fields=[{"name": "urgent", "type": "list"}],
+                    save_as="sorted",
+                ),
+                {"id": "c", "kind": "check", "title": "Some",
+                 "conditions": [{"left": {"count": "sorted.urgent"}, "op": "ge",
+                                 "right": {"value": 0}}]},
+            ],
+        }
+    )  # fmt: skip
+
+    step = workflow.steps[0]
+    assert (step.kind, step.autonomy, step.max_steps) == ("agent", "bounded", 20)
+    assert workflow.model_dump(mode="json")["steps"][0]["tools"] == ["read_file", "write_file"]
+
+
+def test_an_agent_step_needs_version_2() -> None:
+    with pytest.raises(ValidationError, match="agent steps need a version 2 workflow"):
+        parse_workflow({"steps": [_agent(tools=["read_file"])]})
+
+
+@pytest.mark.parametrize(
+    ("step", "message"),
+    [
+        ({}, "a bounded agent step lists the tools it may call"),
+        ({"autonomy": "high", "tools": ["read_file"]}, "list tools only for a bounded one"),
+        ({"tools": ["read_file", "read_file"]}, "each tool is listed once"),
+        ({"autonomy": "full", "fields": [{"name": "x"}]}, "reports in prose"),
+        ({"tools": ["a"], "fields": [{"name": "x"}, {"name": "x"}]}, "field names must be unique"),
+        ({"tools": ["a"], "max_steps": 61}, "less than or equal to 60"),
+    ],
+)
+def test_an_agent_step_is_checked_when_saved(step: dict[str, Any], message: str) -> None:
+    with pytest.raises(ValidationError, match=message):
+        parse_workflow({"version": 2, "steps": [_agent(**step)]})
+
+
+def test_an_agent_steps_result_is_its_report_unless_it_names_fields() -> None:
+    def later(ref: str) -> dict[str, Any]:
+        return {"id": "use", "kind": "llm", "title": "Use", "prompt": "{{" + ref + "}}",
+                "fields": [{"name": "x"}], "save_as": "used"}  # fmt: skip
+
+    for autonomy in ("high", "full"):
+        parse_workflow(
+            {"version": 2, "steps": [_agent(autonomy=autonomy, save_as="a"), later("a.report")]}
+        )
+    with pytest.raises(ValidationError, match=r"reads 'a.summary', but a only has report"):
+        parse_workflow({"version": 2, "steps": [_agent(autonomy="high", save_as="a"),
+                                                 later("a.summary")]})  # fmt: skip
+    with pytest.raises(ValidationError, match="but a only has urgent"):
+        parse_workflow(
+            {"version": 2, "steps": [
+                _agent(tools=["t"], fields=[{"name": "urgent"}], save_as="a"), later("a.report")
+            ]}
+        )  # fmt: skip
+
+
+def test_an_agent_steps_goal_reads_only_what_came_before() -> None:
+    with pytest.raises(ValidationError, match="reads 'later', which isn't an input"):
+        parse_workflow({"version": 2, "steps": [_agent(tools=["t"], goal="Use {{later}}")]})
+
+
+def test_a_problem_inside_an_agent_step_is_located_by_its_number() -> None:
+    data = {
+        "version": 2,
+        "steps": [{"id": "a", "kind": "check", "title": "A",
+                   "conditions": [{"left": {"value": 1}, "op": "eq", "right": {"value": 1}}]},
+                  _agent(tools=["t"], max_steps=0)],
+    }  # fmt: skip
+    with pytest.raises(ValidationError) as caught:
+        parse_workflow(data)
+
+    assert workflow_error(caught.value, data).startswith("step 2: max_steps:")

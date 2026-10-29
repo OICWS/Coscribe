@@ -60,6 +60,9 @@ def _waiting_permission(run: Any) -> dict[str, Any] | None:
     return None
 
 
+_OUTSIDE_CATEGORIES = frozenset({"browser", "web"})
+
+
 def _workflow_routes(router: APIRouter, state: AppState) -> None:
     settings = state.settings
     _session_extra_tools = state.session_extra_tools
@@ -72,15 +75,22 @@ def _workflow_routes(router: APIRouter, state: AppState) -> None:
             return JSONResponse({"error": workflow_error(exc, body.workflow)}, status_code=400)
         return JSONResponse({"workflow": workflow.model_dump(mode="json")})
 
-    def _tool_risks() -> dict[str, str]:
+    def _tool_facts() -> tuple[dict[str, str], set[str]]:
+        """Each tool's risk tier, and the tools that bring in outside
+        content: the browser, the web tools and every connector."""
         risks: dict[str, str] = {}
+        outside: set[str] = set()
         for connector_tool in _session_extra_tools():
             metadata = get_tool_metadata(connector_tool)
             if (metadata.category or "").startswith("mcp:"):
                 risks[connector_tool.name] = metadata.risk_category
+                outside.add(connector_tool.name)
         for tool in build_coordinator_agent(settings, thread_id="__tools_probe__").tools:
-            risks[tool.__name__] = get_tool_metadata(tool).risk_category
-        return risks
+            metadata = get_tool_metadata(tool)
+            risks[tool.__name__] = metadata.risk_category
+            if metadata.category in _OUTSIDE_CATEGORIES:
+                outside.add(tool.__name__)
+        return risks, outside
 
     @router.post("/api/workflows/permissions")
     async def workflow_permissions(body: PermissionsRequest) -> JSONResponse:
@@ -99,11 +109,11 @@ def _workflow_routes(router: APIRouter, state: AppState) -> None:
         granted = trigger.permissions if trigger is not None else None
         if earlier is None and body.against_saved and trigger is not None and trigger.workflow:
             earlier = parse_workflow(trigger.workflow)
-        risks = _tool_risks()
-        summary = summarize(workflow, risks, granted)
+        risks, outside = _tool_facts()
+        summary = summarize(workflow, risks, granted, outside)
         added: dict[str, Any] | None = None
         if earlier is not None:
-            before = summarize(earlier, risks, granted)
+            before = summarize(earlier, risks, granted, outside)
             added = {
                 "folders": [f for f in summary["folders"] if f not in before["folders"]],
                 "sites": [x for x in summary["sites"] if x not in before["sites"]],
@@ -113,6 +123,7 @@ def _workflow_routes(router: APIRouter, state: AppState) -> None:
                     for n in summary["notable"]
                     if n["tool"] not in {b["tool"] for b in before["notable"]}
                 ],
+                "agents": [a for a in summary["agents"] if a not in before["agents"]],
             }
         return JSONResponse({"permissions": summary, "added": added})
 

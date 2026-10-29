@@ -20,9 +20,9 @@ from coscribe.workflows.engine import (
     StepRecord,
     WorkflowNotRunnable,
     WorkflowRun,
-    fields_schema,
     resolve_inputs,
 )
+from coscribe.workflows.model_step import fields_schema
 
 FIXTURE = Path(__file__).parent / "fixtures" / "pdf_error_audit_workflow.json"
 
@@ -320,6 +320,18 @@ async def test_preflight_refuses_a_workflow_that_cant_run(
     h.ctx.tools["ask_user_question"] = lambda **kw: None
 
     with pytest.raises(WorkflowNotRunnable, match=message):
+        await h.run(InMemorySaver(), workflow).start({})
+    assert h.records == []
+
+
+async def test_preflight_refuses_an_agent_step_until_the_engine_runs_one(tmp_path: Path) -> None:
+    workflow = parse_workflow(
+        {"version": 2, "steps": [{"id": "a", "kind": "agent", "title": "A", "goal": "Sort",
+                                  "tools": ["read_file"]}]}
+    )  # fmt: skip
+    h = Harness(tmp_path, [])
+
+    with pytest.raises(WorkflowNotRunnable, match="step 1: agent steps can't run yet"):
         await h.run(InMemorySaver(), workflow).start({})
     assert h.records == []
 
