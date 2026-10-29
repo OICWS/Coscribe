@@ -5,7 +5,13 @@ from ..workflow_spec import BranchStep, LoopStep, Workflow, parse_workflow, walk
 from .agent_step import AgentCall, AgentReply, AgentRequest, AgentRunner
 from .catalog import describe_params, tool_description
 from .engine import RunOutcome, StepContext, StepRecord, WorkflowNotRunnable, WorkflowRun
-from .permissions import granted_by, sites_in, summarize, untrusted_agent_steps
+from .permissions import (
+    brings_outside_content,
+    granted_by,
+    sites_in,
+    summarize,
+    untrusted_agent_steps,
+)
 from .solidify import DraftFailed, WorkflowDraft, draft_workflow, revise_workflow
 from .testing import output_files, run_test, uses_browser
 
@@ -24,6 +30,7 @@ __all__ = [
     "WorkflowDraft",
     "WorkflowNotRunnable",
     "WorkflowRun",
+    "brings_outside_content",
     "describe_params",
     "draft_workflow",
     "granted_by",

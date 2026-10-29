@@ -158,7 +158,8 @@ investigation of the run in a new conversation (which exists now), then the
 repair comes back as a fixed branch and a test case for the user to save, so
 a workflow hardens as it runs. The code module never runs inside a workflow
 (0005). `workflows` imports no agent runtime: an agent step runs through a
-runner `conversation` injects. The step editor edits workflows; a read-only
+runner `conversation` injects, a sub-agent whose every call stops at the
+approval layer, where its allowlist and the task's approval mode hold. The step editor edits workflows; a read-only
 canvas shows them; there is no general editable graph canvas.
 
 A conversation can also pause itself and resume later (`sleep_until`,
@@ -175,7 +176,7 @@ that runs as a sub-agent, so code ability comes to the conversation instead
 of a second place to work in. It is optional and off by default: the pinned
 binary is downloaded on first use, not bundled. Its commands and file
 changes come back through coscribe's approvals, as synthetic gated tools.
-Workflows never use it: a fixed run must not contain an autonomous agent.
+Workflows never use it: a workflow's agent step (0028) never gets the code module.
 
 ### Cost is part of the design
 

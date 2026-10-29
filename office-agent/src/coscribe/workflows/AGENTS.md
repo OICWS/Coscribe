@@ -12,7 +12,7 @@ that fires a run or its stored history (`runtime_lg/scheduled_tasks.py`), the ro
 `BranchStep`, `LoopStep`, `Workflow`, `parse_workflow`, `walk`, `workflow_error` (the definition, re-exported from `workflow_spec`, where it lives);
 `AgentCall`, `AgentReply`, `AgentRequest`, `AgentRunner` (what an agent runner takes and returns);
 `RunOutcome`, `StepContext`, `StepRecord`, `WorkflowNotRunnable`, `WorkflowRun` (a run);
-`granted_by`, `sites_in`, `summarize`, `untrusted_agent_steps` (permissions); `describe_params`, `tool_description`
+`brings_outside_content`, `granted_by`, `sites_in`, `summarize`, `untrusted_agent_steps` (permissions); `describe_params`, `tool_description`
 (catalog); `output_files`, `run_test`, `uses_browser` (test run); `DraftFailed`, `WorkflowDraft`,
 `draft_workflow`, `revise_workflow` (drafting from a conversation: it takes the serialized
 history, so this package does not import `runtime_lg`).
@@ -21,8 +21,9 @@ history, so this package does not import `runtime_lg`).
 `coscribe.needs_permission`, `coscribe.tools`, `coscribe.workflow_spec`.
 
 ## Invariants
-- `engine` and `permissions` (and `coscribe.workflow_spec`) never import `code_runtime`, `runtime_lg` or
-  `coordinator` (`docs/decisions/0005-code-is-a-second-runtime.md`, an import contract).
+- Nothing here (or in `coscribe.workflow_spec`) imports `code_runtime`, `runtime_lg` or
+  `coordinator` (decision 0028; the import contract "Workflows depend on no agent runtime"): an
+  agent step's runner comes in through `StepContext.run_agent`.
 - Saving is the consent: a site or folder outside what `permissions.granted_by` lists stops a run.
 - An agent step's runner keeps one agent per `AgentRequest.key` and never redoes finished work;
   an answer counts only for the call it names (`call_id`), since a resume replays earlier answers.

@@ -19,15 +19,22 @@ from langchain_core.tools import BaseTool, InjectedToolCallId, StructuredTool
 from langgraph.prebuilt import InjectedState
 
 from ..config import Settings
+from ..coordinator import CORE_TOOL_NAMES
 from ..runtime import get_tool_metadata, tool_metadata
+from ..runtime_lg import (
+    WorkflowAgentRunner,
+    keeps_tool_list_fixed,
+    serialize_history_for_ws_lg,
+    tool_name,
+)
 from ..runtime_lg import extract_text as _extract_text
-from ..runtime_lg import serialize_history_for_ws_lg, tool_name
 from ..tools import BROWSER_HOST, ScheduledTrigger, ScheduledTriggerStore, page_screenshot
 from ..workflows import (
     DraftFailed,
     StepContext,
     StepRecord,
     WorkflowDraft,
+    brings_outside_content,
     draft_workflow,
     parse_workflow,
     revise_workflow,
@@ -85,6 +92,8 @@ class WorkflowDraftingHost(Protocol):
     _base_tools: list[Callable[..., Any] | BaseTool]
     _extra_tools: list[Callable[..., Any] | BaseTool]
     _model_string: str
+    _custom_providers: Any
+    hooks_config: dict[str, list[str]]
     _turn_lock: TurnLock
     _live_websocket: EventSink | None
     _turn_websocket: Any
@@ -97,6 +106,11 @@ class WorkflowDraftingHost(Protocol):
     def _next_draft_id(self) -> str: ...
 
     def _resolve_model(self, model_string: str) -> Any: ...
+
+    @property
+    def checkpointer(self) -> Any: ...
+
+    async def _run_pre_tool_use_hooks(self, name: str, args: dict[str, Any]) -> str | None: ...
 
 
 class WorkflowDrafting:
@@ -331,12 +345,41 @@ class WorkflowDrafting:
         def make_model(step_model: str | None) -> Any:
             return self._host._resolve_model(step_model or model or self._host._model_string)
 
+        all_tools = [*self._host._base_tools, *self._host._extra_tools]
         return StepContext(
             tools=tools,
             workspace_root=Path(self._host.workspace_root),
             state_dir=Path(self._host.settings.state_dir),
             make_model=make_model,
             extra_writable=[*self._host.settings.extra_writable_dirs, *self._host.extra_folders],
+            run_agent=self._agent_runner(all_tools, model),
+            outside_tools=frozenset(
+                tool_name(t)
+                for t in all_tools
+                if brings_outside_content(get_tool_metadata(cast(Any, t)).category)
+            ),
+        )
+
+    def _agent_runner(self, tools: list[Any], model: str | None) -> WorkflowAgentRunner:
+        """Agent steps run as sub-agents of this thread, under its hooks."""
+        host = self._host
+
+        def resolve_model(step_model: str | None) -> tuple[str, Any]:
+            chosen = step_model or model or host._model_string
+            return chosen, host._resolve_model(chosen)
+
+        hooks = host._run_pre_tool_use_hooks if host.hooks_config["PreToolUse"] else None
+        return WorkflowAgentRunner(
+            thread_id=host.thread_id,
+            state_dir=Path(host.settings.state_dir),
+            checkpointer=host.checkpointer,
+            tools=tools,
+            resolve_model=resolve_model,
+            defer_tools=host.settings.defer_tools,
+            core_tool_names=CORE_TOOL_NAMES,
+            fixed_tool_names=frozenset(tool_name(t) for t in host._base_tools),
+            keeps_tool_list_fixed=lambda m: keeps_tool_list_fixed(m, host._custom_providers),
+            pre_tool_use=hooks,
         )
 
     async def draft_workflow(self, name_hint: str = "") -> WorkflowDraft:
