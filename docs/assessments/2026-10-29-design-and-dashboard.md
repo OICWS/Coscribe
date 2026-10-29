@@ -1,7 +1,7 @@
 # Design note: Design pages and Dashboards (2026-10-29)
 
 Design before code: it adds a kind of artifact (Dashboard) and turns another (Design) into a canvas. Status:
-**proposed**. It rests on 0001 (a fixed, cached tool list), 0015 (artifacts that run their own
+**accepted in its direction** (the maintainer, 2026-10-29; section 6). It rests on 0001 (a fixed, cached tool list), 0015 (artifacts that run their own
 JavaScript are drawn in a sandboxed frame), 0020 (design systems are a library), 0021 (scripts) and
 0027 (an artifact is what coscribe made from a source it owns; a table to look at is a Dashboard).
 
@@ -16,13 +16,14 @@ JavaScript are drawn in a sandboxed frame), 0020 (design systems are a library),
    和数据文件。页面不写死数字：占位符标 `data-source`，由脚本填；派生数字（通过率）单独声明算法；
    点任何数字都能看到来源和更新时间（参照 Claude 的 Dashboard："每个数字都标明来源"）。
    服务端显示时注入数据，沙箱不联网。
-3. **图表库**：沙箱不联网，所以由服务端提供一个内置图表库。候选 ECharts 6.1.0（Apache-2.0，约 1.1 MB，
-   开箱好看、代码少）和 d3 v7（Claude 的 Dashboard 用它：底层、灵活、代码多）。第 2 步两个都实测再定。
+3. **图表库：d3**（维护者定，2026-10-29）：沙箱不联网，由服务端提供内置的 d3 7.9.0（ISC，约 280 KB）。
+   理由：模型越来越强，像画 SVG 一样直接画图，能做的更多。
 4. **刷新**：第一版"刷新"= 让 coscribe 在对话里重新取数写 data；之后看板可带一个 `refresh.py`，
    保存成固定工作流/定时任务按时刷新（和工作流、定时任务现有机制对接，不新造）。
 5. **让 AI 看见自己做的页面**：现在模型写完 HTML 看不到效果。加一个只读的"看一眼"能力（页面截图返回给模型），
    Design 和 Dashboard 共用。
-6. **需要你拍板**：Design 是否按画布 + 画板做；第一版刷新是否只做"对话里刷新"。
+6. **已定**（维护者，2026-10-29）：d3；Design 按 Claude 的 Design 前端（截图）做，细节由实现定；
+   刷新先做对话里刷新，之后用现有的定时任务自动刷新（工作流只是写数据的一方，看板本身不依赖它）。
 
 ## 1. What exists
 
@@ -95,10 +96,10 @@ person (and coscribe at its next turn) can see which data the page shows and whe
 data file is small to diff and to check; Export joins them into one self-contained HTML.
 
 **Charts.** The frame has no network, so the server carries one chart library, vendored with its
-licence. Candidates: ECharts 6.1.0 (Apache-2.0, 1.12 MB minified: the chart types a dashboard needs,
-zoom and tooltips, good defaults, little code) and d3 7.9.0 (ISC, 280 KB; Claude's Dashboard type ships d3 v7: low
-level, any chart, more code for the model to get right). Step 2 runs the same briefs with each and
-picks one; Chart.js 4.6.1 (MIT, 210 KB) is the light fallback. A card's thumbnail loads the library too; with many dashboards on the
+licence: d3 7.9.0 (ISC, 280 KB), the maintainer's choice (2026-10-29), as Claude's Dashboard type
+ships d3 v7. It is low level: the model draws each chart as it draws SVG, which a strong model does
+well and which leaves it free to draw any chart. ECharts 6.1.0 (Apache-2.0, 1.12 MB) was the
+higher-level alternative. A card's thumbnail loads the library too; with many dashboards on the
 Artifacts page that argues for a server-drawn thumbnail later, whichever library is chosen.
 
 **Panel.** The Design panel's frame, plus: when the data was made, Refresh, and Export (HTML with
@@ -127,18 +128,20 @@ tool list stays fixed (0001): it is one more deferred tool, and the path arrives
 1. Dashboard source and serving: the marker, `datasets.json`, registry kind `dashboard`, the route
    with data and the vendored library injected, the tile with its first-message note, the panel,
    Export HTML with data inlined. Tests: registry, route headers and injection.
-2. The Dashboard skill and the source checker, then a live run on 6 briefs with each chart library
-   (DeepSeek, off-peak), judged from screenshots.
+2. The Dashboard skill and the source checker, then a live run on 6 briefs (DeepSeek, off-peak),
+   judged from screenshots.
 3. Where a number came from, in the panel; Refresh v1; then v2 with `refresh.py` and a saved workflow.
 4. Design canvas: `canvas.json`, artboards in frames, pan, zoom, select, move, Play, theme switch.
 5. The Design skill rewritten, design-system variables, editing text and variables in a panel.
 6. `look_at_page`, used by both skills; the briefs again.
 
-## 6. Questions for the maintainer
+## 6. Decided (the maintainer, 2026-10-29)
 
-1. Design as a canvas of artboards (section 2)?
-2. Refresh in v1 only through the conversation, with the saved-workflow refresh after?
-3. The chart library is picked in step 2 from a measured run (ECharts or d3), unless you prefer one now.
+1. Charts are drawn with d3.
+2. Design follows the front end of Claude's Design (the screenshot: a canvas with a toolbar for
+   select, hand, text, frame, note, pen and shapes; Play; zoom); the details are the implementation's.
+3. Refresh is through the conversation first; the automatic refresh is a scheduled task as they exist
+   today (a workflow is only what writes the data; the dashboard does not depend on it).
 
 ## Not verified
 

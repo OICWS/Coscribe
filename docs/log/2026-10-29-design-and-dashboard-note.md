@@ -1,4 +1,4 @@
-# Design note for Design pages and Dashboards (proposed)
+# Design note for Design pages and Dashboards (accepted in its direction)
 
 Why: the maintainer asked to start on Design and Dashboard after the Doc work. Design exists but
 only teaches icon sheets; Dashboard is a "Soon" tile.
@@ -9,7 +9,7 @@ only teaches icon sheets; Dashboard is a "Soon" tile.
   can be tweaked, Play mode); a Dashboard as a page plus registered datasets, where every number
   shows where it came from, served with the data and a vendored chart library injected; refresh
   through the conversation, then a saved workflow; a read-only tool that shows coscribe its page;
-  six steps and three questions.
+  six steps; the maintainer chose d3, the screenshot's front end for Design, and refresh through the conversation first.
 - `docs/plan.md`: the Design item points to the note.
 
 ## Not verified
