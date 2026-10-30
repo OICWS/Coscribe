@@ -41,16 +41,25 @@ test("a canvas shows its artboards; a board moves and a note is left, and both a
   await page.getByRole("button", { name: "Select", exact: true }).click();
   await expect.poll(async () => (await read()).notes.map((n: { text: string }) => n.text)).toEqual(["Bigger title"]);
 
-  // In Play the artboard's own page takes the pointer.
-  await page.getByRole("button", { name: "Play" }).click();
+  // Played on the canvas, the artboard's own page takes the pointer; the others stay editable.
+  await page.getByRole("button", { name: "Play", exact: true }).first().click();
+  await page.getByRole("menuitem", { name: "Play on canvas" }).click();
   await expect(page.getByTestId("board-home")).toHaveCount(0);
+  await expect(page.getByTestId("board-phone")).toBeVisible();
   // Playwright's hit test misreads a frame inside a scaled canvas, so the page's own button is
   // pressed from inside it.
   await expect(page.locator('iframe[title="Home"]')).toHaveCSS("pointer-events", "auto");
   await page.frameLocator('iframe[title="Home"]').getByRole("button", { name: "Start" }).dispatchEvent("click");
   await expect(page.frameLocator('iframe[title="Home"]').getByRole("button", { name: "clicked" })).toBeVisible();
-  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(page.getByTestId("board-home")).toBeVisible();
+
+  // Full screen: one board fills the panel and still works; Edit goes back.
+  await page.getByRole("button", { name: "Play full screen" }).click();
+  const full = page.getByTestId("board-full-screen");
+  await expect(full.locator("iframe")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(full).toHaveCount(0);
 });
 
 const THEMED = '{\\"boards\\": [{\\"id\\": \\"card\\", \\"title\\": \\"Card\\", \\"file\\": \\"card.html\\", \\"width\\": 400, \\"height\\": 300}], \\"variables\\": [{\\"name\\": \\"--brand\\", \\"value\\": \\"#2557d6\\", \\"label\\": \\"Brand\\"}]}';
@@ -87,7 +96,7 @@ test("a canvas's variables are set from the panel into every artboard, and the b
 
 const LINKED = '{\\"boards\\": [{\\"id\\": \\"menu\\", \\"title\\": \\"Menu\\", \\"file\\": \\"menu.html\\", \\"width\\": 390, \\"height\\": 700}, {\\"id\\": \\"checkout\\", \\"title\\": \\"Checkout\\", \\"file\\": \\"checkout.html\\", \\"width\\": 390, \\"height\\": 700, \\"x\\": 2400, \\"y\\": 900}]}';
 
-test("in Play a link from one artboard to another shows that artboard", async ({ page }) => {
+test("a link from a played artboard to another shows that artboard, played too", async ({ page }) => {
   const name = `linked-${Math.random().toString(36).slice(2, 8)}`;
   mkdirSync(join(workspace, `${name}.design`), { recursive: true });
   writeFileSync(join(workspace, `${name}.design`, "menu.html"), "<body style='margin:0'><a href='checkout.html' style='display:block;font:40px sans-serif'>To checkout</a></body>");
@@ -101,7 +110,8 @@ test("in Play a link from one artboard to another shows that artboard", async ({
   await page.getByTitle(`Open ${name}.design.json`).click();
   await expect(page.locator('iframe[title="Checkout"]')).toBeAttached();
 
-  await page.getByRole("button", { name: "Play" }).click();
+  await page.getByRole("button", { name: "Play", exact: true }).first().click();
+  await page.getByRole("menuitem", { name: "Play on canvas" }).click();
   await page.frameLocator('iframe[title="Menu"]').getByRole("link", { name: "To checkout" }).dispatchEvent("click");
 
   const stage = (await page.getByTestId("canvas-stage").boundingBox())!;
@@ -111,6 +121,7 @@ test("in Play a link from one artboard to another shows that artboard", async ({
       return box ? Math.abs(box.x + box.width / 2 - (stage.x + stage.width / 2)) : Infinity;
     })
     .toBeLessThan(20);
-  // Still in Play: the next screen takes the pointer too.
+  // The next screen is played now, and the one it came from is back to editing.
   await expect(page.locator('iframe[title="Checkout"]')).toHaveCSS("pointer-events", "auto");
+  await expect(page.getByTestId("board-menu")).toBeVisible();
 });

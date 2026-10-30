@@ -1,7 +1,9 @@
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { designFileUrl } from "../../lib/artifacts";
 import type { CanvasBoard, CanvasNote } from "../../lib/designCanvas";
-import { CursorClickIcon, HandIcon, MoonIcon, PauseIcon, PlayIcon, SunIcon } from "../icons";
+import { CursorClickIcon, HandIcon, MoonIcon, PlayIcon, SunIcon } from "../icons";
+import { BoardPlayButton } from "./BoardPlay";
+import type { PlayMode } from "./useBoardPlay";
 import type { Tool } from "./useCanvasEditing";
 import type { Scheme } from "./useCanvasLook";
 
@@ -43,16 +45,16 @@ function ToolButton({ label, active, onClick, children }: { label: string; activ
 }
 
 /** The tools at the canvas's top-left: Select, Hand, Note. */
-export function CanvasTools({ tool, playing, onTool }: { tool: Tool; playing: boolean; onTool: (tool: Tool) => void }) {
+export function CanvasTools({ tool, onTool }: { tool: Tool; onTool: (tool: Tool) => void }) {
   return (
     <div className={`${BAR} left-3 top-3`} role="toolbar" aria-label="Canvas tools">
-      <ToolButton label="Select" active={tool === "select" && !playing} onClick={() => onTool("select")}>
+      <ToolButton label="Select" active={tool === "select"} onClick={() => onTool("select")}>
         <CursorClickIcon className="h-4 w-4" />
       </ToolButton>
-      <ToolButton label="Hand" active={tool === "hand" && !playing} onClick={() => onTool("hand")}>
+      <ToolButton label="Hand" active={tool === "hand"} onClick={() => onTool("hand")}>
         <HandIcon className="h-4 w-4" />
       </ToolButton>
-      <ToolButton label="Note" active={tool === "note" && !playing} onClick={() => onTool("note")}>
+      <ToolButton label="Note" active={tool === "note"} onClick={() => onTool("note")}>
         <NoteIcon className="h-4 w-4" />
       </ToolButton>
     </div>
@@ -61,7 +63,6 @@ export function CanvasTools({ tool, playing, onTool }: { tool: Tool; playing: bo
 
 interface ZoomProps {
   zoom: number;
-  playing: boolean;
   scheme: Scheme;
   /** Absent when the canvas declares no variables. */
   variablesOpen?: boolean;
@@ -74,7 +75,7 @@ interface ZoomProps {
 
 /** The variables, light or dark, Play and the zoom, at the canvas's top-right; the percentage fits
  * everything. */
-export function CanvasZoom({ zoom, playing, scheme, variablesOpen, onPlay, onZoom, onFit, onScheme, onVariables }: ZoomProps) {
+export function CanvasZoom({ zoom, scheme, variablesOpen, onPlay, onZoom, onFit, onScheme, onVariables }: ZoomProps) {
   const plain = "h-8 rounded-lg px-2 hover:bg-[var(--card-bg)]";
   const dark = scheme === "dark";
   return (
@@ -87,8 +88,8 @@ export function CanvasZoom({ zoom, playing, scheme, variablesOpen, onPlay, onZoo
       <ToolButton label={dark ? "Show light" : "Show dark"} active={false} onClick={() => onScheme(dark ? "light" : "dark")}>
         {dark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
       </ToolButton>
-      <ToolButton label={playing ? "Stop playing" : "Play"} active={playing} onClick={onPlay}>
-        {playing ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
+      <ToolButton label="Play full screen" active={false} onClick={onPlay}>
+        <PlayIcon className="h-4 w-4" />
       </ToolButton>
       <button type="button" aria-label="Zoom out" className={plain} onClick={() => onZoom(1 / 1.25)}>
         −
@@ -104,43 +105,46 @@ export function CanvasZoom({ zoom, playing, scheme, variablesOpen, onPlay, onZoo
 }
 
 /** One artboard: its page in a sandboxed frame at its real size and in the canvas's colour scheme, its title above it at a steady
- * size whatever the zoom, and, outside Play, a cover that takes the pointer for the canvas. */
+ * size whatever the zoom with its Play, and, unless it is played, a cover that takes the pointer for the canvas. */
 export function BoardFrame({
   board,
   threadId,
   version,
   zoom,
-  playing,
+  live,
   selected,
   scheme,
   onPress,
+  onPlay,
+  onEdit,
 }: {
   board: CanvasBoard;
   threadId: string;
   version: string;
   zoom: number;
-  playing: boolean;
+  live: boolean;
   selected: boolean;
   scheme: Scheme;
   onPress: (e: ReactPointerEvent) => void;
+  onPlay: (mode: PlayMode) => void;
+  onEdit: () => void;
 }) {
   return (
     <div className="absolute" style={{ left: board.x, top: board.y, width: board.width, height: board.height }}>
-      <div
-        className={`absolute bottom-full left-0 mb-1.5 origin-bottom-left truncate text-[13px] ${selected ? "text-[var(--accent)]" : "text-[var(--muted)]"}`}
-        style={{ transform: `scale(${1 / zoom})`, maxWidth: board.width * zoom }}
-      >
-        {board.title}
+      <div className="absolute bottom-full left-0 z-10 mb-1.5 flex origin-bottom-left items-center gap-2" style={{ transform: `scale(${1 / zoom})`, width: board.width * zoom }}>
+        <span className={`min-w-0 flex-1 truncate text-[13px] ${selected ? "text-[var(--accent)]" : "text-[var(--muted)]"}`}>{board.title}</span>
+        <BoardPlayButton live={live} onPlay={onPlay} onEdit={onEdit} />
       </div>
       <iframe
         key={`${board.path}.${version}.${scheme}`}
         title={board.title}
+        data-board={board.id}
         src={designFileUrl(threadId, board.path, version, scheme)}
         sandbox="allow-scripts"
         className="h-full w-full border-0 bg-white shadow-sm"
-        style={{ pointerEvents: playing ? "auto" : "none" }}
+        style={{ pointerEvents: live ? "auto" : "none" }}
       />
-      {!playing && (
+      {!live && (
         <div
           data-testid={`board-${board.id}`}
           className={`absolute inset-0 ${selected ? "outline outline-2 outline-[var(--accent)]" : "hover:outline hover:outline-1 hover:outline-[var(--accent)]"}`}
