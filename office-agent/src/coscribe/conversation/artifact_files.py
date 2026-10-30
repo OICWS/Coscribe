@@ -8,6 +8,8 @@ import shutil
 from pathlib import Path
 
 from ..tools import copy_deck, deck_files, doc_side_folder, move_deck
+from .dashboard import dashboard_folder
+from .design_canvas import CANVAS_SUFFIX, canvas_folder, is_canvas
 
 
 class ArtifactFileError(Exception):
@@ -25,26 +27,41 @@ def _is_deck(path: Path) -> bool:
     return path.suffix.lower() == ".pptx"
 
 
-def _doc_folder(path: Path) -> Path | None:
-    """A Doc's side folder (versions, comments, pictures), when it has one."""
-    if path.suffix.lower() != ".md":
-        return None
-    folder = doc_side_folder(path)
-    return folder if folder.is_dir() else None
+def _ending(path: Path) -> str:
+    return path.name[-len(CANVAS_SUFFIX) :] if is_canvas(path) else path.suffix
+
+
+def _side_folder_of(path: Path) -> Path | None:
+    """Where the folder that belongs to `path` is or would be: a Doc's (versions, comments,
+    pictures), a canvas's artboards, a dashboard's datasets."""
+    if is_canvas(path):
+        return canvas_folder(path)
+    if path.suffix.lower() == ".md":
+        return doc_side_folder(path)
+    if path.suffix.lower() in (".html", ".htm"):
+        return dashboard_folder(path)
+    return None
+
+
+def _side_folder(path: Path) -> Path | None:
+    folder = _side_folder_of(path)
+    return folder if folder is not None and folder.is_dir() else None
 
 
 def renamed_path(path: Path, name: str) -> Path:
     """Where `path` goes when it is named `name`: same folder and same ending."""
+    ending = _ending(path)
     stem = name.strip()
-    if stem.lower().endswith(path.suffix.lower()):
-        stem = stem[: -len(path.suffix)].rstrip()
+    if stem.lower().endswith(ending.lower()):
+        stem = stem[: -len(ending)].rstrip()
     if not stem or stem.startswith(".") or _FORBIDDEN.search(stem) or stem.endswith("."):
         raise ArtifactFileError("That name can't be used for a file")
-    target = path.with_name(stem + path.suffix)
+    target = path.with_name(stem + ending)
     if target.exists() and not _same_file(target, path):
         raise ArtifactFileError(f"{target.name} already exists in that folder")
-    if _doc_folder(path) and doc_side_folder(target).exists():
-        raise ArtifactFileError(f"{doc_side_folder(target).name} already exists in that folder")
+    folder, moved = _side_folder(path), _side_folder_of(target)
+    if folder and moved is not None and moved.exists() and not _same_file(moved, folder):
+        raise ArtifactFileError(f"{moved.name} already exists in that folder")
     return target
 
 
@@ -57,22 +74,30 @@ def _same_file(a: Path, b: Path) -> bool:
 
 def rename_file(path: Path, name: str) -> Path:
     target = renamed_path(path, name)
-    folder = _doc_folder(path)
+    folder = _side_folder(path)
     if _is_deck(path):
         move_deck(path, target)
     else:
         path.rename(target)
-    if folder:
-        folder.rename(doc_side_folder(target))
+    moved = _side_folder_of(target)
+    if folder and moved is not None:
+        folder.rename(moved)
     return target
 
 
 def free_copy_path(path: Path) -> Path:
     """`name copy.ext`, then `name copy 2.ext`, the first that is free."""
-    candidate = path.with_name(f"{path.stem} copy{path.suffix}")
+    ending = _ending(path)
+    stem = path.name[: -len(ending)] if ending else path.name
+
+    def taken(candidate: Path) -> bool:
+        folder = _side_folder_of(candidate)
+        return candidate.exists() or (folder is not None and folder.exists())
+
+    candidate = path.with_name(f"{stem} copy{ending}")
     n = 2
-    while candidate.exists() or (path.suffix == ".md" and doc_side_folder(candidate).exists()):
-        candidate = path.with_name(f"{path.stem} copy {n}{path.suffix}")
+    while taken(candidate):
+        candidate = path.with_name(f"{stem} copy {n}{ending}")
         n += 1
     return candidate
 
@@ -83,13 +108,12 @@ def copy_file(path: Path) -> Path:
         copy_deck(path, target)
     else:
         shutil.copy2(path, target)
-    if folder := _doc_folder(path):
-        # The copy starts with the original's pictures but not its comments or kept versions.
-        shutil.copytree(
-            folder,
-            doc_side_folder(target),
-            ignore=shutil.ignore_patterns("comments.json", "versions"),
-        )
+    folder, copied = _side_folder(path), _side_folder_of(target)
+    if folder and copied is not None:
+        # A Doc's copy starts with the original's pictures but not its comments or kept versions.
+        doc = path.suffix == ".md"
+        ignore = shutil.ignore_patterns("comments.json", "versions") if doc else None
+        shutil.copytree(folder, copied, ignore=ignore)
     return target
 
 
@@ -99,7 +123,7 @@ def trash_file(path: Path) -> None:
     from send2trash import send2trash
 
     files = deck_files(path) if _is_deck(path) else [path]
-    if folder := _doc_folder(path):
+    if folder := _side_folder(path):
         files = [*files, folder]
     for file in files:
         send2trash(str(file))
