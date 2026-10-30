@@ -183,6 +183,9 @@ async def test_a_call_waiting_for_a_person_pauses_the_run_and_goes_on_without_re
     # One agent across both pauses, and nothing it did ran twice.
     assert len(runner.agents) == 1
     assert runner.log() == ["ran read_file", "ran write_file", "declined send_mail"]
+    # A resume replays the answered call without showing it as waiting again.
+    shown = [r.agent["pending"]["tool"] for r in h.records if r.status == "waiting" and r.agent]
+    assert shown == ["write_file", "send_mail"]
 
 
 @pytest.mark.parametrize(
