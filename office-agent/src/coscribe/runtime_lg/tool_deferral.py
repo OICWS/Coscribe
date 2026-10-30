@@ -84,8 +84,29 @@ _MIN_SHARE_OF_BEST = 0.4
 _MIN_SCORE = 2.0
 
 _STOPWORDS = frozenset(
-    {"a", "an", "the", "to", "of", "for", "and", "or", "in", "on", "with", "this", "that",
-     "is", "are", "it", "as", "at", "be", "by", "from"}
+    {
+        "a",
+        "an",
+        "the",
+        "to",
+        "of",
+        "for",
+        "and",
+        "or",
+        "in",
+        "on",
+        "with",
+        "this",
+        "that",
+        "is",
+        "are",
+        "it",
+        "as",
+        "at",
+        "be",
+        "by",
+        "from",
+    }
 )
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 

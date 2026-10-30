@@ -105,6 +105,12 @@ detail at small sizes instead of shrinking it.
 
 ## Before you say it is done
 
-Check that every board's `file` exists, that every `var(--...)` a page uses is a variable of the
+Look at the canvas with `look_at_page` (find it with `search_tools`): it draws every artboard as
+the app does and reports script errors, blocked loads, a page wider than its board, text over text
+and text past a board's edge. Fix what it reports and what you see in the pictures (text that runs
+into other text, a block crowding the footer, a colour that hides text), then look again; two rounds
+are usually enough. If it says there is no browser to draw with, say you could not look.
+
+Also check that every board's `file` exists, that every `var(--...)` a page uses is a variable of the
 canvas or defined in the page, that every SVG id you refer to exists, and that nothing loads from
 the network. Say the canvas's file name and one line per artboard; do not describe the shapes.

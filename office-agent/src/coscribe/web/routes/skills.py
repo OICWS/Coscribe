@@ -47,7 +47,6 @@ def router(state: AppState) -> APIRouter:
     settings = state.settings
     _skills_by_name = state.skills_by_name
 
-
     @router.get("/api/skills")
     async def get_skills() -> list[dict[str, Any]]:
         builtin_names = {skill.name for skill in load_builtin_skills()}
@@ -151,9 +150,7 @@ def router(state: AppState) -> APIRouter:
                 ],
                 # `connector` is the coscribe connector that talks to the same
                 # server, or null when coscribe has none for it.
-                "connectors": [
-                    {**c, "connector": ours(c)} for c in plugin["connectors"]
-                ],
+                "connectors": [{**c, "connector": ours(c)} for c in plugin["connectors"]],
             }
         )
 

@@ -45,11 +45,8 @@ def router(state: AppState) -> APIRouter:
     settings = state.settings
     _get_session = state.get_session
 
-
     @router.post("/api/upload")
-    async def upload_file(
-        file: UploadFile, thread_id: Annotated[str, Form()] = ""
-    ) -> JSONResponse:
+    async def upload_file(file: UploadFile, thread_id: Annotated[str, Form()] = "") -> JSONResponse:
         # Direct port of web/app.py's identical endpoint -- pure file I/O
         # against settings.workspace_root, nothing runtime-specific about
         # it (unlike /api/config, /api/mcp/*, /api/providers/*, this one

@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from pptx.presentation import Presentation as PresentationType
 
 
-
 class ToolkitBase:
     def __init__(
         self,

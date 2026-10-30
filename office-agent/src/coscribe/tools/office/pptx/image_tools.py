@@ -20,9 +20,6 @@ if TYPE_CHECKING:
     pass
 
 
-
-
-
 class ImageToolsMixin(ToolkitBase):
     @locked_by_path
     def replace_pptx_image(
@@ -140,8 +137,7 @@ class ImageToolsMixin(ToolkitBase):
         immediately rather than silently doing nothing."""
         if icon_name not in th.ICON_NAMES:
             raise ValueError(
-                f"Unknown icon {icon_name!r} -- call list_pptx_icons() to see the "
-                f"available names."
+                f"Unknown icon {icon_name!r} -- call list_pptx_icons() to see the available names."
             )
         if not THEME_HEX_RE.match(color):
             raise ValueError(f"color {color!r} must be a 6-hex-digit color (no '#').")

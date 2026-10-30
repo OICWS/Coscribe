@@ -671,3 +671,19 @@ def _libreoffice_in(tmp_path: Path) -> list[str]:
     remove_libreoffice(tmp_path)
     assert find_libreoffice(tmp_path) is None
     return made
+
+
+@real
+def test_edge_draws_a_page_and_reports_its_overlapping_text() -> None:
+    from coscribe.conversation.page_shot import find_browser, shoot_page
+
+    browser = find_browser()
+    assert browser and browser.lower().endswith(("msedge.exe", "chrome.exe")), browser
+    page = (
+        b"<html><head><style>body{margin:0}p{position:absolute;top:10px;left:10px;font:30px Arial}"
+        b"</style></head><body><p>Title text</p><p>Over it</p></body></html>"
+    )
+    shot = shoot_page(page, 400, 300, fixed=True)
+
+    assert shot.png.startswith(b"\x89PNG")
+    assert shot.report["text_overlapping"] == [["Title text", "Over it"]]

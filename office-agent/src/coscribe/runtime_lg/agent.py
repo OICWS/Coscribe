@@ -29,7 +29,7 @@ from langgraph.errors import GraphBubbleUp
 
 from ..runtime import get_tool_metadata
 from .edit_guard import EditGuardMiddleware
-from .messages import starts_a_turn, steer_message
+from .messages import pictures_as_user_message, starts_a_turn, steer_message
 from .tool_calls import answer_every_tool_call
 from .tool_deferral import (
     DeferredToolMiddleware,
@@ -266,6 +266,21 @@ class _AnswerEveryToolCallMiddleware(AgentMiddleware):
         return await handler(self._patched(request))
 
 
+class _PicturesAsUserMessageMiddleware(AgentMiddleware):
+    """A picture in a tool result reaches the model in a user message right after the results;
+    only the request changes, the saved history keeps the tool result whole."""
+
+    def _patched(self, request: Any) -> Any:
+        messages, changed = pictures_as_user_message(list(request.messages))
+        return request.override(messages=messages) if changed else request
+
+    def wrap_model_call(self, request: Any, handler: Any) -> Any:
+        return handler(self._patched(request))
+
+    async def awrap_model_call(self, request: Any, handler: Any) -> Any:
+        return await handler(self._patched(request))
+
+
 def model_calls_this_turn(messages: Sequence[Any]) -> int:
     """The model's replies since the user's last request -- a note added
     mid-turn or an auto-compact summary is a HumanMessage too, not one."""
@@ -489,6 +504,7 @@ def build_langgraph_agent(
         )
 
     middleware.append(_AnswerEveryToolCallMiddleware())
+    middleware.append(_PicturesAsUserMessageMiddleware())
 
     final_tools = list(tools)
     if defer_tools:

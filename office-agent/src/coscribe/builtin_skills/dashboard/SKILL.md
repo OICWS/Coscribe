@@ -88,6 +88,12 @@ To refresh, read the sources again and write the data files and `datasets.json` 
 
 ## Before you say it is done
 
-Check that every `data-figure` and `data-source` names an entry of `datasets.json`, that no
+Look at the page with `look_at_page` (find it with `search_tools`): it draws the page with its data
+as the app does and reports script errors, blocked loads, text over text and a page wider than the
+panel. Fix what it reports and what you see in the picture (labels over each other, an empty chart,
+a figure that reads wrong against its data), then look again. If it says there is no browser to
+draw with, say you could not look.
+
+Also check that every `data-figure` and `data-source` names an entry of `datasets.json`, that no
 figure is typed into the page, and that nothing loads from the network. Say the page's file
 name, what it shows and where its data came from, in a few lines.

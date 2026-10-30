@@ -121,9 +121,7 @@ def build_images_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., 
             color=color,
         )
 
-    def recolor_pptx_icon(
-        path: str, slide: int, shape_index: str, color: str
-    ) -> dict[str, object]:
+    def recolor_pptx_icon(path: str, slide: int, shape_index: str, color: str) -> dict[str, object]:
         """Change the color of an icon or logo-like picture already on a
         slide, in place -- position, size, and crop are untouched, only
         the pixels change (same relationship-swap mechanism as

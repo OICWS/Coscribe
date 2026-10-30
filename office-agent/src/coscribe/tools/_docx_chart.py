@@ -93,7 +93,7 @@ def _chart_xml(
         title_xml = (
             f'<c:title xmlns:c="{_C}" xmlns:a="{_A}"><c:tx><c:rich><a:bodyPr/><a:p>'
             f'<a:pPr><a:defRPr sz="1200" b="1"/></a:pPr><a:r><a:rPr lang="en-US" sz="1200" b="1"/>'
-            f"<a:t></a:t></a:r></a:p></c:rich></c:tx><c:overlay val=\"0\"/></c:title>"
+            f'<a:t></a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/></c:title>'
         )
         title_el = etree.fromstring(title_xml)
         title_el.find(".//a:t", ns).text = title
@@ -111,9 +111,11 @@ def _chart_xml(
     # A column chart reads by the height of its bars; an axis that starts near the smallest value
     # makes a 7% rise look like a tripling.
     scaling = chart.find("c:plotArea/c:valAx/c:scaling", ns)
-    if chart_type == "bar" and scaling is not None and min(
-        (v for vs in series.values() for v in vs), default=0
-    ) >= 0:
+    if (
+        chart_type == "bar"
+        and scaling is not None
+        and min((v for vs in series.values() for v in vs), default=0) >= 0
+    ):
         etree.SubElement(scaling, f"{{{_C}}}min").set("val", "0")
 
     # Axis labels only; the values themselves keep every decimal.
@@ -202,9 +204,5 @@ def add_chart_paragraph(
 
 
 def _next_drawing_id(document: Any) -> int:
-    ids = [
-        int(value)
-        for value in document.element.xpath("//wp:docPr/@id")
-        if str(value).isdigit()
-    ]
+    ids = [int(value) for value in document.element.xpath("//wp:docPr/@id") if str(value).isdigit()]
     return max(ids, default=0) + 1

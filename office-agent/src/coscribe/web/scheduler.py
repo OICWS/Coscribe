@@ -198,4 +198,3 @@ class Scheduler:
         for thread_id in orphans:
             await self._delete_thread_data(thread_id)
         return len(orphans)
-

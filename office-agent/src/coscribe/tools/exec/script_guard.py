@@ -25,7 +25,7 @@ from pathlib import Path
 
 _BLOCKED_MARK = "COSCRIBE_BLOCKED_WRITE:"
 
-PYTHON_WRAPPER = r'''
+PYTHON_WRAPPER = r"""
 import atexit, json, os, runpy, sys
 
 config = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -84,7 +84,7 @@ atexit.register(report)
 sys.addaudithook(hook)
 sys.argv = [script]
 runpy.run_path(script, run_name="__main__")
-'''.replace("@@MARK@@", _BLOCKED_MARK)
+""".replace("@@MARK@@", _BLOCKED_MARK)
 
 
 def writable_roots(workspace_root: Path, extra_writable: list[Path]) -> list[str]:

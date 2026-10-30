@@ -443,3 +443,35 @@ def test_the_agent_builds_with_the_edit_guard_and_runs_a_tool_through_it(tmp_pat
         {"messages": [HumanMessage(content="hi")]}, config={"configurable": {"thread_id": "g1"}}
     )
     assert calls == ["a.docx"] and result["messages"][-1].content == "done"
+
+
+def test_a_picture_a_tool_returns_reaches_the_model_as_a_user_message_after_its_result() -> None:
+    """OpenAI-compatible APIs do not all take an image in a tool message; the saved history keeps
+    the tool result whole and only the request carries the picture in a user message."""
+    picture = {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA"}}
+
+    def look_at_page(path: str) -> list[dict[str, Any]]:
+        """Look at a page."""
+        return [{"type": "text", "text": '{"path": "a.html"}'}, picture]
+
+    call = {"name": "look_at_page", "args": {"path": "a.html"}, "id": "c1"}
+    model = _RecordingModel(
+        responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="looks fine")],
+        seen=[],
+    )
+    agent = build_langgraph_agent(model, [look_at_page], "be helpful", checkpointer=InMemorySaver())
+    config = {"configurable": {"thread_id": "t1"}}
+
+    agent.invoke({"messages": [HumanMessage(content="check a.html")]}, config=config)
+
+    sent = [m for m in model.seen[1] if not isinstance(m, SystemMessage)]
+    assert [type(m).__name__ for m in sent] == [
+        "HumanMessage",
+        "AIMessage",
+        "ToolMessage",
+        "HumanMessage",
+    ]
+    assert sent[2].content == [{"type": "text", "text": '{"path": "a.html"}'}]
+    assert sent[3].content[1] == picture
+    saved = [m for m in agent.get_state(config).values["messages"] if isinstance(m, ToolMessage)]
+    assert saved[0].content[1] == picture

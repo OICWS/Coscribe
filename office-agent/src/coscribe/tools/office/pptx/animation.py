@@ -65,6 +65,7 @@ def _animation_preset_expected_children(animation: str) -> frozenset[str]:
     tags = {etree.QName(child).localname for child in child_lst}
     return frozenset(tags - {"set"}) or frozenset({"set"})
 
+
 # nodeType on the presetID-bearing <p:cTn> is the Animation Pane's "Start" mode. The manifest
 # stores a placeholder value for every preset, so the row is always overwritten from the caller's
 # trigger (the mapping hugohe3/ppt-master's `_TRIGGER_NODE_TYPES` uses).
@@ -377,9 +378,7 @@ def build_audio_pic_element(
 
     pic = etree.Element(f"{{{P_NS}}}pic")
     nv_pic_pr = etree.SubElement(pic, f"{{{P_NS}}}nvPicPr")
-    c_nv_pr = etree.SubElement(
-        nv_pic_pr, f"{{{P_NS}}}cNvPr", id=str(shape_id), name=shape_name
-    )
+    c_nv_pr = etree.SubElement(nv_pic_pr, f"{{{P_NS}}}cNvPr", id=str(shape_id), name=shape_name)
     etree.SubElement(
         c_nv_pr,
         f"{{{A_NS}}}hlinkClick",
@@ -523,9 +522,7 @@ def add_animation_step(
             # invalid, so it's only ever added once an animation needs
             # it) -- add one now, alongside whatever audio/video nodes
             # are already there, rather than discarding the tree.
-            root_child = timing.find(
-                f".//{{{P_NS}}}cTn[@nodeType='tmRoot']/{{{P_NS}}}childTnLst"
-            )
+            root_child = timing.find(f".//{{{P_NS}}}cTn[@nodeType='tmRoot']/{{{P_NS}}}childTnLst")
             main_child = _append_main_seq(root_child, next_timing_id(timing))
             group = None
         else:
@@ -550,8 +547,15 @@ def add_animation_step(
             etree.SubElement(begin_cond, f"{{{P_NS}}}tn", val="2")
         outer_child = etree.SubElement(outer_ctn, f"{{{P_NS}}}childTnLst")
         _append_step(
-            outer_child, step_id, row_id, shape_id, animation, duration_ms, node_type,
-            delay_ms, paragraph_index,
+            outer_child,
+            step_id,
+            row_id,
+            shape_id,
+            animation,
+            duration_ms,
+            node_type,
+            delay_ms,
+            paragraph_index,
         )
         return
 
@@ -565,8 +569,15 @@ def add_animation_step(
     )
     step_id, row_id = next_id, next_id + 1
     _append_step(
-        group_child, step_id, row_id, shape_id, animation, duration_ms, node_type,
-        start_ms, paragraph_index,
+        group_child,
+        step_id,
+        row_id,
+        shape_id,
+        animation,
+        duration_ms,
+        node_type,
+        start_ms,
+        paragraph_index,
     )
 
 
@@ -647,9 +658,7 @@ def verify_animation_readback(
         sp_tgt = candidate.find(f".//{{{P_NS}}}spTgt")
         if sp_tgt is None or sp_tgt.get("spid") != str(shape_id):
             continue
-        if not all(
-            candidate.find(f".//{{{P_NS}}}{tag}") is not None for tag in expected_children
-        ):
+        if not all(candidate.find(f".//{{{P_NS}}}{tag}") is not None for tag in expected_children):
             continue
         p_rg = sp_tgt.find(f"{{{P_NS}}}txEl/{{{P_NS}}}pRg")
         found.add(int(p_rg.get("st")) if p_rg is not None else None)

@@ -24,8 +24,7 @@ def parse_chart_table(content: str, tool_name: str) -> tuple[list[str], dict[str
         cells = _split_table_row(line)
         if cells is None:
             raise ValueError(
-                f"{tool_name} data must be pipe-table rows only (`| cell | cell |`), "
-                f"got: {line!r}"
+                f"{tool_name} data must be pipe-table rows only (`| cell | cell |`), got: {line!r}"
             )
         if _is_separator_row(cells):
             continue
@@ -35,9 +34,7 @@ def parse_chart_table(content: str, tool_name: str) -> tuple[list[str], dict[str
         raise ValueError(f"{tool_name} data needs a header row plus at least one data row")
     header, *data_rows = rows
     if len(header) < 2:
-        raise ValueError(
-            f"{tool_name} data needs a category column plus at least one data column"
-        )
+        raise ValueError(f"{tool_name} data needs a category column plus at least one data column")
 
     series_names = header[1:]
     categories = [row[0] for row in data_rows]

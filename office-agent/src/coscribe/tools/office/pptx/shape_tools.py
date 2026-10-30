@@ -34,9 +34,6 @@ if TYPE_CHECKING:
     pass
 
 
-
-
-
 class ShapeToolsMixin(ToolkitBase):
     @locked_by_path
     def list_pptx_shapes(self, path: str, slide: int) -> dict[str, object]:
@@ -267,13 +264,11 @@ class ShapeToolsMixin(ToolkitBase):
             )
         if fill_color and not THEME_HEX_RE.match(fill_color):
             raise ValueError(
-                f"fill_color {fill_color!r} must be a 6-hex-digit color (no '#'), "
-                f"e.g. '38BDF8'."
+                f"fill_color {fill_color!r} must be a 6-hex-digit color (no '#'), e.g. '38BDF8'."
             )
         if line_color and not THEME_HEX_RE.match(line_color):
             raise ValueError(
-                f"line_color {line_color!r} must be a 6-hex-digit color (no '#'), "
-                f"e.g. '38BDF8'."
+                f"line_color {line_color!r} must be a 6-hex-digit color (no '#'), e.g. '38BDF8'."
             )
         prs, file_path, target_slide = self._open_slide(path, slide)
         shape = target_slide.shapes.add_shape(
@@ -505,7 +500,10 @@ class ShapeToolsMixin(ToolkitBase):
 
     @locked_by_path
     def duplicate_pptx_slide(
-        self, path: str, slide: int, insert_at: Optional[int] = None  # noqa: UP045
+        self,
+        path: str,
+        slide: int,
+        insert_at: Optional[int] = None,  # noqa: UP045
     ) -> dict[str, object]:
         """Duplicate one slide in an existing .pptx, in place -- every
         shape, its exact position/size/formatting, and every image the

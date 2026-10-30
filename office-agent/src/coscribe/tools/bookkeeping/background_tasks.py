@@ -654,8 +654,17 @@ def build_background_task_tools(
             _prepare_script, language, script, state, scratch_root, write_roots, base_env
         )
         started = await _start_contained(
-            state, thread_id, root, argv, env, folders, runtime, language, description,
-            scratch_dir, timeout,
+            state,
+            thread_id,
+            root,
+            argv,
+            env,
+            folders,
+            runtime,
+            language,
+            description,
+            scratch_dir,
+            timeout,
         )
         if started is not None:
             return started

@@ -94,9 +94,7 @@ class ConnectorManager:
         McpServerConnection, if any -- unlike before the persistent-session
         fix (runtime_lg/mcp.py), there is now a real subprocess to actually
         tear down here, not just a tool list to filter."""
-        self.tools = [
-            t for t in self.tools if get_tool_metadata(t).category != f"mcp:{name}"
-        ]
+        self.tools = [t for t in self.tools if get_tool_metadata(t).category != f"mcp:{name}"]
         connection = self.connections.pop(name, None)
         if connection is not None:
             await connection.close()
