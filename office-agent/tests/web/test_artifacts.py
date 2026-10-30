@@ -259,6 +259,10 @@ def test_a_canvas_is_a_design_its_artboards_are_not_and_its_routes_place_them_lg
         )
         page = client.get(design, params={"path": "ui.design/phone.html"}).text
         assert page.startswith("<style data-coscribe-variables>:root{--brand:#111}")
+        dark = client.get(design, params={"path": "ui.design/phone.html", "scheme": "dark"})
+        assert "setAttribute('data-theme','dark')" in dark.text
+        bad = client.get(design, params={"path": "ui.design/phone.html", "scheme": "sepia"})
+        assert bad.status_code == 422
 
         renamed = client.post(f"/api/artifacts/{item['id']}/rename", json={"name": "app"}).json()
         assert renamed["name"] == "app"

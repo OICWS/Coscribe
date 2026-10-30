@@ -5731,6 +5731,26 @@
               "title": "Print",
               "type": "boolean"
             }
+          },
+          {
+            "in": "query",
+            "name": "scheme",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "light",
+                    "dark"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scheme"
+            }
           }
         ],
         "responses": {

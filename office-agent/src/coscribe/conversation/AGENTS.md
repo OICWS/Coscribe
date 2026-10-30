@@ -15,7 +15,7 @@ coordinator's tools and prompt (`coordinator.py`).
 
 ## Public interface
 `ChatSessionLG`, `ThreadMetaStore`, `OPENABLE_EXTENSIONS`, `open_in_os`, `ArtifactRegistry`,
-`adopt_thread`, `describe_artifact`, `is_dashboard`, `read_dashboard_data`, `render_dashboard`, `DashboardDataError`, and a Design canvas's `is_canvas`, `canvas_folder`, `canvas_of_page`, `read_canvas`, `place_on_canvas`, `variables_style`, `CanvasError`, what the Artifacts menu does to a file (`artifact_files.py`) `rename_file`, `copy_file`, `trash_file`, `ArtifactFileError`. `wire` is imported as a
+`adopt_thread`, `describe_artifact`, `is_dashboard`, `read_dashboard_data`, `render_dashboard`, `DashboardDataError`, and a Design canvas's `is_canvas`, `canvas_folder`, `canvas_of_page`, `in_scheme`, `read_canvas`, `place_on_canvas`, `variables_style`, `CanvasError`, what the Artifacts menu does to a file (`artifact_files.py`) `rename_file`, `copy_file`, `trash_file`, `ArtifactFileError`. `wire` is imported as a
 module (`from coscribe.conversation import wire`) by tests and `scripts/gen_wire_ts.py`; that
 import loads the package's `__init__`, so the whole session comes with it. Tests
 still reach into `session` for private helpers and to patch it; do not copy that into `src`.

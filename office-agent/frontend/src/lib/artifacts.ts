@@ -98,8 +98,9 @@ export const artifactId = (item: PageItem) => item.id;
 export const designUrl = (item: ArtifactSummary) => `/api/artifacts/${item.id}/content?v=${encodeURIComponent(item.modified_at)}`;
 
 /** The same page by the conversation and path a panel shows it with. */
-export const designFileUrl = (threadId: string, path: string, version: string) =>
-  `/api/threads/${encodeURIComponent(threadId)}/design?path=${encodeURIComponent(path)}&v=${encodeURIComponent(version)}`;
+/** A Design page as its frame loads it; `scheme` serves it light or dark whatever the computer's setting. */
+export const designFileUrl = (threadId: string, path: string, version: string, scheme?: "light" | "dark") =>
+  `/api/threads/${encodeURIComponent(threadId)}/design?path=${encodeURIComponent(path)}&v=${encodeURIComponent(version)}${scheme ? `&scheme=${scheme}` : ""}`;
 
 /** A dashboard's datasets as its panel shows them; 404 for a page that is not a dashboard. */
 export interface DashboardInfo {

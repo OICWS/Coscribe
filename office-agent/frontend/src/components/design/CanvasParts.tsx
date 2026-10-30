@@ -1,8 +1,9 @@
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { designFileUrl } from "../../lib/artifacts";
 import type { CanvasBoard, CanvasNote } from "../../lib/designCanvas";
-import { CursorClickIcon, HandIcon, PauseIcon, PlayIcon } from "../icons";
+import { CursorClickIcon, HandIcon, MoonIcon, PauseIcon, PlayIcon, SunIcon } from "../icons";
 import type { Tool } from "./useCanvasEditing";
+import type { Scheme } from "./useCanvasLook";
 
 const NOTE_FILL: Record<CanvasNote["color"], string> = { yellow: "#fff3b0", pink: "#ffd6e0", blue: "#d6e8ff", green: "#d8f5d0" };
 const BAR = "absolute z-10 flex items-center gap-0.5 rounded-xl border border-[var(--border)] bg-[var(--panel-bg)] p-1 shadow-[var(--shadow)]";
@@ -12,6 +13,16 @@ function NoteIcon({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden>
       <path d="M5 4h14v10l-6 6H5z" />
       <path d="M13 20v-6h6" />
+    </svg>
+  );
+}
+
+function SlidersIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+      <path d="M4 7h10M18 7h2M4 17h4M12 17h8" />
+      <circle cx="16" cy="7" r="2" />
+      <circle cx="10" cy="17" r="2" />
     </svg>
   );
 }
@@ -48,11 +59,34 @@ export function CanvasTools({ tool, playing, onTool }: { tool: Tool; playing: bo
   );
 }
 
-/** Play and the zoom, at the canvas's top-right; the percentage fits everything. */
-export function CanvasZoom({ zoom, playing, onPlay, onZoom, onFit }: { zoom: number; playing: boolean; onPlay: () => void; onZoom: (factor: number) => void; onFit: () => void }) {
+interface ZoomProps {
+  zoom: number;
+  playing: boolean;
+  scheme: Scheme;
+  /** Absent when the canvas declares no variables. */
+  variablesOpen?: boolean;
+  onPlay: () => void;
+  onZoom: (factor: number) => void;
+  onFit: () => void;
+  onScheme: (scheme: Scheme) => void;
+  onVariables: () => void;
+}
+
+/** The variables, light or dark, Play and the zoom, at the canvas's top-right; the percentage fits
+ * everything. */
+export function CanvasZoom({ zoom, playing, scheme, variablesOpen, onPlay, onZoom, onFit, onScheme, onVariables }: ZoomProps) {
   const plain = "h-8 rounded-lg px-2 hover:bg-[var(--card-bg)]";
+  const dark = scheme === "dark";
   return (
     <div className={`${BAR} right-3 top-3`}>
+      {variablesOpen !== undefined && (
+        <ToolButton label="Variables" active={variablesOpen} onClick={onVariables}>
+          <SlidersIcon className="h-4 w-4" />
+        </ToolButton>
+      )}
+      <ToolButton label={dark ? "Show light" : "Show dark"} active={false} onClick={() => onScheme(dark ? "light" : "dark")}>
+        {dark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
+      </ToolButton>
       <ToolButton label={playing ? "Stop playing" : "Play"} active={playing} onClick={onPlay}>
         {playing ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
       </ToolButton>
@@ -69,7 +103,7 @@ export function CanvasZoom({ zoom, playing, onPlay, onZoom, onFit }: { zoom: num
   );
 }
 
-/** One artboard: its page in a sandboxed frame at its real size, its title above it at a steady
+/** One artboard: its page in a sandboxed frame at its real size and in the canvas's colour scheme, its title above it at a steady
  * size whatever the zoom, and, outside Play, a cover that takes the pointer for the canvas. */
 export function BoardFrame({
   board,
@@ -78,6 +112,7 @@ export function BoardFrame({
   zoom,
   playing,
   selected,
+  scheme,
   onPress,
 }: {
   board: CanvasBoard;
@@ -86,6 +121,7 @@ export function BoardFrame({
   zoom: number;
   playing: boolean;
   selected: boolean;
+  scheme: Scheme;
   onPress: (e: ReactPointerEvent) => void;
 }) {
   return (
@@ -97,9 +133,9 @@ export function BoardFrame({
         {board.title}
       </div>
       <iframe
-        key={`${board.path}.${version}`}
+        key={`${board.path}.${version}.${scheme}`}
         title={board.title}
-        src={designFileUrl(threadId, board.path, version)}
+        src={designFileUrl(threadId, board.path, version, scheme)}
         sandbox="allow-scripts"
         className="h-full w-full border-0 bg-white shadow-sm"
         style={{ pointerEvents: playing ? "auto" : "none" }}

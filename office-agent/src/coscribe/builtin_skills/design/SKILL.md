@@ -74,6 +74,9 @@ after the page's own styles, and the person can change them on the canvas, so:
 - A script may make the page work when the person presses Play: tabs, a menu that opens, a form
   that checks its fields. It reaches nothing outside the page.
 - Text a person might change is real text in the page, not drawn into an SVG.
+- The canvas shows the artboards light or dark as the person switches. Give a page its dark look
+  in `@media (prefers-color-scheme: dark)` or under `:root[data-theme="dark"]`, with the surface
+  and text colours there; a design that is only light or only dark needs neither.
 
 ## Logos and icons
 

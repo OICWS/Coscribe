@@ -22,8 +22,16 @@ export interface CanvasNote {
   color: "yellow" | "pink" | "blue" | "green";
 }
 
+/** A value the canvas puts into every artboard's page: its shared design system. */
+export interface CanvasVariable {
+  name: string;
+  value: string;
+  label: string;
+}
+
 export interface Canvas {
   boards: CanvasBoard[];
+  variables: CanvasVariable[];
   notes: CanvasNote[];
 }
 
@@ -51,20 +59,30 @@ export async function readCanvas(threadId: string, path: string): Promise<Canvas
   return answer(await fetch(canvasUrl(threadId, path)));
 }
 
-/** Saves what the person did: boards moved or resized (by id), and the notes as they now are. */
+/** Saves what the person did: boards moved or resized (by id), the notes as they now are, and
+ * variables set (by name). */
 export async function placeOnCanvas(
   threadId: string,
   path: string,
   boards: Record<string, Partial<Pick<CanvasBoard, "x" | "y" | "width" | "height">>>,
   notes?: CanvasNote[],
+  variables?: Record<string, string>,
 ): Promise<Canvas> {
   return answer(
     await fetch(canvasUrl(threadId, path), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ boards, notes }),
+      body: JSON.stringify({ boards, notes, variables }),
     }),
   );
+}
+
+/** A value an `<input type="color">` can show, or null when it is not a plain hex colour. */
+export function asHexColour(value: string): string | null {
+  const v = value.trim();
+  if (/^#[0-9a-f]{6}$/i.test(v)) return v.toLowerCase();
+  if (/^#[0-9a-f]{3}$/i.test(v)) return `#${[...v.slice(1)].map((c) => c + c).join("")}`.toLowerCase();
+  return null;
 }
 
 const clampZoom = (zoom: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom));
