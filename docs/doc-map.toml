@@ -179,6 +179,7 @@ covers = ["office-agent/src/coscribe/tools/office/doc/"]
 [[doc]]
 path = "office-agent/src/coscribe/builtin_skills/design/SKILL.md"
 covers = [
+  "office-agent/frontend/src/components/design/",
   "office-agent/src/coscribe/conversation/design_canvas.py",
   "office-agent/src/coscribe/conversation/page_tools.py",
   "office-agent/src/coscribe/conversation/page_shot.py",
