@@ -99,7 +99,7 @@ def test_artifact_note_names_what_is_made_and_is_stripped_from_history() -> None
     assert strip_mode_note(dashboard + "our test results") == "our test results"
     assert strip_mode_note(note + "a deck about tea") == "a deck about tea"
     design = artifact_note("design")
-    assert "SVG and HTML Design skill" in design
+    assert "Design skill" in design and ".design.json" in design
     assert strip_mode_note(design + "an icon for tea") == "an icon for tea"
     system = artifact_note("design-system")
     assert "save_design_system" in system and system.startswith("[The user is starting a Design-")

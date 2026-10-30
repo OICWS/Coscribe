@@ -218,10 +218,12 @@ def test_a_canvas_is_a_design_its_artboards_are_not_and_its_routes_place_them_lg
     workspace = tmp_path / "workspace"
     (workspace / "ui.design").mkdir(parents=True)
     boards = [{"id": "home", "file": "home.html"}, {"id": "phone", "file": "phone.html"}]
-    canvas = json.dumps({"boards": boards})
+    variables = [{"name": "--brand", "value": "#2557d6"}]
+    canvas = json.dumps({"boards": boards, "variables": variables})
+    home = "<html><head><style>:root{--brand:red}</style></head><p>home</p></html>"
     writes = [
         _tool_call("c0", "write_file", {"path": "ui.design.json", "content": canvas}),
-        _tool_call("c1", "write_file", {"path": "ui.design/home.html", "content": "<p>home</p>"}),
+        _tool_call("c1", "write_file", {"path": "ui.design/home.html", "content": home}),
         _tool_call("c2", "write_file", {"path": "ui.design/phone.html", "content": "<p>phone</p>"}),
     ]
     fake_model = FakeToolCallingChatModel(
@@ -245,6 +247,18 @@ def test_a_canvas_is_a_design_its_artboards_are_not_and_its_routes_place_them_lg
         assert (moved["boards"][1]["x"], moved["boards"][1]["y"]) == (0, 900)
         assert moved["notes"][0]["text"] == "bigger title"
         assert client.get(route, params={"path": "home.html"}).status_code == 404
+
+        # The canvas's variables go last in each artboard's head, so they win over the page's.
+        design = "/api/threads/t_canvas/design"
+        page = client.get(design, params={"path": "ui.design/home.html"}).text
+        assert (
+            page.index("--brand:red") < page.index(":root{--brand:#2557d6}") < page.index("</head>")
+        )
+        client.put(
+            route, params={"path": "ui.design.json"}, json={"variables": {"--brand": "#111"}}
+        )
+        page = client.get(design, params={"path": "ui.design/phone.html"}).text
+        assert page.startswith("<style data-coscribe-variables>:root{--brand:#111}")
 
         renamed = client.post(f"/api/artifacts/{item['id']}/rename", json={"name": "app"}).json()
         assert renamed["name"] == "app"

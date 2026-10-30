@@ -10,6 +10,7 @@ from coscribe.conversation.design_canvas import (
     in_canvas_folder,
     place_on_canvas,
     read_canvas,
+    variables_style,
 )
 
 
@@ -88,3 +89,43 @@ def test_an_artboards_page_belongs_to_its_canvas(tmp_path: Path) -> None:
 
     assert in_canvas_folder(tmp_path / "poster.design" / "a.html")
     assert not in_canvas_folder(tmp_path / "loose.design" / "b.html")
+
+
+def test_variables_that_could_break_out_of_a_style_are_dropped_and_the_rest_set_every_root(
+    tmp_path: Path,
+) -> None:
+    path = _canvas(
+        tmp_path,
+        {
+            "boards": [],
+            "variables": [
+                {"name": "--brand", "value": "#2557d6", "label": "Brand"},
+                {"name": "--font", "value": " 'Segoe UI', sans-serif "},
+                {"name": "--evil", "value": "red}</style><script>"},
+                {"name": "--sly", "value": "red /* "},
+                {"name": "brand", "value": "red"},
+                {"name": "--brand", "value": "#000"},
+            ],
+        },
+    )
+
+    canvas = read_canvas(path)
+
+    assert [(v["name"], v["value"], v["label"]) for v in canvas["variables"]] == [
+        ("--brand", "#000", "brand"),
+        ("--font", "'Segoe UI', sans-serif", "font"),
+    ]
+    assert variables_style(canvas) == (
+        b"<style data-coscribe-variables>:root{--brand:#000;--font:'Segoe UI', sans-serif}</style>"
+    )
+    assert variables_style(read_canvas(_canvas(tmp_path, {"boards": []}))) == b""
+
+
+def test_placing_sets_only_declared_variables_to_safe_values(tmp_path: Path) -> None:
+    path = _canvas(tmp_path, {"boards": [], "variables": [{"name": "--brand", "value": "#2557d6"}]})
+
+    place_on_canvas(path, {}, None, {"--brand": "#e0457b", "--new": "red"})
+    place_on_canvas(path, {}, None, {"--brand": "x;}"})
+
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert saved["variables"] == [{"name": "--brand", "value": "#e0457b"}]
