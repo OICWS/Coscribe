@@ -155,10 +155,11 @@ const fs = require('fs'); const {chromium} = require('playwright');
 
 def draw(page: Path, width: float, height: float, shot: Path) -> dict[str, Any]:
     """An artboard's page as the app serves it, drawn at the board's size under its policy."""
-    from coscribe.web.routes.design import _POLICY, _with_canvas_variables
+    from coscribe.conversation import served_page
+    from coscribe.web.routes.design import _POLICY
 
     served = page.with_suffix(".served.html")
-    served.write_bytes(_with_canvas_variables(page, page.read_bytes()))
+    served.write_bytes(served_page(page, page.read_bytes()))
     try:
         done = subprocess.run(
             [
@@ -190,6 +191,7 @@ def judge(brief: Brief, workspace: Path, calls: dict[str, int]) -> dict[str, Any
     canvases = sorted(workspace.rglob("*.design.json"))
     report: dict[str, Any] = {
         "skill_loaded": any(name.startswith("load_skill") for name in calls),
+        "looked": sum(n for name, n in calls.items() if name.endswith("look_at_page")),
         "canvases": [str(c.relative_to(workspace)) for c in canvases],
         "loose_html": sorted(
             str(p.relative_to(workspace))
@@ -272,15 +274,16 @@ async def run_brief(
 
 def summary(results: list[dict[str, Any]]) -> str:
     rows = [
-        "| task | tile | made | skill | boards | variables | undeclared | errors | overflow | ok "
+        "| task | tile | made | skill | looked | boards | variables | undeclared | errors | overflow | ok "
         "| cost |",
-        "|---|---|---|---|---|---|---|---|---|---|---|",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for r in results:
         drawn = r.get("drawn", {}).values()
         rows.append(
             f"| {r['task']} | {'yes' if r['from_tile'] else 'no'} | {'yes' if r['made'] else 'NO'} "
-            f"| {'yes' if r['skill_loaded'] else 'no'} | {len(r.get('boards', []))} "
+            f"| {'yes' if r['skill_loaded'] else 'no'} | {r.get('looked', 0)} "
+            f"| {len(r.get('boards', []))} "
             f"| {len(r.get('variables_used', []))}/{len(r.get('variables', []))} "
             f"| {len(r.get('undeclared', []))} | {sum(len(d['errors']) for d in drawn)} "
             f"| {sum(d['overflow_x'] for d in drawn)} | {'yes' if r['ok'] else 'NO'} "

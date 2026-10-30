@@ -289,6 +289,7 @@ def judge(brief: Brief, workspace: Path, calls: dict[str, int]) -> dict[str, Any
     )
     report: dict[str, Any] = {
         "skill_loaded": any(name.startswith("load_skill") for name in calls),
+        "looked": sum(n for name, n in calls.items() if name.endswith("look_at_page")),
         "pages": [str(p.relative_to(workspace)) for p in pages],
         "made": bool(pages),
     }
@@ -363,14 +364,15 @@ async def run_brief(
 
 def summary(results: list[dict[str, Any]]) -> str:
     rows = [
-        "| task | tile | made | skill | datasets | unknown | typed | errors | marks | figures | ok "
+        "| task | tile | made | skill | looked | datasets | unknown | typed | errors | marks | figures | ok "
         "| cost |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for r in results:
         rows.append(
             f"| {r['task']} | {'yes' if r['from_tile'] else 'no'} | {'yes' if r['made'] else 'NO'} "
-            f"| {'yes' if r['skill_loaded'] else 'no'} | {r.get('datasets', '')} "
+            f"| {'yes' if r['skill_loaded'] else 'no'} | {r.get('looked', 0)} "
+            f"| {r.get('datasets', '')} "
             f"| {len(r.get('unknown_names', []))} | {len(r.get('typed_numbers', []))} "
             f"| {len(r.get('errors', []))} | {r.get('marks', '')} "
             f"| {r.get('figures_right', '')} | {'yes' if r['ok'] else 'NO'} "

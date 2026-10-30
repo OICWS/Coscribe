@@ -17,6 +17,7 @@ from .design_canvas import (
     read_canvas,
     variables_style,
 )
+from .page_tools import served_page
 from .session import ChatSessionLG
 from .thread_meta import ThreadMetaStore
 
@@ -39,6 +40,7 @@ __all__ = [
     "place_on_canvas",
     "read_canvas",
     "variables_style",
+    "served_page",
     "DashboardDataError",
     "is_dashboard",
     "read_dashboard_data",

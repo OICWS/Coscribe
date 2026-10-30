@@ -14,15 +14,12 @@ from ...conversation import (
     CanvasError,
     DashboardDataError,
     canvas_folder,
-    canvas_of_page,
-    in_scheme,
     is_canvas,
     is_dashboard,
     place_on_canvas,
     read_canvas,
     read_dashboard_data,
-    render_dashboard,
-    variables_style,
+    served_page,
 )
 from ..state import AppState
 
@@ -59,19 +56,6 @@ def canvas_cover(file: Path) -> Path:
     return canvas_folder(file) / boards[0]["file"] if boards else file
 
 
-def _with_canvas_variables(page: Path, body: bytes) -> bytes:
-    """An artboard's page with its canvas's variables put last in its head."""
-    canvas = canvas_of_page(page)
-    if canvas is None:
-        return body
-    try:
-        style = variables_style(read_canvas(canvas))
-    except CanvasError:
-        return body
-    end = body.lower().find(b"</head>")
-    return body[:end] + style + body[end:] if end >= 0 else style + body
-
-
 def design_response(file: Path, *, for_print: bool = False, scheme: str | None = None) -> Response:
     """The design file with the policy that keeps it inside its frame."""
     if is_canvas(file):
@@ -82,12 +66,7 @@ def design_response(file: Path, *, for_print: bool = False, scheme: str | None =
     try:
         if file.stat().st_size > _MAX_BYTES:
             return JSONResponse({"error": "This design is too large to show"}, status_code=413)
-        body = file.read_bytes()
-        if is_dashboard(body):
-            body = render_dashboard(file, body)
-        body = _with_canvas_variables(file, body)
-        if scheme:
-            body = in_scheme(body, scheme)
+        body = served_page(file, file.read_bytes(), scheme)
     except OSError:
         return JSONResponse({"error": "This design could not be read"}, status_code=404)
     if for_print:
