@@ -51,6 +51,8 @@ class Brief:
     from_tile: bool
     # The fewest artboards the brief asks for.
     boards: int
+    # A clickable prototype: its screens are artboards linked to each other.
+    linked: bool = False
 
 
 BRIEFS = [
@@ -95,10 +97,21 @@ BRIEFS = [
         True,
         2,
     ),
+    Brief(
+        "07-prototype",
+        "A clickable prototype of a coffee ordering app for the phone: the menu, a drink's page "
+        "with sizes, the cart, and an order-placed screen. The buttons should take me to the next "
+        "screen and back.",
+        True,
+        4,
+        linked=True,
+    ),
 ]
 
 _VAR_USE = re.compile(r"var\(\s*(--[\w-]+)")
 _VAR_DEF = re.compile(r"(--[\w-]+)\s*:")
+_LINK = re.compile(r"""<a\b[^>]*\bhref\s*=\s*["']([\w.-]+\.html?)(?:#[^"']*)?["']""", re.I)
+_BUTTON_IN_LINK = re.compile(r"<a\b[^>]*>\s*<button\b", re.I)
 
 
 def canvas_report(canvas: Path) -> dict[str, Any]:
@@ -113,12 +126,18 @@ def canvas_report(canvas: Path) -> dict[str, Any]:
     folder = canvas_folder(canvas)
     declared = {v["name"] for v in parsed["variables"]}
     boards, undeclared, used = [], set(), set()
+    files = {b["file"].lower() for b in parsed["boards"]}
+    links, broken, buttons_in_links = 0, set(), 0
     for board in parsed["boards"]:
         page = folder / board["file"]
         source = page.read_text(encoding="utf-8", errors="replace") if page.is_file() else ""
         uses = set(_VAR_USE.findall(source))
         used |= uses & declared
         undeclared |= uses - declared - set(_VAR_DEF.findall(source))
+        targets = [t.lower() for t in _LINK.findall(source)]
+        links += sum(1 for t in targets if t in files)
+        broken |= {t for t in targets if t not in files}
+        buttons_in_links += len(_BUTTON_IN_LINK.findall(source))
         boards.append({**board, "exists": page.is_file()})
     return {
         "canvas_error": None,
@@ -126,6 +145,9 @@ def canvas_report(canvas: Path) -> dict[str, Any]:
         "variables": sorted(declared),
         "variables_used": sorted(used),
         "undeclared": sorted(undeclared),
+        "links": links,
+        "broken_links": sorted(broken),
+        "buttons_in_links": buttons_in_links,
     }
 
 
@@ -221,6 +243,14 @@ def judge(brief: Brief, workspace: Path, calls: dict[str, int]) -> dict[str, Any
         and all(b["exists"] for b in found["boards"])
         and found["variables_used"]
         and not found["undeclared"]
+        and (
+            not brief.linked
+            or (
+                found["links"] >= len(found["boards"]) - 1
+                and not found["broken_links"]
+                and not found["buttons_in_links"]
+            )
+        )
         and not any(d["errors"] or d["overflow_x"] for d in drawn.values())
     )
     return report
@@ -274,9 +304,9 @@ async def run_brief(
 
 def summary(results: list[dict[str, Any]]) -> str:
     rows = [
-        "| task | tile | made | skill | looked | boards | variables | undeclared | errors | overflow | ok "
-        "| cost |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| task | tile | made | skill | looked | boards | variables | undeclared | links | errors "
+        "| overflow | ok | cost |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for r in results:
         drawn = r.get("drawn", {}).values()
@@ -285,7 +315,8 @@ def summary(results: list[dict[str, Any]]) -> str:
             f"| {'yes' if r['skill_loaded'] else 'no'} | {r.get('looked', 0)} "
             f"| {len(r.get('boards', []))} "
             f"| {len(r.get('variables_used', []))}/{len(r.get('variables', []))} "
-            f"| {len(r.get('undeclared', []))} | {sum(len(d['errors']) for d in drawn)} "
+            f"| {len(r.get('undeclared', []))} | {r.get('links', 0)} "
+            f"| {sum(len(d['errors']) for d in drawn)} "
             f"| {sum(d['overflow_x'] for d in drawn)} | {'yes' if r['ok'] else 'NO'} "
             f"| {r['cost'] or 0:.3f} |"
         )
