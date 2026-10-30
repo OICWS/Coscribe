@@ -6,7 +6,7 @@ whoever is connected through an EventSink."""
 from .activity import OPENABLE_EXTENSIONS, open_in_os
 from .artifact_files import ArtifactFileError, copy_file, rename_file, trash_file
 from .artifacts import ArtifactRegistry, adopt_thread, describe_artifact
-from .dashboard import is_dashboard, render_dashboard
+from .dashboard import DashboardDataError, is_dashboard, read_dashboard_data, render_dashboard
 from .session import ChatSessionLG
 from .thread_meta import ThreadMetaStore
 
@@ -21,7 +21,9 @@ __all__ = [
     "rename_file",
     "trash_file",
     "describe_artifact",
+    "DashboardDataError",
     "is_dashboard",
+    "read_dashboard_data",
     "render_dashboard",
     "open_in_os",
 ]

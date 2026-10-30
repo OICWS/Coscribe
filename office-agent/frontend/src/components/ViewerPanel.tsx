@@ -47,7 +47,7 @@ export function ViewerPanel({
     );
   }
   if (isDesign(path)) {
-    return <DesignPanel threadId={threadId} path={path} refreshKey={refreshKey} onFileChanged={onFileChanged} />;
+    return <DesignPanel threadId={threadId} path={path} refreshKey={refreshKey} onFileChanged={onFileChanged} onSend={onSendComment} busy={busy} />;
   }
   return null;
 }

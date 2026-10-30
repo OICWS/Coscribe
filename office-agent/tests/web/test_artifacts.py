@@ -198,3 +198,14 @@ def test_a_page_marked_as_a_dashboard_is_one_and_is_served_with_its_data_and_d3_
         body = served.text
         assert '"region": "East"' in body and "scaleLinear" in body
         assert "data-coscribe-lib" not in body
+        # What shows where a figure came from comes last, after the page's own scripts.
+        assert body.index("cs-why") > body.index("</head>")
+        info = client.get("/api/threads/t_dash/dashboard", params={"path": "sales.html"}).json()
+        assert info == {
+            "datasets": [
+                {"id": "q3", "title": "q3", "source": "q3.csv", "updated": None, "rows": 1}
+            ],
+            "error": None,
+        }
+        missing = client.get("/api/threads/t_dash/dashboard", params={"path": "nope.html"})
+        assert missing.status_code == 404

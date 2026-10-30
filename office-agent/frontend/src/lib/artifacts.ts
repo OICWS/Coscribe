@@ -101,6 +101,17 @@ export const designUrl = (item: ArtifactSummary) => `/api/artifacts/${item.id}/c
 export const designFileUrl = (threadId: string, path: string, version: string) =>
   `/api/threads/${encodeURIComponent(threadId)}/design?path=${encodeURIComponent(path)}&v=${encodeURIComponent(version)}`;
 
+/** A dashboard's datasets as its panel shows them; 404 for a page that is not a dashboard. */
+export interface DashboardInfo {
+  datasets: { id: string; title: string; source: string | null; updated: string | null; rows: number }[];
+  error: string | null;
+}
+
+export async function dashboardInfo(threadId: string, path: string): Promise<DashboardInfo | null> {
+  const response = await fetch(`/api/threads/${encodeURIComponent(threadId)}/dashboard?path=${encodeURIComponent(path)}`);
+  return response.ok ? ((await response.json()) as DashboardInfo) : null;
+}
+
 /** The first slide of a deck, drawn by the server; the time keeps a changed deck from showing stale. */
 export const thumbnailUrl = (item: ArtifactSummary) => `/api/artifacts/${item.id}/thumbnail?v=${encodeURIComponent(item.modified_at)}`;
 
