@@ -67,7 +67,10 @@ from it:
 - the time the data was made, from `updated`, in a quiet line under the title.
 
 Draw charts with d3 as SVG: a `viewBox` and `width: 100%` so they fit their card, scales and axes
-from d3, a few colours from CSS variables, a `<title>` on each mark for its value. Pick the chart
+from d3, a few colours from CSS variables, a `<title>` on each mark for its value. Leave room for the
+labels before you draw: size the left margin from the longest category label (about 0.6 × the
+font size per Latin character, 1 × per CJK character), put a negative bar's value label beyond
+the bar's end on its own side, and never let a value label sit on an axis label. Pick the chart
 from the question: a line for change over time, bars to compare, a stacked bar for parts of a
 whole (a pie only for two to five parts).
 
