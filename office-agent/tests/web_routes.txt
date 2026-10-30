@@ -71,6 +71,7 @@ GET /api/threads
 GET /api/threads/status
 GET /api/threads/{thread_id}/activity
 GET /api/threads/{thread_id}/background-tasks
+GET /api/threads/{thread_id}/canvas
 GET /api/threads/{thread_id}/context-breakdown
 GET /api/threads/{thread_id}/dashboard
 GET /api/threads/{thread_id}/design
@@ -165,6 +166,7 @@ PUT /api/scheduled-tasks/{trigger_id}
 PUT /api/scheduled-tasks/{trigger_id}/notes
 PUT /api/secrets/{name}
 PUT /api/settings/proxy
+PUT /api/threads/{thread_id}/canvas
 PUT /api/threads/{thread_id}/doc/blocks
 PUT /api/threads/{thread_id}/doc/comments/{comment_id}
 PUT /api/threads/{thread_id}/slides/{index}/source

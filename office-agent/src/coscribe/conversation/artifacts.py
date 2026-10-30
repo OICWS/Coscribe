@@ -26,6 +26,7 @@ from ..runtime import ToolMetadata
 from ..tools import NotADoc, WorkspaceScope, read_doc_file
 from .activity import summarize_activity
 from .dashboard import is_dashboard
+from .design_canvas import canvas_name, in_canvas_folder, is_canvas
 
 ARTIFACT_KINDS = {
     ".pptx": "slides",
@@ -39,7 +40,9 @@ _EXCERPT_CHARS = 280
 
 def _kind(name: str) -> str | None:
     # Word and PowerPoint leave a `~$name` lock file beside a file that is open.
-    return None if name.startswith("~$") else ARTIFACT_KINDS.get(Path(name).suffix.lower())
+    if name.startswith("~$"):
+        return None
+    return "design" if is_canvas(name) else ARTIFACT_KINDS.get(Path(name).suffix.lower())
 
 
 def _made(output: dict[str, Any]) -> bool:
@@ -143,10 +146,11 @@ def describe_artifact(scope: WorkspaceScope, path: str) -> dict[str, Any] | None
         resolved = scope.resolve(path)
     except (PermissionError, OSError, ValueError):
         return None
-    if not resolved.is_file():
+    if not resolved.is_file() or (kind == "design" and in_canvas_folder(resolved)):
         return None
     stat = resolved.stat()
-    if kind == "design" and _is_dashboard(str(resolved), stat.st_mtime_ns):
+    page = kind == "design" and not is_canvas(resolved)
+    if page and _is_dashboard(str(resolved), stat.st_mtime_ns):
         kind = "dashboard"
     excerpt = _excerpt(str(resolved), stat.st_mtime_ns) if kind == "docs" else None
     if resolved.suffix.lower() == ".md" and excerpt is None:
@@ -154,7 +158,7 @@ def describe_artifact(scope: WorkspaceScope, path: str) -> dict[str, Any] | None
     return {
         "path": scope.relative(resolved),
         "location": str(resolved),
-        "name": resolved.stem,
+        "name": canvas_name(resolved) if is_canvas(resolved) else resolved.stem,
         "kind": kind,
         "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
         "excerpt": excerpt,
