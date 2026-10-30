@@ -271,6 +271,9 @@ def test_run_python_script_gets_the_conversations_variables_read_at_each_run(
 def test_run_python_script_is_not_handed_the_servers_keys_or_proxy_password(
     tools: ScriptTools, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # The first script on a worker installs the baseline packages, and pip would go through the
+    # made-up proxy below; under xdist any test of this file can be a worker's first.
+    tools.run_python_script(script="pass", description="set up the environment")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-not-for-scripts")
     monkeypatch.setenv("HTTPS_PROXY", "http://alice:hunter2@proxy.example:8080")
     script = (
