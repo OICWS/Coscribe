@@ -295,8 +295,8 @@ Last reviewed: 2026-10-15.
 - The attachment cards and the new question-card colours in the desktop app; the
   thin scrollbar on pages in the built-in browser.
 - The code module on real Windows.
-- Decisions 0010, 0022 and 0028 are still "proposed": 0010 and 0022 are built and named as
-  invariants in `AGENTS.md`; accept, change or reject each (log `2026-10-30-docs-freshness.md`).
+- Decision 0028 (a workflow step chooses its autonomy) is still "proposed" while it is built in
+  phases from #719: accept, change or reject it.
 
 ## Open problems, not reproduced or not solved
 

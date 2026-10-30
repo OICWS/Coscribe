@@ -1,0 +1,97 @@
+# Each living document, and the paths whose change can make it untrue. A pull request that changes
+# one of these paths either changes the document too or says in its description that the document
+# still holds: `Docs checked: SECURITY.md (still true)`. office-agent/scripts/doc_impact.py checks
+# it, in the PR text workflow. A path is a prefix: a folder covers everything under it.
+#
+# A module's card (AGENTS.md beside its __init__.py) is not listed: tests/test_module_cards.py keeps
+# its interface equal to the code. A tool's parameters live in its docstring, kept by
+# tests/tool_schemas.txt.
+
+[[doc]]
+path = "SECURITY.md"
+covers = [
+  "office-agent/src/coscribe/tools/exec/",
+  "office-agent/src/coscribe/runtime/secret",
+  "office-agent/src/coscribe/code_runtime/permissions.py",
+  "office-agent/src/coscribe/web/local_guard.py",
+  "office-agent/src/coscribe/runtime_lg/mcp_oauth.py",
+  "office-agent/src/coscribe/conversation/approvals.py",
+  "docs/decisions/",
+]
+
+[[doc]]
+path = "docs/security/review-pack.md"
+covers = [
+  "office-agent/src/coscribe/tools/exec/",
+  "office-agent/src/coscribe/runtime/secret",
+  "office-agent/src/coscribe/web/local_guard.py",
+  "office-agent/src/coscribe/conversation/approvals.py",
+  "office-agent/src/coscribe/runtime_lg/exec_policy.py",
+  "office-agent/src/coscribe/tools/connector_permissions.py",
+  "office-agent/src/coscribe/workflows/permissions.py",
+]
+
+[[doc]]
+path = "docs/security/prompt-injection.md"
+covers = [
+  "office-agent/src/coscribe/tools/exec/",
+  "office-agent/src/coscribe/conversation/approvals.py",
+  "office-agent/src/coscribe/conversation/tool_hooks.py",
+  "office-agent/src/coscribe/runtime_lg/auto_review.py",
+  "office-agent/src/coscribe/runtime_lg/exec_policy.py",
+]
+
+[[doc]]
+path = "ARCHITECTURE.md"
+covers = [
+  "docs/decisions/",
+  "office-agent/src/coscribe/coordinator.py",
+  "office-agent/src/coscribe/runtime_lg/agent.py",
+  "office-agent/src/coscribe/runtime_lg/tool_deferral.py",
+  "office-agent/src/coscribe/runtime_lg/providers.py",
+  "office-agent/src/coscribe/code_runtime/",
+  "office-agent/src/coscribe/builtin_skills/",
+]
+
+[[doc]]
+path = "AGENTS.md"
+covers = [
+  "docs/decisions/",
+  "components.toml",
+  "office-agent/pyproject.toml",
+  "office-agent/scripts/check.sh",
+]
+
+[[doc]]
+path = "office-agent/CLAUDE.md"
+covers = [
+  "office-agent/scripts/check.sh",
+  "office-agent/scripts/ratchet.py",
+  ".github/workflows/office-agent-ci.yml",
+  ".github/workflows/pr-text.yml",
+]
+
+[[doc]]
+path = "README.md"
+covers = [
+  "office-agent/.env.example",
+  "office-agent/src/coscribe/builtin_skills/",
+]
+
+[[doc]]
+path = "office-agent/README.md"
+covers = [
+  "office-agent/.env.example",
+  "office-agent/src/coscribe/builtin_skills/",
+  "office-agent/src/coscribe/web/routes/settings/",
+  "office-agent/frontend/src/components/settings/",
+  "office-agent/src/coscribe/tools/exec/",
+  "office-agent/src/coscribe/code_runtime/",
+]
+
+[[doc]]
+path = "office-agent/frontend/README.md"
+covers = [
+  "office-agent/frontend/package.json",
+  "office-agent/frontend/vite.config.ts",
+]

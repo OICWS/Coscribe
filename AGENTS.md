@@ -89,6 +89,12 @@ bash scripts/check.sh --fast    # frontend build, oxlint, ruff, mypy
 bash scripts/check.sh           # also pytest (~4 min on 4 CPUs); CI runs exactly this
 ```
 
+Then look at the documents your change can make untrue: `python office-agent/scripts/doc_impact.py`
+lists them (from `docs/doc-map.toml`). Read each; change it in the same PR where it no longer
+holds, or say in the PR description `Docs checked: <path> (<why it still holds>)`. The PR text
+workflow fails until every one is changed or named. A new decision record also updates the records
+it supersedes and lists the wording it retires (`docs/decisions/README.md`).
+
 A frontend change must pass `npm run build` (`tsc -b`), not only
 `tsc --noEmit`. Every change reaches `main` through a pull request; see "how a
 change reaches `main`" in `office-agent/CLAUDE.md`. Commit author is set per

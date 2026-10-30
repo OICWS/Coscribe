@@ -147,6 +147,10 @@ Nothing is pushed to `main` directly.
 - One area per PR, about 600 changed lines at most (generated catalogs and
   icons excepted). Land partial work behind an unused code path ("part 1:
   nothing applies it yet") instead of stacking PRs.
+- The description names the documents the change was checked against: `docs/doc-map.toml` maps
+  each living document to the code it describes, and for each one whose code changed the PR
+  edits the document or adds `Docs checked: <path> (<why it still holds>)`. The `docs-checked`
+  job of the PR text workflow fails otherwise (`scripts/doc_impact.py`, run it before pushing).
 - No signature lines: a commit message, PR title or description has no
   `Co-authored-by`, session link or "Generated with/by ..." line. The `PR text`
   check fails a pull request that has one.
