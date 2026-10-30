@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Annotated, Any, Literal
 
 from pydantic import (
@@ -165,6 +166,64 @@ class ApprovalStep(_Step):
 MAX_NESTING = 3
 MAX_STEPS = 100
 MAX_LOOP_ITEMS = 200
+MAX_AGENT_STEPS = 60
+
+Autonomy = Literal["bounded", "high", "full"]
+# What an agent step's result holds when it names no fields.
+AGENT_REPORT_FIELD = "report"
+
+
+def _is_absolute_path(text: str) -> bool:
+    return PurePosixPath(text).is_absolute() or PureWindowsPath(text).is_absolute()
+
+
+def _agent_is_consistent(step: AgentStep) -> AgentStep:
+    if step.autonomy == "bounded" and not step.tools:
+        raise ValueError("a bounded agent step lists the tools it may call")
+    if step.autonomy != "bounded" and step.tools:
+        raise ValueError(
+            f"a {step.autonomy} agent step has the environment's tools; "
+            "list tools only for a bounded one"
+        )
+    if len(set(step.tools)) != len(step.tools):
+        raise ValueError("each tool is listed once")
+    if step.autonomy == "full" and step.fields:
+        raise ValueError("a full agent step reports in prose; give it no fields")
+    if len({f.name for f in step.fields}) != len(step.fields):
+        raise ValueError("field names must be unique")
+    # A relative folder would resolve against wherever the server runs.
+    relative = [f for f in step.folders if not _is_absolute_path(f)]
+    if relative:
+        raise ValueError(f"folders must be full paths, not {', '.join(map(repr, relative))}")
+    return step
+
+
+class AgentStep(_Step):
+    """An agent working toward `goal` with tools, within limits (decision
+    0028). "bounded" may call only `tools` and touch only the declared
+    `folders` and `sites` -- what saving consents to; "high" has the
+    environment's tools under the task's approval mode; "full" is the whole
+    task as one agent and reports in prose. The result is `fields` when
+    given, else {"report": <the agent's reply>}."""
+
+    kind: Literal["agent"] = "agent"
+    autonomy: Autonomy = "bounded"
+    goal: str = Field(min_length=1)
+    tools: list[str] = []
+    folders: list[str] = []
+    sites: list[str] = []
+    fields: list[OutputField] = []
+    # Model calls, the same unit as a sub-agent's step cap.
+    max_steps: int = Field(default=20, ge=1, le=MAX_AGENT_STEPS)
+    model: str | None = None
+    save_as: str | None = None
+
+    _check_save_as = field_validator("save_as")(lambda v: v if v is None else _identifier(v))
+
+    _check_tools = model_validator(mode="after")(lambda step: _agent_is_consistent(step))
+
+    def result_fields(self) -> set[str]:
+        return {f.name for f in self.fields} or {AGENT_REPORT_FIELD}
 
 
 class BranchStep(_Step):
@@ -210,7 +269,7 @@ class LoopStep(_Step):
 
 
 Step = Annotated[
-    ToolStep | ScriptStep | LLMStep | CheckStep | ApprovalStep | BranchStep | LoopStep,
+    ToolStep | ScriptStep | LLMStep | AgentStep | CheckStep | ApprovalStep | BranchStep | LoopStep,
     Field(discriminator="kind"),
 ]
 BlockStep = BranchStep | LoopStep
@@ -233,6 +292,8 @@ def step_references(step: Step) -> list[str]:
         return _value_references(step.inputs)
     if isinstance(step, LLMStep):
         return template_references(step.prompt)
+    if isinstance(step, AgentStep):
+        return template_references(step.goal)
     if isinstance(step, CheckStep):
         return [r for c in step.conditions for r in _condition_refs(c)]
     if isinstance(step, ApprovalStep):
@@ -273,6 +334,8 @@ def step_templates(step: Step) -> list[str]:
         return _texts(step.inputs)
     if isinstance(step, LLMStep):
         return [step.prompt]
+    if isinstance(step, AgentStep):
+        return [step.goal]
     if isinstance(step, ApprovalStep):
         return [step.message]
     return []
@@ -325,8 +388,9 @@ class _Scope:
         # Names that exist only inside a loop or one arm, for a clearer
         # message when a later step reads one.
         self.scoped: set[str] = set()
-        # A model step's result is exactly its declared fields.
+        # A model or agent step's result is exactly its declared fields.
         self.fields: dict[str, set[str]] = {}
+        self.agents = 0
 
     def _field(self, reference: str, where: str) -> None:
         root, _, rest = reference.partition(".")
@@ -361,6 +425,7 @@ class _Scope:
                         "an earlier step" + _scope_hint(reference, self.scoped)
                     )
                 self._field(reference, where)
+            self.agents += isinstance(step, AgentStep)
             if isinstance(step, (BranchStep, LoopStep)) and depth >= MAX_NESTING:
                 raise ValueError(f"{where}: branches and loops nest at most {MAX_NESTING} deep")
             if isinstance(step, BranchStep):
@@ -374,8 +439,8 @@ class _Scope:
                     raise ValueError(f"step {self.number}: {output!r} is already taken")
                 self.taken.add(output)
                 available.add(output)
-                if isinstance(step, LLMStep):
-                    self.fields[output] = {f.name for f in step.fields}
+                if isinstance(step, (LLMStep, AgentStep)):
+                    self.fields[output] = _result_fields(step)
         return available
 
     def _branch(self, step: BranchStep, available: set[str], depth: int) -> set[str]:
@@ -410,6 +475,12 @@ class _Scope:
         self.taken = before
 
 
+def _result_fields(step: LLMStep | AgentStep) -> set[str]:
+    if isinstance(step, AgentStep):
+        return step.result_fields()
+    return {f.name for f in step.fields}
+
+
 def _scope_hint(reference: str, scoped: set[str]) -> str:
     if _root(reference) in scoped:
         return " here (it's made inside a loop, or in only one arm of a branch)"
@@ -417,7 +488,9 @@ def _scope_hint(reference: str, scoped: set[str]) -> str:
 
 
 class Workflow(_Model):
-    version: Literal[1] = 1
+    # Version 2 (decision 0028) may hold agent steps; a version 1 workflow
+    # keeps behaving as it did when it was saved.
+    version: Literal[1, 2] = 1
     inputs: list[WorkflowInput] = []
     # Empty is a workflow still being built on its task page; preflight
     # refuses to run one.
@@ -427,7 +500,10 @@ class Workflow(_Model):
     def _names_resolve_in_order(self) -> Workflow:
         if len({i.name for i in self.inputs}) != len(self.inputs):
             raise ValueError("input names must be unique")
-        _Scope(self.inputs).check(self.steps, {i.name for i in self.inputs}, 0)
+        scope = _Scope(self.inputs)
+        scope.check(self.steps, {i.name for i in self.inputs}, 0)
+        if scope.agents and self.version < 2:
+            raise ValueError("agent steps need a version 2 workflow")
         return self
 
 
@@ -449,7 +525,7 @@ def workflow_error(exc: ValidationError, data: Any = None) -> str:
     return "; ".join(lines)
 
 
-_STEP_KINDS = frozenset({"tool", "script", "llm", "check", "approval", "branch", "loop"})
+_STEP_KINDS = frozenset({"tool", "script", "llm", "agent", "check", "approval", "branch", "loop"})
 _ARMS = ("then", "otherwise", "steps")
 
 

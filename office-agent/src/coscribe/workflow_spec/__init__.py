@@ -4,6 +4,8 @@ and `workflows` can run it without either importing the other."""
 
 from .refs import evaluate, render_text, render_value, resolve
 from .spec import (
+    AGENT_REPORT_FIELD,
+    AgentStep,
     ApprovalStep,
     BranchStep,
     CheckStep,
@@ -15,13 +17,17 @@ from .spec import (
     Step,
     ToolStep,
     Workflow,
+    child_lists,
     parse_workflow,
     step_output,
+    step_references,
     walk,
     workflow_error,
 )
 
 __all__ = [
+    "AGENT_REPORT_FIELD",
+    "AgentStep",
     "ApprovalStep",
     "BranchStep",
     "CheckStep",
@@ -33,12 +39,14 @@ __all__ = [
     "Step",
     "ToolStep",
     "Workflow",
+    "child_lists",
     "evaluate",
     "parse_workflow",
     "render_text",
     "render_value",
     "resolve",
     "step_output",
+    "step_references",
     "walk",
     "workflow_error",
 ]
