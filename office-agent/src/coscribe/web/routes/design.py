@@ -76,8 +76,9 @@ def router(state: AppState) -> APIRouter:
             return JSONResponse({"error": "No dashboard at that path"}, status_code=404)
         try:
             data = read_dashboard_data(file)
-        except DashboardDataError as exc:
-            return JSONResponse({"datasets": [], "error": str(exc)})
+        except DashboardDataError:
+            # The page itself is told why (`window.coscribe.error`); the panel only says it failed.
+            return JSONResponse({"datasets": [], "error": "The dashboard's data could not be read"})
         datasets = [
             {
                 "id": name,
