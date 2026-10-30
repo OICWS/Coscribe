@@ -47,8 +47,14 @@ For a design named `launch`:
 - The same screen at several sizes is several artboards, one per size, side by side.
 - The page fills its board exactly: `html, body { margin: 0; width: 100%; height: 100%; }` and a
   layout made for that width. No scroll bars unless the board is a long page.
+- A board of a fixed size (a poster, a social image, a phone screen) also gets
+  `overflow: hidden` on `html, body`, so a glow or shape that bleeds past the edge is cut off
+  rather than scrolled. Lay it out as a column that fills the height (`display: flex;
+  flex-direction: column`, the footer pushed down with `margin-top: auto`) rather than boxes
+  placed by hand, so the last block cannot run into the footer.
 - Write real content (the person's product, words and numbers where they gave them), not lorem
-  ipsum. Where they gave none, write plausible text and say so.
+  ipsum. Where they gave none, write plausible text and say so. A date they did not give is a
+  placeholder: give no weekday with it.
 
 ## Variables: the design system
 

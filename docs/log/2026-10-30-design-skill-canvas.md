@@ -24,9 +24,22 @@ one canvas, sharing one set of design variables the person can change in one pla
 - Tests: variables (parsed, unsafe ones dropped, set by placing) in `tests/test_design_canvas.py`;
   the served page and the PUT in `tests/web/test_artifacts.py`; skill name lists; OpenAPI snapshot.
 
+## Measured (DeepSeek, `reasoning_effort` low, 2026-10-30 off-peak)
+`evals/design_route.py`, six briefs: all six made a canvas with the skill loaded, 15 artboards in
+all (2, 4, 1, 3, 3, 2), every board's page present, no script errors or blocked loads, every page
+using the canvas's variables (8 to 11 each) and none undeclared; 0.21 USD for the six. Five passed
+every check. Looked at every artboard: real content, distinct options (the logo brief added a
+fourth board that puts the three on a cup), a consistent system across sizes.
+
+Found and fixed in the skill, then 03 and 06 run again (both pass, 0.07 USD):
+- 06's A4 poster scrolled sideways: a glow bled past the edge. A fixed-size board now gets
+  `overflow: hidden`.
+- 03's sign-up box ran into the footer line, which no check sees. A fixed-size board is now laid out
+  as a column filling its height with the footer pushed down.
+- 06 gave a date the brief did not, with the wrong weekday (11.15 as Saturday; it is a Sunday). A
+  date not given is now a placeholder with no weekday.
+
 ## Not verified
-- No model has written a canvas with this skill yet: the DeepSeek run of `evals/design_route.py`
-  goes off-peak.
 - The panel does not show or edit the variables yet (the next PR).
 
 ## Follow-ups
