@@ -84,3 +84,33 @@ test("a canvas's variables are set from the panel into every artboard, and the b
   await page.getByRole("button", { name: "Show dark" }).click();
   await expect(frame.locator("body")).toHaveCSS("background-color", "rgb(17, 17, 17)");
 });
+
+const LINKED = '{\\"boards\\": [{\\"id\\": \\"menu\\", \\"title\\": \\"Menu\\", \\"file\\": \\"menu.html\\", \\"width\\": 390, \\"height\\": 700}, {\\"id\\": \\"checkout\\", \\"title\\": \\"Checkout\\", \\"file\\": \\"checkout.html\\", \\"width\\": 390, \\"height\\": 700, \\"x\\": 2400, \\"y\\": 900}]}';
+
+test("in Play a link from one artboard to another shows that artboard", async ({ page }) => {
+  const name = `linked-${Math.random().toString(36).slice(2, 8)}`;
+  mkdirSync(join(workspace, `${name}.design`), { recursive: true });
+  writeFileSync(join(workspace, `${name}.design`, "menu.html"), "<body style='margin:0'><a href='checkout.html' style='display:block;font:40px sans-serif'>To checkout</a></body>");
+  writeFileSync(join(workspace, `${name}.design`, "checkout.html"), "<body style='margin:0'><a href='menu.html'>Back</a></body>");
+
+  await page.goto(freshThreadPath(name));
+  await waitForConnected(page);
+  await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${LINKED}"}]] [[stub-say Done.]]`);
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await page.getByTitle(`Open ${name}.design.json`).click();
+  await expect(page.locator('iframe[title="Checkout"]')).toBeAttached();
+
+  await page.getByRole("button", { name: "Play" }).click();
+  await page.frameLocator('iframe[title="Menu"]').getByRole("link", { name: "To checkout" }).dispatchEvent("click");
+
+  const stage = (await page.getByTestId("canvas-stage").boundingBox())!;
+  await expect
+    .poll(async () => {
+      const box = await page.locator('iframe[title="Checkout"]').boundingBox();
+      return box ? Math.abs(box.x + box.width / 2 - (stage.x + stage.width / 2)) : Infinity;
+    })
+    .toBeLessThan(20);
+  // Still in Play: the next screen takes the pointer too.
+  await expect(page.locator('iframe[title="Checkout"]')).toHaveCSS("pointer-events", "auto");
+});

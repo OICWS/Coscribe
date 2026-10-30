@@ -140,6 +140,17 @@ def read_canvas(path: Path) -> dict[str, Any]:
     return _parse(raw)
 
 
+# A link from one artboard to another (`<a href="checkout.html">`) can't navigate the sandboxed
+# frame to it, so the click is handed to the panel, which shows that board: a clickable prototype.
+BOARD_LINKS = (
+    b"<script>document.addEventListener('click',function(e){"
+    b"var a=e.target&&e.target.closest&&e.target.closest('a[href]');if(!a)return;"
+    b"var h=a.getAttribute('href')||'';if(!/^[\\w.-]+\\.html?(#.*)?$/i.test(h))return;"
+    b"e.preventDefault();parent.postMessage({coscribe:'go',file:h.split('#')[0]},'*')},true)"
+    b"</script>"
+)
+
+
 def variables_style(canvas: dict[str, Any]) -> bytes:
     """The canvas's variables as a style element for each artboard's page. It goes last in the
     head, so the canvas's value wins over one the page declares itself: the canvas holds the

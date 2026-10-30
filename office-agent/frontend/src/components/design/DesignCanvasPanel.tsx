@@ -5,6 +5,7 @@ import { PanelTitleButton } from "../artifacts/PanelTitleButton";
 import { useDockPanel } from "../dock/dockContext";
 import { BoardFrame, CanvasTools, CanvasZoom, NoteCard } from "./CanvasParts";
 import { CanvasVariables } from "./CanvasVariables";
+import { useBoardLinks } from "./useBoardLinks";
 import { useCanvasEditing, type Tool } from "./useCanvasEditing";
 import { useCanvasLook } from "./useCanvasLook";
 import { useCanvasView } from "./useCanvasView";
@@ -86,6 +87,7 @@ export function DesignCanvasPanel({ threadId, path, refreshKey, onFileChanged }:
   const { view, setView, fit, zoomBy, toCanvas } = useCanvasView(stage, canvas, playing);
   const edit = useCanvasEditing({ threadId, path, canvas, setCanvas, view, setView, toCanvas, onProblem: setProblem });
   const look = useCanvasLook(threadId, path, setCanvas, setProblem);
+  useBoardLinks(stage, canvas, playing, setView);
   const hasVariables = Boolean(canvas?.variables.length);
 
   const panning = tool === "hand" || spaceHeld;
