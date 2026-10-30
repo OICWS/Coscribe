@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse, Response
 
-from ...conversation import is_dashboard, render_dashboard
+from ...conversation import DashboardDataError, is_dashboard, read_dashboard_data, render_dashboard
 from ..state import AppState
 
 _MEDIA = {".html": "text/html; charset=utf-8"}
@@ -63,5 +63,33 @@ def router(state: AppState) -> APIRouter:
             return JSONResponse({"error": "No design at that path"}, status_code=404)
         return design_response(file, for_print=print)
 
+    async def get_dashboard(thread_id: str, path: str) -> JSONResponse:
+        """What the panel shows above a dashboard: its datasets, where each came from and when;
+        404 for a page that is not a dashboard."""
+        try:
+            file = state.get_session(thread_id).workspace_scope().resolve(path)
+            with file.open("rb") as page:
+                marked = is_dashboard(page.read(8192))
+        except (PermissionError, OSError, ValueError):
+            marked = False
+        if not marked:
+            return JSONResponse({"error": "No dashboard at that path"}, status_code=404)
+        try:
+            data = read_dashboard_data(file)
+        except DashboardDataError as exc:
+            return JSONResponse({"datasets": [], "error": str(exc)})
+        datasets = [
+            {
+                "id": name,
+                "title": info.get("title") or name,
+                "source": info.get("source"),
+                "updated": info.get("updated"),
+                "rows": len(info["rows"]),
+            }
+            for name, info in data["datasets"].items()
+        ]
+        return JSONResponse({"datasets": datasets, "error": None})
+
     router.add_api_route("/api/threads/{thread_id}/design", get_design, methods=["GET"])
+    router.add_api_route("/api/threads/{thread_id}/dashboard", get_dashboard, methods=["GET"])
     return router

@@ -5511,6 +5511,53 @@
         "summary": "Get Context Breakdown Endpoint"
       }
     },
+    "/api/threads/{thread_id}/dashboard": {
+      "get": {
+        "description": "What the panel shows above a dashboard: its datasets, where each came from and when;\n404 for a page that is not a dashboard.",
+        "operationId": "get_dashboard_api_threads__thread_id__dashboard_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Dashboard"
+      }
+    },
     "/api/threads/{thread_id}/design": {
       "get": {
         "operationId": "get_design_api_threads__thread_id__design_get",

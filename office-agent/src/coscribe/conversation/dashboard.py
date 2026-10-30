@@ -29,6 +29,8 @@ _LIBRARY_TAG = re.compile(
     rb"<script\b[^>]*\bdata-coscribe-lib\s*=\s*[\"']d3[\"'][^>]*>\s*</script>", re.I
 )
 _HEAD_OPEN = re.compile(rb"<head\b[^>]*>", re.IGNORECASE)
+_BODY_CLOSE = re.compile(rb"</body\s*>", re.IGNORECASE)
+_SOURCES = Path(__file__).with_name("dashboard_sources.js")
 _VENDOR = Path(__file__).parent / "_vendor"
 # What the page and its data may weigh together, as a design page may.
 MAX_DATA_BYTES = 8 * 1024 * 1024
@@ -113,7 +115,8 @@ def _json_script(name: str, value: Any) -> bytes:
 
 def render_dashboard(page: Path, body: bytes) -> bytes:
     """The page with `window.coscribe` (its datasets and figures) set before its own scripts run,
-    and d3 where the page asks for it with `<script data-coscribe-lib="d3"></script>`. A page whose
+    d3 where the page asks for it with `<script data-coscribe-lib="d3"></script>`, and at its end
+    what lets a reader see where a figure or chart came from. A page whose
     data cannot be read is served with the reason in `window.coscribe.error`, so it can say so."""
     try:
         payload: dict[str, Any] = read_dashboard_data(page)
@@ -126,4 +129,8 @@ def render_dashboard(page: Path, body: bytes) -> bytes:
         body = _LIBRARY_TAG.sub(lambda _: _script(library), body, count=1)
     head = _HEAD_OPEN.search(body)
     at = head.end() if head else 0
-    return body[:at] + data + body[at:]
+    body = body[:at] + data + body[at:]
+    # After the page's own scripts, so what they drew is there to point at.
+    sources = _script(_SOURCES.read_bytes())
+    end = _BODY_CLOSE.search(body)
+    return body[: end.start()] + sources + body[end.start() :] if end else body + sources
