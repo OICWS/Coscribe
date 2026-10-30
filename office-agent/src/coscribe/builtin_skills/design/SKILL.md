@@ -5,7 +5,7 @@ description: Make a visual design the app opens on its Design canvas -- screens,
 A design is a canvas of artboards. The canvas is a small JSON file; each artboard is a page of
 its own in the folder beside it, drawn at its real size in a sandboxed frame with no network: no
 CDN, no web fonts, no remote images, no fetch. The person pans and zooms the canvas, moves the
-artboards, leaves notes on it, and presses Play to use an artboard's page.
+artboards, leaves notes on it, and plays an artboard (on the canvas or full screen) to use its page.
 
 ## The files
 
@@ -91,9 +91,9 @@ it fits:
 
 - **Links between artboards** (a flow the person sees whole on the canvas): one artboard per
   screen, and a button is a link to the next screen's file, `<a href="checkout.html">Checkout</a>`;
-  the back arrow is a link too. In Play a click shows that artboard. Style the link as the button
-  (`display: inline-flex`, padding, background, radius); never put a `<button>` inside the link,
-  which swallows the click.
+  the back arrow is a link too. On a played board a click shows that artboard, played too. Style
+  the link as the button (`display: inline-flex`, padding, background, radius); never put a
+  `<button>` inside the link, which swallows the click.
 - **One artboard with states** (screens that share data, such as a cart or a form across steps):
   keep the state in a script and show one screen at a time; the artboards cannot share data.
 - **Anchors** (a long page): `<a href="#pricing">` scrolls within the artboard.
