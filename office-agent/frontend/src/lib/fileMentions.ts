@@ -49,8 +49,8 @@ export function touchedFiles(calls: Iterable<Call>): string[] {
 
 export const baseName = (path: string) => path.split(/[\\/]/).pop() ?? path;
 
-/** The canvas an artboard's page belongs to, by the folder it sits in (`x.design/home.html` is a
- * board of `x.design.json`), or null for a page of its own. */
+/** The canvas an artboard's page belongs to, by the folder it sits in (a page in `<name>.design` is a
+ * board of `<name>.design.json`), or null for a page of its own. */
 export function canvasOfPage(path: string): string | null {
   const match = /^(.*\.design)[\\/][^\\/]+\.html?$/i.exec(path);
   return match ? `${match[1]}.json` : null;
