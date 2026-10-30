@@ -28,6 +28,8 @@ history, so this package does not import `runtime_lg`).
 - An agent step's runner keeps one agent per `AgentRequest.key` and never redoes finished work;
   an answer counts only for the call it names (`call_id`), since a resume replays earlier answers.
 - An agent step that reads outside content may only make READ calls, unless `trusted_input`.
+- A bounded step's allowlist, declared folders and sites are its consent: a call beyond them
+  waits for a person (`agent_step.decide`, `permissions.outside_declared`), never runs unasked.
 - A test run stops before an approval step and writes no run history.
 - `UNAVAILABLE_TOOLS` in `engine.py` only lists tools a run may not call; the import contract,
   not that list, is what keeps the code module out.

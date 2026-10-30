@@ -152,7 +152,7 @@ def _agent(**step: Any) -> dict[str, Any]:
             "save_as": "sorted", **step}  # fmt: skip
 
 
-async def test_a_bounded_step_runs_its_allowlist_and_nothing_else(tmp_path: Path) -> None:
+async def test_a_bounded_step_asks_before_a_call_beyond_its_allowlist(tmp_path: Path) -> None:
     env = Env(
         tmp_path,
         [
@@ -163,14 +163,19 @@ async def test_a_bounded_step_runs_its_allowlist_and_nothing_else(tmp_path: Path
     )
     step = _agent(tools=["read_file"], fields=[{"name": "urgent", "type": "number"}])
 
-    outcome = await env.run([step]).start({})
+    run = env.run([step])
+
+    # A call beyond the allowlist parks the run for a person (decision 0028).
+    first = await run.start({})
+    assert first.status == "waiting"
+    assert first.request is not None and first.request["pending"]["tool"] == "write_file"
+    outcome = await run.answer(False)
 
     assert outcome.status == "completed"
     assert outcome.values["sorted"] == {"urgent": 3}
     assert env.ran == ["read in.txt"]
-    assert "isn't allowed" in env.tool_results()[-1]
     assert [(e["tool_name"], e["decision"], e["reason"]) for e in env.audit()] == [
-        ("write_file", "reject", "workflow_step")
+        ("write_file", "reject", "human")
     ]
     done = next(r for r in env.records if r.status == "done")
     assert done.agent == {"tool_calls": 2, "tokens": 0, "tools_used": ["read_file", "write_file"]}

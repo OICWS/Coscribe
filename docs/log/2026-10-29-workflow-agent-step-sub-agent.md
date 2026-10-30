@@ -17,6 +17,12 @@ no agent runtime.
 - `conversation`: `workflow_context` gives every run, and every test run, this runner and the
   tools that bring in outside content (`workflows.brings_outside_content`, now shared with the
   permissions route); a scheduled run passes its task's approval mode.
+- `workflows`: a bounded step's consent is held as decision 0028 has it (found in this PR's
+  review). A call outside its allowlist, or one whose path lands outside the workspace and the
+  step's declared folders, or a browser call to a site it didn't declare, now parks the run for
+  a person instead of being approved or refused (`permissions.outside_declared`). Paths are
+  read from the arguments the review card reads (`path`, `file_path`, `save_to`, ...), so a
+  path in another argument is not seen.
 - `workflows.engine`: a resumed agent step no longer shows an answered call as waiting again for
   a moment (found in #730's review; the waiting record is sent only when the run really pauses).
 - The import contract is renamed "Workflows depend on no agent runtime" and covers all of
@@ -33,6 +39,8 @@ no agent runtime.
 - On Windows, and in the app: no UI shows an agent step yet (P2).
 - A step's cost cap (0028 says step and cost caps): only the step cap (`max_steps`) exists.
 - An L3 step delegating to sub-agents: a step's agent can't start one.
+- A path in an argument the folder check doesn't read (a script's body, a tool with its own
+  argument name) is not held to a bounded step's folders.
 
 ## Follow-ups
 - P2 the read-only canvas, with the agent step's card and its pending call; then P3 drafting

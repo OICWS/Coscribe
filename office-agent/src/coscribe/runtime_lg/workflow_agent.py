@@ -240,16 +240,14 @@ class WorkflowAgentRunner:
             reason = await self.pre_tool_use(call.tool, call.args)
             if reason is not None:
                 return _Decided.reject("hook_veto", reason)
-        if call.risk == "READ":
-            # Ungated, as in a conversation: nothing to record.
-            return _Decided({"type": "approve"}, None)
         if answer is not None:
             if answer.get("approved") is True:
                 return _Decided({"type": "approve"}, "human")
             return _Decided.reject("human", str(answer.get("note") or "") or "Declined.")
         decision = request.decide(call)
         if decision == "approve":
-            return _Decided({"type": "approve"}, "workflow_step")
+            # A read the step allows is ungated, as in a conversation: nothing to record.
+            return _Decided({"type": "approve"}, None if call.risk == "READ" else "workflow_step")
         if decision == "reject":
             return _Decided.reject("workflow_step", "Not allowed in this run.")
         return None

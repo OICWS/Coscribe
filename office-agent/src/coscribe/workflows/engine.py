@@ -548,6 +548,7 @@ class _GraphBuilder:
             key=f"workflow-agent-{info.task_id}",
             read_only=step.id in self.read_only,
             approval_mode=self.ctx.approval_mode,
+            workspace=str(self.ctx.workspace_root),
             make_model=self.ctx.make_model,
             ask=ask,
         )
