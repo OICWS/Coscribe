@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FILE_LINK, fileLinkPath, filesByName, remarkFileChips, touchedFiles } from "./fileMentions";
+import { canvasOfPage, FILE_LINK, fileLinkPath, filesByName, madeFiles, remarkFileChips, touchedFiles } from "./fileMentions";
 
 const call = (toolName: string, path: string, extra: object = {}) => ({ toolName, arguments: { path }, result: "ok", ...extra });
 
@@ -29,6 +29,25 @@ describe("touchedFiles", () => {
 
   it("maps a file name to its path", () => {
     expect([...filesByName([call("write_docx", "reports/SDD.docx")])]).toEqual([["SDD.docx", "reports/SDD.docx"]]);
+  });
+});
+
+describe("madeFiles", () => {
+  it("gives a design's artboards as its one canvas, and a page of its own as itself", () => {
+    const calls = [
+      call("write_file", "plants.design/home.html"),
+      call("write_file", "plants.design/discover.html"),
+      call("write_file", "landing.html"),
+      call("write_file", "plants.design.json"),
+      call("write_file", "out\\shop.design\\cart.html"),
+    ];
+    expect(madeFiles(calls)).toEqual(["plants.design.json", "landing.html", "out\\shop.design.json"]);
+  });
+
+  it("knows a board's page only by the folder it sits in", () => {
+    expect(canvasOfPage("a/plants.design/home.htm")).toBe("a/plants.design.json");
+    expect(canvasOfPage("plants.design.html")).toBeNull();
+    expect(canvasOfPage("plants.design/sub/home.html")).toBeNull();
   });
 });
 

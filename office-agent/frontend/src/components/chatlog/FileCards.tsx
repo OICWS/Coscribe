@@ -1,6 +1,6 @@
 import { useContext } from "react";
 import { KINDS } from "../../lib/artifacts";
-import { baseName, KIND_WORDS, kindOfFile, touchedFiles } from "../../lib/fileMentions";
+import { baseName, KIND_WORDS, kindOfFile, madeFiles } from "../../lib/fileMentions";
 import { ChevronRightIcon } from "../icons";
 import { KindIcon } from "../artifacts/artifactIcons";
 import { ThreadIdContext } from "../threadContext";
@@ -12,20 +12,20 @@ import type { ToolOrApprovalItem } from "./types";
  * the end of a turn's answer points at what it made. */
 export function FileCards({ items }: { items: ToolOrApprovalItem[] }) {
   const view = useContext(ViewFile);
-  const paths = touchedFiles(items);
+  const paths = madeFiles(items);
   if (!view || paths.length === 0) return null;
   return (
     <div className="mt-2 flex flex-col gap-2">
       {paths.map((path) => (
-        <FileCard key={path} path={path} view={view} />
+        <FileCard key={path} path={path} view={view} calls={items.length} />
       ))}
     </div>
   );
 }
 
-function FileCard({ path, view }: { path: string; view: (path: string) => boolean }) {
+function FileCard({ path, view, calls }: { path: string; view: (path: string) => boolean; calls: number }) {
   const threadId = useContext(ThreadIdContext);
-  const shown = useShownFile(threadId, path);
+  const shown = useShownFile(threadId, path, calls);
   if (!shown) return null;
   const kind = kindOfFile(path);
   const name = baseName(path);

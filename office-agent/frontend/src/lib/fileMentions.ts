@@ -49,6 +49,19 @@ export function touchedFiles(calls: Iterable<Call>): string[] {
 
 export const baseName = (path: string) => path.split(/[\\/]/).pop() ?? path;
 
+/** The canvas an artboard's page belongs to, by the folder it sits in (`x.design/home.html` is a
+ * board of `x.design.json`), or null for a page of its own. */
+export function canvasOfPage(path: string): string | null {
+  const match = /^(.*\.design)[\\/][^\\/]+\.html?$/i.exec(path);
+  return match ? `${match[1]}.json` : null;
+}
+
+/** What a turn made, as the person thinks of it: the boards of one design are that design, so
+ * writing three screens gives one card that opens the canvas, not three pages. */
+export function madeFiles(calls: Iterable<Call>): string[] {
+  return [...new Set(touchedFiles(calls).map((path) => canvasOfPage(path) ?? path))];
+}
+
 /** The artifact kind a file belongs to, for its icon and its words. */
 export const kindOfFile = (path: string): ArtifactKind => (isPptx(path) ? "slides" : isDesign(path) || isDesignCanvas(path) ? "design" : "docs");
 
