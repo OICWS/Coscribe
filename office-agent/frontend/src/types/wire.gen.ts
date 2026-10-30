@@ -216,6 +216,19 @@ export interface WorkflowPermission {
   message: string;
 }
 
+export interface WorkflowAgentCall {
+  tool: string;
+  args: unknown;
+}
+
+/** An agent step's work: what it used once it ends, or the call waiting for a person. */
+export interface WorkflowAgentActivity {
+  tool_calls?: number;
+  tokens?: number;
+  tools_used?: string[];
+  pending?: WorkflowAgentCall;
+}
+
 /** One step of one workflow run (`workflows.engine.StepRecord.to_dict()`). */
 export interface WorkflowStepRecord {
   step_id: string;
@@ -233,6 +246,7 @@ export interface WorkflowStepRecord {
    */
   iteration: number[];
   permission: WorkflowPermission | null;
+  agent: WorkflowAgentActivity | null;
 }
 
 /** One step of a workflow run on this thread started, finished, failed or began waiting. */

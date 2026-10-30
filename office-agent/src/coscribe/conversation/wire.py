@@ -226,6 +226,20 @@ class WorkflowPermission(TypedDict):
     message: str
 
 
+class WorkflowAgentCall(TypedDict):
+    tool: str
+    args: Any
+
+
+class WorkflowAgentActivity(TypedDict):
+    """An agent step's work: what it used once it ends, or the call waiting for a person."""
+
+    tool_calls: NotRequired[int]
+    tokens: NotRequired[int]
+    tools_used: NotRequired[list[str]]
+    pending: NotRequired[WorkflowAgentCall]
+
+
 class WorkflowStepRecord(TypedDict):
     """One step of one workflow run (`workflows.engine.StepRecord.to_dict()`)."""
 
@@ -242,6 +256,7 @@ class WorkflowStepRecord(TypedDict):
     # loops.
     iteration: list[int]
     permission: WorkflowPermission | None
+    agent: WorkflowAgentActivity | None
 
 
 class WorkflowStepEvent(TypedDict):
