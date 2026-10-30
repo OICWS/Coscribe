@@ -150,6 +150,28 @@ def variables_style(canvas: dict[str, Any]) -> bytes:
     return f"<style data-coscribe-variables>:root{{{rules}}}</style>".encode()
 
 
+_SCHEME_QUERY = re.compile(rb"prefers-color-scheme\s*:\s*(dark|light)", re.IGNORECASE)
+
+
+def in_scheme(body: bytes, scheme: str) -> bytes:
+    """A page served light or dark, as the canvas shows its artboards. A frame cannot set the
+    `prefers-color-scheme` a sandboxed page sees, so the page's own queries are answered here (in
+    its styles and its scripts alike) and `data-theme` is set on its root for pages that style
+    by that instead."""
+    if scheme not in ("light", "dark"):
+        return body
+    want = scheme.encode()
+
+    def answer(match: re.Match[bytes]) -> bytes:
+        return b"min-width:0px" if match.group(1).lower() == want else b"max-width:-1px"
+
+    head = (
+        f"<style>:root{{color-scheme:{scheme}}}</style><script>"
+        f"document.documentElement.setAttribute('data-theme','{scheme}')</script>"
+    ).encode()
+    return head + _SCHEME_QUERY.sub(answer, body)
+
+
 def place_on_canvas(
     path: Path,
     boards: dict[str, dict[str, Any]],

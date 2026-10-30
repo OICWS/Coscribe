@@ -52,3 +52,35 @@ test("a canvas shows its artboards; a board moves and a note is left, and both a
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("board-home")).toBeVisible();
 });
+
+const THEMED = '{\\"boards\\": [{\\"id\\": \\"card\\", \\"title\\": \\"Card\\", \\"file\\": \\"card.html\\", \\"width\\": 400, \\"height\\": 300}], \\"variables\\": [{\\"name\\": \\"--brand\\", \\"value\\": \\"#2557d6\\", \\"label\\": \\"Brand\\"}]}';
+
+test("a canvas's variables are set from the panel into every artboard, and the boards show dark", async ({ page }) => {
+  const name = `themed-${Math.random().toString(36).slice(2, 8)}`;
+  mkdirSync(join(workspace, `${name}.design`), { recursive: true });
+  const card =
+    "<html><head><style>body{margin:0;background:#fff}h1{color:var(--brand)}" +
+    "@media (prefers-color-scheme: dark){body{background:rgb(17, 17, 17)}}</style></head><body><h1>Hi</h1></body></html>";
+  writeFileSync(join(workspace, `${name}.design`, "card.html"), card);
+
+  await page.goto(freshThreadPath(name));
+  await waitForConnected(page);
+  await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${THEMED}"}]] [[stub-say Done.]]`);
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await page.getByTitle(`Open ${name}.design.json`).click();
+
+  const frame = page.frameLocator('iframe[title="Card"]');
+  await expect(frame.locator("h1")).toHaveCSS("color", "rgb(37, 87, 214)");
+
+  await page.getByRole("button", { name: "Variables" }).click();
+  const brand = page.getByRole("dialog", { name: "Variables" }).getByLabel("Brand", { exact: true });
+  await brand.fill("#e0457b");
+  await brand.press("Enter");
+  await expect(frame.locator("h1")).toHaveCSS("color", "rgb(224, 69, 123)");
+  const read = async () => (await page.request.get(`/api/threads/${name}/canvas`, { params: { path: `${name}.design.json` } })).json();
+  expect((await read()).variables[0].value).toBe("#e0457b");
+
+  await page.getByRole("button", { name: "Show dark" }).click();
+  await expect(frame.locator("body")).toHaveCSS("background-color", "rgb(17, 17, 17)");
+});

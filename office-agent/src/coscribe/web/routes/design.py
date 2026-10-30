@@ -4,7 +4,7 @@ gets its datasets and chart library put into it, since the frame has no network.
 from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse, Response
@@ -15,6 +15,7 @@ from ...conversation import (
     DashboardDataError,
     canvas_folder,
     canvas_of_page,
+    in_scheme,
     is_canvas,
     is_dashboard,
     place_on_canvas,
@@ -71,7 +72,7 @@ def _with_canvas_variables(page: Path, body: bytes) -> bytes:
     return body[:end] + style + body[end:] if end >= 0 else style + body
 
 
-def design_response(file: Path, *, for_print: bool = False) -> Response:
+def design_response(file: Path, *, for_print: bool = False, scheme: str | None = None) -> Response:
     """The design file with the policy that keeps it inside its frame."""
     if is_canvas(file):
         file = canvas_cover(file)
@@ -85,6 +86,8 @@ def design_response(file: Path, *, for_print: bool = False) -> Response:
         if is_dashboard(body):
             body = render_dashboard(file, body)
         body = _with_canvas_variables(file, body)
+        if scheme:
+            body = in_scheme(body, scheme)
     except OSError:
         return JSONResponse({"error": "This design could not be read"}, status_code=404)
     if for_print:
@@ -110,12 +113,17 @@ def _with_board_paths(path: str, file: Path, canvas: dict[str, Any]) -> dict[str
 def router(state: AppState) -> APIRouter:
     router = APIRouter()
 
-    async def get_design(thread_id: str, path: str, print: bool = False) -> Response:
+    async def get_design(
+        thread_id: str,
+        path: str,
+        print: bool = False,
+        scheme: Literal["light", "dark"] | None = None,
+    ) -> Response:
         try:
             file = state.get_session(thread_id).workspace_scope().resolve(path)
         except (PermissionError, OSError, ValueError):
             return JSONResponse({"error": "No design at that path"}, status_code=404)
-        return design_response(file, for_print=print)
+        return design_response(file, for_print=print, scheme=scheme)
 
     async def get_dashboard(thread_id: str, path: str) -> JSONResponse:
         """What the panel shows above a dashboard: its datasets, where each came from and when;

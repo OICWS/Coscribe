@@ -8,6 +8,7 @@ import pytest
 from coscribe.conversation.design_canvas import (
     CanvasError,
     in_canvas_folder,
+    in_scheme,
     place_on_canvas,
     read_canvas,
     variables_style,
@@ -129,3 +130,20 @@ def test_placing_sets_only_declared_variables_to_safe_values(tmp_path: Path) -> 
 
     saved = json.loads(path.read_text(encoding="utf-8"))
     assert saved["variables"] == [{"name": "--brand", "value": "#e0457b"}]
+
+
+def test_a_page_in_a_scheme_has_its_colour_scheme_queries_answered_and_its_theme_set() -> None:
+    page = (
+        b"<style>@media (prefers-color-scheme: dark){body{background:#111}}"
+        b"@media (PREFERS-COLOR-SCHEME:light){body{background:#fff}}</style>"
+        b"<script>matchMedia('(prefers-color-scheme: dark)')</script>"
+    )
+
+    dark = in_scheme(page, "dark")
+
+    assert b"prefers-color-scheme" not in dark.lower()
+    assert dark.count(b"min-width:0px") == 2 and dark.count(b"max-width:-1px") == 1
+    assert dark.startswith(b"<style>:root{color-scheme:dark}</style><script>")
+    assert b"setAttribute('data-theme','dark')" in dark
+    assert in_scheme(page, "light").count(b"min-width:0px") == 1
+    assert in_scheme(page, "sepia") == page
