@@ -159,6 +159,7 @@ AUDITED_READ_ONLY_GETS = {
     "/api/artifacts/lookup",
     "/api/artifacts/{artifact}/content",
     "/api/threads/{thread_id}/design",
+    "/api/threads/{thread_id}/dashboard",
     # Keeps a copy of the Doc it reads in `name.doc/versions`, so a change made behind the editor
     # can be undone; nothing else is written.
     "/api/threads/{thread_id}/doc/blocks",
