@@ -1,7 +1,7 @@
 # 0022: Commands run in Codex's Windows sandbox
 
-Status: proposed (2026-10-24, issue #588, step 4); accepted once the maintainer's independent
-review passes. Changes 0021 for commands: 0021 kept command lines out of the AppContainer and
+Status: accepted (proposed 2026-10-24, issue #588, step 4; the independent review its acceptance
+waited on was given on #595 on 2026-10-24, which then merged). Changes 0021 for commands: 0021 kept command lines out of the AppContainer and
 let them run as the user.
 
 ## Context

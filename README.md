@@ -3,8 +3,10 @@
 [![CI](https://github.com/OICWS/coscribe/actions/workflows/office-agent-ci.yml/badge.svg)](https://github.com/OICWS/coscribe/actions/workflows/office-agent-ci.yml)
 
 A local, user-friendly assistant for office work. It reads and writes your
-files, produces Word, Excel, PowerPoint and PDF documents, uses the web and
-your tools, and can repeat work on a schedule. It needs only a model API key.
+files, produces Word, Excel, PowerPoint and PDF documents, makes Docs, slide
+decks, designs and dashboards you edit beside the conversation, uses the web
+and your tools, and can repeat work on a schedule. It needs only a model API
+key.
 
 Website: https://oicws.github.io/Coscribe/
 

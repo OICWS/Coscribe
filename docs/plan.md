@@ -295,6 +295,8 @@ Last reviewed: 2026-10-15.
 - The attachment cards and the new question-card colours in the desktop app; the
   thin scrollbar on pages in the built-in browser.
 - The code module on real Windows.
+- Decision 0028 (a workflow step chooses its autonomy) is still "proposed" while it is built in
+  phases from #719: accept, change or reject it.
 
 ## Open problems, not reproduced or not solved
 
@@ -309,6 +311,9 @@ Last reviewed: 2026-10-15.
   one file at a time.
 
 ## Later (wanted, not scheduled)
+
+- The rest of `office-agent/README.md` (browser, MCP, hooks, Web UI, desktop) rewritten as the
+  Files and Scripts sections were: what exists and where to read more, no copied parameters.
 
 - A reasoning-effort choice for the user (#202): done (the scale and its mapping per model, the
   pill and slider, the evaluation on the same scale). Left: a look in the dark theme.

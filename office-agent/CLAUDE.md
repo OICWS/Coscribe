@@ -147,6 +147,10 @@ Nothing is pushed to `main` directly.
 - One area per PR, about 600 changed lines at most (generated catalogs and
   icons excepted). Land partial work behind an unused code path ("part 1:
   nothing applies it yet") instead of stacking PRs.
+- The description names the documents the change was checked against: `docs/doc-map.toml` maps
+  each living document to the code it describes, and for each one whose code changed the PR
+  edits the document or adds `Docs checked: <path> (<why it still holds>)`. The `docs-checked`
+  job of the PR text workflow fails otherwise (`scripts/doc_impact.py`, run it before pushing).
 - No signature lines: a commit message, PR title or description has no
   `Co-authored-by`, session link or "Generated with/by ..." line. The `PR text`
   check fails a pull request that has one.
@@ -188,7 +192,7 @@ marking a PR ready, wait for a green CI run (or run the full
 `bash scripts/check.sh`, about 4 minutes on 4 CPUs). A test that
 writes real files must `monkeypatch.chdir(tmp_path)` first if it (or
 code it calls) can fall back to a relative path -- a real, live-hit
-mistake this session made once already (see `test_web.py`'s own
+mistake this session made once already (see `tests/web/test_settings.py`'s
 `test_post_provider_persists_an_absolute_path_not_a_cwd_relative_one`
 for the established pattern to copy).
 

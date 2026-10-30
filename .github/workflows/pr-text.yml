@@ -38,3 +38,22 @@ jobs:
             status=1
           fi
           exit $status
+
+  # A change to code a living document describes either changes the document or says it still
+  # holds (`Docs checked:` in the description); docs/doc-map.toml says which code each covers.
+  docs-checked:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Documents the change can make untrue
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python office-agent/scripts/doc_impact.py --base "$BASE_SHA" --head "$HEAD_SHA"

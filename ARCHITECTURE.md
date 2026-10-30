@@ -47,7 +47,13 @@ tools, and repeat work on a schedule. It needs only a model API key.
 - **Persistence.** Plain files under `state_dir` (JSON records, previews,
   tasks, memory) and a SQLite checkpointer for conversation state. No
   database server.
-- **Two modes in the nav rail.** Chat, and Scheduled (tasks and workflows).
+- **Two modes in the nav rail.** Chat, and Scheduled (tasks and workflows); the sidebar also
+  opens the Artifacts page.
+- **Artifacts.** What coscribe makes from a source it owns opens in a panel beside the
+  conversation and is listed on the Artifacts page: a Doc (a markdown document), Slides (a deck
+  of SVG pages and HTML sections), a Design (a canvas of HTML artboards) and a Dashboard (a page
+  and its datasets). A Word, Excel or PowerPoint file the person brings is shown, not owned
+  (decisions 0015, 0025, 0027).
 - **Package layers**, top to bottom: `cli`, `web`, `conversation`, `coordinator | runtime_lg`,
   `workflows | code_runtime`, `tools`, `runtime | config`. A package
   imports only from below; the rule is checked in CI (`lint-imports`).
@@ -72,7 +78,7 @@ standing roster of agents.
   (counted from the conversation, so approvals don't reset it), and each
   file gets one review and one re-check per turn.
 
-### Approvals instead of a sandbox
+### Approvals, and a sandbox where it holds
 
 Every tool, built-in or MCP, carries a risk tier, and the tier, not where
 the tool came from, decides whether it is gated:
@@ -126,12 +132,12 @@ enough to be reliable:
 - Every write renders a preview image, so the model and the reviewer see
   the page, not a description of it.
 
-The product does not depend on LibreOffice (decision 0012): a PDF and a deck
-built from SVG pages are drawn without any office program, and other Word,
-Excel and PowerPoint files are drawn and converted by the Microsoft Office or
-WPS the user has, through COM. Without one, previews and conversion are
-skipped with a reason, never the write itself. LibreOffice stays in
-development and in the evaluation, as an independent reader of the files.
+Nothing depends on LibreOffice (decisions 0012, 0026): a PDF and a deck built
+from SVG pages are drawn without any office program, and other Word, Excel and
+PowerPoint files are drawn and converted by the Microsoft Office or WPS the
+user has, through COM. LibreOffice is an optional engine, found on the machine
+or installed when the person asks, never bundled; without any of them, previews
+and conversion are skipped with a reason, never the write itself.
 
 ### Repeated work becomes fixed steps; autonomy is chosen per step
 
@@ -174,7 +180,9 @@ assistant, not a mode of its own: the chat hands it a task (`run_code_task`)
 that runs as a sub-agent, so code ability comes to the conversation instead
 of a second place to work in. It is optional and off by default: the pinned
 binary is downloaded on first use, not bundled. Its commands and file
-changes come back through coscribe's approvals, as synthetic gated tools.
+changes come back through coscribe's approvals, as synthetic gated tools;
+its commands run only where the command sandbox is set up and are refused
+elsewhere, except plain reads of its own folder.
 Workflows never use it: a fixed run must not contain an autonomous agent.
 
 ### Cost is part of the design
@@ -195,8 +203,8 @@ Workflows never use it: a fixed run must not contain an autonomous agent.
 
 - **Web search** (`ddgs`): falls back across free engines; used for
   grounding, not retrieval.
-- **Images**: DuckDuckGo image search with no license filtering, and the
-  user is told to check rights.
+- **Images**: DuckDuckGo image search, whose rights the user is told to check,
+  and a search of licensed photo libraries for pictures that may be used.
 - **Browser** (desktop only): tabs in an Electron `WebContentsView` driven
   over the DevTools protocol, so the AI uses the user's own logins, works
   where the user can watch, and asks per site. Elements are targeted by
@@ -217,8 +225,9 @@ Workflows never use it: a fixed run must not contain an autonomous agent.
   A service that refuses to register clients (HubSpot, Google Workspace) gets a
   guided one-time setup with an app the user registers
   ([decision 0004](docs/decisions/0004-connectors-sign-in-once-in-the-browser.md)).
-- **Skills**: `SKILL.md` folders loaded on demand. Built-in: pptx, excel,
-  word and skill-creator; users add their own in `skills_dir`.
+- **Skills**: `SKILL.md` folders loaded on demand. The built-in ones (Slides,
+  Excel, Word, Docs, Design, Dashboard, markdown, Skill Creator) live in
+  `src/coscribe/builtin_skills/`; users add their own in `skills_dir`.
 - **Hooks**: scripts on lifecycle events (above).
 - **Global instructions**: one `MEMORY.md` the user edits in Settings, read into
   every conversation. The model cannot write to it.
