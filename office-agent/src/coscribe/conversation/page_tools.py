@@ -15,6 +15,7 @@ from ..runtime import tool_metadata
 from ..tools import WorkspaceScope
 from .dashboard import is_dashboard, render_dashboard
 from .design_canvas import (
+    BOARD_LINKS,
     CanvasError,
     canvas_folder,
     canvas_of_page,
@@ -33,15 +34,16 @@ _LONGEST_PAGE = 4000
 
 def served_page(page: Path, body: bytes, scheme: str | None = None) -> bytes:
     """A page as the app serves it to its frame: a dashboard with its data and chart library, an
-    artboard with its canvas's variables last in its head, in a scheme when one is asked for."""
+    artboard with its canvas's variables last in its head and its links to other artboards handed to
+    the panel, in a scheme when one is asked for."""
     if is_dashboard(body):
         body = render_dashboard(page, body)
     canvas = canvas_of_page(page)
     if canvas is not None:
         try:
-            style = variables_style(read_canvas(canvas))
+            style = variables_style(read_canvas(canvas)) + BOARD_LINKS
         except CanvasError:
-            style = b""
+            style = BOARD_LINKS
         end = body.lower().find(b"</head>")
         body = body[:end] + style + body[end:] if end >= 0 else style + body
     return in_scheme(body, scheme) if scheme else body

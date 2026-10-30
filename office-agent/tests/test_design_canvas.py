@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from coscribe.conversation.design_canvas import (
+    BOARD_LINKS,
     CanvasError,
     in_canvas_folder,
     in_scheme,
@@ -147,3 +148,19 @@ def test_a_page_in_a_scheme_has_its_colour_scheme_queries_answered_and_its_theme
     assert b"setAttribute('data-theme','dark')" in dark
     assert in_scheme(page, "light").count(b"min-width:0px") == 1
     assert in_scheme(page, "sepia") == page
+
+
+def test_an_artboard_is_served_with_its_links_to_other_artboards_handed_to_the_panel(
+    tmp_path: Path,
+) -> None:
+    from coscribe.conversation import served_page
+
+    _canvas(tmp_path, {"boards": [{"id": "a", "file": "a.html"}]})
+    (tmp_path / "poster.design").mkdir()
+    page = tmp_path / "poster.design" / "a.html"
+    loose = tmp_path / "loose.html"
+
+    served = served_page(page, b"<html><head></head><a href='b.html'>b</a></html>")
+
+    assert served.index(BOARD_LINKS) < served.index(b"</head>")
+    assert BOARD_LINKS not in served_page(loose, b"<a href='b.html'>b</a>")

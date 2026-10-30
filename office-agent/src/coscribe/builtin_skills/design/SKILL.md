@@ -84,6 +84,20 @@ after the page's own styles, and the person can change them on the canvas, so:
   in `@media (prefers-color-scheme: dark)` or under `:root[data-theme="dark"]`, with the surface
   and text colours there; a design that is only light or only dark needs neither.
 
+## Clickable prototypes
+
+When the person presses Play, the artboards work. Three ways to make a flow of screens, mixed as
+it fits:
+
+- **Links between artboards** (a flow the person sees whole on the canvas): one artboard per
+  screen, and a button is a link to the next screen's file, `<a href="checkout.html">Checkout</a>`;
+  the back arrow is a link too. In Play a click shows that artboard. Style the link as the button
+  (`display: inline-flex`, padding, background, radius); never put a `<button>` inside the link,
+  which swallows the click.
+- **One artboard with states** (screens that share data, such as a cart or a form across steps):
+  keep the state in a script and show one screen at a time; the artboards cannot share data.
+- **Anchors** (a long page): `<a href="#pricing">` scrolls within the artboard.
+
 ## Logos and icons
 
 A logo or icon sheet is an artboard (about 1200 wide) with each option at 16, 32, 48, 64 and 128 px
