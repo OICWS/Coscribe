@@ -6,3 +6,4 @@ office-agent/src/coscribe/tools/_ooxml_schemas/
 package-lock.json
 site/index.html
 office-agent/tests/openapi.json
+office-agent/src/coscribe/conversation/_vendor/

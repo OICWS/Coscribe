@@ -196,5 +196,5 @@ def test_a_page_marked_as_a_dashboard_is_one_and_is_served_with_its_data_and_d3_
         served = client.get(f"/api/artifacts/{item['id']}/content")
         assert served.headers["content-security-policy"].startswith("sandbox allow-scripts;")
         body = served.text
-        assert '"region": "East"' in body and "d3js.org v7.9.0" in body
+        assert '"region": "East"' in body and "scaleLinear" in body
         assert "data-coscribe-lib" not in body

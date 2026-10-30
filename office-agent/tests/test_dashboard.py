@@ -101,5 +101,5 @@ def test_d3_is_put_in_only_where_the_page_asks_for_it(tmp_path: Path) -> None:
     page = _dashboard(tmp_path, {"datasets": {}}, {})
     asks = PAGE.replace(b"</head>", b'<script data-coscribe-lib="d3"></script></head>')
 
-    assert b"d3js.org" in render_dashboard(page, asks)
-    assert b"d3js.org" not in render_dashboard(page, PAGE)
+    assert b"scaleLinear" in render_dashboard(page, asks)
+    assert b"scaleLinear" not in render_dashboard(page, PAGE)
