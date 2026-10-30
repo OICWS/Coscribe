@@ -4,6 +4,7 @@ text, text past the board's edge). Edge ships with every Windows, so nothing is 
 
 from __future__ import annotations
 
+import html
 import json
 import os
 import re
@@ -14,6 +15,7 @@ import tempfile
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 
@@ -43,26 +45,33 @@ _PROBE = (
     "__coscribeErrors.push('blocked (no network): '+e.blockedURI)});</script>"
 )
 
-# Text boxes are the glyph runs of each text node, so inline neighbours never count as overlapping;
-# two runs overlap when they share more than a third of the smaller one.
-_REPORT = """<script>addEventListener('load',function(){setTimeout(function(){
-var W=%(width)d,H=%(height)d,fixed=%(fixed)s,d=document.documentElement,runs=[];
-var walk=document.createTreeWalker(document.body||d,NodeFilter.SHOW_TEXT);
+# The page is drawn in a frame of exactly the board's size: a headless window is never narrower
+# than 500 px, so a phone screen drawn as the window would be laid out and measured too wide.
+# Text boxes are the glyph runs of each text node, so inline neighbours never count as
+# overlapping; two runs overlap when they share more than a third of the smaller one.
+_FRAME = """<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;
+background:#fff}iframe{border:0;display:block}</style></head><body>
+<iframe id="page" width="%(width)d" height="%(height)d" srcdoc="%(page)s"></iframe>
+<script>var f=document.getElementById('page');f.addEventListener('load',function(){
+setTimeout(function(){var w=f.contentWindow,doc=w.document,d=doc.documentElement,runs=[];
+var W=%(width)d,H=%(height)d,fixed=%(fixed)s;
+var walk=doc.createTreeWalker(doc.body||d,NodeFilter.SHOW_TEXT);
 while(walk.nextNode()&&runs.length<400){var n=walk.currentNode,t=n.textContent.trim();
 if(!t||!n.parentElement||/^(SCRIPT|STYLE)$/.test(n.parentElement.tagName))continue;
-var s=getComputedStyle(n.parentElement);if(s.visibility==='hidden'||s.opacity==='0')continue;
-var g=document.createRange();g.selectNodeContents(n);var b=g.getBoundingClientRect();
+var s=w.getComputedStyle(n.parentElement);if(s.visibility==='hidden'||s.opacity==='0')continue;
+var g=doc.createRange();g.selectNodeContents(n);var b=g.getBoundingClientRect();
 if(b.width<2||b.height<2)continue;runs.push({t:t.slice(0,40),x:b.left,y:b.top,r:b.right,b:b.bottom})}
 var over=[],out=[];
 for(var i=0;i<runs.length;i++){var a=runs[i];
 if(fixed&&(a.x<-1||a.y<-1||a.r>W+1||a.b>H+1))out.push(a.t);
 for(var j=i+1;j<runs.length&&over.length<10;j++){var c=runs[j];
-var w=Math.min(a.r,c.r)-Math.max(a.x,c.x),h=Math.min(a.b,c.b)-Math.max(a.y,c.y);
-if(w>0&&h>0&&w*h>Math.min((a.r-a.x)*(a.b-a.y),(c.r-c.x)*(c.b-c.y))/3)over.push([a.t,c.t])}}
-var r={errors:__coscribeErrors.slice(0,10),content_width:d.scrollWidth,
-content_height:d.scrollHeight,wider_than_board:d.scrollWidth>W+1,text_overlapping:over,text_past_edge:out.slice(0,10)};
+var x=Math.min(a.r,c.r)-Math.max(a.x,c.x),y=Math.min(a.b,c.b)-Math.max(a.y,c.y);
+if(x>0&&y>0&&x*y>Math.min((a.r-a.x)*(a.b-a.y),(c.r-c.x)*(c.b-c.y))/3)over.push([a.t,c.t])}}
+var r={errors:(w.__coscribeErrors||[]).slice(0,10),content_width:d.scrollWidth,
+content_height:d.scrollHeight,wider_than_board:d.scrollWidth>W+1,text_overlapping:over,
+text_past_edge:out.slice(0,10)};
 var o=document.createElement('script');o.type='application/json';o.id='coscribe-report';
-o.textContent=JSON.stringify(r);(document.body||d).appendChild(o)},400)})</script>"""
+o.textContent=JSON.stringify(r);document.body.appendChild(o)},400)})</script></body></html>"""
 _REPORT_IN_DOM = re.compile(
     r'<script type="application/json" id="coscribe-report">(.*?)</script>', re.S
 )
@@ -93,13 +102,30 @@ def find_browser() -> str | None:
     return next((found for name in _OTHER_BROWSERS if (found := shutil.which(name))), None)
 
 
-def _with_probe(body: bytes, width: int, height: int, fixed: bool) -> bytes:
-    report = _REPORT % {"width": width, "height": height, "fixed": "true" if fixed else "false"}
+def _framed(body: bytes, width: int, height: int, fixed: bool) -> bytes:
+    """The page with the error probe first in its head, inside a frame of the board's size."""
     head = re.search(rb"<head[^>]*>", body, re.I)
     at = head.end() if head else 0
-    body = body[:at] + _PROBE.encode() + body[at:]
-    end = body.lower().rfind(b"</body>")
-    return body[:end] + report.encode() + body[end:] if end >= 0 else body + report.encode()
+    page = (body[:at] + _PROBE.encode() + body[at:]).decode("utf-8", "replace")
+    framed = _FRAME % {
+        "width": width,
+        "height": height,
+        "fixed": "true" if fixed else "false",
+        "page": html.escape(page, quote=True),
+    }
+    return framed.encode("utf-8")
+
+
+def _cropped(png: bytes, width: int, height: int) -> bytes:
+    """The board alone: the window is at least 500 px wide, wider than a phone screen."""
+    from PIL import Image
+
+    with Image.open(BytesIO(png)) as image:
+        if image.size == (width, height):
+            return png
+        out = BytesIO()
+        image.crop((0, 0, min(width, image.width), min(height, image.height))).save(out, "PNG")
+        return out.getvalue()
 
 
 @contextmanager
@@ -135,8 +161,9 @@ def _run(browser: str, args: list[str], profile: Path) -> subprocess.CompletedPr
         f"--user-data-dir={profile}",
         *args,
     ]
-    # Linux containers (CI, cloud sessions) run as root, where Chromium refuses its own sandbox.
-    if sys.platform != "win32" and hasattr(os, "geteuid") and os.geteuid() == 0:
+    # Off Windows is development and CI only: as root Chromium refuses its own sandbox, and Ubuntu
+    # 24.04 runners block the user namespaces it needs. The page has no network either way.
+    if sys.platform != "win32":
         command.insert(1, "--no-sandbox")
     try:
         with _no_crash_dialog():
@@ -160,9 +187,9 @@ def shoot_page(body: bytes, width: int, height: int, *, fixed: bool) -> PageShot
     with tempfile.TemporaryDirectory(prefix="coscribe-page-") as folder:
         work = Path(folder)
         page = work / "page.html"
-        page.write_bytes(_with_probe(body, width, height, fixed))
+        page.write_bytes(_framed(body, width, height, fixed))
         shot = work / "shot.png"
-        size = f"--window-size={width},{height}"
+        size = f"--window-size={max(width, 500)},{height}"
         url = page.as_uri()
         dumped = _run(browser, [size, "--virtual-time-budget=3000", "--dump-dom", url], work / "a")
         _run(browser, [size, "--virtual-time-budget=3000", f"--screenshot={shot}", url], work / "b")
@@ -173,4 +200,4 @@ def shoot_page(body: bytes, width: int, height: int, *, fixed: bool) -> PageShot
             report = json.loads(found.group(1)) if found else {}
         except ValueError:
             report = {}
-        return PageShot(png=shot.read_bytes(), report=report)
+        return PageShot(png=_cropped(shot.read_bytes(), width, height), report=report)

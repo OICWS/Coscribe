@@ -111,6 +111,8 @@ def test_look_at_page_draws_each_artboard_with_its_canvas_and_reports_what_is_wr
     assert poster_page["text_past_edge"] == ["Cut off"]
     assert any("blocked" in e for e in poster_page["errors"])
     assert fine_page["text_overlapping"] == [] and not fine_page["errors"]
+    # A board narrower than any headless window is still laid out and measured at its own width.
+    assert fine_page["wider_than_board"] is False and fine_page["content_width"] == 300
     assert gone_page == {"board": "gone", "problem": "gone.html does not exist"}
     assert [b["type"] for b in result[1:]] == ["image_url", "image_url"]
 
