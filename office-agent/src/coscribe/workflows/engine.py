@@ -26,7 +26,7 @@ import json
 import logging
 import re
 from collections.abc import Awaitable, Callable, Sequence
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any, Literal, TypedDict, cast
@@ -524,16 +524,15 @@ class _GraphBuilder:
     ) -> tuple[Any, dict[str, Any]]:
         async def ask(call: AgentCall) -> dict[str, Any]:
             message = f"{step.title}: the agent wants to use {call.tool}."
-            pending_call = {"pending": {"tool": call.tool, "args": preview(call.args)}}
-            await self.emit(
-                StepRecord(
-                    step.id, "waiting", started, output=message, iteration=it, agent=pending_call
-                )
-            )
-            answer = interrupt(
-                {"step_id": step.id, "title": step.title, "message": message,
-                 "call_id": call.call_id, **pending_call}
-            )  # fmt: skip
+            pending = {"pending": {"tool": call.tool, "args": preview(call.args)}}
+            try:
+                answer = interrupt({"step_id": step.id, "title": step.title, "message": message,
+                                    "call_id": call.call_id, **pending})  # fmt: skip
+            except GraphBubbleUp:
+                # Only a real pause shows: on resume, earlier answers replay here.
+                waiting = StepRecord(step.id, "waiting", started, output=message, iteration=it)
+                await self.emit(replace(waiting, agent=pending))
+                raise
             await self.emit(StepRecord(step.id, "running", started_at=started, iteration=it))
             return answer_of(answer)
 
