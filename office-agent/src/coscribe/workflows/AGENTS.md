@@ -1,16 +1,17 @@
 # workflows: fixed lists of low-autonomy steps, run by LangGraph
 
 ## Purpose
-Owns how a workflow runs (`engine.py`), what it may touch
-(`permissions.py`), the tool parameters its editor needs (`catalog.py`), drafting one from a
+Owns how a workflow runs (`engine.py`; `model_step.py` gets a model to return a step's
+fields), what it may touch (`permissions.py`), the tool parameters its editor needs (`catalog.py`), drafting one from a
 conversation (`solidify.py`) and a one-off test run (`testing.py`). Does not own the schedule
 that fires a run or its stored history (`runtime_lg/scheduled_tasks.py`), the routes
-(`web/routes/scheduled.py`) or any agent: a fixed run never contains one.
+(`web/routes/scheduled.py`) or any agent. An agent step (decision 0028) is defined and
+summarized here but does not run yet: `preflight` refuses it.
 
 ## Public interface
 `BranchStep`, `LoopStep`, `Workflow`, `parse_workflow`, `walk`, `workflow_error` (the definition, re-exported from `workflow_spec`, where it lives);
 `RunOutcome`, `StepContext`, `StepRecord`, `WorkflowNotRunnable`, `WorkflowRun` (a run);
-`granted_by`, `sites_in`, `summarize` (permissions); `describe_params`, `tool_description`
+`granted_by`, `sites_in`, `summarize`, `untrusted_agent_steps` (permissions); `describe_params`, `tool_description`
 (catalog); `output_files`, `run_test`, `uses_browser` (test run); `DraftFailed`, `WorkflowDraft`,
 `draft_workflow`, `revise_workflow` (drafting from a conversation: it takes the serialized
 history, so this package does not import `runtime_lg`).

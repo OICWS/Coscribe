@@ -39,12 +39,12 @@ from langgraph.types import Command, interrupt
 
 from ..needs_permission import NeedsPermission
 from ..workflow_spec import (
+    AgentStep,
     ApprovalStep,
     BranchStep,
     CheckStep,
     LLMStep,
     LoopStep,
-    OutputField,
     Placed,
     ScriptStep,
     Step,
@@ -58,6 +58,7 @@ from ..workflow_spec import (
     walk,
 )
 from .loop_labels import item_labels as _item_labels
+from .model_step import ask_model, field_problems
 
 logger = logging.getLogger(__name__)
 
@@ -306,80 +307,6 @@ async def _run_script(step: ScriptStep, values: dict[str, Any], ctx: StepContext
         raise StepFailed(f"The script's last line isn't JSON: {lines[-1][:200]!r}") from exc
 
 
-_JSON_TYPES: dict[str, dict[str, Any]] = {
-    "text": {"type": "string"},
-    "number": {"type": "number"},
-    "boolean": {"type": "boolean"},
-    "list": {"type": "array", "items": {}},
-}
-
-
-def fields_schema(fields: list[OutputField]) -> dict[str, Any]:
-    return {
-        "title": "step_result",
-        "description": "The result of this workflow step.",
-        "type": "object",
-        "properties": {
-            f.name: {**_JSON_TYPES[f.type], "description": f.description} for f in fields
-        },
-        "required": [f.name for f in fields],
-        "additionalProperties": False,
-    }
-
-
-def _field_problems(result: Any, fields: list[OutputField]) -> tuple[dict[str, Any], list[str]]:
-    if not isinstance(result, dict):
-        return {}, [f"expected an object with {', '.join(f.name for f in fields)}"]
-    cleaned: dict[str, Any] = {}
-    problems: list[str] = []
-    for f in fields:
-        if f.name not in result:
-            problems.append(f"{f.name} is missing")
-            continue
-        value = result[f.name]
-        if f.type == "number" and isinstance(value, str):
-            try:
-                value = float(value) if "." in value else int(value)
-            except ValueError:
-                pass
-        valid = {
-            "text": isinstance(value, str),
-            "number": isinstance(value, (int, float)) and not isinstance(value, bool),
-            "boolean": isinstance(value, bool),
-            "list": isinstance(value, list),
-        }[f.type]
-        if valid:
-            cleaned[f.name] = value
-        else:
-            problems.append(f"{f.name} must be {f.type}, got {type(value).__name__}")
-    return cleaned, problems
-
-
-def _json_object(text: str) -> Any:
-    match = re.search(r"\{.*\}", text, re.DOTALL)
-    if match is None:
-        raise ValueError("no JSON object in the reply")
-    return json.loads(match.group(0))
-
-
-async def _ask_model(model: Any, messages: list[Any], fields: list[OutputField]) -> Any:
-    """Structured output through a forced tool call where the provider
-    allows one; otherwise ask for bare JSON. Some refuse forced tool calls
-    outright (DeepSeek's thinking mode: "does not support this
-    tool_choice"), so any failure of the first route falls back to the
-    second, whose own error is what gets reported."""
-    try:
-        structured = model.with_structured_output(fields_schema(fields), method="function_calling")
-        return await structured.ainvoke(messages)
-    except Exception:  # noqa: BLE001 -- the JSON route below is the fallback for any refusal
-        logger.info("workflow: structured output unavailable, asking for JSON", exc_info=True)
-    keys = ", ".join(f"{f.name} ({f.type})" for f in fields)
-    reply = await model.ainvoke(
-        [*messages, HumanMessage(f"Reply with only a JSON object with keys: {keys}.")]
-    )
-    return _json_object(str(reply.content))
-
-
 async def _run_llm(step: LLMStep, values: dict[str, Any], ctx: StepContext) -> Any:
     model = ctx.make_model(step.model)
     if "temperature" in getattr(type(model), "model_fields", {}):
@@ -392,11 +319,11 @@ async def _run_llm(step: LLMStep, values: dict[str, Any], ctx: StepContext) -> A
     problems: list[str] = []
     for _attempt in range(2):
         try:
-            result = await _ask_model(model, messages, step.fields)
+            result = await ask_model(model, messages, step.fields)
         except ValueError as exc:
             problems = [str(exc)]
         else:
-            cleaned, problems = _field_problems(result, step.fields)
+            cleaned, problems = field_problems(result, step.fields)
             if not problems:
                 return cleaned
         messages.append(
@@ -430,6 +357,10 @@ def preflight(workflow: Workflow, ctx: StepContext) -> None:
                 raise WorkflowNotRunnable(f"{where}: {step.tool} can't be used in a workflow")
             if step.tool not in ctx.tools:
                 raise WorkflowNotRunnable(f"{where}: there's no tool called {step.tool!r}")
+        if isinstance(step, AgentStep):
+            # Decision 0028, part 1: the spec holds agent steps before the
+            # engine can run them.
+            raise WorkflowNotRunnable(f"{where}: agent steps can't run yet")
         if isinstance(step, LoopStep) and not step.steps:
             raise WorkflowNotRunnable(f"{where}: the loop has no steps to repeat yet")
         if isinstance(step, BranchStep) and not (step.then or step.otherwise):

@@ -10,18 +10,21 @@ imports the other. Does not own running a workflow, what it may touch or draftin
 
 ## Public interface
 Definition: `Workflow`, `parse_workflow`, `workflow_error`, `walk`, `Placed`, `step_output`,
-`Step`, `ToolStep`, `ScriptStep`, `LLMStep`, `CheckStep`, `ApprovalStep`, `BranchStep`, `LoopStep`,
-`OutputField`. References: `resolve`, `evaluate`, `render_text`, `render_value`. Import these from
+`Step`, `ToolStep`, `ScriptStep`, `LLMStep`, `AgentStep`, `CheckStep`, `ApprovalStep`, `BranchStep`,
+`LoopStep`, `OutputField`, `AGENT_REPORT_FIELD`, `child_lists`, `step_references`. References: `resolve`, `evaluate`, `render_text`, `render_value`. Import these from
 `coscribe.workflow_spec`, not a submodule.
 
 ## Depends on
 No other coscribe package.
 
 ## Invariants
-- It imports no LangChain, no agent and no tool: a fixed workflow run never reaches an autonomous
-  agent (import contract "A fixed workflow run never reaches an autonomous agent").
+- It imports no LangChain, no agent and no tool (import contract "A fixed workflow run never
+  reaches an autonomous agent"). An agent step (decision 0028) is data here: what it may call and
+  touch, and the fields it returns.
 - A reference is a lookup, never an expression: nothing in `refs.py` evaluates code.
-- Steps are capped (`MAX_STEPS`, `MAX_NESTING`, `MAX_LOOP_ITEMS`) so a saved workflow stays small.
+- Steps are capped (`MAX_STEPS`, `MAX_NESTING`, `MAX_LOOP_ITEMS`, `MAX_AGENT_STEPS`) so a saved
+  workflow stays small and an agent step's run stays bounded.
+- An agent step needs `version: 2`; a version 1 workflow behaves as when it was saved.
 
 ## Tests
 `tests/test_workflow_spec.py`; the engine, permission, drafting and test-run tests use it too.
