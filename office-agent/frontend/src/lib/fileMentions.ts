@@ -1,5 +1,6 @@
 import type { ArtifactKind } from "./artifacts";
 import { isPptx } from "./slides";
+import { isDesignCanvas } from "./designCanvas";
 import { isDesign, isViewable } from "./viewers";
 
 const isDocx = (path: string) => /\.docx$/i.test(path);
@@ -49,7 +50,7 @@ export function touchedFiles(calls: Iterable<Call>): string[] {
 export const baseName = (path: string) => path.split(/[\\/]/).pop() ?? path;
 
 /** The artifact kind a file belongs to, for its icon and its words. */
-export const kindOfFile = (path: string): ArtifactKind => (isPptx(path) ? "slides" : isDesign(path) ? "design" : "docs");
+export const kindOfFile = (path: string): ArtifactKind => (isPptx(path) ? "slides" : isDesign(path) || isDesignCanvas(path) ? "design" : "docs");
 
 export const KIND_WORDS: Record<ArtifactKind, string> = { docs: "Document", slides: "Presentation", design: "Design", dashboard: "Dashboard" };
 
