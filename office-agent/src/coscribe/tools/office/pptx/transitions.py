@@ -180,6 +180,8 @@ TRANSITION_ALIASES: dict[str, str] = {
 TRANSITIONS = frozenset({*TRANSITION_SPECS, *TRANSITION_ALIASES, "none"})
 
 
+
+
 def _spd_for(duration: float) -> str:
     if duration <= 0.5:
         return "fast"

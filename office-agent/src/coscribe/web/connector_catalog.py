@@ -234,9 +234,7 @@ def _google_setup(scopes: list[str], apis: str, mcp: str) -> dict[str, Any]:
                 "body": "In Google Cloud, open Google Auth Platform > Branding and create the app "
                 "(choose Internal if you can, otherwise External and add yourself as a test "
                 "user). Then under Data Access, add these scopes.",
-                "copy": [
-                    {"label": "Scopes", "value": "\n".join(_GOOGLE_SCOPES + s for s in scopes)}
-                ],
+                "copy": [{"label": "Scopes", "value": "\n".join(_GOOGLE_SCOPES + s for s in scopes)}],
                 "link": {
                     "label": "Open Google Auth Platform",
                     "url": "https://console.cloud.google.com/auth/overview",

@@ -142,7 +142,8 @@ def _parse_template(template_dir: Path, manifest_path: Path) -> TemplateInfo:
         range(content_indices[0], content_indices[-1] + 1)
     ):
         raise ValueError(
-            f"template.yaml slide_roles' 'content' entries must be contiguous, got {slide_roles!r}"
+            f"template.yaml slide_roles' 'content' entries must be contiguous, "
+            f"got {slide_roles!r}"
         )
     # Whether the real file is actually ~16:9, not assumed from the id/
     # description -- "velis" (§13/14 of PPTX_DESIGN.md) is the one bundled
@@ -183,7 +184,8 @@ def format_template_listing(templates: list[TemplateInfo]) -> str:
         "with different proportions or asks for one by name/description:"
     ]
     lines += [
-        f"- {t.id}: {t.name} -- {t.description} [{'16:9' if t.is_widescreen else 'NOT 16:9'}]"
+        f"- {t.id}: {t.name} -- {t.description} "
+        f"[{'16:9' if t.is_widescreen else 'NOT 16:9'}]"
         for t in templates
     ]
     return "\n".join(lines)

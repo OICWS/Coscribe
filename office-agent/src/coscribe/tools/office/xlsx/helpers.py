@@ -58,7 +58,9 @@ def _validate_and_normalize_formula(formula: str) -> str:
         def _prefix(match: re.Match[str], name: str = name) -> str:
             return f"_xlfn.{name}{match.group(1)}"
 
-        formula = re.sub(rf"(?<!_xlfn\.)\b{name}(\s*\()", _prefix, formula, flags=re.IGNORECASE)
+        formula = re.sub(
+            rf"(?<!_xlfn\.)\b{name}(\s*\()", _prefix, formula, flags=re.IGNORECASE
+        )
     return formula
 
 
@@ -93,3 +95,5 @@ def _render_sheet_table(sheet: Worksheet) -> str:
     for row in sheet.iter_rows():
         lines.append("| " + " | ".join(_render_cell(cell.value) for cell in row) + " |")
     return "\n".join(lines)
+
+

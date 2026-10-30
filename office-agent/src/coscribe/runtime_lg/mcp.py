@@ -389,7 +389,9 @@ class McpServerConnection:
                 {self.name: _to_lg_connection(self._config, auth)}, tool_name_prefix=True
             )
             async with client.session(self.name) as session:
-                tools = await load_mcp_tools(session, server_name=self.name, tool_name_prefix=True)
+                tools = await load_mcp_tools(
+                    session, server_name=self.name, tool_name_prefix=True
+                )
                 for tool in tools:
                     # See _strip_boolean_enums'/_collapse_non_nullable_
                     # anyof's/_default_missing_array_items' own docstrings
@@ -536,7 +538,9 @@ async def connect_mcp_tools_lg(
     just no longer blocks them *serially* either.
     """
     if not config_path.is_file():
-        logger.warning("MCP config file not found at %s -- starting with no MCP tools", config_path)
+        logger.warning(
+            "MCP config file not found at %s -- starting with no MCP tools", config_path
+        )
         return [], {}
     configs = load_mcp_server_configs(config_path, state_dir)
     results = await asyncio.gather(

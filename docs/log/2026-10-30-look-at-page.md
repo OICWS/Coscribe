@@ -13,8 +13,12 @@ write a page but never see it.
 - The report (`conversation/page_shot.py`): script errors, loads the page tried (the page policy is
   a meta tag, so it has no network), a page wider than its board, text over text (glyph runs of
   different text sharing over a third of the smaller) and, on a fixed board, text past its edge.
-- Drawn in the computer's own Edge or Chrome, headless, with a throwaway profile: Edge ships with
-  every Windows, so nothing is installed. One run dumps the page's DOM with the report in it, one
+- Drawn in the computer's own Edge or Chrome, headless, with a throwaway profile, started by the
+  server as the user: Edge ships with every Windows, so nothing is installed. Before this tool the
+  maintainer saw DeepSeek write its own script to draw pages with headless Edge; inside the
+  scripts' AppContainer Edge crashed and Windows showed its "Application Error" box. The tool
+  starts the browser outside the container, with no console window and with Windows' crash boxes
+  off for the child (its error mode is set around the start). One run dumps the page's DOM with the report in it, one
   takes the screenshot; about 1.2 s for a page here.
 - The picture reaches the model in a user message right after the step's tool results, added to
   the request only (`pictures_as_user_message`, a middleware in `runtime_lg/agent.py`): an image in a

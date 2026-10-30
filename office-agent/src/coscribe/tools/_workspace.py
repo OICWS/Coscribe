@@ -71,7 +71,7 @@ class WorkspaceScope:
                     raise PermissionError(
                         f"{path} is in a folder that allows reading and writing but no deleting, "
                         "moving or renaming. The user can allow those by adding the folder in "
-                        'Settings > Workspace as "Read, write and delete".'
+                        "Settings > Workspace as \"Read, write and delete\"."
                     )
                 return resolved
         verb = "written to" if write else "read"

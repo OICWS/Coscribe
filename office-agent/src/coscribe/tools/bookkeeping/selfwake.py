@@ -193,10 +193,8 @@ class WakeStore:
     def _list_all(self) -> list[WakeRequest]:
         if not self.root.is_dir():
             return []
-        return [
-            WakeRequest.from_dict(json.loads(p.read_text(encoding="utf-8")))
-            for p in sorted(self.root.glob("*.json"))
-        ]
+        return [WakeRequest.from_dict(json.loads(p.read_text(encoding="utf-8")))
+                for p in sorted(self.root.glob("*.json"))]
 
     def _path_for(self, wake_id: str) -> Path:
         return self.root / f"{wake_id}.json"
@@ -225,7 +223,9 @@ class SignalStore:
         os.replace(tmp_path, path)
         return record
 
-    def fired_since(self, event_key: str, since_iso: str, since_seq: int | None = None) -> bool:
+    def fired_since(
+        self, event_key: str, since_iso: str, since_seq: int | None = None
+    ) -> bool:
         path = self._path_for(event_key)
         if not path.exists():
             return False
@@ -257,13 +257,8 @@ def build_selfwake_tools(thread_id: str, state_dir: str | Path) -> list[Callable
 
     def _create(kind: str, reason: str, **fields: Any) -> dict[str, Any]:
         wake = WakeRequest(
-            wake_id=uuid.uuid4().hex[:12],
-            thread_id=thread_id,
-            kind=kind,
-            reason=reason,
-            created_at=_now_iso(),
-            seq=_Sequence(state_dir).next(),
-            **fields,
+            wake_id=uuid.uuid4().hex[:12], thread_id=thread_id, kind=kind, reason=reason,
+            created_at=_now_iso(), seq=_Sequence(state_dir).next(), **fields,
         )
         wake_store.save(wake)
         return wake.to_dict()
@@ -362,7 +357,11 @@ def build_selfwake_tools(thread_id: str, state_dir: str | Path) -> list[Callable
     def list_wakes() -> list[dict[str, Any]]:
         """List this conversation's own pending sleep/wake requests -- use this to check what you're
         currently waiting on."""
-        return [w.to_dict() for w in wake_store.list_pending() if w.thread_id == thread_id]
+        return [
+            w.to_dict()
+            for w in wake_store.list_pending()
+            if w.thread_id == thread_id
+        ]
 
     def cancel_wake(wake_id: str) -> dict[str, Any]:
         """Cancel one of this conversation's own pending wakes -- e.g. if

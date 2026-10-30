@@ -38,6 +38,9 @@ if TYPE_CHECKING:
     pass
 
 
+
+
+
 class XmlAnimationMixin(ToolkitBase):
     def list_pptx_transition_types(self) -> list[str]:
         """Every `transition` name `set_pptx_transition` accepts, sorted --
@@ -207,7 +210,8 @@ class XmlAnimationMixin(ToolkitBase):
     ) -> dict[str, object]:
         if transition not in TRANSITIONS:
             raise ValueError(
-                f"Unknown transition {transition!r}. Use one of: {', '.join(sorted(TRANSITIONS))}"
+                f"Unknown transition {transition!r}. Use one of: "
+                f"{', '.join(sorted(TRANSITIONS))}"
             )
         prs, file_path, target_slide = self._open_slide(path, slide)
         set_slide_transition(target_slide.element, transition, duration)
@@ -265,12 +269,7 @@ class XmlAnimationMixin(ToolkitBase):
                 )
             for paragraph_index in paragraph_indexes:
                 add_animation_step(
-                    target_slide.element,
-                    shape_id,
-                    animation,
-                    duration_ms,
-                    trigger,
-                    delay_ms,
+                    target_slide.element, shape_id, animation, duration_ms, trigger, delay_ms,
                     paragraph_index,
                 )
             timing = target_slide.element.find(f"{{{P_NS}}}timing")

@@ -155,8 +155,7 @@ def router(state: AppState) -> APIRouter:
         allowed = (
             set(PROVIDER_KEY_ENV_VARS)
             | set(PROVIDER_DEFAULT_MODEL_ENV_VARS)
-            | set(COSCRIBE_ENV_VARS)
-            | set(PROFILE_ENV_VARS)
+            | set(COSCRIBE_ENV_VARS) | set(PROFILE_ENV_VARS)
             | set(DESKTOP_ENV_VARS)
             | set(APPEARANCE_ENV_VARS)
         )

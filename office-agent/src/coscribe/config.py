@@ -220,6 +220,7 @@ class Settings(BaseSettings):
     code_runtime/) as a sub-agent. Off by default; the module downloads ~111 MB
     on first use and only works with models served over the Responses API."""
 
+
     code_model: str | None = None
     """The model Codex uses for a chat's code tasks ("provider:model"); unset,
     the chat's own model. Codex can't use every model the chat can (Claude and

@@ -305,7 +305,9 @@ def add_table_slide(prs: PresentationType, title: str, rows: list[list[str]]) ->
             cell.margin_bottom = Pt(6)
             paragraph = cell.text_frame.paragraphs[0]
             paragraph.alignment = (
-                PP_ALIGN.RIGHT if not is_header and looks_numeric_cell(cell_text) else PP_ALIGN.LEFT
+                PP_ALIGN.RIGHT
+                if not is_header and looks_numeric_cell(cell_text)
+                else PP_ALIGN.LEFT
             )
             add_inline_runs(paragraph, cell_text)
             flagged = not is_header and percent_cell_over_100(cell_text)
@@ -390,7 +392,9 @@ def icon_list_items(blocks: list[Block]) -> list[tuple[str, str]]:
     if not blocks:
         raise ValueError("layout: icon-list needs at least one bullet item.")
     if any(block.kind not in ("bullet", "number") for block in blocks):
-        raise ValueError("layout: icon-list only accepts bullet items -- no paragraphs or tables.")
+        raise ValueError(
+            "layout: icon-list only accepts bullet items -- no paragraphs or tables."
+        )
     if len(blocks) > ICON_LIST_MAX_ITEMS:
         raise ValueError(
             f"layout: icon-list supports at most {ICON_LIST_MAX_ITEMS} items "
@@ -444,7 +448,9 @@ def add_icon_list_slide(
     for index, (glyph, label) in enumerate(items):
         row_top = top + index * row_height
         icon_top = row_top + (row_height - icon_diameter) // 2
-        icon = slide.shapes.add_shape(MSO_SHAPE.OVAL, left, icon_top, icon_diameter, icon_diameter)
+        icon = slide.shapes.add_shape(
+            MSO_SHAPE.OVAL, left, icon_top, icon_diameter, icon_diameter
+        )
         icon.fill.solid()
         # No explicit per-slide accent (empty string) follows the deck's
         # own theme accent color (accent1) instead of a hardcoded literal

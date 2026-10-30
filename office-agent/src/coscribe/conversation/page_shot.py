@@ -11,6 +11,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -100,6 +102,25 @@ def _with_probe(body: bytes, width: int, height: int, fixed: bool) -> bytes:
     return body[:end] + report.encode() + body[end:] if end >= 0 else body + report.encode()
 
 
+@contextmanager
+def _no_crash_dialog() -> Iterator[None]:
+    """A browser that crashes must not put Windows' "Application Error" box in front of the
+    person (seen when a script drew with Edge). A child takes its parent's error mode when it
+    starts, so the mode is set just around the start and put back."""
+    if sys.platform != "win32":
+        yield
+        return
+    import ctypes
+
+    kernel32 = ctypes.windll.kernel32
+    no_boxes = 0x0001 | 0x0002 | 0x8000  # SEM_FAILCRITICALERRORS, NOGPFAULTERRORBOX, NOOPENFILE
+    previous = kernel32.SetErrorMode(no_boxes)
+    try:
+        yield
+    finally:
+        kernel32.SetErrorMode(previous)
+
+
 def _run(browser: str, args: list[str], profile: Path) -> subprocess.CompletedProcess[bytes]:
     command = [
         browser,
@@ -110,6 +131,7 @@ def _run(browser: str, args: list[str], profile: Path) -> subprocess.CompletedPr
         "--no-default-browser-check",
         "--disable-extensions",
         "--mute-audio",
+        "--disable-crash-reporter",
         f"--user-data-dir={profile}",
         *args,
     ]
@@ -117,7 +139,14 @@ def _run(browser: str, args: list[str], profile: Path) -> subprocess.CompletedPr
     if sys.platform != "win32" and hasattr(os, "geteuid") and os.geteuid() == 0:
         command.insert(1, "--no-sandbox")
     try:
-        return subprocess.run(command, capture_output=True, timeout=_TIMEOUT, check=False)
+        with _no_crash_dialog():
+            return subprocess.run(
+                command,
+                capture_output=True,
+                timeout=_TIMEOUT,
+                check=False,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise PageShotError("The browser could not draw the page") from exc
 
