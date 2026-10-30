@@ -324,14 +324,14 @@ async def test_preflight_refuses_a_workflow_that_cant_run(
     assert h.records == []
 
 
-async def test_preflight_refuses_an_agent_step_until_the_engine_runs_one(tmp_path: Path) -> None:
+async def test_preflight_refuses_an_agent_step_where_nothing_runs_agents(tmp_path: Path) -> None:
     workflow = parse_workflow(
         {"version": 2, "steps": [{"id": "a", "kind": "agent", "title": "A", "goal": "Sort",
                                   "tools": ["read_file"]}]}
     )  # fmt: skip
     h = Harness(tmp_path, [])
 
-    with pytest.raises(WorkflowNotRunnable, match="step 1: agent steps can't run yet"):
+    with pytest.raises(WorkflowNotRunnable, match="step 1: agent steps can't run here"):
         await h.run(InMemorySaver(), workflow).start({})
     assert h.records == []
 
