@@ -108,11 +108,11 @@ def test_plan_mode_toggle_updates_state(tmp_path: Path, monkeypatch: pytest.Monk
                 "context_window": 128_000,
                 "enabled_skills": [
                     "Dashboard",
+                    "Design",
                     "Docs",
                     "Excel Spreadsheets",
                     "PPTX Pages",
                     "PPTX Slides",
-                    "SVG and HTML Design",
                     "Skill Creator",
                     "Word Documents",
                 ],

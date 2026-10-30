@@ -14,12 +14,14 @@ from ...conversation import (
     CanvasError,
     DashboardDataError,
     canvas_folder,
+    canvas_of_page,
     is_canvas,
     is_dashboard,
     place_on_canvas,
     read_canvas,
     read_dashboard_data,
     render_dashboard,
+    variables_style,
 )
 from ..state import AppState
 
@@ -56,6 +58,19 @@ def canvas_cover(file: Path) -> Path:
     return canvas_folder(file) / boards[0]["file"] if boards else file
 
 
+def _with_canvas_variables(page: Path, body: bytes) -> bytes:
+    """An artboard's page with its canvas's variables put last in its head."""
+    canvas = canvas_of_page(page)
+    if canvas is None:
+        return body
+    try:
+        style = variables_style(read_canvas(canvas))
+    except CanvasError:
+        return body
+    end = body.lower().find(b"</head>")
+    return body[:end] + style + body[end:] if end >= 0 else style + body
+
+
 def design_response(file: Path, *, for_print: bool = False) -> Response:
     """The design file with the policy that keeps it inside its frame."""
     if is_canvas(file):
@@ -69,6 +84,7 @@ def design_response(file: Path, *, for_print: bool = False) -> Response:
         body = file.read_bytes()
         if is_dashboard(body):
             body = render_dashboard(file, body)
+        body = _with_canvas_variables(file, body)
     except OSError:
         return JSONResponse({"error": "This design could not be read"}, status_code=404)
     if for_print:
@@ -80,6 +96,8 @@ class CanvasPlacement(BaseModel):
     # Board id -> any of x, y, width, height.
     boards: dict[str, dict[str, float]] = {}
     notes: list[dict[str, Any]] | None = None
+    # Variable name -> its new value; only variables the canvas declares change.
+    variables: dict[str, str] = {}
 
 
 def _with_board_paths(path: str, file: Path, canvas: dict[str, Any]) -> dict[str, Any]:
@@ -147,12 +165,13 @@ def router(state: AppState) -> APIRouter:
         return JSONResponse(_with_board_paths(path, file, canvas))
 
     async def put_canvas(thread_id: str, path: str, body: CanvasPlacement) -> JSONResponse:
-        """What the person did on the canvas: boards moved or resized, notes changed."""
+        """What the person did on the canvas: boards moved or resized, variables set, notes
+        changed."""
         file = canvas_file(thread_id, path)
         if file is None:
             return JSONResponse({"error": "No canvas at that path"}, status_code=404)
         try:
-            canvas = place_on_canvas(file, body.boards, body.notes)
+            canvas = place_on_canvas(file, body.boards, body.notes, body.variables)
         except CanvasError:
             return JSONResponse({"error": "The canvas file could not be read"}, status_code=422)
         return JSONResponse(_with_board_paths(path, file, canvas))

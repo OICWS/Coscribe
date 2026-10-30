@@ -166,6 +166,14 @@
               }
             ],
             "title": "Notes"
+          },
+          "variables": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {},
+            "title": "Variables",
+            "type": "object"
           }
         },
         "title": "CanvasPlacement",
@@ -5549,7 +5557,7 @@
         "summary": "Get Canvas"
       },
       "put": {
-        "description": "What the person did on the canvas: boards moved or resized, notes changed.",
+        "description": "What the person did on the canvas: boards moved or resized, variables set, notes\nchanged.",
         "operationId": "put_canvas_api_threads__thread_id__canvas_put",
         "parameters": [
           {

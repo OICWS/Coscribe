@@ -88,7 +88,7 @@ def test_get_skills_lists_the_builtin_skills(
         "Word Documents",
         "Docs",
         "Skill Creator",
-        "SVG and HTML Design",
+        "Design",
         "markdown",
     }
 
@@ -300,11 +300,11 @@ def test_new_thread_defaults_to_the_builtin_skills_enabled(
 
     assert sorted(state["enabled_skills"]) == [
         "Dashboard",
+        "Design",
         "Docs",
         "Excel Spreadsheets",
         "PPTX Pages",
         "PPTX Slides",
-        "SVG and HTML Design",
         "Skill Creator",
         "Word Documents",
     ]

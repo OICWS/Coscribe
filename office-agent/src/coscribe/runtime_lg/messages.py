@@ -116,8 +116,8 @@ _ARTIFACTS = {
         "instructions for new decks say"
     ),
     "design": (
-        "a new design the app opens in its Design panel. Load the SVG and HTML Design skill, "
-        "then write one self-contained .html file with the drawings inline as SVG"
+        "a new design the app opens on its Design canvas. Load the Design skill, then write "
+        "its artboards' pages and the .design.json canvas as the skill says"
     ),
     "dashboard": (
         "a new dashboard the app opens in its Dashboard panel: a page of their real data. Load "

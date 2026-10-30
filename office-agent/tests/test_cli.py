@@ -351,7 +351,7 @@ def test_builtin_skills_are_enabled_by_default(
         "Word Documents",
         "Docs",
         "Skill Creator",
-        "SVG and HTML Design",
+        "Design",
     }
 
 
