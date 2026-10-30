@@ -188,7 +188,7 @@ marking a PR ready, wait for a green CI run (or run the full
 `bash scripts/check.sh`, about 4 minutes on 4 CPUs). A test that
 writes real files must `monkeypatch.chdir(tmp_path)` first if it (or
 code it calls) can fall back to a relative path -- a real, live-hit
-mistake this session made once already (see `test_web.py`'s own
+mistake this session made once already (see `tests/web/test_settings.py`'s
 `test_post_provider_persists_an_absolute_path_not_a_cwd_relative_one`
 for the established pattern to copy).
 

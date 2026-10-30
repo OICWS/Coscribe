@@ -535,785 +535,63 @@ existing folder): its runs read and write there instead of the app's
 default workspace. A task saved from a conversation starts with that
 conversation's folder.
 
-## Files
+## Files, documents and artifacts
 
-The Coordinator's most basic tools work on plain-text files under the
-workspace root (plus any `extra_readable`/`extra_writable` directories --
-see `Settings.extra_readable_dirs`/`extra_writable_dirs`, e.g. your
-Downloads folder, so a file doesn't need to be copied into the workspace
-first):
+Each tool's parameters and contract live in its own docstring, which is also what the model reads:
+`tests/tool_schemas.txt` lists every tool, its risk tier and whether it is bound or found through
+`search_tools` (decision 0001). How coscribe should go about a kind of work lives in the built-in
+skills (`src/coscribe/builtin_skills/<name>/SKILL.md`). This section only says what exists and
+where to read more.
 
-- `list_files(path=".", pattern="*", recursive=True)` / `search_files(query, path=".", pattern="*", regex=False)`
-  -- glob-listing and line-by-line search, literal substring by default or
-  (`regex=True`) a Python regular expression (an invalid pattern raises
-  immediately rather than matching nothing). Each caps its result (200
-  files, 100 matches) and returns a `truncated` flag when it does (plus a
-  real `total_count` for `list_files` -- `search_files` stops scanning
-  early once it hits the cap, so it can't report an exact total without
-  giving up that performance benefit). Don't assume the returned list is
-  complete without checking `truncated`; narrow `path`/`pattern` and call
-  again for the rest.
-- `read_file(path, head=None, tail=None)` / `write_file(path, content, overwrite=True)`
-  -- whole-file text read/write (same write contract as
-  `write_docx`/`write_pdf`). Writes are UTF-8; reads also take GBK/GB18030
-  (what Chinese-locale Excel and Notepad save), with a note saying so, and
-  `edit_file` writes such a file back in its own encoding. `read_file`'s
-  `head`/`tail` (mutually exclusive) read only a large file's first/last N
-  lines instead of the whole thing.
-- `get_file_info(path)` -- a file or directory's size and last-modified
-  time (`{"path", "is_directory", "size_bytes", "modified"}`, `size_bytes`
-  is `null` for a directory), without reading its contents -- check before
-  `read_file` on a file that might be large, or to tell which of a few
-  candidates is newest.
-- `edit_file(path, old_text, new_text, replace_all=False)` -- replaces one
-  exact, unique occurrence of `old_text` with `new_text` (every occurrence
-  with `replace_all=True`) without resending the rest of the file -- the
-  tool to reach for over `read_file`+`write_file` when only part of a
-  (especially large) text file needs to change. Raises rather than
-  guessing if `old_text` isn't found, or matches more than once without
-  `replace_all` -- include enough surrounding context in `old_text` to
-  pin down the one place you mean, same convention Claude Code's own Edit
-  tool uses.
-- `edit_file_batch(path, edits)` -- several `edit_file`-style edits to
-  one file in a single call. `edits` is one string: alternating
-  old_text/new_text chunks separated by a line containing only `---`
-  (the same convention `write_pptx` uses for its own slide content) --
-  not a structured list/object parameter, since this codebase's tool
-  schemas have to stay Gemini-compatible and the schema builder they go
-  through has no support for list/dict-typed parameters at all. Applied
-  in order (a later edit can match text an earlier one in the same batch
-  just introduced), written to disk only once every edit has validated --
-  one bad edit anywhere in the batch leaves the file untouched. No
-  per-edit `replace_all`; a change that needs it still goes through a
-  separate `edit_file` call.
-- `delete_file(path)` -- permanently deletes one file. Rejects a
-  directory outright (not a disguised `rm -rf`) -- use `run_python_script`
-  (`shutil.rmtree`) for a whole directory.
-- `move_file(source, destination, overwrite=False)` -- moves or renames a
-  file *or* a whole directory (a same-directory move is just a rename).
-  Always rejects an existing directory at `destination`, even with
-  `overwrite=True` -- merging into vs. replacing it is ambiguous either
-  way, so this doesn't guess; use `run_python_script` for that case.
-- `copy_file(source, destination, overwrite=False)` -- unlike
-  `read_file`/`write_file`'s text-only shape, this copies bytes
-  directly, so it works on binary files too (images, PDFs, `.pptx`, any
-  format) without corrupting them. Single files only, same directory
-  restriction as `delete_file`.
+- **Files.** `list_files`, `search_files`, `read_file`, `get_file_info` (`READ`) and `write_file`,
+  `edit_file`, `edit_file_batch`, `move_file`, `copy_file`, `delete_file` (`WRITE_LOCAL`, a delete
+  goes to the recycle bin) work inside the conversation's folders (Settings › Workspace; a
+  conversation can be given more, read-only or read-write). Card: `src/coscribe/tools/AGENTS.md`.
+- **Artifacts** (decisions 0015, 0027): what coscribe makes from a source it owns opens in a panel
+  beside the conversation and is listed on the Artifacts page, where it can be renamed, copied,
+  pinned and deleted.
+  - *Doc*: a markdown document edited in the app, with comments for coscribe, exported to
+    Markdown, PDF and Word (decision 0025; the Docs skill).
+  - *Slides*: a deck written as one SVG page per slide, compiled by `build_pptx_from_pages` into
+    native, editable PowerPoint; a slide becomes an HTML section the first time it is edited in
+    the panel (decisions 0010, 0016-0018, 0020; the PPTX Pages skill, `PPTX_DESIGN.md`).
+  - *Design*: a canvas of HTML artboards with shared variables, panned, zoomed and played in the
+    panel, its artboards linked into clickable prototypes (the Design skill).
+  - *Dashboard*: a page and its datasets; every figure shows where it came from, and Refresh asks
+    coscribe to read the sources again (the Dashboard skill).
+  - `look_at_page` lets coscribe see a Design or Dashboard as the app draws it, with a report of
+    what a look catches.
+- **Office files the person brings** are read with `read_docx`, `read_xlsx`, `read_pptx` and
+  `read_pdf`, and changed with the format's own tools: Word through `write_docx`,
+  `edit_docx_structure` and the review tools (tracked changes, comments; the Word skill), Excel
+  through `write_xlsx_cells` and `modify_xlsx` with formulas computed by IronCalc (decision 0011;
+  the Excel skill), PowerPoint through `write_pptx` and the template and shape tools for the
+  person's own template (the PPTX Slides skill). They are shown, not owned: the Word panel is frozen
+  and an Excel file is not an artifact (decisions 0025, 0027).
+- **Previews and conversion** use the Microsoft Office or WPS on the machine through COM; a PDF
+  and a deck built from SVG pages need no office program, and LibreOffice is an optional engine,
+  found or installed on request (decisions 0012, 0026). Without one, a preview or conversion is
+  skipped with a reason, never the write.
 
-`write_file`/`edit_file`/`edit_file_batch`/`delete_file`/`move_file`/
-`copy_file` are all `WRITE_LOCAL` risk and require approval;
-`list_files`/`read_file`/`search_files`/`get_file_info` are `READ` risk
-and don't.
+## Scripts and commands
 
-## Documents (Word/PDF/Excel/PowerPoint)
+`run_python_script`, `run_node_script` and `run_background_script` run code the model writes, in a
+Python venv and an npm directory of their own (Settings › Capabilities installs packages and
+chooses the Python); `run_background_command` runs a command line. All are `EXEC` and approved
+under the permission mode.
 
-Alongside plain-text `read_file`/`write_file`, the Coordinator has
-`read_docx`/`write_docx`, `read_pdf`/`write_pdf`, `read_xlsx`/`write_xlsx`,
-and `read_pptx`/`write_pptx` for real Word, PDF, Excel, and PowerPoint files
-under the workspace -- see `ARCHITECTURE.md` for why these are built in
-rather than routed through Skill/MCP like other document formats. A new
-PowerPoint deck is written as one SVG page per slide and compiled into
-native, editable shapes by `build_pptx_from_pages` (the *PPTX Pages* skill,
-decision 0010); `write_pptx` and the template tools stay for a user's own
-template and for decks the user brings. The
-docx/pdf writers (`python-docx`/`reportlab`) take the same lightweight
-markdown subset:
-
-- `#` / `##` / `###` for headings (up to 3 levels)
-- `-` or `*` for bullet items, `1.` for numbered items
-- `| cell | cell |` rows for tables
-- any other line is a plain paragraph
-
-Around those: `add_docx_chart` (a native, editable bar/line/pie chart from a
-pipe-table) and `add_docx_image` put a chart or picture into an existing Word
-file after a named paragraph; `edit_docx_structure` inserts sections, lists,
-tables or a contents list into an existing Word file, and moves or deletes
-sections, leaving the rest of the file as it is; `convert_office_file` opens a legacy
-`.doc`/`.xls`/`.ppt` (by converting it to the OOXML format the readers take)
-and exports Word/Excel/PowerPoint files as PDF. Conversion and the page
-previews of Word, Excel and PowerPoint files use the Microsoft Office or WPS
-installed on Windows, through COM (decision 0012); a PDF, and a deck built from
-SVG pages, are drawn without any office program. Pages are rasterized and
-measured with PDFium, and formulas are computed by IronCalc, so nothing else
-needs installing.
-
-`read_docx`/`read_pdf` go the other way through `mammoth`+`markdownify`
-and `pdfplumber` respectively -- the same libraries microsoft/markitdown
-itself uses internally for these formats, without pulling in markitdown's
-own mandatory file-type-sniffing dependency. Their output is real
-markdown, a superset of what the writers accept (arbitrary heading depth,
-links, bold/italic), so reading a generated file back is semantically
-faithful but not necessarily byte-for-byte identical. There's no partial
-in-place editing -- to change an existing Word/PDF file, read it,
-produce the modified full text, and write it back with `overwrite=True`
-(same whole-file-overwrite contract `write_file` already uses). Reads are
-low risk; writes are medium risk and require approval, same tier as
-`write_file`.
-
-For a specific term inside one or more PDFs, `search_pdf(query, path=".",
-pattern="*.pdf")` finds matching page numbers across every PDF under
-`path` without spending context on `read_pdf`-ing whole documents first --
-same idea as `search_files`, just PDF-aware (uses the same `pdfplumber`
-extraction `read_pdf` does).
-
-`read_xlsx`/`write_xlsx` (`openpyxl`) work differently from the docx/pdf
-pair, since a workbook is a grid, not flowing text: `content` for
-`write_xlsx` is pipe-table rows only (no headings/bullets/paragraphs), and
-cells that look numeric are stored as real numbers so they're usable in
-Excel formulas afterward. `read_xlsx(path)` with no `sheet` renders every
-sheet as a `## <sheet name>` heading plus its table, in one call; pass
-`sheet="Name"` to read just one sheet, same "don't spend context you don't
-need" idea as `search_pdf`. `overwrite` is also scoped differently here --
-to *the one sheet* you're writing, not the whole file: writing a new
-`sheet_name` to an existing workbook always appends it (build a multi-sheet
-report across several calls), while writing an existing `sheet_name`
-replaces just that sheet's content if `overwrite=True`, or raises if not.
-
-A cell starting with `=` in `write_xlsx`'s `content` is written as a real
-Excel formula (`=SUM(B2:B9)`), not a hardcoded number -- prefer this
-whenever a value depends on other cells, so the sheet actually
-recalculates when its inputs change. `XLOOKUP`/`XMATCH`/`SORT`/`FILTER`/
-`UNIQUE`/`SEQUENCE` are rejected outright (they spill over many cells,
-which the formula engine that verifies every formula does not do, and a
-partial success would silently populate only one cell). Six
-post-2007 functions (`TEXTJOIN`/`CONCAT`/`IFS`/`SWITCH`/`MAXIFS`/
-`MINIFS`) are auto-prefixed with the hidden `_xlfn.` Excel itself uses, so
-you don't need to remember that. `write_xlsx` computes every formula it
-just wrote with IronCalc and stores the values in the file (openpyxl only
-ever writes the formula text, never a cached value) -- see the response's
-`recalc_status` (`"success"`/`"errors_found"`/`"skipped"`), `total_errors`,
-`formula_error_locations` and `unchecked_formulas` (functions the engine
-does not have; Excel computes them on open). `recalc_xlsx(path)` does the same
-recalculation on demand, for a file that already has formulas but wasn't
-written by `write_xlsx`. `format_xlsx_cells(path, sheet_name, cell_range,
-number_format="", font_color="", bold=False)` applies a number format
-(e.g. `"$#,##0"`, `"0.0%"`) and/or font color/weight to a cell or range --
-chain it after `write_xlsx` the same way `add_xlsx_chart` is chained.
-
-`read_pptx`/`write_pptx` (`python-pptx`) use a slide-separated markdown
-convention: a line containing exactly `---` starts a new slide (same
-convention Pandoc/Marp/reveal.js already use); within a slide, the first
-heading becomes the slide title and the rest becomes the body -- bullets/
-paragraphs *or* a single pipe table, not both (put a table on its own
-slide). `write_pptx` is whole-file overwrite, like `write_docx`/`write_pdf`.
-`read_pptx(path)` with no `slide` renders every slide; pass a 1-based
-`slide` number to read just one.
-
-`add_xlsx_chart(path, sheet_name, chart_type, data_range="", title="", anchor="")`
-and `add_pptx_chart(path, slide, chart_type, data, title="")` add a bar,
-line, or pie chart to a file that already exists -- they don't create the
-file themselves, chain them after `write_xlsx`/`write_pptx`. For xlsx,
-`data_range` is optional and defaults to the sheet's entire used range
-(the first column is the category axis, the rest are data series named
-from their header cell) -- pass an explicit A1 range like `"A1:C6"` only
-to chart a subset of a larger sheet; naming the range yourself is easy to
-get one row or column off, silently dropping data or plotting an empty
-series. For pptx, `data` is the same pipe-table convention `write_xlsx`
-uses, since a slide doesn't have a spreadsheet's persistent grid to
-reference. Both are deliberately scoped to single-purpose charts, no
-stacked or secondary-axis/combo charts -- see `ARCHITECTURE.md` for why.
-`add_pptx_chart` positions the chart in the slide's own content area,
-below any text already on that slide's body placeholder (shrinking that
-placeholder to fit its own text first) rather than a fixed box that
-could land on top of it or ignore the deck's real slide size; if the
-existing body text leaves too little room, it raises rather than
-producing an overlapping or off-slide chart. It also matches the deck's
-own theme text color (so it stays readable on a dark `theme=`) instead
-of python-pptx's chart default black. A pie chart takes exactly one
-data column (a second series has no meaningful rendering as pie
-slices).
-
-`write_docx`/`write_pptx` both take an optional `template_path` -- an
-existing .docx/.pptx file whose styles/page setup (docx) or theme/fonts
-(pptx) carry over to the new file, with its own content/slides cleared
-first.
-
-`write_pptx` also takes an optional `theme` parameter for a from-scratch
-deck (no `template_path` needed) that would otherwise stay plain white:
-comma-separated `key=value` color/font tokens -- `bg`, `text`, `surface`,
-`accent` (6-hex-digit colors, no `#`), `heading_font`, `body_font`. Every
-key is optional; e.g. `theme="bg=0F172A,text=F8FAFC,accent=38BDF8"` for a
-dark navy deck with a cyan accent. This edits the deck's own OOXML
-`<a:clrScheme>`/`<a:fontScheme>` directly (python-pptx has no public API
-for it), so it reaches every shape that references a theme color, not
-just the slide background -- `layout: icon-list`/`layout: stat-callout`
-slides that don't specify their own accent hex follow the theme's
-`accent` automatically. Chinese/Japanese/Korean text in a `write_pptx`
-deck (with or without `theme`) always renders in a real CJK typeface
-(Microsoft YaHei), not whatever fallback font the opening machine's
-PowerPoint happens to pick -- every stock python-pptx theme ships with
-that font slot empty. `add_pptx_image(path, slide, image_path, left=1.0, top=1.0,
-width=None, height=None)` inserts a picture already on disk onto an
-existing slide (position/size in inches); `set_pptx_notes(path, slide,
-notes)` sets that slide's speaker notes, replacing them entirely.
-`set_pptx_transition(path, slide, transition, duration=1.0)` sets the
-slide-change transition for advancing into that slide -- any of
-PowerPoint's own real native transitions (48 effects across its own
-Subtle/Exciting/Dynamic Content gallery categories -- `list_pptx_
-transition_types()` returns the full list, e.g. `"morph"`, `"vortex"`,
-`"honeycomb"`, `"cube"`, `"page_curl"`, plus the originally-supported
-`"fade"`/`"push"`/`"wipe"`), or `"none"`. Each effect uses PowerPoint's
-own sensible default variant (e.g. `"push"` always enters from the
-right) -- no direction/shape/style customization yet, a deliberately
-scoped-down v1 of the much larger registry this is adapted from (see
-`PPTX_DESIGN.md` §27). A handful of legacy names (`"strips"`, `"wheel"`,
-...) resolve as aliases onto one of the 48 canonical ones.
-
-`fill_pptx_template(path, template_id, content, overwrite)` fills your
-title/bullets into one of Coscribe's own bundled, hand-designed decks
-instead of building slides from scratch -- unlike `write_pptx`'s
-`template_path` above, it keeps every decorative shape/background in the
-template file exactly as designed rather than clearing the slides first.
-Each template declares one repeatable "content" slide role (see its
-`.yaml` manifest's `slide_roles` list) that is duplicated or trimmed
-automatically to match however many `---`-separated chunks `content`
-actually has, so the chunk count no longer has to equal the template's
-own slide count -- only its non-repeatable slides (title, closing) still
-need exactly one matching chunk each, in their fixed position. Each
-chunk is title + bullets/paragraphs only, no tables or `layout:`
-directives. Templates ship as `.pptx`/`.yaml` pairs under
-`src/coscribe/builtin_templates/pptx/<id>/`, generated by
-`scripts/build_pptx_templates.py` (run it to add a new one or tweak an
-existing design in code, or hand-author a `.pptx`/`.yaml` pair directly
-the way the original `modern-block` template was). Bundling a genuine
-third-party template is possible, but only under a clearly redistribution-
--permitting license (CC0/public domain, verified against the real
-source, not just "free to use") -- most "free PowerPoint template" sites
-turn out to be personal-use-only or attribution-required in ways that
-don't clearly permit shipping the file inside a third-party open-source
-tool, so this bar has only been cleared once so far. As of this writing
-there are seven, all 4 slides (title/content/content/closing):
-`modern-block` (solid color blocks, navy accent), `minimal-light` (white
-background, one thin accent rule per title, no color blocks),
-`bold-statement` (full-bleed dark title/closing slides, a colored accent
-spine on content slides), `investor-pitch` (dark throughout, one bright
-cyan accent reserved for the rule), `academic-research` (even quieter
-than minimal-light -- a flat slate hairline, no gradient, no color),
-`product-launch` (near-black, one vivid coral accent, oversized
-statement-scale title), and `velis` (a real third-party design by
-Laurens R. Krol, CC0 1.0 -- teal/sage/magenta palette, stage-curtain
-motif, the design's own A4-landscape proportions rather than 16:9; see
-`src/coscribe/builtin_templates/pptx/velis/LICENSE`). The three newest
-were prompted by hugohe3/ppt-master's own non-brand style specs
-(`investor-pitch`/`academic-research`/`product-launch` design tendencies,
-not any SVG or palette of theirs) -- see `PPTX_DESIGN.md` §35 for why its
-`brands/` templates (McKinsey, Google, IBM, ...) were deliberately left
-out. The model picks
-among them by tone/fit when asked to build a deck -- `GET
-/api/templates`-style discovery isn't needed since the full list is
-already in its system instructions. Each listed template is tagged
-`[16:9]`/`[NOT 16:9]` (`TemplateInfo.is_widescreen`, computed from the
-real file's own `slide_width`/`slide_height`, not assumed), and the
-model defaults to a `[16:9]` one unless the user is fine with different
-proportions or names a non-16:9 template specifically -- real, live
-user feedback: `velis`'s own A4-landscape proportions got picked for a
-plain deck request with no stated preference, which surprised the
-user, since 16:9 is the expected default for a PowerPoint deck.
-
-`extract_pptx_template(source_path, template_id, name, description,
-overwrite=False)` distills a *new*, immediately-usable
-`fill_pptx_template` template from an arbitrary reference `.pptx` -- a
-user's own company-branded deck, say -- instead of Coscribe's own
-bundled four. It classifies the reference deck's real slides into the
-same title/content/closing roles the bundled templates use (first
-slide = title, last = closing, everything between = content) and
-requires every slide already have a real title and/or body placeholder
-`fill_pptx_template` can write into; a slide that doesn't raises,
-naming which one, rather than silently producing a broken template. The
-result is saved under `COSCRIBE_CUSTOM_TEMPLATES_DIR` (default
-`./templates`, auto-created, gitignored -- same convention as
-`COSCRIBE_SKILLS_DIR` above) alongside Coscribe's own bundled set, so it
-shows up in the model's own template listing on future runs too, not
-just the turn it was created in. Only the reference deck's *design* is
-kept -- its own original wording is always overwritten by
-`fill_pptx_template`'s next call, and no logo/master-layout-perfect
-clone is attempted, just what python-pptx can read/write directly.
-
-`edit_pptx_text(path, slide, title, content, placeholder_index)` edits one
-existing slide's title and/or one content placeholder's text in place, in
-any `.pptx` already in the workspace -- not just Coscribe's own bundled
-templates the way `fill_pptx_template` is restricted to, so this is the
-tool for a real file the user placed in the workspace or uploaded
-themselves (their own company template, a deck someone sent them) and
-wants the wording changed. Everything else in the file -- theme, every
-other slide, images, decorative shapes, the file's own placeholders it
-wasn't told to touch -- is left exactly as authored; both `title` and
-`content` are optional and independent, so a call can rename just the
-title, replace just the body, or both. Tested live against a real
-Microsoft-authored template downloaded from Microsoft's own template
-catalog (13 slides, 12 distinct layouts): this surfaced and fixed two
-real bugs that `fill_pptx_template`'s always-empty bundled templates never
-exposed -- placeholder text was being appended onto instead of replacing
-a placeholder's existing content (garbled output against any template
-that ships with real sample text, which real-world templates always do),
-and a content-placeholder slot already holding a native table crashed
-with an opaque `AttributeError` instead of a clean, actionable error.
-`placeholder_index` (0-based, default 0) reaches a slide's second content
-placeholder on a "two column"-style layout -- call `edit_pptx_text` again
-with `placeholder_index=1` for the other one.
-
-`delete_pptx_slide(path, slide)` removes one slide;
-`duplicate_pptx_slide(path, slide, insert_at=None)` copies one (every
-shape, its exact position/size/formatting, and every image on it --
-speaker notes are not carried over to the copy; defaults to inserting
-right after the source, pass a 1-based `insert_at` to place it
-elsewhere); `reorder_pptx_slide(path, slide, new_position)` moves one
-slide to a new 1-based position. All three operate on an existing
-`.pptx`'s slide *structure* -- every other slide's own content is
-untouched.
-
-`list_pptx_shapes(path, slide)` returns a structured inventory of every
-shape on one slide of an existing `.pptx` -- index, type, position/size
-(inches), rotation, a short text preview, whether it's a table
-(`is_table`) or picture (`is_picture`), fill color (`"#RRGGBB"` for
-a literal color, `"theme:ACCENT_1"` for a `theme_color` reference),
-whole-shape hyperlink address (`None` if it has none), and whether it's
-real SmartArt (`is_smartart`) -- if so, `smartart_text` lists every
-node's own text, since neither this tool nor `python-pptx` can generate
-or edit real SmartArt at all (the layout algorithm lives in PowerPoint
-itself, not the file format). `edit_pptx_shape(path, slide, shape_index,
-left_in, top_in, width_in, height_in, rotation, fill_color)` moves,
-resizes, rotates, and/or recolors one shape in place -- every property is
-optional, only the ones given are changed, and nothing else on the slide
-(or the rest of the deck) is touched. `delete_pptx_shape(path, slide,
-shape_index)` removes one shape entirely, any type. Call `list_pptx_shapes`
-first to find the right `shape_index` rather than guessing it: this is
-the base set of tools for adjusting or removing one element of an
-already-designed deck (a real uploaded template, or one Coscribe already
-generated) instead of rebuilding the slide from scratch. For a SmartArt
-shape specifically, the practical path is: read its `smartart_text`,
-`delete_pptx_shape` it, then rebuild the same idea with this file's other
-shape/icon/table tools (or `write_pptx`'s own `icon-list` layout) --
-there is no way to edit real SmartArt in place.
-
-`replace_pptx_image(path, slide, shape_index, image_path)` swaps an
-existing picture's image in place -- position, size, and crop are
-untouched, only the pixels change (it repoints the shape's own
-`<a:blip>` at a new image part rather than touching the shape itself).
-Raster formats only (PNG/JPEG/GIF/BMP/TIFF, same as `add_pptx_image`),
-not SVG. Use this to swap out a photo or an already-placed icon for a
-different one without disturbing its placement.
-
-`list_pptx_icons()` returns Coscribe's bundled icon names -- a curated
-~50-icon subset of [Lucide](https://lucide.dev) (ISC license) covering
-common business-deck needs (arrows/trend, status, org/business, charts,
-actions, common objects), rasterized to black-on-transparent PNGs at
-build time by `scripts/build_pptx_icons.py` (re-run it to add another
-name to the bundle; it needs `cairosvg`, a dev-only tool, not a project
-dependency). `add_pptx_icon(path, slide, icon_name, left_in=1.0,
-top_in=1.0, size_in=1.0, color="1F2937")` inserts one as a new square
-picture on an existing slide, recolored to `color` (6-hex, no `#`) via
-plain PIL alpha-masking at call time -- no SVG-rendering dependency at
-runtime. This is a real icon, unlike `write_pptx`'s own `layout:
-icon-list` (a glyph inside a plain colored circle).
-
-`recolor_pptx_icon(path, slide, shape_index, color)` changes an
-already-placed icon's color without moving, resizing, or re-inserting
-it -- same relationship-swap mechanism as `replace_pptx_image`, but the
-new image is derived from the icon's own *current* pixels (its existing
-alpha/transparency channel recolored to `color`) rather than a bundled
-icon looked up by name, so it works on any icon `add_pptx_icon` placed
-regardless of which one, and can be called again on an already-recolored
-icon. It does not detect edges -- every non-transparent pixel becomes
-the new solid color, so using it on an opaque photo flattens the whole
-picture to one color block; only meant for icons/logos with real
-transparency. Find `shape_index` via `list_pptx_shapes` the same way as
-the shape-editing tools above.
-
-`edit_pptx_table_cell(path, slide, shape_index, row, col, text)` replaces
-one cell's text in an existing table in place (0-based `row`/`col`);
-`merge_pptx_table_cells(path, slide, shape_index, start_row, start_col,
-end_row, end_col)` merges a rectangular range of cells into one (e.g. a
-spanning header) -- either diagonal corner order works, and it raises if
-the range already contains a merged cell. Both find the table via
-`list_pptx_shapes`'s `shape_index`/`table_dimensions` the same way
-`edit_pptx_shape` does. Merging keeps every merged-away cell's text,
-appended as an extra paragraph into the resulting cell, rather than
-discarding it -- clear a cell with `edit_pptx_table_cell` first if you
-don't want its old text carried into the merge. Row/column insertion and
-row-height/column-width resizing aren't supported yet.
-
-`add_pptx_hyperlink(path, slide, shape_index, url, text=None)` makes a
-shape or a piece of its text clickable, linking to an external URL or
-jumping to another slide in the same deck -- pure `python-pptx` public
-API (`Run.hyperlink`/`Shape.click_action.hyperlink` for external URLs,
-`Shape.click_action.target_slide` for slide jumps), no hand-written XML,
-unlike `set_pptx_transition`/`add_pptx_animation`/`add_pptx_audio`
-above. Find `shape_index` via `list_pptx_shapes` the same way as the
-shape-editing tools above. Omit `text` to hyperlink the *whole shape*
-(an image, an icon, an autoshape, even a table) via its click action;
-pass `text` to hyperlink just one run inside a text frame -- it must
-match that run's exact text (raises, listing the shape's actual run
-texts, if nothing matches; hyperlinking a substring within a run isn't
-supported). `url` is either an external destination -- must start with
-`"http://"`, `"https://"`, `"mailto:"`, or `"ftp://"` -- or `"#slide-N"`
-(1-based) to jump to slide N within this presentation instead, real
-PowerPoint's own actual click-action for that (`list_pptx_shapes`'s own
-`hyperlink` field reports an existing slide-jump shape back in this same
-`"#slide-N"` syntax, not the raw internal relationship target).
-
-`check_pptx_delivery(path)` is a read-only audit of a finished `.pptx`
-before sending it -- package integrity (real ZIP CRC check, duplicate
-internal part names), font portability (every font actually referenced,
-theme fonts included, flagged against a curated list of fonts that ship
-pre-installed on real Windows/Mac machines -- an unsafe one may silently
-substitute on a machine that doesn't have it), media footprint (total
-embedded size/count plus the 5 largest files, a quick way to see what's
-bloating the file before emailing it), hidden slides (easy to leave
-behind after duplicating/reordering), and a motion summary (which
-1-based slide numbers have a transition, a real object animation, or an
-`add_pptx_audio`-style track). Returns structured fields plus a plain-
-English `advisories` list for anything worth flagging (empty if nothing
-stood out). Doesn't render or open the file visually -- pair with
-`render_pptx_preview`/`review_work` for that; this is about problems
-that only show up in the file's own structure. Falls back to just the
-package-level findings (rather than raising) if the file is broken
-enough that even `python-pptx` itself can't fully parse it.
-
-`read_pptx_theme_colors(path)` returns an existing `.pptx`'s real master
-theme color palette (its `<a:clrScheme>`) -- the same 12 colors
-PowerPoint's own Design tab color picker edits: `dk1`/`lt1`, `dk2`/`lt2`,
-`accent1`-`accent6`, and `hlink`/`folHlink`, each a 6-hex-digit string.
-`edit_pptx_theme_colors(path, colors)` changes one or more of them in
-place, `colors` the same comma-separated `key=value` string convention
-as `write_pptx`'s own `theme` parameter but naming the real slots
-directly (e.g. `"accent1=0F6B5C,accent2=C2410C"`) -- only the slots
-named are changed, applied to every slide master in the file. Because
-every theme-color-referencing shape/placeholder across the whole deck
-draws from these same 12 shared slots, this is the single most
-far-reaching edit in this file -- call `read_pptx_theme_colors` first
-rather than guessing which slot maps to "the color in the title."
-**Scope note**: Coscribe's own generated decorative shapes (`write_pptx`'s
-icon-list circles, stat-callout cards, scrims) use hardcoded RGB, not
-theme-color references, so this doesn't recolor those -- it's most
-useful against a real uploaded or downloaded template whose own design
-already references theme colors, not a coscribe-generated deck's own
-decorative elements.
-
-`write_docx` also supports four things `python-docx` has no native API
-for, aligned with what Anthropic's own docx skill covers: a `[TOC]` line
-anywhere in `content` inserts a real Word table-of-contents field built
-from the document's heading levels (raw OOXML field-code XML, since
-python-docx has no TOC API at all) -- it shows placeholder text until
-Word recalculates it, which happens automatically the first time the file
-is opened, no manual "Update Field" needed. A trailing `{{comment: text}}`
-on a heading/paragraph/bullet/numbered-item line attaches a real Word
-comment (visible in Word's Comments pane, authored as `comment_author`)
-anchored to that whole line -- not recognized inside table cells.
-`page_size` (`"letter"`/`"legal"`/`"a4"`/`"a3"`) and `orientation`
-(`"portrait"`/`"landscape"`) override the page setup of a blank document
-or a `template_path`. `track_changes=True` wraps everything this call
-writes in a tracked insertion (`w:ins`, authored as `change_author`)
-instead of already-final content -- useful when the document should go to
-a human as a reviewable redline rather than a silent rewrite; combined
-with `template_path`, the template's own existing paragraphs are marked
-as a tracked *deletion* instead of being discarded outright, so the
-reviewer sees old and new content side by side in Word. Tables are always
-written as final content under `track_changes`, and table-level tracked
-deletion isn't supported when replacing a template's tables -- both
-documented scope limits, not oversights.
-
-`add_pptx_animation(path, slide, shape_index, animation, duration=0.5,
-trigger="on-click", delay=0.0, by_paragraph=False)` adds an animation to
-one shape, `shape_index` 0-based the same way as `list_pptx_shapes`/
-`edit_pptx_shape` (title first, then body/table, then anything added
-later by `add_pptx_image`/`add_pptx_chart`). `animation` is any of
-PowerPoint's own 203 real native animation presets -- `list_pptx_
-animation_types()` returns the full list, grouped by an `entrance_`/
-`emphasis_`/`exit_`/`path_` prefix (shape starts hidden then reveals /
-stays visible throughout / is visible then hides / moves along a motion
-path). Every preset's exact XML -- `presetID`/`presetClass`/
-`presetSubtype`/motion-element shape -- is a real, PowerPoint-authored
-`<p:cTn>` row vendored unmodified from
-[hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) (see
-`PPTX_DESIGN.md` §29), parsed and adapted (ids renumbered, shape
-retargeted, duration scaled) at call time rather than hand-rebuilt from
-scratch -- entrance and exit variants of the same visual effect share
-identical `presetID`/`presetSubtype` in real PowerPoint files
-(`presetClass` is what actually distinguishes them), which the read-back
-verification checks for explicitly. The six original short names
-(`"fade"`, `"fly-in"`, `"exit-fade"`, `"exit-fly"`, `"emphasis-grow"`,
-`"emphasis-spin"`) still work as aliases onto their real preset key. Most
-presets scale their whole timing proportionally to `duration`; a handful
-(instant appear/disappear toggles, discrete state changes like changing a
-shape's font) aren't duration-adjustable in real PowerPoint either, so
-`duration` is ignored for those and the result's own `duration_ms` field
-reports what was actually used. `trigger` is PowerPoint's own Animation
-Pane Start mode: `"on-click"` (default) starts a new, independently
-click-triggered group; `"with-previous"`/`"after-previous"` instead chain
-onto the last animation added to that slide -- playing at the same time,
-or automatically once it finishes -- with `delay` adding any extra gap in
-seconds. The very first animation on a slide still plays even if given
-`"after-previous"`, same as real PowerPoint: it just starts on slide
-entry instead of needing a click. `by_paragraph=True` animates each of
-the shape's non-empty paragraphs as its own step instead of the whole
-shape at once -- the standard way to reveal a bulleted list one bullet at
-a time (pair with `trigger="on-click"` for one click per bullet, or
-`"after-previous"` with a small `delay` for an automatic cascade). Unlike
-everything else in this section, this is hand-built OOXML timing XML --
-`python-pptx` has no animation API at all.
-It's checked two ways before it ever reaches you: the generated XML is
-validated against ECMA-376's real element ordering (verified empirically
-by round-tripping through `python-pptx` with warnings treated as errors),
-and after saving, the file is re-opened and structurally checked that the
-animation actually landed on the right shape -- if that check fails, the
-original file is left untouched and the tool raises instead of silently
-producing a broken deck. What it can't check is whether it *looks* right
-in real PowerPoint: this environment only has LibreOffice to test against,
-and LibreOffice's leniency isn't a reliable stand-in for PowerPoint's own
-stricter validation. Treat `add_pptx_animation` as best-effort, and open
-the result in real PowerPoint before relying on it for anything that
-matters.
-
-`add_pptx_audio(path, slide, audio_path, left_in=0.3, top_in=0.3,
-trigger="auto", start_delay=0.0, hidden=False)` embeds an mp3/m4a/wav
-file on a slide as a real media shape with a speaker icon -- background
-music, a voiceover/narration track, or a sound effect, not just an
-attached file. `trigger="auto"` (default) plays automatically once the
-slide begins, `start_delay` seconds later; `trigger="on-click"` instead
-waits for the speaker icon itself to be clicked, matching PowerPoint's
-own "Start: On Click" option (`start_delay` is ignored for this
-trigger). `hidden=True` moves the icon off the visible canvas instead of
-placing it at `(left_in, top_in)` -- for background narration nobody
-should see or accidentally click, while still keeping `trigger="auto"`.
-Real PowerPoint audio XML needs two relationships to the same media
-part (a legacy `<a:audioFile>` reference plus a PowerPoint-2010
-`<p14:media>` extension) -- `python-pptx`'s own `add_movie` builds the
-video equivalent the identical way for the identical documented reason,
-but only supports video, so this is hand-built OOXML rather than a
-reuse of that method (which would leave the wrong element name and
-relationship type on the shape). Schema-validated before saving, same
-two-check discipline as `add_pptx_animation` above (real ECMA-376
-validation plus a python-pptx warnings-as-errors round-trip); has only
-been tested against LibreOffice in this environment, so treat it as
-best-effort and confirm playback sounds right in real PowerPoint before
-relying on it. Calling this and `add_pptx_animation` on the same slide,
-in either order, is safe -- they share one `<p:timing>` tree.
-
-`search_images(query, max_results=5)` searches the live web for images
-(via `ddgs`, the same library `web_search` uses) and returns candidate
-URLs -- nothing is downloaded yet. `download_image(url, path,
-overwrite=True)` fetches one of those URLs into the workspace, rejecting
-anything that isn't actually a decodable image (an HTML error page, a
-non-image content type, a response over 20MB) before writing it.
-`set_pptx_background_image(path, slide, image_path)` then applies that
-image as a full-bleed background on one slide, cropped (never stretched)
-to cover the whole slide from the image's own aspect ratio, and placed
-behind the slide's existing title/content/other shapes automatically --
-nothing to configure. **Images found through `search_images` are not
-filtered by license or usage rights** -- this was a deliberate choice
-(a curated free-license stock-photo API was considered and not used),
-so treat a deck built with a web-sourced image as a draft, and check the
-image's actual rights yourself before sending or publishing it externally.
-Unlike `web_search`'s text search (which tries several search engines and
-falls back if one is blocked), `ddgs`'s image search has exactly one
-backend, so a soft anti-bot block there fails the whole search outright
-rather than just returning fewer results -- retrying the same query after
-a short wait is normal, not a sign the tool is broken.
-
-When usage rights actually matter (the deck is going external, or the
-user asks for something "royalty-free"/"commercially usable"),
-`search_licensed_images(query, orientation="", min_width=0, min_height=0,
-required_terms="", max_results=5)` searches Openverse and Wikimedia
-Commons instead -- two real, zero-API-key providers, no signup needed.
-Every result is already classified into exactly one of two tiers:
-`"no-attribution"` (CC0/Public Domain -- use freely, no credit needed) or
-`"attribution-required"` (CC BY/CC BY-SA -- comes with a ready-made
-`attribution_text` string for an on-slide credit line); anything else
-(CC BY-NC, CC BY-ND, all-rights-reserved, unknown) is rejected outright
-and never returned. Results are ranked by query relevance first, then
-license tier/orientation/size as tie-breakers, and deduplicated across
-both providers. `download_image` is still how you actually fetch the
-chosen result -- `search_licensed_images` only returns candidate
-metadata, same division of labor as `search_images`. Pass a
-comma-separated `required_terms` (e.g. `"eiffel tower,paris"`, or
-`"Jiefangbei|Liberation Monument"` for either-satisfies alternatives
-within one entry) when a specific name/landmark/entity must be exactly
-right rather than just visually plausible.
-
-If text over a background image ends up hard to read,
-`add_pptx_scrim(path, slide, opacity=0.35, color="000000")` adds a
-full-slide semi-transparent color layer between the background and the
-other shapes -- `python-pptx` has no transparency API at all, so this is
-hand-appended OOXML the same way the background-image crop is. Not
-applied automatically: pick `color` to contrast with the slide's actual
-text color (a light scrim under dark text, a dark scrim under light text
--- a dark scrim under dark text barely helps, confirmed by actually
-rendering both and looking), and only add it when text genuinely needs
-it, not as a default on every background image -- `review_work` (see
-[Subagent delegation and review](#subagent-delegation-and-review) below)
-is a good way to find out whether it's actually needed.
-
-`add_pptx_shape_effect(path, slide, shape_index, effect, color="000000",
-opacity=0.4, size_pt=8.0, distance_pt=4.0, direction=45.0)` applies a drop
-shadow, glow, or soft edge to any shape (autoshape, picture, connector --
-`shape_index` from `list_pptx_shapes`). `python-pptx` has no public API for
-this at all -- its own `ShadowFormat` can only suppress an *inherited* theme
-shadow, never create or customize one -- so this is hand-built against the
-real ECMA-376 schema (`CT_EffectList`/`CT_GlowEffect`/
-`CT_OuterShadowEffect`/`CT_SoftEdgesEffect`). Effects compose across calls:
-adding `"glow"` after `"shadow"` leaves both on the shape, while calling the
-same `effect` again replaces its own settings in place; `effect="none"`
-clears every effect this tool manages. Deliberately narrower than the full
-schema -- only shadow/glow/soft_edge, not blur/fillOverlay/innerShdw/
-prstShdw/reflection.
-
-**Overflow warnings and preview thumbnails come from the office program.**
-With Microsoft Office or WPS installed, `write_pptx` has it draw the deck as a
-PDF in the background and flags any text that overflows its slide bounds in the
-response's `overflow_warnings` -- the single most common visual defect in
-generated decks. `write_docx`/`write_pdf`/`write_xlsx`/`write_pptx` and
-`add_xlsx_chart`/`add_pptx_chart` also each render a one-page PNG thumbnail
-(the first slide for pptx, the affected sheet for xlsx) that shows up as an
-inline image in the chat UI right under the tool call, so you can see what
-got generated -- chart included -- without opening the file yourself. Both
-are best-effort: without an office program, every tool still works
-exactly the same -- `write_pptx` just returns `overflow_warnings: []` with a
-`qa_skipped_reason`, and every write/chart tool's `preview_path` comes back
-`null` with a `preview_skipped_reason`
-explaining why. A PDF, and a deck built with `build_pptx_pages`, are previewed
-without any office program.
-Note also that `python-pptx` itself hasn't seen a release since August 2024;
-it's still the standard library for this, just not as actively maintained as
-the libraries `docx`/`pdf`/`xlsx` support relies on (see `ARCHITECTURE.md`).
-
-`render_pptx_preview(path)` is the multi-slide counterpart: `write_pptx`'s
-automatic thumbnail shows only the first slide -- not enough to catch a deck
-where the title slide looks fine but the rest don't. `render_pptx_preview`
-draws a built deck from its SVG pages, and any other deck through the office
-program as a PDF rasterized with PDFium, so it renders every slide (capped at `max_slides`, default
-8) so `review_work` can check the whole deck, not just the first slide --
-this is what a deck built with `run_node_script` needs for any real visual
-QA, since that tool returns no preview of its own. Same graceful-degradation
-contract as everything else here: a missing office program just means
-`preview_paths` comes back empty with a `preview_skipped_reason`.
-
-## Running scripts
-
-`run_python_script(script, description, timeout=120.0)` lets the
-Coordinator write and run a real Python script for anything the built-in
-document/spreadsheet/presentation tools can't express in one call --
-processing thousands of rows, a multi-step transformation, custom logic.
-It's the highest-risk tool in Coscribe (`risk_level="high"`, always
-requires approval) and the *only* one with no sandbox around it: **there is
-no `WorkspaceScope` path check here** -- a script can read or write any
-file the Coscribe process's own OS user can reach, and make any
-network call. Approving a script call is full trust, not "runs in an
-isolated box" -- the same real-world posture Claude Code itself has on a
-native Windows host with no WSL2 configured (its own docs: "This option
-does not support native Windows. On Windows hosts, use WSL2 or one of the
-container or VM approaches"). The approval prompt shows the complete
-script text plus the model's own one-line description of what it does --
-read it before approving.
-
-There's deliberately no import/library allowlist either -- like Claude
-Code's own Bash tool, any such restriction would be trivially bypassable
-(`__import__`, `subprocess.run(["pip", "install", ...])`) and would only
-give a false sense of security. What *is* controlled is which Python
-environment the script runs in: a dedicated virtual environment, kept
-completely separate from Coscribe's own runtime dependencies, so a
-script installing a package can never destabilize the app itself. That
-environment ships pre-seeded with `openpyxl`/`python-docx`/`python-pptx`/
-`pandas`/`pdfplumber` -- the same libraries this package's own tools use --
-so a script can read/write the same file formats without extra setup.
-Anything else (numpy, requests, whatever a task needs) is added from
-**Settings -> Environment**: a plain add/remove list of installed
-packages, no scripts or command-line knowledge required, deliberately
-simpler than Claude Code's own freeform "Setup script" field since
-Coscribe is aimed at non-technical office users.
-
-A script's result also lists the workspace files it created or modified
-(`files_written`, up to 50 -- found by comparing file timestamps before
-and after the run, skipping hidden folders, `node_modules` and virtual
-environments; skipped entirely for a workspace of more than 5000 files),
-so what it produced shows up in the task panel's Outputs and the model
-doesn't have to re-list the folder to find it. `run_node_script` does the
-same.
-
-There is currently no control over what network hosts a script can reach
-(Claude Code's own cloud environments offer a None/Trusted/Full/Custom
-dropdown for this, but that's enforced at the container/network-policy
-level -- Coscribe is a local desktop app with no equivalent
-infrastructure to enforce it against). Full script visibility at approval
-time is the only safeguard for now.
-
-### `run_node_script` -- real pptxgenjs decks
-
-`write_pptx`'s markdown-to-fixed-layout model (Title-and-Content/
-Title-Only) can't express custom shapes, multi-column layouts, precise
-positioning, or icons -- the things that make a deck look genuinely
-designed rather than templated. `run_node_script(script, description,
-timeout=120.0)` is the fix: the same `risk_level="high"`, always-approve,
-no-sandbox posture as `run_python_script` (see above -- everything in that
-section about approval being the only safeguard applies here identically),
-just for Node.js instead of Python, with `pptxgenjs` (the same library
-Anthropic's own pptx Skill is built on) pre-installed and ready to
-`require("pptxgenjs")`.
-
-**Not just a fallback for special cases** -- confirmed live (see
-`scripts/verify_pptx_quality.py`): with the pptx Skill enabled but its
-guidance framed as "use run_node_script only when write_pptx's layouts
-genuinely aren't enough," the model defaulted straight to `write_pptx` for
-a whole "professional pitch deck" request and produced exactly the
-bare-template look users kept reporting. `coordinator.py`'s own
-instructions now explicitly tell the model to `load_skill("pptx")` before
-writing any deck when that skill is available, and the skill itself
-frames `write_pptx` as the rough-draft option and `run_node_script` as the
-default for anything the user will actually look at -- re-verified live
-that this actually changes behavior (`load_skill` + `run_node_script` get
-called, and the resulting file is built from real composed shapes, not
-stock placeholder layouts).
-
-**Optional: install Node.js** (https://nodejs.org) for this tool to work
-at all -- unlike Python (Coscribe's own runtime, always present),
-Node.js/npm are a genuinely optional system dependency, the same way
-an office program is optional for preview thumbnails/overflow warnings above. A
-call to `run_node_script` before Node.js is installed fails with a clear
-message naming what's missing, rather than every other built-in tool
-being affected -- `write_pptx` and everything else keep working without
-it.
-
-Isolation works differently here than the Python side's venv: Node has no
-equivalent of "bake a fixed interpreter+site-packages path into one
-binary," so packages installed via **Settings -> Environment**'s second
-list (kept separate from this project's own `frontend/` build, not just
-from Coscribe's own runtime) are found via the `NODE_PATH` environment
-variable rather than directory-tree `require()` resolution -- verified to
-actually work (a script file and working directory both outside that
-package directory can still `require("pptxgenjs")`) before this tool
-shipped, not assumed from documentation.
-
-### `run_background_script` -- scripts that run longer than the 600s cap
-
-`run_python_script`/`run_node_script` both cap out at 600 seconds --
-plenty for the document/spreadsheet work above, not enough for a big OCR
-job, a long batch pipeline, or anything else genuinely long-running.
-`run_background_script(language, script, description, timeout_seconds=1800)`
-is the fire-and-forget counterpart: same no-sandbox posture and approval
-prompt as the two synchronous tools (`language` is `"python"` or `"node"`,
-running against those exact same dedicated environments), but it starts
-the script and returns immediately with a `task_id` instead of waiting for
-it to finish -- `timeout_seconds` can go up to 21600 (6 hours).
-
-Modeled on [pi-background-tasks](https://github.com/earendil-works/pi)
-rather than a live output stream: the script's combined stdout/stderr is
-written to a durable log file as it runs, and `check_background_task
-(task_id, tail_bytes=4000)` reads a bounded tail of it -- works whether
-the task is still running (partial output so far) or already finished
-(full output plus `exit_code`). `list_background_tasks()` lists this
-conversation's own tasks; `kill_background_task(task_id)` stops one early.
-To get told automatically once it's done instead of polling yourself,
-combine it with `wake_on_task(task_id, reason)` (see "Sleep and wake"
-above).
-
-**Known limitation**: a background task's live process handle only exists
-in the running `coscribe-web` process's own memory. If the server
-restarts while a task is mid-run, its on-disk record is left stuck at
-"running" -- nothing left to ever mark it finished, so a pending
-`wake_on_task` for it never resolves either. Not fixed for now, same as
-this app's other "the desktop app stays running for the length of the
-task" assumptions elsewhere (e.g. selfwake's own open-tab-doesn't-live-
-stream limitation).
+- On Windows, where the machine passed the self-test, scripts run in an AppContainer that reaches
+  only the conversation's folders (read-write folders without delete) and the interpreter
+  (decision 0021). Where it failed, scripts are refused unless the person lets that conversation
+  run without isolation, which is recorded.
+- Command lines run in Codex's Windows sandbox once Settings › Capabilities set it up
+  (decision 0022): they write only the conversation's read-write folders, are offline unless the
+  environment's network is Full, and the person's private folders are hidden by default. Without
+  it, a command runs as the user only after the person allowed that, and each one is approved.
+- Off Windows, or let out of isolation, code runs as the user; a folder guard then catches
+  mistaken writes and is not a security boundary.
+- A script starts from an allow-list of environment variables, never the server's own (which holds
+  the provider keys). Card: `src/coscribe/tools/exec/AGENTS.md`.
 
 ## Web search
 
@@ -1515,7 +793,7 @@ force a review step.
 
 The file at `COSCRIBE_MEMORY_PATH` (default `./MEMORY.md`, auto-created,
 gitignored by default -- track it yourself if you want shared/team memory) holds
-your global instructions: Settings > Global instructions edits it, and whatever
+your global instructions: Settings › General › Global instructions edits it, and whatever
 is in it is sent to the model in every conversation. Only you write to it: the
 model has no tool for it. It is meant to stay a short, curated list (a
 preference, a stable detail) -- not a running log, and not addressed by
@@ -1636,7 +914,7 @@ that process your files, tools you'll reuse, fixes for a script that fails.
 It's an assistant to the chat, not a mode of its own: you talk to the chat,
 and the chat hands over what needs real code.
 
-- **From a chat**: with *Chats can hand tasks to Code* on (Settings > Code,
+- **From a chat**: with *Chats can hand tasks to Code* on (Settings › Capabilities,
   or `COSCRIBE_CODE_MODULE_ENABLED=true`), a chat can hand a programming
   task to it through `run_code_task`; the run shows in the Sub Agents panel,
   where you watch, approve and stop it.
@@ -1650,22 +928,19 @@ and the chat hands over what needs real code.
   custom provider that serves `/responses` (DeepSeek does). It runs on *Model
   for code* (`COSCRIBE_CODE_MODEL`), or the chat's own model when that's
   unset; when the chat uses a model Codex can't (Claude, Gemini), the chat
-  is told to ask you to pick one in Settings > Code.
+  is told to ask you to pick one in Settings › Capabilities.
 - **Download**: nothing is bundled with the app. The pinned Codex build
   (~111 MB download, ~330 MB on disk on Windows) is fetched into the state
-  directory the first time it's used, or from Settings > Code, which can
-  also remove it. `COSCRIBE_CODEX_WHEEL_URL` points it at a mirror of the
-  same file (the pinned hashes still have to match).
-- **Approvals**: there is no sandbox -- every command and file change
-  comes to you as an approval, under the permission mode, except plain
-  reads of the folder (`ls`, `cat`, `grep`, ... or on Windows
-  `Get-ChildItem`, `Get-Content`, `Select-String`, ... with nothing that
-  writes, chains or leaves the folder; Coscribe decides this itself, not
-  Codex). *Approve* answers one card; *Allow for this task* answers that kind
-  of action for the rest of the task. *Run commands without asking* and
-  *Change files without asking* in Settings > Code allow it for good (Plan
-  mode still declines). Its commands use the same Python environment as
-  `run_python_script`. Stop ends the commands it started.
+  directory the first time it's used, or from Settings › Capabilities, which can
+  also remove it; the download is checked against pinned hashes.
+- **Approvals**: a file change comes to you as an approval under the permission mode; *Approve*
+  answers one card, *Allow for this task* that kind of change for the rest of the task, and
+  *Change files without asking* in Settings › Capabilities allows it for good (Plan mode still
+  declines). Commands run only where the command sandbox is set up (Settings › Capabilities,
+  decision 0022), under a profile that holds them to the folder; elsewhere a command is refused
+  without a card, except a plain read of the folder (`ls`, `cat`, `grep`, ... or on Windows
+  `Get-ChildItem`, `Get-Content`, `Select-String`, ... with nothing that writes, chains or leaves
+  the folder; Coscribe decides this itself, not Codex). Stop ends the commands it started.
 
 Not there yet: a run on real Windows.
 
@@ -2019,7 +1294,7 @@ a "restart required" notice rather than silently doing nothing; that
 matches editing `.env` by hand today, it's just safer to do from the UI.
 Proxy variables (`HTTPS_PROXY`/`HTTP_PROXY`/`NO_PROXY`) aren't in the
 Settings panel, but `.env` works fine for them (see `.env.example`) --
-`_prepare_env`'s `load_dotenv(..., override=True)` makes a `.env` value
+`runtime/dotenv_file.py` loads it with `override=True`, so a `.env` value
 win over a stale OS-level proxy already set, the same real corporate-
 machine bug that fix was written for. Left out of the panel because a
 masked/never-round-tripped text field would be a worse editing experience

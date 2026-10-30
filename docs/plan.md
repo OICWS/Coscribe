@@ -295,6 +295,8 @@ Last reviewed: 2026-10-15.
 - The attachment cards and the new question-card colours in the desktop app; the
   thin scrollbar on pages in the built-in browser.
 - The code module on real Windows.
+- Decisions 0010, 0022 and 0028 are still "proposed": 0010 and 0022 are built and named as
+  invariants in `AGENTS.md`; accept, change or reject each (log `2026-10-30-docs-freshness.md`).
 
 ## Open problems, not reproduced or not solved
 
@@ -309,6 +311,9 @@ Last reviewed: 2026-10-15.
   one file at a time.
 
 ## Later (wanted, not scheduled)
+
+- The rest of `office-agent/README.md` (browser, MCP, hooks, Web UI, desktop) rewritten as the
+  Files and Scripts sections were: what exists and where to read more, no copied parameters.
 
 - A reasoning-effort choice for the user (#202): done (the scale and its mapping per model, the
   pill and slider, the evaluation on the same scale). Left: a look in the dark theme.

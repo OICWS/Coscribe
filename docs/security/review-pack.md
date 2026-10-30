@@ -88,15 +88,22 @@ not read by a person. The one GET that does change state is the connector
 sign-in callback, which is a cross-site navigation by nature and carries the sign-in's own `state`.
 The desktop app's browser-host routes keep their own token. The first-run setup page has no token
 (it runs once, before any data exists). Not covered: any local process, which can read the page, or
-send whatever headers it likes (no sandbox, decision 0002).
+send whatever headers it likes.
 
 Text the model reads (files, pages, messages from other conversations) is covered in
 [`prompt-injection.md`](prompt-injection.md).
 
-## 5. No sandbox (decision 0002)
+## 5. The script sandbox and what it leaves out (decisions 0002, 0021, 0022)
 
-- Scripts, Node scripts and Codex commands run as the user. The folder guard
-  (`tools/exec/script_guard.py`, `tests/test_script_guard.py`) catches mistakes and is not a
+- On Windows, where the machine's self-test passed, scripts and Node scripts run in an
+  AppContainer holding only the conversation's folders (`tools/exec/isolation.py`,
+  `tests/test_isolation.py`, its container tests in the Windows CI job); where it failed,
+  scripts are refused unless the person lets the conversation run without isolation, which is
+  audited. Command lines run in Codex's Windows sandbox where Settings set it up
+  (`tools/exec/command_sandbox.py`, the real sandbox in `tests/test_windows_real.py`); otherwise
+  only once the person allowed commands without it, and each is approved.
+- Off Windows and outside the container, code runs as the user. The folder guard
+  (`tools/exec/script_guard.py`, `tests/test_script_guard.py`) then catches mistakes and is not a
   boundary; the UI and docs must not promise more.
 - Gating is by risk tier and permission mode (section 2), plus the exec policy
   (`runtime_lg/exec_policy.py`, `tests/test_exec_policy.py`).
