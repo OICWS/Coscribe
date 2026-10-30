@@ -2,11 +2,13 @@ import { lazy, Suspense } from "react";
 import { DraftPages, draftPages, type DraftPage } from "../lib/draftPages";
 import type { CommentLink } from "../lib/slideComments";
 import { isPptx } from "../lib/slides";
+import { isDesignCanvas } from "../lib/designCanvas";
 import { isDesign, isDocMarkdown } from "../lib/viewers";
 import { DesignPanel } from "./DesignPanel";
 import { SlidesPanel } from "./slides/SlidesPanel";
 
-// The editor and its library load when a document is first edited, not with the app.
+// The editor and the canvas load when a document or a canvas is first opened, not with the app.
+const DesignCanvasPanel = lazy(() => import("./design/DesignCanvasPanel").then((m) => ({ default: m.DesignCanvasPanel })));
 const DocPanel = lazy(() => import("./doc/DocPanel").then((m) => ({ default: m.DocPanel })));
 
 const NO_DRAFTS: DraftPage[] = [];
@@ -43,6 +45,13 @@ export function ViewerPanel({
     return (
       <Suspense fallback={null}>
         <DocPanel threadId={threadId} path={path} refreshKey={refreshKey} onFileChanged={onFileChanged} onAsk={onSendComment} />
+      </Suspense>
+    );
+  }
+  if (isDesignCanvas(path)) {
+    return (
+      <Suspense fallback={null}>
+        <DesignCanvasPanel threadId={threadId} path={path} refreshKey={refreshKey} onFileChanged={onFileChanged} />
       </Suspense>
     );
   }
