@@ -1,7 +1,7 @@
 # The model is sent: the system prompt, then the tools bound to it (decision 0001).
 # A change here is a change to what providers cache. UPDATE_TOOL_SCHEMAS=1 rewrites it.
 
-system prompt: 34179 chars, ~8544 tokens, sha256 507f377a3d
+system prompt: 34483 chars, ~8620 tokens, sha256 a4b5e7c748
 
 bound to the model: 22 tools, ~4941 tokens
   ask_user_question (questions:array) desc 1435 chars sha256 e846e64163
@@ -27,7 +27,7 @@ bound to the model: 22 tools, ~4941 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 119 tools, ~37026 tokens (the ones not bound are found through search_tools)
+registered: 119 tools, ~37031 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -76,7 +76,7 @@ registered: 119 tools, ~37026 tokens (the ones not bound are found through searc
   http_request | EXTERNAL | web | deferred | sha256 bdbd5887fe
   insert_docx_text | WRITE_LOCAL | documents | deferred | sha256 8af341a5aa
   kill_background_task | WRITE_LOCAL | background_tasks | deferred | sha256 7491d2828c
-  list_artifacts | READ | documents | deferred | sha256 a70aa38d9b
+  list_artifacts | READ | documents | deferred | sha256 9ad56757f9
   list_background_tasks | READ | background_tasks | deferred | sha256 d99c0b74f9
   list_conversations | READ | conversations | deferred | sha256 1eac1b002a
   list_files | READ | filesystem | core | sha256 f70a9b3342

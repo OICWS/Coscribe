@@ -49,7 +49,7 @@ export const KINDS: Record<ArtifactKind, KindInfo> = {
   docs: { label: "Docs", colour: "var(--file-doc)", placeholder: "What should this document be about?", badge: null },
   slides: { label: "Slides", colour: "var(--file-slides)", placeholder: "What should this deck be about?", badge: "Beta" },
   design: { label: "Design", colour: "var(--file-design)", placeholder: "What should this design be about?", badge: "New" },
-  dashboard: { label: "Dashboard", colour: "var(--file-dashboard)", placeholder: null, badge: "Soon" },
+  dashboard: { label: "Dashboard", colour: "var(--file-dashboard)", placeholder: "What data should this dashboard show, and from where?", badge: "New" },
 };
 
 /** Every kind the page offers, the design system last. */
