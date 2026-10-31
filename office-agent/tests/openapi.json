@@ -139,6 +139,46 @@
         "title": "BrowserHostReply",
         "type": "object"
       },
+      "CanvasPlacement": {
+        "properties": {
+          "boards": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "default": {},
+            "title": "Boards",
+            "type": "object"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "variables": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {},
+            "title": "Variables",
+            "type": "object"
+          }
+        },
+        "title": "CanvasPlacement",
+        "type": "object"
+      },
       "CommandSandboxSetup": {
         "properties": {
           "mode": {
@@ -5470,6 +5510,108 @@
         "summary": "List Background Tasks Endpoint"
       }
     },
+    "/api/threads/{thread_id}/canvas": {
+      "get": {
+        "description": "A Design canvas: its boards (each with the path its page is served by) and notes.",
+        "operationId": "get_canvas_api_threads__thread_id__canvas_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Canvas"
+      },
+      "put": {
+        "description": "What the person did on the canvas: boards moved or resized, variables set, notes\nchanged.",
+        "operationId": "put_canvas_api_threads__thread_id__canvas_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CanvasPlacement"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Canvas"
+      }
+    },
     "/api/threads/{thread_id}/context-breakdown": {
       "get": {
         "operationId": "get_context_breakdown_endpoint_api_threads__thread_id__context_breakdown_get",
@@ -5588,6 +5730,26 @@
               "default": false,
               "title": "Print",
               "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scheme",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "light",
+                    "dark"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scheme"
             }
           }
         ],

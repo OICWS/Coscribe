@@ -29,7 +29,7 @@ from langgraph.errors import GraphBubbleUp
 
 from ..runtime import get_tool_metadata
 from .edit_guard import EditGuardMiddleware
-from .messages import starts_a_turn, steer_message
+from .messages import pictures_as_user_message, starts_a_turn, steer_message
 from .tool_calls import answer_every_tool_call
 from .tool_deferral import (
     DeferredToolMiddleware,
@@ -252,12 +252,15 @@ class _AnswerEveryToolCallMiddleware(AgentMiddleware):
     """Whatever left a tool call without a result (a stop, a killed app, an
     approval that was never answered), the provider sees every call
     answered: one unanswered call fails the whole request with a 400, and
-    the conversation can't go on. Only the request is patched; the saved
-    history is left as it is."""
+    the conversation can't go on. A picture a tool returned is moved into a
+    user message after the step's results, which every provider that reads
+    images accepts. Only the request is patched; the saved history is left
+    as it is."""
 
     def _patched(self, request: Any) -> Any:
-        messages, patched = answer_every_tool_call(list(request.messages))
-        return request.override(messages=messages) if patched else request
+        messages, answered = answer_every_tool_call(list(request.messages))
+        messages, moved = pictures_as_user_message(messages)
+        return request.override(messages=messages) if answered or moved else request
 
     def wrap_model_call(self, request: Any, handler: Any) -> Any:
         return handler(self._patched(request))

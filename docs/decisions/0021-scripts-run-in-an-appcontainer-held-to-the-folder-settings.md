@@ -1,7 +1,8 @@
 # 0021: Scripts run in an AppContainer held to the folder settings
 
 Status: accepted (2026-10-23, by the maintainer and Allen on issue #560). Supersedes the "no OS
-sandbox" part of 0002; approvals, risk tiers and the audit from 0002 stay.
+sandbox" part of 0002; approvals, risk tiers and the audit from 0002 stay. Changed by 0022 for
+command lines, which run in Codex's sandbox where it is set up.
 
 ## Context
 0002 left approvals as the only barrier: a script could read any file, use the network and get
@@ -30,3 +31,5 @@ that Codex's own Windows sandbox cannot hold our folders on most machines.
   the whole user profile: granting it means an ACE on every file there, slow the first time and
   to take back; a read-only folder covers the need with a smaller grant (2026-10-23).
 - Prompt injection is not removed; the aim is least privilege plus approvals.
+
+Retired wording: "There is no sandbox", "Approvals instead of a sandbox", "No sandbox (decision 0002)", "the *only* one with no sandbox around it"

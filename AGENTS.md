@@ -70,6 +70,12 @@ Never read a file over 1,500 lines whole, and never read `docs/history/`, the fr
   `runtime.secrets` imports the keychain, `tools` and `runtime` never import
   LangChain. The layers contract has no ignored import; never add one without a
   decision record.
+- **Documents say what is true now, and where to read more.** A tool's parameters live in its
+  docstring and how to do a kind of work in its skill; a document names them, never copies them.
+  A decision that supersedes, replaces, narrows or changes another names itself in that record's
+  status and index row, and lists the sentences it makes false on a `Retired wording:` line.
+  `tests/test_doc_freshness.py` fails on a code name that no longer exists, on retired wording and
+  on a supersession one side does not show.
 - **UI text is English only.** Code comments explain WHY, never WHAT or history
   (history goes in the commit message).
 - **Verify vendor facts live** (model names, API limits, endpoints) before they
@@ -82,6 +88,12 @@ cd office-agent
 bash scripts/check.sh --fast    # frontend build, oxlint, ruff, mypy
 bash scripts/check.sh           # also pytest (~4 min on 4 CPUs); CI runs exactly this
 ```
+
+Then look at the documents your change can make untrue: `python office-agent/scripts/doc_impact.py`
+lists them (from `docs/doc-map.toml`). Read each; change it in the same PR where it no longer
+holds, or say in the PR description `Docs checked: <path> (<why it still holds>)`. The PR text
+workflow fails until every one is changed or named. A new decision record also updates the records
+it supersedes and lists the wording it retires (`docs/decisions/README.md`).
 
 A frontend change must pass `npm run build` (`tsc -b`), not only
 `tsc --noEmit`. Every change reaches `main` through a pull request; see "how a

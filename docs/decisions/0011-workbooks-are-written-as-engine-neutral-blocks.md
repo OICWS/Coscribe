@@ -2,6 +2,7 @@
 
 Status: accepted (2026-10-15, by the maintainer). Evidence:
 `docs/assessments/2026-10-15-excel-quality.md`, design: `docs/assessments/2026-10-15-excel-design.md`.
+Its stage-1 engine ("openpyxl and LibreOffice") is superseded by 0012; the rest stands.
 
 ## Context
 A workbook written whole scored 4.1 of 5 on design against 2.8–3.2 for coscribe's

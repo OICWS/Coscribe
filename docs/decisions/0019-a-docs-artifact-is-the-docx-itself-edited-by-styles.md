@@ -2,7 +2,9 @@
 
 Status: accepted (2026-10-21, by the maintainer, with the research in
 `docs/assessments/2026-10-21-docx-editing.md`: Tiptap 3 for the editor, the block reader and writer
-our own). Builds on 0013 (house style) and 0015 (what coscribe makes is an artifact).
+our own). Builds on 0013 (house style) and 0015 (what coscribe makes is an artifact). Narrowed by
+0025 (a new Doc is a markdown document, not a .docx) and 0027 (a Word file is no longer edited in
+the app): what is left is that a Word file coscribe writes keeps its styles.
 
 ## Context
 Claude has two things: an online Docs object (rich text in the cloud, exported to Word on demand)

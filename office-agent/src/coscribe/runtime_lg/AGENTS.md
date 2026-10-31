@@ -36,7 +36,9 @@ Callers import these from `coscribe.runtime_lg`, not a submodule.
   read-only rule and the task's approval mode are held (decision 0028).
 - A hosted connector signs in once, in the user's own browser (OAuth 2.1 with PKCE); this package
   ships no shared client secret (`docs/decisions/0004-connectors-sign-in-once-in-the-browser.md`).
-- Approvals are not a sandbox: a script runs as the user (`docs/decisions/0002-approvals-not-a-sandbox.md`).
+- Approvals are not a sandbox (`docs/decisions/0002-approvals-not-a-sandbox.md`): on Windows a
+  script runs in an AppContainer where the self-test passed and a command in Codex's sandbox where
+  it is set up (0021, 0022, `tools/exec`); off Windows, or let out of isolation, it runs as the user.
   An `ExecPolicy` rule can only allow, forbid or fall back to asking, never run anything.
 - `runtime_lg` sits above `tools` and `runtime` and below `conversation`: it imports neither
   `conversation` nor `web`. A history never holds a tool call without a result, or the

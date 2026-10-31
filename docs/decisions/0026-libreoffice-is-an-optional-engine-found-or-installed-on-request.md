@@ -99,3 +99,5 @@ runtime folder; commenters disagreed whether every install, Windows included, ge
 2. Render to PDF and page images; the Word page-level check; the reviewer reads those pages.
 3. The install button.
 4. Preview and conversion of Office files without Microsoft Office.
+
+Retired wording: "The product does not depend on LibreOffice"

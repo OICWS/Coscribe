@@ -7,6 +7,17 @@ from .activity import OPENABLE_EXTENSIONS, open_in_os
 from .artifact_files import ArtifactFileError, copy_file, rename_file, trash_file
 from .artifacts import ArtifactRegistry, adopt_thread, describe_artifact
 from .dashboard import DashboardDataError, is_dashboard, read_dashboard_data, render_dashboard
+from .design_canvas import (
+    CanvasError,
+    canvas_folder,
+    canvas_of_page,
+    in_scheme,
+    is_canvas,
+    place_on_canvas,
+    read_canvas,
+    variables_style,
+)
+from .page_tools import served_page
 from .session import ChatSessionLG
 from .thread_meta import ThreadMetaStore
 
@@ -21,6 +32,15 @@ __all__ = [
     "rename_file",
     "trash_file",
     "describe_artifact",
+    "CanvasError",
+    "canvas_folder",
+    "canvas_of_page",
+    "in_scheme",
+    "is_canvas",
+    "place_on_canvas",
+    "read_canvas",
+    "variables_style",
+    "served_page",
     "DashboardDataError",
     "is_dashboard",
     "read_dashboard_data",

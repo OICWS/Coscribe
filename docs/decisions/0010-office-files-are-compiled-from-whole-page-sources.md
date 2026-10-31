@@ -1,6 +1,7 @@
 # 0010: Office files are compiled from whole-page sources; open-source code is reused as owned copies
 
-Status: proposed (2026-10-13), for the maintainer to accept. Evidence:
+Status: accepted (proposed 2026-10-13; accepted 2026-10-30 by the maintainer, long since built:
+`build_pptx_from_pages`, `tools/office/pptx/engine/`, the owned copies under `tools/_native_*`). Evidence:
 `docs/assessments/2026-10-13-office-route.md`.
 
 ## Context

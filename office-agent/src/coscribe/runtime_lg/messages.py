@@ -12,7 +12,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, ToolMessage
 
 # The exact mode_note prefixes session.py's _handle_user_message_locked
 # prepends to every turn's user text before it becomes a checkpointed
@@ -116,8 +116,8 @@ _ARTIFACTS = {
         "instructions for new decks say"
     ),
     "design": (
-        "a new design the app opens in its Design panel. Load the SVG and HTML Design skill, "
-        "then write one self-contained .html file with the drawings inline as SVG"
+        "a new design the app opens on its Design canvas. Load the Design skill, then write "
+        "its artboards' pages and the .design.json canvas as the skill says"
     ),
     "dashboard": (
         "a new dashboard the app opens in its Dashboard panel: a page of their real data. Load "
@@ -339,17 +339,67 @@ def extract_images(content: Any) -> list[str]:
     return urls
 
 
+def _is_image_block(block: Any) -> bool:
+    return isinstance(block, dict) and block.get("type") in ("image_url", "image")
+
+
 def tool_result_value(content: Any) -> Any:
     """ToolMessage.content is usually a JSON-serialized string of the
     tool's real return value -- decode it back so callers see the raw
     object, not a JSON string. Falls back to the raw string if it isn't
-    JSON."""
+    JSON. A result of content blocks (text and pictures, as look_at_page
+    returns) is read from its text, with the number of pictures: the
+    tab, the history and the hooks get no image data."""
+    if isinstance(content, list) and any(_is_image_block(b) for b in content):
+        texts = [
+            b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") == "text"
+        ]
+        value = tool_result_value("\n".join(texts))
+        pictures = sum(1 for b in content if _is_image_block(b))
+        return (
+            {**value, "pictures": pictures}
+            if isinstance(value, dict)
+            else {"text": value, "pictures": pictures}
+        )
     if isinstance(content, str):
         try:
             return json.loads(content)
         except ValueError:
             return content
     return content
+
+
+def pictures_as_user_message(messages: list[Any]) -> tuple[list[Any], bool]:
+    """Pictures a tool returned, moved out of its result into a user message right after the
+    results of that step. OpenAI-compatible APIs do not all take an image in a tool message, while
+    a user's image works wherever images do. Deterministic, so the prompt cache holds."""
+    out: list[Any] = []
+    pending: list[Any] = []
+    changed = False
+
+    def flush() -> None:
+        if pending:
+            note = {
+                "type": "text",
+                "text": "The pictures the tool results above refer to, in order:",
+            }
+            out.append(HumanMessage(content=[note, *pending]))
+            pending.clear()
+
+    for message in messages:
+        if not isinstance(message, ToolMessage):
+            flush()
+            out.append(message)
+            continue
+        content = message.content
+        if isinstance(content, list) and any(_is_image_block(b) for b in content):
+            changed = True
+            pending.extend(b for b in content if _is_image_block(b))
+            text = [b for b in content if not _is_image_block(b)]
+            message = message.model_copy(update={"content": text or "(pictures below)"})
+        out.append(message)
+    flush()
+    return out, changed
 
 
 def serialize_history_for_ws_lg(messages: list[Any]) -> list[dict[str, Any]]:

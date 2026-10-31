@@ -1,0 +1,239 @@
+# Each living document, and the paths whose change can make it untrue. A pull request that changes
+# one of these paths either changes the document too or says in its description that the document
+# still holds: `Docs checked: SECURITY.md (still true)`. office-agent/scripts/doc_impact.py checks
+# it, in the PR text workflow. A path is a prefix: a folder covers everything under it.
+#
+# `added_or_removed` paths count only when a file under them is added, removed or renamed.
+# A Python module's card (AGENTS.md beside its __init__.py) is found by the script: a module that
+# gains, loses or renames a file, or changes __init__.py, asks for it. A tool's parameters live in
+# its docstring, kept by tests/tool_schemas.txt.
+
+[[doc]]
+path = "SECURITY.md"
+covers = [
+  "office-agent/src/coscribe/tools/exec/",
+  "office-agent/src/coscribe/runtime/secret",
+  "office-agent/src/coscribe/code_runtime/permissions.py",
+  "office-agent/src/coscribe/web/local_guard.py",
+  "office-agent/src/coscribe/runtime_lg/mcp_oauth.py",
+  "office-agent/src/coscribe/conversation/approvals.py",
+  "docs/decisions/",
+]
+
+[[doc]]
+path = "docs/security/review-pack.md"
+covers = [
+  "office-agent/src/coscribe/tools/exec/",
+  "office-agent/src/coscribe/runtime/secret",
+  "office-agent/src/coscribe/web/local_guard.py",
+  "office-agent/src/coscribe/conversation/approvals.py",
+  "office-agent/src/coscribe/runtime_lg/exec_policy.py",
+  "office-agent/src/coscribe/tools/connector_permissions.py",
+  "office-agent/src/coscribe/workflows/permissions.py",
+]
+
+[[doc]]
+path = "docs/security/prompt-injection.md"
+covers = [
+  "office-agent/src/coscribe/tools/exec/",
+  "office-agent/src/coscribe/conversation/approvals.py",
+  "office-agent/src/coscribe/conversation/tool_hooks.py",
+  "office-agent/src/coscribe/runtime_lg/auto_review.py",
+  "office-agent/src/coscribe/runtime_lg/exec_policy.py",
+]
+
+[[doc]]
+path = "ARCHITECTURE.md"
+covers = [
+  "docs/decisions/",
+  "office-agent/src/coscribe/coordinator.py",
+  "office-agent/src/coscribe/runtime_lg/agent.py",
+  "office-agent/src/coscribe/runtime_lg/tool_deferral.py",
+  "office-agent/src/coscribe/runtime_lg/providers.py",
+  "office-agent/src/coscribe/code_runtime/",
+]
+# These name the built-in skills: a skill added or removed, not one edited, changes them.
+added_or_removed = ["office-agent/src/coscribe/builtin_skills/"]
+
+[[doc]]
+path = "AGENTS.md"
+covers = [
+  "docs/decisions/",
+  "components.toml",
+  "office-agent/pyproject.toml",
+  "office-agent/scripts/check.sh",
+]
+
+[[doc]]
+path = "office-agent/CLAUDE.md"
+covers = [
+  "office-agent/scripts/check.sh",
+  "office-agent/scripts/ratchet.py",
+  ".github/workflows/office-agent-ci.yml",
+  ".github/workflows/pr-text.yml",
+]
+
+[[doc]]
+path = "README.md"
+covers = ["office-agent/.env.example"]
+added_or_removed = ["office-agent/src/coscribe/builtin_skills/"]
+
+[[doc]]
+path = "office-agent/README.md"
+added_or_removed = ["office-agent/src/coscribe/builtin_skills/"]
+covers = [
+  "office-agent/.env.example",
+  "office-agent/src/coscribe/web/routes/settings/",
+  "office-agent/frontend/src/components/settings/",
+  "office-agent/src/coscribe/tools/exec/",
+  "office-agent/src/coscribe/code_runtime/",
+]
+
+[[doc]]
+path = "office-agent/frontend/README.md"
+covers = [
+  "office-agent/frontend/package.json",
+  "office-agent/frontend/vite.config.ts",
+]
+
+[[doc]]
+path = "CONTRIBUTING.md"
+covers = [
+  "office-agent/scripts/check.sh",
+  ".github/PULL_REQUEST_TEMPLATE.md",
+  ".github/workflows/pr-text.yml",
+  ".github/workflows/office-agent-ci.yml",
+]
+
+[[doc]]
+path = "docs/start-guide.md"
+covers = [
+  ".github/PULL_REQUEST_TEMPLATE.md",
+  ".github/ISSUE_TEMPLATE/",
+  ".github/workflows/pr-text.yml",
+  "office-agent/scripts/check.sh",
+]
+
+[[doc]]
+path = "docs/manual-checks.md"
+covers = [
+  "office-agent/tests/test_windows_real.py",
+  ".github/workflows/windows-more-checks.yml",
+  ".github/workflows/windows.yml",
+  ".github/workflows/windows-checks.yml",
+]
+
+[[doc]]
+path = "office-agent-desktop/README.md"
+covers = [
+  "office-agent-desktop/src/",
+  "office-agent-desktop/package.json",
+]
+
+[[doc]]
+path = "office-agent/evals/README.md"
+covers = [
+  "office-agent/evals/run.py",
+  "office-agent/evals/tasks.py",
+  "office-agent/evals/judge.py",
+  "office-agent/evals/compare.py",
+]
+
+# What the model reads to write slides: it must match what the engine compiles.
+[[doc]]
+path = "office-agent/src/coscribe/tools/office/pptx/engine/sections_guide/instructions.md"
+covers = [
+  "office-agent/src/coscribe/tools/office/pptx/engine/section_format.py",
+  "office-agent/src/coscribe/tools/office/pptx/engine/section_objects.py",
+  "office-agent/src/coscribe/tools/office/pptx/engine/section_layout.py",
+  "office-agent/src/coscribe/tools/office/pptx/engine/sections.py",
+  "office-agent/src/coscribe/tools/office/pptx/engine/compiler.py",
+  "office-agent/src/coscribe/tools/office/pptx/engine/design_system.py",
+]
+
+# The built-in skills: how the model goes about a kind of work, with the tools named in them.
+[[doc]]
+path = "office-agent/src/coscribe/builtin_skills/pptx-pages/SKILL.md"
+covers = ["office-agent/src/coscribe/tools/office/pptx/engine/"]
+
+[[doc]]
+path = "office-agent/src/coscribe/builtin_skills/pptx/SKILL.md"
+covers = [
+  "office-agent/src/coscribe/tools/office/pptx/wrappers",
+  "office-agent/src/coscribe/tools/office/pptx/template",
+  "office-agent/src/coscribe/tools/pptx_templates.py",
+]
+
+[[doc]]
+path = "office-agent/src/coscribe/builtin_skills/excel/SKILL.md"
+covers = ["office-agent/src/coscribe/tools/office/xlsx/"]
+
+[[doc]]
+path = "office-agent/src/coscribe/builtin_skills/word/SKILL.md"
+covers = ["office-agent/src/coscribe/tools/office/docx/"]
+
+[[doc]]
+path = "office-agent/src/coscribe/builtin_skills/doc/SKILL.md"
+covers = ["office-agent/src/coscribe/tools/office/doc/"]
+
+[[doc]]
+path = "office-agent/src/coscribe/builtin_skills/design/SKILL.md"
+covers = [
+  "office-agent/frontend/src/components/design/",
+  "office-agent/src/coscribe/conversation/design_canvas.py",
+  "office-agent/src/coscribe/conversation/page_tools.py",
+  "office-agent/src/coscribe/conversation/page_shot.py",
+]
+
+[[doc]]
+path = "office-agent/src/coscribe/builtin_skills/dashboard/SKILL.md"
+covers = [
+  "office-agent/src/coscribe/conversation/dashboard",
+  "office-agent/src/coscribe/conversation/page_tools.py",
+  "office-agent/src/coscribe/conversation/page_shot.py",
+]
+
+[[doc]]
+path = "office-agent/src/coscribe/builtin_skills/skill-creator/SKILL.md"
+covers = ["office-agent/src/coscribe/tools/skills.py"]
+
+# Each copy of someone else's code: its notice says where it came from and at which version.
+[[doc]]
+path = "office-agent/src/coscribe/tools/_native_svg/NOTICE.md"
+covers = ["office-agent/src/coscribe/tools/_native_svg/"]
+
+[[doc]]
+path = "office-agent/src/coscribe/tools/_native_formula/NOTICE.md"
+covers = ["office-agent/src/coscribe/tools/_native_formula/"]
+
+[[doc]]
+path = "office-agent/src/coscribe/tools/_native_docx_tracks/NOTICE.md"
+covers = ["office-agent/src/coscribe/tools/_native_docx_tracks/"]
+
+[[doc]]
+path = "office-agent/src/coscribe/tools/_native_animation_presets/NOTICE.md"
+covers = ["office-agent/src/coscribe/tools/_native_animation_presets/"]
+
+[[doc]]
+path = "office-agent/src/coscribe/tools/_ooxml_schemas/NOTICE.md"
+covers = ["office-agent/src/coscribe/tools/_ooxml_schemas/"]
+
+[[doc]]
+path = "office-agent/src/coscribe/tools/office/pptx/engine/ICONS_NOTICE.md"
+covers = ["office-agent/src/coscribe/tools/office/pptx/engine/icons.json"]
+
+# The frontend's card names its folders and a few files, not every component.
+[[doc]]
+path = "office-agent/frontend/AGENTS.md"
+covers = [
+  "office-agent/frontend/src/main.tsx",
+  "office-agent/frontend/src/App.tsx",
+  "office-agent/frontend/src/lib/ws.ts",
+  "office-agent/frontend/src/lib/rest.ts",
+  "office-agent/frontend/src/lib/launchToken.ts",
+  "office-agent/frontend/src/lib/electron.ts",
+  "office-agent/frontend/src/lib/desktop.ts",
+  "office-agent/frontend/package.json",
+  "office-agent/frontend/knip.json",
+]
+added_or_removed = ["office-agent/frontend/src/types/", "office-agent/frontend/src/state/"]

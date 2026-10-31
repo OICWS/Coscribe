@@ -1,6 +1,8 @@
 # 0014: Office files are shown in the app as panels; changes to them go through the backend
 
 Status: accepted (2026-10-17, by the maintainer). Design: `docs/assessments/2026-10-17-file-viewers.md`.
+Narrowed by 0025 (the Word panel is frozen) and 0027 (an Excel file is not an artifact; a Word
+file is no longer edited in the app).
 
 ## Context
 The model writes Word, PowerPoint and Excel files the user can only see by opening Office. Word

@@ -1,9 +1,9 @@
 # The model is sent: the system prompt, then the tools bound to it (decision 0001).
 # A change here is a change to what providers cache. UPDATE_TOOL_SCHEMAS=1 rewrites it.
 
-system prompt: 34483 chars, ~8620 tokens, sha256 a4b5e7c748
+system prompt: 34611 chars, ~8652 tokens, sha256 695e4ad531
 
-bound to the model: 22 tools, ~4941 tokens
+bound to the model: 22 tools, ~4944 tokens
   ask_user_question (questions:array) desc 1435 chars sha256 e846e64163
   draft_workflow (name?:string) desc 983 chars sha256 e91334c9ee
   edit_file (new_text:string, old_text:string, path:string, replace_all?:boolean) desc 1330 chars sha256 3f5ab0dd7e
@@ -18,7 +18,7 @@ bound to the model: 22 tools, ~4941 tokens
   read_xlsx (path:string, sheet?:string|null) desc 548 chars sha256 299925b715
   revise_workflow (draft_id?:string, request:string, task_id?:string) desc 632 chars sha256 bb65f01516
   search_files (path?:string, pattern?:string, query:string, regex?:boolean) desc 1842 chars sha256 f741658379
-  search_tools (query:string) desc 1816 chars sha256 3f2b02b225
+  search_tools (query:string) desc 1831 chars sha256 fe3f8fca2a
   task_create (content:string) desc 149 chars sha256 dea506b85f
   task_list () desc 54 chars sha256 7bc88160db
   task_update (status:string, task_id:string) desc 284 chars sha256 e5aa5260b7
@@ -27,7 +27,7 @@ bound to the model: 22 tools, ~4941 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 119 tools, ~37031 tokens (the ones not bound are found through search_tools)
+registered: 120 tools, ~37269 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -90,6 +90,7 @@ registered: 119 tools, ~37031 tokens (the ones not bound are found through searc
   list_subagent_tasks | READ | subagent_tasks | deferred | sha256 21efb81849
   list_wakes | READ | selfwake | deferred | sha256 88b974a2c2
   load_skill | READ | skills | deferred | sha256 7b0c5ee61e
+  look_at_page | READ | documents | deferred | sha256 55d7a94738
   merge_pptx_table_cells | WRITE_LOCAL | documents | deferred | sha256 2ab446f2a5
   modify_xlsx | WRITE_LOCAL | documents | deferred | sha256 3e15498c5f
   move_file | WRITE_LOCAL | filesystem | deferred | sha256 75892076be

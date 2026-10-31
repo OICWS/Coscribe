@@ -34,8 +34,13 @@ test("a dashboard says when its data was made, refreshes, and shows where a figu
   const frame = page.frameLocator(`iframe[title="${name}.html"]`);
   const figure = frame.locator("[data-figure=total]");
   await expect(figure).toHaveText("1520");
-  await figure.hover();
-  await frame.getByRole("button", { name: "i" }).click();
+  // hover() scrolls the figure into view first, and the page hides its "i" on a scroll, which can
+  // arrive after the mouse is already over the figure: scroll first, then hover until it shows.
+  await figure.scrollIntoViewIfNeeded();
+  await expect(async () => {
+    await figure.hover();
+    await frame.getByRole("button", { name: "i" }).click({ timeout: 2000 });
+  }).toPass({ timeout: 15000 });
   await expect(frame.getByRole("dialog")).toContainText("sum of q3 sales");
   await expect(frame.getByRole("dialog")).toContainText("q3.csv");
 

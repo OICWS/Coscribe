@@ -12,10 +12,20 @@ it affects. You will get an answer as soon as the maintainer can give one.
 
 coscribe runs on your own computer.
 
-- **There is no sandbox.** Scripts and commands the assistant runs, after you
-  approve them, run as you and can read any file you can and use the network.
-  The approval prompts, permission modes and workspace folders reduce mistakes;
-  they are not a security boundary.
+- **Scripts run in a Windows sandbox, where it works** (decisions 0021, 0022). Python and
+  Node scripts the assistant writes run in an AppContainer that reaches only the conversation's
+  own folders (read-write folders without delete) and the interpreter. A self-test on each machine
+  decides whether it is used; where it fails, scripts are off unless you let a conversation run
+  them without isolation, a choice that is recorded. Command lines run in Codex's Windows sandbox
+  where Settings set it up: they write only the conversation's read-write folders, have network
+  only when the conversation's environment allows it, and your private folders are hidden by
+  default. Elsewhere a command runs as you, and only after you allowed that and approve each one.
+- **What the sandbox does not cover.** Off Windows, and in a conversation let out of isolation,
+  code runs as you and can read any file you can and use the network. coscribe's own process and
+  its built-in tools (file tools, Office, the web tools) run as you and keep to the folder
+  settings themselves. A script you approve can do anything inside the folders it was given, and
+  prompt injection is not removed: the approval prompts and permission modes stay, and the aim is
+  the least access plus your approval.
 - **Secrets** (provider keys, connector tokens, the global secrets): values go
   to the operating system's keychain where there is one. The promise is that
   the *model* cannot see a value in its tool output, the transcript, approval

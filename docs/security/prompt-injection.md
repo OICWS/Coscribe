@@ -1,8 +1,11 @@
 # Prompt injection: what text the model reads can and cannot do
 
 #388 item 5. Written 2026-10-17 from the code at that date; each claim names the file or test that
-holds it. No sandbox (decision 0002): a model that is persuaded can ask for any action, so the
-question is what stands between a persuaded model and the action.
+holds it. Approvals stand between a persuaded model and an action (decision 0002); since 2026-10-23
+model-written scripts also run in an AppContainer held to the conversation's folders where the
+machine's self-test passed, and commands in Codex's sandbox where it is set up (decisions 0021,
+0022). A persuaded model can still ask for any action, so the question is what stands between it
+and the action.
 
 ## What an attacker wants
 
@@ -53,8 +56,11 @@ fails without the filter.
 - **The auto reviewer being persuaded.** It sees the action and the user's requests, but an
   injected string inside the action's arguments (a file name, a script body) is also read by it.
   Not measured; the limit is the reviewer's judgment.
-- **A script run as the user** can do anything the user can, including rewriting a policy file the
-  file tools may not touch (decision 0002). Approval is the only gate for it.
+- **A script run as the user** (off Windows, where the self-test failed and the person let the
+  conversation run without isolation, or a command where the command sandbox is not set up) can
+  do anything the user can, including rewriting a policy file the file tools may not touch.
+  Approval is the only gate for it. In the AppContainer a script reaches only the conversation's
+  folders (decision 0021).
 - **Reading a settings file.** The file tools refuse to write coscribe's own settings, policies and
   state (`Settings.protected_paths()`), but a file inside the workspace can still be read.
 - **A user who approves what the card shows.** The card is honest about the call, not about whether
