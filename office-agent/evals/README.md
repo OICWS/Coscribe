@@ -201,6 +201,9 @@ python -m evals.workflow.run ... --only expenses --builds agent --no-repair
 The app's browser must be allowed 127.0.0.1 (Browser panel > Always allow), or every run waits on
 the prompt.
 
+`--mark-submit` marks the fixed workflows' final submit irreversible (decision 0029), so a
+repair's test runs stop before it; the side effects column then shows what still got through.
+
 Verdicts:
 - `PASS`: the first run filed every row correctly.
 - `REPAIRED`: the run after the investigation's revision filed every row correctly.

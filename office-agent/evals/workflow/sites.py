@@ -195,7 +195,11 @@ def _field_steps(f: Field, n: int) -> list[dict[str, Any]]:
              "args": {"ref": f'{role} "{f.label}"', "text": value}}]  # fmt: skip
 
 
-def fixed_workflow(spec: SiteSpec, base: str, path: str) -> dict[str, Any]:
+def fixed_workflow(
+    spec: SiteSpec, base: str, path: str, *, mark_submit: bool = False
+) -> dict[str, Any]:
+    """`mark_submit`: mark the final submit irreversible (decision 0029), so a repair's test
+    runs stop before it."""
     steps: list[dict[str, Any]] = [
         {"id": "open", "kind": "tool", "title": "Open the form", "tool": "browser_navigate",
          "args": {"url": f"{base}/form"}},
@@ -205,8 +209,11 @@ def fixed_workflow(spec: SiteSpec, base: str, path: str) -> dict[str, Any]:
             steps += _field_steps(f, n)
         last = n == len(spec.pages) - 1
         label = spec.submit_label[0] if last else spec.next_label[0]
-        steps.append({"id": f"button{n}", "kind": "tool", "title": f"Click {label}",
-                      "tool": "browser_click", "args": {"ref": f'button "{label}"'}})  # fmt: skip
+        button: dict[str, Any] = {"id": f"button{n}", "kind": "tool", "title": f"Click {label}",
+                  "tool": "browser_click", "args": {"ref": f'button "{label}"'}}  # fmt: skip
+        if last and mark_submit:
+            button["irreversible"] = True
+        steps.append(button)
     steps += [
         {"id": "done", "kind": "tool", "title": "Wait for the reference",
          "tool": "browser_wait_for",

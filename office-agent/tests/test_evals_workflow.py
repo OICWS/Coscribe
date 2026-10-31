@@ -95,6 +95,8 @@ def test_the_recorded_workflow_names_the_original_labels() -> None:
     assert 'textbox "Full name"' in refs
     assert 'combobox "Department"' in refs
     assert 'button "Submit claim"' in refs
+    marked = fixed_workflow(SITES["expenses"], "http://127.0.0.1:1", "e.csv", mark_submit=True)
+    assert [s["id"] for s in marked["steps"][2]["steps"] if s.get("irreversible")] == ["button1"]
 
 
 def test_the_sheet_leaves_out_the_column_a_scenario_withholds() -> None:

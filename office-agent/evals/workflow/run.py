@@ -159,8 +159,11 @@ def run_one(app: App, site: Site, port: int, s: Scenario, args: argparse.Namespa
     target = Path(args.workspace) / path
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(sheet(s.site, extra_column=not s.must_stop), encoding="utf-8")
-    build = fixed_workflow if s.build == "fixed" else agent_workflow
-    trigger = app.create_task(f"eval {s.name}", build(spec, base, path))
+    if s.build == "fixed":
+        workflow = fixed_workflow(spec, base, path, mark_submit=args.mark_submit)
+    else:
+        workflow = agent_workflow(spec, base, path)
+    trigger = app.create_task(f"eval {s.name}", workflow)
     o = Outcome(s.name)
     want = expected(s.site, extra=bool({"required_extra", "required_missing"} & set(s.mutations)))
     try:
@@ -236,6 +239,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--builds", nargs="*", default=["fixed", "agent"])
     parser.add_argument("--match", default="", help="run scenarios whose name contains this")
     parser.add_argument("--no-repair", dest="repair", action="store_false")
+    parser.add_argument(
+        "--mark-submit",
+        action="store_true",
+        help="mark the fixed workflows' final submit irreversible (needs decision 0029 in the app)",
+    )
     parser.add_argument("--run-timeout", type=float, default=900)
     parser.add_argument("--repair-timeout", type=float, default=1500)
     parser.add_argument("--port", type=int, default=8830, help="the test sites' first port")
