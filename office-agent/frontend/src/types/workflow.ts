@@ -117,11 +117,28 @@ export type WorkflowStep =
   | LoopStep;
 export type BlockStep = BranchStep | LoopStep;
 
+/** Decision 0030: one switch per task, a ceiling on what its steps may be. */
+export type TaskAutonomy = "fixed" | "self_healing" | "proactive" | "autonomous";
+
 export interface Workflow {
   /** 2 may hold agent steps. */
   version: 1 | 2;
   inputs: WorkflowInput[];
   steps: WorkflowStep[];
+  /** Null or absent: the lowest level its steps need. */
+  autonomy?: TaskAutonomy | null;
+}
+
+/** GET /api/scheduled-tasks/{id}/runs/{run}/report */
+export interface RunReport {
+  autonomy: TaskAutonomy;
+  loops: { step_id: string; title: string; done: number; total: number }[];
+  not_done: { step_id: string; title: string; iteration: number[]; status: string; error: string | null }[];
+  assumed: { step_id: string; title: string; iteration: number[]; values: string[] }[];
+  irreversible: { step_id: string; title: string; iteration: number[] }[];
+  tool_calls: number;
+  tokens: number;
+  seconds: number | null;
 }
 
 export type StepRecord = WorkflowStepRecord;

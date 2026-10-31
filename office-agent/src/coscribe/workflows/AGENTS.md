@@ -2,7 +2,7 @@
 
 ## Purpose
 Owns how a workflow runs (`engine.py`; `model_step.py` gets a model to return a step's
-fields; `agent_step.py` runs an agent step through an injected runner), what it may touch (`permissions.py`), the tool parameters its editor needs (`catalog.py`), drafting one from a
+fields; `agent_step.py` runs an agent step through an injected runner; `report.py` a run's report, decision 0030), what it may touch (`permissions.py`), the tool parameters its editor needs (`catalog.py`), drafting one from a
 conversation (`solidify.py`) and a one-off test run (`testing.py`). Does not own the schedule
 that fires a run or its stored history (`runtime_lg/scheduled_tasks.py`), the routes
 (`web/routes/scheduled.py`) or any agent: an agent step (decision 0028) runs through
@@ -13,7 +13,7 @@ that fires a run or its stored history (`runtime_lg/scheduled_tasks.py`), the ro
 `AgentCall`, `AgentReply`, `AgentRequest`, `AgentRunner` (what an agent runner takes and returns);
 `RunOutcome`, `StepContext`, `StepRecord`, `WorkflowNotRunnable`, `WorkflowRun` (a run);
 `brings_outside_content`, `granted_by`, `sites_in`, `summarize`, `untrusted_agent_steps` (permissions); `describe_params`, `tool_description`
-(catalog); `output_files`, `run_test`, `uses_browser` (test run); `DraftFailed`, `WorkflowDraft`,
+(catalog); `output_files`, `run_test`, `uses_browser` (test run); `run_report` (what a run did, from its step records); `DraftFailed`, `WorkflowDraft`,
 `draft_workflow`, `revise_workflow` (drafting from a conversation: it takes the serialized
 history, so this package does not import `runtime_lg`).
 

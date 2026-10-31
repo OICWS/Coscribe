@@ -280,7 +280,9 @@ Last reviewed: 2026-10-15.
    showing, editing and answering agent steps, done; P2b a read-only canvas, in review;
    then the run's statuses on it); P3
    step-by-step drafting with test cases and dry runs; P4 the repair layers (a step's exception
-   handler, the run's investigation, a repair proposed as a fixed branch); P5 parallel steps,
+   handler, the run's investigation, a repair proposed as a fixed branch), scored by
+   `evals/workflow/` (#754): the task's autonomy setting and the run report (decision 0030, in
+   review), then self-healing at run time; P5 parallel steps,
    sub-workflows, triggers on events, state across runs, versions.
 
 ## Needs the maintainer's testing (could not be verified here)
