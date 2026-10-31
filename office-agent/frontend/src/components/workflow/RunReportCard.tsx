@@ -81,7 +81,9 @@ export function RunReportCard({
             <div key={index} className="text-[13px]">
               {item.title}
               {where(item.iteration)}: {item.did}
-              <span className="text-[var(--muted)]"> -- it had failed: {item.error}</span>
+              <span className="text-[var(--muted)]">
+                {item.carried ? " -- the same fix as an earlier item" : ` -- it had failed: ${item.error}`}
+              </span>
             </div>
           ))}
         </div>

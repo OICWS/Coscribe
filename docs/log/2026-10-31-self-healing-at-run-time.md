@@ -20,11 +20,25 @@ watching.
   reasons. The step's record keeps `agent.healed = {error, did}`.
 - `engine.py` gives up lines to stay under the size ratchet: `loop_labels.py` now holds the loop
   progress and graph size, and `connector_value.py` a connector result's value.
-- `report.py`: the report lists `healed`; `RunReportCard` shows "Healed while running".
+- A heal names the saved arguments it changed (`changed`, e.g. `ref: textbox "Legal name"`;
+  only literal ones, never a snapshot id). The run keeps the last heal per step (`healed` in the
+  graph state), and the step's later passes try those arguments first, with no agent. A step
+  that can't be undone isn't carried over: it heals with the person each time, and its agent is
+  told what was done before.
+- `report.py`: the report lists `healed`, a carried one marked as the same fix; `RunReportCard` shows "Healed while running".
 - `AutonomySetting`: the self-healing description says what it now does.
 - `tests/test_workflow_healing.py`: fixed doesn't heal; a heal inside consent; a heal of a step
   whose output is read; an irreversible heal waits for a yes; a heal that stops; a non-browser
   step isn't healed.
+
+## Live (eval, fixed builds, `--autonomy self_healing --mark-submit --no-repair`, before carry-over)
+- PASS 4, HEALED 1, SAFE_STOP 2, FAILED 7; no false success, nothing wrong filed.
+- Relabels healed (the expenses run healed 18 steps). Every structural change (a new required
+  field, a review page, a date format) was refused by the agent as more than the step did, and
+  is left to the investigation.
+- Each loop pass healed the same drift again, about 30 s and 150k tokens each, and judged it
+  differently once: the suppliers relabel filed its first row and refused the renamed submit on
+  the second. Carry-over is the answer.
 
 ## Not verified
 - On Windows.

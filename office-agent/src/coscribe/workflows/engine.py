@@ -59,7 +59,7 @@ from ..workflow_spec import (
 )
 from .agent_step import CODE_TOOLS, AgentCall, AgentRunner, answer_of, run_agent_step
 from .connector_value import connector_value as _connector_value
-from .healing import healed, stand_in
+from .healing import carried, healed, stand_in
 from .loop_labels import item_labels as _item_labels
 from .loop_labels import loop_progress as _loop_progress
 from .loop_labels import supersteps as _supersteps
@@ -176,6 +176,8 @@ class _State(TypedDict):
     # Per loop id: {"index", "items", "results", "started_at"} of its
     # current pass.
     loops: Annotated[dict[str, Any], _merge]
+    # Per step id: how it was last healed in this run (decision 0030), for its later passes.
+    healed: Annotated[dict[str, Any], _merge]
 
 
 def _node_name(step: Step) -> str:
@@ -415,7 +417,8 @@ class _GraphBuilder:
                 return await self._approval(step, values, started, it)
             await self.emit(StepRecord(step.id, "running", started_at=started, iteration=it))
             try:
-                output, checks, agent = await self._try(step, values, started, it)
+                earlier = (state.get("healed") or {}).get(step.id)
+                output, checks, agent = await self._try(step, values, started, it, earlier)
             except GraphBubbleUp:
                 raise
             except Exception as exc:  # noqa: BLE001 -- any step error stops the run, recorded
@@ -436,19 +439,25 @@ class _GraphBuilder:
                 )
             )
             save_as = None if isinstance(step, BranchStep) else step_output(step)
-            return {"values": {save_as: output}} if save_as else {"values": {}}
+            heal = {"healed": {step.id: agent["healed"]}} if agent and "healed" in agent else {}
+            return {"values": {save_as: output} if save_as else {}, **heal}
 
         return run
 
     async def _try(
-        self, step: Step, values: dict[str, Any], started: str, it: list[int]
+        self, step: Step, values: dict[str, Any], started: str, it: list[int], earlier: Any
     ) -> tuple[Any, list[dict[str, Any]] | None, dict[str, Any] | None]:
         """A step's attempt, asking for what it needs; a failed browser step is healed when the
-        task's autonomy allows it (decision 0030). On resume after a pause in healing the step
-        runs again from its start, and a step that still fails finds its agent where it was."""
+        task's autonomy allows it (decision 0030), and a later pass first tries what healed it.
+        On resume after a pause in healing the step runs again from its start, and a step that
+        still fails finds its agent where it was."""
+        again = carried(step, earlier)
         try:
             while True:
                 try:
+                    if again is not None:
+                        output, _, _ = await self._attempt(again, values, started, it)
+                        return output, None, {"healed": {**earlier, "carried": True}}
                     return await self._attempt(step, values, started, it)
                 except NeedsPermission as need:
                     if not self.ctx.ask_permission:
@@ -458,7 +467,7 @@ class _GraphBuilder:
             raise
         except Exception as exc:
             error = str(exc) or type(exc).__name__
-            agent_step = stand_in(self.workflow, step, values, error)
+            agent_step = stand_in(self.workflow, step, values, error, earlier)
             if agent_step is None or self.ctx.run_agent is None:
                 raise
             confirm = bool(getattr(step, "irreversible", False))

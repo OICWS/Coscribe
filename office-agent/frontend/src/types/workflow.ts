@@ -139,7 +139,7 @@ export interface RunReport {
   loops: { step_id: string; title: string; done: number; total: number }[];
   not_done: { step_id: string; title: string; iteration: number[]; status: string; error: string | null }[];
   assumed: { step_id: string; title: string; iteration: number[]; values: string[] }[];
-  healed: { step_id: string; title: string; iteration: number[]; error: string; did: string }[];
+  healed: { step_id: string; title: string; iteration: number[]; error: string; did: string; carried?: boolean }[];
   irreversible: { step_id: string; title: string; iteration: number[] }[];
   tool_calls: number;
   tokens: number;

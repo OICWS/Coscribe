@@ -54,7 +54,10 @@ class Harness:
 
 
 def _done(did: str, result: str = "") -> tuple[str, str]:
-    return ("done", json.dumps({"outcome": "done", "assumed": [], "did": did, "result": result}))
+    return (
+        "done",
+        json.dumps({"outcome": "done", "assumed": [], "did": did, "result": result, "changed": []}),
+    )
 
 
 async def test_a_fixed_task_fails_a_browser_step_as_it_always_did(tmp_path: Path) -> None:
@@ -85,10 +88,14 @@ async def test_a_self_healing_task_has_an_agent_do_what_the_step_meant(tmp_path:
     assert "Sites you may open: forms.example.com." in request.task
     assert GONE in request.task and '"text": "Acme"' in request.task
     done = next(r for r in h.records if r.step_id == "name" and r.status == "done")
-    assert done.agent is not None and done.agent["healed"] == {"error": GONE, "did": did}
+    assert done.agent is not None and done.agent["healed"] == {
+        "error": GONE,
+        "did": did,
+        "args": {},
+    }
     healed = h.report()["healed"]
     assert healed == [{"step_id": "name", "title": "Enter Company name", "iteration": [],
-                       "error": GONE, "did": did}]  # fmt: skip
+                       "error": GONE, "did": did, "args": {}}]  # fmt: skip
 
 
 async def test_a_healed_step_that_saves_its_output_gives_what_its_tool_would_have(
@@ -152,3 +159,67 @@ async def test_a_step_that_isnt_a_browser_step_is_not_healed(tmp_path: Path) -> 
 
     assert outcome.status == "failed"
     assert runner.requests == []
+
+
+ROWS = {"id": "rows", "kind": "tool", "title": "Rows", "tool": "rows", "save_as": "rows"}
+
+
+def _each(step: dict[str, Any]) -> dict[str, Any]:
+    return {"id": "each", "kind": "loop", "title": "Each row", "over": "rows", "item": "row",
+            "steps": [step]}  # fmt: skip
+
+
+async def test_a_later_pass_tries_what_healed_the_step_before_healing_again(
+    tmp_path: Path,
+) -> None:
+    typed: list[dict[str, Any]] = []
+
+    def browser_type(**args: Any) -> str:
+        if args["ref"] != 'textbox "Legal name"':
+            raise RuntimeError(GONE)
+        typed.append(args)
+        return "typed"
+
+    name = {"id": "name", "kind": "tool", "title": "Enter Company name", "tool": "browser_type",
+            "args": {"ref": 'textbox "Company name"', "text": "{{row}}"}}  # fmt: skip
+    changed = ['ref: textbox "Legal name"', "text: Acme", "ref2: e12"]
+    report = {"outcome": "done", "assumed": [], "did": 'Typed into "Legal name".', "result": "",
+              "changed": changed}  # fmt: skip
+    runner = ScriptedRunner([("done", json.dumps(report))])
+    h = Harness(tmp_path, runner, browser_type=browser_type, rows=lambda: ["Acme", "Globex"])
+
+    outcome = await h.run([OPEN, ROWS, _each(name)], autonomy="self_healing").start({})
+
+    assert outcome.status == "completed"
+    # One agent, for the first row; the second row ran the step with the healed reference.
+    assert len(runner.requests) == 1
+    assert typed == [{"ref": 'textbox "Legal name"', "text": "Globex"}]
+    healed = h.report()["healed"]
+    assert [(e["iteration"], e.get("carried", False)) for e in healed] == [
+        ([0], False),
+        ([1], True),
+    ]
+    # A reference to the row stays the row's; only a literal saved argument is replaced.
+    assert healed[0]["args"] == {"ref": 'textbox "Legal name"'}
+
+
+async def test_a_step_that_cant_be_taken_back_heals_with_the_person_on_every_pass(
+    tmp_path: Path,
+) -> None:
+    report = {"outcome": "done", "assumed": [], "did": 'Clicked "Send".', "result": "",
+              "changed": ['ref: button "Send"']}  # fmt: skip
+    runner = ScriptedRunner([("call", "browser_click", "EXTERNAL"), ("done", json.dumps(report))])
+    submit = {**SUBMIT, "args": {"ref": 'button "Submit"'}}
+    h = Harness(tmp_path, runner, browser_click=_fails, rows=lambda: ["a", "b"])
+    run = h.run([OPEN, ROWS, _each(submit)], autonomy="self_healing")
+
+    outcome = await run.start({})
+    asked = 0
+    while outcome.status == "waiting" and asked < 5:
+        asked += 1
+        outcome = await run.answer(True)
+
+    assert (outcome.status, asked) == ("completed", 2)
+    assert 'Earlier in this run the same step was healed: Clicked "Send".' in (
+        runner.requests[-1].task
+    )
