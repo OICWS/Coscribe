@@ -1,5 +1,6 @@
 import { toolLabel } from "../../lib/toolLabels";
 import { formatValue } from "../../lib/workflowLabels";
+import { tokenLine } from "./RunReportCard";
 import type { WorkflowAgentActivity, WorkflowAgentCall } from "../../types/wire.gen";
 
 /** The tools a finished agent step called, under its output -- declined
@@ -10,7 +11,7 @@ export function AgentToolsUsed({ activity }: { activity: WorkflowAgentActivity |
   return (
     <p className="text-xs text-[var(--muted)]">
       Called {used.map(toolLabel).join(", ")}
-      {activity?.tokens ? ` · ${activity.tokens.toLocaleString()} tokens` : ""}
+      {activity?.tokens ? ` · ${tokenLine(activity.tokens, activity.cached_tokens)}` : ""}
     </p>
   );
 }

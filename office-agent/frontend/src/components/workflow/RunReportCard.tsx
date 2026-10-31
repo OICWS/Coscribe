@@ -9,6 +9,12 @@ function where(iteration: number[]): string {
     : "";
 }
 
+/** Cached input is billed far below new tokens, so a total alone overstates the cost. */
+export function tokenLine(tokens: number, cached?: number): string {
+  if (!cached) return `${tokens.toLocaleString()} tokens`;
+  return `${(tokens - cached).toLocaleString()} new tokens (+${cached.toLocaleString()} cached)`;
+}
+
 /** What a finished run did (decision 0030), so a run is trusted by its result. */
 export function RunReportCard({
   triggerId,
@@ -32,7 +38,7 @@ export function RunReportCard({
   if (!report) return null;
   const usage = [
     report.tool_calls ? `${report.tool_calls} agent tool calls` : null,
-    report.tokens ? `${report.tokens.toLocaleString()} tokens` : null,
+    report.tokens ? tokenLine(report.tokens, report.cached_tokens) : null,
   ].filter(Boolean);
   return (
     <section

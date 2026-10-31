@@ -143,6 +143,7 @@ export interface RunReport {
   irreversible: { step_id: string; title: string; iteration: number[] }[];
   tool_calls: number;
   tokens: number;
+  cached_tokens: number;
   seconds: number | null;
 }
 

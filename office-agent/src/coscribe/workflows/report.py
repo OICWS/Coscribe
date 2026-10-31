@@ -31,7 +31,7 @@ def run_report(
     """{"autonomy", "loops": [{"step_id", "title", "done", "total"}], "not_done": [{"step_id",
     "title", "iteration", "status", "error"}], "assumed": [{"step_id", "title", "iteration",
     "values"}], "healed": [{"step_id", "title", "iteration", "error", "did"}], "irreversible":
-    [{"step_id", "title", "iteration"}], "tool_calls", "tokens",
+    [{"step_id", "title", "iteration"}], "tool_calls", "tokens", "cached_tokens",
     "seconds"}. A step that was removed from the workflow after the run keeps its id as title."""
     steps = {placed.step.id: placed.step for placed in walk(workflow.steps)}
 
@@ -40,7 +40,7 @@ def run_report(
         return step.title if step is not None else step_id
 
     loops, not_done, assumed, healed, irreversible = [], [], [], [], []
-    tool_calls = tokens = 0
+    tool_calls = tokens = cached = 0
     for record in records:
         step_id = str(record.get("step_id") or "")
         step = steps.get(step_id)
@@ -63,6 +63,7 @@ def run_report(
         if isinstance(agent, dict):
             tool_calls += int(agent.get("tool_calls") or 0)
             tokens += int(agent.get("tokens") or 0)
+            cached += int(agent.get("cached_tokens") or 0)
             if agent.get("assumed"):
                 assumed.append({**where, "values": list(agent["assumed"])})
             if isinstance(agent.get("healed"), dict):
@@ -76,5 +77,6 @@ def run_report(
         "irreversible": irreversible,
         "tool_calls": tool_calls,
         "tokens": tokens,
+        "cached_tokens": cached,
         "seconds": _seconds(started_at, finished_at),
     }

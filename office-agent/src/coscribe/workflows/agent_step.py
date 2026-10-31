@@ -68,6 +68,8 @@ class AgentReply:
     error: str | None = None
     tool_calls: int = 0
     tokens: int = 0
+    # The part of `tokens` the provider served from its cache, billed at its cheaper rate.
+    cached_tokens: int = 0
     tools_used: list[str] = field(default_factory=list)
     # What the agent said it decided on its own (`ASSUMED`).
     assumed: list[str] = field(default_factory=list)
@@ -75,6 +77,8 @@ class AgentReply:
     def activity(self) -> dict[str, Any]:
         """What the step's run record keeps of the agent's work."""
         kept = {"tool_calls": self.tool_calls, "tokens": self.tokens, "tools_used": self.tools_used}
+        if self.cached_tokens:
+            kept["cached_tokens"] = self.cached_tokens
         return {**kept, "assumed": self.assumed} if self.assumed else kept
 
 

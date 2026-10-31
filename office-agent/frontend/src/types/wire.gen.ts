@@ -225,6 +225,7 @@ export interface WorkflowAgentCall {
 export interface WorkflowAgentActivity {
   tool_calls?: number;
   tokens?: number;
+  cached_tokens?: number;
   tools_used?: string[];
   pending?: WorkflowAgentCall;
 }
