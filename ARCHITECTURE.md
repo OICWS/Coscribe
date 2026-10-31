@@ -170,6 +170,12 @@ call beyond them waits for the person), and a high or full one runs under the
 task's approval mode. The step editor edits workflows; a read-only canvas
 shows them; there is no general editable graph canvas.
 
+The person sets one switch per task instead of watching each step's level
+(decision 0030, proposed): fixed, self-healing, proactive or autonomous, a
+ceiling that saving enforces on the steps. A finished run has a report: what was
+done and what wasn't, what an agent decided itself, which steps that can't be
+undone ran, and what the agents used.
+
 A conversation can also pause itself and resume later (`sleep_until`,
 `wake_on_task`), which is separate from scheduled tasks: a wake belongs to
 one conversation, a task is a global record that starts its own.

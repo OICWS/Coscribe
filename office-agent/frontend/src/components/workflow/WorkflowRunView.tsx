@@ -31,6 +31,7 @@ import { StepOutput } from "./StepOutput";
 import { AgentToolsUsed } from "./AgentActivity";
 import { primaryButton, secondaryButton } from "../../lib/formStyles";
 import { WaitingCard } from "./WaitingCard";
+import { RunReportCard } from "./RunReportCard";
 import { StatusDot } from "./StatusDot";
 import { ViewToggle } from "./ViewToggle";
 import { WorkflowCanvas } from "./WorkflowCanvas";
@@ -731,6 +732,7 @@ export function WorkflowRunView({
 
         <RunBanner run={run} workflow={workflow} onStop={onStop} onInvestigate={onInvestigate} />
         <InvestigationLink run={run} />
+        <RunReportCard triggerId={task.trigger_id} run={run} />
         {run.sites && run.sites.length > 0 && run.status !== "running" && (
           <div className="text-[13px] text-[var(--muted)]" data-testid="run-sites">
             Opened: <span className="text-[var(--fg)]">{run.sites.join(", ")}</span>

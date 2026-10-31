@@ -12,6 +12,7 @@ from .permissions import (
     summarize,
     untrusted_agent_steps,
 )
+from .report import run_report
 from .solidify import DraftFailed, WorkflowDraft, draft_workflow, revise_workflow
 from .testing import output_files, run_test, uses_browser
 
@@ -37,6 +38,7 @@ __all__ = [
     "output_files",
     "parse_workflow",
     "revise_workflow",
+    "run_report",
     "run_test",
     "sites_in",
     "summarize",

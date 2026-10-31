@@ -4129,6 +4129,52 @@
         "summary": "Investigate Workflow Run"
       }
     },
+    "/api/scheduled-tasks/{trigger_id}/runs/{run_id}/report": {
+      "get": {
+        "operationId": "workflow_run_report_api_scheduled_tasks__trigger_id__runs__run_id__report_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trigger_id",
+            "required": true,
+            "schema": {
+              "title": "Trigger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Workflow Run Report"
+      }
+    },
     "/api/scheduled-tasks/{trigger_id}/runs/{run_id}/retry": {
       "post": {
         "operationId": "retry_workflow_run_api_scheduled_tasks__trigger_id__runs__run_id__retry_post",

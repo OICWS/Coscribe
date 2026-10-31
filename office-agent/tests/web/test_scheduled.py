@@ -907,7 +907,7 @@ def test_validate_workflow_normalizes_or_explains_lg(
         ok = client.post("/api/workflows/validate", json={"workflow": {"steps": []}})
         bad = client.post("/api/workflows/validate", json={"workflow": {"steps": [step]}})
 
-    assert ok.json() == {"workflow": {"version": 1, "inputs": [], "steps": []}}
+    assert ok.json() == {"workflow": {"version": 1, "inputs": [], "steps": [], "autonomy": None}}
     assert bad.status_code == 400
     assert "step 1" in bad.json()["error"]
 
