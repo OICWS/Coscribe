@@ -13,7 +13,7 @@ across sites and kinds of change.
   answering, and saves the last revision. It judges by what the site stored.
 - `evals/README.md`: how to run it and what each verdict means.
 - `--mark-submit` marks the final submit irreversible (decision 0029) and `--autonomy` sets the
-  fixed workflows' autonomy (decisions 0030, 0031), scored as `HEALED` when a healed run filed
+  fixed workflows' autonomy (decision 0030, self-healing in #760), scored as `HEALED` when a healed run filed
   every row right; both need those changes in the app.
 - `tests/test_evals_workflow.py`: the sites, mutations, the recorded workflow and the judge.
 

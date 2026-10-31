@@ -186,7 +186,7 @@ def run_one(app: App, site: Site, port: int, s: Scenario, args: argparse.Namespa
         site.reset(frozenset(s.mutations))
         t0 = time.monotonic()
         run = app.run(trigger, args.run_timeout)
-        # The person says yes to healing a step that can't be undone (decision 0031): what is
+        # The person says yes to healing a step that can't be undone (decision 0030): what is
         # scored is whether what healing then did was right.
         while run["status"] == "needs_approval" and _heal_waiting(run) and o.heal_asks < 10:
             o.heal_asks += 1
@@ -276,7 +276,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--autonomy",
         choices=["fixed", "self_healing", "proactive", "autonomous"],
-        help="set the fixed workflows' autonomy (needs decisions 0030 and 0031 in the app)",
+        help="set the fixed workflows' autonomy (needs decision 0030 and #760 in the app)",
     )
     parser.add_argument("--run-timeout", type=float, default=900)
     parser.add_argument("--repair-timeout", type=float, default=1500)

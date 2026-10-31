@@ -204,7 +204,7 @@ the prompt.
 `--mark-submit` marks the fixed workflows' final submit irreversible (decision 0029), so a
 repair's test runs stop before it; the side effects column then shows what still got through.
 
-`--autonomy self_healing` sets the fixed workflows' autonomy (decisions 0030, 0031): a browser
+`--autonomy self_healing` sets the fixed workflows' autonomy (decision 0030, self-healing in #760): a browser
 step that fails is healed during the run. The eval says yes when healing a step marked
 irreversible waits for a person, and the first-run column shows how many steps were healed and
 how often it asked.
