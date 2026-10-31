@@ -35,9 +35,7 @@ history, so this package does not import `runtime_lg`).
 - Healing (decision 0030) acts only for a browser tool step, only at `self_healing` or above,
   with the page tools on the sites `granted_by` lists, and on a step marked `irreversible` every
   call that does more than read waits for a person; what it did is on the step's record
-  (`agent.healed`) and in the run report. A heal's changed arguments are tried, without an
-  agent, on later steps of the same run whose saved argument had the old value (`recalled`),
-  never on a step marked `irreversible`.
+  (`agent.healed`) and in the run report.
 - `UNAVAILABLE_TOOLS` in `engine.py` only lists tools a run may not call; the import contract,
   not that list, is what keeps the code module out.
 

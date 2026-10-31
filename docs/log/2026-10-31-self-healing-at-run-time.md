@@ -21,12 +21,10 @@ watching.
 - `engine.py` gives up lines to stay under the size ratchet: `loop_labels.py` now holds the loop
   progress and graph size, and `connector_value.py` a connector result's value.
 - A heal names the saved arguments it changed (`changed`, e.g. `ref: textbox "Legal name"`;
-  only literal ones, never a snapshot id). The run remembers each change by tool, argument and
-  the value it replaced (`healed` in the graph state), and any later step whose saved argument
-  had that value tries the new one first, with no agent: the step's next pass in a loop, and
-  the same field's step for the next row in a workflow built row by row. A step that can't be
-  undone isn't carried over: it heals with the person each time, and its agent is told what was
-  done before.
+  only literal ones, never a snapshot id). The run keeps the last heal per step (`healed` in the
+  graph state), and the step's later passes try those arguments first, with no agent. A step
+  that can't be undone isn't carried over: it heals with the person each time, and its agent is
+  told what was done before.
 - `report.py`: the report lists `healed`, a carried one marked as the same fix; `RunReportCard` shows "Healed while running".
 - `AutonomySetting`: the self-healing description says what it now does.
 - `tests/test_workflow_healing.py`: fixed doesn't heal; a heal inside consent; a heal of a step
@@ -41,6 +39,20 @@ watching.
 - Each loop pass healed the same drift again, about 30 s and 150k tokens each, and judged it
   differently once: the suppliers relabel filed its first row and refused the renamed submit on
   the second. Carry-over is the answer.
+
+## Live (the same eval, with carry-over)
+- PASS 4, HEALED 2, SAFE_STOP 2, FAILED 6; no false success, nothing wrong filed. The expenses
+  relabel ran its second row on the first row's fixes (8 of its 9 steps with no agent; the
+  submit, which can't be undone, healed with the person) in 546 s instead of 878 s, and the
+  expenses review page now heals too.
+- One run in between told the agent only "earlier in this run: <what it did>"; it took the second
+  row's submit for a duplicate of the first and stopped. The prompt now says the earlier heal was
+  for an earlier item and this call is a new one.
+- Still failing, and left to the investigation: the structural changes above, and the
+  suppliers relabel, whose agent judged "Who we write to" not to be the contact email field.
+- Carrying a fix to other steps that name the same element was tried and dropped: the eval
+  doesn't need it, and a fix tried before the saved arguments could act on the wrong element
+  of another page.
 
 ## Not verified
 - On Windows.
