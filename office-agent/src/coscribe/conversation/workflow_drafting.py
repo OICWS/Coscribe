@@ -97,6 +97,7 @@ class WorkflowDraftingHost(Protocol):
     _turn_lock: TurnLock
     _live_websocket: EventSink | None
     _turn_websocket: Any
+    preapproved_tools: frozenset[str]
 
     @property
     def environment(self) -> str: ...
@@ -231,8 +232,17 @@ class WorkflowDrafting:
             draft_id: str = "",
             task_id: str = "",
             inputs: dict[str, Any] | None = None,
+            send_for_real: bool = False,
         ) -> str:
             messages = list(state.get("messages", []))
+            if send_for_real and "test_workflow" in self._host.preapproved_tools:
+                # Pre-approved means no one is watching (an unattended
+                # investigation): no one has agreed to send for real.
+                return json.dumps(
+                    {"status": "refused", "error": "No one is here to agree to sending for "
+                     "real. Report what the test checked and what it stopped before."},
+                    ensure_ascii=False,
+                )  # fmt: skip
             try:
                 _name, data, _trigger = self._workflow_to_change(messages, task_id, draft_id)
                 workflow = parse_workflow(data)
@@ -261,7 +271,9 @@ class WorkflowDrafting:
                 # The steps' own download waits must not take a file this
                 # conversation downloaded before the test.
                 BROWSER_HOST.set_active(self._host.thread_id, True)
-            result = await run_test(workflow, ctx, inputs, report, self._host.thread_id)
+            result = await run_test(
+                workflow, ctx, inputs, report, self._host.thread_id, send_for_real=send_for_real
+            )
             if browser:
                 # For the reviewer, not the model: the page the test ended on.
                 result["screenshot"] = await asyncio.to_thread(
@@ -273,6 +285,10 @@ class WorkflowDrafting:
                 "passed": "Tell the user it passed; they review it on the card.",
                 "stopped_at_approval": "It ran up to an approval step, where a test stops; "
                 "tell the user the steps before it passed.",
+                "stopped_before_irreversible": "It ran up to a step that can't be taken back "
+                "(stopped_before), where a test stops. Tell the user the steps before it "
+                "passed. Only if they ask for the rest to be checked too, and agree that it "
+                "really sends, test again with send_for_real=true.",
             }.get(
                 result["status"],
                 "Find the cause from the failed step, its error and the page, fix it with "
@@ -287,8 +303,10 @@ class WorkflowDrafting:
             name="test_workflow",
             description=(
                 "Run a fixed workflow once for real to check it works: every step, in "
-                "order, with real effects -- files written, pages clicked, messages sent. "
-                "Stops at the first failure, or before an approval step. Reports each "
+                "order, with real effects -- files written, pages clicked. Stops at the "
+                "first failure, before an approval step, and before a step marked "
+                "irreversible (it submits, sends, pays or deletes) unless `send_for_real` "
+                "-- only when the user agreed to that. Reports each "
                 "step's status, time, output and error, and for a failed browser workflow "
                 "the page at that moment. Nothing is saved to a task's runs. `draft_id`: "
                 "a draft from draft_workflow or revise_workflow; or `task_id`: a saved "
@@ -304,14 +322,18 @@ class WorkflowDrafting:
     def _workflow_to_change(
         self, messages: list[Any], task_id: str, draft_id: str
     ) -> tuple[str, dict[str, Any], ScheduledTrigger | None]:
-        """(name, workflow, the saved task or None for a draft) for a draft
-        in this conversation or a saved task."""
+        """(name, workflow, the saved task or None for a new workflow) for a
+        draft in this conversation or a saved task."""
+        store = ScheduledTriggerStore(self._host.settings.state_dir)
         if draft_id:
             draft = _draft_from(messages, draft_id)
             if not draft:
                 raise DraftFailed(f"There's no draft {draft_id!r} in this conversation.")
-            return str(draft.get("name") or ""), draft["workflow"], None
-        trigger = ScheduledTriggerStore(self._host.settings.state_dir).load(task_id)
+            # A draft of changes to a saved task stays one when it is revised
+            # again, or the person is offered to save it as a second task.
+            linked = store.load(str(draft["trigger_id"])) if draft.get("trigger_id") else None
+            return str(draft.get("name") or ""), draft["workflow"], linked
+        trigger = store.load(task_id)
         if trigger is None:
             raise DraftFailed(f"There's no scheduled task with id {task_id!r}.")
         if not trigger.workflow:

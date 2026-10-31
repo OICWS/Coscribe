@@ -1,9 +1,9 @@
 # The model is sent: the system prompt, then the tools bound to it (decision 0001).
 # A change here is a change to what providers cache. UPDATE_TOOL_SCHEMAS=1 rewrites it.
 
-system prompt: 34611 chars, ~8652 tokens, sha256 695e4ad531
+system prompt: 34692 chars, ~8673 tokens, sha256 04a0768afe
 
-bound to the model: 22 tools, ~4944 tokens
+bound to the model: 22 tools, ~4988 tokens
   ask_user_question (questions:array) desc 1435 chars sha256 e846e64163
   draft_workflow (name?:string) desc 983 chars sha256 e91334c9ee
   edit_file (new_text:string, old_text:string, path:string, replace_all?:boolean) desc 1330 chars sha256 3f5ab0dd7e
@@ -22,12 +22,12 @@ bound to the model: 22 tools, ~4944 tokens
   task_create (content:string) desc 149 chars sha256 dea506b85f
   task_list () desc 54 chars sha256 7bc88160db
   task_update (status:string, task_id:string) desc 284 chars sha256 e5aa5260b7
-  test_workflow (draft_id?:string, inputs?:object|null, task_id?:string) desc 559 chars sha256 61a34ef677
+  test_workflow (draft_id?:string, inputs?:object|null, send_for_real?:boolean, task_id?:string) desc 677 chars sha256 4732f34b60
   use_tool (arguments:object, name:string) desc 297 chars sha256 707cbdc0c1
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 120 tools, ~37269 tokens (the ones not bound are found through search_tools)
+registered: 120 tools, ~37312 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -139,7 +139,7 @@ registered: 120 tools, ~37269 tokens (the ones not bound are found through searc
   task_create | READ | tasks | core | sha256 40c8ae7f1d
   task_list | READ | tasks | core | sha256 7bc88160db
   task_update | READ | tasks | core | sha256 7e9e92c5a1
-  test_workflow | EXTERNAL | workflows | core | sha256 61a34ef677
+  test_workflow | EXTERNAL | workflows | core | sha256 4732f34b60
   wake_on_event | WRITE_LOCAL | selfwake | deferred | sha256 49123abfdf
   wake_on_task | WRITE_LOCAL | selfwake | deferred | sha256 246c6a0f4f
   web_search | READ | web | core | sha256 8ae68add7a
