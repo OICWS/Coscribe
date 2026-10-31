@@ -21,8 +21,7 @@ import { ChevronRightIcon, PencilIcon, PlayIcon, TrashIcon } from "./icons";
 import { RunStatusIcon } from "./RunStatusIcon";
 import { ToggleSwitch } from "./ToggleSwitch";
 import { RunInputsDialog } from "./workflow/RunInputsDialog";
-import { WorkflowSection } from "./workflow/WorkflowSection";
-import { AutonomySetting } from "./workflow/AutonomySetting";
+import { TaskWorkflowSection } from "./workflow/WorkflowSection";
 import { WorkflowPermissions } from "./workflow/WorkflowPermissions";
 
 // Mirrors tools/bookkeeping/scheduled_tasks.py's MAX_NOTES_CHARS.
@@ -380,11 +379,10 @@ export function ScheduledTaskDetail({
 
         <div className="mt-6 flex flex-col gap-6">
           {workflow ? (
-            <WorkflowSection workflow={workflow} persist={saveWorkflow} focusStepId={focusStepId} />
+            <TaskWorkflowSection workflow={workflow} persist={saveWorkflow} focusStepId={focusStepId} />
           ) : (
             <InstructionsSection prompt={task.prompt} />
           )}
-          {workflow && <AutonomySetting workflow={workflow} persist={saveWorkflow} />}
           <div>
             <SectionLabel>Repeats</SectionLabel>
             <div className="text-sm font-medium">{describeSchedule(task.schedule)}</div>

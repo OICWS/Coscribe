@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Workflow } from "../../types/workflow";
+import { AutonomySetting } from "./AutonomySetting";
 import { WorkflowCanvas } from "./WorkflowCanvas";
 import { WorkflowEditor, type Persist } from "./WorkflowEditor";
 
@@ -65,5 +66,19 @@ export function WorkflowSection({
         <WorkflowEditor workflow={workflow} persist={persist} focusStepId={focus} />
       )}
     </div>
+  );
+}
+
+/** A saved task's workflow: the section, then the task's autonomy switch (decision 0030). */
+export function TaskWorkflowSection(props: {
+  workflow: Workflow;
+  persist: Persist;
+  focusStepId?: string | null;
+}) {
+  return (
+    <>
+      <WorkflowSection {...props} />
+      <AutonomySetting workflow={props.workflow} persist={props.persist} />
+    </>
   );
 }
