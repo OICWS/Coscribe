@@ -131,6 +131,8 @@ def verdict(o: Outcome, s: Scenario, want: list[dict[str, str]]) -> str:
         return "PASS" if o.first_status == "completed" else "PASS_UNREPORTED"
     if o.first_status == "completed":
         return "FALSE_SUCCESS"
+    if o.first_status == "needs_approval" and not o.first_records:
+        return "ASKED"
     if o.repaired:
         second_ok, _ = judge(o.second_records, want)
         if second_ok:
@@ -138,6 +140,15 @@ def verdict(o: Outcome, s: Scenario, want: list[dict[str, str]]) -> str:
         if o.second_status == "completed":
             return "FALSE_SUCCESS_AFTER_REPAIR"
     return "FAILED"
+
+
+def _asked(run: dict[str, Any]) -> str:
+    """What a paused run waits on a person for."""
+    waiting: dict[str, Any] = next(
+        (r for r in reversed(run.get("steps") or []) if r.get("status") == "waiting"), {}
+    )
+    asked = waiting.get("permission") or waiting.get("question") or waiting.get("error") or ""
+    return f"asks at {waiting.get('title', '?')}: {json.dumps(asked, ensure_ascii=False)[:300]}"
 
 
 def run_one(app: App, site: Site, port: int, s: Scenario, args: argparse.Namespace) -> Outcome:
@@ -158,7 +169,10 @@ def run_one(app: App, site: Site, port: int, s: Scenario, args: argparse.Namespa
         o.first_seconds = round(time.monotonic() - t0, 1)
         o.first_status, o.first_error = run["status"], str(run.get("error") or "")
         o.first_records = list(site.records)
-        if o.first_status != "completed" and args.repair:
+        if o.first_status == "needs_approval":
+            o.first_error = _asked(run)
+            app.decline(trigger, run["run_id"], args.run_timeout)
+        if o.first_status == "failed" and args.repair:
             site.records.clear()
             t0 = time.monotonic()
             answer = ANSWER_MISSING if s.must_stop else ANSWER

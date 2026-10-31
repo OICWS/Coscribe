@@ -193,11 +193,15 @@ class Site:
         return f"{self.spec.ref_prefix[0]}-{1000 + n}"
 
     def file(self, values: dict[str, str], status: str) -> str:
-        record = {"status": status, "values": dict(values), "mutations": sorted(self.mutations)}
+        record: dict[str, Any] = {
+            "status": status,
+            "values": dict(values),
+            "mutations": sorted(self.mutations),
+        }
         if status == "filed":
             record["ref"] = self.reference()
         self.records.append(record)
-        return record.get("ref", "")
+        return str(record.get("ref", ""))
 
     def done(self, ref: str) -> str:
         if self.has("ref_format"):
@@ -218,6 +222,12 @@ def parse_date(text: str, dmy: bool) -> date | None:
 
 
 def _handler(site: Site) -> type[BaseHTTPRequestHandler]:
+    def _page(path: str) -> int | None:
+        """The form page a /form/N path names, or None for a page this site doesn't have; an
+        agent finding its way round tries addresses of its own."""
+        tail = path.rsplit("/", 1)[1]
+        return int(tail) if tail.isdigit() and int(tail) < len(site.spec.pages) else None
+
     class Handler(BaseHTTPRequestHandler):
         def _send(self, body: str, code: int = 200, location: str | None = None) -> None:
             self.send_response(code)
@@ -238,8 +248,8 @@ def _handler(site: Site) -> type[BaseHTTPRequestHandler]:
                     sid = str(len(site._sessions) + 1)
                     site._sessions[sid] = {}
                     return self._send(site.form(sid, 0, {}, []))
-                if url.path.startswith("/form/") and sid in site._sessions:
-                    page = int(url.path.rsplit("/", 1)[1])
+                page = _page(url.path) if url.path.startswith("/form/") else None
+                if page is not None and sid in site._sessions:
                     return self._send(site.form(sid, page, {}, []))
                 if url.path == "/review" and sid in site._sessions:
                     rows = "".join(
@@ -275,7 +285,9 @@ def _handler(site: Site) -> type[BaseHTTPRequestHandler]:
                 if url.path == "/confirm":
                     ref = site.file(site._sessions.pop(sid), "filed")
                     return self._send("", 303, f"/done/{ref}")
-                page = int(url.path.rsplit("/", 1)[1])
+                page = _page(url.path) if url.path.startswith("/form/") else None
+                if page is None:
+                    return self._send(site.page("Not found", ""), 404)
                 errors = site.errors(page, sent)
                 if errors:
                     return self._send(site.form(sid, page, sent, errors), 422)
