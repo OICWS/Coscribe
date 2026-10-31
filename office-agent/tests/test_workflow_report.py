@@ -25,7 +25,12 @@ def test_the_report_says_what_was_done_not_done_and_decided() -> None:
     assumed = ["date: 02/11/2026 (form wants DD/MM)"]
     records = [
         _record("rows", "done", []),
-        _record("file", "done", [0], agent={"tool_calls": 9, "tokens": 1200, "assumed": assumed}),
+        _record(
+            "file",
+            "done",
+            [0],
+            agent={"tool_calls": 9, "tokens": 1200, "cached_tokens": 1000, "assumed": assumed},
+        ),  # fmt: skip
         _record(
             "file",
             "failed",
@@ -48,6 +53,7 @@ def test_the_report_says_what_was_done_not_done_and_decided() -> None:
         {"step_id": "file", "title": "File the row", "iteration": [0], "values": assumed}
     ]
     assert (report["tool_calls"], report["tokens"], report["seconds"]) == (13, 1500, 150.0)
+    assert report["cached_tokens"] == 1000
 
 
 def test_a_fixed_task_refuses_an_agent_step() -> None:

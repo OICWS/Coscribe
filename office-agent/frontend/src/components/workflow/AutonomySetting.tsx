@@ -12,9 +12,9 @@ const DESCRIPTION: Record<TaskAutonomy, string> = {
   fixed:
     "Only the saved steps run. A failure stops the run, and a fix is proposed for you to save.",
   self_healing:
-    "Only the saved steps, for now the same as Fixed. Next: a step that breaks because a page changed is fixed during the run, and it asks you before anything that can't be undone.",
+    "The saved steps run. A browser step that breaks because the page changed is done by an agent on the page as it is now, and the report says what it did instead. A step that can't be undone waits for your yes.",
   proactive:
-    "Agent steps may work out their part within their tools and sites.",
+    "As Self-healing, and agent steps may work out their part within their tools and sites.",
   autonomous: "An agent may do the whole task.",
 };
 

@@ -302,6 +302,18 @@ async def test_an_agent_out_of_steps_still_reports(tmp_path: Path) -> None:
     assert outcome.values["sorted"] == {"report": "I read a and b, and didn't get further."}
 
 
+def test_the_cached_part_of_an_agents_tokens_is_counted_apart() -> None:
+    """A provider's cache serves most of each call's input (the fixed tool list) at its cheaper
+    rate, so a total alone overstates what a step cost."""
+    from coscribe.runtime_lg.workflow_agent import _activity
+
+    usage = {"input_tokens": 37192, "output_tokens": 41, "total_tokens": 37233,
+             "input_token_details": {"cache_read": 36992}}  # fmt: skip
+    messages = [AIMessage("", usage_metadata=usage), AIMessage("done", usage_metadata=usage)]
+
+    assert _activity(messages) == (0, 2 * 37233, 2 * 36992, [])
+
+
 async def test_an_agent_that_ends_with_nothing_to_say_is_asked_once_where_it_stands(
     tmp_path: Path,
 ) -> None:

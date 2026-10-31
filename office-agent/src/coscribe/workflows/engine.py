@@ -24,7 +24,6 @@ import asyncio
 import inspect
 import json
 import logging
-import re
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime
@@ -59,7 +58,11 @@ from ..workflow_spec import (
     walk,
 )
 from .agent_step import CODE_TOOLS, AgentCall, AgentRunner, answer_of, run_agent_step
+from .connector_value import connector_value as _connector_value
+from .healing import carried, healed, stand_in
 from .loop_labels import item_labels as _item_labels
+from .loop_labels import loop_progress as _loop_progress
+from .loop_labels import supersteps as _supersteps
 from .model_step import ask_model, field_problems
 from .permissions import untrusted_agent_steps
 
@@ -173,6 +176,8 @@ class _State(TypedDict):
     # Per loop id: {"index", "items", "results", "started_at"} of its
     # current pass.
     loops: Annotated[dict[str, Any], _merge]
+    # Per step id: how it was last healed in this run (decision 0030), for its later passes.
+    healed: Annotated[dict[str, Any], _merge]
 
 
 def _node_name(step: Step) -> str:
@@ -201,42 +206,6 @@ def preview(value: Any, depth: int = 0) -> Any:
             items.append(f"... [{len(value) - _PREVIEW_LIST_ITEMS} more items]")
         return items
     return str(value)
-
-
-_SECTION_HEADING = re.compile(r"^### (.+?)\s*$", re.MULTILINE)
-
-
-def _result_section(text: str) -> str | None:
-    """The body of a `### Result` section, for connectors (Playwright's)
-    that wrap a tool's value in markdown sections alongside the code they
-    ran and the page state -- the value is what later steps need."""
-    if not text.startswith("### "):
-        return None
-    headings = list(_SECTION_HEADING.finditer(text))
-    for index, heading in enumerate(headings):
-        if heading.group(1).strip().lower() == "result":
-            end = headings[index + 1].start() if index + 1 < len(headings) else len(text)
-            return text[heading.end() : end].strip()
-    return None
-
-
-def _connector_value(result: Any) -> Any:
-    """What a connector's tool returned, as a value: its text content
-    blocks joined, its `### Result` section if it has one, and JSON
-    decoded where the text is JSON."""
-    if isinstance(result, tuple):  # (content, artifact)
-        result = result[0]
-    if isinstance(result, list) and all(
-        isinstance(block, dict) and block.get("type") == "text" for block in result
-    ):
-        result = "\n".join(str(block.get("text", "")) for block in result)
-    if isinstance(result, str):
-        result = _result_section(result) or result
-        try:
-            return json.loads(result)
-        except ValueError:
-            return result
-    return result
 
 
 async def _run_tool(step: ToolStep, values: dict[str, Any], ctx: StepContext) -> Any:
@@ -402,24 +371,6 @@ def resolve_inputs(workflow: Workflow, given: dict[str, Any]) -> dict[str, Any]:
     return values
 
 
-def _supersteps(steps: list[Step]) -> int:
-    """The most graph steps `steps` can take -- LangGraph stops a run that
-    goes past its recursion limit, and a loop legitimately goes round."""
-    total = 0
-    for step in steps:
-        if isinstance(step, BranchStep):
-            total += 1 + max(_supersteps(step.then), _supersteps(step.otherwise))
-        elif isinstance(step, LoopStep):
-            total += 2 + step.max_items * (_supersteps(step.steps) + 2)
-        else:
-            total += 1
-    return total
-
-
-def _loop_progress(loop: dict[str, Any]) -> dict[str, Any]:
-    return {"done": loop["index"], "total": len(loop["items"]), "items": loop["labels"]}
-
-
 class _GraphBuilder:
     def __init__(self, workflow: Workflow, ctx: StepContext, on_step: OnStep) -> None:
         self.workflow = workflow
@@ -466,14 +417,8 @@ class _GraphBuilder:
                 return await self._approval(step, values, started, it)
             await self.emit(StepRecord(step.id, "running", started_at=started, iteration=it))
             try:
-                while True:
-                    try:
-                        output, checks, agent = await self._attempt(step, values, started, it)
-                        break
-                    except NeedsPermission as need:
-                        if not self.ctx.ask_permission:
-                            raise
-                        await self._permission(step, need, started, it)
+                earlier = (state.get("healed") or {}).get(step.id)
+                output, checks, agent = await self._try(step, values, started, it, earlier)
             except GraphBubbleUp:
                 raise
             except Exception as exc:  # noqa: BLE001 -- any step error stops the run, recorded
@@ -494,9 +439,46 @@ class _GraphBuilder:
                 )
             )
             save_as = None if isinstance(step, BranchStep) else step_output(step)
-            return {"values": {save_as: output}} if save_as else {"values": {}}
+            heal = {"healed": {step.id: agent["healed"]}} if agent and "healed" in agent else {}
+            return {"values": {save_as: output} if save_as else {}, **heal}
 
         return run
+
+    async def _try(
+        self, step: Step, values: dict[str, Any], started: str, it: list[int], earlier: Any
+    ) -> tuple[Any, list[dict[str, Any]] | None, dict[str, Any] | None]:
+        """A step's attempt, asking for what it needs; a failed browser step is healed when the
+        task's autonomy allows it (decision 0030), and a later pass first tries what healed it.
+        On resume after a pause in healing the step runs again from its start, and a step that
+        still fails finds its agent where it was."""
+        again = carried(step, earlier)
+        try:
+            while True:
+                try:
+                    if again is not None:
+                        output, _, _ = await self._attempt(again, values, started, it)
+                        return output, None, {"healed": {**earlier, "carried": True}}
+                    return await self._attempt(step, values, started, it)
+                except NeedsPermission as need:
+                    if not self.ctx.ask_permission:
+                        raise
+                    await self._permission(step, need, started, it)
+        except (GraphBubbleUp, NeedsPermission):
+            raise
+        except Exception as exc:
+            error = str(exc) or type(exc).__name__
+            agent_step = stand_in(self.workflow, step, values, error, earlier)
+            if agent_step is None or self.ctx.run_agent is None:
+                raise
+            confirm = bool(getattr(step, "irreversible", False))
+            try:
+                result, agent = await self._agent(agent_step, values, started, it, confirm)
+            except GraphBubbleUp:
+                raise
+            except Exception as heal_exc:
+                raise StepFailed(f"{error} -- healing it didn't work: {heal_exc}") from heal_exc
+            output, deviation = healed(step, result, error)
+            return output, None, {**agent, "healed": deviation}
 
     async def _attempt(
         self, step: Step, values: dict[str, Any], started: str, it: list[int]
@@ -520,8 +502,9 @@ class _GraphBuilder:
         return None, None, None
 
     async def _agent(
-        self, step: AgentStep, values: dict[str, Any], started: str, it: list[int]
-    ) -> tuple[Any, dict[str, Any]]:
+        self, step: AgentStep, values: dict[str, Any], started: str, it: list[int],
+        confirm: bool = False,
+    ) -> tuple[Any, dict[str, Any]]:  # fmt: skip
         async def ask(call: AgentCall) -> dict[str, Any]:
             message = f"{step.title}: the agent wants to use {call.tool}."
             pending = {"pending": {"tool": call.tool, "args": preview(call.args)}}
@@ -551,6 +534,7 @@ class _GraphBuilder:
             workspace=str(self.ctx.workspace_root),
             make_model=self.ctx.make_model,
             ask=ask,
+            confirm_changes=confirm,
         )
         return result, reply.activity()
 

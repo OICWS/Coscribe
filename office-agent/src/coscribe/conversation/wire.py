@@ -236,6 +236,7 @@ class WorkflowAgentActivity(TypedDict):
 
     tool_calls: NotRequired[int]
     tokens: NotRequired[int]
+    cached_tokens: NotRequired[int]
     tools_used: NotRequired[list[str]]
     pending: NotRequired[WorkflowAgentCall]
 

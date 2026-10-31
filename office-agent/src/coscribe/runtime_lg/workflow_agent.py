@@ -82,18 +82,20 @@ class _Answers:
         self.path.unlink(missing_ok=True)
 
 
-def _activity(messages: Sequence[Any]) -> tuple[int, int, list[str]]:
-    calls, tokens, used = 0, 0, set()
+def _activity(messages: Sequence[Any]) -> tuple[int, int, int, list[str]]:
+    """Tool calls, tokens, the part of them the provider served from its cache, and tools used."""
+    calls, tokens, cached, used = 0, 0, 0, set()
     for message in messages:
         if not isinstance(message, AIMessage):
             continue
         usage: dict[str, Any] = dict(message.usage_metadata or {})
         tokens += int(usage.get("total_tokens", 0) or 0)
+        cached += int((usage.get("input_token_details") or {}).get("cache_read", 0) or 0)
         for call in message.tool_calls:
             if call["name"] not in _DEFERRAL_TOOLS:
                 calls += 1
                 used.add(call["name"])
-    return calls, tokens, sorted(used)
+    return calls, tokens, cached, sorted(used)
 
 
 @dataclass(frozen=True)
@@ -279,10 +281,10 @@ class WorkflowAgentRunner:
         error: str | None = None,
     ) -> AgentReply:
         messages = list((getattr(state, "values", None) or {}).get("messages", []))
-        calls, tokens, used = _activity(messages)
+        calls, tokens, cached, used = _activity(messages)
         return AgentReply(
             status, text=text, call=call, error=error, tool_calls=calls, tokens=tokens,
-            tools_used=used,
+            cached_tokens=cached, tools_used=used,
         )  # fmt: skip
 
 
