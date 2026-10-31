@@ -62,7 +62,7 @@ _BUDGET_NOTE = (
 
 # The model-call cap ends a run with langchain's own "Model call limits
 # exceeded" message, which reports nothing of the work.
-_LIMIT_MESSAGE_PREFIX = "Model call limits exceeded"
+LIMIT_MESSAGE_PREFIX = "Model call limits exceeded"
 
 # Its own number, not Settings.max_turns: that one is sized for a whole
 # multi-file turn of the main conversation, and a delegated task left that
@@ -106,7 +106,7 @@ _PARENT_ONLY_CATEGORIES = frozenset({"subagent_tasks", "selfwake", "tasks"})
 MODEL_STALL_SECONDS = 180.0
 
 
-def _for_subagents(tool: Callable[..., Any] | BaseTool) -> bool:
+def for_subagents(tool: Callable[..., Any] | BaseTool) -> bool:
     if _tool_name(tool) in _NOT_FOR_SUBAGENTS:
         return False
     if isinstance(tool, BaseTool):
@@ -172,11 +172,11 @@ def _record_progress(task: SubAgentTask, update: Any, seen: set[str]) -> bool:
     return changed
 
 
-class _ModelStalled(Exception):
+class ModelStalled(Exception):
     pass
 
 
-async def _stream_turn(
+async def stream_turn(
     sub_agent: Any,
     turn_input: Any,
     child_config: dict[str, Any],
@@ -202,7 +202,7 @@ async def _stream_turn(
             except StopAsyncIteration:
                 return
             except TimeoutError:
-                raise _ModelStalled(
+                raise ModelStalled(
                     f"The model sent nothing for {stall_seconds:.0f} seconds, so the run "
                     "was stopped. Its connection may be stuck, or the provider overloaded."
                 ) from None
@@ -221,7 +221,7 @@ async def _stream_turn(
         await stream.aclose()
 
 
-async def _wrap_up(chat_model: Any, instructions: str, messages: list[Any]) -> str:
+async def wrap_up(chat_model: Any, instructions: str, messages: list[Any]) -> str:
     """The report a run cut off by its step cap still owes its parent."""
     transcript = render_transcript_lg(messages[:-1])[-_WRAP_UP_TRANSCRIPT_CHARS:]
     reply = await chat_model.ainvoke(
@@ -256,7 +256,7 @@ async def _drive(
     running_tools: set[str] = set()
     try:
         while True:
-            await _stream_turn(
+            await stream_turn(
                 sub_agent,
                 turn_input,
                 child_config,
@@ -300,9 +300,9 @@ async def _drive(
     state = await sub_agent.aget_state(child_config)
     messages = state.values.get("messages", []) if state.values else []
     reply = extract_text(getattr(messages[-1], "content", None)) if messages else ""
-    if reply.startswith(_LIMIT_MESSAGE_PREFIX):
+    if reply.startswith(LIMIT_MESSAGE_PREFIX):
         try:
-            reply = await _wrap_up(chat_model, instructions, messages)
+            reply = await wrap_up(chat_model, instructions, messages)
         except Exception:  # noqa: BLE001 -- the cap's own message is still a report
             logger.warning("sub-agent %s couldn't write its report", task.task_id, exc_info=True)
             reply = f"(it used all {host.max_turns} of its steps before finishing)"
@@ -355,7 +355,7 @@ def build_delegation_tools(
     host: SubAgentHost, available_tools: Sequence[Callable[..., Any] | BaseTool]
 ) -> list[Callable[..., Any]]:
     """spawn_agent and spawn_agent_background, bound to `host`."""
-    tools_by_name = {_tool_name(t): t for t in available_tools if _for_subagents(t)}
+    tools_by_name = {_tool_name(t): t for t in available_tools if for_subagents(t)}
     store = SubAgentTaskStore(host.state_dir)
 
     def start(

@@ -13,8 +13,10 @@ sites are part of what saving allows."""
 from __future__ import annotations
 
 import json
+import ntpath
+import posixpath
 import re
-from collections.abc import Collection, Mapping
+from collections.abc import Collection, Mapping, Sequence
 from pathlib import Path, PureWindowsPath
 from typing import Any
 from urllib.parse import urlparse
@@ -118,6 +120,36 @@ def granted_by(workflow: Workflow) -> dict[str, list[str]]:
     return {"folders": folders, "sites": sites}
 
 
+def _within(text: str, roots: Sequence[str]) -> bool:
+    """Whether a path a tool is given lands in one of `roots`; a relative
+    one is taken from the first, the workspace, as the tools take it."""
+    windows = bool(PureWindowsPath(text).drive) or any(PureWindowsPath(r).drive for r in roots)
+    flavor: Any = ntpath if windows else posixpath
+    full = flavor.normcase(flavor.normpath(flavor.join(roots[0], text)))
+    for root in roots:
+        base = flavor.normcase(flavor.normpath(root))
+        if full == base or full.startswith(base.rstrip(flavor.sep) + flavor.sep):
+            return True
+    return False
+
+
+def outside_declared(step: AgentStep, tool: str, args: Mapping[str, Any], workspace: str) -> bool:
+    """Whether a bounded agent step's call reaches past what saving
+    consented to (decision 0028): a path outside the workspace and the
+    step's folders, or a site the step didn't declare."""
+    roots = [workspace, *step.folders]
+    for name in _FOLDER_ARGS:
+        text = args.get(name)
+        if isinstance(text, str) and text.strip() and not _within(text, roots):
+            return True
+    url = args.get("url")
+    if tool in URL_TOOLS and isinstance(url, str) and url.strip():
+        site = site_of(url)
+        declared = [d for d in map(site_of, step.sites) if d]
+        return site is None or not any(site == d or site.endswith(f".{d}") for d in declared)
+    return False
+
+
 def _unknown_sites(workflow: Workflow) -> list[str]:
     """Steps that open a site taken from an input or an earlier step."""
     defaults = {i.name: i.default for i in workflow.inputs if i.default is not None}
@@ -132,6 +164,15 @@ def _unknown_sites(workflow: Workflow) -> list[str]:
 
 def _references_any(step: Step, names: set[str]) -> bool:
     return any(ref.split(".", 1)[0] in names for ref in step_references(step))
+
+
+_OUTSIDE_CATEGORIES = frozenset({"browser", "web"})
+
+
+def brings_outside_content(category: str | None) -> bool:
+    """Whether a tool of this category returns what someone outside wrote:
+    the browser, the web tools and every connector."""
+    return category in _OUTSIDE_CATEGORIES or (category or "").startswith("mcp:")
 
 
 def untrusted_agent_steps(workflow: Workflow, outside_tools: Collection[str]) -> list[str]:

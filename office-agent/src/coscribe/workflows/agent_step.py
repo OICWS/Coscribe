@@ -21,6 +21,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from ..workflow_spec import AGENT_REPORT_FIELD, AgentStep, OutputField, render_text
 from .model_step import ask_model, field_problems, json_object
+from .permissions import outside_declared
 
 Decision = Literal["approve", "reject", "ask"]
 
@@ -52,7 +53,7 @@ class AgentRequest:
     # Whether the agent may make this call at all. A refused call is
     # answered to the agent as an error, so it can try another way.
     allows: Callable[[AgentCall], bool]
-    # For a call that needs approval: go ahead, refuse, or ask a person.
+    # For every call allowed, READ ones too: go ahead, refuse, or ask a person.
     decide: Callable[[AgentCall], Decision]
     # The person's answer to the call the agent is waiting on.
     answer: dict[str, Any] | None = None
@@ -82,20 +83,26 @@ def is_read_only(risk: str) -> bool:
     return risk == "READ"
 
 
-def allows(step: AgentStep, read_only: bool, call: AgentCall) -> bool:
+def allows(read_only: bool, call: AgentCall) -> bool:
+    """Whether the agent may make this call at all; a refused one comes back
+    to it as an error."""
     if call.tool in CODE_TOOLS:
         return False
-    if read_only and not is_read_only(call.risk):
-        return False
-    return step.autonomy != "bounded" or call.tool in step.tools
+    return not read_only or is_read_only(call.risk)
 
 
-def decide(step: AgentStep, approval_mode: str, call: AgentCall) -> Decision:
-    """A bounded step's allowlist is what saving consented to; a high or
-    full one runs under the task's approval mode, as a prompt task does:
-    "skip" approves everything, "auto" a local change only, since running
-    code or acting outside this machine can't be taken back."""
-    if step.autonomy == "bounded" or approval_mode == "skip":
+def decide(step: AgentStep, approval_mode: str, workspace: str, call: AgentCall) -> Decision:
+    """A bounded step's allowlist, folders and sites are what saving
+    consented to, and a call beyond them parks the run for a person
+    (decision 0028). A high or full one runs under the task's approval mode,
+    as a prompt task does: "skip" approves everything, "auto" a local change
+    only, since running code or acting outside this machine can't be taken
+    back."""
+    if step.autonomy == "bounded":
+        if call.tool not in step.tools or outside_declared(step, call.tool, call.args, workspace):
+            return "ask"
+        return "approve"
+    if is_read_only(call.risk) or approval_mode == "skip":
         return "approve"
     if approval_mode == "auto" and call.risk == "WRITE_LOCAL":
         return "approve"
@@ -192,6 +199,7 @@ async def run_agent_step(
     key: str,
     read_only: bool,
     approval_mode: str,
+    workspace: str,
     make_model: Callable[[str | None], Any],
     ask: Ask,
 ) -> tuple[dict[str, Any], AgentReply]:
@@ -206,8 +214,8 @@ async def run_agent_step(
         tools=tuple(step.tools) if step.autonomy == "bounded" else None,
         max_steps=step.max_steps,
         model=step.model,
-        allows=lambda call: allows(step, read_only, call),
-        decide=lambda call: decide(step, approval_mode, call),
+        allows=lambda call: allows(read_only, call),
+        decide=lambda call: decide(step, approval_mode, workspace, call),
     )
     while True:
         reply = await runner(request)
