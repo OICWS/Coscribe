@@ -39,10 +39,10 @@ way to show what the step is, what saving it allows, or the call it is waiting o
   agent finish, and the row showed "2 tool calls" with the report. The step used about 104k
   tokens in all: the whole tool list goes with each call (cached by the provider), which a cost
   cap would count.
-- Not run again on `main` after #734 merged.
 
 ## Not verified
 - On Windows, and in the desktop app (checked in Chromium against `coscribe-web`).
+- The live run, again on `main` after #734 merged.
 
 ## Follow-ups
 - P2b: the read-only canvas of a workflow.
