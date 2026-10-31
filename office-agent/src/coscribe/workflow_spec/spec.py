@@ -173,7 +173,7 @@ Autonomy = Literal["bounded", "high", "full"]
 AGENT_REPORT_FIELD = "report"
 # Whether the agent finished, which every agent step's report gives
 # (`workflows.agent_step`); a field of the step can't take these names.
-AGENT_OUTCOME_FIELDS = frozenset({"outcome", "stopped_because"})
+AGENT_OUTCOME_FIELDS = frozenset({"outcome", "stopped_because", "assumed"})
 
 
 def _is_absolute_path(text: str) -> bool:

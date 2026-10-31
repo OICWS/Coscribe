@@ -2,6 +2,7 @@
 the conversation's: which calls go ahead, pausing for a person and going on
 without redoing anything, and the step's fields from the agent's reply."""
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -338,6 +339,22 @@ async def test_a_stop_told_only_in_prose_is_not_taken_for_success(tmp_path: Path
     outcome = await h.run([_agent(autonomy="high", fields=FILED)]).start({})
 
     assert (outcome.status, outcome.error) == ("failed", "The agent stopped: The receipt box")
+
+
+async def test_what_the_agent_decided_itself_is_kept_on_the_steps_record(
+    tmp_path: Path,
+) -> None:
+    assumed = ["date: 02/11/2026 (form wants DD/MM)"]
+    text = "Filed. " + json.dumps({"outcome": "done", "assumed": assumed, "reference": "EXP-1"})
+    h = Harness(tmp_path, ScriptedRunner([("done", text)]))
+
+    outcome = await h.run([_agent(autonomy="high", fields=FILED)]).start({})
+
+    assert outcome.values["sorted"] == {"reference": "EXP-1"}
+    done = next(r for r in h.records if r.status == "done")
+    assert done.agent is not None and done.agent["assumed"] == [
+        "date: 02/11/2026 (form wants DD/MM)"
+    ]
 
 
 async def test_a_prose_report_without_a_verdict_is_the_steps_result(tmp_path: Path) -> None:

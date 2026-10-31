@@ -12,6 +12,8 @@ all failed with "reference must be text, got NoneType" instead of its reason.
   `outcome` is read by the model call that already recovers missing fields, which now also
   judges whether the report says the work was finished. A step without fields whose report has
   no JSON keeps the prose as before.
+- The report also lists `assumed`: what the agent decided that the task didn't say. It is kept
+  on the step's run record (`agent.assumed`), for the run report planned under #754.
 - `workflow_spec`: `AGENT_OUTCOME_FIELDS`; a step field can't take those names.
 
 ## Not verified

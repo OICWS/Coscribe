@@ -69,10 +69,13 @@ class AgentReply:
     tool_calls: int = 0
     tokens: int = 0
     tools_used: list[str] = field(default_factory=list)
+    # What the agent said it decided on its own (`ASSUMED`).
+    assumed: list[str] = field(default_factory=list)
 
     def activity(self) -> dict[str, Any]:
         """What the step's run record keeps of the agent's work."""
-        return {"tool_calls": self.tool_calls, "tokens": self.tokens, "tools_used": self.tools_used}
+        kept = {"tool_calls": self.tool_calls, "tokens": self.tokens, "tools_used": self.tools_used}
+        return {**kept, "assumed": self.assumed} if self.assumed else kept
 
 
 class AgentRunner(Protocol):
@@ -125,10 +128,26 @@ OUTCOME = OutputField(
 STOPPED_BECAUSE = OutputField(
     name="stopped_because", description="when stopped: what stopped you, in one sentence"
 )
+# What the run's record shows a person as the agent's own choices.
+ASSUMED = OutputField(
+    name="assumed",
+    type="list",
+    description="what you decided that the task didn't say (a format, one of several "
+    "options), each as 'what: value (why)'; [] if nothing",
+)
 
 
 def _report_fields(step: AgentStep) -> list[OutputField]:
-    return [OUTCOME, STOPPED_BECAUSE, *step.fields]
+    return [OUTCOME, STOPPED_BECAUSE, ASSUMED, *step.fields]
+
+
+def _assumed(text: str) -> list[str]:
+    try:
+        report = json_object(text)
+    except ValueError:
+        return []
+    listed = report.get("assumed") if isinstance(report, dict) else None
+    return [str(x) for x in listed if str(x).strip()] if isinstance(listed, list) else []
 
 
 class AgentStopped(RuntimeError):
@@ -274,4 +293,5 @@ async def run_agent_step(
         )
     if reply.status == "failed":
         raise RuntimeError(reply.error or "The agent stopped without finishing.")
-    return await result_of(step, reply.text, make_model), reply
+    result = await result_of(step, reply.text, make_model)
+    return result, replace(reply, assumed=_assumed(reply.text))
