@@ -34,14 +34,15 @@ way to show what the step is, what saving it allows, or the call it is waiting o
   an agent step added in the editor saves and makes the workflow version 2).
 
 ## Measured
-- Against #734's runner on `deepseek:deepseek-flash`: a broad step paused on `write_file`, the
-  card showed the call's path and content, declining let the agent finish, and the row showed
-  "2 tool calls" with the report. The step used about 104k tokens in all: the
-  whole tool list goes with each call (cached by the provider), which a cost cap would count.
+- With #734's runner, on its branch before it merged, on `deepseek:deepseek-flash`: a broad
+  step paused on `write_file`, the card showed the call's path and content, declining let the
+  agent finish, and the row showed "2 tool calls" with the report. The step used about 104k
+  tokens in all: the whole tool list goes with each call (cached by the provider), which a cost
+  cap would count.
+- Not run again on `main` after #734 merged.
 
 ## Not verified
 - On Windows, and in the desktop app (checked in Chromium against `coscribe-web`).
-- The run view on `main` until #734 merges: without its runner an agent step does not run.
 
 ## Follow-ups
 - P2b: the read-only canvas of a workflow.
