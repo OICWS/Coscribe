@@ -53,6 +53,7 @@ const NEW_TITLE: Record<StepKind, string> = {
   tool: "New tool step",
   script: "New script",
   llm: "Ask the model",
+  agent: "Let an agent do it",
   check: "Check the values",
   approval: "Review before continuing",
   branch: "Decide which way to go",
@@ -96,6 +97,22 @@ export function newStep(kind: StepKind, workflow: Workflow, available: string[],
         model: null,
         save_as: saveAs,
       };
+    case "agent":
+      return {
+        kind,
+        id,
+        title,
+        autonomy: "bounded",
+        goal: "",
+        tools: [],
+        folders: [],
+        sites: [],
+        fields: [],
+        max_steps: 20,
+        model: null,
+        save_as: saveAs,
+        trusted_input: false,
+      };
     case "check":
       return {
         kind,
@@ -127,6 +144,11 @@ export function newStep(kind: StepKind, workflow: Workflow, available: string[],
         max_items: 50,
       };
   }
+}
+
+/** Version 1 can't hold an agent step; the server refuses one there. */
+export function versionFor(step: WorkflowStep, workflow: Workflow): Workflow {
+  return step.kind === "agent" && workflow.version < 2 ? { ...workflow, version: 2 } : workflow;
 }
 
 /** Swaps a step with its neighbour in the same list. */
@@ -182,6 +204,8 @@ function renameInStep(step: WorkflowStep, from: string, to: string): WorkflowSte
       return { ...step, inputs: renameInValue(step.inputs, from, to) as Record<string, unknown> };
     case "llm":
       return { ...step, prompt: renameInText(step.prompt, from, to) };
+    case "agent":
+      return { ...step, goal: renameInText(step.goal, from, to) };
     case "check":
       return { ...step, conditions: step.conditions.map((c) => renameCondition(c, from, to)) };
     case "approval":

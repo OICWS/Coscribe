@@ -3,6 +3,9 @@ import { capitalize, formatRunTime, runDuration, runSourceLabel } from "../../li
 import {
   describeCheckResult,
   formatValue,
+  agentUsage,
+  KIND_COLOR,
+  KIND_LABEL,
   modelStepsRead,
   stepConditions,
   stepDuration,
@@ -24,13 +27,13 @@ import { ConditionText, VarToken } from "./parts";
 import { Screenshot } from "./Screenshot";
 import { InvestigationLink, WAITING_FOR_BROWSER } from "./InvestigationLink";
 import { StepOutput } from "./StepOutput";
+import { AgentToolsUsed } from "./AgentActivity";
+import { primaryButton, secondaryButton } from "../../lib/formStyles";
+import { WaitingCard } from "./WaitingCard";
 
 type RowStatus = StepRecord["status"] | "not_reached" | "stopped";
 
-const primaryButton =
-  "h-8 rounded-md bg-[var(--primary)] px-3 text-[13px] font-medium text-[var(--primary-fg)] hover:bg-[var(--primary-hover)] disabled:opacity-50";
-const secondaryButton =
-  "h-8 rounded-md border border-[var(--border)] bg-[var(--bg)] px-3 text-[13px] hover:bg-[var(--card-bg)] disabled:opacity-50";
+const RUNNING_LABEL: Partial<Record<WorkflowStep["kind"], string>> = { llm: "Asking the model…", agent: "Working on it…" };
 
 function StatusDot({ status }: { status: RowStatus }) {
   const base = "flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full";
@@ -228,76 +231,6 @@ function FailedCard({ step, record, ctx }: RowProps) {
   );
 }
 
-function ApprovalCard({ step, record, ctx }: RowProps) {
-  const permission = record?.permission ?? null;
-  const [note, setNote] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const answer = async (approved: boolean) => {
-    setBusy(true);
-    setError(await ctx.onAnswer(approved, note.trim()));
-    setBusy(false);
-  };
-  return (
-    <div
-      className="flex flex-col gap-3 rounded-xl border px-4 py-3.5"
-      style={{
-        borderColor: "color-mix(in srgb, var(--warning) 40%, transparent)",
-        backgroundColor: "color-mix(in srgb, var(--warning) 7%, var(--bg))",
-      }}
-    >
-      <div className="flex flex-wrap items-baseline gap-x-2.5">
-        <span className="text-sm font-medium">{step.title}</span>
-        <span className="text-[13px] font-medium" style={{ color: "var(--warning)" }}>
-          Waiting for you
-        </span>
-      </div>
-      {permission ? (
-        <div className="flex flex-col gap-1" data-testid="permission-request">
-          <p className="text-sm font-medium">
-            {permission.kind === "folder"
-              ? "It needs to change a folder it hasn’t been allowed"
-              : "It needs to open a website it hasn’t been allowed"}
-          </p>
-          <p className="break-all text-sm">{permission.target}</p>
-          <p className="text-[13px] text-[var(--muted)]">
-            {permission.kind === "folder"
-              ? "Allowing adds it to this workflow for this and later runs. The step then runs again from its start."
-              : "Allowing adds it to this workflow for this and later runs."}
-          </p>
-        </div>
-      ) : (
-        <>
-          {typeof record?.output === "string" && (
-            <p className="whitespace-pre-wrap text-sm leading-relaxed">{record.output}</p>
-          )}
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-[var(--muted)]">Note (optional, saved with this run)</span>
-            <input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              className="rounded-md border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 text-sm outline-none hover:border-[var(--border-hover)] focus:border-[var(--border-hover)]"
-            />
-          </label>
-        </>
-      )}
-      <div className="flex gap-2">
-        <button type="button" disabled={busy} className={primaryButton} onClick={() => answer(true)}>
-          {permission ? "Allow and continue" : "Approve and continue"}
-        </button>
-        <button type="button" disabled={busy} className={secondaryButton} onClick={() => answer(false)}>
-          {permission ? "Don’t allow" : "Decline"}
-        </button>
-      </div>
-      {error && (
-        <p role="alert" className="text-[13px] text-[var(--danger)]">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
 function branchArm(record: StepRecord | undefined): "then" | "otherwise" | null {
   const arm = (record?.output as { arm?: string } | null | undefined)?.arm;
   return arm === "then" || arm === "otherwise" ? arm : null;
@@ -316,7 +249,7 @@ function rowSummary(step: WorkflowStep, record: StepRecord | undefined, status: 
     if (status === "waiting") return `Waiting at item ${progress.done + 1} of ${progress.total}`;
     return `${progress.done} of ${items} done`;
   }
-  if (status === "running") return step.kind === "llm" ? "Asking the model…" : "Running…";
+  if (status === "running") return RUNNING_LABEL[step.kind] ?? "Running…";
   if (status === "failed") return "Stopped inside";
   if (status === "waiting") return "Waiting inside";
   if (status === "skipped") return "Skipped · its condition didn't hold";
@@ -330,7 +263,8 @@ function rowSummary(step: WorkflowStep, record: StepRecord | undefined, status: 
     return `Passed · ${describeCheckResult(step.conditions[0].op, true, first.left, first.right)}`;
   }
   if (step.kind === "approval") return record?.note ? `Approved · “${record.note}”` : "Approved";
-  return summarizeOutput(record?.output);
+  const usage = step.kind === "agent" ? agentUsage(record?.agent) : null;
+  return usage ? `${usage} · ${summarizeOutput(record?.output)}` : summarizeOutput(record?.output);
 }
 
 function Nested({
@@ -505,7 +439,7 @@ function StepRow({
   const record = ctx.records.get(recordKey(step.id, path));
   const stopped = record?.status === "running" && ctx.run.status !== "running";
   const status: RowStatus = stopped ? "stopped" : (record?.status ?? (upNext ? "pending" : "not_reached"));
-  const [open, setOpen] = useState(step.kind === "llm");
+  const [open, setOpen] = useState(step.kind === "llm" || step.kind === "agent");
   const duration = stepDuration(record?.started_at ?? null, record?.finished_at ?? null);
   const blockStopped = stoppedInside(step, ctx.run);
   const hasOutput =
@@ -527,14 +461,20 @@ function StepRow({
       </div>
       <div className={`flex min-w-0 flex-1 flex-col gap-2.5 ${last ? "pb-1" : "pb-4"}`}>
         {showCard && status === "failed" && <FailedCard {...props} />}
-        {showCard && status === "waiting" && <ApprovalCard {...props} />}
+        {showCard && status === "waiting" && <WaitingCard step={step} record={record} onAnswer={ctx.onAnswer} />}
         {!showCard && (
           <>
             <div className="flex min-w-0 items-baseline gap-2.5">
               <span className={`shrink-0 text-sm ${muted ? "text-[var(--muted)]" : "font-medium"}`}>{step.title}</span>
-              {step.kind === "llm" && status === "done" && (
-                <span className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--kind-llm)_13%,transparent)] px-2 py-px text-xs text-[var(--kind-llm)]">
-                  Model
+              {(step.kind === "llm" || step.kind === "agent") && status === "done" && (
+                <span
+                  className="shrink-0 rounded-full px-2 py-px text-xs"
+                  style={{
+                    color: KIND_COLOR[step.kind],
+                    backgroundColor: `color-mix(in srgb, ${KIND_COLOR[step.kind]} 13%, transparent)`,
+                  }}
+                >
+                  {KIND_LABEL[step.kind]}
                 </span>
               )}
               <span className="min-w-0 truncate text-[13px] text-[var(--muted)]">
@@ -557,6 +497,7 @@ function StepRow({
               )}
             </div>
             {hasOutput && open && <StepOutput value={record?.output} />}
+            {hasOutput && open && step.kind === "agent" && <AgentToolsUsed activity={record?.agent} />}
           </>
         )}
         {step.kind === "branch" && <BranchArms step={step} record={record} path={path} ctx={ctx} />}

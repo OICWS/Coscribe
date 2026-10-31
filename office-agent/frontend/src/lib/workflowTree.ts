@@ -104,6 +104,11 @@ export function mapSteps(steps: WorkflowStep[], change: (step: WorkflowStep) => 
 
 function outputNames(step: WorkflowStep): string[] {
   if (step.kind === "llm") return [step.save_as, ...step.fields.map((field) => `${step.save_as}.${field.name}`)];
+  if (step.kind === "agent" && step.save_as) {
+    // workflow_spec/spec.py's AgentStep.result_fields.
+    const fields = step.fields.length > 0 ? step.fields.map((field) => field.name) : ["report"];
+    return [step.save_as, ...fields.map((field) => `${step.save_as}.${field}`)];
+  }
   const output = "save_as" in step ? step.save_as : null;
   return output ? [output] : [];
 }

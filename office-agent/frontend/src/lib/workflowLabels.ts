@@ -1,10 +1,12 @@
-import type { CheckOp, Condition, Operand, StepKind, Workflow, WorkflowStep } from "../types/workflow";
+import type { Autonomy, CheckOp, Condition, Operand, StepKind, Workflow, WorkflowStep } from "../types/workflow";
+import type { WorkflowAgentActivity } from "../types/wire.gen";
 import { allSteps } from "./workflowTree";
 
 export const KIND_LABEL: Record<StepKind, string> = {
   tool: "Tool",
   script: "Script",
   llm: "Model",
+  agent: "Agent",
   check: "Check",
   approval: "Approval",
   branch: "Branch",
@@ -15,10 +17,20 @@ export const KIND_COLOR: Record<StepKind, string> = {
   tool: "var(--kind-tool)",
   script: "var(--kind-script)",
   llm: "var(--kind-llm)",
+  agent: "var(--kind-agent)",
   check: "var(--kind-check)",
   approval: "var(--kind-approval)",
   branch: "var(--kind-branch)",
   loop: "var(--kind-loop)",
+};
+
+// Decision 0028's L2 to L4: how far an agent step may go on its own.
+export const AUTONOMY_LABEL: Record<Autonomy, string> = { bounded: "Within limits", high: "Broad", full: "Whole task" };
+
+export const AUTONOMY_DESCRIPTION: Record<Autonomy, string> = {
+  bounded: "Uses only the tools, folders and sites listed here. Anything else stops and asks you.",
+  high: "Can use any of Coscribe's tools, under the task's approval setting.",
+  full: "Does the whole job its own way, under the task's approval setting, and reports in prose.",
 };
 
 export const OP_LABEL: Record<CheckOp, string> = {
@@ -92,8 +104,8 @@ export function operandReference(operand: Operand): string | null {
   return null;
 }
 
-/** The model steps whose results a condition reads -- where a failed
- * check's bad data most likely came from. */
+/** The model and agent steps whose results a condition reads -- where a
+ * failed check's bad data most likely came from. */
 export function modelStepsRead(workflow: Workflow, conditions: Condition[]): WorkflowStep[] {
   const roots = new Set<string>();
   for (const condition of conditions) {
@@ -102,7 +114,9 @@ export function modelStepsRead(workflow: Workflow, conditions: Condition[]): Wor
       if (ref) roots.add(ref.split(".")[0]);
     }
   }
-  return allSteps(workflow).filter((step) => step.kind === "llm" && roots.has(step.save_as));
+  return allSteps(workflow).filter(
+    (step) => (step.kind === "llm" || step.kind === "agent") && step.save_as !== null && roots.has(step.save_as),
+  );
 }
 
 export function formatValue(value: unknown): string {
@@ -125,7 +139,7 @@ export function stepDuration(startedAt: string | null, finishedAt: string | null
 }
 
 export function countModelSteps(workflow: Workflow): number {
-  return allSteps(workflow).filter((step) => step.kind === "llm").length;
+  return allSteps(workflow).filter((step) => step.kind === "llm" || step.kind === "agent").length;
 }
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
@@ -152,4 +166,11 @@ export function summarizeOutput(value: unknown): string {
     return line.length > 80 ? `${line.slice(0, 80)}…` : line;
   }
   return value === null || value === undefined ? "" : formatValue(value);
+}
+
+/** What an agent step's row says once it ends, before its result. */
+export function agentUsage(activity: WorkflowAgentActivity | null | undefined): string | null {
+  const calls = activity?.tool_calls;
+  if (calls === undefined) return null;
+  return calls === 0 ? "Used no tools" : `${calls} tool ${calls === 1 ? "call" : "calls"}`;
 }

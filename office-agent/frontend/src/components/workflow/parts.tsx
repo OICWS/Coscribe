@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, SVGProps } from "react";
 import { KIND_COLOR, KIND_LABEL, OP_LABEL, formatValue, splitTemplate } from "../../lib/workflowLabels";
 import type { Condition, Operand, StepKind, WorkflowStep } from "../../types/workflow";
 import {
@@ -13,8 +13,21 @@ import {
   UserIcon,
 } from "../icons";
 
+/** An agent step: feather-icons "target" -- it works toward a goal. Kept
+ * here, not in ../icons, since only step tiles use it. */
+export function TargetIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1" />
+    </svg>
+  );
+}
+
 function StepIcon({ step, className }: { step: WorkflowStep; className: string }) {
   if (step.kind === "llm") return <SparkIcon className={className} />;
+  if (step.kind === "agent") return <TargetIcon className={className} />;
   if (step.kind === "check") return <ShieldCheckIcon className={className} />;
   if (step.kind === "approval") return <UserIcon className={className} />;
   if (step.kind === "script") return <TerminalIcon className={className} />;
@@ -29,6 +42,7 @@ const KIND_ICON: Record<StepKind, (props: { className: string }) => ReactNode> =
   tool: ToolIcon,
   script: TerminalIcon,
   llm: SparkIcon,
+  agent: TargetIcon,
   check: ShieldCheckIcon,
   approval: UserIcon,
   branch: BranchIcon,
@@ -65,7 +79,7 @@ export function StepKindTile({ step, size = "md" }: { step: WorkflowStep; size?:
 }
 
 export function KindLegend() {
-  const kinds: StepKind[] = ["tool", "script", "llm", "check", "approval", "branch", "loop"];
+  const kinds: StepKind[] = ["tool", "script", "llm", "agent", "check", "approval", "branch", "loop"];
   return (
     <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-[var(--muted)]">
       {kinds.map((kind) => (

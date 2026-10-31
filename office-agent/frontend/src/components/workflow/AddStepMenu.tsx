@@ -12,6 +12,7 @@ const KINDS: { kind: StepKind; label: string; description: string }[] = [
   { kind: "tool", label: "Tool", description: "Use one of Coscribe's tools -- no model involved" },
   { kind: "script", label: "Script", description: "Run a fixed Python script you've reviewed" },
   { kind: "llm", label: "Model", description: "One model call that must return set fields" },
+  { kind: "agent", label: "Agent", description: "Works toward a goal with tools, within the limits you set" },
   { kind: "check", label: "Check", description: "Stop the run unless values hold" },
   { kind: "approval", label: "Approval", description: "Pause until you approve" },
 ];

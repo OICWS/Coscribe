@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { inputClass, primaryButton, secondaryButton } from "../../lib/formStyles";
 import { getTools } from "../../lib/rest";
-import { moveStep, newStep, renameValue } from "../../lib/workflowEdit";
+import { moveStep, newStep, renameValue, versionFor } from "../../lib/workflowEdit";
 import { KIND_COLOR, stepOutput } from "../../lib/workflowLabels";
 import {
   countInside,
@@ -504,7 +504,7 @@ export function WorkflowEditor({
     }
     if (isNew) steps.splice(index, 0, updated);
     else steps[index] = updated;
-    let next = withList(workflow, list, steps);
+    let next = versionFor(updated, withList(workflow, list, steps));
     const before = current ? stepOutput(current) : null;
     const after = stepOutput(updated);
     if (before && after && before !== after) next = renameValue(next, before, after, updated.id);
