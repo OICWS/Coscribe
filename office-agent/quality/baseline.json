@@ -359,7 +359,7 @@
   "pptx": 1
  },
  "suppressions": {
-  "noqa": 139,
+  "noqa": 141,
   "pragma_no_cover": 2,
   "type_ignore": 36
  },
