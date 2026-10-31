@@ -107,13 +107,15 @@ Text the model reads (files, pages, messages from other conversations) is covere
   boundary; the UI and docs must not promise more.
 - Gating is by risk tier and permission mode (section 2), plus the exec policy
   (`runtime_lg/exec_policy.py`, `tests/test_exec_policy.py`).
-- Workflows are fixed lists of steps: saving is the consent, and a site or folder outside what
+- Workflows are lists of steps: saving is the consent, and a site or folder outside what
   `workflows/permissions.py` lists stops a run (`tests/test_workflow_permissions.py`).
   `workflows` imports no agent runtime (import contract, `pyproject.toml`); an agent step
-  (decision 0028, proposed and built in phases) runs through a runner `conversation` injects,
-  and one that reads outside content may only make READ calls unless marked trusted
-  (`workflows/agent_step.py`, `tests/test_workflow_agent_step.py`). The code module never runs
-  in a workflow (decision 0005).
+  (decision 0028) runs through a runner `conversation` injects (`runtime_lg/workflow_agent.py`,
+  `tests/test_workflow_agent_runner.py`), where every call it makes is decided: a bounded one
+  that calls outside its tools, folders or sites stops for a person
+  (`permissions.outside_declared`), and one that reads outside content may only make READ calls
+  unless marked trusted (`workflows/agent_step.py`, `tests/test_workflow_agent_step.py`). The
+  code module never runs in a workflow (decision 0005).
 - Connector tools are gated by their own permissions (`tools/connector_permissions.py`,
   `tests/test_connector_permissions.py`); a connector signs in once in the user's browser
   (decision 0004) and its tokens go through `runtime/secrets.py`.

@@ -209,6 +209,7 @@ async def _run_workflow(
     ctx = session.workflow_context(trigger.model)
     # A run may stop for an answer; a test in a conversation just fails.
     ctx.ask_permission = True
+    ctx.approval_mode = trigger.approval_mode
     workflow_run = WorkflowRun(
         workflow,
         ctx,
