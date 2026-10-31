@@ -1,5 +1,5 @@
 import { toolLabel } from "../../lib/toolLabels";
-import { AUTONOMY_LABEL, formatValue, stepOutput, wholeReference } from "../../lib/workflowLabels";
+import { formatValue, stepOutput, wholeReference } from "../../lib/workflowLabels";
 import type { AgentStep, WorkflowStep } from "../../types/workflow";
 import { ConditionText, VarToken } from "./parts";
 
@@ -26,6 +26,8 @@ export function ArgPreview({ value, inputNames }: { value: unknown; inputNames: 
   );
 }
 
+const SCOPE = { high: "Any tool", full: "The whole task" };
+
 function AgentSummary({
   step,
   output,
@@ -38,12 +40,15 @@ function AgentSummary({
   const scope =
     step.autonomy === "bounded"
       ? `${step.tools.length} ${step.tools.length === 1 ? "tool" : "tools"}`
-      : AUTONOMY_LABEL[step.autonomy].toLowerCase();
+      : SCOPE[step.autonomy];
   return (
     <>
-      <span>Agent · {scope}</span>
+      <span>{scope}</span>
       {step.fields.length > 0 && (
-        <span className="font-mono text-[12px] text-[var(--fg)]">{step.fields.map((f) => f.name).join(", ")}</span>
+        <>
+          <span>· returns</span>
+          <span className="font-mono text-[12px] text-[var(--fg)]">{step.fields.map((f) => f.name).join(", ")}</span>
+        </>
       )}
       <Arrow output={output} inputNames={inputNames} />
     </>

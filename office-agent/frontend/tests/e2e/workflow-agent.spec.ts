@@ -22,7 +22,7 @@ test("a workflow's page shows its agent steps and what each may do", async ({ pa
   const task = await created.json();
   try {
     await page.goto(`/?view=scheduled&task=${task.trigger_id}`);
-    await expect(page.locator('[data-step="research"]')).toContainText("Agent · 1 tool");
+    await expect(page.locator('[data-canvas-step="research"]')).toContainText("1 tool");
     const panel = page.getByTestId("workflow-permissions");
     await expect(panel).toContainText("Research the company · Within limits: can use Search web, open example.com");
     await expect(panel).toContainText("Write the brief · Broad: can use any of Coscribe’s tools");
@@ -43,13 +43,14 @@ test("an agent step added in the editor is saved, and makes the workflow version
   const task = await created.json();
   try {
     await page.goto(`/?view=scheduled&task=${task.trigger_id}`);
+    await page.getByRole("button", { name: "Edit steps" }).click();
     await page.getByRole("button", { name: "Add step" }).last().click();
     await page.getByRole("dialog", { name: "Add a step" }).getByText("Agent", { exact: true }).click();
     await page.getByLabel("Goal").fill("Summarise {{files}}");
     await page.locator("select", { hasText: "Add a tool…" }).selectOption("read_file");
     await page.getByRole("button", { name: "Add step" }).first().click();
 
-    await expect(page.locator('[data-step="agent"]')).toContainText("Agent · 1 tool");
+    await expect(page.locator('[data-step="agent"]')).toContainText("1 tool");
     const tasks = await (await page.request.get("/api/scheduled-tasks")).json();
     const saved = tasks.find((t: { trigger_id: string }) => t.trigger_id === task.trigger_id);
     expect(saved.workflow.version).toBe(2);
