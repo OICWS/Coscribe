@@ -60,7 +60,7 @@ def heals(workflow: Workflow) -> bool:
 def _args_line(args: dict[str, Any], values: dict[str, Any]) -> str:
     try:
         rendered = render_value(args, values)
-    except Exception:  # noqa: BLE001 -- the saved args are shown as written then
+    except ValueError:  # a reference with no value yet: the saved args, as written
         rendered = args
     return json.dumps(rendered, ensure_ascii=False, default=str)[:1500]
 

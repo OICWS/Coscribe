@@ -456,7 +456,7 @@ class _GraphBuilder:
                     await self._permission(step, need, started, it)
         except (GraphBubbleUp, NeedsPermission):
             raise
-        except Exception as exc:  # noqa: BLE001 -- a failure healing can't take is re-raised
+        except Exception as exc:
             error = str(exc) or type(exc).__name__
             agent_step = stand_in(self.workflow, step, values, error)
             if agent_step is None or self.ctx.run_agent is None:
@@ -466,7 +466,7 @@ class _GraphBuilder:
                 result, agent = await self._agent(agent_step, values, started, it, confirm)
             except GraphBubbleUp:
                 raise
-            except Exception as heal_exc:  # noqa: BLE001 -- the step fails with both reasons
+            except Exception as heal_exc:
                 raise StepFailed(f"{error} -- healing it didn't work: {heal_exc}") from heal_exc
             output, deviation = healed(step, result, error)
             return output, None, {**agent, "healed": deviation}
