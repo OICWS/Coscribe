@@ -4,7 +4,7 @@ import { draftWorkflowFromThread, validateWorkflow, type WorkflowDraftResult } f
 import type { Workflow } from "../../types/workflow";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { AlertCircleIcon, ArrowLeftIcon } from "../icons";
-import { WorkflowEditor } from "./WorkflowEditor";
+import { WorkflowSection } from "./WorkflowSection";
 import { WorkflowPermissions } from "./WorkflowPermissions";
 
 type DraftState =
@@ -242,7 +242,7 @@ export function WorkflowDraftPage({
 
             <div className="mt-6 border-t border-[var(--border)]" />
             <div className="mt-6">
-              <WorkflowEditor workflow={draft.workflow} persist={persist} />
+              <WorkflowSection workflow={draft.workflow} persist={persist} />
             </div>
           </>
         )}
