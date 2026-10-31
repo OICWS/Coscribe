@@ -2,88 +2,27 @@ import { useState } from "react";
 import { controlClass, inputClass } from "../../lib/formStyles";
 import { toolLabel } from "../../lib/toolLabels";
 import { IDENTIFIER } from "../../lib/workflowEdit";
-import type { ToolInfo, ToolParam } from "../../types/settings";
+import type { ToolParam } from "../../types/settings";
 import type {
   ApprovalStep,
   BranchStep,
   CheckStep,
   LLMStep,
   LoopStep,
-  OutputFieldType,
   ScriptStep,
   ToolStep,
   WorkflowStep,
 } from "../../types/workflow";
 import { ToggleSwitch } from "../ToggleSwitch";
+import { AgentEditor } from "./AgentEditor";
 import { ConditionRow } from "./ConditionRow";
+import { type EditorContext, type EditorProps, OutputFieldsTable, SaveAsField, ValuesHint } from "./editorParts";
 import { AddRowButton, AutoTextarea, FieldLabel, RemoveButton } from "./fields";
-import { VarToken } from "./parts";
 
-const FIELD_TYPE_LABEL: Record<OutputFieldType, string> = {
-  text: "Text",
-  number: "Number",
-  boolean: "Yes / no",
-  list: "List",
-};
+export type { EditorContext };
 
 // Arguments whose values are usually paragraphs, not a word or a path.
 const LONG_ARGS = new Set(["content", "script", "data", "text", "prompt", "body", "notes", "message", "code"]);
-
-export interface EditorContext {
-  /** Names this step may read, including model steps' fields. */
-  suggestions: string[];
-  inputNames: Set<string>;
-  tools: Map<string, ToolInfo>;
-  listId: string;
-  /** For a loop: what its body makes, which it can keep from each pass. */
-  collectable?: string[];
-}
-
-interface EditorProps<T extends WorkflowStep> {
-  step: T;
-  onChange: (step: T) => void;
-  context: EditorContext;
-}
-
-function ValuesHint({ context }: { context: EditorContext }) {
-  const roots = context.suggestions.filter((name) => !name.includes("."));
-  if (roots.length === 0) return null;
-  return (
-    <div className="mt-1.5 flex flex-wrap items-baseline gap-1.5 text-xs text-[var(--muted)]">
-      <span>Available:</span>
-      {roots.map((name) => (
-        <VarToken key={name} name={name} isInput={context.inputNames.has(name)} />
-      ))}
-      <span>
-        -- write <span className="font-mono">{"{{name}}"}</span> to use one.
-      </span>
-    </div>
-  );
-}
-
-function SaveAsField<T extends ToolStep | ScriptStep | LLMStep>({ step, onChange }: Omit<EditorProps<T>, "context">) {
-  const value = step.save_as ?? "";
-  const invalid = value !== "" && !IDENTIFIER.test(value);
-  return (
-    <div className="max-w-xs">
-      <FieldLabel htmlFor={`${step.id}-save-as`}>Save result as</FieldLabel>
-      <input
-        id={`${step.id}-save-as`}
-        spellCheck={false}
-        className={`${inputClass} font-mono text-[12.5px]`}
-        value={value}
-        aria-invalid={invalid}
-        placeholder={step.kind === "llm" ? "required" : "not saved"}
-        onChange={(e) => onChange({ ...step, save_as: e.target.value.trim() || (step.kind === "llm" ? "" : null) })}
-      />
-      <p className={`mt-1 text-xs ${invalid ? "text-[var(--danger)]" : "text-[var(--muted)]"}`}>
-        {invalid
-          ? "Lowercase letters, digits and _, starting with a letter."
-          : "Renaming it updates the later steps that read it."}
-      </p>
-    </div>
-  );
-}
 
 // -- Tool ------------------------------------------------------------------------
 
@@ -285,8 +224,6 @@ function ScriptEditor({ step, onChange, context }: EditorProps<ScriptStep>) {
 // -- Model -------------------------------------------------------------------------
 
 function LLMEditor({ step, onChange, context }: EditorProps<LLMStep>) {
-  const setField = (index: number, changes: Partial<LLMStep["fields"][number]>) =>
-    onChange({ ...step, fields: step.fields.map((f, i) => (i === index ? { ...f, ...changes } : f)) });
   return (
     <>
       <div>
@@ -299,80 +236,14 @@ function LLMEditor({ step, onChange, context }: EditorProps<LLMStep>) {
         />
         <ValuesHint context={context} />
       </div>
-      <div>
-        <FieldLabel hint="Anything else is sent back once, then the step fails">Must return</FieldLabel>
-        <div className="overflow-hidden rounded-lg border border-[var(--border)]">
-          <div className="grid grid-cols-[minmax(0,160px)_120px_minmax(0,1fr)_32px] bg-[var(--card-bg)] text-xs text-[var(--muted)]">
-            <div className="px-3 py-2">Field</div>
-            <div className="px-3 py-2">Type</div>
-            <div className="px-3 py-2">Meaning</div>
-            <div />
-          </div>
-          {step.fields.map((field, index) => {
-            const invalid = !IDENTIFIER.test(field.name);
-            return (
-              <div
-                key={index}
-                className="grid grid-cols-[minmax(0,160px)_120px_minmax(0,1fr)_32px] items-center border-t border-[var(--border)]"
-              >
-                <div className="px-1.5 py-1">
-                  <input
-                    aria-label={`Field ${index + 1} name`}
-                    aria-invalid={invalid}
-                    spellCheck={false}
-                    className={`${inputClass} border-transparent py-1 font-mono text-[12.5px] ${invalid ? "text-[var(--danger)]" : ""}`}
-                    value={field.name}
-                    onChange={(e) => setField(index, { name: e.target.value.trim() })}
-                  />
-                </div>
-                <div className="px-1.5 py-1">
-                  <select
-                    aria-label={`Type of field ${index + 1}`}
-                    className={`${inputClass} border-transparent py-1`}
-                    value={field.type}
-                    onChange={(e) => setField(index, { type: e.target.value as OutputFieldType })}
-                  >
-                    {Object.entries(FIELD_TYPE_LABEL).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="px-1.5 py-1">
-                  <input
-                    aria-label={`Meaning of field ${index + 1}`}
-                    className={`${inputClass} border-transparent py-1`}
-                    value={field.description}
-                    placeholder="What it should contain"
-                    onChange={(e) => setField(index, { description: e.target.value })}
-                  />
-                </div>
-                <div>
-                  {step.fields.length > 1 && (
-                    <RemoveButton
-                      label={`Remove field ${field.name || index + 1}`}
-                      onClick={() => onChange({ ...step, fields: step.fields.filter((_, i) => i !== index) })}
-                    />
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="mt-1.5">
-          <AddRowButton
-            onClick={() =>
-              onChange({
-                ...step,
-                fields: [...step.fields, { name: `field${step.fields.length + 1}`, type: "text", description: "" }],
-              })
-            }
-          >
-            Add a field
-          </AddRowButton>
-        </div>
-      </div>
+      <OutputFieldsTable
+        fields={step.fields}
+        minimum={1}
+        hint="Anything else is sent back once, then the step fails"
+        onChange={(fields) => onChange({ ...step, fields })}
+      >
+        Must return
+      </OutputFieldsTable>
       <div className="flex flex-wrap gap-4">
         <div className="w-72">
           <FieldLabel htmlFor={`${step.id}-model`}>Model</FieldLabel>
@@ -596,6 +467,8 @@ export function StepFields({ step, onChange, context }: EditorProps<WorkflowStep
         return <ScriptEditor step={step} onChange={onChange} context={context} />;
       case "llm":
         return <LLMEditor step={step} onChange={onChange} context={context} />;
+      case "agent":
+        return <AgentEditor step={step} onChange={onChange} context={context} />;
       case "check":
         return <CheckEditor step={step} onChange={onChange} context={context} />;
       case "approval":

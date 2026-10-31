@@ -66,7 +66,7 @@ import type {
   ThreadsResponse,
   UploadResult,
 } from "../types/session";
-import type { Workflow } from "../types/workflow";
+import type { Autonomy, Workflow } from "../types/workflow";
 
 // Every settings tab does `someGetter().then(setState)` with no .catch --
 // a rejected promise there just leaves that tab's state at its initial
@@ -388,11 +388,24 @@ export interface WorkflowPermissions {
   scripts: string[];
   notable: { tool: string; title: string; risk: string }[];
   sites_at_run_time: string[];
+  agents: WorkflowAgentPermissions[];
+}
+
+/** An agent step on the review card (workflows/permissions.py's `_agents`). */
+export interface WorkflowAgentPermissions {
+  title: string;
+  autonomy: Autonomy;
+  tools: string[];
+  folders: string[];
+  sites: string[];
+  max_steps: number;
+  /** What it's given came from outside, so it may only read. */
+  read_only: boolean;
 }
 
 export interface PermissionsResult {
   permissions: WorkflowPermissions;
-  added: Pick<WorkflowPermissions, "folders" | "sites" | "scripts" | "notable"> | null;
+  added: Pick<WorkflowPermissions, "folders" | "sites" | "scripts" | "notable" | "agents"> | null;
 }
 
 export const getWorkflowPermissions = (workflow: Workflow, triggerId?: string, againstSaved = false) =>

@@ -3,7 +3,8 @@
 
 import type { WorkflowCheck, WorkflowStepRecord } from "./wire.gen";
 
-export type StepKind = "tool" | "script" | "llm" | "check" | "approval" | "branch" | "loop";
+export type StepKind = "tool" | "script" | "llm" | "agent" | "check" | "approval" | "branch" | "loop";
+export type Autonomy = "bounded" | "high" | "full";
 export type OutputFieldType = "text" | "number" | "boolean" | "list";
 export type CheckOp = "eq" | "ne" | "gt" | "ge" | "lt" | "le" | "contains" | "not_empty";
 
@@ -58,6 +59,23 @@ export interface LLMStep extends StepBase {
   save_as: string;
 }
 
+/** Decision 0028. "bounded" may use only `tools`, `folders` and `sites`. */
+export interface AgentStep extends StepBase {
+  kind: "agent";
+  autonomy: Autonomy;
+  goal: string;
+  tools: string[];
+  folders: string[];
+  sites: string[];
+  /** Empty means the result is { report: <the agent's reply> }. */
+  fields: OutputField[];
+  max_steps: number;
+  model: string | null;
+  save_as: string | null;
+  /** The person said what this step reads from outside may be acted on. */
+  trusted_input: boolean;
+}
+
 export interface CheckStep extends StepBase {
   kind: "check";
   conditions: Condition[];
@@ -88,11 +106,20 @@ export interface LoopStep extends StepBase {
   max_items: number;
 }
 
-export type WorkflowStep = ToolStep | ScriptStep | LLMStep | CheckStep | ApprovalStep | BranchStep | LoopStep;
+export type WorkflowStep =
+  | ToolStep
+  | ScriptStep
+  | LLMStep
+  | AgentStep
+  | CheckStep
+  | ApprovalStep
+  | BranchStep
+  | LoopStep;
 export type BlockStep = BranchStep | LoopStep;
 
 export interface Workflow {
-  version: 1;
+  /** 2 may hold agent steps. */
+  version: 1 | 2;
   inputs: WorkflowInput[];
   steps: WorkflowStep[];
 }

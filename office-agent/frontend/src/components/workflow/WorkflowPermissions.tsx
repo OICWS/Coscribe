@@ -1,7 +1,10 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { getWorkflowPermissions, type PermissionsResult } from "../../lib/rest";
+import { getWorkflowPermissions, type PermissionsResult, type WorkflowAgentPermissions } from "../../lib/rest";
+import { toolLabel } from "../../lib/toolLabels";
+import { AUTONOMY_LABEL } from "../../lib/workflowLabels";
 import type { Workflow } from "../../types/workflow";
 import { AlertCircleIcon, FolderIcon, GlobeIcon, TerminalIcon } from "../icons";
+import { TargetIcon } from "./parts";
 
 interface Props {
   workflow: Workflow;
@@ -48,6 +51,29 @@ function List({ items, fresh }: { items: string[]; fresh: string[] }) {
   );
 }
 
+function AgentLine({ agent, fresh }: { agent: WorkflowAgentPermissions; fresh: boolean }) {
+  const reach =
+    agent.autonomy === "bounded"
+      ? `can use ${agent.tools.map(toolLabel).join(", ")}`
+      : "can use any of Coscribe’s tools, under this task’s approval setting";
+  const places = [
+    agent.folders.length > 0 ? `change files in ${agent.folders.join(", ")}` : "",
+    agent.sites.length > 0 ? `open ${agent.sites.join(", ")}` : "",
+  ].filter(Boolean);
+  return (
+    <div>
+      <span className="text-[var(--fg)]">{agent.title}</span>
+      {fresh && <New />}
+      <span>
+        {" "}
+        · {AUTONOMY_LABEL[agent.autonomy]}: {reach}
+        {places.length > 0 && `, ${places.join(", ")}`}; at most {agent.max_steps} model calls.
+      </span>
+      {agent.read_only && <span> It only reads, because what it’s given comes from outside.</span>}
+    </div>
+  );
+}
+
 /** What a workflow will be able to do once saved -- saving is the consent,
  * and a run that needs more stops and asks. Plain about what scripts are:
  * checked for where they write, not contained. */
@@ -80,6 +106,7 @@ export function WorkflowPermissions({
     folders: added?.folders ?? [],
     scripts: added?.scripts ?? [],
     notable: added?.notable.map((n) => n.tool) ?? [],
+    agents: added?.agents?.map((a) => a.title) ?? [],
   };
   return (
     <section
@@ -126,6 +153,15 @@ export function WorkflowPermissions({
                 {fresh.notable.includes(n.tool) && <New />}
               </span>
             ))}
+          </Row>
+        )}
+        {p.agents.length > 0 && (
+          <Row icon={<TargetIcon className="h-4 w-4" />} label="Agent steps">
+            <div className="flex flex-col gap-1">
+              {p.agents.map((agent, index) => (
+                <AgentLine key={`${agent.title}-${index}`} agent={agent} fresh={fresh.agents.includes(agent.title)} />
+              ))}
+            </div>
           </Row>
         )}
       </div>

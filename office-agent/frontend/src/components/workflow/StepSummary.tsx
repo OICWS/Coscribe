@@ -1,6 +1,6 @@
 import { toolLabel } from "../../lib/toolLabels";
-import { formatValue, stepOutput, wholeReference } from "../../lib/workflowLabels";
-import type { WorkflowStep } from "../../types/workflow";
+import { AUTONOMY_LABEL, formatValue, stepOutput, wholeReference } from "../../lib/workflowLabels";
+import type { AgentStep, WorkflowStep } from "../../types/workflow";
 import { ConditionText, VarToken } from "./parts";
 
 const ARG_PREVIEW_CHARS = 32;
@@ -23,6 +23,30 @@ export function ArgPreview({ value, inputNames }: { value: unknown; inputNames: 
     <span className="font-mono text-[12px] text-[var(--fg)]">
       {text.length > ARG_PREVIEW_CHARS ? `${text.slice(0, ARG_PREVIEW_CHARS)}…` : text}
     </span>
+  );
+}
+
+function AgentSummary({
+  step,
+  output,
+  inputNames,
+}: {
+  step: AgentStep;
+  output: string | null;
+  inputNames: Set<string>;
+}) {
+  const scope =
+    step.autonomy === "bounded"
+      ? `${step.tools.length} ${step.tools.length === 1 ? "tool" : "tools"}`
+      : AUTONOMY_LABEL[step.autonomy].toLowerCase();
+  return (
+    <>
+      <span>Agent · {scope}</span>
+      {step.fields.length > 0 && (
+        <span className="font-mono text-[12px] text-[var(--fg)]">{step.fields.map((f) => f.name).join(", ")}</span>
+      )}
+      <Arrow output={output} inputNames={inputNames} />
+    </>
   );
 }
 
@@ -68,6 +92,7 @@ export function StepSummary({ step, inputNames }: { step: WorkflowStep; inputNam
       </>
     );
   }
+  if (step.kind === "agent") return <AgentSummary step={step} output={output} inputNames={inputNames} />;
   if (step.kind === "check") {
     return (
       <>

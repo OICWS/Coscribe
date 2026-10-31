@@ -239,8 +239,7 @@
  "frontend_file_lines": {
   "office-agent-desktop/src/main/browserAgent.ts": 933,
   "office-agent/frontend/src/App.tsx": 1088,
-  "office-agent/frontend/src/components/icons.tsx": 813,
-  "office-agent/frontend/src/components/workflow/WorkflowRunView.tsx": 857
+  "office-agent/frontend/src/components/icons.tsx": 813
  },
  "frontend_long_functions": {
   "office-agent-desktop/src/main/browserAgent.ts::act": 156,
@@ -257,15 +256,15 @@
   "office-agent/frontend/src/components/EffortPicker.tsx::EffortPicker": 144,
   "office-agent/frontend/src/components/FindInPage.tsx::FindInPage": 102,
   "office-agent/frontend/src/components/ImageAnnotator.tsx::ImageAnnotator": 197,
-  "office-agent/frontend/src/components/NavRail.tsx::NavRail": 203,
+  "office-agent/frontend/src/components/NavRail.tsx::NavRail": 193,
   "office-agent/frontend/src/components/PptxShapeOverlay.tsx::PptxShapeOverlay": 105,
   "office-agent/frontend/src/components/RunPanel.tsx::RunPanel": 253,
   "office-agent/frontend/src/components/ScheduledTaskDetail.tsx::ScheduledTaskDetail": 158,
   "office-agent/frontend/src/components/ScheduledTaskModal.tsx::ScheduledTaskModal": 277,
   "office-agent/frontend/src/components/TaskPanel.tsx::TaskPanel": 153,
   "office-agent/frontend/src/components/ThreadList.tsx::GroupHeader": 116,
-  "office-agent/frontend/src/components/ThreadList.tsx::ThreadList": 255,
-  "office-agent/frontend/src/components/ThreadList.tsx::ThreadMenu": 145,
+  "office-agent/frontend/src/components/ThreadList.tsx::ThreadList": 240,
+  "office-agent/frontend/src/components/ThreadList.tsx::ThreadMenu": 127,
   "office-agent/frontend/src/components/chatlog/UserMessageView.tsx::UserMessageView": 135,
   "office-agent/frontend/src/components/dock/DockControls.tsx::DockControls": 140,
   "office-agent/frontend/src/components/dock/PanelDock.tsx::PanelDock": 266,
@@ -286,7 +285,6 @@
   "office-agent/frontend/src/components/settings/skills/SkillDetailView.tsx::SkillDetailView": 132,
   "office-agent/frontend/src/components/workflow/AddStepMenu.tsx::AddStepMenu": 119,
   "office-agent/frontend/src/components/workflow/InputsEditor.tsx::InputsEditor": 143,
-  "office-agent/frontend/src/components/workflow/StepEditors.tsx::LLMEditor": 105,
   "office-agent/frontend/src/components/workflow/WorkflowDraftCard.tsx::WorkflowDraftCard": 109,
   "office-agent/frontend/src/components/workflow/WorkflowDraftPage.tsx::WorkflowDraftPage": 189,
   "office-agent/frontend/src/components/workflow/WorkflowEditor.tsx::StepCard": 163,
@@ -309,8 +307,7 @@
   "office-agent/frontend/src/lib/workflowTree.ts": 1,
   "office-agent/frontend/src/state/reducer.ts": 1,
   "office-agent/frontend/src/types/session.ts": 2,
-  "office-agent/frontend/src/types/settings.ts": 3,
-  "office-agent/frontend/src/types/workflow.ts": 1
+  "office-agent/frontend/src/types/settings.ts": 3
  },
  "interface_size": {
   "coscribe.runtime_lg": 73,
