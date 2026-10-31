@@ -312,3 +312,31 @@ def test_the_cached_part_of_an_agents_tokens_is_counted_apart() -> None:
     messages = [AIMessage("", usage_metadata=usage), AIMessage("done", usage_metadata=usage)]
 
     assert _activity(messages) == (0, 2 * 37233, 2 * 36992, [])
+
+
+async def test_an_agent_that_ends_with_nothing_to_say_is_asked_once_where_it_stands(
+    tmp_path: Path,
+) -> None:
+    env = Env(
+        tmp_path,
+        [
+            _calls(("read_file", {"path": "a"})),
+            _says(""),
+            _says("I read a; writing the summary isn't done: the tool refused it."),
+        ],
+    )
+
+    outcome = await env.run([_agent(autonomy="high")]).start({})
+
+    assert outcome.status == "completed"
+    assert "isn't done" in outcome.values["sorted"]["report"]
+    assert "Your last reply was empty" in str(env.model.seen[-1][-1].content)
+
+
+async def test_an_agent_silent_after_being_asked_fails_its_step(tmp_path: Path) -> None:
+    env = Env(tmp_path, [_calls(("read_file", {"path": "a"})), _says(""), _says("")])
+
+    outcome = await env.run([_agent(autonomy="high")]).start({})
+
+    assert outcome.status == "failed"
+    assert "without saying whether the task was done" in (outcome.error or "")
