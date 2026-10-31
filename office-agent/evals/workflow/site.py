@@ -222,7 +222,9 @@ def _handler(site: Site) -> type[BaseHTTPRequestHandler]:
         def _send(self, body: str, code: int = 200, location: str | None = None) -> None:
             self.send_response(code)
             if location:
-                self.send_header("Location", location)
+                # Built from the session id in the query; only the ids this site made get here,
+                # and a line break would end the header early.
+                self.send_header("Location", location.replace("\r", "").replace("\n", ""))
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.end_headers()
             self.wfile.write(body.encode())
