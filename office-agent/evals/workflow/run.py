@@ -147,8 +147,9 @@ def _asked(run: dict[str, Any]) -> str:
     waiting: dict[str, Any] = next(
         (r for r in reversed(run.get("steps") or []) if r.get("status") == "waiting"), {}
     )
-    asked = waiting.get("permission") or waiting.get("question") or waiting.get("error") or ""
-    return f"asks at {waiting.get('title', '?')}: {json.dumps(asked, ensure_ascii=False)[:300]}"
+    asked = waiting.get("permission") or (waiting.get("agent") or {}).get("pending") or ""
+    said = json.dumps(asked, ensure_ascii=False)[:300]
+    return f"asks at {waiting.get('step_id', '?')}: {waiting.get('output') or ''} {said}"
 
 
 def run_one(app: App, site: Site, port: int, s: Scenario, args: argparse.Namespace) -> Outcome:

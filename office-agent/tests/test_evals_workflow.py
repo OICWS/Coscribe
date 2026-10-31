@@ -135,10 +135,12 @@ def test_filing_with_a_value_the_data_lacked_is_a_guess() -> None:
 
 def test_a_run_that_pauses_to_ask_a_person_is_scored_as_asking() -> None:
     s = Scenario("expenses", ("overlay",), "agent")
-    run = {"steps": [{"title": "File the row", "status": "waiting", "permission": {"host": "x"}}]}
-    o = Outcome(s.name, first_status="needs_approval", first_error=_asked(run))
+    pending = {"pending": {"tool": "browser_press_key", "args": {"key": "Enter"}}}
+    waiting = {"step_id": "file", "status": "waiting", "output": "wants a tool", "agent": pending}
+    o = Outcome(s.name, first_status="needs_approval", first_error=_asked({"steps": [waiting]}))
     assert verdict(o, s, expected("expenses", extra=False)) == "ASKED"
-    assert o.first_error.startswith("asks at File the row")
+    assert o.first_error.startswith("asks at file: wants a tool")
+    assert "browser_press_key" in o.first_error
 
 
 def test_a_page_the_site_does_not_have_is_not_found(expenses: Any) -> None:
