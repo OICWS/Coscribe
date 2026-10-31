@@ -12,7 +12,7 @@ from typing import Any
 
 import pytest
 
-from evals.workflow.run import Outcome, Scenario, _asked, judge, verdict
+from evals.workflow.run import Outcome, Scenario, _asked, _heal_waiting, judge, verdict
 from evals.workflow.site import Site, serve
 from evals.workflow.sites import ROWS, SITES, expected, fixed_workflow, sheet
 
@@ -152,3 +152,18 @@ def test_a_page_the_site_does_not_have_is_not_found(expenses: Any) -> None:
         with pytest.raises(urllib.error.HTTPError) as missing:
             urllib.request.urlopen(base + path)
         assert missing.value.code == 404
+
+
+def test_a_run_that_filed_right_after_healing_is_healed() -> None:
+    s = Scenario("expenses", ("relabel",), "fixed")
+    want = expected("expenses", extra=False)
+    filed = [_record(w) for w in want]
+    did = ['Typed into "Claimant", the field that replaced "Full name".']
+    healed = Outcome(s.name, first_status="completed", first_records=filed, healed=did)
+    assert verdict(healed, s, want) == "HEALED"
+    assert (
+        verdict(Outcome(s.name, first_status="completed", first_records=filed), s, want) == "PASS"
+    )
+    pending = {"step_id": "submit", "status": "waiting", "agent": {"pending": {"tool": "x"}}}
+    assert _heal_waiting({"steps": [pending]})
+    assert not _heal_waiting({"steps": [{"step_id": "ok", "status": "waiting"}]})

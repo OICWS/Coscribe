@@ -72,6 +72,10 @@ class Outcome:
     second_status: str = ""
     second_error: str = ""
     second_records: list[dict[str, Any]] = field(default_factory=list)
+    # With --autonomy: what the run's report says healing did, and how often a heal of a step
+    # that can't be undone waited for the (simulated) person's yes.
+    healed: list[str] = field(default_factory=list)
+    heal_asks: int = 0
 
 
 def scenarios(only: list[str], builds: list[str]) -> list[Scenario]:
@@ -128,7 +132,9 @@ def verdict(o: Outcome, s: Scenario, want: list[dict[str, str]]) -> str:
         return "SAFE_STOP"
     first_ok, _ = judge(o.first_records, want)
     if first_ok:
-        return "PASS" if o.first_status == "completed" else "PASS_UNREPORTED"
+        if o.first_status != "completed":
+            return "PASS_UNREPORTED"
+        return "HEALED" if o.healed else "PASS"
     if o.first_status == "completed":
         return "FALSE_SUCCESS"
     if o.first_status == "needs_approval" and not o.first_records:
@@ -152,6 +158,14 @@ def _asked(run: dict[str, Any]) -> str:
     return f"asks at {waiting.get('step_id', '?')}: {waiting.get('output') or ''} {said}"
 
 
+def _heal_waiting(run: dict[str, Any]) -> bool:
+    """Whether a paused fixed run waits on a healing agent's call: its steps are all tool steps,
+    so an agent's pending call can only be healing's."""
+    steps = run.get("steps") or []
+    waiting: dict[str, Any] = next((r for r in reversed(steps) if r.get("status") == "waiting"), {})
+    return bool((waiting.get("agent") or {}).get("pending"))
+
+
 def run_one(app: App, site: Site, port: int, s: Scenario, args: argparse.Namespace) -> Outcome:
     spec = SITES[s.site]
     base = f"http://127.0.0.1:{port}"
@@ -161,6 +175,8 @@ def run_one(app: App, site: Site, port: int, s: Scenario, args: argparse.Namespa
     target.write_text(sheet(s.site, extra_column=not s.must_stop), encoding="utf-8")
     if s.build == "fixed":
         workflow = fixed_workflow(spec, base, path, mark_submit=args.mark_submit)
+        if args.autonomy:
+            workflow["autonomy"] = args.autonomy
     else:
         workflow = agent_workflow(spec, base, path)
     trigger = app.create_task(f"eval {s.name}", workflow)
@@ -170,12 +186,21 @@ def run_one(app: App, site: Site, port: int, s: Scenario, args: argparse.Namespa
         site.reset(frozenset(s.mutations))
         t0 = time.monotonic()
         run = app.run(trigger, args.run_timeout)
+        # The person says yes to healing a step that can't be undone (decision 0031): what is
+        # scored is whether what healing then did was right.
+        while run["status"] == "needs_approval" and _heal_waiting(run) and o.heal_asks < 10:
+            o.heal_asks += 1
+            run = app.answer(trigger, run["run_id"], True, args.run_timeout)
         o.first_seconds = round(time.monotonic() - t0, 1)
         o.first_status, o.first_error = run["status"], str(run.get("error") or "")
         o.first_records = list(site.records)
+        if args.autonomy:
+            o.healed = [
+                str(h.get("did") or "") for h in app.report(trigger, run["run_id"])["healed"]
+            ]
         if o.first_status == "needs_approval":
             o.first_error = _asked(run)
-            app.decline(trigger, run["run_id"], args.run_timeout)
+            app.answer(trigger, run["run_id"], False, args.run_timeout)
         if o.first_status == "failed" and args.repair:
             site.records.clear()
             t0 = time.monotonic()
@@ -198,6 +223,10 @@ def run_one(app: App, site: Site, port: int, s: Scenario, args: argparse.Namespa
     return o
 
 
+def _healing(o: Outcome) -> str:
+    return f" (healed {len(o.healed)}, asked {o.heal_asks})" if o.healed or o.heal_asks else ""
+
+
 def summary(outcomes: list[Outcome]) -> str:
     lines = [
         "| scenario | verdict | first run | s | repair: asked / side effects / linked "
@@ -211,7 +240,7 @@ def summary(outcomes: list[Outcome]) -> str:
             else "-"
         )
         lines.append(
-            f"| {o.scenario} | {o.verdict} | {o.first_status} {o.first_error[:80]} "
+            f"| {o.scenario} | {o.verdict} | {o.first_status}{_healing(o)} {o.first_error[:80]} "
             f"| {o.first_seconds} "
             f"| {repair} | {o.second_status} {o.second_error[:60]} |"
         )
@@ -243,6 +272,11 @@ def main(argv: list[str] | None = None) -> int:
         "--mark-submit",
         action="store_true",
         help="mark the fixed workflows' final submit irreversible (needs decision 0029 in the app)",
+    )
+    parser.add_argument(
+        "--autonomy",
+        choices=["fixed", "self_healing", "proactive", "autonomous"],
+        help="set the fixed workflows' autonomy (needs decisions 0030 and 0031 in the app)",
     )
     parser.add_argument("--run-timeout", type=float, default=900)
     parser.add_argument("--repair-timeout", type=float, default=1500)

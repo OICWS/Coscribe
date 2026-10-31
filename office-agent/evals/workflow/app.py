@@ -69,11 +69,17 @@ class App:
         run_id = self.call("POST", f"/api/scheduled-tasks/{trigger_id}/run")["run"]["run_id"]
         return self._until_ended(trigger_id, run_id, timeout)
 
-    def decline(self, trigger_id: str, run_id: str, timeout: float) -> dict[str, Any]:
-        """Say no to what a paused run asks, as a person would, and wait for it to end."""
+    def answer(
+        self, trigger_id: str, run_id: str, approved: bool, timeout: float
+    ) -> dict[str, Any]:
+        """Answer what a paused run asks, as a person would, and wait for it to stop again."""
         path = f"/api/scheduled-tasks/{trigger_id}/runs/{run_id}/answer"
-        self.call("POST", path, {"approved": False, "note": ""})
+        self.call("POST", path, {"approved": approved, "note": ""})
         return self._until_ended(trigger_id, run_id, timeout)
+
+    def report(self, trigger_id: str, run_id: str) -> dict[str, Any]:
+        """The run's report (decision 0030): what was healed, decided, not done."""
+        return dict(self.call("GET", f"/api/scheduled-tasks/{trigger_id}/runs/{run_id}/report"))
 
     def _until_ended(self, trigger_id: str, run_id: str, timeout: float) -> dict[str, Any]:
         deadline = time.monotonic() + timeout
