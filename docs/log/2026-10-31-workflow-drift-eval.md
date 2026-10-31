@@ -26,5 +26,13 @@ across sites and kinds of change.
 - Where a required value was missing, the investigation added a check that stops the run
   before anything is sent and names the rows and the value; it invented none.
 
+## After P4 (#756 agent outcome, #758 irreversible steps; `--mark-submit`)
+- Fixed steps: PASS 4, REPAIRED 8, SAFE_STOP 2, as before, but the repairs' test runs filed 0
+  records (were 2 or 3 each): they stop before the marked submit. 3 of 8 revisions still lost
+  their task; #752 fixes that and wasn't in this build.
+- Agent step per row: PASS 12, SAFE_STOP 2, FALSE_SUCCESS 0.
+- Where a value was missing, nothing was invented: revisions report the rows as blocked and name
+  the column the sheet needs.
+
 ## Not verified
 - On Windows. Scored live on Linux with the desktop app under xvfb and `deepseek:deepseek-flash`.
