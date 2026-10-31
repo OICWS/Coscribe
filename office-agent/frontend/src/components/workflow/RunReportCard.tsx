@@ -48,6 +48,7 @@ export function RunReportCard({
           {loop.title}: {loop.done} of {loop.total} done
         </div>
       ))}
+      {report.not_done.length === 0 && <div>Every step was done.</div>}
       {report.not_done.length > 0 && (
         <div>
           <div className="font-medium">Not done</div>

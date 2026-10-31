@@ -18,9 +18,10 @@ in #754; decision 0030.
   - agent tool calls, tokens and time.
 - **Route**: `GET /api/scheduled-tasks/{id}/runs/{run}/report`.
 - **Frontend**:
-  - `AutonomySetting` in the workflow editor: "Match the steps" or one of the four levels. The
-    server's refusal is shown under it.
+  - `AutonomySetting` on the task's page, above Repeats: "Match the steps" or one of the four
+    levels. The server's refusal is shown under it.
   - `RunReportCard` on a finished run.
+  - `tests/e2e/workflow-autonomy.spec.ts` covers both.
 
 ## Not verified
 - On Windows.

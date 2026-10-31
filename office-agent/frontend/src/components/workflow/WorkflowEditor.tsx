@@ -23,7 +23,6 @@ import { ArrowDownIcon, ArrowUpIcon, ChevronDownIcon, PlusIcon, TrashIcon } from
 import { AddStepMenu } from "./AddStepMenu";
 import { FieldLabel } from "./fields";
 import { InputsEditor } from "./InputsEditor";
-import { AutonomySetting } from "./AutonomySetting";
 import { KindLegend, SectionHeading, StepKindTile } from "./parts";
 import { StepFields, type EditorContext } from "./StepEditors";
 import { StepSummary } from "./StepSummary";
@@ -579,7 +578,6 @@ export function WorkflowEditor({
 
   return (
     <div className="flex flex-col gap-7">
-      <AutonomySetting workflow={workflow} persist={persist} />
       <InputsEditor inputs={workflow.inputs} onSave={saveInputs} />
       <section ref={rootRef}>
         <SectionHeading aside={<KindLegend />}>Steps</SectionHeading>
