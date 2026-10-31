@@ -224,6 +224,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--run-timeout", type=float, default=900)
     parser.add_argument("--repair-timeout", type=float, default=1500)
     parser.add_argument("--port", type=int, default=8830, help="the test sites' first port")
+    parser.add_argument(
+        "--resume", action="store_true", help="keep the scenarios --out already has, run the rest"
+    )
     parser.add_argument("--list", action="store_true")
     args = parser.parse_args(argv)
     chosen = [s for s in scenarios(args.only, args.builds) if args.match in s.name]
@@ -242,7 +245,12 @@ def main(argv: list[str] | None = None) -> int:
         server = serve(site, args.port + n)
         sites[slug] = (site, server.server_address[1])
     outcomes: list[Outcome] = []
+    done = args.out / "results.json"
+    if args.resume and done.exists():
+        outcomes = [Outcome(**x) for x in json.loads(done.read_text(encoding="utf-8"))]
     for s in chosen:
+        if any(o.scenario == s.name for o in outcomes):
+            continue
         site, port = sites[s.site]
         print(f"== {s.name}", flush=True)
         o = run_one(app, site, port, s, args)
