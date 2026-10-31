@@ -28,11 +28,13 @@ test("a run's overview shows each step's state, and a step on it opens in the li
             then: [],
             otherwise: [{ id: "never", kind: "tool", title: "List again", tool: "list_files", args: { path: "." } }],
           },
+          // Fails whatever the workspace holds: CI's has over 200 files, so
+          // the listing there is cut short.
           {
             id: "cut",
             kind: "check",
-            title: "The list was cut short",
-            conditions: [{ left: { ref: "found.truncated" }, op: "eq", right: { value: true } }],
+            title: "The count is negative",
+            conditions: [{ left: { ref: "found.total_count" }, op: "lt", right: { value: 0 } }],
           },
           { id: "ok", kind: "approval", title: "Look it over", message: "Check the list." },
         ],
