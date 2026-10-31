@@ -266,11 +266,19 @@ async def run_agent_step(
     workspace: str,
     make_model: Callable[[str | None], Any],
     ask: Ask,
+    confirm_changes: bool = False,
 ) -> tuple[dict[str, Any], AgentReply]:
     """The step's result and the agent's last reply. `ask` puts a call to
     a person and returns their answer ({"approved", "note", "call_id"}); it pauses
     the run, so everything before it here runs again on resume -- which
-    the runner's keyed agent makes safe."""
+    the runner's keyed agent makes safe. With `confirm_changes` every call
+    that does more than read waits for a person."""
+
+    def decide_call(call: AgentCall) -> Decision:
+        if confirm_changes and not is_read_only(call.risk):
+            return "ask"
+        return decide(step, approval_mode, workspace, call)
+
     request = AgentRequest(
         key=key,
         instructions=AGENT_STEP_INSTRUCTIONS,
@@ -279,7 +287,7 @@ async def run_agent_step(
         max_steps=step.max_steps,
         model=step.model,
         allows=lambda call: allows(read_only, call),
-        decide=lambda call: decide(step, approval_mode, workspace, call),
+        decide=decide_call,
     )
     while True:
         reply = await runner(request)

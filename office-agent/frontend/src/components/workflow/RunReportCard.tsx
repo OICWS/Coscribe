@@ -74,6 +74,18 @@ export function RunReportCard({
           ))}
         </div>
       )}
+      {report.healed.length > 0 && (
+        <div>
+          <div className="font-medium">Healed while running</div>
+          {report.healed.map((item, index) => (
+            <div key={index} className="text-[13px]">
+              {item.title}
+              {where(item.iteration)}: {item.did}
+              <span className="text-[var(--muted)]"> -- it had failed: {item.error}</span>
+            </div>
+          ))}
+        </div>
+      )}
       {report.irreversible.length > 0 && (
         <div>
           <div className="font-medium">Done, can't be undone</div>

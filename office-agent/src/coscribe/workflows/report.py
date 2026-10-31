@@ -1,6 +1,7 @@
 """A workflow run's report (decision 0030): what was done and what wasn't, what an agent decided
-on its own, which steps that can't be taken back ran, and what the agents used -- read from the
-run's step records, so a person trusts a run by its result, not by watching every step."""
+on its own, which steps were healed while running (decision 0030), which steps that can't be
+taken back ran, and what the agents used -- read from the run's step records, so a person trusts
+a run by its result, not by watching every step."""
 
 from __future__ import annotations
 
@@ -29,7 +30,8 @@ def run_report(
 ) -> dict[str, Any]:
     """{"autonomy", "loops": [{"step_id", "title", "done", "total"}], "not_done": [{"step_id",
     "title", "iteration", "status", "error"}], "assumed": [{"step_id", "title", "iteration",
-    "values"}], "irreversible": [{"step_id", "title", "iteration"}], "tool_calls", "tokens",
+    "values"}], "healed": [{"step_id", "title", "iteration", "error", "did"}], "irreversible":
+    [{"step_id", "title", "iteration"}], "tool_calls", "tokens",
     "seconds"}. A step that was removed from the workflow after the run keeps its id as title."""
     steps = {placed.step.id: placed.step for placed in walk(workflow.steps)}
 
@@ -37,7 +39,7 @@ def run_report(
         step = steps.get(step_id)
         return step.title if step is not None else step_id
 
-    loops, not_done, assumed, irreversible = [], [], [], []
+    loops, not_done, assumed, healed, irreversible = [], [], [], [], []
     tool_calls = tokens = 0
     for record in records:
         step_id = str(record.get("step_id") or "")
@@ -63,11 +65,14 @@ def run_report(
             tokens += int(agent.get("tokens") or 0)
             if agent.get("assumed"):
                 assumed.append({**where, "values": list(agent["assumed"])})
+            if isinstance(agent.get("healed"), dict):
+                healed.append({**where, **agent["healed"]})
     return {
         "autonomy": workflow.effective_autonomy(),
         "loops": loops,
         "not_done": not_done,
         "assumed": assumed,
+        "healed": healed,
         "irreversible": irreversible,
         "tool_calls": tool_calls,
         "tokens": tokens,

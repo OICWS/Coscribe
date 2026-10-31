@@ -1,9 +1,12 @@
-"""Short labels for the items of a workflow loop, shown in the run view."""
+"""A workflow loop's pieces the engine shows or sizes by: short labels for its items in the
+run view, its progress, and how many graph steps a run can take."""
 
 from __future__ import annotations
 
 import json
 from typing import Any
+
+from ..workflow_spec import BranchStep, LoopStep, Step
 
 _ITEM_LABEL_CHARS = 60
 _LABEL_KEYS = ("name", "title", "path", "file", "id", "text")
@@ -33,3 +36,21 @@ def item_labels(items: list[Any]) -> list[str]:
         else:
             labels.append(_short(json.dumps(item, ensure_ascii=False, default=str)))
     return labels
+
+
+def supersteps(steps: list[Step]) -> int:
+    """The most graph steps `steps` can take -- LangGraph stops a run that
+    goes past its recursion limit, and a loop legitimately goes round."""
+    total = 0
+    for step in steps:
+        if isinstance(step, BranchStep):
+            total += 1 + max(supersteps(step.then), supersteps(step.otherwise))
+        elif isinstance(step, LoopStep):
+            total += 2 + step.max_items * (supersteps(step.steps) + 2)
+        else:
+            total += 1
+    return total
+
+
+def loop_progress(loop: dict[str, Any]) -> dict[str, Any]:
+    return {"done": loop["index"], "total": len(loop["items"]), "items": loop["labels"]}

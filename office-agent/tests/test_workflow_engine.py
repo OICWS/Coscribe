@@ -685,7 +685,7 @@ async def test_a_connectors_tool_runs_as_a_step_and_its_text_becomes_a_value(
 
 
 def test_a_connectors_result_section_is_the_value() -> None:
-    from coscribe.workflows.engine import _connector_value
+    from coscribe.workflows.connector_value import connector_value as _connector_value
 
     playwright = [
         {"type": "text", "text": '### Result\n"Items: 3\\n| a |"\n### Ran Playwright code\n```js\n'

@@ -2,7 +2,7 @@
 
 ## Purpose
 Owns how a workflow runs (`engine.py`; `model_step.py` gets a model to return a step's
-fields; `agent_step.py` runs an agent step through an injected runner; `report.py` a run's report, decision 0030), what it may touch (`permissions.py`), the tool parameters its editor needs (`catalog.py`), drafting one from a
+fields; `agent_step.py` runs an agent step through an injected runner; `report.py` a run's report, decision 0030; `healing.py` the agent that heals a failed browser step when the task's autonomy allows it), what it may touch (`permissions.py`), the tool parameters its editor needs (`catalog.py`), drafting one from a
 conversation (`solidify.py`) and a one-off test run (`testing.py`). Does not own the schedule
 that fires a run or its stored history (`runtime_lg/scheduled_tasks.py`), the routes
 (`web/routes/scheduled.py`) or any agent: an agent step (decision 0028) runs through
@@ -32,12 +32,16 @@ history, so this package does not import `runtime_lg`).
   waits for a person (`agent_step.decide`, `permissions.outside_declared`), never runs unasked.
 - A test run stops before an approval step and before a step marked `irreversible` (unless
   `send_for_real`, refused when no one is watching; decision 0029), and writes no run history.
+- Healing (decision 0030) acts only for a browser tool step, only at `self_healing` or above,
+  with the page tools on the sites `granted_by` lists, and on a step marked `irreversible` every
+  call that does more than read waits for a person; what it did is on the step's record
+  (`agent.healed`) and in the run report.
 - `UNAVAILABLE_TOOLS` in `engine.py` only lists tools a run may not call; the import contract,
   not that list, is what keeps the code module out.
 
 ## Tests
 `tests/test_workflow_spec.py`, `tests/test_workflow_engine.py`, `tests/test_workflow_agent_step.py`, `tests/test_workflow_permissions.py`,
-`tests/test_workflow_catalog.py`, `tests/test_workflow_solidify.py`, `tests/test_workflow_testing.py`;
+`tests/test_workflow_catalog.py`, `tests/test_workflow_solidify.py`, `tests/test_workflow_testing.py`, `tests/test_workflow_healing.py`, `tests/test_workflow_report.py`;
 `tests/web/test_scheduled.py` covers runs through the server.
 
 ## Verify by hand
