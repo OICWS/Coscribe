@@ -21,10 +21,12 @@ watching.
 - `engine.py` gives up lines to stay under the size ratchet: `loop_labels.py` now holds the loop
   progress and graph size, and `connector_value.py` a connector result's value.
 - A heal names the saved arguments it changed (`changed`, e.g. `ref: textbox "Legal name"`;
-  only literal ones, never a snapshot id). The run keeps the last heal per step (`healed` in the
-  graph state), and the step's later passes try those arguments first, with no agent. A step
-  that can't be undone isn't carried over: it heals with the person each time, and its agent is
-  told what was done before.
+  only literal ones, never a snapshot id). The run remembers each change by tool, argument and
+  the value it replaced (`healed` in the graph state), and any later step whose saved argument
+  had that value tries the new one first, with no agent: the step's next pass in a loop, and
+  the same field's step for the next row in a workflow built row by row. A step that can't be
+  undone isn't carried over: it heals with the person each time, and its agent is told what was
+  done before.
 - `report.py`: the report lists `healed`, a carried one marked as the same fix; `RunReportCard` shows "Healed while running".
 - `AutonomySetting`: the self-healing description says what it now does.
 - `tests/test_workflow_healing.py`: fixed doesn't heal; a heal inside consent; a heal of a step

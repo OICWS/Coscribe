@@ -59,7 +59,7 @@ from ..workflow_spec import (
 )
 from .agent_step import CODE_TOOLS, AgentCall, AgentRunner, answer_of, run_agent_step
 from .connector_value import connector_value as _connector_value
-from .healing import carried, healed, stand_in
+from .healing import carried, healed, recalled, remembered, stand_in
 from .loop_labels import item_labels as _item_labels
 from .loop_labels import loop_progress as _loop_progress
 from .loop_labels import supersteps as _supersteps
@@ -176,7 +176,7 @@ class _State(TypedDict):
     # Per loop id: {"index", "items", "results", "started_at"} of its
     # current pass.
     loops: Annotated[dict[str, Any], _merge]
-    # Per step id: how it was last healed in this run (decision 0030), for its later passes.
+    # What heals in this run changed (decision 0030), by step id and by element, for later steps.
     healed: Annotated[dict[str, Any], _merge]
 
 
@@ -417,7 +417,7 @@ class _GraphBuilder:
                 return await self._approval(step, values, started, it)
             await self.emit(StepRecord(step.id, "running", started_at=started, iteration=it))
             try:
-                earlier = (state.get("healed") or {}).get(step.id)
+                earlier = recalled(step, state.get("healed") or {})
                 output, checks, agent = await self._try(step, values, started, it, earlier)
             except GraphBubbleUp:
                 raise
@@ -439,7 +439,8 @@ class _GraphBuilder:
                 )
             )
             save_as = None if isinstance(step, BranchStep) else step_output(step)
-            heal = {"healed": {step.id: agent["healed"]}} if agent and "healed" in agent else {}
+            fix = agent.get("healed") if agent else None
+            heal = {"healed": remembered(step, fix)} if fix else {}
             return {"values": {save_as: output} if save_as else {}, **heal}
 
         return run

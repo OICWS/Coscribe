@@ -220,6 +220,41 @@ async def test_a_step_that_cant_be_taken_back_heals_with_the_person_on_every_pas
         outcome = await run.answer(True)
 
     assert (outcome.status, asked) == ("completed", 2)
-    assert 'Earlier in this run the same step was healed: Clicked "Send".' in (
-        runner.requests[-1].task
-    )
+    assert 'Earlier in this run: Clicked "Send".' in runner.requests[-1].task
+
+
+async def test_a_step_on_the_same_element_as_a_healed_one_uses_its_fix(tmp_path: Path) -> None:
+    """A workflow built for a list repeats its steps per row; the second row's step names the
+    element the first row's heal replaced."""
+    typed: list[dict[str, Any]] = []
+
+    def browser_type(**args: Any) -> str:
+        if args["ref"] != 'textbox "Legal name"':
+            raise RuntimeError(GONE)
+        typed.append(args)
+        return "typed"
+
+    def name(n: int, company: str) -> dict[str, Any]:
+        return {"id": f"name{n}", "kind": "tool", "title": "Enter Company name",
+                "tool": "browser_type",
+                "args": {"ref": 'textbox "Company name"', "text": company}}  # fmt: skip
+
+    other = {"id": "other", "kind": "tool", "title": "Enter Contact", "tool": "browser_type",
+             "args": {"ref": 'textbox "Contact"', "text": "Ann"}}  # fmt: skip
+    report = {"outcome": "done", "assumed": [], "did": 'Typed into "Legal name".', "result": "",
+              "changed": ['ref: textbox "Legal name"']}  # fmt: skip
+    runner = ScriptedRunner([("done", json.dumps(report)), _done("typed the contact")])
+    h = Harness(tmp_path, runner, browser_type=browser_type)
+
+    steps = [OPEN, name(0, "Acme"), name(1, "Globex"), other]
+    outcome = await h.run(steps, autonomy="self_healing").start({})
+
+    assert outcome.status == "completed"
+    # name1 used name0's fix with no agent; "other" names another element, so it healed itself.
+    assert len(runner.requests) == 2
+    assert typed == [{"ref": 'textbox "Legal name"', "text": "Globex"}]
+    healed = {e["step_id"]: e for e in h.report()["healed"]}
+    assert healed["name1"].get("carried") is True
+    did = 'An earlier step was healed by using ref: textbox "Legal name".'
+    assert healed["name1"]["did"] == did
+    assert not healed["other"].get("carried")

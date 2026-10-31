@@ -9,10 +9,12 @@ every change (the maintainer's choice on #754): the run waits for them, even wit
 watching. What the agent did differently is kept on the step's record, so the run report shows
 every deviation.
 
-A drift seen once is usually seen again on the next item of a loop, so a heal that names the
-saved arguments it changed is tried first on the step's later passes in the same run, without an
-agent; a step that can't be taken back still heals with the person each time, told what was done
-before."""
+A drift seen once is usually seen again: on the step's next pass in a loop, and on every other
+step that names the same element (a workflow built for a list often repeats its steps per row).
+So a heal that names the saved arguments it changed is remembered by tool, argument and old
+value, and any later step in the same run whose saved argument is that old value tries the new
+one first, without an agent. A step that can't be taken back still heals with the person each
+time, told what was done before."""
 
 from __future__ import annotations
 
@@ -108,8 +110,8 @@ def stand_in(
     )
     if isinstance(earlier, dict) and earlier.get("did"):
         goal += (
-            f"\n\nEarlier in this run the same step was healed: {earlier['did']} The page is "
-            "probably the same, so do the same unless it differs."
+            f"\n\nEarlier in this run: {earlier['did']} The page is probably the same, so do "
+            "the same unless it differs."
         )
     return AgentStep(
         id=step.id,
@@ -146,9 +148,42 @@ def healed(step: Step, result: dict[str, Any], error: str) -> tuple[Any, dict[st
     return output, {"error": error, "did": did, "args": _changed_args(step, result.get("changed"))}
 
 
+def _swap_key(tool: str, name: str, old: str) -> str:
+    return f"{tool} {name}={old}"
+
+
+def remembered(step: Step, deviation: dict[str, Any]) -> dict[str, Any]:
+    """What a heal leaves for the rest of the run: the step's own entry, and each changed
+    argument by tool, name and the value it replaced."""
+    memory: dict[str, Any] = {step.id: deviation}
+    if isinstance(step, ToolStep) and not deviation.get("carried"):
+        for name, new in (deviation.get("args") or {}).items():
+            memory[_swap_key(step.tool, name, step.args[name])] = new
+    return memory
+
+
+def recalled(step: Step, memory: dict[str, Any]) -> dict[str, Any] | None:
+    """What earlier heals in this run say about this step: its own last heal, or the changes
+    made to another step on the same tool whose saved argument had the same value."""
+    own = memory.get(step.id)
+    if not isinstance(step, ToolStep):
+        return own if isinstance(own, dict) else None
+    swaps = {
+        name: memory[key]
+        for name, old in step.args.items()
+        if isinstance(old, str) and (key := _swap_key(step.tool, name, old)) in memory
+    }
+    if isinstance(own, dict):
+        return {**own, "args": {**swaps, **(own.get("args") or {})}}
+    if not swaps:
+        return None
+    used = ", ".join(f"{name}: {value}" for name, value in swaps.items())
+    return {"error": "", "did": f"An earlier step was healed by using {used}.", "args": swaps}
+
+
 def carried(step: Step, earlier: Any) -> ToolStep | None:
-    """The step with what healed it earlier in this run, to try before healing again; None
-    when there is nothing to carry or the step can't be taken back."""
+    """The step with what healed it, or a step like it, earlier in this run, to try before
+    healing again; None when there is nothing to carry or the step can't be taken back."""
     if not isinstance(step, ToolStep) or step.irreversible or not isinstance(earlier, dict):
         return None
     args = earlier.get("args")
