@@ -501,6 +501,38 @@ def _scope_hint(reference: str, scoped: set[str]) -> str:
     return ""
 
 
+# A task's one autonomy switch (decision 0030), lowest first: a ceiling on
+# what its steps may be.
+TaskAutonomy = Literal["fixed", "self_healing", "proactive", "autonomous"]
+TASK_AUTONOMY_LEVELS: tuple[TaskAutonomy, ...] = (
+    "fixed",
+    "self_healing",
+    "proactive",
+    "autonomous",
+)
+
+
+def step_autonomy(step: Step) -> TaskAutonomy:
+    """The lowest task setting that allows this step."""
+    if isinstance(step, AgentStep):
+        return "autonomous" if step.autonomy == "full" else "proactive"
+    return "fixed"
+
+
+def needed_autonomy(steps: list[Step]) -> TaskAutonomy:
+    """The lowest task setting that allows every step: what a workflow
+    without the setting acts at."""
+    levels = [TASK_AUTONOMY_LEVELS.index(step_autonomy(p.step)) for p in walk(steps)]
+    return TASK_AUTONOMY_LEVELS[max(levels, default=0)]
+
+
+def steps_above(steps: list[Step], ceiling: TaskAutonomy) -> list[Step]:
+    limit = TASK_AUTONOMY_LEVELS.index(ceiling)
+    return [
+        p.step for p in walk(steps) if TASK_AUTONOMY_LEVELS.index(step_autonomy(p.step)) > limit
+    ]
+
+
 class Workflow(_Model):
     # Version 2 (decision 0028) may hold agent steps; a version 1 workflow
     # keeps behaving as it did when it was saved.
@@ -509,6 +541,11 @@ class Workflow(_Model):
     # Empty is a workflow still being built on its task page; preflight
     # refuses to run one.
     steps: list[Step] = Field(default_factory=list, max_length=MAX_STEPS)
+    # None: the lowest level its steps need (`needed_autonomy`).
+    autonomy: TaskAutonomy | None = None
+
+    def effective_autonomy(self) -> TaskAutonomy:
+        return self.autonomy or needed_autonomy(self.steps)
 
     @model_validator(mode="after")
     def _names_resolve_in_order(self) -> Workflow:
@@ -518,6 +555,13 @@ class Workflow(_Model):
         scope.check(self.steps, {i.name for i in self.inputs}, 0)
         if scope.agents and self.version < 2:
             raise ValueError("agent steps need a version 2 workflow")
+        above = steps_above(self.steps, self.autonomy) if self.autonomy else []
+        if above:
+            names = ", ".join(f'"{step.title}"' for step in above)
+            raise ValueError(
+                f"the task's autonomy is {self.autonomy}, which doesn't allow {names}; "
+                f"raise it to {needed_autonomy(self.steps)} or change those steps"
+            )
         return self
 
 

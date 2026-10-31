@@ -52,6 +52,7 @@ GET /api/providers
 GET /api/providers/catalog
 GET /api/scheduled-tasks
 GET /api/scheduled-tasks/{trigger_id}/notes
+GET /api/scheduled-tasks/{trigger_id}/runs/{run_id}/report
 GET /api/screenshots/{name}
 GET /api/script-env/interpreter
 GET /api/script-env/packages

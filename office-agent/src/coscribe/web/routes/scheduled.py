@@ -35,6 +35,7 @@ from ...workflows import (
     LoopStep,
     brings_outside_content,
     parse_workflow,
+    run_report,
     summarize,
     walk,
     workflow_error,
@@ -252,6 +253,15 @@ def _run_control_routes(router: APIRouter, state: AppState) -> None:
         if run.status != "running" or not stop_run(run_id, run.thread_id):
             return JSONResponse({"error": "This run isn't going"}, status_code=409)
         return JSONResponse({"ok": True})
+
+    @router.get("/api/scheduled-tasks/{trigger_id}/runs/{run_id}/report")
+    async def workflow_run_report(trigger_id: str, run_id: str) -> JSONResponse:
+        trigger = ScheduledTriggerStore(settings.state_dir).load(trigger_id)
+        run = trigger.find_run(run_id) if trigger is not None else None
+        if trigger is None or trigger.workflow is None or run is None:
+            return JSONResponse({"error": f"No workflow run {run_id!r}"}, status_code=404)
+        workflow = parse_workflow(trigger.workflow)
+        return JSONResponse(run_report(workflow, run.steps, run.started_at, run.finished_at))
 
     @router.post("/api/scheduled-tasks/{trigger_id}/runs/{run_id}/investigate")
     async def investigate_workflow_run(
