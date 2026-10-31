@@ -149,6 +149,7 @@
   "coscribe/web/routes/scheduled.py::function update_scheduled_task_endpoint": 1,
   "coscribe/web/routes/scheduled.py::function validate_workflow": 1,
   "coscribe/web/routes/scheduled.py::function workflow_permissions": 1,
+  "coscribe/web/routes/scheduled.py::function workflow_run_report": 1,
   "coscribe/web/routes/settings/catalog.py::function get_commands": 1,
   "coscribe/web/routes/settings/catalog.py::function get_tools": 1,
   "coscribe/web/routes/settings/code.py::function get_code_permissions": 1,
