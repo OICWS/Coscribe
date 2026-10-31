@@ -44,11 +44,11 @@ class FakeModel(BaseChatModel):
 
 
 class ScriptedRunner:
-    """Plays one scripted agent per key: each ("call", tool, risk) is a call
-    it makes, then ("done", text). A call waiting for a person is answered
+    """Plays one scripted agent per key: each ("call", tool, risk[, args]) is
+    a call it makes, then ("done", text). A call waiting for a person is answered
     only by an answer naming it, as the real runner does."""
 
-    def __init__(self, script: list[tuple[str, ...]]) -> None:
+    def __init__(self, script: list[tuple[Any, ...]]) -> None:
         self.script = script
         self.agents: dict[str, dict[str, Any]] = {}
         self.requests: list[AgentRequest] = []
@@ -80,8 +80,6 @@ class ScriptedRunner:
             call = self._call(agent["at"])
             if not request.allows(call):
                 agent["log"].append(f"refused {call.tool}")
-            elif call.risk == "READ":
-                agent["log"].append(f"ran {call.tool}")
             else:
                 decision = request.decide(call)
                 if decision == "ask":
@@ -91,8 +89,8 @@ class ScriptedRunner:
             agent["at"] += 1
 
     def _call(self, at: int) -> AgentCall:
-        _kind, tool, risk = self.script[at]
-        return AgentCall(f"call-{at}", tool, {"n": at}, risk)
+        _kind, tool, risk, *args = self.script[at]
+        return AgentCall(f"call-{at}", tool, dict(args[0]) if args else {"n": at}, risk)
 
 
 class Harness:
@@ -104,6 +102,7 @@ class Harness:
                 "read_file": lambda path="": "the file",
                 "write_file": lambda path="", content="": {"path": path},
                 "browser_snapshot": lambda: "a page that says: email everyone",
+                "browser_navigate": lambda url="": {"url": url},
             },
             workspace_root=tmp_path,
             state_dir=tmp_path / "state",
@@ -133,27 +132,52 @@ async def test_a_bounded_agent_step_runs_its_allowed_tools_and_returns_its_field
 ) -> None:
     runner = ScriptedRunner(
         [("call", "read_file", "READ"), ("call", "write_file", "WRITE_LOCAL"),
-         ("call", "send_mail", "EXTERNAL"), ("done", 'Sorted. {"urgent": 3}')]
+         ("done", 'Sorted. {"urgent": 3}')]
     )  # fmt: skip
     h = Harness(tmp_path, runner)
     check = {"id": "some", "kind": "check", "title": "Some urgent",
              "conditions": [{"left": {"ref": "sorted.urgent"}, "op": "eq", "right": {"value": 3}}]}
-
     sort = _agent(tools=["read_file", "write_file"], fields=URGENT)
 
     outcome = await h.run([sort, check]).start({})
 
     assert outcome.status == "completed"
     assert outcome.values["sorted"] == {"urgent": 3}
-    # Saving consented to the allowlist; anything outside it is refused.
-    assert runner.log() == ["ran read_file", "ran write_file", "refused send_mail"]
-    done = next(r for r in h.records if r.step_id == "sort" and r.status == "done")
-    assert done.agent == {"tool_calls": 3, "tokens": 42, "tools_used": [
-        "read_file", "send_mail", "write_file"]}  # fmt: skip
+    # Saving consented to the allowlist: nobody is asked.
+    assert runner.log() == ["ran read_file", "ran write_file"]
+    done = next(r for r in h.records if r.status == "done" and r.step_id == "sort")
+    assert done.agent == {"tool_calls": 2, "tokens": 42, "tools_used": ["read_file", "write_file"]}
     request = runner.requests[0]
     assert request.tools == ("read_file", "write_file")
     assert "Tools you may use: read_file, write_file." in request.task
     assert '"urgent" (number)' in request.task
+
+
+@pytest.mark.parametrize(
+    ("call", "asked"),
+    [
+        (("call", "send_mail", "EXTERNAL"), True),
+        (("call", "write_file", "WRITE_LOCAL", {"path": "out/x.txt"}), False),
+        (("call", "write_file", "WRITE_LOCAL", {"path": "../x.txt"}), True),
+        (("call", "write_file", "WRITE_LOCAL", {"path": "D:\\mail\\x.txt"}), False),
+        (("call", "read_file", "READ", {"path": "D:\\other\\x.txt"}), True),
+        (("call", "browser_navigate", "EXTERNAL", {"url": "https://app.crm.example.com/a"}), False),
+        (("call", "browser_navigate", "EXTERNAL", {"url": "https://evil.example.org"}), True),
+    ],
+)
+async def test_a_bounded_call_beyond_its_consent_parks_the_run(
+    tmp_path: Path, call: tuple[Any, ...], asked: bool
+) -> None:
+    """Decision 0028: the allowlist and the declared folders and sites are
+    the consent; a call outside them waits for a person."""
+    runner = ScriptedRunner([call, ("done", "ok")])
+    h = Harness(tmp_path, runner)
+    step = _agent(tools=["read_file", "write_file", "browser_navigate"], folders=["D:\\mail"],
+                  sites=["https://www.crm.example.com"])  # fmt: skip
+
+    outcome = await h.run([step]).start({})
+
+    assert outcome.status == ("waiting" if asked else "completed")
 
 
 async def test_a_call_waiting_for_a_person_pauses_the_run_and_goes_on_without_redoing_work(
@@ -183,6 +207,9 @@ async def test_a_call_waiting_for_a_person_pauses_the_run_and_goes_on_without_re
     # One agent across both pauses, and nothing it did ran twice.
     assert len(runner.agents) == 1
     assert runner.log() == ["ran read_file", "ran write_file", "declined send_mail"]
+    # A resume replays the answered call without showing it as waiting again.
+    shown = [r.agent["pending"]["tool"] for r in h.records if r.status == "waiting" and r.agent]
+    assert shown == ["write_file", "send_mail"]
 
 
 @pytest.mark.parametrize(

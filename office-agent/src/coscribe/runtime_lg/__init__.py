@@ -71,6 +71,7 @@ from .tool_deferral import (
     build_use_tool_tool,
     unwrap_use_tool_call,
 )
+from .workflow_agent import WorkflowAgentRunner
 
 if TYPE_CHECKING:
     from .mcp import McpServerConnection, connect_mcp_tools_lg, connect_one_mcp_server_lg
@@ -115,6 +116,7 @@ __all__ = [
     "ExecPolicy",
     "build_langgraph_agent",
     "SubAgentHost",
+    "WorkflowAgentRunner",
     "Verdict",
     "build_delegation_tools",
     "build_review_work_tool",

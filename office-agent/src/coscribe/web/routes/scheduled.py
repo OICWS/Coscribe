@@ -30,7 +30,15 @@ from ...tools import (
     record_draft,
     update_trigger,
 )
-from ...workflows import BranchStep, LoopStep, parse_workflow, summarize, walk, workflow_error
+from ...workflows import (
+    BranchStep,
+    LoopStep,
+    brings_outside_content,
+    parse_workflow,
+    summarize,
+    walk,
+    workflow_error,
+)
 from ..schemas import (
     InvestigateRequest,
     PermissionsRequest,
@@ -60,9 +68,6 @@ def _waiting_permission(run: Any) -> dict[str, Any] | None:
     return None
 
 
-_OUTSIDE_CATEGORIES = frozenset({"browser", "web"})
-
-
 def _workflow_routes(router: APIRouter, state: AppState) -> None:
     settings = state.settings
     _session_extra_tools = state.session_extra_tools
@@ -84,11 +89,12 @@ def _workflow_routes(router: APIRouter, state: AppState) -> None:
             metadata = get_tool_metadata(connector_tool)
             if (metadata.category or "").startswith("mcp:"):
                 risks[connector_tool.name] = metadata.risk_category
+            if brings_outside_content(metadata.category):
                 outside.add(connector_tool.name)
         for tool in build_coordinator_agent(settings, thread_id="__tools_probe__").tools:
             metadata = get_tool_metadata(tool)
             risks[tool.__name__] = metadata.risk_category
-            if metadata.category in _OUTSIDE_CATEGORIES:
+            if brings_outside_content(metadata.category):
                 outside.add(tool.__name__)
         return risks, outside
 
