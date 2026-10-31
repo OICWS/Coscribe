@@ -132,11 +132,15 @@ async def test_a_bounded_agent_step_runs_its_allowed_tools_and_returns_its_field
 ) -> None:
     runner = ScriptedRunner(
         [("call", "read_file", "READ"), ("call", "write_file", "WRITE_LOCAL"),
-         ("done", 'Sorted. {"urgent": 3}')]
+         ("done", 'Sorted. {"outcome": "done", "urgent": 3}')]
     )  # fmt: skip
     h = Harness(tmp_path, runner)
-    check = {"id": "some", "kind": "check", "title": "Some urgent",
-             "conditions": [{"left": {"ref": "sorted.urgent"}, "op": "eq", "right": {"value": 3}}]}
+    check = {
+        "id": "some",
+        "kind": "check",
+        "title": "Some urgent",
+        "conditions": [{"left": {"ref": "sorted.urgent"}, "op": "eq", "right": {"value": 3}}],
+    }
     sort = _agent(tools=["read_file", "write_file"], fields=URGENT)
 
     outcome = await h.run([sort, check]).start({})
@@ -309,6 +313,46 @@ async def test_an_agent_step_fails_when_its_fields_cant_be_had(tmp_path: Path) -
 
     assert outcome.status == "failed"
     assert outcome.error is not None and "urgent must be number" in outcome.error
+
+
+FILED = [{"name": "reference", "type": "text"}]
+
+
+async def test_an_agent_that_says_it_stopped_fails_its_step_with_its_reason(
+    tmp_path: Path,
+) -> None:
+    text = 'Not filed. {"outcome": "stopped", "stopped_because": "No receipt.", "reference": null}'
+    h = Harness(tmp_path, ScriptedRunner([("done", text)]))
+
+    outcome = await h.run([_agent(autonomy="high", fields=FILED)]).start({})
+
+    assert (outcome.status, outcome.error) == ("failed", "The agent stopped: No receipt.")
+
+
+async def test_a_stop_told_only_in_prose_is_not_taken_for_success(tmp_path: Path) -> None:
+    # The agent left the field empty, which a text field accepts (#754).
+    text = 'The site wants a receipt the row lacks, so I stopped. {"reference": ""}'
+    verdict = {"outcome": "stopped", "stopped_because": "The receipt box", "reference": ""}
+    h = Harness(tmp_path, ScriptedRunner([("done", text)]), results=[verdict])
+
+    outcome = await h.run([_agent(autonomy="high", fields=FILED)]).start({})
+
+    assert (outcome.status, outcome.error) == ("failed", "The agent stopped: The receipt box")
+
+
+async def test_a_prose_report_without_a_verdict_is_the_steps_result(tmp_path: Path) -> None:
+    h = Harness(tmp_path, ScriptedRunner([("done", "Sorted them all.")]))
+
+    outcome = await h.run([_agent(autonomy="full")]).start({})
+
+    assert outcome.values["sorted"] == {"report": "Sorted them all."}
+
+
+def test_a_step_field_cannot_take_the_agents_verdict_name() -> None:
+    with pytest.raises(ValueError, match="the agent's own verdict"):
+        parse_workflow(
+            {"version": 2, "steps": [_agent(autonomy="high", fields=[{"name": "outcome"}])]}
+        )
 
 
 async def test_an_agent_that_fails_fails_its_step(tmp_path: Path) -> None:
