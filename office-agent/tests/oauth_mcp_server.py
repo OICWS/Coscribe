@@ -33,6 +33,7 @@ class _Provider(OAuthAuthorizationServerProvider[AuthorizationCode, RefreshToken
         self.access: dict[str, AccessToken] = {}
         self.refresh: dict[str, RefreshToken] = {}
         self.registrations = 0
+        self.refreshes = 0
         self.token_lifetime = 3600
 
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
@@ -96,6 +97,7 @@ class _Provider(OAuthAuthorizationServerProvider[AuthorizationCode, RefreshToken
         refresh_token: RefreshToken,
         scopes: list[str],
     ) -> OAuthToken:
+        self.refreshes += 1
         del self.refresh[refresh_token.token]
         return self._issue(client.client_id or "", scopes or refresh_token.scopes)
 
