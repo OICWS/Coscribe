@@ -352,3 +352,20 @@ def test_check_draft_refuses_a_bare_page_ref_in_a_browser_step() -> None:
     )
     problems = check_draft(workflow, {"browser_click": browser_click})
     assert len(problems) == 1 and problems[0].startswith("step 1: ref 'e322'")
+
+
+async def test_a_revision_never_unmarks_a_step_that_cant_be_taken_back() -> None:
+    """Seen live: asked to make a test reach the end, the model unmarked the submit step."""
+    send = {"id": "send", "kind": "tool", "title": "Send the report", "tool": "write_file",
+            "args": {"path": "outbox/report.md", "content": "{{hits}}"}}  # fmt: skip
+    saved = {"steps": [SAVED["steps"][0], {**send, "irreversible": True}]}
+    revised = {"workflow": {"steps": [SAVED["steps"][0], send]},
+               "changes": ["Removed the irreversible flag so the test runs through"]}  # fmt: skip
+    model = ScriptedModel(replies=[json.dumps(revised)], received=[])
+
+    draft = await revise_workflow(model, "Error audit", saved, "let the test finish", [], TOOLS)
+
+    assert draft.workflow["steps"][1]["irreversible"] is True
+    assert draft.changes is not None and draft.changes[-1] == (
+        'Kept "Send the report" marked as a step that can\'t be taken back; only you can unmark it.'
+    )

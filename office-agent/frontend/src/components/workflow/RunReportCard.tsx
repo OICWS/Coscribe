@@ -16,13 +16,52 @@ export function tokenLine(tokens: number, cached?: number): string {
   return `${(tokens - cached).toLocaleString()} new tokens (+${cached.toLocaleString()} cached)`;
 }
 
+/** The steps an agent healed while running, and how to keep their fixes (decision 0030). */
+function HealedSection({
+  report,
+  triggerId,
+  run,
+  onSaved,
+  onInvestigate,
+}: {
+  report: RunReport;
+  triggerId: string;
+  run: ScheduledRun;
+  onSaved: () => void;
+  onInvestigate?: (model: string | null) => Promise<string | null>;
+}) {
+  return (
+    <div>
+      <div className="font-medium">Healed while running</div>
+      {report.healed.map((item, index) => (
+        <div key={index} className="text-[13px]">
+          {item.title}
+          {where(item.iteration)}: {item.did}
+          <span className="text-[var(--muted)]">
+            {item.carried ? " -- the same fix as an earlier item" : ` -- it had failed: ${item.error}`}
+          </span>
+        </div>
+      ))}
+      <HealFixesSection
+        triggerId={triggerId}
+        fixes={report.fixes}
+        onSaved={onSaved}
+        revising={Boolean(run.investigation)}
+        onRevise={onInvestigate && (() => onInvestigate(null))}
+      />
+    </div>
+  );
+}
+
 /** What a finished run did (decision 0030), so a run is trusted by its result. */
 export function RunReportCard({
   triggerId,
   run,
+  onInvestigate,
 }: {
   triggerId: string;
   run: ScheduledRun;
+  onInvestigate?: (model: string | null) => Promise<string | null>;
 }) {
   const [report, setReport] = useState<RunReport | null>(null);
   const [loads, setLoads] = useState(0);
@@ -83,19 +122,13 @@ export function RunReportCard({
         </div>
       )}
       {report.healed.length > 0 && (
-        <div>
-          <div className="font-medium">Healed while running</div>
-          {report.healed.map((item, index) => (
-            <div key={index} className="text-[13px]">
-              {item.title}
-              {where(item.iteration)}: {item.did}
-              <span className="text-[var(--muted)]">
-                {item.carried ? " -- the same fix as an earlier item" : ` -- it had failed: ${item.error}`}
-              </span>
-            </div>
-          ))}
-          <HealFixesSection triggerId={triggerId} fixes={report.fixes} onSaved={() => setLoads((n) => n + 1)} />
-        </div>
+        <HealedSection
+          report={report}
+          triggerId={triggerId}
+          run={run}
+          onSaved={() => setLoads((n) => n + 1)}
+          onInvestigate={onInvestigate}
+        />
       )}
       {report.irreversible.length > 0 && (
         <div>

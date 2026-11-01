@@ -4,8 +4,8 @@ import type { ScheduledRun } from "../../types/settings";
 export const WAITING_FOR_BROWSER =
   "Waiting for the browser -- another run or test is using it";
 
-/** The way to the conversation that looked into this run's failure: a button in the failed banner
- * (`buttonClass`), a quiet link once a retry has taken the run out of that state. */
+/** The way to the conversation that looked into this run -- its failure, or the steps it healed:
+ * a button in the failed banner (`buttonClass`), a quiet link otherwise. */
 export function InvestigationLink({
   run,
   buttonClass,
@@ -34,7 +34,7 @@ export function InvestigationLink({
         className="underline hover:text-[var(--fg)]"
         onClick={open}
       >
-        Open the conversation that looked into the earlier failure
+        Open the conversation that looked into this run
       </button>
     </div>
   );

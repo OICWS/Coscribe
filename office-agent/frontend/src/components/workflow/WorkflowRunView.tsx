@@ -732,7 +732,7 @@ export function WorkflowRunView({
 
         <RunBanner run={run} workflow={workflow} onStop={onStop} onInvestigate={onInvestigate} />
         <InvestigationLink run={run} />
-        <RunReportCard triggerId={task.trigger_id} run={run} />
+        <RunReportCard triggerId={task.trigger_id} run={run} onInvestigate={onInvestigate} />
         {run.sites && run.sites.length > 0 && run.status !== "running" && (
           <div className="text-[13px] text-[var(--muted)]" data-testid="run-sites">
             Opened: <span className="text-[var(--fg)]">{run.sites.join(", ")}</span>

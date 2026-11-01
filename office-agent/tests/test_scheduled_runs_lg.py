@@ -6,12 +6,15 @@ import pytest
 
 from coscribe.runtime_lg.scheduled_tasks import (
     INVESTIGATION_PREFIX,
+    REVISION_PREFIX,
     _running,
     build_investigation_prompt,
+    build_revision_prompt,
     stop_run,
 )
 from coscribe.tools.bookkeeping.scheduled_tasks import ScheduledRun, ScheduledTrigger, ScheduleRule
 from coscribe.web.background_events import run_event
+from coscribe.workflows import heals_to_revise
 
 
 async def test_stop_cancels_the_task_driving_the_run() -> None:
@@ -118,3 +121,41 @@ def test_a_notification_says_what_the_run_produced_or_where_it_stopped() -> None
     )
     assert waiting_event is not None and waiting_event.body == "Waiting for you at Send the report?"
     assert run_event(_task([]), _run("stopped")) is None
+
+
+def test_a_heal_no_saved_fix_can_keep_is_drafted_as_a_revision() -> None:
+    workflow = {"steps": [
+        {"id": "name", "kind": "tool", "title": "Enter Company name", "tool": "browser_type",
+         "args": {"ref": 'textbox "Company name"', "text": "Acme"}},
+        {"id": "send", "kind": "tool", "title": "Click Submit", "tool": "browser_click",
+         "args": {"ref": 'button "Submit"'}, "irreversible": True},
+    ]}  # fmt: skip
+    renamed = {
+        "error": "gone",
+        "did": 'Typed into "Legal name".',
+        "args": {"ref": 'textbox "Legal name"'},
+        "was": {"ref": 'textbox "Company name"'},
+    }
+    review = {"error": 'No button "Submit"', "did": 'Clicked "Review", then "Confirm and send".',
+              "args": {}, "was": {}}  # fmt: skip
+    run = ScheduledRun(run_id="r", thread_id="x", started_at="2026-11-01T09:00", source="manual",
+                       status="completed", steps=[
+        {"step_id": "name", "status": "done", "agent": {"healed": renamed}},
+        {"step_id": "send", "status": "done", "agent": {"healed": review}},
+    ])  # fmt: skip
+    trigger = ScheduledTrigger(trigger_id="t1", name="Suppliers", enabled=True, workflow=workflow,
+                               schedule=ScheduleRule(kind="manual", at=""), runs=[run],
+                               created_at="2026-10-01T00:00", next_run_at=None)  # fmt: skip
+
+    heals = heals_to_revise(workflow, run.status, run.steps)
+    prompt = build_revision_prompt(trigger, run, "登记供应商", heals)
+
+    # The renamed field is a fix the report saves; only the new review page needs a revision.
+    assert [h["step_id"] for h in heals] == ["send"]
+    assert prompt.startswith(f'{REVISION_PREFIX}"Suppliers" · task t1 · run r]')
+    assert 'Clicked "Review", then "Confirm and send".' in prompt
+    assert "Legal name" not in prompt
+    assert "never unmark such a step to let a test go further" in prompt
+    failed = ScheduledRun(run_id="f", thread_id="y", started_at="", source="manual",
+                          status="failed")  # fmt: skip
+    assert heals_to_revise(workflow, failed.status, run.steps) == []

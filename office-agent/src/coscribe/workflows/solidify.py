@@ -444,6 +444,39 @@ def _tools_in(workflow: dict[str, Any]) -> list[str]:
     return [p.step.tool for p in walk(parsed.steps) if isinstance(p.step, ToolStep)]
 
 
+def _keep_marks(saved: dict[str, Any], draft: WorkflowDraft) -> WorkflowDraft:
+    """A revision keeps every step the workflow it revises marks as one that can't be taken
+    back (decision 0029): a test run stops before it, and a model asked to make a test pass
+    unmarks it. Only the person can, in the editor."""
+    try:
+        marked = {
+            p.step.id
+            for p in walk(parse_workflow(saved).steps)
+            if getattr(p.step, "irreversible", False)
+        }
+    except ValidationError:
+        return draft
+    kept = []
+    for placed in walk(parse_workflow(draft.workflow).steps):
+        if placed.step.id in marked and not getattr(placed.step, "irreversible", False):
+            kept.append(placed.step)
+    if not kept:
+        return draft
+    ids = {step.id for step in kept}
+
+    def mark(steps: list[Any]) -> None:
+        for step in steps:
+            if step.get("id") in ids:
+                step["irreversible"] = True
+            for key in ("steps", "then", "otherwise"):
+                mark(step.get(key) or [])
+
+    mark(draft.workflow.get("steps") or [])
+    titles = ", ".join(f'"{step.title}"' for step in kept)
+    note = f"Kept {titles} marked as a step that can't be taken back; only you can unmark it."
+    return WorkflowDraft(draft.name, draft.workflow, draft.notes, [*(draft.changes or []), note])
+
+
 async def revise_workflow(
     model: Any,
     name: str,
@@ -474,7 +507,7 @@ async def revise_workflow(
         reply = await model.ainvoke(conversation, config={"tags": [TAG_NOSTREAM]})
         text = _reply_text(reply)
         try:
-            return _parse_revision(text, tools, name)
+            return _keep_marks(workflow, _parse_revision(text, tools, name))
         except (ValueError, TypeError) as exc:
             problem = str(exc)
         try:

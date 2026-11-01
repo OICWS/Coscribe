@@ -5,7 +5,7 @@ from ..workflow_spec import BranchStep, LoopStep, Workflow, parse_workflow, walk
 from .agent_step import AgentCall, AgentReply, AgentRequest, AgentRunner
 from .catalog import describe_params, tool_description
 from .engine import RunOutcome, StepContext, StepRecord, WorkflowNotRunnable, WorkflowRun
-from .heal_revision import heal_fixes
+from .heal_revision import heal_fixes, heals_to_revise
 from .permissions import (
     brings_outside_content,
     granted_by,
@@ -37,6 +37,7 @@ __all__ = [
     "draft_workflow",
     "granted_by",
     "heal_fixes",
+    "heals_to_revise",
     "output_files",
     "parse_workflow",
     "revise_workflow",
