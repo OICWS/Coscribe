@@ -287,6 +287,10 @@ Last reviewed: 2026-10-15.
    four-level autonomy setting and the run report (decision 0030, done), self-healing at run
    time (done), and a revision after a heal (the arguments a heal named, saved from the run's
    report, and a heal that changed more, drafted as a revision in a conversation: done; scored by `--keep-heals`);
+   data tasks scored too (`evals/workflow/data_run.py`, #768). Open from it: a drafted data
+   workflow guards its input (a blank required value, a payment that matches no invoice, a value
+   it doesn't know), and a bounded agent step doesn't park a run for a read-only call it wasn't
+   given;
    P5 parallel steps,
    sub-workflows, triggers on events, state across runs, versions.
 

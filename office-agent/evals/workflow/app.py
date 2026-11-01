@@ -7,6 +7,7 @@ import asyncio
 import json
 import re
 import time
+import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -97,18 +98,40 @@ class App:
         thread = self.call("POST", path, {})["thread_id"]
         return asyncio.run(self._follow(thread, answer, timeout))
 
+    def converse(self, text: str, answer: str, timeout: float) -> tuple[str, Followed]:
+        """A new conversation that is asked `text`, followed as an investigation is."""
+        thread = uuid.uuid4().hex[:8]
+        return thread, asyncio.run(self._follow(thread, answer, timeout, first=text))
+
+    def draft(self, thread: str) -> dict[str, Any]:
+        """What "Save as a task" drafts from the conversation: {"name", "workflow", "notes"}."""
+        # Drafting is a model call over the whole conversation: minutes, not seconds.
+        path = f"/api/threads/{thread}/workflow-draft"
+        response = self.http.post(path, json={}, timeout=600)
+        if response.status_code == 400:  # the draft failed, and the body says why
+            raise RuntimeError(str(response.json().get("error") or response.text)[:500])
+        response.raise_for_status()
+        return dict(response.json())
+
     def _working(self, thread: str) -> bool:
         statuses = self.call("GET", "/api/threads/status").get("statuses", {})
         return statuses.get(thread) in ("working", "needs_input")
 
-    async def _follow(self, thread: str, answer: str, timeout: float) -> Followed:
+    async def _follow(
+        self, thread: str, answer: str, timeout: float, first: str | None = None
+    ) -> Followed:
         """Approve what it asks to do, answer its questions with `answer`, and keep the last
-        revision it drafted, until the conversation has been quiet for a while."""
+        revision it drafted, until the conversation has been quiet for a while. `first` is sent
+        as the person's message to start it."""
         seen = Followed()
         ws_url = self.base.replace("http", "ws", 1) + f"/ws/{thread}?token={self.token}"
         deadline = time.monotonic() + timeout
         quiet_since: float | None = None
         async with websockets.connect(ws_url, max_size=None) as ws:
+            if first is not None:
+                await ws.send(json.dumps({"type": "user_message", "text": first}))
+                # A turn just sent may not show as working yet.
+                await asyncio.sleep(10)
             while time.monotonic() < deadline:
                 try:
                     event = json.loads(await asyncio.wait_for(ws.recv(), timeout=5))
