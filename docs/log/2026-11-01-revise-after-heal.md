@@ -6,7 +6,7 @@ new wording of the confirmation) left the saved steps describing the old page, s
 healed it again.
 
 ## Shipped
-- `workflows/heal_fixes.py`: `heals_to_revise(workflow, status, records)`, the heals of a
+- `workflows/heal_revision.py`: `heals_to_revise(workflow, status, records)`, the heals of a
   finished run that no saved fix keeps.
 - `runtime_lg/scheduled_tasks.py`: `start_investigation` opens on such a run with
   `build_revision_prompt`: each healed step, what failed and what the agent did instead, and the
@@ -22,11 +22,17 @@ healed it again.
 - Tests: the prompt (`tests/test_scheduled_runs_lg.py`), the route and the scheduler
   (`tests/web/test_heal_fixes_route.py`), the kept mark (`tests/test_workflow_solidify.py`).
 
-## Live
-- On the expenses test site (version 4: relabelled, a cookie dialog, a new required field and a
-  review page), a run's heals of the submit and the reference were drafted into a revision that
-  passed its test. That conversation, before the kept mark, had unmarked the submit step of a
-  task saved before decision 0029, so its tests filed claims on the test site.
+## Live (DeepSeek flash, the expenses test site at version 4)
+- The site is relabelled, has a cookie banner, a new required field and a review page. A seeded
+  run of a task saved before decision 0029 healed the name field, the submit and the reference.
+  The report offered the name field as a fix and the other two for a revision.
+- First conversation, before the kept mark: the reviser marked the confirm click, then the
+  conversation unmarked it "so the test can run through". Its tests filed 4 claims on the test
+  site. That is why a revision now keeps the marks.
+- Second conversation, with the kept mark: three rounds of revising and testing. It added the
+  review and confirm steps (only the confirm click marked), a cookie dismissal, the cost centre
+  and the new labels, and read the reference from the new text. No claim was filed. It said
+  plainly that its last edit was untested and that no test reaches past the confirm click.
 
 ## Not verified
 - On Windows.
