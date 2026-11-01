@@ -286,7 +286,7 @@ Last reviewed: 2026-10-15.
    stop before a step that can't be taken back (#757, decision 0029, done), the task's
    four-level autonomy setting and the run report (decision 0030, done), self-healing at run
    time (done), and a revision after a heal (the arguments a heal named, saved from the run's
-   report, and a heal that changed more, drafted as a revision in a conversation: in review);
+   report, and a heal that changed more, drafted as a revision in a conversation: done; scored by `--keep-heals`);
    P5 parallel steps,
    sub-workflows, triggers on events, state across runs, versions.
 

@@ -209,6 +209,12 @@ step that fails is healed during the run. The eval says yes when healing a step 
 irreversible waits for a person, and the first-run column shows how many steps were healed and
 how often it asked.
 
+`--keep-heals` (with `--autonomy`) keeps a healed run's heals the way the person would: it saves
+the fixes the run's report offers, asks for a revision of the heals they can't keep (approving and
+answering as for a repair), and runs the task again. The "kept, next run" column scores that run:
+`PASS` when it filed every row without healing, `HEALED_AGAIN` when it had to heal again, `FAILED`
+or `FALSE_SUCCESS` when keeping the heals broke the task.
+
 Verdicts:
 - `PASS`: the first run filed every row correctly.
 - `HEALED`: the first run filed every row correctly after healing at least one step.
