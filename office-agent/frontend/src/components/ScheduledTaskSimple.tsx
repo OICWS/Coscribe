@@ -1,9 +1,12 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { patchScheduledTask } from "../lib/rest";
+import { plainDefault } from "../lib/inputKinds";
 import { describeSchedule } from "../lib/scheduleLabels";
+import { allSteps } from "../lib/workflowTree";
 import type { ScheduledTask } from "../types/settings";
 import type { Workflow } from "../types/workflow";
 import { AutonomyChoice } from "./workflow/AutonomySetting";
+import { InputQuickPanel, QuickEditPanel } from "./workflow/QuickEditPanel";
 import { WorkflowCanvas } from "./workflow/WorkflowCanvas";
 import { WorkflowPermissions } from "./workflow/WorkflowPermissions";
 
@@ -21,23 +24,31 @@ function Section({ title, action, children }: { title: string; action?: ReactNod
 
 const linkButton = "text-[13px] text-[var(--muted)] hover:text-[var(--fg)] hover:underline";
 
-function Inputs({ workflow }: { workflow: Workflow }) {
+function Inputs({ workflow, onChange }: { workflow: Workflow; onChange: (name: string) => void }) {
   if (workflow.inputs.length === 0) return null;
   return (
     <Section title="Asks you for, each time it runs">
       <ul className="flex flex-col gap-1 text-sm">
-        {workflow.inputs.map((input) => (
-          <li key={input.name}>
-            {input.label || input.name}
-            {input.required === false && <span className="text-[var(--muted)]"> (optional)</span>}
-            {input.default !== null && input.default !== "" && (
-              <span className="text-[var(--muted)]">
-                {" "}
-                · usually <span className="break-all">{String(input.default)}</span>
+        {workflow.inputs.map((input) => {
+          const usual = plainDefault(input);
+          return (
+            <li key={input.name} className="flex items-baseline gap-3">
+              <span className="min-w-0">
+                {input.label || input.name}
+                {input.required === false && <span className="text-[var(--muted)]"> (optional)</span>}
+                {usual !== null && (
+                  <span className="text-[var(--muted)]">
+                    {" "}
+                    · usually <span className="break-all">{usual}</span>
+                  </span>
+                )}
               </span>
-            )}
-          </li>
-        ))}
+              <button type="button" className={linkButton} onClick={() => onChange(input.name)}>
+                Change
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </Section>
   );
@@ -46,6 +57,59 @@ function Inputs({ workflow }: { workflow: Workflow }) {
 /** A workflow task's page for someone who uses it rather than builds it: what it does in its
  * steps' own titles, when it runs, what happens when a step stops working and what it may touch.
  * Every control here changes the same settings the detailed view shows. */
+/** The steps and what they ask for, each opening its quick edit. */
+function WhatItDoes({
+  workflow,
+  persist,
+  onShowDetails,
+  onOpenStep,
+}: {
+  workflow: Workflow;
+  persist: (next: Workflow) => Promise<string | null>;
+  onShowDetails: () => void;
+  onOpenStep: (stepId: string) => void;
+}) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editingInput, setEditingInput] = useState<string | null>(null);
+  const input = workflow.inputs.find((i) => i.name === editingInput);
+  const editingStep = editing ? allSteps(workflow).find((step) => step.id === editing) : undefined;
+  return (
+    <>
+      <Section
+        title="What it does"
+        action={
+          <button type="button" className={linkButton} onClick={onShowDetails}>
+            See or edit the steps
+          </button>
+        }
+      >
+        <WorkflowCanvas workflow={workflow} plain onOpenStep={setEditing} />
+      </Section>
+      {editingStep && (
+        <QuickEditPanel
+          key={editingStep.id}
+          workflow={workflow}
+          step={editingStep}
+          persist={persist}
+          onClose={() => setEditing(null)}
+          onOpenEditor={() => onOpenStep(editingStep.id)}
+        />
+      )}
+      <Inputs workflow={workflow} onChange={setEditingInput} />
+      {input && (
+        <InputQuickPanel
+          key={input.name}
+          workflow={workflow}
+          input={input}
+          persist={persist}
+          onClose={() => setEditingInput(null)}
+          onOpenEditor={onShowDetails}
+        />
+      )}
+    </>
+  );
+}
+
 export function ScheduledTaskSimple({
   task,
   workflow,
@@ -62,7 +126,7 @@ export function ScheduledTaskSimple({
   persist: (next: Workflow) => Promise<string | null>;
   onEdit: () => void;
   onShowDetails: () => void;
-  /** Opens a step of the canvas in the detailed view's editor. */
+  /** Opens a step in the detailed view's editor, from its quick edit. */
   onOpenStep: (stepId: string) => void;
   onChanged: () => void;
   runs: ReactNode;
@@ -74,17 +138,7 @@ export function ScheduledTaskSimple({
   };
   return (
     <div className="flex flex-col gap-7" data-testid="task-simple-view">
-      <Section
-        title="What it does"
-        action={
-          <button type="button" className={linkButton} onClick={onShowDetails}>
-            See or edit the steps
-          </button>
-        }
-      >
-        <WorkflowCanvas workflow={workflow} plain onOpenStep={onOpenStep} />
-      </Section>
-      <Inputs workflow={workflow} />
+      <WhatItDoes workflow={workflow} persist={persist} onShowDetails={onShowDetails} onOpenStep={onOpenStep} />
       {runs}
       <Section
         title="When it runs"

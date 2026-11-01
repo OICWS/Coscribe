@@ -22,6 +22,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from ..workflow_spec import (
+    RELATIVE_DATES,
     AgentStep,
     LoopStep,
     ScriptStep,
@@ -89,10 +90,19 @@ def _literal(value: Any, defaults: Mapping[str, Any]) -> str | None:
         return None
 
 
+def _known_defaults(workflow: Workflow) -> dict[str, Any]:
+    # A relative date is another day each run, so what it names isn't known when saving.
+    return {
+        i.name: i.default
+        for i in workflow.inputs
+        if i.default is not None and not (i.type == "date" and i.default in RELATIVE_DATES)
+    }
+
+
 def granted_by(workflow: Workflow) -> dict[str, list[str]]:
     """The folders and sites the steps themselves name: what saving the
     workflow allows it."""
-    defaults = {i.name: i.default for i in workflow.inputs if i.default is not None}
+    defaults = _known_defaults(workflow)
     folders: list[str] = []
     sites: list[str] = []
     for placed in walk(workflow.steps):
@@ -152,7 +162,7 @@ def outside_declared(step: AgentStep, tool: str, args: Mapping[str, Any], worksp
 
 def _unknown_sites(workflow: Workflow) -> list[str]:
     """Steps that open a site taken from an input or an earlier step."""
-    defaults = {i.name: i.default for i in workflow.inputs if i.default is not None}
+    defaults = _known_defaults(workflow)
     titles: list[str] = []
     for placed in walk(workflow.steps):
         step = placed.step

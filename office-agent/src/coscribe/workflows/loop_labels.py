@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from ..workflow_spec import BranchStep, LoopStep, Step
+from ..workflow_spec import BranchStep, ChoiceStep, LoopStep, Step, child_lists
 
 _ITEM_LABEL_CHARS = 60
 _LABEL_KEYS = ("name", "title", "path", "file", "id", "text")
@@ -43,8 +43,8 @@ def supersteps(steps: list[Step]) -> int:
     goes past its recursion limit, and a loop legitimately goes round."""
     total = 0
     for step in steps:
-        if isinstance(step, BranchStep):
-            total += 1 + max(supersteps(step.then), supersteps(step.otherwise))
+        if isinstance(step, (BranchStep, ChoiceStep)):
+            total += 1 + max(supersteps(steps) for _arm, steps in child_lists(step))
         elif isinstance(step, LoopStep):
             total += 2 + step.max_items * (supersteps(step.steps) + 2)
         else:
@@ -53,4 +53,6 @@ def supersteps(steps: list[Step]) -> int:
 
 
 def loop_progress(loop: dict[str, Any]) -> dict[str, Any]:
-    return {"done": loop["index"], "total": len(loop["items"]), "items": loop["labels"]}
+    progress = {"done": loop["index"], "total": len(loop["items"]), "items": loop["labels"]}
+    # Its `until` held after the last pass, so the rest of the items were left on purpose.
+    return {**progress, "stopped_early": True} if loop.get("stopped_early") else progress

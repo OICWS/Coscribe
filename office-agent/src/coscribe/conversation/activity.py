@@ -18,6 +18,7 @@ from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 
 from ..runtime import ToolMetadata
 from ..tools import WorkspaceScope
+from ..workflow_spec import raw_child_lists
 
 _OUTPUT_RISKS = frozenset({"WRITE_LOCAL", "EXTERNAL"})
 # Arguments naming a file the call reads, whichever tool takes them.
@@ -244,10 +245,8 @@ def _all_steps(steps: list[Any]) -> list[dict[str, Any]]:
         if not isinstance(step, dict):
             continue
         found.append(step)
-        for arm in ("then", "otherwise", "steps"):
-            children = step.get(arm)
-            if isinstance(children, list):
-                found.extend(_all_steps(children))
+        for children in raw_child_lists(step):
+            found.extend(_all_steps(children))
     return found
 
 

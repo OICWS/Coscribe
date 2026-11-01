@@ -291,8 +291,11 @@ Last reviewed: 2026-10-15.
    workflow guards its input (a blank required value, a payment that matches no invoice, a value
    it doesn't know), and a bounded agent step doesn't park a run for a read-only call it wasn't
    given;
-   P5 parallel steps,
-   sub-workflows, triggers on events, state across runs, versions.
+   P5 the gaps of #776, in five batches: typed inputs, conditions that hold all or any, a choice
+   of several paths, a loop that stops early and the simple view's quick edit (decision 0031,
+   batch 1, in review); then failure handling (retry, skip, fallback), a form step and a wait
+   step, state across runs and triggers on files and connector events, sub-workflows and
+   versions. Parallel steps are left out for now.
 
 ## Needs the maintainer's testing (could not be verified here)
 

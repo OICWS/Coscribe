@@ -3,10 +3,26 @@
 
 import type { WorkflowCheck, WorkflowStepRecord } from "./wire.gen";
 
-export type StepKind = "tool" | "script" | "llm" | "agent" | "check" | "approval" | "branch" | "loop";
+export type StepKind = "tool" | "script" | "llm" | "agent" | "check" | "approval" | "branch" | "choice" | "loop";
 export type Autonomy = "bounded" | "high" | "full";
 export type OutputFieldType = "text" | "number" | "boolean" | "list";
-export type CheckOp = "eq" | "ne" | "gt" | "ge" | "lt" | "le" | "contains" | "not_empty";
+export type CheckOp =
+  | "eq"
+  | "ne"
+  | "gt"
+  | "ge"
+  | "lt"
+  | "le"
+  | "contains"
+  | "not_contains"
+  | "starts_with"
+  | "ends_with"
+  | "not_empty"
+  | "empty"
+  | "before"
+  | "after";
+/** Whether every condition must hold, or one is enough. */
+export type Match = "all" | "any";
 
 /** Exactly one key is present. */
 export type Operand = { ref: string } | { count: string } | { value: unknown };
@@ -20,8 +36,11 @@ export interface Condition {
 export interface WorkflowInput {
   name: string;
   label: string;
-  type: "text" | "file" | "number";
-  default: string | number | null;
+  type: "text" | "number" | "date" | "choice" | "yes_no" | "file" | "folder";
+  /** A date's may be relative ("last_month_start", lib/inputKinds.ts), worked out per run. */
+  default: string | number | boolean | null;
+  /** A choice's options, in order. */
+  options?: string[];
   /** Absent means required. */
   required?: boolean;
 }
@@ -83,18 +102,39 @@ export interface AgentStep extends StepBase {
 export interface CheckStep extends StepBase {
   kind: "check";
   conditions: Condition[];
+  /** Absent: all. */
+  match?: Match;
 }
 
 export interface ApprovalStep extends StepBase {
   kind: "approval";
   message: string;
-  when: Condition | null;
+  /** Empty: always pause. */
+  when: Condition[];
+  /** Absent: all. */
+  match?: Match;
 }
 
 export interface BranchStep extends StepBase {
   kind: "branch";
-  condition: Condition;
+  conditions: Condition[];
+  /** Absent: all. */
+  match?: Match;
   then: WorkflowStep[];
+  otherwise: WorkflowStep[];
+}
+
+/** One of several paths, by a value: the first case it equals, else `otherwise`. */
+interface ChoiceCase {
+  is: string;
+  steps: WorkflowStep[];
+}
+
+export interface ChoiceStep extends StepBase {
+  kind: "choice";
+  /** A reference to the value that picks the path. */
+  value: string;
+  cases: ChoiceCase[];
   otherwise: WorkflowStep[];
 }
 
@@ -108,6 +148,10 @@ export interface LoopStep extends StepBase {
   collect: string | null;
   save_as: string | null;
   max_items: number;
+  /** Checked after each pass; when they hold, the loop ends early. Empty: it goes through every item. */
+  until?: Condition[];
+  /** Absent: all. */
+  match?: Match;
 }
 
 export type WorkflowStep =
@@ -118,8 +162,9 @@ export type WorkflowStep =
   | CheckStep
   | ApprovalStep
   | BranchStep
+  | ChoiceStep
   | LoopStep;
-export type BlockStep = BranchStep | LoopStep;
+export type BlockStep = BranchStep | ChoiceStep | LoopStep;
 
 /** Decision 0030: one switch per task, a ceiling on what its steps may be. */
 export type TaskAutonomy = "fixed" | "self_healing" | "proactive" | "autonomous";

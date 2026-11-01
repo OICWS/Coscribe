@@ -24,6 +24,7 @@ from ..workflow_spec import (
     ToolStep,
     Workflow,
     parse_workflow,
+    raw_child_lists,
     walk,
     workflow_error,
 )
@@ -40,10 +41,15 @@ _TRANSCRIPT_CHARS = 60_000
 STEP_FORMAT = """\
 Inputs -- values that change from run to run (usually file paths, dates, \
 names): {"name": "pdf_path", "label": "PDF to audit", "type": "text" | \
-"file" | "number", "default": <the value used in the conversation>}. Add \
-"required": false only for an input that may be left blank at run time \
-(e.g. "run date, blank for today") -- the steps then get "" and must \
-handle it.
+"number" | "date" | "choice" | "yes_no" | "file" | "folder", "default": \
+<the value used in the conversation>}. A "date" is "YYYY-MM-DD"; when the \
+conversation meant a day relative to when it runs, its default is one of \
+"today", "yesterday", "week_start", "last_week_start", "last_week_end", \
+"month_start", "last_month_start", "last_month_end", "year_start", worked \
+out each run. A "choice" lists its "options"; a "yes_no" defaults to true \
+or false and the steps get true or false. Add "required": false only for \
+an input that may be left blank at run time -- the steps then get "" and \
+must handle it.
 
 Steps -- every step has "id" (lowercase identifier, unique) and "title" \
 (short, plain language), plus one "kind":
@@ -67,14 +73,20 @@ places where the assistant judged, summarized or classified something. It \
 must return exactly those fields, and its save_as holds them as an object: \
 read one as {{name.field}}, never {{name}} where you mean the field.
 - "check": {"conditions": [{"left": <operand>, "op": "eq" | "ne" | "gt" | \
-"ge" | "lt" | "le" | "contains" | "not_empty", "right": <operand>}]} -- \
-stops the run unless every condition holds. An operand is exactly one of \
-{"ref": "name.field"}, {"count": "name"} (length of a list or text) or \
-{"value": <literal>}; "not_empty" has no "right".
+"ge" | "lt" | "le" | "contains" | "not_contains" | "starts_with" | \
+"ends_with" | "empty" | "not_empty" | "before" | "after", "right": \
+<operand>}], "match": "all" | "any"} -- stops the run unless every \
+condition holds ("all", the default) or one does ("any"). An operand is \
+exactly one of {"ref": "name.field"}, {"count": "name"} (length of a list \
+or text) or {"value": <literal>}; "empty" and "not_empty" have no "right"; \
+"before" and "after" compare dates. A list of conditions is checked in \
+order and stops once the answer is known, so a later one may read what an \
+earlier one rules out.
 - "approval": {"message": "<text with {{references}}>", "when": \
-<condition, optional>} -- pauses for a person. Use one before a step that \
-overwrites or sends something, only if the conversation asked for a \
-confirmation there.
+[<condition>, ...], "match": "all" | "any"} -- pauses for a person, only \
+when "when" holds if it lists any. Use one before a step that overwrites \
+or sends something, only if the conversation asked for a confirmation \
+there.
 
 - "loop": {"over": "<name of a list>", "item": "<name for each item>", \
 "steps": [...], "collect": "<a name made inside>", "save_as": "<name>", \
@@ -83,10 +95,18 @@ conversation made the same calls once per item of a list (each file, each \
 row) instead of copying every call. The list must come from an input or an \
 earlier step. collect/save_as (both or neither) keep one value per item as \
 a list -- collect the exact value later steps use (summary.text, not the \
-whole summary object); names made inside a loop can't be read after it.
-- "branch": {"condition": <condition>, "then": [...], "otherwise": [...]} \
--- only where what the conversation did depended on something a run can \
-check. After it, a name can be read only if both arms make it.
+whole summary object); names made inside a loop can't be read after it. \
+"until": [<condition>, ...] ends it early once they hold after a pass \
+(they may read the item and that pass's results), keeping what it \
+collected; use it when the conversation stopped at the first match.
+- "branch": {"conditions": [<condition>, ...], "match": "all" | "any", \
+"then": [...], "otherwise": [...]} -- only where what the conversation \
+did depended on something a run can check.
+- "choice": {"value": "<name>", "cases": [{"is": "<value>", "steps": \
+[...]}], "otherwise": [...]} -- one of several paths by a value (a \
+department, a status): the first case it equals as text, ignoring case, \
+else "otherwise". After a branch or a choice, a name can be read only if \
+every path makes it.
 
 References: "{{name}}" or "{{name.field}}" reads an input or an earlier \
 step's save_as. A whole-string reference keeps the value's type; inside \
@@ -468,8 +488,8 @@ def _keep_marks(saved: dict[str, Any], draft: WorkflowDraft) -> WorkflowDraft:
         for step in steps:
             if step.get("id") in ids:
                 step["irreversible"] = True
-            for key in ("steps", "then", "otherwise"):
-                mark(step.get(key) or [])
+            for children in raw_child_lists(step):
+                mark(children)
 
     mark(draft.workflow.get("steps") or [])
     titles = ", ".join(f'"{step.title}"' for step in kept)

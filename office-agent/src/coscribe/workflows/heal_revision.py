@@ -11,11 +11,8 @@ from __future__ import annotations
 import copy
 from typing import Any
 
-from ..workflow_spec import parse_workflow
+from ..workflow_spec import parse_workflow, raw_child_lists
 from .report import run_report
-
-# A branch's arms and a loop's body: where a step dict holds other steps.
-_CHILD_LISTS = ("steps", "then", "otherwise")
 
 
 def _find(steps: list[Any], step_id: str) -> dict[str, Any] | None:
@@ -24,8 +21,8 @@ def _find(steps: list[Any], step_id: str) -> dict[str, Any] | None:
             continue
         if step.get("id") == step_id:
             return step
-        for key in _CHILD_LISTS:
-            found = _find(step.get(key) or [], step_id)
+        for children in raw_child_lists(step):
+            found = _find(children, step_id)
             if found is not None:
                 return found
     return None

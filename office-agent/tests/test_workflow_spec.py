@@ -107,7 +107,7 @@ def test_an_operand_is_exactly_one_thing() -> None:
         Condition.model_validate(
             {"left": {"ref": "a", "value": 1}, "op": "eq", "right": {"value": 1}}
         )
-    with pytest.raises(ValidationError, match="not_empty takes no right-hand side"):
+    with pytest.raises(ValidationError, match="not_empty take no right-hand side"):
         Condition.model_validate({"left": {"ref": "a"}, "op": "not_empty", "right": {"value": 1}})
     with pytest.raises(ValidationError, match="needs one"):
         Condition.model_validate({"left": {"ref": "a"}, "op": "eq"})
@@ -192,7 +192,7 @@ def test_a_saved_workflow_loads_back_unchanged() -> None:
 
     assert parse_workflow(saved) == workflow
     assert saved["steps"][2]["conditions"][0]["left"] == {"count": "matches"}
-    assert saved["steps"][6]["when"]["right"] == {"value": False}
+    assert saved["steps"][6]["when"][0]["right"] == {"value": False}
 
 
 def _tool(step_id: str, save_as: str | None = None, **args: Any) -> dict[str, Any]:

@@ -19,6 +19,7 @@ export const KIND_LABEL: Record<StepKind, string> = {
   check: "Check",
   approval: "Approval",
   branch: "Branch",
+  choice: "Choice",
   loop: "Loop",
 };
 
@@ -30,6 +31,7 @@ export const KIND_COLOR: Record<StepKind, string> = {
   check: "var(--kind-check)",
   approval: "var(--kind-approval)",
   branch: "var(--kind-branch)",
+  choice: "var(--kind-branch)",
   loop: "var(--kind-loop)",
 };
 
@@ -50,8 +52,17 @@ export const OP_LABEL: Record<CheckOp, string> = {
   lt: "<",
   le: "≤",
   contains: "contains",
+  not_contains: "doesn't contain",
+  starts_with: "starts with",
+  ends_with: "ends with",
   not_empty: "is not empty",
+  empty: "is empty",
+  before: "is before",
+  after: "is after",
 };
+
+/** Ops that compare a value with nothing. */
+export const UNARY_OPS: ReadonlySet<CheckOp> = new Set(["not_empty", "empty"]);
 
 const NEGATED_OP: Record<CheckOp, string> = {
   eq: "≠",
@@ -61,20 +72,27 @@ const NEGATED_OP: Record<CheckOp, string> = {
   lt: "≥",
   le: ">",
   contains: "doesn't contain",
+  not_contains: "contains",
+  starts_with: "doesn't start with",
+  ends_with: "doesn't end with",
   not_empty: "is empty",
+  empty: "is not empty",
+  before: "is not before",
+  after: "is not after",
 };
 
 /** What a check actually found, e.g. "6 ≠ 5" or "0 ≤ 0". */
 export function describeCheckResult(op: CheckOp, held: boolean, left: unknown, right: unknown): string {
   const symbol = held ? OP_LABEL[op] : NEGATED_OP[op];
   if (op === "not_empty") return held ? "has a value" : "is empty";
+  if (op === "empty") return held ? "is empty" : "has a value";
   return `${formatValue(left)} ${symbol} ${formatValue(right)}`;
 }
 
 export function stepConditions(step: WorkflowStep): Condition[] {
-  if (step.kind === "check") return step.conditions;
-  if (step.kind === "approval" && step.when) return [step.when];
-  if (step.kind === "branch") return [step.condition];
+  if (step.kind === "check" || step.kind === "branch") return step.conditions;
+  if (step.kind === "approval") return step.when;
+  if (step.kind === "loop") return step.until ?? [];
   return [];
 }
 

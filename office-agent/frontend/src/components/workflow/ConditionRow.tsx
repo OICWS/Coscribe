@@ -1,7 +1,7 @@
 import { controlClass } from "../../lib/formStyles";
-import { OP_LABEL, operandReference } from "../../lib/workflowLabels";
-import type { CheckOp, Condition, Operand } from "../../types/workflow";
-import { RemoveButton } from "./fields";
+import { OP_LABEL, operandReference, UNARY_OPS } from "../../lib/workflowLabels";
+import type { CheckOp, Condition, Match, Operand } from "../../types/workflow";
+import { AddRowButton, RemoveButton } from "./fields";
 
 type OperandMode = "ref" | "count" | "value";
 type LiteralType = "text" | "number" | "boolean";
@@ -136,7 +136,7 @@ function LiteralEditor({
 }
 
 /** One editable comparison: two operands and how they must relate. */
-export function ConditionRow({
+function ConditionRow({
   condition,
   onChange,
   onRemove,
@@ -152,7 +152,7 @@ export function ConditionRow({
   defaultReference: string;
 }) {
   const setOp = (op: CheckOp) => {
-    if (op === "not_empty") onChange({ ...condition, op, right: null });
+    if (UNARY_OPS.has(op)) onChange({ ...condition, op, right: null });
     else onChange({ ...condition, op, right: condition.right ?? { value: "" } });
   };
   return (
@@ -188,6 +188,74 @@ export function ConditionRow({
         )}
       </div>
       {onRemove && <RemoveButton label={`Remove ${label.toLowerCase()}`} onClick={onRemove} />}
+    </div>
+  );
+}
+
+/** A list of conditions and whether all must hold or one is enough. */
+export function ConditionsEditor({
+  conditions,
+  match,
+  onChange,
+  valuesListId,
+  defaultReference,
+  label,
+  addLabel,
+  emptyAllowed = false,
+}: {
+  conditions: Condition[];
+  match: Match | undefined;
+  onChange: (conditions: Condition[], match: Match) => void;
+  valuesListId: string;
+  defaultReference: string;
+  /** Names each row: "Condition 1". */
+  label: string;
+  addLabel: string;
+  /** May the last one be removed (an approval that always asks, a loop that never stops early)? */
+  emptyAllowed?: boolean;
+}) {
+  const current: Match = match ?? "all";
+  const set = (next: Condition[]) => onChange(next, current);
+  return (
+    <div className="flex flex-col gap-2">
+      {conditions.length > 1 && (
+        <div role="radiogroup" aria-label={`${label}: how many must hold`} className="flex gap-1 text-[13px]">
+          {(["all", "any"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={current === value}
+              className={`rounded-md px-2.5 py-1 ${
+                current === value
+                  ? "bg-[var(--card-bg)] font-medium text-[var(--fg)]"
+                  : "text-[var(--muted)] hover:text-[var(--fg)]"
+              }`}
+              onClick={() => onChange(conditions, value)}
+            >
+              {value === "all" ? "All of these" : "Any of these"}
+            </button>
+          ))}
+        </div>
+      )}
+      {conditions.map((condition, index) => (
+        <ConditionRow
+          key={index}
+          label={`${label} ${index + 1}`}
+          condition={condition}
+          valuesListId={valuesListId}
+          defaultReference={defaultReference}
+          onChange={(next) => set(conditions.map((c, i) => (i === index ? next : c)))}
+          onRemove={
+            conditions.length > 1 || emptyAllowed ? () => set(conditions.filter((_, i) => i !== index)) : undefined
+          }
+        />
+      ))}
+      <AddRowButton
+        onClick={() => set([...conditions, { left: { ref: defaultReference }, op: "eq", right: { value: "" } }])}
+      >
+        {addLabel}
+      </AddRowButton>
     </div>
   );
 }

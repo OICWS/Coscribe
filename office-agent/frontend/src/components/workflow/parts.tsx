@@ -31,7 +31,7 @@ function StepIcon({ step, className }: { step: WorkflowStep; className: string }
   if (step.kind === "check") return <ShieldCheckIcon className={className} />;
   if (step.kind === "approval") return <UserIcon className={className} />;
   if (step.kind === "script") return <TerminalIcon className={className} />;
-  if (step.kind === "branch") return <BranchIcon className={className} />;
+  if (step.kind === "branch" || step.kind === "choice") return <BranchIcon className={className} />;
   if (step.kind === "loop") return <LoopIcon className={className} />;
   if (step.tool.startsWith("search")) return <SearchIcon className={className} />;
   if (/^(write|edit|fill|add|format)_/.test(step.tool)) return <FileTextIcon className={className} />;
@@ -46,6 +46,7 @@ const KIND_ICON: Record<StepKind, (props: { className: string }) => ReactNode> =
   check: ShieldCheckIcon,
   approval: UserIcon,
   branch: BranchIcon,
+  choice: BranchIcon,
   loop: LoopIcon,
 };
 

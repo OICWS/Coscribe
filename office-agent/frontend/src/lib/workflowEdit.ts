@@ -57,6 +57,7 @@ const NEW_TITLE: Record<StepKind, string> = {
   check: "Check the values",
   approval: "Review before continuing",
   branch: "Decide which way to go",
+  choice: "Pick a path by a value",
   loop: "Repeat for each item",
 };
 
@@ -124,16 +125,19 @@ export function newStep(kind: StepKind, workflow: Workflow, available: string[],
         conditions: [{ left: firstValue ? { ref: firstValue } : { value: "" }, op: "not_empty", right: null }],
       };
     case "approval":
-      return { kind, id, title, message: "Check the results so far before the run continues.", when: null };
+      return { kind, id, title, message: "Check the results so far before the run continues.", when: [] };
     case "branch":
       return {
         kind,
         id,
         title,
-        condition: { left: firstValue ? { ref: firstValue } : { value: "" }, op: "not_empty", right: null },
+        conditions: [{ left: firstValue ? { ref: firstValue } : { value: "" }, op: "not_empty", right: null }],
+        match: "all",
         then: [],
         otherwise: [],
       };
+    case "choice":
+      return { kind, id, title, value: firstValue ?? "", cases: [{ is: "", steps: [] }], otherwise: [] };
     case "loop":
       return {
         kind,
@@ -145,6 +149,8 @@ export function newStep(kind: StepKind, workflow: Workflow, available: string[],
         collect: null,
         save_as: null,
         max_items: 50,
+        until: [],
+        match: "all",
       };
   }
 }
@@ -215,15 +221,18 @@ function renameInStep(step: WorkflowStep, from: string, to: string): WorkflowSte
       return {
         ...step,
         message: renameInText(step.message, from, to),
-        when: step.when ? renameCondition(step.when, from, to) : null,
+        when: step.when.map((c) => renameCondition(c, from, to)),
       };
     case "branch":
-      return { ...step, condition: renameCondition(step.condition, from, to) };
+      return { ...step, conditions: step.conditions.map((c) => renameCondition(c, from, to)) };
+    case "choice":
+      return { ...step, value: renameRoot(step.value, from, to) };
     case "loop":
       return {
         ...step,
         over: renameRoot(step.over, from, to),
         collect: step.collect ? renameRoot(step.collect, from, to) : null,
+        until: (step.until ?? []).map((c) => renameCondition(c, from, to)),
       };
   }
 }

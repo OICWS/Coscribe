@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { controlClass, primaryButton, secondaryButton } from "../../lib/formStyles";
+import { INPUT_TYPE_LABEL, plainDefault } from "../../lib/inputKinds";
 import { IDENTIFIER } from "../../lib/workflowEdit";
 import type { WorkflowInput } from "../../types/workflow";
-import { AddRowButton, RemoveButton } from "./fields";
+import { AddRowButton, AutoTextarea, RemoveButton } from "./fields";
+import { InputValueControl } from "./InputValueControl";
 import { SectionHeading, VarToken } from "./parts";
-
-const INPUT_TYPE_LABEL: Record<WorkflowInput["type"], string> = { text: "Text", file: "File", number: "Number" };
 
 interface Row extends WorkflowInput {
   /** The name this input had when editing began, to carry references over. */
@@ -33,10 +33,10 @@ function ReadOnlyInputs({ inputs }: { inputs: WorkflowInput[] }) {
             {input.required === false ? "optional at each run" : "asked at each run"}
           </span>
           <span className="flex-1" />
-          {input.default !== null && input.default !== "" && (
+          {plainDefault(input) !== null && (
             <span className="flex items-center gap-2 text-[13px]">
               <span className="text-[var(--muted)]">Default</span>
-              <span className="rounded-md bg-[var(--card-bg)] px-2 py-0.5">{String(input.default)}</span>
+              <span className="rounded-md bg-[var(--card-bg)] px-2 py-0.5">{plainDefault(input)}</span>
             </span>
           )}
         </li>
@@ -53,6 +53,36 @@ interface InputsEditorProps {
   inputs: WorkflowInput[];
   /** Resolves to an error message, or null once saved. */
   onSave: (inputs: WorkflowInput[], renames: [string, string][]) => Promise<string | null>;
+}
+
+function cleanRow({ original: _original, ...input }: Row): WorkflowInput {
+  const options = input.type === "choice" ? (input.options ?? []).map((o) => o.trim()).filter(Boolean) : undefined;
+  return { ...input, default: input.default === "" ? null : input.default, options };
+}
+
+function TypeSelect({
+  index,
+  value,
+  onChange,
+}: {
+  index: number;
+  value: WorkflowInput["type"];
+  onChange: (type: WorkflowInput["type"]) => void;
+}) {
+  return (
+    <select
+      aria-label={`Input ${index + 1} type`}
+      className={`${controlClass} min-w-0`}
+      value={value}
+      onChange={(e) => onChange(e.target.value as WorkflowInput["type"])}
+    >
+      {Object.entries(INPUT_TYPE_LABEL).map(([type, label]) => (
+        <option key={type} value={type}>
+          {label}
+        </option>
+      ))}
+    </select>
+  );
 }
 
 export function InputsEditor({ inputs, onSave }: InputsEditorProps) {
@@ -74,11 +104,7 @@ export function InputsEditor({ inputs, onSave }: InputsEditorProps) {
     const renames = rows
       .filter((row) => row.original !== null && row.original !== row.name)
       .map((row) => [row.original as string, row.name] as [string, string]);
-    const cleaned: WorkflowInput[] = rows.map(({ original: _original, ...input }) => ({
-      ...input,
-      default: input.default === "" ? null : input.default,
-    }));
-    const problem = await onSave(cleaned, renames);
+    const problem = await onSave(rows.map(cleanRow), renames);
     setSaving(false);
     setError(problem);
     if (!problem) setRows(null);
@@ -107,7 +133,7 @@ export function InputsEditor({ inputs, onSave }: InputsEditorProps) {
         <ReadOnlyInputs inputs={inputs} />
       ) : (
         <div className="flex flex-col gap-2 rounded-xl border border-[color-mix(in_srgb,var(--accent)_70%,transparent)] p-3">
-          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_100px_minmax(0,1fr)_64px_28px] gap-2 px-1 text-xs text-[var(--muted)]">
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_120px_minmax(0,1.2fr)_64px_28px] gap-2 px-1 text-xs text-[var(--muted)]">
             <span>Name</span>
             <span>Shown as</span>
             <span>Type</span>
@@ -118,7 +144,7 @@ export function InputsEditor({ inputs, onSave }: InputsEditorProps) {
           {rows.map((row, index) => (
             <div
               key={index}
-              className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_100px_minmax(0,1fr)_64px_28px] items-center gap-2"
+              className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_120px_minmax(0,1.2fr)_64px_28px] items-center gap-2"
             >
               <input
                 aria-label={`Input ${index + 1} name`}
@@ -135,29 +161,12 @@ export function InputsEditor({ inputs, onSave }: InputsEditorProps) {
                 value={row.label}
                 onChange={(e) => update(index, { label: e.target.value })}
               />
-              <select
-                aria-label={`Input ${index + 1} type`}
-                className={`${controlClass} min-w-0`}
-                value={row.type}
-                onChange={(e) => update(index, { type: e.target.value as WorkflowInput["type"] })}
-              >
-                {Object.entries(INPUT_TYPE_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-              <input
-                aria-label={`Input ${index + 1} default`}
-                className={`${controlClass} min-w-0`}
-                type={row.type === "number" ? "number" : "text"}
-                value={row.default === null ? "" : String(row.default)}
-                placeholder="Asked each run"
-                onChange={(e) =>
-                  update(index, {
-                    default: row.type === "number" && e.target.value !== "" ? Number(e.target.value) : e.target.value,
-                  })
-                }
+              <TypeSelect index={index} value={row.type} onChange={(type) => update(index, { type, default: null })} />
+              <InputValueControl
+                input={row}
+                label={`Input ${index + 1} default`}
+                value={row.default}
+                onChange={(value) => update(index, { default: value })}
               />
               <label className="flex justify-center">
                 <input
@@ -172,6 +181,16 @@ export function InputsEditor({ inputs, onSave }: InputsEditorProps) {
                 label={`Remove input ${row.name || index + 1}`}
                 onClick={() => setRows(rows.filter((_, i) => i !== index))}
               />
+              {row.type === "choice" && (
+                <div className="col-span-full pl-1">
+                  <AutoTextarea
+                    label={`Input ${index + 1} options`}
+                    placeholder="The options, one per line"
+                    value={(row.options ?? []).join("\n")}
+                    onChange={(text) => update(index, { options: text.split("\n") })}
+                  />
+                </div>
+              )}
             </div>
           ))}
           <AddRowButton onClick={() => setRows([...rows, blankRow(rows.length)])}>Add an input</AddRowButton>

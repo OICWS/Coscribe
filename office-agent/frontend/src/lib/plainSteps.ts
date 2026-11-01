@@ -18,7 +18,7 @@ export function plainReference(ref: string, inputs: WorkflowInput[]): string {
   const input = inputs.find((i) => i.name === head);
   const base = input ? input.label || words(head) : `the ${words(head)}`;
   if (rest.length === 0) return input ? `“${base}”` : base;
-  return `${base}’s ${rest.map(words).join(" ")}`;
+  return `${base}${base.endsWith("s") ? "’" : "’s"} ${rest.map(words).join(" ")}`;
 }
 
 /** A value as words: a reference is named, plain text is quoted. */
@@ -26,11 +26,29 @@ function plainValue(value: unknown, inputs: WorkflowInput[]): string {
   if (typeof value !== "string") return "a value";
   const ref = wholeReference(value);
   if (ref) return plainReference(ref, inputs);
+  // Inside quoted text a reference is a placeholder, so it takes brackets rather than more quotes.
   const text = splitTemplate(value)
-    .map((part) => ("ref" in part ? plainReference(part.ref, inputs) : part.text))
+    .map((part) => ("ref" in part ? `[${plainReference(part.ref, inputs).replace(/[“”]/g, "")}]` : part.text))
     .join("")
     .trim();
   return text.length > FIELD_CHARS ? `“${text.slice(0, FIELD_CHARS)}…”` : `“${text}”`;
+}
+
+const ROLE_WORD: Record<string, string> = {
+  textbox: "box",
+  button: "button",
+  combobox: "list",
+  listbox: "list",
+  checkbox: "checkbox",
+  radio: "option",
+  link: "link",
+};
+
+/** `button "Submit claim"` -> The “Submit claim” button: what a step acts on, as a person names it. */
+export function plainElement(ref: unknown, inputs: WorkflowInput[]): string {
+  const role = typeof ref === "string" ? (/^(\w+)/.exec(ref)?.[1] ?? "") : "";
+  const name = fieldName(ref, inputs);
+  return ROLE_WORD[role] ? `The ${name} ${ROLE_WORD[role]}` : name;
 }
 
 /** `textbox "Full name"` -> “Full name”: the name a person sees on the page. */
@@ -102,6 +120,8 @@ export function plainDetail(step: WorkflowStep, inputs: WorkflowInput[]): string
     case "branch":
     case "loop":
       return null;
+    case "choice":
+      return `Goes one way by ${plainReference(step.value, inputs)}`;
   }
 }
 
@@ -122,7 +142,9 @@ export function plainKind(step: WorkflowStep): string {
     case "approval":
       return "Your OK";
     case "branch":
-      return "Choice";
+      return "If";
+    case "choice":
+      return "Paths";
     case "loop":
       return "Repeat";
   }

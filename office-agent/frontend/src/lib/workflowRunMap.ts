@@ -1,7 +1,7 @@
 import type { ScheduledRun } from "../types/settings";
 import type { StepRecord, StepStatus, Workflow, WorkflowStep } from "../types/workflow";
 import { loopProgress } from "./workflowProgress";
-import { placeSteps } from "./workflowTree";
+import { childLists, placeSteps } from "./workflowTree";
 
 /** A step's state on the run's canvas. "not_taken" is a step in a branch arm
  * the run went past; "stopped" a step that was running when the run stopped. */
@@ -40,14 +40,11 @@ function notTaken(workflow: Workflow, byStep: Map<string, StepRecord[]>): Set<st
   const visit = (steps: WorkflowStep[], loop: string | null) => {
     for (const step of steps) {
       if (step.kind === "loop") visit(step.steps, step.id);
-      if (step.kind !== "branch") continue;
+      if (step.kind !== "branch" && step.kind !== "choice") continue;
       const records = byStep.get(step.id) ?? [];
       const taken = new Set(records.map(armOf).filter((arm) => arm !== null));
       const decided = records.some((record) => record.status === "done") && finished(loop);
-      for (const [arm, list] of [
-        ["then", step.then],
-        ["otherwise", step.otherwise],
-      ] as const) {
+      for (const [arm, list] of childLists(step)) {
         if (decided && !taken.has(arm)) {
           for (const placed of placeSteps(list)) skipped.add(placed.step.id);
         } else {
@@ -101,8 +98,10 @@ export function runMap(workflow: Workflow, run: ScheduledRun): Map<string, NodeR
       records.length > 0 ? worst(statuses) : unreachable.has(step.id) ? "not_taken" : "not_reached";
     const state: NodeRunState = { status };
     const innermost = loops[loops.length - 1];
-    if (step.kind === "branch")
-      state.arms = ["then", "otherwise"].filter((arm) => records.some((r) => armOf(r) === arm));
+    if (step.kind === "branch" || step.kind === "choice")
+      state.arms = childLists(step)
+        .map(([arm]) => arm as string)
+        .filter((arm) => records.some((r) => armOf(r) === arm));
     if (step.kind === "loop" && records.length > 0) state.passes = loopItems(records);
     else if (innermost) state.passes = passesInside(statuses, byStep.get(innermost) ?? [], list.parent === innermost);
     states.set(step.id, state);

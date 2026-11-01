@@ -9,7 +9,7 @@ that fires a run or its stored history (`runtime_lg/scheduled_tasks.py`), the ro
 `StepContext.run_agent`, which `conversation` supplies; without one `preflight` refuses it.
 
 ## Public interface
-`BranchStep`, `LoopStep`, `Workflow`, `parse_workflow`, `walk`, `workflow_error` (the definition, re-exported from `workflow_spec`, where it lives);
+`BranchStep`, `ChoiceStep`, `LoopStep`, `Workflow`, `parse_workflow`, `walk`, `workflow_error` (the definition, re-exported from `workflow_spec`, where it lives);
 `AgentCall`, `AgentReply`, `AgentRequest`, `AgentRunner` (what an agent runner takes and returns);
 `RunOutcome`, `StepContext`, `StepRecord`, `WorkflowNotRunnable`, `WorkflowRun` (a run);
 `brings_outside_content`, `granted_by`, `sites_in`, `summarize`, `untrusted_agent_steps` (permissions); `describe_params`, `tool_description`

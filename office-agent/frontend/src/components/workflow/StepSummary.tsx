@@ -1,7 +1,28 @@
 import { toolLabel } from "../../lib/toolLabels";
 import { formatValue, stepOutput, wholeReference } from "../../lib/workflowLabels";
-import type { AgentStep, WorkflowStep } from "../../types/workflow";
+import type { AgentStep, Condition, Match, WorkflowStep } from "../../types/workflow";
 import { ConditionText, VarToken } from "./parts";
+
+function Conditions({
+  conditions,
+  match,
+  inputNames,
+}: {
+  conditions: Condition[];
+  match: Match | undefined;
+  inputNames: Set<string>;
+}) {
+  return (
+    <>
+      {conditions.map((condition, index) => (
+        <span key={index} className="inline-flex items-baseline gap-1.5">
+          {index > 0 && <span>{match === "any" ? "or" : "and"}</span>}
+          <ConditionText condition={condition} inputNames={inputNames} />
+        </span>
+      ))}
+    </>
+  );
+}
 
 const ARG_PREVIEW_CHARS = 32;
 
@@ -60,6 +81,11 @@ function AgentSummary({
   );
 }
 
+function Chosen({ name, missing, inputNames }: { name: string; missing: string; inputNames: Set<string> }) {
+  if (!name) return <span className="text-[var(--danger)]">{missing} not chosen yet</span>;
+  return <VarToken name={name} isInput={inputNames.has(name.split(".")[0])} />;
+}
+
 export function StepSummary({ step, inputNames }: { step: WorkflowStep; inputNames: Set<string> }) {
   const output = stepOutput(step);
   if (step.kind === "tool") {
@@ -107,12 +133,7 @@ export function StepSummary({ step, inputNames }: { step: WorkflowStep; inputNam
   if (step.kind === "check") {
     return (
       <>
-        {step.conditions.map((condition, index) => (
-          <span key={index} className="inline-flex items-baseline gap-1.5">
-            {index > 0 && <span>and</span>}
-            <ConditionText condition={condition} inputNames={inputNames} />
-          </span>
-        ))}
+        <Conditions conditions={step.conditions} match={step.match} inputNames={inputNames} />
         <span>· otherwise stop</span>
       </>
     );
@@ -121,7 +142,16 @@ export function StepSummary({ step, inputNames }: { step: WorkflowStep; inputNam
     return (
       <>
         <span>If</span>
-        <ConditionText condition={step.condition} inputNames={inputNames} />
+        <Conditions conditions={step.conditions} match={step.match} inputNames={inputNames} />
+      </>
+    );
+  }
+  if (step.kind === "choice") {
+    return (
+      <>
+        <span>Goes by</span>
+        <Chosen name={step.value} missing="a value" inputNames={inputNames} />
+        <span>· {step.cases.map((c) => `“${c.is}”`).join(", ")}, or anything else</span>
       </>
     );
   }
@@ -131,11 +161,7 @@ export function StepSummary({ step, inputNames }: { step: WorkflowStep; inputNam
         <span>For each</span>
         <VarToken name={step.item} isInput={false} />
         <span>in</span>
-        {step.over ? (
-          <VarToken name={step.over} isInput={inputNames.has(step.over.split(".")[0])} />
-        ) : (
-          <span className="text-[var(--danger)]">a list not chosen yet</span>
-        )}
+        <Chosen name={step.over} missing="a list" inputNames={inputNames} />
         {step.collect && (
           <>
             <span>· keeps</span>
@@ -149,9 +175,9 @@ export function StepSummary({ step, inputNames }: { step: WorkflowStep; inputNam
   return (
     <>
       <span>Pauses for your approval</span>
-      {step.when && (
+      {step.when.length > 0 && (
         <span className="inline-flex items-baseline gap-1.5">
-          · only when <ConditionText condition={step.when} inputNames={inputNames} />
+          · only when <Conditions conditions={step.when} match={step.match} inputNames={inputNames} />
         </span>
       )}
     </>
