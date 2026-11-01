@@ -619,6 +619,25 @@ async def test_nested_loops_record_both_positions(tmp_path: Path) -> None:
     ]  # fmt: skip
 
 
+async def test_a_script_called_as_a_tool_that_throws_fails_its_step(tmp_path: Path) -> None:
+    # The call returns normally with the exit code; read as success, a check the script
+    # raised on bad input let the run go on to report a wrong file as done.
+    h = Harness(tmp_path, [])
+    h.ctx.tools["run_node_script"] = lambda script, description: {
+        "exit_code": 1, "stdout": "", "stderr": "Error: unknown status 'on hold'",
+        "timed_out": False,
+    }  # fmt: skip
+    workflow = parse_workflow(
+        {"steps": [{"id": "build", "kind": "tool", "title": "Build", "tool": "run_node_script",
+                    "args": {"script": "throw new Error()", "description": "build"}}]}
+    )  # fmt: skip
+
+    outcome = await h.run(InMemorySaver(), workflow).start({})
+
+    assert outcome.status == "failed" and outcome.step_id == "build"
+    assert outcome.error == "The script failed (exit code 1): Error: unknown status 'on hold'"
+
+
 async def test_an_empty_loop_or_branch_is_refused_before_running(tmp_path: Path) -> None:
     h, _files = _files_harness(tmp_path)
     workflow = parse_workflow(

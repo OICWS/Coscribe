@@ -54,6 +54,11 @@ def write_file(path: str, content: str, overwrite: bool = False) -> str:
     return "ok"
 
 
+def run_node_script(script: str, description: str) -> dict[str, Any]:
+    """Run a Node.js script."""
+    return {}
+
+
 TOOLS = {"search_pdf": search_pdf, "write_file": write_file}
 
 
@@ -214,6 +219,22 @@ def test_check_draft_catches_what_the_spec_cant() -> None:
         "step 3: there's no tool called 'ask_user_question' to use",
     ]
     assert check_draft(parse_workflow({"steps": []}), TOOLS) == ["the workflow has no steps"]
+
+
+def test_check_draft_refuses_a_field_a_node_script_step_cant_hold() -> None:
+    node = {"id": "build", "kind": "tool", "title": "Build", "tool": "run_node_script",
+            "args": {"script": "x", "description": "build"}, "save_as": "build"}
+    workflow = parse_workflow(
+        {"steps": [node, {"id": "ok", "kind": "check", "title": "OK", "conditions": [
+            {"left": {"ref": "build.invoices"}, "op": "gt", "right": {"value": 0}},
+            {"left": {"ref": "build.stdout"}, "op": "contains", "right": {"value": "done"}},
+        ]}]}
+    )  # fmt: skip
+    problems = check_draft(workflow, {**TOOLS, "run_node_script": run_node_script})
+    assert problems == [
+        "step 2: build holds run_node_script's stdout, stderr and exit_code, not invoices; "
+        "have the script throw when it is wrong"
+    ]
 
 
 def test_check_draft_looks_inside_loops_and_branches() -> None:
