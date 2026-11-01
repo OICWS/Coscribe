@@ -35,7 +35,25 @@ write a page but never see it.
 ## Not verified
 - Edge on a person's Windows machine (the runner's Edge is the CI check).
 - A model with no image input: its provider would refuse the picture.
-- A model using it in a real conversation: the Design and Dashboard evals run again off-peak.
+
+## Evals with the tool (DeepSeek, 2026-10-30, off-peak)
+- **Design** (7 briefs, brief 07 a linked prototype):
+  - 7 of 7 made and working; 0.26 USD in all.
+  - Every run looked: 2 to 16 times, median 5.
+  - Every run edited its pages after looking: 3 to 13 edits.
+  - The checks found no script error, no overflow and no undeclared variable.
+  - Links: brief 05 had 7 and brief 07 had 8, none broken.
+  - Screenshots: no text over text, and no block runs into a footer, which is the fault the first
+    run found on a poster.
+  - The most looking was brief 07: 4 screens, 16 looks, 23 writes, 428 s, 0.063 USD.
+- **Dashboard** (6 briefs):
+  - 6 of 6 made and working; 0.14 USD in all.
+  - Every run looked: 2 to 11 times.
+  - No unknown name, no number typed into the page, and no script error.
+  - Every figure that was checked was right.
+- The skills are not changed. The audit log keeps only writes, not what each look reported, so a
+  look that found nothing cannot be told from one whose fault was then fixed. "Two rounds are
+  usually enough" stays as written.
 
 ## Follow-ups
-- Re-run both evals with the tool and record whether the model looks and fixes what it sees.
+- To learn what each look found, the eval would record each look's report.
