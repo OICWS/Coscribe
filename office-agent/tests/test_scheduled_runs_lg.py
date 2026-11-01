@@ -156,6 +156,9 @@ def test_a_heal_no_saved_fix_can_keep_is_drafted_as_a_revision() -> None:
     assert 'Clicked "Review", then "Confirm and send".' in prompt
     assert "Legal name" not in prompt
     assert "never unmark such a step to let a test go further" in prompt
+    prepared = [{**heals[0], "prepared": 'Filled "Cost centre", then clicked Next.'}]
+    before = build_revision_prompt(trigger, run, "", prepared)
+    assert 'Before that, to reach the step: Filled "Cost centre", then clicked Next.' in before
     failed = ScheduledRun(run_id="f", thread_id="y", started_at="", source="manual",
                           status="failed")  # fmt: skip
     assert heals_to_revise(workflow, failed.status, run.steps) == []

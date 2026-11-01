@@ -57,9 +57,9 @@ from ..workflow_spec import (
     step_output,
     walk,
 )
-from .agent_step import CODE_TOOLS, AgentCall, AgentRunner, answer_of, run_agent_step
+from .agent_step import CODE_TOOLS, AgentCall, AgentRunner, CallGuard, answer_of, run_agent_step
 from .connector_value import connector_value as _connector_value
-from .healing import carried, healed, stand_in
+from .healing import carried, heal_guard, healed, stand_in
 from .loop_labels import item_labels as _item_labels
 from .loop_labels import loop_progress as _loop_progress
 from .loop_labels import supersteps as _supersteps
@@ -470,9 +470,9 @@ class _GraphBuilder:
             agent_step = stand_in(self.workflow, step, values, error, earlier)
             if agent_step is None or self.ctx.run_agent is None:
                 raise
-            confirm = bool(getattr(step, "irreversible", False))
             try:
-                result, agent = await self._agent(agent_step, values, started, it, confirm)
+                guard = heal_guard(self.workflow, step, values)
+                result, agent = await self._agent(agent_step, values, started, it, guard)
             except GraphBubbleUp:
                 raise
             except Exception as heal_exc:
@@ -503,7 +503,7 @@ class _GraphBuilder:
 
     async def _agent(
         self, step: AgentStep, values: dict[str, Any], started: str, it: list[int],
-        confirm: bool = False,
+        guard: CallGuard | None = None,
     ) -> tuple[Any, dict[str, Any]]:  # fmt: skip
         async def ask(call: AgentCall) -> dict[str, Any]:
             message = f"{step.title}: the agent wants to use {call.tool}."
@@ -534,7 +534,7 @@ class _GraphBuilder:
             workspace=str(self.ctx.workspace_root),
             make_model=self.ctx.make_model,
             ask=ask,
-            confirm_changes=confirm,
+            guard=guard,
         )
         return result, reply.activity()
 

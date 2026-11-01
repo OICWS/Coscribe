@@ -30,6 +30,18 @@ CODE_TOOLS = frozenset({"run_code_task", "run_code_command"})
 
 
 @dataclass(frozen=True)
+class CallGuard:
+    """What a step adds to its agent's own rules: every change waits for a person (`confirm`),
+    and a call `allows` refuses never runs."""
+
+    confirm: bool = False
+    allows: Callable[[AgentCall], bool] | None = None
+
+
+NO_GUARD = CallGuard()
+
+
+@dataclass(frozen=True)
 class AgentCall:
     """A call the agent wants to make, as the approval layer sees it."""
 
@@ -270,16 +282,16 @@ async def run_agent_step(
     workspace: str,
     make_model: Callable[[str | None], Any],
     ask: Ask,
-    confirm_changes: bool = False,
+    guard: CallGuard | None = None,
 ) -> tuple[dict[str, Any], AgentReply]:
     """The step's result and the agent's last reply. `ask` puts a call to
     a person and returns their answer ({"approved", "note", "call_id"}); it pauses
     the run, so everything before it here runs again on resume -- which
-    the runner's keyed agent makes safe. With `confirm_changes` every call
-    that does more than read waits for a person."""
+    the runner's keyed agent makes safe. `guard` adds to the step's own rules."""
+    guard = guard or NO_GUARD
 
     def decide_call(call: AgentCall) -> Decision:
-        if confirm_changes and not is_read_only(call.risk):
+        if guard.confirm and not is_read_only(call.risk):
             return "ask"
         return decide(step, approval_mode, workspace, call)
 
@@ -290,7 +302,7 @@ async def run_agent_step(
         tools=tuple(step.tools) if step.autonomy == "bounded" else None,
         max_steps=step.max_steps,
         model=step.model,
-        allows=lambda call: allows(read_only, call),
+        allows=lambda call: allows(read_only, call) and (guard.allows or bool)(call),
         decide=decide_call,
     )
     while True:

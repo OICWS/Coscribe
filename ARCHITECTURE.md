@@ -175,8 +175,10 @@ The person sets one switch per task instead of watching each step's level
 ceiling that saving enforces on the steps. A finished run has a report: what was
 done and what wasn't, what an agent decided itself, which steps that can't be
 undone ran, what was healed, and what the agents used. At self-healing and above, a browser
-step that fails is done by a bounded agent on the page as it is now; healing a step that can't
-be undone waits for a person. A heal fixes only its run: the report offers the saved arguments
+step that fails is done by a bounded agent on the page as it is now, which may first fill a
+field the page now requires or press the form's Next. It can enter only values the run has (the
+item, the step's arguments), and healing a step that can't be undone, or resending one the page
+refused, waits for a person. A heal fixes only its run: the report offers the saved arguments
 it changed as a fix the person saves into the task, and a heal that changed more is drafted as a
 revision in a conversation, as a failed run's investigation is.
 

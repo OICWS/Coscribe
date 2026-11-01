@@ -56,7 +56,16 @@ class Harness:
 def _done(did: str, result: str = "") -> tuple[str, str]:
     return (
         "done",
-        json.dumps({"outcome": "done", "assumed": [], "did": did, "result": result, "changed": []}),
+        json.dumps(
+            {
+                "outcome": "done",
+                "assumed": [],
+                "did": did,
+                "result": result,
+                "changed": [],
+                "prepared": "",
+            }
+        ),
     )
 
 
@@ -185,7 +194,7 @@ async def test_a_later_pass_tries_what_healed_the_step_before_healing_again(
             "args": {"ref": 'textbox "Company name"', "text": "{{row}}"}}  # fmt: skip
     changed = ['ref: textbox "Legal name"', "text: Acme", "ref2: e12"]
     report = {"outcome": "done", "assumed": [], "did": 'Typed into "Legal name".', "result": "",
-              "changed": changed}  # fmt: skip
+              "changed": changed, "prepared": ""}  # fmt: skip
     runner = ScriptedRunner([("done", json.dumps(report))])
     h = Harness(tmp_path, runner, browser_type=browser_type, rows=lambda: ["Acme", "Globex"])
 
@@ -209,7 +218,7 @@ async def test_a_step_that_cant_be_taken_back_heals_with_the_person_on_every_pas
     tmp_path: Path,
 ) -> None:
     report = {"outcome": "done", "assumed": [], "did": 'Clicked "Send".', "result": "",
-              "changed": ['ref: button "Send"']}  # fmt: skip
+              "changed": ['ref: button "Send"'], "prepared": ""}  # fmt: skip
     runner = ScriptedRunner([("call", "browser_click", "EXTERNAL"), ("done", json.dumps(report))])
     submit = {**SUBMIT, "args": {"ref": 'button "Submit"'}}
     h = Harness(tmp_path, runner, browser_click=_fails, rows=lambda: ["a", "b"])
@@ -226,3 +235,81 @@ async def test_a_step_that_cant_be_taken_back_heals_with_the_person_on_every_pas
     assert 'the same step was healed for an earlier item: Clicked "Send".' in task
     # Told only what was done before, the agent took the second row's send for a duplicate.
     assert "this is a new call with the values above, not a repeat of it" in task
+
+
+async def test_a_heal_may_bring_the_page_to_its_step_from_the_item_but_not_send(
+    tmp_path: Path,
+) -> None:
+    name = {"id": "name", "kind": "tool", "title": "Enter Company name", "tool": "browser_type",
+            "args": {"ref": 'textbox "Company name"', "text": "{{row.company}}"}}  # fmt: skip
+    prepared = 'Filled "Cost centre" with CC-12 and clicked Next.'
+    report = {"outcome": "done", "assumed": [], "did": 'Typed into "Company name".', "result": "",
+              "changed": [], "prepared": prepared}  # fmt: skip
+    runner = ScriptedRunner([("done", json.dumps(report)), ("done", json.dumps(report))])
+    rows = [{"company": "Acme", "cost_centre": "CC-12"}, {"company": "Globex", "cost_centre": ""}]
+    h = Harness(tmp_path, runner, browser_type=_fails, browser_click=lambda **_: "ok",
+                rows=lambda: rows)  # fmt: skip
+
+    outcome = await h.run([OPEN, ROWS, _each(name), SUBMIT], autonomy="self_healing").start({})
+
+    assert outcome.status == "completed"
+    task = runner.requests[0].task
+    # The only data it may fill a field from is the item it is on.
+    assert '"cost_centre": "CC-12"' in task and "Globex" not in task
+    assert "never one you make up" in task
+    # The send is left to the step marked as one that can't be taken back.
+    assert 'that is left to "Click Submit".' in task
+    healed = h.report()["healed"]
+    assert healed[0]["prepared"] == prepared
+    # What it did before the step isn't carried to the next item as a saved argument: the next
+    # item is healed again.
+    assert len(runner.requests) == 2 and not healed[1].get("carried")
+
+
+async def test_a_heal_enters_only_values_the_run_has(tmp_path: Path) -> None:
+    name = {"id": "name", "kind": "tool", "title": "Enter Company name", "tool": "browser_type",
+            "args": {"ref": 'textbox "Company name"', "text": "{{row.company}}"}}  # fmt: skip
+    runner = ScriptedRunner(
+        [
+            # A required choice the row has no value for: guessed, it would be filed.
+            ("call", "browser_select_option", "EXTERNAL", {"values": ["Logistics"]}),
+            ("call", "browser_type", "EXTERNAL", {"text": "Acme"}),
+            # The row's date, in the form the page asks for.
+            ("call", "browser_type", "EXTERNAL", {"text": "03/10/2026"}),
+            ("call", "browser_press_key", "EXTERNAL", {"key": "L"}),
+            ("call", "browser_press_key", "EXTERNAL", {"key": "Enter"}),
+            _done("typed"),
+        ]
+    )
+    rows = [{"company": "Acme", "date": "2026-10-03"}]
+    h = Harness(tmp_path, runner, browser_type=_fails, rows=lambda: rows)
+
+    outcome = await h.run([OPEN, ROWS, _each(name)], autonomy="self_healing").start({})
+
+    assert outcome.status == "completed"
+    assert runner.log() == [
+        "refused browser_select_option",
+        "ran browser_type",
+        "ran browser_type",
+        "refused browser_press_key",
+        "ran browser_press_key",
+    ]
+
+
+async def test_a_heal_after_a_send_may_send_again_only_with_a_person(tmp_path: Path) -> None:
+    wait = {"id": "wait", "kind": "tool", "title": "Wait for the reference",
+            "tool": "browser_wait_for", "args": {"text": "Your reference is"}}  # fmt: skip
+    runner = ScriptedRunner(
+        [("call", "browser_snapshot", "READ"), ("call", "browser_click", "EXTERNAL"), _done("ok")]
+    )
+    h = Harness(tmp_path, runner, browser_click=lambda **_: "ok", browser_wait_for=_fails)
+    run = h.run([OPEN, SUBMIT, wait], autonomy="self_healing")
+
+    outcome = await run.start({})
+    assert outcome.status == "waiting"
+    outcome = await run.answer(True)
+
+    assert outcome.status == "completed"
+    # Reading the page is free; the click that may send again waited for the person's yes.
+    assert runner.log() == ["ran browser_snapshot", "ran browser_click"]
+    assert 'if the page refused what "Click Submit" sent' in runner.requests[0].task

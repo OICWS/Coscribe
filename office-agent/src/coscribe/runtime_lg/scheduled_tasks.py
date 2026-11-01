@@ -348,6 +348,8 @@ def build_revision_prompt(
             f"- {heal['title']} ({heal['step_id']}): it failed with: {heal.get('error') or '-'}",
             f"  What the agent did instead: {heal.get('did') or '-'}",
         ]
+        if heal.get("prepared"):
+            lines.append(f"  Before that, to reach the step: {heal['prepared']}")
     lines.append(f"Inputs: {json.dumps(run.inputs or {}, ensure_ascii=False)}")
     if request:
         lines.append(f"What the user asked for when the task was made: {request}")
