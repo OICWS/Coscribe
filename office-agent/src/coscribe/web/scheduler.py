@@ -17,6 +17,7 @@ from ..tools import (
     ScheduledRun,
     ScheduledTriggerStore,
 )
+from ..workflows import heals_to_revise
 from .background_events import BackgroundEvent, BackgroundEventBus, run_event
 
 
@@ -126,8 +127,8 @@ class Scheduler:
 
     async def announce_run(self, trigger_id: str, run: ScheduledRun | None) -> None:
         """Tell the desktop app how a run ended -- and, for a failed run of a
-        task set to, start a conversation looking into it first, so the
-        notification can open that."""
+        task set to, or one with heals to revise, start a conversation on it
+        first, so the notification can open that."""
         if run is None:
             return
         store = ScheduledTriggerStore(self._settings.state_dir)
@@ -135,8 +136,9 @@ class Scheduler:
         if trigger is None:
             return
         investigation = None
+        # A run whose heals a saved fix can't keep proposes a revision too (decision 0030).
         if (
-            run.status == "failed"
+            (run.status == "failed" or heals_to_revise(trigger.workflow, run.status, run.steps))
             and trigger.auto_investigate
             and trigger.workflow is not None
             and run.investigation is None
@@ -198,4 +200,3 @@ class Scheduler:
         for thread_id in orphans:
             await self._delete_thread_data(thread_id)
         return len(orphans)
-

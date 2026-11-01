@@ -35,6 +35,7 @@ from ...workflows import (
     LoopStep,
     brings_outside_content,
     heal_fixes,
+    heals_to_revise,
     parse_workflow,
     run_report,
     summarize,
@@ -274,8 +275,9 @@ def _run_control_routes(router: APIRouter, state: AppState) -> None:
         run = trigger.find_run(run_id) if trigger is not None else None
         if trigger is None or trigger.workflow is None or run is None:
             return JSONResponse({"error": f"No workflow run {run_id!r}"}, status_code=404)
-        if run.status != "failed":
-            return JSONResponse({"error": "Only a failed run can be looked into"}, status_code=409)
+        if run.status != "failed" and not heals_to_revise(trigger.workflow, run.status, run.steps):
+            message = "Only a failed run, or one with heals to revise, can be looked into"
+            return JSONResponse({"error": message}, status_code=409)
         thread_id = uuid.uuid4().hex[:8]
         _track_background(
             asyncio.create_task(

@@ -11,6 +11,9 @@ from __future__ import annotations
 import copy
 from typing import Any
 
+from ..workflow_spec import parse_workflow
+from .report import run_report
+
 # A branch's arms and a loop's body: where a step dict holds other steps.
 _CHILD_LISTS = ("steps", "then", "otherwise")
 
@@ -64,3 +67,15 @@ def heal_fixes(workflow: dict[str, Any], healed: list[dict[str, Any]]) -> dict[s
             fixes.append({"step_id": step_id, "title": titles[step_id], "name": name,
                           "was": replaced[(step_id, name)], "now": now})  # fmt: skip
     return {"fixes": fixes, "workflow": revised if fixes else None, "left": list(left.values())}
+
+
+def heals_to_revise(
+    workflow: dict[str, Any] | None, status: str, records: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """The heals of a finished run that a saved fix can't keep, as the run report lists them
+    (what failed and what the agent did instead): a revision has to be drafted for them."""
+    if workflow is None or status != "completed":
+        return []
+    healed = run_report(parse_workflow(workflow), records)["healed"]
+    left = {item["step_id"] for item in heal_fixes(workflow, healed)["left"]}
+    return [h for h in healed if h["step_id"] in left and not h.get("carried")]

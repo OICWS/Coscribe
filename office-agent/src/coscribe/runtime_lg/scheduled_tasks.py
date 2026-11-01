@@ -40,6 +40,7 @@ from ..workflows import (
     StepRecord,
     WorkflowNotRunnable,
     WorkflowRun,
+    heals_to_revise,
     output_files,
     parse_workflow,
     sites_in,
@@ -52,6 +53,7 @@ logger = logging.getLogger(__name__)
 
 RUN_PROMPT_PREFIX = "[Scheduled run of "
 INVESTIGATION_PREFIX = "[Look into a failed run of "
+REVISION_PREFIX = "[Revise the healed steps of "
 _PAGE_CHARS = 6000
 
 # The task driving each run that's going now, so Stop can cancel it.
@@ -327,6 +329,43 @@ def build_investigation_prompt(trigger: ScheduledTrigger, run: ScheduledRun, req
     return "\n".join(lines)
 
 
+def build_revision_prompt(
+    trigger: ScheduledTrigger, run: ScheduledRun, request: str, heals: list[dict[str, Any]]
+) -> str:
+    """What a conversation drafting a revision after a run's heals starts from."""
+    lines = [
+        f'{REVISION_PREFIX}"{trigger.name}" · task {trigger.trigger_id} · run {run.run_id}]',
+        "",
+        "This saved workflow's run finished, but these steps only worked because an agent healed "
+        "them while running: the page had changed, and the agent did what the step meant on the "
+        "page as it is now. The saved steps still describe the old page, so the next run would "
+        "heal them again. Propose a revision. Don't save anything or change the task yourself: "
+        "the user reviews your revision and saves it.",
+        "",
+    ]
+    for heal in heals:
+        lines += [
+            f"- {heal['title']} ({heal['step_id']}): it failed with: {heal.get('error') or '-'}",
+            f"  What the agent did instead: {heal.get('did') or '-'}",
+        ]
+    lines.append(f"Inputs: {json.dumps(run.inputs or {}, ensure_ascii=False)}")
+    if request:
+        lines.append(f"What the user asked for when the task was made: {request}")
+    lines += [
+        "",
+        "1. Fix it with revise_workflow(task_id, request=what changed on the page and how each "
+        "healed step should do it now), so the steps do what the agent did, without an agent.",
+        "2. Test the revision with test_workflow(draft_id, the same inputs) -- at most 3 rounds.",
+        "3. Tell the user in a few sentences what changed on the page and what the revision "
+        "changes, in the language of their request above.",
+        "A test stops before a step marked irreversible (a submit, a send, a payment), by "
+        "design: don't test with send_for_real unless the user agrees to it here, and never "
+        "unmark such a step to let a test go further -- mark any step that submits, sends or "
+        "pays, and tell the user which steps the test couldn't reach.",
+    ]
+    return "\n".join(lines)
+
+
 async def start_investigation(
     state_dir: str | Path,
     trigger_id: str,
@@ -337,9 +376,9 @@ async def start_investigation(
     *,
     attended: bool,
 ) -> None:
-    """Open conversation `thread_id` on a failed workflow run and let the
-    assistant work on it. `attended`: someone is watching, so an approval
-    waits for them; otherwise it's parked for later, as in a run."""
+    """Open conversation `thread_id` on a failed workflow run, or on a finished one whose heals
+    need a revision, and let the assistant work on it. `attended`: someone is watching, so an
+    approval waits for them; otherwise it's parked for later, as in a run."""
     store = ScheduledTriggerStore(state_dir)
     trigger = store.load(trigger_id)
     run = trigger.find_run(run_id) if trigger is not None else None
@@ -348,7 +387,11 @@ async def start_investigation(
     request = (
         await _first_request(get_session, trigger.source_thread) if trigger.source_thread else ""
     )
-    prompt = build_investigation_prompt(trigger, run, request)
+    heals = heals_to_revise(trigger.workflow, run.status, run.steps)
+    if heals:
+        prompt, title = build_revision_prompt(trigger, run, request, heals), "Revise"
+    else:
+        prompt, title = build_investigation_prompt(trigger, run, request), "Look into"
     store.record_evidence(trigger_id, run_id, investigation=thread_id)
     session = await get_session(thread_id)
     socket = _RelaySocket(session)
@@ -356,7 +399,7 @@ async def start_investigation(
     if model and model != getattr(session, "_model_string", None):
         await session.switch_model(model, socket)
     session._title_path().parent.mkdir(parents=True, exist_ok=True)
-    session._title_path().write_text(f"Look into: {trigger.name}", encoding="utf-8")
+    session._title_path().write_text(f"{title}: {trigger.name}", encoding="utf-8")
     await socket.send_json({"type": "scheduled_run_started", "text": prompt})
     # Turning on auto-investigation is consent to replay the task's own
     # steps; anything else the assistant tries still waits for the user.

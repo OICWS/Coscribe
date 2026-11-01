@@ -13,7 +13,7 @@ that fires a run or its stored history (`runtime_lg/scheduled_tasks.py`), the ro
 `AgentCall`, `AgentReply`, `AgentRequest`, `AgentRunner` (what an agent runner takes and returns);
 `RunOutcome`, `StepContext`, `StepRecord`, `WorkflowNotRunnable`, `WorkflowRun` (a run);
 `brings_outside_content`, `granted_by`, `sites_in`, `summarize`, `untrusted_agent_steps` (permissions); `describe_params`, `tool_description`
-(catalog); `output_files`, `run_test`, `uses_browser` (test run); `run_report` (what a run did, from its step records); `heal_fixes` (the saved arguments a run's heals would change); `DraftFailed`, `WorkflowDraft`,
+(catalog); `output_files`, `run_test`, `uses_browser` (test run); `run_report` (what a run did, from its step records); `heal_fixes`, `heals_to_revise` (the saved arguments a run's heals would change, and the heals a revision has to be drafted for); `DraftFailed`, `WorkflowDraft`,
 `draft_workflow`, `revise_workflow` (drafting from a conversation: it takes the serialized
 history, so this package does not import `runtime_lg`).
 

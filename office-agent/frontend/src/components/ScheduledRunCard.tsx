@@ -5,7 +5,8 @@ import { ChevronRightIcon, ClockIcon, SparkIcon } from "./icons";
 // build_investigation_prompt.
 export const RUN_PROMPT_PREFIX = "[Scheduled run of ";
 export const INVESTIGATION_PREFIX = "[Look into a failed run of ";
-const INVESTIGATION_HEADER_RE = /^\[Look into a failed run of "(.*?)" ·/;
+export const REVISION_PREFIX = "[Revise the healed steps of ";
+const INVESTIGATION_HEADER_RE = /^\[(?:Look into a failed run|Revise the healed steps) of "(.*?)" ·/;
 const NOTES_MARKER = "\n\n---\nNotes from earlier runs of this task:\n";
 const NOTES_INSTRUCTIONS_START = "\n\nBefore you finish, call update_task_notes";
 const HEADER_RE = /^\[Scheduled run of ".*?" · (started manually|on schedule) · (\d{4}-\d{2}-\d{2} \d{2}:\d{2})\./;
@@ -87,7 +88,7 @@ export function ScheduledRunCard({ text }: { text: string }) {
 }
 
 /** Stands in for the message that opened a conversation looking into a
- * failed workflow run -- the app wrote it, not the user. */
+ * failed workflow run, or revising the steps a run healed -- the app wrote it, not the user. */
 export function InvestigationCard({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   const name = INVESTIGATION_HEADER_RE.exec(text)?.[1] ?? "a task";
@@ -102,7 +103,9 @@ export function InvestigationCard({ text }: { text: string }) {
         onClick={() => setOpen((v) => !v)}
       >
         <SparkIcon className="h-4 w-4 shrink-0 text-[var(--muted)]" />
-        <span className="min-w-0 flex-1 truncate">Look into the failed run of “{name}”</span>
+        <span className="min-w-0 flex-1 truncate">
+          {text.startsWith(REVISION_PREFIX) ? "Revise the healed steps of" : "Look into the failed run of"} “{name}”
+        </span>
         <ChevronRightIcon
           className={`h-4 w-4 shrink-0 text-[var(--muted)] transition-transform motion-reduce:transition-none ${open ? "rotate-90" : ""}`}
         />
