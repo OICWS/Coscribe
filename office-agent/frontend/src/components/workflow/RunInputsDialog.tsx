@@ -1,14 +1,10 @@
 import { useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
+import { startingValue } from "../../lib/inputKinds";
 import type { WorkflowInput } from "../../types/workflow";
 import { PlayIcon } from "../icons";
+import { InputValueControl } from "./InputValueControl";
 import { VarToken } from "./parts";
-
-function placeholderFor(input: WorkflowInput): string | undefined {
-  if (input.required === false) return "Can be left blank";
-  if (input.type === "file") return "A path in the workspace, e.g. reports/march.pdf";
-  return undefined;
-}
 
 interface RunInputsDialogProps {
   taskName: string;
@@ -20,10 +16,16 @@ interface RunInputsDialogProps {
 /** Run now for a workflow with inputs: the defaults, confirmed or changed
  * for this one run. */
 export function RunInputsDialog({ taskName, inputs, onCancel, onRun }: RunInputsDialogProps) {
-  const [values, setValues] = useState<Record<string, string>>(() =>
-    Object.fromEntries(inputs.map((input) => [input.name, input.default === null ? "" : String(input.default)])),
+  const [values, setValues] = useState<Record<string, WorkflowInput["default"]>>(() =>
+    Object.fromEntries(
+      inputs.map((input) => {
+        const start = startingValue(input);
+        return [input.name, input.type === "yes_no" ? (start === "" ? null : start === "yes") : start];
+      }),
+    ),
   );
-  const missing = inputs.filter((input) => input.required !== false && !values[input.name]?.trim());
+  const blank = (value: WorkflowInput["default"]) => value === null || String(value).trim() === "";
+  const missing = inputs.filter((input) => input.required !== false && blank(values[input.name]));
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -31,8 +33,8 @@ export function RunInputsDialog({ taskName, inputs, onCancel, onRun }: RunInputs
     onRun(
       Object.fromEntries(
         inputs.map((input) => {
-          const value = values[input.name].trim();
-          return [input.name, input.type === "number" && value !== "" ? Number(value) : value];
+          const value = values[input.name];
+          return [input.name, typeof value === "string" ? value.trim() : (value ?? "")];
         }),
       ),
     );
@@ -48,7 +50,7 @@ export function RunInputsDialog({ taskName, inputs, onCancel, onRun }: RunInputs
         <h2 className="text-base font-semibold">Run {taskName}</h2>
         <p className="mt-0.5 text-sm text-[var(--muted)]">These values are used for this run only.</p>
         <div className="mt-4 flex flex-col gap-3.5">
-          {inputs.map((input, index) => (
+          {inputs.map((input) => (
             <label key={input.name} className="flex flex-col gap-1.5">
               {/* A long label pushes the name onto its own line instead of truncating it. */}
               <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
@@ -58,13 +60,12 @@ export function RunInputsDialog({ taskName, inputs, onCancel, onRun }: RunInputs
                 </span>
                 {input.required === false && <span className="text-xs text-[var(--muted)]">Optional</span>}
               </span>
-              <input
-                autoFocus={index === 0}
-                type={input.type === "number" ? "number" : "text"}
-                value={values[input.name] ?? ""}
-                placeholder={placeholderFor(input)}
-                onChange={(e) => setValues((prev) => ({ ...prev, [input.name]: e.target.value }))}
-                className="rounded-md border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 text-sm outline-none hover:border-[var(--border-hover)] focus:border-[var(--border-hover)]"
+              <InputValueControl
+                input={input}
+                forRun
+                label={input.label || input.name}
+                value={values[input.name] ?? null}
+                onChange={(value) => setValues((prev) => ({ ...prev, [input.name]: value }))}
               />
             </label>
           ))}

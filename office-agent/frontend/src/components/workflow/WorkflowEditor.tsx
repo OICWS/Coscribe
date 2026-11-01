@@ -54,7 +54,10 @@ function keepChildren(edited: WorkflowStep, current: WorkflowStep | undefined): 
   return edited;
 }
 
-const ARM_LABEL: Record<Arm, string> = { then: "Then", otherwise: "Otherwise", steps: "For each" };
+function armLabel(arm: Arm): string {
+  if (arm.startsWith("case:")) return `Path ${Number(arm.slice(5)) + 1}`;
+  return { then: "Then", otherwise: "Otherwise", steps: "For each" }[arm as "then" | "otherwise" | "steps"];
+}
 
 interface StepCardProps {
   step: WorkflowStep;
@@ -330,13 +333,18 @@ function BlockLists({ step, api }: { step: WorkflowStep; api: ListApi }) {
           ["then", step.then, "when it holds"],
           ["otherwise", step.otherwise, "when it doesn't"],
         ]
-      : [["steps", step.steps, `${step.item} in ${step.over || "…"}`]];
+      : step.kind === "choice"
+        ? [
+            ...step.cases.map((c, i): [Arm, WorkflowStep[], string] => [`case:${i}`, c.steps, `when it is “${c.is}”`]),
+            ["otherwise", step.otherwise, "anything else"],
+          ]
+        : [["steps", step.steps, `${step.item} in ${step.over || "…"}`]];
   return (
     <div className="flex flex-col gap-2.5 px-3 pb-3">
       {arms.map(([arm, steps, note]) => (
         <section
           key={arm}
-          aria-label={`${step.title}: ${ARM_LABEL[arm]}`}
+          aria-label={`${step.title}: ${armLabel(arm)}`}
           className="rounded-lg border-l-2 py-2.5 pl-3 pr-2.5"
           style={{
             borderLeftColor: `color-mix(in srgb, ${color} 55%, transparent)`,
@@ -345,7 +353,7 @@ function BlockLists({ step, api }: { step: WorkflowStep; api: ListApi }) {
         >
           <div className="mb-1 flex items-baseline gap-2 text-xs">
             <span className="font-semibold uppercase tracking-[0.08em]" style={{ color }}>
-              {ARM_LABEL[arm]}
+              {armLabel(arm)}
             </span>
             <span className="truncate font-mono text-[var(--muted)]">{note}</span>
           </div>

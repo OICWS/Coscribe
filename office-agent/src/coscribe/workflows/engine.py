@@ -26,7 +26,7 @@ import json
 import logging
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import asdict, dataclass, field, replace
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Annotated, Any, Literal, TypedDict, cast
 
@@ -43,6 +43,7 @@ from ..workflow_spec import (
     ApprovalStep,
     BranchStep,
     CheckStep,
+    ChoiceStep,
     LLMStep,
     LoopStep,
     Placed,
@@ -50,7 +51,10 @@ from ..workflow_spec import (
     Step,
     ToolStep,
     Workflow,
-    evaluate,
+    child_lists,
+    choose_arm,
+    conditions_hold,
+    input_values,
     render_text,
     render_value,
     resolve,
@@ -308,14 +312,20 @@ async def _run_llm(step: LLMStep, values: dict[str, Any], ctx: StepContext) -> A
     raise StepFailed("The model didn't return the required fields: " + "; ".join(problems))
 
 
+def _checks(checked: list[tuple[bool, Any, Any]]) -> list[dict[str, Any]]:
+    return [
+        {"held": h, "left": preview(left), "right": preview(right)} for h, left, right in checked
+    ]
+
+
 def _run_check(step: CheckStep, values: dict[str, Any]) -> list[dict[str, Any]]:
-    results = []
-    for condition in step.conditions:
-        held, left, right = evaluate(condition, values)
-        results.append({"held": held, "left": preview(left), "right": preview(right)})
-    failed = [r for r in results if not r["held"]]
-    if failed:
-        raise StepFailed(f"{len(failed)} of {len(results)} checks failed", checks=results)
+    held, checked = conditions_hold(step.conditions, step.match, values, step.match == "any")
+    results = _checks(checked)
+    if not held:
+        failed = f"{sum(not r['held'] for r in results)} of {len(results)} checks failed"
+        raise StepFailed(
+            "none of the checks held" if step.match == "any" else failed, checks=results
+        )
     return results
 
 
@@ -337,8 +347,8 @@ def preflight(workflow: Workflow, ctx: StepContext) -> None:
             _agent_preflight(step, where, ctx)
         if isinstance(step, LoopStep) and not step.steps:
             raise WorkflowNotRunnable(f"{where}: the loop has no steps to repeat yet")
-        if isinstance(step, BranchStep) and not (step.then or step.otherwise):
-            raise WorkflowNotRunnable(f"{where}: the branch has no steps on either side yet")
+        if isinstance(step, (BranchStep, ChoiceStep)) and not any(s for _a, s in child_lists(step)):
+            raise WorkflowNotRunnable(f"{where}: the branch has no steps on any path yet")
 
 
 def _agent_preflight(step: AgentStep, where: str, ctx: StepContext) -> None:
@@ -352,16 +362,10 @@ def _agent_preflight(step: AgentStep, where: str, ctx: StepContext) -> None:
 
 
 def resolve_inputs(workflow: Workflow, given: dict[str, Any]) -> dict[str, Any]:
-    values: dict[str, Any] = {}
-    for spec in workflow.inputs:
-        value = given.get(spec.name, spec.default)
-        if value is None or value == "":
-            if not spec.required:
-                values[spec.name] = ""
-                continue
-            raise WorkflowNotRunnable(f"input {spec.name!r} needs a value")
-        values[spec.name] = value
-    return values
+    try:
+        return input_values(workflow.inputs, given, date.today())
+    except ValueError as exc:
+        raise WorkflowNotRunnable(str(exc)) from exc
 
 
 class _GraphBuilder:
@@ -488,10 +492,9 @@ class _GraphBuilder:
             return output, None, agent
         if isinstance(step, CheckStep):
             return None, _run_check(step, values), None
-        if isinstance(step, BranchStep):
-            held, left, right = evaluate(step.condition, values)
-            checks = [{"held": held, "left": preview(left), "right": preview(right)}]
-            return {"arm": "then" if held else "otherwise"}, checks, None
+        if isinstance(step, (BranchStep, ChoiceStep)):
+            arm, checked = choose_arm(step, values)
+            return {"arm": arm}, _checks(checked), None
         return None, None, None
 
     async def _agent(
@@ -564,9 +567,9 @@ class _GraphBuilder:
         self, step: ApprovalStep, values: dict[str, Any], started: str, it: list[int]
     ) -> dict[str, Any]:
         checks = None
-        if step.when is not None:
-            held, left, right = evaluate(step.when, values)
-            checks = [{"held": held, "left": preview(left), "right": preview(right)}]
+        if step.when:
+            held, checked = conditions_hold(step.when, step.match, values)
+            checks = _checks(checked)
             if not held:
                 await self.emit(
                     StepRecord(step.id, "skipped", started, _now(), checks=checks, iteration=it)
@@ -644,7 +647,7 @@ class _GraphBuilder:
     def loop_next(self, step: LoopStep) -> Callable[[_State], Awaitable[dict[str, Any]]]:
         async def run(state: _State) -> dict[str, Any]:
             loop = state["loops"][step.id]
-            if loop["index"] < len(loop["items"]):
+            if _more(loop):
                 return {"values": {step.item: loop["items"][loop["index"]]}}
             output = {**_loop_progress(loop), "collected": preview(loop["results"])}
             await self.emit(
@@ -667,12 +670,14 @@ class _GraphBuilder:
             it = self.iteration(state, step)
             try:
                 value = resolve(step.collect, state["values"]) if step.collect else None
+                stop = step.until and conditions_hold(step.until, step.match, state["values"])[0]
             except Exception as exc:  # noqa: BLE001 -- recorded like any step's failure
                 failure = await self.fail(step, it, loop["started_at"], exc)
                 if failure is exc:
                     raise
                 raise failure from exc
             loop = {**loop, "index": loop["index"] + 1, "results": [*loop["results"], value]}
+            loop = {**loop, "stopped_early": True} if stop else loop
             await self.emit(
                 StepRecord(
                     step.id,
@@ -690,18 +695,16 @@ class _GraphBuilder:
         for index, step in enumerate(steps):
             following = _node_name(steps[index + 1]) if index + 1 < len(steps) else after
             node = _node_name(step)
-            if isinstance(step, BranchStep):
+            if isinstance(step, (BranchStep, ChoiceStep)):
+                arms = child_lists(step)
                 self.graph.add_node(node, cast(Any, self.make_node(step)))
                 self.graph.add_conditional_edges(
                     node,
-                    _branch_router(step),
-                    {
-                        "then": _node_name(step.then[0]) if step.then else following,
-                        "otherwise": _node_name(step.otherwise[0]) if step.otherwise else following,
-                    },
+                    _arm_router(step),
+                    {arm: _node_name(steps[0]) if steps else following for arm, steps in arms},
                 )
-                self.wire(step.then, following)
-                self.wire(step.otherwise, following)
+                for _arm, steps in arms:
+                    self.wire(steps, following)
             elif isinstance(step, LoopStep):
                 next_node, collect_node = f"next__{step.id}", f"collect__{step.id}"
                 self.graph.add_node(node, cast(Any, self.loop_start(step)))
@@ -732,22 +735,18 @@ def build_graph(workflow: Workflow, ctx: StepContext, on_step: OnStep, checkpoin
     return _GraphBuilder(workflow, ctx, on_step).build(checkpointer)
 
 
-def _branch_router(step: BranchStep) -> Callable[[_State], str]:
+def _arm_router(step: BranchStep | ChoiceStep) -> Callable[[_State], str]:
     # Re-evaluating is safe: the branch node already evaluated the same
     # values without error, and nothing has changed them since.
-    def route(state: _State) -> str:
-        held, _left, _right = evaluate(step.condition, state["values"])
-        return "then" if held else "otherwise"
+    return lambda state: choose_arm(step, state["values"])[0]
 
-    return route
+
+def _more(loop: dict[str, Any]) -> bool:
+    return loop["index"] < len(loop["items"]) and not loop.get("stopped_early")
 
 
 def _loop_router(step: LoopStep) -> Callable[[_State], str]:
-    def route(state: _State) -> str:
-        loop = state["loops"][step.id]
-        return "body" if loop["index"] < len(loop["items"]) else "done"
-
-    return route
+    return lambda state: "body" if _more(state["loops"][step.id]) else "done"
 
 
 class WorkflowRun:

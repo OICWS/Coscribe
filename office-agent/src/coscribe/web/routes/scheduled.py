@@ -32,6 +32,7 @@ from ...tools import (
 )
 from ...workflows import (
     BranchStep,
+    ChoiceStep,
     LoopStep,
     brings_outside_content,
     heal_fixes,
@@ -389,7 +390,11 @@ def _retry_routes(router: APIRouter, state: AppState) -> None:
         # A loop or branch around the failed step is recorded as failed
         # too; retrying means the step itself, on the pass that failed.
         blocks = (
-            {p.step.id for p in walk(workflow.steps) if isinstance(p.step, (BranchStep, LoopStep))}
+            {
+                p.step.id
+                for p in walk(workflow.steps)
+                if isinstance(p.step, (BranchStep, ChoiceStep, LoopStep))
+            }
             if workflow
             else set()
         )

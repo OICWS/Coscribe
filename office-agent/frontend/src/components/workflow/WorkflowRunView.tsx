@@ -212,7 +212,12 @@ function rowSummary(step: WorkflowStep, record: StepRecord | undefined, status: 
   if (step.kind === "branch" && record?.checks?.length) {
     const first = record.checks[0];
     const arm = branchArm(record) === "then" ? "Took Then" : "Took Otherwise";
-    return `${arm} · ${describeCheckResult(step.condition.op, first.held, first.left, first.right)}`;
+    return `${arm} · ${describeCheckResult(step.conditions[0].op, first.held, first.left, first.right)}`;
+  }
+  if (step.kind === "choice") {
+    const arm = (record?.output as { arm?: string } | null | undefined)?.arm ?? "";
+    const index = arm.startsWith("case:") ? Number(arm.slice(5)) : -1;
+    return index >= 0 && step.cases[index] ? `Took path ${index + 1} · “${step.cases[index].is}”` : "Took Otherwise";
   }
   if (step.kind === "check" && record?.checks?.length) {
     const first = record.checks[0];

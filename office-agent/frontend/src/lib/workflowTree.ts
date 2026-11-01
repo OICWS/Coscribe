@@ -4,7 +4,8 @@ import type { BlockStep, Workflow, WorkflowStep } from "../types/workflow";
 // block that holds it and which of its lists it is; ids are unique across
 // the whole workflow, so that's enough to find it.
 
-export type Arm = "then" | "otherwise" | "steps";
+/** A choice's paths are "case:0", "case:1"..., then "otherwise". */
+export type Arm = "then" | "otherwise" | "steps" | `case:${number}`;
 
 export interface ListRef {
   parent: string | null;
@@ -18,7 +19,7 @@ export function listKey(ref: ListRef): string {
 }
 
 export function isBlock(step: WorkflowStep): step is BlockStep {
-  return step.kind === "branch" || step.kind === "loop";
+  return step.kind === "branch" || step.kind === "choice" || step.kind === "loop";
 }
 
 export function childLists(step: WorkflowStep): [Arm, WorkflowStep[]][] {
@@ -28,8 +29,30 @@ export function childLists(step: WorkflowStep): [Arm, WorkflowStep[]][] {
       ["otherwise", step.otherwise],
     ];
   }
+  if (step.kind === "choice") {
+    return [
+      ...step.cases.map((c, index): [Arm, WorkflowStep[]] => [`case:${index}`, c.steps]),
+      ["otherwise", step.otherwise],
+    ];
+  }
   if (step.kind === "loop") return [["steps", step.steps]];
   return [];
+}
+
+/** `step` with the list at `arm` replaced. */
+function withArm(step: BlockStep, arm: Arm, next: WorkflowStep[]): WorkflowStep {
+  if (step.kind === "choice" && arm.startsWith("case:")) {
+    const at = Number(arm.slice(5));
+    return { ...step, cases: step.cases.map((c, i) => (i === at ? { ...c, steps: next } : c)) };
+  }
+  return { ...step, [arm]: next } as WorkflowStep;
+}
+
+/** `step` with every list it holds passed through `change`. */
+function mapArms(step: BlockStep, change: (list: WorkflowStep[]) => WorkflowStep[]): WorkflowStep {
+  let next: WorkflowStep = step;
+  for (const [arm, list] of childLists(step)) next = withArm(next as BlockStep, arm, change(list));
+  return next;
 }
 
 export interface PlacedStep {
@@ -76,11 +99,8 @@ export function listAt(workflow: Workflow, ref: ListRef): WorkflowStep[] {
 function replaceList(steps: WorkflowStep[], ref: ListRef, next: WorkflowStep[]): WorkflowStep[] {
   return steps.map((step) => {
     if (!isBlock(step)) return step;
-    if (step.id === ref.parent && ref.arm) return { ...step, [ref.arm]: next } as WorkflowStep;
-    if (step.kind === "branch") {
-      return { ...step, then: replaceList(step.then, ref, next), otherwise: replaceList(step.otherwise, ref, next) };
-    }
-    return { ...step, steps: replaceList(step.steps, ref, next) };
+    if (step.id === ref.parent && ref.arm) return withArm(step, ref.arm, next);
+    return mapArms(step, (list) => replaceList(list, ref, next));
   });
 }
 
@@ -91,13 +111,7 @@ export function withList(workflow: Workflow, ref: ListRef, next: WorkflowStep[])
 
 /** Applies `change` to every step, children first. */
 export function mapSteps(steps: WorkflowStep[], change: (step: WorkflowStep) => WorkflowStep): WorkflowStep[] {
-  return steps.map((step) => {
-    if (step.kind === "branch") {
-      return change({ ...step, then: mapSteps(step.then, change), otherwise: mapSteps(step.otherwise, change) });
-    }
-    if (step.kind === "loop") return change({ ...step, steps: mapSteps(step.steps, change) });
-    return change(step);
-  });
+  return steps.map((step) => change(isBlock(step) ? mapArms(step, (list) => mapSteps(list, change)) : step));
 }
 
 // -- What a step can read -------------------------------------------------------
@@ -115,7 +129,7 @@ function outputNames(step: WorkflowStep): string[] {
 
 /** Names readable at each position of each list ("<listKey>#<index>"),
  * scoped like workflow_spec/spec.py: a loop's item and body results only
- * inside it, a branch's results after it only when both arms make them.
+ * inside it, a branch's or choice's results after it only when every path makes them.
  * Model steps' fields are listed too, for pickers. */
 export function scopes(workflow: Workflow): Map<string, string[]> {
   const at = new Map<string, string[]>();
@@ -123,11 +137,11 @@ export function scopes(workflow: Workflow): Map<string, string[]> {
     let names = [...available];
     steps.forEach((step, index) => {
       at.set(`${listKey(ref)}#${index}`, names);
-      if (step.kind === "branch") {
-        const afterThen = check(step.then, { parent: step.id, arm: "then" }, names);
-        const afterOtherwise = check(step.otherwise, { parent: step.id, arm: "otherwise" }, names);
-        const both = afterThen.filter((name) => !names.includes(name) && afterOtherwise.includes(name));
-        names = [...names, ...both];
+      if (step.kind === "branch" || step.kind === "choice") {
+        // A name made on every path is there after the block; one made on some paths isn't.
+        const after = childLists(step).map(([arm, list]) => check(list, { parent: step.id, arm }, names));
+        const everywhere = after[0].filter((name) => !names.includes(name) && after.every((a) => a.includes(name)));
+        names = [...names, ...everywhere];
         return;
       }
       if (step.kind === "loop") check(step.steps, { parent: step.id, arm: "steps" }, [...names, step.item]);

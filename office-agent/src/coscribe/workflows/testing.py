@@ -27,6 +27,7 @@ from ..workflow_spec import (
     AgentStep,
     ApprovalStep,
     BranchStep,
+    ChoiceStep,
     LoopStep,
     Step,
     ToolStep,
@@ -153,6 +154,11 @@ def _guarded(workflow: Workflow) -> tuple[Workflow, dict[str, Step]]:
             elif isinstance(step, BranchStep):
                 step = step.model_copy(
                     update={"then": rebuild(step.then), "otherwise": rebuild(step.otherwise)}
+                )
+            elif isinstance(step, ChoiceStep):
+                cases = [c.model_copy(update={"steps": rebuild(c.steps)}) for c in step.cases]
+                step = step.model_copy(
+                    update={"cases": cases, "otherwise": rebuild(step.otherwise)}
                 )
             elif isinstance(step, (ToolStep, AgentStep)) and step.irreversible:
                 out.append(guard(step))

@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Iterable
+from datetime import date, datetime
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -124,22 +126,51 @@ def _equal(left: Any, right: Any) -> bool:
     return bool(left == right)
 
 
+def _when(value: Any) -> datetime:
+    """A date or a date and time, written the ISO way (2026-03-31, 2026-03-31T09:00)."""
+    if isinstance(value, datetime):
+        return value.replace(tzinfo=None)
+    if isinstance(value, date):
+        return datetime(value.year, value.month, value.day)
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value.strip().replace("Z", "+00:00")).replace(tzinfo=None)
+        except ValueError:
+            pass
+    raise UnresolvedReference(f"can't read {value!r} as a date like 2026-03-31")
+
+
+def _inside(left: Any, right: Any) -> bool:
+    if isinstance(left, (list, str, dict)):
+        return right in left
+    raise UnresolvedReference(f"can't look inside a {type(left).__name__}")
+
+
+def _empty(value: Any) -> bool:
+    return value is None or value in ("", [], {})
+
+
 def evaluate(condition: Condition, values: dict[str, Any]) -> tuple[bool, Any, Any]:
     """(held, left value, right value) -- the values are what a run record
     shows, so a failed check says what it actually compared."""
     left = operand_value(condition.left, values)
     right = operand_value(condition.right, values) if condition.right is not None else None
     op = condition.op
-    if op == "not_empty":
-        return left not in (None, "", [], {}), left, None
-    if op == "eq":
-        return _equal(left, right), left, right
-    if op == "ne":
-        return not _equal(left, right), left, right
-    if op == "contains":
-        if isinstance(left, (list, str, dict)):
-            return right in left, left, right
-        raise UnresolvedReference(f"can't look inside a {type(left).__name__}")
+    if op in ("empty", "not_empty"):
+        return _empty(left) == (op == "empty"), left, None
+    if op in ("eq", "ne"):
+        return _equal(left, right) == (op == "eq"), left, right
+    if op in ("contains", "not_contains"):
+        return _inside(left, right) == (op == "contains"), left, right
+    if op == "starts_with":
+        return as_text(left).startswith(as_text(right)), left, right
+    if op == "ends_with":
+        return as_text(left).endswith(as_text(right)), left, right
+    if op in ("before", "after"):
+        earlier, later = (
+            (_when(left), _when(right)) if op == "before" else (_when(right), _when(left))
+        )
+        return earlier < later, left, right
     left_number, right_number = _number(left), _number(right)
     if left_number is None or right_number is None:
         raise UnresolvedReference(f"can't compare {left!r} and {right!r} as numbers")
@@ -150,3 +181,25 @@ def evaluate(condition: Condition, values: dict[str, Any]) -> tuple[bool, Any, A
         "le": left_number <= right_number,
     }[op]
     return held, left, right
+
+
+def conditions_hold(
+    conditions: Iterable[Condition], match: str, values: dict[str, Any], settle_early: bool = True
+) -> tuple[bool, list[tuple[bool, Any, Any]]]:
+    """Whether all the conditions hold, or any one by `match`, and each one checked. It stops at
+    the first that settles it, so a later condition may read what an earlier one rules out
+    ("no rows, or the first row is late"), unless `settle_early` is off: a check step reports
+    every condition that failed."""
+    checked = []
+    for condition in conditions:
+        held, left, right = evaluate(condition, values)
+        checked.append((held, left, right))
+        if settle_early and held == (match == "any"):
+            return held, checked
+    each = [c[0] for c in checked]
+    return (any(each) if match == "any" and each else all(each)), checked
+
+
+def same_choice(value: Any, case: str) -> bool:
+    """Whether a choice's value picks the path for `case`: as text, ignoring case and spaces."""
+    return as_text(value).strip().casefold() == case.strip().casefold()

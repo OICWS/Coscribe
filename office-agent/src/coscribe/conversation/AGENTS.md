@@ -22,7 +22,7 @@ still reach into `session` for private helpers and to patch it; do not copy that
 
 ## Depends on
 `coscribe.code_runtime`, `coscribe.config`, `coscribe.coordinator`, `coscribe.runtime`,
-`coscribe.runtime_lg`, `coscribe.tools`, `coscribe.workflows`.
+`coscribe.runtime_lg`, `coscribe.tools`, `coscribe.workflow_spec`, `coscribe.workflows`.
 
 ## Invariants
 - Only `coscribe.web` knows about HTTP: this package never imports FastAPI, Starlette or uvicorn

@@ -1,7 +1,15 @@
 """Orchestrated workflows: a fixed list of low-autonomy steps, run by
 LangGraph, as the alternative to a free-form prompt on a scheduled task."""
 
-from ..workflow_spec import BranchStep, LoopStep, Workflow, parse_workflow, walk, workflow_error
+from ..workflow_spec import (
+    BranchStep,
+    ChoiceStep,
+    LoopStep,
+    Workflow,
+    parse_workflow,
+    walk,
+    workflow_error,
+)
 from .agent_step import AgentCall, AgentReply, AgentRequest, AgentRunner
 from .catalog import describe_params, tool_description
 from .engine import RunOutcome, StepContext, StepRecord, WorkflowNotRunnable, WorkflowRun
@@ -23,6 +31,7 @@ __all__ = [
     "AgentRequest",
     "AgentRunner",
     "BranchStep",
+    "ChoiceStep",
     "DraftFailed",
     "LoopStep",
     "RunOutcome",

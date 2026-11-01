@@ -2,8 +2,8 @@
 
 ## Purpose
 Owns the definition of a workflow (`spec.py`: the step kinds, `parse_workflow`, the checks that
-every reference points at an earlier step, `workflow_error`) and how a reference or a condition
-is read (`refs.py`). Pure data and string handling with no I/O, so `tools` (the schedule store
+every reference points at an earlier step, `workflow_error`), how a reference or a condition
+is read (`refs.py`) and what a run's inputs take (`inputs.py`: their kinds, relative dates). Pure data and string handling with no I/O, so `tools` (the schedule store
 validates a workflow before saving it) and `workflows` (which runs it) both use it and neither
 imports the other. Does not own running a workflow, what it may touch or drafting one: those are
 `workflows`.
@@ -11,7 +11,9 @@ imports the other. Does not own running a workflow, what it may touch or draftin
 ## Public interface
 Definition: `Workflow`, `parse_workflow`, `workflow_error`, `walk`, `Placed`, `step_output`,
 `Step`, `ToolStep`, `ScriptStep`, `LLMStep`, `AgentStep`, `CheckStep`, `ApprovalStep`, `BranchStep`,
-`LoopStep`, `OutputField`, `AGENT_OUTCOME_FIELDS`, `AGENT_REPORT_FIELD`, `child_lists`, `step_references`. The task's autonomy setting (decision 0030): `TaskAutonomy`, `TASK_AUTONOMY_LEVELS`, `step_autonomy`, `needed_autonomy`, `steps_above`. References: `resolve`, `evaluate`, `render_text`, `render_value`. Import these from
+`ChoiceStep`, `LoopStep`, `OutputField`, `AGENT_OUTCOME_FIELDS`, `AGENT_REPORT_FIELD`, `child_lists`,
+`raw_child_lists` (the same for a stored step's JSON), `current_shape` (a stored workflow as written now), `step_references`, `choose_arm` (which path a
+branch or choice takes). Inputs (decision 0031): `input_values`, `RELATIVE_DATES`. The task's autonomy setting (decision 0030): `TaskAutonomy`, `TASK_AUTONOMY_LEVELS`, `step_autonomy`, `needed_autonomy`, `steps_above`. References: `resolve`, `evaluate`, `conditions_hold`, `render_text`, `render_value`. Import these from
 `coscribe.workflow_spec`, not a submodule.
 
 ## Depends on

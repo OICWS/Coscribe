@@ -37,7 +37,7 @@ from typing import Any, Optional
 from pydantic import ValidationError
 
 from ...runtime import DEFAULT_ENVIRONMENT, Environments, tool_metadata
-from ...workflow_spec import parse_workflow, workflow_error
+from ...workflow_spec import current_shape, parse_workflow, workflow_error
 
 VALID_KINDS = ("manual", "once", "hourly", "daily", "weekdays", "weekly", "monthly")
 VALID_APPROVAL_MODES = ("manual", "auto", "skip")
@@ -406,7 +406,7 @@ class ScheduledTrigger:
             approval_mode=data.get("approval_mode", "manual"),
             notes_enabled=data.get("notes_enabled", True),
             runs=runs,
-            workflow=data.get("workflow"),
+            workflow=current_shape(data.get("workflow")),
             environment=data.get("environment") or DEFAULT_ENVIRONMENT,
             legacy_workspace=data.get("workspace"),
             drafts=list(data.get("drafts") or []),

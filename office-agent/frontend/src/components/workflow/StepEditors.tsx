@@ -3,19 +3,9 @@ import { controlClass, inputClass } from "../../lib/formStyles";
 import { toolLabel } from "../../lib/toolLabels";
 import { IDENTIFIER } from "../../lib/workflowEdit";
 import type { ToolParam } from "../../types/settings";
-import type {
-  ApprovalStep,
-  BranchStep,
-  CheckStep,
-  LLMStep,
-  LoopStep,
-  ScriptStep,
-  ToolStep,
-  WorkflowStep,
-} from "../../types/workflow";
-import { ToggleSwitch } from "../ToggleSwitch";
+import type { LLMStep, LoopStep, ScriptStep, ToolStep, WorkflowStep } from "../../types/workflow";
 import { AgentEditor } from "./AgentEditor";
-import { ConditionRow } from "./ConditionRow";
+import { ApprovalEditor, BranchEditor, CheckEditor, ChoiceEditor, LoopUntilEditor } from "./ConditionEditors";
 import {
   type EditorContext,
   type EditorProps,
@@ -269,101 +259,7 @@ function LLMEditor({ step, onChange, context }: EditorProps<LLMStep>) {
   );
 }
 
-// -- Check / approval ----------------------------------------------------------------
-
-function CheckEditor({ step, onChange, context }: EditorProps<CheckStep>) {
-  const defaultReference = context.suggestions[0] ?? "";
-  return (
-    <div className="flex flex-col gap-2">
-      <FieldLabel hint="All must hold, or the run stops here">Checks</FieldLabel>
-      {step.conditions.map((condition, index) => (
-        <ConditionRow
-          key={index}
-          label={`Check ${index + 1}`}
-          condition={condition}
-          valuesListId={context.listId}
-          defaultReference={defaultReference}
-          onChange={(next) =>
-            onChange({ ...step, conditions: step.conditions.map((c, i) => (i === index ? next : c)) })
-          }
-          onRemove={
-            step.conditions.length > 1
-              ? () => onChange({ ...step, conditions: step.conditions.filter((_, i) => i !== index) })
-              : undefined
-          }
-        />
-      ))}
-      <AddRowButton
-        onClick={() =>
-          onChange({
-            ...step,
-            conditions: [...step.conditions, { left: { ref: defaultReference }, op: "eq", right: { value: "" } }],
-          })
-        }
-      >
-        Add a check
-      </AddRowButton>
-    </div>
-  );
-}
-
-function ApprovalEditor({ step, onChange, context }: EditorProps<ApprovalStep>) {
-  const defaultReference = context.suggestions[0] ?? "";
-  return (
-    <>
-      <div>
-        <FieldLabel htmlFor={`${step.id}-message`}>What to show you</FieldLabel>
-        <AutoTextarea
-          id={`${step.id}-message`}
-          value={step.message}
-          onChange={(message) => onChange({ ...step, message })}
-        />
-        <ValuesHint context={context} />
-      </div>
-      <div className="flex flex-col gap-2">
-        <label className="flex items-center gap-2.5 text-sm">
-          <ToggleSwitch
-            on={step.when !== null}
-            label="Only pause when a condition holds"
-            onClick={() =>
-              onChange({
-                ...step,
-                when: step.when ? null : { left: { ref: defaultReference }, op: "eq", right: { value: true } },
-              })
-            }
-          />
-          Only pause when…
-        </label>
-        {step.when && (
-          <ConditionRow
-            label="Condition"
-            condition={step.when}
-            valuesListId={context.listId}
-            defaultReference={defaultReference}
-            onChange={(when) => onChange({ ...step, when })}
-          />
-        )}
-      </div>
-    </>
-  );
-}
-
-// -- Branch / loop -------------------------------------------------------------------
-
-function BranchEditor({ step, onChange, context }: EditorProps<BranchStep>) {
-  return (
-    <div className="flex flex-col gap-2">
-      <FieldLabel hint="Its Then steps run when this holds; the Otherwise steps when it doesn't">Condition</FieldLabel>
-      <ConditionRow
-        label="Condition"
-        condition={step.condition}
-        valuesListId={context.listId}
-        defaultReference={context.suggestions[0] ?? ""}
-        onChange={(condition) => onChange({ ...step, condition })}
-      />
-    </div>
-  );
-}
+// -- Loop ----------------------------------------------------------------------------
 
 function LoopEditor({ step, onChange, context }: EditorProps<LoopStep>) {
   const collectable = context.collectable ?? [];
@@ -422,6 +318,7 @@ function LoopEditor({ step, onChange, context }: EditorProps<LoopStep>) {
         <span className="font-mono">{`{{${step.item || "item"}}}`}</span>. A longer list stops the run rather than being
         cut short.
       </p>
+      <LoopUntilEditor step={step} onChange={onChange} context={context} />
       <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_110px] gap-3">
         <div>
           <FieldLabel htmlFor={`${step.id}-collect`}>Keep from each pass</FieldLabel>
@@ -483,6 +380,8 @@ export function StepFields({ step, onChange, context }: EditorProps<WorkflowStep
         return <ApprovalEditor step={step} onChange={onChange} context={context} />;
       case "branch":
         return <BranchEditor step={step} onChange={onChange} context={context} />;
+      case "choice":
+        return <ChoiceEditor step={step} onChange={onChange} context={context} />;
       case "loop":
         return <LoopEditor step={step} onChange={onChange} context={context} />;
     }

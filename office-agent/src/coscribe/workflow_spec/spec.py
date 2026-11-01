@@ -7,9 +7,9 @@ validate() checks against what's actually been produced by that point, so
 a typo or a reordered step fails when the workflow is saved, not halfway
 through a run.
 
-Branches and loops hold their own step lists, and scope what they
-produce: after a branch, only a name both arms produce is certain to
-exist; a loop body's names are per item, so only the loop's collected
+Branches, choices and loops hold their own step lists, and scope what
+they produce: after a branch or a choice, only a name every path produces
+is certain to exist; a loop body's names are per item, so only the loop's collected
 list is visible after it. Steps are numbered in document order, nested
 ones included -- the numbers the editor and the run view show."""
 
@@ -30,12 +30,27 @@ from pydantic import (
     model_validator,
 )
 
-from .refs import is_reference, malformed_templates, template_references
+from .inputs import InputType, input_problem
+from .refs import (
+    conditions_hold,
+    is_reference,
+    malformed_templates,
+    resolve,
+    same_choice,
+    template_references,
+)
 
 IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]{0,39}$")
 
 FieldType = Literal["text", "number", "boolean", "list"]
-CheckOp = Literal["eq", "ne", "gt", "ge", "lt", "le", "contains", "not_empty"]
+CheckOp = Literal[
+    "eq", "ne", "gt", "ge", "lt", "le",
+    "contains", "not_contains", "starts_with", "ends_with",
+    "not_empty", "empty", "before", "after",
+]  # fmt: skip
+UNARY_OPS = frozenset({"not_empty", "empty"})
+# Whether every condition of a list must hold, or one is enough (decision 0031).
+Match = Literal["all", "any"]
 
 
 def _identifier(value: str) -> str:
@@ -48,18 +63,30 @@ def _identifier(value: str) -> str:
 
 
 class _Model(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    # By name and by alias: a choice case's `is` is a Python keyword.
+    model_config = ConfigDict(extra="forbid", validate_by_name=True, serialize_by_alias=True)
 
 
 class WorkflowInput(_Model):
     name: str
     label: str = ""
-    type: Literal["text", "file", "number"] = "text"
-    default: str | float | None = None
+    type: InputType = "text"
+    # A date's may be relative ("last_month_start"), worked out when each run starts.
+    default: str | float | bool | None = None
+    # A choice's options, in order.
+    options: list[str] = []
     # An optional input may be left blank at run time; its steps get "".
     required: bool = True
 
     _check_name = field_validator("name")(_identifier)
+    _check_default = model_validator(mode="after")(lambda spec: _input_fits(spec))
+
+
+def _input_fits(spec: WorkflowInput) -> WorkflowInput:
+    problem = input_problem(spec.type, spec.default, spec.options)
+    if problem:
+        raise ValueError(f"input {spec.name!r}: {problem}")
+    return spec
 
 
 class OutputField(_Model):
@@ -102,9 +129,20 @@ class Condition(_Model):
 
     @model_validator(mode="after")
     def _right_unless_unary(self) -> Condition:
-        if (self.op == "not_empty") != (self.right is None):
-            raise ValueError("not_empty takes no right-hand side; every other op needs one")
+        if (self.op in UNARY_OPS) != (self.right is None):
+            raise ValueError(
+                "empty and not_empty take no right-hand side; every other op needs one"
+            )
         return self
+
+
+def _one_condition_as_a_list(data: Any, old: str, new: str) -> Any:
+    # Saved before decision 0031, a branch had one `condition` and an approval one `when`.
+    if isinstance(data, dict) and old in data and (old != new or not isinstance(data[old], list)):
+        data = dict(data)
+        single = data.pop(old)
+        data[new] = [] if single is None else [single]
+    return data
 
 
 class _Step(_Model):
@@ -152,23 +190,30 @@ class LLMStep(_Step):
 
 
 class CheckStep(_Step):
-    """Every condition must hold, or the run stops here."""
+    """The conditions must hold (all of them, or any one by `match`), or the run stops here."""
 
     kind: Literal["check"] = "check"
     conditions: list[Condition] = Field(min_length=1)
+    match: Match = "all"
 
 
 class ApprovalStep(_Step):
-    """Pause until a person approves -- only when `when` holds, if given."""
+    """Pause until a person approves -- only when `when` holds, if it lists any."""
 
     kind: Literal["approval"] = "approval"
     message: str = Field(min_length=1)
-    when: Condition | None = None
+    when: list[Condition] = []
+    match: Match = "all"
+
+    _legacy = model_validator(mode="before")(
+        lambda data: _one_condition_as_a_list(data, "when", "when")
+    )
 
 
 MAX_NESTING = 3
 MAX_STEPS = 100
 MAX_LOOP_ITEMS = 200
+MAX_CHOICE_CASES = 12
 MAX_AGENT_STEPS = 60
 
 Autonomy = Literal["bounded", "high", "full"]
@@ -241,12 +286,48 @@ class AgentStep(_Step):
 
 
 class BranchStep(_Step):
-    """Runs `then` when the condition holds, else `otherwise`."""
+    """Runs `then` when the conditions hold (all, or any one by `match`), else `otherwise`."""
 
     kind: Literal["branch"] = "branch"
-    condition: Condition
+    conditions: list[Condition] = Field(min_length=1)
+    match: Match = "all"
     then: list[Step] = []
     otherwise: list[Step] = []
+
+    _legacy = model_validator(mode="before")(
+        lambda data: _one_condition_as_a_list(data, "condition", "conditions")
+    )
+
+
+class ChoiceCase(_Model):
+    is_: str = Field(alias="is", min_length=1, max_length=200)
+    steps: list[Step] = []
+
+
+class ChoiceStep(_Step):
+    """Runs the steps of the first case whose `is` the value of `value` equals (as text, ignoring
+    case and surrounding spaces), else `otherwise` (decision 0031)."""
+
+    kind: Literal["choice"] = "choice"
+    value: str
+    cases: list[ChoiceCase] = Field(min_length=1, max_length=MAX_CHOICE_CASES)
+    otherwise: list[Step] = []
+
+    _check_value = field_validator("value")(lambda value: _choice_value(value))
+    _check_cases = model_validator(mode="after")(lambda step: _cases_differ(step))
+
+
+def _choice_value(value: str) -> str:
+    if not is_reference(value):
+        raise ValueError(f"{value!r} isn't a name like department or report.status")
+    return value
+
+
+def _cases_differ(step: ChoiceStep) -> ChoiceStep:
+    seen = [case.is_.strip().casefold() for case in step.cases]
+    if len(set(seen)) != len(seen):
+        raise ValueError("each path of a choice needs a different value")
+    return step
 
 
 class LoopStep(_Step):
@@ -261,6 +342,10 @@ class LoopStep(_Step):
     save_as: str | None = None
     # A longer list fails the loop rather than being cut short.
     max_items: int = Field(default=50, ge=1, le=MAX_LOOP_ITEMS)
+    # Checked after each pass, with the item and that pass's results: when they hold, the loop
+    # ends early and keeps what it collected so far.
+    until: list[Condition] = []
+    match: Match = "all"
 
     _check_item = field_validator("item")(_identifier)
     _check_save_as = field_validator("save_as")(lambda v: v if v is None else _identifier(v))
@@ -283,10 +368,11 @@ class LoopStep(_Step):
 
 
 Step = Annotated[
-    ToolStep | ScriptStep | LLMStep | AgentStep | CheckStep | ApprovalStep | BranchStep | LoopStep,
+    ToolStep | ScriptStep | LLMStep | AgentStep | CheckStep | ApprovalStep | BranchStep
+    | ChoiceStep | LoopStep,
     Field(discriminator="kind"),
-]
-BlockStep = BranchStep | LoopStep
+]  # fmt: skip
+BlockStep = BranchStep | ChoiceStep | LoopStep
 
 
 def _root(reference: str) -> str:
@@ -311,11 +397,15 @@ def step_references(step: Step) -> list[str]:
     if isinstance(step, CheckStep):
         return [r for c in step.conditions for r in _condition_refs(c)]
     if isinstance(step, ApprovalStep):
-        refs = template_references(step.message)
-        return refs + (_condition_refs(step.when) if step.when else [])
+        return template_references(step.message) + [
+            r for c in step.when for r in _condition_refs(c)
+        ]
     if isinstance(step, BranchStep):
-        return _condition_refs(step.condition)
+        return [r for c in step.conditions for r in _condition_refs(c)]
+    if isinstance(step, ChoiceStep):
+        return [step.value]
     if isinstance(step, LoopStep):
+        # `until` reads the item and the body's results, checked where the body is.
         return [step.over]
     return []  # pragma: no cover -- every kind is handled above
 
@@ -363,9 +453,27 @@ def child_lists(step: Step) -> list[tuple[str, list[Step]]]:
     """A block's own step lists, in document order."""
     if isinstance(step, BranchStep):
         return [("then", step.then), ("otherwise", step.otherwise)]
+    if isinstance(step, ChoiceStep):
+        cases = [(f"case:{index}", case.steps) for index, case in enumerate(step.cases)]
+        return [*cases, ("otherwise", step.otherwise)]
     if isinstance(step, LoopStep):
         return [("steps", step.steps)]
     return []
+
+
+def choose_arm(
+    step: BranchStep | ChoiceStep, values: dict[str, Any]
+) -> tuple[str, list[tuple[bool, Any, Any]]]:
+    """Which of its paths a branch or a choice takes (a name `child_lists` gives), and what it
+    compared to decide."""
+    if isinstance(step, BranchStep):
+        held, checked = conditions_hold(step.conditions, step.match, values)
+        return ("then" if held else "otherwise"), checked
+    value = resolve(step.value, values)
+    for index, case in enumerate(step.cases):
+        if same_choice(value, case.is_):
+            return f"case:{index}", [(True, value, case.is_)]
+    return "otherwise", [(False, value, [case.is_ for case in step.cases])]
 
 
 @dataclass(frozen=True)
@@ -440,10 +548,10 @@ class _Scope:
                     )
                 self._field(reference, where)
             self.agents += isinstance(step, AgentStep)
-            if isinstance(step, (BranchStep, LoopStep)) and depth >= MAX_NESTING:
+            if isinstance(step, (BranchStep, ChoiceStep, LoopStep)) and depth >= MAX_NESTING:
                 raise ValueError(f"{where}: branches and loops nest at most {MAX_NESTING} deep")
-            if isinstance(step, BranchStep):
-                available |= self._branch(step, available, depth)
+            if isinstance(step, (BranchStep, ChoiceStep)):
+                available |= self._paths(step, available, depth)
                 continue
             if isinstance(step, LoopStep):
                 self._loop(step, where, available, depth)
@@ -457,17 +565,19 @@ class _Scope:
                     self.fields[output] = _result_fields(step)
         return available
 
-    def _branch(self, step: BranchStep, available: set[str], depth: int) -> set[str]:
-        # Each arm may produce the same names -- that's how a value set
-        # either way is read after the branch.
+    def _paths(self, step: BranchStep | ChoiceStep, available: set[str], depth: int) -> set[str]:
+        # Each path may produce the same names -- that's how a value set
+        # whichever way it went is read after the branch.
         before = set(self.taken)
-        self.taken = set(before)
-        after_then = self.check(step.then, available, depth + 1)
-        taken_then, self.taken = self.taken, set(before)
-        after_otherwise = self.check(step.otherwise, available, depth + 1)
-        self.taken |= taken_then
-        merged = (after_then - available) & (after_otherwise - available)
-        self.scoped |= ((after_then | after_otherwise) - available) - merged
+        taken = set(before)
+        made: list[set[str]] = []
+        for _arm, steps in child_lists(step):
+            self.taken = set(before)
+            made.append(self.check(steps, available, depth + 1) - available)
+            taken |= self.taken
+        self.taken = taken
+        merged = set.intersection(*made)
+        self.scoped |= set.union(*made) - merged
         return merged
 
     def _loop(self, step: LoopStep, where: str, available: set[str], depth: int) -> None:
@@ -485,6 +595,13 @@ class _Scope:
                 f"{where} collects {step.collect!r}, which isn't the item or a result of "
                 "a step inside the loop"
             )
+        for reference in (r for c in step.until for r in _condition_refs(c)):
+            if _root(reference) not in after_body:
+                raise ValueError(
+                    f"{where} stops early by {reference!r}, which isn't an input, the item or "
+                    "a result of a step before the loop or inside it"
+                )
+            self._field(reference, where)
         self.scoped |= self.taken - before
         self.taken = before
 
@@ -569,6 +686,18 @@ def parse_workflow(data: Any) -> Workflow:
     return Workflow.model_validate(data)
 
 
+def current_shape(workflow: dict[str, Any] | None) -> dict[str, Any] | None:
+    """A stored workflow as it is written now (one saved before decision 0031 had a branch's
+    single `condition`), so whoever reads it reads one shape; one that no longer validates is
+    kept as it was, for its run to say why."""
+    if workflow is None:
+        return None
+    try:
+        return parse_workflow(workflow).model_dump(mode="json")
+    except ValidationError:
+        return workflow
+
+
 def workflow_error(exc: ValidationError, data: Any = None) -> str:
     """One readable line per problem, located by step number (document
     order, as the editor numbers steps -- which takes the submitted `data`
@@ -583,14 +712,32 @@ def workflow_error(exc: ValidationError, data: Any = None) -> str:
     return "; ".join(lines)
 
 
-_STEP_KINDS = frozenset({"tool", "script", "llm", "agent", "check", "approval", "branch", "loop"})
-_ARMS = ("then", "otherwise", "steps")
+_STEP_KINDS = frozenset(
+    {"tool", "script", "llm", "agent", "check", "approval", "branch", "choice", "loop"}
+)
+
+
+def _raw_arms(step: dict[str, Any]) -> list[tuple[tuple[Any, ...], list[Any]]]:
+    """Each step list of a stored step, with where it sits in the step's JSON."""
+    if step.get("kind") == "loop":
+        return [(("steps",), _as_list(step.get("steps")))]
+    cases = _as_list(step.get("cases")) if step.get("kind") == "choice" else []
+    paths = [
+        (("cases", index, "steps"), _as_list(case.get("steps") if isinstance(case, dict) else None))
+        for index, case in enumerate(cases)
+    ]
+    first = [] if step.get("kind") == "choice" else [(("then",), _as_list(step.get("then")))]
+    return [*first, *paths, (("otherwise",), _as_list(step.get("otherwise")))]
+
+
+def raw_child_lists(step: Any) -> list[list[Any]]:
+    """A stored step's own step lists, in document order, read from its JSON: a branch's arms,
+    a choice's paths, a loop's body."""
+    return [children for _where, children in _raw_arms(step)] if isinstance(step, dict) else []
 
 
 def _count(step: Any) -> int:
-    if not isinstance(step, dict):
-        return 1
-    return 1 + sum(_count(child) for arm in _ARMS for child in _as_list(step.get(arm)))
+    return 1 + sum(_count(child) for children in raw_child_lists(step) for child in children)
 
 
 def _as_list(value: Any) -> list[Any]:
@@ -610,16 +757,20 @@ def _locate(data: Any, loc: list[Any]) -> tuple[int | None, list[Any]]:
         loc = loc[1:]
         if loc and loc[0] in _STEP_KINDS:
             loc = loc[1:]
-        if len(loc) >= 2 and loc[0] in _ARMS and isinstance(loc[1], int) and isinstance(step, dict):
-            if loc[0] == "otherwise":
-                number += sum(_count(s) for s in _as_list(step.get("then")))
-            steps = _as_list(step.get(loc[0]))
-            loc = loc[1:]
-            continue
-        break
+        arms = _raw_arms(step) if isinstance(step, dict) else []
+        for position, (where, children) in enumerate(arms):
+            inside = loc[len(where) :]
+            if tuple(loc[: len(where)]) == where and inside and isinstance(inside[0], int):
+                number += sum(_count(s) for _w, earlier in arms[:position] for s in earlier)
+                steps, loc = children, inside
+                break
+        else:
+            break
     return number, loc
 
 
 BranchStep.model_rebuild()
+ChoiceCase.model_rebuild()
+ChoiceStep.model_rebuild()
 LoopStep.model_rebuild()
 Workflow.model_rebuild()

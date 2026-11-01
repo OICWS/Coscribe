@@ -1,6 +1,6 @@
 import type { ScheduledRun } from "../types/settings";
 import type { LoopStep, StepRecord, StepStatus, Workflow, WorkflowStep } from "../types/workflow";
-import { isBlock, placeSteps } from "./workflowTree";
+import { childLists, isBlock, placeSteps } from "./workflowTree";
 
 export type ProgressStatus = "pending" | "in_progress" | "completed" | "failed";
 
@@ -103,9 +103,9 @@ export function workflowProgress(workflow: Workflow, run: ScheduledRun): Progres
         continue;
       }
       items.push({ id: step.id, content: step.title, status: progressOf(record?.status, going) });
-      if (step.kind === "branch" && record?.status === "done") {
+      if ((step.kind === "branch" || step.kind === "choice") && record?.status === "done") {
         const arm = (record.output as { arm?: string } | null)?.arm;
-        visit(arm === "then" ? step.then : step.otherwise);
+        visit(childLists(step).find(([a]) => a === arm)?.[1] ?? []);
       }
     }
   };

@@ -1,10 +1,10 @@
-import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AUTONOMY_LABEL, KIND_COLOR, KIND_LABEL } from "../../lib/workflowLabels";
 import { plainDetail, plainKind } from "../../lib/plainSteps";
 import { type NodeRunState, runMap } from "../../lib/workflowRunMap";
 import { placeSteps } from "../../lib/workflowTree";
 import type { ScheduledRun } from "../../types/settings";
-import type { BranchStep, LoopStep, Workflow, WorkflowInput, WorkflowStep } from "../../types/workflow";
+import type { BranchStep, ChoiceStep, LoopStep, Workflow, WorkflowInput, WorkflowStep } from "../../types/workflow";
 import { FileTextIcon, GlobeIcon, LoopIcon, TerminalIcon } from "../icons";
 import { StepKindTile, VarToken } from "./parts";
 import { StatusDot } from "./StatusDot";
@@ -23,6 +23,8 @@ interface CanvasContext {
   onOpenStep?: (stepId: string) => void;
   /** The simple view: each step says what it does in plain words, without tool or variable names. */
   plain?: { inputs: WorkflowInput[] };
+  /** Inside a split of three or more paths, where full-width cards would push the rest off the page. */
+  narrow?: boolean;
 }
 
 const LINE = "bg-[var(--border-hover)]";
@@ -77,8 +79,9 @@ function runText(step: WorkflowStep, state: NodeRunState): string | null {
     if (!lead || state.status === "skipped") return `Done for ${items}`;
     return passes.done > 0 ? `${lead} · done for ${items}` : lead;
   }
-  if (step.kind === "branch" && state.arms?.length) {
-    return `Took ${state.arms.map((arm) => (arm === "then" ? "Then" : "Otherwise")).join(" and ")}`;
+  if ((step.kind === "branch" || step.kind === "choice") && state.arms?.length) {
+    const label = (arm: string) => armsOf(step, false).find(([a]) => a === arm)?.[1] ?? arm;
+    return `Took ${state.arms.map(label).join(" and ")}`;
   }
   return lead;
 }
@@ -199,7 +202,7 @@ function StepNode({ step, ctx }: { step: WorkflowStep; ctx: CanvasContext }) {
       )}
     </>
   );
-  const className = `block w-64 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 pb-2.5 pt-2 text-left shadow-sm ${look.className}`;
+  const className = `block ${ctx.narrow ? "w-48" : "w-64"} rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 pb-2.5 pt-2 text-left shadow-sm ${look.className}`;
   const style = {
     borderTopColor: ctx.plain ? plainColor(step) : color,
     borderTopWidth: 3,
@@ -243,35 +246,90 @@ function ArmLabel({ taken, children }: { taken: boolean; children: ReactNode }) 
   );
 }
 
-function BranchBlock({ step, ctx }: { step: BranchStep; ctx: CanvasContext }) {
-  const arms: [string, string, WorkflowStep[]][] = [
-    ["then", ctx.plain ? "If so" : "Then", step.then],
-    ["otherwise", ctx.plain ? "If not" : "Otherwise", step.otherwise],
+function armsOf(step: BranchStep | ChoiceStep, plain: boolean): [string, string, WorkflowStep[]][] {
+  if (step.kind === "branch") {
+    return [
+      ["then", plain ? "If so" : "Then", step.then],
+      ["otherwise", plain ? "If not" : "Otherwise", step.otherwise],
+    ];
+  }
+  return [
+    ...step.cases.map((c, i): [string, string, WorkflowStep[]] => [`case:${i}`, `“${c.is}”`, c.steps]),
+    ["otherwise", plain ? "Anything else" : "Otherwise", step.otherwise],
   ];
+}
+
+/** Where an arm's share of the split and join lines runs: from its middle outward, or across. */
+function lineSpan(index: number, count: number): string {
+  if (index === 0) return "left-1/2 right-0";
+  return index === count - 1 ? "left-0 right-1/2" : "left-0 right-0";
+}
+
+// Past this many paths side by side, the split no longer fits a page, so the paths stack.
+const SIDE_BY_SIDE = 3;
+
+/** Many paths, one under another in a frame that says only one of them runs. */
+function StackedPaths({ step, ctx }: { step: ChoiceStep; ctx: CanvasContext }) {
+  const arms = armsOf(step, Boolean(ctx.plain));
   const taken = ctx.states?.get(step.id)?.arms ?? [];
+  const color = KIND_COLOR.choice;
+  return (
+    <div className="flex flex-col items-center">
+      <StepNode step={step} ctx={ctx} />
+      <Arrow />
+      <div
+        className="flex flex-col items-center rounded-2xl border border-dashed px-5 pb-4 pt-2.5"
+        style={{
+          borderColor: `color-mix(in srgb, ${color} 55%, transparent)`,
+          backgroundColor: `color-mix(in srgb, ${color} 4%, transparent)`,
+        }}
+      >
+        <span className="mb-1 text-xs font-medium" style={{ color }}>
+          Only one of these {arms.length} paths runs
+        </span>
+        {arms.map(([arm, label, steps], index) => (
+          <div
+            key={arm}
+            className={`flex flex-col items-center pt-3 ${index > 0 ? "mt-3 border-t border-dashed border-[var(--border)]" : ""}`}
+          >
+            <ArmLabel taken={taken.includes(arm)}>{label}</ArmLabel>
+            {steps.length > 0 ? (
+              <>
+                <Arrow />
+                <Flow steps={steps} ctx={ctx} />
+              </>
+            ) : (
+              <span className="mt-2 text-xs italic text-[var(--muted)]">nothing</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BranchBlock({ step, ctx }: { step: BranchStep | ChoiceStep; ctx: CanvasContext }) {
+  const arms = armsOf(step, Boolean(ctx.plain));
+  const taken = ctx.states?.get(step.id)?.arms ?? [];
+  if (step.kind === "choice" && arms.length > SIDE_BY_SIDE) return <StackedPaths step={step} ctx={ctx} />;
+  const inner = arms.length > 2 ? { ...ctx, narrow: true } : ctx;
   return (
     <div className="flex flex-col items-center">
       <StepNode step={step} ctx={ctx} />
       <div aria-hidden="true" className={`h-4 w-px ${LINE}`} />
       <div className="flex">
         {arms.map(([arm, label, steps], index) => (
-          <div key={label} className="relative flex flex-col items-center px-4">
+          <div key={arm} className={`relative flex flex-col items-center ${inner.narrow ? "px-2.5" : "px-4"}`}>
             {/* Each arm draws the half of the split and join lines on its own
                 side, so they meet whatever width each arm needs. */}
-            <div
-              aria-hidden="true"
-              className={`absolute top-0 h-px ${index === 0 ? "left-1/2 right-0" : "left-0 right-1/2"} ${LINE}`}
-            />
-            <div
-              aria-hidden="true"
-              className={`absolute bottom-0 h-px ${index === 0 ? "left-1/2 right-0" : "left-0 right-1/2"} ${LINE}`}
-            />
+            <div aria-hidden="true" className={`absolute top-0 h-px ${lineSpan(index, arms.length)} ${LINE}`} />
+            <div aria-hidden="true" className={`absolute bottom-0 h-px ${lineSpan(index, arms.length)} ${LINE}`} />
             <div aria-hidden="true" className={`h-3 w-px ${LINE}`} />
             <ArmLabel taken={taken.includes(arm)}>{label}</ArmLabel>
             {steps.length > 0 ? (
               <>
                 <Arrow />
-                <Flow steps={steps} ctx={ctx} />
+                <Flow steps={steps} ctx={inner} />
               </>
             ) : (
               <span className="mt-2 text-xs italic text-[var(--muted)]">nothing</span>
@@ -292,7 +350,7 @@ function PlainLoopHeader({ step, ctx }: { step: LoopStep; ctx: CanvasContext }) 
       type="button"
       disabled={!ctx.onOpenStep}
       data-canvas-step={step.id}
-      className="mb-1 flex w-64 items-start gap-2 rounded-lg px-1 py-0.5 text-left enabled:hover:bg-[var(--card-bg)]"
+      className={`mb-1 flex ${ctx.narrow ? "w-48" : "w-64"} items-start gap-2 rounded-lg px-1 py-0.5 text-left enabled:hover:bg-[var(--card-bg)]`}
       onClick={() => ctx.onOpenStep?.(step.id)}
     >
       <LoopIcon className="mt-0.5 h-4 w-4 shrink-0" style={{ color }} />
@@ -372,9 +430,11 @@ function Flow({ steps, ctx }: { steps: WorkflowStep[]; ctx: CanvasContext }) {
       {steps.map((step, index) => (
         <Fragment key={step.id}>
           {index > 0 && <Arrow />}
-          {step.kind === "branch" && <BranchBlock step={step} ctx={ctx} />}
+          {(step.kind === "branch" || step.kind === "choice") && <BranchBlock step={step} ctx={ctx} />}
           {step.kind === "loop" && <LoopBlock step={step} ctx={ctx} />}
-          {step.kind !== "branch" && step.kind !== "loop" && <StepNode step={step} ctx={ctx} />}
+          {step.kind !== "branch" && step.kind !== "choice" && step.kind !== "loop" && (
+            <StepNode step={step} ctx={ctx} />
+          )}
         </Fragment>
       ))}
     </div>
@@ -407,8 +467,15 @@ export function WorkflowCanvas({
     }),
     [workflow, run, onOpenStep, plain],
   );
+  const frame = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    // A flow wider than the page opens on its middle, where Start and the main line are.
+    const el = frame.current;
+    if (el && el.scrollWidth > el.clientWidth) el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2;
+  }, [workflow]);
   return (
     <div
+      ref={frame}
       data-testid="workflow-canvas"
       className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--card-bg)]"
       style={{
