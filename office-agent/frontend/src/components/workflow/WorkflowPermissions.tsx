@@ -15,6 +15,8 @@ interface Props {
   /** Changes when something was allowed since, so the list is read again. */
   version?: string;
   className?: string;
+  /** The task page's simple view: one short line per kind of reach, without the caveats. */
+  simple?: boolean;
 }
 
 function New() {
@@ -74,6 +76,50 @@ function AgentLine({ agent, fresh }: { agent: WorkflowAgentPermissions; fresh: b
   );
 }
 
+function SimpleLine({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <li className="flex gap-2.5">
+      <span className="mt-0.5 h-4 w-4 shrink-0 text-[var(--muted)]">{icon}</span>
+      <span className="min-w-0 break-words">{children}</span>
+    </li>
+  );
+}
+
+function SimplePermissions({ p, className }: { p: PermissionsResult["permissions"]; className: string }) {
+  const sites = [...new Set([...p.sites, ...p.agents.flatMap((a) => a.sites)])];
+  const folders = [...new Set([...p.folders, ...p.agents.flatMap((a) => a.folders)])];
+  const unbounded = p.agents.filter((a) => a.autonomy !== "bounded");
+  return (
+    <ul
+      aria-label="Permissions"
+      data-testid="workflow-permissions"
+      className={`flex flex-col gap-1.5 text-sm ${className}`}
+    >
+      {sites.length > 0 && <SimpleLine icon={<GlobeIcon className="h-4 w-4" />}>Opens {sites.join(", ")}</SimpleLine>}
+      <SimpleLine icon={<FolderIcon className="h-4 w-4" />}>
+        Changes files in its workspace
+        {folders.length > 0 && ` and ${folders.join(", ")}`}
+      </SimpleLine>
+      {p.scripts.length > 0 && (
+        <SimpleLine icon={<TerminalIcon className="h-4 w-4" />}>
+          Runs {p.scripts.length === 1 ? "a script" : `${p.scripts.length} scripts`} on this computer
+        </SimpleLine>
+      )}
+      {p.notable.length > 0 && (
+        <SimpleLine icon={<AlertCircleIcon className="h-4 w-4" />}>
+          Acts outside this computer: {p.notable.map((n) => n.title).join(", ")}
+        </SimpleLine>
+      )}
+      {unbounded.length > 0 && (
+        <SimpleLine icon={<TargetIcon className="h-4 w-4" />}>
+          {unbounded.map((a) => a.title).join(", ")} may use any of Coscribe’s tools
+        </SimpleLine>
+      )}
+      <li className="text-[13px] text-[var(--muted)]">Anything else makes a run stop and ask you first.</li>
+    </ul>
+  );
+}
+
 /** What a workflow will be able to do once saved -- saving is the consent,
  * and a run that needs more stops and asks. Plain about what scripts are:
  * checked for where they write, not contained. */
@@ -83,6 +129,7 @@ export function WorkflowPermissions({
   againstSaved = false,
   version = "",
   className = "mt-5",
+  simple = false,
 }: Props) {
   const [result, setResult] = useState<PermissionsResult | null>(null);
   const key = JSON.stringify(workflow);
@@ -101,6 +148,7 @@ export function WorkflowPermissions({
 
   if (!result) return null;
   const { permissions: p, added } = result;
+  if (simple) return <SimplePermissions p={p} className={className} />;
   const fresh = {
     sites: added?.sites ?? [],
     folders: added?.folders ?? [],

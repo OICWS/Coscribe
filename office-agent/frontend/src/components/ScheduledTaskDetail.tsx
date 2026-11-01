@@ -11,6 +11,7 @@ import {
 import { goToThread } from "../lib/nav";
 import { capitalize, formatRunTime, RUN_STATUS_LABEL, runDuration, runSourceLabel } from "../lib/runLabels";
 import { describeSchedule } from "../lib/scheduleLabels";
+import { loadTaskView, saveTaskView, type TaskView } from "../lib/taskView";
 import { countModelSteps } from "../lib/workflowLabels";
 import { allSteps } from "../lib/workflowTree";
 import type { ScheduledTask } from "../types/settings";
@@ -19,8 +20,10 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { DEFAULT_ENVIRONMENT } from "./EnvironmentDialog";
 import { ChevronRightIcon, PencilIcon, PlayIcon, TrashIcon } from "./icons";
 import { RunStatusIcon } from "./RunStatusIcon";
+import { ScheduledTaskSimple } from "./ScheduledTaskSimple";
 import { ToggleSwitch } from "./ToggleSwitch";
 import { RunInputsDialog } from "./workflow/RunInputsDialog";
+import { ViewToggle } from "./workflow/ViewToggle";
 import { TaskWorkflowSection } from "./workflow/WorkflowSection";
 import { WorkflowPermissions } from "./workflow/WorkflowPermissions";
 
@@ -199,11 +202,16 @@ function NotesSection({ task, onChanged }: { task: ScheduledTask; onChanged: () 
   );
 }
 
-function RunsSection({ task }: { task: ScheduledTask }) {
-  const runs = [...task.runs].reverse();
+// The simple view lists the latest runs; older ones are a click away.
+const RECENT_RUNS = 5;
+
+function RunsSection({ task, recent = false }: { task: ScheduledTask; recent?: boolean }) {
+  const [all, setAll] = useState(!recent);
+  const newestFirst = [...task.runs].reverse();
+  const runs = all ? newestFirst : newestFirst.slice(0, RECENT_RUNS);
   return (
     <div>
-      <SectionLabel>Runs</SectionLabel>
+      {recent ? <h2 className="mb-2 text-sm font-medium">Recent runs</h2> : <SectionLabel>Runs</SectionLabel>}
       {runs.length === 0 ? (
         <p className="text-sm text-[var(--muted)]">No runs yet -- use Run now to try it out.</p>
       ) : (
@@ -237,6 +245,15 @@ function RunsSection({ task }: { task: ScheduledTask }) {
           })}
         </ul>
       )}
+      {runs.length < newestFirst.length && (
+        <button
+          type="button"
+          className="mt-1 text-[13px] text-[var(--muted)] hover:text-[var(--fg)] hover:underline"
+          onClick={() => setAll(true)}
+        >
+          Show all {newestFirst.length} runs
+        </button>
+      )}
     </div>
   );
 }
@@ -266,7 +283,13 @@ function WorkflowBadge({ task }: { task: ScheduledTask }) {
 /** One scheduled task: its settings, its notes, and every run it has made --
  * each run opening its own conversation. */
 /** The name of the environment a task's runs use; it is edited from the picker below a message. */
-function EnvironmentName({ id }: { id: string }) {
+function EnvironmentName({
+  id,
+  className = "block break-all text-sm font-medium",
+}: {
+  id: string;
+  className?: string;
+}) {
   const [name, setName] = useState(id === DEFAULT_ENVIRONMENT ? "Default" : "");
   useEffect(() => {
     let cancelled = false;
@@ -277,7 +300,110 @@ function EnvironmentName({ id }: { id: string }) {
       cancelled = true;
     };
   }, [id]);
-  return <div className="break-all text-sm font-medium">{name}</div>;
+  return <span className={className}>{name}</span>;
+}
+
+/** Whether the task is on, when it runs next, and which way its page reads. */
+function StatusRow({
+  task,
+  view,
+  onView,
+  onToggle,
+}: {
+  task: ScheduledTask;
+  view: TaskView;
+  onView: (view: TaskView) => void;
+  onToggle: () => void;
+}) {
+  const workflow = task.workflow;
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <ToggleSwitch on={task.enabled} onClick={onToggle} label={task.enabled ? "Pause task" : "Resume task"} />
+      <span
+        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+          task.enabled
+            ? "bg-green-500/15 text-green-600 dark:text-green-400"
+            : "bg-[var(--card-bg)] text-[var(--muted)]"
+        }`}
+      >
+        {task.enabled ? "Active" : "Paused"}
+      </span>
+      <span className="text-sm text-[var(--muted)]">{formatNextRun(task)}</span>
+      {workflow && <span className="text-sm text-[var(--muted)]">·</span>}
+      <WorkflowBadge task={task} />
+      {workflow && (
+        <div className="ml-auto">
+          <ViewToggle
+            label="Page view"
+            views={[
+              { view: "simple", label: "Simple" },
+              { view: "detailed", label: "Detailed" },
+            ]}
+            value={view}
+            onChange={onView}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Every setting of the task as it is stored: the workflow's canvas and editor, or its
+ * instructions, then schedule, environment, permissions, failures, notes and runs. */
+function DetailedBody({
+  task,
+  persist,
+  focusStepId,
+  onChanged,
+}: {
+  task: ScheduledTask;
+  persist: (next: Workflow) => Promise<string | null>;
+  focusStepId?: string | null;
+  onChanged: () => void;
+}) {
+  const workflow = task.workflow;
+  return (
+    <div className="mt-6 flex flex-col gap-6">
+      {workflow ? (
+        <TaskWorkflowSection workflow={workflow} persist={persist} focusStepId={focusStepId} />
+      ) : (
+        <InstructionsSection prompt={task.prompt} />
+      )}
+      <div>
+        <SectionLabel>Repeats</SectionLabel>
+        <div className="text-sm font-medium">{describeSchedule(task.schedule)}</div>
+      </div>
+      <div>
+        <SectionLabel>Environment</SectionLabel>
+        <EnvironmentName id={task.environment ?? DEFAULT_ENVIRONMENT} />
+      </div>
+      <div>
+        <SectionLabel>Permissions</SectionLabel>
+        {workflow ? (
+          <>
+            <div className="text-sm text-[var(--muted)]">
+              Steps run as saved, without asking each time. The run also pauses at approval steps, and at anything below
+              it hasn’t been allowed.
+            </div>
+            <WorkflowPermissions
+              workflow={workflow}
+              triggerId={task.trigger_id}
+              version={JSON.stringify(task.permissions ?? {})}
+              className="mt-3"
+            />
+          </>
+        ) : (
+          <>
+            <div className="text-sm font-medium">{APPROVAL_LABEL[task.approval_mode]}</div>
+            <div className="text-sm text-[var(--muted)]">{APPROVAL_DESCRIPTION[task.approval_mode]}</div>
+          </>
+        )}
+      </div>
+      {workflow && <FailuresSection task={task} onChanged={onChanged} />}
+      {!workflow && <NotesSection task={task} onChanged={onChanged} />}
+      <RunsSection task={task} />
+    </div>
+  );
 }
 
 export function ScheduledTaskDetail({
@@ -292,6 +418,18 @@ export function ScheduledTaskDetail({
   const [starting, setStarting] = useState(false);
   const [askingInputs, setAskingInputs] = useState(false);
   const workflow = task.workflow;
+  const [view, setView] = useState<TaskView>(() => (focusStepId ? "detailed" : loadTaskView()));
+  // A run's "Edit step" opens the step, which only the detailed view shows.
+  const [seenFocus, setSeenFocus] = useState(focusStepId);
+  if (focusStepId !== seenFocus) {
+    setSeenFocus(focusStepId);
+    if (focusStepId) setView("detailed");
+  }
+  const chooseView = (next: TaskView) => {
+    setView(next);
+    saveTaskView(next);
+  };
+  const simple = Boolean(workflow) && view === "simple";
 
   const start = (inputs?: Record<string, unknown>) => {
     setAskingInputs(false);
@@ -359,64 +497,31 @@ export function ScheduledTaskDetail({
           </div>
         </div>
 
-        <div className="mt-2 flex items-center gap-2">
-          <ToggleSwitch on={task.enabled} onClick={toggleEnabled} label={task.enabled ? "Pause task" : "Resume task"} />
-          <span
-            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-              task.enabled
-                ? "bg-green-500/15 text-green-600 dark:text-green-400"
-                : "bg-[var(--card-bg)] text-[var(--muted)]"
-            }`}
-          >
-            {task.enabled ? "Active" : "Paused"}
-          </span>
-          <span className="text-sm text-[var(--muted)]">{formatNextRun(task)}</span>
-          {workflow && <span className="text-sm text-[var(--muted)]">·</span>}
-          <WorkflowBadge task={task} />
-        </div>
+        <StatusRow task={task} view={view} onView={chooseView} onToggle={toggleEnabled} />
 
         <div className="mt-4 border-t border-[var(--border)]" />
 
-        <div className="mt-6 flex flex-col gap-6">
-          {workflow ? (
-            <TaskWorkflowSection workflow={workflow} persist={saveWorkflow} focusStepId={focusStepId} />
-          ) : (
-            <InstructionsSection prompt={task.prompt} />
-          )}
-          <div>
-            <SectionLabel>Repeats</SectionLabel>
-            <div className="text-sm font-medium">{describeSchedule(task.schedule)}</div>
-          </div>
-          <div>
-            <SectionLabel>Environment</SectionLabel>
-            <EnvironmentName id={task.environment ?? DEFAULT_ENVIRONMENT} />
-          </div>
-          <div>
-            <SectionLabel>Permissions</SectionLabel>
-            {workflow ? (
-              <>
-                <div className="text-sm text-[var(--muted)]">
-                  Steps run as saved, without asking each time. The run also pauses at approval steps, and at
-                  anything below it hasn’t been allowed.
-                </div>
-                <WorkflowPermissions
-                  workflow={workflow}
-                  triggerId={task.trigger_id}
-                  version={JSON.stringify(task.permissions ?? {})}
-                  className="mt-3"
+        {simple && workflow ? (
+          <div className="mt-6">
+            <ScheduledTaskSimple
+              task={task}
+              workflow={workflow}
+              persist={saveWorkflow}
+              onEdit={onEdit}
+              onShowDetails={() => chooseView("detailed")}
+              onChanged={onChanged}
+              runs={<RunsSection task={task} recent />}
+              environment={
+                <EnvironmentName
+                  id={task.environment ?? DEFAULT_ENVIRONMENT}
+                  className="inline font-medium text-[var(--fg)]"
                 />
-              </>
-            ) : (
-              <>
-                <div className="text-sm font-medium">{APPROVAL_LABEL[task.approval_mode]}</div>
-                <div className="text-sm text-[var(--muted)]">{APPROVAL_DESCRIPTION[task.approval_mode]}</div>
-              </>
-            )}
+              }
+            />
           </div>
-          {workflow && <FailuresSection task={task} onChanged={onChanged} />}
-          {!workflow && <NotesSection task={task} onChanged={onChanged} />}
-          <RunsSection task={task} />
-        </div>
+        ) : (
+          <DetailedBody task={task} persist={saveWorkflow} focusStepId={focusStepId} onChanged={onChanged} />
+        )}
       </div>
 
       {askingInputs && workflow && (

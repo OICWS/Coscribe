@@ -148,6 +148,16 @@ interface ScheduledTaskModalProps {
  * action, and the detail page's pencil icon (all pass a different `task`
  * prop into the same component rather than duplicating the form three
  * times). */
+/** A workflow task's environment, named as one: a bare "Default" reads as nothing. */
+function EnvironmentRow({ environment, onPick }: { environment: string; onPick: (id: string) => void }) {
+  return (
+    <div className="flex items-center gap-1 border-t border-[var(--border)] bg-[var(--card-bg)] px-3 py-2">
+      <span className="text-[var(--muted)]">Runs in the environment</span>
+      <EnvironmentPicker current={environment} disabled={false} onPick={onPick} forTask />
+    </div>
+  );
+}
+
 export function ScheduledTaskModal({
   task,
   draft,
@@ -268,9 +278,7 @@ export function ScheduledTaskModal({
           {workflow ? (
             <div className="overflow-hidden rounded-md border border-[var(--border)] text-sm">
               <div className="px-3 py-2.5 text-[var(--muted)]">{workflowSummary(workflow, isEdit)}</div>
-              <div className="border-t border-[var(--border)] bg-[var(--card-bg)] px-3 py-2">
-                <EnvironmentPicker current={environment} disabled={false} onPick={setEnvironment} forTask />
-              </div>
+              <EnvironmentRow environment={environment} onPick={setEnvironment} />
             </div>
           ) : (
             <div>
