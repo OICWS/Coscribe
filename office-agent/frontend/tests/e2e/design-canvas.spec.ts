@@ -125,3 +125,42 @@ test("a link from a played artboard to another shows that artboard, played too",
   await expect(page.locator('iframe[title="Checkout"]')).toHaveCSS("pointer-events", "auto");
   await expect(page.getByTestId("board-menu")).toBeVisible();
 });
+
+const INSPECTED = '{\\"boards\\": [{\\"id\\": \\"card\\", \\"title\\": \\"Card\\", \\"file\\": \\"card.html\\", \\"width\\": 400, \\"height\\": 300}]}';
+
+test("the properties panel shows an artboard's elements and the style of the one picked", async ({ page }) => {
+  const name = `inspect-${Math.random().toString(36).slice(2, 8)}`;
+  mkdirSync(join(workspace, `${name}.design`), { recursive: true });
+  const card =
+    "<html><head><style>body{margin:0;font-family:Georgia,serif;color:#123456}.row{display:flex;gap:12px;padding:20px}" +
+    "h1{font-size:40px;margin:0}</style></head><body><div class='row'><h1>Hello</h1><p>World</p></div></body></html>";
+  writeFileSync(join(workspace, `${name}.design`, "card.html"), card);
+
+  await page.goto(freshThreadPath(name));
+  await waitForConnected(page);
+  await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${INSPECTED}"}]] [[stub-say Done.]]`);
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await page.getByTitle(`Open ${name}.design.json`).click();
+  await expect(page.frameLocator('iframe[title="Card"]').locator("h1")).toBeVisible();
+
+  await page.getByRole("button", { name: "Properties", exact: true }).click();
+  const panel = page.getByRole("complementary", { name: "Properties" });
+  await expect(panel.getByText("Select an artboard")).toBeVisible();
+
+  // A click on the board selects it and picks the element under the pointer: the heading, top-left.
+  const board = (await page.getByTestId("board-card").boundingBox())!;
+  await page.mouse.click(board.x + board.width * 0.12, board.y + board.height * 0.15);
+  const tree = panel.getByRole("tree", { name: "Elements" });
+  await expect(tree.getByRole("treeitem", { name: /^Row/ })).toBeVisible();
+  await expect(tree.getByRole("treeitem", { name: /^Text.*Hello/ })).toHaveAttribute("aria-selected", "true");
+  await expect(panel.getByText("40px")).toBeVisible();
+  await expect(page.getByTestId("inspected-element")).toBeVisible();
+
+  // The tree picks too; the Code tab shows the matching rule and what is inherited.
+  await tree.getByRole("treeitem", { name: /^Row/ }).click();
+  await panel.getByRole("tab", { name: "Code" }).click();
+  await expect(panel.getByText(".row", { exact: true })).toBeVisible();
+  await expect(panel.getByText("gap: 12px;")).toBeVisible();
+  await expect(panel.getByText("From <body>")).toBeVisible();
+});

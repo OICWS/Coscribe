@@ -1,7 +1,7 @@
-import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
+import { useRef, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { designFileUrl } from "../../lib/artifacts";
 import type { CanvasBoard, CanvasNote } from "../../lib/designCanvas";
-import { CursorClickIcon, HandIcon, MoonIcon, PlayIcon, SunIcon } from "../icons";
+import { CursorClickIcon, HandIcon, MoonIcon, PanelRightIcon, PlayIcon, SunIcon } from "../icons";
 import { BoardPlayButton } from "./BoardPlay";
 import type { PlayMode } from "./useBoardPlay";
 import type { Tool } from "./useCanvasEditing";
@@ -66,16 +66,18 @@ interface ZoomProps {
   scheme: Scheme;
   /** Absent when the canvas declares no variables. */
   variablesOpen?: boolean;
+  propertiesOpen: boolean;
   onPlay: () => void;
   onZoom: (factor: number) => void;
   onFit: () => void;
   onScheme: (scheme: Scheme) => void;
   onVariables: () => void;
+  onProperties: () => void;
 }
 
 /** The variables, light or dark, Play and the zoom, at the canvas's top-right; the percentage fits
  * everything. */
-export function CanvasZoom({ zoom, scheme, variablesOpen, onPlay, onZoom, onFit, onScheme, onVariables }: ZoomProps) {
+export function CanvasZoom({ zoom, scheme, variablesOpen, propertiesOpen, onPlay, onZoom, onFit, onScheme, onVariables, onProperties }: ZoomProps) {
   const plain = "h-8 rounded-lg px-2 hover:bg-[var(--card-bg)]";
   const dark = scheme === "dark";
   return (
@@ -87,6 +89,9 @@ export function CanvasZoom({ zoom, scheme, variablesOpen, onPlay, onZoom, onFit,
       )}
       <ToolButton label={dark ? "Show light" : "Show dark"} active={false} onClick={() => onScheme(dark ? "light" : "dark")}>
         {dark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
+      </ToolButton>
+      <ToolButton label="Properties" active={propertiesOpen} onClick={onProperties}>
+        <PanelRightIcon className="h-4 w-4" />
       </ToolButton>
       <ToolButton label="Play full screen" active={false} onClick={onPlay}>
         <PlayIcon className="h-4 w-4" />
@@ -117,6 +122,8 @@ export function BoardFrame({
   onPress,
   onPlay,
   onEdit,
+  onPick,
+  highlight,
 }: {
   board: CanvasBoard;
   threadId: string;
@@ -128,7 +135,12 @@ export function BoardFrame({
   onPress: (e: ReactPointerEvent) => void;
   onPlay: (mode: PlayMode) => void;
   onEdit: () => void;
+  /** A click that did not drag, at a point of the board's page. */
+  onPick?: (x: number, y: number) => void;
+  /** The inspected element's box, in the page's pixels. */
+  highlight?: { x: number; y: number; width: number; height: number } | null;
 }) {
+  const down = useRef<{ x: number; y: number } | null>(null);
   return (
     <div className="absolute" style={{ left: board.x, top: board.y, width: board.width, height: board.height }}>
       <div className="absolute bottom-full left-0 z-10 mb-1.5 flex origin-bottom-left items-center gap-2" style={{ transform: `scale(${1 / zoom})`, width: board.width * zoom }}>
@@ -148,7 +160,24 @@ export function BoardFrame({
         <div
           data-testid={`board-${board.id}`}
           className={`absolute inset-0 ${selected ? "outline outline-2 outline-[var(--accent)]" : "hover:outline hover:outline-1 hover:outline-[var(--accent)]"}`}
-          onPointerDown={onPress}
+          onPointerDown={(e) => {
+            down.current = { x: e.clientX, y: e.clientY };
+            onPress(e);
+          }}
+          onClick={(e) => {
+            const from = down.current;
+            if (!onPick || !from || Math.hypot(e.clientX - from.x, e.clientY - from.y) > 3) return;
+            // The cover is drawn scaled with the canvas; the page's own pixels are the board's.
+            const box = e.currentTarget.getBoundingClientRect();
+            onPick(((e.clientX - box.left) * board.width) / box.width, ((e.clientY - box.top) * board.height) / box.height);
+          }}
+        />
+      )}
+      {highlight && (
+        <div
+          data-testid="inspected-element"
+          className="pointer-events-none absolute outline outline-2 outline-[var(--accent)]"
+          style={{ left: highlight.x, top: highlight.y, width: highlight.width, height: highlight.height }}
         />
       )}
     </div>

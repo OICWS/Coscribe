@@ -4,12 +4,14 @@ import { PanelFileMenu } from "../artifacts/PanelFileMenu";
 import { PanelTitleButton } from "../artifacts/PanelTitleButton";
 import { useDockPanel } from "../dock/dockContext";
 import { FullScreenPlayer } from "./BoardPlay";
+import { BoardInspector } from "./BoardInspector";
 import { BoardFrame, CanvasTools, CanvasZoom, NoteCard } from "./CanvasParts";
 import { CanvasVariables } from "./CanvasVariables";
+import { useBoardInspector } from "./useBoardInspector";
 import { useBoardLinks } from "./useBoardLinks";
 import { useBoardPlay } from "./useBoardPlay";
 import { useCanvasEditing, type Tool } from "./useCanvasEditing";
-import { useCanvasLook } from "./useCanvasLook";
+import { useCanvasLook, type Scheme } from "./useCanvasLook";
 import { useCanvasView } from "./useCanvasView";
 
 /** Space held turns any tool into the hand, as long as no text is being typed; Escape stops playing. */
@@ -74,10 +76,109 @@ function CanvasHeader({ threadId, path, problem, onFileChanged }: { threadId: st
   );
 }
 
+/** The top-right bar and the variables it opens. */
+function CanvasBars({
+  canvas,
+  zoom,
+  look,
+  inspector,
+  onPlay,
+  onZoom,
+  onFit,
+}: {
+  canvas: Canvas | null;
+  zoom: number;
+  look: ReturnType<typeof useCanvasLook>;
+  inspector: ReturnType<typeof useBoardInspector>;
+  onPlay: () => void;
+  onZoom: (factor: number) => void;
+  onFit: () => void;
+}) {
+  const hasVariables = Boolean(canvas?.variables.length);
+  return (
+    <>
+      <CanvasZoom
+        zoom={zoom}
+        scheme={look.scheme}
+        variablesOpen={hasVariables ? look.variablesOpen : undefined}
+        propertiesOpen={inspector.open}
+        onPlay={onPlay}
+        onZoom={onZoom}
+        onFit={onFit}
+        onScheme={look.setScheme}
+        onVariables={() => look.setVariablesOpen((open) => !open)}
+        onProperties={() => inspector.setOpen((open) => !open)}
+      />
+      {hasVariables && look.variablesOpen && <CanvasVariables variables={canvas!.variables} onSet={look.setVariable} onClose={() => look.setVariablesOpen(false)} />}
+    </>
+  );
+}
+
+/** Every artboard on the canvas, with what playing and inspecting do to it. */
+function CanvasBoards({
+  canvas,
+  threadId,
+  version,
+  zoom,
+  scheme,
+  selected,
+  play,
+  inspector,
+  onPress,
+}: {
+  canvas: Canvas;
+  threadId: string;
+  version: string;
+  zoom: number;
+  scheme: Scheme;
+  selected: string | null;
+  play: ReturnType<typeof useBoardPlay>;
+  inspector: ReturnType<typeof useBoardInspector>;
+  onPress: (e: ReactPointerEvent, id: string) => void;
+}) {
+  return canvas.boards.map((board) => (
+    <BoardFrame
+      key={board.id}
+      board={board}
+      threadId={threadId}
+      version={version}
+      zoom={zoom}
+      live={play.live.includes(board.id)}
+      selected={selected === board.id}
+      scheme={scheme}
+      onPress={(e) => onPress(e, board.id)}
+      onPlay={(mode) => play.play(board.id, mode)}
+      onEdit={() => play.edit(board.id)}
+      onPick={inspector.open ? inspector.pick : undefined}
+      highlight={inspector.open && selected === board.id ? inspector.element?.box : null}
+    />
+  ));
+}
+
+/** The properties panel beside the canvas, for the selected artboard. */
+function InspectorAside({ canvas, selected, inspector }: { canvas: Canvas | null; selected: string | null; inspector: ReturnType<typeof useBoardInspector> }) {
+  return (
+    <BoardInspector
+      boardTitle={canvas?.boards.find((b) => b.id === selected)?.title ?? null}
+      tree={inspector.tree}
+      element={inspector.element}
+      onSelect={inspector.select}
+      onClose={() => inspector.setOpen(false)}
+    />
+  );
+}
+
+interface PanelProps {
+  threadId: string;
+  path: string;
+  refreshKey: string;
+  onFileChanged?: (path: string | null) => void;
+}
+
 /** A Design canvas beside the conversation: its artboards, each its own page in a sandboxed frame,
  * laid out on a canvas the person pans and zooms. Boards and notes move with the select tool and
  * the moves are saved to the canvas file; a board played hands the pointer to its own page. */
-export function DesignCanvasPanel({ threadId, path, refreshKey, onFileChanged }: { threadId: string; path: string; refreshKey: string; onFileChanged?: (path: string | null) => void }) {
+export function DesignCanvasPanel({ threadId, path, refreshKey, onFileChanged }: PanelProps) {
   const stage = useRef<HTMLDivElement>(null);
   const { canvas, setCanvas, problem, setProblem } = useCanvasFile(threadId, path, refreshKey);
   const [tool, setTool] = useState<Tool>("select");
@@ -91,7 +192,8 @@ export function DesignCanvasPanel({ threadId, path, refreshKey, onFileChanged }:
   const edit = useCanvasEditing({ threadId, path, canvas, setCanvas, view, setView, toCanvas, onProblem: setProblem });
   const look = useCanvasLook(threadId, path, setCanvas, setProblem);
   useBoardLinks(area, canvas, play.go);
-  const hasVariables = Boolean(canvas?.variables.length);
+  const version = `${refreshKey}.${look.served}`;
+  const inspector = useBoardInspector(area, selected, `${version}.${look.scheme}`);
 
   const panning = tool === "hand" || spaceHeld;
   const onStageDown = (e: ReactPointerEvent) => {
@@ -108,63 +210,62 @@ export function DesignCanvasPanel({ threadId, path, refreshKey, onFileChanged }:
   return (
     <div className="flex h-full min-h-0 flex-col">
       <CanvasHeader threadId={threadId} path={path} problem={problem} onFileChanged={onFileChanged} />
-      <div ref={area} className="relative min-h-0 flex-1 overflow-hidden bg-[var(--card-bg)]">
-        <CanvasTools tool={tool} onTool={setTool} />
-        <CanvasZoom
-          zoom={view.zoom}
-          scheme={look.scheme}
-          variablesOpen={hasVariables ? look.variablesOpen : undefined}
-          onPlay={() => canvas?.boards.length && play.play(selected ?? canvas.boards[0].id, "full")}
-          onZoom={zoomBy}
-          onFit={fit}
-          onScheme={look.setScheme}
-          onVariables={() => look.setVariablesOpen((open) => !open)}
-        />
-        {hasVariables && look.variablesOpen && <CanvasVariables variables={canvas!.variables} onSet={look.setVariable} onClose={() => look.setVariablesOpen(false)} />}
-        <div
-          ref={stage}
-          data-testid="canvas-stage"
-          className={`absolute inset-0 ${panning ? "cursor-grab" : tool === "note" ? "cursor-crosshair" : ""}`}
-          onPointerDown={onStageDown}
-          onPointerMove={edit.move}
-          onPointerUp={edit.end}
-        >
-          <div className="absolute left-0 top-0 origin-top-left" style={{ transform: `scale(${view.zoom}) translate(${-view.x}px, ${-view.y}px)` }}>
-            {canvas?.boards.map((board) => (
-              <BoardFrame
-                key={board.id}
-                board={board}
-                threadId={threadId}
-                version={`${refreshKey}.${look.served}`}
-                zoom={view.zoom}
-                live={play.live.includes(board.id)}
-                selected={selected === board.id}
-                scheme={look.scheme}
-                onPress={(e) => {
-                  if (panning || tool === "note") return;
-                  setSelected(board.id);
-                  edit.start(e, "board", board.id);
-                }}
-                onPlay={(mode) => play.play(board.id, mode)}
-                onEdit={() => play.edit(board.id)}
-              />
-            ))}
-            {canvas?.notes.map((note) => (
-              <NoteCard
-                key={note.id}
-                note={note}
-                editing={editing === note.id}
-                onPress={(e) => !panning && edit.start(e, "note", note.id)}
-                onEdit={() => setEditing(note.id)}
-                onDone={(text) => {
-                  setEditing(null);
-                  edit.editNote(note.id, text);
-                }}
-              />
-            ))}
+      <div className="flex min-h-0 flex-1">
+        <div ref={area} className="relative min-w-0 flex-1 overflow-hidden bg-[var(--card-bg)]">
+          <CanvasTools tool={tool} onTool={setTool} />
+          <CanvasBars
+            canvas={canvas}
+            zoom={view.zoom}
+            look={look}
+            inspector={inspector}
+            onPlay={() => canvas?.boards.length && play.play(selected ?? canvas.boards[0].id, "full")}
+            onZoom={zoomBy}
+            onFit={fit}
+          />
+          <div
+            ref={stage}
+            data-testid="canvas-stage"
+            className={`absolute inset-0 ${panning ? "cursor-grab" : tool === "note" ? "cursor-crosshair" : ""}`}
+            onPointerDown={onStageDown}
+            onPointerMove={edit.move}
+            onPointerUp={edit.end}
+          >
+            <div className="absolute left-0 top-0 origin-top-left" style={{ transform: `scale(${view.zoom}) translate(${-view.x}px, ${-view.y}px)` }}>
+              {canvas && (
+                <CanvasBoards
+                  canvas={canvas}
+                  threadId={threadId}
+                  version={version}
+                  zoom={view.zoom}
+                  scheme={look.scheme}
+                  selected={selected}
+                  play={play}
+                  inspector={inspector}
+                  onPress={(e, id) => {
+                    if (panning || tool === "note") return;
+                    setSelected(id);
+                    edit.start(e, "board", id);
+                  }}
+                />
+              )}
+              {canvas?.notes.map((note) => (
+                <NoteCard
+                  key={note.id}
+                  note={note}
+                  editing={editing === note.id}
+                  onPress={(e) => !panning && edit.start(e, "note", note.id)}
+                  onEdit={() => setEditing(note.id)}
+                  onDone={(text) => {
+                    setEditing(null);
+                    edit.editNote(note.id, text);
+                  }}
+                />
+              ))}
+            </div>
           </div>
+          {play.fullBoard && <FullScreenPlayer board={play.fullBoard} threadId={threadId} version={version} scheme={look.scheme} onClose={play.stop} />}
         </div>
-        {play.fullBoard && <FullScreenPlayer board={play.fullBoard} threadId={threadId} version={`${refreshKey}.${look.served}`} scheme={look.scheme} onClose={play.stop} />}
+        {inspector.open && <InspectorAside canvas={canvas} selected={selected} inspector={inspector} />}
       </div>
     </div>
   );
