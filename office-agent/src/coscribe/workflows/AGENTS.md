@@ -32,6 +32,7 @@ history, so this package does not import `runtime_lg`).
   waits for a person (`agent_step.decide`, `permissions.outside_declared`), never runs unasked.
 - A test run stops before an approval step and before a step marked `irreversible` (unless
   `send_for_real`, refused when no one is watching; decision 0029), and writes no run history.
+  A revision (`revise_workflow`) keeps every step the workflow it revises marks `irreversible`.
 - Healing (decision 0030) acts only for a browser tool step, only at `self_healing` or above,
   with the page tools on the sites `granted_by` lists, and on a step marked `irreversible` every
   call that does more than read waits for a person; what it did is on the step's record
