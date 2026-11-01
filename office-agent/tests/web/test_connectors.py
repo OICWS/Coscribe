@@ -987,9 +987,8 @@ def test_an_expired_oauth_sign_in_is_refreshed_without_the_browser(
         assert len(opened) == 1
 
 
-@pytest.mark.parametrize("saved_expiry", ["passed", "missing"])
 def test_a_token_that_expired_while_the_app_was_closed_is_refreshed_without_the_browser(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, saved_expiry: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # A reconnect builds a new provider, as a restart does, so it starts from the file alone.
     with _oauth_connector_client(tmp_path, monkeypatch) as (client, server, opened):
@@ -1000,15 +999,28 @@ def test_a_token_that_expired_while_the_app_was_closed_is_refreshed_without_the_
         [saved] = tmp_path.rglob("mcp_oauth/docs.json")
         data = json.loads(saved.read_text(encoding="utf-8"))
         assert data["expires_at"] > time.time() and "token_endpoint" in data["auth_server"]
-        if saved_expiry == "passed":
-            data["expires_at"] = time.time() - 1
-        else:
-            # Saved before the expiry was kept: refreshed once rather than trusted.
-            del data["expires_at"]
+        data["expires_at"] = time.time() - 1
         saved.write_text(json.dumps(data), encoding="utf-8")
 
         assert client.post("/api/mcp/servers/docs/reconnect").json()["connected"] is True
         assert len(opened) == 1 and server.provider.refreshes == 1
+
+
+def test_a_saved_token_whose_expiry_is_unknown_is_used_while_it_works(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Unknown expiry: the token is used while it works, and a failing refresh never costs it.
+    with _oauth_connector_client(tmp_path, monkeypatch) as (client, server, opened):
+        _add_oauth_connector(client, server)
+        _wait_until(lambda: client.get("/api/mcp/servers").json()["docs"]["connected"])
+        server.provider.refresh.clear()
+        [saved] = tmp_path.rglob("mcp_oauth/docs.json")
+        data = json.loads(saved.read_text(encoding="utf-8"))
+        del data["expires_at"], data["auth_server"]
+        saved.write_text(json.dumps(data), encoding="utf-8")
+
+        assert client.post("/api/mcp/servers/docs/reconnect").json()["connected"] is True
+        assert len(opened) == 1 and server.provider.refreshes == 0
 
 
 def test_a_refused_oauth_sign_in_says_so_and_can_be_retried(
@@ -1195,3 +1207,49 @@ def test_connector_manager_refresh_gives_every_open_session_the_current_tools(
     asyncio.run(manager.refresh_all_sessions_extra_tools())
 
     assert first.seen == [tool] and second.seen == [tool]
+
+
+def test_saved_oauth_tokens_keep_a_refresh_token_left_out_and_no_metadata_from_before(
+    tmp_path: Path,
+) -> None:
+    from mcp.shared.auth import OAuthMetadata, OAuthToken
+
+    from coscribe.runtime_lg import McpOAuth
+
+    storage = McpOAuth(tmp_path)._storage("docs")
+    storage.metadata = OAuthMetadata.model_validate(
+        {
+            "issuer": "https://old.example",
+            "authorization_endpoint": "https://old.example/authorize",
+            "token_endpoint": "https://old.example/token",
+            "response_types_supported": ["code"],
+        }
+    )
+    asyncio.run(storage.set_tokens(OAuthToken(access_token="a", refresh_token="r", expires_in=60)))
+    assert storage.auth_server() is not None and storage.expires_at() is not None
+
+    # A refresh response that leaves the refresh token out, from a server with no metadata.
+    storage.metadata = None
+    asyncio.run(storage.set_tokens(OAuthToken(access_token="b")))
+    kept = asyncio.run(storage.get_tokens())
+
+    assert kept is not None and (kept.access_token, kept.refresh_token) == ("b", "r")
+    assert storage.auth_server() is None and storage.expires_at() is None
+
+
+def test_a_refused_refresh_is_not_tried_again_on_the_next_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with _oauth_connector_client(tmp_path, monkeypatch) as (client, server, opened):
+        _add_oauth_connector(client, server)
+        _wait_until(lambda: client.get("/api/mcp/servers").json()["docs"]["connected"])
+        server.provider.refresh.clear()
+        [saved] = tmp_path.rglob("mcp_oauth/docs.json")
+        data = json.loads(saved.read_text(encoding="utf-8"))
+        data["expires_at"] = time.time() - 1
+        saved.write_text(json.dumps(data), encoding="utf-8")
+
+        client.post("/api/mcp/servers/docs/reconnect")
+
+        assert "expires_at" not in json.loads(saved.read_text(encoding="utf-8"))
+        assert len(opened) == 1

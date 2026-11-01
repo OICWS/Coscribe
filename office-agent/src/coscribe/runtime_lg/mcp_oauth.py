@@ -34,6 +34,7 @@ treated as a lost sign-in.
 from __future__ import annotations
 
 import asyncio
+import functools
 import json
 import re
 import time
@@ -110,9 +111,9 @@ class _Storage:
     def __init__(self, path: Path, name: str) -> None:
         self._path = path
         self._name = name
-        # Set by `auth_for`: the metadata the provider discovered, read
-        # when tokens are saved so a later process can refresh them.
-        self.metadata: Callable[[], OAuthMetadata | None] = lambda: None
+        # Set by the provider: the metadata it discovered, saved with the
+        # tokens so a later process can refresh them.
+        self.metadata: OAuthMetadata | None = None
 
     def _read(self) -> dict[str, Any]:
         try:
@@ -138,6 +139,7 @@ class _Storage:
             delete_secret(data.pop(key))
             if key == "tokens":
                 data.pop(_EXPIRES_AT, None)
+                data.pop(_AUTH_SERVER, None)
             self._write(data)
 
     def load(self, key: str) -> str | None:
@@ -150,16 +152,31 @@ class _Storage:
         return OAuthToken.model_validate_json(raw) if raw else None
 
     async def set_tokens(self, tokens: OAuthToken) -> None:
-        self._save("tokens", tokens.model_dump_json(exclude_none=True))
         data = self._read()
+        old = resolve_secret(data.get("tokens"))
+        if tokens.refresh_token is None and old:
+            # RFC 6749 section 6: a refresh may leave the refresh token out and
+            # keep the old one valid; the SDK would save the response as is.
+            from mcp.shared.auth import OAuthToken
+
+            kept = OAuthToken.model_validate_json(old).refresh_token
+            tokens = tokens.model_copy(update={"refresh_token": kept})
+        delete_secret(data.get("tokens"))
+        data["tokens"] = store_secret(
+            f"mcp-oauth:{self._name}:tokens", tokens.model_dump_json(exclude_none=True)
+        )
+        data.pop(_EXPIRES_AT, None)
         if tokens.expires_in is not None:
             data[_EXPIRES_AT] = time.time() + tokens.expires_in
-        else:
-            data.pop(_EXPIRES_AT, None)
-        metadata = self.metadata()
-        if metadata is not None:
-            data[_AUTH_SERVER] = metadata.model_dump(mode="json", exclude_none=True)
+        data.pop(_AUTH_SERVER, None)
+        if self.metadata is not None:
+            data[_AUTH_SERVER] = self.metadata.model_dump(mode="json", exclude_none=True)
         self._write(data)
+
+    def forget_expiry(self) -> None:
+        data = self._read()
+        if data.pop(_EXPIRES_AT, None) is not None:
+            self._write(data)
 
     def expires_at(self) -> float | None:
         value = self._read().get(_EXPIRES_AT)
@@ -386,7 +403,7 @@ class McpOAuth:
             except TimeoutError:
                 raise OAuthFlowError("Timed out waiting for you to sign in.") from None
 
-        provider = _provider_class()(
+        return _provider_class()(
             server_url=server_url,
             client_metadata=metadata,
             storage=storage,
@@ -394,42 +411,66 @@ class McpOAuth:
             callback_handler=callback_handler,
             timeout=SIGN_IN_TIMEOUT_SECONDS,
         )
-        storage.metadata = lambda: provider.context.oauth_metadata
-        return provider
 
 
-_PROVIDER: type[OAuthClientProvider] | None = None
-
-
+@functools.cache
 def _provider_class() -> type[OAuthClientProvider]:
     """The SDK's provider, restoring what it keeps only in memory. Built on
     first use because the SDK is imported where it is used."""
-    global _PROVIDER
-    if _PROVIDER is not None:
-        return _PROVIDER
     from mcp.client.auth import OAuthClientProvider
 
     class _Provider(OAuthClientProvider):
         async def _initialize(self) -> None:
             await super()._initialize()
             storage = self.context.storage
-            if not isinstance(storage, _Storage):
-                return
-            if self.context.oauth_metadata is None:
-                self.context.oauth_metadata = storage.auth_server()
             tokens = self.context.current_tokens
-            if tokens is None or not tokens.refresh_token:
+            if not isinstance(storage, _Storage) or tokens is None or not tokens.refresh_token:
                 return
-            # The SDK reads "no expiry" as "valid forever" and answers the
-            # server's 401 with a new sign-in, never a refresh. A token whose
-            # expiry this file doesn't know (saved before it kept one, or
-            # issued without one) is refreshed once rather than trusted.
             expires_at = storage.expires_at()
-            remaining = -1 if expires_at is None else int(expires_at - time.time())
-            self.context.update_token_expiry(tokens.model_copy(update={"expires_in": remaining}))
+            # The SDK reads "no expiry" as "valid forever" and answers the
+            # server's 401 with a new sign-in, never a refresh, so an expiry
+            # that passed while the app was closed has to be put back. An
+            # unknown one stays unknown: forcing a refresh would throw away an
+            # access token that still works whenever the refresh fails.
+            if expires_at is not None:
+                remaining = int(expires_at - time.time())
+                update = {"expires_in": remaining}
+                self.context.update_token_expiry(tokens.model_copy(update=update))
 
-    _PROVIDER = _Provider
-    return _PROVIDER
+        async def _refresh_token(self) -> httpx.Request:
+            # Lent to the refresh only: held any longer, it would stop the SDK
+            # from discovering the protected resource on a scope step-up.
+            storage = self.context.storage
+            if self.context.oauth_metadata is not None or not isinstance(storage, _Storage):
+                return await super()._refresh_token()
+            self.context.oauth_metadata = storage.auth_server()
+            try:
+                return await super()._refresh_token()
+            finally:
+                self.context.oauth_metadata = None
+
+        async def _handle_refresh_response(self, response: httpx.Response) -> bool:
+            storage = self.context.storage
+            if not isinstance(storage, _Storage):
+                return await super()._handle_refresh_response(response)
+            storage.metadata = self.context.oauth_metadata or storage.auth_server()
+            refreshed = await super()._handle_refresh_response(response)
+            if refreshed:
+                # The saved tokens kept a refresh token the response left out.
+                self.context.current_tokens = await storage.get_tokens()
+            else:
+                # Otherwise each request reloads the passed expiry and posts
+                # the same dead refresh token before reaching the 401.
+                storage.forget_expiry()
+            return refreshed
+
+        async def _handle_token_response(self, response: httpx.Response) -> None:
+            storage = self.context.storage
+            if isinstance(storage, _Storage):
+                storage.metadata = self.context.oauth_metadata
+            await super()._handle_token_response(response)
+
+    return _Provider
 
 
 class LoopbackCallback:
