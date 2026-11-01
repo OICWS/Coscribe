@@ -45,9 +45,9 @@ def heal_fixes(workflow: dict[str, Any], healed: list[dict[str, Any]]) -> dict[s
         if entry.get("carried"):
             continue
         args, was = entry.get("args") or {}, entry.get("was") or {}
-        if not args:
-            left.setdefault(step_id, {"step_id": step_id, "title": titles[step_id],
-                                      "did": str(entry.get("did") or "")})  # fmt: skip
+        if not args or entry.get("prepared"):
+            did = " ".join(str(entry.get(k) or "") for k in ("prepared", "did")).strip()
+            left.setdefault(step_id, {"step_id": step_id, "title": titles[step_id], "did": did})
         for name, now in args.items():
             if name in was:
                 proposed.setdefault((step_id, name), set()).add(str(now))

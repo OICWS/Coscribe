@@ -76,3 +76,18 @@ def test_a_heal_from_before_the_replaced_values_were_kept_offers_nothing() -> No
     result = heal_fixes(_workflow(), [_healed("name", {"ref": NEW}, {})])
 
     assert result == {"fixes": [], "workflow": None, "left": []}
+
+
+def test_a_heal_that_did_work_before_its_step_is_left_to_a_revision() -> None:
+    workflow = {"steps": [{"id": "name", "kind": "tool", "title": "Enter name",
+                           "tool": "browser_type", "args": {"ref": 'textbox "Name"'}}]}  # fmt: skip
+    heal = {"step_id": "name", "title": "Enter name", "did": "Typed the name.",
+            "args": {"ref": 'textbox "Legal name"'}, "was": {"ref": 'textbox "Name"'},
+            "prepared": "Filled Cost centre and clicked Next."}  # fmt: skip
+
+    fixes = heal_fixes(workflow, [heal])
+
+    # The renamed field is still saved; the steps it needed first are drafted in a revision.
+    assert fixes["fixes"][0]["now"] == 'textbox "Legal name"'
+    did = "Filled Cost centre and clicked Next. Typed the name."
+    assert fixes["left"] == [{"step_id": "name", "title": "Enter name", "did": did}]

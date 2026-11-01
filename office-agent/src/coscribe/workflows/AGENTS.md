@@ -35,7 +35,12 @@ history, so this package does not import `runtime_lg`).
   A revision (`revise_workflow`) keeps every step the workflow it revises marks `irreversible`.
 - Healing (decision 0030) acts only for a browser tool step, only at `self_healing` or above,
   with the page tools on the sites `granted_by` lists, and on a step marked `irreversible` every
-  call that does more than read waits for a person; what it did is on the step's record
+  call that does more than read waits for a person. To reach its step it may fill a field the
+  page now requires, correct a value the page refuses, and press the form's own Next, Continue
+  or Review (decision 0030, the maintainer's choice on 2026-11-01). `heal_guard` refuses any
+  value typed or picked that isn't in the loop's current item or the step's own arguments. It
+  sends what another `irreversible` step sends only to resend one that ran earlier in the same
+  pass, and then every change waits for a person. What it did is on the step's record
   (`agent.healed`) and in the run report. A heal changes the saved workflow only when the person
   saves its fixes (`heal_fixes`), and a fix replaces an argument only while it still holds the
   value the heal replaced.
