@@ -1,10 +1,11 @@
-import { Fragment, useMemo, type ReactNode } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { AUTONOMY_LABEL, KIND_COLOR, KIND_LABEL } from "../../lib/workflowLabels";
+import { plainDetail, plainKind } from "../../lib/plainSteps";
 import { type NodeRunState, runMap } from "../../lib/workflowRunMap";
 import { placeSteps } from "../../lib/workflowTree";
 import type { ScheduledRun } from "../../types/settings";
-import type { BranchStep, LoopStep, Workflow, WorkflowStep } from "../../types/workflow";
-import { LoopIcon } from "../icons";
+import type { BranchStep, LoopStep, Workflow, WorkflowInput, WorkflowStep } from "../../types/workflow";
+import { FileTextIcon, GlobeIcon, LoopIcon, TerminalIcon } from "../icons";
 import { StepKindTile, VarToken } from "./parts";
 import { StatusDot } from "./StatusDot";
 import { StepSummary } from "./StepSummary";
@@ -20,6 +21,8 @@ interface CanvasContext {
   /** Each step's state when the canvas shows a run. */
   states?: Map<string, NodeRunState>;
   onOpenStep?: (stepId: string) => void;
+  /** The simple view: each step says what it does in plain words, without tool or variable names. */
+  plain?: { inputs: WorkflowInput[] };
 }
 
 const LINE = "bg-[var(--border-hover)]";
@@ -93,13 +96,84 @@ function runLook(state: NodeRunState | undefined): { className: string; ring?: s
   return { className: "" };
 }
 
+function cannotUndo(step: WorkflowStep): boolean {
+  return (step.kind === "tool" || step.kind === "agent") && step.irreversible;
+}
+
+/** A step for someone who reads the task rather than builds it: what kind of thing it is, its
+ * title, and one sentence on what it does. */
+// The simple view colours a step by what a person sees it touch; a program is background work,
+// so it takes the quiet colour.
+function plainColor(step: WorkflowStep): string {
+  if (step.kind === "script") return KIND_COLOR.tool;
+  if (step.kind !== "tool") return KIND_COLOR[step.kind];
+  if (step.tool.startsWith("browser_")) return "var(--kind-web)";
+  return plainKind(step) === "File" ? "var(--kind-file)" : KIND_COLOR.tool;
+}
+
+function PlainTile({ step, color }: { step: WorkflowStep; color: string }) {
+  const web = step.kind === "tool" && step.tool.startsWith("browser_");
+  const file = step.kind === "tool" && plainKind(step) === "File";
+  if (!web && !file && step.kind !== "script") return <StepKindTile step={step} size="sm" />;
+  const Glyph = web ? GlobeIcon : file ? FileTextIcon : TerminalIcon;
+  return (
+    <span
+      aria-hidden="true"
+      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
+      style={{ color, backgroundColor: `color-mix(in srgb, ${color} 13%, transparent)` }}
+    >
+      <Glyph className="h-3 w-3" />
+    </span>
+  );
+}
+
+function PlainBody({ step, inputs, state }: { step: WorkflowStep; inputs: WorkflowInput[]; state?: NodeRunState }) {
+  const color = plainColor(step);
+  const detail = plainDetail(step, inputs);
+  return (
+    <>
+      <span className="flex items-center gap-2">
+        <PlainTile step={step} color={color} />
+        <span
+          className="rounded-full px-2 py-px text-[11px] font-medium"
+          style={{ color, backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)` }}
+        >
+          {plainKind(step)}
+        </span>
+        {cannotUndo(step) && (
+          <span className="ml-auto rounded-full bg-[color-mix(in_srgb,var(--warning)_18%,transparent)] px-1.5 py-0.5 text-[11px] font-medium">
+            Can’t be undone
+          </span>
+        )}
+        {state && <StatusDot status={state.status} />}
+      </span>
+      <span className="mt-1.5 line-clamp-2 block text-sm font-medium leading-snug" title={step.title}>
+        {step.title}
+      </span>
+      {detail && <span className="mt-1 line-clamp-2 block text-xs text-[var(--muted)]">{detail}</span>}
+    </>
+  );
+}
+
 function StepNode({ step, ctx }: { step: WorkflowStep; ctx: CanvasContext }) {
   const color = KIND_COLOR[step.kind];
   const state = ctx.states?.get(step.id);
   const note = state ? runText(step, state) : null;
   const look = runLook(state);
   const kind = step.kind === "agent" ? `Agent · ${AUTONOMY_LABEL[step.autonomy]}` : KIND_LABEL[step.kind];
-  const body = (
+  const body = ctx.plain ? (
+    <>
+      <PlainBody step={step} inputs={ctx.plain.inputs} state={state} />
+      {note && (
+        <span
+          className="mt-1.5 block border-t border-[var(--border)] pt-1.5 text-xs font-medium"
+          style={{ color: look.ring }}
+        >
+          {note}
+        </span>
+      )}
+    </>
+  ) : (
     <>
       <span className="flex items-center gap-2">
         <StepKindTile step={step} size="sm" />
@@ -127,7 +201,7 @@ function StepNode({ step, ctx }: { step: WorkflowStep; ctx: CanvasContext }) {
   );
   const className = `block w-64 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 pb-2.5 pt-2 text-left shadow-sm ${look.className}`;
   const style = {
-    borderTopColor: color,
+    borderTopColor: ctx.plain ? plainColor(step) : color,
     borderTopWidth: 3,
     ...(look.ring ? { boxShadow: `0 0 0 2px color-mix(in srgb, ${look.ring} 45%, transparent)` } : {}),
   };
@@ -171,8 +245,8 @@ function ArmLabel({ taken, children }: { taken: boolean; children: ReactNode }) 
 
 function BranchBlock({ step, ctx }: { step: BranchStep; ctx: CanvasContext }) {
   const arms: [string, string, WorkflowStep[]][] = [
-    ["then", "Then", step.then],
-    ["otherwise", "Otherwise", step.otherwise],
+    ["then", ctx.plain ? "If so" : "Then", step.then],
+    ["otherwise", ctx.plain ? "If not" : "Otherwise", step.otherwise],
   ];
   const taken = ctx.states?.get(step.id)?.arms ?? [];
   return (
@@ -210,6 +284,54 @@ function BranchBlock({ step, ctx }: { step: BranchStep; ctx: CanvasContext }) {
   );
 }
 
+/** The simple view names a loop once, on its frame: its title, then what it repeats for. */
+function PlainLoopHeader({ step, ctx }: { step: LoopStep; ctx: CanvasContext }) {
+  const color = KIND_COLOR.loop;
+  return (
+    <button
+      type="button"
+      disabled={!ctx.onOpenStep}
+      data-canvas-step={step.id}
+      className="mb-1 flex w-64 items-start gap-2 rounded-lg px-1 py-0.5 text-left enabled:hover:bg-[var(--card-bg)]"
+      onClick={() => ctx.onOpenStep?.(step.id)}
+    >
+      <LoopIcon className="mt-0.5 h-4 w-4 shrink-0" style={{ color }} />
+      <span className="min-w-0">
+        <span className="block text-sm font-medium">{step.title}</span>
+        <span className="block text-xs" style={{ color }}>
+          Repeats for each {step.item.replace(/_/g, " ")}, up to {step.max_items}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+// A long loop body shows its first steps and a button for the rest, so one loop doesn't fill
+// the page.
+const SHOWN_FIRST = 3;
+const COLLAPSE_OVER = 5;
+
+function ShortFlow({ steps, ctx }: { steps: WorkflowStep[]; ctx: CanvasContext }) {
+  const [open, setOpen] = useState(false);
+  if (open || steps.length <= COLLAPSE_OVER) return <Flow steps={steps} ctx={ctx} />;
+  const hidden = steps.slice(SHOWN_FIRST);
+  // A step that can't be taken back is never hidden without saying so.
+  const final = placeSteps(hidden).filter((placed) => cannotUndo(placed.step)).length;
+  return (
+    <div className="flex flex-col items-center">
+      <Flow steps={steps.slice(0, SHOWN_FIRST)} ctx={ctx} />
+      <Arrow />
+      <button
+        type="button"
+        className="rounded-full border border-[var(--border)] bg-[var(--bg)] px-3.5 py-1.5 text-xs text-[var(--muted)] shadow-sm hover:text-[var(--fg)]"
+        onClick={() => setOpen(true)}
+      >
+        {hidden.length} more steps{final > 0 && `, ${final} can’t be undone`}
+      </button>
+    </div>
+  );
+}
+
 function LoopBlock({ step, ctx }: { step: LoopStep; ctx: CanvasContext }) {
   const color = KIND_COLOR.loop;
   return (
@@ -220,16 +342,22 @@ function LoopBlock({ step, ctx }: { step: LoopStep; ctx: CanvasContext }) {
         backgroundColor: `color-mix(in srgb, ${color} 4%, transparent)`,
       }}
     >
-      <div className="mb-3 flex w-full items-center gap-1.5 text-xs" style={{ color }}>
-        <LoopIcon className="h-3.5 w-3.5" />
-        <span className="font-medium">Repeats for each item</span>
-        <span className="ml-auto text-[var(--muted)]">at most {step.max_items}</span>
-      </div>
-      <StepNode step={step} ctx={ctx} />
+      {ctx.plain ? (
+        <PlainLoopHeader step={step} ctx={ctx} />
+      ) : (
+        <>
+          <div className="mb-3 flex w-full items-center gap-1.5 text-xs" style={{ color }}>
+            <LoopIcon className="h-3.5 w-3.5" />
+            <span className="font-medium">Repeats for each item</span>
+            <span className="ml-auto text-[var(--muted)]">at most {step.max_items}</span>
+          </div>
+          <StepNode step={step} ctx={ctx} />
+        </>
+      )}
       {step.steps.length > 0 ? (
         <>
           <Arrow />
-          <Flow steps={step.steps} ctx={ctx} />
+          {ctx.plain ? <ShortFlow steps={step.steps} ctx={ctx} /> : <Flow steps={step.steps} ctx={ctx} />}
         </>
       ) : (
         <span className="mt-3 text-xs italic text-[var(--muted)]">no steps inside yet</span>
@@ -260,11 +388,14 @@ export function WorkflowCanvas({
   workflow,
   run,
   onOpenStep,
+  plain = false,
 }: {
   workflow: Workflow;
   /** Draws how this run went on the workflow. */
   run?: ScheduledRun;
   onOpenStep?: (stepId: string) => void;
+  /** Plain words instead of tool and variable names, for the task page's simple view. */
+  plain?: boolean;
 }) {
   const ctx = useMemo<CanvasContext>(
     () => ({
@@ -272,8 +403,9 @@ export function WorkflowCanvas({
       inputNames: new Set(workflow.inputs.map((input) => input.name)),
       states: run ? runMap(workflow, run) : undefined,
       onOpenStep,
+      plain: plain ? { inputs: workflow.inputs } : undefined,
     }),
-    [workflow, run, onOpenStep],
+    [workflow, run, onOpenStep, plain],
   );
   return (
     <div
@@ -288,9 +420,11 @@ export function WorkflowCanvas({
         <Terminal>
           <span className="font-medium text-[var(--fg)]">Start</span>
           {workflow.inputs.length > 0 && <span>with</span>}
-          {workflow.inputs.map((input) => (
-            <VarToken key={input.name} name={input.name} isInput />
-          ))}
+          {plain ? (
+            <span>{workflow.inputs.map((input) => input.label || input.name).join(", ")}</span>
+          ) : (
+            workflow.inputs.map((input) => <VarToken key={input.name} name={input.name} isInput />)
+          )}
         </Terminal>
         <Arrow />
         {workflow.steps.length > 0 ? (

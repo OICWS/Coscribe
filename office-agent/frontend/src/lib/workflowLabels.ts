@@ -1,4 +1,13 @@
-import type { Autonomy, CheckOp, Condition, Operand, StepKind, Workflow, WorkflowStep } from "../types/workflow";
+import type {
+  Autonomy,
+  CheckOp,
+  Condition,
+  Operand,
+  StepKind,
+  TaskAutonomy,
+  Workflow,
+  WorkflowStep,
+} from "../types/workflow";
 import type { WorkflowAgentActivity } from "../types/wire.gen";
 import { allSteps } from "./workflowTree";
 
@@ -173,4 +182,19 @@ export function agentUsage(activity: WorkflowAgentActivity | null | undefined): 
   const calls = activity?.tool_calls;
   if (calls === undefined) return null;
   return calls === 0 ? "Used no tools" : `${calls} tool ${calls === 1 ? "call" : "calls"}`;
+}
+
+const TASK_LEVELS: TaskAutonomy[] = ["fixed", "self_healing", "proactive", "autonomous"];
+
+// Mirrors workflow_spec/spec.py's step_autonomy.
+function stepNeeds(step: WorkflowStep): TaskAutonomy {
+  if (step.kind !== "agent") return "fixed";
+  return step.autonomy === "full" ? "autonomous" : "proactive";
+}
+
+/** The lowest task autonomy that allows every step: what a workflow without the setting acts at
+ * (workflow_spec/spec.py's needed_autonomy). */
+export function neededAutonomy(workflow: Workflow): TaskAutonomy {
+  const most = Math.max(0, ...allSteps(workflow).map((step) => TASK_LEVELS.indexOf(stepNeeds(step))));
+  return TASK_LEVELS[most];
 }

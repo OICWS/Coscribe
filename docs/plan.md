@@ -325,6 +325,10 @@ Last reviewed: 2026-10-15.
 
 ## Later (wanted, not scheduled)
 
+- A scheduled task changed by describing the change in words, from the task page's simple view
+  (#773): today a person edits steps in the detailed view or asks in a conversation. Needs a
+  route that drafts a revision of a saved task from a request, as a failed run's investigation does.
+
 - The rest of `office-agent/README.md` (browser, MCP, hooks, Web UI, desktop) rewritten as the
   Files and Scripts sections were: what exists and where to read more, no copied parameters.
 

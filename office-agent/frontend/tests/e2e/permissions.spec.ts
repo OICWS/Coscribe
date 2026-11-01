@@ -24,6 +24,7 @@ test("a workflow's page lists what it can touch, and is plain about scripts", as
   const task = await created.json();
   try {
     await page.goto(`/?view=scheduled&task=${task.trigger_id}`);
+    await page.getByRole("button", { name: "Detailed" }).click();
     const panel = page.getByTestId("workflow-permissions");
     await expect(panel).toContainText("erp.example.com");
     await expect(panel).toContainText("Summarise");

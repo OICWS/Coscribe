@@ -98,6 +98,8 @@
   --kind-approval: #93600f;
   --kind-branch: #6a4db3;
   --kind-loop: #17767c;
+  --kind-web: #0275b8;
+  --kind-file: #6b7a1f;
   --accent-ink: #1d5fb0;
   --card-bg: #f0f0ef;
   /* The grey a slide sits on in the Slides panel. */
@@ -160,6 +162,8 @@
   --kind-approval: #e8b85c;
   --kind-branch: #c3adf7;
   --kind-loop: #7fd2d6;
+  --kind-web: #74c4f2;
+  --kind-file: #c5d27a;
   --accent-ink: #9cc3f3;
   --card-bg: #322f2e;
   --stage-bg: #1b1a19;

@@ -28,6 +28,7 @@ test("the autonomy switch refuses a level below the task's steps", async ({
   const task = await created.json();
   try {
     await page.goto(`/?view=scheduled&task=${task.trigger_id}`);
+    await page.getByRole("button", { name: "Detailed" }).click();
     const setting = page.getByTestId("autonomy-setting");
     await setting.getByRole("radio", { name: "Fixed" }).click();
     await expect(setting).toContainText(
