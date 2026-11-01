@@ -1,6 +1,6 @@
 import { controlClass, inputClass } from "../../lib/formStyles";
 import { toolLabel } from "../../lib/toolLabels";
-import { UNAVAILABLE_TOOLS } from "../../lib/workflowEdit";
+import { READ_TOOLS, UNAVAILABLE_TOOLS } from "../../lib/workflowEdit";
 import { AUTONOMY_DESCRIPTION, AUTONOMY_LABEL } from "../../lib/workflowLabels";
 import type { AgentStep, Autonomy } from "../../types/workflow";
 import { ToggleSwitch } from "../ToggleSwitch";
@@ -99,7 +99,7 @@ function AutonomyChoice({ step, onChange }: Omit<EditorProps<AgentStep>, "contex
       ...step,
       autonomy,
       // The server refuses a tool list on a broad agent and fields on a whole-task one.
-      tools: autonomy === "bounded" ? step.tools : [],
+      tools: autonomy !== "bounded" ? [] : step.tools.length > 0 ? step.tools : [...READ_TOOLS],
       fields: autonomy === "full" ? [] : step.fields,
     });
   return (

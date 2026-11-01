@@ -68,6 +68,10 @@ result = {}
 
 print(json.dumps(result))`;
 
+/** What a new bounded agent step may call to begin with: reading in its workspace is what it
+ * does first, and without these a run stops to ask before it looks at a file. */
+export const READ_TOOLS = ["list_files", "get_file_info", "read_file"];
+
 /** `available`: the names readable where the step goes, to start its
  * condition or list on something real. */
 export function newStep(kind: StepKind, workflow: Workflow, available: string[], tool?: ToolInfo): WorkflowStep {
@@ -107,7 +111,7 @@ export function newStep(kind: StepKind, workflow: Workflow, available: string[],
         title,
         autonomy: "bounded",
         goal: "",
-        tools: [],
+        tools: [...READ_TOOLS],
         folders: [],
         sites: [],
         fields: [],

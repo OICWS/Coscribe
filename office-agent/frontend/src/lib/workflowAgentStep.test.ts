@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgentStep, Workflow } from "../types/workflow";
-import { newStep, renameValue } from "./workflowEdit";
+import { newStep, READ_TOOLS, renameValue } from "./workflowEdit";
 import { countModelSteps, modelStepsRead } from "./workflowLabels";
 import { ROOT, scopeAt, scopes } from "./workflowTree";
 
@@ -49,9 +49,15 @@ describe("agent steps", () => {
     expect((renamed.steps[0] as AgentStep).goal).toBe("Find the latest results of {{firm}}");
   });
 
-  it("start bounded with no tools, so saving one asks for its tools", () => {
+  it("start bounded with the tools that read files, so a run doesn't stop to ask before it reads one", () => {
     const step = newStep("agent", workflow(agent()), ["company"]);
-    expect(step).toMatchObject({ kind: "agent", autonomy: "bounded", tools: [], fields: [], trusted_input: false });
+    expect(step).toMatchObject({
+      kind: "agent",
+      autonomy: "bounded",
+      tools: READ_TOOLS,
+      fields: [],
+      trusted_input: false,
+    });
   });
 
   it("count as using a model, and as where a failed check's values came from", () => {

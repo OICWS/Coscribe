@@ -79,6 +79,7 @@ RunOutcomeStatus = Literal["completed", "failed", "waiting"]
 # approval step instead.
 UNAVAILABLE_TOOLS = frozenset({"ask_user_question", "create_scheduled_task"})
 SCRIPT_TIMEOUT_SECONDS = 300.0
+SCRIPT_TOOLS = frozenset({"run_python_script", "run_node_script"})
 _PREVIEW_TEXT_CHARS = 2000
 _PREVIEW_LIST_ITEMS = 50
 
@@ -222,7 +223,19 @@ async def _run_tool(step: ToolStep, values: dict[str, Any], ctx: StepContext) ->
     else:
         result = await asyncio.to_thread(tool, **args)
     _refuse_blocked_write(result)
+    if step.tool in SCRIPT_TOOLS and isinstance(result, dict):
+        _refuse_failed_script(result)
     return result
+
+
+def _refuse_failed_script(result: dict[str, Any]) -> None:
+    """A script that threw or ran too long fails its step. Called as a tool, the call itself
+    returns normally, so a check the script raised would otherwise let the run carry on."""
+    if result.get("timed_out"):
+        raise StepFailed("The script ran too long and was stopped.")
+    if result.get("exit_code") != 0:
+        stderr = str(result.get("stderr") or "").strip()[-1500:]
+        raise StepFailed(f"The script failed (exit code {result.get('exit_code')}): {stderr}")
 
 
 def _refuse_blocked_write(result: Any) -> None:
@@ -256,33 +269,13 @@ async def _run_script(step: ScriptStep, values: dict[str, Any], ctx: StepContext
     # repr() of the JSON text is a valid Python string literal, so input
     # values can never break out into the script's code.
     prelude = f"inputs = __import__('json').loads({json.dumps(inputs, ensure_ascii=False)!r})\n"
+    where = (ctx.workspace_root, ctx.state_dir, prelude + step.code, SCRIPT_TIMEOUT_SECONDS)
     if ctx.run_script is not None:
-        result = await asyncio.to_thread(
-            ctx.run_script,
-            ctx.workspace_root,
-            ctx.state_dir,
-            prelude + step.code,
-            SCRIPT_TIMEOUT_SECONDS,
-        )
+        result = await asyncio.to_thread(ctx.run_script, *where)
     else:
-        result = await asyncio.to_thread(
-            _default_run_script,
-            ctx.workspace_root,
-            ctx.state_dir,
-            prelude + step.code,
-            SCRIPT_TIMEOUT_SECONDS,
-            ctx.extra_writable,
-        )
+        result = await asyncio.to_thread(_default_run_script, *where, ctx.extra_writable)
     _refuse_blocked_write(result)
-    stderr = str(result.get("stderr") or "").strip()
-    if result.get("timed_out"):
-        raise StepFailed(
-            f"The script ran longer than {SCRIPT_TIMEOUT_SECONDS:.0f}s and was stopped."
-        )
-    if result.get("exit_code") != 0:
-        raise StepFailed(
-            f"The script failed (exit code {result.get('exit_code')}): {stderr[-1500:]}"
-        )
+    _refuse_failed_script(result)
     lines = [line for line in str(result.get("stdout") or "").splitlines() if line.strip()]
     if not lines:
         raise StepFailed(

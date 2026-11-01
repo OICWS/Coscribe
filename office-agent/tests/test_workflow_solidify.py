@@ -54,6 +54,11 @@ def write_file(path: str, content: str, overwrite: bool = False) -> str:
     return "ok"
 
 
+def run_node_script(script: str, description: str) -> dict[str, Any]:
+    """Run a Node.js script."""
+    return {}
+
+
 TOOLS = {"search_pdf": search_pdf, "write_file": write_file}
 
 
@@ -176,6 +181,27 @@ async def test_a_conversation_without_tool_calls_is_refused_without_asking() -> 
         )
 
 
+async def test_a_bounded_agent_step_is_drafted_with_the_read_tools() -> None:
+    # Without them a run stopped to ask before it looked at a file in its own workspace.
+    agent = {"id": "do", "kind": "agent", "title": "Do", "goal": "Make the report",
+             "tools": ["read_file", "run_python_script"]}
+    broad = {"id": "more", "kind": "agent", "title": "More", "goal": "Tidy up",
+             "autonomy": "high"}
+    loop = {"id": "each", "kind": "loop", "title": "Each", "over": "files", "item": "f",
+            "steps": [{**agent, "id": "inner", "tools": ["search_pdf"]}]}
+    workflow = {"version": 2, "inputs": [{"name": "files", "label": "Files", "type": "text"}],
+                "steps": [agent, broad, loop]}  # fmt: skip
+    tools = {**TOOLS, "list_files": print, "read_file": print, "get_file_info": print}
+    model = ScriptedModel(replies=[_reply(workflow)], received=[])
+
+    draft = await draft_workflow(model, HISTORY, tools)
+
+    outer, more, each = draft.workflow["steps"]
+    assert outer["tools"] == ["read_file", "run_python_script", "list_files", "get_file_info"]
+    assert more["tools"] == []
+    assert each["steps"][0]["tools"] == ["search_pdf", "list_files", "get_file_info", "read_file"]
+
+
 def test_check_draft_catches_what_the_spec_cant() -> None:
     workflow = parse_workflow(
         {
@@ -193,6 +219,22 @@ def test_check_draft_catches_what_the_spec_cant() -> None:
         "step 3: there's no tool called 'ask_user_question' to use",
     ]
     assert check_draft(parse_workflow({"steps": []}), TOOLS) == ["the workflow has no steps"]
+
+
+def test_check_draft_refuses_a_field_a_node_script_step_cant_hold() -> None:
+    node = {"id": "build", "kind": "tool", "title": "Build", "tool": "run_node_script",
+            "args": {"script": "x", "description": "build"}, "save_as": "build"}
+    workflow = parse_workflow(
+        {"steps": [node, {"id": "ok", "kind": "check", "title": "OK", "conditions": [
+            {"left": {"ref": "build.invoices"}, "op": "gt", "right": {"value": 0}},
+            {"left": {"ref": "build.stdout"}, "op": "contains", "right": {"value": "done"}},
+        ]}]}
+    )  # fmt: skip
+    problems = check_draft(workflow, {**TOOLS, "run_node_script": run_node_script})
+    assert problems == [
+        "step 2: build holds run_node_script's stdout, stderr and exit_code, not invoices; "
+        "have the script throw when it is wrong"
+    ]
 
 
 def test_check_draft_looks_inside_loops_and_branches() -> None:

@@ -19,12 +19,14 @@ from langgraph.constants import TAG_NOSTREAM
 from pydantic import ValidationError
 
 from ..workflow_spec import (
+    AgentStep,
     LLMStep,
     LoopStep,
     ToolStep,
     Workflow,
     parse_workflow,
     raw_child_lists,
+    step_references,
     walk,
     workflow_error,
 )
@@ -32,6 +34,11 @@ from .catalog import describe_params, tool_description
 from .engine import UNAVAILABLE_TOOLS
 
 SCRIPT_TOOL = "run_python_script"
+# What a run_node_script tool step holds: the call's own result, not what the script printed.
+_NODE_RESULT = frozenset({"exit_code", "stdout", "stderr", "timed_out"})
+# A bounded agent step may call only its listed tools (decision 0028), so one drafted without
+# these stopped a run to ask before looking at a file in its own workspace.
+READ_TOOLS = ("list_files", "get_file_info", "read_file")
 MAX_ATTEMPTS = 3
 _ARGS_CHARS = 4000
 _RESULT_CHARS = 600
@@ -59,7 +66,10 @@ replacing only the values that became inputs or come from earlier steps. \
 Add "irreversible": true to a step that submits, sends, pays or deletes \
 something outside this machine -- a form's final submit, a sent message, \
 a payment -- never to one that only moves on, saves a draft or reads. A \
-test run stops before such a step, so checking the workflow sends nothing.
+test run stops before such a step, so checking the workflow sends nothing. \
+A run_node_script step's save_as holds {"stdout", "stderr", "exit_code"}, \
+not what the script printed: a script that finds something wrong throws, \
+which stops the run.
 - "script": {"code": "<python>", "inputs": {"pdf": "{{pdf_path}}"}, \
 "save_as": "<name>"} -- for a run_python_script call. The code reads \
 values from a ready-made `inputs` dict (never paste them into the code) \
@@ -121,6 +131,19 @@ peeking, reading the same thing again), failed attempts and anything \
 undone later.
 - Add a check wherever the conversation verified something (counts that \
 must match, a value that must not be empty), grounded in what it found.
+- A script that reads a file of this run must stop rather than guess when \
+the file is not as it was in the conversation: check that the columns it \
+uses are there, raise on a blank value a result needs (never read it as 0 \
+or ""), and raise on a row it cannot place -- a value it never saw (a new \
+status, an unknown category), an incoming payment that matches no record \
+-- unless the conversation showed such rows are left out, and then print \
+how many it left out. Incoming money that names no record it can find is \
+such a row, not a fee to skip. Match by what identifies a row (an id \
+anywhere in a text, written with or without its separators and leading \
+zeros; an amount and a date), not by the exact wording the conversation \
+saw. Decode text strictly: a file that is not in the expected encoding \
+raises instead of turning letters into replacement characters. A wrong \
+report that looks finished is worse than a run that stops.
 - Keep it as short as the task allows; the reviewer can add steps later.
 - Browser steps must work on a fresh page load. Element refs like "e42" \
 are numbered afresh on every load, so a step names its element the way the \
@@ -312,8 +335,20 @@ def check_draft(workflow: Workflow, tools: dict[str, Any]) -> list[str]:
         return ["the workflow has no steps"]
     problems = []
     model_results = {p.step.save_as for p in walk(workflow.steps) if isinstance(p.step, LLMStep)}
+    node_results = {
+        p.step.save_as
+        for p in walk(workflow.steps)
+        if isinstance(p.step, ToolStep) and p.step.tool == "run_node_script"
+    }
     for placed in walk(workflow.steps):
         step, index = placed.step, placed.number
+        for reference in step_references(step):
+            name, _, field = reference.partition(".")
+            if name in node_results and field and field.split(".")[0] not in _NODE_RESULT:
+                problems.append(
+                    f"step {index}: {name} holds run_node_script's stdout, stderr and "
+                    f"exit_code, not {field}; have the script throw when it is wrong"
+                )
         if isinstance(step, LoopStep) and step.collect in model_results:
             # A model step's result is always an object of its fields; a
             # list of those is rarely what the steps after the loop expect.
@@ -343,6 +378,16 @@ def check_draft(workflow: Workflow, tools: dict[str, Any]) -> list[str]:
         if missing:
             problems.append(f"step {index}: {step.tool} needs {', '.join(missing)}")
     return problems
+
+
+def with_read_tools(workflow: Workflow, tools: dict[str, Any]) -> Workflow:
+    """Every bounded agent step may also list, inspect and read files: reading inside the
+    workspace is what such a step does first, and is no new reach to consent to."""
+    for placed in walk(workflow.steps):
+        step = placed.step
+        if isinstance(step, AgentStep) and step.autonomy == "bounded":
+            step.tools += [t for t in READ_TOOLS if t in tools and t not in step.tools]
+    return workflow
 
 
 def _reply_object(text: str) -> dict[str, Any]:
@@ -376,6 +421,7 @@ def _parse_reply(text: str, tools: dict[str, Any], name_hint: str) -> WorkflowDr
     problems = check_draft(workflow, tools)
     if problems:
         raise ValueError("; ".join(problems))
+    workflow = with_read_tools(workflow, tools)
     notes = data.get("notes") or []
     if isinstance(notes, str):
         notes = [notes]
@@ -445,6 +491,7 @@ def _parse_revision(text: str, tools: dict[str, Any], name: str) -> WorkflowDraf
     problems = check_draft(workflow, tools)
     if problems:
         raise ValueError("; ".join(problems))
+    workflow = with_read_tools(workflow, tools)
     changes = _lines(data.get("changes"))
     if not changes:
         raise ValueError('list what you changed in "changes"')
