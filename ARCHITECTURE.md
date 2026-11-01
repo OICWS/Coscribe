@@ -176,7 +176,8 @@ ceiling that saving enforces on the steps. A finished run has a report: what was
 done and what wasn't, what an agent decided itself, which steps that can't be
 undone ran, what was healed, and what the agents used. At self-healing and above, a browser
 step that fails is done by a bounded agent on the page as it is now; healing a step that can't
-be undone waits for a person.
+be undone waits for a person. A heal fixes only its run: the report offers the saved arguments
+it changed as a fix the person saves into the task.
 
 A conversation can also pause itself and resume later (`sleep_until`,
 `wake_on_task`), which is separate from scheduled tasks: a wake belongs to

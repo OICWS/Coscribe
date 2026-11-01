@@ -92,10 +92,11 @@ async def test_a_self_healing_task_has_an_agent_do_what_the_step_meant(tmp_path:
         "error": GONE,
         "did": did,
         "args": {},
+        "was": {},
     }
     healed = h.report()["healed"]
     assert healed == [{"step_id": "name", "title": "Enter Company name", "iteration": [],
-                       "error": GONE, "did": did, "args": {}}]  # fmt: skip
+                       "error": GONE, "did": did, "args": {}, "was": {}}]  # fmt: skip
 
 
 async def test_a_healed_step_that_saves_its_output_gives_what_its_tool_would_have(
@@ -201,6 +202,7 @@ async def test_a_later_pass_tries_what_healed_the_step_before_healing_again(
     ]
     # A reference to the row stays the row's; only a literal saved argument is replaced.
     assert healed[0]["args"] == {"ref": 'textbox "Legal name"'}
+    assert healed[0]["was"] == {"ref": 'textbox "Company name"'}
 
 
 async def test_a_step_that_cant_be_taken_back_heals_with_the_person_on_every_pass(

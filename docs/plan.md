@@ -284,8 +284,10 @@ Last reviewed: 2026-10-15.
    handler, the run's investigation, a repair proposed as a fixed branch), scored by
    `evals/workflow/` (#754): an agent step that says whether it finished (done), test runs that
    stop before a step that can't be taken back (#757, decision 0029, done), the task's
-   four-level autonomy setting and the run report (decision 0030, done), and self-healing at run
-   time (in review), then a revision proposed after a heal; P5 parallel steps,
+   four-level autonomy setting and the run report (decision 0030, done), self-healing at run
+   time (done), and a revision after a heal (the arguments a heal named, saved from the run's
+   report, in review; a heal that changed more, drafted as a revision in a conversation, next);
+   P5 parallel steps,
    sub-workflows, triggers on events, state across runs, versions.
 
 ## Needs the maintainer's testing (could not be verified here)

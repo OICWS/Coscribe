@@ -145,6 +145,15 @@ export interface RunReport {
   tokens: number;
   cached_tokens: number;
   seconds: number | null;
+  fixes: HealFixes;
+}
+
+/** The revision a run's heals propose (decision 0030): saved arguments to replace, and the heals
+ * that changed more than that. */
+export interface HealFixes {
+  fixes: { step_id: string; title: string; name: string; was: string; now: string }[];
+  workflow: Workflow | null;
+  left: { step_id: string; title: string; did: string }[];
 }
 
 export type StepRecord = WorkflowStepRecord;

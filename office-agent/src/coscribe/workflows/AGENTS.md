@@ -2,7 +2,7 @@
 
 ## Purpose
 Owns how a workflow runs (`engine.py`; `model_step.py` gets a model to return a step's
-fields; `agent_step.py` runs an agent step through an injected runner; `report.py` a run's report, decision 0030; `healing.py` the agent that heals a failed browser step when the task's autonomy allows it), what it may touch (`permissions.py`), the tool parameters its editor needs (`catalog.py`), drafting one from a
+fields; `agent_step.py` runs an agent step through an injected runner; `report.py` a run's report, decision 0030; `healing.py` the agent that heals a failed browser step when the task's autonomy allows it; `heal_fixes.py` the revision a run's heals propose), what it may touch (`permissions.py`), the tool parameters its editor needs (`catalog.py`), drafting one from a
 conversation (`solidify.py`) and a one-off test run (`testing.py`). Does not own the schedule
 that fires a run or its stored history (`runtime_lg/scheduled_tasks.py`), the routes
 (`web/routes/scheduled.py`) or any agent: an agent step (decision 0028) runs through
@@ -13,7 +13,7 @@ that fires a run or its stored history (`runtime_lg/scheduled_tasks.py`), the ro
 `AgentCall`, `AgentReply`, `AgentRequest`, `AgentRunner` (what an agent runner takes and returns);
 `RunOutcome`, `StepContext`, `StepRecord`, `WorkflowNotRunnable`, `WorkflowRun` (a run);
 `brings_outside_content`, `granted_by`, `sites_in`, `summarize`, `untrusted_agent_steps` (permissions); `describe_params`, `tool_description`
-(catalog); `output_files`, `run_test`, `uses_browser` (test run); `run_report` (what a run did, from its step records); `DraftFailed`, `WorkflowDraft`,
+(catalog); `output_files`, `run_test`, `uses_browser` (test run); `run_report` (what a run did, from its step records); `heal_fixes` (the saved arguments a run's heals would change); `DraftFailed`, `WorkflowDraft`,
 `draft_workflow`, `revise_workflow` (drafting from a conversation: it takes the serialized
 history, so this package does not import `runtime_lg`).
 
@@ -35,7 +35,9 @@ history, so this package does not import `runtime_lg`).
 - Healing (decision 0030) acts only for a browser tool step, only at `self_healing` or above,
   with the page tools on the sites `granted_by` lists, and on a step marked `irreversible` every
   call that does more than read waits for a person; what it did is on the step's record
-  (`agent.healed`) and in the run report.
+  (`agent.healed`) and in the run report. A heal changes the saved workflow only when the person
+  saves its fixes (`heal_fixes`), and a fix replaces an argument only while it still holds the
+  value the heal replaced.
 - `UNAVAILABLE_TOOLS` in `engine.py` only lists tools a run may not call; the import contract,
   not that list, is what keeps the code module out.
 
