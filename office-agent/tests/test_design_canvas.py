@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from coscribe.conversation.design_canvas import (
+    BOARD_INSPECTOR,
     BOARD_LINKS,
     CanvasError,
     in_canvas_folder,
@@ -163,4 +164,6 @@ def test_an_artboard_is_served_with_its_links_to_other_artboards_handed_to_the_p
     served = served_page(page, b"<html><head></head><a href='b.html'>b</a></html>")
 
     assert served.index(BOARD_LINKS) < served.index(b"</head>")
+    assert served.index(BOARD_INSPECTOR) < served.index(b"</head>")
     assert BOARD_LINKS not in served_page(loose, b"<a href='b.html'>b</a>")
+    assert b"</script" not in BOARD_INSPECTOR[len(b"<script>") : -len(b"</script>")].lower()

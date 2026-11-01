@@ -151,6 +151,12 @@ BOARD_LINKS = (
 )
 
 
+# The panel's inspector reads an artboard's elements through it; see the file for why by message.
+BOARD_INSPECTOR = (
+    b"<script>" + Path(__file__).with_name("board_inspector.js").read_bytes() + b"</script>"
+)
+
+
 def variables_style(canvas: dict[str, Any]) -> bytes:
     """The canvas's variables as a style element for each artboard's page. It goes last in the
     head, so the canvas's value wins over one the page declares itself: the canvas holds the
