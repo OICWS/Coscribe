@@ -987,6 +987,30 @@ def test_an_expired_oauth_sign_in_is_refreshed_without_the_browser(
         assert len(opened) == 1
 
 
+@pytest.mark.parametrize("saved_expiry", ["passed", "missing"])
+def test_a_token_that_expired_while_the_app_was_closed_is_refreshed_without_the_browser(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, saved_expiry: str
+) -> None:
+    # A reconnect builds a new provider, as a restart does, so it starts from the file alone.
+    with _oauth_connector_client(tmp_path, monkeypatch) as (client, server, opened):
+        _add_oauth_connector(client, server)
+        _wait_until(lambda: client.get("/api/mcp/servers").json()["docs"]["connected"])
+        for token in server.provider.access.values():
+            token.expires_at = int(time.time()) - 1
+        [saved] = tmp_path.rglob("mcp_oauth/docs.json")
+        data = json.loads(saved.read_text(encoding="utf-8"))
+        assert data["expires_at"] > time.time() and "token_endpoint" in data["auth_server"]
+        if saved_expiry == "passed":
+            data["expires_at"] = time.time() - 1
+        else:
+            # Saved before the expiry was kept: refreshed once rather than trusted.
+            del data["expires_at"]
+        saved.write_text(json.dumps(data), encoding="utf-8")
+
+        assert client.post("/api/mcp/servers/docs/reconnect").json()["connected"] is True
+        assert len(opened) == 1 and server.provider.refreshes == 1
+
+
 def test_a_refused_oauth_sign_in_says_so_and_can_be_retried(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

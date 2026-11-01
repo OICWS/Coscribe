@@ -22,6 +22,13 @@ Tokens and the registered client are stored through `runtime/secrets.py`
 without asking again; a refresh token that no longer works surfaces as
 `NeedsSignIn`, because opening a browser at startup, with nobody waiting
 for it, would be wrong.
+
+The SDK keeps when a token expires and where to refresh it only in memory,
+and on a 401 it starts a new sign-in instead of refreshing. So next to the
+tokens the file keeps the expiry time and the authorization server's
+metadata, and a new process puts them back before its first request: an
+access token that expired while the app was closed is refreshed, not
+treated as a lost sign-in.
 """
 
 from __future__ import annotations
@@ -29,6 +36,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import time
 import webbrowser
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -42,7 +50,8 @@ from ..runtime import delete_secret, harden_file_permissions, resolve_secret, st
 # loaded for every server start, and most people have no remote connector.
 if TYPE_CHECKING:
     import httpx
-    from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
+    from mcp.client.auth import OAuthClientProvider
+    from mcp.shared.auth import OAuthClientInformationFull, OAuthMetadata, OAuthToken
 
 # Long enough to sign in, find a code on a phone, approve an admin prompt.
 SIGN_IN_TIMEOUT_SECONDS = 300.0
@@ -87,13 +96,23 @@ class SignIn:
     )
 
 
+# Not secrets, so kept in the file itself: when the access token expires and
+# the authorization server's public metadata.
+_EXPIRES_AT = "expires_at"
+_AUTH_SERVER = "auth_server"
+
+
 class _Storage:
     """The SDK's `TokenStorage`, kept in one small file per connector. The
-    file holds only what `store_secret` returned for each value."""
+    file holds what `store_secret` returned for each secret, plus the
+    token's expiry time and the authorization server's metadata."""
 
     def __init__(self, path: Path, name: str) -> None:
         self._path = path
         self._name = name
+        # Set by `auth_for`: the metadata the provider discovered, read
+        # when tokens are saved so a later process can refresh them.
+        self.metadata: Callable[[], OAuthMetadata | None] = lambda: None
 
     def _read(self) -> dict[str, Any]:
         try:
@@ -117,6 +136,8 @@ class _Storage:
         data = self._read()
         if key in data:
             delete_secret(data.pop(key))
+            if key == "tokens":
+                data.pop(_EXPIRES_AT, None)
             self._write(data)
 
     def load(self, key: str) -> str | None:
@@ -130,6 +151,31 @@ class _Storage:
 
     async def set_tokens(self, tokens: OAuthToken) -> None:
         self._save("tokens", tokens.model_dump_json(exclude_none=True))
+        data = self._read()
+        if tokens.expires_in is not None:
+            data[_EXPIRES_AT] = time.time() + tokens.expires_in
+        else:
+            data.pop(_EXPIRES_AT, None)
+        metadata = self.metadata()
+        if metadata is not None:
+            data[_AUTH_SERVER] = metadata.model_dump(mode="json", exclude_none=True)
+        self._write(data)
+
+    def expires_at(self) -> float | None:
+        value = self._read().get(_EXPIRES_AT)
+        return float(value) if isinstance(value, int | float) else None
+
+    def auth_server(self) -> OAuthMetadata | None:
+        from mcp.shared.auth import OAuthMetadata
+        from pydantic import ValidationError
+
+        raw = self._read().get(_AUTH_SERVER)
+        if not isinstance(raw, dict):
+            return None
+        try:
+            return OAuthMetadata.model_validate(raw)
+        except ValidationError:
+            return None
 
     async def get_client_info(self) -> OAuthClientInformationFull | None:
         from mcp.shared.auth import OAuthClientInformationFull
@@ -298,7 +344,6 @@ class McpOAuth:
         return flow.name
 
     async def auth_for(self, name: str, server_url: str) -> httpx.Auth:
-        from mcp.client.auth import OAuthClientProvider
         from mcp.shared.auth import OAuthClientMetadata
         from pydantic import AnyUrl
 
@@ -341,7 +386,7 @@ class McpOAuth:
             except TimeoutError:
                 raise OAuthFlowError("Timed out waiting for you to sign in.") from None
 
-        return OAuthClientProvider(
+        provider = _provider_class()(
             server_url=server_url,
             client_metadata=metadata,
             storage=storage,
@@ -349,6 +394,40 @@ class McpOAuth:
             callback_handler=callback_handler,
             timeout=SIGN_IN_TIMEOUT_SECONDS,
         )
+        storage.metadata = lambda: provider.context.oauth_metadata
+        return provider
+
+
+_PROVIDER: type[OAuthClientProvider] | None = None
+
+
+def _provider_class() -> type[OAuthClientProvider]:
+    """The SDK's provider, restoring what it keeps only in memory. Built on
+    first use because the SDK is imported where it is used."""
+    global _PROVIDER
+    if _PROVIDER is not None:
+        return _PROVIDER
+    from mcp.client.auth import OAuthClientProvider
+
+    class _Provider(OAuthClientProvider):
+        async def _initialize(self) -> None:
+            await super()._initialize()
+            storage = self.context.storage
+            if not isinstance(storage, _Storage):
+                return
+            if self.context.oauth_metadata is None:
+                self.context.oauth_metadata = storage.auth_server()
+            tokens = self.context.current_tokens
+            if tokens is None or not tokens.refresh_token:
+                return
+            # The SDK reads "no expiry" as "valid forever" and answers the
+            # server's 401 with a new sign-in, never a refresh. A token whose
+            # expiry this file doesn't know (saved before it kept one, or
+            # issued without one) is refreshed once rather than trusted.
+            self.context.token_expiry_time = storage.expires_at() or 1.0
+
+    _PROVIDER = _Provider
+    return _PROVIDER
 
 
 class LoopbackCallback:
