@@ -1,6 +1,6 @@
 # 0030: A task has one autonomy setting, and every run a report
 
-Status: proposed (2026-10-31, kurtosisOC; agreed with the maintainer in #754, needs acceptance).
+Status: accepted (2026-11-01, by the maintainer; proposed 2026-10-31 by kurtosisOC in #754).
 Builds on 0028 (per-step autonomy) and 0029 (irreversible steps). Issue #754.
 
 ## Context
