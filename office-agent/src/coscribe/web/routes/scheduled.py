@@ -34,6 +34,7 @@ from ...workflows import (
     BranchStep,
     LoopStep,
     brings_outside_content,
+    heal_fixes,
     parse_workflow,
     run_report,
     summarize,
@@ -261,7 +262,8 @@ def _run_control_routes(router: APIRouter, state: AppState) -> None:
         if trigger is None or trigger.workflow is None or run is None:
             return JSONResponse({"error": f"No workflow run {run_id!r}"}, status_code=404)
         workflow = parse_workflow(trigger.workflow)
-        return JSONResponse(run_report(workflow, run.steps, run.started_at, run.finished_at))
+        report = run_report(workflow, run.steps, run.started_at, run.finished_at)
+        return JSONResponse({**report, "fixes": heal_fixes(trigger.workflow, report["healed"])})
 
     @router.post("/api/scheduled-tasks/{trigger_id}/runs/{run_id}/investigate")
     async def investigate_workflow_run(

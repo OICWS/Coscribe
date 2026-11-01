@@ -140,11 +140,15 @@ def _changed_args(step: Step, changed: Any) -> dict[str, str]:
 
 
 def healed(step: Step, result: dict[str, Any], error: str) -> tuple[Any, dict[str, Any]]:
-    """The step's output and its record of the deviation. A step whose output a later step
-    reads gets what its tool would have returned."""
+    """The step's output and its record of the deviation: what was done, and the saved
+    arguments it changed with the values they had. A step whose output a later step reads gets
+    what its tool would have returned."""
     did = str(result.get("did") or "").strip()
     output = result.get("result") if step_output(step) else did
-    return output, {"error": error, "did": did, "args": _changed_args(step, result.get("changed"))}
+    args = _changed_args(step, result.get("changed"))
+    # What each changed argument was, so a revision replaces it only while the task still has it.
+    was = {name: step.args[name] for name in args} if isinstance(step, ToolStep) else {}
+    return output, {"error": error, "did": did, "args": args, "was": was}
 
 
 def carried(step: Step, earlier: Any) -> ToolStep | None:

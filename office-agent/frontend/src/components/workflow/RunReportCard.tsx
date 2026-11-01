@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { ScheduledRun } from "../../types/settings";
 import type { RunReport } from "../../types/workflow";
 import { AUTONOMY_LABEL } from "./AutonomySetting";
+import { HealFixesSection } from "./HealFixesSection";
 
 function where(iteration: number[]): string {
   return iteration.length
@@ -24,6 +25,7 @@ export function RunReportCard({
   run: ScheduledRun;
 }) {
   const [report, setReport] = useState<RunReport | null>(null);
+  const [loads, setLoads] = useState(0);
   useEffect(() => {
     if (run.status === "running") return;
     let live = true;
@@ -34,7 +36,7 @@ export function RunReportCard({
     return () => {
       live = false;
     };
-  }, [triggerId, run.run_id, run.status]);
+  }, [triggerId, run.run_id, run.status, loads]);
   if (!report) return null;
   const usage = [
     report.tool_calls ? `${report.tool_calls} agent tool calls` : null,
@@ -92,6 +94,7 @@ export function RunReportCard({
               </span>
             </div>
           ))}
+          <HealFixesSection triggerId={triggerId} fixes={report.fixes} onSaved={() => setLoads((n) => n + 1)} />
         </div>
       )}
       {report.irreversible.length > 0 && (
