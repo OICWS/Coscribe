@@ -229,3 +229,35 @@ Verdicts:
 - what the investigation asked;
 - the records the site got while it was being repaired (its test runs are real submissions);
 - whether its revision was still tied to the task.
+
+## Do saved data tasks survive input that changes? (`workflow/data_run.py`, #768)
+
+A script that reads a changed file seldom stops: it writes a wrong report and says it completed.
+Two tasks a person repeats every month, built from a brief:
+- a sales summary from an order export (`sales`): paid orders of the month per region;
+- an invoice reconciliation against a bank export (`reconcile`): what is still open.
+
+Their input drifts in how it is written (renamed or reordered columns, `;` with a decimal comma,
+title lines above the header, another date format, cp1252, debit and credit columns) or in what
+it holds (a new status that doesn't count, duplicate rows, a new region, a new booking text, a
+payment in parts). In `missing`, a required value is blank, and the run must stop.
+`python -m evals.workflow.data_run --list` names them all.
+
+Builds:
+- `drafted`: the app does the task once in a conversation on the original files, and the
+  workflow drafted from that conversation is saved, as "Save as a task" does. Each repeat drafts
+  again.
+- `agent`: one bounded agent step does the task with Python on every run.
+
+The right answer is computed from the rows (`data_tasks.py`), and the judge reads the file the
+run wrote, whatever its separator. A failed run is followed into its investigation and run again,
+as above. `--repeat k` runs every scenario k times. The summary gives pass@1 and pass^k, the
+share of scenarios right in all k runs: a task that runs every month has to be right every time.
+
+```bash
+python -m evals.workflow.data_run --app http://127.0.0.1:PORT --workspace APP_WORKSPACE --out evals/runs/data --repeat 3
+```
+
+Verdicts as above, judged from the file instead of a site: `PASS`, `REPAIRED`, `SAFE_STOP`,
+`GUESSED` (a report written although a required value was blank), `FALSE_SUCCESS` (completed
+with a wrong report), `FAILED`, and `NO_DRAFT` (the conversation didn't produce a workflow).
