@@ -4,7 +4,7 @@ import { describeSchedule } from "../lib/scheduleLabels";
 import type { ScheduledTask } from "../types/settings";
 import type { Workflow } from "../types/workflow";
 import { AutonomyChoice } from "./workflow/AutonomySetting";
-import { StepOutline } from "./workflow/StepOutline";
+import { WorkflowCanvas } from "./workflow/WorkflowCanvas";
 import { WorkflowPermissions } from "./workflow/WorkflowPermissions";
 
 function Section({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
@@ -52,6 +52,7 @@ export function ScheduledTaskSimple({
   persist,
   onEdit,
   onShowDetails,
+  onOpenStep,
   onChanged,
   runs,
   environment,
@@ -61,6 +62,8 @@ export function ScheduledTaskSimple({
   persist: (next: Workflow) => Promise<string | null>;
   onEdit: () => void;
   onShowDetails: () => void;
+  /** Opens a step of the canvas in the detailed view's editor. */
+  onOpenStep: (stepId: string) => void;
   onChanged: () => void;
   runs: ReactNode;
   environment: ReactNode;
@@ -79,11 +82,7 @@ export function ScheduledTaskSimple({
           </button>
         }
       >
-        {workflow.steps.length > 0 ? (
-          <StepOutline steps={workflow.steps} />
-        ) : (
-          <p className="text-sm text-[var(--muted)]">No steps yet.</p>
-        )}
+        <WorkflowCanvas workflow={workflow} plain onOpenStep={onOpenStep} />
       </Section>
       <Inputs workflow={workflow} />
       {runs}

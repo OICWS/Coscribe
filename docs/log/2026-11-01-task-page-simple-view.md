@@ -7,16 +7,24 @@ a bare environment name and a permissions box of caveats, with the runs last (#7
 ## Shipped
 - `frontend/src/components/ScheduledTaskSimple.tsx`: the simple view of a workflow task, the
   default. In order:
-  - what it does, as the steps' titles;
+  - what it does, as the workflow's canvas in plain words;
   - what it asks for at each run, by label and usual value;
   - the five most recent runs;
   - when it runs, with Change;
   - if a step stops working;
   - what it may touch.
-- `components/workflow/StepOutline.tsx`: the steps as a numbered list. Loops and branches indent
-  what they hold. Tags say what a person needs: AI, Check, Waits for your OK, Can't be undone. A
-  long loop body shows its first steps, and the "more" button counts hidden steps that can't be
-  undone.
+- `components/workflow/WorkflowCanvas.tsx`: a `plain` form of the canvas, the same layout
+  (branches side by side as "If so" and "If not", loops in a frame) with plain cards:
+  - A card shows a category in its own colour (Website, File, Program, AI, Check, Your OK,
+    Choice, Repeat), the step's title and one sentence from `lib/plainSteps.ts`. For example:
+    "Types the claim's name into 'Full name'".
+  - No card shows a tool name, a variable name, code or a step number. A value from an earlier
+    step reads "the claim's name", and an input reads its label.
+  - A step that can't be undone is tagged.
+  - A loop names itself on its frame. A loop of more than 5 steps shows its first 3 and a button
+    that counts the rest and how many of them can't be undone.
+  - Clicking a card opens that step in the Detailed view's editor.
+  - Two colour tokens are new: `--kind-web` and `--kind-file`.
 - `AutonomySetting.tsx`: `AutonomyChoice`, the task's autonomy as one select in plain words. It
   shows the level a task without the setting acts at (`neededAutonomy` in `lib/workflowLabels.ts`,
   mirroring `workflow_spec`), and levels below what the steps need can't be picked.
@@ -28,8 +36,9 @@ a bare environment name and a permissions box of caveats, with the runs last (#7
 - Instruction tasks (no workflow) keep their one page.
 
 ## Not verified
-- On Windows, in the desktop app. Checked in Chromium against a live server, on two saved tasks:
-  a browser task with a loop and a script task.
+- On Windows, in the desktop app. Checked in Chromium against a live server, on three saved
+  tasks: a browser task with a loop, a script task and a task with a branch.
+- The dark theme's colours for the two new tokens (picked, not looked at).
 
 ## Follow-ups
 - Change a task by describing the change in words (in `docs/plan.md`).

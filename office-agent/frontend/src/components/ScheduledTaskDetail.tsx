@@ -406,6 +406,28 @@ function DetailedBody({
   );
 }
 
+/** Which view the page shows, and the step the detailed view's editor opens on. */
+function useTaskView(focusStepId: string | null | undefined) {
+  const [view, setView] = useState<TaskView>(() => (focusStepId ? "detailed" : loadTaskView()));
+  // A run's "Edit step" opens the step, which only the detailed view shows.
+  const [seenFocus, setSeenFocus] = useState(focusStepId);
+  if (focusStepId !== seenFocus) {
+    setSeenFocus(focusStepId);
+    if (focusStepId) setView("detailed");
+  }
+  // A step clicked on the simple view's canvas opens in the detailed view's editor.
+  const [openedStep, setOpenedStep] = useState<string | null>(null);
+  const chooseView = (next: TaskView) => {
+    setView(next);
+    saveTaskView(next);
+  };
+  const openStep = (stepId: string) => {
+    setOpenedStep(stepId);
+    chooseView("detailed");
+  };
+  return { view, chooseView, focus: openedStep ?? focusStepId, openStep };
+}
+
 export function ScheduledTaskDetail({
   task,
   onEdit,
@@ -418,17 +440,7 @@ export function ScheduledTaskDetail({
   const [starting, setStarting] = useState(false);
   const [askingInputs, setAskingInputs] = useState(false);
   const workflow = task.workflow;
-  const [view, setView] = useState<TaskView>(() => (focusStepId ? "detailed" : loadTaskView()));
-  // A run's "Edit step" opens the step, which only the detailed view shows.
-  const [seenFocus, setSeenFocus] = useState(focusStepId);
-  if (focusStepId !== seenFocus) {
-    setSeenFocus(focusStepId);
-    if (focusStepId) setView("detailed");
-  }
-  const chooseView = (next: TaskView) => {
-    setView(next);
-    saveTaskView(next);
-  };
+  const { view, chooseView, focus, openStep } = useTaskView(focusStepId);
   const simple = Boolean(workflow) && view === "simple";
 
   const start = (inputs?: Record<string, unknown>) => {
@@ -509,6 +521,7 @@ export function ScheduledTaskDetail({
               persist={saveWorkflow}
               onEdit={onEdit}
               onShowDetails={() => chooseView("detailed")}
+              onOpenStep={openStep}
               onChanged={onChanged}
               runs={<RunsSection task={task} recent />}
               environment={
@@ -520,7 +533,7 @@ export function ScheduledTaskDetail({
             />
           </div>
         ) : (
-          <DetailedBody task={task} persist={saveWorkflow} focusStepId={focusStepId} onChanged={onChanged} />
+          <DetailedBody task={task} persist={saveWorkflow} focusStepId={focus} onChanged={onChanged} />
         )}
       </div>
 
