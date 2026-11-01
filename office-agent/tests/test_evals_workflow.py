@@ -4,6 +4,7 @@ model."""
 
 from __future__ import annotations
 
+import argparse
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -12,7 +13,17 @@ from typing import Any
 
 import pytest
 
-from evals.workflow.run import Outcome, Scenario, _asked, _heal_waiting, judge, verdict
+from evals.workflow.app import Followed
+from evals.workflow.run import (
+    Outcome,
+    Scenario,
+    _asked,
+    _heal_waiting,
+    judge,
+    keep_heals,
+    rerun_verdict,
+    verdict,
+)
 from evals.workflow.site import Site, serve
 from evals.workflow.sites import ROWS, SITES, expected, fixed_workflow, sheet
 
@@ -167,3 +178,58 @@ def test_a_run_that_filed_right_after_healing_is_healed() -> None:
     pending = {"step_id": "submit", "status": "waiting", "agent": {"pending": {"tool": "x"}}}
     assert _heal_waiting({"steps": [pending]})
     assert not _heal_waiting({"steps": [{"step_id": "ok", "status": "waiting"}]})
+
+
+class _KeepingApp:
+    """The app as keep_heals drives it: the healed run's report offers `fixes`, a revision
+    conversation drafts `revision`, and the next run files `files` with the heals `heals`."""
+
+    def __init__(self, site: Any, fixes: dict[str, Any], revision: Any, files: list[Any]) -> None:
+        self.site, self.fixes, self.revision, self.files = site, fixes, revision, files
+        self.saved: list[Any] = []
+        self.heals: list[dict[str, Any]] = []
+
+    def report(self, trigger: str, run_id: str) -> dict[str, Any]:
+        return {"fixes": self.fixes} if run_id == "r1" else {"healed": self.heals}
+
+    def set_workflow(self, trigger: str, workflow: Any) -> None:
+        self.saved.append(workflow)
+
+    def investigate(self, trigger: str, run_id: str, answer: str, timeout: float) -> Followed:
+        self.site.records.append({"status": "filed", "values": {"by": "a test"}})
+        return Followed(revision={"trigger_id": trigger, "workflow": self.revision})
+
+    def run(self, trigger: str, timeout: float) -> dict[str, Any]:
+        self.site.records.extend(self.files)
+        return {"run_id": "r2", "status": "completed"}
+
+
+class _Records:
+    def __init__(self) -> None:
+        self.records: list[dict[str, Any]] = []
+
+
+def test_keeping_the_heals_saves_the_fixes_and_the_revision_then_runs_again() -> None:
+    want = expected("expenses", extra=False)
+    site = _Records()
+    fixes = {"workflow": {"v": "fixed"}, "left": [{"step_id": "submit"}]}
+    app = _KeepingApp(site, fixes, {"v": "revised"}, [_record(w) for w in want])
+    o = Outcome("expenses/fixed/relabel")
+    args = argparse.Namespace(repair_timeout=1, run_timeout=1)
+    keep_heals(app, site, "t1", "r1", o, args)  # type: ignore[arg-type]
+    assert app.saved == [{"v": "fixed"}, {"v": "revised"}]
+    assert o.kept_by == "fixes+revision"
+    assert o.repair_records == 1  # the revision's tests filed one record: a side effect
+    assert o.revision_linked
+    assert rerun_verdict(o, want) == "PASS"
+    o.rerun_healed = ["typed into the relabelled field again"]
+    assert rerun_verdict(o, want) == "HEALED_AGAIN"
+
+
+def test_nothing_is_run_again_when_the_heals_offer_nothing_to_keep() -> None:
+    site = _Records()
+    app = _KeepingApp(site, {"workflow": None, "left": []}, None, [])
+    o = Outcome("expenses/fixed/relabel")
+    keep_heals(app, site, "t1", "r1", o, argparse.Namespace())  # type: ignore[arg-type]
+    assert (o.kept_by, o.rerun_status) == ("", "")
+    assert rerun_verdict(o, expected("expenses", extra=False)) == ""

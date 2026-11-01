@@ -76,6 +76,14 @@ class Outcome:
     # that can't be undone waited for the (simulated) person's yes.
     healed: list[str] = field(default_factory=list)
     heal_asks: int = 0
+    # With --keep-heals: how the heals were kept in the task ("fixes" saved from the report, or
+    # a "revision" drafted after the run), and the run after that, which should need no heal.
+    kept_by: str = ""
+    rerun_status: str = ""
+    rerun_error: str = ""
+    rerun_records: list[dict[str, Any]] = field(default_factory=list)
+    rerun_healed: list[str] = field(default_factory=list)
+    rerun_verdict: str = ""
 
 
 def scenarios(only: list[str], builds: list[str]) -> list[Scenario]:
@@ -148,6 +156,53 @@ def verdict(o: Outcome, s: Scenario, want: list[dict[str, str]]) -> str:
     return "FAILED"
 
 
+def rerun_verdict(o: Outcome, want: list[dict[str, str]]) -> str:
+    """Whether keeping the heals made the next run pass without healing again."""
+    if not o.kept_by:
+        return ""
+    ok, _ = judge(o.rerun_records, want)
+    if not ok:
+        return "FALSE_SUCCESS" if o.rerun_status == "completed" else "FAILED"
+    if o.rerun_status != "completed":
+        return "PASS_UNREPORTED"
+    return "HEALED_AGAIN" if o.rerun_healed else "PASS"
+
+
+def keep_heals(
+    app: App, site: Site, trigger: str, run_id: str, o: Outcome, args: argparse.Namespace
+) -> None:
+    """Keep a healed run's heals the way the person would (decision 0030): save the fixes the
+    report offers, and ask for a revision of what they can't keep. Then run the task again."""
+    fixes = app.report(trigger, run_id)["fixes"]
+    if fixes["workflow"] is not None:
+        app.set_workflow(trigger, fixes["workflow"])
+        o.kept_by = "fixes"
+    if fixes["left"]:
+        site.records.clear()
+        seen = app.investigate(trigger, run_id, ANSWER, args.repair_timeout)
+        o.questions, o.repair_reply = seen.questions, seen.reply[-1500:]
+        o.repair_records = len(site.records)
+        if seen.revision is not None:
+            o.revision_linked = seen.revision.get("trigger_id") == trigger
+            app.set_workflow(trigger, seen.revision["workflow"])
+            o.kept_by = "+".join(filter(None, [o.kept_by, "revision"]))
+    if not o.kept_by:
+        return
+    site.records.clear()
+    run = app.run(trigger, args.run_timeout)
+    asks = 0
+    while run["status"] == "needs_approval" and _heal_waiting(run) and asks < 10:
+        asks += 1
+        run = app.answer(trigger, run["run_id"], True, args.run_timeout)
+    o.rerun_status, o.rerun_error = run["status"], str(run.get("error") or "")
+    o.rerun_records = list(site.records)
+    report = app.report(trigger, run["run_id"])
+    o.rerun_healed = [str(h.get("did") or "") for h in report["healed"]]
+    if o.rerun_status == "needs_approval":
+        o.rerun_error = _asked(run)
+        app.answer(trigger, run["run_id"], False, args.run_timeout)
+
+
 def _asked(run: dict[str, Any]) -> str:
     """What a paused run waits on a person for."""
     waiting: dict[str, Any] = next(
@@ -194,6 +249,7 @@ def run_one(app: App, site: Site, port: int, s: Scenario, args: argparse.Namespa
         o.first_seconds = round(time.monotonic() - t0, 1)
         o.first_status, o.first_error = run["status"], str(run.get("error") or "")
         o.first_records = list(site.records)
+        first_run = run["run_id"]
         if args.autonomy:
             o.healed = [
                 str(h.get("did") or "") for h in app.report(trigger, run["run_id"])["healed"]
@@ -217,9 +273,12 @@ def run_one(app: App, site: Site, port: int, s: Scenario, args: argparse.Namespa
                 run = app.run(trigger, args.run_timeout)
                 o.second_status, o.second_error = run["status"], str(run.get("error") or "")
                 o.second_records = list(site.records)
+        if args.keep_heals and o.healed and judge(o.first_records, want)[0]:
+            keep_heals(app, site, trigger, first_run, o, args)
     finally:
         app.delete_task(trigger)
     o.verdict = verdict(o, s, want)
+    o.rerun_verdict = rerun_verdict(o, want)
     return o
 
 
@@ -227,11 +286,19 @@ def _healing(o: Outcome) -> str:
     return f" (healed {len(o.healed)}, asked {o.heal_asks})" if o.healed or o.heal_asks else ""
 
 
+def _kept(o: Outcome) -> str:
+    if not o.kept_by:
+        return "-"
+    healed = f", healed {len(o.rerun_healed)}" if o.rerun_healed else ""
+    return f"{o.kept_by}: {o.rerun_verdict}{healed} {o.rerun_error[:60]}".strip()
+
+
 def summary(outcomes: list[Outcome]) -> str:
+    kept = any(o.kept_by for o in outcomes)
     lines = [
         "| scenario | verdict | first run | s | repair: asked / side effects / linked "
-        "| after repair |",
-        "|---|---|---|---|---|---|",
+        "| after repair |" + (" kept, next run |" if kept else ""),
+        "|---|---|---|---|---|---|" + ("---|" if kept else ""),
     ]
     for o in outcomes:
         repair = (
@@ -243,6 +310,7 @@ def summary(outcomes: list[Outcome]) -> str:
             f"| {o.scenario} | {o.verdict} | {o.first_status}{_healing(o)} {o.first_error[:80]} "
             f"| {o.first_seconds} "
             f"| {repair} | {o.second_status} {o.second_error[:60]} |"
+            + (f" {_kept(o)} |" if kept else "")
         )
     by: dict[str, dict[str, int]] = {}
     for o in outcomes:
@@ -277,6 +345,12 @@ def main(argv: list[str] | None = None) -> int:
         "--autonomy",
         choices=["fixed", "self_healing", "proactive", "autonomous"],
         help="set the fixed workflows' autonomy (needs decision 0030 and #760 in the app)",
+    )
+    parser.add_argument(
+        "--keep-heals",
+        action="store_true",
+        help="after a healed run that filed right, save its fixes or ask for a revision, and "
+        "run again (needs #762 and #763 in the app; use with --autonomy)",
     )
     parser.add_argument("--run-timeout", type=float, default=900)
     parser.add_argument("--repair-timeout", type=float, default=1500)
