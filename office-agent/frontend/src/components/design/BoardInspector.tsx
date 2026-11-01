@@ -108,7 +108,10 @@ function Code({ element }: { element: InspectedElement }) {
 
 function Tree({ tree, selected, onSelect }: { tree: InspectedNode; selected: string | null; onSelect: (path: string) => void }) {
   const list = useRef<HTMLDivElement>(null);
-  useEffect(() => list.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" }), [selected]);
+  // A block body: scrollIntoView returns a promise in newer browsers, and React would call it as the cleanup.
+  useEffect(() => {
+    list.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
+  }, [selected]);
   return (
     <div ref={list} role="tree" aria-label="Elements" className="max-h-[40%] shrink-0 overflow-auto border-b border-[var(--border)] py-1">
       {treeRows(tree).map(({ node, depth }) => (
