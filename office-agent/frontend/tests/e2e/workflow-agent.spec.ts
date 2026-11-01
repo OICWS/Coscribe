@@ -49,14 +49,18 @@ test("an agent step added in the editor is saved, and makes the workflow version
     await page.getByRole("button", { name: "Add step" }).last().click();
     await page.getByRole("dialog", { name: "Add a step" }).getByText("Agent", { exact: true }).click();
     await page.getByLabel("Goal").fill("Summarise {{files}}");
-    await page.locator("select", { hasText: "Add a tool…" }).selectOption("read_file");
+    await page.locator("select", { hasText: "Add a tool…" }).selectOption("write_file");
     await page.getByRole("button", { name: "Add step" }).first().click();
 
-    await expect(page.locator('[data-step="agent"]')).toContainText("1 tool");
+    await expect(page.locator('[data-step="agent"]')).toContainText("4 tools");
     const tasks = await (await page.request.get("/api/scheduled-tasks")).json();
     const saved = tasks.find((t: { trigger_id: string }) => t.trigger_id === task.trigger_id);
     expect(saved.workflow.version).toBe(2);
-    expect(saved.workflow.steps[1]).toMatchObject({ kind: "agent", autonomy: "bounded", tools: ["read_file"] });
+    expect(saved.workflow.steps[1]).toMatchObject({
+      kind: "agent",
+      autonomy: "bounded",
+      tools: ["list_files", "get_file_info", "read_file", "write_file"],
+    });
   } finally {
     await page.request.delete(`/api/scheduled-tasks/${task.trigger_id}`);
   }
