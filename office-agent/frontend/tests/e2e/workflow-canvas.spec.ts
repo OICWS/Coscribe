@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-// No model involved: a workflow's page opens on its canvas, which draws
-// branches and loops from the workflow's structure.
+// No model involved: a workflow's page opens on its simple view, a list of its steps' titles;
+// its detailed view draws branches and loops on a canvas from the workflow's structure.
 
-test("a workflow's page shows it as a canvas, and a step on it opens in the editor", async ({ page }) => {
+test("a workflow's page lists its steps, shows them as a canvas in detail, and a step on it opens in the editor", async ({ page }) => {
   const created = await page.request.post("/api/scheduled-tasks", {
     data: {
       name: "e2e workflow canvas",
@@ -36,6 +36,14 @@ test("a workflow's page shows it as a canvas, and a step on it opens in the edit
   const task = await created.json();
   try {
     await page.goto(`/?view=scheduled&task=${task.trigger_id}`);
+    const simple = page.getByTestId("task-simple-view");
+    await expect(simple).toContainText("List the reports");
+    await expect(simple).toContainText("For each one:");
+    await expect(simple).toContainText("Read the report");
+    await expect(simple).toContainText("Waits for your OK");
+    await expect(simple).not.toContainText("list_files");
+
+    await page.getByRole("button", { name: "Detailed" }).click();
     const canvas = page.getByTestId("workflow-canvas");
     await expect(canvas).toContainText("Start");
     await expect(canvas).toContainText("Repeats for each item");
