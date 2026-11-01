@@ -424,7 +424,9 @@ def _provider_class() -> type[OAuthClientProvider]:
             # server's 401 with a new sign-in, never a refresh. A token whose
             # expiry this file doesn't know (saved before it kept one, or
             # issued without one) is refreshed once rather than trusted.
-            self.context.token_expiry_time = storage.expires_at() or 1.0
+            expires_at = storage.expires_at()
+            remaining = -1 if expires_at is None else int(expires_at - time.time())
+            self.context.update_token_expiry(tokens.model_copy(update={"expires_in": remaining}))
 
     _PROVIDER = _Provider
     return _PROVIDER
