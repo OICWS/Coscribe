@@ -19,6 +19,7 @@ from langgraph.constants import TAG_NOSTREAM
 from pydantic import ValidationError
 
 from ..workflow_spec import (
+    AgentStep,
     LLMStep,
     LoopStep,
     ToolStep,
@@ -34,6 +35,9 @@ from .engine import UNAVAILABLE_TOOLS
 SCRIPT_TOOL = "run_python_script"
 # What a run_node_script tool step holds: the call's own result, not what the script printed.
 _NODE_RESULT = frozenset({"exit_code", "stdout", "stderr", "timed_out"})
+# A bounded agent step may call only its listed tools (decision 0028), so one drafted without
+# these stopped a run to ask before looking at a file in its own workspace.
+READ_TOOLS = ("list_files", "get_file_info", "read_file")
 MAX_ATTEMPTS = 3
 _ARGS_CHARS = 4000
 _RESULT_CHARS = 600
@@ -356,6 +360,16 @@ def check_draft(workflow: Workflow, tools: dict[str, Any]) -> list[str]:
     return problems
 
 
+def with_read_tools(workflow: Workflow, tools: dict[str, Any]) -> Workflow:
+    """Every bounded agent step may also list, inspect and read files: reading inside the
+    workspace is what such a step does first, and is no new reach to consent to."""
+    for placed in walk(workflow.steps):
+        step = placed.step
+        if isinstance(step, AgentStep) and step.autonomy == "bounded":
+            step.tools += [t for t in READ_TOOLS if t in tools and t not in step.tools]
+    return workflow
+
+
 def _reply_object(text: str) -> dict[str, Any]:
     start, end = text.find("{"), text.rfind("}")
     if start < 0 or end < start:
@@ -387,6 +401,7 @@ def _parse_reply(text: str, tools: dict[str, Any], name_hint: str) -> WorkflowDr
     problems = check_draft(workflow, tools)
     if problems:
         raise ValueError("; ".join(problems))
+    workflow = with_read_tools(workflow, tools)
     notes = data.get("notes") or []
     if isinstance(notes, str):
         notes = [notes]
@@ -456,6 +471,7 @@ def _parse_revision(text: str, tools: dict[str, Any], name: str) -> WorkflowDraf
     problems = check_draft(workflow, tools)
     if problems:
         raise ValueError("; ".join(problems))
+    workflow = with_read_tools(workflow, tools)
     changes = _lines(data.get("changes"))
     if not changes:
         raise ValueError('list what you changed in "changes"')

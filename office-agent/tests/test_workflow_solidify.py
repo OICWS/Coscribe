@@ -181,6 +181,27 @@ async def test_a_conversation_without_tool_calls_is_refused_without_asking() -> 
         )
 
 
+async def test_a_bounded_agent_step_is_drafted_with_the_read_tools() -> None:
+    # Without them a run stopped to ask before it looked at a file in its own workspace.
+    agent = {"id": "do", "kind": "agent", "title": "Do", "goal": "Make the report",
+             "tools": ["read_file", "run_python_script"]}
+    broad = {"id": "more", "kind": "agent", "title": "More", "goal": "Tidy up",
+             "autonomy": "high"}
+    loop = {"id": "each", "kind": "loop", "title": "Each", "over": "files", "item": "f",
+            "steps": [{**agent, "id": "inner", "tools": ["search_pdf"]}]}
+    workflow = {"version": 2, "inputs": [{"name": "files", "label": "Files", "type": "text"}],
+                "steps": [agent, broad, loop]}  # fmt: skip
+    tools = {**TOOLS, "list_files": print, "read_file": print, "get_file_info": print}
+    model = ScriptedModel(replies=[_reply(workflow)], received=[])
+
+    draft = await draft_workflow(model, HISTORY, tools)
+
+    outer, more, each = draft.workflow["steps"]
+    assert outer["tools"] == ["read_file", "run_python_script", "list_files", "get_file_info"]
+    assert more["tools"] == []
+    assert each["steps"][0]["tools"] == ["search_pdf", "list_files", "get_file_info", "read_file"]
+
+
 def test_check_draft_catches_what_the_spec_cant() -> None:
     workflow = parse_workflow(
         {
