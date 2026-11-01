@@ -2,7 +2,7 @@
 
 ## Purpose
 Owns how a workflow runs (`engine.py`; `model_step.py` gets a model to return a step's
-fields; `agent_step.py` runs an agent step through an injected runner; `report.py` a run's report, decision 0030; `healing.py` the agent that heals a failed browser step when the task's autonomy allows it; `heal_fixes.py` the revision a run's heals propose), what it may touch (`permissions.py`), the tool parameters its editor needs (`catalog.py`), drafting one from a
+fields; `agent_step.py` runs an agent step through an injected runner; `report.py` a run's report, decision 0030; `healing.py` the agent that heals a failed browser step when the task's autonomy allows it; `heal_revision.py` the revision a run's heals propose), what it may touch (`permissions.py`), the tool parameters its editor needs (`catalog.py`), drafting one from a
 conversation (`solidify.py`) and a one-off test run (`testing.py`). Does not own the schedule
 that fires a run or its stored history (`runtime_lg/scheduled_tasks.py`), the routes
 (`web/routes/scheduled.py`) or any agent: an agent step (decision 0028) runs through

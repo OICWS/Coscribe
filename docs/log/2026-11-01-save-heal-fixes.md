@@ -7,7 +7,7 @@ after a heal.
 ## Shipped
 - `workflows/healing.py`: a heal's record keeps, next to the saved arguments it changed
   (`args`), the values they replaced (`was`).
-- `workflows/heal_fixes.py`: `heal_fixes(workflow, healed)` turns a run's heals into a revision:
+- `workflows/heal_revision.py`: `heal_fixes(workflow, healed)` turns a run's heals into a revision:
   each named change replaces the saved argument, but only while the task still holds the value
   the heal replaced, so a task edited since the run is never overwritten. A heal reused on a
   later item counts once. A heal that named no argument, or a step healed to different values on
