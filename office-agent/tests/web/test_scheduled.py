@@ -135,7 +135,7 @@ def test_wake_poll_loop_publishes_background_events_for_fired_wakes_and_triggers
     store.finish_run(digest.trigger_id, fired_run.run_id, "failed", "no network")
 
     async def _fake_poll_due_scheduled_tasks(
-        state_dir: Any, get_session: Any, on_pruned: Any = None, on_woken: Any = None
+        state_dir: Any, get_session: Any, on_pruned: Any = None, on_ended: Any = None
     ) -> list[Any]:
         return [store.load(digest.trigger_id)]
 
@@ -907,7 +907,8 @@ def test_validate_workflow_normalizes_or_explains_lg(
         ok = client.post("/api/workflows/validate", json={"workflow": {"steps": []}})
         bad = client.post("/api/workflows/validate", json={"workflow": {"steps": [step]}})
 
-    empty = {"version": 1, "inputs": [], "steps": [], "autonomy": None, "after_failure": []}
+    empty = {"version": 1, "inputs": [], "steps": [], "autonomy": None, "after_failure": [],
+             "memory": []}
     assert ok.json() == {"workflow": empty}
     assert bad.status_code == 400
     assert "step 1" in bad.json()["error"]

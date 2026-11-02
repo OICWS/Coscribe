@@ -121,7 +121,7 @@ class Scheduler:
                 self._settings.state_dir,
                 self._get_session_async,
                 on_pruned=self.delete_run_threads,
-                on_woken=self.announce_run,
+                on_ended=self.announce_run,
             )
         except Exception:
             logging.getLogger(__name__).exception(

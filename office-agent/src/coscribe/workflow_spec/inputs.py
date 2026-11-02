@@ -4,8 +4,9 @@ can default to, worked out on the day each run starts. The frontend mirrors thes
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Literal, Protocol
 
 InputType = Literal["text", "number", "date", "choice", "yes_no", "file", "folder"]
@@ -151,3 +152,40 @@ def input_values(specs: Iterable[_Input], given: dict[str, Any], today: date) ->
         else:
             values[spec.name] = ""
     return values
+
+
+MemoryType = Literal["text", "number", "date", "list"]
+
+# Every run reads the whole memory and the task page shows it, so each value stays small.
+MAX_MEMORY_CHARS = 20_000
+
+
+def _size(value: Any) -> int:
+    return len(json.dumps(value, ensure_ascii=False, default=str))
+
+
+def memory_value(name: str, kind: MemoryType, given: Any) -> Any:
+    """What the memory `name` keeps for `given` (decision 0034); ValueError when it isn't a
+    `kind` value or is too big. A list too big keeps its newest items, so a list of what was
+    already handled never stops a task."""
+    if given is None or given == "":
+        return None
+    if kind == "number":
+        value: Any = _number(name, given)
+    elif kind == "date":
+        value = str(given).strip()
+        try:
+            datetime.fromisoformat(value)
+        except ValueError:
+            raise ValueError(f"{name!r} keeps a date like 2026-03-31, not {given!r}") from None
+    elif kind == "list":
+        if not isinstance(given, list):
+            raise ValueError(f"{name!r} keeps a list, not {given!r}")
+        value = list(given)
+        while value and _size(value) > MAX_MEMORY_CHARS:
+            value = value[max(1, len(value) // 10) :]
+    else:
+        value = given if isinstance(given, str) else json.dumps(given, ensure_ascii=False)
+    if _size(value) > MAX_MEMORY_CHARS:
+        raise ValueError(f"{name!r} is over {MAX_MEMORY_CHARS} characters; keep less")
+    return value

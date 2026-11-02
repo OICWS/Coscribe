@@ -28,7 +28,13 @@ from ..runtime_lg import (
     tool_name,
 )
 from ..runtime_lg import extract_text as _extract_text
-from ..tools import BROWSER_HOST, ScheduledTrigger, ScheduledTriggerStore, page_screenshot
+from ..tools import (
+    BROWSER_HOST,
+    ScheduledTrigger,
+    ScheduledTriggerStore,
+    TaskMemory,
+    page_screenshot,
+)
 from ..workflows import (
     DraftFailed,
     StepContext,
@@ -244,7 +250,7 @@ class WorkflowDrafting:
                     ensure_ascii=False,
                 )  # fmt: skip
             try:
-                _name, data, _trigger = self._workflow_to_change(messages, task_id, draft_id)
+                _name, data, trigger = self._workflow_to_change(messages, task_id, draft_id)
                 workflow = parse_workflow(data)
             except (DraftFailed, ValueError, TypeError) as exc:
                 return json.dumps({"status": "failed", "error": str(exc)}, ensure_ascii=False)
@@ -271,9 +277,16 @@ class WorkflowDrafting:
                 # The steps' own download waits must not take a file this
                 # conversation downloaded before the test.
                 BROWSER_HOST.set_active(self._host.thread_id, True)
-            result = await run_test(
-                workflow, ctx, inputs, report, self._host.thread_id, send_for_real=send_for_real
+            # A test of a saved task reads what its runs remembered, and keeps nothing.
+            memory = (
+                TaskMemory(self._host.settings.state_dir).values(trigger.trigger_id)
+                if trigger is not None
+                else None
             )
+            result = await run_test(
+                workflow, ctx, inputs, report, self._host.thread_id,
+                send_for_real=send_for_real, memory=memory,
+            )  # fmt: skip
             if browser:
                 # For the reviewer, not the model: the page the test ended on.
                 result["screenshot"] = await asyncio.to_thread(

@@ -9,8 +9,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from ..workflow_spec import LoopStep, Workflow, walk
+from ..workflow_spec import LoopStep, RememberStep, Workflow, walk
 from .pause_steps import NO_ANSWER
+from .remember_steps import NOTHING_TO_DO
 
 
 def _seconds(started: str | None, finished: str | None) -> float | None:
@@ -39,6 +40,7 @@ def run_report(
     "recovered": [{"step_id", "title", "iteration", "how", "error"}],
     "retried": [{"step_id", "title", "iteration", "attempts", "worked"}],
     "after_failure": [{"step_id", "title", "status", "error"}],
+    "remembered": [{"step_id", "title", "name", "value"}], "ended": {"step_id", "title"} | None,
     "tool_calls", "tokens", "cached_tokens", "seconds"}. A loop's `done` counts the items that
     worked. A step that was removed from the workflow after the run keeps its id as title."""
     steps = {placed.step.id: placed.step for placed in walk(workflow.every_step())}
@@ -54,6 +56,10 @@ def run_report(
     recovered: list[dict[str, Any]] = []
     retried: list[dict[str, Any]] = []
     after_failure: list[dict[str, Any]] = []
+    # What the run keeps for the next one, kept only if it finished, and the check that ended it
+    # with nothing to do (decision 0034).
+    remembered: list[dict[str, Any]] = []
+    ended: dict[str, Any] | None = None
     tool_calls = tokens = cached = 0
     for record in records:
         step_id = str(record.get("step_id") or "")
@@ -84,6 +90,11 @@ def run_report(
             irreversible.append(where)
         if status == "done" and record.get("note") == NO_ANSWER:
             unanswered.append(where)
+        if status == "done" and record.get("note") == NOTHING_TO_DO:
+            ended = {"step_id": step_id, "title": title(step_id)}
+        if status == "done" and isinstance(step, RememberStep) and isinstance(output, dict):
+            remembered.append({"step_id": step_id, "title": title(step_id),
+                               "name": step.name, "value": output.get("value")})  # fmt: skip
         agent = record.get("agent")
         if isinstance(agent, dict):
             tool_calls += int(agent.get("tool_calls") or 0)
@@ -104,6 +115,8 @@ def run_report(
         "recovered": recovered,
         "retried": retried,
         "after_failure": after_failure,
+        "remembered": remembered,
+        "ended": ended,
         "tool_calls": tool_calls,
         "tokens": tokens,
         "cached_tokens": cached,

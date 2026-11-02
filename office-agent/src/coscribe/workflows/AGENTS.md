@@ -45,7 +45,7 @@ history, so this package does not import `runtime_lg`).
   saves its fixes (`heal_fixes`), and a fix replaces an argument only while it still holds the
   value the heal replaced.
 - Decision 0032: a step marked `irreversible` is never tried again on its own (the spec refuses retries on it); a failure that doesn't stop the run is on the step's record (`recovered`) and in the run report, never counted as done; the steps after a failed run never wait for a person, and their failure never replaces the run's own error. Decision 0033: a run paused at an ask or wait step holds nothing but its checkpoint; only `WorkflowRun.answer` or `wake` continues it, and a wait looks only whether its file is there.
-- `UNAVAILABLE_TOOLS` in `engine.py` only lists tools a run may not call; the import contract,
+- `UNAVAILABLE_TOOLS` in `preflight.py` only lists tools a run may not call; the import contract,
   not that list, is what keeps the code module out.
 
 ## Tests

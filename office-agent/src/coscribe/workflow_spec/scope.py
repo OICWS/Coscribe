@@ -4,29 +4,33 @@ nesting hold."""
 
 from __future__ import annotations
 
+from .reads import _condition_refs, step_references, step_templates
 from .refs import malformed_templates
 from .spec import (
     FAILURE,
     MAX_NESTING,
     MAX_STEPS,
+    MEMORY,
+    RUN_FIELDS,
+    THIS_RUN,
     AgentStep,
     AskStep,
     BranchStep,
+    CheckStep,
     ChoiceStep,
     LLMStep,
     LoopStep,
+    MemoryEntry,
     OnFailure,
+    RememberStep,
     Step,
     WaitStep,
     WorkflowInput,
-    _condition_refs,
     _Recovers,
     _root,
     child_lists,
     failure_policy,
     step_output,
-    step_references,
-    step_templates,
 )
 
 
@@ -46,6 +50,21 @@ class _Scope:
         # How many steps-in-place-of-a-failed-one surround the steps being checked, where
         # `failure` is theirs to read.
         self.fallbacks = 0
+
+    def remembers(self, memory: list[MemoryEntry]) -> set[str]:
+        """The names the steps may read from the start: the inputs, and with memory, `memory`
+        and `run` (decision 0034)."""
+        available = set(self.taken)
+        if not memory:
+            return available
+        if len({m.name for m in memory}) != len(memory):
+            raise ValueError("each value a task remembers has its own name")
+        for reserved in (MEMORY, THIS_RUN):
+            if reserved in self.taken:
+                raise ValueError(f"a task that remembers reads {reserved!r}; rename that input")
+        self.taken |= {MEMORY, THIS_RUN}
+        self.fields |= {MEMORY: {m.name for m in memory}, THIS_RUN: set(RUN_FIELDS)}
+        return available | {MEMORY, THIS_RUN}
 
     def _field(self, reference: str, where: str) -> None:
         root, _, rest = reference.partition(".")
@@ -81,6 +100,7 @@ class _Scope:
                     )
                 self._field(reference, where)
             self.agents += isinstance(step, AgentStep)
+            self._ends_or_remembers(step, where, depth)
             if isinstance(step, (BranchStep, ChoiceStep, LoopStep)) and depth >= MAX_NESTING:
                 raise ValueError(f"{where}: branches and loops nest at most {MAX_NESTING} deep")
             if isinstance(step, (BranchStep, ChoiceStep)):
@@ -96,6 +116,12 @@ class _Scope:
             output = step_output(step)
             available |= {output} if output else set()
         return available
+
+    def _ends_or_remembers(self, step: Step, where: str, depth: int) -> None:
+        if isinstance(step, CheckStep) and step.otherwise == "end" and (depth or self.fallbacks):
+            raise ValueError(f"{where}: only a check outside loops and branches ends the run")
+        if isinstance(step, RememberStep) and step.name not in self.fields.get(MEMORY, set()):
+            raise ValueError(f"{where} remembers {step.name!r}, which the task doesn't keep")
 
     def _save(self, step: Step) -> None:
         output = step_output(step)

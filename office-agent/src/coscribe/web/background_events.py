@@ -75,8 +75,12 @@ def run_event(
     trigger: ScheduledTrigger, run: ScheduledRun, investigation: str | None = None
 ) -> BackgroundEvent | None:
     """The notification for how `run` ended, or None when there's nothing
-    to tell (it was stopped, or is still going). `investigation`: the
+    to tell (it was stopped, is still going, or ended quietly with nothing
+    to do: a task checking every few minutes would otherwise notify each
+    time). `investigation`: the
     conversation now looking into a failure, which the notification opens."""
+    if run.quiet:
+        return None
     if run.status == "completed":
         body = f"Completed{_files_line(run.files)}"
     elif run.status == "failed":

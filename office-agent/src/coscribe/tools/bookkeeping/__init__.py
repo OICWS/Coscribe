@@ -22,6 +22,7 @@ from .conversations import (
     format_incoming,
     set_inbox_listener,
 )
+from .folder_watch import FolderWatch
 from .interaction import (
     PLAN_CHOICE_AUTO,
     PLAN_CHOICE_MANUAL,
@@ -67,6 +68,7 @@ from .subagent_tasks import (
     stop_subagent_task,
     take_stop_requester,
 )
+from .task_memory import TaskMemory
 from .tasks import TaskToolkit, build_task_tools
 
 __all__ = [
@@ -100,6 +102,8 @@ __all__ = [
     "SignalStore",
     "SubAgentTask",
     "SubAgentTaskStore",
+    "TaskMemory",
+    "FolderWatch",
     "WakeRequest",
     "WakeStore",
     "build_background_task_tools",

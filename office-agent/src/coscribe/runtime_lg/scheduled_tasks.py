@@ -28,9 +28,11 @@ from typing import Any
 
 from ..tools import (
     BROWSER_HOST,
+    FolderWatch,
     ScheduledRun,
     ScheduledTrigger,
     ScheduledTriggerStore,
+    TaskMemory,
     browser_run,
     compute_next_run_at,
     page_screenshot,
@@ -250,7 +252,10 @@ async def _run_workflow(
         if outcome.status == "completed":
             since = int(datetime.fromisoformat(run.started_at).timestamp())
             files = await asyncio.to_thread(output_files, outputs, ctx.workspace_root, since)
-            store.record_evidence(trigger.trigger_id, run.run_id, files=files)
+            store.record_evidence(trigger.trigger_id, run.run_id, files=files,
+                                  quiet=1 if outcome.ended else 0)  # fmt: skip
+            # Only a finished run moves the task's memory on (decision 0034).
+            TaskMemory(store.state_dir).keep(trigger.trigger_id, outcome.remembered, run.run_id)
             return "completed", None
     if outcome.status == "waiting":
         # A wait step's run goes on by itself (decision 0033); anything else waits for a person.
@@ -467,8 +472,9 @@ async def execute_run(
             session = await get_session(run.thread_id)
             if trigger.workflow is not None:
                 inputs = run.inputs or {}
+                memory = TaskMemory(state_dir).values(trigger_id)
                 status, error = await _run_workflow(
-                    store, trigger, run, session, lambda wf: wf.start(inputs)
+                    store, trigger, run, session, lambda wf: wf.start(inputs, memory)
                 )
             else:
                 status, error = await _run_in_session(
@@ -494,14 +500,16 @@ async def poll_due_scheduled_tasks(
     state_dir: str | Path,
     get_session: Callable[[str], Awaitable[Any]],
     on_pruned: Callable[[list[ScheduledRun]], Awaitable[None]] | None = None,
-    on_woken: Callable[[str, ScheduledRun], Awaitable[None]] | None = None,
+    on_ended: Callable[[str, ScheduledRun], Awaitable[None]] | None = None,
 ) -> list[ScheduledTrigger]:
     """Start a run for every due ScheduledTrigger, advance each schedule
     (or disable a one-time trigger), then wait for all of them to finish.
     Returns the triggers that fired, for a caller to log/print. Runs paused
-    at a step whose time came go on too (decision 0033), each passed to
-    `on_woken` with its task's id as it ends; one due while Coscribe was
-    closed goes on at the first poll after it starts.
+    at a step whose time came go on too (decision 0033), and each new file
+    in a folder task's folder starts a run (decision 0034); those are each
+    passed to `on_ended` with their task's id as they end. One due, or a
+    file that arrived, while Coscribe was closed goes on at the first poll
+    after it starts.
 
     The schedule advances when the run *starts*, not when it ends, so a
     run that takes longer than the poll interval is never started twice,
@@ -526,16 +534,43 @@ async def poll_due_scheduled_tasks(
         fired.append(trigger)
         executions.append(execute_run(state_dir, trigger.trigger_id, run.run_id, get_session))
 
-    async def wake(trigger_id: str, run_id: str) -> None:
-        run = await continue_workflow_run(state_dir, trigger_id, run_id, get_session,
-                                          lambda wf: wf.wake())  # fmt: skip
-        if run is not None and on_woken is not None:
-            await on_woken(trigger_id, run)
+    async def ended(trigger_id: str, running: Awaitable[ScheduledRun | None]) -> None:
+        run = await running
+        if run is not None and on_ended is not None:
+            await on_ended(trigger_id, run)
 
-    executions += [wake(t, r) for t, r in _reopen_due_pauses(store, now)]
+    for trigger_id, inputs in _new_files(store):
+        _, run, pruned = store.start_run(trigger_id, "scheduled", inputs)
+        if pruned and on_pruned is not None:
+            await on_pruned(pruned)
+        executions.append(
+            ended(trigger_id, execute_run(state_dir, trigger_id, run.run_id, get_session))
+        )
+    for trigger_id, run_id in _reopen_due_pauses(store, now):
+        going_on = continue_workflow_run(state_dir, trigger_id, run_id, get_session,
+                                         lambda wf: wf.wake())  # fmt: skip
+        executions.append(ended(trigger_id, going_on))
     # A run stopped by the user ends in CancelledError; the others go on.
     await asyncio.gather(*executions, return_exceptions=True)
     return [store.load(t.trigger_id) or t for t in fired]
+
+
+def _new_files(store: ScheduledTriggerStore) -> list[tuple[str, dict[str, str]]]:
+    """Each new file in a folder task's folder, as its task and the inputs of the run it starts
+    (decision 0034)."""
+    watch = FolderWatch(store.state_dir)
+    started: list[tuple[str, dict[str, str]]] = []
+    for trigger in store.list_all():
+        rule = trigger.schedule
+        if rule.kind != "folder" or not rule.folder or not rule.input:
+            continue
+        if not trigger.enabled:
+            # Resuming starts from what is there then, as a timed task doesn't catch up either.
+            watch.forget(trigger.trigger_id)
+            continue
+        found = watch.new_files(trigger.trigger_id, rule.folder, rule.pattern)
+        started += [(trigger.trigger_id, {rule.input: path}) for path in found]
+    return started
 
 
 def _reopen_due_pauses(store: ScheduledTriggerStore, now: datetime) -> list[tuple[str, str]]:
