@@ -37,6 +37,17 @@ function BookmarkIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** A step that runs another task: feather-icons "layers" -- a task stacked inside this one. */
+export function LayersIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} {...props}>
+      <path d="M12 2 2 7l10 5 10-5-10-5z" />
+      <path d="m2 17 10 5 10-5" />
+      <path d="m2 12 10 5 10-5" />
+    </svg>
+  );
+}
+
 function StepIcon({ step, className }: { step: WorkflowStep; className: string }) {
   if (step.kind === "llm") return <SparkIcon className={className} />;
   if (step.kind === "agent") return <TargetIcon className={className} />;
@@ -45,6 +56,7 @@ function StepIcon({ step, className }: { step: WorkflowStep; className: string }
   if (step.kind === "ask") return <HelpIcon className={className} />;
   if (step.kind === "wait") return <ClockIcon className={className} />;
   if (step.kind === "remember") return <BookmarkIcon className={className} />;
+  if (step.kind === "run_task") return <LayersIcon className={className} />;
   if (step.kind === "script") return <TerminalIcon className={className} />;
   if (step.kind === "branch" || step.kind === "choice") return <BranchIcon className={className} />;
   if (step.kind === "loop") return <LoopIcon className={className} />;
@@ -63,6 +75,7 @@ const KIND_ICON: Record<StepKind, (props: { className: string }) => ReactNode> =
   ask: HelpIcon,
   wait: ClockIcon,
   remember: BookmarkIcon,
+  run_task: LayersIcon,
   branch: BranchIcon,
   choice: BranchIcon,
   loop: LoopIcon,
@@ -98,7 +111,7 @@ export function StepKindTile({ step, size = "md" }: { step: WorkflowStep; size?:
 }
 
 export function KindLegend() {
-  const kinds: StepKind[] = ["tool", "script", "llm", "agent", "check", "approval", "wait", "remember", "branch", "loop"];
+  const kinds: StepKind[] = ["tool", "script", "llm", "agent", "check", "approval", "wait", "remember", "run_task", "branch", "loop"];
   return (
     <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-[var(--muted)]">
       {kinds.map((kind) => (

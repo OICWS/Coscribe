@@ -2,7 +2,18 @@ import { toolLabel } from "../../lib/toolLabels";
 import { formatValue, stepOutput, wholeReference } from "../../lib/workflowLabels";
 import { askTimeoutWords } from "../../lib/pauseWords";
 import { duration } from "../../lib/plainSteps";
-import type { AgentStep, AskStep, Condition, Match, RememberStep, WaitStep, WorkflowStep } from "../../types/workflow";
+import { useTaskNames } from "../../lib/taskCalls";
+import type {
+  AgentStep,
+  AskStep,
+  Condition,
+  Match,
+  RememberStep,
+  RunTaskStep,
+  ScriptStep,
+  WaitStep,
+  WorkflowStep,
+} from "../../types/workflow";
 import { ConditionText, VarToken } from "./parts";
 
 function Conditions({
@@ -137,6 +148,45 @@ function RememberSummary({ step, inputNames }: { step: RememberStep; inputNames:
   );
 }
 
+function ScriptSummary({
+  step,
+  output,
+  inputNames,
+}: {
+  step: ScriptStep;
+  output: string | null;
+  inputNames: Set<string>;
+}) {
+  const lines = step.code.split("\n").length;
+  return (
+    <>
+      <span>
+        Python · {lines} {lines === 1 ? "line" : "lines"}
+      </span>
+      {Object.values(step.inputs).map((value, index) => (
+        <ArgPreview key={index} value={value} inputNames={inputNames} />
+      ))}
+      <Arrow output={output} inputNames={inputNames} />
+    </>
+  );
+}
+
+function RunTaskSummary({ step, inputNames }: { step: RunTaskStep; inputNames: Set<string> }) {
+  const name = useTaskNames().get(step.task);
+  const given = Object.values(step.inputs).slice(0, 2);
+  return (
+    <>
+      <span>Runs</span>
+      <span className="font-medium text-[var(--fg)]">{name ? `“${name}”` : "another task"}</span>
+      {given.length > 0 && <span>with</span>}
+      {given.map((value, index) => (
+        <ArgPreview key={index} value={value} inputNames={inputNames} />
+      ))}
+      <Arrow output={step.save_as} inputNames={inputNames} />
+    </>
+  );
+}
+
 export function StepSummary({ step, inputNames }: { step: WorkflowStep; inputNames: Set<string> }) {
   const output = stepOutput(step);
   if (step.kind === "tool") {
@@ -157,20 +207,7 @@ export function StepSummary({ step, inputNames }: { step: WorkflowStep; inputNam
       </>
     );
   }
-  if (step.kind === "script") {
-    const lines = step.code.split("\n").length;
-    return (
-      <>
-        <span>
-          Python · {lines} {lines === 1 ? "line" : "lines"}
-        </span>
-        {Object.values(step.inputs).map((value, index) => (
-          <ArgPreview key={index} value={value} inputNames={inputNames} />
-        ))}
-        <Arrow output={output} inputNames={inputNames} />
-      </>
-    );
-  }
+  if (step.kind === "script") return <ScriptSummary step={step} output={output} inputNames={inputNames} />;
   if (step.kind === "llm") {
     return (
       <>
@@ -184,6 +221,7 @@ export function StepSummary({ step, inputNames }: { step: WorkflowStep; inputNam
   if (step.kind === "ask") return <AskSummary step={step} output={output} inputNames={inputNames} />;
   if (step.kind === "wait") return <WaitSummary step={step} output={output} inputNames={inputNames} />;
   if (step.kind === "remember") return <RememberSummary step={step} inputNames={inputNames} />;
+  if (step.kind === "run_task") return <RunTaskSummary step={step} inputNames={inputNames} />;
   if (step.kind === "check") {
     return (
       <>

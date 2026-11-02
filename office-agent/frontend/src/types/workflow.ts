@@ -13,6 +13,7 @@ export type StepKind =
   | "ask"
   | "wait"
   | "remember"
+  | "run_task"
   | "branch"
   | "choice"
   | "loop";
@@ -209,6 +210,16 @@ export interface MemoryEntry {
   initial?: unknown;
 }
 
+/** Runs another workflow task, by its id, as a run of its own (decision 0035); `save_as` gets its
+ * results by name. */
+export interface RunTaskStep extends RecoveringBase {
+  kind: "run_task";
+  task: string;
+  /** The values it asks for, as text with references; one left out takes its default. */
+  inputs: Record<string, string>;
+  save_as: string | null;
+}
+
 export interface BranchStep extends StepBase {
   kind: "branch";
   conditions: Condition[];
@@ -260,11 +271,12 @@ export type WorkflowStep =
   | AskStep
   | WaitStep
   | RememberStep
+  | RunTaskStep
   | BranchStep
   | ChoiceStep
   | LoopStep;
 export type BlockStep = BranchStep | ChoiceStep | LoopStep;
-export type RecoveringStep = ToolStep | ScriptStep | LLMStep | AgentStep;
+export type RecoveringStep = ToolStep | ScriptStep | LLMStep | AgentStep | RunTaskStep;
 
 /** Decision 0030: one switch per task, a ceiling on what its steps may be. */
 export type TaskAutonomy = "fixed" | "self_healing" | "proactive" | "autonomous";
@@ -310,6 +322,10 @@ export interface RunReport {
   remembered?: { step_id: string; title: string; name: string; label?: string; value: unknown }[];
   /** The check that ended the run with nothing to do. */
   ended?: { step_id: string; title: string } | null;
+  /** The tasks its steps ran, each with the version it ran (decision 0035). */
+  tasks?: { step_id: string; task: string; name: string; version: number | null; status: string | null }[];
+  /** The versions of its own task it ran, usually one. */
+  versions?: number[];
   tool_calls: number;
   tokens: number;
   cached_tokens: number;

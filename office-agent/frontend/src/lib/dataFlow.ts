@@ -28,6 +28,7 @@ function readsOf(step: WorkflowStep): string[] {
     case "tool":
       return valueReads(step.args);
     case "script":
+    case "run_task":
       return valueReads(step.inputs);
     case "llm":
       return textReads(step.prompt);

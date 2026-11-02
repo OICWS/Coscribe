@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ThisTask } from "../../lib/taskCalls";
 import type { Workflow } from "../../types/workflow";
 import { AutonomySetting } from "./AutonomySetting";
 import { CompiledGraph } from "./CompiledGraph";
@@ -54,16 +55,21 @@ export function WorkflowSection({
   );
 }
 
-/** A saved task's workflow: the section, then the task's autonomy switch (decision 0030). */
-export function TaskWorkflowSection(props: {
+/** A saved task's workflow: the section, then the task's autonomy switch (decision 0030). Its
+ * steps may run any other task, not this one (decision 0035). */
+export function TaskWorkflowSection({
+  taskId,
+  ...props
+}: {
+  taskId: string;
   workflow: Workflow;
   persist: Persist;
   focusStepId?: string | null;
 }) {
   return (
-    <>
+    <ThisTask.Provider value={taskId}>
       <WorkflowSection {...props} />
       <AutonomySetting workflow={props.workflow} persist={props.persist} />
-    </>
+    </ThisTask.Provider>
   );
 }

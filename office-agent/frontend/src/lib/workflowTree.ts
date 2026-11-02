@@ -26,7 +26,13 @@ export function isBlock(step: WorkflowStep): step is BlockStep {
 }
 
 export function canRecover(step: WorkflowStep): step is RecoveringStep {
-  return step.kind === "tool" || step.kind === "script" || step.kind === "llm" || step.kind === "agent";
+  return (
+    step.kind === "tool" ||
+    step.kind === "script" ||
+    step.kind === "llm" ||
+    step.kind === "agent" ||
+    step.kind === "run_task"
+  );
 }
 
 /** The steps a run goes through and those after a failed one, in the order they are numbered

@@ -154,7 +154,6 @@
   "coscribe/web/routes/settings/code.py::function install_code": 1,
   "coscribe/web/routes/settings/code.py::function put_code_permissions": 1,
   "coscribe/web/routes/settings/code.py::function remove_code": 1,
-  "coscribe/web/routes/settings/config.py::function get_config": 1,
   "coscribe/web/routes/settings/config.py::function update_config": 1,
   "coscribe/web/routes/settings/design_systems.py::function create_design_system": 1,
   "coscribe/web/routes/settings/design_systems.py::function delete_design_system": 1,
@@ -230,7 +229,7 @@
   "src/coscribe/conversation/session.py": 1308,
   "src/coscribe/coordinator.py": 844,
   "src/coscribe/runtime_lg/subagents.py": 842,
-  "src/coscribe/tools/bookkeeping/scheduled_tasks.py": 968,
+  "src/coscribe/tools/bookkeeping/scheduled_tasks.py": 964,
   "src/coscribe/web/browser_panel.py": 813,
   "src/coscribe/web/connector_catalog.py": 948
  },

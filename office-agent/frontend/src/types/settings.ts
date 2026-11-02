@@ -401,6 +401,11 @@ export interface ScheduledRun {
   queued?: boolean;
   /** A check ended it with nothing to do: how many such runs in a row it stands for (decision 0034). */
   quiet?: number;
+  /** The versions of its task it ran, usually one (decision 0035). */
+  versions?: number[];
+  /** Per step that ran another task ("<step>" or "<step>/<its step>"): that task and its definition
+   * as the run found it. */
+  called?: Record<string, CalledTask>;
 }
 
 export interface ScheduledTask {
@@ -430,6 +435,27 @@ export interface ScheduledTask {
   auto_investigate?: boolean;
   /** What its runs were allowed while they waited, beyond what the steps name. */
   permissions?: { folders?: string[]; sites?: string[] };
+  /** Its workflow's version number (decision 0035). */
+  version?: number;
+  /** What a run of it gives a task that runs it: each name its top-level steps save. */
+  results?: string[];
+}
+
+export interface CalledTask {
+  task: string;
+  name: string;
+  version: number | null;
+  workflow: Workflow;
+}
+
+/** One saved definition of a task's workflow (decision 0035). */
+export interface TaskVersion {
+  number: number;
+  saved_at: string;
+  how: "created" | "edited" | "conversation" | "restored" | "found";
+  /** A restored one's source. */
+  from?: number;
+  workflow: Workflow;
 }
 
 export interface CreateScheduledTaskPayload {

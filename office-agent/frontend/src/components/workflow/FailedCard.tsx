@@ -76,6 +76,8 @@ export function FailedCard({
       : undefined;
   const sourceNumber = source ? (ctx.numbers.get(source.id) ?? null) : null;
   const declined = step.kind === "approval";
+  // A step of a task another step ran (decision 0035) is changed on that task's own page.
+  const elsewhere = step.id.includes("/");
   const pass = record?.iteration?.length ? ` on item ${record.iteration[record.iteration.length - 1] + 1}` : "";
 
   const retry = async (stepId?: string) => {
@@ -131,9 +133,15 @@ export function FailedCard({
             <button type="button" disabled={busy} className={primaryButton} onClick={() => retry(step.id)}>
               {declined ? "Ask again" : "Retry this step"}
             </button>
-            <button type="button" className={secondaryButton} onClick={() => ctx.onEditStep(step.id)}>
-              Edit step {number}
-            </button>
+            {elsewhere ? (
+              <span className="self-center text-[13px] text-[var(--muted)]">
+                To change it, open the task it belongs to.
+              </span>
+            ) : (
+              <button type="button" className={secondaryButton} onClick={() => ctx.onEditStep(step.id)}>
+                Edit step {number}
+              </button>
+            )}
           </>
         )}
       </div>

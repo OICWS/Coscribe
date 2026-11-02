@@ -80,10 +80,13 @@ export function passStatus(
 /** A block whose own record says failed or waiting because of a step
  * inside it -- that step shows the problem, not the block. */
 export function stoppedInside(step: WorkflowStep, run: ScheduledRun): boolean {
-  if (!isBlock(step)) return false;
-  const inside = new Set(descendants(step).map((s) => s.id));
+  // A step that ran another task holds that task's records, as "<step>/<its step>" (decision 0035).
+  const ran = step.kind === "run_task";
+  if (!ran && !isBlock(step)) return false;
+  const inside = new Set(ran ? [] : descendants(step).map((s) => s.id));
+  const within = (id: string) => (ran ? id.startsWith(`${step.id}/`) : inside.has(id));
   return run.steps.some(
-    (r) => inside.has(r.step_id) && ((r.status === "failed" && !r.recovered) || r.status === "waiting"),
+    (r) => within(r.step_id) && ((r.status === "failed" && !r.recovered) || r.status === "waiting"),
   );
 }
 

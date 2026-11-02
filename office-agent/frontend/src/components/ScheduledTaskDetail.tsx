@@ -22,6 +22,7 @@ import { ChevronRightIcon, PencilIcon, PlayIcon, TrashIcon } from "./icons";
 import { RunStatusIcon } from "./RunStatusIcon";
 import { ScheduledTaskSimple } from "./ScheduledTaskSimple";
 import { TaskMemorySection } from "./TaskMemorySection";
+import { TaskVersionsSection } from "./TaskVersionsSection";
 import { ToggleSwitch } from "./ToggleSwitch";
 import { RunInputsDialog } from "./workflow/RunInputsDialog";
 import { ViewToggle } from "./workflow/ViewToggle";
@@ -237,6 +238,7 @@ function RunsSection({ task, recent = false }: { task: ScheduledTask; recent?: b
                         {" "}
                         · {runSourceLabel(run)}
                         {duration && ` · ${duration}`}
+                        {run.versions?.length ? ` · version ${run.versions.join(" → ")}` : ""}
                       </span>
                     </span>
                     {run.status !== "completed" && (
@@ -375,7 +377,7 @@ function DetailedBody({
   return (
     <div className="mt-6 flex flex-col gap-6">
       {workflow ? (
-        <TaskWorkflowSection workflow={workflow} persist={persist} focusStepId={focusStepId} />
+        <TaskWorkflowSection taskId={task.trigger_id} workflow={workflow} persist={persist} focusStepId={focusStepId} />
       ) : (
         <InstructionsSection prompt={task.prompt} />
       )}
@@ -409,6 +411,7 @@ function DetailedBody({
           </>
         )}
       </div>
+      {workflow && <TaskVersionsSection task={task} onChanged={onChanged} />}
       {workflow && <FailuresSection task={task} onChanged={onChanged} />}
       {!workflow && <NotesSection task={task} onChanged={onChanged} />}
       <RunsSection task={task} />

@@ -9,7 +9,7 @@ import {
   stepDuration,
   summarizeOutput,
 } from "../../lib/workflowLabels";
-import type { ScheduledRun, ScheduledTask } from "../../types/settings";
+import type { CalledTask, ScheduledRun, ScheduledTask } from "../../types/settings";
 import {
   loopProgress,
   passStatus,
@@ -19,6 +19,7 @@ import {
   type LoopProgress,
 } from "../../lib/workflowProgress";
 import { passShowing } from "../../lib/workflowRunMap";
+import { calledWorkflow, runStepTitle, waitingInside } from "../../lib/calledRun";
 import { canRecover, everyStep, placeSteps } from "../../lib/workflowTree";
 import type { LoopStep, StepRecord, Workflow, WorkflowStep } from "../../types/workflow";
 import { CheckIcon, ChevronDownIcon, ClockIcon, SparkIcon, StopIcon } from "../icons";
@@ -46,6 +47,7 @@ type RowStatus = StepRecord["status"] | "not_reached" | "stopped" | "recovered";
 const RUNNING_LABEL: Partial<Record<WorkflowStep["kind"], string>> = {
   llm: "Asking the model…",
   agent: "Working on it…",
+  run_task: "Running its task…",
 };
 
 interface RunContext extends FailedContext {
@@ -72,7 +74,7 @@ const RECOVERED_SUMMARY: Record<NonNullable<StepRecord["recovered"]>, string> = 
   item_skipped: "Failed, this item was skipped",
 };
 
-function rowSummary(step: WorkflowStep, record: StepRecord | undefined, status: RowStatus): string {
+function rowSummary(step: WorkflowStep, record: StepRecord | undefined, status: RowStatus, ran?: CalledTask): string {
   if (status === "recovered" && record?.recovered) return `${RECOVERED_SUMMARY[record.recovered]}${triesWords(record)}`;
   if (status === "not_reached") return "Not reached";
   if (status === "pending") return "Up next";
@@ -118,6 +120,10 @@ function rowSummary(step: WorkflowStep, record: StepRecord | undefined, status: 
   if (step.kind === "approval") return record?.note ? `Approved · “${record.note}”` : "Approved";
   if (step.kind === "ask") return answeredWords(step, record?.output, record?.note);
   if (step.kind === "wait") return waitedWords(step, record?.output);
+  if (step.kind === "run_task" && ran) {
+    const version = ran.version ? ` · version ${ran.version}` : "";
+    return `Ran “${ran.name}”${version} · ${summarizeOutput(record?.output)}`;
+  }
   const usage = step.kind === "agent" ? agentUsage(record?.agent) : null;
   const summary = usage ? `${usage} · ${summarizeOutput(record?.output)}` : summarizeOutput(record?.output);
   const attempts = record?.attempts ?? 1;
@@ -326,6 +332,32 @@ function LoopPasses({
   );
 }
 
+/** The steps of the task a step ran, under it: open while they go on or stopped, a click away once done. */
+function CalledSteps({ stepId, status, path, ctx }: { stepId: string; status: RowStatus; path: number[]; ctx: RunContext }) {
+  const [open, setOpen] = useState(false);
+  const called = ctx.run.called?.[stepId];
+  const workflow = calledWorkflow(ctx.run, stepId);
+  if (!called || !workflow) return null;
+  const label = `“${called.name}”`;
+  const note = called.version ? `${label} · version ${called.version}` : label;
+  if (status === "done" && !open) {
+    return (
+      <button
+        type="button"
+        className="self-start pl-3.5 text-[13px] text-[var(--muted)] hover:text-[var(--fg)]"
+        onClick={() => setOpen(true)}
+      >
+        Show the {stepCount(workflow.steps)} of {label}
+      </button>
+    );
+  }
+  return (
+    <Nested label="Its task" color="var(--kind-task)" note={note}>
+      <RunList steps={workflow.steps} path={path} ctx={ctx} />
+    </Nested>
+  );
+}
+
 function StepRow({
   step,
   path,
@@ -342,7 +374,9 @@ function StepRow({
   const record = ctx.records.get(recordKey(step.id, path));
   const stopped = record?.status === "running" && ctx.run.status !== "running";
   const status: RowStatus = stopped
-    ? "stopped"
+    ? step.kind === "run_task" && waitingInside(step.id, ctx.run)
+      ? "waiting"
+      : "stopped"
     : record?.status === "failed" && record.recovered
       ? "recovered"
       : (record?.status ?? (upNext ? "pending" : "not_reached"));
@@ -384,7 +418,7 @@ function StepRow({
                 </span>
               )}
               <span className="min-w-0 truncate text-[13px] text-[var(--muted)]">
-                {rowSummary(step, record, status)}
+                {rowSummary(step, record, status, ctx.run.called?.[step.id])}
               </span>
               <span className="flex-1" />
               {duration && <span className="shrink-0 text-xs tabular-nums text-[var(--muted)]">{duration}</span>}
@@ -408,6 +442,7 @@ function StepRow({
         )}
         <RunArms step={step} record={record} path={path} ctx={ctx} />
         {step.kind === "loop" && <LoopPasses key={ctx.focus ?? ""} step={step} record={record} path={path} ctx={ctx} />}
+        {step.kind === "run_task" && <CalledSteps stepId={step.id} status={status} path={path} ctx={ctx} />}
       </div>
     </li>
   );
@@ -453,11 +488,6 @@ interface WorkflowRunViewProps {
   onInvestigate: (model: string | null) => Promise<string | null>;
 }
 
-function stepTitle(workflow: Workflow, stepId: string | undefined): string {
-  if (!stepId) return "a step";
-  return placeSteps(everyStep(workflow)).find((placed) => placed.step.id === stepId)?.step.title ?? stepId;
-}
-
 function useModels(enabled: boolean): string[] {
   const [models, setModels] = useState<string[]>([]);
   useEffect(() => {
@@ -497,12 +527,12 @@ function GoingBanner({
         )}
         {run.status === "waiting" ? (
           <span className="min-w-0 flex-1">
-            <span className="font-medium">{stepTitle(workflow, current?.step_id)}</span> is waiting
+            <span className="font-medium">{runStepTitle(workflow, run, current?.step_id)}</span> is waiting
             {current?.pause?.path ? " for a file" : until ? ` until ${untilWords(until)}` : ""} -- the run goes on by itself.
           </span>
         ) : (
           <span className="min-w-0 flex-1 truncate">
-            {run.queued ? WAITING_FOR_BROWSER : `Running${current ? ` · ${stepTitle(workflow, current.step_id)}` : ""}`}
+            {run.queued ? WAITING_FOR_BROWSER : `Running${current ? ` · ${runStepTitle(workflow, run, current.step_id)}` : ""}`}
           </span>
         )}
         <button type="button" className={secondaryButton} disabled={busy} onClick={onStop}>
@@ -526,7 +556,7 @@ function CompletedBanner({ run, workflow, box }: { run: ScheduledRun; workflow: 
       <div className={`${box} border-[var(--border)] text-[var(--muted)]`} data-testid="run-banner">
         <span>
           <span className="font-medium text-[var(--fg)]">Nothing new</span> --{" "}
-          {ended ? `“${stepTitle(workflow, ended.step_id)}” found` : "a check found"} nothing to do, so the run ended there.{row}
+          {ended ? `“${runStepTitle(workflow, run, ended.step_id)}” found` : "a check found"} nothing to do, so the run ended there.{row}
         </span>
       </div>
     );
@@ -591,7 +621,7 @@ function RunBanner({
           <ClockIcon className="h-4 w-4 shrink-0 text-[var(--warning)]" />
           <span>
             {waiting?.permission ? "Needs your OK" : waiting?.pause ? "Waiting for your answer" : "Waiting for you"} at{" "}
-            <span className="font-medium">{stepTitle(workflow, waiting?.step_id)}</span> -- answer it below to go on.
+            <span className="font-medium">{runStepTitle(workflow, run, waiting?.step_id)}</span> -- answer it below to go on.
           </span>
         </div>
       </div>
@@ -601,7 +631,7 @@ function RunBanner({
     const at = run.steps.findLast((r) => r.status === "running");
     return (
       <div className={`${box} border-[var(--border)] text-[var(--muted)]`} data-testid="run-banner">
-        Stopped{at ? ` at ${stepTitle(workflow, at.step_id)}` : ""}. Nothing after that ran.
+        Stopped{at ? ` at ${runStepTitle(workflow, run, at.step_id)}` : ""}. Nothing after that ran.
       </div>
     );
   }
@@ -614,7 +644,7 @@ function RunBanner({
       >
         <div className="flex flex-wrap items-start gap-3">
           <div className="min-w-0 flex-1">
-            <div className="font-medium">Failed at {stepTitle(workflow, failedRecord.step_id)}</div>
+            <div className="font-medium">Failed at {runStepTitle(workflow, run, failedRecord.step_id)}</div>
             {failedRecord.error && (
               <div className="mt-0.5 line-clamp-4 break-words text-[13px] text-[var(--muted)]">
                 {failedRecord.error}

@@ -18,6 +18,7 @@ const KINDS: { kind: StepKind; label: string; description: string }[] = [
   { kind: "ask", label: "Ask you", description: "Pause until you fill in values the later steps use" },
   { kind: "wait", label: "Wait", description: "Pause for a while, until a time, or until a file appears" },
   { kind: "remember", label: "Remember", description: "Keep a value for the next run, like what was already handled" },
+  { kind: "run_task", label: "Run a task", description: "Run another of your tasks as one step and use its results" },
 ];
 
 const STRUCTURE: { kind: StepKind; label: string; description: string }[] = [
@@ -42,7 +43,7 @@ interface AddStepMenuProps {
   workOnly?: boolean;
 }
 
-const WORK: ReadonlySet<StepKind> = new Set(["tool", "script", "llm", "agent"]);
+const WORK: ReadonlySet<StepKind> = new Set(["tool", "script", "llm", "agent", "run_task"]);
 
 function KindRow({
   kind,

@@ -246,8 +246,9 @@ async def test_a_loop_runs_the_task_once_per_item_and_a_wait_inside_it_wakes(
 ) -> None:
     world = World(tmp_path)
     wait = {"id": "pause", "title": "pause", "kind": "wait", "until": "duration", "minutes": 1}
-    called = _save(world.store, "Per item", {"version": 1, "inputs": [{"name": "x", "type": "text"}],
-                                             "steps": [wait, _note("n", "{{x}}", "out")]})  # fmt: skip
+    per_item = {"version": 1, "inputs": [{"name": "x", "type": "text"}],
+                "steps": [wait, _note("n", "{{x}}", "out")]}  # fmt: skip
+    called = _save(world.store, "Per item", per_item)
     loop = {"id": "each", "title": "each", "kind": "loop", "over": "items", "item": "it",
             "steps": [_call(called, inputs={"x": "{{it}}"})], "collect": "got.out.text",
             "save_as": "all"}  # fmt: skip

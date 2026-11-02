@@ -30,6 +30,7 @@ from ...tools import (
     record_draft,
     update_trigger,
 )
+from ...workflow_spec import task_results
 from ...workflows import (
     BranchStep,
     ChoiceStep,
@@ -74,6 +75,14 @@ def _waiting_permission(run: Any) -> dict[str, Any] | None:
             asked = record.get("permission")
             return {**asked, "step_id": record["step_id"]} if isinstance(asked, dict) else None
     return None
+
+
+def _results(workflow: dict[str, Any] | None) -> list[str]:
+    """What a run of a workflow task gives a task that runs it (decision 0035)."""
+    try:
+        return list(task_results(parse_workflow(workflow))) if workflow else []
+    except ValidationError:
+        return []
 
 
 def _owner(trigger: Any, run: Any, step_id: str) -> tuple[str, Any]:
@@ -197,8 +206,8 @@ def _task_routes(router: APIRouter, state: AppState) -> None:
     async def list_scheduled_tasks_endpoint() -> list[dict[str, Any]]:
         store = ScheduledTriggerStore(settings.state_dir)
         # A task saved before versions were kept is shown as its version 1 (decision 0035).
-        return [{**t.to_dict(), "version": store.versions.current(t.trigger_id) or 1}
-                for t in store.list_all()]  # fmt: skip
+        return [{**t.to_dict(), "version": store.versions.current(t.trigger_id) or 1,
+                 "results": _results(t.workflow)} for t in store.list_all()]  # fmt: skip
 
     @router.post("/api/scheduled-tasks")
     async def create_scheduled_task_endpoint(payload: ScheduledTaskCreate) -> JSONResponse:

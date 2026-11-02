@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { inputClass, primaryButton, secondaryButton } from "../../lib/formStyles";
 import { INPUT_TYPE_LABEL, isRelativeDate, resolveDate } from "../../lib/inputKinds";
 import { plainDetail, plainKind } from "../../lib/plainSteps";
+import { useTaskNames } from "../../lib/taskCalls";
 import { dataFlow } from "../../lib/dataFlow";
 import { applyQuick, type QuickField, quickFields, replaceStep } from "../../lib/quickEdit";
 import { allSteps } from "../../lib/workflowTree";
@@ -231,7 +232,7 @@ export function QuickEditPanel({
 }: PanelProps & { step: WorkflowStep }) {
   const [draft, setDraft] = useState(step);
   const { error, saving, save } = useSave(persist, onClose);
-  const detail = plainDetail(step, workflow.inputs, workflow.memory);
+  const detail = plainDetail(step, workflow.inputs, workflow.memory, useTaskNames());
   const changed = JSON.stringify(draft) !== JSON.stringify(step);
   return (
     <QuickSheet
