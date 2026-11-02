@@ -169,6 +169,9 @@ test("the properties panel shows an artboard's elements and the style of the one
   await panel.getByRole("tab", { name: "Properties" }).click();
   await tree.getByRole("treeitem", { name: /^Text.*Hello/ }).click();
   const size = panel.getByLabel("Size", { exact: true });
+  // The pick reaches the panel after the click; a value typed before it would be replaced.
+  await expect(tree.getByRole("treeitem", { name: /^Text.*Hello/ })).toHaveAttribute("aria-selected", "true");
+  await expect(size).toHaveValue("40px");
   await size.fill("30px");
   await size.press("Enter");
   await expect(page.frameLocator('iframe[title="Card"]').locator("h1")).toHaveCSS("font-size", "30px");
