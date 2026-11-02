@@ -2,7 +2,7 @@
 between them. Pure data and string handling, so the schedule store (`tools`) can validate one
 and `workflows` can run it without either importing the other."""
 
-from .inputs import RELATIVE_DATES, input_values
+from .inputs import RELATIVE_DATES, default_value, input_value, input_values, resolve_date
 from .locate import raw_child_lists, workflow_error
 from .refs import conditions_hold, evaluate, render_text, render_value, resolve
 from .spec import (
@@ -13,6 +13,8 @@ from .spec import (
     TASK_AUTONOMY_LEVELS,
     AgentStep,
     ApprovalStep,
+    AskField,
+    AskStep,
     BranchStep,
     CheckStep,
     ChoiceStep,
@@ -25,6 +27,7 @@ from .spec import (
     Step,
     TaskAutonomy,
     ToolStep,
+    WaitStep,
     Workflow,
     child_lists,
     choose_arm,
@@ -46,6 +49,8 @@ __all__ = [
     "FAILURE",
     "MAX_RETRY_WAIT",
     "ApprovalStep",
+    "AskField",
+    "AskStep",
     "BranchStep",
     "CheckStep",
     "ChoiceStep",
@@ -60,6 +65,7 @@ __all__ = [
     "TASK_AUTONOMY_LEVELS",
     "TaskAutonomy",
     "ToolStep",
+    "WaitStep",
     "Workflow",
     "child_lists",
     "choose_arm",
@@ -67,7 +73,10 @@ __all__ = [
     "current_shape",
     "evaluate",
     "failure_policy",
+    "default_value",
+    "input_value",
     "input_values",
+    "resolve_date",
     "needed_autonomy",
     "parse_workflow",
     "render_text",

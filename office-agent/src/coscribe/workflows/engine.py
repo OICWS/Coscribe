@@ -24,8 +24,8 @@ import asyncio
 import inspect
 import logging
 from collections.abc import Awaitable, Callable, Hashable
-from dataclasses import asdict, dataclass, field, replace
-from datetime import date, datetime
+from dataclasses import dataclass, field, replace
+from datetime import date
 from typing import Annotated, Any, Literal, TypedDict, cast
 
 from langgraph.checkpoint.memory import InMemorySaver
@@ -39,6 +39,7 @@ from ..workflow_spec import (
     FAILURE,
     AgentStep,
     ApprovalStep,
+    AskStep,
     BranchStep,
     CheckStep,
     ChoiceStep,
@@ -48,13 +49,13 @@ from ..workflow_spec import (
     ScriptStep,
     Step,
     ToolStep,
+    WaitStep,
     Workflow,
     child_lists,
     choose_arm,
     conditions_hold,
     failure_policy,
     input_values,
-    render_text,
     resolve,
     step_output,
     walk,
@@ -64,14 +65,16 @@ from .healing import carried, heal_guard, healed, stand_in
 from .loop_labels import item_labels as _item_labels
 from .loop_labels import loop_progress as _loop_progress
 from .loop_labels import supersteps as _supersteps
+from .pause_steps import PAUSED, Pauses
 from .permissions import untrusted_agent_steps
 from .step_work import StepContext as StepContext
 from .step_work import StepFailed as StepFailed
-from .step_work import checks_of, preview, run_check, run_llm, run_script, run_tool
+from .step_work import StepRecord as StepRecord
+from .step_work import StepStatus, checks_of, preview, run_check, run_llm, run_script, run_tool
+from .step_work import now_text as _now
 
 logger = logging.getLogger(__name__)
 
-StepStatus = Literal["pending", "running", "done", "failed", "skipped", "waiting"]
 RunOutcomeStatus = Literal["completed", "failed", "waiting"]
 
 # Tools that need a person in the loop mid-call; a workflow asks through an
@@ -81,38 +84,6 @@ UNAVAILABLE_TOOLS = frozenset({"ask_user_question", "create_scheduled_task"})
 
 class WorkflowNotRunnable(ValueError):
     pass
-
-
-@dataclass
-class StepRecord:
-    step_id: str
-    status: StepStatus
-    started_at: str | None = None
-    finished_at: str | None = None
-    output: Any = None
-    error: str | None = None
-    # One entry per condition of a check (or an approval's `when`):
-    # {"held", "left", "right"}, so a failure shows what it compared.
-    checks: list[dict[str, Any]] | None = None
-    # What the person who answered an approval step wrote, if anything.
-    note: str | None = None
-    # Which pass of each loop around the step this is, outermost first --
-    # empty outside loops. A step's record is one per pass.
-    iteration: list[int] = field(default_factory=list)
-    # A waiting step that is asking to be allowed something, not approved:
-    # {"kind": "folder" | "site", "target", "message"}.
-    permission: dict[str, Any] | None = None
-    # An agent step's work: {"tool_calls", "tokens", "tools_used"} once it
-    # ends, {"pending": {"tool", "args"}} while a call waits for a person.
-    agent: dict[str, Any] | None = None
-    # Tries the step took in this pass (decision 0032); more than one only when it has retries.
-    attempts: int = 1
-    # A failed step whose failure didn't stop the run: it was skipped, steps ran in its place, or
-    # its loop skipped the item it failed on.
-    recovered: Literal["skipped", "fallback", "item_skipped"] | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
 
 
 @dataclass
@@ -126,10 +97,6 @@ class RunOutcome:
 
 
 OnStep = Callable[[StepRecord], Awaitable[None] | None]
-
-
-def _now() -> str:
-    return datetime.now().isoformat(timespec="milliseconds")
 
 
 def _merge(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
@@ -209,6 +176,7 @@ class _GraphBuilder:
         self.placed = {p.step.id: p for p in walk(workflow.steps)}
         self.read_only = set(untrusted_agent_steps(workflow, ctx.outside_tools))
         self.graph = StateGraph(_State)
+        self.pauses = Pauses(self)
 
     async def emit(self, record: StepRecord) -> None:
         result = self.on_step(record)
@@ -257,7 +225,10 @@ class _GraphBuilder:
             in_place = policy.steps
             routes |= {"retry": _node_name(step), "skip": following,
                        "steps": _node_name(in_place[0]) if in_place else following}  # fmt: skip
-        loop = None if isinstance(step, ApprovalStep) else self.skipping_loop(step)
+        if isinstance(step, (AskStep, WaitStep)):
+            routes[PAUSED] = _node_name(step)
+        # A person's no stops the run, wherever it is.
+        loop = None if isinstance(step, (ApprovalStep, AskStep)) else self.skipping_loop(step)
         if loop is not None:
             routes["skip_item"] = f"next__{loop}"
         return routes
@@ -322,7 +293,14 @@ class _GraphBuilder:
             values = state["values"]
             it = self.iteration(state, step)
             if isinstance(step, ApprovalStep):
-                return await self._approval(step, values, _now(), it)
+                return await self.pauses.approval(step, values, it)
+            if isinstance(step, (AskStep, WaitStep)):
+                held = (state.get("attempts") or {}).get(step.id) or {}
+                if held.get("route") != PAUSED:
+                    return await self.pauses.settle(step, values, it)
+                if isinstance(step, AskStep):
+                    return await self.pauses.ask(step, values, held, it)
+                return await self.pauses.wait(step, state, held, it)
             # Tries after the first carry on the step's record from when it started.
             failed = (state.get("attempts") or {}).get(step.id) or {}
             retrying = failed.get("route") == "retry"
@@ -476,53 +454,6 @@ class _GraphBuilder:
         if not (isinstance(answer, dict) and answer.get("approved") is True):
             raise StepFailed(f"Not allowed: {need.message}", step_id=step.id, declined=True)
         await self.emit(StepRecord(step.id, "running", started_at=started, iteration=it))
-
-    async def _approval(
-        self, step: ApprovalStep, values: dict[str, Any], started: str, it: list[int]
-    ) -> dict[str, Any]:
-        checks = None
-        if step.when:
-            held, checked = conditions_hold(step.when, step.match, values)
-            checks = checks_of(checked)
-            if not held:
-                await self.emit(
-                    StepRecord(step.id, "skipped", started, _now(), checks=checks, iteration=it)
-                )
-                return {"values": {}}
-        message = render_text(step.message, values)
-        await self.emit(
-            StepRecord(step.id, "waiting", started, output=message, checks=checks, iteration=it)
-        )
-        answer = interrupt({"step_id": step.id, "title": step.title, "message": message})
-        approved = isinstance(answer, dict) and answer.get("approved") is True
-        note = str(answer.get("note") or "") if isinstance(answer, dict) else ""
-        if not approved:
-            error = "Not approved" + (f": {note}" if note else "")
-            await self.emit(
-                StepRecord(
-                    step.id,
-                    "failed",
-                    started,
-                    _now(),
-                    output=message,
-                    error=error,
-                    note=note or None,
-                    iteration=it,
-                )
-            )
-            raise StepFailed(error, step_id=step.id, declined=True)
-        await self.emit(
-            StepRecord(
-                step.id,
-                "done",
-                started,
-                _now(),
-                output=message,
-                note=note or None,
-                iteration=it,
-            )
-        )
-        return {"values": {}}
 
     def loop_start(self, step: LoopStep) -> Callable[[_State], Awaitable[dict[str, Any]]]:
         async def run(state: _State) -> dict[str, Any]:
@@ -724,15 +655,23 @@ class WorkflowRun:
         recorded answer -- so asking again is retry_from() that step."""
         return await self._drive(None)
 
-    async def answer(self, approved: bool, note: str = "") -> RunOutcome:
+    async def answer(
+        self, approved: bool, note: str = "", values: dict[str, Any] | None = None
+    ) -> RunOutcome:
         # An agent step's answer names its call: resuming replays earlier
         # answers by position, and the agent must not take one for another.
         state = await self._compiled.aget_state(self.config)
         asked = [i.value for t in state.tasks for i in t.interrupts if isinstance(i.value, dict)]
         call_id = asked[0].get("call_id") if asked else None
         return await self._drive(
-            Command(resume={"approved": approved, "note": note, "call_id": call_id})
-        )
+            Command(resume={"approved": approved, "note": note, "call_id": call_id,
+                            "values": values})
+        )  # fmt: skip
+
+    async def wake(self) -> RunOutcome:
+        """Go on with a run paused at a wait step whose time came or whose file appeared, or at
+        an ask step no one answered in time (decision 0033)."""
+        return await self._drive(Command(resume={"woke": True}))
 
     async def retry_from(self, step_id: str) -> RunOutcome:
         """Re-run from an earlier step, discarding what came after it --

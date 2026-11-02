@@ -13,7 +13,7 @@ that fires a run or its stored history (`runtime_lg/scheduled_tasks.py`), the ro
 `AgentCall`, `AgentReply`, `AgentRequest`, `AgentRunner` (what an agent runner takes and returns);
 `RunOutcome`, `StepContext`, `StepRecord`, `WorkflowNotRunnable`, `WorkflowRun` (a run);
 `brings_outside_content`, `granted_by`, `sites_in`, `summarize`, `untrusted_agent_steps` (permissions); `describe_params`, `tool_description`
-(catalog); `output_files`, `run_test`, `uses_browser` (test run); `run_report` (what a run did, from its step records); `compiled_graph` (the nodes and edges LangGraph compiles a workflow to); `heal_fixes`, `heals_to_revise` (the saved arguments a run's heals would change, and the heals a revision has to be drafted for); `DraftFailed`, `WorkflowDraft`,
+(catalog); `output_files`, `run_test`, `uses_browser` (test run); `run_report` (what a run did, from its step records); `compiled_graph` (the nodes and edges LangGraph compiles a workflow to); `answer_problem`, `paused_at`, `wake_due` (a run paused at an ask or wait step, decision 0033); `heal_fixes`, `heals_to_revise` (the saved arguments a run's heals would change, and the heals a revision has to be drafted for); `DraftFailed`, `WorkflowDraft`,
 `draft_workflow`, `revise_workflow` (drafting from a conversation: it takes the serialized
 history, so this package does not import `runtime_lg`).
 
@@ -30,7 +30,7 @@ history, so this package does not import `runtime_lg`).
 - An agent step that reads outside content may only make READ calls, unless `trusted_input`.
 - A bounded step's allowlist, declared folders and sites are its consent: a call beyond them
   waits for a person (`agent_step.decide`, `permissions.outside_declared`), never runs unasked.
-- A test run stops before an approval step and before a step marked `irreversible` (unless
+- A test run stops before an approval step, an ask step without defaults (it doesn't wait at a wait step) and before a step marked `irreversible` (unless
   `send_for_real`, refused when no one is watching; decision 0029), and writes no run history.
   A revision (`revise_workflow`) keeps every step the workflow it revises marks `irreversible`.
 - Healing (decision 0030) acts only for a browser tool step, only at `self_healing` or above,
@@ -44,13 +44,13 @@ history, so this package does not import `runtime_lg`).
   (`agent.healed`) and in the run report. A heal changes the saved workflow only when the person
   saves its fixes (`heal_fixes`), and a fix replaces an argument only while it still holds the
   value the heal replaced.
-- Decision 0032: a step marked `irreversible` is never tried again on its own (the spec refuses retries on it); a failure that doesn't stop the run is on the step's record (`recovered`) and in the run report, never counted as done; the steps after a failed run never wait for a person, and their failure never replaces the run's own error.
+- Decision 0032: a step marked `irreversible` is never tried again on its own (the spec refuses retries on it); a failure that doesn't stop the run is on the step's record (`recovered`) and in the run report, never counted as done; the steps after a failed run never wait for a person, and their failure never replaces the run's own error. Decision 0033: a run paused at an ask or wait step holds nothing but its checkpoint; only `WorkflowRun.answer` or `wake` continues it, and a wait looks only whether its file is there.
 - `UNAVAILABLE_TOOLS` in `engine.py` only lists tools a run may not call; the import contract,
   not that list, is what keeps the code module out.
 
 ## Tests
 `tests/test_workflow_spec.py`, `tests/test_workflow_engine.py`, `tests/test_workflow_agent_step.py`, `tests/test_workflow_permissions.py`,
-`tests/test_workflow_catalog.py`, `tests/test_workflow_solidify.py`, `tests/test_workflow_testing.py`, `tests/test_workflow_healing.py`, `tests/test_workflow_report.py`, `tests/test_workflow_failures.py`; `tests/web/test_scheduled.py` covers runs through the server.
+`tests/test_workflow_catalog.py`, `tests/test_workflow_solidify.py`, `tests/test_workflow_testing.py`, `tests/test_workflow_healing.py`, `tests/test_workflow_report.py`, `tests/test_workflow_failures.py`, `tests/test_workflow_pauses.py`; `tests/web/test_scheduled.py` covers runs through the server.
 
 ## Verify by hand
 Drafting a workflow from a real conversation with a real model (`solidify`); a browser step

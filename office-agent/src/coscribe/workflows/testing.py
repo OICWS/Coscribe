@@ -9,7 +9,8 @@ stops before a step marked irreversible unless told to send for real
 (decision 0029): checking a fix must not file a claim or pay an invoice. A
 step's retries wait at most a few seconds between tries in a test (decision
 0032): a test is waited for, and what it checks is the workflow, not how long
-a site takes to come back."""
+a site takes to come back. A wait step doesn't wait in a test, and an ask
+step goes on with its defaults where it has them (decision 0033)."""
 
 from __future__ import annotations
 
@@ -210,7 +211,9 @@ async def run_test(
         if on_step is not None:
             await on_step(record)
 
-    ctx = replace(ctx, max_retry_wait=min(ctx.max_retry_wait, _TEST_RETRY_WAIT_SECONDS))
+    ctx = replace(
+        ctx, max_retry_wait=min(ctx.max_retry_wait, _TEST_RETRY_WAIT_SECONDS), waits=False
+    )
     run = WorkflowRun(workflow, ctx, InMemorySaver(), f"test-{uuid.uuid4().hex[:8]}", record_step)
     started = time.monotonic()
     # Whole seconds: some file systems keep coarse modification times.

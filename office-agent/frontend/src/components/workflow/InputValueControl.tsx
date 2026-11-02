@@ -7,7 +7,17 @@ type Value = WorkflowInput["default"];
 const FIXED = "fixed";
 
 /** A date that is either worked out each run ("First day of last month") or a fixed day. */
-function DateValue({ value, onChange, label }: { value: Value; onChange: (v: Value) => void; label: string }) {
+function DateValue({
+  value,
+  onChange,
+  label,
+  blank,
+}: {
+  value: Value;
+  onChange: (v: Value) => void;
+  label: string;
+  blank: string;
+}) {
   const relative = isRelativeDate(value);
   const choice = value === null || value === "" ? "" : relative ? String(value) : FIXED;
   return (
@@ -18,7 +28,7 @@ function DateValue({ value, onChange, label }: { value: Value; onChange: (v: Val
         value={choice}
         onChange={(e) => onChange(e.target.value === FIXED ? resolveDate("today") : e.target.value || null)}
       >
-        <option value="">Asked each run</option>
+        <option value="">{blank}</option>
         <optgroup label="Worked out each run">
           {RELATIVE_DATES.map(([id, text]) => (
             <option key={id} value={id}>
@@ -41,11 +51,11 @@ function DateValue({ value, onChange, label }: { value: Value; onChange: (v: Val
   );
 }
 
-function placeholderFor(input: WorkflowInput, forRun: boolean): string | undefined {
+function placeholderFor(input: WorkflowInput, forRun: boolean, blank: string): string | undefined {
   if (forRun && input.required === false) return "Can be left blank";
   if (input.type === "file") return "A path in the workspace, e.g. reports/march.pdf";
   if (input.type === "folder") return "A folder in the workspace, e.g. reports/2026";
-  return forRun ? undefined : "Asked each run";
+  return forRun ? undefined : blank;
 }
 
 /** The control for an input's value, by its kind: its default in the editor, its value for a run. */
@@ -55,6 +65,7 @@ export function InputValueControl({
   onChange,
   label,
   forRun = false,
+  blank = "Asked each run",
 }: {
   input: WorkflowInput;
   value: Value;
@@ -62,9 +73,11 @@ export function InputValueControl({
   label: string;
   /** A run needs a value, so a date is a date, not "worked out each run". */
   forRun?: boolean;
+  /** What no default is called. */
+  blank?: string;
 }) {
   const className = `${controlClass} w-full min-w-0`;
-  if (input.type === "date" && !forRun) return <DateValue value={value} onChange={onChange} label={label} />;
+  if (input.type === "date" && !forRun) return <DateValue value={value} onChange={onChange} label={label} blank={blank} />;
   if (input.type === "date") {
     return (
       <input
@@ -84,7 +97,7 @@ export function InputValueControl({
         value={String(value ?? "")}
         onChange={(e) => onChange(e.target.value || null)}
       >
-        <option value="">{forRun ? "Choose…" : "Asked each run"}</option>
+        <option value="">{forRun ? "Choose…" : blank}</option>
         {(input.options ?? []).map((option) => (
           <option key={option} value={option}>
             {option}
@@ -102,7 +115,7 @@ export function InputValueControl({
         value={current}
         onChange={(e) => onChange(e.target.value === "" ? null : e.target.value === "yes")}
       >
-        {!forRun && <option value="">Asked each run</option>}
+        {!forRun && <option value="">{blank}</option>}
         <option value="yes">Yes</option>
         <option value="no">No</option>
       </select>
@@ -114,7 +127,7 @@ export function InputValueControl({
       className={className}
       type={input.type === "number" ? "number" : "text"}
       value={value === null ? "" : String(value)}
-      placeholder={placeholderFor(input, forRun)}
+      placeholder={placeholderFor(input, forRun, blank)}
       onChange={(e) =>
         onChange(input.type === "number" && e.target.value !== "" ? Number(e.target.value) : e.target.value)
       }

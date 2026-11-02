@@ -8,6 +8,7 @@ import asyncio
 import logging
 import uuid
 from collections.abc import Callable, Coroutine, Mapping
+from datetime import datetime
 from typing import Any, Protocol
 
 from ..config import Settings
@@ -17,7 +18,7 @@ from ..tools import (
     ScheduledRun,
     ScheduledTriggerStore,
 )
-from ..workflows import heals_to_revise
+from ..workflows import heals_to_revise, paused_at
 from .background_events import BackgroundEvent, BackgroundEventBus, run_event
 
 
@@ -47,6 +48,9 @@ class Scheduler:
         self._poll_due_scheduled_tasks = poll_due_scheduled_tasks
         self._background_tasks: set[asyncio.Task[Any]] = set()
         self._wake_poll_task: asyncio.Task[None] | None = None
+        # Per run waiting for an answer: how many days in it was last reminded. Kept only while
+        # the process runs: after a restart a run is reminded once more at most.
+        self._reminded: dict[str, int] = {}
 
     def start(self) -> None:
         self._wake_poll_task = asyncio.create_task(self.wake_poll_loop())
@@ -114,7 +118,10 @@ class Scheduler:
     async def poll_scheduled_tasks_once(self) -> None:
         try:
             fired_triggers = await self._poll_due_scheduled_tasks(
-                self._settings.state_dir, self._get_session_async, on_pruned=self.delete_run_threads
+                self._settings.state_dir,
+                self._get_session_async,
+                on_pruned=self.delete_run_threads,
+                on_woken=self.announce_run,
             )
         except Exception:
             logging.getLogger(__name__).exception(
@@ -124,6 +131,27 @@ class Scheduler:
         for trigger in fired_triggers:
             if trigger.runs:
                 await self.announce_run(trigger.trigger_id, trigger.runs[-1])
+        self.remind_waiting()
+
+    def remind_waiting(self, now: datetime | None = None) -> None:
+        """Tell the person again, once a day, about a run waiting for their answer at an ask
+        step (decision 0033): one that waits for as long as it takes is otherwise easy to
+        forget."""
+        now = now or datetime.now()
+        for trigger in ScheduledTriggerStore(self._settings.state_dir).list_all():
+            for run in trigger.runs:
+                pause = paused_at(run.steps) if run.status == "needs_approval" else None
+                waiting: dict[str, Any] = next(
+                    (s for s in reversed(run.steps) if s.get("status") == "waiting"), {}
+                )
+                if pause is None or pause.get("kind") != "ask" or not waiting.get("started_at"):
+                    continue
+                days = (now - datetime.fromisoformat(waiting["started_at"])).days
+                if days >= 1 and self._reminded.get(run.run_id, 0) < days:
+                    self._reminded[run.run_id] = days
+                    event = run_event(trigger, run)
+                    if event is not None:
+                        self._background_events.publish(event)
 
     async def announce_run(self, trigger_id: str, run: ScheduledRun | None) -> None:
         """Tell the desktop app how a run ended -- and, for a failed run of a

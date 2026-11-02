@@ -144,7 +144,8 @@ and conversion are skipped with a reason, never the write itself.
 Day to day, the user just asks and the coordinator plans and acts. Work that
 repeats becomes a scheduled task, a workflow compiled into a LangGraph
 `StateGraph` (branches, loops, approvals as interrupts, resumable from
-checkpoints). Decision 0028 (proposed; built in phases from #719) replaces
+checkpoints). A run can also pause for values a person fills in or for a time
+or a file, holding only its checkpoint until the poller wakes it (0033). Decision 0028 (proposed; built in phases from #719) replaces
 the two kinds below with one: the graph stays fixed, and each step chooses
 its autonomy.
 

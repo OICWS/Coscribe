@@ -2,10 +2,50 @@ import { useState } from "react";
 import type { StepRecord, WorkflowStep } from "../../types/workflow";
 import { AgentCallRequest } from "./AgentActivity";
 import { primaryButton, secondaryButton } from "../../lib/formStyles";
+import { AskCard, type AnswerValues, WaitCard } from "./PauseCards";
 
 /** A step waiting for the person: an approval step, a folder or site the
- * run wasn't allowed, or one call an agent step needs an OK for. */
+ * run wasn't allowed, one call an agent step needs an OK for, or values an ask step needs; or a
+ * wait step waiting for a time or a file. */
 export function WaitingCard({
+  step,
+  record,
+  onAnswer,
+}: {
+  step: WorkflowStep;
+  record: StepRecord | undefined;
+  onAnswer: (approved: boolean, note: string, values?: AnswerValues) => Promise<string | null>;
+}) {
+  const pause = record?.pause ?? null;
+  // A wait goes on by itself: it isn't asking the person for anything.
+  const tone = pause?.kind === "wait" ? "var(--kind-wait)" : "var(--warning)";
+  return (
+    <div
+      className="flex flex-col gap-3 rounded-xl border px-4 py-3.5"
+      style={{
+        borderColor: `color-mix(in srgb, ${tone} 40%, transparent)`,
+        backgroundColor: `color-mix(in srgb, ${tone} 7%, var(--bg))`,
+      }}
+    >
+      <div className="flex flex-wrap items-baseline gap-x-2.5">
+        <span className="text-sm font-medium">{step.title}</span>
+        <span className="text-[13px] font-medium" style={{ color: tone }}>
+          {pause?.kind === "wait" ? "Waiting" : "Waiting for you"}
+        </span>
+      </div>
+      {pause?.kind === "ask" ? (
+        <AskCard record={record} pause={pause} onAnswer={onAnswer} />
+      ) : pause?.kind === "wait" ? (
+        <WaitCard pause={pause} onAnswer={onAnswer} />
+      ) : (
+        <ApprovalBody step={step} record={record} onAnswer={onAnswer} />
+      )}
+    </div>
+  );
+}
+
+/** An approval step, a folder or site the run wasn't allowed, or an agent's call. */
+function ApprovalBody({
   step,
   record,
   onAnswer,
@@ -25,19 +65,7 @@ export function WaitingCard({
     setBusy(false);
   };
   return (
-    <div
-      className="flex flex-col gap-3 rounded-xl border px-4 py-3.5"
-      style={{
-        borderColor: "color-mix(in srgb, var(--warning) 40%, transparent)",
-        backgroundColor: "color-mix(in srgb, var(--warning) 7%, var(--bg))",
-      }}
-    >
-      <div className="flex flex-wrap items-baseline gap-x-2.5">
-        <span className="text-sm font-medium">{step.title}</span>
-        <span className="text-[13px] font-medium" style={{ color: "var(--warning)" }}>
-          Waiting for you
-        </span>
-      </div>
+    <>
       {permission ? (
         <div className="flex flex-col gap-1" data-testid="permission-request">
           <p className="text-sm font-medium">
@@ -83,6 +111,6 @@ export function WaitingCard({
           {error}
         </p>
       )}
-    </div>
+    </>
   );
 }

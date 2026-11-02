@@ -1,4 +1,4 @@
-import type { WorkflowInput, WorkflowStep } from "../types/workflow";
+import type { AskStep, WaitStep, WorkflowInput, WorkflowStep } from "../types/workflow";
 import { toolLabel } from "./toolLabels";
 import { splitTemplate, wholeReference } from "./workflowLabels";
 
@@ -100,6 +100,51 @@ function toolSentence(tool: string, args: Record<string, unknown>, inputs: Workf
   }
 }
 
+function listWords(items: string[]): string {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
+function askSentence(step: AskStep): string {
+  const named = step.fields.map((f) => `“${f.label || words(f.name)}”`);
+  const shown = named.length > 3 ? [...named.slice(0, 2), `${named.length - 2} more`] : named;
+  const then = step.on_timeout === "defaults" ? "goes on with the defaults" : "the run stops";
+  const timeout = step.timeout_hours ? `; if no one answers in ${duration(Math.round(step.timeout_hours * 60))}, ${then}` : "";
+  return `Asks you for ${listWords(shown)}${timeout}`;
+}
+
+/** "Waits 10 minutes", "Waits until 17:00", "Waits for “done.xlsx” to appear". */
+function waitSentence(step: WaitStep, inputs: WorkflowInput[]): string {
+  if (step.until === "duration") return `Waits ${duration(step.minutes ?? 0)}`;
+  if (step.until === "time") {
+    const day = step.on ? ` on ${plainDay(step.on, inputs)}` : "";
+    return `Waits until ${step.at ?? "a time"}${day}`;
+  }
+  return `Waits up to ${duration(step.max_minutes ?? 1440)} for ${plainValue(step.path ?? "", inputs)} to appear`;
+}
+
+const DAY_WORDS: Record<string, string> = {
+  today: "today",
+  yesterday: "yesterday",
+  week_start: "Monday this week",
+  month_start: "the 1st of this month",
+};
+
+function plainDay(on: string, inputs: WorkflowInput[]): string {
+  return DAY_WORDS[on] ?? plainValue(on.includes("{{") || /^\d/.test(on) ? on : `{{${on}}}`, inputs);
+}
+
+/** 90 -> "1 hour 30 minutes", 2880 -> "2 days". */
+export function duration(minutes: number): string {
+  const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
+  if (minutes >= 1440 && minutes % 1440 === 0) return plural(minutes / 1440, "day");
+  if (minutes >= 60) {
+    const rest = minutes % 60;
+    return rest ? `${plural(Math.floor(minutes / 60), "hour")} ${plural(rest, "minute")}` : plural(minutes / 60, "hour");
+  }
+  return plural(minutes, "minute");
+}
+
 /** One sentence on what a step does, or null when its title already says all there is. */
 export function plainDetail(step: WorkflowStep, inputs: WorkflowInput[]): string | null {
   switch (step.kind) {
@@ -117,6 +162,10 @@ export function plainDetail(step: WorkflowStep, inputs: WorkflowInput[]): string
       return "Stops the run if this isn’t so";
     case "approval":
       return "Waits for your OK before going on";
+    case "ask":
+      return askSentence(step);
+    case "wait":
+      return waitSentence(step, inputs);
     case "branch":
     case "loop":
       return null;
@@ -141,6 +190,10 @@ export function plainKind(step: WorkflowStep): string {
       return "Check";
     case "approval":
       return "Your OK";
+    case "ask":
+      return "Your answer";
+    case "wait":
+      return "Wait";
     case "branch":
       return "If";
     case "choice":

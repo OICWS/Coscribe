@@ -60,6 +60,16 @@ def _yes_no(value: Any) -> bool | None:
     return True if text in _YES else False if text in _NO else None
 
 
+def _number(name: str, given: Any) -> int | float:
+    if isinstance(given, bool):
+        raise ValueError(f"input {name!r} needs a number, not {given!r}")
+    try:
+        number = float(str(given).strip())
+    except ValueError:
+        raise ValueError(f"input {name!r} needs a number, not {given!r}") from None
+    return int(number) if number.is_integer() else number
+
+
 def input_problem(kind: InputType, default: Any, options: list[str]) -> str | None:
     """Why an input's definition doesn't hold together, or None."""
     if kind == "choice":
@@ -84,11 +94,17 @@ def input_problem(kind: InputType, default: Any, options: list[str]) -> str | No
 
 
 class _Input(Protocol):
-    name: str
-    type: InputType
-    default: Any
-    options: list[str]
-    required: bool
+    # Read-only, so an ask step's field, which can also be a pick, is one too.
+    @property
+    def name(self) -> str: ...
+    @property
+    def type(self) -> str: ...
+    @property
+    def default(self) -> Any: ...
+    @property
+    def options(self) -> list[str]: ...
+    @property
+    def required(self) -> bool: ...
 
 
 def default_value(spec: _Input, today: date) -> Any:
@@ -111,6 +127,8 @@ def input_value(spec: _Input, given: Any) -> Any:
         if answer is None:
             raise ValueError(f"input {spec.name!r} needs yes or no, not {given!r}")
         return answer
+    if spec.type == "number":
+        return _number(spec.name, given)
     if spec.type == "choice":
         wanted = str(given).strip().casefold()
         for option in spec.options:

@@ -241,6 +241,40 @@ class WorkflowAgentActivity(TypedDict):
     pending: NotRequired[WorkflowAgentCall]
 
 
+class WorkflowAskChoice(TypedDict):
+    """One item a pick offers: what it shows, and its place in the list."""
+
+    label: str
+    index: int
+
+
+class WorkflowAskField(TypedDict):
+    """One value an ask step waits for, with its default worked out for this run."""
+
+    name: str
+    label: str
+    type: Literal["text", "number", "date", "choice", "yes_no", "file", "folder", "pick"]
+    options: list[str]
+    default: Any
+    required: bool
+    # A pick's items.
+    items: NotRequired[list[WorkflowAskChoice]]
+
+
+class WorkflowPause(TypedDict):
+    """What a waiting ask or wait step is waiting for (decision 0033). `until`: when an ask
+    stops waiting for an answer, or when a wait ends; None while it waits for as long as it
+    takes."""
+
+    kind: Literal["ask", "wait"]
+    until: str | None
+    # An ask's.
+    fields: NotRequired[list[WorkflowAskField]]
+    on_timeout: NotRequired[Literal["defaults", "fail"]]
+    # A wait for a file: where it looks.
+    path: NotRequired[str]
+
+
 class WorkflowStepRecord(TypedDict):
     """One step of one workflow run (`workflows.engine.StepRecord.to_dict()`)."""
 
@@ -263,6 +297,8 @@ class WorkflowStepRecord(TypedDict):
     # A failure that didn't stop the run: the step was skipped, steps ran in its place, or its
     # loop skipped the item.
     recovered: NotRequired[Literal["skipped", "fallback", "item_skipped"] | None]
+    # An ask or wait step waiting, and what for; absent on older runs.
+    pause: NotRequired[WorkflowPause | None]
 
 
 class WorkflowStepEvent(TypedDict):

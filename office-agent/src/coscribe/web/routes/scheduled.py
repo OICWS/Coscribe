@@ -34,6 +34,7 @@ from ...workflows import (
     BranchStep,
     ChoiceStep,
     LoopStep,
+    answer_problem,
     brings_outside_content,
     compiled_graph,
     heal_fixes,
@@ -71,6 +72,19 @@ def _waiting_permission(run: Any) -> dict[str, Any] | None:
             asked = record.get("permission")
             return asked if isinstance(asked, dict) else None
     return None
+
+
+def _answer_problem(trigger: Any, run: Any, payload: WorkflowAnswer) -> str | None:
+    """Why the values sent to a waiting ask step won't do, so the person can fix them before
+    the run goes on (decision 0033); None when they will, or nothing asks for values."""
+    if trigger is None or run is None or not trigger.workflow or payload.values is None:
+        return None
+    waiting = next((r for r in reversed(run.steps) if r.get("status") == "waiting"), None)
+    if waiting is None:
+        return None
+    steps = {p.step.id: p.step for p in walk(parse_workflow(trigger.workflow).steps)}
+    step = steps.get(waiting["step_id"])
+    return answer_problem(step, payload.values) if step is not None else None
 
 
 def _workflow_routes(router: APIRouter, state: AppState) -> None:
@@ -263,6 +277,10 @@ def _run_control_routes(router: APIRouter, state: AppState) -> None:
         run = trigger.find_run(run_id) if trigger is not None else None
         if trigger is None or run is None:
             return JSONResponse({"error": f"No run {run_id!r}"}, status_code=404)
+        if run.status == "waiting":
+            # Paused at a wait step, it holds nothing to cancel (decision 0033).
+            store.finish_run(trigger_id, run_id, "stopped")
+            return JSONResponse({"ok": True})
         if run.status != "running" or not stop_run(run_id, run.thread_id):
             return JSONResponse({"error": "This run isn't going"}, status_code=409)
         return JSONResponse({"ok": True})
@@ -367,8 +385,11 @@ def _approval_routes(router: APIRouter, state: AppState) -> None:
         store = ScheduledTriggerStore(settings.state_dir)
         trigger = store.load(trigger_id)
         before = trigger.find_run(run_id) if trigger is not None else None
-        if before is not None and before.status != "needs_approval":
+        if before is not None and before.status not in ("needs_approval", "waiting"):
             return JSONResponse({"error": "This run isn't waiting for approval"}, status_code=409)
+        problem = _answer_problem(trigger, before, payload) if payload.approved else None
+        if problem:
+            return JSONResponse({"error": problem}, status_code=422)
         permission = _waiting_permission(before) if before is not None else None
         if payload.approved and permission is not None and before is not None:
             problem = await _allow_for_run(store, trigger_id, before.thread_id, permission)
@@ -378,7 +399,7 @@ def _approval_routes(router: APIRouter, state: AppState) -> None:
         if isinstance(reopened, JSONResponse):
             return reopened
         _continue_in_background(
-            trigger_id, run_id, lambda wf: wf.answer(payload.approved, payload.note)
+            trigger_id, run_id, lambda wf: wf.answer(payload.approved, payload.note, payload.values)
         )
         return JSONResponse({"run": reopened[1].to_dict()})
 

@@ -115,6 +115,37 @@ function FailuresSection({ report }: { report: RunReport }) {
   );
 }
 
+/** The values no person gave: what an agent assumed, and the asks that went on with their
+ * defaults because no one answered (decision 0033). */
+function DecidedSection({ report }: { report: RunReport }) {
+  return (
+    <>
+      {report.assumed.length > 0 && (
+        <div>
+          <div className="font-medium">Decided by the agent</div>
+          {report.assumed.map((item, index) => (
+            <div key={index} className="text-[13px]">
+              {item.title}
+              {where(item.iteration)}: {item.values.join("; ")}
+            </div>
+          ))}
+        </div>
+      )}
+      {report.unanswered.length > 0 && (
+        <div>
+          <div className="font-medium">No one answered, went on with the defaults</div>
+          {report.unanswered.map((item, index) => (
+            <div key={index} className="text-[13px]">
+              {item.title}
+              {where(item.iteration)}
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 /** What a finished run did (decision 0030), so a run is trusted by its result. */
 export function RunReportCard({
   triggerId,
@@ -174,17 +205,7 @@ export function RunReportCard({
         </div>
       )}
       <FailuresSection report={report} />
-      {report.assumed.length > 0 && (
-        <div>
-          <div className="font-medium">Decided by the agent</div>
-          {report.assumed.map((item, index) => (
-            <div key={index} className="text-[13px]">
-              {item.title}
-              {where(item.iteration)}: {item.values.join("; ")}
-            </div>
-          ))}
-        </div>
-      )}
+      <DecidedSection report={report} />
       {report.healed.length > 0 && (
         <HealedSection
           report={report}

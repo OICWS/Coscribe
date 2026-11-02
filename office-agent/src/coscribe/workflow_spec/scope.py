@@ -10,12 +10,14 @@ from .spec import (
     MAX_NESTING,
     MAX_STEPS,
     AgentStep,
+    AskStep,
     BranchStep,
     ChoiceStep,
     LLMStep,
     LoopStep,
     OnFailure,
     Step,
+    WaitStep,
     WorkflowInput,
     _condition_refs,
     _Recovers,
@@ -104,6 +106,10 @@ class _Scope:
         self.taken.add(output)
         if isinstance(step, (LLMStep, AgentStep)):
             self.fields[output] = _result_fields(step)
+        elif isinstance(step, AskStep):
+            self.fields[output] = {f.name for f in step.fields}
+        elif isinstance(step, WaitStep):
+            self.fields[output] = {"path", "found"}
 
     def _recovery(
         self, step: Step, policy: OnFailure, where: str, available: set[str], depth: int

@@ -1,6 +1,6 @@
 import { RUN_STATUS_LABEL } from "../lib/runLabels";
 import type { RunStatus } from "../types/settings";
-import { AlertCircleIcon, CheckCircleIcon, StopIcon, XCircleIcon } from "./icons";
+import { AlertCircleIcon, CheckCircleIcon, ClockIcon, StopIcon, XCircleIcon } from "./icons";
 
 interface RunStatusIconProps {
   status: RunStatus;
@@ -25,5 +25,6 @@ export function RunStatusIcon({ status, className = "h-3.5 w-3.5" }: RunStatusIc
   if (status === "completed") return <CheckCircleIcon {...common} style={{ color: "var(--success)" }} />;
   if (status === "failed") return <XCircleIcon {...common} style={{ color: "var(--danger)" }} />;
   if (status === "needs_approval") return <AlertCircleIcon {...common} style={{ color: "var(--warning)" }} />;
+  if (status === "waiting") return <ClockIcon {...common} style={{ color: "var(--kind-wait)" }} />;
   return <StopIcon {...common} style={{ color: "var(--muted)" }} />;
 }

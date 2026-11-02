@@ -10,6 +10,7 @@ import type {
   WorkflowStep,
 } from "../types/workflow";
 import { failureFields, withFailure } from "./failureWords";
+import { applyAskQuick, applyWaitQuick, askQuickFields, waitQuickFields } from "./pauseWords";
 import { plainElement, plainReference } from "./plainSteps";
 import { splitTemplate, wholeReference } from "./workflowLabels";
 import { mapWorkflow } from "./workflowTree";
@@ -189,6 +190,10 @@ export function quickFields(step: WorkflowStep, inputs: WorkflowInput[]): QuickF
         { key: "message", label: "What it asks you", kind: "longtext", value: step.message },
         ...conditionFields("cond", step.when, step.match, inputs),
       ];
+    case "ask":
+      return [...fields, ...askQuickFields(step, inputs)];
+    case "wait":
+      return [...fields, ...waitQuickFields(step, inputs)];
     case "branch":
       return [...fields, ...conditionFields("cond", step.conditions, step.match, inputs)];
     case "choice":
@@ -265,6 +270,10 @@ export function applyQuick(step: WorkflowStep, key: string, value: QuickField["v
     case "approval":
       if (head === "message") return { ...step, message: String(value) };
       return head === "cond" ? { ...step, when: setRight(step.when, rest, value) } : step;
+    case "ask":
+      return applyAskQuick(step, key, value);
+    case "wait":
+      return applyWaitQuick(step, key, value);
     case "choice":
       if (head !== "case") return step;
       return { ...step, cases: step.cases.map((c, i) => (i === Number(rest) ? { ...c, is: String(value) } : c)) };

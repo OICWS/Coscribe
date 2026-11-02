@@ -283,8 +283,9 @@ class WorkflowDrafting:
                 result["page"] = await _page_now(ctx)
             result["next"] = {
                 "passed": "Tell the user it passed; they review it on the card.",
-                "stopped_at_approval": "It ran up to an approval step, where a test stops; "
-                "tell the user the steps before it passed.",
+                "stopped_at_approval": "It ran up to an approval step, or a step that asks "
+                "for a value with no default, where a test stops; tell the user the steps before "
+                "it passed.",
                 "stopped_before_irreversible": "It ran up to a step that can't be taken back "
                 "(stopped_before), where a test stops. Tell the user the steps before it "
                 "passed. Only if they ask for the rest to be checked too, and agree that it "

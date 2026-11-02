@@ -48,7 +48,7 @@ import { useSteerNotes } from "./lib/steerNotes";
 import { BackgroundTasks, DetachScript, OpenDesignSystem, SteerActionsContext, ViewFile } from "./components/chatlog/contexts";
 import { canOpenPanelWindows, focusPanelWindow, usePanelWindows } from "./lib/panelWindows";
 import { WorkflowDraftPage } from "./components/workflow/WorkflowDraftPage";
-import { WorkflowRunView } from "./components/workflow/WorkflowRunView";
+import { WorkflowRunView, type WorkflowAnswer } from "./components/workflow/WorkflowRunView";
 import { PageHeader, TitleBar } from "./components/AppHeader";
 import { ThreadHeader } from "./components/ThreadHeader";
 import {
@@ -538,8 +538,8 @@ function App() {
     return error;
   };
 
-  const answerWorkflow = async (task: ScheduledTask, run: ScheduledRun, approved: boolean, note: string) => {
-    const error = await answerWorkflowStep(task.trigger_id, run.run_id, approved, note);
+  const answerWorkflow = async (task: ScheduledTask, run: ScheduledRun, ...answer: WorkflowAnswer) => {
+    const error = await answerWorkflowStep(task.trigger_id, run.run_id, ...answer);
     refreshScheduledTasks();
     return error;
   };
@@ -940,7 +940,7 @@ function App() {
                   run={threadRun}
                   workflow={threadWorkflow}
                   onRetry={(stepId) => retryWorkflow(threadTask, threadRun, stepId)}
-                  onAnswer={(approved, note) => answerWorkflow(threadTask, threadRun, approved, note)}
+                  onAnswer={(...answer) => answerWorkflow(threadTask, threadRun, ...answer)}
                   onEditStep={(stepId) => editWorkflowStep(threadTask, stepId)}
                   onStop={() => stopWorkflow(threadTask, threadRun)}
                   onInvestigate={(model) => investigateWorkflow(threadTask, threadRun, model)}

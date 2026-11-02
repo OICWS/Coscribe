@@ -3,7 +3,18 @@
 
 import type { WorkflowCheck, WorkflowStepRecord } from "./wire.gen";
 
-export type StepKind = "tool" | "script" | "llm" | "agent" | "check" | "approval" | "branch" | "choice" | "loop";
+export type StepKind =
+  | "tool"
+  | "script"
+  | "llm"
+  | "agent"
+  | "check"
+  | "approval"
+  | "ask"
+  | "wait"
+  | "branch"
+  | "choice"
+  | "loop";
 export type Autonomy = "bounded" | "high" | "full";
 export type OutputFieldType = "text" | "number" | "boolean" | "list";
 export type CheckOp =
@@ -132,6 +143,52 @@ export interface ApprovalStep extends StepBase {
   match?: Match;
 }
 
+/** One value an ask step asks for (decision 0033): an input's kinds, or `pick`, some items of a list. */
+export interface AskField {
+  name: string;
+  label: string;
+  type: WorkflowInput["type"] | "pick";
+  options?: string[];
+  default?: string | number | boolean | null;
+  /** Absent means required. */
+  required?: boolean;
+  /** A pick's list, by reference. */
+  items?: string | null;
+  /** A pick's field of each item to show. Empty: the item itself. */
+  show?: string;
+}
+
+/** Pauses until a person fills `fields`; `save_as` gets { name: value }. */
+export interface AskStep extends StepBase {
+  kind: "ask";
+  message: string;
+  fields: AskField[];
+  save_as: string;
+  /** Null or absent: it waits for as long as it takes. */
+  timeout_hours?: number | null;
+  /** After the timeout: go on with the defaults, or fail. Absent: fail. */
+  on_timeout?: "defaults" | "fail";
+}
+
+/** Pauses the run, holding nothing: for `minutes`, until `at` (HH:MM) on the day `on`, or until
+ * `path` exists, for at most `max_minutes`. */
+export interface WaitStep extends StepBase {
+  kind: "wait";
+  until: "duration" | "time" | "file";
+  minutes?: number | null;
+  /** "17:00". */
+  at?: string | null;
+  /** A date, a relative one ("today") or a reference. Absent: the next time `at` comes. */
+  on?: string | null;
+  path?: string | null;
+  /** A file's longest wait. Absent: a day. */
+  max_minutes?: number;
+  /** A file that doesn't come: fail, or go on. Absent: fail. */
+  if_missing?: "fail" | "continue";
+  /** A file's: { path, found }. */
+  save_as?: string | null;
+}
+
 export interface BranchStep extends StepBase {
   kind: "branch";
   conditions: Condition[];
@@ -180,6 +237,8 @@ export type WorkflowStep =
   | AgentStep
   | CheckStep
   | ApprovalStep
+  | AskStep
+  | WaitStep
   | BranchStep
   | ChoiceStep
   | LoopStep;
@@ -206,6 +265,7 @@ export interface RunReport {
   loops: { step_id: string; title: string; done: number; total: number; skipped?: number }[];
   not_done: { step_id: string; title: string; iteration: number[]; status: string; error: string | null }[];
   assumed: { step_id: string; title: string; iteration: number[]; values: string[] }[];
+  unanswered: { step_id: string; title: string; iteration: number[] }[];
   healed: { step_id: string; title: string; iteration: number[]; error: string; did: string; carried?: boolean }[];
   irreversible: { step_id: string; title: string; iteration: number[] }[];
   /** Failures that didn't stop the run (decision 0032). Absent on older servers. */

@@ -94,6 +94,8 @@ def run_event(
         asked = waiting.get("permission") if waiting else None
         if isinstance(asked, dict) and asked.get("target"):
             body = f"Needs your OK to use {asked['target']}{where}"
+        elif waiting and waiting.get("pause"):
+            body = f"Waiting for your answer{where}"
         else:
             body = f"Waiting for you{where}"
     else:

@@ -56,6 +56,8 @@ const NEW_TITLE: Record<StepKind, string> = {
   agent: "Let an agent do it",
   check: "Check the values",
   approval: "Review before continuing",
+  ask: "Ask you",
+  wait: "Wait",
   branch: "Decide which way to go",
   choice: "Pick a path by a value",
   loop: "Repeat for each item",
@@ -130,6 +132,18 @@ export function newStep(kind: StepKind, workflow: Workflow, available: string[],
       };
     case "approval":
       return { kind, id, title, message: "Check the results so far before the run continues.", when: [] };
+    case "ask":
+      return {
+        kind,
+        id,
+        title,
+        message: "",
+        fields: [{ name: "answer", label: "Answer", type: "text" }],
+        save_as: uniqueValueName(workflow, "answers"),
+        timeout_hours: null,
+      };
+    case "wait":
+      return { kind, id, title, until: "duration", minutes: 10 };
     case "branch":
       return {
         kind,
@@ -226,6 +240,18 @@ function renameInStep(step: WorkflowStep, from: string, to: string): WorkflowSte
         ...step,
         message: renameInText(step.message, from, to),
         when: step.when.map((c) => renameCondition(c, from, to)),
+      };
+    case "ask":
+      return {
+        ...step,
+        message: renameInText(step.message, from, to),
+        fields: step.fields.map((f) => (f.items ? { ...f, items: renameRoot(f.items, from, to) } : f)),
+      };
+    case "wait":
+      return {
+        ...step,
+        path: step.path ? renameInText(step.path, from, to) : step.path,
+        on: step.on ? renameInText(step.on, from, to) : step.on,
       };
     case "branch":
       return { ...step, conditions: step.conditions.map((c) => renameCondition(c, from, to)) };

@@ -15,6 +15,8 @@ const KINDS: { kind: StepKind; label: string; description: string }[] = [
   { kind: "agent", label: "Agent", description: "Works toward a goal with tools, within the limits you set" },
   { kind: "check", label: "Check", description: "Stop the run unless values hold" },
   { kind: "approval", label: "Approval", description: "Pause until you approve" },
+  { kind: "ask", label: "Ask you", description: "Pause until you fill in values the later steps use" },
+  { kind: "wait", label: "Wait", description: "Pause for a while, until a time, or until a file appears" },
 ];
 
 const STRUCTURE: { kind: StepKind; label: string; description: string }[] = [

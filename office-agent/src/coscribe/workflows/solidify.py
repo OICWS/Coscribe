@@ -97,6 +97,22 @@ earlier one rules out.
 when "when" holds if it lists any. Use one before a step that overwrites \
 or sends something, only if the conversation asked for a confirmation \
 there.
+- "ask": {"message": "<text with {{references}}>", "fields": [{"name": \
+"...", "label": "...", "type": "text" | "number" | "date" | "yes_no" | \
+"choice" | "file" | "folder" | "pick", "options": [...], "default": ..., "required": true}], \
+"save_as": "<name>", "timeout_hours": <number>, "on_timeout": "defaults" | \
+"fail"} -- pauses until a person fills the fields; its save_as holds them \
+by name. A "pick" field has "items": "<name of a list>" and "show": \
+"<field each item is shown by>", and holds the items the person ticked. \
+Use one where the conversation stopped to ask the user for a value only \
+they knew (an amount, a choice, which rows to keep). It waits as long as \
+it takes unless "timeout_hours" is given.
+- "wait": {"until": "duration", "minutes": <n>} | {"until": "time", "at": \
+"HH:MM", "on": "<date or reference>"} | {"until": "file", "path": "<path \
+with {{references}}>", "max_minutes": <n>, "if_missing": "fail" | \
+"continue", "save_as": "<name>"} -- pauses the run, holding nothing, for a \
+time, until a time, or until a file appears (its save_as holds {"path", \
+"found"}). Use one only where the conversation waited for something.
 
 - "loop": {"over": "<name of a list>", "item": "<name for each item>", \
 "steps": [...], "collect": "<a name made inside>", "save_as": "<name>", \

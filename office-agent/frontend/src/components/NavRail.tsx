@@ -40,6 +40,7 @@ const DOT_COLOR: Partial<Record<RunStatus, string>> = {
   completed: "var(--success)",
   failed: "var(--danger)",
   needs_approval: "var(--warning)",
+  waiting: "var(--kind-wait)",
 };
 
 /** The task's latest run at a glance: a spinner while it runs, then a

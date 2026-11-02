@@ -41,7 +41,7 @@ from ...workflow_spec import current_shape, parse_workflow, workflow_error
 
 VALID_KINDS = ("manual", "once", "hourly", "daily", "weekdays", "weekly", "monthly")
 VALID_APPROVAL_MODES = ("manual", "auto", "skip")
-RUN_STATUSES = ("running", "completed", "failed", "needs_approval", "stopped")
+RUN_STATUSES = ("running", "completed", "failed", "needs_approval", "waiting", "stopped")
 
 # Every run's conversation is keyed off this prefix (see run_thread_id) --
 # shared with web/app.py's list_threads, which filters by it so run

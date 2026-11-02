@@ -43,3 +43,4 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0030](0030-a-task-has-one-autonomy-setting-and-every-run-a-report.md) | A task has one autonomy setting, and every run a report (accepted; narrowed by 0032) |
 | [0031](0031-a-workflow-asks-for-typed-inputs-and-goes-one-of-several-ways.md) | A workflow asks for typed inputs and goes one of several ways (proposed) |
 | [0032](0032-a-step-says-what-happens-when-it-fails.md) | A step says what happens when it fails (proposed) |
+| [0033](0033-a-run-can-pause-for-a-person-or-a-time.md) | A run can pause for a person or a time (proposed) |

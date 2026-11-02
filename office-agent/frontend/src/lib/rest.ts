@@ -349,8 +349,14 @@ async function errorOf(url: string, body: unknown): Promise<string | null> {
 const runUrl = (triggerId: string, runId: string, action: string) =>
   `/api/scheduled-tasks/${encodeURIComponent(triggerId)}/runs/${encodeURIComponent(runId)}/${action}`;
 
-export const answerWorkflowStep = (triggerId: string, runId: string, approved: boolean, note = "") =>
-  errorOf(runUrl(triggerId, runId, "answer"), { approved, note });
+/** `values`: an ask step's answers, a pick's as the places of the items picked. */
+export const answerWorkflowStep = (
+  triggerId: string,
+  runId: string,
+  approved: boolean,
+  note = "",
+  values?: Record<string, unknown>,
+) => errorOf(runUrl(triggerId, runId, "answer"), { approved, note, ...(values ? { values } : {}) });
 
 /** No stepId: retry the step the run failed at. */
 export const retryWorkflowRun = (triggerId: string, runId: string, stepId?: string) =>

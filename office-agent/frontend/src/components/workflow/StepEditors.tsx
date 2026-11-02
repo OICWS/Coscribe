@@ -17,6 +17,7 @@ import {
   ValuesHint,
 } from "./editorParts";
 import { AddRowButton, AutoTextarea, FieldLabel, RemoveButton } from "./fields";
+import { AskEditor, WaitEditor } from "./PauseEditors";
 
 export type { EditorContext };
 
@@ -380,6 +381,10 @@ export function StepFields({ step, onChange, context }: EditorProps<WorkflowStep
         return <CheckEditor step={step} onChange={onChange} context={context} />;
       case "approval":
         return <ApprovalEditor step={step} onChange={onChange} context={context} />;
+      case "ask":
+        return <AskEditor step={step} onChange={onChange} context={context} />;
+      case "wait":
+        return <WaitEditor step={step} onChange={onChange} context={context} />;
       case "branch":
         return <BranchEditor step={step} onChange={onChange} context={context} />;
       case "choice":

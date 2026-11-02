@@ -418,6 +418,11 @@ async def _check_wakes_async(settings: Any) -> None:
             settings.mcp_config_path, state_dir=settings.state_dir
         )
 
+    woken: list[tuple[str, Any]] = []
+
+    async def _note_woken(trigger_id: str, run: Any) -> None:
+        woken.append((trigger_id, run))
+
     checkpoint_path = settings.state_dir / "runtime_lg_checkpoints.sqlite"
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -438,18 +443,22 @@ async def _check_wakes_async(settings: Any) -> None:
                 )
 
             fired_wakes = await poll_due_wakes(settings.state_dir, _get_session)
-            fired_tasks = await poll_due_scheduled_tasks(settings.state_dir, _get_session)
+            fired_tasks = await poll_due_scheduled_tasks(
+                settings.state_dir, _get_session, on_woken=_note_woken
+            )
     finally:
         for connection in mcp_connections.values():
             await connection.close()
 
-    if not fired_wakes and not fired_tasks:
+    if not fired_wakes and not fired_tasks and not woken:
         typer.echo("No due wakes.")
         return
     for wake in fired_wakes:
         typer.echo(f"Resumed thread {wake.thread_id!r} ({wake.kind}): {wake.reason}")
     for trigger in fired_tasks:
         typer.echo(f"Ran scheduled task {trigger.name!r} ({trigger.trigger_id})")
+    for trigger_id, run in woken:
+        typer.echo(f"Went on with run {run.run_id} of {trigger_id}: {run.status}")
 
 
 def main() -> None:

@@ -231,6 +231,8 @@ class PermissionsRequest(BaseModel):
 class WorkflowAnswer(BaseModel):
     approved: bool
     note: str = ""
+    # An ask step's answers, a pick's as the places of the items picked (decision 0033).
+    values: dict[str, Any] | None = None
 
 
 class WorkflowRetry(BaseModel):

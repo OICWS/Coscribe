@@ -230,6 +230,39 @@ export interface WorkflowAgentActivity {
   pending?: WorkflowAgentCall;
 }
 
+/** One item a pick offers: what it shows, and its place in the list. */
+export interface WorkflowAskChoice {
+  label: string;
+  index: number;
+}
+
+/** One value an ask step waits for, with its default worked out for this run. */
+export interface WorkflowAskField {
+  name: string;
+  label: string;
+  type: "text" | "number" | "date" | "choice" | "yes_no" | "file" | "folder" | "pick";
+  options: string[];
+  default: unknown;
+  required: boolean;
+  /** A pick's items. */
+  items?: WorkflowAskChoice[];
+}
+
+/**
+ * What a waiting ask or wait step is waiting for (decision 0033). `until`: when an ask
+ * stops waiting for an answer, or when a wait ends; None while it waits for as long as it
+ * takes.
+ */
+export interface WorkflowPause {
+  kind: "ask" | "wait";
+  until: string | null;
+  /** An ask's. */
+  fields?: WorkflowAskField[];
+  on_timeout?: "defaults" | "fail";
+  /** A wait for a file: where it looks. */
+  path?: string;
+}
+
 /** One step of one workflow run (`workflows.engine.StepRecord.to_dict()`). */
 export interface WorkflowStepRecord {
   step_id: string;
@@ -258,6 +291,8 @@ export interface WorkflowStepRecord {
    * place, or its loop skipped the item.
    */
   recovered?: "skipped" | "fallback" | "item_skipped" | null;
+  /** An ask or wait step waiting, and what for; absent on older runs. */
+  pause?: WorkflowPause | null;
 }
 
 /** One step of a workflow run on this thread started, finished, failed or began waiting. */
