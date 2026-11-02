@@ -226,6 +226,31 @@ async def test_a_choice_runs_the_path_for_its_value(tmp_path: Path) -> None:
     assert picked == [{"arm": "case:1"}, {"arm": "otherwise"}]
 
 
+@pytest.mark.parametrize("kind", ["branch", "choice"])
+async def test_every_step_after_a_branch_or_choice_runs(tmp_path: Path, kind: str) -> None:
+    # The steps of one list are wired in turn; reading the next one from a path's list instead
+    # ended the run early, as if it had finished.
+    def read(step_id: str) -> dict[str, Any]:
+        return _tool(step_id, step_id, f"{step_id}.txt")
+
+    split = (
+        {"id": "split", "kind": "branch", "title": "Split", "then": [read("then")], "otherwise": [],
+         "conditions": [{"left": {"ref": "dept"}, "op": "eq", "right": {"value": "Sales"}}]}
+        if kind == "branch"
+        else _choice(id="split")
+    )  # fmt: skip
+    workflow = parse_workflow({
+        "inputs": [{"name": "dept", "type": "choice", "options": ["Sales", "Finance", "Ops"]}],
+        "steps": [split, read("after1"), read("after2"), read("after3")],
+    })  # fmt: skip
+    h, files = _files_harness(tmp_path)
+
+    outcome = await h.run(InMemorySaver(), workflow).start({"dept": "Sales"})
+
+    assert outcome.status == "completed"
+    assert files.reads[-3:] == ["after1.txt", "after2.txt", "after3.txt"]
+
+
 # -- branch, check and approval with several conditions
 
 

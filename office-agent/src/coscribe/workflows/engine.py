@@ -701,10 +701,10 @@ class _GraphBuilder:
                 self.graph.add_conditional_edges(
                     node,
                     _arm_router(step),
-                    {arm: _node_name(steps[0]) if steps else following for arm, steps in arms},
+                    {arm: _node_name(path[0]) if path else following for arm, path in arms},
                 )
-                for _arm, steps in arms:
-                    self.wire(steps, following)
+                for _arm, path in arms:
+                    self.wire(path, following)
             elif isinstance(step, LoopStep):
                 next_node, collect_node = f"next__{step.id}", f"collect__{step.id}"
                 self.graph.add_node(node, cast(Any, self.loop_start(step)))
