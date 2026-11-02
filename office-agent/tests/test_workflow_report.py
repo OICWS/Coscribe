@@ -44,7 +44,8 @@ def test_the_report_says_what_was_done_not_done_and_decided() -> None:
     report = run_report(workflow, records, "2026-10-31T10:00:00", "2026-10-31T10:02:30")
 
     assert report["autonomy"] == "proactive"
-    assert report["loops"] == [{"step_id": "each", "title": "Each row", "done": 1, "total": 2}]
+    loop = {"step_id": "each", "title": "Each row", "done": 1, "total": 2, "skipped": 0}
+    assert report["loops"] == [loop]
     assert [(n["step_id"], n["iteration"], n["error"]) for n in report["not_done"]] == [
         ("file", [1], "The agent stopped: no receipt"),
         ("each", [], None),

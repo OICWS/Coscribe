@@ -35,9 +35,42 @@ interface AddStepMenuProps {
   onClose: () => void;
   /** Opens upward when the trigger sits near the bottom of the list. */
   placement?: "below" | "above";
+  /** Only work steps: after a failed run there is nothing to check, approve or branch on. */
+  workOnly?: boolean;
 }
 
-export function AddStepMenu({ tools, onPick, onClose, placement = "below" }: AddStepMenuProps) {
+const WORK: ReadonlySet<StepKind> = new Set(["tool", "script", "llm", "agent"]);
+
+function KindRow({
+  kind,
+  label,
+  description,
+  onClick,
+}: {
+  kind: StepKind;
+  label: string;
+  description: string;
+  onClick: () => void;
+}) {
+  return (
+    <li className={kind === STRUCTURE[0].kind ? "mt-1.5 border-t border-[var(--border)] pt-1.5" : undefined}>
+      <button
+        type="button"
+        className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left hover:bg-[var(--card-bg)] focus-visible:bg-[var(--card-bg)] focus-visible:outline-none"
+        onClick={onClick}
+      >
+        <KindTile kind={kind} />
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-medium">{label}</span>
+          <span className="block text-xs text-[var(--muted)]">{description}</span>
+        </span>
+        {kind === "tool" && <ChevronRightIcon className="h-4 w-4 shrink-0 text-[var(--muted)]" />}
+      </button>
+    </li>
+  );
+}
+
+export function AddStepMenu({ tools, onPick, onClose, placement = "below", workOnly = false }: AddStepMenuProps) {
   const [view, setView] = useState<"kinds" | "tools">("kinds");
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
@@ -85,25 +118,15 @@ export function AddStepMenu({ tools, onPick, onClose, placement = "below" }: Add
     >
       {view === "kinds" ? (
         <ul className="flex flex-col p-1.5">
-          {[...KINDS, ...STRUCTURE].map(({ kind, label, description }) => (
-            <li
-              key={kind}
-              className={kind === STRUCTURE[0].kind ? "mt-1.5 border-t border-[var(--border)] pt-1.5" : undefined}
-            >
-              <button
-                type="button"
-                className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left hover:bg-[var(--card-bg)] focus-visible:bg-[var(--card-bg)] focus-visible:outline-none"
-                onClick={() => (kind === "tool" ? setView("tools") : onPick(kind))}
-              >
-                <KindTile kind={kind} />
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium">{label}</span>
-                  <span className="block text-xs text-[var(--muted)]">{description}</span>
-                </span>
-                {kind === "tool" && <ChevronRightIcon className="h-4 w-4 shrink-0 text-[var(--muted)]" />}
-              </button>
-            </li>
-          ))}
+          {[...KINDS, ...STRUCTURE]
+            .filter(({ kind }) => !workOnly || WORK.has(kind))
+            .map((option) => (
+              <KindRow
+                key={option.kind}
+                {...option}
+                onClick={() => (option.kind === "tool" ? setView("tools") : onPick(option.kind))}
+              />
+            ))}
         </ul>
       ) : (
         <div className="flex max-h-[420px] flex-col">

@@ -1,22 +1,37 @@
-import type { CheckOp, Condition, Match, Operand, Workflow, WorkflowInput, WorkflowStep } from "../types/workflow";
+import type {
+  CheckOp,
+  Condition,
+  Match,
+  OnFailure,
+  Operand,
+  RecoveringStep,
+  Workflow,
+  WorkflowInput,
+  WorkflowStep,
+} from "../types/workflow";
+import { failureFields, withFailure } from "./failureWords";
 import { plainElement, plainReference } from "./plainSteps";
 import { splitTemplate, wholeReference } from "./workflowLabels";
-import { mapSteps } from "./workflowTree";
+import { mapWorkflow } from "./workflowTree";
 
 // The simple view's quick edit: every fixed value a step holds, in plain words, and nothing that
 // changes the workflow's shape (which steps there are, what feeds what, code, a model's fields).
 // A value that comes from an earlier step or an input is shown, not edited: changing where it comes
 // from is a change of shape.
 
-type QuickFieldKind = "text" | "longtext" | "number" | "list" | "lock" | "shown";
+type QuickFieldKind = "text" | "longtext" | "number" | "list" | "lock" | "shown" | "pick";
 
 export interface QuickField {
   key: string;
   label: string;
   kind: QuickFieldKind;
-  /** text, longtext and shown: a string; number: a number; list: strings; lock: a boolean. */
+  /** text, longtext and shown: a string; number: a number; list: strings; lock: a boolean;
+   * pick: one of `options`' values. */
   value: string | number | string[] | boolean;
   hint?: string;
+  options?: { value: string | number; label: string }[];
+  /** A heading the field starts, for a group of fields. */
+  section?: string;
 }
 
 const ARG_LABEL: Record<string, string> = {
@@ -141,15 +156,21 @@ export function quickFields(step: WorkflowStep, inputs: WorkflowInput[]): QuickF
         ...fields,
         ...Object.entries(step.args).map(([name, value]) => argField(name, value, inputs)),
         lockField(step.irreversible),
+        ...failureFields(step),
       ];
     case "script":
       return [
         ...fields,
         ...Object.entries(step.inputs).map(([name, value]) => argField(name, value, inputs)),
         { key: "code", label: "Program", kind: "shown", value: "Changed in the full editor" },
+        ...failureFields(step),
       ];
     case "llm":
-      return [...fields, { key: "prompt", label: "What it asks the AI", kind: "longtext", value: step.prompt }];
+      return [
+        ...fields,
+        { key: "prompt", label: "What it asks the AI", kind: "longtext", value: step.prompt },
+        ...failureFields(step),
+      ];
     case "agent":
       return [
         ...fields,
@@ -158,6 +179,7 @@ export function quickFields(step: WorkflowStep, inputs: WorkflowInput[]): QuickF
         { key: "sites", label: "Websites it may open", kind: "list", value: step.sites },
         { key: "folders", label: "Folders it may change", kind: "list", value: step.folders },
         lockField(step.irreversible),
+        ...failureFields(step),
       ];
     case "check":
       return [...fields, ...conditionFields("cond", step.conditions, step.match, inputs)];
@@ -191,6 +213,17 @@ export function quickFields(step: WorkflowStep, inputs: WorkflowInput[]): QuickF
           value: step.max_items,
           hint: "1 to 200. A longer list stops the run.",
         },
+        {
+          key: "on_item_failure",
+          label: "If one item fails",
+          kind: "pick",
+          value: step.on_item_failure ?? "stop",
+          options: [
+            { value: "stop", label: "Stop the run" },
+            { value: "skip", label: "Skip that item and go on" },
+          ],
+          hint: "Skipped items are listed in the run’s report.",
+        },
         ...conditionFields("cond", step.until ?? [], step.match, inputs).map((field) => ({
           ...field,
           label: field.label.replace(/^(If|And if|Or if)/, (lead) => `Stop early ${lead.toLowerCase()}`),
@@ -208,9 +241,12 @@ export function applyQuick(step: WorkflowStep, key: string, value: QuickField["v
   const [head, rest] = key.split(/:(.*)/s);
   if (head === "title") return { ...step, title: String(value) };
   if (head === "irreversible" && (step.kind === "tool" || step.kind === "agent")) {
-    // On only: unmarking a step that can't be undone is the full editor's, on purpose.
-    return { ...step, irreversible: step.irreversible || value === true };
+    // On only: unmarking a step that can't be undone is the full editor's, on purpose. Once
+    // marked it is never tried again on its own.
+    const marked = { ...step, irreversible: step.irreversible || value === true };
+    return marked.irreversible ? withFailure(marked, { retries: 0 }) : marked;
   }
+  if (head === "failure") return withFailure(step as RecoveringStep, { [rest]: value } as Partial<OnFailure>);
   switch (step.kind) {
     case "tool":
       return head === "arg" ? { ...step, args: { ...step.args, [rest]: value } } : step;
@@ -234,11 +270,12 @@ export function applyQuick(step: WorkflowStep, key: string, value: QuickField["v
       return { ...step, cases: step.cases.map((c, i) => (i === Number(rest) ? { ...c, is: String(value) } : c)) };
     case "loop":
       if (head === "cond") return { ...step, until: setRight(step.until ?? [], rest, value) };
+      if (head === "on_item_failure") return { ...step, on_item_failure: value === "skip" ? "skip" : "stop" };
       return head === "max_items" ? { ...step, max_items: Number(value) } : step;
   }
 }
 
 /** The workflow with step `id` replaced. */
 export function replaceStep(workflow: Workflow, id: string, next: WorkflowStep): Workflow {
-  return { ...workflow, steps: mapSteps(workflow.steps, (step) => (step.id === id ? next : step)) };
+  return mapWorkflow(workflow, (step) => (step.id === id ? next : step));
 }

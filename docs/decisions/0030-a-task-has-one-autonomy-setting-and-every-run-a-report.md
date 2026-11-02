@@ -1,7 +1,8 @@
 # 0030: A task has one autonomy setting, and every run a report
 
 Status: accepted (2026-11-01, by the maintainer; proposed 2026-10-31 by kurtosisOC in #754).
-Builds on 0028 (per-step autonomy) and 0029 (irreversible steps). Issue #754.
+Builds on 0028 (per-step autonomy) and 0029 (irreversible steps). Issue #754. Narrowed by 0032:
+a failure stops the run unless the step says to try again, skip it or run other steps.
 
 ## Context
 0028 lets each step choose its autonomy. A person thinks about a task instead: a finance task

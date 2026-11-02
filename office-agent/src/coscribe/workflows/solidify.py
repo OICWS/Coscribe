@@ -118,6 +118,21 @@ department, a status): the first case it equals as text, ignoring case, \
 else "otherwise". After a branch or a choice, a name can be read only if \
 every path makes it.
 
+When a step fails -- "tool", "script", "llm" and "agent" steps may add \
+"on_failure": {"retries": 0-5, "wait_seconds": 0-300, "then": "stop" | \
+"skip" | "steps", "steps": [...]}. Leave it out unless the conversation \
+showed the need: retries for a site or service that didn't answer at \
+first, "skip" for a step the result doesn't need (its save_as can't be \
+read after it then), "steps" for what the conversation did instead when \
+it failed (they read {{failure.step}} and {{failure.message}}; give one \
+the failed step's save_as for later steps to use either). A step marked \
+irreversible never has retries. A loop may add "on_item_failure": "skip" \
+when the conversation left out an item it couldn't handle and went on. \
+Beside "steps", a workflow may list "after_failure": [...] -- tool, \
+script, llm or agent steps that run only when the run fails (to tell \
+someone, or to clean up), reading the inputs and {{failure.step}} and \
+{{failure.message}}.
+
 References: "{{name}}" or "{{name.field}}" reads an input or an earlier \
 step's save_as. A whole-string reference keeps the value's type; inside \
 longer text it becomes text. A step can only read what comes before it. \
@@ -334,13 +349,14 @@ def check_draft(workflow: Workflow, tools: dict[str, Any]) -> list[str]:
     if not workflow.steps:
         return ["the workflow has no steps"]
     problems = []
-    model_results = {p.step.save_as for p in walk(workflow.steps) if isinstance(p.step, LLMStep)}
+    every = walk(workflow.every_step())
+    model_results = {p.step.save_as for p in every if isinstance(p.step, LLMStep)}
     node_results = {
         p.step.save_as
-        for p in walk(workflow.steps)
+        for p in every
         if isinstance(p.step, ToolStep) and p.step.tool == "run_node_script"
     }
-    for placed in walk(workflow.steps):
+    for placed in every:
         step, index = placed.step, placed.number
         for reference in step_references(step):
             name, _, field = reference.partition(".")
@@ -383,7 +399,7 @@ def check_draft(workflow: Workflow, tools: dict[str, Any]) -> list[str]:
 def with_read_tools(workflow: Workflow, tools: dict[str, Any]) -> Workflow:
     """Every bounded agent step may also list, inspect and read files: reading inside the
     workspace is what such a step does first, and is no new reach to consent to."""
-    for placed in walk(workflow.steps):
+    for placed in walk(workflow.every_step()):
         step = placed.step
         if isinstance(step, AgentStep) and step.autonomy == "bounded":
             step.tools += [t for t in READ_TOOLS if t in tools and t not in step.tools]
@@ -508,7 +524,7 @@ def _tools_in(workflow: dict[str, Any]) -> list[str]:
         parsed = parse_workflow(workflow)
     except ValidationError:
         return []
-    return [p.step.tool for p in walk(parsed.steps) if isinstance(p.step, ToolStep)]
+    return [p.step.tool for p in walk(parsed.every_step()) if isinstance(p.step, ToolStep)]
 
 
 def _keep_marks(saved: dict[str, Any], draft: WorkflowDraft) -> WorkflowDraft:
@@ -518,13 +534,13 @@ def _keep_marks(saved: dict[str, Any], draft: WorkflowDraft) -> WorkflowDraft:
     try:
         marked = {
             p.step.id
-            for p in walk(parse_workflow(saved).steps)
+            for p in walk(parse_workflow(saved).every_step())
             if getattr(p.step, "irreversible", False)
         }
     except ValidationError:
         return draft
     kept = []
-    for placed in walk(parse_workflow(draft.workflow).steps):
+    for placed in walk(parse_workflow(draft.workflow).every_step()):
         if placed.step.id in marked and not getattr(placed.step, "irreversible", False):
             kept.append(placed.step)
     if not kept:
@@ -539,6 +555,7 @@ def _keep_marks(saved: dict[str, Any], draft: WorkflowDraft) -> WorkflowDraft:
                 mark(children)
 
     mark(draft.workflow.get("steps") or [])
+    mark(draft.workflow.get("after_failure") or [])
     titles = ", ".join(f'"{step.title}"' for step in kept)
     note = f"Kept {titles} marked as a step that can't be taken back; only you can unmark it."
     return WorkflowDraft(draft.name, draft.workflow, draft.notes, [*(draft.changes or []), note])

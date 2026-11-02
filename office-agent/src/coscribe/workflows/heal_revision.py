@@ -51,8 +51,9 @@ def heal_fixes(workflow: dict[str, Any], healed: list[dict[str, Any]]) -> dict[s
                 replaced[(step_id, name)] = str(was[name])
     revised = copy.deepcopy(workflow)
     fixes: list[dict[str, Any]] = []
+    every = [*(revised.get("steps") or []), *(revised.get("after_failure") or [])]
     for (step_id, name), values in proposed.items():
-        step = _find(revised.get("steps") or [], step_id)
+        step = _find(every, step_id)
         args = step.get("args") if step is not None and step.get("kind") == "tool" else None
         if len(values) > 1:
             # Healed differently on different items: no one value is the step's.

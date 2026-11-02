@@ -3,7 +3,9 @@ import { createPortal } from "react-dom";
 import { inputClass, primaryButton, secondaryButton } from "../../lib/formStyles";
 import { INPUT_TYPE_LABEL, isRelativeDate, resolveDate } from "../../lib/inputKinds";
 import { plainDetail, plainKind } from "../../lib/plainSteps";
+import { dataFlow } from "../../lib/dataFlow";
 import { applyQuick, type QuickField, quickFields, replaceStep } from "../../lib/quickEdit";
+import { allSteps } from "../../lib/workflowTree";
 import type { Workflow, WorkflowInput, WorkflowStep } from "../../types/workflow";
 import { CloseIcon } from "../icons";
 import { AutoTextarea, FieldLabel } from "./fields";
@@ -18,7 +20,47 @@ function ListField({ id, value, onChange }: { id: string; value: string[]; onCha
   );
 }
 
+function PickField({
+  id,
+  field,
+  onChange,
+}: {
+  id: string;
+  field: QuickField;
+  onChange: (value: string | number) => void;
+}) {
+  const options = field.options ?? [];
+  return (
+    <select
+      id={id}
+      className={`${inputClass} max-w-[260px]`}
+      value={String(field.value)}
+      onChange={(e) => {
+        const picked = options.find((option) => String(option.value) === e.target.value);
+        if (picked) onChange(picked.value);
+      }}
+    >
+      {options.map((option) => (
+        <option key={String(option.value)} value={String(option.value)}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 function Field({ field, onChange }: { field: QuickField; onChange: (value: QuickField["value"]) => void }) {
+  const control = <FieldControl field={field} onChange={onChange} />;
+  if (!field.section) return control;
+  return (
+    <>
+      <h3 className="-mb-1 mt-2 border-t border-[var(--border)] pt-4 text-[13px] font-semibold">{field.section}</h3>
+      {control}
+    </>
+  );
+}
+
+function FieldControl({ field, onChange }: { field: QuickField; onChange: (value: QuickField["value"]) => void }) {
   const id = `quick-${field.key}`;
   if (field.kind === "lock") {
     const on = field.value === true;
@@ -51,7 +93,35 @@ function Field({ field, onChange }: { field: QuickField; onChange: (value: Quick
         />
       )}
       {field.kind === "longtext" && <AutoTextarea id={id} value={String(field.value)} onChange={onChange} />}
+      {field.kind === "pick" && <PickField id={id} field={field} onChange={onChange} />}
       {field.kind === "list" && <ListField id={id} value={field.value as string[]} onChange={onChange} />}
+    </div>
+  );
+}
+
+/** Where a step's values come from and where its result goes, the same links the canvas lights. */
+function FlowSummary({ workflow, step }: { workflow: Workflow; step: WorkflowStep }) {
+  const flow = dataFlow(workflow).get(step.id);
+  if (!flow) return null;
+  const titles = new Map(allSteps(workflow).map((s) => [s.id, s.title]));
+  const labels = new Map(workflow.inputs.map((input) => [input.name, input.label || input.name]));
+  const from = [
+    ...[...flow.inputs].map((name) => labels.get(name) ?? name),
+    ...[...flow.from].map((id) => titles.get(id) ?? id),
+  ];
+  const to = [...flow.to].map((id) => titles.get(id) ?? id);
+  const row = (label: string, items: string[], color: string) => (
+    <div className="flex gap-2">
+      <span className="w-32 shrink-0 text-[var(--muted)]">{label}</span>
+      <span style={{ color: items.length ? color : undefined }} className={items.length ? "" : "text-[var(--muted)]"}>
+        {items.length ? items.join(", ") : "Nothing"}
+      </span>
+    </div>
+  );
+  return (
+    <div className="flex flex-col gap-1 rounded-lg bg-[var(--card-bg)] px-3 py-2 text-[13px]">
+      {row("Gets values from", from, "var(--kind-script)")}
+      {row("Its result goes to", to, "var(--kind-check)")}
     </div>
   );
 }
@@ -173,6 +243,7 @@ export function QuickEditPanel({
       onClose={onClose}
       onOpenEditor={onOpenEditor}
     >
+      <FlowSummary workflow={workflow} step={step} />
       {quickFields(draft, workflow.inputs).map((field) => (
         <Field key={field.key} field={field} onChange={(value) => setDraft(applyQuick(draft, field.key, value))} />
       ))}

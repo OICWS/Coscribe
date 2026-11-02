@@ -1,5 +1,5 @@
 import type { NodeStatus } from "../../lib/workflowRunMap";
-import { CheckIcon, ClockIcon, CloseIcon } from "../icons";
+import { CheckIcon, ClockIcon, CloseIcon, RetryIcon } from "../icons";
 
 /** A step's state in a run, as a small round mark: in the run's list and on
  * its canvas. */
@@ -38,6 +38,13 @@ export function StatusDot({ status }: { status: NodeStatus }) {
     return (
       <span className={`${base} border border-[var(--border-hover)]`} role="img" aria-label="Running">
         <span className="h-3 w-3 animate-spin rounded-full border-[1.5px] border-[var(--border)] border-t-[var(--accent)] motion-reduce:animate-none" />
+      </span>
+    );
+  }
+  if (status === "recovered") {
+    return (
+      <span className={base} style={tint("var(--warning)")} role="img" aria-label="Failed, handled">
+        <RetryIcon className="h-3 w-3" strokeWidth={2.5} />
       </span>
     );
   }

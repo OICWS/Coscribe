@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from ..workflow_spec import BranchStep, ChoiceStep, LoopStep, Step, child_lists
+from ..workflow_spec import BranchStep, ChoiceStep, LoopStep, Step, child_lists, failure_policy
 
 _ITEM_LABEL_CHARS = 60
 _LABEL_KEYS = ("name", "title", "path", "file", "id", "text")
@@ -48,11 +48,16 @@ def supersteps(steps: list[Step]) -> int:
         elif isinstance(step, LoopStep):
             total += 2 + step.max_items * (supersteps(step.steps) + 2)
         else:
-            total += 1
+            # Each try is a graph step, and the steps in its place follow the last (decision 0032).
+            policy = failure_policy(step)
+            total += 1 + (policy.retries + supersteps(policy.steps) if policy else 0)
     return total
 
 
 def loop_progress(loop: dict[str, Any]) -> dict[str, Any]:
+    """`done` counts the items gone through, the skipped ones (decision 0032) among them."""
     progress = {"done": loop["index"], "total": len(loop["items"]), "items": loop["labels"]}
+    if loop.get("skipped"):
+        progress["skipped"] = loop["skipped"]
     # Its `until` held after the last pass, so the rest of the items were left on purpose.
     return {**progress, "stopped_early": True} if loop.get("stopped_early") else progress

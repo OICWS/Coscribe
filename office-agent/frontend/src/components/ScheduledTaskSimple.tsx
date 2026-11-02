@@ -83,7 +83,7 @@ function WhatItDoes({
           </button>
         }
       >
-        <WorkflowCanvas workflow={workflow} plain onOpenStep={setEditing} />
+        <WorkflowCanvas workflow={workflow} plain onOpenStep={setEditing} openStepId={editing} />
       </Section>
       {editingStep && (
         <QuickEditPanel

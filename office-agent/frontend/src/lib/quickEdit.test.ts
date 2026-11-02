@@ -22,6 +22,8 @@ describe("the simple view's quick edit", () => {
       ["arg:sheet", "text"],
       ["arg:limit", "number"],
       ["irreversible", "lock"],
+      ["failure:retries", "pick"],
+      ["failure:then", "pick"],
     ]);
     expect(fields[1].value).toBe("reports/[Department]/sales.csv");
   });

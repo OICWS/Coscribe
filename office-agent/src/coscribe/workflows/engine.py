@@ -22,16 +22,13 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-import json
 import logging
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Hashable
 from dataclasses import asdict, dataclass, field, replace
 from datetime import date, datetime
-from pathlib import Path
 from typing import Annotated, Any, Literal, TypedDict, cast
 
-from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_core.tools import BaseTool
+from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.errors import GraphBubbleUp
 from langgraph.graph import END, START, StateGraph
 from langgraph.runtime import get_runtime
@@ -39,6 +36,7 @@ from langgraph.types import Command, interrupt
 
 from ..needs_permission import NeedsPermission
 from ..workflow_spec import (
+    FAILURE,
     AgentStep,
     ApprovalStep,
     BranchStep,
@@ -54,21 +52,22 @@ from ..workflow_spec import (
     child_lists,
     choose_arm,
     conditions_hold,
+    failure_policy,
     input_values,
     render_text,
-    render_value,
     resolve,
     step_output,
     walk,
 )
-from .agent_step import CODE_TOOLS, AgentCall, AgentRunner, CallGuard, answer_of, run_agent_step
-from .connector_value import connector_value as _connector_value
+from .agent_step import CODE_TOOLS, AgentCall, CallGuard, answer_of, run_agent_step
 from .healing import carried, heal_guard, healed, stand_in
 from .loop_labels import item_labels as _item_labels
 from .loop_labels import loop_progress as _loop_progress
 from .loop_labels import supersteps as _supersteps
-from .model_step import ask_model, field_problems
 from .permissions import untrusted_agent_steps
+from .step_work import StepContext as StepContext
+from .step_work import StepFailed as StepFailed
+from .step_work import checks_of, preview, run_check, run_llm, run_script, run_tool
 
 logger = logging.getLogger(__name__)
 
@@ -78,25 +77,6 @@ RunOutcomeStatus = Literal["completed", "failed", "waiting"]
 # Tools that need a person in the loop mid-call; a workflow asks through an
 # approval step instead.
 UNAVAILABLE_TOOLS = frozenset({"ask_user_question", "create_scheduled_task"})
-SCRIPT_TIMEOUT_SECONDS = 300.0
-SCRIPT_TOOLS = frozenset({"run_python_script", "run_node_script"})
-_PREVIEW_TEXT_CHARS = 2000
-_PREVIEW_LIST_ITEMS = 50
-
-LLM_STEP_INSTRUCTIONS = (
-    "You are one step of a fixed workflow, not a chat. Work only from the "
-    "information given in the message. Return exactly the requested fields, "
-    "with the requested types -- nothing else."
-)
-
-
-class StepFailed(Exception):
-    def __init__(
-        self, message: str, checks: list[dict[str, Any]] | None = None, step_id: str | None = None
-    ) -> None:
-        super().__init__(message)
-        self.checks = checks
-        self.step_id = step_id
 
 
 class WorkflowNotRunnable(ValueError):
@@ -125,34 +105,14 @@ class StepRecord:
     # An agent step's work: {"tool_calls", "tokens", "tools_used"} once it
     # ends, {"pending": {"tool", "args"}} while a call waits for a person.
     agent: dict[str, Any] | None = None
+    # Tries the step took in this pass (decision 0032); more than one only when it has retries.
+    attempts: int = 1
+    # A failed step whose failure didn't stop the run: it was skipped, steps ran in its place, or
+    # its loop skipped the item it failed on.
+    recovered: Literal["skipped", "fallback", "item_skipped"] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
-
-
-@dataclass
-class StepContext:
-    # Built-in tools are plain functions; a connector's are LangChain tools.
-    tools: dict[str, Any]
-    workspace_root: Path
-    state_dir: Path
-    # A LangChain chat model for a "provider:model" string, or the
-    # default model for None.
-    make_model: Callable[[str | None], Any]
-    run_script: Callable[[Path, Path, str, float], dict[str, object]] | None = None
-    # The folders a script may write besides the workspace.
-    extra_writable: Sequence[Path] = ()
-    # A saved run waits for the person when a step needs a folder or site
-    # it hasn't been allowed; anywhere else that is an ordinary failure.
-    ask_permission: bool = False
-    # Runs agent steps (decision 0028); without one a workflow that has
-    # one is refused before it starts.
-    run_agent: AgentRunner | None = None
-    # The task's approval mode, which high and full agent steps run under.
-    approval_mode: str = "manual"
-    # Tools whose results come from outside: an agent step that reads one
-    # through its references gets read-only tools.
-    outside_tools: frozenset[str] = frozenset()
 
 
 @dataclass
@@ -183,150 +143,15 @@ class _State(TypedDict):
     loops: Annotated[dict[str, Any], _merge]
     # Per step id: how it was last healed in this run (decision 0030), for its later passes.
     healed: Annotated[dict[str, Any], _merge]
+    # Per step id, in its current pass: {"route", "tries", "started"} -- where the run goes from
+    # it and how many of its tries have failed (decision 0032). Each try is its own graph step,
+    # so a pause during one resumes that try, not the first.
+    attempts: Annotated[dict[str, Any], _merge]
 
 
 def _node_name(step: Step) -> str:
     # A node can't share a name with a state key ("values").
     return f"step__{step.id}"
-
-
-def preview(value: Any, depth: int = 0) -> Any:
-    """A bounded, JSON-safe copy for a run record."""
-    if isinstance(value, str):
-        if len(value) <= _PREVIEW_TEXT_CHARS:
-            return value
-        return (
-            value[:_PREVIEW_TEXT_CHARS]
-            + f"... [{len(value) - _PREVIEW_TEXT_CHARS} more characters]"
-        )
-    if isinstance(value, (int, float, bool)) or value is None:
-        return value
-    if depth > 4:
-        return "..."
-    if isinstance(value, dict):
-        return {str(k): preview(v, depth + 1) for k, v in value.items()}
-    if isinstance(value, (list, tuple)):
-        items = [preview(v, depth + 1) for v in value[:_PREVIEW_LIST_ITEMS]]
-        if len(value) > _PREVIEW_LIST_ITEMS:
-            items.append(f"... [{len(value) - _PREVIEW_LIST_ITEMS} more items]")
-        return items
-    return str(value)
-
-
-async def _run_tool(step: ToolStep, values: dict[str, Any], ctx: StepContext) -> Any:
-    tool = ctx.tools[step.tool]
-    args = render_value(step.args, values)
-    if isinstance(tool, BaseTool):
-        return _connector_value(await tool.ainvoke(args))
-    if inspect.iscoroutinefunction(tool):
-        result = await tool(**args)
-    else:
-        result = await asyncio.to_thread(tool, **args)
-    _refuse_blocked_write(result)
-    if step.tool in SCRIPT_TOOLS and isinstance(result, dict):
-        _refuse_failed_script(result)
-    return result
-
-
-def _refuse_failed_script(result: dict[str, Any]) -> None:
-    """A script that threw or ran too long fails its step. Called as a tool, the call itself
-    returns normally, so a check the script raised would otherwise let the run carry on."""
-    if result.get("timed_out"):
-        raise StepFailed("The script ran too long and was stopped.")
-    if result.get("exit_code") != 0:
-        stderr = str(result.get("stderr") or "").strip()[-1500:]
-        raise StepFailed(f"The script failed (exit code {result.get('exit_code')}): {stderr}")
-
-
-def _refuse_blocked_write(result: Any) -> None:
-    """A script the folder guard stopped is a step that needs a folder."""
-    if isinstance(result, dict) and result.get("blocked_write"):
-        path = str(result["blocked_write"])
-        folder = str(result.get("blocked_folder") or "")
-        raise NeedsPermission(
-            "folder",
-            folder or path,
-            f'The script tried to write "{path}", which is outside the workspace and the '
-            "folders this run may use. Allow that folder, or have the script save inside "
-            "the workspace.",
-        )
-
-
-def _default_run_script(
-    workspace_root: Path,
-    state_dir: Path,
-    script: str,
-    timeout: float,
-    extra_writable: Sequence[Path] = (),
-) -> dict[str, object]:
-    from ..tools import run_python_script
-
-    return run_python_script(workspace_root, state_dir, script, timeout, extra_writable)
-
-
-async def _run_script(step: ScriptStep, values: dict[str, Any], ctx: StepContext) -> Any:
-    inputs = render_value(step.inputs, values)
-    # repr() of the JSON text is a valid Python string literal, so input
-    # values can never break out into the script's code.
-    prelude = f"inputs = __import__('json').loads({json.dumps(inputs, ensure_ascii=False)!r})\n"
-    where = (ctx.workspace_root, ctx.state_dir, prelude + step.code, SCRIPT_TIMEOUT_SECONDS)
-    if ctx.run_script is not None:
-        result = await asyncio.to_thread(ctx.run_script, *where)
-    else:
-        result = await asyncio.to_thread(_default_run_script, *where, ctx.extra_writable)
-    _refuse_blocked_write(result)
-    _refuse_failed_script(result)
-    lines = [line for line in str(result.get("stdout") or "").splitlines() if line.strip()]
-    if not lines:
-        raise StepFailed(
-            "The script printed nothing; it must print its result as JSON on its last line."
-        )
-    try:
-        return json.loads(lines[-1])
-    except ValueError as exc:
-        raise StepFailed(f"The script's last line isn't JSON: {lines[-1][:200]!r}") from exc
-
-
-async def _run_llm(step: LLMStep, values: dict[str, Any], ctx: StepContext) -> Any:
-    model = ctx.make_model(step.model)
-    if "temperature" in getattr(type(model), "model_fields", {}):
-        model = model.model_copy(update={"temperature": 0})
-    field_lines = "\n".join(f"- {f.name} ({f.type}): {f.description}" for f in step.fields)
-    messages: list[Any] = [
-        SystemMessage(LLM_STEP_INSTRUCTIONS),
-        HumanMessage(f"{render_text(step.prompt, values)}\n\nReturn:\n{field_lines}"),
-    ]
-    problems: list[str] = []
-    for _attempt in range(2):
-        try:
-            result = await ask_model(model, messages, step.fields)
-        except ValueError as exc:
-            problems = [str(exc)]
-        else:
-            cleaned, problems = field_problems(result, step.fields)
-            if not problems:
-                return cleaned
-        messages.append(
-            HumanMessage("That result was rejected: " + "; ".join(problems) + ". Try again.")
-        )
-    raise StepFailed("The model didn't return the required fields: " + "; ".join(problems))
-
-
-def _checks(checked: list[tuple[bool, Any, Any]]) -> list[dict[str, Any]]:
-    return [
-        {"held": h, "left": preview(left), "right": preview(right)} for h, left, right in checked
-    ]
-
-
-def _run_check(step: CheckStep, values: dict[str, Any]) -> list[dict[str, Any]]:
-    held, checked = conditions_hold(step.conditions, step.match, values, step.match == "any")
-    results = _checks(checked)
-    if not held:
-        failed = f"{sum(not r['held'] for r in results)} of {len(results)} checks failed"
-        raise StepFailed(
-            "none of the checks held" if step.match == "any" else failed, checks=results
-        )
-    return results
 
 
 _NO_STEPS = "This workflow has no steps yet -- add some on its task page."
@@ -336,7 +161,7 @@ def preflight(workflow: Workflow, ctx: StepContext) -> None:
     """Refuse a workflow that can't run here, before any step does."""
     if not workflow.steps:
         raise WorkflowNotRunnable(_NO_STEPS)
-    for placed in walk(workflow.steps):
+    for placed in walk(workflow.every_step()):
         step, where = placed.step, f"step {placed.number}"
         if isinstance(step, ToolStep):
             if step.tool in UNAVAILABLE_TOOLS:
@@ -349,6 +174,9 @@ def preflight(workflow: Workflow, ctx: StepContext) -> None:
             raise WorkflowNotRunnable(f"{where}: the loop has no steps to repeat yet")
         if isinstance(step, (BranchStep, ChoiceStep)) and not any(s for _a, s in child_lists(step)):
             raise WorkflowNotRunnable(f"{where}: the branch has no steps on any path yet")
+        policy = failure_policy(step)
+        if policy is not None and policy.then == "steps" and not policy.steps:
+            raise WorkflowNotRunnable(f"{where}: no steps run in its place yet if it fails")
 
 
 def _agent_preflight(step: AgentStep, where: str, ctx: StepContext) -> None:
@@ -369,10 +197,15 @@ def resolve_inputs(workflow: Workflow, given: dict[str, Any]) -> dict[str, Any]:
 
 
 class _GraphBuilder:
-    def __init__(self, workflow: Workflow, ctx: StepContext, on_step: OnStep) -> None:
+    def __init__(
+        self, workflow: Workflow, ctx: StepContext, on_step: OnStep, *, unattended: bool = False
+    ) -> None:
         self.workflow = workflow
         self.ctx = ctx
         self.on_step = on_step
+        # The steps after a failed run (decision 0032): no one is there to answer them, so an
+        # agent's question is answered no instead of pausing the run.
+        self.unattended = unattended
         self.placed = {p.step.id: p for p in walk(workflow.steps)}
         self.read_only = set(untrusted_agent_steps(workflow, ctx.outside_tools))
         self.graph = StateGraph(_State)
@@ -386,68 +219,146 @@ class _GraphBuilder:
         loops = state.get("loops") or {}
         return [loops[loop_id]["index"] for loop_id in self.placed[step.id].loops]
 
-    async def fail(self, step: Step, it: list[int], started: str, exc: Exception) -> StepFailed:
+    async def fail(
+        self,
+        step: Step,
+        it: list[int],
+        started: str,
+        exc: Exception,
+        attempts: int = 1,
+        recovered: Literal["skipped", "fallback", "item_skipped"] | None = None,
+        output: Any = None,
+    ) -> StepFailed:
         if isinstance(exc, StepFailed):
             failure = exc
         else:
             failure = StepFailed(str(exc) or type(exc).__name__)
         failure.step_id = step.id
         await self.emit(
-            StepRecord(
-                step.id,
-                "failed",
-                started,
-                _now(),
-                error=str(failure),
-                checks=failure.checks,
-                iteration=it,
-            )
-        )
+            StepRecord(step.id, "failed", started, _now(), output=output, error=str(failure),
+                       checks=failure.checks, iteration=it, attempts=attempts,
+                       recovered=recovered)
+        )  # fmt: skip
         return failure
+
+    def skipping_loop(self, step: Step) -> str | None:
+        """The innermost loop around `step` that skips an item a step fails on, if any."""
+        around = self.placed[step.id].loops
+        loops = {p.step.id: p.step for p in self.placed.values() if p.step.id in around}
+        skipping = [i for i in around if cast(LoopStep, loops[i]).on_item_failure == "skip"]
+        return skipping[-1] if skipping else None
+
+    def routes(self, step: Step, following: str) -> dict[str, str]:
+        """Where the run goes from `step` other than on success (decision 0032); empty when a
+        failure there stops the run."""
+        routes: dict[str, str] = {}
+        policy = failure_policy(step)
+        if policy is not None:
+            in_place = policy.steps
+            routes |= {"retry": _node_name(step), "skip": following,
+                       "steps": _node_name(in_place[0]) if in_place else following}  # fmt: skip
+        loop = None if isinstance(step, ApprovalStep) else self.skipping_loop(step)
+        if loop is not None:
+            routes["skip_item"] = f"next__{loop}"
+        return routes
+
+    async def recover(
+        self, step: Step, state: _State, it: list[int], started: str, tries: int, exc: Exception,
+        output: Any = None,
+    ) -> dict[str, Any]:  # fmt: skip
+        """After a failed try: try again, skip the step, run the steps in its place, skip the
+        loop's item, or stop the run (decision 0032)."""
+        policy = failure_policy(step)
+        error = str(exc) or type(exc).__name__
+        again = not (isinstance(exc, StepFailed) and exc.declined)
+        if policy is not None and tries <= policy.retries and again:
+            await self.emit(StepRecord(step.id, "running", started, iteration=it, attempts=tries,
+                                       error=f"Try {tries} didn't work: {error}"))  # fmt: skip
+            await asyncio.sleep(min(policy.wait_seconds, self.ctx.max_retry_wait))
+            return {"attempts": {step.id: {"route": "retry", "tries": tries, "started": started}}}
+        then = policy.then if policy is not None else "stop"
+        if then != "stop":
+            how: Literal["skipped", "fallback"] = "skipped" if then == "skip" else "fallback"
+            await self.fail(step, it, started, exc, tries, how)
+            made = {FAILURE: {"step": step.title, "message": error}} if then == "steps" else {}
+            return {"values": made, "attempts": {step.id: {"route": then}}}
+        loop = self.skipping_loop(step)
+        if loop is None:
+            failure = await self.fail(step, it, started, exc, tries, output=output)
+            if failure is exc:
+                raise failure
+            raise failure from exc
+        await self.fail(step, it, started, exc, tries, "item_skipped", output)
+        return await self.skip_item(step, loop, state, error)
+
+    async def skip_item(
+        self, step: Step, loop_id: str, state: _State, error: str
+    ) -> dict[str, Any]:
+        """Leave the item of `loop_id` that `step` failed on, and the loops inside its pass where
+        they stopped, and go on with its next item."""
+        around = self.placed[step.id].loops
+        depth = around.index(loop_id)
+        loops = state["loops"]
+        it = [loops[i]["index"] for i in around]
+        for inner_depth in range(depth + 1, len(around)):
+            inner = loops[around[inner_depth]]
+            await self.emit(
+                StepRecord(around[inner_depth], "failed", inner["started_at"], _now(),
+                           output=_loop_progress(inner), iteration=it[:inner_depth],
+                           error=f"Stopped at item {inner['index'] + 1}: {error}",
+                           recovered="item_skipped")
+            )  # fmt: skip
+        loop = loops[loop_id]
+        index = loop["index"]
+        skipped = [*loop.get("skipped", []), {"index": index, "label": loop["labels"][index],
+                                               "error": error}]  # fmt: skip
+        loop = {**loop, "index": index + 1, "skipped": skipped}
+        await self.emit(StepRecord(loop_id, "running", loop["started_at"],
+                                   output=_loop_progress(loop), iteration=it[:depth]))  # fmt: skip
+        return {"loops": {loop_id: loop}, "attempts": {step.id: {"route": "skip_item"}}}
 
     def make_node(self, step: Step) -> Callable[[_State], Awaitable[dict[str, Any]]]:
         async def run(state: _State) -> dict[str, Any]:
             values = state["values"]
             it = self.iteration(state, step)
-            started = _now()
             if isinstance(step, ApprovalStep):
-                return await self._approval(step, values, started, it)
-            await self.emit(StepRecord(step.id, "running", started_at=started, iteration=it))
+                return await self._approval(step, values, _now(), it)
+            # Tries after the first carry on the step's record from when it started.
+            failed = (state.get("attempts") or {}).get(step.id) or {}
+            retrying = failed.get("route") == "retry"
+            started = failed["started"] if retrying else _now()
+            attempt = failed["tries"] + 1 if retrying else 1
+            policy = failure_policy(step)
+            last = policy is None or attempt > policy.retries
+            await self.emit(StepRecord(step.id, "running", started_at=started, iteration=it,
+                                       attempts=attempt))  # fmt: skip
             try:
                 earlier = (state.get("healed") or {}).get(step.id)
-                output, checks, agent = await self._try(step, values, started, it, earlier)
+                output, checks, agent = await self._try(step, values, started, it, earlier, last)
             except GraphBubbleUp:
                 raise
-            except Exception as exc:  # noqa: BLE001 -- any step error stops the run, recorded
-                failure = await self.fail(step, it, started, exc)
-                if failure is exc:
-                    raise
-                raise failure from exc
+            except Exception as exc:  # noqa: BLE001 -- recorded, then recovered from or raised
+                return await self.recover(step, state, it, started, attempt, exc)
             await self.emit(
-                StepRecord(
-                    step.id,
-                    "done",
-                    started,
-                    _now(),
-                    output=preview(output),
-                    checks=checks,
-                    iteration=it,
-                    agent=agent,
-                )
-            )
+                StepRecord(step.id, "done", started, _now(), output=preview(output),
+                           checks=checks, iteration=it, agent=agent, attempts=attempt)
+            )  # fmt: skip
             save_as = None if isinstance(step, BranchStep) else step_output(step)
             heal = {"healed": {step.id: agent["healed"]}} if agent and "healed" in agent else {}
-            return {"values": {save_as: output} if save_as else {}, **heal}
+            return {"values": {save_as: output} if save_as else {}, **heal,
+                    "attempts": {step.id: {"route": "ok"}}}  # fmt: skip
 
         return run
 
     async def _try(
-        self, step: Step, values: dict[str, Any], started: str, it: list[int], earlier: Any
-    ) -> tuple[Any, list[dict[str, Any]] | None, dict[str, Any] | None]:
+        self, step: Step, values: dict[str, Any], started: str, it: list[int], earlier: Any,
+        last: bool = True,
+    ) -> tuple[Any, list[dict[str, Any]] | None, dict[str, Any] | None]:  # fmt: skip
         """A step's attempt, asking for what it needs; a failed browser step is healed when the
         task's autonomy allows it (decision 0030), and a later pass first tries what healed it.
         On resume after a pause in healing the step runs again from its start, and a step that
-        still fails finds its agent where it was."""
+        still fails finds its agent where it was. Only its `last` try is healed: the ones
+        before it are for a site that didn't answer, which an agent can't fix."""
         again = carried(step, earlier)
         try:
             while True:
@@ -464,7 +375,7 @@ class _GraphBuilder:
             raise
         except Exception as exc:
             error = str(exc) or type(exc).__name__
-            agent_step = stand_in(self.workflow, step, values, error, earlier)
+            agent_step = stand_in(self.workflow, step, values, error, earlier) if last else None
             if agent_step is None or self.ctx.run_agent is None:
                 raise
             try:
@@ -482,19 +393,19 @@ class _GraphBuilder:
     ) -> tuple[Any, list[dict[str, Any]] | None, dict[str, Any] | None]:
         """One try at a step: its output, its checks and its agent's activity."""
         if isinstance(step, ToolStep):
-            return await _run_tool(step, values, self.ctx), None, None
+            return await run_tool(step, values, self.ctx), None, None
         if isinstance(step, ScriptStep):
-            return await _run_script(step, values, self.ctx), None, None
+            return await run_script(step, values, self.ctx), None, None
         if isinstance(step, LLMStep):
-            return await _run_llm(step, values, self.ctx), None, None
+            return await run_llm(step, values, self.ctx), None, None
         if isinstance(step, AgentStep):
             output, agent = await self._agent(step, values, started, it)
             return output, None, agent
         if isinstance(step, CheckStep):
-            return None, _run_check(step, values), None
+            return None, run_check(step, values), None
         if isinstance(step, (BranchStep, ChoiceStep)):
             arm, checked = choose_arm(step, values)
-            return {"arm": arm}, _checks(checked), None
+            return {"arm": arm}, checks_of(checked), None
         return None, None, None
 
     async def _agent(
@@ -502,6 +413,9 @@ class _GraphBuilder:
         guard: CallGuard | None = None,
     ) -> tuple[Any, dict[str, Any]]:  # fmt: skip
         async def ask(call: AgentCall) -> dict[str, Any]:
+            if self.unattended:
+                note = "No one is there to answer: this step runs after the run failed."
+                return {"approved": False, "note": note, "call_id": call.call_id}
             message = f"{step.title}: the agent wants to use {call.tool}."
             pending = {"pending": {"tool": call.tool, "args": preview(call.args)}}
             try:
@@ -560,7 +474,7 @@ class _GraphBuilder:
             }
         )
         if not (isinstance(answer, dict) and answer.get("approved") is True):
-            raise StepFailed(f"Not allowed: {need.message}", step_id=step.id)
+            raise StepFailed(f"Not allowed: {need.message}", step_id=step.id, declined=True)
         await self.emit(StepRecord(step.id, "running", started_at=started, iteration=it))
 
     async def _approval(
@@ -569,7 +483,7 @@ class _GraphBuilder:
         checks = None
         if step.when:
             held, checked = conditions_hold(step.when, step.match, values)
-            checks = _checks(checked)
+            checks = checks_of(checked)
             if not held:
                 await self.emit(
                     StepRecord(step.id, "skipped", started, _now(), checks=checks, iteration=it)
@@ -596,7 +510,7 @@ class _GraphBuilder:
                     iteration=it,
                 )
             )
-            raise StepFailed(error, step_id=step.id)
+            raise StepFailed(error, step_id=step.id, declined=True)
         await self.emit(
             StepRecord(
                 step.id,
@@ -626,21 +540,19 @@ class _GraphBuilder:
                         f"{step.max_items}"
                     )
             except Exception as exc:  # noqa: BLE001 -- recorded like any step's failure
-                failure = await self.fail(step, it, started, exc)
-                if failure is exc:
-                    raise
-                raise failure from exc
+                return await self.recover(step, state, it, started, 1, exc)
             loop = {
                 "index": 0,
                 "items": items,
                 "labels": _item_labels(items),
                 "results": [],
+                "skipped": [],
                 "started_at": started,
             }
             await self.emit(
                 StepRecord(step.id, "running", started, output=_loop_progress(loop), iteration=it)
             )
-            return {"loops": {step.id: loop}}
+            return {"loops": {step.id: loop}, "attempts": {step.id: {"route": "ok"}}}
 
         return run
 
@@ -648,7 +560,14 @@ class _GraphBuilder:
         async def run(state: _State) -> dict[str, Any]:
             loop = state["loops"][step.id]
             if _more(loop):
-                return {"values": {step.item: loop["items"][loop["index"]]}}
+                return {"values": {step.item: loop["items"][loop["index"]]},
+                        "attempts": {step.id: {"route": "ok"}}}  # fmt: skip
+            skipped = loop.get("skipped") or []
+            if skipped and len(skipped) == len(loop["items"]):
+                it = self.iteration(state, step)
+                failure = StepFailed(f"Every item failed. The last: {skipped[-1]['error']}")
+                progress = _loop_progress(loop)
+                return await self.recover(step, state, it, loop["started_at"], 1, failure, progress)
             output = {**_loop_progress(loop), "collected": preview(loop["results"])}
             await self.emit(
                 StepRecord(
@@ -660,7 +579,8 @@ class _GraphBuilder:
                     iteration=self.iteration(state, step),
                 )
             )
-            return {"values": {step.save_as: loop["results"]}} if step.save_as else {"values": {}}
+            made = {step.save_as: loop["results"]} if step.save_as else {}
+            return {"values": made, "attempts": {step.id: {"route": "ok"}}}
 
         return run
 
@@ -698,11 +618,8 @@ class _GraphBuilder:
             if isinstance(step, (BranchStep, ChoiceStep)):
                 arms = child_lists(step)
                 self.graph.add_node(node, cast(Any, self.make_node(step)))
-                self.graph.add_conditional_edges(
-                    node,
-                    _arm_router(step),
-                    {arm: _node_name(path[0]) if path else following for arm, path in arms},
-                )
+                paths = {arm: _node_name(path[0]) if path else following for arm, path in arms}
+                self.edges(node, step, following, _arm_router(step), paths)
                 for _arm, path in arms:
                     self.wire(path, following)
             elif isinstance(step, LoopStep):
@@ -710,20 +627,36 @@ class _GraphBuilder:
                 self.graph.add_node(node, cast(Any, self.loop_start(step)))
                 self.graph.add_node(next_node, cast(Any, self.loop_next(step)))
                 self.graph.add_node(collect_node, cast(Any, self.loop_collect(step)))
-                self.graph.add_edge(node, next_node)
-                self.graph.add_conditional_edges(
-                    next_node,
-                    _loop_router(step),
-                    {
-                        "body": _node_name(step.steps[0]) if step.steps else collect_node,
-                        "done": following,
-                    },
-                )
+                self.edges(node, step, next_node)
+                body = _node_name(step.steps[0]) if step.steps else collect_node
+                self.edges(next_node, step, following, _loop_router(step),
+                           {"body": body, "done": following})  # fmt: skip
                 self.wire(step.steps, collect_node)
                 self.graph.add_edge(collect_node, next_node)
             else:
                 self.graph.add_node(node, cast(Any, self.make_node(step)))
-                self.graph.add_edge(node, following)
+                self.edges(node, step, following)
+                policy = failure_policy(step)
+                if policy is not None and policy.then == "steps":
+                    self.wire(policy.steps, following)
+
+    def edges(
+        self,
+        node: str,
+        step: Step,
+        following: str,
+        router: Callable[[_State], str] | None = None,
+        targets: dict[str, str] | None = None,
+    ) -> None:
+        """`node`'s ways on: to `targets` by `router` when it worked (to `following` without
+        one), and the routes a failure there takes (decision 0032)."""
+        routes = self.routes(step, following)
+        if router is None and not routes:
+            self.graph.add_edge(node, following)
+            return
+        ways = [*(targets or {"ok": following}).items(), *routes.items()]
+        destinations: dict[Hashable, str] = {way: target for way, target in ways}
+        self.graph.add_conditional_edges(node, _routed(step, router), destinations)
 
     def build(self, checkpointer: Any) -> Any:
         self.wire(self.workflow.steps, END)
@@ -733,6 +666,16 @@ class _GraphBuilder:
 
 def build_graph(workflow: Workflow, ctx: StepContext, on_step: OnStep, checkpointer: Any) -> Any:
     return _GraphBuilder(workflow, ctx, on_step).build(checkpointer)
+
+
+def _routed(step: Step, router: Callable[[_State], str] | None) -> Callable[[_State], str]:
+    def route(state: _State) -> str:
+        taken = ((state.get("attempts") or {}).get(step.id) or {}).get("route", "ok")
+        if taken != "ok":
+            return str(taken)
+        return router(state) if router is not None else "ok"
+
+    return route
 
 
 def _arm_router(step: BranchStep | ChoiceStep) -> Callable[[_State], str]:
@@ -772,7 +715,8 @@ class WorkflowRun:
 
     async def start(self, inputs: dict[str, Any]) -> RunOutcome:
         preflight(self.workflow, self.ctx)
-        return await self._drive({"values": resolve_inputs(self.workflow, inputs), "loops": {}})
+        values = resolve_inputs(self.workflow, inputs)
+        return await self._drive({"values": values, "loops": {}, "attempts": {}})
 
     async def resume(self) -> RunOutcome:
         """Carry on after a crash or a failed step's cause being fixed. A
@@ -810,6 +754,29 @@ class WorkflowRun:
         result = self.on_step(record)
         if inspect.isawaitable(result):
             await result
+
+    async def _after_failure(self, values: dict[str, Any], failure: StepFailed) -> None:
+        """Run the steps for a failed run (decision 0032) with the run's inputs and what failed,
+        unless a person said no: they know the run stopped. No one may be watching, so nothing
+        in them waits for a person: what would ask fails instead. Their own failure is on their
+        records and never hides the run's."""
+        steps = self.workflow.after_failure
+        if not steps or failure.declined:
+            return
+        placed = self._placed.get(failure.step_id or "")
+        about = {"step": placed.step.title if placed else failure.step_id, "message": str(failure)}
+        workflow = self.workflow.model_copy(update={"steps": steps, "after_failure": []})
+        ctx = replace(self.ctx, ask_permission=False)
+        graph = _GraphBuilder(workflow, ctx, self.on_step, unattended=True).build(InMemorySaver())
+        config = {"configurable": {"thread_id": "after-failure"},
+                  "recursion_limit": _supersteps(steps) + 10}  # fmt: skip
+        try:
+            await graph.ainvoke({"values": {**values, FAILURE: about}, "loops": {},
+                                 "attempts": {}}, config)  # fmt: skip
+        except StepFailed:
+            pass
+        except Exception:
+            logger.warning("workflow: the steps after a failed run stopped", exc_info=True)
 
     def _loops_around(self, node: str) -> tuple[str, ...]:
         kind, _, step_id = node.partition("__")
@@ -859,9 +826,9 @@ class WorkflowRun:
         except StepFailed as exc:
             await self._mark_loops(f"step__{exc.step_id}", "failed", str(exc))
             state = await graph.aget_state(self.config)
-            return RunOutcome(
-                "failed", step_id=exc.step_id, error=str(exc), values=state.values.get("values", {})
-            )
+            values = state.values.get("values", {})
+            await self._after_failure(values, exc)
+            return RunOutcome("failed", step_id=exc.step_id, error=str(exc), values=values)
         state = await graph.aget_state(self.config)
         values = state.values.get("values", {})
         for task in state.tasks:

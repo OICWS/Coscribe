@@ -4,7 +4,12 @@ import { getTools } from "../../lib/rest";
 import { moveStep, newStep, renameValue, versionFor } from "../../lib/workflowEdit";
 import { KIND_COLOR, stepOutput } from "../../lib/workflowLabels";
 import {
+  AFTER_FAILURE,
+  canRecover,
+  childLists,
   countInside,
+  everyStep,
+  withChildren,
   isBlock,
   listAt,
   listKey,
@@ -39,24 +44,23 @@ function refusal(action: string, problem: string | null): string | null {
 
 /** A step without the steps it holds -- what its own editor changes. */
 function ownFields(step: WorkflowStep): string {
-  if (step.kind === "branch") return JSON.stringify({ ...step, then: null, otherwise: null });
-  if (step.kind === "loop") return JSON.stringify({ ...step, steps: null });
-  return JSON.stringify(step);
+  // A choice's editor changes its paths' list of cases, so its children are its own.
+  return JSON.stringify(step.kind === "choice" ? step : withChildren(step, () => []));
 }
 
 /** `edited`'s own fields with `current`'s children: the steps inside a
  * block are saved from their own cards while the block is open. */
 function keepChildren(edited: WorkflowStep, current: WorkflowStep | undefined): WorkflowStep {
-  if (edited.kind === "branch" && current?.kind === "branch") {
-    return { ...edited, then: current.then, otherwise: current.otherwise };
-  }
-  if (edited.kind === "loop" && current?.kind === "loop") return { ...edited, steps: current.steps };
-  return edited;
+  if (!current || current.kind !== edited.kind || edited.kind === "choice") return edited;
+  const lists = new Map(childLists(current));
+  // A list the edit just added (the steps to run in a failed step's place) starts as it is.
+  return withChildren(edited, (arm, list) => lists.get(arm) ?? list);
 }
 
 function armLabel(arm: Arm): string {
   if (arm.startsWith("case:")) return `Path ${Number(arm.slice(5)) + 1}`;
-  return { then: "Then", otherwise: "Otherwise", steps: "For each" }[arm as "then" | "otherwise" | "steps"];
+  const labels = { then: "Then", otherwise: "Otherwise", steps: "For each", fallback: "If it fails" };
+  return labels[arm as keyof typeof labels] ?? arm;
 }
 
 interface StepCardProps {
@@ -304,6 +308,7 @@ function AddStepButton({ api, list, index, nested }: { api: ListApi; list: ListR
       <button
         type="button"
         aria-expanded={open}
+        aria-label={list.arm === "after_failure" ? "Add a step after a failed run" : undefined}
         className={`flex items-center gap-2 rounded-lg border border-dashed border-[var(--border-hover)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] ${
           nested ? "px-2.5 py-1.5 text-[13px]" : "px-3 py-2 text-sm"
         }`}
@@ -315,6 +320,7 @@ function AddStepButton({ api, list, index, nested }: { api: ListApi; list: ListR
         <AddStepMenu
           tools={api.tools}
           placement="below"
+          workOnly={list.arm === "after_failure"}
           onPick={(kind, tool) => api.pick(list, index, kind, tool)}
           onClose={api.closeMenu}
         />
@@ -323,22 +329,30 @@ function AddStepButton({ api, list, index, nested }: { api: ListApi; list: ListR
   );
 }
 
-/** The lists a branch or loop holds, under its header. */
-function BlockLists({ step, api }: { step: WorkflowStep; api: ListApi }) {
-  if (!isBlock(step)) return null;
-  const color = KIND_COLOR[step.kind];
-  const arms: [Arm, WorkflowStep[], string][] =
-    step.kind === "branch"
+function armsOf(step: WorkflowStep): [Arm, WorkflowStep[], string][] {
+  if (canRecover(step)) {
+    const inPlace = step.on_failure?.then === "steps" ? step.on_failure.steps : null;
+    return inPlace ? [["fallback", inPlace, "in its place · they read failure"]] : [];
+  }
+  if (!isBlock(step)) return [];
+  return step.kind === "branch"
+    ? [
+        ["then", step.then, "when it holds"],
+        ["otherwise", step.otherwise, "when it doesn't"],
+      ]
+    : step.kind === "choice"
       ? [
-          ["then", step.then, "when it holds"],
-          ["otherwise", step.otherwise, "when it doesn't"],
+          ...step.cases.map((c, i): [Arm, WorkflowStep[], string] => [`case:${i}`, c.steps, `when it is “${c.is}”`]),
+          ["otherwise", step.otherwise, "anything else"],
         ]
-      : step.kind === "choice"
-        ? [
-            ...step.cases.map((c, i): [Arm, WorkflowStep[], string] => [`case:${i}`, c.steps, `when it is “${c.is}”`]),
-            ["otherwise", step.otherwise, "anything else"],
-          ]
-        : [["steps", step.steps, `${step.item} in ${step.over || "…"}`]];
+      : [["steps", step.steps, `${step.item} in ${step.over || "…"}`]];
+}
+
+/** The lists a branch, a loop or a step with steps in its place holds, under its header. */
+function BlockLists({ step, api }: { step: WorkflowStep; api: ListApi }) {
+  const arms = armsOf(step);
+  if (arms.length === 0) return null;
+  const color = isBlock(step) ? KIND_COLOR[step.kind] : "var(--danger)";
   return (
     <div className="flex flex-col gap-2.5 px-3 pb-3">
       {arms.map(([arm, steps, note]) => (
@@ -461,6 +475,24 @@ function StepList({
  * result, a move past a value's source) comes back to the step that
  * caused it. Branches and loops hold their own lists, edited the same way
  * inside their cards. */
+function stepNumbers(workflow: Workflow): Map<string, number> {
+  return new Map(placeSteps(everyStep(workflow)).map((placed) => [placed.step.id, placed.number]));
+}
+
+function AfterFailureSection({ api, steps }: { api: ListApi; steps: WorkflowStep[] }) {
+  return (
+    <section aria-label="After a failed run">
+      <SectionHeading>After a failed run</SectionHeading>
+      <p className="-mt-1 mb-2 text-[13px] text-[var(--muted)]">
+        Runs when a step fails and the run stops, not when you say no to a step. They can read the inputs and{" "}
+        <span className="font-mono">{"{{failure.step}}"}</span>,{" "}
+        <span className="font-mono">{"{{failure.message}}"}</span>. The run still counts as failed.
+      </p>
+      <StepList api={api} list={AFTER_FAILURE} steps={steps} nested />
+    </section>
+  );
+}
+
 export function WorkflowEditor({
   workflow,
   persist,
@@ -479,10 +511,7 @@ export function WorkflowEditor({
   const rootRef = useRef<HTMLElement>(null);
   const inputNames = useMemo(() => new Set(workflow.inputs.map((input) => input.name)), [workflow.inputs]);
   const toolsByName = useMemo(() => new Map(tools.map((tool) => [tool.name, tool])), [tools]);
-  const numbers = useMemo(
-    () => new Map(placeSteps(workflow.steps).map((placed) => [placed.step.id, placed.number])),
-    [workflow.steps],
-  );
+  const numbers = useMemo(() => stepNumbers(workflow), [workflow]);
   const scopeMap = useMemo(() => scopes(workflow), [workflow]);
 
   useEffect(() => {
@@ -591,6 +620,7 @@ export function WorkflowEditor({
         <SectionHeading aside={<KindLegend />}>Steps</SectionHeading>
         <StepList api={api} list={ROOT} steps={workflow.steps} nested={false} />
       </section>
+      <AfterFailureSection api={api} steps={workflow.after_failure ?? []} />
       {deleting && (
         <ConfirmDialog
           title={`Delete "${deleting.step.title}"?`}

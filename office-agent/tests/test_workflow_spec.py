@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
+from coscribe.workflow_spec.locate import _locate, workflow_error
 from coscribe.workflow_spec.refs import (
     UnresolvedReference,
     evaluate,
@@ -17,11 +18,9 @@ from coscribe.workflow_spec.spec import (
     Condition,
     LoopStep,
     Operand,
-    _locate,
     child_lists,
     parse_workflow,
     walk,
-    workflow_error,
 )
 
 FIXTURE = Path(__file__).parent / "fixtures" / "pdf_error_audit_workflow.json"
@@ -470,7 +469,10 @@ def test_what_a_step_cannot_read_is_explained_and_a_loop_or_arm_name_is_hinted()
     assert _error(_with(_tool("a", path="{{ghost}}"))) == (
         "step 1 ('A') reads 'ghost', which isn't an input or the result of an earlier step"
     )
-    hint = " here (it's made inside a loop, or in only one arm of a branch)"
+    hint = (
+        " here (it's made inside a loop, in only one arm of a branch, or by a step that is"
+        " skipped when it fails)"
+    )
     one_arm = _branch([_tool("a", "x", path="1")], [])
     other_arm = {**_branch([], [_tool("b", "y", path="2")]), "id": "decide2"}
     assert _error(_with(one_arm, other_arm, _tool("z", path="{{x}}"))) == (
@@ -483,7 +485,10 @@ def test_what_a_step_cannot_read_is_explained_and_a_loop_or_arm_name_is_hinted()
 
 
 def test_names_hinted_from_two_loops_are_both_remembered() -> None:
-    hint = " here (it's made inside a loop, or in only one arm of a branch)"
+    hint = (
+        " here (it's made inside a loop, in only one arm of a branch, or by a step that is"
+        " skipped when it fails)"
+    )
     first = _loop([_tool("c", "one", path="{{file}}")])
     second = {**_loop([_tool("d", "two", path="{{file}}")]), "id": "each2"}
 

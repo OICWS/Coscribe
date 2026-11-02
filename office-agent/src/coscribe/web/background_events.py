@@ -87,7 +87,8 @@ def run_event(
         waiting = next((s for s in reversed(run.steps) if s.get("status") == "waiting"), None)
         titles: dict[str, str] = {}
         if trigger.workflow is not None:
-            titles = {p.step.id: p.step.title for p in walk(parse_workflow(trigger.workflow).steps)}
+            steps = parse_workflow(trigger.workflow).every_step()
+            titles = {p.step.id: p.step.title for p in walk(steps)}
         step = str(waiting.get("step_id")) if waiting else ""
         where = f" at {titles.get(step, step)}" if step else ""
         asked = waiting.get("permission") if waiting else None

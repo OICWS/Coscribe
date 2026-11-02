@@ -258,6 +258,11 @@ class WorkflowStepRecord(TypedDict):
     iteration: list[int]
     permission: WorkflowPermission | None
     agent: WorkflowAgentActivity | None
+    # How many times it was tried, retries included (decision 0032); absent on older runs.
+    attempts: NotRequired[int]
+    # A failure that didn't stop the run: the step was skipped, steps ran in its place, or its
+    # loop skipped the item.
+    recovered: NotRequired[Literal["skipped", "fallback", "item_skipped"] | None]
 
 
 class WorkflowStepEvent(TypedDict):

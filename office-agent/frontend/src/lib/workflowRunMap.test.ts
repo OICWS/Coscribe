@@ -78,7 +78,7 @@ describe("a run drawn on the canvas", () => {
       ]),
     );
     expect(states.get("list")).toEqual({ status: "done" });
-    expect(states.get("each")).toEqual({ status: "running", passes: { done: 1, total: 3 } });
+    expect(states.get("each")).toEqual({ status: "running", passes: { done: 1, total: 3, skipped: 0 } });
     expect(states.get("big")).toMatchObject({ status: "running", arms: ["then"] });
     expect(states.get("ask")?.passes).toEqual({ done: 0, total: null });
     // Under a branch: only the passes that take its arm run it.

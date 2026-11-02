@@ -1,6 +1,6 @@
 import type { ScheduledRun } from "../types/settings";
 import type { LoopStep, StepRecord, StepStatus, Workflow, WorkflowStep } from "../types/workflow";
-import { childLists, isBlock, placeSteps } from "./workflowTree";
+import { childLists, everyStep, isBlock, placeSteps } from "./workflowTree";
 
 export type ProgressStatus = "pending" | "in_progress" | "completed" | "failed";
 
@@ -27,17 +27,26 @@ export interface LoopProgress {
   /** A short name per item, in order. */
   items: string[];
   collected?: unknown;
+  /** Items a failure skipped (decision 0032), in order. */
+  skipped: SkippedItem[];
+}
+
+interface SkippedItem {
+  index: number;
+  label: string;
+  error: string;
 }
 
 export function loopProgress(record: StepRecord | undefined): LoopProgress | null {
   const output = record?.output;
   if (typeof output !== "object" || output === null || !("total" in output)) return null;
-  const { done, total, items, collected } = output as Record<string, unknown>;
+  const { done, total, items, collected, skipped } = output as Record<string, unknown>;
   return {
     done: typeof done === "number" ? done : 0,
     total: typeof total === "number" ? total : 0,
     items: Array.isArray(items) ? items.map(String) : [],
     collected,
+    skipped: Array.isArray(skipped) ? (skipped as SkippedItem[]) : [],
   };
 }
 
@@ -52,16 +61,16 @@ export function passStatus(
   loop: LoopStep,
   path: number[],
   records: Map<string, StepRecord>,
-): StepStatus | "not_reached" {
-  const statuses: StepStatus[] = [];
+): StepStatus | "not_reached" | "recovered" {
+  const statuses: (StepStatus | "recovered")[] = [];
   for (const placed of placeSteps(loop.steps)) {
     // Only the steps directly in this pass; deeper loops add their own index.
     const depth = placed.loops.length;
     const record = depth === 0 ? records.get(recordKey(placed.step.id, path)) : undefined;
-    if (record) statuses.push(record.status);
+    if (record) statuses.push(record.status === "failed" && record.recovered ? "recovered" : record.status);
   }
   if (statuses.length === 0) return "not_reached";
-  for (const status of ["failed", "waiting", "running"] as const) {
+  for (const status of ["failed", "waiting", "running", "recovered"] as const) {
     if (statuses.includes(status)) return status;
   }
   return "done";
@@ -72,13 +81,17 @@ export function passStatus(
 export function stoppedInside(step: WorkflowStep, run: ScheduledRun): boolean {
   if (!isBlock(step)) return false;
   const inside = new Set(descendants(step).map((s) => s.id));
-  return run.steps.some((r) => inside.has(r.step_id) && (r.status === "failed" || r.status === "waiting"));
+  return run.steps.some(
+    (r) => inside.has(r.step_id) && ((r.status === "failed" && !r.recovered) || r.status === "waiting"),
+  );
 }
 
 // -- Side panel and header ----------------------------------------------------------
 
-function progressOf(status: StepStatus | undefined, runGoing: boolean): ProgressStatus {
-  if (status === "done" || status === "skipped") return "completed";
+function progressOf(record: StepRecord | undefined, runGoing: boolean): ProgressStatus {
+  const status = record?.status;
+  // A failure the step's own setting handled (decision 0032) let the run go on.
+  if (status === "done" || status === "skipped" || record?.recovered) return "completed";
   // A stopped run leaves its last step's record at "running".
   if (status === "running") return runGoing ? "in_progress" : "pending";
   if (status === "waiting") return "in_progress";
@@ -98,11 +111,15 @@ export function workflowProgress(workflow: Workflow, run: ScheduledRun): Progres
       const record = records.get(recordKey(step.id));
       if (step.kind === "loop") {
         const progress = loopProgress(record);
-        const counted = progress ? ` · ${progress.done} of ${progress.total}` : "";
-        items.push({ id: step.id, content: `${step.title}${counted}`, status: progressOf(record?.status, going) });
+        const skipped = progress?.skipped.length ? ` · ${progress.skipped.length} skipped` : "";
+        const counted = progress ? ` · ${progress.done} of ${progress.total}${skipped}` : "";
+        items.push({ id: step.id, content: `${step.title}${counted}`, status: progressOf(record, going) });
         continue;
       }
-      items.push({ id: step.id, content: step.title, status: progressOf(record?.status, going) });
+      const note =
+        record?.recovered === "skipped" ? " · skipped" : record?.recovered === "fallback" ? " · replaced" : "";
+      items.push({ id: step.id, content: `${step.title}${note}`, status: progressOf(record, going) });
+      if (record?.recovered === "fallback") visit(childLists(step).find(([a]) => a === "fallback")?.[1] ?? []);
       if ((step.kind === "branch" || step.kind === "choice") && record?.status === "done") {
         const arm = (record.output as { arm?: string } | null)?.arm;
         visit(childLists(step).find(([a]) => a === arm)?.[1] ?? []);
@@ -115,11 +132,13 @@ export function workflowProgress(workflow: Workflow, run: ScheduledRun): Progres
 
 /** The run header's status, naming the step when it matters. */
 export function workflowRunLabel(workflow: Workflow, run: ScheduledRun): string | null {
-  const placed = placeSteps(workflow.steps);
+  const placed = placeSteps(everyStep(workflow));
   const where = (status: StepStatus) => {
     const record = [...run.steps]
       .reverse()
-      .find((r) => r.status === status && !placed.find((p) => p.step.id === r.step_id && isBlock(p.step)));
+      .find(
+        (r) => r.status === status && !r.recovered && !placed.find((p) => p.step.id === r.step_id && isBlock(p.step)),
+      );
     const spot = record ? placed.find((p) => p.step.id === record.step_id) : undefined;
     if (!record || !spot) return null;
     const pass = record.iteration?.length ? `, item ${record.iteration[record.iteration.length - 1] + 1}` : "";
