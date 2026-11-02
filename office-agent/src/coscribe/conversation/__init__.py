@@ -6,7 +6,13 @@ whoever is connected through an EventSink."""
 from .activity import OPENABLE_EXTENSIONS, open_in_os
 from .artifact_files import ArtifactFileError, copy_file, rename_file, trash_file
 from .artifacts import ArtifactRegistry, adopt_thread, describe_artifact
-from .board_edits import EDITABLE, BoardEditError, edit_board_element, remember_board_edit
+from .board_edits import (
+    EDITABLE,
+    BoardEditError,
+    BoardElementChanged,
+    edit_board_element,
+    remember_board_edit,
+)
 from .dashboard import DashboardDataError, is_dashboard, read_dashboard_data, render_dashboard
 from .design_canvas import (
     CanvasError,
@@ -35,6 +41,7 @@ __all__ = [
     "describe_artifact",
     "EDITABLE",
     "BoardEditError",
+    "BoardElementChanged",
     "edit_board_element",
     "remember_board_edit",
     "CanvasError",

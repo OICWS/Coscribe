@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from ...conversation import (
     BoardEditError,
+    BoardElementChanged,
     CanvasError,
     DashboardDataError,
     canvas_folder,
@@ -86,6 +87,11 @@ class CanvasPlacement(BaseModel):
     variables: dict[str, str] = {}
 
 
+# Fixed texts, not the exception's: what reaches the panel is chosen here.
+_ELEMENT_CHANGED = "The page changed since the element was picked; pick it again"
+_EDIT_REFUSED = "The panel cannot write that change into this page"
+
+
 class ElementEdit(BaseModel):
     # The artboard's page as the canvas serves it, and the element as the inspector names it.
     page: str
@@ -122,8 +128,10 @@ async def _put_element(state: AppState, thread_id: str, body: ElementEdit) -> JS
             text=body.text,
             text_before=body.text_before,
         )
-    except BoardEditError as e:
-        return JSONResponse({"error": str(e)}, status_code=409)
+    except BoardElementChanged:
+        return JSONResponse({"error": _ELEMENT_CHANGED}, status_code=409)
+    except BoardEditError:
+        return JSONResponse({"error": _EDIT_REFUSED}, status_code=422)
     remember_board_edit(page, said, state.settings.state_dir)
     return JSONResponse({"ok": True})
 

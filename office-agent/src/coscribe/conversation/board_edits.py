@@ -48,7 +48,11 @@ _MAX_TOLD = 12
 
 
 class BoardEditError(ValueError):
-    """An edit that cannot be made; the text is safe to show."""
+    """An edit that cannot be made, and why."""
+
+
+class BoardElementChanged(BoardEditError):
+    """The element picked in the panel is no longer where, or what, the source has."""
 
 
 class _Element:
@@ -147,7 +151,7 @@ def _locate(source: str, path: str) -> _Element:
     if not locator.body_seen:
         raise BoardEditError("The page has no body element, so its elements cannot be edited here")
     if locator.found is None or locator.found.end is None:
-        raise BoardEditError("The page changed since the element was picked; pick it again")
+        raise BoardElementChanged("The page changed since the element was picked; pick it again")
     return locator.found
 
 
@@ -199,7 +203,7 @@ def edit_board_element(
     source = page.read_text(encoding="utf-8")
     element = _locate(source, path)
     if element.tag != tag.lower():
-        raise BoardEditError("The page changed since the element was picked; pick it again")
+        raise BoardElementChanged("The page changed since the element was picked; pick it again")
     inner = source[element.start_end : element.end]
     said = []
     if style:
@@ -216,7 +220,9 @@ def edit_board_element(
         if element.has_element_child:
             raise BoardEditError("Only an element that holds text alone has its text edited here")
         if text_before is not None and _collapsed(inner) != " ".join(text_before.split()):
-            raise BoardEditError("The page changed since the element was picked; pick it again")
+            raise BoardElementChanged(
+                "The page changed since the element was picked; pick it again"
+            )
         source = (
             source[: element.start_end] + html.escape(text, quote=False) + source[element.end :]
         )
