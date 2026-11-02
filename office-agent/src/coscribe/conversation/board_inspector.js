@@ -151,6 +151,9 @@
       label: labelOf(el),
       kind: kindOf(el),
       text: textOf(el),
+      // For an element that holds text alone: its whole text as the source has it (textContent, not
+      // the drawn innerText, which follows text-transform), so an edit can be checked against it.
+      content: el.children.length ? null : (el.textContent || "").replace(/\s+/g, " ").trim(),
       box: { x: box.left + scrollX, y: box.top + scrollY, width: box.width, height: box.height },
       computed: computed,
       rules: rules,

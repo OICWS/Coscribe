@@ -3,6 +3,7 @@ gets its datasets and chart library put into it, since the frame has no network.
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal
 
@@ -11,14 +12,17 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
 from ...conversation import (
+    BoardEditError,
     CanvasError,
     DashboardDataError,
     canvas_folder,
+    edit_board_element,
     is_canvas,
     is_dashboard,
     place_on_canvas,
     read_canvas,
     read_dashboard_data,
+    remember_board_edit,
     served_page,
 )
 from ..state import AppState
@@ -80,6 +84,48 @@ class CanvasPlacement(BaseModel):
     notes: list[dict[str, Any]] | None = None
     # Variable name -> its new value; only variables the canvas declares change.
     variables: dict[str, str] = {}
+
+
+class ElementEdit(BaseModel):
+    # The artboard's page as the canvas serves it, and the element as the inspector names it.
+    page: str
+    element: str
+    tag: str
+    style: dict[str, str] = {}
+    text: str | None = None
+    text_before: str | None = None
+
+
+def _element_route(state: AppState) -> Any:
+    async def put_element(thread_id: str, body: ElementEdit) -> JSONResponse:
+        return await _put_element(state, thread_id, body)
+
+    return put_element
+
+
+async def _put_element(state: AppState, thread_id: str, body: ElementEdit) -> JSONResponse:
+    """One element of an artboard changed in the properties panel, written into its page and
+    kept for coscribe's next turn."""
+    try:
+        page = state.get_session(thread_id).workspace_scope().resolve(body.page)
+    except (PermissionError, OSError, ValueError):
+        return JSONResponse({"error": "No page at that path"}, status_code=404)
+    if not page.is_file():
+        return JSONResponse({"error": "No page at that path"}, status_code=404)
+    try:
+        said = await asyncio.to_thread(
+            edit_board_element,
+            page,
+            body.element,
+            body.tag,
+            style=body.style,
+            text=body.text,
+            text_before=body.text_before,
+        )
+    except BoardEditError as e:
+        return JSONResponse({"error": str(e)}, status_code=409)
+    remember_board_edit(page, said, state.settings.state_dir)
+    return JSONResponse({"ok": True})
 
 
 def _with_board_paths(path: str, file: Path, canvas: dict[str, Any]) -> dict[str, Any]:
@@ -164,6 +210,9 @@ def router(state: AppState) -> APIRouter:
         return JSONResponse(_with_board_paths(path, file, canvas))
 
     router.add_api_route("/api/threads/{thread_id}/design", get_design, methods=["GET"])
+    router.add_api_route(
+        "/api/threads/{thread_id}/canvas/element", _element_route(state), methods=["PUT"]
+    )
     router.add_api_route("/api/threads/{thread_id}/canvas", get_canvas, methods=["GET"])
     router.add_api_route("/api/threads/{thread_id}/canvas", put_canvas, methods=["PUT"])
     router.add_api_route("/api/threads/{thread_id}/dashboard", get_dashboard, methods=["GET"])

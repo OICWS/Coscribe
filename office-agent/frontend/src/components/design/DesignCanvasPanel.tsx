@@ -162,7 +162,9 @@ function InspectorAside({ canvas, selected, inspector }: { canvas: Canvas | null
       boardTitle={canvas?.boards.find((b) => b.id === selected)?.title ?? null}
       tree={inspector.tree}
       element={inspector.element}
+      problem={inspector.problem}
       onSelect={inspector.select}
+      onEdit={(change) => inspector.element && inspector.edit(inspector.element, change)}
       onClose={() => inspector.setOpen(false)}
     />
   );
@@ -193,7 +195,8 @@ export function DesignCanvasPanel({ threadId, path, refreshKey, onFileChanged }:
   const look = useCanvasLook(threadId, path, setCanvas, setProblem);
   useBoardLinks(area, canvas, play.go);
   const version = `${refreshKey}.${look.served}`;
-  const inspector = useBoardInspector(area, selected, `${version}.${look.scheme}`);
+  const inspected = canvas?.boards.find((b) => b.id === selected) ?? null;
+  const inspector = useBoardInspector(area, inspected, `${version}.${look.scheme}`, { threadId, onSaved: look.reload });
 
   const panning = tool === "hand" || spaceHeld;
   const onStageDown = (e: ReactPointerEvent) => {

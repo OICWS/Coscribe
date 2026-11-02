@@ -264,6 +264,22 @@ def test_a_canvas_is_a_design_its_artboards_are_not_and_its_routes_place_them_lg
         bad = client.get(design, params={"path": "ui.design/phone.html", "scheme": "sepia"})
         assert bad.status_code == 422
 
+        # The properties panel writes one element's change into the page; a stale pick is refused.
+        element = "/api/threads/t_canvas/canvas/element"
+        edit = {
+            "page": "ui.design/phone.html",
+            "element": "0",
+            "tag": "p",
+            "style": {"color": "red"},
+        }
+        assert client.put(element, json=edit).json() == {"ok": True}
+        assert (
+            workspace / "ui.design" / "phone.html"
+        ).read_text() == '<p style="color: red">phone</p>'
+        stale = client.put(element, json={**edit, "tag": "h1"})
+        assert stale.status_code == 409 and "pick it again" in stale.json()["error"]
+        assert client.put(element, json={**edit, "page": "nope.html"}).status_code == 404
+
         renamed = client.post(f"/api/artifacts/{item['id']}/rename", json={"name": "app"}).json()
         assert renamed["name"] == "app"
         assert (workspace / "app.design.json").is_file()
