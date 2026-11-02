@@ -30,7 +30,7 @@ from pydantic import (
     model_validator,
 )
 
-from .inputs import InputType, input_problem
+from .inputs import RELATIVE_DATES, InputType, input_problem
 from .refs import (
     conditions_hold,
     is_reference,
@@ -260,6 +260,101 @@ class ApprovalStep(_Step):
     )
 
 
+MAX_ASK_FIELDS = 12
+# A run waits at most a month for a person, and a week for a time or a file (decision 0033).
+MAX_ASK_HOURS = 720
+MAX_WAIT_MINUTES = 7 * 24 * 60
+CLOCK = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
+
+
+class AskField(_Model):
+    """One value an ask step asks for: an input's kinds (decision 0031), or `pick`, some of the
+    items of a list (`items`), each shown by its field `show`."""
+
+    name: str
+    label: str = ""
+    type: InputType | Literal["pick"] = "text"
+    options: list[str] = []
+    default: str | float | bool | None = None
+    required: bool = True
+    items: str | None = None
+    show: str = ""
+
+    _check_name = field_validator("name")(_identifier)
+    _check_fits = model_validator(mode="after")(lambda field: _field_fits(field))
+
+
+def _field_fits(field: AskField) -> AskField:
+    if field.type != "pick":
+        problem = input_problem(field.type, field.default, field.options)
+        if problem or field.items is not None:
+            raise ValueError(f"{field.name!r}: {problem or 'only a pick takes items'}")
+    elif field.items is None or not is_reference(field.items) or field.options:
+        raise ValueError(f"{field.name!r}: a pick takes `items`, the name of a list")
+    elif field.default not in (None, ""):
+        raise ValueError(f"{field.name!r}: a pick has no default; it starts with none picked")
+    return field
+
+
+class AskStep(_Step):
+    """Pause until a person fills `fields`; `save_as` gets {name: value}. It waits for as long as
+    it takes, or `timeout_hours`, then goes on with the defaults or fails."""
+
+    kind: Literal["ask"] = "ask"
+    message: str = Field(min_length=1)
+    fields: list[AskField] = Field(min_length=1, max_length=MAX_ASK_FIELDS)
+    save_as: str
+    timeout_hours: float | None = Field(default=None, gt=0, le=MAX_ASK_HOURS)
+    on_timeout: Literal["defaults", "fail"] = "fail"
+
+    _check_save_as = field_validator("save_as")(_identifier)
+    _check_answers = model_validator(mode="after")(lambda step: _answers_hold_together(step))
+
+
+def _answers_hold_together(step: AskStep) -> AskStep:
+    if len({f.name for f in step.fields}) != len(step.fields):
+        raise ValueError("each value an ask step asks for has its own name")
+    if step.timeout_hours is not None and step.on_timeout == "defaults":
+        missing = [f.name for f in step.fields if f.required and f.default in (None, "")]
+        if missing:
+            raise ValueError("going on with the defaults needs one for " + ", ".join(missing))
+    return step
+
+
+class WaitStep(_Step):
+    """Pause the run, holding nothing, for `minutes`; until `at` (HH:MM) on the day `on` (a date,
+    a relative one, or a reference) or the next time it comes; or until `path` exists, for at
+    most `max_minutes`, then fail or go on. `save_as` gets {"path", "found"} for a file."""
+
+    kind: Literal["wait"] = "wait"
+    until: Literal["duration", "time", "file"] = "duration"
+    minutes: int | None = Field(default=None, ge=1, le=MAX_WAIT_MINUTES)
+    at: str | None = None
+    on: str | None = None
+    path: str | None = None
+    max_minutes: int = Field(default=24 * 60, ge=1, le=MAX_WAIT_MINUTES)
+    if_missing: Literal["fail", "continue"] = "fail"
+    save_as: str | None = None
+
+    _check_save_as = field_validator("save_as")(lambda v: v if v is None else _identifier(v))
+    _check_how_long = model_validator(mode="after")(lambda step: _says_how_long(step))
+
+
+def _says_how_long(step: WaitStep) -> WaitStep:
+    given = {"minutes": step.minutes is not None, "at": step.at is not None,
+             "path": bool(step.path)}  # fmt: skip
+    wanted = {"duration": "minutes", "time": "at", "file": "path"}[step.until]
+    if not given[wanted] or any(on for name, on in given.items() if name != wanted):
+        raise ValueError(f"waiting for a {step.until} takes `{wanted}` and nothing else")
+    if step.at is not None and not CLOCK.fullmatch(step.at):
+        raise ValueError(f"{step.at!r} isn't a time like 17:00")
+    if step.on is not None and step.until != "time":
+        raise ValueError("only waiting for a time takes a day, `on`")
+    if step.save_as is not None and step.until != "file":
+        raise ValueError("only waiting for a file saves what it found")
+    return step
+
+
 MAX_NESTING = 3
 MAX_STEPS = 100
 MAX_LOOP_ITEMS = 200
@@ -420,8 +515,8 @@ class LoopStep(_Step):
 
 
 Step = Annotated[
-    ToolStep | ScriptStep | LLMStep | AgentStep | CheckStep | ApprovalStep | BranchStep
-    | ChoiceStep | LoopStep,
+    ToolStep | ScriptStep | LLMStep | AgentStep | CheckStep | ApprovalStep | AskStep | WaitStep
+    | BranchStep | ChoiceStep | LoopStep,
     Field(discriminator="kind"),
 ]  # fmt: skip
 BlockStep = BranchStep | ChoiceStep | LoopStep
@@ -452,6 +547,10 @@ def step_references(step: Step) -> list[str]:
         return template_references(step.message) + [
             r for c in step.when for r in _condition_refs(c)
         ]
+    if isinstance(step, AskStep):
+        return template_references(step.message) + [f.items for f in step.fields if f.items]
+    if isinstance(step, WaitStep):
+        return template_references(step.path or "") + _day_reference(step.on)
     if isinstance(step, BranchStep):
         return [r for c in step.conditions for r in _condition_refs(c)]
     if isinstance(step, ChoiceStep):
@@ -460,6 +559,14 @@ def step_references(step: Step) -> list[str]:
         # `until` reads the item and the body's results, checked where the body is.
         return [step.over]
     return []  # pragma: no cover -- every kind is handled above
+
+
+def _day_reference(on: str | None) -> list[str]:
+    """What a wait's day reads: a reference, or the references in a template; a date or a
+    relative one reads nothing."""
+    if on is None or on in RELATIVE_DATES or not (is_reference(on) or "{{" in on):
+        return []
+    return [on] if is_reference(on) else template_references(on)
 
 
 def _value_references(value: Any) -> list[str]:
@@ -492,8 +599,10 @@ def step_templates(step: Step) -> list[str]:
         return [step.prompt]
     if isinstance(step, AgentStep):
         return [step.goal]
-    if isinstance(step, ApprovalStep):
+    if isinstance(step, (ApprovalStep, AskStep)):
         return [step.message]
+    if isinstance(step, WaitStep):
+        return [t for t in (step.path, step.on) if t and not is_reference(t)]
     return []
 
 

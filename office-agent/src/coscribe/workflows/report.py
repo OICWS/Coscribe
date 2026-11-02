@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any
 
 from ..workflow_spec import LoopStep, Workflow, walk
+from .pause_steps import NO_ANSWER
 
 
 def _seconds(started: str | None, finished: str | None) -> float | None:
@@ -32,6 +33,7 @@ def run_report(
     """{"autonomy", "loops": [{"step_id", "title", "done", "total", "skipped"}],
     "not_done": [{"step_id", "title", "iteration", "status", "error"}],
     "assumed": [{"step_id", "title", "iteration", "values"}],
+    "unanswered": [{"step_id", "title", "iteration"}],
     "healed": [{"step_id", "title", "iteration", "error", "did"}],
     "irreversible": [{"step_id", "title", "iteration"}],
     "recovered": [{"step_id", "title", "iteration", "how", "error"}],
@@ -47,6 +49,8 @@ def run_report(
         return step.title if step is not None else step_id
 
     loops, not_done, assumed, healed, irreversible = [], [], [], [], []
+    # Ask steps no one answered in time, which went on with their defaults (decision 0033).
+    unanswered: list[dict[str, Any]] = []
     recovered: list[dict[str, Any]] = []
     retried: list[dict[str, Any]] = []
     after_failure: list[dict[str, Any]] = []
@@ -78,6 +82,8 @@ def run_report(
         # Marked steps are decision 0029's; a workflow from before it has none.
         if status == "done" and getattr(step, "irreversible", False):
             irreversible.append(where)
+        if status == "done" and record.get("note") == NO_ANSWER:
+            unanswered.append(where)
         agent = record.get("agent")
         if isinstance(agent, dict):
             tool_calls += int(agent.get("tool_calls") or 0)
@@ -92,6 +98,7 @@ def run_report(
         "loops": loops,
         "not_done": not_done,
         "assumed": assumed,
+        "unanswered": unanswered,
         "healed": healed,
         "irreversible": irreversible,
         "recovered": recovered,

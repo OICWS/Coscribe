@@ -1,5 +1,6 @@
 import type { ScheduledRun } from "../types/settings";
 import type { LoopStep, StepRecord, StepStatus, Workflow, WorkflowStep } from "../types/workflow";
+import { RUN_STATUS_LABEL } from "./runLabels";
 import { childLists, everyStep, isBlock, placeSteps } from "./workflowTree";
 
 export type ProgressStatus = "pending" | "in_progress" | "completed" | "failed";
@@ -152,9 +153,9 @@ export function workflowRunLabel(workflow: Workflow, run: ScheduledRun): string 
     const at = where("running");
     return at ? `Stopped at ${at}` : null;
   }
-  if (run.status === "needs_approval") {
+  if (run.status === "needs_approval" || run.status === "waiting") {
     const at = where("waiting");
-    return at ? `Waiting at ${at}` : "Needs approval";
+    return at ? `Waiting at ${at}` : RUN_STATUS_LABEL[run.status];
   }
   return null;
 }

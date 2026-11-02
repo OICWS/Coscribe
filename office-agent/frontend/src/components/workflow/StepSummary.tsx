@@ -1,6 +1,8 @@
 import { toolLabel } from "../../lib/toolLabels";
 import { formatValue, stepOutput, wholeReference } from "../../lib/workflowLabels";
-import type { AgentStep, Condition, Match, WorkflowStep } from "../../types/workflow";
+import { askTimeoutWords } from "../../lib/pauseWords";
+import { duration } from "../../lib/plainSteps";
+import type { AgentStep, AskStep, Condition, Match, WaitStep, WorkflowStep } from "../../types/workflow";
 import { ConditionText, VarToken } from "./parts";
 
 function Conditions({
@@ -86,6 +88,43 @@ function Chosen({ name, missing, inputNames }: { name: string; missing: string; 
   return <VarToken name={name} isInput={inputNames.has(name.split(".")[0])} />;
 }
 
+function AskSummary({ step, output, inputNames }: { step: AskStep; output: string | null; inputNames: Set<string> }) {
+  return (
+    <>
+      <span>Asks for</span>
+      <span className="font-mono text-[12px] text-[var(--fg)]">{step.fields.map((f) => f.name).join(", ")}</span>
+      <span>· {askTimeoutWords(step)}</span>
+      <Arrow output={output} inputNames={inputNames} />
+    </>
+  );
+}
+
+function WaitSummary({ step, output, inputNames }: { step: WaitStep; output: string | null; inputNames: Set<string> }) {
+  if (step.until === "duration") return <span>For {duration(step.minutes ?? 0)}</span>;
+  if (step.until === "time") {
+    return (
+      <>
+        <span>Until {step.at}</span>
+        {step.on && (
+          <span className="inline-flex items-baseline gap-1">
+            on <ArgPreview value={step.on} inputNames={inputNames} />
+          </span>
+        )}
+      </>
+    );
+  }
+  return (
+    <>
+      <span>Until</span>
+      <ArgPreview value={step.path} inputNames={inputNames} />
+      <span>
+        appears · up to {duration(step.max_minutes ?? 1440)}, then {step.if_missing === "continue" ? "go on" : "stop"}
+      </span>
+      <Arrow output={output} inputNames={inputNames} />
+    </>
+  );
+}
+
 export function StepSummary({ step, inputNames }: { step: WorkflowStep; inputNames: Set<string> }) {
   const output = stepOutput(step);
   if (step.kind === "tool") {
@@ -130,6 +169,8 @@ export function StepSummary({ step, inputNames }: { step: WorkflowStep; inputNam
     );
   }
   if (step.kind === "agent") return <AgentSummary step={step} output={output} inputNames={inputNames} />;
+  if (step.kind === "ask") return <AskSummary step={step} output={output} inputNames={inputNames} />;
+  if (step.kind === "wait") return <WaitSummary step={step} output={output} inputNames={inputNames} />;
   if (step.kind === "check") {
     return (
       <>

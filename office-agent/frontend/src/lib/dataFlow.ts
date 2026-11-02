@@ -38,6 +38,10 @@ function readsOf(step: WorkflowStep): string[] {
       return conditionReads(step.conditions);
     case "approval":
       return [...textReads(step.message), ...conditionReads(step.when)];
+    case "ask":
+      return [...textReads(step.message), ...step.fields.flatMap((f) => (f.items ? [f.items] : []))];
+    case "wait":
+      return [...textReads(step.path ?? ""), ...textReads(step.on ?? "")];
     case "choice":
       return [step.value];
     case "loop":

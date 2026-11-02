@@ -43,8 +43,10 @@ from ..workflows import (
     heals_to_revise,
     output_files,
     parse_workflow,
+    paused_at,
     sites_in,
     uses_browser,
+    wake_due,
     walk,
 )
 from .messages import extract_text, strip_mode_note
@@ -251,7 +253,9 @@ async def _run_workflow(
             store.record_evidence(trigger.trigger_id, run.run_id, files=files)
             return "completed", None
     if outcome.status == "waiting":
-        return "needs_approval", None
+        # A wait step's run goes on by itself (decision 0033); anything else waits for a person.
+        pause = (outcome.request or {}).get("pause") or {}
+        return ("waiting" if pause.get("kind") == "wait" else "needs_approval"), None
     titles = {placed.step.id: placed.step.title for placed in walk(workflow.every_step())}
     title = titles.get(outcome.step_id or "", "A step")
     return "failed", f"{title}: {outcome.error}"
@@ -490,10 +494,14 @@ async def poll_due_scheduled_tasks(
     state_dir: str | Path,
     get_session: Callable[[str], Awaitable[Any]],
     on_pruned: Callable[[list[ScheduledRun]], Awaitable[None]] | None = None,
+    on_woken: Callable[[str, ScheduledRun], Awaitable[None]] | None = None,
 ) -> list[ScheduledTrigger]:
     """Start a run for every due ScheduledTrigger, advance each schedule
     (or disable a one-time trigger), then wait for all of them to finish.
-    Returns the triggers that fired, for a caller to log/print.
+    Returns the triggers that fired, for a caller to log/print. Runs paused
+    at a step whose time came go on too (decision 0033), each passed to
+    `on_woken` with its task's id as it ends; one due while Coscribe was
+    closed goes on at the first poll after it starts.
 
     The schedule advances when the run *starts*, not when it ends, so a
     run that takes longer than the poll interval is never started twice,
@@ -517,9 +525,35 @@ async def poll_due_scheduled_tasks(
             await on_pruned(pruned)
         fired.append(trigger)
         executions.append(execute_run(state_dir, trigger.trigger_id, run.run_id, get_session))
+
+    async def wake(trigger_id: str, run_id: str) -> None:
+        run = await continue_workflow_run(state_dir, trigger_id, run_id, get_session,
+                                          lambda wf: wf.wake())  # fmt: skip
+        if run is not None and on_woken is not None:
+            await on_woken(trigger_id, run)
+
+    executions += [wake(t, r) for t, r in _reopen_due_pauses(store, now)]
     # A run stopped by the user ends in CancelledError; the others go on.
     await asyncio.gather(*executions, return_exceptions=True)
     return [store.load(t.trigger_id) or t for t in fired]
+
+
+def _reopen_due_pauses(store: ScheduledTriggerStore, now: datetime) -> list[tuple[str, str]]:
+    """The workflow runs paused at a wait step whose time came or whose file appeared, or at an
+    ask step no one answered in time (decision 0033), each reopened so that a later poll, or an
+    answer, finds it going."""
+    due: list[tuple[str, str]] = []
+    for trigger in store.list_all():
+        for run in trigger.runs:
+            pause = paused_at(run.steps) if run.status in ("waiting", "needs_approval") else None
+            if trigger.workflow is None or pause is None or not wake_due(pause, now):
+                continue
+            try:
+                store.reopen_run(trigger.trigger_id, run.run_id)
+            except (KeyError, ValueError):
+                continue  # answered, stopped or deleted since the list was read
+            due.append((trigger.trigger_id, run.run_id))
+    return due
 
 
 async def fire_trigger_now(

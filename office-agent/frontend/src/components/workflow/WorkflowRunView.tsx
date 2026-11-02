@@ -29,9 +29,14 @@ import { StepOutput } from "./StepOutput";
 import { AgentToolsUsed } from "./AgentActivity";
 import { primaryButton, secondaryButton } from "../../lib/formStyles";
 import { WaitingCard } from "./WaitingCard";
+import type { AnswerValues } from "./PauseCards";
+import { answeredWords, untilWords, waitedWords } from "../../lib/pauseWords";
 import { FailedCard, type FailedContext } from "./FailedCard";
 import { RunReportCard } from "./RunReportCard";
 import { StatusDot } from "./StatusDot";
+
+/** An answer to a waiting step: an ask step's values with it. */
+export type WorkflowAnswer = [approved: boolean, note: string, values?: AnswerValues];
 import { ViewToggle } from "./ViewToggle";
 import { WorkflowCanvas } from "./WorkflowCanvas";
 
@@ -45,7 +50,7 @@ const RUNNING_LABEL: Partial<Record<WorkflowStep["kind"], string>> = {
 interface RunContext extends FailedContext {
   run: ScheduledRun;
   records: Map<string, StepRecord>;
-  onAnswer: (approved: boolean, note: string) => Promise<string | null>;
+  onAnswer: (...answer: WorkflowAnswer) => Promise<string | null>;
   /** The step picked on the run's canvas: loops open on a pass it ran in. */
   focus: string | null;
 }
@@ -102,6 +107,8 @@ function rowSummary(step: WorkflowStep, record: StepRecord | undefined, status: 
     return `Passed · ${describeCheckResult(step.conditions[0].op, true, first.left, first.right)}`;
   }
   if (step.kind === "approval") return record?.note ? `Approved · “${record.note}”` : "Approved";
+  if (step.kind === "ask") return answeredWords(step, record?.output, record?.note);
+  if (step.kind === "wait") return waitedWords(step, record?.output);
   const usage = step.kind === "agent" ? agentUsage(record?.agent) : null;
   const summary = usage ? `${usage} · ${summarizeOutput(record?.output)}` : summarizeOutput(record?.output);
   const attempts = record?.attempts ?? 1;
@@ -429,7 +436,7 @@ interface WorkflowRunViewProps {
   run: ScheduledRun;
   workflow: Workflow;
   onRetry: (stepId?: string) => Promise<string | null>;
-  onAnswer: (approved: boolean, note: string) => Promise<string | null>;
+  onAnswer: (...answer: WorkflowAnswer) => Promise<string | null>;
   onEditStep: (stepId: string) => void;
   onStop: () => Promise<string | null>;
   /** Opens a conversation looking into this failed run, with `model`
@@ -461,6 +468,46 @@ function useModels(enabled: boolean): string[] {
 }
 
 /** How the run stands, and what can be done about it, above the steps. */
+/** A run that is going, or waiting at a wait step to go on by itself: what it is at, and Stop. */
+function GoingBanner({
+  run,
+  workflow,
+  busy,
+  error,
+  onStop,
+}: Pick<WorkflowRunViewProps, "run" | "workflow"> & { busy: boolean; error: string | null; onStop: () => void }) {
+  const current = run.steps.findLast((r) => r.status === (run.status === "waiting" ? "waiting" : "running"));
+  const until = current?.pause?.until;
+  return (
+    <div className="flex flex-col gap-2.5 rounded-xl border border-[var(--border)] px-4 py-3 text-sm" data-testid="run-banner">
+      <div className="flex items-center gap-3">
+        {run.status === "waiting" ? (
+          <ClockIcon className="h-4 w-4 shrink-0 text-[var(--kind-wait)]" />
+        ) : (
+          <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] motion-reduce:animate-none" />
+        )}
+        {run.status === "waiting" ? (
+          <span className="min-w-0 flex-1">
+            <span className="font-medium">{stepTitle(workflow, current?.step_id)}</span> is waiting
+            {current?.pause?.path ? " for a file" : until ? ` until ${untilWords(until)}` : ""} -- the run goes on by itself.
+          </span>
+        ) : (
+          <span className="min-w-0 flex-1 truncate">
+            {run.queued ? WAITING_FOR_BROWSER : `Running${current ? ` · ${stepTitle(workflow, current.step_id)}` : ""}`}
+          </span>
+        )}
+        <button type="button" className={secondaryButton} disabled={busy} onClick={onStop}>
+          <span className="flex items-center gap-1.5">
+            <StopIcon className="h-3.5 w-3.5" />
+            Stop run
+          </span>
+        </button>
+      </div>
+      {error && <p className="text-[13px] text-[var(--danger)]">{error}</p>}
+    </div>
+  );
+}
+
 function RunBanner({
   run,
   workflow,
@@ -479,25 +526,8 @@ function RunBanner({
   };
   const box = "flex flex-col gap-2.5 rounded-xl border px-4 py-3 text-sm";
 
-  if (run.status === "running") {
-    const current = run.steps.findLast((r) => r.status === "running");
-    return (
-      <div className={`${box} border-[var(--border)]`} data-testid="run-banner">
-        <div className="flex items-center gap-3">
-          <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] motion-reduce:animate-none" />
-          <span className="min-w-0 flex-1 truncate">
-            {run.queued ? WAITING_FOR_BROWSER : `Running${current ? ` · ${stepTitle(workflow, current.step_id)}` : ""}`}
-          </span>
-          <button type="button" className={secondaryButton} disabled={busy} onClick={() => act(onStop)}>
-            <span className="flex items-center gap-1.5">
-              <StopIcon className="h-3.5 w-3.5" />
-              Stop run
-            </span>
-          </button>
-        </div>
-        {error && <p className="text-[13px] text-[var(--danger)]">{error}</p>}
-      </div>
-    );
+  if (run.status === "running" || run.status === "waiting") {
+    return <GoingBanner run={run} workflow={workflow} busy={busy} error={error} onStop={() => act(onStop)} />;
   }
   if (run.status === "needs_approval") {
     const waiting = run.steps.findLast((r) => r.status === "waiting");
@@ -509,7 +539,7 @@ function RunBanner({
         <div className="flex items-center gap-2.5">
           <ClockIcon className="h-4 w-4 shrink-0 text-[var(--warning)]" />
           <span>
-            {waiting?.permission ? "Needs your OK" : "Waiting for you"} at{" "}
+            {waiting?.permission ? "Needs your OK" : waiting?.pause ? "Waiting for your answer" : "Waiting for you"} at{" "}
             <span className="font-medium">{stepTitle(workflow, waiting?.step_id)}</span> -- answer it below to go on.
           </span>
         </div>

@@ -15,6 +15,7 @@ from .catalog import describe_params, tool_description
 from .engine import RunOutcome, StepContext, StepRecord, WorkflowNotRunnable, WorkflowRun
 from .graph_view import compiled_graph
 from .heal_revision import heal_fixes, heals_to_revise
+from .pause_steps import answer_problem, paused_at, wake_due
 from .permissions import (
     brings_outside_content,
     granted_by,
@@ -42,6 +43,7 @@ __all__ = [
     "WorkflowDraft",
     "WorkflowNotRunnable",
     "WorkflowRun",
+    "answer_problem",
     "brings_outside_content",
     "compiled_graph",
     "describe_params",
@@ -51,6 +53,7 @@ __all__ = [
     "heals_to_revise",
     "output_files",
     "parse_workflow",
+    "paused_at",
     "revise_workflow",
     "run_report",
     "run_test",
@@ -59,6 +62,7 @@ __all__ = [
     "tool_description",
     "untrusted_agent_steps",
     "uses_browser",
+    "wake_due",
     "walk",
     "workflow_error",
 ]

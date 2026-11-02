@@ -6,7 +6,16 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from ..workflow_spec import BranchStep, ChoiceStep, LoopStep, Step, child_lists, failure_policy
+from ..workflow_spec import (
+    AskStep,
+    BranchStep,
+    ChoiceStep,
+    LoopStep,
+    Step,
+    WaitStep,
+    child_lists,
+    failure_policy,
+)
 
 _ITEM_LABEL_CHARS = 60
 _LABEL_KEYS = ("name", "title", "path", "file", "id", "text")
@@ -47,6 +56,10 @@ def supersteps(steps: list[Step]) -> int:
             total += 1 + max(supersteps(steps) for _arm, steps in child_lists(step))
         elif isinstance(step, LoopStep):
             total += 2 + step.max_items * (supersteps(step.steps) + 2)
+        elif isinstance(step, (AskStep, WaitStep)):
+            # It settles its deadline, then pauses: each resume that isn't its end goes round once
+            # more, in a run of its own (decision 0033).
+            total += 3
         else:
             # Each try is a graph step, and the steps in its place follow the last (decision 0032).
             policy = failure_policy(step)

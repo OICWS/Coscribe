@@ -3,7 +3,9 @@ import { KIND_COLOR, KIND_LABEL, OP_LABEL, formatValue, splitTemplate } from "..
 import type { Condition, Operand, StepKind, WorkflowStep } from "../../types/workflow";
 import {
   BranchIcon,
+  ClockIcon,
   FileTextIcon,
+  HelpIcon,
   LoopIcon,
   SearchIcon,
   ShieldCheckIcon,
@@ -30,6 +32,8 @@ function StepIcon({ step, className }: { step: WorkflowStep; className: string }
   if (step.kind === "agent") return <TargetIcon className={className} />;
   if (step.kind === "check") return <ShieldCheckIcon className={className} />;
   if (step.kind === "approval") return <UserIcon className={className} />;
+  if (step.kind === "ask") return <HelpIcon className={className} />;
+  if (step.kind === "wait") return <ClockIcon className={className} />;
   if (step.kind === "script") return <TerminalIcon className={className} />;
   if (step.kind === "branch" || step.kind === "choice") return <BranchIcon className={className} />;
   if (step.kind === "loop") return <LoopIcon className={className} />;
@@ -45,6 +49,8 @@ const KIND_ICON: Record<StepKind, (props: { className: string }) => ReactNode> =
   agent: TargetIcon,
   check: ShieldCheckIcon,
   approval: UserIcon,
+  ask: HelpIcon,
+  wait: ClockIcon,
   branch: BranchIcon,
   choice: BranchIcon,
   loop: LoopIcon,
@@ -80,7 +86,7 @@ export function StepKindTile({ step, size = "md" }: { step: WorkflowStep; size?:
 }
 
 export function KindLegend() {
-  const kinds: StepKind[] = ["tool", "script", "llm", "agent", "check", "approval", "branch", "loop"];
+  const kinds: StepKind[] = ["tool", "script", "llm", "agent", "check", "approval", "wait", "branch", "loop"];
   return (
     <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-[var(--muted)]">
       {kinds.map((kind) => (

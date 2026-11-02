@@ -7,6 +7,7 @@ export const RUN_STATUS_LABEL: Record<RunStatus, string> = {
   completed: "Completed",
   failed: "Failed",
   needs_approval: "Needs approval",
+  waiting: "Waiting",
   stopped: "Stopped",
 };
 

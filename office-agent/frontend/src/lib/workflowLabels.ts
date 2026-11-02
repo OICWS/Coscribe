@@ -18,6 +18,8 @@ export const KIND_LABEL: Record<StepKind, string> = {
   agent: "Agent",
   check: "Check",
   approval: "Approval",
+  ask: "Ask",
+  wait: "Wait",
   branch: "Branch",
   choice: "Choice",
   loop: "Loop",
@@ -30,6 +32,8 @@ export const KIND_COLOR: Record<StepKind, string> = {
   agent: "var(--kind-agent)",
   check: "var(--kind-check)",
   approval: "var(--kind-approval)",
+  ask: "var(--kind-approval)",
+  wait: "var(--kind-wait)",
   branch: "var(--kind-branch)",
   choice: "var(--kind-branch)",
   loop: "var(--kind-loop)",
@@ -122,7 +126,7 @@ export function wholeReference(value: unknown): string | null {
 }
 
 export function stepOutput(step: WorkflowStep): string | null {
-  return "save_as" in step ? step.save_as : null;
+  return "save_as" in step ? (step.save_as ?? null) : null;
 }
 
 export function operandReference(operand: Operand): string | null {

@@ -294,8 +294,9 @@ Last reviewed: 2026-10-15.
    P5 the gaps of #776, in five batches: typed inputs, conditions that hold all or any, a choice
    of several paths, a loop that stops early and the simple view's quick edit (decision 0031,
    batch 1, done); failure handling: retries, skip, steps in a failed step's place, a loop that
-   skips an item and steps after a failed run (decision 0032, batch 2, in review); then a form
-   step and a wait step, state across runs and triggers on files and connector events, sub-workflows and
+   skips an item and steps after a failed run (decision 0032, batch 2, done); a step that asks
+   you for values and a step that waits for a time or a file (decision 0033, batch 3, in
+   review); then state across runs and triggers on files and connector events, sub-workflows and
    versions. Parallel steps are left out for now.
 
 ## Needs the maintainer's testing (could not be verified here)

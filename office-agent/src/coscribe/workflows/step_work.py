@@ -7,9 +7,10 @@ import asyncio
 import inspect
 import json
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, field
+from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import BaseTool
@@ -39,6 +40,47 @@ LLM_STEP_INSTRUCTIONS = (
     "information given in the message. Return exactly the requested fields, "
     "with the requested types -- nothing else."
 )
+
+
+StepStatus = Literal["pending", "running", "done", "failed", "skipped", "waiting"]
+
+
+def now_text() -> str:
+    return datetime.now().isoformat(timespec="milliseconds")
+
+
+@dataclass
+class StepRecord:
+    step_id: str
+    status: StepStatus
+    started_at: str | None = None
+    finished_at: str | None = None
+    output: Any = None
+    error: str | None = None
+    # One entry per condition of a check (or an approval's `when`):
+    # {"held", "left", "right"}, so a failure shows what it compared.
+    checks: list[dict[str, Any]] | None = None
+    # What the person who answered an approval step wrote, if anything.
+    note: str | None = None
+    # Which pass of each loop around the step this is, outermost first --
+    # empty outside loops. A step's record is one per pass.
+    iteration: list[int] = field(default_factory=list)
+    # A waiting step that is asking to be allowed something, not approved:
+    # {"kind": "folder" | "site", "target", "message"}.
+    permission: dict[str, Any] | None = None
+    # An agent step's work: {"tool_calls", "tokens", "tools_used"} once it
+    # ends, {"pending": {"tool", "args"}} while a call waits for a person.
+    agent: dict[str, Any] | None = None
+    # Tries the step took in this pass (decision 0032); more than one only when it has retries.
+    attempts: int = 1
+    # A failed step whose failure didn't stop the run: it was skipped, steps ran in its place, or
+    # its loop skipped the item it failed on.
+    recovered: Literal["skipped", "fallback", "item_skipped"] | None = None
+    # A waiting ask or wait step, and what for (decision 0033): conversation.wire's WorkflowPause.
+    pause: dict[str, Any] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
 
 class StepFailed(Exception):
@@ -75,6 +117,8 @@ class StepContext:
     # Runs agent steps (decision 0028); without one a workflow that has
     # one is refused before it starts.
     run_agent: AgentRunner | None = None
+    # A wait step waits; a test run's looks for its file once and goes on (decision 0033).
+    waits: bool = True
     # The task's approval mode, which high and full agent steps run under.
     approval_mode: str = "manual"
     # Tools whose results come from outside: an agent step that reads one

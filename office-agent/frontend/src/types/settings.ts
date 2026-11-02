@@ -358,7 +358,8 @@ export interface ScheduleRule {
   start_date: string | null;
 }
 
-export type RunStatus = "running" | "completed" | "failed" | "needs_approval" | "stopped";
+/** "waiting": a wait step paused the run until a time or a file (decision 0033). */
+export type RunStatus = "running" | "completed" | "failed" | "needs_approval" | "waiting" | "stopped";
 
 /** One execution of a task, in its own conversation (thread_id). */
 export interface ScheduledRun {
