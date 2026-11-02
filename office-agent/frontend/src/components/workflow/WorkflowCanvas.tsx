@@ -1,11 +1,21 @@
 import { Fragment, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { dataFlow, flowRole, type FlowRole, type StepFlow } from "../../lib/dataFlow";
+import { failureLine } from "../../lib/failureWords";
 import { AUTONOMY_LABEL, KIND_COLOR, KIND_LABEL } from "../../lib/workflowLabels";
 import { plainDetail, plainKind } from "../../lib/plainSteps";
 import { type NodeRunState, runMap } from "../../lib/workflowRunMap";
-import { placeSteps } from "../../lib/workflowTree";
+import { canRecover, everyStep, isBlock, placeSteps } from "../../lib/workflowTree";
 import type { ScheduledRun } from "../../types/settings";
-import type { BranchStep, ChoiceStep, LoopStep, Workflow, WorkflowInput, WorkflowStep } from "../../types/workflow";
-import { FileTextIcon, GlobeIcon, LoopIcon, TerminalIcon } from "../icons";
+import type {
+  BranchStep,
+  ChoiceStep,
+  LoopStep,
+  RecoveringStep,
+  Workflow,
+  WorkflowInput,
+  WorkflowStep,
+} from "../../types/workflow";
+import { FileTextIcon, GlobeIcon, LoopIcon, RetryIcon, TerminalIcon } from "../icons";
 import { StepKindTile, VarToken } from "./parts";
 import { StatusDot } from "./StatusDot";
 import { StepSummary } from "./StepSummary";
@@ -25,6 +35,40 @@ interface CanvasContext {
   plain?: { inputs: WorkflowInput[] };
   /** Inside a split of three or more paths, where full-width cards would push the rest off the page. */
   narrow?: boolean;
+  /** Which steps feed and use the one in focus (pointed at or opened), to light up its data. */
+  flow: { flows: Map<string, StepFlow>; focus: string | null; setFocus: (id: string | null) => void };
+}
+
+const FAIL_COLOR = "var(--danger)";
+
+const ROLE: Record<Exclude<FlowRole, "focus" | "other">, { label: string; color: string }> = {
+  feeds: { label: "Gives it values", color: "var(--kind-script)" },
+  uses: { label: "Uses its result", color: "var(--kind-check)" },
+  both: { label: "Gives and uses", color: "var(--kind-script)" },
+};
+
+function RoleTag({ role }: { role: FlowRole }) {
+  if (role === "focus" || role === "other") return null;
+  const { label, color } = ROLE[role];
+  return (
+    <span
+      className="rounded-full px-1.5 py-px text-[11px] font-medium"
+      style={{ color, backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)` }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function FailureNote({ step }: { step: WorkflowStep }) {
+  const line = failureLine(step);
+  if (!line) return null;
+  return (
+    <span className="mt-1.5 flex items-center gap-1.5 text-[11px] text-[var(--muted)]">
+      <RetryIcon className="h-3 w-3 shrink-0" style={{ color: FAIL_COLOR }} />
+      {line}
+    </span>
+  );
 }
 
 const LINE = "bg-[var(--border-hover)]";
@@ -60,19 +104,32 @@ const RUN_TEXT: Partial<Record<NodeRunState["status"], string>> = {
   pending: "Up next",
 };
 
-function loopText(state: NodeRunState, done: number, total: number | null): string {
+const RECOVERED: Record<NonNullable<NodeRunState["recovered"]>, string> = {
+  skipped: "Failed, skipped it",
+  fallback: "Failed, ran the steps in its place",
+  item_skipped: "Failed, skipped the item",
+};
+
+function loopText(state: NodeRunState, done: number, total: number | null, skipped: number): string {
   const of = total === null ? "" : ` of ${total}`;
+  const also = skipped > 0 ? ` · ${skipped} skipped` : "";
   if (state.status === "failed" || state.status === "stopped") return `Stopped at item ${done + 1}${of}`;
   if (state.status === "waiting") return `Waiting at item ${done + 1}${of}`;
-  const through = `${done}${of} ${(total ?? done) === 1 ? "item" : "items"} through`;
+  const through = `${done}${of} ${(total ?? done) === 1 ? "item" : "items"} through${also}`;
   return state.status === "running" ? `Running… · ${through}` : through;
 }
 
 function runText(step: WorkflowStep, state: NodeRunState): string | null {
   const { passes } = state;
-  const lead = RUN_TEXT[state.status] ?? null;
+  const tries = state.attempts ? `worked on try ${state.attempts}` : null;
+  const lead =
+    state.status === "recovered" && state.recovered
+      ? RECOVERED[state.recovered]
+      : state.status === "done" && tries
+        ? tries.charAt(0).toUpperCase() + tries.slice(1)
+        : (RUN_TEXT[state.status] ?? null);
   if (passes && (state.status !== "not_reached" || passes.done > 0)) {
-    if (step.kind === "loop") return loopText(state, passes.done, passes.total);
+    if (step.kind === "loop") return loopText(state, passes.done, passes.total, passes.skipped ?? 0);
     // A step inside a loop: how many items it has been done for so far.
     const count = passes.total === null ? `${passes.done}` : `${passes.done} of ${passes.total}`;
     const items = `${count} ${(passes.total ?? passes.done) === 1 ? "item" : "items"}`;
@@ -93,6 +150,7 @@ function runLook(state: NodeRunState | undefined): { className: string; ring?: s
   if (state.status === "failed") return { className: "", ring: "var(--danger)" };
   if (state.status === "waiting") return { className: "", ring: "var(--warning)" };
   if (state.status === "running") return { className: "", ring: "var(--accent)" };
+  if (state.status === "recovered") return { className: "", ring: "var(--warning)" };
   if (state.status === "not_reached" || state.status === "not_taken" || state.status === "skipped") {
     return { className: "opacity-55" };
   }
@@ -130,7 +188,17 @@ function PlainTile({ step, color }: { step: WorkflowStep; color: string }) {
   );
 }
 
-function PlainBody({ step, inputs, state }: { step: WorkflowStep; inputs: WorkflowInput[]; state?: NodeRunState }) {
+function PlainBody({
+  step,
+  inputs,
+  state,
+  role,
+}: {
+  step: WorkflowStep;
+  inputs: WorkflowInput[];
+  state?: NodeRunState;
+  role: FlowRole;
+}) {
   const color = plainColor(step);
   const detail = plainDetail(step, inputs);
   return (
@@ -143,11 +211,14 @@ function PlainBody({ step, inputs, state }: { step: WorkflowStep; inputs: Workfl
         >
           {plainKind(step)}
         </span>
-        {cannotUndo(step) && (
-          <span className="ml-auto rounded-full bg-[color-mix(in_srgb,var(--warning)_18%,transparent)] px-1.5 py-0.5 text-[11px] font-medium">
-            Can’t be undone
-          </span>
-        )}
+        <span className="ml-auto flex items-center gap-1">
+          <RoleTag role={role} />
+          {cannotUndo(step) && (
+            <span className="rounded-full bg-[color-mix(in_srgb,var(--warning)_18%,transparent)] px-1.5 py-0.5 text-[11px] font-medium">
+              Can’t be undone
+            </span>
+          )}
+        </span>
         {state && <StatusDot status={state.status} />}
       </span>
       <span className="mt-1.5 line-clamp-2 block text-sm font-medium leading-snug" title={step.title}>
@@ -163,10 +234,13 @@ function StepNode({ step, ctx }: { step: WorkflowStep; ctx: CanvasContext }) {
   const state = ctx.states?.get(step.id);
   const note = state ? runText(step, state) : null;
   const look = runLook(state);
+  const { flows, focus, setFocus } = ctx.flow;
+  const role = focus ? flowRole(flows, focus, step.id) : "focus";
   const kind = step.kind === "agent" ? `Agent · ${AUTONOMY_LABEL[step.autonomy]}` : KIND_LABEL[step.kind];
   const body = ctx.plain ? (
     <>
-      <PlainBody step={step} inputs={ctx.plain.inputs} state={state} />
+      <PlainBody step={step} inputs={ctx.plain.inputs} state={state} role={role} />
+      <FailureNote step={step} />
       {note && (
         <span
           className="mt-1.5 block border-t border-[var(--border)] pt-1.5 text-xs font-medium"
@@ -183,7 +257,10 @@ function StepNode({ step, ctx }: { step: WorkflowStep; ctx: CanvasContext }) {
         <span className="text-[11px] font-medium uppercase tracking-[0.06em]" style={{ color }}>
           {kind}
         </span>
-        <span className="ml-auto text-xs tabular-nums text-[var(--muted)]">{ctx.numbers.get(step.id)}</span>
+        <span className="ml-auto flex items-center gap-1.5">
+          <RoleTag role={role} />
+          <span className="text-xs tabular-nums text-[var(--muted)]">{ctx.numbers.get(step.id)}</span>
+        </span>
         {state && <StatusDot status={state.status} />}
       </span>
       <span className="mt-1.5 line-clamp-2 block text-[13px] font-medium leading-snug" title={step.title}>
@@ -192,6 +269,7 @@ function StepNode({ step, ctx }: { step: WorkflowStep; ctx: CanvasContext }) {
       <span className="mt-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-xs text-[var(--muted)]">
         <StepSummary step={step} inputNames={ctx.inputNames} />
       </span>
+      <FailureNote step={step} />
       {note && (
         <span
           className="mt-1.5 block border-t border-[var(--border)] pt-1.5 text-xs font-medium"
@@ -202,15 +280,29 @@ function StepNode({ step, ctx }: { step: WorkflowStep; ctx: CanvasContext }) {
       )}
     </>
   );
-  const className = `block ${ctx.narrow ? "w-48" : "w-64"} rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 pb-2.5 pt-2 text-left shadow-sm ${look.className}`;
+  const dim = role === "other" ? "opacity-40" : "";
+  const className = `block ${ctx.narrow ? "w-48" : "w-64"} rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 pb-2.5 pt-2 text-left shadow-sm transition-opacity ${look.className} ${dim}`;
+  const ring =
+    look.ring ??
+    (role === "focus" && focus
+      ? "var(--accent)"
+      : role !== "other" && focus
+        ? ROLE[role as keyof typeof ROLE].color
+        : undefined);
   const style = {
     borderTopColor: ctx.plain ? plainColor(step) : color,
     borderTopWidth: 3,
-    ...(look.ring ? { boxShadow: `0 0 0 2px color-mix(in srgb, ${look.ring} 45%, transparent)` } : {}),
+    ...(ring ? { boxShadow: `0 0 0 2px color-mix(in srgb, ${ring} 45%, transparent)` } : {}),
+  };
+  const pointer = {
+    onMouseEnter: () => setFocus(step.id),
+    onMouseLeave: () => setFocus(null),
+    onFocus: () => setFocus(step.id),
+    onBlur: () => setFocus(null),
   };
   if (!ctx.onOpenStep) {
     return (
-      <div className={className} style={style} data-canvas-step={step.id} data-run-status={state?.status}>
+      <div className={className} style={style} data-canvas-step={step.id} data-run-status={state?.status} {...pointer}>
         {body}
       </div>
     );
@@ -222,16 +314,25 @@ function StepNode({ step, ctx }: { step: WorkflowStep; ctx: CanvasContext }) {
       style={style}
       data-canvas-step={step.id}
       data-run-status={state?.status}
+      data-flow-role={focus ? role : undefined}
       title={ctx.states ? `Show "${step.title}" in the run` : `Edit "${step.title}"`}
       onClick={() => ctx.onOpenStep?.(step.id)}
+      {...pointer}
     >
       {body}
     </button>
   );
 }
 
-function ArmLabel({ taken, children }: { taken: boolean; children: ReactNode }) {
-  const color = KIND_COLOR.branch;
+function ArmLabel({
+  taken,
+  color = KIND_COLOR.branch,
+  children,
+}: {
+  taken: boolean;
+  color?: string;
+  children: ReactNode;
+}) {
   return (
     <span
       className={`rounded-full border px-2 py-px text-[11px] ${taken ? "font-medium" : "border-[var(--border)] bg-[var(--card-bg)] text-[var(--muted)]"}`}
@@ -342,6 +443,67 @@ function BranchBlock({ step, ctx }: { step: BranchStep | ChoiceStep; ctx: Canvas
   );
 }
 
+/** A step with steps to run in its place when it fails: the main line goes on from it, and the
+ * steps in its place sit beside it and rejoin the line after. */
+function RecoverBlock({ step, ctx }: { step: RecoveringStep; ctx: CanvasContext }) {
+  const inPlace = step.on_failure?.steps ?? [];
+  const taken = ctx.states?.get(step.id)?.arms ?? [];
+  const arm = (index: number, label: ReactNode, inside: ReactNode) => (
+    <div className="relative flex flex-col items-center px-4">
+      <div aria-hidden="true" className={`absolute top-0 h-px ${lineSpan(index, 2)} ${LINE}`} />
+      <div aria-hidden="true" className={`absolute bottom-0 h-px ${lineSpan(index, 2)} ${LINE}`} />
+      <div aria-hidden="true" className={`h-3 w-px ${LINE}`} />
+      {label}
+      {inside}
+      <div aria-hidden="true" className={`min-h-4 w-px flex-1 ${LINE}`} />
+    </div>
+  );
+  return (
+    <div className="flex flex-col items-center">
+      <StepNode step={step} ctx={ctx} />
+      <div aria-hidden="true" className={`h-4 w-px ${LINE}`} />
+      <div className="flex">
+        {arm(0, <ArmLabel taken={false}>If it works</ArmLabel>, null)}
+        {arm(
+          1,
+          <ArmLabel taken={taken.includes("fallback")} color={FAIL_COLOR}>
+            If it fails
+          </ArmLabel>,
+          inPlace.length > 0 ? (
+            <>
+              <Arrow />
+              <Flow steps={inPlace} ctx={ctx} />
+            </>
+          ) : (
+            <span className="mt-2 text-xs italic text-[var(--muted)]">no steps yet</span>
+          ),
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** What runs when a run fails, apart from the main line: nothing leads into it but a failure. */
+function AfterFailure({ steps, ctx }: { steps: WorkflowStep[]; ctx: CanvasContext }) {
+  return (
+    <div
+      data-testid="after-failure"
+      className="mt-8 flex flex-col items-center rounded-2xl border border-dashed px-5 pb-5 pt-3"
+      style={{
+        borderColor: `color-mix(in srgb, ${FAIL_COLOR} 45%, transparent)`,
+        backgroundColor: `color-mix(in srgb, ${FAIL_COLOR} 3%, transparent)`,
+      }}
+    >
+      <span className="text-xs font-medium" style={{ color: FAIL_COLOR }}>
+        If a run fails
+      </span>
+      <span className="mb-1 text-[11px] text-[var(--muted)]">Then these run, and the run still counts as failed</span>
+      <Arrow />
+      <Flow steps={steps} ctx={ctx} />
+    </div>
+  );
+}
+
 /** The simple view names a loop once, on its frame: its title, then what it repeats for. */
 function PlainLoopHeader({ step, ctx }: { step: LoopStep; ctx: CanvasContext }) {
   const color = KIND_COLOR.loop;
@@ -359,6 +521,12 @@ function PlainLoopHeader({ step, ctx }: { step: LoopStep; ctx: CanvasContext }) 
         <span className="block text-xs" style={{ color }}>
           Repeats for each {step.item.replace(/_/g, " ")}, up to {step.max_items}
         </span>
+        {step.on_item_failure === "skip" && (
+          <span className="mt-0.5 flex items-center gap-1 text-[11px] text-[var(--muted)]">
+            <RetryIcon className="h-3 w-3" style={{ color: FAIL_COLOR }} />
+            An item that fails is skipped and listed in the report
+          </span>
+        )}
       </span>
     </button>
   );
@@ -407,6 +575,7 @@ function LoopBlock({ step, ctx }: { step: LoopStep; ctx: CanvasContext }) {
           <div className="mb-3 flex w-full items-center gap-1.5 text-xs" style={{ color }}>
             <LoopIcon className="h-3.5 w-3.5" />
             <span className="font-medium">Repeats for each item</span>
+            {step.on_item_failure === "skip" && <span className="text-[var(--muted)]">· skips an item that fails</span>}
             <span className="ml-auto text-[var(--muted)]">at most {step.max_items}</span>
           </div>
           <StepNode step={step} ctx={ctx} />
@@ -432,7 +601,8 @@ function Flow({ steps, ctx }: { steps: WorkflowStep[]; ctx: CanvasContext }) {
           {index > 0 && <Arrow />}
           {(step.kind === "branch" || step.kind === "choice") && <BranchBlock step={step} ctx={ctx} />}
           {step.kind === "loop" && <LoopBlock step={step} ctx={ctx} />}
-          {step.kind !== "branch" && step.kind !== "choice" && step.kind !== "loop" && (
+          {canRecover(step) && step.on_failure?.then === "steps" && <RecoverBlock step={step} ctx={ctx} />}
+          {!isBlock(step) && !(canRecover(step) && step.on_failure?.then === "steps") && (
             <StepNode step={step} ctx={ctx} />
           )}
         </Fragment>
@@ -448,25 +618,33 @@ export function WorkflowCanvas({
   workflow,
   run,
   onOpenStep,
+  openStepId,
   plain = false,
 }: {
   workflow: Workflow;
+  /** The step open beside the canvas, whose data stays lit while nothing else is pointed at. */
+  openStepId?: string | null;
   /** Draws how this run went on the workflow. */
   run?: ScheduledRun;
   onOpenStep?: (stepId: string) => void;
   /** Plain words instead of tool and variable names, for the task page's simple view. */
   plain?: boolean;
 }) {
+  const [pointed, setPointed] = useState<string | null>(null);
+  const flows = useMemo(() => dataFlow(workflow), [workflow]);
+  const focus = pointed ?? openStepId ?? null;
   const ctx = useMemo<CanvasContext>(
     () => ({
-      numbers: new Map(placeSteps(workflow.steps).map((placed) => [placed.step.id, placed.number])),
+      numbers: new Map(placeSteps(everyStep(workflow)).map((placed) => [placed.step.id, placed.number])),
       inputNames: new Set(workflow.inputs.map((input) => input.name)),
       states: run ? runMap(workflow, run) : undefined,
       onOpenStep,
       plain: plain ? { inputs: workflow.inputs } : undefined,
+      flow: { flows, focus, setFocus: setPointed },
     }),
-    [workflow, run, onOpenStep, plain],
+    [workflow, run, onOpenStep, plain, flows, focus],
   );
+  const fedInputs = focus ? (flows.get(focus)?.inputs ?? new Set<string>()) : new Set<string>();
   const frame = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     // A flow wider than the page opens on its middle, where Start and the main line are.
@@ -484,11 +662,20 @@ export function WorkflowCanvas({
       }}
     >
       <div className="mx-auto flex w-max min-w-full flex-col items-center px-8 py-7">
-        <Terminal>
+        <Terminal faded={focus !== null && fedInputs.size === 0}>
           <span className="font-medium text-[var(--fg)]">Start</span>
           {workflow.inputs.length > 0 && <span>with</span>}
           {plain ? (
-            <span>{workflow.inputs.map((input) => input.label || input.name).join(", ")}</span>
+            <span>
+              {workflow.inputs.map((input, index) => (
+                <Fragment key={input.name}>
+                  {index > 0 && ", "}
+                  <span className={fedInputs.has(input.name) ? "font-medium text-[var(--kind-script)]" : ""}>
+                    {input.label || input.name}
+                  </span>
+                </Fragment>
+              ))}
+            </span>
           ) : (
             workflow.inputs.map((input) => <VarToken key={input.name} name={input.name} isInput />)
           )}
@@ -503,6 +690,7 @@ export function WorkflowCanvas({
         <Terminal faded={run !== undefined && run.status !== "completed"}>
           <span className="font-medium text-[var(--fg)]">Done</span>
         </Terminal>
+        {(workflow.after_failure ?? []).length > 0 && <AfterFailure steps={workflow.after_failure ?? []} ctx={ctx} />}
       </div>
     </div>
   );

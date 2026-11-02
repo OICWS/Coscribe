@@ -6,7 +6,10 @@ It runs on a throwaway checkpointer, so nothing lands in a task's run
 history, and stops before an approval step: a test has no one to ask, and
 what comes after an approval is exactly what the approval guards. It also
 stops before a step marked irreversible unless told to send for real
-(decision 0029): checking a fix must not file a claim or pay an invoice."""
+(decision 0029): checking a fix must not file a claim or pay an invoice. A
+step's retries wait at most a few seconds between tries in a test (decision
+0032): a test is waited for, and what it checks is the workflow, not how long
+a site takes to come back."""
 
 from __future__ import annotations
 
@@ -16,6 +19,7 @@ import json
 import time
 import uuid
 from collections.abc import Awaitable, Callable
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -32,9 +36,11 @@ from ..workflow_spec import (
     Step,
     ToolStep,
     Workflow,
+    failure_policy,
     walk,
 )
-from .engine import StepContext, StepRecord, WorkflowNotRunnable, WorkflowRun, preview
+from .engine import StepContext, StepRecord, WorkflowNotRunnable, WorkflowRun
+from .step_work import preview
 
 _OUTPUT_CHARS = 400
 _MAX_FILES = 10
@@ -45,7 +51,7 @@ _FILE_KEYS = frozenset({"path", "file", "files", "destination"})
 def uses_browser(workflow: Workflow) -> bool:
     return any(
         isinstance(placed.step, ToolStep) and placed.step.tool.startswith("browser_")
-        for placed in walk(workflow.steps)
+        for placed in walk(workflow.every_step())
     )
 
 
@@ -125,13 +131,14 @@ def output_files(outputs: list[Any], root: Path, since: float) -> list[dict[str,
 
 
 _GUARD_PREFIX = "before_"
+_TEST_RETRY_WAIT_SECONDS = 5
 
 
 def _guarded(workflow: Workflow) -> tuple[Workflow, dict[str, Step]]:
     """The workflow with an approval step in front of every irreversible
     one -- the engine already stops a test there -- and which guard stands
     for which step."""
-    taken = {placed.step.id for placed in walk(workflow.steps)}
+    taken = {placed.step.id for placed in walk(workflow.every_step())}
     guards: dict[str, Step] = {}
 
     def guard(step: Step) -> ApprovalStep:
@@ -160,12 +167,20 @@ def _guarded(workflow: Workflow) -> tuple[Workflow, dict[str, Step]]:
                 step = step.model_copy(
                     update={"cases": cases, "otherwise": rebuild(step.otherwise)}
                 )
-            elif isinstance(step, (ToolStep, AgentStep)) and step.irreversible:
+            policy = failure_policy(step)
+            if policy is not None and policy.steps:
+                in_place = policy.model_copy(update={"steps": rebuild(policy.steps)})
+                step = step.model_copy(update={"on_failure": in_place})
+            if isinstance(step, (ToolStep, AgentStep)) and step.irreversible:
                 out.append(guard(step))
             out.append(step)
         return out
 
-    return workflow.model_copy(update={"steps": rebuild(workflow.steps)}), guards
+    # The steps after a failed run can't pause at a guard (decision 0032), so a test leaves out
+    # the ones that can't be taken back.
+    after = [s for s in workflow.after_failure if not getattr(s, "irreversible", False)]
+    guarded = {"steps": rebuild(workflow.steps), "after_failure": after}
+    return workflow.model_copy(update=guarded), guards
 
 
 async def run_test(
@@ -195,6 +210,7 @@ async def run_test(
         if on_step is not None:
             await on_step(record)
 
+    ctx = replace(ctx, max_retry_wait=min(ctx.max_retry_wait, _TEST_RETRY_WAIT_SECONDS))
     run = WorkflowRun(workflow, ctx, InMemorySaver(), f"test-{uuid.uuid4().hex[:8]}", record_step)
     started = time.monotonic()
     # Whole seconds: some file systems keep coarse modification times.
@@ -217,7 +233,7 @@ async def run_test(
     if stopped_before is not None:
         status = "stopped_before_irreversible"
     steps = []
-    for placed in walk(shown.steps):
+    for placed in walk(shown.every_step()):
         record = records.get(placed.step.id)
         step: dict[str, Any] = {
             "id": placed.step.id,

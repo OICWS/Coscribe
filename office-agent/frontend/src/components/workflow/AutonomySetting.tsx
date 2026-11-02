@@ -11,7 +11,7 @@ export const AUTONOMY_LABEL: Record<TaskAutonomy, string> = {
 
 const DESCRIPTION: Record<TaskAutonomy, string> = {
   fixed:
-    "Only the saved steps run. A failure stops the run, and a fix is proposed for you to save.",
+    "Only the saved steps run. A failure a step doesn’t handle stops the run, and a fix is proposed for you to save.",
   self_healing:
     "The saved steps run. A browser step that breaks because the page changed is done by an agent on the page as it is now, and the report says what it did instead. A step that can't be undone waits for your yes.",
   proactive:

@@ -1,7 +1,7 @@
 # workflows: fixed lists of low-autonomy steps, run by LangGraph
 
 ## Purpose
-Owns how a workflow runs (`engine.py`; `model_step.py` gets a model to return a step's
+Owns how a workflow runs (`engine.py`, and what a step does when it fails, decision 0032; `step_work.py` what a tool, script, model or check step does; `graph_view.py` the graph a workflow compiles to, for the editor; `model_step.py` gets a model to return a step's
 fields; `agent_step.py` runs an agent step through an injected runner; `report.py` a run's report, decision 0030; `healing.py` the agent that heals a failed browser step when the task's autonomy allows it; `heal_revision.py` the revision a run's heals propose), what it may touch (`permissions.py`), the tool parameters its editor needs (`catalog.py`), drafting one from a
 conversation (`solidify.py`) and a one-off test run (`testing.py`). Does not own the schedule
 that fires a run or its stored history (`runtime_lg/scheduled_tasks.py`), the routes
@@ -13,7 +13,7 @@ that fires a run or its stored history (`runtime_lg/scheduled_tasks.py`), the ro
 `AgentCall`, `AgentReply`, `AgentRequest`, `AgentRunner` (what an agent runner takes and returns);
 `RunOutcome`, `StepContext`, `StepRecord`, `WorkflowNotRunnable`, `WorkflowRun` (a run);
 `brings_outside_content`, `granted_by`, `sites_in`, `summarize`, `untrusted_agent_steps` (permissions); `describe_params`, `tool_description`
-(catalog); `output_files`, `run_test`, `uses_browser` (test run); `run_report` (what a run did, from its step records); `heal_fixes`, `heals_to_revise` (the saved arguments a run's heals would change, and the heals a revision has to be drafted for); `DraftFailed`, `WorkflowDraft`,
+(catalog); `output_files`, `run_test`, `uses_browser` (test run); `run_report` (what a run did, from its step records); `compiled_graph` (the nodes and edges LangGraph compiles a workflow to); `heal_fixes`, `heals_to_revise` (the saved arguments a run's heals would change, and the heals a revision has to be drafted for); `DraftFailed`, `WorkflowDraft`,
 `draft_workflow`, `revise_workflow` (drafting from a conversation: it takes the serialized
 history, so this package does not import `runtime_lg`).
 
@@ -44,13 +44,13 @@ history, so this package does not import `runtime_lg`).
   (`agent.healed`) and in the run report. A heal changes the saved workflow only when the person
   saves its fixes (`heal_fixes`), and a fix replaces an argument only while it still holds the
   value the heal replaced.
+- Decision 0032: a step marked `irreversible` is never tried again on its own (the spec refuses retries on it); a failure that doesn't stop the run is on the step's record (`recovered`) and in the run report, never counted as done; the steps after a failed run never wait for a person, and their failure never replaces the run's own error.
 - `UNAVAILABLE_TOOLS` in `engine.py` only lists tools a run may not call; the import contract,
   not that list, is what keeps the code module out.
 
 ## Tests
 `tests/test_workflow_spec.py`, `tests/test_workflow_engine.py`, `tests/test_workflow_agent_step.py`, `tests/test_workflow_permissions.py`,
-`tests/test_workflow_catalog.py`, `tests/test_workflow_solidify.py`, `tests/test_workflow_testing.py`, `tests/test_workflow_healing.py`, `tests/test_workflow_report.py`;
-`tests/web/test_scheduled.py` covers runs through the server.
+`tests/test_workflow_catalog.py`, `tests/test_workflow_solidify.py`, `tests/test_workflow_testing.py`, `tests/test_workflow_healing.py`, `tests/test_workflow_report.py`, `tests/test_workflow_failures.py`; `tests/web/test_scheduled.py` covers runs through the server.
 
 ## Verify by hand
 Drafting a workflow from a real conversation with a real model (`solidify`); a browser step

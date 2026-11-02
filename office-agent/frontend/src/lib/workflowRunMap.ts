@@ -1,25 +1,31 @@
 import type { ScheduledRun } from "../types/settings";
 import type { StepRecord, StepStatus, Workflow, WorkflowStep } from "../types/workflow";
 import { loopProgress } from "./workflowProgress";
-import { childLists, placeSteps } from "./workflowTree";
+import { childLists, everyStep, placeSteps } from "./workflowTree";
 
 /** A step's state on the run's canvas. "not_taken" is a step in a branch arm
- * the run went past; "stopped" a step that was running when the run stopped. */
-export type NodeStatus = StepStatus | "not_reached" | "not_taken" | "stopped";
+ * the run went past; "stopped" a step that was running when the run stopped; "recovered" a step
+ * that failed without stopping the run (decision 0032). */
+export type NodeStatus = StepStatus | "not_reached" | "not_taken" | "stopped" | "recovered";
 
 export interface NodeRunState {
   status: NodeStatus;
   /** For a loop, how many of its items are through; for a step inside one,
    * how many of its passes finished, of how many the loops around it hold
    * (null while that isn't known yet). */
-  passes?: { done: number; total: number | null };
-  /** For a branch, the arms its finished passes took. */
+  passes?: { done: number; total: number | null; skipped?: number };
+  /** For a branch, the arms its finished passes took; for a step with steps in its place,
+   * "fallback" once they ran. */
   arms?: string[];
+  /** The most tries one of its passes took, when that was more than one. */
+  attempts?: number;
+  /** How its failures were handled, when they didn't stop the run. */
+  recovered?: StepRecord["recovered"];
 }
 
 // The order a step with several passes is shown in: what needs the person
 // first, then what is still going, then how the rest went.
-const WORST: NodeStatus[] = ["failed", "waiting", "stopped", "running", "done", "skipped"];
+const WORST: NodeStatus[] = ["failed", "waiting", "stopped", "running", "recovered", "done", "skipped"];
 
 function worst(statuses: NodeStatus[]): NodeStatus {
   return WORST.find((status) => statuses.includes(status)) ?? "not_reached";
@@ -61,11 +67,13 @@ function notTaken(workflow: Workflow, byStep: Map<string, StepRecord[]>): Set<st
 function loopItems(records: StepRecord[]): NodeRunState["passes"] {
   let done = 0;
   let total = 0;
+  let skipped = 0;
   for (const progress of records.map(loopProgress)) {
     done += progress?.done ?? 0;
     total += progress?.total ?? 0;
+    skipped += progress?.skipped.length ?? 0;
   }
-  return { done, total };
+  return { done, total, skipped };
 }
 
 /** A step inside a loop: its passes finished, of all the passes the
@@ -89,11 +97,12 @@ export function runMap(workflow: Workflow, run: ScheduledRun): Map<string, NodeR
   const going = run.status === "running";
   const unreachable = notTaken(workflow, byStep);
   const states = new Map<string, NodeRunState>();
-  for (const { step, loops, list } of placeSteps(workflow.steps)) {
+  for (const { step, loops, list } of placeSteps(everyStep(workflow))) {
     const records = byStep.get(step.id) ?? [];
-    const statuses = records.map(
-      (record): NodeStatus => (record.status === "running" && !going ? "stopped" : record.status),
-    );
+    const statuses = records.map((record): NodeStatus => {
+      if (record.status === "failed" && record.recovered) return "recovered";
+      return record.status === "running" && !going ? "stopped" : record.status;
+    });
     const status: NodeStatus =
       records.length > 0 ? worst(statuses) : unreachable.has(step.id) ? "not_taken" : "not_reached";
     const state: NodeRunState = { status };
@@ -102,6 +111,11 @@ export function runMap(workflow: Workflow, run: ScheduledRun): Map<string, NodeR
       state.arms = childLists(step)
         .map(([arm]) => arm as string)
         .filter((arm) => records.some((r) => armOf(r) === arm));
+    const recovered = records.find((record) => record.recovered)?.recovered;
+    if (recovered) state.recovered = recovered;
+    if (recovered === "fallback") state.arms = ["fallback"];
+    const attempts = Math.max(1, ...records.map((record) => record.attempts ?? 1));
+    if (attempts > 1) state.attempts = attempts;
     if (step.kind === "loop" && records.length > 0) state.passes = loopItems(records);
     else if (innermost) state.passes = passesInside(statuses, byStep.get(innermost) ?? [], list.parent === innermost);
     states.set(step.id, state);

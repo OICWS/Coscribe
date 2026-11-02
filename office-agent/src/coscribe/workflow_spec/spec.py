@@ -34,7 +34,6 @@ from .inputs import InputType, input_problem
 from .refs import (
     conditions_hold,
     is_reference,
-    malformed_templates,
     resolve,
     same_choice,
     template_references,
@@ -152,7 +151,58 @@ class _Step(_Model):
     _check_id = field_validator("id")(_identifier)
 
 
-class ToolStep(_Step):
+MAX_RETRIES = 5
+MAX_RETRY_WAIT = 300
+# What the steps that run because a step failed read about it: {"step", "message"}.
+FAILURE = "failure"
+
+
+class OnFailure(_Model):
+    """What a step does when it still fails (decision 0032): try again `retries` times,
+    `wait_seconds` apart, then stop the run, skip the step, or run `steps` in its place."""
+
+    retries: int = Field(default=0, ge=0, le=MAX_RETRIES)
+    wait_seconds: int = Field(default=30, ge=0, le=MAX_RETRY_WAIT)
+    then: Literal["stop", "skip", "steps"] = "stop"
+    # Empty while it's being built; preflight refuses to run it so.
+    steps: list[Step] = []
+
+    _steps_only_for_steps = model_validator(mode="after")(
+        lambda failure: _only_steps_run_steps(failure)
+    )
+
+
+def _only_steps_run_steps(failure: OnFailure) -> OnFailure:
+    if failure.then != "steps" and failure.steps:
+        raise ValueError(
+            f"steps run in a failed step's place only with then: steps, not {failure.then}"
+        )
+    return failure
+
+
+def _never_retried(step: _Recovers) -> _Recovers:
+    # Trying again could send, pay or delete twice.
+    if step.on_failure and step.on_failure.retries and getattr(step, "irreversible", False):
+        raise ValueError(
+            "a step that can't be undone is never tried again on its own; give it no retries"
+        )
+    return step
+
+
+class _Recovers(_Step):
+    """A step that does work which can fail for reasons outside the workflow."""
+
+    on_failure: OnFailure | None = None
+
+    _check_retries = model_validator(mode="after")(lambda step: _never_retried(step))
+
+
+def failure_policy(step: Step) -> OnFailure | None:
+    """What `step` does when it fails; None when a failure stops the run at once."""
+    return step.on_failure if isinstance(step, _Recovers) else None
+
+
+class ToolStep(_Recovers):
     kind: Literal["tool"] = "tool"
     tool: str
     args: dict[str, Any] = {}
@@ -164,7 +214,7 @@ class ToolStep(_Step):
     _check_save_as = field_validator("save_as")(lambda v: v if v is None else _identifier(v))
 
 
-class ScriptStep(_Step):
+class ScriptStep(_Recovers):
     """A fixed Python script, reviewed once when the workflow is saved. It
     reads earlier values from a ready-made `inputs` dict (never spliced into
     the code), and its result is the JSON it prints on its last line."""
@@ -177,7 +227,7 @@ class ScriptStep(_Step):
     _check_save_as = field_validator("save_as")(lambda v: v if v is None else _identifier(v))
 
 
-class LLMStep(_Step):
+class LLMStep(_Recovers):
     """One model call, no tools, that must return exactly `fields`."""
 
     kind: Literal["llm"] = "llm"
@@ -252,7 +302,7 @@ def _agent_is_consistent(step: AgentStep) -> AgentStep:
     return step
 
 
-class AgentStep(_Step):
+class AgentStep(_Recovers):
     """An agent working toward `goal` with tools, within limits (decision
     0028). "bounded" may call only `tools` and touch only the declared
     `folders` and `sites` -- what saving consents to; "high" has the
@@ -346,6 +396,8 @@ class LoopStep(_Step):
     # ends early and keeps what it collected so far.
     until: list[Condition] = []
     match: Match = "all"
+    # A pass that fails: stop the run, or record the item as skipped and go on to the next.
+    on_item_failure: Literal["stop", "skip"] = "stop"
 
     _check_item = field_validator("item")(_identifier)
     _check_save_as = field_validator("save_as")(lambda v: v if v is None else _identifier(v))
@@ -458,6 +510,8 @@ def child_lists(step: Step) -> list[tuple[str, list[Step]]]:
         return [*cases, ("otherwise", step.otherwise)]
     if isinstance(step, LoopStep):
         return [("steps", step.steps)]
+    if isinstance(step, _Recovers) and step.on_failure:
+        return [("fallback", step.on_failure.steps)]
     return []
 
 
@@ -498,124 +552,6 @@ def walk(steps: list[Step]) -> list[Placed]:
 
     visit(steps, ())
     return placed
-
-
-class _Scope:
-    """Save-time checks, walking the steps in the order they'd run."""
-
-    def __init__(self, inputs: list[WorkflowInput]) -> None:
-        self.number = 0
-        self.ids: set[str] = set()
-        self.taken = {i.name for i in inputs}
-        # Names that exist only inside a loop or one arm, for a clearer
-        # message when a later step reads one.
-        self.scoped: set[str] = set()
-        # A model or agent step's result is exactly its declared fields.
-        self.fields: dict[str, set[str]] = {}
-        self.agents = 0
-
-    def _field(self, reference: str, where: str) -> None:
-        root, _, rest = reference.partition(".")
-        fields = self.fields.get(root)
-        field_name = rest.split(".", 1)[0]
-        if fields is not None and rest and field_name not in fields:
-            raise ValueError(
-                f"{where} reads {reference!r}, but {root} only has " + ", ".join(sorted(fields))
-            )
-
-    def check(self, steps: list[Step], available: set[str], depth: int) -> set[str]:
-        """Returns the names available after `steps`."""
-        available = set(available)
-        for step in steps:
-            self.number += 1
-            where = f"step {self.number} ({step.title!r})"
-            if self.number > MAX_STEPS:
-                raise ValueError(f"a workflow has at most {MAX_STEPS} steps, nested ones included")
-            if step.id in self.ids:
-                raise ValueError(f"step {self.number}: id {step.id!r} is used twice")
-            self.ids.add(step.id)
-            for text in step_templates(step):
-                for bad in malformed_templates(text):
-                    raise ValueError(
-                        f"{where}: {bad} isn't a reference -- write "
-                        "{{name}} or {{name.field}}, with no other expressions"
-                    )
-            for reference in step_references(step):
-                if _root(reference) not in available:
-                    raise ValueError(
-                        f"{where} reads {reference!r}, which isn't an input or the result of "
-                        "an earlier step" + _scope_hint(reference, self.scoped)
-                    )
-                self._field(reference, where)
-            self.agents += isinstance(step, AgentStep)
-            if isinstance(step, (BranchStep, ChoiceStep, LoopStep)) and depth >= MAX_NESTING:
-                raise ValueError(f"{where}: branches and loops nest at most {MAX_NESTING} deep")
-            if isinstance(step, (BranchStep, ChoiceStep)):
-                available |= self._paths(step, available, depth)
-                continue
-            if isinstance(step, LoopStep):
-                self._loop(step, where, available, depth)
-            output = step_output(step)
-            if output is not None:
-                if output in self.taken:
-                    raise ValueError(f"step {self.number}: {output!r} is already taken")
-                self.taken.add(output)
-                available.add(output)
-                if isinstance(step, (LLMStep, AgentStep)):
-                    self.fields[output] = _result_fields(step)
-        return available
-
-    def _paths(self, step: BranchStep | ChoiceStep, available: set[str], depth: int) -> set[str]:
-        # Each path may produce the same names -- that's how a value set
-        # whichever way it went is read after the branch.
-        before = set(self.taken)
-        taken = set(before)
-        made: list[set[str]] = []
-        for _arm, steps in child_lists(step):
-            self.taken = set(before)
-            made.append(self.check(steps, available, depth + 1) - available)
-            taken |= self.taken
-        self.taken = taken
-        merged = set.intersection(*made)
-        self.scoped |= set.union(*made) - merged
-        return merged
-
-    def _loop(self, step: LoopStep, where: str, available: set[str], depth: int) -> None:
-        if step.item in self.taken:
-            raise ValueError(f"{where}: {step.item!r} is already taken, name the item differently")
-        # A body's names exist per item, so they're free again after the
-        # loop -- two loops in a row can both call their item `item`.
-        before = set(self.taken)
-        self.taken.add(step.item)
-        after_body = self.check(step.steps, available | {step.item}, depth + 1)
-        if step.collect is not None and _root(step.collect) in after_body - available:
-            self._field(step.collect, where)
-        if step.collect is not None and _root(step.collect) not in after_body - available:
-            raise ValueError(
-                f"{where} collects {step.collect!r}, which isn't the item or a result of "
-                "a step inside the loop"
-            )
-        for reference in (r for c in step.until for r in _condition_refs(c)):
-            if _root(reference) not in after_body:
-                raise ValueError(
-                    f"{where} stops early by {reference!r}, which isn't an input, the item or "
-                    "a result of a step before the loop or inside it"
-                )
-            self._field(reference, where)
-        self.scoped |= self.taken - before
-        self.taken = before
-
-
-def _result_fields(step: LLMStep | AgentStep) -> set[str]:
-    if isinstance(step, AgentStep):
-        return step.result_fields()
-    return {f.name for f in step.fields}
-
-
-def _scope_hint(reference: str, scoped: set[str]) -> str:
-    if _root(reference) in scoped:
-        return " here (it's made inside a loop, or in only one arm of a branch)"
-    return ""
 
 
 # A task's one autonomy switch (decision 0030), lowest first: a ceiling on
@@ -660,24 +596,34 @@ class Workflow(_Model):
     steps: list[Step] = Field(default_factory=list, max_length=MAX_STEPS)
     # None: the lowest level its steps need (`needed_autonomy`).
     autonomy: TaskAutonomy | None = None
+    # Run when a step fails and the run stops, not when a person said no (decision 0032).
+    after_failure: list[Step] = Field(default_factory=list, max_length=MAX_STEPS)
 
     def effective_autonomy(self) -> TaskAutonomy:
-        return self.autonomy or needed_autonomy(self.steps)
+        return self.autonomy or needed_autonomy(self.every_step())
+
+    def every_step(self) -> list[Step]:
+        """The steps of a run and those after a failed one, in the order they are numbered."""
+        return [*self.steps, *self.after_failure]
 
     @model_validator(mode="after")
     def _names_resolve_in_order(self) -> Workflow:
         if len({i.name for i in self.inputs}) != len(self.inputs):
             raise ValueError("input names must be unique")
+        # Here, not at the top: the checks read the step classes this module defines.
+        from .scope import _Scope
+
         scope = _Scope(self.inputs)
         scope.check(self.steps, {i.name for i in self.inputs}, 0)
+        scope.after_failure(self.after_failure, {i.name for i in self.inputs})
         if scope.agents and self.version < 2:
             raise ValueError("agent steps need a version 2 workflow")
-        above = steps_above(self.steps, self.autonomy) if self.autonomy else []
+        above = steps_above(self.every_step(), self.autonomy) if self.autonomy else []
         if above:
             names = ", ".join(f'"{step.title}"' for step in above)
             raise ValueError(
                 f"the task's autonomy is {self.autonomy}, which doesn't allow {names}; "
-                f"raise it to {needed_autonomy(self.steps)} or change those steps"
+                f"raise it to {needed_autonomy(self.every_step())} or change those steps"
             )
         return self
 
@@ -698,77 +644,11 @@ def current_shape(workflow: dict[str, Any] | None) -> dict[str, Any] | None:
         return workflow
 
 
-def workflow_error(exc: ValidationError, data: Any = None) -> str:
-    """One readable line per problem, located by step number (document
-    order, as the editor numbers steps -- which takes the submitted `data`
-    for a problem inside a branch or loop)."""
-    lines = []
-    for error in exc.errors():
-        number, loc = _locate(data, list(error["loc"]))
-        where = f"step {number}: " if number is not None else ""
-        field = ".".join(str(part) for part in loc)
-        message = str(error["msg"]).removeprefix("Value error, ")
-        lines.append(f"{where}{field + ': ' if field else ''}{message}")
-    return "; ".join(lines)
-
-
-_STEP_KINDS = frozenset(
-    {"tool", "script", "llm", "agent", "check", "approval", "branch", "choice", "loop"}
-)
-
-
-def _raw_arms(step: dict[str, Any]) -> list[tuple[tuple[Any, ...], list[Any]]]:
-    """Each step list of a stored step, with where it sits in the step's JSON."""
-    if step.get("kind") == "loop":
-        return [(("steps",), _as_list(step.get("steps")))]
-    cases = _as_list(step.get("cases")) if step.get("kind") == "choice" else []
-    paths = [
-        (("cases", index, "steps"), _as_list(case.get("steps") if isinstance(case, dict) else None))
-        for index, case in enumerate(cases)
-    ]
-    first = [] if step.get("kind") == "choice" else [(("then",), _as_list(step.get("then")))]
-    return [*first, *paths, (("otherwise",), _as_list(step.get("otherwise")))]
-
-
-def raw_child_lists(step: Any) -> list[list[Any]]:
-    """A stored step's own step lists, in document order, read from its JSON: a branch's arms,
-    a choice's paths, a loop's body."""
-    return [children for _where, children in _raw_arms(step)] if isinstance(step, dict) else []
-
-
-def _count(step: Any) -> int:
-    return 1 + sum(_count(child) for children in raw_child_lists(step) for child in children)
-
-
-def _as_list(value: Any) -> list[Any]:
-    return value if isinstance(value, list) else []
-
-
-def _locate(data: Any, loc: list[Any]) -> tuple[int | None, list[Any]]:
-    if len(loc) < 2 or loc[0] != "steps" or not isinstance(loc[1], int):
-        return None, loc
-    steps = _as_list(data.get("steps")) if isinstance(data, dict) else []
-    number = 0
-    loc = loc[1:]
-    while loc and isinstance(loc[0], int):
-        index = loc[0]
-        number += sum(_count(s) for s in steps[:index]) + 1
-        step = steps[index] if index < len(steps) else None
-        loc = loc[1:]
-        if loc and loc[0] in _STEP_KINDS:
-            loc = loc[1:]
-        arms = _raw_arms(step) if isinstance(step, dict) else []
-        for position, (where, children) in enumerate(arms):
-            inside = loc[len(where) :]
-            if tuple(loc[: len(where)]) == where and inside and isinstance(inside[0], int):
-                number += sum(_count(s) for _w, earlier in arms[:position] for s in earlier)
-                steps, loc = children, inside
-                break
-        else:
-            break
-    return number, loc
-
-
+OnFailure.model_rebuild()
+ToolStep.model_rebuild()
+ScriptStep.model_rebuild()
+LLMStep.model_rebuild()
+AgentStep.model_rebuild()
 BranchStep.model_rebuild()
 ChoiceCase.model_rebuild()
 ChoiceStep.model_rebuild()

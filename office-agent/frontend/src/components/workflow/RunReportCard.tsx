@@ -53,6 +53,68 @@ function HealedSection({
   );
 }
 
+const HOW: Record<NonNullable<RunReport["recovered"]>[number]["how"], string> = {
+  skipped: "skipped",
+  fallback: "ran the steps in its place",
+  item_skipped: "skipped the item",
+};
+
+/** What went wrong without stopping the run, and what ran because it stopped (decision 0032). */
+function FailuresSection({ report }: { report: RunReport }) {
+  const recovered = report.recovered ?? [];
+  const retried = report.retried ?? [];
+  const after = report.after_failure ?? [];
+  const tries = new Map(retried.map((item) => [`${item.step_id}:${item.iteration.join(".")}`, item.attempts]));
+  const triesOf = (item: { step_id: string; iteration: number[] }) => {
+    const count = tries.get(`${item.step_id}:${item.iteration.join(".")}`);
+    return count ? ` after ${count} tries` : "";
+  };
+  const worked = retried.filter((item) => item.worked);
+  return (
+    <>
+      {recovered.length > 0 && (
+        <div data-testid="report-recovered">
+          <div className="font-medium">Failed without stopping the run</div>
+          {recovered.map((item, index) => (
+            <div key={index} className="text-[13px]">
+              {item.title}
+              {where(item.iteration)}: {HOW[item.how]}
+              {triesOf(item)}
+              {item.error && <span className="text-[var(--muted)]"> -- {item.error}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+      {worked.length > 0 && (
+        <div>
+          <div className="font-medium">Worked when tried again</div>
+          {worked.map((item, index) => (
+            <div key={index} className="text-[13px]">
+              {item.title}
+              {where(item.iteration)}: on try {item.attempts}
+            </div>
+          ))}
+        </div>
+      )}
+      {after.length > 0 && (
+        <div>
+          <div className="font-medium">Ran because the run failed</div>
+          {after.map((item, index) => (
+            <div key={index} className="text-[13px]">
+              {item.title}
+              {item.status === "failed" ? (
+                <span className="text-[var(--danger)]"> -- it failed too: {item.error}</span>
+              ) : (
+                <span className="text-[var(--muted)]"> -- done</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 /** What a finished run did (decision 0030), so a run is trusted by its result. */
 export function RunReportCard({
   triggerId,
@@ -93,9 +155,10 @@ export function RunReportCard({
       {report.loops.map((loop) => (
         <div key={loop.step_id}>
           {loop.title}: {loop.done} of {loop.total} done
+          {loop.skipped ? `, ${loop.skipped} skipped` : ""}
         </div>
       ))}
-      {report.not_done.length === 0 && <div>Every step was done.</div>}
+      {report.not_done.length === 0 && (report.recovered ?? []).length === 0 && <div>Every step was done.</div>}
       {report.not_done.length > 0 && (
         <div>
           <div className="font-medium">Not done</div>
@@ -110,6 +173,7 @@ export function RunReportCard({
           ))}
         </div>
       )}
+      <FailuresSection report={report} />
       {report.assumed.length > 0 && (
         <div>
           <div className="font-medium">Decided by the agent</div>

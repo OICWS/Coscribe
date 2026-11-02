@@ -2,7 +2,7 @@ import type { ToolInfo } from "../types/settings";
 import type { Condition, Operand, StepKind, Workflow, WorkflowStep } from "../types/workflow";
 import { toolLabel } from "./toolLabels";
 import { stepOutput } from "./workflowLabels";
-import { allSteps, listAt, mapSteps, placeSteps, withList, type ListRef } from "./workflowTree";
+import { allSteps, everyStep, listAt, mapWorkflow, placeSteps, withList, type ListRef } from "./workflowTree";
 
 // Mirrors workflow_spec/spec.py's IDENTIFIER.
 export const IDENTIFIER = /^[a-z][a-z0-9_]{0,39}$/;
@@ -247,13 +247,10 @@ function renameInStep(step: WorkflowStep, from: string, to: string): WorkflowSte
  * that use it. */
 export function renameValue(workflow: Workflow, from: string, to: string, afterStepId: string | null): Workflow {
   if (from === to) return workflow;
-  const placed = placeSteps(workflow.steps);
+  const placed = placeSteps(everyStep(workflow));
   const after = placed.find((p) => p.step.id === afterStepId)?.number ?? 0;
   const later = new Set(placed.filter((p) => p.number > after).map((p) => p.step.id));
-  return {
-    ...workflow,
-    steps: mapSteps(workflow.steps, (step) => (later.has(step.id) ? renameInStep(step, from, to) : step)),
-  };
+  return mapWorkflow(workflow, (step) => (later.has(step.id) ? renameInStep(step, from, to) : step));
 }
 
 export const EMPTY_WORKFLOW: Workflow = { version: 1, inputs: [], steps: [] };

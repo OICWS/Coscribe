@@ -3,10 +3,13 @@ between them. Pure data and string handling, so the schedule store (`tools`) can
 and `workflows` can run it without either importing the other."""
 
 from .inputs import RELATIVE_DATES, input_values
+from .locate import raw_child_lists, workflow_error
 from .refs import conditions_hold, evaluate, render_text, render_value, resolve
 from .spec import (
     AGENT_OUTCOME_FIELDS,
     AGENT_REPORT_FIELD,
+    FAILURE,
+    MAX_RETRY_WAIT,
     TASK_AUTONOMY_LEVELS,
     AgentStep,
     ApprovalStep,
@@ -15,6 +18,7 @@ from .spec import (
     ChoiceStep,
     LLMStep,
     LoopStep,
+    OnFailure,
     OutputField,
     Placed,
     ScriptStep,
@@ -25,27 +29,29 @@ from .spec import (
     child_lists,
     choose_arm,
     current_shape,
+    failure_policy,
     needed_autonomy,
     parse_workflow,
-    raw_child_lists,
     step_autonomy,
     step_output,
     step_references,
     steps_above,
     walk,
-    workflow_error,
 )
 
 __all__ = [
     "AGENT_OUTCOME_FIELDS",
     "AGENT_REPORT_FIELD",
     "AgentStep",
+    "FAILURE",
+    "MAX_RETRY_WAIT",
     "ApprovalStep",
     "BranchStep",
     "CheckStep",
     "ChoiceStep",
     "LLMStep",
     "LoopStep",
+    "OnFailure",
     "RELATIVE_DATES",
     "OutputField",
     "Placed",
@@ -60,6 +66,7 @@ __all__ = [
     "conditions_hold",
     "current_shape",
     "evaluate",
+    "failure_policy",
     "input_values",
     "needed_autonomy",
     "parse_workflow",

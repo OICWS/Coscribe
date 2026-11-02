@@ -358,7 +358,7 @@ variable for.
 | `tool` | no | Calls one built-in tool with fixed arguments; `{{name}}` references fill in earlier values. |
 | `script` | no | Runs a fixed Python script, reviewed once when saved. Earlier values arrive as an `inputs` dict (injected as data, never spliced into the code); the result is the JSON its last output line prints. |
 | `llm` | one call, no tools | Returns exactly the declared fields (`text`/`number`/`boolean`/`list`) at temperature 0. A wrong answer is sent back once with what was wrong, then the step fails. Uses forced structured output where the provider allows it, else asks for bare JSON (DeepSeek's thinking mode refuses forced tool calls). |
-| `check` | no | Structured comparisons (`eq`, `ne`, `gt`, `ge`, `lt`, `le`, `contains`, `not_empty`) on references, counts (`{"count": "matches"}`) or literals. Any that fails stops the run, recording what it compared. |
+| `check` | no | Structured comparisons (`eq`, `ne`, `gt`, `ge`, `lt`, `le`, `contains`, `not_empty`) on references, counts (`{"count": "matches"}`) or literals. Any that fails stops the run (or skips the item, in a loop set to), recording what it compared. |
 | `approval` | no | Pauses until a person approves -- only when its `when` condition holds, if it has one. |
 | `branch` | no | Runs its `then` steps when a condition holds, else its `otherwise` steps. |
 | `loop` | no | Runs its steps once per item of a list, in order, with the item as `{{item}}` (or the name you give it); `collect` keeps one value per pass, saved as a list. A list longer than `max_items` (default 50, at most 200) stops the run instead of being cut short. |
@@ -379,6 +379,14 @@ nested ones included, in messages, the editor and the run view. Blocks
 nest at most three deep; a workflow has at most 100 steps in all. Reading
 a model step's field it doesn't declare (`summary.text` when it returns
 only `summary`) is refused at save time too.
+
+A step that does work (a tool, a script, a model or an agent step) can
+say what happens when it fails: try again a few times with a wait
+between, then stop the run, skip the step, or run other steps in its
+place. A loop can skip an item a step fails on, and the steps under
+`after_failure` run when a run fails. A step that can't be undone is
+never tried again on its own, and a skipped or replaced step is listed in
+the run's report, never counted as done. Decision 0032 has the rules.
 
 Every step's status, timing, output (trimmed) and check results are
 recorded on the run as it goes. A run that stops can be taken further:

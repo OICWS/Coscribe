@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { withFailure } from "../../lib/failureWords";
 import { inputClass } from "../../lib/formStyles";
 import { IDENTIFIER } from "../../lib/workflowEdit";
 import type { ToolInfo } from "../../types/settings";
@@ -184,7 +185,14 @@ export function IrreversibleToggle<T extends ToolStep | AgentStep>({
       <ToggleSwitch
         on={step.irreversible}
         label="Can't be undone"
-        onClick={() => onChange({ ...step, irreversible: !step.irreversible })}
+        // A step that can't be undone is never tried again on its own (decision 0032).
+        onClick={() =>
+          onChange(
+            step.irreversible
+              ? { ...step, irreversible: false }
+              : withFailure({ ...step, irreversible: true }, { retries: 0 }),
+          )
+        }
       />
       <span>
         Can’t be undone

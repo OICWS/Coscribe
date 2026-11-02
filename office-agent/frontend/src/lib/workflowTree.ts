@@ -1,11 +1,12 @@
-import type { BlockStep, Workflow, WorkflowStep } from "../types/workflow";
+import type { BlockStep, RecoveringStep, Workflow, WorkflowStep } from "../types/workflow";
 
 // Branches and loops hold their own step lists. A list is named by the
 // block that holds it and which of its lists it is; ids are unique across
 // the whole workflow, so that's enough to find it.
 
-/** A choice's paths are "case:0", "case:1"..., then "otherwise". */
-export type Arm = "then" | "otherwise" | "steps" | `case:${number}`;
+/** A choice's paths are "case:0", "case:1"..., then "otherwise". "fallback" is what runs in a
+ * failed step's place; "after_failure" is the workflow's own list for a failed run. */
+export type Arm = "then" | "otherwise" | "steps" | "fallback" | "after_failure" | `case:${number}`;
 
 export interface ListRef {
   parent: string | null;
@@ -13,13 +14,25 @@ export interface ListRef {
 }
 
 export const ROOT: ListRef = { parent: null, arm: null };
+export const AFTER_FAILURE: ListRef = { parent: null, arm: "after_failure" };
 
 export function listKey(ref: ListRef): string {
-  return ref.parent === null ? "root" : `${ref.parent}:${ref.arm}`;
+  if (ref.parent === null) return ref.arm === "after_failure" ? "after_failure" : "root";
+  return `${ref.parent}:${ref.arm}`;
 }
 
 export function isBlock(step: WorkflowStep): step is BlockStep {
   return step.kind === "branch" || step.kind === "choice" || step.kind === "loop";
+}
+
+export function canRecover(step: WorkflowStep): step is RecoveringStep {
+  return step.kind === "tool" || step.kind === "script" || step.kind === "llm" || step.kind === "agent";
+}
+
+/** The steps a run goes through and those after a failed one, in the order they are numbered
+ * (workflow_spec's Workflow.every_step). */
+export function everyStep(workflow: Workflow): WorkflowStep[] {
+  return [...workflow.steps, ...(workflow.after_failure ?? [])];
 }
 
 export function childLists(step: WorkflowStep): [Arm, WorkflowStep[]][] {
@@ -36,11 +49,15 @@ export function childLists(step: WorkflowStep): [Arm, WorkflowStep[]][] {
     ];
   }
   if (step.kind === "loop") return [["steps", step.steps]];
+  if (canRecover(step) && step.on_failure) return [["fallback", step.on_failure.steps]];
   return [];
 }
 
 /** `step` with the list at `arm` replaced. */
-function withArm(step: BlockStep, arm: Arm, next: WorkflowStep[]): WorkflowStep {
+function withArm(step: WorkflowStep, arm: Arm, next: WorkflowStep[]): WorkflowStep {
+  if (arm === "fallback" && canRecover(step) && step.on_failure) {
+    return { ...step, on_failure: { ...step.on_failure, steps: next } };
+  }
   if (step.kind === "choice" && arm.startsWith("case:")) {
     const at = Number(arm.slice(5));
     return { ...step, cases: step.cases.map((c, i) => (i === at ? { ...c, steps: next } : c)) };
@@ -48,10 +65,20 @@ function withArm(step: BlockStep, arm: Arm, next: WorkflowStep[]): WorkflowStep 
   return { ...step, [arm]: next } as WorkflowStep;
 }
 
-/** `step` with every list it holds passed through `change`. */
-function mapArms(step: BlockStep, change: (list: WorkflowStep[]) => WorkflowStep[]): WorkflowStep {
+/** `step` with each list it holds replaced by `change`'s. */
+export function withChildren(
+  step: WorkflowStep,
+  change: (arm: Arm, list: WorkflowStep[]) => WorkflowStep[],
+): WorkflowStep {
   let next: WorkflowStep = step;
-  for (const [arm, list] of childLists(step)) next = withArm(next as BlockStep, arm, change(list));
+  for (const [arm, list] of childLists(step)) next = withArm(next, arm, change(arm, list));
+  return next;
+}
+
+/** `step` with every list it holds passed through `change`. */
+function mapArms(step: WorkflowStep, change: (list: WorkflowStep[]) => WorkflowStep[]): WorkflowStep {
+  let next: WorkflowStep = step;
+  for (const [arm, list] of childLists(step)) next = withArm(next, arm, change(list));
   return next;
 }
 
@@ -81,7 +108,7 @@ export function placeSteps(steps: WorkflowStep[]): PlacedStep[] {
 }
 
 export function allSteps(workflow: Workflow): WorkflowStep[] {
-  return placeSteps(workflow.steps).map((placed) => placed.step);
+  return placeSteps(everyStep(workflow)).map((placed) => placed.step);
 }
 
 /** How many steps a block holds, all the way down. */
@@ -90,7 +117,7 @@ export function countInside(step: WorkflowStep): number {
 }
 
 export function listAt(workflow: Workflow, ref: ListRef): WorkflowStep[] {
-  if (ref.parent === null) return workflow.steps;
+  if (ref.parent === null) return ref.arm === "after_failure" ? (workflow.after_failure ?? []) : workflow.steps;
   const parent = allSteps(workflow).find((step) => step.id === ref.parent);
   const found = parent ? childLists(parent).find(([arm]) => arm === ref.arm) : undefined;
   return found ? found[1] : [];
@@ -98,20 +125,36 @@ export function listAt(workflow: Workflow, ref: ListRef): WorkflowStep[] {
 
 function replaceList(steps: WorkflowStep[], ref: ListRef, next: WorkflowStep[]): WorkflowStep[] {
   return steps.map((step) => {
-    if (!isBlock(step)) return step;
     if (step.id === ref.parent && ref.arm) return withArm(step, ref.arm, next);
     return mapArms(step, (list) => replaceList(list, ref, next));
   });
 }
 
 export function withList(workflow: Workflow, ref: ListRef, next: WorkflowStep[]): Workflow {
-  if (ref.parent === null) return { ...workflow, steps: next };
-  return { ...workflow, steps: replaceList(workflow.steps, ref, next) };
+  if (ref.parent === null) {
+    return ref.arm === "after_failure" ? { ...workflow, after_failure: next } : { ...workflow, steps: next };
+  }
+  const after = workflow.after_failure;
+  return {
+    ...workflow,
+    steps: replaceList(workflow.steps, ref, next),
+    ...(after ? { after_failure: replaceList(after, ref, next) } : {}),
+  };
 }
 
 /** Applies `change` to every step, children first. */
-export function mapSteps(steps: WorkflowStep[], change: (step: WorkflowStep) => WorkflowStep): WorkflowStep[] {
-  return steps.map((step) => change(isBlock(step) ? mapArms(step, (list) => mapSteps(list, change)) : step));
+function mapSteps(steps: WorkflowStep[], change: (step: WorkflowStep) => WorkflowStep): WorkflowStep[] {
+  return steps.map((step) => change(mapArms(step, (list) => mapSteps(list, change))));
+}
+
+/** The workflow with `change` applied to every step, those after a failed run too. */
+export function mapWorkflow(workflow: Workflow, change: (step: WorkflowStep) => WorkflowStep): Workflow {
+  const after = workflow.after_failure;
+  return {
+    ...workflow,
+    steps: mapSteps(workflow.steps, change),
+    ...(after ? { after_failure: mapSteps(after, change) } : {}),
+  };
 }
 
 // -- What a step can read -------------------------------------------------------
@@ -127,9 +170,13 @@ function outputNames(step: WorkflowStep): string[] {
   return output ? [output] : [];
 }
 
+/** What the steps that run because a step failed read about it (workflow_spec's FAILURE). */
+const FAILURE_NAMES = ["failure", "failure.step", "failure.message"];
+
 /** Names readable at each position of each list ("<listKey>#<index>"),
- * scoped like workflow_spec/spec.py: a loop's item and body results only
- * inside it, a branch's or choice's results after it only when every path makes them.
+ * scoped like workflow_spec/scope.py: a loop's item and body results only
+ * inside it, a branch's or choice's results after it only when every path makes them,
+ * a step's result after it only when a failure can't skip it.
  * Model steps' fields are listed too, for pickers. */
 export function scopes(workflow: Workflow): Map<string, string[]> {
   const at = new Map<string, string[]>();
@@ -145,16 +192,22 @@ export function scopes(workflow: Workflow): Map<string, string[]> {
         return;
       }
       if (step.kind === "loop") check(step.steps, { parent: step.id, arm: "steps" }, [...names, step.item]);
+      const then = canRecover(step) ? step.on_failure?.then : undefined;
+      if (then === "skip") return;
+      if (then === "steps" && canRecover(step) && step.on_failure) {
+        const inPlace = { parent: step.id, arm: "fallback" as const };
+        const made = check(step.on_failure.steps, inPlace, [...names, ...FAILURE_NAMES]);
+        names = [...names, ...outputNames(step).filter((name) => made.includes(name))];
+        return;
+      }
       names = [...names, ...outputNames(step)];
     });
     at.set(`${listKey(ref)}#${steps.length}`, names);
     return names;
   };
-  check(
-    workflow.steps,
-    ROOT,
-    workflow.inputs.map((input) => input.name),
-  );
+  const inputs = workflow.inputs.map((input) => input.name);
+  check(workflow.steps, ROOT, inputs);
+  check(workflow.after_failure ?? [], AFTER_FAILURE, [...inputs, ...FAILURE_NAMES]);
   return at;
 }
 

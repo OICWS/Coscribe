@@ -2,10 +2,12 @@ import { useState } from "react";
 import { controlClass, inputClass } from "../../lib/formStyles";
 import { toolLabel } from "../../lib/toolLabels";
 import { IDENTIFIER } from "../../lib/workflowEdit";
+import { canRecover } from "../../lib/workflowTree";
 import type { ToolParam } from "../../types/settings";
 import type { LLMStep, LoopStep, ScriptStep, ToolStep, WorkflowStep } from "../../types/workflow";
 import { AgentEditor } from "./AgentEditor";
 import { ApprovalEditor, BranchEditor, CheckEditor, ChoiceEditor, LoopUntilEditor } from "./ConditionEditors";
+import { FailureEditor, ItemFailureEditor } from "./FailureEditor";
 import {
   type EditorContext,
   type EditorProps,
@@ -394,6 +396,8 @@ export function StepFields({ step, onChange, context }: EditorProps<WorkflowStep
         ))}
       </datalist>
       {body}
+      {canRecover(step) && <FailureEditor step={step} onChange={onChange} />}
+      {step.kind === "loop" && <ItemFailureEditor step={step} onChange={onChange} />}
     </>
   );
 }

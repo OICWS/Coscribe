@@ -22,6 +22,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from ..workflow_spec import (
+    FAILURE,
     RELATIVE_DATES,
     AgentStep,
     LoopStep,
@@ -105,7 +106,7 @@ def granted_by(workflow: Workflow) -> dict[str, list[str]]:
     defaults = _known_defaults(workflow)
     folders: list[str] = []
     sites: list[str] = []
-    for placed in walk(workflow.steps):
+    for placed in walk(workflow.every_step()):
         step = placed.step
         if isinstance(step, AgentStep):
             folders += [f for f in step.folders if f not in folders]
@@ -164,7 +165,7 @@ def _unknown_sites(workflow: Workflow) -> list[str]:
     """Steps that open a site taken from an input or an earlier step."""
     defaults = _known_defaults(workflow)
     titles: list[str] = []
-    for placed in walk(workflow.steps):
+    for placed in walk(workflow.every_step()):
         step = placed.step
         if isinstance(step, ToolStep) and step.tool in URL_TOOLS and step.args.get("url"):
             if _literal(step.args.get("url"), defaults) is None:
@@ -190,8 +191,10 @@ def untrusted_agent_steps(workflow: Workflow, outside_tools: Collection[str]) ->
     response, a connector's data -- through their references: they get
     read-only tools unless the person grants more (decision 0028). A value
     is from outside when a step calling one of `outside_tools` made it, or
-    a step that read such a value did, a loop's item over it included."""
-    tainted: set[str] = set()
+    a step that read such a value did, a loop's item over it included, and
+    what a failed step said (decision 0032)."""
+    # A failure's message can quote what a page or a service answered (decision 0032).
+    tainted: set[str] = {FAILURE}
     found: list[str] = []
 
     def visit(steps: list[Step]) -> None:
@@ -215,7 +218,7 @@ def untrusted_agent_steps(workflow: Workflow, outside_tools: Collection[str]) ->
             if makes and (reads or outside):
                 tainted.add(makes)
 
-    visit(workflow.steps)
+    visit(workflow.every_step())
     return found
 
 
@@ -230,7 +233,7 @@ def _agents(workflow: Workflow, untrusted: list[str]) -> list[dict[str, Any]]:
             "max_steps": placed.step.max_steps,
             "read_only": placed.step.id in untrusted,
         }
-        for placed in walk(workflow.steps)
+        for placed in walk(workflow.every_step())
         if isinstance(placed.step, AgentStep)
     ]
 
@@ -251,7 +254,7 @@ def summarize(
     sites = list(dict.fromkeys([*named["sites"], *((granted or {}).get("sites") or [])]))
     scripts: list[str] = []
     notable: list[dict[str, str]] = []
-    for placed in walk(workflow.steps):
+    for placed in walk(workflow.every_step()):
         step = placed.step
         if isinstance(step, ScriptStep) or (
             isinstance(step, ToolStep) and step.tool in SCRIPT_TOOLS

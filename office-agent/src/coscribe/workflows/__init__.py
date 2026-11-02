@@ -13,6 +13,7 @@ from ..workflow_spec import (
 from .agent_step import AgentCall, AgentReply, AgentRequest, AgentRunner
 from .catalog import describe_params, tool_description
 from .engine import RunOutcome, StepContext, StepRecord, WorkflowNotRunnable, WorkflowRun
+from .graph_view import compiled_graph
 from .heal_revision import heal_fixes, heals_to_revise
 from .permissions import (
     brings_outside_content,
@@ -42,6 +43,7 @@ __all__ = [
     "WorkflowNotRunnable",
     "WorkflowRun",
     "brings_outside_content",
+    "compiled_graph",
     "describe_params",
     "draft_workflow",
     "granted_by",

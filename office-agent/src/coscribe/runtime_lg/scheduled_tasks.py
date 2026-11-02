@@ -252,7 +252,7 @@ async def _run_workflow(
             return "completed", None
     if outcome.status == "waiting":
         return "needs_approval", None
-    titles = {placed.step.id: placed.step.title for placed in walk(workflow.steps)}
+    titles = {placed.step.id: placed.step.title for placed in walk(workflow.every_step())}
     title = titles.get(outcome.step_id or "", "A step")
     return "failed", f"{title}: {outcome.error}"
 
@@ -292,7 +292,8 @@ def build_investigation_prompt(trigger: ScheduledTrigger, run: ScheduledRun, req
     """What a conversation looking into a failed workflow run starts from."""
     titles: dict[str, str] = {}
     if trigger.workflow is not None:
-        titles = {p.step.id: p.step.title for p in walk(parse_workflow(trigger.workflow).steps)}
+        steps = parse_workflow(trigger.workflow).every_step()
+        titles = {p.step.id: p.step.title for p in walk(steps)}
     failed = next((s for s in reversed(run.steps) if s.get("status") == "failed"), None)
     step_id = str(failed.get("step_id")) if failed else ""
     last_ok = next((r for r in reversed(trigger.runs) if r.status == "completed"), None)

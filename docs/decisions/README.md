@@ -40,5 +40,6 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0027](0027-an-artifact-is-what-coscribe-made-from-a-source-it-owns.md) | An artifact is what coscribe made from a source it owns |
 | [0028](0028-a-workflow-step-chooses-its-autonomy.md) | A workflow step chooses its autonomy; the graph stays fixed (proposed) |
 | [0029](0029-a-test-run-stops-before-a-step-that-cant-be-taken-back.md) | A test run stops before a step that can't be taken back (proposed) |
-| [0030](0030-a-task-has-one-autonomy-setting-and-every-run-a-report.md) | A task has one autonomy setting, and every run a report (accepted) |
+| [0030](0030-a-task-has-one-autonomy-setting-and-every-run-a-report.md) | A task has one autonomy setting, and every run a report (accepted; narrowed by 0032) |
 | [0031](0031-a-workflow-asks-for-typed-inputs-and-goes-one-of-several-ways.md) | A workflow asks for typed inputs and goes one of several ways (proposed) |
+| [0032](0032-a-step-says-what-happens-when-it-fails.md) | A step says what happens when it fails (proposed) |

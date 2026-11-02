@@ -248,6 +248,16 @@ export interface WorkflowStepRecord {
   iteration: number[];
   permission: WorkflowPermission | null;
   agent: WorkflowAgentActivity | null;
+  /**
+   * How many times it was tried, retries included (decision 0032); absent on older
+   * runs.
+   */
+  attempts?: number;
+  /**
+   * A failure that didn't stop the run: the step was skipped, steps ran in its
+   * place, or its loop skipped the item.
+   */
+  recovered?: "skipped" | "fallback" | "item_skipped" | null;
 }
 
 /** One step of a workflow run on this thread started, finished, failed or began waiting. */

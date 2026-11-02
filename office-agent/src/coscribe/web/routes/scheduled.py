@@ -35,6 +35,7 @@ from ...workflows import (
     ChoiceStep,
     LoopStep,
     brings_outside_content,
+    compiled_graph,
     heal_fixes,
     heals_to_revise,
     parse_workflow,
@@ -83,6 +84,15 @@ def _workflow_routes(router: APIRouter, state: AppState) -> None:
         except ValidationError as exc:
             return JSONResponse({"error": workflow_error(exc, body.workflow)}, status_code=400)
         return JSONResponse({"workflow": workflow.model_dump(mode="json")})
+
+    async def workflow_graph(body: WorkflowCheck) -> JSONResponse:
+        try:
+            workflow = parse_workflow(body.workflow)
+        except ValidationError as exc:
+            return JSONResponse({"error": workflow_error(exc, body.workflow)}, status_code=400)
+        return JSONResponse(compiled_graph(workflow))
+
+    router.add_api_route("/api/workflows/graph", workflow_graph, methods=["POST"])
 
     def _tool_facts() -> tuple[dict[str, str], set[str]]:
         """Each tool's risk tier, and the tools that bring in outside

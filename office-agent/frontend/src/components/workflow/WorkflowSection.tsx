@@ -1,15 +1,17 @@
 import { useState } from "react";
 import type { Workflow } from "../../types/workflow";
 import { AutonomySetting } from "./AutonomySetting";
+import { CompiledGraph } from "./CompiledGraph";
 import { WorkflowCanvas } from "./WorkflowCanvas";
 import { ViewToggle } from "./ViewToggle";
 import { WorkflowEditor, type Persist } from "./WorkflowEditor";
 
-type View = "canvas" | "edit";
+type View = "canvas" | "edit" | "graph";
 
 const VIEWS: { view: View; label: string }[] = [
   { view: "canvas", label: "Overview" },
   { view: "edit", label: "Edit steps" },
+  { view: "graph", label: "Compiled graph" },
 ];
 
 /** A workflow on its task or draft page: the canvas to look at, or the
@@ -37,7 +39,8 @@ export function WorkflowSection({
   return (
     <div className="flex flex-col gap-3">
       <ViewToggle label="Workflow view" views={VIEWS} value={view} onChange={setView} />
-      {view === "canvas" ? (
+      {view === "graph" && <CompiledGraph workflow={workflow} />}
+      {view === "canvas" && (
         <WorkflowCanvas
           workflow={workflow}
           onOpenStep={(stepId) => {
@@ -45,9 +48,8 @@ export function WorkflowSection({
             setView("edit");
           }}
         />
-      ) : (
-        <WorkflowEditor workflow={workflow} persist={persist} focusStepId={focus} />
       )}
+      {view === "edit" && <WorkflowEditor workflow={workflow} persist={persist} focusStepId={focus} />}
     </div>
   );
 }

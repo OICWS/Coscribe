@@ -260,7 +260,8 @@ def summarize_workflow_run(
     thread holds no conversation to read, but whose step records say what
     each step did."""
     # One record per step per loop pass; each pass that ran counts.
-    steps = {step.get("id"): step for step in _all_steps(workflow.get("steps", []))}
+    every = [*workflow.get("steps", []), *workflow.get("after_failure", [])]
+    steps = {step.get("id"): step for step in _all_steps(every)}
     output_paths: list[str] = []
     tool_counts: dict[str, int] = {}
     connectors: dict[str, dict[str, int]] = {}
