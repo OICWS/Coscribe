@@ -159,7 +159,8 @@ its autonomy.
 
 The AI drafts a workflow from a conversation, picking the lowest level that
 works, and test-runs it before the user saves it. A failure climbs one
-capped layer at a time: the step's own exception handler, then the
+capped layer at a time: the step's own failure setting (try again, skip it,
+or run other steps in its place; decision 0032), then the
 investigation of the run in a new conversation (which exists now), then the
 repair comes back as a fixed branch and a test case for the user to save, so
 a workflow hardens as it runs. The code module never runs inside a workflow
