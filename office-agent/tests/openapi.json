@@ -4456,6 +4456,89 @@
         "summary": "Stop Workflow Run"
       }
     },
+    "/api/scheduled-tasks/{trigger_id}/versions": {
+      "get": {
+        "operationId": "task_versions_api_scheduled_tasks__trigger_id__versions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trigger_id",
+            "required": true,
+            "schema": {
+              "title": "Trigger Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Task Versions"
+      }
+    },
+    "/api/scheduled-tasks/{trigger_id}/versions/{number}/restore": {
+      "post": {
+        "operationId": "restore_task_version_api_scheduled_tasks__trigger_id__versions__number__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trigger_id",
+            "required": true,
+            "schema": {
+              "title": "Trigger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "title": "Number",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Task Version"
+      }
+    },
     "/api/screenshots/{name}": {
       "get": {
         "operationId": "get_screenshot_api_screenshots__name__get",

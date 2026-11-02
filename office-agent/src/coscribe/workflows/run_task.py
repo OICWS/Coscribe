@@ -129,7 +129,7 @@ class TaskSteps:
             results = await self._called(step, task, values=state["values"], it=it, thread=thread)
         except GraphBubbleUp:
             raise
-        except Exception as exc:  # noqa: BLE001 -- recorded, then recovered from or raised
+        except (StepFailed, ValueError, KeyError, OSError) as exc:
             recovered = await self.builder.recover(step, state, it, started, tries, exc)
             way = recovered.get("attempts", {}).get(step.id, {})
             if way.get("route") == "retry":

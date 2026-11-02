@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Any
 
 MAX_VERSIONS = 50
-HOWS = ("created", "edited", "conversation", "restored", "found")
 
 
 def _same(left: Any, right: Any) -> bool:

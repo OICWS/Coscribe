@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from ..workflow_spec import LoopStep, RememberStep, Workflow, walk
+from ..workflow_spec import LoopStep, RememberStep, Step, Workflow, parse_workflow, walk
 from .pause_steps import NO_ANSWER
 from .remember_steps import NOTHING_TO_DO
 
@@ -25,11 +25,33 @@ def _seconds(started: str | None, finished: str | None) -> float | None:
         return None
 
 
+def _every_step(workflow: Workflow, called: dict[str, Any]) -> dict[str, Step]:
+    """Each step by the id its records carry: a called task's as `<step>/<its step>` (decision
+    0035), from the definition the run recorded."""
+    steps = {placed.step.id: placed.step for placed in walk(workflow.every_step())}
+    for path, info in called.items():
+        try:
+            inner = parse_workflow(info.get("workflow"))
+        except ValueError:
+            continue
+        steps |= {f"{path}/{p.step.id}": p.step for p in walk(inner.every_step())}
+    return steps
+
+
+def _tasks_ran(called: dict[str, Any], records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The tasks the run's steps ran, each with the version it ran and how its step ended."""
+    status = {str(r.get("step_id")): r.get("status") for r in records}
+    return [{"step_id": path, "task": info.get("task"), "name": info.get("name"),
+             "version": info.get("version"), "status": status.get(path)}
+            for path, info in called.items()]  # fmt: skip
+
+
 def run_report(
     workflow: Workflow,
     records: list[dict[str, Any]],
     started_at: str | None = None,
     finished_at: str | None = None,
+    called: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """{"autonomy", "loops": [{"step_id", "title", "done", "total", "skipped"}],
     "not_done": [{"step_id", "title", "iteration", "status", "error"}],
@@ -42,9 +64,10 @@ def run_report(
     "after_failure": [{"step_id", "title", "status", "error"}],
     "remembered": [{"step_id", "title", "name", "label", "value"}],
     "ended": {"step_id", "title"} | None,
+    "tasks": [{"step_id", "task", "name", "version", "status"}],
     "tool_calls", "tokens", "cached_tokens", "seconds"}. A loop's `done` counts the items that
     worked. A step that was removed from the workflow after the run keeps its id as title."""
-    steps = {placed.step.id: placed.step for placed in walk(workflow.every_step())}
+    steps = _every_step(workflow, called or {})
     after = {placed.step.id for placed in walk(workflow.after_failure)}
 
     def title(step_id: str) -> str:
@@ -52,11 +75,8 @@ def run_report(
         return step.title if step is not None else step_id
 
     loops, not_done, assumed, healed, irreversible = [], [], [], [], []
-    # Ask steps no one answered in time, which went on with their defaults (decision 0033).
-    unanswered: list[dict[str, Any]] = []
-    recovered: list[dict[str, Any]] = []
-    retried: list[dict[str, Any]] = []
-    after_failure: list[dict[str, Any]] = []
+    # `unanswered`: ask steps no one answered in time, which went on with defaults (decision 0033).
+    unanswered, recovered, retried, after_failure = [], [], [], []
     # What the run keeps for the next one, kept only if it finished, and the check that ended it
     # with nothing to do (decision 0034).
     remembered: list[dict[str, Any]] = []
@@ -120,6 +140,7 @@ def run_report(
         "after_failure": after_failure,
         "remembered": remembered,
         "ended": ended,
+        "tasks": _tasks_ran(called or {}, records),
         "tool_calls": tool_calls,
         "tokens": tokens,
         "cached_tokens": cached,

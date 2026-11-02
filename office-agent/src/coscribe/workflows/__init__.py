@@ -17,7 +17,9 @@ from .graph_view import compiled_graph
 from .heal_revision import heal_fixes, heals_to_revise
 from .pause_steps import answer_problem, paused_at, wake_due
 from .permissions import (
+    allowed_to_run,
     brings_outside_content,
+    called_permissions,
     granted_by,
     sites_in,
     summarize,
@@ -51,9 +53,11 @@ __all__ = [
     "WorkflowDraft",
     "WorkflowNotRunnable",
     "WorkflowRun",
+    "allowed_to_run",
     "answer_problem",
     "brings_outside_content",
     "callable_tasks",
+    "called_permissions",
     "compiled_graph",
     "describe_params",
     "draft_workflow",

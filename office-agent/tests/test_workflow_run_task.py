@@ -26,6 +26,7 @@ from coscribe.workflows import (
     TaskSource,
     WorkflowRun,
     pause_steps,
+    run_report,
     run_test,
 )
 
@@ -177,6 +178,12 @@ async def test_a_step_runs_another_task_and_reads_its_results(tmp_path: Path) ->
     assert world.store.memory.values(called) == {"last": "2026-10"}
     assert world.called["call"]["version"] == 1
     assert world.called["call"]["name"] == "Fetch sales"
+    # The report names the task, its version, and its steps by their own titles.
+    caller = parse_workflow({"version": 1, "steps": [_call(called, inputs={"month": "x"})]})
+    report = run_report(caller, [r.to_dict() for r in world.records], called=world.called)
+    assert report["tasks"] == [{"step_id": "call", "task": called, "name": "Fetch sales",
+                                "version": 1, "status": "done"}]  # fmt: skip
+    assert report["remembered"][0]["title"] == "keep"
 
 
 async def test_the_called_tasks_pauses_pause_the_caller(tmp_path: Path) -> None:
