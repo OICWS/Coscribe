@@ -155,8 +155,14 @@ export function duration(minutes: number): string {
   return plural(minutes, "minute");
 }
 
-/** One sentence on what a step does, or null when its title already says all there is. */
-export function plainDetail(step: WorkflowStep, inputs: WorkflowInput[], memory: MemoryEntry[] = []): string | null {
+/** One sentence on what a step does, or null when its title already says all there is.
+ * `taskNames`: the saved tasks by id, for a step that runs one (decision 0035). */
+export function plainDetail(
+  step: WorkflowStep,
+  inputs: WorkflowInput[],
+  memory: MemoryEntry[] = [],
+  taskNames: Map<string, string> = new Map(),
+): string | null {
   switch (step.kind) {
     case "tool":
       return toolSentence(step.tool, step.args, inputs);
@@ -179,6 +185,10 @@ export function plainDetail(step: WorkflowStep, inputs: WorkflowInput[], memory:
     case "remember": {
       const label = memory.find((entry) => entry.name === step.name)?.label;
       return `Keeps “${label || words(step.name)}” for the next run`;
+    }
+    case "run_task": {
+      const name = taskNames.get(step.task);
+      return name ? `Runs your task “${name}” and waits for it to finish` : "Runs another of your tasks";
     }
     case "branch":
     case "loop":
@@ -210,6 +220,8 @@ export function plainKind(step: WorkflowStep): string {
       return "Wait";
     case "remember":
       return "Memory";
+    case "run_task":
+      return "Task";
     case "branch":
       return "If";
     case "choice":

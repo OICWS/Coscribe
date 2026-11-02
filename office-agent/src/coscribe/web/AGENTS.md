@@ -19,7 +19,7 @@ None re-exported: `__all__` is empty. Entry points: `create_app_lg` and `main` i
 ## Depends on
 `coscribe`, `coscribe.code_runtime`, `coscribe.config`, `coscribe.conversation`,
 `coscribe.coordinator`, `coscribe.runtime`, `coscribe.runtime_lg`, `coscribe.tools`,
-`coscribe.workflows`.
+`coscribe.workflow_spec`, `coscribe.workflows`.
 
 ## Invariants
 - `web` is the only package that imports FastAPI, Starlette or uvicorn (import contract). The one

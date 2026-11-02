@@ -1,26 +1,9 @@
-"""Scheduled Tasks: a real, independently-manageable product feature for
-"do this later, once or on a repeating schedule" -- distinct from
-tools/bookkeeping/selfwake.py's sleep_for/wake_on/wake_on_event, which are agent-
-initiated, one-off, thread-scoped pauses only callable from inside an
-existing conversation. A ScheduledTrigger is the opposite shape: global,
-named, persisted, creatable either mid-conversation (create_scheduled_task)
-or from the Settings > Scheduled Tasks panel with no conversation needed
-at all -- global, named, and persisted, so it's its own concept rather
-than a new WakeRequest kind. See ARCHITECTURE.md's "Repeated work becomes fixed
-steps" section for the fuller reasoning.
-
-Split the same way tools/bookkeeping/selfwake.py splits its own data model/storage/
-tools from the runtime-specific resume logic: this
-module holds ScheduleRule/ScheduledTrigger/ScheduledTriggerStore and the
-model-callable tools (no live LLM client or checkpointer needed for any of
-that); actually firing a due trigger lives in runtime_lg/scheduled_tasks.py
-instead, since that needs a live ChatSessionLG.
-
-Schedule times (`ScheduleRule.at`, "HH:MM" for recurring rules) are
-interpreted in the server's own local wall-clock time, not UTC: coscribe
-is single-user, local-first software, so the machine and the user share a
-timezone (as with cron), a limitation if coscribe is ever remotely hosted.
-"""
+"""Scheduled tasks: global, named and persisted, made in a conversation (create_scheduled_task)
+or on the Scheduled page -- unlike tools/bookkeeping/selfwake.py's one-off, thread-scoped pauses.
+This module holds the triggers, their store and the model's tools; firing a due one needs a live
+session and lives in runtime_lg/scheduled_tasks.py. ARCHITECTURE.md's "Repeated work becomes
+fixed steps" has the reasoning. Times ("HH:MM") are the server's local wall clock, as with cron:
+the app is single-user and local-first."""
 
 from __future__ import annotations
 
@@ -44,7 +27,9 @@ from .schedule_rule import (
     _to_local_naive,
     compute_next_run_at,
 )
+from .task_calls import TaskCalls, check_calls
 from .task_memory import TaskMemory
+from .task_versions import TaskVersions
 
 VALID_APPROVAL_MODES = ("manual", "auto", "skip")
 RUN_STATUSES = ("running", "completed", "failed", "needs_approval", "waiting", "stopped")
@@ -62,20 +47,14 @@ SCHEDULED_THREAD_PREFIX = "scheduled-"
 TASK_DRAFT_TOOL_NAMES: frozenset[str] = frozenset({"create_scheduled_task", "edit_scheduled_task"})
 
 # edit_scheduled_task's fields, as the draft the user reviews names them.
-_EDITABLE_FIELDS = (
-    "name",
-    "kind",
-    "at",
-    "prompt",
-    "weekday",
-    "day_of_month",
-    "start_date",
-    "model",
-    "approval_mode",
+_EDITABLE_FIELDS = tuple(
+    "name kind at prompt weekday day_of_month start_date model approval_mode".split()
 )
 
 # What a run records besides its steps and status.
-_EVIDENCE = frozenset({"screenshot", "page", "files", "sites", "investigation", "queued", "quiet"})
+_EVIDENCE = frozenset(
+    "screenshot page files sites investigation queued quiet versions called".split()
+)
 
 # Oldest run records beyond this are dropped from the trigger (their
 # conversations are deleted along with them, see web/app.py).
@@ -151,6 +130,10 @@ class ScheduledRun:
     # A run a check ended with nothing to do (decision 0034): how many such runs in a row this
     # record stands for, since only the latest of a row is kept; 0 for any other run.
     quiet: int = 0
+    # The versions of its task it ran (decision 0035), and per run-task step ("<step>" or
+    # "<step>/<its step>"): {"task", "name", "version", "workflow"} of the task it ran.
+    versions: list[int] = field(default_factory=list)
+    called: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -170,6 +153,8 @@ class ScheduledRun:
             "sites": self.sites,
             "queued": self.queued,
             "quiet": self.quiet,
+            "versions": self.versions,
+            "called": self.called,
         }
 
     @classmethod
@@ -191,6 +176,8 @@ class ScheduledRun:
             sites=list(data.get("sites") or []),
             queued=bool(data.get("queued", False)),
             quiet=int(data.get("quiet") or 0),
+            versions=[int(v) for v in data.get("versions") or []],
+            called=dict(data.get("called") or {}),
         )
 
 
@@ -313,6 +300,8 @@ class ScheduledTriggerStore:
         # (decision 0034), kept beside the tasks and deleted with them.
         self.memory = TaskMemory(self.state_dir)
         self.folders = FolderWatch(self.state_dir)
+        self.versions = TaskVersions(self.state_dir)
+        self.calls = TaskCalls(self)
 
     def save(self, trigger: ScheduledTrigger) -> None:
         self.root.mkdir(parents=True, exist_ok=True)
@@ -362,6 +351,7 @@ class ScheduledTriggerStore:
         self._notes_path(trigger_id).unlink(missing_ok=True)
         self.memory.delete(trigger_id)
         self.folders.forget(trigger_id)
+        self.versions.delete(trigger_id)
         return existed
 
     def start_run(
@@ -577,6 +567,7 @@ def create_trigger(
     workflow: dict[str, Any] | None = None,
     environment: str | None = None,
     watch: dict[str, Any] | None = None,
+    how: str = "created",
 ) -> ScheduledTrigger:
     """Validate and persist a new ScheduledTrigger. Shared by the model's create_scheduled_task
     and POST /api/scheduled-tasks (the UI's form), so the two can't drift apart."""
@@ -593,6 +584,7 @@ def create_trigger(
     )
 
     trigger_id = uuid.uuid4().hex[:12]
+    check_calls(store, trigger_id, normalized_workflow)
     trigger = ScheduledTrigger(
         trigger_id=trigger_id,
         name=name,
@@ -609,6 +601,7 @@ def create_trigger(
     )
     _watch_folder(trigger)
     store.save(trigger)
+    store.versions.keep(trigger_id, normalized_workflow, how)
     return trigger
 
 
@@ -629,17 +622,12 @@ def update_trigger(
     workflow: dict[str, Any] | None = None,
     environment: str | None = None,
     watch: dict[str, Any] | None = None,
+    how: str = "edited",
+    restored_from: int | None = None,
 ) -> ScheduledTrigger:
-    """Edit an existing trigger in place -- the Edit modal's Save action.
-    Same validation as create_trigger (via _validate_and_build_schedule),
-    so an edited task can never end up in a state a *new* task couldn't
-    also be created in. Preserves trigger_id/created_at/enabled/runs/
-    last_run_at/last_run_status; recomputes next_run_at from now against
-    the (possibly changed) schedule, same as resume_scheduled_task already
-    does when re-enabling a paused trigger -- editing a currently-paused
-    task's schedule doesn't un-pause it, but next_run_at still reflects
-    what it *would* run next if resumed, not a stale value from before
-    the edit."""
+    """Edit a trigger in place, validated as create_trigger does, so an edited task can't end up
+    in a state a new one couldn't. Keeps its id, runs and pause; next_run_at is worked out again
+    from now, as resuming a paused task does. A changed workflow is kept as a new version."""
     trigger = store.load(trigger_id)
     if trigger is None:
         raise KeyError(f"No scheduled task with id {trigger_id!r}")
@@ -655,6 +643,8 @@ def update_trigger(
         workflow=workflow,
         watch=watch,
     )
+    check_calls(store, trigger_id, normalized_workflow)
+    before = trigger.workflow
 
     trigger.name = name
     trigger.schedule = rule
@@ -667,11 +657,15 @@ def update_trigger(
     trigger.environment = _checked_environment(store, environment)
     _watch_folder(trigger)
     store.save(trigger)
+    store.versions.saved(trigger_id, before, normalized_workflow, how, restored_from)
     return trigger
 
 
 def patch_trigger(
-    store: ScheduledTriggerStore, trigger_id: str, changes: dict[str, Any]
+    store: ScheduledTriggerStore,
+    trigger_id: str,
+    changes: dict[str, Any],
+    restored_from: int | None = None,
 ) -> ScheduledTrigger:
     """Change only the given fields, keeping the rest as stored -- not as a
     page last loaded them. Two cards saved one after the other (a workflow
@@ -702,7 +696,9 @@ def patch_trigger(
     unknown = sorted(set(changes) - set(current))
     if unknown:
         raise ValueError(f"Can't change {', '.join(unknown)}")
-    trigger = update_trigger(store, trigger_id, **{**current, **changes})
+    how = "restored" if restored_from is not None else "conversation" if draft else "edited"
+    trigger = update_trigger(store, trigger_id, **{**current, **changes}, how=how,
+                             restored_from=restored_from)  # fmt: skip
     if auto_investigate is not None:
         trigger.auto_investigate = bool(auto_investigate)
         store.save(trigger)

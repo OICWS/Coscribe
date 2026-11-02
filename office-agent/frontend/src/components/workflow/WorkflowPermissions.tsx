@@ -1,10 +1,15 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { getWorkflowPermissions, type PermissionsResult, type WorkflowAgentPermissions } from "../../lib/rest";
+import {
+  getWorkflowPermissions,
+  type CalledTaskPermissions,
+  type PermissionsResult,
+  type WorkflowAgentPermissions,
+} from "../../lib/rest";
 import { toolLabel } from "../../lib/toolLabels";
 import { AUTONOMY_LABEL } from "../../lib/workflowLabels";
 import type { Workflow } from "../../types/workflow";
 import { AlertCircleIcon, FolderIcon, GlobeIcon, TerminalIcon } from "../icons";
-import { TargetIcon } from "./parts";
+import { LayersIcon, TargetIcon } from "./parts";
 
 interface Props {
   workflow: Workflow;
@@ -76,6 +81,39 @@ function AgentLine({ agent, fresh }: { agent: WorkflowAgentPermissions; fresh: b
   );
 }
 
+function taskReach(task: CalledTaskPermissions): string {
+  const places = [
+    task.sites.length > 0 ? `opens ${task.sites.join(", ")}` : "",
+    task.folders.length > 0 ? `changes files in ${task.folders.join(", ")}` : "",
+  ].filter(Boolean);
+  return places.length > 0 ? places.join(", ") : "only its own workspace";
+}
+
+/** A task its steps run (decision 0035): what it may use is its own, set on its own page. */
+function TaskLine({ task, fresh }: { task: CalledTaskPermissions; fresh: boolean }) {
+  return (
+    <div>
+      <span className="text-[var(--fg)]">“{task.name}”</span>
+      {fresh && <New />}
+      <span> · {taskReach(task)}</span>
+    </div>
+  );
+}
+
+function TasksRow({ tasks, fresh }: { tasks: CalledTaskPermissions[]; fresh: string[] }) {
+  if (tasks.length === 0) return null;
+  return (
+    <Row icon={<LayersIcon className="h-4 w-4" />} label="Tasks it runs">
+      <div className="flex flex-col gap-1">
+        {tasks.map((task) => (
+          <TaskLine key={task.task} task={task} fresh={fresh.includes(task.task)} />
+        ))}
+      </div>
+      <div className="mt-1">Each runs with its own approval setting; change what it may use on its own page.</div>
+    </Row>
+  );
+}
+
 function SimpleLine({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
     <li className="flex gap-2.5">
@@ -110,6 +148,11 @@ function SimplePermissions({ p, className }: { p: PermissionsResult["permissions
           Acts outside this computer: {p.notable.map((n) => n.title).join(", ")}
         </SimpleLine>
       )}
+      {(p.tasks ?? []).map((task) => (
+        <SimpleLine key={task.task} icon={<LayersIcon className="h-4 w-4" />}>
+          Runs your task “{task.name}”, which {taskReach(task)}
+        </SimpleLine>
+      ))}
       {unbounded.length > 0 && (
         <SimpleLine icon={<TargetIcon className="h-4 w-4" />}>
           {unbounded.map((a) => a.title).join(", ")} may use any of Coscribe’s tools
@@ -212,6 +255,7 @@ export function WorkflowPermissions({
             </div>
           </Row>
         )}
+        <TasksRow tasks={p.tasks ?? []} fresh={added?.tasks?.map((t) => t.task) ?? []} />
       </div>
     </section>
   );

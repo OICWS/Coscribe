@@ -51,7 +51,7 @@ from .tools import (
     load_skills,
     parse_run_thread_id,
 )
-from .workflows import granted_by, parse_workflow
+from .workflows import allowed_to_run
 
 # The always-bound tool set when Settings.defer_tools is on (see
 # conversation/session.py's _build_lg_agent and runtime_lg/tool_deferral.py) --
@@ -685,13 +685,13 @@ def _is_saved_workflow_run(settings: Settings, thread_id: str) -> bool:
 
 def _sites_allowed_to_run(settings: Settings, thread_id: str) -> list[str]:
     """The sites a task's workflow may open: those its steps name, and any
-    the person allowed while a run waited. Read at each browser step."""
+    the person allowed while a run waited, and those of the tasks it runs. Read at each step."""
     parsed = parse_run_thread_id(thread_id)
-    trigger = ScheduledTriggerStore(settings.state_dir).load(parsed[0]) if parsed else None
+    store = ScheduledTriggerStore(settings.state_dir)
+    trigger = store.load(parsed[0]) if parsed else None
     if trigger is None or trigger.workflow is None:
         return []
-    named = granted_by(parse_workflow(trigger.workflow))["sites"]
-    return list(dict.fromkeys([*named, *trigger.permissions.get("sites", [])]))
+    return allowed_to_run(trigger, store.calls.tasks(trigger.workflow))["sites"]
 
 
 def build_coordinator_agent(

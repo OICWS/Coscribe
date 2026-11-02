@@ -461,6 +461,24 @@ class AgentStep(_Recovers):
         return {f.name for f in self.fields} or {AGENT_REPORT_FIELD}
 
 
+# A task runs another, which may run another: at most this many calls deep (decision 0035).
+MAX_TASK_DEPTH = 3
+
+
+class RunTaskStep(_Recovers):
+    """Run another workflow task, by its id, as a run of its own (decision 0035). `inputs` gives
+    the values it asks for (text with references; one left out takes its default); `save_as`
+    gets its results, every name its top-level steps saved."""
+
+    kind: Literal["run_task"] = "run_task"
+    task: str = Field(min_length=1, max_length=64)
+    inputs: dict[str, str] = {}
+    save_as: str | None = None
+
+    _check_save_as = field_validator("save_as")(lambda v: v if v is None else _identifier(v))
+    _check_inputs = field_validator("inputs")(lambda v: {_identifier(k): t for k, t in v.items()})
+
+
 class BranchStep(_Step):
     """Runs `then` when the conditions hold (all, or any one by `match`), else `otherwise`."""
 
@@ -547,7 +565,7 @@ class LoopStep(_Step):
 
 Step = Annotated[
     ToolStep | ScriptStep | LLMStep | AgentStep | CheckStep | ApprovalStep | AskStep | WaitStep
-    | RememberStep | BranchStep | ChoiceStep | LoopStep,
+    | RememberStep | RunTaskStep | BranchStep | ChoiceStep | LoopStep,
     Field(discriminator="kind"),
 ]  # fmt: skip
 BlockStep = BranchStep | ChoiceStep | LoopStep
@@ -711,6 +729,7 @@ ToolStep.model_rebuild()
 ScriptStep.model_rebuild()
 LLMStep.model_rebuild()
 AgentStep.model_rebuild()
+RunTaskStep.model_rebuild()
 BranchStep.model_rebuild()
 ChoiceCase.model_rebuild()
 ChoiceStep.model_rebuild()

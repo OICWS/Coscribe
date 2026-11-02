@@ -46,6 +46,7 @@ from ..workflow_spec import (
     LoopStep,
     Placed,
     RememberStep,
+    RunTaskStep,
     ScriptStep,
     Step,
     ToolStep,
@@ -57,6 +58,7 @@ from ..workflow_spec import (
     failure_policy,
     resolve,
     step_output,
+    task_results,
     walk,
 )
 from .agent_step import AgentCall, CallGuard, answer_of, run_agent_step
@@ -71,6 +73,7 @@ from .preflight import UNAVAILABLE_TOOLS as UNAVAILABLE_TOOLS
 from .preflight import WorkflowNotRunnable as WorkflowNotRunnable
 from .preflight import preflight, starting_values
 from .remember_steps import ENDED, check_or_end, remember
+from .run_task import TaskSteps
 from .step_work import StepContext as StepContext
 from .step_work import StepFailed as StepFailed
 from .step_work import StepRecord as StepRecord
@@ -94,6 +97,10 @@ class RunOutcome:
     # it with nothing to do.
     remembered: dict[str, Any] = field(default_factory=dict)
     ended: bool = False
+    # For "completed", what it gives a task that ran it (decision 0035); for "failed", whether a
+    # person said no.
+    results: dict[str, Any] = field(default_factory=dict)
+    declined: bool = False
 
 
 OnStep = Callable[[StepRecord], Awaitable[None] | None]
@@ -137,6 +144,8 @@ class _GraphBuilder:
         self.read_only = set(untrusted_agent_steps(workflow, ctx.outside_tools))
         self.graph = StateGraph(_State)
         self.pauses = Pauses(self)
+        self.tasks = TaskSteps(self, WorkflowRun)
+        self.checkpointer: Any = None
 
     async def emit(self, record: StepRecord) -> None:
         result = self.on_step(record)
@@ -258,6 +267,8 @@ class _GraphBuilder:
                 return await self.pauses.approval(step, values, it)
             if isinstance(step, RememberStep):
                 return await remember(self, step, values, it)
+            if isinstance(step, RunTaskStep):
+                return await self.tasks.run(step, state, it)
             if isinstance(step, CheckStep) and step.otherwise == ENDED:
                 return await check_or_end(self, step, values, it)
             if isinstance(step, (AskStep, WaitStep)):
@@ -556,6 +567,7 @@ class _GraphBuilder:
         self.graph.add_conditional_edges(node, _routed(step, router), destinations)
 
     def build(self, checkpointer: Any) -> Any:
+        self.checkpointer = checkpointer
         self.wire(self.workflow.steps, END)
         self.graph.add_edge(START, _node_name(self.workflow.steps[0]))
         return self.graph.compile(checkpointer=checkpointer)
@@ -626,20 +638,36 @@ class WorkflowRun:
     async def answer(
         self, approved: bool, note: str = "", values: dict[str, Any] | None = None
     ) -> RunOutcome:
-        # An agent step's answer names its call: resuming replays earlier
-        # answers by position, and the agent must not take one for another.
-        state = await self._compiled.aget_state(self.config)
-        asked = [i.value for t in state.tasks for i in t.interrupts if isinstance(i.value, dict)]
-        call_id = asked[0].get("call_id") if asked else None
-        return await self._drive(
-            Command(resume={"approved": approved, "note": note, "call_id": call_id,
-                            "values": values})
-        )  # fmt: skip
+        answer = {"approved": approved, "note": note, "values": values}
+        return await self._drive(Command(resume={**answer, "call_id": await self._call_id()}))
 
     async def wake(self) -> RunOutcome:
         """Go on with a run paused at a wait step whose time came or whose file appeared, or at
         an ask step no one answered in time (decision 0033)."""
-        return await self._drive(Command(resume={"woke": True}))
+        return await self._drive(Command(resume={"woke": True, "call_id": await self._call_id()}))
+
+    async def _call_id(self) -> Any:
+        """What the pause being answered names: an agent's call, or a called task's pause.
+        Resuming replays earlier answers by position, and neither may take one for another."""
+        state = await self._compiled.aget_state(self.config)
+        asked = [i.value for t in state.tasks for i in t.interrupts if isinstance(i.value, dict)]
+        return asked[0].get("call_id") if asked else None
+
+    async def settled(self) -> RunOutcome | None:
+        """Where this run stands, without taking it further: None when it never started;
+        "failed" when it stopped part way, for resume() to go on with."""
+        if self._graph is None:
+            return None
+        state = await self._graph.aget_state(self.config)
+        if not state.values:
+            return None
+        if state.next and not any(task.interrupts for task in state.tasks):
+            return RunOutcome("failed", values=state.values.get("values", {}))
+        return await self._outcome(state)
+
+    async def checkpoint_id(self) -> str:
+        state = await self._compiled.aget_state(self.config)
+        return str(state.config["configurable"]["checkpoint_id"])
 
     async def retry_from(self, step_id: str) -> RunOutcome:
         """Re-run from an earlier step, discarding what came after it --
@@ -687,7 +715,8 @@ class WorkflowRun:
 
     def _loops_around(self, node: str) -> tuple[str, ...]:
         kind, _, step_id = node.partition("__")
-        placed = self._placed.get(step_id)
+        # A called task's step stops inside the step that runs it (decision 0035).
+        placed = self._placed.get(step_id.split("/", 1)[0])
         if placed is None:
             return ()
         # A loop's own next-item and collect nodes are inside it.
@@ -735,8 +764,11 @@ class WorkflowRun:
             state = await graph.aget_state(self.config)
             values = state.values.get("values", {})
             await self._after_failure(values, exc)
-            return RunOutcome("failed", step_id=exc.step_id, error=str(exc), values=values)
-        state = await graph.aget_state(self.config)
+            return RunOutcome("failed", step_id=exc.step_id, error=str(exc), values=values,
+                              declined=exc.declined)  # fmt: skip
+        return await self._outcome(await graph.aget_state(self.config))
+
+    async def _outcome(self, state: Any) -> RunOutcome:
         values = state.values.get("values", {})
         for task in state.tasks:
             for pending in task.interrupts:
@@ -751,4 +783,5 @@ class WorkflowRun:
             values=values,
             ended=any(a.get("route") == ENDED for a in attempts),
             remembered=state.values.get("remembered") or {},
+            results={k: values[k] for k in task_results(self.workflow) if k in values},
         )

@@ -34,6 +34,7 @@ import type {
   ScheduledTaskResult,
   RunNowResult,
   TaskMemoryResult,
+  TaskVersion,
   TaskNotesResult,
   ScriptEnvInstallResult,
   ScriptEnvInterpreterInfo,
@@ -400,6 +401,15 @@ export interface WorkflowPermissions {
   notable: { tool: string; title: string; risk: string }[];
   sites_at_run_time: string[];
   agents: WorkflowAgentPermissions[];
+  /** The tasks its steps run, each with what it may use under its own name (decision 0035). */
+  tasks?: CalledTaskPermissions[];
+}
+
+export interface CalledTaskPermissions {
+  task: string;
+  name: string;
+  folders: string[];
+  sites: string[];
 }
 
 /** An agent step on the review card (workflows/permissions.py's `_agents`). */
@@ -416,7 +426,7 @@ export interface WorkflowAgentPermissions {
 
 export interface PermissionsResult {
   permissions: WorkflowPermissions;
-  added: Pick<WorkflowPermissions, "folders" | "sites" | "scripts" | "notable" | "agents"> | null;
+  added: Pick<WorkflowPermissions, "folders" | "sites" | "scripts" | "notable" | "agents" | "tasks"> | null;
 }
 
 export const getWorkflowPermissions = (workflow: Workflow, triggerId?: string, againstSaved = false) =>
@@ -432,6 +442,14 @@ export const setTaskMemory = (triggerId: string, name: string, value: unknown) =
   putJson<TaskMemoryResult>(
     `/api/scheduled-tasks/${encodeURIComponent(triggerId)}/memory/${encodeURIComponent(name)}`,
     { value },
+  );
+export const getTaskVersions = (triggerId: string) =>
+  getJson<{ current: number; versions: TaskVersion[] }>(`/api/scheduled-tasks/${encodeURIComponent(triggerId)}/versions`);
+export const restoreTaskVersion = (triggerId: string, number: number) =>
+  sendForResult<ScheduledTask>(
+    `/api/scheduled-tasks/${encodeURIComponent(triggerId)}/versions/${number}/restore`,
+    "POST",
+    {},
   );
 export const getTaskNotes = (triggerId: string) =>
   getJson<TaskNotesResult>(`/api/scheduled-tasks/${encodeURIComponent(triggerId)}/notes`);

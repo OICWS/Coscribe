@@ -59,6 +59,7 @@ const NEW_TITLE: Record<StepKind, string> = {
   ask: "Ask you",
   wait: "Wait",
   remember: "Remember for the next run",
+  run_task: "Run another task",
   branch: "Decide which way to go",
   choice: "Pick a path by a value",
   loop: "Repeat for each item",
@@ -147,6 +148,8 @@ export function newStep(kind: StepKind, workflow: Workflow, available: string[],
       return { kind, id, title, until: "duration", minutes: 10 };
     case "remember":
       return { kind, id, title, name: workflow.memory?.[0]?.name ?? "", value: firstValue ? `{{${firstValue}}}` : "" };
+    case "run_task":
+      return { kind, id, title, task: "", inputs: {}, save_as: uniqueValueName(workflow, "task_result") };
     case "branch":
       return {
         kind,
@@ -232,6 +235,8 @@ function renameInStep(step: WorkflowStep, from: string, to: string): WorkflowSte
       return { ...step, args: renameInValue(step.args, from, to) as Record<string, unknown> };
     case "script":
       return { ...step, inputs: renameInValue(step.inputs, from, to) as Record<string, unknown> };
+    case "run_task":
+      return { ...step, inputs: renameInValue(step.inputs, from, to) as Record<string, string> };
     case "llm":
       return { ...step, prompt: renameInText(step.prompt, from, to) };
     case "agent":

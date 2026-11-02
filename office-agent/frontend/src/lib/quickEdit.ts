@@ -212,6 +212,12 @@ export function quickFields(step: WorkflowStep, inputs: WorkflowInput[]): QuickF
       return [...fields, ...waitQuickFields(step, inputs)];
     case "remember":
       return [...fields, { key: "value", label: "What it keeps", kind: "text", value: step.value }];
+    case "run_task":
+      return [
+        ...fields,
+        ...Object.entries(step.inputs).map(([name, value]) => argField(name, value, inputs)),
+        ...failureFields(step),
+      ];
     case "branch":
       return [...fields, ...conditionFields("cond", step.conditions, step.match, inputs)];
     case "choice":
@@ -296,6 +302,8 @@ export function applyQuick(step: WorkflowStep, key: string, value: QuickField["v
       return applyWaitQuick(step, key, value);
     case "remember":
       return head === "value" ? { ...step, value: String(value) } : step;
+    case "run_task":
+      return head === "arg" ? { ...step, inputs: { ...step.inputs, [rest]: String(value) } } : step;
     case "choice":
       if (head !== "case") return step;
       return { ...step, cases: step.cases.map((c, i) => (i === Number(rest) ? { ...c, is: String(value) } : c)) };

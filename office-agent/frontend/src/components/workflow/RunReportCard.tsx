@@ -147,6 +147,25 @@ function DecidedSection({ report }: { report: RunReport }) {
   );
 }
 
+const TASK_ENDED: Record<string, string> = { done: "done", failed: "stopped", running: "not finished" };
+
+/** The tasks its steps ran, and the version of each it ran (decision 0035). */
+function TasksSection({ report }: { report: RunReport }) {
+  const tasks = report.tasks ?? [];
+  if (tasks.length === 0) return null;
+  return (
+    <div data-testid="report-tasks">
+      <div className="font-medium">Tasks it ran</div>
+      {tasks.map((item) => (
+        <div key={item.step_id} className="text-[13px]">
+          “{item.name}”{item.version ? ` · version ${item.version}` : ""}
+          <span className="text-[var(--muted)]"> -- {TASK_ENDED[item.status ?? ""] ?? "not reached"}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** What the run keeps for the next one (decision 0034): only a run that finished keeps it. */
 function RememberedSection({ report, kept }: { report: RunReport; kept: boolean }) {
   const remembered = report.remembered ?? [];
@@ -187,7 +206,9 @@ export function RunReportCard({
     };
   }, [triggerId, run.run_id, run.status, loads]);
   if (!report) return null;
+  const versions = report.versions ?? [];
   const usage = [
+    versions.length ? `version ${versions.join(", ")}` : null,
     report.tool_calls ? `${report.tool_calls} agent tool calls` : null,
     report.tokens ? tokenLine(report.tokens, report.cached_tokens) : null,
   ].filter(Boolean);
@@ -225,6 +246,7 @@ export function RunReportCard({
           ))}
         </div>
       )}
+      <TasksSection report={report} />
       <FailuresSection report={report} />
       <DecidedSection report={report} />
       <RememberedSection report={report} kept={run.status === "completed"} />

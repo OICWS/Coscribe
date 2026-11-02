@@ -38,6 +38,7 @@ from ..tools import (
 from ..workflows import (
     RunOutcome,
     StepRecord,
+    TaskSource,
     WorkflowNotRunnable,
     WorkflowRun,
     heals_to_revise,
@@ -214,6 +215,7 @@ async def _run_workflow(
     # A run may stop for an answer; a test in a conversation just fails.
     ctx.ask_permission = True
     ctx.approval_mode = trigger.approval_mode
+    ctx.tasks = _task_source(store, trigger, run)
     workflow_run = WorkflowRun(
         workflow,
         ctx,
@@ -223,7 +225,8 @@ async def _run_workflow(
     )
     # Tasks due together, or runs caught up after the computer was off, share
     # this run's tabs; runs in other threads have tabs of their own.
-    needs_browser = uses_browser(workflow)
+    called = [parse_workflow(t.workflow) for t in store.calls.tasks(trigger.workflow)]
+    needs_browser = any(uses_browser(w) for w in [workflow, *called])
     lock = browser_run(run.thread_id)
     if needs_browser and lock.locked():
         store.record_evidence(trigger.trigger_id, run.run_id, queued=True)
@@ -260,8 +263,31 @@ async def _run_workflow(
         pause = (outcome.request or {}).get("pause") or {}
         return ("waiting" if pause.get("kind") == "wait" else "needs_approval"), None
     titles = {placed.step.id: placed.step.title for placed in walk(workflow.every_step())}
-    title = titles.get(outcome.step_id or "", "A step")
+    # A called task's step fails inside the step that runs it, whose error names the task.
+    title = titles.get((outcome.step_id or "").split("/", 1)[0], "A step")
     return "failed", f"{title}: {outcome.error}"
+
+
+def _task_source(
+    store: ScheduledTriggerStore, trigger: ScheduledTrigger, run: ScheduledRun
+) -> TaskSource:
+    """The tasks this run's steps may run (decision 0035), and the run's record of the version
+    of its own task and of each one it ran, as this action finds them."""
+    version = store.versions.keep(trigger.trigger_id, trigger.workflow, "found")
+    stored = store.load(trigger.trigger_id)
+    ran = stored.find_run(run.run_id) if stored is not None else None
+    versions = ran.versions if ran is not None else []
+    if version is not None and version not in versions[-1:]:
+        store.record_evidence(trigger.trigger_id, run.run_id, versions=[*versions, version])
+
+    def record(path: str, info: dict[str, Any]) -> None:
+        latest = store.load(trigger.trigger_id)
+        current = latest.find_run(run.run_id) if latest is not None else None
+        if current is not None and current.called.get(path) != info:
+            called = {**current.called, path: info}
+            store.record_evidence(trigger.trigger_id, run.run_id, called=called)
+
+    return TaskSource(store, record=record, by=run.run_id, chain=(trigger.trigger_id,))
 
 
 async def _record_failure_page(

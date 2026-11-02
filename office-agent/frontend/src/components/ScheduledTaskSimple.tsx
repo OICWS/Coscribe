@@ -206,6 +206,18 @@ export function ScheduledTaskSimple({
           Uses the environment {environment}
         </div>
       </Section>
+      {(task.version ?? 1) > 1 && (
+        <Section
+          title="Versions"
+          action={
+            <button type="button" className={linkButton} onClick={onShowDetails}>
+              Compare or restore
+            </button>
+          }
+        >
+          <div className="text-sm">Version {task.version} · each save keeps the one before, so you can go back</div>
+        </Section>
+      )}
     </div>
   );
 }

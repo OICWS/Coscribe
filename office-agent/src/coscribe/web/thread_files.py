@@ -16,7 +16,7 @@ from ..tools import (
     WorkspaceScope,
     parse_run_thread_id,
 )
-from ..workflows import granted_by, parse_workflow
+from ..workflows import allowed_to_run
 
 
 class ThreadFiles:
@@ -102,18 +102,17 @@ class ThreadFiles:
 
     def run_folders(self, thread_id: str) -> list[str]:
         """A scheduled run's folders: its task's environment's, then the existing ones its
-        workflow names or the person allowed while a run waited."""
+        workflow and the tasks it runs name, or the person allowed while a run waited."""
         parsed = parse_run_thread_id(thread_id)
-        trigger = (
-            ScheduledTriggerStore(self._settings.state_dir).load(parsed[0]) if parsed else None
-        )
+        store = ScheduledTriggerStore(self._settings.state_dir)
+        trigger = store.load(parsed[0]) if parsed else None
         if trigger is None:
             return []
         environment = Environments(self._settings.state_dir).get(trigger.environment)
         own = list(environment["folders"]) if environment else []
         extra = list(trigger.permissions.get("folders", []))
         if trigger.workflow is not None:
-            extra = [*granted_by(parse_workflow(trigger.workflow))["folders"], *extra]
+            extra = allowed_to_run(trigger, store.calls.tasks(trigger.workflow))["folders"]
         extra = [f for f in dict.fromkeys(extra) if Path(f).is_dir() and f not in own]
         if not extra:
             return own

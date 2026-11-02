@@ -10,7 +10,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import BaseTool
@@ -29,6 +29,9 @@ from ..workflow_spec import (
 from .agent_step import AgentRunner
 from .connector_value import connector_value as _connector_value
 from .model_step import ask_model, field_problems
+
+if TYPE_CHECKING:
+    from .run_task import TaskSource
 
 SCRIPT_TIMEOUT_SECONDS = 300.0
 SCRIPT_TOOLS = frozenset({"run_python_script", "run_node_script"})
@@ -126,6 +129,8 @@ class StepContext:
     outside_tools: frozenset[str] = frozenset()
     # The longest wait between a step's tries (decision 0032): a test run shortens it.
     max_retry_wait: float = float(MAX_RETRY_WAIT)
+    # The tasks a run-task step may run (decision 0035); without it such a step fails.
+    tasks: TaskSource | None = None
 
 
 def preview(value: Any, depth: int = 0) -> Any:

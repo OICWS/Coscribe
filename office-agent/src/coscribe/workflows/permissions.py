@@ -31,6 +31,7 @@ from ..workflow_spec import (
     ToolStep,
     Workflow,
     child_lists,
+    parse_workflow,
     render_text,
     step_output,
     step_references,
@@ -129,6 +130,28 @@ def granted_by(workflow: Workflow) -> dict[str, list[str]]:
                 if folder not in folders:
                     folders.append(folder)
     return {"folders": folders, "sites": sites}
+
+
+def called_permissions(called: Sequence[Any]) -> list[dict[str, Any]]:
+    """What each task a workflow runs may use (decision 0035), under its own name: the folders
+    and sites its steps name, and those it was allowed while a run waited."""
+    shown = []
+    for trigger in called:
+        named = granted_by(parse_workflow(trigger.workflow))
+        both = {kind: list(dict.fromkeys([*named[kind], *trigger.permissions.get(kind, [])]))
+                for kind in ("folders", "sites")}  # fmt: skip
+        shown.append({"task": trigger.trigger_id, "name": trigger.name, **both})
+    return shown
+
+
+def allowed_to_run(trigger: Any, called: Sequence[Any]) -> dict[str, list[str]]:
+    """The folders and sites a run of a workflow task may use: those its steps name, those it was
+    allowed while a run waited, and those of each task it runs (decision 0035)."""
+    named = granted_by(parse_workflow(trigger.workflow))
+    inner = called_permissions(called)
+    return {kind: list(dict.fromkeys([*named[kind], *trigger.permissions.get(kind, []),
+                                      *(item for task in inner for item in task[kind])]))
+            for kind in ("folders", "sites")}  # fmt: skip
 
 
 def _within(text: str, roots: Sequence[str]) -> bool:

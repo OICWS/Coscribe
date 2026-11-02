@@ -19,6 +19,7 @@ import {
 import { AddRowButton, AutoTextarea, FieldLabel, RemoveButton } from "./fields";
 import { RememberEditor } from "./MemoryEditor";
 import { AskEditor, WaitEditor } from "./PauseEditors";
+import { RunTaskEditor } from "./RunTaskEditor";
 
 export type { EditorContext };
 
@@ -388,6 +389,8 @@ export function StepFields({ step, onChange, context }: EditorProps<WorkflowStep
         return <WaitEditor step={step} onChange={onChange} context={context} />;
       case "remember":
         return <RememberEditor step={step} onChange={onChange} context={context} />;
+      case "run_task":
+        return <RunTaskEditor step={step} onChange={onChange} context={context} />;
       case "branch":
         return <BranchEditor step={step} onChange={onChange} context={context} />;
       case "choice":

@@ -3,6 +3,7 @@ import { dataFlow, flowRole, type FlowRole, type StepFlow } from "../../lib/data
 import { failureLine } from "../../lib/failureWords";
 import { AUTONOMY_LABEL, KIND_COLOR, KIND_LABEL } from "../../lib/workflowLabels";
 import { plainDetail, plainKind } from "../../lib/plainSteps";
+import { useTaskNames } from "../../lib/taskCalls";
 import { type NodeRunState, runMap } from "../../lib/workflowRunMap";
 import { canRecover, everyStep, isBlock, placeSteps } from "../../lib/workflowTree";
 import type { ScheduledRun } from "../../types/settings";
@@ -203,7 +204,7 @@ function PlainBody({
   role: FlowRole;
 }) {
   const color = plainColor(step);
-  const detail = plainDetail(step, inputs, memory);
+  const detail = plainDetail(step, inputs, memory, useTaskNames());
   return (
     <>
       <span className="flex items-center gap-2">

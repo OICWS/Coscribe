@@ -30,12 +30,14 @@ from ...tools import (
     record_draft,
     update_trigger,
 )
+from ...workflow_spec import task_results
 from ...workflows import (
     BranchStep,
     ChoiceStep,
     LoopStep,
     answer_problem,
     brings_outside_content,
+    called_permissions,
     compiled_graph,
     heal_fixes,
     heals_to_revise,
@@ -67,12 +69,30 @@ class _NoSocket:
 
 
 def _waiting_permission(run: Any) -> dict[str, Any] | None:
-    """What the run's waiting step asks to be allowed, if it is asking."""
+    """What the run's waiting step asks to be allowed, if it is asking, and which step asks."""
     for record in reversed(run.steps):
         if record.get("status") == "waiting":
             asked = record.get("permission")
-            return asked if isinstance(asked, dict) else None
+            return {**asked, "step_id": record["step_id"]} if isinstance(asked, dict) else None
     return None
+
+
+def _results(workflow: dict[str, Any] | None) -> list[str]:
+    """What a run of a workflow task gives a task that runs it (decision 0035)."""
+    try:
+        return list(task_results(parse_workflow(workflow))) if workflow else []
+    except ValidationError:
+        return []
+
+
+def _owner(trigger: Any, run: Any, step_id: str) -> tuple[str, Any]:
+    """The task a step of this run belongs to, and its workflow: a called task's step
+    (decision 0035) is `<step>/<its step>`, under the definition the run recorded."""
+    path = step_id.rpartition("/")[0]
+    if not path:
+        return trigger.trigger_id, trigger.workflow
+    called = run.called.get(path) or {}
+    return str(called.get("task") or trigger.trigger_id), called.get("workflow")
 
 
 def _answer_problem(trigger: Any, run: Any, payload: WorkflowAnswer) -> str | None:
@@ -83,8 +103,11 @@ def _answer_problem(trigger: Any, run: Any, payload: WorkflowAnswer) -> str | No
     waiting = next((r for r in reversed(run.steps) if r.get("status") == "waiting"), None)
     if waiting is None:
         return None
-    steps = {p.step.id: p.step for p in walk(parse_workflow(trigger.workflow).steps)}
-    step = steps.get(waiting["step_id"])
+    _task, workflow = _owner(trigger, run, waiting["step_id"])
+    if not workflow:
+        return None
+    steps = {p.step.id: p.step for p in walk(parse_workflow(workflow).steps)}
+    step = steps.get(waiting["step_id"].rpartition("/")[2])
     return answer_problem(step, payload.values) if step is not None else None
 
 
@@ -145,10 +168,15 @@ def _workflow_routes(router: APIRouter, state: AppState) -> None:
         if earlier is None and body.against_saved and trigger is not None and trigger.workflow:
             earlier = parse_workflow(trigger.workflow)
         risks, outside = _tool_facts()
+        store = ScheduledTriggerStore(settings.state_dir)
         summary = summarize(workflow, risks, granted, outside)
+        # What each task it runs may use is that task's own (decision 0035).
+        summary["tasks"] = called_permissions(store.calls.tasks(body.workflow))
         added: dict[str, Any] | None = None
         if earlier is not None:
             before = summarize(earlier, risks, granted, outside)
+            earlier_json = earlier.model_dump(mode="json")
+            ran_before = {t.trigger_id for t in store.calls.tasks(earlier_json)}
             added = {
                 "folders": [f for f in summary["folders"] if f not in before["folders"]],
                 "sites": [x for x in summary["sites"] if x not in before["sites"]],
@@ -159,6 +187,7 @@ def _workflow_routes(router: APIRouter, state: AppState) -> None:
                     if n["tool"] not in {b["tool"] for b in before["notable"]}
                 ],
                 "agents": [a for a in summary["agents"] if a not in before["agents"]],
+                "tasks": [t for t in summary["tasks"] if t["task"] not in ran_before],
             }
         return JSONResponse({"permissions": summary, "added": added})
 
@@ -175,7 +204,10 @@ def _task_routes(router: APIRouter, state: AppState) -> None:
 
     @router.get("/api/scheduled-tasks")
     async def list_scheduled_tasks_endpoint() -> list[dict[str, Any]]:
-        return [t.to_dict() for t in ScheduledTriggerStore(settings.state_dir).list_all()]
+        store = ScheduledTriggerStore(settings.state_dir)
+        # A task saved before versions were kept is shown as its version 1 (decision 0035).
+        return [{**t.to_dict(), "version": store.versions.current(t.trigger_id) or 1,
+                 "results": _results(t.workflow)} for t in store.list_all()]  # fmt: skip
 
     @router.post("/api/scheduled-tasks")
     async def create_scheduled_task_endpoint(payload: ScheduledTaskCreate) -> JSONResponse:
@@ -196,6 +228,7 @@ def _task_routes(router: APIRouter, state: AppState) -> None:
                 workflow=payload.workflow,
                 environment=payload.environment,
                 watch=payload.watch,
+                how="conversation" if payload.from_draft else "created",
             )
         except (ValueError, KeyError) as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
@@ -295,7 +328,8 @@ def _run_control_routes(router: APIRouter, state: AppState) -> None:
         if trigger is None or trigger.workflow is None or run is None:
             return JSONResponse({"error": f"No workflow run {run_id!r}"}, status_code=404)
         workflow = parse_workflow(trigger.workflow)
-        report = run_report(workflow, run.steps, run.started_at, run.finished_at)
+        report = run_report(workflow, run.steps, run.started_at, run.finished_at, run.called)
+        report["versions"] = run.versions
         return JSONResponse({**report, "fixes": heal_fixes(trigger.workflow, report["healed"])})
 
     @router.post("/api/scheduled-tasks/{trigger_id}/runs/{run_id}/investigate")
@@ -395,7 +429,10 @@ def _approval_routes(router: APIRouter, state: AppState) -> None:
             return JSONResponse({"error": problem}, status_code=422)
         permission = _waiting_permission(before) if before is not None else None
         if payload.approved and permission is not None and before is not None:
-            problem = await _allow_for_run(store, trigger_id, before.thread_id, permission)
+            # Granted to the task whose step asked, a called one's own (decision 0035).
+            asking = permission.get("step_id") or ""
+            owner = _owner(trigger, before, asking)[0] if trigger is not None else trigger_id
+            problem = await _allow_for_run(store, owner, before.thread_id, permission)
             if problem:
                 return JSONResponse({"error": problem}, status_code=409)
         reopened = _reopen_workflow_run(trigger_id, run_id)
@@ -440,7 +477,8 @@ def _retry_routes(router: APIRouter, state: AppState) -> None:
             ),
             None,
         )
-        if step_id is None:
+        # A called task's step goes on inside the step that runs it (decision 0035).
+        if step_id is None or "/" in step_id:
             _continue_in_background(trigger_id, run_id, lambda wf: wf.resume())
         else:
             _continue_in_background(trigger_id, run_id, lambda wf: wf.retry_from(step_id))
@@ -536,6 +574,44 @@ def _memory_routes(router: APIRouter, state: AppState) -> None:
     router.add_api_route(path + "/{name}", put_task_memory, methods=["PUT"])
 
 
+def _version_routes(router: APIRouter, state: AppState) -> None:
+    """Every workflow a task was saved with, and putting one back (decision 0035)."""
+    settings = state.settings
+
+    async def task_versions(trigger_id: str) -> JSONResponse:
+        store = ScheduledTriggerStore(settings.state_dir)
+        trigger = store.load(trigger_id)
+        if trigger is None or trigger.workflow is None:
+            return JSONResponse({"error": f"No workflow task {trigger_id!r}"}, status_code=404)
+        versions = store.versions.all(trigger_id)
+        if not versions:
+            # Saved before versions were kept: what it holds is its first, not yet written.
+            versions = [{"number": 1, "how": "found", "saved_at": trigger.created_at,
+                         "workflow": trigger.workflow}]  # fmt: skip
+        return JSONResponse({"current": versions[-1]["number"], "versions": versions[::-1]})
+
+    async def restore_task_version(trigger_id: str, number: int) -> JSONResponse:
+        store = ScheduledTriggerStore(settings.state_dir)
+        version = store.versions.get(trigger_id, number)
+        if store.load(trigger_id) is None or version is None:
+            return JSONResponse({"error": f"There is no version {number}"}, status_code=404)
+        problem = store.calls.problem(trigger_id, version["workflow"])
+        if problem:
+            return JSONResponse({"error": f"Version {number} can't come back: {problem}"},
+                                status_code=409)  # fmt: skip
+        try:
+            trigger = patch_trigger(store, trigger_id, {"workflow": version["workflow"]},
+                                    restored_from=number)  # fmt: skip
+        except (KeyError, ValueError):
+            message = f"Version {number} no longer fits what a task can be; copy what you need"
+            return JSONResponse({"error": message}, status_code=409)
+        return JSONResponse({**trigger.to_dict(), "version": store.versions.current(trigger_id)})
+
+    path = "/api/scheduled-tasks/{trigger_id}/versions"
+    router.add_api_route(path, task_versions, methods=["GET"])
+    router.add_api_route(path + "/{number}/restore", restore_task_version, methods=["POST"])
+
+
 def router(state: AppState) -> APIRouter:
     router = APIRouter()
     _workflow_routes(router, state)
@@ -545,4 +621,5 @@ def router(state: AppState) -> APIRouter:
     _retry_routes(router, state)
     _note_and_lifecycle_routes(router, state)
     _memory_routes(router, state)
+    _version_routes(router, state)
     return router

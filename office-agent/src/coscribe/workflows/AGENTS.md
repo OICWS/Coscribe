@@ -2,7 +2,7 @@
 
 ## Purpose
 Owns how a workflow runs (`engine.py`, and what a step does when it fails, decision 0032; `step_work.py` what a tool, script, model or check step does; `graph_view.py` the graph a workflow compiles to, for the editor; `model_step.py` gets a model to return a step's
-fields; `agent_step.py` runs an agent step through an injected runner; `report.py` a run's report, decision 0030; `healing.py` the agent that heals a failed browser step when the task's autonomy allows it; `heal_revision.py` the revision a run's heals propose), what it may touch (`permissions.py`), the tool parameters its editor needs (`catalog.py`), drafting one from a
+fields; `agent_step.py` runs an agent step through an injected runner; `report.py` a run's report, decision 0030; `healing.py` the agent that heals a failed browser step when the task's autonomy allows it; `heal_revision.py` the revision a run's heals propose; `run_task.py` a step that runs another task, decision 0035), what it may touch (`permissions.py`), the tool parameters its editor needs (`catalog.py`), drafting one from a
 conversation (`solidify.py`) and a one-off test run (`testing.py`). Does not own the schedule
 that fires a run or its stored history (`runtime_lg/scheduled_tasks.py`), the routes
 (`web/routes/scheduled.py`) or any agent: an agent step (decision 0028) runs through
@@ -12,7 +12,7 @@ that fires a run or its stored history (`runtime_lg/scheduled_tasks.py`), the ro
 `BranchStep`, `ChoiceStep`, `LoopStep`, `Workflow`, `parse_workflow`, `walk`, `workflow_error` (the definition, re-exported from `workflow_spec`, where it lives);
 `AgentCall`, `AgentReply`, `AgentRequest`, `AgentRunner` (what an agent runner takes and returns);
 `RunOutcome`, `StepContext`, `StepRecord`, `WorkflowNotRunnable`, `WorkflowRun` (a run);
-`brings_outside_content`, `granted_by`, `sites_in`, `summarize`, `untrusted_agent_steps` (permissions); `describe_params`, `tool_description`
+`brings_outside_content`, `granted_by`, `sites_in`, `summarize`, `untrusted_agent_steps`, `called_permissions`, `allowed_to_run` (permissions); `TaskSource` (where a run finds the tasks its steps run), `callable_tasks` (what the drafter is told it can run); `describe_params`, `tool_description`
 (catalog); `output_files`, `run_test`, `uses_browser` (test run); `run_report` (what a run did, from its step records); `compiled_graph` (the nodes and edges LangGraph compiles a workflow to); `answer_problem`, `paused_at`, `wake_due` (a run paused at an ask or wait step, decision 0033); `heal_fixes`, `heals_to_revise` (the saved arguments a run's heals would change, and the heals a revision has to be drafted for); `DraftFailed`, `WorkflowDraft`,
 `draft_workflow`, `revise_workflow` (drafting from a conversation: it takes the serialized
 history, so this package does not import `runtime_lg`).
@@ -44,13 +44,13 @@ history, so this package does not import `runtime_lg`).
   (`agent.healed`) and in the run report. A heal changes the saved workflow only when the person
   saves its fixes (`heal_fixes`), and a fix replaces an argument only while it still holds the
   value the heal replaced.
-- Decision 0032: a step marked `irreversible` is never tried again on its own (the spec refuses retries on it); a failure that doesn't stop the run is on the step's record (`recovered`) and in the run report, never counted as done; the steps after a failed run never wait for a person, and their failure never replaces the run's own error. Decision 0033: a run paused at an ask or wait step holds nothing but its checkpoint; only `WorkflowRun.answer` or `wake` continues it, and a wait looks only whether its file is there.
+- Decision 0032: a step marked `irreversible` is never tried again on its own (the spec refuses retries on it); a failure that doesn't stop the run is on the step's record (`recovered`) and in the run report, never counted as done; the steps after a failed run never wait for a person, and their failure never replaces the run's own error. Decision 0033: a run paused at an ask or wait step holds nothing but its checkpoint; only `WorkflowRun.answer` or `wake` continues it, and a wait looks only whether its file is there. Decision 0035: a called task runs on its own checkpoint thread under its own approval mode, at most `MAX_TASK_DEPTH` deep and never in a cycle; its pauses pass up keyed by where it stopped, and a test run guards its steps as its own.
 - `UNAVAILABLE_TOOLS` in `preflight.py` only lists tools a run may not call; the import contract,
   not that list, is what keeps the code module out.
 
 ## Tests
 `tests/test_workflow_spec.py`, `tests/test_workflow_engine.py`, `tests/test_workflow_agent_step.py`, `tests/test_workflow_permissions.py`,
-`tests/test_workflow_catalog.py`, `tests/test_workflow_solidify.py`, `tests/test_workflow_testing.py`, `tests/test_workflow_healing.py`, `tests/test_workflow_report.py`, `tests/test_workflow_failures.py`, `tests/test_workflow_pauses.py`; `tests/web/test_scheduled.py` covers runs through the server.
+`tests/test_workflow_catalog.py`, `tests/test_workflow_solidify.py`, `tests/test_workflow_testing.py`, `tests/test_workflow_healing.py`, `tests/test_workflow_report.py`, `tests/test_workflow_failures.py`, `tests/test_workflow_pauses.py`, `tests/test_workflow_run_task.py`; `tests/web/test_scheduled.py` covers runs through the server.
 
 ## Verify by hand
 Drafting a workflow from a real conversation with a real model (`solidify`); a browser step
