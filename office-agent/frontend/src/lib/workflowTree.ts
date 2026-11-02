@@ -205,7 +205,10 @@ export function scopes(workflow: Workflow): Map<string, string[]> {
     at.set(`${listKey(ref)}#${steps.length}`, names);
     return names;
   };
-  const inputs = workflow.inputs.map((input) => input.name);
+  const memory = workflow.memory?.length
+    ? [...workflow.memory.map((m) => `memory.${m.name}`), "run.started_at", "run.date"]
+    : [];
+  const inputs = [...workflow.inputs.map((input) => input.name), ...memory];
   check(workflow.steps, ROOT, inputs);
   check(workflow.after_failure ?? [], AFTER_FAILURE, [...inputs, ...FAILURE_NAMES]);
   return at;

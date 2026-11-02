@@ -30,13 +30,12 @@ from pydantic import (
     model_validator,
 )
 
-from .inputs import RELATIVE_DATES, InputType, input_problem
+from .inputs import InputType, MemoryType, input_problem, memory_value
 from .refs import (
     conditions_hold,
     is_reference,
     resolve,
     same_choice,
-    template_references,
 )
 
 IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]{0,39}$")
@@ -240,11 +239,43 @@ class LLMStep(_Recovers):
 
 
 class CheckStep(_Step):
-    """The conditions must hold (all of them, or any one by `match`), or the run stops here."""
+    """The conditions must hold (all of them, or any one by `match`), or the run stops here:
+    failed, or with `otherwise: "end"` done, as a run with nothing to do (decision 0034)."""
 
     kind: Literal["check"] = "check"
     conditions: list[Condition] = Field(min_length=1)
     match: Match = "all"
+    otherwise: Literal["fail", "end"] = "fail"
+
+
+MAX_MEMORY = 20
+
+
+def _initial_fits(entry: MemoryEntry) -> MemoryEntry:
+    entry.initial = memory_value(entry.name, entry.type, entry.initial)
+    return entry
+
+
+class MemoryEntry(_Model):
+    """One value the task keeps; the first run reads `initial`."""
+
+    name: str
+    label: str = ""
+    type: MemoryType = "text"
+    initial: Any = None
+
+    _check_name = field_validator("name")(_identifier)
+    _check_initial = model_validator(mode="after")(lambda entry: _initial_fits(entry))
+
+
+class RememberStep(_Step):
+    """Keep `value` (a reference, or text with references) as the memory `name` for the next
+    run. It is kept only when this run finishes; a later step of this run still reads the old
+    one."""
+
+    kind: Literal["remember"] = "remember"
+    name: str
+    value: str = Field(min_length=1)
 
 
 class ApprovalStep(_Step):
@@ -516,7 +547,7 @@ class LoopStep(_Step):
 
 Step = Annotated[
     ToolStep | ScriptStep | LLMStep | AgentStep | CheckStep | ApprovalStep | AskStep | WaitStep
-    | BranchStep | ChoiceStep | LoopStep,
+    | RememberStep | BranchStep | ChoiceStep | LoopStep,
     Field(discriminator="kind"),
 ]  # fmt: skip
 BlockStep = BranchStep | ChoiceStep | LoopStep
@@ -524,86 +555,6 @@ BlockStep = BranchStep | ChoiceStep | LoopStep
 
 def _root(reference: str) -> str:
     return reference.split(".", 1)[0]
-
-
-def _condition_refs(condition: Condition) -> list[str]:
-    operands = [condition.left] + ([condition.right] if condition.right else [])
-    return [r for o in operands if (r := o.reference()) is not None]
-
-
-def step_references(step: Step) -> list[str]:
-    """Every reference a step reads, as written."""
-    if isinstance(step, ToolStep):
-        return _value_references(step.args)
-    if isinstance(step, ScriptStep):
-        return _value_references(step.inputs)
-    if isinstance(step, LLMStep):
-        return template_references(step.prompt)
-    if isinstance(step, AgentStep):
-        return template_references(step.goal)
-    if isinstance(step, CheckStep):
-        return [r for c in step.conditions for r in _condition_refs(c)]
-    if isinstance(step, ApprovalStep):
-        return template_references(step.message) + [
-            r for c in step.when for r in _condition_refs(c)
-        ]
-    if isinstance(step, AskStep):
-        return template_references(step.message) + [f.items for f in step.fields if f.items]
-    if isinstance(step, WaitStep):
-        return template_references(step.path or "") + _day_reference(step.on)
-    if isinstance(step, BranchStep):
-        return [r for c in step.conditions for r in _condition_refs(c)]
-    if isinstance(step, ChoiceStep):
-        return [step.value]
-    if isinstance(step, LoopStep):
-        # `until` reads the item and the body's results, checked where the body is.
-        return [step.over]
-    return []  # pragma: no cover -- every kind is handled above
-
-
-def _day_reference(on: str | None) -> list[str]:
-    """What a wait's day reads: a reference, or the references in a template; a date or a
-    relative one reads nothing."""
-    if on is None or on in RELATIVE_DATES or not (is_reference(on) or "{{" in on):
-        return []
-    return [on] if is_reference(on) else template_references(on)
-
-
-def _value_references(value: Any) -> list[str]:
-    if isinstance(value, str):
-        return template_references(value)
-    if isinstance(value, list):
-        return [r for item in value for r in _value_references(item)]
-    if isinstance(value, dict):
-        return [r for item in value.values() for r in _value_references(item)]
-    return []
-
-
-def _texts(value: Any) -> list[str]:
-    if isinstance(value, str):
-        return [value]
-    if isinstance(value, list):
-        return [t for item in value for t in _texts(item)]
-    if isinstance(value, dict):
-        return [t for item in value.values() for t in _texts(item)]
-    return []
-
-
-def step_templates(step: Step) -> list[str]:
-    """Every text of a step that references are filled into."""
-    if isinstance(step, ToolStep):
-        return _texts(step.args)
-    if isinstance(step, ScriptStep):
-        return _texts(step.inputs)
-    if isinstance(step, LLMStep):
-        return [step.prompt]
-    if isinstance(step, AgentStep):
-        return [step.goal]
-    if isinstance(step, (ApprovalStep, AskStep)):
-        return [step.message]
-    if isinstance(step, WaitStep):
-        return [t for t in (step.path, step.on) if t and not is_reference(t)]
-    return []
 
 
 def step_output(step: Step) -> str | None:
@@ -707,6 +658,7 @@ class Workflow(_Model):
     autonomy: TaskAutonomy | None = None
     # Run when a step fails and the run stops, not when a person said no (decision 0032).
     after_failure: list[Step] = Field(default_factory=list, max_length=MAX_STEPS)
+    memory: list[MemoryEntry] = Field(default_factory=list, max_length=MAX_MEMORY)
 
     def effective_autonomy(self) -> TaskAutonomy:
         return self.autonomy or needed_autonomy(self.every_step())
@@ -723,8 +675,9 @@ class Workflow(_Model):
         from .scope import _Scope
 
         scope = _Scope(self.inputs)
-        scope.check(self.steps, {i.name for i in self.inputs}, 0)
-        scope.after_failure(self.after_failure, {i.name for i in self.inputs})
+        available = scope.remembers(self.memory)
+        scope.check(self.steps, available, 0)
+        scope.after_failure(self.after_failure, available)
         if scope.agents and self.version < 2:
             raise ValueError("agent steps need a version 2 workflow")
         above = steps_above(self.every_step(), self.autonomy) if self.autonomy else []

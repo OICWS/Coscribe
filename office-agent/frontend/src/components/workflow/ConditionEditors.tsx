@@ -9,9 +9,14 @@ import { AddRowButton, AutoTextarea, FieldLabel, RemoveButton } from "./fields";
 // choice and a loop that may stop early.
 
 export function CheckEditor({ step, onChange, context }: EditorProps<CheckStep>) {
+  const ends = step.otherwise === "end";
   return (
     <div className="flex flex-col gap-2">
-      <FieldLabel hint="If they don't hold, the run stops here">Checks</FieldLabel>
+      <FieldLabel
+        hint={ends ? "If they don't hold, the run ends here as done" : "If they don't hold, the run stops here"}
+      >
+        Checks
+      </FieldLabel>
       <ConditionsEditor
         conditions={step.conditions}
         match={step.match}
@@ -21,6 +26,27 @@ export function CheckEditor({ step, onChange, context }: EditorProps<CheckStep>)
         label="Check"
         addLabel="Add a check"
       />
+      {(context.topLevel || ends) && (
+        <div className="flex flex-wrap items-center gap-2 text-[13px]">
+          <label htmlFor={`${step.id}-otherwise`} className="text-[var(--muted)]">
+            If they don't hold
+          </label>
+          <select
+            id={`${step.id}-otherwise`}
+            className={`${inputClass} w-auto`}
+            value={step.otherwise ?? "fail"}
+            onChange={(e) => onChange({ ...step, otherwise: e.target.value === "end" ? "end" : "fail" })}
+          >
+            <option value="fail">Stop the run (it failed)</option>
+            <option value="end">End the run quietly (nothing to do)</option>
+          </select>
+          {ends && (
+            <span className="text-xs text-[var(--muted)]">
+              No notification; a row of such runs shows as one on the task page.
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -42,6 +42,8 @@ function readsOf(step: WorkflowStep): string[] {
       return [...textReads(step.message), ...step.fields.flatMap((f) => (f.items ? [f.items] : []))];
     case "wait":
       return [...textReads(step.path ?? ""), ...textReads(step.on ?? "")];
+    case "remember":
+      return textReads(step.value);
     case "choice":
       return [step.value];
     case "loop":

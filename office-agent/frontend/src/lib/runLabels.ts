@@ -54,5 +54,6 @@ export function runDuration(run: ScheduledRun): string | null {
 }
 
 export function runSourceLabel(run: ScheduledRun): string {
+  if (run.source === "file") return "New file";
   return run.source === "manual" ? "Manual" : "Scheduled";
 }

@@ -195,6 +195,8 @@ class ScheduledTaskCreate(BaseModel):
     notes_enabled: bool = True
     workflow: dict[str, Any] | None = None
     environment: str | None = None
+    # For an "every" or "folder" kind: {"minutes"} or {"folder", "pattern", "input"}.
+    watch: dict[str, Any] | None = None
     # The conversation draft this task was saved from, and that
     # conversation, if any.
     from_draft: str | None = None
@@ -242,6 +244,11 @@ class WorkflowRetry(BaseModel):
 
 class TaskNotesUpdate(BaseModel):
     notes: str
+
+
+class TaskMemoryUpdate(BaseModel):
+    # Blank forgets the value, so the next run reads the starting one.
+    value: Any = None
 
 
 class ProviderUpdate(BaseModel):

@@ -295,9 +295,11 @@ Last reviewed: 2026-10-15.
    of several paths, a loop that stops early and the simple view's quick edit (decision 0031,
    batch 1, done); failure handling: retries, skip, steps in a failed step's place, a loop that
    skips an item and steps after a failed run (decision 0032, batch 2, done); a step that asks
-   you for values and a step that waits for a time or a file (decision 0033, batch 3, in
-   review); then state across runs and triggers on files and connector events, sub-workflows and
-   versions. Parallel steps are left out for now.
+   you for values and a step that waits for a time or a file (decision 0033, batch 3, done);
+   what a task remembers between runs, a check that ends a run quietly, and runs every few
+   minutes or when a file arrives in a folder (decision 0034, batch 4, in review); then
+   sub-workflows and versions. Webhooks and connector events as triggers are left out, as are
+   parallel steps.
 
 ## Needs the maintainer's testing (could not be verified here)
 

@@ -50,6 +50,7 @@ from ..schemas import (
     PermissionsRequest,
     RunNowRequest,
     ScheduledTaskCreate,
+    TaskMemoryUpdate,
     TaskNotesUpdate,
     WorkflowAnswer,
     WorkflowCheck,
@@ -194,6 +195,7 @@ def _task_routes(router: APIRouter, state: AppState) -> None:
                 notes_enabled=payload.notes_enabled,
                 workflow=payload.workflow,
                 environment=payload.environment,
+                watch=payload.watch,
             )
         except (ValueError, KeyError) as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
@@ -224,6 +226,7 @@ def _task_routes(router: APIRouter, state: AppState) -> None:
                 notes_enabled=payload.notes_enabled,
                 workflow=payload.workflow,
                 environment=payload.environment,
+                watch=payload.watch,
             )
         except KeyError as exc:
             return JSONResponse({"error": str(exc)}, status_code=404)
@@ -497,6 +500,42 @@ def _note_and_lifecycle_routes(router: APIRouter, state: AppState) -> None:
         return JSONResponse({"deleted": trigger_id})
 
 
+def _memory_routes(router: APIRouter, state: AppState) -> None:
+    """What a task remembers between runs (decision 0034), which a person may correct."""
+    settings = state.settings
+
+    async def get_task_memory(trigger_id: str) -> JSONResponse:
+        store = ScheduledTriggerStore(settings.state_dir)
+        if store.load(trigger_id) is None:
+            return JSONResponse({"error": f"No scheduled task {trigger_id!r}"}, status_code=404)
+        return JSONResponse({"memory": store.memory.entries(trigger_id)})
+
+    async def put_task_memory(
+        trigger_id: str, name: str, payload: TaskMemoryUpdate
+    ) -> JSONResponse:
+        store = ScheduledTriggerStore(settings.state_dir)
+        trigger = store.load(trigger_id)
+        if trigger is None or trigger.workflow is None:
+            return JSONResponse({"error": f"No scheduled task {trigger_id!r}"}, status_code=404)
+        declared = parse_workflow(trigger.workflow).memory
+        entry = next((m for m in declared if m.name == name), None)
+        if entry is None:
+            return JSONResponse({"error": f"This task doesn't remember {name!r}"}, status_code=404)
+        try:
+            store.memory.set(trigger_id, declared, name, payload.value)
+        except ValueError:
+            # Said from the entry, not the exception, so no internal text reaches the page.
+            kind = {"list": "a list", "date": "a date like 2026-03-31", "number": "a number"}
+            keeps = kind.get(entry.type, "text")
+            problem = f"“{entry.label or name}” keeps {keeps}, and not too long"
+            return JSONResponse({"error": problem}, status_code=400)
+        return JSONResponse({"memory": store.memory.entries(trigger_id)})
+
+    path = "/api/scheduled-tasks/{trigger_id}/memory"
+    router.add_api_route(path, get_task_memory, methods=["GET"])
+    router.add_api_route(path + "/{name}", put_task_memory, methods=["PUT"])
+
+
 def router(state: AppState) -> APIRouter:
     router = APIRouter()
     _workflow_routes(router, state)
@@ -505,4 +544,5 @@ def router(state: AppState) -> APIRouter:
     _approval_routes(router, state)
     _retry_routes(router, state)
     _note_and_lifecycle_routes(router, state)
+    _memory_routes(router, state)
     return router

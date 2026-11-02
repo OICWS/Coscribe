@@ -103,7 +103,7 @@ async def test_the_poll_wakes_a_run_whose_wait_is_over(
         monkeypatch.setattr(pause_steps, "clock", lambda: datetime.now() - timedelta(minutes=31))
         due = await fire_trigger_now(settings.state_dir, "trig-due", get_session)
         monkeypatch.setattr(pause_steps, "clock", datetime.now)
-        fired = await poll_due_scheduled_tasks(settings.state_dir, get_session, on_woken=on_woken)
+        fired = await poll_due_scheduled_tasks(settings.state_dir, get_session, on_ended=on_woken)
 
     assert soon is not None and soon.status == "waiting"
     assert due is not None and due.status == "waiting"

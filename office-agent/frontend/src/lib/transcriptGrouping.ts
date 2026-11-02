@@ -140,6 +140,10 @@ export interface WorkflowTestResult {
   error: string | null;
   /** A file under GET /api/screenshots/: the page the test ended on. */
   screenshot?: string | null;
+  /** A check ended it with nothing to do (decision 0034). */
+  ended?: boolean;
+  /** What the run would keep for the next one; a test keeps nothing. */
+  would_remember?: Record<string, unknown>;
 }
 
 /** A draft's latest test: its result, or running with none yet. */

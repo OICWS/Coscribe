@@ -444,7 +444,7 @@ async def _check_wakes_async(settings: Any) -> None:
 
             fired_wakes = await poll_due_wakes(settings.state_dir, _get_session)
             fired_tasks = await poll_due_scheduled_tasks(
-                settings.state_dir, _get_session, on_woken=_note_woken
+                settings.state_dir, _get_session, on_ended=_note_woken
             )
     finally:
         for connection in mcp_connections.values():
@@ -458,7 +458,7 @@ async def _check_wakes_async(settings: Any) -> None:
     for trigger in fired_tasks:
         typer.echo(f"Ran scheduled task {trigger.name!r} ({trigger.trigger_id})")
     for trigger_id, run in woken:
-        typer.echo(f"Went on with run {run.run_id} of {trigger_id}: {run.status}")
+        typer.echo(f"Run {run.run_id} of {trigger_id}: {run.status}")
 
 
 def main() -> None:

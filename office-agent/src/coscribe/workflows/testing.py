@@ -192,13 +192,16 @@ async def run_test(
     thread_id: str = "",
     *,
     send_for_real: bool = False,
+    memory: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """{"status": "passed" | "failed" | "stopped_at_approval" |
     "stopped_before_irreversible", "seconds", "steps": [{"id", "title",
     "status", "seconds", "output", "error"}], "failed_step", "error"} --
     every step listed, "not reached" for those the run never got to; with
     "stopped_before" ({"id", "title"}) when an irreversible step stopped it.
-    `send_for_real` runs irreversible steps too."""
+    `send_for_real` runs irreversible steps too. A task's `memory` is read as a run reads it;
+    what the run would keep comes back as "would_remember", and "ended" says a check ended it
+    with nothing to do (decision 0034) -- a test never keeps anything."""
     records: dict[str, StepRecord] = {}
     shown = workflow
     guards: dict[str, Step] = {}
@@ -221,7 +224,7 @@ async def run_test(
     lock = browser_run(thread_id) if uses_browser(workflow) else contextlib.nullcontext()
     async with lock:
         try:
-            outcome = await run.start(inputs or {})
+            outcome = await run.start(inputs or {}, memory)
         except WorkflowNotRunnable as exc:
             return {
                 "status": "failed",
@@ -249,11 +252,15 @@ async def run_test(
         if record and record.status == "failed" and record.checks:
             step["checks"] = record.checks
         steps.append(step)
-    extra = (
+    extra: dict[str, Any] = (
         {"stopped_before": {"id": stopped_before.id, "title": stopped_before.title}}
         if stopped_before is not None
         else {}
     )
+    if status == "passed" and outcome.ended:
+        extra["ended"] = True
+    if status == "passed" and outcome.remembered:
+        extra["would_remember"] = {k: _clip(v) for k, v in outcome.remembered.items()}
     return {
         "status": status,
         **extra,

@@ -24,12 +24,31 @@ function Section({ title, action, children }: { title: string; action?: ReactNod
 
 const linkButton = "text-[13px] text-[var(--muted)] hover:text-[var(--fg)] hover:underline";
 
-function Inputs({ workflow, onChange }: { workflow: Workflow; onChange: (name: string) => void }) {
+/** `fromFile` names the input a folder task fills with the file that arrived: nothing to change. */
+function Inputs({
+  workflow,
+  fromFile,
+  onChange,
+}: {
+  workflow: Workflow;
+  fromFile: string | null;
+  onChange: (name: string) => void;
+}) {
   if (workflow.inputs.length === 0) return null;
+  const onlyTheFile = workflow.inputs.every((input) => input.name === fromFile);
   return (
-    <Section title="Asks you for, each time it runs">
+    <Section title={onlyTheFile ? "Works on" : "Asks you for, each time it runs"}>
       <ul className="flex flex-col gap-1 text-sm">
         {workflow.inputs.map((input) => {
+          if (input.name === fromFile)
+            return (
+              <li key={input.name} className="flex items-baseline gap-3">
+                <span className="min-w-0">
+                  {input.label || input.name}
+                  <span className="text-[var(--muted)]"> · the new file that arrived in the folder</span>
+                </span>
+              </li>
+            );
           const usual = plainDefault(input);
           return (
             <li key={input.name} className="flex items-baseline gap-3">
@@ -60,11 +79,13 @@ function Inputs({ workflow, onChange }: { workflow: Workflow; onChange: (name: s
 /** The steps and what they ask for, each opening its quick edit. */
 function WhatItDoes({
   workflow,
+  fromFile,
   persist,
   onShowDetails,
   onOpenStep,
 }: {
   workflow: Workflow;
+  fromFile: string | null;
   persist: (next: Workflow) => Promise<string | null>;
   onShowDetails: () => void;
   onOpenStep: (stepId: string) => void;
@@ -95,7 +116,7 @@ function WhatItDoes({
           onOpenEditor={() => onOpenStep(editingStep.id)}
         />
       )}
-      <Inputs workflow={workflow} onChange={setEditingInput} />
+      <Inputs workflow={workflow} fromFile={fromFile} onChange={setEditingInput} />
       {input && (
         <InputQuickPanel
           key={input.name}
@@ -138,7 +159,13 @@ export function ScheduledTaskSimple({
   };
   return (
     <div className="flex flex-col gap-7" data-testid="task-simple-view">
-      <WhatItDoes workflow={workflow} persist={persist} onShowDetails={onShowDetails} onOpenStep={onOpenStep} />
+      <WhatItDoes
+        workflow={workflow}
+        fromFile={task.schedule.kind === "folder" ? task.schedule.input || null : null}
+        persist={persist}
+        onShowDetails={onShowDetails}
+        onOpenStep={onOpenStep}
+      />
       {runs}
       <Section
         title="When it runs"

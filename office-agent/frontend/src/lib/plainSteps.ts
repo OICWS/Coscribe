@@ -1,4 +1,4 @@
-import type { AskStep, WaitStep, WorkflowInput, WorkflowStep } from "../types/workflow";
+import type { AskStep, MemoryEntry, WaitStep, WorkflowInput, WorkflowStep } from "../types/workflow";
 import { toolLabel } from "./toolLabels";
 import { splitTemplate, wholeReference } from "./workflowLabels";
 
@@ -12,10 +12,20 @@ function words(name: string): string {
   return name.replace(/_/g, " ");
 }
 
+/** What a task remembers and when its run started (decision 0034), in words. */
+function memoryWords(head: string, rest: string[]): string | null {
+  if (head === "memory" && rest.length === 1) return `the remembered “${words(rest[0])}”`;
+  if (head === "run" && rest[0] === "started_at") return "when this run started";
+  if (head === "run" && rest[0] === "date") return "this run’s day";
+  return null;
+}
+
 /** "claim.employee_id" -> "the claim's employee id"; an input -> its label. */
 export function plainReference(ref: string, inputs: WorkflowInput[]): string {
   const [head, ...rest] = ref.split(".");
   const input = inputs.find((i) => i.name === head);
+  const own = input ? null : memoryWords(head, rest);
+  if (own) return own;
   const base = input ? input.label || words(head) : `the ${words(head)}`;
   if (rest.length === 0) return input ? `“${base}”` : base;
   return `${base}${base.endsWith("s") ? "’" : "’s"} ${rest.map(words).join(" ")}`;
@@ -146,7 +156,7 @@ export function duration(minutes: number): string {
 }
 
 /** One sentence on what a step does, or null when its title already says all there is. */
-export function plainDetail(step: WorkflowStep, inputs: WorkflowInput[]): string | null {
+export function plainDetail(step: WorkflowStep, inputs: WorkflowInput[], memory: MemoryEntry[] = []): string | null {
   switch (step.kind) {
     case "tool":
       return toolSentence(step.tool, step.args, inputs);
@@ -159,13 +169,17 @@ export function plainDetail(step: WorkflowStep, inputs: WorkflowInput[]): string
         ? "AI works it out with the tools it was given"
         : "AI works it out its own way";
     case "check":
-      return "Stops the run if this isn’t so";
+      return step.otherwise === "end" ? "Ends the run quietly if this isn’t so" : "Stops the run if this isn’t so";
     case "approval":
       return "Waits for your OK before going on";
     case "ask":
       return askSentence(step);
     case "wait":
       return waitSentence(step, inputs);
+    case "remember": {
+      const label = memory.find((entry) => entry.name === step.name)?.label;
+      return `Keeps “${label || words(step.name)}” for the next run`;
+    }
     case "branch":
     case "loop":
       return null;
@@ -194,6 +208,8 @@ export function plainKind(step: WorkflowStep): string {
       return "Your answer";
     case "wait":
       return "Wait";
+    case "remember":
+      return "Memory";
     case "branch":
       return "If";
     case "choice":

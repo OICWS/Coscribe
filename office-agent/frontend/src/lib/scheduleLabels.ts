@@ -28,10 +28,23 @@ function ordinal(day: number): string {
   }
 }
 
+/** 30 -> "30 minutes", 120 -> "2 hours", 90 -> "90 minutes". */
+export function everyWords(minutes: number): string {
+  if (minutes >= 60 && minutes % 60 === 0) return minutes === 60 ? "hour" : `${minutes / 60} hours`;
+  return `${minutes} minutes`;
+}
+
+/** The last part of a folder path, which is what a person recognizes it by. */
+function folderName(folder: string): string {
+  return folder.split(/[\\/]/).filter(Boolean).pop() ?? folder;
+}
+
 /** Short, single-word badge for a tight space (sidebar row, portal card
  * corner) -- just the schedule kind, title-cased. */
 export function scheduleKindLabel(kind: ScheduleKind): string {
   if (kind === "once") return "Once";
+  if (kind === "every") return "Repeats";
+  if (kind === "folder") return "On new file";
   return kind.charAt(0).toUpperCase() + kind.slice(1);
 }
 
@@ -53,6 +66,10 @@ export function describeSchedule(schedule: ScheduleRule): string {
       return `Weekly on ${WEEKDAYS[schedule.weekday ?? 0]} at ${formatTimeOfDay(schedule.at)}`;
     case "monthly":
       return `Monthly on the ${ordinal(schedule.day_of_month ?? 1)} at ${formatTimeOfDay(schedule.at)}`;
+    case "every":
+      return `Every ${everyWords(schedule.minutes ?? 0)}`;
+    case "folder":
+      return `When a ${schedule.pattern && schedule.pattern !== "*" ? `${schedule.pattern} ` : ""}file arrives in ${folderName(schedule.folder ?? "")}`;
     default:
       return schedule.kind;
   }

@@ -58,6 +58,7 @@ const NEW_TITLE: Record<StepKind, string> = {
   approval: "Review before continuing",
   ask: "Ask you",
   wait: "Wait",
+  remember: "Remember for the next run",
   branch: "Decide which way to go",
   choice: "Pick a path by a value",
   loop: "Repeat for each item",
@@ -144,6 +145,8 @@ export function newStep(kind: StepKind, workflow: Workflow, available: string[],
       };
     case "wait":
       return { kind, id, title, until: "duration", minutes: 10 };
+    case "remember":
+      return { kind, id, title, name: workflow.memory?.[0]?.name ?? "", value: firstValue ? `{{${firstValue}}}` : "" };
     case "branch":
       return {
         kind,
@@ -253,6 +256,11 @@ function renameInStep(step: WorkflowStep, from: string, to: string): WorkflowSte
         path: step.path ? renameInText(step.path, from, to) : step.path,
         on: step.on ? renameInText(step.on, from, to) : step.on,
       };
+    case "remember": {
+      // A memory value renamed: its remember steps keep it under the new name.
+      const name = from === `memory.${step.name}` ? to.slice("memory.".length) : step.name;
+      return { ...step, name, value: renameInText(step.value, from, to) };
+    }
     case "branch":
       return { ...step, conditions: step.conditions.map((c) => renameCondition(c, from, to)) };
     case "choice":

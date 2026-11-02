@@ -904,6 +904,18 @@
             ],
             "title": "Start Date"
           },
+          "watch": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watch"
+          },
           "weekday": {
             "anyOf": [
               {
@@ -1155,6 +1167,15 @@
           "version"
         ],
         "title": "SlideSave",
+        "type": "object"
+      },
+      "TaskMemoryUpdate": {
+        "properties": {
+          "value": {
+            "title": "Value"
+          }
+        },
+        "title": "TaskMemoryUpdate",
         "type": "object"
       },
       "TaskNotesUpdate": {
@@ -3863,6 +3884,99 @@
           }
         },
         "summary": "Update Scheduled Task Endpoint"
+      }
+    },
+    "/api/scheduled-tasks/{trigger_id}/memory": {
+      "get": {
+        "operationId": "get_task_memory_api_scheduled_tasks__trigger_id__memory_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trigger_id",
+            "required": true,
+            "schema": {
+              "title": "Trigger Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Task Memory"
+      }
+    },
+    "/api/scheduled-tasks/{trigger_id}/memory/{name}": {
+      "put": {
+        "operationId": "put_task_memory_api_scheduled_tasks__trigger_id__memory__name__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trigger_id",
+            "required": true,
+            "schema": {
+              "title": "Trigger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskMemoryUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Task Memory"
       }
     },
     "/api/scheduled-tasks/{trigger_id}/notes": {

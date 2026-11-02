@@ -44,3 +44,4 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0031](0031-a-workflow-asks-for-typed-inputs-and-goes-one-of-several-ways.md) | A workflow asks for typed inputs and goes one of several ways (proposed) |
 | [0032](0032-a-step-says-what-happens-when-it-fails.md) | A step says what happens when it fails (proposed) |
 | [0033](0033-a-run-can-pause-for-a-person-or-a-time.md) | A run can pause for a person or a time (proposed) |
+| [0034](0034-a-task-remembers-between-runs-and-starts-on-a-new-file.md) | A task remembers between runs, and starts on a schedule of minutes or a new file (proposed) |

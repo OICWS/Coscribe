@@ -2,40 +2,19 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { createScheduledTask, patchScheduledTask } from "../lib/rest";
 import type { Workflow } from "../types/workflow";
-import type { ApprovalMode, ScheduledTask, ScheduleKind } from "../types/settings";
+import type { ApprovalMode, ScheduledTask } from "../types/settings";
 import type { TaskDraft } from "../types/wire";
 import { CloseIcon } from "./icons";
+import { fileInputs, initialSchedule, schedulePayload, type ScheduleForm } from "../lib/scheduleForm";
 import { allSteps } from "../lib/workflowTree";
 import { DEFAULT_ENVIRONMENT } from "./EnvironmentDialog";
 import { EnvironmentPicker } from "./EnvironmentPicker";
-
-const FREQUENCY_OPTIONS: { value: ScheduleKind; label: string }[] = [
-  { value: "manual", label: "Manual" },
-  { value: "hourly", label: "Hourly" },
-  { value: "daily", label: "Daily" },
-  { value: "weekdays", label: "Weekdays" },
-  { value: "weekly", label: "Weekly" },
-  { value: "monthly", label: "Monthly" },
-];
+import { FrequencyRow } from "./ScheduleFields";
 
 const APPROVAL_OPTIONS: { value: ApprovalMode; label: string }[] = [
   { value: "manual", label: "Ask before every action" },
   { value: "auto", label: "Automatically approve" },
   { value: "skip", label: "Never ask" },
-];
-
-// Display order matches the reference screenshot (Sunday first, JS
-// Date.getDay() order); `value` is ScheduleRule.weekday's own convention
-// (0=Monday..6=Sunday, see tools/bookkeeping/scheduled_tasks.py) -- the two orders
-// differ, so this table (not a formula) is what bridges them.
-const WEEKDAY_OPTIONS: { label: string; value: number }[] = [
-  { label: "Sunday", value: 6 },
-  { label: "Monday", value: 0 },
-  { label: "Tuesday", value: 1 },
-  { label: "Wednesday", value: 2 },
-  { label: "Thursday", value: 3 },
-  { label: "Friday", value: 4 },
-  { label: "Saturday", value: 5 },
 ];
 
 // No banner for "manual" -- it's the safe default, and no reference
@@ -47,36 +26,6 @@ const APPROVAL_BANNER: Partial<Record<ApprovalMode, string>> = {
   skip: "For this task, Coscribe will never pause for approval -- it runs code and uses connectors on its own. Only your blocking rules still apply. Use with caution.",
 };
 
-function todayIso(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
-function dateForDayOfMonth(day: number): string {
-  const today = new Date();
-  const candidate = new Date(today.getFullYear(), today.getMonth(), day);
-  if (candidate < today) candidate.setMonth(candidate.getMonth() + 1);
-  return `${candidate.getFullYear()}-${String(candidate.getMonth() + 1).padStart(2, "0")}-${String(candidate.getDate()).padStart(2, "0")}`;
-}
-
-/** Best-effort reconstruction of the "starts on" date to show when
- * editing a monthly task -- the only kind that still uses a date picker
- * (weekly uses a plain weekday dropdown instead, see WEEKDAY_OPTIONS).
- * ScheduleRule itself only stores a bare day_of_month number, not a
- * specific date, so this picks the nearest real date matching it (or
- * start_date, if the trigger has one) for display purposes only;
- * submitting the form re-derives day_of_month/start_date from whatever
- * date ends up picked. */
-function initialDateFor(task: ScheduledTask | null, draft: TaskDraft | undefined): string {
-  if (draft?.start_date) return draft.start_date;
-  if (draft?.kind === "monthly") return dateForDayOfMonth(draft.day_of_month ?? 1);
-  if (!task) return todayIso();
-  if (task.schedule.start_date) return task.schedule.start_date;
-  if (task.schedule.kind === "monthly") return dateForDayOfMonth(task.schedule.day_of_month ?? 1);
-  return todayIso();
-}
-
-const FREQUENCY_VALUES = new Set<string>(FREQUENCY_OPTIONS.map((o) => o.value));
 const APPROVAL_VALUES = new Set<string>(APPROVAL_OPTIONS.map((o) => o.value));
 
 /** The form's starting values: an existing task being edited, a draft the
@@ -84,14 +33,10 @@ const APPROVAL_VALUES = new Set<string>(APPROVAL_OPTIONS.map((o) => o.value));
  * represent falls back to a default), or blank. */
 function initialValues(task: ScheduledTask | null, draft: TaskDraft | undefined) {
   if (draft) {
-    const kind = (FREQUENCY_VALUES.has(draft.kind ?? "") ? draft.kind : "manual") as ScheduleKind;
     return {
       name: draft.name ?? "",
       instructions: draft.prompt ?? "",
       model: draft.model ?? "",
-      kind,
-      time: kind !== "manual" && /^\d{1,2}:\d{2}$/.test(draft.at ?? "") ? (draft.at as string) : "09:00",
-      weekday: draft.weekday ?? 0,
       approvalMode: (APPROVAL_VALUES.has(draft.approval_mode ?? "") ? draft.approval_mode : "manual") as ApprovalMode,
     };
   }
@@ -99,9 +44,6 @@ function initialValues(task: ScheduledTask | null, draft: TaskDraft | undefined)
     name: task?.name ?? "",
     instructions: task?.prompt ?? "",
     model: task?.model ?? "",
-    kind: (task?.schedule.kind === "once" ? "manual" : (task?.schedule.kind ?? "manual")) as ScheduleKind,
-    time: task?.schedule.at && task.schedule.kind !== "manual" ? task.schedule.at : "09:00",
-    weekday: task?.schedule.weekday ?? 0,
     approvalMode: task?.approval_mode ?? "manual",
   };
 }
@@ -176,10 +118,7 @@ export function ScheduledTaskModal({
   const [instructions, setInstructions] = useState(initial.instructions);
   const [model, setModel] = useState(initial.model);
   const [environment, setEnvironment] = useState(task?.environment ?? initialEnvironment ?? DEFAULT_ENVIRONMENT);
-  const [kind, setKind] = useState<ScheduleKind>(initial.kind);
-  const [date, setDate] = useState(() => initialDateFor(task, draft));
-  const [time, setTime] = useState(initial.time);
-  const [weekday, setWeekday] = useState(initial.weekday);
+  const [schedule, setSchedule] = useState<ScheduleForm>(() => initialSchedule(task, draft));
   const [approvalMode, setApprovalMode] = useState<ApprovalMode>(initial.approvalMode);
   const [providers, setProviders] = useState<[string, ProviderInfo][]>([]);
   const [saving, setSaving] = useState(false);
@@ -205,13 +144,14 @@ export function ScheduledTaskModal({
       setError("Instructions are required.");
       return;
     }
+    if (schedule.kind === "folder" && !schedule.folder.trim()) {
+      setError("Choose the folder to watch.");
+      return;
+    }
     const payload = {
       name: trimmedName,
-      kind,
-      at: kind === "manual" ? "" : kind === "hourly" ? "00:00" : time,
+      ...schedulePayload(schedule, fileInputs(workflow)),
       prompt: trimmedInstructions,
-      ...(kind === "weekly" ? { weekday } : {}),
-      ...(kind === "monthly" ? { day_of_month: Number(date.split("-")[2]), start_date: date } : {}),
       ...(model ? { model } : {}),
       approval_mode: approvalMode,
       notes_enabled: task?.notes_enabled ?? true,
@@ -316,73 +256,7 @@ export function ScheduledTaskModal({
             </div>
           )}
 
-          {/* w-24 on both labels is load-bearing, not decorative -- it's
-           * what keeps the Frequency/Permissions dropdowns' left edges
-           * aligned despite the two labels being different lengths. */}
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="w-24 shrink-0 text-sm font-medium">Frequency</label>
-            <select
-              aria-label="Frequency"
-              className="rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm"
-              value={kind}
-              onChange={(e) => setKind(e.target.value as ScheduleKind)}
-            >
-              {FREQUENCY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            {/* manual/hourly show no further controls at all -- hourly
-             * always fires on the hour (:00), not user-configurable from
-             * here (the backend itself supports an arbitrary minute, see
-             * tools/bookkeeping/scheduled_tasks.py's compute_next_run_at, but the
-             * reference screenshots never expose that). daily/weekdays
-             * add just a time; weekly adds a time + a weekday dropdown
-             * (not a date -- ScheduleRule.weekday is a bare 0-6, no
-             * specific calendar date involved); monthly alone gets the
-             * "starts on" date+time pair, since a specific date is the
-             * only way to name both a day-of-month and a floor. */}
-            {(kind === "daily" || kind === "weekdays" || kind === "weekly") && (
-              <input
-                type="time"
-                className="rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm outline-none"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-              />
-            )}
-            {kind === "weekly" && (
-              <select
-                aria-label="Weekday"
-                className="rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm"
-                value={weekday}
-                onChange={(e) => setWeekday(Number(e.target.value))}
-              >
-                {WEEKDAY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            )}
-            {kind === "monthly" && (
-              <>
-                <span className="text-sm text-[var(--muted)]">starts on</span>
-                <input
-                  type="date"
-                  className="rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm outline-none"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
-                <input
-                  type="time"
-                  className="rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm outline-none"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                />
-              </>
-            )}
-          </div>
+          <FrequencyRow form={schedule} onChange={setSchedule} workflow={workflow} />
 
           {!workflow && (
             <div className="flex flex-wrap items-center gap-2">

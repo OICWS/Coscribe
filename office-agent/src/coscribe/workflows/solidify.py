@@ -91,7 +91,10 @@ exactly one of {"ref": "name.field"}, {"count": "name"} (length of a list \
 or text) or {"value": <literal>}; "empty" and "not_empty" have no "right"; \
 "before" and "after" compare dates. A list of conditions is checked in \
 order and stops once the answer is known, so a later one may read what an \
-earlier one rules out.
+earlier one rules out. A check outside any loop, branch or choice may add \
+"otherwise": "end" when its conditions not holding means there is nothing \
+to do this time (no new rows, no new mail): the run then ends as done, \
+quietly, instead of failing.
 - "approval": {"message": "<text with {{references}}>", "when": \
 [<condition>, ...], "match": "all" | "any"} -- pauses for a person, only \
 when "when" holds if it lists any. Use one before a step that overwrites \
@@ -113,6 +116,9 @@ with {{references}}>", "max_minutes": <n>, "if_missing": "fail" | \
 "continue", "save_as": "<name>"} -- pauses the run, holding nothing, for a \
 time, until a time, or until a file appears (its save_as holds {"path", \
 "found"}). Use one only where the conversation waited for something.
+
+- "remember": {"name": "<a memory name>", "value": "<text with \
+{{references}}>"} -- keeps a value for the next run (see Memory below).
 
 - "loop": {"over": "<name of a list>", "item": "<name for each item>", \
 "steps": [...], "collect": "<a name made inside>", "save_as": "<name>", \
@@ -148,6 +154,19 @@ Beside "steps", a workflow may list "after_failure": [...] -- tool, \
 script, llm or agent steps that run only when the run fails (to tell \
 someone, or to clean up), reading the inputs and {{failure.step}} and \
 {{failure.message}}.
+
+Memory -- only for a task the conversation made depend on what an earlier \
+run did ("only the new ones", "since last time"): beside "steps", a \
+workflow may list "memory": [{"name": "last_checked", "label": "Last \
+checked", "type": "text" | "number" | "date" | "list", "initial": <the \
+value before the first run, or leave it out>}]. Steps read it as \
+{{memory.<name>}}, and the time this run started as {{run.started_at}} \
+(the day as {{run.date}}). A remember step's value is kept only once the \
+run finishes, so a later step of the same run still reads the old one, and \
+a failed run keeps nothing. A "list" that grows too long keeps its newest \
+items. The usual shape: read {{memory.seen}}, work out what is new in a \
+script, end with a check "otherwise": "end" when nothing is, do the work, \
+then remember what was handled.
 
 References: "{{name}}" or "{{name.field}}" reads an input or an earlier \
 step's save_as. A whole-string reference keeps the value's type; inside \

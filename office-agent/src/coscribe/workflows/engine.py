@@ -25,7 +25,6 @@ import inspect
 import logging
 from collections.abc import Awaitable, Callable, Hashable
 from dataclasses import dataclass, field, replace
-from datetime import date
 from typing import Annotated, Any, Literal, TypedDict, cast
 
 from langgraph.checkpoint.memory import InMemorySaver
@@ -46,6 +45,7 @@ from ..workflow_spec import (
     LLMStep,
     LoopStep,
     Placed,
+    RememberStep,
     ScriptStep,
     Step,
     ToolStep,
@@ -55,18 +55,22 @@ from ..workflow_spec import (
     choose_arm,
     conditions_hold,
     failure_policy,
-    input_values,
     resolve,
     step_output,
     walk,
 )
-from .agent_step import CODE_TOOLS, AgentCall, CallGuard, answer_of, run_agent_step
+from .agent_step import AgentCall, CallGuard, answer_of, run_agent_step
 from .healing import carried, heal_guard, healed, stand_in
 from .loop_labels import item_labels as _item_labels
 from .loop_labels import loop_progress as _loop_progress
 from .loop_labels import supersteps as _supersteps
 from .pause_steps import PAUSED, Pauses
 from .permissions import untrusted_agent_steps
+from .preflight import NO_STEPS as _NO_STEPS
+from .preflight import UNAVAILABLE_TOOLS as UNAVAILABLE_TOOLS
+from .preflight import WorkflowNotRunnable as WorkflowNotRunnable
+from .preflight import preflight, starting_values
+from .remember_steps import ENDED, check_or_end, remember
 from .step_work import StepContext as StepContext
 from .step_work import StepFailed as StepFailed
 from .step_work import StepRecord as StepRecord
@@ -77,14 +81,6 @@ logger = logging.getLogger(__name__)
 
 RunOutcomeStatus = Literal["completed", "failed", "waiting"]
 
-# Tools that need a person in the loop mid-call; a workflow asks through an
-# approval step instead.
-UNAVAILABLE_TOOLS = frozenset({"ask_user_question", "create_scheduled_task"})
-
-
-class WorkflowNotRunnable(ValueError):
-    pass
-
 
 @dataclass
 class RunOutcome:
@@ -94,6 +90,10 @@ class RunOutcome:
     # For "waiting": what the approval step asks.
     request: dict[str, Any] | None = None
     values: dict[str, Any] = field(default_factory=dict)
+    # For "completed" (decision 0034): what its remember steps keep, and whether a check ended
+    # it with nothing to do.
+    remembered: dict[str, Any] = field(default_factory=dict)
+    ended: bool = False
 
 
 OnStep = Callable[[StepRecord], Awaitable[None] | None]
@@ -110,6 +110,8 @@ class _State(TypedDict):
     loops: Annotated[dict[str, Any], _merge]
     # Per step id: how it was last healed in this run (decision 0030), for its later passes.
     healed: Annotated[dict[str, Any], _merge]
+    # Per memory name: what this run's remember steps keep (decision 0034).
+    remembered: Annotated[dict[str, Any], _merge]
     # Per step id, in its current pass: {"route", "tries", "started"} -- where the run goes from
     # it and how many of its tries have failed (decision 0032). Each try is its own graph step,
     # so a pause during one resumes that try, not the first.
@@ -119,48 +121,6 @@ class _State(TypedDict):
 def _node_name(step: Step) -> str:
     # A node can't share a name with a state key ("values").
     return f"step__{step.id}"
-
-
-_NO_STEPS = "This workflow has no steps yet -- add some on its task page."
-
-
-def preflight(workflow: Workflow, ctx: StepContext) -> None:
-    """Refuse a workflow that can't run here, before any step does."""
-    if not workflow.steps:
-        raise WorkflowNotRunnable(_NO_STEPS)
-    for placed in walk(workflow.every_step()):
-        step, where = placed.step, f"step {placed.number}"
-        if isinstance(step, ToolStep):
-            if step.tool in UNAVAILABLE_TOOLS:
-                raise WorkflowNotRunnable(f"{where}: {step.tool} can't be used in a workflow")
-            if step.tool not in ctx.tools:
-                raise WorkflowNotRunnable(f"{where}: there's no tool called {step.tool!r}")
-        if isinstance(step, AgentStep):
-            _agent_preflight(step, where, ctx)
-        if isinstance(step, LoopStep) and not step.steps:
-            raise WorkflowNotRunnable(f"{where}: the loop has no steps to repeat yet")
-        if isinstance(step, (BranchStep, ChoiceStep)) and not any(s for _a, s in child_lists(step)):
-            raise WorkflowNotRunnable(f"{where}: the branch has no steps on any path yet")
-        policy = failure_policy(step)
-        if policy is not None and policy.then == "steps" and not policy.steps:
-            raise WorkflowNotRunnable(f"{where}: no steps run in its place yet if it fails")
-
-
-def _agent_preflight(step: AgentStep, where: str, ctx: StepContext) -> None:
-    if ctx.run_agent is None:
-        raise WorkflowNotRunnable(f"{where}: agent steps can't run here")
-    for tool in step.tools:
-        if tool in UNAVAILABLE_TOOLS or tool in CODE_TOOLS:
-            raise WorkflowNotRunnable(f"{where}: {tool} can't be used in a workflow")
-        if tool not in ctx.tools:
-            raise WorkflowNotRunnable(f"{where}: there's no tool called {tool!r}")
-
-
-def resolve_inputs(workflow: Workflow, given: dict[str, Any]) -> dict[str, Any]:
-    try:
-        return input_values(workflow.inputs, given, date.today())
-    except ValueError as exc:
-        raise WorkflowNotRunnable(str(exc)) from exc
 
 
 class _GraphBuilder:
@@ -227,6 +187,8 @@ class _GraphBuilder:
                        "steps": _node_name(in_place[0]) if in_place else following}  # fmt: skip
         if isinstance(step, (AskStep, WaitStep)):
             routes[PAUSED] = _node_name(step)
+        if isinstance(step, CheckStep) and step.otherwise == ENDED:
+            routes[ENDED] = END
         # A person's no stops the run, wherever it is.
         loop = None if isinstance(step, (ApprovalStep, AskStep)) else self.skipping_loop(step)
         if loop is not None:
@@ -294,6 +256,10 @@ class _GraphBuilder:
             it = self.iteration(state, step)
             if isinstance(step, ApprovalStep):
                 return await self.pauses.approval(step, values, it)
+            if isinstance(step, RememberStep):
+                return await remember(self, step, values, it)
+            if isinstance(step, CheckStep) and step.otherwise == ENDED:
+                return await check_or_end(self, step, values, it)
             if isinstance(step, (AskStep, WaitStep)):
                 held = (state.get("attempts") or {}).get(step.id) or {}
                 if held.get("route") != PAUSED:
@@ -644,9 +610,11 @@ class WorkflowRun:
         }
         self._graph = build_graph(workflow, ctx, on_step, checkpointer) if workflow.steps else None
 
-    async def start(self, inputs: dict[str, Any]) -> RunOutcome:
+    async def start(
+        self, inputs: dict[str, Any], memory: dict[str, Any] | None = None
+    ) -> RunOutcome:
         preflight(self.workflow, self.ctx)
-        values = resolve_inputs(self.workflow, inputs)
+        values = starting_values(self.workflow, inputs, memory)
         return await self._drive({"values": values, "loops": {}, "attempts": {}})
 
     async def resume(self) -> RunOutcome:
@@ -777,4 +745,10 @@ class WorkflowRun:
                 return RunOutcome(
                     "waiting", step_id=request.get("step_id"), request=request, values=values
                 )
-        return RunOutcome("completed", values=values)
+        attempts = (state.values.get("attempts") or {}).values()
+        return RunOutcome(
+            "completed",
+            values=values,
+            ended=any(a.get("route") == ENDED for a in attempts),
+            remembered=state.values.get("remembered") or {},
+        )

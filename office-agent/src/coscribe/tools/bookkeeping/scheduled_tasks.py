@@ -24,13 +24,12 @@ timezone (as with cron), a limitation if coscribe is ever remotely hosted.
 
 from __future__ import annotations
 
-import calendar
 import json
 import os
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
@@ -38,8 +37,15 @@ from pydantic import ValidationError
 
 from ...runtime import DEFAULT_ENVIRONMENT, Environments, tool_metadata
 from ...workflow_spec import current_shape, parse_workflow, workflow_error
+from .folder_watch import FolderWatch
+from .schedule_rule import (
+    VALID_KINDS,
+    ScheduleRule,
+    _to_local_naive,
+    compute_next_run_at,
+)
+from .task_memory import TaskMemory
 
-VALID_KINDS = ("manual", "once", "hourly", "daily", "weekdays", "weekly", "monthly")
 VALID_APPROVAL_MODES = ("manual", "auto", "skip")
 RUN_STATUSES = ("running", "completed", "failed", "needs_approval", "waiting", "stopped")
 
@@ -68,12 +74,28 @@ _EDITABLE_FIELDS = (
     "approval_mode",
 )
 
+# What a run records besides its steps and status.
+_EVIDENCE = frozenset({"screenshot", "page", "files", "sites", "investigation", "queued", "quiet"})
+
 # Oldest run records beyond this are dropped from the trigger (their
 # conversations are deleted along with them, see web/app.py).
 MAX_RUNS_KEPT = 50
 # The notes a run carries forward are part of every future run's prompt,
 # so they're kept deliberately small.
 MAX_NOTES_CHARS = 4000
+
+
+def _fold_quiet(runs: list[ScheduledRun]) -> tuple[list[ScheduledRun], list[ScheduledRun]]:
+    """Keep only the latest of each row of quiet runs, counting the ones it stands for: a task
+    that checks every few minutes would otherwise bury its real runs."""
+    kept: list[ScheduledRun] = []
+    dropped: list[ScheduledRun] = []
+    for run in runs:
+        if kept and kept[-1].quiet and run.quiet and run.status == kept[-1].status == "completed":
+            run.quiet += kept[-1].quiet
+            dropped.append(kept.pop())
+        kept.append(run)
+    return kept, dropped
 
 
 def run_thread_id(trigger_id: str, run_id: str) -> str:
@@ -97,154 +119,6 @@ def _now_iso() -> str:
     return datetime.now().isoformat()
 
 
-def _to_local_naive(value: datetime) -> datetime:
-    """Normalizes any datetime (naive or tz-aware) to a naive local
-    wall-clock datetime, so every comparison in this module is apples to
-    apples regardless of what a caller passed in."""
-    if value.tzinfo is not None:
-        return value.astimezone().replace(tzinfo=None)
-    return value
-
-
-def _parse_local(value: str) -> datetime:
-    return _to_local_naive(datetime.fromisoformat(value))
-
-
-def _parse_hhmm(value: str) -> tuple[int, int]:
-    try:
-        hour_str, minute_str = value.split(":")
-        hour, minute = int(hour_str), int(minute_str)
-    except ValueError as exc:
-        raise ValueError(f'at must be "HH:MM" for a recurring schedule, got {value!r}') from exc
-    if not (0 <= hour <= 23 and 0 <= minute <= 59):
-        raise ValueError(f'at must be "HH:MM" (00:00-23:59), got {value!r}')
-    return hour, minute
-
-
-def _add_months(year: int, month: int, delta: int) -> tuple[int, int]:
-    index = (year * 12 + (month - 1)) + delta
-    return index // 12, index % 12 + 1
-
-
-def _clamp_day(year: int, month: int, day: int) -> int:
-    return min(day, calendar.monthrange(year, month)[1])
-
-
-@dataclass
-class ScheduleRule:
-    kind: str  # "manual" | "once" | "hourly" | "daily" | "weekdays" |
-    # "weekly" | "monthly" -- plain str rather than Literal: aisuite's
-    # schema inference has broken on exotic annotations before. "once" predates the six-value
-    # Manual/Hourly/Daily/Weekdays/Weekly/Monthly frequency picker the
-    # frontend now offers for new tasks -- kept valid here so an
-    # already-created "once" trigger keeps working, not exposed as a
-    # creatable choice going forward.
-    at: str  # "once": a full ISO-8601 timestamp. "manual": unused, may be
-    # "". "hourly": "HH:MM" but only the minute is used (fires every hour
-    # at that minute; the hour is ignored). Otherwise: "HH:MM".
-    weekday: int | None = None  # 0=Monday..6=Sunday, required for "weekly"
-    day_of_month: int | None = None  # 1-31, required for "monthly" --
-    # clamped to a given month's real last day if it doesn't have that many.
-    start_date: str | None = None  # "YYYY-MM-DD" -- the schedule produces
-    # no occurrence before this date; None means "starting now." Unused
-    # (and meaningless) for "manual"/"once".
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "kind": self.kind,
-            "at": self.at,
-            "weekday": self.weekday,
-            "day_of_month": self.day_of_month,
-            "start_date": self.start_date,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ScheduleRule:
-        return cls(
-            kind=data["kind"],
-            at=data["at"],
-            weekday=data.get("weekday"),
-            day_of_month=data.get("day_of_month"),
-            start_date=data.get("start_date"),
-        )
-
-
-def compute_next_run_at(rule: ScheduleRule, after: datetime) -> str | None:
-    """The next real occurrence strictly after `after`, as a naive local
-    ISO string. None for a "manual" rule (never fires on its own -- only
-    via an explicit run-now), and for a "once" rule whose `at` is already
-    in the past -- create_trigger rejects the latter case up front (same
-    "reject a past timestamp" posture sleep_until already has); pause/
-    resume_scheduled_task never re-run this against a "once" rule that
-    already fired (it disables itself instead, see poll_due_scheduled_tasks).
-
-    `rule.start_date`, if set, floors the search: no occurrence before
-    that date is ever returned, by raising the effective `after` to just
-    before start_date's own start-of-day when that's later than the real
-    `after` -- a no-op once the schedule's actual occurrences have caught
-    up to or passed start_date."""
-    after = _to_local_naive(after)
-    if rule.kind == "manual":
-        return None
-    if rule.start_date is not None:
-        floor = datetime.fromisoformat(rule.start_date) - timedelta(microseconds=1)
-        if floor > after:
-            after = floor
-    if rule.kind == "once":
-        candidate = _parse_local(rule.at)
-        return candidate.isoformat() if candidate > after else None
-
-    hour, minute = _parse_hhmm(rule.at)
-
-    if rule.kind == "hourly":
-        # Only the minute matters -- fires every hour at that minute,
-        # regardless of what hour `at` itself names.
-        candidate = after.replace(minute=minute, second=0, microsecond=0)
-        if candidate <= after:
-            candidate += timedelta(hours=1)
-        return candidate.isoformat()
-
-    if rule.kind == "daily":
-        candidate = after.replace(hour=hour, minute=minute, second=0, microsecond=0)
-        if candidate <= after:
-            candidate += timedelta(days=1)
-        return candidate.isoformat()
-
-    if rule.kind == "weekdays":
-        candidate = after.replace(hour=hour, minute=minute, second=0, microsecond=0)
-        if candidate <= after:
-            candidate += timedelta(days=1)
-        while candidate.weekday() >= 5:  # 5=Saturday, 6=Sunday
-            candidate += timedelta(days=1)
-        return candidate.isoformat()
-
-    if rule.kind == "weekly":
-        if rule.weekday is None or not (0 <= rule.weekday <= 6):
-            raise ValueError('weekday (0=Monday..6=Sunday) is required for a "weekly" schedule')
-        candidate = after.replace(hour=hour, minute=minute, second=0, microsecond=0)
-        days_ahead = (rule.weekday - candidate.weekday()) % 7
-        candidate += timedelta(days=days_ahead)
-        if candidate <= after:
-            candidate += timedelta(days=7)
-        return candidate.isoformat()
-
-    if rule.kind == "monthly":
-        if rule.day_of_month is None or not (1 <= rule.day_of_month <= 31):
-            raise ValueError('day_of_month (1-31) is required for a "monthly" schedule')
-        year, month = after.year, after.month
-        day = _clamp_day(year, month, rule.day_of_month)
-        candidate = after.replace(
-            year=year, month=month, day=day, hour=hour, minute=minute, second=0, microsecond=0
-        )
-        if candidate <= after:
-            year, month = _add_months(year, month, 1)
-            day = _clamp_day(year, month, rule.day_of_month)
-            candidate = candidate.replace(year=year, month=month, day=day)
-        return candidate.isoformat()
-
-    raise ValueError(f"Unknown schedule kind {rule.kind!r}, expected one of {VALID_KINDS}")
-
-
 @dataclass
 class ScheduledRun:
     """One execution of a trigger, in its own fresh conversation -- never
@@ -255,7 +129,7 @@ class ScheduledRun:
     run_id: str
     thread_id: str
     started_at: str
-    source: str  # "manual" (Run now) | "scheduled"
+    source: str  # "manual" (Run now) | "scheduled" | "file" (a new file in its folder)
     status: str = "running"  # one of RUN_STATUSES
     finished_at: str | None = None
     error: str | None = None
@@ -274,6 +148,9 @@ class ScheduledRun:
     # The sites a workflow run opened, as hosts.
     sites: list[str] = field(default_factory=list)
     queued: bool = False  # waiting for the browser, which one run uses at a time
+    # A run a check ended with nothing to do (decision 0034): how many such runs in a row this
+    # record stands for, since only the latest of a row is kept; 0 for any other run.
+    quiet: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -292,6 +169,7 @@ class ScheduledRun:
             "investigation": self.investigation,
             "sites": self.sites,
             "queued": self.queued,
+            "quiet": self.quiet,
         }
 
     @classmethod
@@ -312,6 +190,7 @@ class ScheduledRun:
             investigation=data.get("investigation"),
             sites=list(data.get("sites") or []),
             queued=bool(data.get("queued", False)),
+            quiet=int(data.get("quiet") or 0),
         )
 
 
@@ -430,6 +309,10 @@ class ScheduledTriggerStore:
     def __init__(self, state_dir: str | Path) -> None:
         self.state_dir = Path(state_dir)
         self.root = self.state_dir / "scheduled_tasks"
+        # What each task keeps between runs and the files its folder watch has seen
+        # (decision 0034), kept beside the tasks and deleted with them.
+        self.memory = TaskMemory(self.state_dir)
+        self.folders = FolderWatch(self.state_dir)
 
     def save(self, trigger: ScheduledTrigger) -> None:
         self.root.mkdir(parents=True, exist_ok=True)
@@ -477,6 +360,8 @@ class ScheduledTriggerStore:
         existed = path.exists()
         path.unlink(missing_ok=True)
         self._notes_path(trigger_id).unlink(missing_ok=True)
+        self.memory.delete(trigger_id)
+        self.folders.forget(trigger_id)
         return existed
 
     def start_run(
@@ -497,8 +382,9 @@ class ScheduledTriggerStore:
             source=source,
             inputs=inputs,
         )
+        trigger.runs, pruned = _fold_quiet(trigger.runs)
         trigger.runs.append(run)
-        pruned = trigger.runs[:-MAX_RUNS_KEPT]
+        pruned += trigger.runs[:-MAX_RUNS_KEPT]
         trigger.runs = trigger.runs[-MAX_RUNS_KEPT:]
         trigger.last_run_at = run.started_at
         trigger.last_run_status = run.status
@@ -530,13 +416,13 @@ class ScheduledTriggerStore:
         return trigger
 
     def record_evidence(self, trigger_id: str, run_id: str, **fields: Any) -> None:
-        """Set a run's screenshot, page, files, sites, investigation or queued flag."""
+        """Set a run's screenshot, page, files, sites, investigation, queued or quiet flag."""
         trigger = self.load(trigger_id)
         run = trigger.find_run(run_id) if trigger is not None else None
         if trigger is None or run is None:
             return
         for name, value in fields.items():
-            if name not in {"screenshot", "page", "files", "sites", "investigation", "queued"}:
+            if name not in _EVIDENCE:
                 raise ValueError(f"{name!r} isn't run evidence")
             setattr(run, name, value)
         self.save(trigger)
@@ -612,6 +498,7 @@ def _validate_and_build_schedule(
     start_date: str | None,
     approval_mode: str,
     workflow: dict[str, Any] | None = None,
+    watch: dict[str, Any] | None = None,
 ) -> tuple[ScheduleRule, str | None, dict[str, Any] | None]:
     """Shared validation + ScheduleRule construction for create_trigger
     and update_trigger -- kept as one function so the two paths can never
@@ -633,15 +520,37 @@ def _validate_and_build_schedule(
     elif not prompt.strip():
         raise ValueError("prompt cannot be blank")
 
+    watch = watch or {}
     rule = ScheduleRule(
-        kind=kind, at=at, weekday=weekday, day_of_month=day_of_month, start_date=start_date
-    )
+        kind=kind, at=at, weekday=weekday, day_of_month=day_of_month, start_date=start_date,
+        minutes=watch.get("minutes"), folder=watch.get("folder"),
+        pattern=watch.get("pattern") or "*", input=watch.get("input"),
+    )  # fmt: skip
+    if kind == "folder":
+        _check_folder_rule(rule, normalized_workflow)
     next_run_at = compute_next_run_at(rule, datetime.now())
-    # "manual" never has a next_run_at by design (see ScheduleRule.kind) --
+    # "manual" and "folder" never have a next_run_at by design (see ScheduleRule.kind) --
     # only every other kind treats a None result as "at was in the past."
-    if next_run_at is None and kind != "manual":
+    if next_run_at is None and kind not in ("manual", "folder"):
         raise ValueError(f"at must be in the future, got {at!r}")
     return rule, next_run_at, normalized_workflow
+
+
+def _check_folder_rule(rule: ScheduleRule, workflow: dict[str, Any] | None) -> None:
+    folder = Path(rule.folder or "")
+    if not rule.folder or not folder.is_absolute() or not folder.is_dir():
+        raise ValueError(f"A task that starts on a new file needs a folder, not {rule.folder!r}")
+    inputs = {i["name"]: i.get("type") for i in (workflow or {}).get("inputs") or []}
+    if inputs.get(rule.input or "") != "file":
+        raise ValueError("A task that starts on a new file passes it to one of its file inputs")
+
+
+def _watch_folder(trigger: ScheduledTrigger) -> None:
+    """A task started by files in a folder may read that folder."""
+    folder = trigger.schedule.folder
+    allowed = trigger.permissions.setdefault("folders", [])
+    if trigger.schedule.kind == "folder" and folder and folder not in allowed:
+        allowed.append(folder)
 
 
 def _checked_environment(store: ScheduledTriggerStore, environment: str | None) -> str:
@@ -667,6 +576,7 @@ def create_trigger(
     notes_enabled: bool = True,
     workflow: dict[str, Any] | None = None,
     environment: str | None = None,
+    watch: dict[str, Any] | None = None,
 ) -> ScheduledTrigger:
     """Validate and persist a new ScheduledTrigger. Shared by the model's create_scheduled_task
     and POST /api/scheduled-tasks (the UI's form), so the two can't drift apart."""
@@ -679,6 +589,7 @@ def create_trigger(
         start_date=start_date,
         approval_mode=approval_mode,
         workflow=workflow,
+        watch=watch,
     )
 
     trigger_id = uuid.uuid4().hex[:12]
@@ -696,6 +607,7 @@ def create_trigger(
         workflow=normalized_workflow,
         environment=_checked_environment(store, environment),
     )
+    _watch_folder(trigger)
     store.save(trigger)
     return trigger
 
@@ -716,6 +628,7 @@ def update_trigger(
     notes_enabled: bool = True,
     workflow: dict[str, Any] | None = None,
     environment: str | None = None,
+    watch: dict[str, Any] | None = None,
 ) -> ScheduledTrigger:
     """Edit an existing trigger in place -- the Edit modal's Save action.
     Same validation as create_trigger (via _validate_and_build_schedule),
@@ -740,6 +653,7 @@ def update_trigger(
         start_date=start_date,
         approval_mode=approval_mode,
         workflow=workflow,
+        watch=watch,
     )
 
     trigger.name = name
@@ -751,6 +665,7 @@ def update_trigger(
     trigger.notes_enabled = notes_enabled
     trigger.workflow = normalized_workflow
     trigger.environment = _checked_environment(store, environment)
+    _watch_folder(trigger)
     store.save(trigger)
     return trigger
 
@@ -782,6 +697,7 @@ def patch_trigger(
         "notes_enabled": trigger.notes_enabled,
         "workflow": trigger.workflow,
         "environment": trigger.environment,
+        "watch": {k: getattr(rule, k) for k in ("minutes", "folder", "pattern", "input")},
     }
     unknown = sorted(set(changes) - set(current))
     if unknown:

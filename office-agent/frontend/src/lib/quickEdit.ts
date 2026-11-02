@@ -1,5 +1,6 @@
 import type {
   CheckOp,
+  CheckStep,
   Condition,
   Match,
   OnFailure,
@@ -148,6 +149,21 @@ function lockField(irreversible: boolean): QuickField {
   };
 }
 
+/** A check's other way out (decision 0034): a run with nothing to do ends as done, quietly. */
+function otherwiseField(step: CheckStep): QuickField {
+  return {
+    key: "otherwise",
+    label: "If it doesn’t hold",
+    kind: "pick",
+    value: step.otherwise ?? "fail",
+    options: [
+      { value: "fail", label: "Stop the run (it failed)" },
+      { value: "end", label: "End the run quietly (nothing to do)" },
+    ],
+    hint: "Ending quietly works outside loops and branches",
+  };
+}
+
 /** What the quick edit shows for a step, title first. */
 export function quickFields(step: WorkflowStep, inputs: WorkflowInput[]): QuickField[] {
   const fields: QuickField[] = [{ key: "title", label: "Name", kind: "text", value: step.title }];
@@ -183,7 +199,7 @@ export function quickFields(step: WorkflowStep, inputs: WorkflowInput[]): QuickF
         ...failureFields(step),
       ];
     case "check":
-      return [...fields, ...conditionFields("cond", step.conditions, step.match, inputs)];
+      return [...fields, ...conditionFields("cond", step.conditions, step.match, inputs), otherwiseField(step)];
     case "approval":
       return [
         ...fields,
@@ -194,6 +210,8 @@ export function quickFields(step: WorkflowStep, inputs: WorkflowInput[]): QuickF
       return [...fields, ...askQuickFields(step, inputs)];
     case "wait":
       return [...fields, ...waitQuickFields(step, inputs)];
+    case "remember":
+      return [...fields, { key: "value", label: "What it keeps", kind: "text", value: step.value }];
     case "branch":
       return [...fields, ...conditionFields("cond", step.conditions, step.match, inputs)];
     case "choice":
@@ -265,6 +283,8 @@ export function applyQuick(step: WorkflowStep, key: string, value: QuickField["v
       if (head === "sites" || head === "folders") return { ...step, [head]: value as string[] };
       return step;
     case "check":
+      if (head === "otherwise") return { ...step, otherwise: value === "end" ? "end" : "fail" };
+      return head === "cond" ? { ...step, conditions: setRight(step.conditions, rest, value) } : step;
     case "branch":
       return head === "cond" ? { ...step, conditions: setRight(step.conditions, rest, value) } : step;
     case "approval":
@@ -274,6 +294,8 @@ export function applyQuick(step: WorkflowStep, key: string, value: QuickField["v
       return applyAskQuick(step, key, value);
     case "wait":
       return applyWaitQuick(step, key, value);
+    case "remember":
+      return head === "value" ? { ...step, value: String(value) } : step;
     case "choice":
       if (head !== "case") return step;
       return { ...step, cases: step.cases.map((c, i) => (i === Number(rest) ? { ...c, is: String(value) } : c)) };

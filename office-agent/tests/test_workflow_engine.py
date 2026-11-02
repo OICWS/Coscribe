@@ -20,9 +20,9 @@ from coscribe.workflows.engine import (
     StepRecord,
     WorkflowNotRunnable,
     WorkflowRun,
-    resolve_inputs,
 )
 from coscribe.workflows.model_step import fields_schema
+from coscribe.workflows.preflight import starting_values
 
 FIXTURE = Path(__file__).parent / "fixtures" / "pdf_error_audit_workflow.json"
 
@@ -374,8 +374,8 @@ def test_an_optional_input_may_be_left_blank() -> None:
             ],
         }
     )
-    assert resolve_inputs(workflow, {"run_date": ""}) == {"run_date": "", "folder": "downloads"}
-    assert resolve_inputs(workflow, {})["run_date"] == ""
+    assert starting_values(workflow, {"run_date": ""}) == {"run_date": "", "folder": "downloads"}
+    assert starting_values(workflow, {})["run_date"] == ""
 
 
 def test_fields_schema_requires_every_field_and_nothing_else() -> None:
