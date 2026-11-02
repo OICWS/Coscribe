@@ -122,7 +122,13 @@ export function workflowProgress(workflow: Workflow, run: ScheduledRun): Progres
       }
       const note =
         record?.recovered === "skipped" ? " · skipped" : record?.recovered === "fallback" ? " · replaced" : "";
-      items.push({ id: step.id, content: `${step.title}${note}`, status: progressOf(record, going) });
+      // A step that ran another task stays "running" while one of that task's steps waits.
+      const asking = step.kind === "run_task" && record?.status === "running" && stoppedInside(step, run);
+      items.push({
+        id: step.id,
+        content: `${step.title}${note}`,
+        status: asking ? "in_progress" : progressOf(record, going),
+      });
       if (record?.recovered === "fallback") visit(childLists(step).find(([a]) => a === "fallback")?.[1] ?? []);
       if ((step.kind === "branch" || step.kind === "choice") && record?.status === "done") {
         const arm = (record.output as { arm?: string } | null)?.arm;

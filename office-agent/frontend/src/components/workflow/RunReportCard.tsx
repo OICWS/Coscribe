@@ -147,7 +147,7 @@ function DecidedSection({ report }: { report: RunReport }) {
   );
 }
 
-const TASK_ENDED: Record<string, string> = { done: "done", failed: "stopped", waiting: "waiting", running: "stopped" };
+const TASK_ENDED: Record<string, string> = { done: "done", failed: "stopped", running: "not finished" };
 
 /** The tasks its steps ran, and the version of each it ran (decision 0035). */
 function TasksSection({ report }: { report: RunReport }) {
