@@ -107,7 +107,9 @@ export function SettingsSearch({
     return hits;
   }, [query, categories]);
 
-  useEffect(() => activeItem.current?.scrollIntoView({ block: "nearest" }), [active]);
+  useEffect(() => {
+    activeItem.current?.scrollIntoView({ block: "nearest" });
+  }, [active]);
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {

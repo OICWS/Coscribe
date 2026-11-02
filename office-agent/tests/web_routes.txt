@@ -171,6 +171,7 @@ PUT /api/scheduled-tasks/{trigger_id}/notes
 PUT /api/secrets/{name}
 PUT /api/settings/proxy
 PUT /api/threads/{thread_id}/canvas
+PUT /api/threads/{thread_id}/canvas/element
 PUT /api/threads/{thread_id}/doc/blocks
 PUT /api/threads/{thread_id}/doc/comments/{comment_id}
 PUT /api/threads/{thread_id}/slides/{index}/source

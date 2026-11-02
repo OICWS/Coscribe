@@ -1,82 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { treeRows, type InspectedElement, type InspectedNode } from "../../lib/boardInspector";
+import { treeRows, type ElementChange, type InspectedElement, type InspectedNode } from "../../lib/boardInspector";
 import { CloseIcon } from "../icons";
+import { ElementProperties } from "./ElementProperties";
 
 type Tab = "properties" | "code";
-
-const SECTIONS: [string, [string, string][]][] = [
-  [
-    "Layout",
-    [
-      ["display", "Display"],
-      ["position", "Position"],
-      ["flex-direction", "Direction"],
-      ["justify-content", "Justify"],
-      ["align-items", "Align"],
-      ["gap", "Gap"],
-      ["padding", "Padding"],
-      ["margin", "Margin"],
-    ],
-  ],
-  [
-    "Text",
-    [
-      ["font-family", "Font"],
-      ["font-size", "Size"],
-      ["font-weight", "Weight"],
-      ["line-height", "Line height"],
-      ["color", "Color"],
-    ],
-  ],
-  [
-    "Fill",
-    [
-      ["background-color", "Background"],
-      ["border-radius", "Radius"],
-      ["opacity", "Opacity"],
-    ],
-  ],
-];
-
-// Values that say nothing about the element: a reader scans what was set, not every default.
-const SAYS_NOTHING = new Set(["", "normal", "none", "0px", "static", "rgba(0, 0, 0, 0)", "1", "auto"]);
-
-function Row({ label, value }: { label: string; value: string }) {
-  const colour = /^(rgb|#)/.test(value) ? value : null;
-  return (
-    <div className="flex items-center gap-2 py-1 text-[13px]">
-      <span className="w-24 shrink-0 text-[var(--muted)]">{label}</span>
-      {colour && <span className="h-3.5 w-3.5 shrink-0 rounded border border-[var(--border)]" style={{ background: colour }} />}
-      <span className="min-w-0 flex-1 truncate" title={value}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function Properties({ element }: { element: InspectedElement }) {
-  return (
-    <div className="divide-y divide-[var(--border)]">
-      <section className="px-3 py-2">
-        <h3 className="mb-1 text-[13px] font-semibold">Size</h3>
-        <Row label="Width" value={`${Math.round(element.box.width)}px`} />
-        <Row label="Height" value={`${Math.round(element.box.height)}px`} />
-      </section>
-      {SECTIONS.map(([title, fields]) => {
-        const shown = fields.filter(([name]) => !SAYS_NOTHING.has(element.computed[name] ?? ""));
-        if (!shown.length) return null;
-        return (
-          <section key={title} className="px-3 py-2">
-            <h3 className="mb-1 text-[13px] font-semibold">{title}</h3>
-            {shown.map(([name, label]) => (
-              <Row key={name} label={label} value={element.computed[name]} />
-            ))}
-          </section>
-        );
-      })}
-    </div>
-  );
-}
 
 function Code({ element }: { element: InspectedElement }) {
   return (
@@ -133,18 +60,23 @@ function Tree({ tree, selected, onSelect }: { tree: InspectedNode; selected: str
 }
 
 /** Beside the canvas: the selected artboard's elements as a tree, and for the element picked
- * there or on the board, what it measures and the style that makes it so. It only reads. */
+ * there or on the board, what it measures and the style that makes it so, which the Properties tab
+ * also edits. */
 export function BoardInspector({
   boardTitle,
   tree,
   element,
+  problem,
   onSelect,
+  onEdit,
   onClose,
 }: {
   boardTitle: string | null;
   tree: InspectedNode | null;
   element: InspectedElement | null;
+  problem: string | null;
   onSelect: (path: string) => void;
+  onEdit: (change: ElementChange) => void;
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("properties");
@@ -182,7 +114,7 @@ export function BoardInspector({
                 <div className="truncate px-3 pt-2 font-mono text-[12px] text-[var(--muted)]">
                   &lt;{element.label}&gt;{element.text && <span className="font-sans"> “{element.text}”</span>}
                 </div>
-                {tab === "properties" ? <Properties element={element} /> : <Code element={element} />}
+                {tab === "properties" ? <ElementProperties element={element} problem={problem} onEdit={onEdit} /> : <Code element={element} />}
               </>
             )}
           </div>
