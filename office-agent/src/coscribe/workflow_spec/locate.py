@@ -24,9 +24,9 @@ def workflow_error(exc: ValidationError, data: Any = None) -> str:
 
 
 _STEP_KINDS = frozenset(
-    {"tool", "script", "llm", "agent", "check", "approval", "branch", "choice", "loop"}
+    {"tool", "script", "llm", "agent", "run_task", "check", "approval", "branch", "choice", "loop"}
 )
-_RECOVERING_KINDS = frozenset({"tool", "script", "llm", "agent"})
+_RECOVERING_KINDS = frozenset({"tool", "script", "llm", "agent", "run_task"})
 
 
 def _raw_arms(step: dict[str, Any]) -> list[tuple[tuple[Any, ...], list[Any]]]:

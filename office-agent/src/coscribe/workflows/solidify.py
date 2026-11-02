@@ -22,11 +22,13 @@ from ..workflow_spec import (
     AgentStep,
     LLMStep,
     LoopStep,
+    RunTaskStep,
     ToolStep,
     Workflow,
     parse_workflow,
     raw_child_lists,
     step_references,
+    task_results,
     walk,
     workflow_error,
 )
@@ -119,6 +121,15 @@ time, until a time, or until a file appears (its save_as holds {"path", \
 
 - "remember": {"name": "<a memory name>", "value": "<text with \
 {{references}}>"} -- keeps a value for the next run (see Memory below).
+
+- "run_task": {"task": "<the id of a task listed as one a step can run>", \
+"inputs": {"<its input>": "<text with {{references}}>"}, "save_as": \
+"<name>"} -- runs that saved task as a whole and goes on once it has \
+finished; its save_as holds the task's results by name, read as \
+{{name.<result>}} or {{name.<result>.<field>}}. Use one where the work is \
+what a listed task already does, instead of copying its steps; give every \
+input it asks for that has no default. It may say what happens when it \
+fails, like a tool step.
 
 - "loop": {"over": "<name of a list>", "item": "<name for each item>", \
 "steps": [...], "collect": "<a name made inside>", "save_as": "<name>", \
@@ -268,6 +279,42 @@ class WorkflowDraft:
         if self.changes is not None:
             data["changes"] = self.changes
         return data
+
+
+def callable_tasks(triggers: list[Any], leave_out: str | None = None) -> list[dict[str, Any]]:
+    """The saved tasks a drafted step may run (decision 0035), as the drafter reads them: id,
+    name, the inputs it asks for and the results it gives."""
+    tasks = []
+    for trigger in triggers:
+        try:
+            workflow = parse_workflow(trigger.workflow) if trigger.workflow else None
+        except ValidationError:
+            continue
+        if workflow is None or not workflow.steps or trigger.trigger_id == leave_out:
+            continue
+        inputs = [
+            {"name": i.name, "label": i.label, "type": i.type,
+             "needed": i.required and i.default in (None, "")}
+            for i in workflow.inputs
+        ]  # fmt: skip
+        tasks.append({"id": trigger.trigger_id, "name": trigger.name, "inputs": inputs,
+                      "results": task_results(workflow)})  # fmt: skip
+    return tasks
+
+
+def _tasks_text(tasks: list[dict[str, Any]]) -> str:
+    if not tasks:
+        return ""
+    return f"Tasks a step can run:\n{json.dumps(tasks, ensure_ascii=False)}\n\n"
+
+
+def _task_problems(workflow: Workflow, tasks: list[dict[str, Any]]) -> list[str]:
+    known = {task["id"] for task in tasks}
+    return [
+        f"{p.step.title!r} runs {p.step.task!r}, which isn't a task listed as one a step can run"
+        for p in walk(workflow.every_step())
+        if isinstance(p.step, RunTaskStep) and p.step.task not in known
+    ]
 
 
 def _clip(text: str, limit: int) -> str:
@@ -460,7 +507,9 @@ def _reply_text(message: Any) -> str:
     )
 
 
-def _parse_reply(text: str, tools: dict[str, Any], name_hint: str) -> WorkflowDraft:
+def _parse_reply(
+    text: str, tools: dict[str, Any], name_hint: str, tasks: list[dict[str, Any]]
+) -> WorkflowDraft:
     """The draft, or ValueError with every problem the curator should fix."""
     data = _reply_object(text)
     if "error" in data and "workflow" not in data:
@@ -469,7 +518,7 @@ def _parse_reply(text: str, tools: dict[str, Any], name_hint: str) -> WorkflowDr
         workflow = parse_workflow(data.get("workflow"))
     except ValidationError as exc:
         raise ValueError(workflow_error(exc, data.get("workflow"))) from exc
-    problems = check_draft(workflow, tools)
+    problems = check_draft(workflow, tools) + _task_problems(workflow, tasks)
     if problems:
         raise ValueError("; ".join(problems))
     workflow = with_read_tools(workflow, tools)
@@ -489,7 +538,9 @@ async def draft_workflow(
     history: list[dict[str, Any]],
     tools: dict[str, Any],
     name_hint: str = "",
+    tasks: list[dict[str, Any]] | None = None,
 ) -> WorkflowDraft:
+    tasks = tasks or []
     transcript, used = render_conversation(history)
     if not used:
         raise DraftFailed(
@@ -503,7 +554,7 @@ async def draft_workflow(
         SystemMessage(CURATOR_INSTRUCTIONS),
         HumanMessage(
             f"{name_line}Tools you can use:\n{describe_tools(used, tools)}\n\n"
-            f"The conversation:\n\n{transcript}"
+            f"{_tasks_text(tasks)}The conversation:\n\n{transcript}"
         ),
     ]
     problem = ""
@@ -514,7 +565,7 @@ async def draft_workflow(
         reply = await model.ainvoke(conversation, config={"tags": [TAG_NOSTREAM]})
         text = _reply_text(reply)
         try:
-            return _parse_reply(text, tools, name_hint)
+            return _parse_reply(text, tools, name_hint, tasks)
         except (ValueError, TypeError) as exc:
             problem = str(exc)
         conversation += [
@@ -531,7 +582,9 @@ def _lines(value: Any) -> list[str]:
     return [str(item) for item in items if str(item).strip()]
 
 
-def _parse_revision(text: str, tools: dict[str, Any], name: str) -> WorkflowDraft:
+def _parse_revision(
+    text: str, tools: dict[str, Any], name: str, tasks: list[dict[str, Any]]
+) -> WorkflowDraft:
     data = _reply_object(text)
     if "error" in data and "workflow" not in data:
         raise DraftFailed(str(data["error"]))
@@ -539,7 +592,7 @@ def _parse_revision(text: str, tools: dict[str, Any], name: str) -> WorkflowDraf
         workflow = parse_workflow(data.get("workflow"))
     except ValidationError as exc:
         raise ValueError(workflow_error(exc, data.get("workflow"))) from exc
-    problems = check_draft(workflow, tools)
+    problems = check_draft(workflow, tools) + _task_problems(workflow, tasks)
     if problems:
         raise ValueError("; ".join(problems))
     workflow = with_read_tools(workflow, tools)
@@ -603,9 +656,11 @@ async def revise_workflow(
     request: str,
     history: list[dict[str, Any]],
     tools: dict[str, Any],
+    tasks: list[dict[str, Any]] | None = None,
 ) -> WorkflowDraft:
     """The saved `workflow` changed as `request` asks, checked like a new
     draft, with a line per change for the person reviewing it."""
+    tasks = tasks or []
     transcript, used = render_conversation(history)
     if "temperature" in getattr(type(model), "model_fields", {}):
         model = model.model_copy(update={"temperature": 0})
@@ -618,7 +673,7 @@ async def revise_workflow(
             f"The user's request: {request}\n\n"
             f"Tools:\n{describe_tools(described, tools)}\n"
             f"Other tools (you'll get their parameters if you use one): {', '.join(others)}\n\n"
-            f"The conversation:\n\n{transcript or '(nothing yet)'}"
+            f"{_tasks_text(tasks)}The conversation:\n\n{transcript or '(nothing yet)'}"
         ),
     ]
     problem = ""
@@ -626,7 +681,7 @@ async def revise_workflow(
         reply = await model.ainvoke(conversation, config={"tags": [TAG_NOSTREAM]})
         text = _reply_text(reply)
         try:
-            return _keep_marks(workflow, _parse_revision(text, tools, name))
+            return _keep_marks(workflow, _parse_revision(text, tools, name, tasks))
         except (ValueError, TypeError) as exc:
             problem = str(exc)
         try:

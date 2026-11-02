@@ -18,6 +18,7 @@ from .spec import (
     LLMStep,
     LoopStep,
     RememberStep,
+    RunTaskStep,
     ScriptStep,
     Step,
     ToolStep,
@@ -34,7 +35,7 @@ def step_references(step: Step) -> list[str]:
     """Every reference a step reads, as written."""
     if isinstance(step, ToolStep):
         return _value_references(step.args)
-    if isinstance(step, ScriptStep):
+    if isinstance(step, (ScriptStep, RunTaskStep)):
         return _value_references(step.inputs)
     if isinstance(step, LLMStep):
         return template_references(step.prompt)
@@ -94,7 +95,7 @@ def step_templates(step: Step) -> list[str]:
     """Every text of a step that references are filled into."""
     if isinstance(step, ToolStep):
         return _texts(step.args)
-    if isinstance(step, ScriptStep):
+    if isinstance(step, (ScriptStep, RunTaskStep)):
         return _texts(step.inputs)
     if isinstance(step, LLMStep):
         return [step.prompt]

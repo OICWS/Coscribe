@@ -38,8 +38,10 @@ from ..workflows import (
     DraftFailed,
     StepContext,
     StepRecord,
+    TaskSource,
     WorkflowDraft,
     brings_outside_content,
+    callable_tasks,
     draft_workflow,
     parse_workflow,
     revise_workflow,
@@ -132,7 +134,11 @@ class WorkflowDrafting:
             history = serialize_history_for_ws_lg(list(state.get("messages", [])))
             try:
                 draft = await draft_workflow(
-                    self._host.model, history, self.workflow_context(None).tools, name.strip()
+                    self._host.model,
+                    history,
+                    self.workflow_context(None).tools,
+                    name.strip(),
+                    self._callable_tasks(),
                 )
             except DraftFailed as exc:
                 return json.dumps({"status": "failed", "error": str(exc)}, ensure_ascii=False)
@@ -183,8 +189,9 @@ class WorkflowDrafting:
                 name, workflow, trigger = self._workflow_to_change(messages, task_id, draft_id)
                 history = serialize_history_for_ws_lg(messages)
                 tools = self.workflow_context(None).tools
+                tasks = self._callable_tasks(trigger.trigger_id if trigger else None)
                 draft = await revise_workflow(
-                    self._host.model, name, workflow, request, history, tools
+                    self._host.model, name, workflow, request, history, tools, tasks
                 )
             except DraftFailed as exc:
                 return json.dumps({"status": "failed", "error": str(exc)}, ensure_ascii=False)
@@ -390,6 +397,7 @@ class WorkflowDrafting:
                 for t in all_tools
                 if brings_outside_content(get_tool_metadata(cast(Any, t)).category)
             ),
+            tasks=TaskSource(ScheduledTriggerStore(self._host.settings.state_dir)),
         )
 
     def _agent_runner(self, tools: list[Any], model: str | None) -> WorkflowAgentRunner:
@@ -426,5 +434,14 @@ class WorkflowDrafting:
             raise DraftFailed("Resolve the pending approval first.")
         history = serialize_history_for_ws_lg((state.values or {}).get("messages", []))
         return await draft_workflow(
-            self._host.model, history, self.workflow_context(None).tools, name_hint
+            self._host.model,
+            history,
+            self.workflow_context(None).tools,
+            name_hint,
+            self._callable_tasks(),
         )
+
+    def _callable_tasks(self, leave_out: str | None = None) -> list[dict[str, Any]]:
+        """The saved tasks a drafted step may run (decision 0035)."""
+        return callable_tasks(ScheduledTriggerStore(self._host.settings.state_dir).list_all(),
+                              leave_out)  # fmt: skip

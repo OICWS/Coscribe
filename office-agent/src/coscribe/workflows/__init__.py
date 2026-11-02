@@ -24,7 +24,14 @@ from .permissions import (
     untrusted_agent_steps,
 )
 from .report import run_report
-from .solidify import DraftFailed, WorkflowDraft, draft_workflow, revise_workflow
+from .run_task import TaskSource
+from .solidify import (
+    DraftFailed,
+    WorkflowDraft,
+    callable_tasks,
+    draft_workflow,
+    revise_workflow,
+)
 from .testing import output_files, run_test, uses_browser
 
 __all__ = [
@@ -39,12 +46,14 @@ __all__ = [
     "RunOutcome",
     "StepContext",
     "StepRecord",
+    "TaskSource",
     "Workflow",
     "WorkflowDraft",
     "WorkflowNotRunnable",
     "WorkflowRun",
     "answer_problem",
     "brings_outside_content",
+    "callable_tasks",
     "compiled_graph",
     "describe_params",
     "draft_workflow",

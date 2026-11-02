@@ -23,6 +23,7 @@ from .spec import (
     RememberStep,
     Step,
     WaitStep,
+    Workflow,
     WorkflowInput,
     _Recovers,
     _root,
@@ -236,3 +237,13 @@ def _scope_hint(reference: str, scoped: set[str]) -> str:
             "skipped when it fails)"
         )
     return ""
+
+
+def task_results(workflow: Workflow) -> dict[str, list[str] | None]:
+    """What a run of `workflow` gives the task that runs it (decision 0035): each name its
+    top-level steps saved, with its fields where they are known."""
+    scope = _Scope(workflow.inputs)
+    available = scope.remembers(workflow.memory)
+    made = scope.check(workflow.steps, available, 0) - available
+    return {name: sorted(scope.fields[name]) if name in scope.fields else None
+            for name in sorted(made)}  # fmt: skip

@@ -184,6 +184,21 @@ def _guarded(workflow: Workflow) -> tuple[Workflow, dict[str, Step]]:
     return workflow.model_copy(update=guarded), guards
 
 
+def _guard_only(workflow: Workflow) -> Workflow:
+    return _guarded(workflow)[0]
+
+
+def _stopped_inside(outcome: Any) -> dict[str, str] | None:
+    """The step of a called task (decision 0035) a test stopped before, when it stopped at one
+    of that task's guards: {"id", "title"}."""
+    step_id = str(outcome.step_id or "")
+    inner = step_id.rsplit("/", 1)[-1]
+    if "/" not in step_id or not inner.startswith(_GUARD_PREFIX):
+        return None
+    title = str((outcome.request or {}).get("title") or "").removeprefix("Before ")
+    return {"id": step_id.removesuffix(inner) + inner.removeprefix(_GUARD_PREFIX), "title": title}
+
+
 async def run_test(
     workflow: Workflow,
     ctx: StepContext,
@@ -214,9 +229,11 @@ async def run_test(
         if on_step is not None:
             await on_step(record)
 
-    ctx = replace(
-        ctx, max_retry_wait=min(ctx.max_retry_wait, _TEST_RETRY_WAIT_SECONDS), waits=False
-    )
+    # A called task's steps that can't be taken back stop the test too, and it keeps nothing.
+    tasks = ctx.tasks and replace(ctx.tasks, prepare=None if send_for_real else _guard_only,
+                                  record=None, keeps=False)  # fmt: skip
+    ctx = replace(ctx, max_retry_wait=min(ctx.max_retry_wait, _TEST_RETRY_WAIT_SECONDS),
+                  waits=False, tasks=tasks)  # fmt: skip
     run = WorkflowRun(workflow, ctx, InMemorySaver(), f"test-{uuid.uuid4().hex[:8]}", record_step)
     started = time.monotonic()
     # Whole seconds: some file systems keep coarse modification times.
@@ -236,7 +253,8 @@ async def run_test(
             }
     status = {"completed": "passed", "waiting": "stopped_at_approval"}.get(outcome.status, "failed")
     stopped_before = guards.get(outcome.step_id or "") if status == "stopped_at_approval" else None
-    if stopped_before is not None:
+    stopped_inside = _stopped_inside(outcome) if status == "stopped_at_approval" else None
+    if stopped_before is not None or stopped_inside is not None:
         status = "stopped_before_irreversible"
     steps = []
     for placed in walk(shown.every_step()):
@@ -255,6 +273,8 @@ async def run_test(
     extra: dict[str, Any] = (
         {"stopped_before": {"id": stopped_before.id, "title": stopped_before.title}}
         if stopped_before is not None
+        else {"stopped_before": stopped_inside}
+        if stopped_inside is not None
         else {}
     )
     if status == "passed" and outcome.ended:
