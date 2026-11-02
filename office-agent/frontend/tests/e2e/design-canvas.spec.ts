@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
 import { freshThreadPath, waitForConnected } from "./helpers";
@@ -154,7 +154,7 @@ test("the properties panel shows an artboard's elements and the style of the one
   const tree = panel.getByRole("tree", { name: "Elements" });
   await expect(tree.getByRole("treeitem", { name: /^Row/ })).toBeVisible();
   await expect(tree.getByRole("treeitem", { name: /^Text.*Hello/ })).toHaveAttribute("aria-selected", "true");
-  await expect(panel.getByText("40px")).toBeVisible();
+  await expect(panel.getByLabel("Size", { exact: true })).toHaveValue("40px");
   await expect(page.getByTestId("inspected-element")).toBeVisible();
 
   // The tree picks too; the Code tab shows the matching rule and what is inherited.
@@ -163,4 +163,19 @@ test("the properties panel shows an artboard's elements and the style of the one
   await expect(panel.getByText(".row", { exact: true })).toBeVisible();
   await expect(panel.getByText("gap: 12px;")).toBeVisible();
   await expect(panel.getByText("From <body>")).toBeVisible();
+
+  // The Properties tab edits: a size and a text are written into the page, which is served anew
+  // with the same element picked.
+  await panel.getByRole("tab", { name: "Properties" }).click();
+  await tree.getByRole("treeitem", { name: /^Text.*Hello/ }).click();
+  const size = panel.getByLabel("Size", { exact: true });
+  await size.fill("30px");
+  await size.press("Enter");
+  await expect(page.frameLocator('iframe[title="Card"]').locator("h1")).toHaveCSS("font-size", "30px");
+  await expect(panel.getByLabel("Size", { exact: true })).toHaveValue("30px");
+  const text = panel.getByLabel("Text", { exact: true });
+  await text.fill("Hi there");
+  await text.press("Enter");
+  await expect(page.frameLocator('iframe[title="Card"]').locator("h1")).toHaveText("Hi there");
+  expect(readFileSync(join(workspace, `${name}.design`, "card.html"), "utf8")).toContain('<h1 style="font-size: 30px">Hi there</h1>');
 });

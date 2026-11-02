@@ -23,6 +23,8 @@ export interface InspectedElement {
   label: string;
   kind: ElementKind;
   text: string;
+  /** The whole text of an element that holds text alone, as its source has it; null otherwise. */
+  content: string | null;
   /** In the page's own pixels, from its top-left corner. */
   box: { x: number; y: number; width: number; height: number };
   computed: Record<string, string>;
@@ -41,4 +43,32 @@ export function inspectorAnswer(data: unknown): { tree: InspectedNode } | { elem
 /** The tree as rows to draw, each with its depth. */
 export function treeRows(node: InspectedNode, depth = 0): { node: InspectedNode; depth: number }[] {
   return [{ node, depth }, ...node.children.flatMap((child) => treeRows(child, depth + 1))];
+}
+
+/** What the properties panel writes into one element of an artboard's page; an empty value removes
+ * that property from the element's own style. */
+export interface ElementChange {
+  style?: Record<string, string>;
+  text?: string;
+}
+
+/** Writes the change into the page (`PUT /canvas/element`); rejects with the server's reason, such
+ * as a page that changed since the element was picked. */
+export async function editBoardElement(threadId: string, page: string, element: InspectedElement, change: ElementChange): Promise<void> {
+  const response = await fetch(`/api/threads/${encodeURIComponent(threadId)}/canvas/element`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      page,
+      element: element.path,
+      tag: element.tag,
+      style: change.style ?? {},
+      text: change.text,
+      text_before: change.text === undefined ? undefined : element.content,
+    }),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error ?? `HTTP ${response.status}`);
+  }
 }

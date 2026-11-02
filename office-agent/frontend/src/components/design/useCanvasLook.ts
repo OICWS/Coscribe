@@ -27,5 +27,7 @@ export function useCanvasLook(threadId: string, path: string, setCanvas: (canvas
     setVariablesOpen,
     served,
     setVariable,
+    /** Serves every artboard anew, after a page was written from the panel. */
+    reload: () => setServed((n) => n + 1),
   };
 }
