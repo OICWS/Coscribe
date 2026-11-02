@@ -248,11 +248,6 @@ class CheckStep(_Step):
     otherwise: Literal["fail", "end"] = "fail"
 
 
-# What a task keeps from one run to the next (decision 0034): read as {{memory.<name>}}, with
-# {{run.started_at}} and {{run.date}} beside it to remember when a run looked.
-MEMORY = "memory"
-THIS_RUN = "run"
-RUN_FIELDS = frozenset({"started_at", "date"})
 MAX_MEMORY = 20
 
 

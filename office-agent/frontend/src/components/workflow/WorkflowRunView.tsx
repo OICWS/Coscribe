@@ -31,6 +31,7 @@ import { primaryButton, secondaryButton } from "../../lib/formStyles";
 import { WaitingCard } from "./WaitingCard";
 import type { AnswerValues } from "./PauseCards";
 import { answeredWords, untilWords, waitedWords } from "../../lib/pauseWords";
+import { memoryPreview } from "../../lib/memoryWords";
 import { FailedCard, type FailedContext } from "./FailedCard";
 import { RunReportCard } from "./RunReportCard";
 import { StatusDot } from "./StatusDot";
@@ -103,8 +104,16 @@ function rowSummary(step: WorkflowStep, record: StepRecord | undefined, status: 
     return index >= 0 && step.cases[index] ? `Took path ${index + 1} · “${step.cases[index].is}”` : "Took Otherwise";
   }
   if (step.kind === "check" && record?.checks?.length) {
-    const first = record.checks[0];
-    return `Passed · ${describeCheckResult(step.conditions[0].op, true, first.left, first.right)}`;
+    // A check that ended the run with nothing to do (decision 0034) is done, not passed.
+    const missed = step.otherwise === "end" ? record.checks.findIndex((c) => !c.held) : -1;
+    const at = Math.max(missed, 0);
+    const shown = record.checks[at];
+    const result = describeCheckResult(step.conditions[at]?.op ?? "eq", missed < 0, shown.left, shown.right);
+    return missed >= 0 ? `Nothing to do · ended the run here · ${result}` : `Passed · ${result}`;
+  }
+  if (step.kind === "remember") {
+    const kept = (record?.output as { value?: unknown } | null | undefined)?.value;
+    return `Kept for the next run · ${memoryPreview(kept)}`;
   }
   if (step.kind === "approval") return record?.note ? `Approved · “${record.note}”` : "Approved";
   if (step.kind === "ask") return answeredWords(step, record?.output, record?.note);
@@ -508,6 +517,48 @@ function GoingBanner({
   );
 }
 
+/** A finished run: what it wrote, or that a check found nothing to do (decision 0034). */
+function CompletedBanner({ run, workflow, box }: { run: ScheduledRun; workflow: Workflow; box: string }) {
+  if (run.quiet) {
+    const ended = run.steps.find((r) => r.note?.startsWith("Nothing to do"));
+    const row = run.quiet > 1 ? ` The last ${run.quiet} runs found nothing; only this one is kept.` : "";
+    return (
+      <div className={`${box} border-[var(--border)] text-[var(--muted)]`} data-testid="run-banner">
+        <span>
+          <span className="font-medium text-[var(--fg)]">Nothing new</span> --{" "}
+          {ended ? `“${stepTitle(workflow, ended.step_id)}” found` : "a check found"} nothing to do, so the run ended there.{row}
+        </span>
+      </div>
+    );
+  }
+  if (!run.files?.length) return null;
+  return (
+    <div
+      className={`${box} border-[color-mix(in_srgb,var(--success)_40%,transparent)] bg-[color-mix(in_srgb,var(--success)_5%,transparent)]`}
+      data-testid="run-banner"
+    >
+      <div className="flex items-center gap-2 font-medium">
+        <CheckIcon className="h-4 w-4 text-[var(--success)]" strokeWidth={3} />
+        Completed
+      </div>
+      <ul className="flex flex-col gap-1">
+        {run.files.map((file) => (
+          <li key={file.path} className="flex min-w-0 gap-2 text-[13px]">
+            <span className="min-w-0 truncate" title={file.path}>
+              {file.path}
+            </span>
+            {file.rows !== undefined && file.columns !== undefined && (
+              <span className="shrink-0 tabular-nums text-[var(--muted)]">
+                {file.rows} rows × {file.columns} columns
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function RunBanner({
   run,
   workflow,
@@ -554,33 +605,7 @@ function RunBanner({
       </div>
     );
   }
-  if (run.status === "completed" && run.files?.length) {
-    return (
-      <div
-        className={`${box} border-[color-mix(in_srgb,var(--success)_40%,transparent)] bg-[color-mix(in_srgb,var(--success)_5%,transparent)]`}
-        data-testid="run-banner"
-      >
-        <div className="flex items-center gap-2 font-medium">
-          <CheckIcon className="h-4 w-4 text-[var(--success)]" strokeWidth={3} />
-          Completed
-        </div>
-        <ul className="flex flex-col gap-1">
-          {run.files.map((file) => (
-            <li key={file.path} className="flex min-w-0 gap-2 text-[13px]">
-              <span className="min-w-0 truncate" title={file.path}>
-                {file.path}
-              </span>
-              {file.rows !== undefined && file.columns !== undefined && (
-                <span className="shrink-0 tabular-nums text-[var(--muted)]">
-                  {file.rows} rows × {file.columns} columns
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  }
+  if (run.status === "completed") return <CompletedBanner run={run} workflow={workflow} box={box} />;
   if (run.status === "failed" && failedRecord) {
     return (
       <div

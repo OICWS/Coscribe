@@ -12,6 +12,7 @@ export type StepKind =
   | "approval"
   | "ask"
   | "wait"
+  | "remember"
   | "branch"
   | "choice"
   | "loop";
@@ -132,6 +133,9 @@ export interface CheckStep extends StepBase {
   conditions: Condition[];
   /** Absent: all. */
   match?: Match;
+  /** When the conditions don't hold: fail the run, or end it as done with nothing to do (decision
+   * 0034; only outside loops and branches). Absent: fail. */
+  otherwise?: "fail" | "end";
 }
 
 export interface ApprovalStep extends StepBase {
@@ -189,6 +193,22 @@ export interface WaitStep extends StepBase {
   save_as?: string | null;
 }
 
+/** Keeps `value` as the memory `name` for the next run (decision 0034), once this run finishes. */
+export interface RememberStep extends StepBase {
+  kind: "remember";
+  name: string;
+  value: string;
+}
+
+/** One value a task keeps from one run to the next, read as {{memory.<name>}}. */
+export interface MemoryEntry {
+  name: string;
+  label: string;
+  type: "text" | "number" | "date" | "list";
+  /** What the first run reads. */
+  initial?: unknown;
+}
+
 export interface BranchStep extends StepBase {
   kind: "branch";
   conditions: Condition[];
@@ -239,6 +259,7 @@ export type WorkflowStep =
   | ApprovalStep
   | AskStep
   | WaitStep
+  | RememberStep
   | BranchStep
   | ChoiceStep
   | LoopStep;
@@ -257,7 +278,13 @@ export interface Workflow {
   autonomy?: TaskAutonomy | null;
   /** Run when a step fails and the run stops, not when a person said no. Absent: none. */
   after_failure?: WorkflowStep[];
+  /** What the task keeps between runs (decision 0034). Absent: nothing. */
+  memory?: MemoryEntry[];
 }
+
+/** GET /api/scheduled-tasks/{id}/memory: by name, the value kept, when, and by which run ("you"
+ * for a person's edit). */
+export type TaskMemoryValues = Record<string, { value: unknown; at: string; by: string }>;
 
 /** GET /api/scheduled-tasks/{id}/runs/{run}/report */
 export interface RunReport {
@@ -279,6 +306,10 @@ export interface RunReport {
   retried?: { step_id: string; title: string; iteration: number[]; attempts: number; worked: boolean }[];
   /** The steps that ran because the run failed. */
   after_failure?: { step_id: string; title: string; iteration: number[]; status: string; error: string | null }[];
+  /** What the run keeps for the next one, kept only if it finished (decision 0034). */
+  remembered?: { step_id: string; title: string; name: string; label?: string; value: unknown }[];
+  /** The check that ended the run with nothing to do. */
+  ended?: { step_id: string; title: string } | null;
   tool_calls: number;
   tokens: number;
   cached_tokens: number;

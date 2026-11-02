@@ -14,13 +14,15 @@ pytest.importorskip("langgraph", reason="needs the langgraph_spike extra install
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
 from coscribe.runtime_lg import fire_trigger_now, poll_due_scheduled_tasks
-from coscribe.tools import FolderWatch, TaskMemory, compute_next_run_at
+from coscribe.tools import compute_next_run_at
 from coscribe.tools.bookkeeping import ScheduleRule
+from coscribe.tools.bookkeeping.folder_watch import FolderWatch
 from coscribe.tools.bookkeeping.scheduled_tasks import (
     ScheduledTriggerStore,
     create_trigger,
     patch_trigger,
 )
+from coscribe.tools.bookkeeping.task_memory import TaskMemory
 from coscribe.web.background_events import run_event
 
 from .test_scheduled_tasks_resume import FakeToolCallingChatModel, _make_get_session, _settings
@@ -148,7 +150,7 @@ async def test_a_new_file_in_the_folder_starts_a_run_with_its_path(
     assert ended == [(trigger.trigger_id, "completed")]
     saved = store.load(trigger.trigger_id)
     assert saved is not None and len(saved.runs) == 1
-    assert saved.runs[0].inputs == {"doc": str(report)}
+    assert saved.runs[0].inputs == {"doc": str(report)} and saved.runs[0].source == "file"
     assert (settings.workspace_root / "seen.txt").read_text(encoding="utf-8") == str(report)
 
 

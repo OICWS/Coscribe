@@ -1,4 +1,4 @@
-import type { StepRecord, Workflow } from "./workflow";
+import type { StepRecord, TaskMemoryValues, Workflow } from "./workflow";
 
 /**
  * REST request/response shapes for the settings panel, hand-encoded from
@@ -346,7 +346,16 @@ export interface OwnPythonDownload {
 // frequency picker the Edit/Create modal offers -- kept in the union so an
 // already-created "once" trigger's schedule still type-checks, but the
 // modal never lets you pick it for a new/edited task.
-export type ScheduleKind = "manual" | "once" | "hourly" | "daily" | "weekdays" | "weekly" | "monthly";
+export type ScheduleKind =
+  | "manual"
+  | "once"
+  | "hourly"
+  | "daily"
+  | "weekdays"
+  | "weekly"
+  | "monthly"
+  | "every"
+  | "folder";
 
 export type ApprovalMode = "manual" | "auto" | "skip";
 
@@ -356,6 +365,12 @@ export interface ScheduleRule {
   weekday: number | null;
   day_of_month: number | null;
   start_date: string | null;
+  /** "every": minutes apart, 5 to 1440 (decision 0034). */
+  minutes?: number | null;
+  /** "folder": each new file there matching `pattern` starts a run, its path the file input `input`. */
+  folder?: string | null;
+  pattern?: string;
+  input?: string | null;
 }
 
 /** "waiting": a wait step paused the run until a time or a file (decision 0033). */
@@ -366,7 +381,8 @@ export interface ScheduledRun {
   run_id: string;
   thread_id: string;
   started_at: string;
-  source: "manual" | "scheduled";
+  /** "file": a new file in the task's folder started it (decision 0034). */
+  source: "manual" | "scheduled" | "file";
   status: RunStatus;
   finished_at: string | null;
   error: string | null;
@@ -383,6 +399,8 @@ export interface ScheduledRun {
   sites?: string[];
   /** Waiting for the browser, which another run or test is using. */
   queued?: boolean;
+  /** A check ended it with nothing to do: how many such runs in a row it stands for (decision 0034). */
+  quiet?: number;
 }
 
 export interface ScheduledTask {
@@ -431,6 +449,8 @@ export interface CreateScheduledTaskPayload {
   from_draft?: string;
   from_thread?: string;
   auto_investigate?: boolean;
+  /** For an "every" or "folder" kind. */
+  watch?: { minutes?: number; folder?: string; pattern?: string; input?: string };
 }
 
 export type ScheduledTaskResult = ScheduledTask | { error: string };
@@ -438,6 +458,8 @@ export type ScheduledTaskResult = ScheduledTask | { error: string };
 export type RunNowResult = { task: ScheduledTask; run: ScheduledRun } | { error: string };
 
 export type TaskNotesResult = { notes: string } | { error: string };
+
+export type TaskMemoryResult = { memory: TaskMemoryValues } | { error: string };
 
 export type ScheduledTaskDeleteResult = { deleted: string } | { error: string };
 

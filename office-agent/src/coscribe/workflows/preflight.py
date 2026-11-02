@@ -8,8 +8,6 @@ from datetime import date, datetime
 from typing import Any
 
 from ..workflow_spec import (
-    MEMORY,
-    THIS_RUN,
     AgentStep,
     BranchStep,
     ChoiceStep,
@@ -19,6 +17,7 @@ from ..workflow_spec import (
     child_lists,
     failure_policy,
     input_values,
+    remembered_values,
     walk,
 )
 from .agent_step import CODE_TOOLS
@@ -67,10 +66,6 @@ def _agent_preflight(step: AgentStep, where: str, ctx: StepContext) -> None:
             raise WorkflowNotRunnable(f"{where}: there's no tool called {tool!r}")
 
 
-def _first_set(*values: Any) -> Any:
-    return next(value for value in values if value is not None)
-
-
 def starting_values(
     workflow: Workflow, given: dict[str, Any], memory: dict[str, Any] | None = None
 ) -> dict[str, Any]:
@@ -82,11 +77,6 @@ def starting_values(
     except ValueError as exc:
         raise WorkflowNotRunnable(str(exc)) from exc
     if workflow.memory:
-        kept = memory or {}
-        values[MEMORY] = {
-            m.name: _first_set(kept.get(m.name), m.initial, [] if m.type == "list" else "")
-            for m in workflow.memory
-        }
         now = datetime.now().replace(microsecond=0)
-        values[THIS_RUN] = {"started_at": now.isoformat(), "date": now.date().isoformat()}
+        values |= remembered_values(workflow.memory, memory or {}, now)
     return values

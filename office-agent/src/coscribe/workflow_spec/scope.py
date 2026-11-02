@@ -4,15 +4,13 @@ nesting hold."""
 
 from __future__ import annotations
 
+from .inputs import MEMORY, RUN_FIELDS, THIS_RUN
 from .reads import _condition_refs, step_references, step_templates
 from .refs import malformed_templates
 from .spec import (
     FAILURE,
     MAX_NESTING,
     MAX_STEPS,
-    MEMORY,
-    RUN_FIELDS,
-    THIS_RUN,
     AgentStep,
     AskStep,
     BranchStep,

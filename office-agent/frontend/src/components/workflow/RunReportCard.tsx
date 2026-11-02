@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ScheduledRun } from "../../types/settings";
 import type { RunReport } from "../../types/workflow";
+import { memoryPreview } from "../../lib/memoryWords";
 import { AUTONOMY_LABEL } from "./AutonomySetting";
 import { HealFixesSection } from "./HealFixesSection";
 
@@ -146,6 +147,22 @@ function DecidedSection({ report }: { report: RunReport }) {
   );
 }
 
+/** What the run keeps for the next one (decision 0034): only a run that finished keeps it. */
+function RememberedSection({ report, kept }: { report: RunReport; kept: boolean }) {
+  const remembered = report.remembered ?? [];
+  if (remembered.length === 0) return null;
+  return (
+    <div>
+      <div className="font-medium">{kept ? "Kept for the next run" : "Not kept: the run didn't finish"}</div>
+      {remembered.map((item) => (
+        <div key={item.step_id} className="min-w-0 truncate text-[13px]">
+          {item.label || item.name}: <span className="text-[var(--muted)]">{memoryPreview(item.value)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** What a finished run did (decision 0030), so a run is trusted by its result. */
 export function RunReportCard({
   triggerId,
@@ -189,7 +206,11 @@ export function RunReportCard({
           {loop.skipped ? `, ${loop.skipped} skipped` : ""}
         </div>
       ))}
-      {report.not_done.length === 0 && (report.recovered ?? []).length === 0 && <div>Every step was done.</div>}
+      {report.ended ? (
+        <div>Ended at “{report.ended.title}”: nothing to do this time.</div>
+      ) : (
+        report.not_done.length === 0 && (report.recovered ?? []).length === 0 && <div>Every step was done.</div>
+      )}
       {report.not_done.length > 0 && (
         <div>
           <div className="font-medium">Not done</div>
@@ -206,6 +227,7 @@ export function RunReportCard({
       )}
       <FailuresSection report={report} />
       <DecidedSection report={report} />
+      <RememberedSection report={report} kept={run.status === "completed"} />
       {report.healed.length > 0 && (
         <HealedSection
           report={report}

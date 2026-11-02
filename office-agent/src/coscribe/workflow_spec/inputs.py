@@ -164,6 +164,36 @@ def _size(value: Any) -> int:
     return len(json.dumps(value, ensure_ascii=False, default=str))
 
 
+# What a task keeps from one run to the next (decision 0034): read as {{memory.<name>}}, with
+# {{run.started_at}} and {{run.date}} beside it to remember when a run looked.
+MEMORY = "memory"
+THIS_RUN = "run"
+RUN_FIELDS = frozenset({"started_at", "date"})
+
+
+class _Remembered(Protocol):
+    name: str
+    type: MemoryType
+    initial: Any
+
+
+def remembered_values(
+    declared: Iterable[_Remembered], kept: dict[str, Any], now: datetime
+) -> dict[str, Any]:
+    """What a run of a task that remembers reads besides its inputs: each value as the last
+    finished run kept it, else its `initial`, else blank like an optional input left empty;
+    and when this run started."""
+    memory = {}
+    for entry in declared:
+        blank: Any = [] if entry.type == "list" else ""
+        found = [v for v in (kept.get(entry.name), entry.initial) if v is not None]
+        memory[entry.name] = found[0] if found else blank
+    return {
+        MEMORY: memory,
+        THIS_RUN: {"started_at": now.isoformat(), "date": now.date().isoformat()},
+    }
+
+
 def memory_value(name: str, kind: MemoryType, given: Any) -> Any:
     """What the memory `name` keeps for `given` (decision 0034); ValueError when it isn't a
     `kind` value or is too big. A list too big keeps its newest items, so a list of what was

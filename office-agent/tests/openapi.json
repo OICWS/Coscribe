@@ -3835,7 +3835,6 @@
     },
     "/api/scheduled-tasks/{trigger_id}/memory": {
       "get": {
-        "description": "What the task remembers (decision 0034): {name: {\"value\", \"at\", \"by\"}}.",
         "operationId": "get_task_memory_api_scheduled_tasks__trigger_id__memory_get",
         "parameters": [
           {

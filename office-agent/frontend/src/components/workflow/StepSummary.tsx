@@ -2,7 +2,7 @@ import { toolLabel } from "../../lib/toolLabels";
 import { formatValue, stepOutput, wholeReference } from "../../lib/workflowLabels";
 import { askTimeoutWords } from "../../lib/pauseWords";
 import { duration } from "../../lib/plainSteps";
-import type { AgentStep, AskStep, Condition, Match, WaitStep, WorkflowStep } from "../../types/workflow";
+import type { AgentStep, AskStep, Condition, Match, RememberStep, WaitStep, WorkflowStep } from "../../types/workflow";
 import { ConditionText, VarToken } from "./parts";
 
 function Conditions({
@@ -125,6 +125,18 @@ function WaitSummary({ step, output, inputNames }: { step: WaitStep; output: str
   );
 }
 
+function RememberSummary({ step, inputNames }: { step: RememberStep; inputNames: Set<string> }) {
+  return (
+    <>
+      <span>Keeps</span>
+      <ArgPreview value={step.value} inputNames={inputNames} />
+      <span>as</span>
+      <VarToken name={`memory.${step.name || "?"}`} isInput={false} />
+      <span>for the next run</span>
+    </>
+  );
+}
+
 export function StepSummary({ step, inputNames }: { step: WorkflowStep; inputNames: Set<string> }) {
   const output = stepOutput(step);
   if (step.kind === "tool") {
@@ -171,11 +183,12 @@ export function StepSummary({ step, inputNames }: { step: WorkflowStep; inputNam
   if (step.kind === "agent") return <AgentSummary step={step} output={output} inputNames={inputNames} />;
   if (step.kind === "ask") return <AskSummary step={step} output={output} inputNames={inputNames} />;
   if (step.kind === "wait") return <WaitSummary step={step} output={output} inputNames={inputNames} />;
+  if (step.kind === "remember") return <RememberSummary step={step} inputNames={inputNames} />;
   if (step.kind === "check") {
     return (
       <>
         <Conditions conditions={step.conditions} match={step.match} inputNames={inputNames} />
-        <span>· otherwise stop</span>
+        <span>{step.otherwise === "end" ? "· otherwise end quietly" : "· otherwise stop"}</span>
       </>
     );
   }

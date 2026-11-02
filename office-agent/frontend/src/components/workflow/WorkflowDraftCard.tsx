@@ -1,6 +1,7 @@
 import { useContext, useState } from "react";
 import type { WorkflowDraftEntry, WorkflowTestResult } from "../../lib/transcriptGrouping";
 import { type DraftCards, DraftCardsContext } from "./draftCards";
+import { memoryPreview } from "../../lib/memoryWords";
 import { placeSteps } from "../../lib/workflowTree";
 import { primaryButton, secondaryButton } from "../../lib/formStyles";
 import {
@@ -109,11 +110,30 @@ function formatSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+/** What a task that remembers would carry to its next run (decision 0034). */
+function MemoryEvidence({ result }: { result: WorkflowTestResult }) {
+  const kept = Object.entries(result.would_remember ?? {});
+  if (!result.ended && kept.length === 0) return null;
+  return (
+    <div className="rounded-lg border border-[var(--border)] px-3 py-2 text-[13px]" data-testid="draft-test-memory">
+      {result.ended && <div>Nothing to do this time: a check ended the run quietly.</div>}
+      {kept.length > 0 && <div className="text-[var(--muted)]">A real run would keep for the next one:</div>}
+      {kept.map(([name, value]) => (
+        <div key={name} className="min-w-0 truncate">
+          {name}: <span className="text-[var(--muted)]">{memoryPreview(value)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Evidence({ result }: { result: WorkflowTestResult }) {
   const failed = result.status === "failed";
-  if (!failed && result.files.length === 0 && !result.screenshot) return null;
+  const remembers = Boolean(result.ended || result.would_remember);
+  if (!failed && result.files.length === 0 && !result.screenshot && !remembers) return null;
   return (
     <div className="mt-3 flex flex-col gap-2.5">
+      <MemoryEvidence result={result} />
       {failed && (
         <div className="rounded-lg border border-[color-mix(in_srgb,var(--danger)_35%,transparent)] bg-[color-mix(in_srgb,var(--danger)_6%,transparent)] px-3 py-2 text-[13px]">
           <div className="font-medium">{failedTitle(result)}</div>

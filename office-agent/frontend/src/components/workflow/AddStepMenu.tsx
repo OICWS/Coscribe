@@ -17,6 +17,7 @@ const KINDS: { kind: StepKind; label: string; description: string }[] = [
   { kind: "approval", label: "Approval", description: "Pause until you approve" },
   { kind: "ask", label: "Ask you", description: "Pause until you fill in values the later steps use" },
   { kind: "wait", label: "Wait", description: "Pause for a while, until a time, or until a file appears" },
+  { kind: "remember", label: "Remember", description: "Keep a value for the next run, like what was already handled" },
 ];
 
 const STRUCTURE: { kind: StepKind; label: string; description: string }[] = [

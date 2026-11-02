@@ -7,7 +7,7 @@ import pytest
 
 pytest.importorskip("langgraph", reason="needs the langgraph_spike extra installed")
 
-from coscribe.tools import TaskMemory  # noqa: E402
+from coscribe.tools.bookkeeping.task_memory import TaskMemory  # noqa: E402
 
 from .helpers import FakeToolCallingChatModel, _client_lg  # noqa: E402
 

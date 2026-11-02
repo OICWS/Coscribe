@@ -12,7 +12,7 @@ pytest.importorskip("langgraph", reason="needs the langgraph_spike extra install
 from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import ValidationError
 
-from coscribe.tools import TaskMemory
+from coscribe.tools.bookkeeping.task_memory import TaskMemory
 from coscribe.workflow_spec import memory_value, parse_workflow
 from coscribe.workflow_spec.inputs import MAX_MEMORY_CHARS
 from coscribe.workflows import StepContext, StepRecord, WorkflowRun, run_report, run_test
@@ -112,8 +112,10 @@ def test_the_spec_refuses_memory_it_cant_keep(data: dict[str, Any], problem: str
 
 
 def test_run_is_only_a_name_where_the_task_remembers() -> None:
-    parse_workflow({"version": 1, "inputs": [{"name": "run", "type": "text", "default": "x"}],
-                    "steps": [_note("a", "{{run}}")]})  # fmt: skip
+    workflow = parse_workflow({"version": 1, "inputs": [{"name": "run", "type": "text",
+                                                         "default": "x"}],
+                               "steps": [_note("a", "{{run}}")]})  # fmt: skip
+    assert workflow.inputs[0].name == "run"
 
 
 def test_a_list_too_big_keeps_its_newest_items() -> None:
@@ -182,7 +184,7 @@ async def test_a_check_that_ends_the_run_leaves_the_rest_and_counts_as_done(
     assert ended.status == "done" and ended.note and "Nothing to do" in ended.note
     report = run_report(parse_workflow(data), [r.to_dict() for r in notes.records])
     assert report["ended"] == {"step_id": "anything", "title": "anything"}
-    assert report["remembered"][0]["name"] == "last"
+    assert report["remembered"][0]["label"] == "last"
 
 
 async def test_a_value_that_isnt_the_memorys_type_fails_the_step(tmp_path: Path) -> None:

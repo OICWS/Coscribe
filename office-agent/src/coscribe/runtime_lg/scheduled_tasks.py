@@ -28,11 +28,9 @@ from typing import Any
 
 from ..tools import (
     BROWSER_HOST,
-    FolderWatch,
     ScheduledRun,
     ScheduledTrigger,
     ScheduledTriggerStore,
-    TaskMemory,
     browser_run,
     compute_next_run_at,
     page_screenshot,
@@ -255,7 +253,7 @@ async def _run_workflow(
             store.record_evidence(trigger.trigger_id, run.run_id, files=files,
                                   quiet=1 if outcome.ended else 0)  # fmt: skip
             # Only a finished run moves the task's memory on (decision 0034).
-            TaskMemory(store.state_dir).keep(trigger.trigger_id, outcome.remembered, run.run_id)
+            store.memory.keep(trigger.trigger_id, outcome.remembered, run.run_id)
             return "completed", None
     if outcome.status == "waiting":
         # A wait step's run goes on by itself (decision 0033); anything else waits for a person.
@@ -472,7 +470,7 @@ async def execute_run(
             session = await get_session(run.thread_id)
             if trigger.workflow is not None:
                 inputs = run.inputs or {}
-                memory = TaskMemory(state_dir).values(trigger_id)
+                memory = store.memory.values(trigger_id)
                 status, error = await _run_workflow(
                     store, trigger, run, session, lambda wf: wf.start(inputs, memory)
                 )
@@ -540,7 +538,7 @@ async def poll_due_scheduled_tasks(
             await on_ended(trigger_id, run)
 
     for trigger_id, inputs in _new_files(store):
-        _, run, pruned = store.start_run(trigger_id, "scheduled", inputs)
+        _, run, pruned = store.start_run(trigger_id, "file", inputs)
         if pruned and on_pruned is not None:
             await on_pruned(pruned)
         executions.append(
@@ -558,7 +556,6 @@ async def poll_due_scheduled_tasks(
 def _new_files(store: ScheduledTriggerStore) -> list[tuple[str, dict[str, str]]]:
     """Each new file in a folder task's folder, as its task and the inputs of the run it starts
     (decision 0034)."""
-    watch = FolderWatch(store.state_dir)
     started: list[tuple[str, dict[str, str]]] = []
     for trigger in store.list_all():
         rule = trigger.schedule
@@ -566,9 +563,9 @@ def _new_files(store: ScheduledTriggerStore) -> list[tuple[str, dict[str, str]]]
             continue
         if not trigger.enabled:
             # Resuming starts from what is there then, as a timed task doesn't catch up either.
-            watch.forget(trigger.trigger_id)
+            store.folders.forget(trigger.trigger_id)
             continue
-        found = watch.new_files(trigger.trigger_id, rule.folder, rule.pattern)
+        found = store.folders.new_files(trigger.trigger_id, rule.folder, rule.pattern)
         started += [(trigger.trigger_id, {rule.input: path}) for path in found]
     return started
 

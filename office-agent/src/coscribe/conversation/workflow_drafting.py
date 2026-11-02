@@ -32,7 +32,6 @@ from ..tools import (
     BROWSER_HOST,
     ScheduledTrigger,
     ScheduledTriggerStore,
-    TaskMemory,
     page_screenshot,
 )
 from ..workflows import (
@@ -278,11 +277,8 @@ class WorkflowDrafting:
                 # conversation downloaded before the test.
                 BROWSER_HOST.set_active(self._host.thread_id, True)
             # A test of a saved task reads what its runs remembered, and keeps nothing.
-            memory = (
-                TaskMemory(self._host.settings.state_dir).values(trigger.trigger_id)
-                if trigger is not None
-                else None
-            )
+            store = ScheduledTriggerStore(self._host.settings.state_dir)
+            memory = store.memory.values(trigger.trigger_id) if trigger is not None else None
             result = await run_test(
                 workflow, ctx, inputs, report, self._host.thread_id,
                 send_for_real=send_for_real, memory=memory,

@@ -130,13 +130,21 @@ def compute_next_run_at(rule: ScheduleRule, after: datetime) -> str | None:
         return candidate.isoformat() if candidate > after else None
 
     if rule.kind == "every":
-        minutes = rule.minutes or 0
-        if not MIN_EVERY_MINUTES <= minutes <= MAX_EVERY_MINUTES:
-            raise ValueError(
-                f'minutes must be {MIN_EVERY_MINUTES}-{MAX_EVERY_MINUTES} for an "every" schedule'
-            )
-        return (after.replace(second=0, microsecond=0) + timedelta(minutes=minutes)).isoformat()
+        return _every(rule, after)
+    return _next_by_clock(rule, after)
 
+
+def _every(rule: ScheduleRule, after: datetime) -> str:
+    minutes = rule.minutes or 0
+    if not MIN_EVERY_MINUTES <= minutes <= MAX_EVERY_MINUTES:
+        raise ValueError(
+            f'minutes must be {MIN_EVERY_MINUTES}-{MAX_EVERY_MINUTES} for an "every" schedule'
+        )
+    return (after.replace(second=0, microsecond=0) + timedelta(minutes=minutes)).isoformat()
+
+
+def _next_by_clock(rule: ScheduleRule, after: datetime) -> str:
+    """The hourly, daily, weekday, weekly and monthly kinds: the next time at `rule.at`."""
     hour, minute = _parse_hhmm(rule.at)
 
     if rule.kind == "hourly":

@@ -22,12 +22,13 @@ import {
   type ListRef,
 } from "../../lib/workflowTree";
 import type { ToolInfo } from "../../types/settings";
-import type { StepKind, Workflow, WorkflowInput, WorkflowStep } from "../../types/workflow";
+import type { MemoryEntry, StepKind, Workflow, WorkflowInput, WorkflowStep } from "../../types/workflow";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { ArrowDownIcon, ArrowUpIcon, ChevronDownIcon, PlusIcon, TrashIcon } from "../icons";
 import { AddStepMenu } from "./AddStepMenu";
 import { FieldLabel } from "./fields";
 import { InputsEditor } from "./InputsEditor";
+import { MemorySection } from "./MemoryEditor";
 import { KindLegend, SectionHeading, StepKindTile } from "./parts";
 import { StepFields, type EditorContext } from "./StepEditors";
 import { StepSummary } from "./StepSummary";
@@ -280,6 +281,7 @@ function InsertPoint({
  * the lists nested inside branches and loops. */
 interface ListApi {
   numbers: Map<string, number>;
+  memory: MemoryEntry[];
   scopeMap: Map<string, string[]>;
   inputNames: Set<string>;
   tools: ToolInfo[];
@@ -403,6 +405,8 @@ function StepList({
       inputNames: api.inputNames,
       tools: api.toolsByName,
       listId: `values-${step.id}`,
+      memory: api.memory,
+      topLevel: listKey(list) === listKey(ROOT),
       collectable:
         step.kind === "loop"
           ? scopeAt(api.scopeMap, { parent: step.id, arm: "steps" }, step.steps.length).filter(
@@ -493,6 +497,12 @@ function AfterFailureSection({ api, steps }: { api: ListApi; steps: WorkflowStep
   );
 }
 
+function deleteWords(step: WorkflowStep): string {
+  const inside = countInside(step);
+  if (inside === 0) return "Past runs keep their record of it. Later steps that read its result will need changing.";
+  return `The ${inside} ${inside === 1 ? "step" : "steps"} inside it go too. Past runs keep their record.`;
+}
+
 export function WorkflowEditor({
   workflow,
   persist,
@@ -554,11 +564,13 @@ export function WorkflowEditor({
     return problem;
   };
 
-  const saveInputs = (inputs: WorkflowInput[], renames: [string, string][]) => {
-    let next: Workflow = { ...workflow, inputs };
-    for (const [from, to] of renames) next = renameValue(next, from, to, null);
-    return persist(next);
-  };
+  // Inputs and remembered values are both read by name, so a rename carries into the steps.
+  const saveNamed =
+    (field: "inputs" | "memory") => (values: WorkflowInput[] | MemoryEntry[], renames: [string, string][]) => {
+      let next: Workflow = { ...workflow, [field]: values };
+      for (const [from, to] of renames) next = renameValue(next, from, to, null);
+      return persist(next);
+    };
 
   const confirmDelete = async () => {
     if (!deleting) return;
@@ -575,6 +587,7 @@ export function WorkflowEditor({
 
   const api: ListApi = {
     numbers,
+    memory: workflow.memory ?? [],
     scopeMap,
     inputNames,
     tools,
@@ -607,20 +620,17 @@ export function WorkflowEditor({
     },
   };
 
-  const inside = deleting ? countInside(deleting.step) : 0;
-  let deleteDescription = "Past runs keep their record of it. Later steps that read its result will need changing.";
-  if (inside > 0) {
-    deleteDescription = `The ${inside} ${inside === 1 ? "step" : "steps"} inside it go too. Past runs keep their record.`;
-  }
+  const deleteDescription = deleting ? deleteWords(deleting.step) : "";
 
   return (
     <div className="flex flex-col gap-7">
-      <InputsEditor inputs={workflow.inputs} onSave={saveInputs} />
+      <InputsEditor inputs={workflow.inputs} onSave={saveNamed("inputs")} />
       <section ref={rootRef}>
         <SectionHeading aside={<KindLegend />}>Steps</SectionHeading>
         <StepList api={api} list={ROOT} steps={workflow.steps} nested={false} />
       </section>
       <AfterFailureSection api={api} steps={workflow.after_failure ?? []} />
+      <MemorySection memory={workflow.memory ?? []} onSave={saveNamed("memory")} />
       {deleting && (
         <ConfirmDialog
           title={`Delete "${deleting.step.title}"?`}

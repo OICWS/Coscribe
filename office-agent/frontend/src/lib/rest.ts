@@ -33,6 +33,7 @@ import type {
   ScheduledTaskDeleteResult,
   ScheduledTaskResult,
   RunNowResult,
+  TaskMemoryResult,
   TaskNotesResult,
   ScriptEnvInstallResult,
   ScriptEnvInterpreterInfo,
@@ -425,6 +426,13 @@ export const getWorkflowPermissions = (workflow: Workflow, triggerId?: string, a
     against_saved: againstSaved,
   });
 
+export const getTaskMemory = (triggerId: string) =>
+  getJson<TaskMemoryResult>(`/api/scheduled-tasks/${encodeURIComponent(triggerId)}/memory`);
+export const setTaskMemory = (triggerId: string, name: string, value: unknown) =>
+  putJson<TaskMemoryResult>(
+    `/api/scheduled-tasks/${encodeURIComponent(triggerId)}/memory/${encodeURIComponent(name)}`,
+    { value },
+  );
 export const getTaskNotes = (triggerId: string) =>
   getJson<TaskNotesResult>(`/api/scheduled-tasks/${encodeURIComponent(triggerId)}/notes`);
 export const saveTaskNotes = (triggerId: string, notes: string) =>

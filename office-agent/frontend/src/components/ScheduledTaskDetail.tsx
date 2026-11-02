@@ -21,6 +21,7 @@ import { DEFAULT_ENVIRONMENT } from "./EnvironmentDialog";
 import { ChevronRightIcon, PencilIcon, PlayIcon, TrashIcon } from "./icons";
 import { RunStatusIcon } from "./RunStatusIcon";
 import { ScheduledTaskSimple } from "./ScheduledTaskSimple";
+import { TaskMemorySection } from "./TaskMemorySection";
 import { ToggleSwitch } from "./ToggleSwitch";
 import { RunInputsDialog } from "./workflow/RunInputsDialog";
 import { ViewToggle } from "./workflow/ViewToggle";
@@ -44,6 +45,7 @@ const APPROVAL_DESCRIPTION: Record<ScheduledTask["approval_mode"], string> = {
 
 function formatNextRun(task: ScheduledTask): string {
   if (task.schedule.kind === "manual") return "Runs when you start it";
+  if (task.schedule.kind === "folder") return describeSchedule(task.schedule);
   if (!task.next_run_at) return "Not scheduled";
   return `Next run: ${new Date(task.next_run_at).toLocaleString(undefined, {
     month: "short",
@@ -210,51 +212,59 @@ function RunsSection({ task, recent = false }: { task: ScheduledTask; recent?: b
   const newestFirst = [...task.runs].reverse();
   const runs = all ? newestFirst : newestFirst.slice(0, RECENT_RUNS);
   return (
-    <div>
-      {recent ? <h2 className="mb-2 text-sm font-medium">Recent runs</h2> : <SectionLabel>Runs</SectionLabel>}
-      {runs.length === 0 ? (
-        <p className="text-sm text-[var(--muted)]">No runs yet -- use Run now to try it out.</p>
-      ) : (
-        <ul className="-mx-2 flex flex-col">
-          {runs.map((run) => {
-            const duration = runDuration(run);
-            return (
-              <li key={run.run_id}>
-                <button
-                  type="button"
-                  className="group flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-[var(--card-bg)]"
-                  onClick={() => goToThread(run.thread_id)}
-                  title={run.error ?? undefined}
-                >
-                  <RunStatusIcon status={run.status} />
-                  <span className="min-w-0 flex-1 truncate">
-                    {capitalize(formatRunTime(run.started_at))}
-                    <span className="text-[var(--muted)]">
-                      {" "}
-                      · {runSourceLabel(run)}
-                      {duration && ` · ${duration}`}
+    <>
+      <TaskMemorySection task={task} refresh={`${task.last_run_at}:${task.last_run_status}`} />
+      <div>
+        {recent ? <h2 className="mb-2 text-sm font-medium">Recent runs</h2> : <SectionLabel>Runs</SectionLabel>}
+        {runs.length === 0 ? (
+          <p className="text-sm text-[var(--muted)]">No runs yet -- use Run now to try it out.</p>
+        ) : (
+          <ul className="-mx-2 flex flex-col">
+            {runs.map((run) => {
+              const duration = runDuration(run);
+              return (
+                <li key={run.run_id}>
+                  <button
+                    type="button"
+                    className="group flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-[var(--card-bg)]"
+                    onClick={() => goToThread(run.thread_id)}
+                    title={run.error ?? undefined}
+                  >
+                    <RunStatusIcon status={run.status} />
+                    <span className="min-w-0 flex-1 truncate">
+                      {capitalize(formatRunTime(run.started_at))}
+                      <span className="text-[var(--muted)]">
+                        {" "}
+                        · {runSourceLabel(run)}
+                        {duration && ` · ${duration}`}
+                      </span>
                     </span>
-                  </span>
-                  {run.status !== "completed" && (
-                    <span className="shrink-0 text-xs text-[var(--muted)]">{RUN_STATUS_LABEL[run.status]}</span>
-                  )}
-                  <ChevronRightIcon className="h-4 w-4 shrink-0 text-[var(--muted)] opacity-0 transition-opacity group-hover:opacity-100" />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      {runs.length < newestFirst.length && (
-        <button
-          type="button"
-          className="mt-1 text-[13px] text-[var(--muted)] hover:text-[var(--fg)] hover:underline"
-          onClick={() => setAll(true)}
-        >
-          Show all {newestFirst.length} runs
-        </button>
-      )}
-    </div>
+                    {run.status !== "completed" && (
+                      <span className="shrink-0 text-xs text-[var(--muted)]">{RUN_STATUS_LABEL[run.status]}</span>
+                    )}
+                    {run.status === "completed" && run.quiet ? (
+                      <span className="shrink-0 text-xs text-[var(--muted)]" title="A check found nothing to do">
+                        Nothing new{run.quiet > 1 ? ` · ${run.quiet} checks` : ""}
+                      </span>
+                    ) : null}
+                    <ChevronRightIcon className="h-4 w-4 shrink-0 text-[var(--muted)] opacity-0 transition-opacity group-hover:opacity-100" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {runs.length < newestFirst.length && (
+          <button
+            type="button"
+            className="mt-1 text-[13px] text-[var(--muted)] hover:text-[var(--fg)] hover:underline"
+            onClick={() => setAll(true)}
+          >
+            Show all {newestFirst.length} runs
+          </button>
+        )}
+      </div>
+    </>
   );
 }
 

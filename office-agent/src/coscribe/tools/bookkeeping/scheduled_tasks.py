@@ -129,7 +129,7 @@ class ScheduledRun:
     run_id: str
     thread_id: str
     started_at: str
-    source: str  # "manual" (Run now) | "scheduled"
+    source: str  # "manual" (Run now) | "scheduled" | "file" (a new file in its folder)
     status: str = "running"  # one of RUN_STATUSES
     finished_at: str | None = None
     error: str | None = None
@@ -309,6 +309,10 @@ class ScheduledTriggerStore:
     def __init__(self, state_dir: str | Path) -> None:
         self.state_dir = Path(state_dir)
         self.root = self.state_dir / "scheduled_tasks"
+        # What each task keeps between runs and the files its folder watch has seen
+        # (decision 0034), kept beside the tasks and deleted with them.
+        self.memory = TaskMemory(self.state_dir)
+        self.folders = FolderWatch(self.state_dir)
 
     def save(self, trigger: ScheduledTrigger) -> None:
         self.root.mkdir(parents=True, exist_ok=True)
@@ -356,8 +360,8 @@ class ScheduledTriggerStore:
         existed = path.exists()
         path.unlink(missing_ok=True)
         self._notes_path(trigger_id).unlink(missing_ok=True)
-        TaskMemory(self.state_dir).delete(trigger_id)
-        FolderWatch(self.state_dir).forget(trigger_id)
+        self.memory.delete(trigger_id)
+        self.folders.forget(trigger_id)
         return existed
 
     def start_run(

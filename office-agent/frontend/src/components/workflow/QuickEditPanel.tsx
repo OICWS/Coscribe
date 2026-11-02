@@ -231,7 +231,7 @@ export function QuickEditPanel({
 }: PanelProps & { step: WorkflowStep }) {
   const [draft, setDraft] = useState(step);
   const { error, saving, save } = useSave(persist, onClose);
-  const detail = plainDetail(step, workflow.inputs);
+  const detail = plainDetail(step, workflow.inputs, workflow.memory);
   const changed = JSON.stringify(draft) !== JSON.stringify(step);
   return (
     <QuickSheet

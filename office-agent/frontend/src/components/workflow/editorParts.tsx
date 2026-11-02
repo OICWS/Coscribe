@@ -6,6 +6,7 @@ import type { ToolInfo } from "../../types/settings";
 import type {
   AgentStep,
   LLMStep,
+  MemoryEntry,
   OutputField,
   OutputFieldType,
   ScriptStep,
@@ -31,6 +32,10 @@ export interface EditorContext {
   listId: string;
   /** For a loop: what its body makes, which it can keep from each pass. */
   collectable?: string[];
+  /** What the task remembers between runs (decision 0034), for a remember step to keep. */
+  memory?: MemoryEntry[];
+  /** The step is outside every loop and branch, where a check may end the run quietly. */
+  topLevel?: boolean;
 }
 
 export interface EditorProps<T extends WorkflowStep> {
@@ -40,7 +45,8 @@ export interface EditorProps<T extends WorkflowStep> {
 }
 
 export function ValuesHint({ context }: { context: EditorContext }) {
-  const roots = context.suggestions.filter((name) => !name.includes("."));
+  // What the task remembers is read by its full name (decision 0034).
+  const roots = context.suggestions.filter((name) => !name.includes(".") || /^(memory|run)\./.test(name));
   if (roots.length === 0) return null;
   return (
     <div className="mt-1.5 flex flex-wrap items-baseline gap-1.5 text-xs text-[var(--muted)]">

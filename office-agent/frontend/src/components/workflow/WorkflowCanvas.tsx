@@ -10,6 +10,7 @@ import type {
   BranchStep,
   ChoiceStep,
   LoopStep,
+  MemoryEntry,
   RecoveringStep,
   Workflow,
   WorkflowInput,
@@ -32,7 +33,7 @@ interface CanvasContext {
   states?: Map<string, NodeRunState>;
   onOpenStep?: (stepId: string) => void;
   /** The simple view: each step says what it does in plain words, without tool or variable names. */
-  plain?: { inputs: WorkflowInput[] };
+  plain?: { inputs: WorkflowInput[]; memory: MemoryEntry[] };
   /** Inside a split of three or more paths, where full-width cards would push the rest off the page. */
   narrow?: boolean;
   /** Which steps feed and use the one in focus (pointed at or opened), to light up its data. */
@@ -191,16 +192,18 @@ function PlainTile({ step, color }: { step: WorkflowStep; color: string }) {
 function PlainBody({
   step,
   inputs,
+  memory,
   state,
   role,
 }: {
   step: WorkflowStep;
   inputs: WorkflowInput[];
+  memory: MemoryEntry[];
   state?: NodeRunState;
   role: FlowRole;
 }) {
   const color = plainColor(step);
-  const detail = plainDetail(step, inputs);
+  const detail = plainDetail(step, inputs, memory);
   return (
     <>
       <span className="flex items-center gap-2">
@@ -239,7 +242,7 @@ function StepNode({ step, ctx }: { step: WorkflowStep; ctx: CanvasContext }) {
   const kind = step.kind === "agent" ? `Agent · ${AUTONOMY_LABEL[step.autonomy]}` : KIND_LABEL[step.kind];
   const body = ctx.plain ? (
     <>
-      <PlainBody step={step} inputs={ctx.plain.inputs} state={state} role={role} />
+      <PlainBody step={step} inputs={ctx.plain.inputs} memory={ctx.plain.memory} state={state} role={role} />
       <FailureNote step={step} />
       {note && (
         <span
@@ -639,7 +642,7 @@ export function WorkflowCanvas({
       inputNames: new Set(workflow.inputs.map((input) => input.name)),
       states: run ? runMap(workflow, run) : undefined,
       onOpenStep,
-      plain: plain ? { inputs: workflow.inputs } : undefined,
+      plain: plain ? { inputs: workflow.inputs, memory: workflow.memory ?? [] } : undefined,
       flow: { flows, focus, setFocus: setPointed },
     }),
     [workflow, run, onOpenStep, plain, flows, focus],

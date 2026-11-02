@@ -22,7 +22,6 @@ from .conversations import (
     format_incoming,
     set_inbox_listener,
 )
-from .folder_watch import FolderWatch
 from .interaction import (
     PLAN_CHOICE_AUTO,
     PLAN_CHOICE_MANUAL,
@@ -34,15 +33,14 @@ from .interaction import (
     normalize_questions,
 )
 from .memory import format_memory_section, load_memory
+from .schedule_rule import ScheduleRule, compute_next_run_at
 from .scheduled_tasks import (
     SCHEDULED_THREAD_PREFIX,
     TASK_DRAFT_TOOL_NAMES,
     ScheduledRun,
     ScheduledTrigger,
     ScheduledTriggerStore,
-    ScheduleRule,
     build_scheduled_task_tools,
-    compute_next_run_at,
     create_trigger,
     edit_draft,
     parse_run_thread_id,
@@ -68,7 +66,6 @@ from .subagent_tasks import (
     stop_subagent_task,
     take_stop_requester,
 )
-from .task_memory import TaskMemory
 from .tasks import TaskToolkit, build_task_tools
 
 __all__ = [
@@ -102,8 +99,6 @@ __all__ = [
     "SignalStore",
     "SubAgentTask",
     "SubAgentTaskStore",
-    "TaskMemory",
-    "FolderWatch",
     "WakeRequest",
     "WakeStore",
     "build_background_task_tools",
