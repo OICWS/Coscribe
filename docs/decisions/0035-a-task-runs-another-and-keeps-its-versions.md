@@ -30,10 +30,10 @@ definition it ran.
   under each called task's name, and one allowed while a called step waits is granted to the
   called task.
 - **Every save keeps a version** (`state_dir/task_versions/<id>.json`, the latest 50, deleted
-  with the task): its number, when, how (`created`, `edited`, `conversation`, `restored`) and
-  the workflow. A task saved before versions starts its history at version 1 when first
-  changed. The task page lists them, compares one with the current step by step, and restores
-  one in a click, which saves it as a new version.
+  with the task): its number, when, how (`created`, `edited`, `conversation`, `restored`, or
+  `found`: a task saved before versions, recorded the first time it changes or runs) and the
+  workflow. The task page lists them, compares one with the current step by step, and
+  restores one in a click, which saves it as a new version.
 - **A run records the versions it ran** (`versions`, usually one; a retry after an edit adds
   the newer), and for each called task its name, version and definition (`called`), so the run
   view shows the called steps as they were.

@@ -116,8 +116,11 @@ Text the model reads (files, pages, messages from other conversations) is covere
   (`permissions.outside_declared`), and one that reads outside content may only make READ calls
   unless marked trusted (`workflows/agent_step.py`, `tests/test_workflow_agent_step.py`). A
   failed step's message counts as outside content, and the steps after a failed run never wait
-  for a person: what would ask is refused (decision 0032, `tests/test_workflow_failures.py`). The
-  code module never runs in a workflow (decision 0005).
+  for a person: what would ask is refused (decision 0032, `tests/test_workflow_failures.py`). A
+  step that runs another task runs it under that task's own approval mode, and the caller's run
+  may use only what the called task's steps name or were allowed (`permissions.allowed_to_run`,
+  decision 0035, `tests/test_workflow_run_task.py`). The code module never runs in a workflow
+  (decision 0005).
 - Connector tools are gated by their own permissions (`tools/connector_permissions.py`,
   `tests/test_connector_permissions.py`); a connector signs in once in the user's browser
   (decision 0004) and its tokens go through `runtime/secrets.py`.

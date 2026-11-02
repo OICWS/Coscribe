@@ -2,6 +2,7 @@
 checks saving one makes, the engine passing the called run's pauses, failures and results
 through, the version history, and a test run."""
 
+import json
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -10,9 +11,12 @@ import pytest
 
 pytest.importorskip("langgraph", reason="needs the langgraph_spike extra installed")
 
+from langchain_core.language_models.fake_chat_models import FakeListChatModel
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import ValidationError
 
+from coscribe.runtime_lg.messages import serialize_history_for_ws_lg
 from coscribe.tools.bookkeeping.scheduled_tasks import (
     ScheduledTriggerStore,
     create_trigger,
@@ -25,6 +29,8 @@ from coscribe.workflows import (
     StepRecord,
     TaskSource,
     WorkflowRun,
+    callable_tasks,
+    draft_workflow,
     pause_steps,
     run_report,
     run_test,
@@ -328,3 +334,42 @@ def test_a_task_saved_before_versions_starts_its_history_when_it_changes(tmp_pat
     update_trigger(store, task, name="Old", kind="manual", at="", prompt="",
                    workflow={"version": 1, "steps": [_note("a", "y")]})  # fmt: skip
     assert [v["how"] for v in store.versions.all(task)] == ["found", "edited"]
+
+
+# -- drafting -----------------------------------------------------------------
+
+
+def write_file(path: str, content: str) -> str:
+    """Write a text file."""
+    return "ok"
+
+
+async def test_the_drafter_is_told_which_tasks_a_step_can_run(tmp_path: Path) -> None:
+    store = ScheduledTriggerStore(tmp_path)
+    called = _save(store, "Fetch sales", CALLED)
+    tasks = callable_tasks(store.list_all())
+    history = serialize_history_for_ws_lg([
+        HumanMessage("Get this month's sales and write them down."),
+        AIMessage(content="", tool_calls=[{"id": "c1", "name": "write_file",
+                                           "args": {"path": "s.txt", "content": "1"}}]),
+        ToolMessage('"ok"', tool_call_id="c1"),
+    ])  # fmt: skip
+    write = {"id": "write", "title": "Write", "kind": "tool", "tool": "write_file",
+             "args": {"path": "s.txt", "content": "{{got.sales}}"}}  # fmt: skip
+
+    def reply(task: str) -> str:
+        steps = [_call(task, inputs={"month": "{{month}}"}), write]
+        inputs = [{"name": "month", "type": "text"}]
+        return json.dumps({"name": "Sales", "workflow": {"inputs": inputs, "steps": steps}})
+
+    model = FakeListChatModel(responses=[reply("nope"), reply(called)])
+    draft = await draft_workflow(model, history, {"write_file": write_file}, tasks=tasks)
+
+    month = {"name": "month", "label": "Month", "type": "text", "needed": True}
+    region = {"name": "region", "label": "", "type": "text", "needed": False}
+    inputs = [month, region]
+    assert tasks == [
+        {"id": called, "name": "Fetch sales", "inputs": inputs, "results": {"sales": None}}
+    ]
+    assert draft.workflow["steps"][0]["task"] == called
+    assert callable_tasks(store.list_all(), leave_out=called) == []
