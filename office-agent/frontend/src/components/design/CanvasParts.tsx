@@ -143,7 +143,7 @@ export function BoardFrame({
   const down = useRef<{ x: number; y: number } | null>(null);
   return (
     <div className="absolute" style={{ left: board.x, top: board.y, width: board.width, height: board.height }}>
-      <div className="absolute bottom-full left-0 z-10 mb-1.5 flex origin-bottom-left items-center gap-2" style={{ transform: `scale(${1 / zoom})`, width: board.width * zoom }}>
+      <div className="absolute bottom-full left-0 z-10 mb-2.5 flex origin-bottom-left items-center gap-2" style={{ transform: `scale(${1 / zoom})`, width: board.width * zoom }}>
         <span className={`min-w-0 flex-1 truncate text-[13px] ${selected ? "text-[var(--accent)]" : "text-[var(--muted)]"}`}>{board.title}</span>
         <BoardPlayButton live={live} onPlay={onPlay} onEdit={onEdit} />
       </div>
