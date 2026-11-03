@@ -44,6 +44,7 @@ from ..workflow_spec import (
     ChoiceStep,
     LLMStep,
     LoopStep,
+    ParallelStep,
     Placed,
     RememberStep,
     RunTaskStep,
@@ -58,7 +59,6 @@ from ..workflow_spec import (
     failure_policy,
     resolve,
     step_output,
-    task_results,
     walk,
 )
 from .agent_step import AgentCall, CallGuard, answer_of, run_agent_step
@@ -66,6 +66,7 @@ from .healing import carried, heal_guard, healed, stand_in
 from .loop_labels import item_labels as _item_labels
 from .loop_labels import loop_progress as _loop_progress
 from .loop_labels import supersteps as _supersteps
+from .parallel import ParallelSteps
 from .pause_steps import PAUSED, Pauses
 from .permissions import untrusted_agent_steps
 from .preflight import NO_STEPS as _NO_STEPS
@@ -73,7 +74,7 @@ from .preflight import UNAVAILABLE_TOOLS as UNAVAILABLE_TOOLS
 from .preflight import WorkflowNotRunnable as WorkflowNotRunnable
 from .preflight import preflight, starting_values
 from .remember_steps import ENDED, check_or_end, remember
-from .run_task import TaskSteps
+from .run_task import TaskSteps, given_results
 from .step_work import StepContext as StepContext
 from .step_work import StepFailed as StepFailed
 from .step_work import StepRecord as StepRecord
@@ -145,6 +146,7 @@ class _GraphBuilder:
         self.graph = StateGraph(_State)
         self.pauses = Pauses(self)
         self.tasks = TaskSteps(self, WorkflowRun)
+        self.parallel = ParallelSteps(self, WorkflowRun, workflow)
         self.checkpointer: Any = None
 
     async def emit(self, record: StepRecord) -> None:
@@ -269,6 +271,8 @@ class _GraphBuilder:
                 return await remember(self, step, values, it)
             if isinstance(step, RunTaskStep):
                 return await self.tasks.run(step, state, it)
+            if isinstance(step, ParallelStep):
+                return await self.parallel.run(step, state, it)
             if isinstance(step, CheckStep) and step.otherwise == ENDED:
                 return await check_or_end(self, step, values, it)
             if isinstance(step, (AskStep, WaitStep)):
@@ -629,6 +633,11 @@ class WorkflowRun:
         values = starting_values(self.workflow, inputs, memory)
         return await self._drive({"values": values, "loops": {}, "attempts": {}})
 
+    async def start_from(self, values: dict[str, Any]) -> RunOutcome:
+        """A parallel step's lane: from the values the run had when the step began."""
+        preflight(self.workflow, self.ctx)
+        return await self._drive({"values": values, "loops": {}, "attempts": {}})
+
     async def resume(self) -> RunOutcome:
         """Carry on after a crash or a failed step's cause being fixed. A
         declined approval stays declined here -- LangGraph replays the
@@ -661,8 +670,10 @@ class WorkflowRun:
         state = await self._graph.aget_state(self.config)
         if not state.values:
             return None
-        if state.next and not any(task.interrupts for task in state.tasks):
-            return RunOutcome("failed", values=state.values.get("values", {}))
+        # A step that failed on an answer still holds the pause it answered.
+        if state.next and any(t.error or not t.interrupts for t in state.tasks):
+            stopped = state.next[0].removeprefix("step__") if len(state.next) == 1 else None
+            return RunOutcome("failed", step_id=stopped, values=state.values.get("values", {}))
         return await self._outcome(state)
 
     async def checkpoint_id(self) -> str:
@@ -783,5 +794,5 @@ class WorkflowRun:
             values=values,
             ended=any(a.get("route") == ENDED for a in attempts),
             remembered=state.values.get("remembered") or {},
-            results={k: values[k] for k in task_results(self.workflow) if k in values},
+            results=given_results(self.workflow, values),
         )

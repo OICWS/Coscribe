@@ -45,4 +45,5 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0032](0032-a-step-says-what-happens-when-it-fails.md) | A step says what happens when it fails (proposed) |
 | [0033](0033-a-run-can-pause-for-a-person-or-a-time.md) | A run can pause for a person or a time (proposed) |
 | [0034](0034-a-task-remembers-between-runs-and-starts-on-a-new-file.md) | A task remembers between runs, and starts on a schedule of minutes or a new file (proposed) |
-| [0035](0035-a-task-runs-another-and-keeps-its-versions.md) | A task runs another task as a step, and keeps every version it was saved as (proposed) |
+| [0035](0035-a-task-runs-another-and-keeps-its-versions.md) | A task runs another task as a step, and keeps every version it was saved as (proposed; narrowed by 0036) |
+| [0036](0036-a-step-runs-several-lanes-at-the-same-time.md) | A step runs several lanes of steps at the same time (proposed) |

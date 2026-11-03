@@ -298,9 +298,12 @@ Last reviewed: 2026-10-15.
    you for values and a step that waits for a time or a file (decision 0033, batch 3, done);
    what a task remembers between runs, a check that ends a run quietly, and runs every few
    minutes or when a file arrives in a folder (decision 0034, batch 4, done); a step that runs
-   another task, and versions a person compares and restores (decision 0035, batch 5, in
-   review). Webhooks and connector events as triggers are left out, as are
-   parallel steps.
+   another task, and versions a person compares and restores (decision 0035, batch 5, done).
+   P6 what #776 left out, in three batches (#788): a step that runs lanes at the same time
+   (decision 0036, batch 1, in review); a run started by a webhook or a connector event, with
+   the event's data as its inputs (batch 2); steps a run adds by itself, within what the task's
+   autonomy allows and marked in the run, saved as a new version only when a person agrees
+   (batch 3).
 
 ## Needs the maintainer's testing (could not be verified here)
 

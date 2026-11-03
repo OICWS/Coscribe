@@ -195,6 +195,8 @@ export function plainDetail(
       return null;
     case "choice":
       return `Goes one way by ${plainReference(step.value, inputs)}`;
+    case "parallel":
+      return `Does ${step.lanes.length} things at the same time, then goes on`;
   }
 }
 
@@ -226,6 +228,8 @@ export function plainKind(step: WorkflowStep): string {
       return "If";
     case "choice":
       return "Paths";
+    case "parallel":
+      return "At once";
     case "loop":
       return "Repeat";
   }

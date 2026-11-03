@@ -1,6 +1,6 @@
 import type { ScheduledRun } from "../types/settings";
 import type { StepRecord, StepStatus, Workflow, WorkflowStep } from "../types/workflow";
-import { loopProgress } from "./workflowProgress";
+import { loopProgress, stoppedInside } from "./workflowProgress";
 import { childLists, everyStep, placeSteps } from "./workflowTree";
 
 /** A step's state on the run's canvas. "not_taken" is a step in a branch arm
@@ -103,8 +103,11 @@ export function runMap(workflow: Workflow, run: ScheduledRun): Map<string, NodeR
       if (record.status === "failed" && record.recovered) return "recovered";
       return record.status === "running" && !going ? "stopped" : record.status;
     });
-    const status: NodeStatus =
+    const found: NodeStatus =
       records.length > 0 ? worst(statuses) : unreachable.has(step.id) ? "not_taken" : "not_reached";
+    // Its lanes went on as runs of their own: one of them is what waits.
+    const waits = found === "stopped" && step.kind === "parallel" && stoppedInside(step, run);
+    const status: NodeStatus = waits ? "waiting" : found;
     const state: NodeRunState = { status };
     const innermost = loops[loops.length - 1];
     if (step.kind === "branch" || step.kind === "choice")

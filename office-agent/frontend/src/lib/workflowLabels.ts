@@ -24,6 +24,7 @@ export const KIND_LABEL: Record<StepKind, string> = {
   run_task: "Task",
   branch: "Branch",
   choice: "Choice",
+  parallel: "At once",
   loop: "Loop",
 };
 
@@ -40,6 +41,7 @@ export const KIND_COLOR: Record<StepKind, string> = {
   run_task: "var(--kind-task)",
   branch: "var(--kind-branch)",
   choice: "var(--kind-branch)",
+  parallel: "var(--kind-parallel)",
   loop: "var(--kind-loop)",
 };
 

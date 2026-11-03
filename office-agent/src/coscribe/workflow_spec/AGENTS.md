@@ -13,7 +13,7 @@ Definition: `Workflow`, `parse_workflow`, `workflow_error`, `walk`, `Placed`, `s
 `Step`, `ToolStep`, `ScriptStep`, `LLMStep`, `AgentStep`, `CheckStep`, `ApprovalStep`, `BranchStep`,
 `ChoiceStep`, `LoopStep`, `OutputField`, `AGENT_REPORT_FIELD`, `child_lists`,
 `raw_child_lists` (the same for a stored step's JSON), `current_shape` (a stored workflow as written now), `step_references`, `choose_arm` (which path a
-branch or choice takes). Inputs (decision 0031): `input_values`, `input_value`, `default_value`, `resolve_date`, `RELATIVE_DATES`. Steps that pause the run (decision 0033): `AskStep`, `AskField`, `WaitStep`. What a task remembers (decision 0034): `MemoryEntry`, `RememberStep`, `memory_value` (what a value keeps, by its type) and `remembered_values` (what a run reads as `memory.<name>`, `run.started_at` and `run.date`). A step that runs another task (decision 0035): `RunTaskStep`, `MAX_TASK_DEPTH`, `task_results` (what a run of a workflow gives the task that runs it). The task's autonomy setting (decision 0030): `TASK_AUTONOMY_LEVELS`. Failure handling (decision 0032): `failure_policy`, `MAX_RETRY_WAIT`, `FAILURE` (the name the steps run because of a failure read it by). References: `resolve`, `evaluate`, `conditions_hold`, `render_text`, `render_value`. Import these from
+branch or choice takes). Inputs (decision 0031): `input_values`, `input_value`, `default_value`, `resolve_date`, `RELATIVE_DATES`. Steps that pause the run (decision 0033): `AskStep`, `AskField`, `WaitStep`. What a task remembers (decision 0034): `MemoryEntry`, `RememberStep`, `memory_value` (what a value keeps, by its type) and `remembered_values` (what a run reads as `memory.<name>`, `run.started_at` and `run.date`). A step that runs another task (decision 0035): `RunTaskStep`, `MAX_TASK_DEPTH`, `task_results` (what a run of a workflow gives the task that runs it). A step that runs lanes at the same time (decision 0036): `ParallelStep`, `Lane`. The task's autonomy setting (decision 0030): `TASK_AUTONOMY_LEVELS`. Failure handling (decision 0032): `failure_policy`, `MAX_RETRY_WAIT`, `FAILURE` (the name the steps run because of a failure read it by). References: `resolve`, `evaluate`, `conditions_hold`, `render_text`, `render_value`. Import these from
 `coscribe.workflow_spec`, not a submodule.
 
 ## Depends on
@@ -24,7 +24,7 @@ No other coscribe package.
   reaches an autonomous agent"). An agent step (decision 0028) is data here: what it may call and
   touch, and the fields it returns.
 - A reference is a lookup, never an expression: nothing in `refs.py` evaluates code.
-- Steps are capped (`MAX_STEPS`, `MAX_NESTING`, `MAX_LOOP_ITEMS`, `MAX_AGENT_STEPS`) so a saved
+- Steps are capped (`MAX_STEPS`, `MAX_NESTING`, `MAX_LOOP_ITEMS`, `MAX_LANES`, `MAX_AGENT_STEPS`) so a saved
   workflow stays small and an agent step's run stays bounded.
 - An agent step needs `version: 2`; a version 1 workflow behaves as when it was saved.
 

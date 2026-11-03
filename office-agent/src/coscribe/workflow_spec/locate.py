@@ -24,9 +24,18 @@ def workflow_error(exc: ValidationError, data: Any = None) -> str:
 
 
 _STEP_KINDS = frozenset(
-    {"tool", "script", "llm", "agent", "run_task", "check", "approval", "branch", "choice", "loop"}
-)
+    {"tool", "script", "llm", "agent", "run_task", "check", "approval", "branch", "choice", "loop",
+     "parallel"}
+)  # fmt: skip
 _RECOVERING_KINDS = frozenset({"tool", "script", "llm", "agent", "run_task"})
+
+
+def _listed(step: dict[str, Any], key: str) -> list[tuple[tuple[Any, ...], list[Any]]]:
+    """The steps of each of a choice's cases or a parallel step's lanes."""
+    return [
+        ((key, index, "steps"), _as_list(item.get("steps") if isinstance(item, dict) else None))
+        for index, item in enumerate(_as_list(step.get(key)))
+    ]
 
 
 def _raw_arms(step: dict[str, Any]) -> list[tuple[tuple[Any, ...], list[Any]]]:
@@ -37,11 +46,11 @@ def _raw_arms(step: dict[str, Any]) -> list[tuple[tuple[Any, ...], list[Any]]]:
         return [(("on_failure", "steps"), _as_list(steps))]
     if step.get("kind") == "loop":
         return [(("steps",), _as_list(step.get("steps")))]
-    cases = _as_list(step.get("cases")) if step.get("kind") == "choice" else []
-    paths = [
-        (("cases", index, "steps"), _as_list(case.get("steps") if isinstance(case, dict) else None))
-        for index, case in enumerate(cases)
-    ]
+    if step.get("kind") == "parallel":
+        failure = step.get("on_failure")
+        steps = failure.get("steps") if isinstance(failure, dict) else None
+        return [*_listed(step, "lanes"), (("on_failure", "steps"), _as_list(steps))]
+    paths = _listed(step, "cases") if step.get("kind") == "choice" else []
     first = [] if step.get("kind") == "choice" else [(("then",), _as_list(step.get("then")))]
     return [*first, *paths, (("otherwise",), _as_list(step.get("otherwise")))]
 

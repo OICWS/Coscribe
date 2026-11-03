@@ -19,8 +19,9 @@ import {
   type LoopProgress,
 } from "../../lib/workflowProgress";
 import { passShowing } from "../../lib/workflowRunMap";
+import { runArms } from "../../lib/runArms";
 import { calledWorkflow, runStepTitle, waitingInside } from "../../lib/calledRun";
-import { canRecover, everyStep, placeSteps } from "../../lib/workflowTree";
+import { everyStep, placeSteps } from "../../lib/workflowTree";
 import type { LoopStep, StepRecord, Workflow, WorkflowStep } from "../../types/workflow";
 import { CheckIcon, ChevronDownIcon, ClockIcon, SparkIcon, StopIcon } from "../icons";
 import { VarToken } from "./parts";
@@ -48,6 +49,7 @@ const RUNNING_LABEL: Partial<Record<WorkflowStep["kind"], string>> = {
   llm: "Asking the model…",
   agent: "Working on it…",
   run_task: "Running its task…",
+  parallel: "Running its lanes…",
 };
 
 interface RunContext extends FailedContext {
@@ -120,6 +122,7 @@ function rowSummary(step: WorkflowStep, record: StepRecord | undefined, status: 
   if (step.kind === "approval") return record?.note ? `Approved · “${record.note}”` : "Approved";
   if (step.kind === "ask") return answeredWords(step, record?.output, record?.note);
   if (step.kind === "wait") return waitedWords(step, record?.output);
+  if (step.kind === "parallel" && status === "done") return `All ${step.lanes.length} lanes ended${triesWords(record)}`;
   if (step.kind === "run_task" && ran) {
     const version = ran.version ? ` · version ${ran.version}` : "";
     return `Ran “${ran.name}”${version} · ${summarizeOutput(record?.output)}`;
@@ -166,53 +169,6 @@ function stepCount(steps: WorkflowStep[]): string {
   return `${count} ${count === 1 ? "step" : "steps"}`;
 }
 
-interface RunArm {
-  arm: string;
-  label: string;
-  steps: WorkflowStep[];
-}
-
-/** The lists under a branch, a choice or a step with steps in its place, by the record's arm. */
-function runArms(
-  step: WorkflowStep,
-  record: StepRecord | undefined,
-): { arms: RunArm[]; taken: string | null; color: string; idle: string } | null {
-  const arm = (record?.output as { arm?: string } | null | undefined)?.arm ?? null;
-  const decided = record?.status === "done" ? arm : null;
-  if (step.kind === "branch") {
-    return {
-      arms: [
-        { arm: "then", label: "Then", steps: step.then },
-        { arm: "otherwise", label: "Otherwise", steps: step.otherwise },
-      ],
-      taken: decided,
-      color: KIND_COLOR.branch,
-      idle: decided ? "not taken" : "not decided yet",
-    };
-  }
-  if (step.kind === "choice") {
-    return {
-      arms: [
-        ...step.cases.map((c, index) => ({ arm: `case:${index}`, label: `Is “${c.is}”`, steps: c.steps })),
-        { arm: "otherwise", label: "Anything else", steps: step.otherwise },
-      ],
-      taken: decided,
-      color: KIND_COLOR.choice,
-      idle: decided ? "not taken" : "not decided yet",
-    };
-  }
-  if (canRecover(step) && step.on_failure?.then === "steps") {
-    const ran = record?.recovered === "fallback";
-    return {
-      arms: [{ arm: "fallback", label: "If it fails", steps: step.on_failure.steps }],
-      taken: ran ? "fallback" : null,
-      color: "var(--warning)",
-      idle: record?.status === "done" ? "not needed" : "only if it fails",
-    };
-  }
-  return null;
-}
-
 function RunArms({
   step,
   record,
@@ -228,10 +184,10 @@ function RunArms({
   if (!shape) return null;
   return (
     <div className="flex flex-col gap-2">
-      {shape.arms.map(({ arm, label, steps }) => {
-        if (shape.taken === arm) {
+      {shape.arms.map(({ arm, label, steps, color }) => {
+        if (shape.taken.includes(arm)) {
           return (
-            <Nested key={arm} label={label} color={shape.color}>
+            <Nested key={arm} label={label} color={color}>
               {steps.length > 0 ? (
                 <RunList steps={steps} path={path} ctx={ctx} />
               ) : (
@@ -374,7 +330,8 @@ function StepRow({
   const record = ctx.records.get(recordKey(step.id, path));
   const stopped = record?.status === "running" && ctx.run.status !== "running";
   const status: RowStatus = stopped
-    ? step.kind === "run_task" && waitingInside(step.id, ctx.run)
+    ? (step.kind === "run_task" && waitingInside(step.id, ctx.run)) ||
+      (step.kind === "parallel" && stoppedInside(step, ctx.run))
       ? "waiting"
       : "stopped"
     : record?.status === "failed" && record.recovered
@@ -389,6 +346,7 @@ function StepRow({
     record?.output !== undefined &&
     step.kind !== "approval" &&
     step.kind !== "branch" &&
+    step.kind !== "parallel" &&
     step.kind !== "loop";
   const muted = status === "not_reached" || status === "pending" || status === "skipped";
   const showCard = !blockStopped && (status === "failed" || status === "waiting");

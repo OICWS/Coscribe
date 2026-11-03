@@ -1,7 +1,8 @@
 # 0035: A task runs another task as a step, and keeps every version it was saved as
 
 Status: proposed (2026-11-02, kurtosisOC; needs the maintainer's acceptance). Builds on 0032,
-0033 and 0034. Issue #776, batch 5.
+0033 and 0034. Issue #776, batch 5. Narrowed by 0036: a called task may run in a parallel
+step's lane.
 
 ## Context
 Two tasks that share work (fetch the month's sales, then report or reconcile) each held a copy

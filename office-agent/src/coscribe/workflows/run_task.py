@@ -20,8 +20,24 @@ from langgraph.errors import GraphBubbleUp
 from langgraph.runtime import get_runtime
 from langgraph.types import interrupt
 
-from ..workflow_spec import MAX_TASK_DEPTH, RunTaskStep, Workflow, parse_workflow, render_value
+from ..workflow_spec import (
+    MAX_TASK_DEPTH,
+    RunTaskStep,
+    Workflow,
+    parse_workflow,
+    render_value,
+    task_results,
+)
 from .step_work import StepContext, StepFailed, StepRecord, now_text, preview
+
+
+def given_results(workflow: Workflow, values: dict[str, Any]) -> dict[str, Any]:
+    """What a finished run gives a task that ran it: each name its top-level steps saved."""
+    try:
+        names = task_results(workflow)
+    except ValueError:  # a parallel step's lane, which reads what came before the step
+        return {}
+    return {name: values[name] for name in names if name in values}
 
 
 @dataclass

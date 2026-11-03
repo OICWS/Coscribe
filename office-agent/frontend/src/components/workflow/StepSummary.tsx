@@ -222,6 +222,7 @@ export function StepSummary({ step, inputNames }: { step: WorkflowStep; inputNam
   if (step.kind === "wait") return <WaitSummary step={step} output={output} inputNames={inputNames} />;
   if (step.kind === "remember") return <RememberSummary step={step} inputNames={inputNames} />;
   if (step.kind === "run_task") return <RunTaskSummary step={step} inputNames={inputNames} />;
+  if (step.kind === "parallel") return <span>{`At the same time: ${step.lanes.map((l) => l.label).join(", ")}`}</span>;
   if (step.kind === "check") {
     return (
       <>
