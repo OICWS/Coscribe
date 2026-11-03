@@ -112,6 +112,7 @@ _VAR_USE = re.compile(r"var\(\s*(--[\w-]+)")
 _VAR_DEF = re.compile(r"(--[\w-]+)\s*:")
 _LINK = re.compile(r"""<a\b[^>]*\bhref\s*=\s*["']([\w.-]+\.html?)(?:#[^"']*)?["']""", re.I)
 _BUTTON_IN_LINK = re.compile(r"<a\b[^>]*>\s*<button\b", re.I)
+_PART = re.compile(r"""<coscribe-part\s+name\s*=\s*["']?([\w-]+)""", re.I)
 
 
 def canvas_report(canvas: Path) -> dict[str, Any]:
@@ -128,6 +129,7 @@ def canvas_report(canvas: Path) -> dict[str, Any]:
     boards, undeclared, used = [], set(), set()
     files = {b["file"].lower() for b in parsed["boards"]}
     links, broken, buttons_in_links = 0, set(), 0
+    placed: dict[str, int] = {}
     for board in parsed["boards"]:
         page = folder / board["file"]
         source = page.read_text(encoding="utf-8", errors="replace") if page.is_file() else ""
@@ -138,6 +140,8 @@ def canvas_report(canvas: Path) -> dict[str, Any]:
         links += sum(1 for t in targets if t in files)
         broken |= {t for t in targets if t not in files}
         buttons_in_links += len(_BUTTON_IN_LINK.findall(source))
+        for name in set(_PART.findall(source)):
+            placed[name] = placed.get(name, 0) + 1
         boards.append({**board, "exists": page.is_file()})
     return {
         "canvas_error": None,
@@ -148,6 +152,9 @@ def canvas_report(canvas: Path) -> dict[str, Any]:
         "links": links,
         "broken_links": sorted(broken),
         "buttons_in_links": buttons_in_links,
+        # Each part the pages place, with how many pages place it.
+        "parts": placed,
+        "missing_parts": sorted(n for n in placed if not (folder / f"{n}.part.html").is_file()),
     }
 
 
@@ -251,6 +258,7 @@ def judge(brief: Brief, workspace: Path, calls: dict[str, int]) -> dict[str, Any
                 and not found["buttons_in_links"]
             )
         )
+        and not found.get("missing_parts")
         and not any(d["errors"] or d["overflow_x"] for d in drawn.values())
     )
     return report
@@ -302,11 +310,18 @@ async def run_brief(
     return result
 
 
+def _parts(result: dict[str, Any]) -> str:
+    """Each part as the pages that place it, and a part placed but never written."""
+    shown = ", ".join(f"{n}x{c}" for n, c in sorted(result.get("parts", {}).items())) or "0"
+    missing = result.get("missing_parts") or []
+    return f"{shown} (missing {', '.join(missing)})" if missing else shown
+
+
 def summary(results: list[dict[str, Any]]) -> str:
     rows = [
-        "| task | tile | made | skill | looked | boards | variables | undeclared | links | errors "
-        "| overflow | ok | cost |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| task | tile | made | skill | looked | boards | variables | undeclared | links | parts "
+        "| errors | overflow | ok | cost |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for r in results:
         drawn = r.get("drawn", {}).values()
@@ -315,7 +330,7 @@ def summary(results: list[dict[str, Any]]) -> str:
             f"| {'yes' if r['skill_loaded'] else 'no'} | {r.get('looked', 0)} "
             f"| {len(r.get('boards', []))} "
             f"| {len(r.get('variables_used', []))}/{len(r.get('variables', []))} "
-            f"| {len(r.get('undeclared', []))} | {r.get('links', 0)} "
+            f"| {len(r.get('undeclared', []))} | {r.get('links', 0)} | {_parts(r)} "
             f"| {sum(len(d['errors']) for d in drawn)} "
             f"| {sum(d['overflow_x'] for d in drawn)} | {'yes' if r['ok'] else 'NO'} "
             f"| {r['cost'] or 0:.3f} |"
