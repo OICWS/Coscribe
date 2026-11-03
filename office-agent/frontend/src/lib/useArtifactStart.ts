@@ -21,7 +21,7 @@ export function useArtifactStart(threadId: string) {
   const take = (text: string): { artifact?: PageKind; design_system?: string } => {
     if (!kind || text.trimStart().startsWith("/")) return {};
     setMade(null);
-    return kind === "slides" && designSystem ? { artifact: kind, design_system: designSystem } : { artifact: kind };
+    return (kind === "slides" || kind === "design") && designSystem ? { artifact: kind, design_system: designSystem } : { artifact: kind };
   };
   return { kind, designSystem, start, clear, chooseDesignSystem, take };
 }

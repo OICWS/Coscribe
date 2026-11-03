@@ -302,3 +302,25 @@ def test_a_design_system_that_is_not_in_the_library_or_not_for_slides_is_left_ou
             _receive_until(ws, "tasks_changed")
     assert "design system" not in str(fake_model.received[0][-1].content)
     assert "design system" not in str(fake_model.received[1][-1].content)
+
+
+def test_a_design_conversation_started_with_a_design_system_gets_it_as_its_variables(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="ok")])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        made = client.post("/api/design-systems", json={"name": "Acme"}).json()
+        with client.websocket_connect("/ws/t_design") as ws:
+            ws.receive_json()
+            ws.receive_json()
+            ws.send_json(
+                {
+                    "type": "user_message",
+                    "text": "a poster",
+                    "artifact": "design",
+                    "design_system": made["id"],
+                }
+            )
+            _receive_until(ws, "tasks_changed")
+    sent = str(fake_model.received[0][-1].content)
+    assert 'Follow their design system "Acme"' in sent and "the canvas's variables" in sent

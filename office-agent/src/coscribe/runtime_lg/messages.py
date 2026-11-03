@@ -183,13 +183,19 @@ def design_system_text(system: dict[str, Any]) -> str:
 
 def artifact_note(kind: str | None, design_system: dict[str, Any] | None = None) -> str:
     """What the conversation's first message is to make, when it started from the Artifacts page;
-    it goes with the message, never in the system prompt or a tool schema. A Slides conversation
-    started with a library design system carries it in the same sentence."""
+    it goes with the message, never in the system prompt or a tool schema. A Slides or Design
+    conversation started with a library design system carries it in the same sentence."""
     if kind not in _ARTIFACTS:
         return ""
     sentence = f"{_ARTIFACTS[kind]}."
-    if kind == "slides" and design_system:
+    if kind in ("slides", "design") and design_system:
         sentence += f" {design_system_text(design_system)}"
+    if kind == "design" and design_system:
+        # A system's text sizes are set on the 1920-wide slide its form edits.
+        sentence += (
+            " Make its colors, fonts, spacing and radius the canvas's variables; its text sizes "
+            "are for a 1920-wide slide, so scale them to each artboard."
+        )
     return f"[The user is starting a {kind.capitalize()} artifact: {sentence}] "
 
 

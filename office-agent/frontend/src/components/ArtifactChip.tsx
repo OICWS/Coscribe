@@ -113,7 +113,7 @@ export function ArtifactChip({
           </button>
         )}
       </PillMenu>
-      {kind === "slides" && <DesignSystemChoice chosen={designSystem} onChoose={onDesignSystem} onManage={onManageDesignSystems} />}
+      {(kind === "slides" || kind === "design") && <DesignSystemChoice chosen={designSystem} onChoose={onDesignSystem} onManage={onManageDesignSystems} />}
     </div>
   );
 }
