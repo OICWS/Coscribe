@@ -9,10 +9,11 @@ import type { PlayMode } from "./useBoardPlay";
  * board is played on the canvas. */
 export function BoardPlayButton({ live, onPlay, onEdit }: { live: boolean; onPlay: (mode: PlayMode) => void; onEdit: () => void }) {
   const [open, setOpen] = useState(false);
-  const pill = "flex h-5 items-center gap-1 rounded-md border px-1.5 text-[11px] font-medium uppercase tracking-wide";
+  // Quiet until hovered: the board's own content is what the canvas is for.
+  const pill = "flex h-[18px] items-center gap-1 rounded-full px-1.5 text-[11px] leading-none";
   if (live) {
     return (
-      <button type="button" className={`${pill} border-[var(--text)] bg-[var(--text)] text-[var(--bg)]`} onPointerDown={(e) => e.stopPropagation()} onClick={onEdit}>
+      <button type="button" className={`${pill} bg-[var(--accent)] font-medium text-white hover:opacity-90`} onPointerDown={(e) => e.stopPropagation()} onClick={onEdit}>
         Edit
       </button>
     );
@@ -23,14 +24,14 @@ export function BoardPlayButton({ live, onPlay, onEdit }: { live: boolean; onPla
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
-        className={`${pill} border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]`}
+        className={`${pill} text-[var(--muted)] hover:bg-[var(--panel-bg)] hover:text-[var(--text)] aria-expanded:bg-[var(--panel-bg)] aria-expanded:text-[var(--text)]`}
         onClick={() => setOpen((o) => !o)}
       >
-        <PlayIcon className="h-3 w-3" />
+        <PlayIcon className="h-2.5 w-2.5" />
         Play
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 top-full z-20 mt-1 w-40 rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-1 normal-case shadow-[var(--shadow)]">
+        <div role="menu" className="absolute right-0 top-full z-20 mt-1 w-36 rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] p-1 normal-case shadow-[var(--shadow)]">
           {(
             [
               ["canvas", "Play on canvas"],
@@ -41,7 +42,7 @@ export function BoardPlayButton({ live, onPlay, onEdit }: { live: boolean; onPla
               key={mode}
               type="button"
               role="menuitem"
-              className="block w-full rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-[var(--card-bg)]"
+              className="block w-full rounded-md px-2 py-1 text-left text-[12px] hover:bg-[var(--card-bg)]"
               onClick={() => {
                 setOpen(false);
                 onPlay(mode);
