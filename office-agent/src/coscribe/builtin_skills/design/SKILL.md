@@ -75,8 +75,13 @@ after the page's own styles, and the person can change them on the canvas, so:
 ## Inside a page
 
 - Self-contained: styles in `<style>`, scripts inline. Fonts are local stacks (`'Segoe UI',
-  system-ui, sans-serif`; `Georgia, serif`). Pictures are inline `<svg>` or `data:` URIs; draw
-  illustrations, icons and charts as SVG.
+  system-ui, sans-serif`; `Georgia, serif`). Draw illustrations, icons and charts as inline SVG.
+- A picture file (a logo, a photo the person gave) is copied into the canvas folder with
+  `copy_file` and named by its file name, `<img src="logo.svg" alt="Acme">`; the app puts it
+  in. Nothing loads from outside the canvas folder.
+- When the first message lists a design system's pictures (`brand/...`), use its logo on the
+  artboards where a brand belongs (a header, a cover, a footer), the variant its note asks for;
+  never redraw, recolour or stretch it.
 - A script may make the page work when the person presses Play: tabs, a menu that opens, a form
   that checks its fields. It reaches nothing outside the page.
 - Text a person might change is real text in the page, not drawn into an SVG.

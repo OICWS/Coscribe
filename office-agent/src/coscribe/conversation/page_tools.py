@@ -25,6 +25,7 @@ from .design_canvas import (
     read_canvas,
     variables_style,
     with_parts,
+    with_pictures,
 )
 from .page_shot import PageShotError, shoot_page
 
@@ -37,14 +38,14 @@ _LONGEST_PAGE = 4000
 
 def served_page(page: Path, body: bytes, scheme: str | None = None) -> bytes:
     """A page as the app serves it to its frame: a dashboard with its data and chart library, an
-    artboard with the parts it places filled in, its canvas's variables last in its head, its links
-    to other artboards handed to the panel and the panel's inspector, in a scheme when one is asked
-    for."""
+    artboard with the parts it places and the picture files it names filled in, its canvas's
+    variables last in its head, its links to other artboards handed to the panel and the panel's
+    inspector, in a scheme when one is asked for."""
     if is_dashboard(body):
         body = render_dashboard(page, body)
     canvas = canvas_of_page(page)
     if canvas is not None:
-        body = with_parts(page, body)
+        body = with_pictures(page, with_parts(page, body))
         try:
             style = variables_style(read_canvas(canvas)) + BOARD_LINKS + BOARD_INSPECTOR
         except CanvasError:

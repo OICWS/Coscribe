@@ -13,6 +13,7 @@ sandboxed frame. It sits with the artifact registry, which lists a canvas as a d
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
@@ -170,6 +171,49 @@ def with_parts(page: Path, body: bytes) -> bytes:
         return start + inner + b"</coscribe-part>"
 
     return _PART_TAG.sub(fill, body)
+
+
+_PICTURE_MEDIA = {
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+}
+# A picture named by a plain file name of the canvas folder (or a folder in it), never a path
+# out of it or an address; the frame loads only data: URIs, so the server fills them in.
+_PICTURE_SRC = re.compile(
+    rb"""(<(?:img|image)\b[^>]*?\s(?:src|href)\s*=\s*)(["'])([\w.-]+(?:/[\w.-]+)*\.(?:svg|png|jpe?g|webp|gif))\2""",
+    re.IGNORECASE,
+)
+_MAX_PICTURES_BYTES = 12 * 1024 * 1024
+
+
+def with_pictures(page: Path, body: bytes) -> bytes:
+    """The page with each picture file of its canvas folder it names (`<img src="logo.svg">`,
+    SVG's `<image href>`) put in as a data: URI. A name that is not a file there is left as it
+    is, so a look at the page shows the gap."""
+    folder = page.parent.resolve()
+    budget = [_MAX_PICTURES_BYTES]
+
+    def fill(match: re.Match[bytes]) -> bytes:
+        name = match.group(3).decode()
+        file = (folder / name).resolve()
+        media = _PICTURE_MEDIA.get(file.suffix.lower())
+        if media is None or ".." in name.split("/") or not file.is_relative_to(folder):
+            return match.group(0)
+        try:
+            data = file.read_bytes()
+        except OSError:
+            return match.group(0)
+        if len(data) > budget[0]:
+            return match.group(0)
+        budget[0] -= len(data)
+        uri = f"data:{media};base64,{base64.b64encode(data).decode()}".encode()
+        return match.group(1) + match.group(2) + uri + match.group(2)
+
+    return _PICTURE_SRC.sub(fill, body)
 
 
 # A link from one artboard to another (`<a href="checkout.html">`) can't navigate the sandboxed

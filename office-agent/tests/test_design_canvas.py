@@ -194,3 +194,33 @@ def test_a_part_is_filled_into_each_page_that_places_it_and_a_missing_one_is_mar
     # Only an artboard's page is filled; a page of its own is served as written.
     loose = tmp_path / "loose.html"
     assert b"<nav" not in served_page(loose, source)
+
+
+def test_a_picture_file_of_the_canvas_folder_is_filled_in_and_nothing_outside_it(
+    tmp_path: Path,
+) -> None:
+    import base64
+
+    from coscribe.conversation import served_page
+
+    _canvas(tmp_path, {"boards": [{"id": "a", "file": "a.html"}]})
+    folder = tmp_path / "poster.design"
+    (folder / "brand").mkdir(parents=True)
+    logo = b'<svg xmlns="http://www.w3.org/2000/svg"/>'
+    (folder / "logo.svg").write_bytes(logo)
+    (folder / "brand" / "mark.png").write_bytes(b"\x89PNG fake")
+    (tmp_path / "secret.png").write_bytes(b"\x89PNG secret")
+    (folder / "tabs.part.html").write_bytes(b"<img alt='p' src='logo.svg'>")
+    source = (
+        b'<body><img src="logo.svg" alt="Logo"><svg><image href="brand/mark.png"/></svg>'
+        b'<img src="../secret.png"><img src="gone.png"><img src="https://example.com/x.png">'
+        b"<coscribe-part name='tabs'></coscribe-part></body>"
+    )
+
+    served = served_page(folder / "a.html", source)
+
+    data = b"data:image/svg+xml;base64," + base64.b64encode(logo)
+    assert served.count(data) == 2  # the page's and the part's
+    assert b'href="data:image/png;base64,' + base64.b64encode(b"\x89PNG fake") in served
+    for left in (b'src="../secret.png"', b'src="gone.png"', b'src="https://example.com/x.png"'):
+        assert left in served
