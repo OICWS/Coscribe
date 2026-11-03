@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { treeRows, type ElementChange, type InspectedElement, type InspectedNode } from "../../lib/boardInspector";
-import { CloseIcon } from "../icons";
+import { CloseIcon, UndoIcon } from "../icons";
 import { ElementProperties } from "./ElementProperties";
 
 type Tab = "properties" | "code";
@@ -69,6 +69,8 @@ export function BoardInspector({
   problem,
   onSelect,
   onEdit,
+  canUndo,
+  onUndo,
   onClose,
 }: {
   boardTitle: string | null;
@@ -77,9 +79,23 @@ export function BoardInspector({
   problem: string | null;
   onSelect: (path: string) => void;
   onEdit: (change: ElementChange) => void;
+  canUndo: boolean;
+  onUndo: () => void;
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("properties");
+  // Ctrl+Z in a field undoes typing there; elsewhere it undoes the panel's last edit to the page.
+  useEffect(() => {
+    if (!canUndo) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.key.toLowerCase() !== "z") return;
+      if (e.target instanceof HTMLElement && e.target.closest("input, textarea, [contenteditable]")) return;
+      e.preventDefault();
+      onUndo();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [canUndo, onUndo]);
   const tabButton = (id: Tab, label: string) => (
     <button
       type="button"
@@ -97,6 +113,16 @@ export function BoardInspector({
         {tabButton("properties", "Properties")}
         {tabButton("code", "Code")}
         <div className="flex-1" />
+        <button
+          type="button"
+          aria-label="Undo"
+          title="Undo the last edit (Ctrl+Z)"
+          disabled={!canUndo}
+          className="rounded-md p-1 text-[var(--muted)] hover:bg-[var(--card-bg)] disabled:opacity-40 disabled:hover:bg-transparent"
+          onClick={onUndo}
+        >
+          <UndoIcon className="h-4 w-4" />
+        </button>
         <button type="button" aria-label="Close properties" className="rounded-md p-1 text-[var(--muted)] hover:bg-[var(--card-bg)]" onClick={onClose}>
           <CloseIcon className="h-4 w-4" />
         </button>

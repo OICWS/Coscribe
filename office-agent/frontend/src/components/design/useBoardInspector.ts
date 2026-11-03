@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { editBoardElement, inspectorAnswer, type ElementChange, type InspectedElement, type InspectedNode } from "../../lib/boardInspector";
+import { editBoardElement, inspectorAnswer, undoBoardElement, type ElementChange, type InspectedElement, type InspectedNode } from "../../lib/boardInspector";
 
 /** The inspector of the selected artboard: its page's element tree, and the element picked on the
  * board or in the tree. Questions go to that board's frame and only its answers count; the tree
@@ -14,6 +14,8 @@ export function useBoardInspector(
   const boardId = board?.id ?? null;
   const repick = useRef<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  // Edits the panel wrote to each page in this view, which undo can take back.
+  const [undoable, setUndoable] = useState<Record<string, number>>({});
   const [open, setOpen] = useState(false);
   // Answers are kept with the board and page version they came from, so another board or a reloaded
   // page shows nothing stale.
@@ -62,9 +64,28 @@ export function useBoardInspector(
       editBoardElement(saving.threadId, board.path, target, change).then(
         () => {
           repick.current = target.path;
+          setUndoable((counts) => ({ ...counts, [board.path]: (counts[board.path] ?? 0) + 1 }));
           saving.onSaved();
         },
         (e: unknown) => setProblem(e instanceof Error ? e.message : String(e)),
+      );
+    },
+    canUndo: Boolean(board && undoable[board.path]),
+    undo: () => {
+      if (!board) return;
+      setProblem(null);
+      const keep = element?.key === key ? (element.element?.path ?? null) : null;
+      const settle = (left: number) => setUndoable((counts) => ({ ...counts, [board.path]: left }));
+      undoBoardElement(saving.threadId, board.path).then(
+        (left) => {
+          repick.current = keep;
+          settle(left);
+          saving.onSaved();
+        },
+        (e: unknown) => {
+          settle(0);
+          setProblem(e instanceof Error ? e.message : String(e));
+        },
       );
     },
   };

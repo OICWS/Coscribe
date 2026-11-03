@@ -279,6 +279,15 @@ def test_a_canvas_is_a_design_its_artboards_are_not_and_its_routes_place_them_lg
         stale = client.put(element, json={**edit, "tag": "h1"})
         assert stale.status_code == 409 and "pick it again" in stale.json()["error"]
         assert client.put(element, json={**edit, "page": "nope.html"}).status_code == 404
+        # Undo puts the page back once; a second undo has nothing left.
+        undo = "/api/threads/t_canvas/canvas/element/undo"
+        assert client.post(undo, json={"page": "ui.design/phone.html"}).json() == {
+            "ok": True,
+            "left": 0,
+        }
+        assert (workspace / "ui.design" / "phone.html").read_text() == "<p>phone</p>"
+        assert client.post(undo, json={"page": "ui.design/phone.html"}).status_code == 409
+
         # Any other refusal says so in a fixed text, not the exception's.
         refused = client.put(element, json={**edit, "style": {"color": "red; display: none"}})
         assert refused.status_code == 422

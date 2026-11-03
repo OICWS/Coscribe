@@ -181,4 +181,15 @@ test("the properties panel shows an artboard's elements and the style of the one
   await text.press("Enter");
   await expect(page.frameLocator('iframe[title="Card"]').locator("h1")).toHaveText("Hi there");
   expect(readFileSync(join(workspace, `${name}.design`, "card.html"), "utf8")).toContain('<h1 style="font-size: 30px">Hi there</h1>');
+
+  // Undo takes the edits back one at a time: the button, then Ctrl+Z outside a field.
+  const heading = page.frameLocator('iframe[title="Card"]').locator("h1");
+  await panel.getByRole("button", { name: "Undo" }).click();
+  await expect(heading).toHaveText("Hello");
+  await expect(heading).toHaveCSS("font-size", "30px");
+  await panel.getByRole("tab", { name: "Properties" }).click();
+  await page.keyboard.press("Control+z");
+  await expect(heading).toHaveCSS("font-size", "40px");
+  await expect(panel.getByRole("button", { name: "Undo" })).toBeDisabled();
+  expect(readFileSync(join(workspace, `${name}.design`, "card.html"), "utf8")).toBe(card);
 });

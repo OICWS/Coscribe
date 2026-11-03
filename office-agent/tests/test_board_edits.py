@@ -133,3 +133,51 @@ def test_comments_quoted_angles_and_script_text_do_not_count_as_elements(tmp_pat
     page = _page(tmp_path, source)
     edit_board_element(page, "2", "p", style={"color": "red"})
     assert page.read_text(encoding="utf-8").endswith('<p style="color: red">target</p></body>')
+
+
+def test_undo_puts_the_page_back_step_by_step_and_keeps_coscribe_told_rightly(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.conversation import (
+        NothingToUndo,
+        PageWrittenSince,
+        keep_for_undo,
+        undo_board_edit,
+    )
+
+    page, state, scope = _page(tmp_path), tmp_path / "state", WorkspaceScope(tmp_path)
+    entries = [{"path": "ui.design.json", "exists": True}]
+    monkeypatch.setattr(
+        user_edits, "summarize_activity", lambda *_: {"outputs": entries, "references": []}
+    )
+
+    def edit(**change: object) -> None:
+        before = page.read_text(encoding="utf-8")
+        said = edit_board_element(page, "1.0", "h1", **change)  # type: ignore[arg-type]
+        remember_board_edit(page, said, state)
+        keep_for_undo(page, before, said, state)
+
+    edit(style={"color": "red"})
+    after_first = page.read_text(encoding="utf-8")
+    edit(style={"font-size": "28px"})
+    assert undo_board_edit(page, state) == 1
+    assert page.read_text(encoding="utf-8") == after_first
+    # The undone edit was never told, so the note has only the first.
+    note = design_edits_note([], {}, scope, state)
+    assert "color red" in note and "font-size" not in note
+
+    # Told already: undoing it now is reported as undone.
+    assert undo_board_edit(page, state) == 0
+    assert page.read_text(encoding="utf-8") == PAGE
+    assert "undid <h1> 'Hello & welcome': color red" in design_edits_note([], {}, scope, state)
+    with pytest.raises(NothingToUndo):
+        undo_board_edit(page, state)
+
+    # A page coscribe wrote after the edit is not put back over its work.
+    edit(style={"color": "blue"})
+    page.write_text(PAGE.replace("World", "Earth"), encoding="utf-8")
+    with pytest.raises(PageWrittenSince):
+        undo_board_edit(page, state)
+    assert "Earth" in page.read_text(encoding="utf-8")
+    with pytest.raises(NothingToUndo):
+        undo_board_edit(page, state)

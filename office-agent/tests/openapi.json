@@ -464,6 +464,19 @@
         "title": "ElementEdit",
         "type": "object"
       },
+      "ElementUndo": {
+        "properties": {
+          "page": {
+            "title": "Page",
+            "type": "string"
+          }
+        },
+        "required": [
+          "page"
+        ],
+        "title": "ElementUndo",
+        "type": "object"
+      },
       "GroupRename": {
         "properties": {
           "name": {
@@ -5965,6 +5978,53 @@
           }
         },
         "summary": "Put Element"
+      }
+    },
+    "/api/threads/{thread_id}/canvas/element/undo": {
+      "post": {
+        "operationId": "undo_element_api_threads__thread_id__canvas_element_undo_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ElementUndo"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Undo Element"
       }
     },
     "/api/threads/{thread_id}/context-breakdown": {
