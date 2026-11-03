@@ -165,6 +165,8 @@ function InspectorAside({ canvas, selected, inspector }: { canvas: Canvas | null
       problem={inspector.problem}
       onSelect={inspector.select}
       onEdit={(change) => inspector.element && inspector.edit(inspector.element, change)}
+      canUndo={inspector.canUndo}
+      onUndo={inspector.undo}
       onClose={() => inspector.setOpen(false)}
     />
   );

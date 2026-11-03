@@ -72,3 +72,16 @@ export async function editBoardElement(threadId: string, page: string, element: 
     throw new Error(body?.error ?? `HTTP ${response.status}`);
   }
 }
+
+/** Puts the page back as it was before the panel's last edit (`POST /canvas/element/undo`); how many
+ * edits are left to undo. Rejects when there is none, or the page was written since. */
+export async function undoBoardElement(threadId: string, page: string): Promise<number> {
+  const response = await fetch(`/api/threads/${encodeURIComponent(threadId)}/canvas/element/undo`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ page }),
+  });
+  const body = (await response.json().catch(() => null)) as { error?: string; left?: number } | null;
+  if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`);
+  return body?.left ?? 0;
+}

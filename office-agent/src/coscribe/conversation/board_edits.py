@@ -251,6 +251,29 @@ def remember_board_edit(page: Path, said: str, state_dir: Path) -> None:
     record.write_text(json.dumps(edits, ensure_ascii=False), encoding="utf-8")
 
 
+def note_board_undo(page: Path, said: str, state_dir: Path) -> None:
+    """An undone edit coscribe has not been told of is dropped from the note; one it was told of is
+    reported as undone, since its page has changed back."""
+    canvas = canvas_of_page(page)
+    if canvas is None:
+        return
+    record = _record(canvas, state_dir)
+    try:
+        edits = json.loads(record.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        edits = []
+    entry = {"page": page.name, "edit": said}
+    if edits and edits[-1] == entry:
+        edits.pop()
+    else:
+        edits.append({"page": page.name, "edit": f"undid {said}"})
+    if edits:
+        record.parent.mkdir(parents=True, exist_ok=True)
+        record.write_text(json.dumps(edits, ensure_ascii=False), encoding="utf-8")
+    else:
+        record.unlink(missing_ok=True)
+
+
 def board_edits_since_told(canvas: Path, state_dir: Path) -> list[dict[str, str]]:
     """The edits made to this canvas's pages since coscribe was last told; telling forgets them."""
     record = _record(canvas, state_dir)

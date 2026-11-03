@@ -16,15 +16,19 @@ from ...conversation import (
     BoardElementChanged,
     CanvasError,
     DashboardDataError,
+    NothingToUndo,
+    PageWrittenSince,
     canvas_folder,
     edit_board_element,
     is_canvas,
     is_dashboard,
+    keep_for_undo,
     place_on_canvas,
     read_canvas,
     read_dashboard_data,
     remember_board_edit,
     served_page,
+    undo_board_edit,
 )
 from ..state import AppState
 
@@ -90,6 +94,8 @@ class CanvasPlacement(BaseModel):
 # Fixed texts, not the exception's: what reaches the panel is chosen here.
 _ELEMENT_CHANGED = "The page changed since the element was picked; pick it again"
 _EDIT_REFUSED = "The panel cannot write that change into this page"
+_NOTHING_TO_UNDO = "There is no edit from the panel to undo on this page"
+_WRITTEN_SINCE = "The page was written since the last edit, so it was not undone"
 
 
 class ElementEdit(BaseModel):
@@ -102,22 +108,35 @@ class ElementEdit(BaseModel):
     text_before: str | None = None
 
 
-def _element_route(state: AppState) -> Any:
+class ElementUndo(BaseModel):
+    page: str
+
+
+def _element_routes(state: AppState) -> tuple[Any, Any]:
     async def put_element(thread_id: str, body: ElementEdit) -> JSONResponse:
         return await _put_element(state, thread_id, body)
 
-    return put_element
+    async def undo_element(thread_id: str, body: ElementUndo) -> JSONResponse:
+        return await _undo_element(state, thread_id, body)
+
+    return put_element, undo_element
+
+
+def _artboard_page(state: AppState, thread_id: str, path: str) -> Path | None:
+    try:
+        page = state.get_session(thread_id).workspace_scope().resolve(path)
+    except (PermissionError, OSError, ValueError):
+        return None
+    return page if page.is_file() else None
 
 
 async def _put_element(state: AppState, thread_id: str, body: ElementEdit) -> JSONResponse:
     """One element of an artboard changed in the properties panel, written into its page and
-    kept for coscribe's next turn."""
-    try:
-        page = state.get_session(thread_id).workspace_scope().resolve(body.page)
-    except (PermissionError, OSError, ValueError):
+    kept for coscribe's next turn and for undo."""
+    page = _artboard_page(state, thread_id, body.page)
+    if page is None:
         return JSONResponse({"error": "No page at that path"}, status_code=404)
-    if not page.is_file():
-        return JSONResponse({"error": "No page at that path"}, status_code=404)
+    before = page.read_text(encoding="utf-8")
     try:
         said = await asyncio.to_thread(
             edit_board_element,
@@ -133,7 +152,22 @@ async def _put_element(state: AppState, thread_id: str, body: ElementEdit) -> JS
     except BoardEditError:
         return JSONResponse({"error": _EDIT_REFUSED}, status_code=422)
     remember_board_edit(page, said, state.settings.state_dir)
+    keep_for_undo(page, before, said, state.settings.state_dir)
     return JSONResponse({"ok": True})
+
+
+async def _undo_element(state: AppState, thread_id: str, body: ElementUndo) -> JSONResponse:
+    """The page put back as it was before the panel's last edit, while nothing else wrote it."""
+    page = _artboard_page(state, thread_id, body.page)
+    if page is None:
+        return JSONResponse({"error": "No page at that path"}, status_code=404)
+    try:
+        left = await asyncio.to_thread(undo_board_edit, page, state.settings.state_dir)
+    except NothingToUndo:
+        return JSONResponse({"error": _NOTHING_TO_UNDO, "left": 0}, status_code=409)
+    except PageWrittenSince:
+        return JSONResponse({"error": _WRITTEN_SINCE, "left": 0}, status_code=409)
+    return JSONResponse({"ok": True, "left": left})
 
 
 def _with_board_paths(path: str, file: Path, canvas: dict[str, Any]) -> dict[str, Any]:
@@ -218,8 +252,10 @@ def router(state: AppState) -> APIRouter:
         return JSONResponse(_with_board_paths(path, file, canvas))
 
     router.add_api_route("/api/threads/{thread_id}/design", get_design, methods=["GET"])
+    put_element, undo_element = _element_routes(state)
+    router.add_api_route("/api/threads/{thread_id}/canvas/element", put_element, methods=["PUT"])
     router.add_api_route(
-        "/api/threads/{thread_id}/canvas/element", _element_route(state), methods=["PUT"]
+        "/api/threads/{thread_id}/canvas/element/undo", undo_element, methods=["POST"]
     )
     router.add_api_route("/api/threads/{thread_id}/canvas", get_canvas, methods=["GET"])
     router.add_api_route("/api/threads/{thread_id}/canvas", put_canvas, methods=["PUT"])
