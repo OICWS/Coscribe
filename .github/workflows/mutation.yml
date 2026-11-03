@@ -65,7 +65,7 @@ jobs:
         run: |
           pip install ".[dev,web]"
           pip uninstall -y coscribe
-          pip install mutmut==3.8.0
+          pip install mutmut==3.8.1
 
       - name: Mutate ${{ matrix.module }}
         run: python scripts/mutation.py run ${{ matrix.module }} --out mutation-results
