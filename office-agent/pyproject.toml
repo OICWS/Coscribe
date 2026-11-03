@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 license = { text = "MIT" }
 dependencies = [
     # cache_control (prompt caching) exists in the SDK's types only from about 0.68.
-    "anthropic>=0.68.0,<2.0.0",
+    "anthropic>=0.68.0,<3.0.0",
     # Part.thought_signature (multi-turn function calling with "thinking" Gemini
     # models) exists from 2.13.0; 2.14.0 removed it again (diffed model_fields against
     # 2.13.0), so the range stops below it. Dependabot ignores this package for that reason.
