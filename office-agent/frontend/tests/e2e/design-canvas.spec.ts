@@ -264,7 +264,7 @@ test("a double click on an artboard's text edits it where it is drawn and writes
 const PARTED =
   '{\\"boards\\": [{\\"id\\": \\"home\\", \\"title\\": \\"Home\\", \\"file\\": \\"home.html\\", \\"width\\": 400, \\"height\\": 300}, {\\"id\\": \\"cart\\", \\"title\\": \\"Cart\\", \\"file\\": \\"cart.html\\", \\"width\\": 400, \\"height\\": 300}]}';
 
-test("a part several artboards place is drawn in each, and the panel shows it but does not edit it", async ({ page }) => {
+test("a part several artboards place is drawn in each, and an edit of it from one board changes them all", async ({ page }) => {
   const name = `parts-${Math.random().toString(36).slice(2, 8)}`;
   const folder = join(workspace, `${name}.design`);
   mkdirSync(folder, { recursive: true });
@@ -281,19 +281,35 @@ test("a part several artboards place is drawn in each, and the panel shows it bu
   await page.getByTitle(`Open ${name}.design.json`).click();
   for (const title of ["Home", "Cart"]) await expect(page.frameLocator(`iframe[title="${title}"]`).locator("nav.tabs-bar b").first()).toHaveText("Home");
 
-  // A text of the part is picked, not edited in place; the panel says why.
+  // A text of the part is edited in place; it is written into the part, so both boards show it.
   const board = (await page.getByTestId("board-home").boundingBox())!;
   await page.mouse.dblclick(board.x + board.width * 0.05, board.y + board.height * 0.06);
   const panel = page.getByRole("complementary", { name: "Properties" });
   await expect(panel.getByText("This is in the shared part “tabs”")).toBeVisible();
-  await expect(page.getByLabel("Edit text", { exact: true })).toBeHidden();
   await expect(panel.getByRole("tree", { name: "Elements" }).getByRole("treeitem", { name: /^Part.*tabs/ })).toBeVisible();
+  const field = page.getByLabel("Edit text", { exact: true });
+  await expect(field).toHaveValue("Home");
+  await page.keyboard.type("Start");
+  await page.keyboard.press("Enter");
+  for (const title of ["Home", "Cart"]) await expect(page.frameLocator(`iframe[title="${title}"]`).locator("nav.tabs-bar b").first()).toHaveText("Start");
+  expect(readFileSync(join(folder, "tabs.part.html"), "utf8")).toContain("<b>Start</b><b>Cart</b>");
+  expect(readFileSync(join(folder, "home.html"), "utf8")).toBe(page_("Welcome"));
 
   // The page's own heading, after the part, is still written into the page.
   await page.mouse.dblclick(board.x + board.width * 0.1, board.y + board.height * 0.3);
-  await expect(page.getByLabel("Edit text", { exact: true })).toHaveValue("Welcome");
+  await expect(field).toHaveValue("Welcome");
   await page.keyboard.type("Hello again");
   await page.keyboard.press("Enter");
   await expect(page.frameLocator('iframe[title="Home"]').locator("h1")).toHaveText("Hello again");
   expect(readFileSync(join(folder, "home.html"), "utf8")).toBe(page_("Hello again"));
+
+  // Undo is the canvas's: from the other board, both edits are taken back in turn.
+  const cart = (await page.getByTestId("board-cart").boundingBox())!;
+  await page.mouse.click(cart.x + cart.width * 0.1, cart.y + cart.height * 0.3);
+  await panel.getByRole("button", { name: "Undo" }).click();
+  await expect(page.frameLocator('iframe[title="Home"]').locator("h1")).toHaveText("Welcome");
+  await panel.getByRole("button", { name: "Undo" }).click();
+  await expect(page.frameLocator('iframe[title="Cart"]').locator("nav.tabs-bar b").first()).toHaveText("Home");
+  await expect(panel.getByRole("button", { name: "Undo" })).toBeDisabled();
+
 });

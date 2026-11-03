@@ -3,7 +3,6 @@ import {
   boardElementSteps,
   editBoardElement,
   inspectorAnswer,
-  partNote,
   stepBoardElement,
   type ElementChange,
   type InspectedElement,
@@ -41,7 +40,7 @@ function useFrameAnswers(root: RefObject<HTMLDivElement | null>, open: boolean, 
       } else if (answer) {
         setElement({ key: answered, element: answer.element });
         const found = answer.element;
-        if (editNext.current && found && found.content !== null && !found.part) {
+        if (editNext.current && found && found.content !== null) {
           setEditing({ key: answered, path: found.path });
           target.contentWindow?.postMessage({ coscribe: "inspect-hide-text", path: found.path, hidden: true }, "*");
         }
@@ -112,10 +111,6 @@ export function useBoardInspector(
 
   const edit = (target: InspectedElement, change: ElementChange) => {
     if (!board) return;
-    if (target.part) {
-      setProblem(partNote(target.part));
-      return;
-    }
     setProblem(null);
     editBoardElement(saving.threadId, board.path, target, change).then(
       () => {
