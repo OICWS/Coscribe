@@ -128,6 +128,8 @@ detail at small sizes instead of shrinking it.
   (`feDropShadow`, `dy` about 6% of the height, low opacity) gives depth without an outline.
 - Convert a logo's text to paths. Also write each finished drawing as its own `.svg` beside the
   canvas, so the person can use it elsewhere.
+- The person can export any artboard as a PNG, and a square one as a Windows icon, from the
+  canvas's Export. For an app icon, give each option its own square artboard (128 or 256).
 
 ## Changing a design
 

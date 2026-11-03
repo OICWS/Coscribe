@@ -81,6 +81,10 @@ class PageShotError(RuntimeError):
     """No browser to draw with, or the browser failed; the text is safe to show."""
 
 
+class NoBrowser(PageShotError):
+    """No Edge or Chrome on this computer to draw with."""
+
+
 @dataclass
 class PageShot:
     png: bytes
@@ -178,12 +182,13 @@ def _run(browser: str, args: list[str], profile: Path) -> subprocess.CompletedPr
         raise PageShotError("The browser could not draw the page") from exc
 
 
-def shoot_page(body: bytes, width: int, height: int, *, fixed: bool) -> PageShot:
-    """The page at this viewport size. A `fixed` board (a poster, a phone screen) is also checked
-    for text past its edges; a long page is drawn whole."""
+def shoot_page(body: bytes, width: int, height: int, *, fixed: bool, scale: int = 1) -> PageShot:
+    """The page at this viewport size, drawn `scale` device pixels to a CSS pixel. A `fixed` board
+    (a poster, a phone screen) is also checked for text past its edges; a long page is drawn
+    whole."""
     browser = find_browser()
     if browser is None:
-        raise PageShotError("No Edge or Chrome on this computer to draw the page with")
+        raise NoBrowser("No Edge or Chrome on this computer to draw the page with")
     with tempfile.TemporaryDirectory(prefix="coscribe-page-") as folder:
         work = Path(folder)
         page = work / "page.html"
@@ -192,7 +197,12 @@ def shoot_page(body: bytes, width: int, height: int, *, fixed: bool) -> PageShot
         size = f"--window-size={max(width, 500)},{height}"
         url = page.as_uri()
         dumped = _run(browser, [size, "--virtual-time-budget=3000", "--dump-dom", url], work / "a")
-        _run(browser, [size, "--virtual-time-budget=3000", f"--screenshot={shot}", url], work / "b")
+        density = f"--force-device-scale-factor={scale}"
+        _run(
+            browser,
+            [size, density, "--virtual-time-budget=3000", f"--screenshot={shot}", url],
+            work / "b",
+        )
         if not shot.is_file():
             raise PageShotError("The browser could not draw the page")
         found = _REPORT_IN_DOM.search(dumped.stdout.decode("utf-8", "replace"))
@@ -200,4 +210,5 @@ def shoot_page(body: bytes, width: int, height: int, *, fixed: bool) -> PageShot
             report = json.loads(found.group(1)) if found else {}
         except ValueError:
             report = {}
-        return PageShot(png=_cropped(shot.read_bytes(), width, height), report=report)
+        png = _cropped(shot.read_bytes(), width * scale, height * scale)
+        return PageShot(png=png, report=report)

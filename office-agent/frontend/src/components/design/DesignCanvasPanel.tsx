@@ -6,6 +6,8 @@ import { useDockPanel } from "../dock/dockContext";
 import { FullScreenPlayer } from "./BoardPlay";
 import { BoardInspector } from "./BoardInspector";
 import { BoardTextEditor } from "./BoardTextEditor";
+import { boardExports } from "./boardExports";
+import type { MenuEntry } from "../slides/SlideMenu";
 import { BoardFrame, CanvasTools, CanvasZoom, NoteCard } from "./CanvasParts";
 import { CanvasVariables } from "./CanvasVariables";
 import { useBoardInspector } from "./useBoardInspector";
@@ -56,13 +58,25 @@ function useCanvasFile(threadId: string, path: string, version: string) {
 }
 
 /** The panel's title (with the file menu), what went wrong with the canvas, and the dock's controls. */
-function CanvasHeader({ threadId, path, problem, onFileChanged }: { threadId: string; path: string; problem: string | null; onFileChanged?: (path: string | null) => void }) {
+function CanvasHeader({
+  threadId,
+  path,
+  problem,
+  exports,
+  onFileChanged,
+}: {
+  threadId: string;
+  path: string;
+  problem: string | null;
+  exports: MenuEntry[];
+  onFileChanged?: (path: string | null) => void;
+}) {
   const dock = useDockPanel();
   const [menu, setMenu] = useState<DOMRect | null>(null);
   const name = path.split(/[\\/]/).pop() ?? path;
   return (
     <>
-      {menu && <PanelFileMenu anchor={menu} threadId={threadId} path={path} onFileChanged={onFileChanged} onClose={() => setMenu(null)} />}
+      {menu && <PanelFileMenu anchor={menu} threadId={threadId} path={path} extra={exports} onFileChanged={onFileChanged} onClose={() => setMenu(null)} />}
       <div className="flex h-12 shrink-0 items-center gap-2 px-3" {...dock.headerProps}>
         <PanelTitleButton title={name.replace(/\.design\.json$/i, "")} path={path} onMenu={setMenu} />
         <div className="flex-1" />
@@ -220,7 +234,13 @@ export function DesignCanvasPanel({ threadId, path, refreshKey, onFileChanged }:
   };
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <CanvasHeader threadId={threadId} path={path} problem={problem} onFileChanged={onFileChanged} />
+      <CanvasHeader
+        threadId={threadId}
+        path={path}
+        problem={problem}
+        exports={boardExports(threadId, path, inspected ?? canvas?.boards[0] ?? null, look.scheme, setProblem)}
+        onFileChanged={onFileChanged}
+      />
       <div className="flex min-h-0 flex-1">
         <div ref={area} className="relative min-w-0 flex-1 overflow-hidden bg-[var(--card-bg)]">
           <CanvasTools tool={tool} onTool={setTool} />

@@ -27,6 +27,43 @@
         "title": "ArtifactShow",
         "type": "object"
       },
+      "BoardExport": {
+        "properties": {
+          "kind": {
+            "default": "png",
+            "enum": [
+              "png",
+              "ico"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "page": {
+            "title": "Page",
+            "type": "string"
+          },
+          "scheme": {
+            "anyOf": [
+              {
+                "enum": [
+                  "light",
+                  "dark"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheme"
+          }
+        },
+        "required": [
+          "page"
+        ],
+        "title": "BoardExport",
+        "type": "object"
+      },
       "Body_post_asset_api_threads__thread_id__doc_asset_post": {
         "properties": {
           "file": {
@@ -6119,6 +6156,54 @@
           }
         },
         "summary": "Undo Element"
+      }
+    },
+    "/api/threads/{thread_id}/canvas/export": {
+      "post": {
+        "description": "One artboard drawn in the computer's own browser and sent back as a PNG or an .ico.\nA POST, not a GET: it starts a browser, so it carries the launch token.",
+        "operationId": "export_board_file_api_threads__thread_id__canvas_export_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BoardExport"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Board File"
       }
     },
     "/api/threads/{thread_id}/context-breakdown": {
