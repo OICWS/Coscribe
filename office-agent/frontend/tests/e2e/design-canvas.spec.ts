@@ -201,4 +201,16 @@ test("the properties panel shows an artboard's elements and the style of the one
   await expect(heading).toHaveCSS("font-size", "40px");
   await expect(panel.getByRole("button", { name: "Undo" })).toBeDisabled();
   expect(readFileSync(join(workspace, `${name}.design`, "card.html"), "utf8")).toBe(card);
+
+  // Redo does the size again; the steps are the server's, so they are still there after a reload.
+  await panel.getByRole("button", { name: "Redo" }).click();
+  await expect(heading).toHaveCSS("font-size", "30px");
+  await page.reload();
+  await page.getByTitle(`Open ${name}.design.json`).click();
+  await page.getByRole("button", { name: "Properties", exact: true }).click();
+  const again = (await page.getByTestId("board-card").boundingBox())!;
+  await page.mouse.click(again.x + again.width * 0.12, again.y + again.height * 0.15);
+  await panel.getByRole("button", { name: "Undo" }).click();
+  await expect(heading).toHaveCSS("font-size", "40px");
+  expect(readFileSync(join(workspace, `${name}.design`, "card.html"), "utf8")).toBe(card);
 });

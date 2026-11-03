@@ -12,7 +12,14 @@ from .board_edits import (
     edit_board_element,
     remember_board_edit,
 )
-from .board_undo import NothingToUndo, PageWrittenSince, keep_for_undo, undo_board_edit
+from .board_undo import (
+    NothingToUndo,
+    PageWrittenSince,
+    keep_for_undo,
+    redo_board_edit,
+    steps_left,
+    undo_board_edit,
+)
 from .dashboard import DashboardDataError, is_dashboard, read_dashboard_data, render_dashboard
 from .design_canvas import (
     CanvasError,
@@ -45,6 +52,8 @@ __all__ = [
     "PageWrittenSince",
     "keep_for_undo",
     "undo_board_edit",
+    "redo_board_edit",
+    "steps_left",
     "edit_board_element",
     "remember_board_edit",
     "CanvasError",
