@@ -9,8 +9,10 @@
     "letter-spacing", "text-align", "text-transform", "white-space"];
   var SHOWN = ["display", "position", "flex-direction", "justify-content", "align-items", "gap",
     "padding", "margin", "font-family", "font-size", "font-weight", "line-height", "color",
-    "background-color", "border-radius", "opacity"];
+    "background-color", "border-radius", "opacity", "font-style", "letter-spacing", "text-align",
+    "text-transform"];
   var MAX_NODES = 400;
+  var hiddenColor = {};
 
   function pathOf(el) {
     var parts = [];
@@ -169,6 +171,18 @@
       var el = data.coscribe === "inspect-pick" ? document.elementFromPoint(Number(data.x), Number(data.y)) : byPath(data.path);
       while (el && el.closest && el.closest("svg") && el.tagName.toLowerCase() !== "svg") el = el.parentElement;
       parent.postMessage({ coscribe: "inspect-element", element: describe(el) }, "*");
+    } else if (data.coscribe === "inspect-hide-text") {
+      // The app draws the text being edited over the element; the page's own copy stays in the
+      // layout, unseen, so nothing around it moves.
+      var target = byPath(data.path);
+      if (!target) return;
+      if (data.hidden) {
+        if (!(data.path in hiddenColor)) hiddenColor[data.path] = target.style.getPropertyValue("color");
+        target.style.setProperty("color", "transparent");
+      } else if (data.path in hiddenColor) {
+        target.style.setProperty("color", hiddenColor[data.path]);
+        delete hiddenColor[data.path];
+      }
     }
   });
 })();

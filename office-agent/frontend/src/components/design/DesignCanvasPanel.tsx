@@ -5,6 +5,7 @@ import { PanelTitleButton } from "../artifacts/PanelTitleButton";
 import { useDockPanel } from "../dock/dockContext";
 import { FullScreenPlayer } from "./BoardPlay";
 import { BoardInspector } from "./BoardInspector";
+import { BoardTextEditor } from "./BoardTextEditor";
 import { BoardFrame, CanvasTools, CanvasZoom, NoteCard } from "./CanvasParts";
 import { CanvasVariables } from "./CanvasVariables";
 import { useBoardInspector } from "./useBoardInspector";
@@ -150,8 +151,11 @@ function CanvasBoards({
       onPlay={(mode) => play.play(board.id, mode)}
       onEdit={() => play.edit(board.id)}
       onPick={inspector.open ? inspector.pick : undefined}
-      highlight={inspector.open && selected === board.id ? inspector.element?.box : null}
-    />
+      onEditText={inspector.editTextAt}
+      highlight={inspector.open && selected === board.id && !inspector.editingText ? inspector.element?.box : null}
+    >
+      {selected === board.id && inspector.editingText && <BoardTextEditor key={inspector.editingText.path} element={inspector.editingText} onDone={inspector.finishText} />}
+    </BoardFrame>
   ));
 }
 

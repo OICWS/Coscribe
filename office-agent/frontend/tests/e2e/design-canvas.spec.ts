@@ -214,3 +214,49 @@ test("the properties panel shows an artboard's elements and the style of the one
   await expect(heading).toHaveCSS("font-size", "40px");
   expect(readFileSync(join(workspace, `${name}.design`, "card.html"), "utf8")).toBe(card);
 });
+
+test("a double click on an artboard's text edits it where it is drawn and writes it into the page", async ({ page }) => {
+  const name = `intext-${Math.random().toString(36).slice(2, 8)}`;
+  mkdirSync(join(workspace, `${name}.design`), { recursive: true });
+  const card =
+    "<html><head><style>body{margin:0;font-family:Georgia,serif;color:#123456}.row{display:flex;gap:12px;padding:20px}" +
+    "h1{font-size:40px;margin:0}</style></head><body><div class='row'><h1>Hello</h1><p>World</p></div></body></html>";
+  const file = join(workspace, `${name}.design`, "card.html");
+  writeFileSync(file, card);
+
+  await page.goto(freshThreadPath(name));
+  await waitForConnected(page);
+  await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${INSPECTED}"}]] [[stub-say Done.]]`);
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await page.getByTitle(`Open ${name}.design.json`).click();
+  const heading = page.frameLocator('iframe[title="Card"]').locator("h1");
+  await expect(heading).toBeVisible();
+
+  // With the properties panel closed, a double click on the heading opens it and edits the text in
+  // place; the page's own copy is hidden meanwhile. Escape leaves the page as it was.
+  const board = (await page.getByTestId("board-card").boundingBox())!;
+  await page.mouse.dblclick(board.x + board.width * 0.12, board.y + board.height * 0.15);
+  const field = page.getByLabel("Edit text", { exact: true });
+  await expect(field).toHaveValue("Hello");
+  await expect(field).toBeFocused();
+  await expect(heading).toHaveCSS("color", "rgba(0, 0, 0, 0)");
+  await expect(page.getByRole("complementary", { name: "Properties" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(field).toBeHidden();
+  await expect(heading).toHaveCSS("color", "rgb(18, 52, 86)");
+
+  // Typed and Enter: written into the page, which is served anew.
+  await page.mouse.dblclick(board.x + board.width * 0.12, board.y + board.height * 0.15);
+  await expect(field).toHaveValue("Hello");
+  await page.keyboard.type("Good day");
+  await page.keyboard.press("Enter");
+  await expect(heading).toHaveText("Good day");
+  expect(readFileSync(file, "utf8")).toBe(card.replace("<h1>Hello</h1>", "<h1>Good day</h1>"));
+
+  // The row holds elements, not text alone: a double click there only picks it.
+  // (Inside its padding, left of the heading; the panel now covers the board's right side.)
+  await page.mouse.dblclick(board.x + 8, board.y + 8);
+  await expect(page.getByRole("tree", { name: "Elements" }).getByRole("treeitem", { name: /^Row/ })).toHaveAttribute("aria-selected", "true");
+  await expect(field).toBeHidden();
+});
