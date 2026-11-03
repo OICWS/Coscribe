@@ -178,6 +178,19 @@ def design_system_text(system: dict[str, Any]) -> str:
         ]
         if rows:
             parts.append(f"{label}: {'; '.join(rows)}.")
+    pictures = [
+        f"{_inline(a['path'])} ({_inline(a.get('kind', 'picture'))}"
+        + (f", {a['width']}x{a['height']}" if a.get("width") and a.get("height") else "")
+        + (f", {_inline(a['note'])}" if a.get("note") else "")
+        + ")"
+        for a in system.get("assets", [])
+        if isinstance(a, dict) and a.get("path")
+    ]
+    if pictures:
+        parts.append(
+            f"Its pictures, copied into the workspace: {'; '.join(pictures)}. Use a logo where its "
+            "note says, copied into the deck or canvas folder."
+        )
     return " ".join(parts)
 
 

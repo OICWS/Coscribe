@@ -324,3 +324,34 @@ def test_a_design_conversation_started_with_a_design_system_gets_it_as_its_varia
             _receive_until(ws, "tasks_changed")
     sent = str(fake_model.received[0][-1].content)
     assert 'Follow their design system "Acme"' in sent and "the canvas's variables" in sent
+
+
+def test_a_start_with_a_design_system_copies_its_pictures_and_names_them(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="ok")])
+    svg = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64"/>'
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        made = client.post("/api/design-systems", json={"name": "Acme"}).json()
+        logo = client.post(
+            f"/api/design-systems/{made['id']}/assets",
+            files={"file": ("acme-logo.svg", svg, "image/svg+xml")},
+        ).json()
+        client.put(
+            f"/api/design-systems/{made['id']}/assets/{logo['id']}", json={"note": "on light"}
+        )
+        with client.websocket_connect("/ws/t_pictures") as ws:
+            ws.receive_json()
+            ws.receive_json()
+            ws.send_json(
+                {
+                    "type": "user_message",
+                    "text": "a poster",
+                    "artifact": "design",
+                    "design_system": made["id"],
+                }
+            )
+            _receive_until(ws, "tasks_changed")
+    sent = str(fake_model.received[0][-1].content)
+    assert "brand/Acme/acme-logo.svg (logo, 240x64, on light)" in sent
+    assert (tmp_path / "workspace" / "brand" / "Acme" / "acme-logo.svg").read_bytes() == svg
