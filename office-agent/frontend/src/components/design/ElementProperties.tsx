@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ElementChange, InspectedElement } from "../../lib/boardInspector";
+import { partNote, type ElementChange, type InspectedElement } from "../../lib/boardInspector";
 
 const SECTIONS: [string, [string, string][]][] = [
   [
@@ -105,12 +105,17 @@ export function ElementProperties({ element, problem, onEdit }: { element: Inspe
   const style = (name: string) => (value: string) => onEdit({ style: { [name]: value } });
   return (
     // Keyed by the element and its values, so a field shows the page again after a save.
-    <div key={`${element.path}|${JSON.stringify(element.computed)}|${element.content}`} className="divide-y divide-[var(--border)]">
+    <fieldset
+      key={`${element.path}|${JSON.stringify(element.computed)}|${element.content}`}
+      disabled={element.part !== null}
+      className="min-w-0 divide-y divide-[var(--border)] disabled:[&_input]:opacity-60 disabled:[&_textarea]:opacity-60"
+    >
       {problem && (
         <p role="alert" className="px-3 py-2 text-[13px] text-[var(--danger)]">
           {problem}
         </p>
       )}
+      {element.part && !problem && <p className="px-3 py-2 text-[13px] text-[var(--muted)]">{partNote(element.part)}</p>}
       {element.content !== null && (
         <section className="px-3 py-2">
           <h3 className="mb-1 text-[13px] font-semibold">Text</h3>
@@ -137,6 +142,6 @@ export function ElementProperties({ element, problem, onEdit }: { element: Inspe
           </section>
         );
       })}
-    </div>
+    </fieldset>
   );
 }

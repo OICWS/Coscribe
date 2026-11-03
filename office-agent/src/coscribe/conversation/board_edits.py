@@ -140,9 +140,24 @@ def _locate(source: str, path: str) -> _Element:
     locator.walk(source)
     if not locator.body_seen:
         raise BoardEditError("The page has no body element, so its elements cannot be edited here")
+    if _in_part(source, indexes):
+        raise BoardEditError(
+            "That element is in a part several artboards share; it is changed in the part's file"
+        )
     if locator.found is None or locator.found.end is None:
         raise BoardElementChanged("The page changed since the element was picked; pick it again")
     return locator.found
+
+
+def _in_part(source: str, indexes: list[int]) -> bool:
+    """Whether the path is a placed part or leads into one: the served page fills the part in
+    (`with_parts`), the source holds only the empty element that places it."""
+    for end in range(len(indexes), 0, -1):
+        locator = _Locator(indexes[:end])
+        locator.walk(source)
+        if locator.found is not None:
+            return locator.found.tag == "coscribe-part"
+    return False
 
 
 def _collapsed(text: str) -> str:

@@ -1,7 +1,7 @@
 /** What an artboard's page says about its elements (`conversation/board_inspector.js`): the page
  * answers by message, since its frame is sandboxed apart from the app. */
 
-type ElementKind = "Frame" | "Row" | "Column" | "Grid" | "Text" | "Image";
+type ElementKind = "Frame" | "Row" | "Column" | "Grid" | "Text" | "Image" | "Part";
 
 export interface InspectedNode {
   /** Child indexes from the body, dot-separated; the body is "". */
@@ -30,7 +30,13 @@ export interface InspectedElement {
   computed: Record<string, string>;
   rules: InspectedRule[];
   inherited: { from: string; props: [string, string][] }[];
+  /** The part several artboards share that the element is in (or is), filled in by the server: its
+   * elements are not in this page's source, so the panel does not write them. */
+  part: string | null;
 }
+
+/** Why the panel does not write an element of a shared part. */
+export const partNote = (part: string) => `This is in the shared part “${part}”, which every artboard that places it shows. Ask coscribe to change it.`;
 
 /** The page's answer to one of the panel's questions, or null for any other message. */
 export function inspectorAnswer(data: unknown): { tree: InspectedNode } | { element: InspectedElement | null } | null {

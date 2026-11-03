@@ -7,6 +7,8 @@ sandboxed frame. It sits with the artifact registry, which lists a canvas as a d
                              "notes": [{id, text, x, y, width, color}]}
     poster.design           the folder beside it, holding
       main.html             one page per artboard, named by its `file`
+      tab-bar.part.html     a part several pages share, placed in each with
+                            `<coscribe-part name="tab-bar"></coscribe-part>`
 """
 
 from __future__ import annotations
@@ -138,6 +140,36 @@ def read_canvas(path: Path) -> dict[str, Any]:
     except (OSError, ValueError) as exc:
         raise CanvasError(f"{path.name} is not valid JSON") from exc
     return _parse(raw)
+
+
+PART_SUFFIX = ".part.html"
+_PART_TAG = re.compile(
+    rb"""<coscribe-part\s+name\s*=\s*["']?([\w-]{1,64})["']?\s*>\s*</coscribe-part\s*>""",
+    re.IGNORECASE,
+)
+_MAX_PART = 512 * 1024
+
+
+def with_parts(page: Path, body: bytes) -> bytes:
+    """The page with each part it places filled in from the canvas folder. The filled part stays in
+    a `coscribe-part` element laid out as if it were not there (`display: contents`), so the page's
+    other elements keep the places they have in the source, which the properties panel's edits
+    count by. A part does not place parts; a missing one is drawn as a marked gap, so a look at
+    the page shows it."""
+
+    def fill(match: re.Match[bytes]) -> bytes:
+        name = match.group(1)
+        try:
+            inner = (page.parent / f"{name.decode()}{PART_SUFFIX}").read_bytes()[:_MAX_PART]
+        except OSError:
+            inner = (
+                b'<div style="padding:8px;border:2px dashed #d33;color:#d33;font:13px sans-serif">'
+                b"Missing part: " + name + b"</div>"
+            )
+        start = b'<coscribe-part name="' + name + b'" style="display:contents">'
+        return start + inner + b"</coscribe-part>"
+
+    return _PART_TAG.sub(fill, body)
 
 
 # A link from one artboard to another (`<a href="checkout.html">`) can't navigate the sandboxed

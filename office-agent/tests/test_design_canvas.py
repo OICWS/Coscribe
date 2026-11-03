@@ -167,3 +167,30 @@ def test_an_artboard_is_served_with_its_links_to_other_artboards_handed_to_the_p
     assert served.index(BOARD_INSPECTOR) < served.index(b"</head>")
     assert BOARD_LINKS not in served_page(loose, b"<a href='b.html'>b</a>")
     assert b"</script" not in BOARD_INSPECTOR[len(b"<script>") : -len(b"</script>")].lower()
+
+
+def test_a_part_is_filled_into_each_page_that_places_it_and_a_missing_one_is_marked(
+    tmp_path: Path,
+) -> None:
+    from coscribe.conversation import served_page
+
+    _canvas(tmp_path, {"boards": [{"id": "a", "file": "a.html"}]})
+    folder = tmp_path / "poster.design"
+    folder.mkdir()
+    (folder / "tabs.part.html").write_bytes(b"<nav class='tabs'>Home</nav>")
+    page = folder / "a.html"
+    source = (
+        b"<html><head></head><body><h1>Hi</h1><coscribe-part name='tabs'></coscribe-part>"
+        b'<coscribe-part name="gone"></coscribe-part></body></html>'
+    )
+
+    served = served_page(page, source)
+
+    assert (
+        b'<coscribe-part name="tabs" style="display:contents"><nav class=\'tabs\'>Home</nav>'
+        b"</coscribe-part>"
+    ) in served
+    assert b"Missing part: gone" in served
+    # Only an artboard's page is filled; a page of its own is served as written.
+    loose = tmp_path / "loose.html"
+    assert b"<nav" not in served_page(loose, source)
