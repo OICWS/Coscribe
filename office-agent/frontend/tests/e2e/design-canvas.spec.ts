@@ -313,3 +313,29 @@ test("a part several artboards place is drawn in each, and an edit of it from on
   await expect(panel.getByRole("button", { name: "Undo" })).toBeDisabled();
 
 });
+
+test("the canvas's Export saves the selected artboard as a PNG, and offers an icon only for a square one", async ({ page }) => {
+  const name = `export-${Math.random().toString(36).slice(2, 8)}`;
+  mkdirSync(join(workspace, `${name}.design`), { recursive: true });
+  writeFileSync(join(workspace, `${name}.design`, "card.html"), "<html><head><style>body{margin:0;background:#2557d6}</style></head><body></body></html>");
+  await page.goto(freshThreadPath(name));
+  await waitForConnected(page);
+  await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${INSPECTED}"}]] [[stub-say Done.]]`);
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await page.getByTitle(`Open ${name}.design.json`).click();
+  await expect(page.frameLocator('iframe[title="Card"]').locator("body")).toBeAttached();
+
+  await page.locator(`button[aria-haspopup="menu"][title="${name}.design.json"]`).click();
+  await page.getByRole("menuitem", { name: /Export/ }).hover();
+  // The card is 400 by 300: no icon from it.
+  await expect(page.getByRole("menuitem", { name: /ICO/ })).toBeDisabled();
+  const saving = page.waitForEvent("download");
+  await page.getByRole("menuitem", { name: /PNG/ }).click();
+  const saved = await saving;
+  expect(saved.suggestedFilename()).toBe(`${name}-card.png`);
+  const png = readFileSync(await saved.path());
+  // The PNG signature, then the IHDR width and height: twice the board's 400 by 300.
+  expect(png.subarray(1, 4).toString()).toBe("PNG");
+  expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([800, 600]);
+});

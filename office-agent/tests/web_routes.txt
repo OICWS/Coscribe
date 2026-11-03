@@ -143,6 +143,7 @@ POST /api/subagents/{task_id}/stop
 POST /api/thread-groups/{name}/rename
 POST /api/threads/{thread_id}/canvas/element/redo
 POST /api/threads/{thread_id}/canvas/element/undo
+POST /api/threads/{thread_id}/canvas/export
 POST /api/threads/{thread_id}/doc/asset
 POST /api/threads/{thread_id}/doc/comments
 POST /api/threads/{thread_id}/doc/comments/{comment_id}

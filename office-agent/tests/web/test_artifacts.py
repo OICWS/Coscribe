@@ -300,3 +300,47 @@ def test_a_canvas_is_a_design_its_artboards_are_not_and_its_routes_place_them_lg
         assert renamed["name"] == "app"
         assert (workspace / "app.design.json").is_file()
         assert (workspace / "app.design" / "home.html").is_file()
+
+
+def test_an_artboard_is_exported_through_the_route_with_fixed_texts_when_it_cannot_be_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.conversation import NoBrowser, NotSquare
+    from coscribe.web.routes import design as design_routes
+
+    workspace = tmp_path / "workspace"
+    canvas = json.dumps({"boards": [{"id": "mark", "file": "mark.html"}]})
+    writes = [
+        _tool_call("c0", "write_file", {"path": "logo.design.json", "content": canvas}),
+        _tool_call("c1", "write_file", {"path": "logo.design/mark.html", "content": "<p>m</p>"}),
+    ]
+    fake_model = FakeToolCallingChatModel(
+        responses=[AIMessage(content="", tool_calls=writes), AIMessage(content="done")]
+    )
+    asked: list[tuple[str, str, str | None]] = []
+
+    def drawn(page: Path, kind: str, scheme: str | None) -> bytes:
+        asked.append((page.name, kind, scheme))
+        if kind == "ico":
+            raise NotSquare("An icon is made from a square artboard: 1280x800")
+        return b"\x89PNG fake"
+
+    monkeypatch.setattr(design_routes, "export_board", drawn)
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        _run_turn(client, "t_export", "a logo")
+        route = "/api/threads/t_export/canvas/export"
+        got = client.post(route, json={"page": "logo.design/mark.html", "scheme": "dark"})
+        assert (got.status_code, got.headers["content-type"]) == (200, "image/png")
+        assert got.content == b"\x89PNG fake"
+        refused = client.post(route, json={"page": "logo.design/mark.html", "kind": "ico"})
+        assert refused.json() == {"error": "An icon is made from a square artboard"}
+
+        def no_browser(*_: object) -> bytes:
+            raise NoBrowser("No Edge or Chrome on this computer to draw the page with")
+
+        monkeypatch.setattr(design_routes, "export_board", no_browser)
+        missing = client.post(route, json={"page": "logo.design/mark.html"})
+        assert missing.json()["error"].startswith("No Edge or Chrome")
+        assert client.post(route, json={"page": "logo.design/gone.html"}).status_code == 404
+    assert asked == [("mark.html", "png", "dark"), ("mark.html", "ico", None)]
+    assert (workspace / "logo.design" / "mark.html").is_file()
