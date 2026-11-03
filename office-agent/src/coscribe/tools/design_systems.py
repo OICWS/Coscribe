@@ -3,7 +3,8 @@ folder per system holding `system.json`. A conversation that makes a deck gets a
 here refers back to a deck, so changing a system never moves a finished one.
 
 What a system holds: colors (named roles), typography (installed fonts and named text styles),
-spacing, corner radius, and an overview in free text that the model reads.
+spacing, corner radius, assets (logos, icons and pictures in `assets/`, each with a note on when
+to use it) and an overview in free text that the model reads.
 """
 
 from __future__ import annotations
@@ -32,6 +33,16 @@ _MAX_ROWS = 60
 _MAX_TEXT = 200
 # How many colors a listing carries for a card to draw.
 _SWATCHES = 8
+ASSETS_FOLDER = "assets"
+_MAX_ASSET_BYTES = 2 * 1024 * 1024
+_MAX_ASSETS = 24
+ASSET_KINDS = ("logo", "icon", "picture")
+ASSET_MEDIA = {
+    "svg": "image/svg+xml",
+    "png": "image/png",
+    "jpg": "image/jpeg",
+    "webp": "image/webp",
+}
 
 # What a new system starts with, so its form is not empty: a neutral palette and the six text
 # styles a deck needs (size in px on the 1920 canvas, weight, line height, letter spacing in px).
@@ -155,6 +166,57 @@ def _clean(data: Any) -> dict[str, Any]:
     }
 
 
+def _sniffed(data: bytes) -> str | None:
+    """The picture's format from its first bytes, never from the name it was given."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "jpg"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "webp"
+    head = data[:1024].lstrip().lower()
+    if head.startswith((b"<?xml", b"<svg", b"<!--")) and b"<svg" in data[:4096].lower():
+        return "svg"
+    return None
+
+
+def _picture_size(data: bytes, kind: str) -> tuple[int | None, int | None]:
+    if kind == "svg":
+        found = re.search(
+            rb"<svg[^>]*\bviewBox\s*=\s*[\"']\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)",
+            data,
+            re.I,
+        )
+        return (
+            (round(float(found.group(1))), round(float(found.group(2)))) if found else (None, None)
+        )
+    from io import BytesIO
+
+    from PIL import Image
+
+    try:
+        with Image.open(BytesIO(data)) as image:
+            return image.size
+    except OSError:
+        raise DesignSystemError("the picture could not be read") from None
+
+
+def _asset_fields(data: Any, current: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        raise DesignSystemError("an asset must be an object")
+    kind = data.get("kind", current.get("kind", "logo"))
+    if kind not in ASSET_KINDS:
+        raise DesignSystemError(f"an asset is a {', '.join(ASSET_KINDS)}")
+    name = _text(data.get("name", current.get("name", "")), "an asset name")
+    if not name:
+        raise DesignSystemError("an asset needs a name")
+    return {
+        "name": name,
+        "kind": kind,
+        "note": _text(data.get("note", current.get("note", "")), "an asset note"),
+    }
+
+
 def _palette_of(data: dict[str, Any]) -> list[str]:
     """The system's colors as #RRGGBB, for a card to draw; what a damaged file holds is skipped."""
     colors = data.get("colors")
@@ -267,6 +329,114 @@ class DesignSystemStore:
 
     def chosen_for_thread(self, thread_id: str) -> dict[str, Any] | None:
         return self._read(self._thread_path(thread_id))
+
+    def duplicate(self, system_id: str, name: str) -> dict[str, Any] | None:
+        """A copy of the system under a new id, its assets with it; None when there is none."""
+        path = self._path(system_id)
+        current = self._read(path) if path is not None else None
+        if path is None or current is None:
+            return None
+        made = self.create(name)
+        target = self.root / made["id"]
+        if (path.parent / ASSETS_FOLDER).is_dir():
+            shutil.copytree(path.parent / ASSETS_FOLDER, target / ASSETS_FOLDER)
+        system = {
+            **current,
+            "name": _text(name, "the name", _MAX_NAME),
+            "created_at": made["created_at"],
+        }
+        system["updated_at"] = made["updated_at"]
+        with file_lock(target / SYSTEM_FILE):
+            self._write(target / SYSTEM_FILE, system)
+        return {**system, "id": made["id"]}
+
+    def add_asset(self, system_id: str, data: bytes, name: str) -> dict[str, Any] | None:
+        """Keeps a picture with the system; None when there is no such system."""
+        path = self._path(system_id)
+        if path is None:
+            return None
+        if len(data) > _MAX_ASSET_BYTES:
+            raise DesignSystemError("a picture may be at most 2 MB")
+        kind = _sniffed(data)
+        if kind is None:
+            raise DesignSystemError("a picture is an SVG, PNG, JPEG or WebP file")
+        width, height = _picture_size(data, kind)
+        stem = re.sub(r"\.[A-Za-z0-9]{1,5}$", "", name.strip())[:_MAX_TEXT] or "Picture"
+        with file_lock(path):
+            current = self._read(path)
+            if current is None:
+                return None
+            assets = [a for a in current.get("assets", []) if isinstance(a, dict)]
+            if len(assets) >= _MAX_ASSETS:
+                raise DesignSystemError(f"a design system holds at most {_MAX_ASSETS} pictures")
+            asset_id = uuid.uuid4().hex[:10]
+            asset = {
+                "id": asset_id,
+                "file": f"{asset_id}.{kind}",
+                "name": stem,
+                "kind": "logo",
+                "note": "",
+                "width": width,
+                "height": height,
+            }
+            folder = path.parent / ASSETS_FOLDER
+            folder.mkdir(exist_ok=True)
+            (folder / f"{asset_id}.{kind}").write_bytes(data)
+            self._write(path, {**current, "assets": [*assets, asset], "updated_at": _now()})
+        return asset
+
+    def update_asset(self, system_id: str, asset_id: str, data: Any) -> dict[str, Any] | None:
+        """Renames an asset or changes its kind or note; None when there is no such asset."""
+        path = self._path(system_id)
+        if path is None:
+            return None
+        with file_lock(path):
+            current = self._read(path)
+            assets = [a for a in (current or {}).get("assets", []) if isinstance(a, dict)]
+            found = next((a for a in assets if a.get("id") == asset_id), None)
+            if current is None or found is None:
+                return None
+            changed = {**found, **_asset_fields(data, found)}
+            assets = [changed if a is found else a for a in assets]
+            self._write(path, {**current, "assets": assets, "updated_at": _now()})
+        return changed
+
+    def delete_asset(self, system_id: str, asset_id: str) -> bool:
+        path = self._path(system_id)
+        if path is None:
+            return False
+        with file_lock(path):
+            current = self._read(path)
+            assets = [a for a in (current or {}).get("assets", []) if isinstance(a, dict)]
+            found = next((a for a in assets if a.get("id") == asset_id), None)
+            if current is None or found is None:
+                return False
+            kept = [a for a in assets if a is not found]
+            self._write(path, {**current, "assets": kept, "updated_at": _now()})
+        (path.parent / ASSETS_FOLDER / str(found.get("file", ""))).unlink(missing_ok=True)
+        return True
+
+    def asset_file(self, system_id: str, asset_id: str) -> tuple[Path, str] | None:
+        """The asset's file and its media type, for the app to draw it."""
+        system = self.get(system_id)
+        found = next(
+            (
+                a
+                for a in (system or {}).get("assets", [])
+                if isinstance(a, dict) and a.get("id") == asset_id
+            ),
+            None,
+        )
+        if system is None or found is None:
+            return None
+        file = str(found.get("file", ""))
+        media = ASSET_MEDIA.get(file.rsplit(".", 1)[-1])
+        target = self.root / system_id / ASSETS_FOLDER / file
+        return (
+            (target, media)
+            if media and re.fullmatch(r"[a-f0-9]{10}\.[a-z]{3,4}", file) and target.is_file()
+            else None
+        )
 
     def delete(self, system_id: str) -> bool:
         path = self._path(system_id)

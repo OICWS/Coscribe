@@ -3,9 +3,10 @@ import { saveDesignSystem } from "../../lib/rest";
 import type { DesignColor, DesignNamedValue, DesignSystem, DesignTextStyle } from "../../types/settings";
 import { ArrowLeftIcon, PlusIcon, TrashIcon } from "../icons";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { DesignSystemAssets } from "./DesignSystemAssets";
 import { fieldClass, primaryButtonClass, secondaryButtonClass } from "./SettingRow";
 
-const SECTIONS = ["Overview", "Colors", "Typography", "Spacing", "Corner radius"] as const;
+const SECTIONS = ["Overview", "Colors", "Typography", "Spacing", "Corner radius", "Assets"] as const;
 type Section = (typeof SECTIONS)[number];
 
 const numberField = `${fieldClass} w-full min-w-0`;
@@ -227,6 +228,12 @@ function SectionForm({ section, draft, onChange }: { section: Section; draft: De
         <>
           <Heading title="Corner radius" hint="Named roundings for cards and pictures, in px." />
           <NamedValues rows={draft.radius} what="radius" valueHint="16" onChange={(radius) => onChange({ ...draft, radius })} />
+        </>
+      )}
+  {section === "Assets" && (
+        <>
+          <Heading title="Assets" hint="Logos, icons and pictures, each with a note on when to use it. They are kept as soon as you add or change them." />
+          <DesignSystemAssets systemId={draft.id} initial={draft.assets ?? []} />
         </>
       )}
     </>

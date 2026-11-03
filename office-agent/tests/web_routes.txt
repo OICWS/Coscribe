@@ -2,6 +2,7 @@ DELETE /api/artifacts/{artifact}
 DELETE /api/code/install
 DELETE /api/command-sandbox
 DELETE /api/design-systems/{system_id}
+DELETE /api/design-systems/{system_id}/assets/{asset_id}
 DELETE /api/environments/{env_id}
 DELETE /api/libreoffice
 DELETE /api/mcp/oauth-apps/{group}
@@ -36,6 +37,7 @@ GET /api/commands
 GET /api/config
 GET /api/design-systems
 GET /api/design-systems/{system_id}
+GET /api/design-systems/{system_id}/assets/{asset_id}
 GET /api/environments
 GET /api/libreoffice
 GET /api/mcp/catalog
@@ -111,6 +113,8 @@ POST /api/code/install
 POST /api/command-sandbox
 POST /api/config
 POST /api/design-systems
+POST /api/design-systems/{system_id}/assets
+POST /api/design-systems/{system_id}/duplicate
 POST /api/environments
 POST /api/libreoffice
 POST /api/mcp/oauth-apps/import
@@ -168,6 +172,7 @@ POST /internal/browser-host/result
 PUT /api/capabilities/{name}
 PUT /api/code/permissions
 PUT /api/design-systems/{system_id}
+PUT /api/design-systems/{system_id}/assets/{asset_id}
 PUT /api/environments/{env_id}
 PUT /api/mcp/oauth-apps/{group}
 PUT /api/mcp/servers/{name}/permissions

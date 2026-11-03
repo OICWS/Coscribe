@@ -160,6 +160,8 @@ AUDITED_READ_ONLY_GETS = {
     "/api/artifacts/{artifact}/content",
     "/api/threads/{thread_id}/design",
     "/api/threads/{thread_id}/canvas",
+    # A design system's kept picture, drawn by Settings; it reads one file.
+    "/api/design-systems/{system_id}/assets/{asset_id}",
     "/api/threads/{thread_id}/canvas/element/steps",
     "/api/threads/{thread_id}/dashboard",
     # Keeps a copy of the Doc it reads in `name.doc/versions`, so a change made behind the editor

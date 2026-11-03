@@ -61,3 +61,43 @@ test("Describe it in Settings closes it and starts the conversation that makes a
   await expect(page.getByRole("button", { name: "Design system mode" })).toBeVisible();
   await expect(page.getByPlaceholder("Describe the brand or the look you want…")).toBeVisible();
 });
+
+// A system's Assets: a logo added from a file is kept at once, drawn, given a kind and a note, and
+// still there when the system is opened again.
+test("a design system keeps a logo with a note on when to use it", async ({ page }) => {
+  const name = `Brand ${Math.random().toString(36).slice(2, 7)}`;
+  await page.goto(freshThreadPath("design-assets"));
+  await waitForConnected(page);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Design systems" }).click();
+  await page.getByRole("button", { name: "New design system" }).click();
+  await page.getByLabel("New design system name").fill(name);
+  await page.getByRole("button", { name: "Create" }).click();
+
+  await page.getByRole("button", { name: "Assets", exact: true }).click();
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40"><rect width="120" height="40" fill="#0F766E"/></svg>';
+  await page.getByTestId("asset-file").setInputFiles({ name: "acme-logo.svg", mimeType: "image/svg+xml", buffer: Buffer.from(svg) });
+  await expect(page.getByLabel("Picture name")).toHaveValue("acme-logo");
+  // Drawn from the server: the picture loads (an SVG sized by its viewBox has no fixed natural width).
+  const logo = page.getByRole("img", { name: "acme-logo" });
+  await expect.poll(() => logo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+  await expect(page.getByText("120×40")).toBeVisible();
+  await page.getByLabel("Kind").selectOption("icon");
+  const note = page.getByLabel("When to use it");
+  await note.fill("On dark backgrounds");
+  await note.press("Enter");
+
+  // Not a picture: refused with the reason, nothing added.
+  await page.getByTestId("asset-file").setInputFiles({ name: "notes.png", mimeType: "image/png", buffer: Buffer.from("hello") });
+  await expect(page.getByRole("alert")).toContainText("SVG, PNG, JPEG or WebP");
+
+  // The form's Save stays off: a picture is kept on its own.
+  await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Back to design systems" }).click();
+  await page.getByRole("listitem").filter({ hasText: name }).getByRole("button", { name: "Edit" }).click();
+  await page.getByRole("button", { name: "Assets", exact: true }).click();
+  await expect(page.getByLabel("When to use it")).toHaveValue("On dark backgrounds");
+  await expect(page.getByLabel("Kind")).toHaveValue("icon");
+  await page.getByRole("button", { name: "Remove acme-logo" }).click();
+  await expect(page.getByLabel("Picture name")).toHaveCount(0);
+});
