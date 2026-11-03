@@ -21,10 +21,10 @@ from ..tools import DesignSystemStore
 def design_system_for_start(
     state_dir: str | Path, thread_id: str, artifact: str | None, system_id: str | None
 ) -> dict[str, Any] | None:
-    """The library system a Slides conversation's first message names, kept as a copy for the
-    conversation (its deck begins as that copy, whatever happens to the library later). None for
-    anything but a Slides start, and for a system that is no longer in the library."""
-    if artifact != "slides" or not system_id:
+    """The library system a Slides or Design conversation's first message names, kept as a copy
+    for the conversation (its deck begins as that copy, whatever happens to the library later).
+    None for any other start, and for a system that is no longer in the library."""
+    if artifact not in ("slides", "design") or not system_id:
         return None
     return DesignSystemStore(state_dir).choose_for_thread(thread_id, system_id)
 

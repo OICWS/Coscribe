@@ -110,7 +110,9 @@ def test_artifact_note_names_what_is_made_and_is_stripped_from_history() -> None
     assert strip_mode_note(full) == asked
 
 
-def test_a_slides_note_carries_the_chosen_design_system_in_one_stripped_sentence() -> None:
+def test_a_slides_or_design_note_carries_the_chosen_design_system_in_one_stripped_sentence() -> (
+    None
+):
     system = {
         "name": "Acme [draft]",
         "overview": "Calm\nand technical.",
@@ -129,9 +131,15 @@ def test_a_slides_note_carries_the_chosen_design_system_in_one_stripped_sentence
     assert "Body 32px weight 400" in note and "Spacing: Gap 24." in note
     assert "Corner radius" not in note
     assert strip_mode_note(note + "a deck about tea") == "a deck about tea"
-    # Only a Slides conversation takes one, and none changes the note.
+    # A Design start takes one too, as the canvas's variables with its sizes scaled; any other
+    # start ignores it, and none changes the note.
+    design = artifact_note("design", system)
+    assert "Brand #112233" in design and "the canvas's variables" in design
+    assert "scale them to each artboard" in design
+    assert strip_mode_note(design + "a poster") == "a poster"
     assert artifact_note("docs", system) == artifact_note("docs")
     assert artifact_note("slides", None) == artifact_note("slides")
+    assert artifact_note("design", None) == artifact_note("design")
 
 
 def test_the_note_naming_attached_files_becomes_the_entrys_files_not_its_text() -> None:
