@@ -260,3 +260,40 @@ test("a double click on an artboard's text edits it where it is drawn and writes
   await expect(page.getByRole("tree", { name: "Elements" }).getByRole("treeitem", { name: /^Row/ })).toHaveAttribute("aria-selected", "true");
   await expect(field).toBeHidden();
 });
+
+const PARTED =
+  '{\\"boards\\": [{\\"id\\": \\"home\\", \\"title\\": \\"Home\\", \\"file\\": \\"home.html\\", \\"width\\": 400, \\"height\\": 300}, {\\"id\\": \\"cart\\", \\"title\\": \\"Cart\\", \\"file\\": \\"cart.html\\", \\"width\\": 400, \\"height\\": 300}]}';
+
+test("a part several artboards place is drawn in each, and the panel shows it but does not edit it", async ({ page }) => {
+  const name = `parts-${Math.random().toString(36).slice(2, 8)}`;
+  const folder = join(workspace, `${name}.design`);
+  mkdirSync(folder, { recursive: true });
+  writeFileSync(join(folder, "tabs.part.html"), "<style>.tabs-bar{display:flex;gap:8px;padding:12px;font-size:20px}</style><nav class='tabs-bar'><b>Home</b><b>Cart</b></nav>");
+  const page_ = (title: string) => `<html><head><style>body{margin:0}</style></head><body><coscribe-part name="tabs"></coscribe-part><h1>${title}</h1></body></html>`;
+  writeFileSync(join(folder, "home.html"), page_("Welcome"));
+  writeFileSync(join(folder, "cart.html"), page_("Your cart"));
+
+  await page.goto(freshThreadPath(name));
+  await waitForConnected(page);
+  await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${PARTED}"}]] [[stub-say Done.]]`);
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await page.getByTitle(`Open ${name}.design.json`).click();
+  for (const title of ["Home", "Cart"]) await expect(page.frameLocator(`iframe[title="${title}"]`).locator("nav.tabs-bar b").first()).toHaveText("Home");
+
+  // A text of the part is picked, not edited in place; the panel says why.
+  const board = (await page.getByTestId("board-home").boundingBox())!;
+  await page.mouse.dblclick(board.x + board.width * 0.05, board.y + board.height * 0.06);
+  const panel = page.getByRole("complementary", { name: "Properties" });
+  await expect(panel.getByText("This is in the shared part “tabs”")).toBeVisible();
+  await expect(page.getByLabel("Edit text", { exact: true })).toBeHidden();
+  await expect(panel.getByRole("tree", { name: "Elements" }).getByRole("treeitem", { name: /^Part.*tabs/ })).toBeVisible();
+
+  // The page's own heading, after the part, is still written into the page.
+  await page.mouse.dblclick(board.x + board.width * 0.1, board.y + board.height * 0.3);
+  await expect(page.getByLabel("Edit text", { exact: true })).toHaveValue("Welcome");
+  await page.keyboard.type("Hello again");
+  await page.keyboard.press("Enter");
+  await expect(page.frameLocator('iframe[title="Home"]').locator("h1")).toHaveText("Hello again");
+  expect(readFileSync(join(folder, "home.html"), "utf8")).toBe(page_("Hello again"));
+});

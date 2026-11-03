@@ -84,6 +84,20 @@ after the page's own styles, and the person can change them on the canvas, so:
   in `@media (prefers-color-scheme: dark)` or under `:root[data-theme="dark"]`, with the surface
   and text colours there; a design that is only light or only dark needs neither.
 
+## Parts several artboards share
+
+What appears on several artboards the same way (a tab bar, a header, a cart bar, a footer) is a
+part: write it once, so a change to it shows on every artboard.
+
+- Write the part as `name.part.html` in the canvas folder: the elements only, no `<html>`, `<head>`
+  or `<body>`, with its own `<style>` if it needs one (prefix its classes, `tabbar-`, since they
+  share the page with the artboard's).
+- Place it in a page with `<coscribe-part name="name"></coscribe-part>`, empty, where it goes. The
+  app fills it in, laid out as if its elements were written there.
+- A part does not place parts. What differs per artboard (the active tab) is styled by the page,
+  for example `body[data-tab="cart"] .tabbar-cart { color: var(--brand) }`.
+- To change a part, write its file again. The person cannot edit a part's elements in the panel.
+
 ## Clickable prototypes
 
 When the person presses Play, the artboards work. Three ways to make a flow of screens, mixed as
@@ -135,6 +149,6 @@ and text past a board's edge. Fix what it reports and what you see in the pictur
 into other text, a block crowding the footer, a colour that hides text), then look again; two rounds
 are usually enough. If it says there is no browser to draw with, say you could not look.
 
-Also check that every board's `file` exists, that every `var(--...)` a page uses is a variable of the
-canvas or defined in the page, that every SVG id you refer to exists, and that nothing loads from
-the network. Say the canvas's file name and one line per artboard; do not describe the shapes.
+Also check that every board's `file` exists, that every part a page places has its `.part.html`,
+that every `var(--...)` a page uses is a variable of the canvas or defined in the page, that every
+SVG id you refer to exists, and that nothing loads from the network. Say the canvas's file name and one line per artboard; do not describe the shapes.

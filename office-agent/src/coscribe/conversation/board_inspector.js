@@ -34,6 +34,7 @@
 
   function kindOf(el) {
     var tag = el.tagName.toLowerCase();
+    if (tag === "coscribe-part") return "Part";
     if (/^(img|svg|picture|canvas|video)$/.test(tag)) return "Image";
     var style = getComputedStyle(el);
     if (style.display.indexOf("flex") >= 0) return style.flexDirection.indexOf("column") === 0 ? "Column" : "Row";
@@ -62,7 +63,9 @@
           if (!skipped(el.children[i])) children.push(node(el.children[i]));
         }
       }
-      return { path: pathOf(el), tag: el.tagName.toLowerCase(), kind: kind, text: textOf(el), children: children };
+      var item = { path: pathOf(el), tag: el.tagName.toLowerCase(), kind: kind, text: textOf(el), children: children };
+      if (kind === "Part") item.text = el.getAttribute("name") || "";
+      return item;
     }
     return node(document.body);
   }
@@ -160,6 +163,9 @@
       computed: computed,
       rules: rules,
       inherited: inherited(el),
+      // A part several artboards share is filled in by the server; its elements are not in this
+      // page's source.
+      part: el.closest && el.closest("coscribe-part") ? el.closest("coscribe-part").getAttribute("name") : null,
     };
   }
 

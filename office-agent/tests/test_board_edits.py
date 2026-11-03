@@ -201,3 +201,17 @@ def test_undo_and_redo_step_through_the_panels_edits_and_keep_coscribe_told_righ
     assert "Earth" in page.read_text(encoding="utf-8")
     with pytest.raises(NothingToUndo):
         undo_board_edit(page, state)
+
+
+def test_an_element_of_a_shared_part_is_not_written_but_the_elements_around_it_are(
+    tmp_path: Path,
+) -> None:
+    # The served page fills the part into its element, which keeps the paths of the elements after
+    # it as the source counts them.
+    source = "<body><coscribe-part name='tabs'></coscribe-part><p>after</p></body>"
+    page = _page(tmp_path, source)
+    for path in ("0", "0.0", "0.0.1"):
+        with pytest.raises(BoardEditError, match="part several artboards share"):
+            edit_board_element(page, path, "nav", style={"color": "red"})
+    edit_board_element(page, "1", "p", style={"color": "red"})
+    assert page.read_text(encoding="utf-8").endswith('<p style="color: red">after</p></body>')
