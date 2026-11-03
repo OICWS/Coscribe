@@ -79,8 +79,9 @@ def test_an_edit_is_refused_when_the_page_no_longer_matches_or_the_value_could_b
         edit_board_element(page, "1.0", "p", style={"color": "red"})
     with pytest.raises(BoardEditError, match="pick it again"):
         edit_board_element(page, "1.0", "h1", text="x", text_before="Something else")
-    with pytest.raises(BoardEditError, match="not edited from the panel"):
-        edit_board_element(page, "1.0", "h1", style={"position": "absolute"})
+    for bad_name in ("back ground", "color;x", 'x"y', "Color"):
+        with pytest.raises(BoardEditError, match="not a CSS property name"):
+            edit_board_element(page, "1.0", "h1", style={bad_name: "red"})
     for bad in ('red" onclick="x', "red; display: none", "red</style>"):
         with pytest.raises(BoardEditError, match="not a value"):
             edit_board_element(page, "1.0", "h1", style={"color": bad})

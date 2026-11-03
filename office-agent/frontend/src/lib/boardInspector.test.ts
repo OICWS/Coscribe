@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inspectorAnswer, treeRows, type InspectedNode } from "./boardInspector";
+import { inspectorAnswer, styleChanges, treeRows, type InspectedNode } from "./boardInspector";
 
 const leaf = (path: string, text: string): InspectedNode => ({ path, tag: "p", kind: "Text", text, children: [] });
 
@@ -14,5 +14,16 @@ describe("board inspector", () => {
     expect(inspectorAnswer({ coscribe: "inspect-element", element: null })).toEqual({ element: null });
     expect(inspectorAnswer({ coscribe: "go", file: "a.html" })).toBeNull();
     expect(inspectorAnswer("hello")).toBeNull();
+  });
+
+  it("turns the typed style into what changed: new and changed values, and removed properties", () => {
+    const before: [string, string][] = [
+      ["color", "red"],
+      ["gap", "8px"],
+    ];
+    expect(styleChanges(before, "color: red;\nletter-spacing: 1px; gap:12px")).toEqual({ "letter-spacing": "1px", gap: "12px" });
+    expect(styleChanges(before, "gap: 8px")).toEqual({ color: "" });
+    expect(styleChanges(before, "color: red; gap: 8px;")).toEqual({});
+    expect(styleChanges([], "not a declaration\n: none")).toEqual({});
   });
 });

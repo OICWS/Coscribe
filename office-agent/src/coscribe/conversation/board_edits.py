@@ -20,19 +20,9 @@ from pathlib import Path
 
 from .design_canvas import canvas_of_page
 
-# What the panel edits: the properties a person changes by eye. Layout and position stay coscribe's.
-EDITABLE = (
-    "width",
-    "height",
-    "font-size",
-    "font-weight",
-    "color",
-    "background-color",
-    "border-radius",
-    "padding",
-    "gap",
-    "opacity",
-)
+# A property name as CSS writes one, custom properties (`--brand`) included: nothing that could
+# end the declaration or the attribute.
+_PROPERTY = re.compile(r"(?:--)?-?[a-z][a-z0-9-]{0,60}")
 _VOID = {
     "area", "base", "br", "col", "embed", "hr", "img", "input",
     "link", "meta", "param", "source", "track", "wbr",
@@ -196,8 +186,8 @@ def edit_board_element(
         raise BoardEditError("Only an artboard's page is edited from the canvas")
     style = style or {}
     for name, value in style.items():
-        if name not in EDITABLE:
-            raise BoardEditError(f"{name} is not edited from the panel")
+        if not _PROPERTY.fullmatch(name):
+            raise BoardEditError(f"{name!r} is not a CSS property name")
         if value and not _VALUE.fullmatch(value.strip()):
             raise BoardEditError(f"{value!r} is not a value the panel writes")
     source = page.read_text(encoding="utf-8")

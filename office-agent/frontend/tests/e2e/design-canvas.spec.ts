@@ -164,6 +164,15 @@ test("the properties panel shows an artboard's elements and the style of the one
   await expect(panel.getByText("gap: 12px;")).toBeVisible();
   await expect(panel.getByText("From <body>")).toBeVisible();
 
+  // The Code tab writes any property into the element's own style; undo takes it back.
+  const own = panel.getByLabel("This element's style");
+  await own.fill("letter-spacing: 2px;");
+  await own.press("Control+Enter");
+  await expect(page.frameLocator('iframe[title="Card"]').locator(".row")).toHaveCSS("letter-spacing", "2px");
+  expect(readFileSync(join(workspace, `${name}.design`, "card.html"), "utf8")).toContain(`<div class='row' style="letter-spacing: 2px">`);
+  await panel.getByRole("button", { name: "Undo" }).click();
+  await expect(page.frameLocator('iframe[title="Card"]').locator(".row")).toHaveCSS("letter-spacing", "normal");
+
   // The Properties tab edits: a size and a text are written into the page, which is served anew
   // with the same element picked.
   await panel.getByRole("tab", { name: "Properties" }).click();

@@ -7,7 +7,6 @@ from .activity import OPENABLE_EXTENSIONS, open_in_os
 from .artifact_files import ArtifactFileError, copy_file, rename_file, trash_file
 from .artifacts import ArtifactRegistry, adopt_thread, describe_artifact
 from .board_edits import (
-    EDITABLE,
     BoardEditError,
     BoardElementChanged,
     edit_board_element,
@@ -40,7 +39,6 @@ __all__ = [
     "rename_file",
     "trash_file",
     "describe_artifact",
-    "EDITABLE",
     "BoardEditError",
     "BoardElementChanged",
     "NothingToUndo",
