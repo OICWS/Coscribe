@@ -29,6 +29,7 @@ from .design_canvas import (
 from .page_shot import PageShotError, shoot_page
 
 _MAX_BOARDS = 4
+_ICON_SIZES = (16, 24, 32, 48, 64, 128, 256)
 _MAX_SIDE = 1568
 _PAGE_SIZE = (1280, 800)
 _LONGEST_PAGE = 4000
@@ -51,6 +52,42 @@ def served_page(page: Path, body: bytes, scheme: str | None = None) -> bytes:
         end = body.lower().find(b"</head>")
         body = body[:end] + style + body[end:] if end >= 0 else style + body
     return in_scheme(body, scheme) if scheme else body
+
+
+class NotSquare(PageShotError):
+    """An icon asked of an artboard that is not square."""
+
+
+def export_board(page: Path, kind: str, scheme: str | None = None) -> bytes:
+    """An artboard's page as a file to keep: a PNG at twice its size, or, for a square board (a
+    logo, an icon), an .ico holding it at the sizes Windows asks for. Drawn as the app serves it,
+    in the computer's own browser."""
+    from PIL import Image
+
+    canvas = canvas_of_page(page)
+    try:
+        boards = read_canvas(canvas)["boards"] if canvas is not None else []
+    except CanvasError as exc:
+        raise PageShotError(str(exc)) from exc
+    board = next((b for b in boards if b["file"].lower() == page.name.lower()), None)
+    if board is None:
+        raise PageShotError("Only an artboard of a canvas is exported here")
+    width, height = int(board["width"]), int(board["height"])
+    if kind == "ico" and width != height:
+        raise NotSquare("An icon is made from a square artboard")
+    # An icon's largest size is 256 px; a smaller board is drawn denser to reach it.
+    scale = 2 if kind == "png" else max(1, min(4, -(-256 // width)))
+    shot = shoot_page(
+        served_page(page, page.read_bytes(), scheme), width, height, fixed=True, scale=scale
+    )
+    if kind == "png":
+        return shot.png
+    out = BytesIO()
+    with Image.open(BytesIO(shot.png)) as image:
+        side = min(image.size)
+        sizes = [(s, s) for s in _ICON_SIZES if s <= side] or [(side, side)]
+        image.convert("RGBA").save(out, format="ICO", sizes=sizes)
+    return out.getvalue()
 
 
 def _smaller(png: bytes) -> bytes:

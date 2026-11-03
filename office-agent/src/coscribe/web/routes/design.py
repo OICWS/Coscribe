@@ -16,11 +16,15 @@ from ...conversation import (
     BoardElementChanged,
     CanvasError,
     DashboardDataError,
+    NoBrowser,
     NothingToUndo,
+    NotSquare,
+    PageShotError,
     PageWrittenSince,
     board_edit_file,
     canvas_folder,
     edit_board_element,
+    export_board,
     is_canvas,
     is_dashboard,
     keep_for_undo,
@@ -113,6 +117,39 @@ class ElementEdit(BaseModel):
 
 class ElementUndo(BaseModel):
     page: str
+
+
+class BoardExport(BaseModel):
+    page: str
+    kind: Literal["png", "ico"] = "png"
+    scheme: Literal["light", "dark"] | None = None
+
+
+_EXPORT_MEDIA = {"png": "image/png", "ico": "image/x-icon"}
+# Fixed texts: what reaches the panel is chosen here, not the exception's.
+_NO_BROWSER = "No Edge or Chrome on this computer to draw the artboard with"
+_NOT_EXPORTED = "This artboard could not be exported"
+_NOT_SQUARE = "An icon is made from a square artboard"
+
+
+def _export_route(state: AppState) -> Any:
+    async def export_board_file(thread_id: str, body: BoardExport) -> Response:
+        """One artboard drawn in the computer's own browser and sent back as a PNG or an .ico.
+        A POST, not a GET: it starts a browser, so it carries the launch token."""
+        page = _artboard_page(state, thread_id, body.page)
+        if page is None:
+            return JSONResponse({"error": "No page at that path"}, status_code=404)
+        try:
+            data = await asyncio.to_thread(export_board, page, body.kind, body.scheme)
+        except NoBrowser:
+            return JSONResponse({"error": _NO_BROWSER}, status_code=422)
+        except NotSquare:
+            return JSONResponse({"error": _NOT_SQUARE}, status_code=422)
+        except PageShotError:
+            return JSONResponse({"error": _NOT_EXPORTED}, status_code=422)
+        return Response(data, media_type=_EXPORT_MEDIA[body.kind])
+
+    return export_board_file
 
 
 def _element_routes(state: AppState) -> tuple[Any, Any, Any, Any]:
@@ -277,6 +314,9 @@ def router(state: AppState) -> APIRouter:
     router.add_api_route(f"{element}/undo", undo_element, methods=["POST"])
     router.add_api_route(f"{element}/redo", redo_element, methods=["POST"])
     router.add_api_route(f"{element}/steps", element_steps, methods=["GET"])
+    router.add_api_route(
+        "/api/threads/{thread_id}/canvas/export", _export_route(state), methods=["POST"]
+    )
     router.add_api_route("/api/threads/{thread_id}/canvas", get_canvas, methods=["GET"])
     router.add_api_route("/api/threads/{thread_id}/canvas", put_canvas, methods=["PUT"])
     router.add_api_route("/api/threads/{thread_id}/dashboard", get_dashboard, methods=["GET"])

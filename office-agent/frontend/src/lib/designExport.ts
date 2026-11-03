@@ -46,3 +46,20 @@ function printDesign(threadId: string, path: string, version: string): Promise<v
     document.body.appendChild(frame);
   });
 }
+
+export type BoardExport = "png" | "ico";
+
+/** One artboard drawn by the server in the computer's own browser (`POST /canvas/export`) and
+ * saved as a PNG at twice its size, or an .ico for a square one; rejects with the server's reason. */
+export async function exportBoard(threadId: string, page: string, kind: BoardExport, scheme: "light" | "dark", name: string): Promise<void> {
+  const response = await fetch(`/api/threads/${encodeURIComponent(threadId)}/canvas/export`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ page, kind, scheme }),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error ?? `HTTP ${response.status}`);
+  }
+  saveBlob(await response.blob(), `${name}.${kind}`);
+}

@@ -32,7 +32,8 @@ from .design_canvas import (
     read_canvas,
     variables_style,
 )
-from .page_tools import served_page
+from .page_shot import NoBrowser, PageShotError
+from .page_tools import NotSquare, export_board, served_page
 from .session import ChatSessionLG
 from .thread_meta import ThreadMetaStore
 
@@ -67,6 +68,10 @@ __all__ = [
     "read_canvas",
     "variables_style",
     "served_page",
+    "export_board",
+    "PageShotError",
+    "NoBrowser",
+    "NotSquare",
     "DashboardDataError",
     "is_dashboard",
     "read_dashboard_data",
