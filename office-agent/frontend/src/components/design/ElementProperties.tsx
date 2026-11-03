@@ -35,7 +35,7 @@ const SECTIONS: [string, [string, string][]][] = [
   ],
 ];
 
-// What the panel writes back (`board_edits.EDITABLE` on the server); the rest only reads.
+// What the Properties tab writes back by eye; the Code tab writes any property.
 const EDITABLE = new Set(["width", "height", "font-size", "font-weight", "color", "background-color", "border-radius", "padding", "gap", "opacity"]);
 // Values that say nothing about the element: a reader scans what was set, not every default.
 const SAYS_NOTHING = new Set(["", "normal", "none", "0px", "static", "rgba(0, 0, 0, 0)", "1", "auto"]);

@@ -121,9 +121,9 @@ detail at small sizes instead of shrinking it.
   file before you write it, and keep every board's `x`, `y`, `width` and `height`, the variables'
   values and the `notes` as they are, unless you are asked to change them. A note is the person's
   comment on the design: do what it asks, then leave it unless they say to remove it.
-- The person can also change an element's text, size, colours, spacing or font size in the
-  canvas's properties panel, which writes it into the page as the element's own `style`
-  attribute; you are told which page at your next turn. Read that page before you write it, and
+- The person can also change an element's text or any of its style properties in the canvas's
+  properties panel, which writes it into the page as the element's own `style` attribute; you
+  are told which page at your next turn. Read that page before you write it, and
   keep those changes unless you are asked to undo them.
 - To add an option, add a page and a board; to drop one, remove its board (and say so).
 

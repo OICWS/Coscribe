@@ -85,3 +85,20 @@ export async function undoBoardElement(threadId: string, page: string): Promise<
   if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`);
   return body?.left ?? 0;
 }
+
+/** The style typed for an element (`name: value;`, one or more a line) as properties to write: a
+ * property the element had and the text no longer names is removed (an empty value). */
+export function styleChanges(before: [string, string][], typed: string): Record<string, string> {
+  const after = new Map<string, string>();
+  for (const part of typed.split(/;|\n/)) {
+    const at = part.indexOf(":");
+    if (at <= 0) continue;
+    const name = part.slice(0, at).trim();
+    const value = part.slice(at + 1).trim();
+    if (name && value) after.set(name, value);
+  }
+  const changes: Record<string, string> = {};
+  for (const [name] of before) if (!after.has(name)) changes[name] = "";
+  for (const [name, value] of after) if (!before.some(([n, v]) => n === name && v === value)) changes[name] = value;
+  return changes;
+}
