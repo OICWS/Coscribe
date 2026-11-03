@@ -96,7 +96,8 @@ part: write it once, so a change to it shows on every artboard.
   app fills it in, laid out as if its elements were written there.
 - A part does not place parts. What differs per artboard (the active tab) is styled by the page,
   for example `body[data-tab="cart"] .tabbar-cart { color: var(--brand) }`.
-- To change a part, write its file again. The person cannot edit a part's elements in the panel.
+- To change a part, write its file again. The person's edits to a part's elements in the panel
+  are written into the part's file, and you are told which file, as for a page.
 
 ## Clickable prototypes
 

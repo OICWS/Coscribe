@@ -9,6 +9,7 @@ from .artifacts import ArtifactRegistry, adopt_thread, describe_artifact
 from .board_edits import (
     BoardEditError,
     BoardElementChanged,
+    board_edit_file,
     edit_board_element,
     remember_board_edit,
 )
@@ -54,6 +55,7 @@ __all__ = [
     "undo_board_edit",
     "redo_board_edit",
     "steps_left",
+    "board_edit_file",
     "edit_board_element",
     "remember_board_edit",
     "CanvasError",

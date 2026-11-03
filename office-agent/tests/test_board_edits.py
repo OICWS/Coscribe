@@ -203,15 +203,37 @@ def test_undo_and_redo_step_through_the_panels_edits_and_keep_coscribe_told_righ
         undo_board_edit(page, state)
 
 
-def test_an_element_of_a_shared_part_is_not_written_but_the_elements_around_it_are(
-    tmp_path: Path,
+def test_an_element_of_a_shared_part_is_written_into_the_part_and_undone_from_any_page(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # The served page fills the part into its element, which keeps the paths of the elements after
-    # it as the source counts them.
-    source = "<body><coscribe-part name='tabs'></coscribe-part><p>after</p></body>"
-    page = _page(tmp_path, source)
-    for path in ("0", "0.0", "0.0.1"):
-        with pytest.raises(BoardEditError, match="part several artboards share"):
-            edit_board_element(page, path, "nav", style={"color": "red"})
-    edit_board_element(page, "1", "p", style={"color": "red"})
-    assert page.read_text(encoding="utf-8").endswith('<p style="color: red">after</p></body>')
+    from coscribe.conversation import keep_for_undo, steps_left, undo_board_edit
+    from coscribe.conversation.board_edits import board_edit_file
+
+    # The served page fills the part into its element, so the paths inside it are counted from the
+    # part's own top-level elements, a style among them, and the paths after it as the source has.
+    page = _page(tmp_path, "<body><coscribe-part name='tabs'></coscribe-part><p>after</p></body>")
+    other = page.with_name("cart.html")
+    other.write_text("<body><coscribe-part name='tabs'></coscribe-part></body>", encoding="utf-8")
+    part = page.with_name("tabs.part.html")
+    part_source = "<style>.t{gap:4px}</style>\n<nav class='t'><a>Home</a><a>Cart</a></nav>"
+    part.write_text(part_source, encoding="utf-8")
+    state = tmp_path / "state"
+
+    assert board_edit_file(page, "0.1.1") == (part, [1, 1])
+    assert board_edit_file(page, "1") == (page, [1])
+    with pytest.raises(BoardEditError, match="through the elements inside it"):
+        edit_board_element(page, "0", "coscribe-part", style={"color": "red"})
+
+    file, _ = board_edit_file(page, "0.1.1")
+    before = file.read_text(encoding="utf-8")
+    said = edit_board_element(page, "0.1.1", "a", text="Bag", text_before="Cart")
+    keep_for_undo(file, before, said, state)
+    assert part.read_text(encoding="utf-8").endswith("<a>Home</a><a>Bag</a></nav>")
+    assert "tabs" in page.read_text(encoding="utf-8") and "<p>after</p>" in page.read_text(
+        encoding="utf-8"
+    )
+
+    # The steps are the canvas's: the other page that places the part sees and undoes the edit.
+    assert steps_left(other, state) == {"undo": 1, "redo": 0}
+    assert undo_board_edit(other, state) == {"undo": 0, "redo": 1}
+    assert part.read_text(encoding="utf-8") == part_source

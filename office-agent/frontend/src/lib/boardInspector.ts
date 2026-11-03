@@ -30,13 +30,13 @@ export interface InspectedElement {
   computed: Record<string, string>;
   rules: InspectedRule[];
   inherited: { from: string; props: [string, string][] }[];
-  /** The part several artboards share that the element is in (or is), filled in by the server: its
-   * elements are not in this page's source, so the panel does not write them. */
+  /** The part several artboards share that the element is in (or is), filled in by the server: an
+   * edit of it is written into the part's own file. */
   part: string | null;
 }
 
-/** Why the panel does not write an element of a shared part. */
-export const partNote = (part: string) => `This is in the shared part “${part}”, which every artboard that places it shows. Ask coscribe to change it.`;
+/** What an edit to an element of a shared part does. */
+export const partNote = (part: string) => `This is in the shared part “${part}”: a change here shows on every artboard that places it.`;
 
 /** The page's answer to one of the panel's questions, or null for any other message. */
 export function inspectorAnswer(data: unknown): { tree: InspectedNode } | { element: InspectedElement | null } | null {

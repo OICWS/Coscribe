@@ -107,7 +107,8 @@ export function ElementProperties({ element, problem, onEdit }: { element: Inspe
     // Keyed by the element and its values, so a field shows the page again after a save.
     <fieldset
       key={`${element.path}|${JSON.stringify(element.computed)}|${element.content}`}
-      disabled={element.part !== null}
+      // The element that places a part is laid out as if it were not there; its elements are edited.
+      disabled={element.tag === "coscribe-part"}
       className="min-w-0 divide-y divide-[var(--border)] disabled:[&_input]:opacity-60 disabled:[&_textarea]:opacity-60"
     >
       {problem && (

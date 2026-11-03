@@ -18,6 +18,7 @@ from ...conversation import (
     DashboardDataError,
     NothingToUndo,
     PageWrittenSince,
+    board_edit_file,
     canvas_folder,
     edit_board_element,
     is_canvas,
@@ -148,8 +149,10 @@ async def _put_element(state: AppState, thread_id: str, body: ElementEdit) -> JS
     page = _artboard_page(state, thread_id, body.page)
     if page is None:
         return JSONResponse({"error": "No page at that path"}, status_code=404)
-    before = page.read_text(encoding="utf-8")
     try:
+        # The page, or the part it places when the element is inside one.
+        written, _ = board_edit_file(page, body.element)
+        before = written.read_text(encoding="utf-8")
         said = await asyncio.to_thread(
             edit_board_element,
             page,
@@ -159,12 +162,12 @@ async def _put_element(state: AppState, thread_id: str, body: ElementEdit) -> JS
             text=body.text,
             text_before=body.text_before,
         )
-    except BoardElementChanged:
+    except (BoardElementChanged, OSError):
         return JSONResponse({"error": _ELEMENT_CHANGED}, status_code=409)
     except BoardEditError:
         return JSONResponse({"error": _EDIT_REFUSED}, status_code=422)
-    remember_board_edit(page, said, state.settings.state_dir)
-    keep_for_undo(page, before, said, state.settings.state_dir)
+    remember_board_edit(written, said, state.settings.state_dir)
+    keep_for_undo(written, before, said, state.settings.state_dir)
     return JSONResponse({"ok": True})
 
 
