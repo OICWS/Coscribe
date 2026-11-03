@@ -560,6 +560,17 @@ export interface DesignNamedValue {
   value: string;
 }
 
+/** A logo, icon or picture kept with a design system, with a note on when to use it. */
+export interface DesignAsset {
+  id: string;
+  file: string;
+  name: string;
+  kind: "logo" | "icon" | "picture";
+  note: string;
+  width: number | null;
+  height: number | null;
+}
+
 /** A design system (decision 0020): what a deck made with it follows. */
 export interface DesignSystem {
   id: string;
@@ -569,6 +580,8 @@ export interface DesignSystem {
   typography: { fonts: string[]; styles: DesignTextStyle[] };
   spacing: DesignNamedValue[];
   radius: DesignNamedValue[];
+  /** Kept and changed through their own routes, not the form's save. */
+  assets?: DesignAsset[];
   updated_at: string;
 }
 

@@ -1,4 +1,5 @@
 import type {
+  DesignAsset,
   DesignSystem,
   DesignSystemSummary,
   SecretInfo,
@@ -563,6 +564,25 @@ export const saveDesignSystem = (system: DesignSystem) =>
   sendForResult<DesignSystem>(`/api/design-systems/${encodeURIComponent(system.id)}`, "PUT", system);
 export const deleteDesignSystem = (id: string) =>
   sendForResult<{ status: string }>(`/api/design-systems/${encodeURIComponent(id)}`, "DELETE", undefined);
+export const duplicateDesignSystem = (id: string, name: string) =>
+  sendForResult<DesignSystem>(`/api/design-systems/${encodeURIComponent(id)}/duplicate`, "POST", { name });
+
+const assetsUrl = (systemId: string) => `/api/design-systems/${encodeURIComponent(systemId)}/assets`;
+export const designAssetUrl = (systemId: string, assetId: string) => `${assetsUrl(systemId)}/${encodeURIComponent(assetId)}`;
+
+/** Keeps a picture with the system; answers with the refusal's reason (not a picture, too big). */
+export async function addDesignAsset(systemId: string, file: File): Promise<DesignAsset | { error: string }> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(assetsUrl(systemId), { method: "POST", body: form }).catch(() => null);
+  if (!res) return { error: "Couldn't reach coscribe. Check that it's still running." };
+  if (res.ok) return res.json() as Promise<DesignAsset>;
+  const parsed = (await res.json().catch(() => null)) as { detail?: unknown } | null;
+  return { error: typeof parsed?.detail === "string" ? parsed.detail : `Request failed (${res.status})` };
+}
+export const updateDesignAsset = (systemId: string, assetId: string, change: Partial<Pick<DesignAsset, "name" | "kind" | "note">>) =>
+  sendForResult<DesignAsset>(designAssetUrl(systemId, assetId), "PUT", change);
+export const deleteDesignAsset = (systemId: string, assetId: string) => sendForResult<{ status: string }>(designAssetUrl(systemId, assetId), "DELETE", undefined);
 
 /** Named environments: where a conversation works and what it may reach. */
 export const getEnvironments = () => getJson<{ environments: Environment[] }>("/api/environments");

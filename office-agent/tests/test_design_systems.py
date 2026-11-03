@@ -95,3 +95,70 @@ def test_a_listing_carries_each_systems_first_colors(tmp_path: Path) -> None:
     [listed] = store.list_systems()
 
     assert listed["palette"] == [f"#0000{i:02X}" for i in range(8)]
+
+
+def _png(width: int, height: int) -> bytes:
+    from io import BytesIO
+
+    from PIL import Image
+
+    out = BytesIO()
+    Image.new("RGB", (width, height), "#0F766E").save(out, "PNG")
+    return out.getvalue()
+
+
+def test_a_picture_is_kept_by_its_content_with_a_note_and_goes_with_a_duplicate(
+    tmp_path: Path,
+) -> None:
+    store = DesignSystemStore(tmp_path)
+    made = store.create("Acme")
+    logo = store.add_asset(made["id"], _png(120, 40), "acme-logo.png")
+    assert logo is not None
+    assert (logo["name"], logo["kind"], logo["width"], logo["height"]) == (
+        "acme-logo",
+        "logo",
+        120,
+        40,
+    )
+    svg = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 32"><rect/></svg>'
+    mark = store.add_asset(made["id"], svg, "mark")
+    assert mark is not None and (mark["file"].endswith(".svg"), mark["width"]) == (True, 64)
+
+    noted = store.update_asset(
+        made["id"], logo["id"], {"kind": "icon", "note": "on dark backgrounds"}
+    )
+    assert noted is not None and (noted["kind"], noted["note"], noted["name"]) == (
+        "icon",
+        "on dark backgrounds",
+        "acme-logo",
+    )
+    # Saving the form keeps the pictures: they are not part of what it sends.
+    store.update(made["id"], {"name": "Acme 2"})
+    assert [a["id"] for a in store.get(made["id"])["assets"]] == [logo["id"], mark["id"]]
+
+    copy = store.duplicate(made["id"], "Acme copy")
+    assert copy is not None and copy["id"] != made["id"] and len(copy["assets"]) == 2
+    kept = store.asset_file(copy["id"], logo["id"])
+    assert kept is not None and kept[1] == "image/png" and kept[0].read_bytes() == _png(120, 40)
+
+    assert store.delete_asset(made["id"], logo["id"])
+    assert store.asset_file(made["id"], logo["id"]) is None
+    assert store.asset_file(copy["id"], logo["id"]) is not None
+
+
+def test_a_file_that_is_not_a_picture_too_big_or_one_too_many_is_refused(tmp_path: Path) -> None:
+    store = DesignSystemStore(tmp_path)
+    made = store.create("Acme")
+    with pytest.raises(DesignSystemError, match="SVG, PNG, JPEG or WebP"):
+        store.add_asset(made["id"], b"MZ\x90\x00 not a picture", "logo.png")
+    with pytest.raises(DesignSystemError, match="2 MB"):
+        store.add_asset(made["id"], b"\x89PNG\r\n\x1a\n" + b"0" * (2 * 1024 * 1024), "big.png")
+    with pytest.raises(DesignSystemError, match="is a logo, icon, picture"):
+        logo = store.add_asset(made["id"], _png(4, 4), "x")
+        assert logo is not None
+        store.update_asset(made["id"], logo["id"], {"kind": "banner"})
+    for i in range(23):
+        store.add_asset(made["id"], _png(4, 4), f"p{i}")
+    with pytest.raises(DesignSystemError, match="at most 24"):
+        store.add_asset(made["id"], _png(4, 4), "one more")
+    assert store.add_asset("not-an-id", _png(4, 4), "x") is None
