@@ -73,17 +73,33 @@ export async function editBoardElement(threadId: string, page: string, element: 
   }
 }
 
-/** Puts the page back as it was before the panel's last edit (`POST /canvas/element/undo`); how many
- * edits are left to undo. Rejects when there is none, or the page was written since. */
-export async function undoBoardElement(threadId: string, page: string): Promise<number> {
-  const response = await fetch(`/api/threads/${encodeURIComponent(threadId)}/canvas/element/undo`, {
+/** How many of the panel's edits to a page can be undone and redone. */
+export interface Steps {
+  undo: number;
+  redo: number;
+}
+
+const elementUrl = (threadId: string, action: string) => `/api/threads/${encodeURIComponent(threadId)}/canvas/element/${action}`;
+
+/** Takes back the panel's last edit to the page, or does the last undone one again
+ * (`POST /canvas/element/undo|redo`). Rejects when there is none, or the page was written since. */
+export async function stepBoardElement(threadId: string, page: string, action: "undo" | "redo"): Promise<Steps> {
+  const response = await fetch(elementUrl(threadId, action), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ page }),
   });
-  const body = (await response.json().catch(() => null)) as { error?: string; left?: number } | null;
+  const body = (await response.json().catch(() => null)) as (Steps & { error?: string }) | null;
   if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`);
-  return body?.left ?? 0;
+  return { undo: body?.undo ?? 0, redo: body?.redo ?? 0 };
+}
+
+/** The steps there are on the page as it is now: none once coscribe has written it since. */
+export async function boardElementSteps(threadId: string, page: string): Promise<Steps> {
+  const response = await fetch(`${elementUrl(threadId, "steps")}?page=${encodeURIComponent(page)}`);
+  if (!response.ok) return { undo: 0, redo: 0 };
+  const body = (await response.json()) as Steps;
+  return { undo: body.undo ?? 0, redo: body.redo ?? 0 };
 }
 
 /** The style typed for an element (`name: value;`, one or more a line) as properties to write: a

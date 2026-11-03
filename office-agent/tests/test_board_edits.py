@@ -136,13 +136,15 @@ def test_comments_quoted_angles_and_script_text_do_not_count_as_elements(tmp_pat
     assert page.read_text(encoding="utf-8").endswith('<p style="color: red">target</p></body>')
 
 
-def test_undo_puts_the_page_back_step_by_step_and_keeps_coscribe_told_rightly(
+def test_undo_and_redo_step_through_the_panels_edits_and_keep_coscribe_told_rightly(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from coscribe.conversation import (
         NothingToUndo,
         PageWrittenSince,
         keep_for_undo,
+        redo_board_edit,
+        steps_left,
         undo_board_edit,
     )
 
@@ -158,25 +160,42 @@ def test_undo_puts_the_page_back_step_by_step_and_keeps_coscribe_told_rightly(
         remember_board_edit(page, said, state)
         keep_for_undo(page, before, said, state)
 
+    assert steps_left(page, state) == {"undo": 0, "redo": 0}
     edit(style={"color": "red"})
     after_first = page.read_text(encoding="utf-8")
     edit(style={"font-size": "28px"})
-    assert undo_board_edit(page, state) == 1
+    after_second = page.read_text(encoding="utf-8")
+    assert steps_left(page, state) == {"undo": 2, "redo": 0}
+
+    assert undo_board_edit(page, state) == {"undo": 1, "redo": 1}
     assert page.read_text(encoding="utf-8") == after_first
     # The undone edit was never told, so the note has only the first.
     note = design_edits_note([], {}, scope, state)
     assert "color red" in note and "font-size" not in note
 
-    # Told already: undoing it now is reported as undone.
-    assert undo_board_edit(page, state) == 0
+    # Redo writes the edit back; told since its undo, so it is said again.
+    assert redo_board_edit(page, state) == {"undo": 2, "redo": 0}
+    assert page.read_text(encoding="utf-8") == after_second
+    assert "font-size 28px" in design_edits_note([], {}, scope, state)
+    with pytest.raises(NothingToUndo):
+        redo_board_edit(page, state)
+
+    # Told already: undoing now is reported as undone, and the steps survive a reload.
+    assert undo_board_edit(page, state) == {"undo": 1, "redo": 1}
+    assert undo_board_edit(page, state) == {"undo": 0, "redo": 2}
     assert page.read_text(encoding="utf-8") == PAGE
-    assert "undid <h1> 'Hello & welcome': color red" in design_edits_note([], {}, scope, state)
+    assert steps_left(page, state) == {"undo": 0, "redo": 2}
+    assert "undid <h1> 'Hello & welcome': font-size 28px" in design_edits_note([], {}, scope, state)
     with pytest.raises(NothingToUndo):
         undo_board_edit(page, state)
 
-    # A page coscribe wrote after the edit is not put back over its work.
+    # A new edit drops what there was to redo.
     edit(style={"color": "blue"})
+    assert steps_left(page, state) == {"undo": 1, "redo": 0}
+
+    # A page coscribe wrote after the edit is not put back over its work.
     page.write_text(PAGE.replace("World", "Earth"), encoding="utf-8")
+    assert steps_left(page, state) == {"undo": 0, "redo": 0}
     with pytest.raises(PageWrittenSince):
         undo_board_edit(page, state)
     assert "Earth" in page.read_text(encoding="utf-8")

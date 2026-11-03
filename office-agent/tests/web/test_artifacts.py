@@ -281,12 +281,15 @@ def test_a_canvas_is_a_design_its_artboards_are_not_and_its_routes_place_them_lg
         assert client.put(element, json={**edit, "page": "nope.html"}).status_code == 404
         # Undo puts the page back once; a second undo has nothing left.
         undo = "/api/threads/t_canvas/canvas/element/undo"
-        assert client.post(undo, json={"page": "ui.design/phone.html"}).json() == {
-            "ok": True,
-            "left": 0,
-        }
+        phone = {"page": "ui.design/phone.html"}
+        steps = "/api/threads/t_canvas/canvas/element/steps"
+        assert client.get(steps, params=phone).json() == {"undo": 1, "redo": 0}
+        assert client.post(undo, json=phone).json() == {"ok": True, "undo": 0, "redo": 1}
         assert (workspace / "ui.design" / "phone.html").read_text() == "<p>phone</p>"
-        assert client.post(undo, json={"page": "ui.design/phone.html"}).status_code == 409
+        assert client.post(undo, json=phone).status_code == 409
+        redo = "/api/threads/t_canvas/canvas/element/redo"
+        assert client.post(redo, json=phone).json() == {"ok": True, "undo": 1, "redo": 0}
+        assert "color: red" in (workspace / "ui.design" / "phone.html").read_text()
 
         # Any other refusal says so in a fixed text, not the exception's.
         refused = client.put(element, json={**edit, "style": {"color": "red; display: none"}})

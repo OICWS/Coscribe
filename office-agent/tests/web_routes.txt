@@ -75,6 +75,7 @@ GET /api/threads/status
 GET /api/threads/{thread_id}/activity
 GET /api/threads/{thread_id}/background-tasks
 GET /api/threads/{thread_id}/canvas
+GET /api/threads/{thread_id}/canvas/element/steps
 GET /api/threads/{thread_id}/context-breakdown
 GET /api/threads/{thread_id}/dashboard
 GET /api/threads/{thread_id}/design
@@ -140,6 +141,7 @@ POST /api/skills/upload
 POST /api/skills/{name}/enabled
 POST /api/subagents/{task_id}/stop
 POST /api/thread-groups/{name}/rename
+POST /api/threads/{thread_id}/canvas/element/redo
 POST /api/threads/{thread_id}/canvas/element/undo
 POST /api/threads/{thread_id}/doc/asset
 POST /api/threads/{thread_id}/doc/comments

@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { editBoardElement, inspectorAnswer, undoBoardElement, type ElementChange, type InspectedElement, type InspectedNode } from "../../lib/boardInspector";
+import {
+  boardElementSteps,
+  editBoardElement,
+  inspectorAnswer,
+  stepBoardElement,
+  type ElementChange,
+  type InspectedElement,
+  type InspectedNode,
+  type Steps,
+} from "../../lib/boardInspector";
 
 /** The inspector of the selected artboard: its page's element tree, and the element picked on the
  * board or in the tree. Questions go to that board's frame and only its answers count; the tree
@@ -14,8 +23,9 @@ export function useBoardInspector(
   const boardId = board?.id ?? null;
   const repick = useRef<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
-  // Edits the panel wrote to each page in this view, which undo can take back.
-  const [undoable, setUndoable] = useState<Record<string, number>>({});
+  // What the server says can be undone and redone on the page, asked again whenever it is served anew
+  // (coscribe writing the page ends them).
+  const [steps, setSteps] = useState<{ key: string; steps: Steps } | null>(null);
   const [open, setOpen] = useState(false);
   // Answers are kept with the board and page version they came from, so another board or a reloaded
   // page shows nothing stale.
@@ -50,6 +60,30 @@ export function useBoardInspector(
     };
   }, [root, open, boardId, version]);
 
+  const page = board?.path ?? null;
+  useEffect(() => {
+    if (!open || !page) return;
+    let live = true;
+    boardElementSteps(saving.threadId, page).then((found) => live && setSteps({ key, steps: found }));
+    return () => {
+      live = false;
+    };
+  }, [open, page, key, saving.threadId]);
+  const shown = steps?.key === key ? steps.steps : { undo: 0, redo: 0 };
+
+  const step = (action: "undo" | "redo") => {
+    if (!board) return;
+    setProblem(null);
+    const keep = element?.key === key ? (element.element?.path ?? null) : null;
+    stepBoardElement(saving.threadId, board.path, action).then(
+      () => {
+        repick.current = keep;
+        saving.onSaved();
+      },
+      (e: unknown) => setProblem(e instanceof Error ? e.message : String(e)),
+    );
+  };
+
   return {
     open,
     setOpen,
@@ -64,29 +98,14 @@ export function useBoardInspector(
       editBoardElement(saving.threadId, board.path, target, change).then(
         () => {
           repick.current = target.path;
-          setUndoable((counts) => ({ ...counts, [board.path]: (counts[board.path] ?? 0) + 1 }));
           saving.onSaved();
         },
         (e: unknown) => setProblem(e instanceof Error ? e.message : String(e)),
       );
     },
-    canUndo: Boolean(board && undoable[board.path]),
-    undo: () => {
-      if (!board) return;
-      setProblem(null);
-      const keep = element?.key === key ? (element.element?.path ?? null) : null;
-      const settle = (left: number) => setUndoable((counts) => ({ ...counts, [board.path]: left }));
-      undoBoardElement(saving.threadId, board.path).then(
-        (left) => {
-          repick.current = keep;
-          settle(left);
-          saving.onSaved();
-        },
-        (e: unknown) => {
-          settle(0);
-          setProblem(e instanceof Error ? e.message : String(e));
-        },
-      );
-    },
+    canUndo: shown.undo > 0,
+    canRedo: shown.redo > 0,
+    undo: () => step("undo"),
+    redo: () => step("redo"),
   };
 }
