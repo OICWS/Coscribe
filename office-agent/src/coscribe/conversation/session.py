@@ -1080,9 +1080,7 @@ class ChatSessionLG:
                     websocket,
                     images=images,
                     artifact=artifact,
-                    design_system=design_system_for_start(
-                        self.settings.state_dir, self.thread_id, artifact, design_system
-                    ),
+                    design_system=design_system_for_start(self, artifact, design_system),
                 )
         finally:
             self.turn_running = False

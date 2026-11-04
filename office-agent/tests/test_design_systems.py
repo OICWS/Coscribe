@@ -162,3 +162,22 @@ def test_a_file_that_is_not_a_picture_too_big_or_one_too_many_is_refused(tmp_pat
     with pytest.raises(DesignSystemError, match="at most 24"):
         store.add_asset(made["id"], _png(4, 4), "one more")
     assert store.add_asset("not-an-id", _png(4, 4), "x") is None
+
+
+def test_a_systems_pictures_are_copied_into_the_workspace_under_plain_names(tmp_path: Path) -> None:
+    store = DesignSystemStore(tmp_path / "state")
+    made = store.create("Acme Lab / Café")
+    store.add_asset(made["id"], _png(8, 8), "logo.png")
+    store.add_asset(made["id"], _png(4, 4), "logo.png")
+    store.add_asset(made["id"], b'<svg xmlns="http://www.w3.org/2000/svg"/>', "../../mark?.svg")
+    workspace = tmp_path / "workspace"
+
+    copied = store.copy_assets(made["id"], workspace)
+
+    assert [c["path"] for c in copied] == [
+        "brand/Acme-Lab-Café/logo.png",
+        "brand/Acme-Lab-Café/logo-2.png",
+        "brand/Acme-Lab-Café/mark.svg",
+    ]
+    assert (workspace / copied[1]["path"]).read_bytes() == _png(4, 4)
+    assert store.copy_assets("aaaaaaaaaa", workspace) == []

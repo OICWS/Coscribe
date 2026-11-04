@@ -217,6 +217,11 @@ def _asset_fields(data: Any, current: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _file_stem(text: str) -> str:
+    """A name as a plain file name: letters, digits, dashes and underscores, any script."""
+    return re.sub(r"[^\w-]+", "-", text).strip("-_")[:60]
+
+
 def _palette_of(data: dict[str, Any]) -> list[str]:
     """The system's colors as #RRGGBB, for a card to draw; what a damaged file holds is skipped."""
     colors = data.get("colors")
@@ -437,6 +442,34 @@ class DesignSystemStore:
             if media and re.fullmatch(r"[a-f0-9]{10}\.[a-z]{3,4}", file) and target.is_file()
             else None
         )
+
+    def copy_assets(self, system_id: str, workspace: Path) -> list[dict[str, Any]]:
+        """The system's pictures copied into the workspace as `brand/<system>/<name>.<ext>`, each
+        entry with its workspace `path`. The copy never refers back (decision 0020): a picture
+        changed in the library later does not move a deck or design made from this one."""
+        system = self.get(system_id)
+        if system is None:
+            return []
+        folder_name = _file_stem(str(system.get("name", ""))) or "design-system"
+        target = workspace / "brand" / folder_name
+        copied: list[dict[str, Any]] = []
+        taken: set[str] = set()
+        for asset in system.get("assets", []):
+            kept = self.asset_file(system_id, str(asset.get("id", "")))
+            if kept is None:
+                continue
+            source, _ = kept
+            stem = _file_stem(str(asset.get("name", ""))) or "picture"
+            name = f"{stem}{source.suffix}"
+            n = 2
+            while name.lower() in taken:
+                name = f"{stem}-{n}{source.suffix}"
+                n += 1
+            taken.add(name.lower())
+            target.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, target / name)
+            copied.append({**asset, "path": f"brand/{folder_name}/{name}"})
+        return copied
 
     def delete(self, system_id: str) -> bool:
         path = self._path(system_id)
