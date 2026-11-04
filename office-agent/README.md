@@ -803,7 +803,8 @@ The file at `COSCRIBE_MEMORY_PATH` (default `./MEMORY.md`, auto-created,
 gitignored by default -- track it yourself if you want shared/team memory) holds
 your global instructions: Settings › General › Global instructions edits it, and whatever
 is in it is sent to the model in every conversation. Only you write to it: the
-model has no tool for it. It is meant to stay a short, curated list (a
+model can offer a line with `remember` (when you say "always..." or "from now on..."), shown
+as a question card, and the line is added only if you press Save. It is meant to stay a short, curated list (a
 preference, a stable detail) -- not a running log, and not addressed by
 `/compact` (which only
 ever touches a single thread's conversation history, a much faster-growing

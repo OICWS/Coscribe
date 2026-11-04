@@ -3,7 +3,7 @@
 
 system prompt: 34692 chars, ~8673 tokens, sha256 04a0768afe
 
-bound to the model: 22 tools, ~4988 tokens
+bound to the model: 22 tools, ~4997 tokens
   ask_user_question (questions:array) desc 1435 chars sha256 e846e64163
   draft_workflow (name?:string) desc 983 chars sha256 e91334c9ee
   edit_file (new_text:string, old_text:string, path:string, replace_all?:boolean) desc 1330 chars sha256 3f5ab0dd7e
@@ -18,7 +18,7 @@ bound to the model: 22 tools, ~4988 tokens
   read_xlsx (path:string, sheet?:string|null) desc 548 chars sha256 299925b715
   revise_workflow (draft_id?:string, request:string, task_id?:string) desc 632 chars sha256 bb65f01516
   search_files (path?:string, pattern?:string, query:string, regex?:boolean) desc 1842 chars sha256 f741658379
-  search_tools (query:string) desc 1831 chars sha256 fe3f8fca2a
+  search_tools (query:string) desc 1869 chars sha256 999321119b
   task_create (content:string) desc 149 chars sha256 dea506b85f
   task_list () desc 54 chars sha256 7bc88160db
   task_update (status:string, task_id:string) desc 284 chars sha256 e5aa5260b7
@@ -27,7 +27,7 @@ bound to the model: 22 tools, ~4988 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 120 tools, ~37312 tokens (the ones not bound are found through search_tools)
+registered: 121 tools, ~37515 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -110,6 +110,7 @@ registered: 120 tools, ~37312 tokens (the ones not bound are found through searc
   recalc_xlsx | WRITE_LOCAL | documents | deferred | sha256 552e3332e2
   recolor_pptx_icon | WRITE_LOCAL | documents | deferred | sha256 c79f3aa354
   reject_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 625975143d
+  remember | READ | interaction | deferred | sha256 b51aa62e0f
   render_pptx_preview | READ | documents | deferred | sha256 ae8d4ec268
   reorder_pptx_slide | WRITE_LOCAL | documents | deferred | sha256 3529565f4d
   replace_docx_text | WRITE_LOCAL | documents | deferred | sha256 d3ce81d157

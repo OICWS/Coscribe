@@ -52,6 +52,23 @@ from ..tools import (
 from .events import EventSink
 
 _COMMAND_TOOL = "run_background_command"
+_MEMORY_SAVE = "Save"
+
+
+def _memory_question(line: str) -> dict[str, Any]:
+    question = f"Save this to your global instructions, read in every conversation?\n\n{line}"
+    options = [{"label": _MEMORY_SAVE}, {"label": "Don't save"}]
+    return {"questions": [{"question": question, "header": "Remember", "options": options}]}
+
+
+def _saved_to_memory(path: Path, line: str, answer: dict[str, Any]) -> dict[str, Any]:
+    """The model only proposes the line: it is written here, and only on the person's Save."""
+    if not line or answer.get("message") != _MEMORY_SAVE:
+        return {"type": "respond", "message": "The user didn't save it. Don't offer it again."}
+    current = path.read_text(encoding="utf-8").rstrip() if path.is_file() else ""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"{current}\n- {line}\n".lstrip("\n"), encoding="utf-8")
+    return {"type": "respond", "message": "Saved to the user's global instructions."}
 
 
 def can_resolve_approvals(websocket: Any) -> bool:
@@ -241,6 +258,10 @@ class ApprovalDecider:
                 return await self._decide_task_draft_request(name, args, websocket)
             if name == "exit_plan_mode":
                 return await self._decide_plan_request(args, websocket)
+            if name == "remember":
+                line = str(args.get("line", "")).strip()
+                answer = await self._decide_question_request(_memory_question(line), websocket)
+                return _saved_to_memory(Path(self._host.settings.memory_path), line, answer)
             return await self._decide_question_request(args, websocket)
         if name not in self._host._gated_tool_risks:
             return {"type": "approve"}
