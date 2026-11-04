@@ -128,6 +128,30 @@ def test_an_image_is_embedded_and_one_outside_the_folder_is_refused(tmp_path: Pa
     assert report.pages[1].errors
 
 
+_ASVG = "http://schemas.microsoft.com/office/drawing/2016/SVG/main"
+_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+
+
+def test_an_svg_picture_keeps_its_file_and_carries_a_png_for_older_readers(tmp_path: Path) -> None:
+    logo = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64">'
+        '<circle cx="32" cy="32" r="26" fill="#0F766E"/></svg>'
+    )
+    (tmp_path / "logo.svg").write_text(logo, encoding="utf-8")
+    page = f'<svg {_SVG}><image href="logo.svg" x="64" y="44" width="150" height="40"/></svg>'
+
+    out, report = _compile(tmp_path, [("p1", page)], svg_dir=tmp_path)
+
+    assert report.ok, report.errors()
+    picture = next(s for s in Presentation(str(out)).slides[0].shapes if s.shape_type == 13)
+    fallback = Image.open(io.BytesIO(picture.image.blob))
+    assert fallback.format == "PNG" and fallback.size == (600, 160)
+    svg_blip = next(picture._element.iter(f"{{{_ASVG}}}svgBlip"))
+    svg_rid = svg_blip.get(f"{{{_REL}}}embed")
+    svg_part = picture.part.related_part(svg_rid)
+    assert svg_part.content_type == "image/svg+xml" and svg_part.blob.decode() == logo
+
+
 def test_problems_are_reported_per_page_and_the_other_pages_still_compile(tmp_path: Path) -> None:
     broken = f"""<svg {_SVG}>
       <foreignObject x="0" y="0" width="10" height="10"/>
