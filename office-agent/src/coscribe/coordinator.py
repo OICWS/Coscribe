@@ -224,8 +224,10 @@ To change an existing .pptx beyond one slide's text -- delete, copy or \
 reorder slides; move, recolor or delete a shape (SmartArt included); build a \
 diagram shape by shape; add a formula, icon or hyperlink; replace or crop a \
 picture; edit a table cell; read or change theme colors -- call \
-load_skill("PPTX Editing") first: it says which tool does each and what to \
-avoid. A plain arrow or box is add_pptx_shape, never add_pptx_icon, and \
+load_skill("PPTX Editing") first if it is listed: it says which tool does \
+each and what to avoid (if it is not, list_pptx_shapes before any shape edit \
+and read each tool's description). A plain arrow or box is add_pptx_shape, \
+never add_pptx_icon, and \
 edit_pptx_theme_colors does not recolor title or body text \
 (edit_pptx_shape's text_color does). \
 \
