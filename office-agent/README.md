@@ -804,7 +804,8 @@ The file at `COSCRIBE_MEMORY_PATH` (default `./MEMORY.md`, auto-created,
 gitignored by default -- track it yourself if you want shared/team memory) holds
 your global instructions: Settings › General › Global instructions edits it, and whatever
 is in it is sent to the model in every conversation. Only you write to it: the
-model has no tool for it. It is meant to stay a short, curated list (a
+model can offer a line with `remember` (when you say "always..." or "from now on..."), shown
+as a question card, and the line is added only if you press Save. It is meant to stay a short, curated list (a
 preference, a stable detail) -- not a running log, and not addressed by
 `/compact` (which only
 ever touches a single thread's conversation history, a much faster-growing
@@ -815,9 +816,14 @@ and more urgent problem than a short memory file).
 The Coordinator can hand a self-contained task to a sub-agent
 (`runtime_lg/subagents.py`'s `build_delegation_tools`):
 
-- `spawn_agent(description, prompt, instructions="", model="", tool_names="")`
+- `spawn_agent(description, prompt, instructions="", model="", tool_names="", kind="")`
   waits for the sub-agent's report; `spawn_agent_background(...)` returns a
   `task_id` at once. Only the report re-enters the conversation.
+- **Kinds** (`runtime_lg/subagent_kinds.py`): `kind="research"` finds things
+  in files and on the web and reports each with its source, with read-only
+  tools; `kind="check"` confirms the figures and statements it is given
+  against their sources, with read-only tools and scripts. The call's own
+  `instructions` and `tool_names` take the kind's place.
 - **A background sub-agent reports back by itself**: when it succeeds,
   fails, or you stop it from the panel, its report (or error) arrives in
   the conversation as a message of its own -- drawn as a "Sub-agent
@@ -840,7 +846,7 @@ The Coordinator can hand a self-contained task to a sub-agent
   the user which to use the first time it delegates.
 - **Tools and folders**: by default the sub-agent gets the Coordinator's own
   tools (found through `search_tools` when tool deferral is on), bound to the
-  conversation's folders; `tool_names` narrows that to a list. Tools bound
+  conversation's folders; a kind or `tool_names` narrows that. Tools bound
   to the parent's own conversation stay with the parent: the sub-agent
   list/check/stop tools (a sub-agent listing them finds itself "running"
   and takes its task as someone else's), wakes, and the to-do list.

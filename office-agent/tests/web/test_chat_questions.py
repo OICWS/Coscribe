@@ -364,3 +364,34 @@ def test_a_pending_question_is_redelivered_every_time_the_conversation_is_reopen
             messages = _receive_until(ws, "tasks_changed")
 
     assert next(m for m in messages if m["type"] == "agent_message")["text"] == "done"
+
+
+@pytest.mark.parametrize("answer", ["Save", "Don't save"])
+def test_remember_writes_the_line_only_when_the_user_saves_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, answer: str
+) -> None:
+    line = "Use Templates/brand.pptx for every deck."
+    call = _tool_call("call_1", "remember", {"line": line})
+    fake_model = FakeToolCallingChatModel(
+        responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="done")]
+    )
+    memory = tmp_path / "MEMORY.md"
+    memory.write_text("- Write in English.\n", encoding="utf-8")
+    with _client_lg(tmp_path, monkeypatch, fake_model, memory_path=memory) as client:
+        with client.websocket_connect("/ws/t_remember") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "always use our brand template"})
+            question = ws.receive_json()
+            assert question["type"] == "question_required"
+            assert line in question["questions"][0]["question"]
+            ws.send_json({"type": "question_response", "id": question["id"], "answers": [answer]})
+            _receive_until(ws, "tasks_changed")
+
+    tool_messages = [m for m in fake_model.received[-1] if isinstance(m, ToolMessage)]
+    if answer == "Save":
+        assert memory.read_text(encoding="utf-8") == f"- Write in English.\n- {line}\n"
+        assert "Saved" in str(tool_messages[-1].content)
+    else:
+        assert memory.read_text(encoding="utf-8") == "- Write in English.\n"
+        assert "didn't save" in str(tool_messages[-1].content)

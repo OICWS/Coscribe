@@ -23,6 +23,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, BinaryIO
+from urllib.parse import quote
 
 from .._output_truncation import truncate_script_output
 from . import isolation as _isolation
@@ -198,6 +199,11 @@ class Detachable:
     thread_id: str
     hand_off: HandOff
 
+    def cut_output_dir(self, state_dir: Path) -> Path:
+        """Where this conversation's cut script output is kept whole. Its file tools may read
+        it (coordinator.py), so the model can search what a cut left out."""
+        return Path(state_dir) / "script-output" / quote(self.thread_id, safe="")
+
 
 @dataclass
 class Ran:
@@ -207,6 +213,16 @@ class Ran:
     timed_out: bool = False
     # What the tool returns when the command was let go on in the background.
     detached: dict[str, object] | None = None
+
+
+def timed_out_result(ran: Ran, timeout: float, keep: Path | None) -> dict[str, object]:
+    return {
+        "exit_code": None,
+        "stdout": truncate_script_output(ran.stdout, keep),
+        "stderr": truncate_script_output(ran.stderr, keep, "stderr")
+        + f"\n[timed out after {timeout}s]",
+        "timed_out": True,
+    }
 
 
 def run_to_end(

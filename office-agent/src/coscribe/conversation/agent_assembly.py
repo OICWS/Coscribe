@@ -35,6 +35,7 @@ from ..runtime_lg import (
 from ..tools import (
     QUESTION_TOOL_NAMES,
     TASK_DRAFT_TOOL_NAMES,
+    TaskToolkit,
     WorkspaceScope,
     format_skill_listing,
     load_builtin_skills,
@@ -186,6 +187,9 @@ class AgentAssembly:
             take_steers=self._host._take_steers,
             redact=redactor(self._host.settings.state_dir),
             resolve_file=lambda path: self._host.workspace_scope().resolve(path),
+            open_tasks=lambda: TaskToolkit(
+                self._host.thread_id, self._host.settings.state_dir
+            ).open_tasks_note(),
         )
 
     def tool_binding(

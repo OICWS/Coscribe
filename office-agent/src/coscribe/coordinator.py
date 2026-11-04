@@ -586,9 +586,10 @@ def build_coordinator_agent(
     # extra directories, and described to the model the same way.
     extra_readable = [*settings.extra_readable_dirs, *extra_folders]
     extra_writable = [*settings.extra_writable_dirs, *extra_folders]
-    # Only the file tools reach skills_dir, so the skill-creator skill can write a SKILL.md there.
-    # It isn't one of the user's folders, so it gets its own instruction line, not that listing.
-    file_tool_readable = [*extra_readable, settings.skills_dir]
+    detachable = Detachable(thread_id, partial(adopt_running_command, settings.state_dir))
+    # Only the file tools reach skills_dir (the skill creator writes there) and cut script output.
+    cut_output = detachable.cut_output_dir(settings.state_dir)
+    file_tool_readable = [*extra_readable, settings.skills_dir, cut_output]
     file_tool_writable = [*extra_writable, settings.skills_dir]
     file_tool_deletable = [*settings.extra_deletable_dirs, settings.skills_dir]
 
@@ -599,7 +600,6 @@ def build_coordinator_agent(
         ]
         return variables
 
-    detachable = Detachable(thread_id, partial(adopt_running_command, settings.state_dir))
     network = NetworkGuard(settings.state_dir, thread_id)
 
     tools = (

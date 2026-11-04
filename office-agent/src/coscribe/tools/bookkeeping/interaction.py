@@ -22,7 +22,6 @@ a question belongs to the person talking to the parent, not to a
 delegated run.
 """
 
-
 from collections.abc import Callable, Sequence
 from typing import Annotated, Any, NotRequired
 
@@ -33,7 +32,7 @@ from typing_extensions import TypedDict
 
 from ...runtime import tool_metadata
 
-QUESTION_TOOL_NAMES: frozenset[str] = frozenset({"ask_user_question", "exit_plan_mode"})
+QUESTION_TOOL_NAMES: frozenset[str] = frozenset({"ask_user_question", "exit_plan_mode", "remember"})
 
 # exit_plan_mode's answers, as the frontend sends them.
 PLAN_CHOICE_AUTO = "auto"
@@ -187,6 +186,26 @@ def exit_plan_mode(plan: str) -> str:
     )
 
 
+def remember(line: str) -> str:
+    """Offer to add one line to the user's global instructions, which are
+    read into every conversation. Use it when the user states something
+    that should hold from now on -- "always...", "from now on...", "remember
+    that..." -- or corrects you on a preference that will come up again.
+    Not for facts about the current task. The user sees the line and saves
+    it or not; nothing is written unless they do, and the result says which.
+    Don't offer the same line again after they decline.
+
+    Args:
+        line: one short sentence, in the user's language, that makes sense
+            on its own in any later conversation, e.g. "Use the company
+            template in Templates/brand.pptx for every deck."
+    """
+    raise RuntimeError(
+        "remember must be resolved via HumanInTheLoopMiddleware's 'respond' decision -- "
+        "reaching this body means the graph never registered it in question_tool_names."
+    )
+
+
 def build_interaction_tools() -> list[Callable[..., Any]]:
     """Return the interaction tool callables. No state to bind -- unlike
     every other build_*_tools factory in this package, this one takes no
@@ -196,4 +215,5 @@ def build_interaction_tools() -> list[Callable[..., Any]]:
     return [
         tool_metadata(ask_user_question, risk_category="READ", category="interaction"),
         tool_metadata(exit_plan_mode, risk_category="READ", category="interaction"),
+        tool_metadata(remember, risk_category="READ", category="interaction"),
     ]
