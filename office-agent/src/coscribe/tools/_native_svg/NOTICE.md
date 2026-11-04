@@ -35,7 +35,11 @@ coscribe's own code that walks an SVG page and packages the slides lives in
    `a:latin`), not the stack's first family: for `"Microsoft YaHei, Arial"` PowerPoint draws
    digits in Arial, which upstream measured, where the first family left them guessed. It also
    reads `font_advances_windows.json`, which is ours (below), over upstream's table: 6 lines.
-5. Nothing else. Docstrings still show upstream's usage examples with top-level imports.
+5. `svg_to_pptx/drawingml/elements.py`'s `convert_image` keeps an SVG picture as itself: the
+   blip embeds a PNG resvg draws at four times the picture's size and names the SVG in an
+   `asvg:svgBlip` extension (`_build_image_blip_xml`, `_svg_fallback_png`), because the slide's
+   relationships are made by python-pptx, which opens every image part with Pillow.
+6. Nothing else. Docstrings still show upstream's usage examples with top-level imports.
 
 The upstream project checks its own attribution (SKILL.md metadata, LICENSE, SPONSORS) at its
 script entry points; none of those entry points is in this copy. The MIT licence below is kept

@@ -4877,16 +4877,33 @@ def _resolve_image_meet_fit(
     return (dx, dy, fit_w, fit_h)
 
 
-def _build_image_blip_xml(r_id: str, opacity: float | None) -> str:
+# MS-ODRAWXML's svgBlip: PowerPoint 2016 and later draw the SVG; older readers draw the PNG
+# the blip itself embeds, so a picture never comes out blank.
+_SVG_BLIP_EXT = (
+    '<a:extLst><a:ext uri="{{96DAC541-7B7A-43D3-8B79-37D633B846F1}}">'
+    '<asvg:svgBlip xmlns:asvg="http://schemas.microsoft.com/office/drawing/2016/SVG/main" '
+    'r:embed="{svg_r_id}"/></a:ext></a:extLst>'
+)
+_SVG_FALLBACK_SCALE = 4
+_SVG_FALLBACK_MAX_WIDTH = 4096
+
+
+def _build_image_blip_xml(r_id: str, opacity: float | None, svg_r_id: str | None = None) -> str:
     """Build an image blip with native DrawingML transparency when requested."""
-    if opacity is None:
+    inner = '' if opacity is None else f'<a:alphaModFix amt="{quantize_ooxml_alpha(opacity)}"/>'
+    if svg_r_id is not None:
+        inner += _SVG_BLIP_EXT.format(svg_r_id=svg_r_id)
+    if not inner:
         return f'<a:blip r:embed="{r_id}"/>'
-    alpha = quantize_ooxml_alpha(opacity)
-    return (
-        f'<a:blip r:embed="{r_id}">'
-        f'<a:alphaModFix amt="{alpha}"/>'
-        '</a:blip>'
-    )
+    return f'<a:blip r:embed="{r_id}">{inner}</a:blip>'
+
+
+def _svg_fallback_png(svg: bytes, rendered_w: float) -> bytes:
+    """The PNG a reader without SVG support draws, sharp at four times the picture's size."""
+    import resvg_py
+
+    width = max(1, min(_SVG_FALLBACK_MAX_WIDTH, round(rendered_w * _SVG_FALLBACK_SCALE)))
+    return bytes(resvg_py.svg_to_bytes(svg_string=svg.decode('utf-8'), width=width))
 
 
 def _register_image_media(
@@ -4992,6 +5009,12 @@ def convert_image(elem: ET.Element, ctx: ConvertContext) -> ShapeResult | None:
         visible_source_fraction=visible_source_fraction,
     )
 
+    # A package part python-pptx can make is a raster one, and the SVG itself rides in the blip's
+    # extension: the picture stays the very file it was given, drawn as vector where it can be.
+    svg_r_id = None
+    if img_format.lower() == 'svg':
+        svg_r_id = _register_image_media(ctx, 'svg', img_data)
+        img_data, img_format = _svg_fallback_png(img_data, rendered_w), 'png'
     r_id = _register_image_media(ctx, img_format, img_data)
 
     # Resolve clip-path → DrawingML geometry
@@ -5004,7 +5027,7 @@ def convert_image(elem: ET.Element, ctx: ConvertContext) -> ShapeResult | None:
     # Image optimization only downscales the full source image; it never crops
     # pixels out of the embedded media.
     src_rect_xml = _src_rect_xml(src_rect)
-    blip_xml = _build_image_blip_xml(r_id, get_element_opacity(elem, ctx))
+    blip_xml = _build_image_blip_xml(r_id, get_element_opacity(elem, ctx), svg_r_id)
 
     # Resolve preserveAspectRatio="<align> meet" by shrinking the picture
     # frame to match the image's aspect ratio. Skipped when a real clip-path
