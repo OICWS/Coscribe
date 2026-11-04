@@ -21,6 +21,7 @@ from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResu
 
 from coscribe.runtime import tool_metadata
 from coscribe.runtime_lg.selfwake import poll_due_wakes
+from coscribe.runtime_lg.subagent_kinds import subagent_role
 from coscribe.runtime_lg.subagents import SubAgentHost, build_delegation_tools, subagent_report
 from coscribe.tools.bookkeeping import subagent_tasks
 from coscribe.tools.bookkeeping.selfwake import WakeRequest, WakeStore
@@ -648,3 +649,32 @@ def test_a_run_the_user_stopped_is_reported_as_such() -> None:
         '[Sub-agent finished] "Research Bosch" (task t1, glm:glm-4.6v) was stopped by the '
         "user before it finished."
     )
+
+
+async def test_a_research_sub_agent_gets_its_role_and_only_read_tools(tmp_path: Path) -> None:
+    model = _RecordingChatModel(responses=[AIMessage(content="found it")])
+    model.seen = []
+    _, spawn_background = build_delegation_tools(_host(tmp_path, model), _tools())
+
+    started = await spawn_background(description="x", prompt="y", kind="research")
+    await _wait_for_status(SubAgentTaskStore(tmp_path), started["task_id"], "succeeded")
+
+    assert str(model.seen[0][0].content).startswith("You are a researcher")
+    assert [tool.__name__ for tool in subagent_role("research", "").tools(_tools())] == [
+        "_read_note"
+    ]
+
+
+def test_a_kinds_tools_stay_when_the_call_writes_its_own_role() -> None:
+    role = subagent_role("research", "Be terse.")
+
+    assert role.instructions == "Be terse."
+    assert [tool.__name__ for tool in role.tools(_tools())] == ["_read_note"]
+    assert len(subagent_role("", "").tools(_tools())) == 2
+
+
+def test_an_unknown_kind_is_refused(tmp_path: Path) -> None:
+    spawn, _ = build_delegation_tools(_host(tmp_path, None), _tools())
+
+    with pytest.raises(ValueError, match="research, check"):
+        asyncio.run(spawn(description="x", prompt="y", kind="writer"))

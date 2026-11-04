@@ -4,7 +4,7 @@
 Owns building the agent graph from the tool factories and their risk metadata (`agent.py`), the
 deferred tool list (`tool_deferral.py`), the chat model for a `provider:model` string and how hard
 it thinks (`providers.py`, `effort.py`), approvals' helpers (`audit.py`, `auto_review.py`,
-`exec_policy.py`), delegated sub-agents (`subagents.py`), the runner a workflow's agent step runs through
+`exec_policy.py`), delegated sub-agents and their ready-made roles (`subagents.py`, `subagent_kinds.py`), the runner a workflow's agent step runs through
 (`workflow_agent.py`), the code module's entry point
 (`code_agent.py`), hosted and local MCP connectors and their sign-in (`mcp.py`, `mcp_oauth.py`),
 the run side of scheduled tasks and self-wakes (`scheduled_tasks.py`, `selfwake.py`), turning a

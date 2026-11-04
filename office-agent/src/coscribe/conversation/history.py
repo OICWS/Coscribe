@@ -18,11 +18,13 @@ from ..runtime import COMPACT_INSTRUCTIONS
 from ..runtime_lg import answer_every_tool_call, is_steer, serialize_history_for_ws_lg
 from ..runtime_lg import extract_text as _extract_text
 from ..runtime_lg import render_transcript_lg as _render_transcript_lg
+from ..tools import TaskToolkit
 from .events import EventSink
 from .export_text import conversation_markdown
 from .turn_lock import TurnLock
 
 if TYPE_CHECKING:
+    from ..config import Settings
     from .approvals import ApprovalDecider
 
 # Shared between _handle_compact (which writes it as the first message of
@@ -72,6 +74,7 @@ class HistoryHost(Protocol):
     """What the history reads and calls on the session it belongs to."""
 
     thread_id: str
+    settings: Settings
     config: dict[str, Any]
     lg_agent: Any
     model: Any
@@ -282,6 +285,9 @@ class ConversationHistory:
         )
         summary = _extract_text(summary_message.content) or "(no summary)"
         note = f"{_COMPACT_NOTE_PREFIX}\n\n{summary}"
+        tasks = TaskToolkit(self._host.thread_id, self._host.settings.state_dir).open_tasks_note()
+        if tasks:
+            note = f"{note}\n\n{tasks}"
         await self._host.lg_agent.aupdate_state(
             self._host.config,
             {"messages": [RemoveMessage(id=REMOVE_ALL_MESSAGES), HumanMessage(content=note)]},

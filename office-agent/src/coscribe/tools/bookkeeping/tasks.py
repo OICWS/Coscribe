@@ -84,6 +84,18 @@ class TaskToolkit:
     def list_tasks(self) -> list[dict[str, Any]]:
         return list(self._tasks)
 
+    def open_tasks_note(self) -> str:
+        """The unfinished tasks, for the message after a compaction's summary: the summary is
+        written from the transcript, which can miss a task created before the part it saw."""
+        lines = [
+            f"- [{task['status']}] {task['id']}: {task['content']}"
+            for task in self._tasks
+            if task["status"] != "completed"
+        ]
+        if not lines:
+            return ""
+        return "Open tasks in your plan (task_update them as you go):\n" + "\n".join(lines)
+
 
 def build_task_tools(thread_id: str, state_dir: str | Path) -> list[Callable[..., Any]]:
     """Return the task-tracking tool callables, bound to one conversation thread."""

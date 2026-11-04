@@ -22,12 +22,12 @@ from langchain.agents.middleware import (
     SummarizationMiddleware,
     hook_config,
 )
-from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.errors import GraphBubbleUp
 
-from ..runtime import get_tool_metadata
+from ..runtime import COMPACT_INSTRUCTIONS, get_tool_metadata
 from .edit_guard import EditGuardMiddleware
 from .messages import pictures_as_user_message, starts_a_turn, steer_message
 from .tool_calls import answer_every_tool_call
@@ -319,6 +319,56 @@ class _SteerMiddleware(AgentMiddleware):
         return {"messages": [steer_message(note) for note in notes]} if notes else None
 
 
+_AUTO_COMPACT_PROMPT = COMPACT_INSTRUCTIONS + "\n<messages>\n{messages}\n</messages>"
+
+
+class _CompactMiddleware(SummarizationMiddleware):
+    """LangChain's summarization with what an office conversation needs kept.
+
+    The middleware's defaults summarize only the last 4,000 tokens of what it drops
+    (`trim_tokens_to_summarize`), so the user's first request and the files made early on were
+    lost at the first compaction; and it keeps the last 20 messages whatever their size, so a
+    few large tool results could leave the conversation over the trigger again at once. Here
+    the summary reads everything it replaces: that is about the trigger's size, which is under
+    the context window, since the check runs before every model call. The kept tail is
+    measured in tokens, and the open tasks follow the summary, read from their store rather
+    than from the summarized transcript."""
+
+    def __init__(
+        self,
+        model: Any,
+        trigger_tokens: int,
+        open_tasks: Callable[[], str] | None,
+    ) -> None:
+        super().__init__(
+            model=model,
+            trigger=("tokens", trigger_tokens),
+            keep=("tokens", max(1, trigger_tokens // 8)),
+            summary_prompt=_AUTO_COMPACT_PROMPT,
+            trim_tokens_to_summarize=None,
+        )
+        self.open_tasks = open_tasks
+
+    def _with_tasks(self, update: dict[str, Any] | None) -> dict[str, Any] | None:
+        if update is None or self.open_tasks is None:
+            return update
+        note = self.open_tasks()
+        if not note:
+            return update
+        messages = list(update["messages"])
+        # [RemoveMessage(all), summary, *kept]: the note goes right after the summary.
+        messages.insert(
+            2, HumanMessage(content=note, additional_kwargs={"lc_source": "summarization"})
+        )
+        return {**update, "messages": messages}
+
+    def before_model(self, state: Any, runtime: Any) -> dict[str, Any] | None:
+        return self._with_tasks(super().before_model(state, runtime))
+
+    async def abefore_model(self, state: Any, runtime: Any) -> dict[str, Any] | None:
+        return self._with_tasks(await super().abefore_model(state, runtime))
+
+
 def _writer_names(tools: Sequence[Callable[..., Any] | BaseTool]) -> set[str]:
     return {
         tool_name(t)
@@ -342,6 +392,7 @@ def build_langgraph_agent(
     take_steers: Callable[[], Awaitable[list[str]]] | None = None,
     redact: Callable[[str], str] | None = None,
     resolve_file: Callable[[str], Path] | None = None,
+    open_tasks: Callable[[], str] | None = None,
 ) -> Any:
     """Build a LangGraph agent reusing coscribe's own ToolMetadata.
 
@@ -434,7 +485,7 @@ def build_langgraph_agent(
     computes `auto_compact_tokens` from this project's own already-working
     `LLMClient.get_context_window(model_string)` instead of depending on
     LangChain's incomplete model-profile registry -- see `conversation/session.py`'s
-    `_build_lg_agent`.
+    `_build_lg_agent`. `open_tasks` is the note `_CompactMiddleware` puts after a summary.
     """
     approval_tool_names = {
         tool_name(t)
@@ -487,9 +538,7 @@ def build_langgraph_agent(
     if max_turns is not None:
         middleware.append(_TurnModelCallLimitMiddleware(max_turns))
     if auto_compact_tokens is not None:
-        middleware.append(
-            SummarizationMiddleware(model=model, trigger=("tokens", auto_compact_tokens))
-        )
+        middleware.append(_CompactMiddleware(model, auto_compact_tokens, open_tasks))
 
     middleware.append(_AnswerEveryToolCallMiddleware())
 
