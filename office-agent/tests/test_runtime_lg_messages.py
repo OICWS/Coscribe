@@ -140,6 +140,22 @@ def test_a_slides_or_design_note_carries_the_chosen_design_system_in_one_strippe
     assert artifact_note("docs", system) == artifact_note("docs")
     assert artifact_note("slides", None) == artifact_note("slides")
     assert artifact_note("design", None) == artifact_note("design")
+    pictured = {
+        **system,
+        "assets": [
+            {
+                "path": "brand/Acme/logo.svg",
+                "kind": "logo",
+                "width": 240,
+                "height": 64,
+                "note": "on light",
+            },
+            {"path": "brand/Acme/icon.png", "kind": "icon", "note": ""},
+        ],
+    }
+    listed = artifact_note("slides", pictured)
+    assert "brand/Acme/logo.svg (logo, 240x64, on light); brand/Acme/icon.png (icon)" in listed
+    assert strip_mode_note(listed + "a deck") == "a deck"
 
 
 def test_the_note_naming_attached_files_becomes_the_entrys_files_not_its_text() -> None:

@@ -103,7 +103,6 @@
   "coscribe/tools/office/xlsx/engine_objects.py::attribute print_title_rows": 1,
   "coscribe/tools/office/xlsx/engine_objects.py::attribute solidFill": 2,
   "coscribe/tools/office/xlsx/engine_objects.py::attribute tabColor": 2,
-  "coscribe/tools/web/_licensed_image_search.py::variable asset_id": 1,
   "coscribe/tools/web/_licensed_image_search.py::variable preview_url": 1,
   "coscribe/web/app.py::attribute should_exit": 1,
   "coscribe/web/routes/connectors/catalog.py::function get_mcp_catalog": 1,
@@ -226,7 +225,7 @@
  },
  "fan_out": {},
  "file_lines": {
-  "src/coscribe/conversation/session.py": 1308,
+  "src/coscribe/conversation/session.py": 1306,
   "src/coscribe/coordinator.py": 844,
   "src/coscribe/runtime_lg/subagents.py": 842,
   "src/coscribe/tools/bookkeeping/scheduled_tasks.py": 964,
