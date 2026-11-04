@@ -406,9 +406,12 @@ def _svg_part(slide: Any, data: bytes) -> Part:
     """python-pptx reads every image part with Pillow, which cannot open an SVG, so the part a
     picture's svgBlip names is made directly; the same file on many slides is one part."""
     package = slide.part.package
-    for part in package.iter_parts():
-        if part.content_type == "image/svg+xml" and part.blob == data:
-            return part
+    same: Part | None = next(
+        (p for p in package.iter_parts() if p.content_type == "image/svg+xml" and p.blob == data),
+        None,
+    )
+    if same is not None:
+        return same
     return Part(package.next_partname("/ppt/media/image%d.svg"), "image/svg+xml", package, data)
 
 
