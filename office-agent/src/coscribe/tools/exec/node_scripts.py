@@ -35,7 +35,7 @@ from .capabilities import require_capability
 from .env_allowlist import child_env
 from .isolation import denied_note, for_scripts, scratch_root
 from .node_env import ensure_node_env
-from .running import Detachable, run_to_end
+from .running import Detachable, run_to_end, timed_out_result
 from .script_guard import (
     blocked_write,
     node_guard_args,
@@ -92,6 +92,7 @@ def _run_node_script(
         env |= {"TEMP": str(scratch_dir), "TMP": str(scratch_dir)}
     guard = node_guard_args(node, writable_roots(workspace_root, [*extra_writable, scratch_dir]))
     before = snapshot_workspace(workspace_root)
+    keep = detachable.cut_output_dir(state_dir) if detachable else None
     # A command let go on in the background owns the scratch directory from then on.
     handed_over = False
     try:
@@ -116,18 +117,12 @@ def _run_node_script(
             handed_over = True
             return ran.detached
         if ran.timed_out:
-            timeout_note = f"\n[timed out after {timeout}s]"
-            timed_out: dict[str, object] = {
-                "exit_code": None,
-                "stdout": truncate_script_output(ran.stdout),
-                "stderr": truncate_script_output(ran.stderr) + timeout_note,
-                "timed_out": True,
-            }
-            return with_files_written(timed_out, before, workspace_root)
+            result = timed_out_result(ran, timeout, keep)
+            return with_files_written(result, before, workspace_root)
         blocked, stderr = blocked_write(without_guard_warnings(ran.stderr))
         finished: dict[str, object] = {
             "exit_code": ran.returncode,
-            "stdout": truncate_script_output(ran.stdout),
+            "stdout": truncate_script_output(ran.stdout, keep),
             "stderr": truncate_script_output(
                 stderr
                 + (refusal_note(blocked) if blocked else "")
