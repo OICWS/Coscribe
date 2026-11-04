@@ -250,7 +250,8 @@ Workflows never use it: a workflow's agent step (0028) never gets the code modul
   `src/coscribe/builtin_skills/`; users add their own in `skills_dir`.
 - **Hooks**: scripts on lifecycle events (above).
 - **Global instructions**: one `MEMORY.md` the user edits in Settings, read into
-  every conversation. The model cannot write to it.
+  every conversation. The model cannot write to it: it can offer a line (`remember`), and only
+  the person's Save on that card writes it.
 
 ## Scope
 

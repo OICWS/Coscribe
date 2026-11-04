@@ -159,11 +159,17 @@ def test_skill_names_empty_set_splices_no_skills_at_all(tmp_path: Path) -> None:
     assert "Available skills" not in (agent.instructions or "")
 
 
-def test_the_model_has_no_tool_to_write_the_global_instructions(tmp_path: Path) -> None:
+def test_the_model_reaches_the_global_instructions_only_through_a_question(tmp_path: Path) -> None:
+    """remember is answered by the person's Save, never run by the model, so
+    text injected into a tool result cannot write itself into every later
+    conversation."""
+    from coscribe.tools import QUESTION_TOOL_NAMES
+
     agent = build_coordinator_agent(_settings(tmp_path), "thread-1")
 
     tool_names = [tool.__name__ for tool in agent.tools]  # type: ignore[attr-defined]
-    assert "remember" not in tool_names
+    assert "remember" in tool_names
+    assert "remember" in QUESTION_TOOL_NAMES
     assert agent.instructions is not None
     assert "remember(" not in agent.instructions
     assert "global instructions" not in agent.instructions
