@@ -111,6 +111,7 @@ def test_plan_mode_toggle_updates_state(tmp_path: Path, monkeypatch: pytest.Monk
                     "Design",
                     "Docs",
                     "Excel Spreadsheets",
+                    "PPTX Editing",
                     "PPTX Pages",
                     "PPTX Slides",
                     "Skill Creator",
