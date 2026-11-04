@@ -28,6 +28,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.errors import GraphBubbleUp
 
 from ..runtime import COMPACT_INSTRUCTIONS, get_tool_metadata
+from .context_editing import clear_old_tool_results_middleware
 from .edit_guard import EditGuardMiddleware
 from .messages import pictures_as_user_message, starts_a_turn, steer_message
 from .tool_calls import answer_every_tool_call
@@ -485,7 +486,7 @@ def build_langgraph_agent(
     computes `auto_compact_tokens` from this project's own already-working
     `LLMClient.get_context_window(model_string)` instead of depending on
     LangChain's incomplete model-profile registry -- see `conversation/session.py`'s
-    `_build_lg_agent`. `open_tasks` is the note `_CompactMiddleware` puts after a summary.
+    `_build_lg_agent`. `open_tasks`: see `_CompactMiddleware`; `context_editing.py` runs from half.
     """
     approval_tool_names = {
         tool_name(t)
@@ -539,6 +540,7 @@ def build_langgraph_agent(
         middleware.append(_TurnModelCallLimitMiddleware(max_turns))
     if auto_compact_tokens is not None:
         middleware.append(_CompactMiddleware(model, auto_compact_tokens, open_tasks))
+        middleware.append(clear_old_tool_results_middleware(auto_compact_tokens // 2))
 
     middleware.append(_AnswerEveryToolCallMiddleware())
 

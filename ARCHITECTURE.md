@@ -37,7 +37,8 @@ tools, and repeat work on a schedule. It needs only a model API key.
   `src/coscribe/web/static/`.
 - **Runtime.** `coscribe.runtime_lg`, on LangChain/LangGraph: one
   coordinator agent per conversation with ~100 built-in tools, plus
-  middleware for approvals, tool deferral, auto-compaction, a per-turn
+  middleware for approvals, tool deferral, auto-compaction (with older
+  tool results cleared from each request from half that size), a per-turn
   model-call cap, and notes the user adds mid-turn. It replaced a
   hand-written runtime whose own provider adapters kept producing bugs.
 - **Models.** Anthropic, OpenAI and Gemini directly, and any
