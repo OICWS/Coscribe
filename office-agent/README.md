@@ -574,7 +574,8 @@ where to read more.
   `edit_docx_structure` and the review tools (tracked changes, comments; the Word skill), Excel
   through `write_xlsx_cells` and `modify_xlsx` with formulas computed by IronCalc (decision 0011;
   the Excel skill), PowerPoint through `write_pptx` and the template and shape tools for the
-  person's own template (the PPTX Slides skill). They are shown, not owned: the Word panel is frozen
+  person's own template (the PPTX Slides skill; the PPTX Editing skill for changing slides,
+  shapes, pictures, tables and theme colors in place). They are shown, not owned: the Word panel is frozen
   and an Excel file is not an artifact (decisions 0025, 0027).
 - **Previews and conversion** use the Microsoft Office or WPS on the machine through COM; a PDF
   and a deck built from SVG pages need no office program, and LibreOffice is an optional engine,

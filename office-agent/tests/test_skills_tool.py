@@ -152,6 +152,7 @@ def test_load_builtin_skills_finds_the_four_shipped_skills() -> None:
         "Dashboard",
         "PPTX Slides",
         "PPTX Pages",
+        "PPTX Editing",
         "Excel Spreadsheets",
         "Word Documents",
         "Docs",

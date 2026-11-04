@@ -246,7 +246,7 @@ Workflows never use it: a workflow's agent step (0028) never gets the code modul
   guided one-time setup with an app the user registers
   ([decision 0004](docs/decisions/0004-connectors-sign-in-once-in-the-browser.md)).
 - **Skills**: `SKILL.md` folders loaded on demand. The built-in ones (Slides,
-  Excel, Word, Docs, Design, Dashboard, markdown, Skill Creator) live in
+  PowerPoint editing, Excel, Word, Docs, Design, Dashboard, markdown, Skill Creator) live in
   `src/coscribe/builtin_skills/`; users add their own in `skills_dir`.
 - **Hooks**: scripts on lifecycle events (above).
 - **Global instructions**: one `MEMORY.md` the user edits in Settings, read into
