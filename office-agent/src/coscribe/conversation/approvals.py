@@ -56,7 +56,7 @@ _MEMORY_SAVE = "Save"
 
 
 def _memory_question(line: str) -> dict[str, Any]:
-    question = f"Save this to your global instructions, read in every conversation?\n\n{line}"
+    question = f'Save "{line}" to your global instructions? They are read in every conversation.'
     options = [{"label": _MEMORY_SAVE}, {"label": "Don't save"}]
     return {"questions": [{"question": question, "header": "Remember", "options": options}]}
 
