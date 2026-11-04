@@ -143,7 +143,9 @@ task's run follows the task's own approval setting instead.
   single note, freeing up context for the rest of a long-running session.
   Does nothing if there's not much yet to compact. This also happens
   automatically once a turn's usage crosses `COSCRIBE_AUTO_COMPACT_THRESHOLD`
-  of the model's context window (default 0.8) -- see
+  of the model's context window (default 0.8); from half that size, older
+  tool results (not the plan, skills or answers) are left out of what the
+  model is sent, and the model calls the tool again if it needs one -- see
   [Scheduled / unattended runs](#scheduled--unattended-runs) below for why.
 - `/clear` -- wipe the current thread's conversation history outright and
   start fresh (unlike `/compact`, which summarizes rather than discards).

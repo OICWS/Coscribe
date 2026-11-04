@@ -259,6 +259,32 @@ def test_auto_compact_puts_the_open_tasks_after_the_summary() -> None:
     assert note.additional_kwargs.get("lc_source") == "summarization"
 
 
+def test_old_tool_results_are_cleared_from_the_request_before_compaction() -> None:
+    from coscribe.runtime_lg.context_editing import PLACEHOLDER
+
+    _SEEN.clear()
+    model = _PromptRecordingModel(responses=[AIMessage(content="done")])
+    agent = build_langgraph_agent(
+        model, [], "be helpful", checkpointer=InMemorySaver(), auto_compact_tokens=40_000
+    )
+    history: list[BaseMessage] = [HumanMessage("Summarize the reports")]
+    for i in range(20):
+        call = {"name": "read_file", "args": {"path": f"r{i}.docx"}, "id": f"c{i}"}
+        history.append(AIMessage(content="", tool_calls=[call]))
+        history.append(
+            ToolMessage(f"report {i} " + "x " * 3000, name="read_file", tool_call_id=f"c{i}")
+        )
+    config = {"configurable": {"thread_id": "t1"}}
+
+    agent.invoke({"messages": [*history, HumanMessage("Go on")]}, config=config)
+
+    assert PLACEHOLDER in _SEEN[-1]
+    assert "report 0 " not in _SEEN[-1]
+    assert "report 19 " in _SEEN[-1]
+    kept = agent.get_state(config).values["messages"]
+    assert not any(m.content == PLACEHOLDER for m in kept)
+
+
 def test_auto_compact_tokens_none_means_no_summarization_middleware() -> None:
     """The default (no auto_compact_tokens passed) must not summarize
     anything, even past the 20-message floor -- guards against a regression
