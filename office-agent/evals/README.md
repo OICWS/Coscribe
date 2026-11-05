@@ -261,3 +261,36 @@ python -m evals.workflow.data_run --app http://127.0.0.1:PORT --workspace APP_WO
 Verdicts as above, judged from the file instead of a site: `PASS`, `REPAIRED`, `SAFE_STOP`,
 `GUESSED` (a report written although a required value was blank), `FALSE_SUCCESS` (completed
 with a wrong report), `FAILED`, and `NO_DRAFT` (the conversation didn't produce a workflow).
+
+## Does a conversation finish on its own? (`agentic/`, #819)
+
+The office tasks above send one message and look at the file. These send a short conversation and
+look at how far it got without a person steering it: the measurement for the agentic steps of #819.
+
+```bash
+python -m evals.agentic.run --tasks all --out evals/runs/agentic-main
+python -m evals.agentic.run --tasks 01,06 --out evals/runs/agentic-try
+```
+
+The tasks live in `agentic/tasks.py`. Each has its turns, a setup that writes its inputs from a
+fixed seed, and checks on what the conversation left behind. A check can look at the last turn's
+replies, the global instructions or a file in the workspace. Some tasks set a low compaction
+threshold so their long reads go through compaction and clearing.
+
+The session is built as above, but in the tier of a person at the keyboard. The scripted user
+approves gated calls, saves what `remember` offers, and answers every other question with "decide
+it yourself". After the scripted turns, a failed check gets one generic nudge ("Is everything I
+asked for done?") and the checks run again.
+
+`result.json` per task records:
+
+- whether the task was done, and whether it was done after the nudge
+- open tasks left in the plan
+- calls repeated with the same arguments in the same turn
+- replies carrying a compaction summary's headings
+- questions, approvals and `remember` saves
+- tool calls and errors
+- cost and time
+- every turn's calls and replies
+
+`summary.md` / `summary.json` hold the totals for the run.
