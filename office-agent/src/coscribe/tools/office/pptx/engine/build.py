@@ -22,7 +22,7 @@ from pptx import Presentation
 
 from .checker import check_deck, source_text
 from .compiler import PageReport, compile_pages
-from .design_check import library_system, off_system
+from .design_check import PICTURE, library_system, off_system, unplaced_logo
 from .history import record_state
 from .sections import check_sections, compile_sections
 from .svg_to_section import convert_page
@@ -83,9 +83,25 @@ def page_files(pages_dir: Path, suffix: str | tuple[str, ...] = ".svg") -> list[
         ]
 
     suffixes = (suffix,) if isinstance(suffix, str) else suffix
-    return sorted(
-        (p for p in pages_dir.iterdir() if p.is_file() and p.suffix.lower() in suffixes), key=key
-    )
+    found = [p for p in pages_dir.iterdir() if p.is_file() and p.suffix.lower() in suffixes]
+    pictures = _placed_pictures(found)
+    return sorted((p for p in found if p.name.lower() not in pictures), key=key)
+
+
+def _placed_pictures(files: Sequence[Path]) -> set[str]:
+    """The names of files beside the pages that a page places as a picture (a logo copied in
+    as `logo.svg`): a picture, not a slide, though it has a page's suffix."""
+    named: set[str] = set()
+    for file in files:
+        try:
+            text = file.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for ref in PICTURE.findall(text):
+            ref = ref.removeprefix("./")
+            if "/" not in ref and "\\" not in ref:
+                named.add(ref.lower())
+    return named
 
 
 def _sources(pages_dir: Path, template: Path | None) -> tuple[list[Path], bool]:
@@ -155,6 +171,8 @@ def build_deck(
         strays = off_system(system, texts)
         for page in report.pages:
             page.warnings.extend(strays.get(page.name, []))
+        if (logo := unplaced_logo(system, pages_dir, texts)) is not None:
+            report.warnings.append(logo)
 
     before = {entry["page"]: entry["source"] for entry in previous.get("pages", [])}
     hashes = [_source_hash(text) for _name, text in texts]

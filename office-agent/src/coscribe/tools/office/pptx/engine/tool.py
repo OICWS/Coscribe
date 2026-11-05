@@ -15,6 +15,7 @@ from .....runtime import tool_metadata
 from ...._file_locks import file_lock
 from ...._workspace import WorkspaceScope
 from .build import DeckChangedError, build_deck, page_files
+from .design_system import seed_design_system
 from .template import describe
 
 # A reviewer round sends every slide image to a vision model: on a deck the build has checked, it
@@ -30,6 +31,7 @@ def build_engine_tools(
     *,
     extra_readable: Sequence[str | Path] = (),
     extra_writable: Sequence[str | Path] = (),
+    design_system: Callable[[], dict[str, Any] | None] | None = None,
 ) -> list[Callable[..., Any]]:
     scope = WorkspaceScope(root, extra_readable=extra_readable, extra_writable=extra_writable)
 
@@ -101,10 +103,9 @@ def build_engine_tools(
         if not path.lower().endswith(".pptx"):
             raise ValueError(f"path must end in .pptx: {path}")
         out = scope.resolve(path, write=True)
-        source_paths = [scope.resolve(s) for s in sources or []]
-        for source, given in zip(source_paths, sources or [], strict=True):
-            if not source.is_file():
-                raise ValueError(f"Source file does not exist: {given}")
+        source_paths = _existing_sources(scope, sources or [])
+        if design_system is not None:
+            seed_design_system(folder, design_system())
         with file_lock(out):
             try:
                 report = build_deck(
@@ -125,6 +126,14 @@ def build_engine_tools(
         return {**result, "next": _AFTER_A_CLEAN_BUILD} if clean else result
 
     return [tool_metadata(build_pptx_from_pages, risk_category="WRITE_LOCAL", category="documents")]
+
+
+def _existing_sources(scope: WorkspaceScope, sources: list[str]) -> list[Path]:
+    paths = [scope.resolve(s) for s in sources]
+    for path, given in zip(paths, sources, strict=True):
+        if not path.is_file():
+            raise ValueError(f"Source file does not exist: {given}")
+    return paths
 
 
 def _allowed_root(scope: WorkspaceScope, folder: Path) -> Path:

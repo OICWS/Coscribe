@@ -47,10 +47,26 @@ def design_system(deck: Path, seed: dict[str, Any] | None = None) -> dict[str, A
             return found
         made = seed if seed is not None and _load_dict(seed) else _default(folder, deck.stem)
         if not path.exists():
-            tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-            tmp.write_text(json.dumps(made, ensure_ascii=False, indent=2), encoding="utf-8")
-            replace_with_retry(tmp, path)
+            _write(path, made)
         return made
+
+
+def seed_design_system(folder: Path, seed: dict[str, Any] | None) -> None:
+    """Keeps `seed` (the library system the conversation started with, if any) as the pages
+    folder's design system when it has none yet, so the build checks the deck against it from the
+    first build on, not only once the Slides panel has read it. A system already there is kept."""
+    if seed is None or _load_dict(seed) is None:
+        return
+    path = folder / DESIGN_SYSTEM
+    with file_lock(path):
+        if not path.exists():
+            _write(path, seed)
+
+
+def _write(path: Path, system: dict[str, Any]) -> None:
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(system, ensure_ascii=False, indent=2), encoding="utf-8")
+    replace_with_retry(tmp, path)
 
 
 def _load(path: Path) -> dict[str, Any] | None:

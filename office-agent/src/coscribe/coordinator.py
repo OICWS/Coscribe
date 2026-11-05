@@ -625,8 +625,7 @@ def build_coordinator_agent(
             extra_writable=extra_writable,
         )
         + build_presentation_tools(
-            root,
-            state_dir=settings.state_dir,
+            root, thread_id=thread_id, state_dir=settings.state_dir,
             custom_templates_dir=settings.custom_templates_dir,
             extra_readable=extra_readable,
             extra_writable=extra_writable,

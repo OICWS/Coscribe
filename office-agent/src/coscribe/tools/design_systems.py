@@ -450,26 +450,32 @@ class DesignSystemStore:
         system = self.get(system_id)
         if system is None:
             return []
-        folder_name = _file_stem(str(system.get("name", ""))) or "design-system"
-        target = workspace / "brand" / folder_name
         copied: list[dict[str, Any]] = []
-        taken: set[str] = set()
-        for asset in system.get("assets", []):
+        for asset, path in _brand_paths(system):
             kept = self.asset_file(system_id, str(asset.get("id", "")))
             if kept is None:
                 continue
-            source, _ = kept
-            stem = _file_stem(str(asset.get("name", ""))) or "picture"
-            name = f"{stem}{source.suffix}"
-            n = 2
-            while name.lower() in taken:
-                name = f"{stem}-{n}{source.suffix}"
-                n += 1
-            taken.add(name.lower())
-            target.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(source, target / name)
-            copied.append({**asset, "path": f"brand/{folder_name}/{name}"})
+            target = workspace / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(kept[0], target)
+            copied.append({**asset, "path": path})
         return copied
+
+    def deck_system_for_thread(self, thread_id: str) -> dict[str, Any] | None:
+        """The system the conversation started with, in a deck's shape, each picture with the
+        workspace path `copy_assets` gave its copy and the sha256 of its file: what a deck built
+        in that conversation is checked against. None when it started with none."""
+        chosen = self.chosen_for_thread(thread_id)
+        if chosen is None:
+            return None
+        assets = []
+        for asset, path in _brand_paths(chosen):
+            entry = {**asset, "path": path}
+            kept = self.asset_file(str(chosen.get("id", "")), str(asset.get("id", "")))
+            if kept is not None:
+                entry["sha256"] = hashlib.sha256(kept[0].read_bytes()).hexdigest()
+            assets.append(entry)
+        return {**as_deck_design_system(chosen), "assets": assets}
 
     def delete(self, system_id: str) -> bool:
         path = self._path(system_id)
@@ -478,6 +484,25 @@ class DesignSystemStore:
         with file_lock(path):
             shutil.rmtree(path.parent, ignore_errors=True)
         return True
+
+
+def _brand_paths(system: dict[str, Any]) -> list[tuple[dict[str, Any], str]]:
+    """Each picture of `system` with its workspace path, `brand/<system>/<name>.<ext>`, a name
+    taken twice numbered."""
+    folder = _file_stem(str(system.get("name", ""))) or "design-system"
+    named: list[tuple[dict[str, Any], str]] = []
+    taken: set[str] = set()
+    for asset in system.get("assets", []):
+        if not isinstance(asset, dict):
+            continue
+        suffix = Path(str(asset.get("file", ""))).suffix
+        stem = _file_stem(str(asset.get("name", ""))) or "picture"
+        name, n = f"{stem}{suffix}", 2
+        while name.lower() in taken:
+            name, n = f"{stem}-{n}{suffix}", n + 1
+        taken.add(name.lower())
+        named.append((asset, f"brand/{folder}/{name}"))
+    return named
 
 
 def as_deck_design_system(system: dict[str, Any]) -> dict[str, Any]:
