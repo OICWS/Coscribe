@@ -193,10 +193,11 @@ def remember(line: str) -> str:
     that..." -- or corrects you on a preference that will come up again.
     Not for facts about the current task. The user sees the line and saves
     it or not; nothing is written unless they do, and the result says which.
-    Don't offer the same line again after they decline.
+    Offer a preference once: after they save or decline it, don't offer it
+    again, reworded or in another language.
 
     Args:
-        line: one short sentence, in the user's language, that makes sense
+        line: one short sentence, in the language the user wrote in, that makes sense
             on its own in any later conversation, e.g. "Use the company
             template in Templates/brand.pptx for every deck."
     """

@@ -355,3 +355,41 @@ def test_a_start_with_a_design_system_copies_its_pictures_and_names_them(
     sent = str(fake_model.received[0][-1].content)
     assert "brand/Acme/acme-logo.svg (logo, 240x64, on light)" in sent
     assert (tmp_path / "workspace" / "brand" / "Acme" / "acme-logo.svg").read_bytes() == svg
+
+
+class _SummarizingModel(FakeToolCallingChatModel):
+    """Answers the automatic compaction's own call with a summary, and every other call from
+    `responses` in order. A streamed run streams that call too."""
+
+    def _stream(
+        self, messages: list[BaseMessage], stop: Any = None, run_manager: Any = None, **kwargs: Any
+    ) -> Any:
+        if any("## Requests" in str(m.content) for m in messages):
+            yield ChatGenerationChunk(message=AIMessageChunk(content="SUMMARY-OF-WORK"))
+            return
+        yield from super()._stream(messages, stop, run_manager, **kwargs)
+
+
+def test_a_compaction_mid_turn_is_not_shown_as_a_reply_or_as_calls_starting_again_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir(parents=True, exist_ok=True)
+    (workspace / "big.txt").write_text("word " * 1500, encoding="utf-8")
+    calls = [_tool_call(f"call_{i}", "read_file", {"path": "big.txt"}) for i in range(5)]
+    fake_model = _SummarizingModel(
+        responses=[AIMessage(content="", tool_calls=[call]) for call in calls]
+        + [AIMessage(content="done")]
+    )
+    # 3% of the default 128k window: a few reads of big.txt pass it.
+    with _client_lg(tmp_path, monkeypatch, fake_model, auto_compact_threshold=0.03) as client:
+        with client.websocket_connect("/ws/t_compact_mid_turn") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "read big.txt five times"})
+            messages = _receive_until(ws, "tasks_changed")
+
+    shown = "".join(m.get("text", "") for m in messages if m["type"] == "agent_delta")
+    assert "SUMMARY-OF-WORK" not in shown
+    started = [m["arguments"] for m in messages if m["type"] == "tool_started"]
+    assert len(started) == len(calls)

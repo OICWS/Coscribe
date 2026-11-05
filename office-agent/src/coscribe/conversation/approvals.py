@@ -68,7 +68,8 @@ def _saved_to_memory(path: Path, line: str, answer: dict[str, Any]) -> dict[str,
     current = path.read_text(encoding="utf-8").rstrip() if path.is_file() else ""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(f"{current}\n- {line}\n".lstrip("\n"), encoding="utf-8")
-    return {"type": "respond", "message": "Saved to the user's global instructions."}
+    saved = "Saved to the user's global instructions. Don't offer it again."
+    return {"type": "respond", "message": saved}
 
 
 def can_resolve_approvals(websocket: Any) -> bool:

@@ -18,6 +18,15 @@ from .history import close_orphaned_tool_calls
 from .turn_text import usage_event
 
 
+async def _without_summaries(stream: Any) -> Any:
+    """The run's events without the automatic compaction's own model call: its summary goes
+    into the history, not to the person as a reply."""
+    async for mode, chunk in stream:
+        if mode == "messages" and chunk[1].get("lc_source") == "summarization":
+            continue
+        yield mode, chunk
+
+
 class TurnStreamHost(Protocol):
     """What the stream reads and writes on the session it belongs to."""
 
@@ -104,7 +113,7 @@ class TurnStreamer:
         # its tool calls run, which "messages" has no event for.
         stream = agent.astream(turn_input, config=config, stream_mode=["messages", "updates"])
         try:
-            async for mode, chunk in stream:
+            async for mode, chunk in _without_summaries(stream):
                 if mode == "updates":
                     await self.announce_started_tools(chunk, websocket)
                     continue
@@ -164,8 +173,10 @@ class TurnStreamer:
         approval shows as its approval card."""
         if not isinstance(update, dict):
             return
-        for node_update in update.values():
-            if not isinstance(node_update, dict):
+        # Only the model node adds new calls: the compaction's update re-adds the kept tail,
+        # whose calls ran before it.
+        for node, node_update in update.items():
+            if node != "model" or not isinstance(node_update, dict):
                 continue
             for message in node_update.get("messages", []) or []:
                 if not isinstance(message, AIMessage):
