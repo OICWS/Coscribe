@@ -24,7 +24,7 @@ Why: the agentic steps of #819 (a plan check, a side-call model, a delivery chec
 - 0 open tasks at the end and 0 summary leaks.
 - 4 repeated calls (3 of them in the five-file task).
 - 1 question (the remember offer), 0 approvals.
-- 120 tool calls.
+- 162 tool calls.
 - $0.20 and 14 minutes of task time.
 
 ## Not verified
