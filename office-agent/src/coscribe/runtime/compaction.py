@@ -6,7 +6,9 @@ from __future__ import annotations
 COMPACT_INSTRUCTIONS = """\
 Summarize the conversation transcript below so the work can go on from the summary alone: \
 it replaces the transcript. Write a brief for someone picking up the work fresh, not a \
-transcript, and keep these sections, writing "None" under one with nothing in it:
+transcript, and keep these sections, writing "None" under one with nothing in it. When the \
+transcript opens with an earlier summary, that summary is the record of everything before \
+it: carry each of its sections forward, updated, so no request or fact it holds is lost.
 
 ## Requests
 Every request the user made, in their own words where the wording matters (names, figures, \
