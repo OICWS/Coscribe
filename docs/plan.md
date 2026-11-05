@@ -303,7 +303,7 @@ Last reviewed: 2026-10-15.
    parallel steps.
 9. **A more agentic coscribe, measured** (#819). One PR per step, each scored by the multi-turn
    evaluation `office-agent/evals/agentic/` against the baseline on `main`: the evaluation and
-   its baseline (step 1, #820); an end-of-turn plan check and a note on a repeated read (step 2,
+   its baseline (step 1, #820, done); an end-of-turn plan check and a note on a repeated read (step 2,
    in review); a small model for side calls and a default model picked from the keys present; a
    delivery check on the Office files a turn wrote; a folder brief on first attach and an offer
    to save a job as a workflow or skill; an in-chat connector card (decision record and
