@@ -1,15 +1,18 @@
-"""Two checks that keep a turn going until its work is done, without a person pushing it.
+"""Checks that keep a turn going until its work is done, without a person pushing it.
 
-A model often ends a turn with tasks of its own plan still open, and the user has to say "you
-didn't finish"; the plan check reads the plan when the model stops and sends it back once per
-turn. A model that lost track also makes the same read again, and the repeat note on that call's
-result says so, rather than blocking a call that may be right (the file may have changed, or an
-earlier result may have been cleared from the context)."""
+A model often ends a turn with tasks of its own plan still open, or with a Word, Excel or
+PowerPoint file it wrote that doesn't open, and the user has to say "you didn't finish" or "the
+file is broken"; the turn-end check reads the plan and opens those files (delivery_check.py) when
+the model stops, and sends what it finds back once per turn. A model that lost track also makes
+the same read again, and the repeat note on that call's result says so, rather than blocking a
+call that may be right (the file may have changed, or an earlier result may have been cleared
+from the context)."""
 
 from __future__ import annotations
 
 import json
 from collections.abc import Callable, Sequence
+from pathlib import Path
 from typing import Any, cast
 
 from langchain.agents.middleware import AgentMiddleware, after_model
@@ -17,6 +20,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import BaseTool
 
 from ..runtime import get_tool_metadata
+from .delivery_check import broken_office_files
 from .messages import is_plan_check, plan_check_message, starts_a_turn
 from .tool_deferral import unwrap_use_tool_call
 
@@ -24,6 +28,10 @@ PLAN_CHECK = (
     "{tasks}\n\nBefore you end your turn: continue any of these you can do now. If one is "
     "done or no longer needed, update it. If you need something from the user, ask for it in "
     "your reply. Don't repeat what you already told the user."
+)
+DELIVERY_CHECK = (
+    "These Office files you wrote this turn don't open, so the user can't use them:\n{files}\n\n"
+    "Before you end your turn, fix or rebuild them, or tell the user what went wrong."
 )
 _PLAN_TOOLS = frozenset({"task_create", "task_update"})
 REPEAT_NOTE = (
@@ -49,26 +57,37 @@ def _worked_on_plan(turn: Sequence[Any]) -> bool:
     )
 
 
-def _plan_check(open_tasks: Callable[[], str]) -> AgentMiddleware:
-    """When the model ends a turn that worked on its plan with tasks still open, send them back
-    to it once in that turn."""
+def _turn_end(
+    open_tasks: Callable[[], str] | None,
+    writers: set[str],
+    resolve_file: Callable[[str], Path] | None,
+) -> AgentMiddleware:
+    """When the model ends a turn that worked on its plan with tasks still open, or that wrote
+    an Office file which doesn't open, send that back to it once in that turn."""
 
     @after_model(can_jump_to=["model"])
-    def plan_check(state: Any, runtime: Any) -> dict[str, Any] | None:
+    def turn_end_check(state: Any, runtime: Any) -> dict[str, Any] | None:
         messages = state["messages"]
         last = messages[-1] if messages else None
         if not isinstance(last, AIMessage) or last.tool_calls:
             return None
         turn = _this_turn(messages)
-        if any(is_plan_check(m) for m in turn) or not _worked_on_plan(turn):
+        if any(is_plan_check(m) for m in turn):
             return None
-        tasks = open_tasks()
-        if not tasks:
+        notes = []
+        if open_tasks is not None and _worked_on_plan(turn):
+            tasks = open_tasks()
+            if tasks:
+                notes.append(PLAN_CHECK.format(tasks=tasks))
+        if resolve_file is not None:
+            broken = broken_office_files(turn, writers, resolve_file)
+            if broken:
+                notes.append(DELIVERY_CHECK.format(files="\n".join(broken)))
+        if not notes:
             return None
-        note = plan_check_message(PLAN_CHECK.format(tasks=tasks))
-        return {"messages": [note], "jump_to": "model"}
+        return {"messages": [plan_check_message("\n\n".join(notes))], "jump_to": "model"}
 
-    return plan_check
+    return turn_end_check
 
 
 def _key(name: str, args: dict[str, Any]) -> tuple[str, str]:
@@ -126,5 +145,16 @@ def repeat_note(tools: Sequence[Callable[..., Any] | BaseTool]) -> Callable[[Any
     return note
 
 
-def plan_check(open_tasks: Callable[[], str] | None) -> list[AgentMiddleware]:
-    return [] if open_tasks is None else [_plan_check(open_tasks)]
+def turn_end(
+    open_tasks: Callable[[], str] | None,
+    tools: Sequence[Callable[..., Any] | BaseTool],
+    resolve_file: Callable[[str], Path] | None,
+) -> list[AgentMiddleware]:
+    if open_tasks is None and resolve_file is None:
+        return []
+    writers = {
+        str(getattr(t, "name", None) or getattr(t, "__name__", ""))
+        for t in tools
+        if get_tool_metadata(cast(Callable[..., Any], t)).risk_category == "WRITE_LOCAL"
+    }
+    return [_turn_end(open_tasks, writers, resolve_file)]

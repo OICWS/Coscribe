@@ -15,6 +15,10 @@ from coscribe.web.routes import artifacts as artifact_routes
 from .helpers import FakeToolCallingChatModel, _client_lg, _run_turn, _tool_call
 
 
+# A turn that wrote "x" into an Office file hears that it doesn't open, and answers again.
+_DONE_TWICE = [AIMessage(content="done"), AIMessage(content="done")]
+
+
 def _made(*paths: str) -> AIMessage:
     calls = [
         _tool_call(f"c{i}", "write_file", {"path": p, "content": "x"}) for i, p in enumerate(paths)
@@ -31,9 +35,9 @@ def test_the_artifacts_route_lists_what_the_conversations_created_lg(
             # A lock file PowerPoint leaves, a plain note, and a Word and an Excel file are not
             # artifacts.
             _made("deck.pptx", "report.docx", "numbers.xlsx", "notes.md", "~$deck2.pptx"),
-            AIMessage(content="done"),
+            *_DONE_TWICE,
             _made("later.pptx"),
-            AIMessage(content="done"),
+            *_DONE_TWICE,
         ]
     )
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
@@ -76,7 +80,8 @@ def test_an_artifact_outlives_its_conversation_and_opens_in_a_new_one_lg(
 ) -> None:
     (tmp_path / "workspace").mkdir()
     fake_model = FakeToolCallingChatModel(
-        responses=[_made("report.html", "deck.pptx"), AIMessage(content="done")]
+        # The second "done" answers the note that the "x" deck doesn't open.
+        responses=[_made("report.html", "deck.pptx"), *_DONE_TWICE]
     )
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
         _run_turn(client, "t_one", "make things")
@@ -102,7 +107,7 @@ def test_the_menu_renames_copies_and_deletes_an_artifact_lg(
     sent: list[str] = []
     monkeypatch.setattr("send2trash.send2trash", lambda path: (sent.append(path), None)[1])
     fake_model = FakeToolCallingChatModel(
-        responses=[_made("report.pptx", "plan.pptx"), AIMessage(content="done")]
+        responses=[_made("report.pptx", "plan.pptx"), *_DONE_TWICE]
     )
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
         _run_turn(client, "t_one", "make things")
@@ -139,7 +144,7 @@ def test_a_system_error_is_not_shown_to_the_page_lg(
         raise PermissionError(13, "denied", str(tmp_path / "workspace" / "report.pptx"))
 
     monkeypatch.setattr(artifact_routes, "rename_file", locked)
-    fake_model = FakeToolCallingChatModel(responses=[_made("report.pptx"), AIMessage(content="d")])
+    fake_model = FakeToolCallingChatModel(responses=[_made("report.pptx"), *_DONE_TWICE])
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
         _run_turn(client, "t_one", "make")
         artifact = client.get("/api/artifacts").json()[0]["id"]

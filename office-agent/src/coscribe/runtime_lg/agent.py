@@ -37,7 +37,7 @@ from .tool_deferral import (
     build_search_tools_tool,
     build_use_tool_tool,
 )
-from .turn_checks import plan_check, repeat_note
+from .turn_checks import repeat_note, turn_end
 
 
 def tool_name(tool: Callable[..., Any] | BaseTool) -> str:
@@ -545,7 +545,7 @@ def build_langgraph_agent(
         middleware.append(_CompactMiddleware(model, auto_compact_tokens, open_tasks))
         middleware.append(clear_old_tool_results_middleware(auto_compact_tokens // 2))
 
-    middleware += [*plan_check(open_tasks), _AnswerEveryToolCallMiddleware()]
+    middleware += [*turn_end(open_tasks, tools, resolve_file), _AnswerEveryToolCallMiddleware()]
 
     final_tools = list(tools)
     if defer_tools:
