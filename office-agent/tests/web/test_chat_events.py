@@ -393,3 +393,70 @@ def test_a_compaction_mid_turn_is_not_shown_as_a_reply_or_as_calls_starting_agai
     assert "SUMMARY-OF-WORK" not in shown
     started = [m["arguments"] for m in messages if m["type"] == "tool_started"]
     assert len(started) == len(calls)
+
+
+def test_a_turn_that_stops_with_its_plan_open_goes_on_once_and_the_note_stays_hidden_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[_tool_call("c1", "task_create", {"content": "Write the memo"})],
+            ),
+            AIMessage(content="I made a plan."),
+            AIMessage(
+                content="",
+                tool_calls=[
+                    _tool_call("c2", "task_update", {"task_id": "1", "status": "completed"})
+                ],
+            ),
+            AIMessage(content="The memo is written."),
+        ]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_plan_check") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "write the memo"})
+            messages = _receive_until(ws, "tasks_changed")
+            while not any(
+                m["type"] == "agent_message" and "memo is" in m["text"] for m in messages
+            ):
+                messages.append(ws.receive_json())
+        with client.websocket_connect("/ws/t_plan_check") as ws:
+            ws.receive_json()  # state
+            history = ws.receive_json()
+
+    shown = "".join(m["text"] for m in messages if m["type"] == "agent_delta")
+    replies = [m["text"] for m in messages if m["type"] == "agent_message"]
+    assert "I made a plan." in shown
+    assert replies == ["The memo is written."]
+    entries = history["entries"]
+    assert [e["kind"] for e in entries if e["kind"] != "tool"] == ["user", "agent", "agent"]
+
+
+def test_a_reply_after_the_plan_check_is_a_new_paragraph_of_the_same_reply_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[_tool_call("c1", "task_create", {"content": "Write the memo"})],
+            ),
+            AIMessage(content="I made a plan."),
+            AIMessage(content="The memo needs your figures first."),
+        ]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_plan_check_text") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "write the memo"})
+            messages = _receive_until(ws, "tasks_changed")
+            while not any(m["type"] == "agent_message" for m in messages):
+                messages.append(ws.receive_json())
+
+    replies = [m["text"] for m in messages if m["type"] == "agent_message"]
+    assert replies == ["I made a plan.\n\nThe memo needs your figures first."]
