@@ -636,7 +636,7 @@ def build_coordinator_agent(
         + build_task_tools(thread_id, settings.state_dir)
         + build_interaction_tools()
         + build_conversation_tools(thread_id, settings.state_dir, conversation_source)
-        + build_design_system_tools(settings.state_dir)
+        + build_design_system_tools(settings.state_dir, root, extra_readable)
         + build_selfwake_tools(thread_id, settings.state_dir)
         + build_scheduled_task_tools(settings.state_dir, thread_id)
         + build_websearch_tools(network)

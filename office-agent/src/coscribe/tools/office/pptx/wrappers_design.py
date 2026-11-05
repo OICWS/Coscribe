@@ -14,11 +14,13 @@ def build_design_tools(toolkit: PresentationToolkit) -> dict[str, Callable[..., 
         as facts: the master theme's 12 colors (`dk1`..`folHlink`, 6 hex
         digits, no `#`), its heading and body fonts, the master's title and
         body text sizes (in points and as pixels on a 1920 px wide slide, the
-        size a Coscribe design system uses), the slide size, and the names of
-        its layouts. Use it to build a design system from a template: read
-        this, look at a few slides with `render_pptx_preview`, then save the
-        system with `save_design_system`. It reads the master only; colors or
-        fonts a slide sets by hand are not listed.
+        size a Coscribe design system uses), the slide size, the names of its
+        layouts, and the pictures the master and layouts draw (a logo, say),
+        each with the `file` save_design_system takes as an asset. Use it to
+        build a design system from a template: read this, look at a few slides
+        with `render_pptx_preview`, then save the system with
+        `save_design_system`. It reads the master only; colors or fonts a
+        slide sets by hand are not listed.
 
         Args:
             path: file to read, relative to the workspace root

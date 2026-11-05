@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from ..._file_locks import locked_by_path
 from ..._ooxml_validate import assert_ooxml_valid
@@ -195,6 +195,7 @@ class ReviewToolsMixin(ToolkitBase):
             "fonts": fonts,
             "text_sizes": sizes,
             "layouts": [layout.name for layout in master.slide_layouts],
+            "pictures": _master_pictures(self._scope.relative(file_path), master, scale),
         }
 
     @locked_by_path
@@ -240,3 +241,35 @@ class ReviewToolsMixin(ToolkitBase):
         file_path = self._check_readable(path)
         state_dir = Path(self._state_dir) if self._state_dir is not None else None
         return preview_deck(file_path, state_dir, max_slides)
+
+
+def _master_pictures(path: str, master: Any, scale: float) -> list[dict[str, object]]:
+    """The pictures the master and its layouts draw on every slide (a logo, a band), each once:
+    `file` names it inside the deck as save_design_system takes it, `on` where it is drawn and
+    `shown_px_on_1920` its size there; `pixels` is the image's own size."""
+    from pptx.enum.shapes import MSO_SHAPE_TYPE
+
+    found: dict[str, dict[str, object]] = {}
+    owners = [(master, "master"), *((lay, f"layout {lay.name!r}") for lay in master.slide_layouts)]
+    for owner, label in owners:
+        for shape in owner.shapes:
+            if shape.shape_type != MSO_SHAPE_TYPE.PICTURE:
+                continue
+            embed = shape._element.xpath(".//a:blip/@r:embed")
+            if not embed:
+                continue
+            part = owner.part.related_part(embed[0])
+            entry = found.setdefault(
+                str(part.partname),
+                {
+                    "file": f"{path}#{str(part.partname).lstrip('/')}",
+                    "on": [],
+                    "shown_px_on_1920": [
+                        round((shape.width or 0) / 12700 * scale),
+                        round((shape.height or 0) / 12700 * scale),
+                    ],
+                    "pixels": list(shape.image.size),
+                },
+            )
+            cast(list[str], entry["on"]).append(label)
+    return list(found.values())

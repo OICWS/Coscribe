@@ -164,3 +164,34 @@ def test_read_pptx_design_refuses_a_path_outside_the_workspace(tmp_path: Path) -
     tools = _tools_by_name(tmp_path)
     with pytest.raises((PermissionError, ValueError, FileNotFoundError)):
         tools["read_pptx_design"](path="../elsewhere.pptx")
+
+
+def test_read_pptx_design_lists_a_layouts_logo_that_save_design_system_takes(
+    tmp_path: Path,
+) -> None:
+    from PIL import Image
+    from pptx import Presentation
+    from pptx.opc.constants import RELATIONSHIP_TYPE as RT
+    from pptx.util import Inches
+
+    from coscribe.tools import DesignSystemStore, build_design_system_tools
+
+    Image.new("RGB", (60, 20), "#0F766E").save(tmp_path / "logo.png")
+    prs = Presentation()
+    layout = prs.slide_layouts[0]
+    picture = prs.slides.add_slide(layout).shapes.add_picture(
+        str(tmp_path / "logo.png"), Inches(0.5), Inches(0.5), Inches(1.5)
+    )
+    image = picture.part.related_part(picture._element.blip_rId)
+    picture._element.blipFill.blip.rEmbed = layout.part.relate_to(image, RT.IMAGE)
+    layout.shapes._spTree.append(picture._element)  # the layout draws it, not the slide
+    prs.save(str(tmp_path / "template.pptx"))
+
+    design = _tools_by_name(tmp_path)["read_pptx_design"](path="template.pptx")
+
+    [found] = cast(list[dict[str, object]], design["pictures"])
+    assert found["on"] == ["layout 'Title Slide'"] and found["pixels"] == [60, 20]
+    save = build_design_system_tools(tmp_path / "state", tmp_path)[0]
+    made = save(name="Acme", assets=[{"file": found["file"], "kind": "logo", "note": "light"}])
+    [asset] = DesignSystemStore(tmp_path / "state").get(made["id"])["assets"]
+    assert asset["kind"] == "logo" and (asset["width"], asset["height"]) == (60, 20)

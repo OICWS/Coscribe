@@ -27,7 +27,7 @@ bound to the model: 22 tools, ~4997 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 121 tools, ~37781 tokens (the ones not bound are found through search_tools)
+registered: 121 tools, ~37947 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -101,7 +101,7 @@ registered: 121 tools, ~37781 tokens (the ones not bound are found through searc
   read_file | READ | filesystem | core | sha256 ee32c83a8a
   read_pdf | READ | documents | core | sha256 3366cc72e1
   read_pptx | READ | documents | core | sha256 c8c3ef7f3e
-  read_pptx_design | READ | documents | deferred | sha256 17efa1a7b8
+  read_pptx_design | READ | documents | deferred | sha256 b98ba9ddd3
   read_pptx_theme_colors | READ | documents | deferred | sha256 b3ee322f96
   read_pptx_xml | READ | documents | deferred | sha256 001495249e
   read_skill_file | READ | skills | deferred | sha256 641b92cec5
