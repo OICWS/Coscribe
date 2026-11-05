@@ -86,6 +86,11 @@ def file_text(path: Path) -> str:
             document = Document(str(path))
             cells = [c.text for t in document.tables for row in t.rows for c in row.cells]
             return "\n".join([p.text for p in document.paragraphs] + cells)
+        if path.suffix == ".pptx":
+            from pptx import Presentation
+
+            shapes = [shape for slide in Presentation(str(path)).slides for shape in slide.shapes]
+            return "\n".join(shape.text_frame.text for shape in shapes if shape.has_text_frame)
         if path.suffix == ".xlsx":
             from openpyxl import load_workbook
 
@@ -147,9 +152,9 @@ def orders(count: int) -> list[tuple[int, str, int]]:
     return [(i, rnd.choice(REGIONS), rnd.randint(1, 999)) for i in range(1, count + 1)]
 
 
-def write_orders(count: int) -> Callable[[Path], None]:
+def write_orders(count: int, name: str = "orders.csv") -> Callable[[Path], None]:
     def setup(workspace: Path) -> None:
-        with (workspace / "orders.csv").open("w", newline="", encoding="utf-8") as handle:
+        with (workspace / name).open("w", newline="", encoding="utf-8") as handle:
             writer = csv.writer(handle)
             writer.writerow(["row", "region", "amount"])
             writer.writerows(orders(count))
@@ -166,6 +171,16 @@ def region_totals(count: int) -> Counter[str]:
 
 def region_counts(count: int) -> Counter[str]:
     return Counter(region for _, region, _ in orders(count))
+
+
+def biggest_order(count: int) -> tuple[int, str, int]:
+    return max(orders(count), key=lambda order: order[2])
+
+
+def write_twelve_notes(workspace: Path) -> None:
+    write_notes(workspace)
+    for i in range(13, 25):
+        (workspace / f"note{i:02d}.txt").unlink()
 
 
 def nothing(workspace: Path) -> None:
@@ -284,6 +299,44 @@ TASKS: tuple[AgenticTask, ...] = (
                 "未找到",
             ),
         },
+    ),
+    AgenticTask(
+        name="09-five-deliverables",
+        turns=(
+            "From orders.csv, make all of these: region_totals.xlsx with the total amount per "
+            "region; region_memo.docx, a short memo naming the region with the highest total and "
+            "that total; region_deck.pptx, three slides on the regions that name the top one; "
+            "top_orders.csv with the 10 largest orders; and summary.md giving the total of all "
+            "orders.",
+        ),
+        setup=write_orders(_SMALL),
+        checks={
+            "workbook": file_says("region_totals*.xlsx", *REGIONS),
+            "memo": file_says("region_memo*.docx", _TOP_REGION, str(_TOP_TOTAL)),
+            "deck": file_says("region_deck*.pptx", _TOP_REGION),
+            "top orders": file_says("top_orders*.csv", str(biggest_order(_SMALL)[2])),
+            "summary": file_says("summary*.md", str(sum(region_totals(_SMALL).values()))),
+        },
+    ),
+    AgenticTask(
+        name="10-twelve-files",
+        turns=(
+            "For each of note01.txt to note12.txt, find the code it gives and add a line "
+            "'noteNN: CODE' to codes.txt (create it). Make a task for each file first, and read "
+            "each file in full with its own read_file call.",
+        ),
+        setup=write_twelve_notes,
+        checks={
+            f"note{i:02d}": file_says("codes.txt", f"note{i:02d}:{note_code(i)}")
+            for i in range(1, 13)
+        },
+        compact_threshold=0.05,
+    ),
+    AgenticTask(
+        name="11-misnamed-file",
+        turns=("What is the total amount in q3_sales.csv?",),
+        setup=write_orders(50, "q3_sales_final.csv"),
+        checks={"total": says(str(sum(region_totals(50).values())))},
     ),
 )
 

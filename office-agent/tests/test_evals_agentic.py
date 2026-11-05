@@ -11,6 +11,7 @@ from typing import Any
 import pytest
 from docx import Document
 from openpyxl import Workbook
+from pptx import Presentation
 
 from evals.agentic import run, tasks
 
@@ -69,19 +70,24 @@ def test_remembered_reads_the_global_instructions(tmp_path: Path) -> None:
     assert not check(_outcome(tmp_path, []))
 
 
-def test_file_says_reads_word_and_excel_files(tmp_path: Path) -> None:
+def test_file_says_reads_word_excel_and_powerpoint_files(tmp_path: Path) -> None:
     document = Document()
     document.add_paragraph("East had the highest total: 37,977.")
     document.save(str(tmp_path / "region_memo.docx"))
     workbook = Workbook()
     workbook.active.append(["North", 1])
     workbook.save(tmp_path / "orders_summary.xlsx")
+    deck = Presentation()
+    slide = deck.slides.add_slide(deck.slide_layouts[1])
+    slide.shapes.title.text = "East leads"
+    deck.save(str(tmp_path / "region_deck.pptx"))
     (tmp_path / "broken.docx").write_text("not a document", encoding="utf-8")
 
     outcome = _outcome(tmp_path, [])
 
     assert tasks.file_says("region_memo*.docx", "east", "37977")(outcome)
     assert tasks.file_says("orders_summary*.xlsx", "north")(outcome)
+    assert tasks.file_says("region_deck.pptx", "east")(outcome)
     assert not tasks.file_says("orders_summary*.xlsx", "south")(outcome)
     assert not tasks.file_says("broken.docx", "document")(outcome)
 
