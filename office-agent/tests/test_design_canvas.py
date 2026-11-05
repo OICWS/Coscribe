@@ -224,3 +224,24 @@ def test_a_picture_file_of_the_canvas_folder_is_filled_in_and_nothing_outside_it
     assert b'href="data:image/png;base64,' + base64.b64encode(b"\x89PNG fake") in served
     for left in (b'src="../secret.png"', b'src="gone.png"', b'src="https://example.com/x.png"'):
         assert left in served
+
+
+def test_the_pictures_a_page_places_are_its_files_and_its_parts_files(tmp_path: Path) -> None:
+    import hashlib
+
+    from coscribe.conversation.design_canvas import placed_pictures, with_parts
+
+    _canvas(tmp_path, {"boards": [{"id": "a", "file": "a.html"}]})
+    folder = tmp_path / "poster.design"
+    folder.mkdir()
+    (folder / "logo.svg").write_bytes(b"<svg>logo</svg>")
+    (folder / "photo.png").write_bytes(b"\x89PNG photo")
+    (tmp_path / "outside.png").write_bytes(b"\x89PNG outside")
+    (folder / "head.part.html").write_bytes(b"<img src='logo.svg'>")
+    page = folder / "a.html"
+    body = b"<coscribe-part name='head'></coscribe-part><img src='../outside.png'>"
+
+    assert placed_pictures(page, body) == set()
+    assert placed_pictures(page, with_parts(page, body)) == {
+        hashlib.sha256(b"<svg>logo</svg>").hexdigest()
+    }

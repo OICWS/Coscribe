@@ -140,7 +140,9 @@ class AgentAssembly:
             *code_tools,
             *build_http_tools(self._host.settings.state_dir, self._host.thread_id),
             *build_artifact_tools(self._host.settings.state_dir, self._host.workspace_scope),
-            *build_page_tools(self._host.workspace_scope),
+            *build_page_tools(
+                self._host.workspace_scope, self._host.settings.state_dir, self._host.thread_id
+            ),
             review_work_tool,
             self._host._build_draft_workflow_tool(),
             self._host._build_revise_workflow_tool(),
