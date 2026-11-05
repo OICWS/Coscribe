@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { editEnvironment, environmentNamed, freshThreadPath, newEnvironment, waitForConnected } from "./helpers";
+import { editEnvironment, environmentNamed, freshThreadPath, newEnvironment, pickOption, waitForConnected } from "./helpers";
 
 // Needs a backend with a working keychain (CI and dev machines have one; the
 // live-test setup points keyring at a file backend).
@@ -99,7 +99,7 @@ test("a secret is picked into a connector's header and checked against its host"
 
     await dialog.getByLabel("MCP server URL").fill("https://other.example.net/mcp");
     await dialog.getByLabel("Headers").fill("Authorization: Bearer ");
-    await dialog.getByLabel("Insert a secret").selectOption(name);
+    await pickOption(dialog.getByLabel("Insert a secret"), name);
     await expect(dialog.getByLabel("Headers")).toHaveValue(`Authorization: Bearer {{secret:${name}}}`);
     await expect(dialog.getByRole("alert")).toContainText(`${name} may only be sent to mcp.example.com, not other.example.net`);
 

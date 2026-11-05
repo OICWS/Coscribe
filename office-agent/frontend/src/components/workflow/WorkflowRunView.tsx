@@ -40,6 +40,7 @@ import { StatusDot } from "./StatusDot";
 /** An answer to a waiting step: an ask step's values with it. */
 export type WorkflowAnswer = [approved: boolean, note: string, values?: AnswerValues];
 import { ViewToggle } from "./ViewToggle";
+import { SelectMenu } from "../SelectMenu";
 import { WorkflowCanvas } from "./WorkflowCanvas";
 
 type RowStatus = StepRecord["status"] | "not_reached" | "stopped" | "recovered";
@@ -669,19 +670,14 @@ function RunBanner({
               {run.investigation ? "Look into it again" : "Let AI look into it"}
             </span>
           </button>
-          <select
-            aria-label="Model to look into it"
-            className="h-8 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 text-[13px]"
+          <SelectMenu
+            ariaLabel="Model to look into it"
+            variant="field"
+            triggerClassName="h-8 py-0 text-[13px]"
             value={model}
-            onChange={(event) => setModel(event.target.value)}
-          >
-            <option value="">Default model</option>
-            {models.map((m) => (
-              <option key={m} value={m}>
-                {m.split(":", 2)[1] ?? m}
-              </option>
-            ))}
-          </select>
+            options={[{ value: "", label: "Default model" }, ...models.map((m) => ({ value: m, label: m.split(":", 2)[1] ?? m }))]}
+            onChange={setModel}
+          />
           <span className="text-[13px] text-[var(--muted)]">
             Opens a new conversation that reproduces it and drafts a fix for you to review.
           </span>

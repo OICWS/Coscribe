@@ -18,7 +18,7 @@ import {
 import { GlobalInstructionsSection } from "./GlobalInstructionsSection";
 import { ProxySection } from "./ProxySection";
 import { SegmentedControl } from "./SegmentedControl";
-import { SelectMenu } from "./SelectMenu";
+import { SelectMenu } from "../SelectMenu";
 import { SettingRow, SettingRows, SettingsSection, fieldClass } from "./SettingRow";
 
 interface GeneralTabProps {

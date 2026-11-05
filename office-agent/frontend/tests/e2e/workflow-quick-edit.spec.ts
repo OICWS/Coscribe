@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
+import { pickOption } from "./helpers";
 
 // No model involved: from the simple view a person changes a step's fixed values and an input's
 // usual value without the full editor (decision 0031), and many paths stack instead of running
@@ -65,7 +66,7 @@ test("a step's values and an input's usual value change from the simple view", a
 
     await simple.getByRole("button", { name: "Change" }).nth(1).click();
     const input = page.getByRole("complementary", { name: "Change what it asks for" });
-    await input.getByLabel("Usually").selectOption("Finance");
+    await pickOption(input.getByLabel("Usually"), "Finance");
     await input.getByRole("button", { name: "Save" }).click();
     await expect(input).toHaveCount(0);
     await expect(simple).toContainText("usually Finance");

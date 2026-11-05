@@ -54,7 +54,7 @@ test("a failed step tried again and replaced, and a skipped one, don't stop the 
     await page.locator('[data-canvas-step="chat"]').click();
     const sheet = page.getByRole("complementary", { name: "Change this step" });
     await expect(sheet.getByText("If it fails", { exact: true })).toBeVisible();
-    await expect(sheet.getByLabel("Then")).toHaveValue("skip");
+    await expect(sheet.getByLabel("Then")).toHaveText("Skip it and go on");
     await sheet.getByRole("button", { name: "Close" }).click();
 
     await page.request.post(`/api/scheduled-tasks/${task.trigger_id}/run`, { data: {} });

@@ -1,7 +1,7 @@
-import { inputClass } from "../../lib/formStyles";
 import { NO_FAILURE, waitWords, withFailure } from "../../lib/failureWords";
 import type { LoopStep, OnFailure, RecoveringStep } from "../../types/workflow";
 import { FieldLabel } from "./fields";
+import { SelectMenu } from "../SelectMenu";
 
 // What a step does when it fails (decision 0032), in the full editor. The steps that run in its
 // place are a list under the step's card, edited like a branch's.
@@ -66,35 +66,30 @@ export function FailureEditor<T extends RecoveringStep>({ step, onChange }: { st
       <div className="flex flex-wrap items-end gap-3">
         <div>
           <FieldLabel htmlFor={`${step.id}-retries`}>Try again</FieldLabel>
-          <select
+          <SelectMenu
             id={`${step.id}-retries`}
-            className={`${inputClass} w-40`}
+            variant="field"
+            className="w-40"
             disabled={final}
             value={final ? 0 : failure.retries}
-            onChange={(e) => set({ retries: Number(e.target.value) })}
-          >
-            {[0, 1, 2, 3, 4, 5].map((n) => (
-              <option key={n} value={n}>
-                {n === 0 ? (final ? "Never" : "No") : n === 1 ? "Once" : `Up to ${n} times`}
-              </option>
-            ))}
-          </select>
+            options={[0, 1, 2, 3, 4, 5].map((n) => ({
+              value: n,
+              label: n === 0 ? (final ? "Never" : "No") : n === 1 ? "Once" : `Up to ${n} times`,
+            }))}
+            onChange={(retries) => set({ retries })}
+          />
         </div>
         {failure.retries > 0 && (
           <div>
             <FieldLabel htmlFor={`${step.id}-wait`}>Wait between tries</FieldLabel>
-            <select
+            <SelectMenu
               id={`${step.id}-wait`}
-              className={`${inputClass} w-36`}
+              variant="field"
+              className="w-36"
               value={failure.wait_seconds}
-              onChange={(e) => set({ wait_seconds: Number(e.target.value) })}
-            >
-              {waits.map((seconds) => (
-                <option key={seconds} value={seconds}>
-                  {waitWords(seconds)}
-                </option>
-              ))}
-            </select>
+              options={waits.map((seconds) => ({ value: seconds, label: waitWords(seconds) }))}
+              onChange={(wait_seconds) => set({ wait_seconds })}
+            />
           </div>
         )}
       </div>

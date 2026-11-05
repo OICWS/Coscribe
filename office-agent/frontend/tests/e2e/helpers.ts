@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 /** A fresh, random thread id per test -- avoids collisions between test
  * runs and with any real conversation history sitting in the dev
@@ -65,4 +65,11 @@ export async function environmentNamed(
 ): Promise<EnvironmentRecord | undefined> {
   const listed = (await (await request.get("/api/environments")).json()) as { environments: EnvironmentRecord[] };
   return listed.environments.find((e) => e.name === name);
+}
+
+/** Picks an option of a SelectMenu (the app's dropdown): opens it and clicks the row by its text.
+ * The menu sits in a portal on <body>, so the row is looked up on the page, not in the trigger. */
+export async function pickOption(trigger: Locator, option: string) {
+  await trigger.click();
+  await trigger.page().getByRole("menuitemradio", { name: option, exact: true }).click();
 }
