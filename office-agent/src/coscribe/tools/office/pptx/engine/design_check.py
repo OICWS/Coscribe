@@ -1,11 +1,13 @@
 """What a page uses that the deck's design system does not have (decision 0020: the system guides
 the model, it does not forbid): colors, fonts and named text styles, as warnings on the page so
-the model repairs them or says why. Only a deck that began from a system of the person's library
-is checked; a deck's own system is made from its pages.
+the model repairs them or says why; and a system's logo that no page places, as a warning on the
+deck. Only a deck that began from a system of the person's library is checked; a deck's own
+system is made from its pages.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import re
@@ -24,6 +26,8 @@ _GENERIC_FONTS = {"sans-serif", "serif", "monospace", "cursive", "fantasy", "sys
 _STYLE = re.compile(r"""data-text-style=["']([^"']+)["']""")
 # A page with many strays gets the first few named and a count.
 _LISTED = 4
+# A picture a page places: an SVG page's <image href>, a section's <img src>.
+PICTURE = re.compile(r"""(?:href|src)\s*=\s*["']([^"'#?]+)["']""")
 
 
 def library_system(folder: Path) -> dict[str, Any] | None:
@@ -73,6 +77,40 @@ def off_system(system: dict[str, Any], pages: Sequence[tuple[str, str]]) -> dict
         if warnings:
             found[page] = [f"off the design system: {w}" for w in warnings]
     return found
+
+
+def unplaced_logo(
+    system: dict[str, Any], folder: Path, pages: Sequence[tuple[str, str]]
+) -> str | None:
+    """A warning when the `system` has logos and no page in `folder` places any of them. A logo
+    counts as placed when a picture a page names is that very file (its sha256), whatever it is
+    called: a copy renamed is the logo, a redrawn or recoloured one is not."""
+    logos = [
+        a
+        for a in system.get("assets", [])
+        if isinstance(a, dict) and a.get("kind") == "logo" and a.get("sha256")
+    ]
+    if not logos:
+        return None
+    placed = set()
+    for _page, text in pages:
+        for ref in PICTURE.findall(text):
+            try:
+                placed.add(hashlib.sha256((folder / ref).read_bytes()).hexdigest())
+            except (OSError, ValueError):
+                continue
+    if any(logo["sha256"] in placed for logo in logos):
+        return None
+    files = "; ".join(
+        f"{logo.get('path') or logo.get('name')}"
+        + (f" ({logo['note']})" if logo.get("note") else "")
+        for logo in logos
+    )
+    return (
+        f"the design system {system.get('name', '')!r} has a logo no slide places: copy_file it "
+        f"into the pages folder and place the file itself where its note says ({files}), or "
+        "tell the user why this deck has none"
+    )
 
 
 def _unlisted(values: list[str], known: Any) -> list[str]:

@@ -79,7 +79,10 @@ def build_presentation_tools(
     custom_templates_dir: str | Path | None = None,
     extra_readable: Sequence[str | Path] = (),
     extra_writable: Sequence[str | Path] = (),
+    thread_id: str | None = None,
 ) -> list[Callable[..., Any]]:
+    """`thread_id` names the conversation, so a deck it builds is checked against the library
+    system it started with."""
     return [
         *build_legacy_presentation_tools(
             root,
@@ -88,5 +91,11 @@ def build_presentation_tools(
             extra_readable=extra_readable,
             extra_writable=extra_writable,
         ),
-        *build_engine_tools(root, extra_readable=extra_readable, extra_writable=extra_writable),
+        *build_engine_tools(
+            root,
+            extra_readable=extra_readable,
+            extra_writable=extra_writable,
+            state_dir=state_dir,
+            thread_id=thread_id,
+        ),
     ]

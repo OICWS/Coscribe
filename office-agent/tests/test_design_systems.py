@@ -1,5 +1,6 @@
 """The design-system library: a store of per-person systems under the app's data directory."""
 
+import hashlib
 from pathlib import Path
 from typing import Any
 
@@ -181,3 +182,22 @@ def test_a_systems_pictures_are_copied_into_the_workspace_under_plain_names(tmp_
     ]
     assert (workspace / copied[1]["path"]).read_bytes() == _png(4, 4)
     assert store.copy_assets("aaaaaaaaaa", workspace) == []
+
+
+def test_a_conversations_system_comes_in_a_decks_shape_with_its_pictures_named(
+    tmp_path: Path,
+) -> None:
+    store = DesignSystemStore(tmp_path / "state")
+    made = store.create("Acme")
+    logo = store.add_asset(made["id"], _png(8, 8), "logo.png")
+    assert logo is not None
+    store.update_asset(made["id"], logo["id"], {"kind": "logo", "note": "on light backgrounds"})
+    assert store.deck_system_for_thread("t1") is None
+    store.choose_for_thread("t1", made["id"])
+
+    system = store.deck_system_for_thread("t1")
+
+    assert system is not None and system["source"] == made["id"]
+    [asset] = system["assets"]
+    assert asset["path"] == "brand/Acme/logo.png" and asset["kind"] == "logo"
+    assert asset["sha256"] == hashlib.sha256(_png(8, 8)).hexdigest()
