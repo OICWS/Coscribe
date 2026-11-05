@@ -7,6 +7,7 @@ import type { EditorProps } from "./editorParts";
 import { ValuesHint } from "./editorParts";
 import { AddRowButton, AutoTextarea, FieldLabel, RemoveButton } from "./fields";
 import { InputValueControl } from "./InputValueControl";
+import { SelectMenu } from "../SelectMenu";
 
 // The full editor for the steps that pause a run (decision 0033).
 
@@ -27,19 +28,14 @@ function PickFrom({
   return (
     <div className="col-span-full flex flex-wrap items-center gap-2 pl-1 text-sm">
       <span className="text-[var(--muted)]">From the list</span>
-      <select
-        aria-label={`Value ${index + 1} list`}
-        className={`${controlClass} min-w-[10rem]`}
+      <SelectMenu
+        ariaLabel={`Value ${index + 1} list`}
+        variant="field"
+        className="min-w-[10rem]"
         value={field.items ?? ""}
-        onChange={(e) => onChange({ ...field, items: e.target.value })}
-      >
-        {field.items && !lists.includes(field.items) && <option value={field.items}>{field.items}</option>}
-        {lists.map((name) => (
-          <option key={name} value={name}>
-            {name}
-          </option>
-        ))}
-      </select>
+        options={[...(field.items && !lists.includes(field.items) ? [field.items] : []), ...lists].map((name) => ({ value: name, label: name }))}
+        onChange={(items) => onChange({ ...field, items })}
+      />
       <span className="text-[var(--muted)]">showing each item’s</span>
       <input
         aria-label={`Value ${index + 1} shown field`}
@@ -91,18 +87,13 @@ function FieldRow({
         value={field.label}
         onChange={(e) => onChange({ ...field, label: e.target.value })}
       />
-      <select
-        aria-label={`Value ${index + 1} type`}
-        className={`${controlClass} min-w-0`}
+      <SelectMenu
+        ariaLabel={`Value ${index + 1} type`}
+        variant="field"
         value={field.type}
-        onChange={(e) => setType(e.target.value as AskField["type"])}
-      >
-        {Object.entries(FIELD_TYPE_LABEL).map(([type, label]) => (
-          <option key={type} value={type}>
-            {label}
-          </option>
-        ))}
-      </select>
+        options={Object.entries(FIELD_TYPE_LABEL).map(([type, label]) => ({ value: type as AskField["type"], label }))}
+        onChange={setType}
+      />
       {field.type === "pick" ? (
         <span className="text-xs text-[var(--muted)]">None picked to begin with</span>
       ) : (
@@ -146,39 +137,32 @@ function TimeoutFields({ step, onChange }: Omit<EditorProps<AskStep>, "context">
     <div className="flex flex-wrap items-end gap-3">
       <div>
         <FieldLabel htmlFor={`${step.id}-timeout`}>If no one answers, wait</FieldLabel>
-        <select
+        <SelectMenu
           id={`${step.id}-timeout`}
-          className={inputClass}
+          variant="field"
           value={hours}
-          onChange={(e) => {
-            const next = Number(e.target.value);
-            onChange(
-              next > 0 ? { ...step, timeout_hours: next } : { ...step, timeout_hours: null, on_timeout: "fail" },
-            );
-          }}
-        >
-          {TIMEOUTS.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
-            </option>
-          ))}
-          {!TIMEOUTS.some((t) => t.value === hours) && <option value={hours}>{duration(hours * 60)}</option>}
-        </select>
+          options={[
+            ...TIMEOUTS,
+            ...(TIMEOUTS.some((t) => t.value === hours) ? [] : [{ value: hours, label: duration(hours * 60) }]),
+          ]}
+          onChange={(next) =>
+            onChange(next > 0 ? { ...step, timeout_hours: next } : { ...step, timeout_hours: null, on_timeout: "fail" })
+          }
+        />
       </div>
       {hours > 0 && (
         <div>
           <FieldLabel htmlFor={`${step.id}-on-timeout`}>Then</FieldLabel>
-          <select
+          <SelectMenu
             id={`${step.id}-on-timeout`}
-            className={inputClass}
+            variant="field"
             value={step.on_timeout ?? "fail"}
-            onChange={(e) => onChange({ ...step, on_timeout: e.target.value === "defaults" ? "defaults" : "fail" })}
-          >
-            <option value="fail">Stop the run</option>
-            <option value="defaults" disabled={!defaults}>
-              Go on with the defaults
-            </option>
-          </select>
+            options={[
+              { value: "fail", label: "Stop the run" },
+              { value: "defaults", label: "Go on with the defaults", disabled: !defaults },
+            ]}
+            onChange={(on_timeout) => onChange({ ...step, on_timeout })}
+          />
         </div>
       )}
       <p className="basis-full text-xs text-[var(--muted)]">
@@ -301,15 +285,16 @@ function WaitUntilFile({ step, onChange, context }: EditorProps<WaitStep>) {
         </div>
         <div>
           <FieldLabel htmlFor={`${step.id}-missing`}>If it doesn’t come</FieldLabel>
-          <select
+          <SelectMenu
             id={`${step.id}-missing`}
-            className={inputClass}
+            variant="field"
             value={step.if_missing ?? "fail"}
-            onChange={(e) => onChange({ ...step, if_missing: e.target.value === "continue" ? "continue" : "fail" })}
-          >
-            <option value="fail">Stop the run</option>
-            <option value="continue">Go on without it</option>
-          </select>
+            options={[
+              { value: "fail", label: "Stop the run" },
+              { value: "continue", label: "Go on without it" },
+            ]}
+            onChange={(if_missing) => onChange({ ...step, if_missing })}
+          />
         </div>
         <div>
           <FieldLabel htmlFor={`${step.id}-save-as`}>Save as</FieldLabel>

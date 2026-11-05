@@ -3,6 +3,7 @@ import { everyWords } from "../lib/scheduleLabels";
 import { fileInputs, type ScheduleForm } from "../lib/scheduleForm";
 import type { ScheduleKind } from "../types/settings";
 import type { Workflow } from "../types/workflow";
+import { SelectMenu } from "./SelectMenu";
 import { DirBrowserModal } from "./settings/DirBrowserModal";
 
 // When a task runs: the Frequency row of the create/edit form. Besides the clock, a workflow task
@@ -78,18 +79,14 @@ function FolderFields({
         {inputs.length > 1 && (
           <>
             <span className="text-[var(--muted)]">given to</span>
-            <select
-              aria-label="Input the file goes to"
-              className={control}
+            <SelectMenu
+              ariaLabel="Input the file goes to"
+              variant="field"
+              className="w-40"
               value={form.input || inputs[0]}
-              onChange={(e) => onChange({ ...form, input: e.target.value })}
-            >
-              {inputs.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
+              options={inputs.map((name) => ({ value: name, label: name }))}
+              onChange={(input) => onChange({ ...form, input })}
+            />
           </>
         )}
       </div>
@@ -130,33 +127,27 @@ export function FrequencyRow({
     <div className="flex flex-wrap items-center gap-2">
       {/* w-24 keeps the Frequency and Permissions controls' left edges aligned. */}
       <label className="w-24 shrink-0 text-sm font-medium">Frequency</label>
-      <select
-        aria-label="Frequency"
-        className={control}
+      <SelectMenu
+        ariaLabel="Frequency"
+        variant="field"
+        className="w-56"
         value={form.kind}
-        onChange={(e) => set({ kind: e.target.value as ScheduleKind })}
-      >
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value} disabled={opt.value === "folder" && inputs.length === 0}>
-            {opt.label}
-            {opt.value === "folder" && inputs.length === 0 ? " (needs a file input)" : ""}
-          </option>
-        ))}
-      </select>
+        options={options.map((opt) => {
+          const needsInput = opt.value === "folder" && inputs.length === 0;
+          return { ...opt, disabled: needsInput, label: needsInput ? `${opt.label} (needs a file input)` : opt.label };
+        })}
+        onChange={(kind) => set({ kind })}
+      />
       {(form.kind === "daily" || form.kind === "weekdays" || form.kind === "weekly") && timeInput}
       {form.kind === "weekly" && (
-        <select
-          aria-label="Weekday"
-          className={control}
+        <SelectMenu
+          ariaLabel="Weekday"
+          variant="field"
+          className="w-36"
           value={form.weekday}
-          onChange={(e) => set({ weekday: Number(e.target.value) })}
-        >
-          {WEEKDAY_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+          options={WEEKDAY_OPTIONS}
+          onChange={(weekday) => set({ weekday })}
+        />
       )}
       {form.kind === "monthly" && (
         <>
@@ -166,20 +157,16 @@ export function FrequencyRow({
         </>
       )}
       {form.kind === "every" && (
-        <select
-          aria-label="How often"
-          className={control}
+        <SelectMenu
+          ariaLabel="How often"
+          variant="field"
+          className="w-36"
           value={form.minutes}
-          onChange={(e) => set({ minutes: Number(e.target.value) })}
-        >
-          {[...new Set([...EVERY_MINUTES, form.minutes])]
+          options={[...new Set([...EVERY_MINUTES, form.minutes])]
             .sort((a, b) => a - b)
-            .map((minutes) => (
-              <option key={minutes} value={minutes}>
-                {minutes === 60 ? "1 hour" : everyWords(minutes)}
-              </option>
-            ))}
-        </select>
+            .map((minutes) => ({ value: minutes, label: minutes === 60 ? "1 hour" : everyWords(minutes) }))}
+          onChange={(minutes) => set({ minutes })}
+        />
       )}
       {form.kind === "every" && (
         <p className="w-full pl-[6.5rem] text-xs text-[var(--muted)]">

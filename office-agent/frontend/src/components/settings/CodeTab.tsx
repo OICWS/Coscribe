@@ -5,7 +5,7 @@ import { useConfiguredModels } from "../../lib/useConfiguredModels";
 import { CodeDownload } from "../CodeModuleStatus";
 import { ToggleSwitch } from "../ToggleSwitch";
 import { CODE_MODEL_KEY, CODE_MODULE_ENABLED_KEY } from "./fields";
-import { SelectMenu } from "./SelectMenu";
+import { SelectMenu } from "../SelectMenu";
 import { SettingRow, SettingRows, SettingsSection } from "./SettingRow";
 
 interface CodeTabProps {

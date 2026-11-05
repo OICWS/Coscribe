@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test, type APIRequestContext } from "@playwright/test";
+import { pickOption } from "./helpers";
 
 // No model involved: a task keeps a value only when its run finishes, the next run reads it and
 // ends quietly, and a person clears it on the task page; then the task is set to run when a file
@@ -108,7 +109,7 @@ test("a workflow task can run when a file arrives in a folder", async ({ page })
   try {
     await page.goto(`/?view=scheduled&task=${id}`);
     await page.getByRole("button", { name: "Edit" }).first().click();
-    await page.getByLabel("Frequency").selectOption("folder");
+    await pickOption(page.getByLabel("Frequency"), "When a file arrives in a folder");
     await page.getByLabel("Folder to watch").fill(inbox);
     await page.getByLabel("File name pattern").fill("*.pdf");
     await page.getByRole("button", { name: "Save" }).click();

@@ -4,6 +4,7 @@ import { IDENTIFIER } from "../../lib/workflowEdit";
 import type { RunTaskStep } from "../../types/workflow";
 import { type EditorProps, ValuesHint } from "./editorParts";
 import { AutoTextarea, FieldLabel } from "./fields";
+import { SelectMenu } from "../SelectMenu";
 
 /** Which task a run-task step runs (decision 0035), the values it gives it, and the name its
  * results are read by. */
@@ -18,20 +19,15 @@ export function RunTaskEditor({ step, onChange, context }: EditorProps<RunTaskSt
         <FieldLabel htmlFor={`${step.id}-task`} hint="It runs as a whole, with its own approvals and memory">
           Task to run
         </FieldLabel>
-        <select
+        <SelectMenu
           id={`${step.id}-task`}
-          className={inputClass}
-          aria-invalid={!task}
+          variant="field"
+          invalid={!task}
           value={step.task}
-          onChange={(e) => onChange({ ...step, task: e.target.value, inputs: {} })}
-        >
-          {!task && <option value={step.task}>{step.task ? "A task that's gone" : "Choose a task"}</option>}
-          {tasks.map((t) => (
-            <option key={t.trigger_id} value={t.trigger_id}>
-              {t.name} · version {t.version ?? 1}
-            </option>
-          ))}
-        </select>
+          placeholder={step.task ? "A task that's gone" : "Choose a task"}
+          options={tasks.map((t) => ({ value: t.trigger_id, label: `${t.name} · version ${t.version ?? 1}` }))}
+          onChange={(trigger) => onChange({ ...step, task: trigger, inputs: {} })}
+        />
         {tasks.length === 0 && (
           <p className="mt-1 text-xs text-[var(--muted)]">Save another task with steps first; it shows up here.</p>
         )}

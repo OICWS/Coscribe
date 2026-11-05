@@ -2,12 +2,22 @@ import { controlClass } from "../../lib/formStyles";
 import { OP_LABEL, operandReference, UNARY_OPS } from "../../lib/workflowLabels";
 import type { CheckOp, Condition, Match, Operand } from "../../types/workflow";
 import { AddRowButton, RemoveButton } from "./fields";
+import { SelectMenu, type SelectOption } from "../SelectMenu";
 
 type OperandMode = "ref" | "count" | "value";
 type LiteralType = "text" | "number" | "boolean";
 
 const MODE_LABEL: Record<OperandMode, string> = { ref: "Value of", count: "Count of", value: "Fixed" };
 const OPS = Object.keys(OP_LABEL) as CheckOp[];
+const LITERAL_TYPES: SelectOption<LiteralType>[] = [
+  { value: "text", label: "text" },
+  { value: "number", label: "number" },
+  { value: "boolean", label: "yes / no" },
+];
+const YES_NO: SelectOption<"yes" | "no">[] = [
+  { value: "yes", label: "yes" },
+  { value: "no", label: "no" },
+];
 
 function modeOf(operand: Operand): OperandMode {
   if ("ref" in operand) return "ref";
@@ -47,18 +57,14 @@ function OperandEditor({
 
   return (
     <span className="inline-flex flex-wrap items-center gap-1.5">
-      <select
-        aria-label={`${label}: kind`}
-        className={`${controlClass} py-1 text-[13px]`}
+      <SelectMenu
+        ariaLabel={`${label}: kind`}
+        variant="field"
+        triggerClassName="py-1 text-[13px]"
         value={mode}
-        onChange={(e) => setMode(e.target.value as OperandMode)}
-      >
-        {(Object.keys(MODE_LABEL) as OperandMode[]).map((key) => (
-          <option key={key} value={key}>
-            {MODE_LABEL[key]}
-          </option>
-        ))}
-      </select>
+        options={(Object.keys(MODE_LABEL) as OperandMode[]).map((key) => ({ value: key, label: MODE_LABEL[key] }))}
+        onChange={setMode}
+      />
       {"value" in operand ? (
         <LiteralEditor value={operand.value} label={label} onChange={(value) => onChange({ value })} />
       ) : (
@@ -93,26 +99,23 @@ function LiteralEditor({
   };
   return (
     <>
-      <select
-        aria-label={`${label}: type`}
-        className={`${controlClass} py-1 text-[13px]`}
+      <SelectMenu
+        ariaLabel={`${label}: type`}
+        variant="field"
+        triggerClassName="py-1 text-[13px]"
         value={type}
-        onChange={(e) => setType(e.target.value as LiteralType)}
-      >
-        <option value="text">text</option>
-        <option value="number">number</option>
-        <option value="boolean">yes / no</option>
-      </select>
+        options={LITERAL_TYPES}
+        onChange={setType}
+      />
       {type === "boolean" && (
-        <select
-          aria-label={`${label}: value`}
-          className={`${controlClass} py-1 text-[13px]`}
+        <SelectMenu
+          ariaLabel={`${label}: value`}
+          variant="field"
+          triggerClassName="py-1 text-[13px]"
           value={value ? "yes" : "no"}
-          onChange={(e) => onChange(e.target.value === "yes")}
-        >
-          <option value="yes">yes</option>
-          <option value="no">no</option>
-        </select>
+          options={YES_NO}
+          onChange={(picked) => onChange(picked === "yes")}
+        />
       )}
       {type === "number" && (
         <input
@@ -165,18 +168,14 @@ function ConditionRow({
           label={`${label}, left`}
           defaultReference={defaultReference}
         />
-        <select
-          aria-label={`${label}: comparison`}
-          className={`${controlClass} py-1`}
+        <SelectMenu
+          ariaLabel={`${label}: comparison`}
+          variant="field"
+          triggerClassName="py-1"
           value={condition.op}
-          onChange={(e) => setOp(e.target.value as CheckOp)}
-        >
-          {OPS.map((op) => (
-            <option key={op} value={op}>
-              {OP_LABEL[op]}
-            </option>
-          ))}
-        </select>
+          options={OPS.map((op) => ({ value: op, label: OP_LABEL[op] }))}
+          onChange={setOp}
+        />
         {condition.right && (
           <OperandEditor
             operand={condition.right}

@@ -4,6 +4,7 @@ import { ToggleSwitch } from "../ToggleSwitch";
 import { ConditionsEditor } from "./ConditionRow";
 import { type EditorProps, ValuesHint } from "./editorParts";
 import { AddRowButton, AutoTextarea, FieldLabel, RemoveButton } from "./fields";
+import { SelectMenu } from "../SelectMenu";
 
 // The editors of the steps that decide something: a check, an approval's "only when", a branch, a
 // choice and a loop that may stop early.
@@ -31,15 +32,17 @@ export function CheckEditor({ step, onChange, context }: EditorProps<CheckStep>)
           <label htmlFor={`${step.id}-otherwise`} className="text-[var(--muted)]">
             If they don't hold
           </label>
-          <select
+          <SelectMenu
             id={`${step.id}-otherwise`}
-            className={`${inputClass} w-auto`}
+            variant="field"
+            className="w-auto"
             value={step.otherwise ?? "fail"}
-            onChange={(e) => onChange({ ...step, otherwise: e.target.value === "end" ? "end" : "fail" })}
-          >
-            <option value="fail">Stop the run (it failed)</option>
-            <option value="end">End the run quietly (nothing to do)</option>
-          </select>
+            options={[
+              { value: "fail", label: "Stop the run (it failed)" },
+              { value: "end", label: "End the run quietly (nothing to do)" },
+            ]}
+            onChange={(otherwise) => onChange({ ...step, otherwise })}
+          />
           {ends && (
             <span className="text-xs text-[var(--muted)]">
               No notification; a row of such runs shows as one on the task page.

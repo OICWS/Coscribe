@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { pickOption } from "./helpers";
 
 // No model involved: these check how agent steps (decision 0028) read on a
 // workflow's page and that one added in the editor saves as version 2.
@@ -49,7 +50,7 @@ test("an agent step added in the editor is saved, and makes the workflow version
     await page.getByRole("button", { name: "Add step" }).last().click();
     await page.getByRole("dialog", { name: "Add a step" }).getByText("Agent", { exact: true }).click();
     await page.getByLabel("Goal").fill("Summarise {{files}}");
-    await page.locator("select", { hasText: "Add a tool…" }).selectOption("write_file");
+    await pickOption(page.locator('button[id$="-add-tool"]'), "Write file");
     await page.getByRole("button", { name: "Add step" }).first().click();
 
     await expect(page.locator('[data-step="agent"]')).toContainText("4 tools");

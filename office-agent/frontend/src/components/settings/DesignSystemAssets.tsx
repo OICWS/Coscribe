@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { addDesignAsset, deleteDesignAsset, designAssetUrl, updateDesignAsset } from "../../lib/rest";
 import type { DesignAsset } from "../../types/settings";
 import { PlusIcon, TrashIcon } from "../icons";
+import { SelectMenu } from "../SelectMenu";
 import { fieldClass, secondaryButtonClass } from "./SettingRow";
 
 const KINDS: [DesignAsset["kind"], string][] = [
@@ -51,13 +52,14 @@ function AssetRow({ systemId, asset, onChange, onRemove }: { systemId: string; a
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex gap-2">
           <CommitField label="Picture name" value={asset.name} className={`${fieldClass} min-w-0 flex-1`} onCommit={(name) => onChange({ name })} />
-          <select aria-label="Kind" className={`${fieldClass} w-28`} value={asset.kind} onChange={(e) => onChange({ kind: e.target.value as DesignAsset["kind"] })}>
-            {KINDS.map(([kind, label]) => (
-              <option key={kind} value={kind}>
-                {label}
-              </option>
-            ))}
-          </select>
+          <SelectMenu
+            ariaLabel="Kind"
+            variant="field"
+            className="w-28"
+            value={asset.kind}
+            options={KINDS.map(([kind, label]) => ({ value: kind, label }))}
+            onChange={(kind) => onChange({ kind })}
+          />
         </div>
         <CommitField
           label="When to use it"

@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { controlClass, inputClass, primaryButton, secondaryButton } from "../../lib/formStyles";
+import { controlClass, primaryButton, secondaryButton } from "../../lib/formStyles";
 import { MEMORY_TYPE_LABEL, memoryFromText, memoryPreview, memoryText } from "../../lib/memoryWords";
 import { IDENTIFIER } from "../../lib/workflowEdit";
 import type { MemoryEntry, RememberStep } from "../../types/workflow";
 import { type EditorProps, ValuesHint } from "./editorParts";
 import { AddRowButton, AutoTextarea, FieldLabel, RemoveButton } from "./fields";
+import { SelectMenu } from "../SelectMenu";
 import { SectionHeading, VarToken } from "./parts";
 
 // What a task keeps from one run to the next (decision 0034): the values it declares, edited
@@ -92,18 +93,13 @@ function MemoryRowFields({
         value={row.label}
         onChange={(e) => onChange({ label: e.target.value })}
       />
-      <select
-        aria-label={`Remembered value ${index + 1} type`}
-        className={`${controlClass} min-w-0`}
+      <SelectMenu
+        ariaLabel={`Remembered value ${index + 1} type`}
+        variant="field"
         value={row.type}
-        onChange={(e) => onChange({ type: e.target.value as MemoryEntry["type"], text: "" })}
-      >
-        {Object.entries(MEMORY_TYPE_LABEL).map(([type, label]) => (
-          <option key={type} value={type}>
-            {label}
-          </option>
-        ))}
-      </select>
+        options={Object.entries(MEMORY_TYPE_LABEL).map(([type, label]) => ({ value: type as MemoryEntry["type"], label }))}
+        onChange={(type) => onChange({ type, text: "" })}
+      />
       <AutoTextarea
         label={`Remembered value ${index + 1} starting value`}
         placeholder={row.type === "list" ? "Empty, or one item per line" : "Empty"}
@@ -222,20 +218,15 @@ export function RememberEditor({ step, onChange, context }: EditorProps<Remember
     <>
       <div className="max-w-xs">
         <FieldLabel htmlFor={`${step.id}-name`}>Keep as</FieldLabel>
-        <select
+        <SelectMenu
           id={`${step.id}-name`}
-          className={inputClass}
-          aria-invalid={!memory.some((m) => m.name === step.name)}
+          variant="field"
+          invalid={!memory.some((m) => m.name === step.name)}
           value={step.name}
-          onChange={(e) => onChange({ ...step, name: e.target.value })}
-        >
-          {!memory.some((m) => m.name === step.name) && <option value={step.name}>Choose a value</option>}
-          {memory.map((m) => (
-            <option key={m.name} value={m.name}>
-              {m.label || m.name}
-            </option>
-          ))}
-        </select>
+          placeholder="Choose a value"
+          options={memory.map((m) => ({ value: m.name, label: m.label || m.name }))}
+          onChange={(name) => onChange({ ...step, name })}
+        />
         {memory.length === 0 && (
           <p className="mt-1 text-xs text-[var(--danger)]">Add a value under “Remembered between runs” first.</p>
         )}

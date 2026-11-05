@@ -1,6 +1,7 @@
 import { controlClass } from "../../lib/formStyles";
 import { isRelativeDate, RELATIVE_DATES, resolveDate } from "../../lib/inputKinds";
 import type { WorkflowInput } from "../../types/workflow";
+import { SelectMenu } from "../SelectMenu";
 
 type Value = WorkflowInput["default"];
 
@@ -22,22 +23,17 @@ function DateValue({
   const choice = value === null || value === "" ? "" : relative ? String(value) : FIXED;
   return (
     <div className="flex min-w-0 flex-wrap gap-2">
-      <select
-        aria-label={label}
-        className={`${controlClass} min-w-0`}
+      <SelectMenu
+        ariaLabel={label}
+        variant="field"
         value={choice}
-        onChange={(e) => onChange(e.target.value === FIXED ? resolveDate("today") : e.target.value || null)}
-      >
-        <option value="">{blank}</option>
-        <optgroup label="Worked out each run">
-          {RELATIVE_DATES.map(([id, text]) => (
-            <option key={id} value={id}>
-              {text}
-            </option>
-          ))}
-        </optgroup>
-        <option value={FIXED}>A fixed date</option>
-      </select>
+        options={[
+          { value: "", label: blank },
+          ...RELATIVE_DATES.map(([id, text]) => ({ value: id, label: text, group: "Worked out each run" })),
+          { value: FIXED, label: "A fixed date" },
+        ]}
+        onChange={(picked) => onChange(picked === FIXED ? resolveDate("today") : picked || null)}
+      />
       {choice === FIXED && (
         <input
           type="date"
@@ -91,34 +87,27 @@ export function InputValueControl({
   }
   if (input.type === "choice") {
     return (
-      <select
-        aria-label={label}
-        className={className}
+      <SelectMenu
+        ariaLabel={label}
+        variant="field"
+        className="w-full"
         value={String(value ?? "")}
-        onChange={(e) => onChange(e.target.value || null)}
-      >
-        <option value="">{forRun ? "Choose…" : blank}</option>
-        {(input.options ?? []).map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+        options={[{ value: "", label: forRun ? "Choose…" : blank }, ...(input.options ?? []).map((option) => ({ value: option, label: option }))]}
+        onChange={(picked) => onChange(picked || null)}
+      />
     );
   }
   if (input.type === "yes_no") {
     const current = value === null || value === "" ? "" : value === true ? "yes" : "no";
     return (
-      <select
-        aria-label={label}
-        className={className}
+      <SelectMenu
+        ariaLabel={label}
+        variant="field"
+        className="w-full"
         value={current}
-        onChange={(e) => onChange(e.target.value === "" ? null : e.target.value === "yes")}
-      >
-        {!forRun && <option value="">{blank}</option>}
-        <option value="yes">Yes</option>
-        <option value="no">No</option>
-      </select>
+        options={[...(forRun ? [] : [{ value: "", label: blank }]), { value: "yes", label: "Yes" }, { value: "no", label: "No" }]}
+        onChange={(picked) => onChange(picked === "" ? null : picked === "yes")}
+      />
     );
   }
   return (

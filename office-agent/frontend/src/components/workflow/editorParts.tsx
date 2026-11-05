@@ -15,6 +15,7 @@ import type {
 } from "../../types/workflow";
 import { ToggleSwitch } from "../ToggleSwitch";
 import { AddRowButton, FieldLabel, RemoveButton } from "./fields";
+import { SelectMenu } from "../SelectMenu";
 import { VarToken } from "./parts";
 
 const FIELD_TYPE_LABEL: Record<OutputFieldType, string> = {
@@ -133,18 +134,14 @@ export function OutputFieldsTable({
                   />
                 </div>
                 <div className="px-1.5 py-1">
-                  <select
-                    aria-label={`Type of field ${index + 1}`}
-                    className={`${inputClass} border-transparent py-1`}
+                  <SelectMenu
+                    ariaLabel={`Type of field ${index + 1}`}
+                    variant="field"
+                    triggerClassName="border-transparent py-1"
                     value={field.type}
-                    onChange={(e) => setField(index, { type: e.target.value as OutputFieldType })}
-                  >
-                    {Object.entries(FIELD_TYPE_LABEL).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
+                    options={Object.entries(FIELD_TYPE_LABEL).map(([value, label]) => ({ value: value as OutputFieldType, label }))}
+                    onChange={(type) => setField(index, { type })}
+                  />
                 </div>
                 <div className="px-1.5 py-1">
                   <input

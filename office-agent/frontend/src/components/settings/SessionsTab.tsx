@@ -9,7 +9,7 @@ import {
   KEEP_AWAKE_ON_BATTERY_KEY,
   PROMPT_SUGGESTIONS_KEY,
 } from "./fields";
-import { SelectMenu } from "./SelectMenu";
+import { SelectMenu } from "../SelectMenu";
 import { SettingRow, SettingRows, SettingsSection } from "./SettingRow";
 
 interface SessionsTabProps {

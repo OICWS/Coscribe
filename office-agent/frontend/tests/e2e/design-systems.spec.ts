@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { freshThreadPath, waitForConnected } from "./helpers";
+import { freshThreadPath, pickOption, waitForConnected } from "./helpers";
 
 // Settings > Design systems: make one from the blank form, edit and save it, see it in the list,
 // then delete it.
@@ -82,7 +82,7 @@ test("a design system keeps a logo with a note on when to use it", async ({ page
   const logo = page.getByRole("img", { name: "acme-logo" });
   await expect.poll(() => logo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
   await expect(page.getByText("120×40")).toBeVisible();
-  await page.getByLabel("Kind").selectOption("icon");
+  await pickOption(page.getByLabel("Kind"), "Icon");
   const note = page.getByLabel("When to use it");
   await note.fill("On dark backgrounds");
   await note.press("Enter");
@@ -97,7 +97,7 @@ test("a design system keeps a logo with a note on when to use it", async ({ page
   await page.getByRole("listitem").filter({ hasText: name }).getByRole("button", { name: "Edit" }).click();
   await page.getByRole("button", { name: "Assets", exact: true }).click();
   await expect(page.getByLabel("When to use it")).toHaveValue("On dark backgrounds");
-  await expect(page.getByLabel("Kind")).toHaveValue("icon");
+  await expect(page.getByLabel("Kind")).toHaveText("Icon");
   await page.getByRole("button", { name: "Remove acme-logo" }).click();
   await expect(page.getByLabel("Picture name")).toHaveCount(0);
 });

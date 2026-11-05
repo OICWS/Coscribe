@@ -1,4 +1,4 @@
-import { controlClass, inputClass } from "../../lib/formStyles";
+import { inputClass } from "../../lib/formStyles";
 import { toolLabel } from "../../lib/toolLabels";
 import { READ_TOOLS, UNAVAILABLE_TOOLS } from "../../lib/workflowEdit";
 import { AUTONOMY_DESCRIPTION, AUTONOMY_LABEL } from "../../lib/workflowLabels";
@@ -6,6 +6,7 @@ import type { AgentStep, Autonomy } from "../../types/workflow";
 import { ToggleSwitch } from "../ToggleSwitch";
 import { type EditorProps, IrreversibleToggle, OutputFieldsTable, SaveAsField, ValuesHint } from "./editorParts";
 import { AddRowButton, AutoTextarea, FieldLabel, RemoveButton } from "./fields";
+import { SelectMenu } from "../SelectMenu";
 
 // Mirrors workflow_spec/spec.py's MAX_AGENT_STEPS.
 const MAX_AGENT_STEPS = 60;
@@ -74,19 +75,15 @@ function ToolPicker({ step, onChange, context }: EditorProps<AgentStep>) {
             />
           </span>
         ))}
-        <select
+        <SelectMenu
           id={`${step.id}-add-tool`}
-          className={`${controlClass} w-56`}
+          variant="field"
+          className="w-56"
           value=""
-          onChange={(e) => e.target.value && onChange({ ...step, tools: [...step.tools, e.target.value] })}
-        >
-          <option value="">Add a tool…</option>
-          {offered.map((tool) => (
-            <option key={tool.name} value={tool.name}>
-              {toolLabel(tool.name)}
-            </option>
-          ))}
-        </select>
+          placeholder="Add a tool…"
+          options={offered.map((tool) => ({ value: tool.name, label: toolLabel(tool.name) }))}
+          onChange={(name) => onChange({ ...step, tools: [...step.tools, name] })}
+        />
       </div>
       {step.tools.length === 0 && <p className="mt-1 text-xs text-[var(--danger)]">List at least one tool.</p>}
     </div>
