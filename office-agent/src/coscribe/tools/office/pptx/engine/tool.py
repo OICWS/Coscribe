@@ -14,6 +14,7 @@ from typing import Any
 from .....runtime import tool_metadata
 from ...._file_locks import file_lock
 from ...._workspace import WorkspaceScope
+from ....design_systems import DesignSystemStore
 from .build import DeckChangedError, build_deck, page_files
 from .design_system import seed_design_system
 from .template import describe
@@ -31,7 +32,8 @@ def build_engine_tools(
     *,
     extra_readable: Sequence[str | Path] = (),
     extra_writable: Sequence[str | Path] = (),
-    design_system: Callable[[], dict[str, Any] | None] | None = None,
+    state_dir: str | Path | None = None,
+    thread_id: str | None = None,
 ) -> list[Callable[..., Any]]:
     scope = WorkspaceScope(root, extra_readable=extra_readable, extra_writable=extra_writable)
 
@@ -104,8 +106,7 @@ def build_engine_tools(
             raise ValueError(f"path must end in .pptx: {path}")
         out = scope.resolve(path, write=True)
         source_paths = _existing_sources(scope, sources or [])
-        if design_system is not None:
-            seed_design_system(folder, design_system())
+        _seed_from_conversation(folder, state_dir, thread_id)
         with file_lock(out):
             try:
                 report = build_deck(
@@ -126,6 +127,15 @@ def build_engine_tools(
         return {**result, "next": _AFTER_A_CLEAN_BUILD} if clean else result
 
     return [tool_metadata(build_pptx_from_pages, risk_category="WRITE_LOCAL", category="documents")]
+
+
+def _seed_from_conversation(
+    folder: Path, state_dir: str | Path | None, thread_id: str | None
+) -> None:
+    """A deck folder without a design system of its own takes the library system the
+    conversation started with, so the build checks the deck against it."""
+    if state_dir is not None and thread_id:
+        seed_design_system(folder, DesignSystemStore(state_dir).deck_system_for_thread(thread_id))
 
 
 def _existing_sources(scope: WorkspaceScope, sources: list[str]) -> list[Path]:

@@ -14,9 +14,10 @@ up while adding that warning:
 
 ## Shipped
 - **The conversation's system reaches the build:**
-  - `build_presentation_tools(thread_id=...)` hands the engine
-    `DesignSystemStore.deck_system_for_thread`. That is the system the conversation started with,
-    in a deck's shape, each picture with the `brand/...` path its copy has and its file's sha256.
+  - `build_presentation_tools(thread_id=...)` passes the conversation to the engine's tool. The
+    tool reads `DesignSystemStore.deck_system_for_thread`: the system the conversation started
+    with, in a deck's shape, each picture with the `brand/...` path its copy has and its file's
+    sha256.
   - A pages folder with no `design-system.json` yet is seeded with it (`seed_design_system`), as
     the panel does on its first read. The existing off-system check now runs from the first build.
 - **The logo warning** (`design_check.unplaced_logo`):

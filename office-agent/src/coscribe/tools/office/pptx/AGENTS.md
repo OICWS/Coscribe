@@ -17,7 +17,7 @@ a deck.
 `coscribe.tools._native_formula`, `coscribe.tools._native_svg`, `coscribe.tools._office_com`,
 `coscribe.tools._ooxml_validate`, `coscribe.tools._output_truncation`, `coscribe.tools._pdfium`, `coscribe.tools._pptx_shapes`,
 `coscribe.tools._pptx_text`, `coscribe.tools._svg_slide`, `coscribe.tools._thumbnail`,
-`coscribe.tools._workspace`, `coscribe.tools.office.markdown_blocks`, `coscribe.tools.office.pdf`,
+`coscribe.tools._workspace`, `coscribe.tools.design_systems` (the conversation's system a build checks against), `coscribe.tools.office.markdown_blocks`, `coscribe.tools.office.pdf`,
 `coscribe.tools.pptx_templates`.
 
 ## Invariants

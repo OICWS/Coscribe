@@ -6,11 +6,9 @@ engine's together."""
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from functools import partial
 from pathlib import Path
 from typing import Any
 
-from ...design_systems import DesignSystemStore
 from .engine.build import DeckChangedError
 from .engine.deck_files import copy_deck, deck_files, move_deck
 from .engine.design_system import design_system
@@ -85,11 +83,6 @@ def build_presentation_tools(
 ) -> list[Callable[..., Any]]:
     """`thread_id` names the conversation, so a deck it builds is checked against the library
     system it started with."""
-    chosen_system = (
-        partial(DesignSystemStore(state_dir).deck_system_for_thread, thread_id)
-        if state_dir is not None and thread_id is not None
-        else None
-    )
     return [
         *build_legacy_presentation_tools(
             root,
@@ -102,6 +95,7 @@ def build_presentation_tools(
             root,
             extra_readable=extra_readable,
             extra_writable=extra_writable,
-            design_system=chosen_system,
+            state_dir=state_dir,
+            thread_id=thread_id,
         ),
     ]
