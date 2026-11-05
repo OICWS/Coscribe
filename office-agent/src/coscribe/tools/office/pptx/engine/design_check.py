@@ -15,6 +15,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from ....design_systems import unplaced_logo as logo_note
+
 DESIGN_SYSTEM = "design-system.json"
 COLOUR = re.compile(r"#[0-9a-fA-F]{6}\b")
 FONT = re.compile(r"font-family(?::\s*|=\")([^;\"]+)")
@@ -82,16 +84,7 @@ def off_system(system: dict[str, Any], pages: Sequence[tuple[str, str]]) -> dict
 def unplaced_logo(
     system: dict[str, Any], folder: Path, pages: Sequence[tuple[str, str]]
 ) -> str | None:
-    """A warning when the `system` has logos and no page in `folder` places any of them. A logo
-    counts as placed when a picture a page names is that very file (its sha256), whatever it is
-    called: a copy renamed is the logo, a redrawn or recoloured one is not."""
-    logos = [
-        a
-        for a in system.get("assets", [])
-        if isinstance(a, dict) and a.get("kind") == "logo" and a.get("sha256")
-    ]
-    if not logos:
-        return None
+    """A deck warning when the `system` has logos and no page in `folder` places one of them."""
     placed = set()
     for _page, text in pages:
         for ref in PICTURE.findall(text):
@@ -99,18 +92,7 @@ def unplaced_logo(
                 placed.add(hashlib.sha256((folder / ref).read_bytes()).hexdigest())
             except (OSError, ValueError):
                 continue
-    if any(logo["sha256"] in placed for logo in logos):
-        return None
-    files = "; ".join(
-        f"{logo.get('path') or logo.get('name')}"
-        + (f" ({logo['note']})" if logo.get("note") else "")
-        for logo in logos
-    )
-    return (
-        f"the design system {system.get('name', '')!r} has a logo no slide places: copy_file it "
-        f"into the pages folder and place the file itself where its note says ({files}), or "
-        "tell the user why this deck has none"
-    )
+    return logo_note(system, placed, where="slide", folder="pages folder")
 
 
 def _unlisted(values: list[str], known: Any) -> list[str]:

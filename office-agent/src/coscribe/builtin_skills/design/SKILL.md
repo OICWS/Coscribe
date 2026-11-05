@@ -81,7 +81,7 @@ after the page's own styles, and the person can change them on the canvas, so:
   in. Nothing loads from outside the canvas folder.
 - When the first message lists a design system's pictures (`brand/...`), use its logo on the
   artboards where a brand belongs (a header, a cover, a footer), the variant its note asks for;
-  never redraw, recolour or stretch it.
+  never redraw, recolour or stretch it. look_at_page says when no artboard places it.
 - A script may make the page work when the person presses Play: tabs, a menu that opens, a form
   that checks its fields. It reaches nothing outside the page.
 - Text a person might change is real text in the page, not drawn into an SVG.

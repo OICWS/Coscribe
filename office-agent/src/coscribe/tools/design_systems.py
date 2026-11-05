@@ -15,7 +15,7 @@ import os
 import re
 import shutil
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -477,6 +477,13 @@ class DesignSystemStore:
             assets.append(entry)
         return {**as_deck_design_system(chosen), "assets": assets}
 
+    def unplaced_logo_for_thread(
+        self, thread_id: str, placed: Collection[str], *, where: str, folder: str
+    ) -> str | None:
+        """`unplaced_logo` for the system the conversation started with; None without one."""
+        system = self.deck_system_for_thread(thread_id)
+        return unplaced_logo(system, placed, where=where, folder=folder) if system else None
+
     def delete(self, system_id: str) -> bool:
         path = self._path(system_id)
         if path is None or not path.parent.is_dir():
@@ -503,6 +510,32 @@ def _brand_paths(system: dict[str, Any]) -> list[tuple[dict[str, Any], str]]:
         taken.add(name.lower())
         named.append((asset, f"brand/{folder}/{name}"))
     return named
+
+
+def unplaced_logo(
+    system: dict[str, Any], placed: Collection[str], *, where: str, folder: str
+) -> str | None:
+    """A note when `system` (from `deck_system_for_thread`) has logos and none of them is among
+    `placed`, the sha256 of each picture file the pages place: a copy renamed is the logo, a
+    redrawn or recoloured one is not. `where` names a page ("slide", "board"), `folder` where the
+    pages' pictures go."""
+    logos = [
+        a
+        for a in system.get("assets", [])
+        if isinstance(a, dict) and a.get("kind") == "logo" and a.get("sha256")
+    ]
+    if not logos or any(logo["sha256"] in placed for logo in logos):
+        return None
+    files = "; ".join(
+        str(logo.get("path") or logo.get("name"))
+        + (f" ({logo['note']})" if logo.get("note") else "")
+        for logo in logos
+    )
+    return (
+        f"the design system {system.get('name', '')!r} has a logo no {where} places: copy_file "
+        f"it into the {folder} and place the file itself where its note says ({files}), or tell "
+        "the user why there is none"
+    )
 
 
 def as_deck_design_system(system: dict[str, Any]) -> dict[str, Any]:

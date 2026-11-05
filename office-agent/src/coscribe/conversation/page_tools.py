@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from ..runtime import tool_metadata
-from ..tools import WorkspaceScope
+from ..tools import DesignSystemStore, WorkspaceScope
 from .dashboard import is_dashboard, render_dashboard
 from .design_canvas import (
     BOARD_INSPECTOR,
@@ -22,6 +22,7 @@ from .design_canvas import (
     canvas_of_page,
     in_scheme,
     is_canvas,
+    placed_pictures,
     read_canvas,
     variables_style,
     with_parts,
@@ -133,8 +134,30 @@ def _targets(file: Path, board: str | None) -> tuple[list[dict[str, Any]], list[
     return chosen, [b["id"] for b in boards[_MAX_BOARDS:]]
 
 
-def build_page_tools(scope: Callable[[], WorkspaceScope]) -> list[Callable[..., Any]]:
-    """`look_at_page`, read only and deferred like the other non-core tools (0001)."""
+def _logo_note(file: Path, state_dir: str | Path, thread_id: str) -> str | None:
+    """For a canvas: the note when the conversation's system has a logo and no artboard (all of
+    them, not only those drawn this time) places it."""
+    if not is_canvas(file):
+        return None
+    folder = canvas_folder(file)
+    placed: set[str] = set()
+    for board in read_canvas(file)["boards"]:
+        page = folder / board["file"]
+        if page.is_file():
+            placed |= placed_pictures(page, with_parts(page, page.read_bytes()))
+    return DesignSystemStore(state_dir).unplaced_logo_for_thread(
+        thread_id, placed, where="artboard", folder="canvas folder"
+    )
+
+
+def build_page_tools(
+    scope: Callable[[], WorkspaceScope],
+    state_dir: str | Path | None = None,
+    thread_id: str | None = None,
+) -> list[Callable[..., Any]]:
+    """`look_at_page`, read only and deferred like the other non-core tools (0001). With the
+    conversation (`state_dir`, `thread_id`), a canvas is also checked for the logo of the library
+    system the conversation started with."""
 
     def look_at_page(
         path: str, board: str | None = None, scheme: str | None = None
@@ -178,6 +201,8 @@ def build_page_tools(scope: Callable[[], WorkspaceScope]) -> list[Callable[..., 
         summary: dict[str, Any] = {"path": path, "pages": pages}
         if not_shown:
             summary["not_shown"] = not_shown
+        if state_dir is not None and thread_id and (note := _logo_note(file, state_dir, thread_id)):
+            summary["design_system"] = note
         return [{"type": "text", "text": json.dumps(summary, ensure_ascii=False)}, *images]
 
     return [tool_metadata(look_at_page, risk_category="READ", category="documents")]

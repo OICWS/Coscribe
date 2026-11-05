@@ -14,6 +14,7 @@ sandboxed frame. It sits with the artifact registry, which lists a canvas as a d
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import os
 import re
@@ -198,15 +199,10 @@ def with_pictures(page: Path, body: bytes) -> bytes:
     budget = [_MAX_PICTURES_BYTES]
 
     def fill(match: re.Match[bytes]) -> bytes:
-        name = match.group(3).decode()
-        file = (folder / name).resolve()
-        media = _PICTURE_MEDIA.get(file.suffix.lower())
-        if media is None or ".." in name.split("/") or not file.is_relative_to(folder):
+        found = _picture_file(folder, match.group(3).decode())
+        if found is None:
             return match.group(0)
-        try:
-            data = file.read_bytes()
-        except OSError:
-            return match.group(0)
+        data, media = found
         if len(data) > budget[0]:
             return match.group(0)
         budget[0] -= len(data)
@@ -214,6 +210,27 @@ def with_pictures(page: Path, body: bytes) -> bytes:
         return match.group(1) + match.group(2) + uri + match.group(2)
 
     return _PICTURE_SRC.sub(fill, body)
+
+
+def placed_pictures(page: Path, body: bytes) -> set[str]:
+    """The sha256 of each picture file `body` (a page of the canvas folder, its parts filled in)
+    places, by the rule `with_pictures` fills them in by."""
+    folder = page.parent.resolve()
+    found = (_picture_file(folder, m.group(3).decode()) for m in _PICTURE_SRC.finditer(body))
+    return {hashlib.sha256(f[0]).hexdigest() for f in found if f is not None}
+
+
+def _picture_file(folder: Path, name: str) -> tuple[bytes, str] | None:
+    """A picture file of `folder` (or a folder inside it) with its media type; None for any other
+    name, one that leaves the folder, or a missing file."""
+    file = (folder / name).resolve()
+    media = _PICTURE_MEDIA.get(file.suffix.lower())
+    if media is None or ".." in name.split("/") or not file.is_relative_to(folder):
+        return None
+    try:
+        return file.read_bytes(), media
+    except OSError:
+        return None
 
 
 # A link from one artboard to another (`<a href="checkout.html">`) can't navigate the sandboxed
