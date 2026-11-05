@@ -313,6 +313,21 @@ def is_steer(message: Any) -> bool:
     return bool((getattr(message, "additional_kwargs", None) or {}).get(_STEER_MARK))
 
 
+_PLAN_CHECK_MARK = "coscribe_plan_check"
+
+
+def plan_check_message(text: str) -> HumanMessage:
+    """The plan sent back to the model when it stops with tasks open. Marked as a steer so the
+    per-turn counts and the edit and rewind positions skip it, and as a notice so it is not
+    taken for what the user asked; the chat doesn't show it."""
+    marks = {_STEER_MARK: True, _PLAN_CHECK_MARK: True, "notice": True}
+    return HumanMessage(content=text, additional_kwargs=marks)
+
+
+def is_plan_check(message: Any) -> bool:
+    return bool((getattr(message, "additional_kwargs", None) or {}).get(_PLAN_CHECK_MARK))
+
+
 def starts_a_turn(message: Any) -> bool:
     """A user's request: not a note added mid-turn, and not an
     auto-compact summary (a HumanMessage too)."""
@@ -525,7 +540,7 @@ def serialize_history_for_ws_lg(messages: list[Any]) -> list[dict[str, Any]]:
             # but real content (the image itself) that a bare text check
             # would otherwise drop the whole entry over.
             images = extract_images(message.content)
-            if not text and not images:
+            if (not text and not images) or is_plan_check(message):
                 continue
             kind = "steer" if is_steer(message) else "user"
             shown, files = split_attached_files(strip_mode_note(text))

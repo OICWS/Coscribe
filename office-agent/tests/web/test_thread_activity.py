@@ -59,6 +59,8 @@ def test_thread_activity_lists_outputs_references_tools_and_progress_lg(
                 ],
             ),
             AIMessage(content="done"),
+            # The task is left open, so the plan check gives the model one more step.
+            AIMessage(content=""),
         ]
     )
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:

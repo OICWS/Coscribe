@@ -37,6 +37,7 @@ from .tool_deferral import (
     build_search_tools_tool,
     build_use_tool_tool,
 )
+from .turn_checks import plan_check, repeat_note
 
 
 def tool_name(tool: Callable[..., Any] | BaseTool) -> str:
@@ -180,9 +181,14 @@ class _CatchToolErrorsMiddleware(AgentMiddleware):
     interrupt still pauses (`state.next` populated) and resumes correctly
     with this middleware installed alongside it."""
 
+    def __init__(self, after: Callable[[Any, Any], Any] | None = None) -> None:
+        super().__init__()
+        # What a successful result goes through on its way back (turn_checks.repeat_note).
+        self.after = after or (lambda request, result: result)
+
     def wrap_tool_call(self, request: Any, handler: Any) -> Any:
         try:
-            return handler(request)
+            return self.after(request, handler(request))
         except GraphBubbleUp:
             raise
         except Exception as exc:  # noqa: BLE001 -- exactly the tools/*.py ValueError-for-
@@ -191,14 +197,11 @@ class _CatchToolErrorsMiddleware(AgentMiddleware):
 
     async def awrap_tool_call(self, request: Any, handler: Any) -> Any:
         try:
-            return await handler(request)
+            return self.after(request, await handler(request))
         except GraphBubbleUp:
             raise
         except Exception as exc:  # noqa: BLE001 -- same reasoning as wrap_tool_call above
             return _tool_error_message(request, exc)
-
-
-_catch_tool_errors = _CatchToolErrorsMiddleware()
 
 
 def _redact_value(value: Any, redact: Callable[[str], str]) -> Any:
@@ -237,7 +240,7 @@ class _RedactToolResultsMiddleware(AgentMiddleware):
     it is written to the conversation, so the model, the transcript, the UI
     and the audit log all read the same blanked text. The one place secret
     values are kept out of what the model reads. Outermost, so it also sees
-    the error messages `_catch_tool_errors` makes."""
+    the error messages `_CatchToolErrorsMiddleware` makes."""
 
     def __init__(self, redact: Callable[[str], str]) -> None:
         self._redact = redact
@@ -486,7 +489,7 @@ def build_langgraph_agent(
     computes `auto_compact_tokens` from this project's own already-working
     `LLMClient.get_context_window(model_string)` instead of depending on
     LangChain's incomplete model-profile registry -- see `conversation/session.py`'s
-    `_build_lg_agent`. `open_tasks`: see `_CompactMiddleware`; `context_editing.py` runs from half.
+    `_build_lg_agent`. `open_tasks`: `_CompactMiddleware`, `turn_checks`; `context_editing` at half.
     """
     approval_tool_names = {
         tool_name(t)
@@ -499,14 +502,14 @@ def build_langgraph_agent(
     }
     approval_tool_names.update(extra_interrupt_tool_names)
     question_tool_names_set = set(question_tool_names)
-    # _catch_tool_errors always runs, regardless of approval gating --
+    # _CatchToolErrorsMiddleware always runs, regardless of approval gating --
     # every graph built here should feed a tool's own raised exception back
     # to the model instead of crashing the turn (see its own docstring for
     # the live-reported bug this fixes). Listed before HumanInTheLoopMiddleware
     # so it's the outermost wrapper; order doesn't change correctness here
     # (it re-raises GraphBubbleUp untouched either way), but outermost is
     # the natural place for a catch-all.
-    middleware: list[Any] = [_catch_tool_errors]
+    middleware: list[Any] = [_CatchToolErrorsMiddleware(after=repeat_note(tools))]
     if resolve_file is not None:
         middleware.append(EditGuardMiddleware(resolve_file, _writer_names(tools)))
     if redact is not None:
@@ -542,7 +545,7 @@ def build_langgraph_agent(
         middleware.append(_CompactMiddleware(model, auto_compact_tokens, open_tasks))
         middleware.append(clear_old_tool_results_middleware(auto_compact_tokens // 2))
 
-    middleware.append(_AnswerEveryToolCallMiddleware())
+    middleware += [*plan_check(open_tasks), _AnswerEveryToolCallMiddleware()]
 
     final_tools = list(tools)
     if defer_tools:
