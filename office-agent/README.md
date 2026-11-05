@@ -22,8 +22,8 @@ python3 -m venv .venv
 source .venv/bin/activate          # Windows PowerShell: .\.venv\Scripts\Activate.ps1
 pip install -e ".[dev,web]"
 cp .env.example .env
-# edit .env and set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GEMINI_API_KEY,
-# and COSCRIBE_DEFAULT_MODEL as "provider:model" (e.g. gemini:gemini-2.5-flash)
+# edit .env and set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GEMINI_API_KEY; optionally
+# COSCRIBE_DEFAULT_MODEL as "provider:model" (left empty, the key's provider picks one)
 cd frontend && npm install && npm run build && cd ..
 # ^ one-time (and after any frontend change) -- compiles into
 # src/coscribe/web/static/, which coscribe-web serves and which is
