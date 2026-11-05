@@ -3,13 +3,42 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from coscribe.config import Settings
+from coscribe.config import DEFAULT_MODELS, Settings, side_model_name
+
+
+def _no_model_or_keys(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("COSCRIBE_DEFAULT_MODEL", raising=False)
+    for key_env, _ in DEFAULT_MODELS.values():
+        monkeypatch.delenv(key_env, raising=False)
 
 
 def test_requires_default_model(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("COSCRIBE_DEFAULT_MODEL", raising=False)
+    _no_model_or_keys(monkeypatch)
     with pytest.raises(ValidationError):
         Settings(_env_file=None)  # type: ignore[call-arg]
+
+
+def test_a_provider_key_alone_picks_that_providers_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    _no_model_or_keys(monkeypatch)
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+
+    settings = Settings(_env_file=None)  # type: ignore[call-arg]
+
+    assert settings.default_model == f"gemini:{DEFAULT_MODELS['gemini'][1]}"
+
+
+def test_a_model_that_is_set_wins_over_a_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    _no_model_or_keys(monkeypatch)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
+    monkeypatch.setenv("COSCRIBE_DEFAULT_MODEL", "deepseek:deepseek-flash")
+
+    assert Settings(_env_file=None).default_model == "deepseek:deepseek-flash"  # type: ignore[call-arg]
+
+
+def test_side_calls_use_the_providers_small_model_unless_one_is_set() -> None:
+    assert side_model_name("anthropic:claude-opus-5-5") == "anthropic:claude-haiku-5-5"
+    assert side_model_name("deepseek:deepseek-flash") == "deepseek:deepseek-flash"
+    assert side_model_name("anthropic:claude-opus-5-5", "openai:gpt-6-luna") == "openai:gpt-6-luna"
 
 
 def test_default_model_must_have_provider_prefix(monkeypatch: pytest.MonkeyPatch) -> None:

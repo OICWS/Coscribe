@@ -647,3 +647,47 @@ def test_no_suggestion_is_made_when_the_setting_is_off_lg(
             _receive_until(ws, "tasks_changed")
 
     assert not [m for m in fake_model.received if "predict what" in str(m[0].content)]
+
+
+class _FailingModel(_TitlingModel):
+    def _generate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: Any = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        raise RuntimeError("this key has no access to the small model")
+
+
+@pytest.mark.parametrize("small_works", [True, False])
+def test_the_title_comes_from_the_small_model_and_from_the_main_one_when_it_fails_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, small_works: bool
+) -> None:
+    from coscribe.conversation import agent_assembly
+
+    small = _TitlingModel(responses=[]) if small_works else _FailingModel(responses=[])
+    built: list[str] = []
+
+    def resolve(model: str, custom_providers: Any = None) -> Any:
+        built.append(model)
+        return small
+
+    monkeypatch.setattr(agent_assembly, "resolve_chat_model", resolve)
+    main = _TitlingModel(responses=[AIMessage(content="Here's the summary.")])
+    overrides = {"auto_title_threads": True, "side_model": "fake:small"}
+    with _client_lg(tmp_path, monkeypatch, main, **overrides) as client:
+        with client.websocket_connect("/ws/t_small") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "summarize Q3 sales"})
+            titled = _receive_until(ws, "thread_titled")[-1]
+            _receive_until(ws, "tasks_changed")
+
+    assert titled["title"] == "Q3 销售汇总"
+    assert built == ["fake:small"]
+    def asked_for_a_title(model: _TitlingModel) -> bool:
+        return any("Name this" in str(m[0].content) for m in model.received)
+
+    assert asked_for_a_title(small) is small_works
+    assert asked_for_a_title(main) is not small_works
