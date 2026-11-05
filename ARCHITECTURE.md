@@ -67,7 +67,9 @@ Specialist behavior comes from Skills and from delegation, not from a
 standing roster of agents.
 
 - **Planning** is the coordinator's own task list (`task_create`/`update`)
-  plus Plan mode, where it can only read until the user approves a plan.
+  plus Plan mode, where it can only read until the user approves a plan. A
+  turn that worked on the list and stops with tasks open gets them back once.
+  A read repeated in a turn gets a note on its result.
 - **Reflection** needs someone who didn't do the work: `review_work` runs a
   fresh reviewer with read-only tools, the rendered pages, and a log of what
   the work's scripts and reads actually returned, so a figure that nothing

@@ -27,6 +27,21 @@ async def _without_summaries(stream: Any) -> Any:
         yield mode, chunk
 
 
+async def _shown(stream: Any) -> Any:
+    """`_without_summaries`, with a paragraph break between two replies that no tool call
+    separates (the model going on after the plan check), so they don't run together."""
+    spoke, last_id = False, None
+    async for mode, chunk in _without_summaries(stream):
+        message = chunk[0] if mode == "messages" else None
+        if isinstance(message, ToolMessage):
+            spoke = False
+        elif isinstance(message, AIMessage) and _extract_text(message.content):
+            if spoke and message.id != last_id:
+                yield mode, (AIMessageChunk(content="\n\n", id=message.id), chunk[1])
+            spoke, last_id = True, message.id
+        yield mode, chunk
+
+
 class TurnStreamHost(Protocol):
     """What the stream reads and writes on the session it belongs to."""
 
@@ -113,7 +128,7 @@ class TurnStreamer:
         # its tool calls run, which "messages" has no event for.
         stream = agent.astream(turn_input, config=config, stream_mode=["messages", "updates"])
         try:
-            async for mode, chunk in _without_summaries(stream):
+            async for mode, chunk in _shown(stream):
                 if mode == "updates":
                     await self.announce_started_tools(chunk, websocket)
                     continue

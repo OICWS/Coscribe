@@ -84,6 +84,8 @@ def test_task_list_endpoint_reflects_task_create(
         responses=[
             AIMessage(content="", tool_calls=[call]),
             AIMessage(content="tracked it"),
+            # The task is left open, so the plan check gives the model one more step.
+            AIMessage(content=""),
         ]
     )
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
