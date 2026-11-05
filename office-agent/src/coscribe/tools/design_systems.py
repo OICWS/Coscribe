@@ -15,13 +15,15 @@ import os
 import re
 import shutil
 import uuid
-from collections.abc import Callable, Collection
+import zipfile
+from collections.abc import Callable, Collection, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from ..runtime import tool_metadata
 from ._file_locks import file_lock, replace_with_retry
+from ._workspace import WorkspaceScope
 
 SYSTEM_FILE = "system.json"
 # An id comes from a URL, so it must never name a path outside the library.
@@ -552,17 +554,72 @@ def as_deck_design_system(system: dict[str, Any]) -> dict[str, Any]:
 
 def _summary(system: dict[str, Any]) -> str:
     typography = system["typography"]
+    pictures = len(system.get("assets", []))
     return (
         f"{len(system['colors'])} colors, {len(typography['fonts'])} fonts, "
         f"{len(typography['styles'])} text styles, {len(system['spacing'])} spacing and "
         f"{len(system['radius'])} corner radius values"
+        + (f", {pictures} pictures" if pictures else "")
     )
 
 
-def build_design_system_tools(state_dir: str | Path) -> list[Callable[..., Any]]:
+def _add_assets(
+    store: DesignSystemStore,
+    system_id: str,
+    rows: list[dict[str, str]],
+    scope: WorkspaceScope | None,
+) -> dict[str, Any] | None:
+    """Adds the pictures `rows` name to the system, one already there (the same file) once;
+    the system as it is then. Raises DesignSystemError for a row it cannot take."""
+    if scope is None:
+        raise DesignSystemError("pictures can't be added here; add them in Settings")
+    system = store.get(system_id) or {}
+    kept = {
+        hashlib.sha256(found[0].read_bytes()).hexdigest()
+        for a in system.get("assets", [])
+        if (found := store.asset_file(system_id, str(a.get("id", ""))))
+    }
+    for row in rows:
+        if not isinstance(row, dict) or not row.get("file"):
+            raise DesignSystemError('each picture names its "file"')
+        data = _picture_bytes(scope, str(row["file"]))
+        digest = hashlib.sha256(data).hexdigest()
+        if digest in kept:
+            continue
+        name = str(row.get("name") or Path(str(row["file"]).split("#")[-1]).name)
+        made = store.add_asset(system_id, data, name)
+        assert made is not None
+        fields = {"kind": row.get("kind") or "picture", "note": row.get("note") or ""}
+        store.update_asset(system_id, made["id"], fields)
+        kept.add(digest)
+    return store.get(system_id)
+
+
+def _picture_bytes(scope: WorkspaceScope, file: str) -> bytes:
+    """A workspace file, or a picture inside a .pptx or .potx (`deck.pptx#ppt/media/image3.png`)."""
+    deck, _, member = file.partition("#")
+    try:
+        path = scope.resolve(deck)
+        if not member:
+            return path.read_bytes()
+        if path.suffix.lower() not in (".pptx", ".potx") or not member.startswith("ppt/media/"):
+            raise DesignSystemError(f"{file}: a picture inside a deck is deck.pptx#ppt/media/...")
+        with zipfile.ZipFile(path) as package:
+            return package.read(member)
+    except (OSError, KeyError, zipfile.BadZipFile) as exc:
+        raise DesignSystemError(f"{file}: not a file that can be read") from exc
+
+
+def build_design_system_tools(
+    state_dir: str | Path,
+    root: str | Path | None = None,
+    extra_readable: Sequence[str | Path] = (),
+) -> list[Callable[..., Any]]:
     """The tool that saves a design system to the person's library. Deferred like the other
-    non-core tools, so the fixed tool list (0001) is unchanged."""
+    non-core tools, so the fixed tool list (0001) is unchanged. `root` is the workspace its
+    pictures are read from; without it, a system takes no pictures."""
     store = DesignSystemStore(state_dir)
+    scope = WorkspaceScope(root, extra_readable=extra_readable) if root is not None else None
 
     def save_design_system(
         name: str | None = None,
@@ -572,6 +629,7 @@ def build_design_system_tools(state_dir: str | Path) -> list[Callable[..., Any]]
         text_styles: list[dict[str, Any]] | None = None,
         spacing: list[dict[str, str]] | None = None,
         radius: list[dict[str, str]] | None = None,
+        assets: list[dict[str, str]] | None = None,
         system_id: str | None = None,
     ) -> dict[str, str]:
         """Save a design system to the user's library, where it shows on the Artifacts page and
@@ -592,6 +650,11 @@ def build_design_system_tools(state_dir: str | Path) -> list[Callable[..., Any]]
                 heading-1, heading-3, lead, eyebrow, body and caption.
             spacing: rows of {"name", "value"}, for example {"name": "Margin", "value": "96px"}.
             radius: rows of {"name", "value"}, for example {"name": "Card", "value": "16px"}.
+            assets: pictures to add to the system, rows of {"file", "name", "kind", "note"}:
+                file is an SVG, PNG, JPEG or WebP in the workspace (one the user attached) or a
+                picture read_pptx_design lists ("template.pptx#ppt/media/image3.png"); kind is
+                logo, icon or picture; note says when to use it ("on dark backgrounds"). Each
+                is added to those the system has; the same picture twice is kept once.
             system_id: the id returned when it was saved, to change that system.
         """
         if system_id is None:
@@ -621,6 +684,8 @@ def build_design_system_tools(state_dir: str | Path) -> list[Callable[..., Any]]
         }
         try:
             saved = store.update(current["id"], data)
+            if assets:
+                saved = _add_assets(store, current["id"], assets, scope) or saved
         except DesignSystemError:
             if system_id is None:
                 store.delete(current["id"])  # a half-made system must not stay in the library
