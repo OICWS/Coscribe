@@ -14,7 +14,6 @@ from coscribe.web.routes import artifacts as artifact_routes
 
 from .helpers import FakeToolCallingChatModel, _client_lg, _run_turn, _tool_call
 
-
 # A turn that wrote "x" into an Office file hears that it doesn't open, and answers again.
 _DONE_TWICE = [AIMessage(content="done"), AIMessage(content="done")]
 
