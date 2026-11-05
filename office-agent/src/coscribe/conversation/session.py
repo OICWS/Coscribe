@@ -420,7 +420,7 @@ class ChatSessionLG:
             and self._report_turns_in_row == 0
         ):
             self._suggestion_task = asyncio.create_task(
-                offer_next_prompt(self.model, websocket, user_text, reply_text)
+                offer_next_prompt(self._assembly.side_model(), websocket, user_text, reply_text)
             )
 
     async def _name_thread(self, websocket: EventSink, first_message: str | None = None) -> None:
@@ -452,7 +452,7 @@ class ChatSessionLG:
                 )
             if not first_user.strip():
                 return
-            reply = await self.model.ainvoke(
+            reply = await self._assembly.side_model().ainvoke(
                 [
                     SystemMessage(content=TITLE_INSTRUCTIONS),
                     HumanMessage(
