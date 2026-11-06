@@ -47,6 +47,8 @@ def answer_every_tool_call(messages: list[Any]) -> tuple[list[Any], bool]:
 
 
 STOPPED_MARKER = "[stopped]"
+# What a question still open at a stop is answered with (ChatSessionLG.request_stop).
+_STOPPED_BEFORE_ANSWER = "(Stopped by user before answering.)"
 
 
 def stopped_turn_messages(
@@ -66,14 +68,20 @@ def stopped_turn_messages(
     for message in messages[start + 1 :]:
         for call in getattr(message, "tool_calls", None) or []:
             names[call["id"]] = unwrap_use_tool_call(call["name"], call.get("args") or {})[0]
+    results = [m for m in messages[start + 1 :] if isinstance(m, ToolMessage)]
     cut = [
         names.get(m.tool_call_id, m.name or "a tool")
-        for m in messages[start + 1 :]
-        if isinstance(m, ToolMessage) and m.content == ORPHANED_TOOL_CALL_NOTE
+        for m in results
+        if m.content == ORPHANED_TOOL_CALL_NOTE
     ]
     note = "[The user pressed Stop and ended your previous turn there."
     if cut:
         note += f" These calls were cut off and did not finish: {', '.join(cut)}."
+    if any(m.content == _STOPPED_BEFORE_ANSWER for m in results):
+        note += (
+            " Your question was left unanswered: don't ask it again first thing; answer their"
+            " next message, and ask again only if you still need to."
+        )
     note += (
         " Steps that finished keep their results, so don't redo them, and don't take the "
         "stopped work up again unless the user asks: answer their next message."

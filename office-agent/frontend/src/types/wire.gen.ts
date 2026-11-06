@@ -506,6 +506,11 @@ export interface ApprovalResponseOut {
   approved: boolean;
   /** "task": allow this kind of action for the rest of the code task. */
   scope?: "task";
+  /**
+   * Written in the chat while the card was open: the call is denied, the words go to
+   * the model.
+   */
+  reply?: string;
 }
 
 /** Answer to a plan or task draft. */
@@ -532,10 +537,18 @@ export interface QuestionDismissedOut {
   dismissed: true;
 }
 
+/** The user wrote in the chat instead of choosing: the text is their answer. */
+export interface QuestionRepliedOut {
+  type: "question_response";
+  id: string;
+  reply: string;
+}
+
 export type QuestionResponseOut =
   | QuestionAnswerOut
   | QuestionAnswersOut
-  | QuestionDismissedOut;
+  | QuestionDismissedOut
+  | QuestionRepliedOut;
 
 /** Cooperative stop; also denies any pending approval. */
 export interface StopOut {
@@ -605,6 +618,7 @@ export type ClientMessage =
   | QuestionAnswerOut
   | QuestionAnswersOut
   | QuestionDismissedOut
+  | QuestionRepliedOut
   | StopOut
   | SwitchModelOut
   | SetEnvironmentOut

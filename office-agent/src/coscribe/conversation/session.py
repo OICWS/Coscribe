@@ -215,14 +215,12 @@ class ChatSessionLG:
         self.extra_folders: list[Path] = list(extra_folders or [])
         self._context_window_client = context_window_client
         self._context_window: int | None = None
-        self._pending_approvals: dict[str, Future[bool]] = {}
+        self._pending_approvals: dict[str, Future[bool | str]] = {}
         # The code module's approvals: which (task, action) a pending card
         # is for, and what the person has allowed for a whole task.
         self._code_requests: dict[str, tuple[str, str]] = {}
         self._code_task_allowances: set[tuple[str, str]] = set()
-        # A question's answer is one entry per question, or None when the
-        # user closed them; the other requests (plans, drafts) and a stop
-        # answer with a string.
+        # A question's answer: see question_answer; a plan, a draft and a stop answer with a string.
         self._pending_questions: dict[str, Future[Any]] = {}
         self.hooks_config: dict[str, list[str]] = hooks_config or empty_hooks_config()
         self.plan_mode = False
@@ -492,17 +490,19 @@ class ChatSessionLG:
     ) -> Any:
         return self._assembly.build_lg_agent(model, model_string, lg_tools)
 
-    def resolve_approval(self, request_id: str, approved: bool, scope: str | None = None) -> None:
-        # "task": the person allowed this kind of action for the rest of the
-        # code task that asked, not only this once.
+    def resolve_approval(
+        self, request_id: str, approved: bool, scope: str | None = None, reply: str | None = None
+    ) -> None:
+        # "task": the person allowed this kind of action for the rest of the code task that asked.
         code_request = self._code_requests.get(request_id)
         if approved and scope == "task" and code_request is not None:
             self._code_task_allowances.add(code_request)
         future = self._pending_approvals.get(request_id)
         if future is not None and not future.done():
-            future.set_result(approved)
+            # Words written in the chat instead of choosing deny the call and go to the model.
+            future.set_result((reply or "").strip() or approved)
 
-    def resolve_question(self, request_id: str, answer: str | list[str | None] | None) -> None:
+    def resolve_question(self, request_id: str, answer: Any) -> None:
         future = self._pending_questions.get(request_id)
         if future is not None and not future.done():
             future.set_result(answer)

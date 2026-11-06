@@ -65,3 +65,16 @@ async def test_a_dropped_socket_keeps_nothing() -> None:
     host = SimpleNamespace(lg_agent=None, _stop_requested=False)
 
     assert await keep_stopped_turn(cast(Any, host), "half") == "[stopped]"
+
+
+def test_a_question_left_open_by_the_stop_is_not_asked_again_first_thing() -> None:
+    messages = [
+        HumanMessage(content="tidy the folder"),
+        AIMessage(content="", tool_calls=[{"id": "q1", "name": "ask_user_question", "args": {}}]),
+        ToolMessage(content="(Stopped by user before answering.)", tool_call_id="q1"),
+    ]
+
+    note = stopped_turn_messages(messages, "", [])[-1]
+
+    assert "question was left unanswered" in note.content
+    assert "cut off" not in note.content
