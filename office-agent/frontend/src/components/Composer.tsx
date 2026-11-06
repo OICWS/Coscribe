@@ -96,6 +96,7 @@ interface ComposerProps {
    * before its next step, instead of a message waiting for the reply. */
   onSteer: (text: string) => void;
   onStop: () => void;
+  stopping?: boolean;
   onLocalError: (message: string) => void;
   /** Set by BrowserPanel's "Add to chat" -- an element it picked, handed
    * down from App.tsx as a prop instead of a DOM event since there's no
@@ -144,6 +145,7 @@ export function Composer({
   onSend,
   onSteer,
   onStop,
+  stopping = false,
   onLocalError,
   externalImage,
   onExternalImageConsumed,
@@ -250,10 +252,8 @@ export function Composer({
       pendingPastes.length === 0
     )
       return;
-    // While a reply is being worked on, text goes to it as a note rather
-    // than queuing as a message behind it. Attachments can't ride along
-    // on a note, so they wait for the reply. "/stop" still reaches the
-    // running turn as a stop (App.tsx's onSend).
+    // While a reply is being worked on, text goes to it as a note (or answers the card it waits on)
+    // rather than queuing behind it. Attachments wait for the reply; "/stop" still stops it.
     if (turnInFlight && text.trim().toLowerCase() !== "/stop") {
       if (!text.trim() || hasAttachments) return;
       onSteer(text.trim());
@@ -575,7 +575,7 @@ export function Composer({
             type="button"
             title="Stop"
             className="absolute bottom-3 right-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--fg)] hover:bg-[var(--card-bg)]"
-            onClick={onStop}
+            onClick={() => (onStop(), textareaRef.current?.focus())}
           >
             <StopRingIcon className="h-5 w-5" />
           </button>
@@ -616,7 +616,7 @@ export function Composer({
           {environmentPicker}
           {modePill}
         </div>
-        <RunStatus key={threadId} threadId={threadId} turnInFlight={turnInFlight} serverStartedAt={turnStartedAt} totalTokens={totalTokens} workflowTest={workflowTest} />
+        <RunStatus key={threadId} threadId={threadId} turnInFlight={turnInFlight} serverStartedAt={turnStartedAt} totalTokens={totalTokens} workflowTest={workflowTest} stopping={stopping} />
         <div className="flex min-w-0 items-center gap-1.5">
           {modelPicker}
           {effortPicker}

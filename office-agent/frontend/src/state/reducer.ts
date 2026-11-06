@@ -52,6 +52,8 @@ export type LogItem =
       /** Same is_error signal as the "tool" variant's own, set alongside
        * `result` once the approved call actually executes. */
       isError?: boolean;
+      /** What the user wrote in the chat instead of approving; the call was denied with it. */
+      reply?: string;
     }
   | {
       id: string;
@@ -61,6 +63,8 @@ export type LogItem =
       /** One per question, null for a skipped one; null as a whole when
        * the user closed the questions. */
       answers?: (string | null)[] | null;
+      /** What the user wrote in the chat instead of choosing, which answered the questions. */
+      reply?: string;
     }
   | {
       id: string;
@@ -202,8 +206,8 @@ export type LocalAction =
   | { type: "local_suggestion_dismissed" }
   | { type: "local_edit_message"; turnIndex: number; text: string }
   | { type: "local_rewind_message"; turnIndex: number }
-  | { type: "local_approval_resolved"; id: string; approved: boolean }
-  | { type: "local_question_answered"; id: string; answers: (string | null)[] | null }
+  | { type: "local_approval_resolved"; id: string; approved: boolean; reply?: string }
+  | { type: "local_question_answered"; id: string; answers: (string | null)[] | null; reply?: string }
   | { type: "local_plan_answered"; id: string; status: "auto" | "manual" | "revise" | "reject" }
   | { type: "local_task_draft_resolved"; id: string; status: "saved" | "dismissed"; savedName?: string }
   | { type: "local_connection_reset" }
@@ -460,7 +464,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         items: state.items.map((item) =>
           item.kind === "approval" && item.id === action.id
-            ? { ...item, status: action.approved ? "approved" : "denied" }
+            ? { ...item, status: action.approved ? "approved" : "denied", reply: action.reply }
             : item,
         ),
       };
@@ -470,7 +474,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         items: state.items.map((item) =>
           item.kind === "question" && item.id === action.id
-            ? { ...item, status: "answered", answers: action.answers }
+            ? { ...item, status: "answered", answers: action.answers, reply: action.reply }
             : item,
         ),
       };

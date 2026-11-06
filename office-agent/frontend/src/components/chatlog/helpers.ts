@@ -29,3 +29,15 @@ export function inSentence(parts: SummaryParts, index: number): SummaryParts {
   if (index === 0 || !/^[A-Z][a-z]/.test(parts.verb)) return parts;
   return { ...parts, verb: parts.verb[0].toLowerCase() + parts.verb.slice(1) };
 }
+
+// Matches the end the server gives a stopped turn (conversation/stopped_turn.py): the history keeps
+// "[stopped]" so the model knows, and the page shows it as a status line instead of prose.
+const STOPPED_END = /\s*\[stopped\](?:\s*\((\d+) background task\(s\) still running; stop them in the Background tasks panel\.\))?\s*$/;
+
+/** A reply split into what the model said and whether the user stopped it, with the number of
+ * background tasks the stop left running. */
+export function splitStopped(text: string): { said: string; stopped: boolean; running: number } {
+  const match = STOPPED_END.exec(text);
+  if (!match) return { said: text, stopped: false, running: 0 };
+  return { said: text.slice(0, match.index), stopped: true, running: Number(match[1] ?? 0) };
+}

@@ -264,10 +264,11 @@ def run_to_end(
                 "output_so_far": truncate_script_output(so_far),
                 "note": (
                     "The user moved this command to the background. It keeps running and its "
-                    "task shows in the Background tasks panel. Don't check it again and again: "
-                    "go on with other work, or, if you need its result before you can go on, "
-                    "end this turn with wake_on_task(task_id, reason) (through use_tool) and "
-                    "you are resumed when it finishes."
+                    "task shows in the Background tasks panel. When it ends, its outcome and "
+                    "the end of its output come to you in a message of their own, so don't "
+                    "check it again and again: go on with other work, or, if you need its "
+                    "result before you can go on, tell the user what you're waiting for and "
+                    "end your turn."
                 ),
             },
         )

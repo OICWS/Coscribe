@@ -6,6 +6,7 @@ import asyncio
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from ...conversation import question_answer
 from ..browser_panel import BrowserPanelError, BrowserPanelSession
 from ..state import AppState
 
@@ -150,19 +151,10 @@ def router(state: AppState) -> APIRouter:
                     # regardless since it only ever awaits _turn_lock.
                     asyncio.create_task(session.handle_rewind_message(data["index"], websocket))
                 elif message_type == "approval_response":
-                    session.resolve_approval(
-                        data["id"], bool(data.get("approved")), data.get("scope")
-                    )
+                    approved, scope = bool(data.get("approved")), data.get("scope")
+                    session.resolve_approval(data["id"], approved, scope, data.get("reply"))
                 elif message_type == "question_response":
-                    answers = data.get("answers")
-                    if data.get("dismissed"):
-                        session.resolve_question(data["id"], None)
-                    elif isinstance(answers, list):
-                        session.resolve_question(
-                            data["id"], [None if a is None else str(a) for a in answers]
-                        )
-                    else:
-                        session.resolve_question(data["id"], str(data.get("answer", "")))
+                    session.resolve_question(data["id"], question_answer(data))
                 elif message_type == "steer":
                     session.add_steer(str(data.get("id", "")), data.get("text"))
                 elif message_type == "detach_command":

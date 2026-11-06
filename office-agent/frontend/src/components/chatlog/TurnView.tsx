@@ -15,6 +15,7 @@ import {
   ScheduledRunCard,
 } from "../ScheduledRunCard";
 import { CONVERSATION_MESSAGE_PREFIX, ConversationMessageCard } from "../ConversationMessageCard";
+import { BACKGROUND_REPORT_PREFIX, BackgroundTaskReportCard } from "../BackgroundTaskReportCard";
 import { SUBAGENT_REPORT_PREFIX, SubAgentReportCard } from "../SubAgentReportCard";
 import { TaskDraftCard } from "../TaskDraftCard";
 import { TaskCard } from "./TaskCard";
@@ -24,6 +25,8 @@ import { ToolRunGroupView } from "./ToolRuns";
 import { UserMessageView, SteerView } from "./UserMessageView";
 import { FileCards } from "./FileCards";
 import { SystemCards } from "./SystemCards";
+import { splitStopped } from "./helpers";
+import { StoppedNote } from "./StoppedNote";
 
 /** react-markdown + remark/rehype + katex is the single biggest dependency
  * added to this app (roughly triples the production bundle) -- code-split
@@ -139,7 +142,7 @@ export function TurnView({
       {canFooter && (
         <div className="-mt-2 flex items-center gap-0.5 self-start opacity-0 transition-opacity group-hover/turn:opacity-100">
           <CopyButton
-            getText={() => finalAgentItem.text}
+            getText={() => splitStopped(finalAgentItem.text).said}
             title="Copy reply"
             className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
           />
@@ -181,12 +184,15 @@ export function LogItemView({
     if (item.text.startsWith(INVESTIGATION_PREFIX) || item.text.startsWith(REVISION_PREFIX))
       return <InvestigationCard text={item.text} />;
     if (item.text.startsWith(SUBAGENT_REPORT_PREFIX)) return <SubAgentReportCard text={item.text} />;
+    if (item.text.startsWith(BACKGROUND_REPORT_PREFIX)) return <BackgroundTaskReportCard text={item.text} />;
     if (item.text.startsWith(CONVERSATION_MESSAGE_PREFIX)) return <ConversationMessageCard text={item.text} />;
     return <UserMessageView item={item} onEditMessage={onEditMessage} />;
   }
 
   if (item.kind === "agent") {
-    const text = item.streaming ? `${item.text} ▍` : item.text;
+    const { said, stopped, running } = item.streaming ? { said: item.text, stopped: false, running: 0 } : splitStopped(item.text);
+    const text = item.streaming ? `${said} ▍` : said;
+    if (stopped && !said.trim()) return <StoppedNote running={running} />;
     return (
       <div className="min-w-0 max-w-[92%] [overflow-wrap:anywhere]">
         {/* No border/bubble at all, like claude.ai's own assistant replies
@@ -203,6 +209,7 @@ export function LogItemView({
             <Markdown text={text} />
           </Suspense>
         </div>
+        {stopped && <StoppedNote running={running} />}
       </div>
     );
   }

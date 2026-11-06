@@ -54,6 +54,25 @@ from .events import EventSink
 _COMMAND_TOOL = "run_background_command"
 _MEMORY_SAVE = "Save"
 
+_REPLIED_INSTEAD = (
+    "The user didn't approve this call and wrote this instead; do what they ask rather than "
+    "trying the same call again:\n{reply}"
+)
+
+
+def question_answer(data: dict[str, Any]) -> str | list[str | None] | dict[str, str] | None:
+    """The answer a tab's question_response carries: None when the questions were closed,
+    `{"reply": text}` when the person wrote in the chat instead of choosing, one answer per
+    question, or a plain answer (a plan's or a task draft's)."""
+    if data.get("dismissed"):
+        return None
+    if isinstance(data.get("reply"), str):
+        return {"reply": data["reply"]}
+    answers = data.get("answers")
+    if isinstance(answers, list):
+        return [None if a is None else str(a) for a in answers]
+    return str(data.get("answer", ""))
+
 
 def _memory_question(line: str) -> dict[str, Any]:
     question = f'Save "{line}" to your global instructions? They are read in every conversation.'
@@ -130,7 +149,7 @@ class ApprovalHost(Protocol):
     _auto_paused: bool
     _auto_blocks_in_row: int
     _auto_blocks_total: int
-    _pending_approvals: dict[str, Future[bool]]
+    _pending_approvals: dict[str, Future[bool | str]]
     _pending_questions: dict[str, Future[Any]]
     _subagent_request_ids: set[str]
     _code_requests: dict[str, tuple[str, str]]
@@ -431,7 +450,8 @@ class ApprovalDecider:
         reviewer_note: str | None,
     ) -> dict[str, Any]:
         request_id = uuid.uuid4().hex
-        future: Future[bool] = get_running_loop().create_future()
+        # True or False from the card, or the words the person wrote in the chat instead.
+        future: Future[bool | str] = get_running_loop().create_future()
         self._host._pending_approvals[request_id] = future
         if isinstance(websocket, SubAgentChannel):
             self._host._subagent_request_ids.add(request_id)
@@ -460,12 +480,16 @@ class ApprovalDecider:
             },
         )
         try:
-            approved = await future
+            decision = await future
         finally:
             self._host._pending_approvals.pop(request_id, None)
             self.open_prompts.pop(request_id, None)
             self._host._subagent_request_ids.discard(request_id)
             self._host._code_requests.pop(request_id, None)
+        if isinstance(decision, str):
+            self._audit(audit_log, name, args, "reject", "human", decision)
+            return {"type": "reject", "message": _REPLIED_INSTEAD.format(reply=decision)}
+        approved = decision
         if approved and self._host._auto_paused:
             self._host._auto_paused = False
             self._host._auto_blocks_in_row = 0

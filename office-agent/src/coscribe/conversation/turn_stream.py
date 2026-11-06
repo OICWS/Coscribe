@@ -15,6 +15,7 @@ from ..runtime_lg import unwrap_use_tool_call
 from ..tools import QUESTION_TOOL_NAMES, TASK_DRAFT_TOOL_NAMES
 from .events import EventSink
 from .history import close_orphaned_tool_calls
+from .stopped_turn import keep_stopped_turn
 from .turn_text import usage_event
 
 
@@ -47,6 +48,8 @@ class TurnStreamHost(Protocol):
 
     config: dict[str, Any]
     lg_agent: Any
+    thread_id: str
+    settings: Any
     _turn_websocket: Any
     _stop_requested: bool
     _gated_tool_risks: dict[str, str]
@@ -65,6 +68,16 @@ class TurnStreamHost(Protocol):
 class TurnStreamer:
     def __init__(self, host: TurnStreamHost) -> None:
         self._host = host
+        # The reply text of the model call in flight, which a hard stop keeps.
+        self.streamed: list[str] = []
+        # Off once the conversation is being deleted, which a kept turn would bring back.
+        self.keep_stopped_work = True
+
+    async def stopped(self, text: str | None = None) -> str:
+        """What the page shows for a turn that ended on a stop, after keeping its work in the
+        history. `text` is the finished reply; a hard stop passes none and keeps what streamed."""
+        said = "".join(self.streamed) if text is None else text
+        return await keep_stopped_turn(self._host, said, keep=self.keep_stopped_work)
 
     async def stream_turn(self, turn_input: Any, websocket: EventSink) -> str:
         """Run one `astream()` call and return only the last model response's narration.
@@ -90,7 +103,7 @@ class TurnStreamer:
         host._turn_websocket = websocket
         if not isinstance(turn_input, Command):
             await close_orphaned_tool_calls(agent, config)
-        text_parts: list[str] = []
+        self.streamed = text_parts = []
         accumulated: AIMessageChunk | None = None
         # The chunks of the latest model response only. Each response's usage already counts
         # the whole prompt it was sent, so summing responses would count the context twice.

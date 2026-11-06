@@ -216,16 +216,14 @@ simpler route -- no cron entry, and each run gets its own conversation.)
 
 The pattern above works well for a task that runs on a fixed external
 schedule. For a task where the *agent itself* decides when to check back
--- "wait until 9am tomorrow," "resume once that background script
-finishes," "resume once something else tells you to" -- the Coordinator
-has its own tools instead of you writing a second cron entry per task:
+-- "wait until 9am tomorrow," "resume once something else tells you to"
+-- the Coordinator has its own tools instead of you writing a second cron
+entry per task. A background script, command or sub-agent needs none: its
+end comes back to the conversation as a turn of its own.
 
 - `sleep_until(wake_at, reason)` / `sleep_for(seconds, reason)` -- pause
   this conversation and automatically resume it at a wall-clock time or
   after a delay.
-- `wake_on_task(task_id, reason)` -- pause until a specific in-progress
-  background script (started via `run_background_script`, see below)
-  finishes (`task_id` is that task's id).
 - `wake_on_event(event_key, reason)` / `signal_event(event_key, payload)`
   -- pause until a named event fires; `signal_event` is how another turn
   (this thread, another thread, or a future connector/webhook) fires it.

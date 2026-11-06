@@ -8,6 +8,8 @@ interface RunStatusProps {
   serverStartedAt: number | null;
   totalTokens: number;
   workflowTest?: { done: number; total: number } | null;
+  /** Stop was pressed and the turn has not ended yet: a call in flight can take a moment. */
+  stopping?: boolean;
 }
 
 // Outside the component: switching to another conversation and back mounts it afresh while the
@@ -27,7 +29,7 @@ const starts = new Map<string, { at: number; tokens: number }>();
  * "Editing Fundamentals.md ▾" running action list Claude Code's own
  * status line also shows -- that needs a live list of in-progress
  * actions coscribe doesn't track yet, a separate, larger piece of work. */
-export function RunStatus({ threadId, turnInFlight, serverStartedAt, totalTokens, workflowTest = null }: RunStatusProps) {
+export function RunStatus({ threadId, turnInFlight, serverStartedAt, totalTokens, workflowTest = null, stopping = false }: RunStatusProps) {
   const [start, setStart] = useState<{ at: number; tokens: number } | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const wasRunning = useRef(false);
@@ -67,8 +69,14 @@ export function RunStatus({ threadId, turnInFlight, serverStartedAt, totalTokens
           Testing workflow {workflowTest.done}/{workflowTest.total} ·{" "}
         </span>
       )}
-      {formatElapsed(now - start.at)}
-      {tokenDelta > 0 && <> · {formatTokenCount(tokenDelta)} tokens</>}
+      {stopping ? (
+        "Stopping…"
+      ) : (
+        <>
+          {formatElapsed(now - start.at)}
+          {tokenDelta > 0 && <> · {formatTokenCount(tokenDelta)} tokens</>}
+        </>
+      )}
     </span>
   );
 }

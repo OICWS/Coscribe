@@ -62,7 +62,6 @@ from ..runtime import (
     load_custom_providers,
 )
 from ..runtime_lg import (
-    ORPHANED_TOOL_CALL_NOTE,
     AutoApproveReason,
     CheckpointConversations,
     ExecPolicy,
@@ -141,8 +140,6 @@ SAVE_WORKFLOW_PROMPT = (
     "repeatable task in this conversation yet, ask me what to save instead."
 )
 
-_ORPHANED_TOOL_CALL_NOTE = ORPHANED_TOOL_CALL_NOTE
-
 
 def _new_draft_id() -> str:
     return uuid.uuid4().hex[:8]
@@ -218,14 +215,12 @@ class ChatSessionLG:
         self.extra_folders: list[Path] = list(extra_folders or [])
         self._context_window_client = context_window_client
         self._context_window: int | None = None
-        self._pending_approvals: dict[str, Future[bool]] = {}
+        self._pending_approvals: dict[str, Future[bool | str]] = {}
         # The code module's approvals: which (task, action) a pending card
         # is for, and what the person has allowed for a whole task.
         self._code_requests: dict[str, tuple[str, str]] = {}
         self._code_task_allowances: set[tuple[str, str]] = set()
-        # A question's answer is one entry per question, or None when the
-        # user closed them; the other requests (plans, drafts) and a stop
-        # answer with a string.
+        # A question's answer: see question_answer; a plan, a draft and a stop answer with a string.
         self._pending_questions: dict[str, Future[Any]] = {}
         self.hooks_config: dict[str, list[str]] = hooks_config or empty_hooks_config()
         self.plan_mode = False
@@ -495,17 +490,19 @@ class ChatSessionLG:
     ) -> Any:
         return self._assembly.build_lg_agent(model, model_string, lg_tools)
 
-    def resolve_approval(self, request_id: str, approved: bool, scope: str | None = None) -> None:
-        # "task": the person allowed this kind of action for the rest of the
-        # code task that asked, not only this once.
+    def resolve_approval(
+        self, request_id: str, approved: bool, scope: str | None = None, reply: str | None = None
+    ) -> None:
+        # "task": the person allowed this kind of action for the rest of the code task that asked.
         code_request = self._code_requests.get(request_id)
         if approved and scope == "task" and code_request is not None:
             self._code_task_allowances.add(code_request)
         future = self._pending_approvals.get(request_id)
         if future is not None and not future.done():
-            future.set_result(approved)
+            # Words written in the chat instead of choosing deny the call and go to the model.
+            future.set_result((reply or "").strip() or approved)
 
-    def resolve_question(self, request_id: str, answer: str | list[str | None] | None) -> None:
+    def resolve_question(self, request_id: str, answer: Any) -> None:
         future = self._pending_questions.get(request_id)
         if future is not None and not future.done():
             future.set_result(answer)
@@ -615,6 +612,7 @@ class ChatSessionLG:
         """Stops the running turn and waits for it to end: one ending after its conversation was
         deleted would write a checkpoint and bring the conversation back."""
         if self._turn_lock.locked():
+            self._turn_streamer.keep_stopped_work = False
             self.request_stop()
             await self._turn_lock.wait_released(timeout)
 
@@ -1234,14 +1232,12 @@ class ChatSessionLG:
                 # docstring) whenever there's no pending approval/question to
                 # resolve instead -- exactly the case where _stream_turn is
                 # stuck inside a raw provider call with no chunk ever yielded
-                # for its cooperative stop-flag check to run against. No
-                # partial reply_text exists at this point (the cancellation
-                # interrupts _stream_turn before it can return one), so this
-                # sends just the marker -- same "agent_message" type and
-                # "[stopped]" convention the cooperative-stop path below
-                # already uses, so the frontend needs no changes to render it.
+                # for its cooperative stop-flag check to run against. What it
+                # streamed before is kept; a dropped socket keeps nothing,
+                # since a reconnect resumes the turn.
                 try:
-                    await websocket.send_json({"type": "agent_message", "text": "[stopped]"})
+                    shown = await self._turn_streamer.stopped()
+                    await websocket.send_json({"type": "agent_message", "text": shown})
                     # The task panel refreshes on this, as after any other turn.
                     await websocket.send_json({"type": "tasks_changed"})
                 except Exception:  # noqa: BLE001 -- the client is already gone
@@ -1286,11 +1282,8 @@ class ChatSessionLG:
                 return
 
         if self._stop_requested:
-            # Mirrors ChatSession's _format_agent_reply for status ==
-            # "stopped" -- same "[stopped]" note, appended rather than
-            # replacing whatever text streamed through before the stop.
-            reply_text = f"{reply_text}\n\n[stopped]" if reply_text.strip() else "[stopped]"
-            await websocket.send_json({"type": "agent_message", "text": reply_text})
+            shown = await self._turn_streamer.stopped(reply_text)
+            await websocket.send_json({"type": "agent_message", "text": shown})
         else:
             await websocket.send_json({"type": "agent_message", "text": format_reply(reply_text)})
         # self._last_usage_metadata is set by _stream_turn (see its

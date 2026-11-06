@@ -22,7 +22,7 @@ a question belongs to the person talking to the parent, not to a
 delegated run.
 """
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Annotated, Any, NotRequired
 
 from pydantic import Field
@@ -146,16 +146,24 @@ QUESTIONS_DISMISSED = (
     "if you can't go on without an answer."
 )
 
+QUESTION_REPLIED = (
+    "The user didn't pick an option and wrote this instead; take it as their answer:\n{reply}"
+)
+
 
 def format_question_answers(
-    questions: Sequence[dict[str, Any]], reply: str | Sequence[str | None] | None
+    questions: Sequence[dict[str, Any]],
+    reply: str | Sequence[str | None] | Mapping[str, str] | None,
 ) -> str:
     """The tool result the model reads. `reply` is one answer per question
-    (None for a skipped one), None when the user closed the questions, or
+    (None for a skipped one), None when the user closed the questions,
+    `{"reply": text}` when they wrote in the chat instead of choosing, or
     a plain string -- a stop's placeholder, or an older page's single
     answer -- passed through as is."""
     if reply is None:
         return QUESTIONS_DISMISSED
+    if isinstance(reply, Mapping):
+        return QUESTION_REPLIED.format(reply=str(reply.get("reply", "")).strip())
     if isinstance(reply, str):
         return reply
     answers = [answer.strip() if answer and answer.strip() else "(skipped)" for answer in reply]

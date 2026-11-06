@@ -515,6 +515,8 @@ class ApprovalResponseOut(TypedDict):
     approved: bool
     # "task": allow this kind of action for the rest of the code task.
     scope: NotRequired[Literal["task"]]
+    # Written in the chat while the card was open: the call is denied, the words go to the model.
+    reply: NotRequired[str]
 
 
 class QuestionAnswerOut(TypedDict):
@@ -542,7 +544,17 @@ class QuestionDismissedOut(TypedDict):
     dismissed: Literal[True]
 
 
-QuestionResponseOut = QuestionAnswerOut | QuestionAnswersOut | QuestionDismissedOut
+class QuestionRepliedOut(TypedDict):
+    """The user wrote in the chat instead of choosing: the text is their answer."""
+
+    type: Literal["question_response"]
+    id: str
+    reply: str
+
+
+QuestionResponseOut = (
+    QuestionAnswerOut | QuestionAnswersOut | QuestionDismissedOut | QuestionRepliedOut
+)
 
 
 class StopOut(TypedDict):
@@ -610,6 +622,7 @@ ClientMessage = (
     | QuestionAnswerOut
     | QuestionAnswersOut
     | QuestionDismissedOut
+    | QuestionRepliedOut
     | StopOut
     | SwitchModelOut
     | SetEnvironmentOut
