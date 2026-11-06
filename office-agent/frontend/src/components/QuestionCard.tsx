@@ -288,7 +288,16 @@ function SendButton({ onClick, disabled = false }: { onClick: () => void; disabl
 export function QuestionRecord({ item }: { item: QuestionItem }) {
   return (
     <div className="w-full max-w-[560px] self-start rounded-3xl border border-[var(--border)] bg-[var(--bg)] px-5 py-4 text-[15px]">
-      {item.answers === null ? (
+      {item.reply !== undefined ? (
+        <>
+          {item.questions.map((q, i) => (
+            <div key={i} className="text-[var(--muted)]">
+              {q.question}
+            </div>
+          ))}
+          <div className="mt-1 whitespace-pre-wrap">{item.reply}</div>
+        </>
+      ) : item.answers === null ? (
         <>
           {item.questions.map((q, i) => (
             <div key={i} className="text-[var(--muted)]">

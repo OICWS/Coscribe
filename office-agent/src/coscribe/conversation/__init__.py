@@ -4,6 +4,7 @@ which is why it does not live under web/ and knows nothing of HTTP: it talks to
 whoever is connected through an EventSink."""
 
 from .activity import OPENABLE_EXTENSIONS, open_in_os
+from .approvals import question_answer
 from .artifact_files import ArtifactFileError, copy_file, rename_file, trash_file
 from .artifacts import ArtifactRegistry, adopt_thread, describe_artifact
 from .board_edits import (
@@ -41,6 +42,7 @@ __all__ = [
     "OPENABLE_EXTENSIONS",
     "ChatSessionLG",
     "ThreadMetaStore",
+    "question_answer",
     "ArtifactFileError",
     "ArtifactRegistry",
     "adopt_thread",
