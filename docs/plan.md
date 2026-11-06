@@ -48,9 +48,10 @@ Last reviewed: 2026-11-06.
 - **Scripts and commands:** a PyPI mirror setting for networks that block PyPI (#560); hiding other
   drives' user folders from commands (#588); a company proxy on a real Windows machine (Basic only;
   NTLM and Kerberos are not supported, #666).
-- **The `tools` interface** (#677): item B, the split of `tools`, waits for the maintainer's choice;
-  moving callers to the sub-components first needs the metrics to count a declared sub-component
-  as an entry.
+- **The `tools` interface** (#677): done; B was closed with a reason (#692): the `tools` card and
+  `slice.py` list only the 54 names `tools` owns. Moving callers to the sub-components is not
+  planned: it would first need `deep_imports` to count a declared sub-component as an entry, and
+  the fresh-session samples found no wrong turn without it.
 - **Structure leftovers** (closing report `docs/metrics/2026-10-19-structure-period-close.md`): the
   office formats' layers contract still ignores 3 imports (the pptx engine); golden files next for
   pptx templates and SmartArt edits, audio and CJK text, then `pdf` and `recalc_xlsx`; the layout
@@ -65,11 +66,9 @@ Last reviewed: 2026-11-06.
 
 - Make the Windows job required once it has 14 green scheduled nights; the count restarted on
   2026-10-27.
-- Repository settings: Dependabot security updates, secret scanning and push protection (#263);
-  "require code owner review" in the ruleset (decision 0007).
 - Read the CodeQL alerts and the first `audit.yml` run.
 - Decide whether changed-line coverage is enforced (`docs/assessments/2026-10-13-diff-coverage.md`).
-- Decisions still proposed: 0028 (a workflow step chooses its autonomy) and, with #789, 0036.
+- Decision 0036 (parallel workflow steps) is proposed with #789.
 
 ## Needs the maintainer's testing (could not be verified here)
 
