@@ -308,7 +308,9 @@ Last reviewed: 2026-10-15.
    (step 3, #822, done); a delivery check that opens the Office files a turn wrote (step 4, in
    review); a folder brief on first attach and an offer
    to save a job as a workflow or skill; an in-chat connector card (decision record and
-   independent review first).
+   independent review first). Before step 5, at the maintainer's request: background tasks that
+   report back on their own (in review), Stop that keeps the work done so far (in review), and a
+   script that reaches its time limit or gets a message mid-turn moving to the background.
 
 ## Needs the maintainer's testing (could not be verified here)
 

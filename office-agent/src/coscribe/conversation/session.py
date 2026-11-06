@@ -62,7 +62,6 @@ from ..runtime import (
     load_custom_providers,
 )
 from ..runtime_lg import (
-    ORPHANED_TOOL_CALL_NOTE,
     AutoApproveReason,
     CheckpointConversations,
     ExecPolicy,
@@ -140,8 +139,6 @@ SAVE_WORKFLOW_PROMPT = (
     "the expected output. Leave out dead ends and unrelated chatter. If there's no "
     "repeatable task in this conversation yet, ask me what to save instead."
 )
-
-_ORPHANED_TOOL_CALL_NOTE = ORPHANED_TOOL_CALL_NOTE
 
 
 def _new_draft_id() -> str:
@@ -615,6 +612,7 @@ class ChatSessionLG:
         """Stops the running turn and waits for it to end: one ending after its conversation was
         deleted would write a checkpoint and bring the conversation back."""
         if self._turn_lock.locked():
+            self._turn_streamer.keep_stopped_work = False
             self.request_stop()
             await self._turn_lock.wait_released(timeout)
 
@@ -1234,14 +1232,12 @@ class ChatSessionLG:
                 # docstring) whenever there's no pending approval/question to
                 # resolve instead -- exactly the case where _stream_turn is
                 # stuck inside a raw provider call with no chunk ever yielded
-                # for its cooperative stop-flag check to run against. No
-                # partial reply_text exists at this point (the cancellation
-                # interrupts _stream_turn before it can return one), so this
-                # sends just the marker -- same "agent_message" type and
-                # "[stopped]" convention the cooperative-stop path below
-                # already uses, so the frontend needs no changes to render it.
+                # for its cooperative stop-flag check to run against. What it
+                # streamed before is kept; a dropped socket keeps nothing,
+                # since a reconnect resumes the turn.
                 try:
-                    await websocket.send_json({"type": "agent_message", "text": "[stopped]"})
+                    shown = await self._turn_streamer.stopped()
+                    await websocket.send_json({"type": "agent_message", "text": shown})
                     # The task panel refreshes on this, as after any other turn.
                     await websocket.send_json({"type": "tasks_changed"})
                 except Exception:  # noqa: BLE001 -- the client is already gone
@@ -1286,11 +1282,8 @@ class ChatSessionLG:
                 return
 
         if self._stop_requested:
-            # Mirrors ChatSession's _format_agent_reply for status ==
-            # "stopped" -- same "[stopped]" note, appended rather than
-            # replacing whatever text streamed through before the stop.
-            reply_text = f"{reply_text}\n\n[stopped]" if reply_text.strip() else "[stopped]"
-            await websocket.send_json({"type": "agent_message", "text": reply_text})
+            shown = await self._turn_streamer.stopped(reply_text)
+            await websocket.send_json({"type": "agent_message", "text": shown})
         else:
             await websocket.send_json({"type": "agent_message", "text": format_reply(reply_text)})
         # self._last_usage_metadata is set by _stream_turn (see its

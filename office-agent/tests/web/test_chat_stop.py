@@ -167,7 +167,7 @@ def test_close_orphaned_tool_calls_commits_a_finished_parallel_calls_uncommitted
     from coscribe.conversation.history import (
         close_orphaned_tool_calls as _close_orphaned_tool_calls,
     )
-    from coscribe.conversation.session import _ORPHANED_TOOL_CALL_NOTE
+    from coscribe.runtime_lg.tool_calls import ORPHANED_TOOL_CALL_NOTE
 
     started = threading.Event()
     release = threading.Event()
@@ -217,7 +217,7 @@ def test_close_orphaned_tool_calls_commits_a_finished_parallel_calls_uncommitted
 
     history = model.received[-1]
     tool_messages = {m.tool_call_id: m.content for m in history if isinstance(m, ToolMessage)}
-    assert tool_messages == {"fast_call": "fast result", "slow_call": _ORPHANED_TOOL_CALL_NOTE}
+    assert tool_messages == {"fast_call": "fast result", "slow_call": ORPHANED_TOOL_CALL_NOTE}
     assert isinstance(history[-1], HumanMessage)
 
 

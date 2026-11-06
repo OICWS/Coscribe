@@ -224,7 +224,7 @@
  },
  "fan_out": {},
  "file_lines": {
-  "src/coscribe/conversation/session.py": 1306,
+  "src/coscribe/conversation/session.py": 1299,
   "src/coscribe/runtime_lg/subagents.py": 839,
   "src/coscribe/tools/bookkeeping/scheduled_tasks.py": 964,
   "src/coscribe/web/browser_panel.py": 813,
@@ -310,7 +310,7 @@
  "long_functions": {
   "src/coscribe/cli.py::_chat_async": 108,
   "src/coscribe/conversation/session.py::ChatSessionLG.__init__": 192,
-  "src/coscribe/conversation/session.py::ChatSessionLG._handle_user_message_locked": 212,
+  "src/coscribe/conversation/session.py::ChatSessionLG._handle_user_message_locked": 207,
   "src/coscribe/conversation/turn_stream.py::TurnStreamer.stream_turn": 115,
   "src/coscribe/coordinator.py::build_coordinator_agent": 147,
   "src/coscribe/runtime_lg/agent.py::build_langgraph_agent": 187,
