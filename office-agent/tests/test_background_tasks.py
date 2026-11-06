@@ -83,8 +83,7 @@ async def _wait_until_finished(
     """check_background_task until status leaves "running" -- the tool
     itself is deliberately non-blocking (that's the whole point), so a
     test asserting on a *finished* task's fields has to poll for it, same
-    as a real caller using check_background_task instead of wake_on_task
-    would."""
+    as a real caller reading partial output would."""
     deadline = asyncio.get_event_loop().time() + timeout
     while True:
         result = tools.check_background_task(task_id)
@@ -185,6 +184,8 @@ async def test_kill_background_task_marks_it_killed_not_failed(tools: BgTools) -
 
     killed = await tools.kill_background_task(started["task_id"])
     assert killed["status"] == "killed"
+    # The model stopped it itself, so no report of it follows.
+    assert killed["reported"] is True
 
     # The real regression this guards against: _supervise seeing the
     # process actually exit (from being killed) and overwriting "killed"
@@ -392,8 +393,10 @@ async def test_a_running_task_tells_the_model_to_wait_instead_of_polling(tools: 
     started = await tools.run_background_script(
         language="python", script="import time\ntime.sleep(2)\n", description="sleep"
     )
-    assert "wake_on_task" in started["how_to_wait"]
-    assert "wake_on_task" in tools.check_background_task(started["task_id"])["how_to_wait"]
+    assert "message of their own" in started["how_to_wait"]
+    assert "message of their own" in tools.check_background_task(started["task_id"])["how_to_wait"]
 
     finished = await _wait_until_finished(tools, started["task_id"])
     assert "how_to_wait" not in finished
+    # The model read how it ended, so no report of it follows.
+    assert finished["reported"] is True

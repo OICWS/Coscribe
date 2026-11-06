@@ -1,4 +1,4 @@
-"""Sub-agents and the inbox: how a background sub-agent's end, and messages from
+"""Sub-agents and the inbox: how a background sub-agent's or script's end, and messages from
 other conversations, become a turn of the conversation they belong to, and what
 the watching tab hears meanwhile. It lives apart from ChatSessionLG so the rule
 that bounds a chain of such turns reads in one place; the session keeps the turn
@@ -29,11 +29,13 @@ from ..runtime_lg import (
 )
 from ..tools import (
     BackgroundTask,
+    BackgroundTaskStore,
     MessagingStore,
     SubAgentTask,
     SubAgentTaskStore,
     WakeStore,
     format_incoming,
+    read_background_log,
     running_subagent,
     set_change_listener,
     set_inbox_listener,
@@ -57,6 +59,34 @@ _WIND_DOWN_NOTE = (
     "user. Tell the user where things stand now rather than starting more sub-agents, "
     "unless they asked for more rounds.)"
 )
+_TASK_WIND_DOWN_NOTE = (
+    "\n\n(Several reports in a row have come in without a word from the user. Tell the "
+    "user where things stand now rather than starting more background work, unless they "
+    "asked for more rounds.)"
+)
+
+# Starts the message a finished background script or command sends its conversation; the chat
+# draws such a message as a notice rather than the user's words.
+BACKGROUND_REPORT_PREFIX = "[Background task finished]"
+_REPORT_TAIL_BYTES = 6000
+_OUTCOMES = {
+    "succeeded": "finished",
+    "timed_out": "ran out of time and was stopped",
+    "killed": "was stopped by the user",
+    "interrupted": "was cut off when coscribe closed",
+}
+
+
+def background_report(state_dir: str | Path, task: BackgroundTask, reasons: list[str]) -> str:
+    """The message a background script's or command's end sends its conversation."""
+    outcome = _OUTCOMES.get(task.status, f"failed with exit code {task.exit_code}")
+    body = f'{BACKGROUND_REPORT_PREFIX} "{task.description}" (task {task.task_id}) {outcome}.'
+    log = read_background_log(state_dir, task.task_id, _REPORT_TAIL_BYTES)
+    output = str(log["output"]).strip() if log else ""
+    body += f" The end of its output:\n\n{output}" if output else " It printed nothing."
+    for reason in reasons:
+        body += f"\n\nYou asked to be woken for it to: {reason}"
+    return body
 
 
 class SubAgentApprovalChannel(SubAgentChannel):
@@ -207,7 +237,7 @@ class SubAgentReporter:
             and task.task_id not in self._host._reporting_subagents
         ):
             self._host._reporting_subagents.add(task.task_id)
-            reasons = self._take_subagent_wakes(task.task_id)
+            reasons = self._take_wakes("subagent", task.task_id)
             report = asyncio.create_task(self._report_subagent(task.task_id, reasons))
             self._host._report_tasks.add(report)
             report.add_done_callback(self._host._report_tasks.discard)
@@ -222,6 +252,19 @@ class SubAgentReporter:
             logger.debug("subagents_changed not delivered", exc_info=True)
 
     def _background_task_changed(self, task: BackgroundTask) -> None:
+        # Before any await, like a sub-agent's: the wake poller must not also resume the thread.
+        if (
+            task.status != "running"
+            and not task.reported
+            and task.task_id not in self._host._reporting_subagents
+        ):
+            self._host._reporting_subagents.add(task.task_id)
+            reasons = self._take_wakes("task", task.task_id)
+            report = asyncio.get_running_loop().create_task(
+                self._report_background_task(task.task_id, reasons)
+            )
+            self._host._report_tasks.add(report)
+            report.add_done_callback(self._host._report_tasks.discard)
         websocket = self._host._live_websocket
         if websocket is None:
             return
@@ -241,15 +284,12 @@ class SubAgentReporter:
         except Exception:  # noqa: BLE001 -- a closing tab mustn't fail the script's run
             logger.debug("%s not delivered", message["type"], exc_info=True)
 
-    def _take_subagent_wakes(self, task_id: str) -> list[str]:
+    def _take_wakes(self, kind: str, task_id: str) -> list[str]:
         wake_store = WakeStore(self._host.settings.state_dir)
         reasons = []
         for wake in wake_store.list_pending():
-            if (
-                wake.thread_id == self._host.thread_id
-                and wake.kind == "subagent"
-                and wake.subagent_task_id == task_id
-            ):
+            waits_on = wake.subagent_task_id if kind == "subagent" else wake.task_id
+            if wake.thread_id == self._host.thread_id and wake.kind == kind and waits_on == task_id:
                 wake.status = "woken"
                 wake.woken_at = datetime.now(UTC).isoformat()
                 wake_store.save(wake)
@@ -257,43 +297,65 @@ class SubAgentReporter:
         return reasons
 
     async def _report_subagent(self, task_id: str, reasons: list[str]) -> None:
-        """Tells the conversation how a background sub-agent ended, as a
-        turn of its own -- after the turn in progress, if there is one, so
-        the model hears it at its next chance rather than never. Skipped if
-        the model already read the outcome itself in the meantime."""
+        """Tells the conversation how a background sub-agent ended. Skipped if the model
+        already read the outcome itself in the meantime."""
+
+        def claim() -> str | None:
+            store = SubAgentTaskStore(self._host.settings.state_dir)
+            task = store.load(task_id)
+            if task is None or task.reported:
+                return None
+            task.reported = True
+            store.save(task)
+            return subagent_report(task, reasons)
+
+        await self._report(task_id, claim, _WIND_DOWN_NOTE)
+
+    async def _report_background_task(self, task_id: str, reasons: list[str]) -> None:
+        """Tells the conversation how a background script or command ended, with the end of
+        its output, so the model carries on without polling or asking to be woken."""
+        state_dir = self._host.settings.state_dir
+
+        def claim() -> str | None:
+            store = BackgroundTaskStore(state_dir)
+            task = store.load(task_id)
+            if task is None or task.status == "running" or task.reported:
+                return None
+            task.reported = True
+            store.save(task)
+            return background_report(state_dir, task, reasons)
+
+        await self._report(task_id, claim, _TASK_WIND_DOWN_NOTE)
+
+    async def _report(
+        self, task_id: str, claim: Callable[[], str | None], wind_down_note: str
+    ) -> None:
+        """Sends a report as a turn of its own -- after the turn in progress, if there is one,
+        so the model hears it at its next chance rather than never. Past the cap of report
+        turns without the user it stays unreported, for the model to find once the user is
+        back."""
         try:
             async with self._host._turn_lock:
-                store = SubAgentTaskStore(self._host.settings.state_dir)
-                task = store.load(task_id)
-                if task is None or task.reported or self._host.is_workflow_run():
-                    logger.info(
-                        "sub-agent %s not reported to %s: %s",
-                        task_id,
-                        self._host.thread_id,
-                        "its record is gone"
-                        if task is None
-                        else "already read by the model"
-                        if task.reported
-                        else "a workflow run",
-                    )
+                if self._host.is_workflow_run():
                     return
                 if self._host._report_turns_in_row >= _MAX_REPORT_TURNS_IN_ROW:
-                    # Left unreported: the model finds it with
-                    # list_subagent_tasks once the user is back.
                     logger.info(
-                        "sub-agent %s not reported to %s: %d report turns without the user",
+                        "%s not reported to %s: %d report turns without the user",
                         task_id,
                         self._host.thread_id,
                         self._host._report_turns_in_row,
                     )
                     await self._host.notify_resync()
                     return
+                text = claim()
+                if text is None:
+                    logger.info(
+                        "%s not reported to %s: gone or already read", task_id, self._host.thread_id
+                    )
+                    return
                 self._host._report_turns_in_row += 1
-                task.reported = True
-                store.save(task)
-                text = subagent_report(task, reasons)
                 if self._host._report_turns_in_row >= _WIND_DOWN_REPORT_TURN:
-                    text += _WIND_DOWN_NOTE
+                    text += wind_down_note
                 websocket: Any = self._host._live_websocket
                 if websocket is not None:
                     try:
@@ -306,7 +368,7 @@ class SubAgentReporter:
             if websocket is None:
                 await self._host.notify_resync()
         except Exception:
-            logger.exception("reporting sub-agent %s to its conversation failed", task_id)
+            logger.exception("reporting %s to its conversation failed", task_id)
         finally:
             self._host._reporting_subagents.discard(task_id)
 

@@ -15,6 +15,7 @@ import {
   ScheduledRunCard,
 } from "../ScheduledRunCard";
 import { CONVERSATION_MESSAGE_PREFIX, ConversationMessageCard } from "../ConversationMessageCard";
+import { BACKGROUND_REPORT_PREFIX, BackgroundTaskReportCard } from "../BackgroundTaskReportCard";
 import { SUBAGENT_REPORT_PREFIX, SubAgentReportCard } from "../SubAgentReportCard";
 import { TaskDraftCard } from "../TaskDraftCard";
 import { TaskCard } from "./TaskCard";
@@ -182,6 +183,7 @@ export function LogItemView({
     if (item.text.startsWith(INVESTIGATION_PREFIX) || item.text.startsWith(REVISION_PREFIX))
       return <InvestigationCard text={item.text} />;
     if (item.text.startsWith(SUBAGENT_REPORT_PREFIX)) return <SubAgentReportCard text={item.text} />;
+    if (item.text.startsWith(BACKGROUND_REPORT_PREFIX)) return <BackgroundTaskReportCard text={item.text} />;
     if (item.text.startsWith(CONVERSATION_MESSAGE_PREFIX)) return <ConversationMessageCard text={item.text} />;
     return <UserMessageView item={item} onEditMessage={onEditMessage} />;
   }

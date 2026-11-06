@@ -305,10 +305,12 @@ Last reviewed: 2026-10-15.
    evaluation `office-agent/evals/agentic/` against the baseline on `main`: the evaluation and
    its baseline (step 1, #820, done); an end-of-turn plan check and a note on a repeated read (step 2,
    #821, done); a small model for side calls and a default model picked from the keys present
-   (step 3, #822, done); a delivery check that opens the Office files a turn wrote (step 4, in
-   review); a folder brief on first attach and an offer
-   to save a job as a workflow or skill; an in-chat connector card (decision record and
-   independent review first).
+   (step 3, #822, done); a delivery check that opens the Office files a turn wrote (step 4, #824,
+   done). The maintainer put two asks before the rest: a background script's or command's end
+   reported to its conversation by itself, as a sub-agent's is (in review), then a turn the
+   person stopped that the model knows was stopped. After them: a folder brief on first attach
+   and an offer to save a job as a workflow or skill; an in-chat connector card (decision record
+   and independent review first).
 
 ## Needs the maintainer's testing (could not be verified here)
 
