@@ -305,8 +305,8 @@ Last reviewed: 2026-10-15.
    evaluation `office-agent/evals/agentic/` against the baseline on `main`: the evaluation and
    its baseline (step 1, #820, done); an end-of-turn plan check and a note on a repeated read (step 2,
    #821, done); a small model for side calls and a default model picked from the keys present
-   (step 3, in review); a
-   delivery check on the Office files a turn wrote; a folder brief on first attach and an offer
+   (step 3, #822, done); a delivery check that opens the Office files a turn wrote (step 4, in
+   review); a folder brief on first attach and an offer
    to save a job as a workflow or skill; an in-chat connector card (decision record and
    independent review first).
 
