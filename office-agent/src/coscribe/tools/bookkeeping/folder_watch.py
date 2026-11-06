@@ -15,6 +15,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from ._trigger_files import trigger_file
+
 # How long a file must stay unchanged to count as written; the wait step uses the same.
 SETTLE_SECONDS = 5
 # A folder that fills up at once starts this many runs a check, the rest at the next ones.
@@ -81,4 +83,4 @@ class FolderWatch:
         os.replace(tmp_path, path)
 
     def _path(self, trigger_id: str) -> Path:
-        return self.root / f"{trigger_id}.folder.json"
+        return trigger_file(self.root, trigger_id, ".folder.json")
