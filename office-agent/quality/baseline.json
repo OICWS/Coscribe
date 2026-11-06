@@ -283,7 +283,7 @@
   "office-agent/frontend/src/components/workflow/WorkflowDraftPage.tsx::WorkflowDraftPage": 189,
   "office-agent/frontend/src/components/workflow/WorkflowEditor.tsx::StepCard": 163,
   "office-agent/frontend/src/components/workflow/WorkflowEditor.tsx::WorkflowEditor": 141,
-  "office-agent/frontend/src/state/reducer.ts::chatReducer": 469
+  "office-agent/frontend/src/state/reducer.ts::chatReducer": 419
  },
  "frontend_unused_exports": {
   "office-agent/frontend/src/components/icons.tsx": 3,

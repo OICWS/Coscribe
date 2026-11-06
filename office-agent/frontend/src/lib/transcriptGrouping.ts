@@ -1,7 +1,6 @@
 import type { LogItem } from "../state/reducer";
 import type { Workflow } from "../types/workflow";
-import { taskListOf } from "./taskCard";
-import type { ProgressItem } from "./workflowProgress";
+import { taskCardPlaces, type TaskCardEntry } from "./taskCard";
 
 type ToolOrApprovalItem = Extract<LogItem, { kind: "tool" | "approval" }>;
 type UserItem = Extract<LogItem, { kind: "user" }>;
@@ -29,8 +28,8 @@ export interface Turn {
   /** An unresolved approval blocks both editing and (by the same real
    * backend rule -- see handle_edit_message's own check) rewinding. */
   hasPendingApproval: boolean;
-  /** The task list the conversation had when this turn began. */
-  tasksBefore: ProgressItem[];
+  /** Where the conversation's task list is shown (see taskCardPlaces). */
+  taskPlaces: Record<string, TaskCardEntry>;
 }
 
 /** Splits a flat LogItem[] into per-turn spans -- a coarser grouping than
@@ -41,7 +40,7 @@ export function groupTurns(items: LogItem[]): Turn[] {
   const turns: Turn[] = [];
   let current: LogItem[] = [];
   let currentUserItem: UserItem | null = null;
-  let tasks: ProgressItem[] = [];
+  const taskPlaces = taskCardPlaces(items);
 
   const flush = () => {
     if (current.length === 0) return;
@@ -58,9 +57,8 @@ export function groupTurns(items: LogItem[]): Turn[] {
       userItem: currentUserItem,
       finalAgentItem,
       hasPendingApproval,
-      tasksBefore: tasks,
+      taskPlaces,
     });
-    tasks = taskListOf(current, tasks);
     current = [];
     currentUserItem = null;
   };

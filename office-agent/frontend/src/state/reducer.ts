@@ -310,6 +310,68 @@ export function historyToItems(entries: HistoryEntry[]): LogItem[] {
   });
 }
 
+function withToolResult(state: ChatState, action: Extract<ChatAction, { type: "tool_result" }>): ChatState {
+  // Copied again after closeStreamingBubble, which returns state.items
+  // itself unchanged when there's nothing to close -- items[i] = ...
+  // below must never end up mutating that shared reference in place.
+  const items = [...closeStreamingBubble(state.items)];
+  const workflowTest = action.tool_name === "test_workflow" ? null : state.workflowTest;
+  // Parallel calls of one tool all start before any result arrives, and each result comes back
+  // with its own arguments: the started call with the same arguments is the one that ran.
+  const args = JSON.stringify(action.arguments);
+  const same = items.findIndex((item) => item.kind === "tool" && item.toolName === action.tool_name && item.result === undefined && JSON.stringify(item.arguments) === args);
+  const target = items[same];
+  if (target?.kind === "tool") {
+    items[same] = { ...target, result: action.result, isError: action.is_error };
+    return { ...state, items, workflowTest };
+  }
+  for (let i = items.length - 1; i >= 0; i -= 1) {
+    const item = items[i];
+    if (item.kind === "tool" && item.toolName === action.tool_name && item.result === undefined) {
+      items[i] = {
+        ...item,
+        arguments: action.arguments,
+        result: action.result,
+        isError: action.is_error,
+      };
+      return { ...state, items, workflowTest };
+    }
+    // A gated call only ever produced an "approval" LogItem live --
+    // there's no separate "tool call started" WS event to have
+    // created a "tool" placeholder for the branch above to find (see
+    // wire.ts's ToolResultEvent, the only tool-shaped message a live
+    // turn sends). Once approved and actually executed, its result
+    // belongs on *this same* item (kept as "approval", not
+    // recreated as "tool" -- that would drop its status/
+    // beforePreview/afterPreview, and ApprovalDetail still wants to
+    // show "Approved" alongside the result, not replace it). Merging
+    // here, instead of leaving the tool_result to fall through to
+    // the push below, is what fixes a real bug found live: pushing
+    // a *second* item for the same action left both it and the
+    // still-present approval item describing the same edit, so a
+    // collapsed tool-run group summarized both -- "Wrote notes.txt,
+    // Wrote notes.txt" for one write_file call.
+    if (item.kind === "approval" && item.toolName === action.tool_name && item.status === "approved") {
+      items[i] = {
+        ...item,
+        arguments: action.arguments,
+        result: action.result,
+        isError: action.is_error,
+      };
+      return { ...state, items, workflowTest };
+    }
+  }
+  items.push({
+    id: genId(),
+    kind: "tool",
+    toolName: action.tool_name,
+    arguments: action.arguments,
+    result: action.result,
+    isError: action.is_error,
+  });
+  return { ...state, items, workflowTest };
+}
+
 export function chatReducer(state: ChatState, action: ChatAction): ChatState {
   switch (action.type) {
     case "local_connection_reset":
@@ -535,58 +597,8 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ],
       };
 
-    case "tool_result": {
-      // Copied again after closeStreamingBubble, which returns state.items
-      // itself unchanged when there's nothing to close -- items[i] = ...
-      // below must never end up mutating that shared reference in place.
-      const items = [...closeStreamingBubble(state.items)];
-      const workflowTest = action.tool_name === "test_workflow" ? null : state.workflowTest;
-      for (let i = items.length - 1; i >= 0; i -= 1) {
-        const item = items[i];
-        if (item.kind === "tool" && item.toolName === action.tool_name && item.result === undefined) {
-          items[i] = {
-            ...item,
-            arguments: action.arguments,
-            result: action.result,
-            isError: action.is_error,
-          };
-          return { ...state, items, workflowTest };
-        }
-        // A gated call only ever produced an "approval" LogItem live --
-        // there's no separate "tool call started" WS event to have
-        // created a "tool" placeholder for the branch above to find (see
-        // wire.ts's ToolResultEvent, the only tool-shaped message a live
-        // turn sends). Once approved and actually executed, its result
-        // belongs on *this same* item (kept as "approval", not
-        // recreated as "tool" -- that would drop its status/
-        // beforePreview/afterPreview, and ApprovalDetail still wants to
-        // show "Approved" alongside the result, not replace it). Merging
-        // here, instead of leaving the tool_result to fall through to
-        // the push below, is what fixes a real bug found live: pushing
-        // a *second* item for the same action left both it and the
-        // still-present approval item describing the same edit, so a
-        // collapsed tool-run group summarized both -- "Wrote notes.txt,
-        // Wrote notes.txt" for one write_file call.
-        if (item.kind === "approval" && item.toolName === action.tool_name && item.status === "approved") {
-          items[i] = {
-            ...item,
-            arguments: action.arguments,
-            result: action.result,
-            isError: action.is_error,
-          };
-          return { ...state, items, workflowTest };
-        }
-      }
-      items.push({
-        id: genId(),
-        kind: "tool",
-        toolName: action.tool_name,
-        arguments: action.arguments,
-        result: action.result,
-        isError: action.is_error,
-      });
-      return { ...state, items, workflowTest };
-    }
+    case "tool_result":
+      return withToolResult(state, action);
 
     case "approval_required":
       // A sub-agent's approval is shown in the Background tasks panel.
