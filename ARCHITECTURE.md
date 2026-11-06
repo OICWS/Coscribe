@@ -191,8 +191,10 @@ it changed as a fix the person saves into the task, and a heal that changed more
 revision in a conversation, as a failed run's investigation is.
 
 A conversation can also pause itself and resume later (`sleep_until`,
-`wake_on_task`), which is separate from scheduled tasks: a wake belongs to
-one conversation, a task is a global record that starts its own.
+`wake_on_event`), which is separate from scheduled tasks: a wake belongs to
+one conversation, a task is a global record that starts its own. A background
+script, command or sub-agent needs no wake: its end comes back to its conversation
+as a turn of its own (`conversation/subagents.py`).
 
 ### Code is a second runtime, not a node in the first
 

@@ -5,7 +5,6 @@ import pytest
 
 from coscribe.runtime import get_tool_metadata
 from coscribe.tools.bookkeeping import selfwake as selfwake_module
-from coscribe.tools.bookkeeping.background_tasks import BackgroundTask, BackgroundTaskStore
 from coscribe.tools.bookkeeping.selfwake import SignalStore, WakeStore, build_selfwake_tools
 
 
@@ -86,34 +85,14 @@ def test_sleep_for_rejects_non_positive_seconds(tmp_path: Path) -> None:
 # -- wake_on --
 
 
-# -- wake_on_task --
+# -- background tasks --
 
 
-def test_wake_on_task_requires_a_real_background_task(tmp_path: Path) -> None:
+def test_no_tool_waits_on_a_background_task_since_its_end_reports_itself(tmp_path: Path) -> None:
     tools = _tools_by_name("thread-1", tmp_path)
 
-    with pytest.raises(ValueError, match="No background task"):
-        tools["wake_on_task"](task_id="does-not-exist", reason="x")
-
-
-def test_wake_on_task_succeeds_for_a_real_task(tmp_path: Path) -> None:
-    task_store = BackgroundTaskStore(tmp_path)
-    task_store.save(
-        BackgroundTask(
-            task_id="task-1",
-            thread_id="thread-1",
-            language="python",
-            description="crunch numbers",
-            status="running",
-            started_at=datetime.now(UTC).isoformat(),
-        )
-    )
-    tools = _tools_by_name("thread-1", tmp_path)
-
-    result = tools["wake_on_task"](task_id="task-1", reason="tell me when it's done")
-
-    assert result["kind"] == "task"
-    assert result["task_id"] == "task-1"
+    assert "wake_on_task" not in tools
+    assert "wake_on_event" in tools
 
 
 # -- wake_on_event / signal_event --
@@ -251,7 +230,6 @@ def test_mutating_selfwake_tools_are_write_local_and_gated(tmp_path: Path) -> No
     for name in (
         "sleep_until",
         "sleep_for",
-        "wake_on_task",
         "wake_on_event",
         "signal_event",
         "cancel_wake",
