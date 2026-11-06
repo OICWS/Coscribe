@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { LogItem } from "../state/reducer";
 import { groupToolRuns, groupTurns } from "./transcriptGrouping";
-import { foldTaskCard, planPanelData, taskListOf, type TaskCardEntry } from "./taskCard";
+import { foldTaskCard, planPanelData, taskCardPlaces, taskListOf, type TaskCardEntry } from "./taskCard";
 
 type Of<K extends LogItem["kind"]> = Extract<LogItem, { kind: K }>;
 
@@ -19,10 +19,9 @@ const tool = (toolName: string, args: Record<string, unknown> = {}, result?: unk
 const create = (taskId: string, content: string) => tool("task_create", { content }, { id: taskId, content, status: "pending" });
 const update = (taskId: string, content: string, status: string) =>
   tool("task_update", { task_id: taskId, status }, { id: taskId, content, status });
-const approval = (status: Of<"approval">["status"]): Of<"approval"> => ({ id: id(), kind: "approval", toolName: "write_file", arguments: {}, status });
 
-const fold = (items: LogItem[], live = false) => foldTaskCard(groupToolRuns(items), live);
-const cardOf = (entries: ReturnType<typeof fold>) => entries.find((e): e is TaskCardEntry => e.kind === "task_card");
+const fold = (items: LogItem[]) => foldTaskCard(groupToolRuns(items), taskCardPlaces(items));
+const cardsOf = (entries: ReturnType<typeof fold>) => entries.filter((e): e is TaskCardEntry => e.kind === "task_card");
 
 describe("taskListOf", () => {
   it("replays creates and updates from their results", () => {
@@ -66,10 +65,10 @@ describe("planPanelData", () => {
 describe("foldTaskCard", () => {
   it("leaves a turn without a task list as it is", () => {
     const entries = groupToolRuns([agent(), tool("read_file")]);
-    expect(foldTaskCard(entries, false)).toBe(entries);
+    expect(foldTaskCard(entries, {})).toEqual(entries);
   });
 
-  it("replaces the narration and the calls of the stretch with one card", () => {
+  it("shows one card, under the last call that changed the list, and the calls and narration as they are", () => {
     const items = [
       agent("plan it"),
       create("1", "Read"),
@@ -80,112 +79,45 @@ describe("foldTaskCard", () => {
       update("1", "Read", "completed"),
       update("2", "Write", "in_progress"),
       tool("write_file"),
-      update("2", "Write", "completed"),
-      agent("All done."),
     ];
     const entries = fold(items);
-    expect(entries.map((e) => e.kind)).toEqual(["agent", "task_card", "agent"]);
-    const card = cardOf(entries);
-    expect(card?.tasks.map((t) => t.status)).toEqual(["completed", "completed"]);
-    expect(card?.calls["1"]).toHaveLength(1);
-    expect(card?.calls["2"]).toHaveLength(1);
-    expect(entries[2]).toMatchObject({ text: "All done." });
+    expect(entries.map((e) => e.kind)).toEqual(["agent", "tool_run", "agent", "task_card", "tool_run"]);
+    const [card] = cardsOf(entries);
+    expect(card.tasks.map((t) => t.status)).toEqual(["completed", "in_progress"]);
+    expect(card.done).toBe(false);
   });
 
-  it("keeps calls made before the list in their own run", () => {
+  it("does not move for a call that leaves the list as it was", () => {
+    const listed = [{ id: "1", content: "A", status: "in_progress" }];
+    const items = [create("1", "A"), update("1", "A", "in_progress"), tool("read_file"), tool("task_list", {}, listed), agent("still on it")];
+    const entries = fold(items);
+    expect(entries.map((e) => e.kind)).toEqual(["task_card", "tool_run", "agent"]);
+  });
+
+  it("folds a finished list into a done line where it finished", () => {
+    const items = [create("1", "A"), update("1", "A", "completed"), agent("All done.")];
+    const entries = fold(items);
+    expect(entries.map((e) => e.kind)).toEqual(["task_card", "agent"]);
+    expect(cardsOf(entries)[0]).toMatchObject({ done: true });
+  });
+
+  it("keeps a finished list's line and shows the card again further down when the list grows", () => {
+    const items = [create("1", "A"), update("1", "A", "completed"), agent("done"), create("2", "B")];
+    const cards = cardsOf(fold(items));
+    expect(cards.map((c) => c.done)).toEqual([true, false]);
+    expect(cards[1].tasks).toHaveLength(2);
+  });
+
+  it("follows the list into a later turn", () => {
+    const items = [{ id: id(), kind: "user", text: "go" } as LogItem, create("1", "A"), agent("half"), { id: id(), kind: "user", text: "more" } as LogItem, update("1", "A", "in_progress")];
+    const turns = groupTurns(items);
+    const cards = turns.map((turn) => cardsOf(foldTaskCard(groupToolRuns(turn.items), turn.taskPlaces)));
+    expect(cards.map((c) => c.length)).toEqual([0, 1]);
+    expect(cards[1][0].tasks[0].status).toBe("in_progress");
+  });
+
+  it("keeps the calls around a task call in runs of their own", () => {
     const entries = fold([tool("list_files"), create("1", "A"), tool("read_file")]);
-    expect(entries.map((e) => e.kind)).toEqual(["tool_run", "task_card"]);
-  });
-
-  it("puts a call made while no item is in progress under the card", () => {
-    const card = cardOf(fold([create("1", "A"), tool("read_file")]));
-    expect(card?.calls[""]).toHaveLength(1);
-  });
-
-  it("marks the item a failed call ran under", () => {
-    const card = cardOf(
-      fold([create("1", "A"), create("2", "B"), update("1", "A", "in_progress"), tool("run_python_script", {}, "boom", true), update("1", "A", "completed")]),
-    );
-    expect(card?.failed).toEqual(["1"]);
-  });
-
-  it("leaves an approval waiting on the person outside the card", () => {
-    const entries = fold([create("1", "A"), update("1", "A", "in_progress"), tool("read_file"), approval("pending")]);
-    expect(entries.map((e) => e.kind)).toEqual(["task_card", "tool_run"]);
-    expect(cardOf(entries)?.calls["1"]).toHaveLength(1);
-  });
-
-  it("keeps the reply after an unfinished list once the turn is over, and hides it while live", () => {
-    const items = [create("1", "A"), update("1", "A", "in_progress"), tool("read_file"), agent("so far")];
-    expect(fold(items, false).map((e) => e.kind)).toEqual(["task_card", "agent"]);
-    expect(fold(items, true).map((e) => e.kind)).toEqual(["task_card"]);
-  });
-
-  it("shows the reply written after a finished list while the turn is still live", () => {
-    const items = [create("1", "A"), update("1", "A", "completed"), agent("summary")];
-    expect(fold(items, true).map((e) => e.kind)).toEqual(["task_card", "agent"]);
-  });
-});
-
-describe("a later turn that only updates the list", () => {
-  it("draws the whole list, from what the turns before left", () => {
-    const first = [{ id: id(), kind: "user", text: "go", turnIndex: 0 } as const, create("1", "Read"), create("2", "Write")];
-    const second = [{ id: id(), kind: "user", text: "next", turnIndex: 1 } as const, update("1", "Read", "completed")];
-    const turns = groupTurns([...first, ...second]);
-    expect(turns.map((t) => t.tasksBefore.length)).toEqual([0, 2]);
-    const card = cardOf(foldTaskCard(groupToolRuns(turns[1].items), false, turns[1].tasksBefore));
-    expect(card?.tasks.map((t) => [t.content, t.status])).toEqual([
-      ["Read", "completed"],
-      ["Write", "pending"],
-    ]);
-  });
-
-  it("draws a call under the item that started last when several run at once", () => {
-    const read = tool("read_file");
-    const write = tool("write_file");
-    const items = [
-      create("1", "A"),
-      create("2", "B"),
-      update("1", "A", "in_progress"),
-      read,
-      update("2", "B", "in_progress"),
-      write,
-      update("2", "B", "completed"),
-    ];
-    const card = cardOf(fold(items));
-    expect(card?.calls["1"]).toEqual([read]);
-    expect(card?.calls["2"]).toEqual([write]);
-    expect(card?.tasks.map((t) => t.status)).toEqual(["in_progress", "completed"]);
-  });
-
-  it("marks an item waiting while an approval for it is pending", () => {
-    const items = [create("1", "A"), create("2", "B"), update("1", "A", "in_progress"), update("2", "B", "in_progress"), approval("pending")];
-    expect(cardOf(fold(items, true))?.waiting).toEqual(["2"]);
-    expect(cardOf(fold([create("1", "A"), update("1", "A", "in_progress"), approval("pending"), update("1", "A", "completed")], true))?.waiting).toEqual([]);
-  });
-
-  it("marks an item waiting while a question for the person is pending", () => {
-    const question: LogItem = { id: id(), kind: "question", questions: [], status: "pending" };
-    const items = [create("1", "A"), update("1", "A", "in_progress"), tool("read_file"), question];
-    expect(cardOf(fold(items, true))?.waiting).toEqual(["1"]);
-  });
-
-  it("binds a started background task to the item in progress, from the saved history too", () => {
-    const items = [
-      create("1", "A"),
-      create("2", "B"),
-      update("1", "A", "in_progress"),
-      tool("spawn_agent_background", {}, { task_id: "agent-1", status: "running" }),
-      update("2", "B", "in_progress"),
-      tool("run_background_script", {}, JSON.stringify({ task_id: "script-1" })),
-      tool("run_background_command", {}, { task_id: "cmd-1" }),
-      tool("run_background_script", {}),
-    ];
-    expect(cardOf(fold(items))?.bound).toEqual({ "1": ["agent-1"], "2": ["script-1", "cmd-1"] });
-  });
-
-  it("binds nothing started while no item is in progress", () => {
-    const items = [create("1", "A"), tool("run_background_script", {}, { task_id: "script-1" }), update("1", "A", "in_progress")];
-    expect(cardOf(fold(items))?.bound).toEqual({});
+    expect(entries.map((e) => e.kind)).toEqual(["tool_run", "task_card", "tool_run"]);
   });
 });

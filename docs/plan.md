@@ -20,10 +20,11 @@ Last reviewed: 2026-11-06.
 2. **Settings search index guard.** Settings search lists its rows by hand in
    `frontend/src/components/settings/searchIndex.ts`; add a test that fails when a `SettingRow`
    label is missing from it.
-3. **Chat: a live Plan card** (maintainer, 2026-10-21, agreed): in Plan mode the conversation shows
-   one card with the plan's items ticking off and the commands folded inside it, gone when the plan
-   is done, beside the full view in the Plan page. Design first, then build. (The readable tool rows
-   of the same request are done: `docs/log/2026-10-21-tool-row-*.md`.)
+3. **Chat: a live Plan card** (maintainer, 2026-10-21 and 2026-11-06). Done: the conversation
+   shows one task card under the latest call that changed the list, so it moves down only when its
+   content changes, and it folds into a "N steps done" line when every item is done
+   (`docs/log/2026-11-06-task-card-follows.md`). Open: the card no longer shows which background
+   tasks an item started; bring that back on the card if it is missed.
 4. **A more agentic coscribe, measured** (#819), each step scored by `office-agent/evals/agentic/`.
    Done: the evaluation (#820), the end-of-turn plan check (#821), the small model for side calls
    (#822), the delivery check of the Office files a turn wrote (#824). In review, put before step 5

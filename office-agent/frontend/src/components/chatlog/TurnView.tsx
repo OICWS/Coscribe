@@ -98,10 +98,9 @@ export function TurnView({
   onDismissTaskDraft?: (item: TaskDraftItem) => void;
   onPptxShapePicked: (capture: PptxShapeCapture) => void;
 }) {
-  const entries = foldTaskCard(groupToolRuns(turn.items), live, turn.tasksBefore);
-  const calls = entries.flatMap((entry) =>
-    entry.kind === "tool_run" ? entry.items : entry.kind === "task_card" ? Object.values(entry.calls).flat() : [],
-  );
+  const entries = foldTaskCard(groupToolRuns(turn.items), turn.taskPlaces);
+  const calls = entries.flatMap((entry) => (entry.kind === "tool_run" ? entry.items : []));
+  const waiting = turn.hasPendingApproval || turn.items.some((item) => item.kind === "question" && item.status === "pending");
   const finalAgentItem = turn.finalAgentItem;
   const userItem = turn.userItem;
   const canFooter =
@@ -123,7 +122,7 @@ export function TurnView({
             onPptxShapePicked={onPptxShapePicked}
           />
         ) : entry.kind === "task_card" ? (
-          <TaskCard key={entry.id} entry={entry} live={live} onApprove={onApprove} onPptxShapePicked={onPptxShapePicked} />
+          <TaskCard key={entry.id} entry={entry} live={live} waiting={waiting} />
         ) : entry.kind === "question" ? (
           entry.status === "answered" ? <QuestionRecord key={entry.id} item={entry} /> : null
         ) : entry.kind === "plan" ? (
