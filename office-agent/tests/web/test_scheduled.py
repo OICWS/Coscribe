@@ -508,6 +508,17 @@ def test_delete_scheduled_task_endpoint_unknown_id_404s_lg(
     assert response.status_code == 404
 
 
+def test_a_task_id_that_could_leave_the_store_404s_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        deleted = client.delete("/api/scheduled-tasks/..%5C..%5Csecret")
+        fetched = client.get("/api/scheduled-tasks/..%5C..%5Csecret/notes")
+
+    assert deleted.status_code == 404 and fetched.status_code == 404
+
+
 def test_get_threads_endpoint_excludes_scheduled_task_threads_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
