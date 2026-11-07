@@ -3,7 +3,8 @@ folder per system holding `system.json`. A conversation that makes a deck gets a
 here refers back to a deck, so changing a system never moves a finished one.
 
 What a system holds: colors (named roles), typography (installed fonts and named text styles),
-spacing, corner radius, and an overview in free text that the model reads.
+spacing, corner radius, assets (logos, icons and pictures in `assets/`, each with a note on when
+to use it) and an overview in free text that the model reads.
 """
 
 from __future__ import annotations
@@ -14,13 +15,15 @@ import os
 import re
 import shutil
 import uuid
-from collections.abc import Callable
+import zipfile
+from collections.abc import Callable, Collection, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from ..runtime import tool_metadata
 from ._file_locks import file_lock, replace_with_retry
+from ._workspace import WorkspaceScope
 
 SYSTEM_FILE = "system.json"
 # An id comes from a URL, so it must never name a path outside the library.
@@ -32,6 +35,16 @@ _MAX_ROWS = 60
 _MAX_TEXT = 200
 # How many colors a listing carries for a card to draw.
 _SWATCHES = 8
+ASSETS_FOLDER = "assets"
+_MAX_ASSET_BYTES = 2 * 1024 * 1024
+_MAX_ASSETS = 24
+ASSET_KINDS = ("logo", "icon", "picture")
+ASSET_MEDIA = {
+    "svg": "image/svg+xml",
+    "png": "image/png",
+    "jpg": "image/jpeg",
+    "webp": "image/webp",
+}
 
 # What a new system starts with, so its form is not empty: a neutral palette and the six text
 # styles a deck needs (size in px on the 1920 canvas, weight, line height, letter spacing in px).
@@ -155,6 +168,62 @@ def _clean(data: Any) -> dict[str, Any]:
     }
 
 
+def _sniffed(data: bytes) -> str | None:
+    """The picture's format from its first bytes, never from the name it was given."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "jpg"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "webp"
+    head = data[:1024].lstrip().lower()
+    if head.startswith((b"<?xml", b"<svg", b"<!--")) and b"<svg" in data[:4096].lower():
+        return "svg"
+    return None
+
+
+def _picture_size(data: bytes, kind: str) -> tuple[int | None, int | None]:
+    if kind == "svg":
+        found = re.search(
+            rb"<svg[^>]*\bviewBox\s*=\s*[\"']\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)",
+            data,
+            re.I,
+        )
+        return (
+            (round(float(found.group(1))), round(float(found.group(2)))) if found else (None, None)
+        )
+    from io import BytesIO
+
+    from PIL import Image
+
+    try:
+        with Image.open(BytesIO(data)) as image:
+            return image.size
+    except OSError:
+        raise DesignSystemError("the picture could not be read") from None
+
+
+def _asset_fields(data: Any, current: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        raise DesignSystemError("an asset must be an object")
+    kind = data.get("kind", current.get("kind", "logo"))
+    if kind not in ASSET_KINDS:
+        raise DesignSystemError(f"an asset is a {', '.join(ASSET_KINDS)}")
+    name = _text(data.get("name", current.get("name", "")), "an asset name")
+    if not name:
+        raise DesignSystemError("an asset needs a name")
+    return {
+        "name": name,
+        "kind": kind,
+        "note": _text(data.get("note", current.get("note", "")), "an asset note"),
+    }
+
+
+def _file_stem(text: str) -> str:
+    """A name as a plain file name: letters, digits, dashes and underscores, any script."""
+    return re.sub(r"[^\w-]+", "-", text).strip("-_")[:60]
+
+
 def _palette_of(data: dict[str, Any]) -> list[str]:
     """The system's colors as #RRGGBB, for a card to draw; what a damaged file holds is skipped."""
     colors = data.get("colors")
@@ -268,6 +337,155 @@ class DesignSystemStore:
     def chosen_for_thread(self, thread_id: str) -> dict[str, Any] | None:
         return self._read(self._thread_path(thread_id))
 
+    def duplicate(self, system_id: str, name: str) -> dict[str, Any] | None:
+        """A copy of the system under a new id, its assets with it; None when there is none."""
+        path = self._path(system_id)
+        current = self._read(path) if path is not None else None
+        if path is None or current is None:
+            return None
+        made = self.create(name)
+        target = self.root / made["id"]
+        if (path.parent / ASSETS_FOLDER).is_dir():
+            shutil.copytree(path.parent / ASSETS_FOLDER, target / ASSETS_FOLDER)
+        system = {
+            **current,
+            "name": _text(name, "the name", _MAX_NAME),
+            "created_at": made["created_at"],
+        }
+        system["updated_at"] = made["updated_at"]
+        with file_lock(target / SYSTEM_FILE):
+            self._write(target / SYSTEM_FILE, system)
+        return {**system, "id": made["id"]}
+
+    def add_asset(self, system_id: str, data: bytes, name: str) -> dict[str, Any] | None:
+        """Keeps a picture with the system; None when there is no such system."""
+        path = self._path(system_id)
+        if path is None:
+            return None
+        if len(data) > _MAX_ASSET_BYTES:
+            raise DesignSystemError("a picture may be at most 2 MB")
+        kind = _sniffed(data)
+        if kind is None:
+            raise DesignSystemError("a picture is an SVG, PNG, JPEG or WebP file")
+        width, height = _picture_size(data, kind)
+        stem = re.sub(r"\.[A-Za-z0-9]{1,5}$", "", name.strip())[:_MAX_TEXT] or "Picture"
+        with file_lock(path):
+            current = self._read(path)
+            if current is None:
+                return None
+            assets = [a for a in current.get("assets", []) if isinstance(a, dict)]
+            if len(assets) >= _MAX_ASSETS:
+                raise DesignSystemError(f"a design system holds at most {_MAX_ASSETS} pictures")
+            asset_id = uuid.uuid4().hex[:10]
+            asset = {
+                "id": asset_id,
+                "file": f"{asset_id}.{kind}",
+                "name": stem,
+                "kind": "logo",
+                "note": "",
+                "width": width,
+                "height": height,
+            }
+            folder = path.parent / ASSETS_FOLDER
+            folder.mkdir(exist_ok=True)
+            (folder / f"{asset_id}.{kind}").write_bytes(data)
+            self._write(path, {**current, "assets": [*assets, asset], "updated_at": _now()})
+        return asset
+
+    def update_asset(self, system_id: str, asset_id: str, data: Any) -> dict[str, Any] | None:
+        """Renames an asset or changes its kind or note; None when there is no such asset."""
+        path = self._path(system_id)
+        if path is None:
+            return None
+        with file_lock(path):
+            current = self._read(path)
+            assets = [a for a in (current or {}).get("assets", []) if isinstance(a, dict)]
+            found = next((a for a in assets if a.get("id") == asset_id), None)
+            if current is None or found is None:
+                return None
+            changed = {**found, **_asset_fields(data, found)}
+            assets = [changed if a is found else a for a in assets]
+            self._write(path, {**current, "assets": assets, "updated_at": _now()})
+        return changed
+
+    def delete_asset(self, system_id: str, asset_id: str) -> bool:
+        path = self._path(system_id)
+        if path is None:
+            return False
+        with file_lock(path):
+            current = self._read(path)
+            assets = [a for a in (current or {}).get("assets", []) if isinstance(a, dict)]
+            found = next((a for a in assets if a.get("id") == asset_id), None)
+            if current is None or found is None:
+                return False
+            kept = [a for a in assets if a is not found]
+            self._write(path, {**current, "assets": kept, "updated_at": _now()})
+        (path.parent / ASSETS_FOLDER / str(found.get("file", ""))).unlink(missing_ok=True)
+        return True
+
+    def asset_file(self, system_id: str, asset_id: str) -> tuple[Path, str] | None:
+        """The asset's file and its media type, for the app to draw it."""
+        system = self.get(system_id)
+        found = next(
+            (
+                a
+                for a in (system or {}).get("assets", [])
+                if isinstance(a, dict) and a.get("id") == asset_id
+            ),
+            None,
+        )
+        if system is None or found is None:
+            return None
+        file = str(found.get("file", ""))
+        media = ASSET_MEDIA.get(file.rsplit(".", 1)[-1])
+        target = self.root / system_id / ASSETS_FOLDER / file
+        return (
+            (target, media)
+            if media and re.fullmatch(r"[a-f0-9]{10}\.[a-z]{3,4}", file) and target.is_file()
+            else None
+        )
+
+    def copy_assets(self, system_id: str, workspace: Path) -> list[dict[str, Any]]:
+        """The system's pictures copied into the workspace as `brand/<system>/<name>.<ext>`, each
+        entry with its workspace `path`. The copy never refers back (decision 0020): a picture
+        changed in the library later does not move a deck or design made from this one."""
+        system = self.get(system_id)
+        if system is None:
+            return []
+        copied: list[dict[str, Any]] = []
+        for asset, path in _brand_paths(system):
+            kept = self.asset_file(system_id, str(asset.get("id", "")))
+            if kept is None:
+                continue
+            target = workspace / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(kept[0], target)
+            copied.append({**asset, "path": path})
+        return copied
+
+    def deck_system_for_thread(self, thread_id: str) -> dict[str, Any] | None:
+        """The system the conversation started with, in a deck's shape, each picture with the
+        workspace path `copy_assets` gave its copy and the sha256 of its file: what a deck built
+        in that conversation is checked against. None when it started with none."""
+        chosen = self.chosen_for_thread(thread_id)
+        if chosen is None:
+            return None
+        assets = []
+        for asset, path in _brand_paths(chosen):
+            entry = {**asset, "path": path}
+            kept = self.asset_file(str(chosen.get("id", "")), str(asset.get("id", "")))
+            if kept is not None:
+                entry["sha256"] = hashlib.sha256(kept[0].read_bytes()).hexdigest()
+            assets.append(entry)
+        return {**as_deck_design_system(chosen), "assets": assets}
+
+    def unplaced_logo_for_thread(
+        self, thread_id: str, placed: Collection[str], *, where: str, folder: str
+    ) -> str | None:
+        """`unplaced_logo` for the system the conversation started with; None without one."""
+        system = self.deck_system_for_thread(thread_id)
+        return unplaced_logo(system, placed, where=where, folder=folder) if system else None
+
     def delete(self, system_id: str) -> bool:
         path = self._path(system_id)
         if path is None or not path.parent.is_dir():
@@ -275,6 +493,51 @@ class DesignSystemStore:
         with file_lock(path):
             shutil.rmtree(path.parent, ignore_errors=True)
         return True
+
+
+def _brand_paths(system: dict[str, Any]) -> list[tuple[dict[str, Any], str]]:
+    """Each picture of `system` with its workspace path, `brand/<system>/<name>.<ext>`, a name
+    taken twice numbered."""
+    folder = _file_stem(str(system.get("name", ""))) or "design-system"
+    named: list[tuple[dict[str, Any], str]] = []
+    taken: set[str] = set()
+    for asset in system.get("assets", []):
+        if not isinstance(asset, dict):
+            continue
+        suffix = Path(str(asset.get("file", ""))).suffix
+        stem = _file_stem(str(asset.get("name", ""))) or "picture"
+        name, n = f"{stem}{suffix}", 2
+        while name.lower() in taken:
+            name, n = f"{stem}-{n}{suffix}", n + 1
+        taken.add(name.lower())
+        named.append((asset, f"brand/{folder}/{name}"))
+    return named
+
+
+def unplaced_logo(
+    system: dict[str, Any], placed: Collection[str], *, where: str, folder: str
+) -> str | None:
+    """A note when `system` (from `deck_system_for_thread`) has logos and none of them is among
+    `placed`, the sha256 of each picture file the pages place: a copy renamed is the logo, a
+    redrawn or recoloured one is not. `where` names a page ("slide", "board"), `folder` where the
+    pages' pictures go."""
+    logos = [
+        a
+        for a in system.get("assets", [])
+        if isinstance(a, dict) and a.get("kind") == "logo" and a.get("sha256")
+    ]
+    if not logos or any(logo["sha256"] in placed for logo in logos):
+        return None
+    files = "; ".join(
+        str(logo.get("path") or logo.get("name"))
+        + (f" ({logo['note']})" if logo.get("note") else "")
+        for logo in logos
+    )
+    return (
+        f"the design system {system.get('name', '')!r} has a logo no {where} places: copy_file "
+        f"it into the {folder} and place the file itself where its note says ({files}), or tell "
+        "the user why there is none"
+    )
 
 
 def as_deck_design_system(system: dict[str, Any]) -> dict[str, Any]:
@@ -291,17 +554,72 @@ def as_deck_design_system(system: dict[str, Any]) -> dict[str, Any]:
 
 def _summary(system: dict[str, Any]) -> str:
     typography = system["typography"]
+    pictures = len(system.get("assets", []))
     return (
         f"{len(system['colors'])} colors, {len(typography['fonts'])} fonts, "
         f"{len(typography['styles'])} text styles, {len(system['spacing'])} spacing and "
         f"{len(system['radius'])} corner radius values"
+        + (f", {pictures} pictures" if pictures else "")
     )
 
 
-def build_design_system_tools(state_dir: str | Path) -> list[Callable[..., Any]]:
+def _add_assets(
+    store: DesignSystemStore,
+    system_id: str,
+    rows: list[dict[str, str]],
+    scope: WorkspaceScope | None,
+) -> dict[str, Any] | None:
+    """Adds the pictures `rows` name to the system, one already there (the same file) once;
+    the system as it is then. Raises DesignSystemError for a row it cannot take."""
+    if scope is None:
+        raise DesignSystemError("pictures can't be added here; add them in Settings")
+    system = store.get(system_id) or {}
+    kept = {
+        hashlib.sha256(found[0].read_bytes()).hexdigest()
+        for a in system.get("assets", [])
+        if (found := store.asset_file(system_id, str(a.get("id", ""))))
+    }
+    for row in rows:
+        if not isinstance(row, dict) or not row.get("file"):
+            raise DesignSystemError('each picture names its "file"')
+        data = _picture_bytes(scope, str(row["file"]))
+        digest = hashlib.sha256(data).hexdigest()
+        if digest in kept:
+            continue
+        name = str(row.get("name") or Path(str(row["file"]).split("#")[-1]).name)
+        made = store.add_asset(system_id, data, name)
+        assert made is not None
+        fields = {"kind": row.get("kind") or "picture", "note": row.get("note") or ""}
+        store.update_asset(system_id, made["id"], fields)
+        kept.add(digest)
+    return store.get(system_id)
+
+
+def _picture_bytes(scope: WorkspaceScope, file: str) -> bytes:
+    """A workspace file, or a picture inside a .pptx or .potx (`deck.pptx#ppt/media/image3.png`)."""
+    deck, _, member = file.partition("#")
+    try:
+        path = scope.resolve(deck)
+        if not member:
+            return path.read_bytes()
+        if path.suffix.lower() not in (".pptx", ".potx") or not member.startswith("ppt/media/"):
+            raise DesignSystemError(f"{file}: a picture inside a deck is deck.pptx#ppt/media/...")
+        with zipfile.ZipFile(path) as package:
+            return package.read(member)
+    except (OSError, KeyError, zipfile.BadZipFile) as exc:
+        raise DesignSystemError(f"{file}: not a file that can be read") from exc
+
+
+def build_design_system_tools(
+    state_dir: str | Path,
+    root: str | Path | None = None,
+    extra_readable: Sequence[str | Path] = (),
+) -> list[Callable[..., Any]]:
     """The tool that saves a design system to the person's library. Deferred like the other
-    non-core tools, so the fixed tool list (0001) is unchanged."""
+    non-core tools, so the fixed tool list (0001) is unchanged. `root` is the workspace its
+    pictures are read from; without it, a system takes no pictures."""
     store = DesignSystemStore(state_dir)
+    scope = WorkspaceScope(root, extra_readable=extra_readable) if root is not None else None
 
     def save_design_system(
         name: str | None = None,
@@ -311,6 +629,7 @@ def build_design_system_tools(state_dir: str | Path) -> list[Callable[..., Any]]
         text_styles: list[dict[str, Any]] | None = None,
         spacing: list[dict[str, str]] | None = None,
         radius: list[dict[str, str]] | None = None,
+        assets: list[dict[str, str]] | None = None,
         system_id: str | None = None,
     ) -> dict[str, str]:
         """Save a design system to the user's library, where it shows on the Artifacts page and
@@ -331,6 +650,11 @@ def build_design_system_tools(state_dir: str | Path) -> list[Callable[..., Any]]
                 heading-1, heading-3, lead, eyebrow, body and caption.
             spacing: rows of {"name", "value"}, for example {"name": "Margin", "value": "96px"}.
             radius: rows of {"name", "value"}, for example {"name": "Card", "value": "16px"}.
+            assets: pictures to add to the system, rows of {"file", "name", "kind", "note"}:
+                file is an SVG, PNG, JPEG or WebP in the workspace (one the user attached) or a
+                picture read_pptx_design lists ("template.pptx#ppt/media/image3.png"); kind is
+                logo, icon or picture; note says when to use it ("on dark backgrounds"). Each
+                is added to those the system has; the same picture twice is kept once.
             system_id: the id returned when it was saved, to change that system.
         """
         if system_id is None:
@@ -360,6 +684,8 @@ def build_design_system_tools(state_dir: str | Path) -> list[Callable[..., Any]]
         }
         try:
             saved = store.update(current["id"], data)
+            if assets:
+                saved = _add_assets(store, current["id"], assets, scope) or saved
         except DesignSystemError:
             if system_id is None:
                 store.delete(current["id"])  # a half-made system must not stay in the library

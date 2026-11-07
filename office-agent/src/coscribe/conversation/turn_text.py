@@ -4,8 +4,7 @@ system a Slides conversation starts with."""
 from __future__ import annotations
 
 import unicodedata
-from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from langchain_core.messages.ai import UsageMetadata
 
@@ -15,18 +14,33 @@ from ..runtime_lg import (
     NORMAL_MODE_NOTE,
     PLAN_MODE_NOTE,
 )
-from ..tools import DesignSystemStore
+from ..tools import DesignSystemStore, WorkspaceScope
+
+
+class _Starting(Protocol):
+    """What a conversation offers its first message: where it keeps state and its workspace."""
+
+    settings: Any
+    thread_id: str
+
+    def workspace_scope(self) -> WorkspaceScope: ...
 
 
 def design_system_for_start(
-    state_dir: str | Path, thread_id: str, artifact: str | None, system_id: str | None
+    session: _Starting, artifact: str | None, system_id: str | None
 ) -> dict[str, Any] | None:
-    """The library system a Slides conversation's first message names, kept as a copy for the
-    conversation (its deck begins as that copy, whatever happens to the library later). None for
-    anything but a Slides start, and for a system that is no longer in the library."""
-    if artifact != "slides" or not system_id:
+    """The library system a Slides or Design conversation's first message names, kept as a copy
+    for the conversation (its deck begins as that copy, whatever happens to the library later),
+    its pictures copied into the workspace for the conversation to use. None for any other start,
+    and for a system that is no longer in the library."""
+    if artifact not in ("slides", "design") or not system_id:
         return None
-    return DesignSystemStore(state_dir).choose_for_thread(thread_id, system_id)
+    store = DesignSystemStore(session.settings.state_dir)
+    system = store.choose_for_thread(session.thread_id, system_id)
+    if system is not None and system.get("assets"):
+        workspace = session.workspace_scope().root
+        system = {**system, "assets": store.copy_assets(system_id, workspace)}
+    return system
 
 
 def format_reply(text: str) -> str:

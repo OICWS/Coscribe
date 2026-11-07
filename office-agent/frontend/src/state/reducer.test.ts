@@ -427,6 +427,13 @@ describe("tool results", () => {
     expect(next.items[2]).not.toHaveProperty("result");
   });
 
+  it("fills in the parallel call that has the same arguments", () => {
+    const started = stateWith({ items: [toolItem("t1", "task_create", { arguments: { content: "a" } }), toolItem("t2", "task_create", { arguments: { content: "b" } })] });
+    const next = run(started, { type: "tool_result", tool_name: "task_create", arguments: { content: "a" }, result: { id: "1" }, is_error: false });
+    expect(next.items[0]).toMatchObject({ id: "t1", result: { id: "1" } });
+    expect(next.items[1]).not.toHaveProperty("result");
+  });
+
   it("does not mutate the log it was given", () => {
     const items = [toolItem("t", "read_file")];
     run(stateWith({ items }), { type: "tool_result", tool_name: "read_file", arguments: {}, result: 1, is_error: false });

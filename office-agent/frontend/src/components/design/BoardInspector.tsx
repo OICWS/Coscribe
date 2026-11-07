@@ -1,15 +1,51 @@
 import { useEffect, useRef, useState } from "react";
-import { treeRows, type ElementChange, type InspectedElement, type InspectedNode } from "../../lib/boardInspector";
-import { CloseIcon } from "../icons";
+import { styleChanges, treeRows, type ElementChange, type InspectedElement, type InspectedNode } from "../../lib/boardInspector";
+import { CloseIcon, RedoIcon, UndoIcon } from "../icons";
 import { ElementProperties } from "./ElementProperties";
 
 type Tab = "properties" | "code";
 
-function Code({ element }: { element: InspectedElement }) {
+const OWN = "style attribute";
+
+/** The element's own style, typed as CSS: written into its style attribute when the field is left
+ * or Ctrl+Enter is pressed. A rule of a style sheet can style many elements, so it only reads. */
+function OwnStyle({ element, onEdit }: { element: InspectedElement; onEdit: (change: ElementChange) => void }) {
+  const own = element.rules.find((rule) => rule.selector === OWN)?.declarations ?? [];
+  const text = own.map(([name, value]) => `${name}: ${value};`).join("\n");
+  const [draft, setDraft] = useState(text);
+  const commit = () => {
+    const style = styleChanges(own, draft);
+    if (Object.keys(style).length) onEdit({ style });
+  };
   return (
-    <div className="space-y-3 px-3 py-2 font-mono text-[12px] leading-relaxed">
-      {element.rules.length === 0 && <p className="font-sans text-[13px] text-[var(--muted)]">No style rule matches this element.</p>}
-      {element.rules.map((rule, i) => (
+    <div>
+      <div className="text-[var(--muted)]">This element</div>
+      <textarea
+        aria-label="This element's style"
+        value={draft}
+        placeholder="color: var(--brand);"
+        rows={Math.max(3, own.length + 1)}
+        spellCheck={false}
+        className="mt-1 w-full resize-y rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 font-mono text-[12px] focus:border-[var(--accent)] focus:outline-none"
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) e.currentTarget.blur();
+          if (e.key === "Escape") setDraft(text);
+        }}
+      />
+    </div>
+  );
+}
+
+function Code({ element, onEdit }: { element: InspectedElement; onEdit: (change: ElementChange) => void }) {
+  const sheets = element.rules.filter((rule) => rule.selector !== OWN);
+  return (
+    // Keyed by the element and its own style, so the field shows the page again after a save.
+    <div key={`${element.path}|${JSON.stringify(element.rules.find((rule) => rule.selector === OWN))}`} className="space-y-3 px-3 py-2 font-mono text-[12px] leading-relaxed">
+      <OwnStyle element={element} onEdit={onEdit} />
+      {sheets.length === 0 && <p className="font-sans text-[13px] text-[var(--muted)]">No style rule matches this element.</p>}
+      {sheets.map((rule, i) => (
         <div key={i}>
           <div className="text-[var(--muted)]">{rule.selector}</div>
           {rule.declarations.map(([name, value]) => (
@@ -59,6 +95,41 @@ function Tree({ tree, selected, onSelect }: { tree: InspectedNode; selected: str
   );
 }
 
+// Ctrl+Z (and Ctrl+Shift+Z or Ctrl+Y) in a field undoes typing there; elsewhere it steps through
+// the panel's edits to the page.
+function useStepKeys(canUndo: boolean, onUndo: () => void, canRedo: boolean, onRedo: () => void) {
+  useEffect(() => {
+    if (!canUndo && !canRedo) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.target instanceof HTMLElement && e.target.closest("input, textarea, [contenteditable]")) return;
+      const key = e.key.toLowerCase();
+      const redo = key === "y" || (key === "z" && e.shiftKey);
+      if (redo ? !canRedo : key !== "z" || !canUndo) return;
+      e.preventDefault();
+      if (redo) onRedo();
+      else onUndo();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [canUndo, onUndo, canRedo, onRedo]);
+}
+
+function StepButton({ label, title, enabled, onClick, icon: Icon }: { label: string; title: string; enabled: boolean; onClick: () => void; icon: typeof UndoIcon }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={title}
+      disabled={!enabled}
+      className="rounded-md p-1 text-[var(--muted)] hover:bg-[var(--card-bg)] disabled:opacity-40 disabled:hover:bg-transparent"
+      onClick={onClick}
+    >
+      <Icon className="h-4 w-4" />
+    </button>
+  );
+}
+
 /** Beside the canvas: the selected artboard's elements as a tree, and for the element picked
  * there or on the board, what it measures and the style that makes it so, which the Properties tab
  * also edits. */
@@ -69,6 +140,10 @@ export function BoardInspector({
   problem,
   onSelect,
   onEdit,
+  canUndo,
+  onUndo,
+  canRedo,
+  onRedo,
   onClose,
 }: {
   boardTitle: string | null;
@@ -77,9 +152,14 @@ export function BoardInspector({
   problem: string | null;
   onSelect: (path: string) => void;
   onEdit: (change: ElementChange) => void;
+  canUndo: boolean;
+  onUndo: () => void;
+  canRedo: boolean;
+  onRedo: () => void;
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("properties");
+  useStepKeys(canUndo, onUndo, canRedo, onRedo);
   const tabButton = (id: Tab, label: string) => (
     <button
       type="button"
@@ -97,6 +177,8 @@ export function BoardInspector({
         {tabButton("properties", "Properties")}
         {tabButton("code", "Code")}
         <div className="flex-1" />
+        <StepButton label="Undo" title="Undo the last edit (Ctrl+Z)" enabled={canUndo} onClick={onUndo} icon={UndoIcon} />
+        <StepButton label="Redo" title="Redo (Ctrl+Shift+Z)" enabled={canRedo} onClick={onRedo} icon={RedoIcon} />
         <button type="button" aria-label="Close properties" className="rounded-md p-1 text-[var(--muted)] hover:bg-[var(--card-bg)]" onClick={onClose}>
           <CloseIcon className="h-4 w-4" />
         </button>
@@ -114,7 +196,7 @@ export function BoardInspector({
                 <div className="truncate px-3 pt-2 font-mono text-[12px] text-[var(--muted)]">
                   &lt;{element.label}&gt;{element.text && <span className="font-sans"> “{element.text}”</span>}
                 </div>
-                {tab === "properties" ? <ElementProperties element={element} problem={problem} onEdit={onEdit} /> : <Code element={element} />}
+                {tab === "properties" ? <ElementProperties element={element} problem={problem} onEdit={onEdit} /> : <Code element={element} onEdit={onEdit} />}
               </>
             )}
           </div>

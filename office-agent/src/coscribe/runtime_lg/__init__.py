@@ -64,7 +64,7 @@ from .subagents import (
     select_reviewer_tools,
     subagent_report,
 )
-from .tool_calls import ORPHANED_TOOL_CALL_NOTE, answer_every_tool_call
+from .tool_calls import answer_every_tool_call, stopped_turn_messages
 from .tool_deferral import (
     bound_tool_names,
     build_search_tools_tool,
@@ -101,7 +101,7 @@ __all__ = [
     "language_note",
     "last_conversation_context",
     "unwrap_use_tool_call",
-    "ORPHANED_TOOL_CALL_NOTE",
+    "stopped_turn_messages",
     "answer_every_tool_call",
     "is_steer",
     "SUBAGENT_MAX_STEPS",

@@ -10,6 +10,7 @@ import { allSteps } from "../lib/workflowTree";
 import { DEFAULT_ENVIRONMENT } from "./EnvironmentDialog";
 import { EnvironmentPicker } from "./EnvironmentPicker";
 import { FrequencyRow } from "./ScheduleFields";
+import { SelectMenu } from "./SelectMenu";
 
 const APPROVAL_OPTIONS: { value: ApprovalMode; label: string }[] = [
   { value: "manual", label: "Ask before every action" },
@@ -235,22 +236,15 @@ export function ScheduledTaskModal({
                 />
                 <div className="flex items-center justify-between border-t border-[var(--border)] bg-[var(--card-bg)] px-3 py-2 text-sm">
                   <EnvironmentPicker current={environment} disabled={false} onPick={setEnvironment} forTask />
-                  <select
-                    aria-label="Model"
-                    className="bg-transparent text-[var(--muted)] outline-none"
+                  <SelectMenu
+                    ariaLabel="Model"
                     value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                  >
-                    <option value="">Default model</option>
-                    {providers.map(([providerKey, info]) => {
-                      const value = `${providerKey}:${info.default_model}`;
-                      return (
-                        <option key={providerKey} value={value}>
-                          {info.default_model}
-                        </option>
-                      );
-                    })}
-                  </select>
+                    options={[
+                      { value: "", label: "Default model" },
+                      ...providers.map(([providerKey, info]) => ({ value: `${providerKey}:${info.default_model}`, label: info.default_model })),
+                    ]}
+                    onChange={setModel}
+                  />
                 </div>
               </div>
             </div>
@@ -261,18 +255,7 @@ export function ScheduledTaskModal({
           {!workflow && (
             <div className="flex flex-wrap items-center gap-2">
               <label className="w-24 shrink-0 text-sm font-medium">Permissions</label>
-              <select
-                aria-label="Permissions"
-                className="rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm"
-                value={approvalMode}
-                onChange={(e) => setApprovalMode(e.target.value as ApprovalMode)}
-              >
-                {APPROVAL_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+              <SelectMenu ariaLabel="Permissions" variant="field" className="w-56" value={approvalMode} options={APPROVAL_OPTIONS} onChange={setApprovalMode} />
             </div>
           )}
 

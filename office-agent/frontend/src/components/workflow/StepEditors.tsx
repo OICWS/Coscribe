@@ -21,6 +21,7 @@ import { RememberEditor } from "./MemoryEditor";
 import { AskEditor, WaitEditor } from "./PauseEditors";
 import { ParallelEditor } from "./ParallelEditor";
 import { RunTaskEditor } from "./RunTaskEditor";
+import { SelectMenu } from "../SelectMenu";
 
 export type { EditorContext };
 
@@ -80,16 +81,17 @@ function ArgControl({
     let current = "default";
     if (value !== undefined) current = value ? "yes" : "no";
     return (
-      <select
+      <SelectMenu
         id={id}
-        className={inputClass}
+        variant="field"
         value={current}
-        onChange={(e) => onChange(e.target.value === "default" ? undefined : e.target.value === "yes")}
-      >
-        {!param.required && <option value="default">Default ({param.default ? "yes" : "no"})</option>}
-        <option value="yes">Yes</option>
-        <option value="no">No</option>
-      </select>
+        options={[
+          ...(param.required ? [] : [{ value: "default", label: `Default (${param.default ? "yes" : "no"})` }]),
+          { value: "yes", label: "Yes" },
+          { value: "no", label: "No" },
+        ]}
+        onChange={(picked) => onChange(picked === "default" ? undefined : picked === "yes")}
+      />
     );
   }
   if (param.type === "other" && typeof value !== "string") {
@@ -328,22 +330,19 @@ function LoopEditor({ step, onChange, context }: EditorProps<LoopStep>) {
       <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_110px] gap-3">
         <div>
           <FieldLabel htmlFor={`${step.id}-collect`}>Keep from each pass</FieldLabel>
-          <select
+          <SelectMenu
             id={`${step.id}-collect`}
-            className={inputClass}
+            variant="field"
             value={step.collect ?? ""}
-            onChange={(e) => setCollect(e.target.value)}
-          >
-            <option value="">Nothing</option>
-            {step.collect && !collectable.includes(step.collect) && (
-              <option value={step.collect}>{step.collect}</option>
-            )}
-            {collectable.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
+            options={[
+              { value: "", label: "Nothing" },
+              ...[...(step.collect && !collectable.includes(step.collect) ? [step.collect] : []), ...collectable].map((name) => ({
+                value: name,
+                label: name,
+              })),
+            ]}
+            onChange={setCollect}
+          />
         </div>
         {step.collect !== null && (
           <div>

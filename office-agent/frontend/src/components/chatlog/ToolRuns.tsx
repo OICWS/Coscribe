@@ -346,7 +346,8 @@ function ApprovalDetail({
         </div>
       ) : (
         <>
-          <div className="mt-1 text-xs text-[var(--muted)]">{item.status === "approved" ? "Approved" : "Denied"}</div>
+          <div className="mt-1 text-xs text-[var(--muted)]">{item.status === "approved" ? "Approved" : item.reply ? "Denied, with your reply:" : "Denied"}</div>
+          {item.reply && <div className="mt-1 whitespace-pre-wrap text-sm">{item.reply}</div>}
           {item.result !== undefined && (
             <div className="mt-1">
               {isScript ? <CommandOutput result={item.result} /> : <ResultText result={item.result} pad={false} />}

@@ -15,7 +15,32 @@ from ..runtime_lg import unwrap_use_tool_call
 from ..tools import QUESTION_TOOL_NAMES, TASK_DRAFT_TOOL_NAMES
 from .events import EventSink
 from .history import close_orphaned_tool_calls
+from .stopped_turn import keep_stopped_turn
 from .turn_text import usage_event
+
+
+async def _without_summaries(stream: Any) -> Any:
+    """The run's events without the automatic compaction's own model call: its summary goes
+    into the history, not to the person as a reply."""
+    async for mode, chunk in stream:
+        if mode == "messages" and chunk[1].get("lc_source") == "summarization":
+            continue
+        yield mode, chunk
+
+
+async def _shown(stream: Any) -> Any:
+    """`_without_summaries`, with a paragraph break between two replies that no tool call
+    separates (the model going on after the plan check), so they don't run together."""
+    spoke, last_id = False, None
+    async for mode, chunk in _without_summaries(stream):
+        message = chunk[0] if mode == "messages" else None
+        if isinstance(message, ToolMessage):
+            spoke = False
+        elif isinstance(message, AIMessage) and _extract_text(message.content):
+            if spoke and message.id != last_id:
+                yield mode, (AIMessageChunk(content="\n\n", id=message.id), chunk[1])
+            spoke, last_id = True, message.id
+        yield mode, chunk
 
 
 class TurnStreamHost(Protocol):
@@ -23,6 +48,8 @@ class TurnStreamHost(Protocol):
 
     config: dict[str, Any]
     lg_agent: Any
+    thread_id: str
+    settings: Any
     _turn_websocket: Any
     _stop_requested: bool
     _gated_tool_risks: dict[str, str]
@@ -41,6 +68,16 @@ class TurnStreamHost(Protocol):
 class TurnStreamer:
     def __init__(self, host: TurnStreamHost) -> None:
         self._host = host
+        # The reply text of the model call in flight, which a hard stop keeps.
+        self.streamed: list[str] = []
+        # Off once the conversation is being deleted, which a kept turn would bring back.
+        self.keep_stopped_work = True
+
+    async def stopped(self, text: str | None = None) -> str:
+        """What the page shows for a turn that ended on a stop, after keeping its work in the
+        history. `text` is the finished reply; a hard stop passes none and keeps what streamed."""
+        said = "".join(self.streamed) if text is None else text
+        return await keep_stopped_turn(self._host, said, keep=self.keep_stopped_work)
 
     async def stream_turn(self, turn_input: Any, websocket: EventSink) -> str:
         """Run one `astream()` call and return only the last model response's narration.
@@ -66,7 +103,7 @@ class TurnStreamer:
         host._turn_websocket = websocket
         if not isinstance(turn_input, Command):
             await close_orphaned_tool_calls(agent, config)
-        text_parts: list[str] = []
+        self.streamed = text_parts = []
         accumulated: AIMessageChunk | None = None
         # The chunks of the latest model response only. Each response's usage already counts
         # the whole prompt it was sent, so summing responses would count the context twice.
@@ -104,7 +141,7 @@ class TurnStreamer:
         # its tool calls run, which "messages" has no event for.
         stream = agent.astream(turn_input, config=config, stream_mode=["messages", "updates"])
         try:
-            async for mode, chunk in stream:
+            async for mode, chunk in _shown(stream):
                 if mode == "updates":
                     await self.announce_started_tools(chunk, websocket)
                     continue
@@ -164,8 +201,10 @@ class TurnStreamer:
         approval shows as its approval card."""
         if not isinstance(update, dict):
             return
-        for node_update in update.values():
-            if not isinstance(node_update, dict):
+        # Only the model node adds new calls: the compaction's update re-adds the kept tail,
+        # whose calls ran before it.
+        for node, node_update in update.items():
+            if node != "model" or not isinstance(node_update, dict):
                 continue
             for message in node_update.get("messages", []) or []:
                 if not isinstance(message, AIMessage):

@@ -1,17 +1,21 @@
 """What a page uses that the deck's design system does not have (decision 0020: the system guides
 the model, it does not forbid): colors, fonts and named text styles, as warnings on the page so
-the model repairs them or says why. Only a deck that began from a system of the person's library
-is checked; a deck's own system is made from its pages.
+the model repairs them or says why; and a system's logo that no page places, as a warning on the
+deck. Only a deck that began from a system of the person's library is checked; a deck's own
+system is made from its pages.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import re
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
+
+from ....design_systems import unplaced_logo as logo_note
 
 DESIGN_SYSTEM = "design-system.json"
 COLOUR = re.compile(r"#[0-9a-fA-F]{6}\b")
@@ -24,6 +28,8 @@ _GENERIC_FONTS = {"sans-serif", "serif", "monospace", "cursive", "fantasy", "sys
 _STYLE = re.compile(r"""data-text-style=["']([^"']+)["']""")
 # A page with many strays gets the first few named and a count.
 _LISTED = 4
+# A picture a page places: an SVG page's <image href>, a section's <img src>.
+PICTURE = re.compile(r"""(?:href|src)\s*=\s*["']([^"'#?]+)["']""")
 
 
 def library_system(folder: Path) -> dict[str, Any] | None:
@@ -73,6 +79,20 @@ def off_system(system: dict[str, Any], pages: Sequence[tuple[str, str]]) -> dict
         if warnings:
             found[page] = [f"off the design system: {w}" for w in warnings]
     return found
+
+
+def unplaced_logo(
+    system: dict[str, Any], folder: Path, pages: Sequence[tuple[str, str]]
+) -> str | None:
+    """A deck warning when the `system` has logos and no page in `folder` places one of them."""
+    placed = set()
+    for _page, text in pages:
+        for ref in PICTURE.findall(text):
+            try:
+                placed.add(hashlib.sha256((folder / ref).read_bytes()).hexdigest())
+            except (OSError, ValueError):
+                continue
+    return logo_note(system, placed, where="slide", folder="pages folder")
 
 
 def _unlisted(values: list[str], known: Any) -> list[str]:

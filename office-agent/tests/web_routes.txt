@@ -2,6 +2,7 @@ DELETE /api/artifacts/{artifact}
 DELETE /api/code/install
 DELETE /api/command-sandbox
 DELETE /api/design-systems/{system_id}
+DELETE /api/design-systems/{system_id}/assets/{asset_id}
 DELETE /api/environments/{env_id}
 DELETE /api/libreoffice
 DELETE /api/mcp/oauth-apps/{group}
@@ -36,6 +37,7 @@ GET /api/commands
 GET /api/config
 GET /api/design-systems
 GET /api/design-systems/{system_id}
+GET /api/design-systems/{system_id}/assets/{asset_id}
 GET /api/environments
 GET /api/libreoffice
 GET /api/mcp/catalog
@@ -75,6 +77,7 @@ GET /api/threads/status
 GET /api/threads/{thread_id}/activity
 GET /api/threads/{thread_id}/background-tasks
 GET /api/threads/{thread_id}/canvas
+GET /api/threads/{thread_id}/canvas/element/steps
 GET /api/threads/{thread_id}/context-breakdown
 GET /api/threads/{thread_id}/dashboard
 GET /api/threads/{thread_id}/design
@@ -110,6 +113,8 @@ POST /api/code/install
 POST /api/command-sandbox
 POST /api/config
 POST /api/design-systems
+POST /api/design-systems/{system_id}/assets
+POST /api/design-systems/{system_id}/duplicate
 POST /api/environments
 POST /api/libreoffice
 POST /api/mcp/oauth-apps/import
@@ -140,6 +145,9 @@ POST /api/skills/upload
 POST /api/skills/{name}/enabled
 POST /api/subagents/{task_id}/stop
 POST /api/thread-groups/{name}/rename
+POST /api/threads/{thread_id}/canvas/element/redo
+POST /api/threads/{thread_id}/canvas/element/undo
+POST /api/threads/{thread_id}/canvas/export
 POST /api/threads/{thread_id}/doc/asset
 POST /api/threads/{thread_id}/doc/comments
 POST /api/threads/{thread_id}/doc/comments/{comment_id}
@@ -164,6 +172,7 @@ POST /internal/browser-host/result
 PUT /api/capabilities/{name}
 PUT /api/code/permissions
 PUT /api/design-systems/{system_id}
+PUT /api/design-systems/{system_id}/assets/{asset_id}
 PUT /api/environments/{env_id}
 PUT /api/mcp/oauth-apps/{group}
 PUT /api/mcp/servers/{name}/permissions

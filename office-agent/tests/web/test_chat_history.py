@@ -11,6 +11,8 @@ from langchain_core.messages import (
     AIMessage,
 )
 
+from coscribe.tools import TaskToolkit
+
 from .helpers import (
     FakeToolCallingChatModel,
     GrpcMetadataOverflowThenSuccessModel,
@@ -32,6 +34,38 @@ def test_compact_refuses_when_nothing_to_compact(
 
     assert error["type"] == "error"
     assert "Nothing much to compact" in error["message"]
+
+
+def test_compact_note_ends_with_the_open_tasks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tasks = TaskToolkit("t_compact_tasks", tmp_path / "state")
+    tasks.update(tasks.create("Read sales.xlsx")["id"], "completed")
+    tasks.create("Write the summary memo")
+    fake_model = FakeToolCallingChatModel(
+        responses=[
+            AIMessage(content="reply a"),
+            AIMessage(content="reply b"),
+            AIMessage(content="the summary"),
+        ]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_compact_tasks") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            for text in ("turn a", "turn b"):
+                ws.send_json({"type": "user_message", "text": text})
+                _receive_until(ws, "tasks_changed")
+            ws.send_json({"type": "user_message", "text": "/compact"})
+            assert ws.receive_json()["type"] == "compacted"
+        with client.websocket_connect("/ws/t_compact_tasks") as ws:
+            ws.receive_json()  # state
+            history = ws.receive_json()
+
+    note = history["entries"][0]["text"]
+    assert "the summary" in note
+    assert "2: Write the summary memo" in note
+    assert "Read sales.xlsx" not in note
 
 
 def test_load_older_messages_across_two_compactions_reveals_each_epoch_once(

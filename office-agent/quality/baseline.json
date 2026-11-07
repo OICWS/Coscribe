@@ -15,8 +15,8 @@
   "src/coscribe/web/routes/settings/config.py::update_config": 18,
   "src/coscribe/web/routes/skills.py::router": 35,
   "src/coscribe/web/routes/ws.py::browser_panel_ws": 16,
-  "src/coscribe/web/routes/ws.py::router": 36,
-  "src/coscribe/web/routes/ws.py::ws_endpoint": 19
+  "src/coscribe/web/routes/ws.py::router": 34,
+  "src/coscribe/web/routes/ws.py::ws_endpoint": 17
  },
  "dead_code": {
   "coscribe/cli.py::function chat": 1,
@@ -49,7 +49,6 @@
   "coscribe/conversation/wire.py::variable turn_in_flight": 1,
   "coscribe/runtime/types.py::variable model_settings": 1,
   "coscribe/runtime_lg/__init__.py::function __getattr__": 1,
-  "coscribe/runtime_lg/agent.py::method abefore_model": 2,
   "coscribe/runtime_lg/agent.py::method awrap_model_call": 1,
   "coscribe/runtime_lg/agent.py::method awrap_tool_call": 2,
   "coscribe/runtime_lg/agent.py::method wrap_model_call": 1,
@@ -103,7 +102,6 @@
   "coscribe/tools/office/xlsx/engine_objects.py::attribute print_title_rows": 1,
   "coscribe/tools/office/xlsx/engine_objects.py::attribute solidFill": 2,
   "coscribe/tools/office/xlsx/engine_objects.py::attribute tabColor": 2,
-  "coscribe/tools/web/_licensed_image_search.py::variable asset_id": 1,
   "coscribe/tools/web/_licensed_image_search.py::variable preview_url": 1,
   "coscribe/web/app.py::attribute should_exit": 1,
   "coscribe/web/routes/connectors/catalog.py::function get_mcp_catalog": 1,
@@ -226,9 +224,8 @@
  },
  "fan_out": {},
  "file_lines": {
-  "src/coscribe/conversation/session.py": 1308,
-  "src/coscribe/coordinator.py": 844,
-  "src/coscribe/runtime_lg/subagents.py": 842,
+  "src/coscribe/conversation/session.py": 1299,
+  "src/coscribe/runtime_lg/subagents.py": 839,
   "src/coscribe/tools/bookkeeping/scheduled_tasks.py": 964,
   "src/coscribe/web/browser_panel.py": 813,
   "src/coscribe/web/connector_catalog.py": 948
@@ -248,7 +245,7 @@
   "office-agent/frontend/src/components/BackgroundTasksPanel.tsx::BackgroundTasksPanel": 162,
   "office-agent/frontend/src/components/BrowserPanel.tsx::ScreencastBrowserPanel": 536,
   "office-agent/frontend/src/components/ChatLog.tsx::ChatLog": 166,
-  "office-agent/frontend/src/components/Composer.tsx::Composer": 502,
+  "office-agent/frontend/src/components/Composer.tsx::Composer": 501,
   "office-agent/frontend/src/components/DesktopBrowserPanel.tsx::DesktopBrowserPanel": 385,
   "office-agent/frontend/src/components/EffortPicker.tsx::EffortPicker": 144,
   "office-agent/frontend/src/components/FindInPage.tsx::FindInPage": 102,
@@ -257,7 +254,7 @@
   "office-agent/frontend/src/components/PptxShapeOverlay.tsx::PptxShapeOverlay": 105,
   "office-agent/frontend/src/components/RunPanel.tsx::RunPanel": 253,
   "office-agent/frontend/src/components/ScheduledTaskDetail.tsx::ScheduledTaskDetail": 128,
-  "office-agent/frontend/src/components/ScheduledTaskModal.tsx::ScheduledTaskModal": 207,
+  "office-agent/frontend/src/components/ScheduledTaskModal.tsx::ScheduledTaskModal": 189,
   "office-agent/frontend/src/components/TaskPanel.tsx::TaskPanel": 153,
   "office-agent/frontend/src/components/ThreadList.tsx::GroupHeader": 116,
   "office-agent/frontend/src/components/ThreadList.tsx::ThreadList": 240,
@@ -286,8 +283,7 @@
   "office-agent/frontend/src/components/workflow/WorkflowDraftPage.tsx::WorkflowDraftPage": 189,
   "office-agent/frontend/src/components/workflow/WorkflowEditor.tsx::StepCard": 163,
   "office-agent/frontend/src/components/workflow/WorkflowEditor.tsx::WorkflowEditor": 141,
-  "office-agent/frontend/src/components/workflow/WorkflowRunView.tsx::RunBanner": 103,
-  "office-agent/frontend/src/state/reducer.ts::chatReducer": 469
+  "office-agent/frontend/src/state/reducer.ts::chatReducer": 419
  },
  "frontend_unused_exports": {
   "office-agent/frontend/src/components/icons.tsx": 3,
@@ -313,19 +309,19 @@
  },
  "long_functions": {
   "src/coscribe/cli.py::_chat_async": 108,
-  "src/coscribe/conversation/session.py::ChatSessionLG.__init__": 192,
-  "src/coscribe/conversation/session.py::ChatSessionLG._handle_user_message_locked": 212,
+  "src/coscribe/conversation/session.py::ChatSessionLG.__init__": 190,
+  "src/coscribe/conversation/session.py::ChatSessionLG._handle_user_message_locked": 207,
   "src/coscribe/conversation/turn_stream.py::TurnStreamer.stream_turn": 115,
-  "src/coscribe/coordinator.py::build_coordinator_agent": 148,
+  "src/coscribe/coordinator.py::build_coordinator_agent": 147,
   "src/coscribe/runtime_lg/agent.py::build_langgraph_agent": 187,
   "src/coscribe/runtime_lg/messages.py::serialize_history_for_ws_lg": 118,
   "src/coscribe/runtime_lg/providers.py::resolve_chat_model": 107,
   "src/coscribe/runtime_lg/subagents.py::build_delegation_tools": 154,
   "src/coscribe/runtime_lg/subagents.py::build_review_work_tool": 133,
   "src/coscribe/runtime_lg/subagents.py::build_review_work_tool.review_work": 103,
-  "src/coscribe/tools/bookkeeping/background_tasks.py::build_background_task_tools": 210,
+  "src/coscribe/tools/bookkeeping/background_tasks.py::build_background_task_tools": 207,
   "src/coscribe/tools/bookkeeping/scheduled_tasks.py::build_scheduled_task_tools": 225,
-  "src/coscribe/tools/bookkeeping/selfwake.py::build_selfwake_tools": 151,
+  "src/coscribe/tools/bookkeeping/selfwake.py::build_selfwake_tools": 128,
   "src/coscribe/tools/files.py::build_file_tools": 247,
   "src/coscribe/tools/office/pptx/shape_tools.py::ShapeToolsMixin.add_pptx_chart": 152,
   "src/coscribe/tools/office/pptx/shape_tools.py::ShapeToolsMixin.edit_pptx_shape": 130,
@@ -345,8 +341,8 @@
   "src/coscribe/web/routes/settings/config.py::router": 103,
   "src/coscribe/web/routes/settings/providers.py::router": 138,
   "src/coscribe/web/routes/skills.py::router": 220,
-  "src/coscribe/web/routes/ws.py::router": 203,
-  "src/coscribe/web/routes/ws.py::router.ws_endpoint": 118
+  "src/coscribe/web/routes/ws.py::router": 194,
+  "src/coscribe/web/routes/ws.py::router.ws_endpoint": 109
  },
  "patch_by_string": {},
  "startup_imports": {

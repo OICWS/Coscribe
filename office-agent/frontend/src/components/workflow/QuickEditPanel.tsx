@@ -11,6 +11,7 @@ import type { Workflow, WorkflowInput, WorkflowStep } from "../../types/workflow
 import { CloseIcon } from "../icons";
 import { AutoTextarea, FieldLabel } from "./fields";
 import { InputValueControl } from "./InputValueControl";
+import { SelectMenu } from "../SelectMenu";
 
 function ListField({ id, value, onChange }: { id: string; value: string[]; onChange: (next: string[]) => void }) {
   return (
@@ -30,23 +31,15 @@ function PickField({
   field: QuickField;
   onChange: (value: string | number) => void;
 }) {
-  const options = field.options ?? [];
   return (
-    <select
+    <SelectMenu
       id={id}
-      className={`${inputClass} max-w-[260px]`}
-      value={String(field.value)}
-      onChange={(e) => {
-        const picked = options.find((option) => String(option.value) === e.target.value);
-        if (picked) onChange(picked.value);
-      }}
-    >
-      {options.map((option) => (
-        <option key={String(option.value)} value={String(option.value)}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+      variant="field"
+      className="max-w-[260px]"
+      value={field.options?.find((option) => String(option.value) === String(field.value))?.value ?? String(field.value)}
+      options={field.options ?? []}
+      onChange={onChange}
+    />
   );
 }
 

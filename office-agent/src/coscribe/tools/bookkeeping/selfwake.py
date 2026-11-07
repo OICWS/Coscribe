@@ -1,5 +1,5 @@
 """Suspend/resume primitives (ROADMAP.md Phase 4): sleep_for/sleep_until,
-wake_on_task, wake_on_event -- let the model end a turn
+wake_on_event -- let the model end a turn
 saying "check back later" instead of the *user* having to schedule
 anything. Distinct from tools/bookkeeping/scheduled_tasks.py: a wake resumes *this*
 conversation once; a scheduled task runs on its own schedule in fresh
@@ -14,13 +14,11 @@ way to construct/reuse a ChatSessionLG -- lives in runtime_lg/selfwake.py.
 Kinds of wake, deliberately scoped to backing that's real today, not
 hypothetical:
 - "timer": sleep_for/sleep_until -- wake at a wall-clock time.
-- "task": wake_on_task(task_id) -- task_id is a tools/bookkeeping/background_tasks.py
-  BackgroundTask.task_id. Validated against that store up front, so a
-  wake nothing could ever resolve is never registered.
-- "subagent": a tools/bookkeeping/subagent_tasks.py SubAgentTask.task_id. No tool
-  creates one -- a background sub-agent reports to its conversation by
-  itself when it ends (conversation/session.py) -- but a pending one on disk still
-  resolves once the run has finished.
+- "task" and "subagent": a tools/bookkeeping/background_tasks.py BackgroundTask.task_id or a
+  tools/bookkeeping/subagent_tasks.py SubAgentTask.task_id. No tool creates either -- a
+  background script, command or sub-agent reports to its conversation by itself when it ends
+  (conversation/subagents.py) -- but a pending one on disk still resolves once the run has
+  finished.
 - "event": wake_on_event(event_key) -- resolved by a signal_event call
   (this thread, another thread, or -- once ROADMAP.md Phase 5c's Slack/
   webhook work lands -- an external event source calling the same
@@ -43,7 +41,6 @@ from typing import Any
 from urllib.parse import quote
 
 from ...runtime import tool_metadata
-from .background_tasks import BackgroundTaskStore
 
 VALID_KINDS = ("timer", "task", "subagent", "event")
 VALID_STATUSES = ("pending", "woken", "cancelled")
@@ -253,7 +250,6 @@ def build_selfwake_tools(thread_id: str, state_dir: str | Path) -> list[Callable
     """
     wake_store = WakeStore(state_dir)
     signal_store = SignalStore(state_dir)
-    task_store = BackgroundTaskStore(state_dir)
 
     def _create(kind: str, reason: str, **fields: Any) -> dict[str, Any]:
         wake = WakeRequest(
@@ -302,27 +298,6 @@ def build_selfwake_tools(thread_id: str, state_dir: str | Path) -> list[Callable
             raise ValueError(f"seconds must be positive, got {seconds}")
         wake_at = (datetime.now(UTC) + timedelta(seconds=seconds)).isoformat()
         return _create("timer", reason, wake_at=wake_at)
-
-    def wake_on_task(task_id: str, reason: str) -> dict[str, Any]:
-        """Pause this conversation and automatically resume it once a
-        background script started via run_background_script finishes
-        (succeeds, fails, times out, or is killed) -- for "let me know
-        when that's done" instead of calling check_background_task
-        yourself over and over. task_id must be a real, currently-running
-        background task id (see run_background_script's own return value,
-        or list_background_tasks) -- there is no other kind of background
-        task this can watch.
-
-        Args:
-            task_id: the task_id of an in-progress background script.
-            reason: what to do or check when you wake up -- e.g. "read its
-                output with check_background_task and summarize the
-                result."
-        """
-        task = task_store.load(task_id)
-        if task is None:
-            raise ValueError(f"No background task with id {task_id!r}")
-        return _create("task", reason, task_id=task_id)
 
     def wake_on_event(event_key: str, reason: str) -> dict[str, Any]:
         """Pause this conversation and automatically resume it once a named
@@ -386,7 +361,6 @@ def build_selfwake_tools(thread_id: str, state_dir: str | Path) -> list[Callable
         # thread-scoped bookkeeping tool like task_create.
         tool_metadata(sleep_until, risk_category="WRITE_LOCAL", category="selfwake"),
         tool_metadata(sleep_for, risk_category="WRITE_LOCAL", category="selfwake"),
-        tool_metadata(wake_on_task, risk_category="WRITE_LOCAL", category="selfwake"),
         tool_metadata(wake_on_event, risk_category="WRITE_LOCAL", category="selfwake"),
         tool_metadata(signal_event, risk_category="WRITE_LOCAL", category="selfwake"),
         tool_metadata(list_wakes, risk_category="READ", category="selfwake"),

@@ -22,8 +22,8 @@ python3 -m venv .venv
 source .venv/bin/activate          # Windows PowerShell: .\.venv\Scripts\Activate.ps1
 pip install -e ".[dev,web]"
 cp .env.example .env
-# edit .env and set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GEMINI_API_KEY,
-# and COSCRIBE_DEFAULT_MODEL as "provider:model" (e.g. gemini:gemini-2.5-flash)
+# edit .env and set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GEMINI_API_KEY; optionally
+# COSCRIBE_DEFAULT_MODEL as "provider:model" (left empty, the key's provider picks one)
 cd frontend && npm install && npm run build && cd ..
 # ^ one-time (and after any frontend change) -- compiles into
 # src/coscribe/web/static/, which coscribe-web serves and which is
@@ -143,7 +143,9 @@ task's run follows the task's own approval setting instead.
   single note, freeing up context for the rest of a long-running session.
   Does nothing if there's not much yet to compact. This also happens
   automatically once a turn's usage crosses `COSCRIBE_AUTO_COMPACT_THRESHOLD`
-  of the model's context window (default 0.8) -- see
+  of the model's context window (default 0.8); from half that size, older
+  tool results (not the plan, skills or answers) are left out of what the
+  model is sent, and the model calls the tool again if it needs one -- see
   [Scheduled / unattended runs](#scheduled--unattended-runs) below for why.
 - `/clear` -- wipe the current thread's conversation history outright and
   start fresh (unlike `/compact`, which summarizes rather than discards).
@@ -214,16 +216,14 @@ simpler route -- no cron entry, and each run gets its own conversation.)
 
 The pattern above works well for a task that runs on a fixed external
 schedule. For a task where the *agent itself* decides when to check back
--- "wait until 9am tomorrow," "resume once that background script
-finishes," "resume once something else tells you to" -- the Coordinator
-has its own tools instead of you writing a second cron entry per task:
+-- "wait until 9am tomorrow," "resume once something else tells you to"
+-- the Coordinator has its own tools instead of you writing a second cron
+entry per task. A background script, command or sub-agent needs none: its
+end comes back to the conversation as a turn of its own.
 
 - `sleep_until(wake_at, reason)` / `sleep_for(seconds, reason)` -- pause
   this conversation and automatically resume it at a wall-clock time or
   after a delay.
-- `wake_on_task(task_id, reason)` -- pause until a specific in-progress
-  background script (started via `run_background_script`, see below)
-  finishes (`task_id` is that task's id).
 - `wake_on_event(event_key, reason)` / `signal_event(event_key, payload)`
   -- pause until a named event fires; `signal_event` is how another turn
   (this thread, another thread, or a future connector/webhook) fires it.
@@ -574,7 +574,8 @@ where to read more.
   `edit_docx_structure` and the review tools (tracked changes, comments; the Word skill), Excel
   through `write_xlsx_cells` and `modify_xlsx` with formulas computed by IronCalc (decision 0011;
   the Excel skill), PowerPoint through `write_pptx` and the template and shape tools for the
-  person's own template (the PPTX Slides skill). They are shown, not owned: the Word panel is frozen
+  person's own template (the PPTX Slides skill; the PPTX Editing skill for changing slides,
+  shapes, pictures, tables and theme colors in place). They are shown, not owned: the Word panel is frozen
   and an Excel file is not an artifact (decisions 0025, 0027).
 - **Previews and conversion** use the Microsoft Office or WPS on the machine through COM; a PDF
   and a deck built from SVG pages need no office program, and LibreOffice is an optional engine,
@@ -803,7 +804,8 @@ The file at `COSCRIBE_MEMORY_PATH` (default `./MEMORY.md`, auto-created,
 gitignored by default -- track it yourself if you want shared/team memory) holds
 your global instructions: Settings › General › Global instructions edits it, and whatever
 is in it is sent to the model in every conversation. Only you write to it: the
-model has no tool for it. It is meant to stay a short, curated list (a
+model can offer a line with `remember` (when you say "always..." or "from now on..."), shown
+as a question card, and the line is added only if you press Save. It is meant to stay a short, curated list (a
 preference, a stable detail) -- not a running log, and not addressed by
 `/compact` (which only
 ever touches a single thread's conversation history, a much faster-growing
@@ -814,9 +816,14 @@ and more urgent problem than a short memory file).
 The Coordinator can hand a self-contained task to a sub-agent
 (`runtime_lg/subagents.py`'s `build_delegation_tools`):
 
-- `spawn_agent(description, prompt, instructions="", model="", tool_names="")`
+- `spawn_agent(description, prompt, instructions="", model="", tool_names="", kind="")`
   waits for the sub-agent's report; `spawn_agent_background(...)` returns a
   `task_id` at once. Only the report re-enters the conversation.
+- **Kinds** (`runtime_lg/subagent_kinds.py`): `kind="research"` finds things
+  in files and on the web and reports each with its source, with read-only
+  tools; `kind="check"` confirms the figures and statements it is given
+  against their sources, with read-only tools and scripts. The call's own
+  `instructions` and `tool_names` take the kind's place.
 - **A background sub-agent reports back by itself**: when it succeeds,
   fails, or you stop it from the panel, its report (or error) arrives in
   the conversation as a message of its own -- drawn as a "Sub-agent
@@ -839,7 +846,7 @@ The Coordinator can hand a self-contained task to a sub-agent
   the user which to use the first time it delegates.
 - **Tools and folders**: by default the sub-agent gets the Coordinator's own
   tools (found through `search_tools` when tool deferral is on), bound to the
-  conversation's folders; `tool_names` narrows that to a list. Tools bound
+  conversation's folders; a kind or `tool_names` narrows that. Tools bound
   to the parent's own conversation stay with the parent: the sub-agent
   list/check/stop tools (a sub-agent listing them finds itself "running"
   and takes its task as someone else's), wakes, and the to-do list.

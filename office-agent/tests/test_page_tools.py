@@ -132,3 +132,69 @@ def test_look_at_page_draws_each_artboard_with_its_canvas_and_reports_what_is_wr
         look_at_page("p.design.json", board="nope")
     with pytest.raises(ValueError, match="light"):
         look_at_page("p.design.json", scheme="sepia")
+
+
+@needs_browser
+def test_an_artboard_exports_as_a_png_at_twice_its_size_and_a_square_one_as_an_icon(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from PIL import Image
+
+    from coscribe.conversation import NotSquare, PageShotError, export_board
+
+    if (chromium := _local_chromium()) is not None:
+        monkeypatch.setenv("COSCRIBE_PAGE_BROWSER", chromium)
+    (tmp_path / "logo.design").mkdir()
+    canvas = {
+        "boards": [
+            {"id": "wide", "file": "wide.html", "width": 300, "height": 200},
+            {"id": "mark", "file": "mark.html", "width": 128, "height": 128},
+        ],
+        "variables": [{"name": "--brand", "value": "#ff0000"}],
+    }
+    (tmp_path / "logo.design.json").write_text(json.dumps(canvas), encoding="utf-8")
+    page = "<html><head><style>body{margin:0;background:var(--brand)}</style></head></html>"
+    for name in ("wide", "mark"):
+        (tmp_path / "logo.design" / f"{name}.html").write_text(page, encoding="utf-8")
+    wide, mark = tmp_path / "logo.design" / "wide.html", tmp_path / "logo.design" / "mark.html"
+
+    with Image.open(io.BytesIO(export_board(wide, "png"))) as png:
+        # Drawn as the app serves it: the canvas's variable fills the page.
+        assert png.size == (600, 400)
+        assert png.convert("RGB").getpixel((300, 200)) == (255, 0, 0)
+    with Image.open(io.BytesIO(export_board(mark, "ico"))) as ico:
+        assert ico.format == "ICO"
+        assert {(16, 16), (32, 32), (256, 256)} <= set(ico.info["sizes"])
+    with pytest.raises(NotSquare):
+        export_board(wide, "ico")
+    loose = tmp_path / "loose.html"
+    loose.write_text(page, encoding="utf-8")
+    with pytest.raises(PageShotError, match="artboard"):
+        export_board(loose, "png")
+
+
+def test_a_canvas_is_told_when_no_artboard_places_the_conversations_logo(tmp_path: Path) -> None:
+    from coscribe.conversation.page_tools import _logo_note
+    from coscribe.tools import DesignSystemStore
+
+    store = DesignSystemStore(tmp_path / "state")
+    made = store.create("Acme")
+    logo = store.add_asset(made["id"], b'<svg xmlns="http://www.w3.org/2000/svg"/>', "logo.svg")
+    assert logo is not None
+    store.update_asset(made["id"], logo["id"], {"kind": "logo", "note": "in the header"})
+    canvas = tmp_path / "p.design.json"
+    canvas.write_text(
+        json.dumps({"boards": [{"id": "a", "file": "a.html"}, {"id": "b", "file": "b.html"}]}),
+        encoding="utf-8",
+    )
+    (tmp_path / "p.design").mkdir()
+    (tmp_path / "p.design" / "a.html").write_text("<p>Hi</p>", encoding="utf-8")
+    (tmp_path / "p.design" / "b.html").write_text("<img src='mark.svg'>", encoding="utf-8")
+    assert _logo_note(canvas, tmp_path / "state", "t1") is None  # no system chosen
+    store.choose_for_thread("t1", made["id"])
+
+    note = _logo_note(canvas, tmp_path / "state", "t1")
+    (tmp_path / "p.design" / "mark.svg").write_bytes(b'<svg xmlns="http://www.w3.org/2000/svg"/>')
+
+    assert note is not None and "no artboard places" in note and "(in the header)" in note
+    assert _logo_note(canvas, tmp_path / "state", "t1") is None

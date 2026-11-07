@@ -1,4 +1,4 @@
-import { createDesignSystem, deleteDesignSystem, getDesignSystem, getDesignSystems, saveDesignSystem } from "./rest";
+import { deleteDesignSystem, duplicateDesignSystem, getDesignSystem, getDesignSystems, saveDesignSystem } from "./rest";
 import type { SystemItem } from "./artifacts";
 
 /** The library as the Artifacts page lists it. */
@@ -14,12 +14,10 @@ export async function renameSystem(id: string, name: string): Promise<void> {
   if (error) throw new Error(error);
 }
 
-/** A copy under "<name> copy", with everything the original has. */
+/** A copy under "<name> copy", with everything the original has, its pictures included. */
 export async function duplicateSystem(id: string): Promise<void> {
   const original = await getDesignSystem(id);
-  const made = await createDesignSystem(`${original.name} copy`);
-  if ("error" in made) throw new Error(made.error);
-  const error = failure(await saveDesignSystem({ ...original, id: made.id, name: made.name }));
+  const error = failure(await duplicateDesignSystem(id, `${original.name} copy`));
   if (error) throw new Error(error);
 }
 

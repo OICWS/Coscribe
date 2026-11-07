@@ -13,7 +13,7 @@ from langchain_core.messages.ai import UsageMetadata
 from langchain_core.tools import BaseTool
 
 from ..code_runtime import code_service
-from ..config import Settings
+from ..config import Settings, side_model_name
 from ..coordinator import CORE_TOOL_NAMES
 from ..runtime import LLMClient, SessionEnvironments, get_tool_metadata, redactor
 from ..runtime_lg import (
@@ -29,12 +29,14 @@ from ..runtime_lg import (
     build_search_tools_tool,
     build_use_tool_tool,
     keeps_tool_list_fixed,
+    resolve_chat_model,
     select_reviewer_tools,
     tool_name,
 )
 from ..tools import (
     QUESTION_TOOL_NAMES,
     TASK_DRAFT_TOOL_NAMES,
+    TaskToolkit,
     WorkspaceScope,
     format_skill_listing,
     load_builtin_skills,
@@ -55,6 +57,7 @@ class AssemblyHost(Protocol):
     workspace_root: Path
     enabled_skill_names: set[str]
     hooks_config: dict[str, list[str]]
+    model: Any
     _model_string: str
     _instructions: str
     _checkpointer: Any
@@ -96,6 +99,24 @@ def risks_of_gated_tools(lg_tools: list[Any]) -> dict[str, str]:
 class AgentAssembly:
     def __init__(self, host: AssemblyHost) -> None:
         self._host = host
+        self._side: tuple[str, Any] | None = None
+
+    def side_model(self) -> Any:
+        """The model for the short calls around a turn (`Settings.side_model`). It falls back to
+        the conversation's model, so a key without access to the small model still gets a
+        title."""
+        main = self._host.model
+        name = side_model_name(self._host._model_string, self._host.settings.side_model)
+        if name == self._host._model_string:
+            return main
+        if self._side is None or self._side[0] != name:
+            try:
+                small = resolve_chat_model(name, self._host._custom_providers)
+            except (ValueError, ImportError):
+                # No small model (an unknown provider, no package for it) only costs more.
+                return main
+            self._side = (name, small)
+        return self._side[1].with_fallbacks([main])
 
     def build_lg_tools(self, model: Any) -> list[Callable[..., Any] | BaseTool]:
         # self._host._base_tools ("domain" tools) combined with self._host._extra_tools
@@ -139,7 +160,9 @@ class AgentAssembly:
             *code_tools,
             *build_http_tools(self._host.settings.state_dir, self._host.thread_id),
             *build_artifact_tools(self._host.settings.state_dir, self._host.workspace_scope),
-            *build_page_tools(self._host.workspace_scope),
+            *build_page_tools(
+                self._host.workspace_scope, self._host.settings.state_dir, self._host.thread_id
+            ),
             review_work_tool,
             self._host._build_draft_workflow_tool(),
             self._host._build_revise_workflow_tool(),
@@ -186,6 +209,9 @@ class AgentAssembly:
             take_steers=self._host._take_steers,
             redact=redactor(self._host.settings.state_dir),
             resolve_file=lambda path: self._host.workspace_scope().resolve(path),
+            open_tasks=lambda: TaskToolkit(
+                self._host.thread_id, self._host.settings.state_dir
+            ).open_tasks_note(),
         )
 
     def tool_binding(

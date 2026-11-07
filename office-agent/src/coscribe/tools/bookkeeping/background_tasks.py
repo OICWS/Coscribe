@@ -16,11 +16,9 @@ result ambiguous depending on a boolean the model has to remember to check.
 **Fire-and-forget, not fire-and-stream.** Pi's own design deliberately
 doesn't push live output either -- a durable log file plus a *bounded*,
 on-demand read (`check_background_task`'s `tail_bytes`), not a live
-WebSocket stream. Simpler, and matches what selfwake.py's wake mechanism
-already gives for "come back when it's done" -- see tools/bookkeeping/selfwake.py's
-`wake_on_task`, the direct extension of its existing `wake_on(job_id)` to
-a second kind of "background thing that eventually finishes," this
-module's `BackgroundTaskStore` as its new backing.
+WebSocket stream. When a task ends, its conversation gets the outcome and the
+end of the log as a turn of its own (conversation/subagents.py), as it does for
+a background sub-agent, so the model never has to poll or ask to be woken.
 
 **Same isolation as the synchronous scripts** (see tools/exec/scripts.py's own
 docstring): in the AppContainer where the machine passed the self-test, and
@@ -34,7 +32,7 @@ and live Process handle only exist in this coscribe-web process's own
 memory (`_LIVE`/`_RUNNING_SUPERVISORS` below). If the server process
 restarts while a task is mid-run, the durable on-disk record is orphaned
 at status="running" forever -- nothing left to ever mark it finished, so
-a pending wake_on_task for it never resolves either. Re-adopting orphaned
+its conversation never hears that it ended. Re-adopting orphaned
 processes by PID on startup would fix this but is real extra machinery,
 not justified for a first version of a feature whose whole premise is
 "the desktop app stays running for the length of one script."
@@ -175,6 +173,8 @@ class BackgroundTask:
     exit_code: int | None = None
     pid: int | None = None
     note: str | None = None
+    # Its conversation heard how it ended: from its report, or the model read or stopped it.
+    reported: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -188,6 +188,7 @@ class BackgroundTask:
             "exit_code": self.exit_code,
             "pid": self.pid,
             "note": self.note,
+            "reported": self.reported,
         }
 
     @classmethod
@@ -203,6 +204,8 @@ class BackgroundTask:
             exit_code=data.get("exit_code"),
             pid=data.get("pid"),
             note=data.get("note"),
+            # A record from before reports existed was never going to get one.
+            reported=data.get("reported", True),
         )
 
 
@@ -525,11 +528,12 @@ def _watch(
 
 
 def stop_background_task(
-    state_dir: str | Path, task_id: str, thread_id: str | None = None
+    state_dir: str | Path, task_id: str, thread_id: str | None = None, *, by_model: bool = False
 ) -> dict[str, Any]:
     """Kill a running background script. Raises KeyError for an unknown task
     (or one of another conversation, when `thread_id` is given) and
-    ValueError when it isn't running or this process holds no handle to it."""
+    ValueError when it isn't running or this process holds no handle to it.
+    A stop the model asked for itself needs no report; one from the panel gets one."""
     on_disk = BackgroundTaskStore(state_dir).load(task_id)
     if on_disk is None or (thread_id is not None and on_disk.thread_id != thread_id):
         raise KeyError(f"No background task with id {task_id!r} in this conversation")
@@ -545,6 +549,7 @@ def stop_background_task(
     # object's status once the process exits to tell a kill from a failure.
     live_task, proc = live
     live_task.status = "killed"
+    live_task.reported = live_task.reported or by_model
     BackgroundTaskStore(state_dir).save(live_task)
     _kill(live_task, proc)
     return live_task.to_dict()
@@ -578,9 +583,9 @@ def read_background_log(
 # A model left to choose polls in a tight loop (the maintainer saw four checks in a few
 # seconds), so the result says how to wait instead.
 WAIT_NOTE = (
-    "Don't check it again and again. Go on with other work, or, if you need its result "
-    "before you can go on, end this turn with wake_on_task(task_id, reason) (through "
-    "use_tool) and you are resumed when it finishes."
+    "When it ends, its outcome and the end of its output come to you in a message of their "
+    "own, so don't check it again and again. Go on with other work, or, if you need its "
+    "result before you can go on, tell the user what you're waiting for and end your turn."
 )
 
 
@@ -628,10 +633,9 @@ def build_background_task_tools(
         "you manage extra packages from the Capabilities settings tab" rule).
 
         This call does NOT return the script's output -- only a task_id
-        confirming it started. Use check_background_task(task_id) to read
-        its output/status later (works both while it's still running and
-        after), or wake_on_task(task_id, reason) to end this turn and get
-        automatically resumed once it finishes, instead of polling.
+        confirming it started. When it ends, its outcome and the end of its
+        output come to you in a message of their own; check_background_task
+        (task_id) reads its output so far while it runs.
 
         Args:
             language: "python" or "node".
@@ -664,11 +668,7 @@ def build_background_task_tools(
             cwd=str(root),
             env=env,
             stdout=asyncio.subprocess.PIPE,
-            # Merged into stdout -- one combined, chronological log, same
-            # as a user reading a terminal would see (and matching how
-            # this feature's own inspiration -- Claude Code's own
-            # background-task panel -- shows a single "2>&1"-merged
-            # stream, not two separate ones to correlate by hand).
+            # Merged into stdout: one chronological log, as a terminal shows it.
             stderr=asyncio.subprocess.STDOUT,
         )
         return _register(proc, language, description, scratch_dir, timeout)
@@ -689,10 +689,10 @@ def build_background_task_tools(
         can.
 
         This call does NOT return the command's output -- only a task_id
-        confirming it started. Use check_background_task(task_id) to read its
-        output/status later, wake_on_task(task_id, reason) to end this turn
-        and be resumed once it finishes, or kill_background_task(task_id) to
-        stop it (the command and the processes it started).
+        confirming it started. When it ends, its outcome and the end of its
+        output come to you in a message of their own; check_background_task
+        (task_id) reads its output so far, and kill_background_task(task_id)
+        stops it (the command and the processes it started).
 
         Args:
             command: the command line, exactly as typed in a terminal.
@@ -741,9 +741,8 @@ def build_background_task_tools(
     ) -> dict[str, Any]:
         """Check a background script's status and read its output -- works
         whether it's still running (partial output so far) or already
-        finished (full output, plus exit_code). Call this to poll instead
-        of using wake_on_task when you'd rather keep working on something
-        else in the meantime and check back yourself.
+        finished (full output, plus exit_code). Its end is reported to you on
+        its own; this reads output partway through, or more than the report holds.
 
         Args:
             task_id: id returned by run_background_script.
@@ -755,6 +754,9 @@ def build_background_task_tools(
         task = store.load(task_id)
         if task is None or task.thread_id != thread_id:
             raise KeyError(f"No background task with id {task_id!r} in this conversation")
+        if task.status != "running" and not task.reported:
+            task.reported = True  # the model read how it ended: no report of it follows
+            store.save(task)
         tail_bytes = min(max(tail_bytes, 1), _MAX_TAIL_BYTES)
         result = task.to_dict()
         blocked, output = blocked_write(without_guard_warnings(store.tail(task_id, tail_bytes)))
@@ -783,7 +785,7 @@ def build_background_task_tools(
         Args:
             task_id: id returned by run_background_script.
         """
-        return stop_background_task(state, task_id, thread_id)
+        return stop_background_task(state, task_id, thread_id, by_model=True)
 
     return [
         tool_metadata(run_background_script, risk_category="EXEC", category="background_tasks"),

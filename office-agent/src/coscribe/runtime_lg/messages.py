@@ -127,9 +127,10 @@ _ARTIFACTS = {
     "design-system": (
         "a new design system for their library. Ask for what is missing (brand colors, fonts, "
         "tone, who it is for), read what they attached with the file and image tools (for a "
-        ".pptx template, read_pptx_design gives its colors, fonts and text sizes), say the "
-        "system you propose in words, and when they agree save it with save_design_system "
-        "(find it with search_tools)"
+        ".pptx template, read_pptx_design gives its colors, fonts, text sizes and the pictures "
+        "its master draws), say the system you propose in words, and when they agree save it "
+        "with save_design_system (find it with search_tools), with the logos and icons they "
+        "attached or the template holds as its assets"
     ),
 }
 # "Sheets" stays so a history saved before that kind was dropped still loses its note.
@@ -178,18 +179,37 @@ def design_system_text(system: dict[str, Any]) -> str:
         ]
         if rows:
             parts.append(f"{label}: {'; '.join(rows)}.")
+    pictures = [
+        f"{_inline(a['path'])} ({_inline(a.get('kind', 'picture'))}"
+        + (f", {a['width']}x{a['height']}" if a.get("width") and a.get("height") else "")
+        + (f", {_inline(a['note'])}" if a.get("note") else "")
+        + ")"
+        for a in system.get("assets", [])
+        if isinstance(a, dict) and a.get("path")
+    ]
+    if pictures:
+        parts.append(
+            f"Its pictures, copied into the workspace: {'; '.join(pictures)}. Use a logo where its "
+            "note says, copied into the deck or canvas folder."
+        )
     return " ".join(parts)
 
 
 def artifact_note(kind: str | None, design_system: dict[str, Any] | None = None) -> str:
     """What the conversation's first message is to make, when it started from the Artifacts page;
-    it goes with the message, never in the system prompt or a tool schema. A Slides conversation
-    started with a library design system carries it in the same sentence."""
+    it goes with the message, never in the system prompt or a tool schema. A Slides or Design
+    conversation started with a library design system carries it in the same sentence."""
     if kind not in _ARTIFACTS:
         return ""
     sentence = f"{_ARTIFACTS[kind]}."
-    if kind == "slides" and design_system:
+    if kind in ("slides", "design") and design_system:
         sentence += f" {design_system_text(design_system)}"
+    if kind == "design" and design_system:
+        # A system's text sizes are set on the 1920-wide slide its form edits.
+        sentence += (
+            " Make its colors, fonts, spacing and radius the canvas's variables; its text sizes "
+            "are for a 1920-wide slide, so scale them to each artboard."
+        )
     return f"[The user is starting a {kind.capitalize()} artifact: {sentence}] "
 
 
@@ -291,6 +311,21 @@ def steer_message(text: str) -> HumanMessage:
 
 def is_steer(message: Any) -> bool:
     return bool((getattr(message, "additional_kwargs", None) or {}).get(_STEER_MARK))
+
+
+_PLAN_CHECK_MARK = "coscribe_plan_check"
+
+
+def plan_check_message(text: str) -> HumanMessage:
+    """The plan sent back to the model when it stops with tasks open. Marked as a steer so the
+    per-turn counts and the edit and rewind positions skip it, and as a notice so it is not
+    taken for what the user asked; the chat doesn't show it."""
+    marks = {_STEER_MARK: True, _PLAN_CHECK_MARK: True, "notice": True}
+    return HumanMessage(content=text, additional_kwargs=marks)
+
+
+def is_plan_check(message: Any) -> bool:
+    return bool((getattr(message, "additional_kwargs", None) or {}).get(_PLAN_CHECK_MARK))
 
 
 def starts_a_turn(message: Any) -> bool:
@@ -505,7 +540,7 @@ def serialize_history_for_ws_lg(messages: list[Any]) -> list[dict[str, Any]]:
             # but real content (the image itself) that a bare text check
             # would otherwise drop the whole entry over.
             images = extract_images(message.content)
-            if not text and not images:
+            if (not text and not images) or is_plan_check(message):
                 continue
             kind = "steer" if is_steer(message) else "user"
             shown, files = split_attached_files(strip_mode_note(text))

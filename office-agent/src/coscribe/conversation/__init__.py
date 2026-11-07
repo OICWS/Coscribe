@@ -4,14 +4,23 @@ which is why it does not live under web/ and knows nothing of HTTP: it talks to
 whoever is connected through an EventSink."""
 
 from .activity import OPENABLE_EXTENSIONS, open_in_os
+from .approvals import question_answer
 from .artifact_files import ArtifactFileError, copy_file, rename_file, trash_file
 from .artifacts import ArtifactRegistry, adopt_thread, describe_artifact
 from .board_edits import (
-    EDITABLE,
     BoardEditError,
     BoardElementChanged,
+    board_edit_file,
     edit_board_element,
     remember_board_edit,
+)
+from .board_undo import (
+    NothingToUndo,
+    PageWrittenSince,
+    keep_for_undo,
+    redo_board_edit,
+    steps_left,
+    undo_board_edit,
 )
 from .dashboard import DashboardDataError, is_dashboard, read_dashboard_data, render_dashboard
 from .design_canvas import (
@@ -24,7 +33,8 @@ from .design_canvas import (
     read_canvas,
     variables_style,
 )
-from .page_tools import served_page
+from .page_shot import NoBrowser, PageShotError
+from .page_tools import NotSquare, export_board, served_page
 from .session import ChatSessionLG
 from .thread_meta import ThreadMetaStore
 
@@ -32,6 +42,7 @@ __all__ = [
     "OPENABLE_EXTENSIONS",
     "ChatSessionLG",
     "ThreadMetaStore",
+    "question_answer",
     "ArtifactFileError",
     "ArtifactRegistry",
     "adopt_thread",
@@ -39,9 +50,15 @@ __all__ = [
     "rename_file",
     "trash_file",
     "describe_artifact",
-    "EDITABLE",
     "BoardEditError",
     "BoardElementChanged",
+    "NothingToUndo",
+    "PageWrittenSince",
+    "keep_for_undo",
+    "undo_board_edit",
+    "redo_board_edit",
+    "steps_left",
+    "board_edit_file",
     "edit_board_element",
     "remember_board_edit",
     "CanvasError",
@@ -53,6 +70,10 @@ __all__ = [
     "read_canvas",
     "variables_style",
     "served_page",
+    "export_board",
+    "PageShotError",
+    "NoBrowser",
+    "NotSquare",
     "DashboardDataError",
     "is_dashboard",
     "read_dashboard_data",

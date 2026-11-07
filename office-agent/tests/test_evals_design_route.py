@@ -17,8 +17,10 @@ def test_a_canvas_report_names_missing_pages_and_variables_nobody_declared(
     page = (
         "<style>:root{--gap:8px} p{color:var(--brand);margin:var(--gap);top:var(--lost)}</style>"
         "<a href='b.html'>Next</a><a class='x' href=\"gone.html#top\"><button>Go</button></a>"
+        "<coscribe-part name='tabs'></coscribe-part><coscribe-part name=\"lost\"></coscribe-part>"
     )
     (tmp_path / "x.design" / "a.html").write_text(page, encoding="utf-8")
+    (tmp_path / "x.design" / "tabs.part.html").write_text("<nav>t</nav>", encoding="utf-8")
 
     report = canvas_report(canvas)
 
@@ -31,6 +33,8 @@ def test_a_canvas_report_names_missing_pages_and_variables_nobody_declared(
         ["gone.html"],
         1,
     )
+    assert report["parts"] == {"tabs": 1, "lost": 1}
+    assert report["missing_parts"] == ["lost"]
 
 
 def test_a_broken_canvas_is_reported_not_raised(tmp_path: Path) -> None:

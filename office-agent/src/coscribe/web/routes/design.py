@@ -16,15 +16,26 @@ from ...conversation import (
     BoardElementChanged,
     CanvasError,
     DashboardDataError,
+    NoBrowser,
+    NothingToUndo,
+    NotSquare,
+    PageShotError,
+    PageWrittenSince,
+    board_edit_file,
     canvas_folder,
     edit_board_element,
+    export_board,
     is_canvas,
     is_dashboard,
+    keep_for_undo,
     place_on_canvas,
     read_canvas,
     read_dashboard_data,
+    redo_board_edit,
     remember_board_edit,
     served_page,
+    steps_left,
+    undo_board_edit,
 )
 from ..state import AppState
 
@@ -90,6 +101,8 @@ class CanvasPlacement(BaseModel):
 # Fixed texts, not the exception's: what reaches the panel is chosen here.
 _ELEMENT_CHANGED = "The page changed since the element was picked; pick it again"
 _EDIT_REFUSED = "The panel cannot write that change into this page"
+_NOTHING_TO_UNDO = "There is no edit from the panel to take back or do again on this page"
+_WRITTEN_SINCE = "The page was written since the panel's last edit, so it was left as it is"
 
 
 class ElementEdit(BaseModel):
@@ -102,23 +115,81 @@ class ElementEdit(BaseModel):
     text_before: str | None = None
 
 
-def _element_route(state: AppState) -> Any:
+class ElementUndo(BaseModel):
+    page: str
+
+
+class BoardExport(BaseModel):
+    page: str
+    kind: Literal["png", "ico"] = "png"
+    scheme: Literal["light", "dark"] | None = None
+
+
+_EXPORT_MEDIA = {"png": "image/png", "ico": "image/x-icon"}
+# Fixed texts: what reaches the panel is chosen here, not the exception's.
+_NO_BROWSER = "No Edge or Chrome on this computer to draw the artboard with"
+_NOT_EXPORTED = "This artboard could not be exported"
+_NOT_SQUARE = "An icon is made from a square artboard"
+
+
+def _export_route(state: AppState) -> Any:
+    async def export_board_file(thread_id: str, body: BoardExport) -> Response:
+        """One artboard drawn in the computer's own browser and sent back as a PNG or an .ico.
+        A POST, not a GET: it starts a browser, so it carries the launch token."""
+        page = _artboard_page(state, thread_id, body.page)
+        if page is None:
+            return JSONResponse({"error": "No page at that path"}, status_code=404)
+        try:
+            data = await asyncio.to_thread(export_board, page, body.kind, body.scheme)
+        except NoBrowser:
+            return JSONResponse({"error": _NO_BROWSER}, status_code=422)
+        except NotSquare:
+            return JSONResponse({"error": _NOT_SQUARE}, status_code=422)
+        except PageShotError:
+            return JSONResponse({"error": _NOT_EXPORTED}, status_code=422)
+        return Response(data, media_type=_EXPORT_MEDIA[body.kind])
+
+    return export_board_file
+
+
+def _element_routes(state: AppState) -> tuple[Any, Any, Any, Any]:
     async def put_element(thread_id: str, body: ElementEdit) -> JSONResponse:
         return await _put_element(state, thread_id, body)
 
-    return put_element
+    async def undo_element(thread_id: str, body: ElementUndo) -> JSONResponse:
+        return await _step_element(state, thread_id, body, redo=False)
+
+    async def redo_element(thread_id: str, body: ElementUndo) -> JSONResponse:
+        return await _step_element(state, thread_id, body, redo=True)
+
+    async def element_steps(thread_id: str, page: str) -> JSONResponse:
+        """How many of the panel's edits to the page can be undone and redone now."""
+        file = _artboard_page(state, thread_id, page)
+        if file is None:
+            return JSONResponse({"error": "No page at that path"}, status_code=404)
+        return JSONResponse(steps_left(file, state.settings.state_dir))
+
+    return put_element, undo_element, redo_element, element_steps
+
+
+def _artboard_page(state: AppState, thread_id: str, path: str) -> Path | None:
+    try:
+        page = state.get_session(thread_id).workspace_scope().resolve(path)
+    except (PermissionError, OSError, ValueError):
+        return None
+    return page if page.is_file() else None
 
 
 async def _put_element(state: AppState, thread_id: str, body: ElementEdit) -> JSONResponse:
     """One element of an artboard changed in the properties panel, written into its page and
-    kept for coscribe's next turn."""
-    try:
-        page = state.get_session(thread_id).workspace_scope().resolve(body.page)
-    except (PermissionError, OSError, ValueError):
-        return JSONResponse({"error": "No page at that path"}, status_code=404)
-    if not page.is_file():
+    kept for coscribe's next turn and for undo."""
+    page = _artboard_page(state, thread_id, body.page)
+    if page is None:
         return JSONResponse({"error": "No page at that path"}, status_code=404)
     try:
+        # The page, or the part it places when the element is inside one.
+        written, _ = board_edit_file(page, body.element)
+        before = written.read_text(encoding="utf-8")
         said = await asyncio.to_thread(
             edit_board_element,
             page,
@@ -128,12 +199,31 @@ async def _put_element(state: AppState, thread_id: str, body: ElementEdit) -> JS
             text=body.text,
             text_before=body.text_before,
         )
-    except BoardElementChanged:
+    except (BoardElementChanged, OSError):
         return JSONResponse({"error": _ELEMENT_CHANGED}, status_code=409)
     except BoardEditError:
         return JSONResponse({"error": _EDIT_REFUSED}, status_code=422)
-    remember_board_edit(page, said, state.settings.state_dir)
+    remember_board_edit(written, said, state.settings.state_dir)
+    keep_for_undo(written, before, said, state.settings.state_dir)
     return JSONResponse({"ok": True})
+
+
+async def _step_element(
+    state: AppState, thread_id: str, body: ElementUndo, *, redo: bool
+) -> JSONResponse:
+    """The panel's last edit to the page taken back, or the last undo done again, while nothing
+    else wrote the page."""
+    page = _artboard_page(state, thread_id, body.page)
+    if page is None:
+        return JSONResponse({"error": "No page at that path"}, status_code=404)
+    step = redo_board_edit if redo else undo_board_edit
+    try:
+        left = await asyncio.to_thread(step, page, state.settings.state_dir)
+    except NothingToUndo:
+        return JSONResponse({"error": _NOTHING_TO_UNDO, "undo": 0, "redo": 0}, status_code=409)
+    except PageWrittenSince:
+        return JSONResponse({"error": _WRITTEN_SINCE, "undo": 0, "redo": 0}, status_code=409)
+    return JSONResponse({"ok": True, **left})
 
 
 def _with_board_paths(path: str, file: Path, canvas: dict[str, Any]) -> dict[str, Any]:
@@ -218,8 +308,14 @@ def router(state: AppState) -> APIRouter:
         return JSONResponse(_with_board_paths(path, file, canvas))
 
     router.add_api_route("/api/threads/{thread_id}/design", get_design, methods=["GET"])
+    put_element, undo_element, redo_element, element_steps = _element_routes(state)
+    element = "/api/threads/{thread_id}/canvas/element"
+    router.add_api_route(element, put_element, methods=["PUT"])
+    router.add_api_route(f"{element}/undo", undo_element, methods=["POST"])
+    router.add_api_route(f"{element}/redo", redo_element, methods=["POST"])
+    router.add_api_route(f"{element}/steps", element_steps, methods=["GET"])
     router.add_api_route(
-        "/api/threads/{thread_id}/canvas/element", _element_route(state), methods=["PUT"]
+        "/api/threads/{thread_id}/canvas/export", _export_route(state), methods=["POST"]
     )
     router.add_api_route("/api/threads/{thread_id}/canvas", get_canvas, methods=["GET"])
     router.add_api_route("/api/threads/{thread_id}/canvas", put_canvas, methods=["PUT"])

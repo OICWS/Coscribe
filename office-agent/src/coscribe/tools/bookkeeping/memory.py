@@ -1,6 +1,7 @@
 """The user's global instructions: one file they edit in Settings, read into
-every conversation. The model only reads it -- nothing here writes to it, so
-what it holds is what the user put there.
+every conversation. The model only reads it; it can propose a line with the
+`remember` tool, which the person's Save writes (conversation/approvals.py),
+so what it holds is what the user put or accepted there.
 """
 
 from __future__ import annotations

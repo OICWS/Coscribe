@@ -15,6 +15,9 @@ traceback line a debugging turn most needs to see.
 
 from __future__ import annotations
 
+import time
+from pathlib import Path
+
 _TRUNCATED_HEAD_CHARS = 4_000
 _TRUNCATED_TAIL_CHARS = 4_000
 # Kept well under head+tail's own combined 8000 so a merely-borderline
@@ -24,17 +27,30 @@ _TRUNCATED_TAIL_CHARS = 4_000
 MAX_SCRIPT_OUTPUT_CHARS = 20_000
 
 
-def truncate_script_output(text: str) -> str:
+def truncate_script_output(text: str, save_dir: Path | None = None, stream: str = "stdout") -> str:
     """No-op for anything at or under MAX_SCRIPT_OUTPUT_CHARS. Past that,
     keeps the first/last `_TRUNCATED_HEAD_CHARS`/`_TRUNCATED_TAIL_CHARS`
     with a marker naming exactly how many characters were cut from the
-    middle -- honest about what's missing, not a silent cut."""
+    middle -- honest about what's missing, not a silent cut. With `save_dir`,
+    the whole text is written there first and the marker names the file."""
     if len(text) <= MAX_SCRIPT_OUTPUT_CHARS:
         return text
     omitted = len(text) - _TRUNCATED_HEAD_CHARS - _TRUNCATED_TAIL_CHARS
     head = text[:_TRUNCATED_HEAD_CHARS]
     tail = text[-_TRUNCATED_TAIL_CHARS:]
-    return f"{head}\n\n...[{omitted:,} characters truncated]...\n\n{tail}"
+    where = ""
+    if save_dir is not None:
+        try:
+            save_dir.mkdir(parents=True, exist_ok=True)
+            saved = save_dir / f"{time.time_ns()}-{stream}.txt"
+            saved.write_text(text, encoding="utf-8")
+            where = (
+                f"; the whole output is in {saved}: read_file it with head/tail, or "
+                "search_files that folder for what you need"
+            )
+        except OSError:
+            where = ""
+    return f"{head}\n\n...[{omitted:,} characters truncated{where}]...\n\n{tail}"
 
 
 # What one read may hand the model: about 20-30k tokens. A whole 5 MB CSV

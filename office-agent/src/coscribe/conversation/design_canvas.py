@@ -7,10 +7,14 @@ sandboxed frame. It sits with the artifact registry, which lists a canvas as a d
                              "notes": [{id, text, x, y, width, color}]}
     poster.design           the folder beside it, holding
       main.html             one page per artboard, named by its `file`
+      tab-bar.part.html     a part several pages share, placed in each with
+                            `<coscribe-part name="tab-bar"></coscribe-part>`
 """
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 import os
 import re
@@ -138,6 +142,95 @@ def read_canvas(path: Path) -> dict[str, Any]:
     except (OSError, ValueError) as exc:
         raise CanvasError(f"{path.name} is not valid JSON") from exc
     return _parse(raw)
+
+
+PART_SUFFIX = ".part.html"
+_PART_TAG = re.compile(
+    rb"""<coscribe-part\s+name\s*=\s*["']?([\w-]{1,64})["']?\s*>\s*</coscribe-part\s*>""",
+    re.IGNORECASE,
+)
+_MAX_PART = 512 * 1024
+
+
+def with_parts(page: Path, body: bytes) -> bytes:
+    """The page with each part it places filled in from the canvas folder. The filled part stays in
+    a `coscribe-part` element laid out as if it were not there (`display: contents`), so the page's
+    other elements keep the places they have in the source, which the properties panel's edits
+    count by. A part does not place parts; a missing one is drawn as a marked gap, so a look at
+    the page shows it."""
+
+    def fill(match: re.Match[bytes]) -> bytes:
+        name = match.group(1)
+        try:
+            inner = (page.parent / f"{name.decode()}{PART_SUFFIX}").read_bytes()[:_MAX_PART]
+        except OSError:
+            inner = (
+                b'<div style="padding:8px;border:2px dashed #d33;color:#d33;font:13px sans-serif">'
+                b"Missing part: " + name + b"</div>"
+            )
+        start = b'<coscribe-part name="' + name + b'" style="display:contents">'
+        return start + inner + b"</coscribe-part>"
+
+    return _PART_TAG.sub(fill, body)
+
+
+_PICTURE_MEDIA = {
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+}
+# A picture named by a plain file name of the canvas folder (or a folder in it), never a path
+# out of it or an address; the frame loads only data: URIs, so the server fills them in.
+_PICTURE_SRC = re.compile(
+    rb"""(<(?:img|image)\b[^>]*?\s(?:src|href)\s*=\s*)(["'])([\w.-]+(?:/[\w.-]+)*\.(?:svg|png|jpe?g|webp|gif))\2""",
+    re.IGNORECASE,
+)
+_MAX_PICTURES_BYTES = 12 * 1024 * 1024
+
+
+def with_pictures(page: Path, body: bytes) -> bytes:
+    """The page with each picture file of its canvas folder it names (`<img src="logo.svg">`,
+    SVG's `<image href>`) put in as a data: URI. A name that is not a file there is left as it
+    is, so a look at the page shows the gap."""
+    folder = page.parent.resolve()
+    budget = [_MAX_PICTURES_BYTES]
+
+    def fill(match: re.Match[bytes]) -> bytes:
+        found = _picture_file(folder, match.group(3).decode())
+        if found is None:
+            return match.group(0)
+        data, media = found
+        if len(data) > budget[0]:
+            return match.group(0)
+        budget[0] -= len(data)
+        uri = f"data:{media};base64,{base64.b64encode(data).decode()}".encode()
+        return match.group(1) + match.group(2) + uri + match.group(2)
+
+    return _PICTURE_SRC.sub(fill, body)
+
+
+def placed_pictures(page: Path, body: bytes) -> set[str]:
+    """The sha256 of each picture file `body` (a page of the canvas folder, its parts filled in)
+    places, by the rule `with_pictures` fills them in by."""
+    folder = page.parent.resolve()
+    found = (_picture_file(folder, m.group(3).decode()) for m in _PICTURE_SRC.finditer(body))
+    return {hashlib.sha256(f[0]).hexdigest() for f in found if f is not None}
+
+
+def _picture_file(folder: Path, name: str) -> tuple[bytes, str] | None:
+    """A picture file of `folder` (or a folder inside it) with its media type; None for any other
+    name, one that leaves the folder, or a missing file."""
+    file = (folder / name).resolve()
+    media = _PICTURE_MEDIA.get(file.suffix.lower())
+    if media is None or ".." in name.split("/") or not file.is_relative_to(folder):
+        return None
+    try:
+        return file.read_bytes(), media
+    except OSError:
+        return None
 
 
 # A link from one artboard to another (`<a href="checkout.html">`) can't navigate the sandboxed

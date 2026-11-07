@@ -22,8 +22,7 @@ a question belongs to the person talking to the parent, not to a
 delegated run.
 """
 
-
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Annotated, Any, NotRequired
 
 from pydantic import Field
@@ -33,7 +32,7 @@ from typing_extensions import TypedDict
 
 from ...runtime import tool_metadata
 
-QUESTION_TOOL_NAMES: frozenset[str] = frozenset({"ask_user_question", "exit_plan_mode"})
+QUESTION_TOOL_NAMES: frozenset[str] = frozenset({"ask_user_question", "exit_plan_mode", "remember"})
 
 # exit_plan_mode's answers, as the frontend sends them.
 PLAN_CHOICE_AUTO = "auto"
@@ -147,16 +146,24 @@ QUESTIONS_DISMISSED = (
     "if you can't go on without an answer."
 )
 
+QUESTION_REPLIED = (
+    "The user didn't pick an option and wrote this instead; take it as their answer:\n{reply}"
+)
+
 
 def format_question_answers(
-    questions: Sequence[dict[str, Any]], reply: str | Sequence[str | None] | None
+    questions: Sequence[dict[str, Any]],
+    reply: str | Sequence[str | None] | Mapping[str, str] | None,
 ) -> str:
     """The tool result the model reads. `reply` is one answer per question
-    (None for a skipped one), None when the user closed the questions, or
+    (None for a skipped one), None when the user closed the questions,
+    `{"reply": text}` when they wrote in the chat instead of choosing, or
     a plain string -- a stop's placeholder, or an older page's single
     answer -- passed through as is."""
     if reply is None:
         return QUESTIONS_DISMISSED
+    if isinstance(reply, Mapping):
+        return QUESTION_REPLIED.format(reply=str(reply.get("reply", "")).strip())
     if isinstance(reply, str):
         return reply
     answers = [answer.strip() if answer and answer.strip() else "(skipped)" for answer in reply]
@@ -187,6 +194,27 @@ def exit_plan_mode(plan: str) -> str:
     )
 
 
+def remember(line: str) -> str:
+    """Offer to add one line to the user's global instructions, which are
+    read into every conversation. Use it when the user states something
+    that should hold from now on -- "always...", "from now on...", "remember
+    that..." -- or corrects you on a preference that will come up again.
+    Not for facts about the current task. The user sees the line and saves
+    it or not; nothing is written unless they do, and the result says which.
+    Offer a preference once: after they save or decline it, don't offer it
+    again, reworded or in another language.
+
+    Args:
+        line: one short sentence, in the language the user wrote in, that makes sense
+            on its own in any later conversation, e.g. "Use the company
+            template in Templates/brand.pptx for every deck."
+    """
+    raise RuntimeError(
+        "remember must be resolved via HumanInTheLoopMiddleware's 'respond' decision -- "
+        "reaching this body means the graph never registered it in question_tool_names."
+    )
+
+
 def build_interaction_tools() -> list[Callable[..., Any]]:
     """Return the interaction tool callables. No state to bind -- unlike
     every other build_*_tools factory in this package, this one takes no
@@ -196,4 +224,5 @@ def build_interaction_tools() -> list[Callable[..., Any]]:
     return [
         tool_metadata(ask_user_question, risk_category="READ", category="interaction"),
         tool_metadata(exit_plan_mode, risk_category="READ", category="interaction"),
+        tool_metadata(remember, risk_category="READ", category="interaction"),
     ]

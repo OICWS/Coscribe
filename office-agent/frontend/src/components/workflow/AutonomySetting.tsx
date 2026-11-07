@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { neededAutonomy } from "../../lib/workflowLabels";
 import type { TaskAutonomy, Workflow } from "../../types/workflow";
+import { SelectMenu } from "../SelectMenu";
 
 export const AUTONOMY_LABEL: Record<TaskAutonomy, string> = {
   fixed: "Fixed",
@@ -99,25 +100,18 @@ export function AutonomyChoice({
   const current = workflow.autonomy ?? needed;
   return (
     <div className="flex flex-col gap-1.5" data-testid="autonomy-choice">
-      <select
-        aria-label="If a step stops working"
-        className="self-start rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm"
+      <SelectMenu
+        ariaLabel="If a step stops working"
+        variant="field"
+        className="self-start"
         value={current}
-        onChange={async (e) =>
-          setProblem(
-            await persist({
-              ...workflow,
-              autonomy: e.target.value as TaskAutonomy,
-            }),
-          )
-        }
-      >
-        {LEVELS.map((level) => (
-          <option key={level} value={level} disabled={LEVELS.indexOf(level) < LEVELS.indexOf(needed)}>
-            {PLAIN_LABEL[level]}
-          </option>
-        ))}
-      </select>
+        options={LEVELS.map((level) => ({
+          value: level,
+          label: PLAIN_LABEL[level],
+          disabled: LEVELS.indexOf(level) < LEVELS.indexOf(needed),
+        }))}
+        onChange={async (autonomy) => setProblem(await persist({ ...workflow, autonomy }))}
+      />
       <p className="text-[13px] text-[var(--muted)]">{PLAIN_DESCRIPTION[current]}</p>
       {problem && <p className="text-[13px] text-[var(--danger)]">{problem}</p>}
     </div>

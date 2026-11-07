@@ -1,5 +1,5 @@
 import type { SecretInfo } from "../../../types/settings";
-import { fieldClass } from "../SettingRow";
+import { SelectMenu } from "../../SelectMenu";
 
 /** Puts `{{secret:NAME}}` into the text field it sits under, at the caret. */
 export function SecretPicker({
@@ -11,18 +11,14 @@ export function SecretPicker({
 }) {
   if (secrets.length === 0) return null;
   return (
-    <select
-      aria-label="Insert a secret"
-      className={`${fieldClass} h-8 w-fit text-[13px]`}
+    <SelectMenu
+      ariaLabel="Insert a secret"
+      variant="field"
+      className="w-fit"
       value=""
-      onChange={(e) => e.target.value && onPick(`{{secret:${e.target.value}}}`)}
-    >
-      <option value="">Insert a secret…</option>
-      {secrets.map((secret) => (
-        <option key={secret.name} value={secret.name}>
-          {secret.name}
-        </option>
-      ))}
-    </select>
+      placeholder="Insert a secret…"
+      options={secrets.map((secret) => ({ value: secret.name, label: secret.name }))}
+      onChange={(name) => onPick(`{{secret:${name}}}`)}
+    />
   );
 }

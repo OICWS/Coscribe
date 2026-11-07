@@ -16,6 +16,8 @@ import base64
 import contextvars
 import logging
 import posixpath
+import re
+import textwrap
 import uuid
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
@@ -46,6 +48,7 @@ from .messages import (
     serialize_history_for_ws_lg,
     starts_a_turn,
 )
+from .subagent_kinds import KIND_ARG_DOC, subagent_role
 
 logger = logging.getLogger(__name__)
 
@@ -75,12 +78,6 @@ _WRAP_UP_REQUEST = (
     "\"I didn't write the file\"). Don't ask for more steps.\n\n{transcript}"
 )
 _WRAP_UP_TRANSCRIPT_CHARS = 60000
-
-DEFAULT_SUBAGENT_INSTRUCTIONS = (
-    "You are doing one task delegated to you by another assistant. Do the "
-    "task with your tools, then reply with a short, complete report of what "
-    "you did and found -- that reply is all the other assistant will see."
-)
 
 # Tools that need a person on the parent's side of the conversation, or
 # would let a child start children of its own.
@@ -365,14 +362,16 @@ def build_delegation_tools(
         model: str,
         tool_names: str,
         background: bool,
+        kind: str,
     ) -> tuple[SubAgentTask, asyncio.Task[None]]:
         requested = [n.strip() for n in tool_names.split(",") if n.strip()]
         unknown = [n for n in requested if n not in tools_by_name]
         if unknown:
             raise ValueError(f"Unknown tool for a sub-agent: {', '.join(unknown)}")
-        selected = [tools_by_name[n] for n in requested] or list(tools_by_name.values())
+        role = subagent_role(kind, instructions)
+        selected = [tools_by_name[n] for n in requested] or role.tools(tools_by_name.values())
         model_string, chat_model = host.resolve_model(model.strip())
-        system_prompt = instructions.strip() or DEFAULT_SUBAGENT_INSTRUCTIONS
+        system_prompt = role.instructions
         if host.max_turns is not None:
             system_prompt += _BUDGET_NOTE.format(max_turns=host.max_turns)
         core_names = host.core_tool_names
@@ -431,6 +430,7 @@ def build_delegation_tools(
         instructions: str = "",
         model: str = "",
         tool_names: str = "",
+        kind: str = "",
     ) -> str:
         """Hand a self-contained task to a sub-agent with its own context
         and wait for its report -- only that report comes back, so its
@@ -448,7 +448,7 @@ def build_delegation_tools(
             tool_names: comma-separated names of your tools to give it; empty
                 gives it all of them (it finds the ones it needs).
         """
-        task, runner = start(description, prompt, instructions, model, tool_names, False)
+        task, runner = start(description, prompt, instructions, model, tool_names, False, kind)
         try:
             await host.changed(task)
             await asyncio.shield(runner)
@@ -473,34 +473,31 @@ def build_delegation_tools(
         instructions: str = "",
         model: str = "",
         tool_names: str = "",
+        kind: str = "",
     ) -> dict[str, Any]:
         """Like spawn_agent, but returns at once with a task_id instead of
         waiting, so this conversation can go on. When it ends -- its report,
         or the error it failed with -- you're told in a message of its own,
         so there's no need to poll; check_subagent_task(task_id) shows how
         one is getting on, and stop_subagent(task_id) stops one.
-
-        Args:
-            description: a few plain words for the panel.
-            prompt: the complete task -- it sees nothing of this conversation.
-            instructions: its role, if it needs one beyond doing the task.
-            model: which model runs it, as "provider:model"; empty for this
-                conversation's own model.
-            tool_names: comma-separated names of your tools to give it; empty
-                gives it all of them.
         """
         if not host.background_allowed():
             raise ValueError(
                 "Background sub-agents are turned off in Settings > Sessions; use spawn_agent, "
                 "which waits for the report, or do the work in this conversation."
             )
-        task, _runner = start(description, prompt, instructions, model, tool_names, True)
+        task, _runner = start(description, prompt, instructions, model, tool_names, True, kind)
         await host.changed(task)
         return {"task_id": task.task_id, "status": task.status, "description": task.description}
 
+    # One argument list for both: they take the same arguments. Python 3.13 strips a
+    # docstring's indentation, so it is read from the docstring rather than assumed.
+    head, pad, args = re.split(r"\n( *)Args:", spawn_agent.__doc__ or "", maxsplit=1)
+    args = args.rstrip() + textwrap.indent(KIND_ARG_DOC, pad + "    ")
     for delegate in (spawn_agent, spawn_agent_background):
-        head, _, args = (delegate.__doc__ or "").partition("        Args:")
-        delegate.__doc__ = f"{head}        Configured models: {models_note}.\n\n        Args:{args}"
+        head = re.split(r"\n *Args:", delegate.__doc__ or "", maxsplit=1)[0].rstrip()
+        models = f"{pad}Configured models: {models_note}."
+        delegate.__doc__ = f"{head}\n\n{models}\n\n{pad}Args:{args.rstrip()}\n{pad}"
     return [
         tool_metadata(spawn_agent, risk_category="READ", category="subagents"),
         tool_metadata(spawn_agent_background, risk_category="READ", category="subagents"),

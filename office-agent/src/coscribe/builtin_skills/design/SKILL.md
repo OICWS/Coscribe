@@ -75,14 +75,34 @@ after the page's own styles, and the person can change them on the canvas, so:
 ## Inside a page
 
 - Self-contained: styles in `<style>`, scripts inline. Fonts are local stacks (`'Segoe UI',
-  system-ui, sans-serif`; `Georgia, serif`). Pictures are inline `<svg>` or `data:` URIs; draw
-  illustrations, icons and charts as SVG.
+  system-ui, sans-serif`; `Georgia, serif`). Draw illustrations, icons and charts as inline SVG.
+- A picture file (a logo, a photo the person gave) is copied into the canvas folder with
+  `copy_file` and named by its file name, `<img src="logo.svg" alt="Acme">`; the app puts it
+  in. Nothing loads from outside the canvas folder.
+- When the first message lists a design system's pictures (`brand/...`), use its logo on the
+  artboards where a brand belongs (a header, a cover, a footer), the variant its note asks for;
+  never redraw, recolour or stretch it. look_at_page says when no artboard places it.
 - A script may make the page work when the person presses Play: tabs, a menu that opens, a form
   that checks its fields. It reaches nothing outside the page.
 - Text a person might change is real text in the page, not drawn into an SVG.
 - The canvas shows the artboards light or dark as the person switches. Give a page its dark look
   in `@media (prefers-color-scheme: dark)` or under `:root[data-theme="dark"]`, with the surface
   and text colours there; a design that is only light or only dark needs neither.
+
+## Parts several artboards share
+
+What appears on several artboards the same way (a tab bar, a header, a cart bar, a footer) is a
+part: write it once, so a change to it shows on every artboard.
+
+- Write the part as `name.part.html` in the canvas folder: the elements only, no `<html>`, `<head>`
+  or `<body>`, with its own `<style>` if it needs one (prefix its classes, `tabbar-`, since they
+  share the page with the artboard's).
+- Place it in a page with `<coscribe-part name="name"></coscribe-part>`, empty, where it goes. The
+  app fills it in, laid out as if its elements were written there.
+- A part does not place parts. What differs per artboard (the active tab) is styled by the page,
+  for example `body[data-tab="cart"] .tabbar-cart { color: var(--brand) }`.
+- To change a part, write its file again. The person's edits to a part's elements in the panel
+  are written into the part's file, and you are told which file, as for a page.
 
 ## Clickable prototypes
 
@@ -113,6 +133,8 @@ detail at small sizes instead of shrinking it.
   (`feDropShadow`, `dy` about 6% of the height, low opacity) gives depth without an outline.
 - Convert a logo's text to paths. Also write each finished drawing as its own `.svg` beside the
   canvas, so the person can use it elsewhere.
+- The person can export any artboard as a PNG, and a square one as a Windows icon, from the
+  canvas's Export. For an app icon, give each option its own square artboard (128 or 256).
 
 ## Changing a design
 
@@ -121,9 +143,9 @@ detail at small sizes instead of shrinking it.
   file before you write it, and keep every board's `x`, `y`, `width` and `height`, the variables'
   values and the `notes` as they are, unless you are asked to change them. A note is the person's
   comment on the design: do what it asks, then leave it unless they say to remove it.
-- The person can also change an element's text, size, colours, spacing or font size in the
-  canvas's properties panel, which writes it into the page as the element's own `style`
-  attribute; you are told which page at your next turn. Read that page before you write it, and
+- The person can also change an element's text or any of its style properties in the canvas's
+  properties panel, which writes it into the page as the element's own `style` attribute; you
+  are told which page at your next turn. Read that page before you write it, and
   keep those changes unless you are asked to undo them.
 - To add an option, add a page and a board; to drop one, remove its board (and say so).
 
@@ -135,6 +157,6 @@ and text past a board's edge. Fix what it reports and what you see in the pictur
 into other text, a block crowding the footer, a colour that hides text), then look again; two rounds
 are usually enough. If it says there is no browser to draw with, say you could not look.
 
-Also check that every board's `file` exists, that every `var(--...)` a page uses is a variable of the
-canvas or defined in the page, that every SVG id you refer to exists, and that nothing loads from
-the network. Say the canvas's file name and one line per artboard; do not describe the shapes.
+Also check that every board's `file` exists, that every part a page places has its `.part.html`,
+that every `var(--...)` a page uses is a variable of the canvas or defined in the page, that every
+SVG id you refer to exists, and that nothing loads from the network. Say the canvas's file name and one line per artboard; do not describe the shapes.

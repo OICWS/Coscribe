@@ -23,6 +23,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, BinaryIO
+from urllib.parse import quote
 
 from .._output_truncation import truncate_script_output
 from . import isolation as _isolation
@@ -198,6 +199,11 @@ class Detachable:
     thread_id: str
     hand_off: HandOff
 
+    def cut_output_dir(self, state_dir: Path) -> Path:
+        """Where this conversation's cut script output is kept whole. Its file tools may read
+        it (coordinator.py), so the model can search what a cut left out."""
+        return Path(state_dir) / "script-output" / quote(self.thread_id, safe="")
+
 
 @dataclass
 class Ran:
@@ -207,6 +213,16 @@ class Ran:
     timed_out: bool = False
     # What the tool returns when the command was let go on in the background.
     detached: dict[str, object] | None = None
+
+
+def timed_out_result(ran: Ran, timeout: float, keep: Path | None) -> dict[str, object]:
+    return {
+        "exit_code": None,
+        "stdout": truncate_script_output(ran.stdout, keep),
+        "stderr": truncate_script_output(ran.stderr, keep, "stderr")
+        + f"\n[timed out after {timeout}s]",
+        "timed_out": True,
+    }
 
 
 def run_to_end(
@@ -248,10 +264,11 @@ def run_to_end(
                 "output_so_far": truncate_script_output(so_far),
                 "note": (
                     "The user moved this command to the background. It keeps running and its "
-                    "task shows in the Background tasks panel. Don't check it again and again: "
-                    "go on with other work, or, if you need its result before you can go on, "
-                    "end this turn with wake_on_task(task_id, reason) (through use_tool) and "
-                    "you are resumed when it finishes."
+                    "task shows in the Background tasks panel. When it ends, its outcome and "
+                    "the end of its output come to you in a message of their own, so don't "
+                    "check it again and again: go on with other work, or, if you need its "
+                    "result before you can go on, tell the user what you're waiting for and "
+                    "end your turn."
                 ),
             },
         )

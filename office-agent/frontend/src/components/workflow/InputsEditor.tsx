@@ -5,6 +5,7 @@ import { IDENTIFIER } from "../../lib/workflowEdit";
 import type { WorkflowInput } from "../../types/workflow";
 import { AddRowButton, AutoTextarea, RemoveButton } from "./fields";
 import { InputValueControl } from "./InputValueControl";
+import { SelectMenu } from "../SelectMenu";
 import { SectionHeading, VarToken } from "./parts";
 
 interface Row extends WorkflowInput {
@@ -70,18 +71,13 @@ function TypeSelect({
   onChange: (type: WorkflowInput["type"]) => void;
 }) {
   return (
-    <select
-      aria-label={`Input ${index + 1} type`}
-      className={`${controlClass} min-w-0`}
+    <SelectMenu
+      ariaLabel={`Input ${index + 1} type`}
+      variant="field"
       value={value}
-      onChange={(e) => onChange(e.target.value as WorkflowInput["type"])}
-    >
-      {Object.entries(INPUT_TYPE_LABEL).map(([type, label]) => (
-        <option key={type} value={type}>
-          {label}
-        </option>
-      ))}
-    </select>
+      options={Object.entries(INPUT_TYPE_LABEL).map(([type, label]) => ({ value: type as WorkflowInput["type"], label }))}
+      onChange={onChange}
+    />
   );
 }
 

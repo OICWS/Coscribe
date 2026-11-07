@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from ..runtime import tool_metadata
-from ..tools import WorkspaceScope
+from ..tools import DesignSystemStore, WorkspaceScope
 from .dashboard import is_dashboard, render_dashboard
 from .design_canvas import (
     BOARD_INSPECTOR,
@@ -22,12 +22,16 @@ from .design_canvas import (
     canvas_of_page,
     in_scheme,
     is_canvas,
+    placed_pictures,
     read_canvas,
     variables_style,
+    with_parts,
+    with_pictures,
 )
 from .page_shot import PageShotError, shoot_page
 
 _MAX_BOARDS = 4
+_ICON_SIZES = (16, 24, 32, 48, 64, 128, 256)
 _MAX_SIDE = 1568
 _PAGE_SIZE = (1280, 800)
 _LONGEST_PAGE = 4000
@@ -35,12 +39,14 @@ _LONGEST_PAGE = 4000
 
 def served_page(page: Path, body: bytes, scheme: str | None = None) -> bytes:
     """A page as the app serves it to its frame: a dashboard with its data and chart library, an
-    artboard with its canvas's variables last in its head, its links to other artboards handed to
-    the panel and the panel's inspector, in a scheme when one is asked for."""
+    artboard with the parts it places and the picture files it names filled in, its canvas's
+    variables last in its head, its links to other artboards handed to the panel and the panel's
+    inspector, in a scheme when one is asked for."""
     if is_dashboard(body):
         body = render_dashboard(page, body)
     canvas = canvas_of_page(page)
     if canvas is not None:
+        body = with_pictures(page, with_parts(page, body))
         try:
             style = variables_style(read_canvas(canvas)) + BOARD_LINKS + BOARD_INSPECTOR
         except CanvasError:
@@ -48,6 +54,42 @@ def served_page(page: Path, body: bytes, scheme: str | None = None) -> bytes:
         end = body.lower().find(b"</head>")
         body = body[:end] + style + body[end:] if end >= 0 else style + body
     return in_scheme(body, scheme) if scheme else body
+
+
+class NotSquare(PageShotError):
+    """An icon asked of an artboard that is not square."""
+
+
+def export_board(page: Path, kind: str, scheme: str | None = None) -> bytes:
+    """An artboard's page as a file to keep: a PNG at twice its size, or, for a square board (a
+    logo, an icon), an .ico holding it at the sizes Windows asks for. Drawn as the app serves it,
+    in the computer's own browser."""
+    from PIL import Image
+
+    canvas = canvas_of_page(page)
+    try:
+        boards = read_canvas(canvas)["boards"] if canvas is not None else []
+    except CanvasError as exc:
+        raise PageShotError(str(exc)) from exc
+    board = next((b for b in boards if b["file"].lower() == page.name.lower()), None)
+    if board is None:
+        raise PageShotError("Only an artboard of a canvas is exported here")
+    width, height = int(board["width"]), int(board["height"])
+    if kind == "ico" and width != height:
+        raise NotSquare("An icon is made from a square artboard")
+    # An icon's largest size is 256 px; a smaller board is drawn denser to reach it.
+    scale = 2 if kind == "png" else max(1, min(4, -(-256 // width)))
+    shot = shoot_page(
+        served_page(page, page.read_bytes(), scheme), width, height, fixed=True, scale=scale
+    )
+    if kind == "png":
+        return shot.png
+    out = BytesIO()
+    with Image.open(BytesIO(shot.png)) as image:
+        side = min(image.size)
+        sizes = [(s, s) for s in _ICON_SIZES if s <= side] or [(side, side)]
+        image.convert("RGBA").save(out, format="ICO", sizes=sizes)
+    return out.getvalue()
 
 
 def _smaller(png: bytes) -> bytes:
@@ -92,8 +134,30 @@ def _targets(file: Path, board: str | None) -> tuple[list[dict[str, Any]], list[
     return chosen, [b["id"] for b in boards[_MAX_BOARDS:]]
 
 
-def build_page_tools(scope: Callable[[], WorkspaceScope]) -> list[Callable[..., Any]]:
-    """`look_at_page`, read only and deferred like the other non-core tools (0001)."""
+def _logo_note(file: Path, state_dir: str | Path, thread_id: str) -> str | None:
+    """For a canvas: the note when the conversation's system has a logo and no artboard (all of
+    them, not only those drawn this time) places it."""
+    if not is_canvas(file):
+        return None
+    folder = canvas_folder(file)
+    placed: set[str] = set()
+    for board in read_canvas(file)["boards"]:
+        page = folder / board["file"]
+        if page.is_file():
+            placed |= placed_pictures(page, with_parts(page, page.read_bytes()))
+    return DesignSystemStore(state_dir).unplaced_logo_for_thread(
+        thread_id, placed, where="artboard", folder="canvas folder"
+    )
+
+
+def build_page_tools(
+    scope: Callable[[], WorkspaceScope],
+    state_dir: str | Path | None = None,
+    thread_id: str | None = None,
+) -> list[Callable[..., Any]]:
+    """`look_at_page`, read only and deferred like the other non-core tools (0001). With the
+    conversation (`state_dir`, `thread_id`), a canvas is also checked for the logo of the library
+    system the conversation started with."""
 
     def look_at_page(
         path: str, board: str | None = None, scheme: str | None = None
@@ -137,6 +201,8 @@ def build_page_tools(scope: Callable[[], WorkspaceScope]) -> list[Callable[..., 
         summary: dict[str, Any] = {"path": path, "pages": pages}
         if not_shown:
             summary["not_shown"] = not_shown
+        if state_dir is not None and thread_id and (note := _logo_note(file, state_dir, thread_id)):
+            summary["design_system"] = note
         return [{"type": "text", "text": json.dumps(summary, ensure_ascii=False)}, *images]
 
     return [tool_metadata(look_at_page, risk_category="READ", category="documents")]

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ElementChange, InspectedElement } from "../../lib/boardInspector";
+import { partNote, type ElementChange, type InspectedElement } from "../../lib/boardInspector";
 
 const SECTIONS: [string, [string, string][]][] = [
   [
@@ -35,7 +35,7 @@ const SECTIONS: [string, [string, string][]][] = [
   ],
 ];
 
-// What the panel writes back (`board_edits.EDITABLE` on the server); the rest only reads.
+// What the Properties tab writes back by eye; the Code tab writes any property.
 const EDITABLE = new Set(["width", "height", "font-size", "font-weight", "color", "background-color", "border-radius", "padding", "gap", "opacity"]);
 // Values that say nothing about the element: a reader scans what was set, not every default.
 const SAYS_NOTHING = new Set(["", "normal", "none", "0px", "static", "rgba(0, 0, 0, 0)", "1", "auto"]);
@@ -105,12 +105,18 @@ export function ElementProperties({ element, problem, onEdit }: { element: Inspe
   const style = (name: string) => (value: string) => onEdit({ style: { [name]: value } });
   return (
     // Keyed by the element and its values, so a field shows the page again after a save.
-    <div key={`${element.path}|${JSON.stringify(element.computed)}|${element.content}`} className="divide-y divide-[var(--border)]">
+    <fieldset
+      key={`${element.path}|${JSON.stringify(element.computed)}|${element.content}`}
+      // The element that places a part is laid out as if it were not there; its elements are edited.
+      disabled={element.tag === "coscribe-part"}
+      className="min-w-0 divide-y divide-[var(--border)] disabled:[&_input]:opacity-60 disabled:[&_textarea]:opacity-60"
+    >
       {problem && (
         <p role="alert" className="px-3 py-2 text-[13px] text-[var(--danger)]">
           {problem}
         </p>
       )}
+      {element.part && !problem && <p className="px-3 py-2 text-[13px] text-[var(--muted)]">{partNote(element.part)}</p>}
       {element.content !== null && (
         <section className="px-3 py-2">
           <h3 className="mb-1 text-[13px] font-semibold">Text</h3>
@@ -137,6 +143,6 @@ export function ElementProperties({ element, problem, onEdit }: { element: Inspe
           </section>
         );
       })}
-    </div>
+    </fieldset>
   );
 }

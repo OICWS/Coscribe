@@ -669,7 +669,7 @@ function App() {
   const onSendComment = useCommentSender(threadId, state.items, state.turnInFlight, (text) => onSend({ displayText: text, outgoingText: text, isInstant: false }));
 
   const steers = useSteerNotes(state, dispatch, (message) => socketRef.current?.send(message), setPendingComposerText, onSend);
-  const { steer: onSteer, stop: onStop } = steers;
+  const { steer: onSteer, stop: onStop, stopping } = steers;
 
   const onEditMessage = (turnIndex: number, text: string) => {
     dispatch({ type: "local_edit_message", turnIndex, text });
@@ -824,7 +824,7 @@ function App() {
       }
       onSend={onSend}
       onSteer={onSteer}
-      onStop={onStop}
+      onStop={onStop} stopping={stopping}
       onLocalError={onLocalError}
       externalImage={pendingBrowserCapture}
       onExternalImageConsumed={() => setPendingBrowserCapture(null)}

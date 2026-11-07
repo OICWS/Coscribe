@@ -18,21 +18,11 @@ import os
 import re
 from pathlib import Path
 
-from .design_canvas import canvas_of_page
+from .design_canvas import PART_SUFFIX, canvas_of_page
 
-# What the panel edits: the properties a person changes by eye. Layout and position stay coscribe's.
-EDITABLE = (
-    "width",
-    "height",
-    "font-size",
-    "font-weight",
-    "color",
-    "background-color",
-    "border-radius",
-    "padding",
-    "gap",
-    "opacity",
-)
+# A property name as CSS writes one, custom properties (`--brand`) included: nothing that could
+# end the declaration or the attribute.
+_PROPERTY = re.compile(r"(?:--)?-?[a-z][a-z0-9-]{0,60}")
 _VOID = {
     "area", "base", "br", "col", "embed", "hr", "img", "input",
     "link", "meta", "param", "source", "track", "wbr",
@@ -79,14 +69,15 @@ class _Locator:
     """Walks the source's tags and keeps, for the element at `path`, where its start tag and its
     content lie."""
 
-    def __init__(self, path: list[int]) -> None:
+    def __init__(self, path: list[int], *, fragment: bool = False) -> None:
         self.want = path
         self.stack: list[tuple[_Element, list[int] | None]] = []
         self.found: _Element | None = None
-        self.body_seen = False
+        self.body_seen = fragment
         # Without a body tag the browser makes one at the first element a head cannot hold; the
-        # top-level elements from there on are its children.
-        self.implied: _Element | None = None
+        # top-level elements from there on are its children. A part's file is filled into its
+        # placing element whole, so every top-level element of it, a style too, is a child.
+        self.implied: _Element | None = _Element("part", 0, 0) if fragment else None
 
     def walk(self, source: str) -> None:
         at = 0
@@ -139,20 +130,46 @@ class _Locator:
                 return
 
 
-def _locate(source: str, path: str) -> _Element:
+def _indexes(path: str) -> list[int]:
     try:
-        indexes = [int(part) for part in path.split(".")] if path else []
+        return [int(part) for part in path.split(".")] if path else []
     except ValueError:
         raise BoardEditError(
             "That element's place in the page is not one the panel gives"
         ) from None
-    locator = _Locator(indexes)
+
+
+def _locate(source: str, indexes: list[int], *, fragment: bool = False) -> _Element:
+    locator = _Locator(indexes, fragment=fragment)
     locator.walk(source)
     if not locator.body_seen:
         raise BoardEditError("The page has no body element, so its elements cannot be edited here")
     if locator.found is None or locator.found.end is None:
         raise BoardElementChanged("The page changed since the element was picked; pick it again")
     return locator.found
+
+
+_PART_NAME = re.compile(r"""\sname\s*=\s*["']?([\w-]{1,64})""", re.IGNORECASE)
+
+
+def board_edit_file(page: Path, path: str) -> tuple[Path, list[int]]:
+    """The file an edit of the element at `path` goes into, and the element's place in it: the
+    page itself, or the part a page places when the element is inside it (the served page fills
+    the part in, `with_parts`; the page's source holds only the empty element that places it)."""
+    indexes = _indexes(path)
+    source = page.read_text(encoding="utf-8")
+    for end in range(len(indexes), 0, -1):
+        locator = _Locator(indexes[:end])
+        locator.walk(source)
+        if locator.found is None:
+            continue
+        if locator.found.tag != "coscribe-part":
+            break
+        name = _PART_NAME.search(source[locator.found.start : locator.found.start_end])
+        if end == len(indexes) or name is None:
+            raise BoardEditError("A placed part is changed through the elements inside it")
+        return page.parent / f"{name.group(1)}{PART_SUFFIX}", indexes[end:]
+    return page, indexes
 
 
 def _collapsed(text: str) -> str:
@@ -190,18 +207,25 @@ def edit_board_element(
     text: str | None = None,
     text_before: str | None = None,
 ) -> str:
-    """Write one element's change into the page and say what changed, in a line for coscribe.
-    An empty style value removes that property from the element's own style."""
+    """Write one element's change into the page (or the part it is in, `board_edit_file`) and say
+    what changed, in a line for coscribe. An empty style value removes that property from the
+    element's own style."""
     if canvas_of_page(page) is None:
         raise BoardEditError("Only an artboard's page is edited from the canvas")
     style = style or {}
     for name, value in style.items():
-        if name not in EDITABLE:
-            raise BoardEditError(f"{name} is not edited from the panel")
+        if not _PROPERTY.fullmatch(name):
+            raise BoardEditError(f"{name!r} is not a CSS property name")
         if value and not _VALUE.fullmatch(value.strip()):
             raise BoardEditError(f"{value!r} is not a value the panel writes")
-    source = page.read_text(encoding="utf-8")
-    element = _locate(source, path)
+    file, indexes = board_edit_file(page, path)
+    try:
+        source = file.read_text(encoding="utf-8")
+    except OSError:
+        raise BoardElementChanged(
+            "The page changed since the element was picked; pick it again"
+        ) from None
+    element = _locate(source, indexes, fragment=file is not page)
     if element.tag != tag.lower():
         raise BoardElementChanged("The page changed since the element was picked; pick it again")
     inner = source[element.start_end : element.end]
@@ -227,7 +251,7 @@ def edit_board_element(
             source[: element.start_end] + html.escape(text, quote=False) + source[element.end :]
         )
         said.append(f"text to {text[:60]!r}")
-    page.write_text(source, encoding="utf-8")
+    file.write_text(source, encoding="utf-8")
     return f"<{tag}> {_collapsed(inner)[:40]!r}: {'; '.join(said)}"
 
 
@@ -249,6 +273,30 @@ def remember_board_edit(page: Path, said: str, state_dir: Path) -> None:
     edits.append({"page": page.name, "edit": said})
     record.parent.mkdir(parents=True, exist_ok=True)
     record.write_text(json.dumps(edits, ensure_ascii=False), encoding="utf-8")
+
+
+def note_board_undo(page: Path, said: str, state_dir: Path, *, redone: bool = False) -> None:
+    """An edit undone (or, `redone`, an undo taken back) that coscribe has not been told of cancels
+    out of the note; one it was told of is reported, since its page has changed again."""
+    canvas = canvas_of_page(page)
+    if canvas is None:
+        return
+    record = _record(canvas, state_dir)
+    try:
+        edits = json.loads(record.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        edits = []
+    undone, done = {"page": page.name, "edit": f"undid {said}"}, {"page": page.name, "edit": said}
+    cancels, adds = (undone, done) if redone else (done, undone)
+    if edits and edits[-1] == cancels:
+        edits.pop()
+    else:
+        edits.append(adds)
+    if edits:
+        record.parent.mkdir(parents=True, exist_ok=True)
+        record.write_text(json.dumps(edits, ensure_ascii=False), encoding="utf-8")
+    else:
+        record.unlink(missing_ok=True)
 
 
 def board_edits_since_told(canvas: Path, state_dir: Path) -> list[dict[str, str]]:

@@ -59,3 +59,48 @@ def test_a_new_system_needs_a_name_and_an_id_must_exist(tmp_path: Path) -> None:
         save(overview="x")
     with pytest.raises(DesignSystemError, match="no design system"):
         save(system_id="0123456789", name="x")
+
+
+def _png(width: int, height: int, colour: str = "#0F766E") -> bytes:
+    import io
+
+    from PIL import Image
+
+    out = io.BytesIO()
+    Image.new("RGB", (width, height), colour).save(out, "PNG")
+    return out.getvalue()
+
+
+def test_pictures_the_user_attached_are_added_once_each(tmp_path: Path) -> None:
+    (tmp_path / "logo.png").write_bytes(_png(40, 20))
+    (tmp_path / "mark.png").write_bytes(_png(16, 16, "#F59E0B"))
+    save = build_design_system_tools(tmp_path / "state", tmp_path)[0]
+    made = save(name="Acme", assets=[{"file": "logo.png", "kind": "logo", "note": "light"}])
+
+    again = save(
+        system_id=made["id"],
+        assets=[{"file": "logo.png", "kind": "logo"}, {"file": "mark.png", "kind": "icon"}],
+    )
+
+    assets = DesignSystemStore(tmp_path / "state").get(made["id"])["assets"]
+    assert [(a["name"], a["kind"], a["note"]) for a in assets] == [
+        ("logo", "logo", "light"),
+        ("mark", "icon", ""),
+    ]
+    assert again["summary"].endswith(", 2 pictures")
+
+
+def test_a_picture_that_cant_be_taken_leaves_no_half_made_system(tmp_path: Path) -> None:
+    (tmp_path / "notes.txt").write_text("not a picture", encoding="utf-8")
+    save = build_design_system_tools(tmp_path / "state", tmp_path)[0]
+    for file, problem in (
+        ("notes.txt", "SVG, PNG, JPEG or WebP"),
+        ("gone.png", "not a file that can be read"),
+        ("../outside.png", "not a file that can be read"),
+        ("notes.txt#word/media/image1.png", "deck.pptx#ppt/media"),
+    ):
+        with pytest.raises(DesignSystemError, match=problem):
+            save(name="Acme", assets=[{"file": file, "kind": "logo"}])
+    with pytest.raises(DesignSystemError, match="add them in Settings"):
+        _save(tmp_path / "other")(name="Acme", assets=[{"file": "logo.png"}])
+    assert DesignSystemStore(tmp_path / "state").list_systems() == []

@@ -9,8 +9,10 @@
     "letter-spacing", "text-align", "text-transform", "white-space"];
   var SHOWN = ["display", "position", "flex-direction", "justify-content", "align-items", "gap",
     "padding", "margin", "font-family", "font-size", "font-weight", "line-height", "color",
-    "background-color", "border-radius", "opacity"];
+    "background-color", "border-radius", "opacity", "font-style", "letter-spacing", "text-align",
+    "text-transform"];
   var MAX_NODES = 400;
+  var hiddenColor = {};
 
   function pathOf(el) {
     var parts = [];
@@ -32,6 +34,7 @@
 
   function kindOf(el) {
     var tag = el.tagName.toLowerCase();
+    if (tag === "coscribe-part") return "Part";
     if (/^(img|svg|picture|canvas|video)$/.test(tag)) return "Image";
     var style = getComputedStyle(el);
     if (style.display.indexOf("flex") >= 0) return style.flexDirection.indexOf("column") === 0 ? "Column" : "Row";
@@ -60,7 +63,9 @@
           if (!skipped(el.children[i])) children.push(node(el.children[i]));
         }
       }
-      return { path: pathOf(el), tag: el.tagName.toLowerCase(), kind: kind, text: textOf(el), children: children };
+      var item = { path: pathOf(el), tag: el.tagName.toLowerCase(), kind: kind, text: textOf(el), children: children };
+      if (kind === "Part") item.text = el.getAttribute("name") || "";
+      return item;
     }
     return node(document.body);
   }
@@ -158,6 +163,9 @@
       computed: computed,
       rules: rules,
       inherited: inherited(el),
+      // A part several artboards share is filled in by the server; its elements are not in this
+      // page's source.
+      part: el.closest && el.closest("coscribe-part") ? el.closest("coscribe-part").getAttribute("name") : null,
     };
   }
 
@@ -169,6 +177,18 @@
       var el = data.coscribe === "inspect-pick" ? document.elementFromPoint(Number(data.x), Number(data.y)) : byPath(data.path);
       while (el && el.closest && el.closest("svg") && el.tagName.toLowerCase() !== "svg") el = el.parentElement;
       parent.postMessage({ coscribe: "inspect-element", element: describe(el) }, "*");
+    } else if (data.coscribe === "inspect-hide-text") {
+      // The app draws the text being edited over the element; the page's own copy stays in the
+      // layout, unseen, so nothing around it moves.
+      var target = byPath(data.path);
+      if (!target) return;
+      if (data.hidden) {
+        if (!(data.path in hiddenColor)) hiddenColor[data.path] = target.style.getPropertyValue("color");
+        target.style.setProperty("color", "transparent");
+      } else if (data.path in hiddenColor) {
+        target.style.setProperty("color", hiddenColor[data.path]);
+        delete hiddenColor[data.path];
+      }
     }
   });
 })();

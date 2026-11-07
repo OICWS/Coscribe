@@ -14,6 +14,9 @@ from coscribe.web.routes import artifacts as artifact_routes
 
 from .helpers import FakeToolCallingChatModel, _client_lg, _run_turn, _tool_call
 
+# A turn that wrote "x" into an Office file hears that it doesn't open, and answers again.
+_DONE_TWICE = [AIMessage(content="done"), AIMessage(content="done")]
+
 
 def _made(*paths: str) -> AIMessage:
     calls = [
@@ -31,9 +34,9 @@ def test_the_artifacts_route_lists_what_the_conversations_created_lg(
             # A lock file PowerPoint leaves, a plain note, and a Word and an Excel file are not
             # artifacts.
             _made("deck.pptx", "report.docx", "numbers.xlsx", "notes.md", "~$deck2.pptx"),
-            AIMessage(content="done"),
+            *_DONE_TWICE,
             _made("later.pptx"),
-            AIMessage(content="done"),
+            *_DONE_TWICE,
         ]
     )
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
@@ -76,7 +79,8 @@ def test_an_artifact_outlives_its_conversation_and_opens_in_a_new_one_lg(
 ) -> None:
     (tmp_path / "workspace").mkdir()
     fake_model = FakeToolCallingChatModel(
-        responses=[_made("report.html", "deck.pptx"), AIMessage(content="done")]
+        # The second "done" answers the note that the "x" deck doesn't open.
+        responses=[_made("report.html", "deck.pptx"), *_DONE_TWICE]
     )
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
         _run_turn(client, "t_one", "make things")
@@ -102,7 +106,7 @@ def test_the_menu_renames_copies_and_deletes_an_artifact_lg(
     sent: list[str] = []
     monkeypatch.setattr("send2trash.send2trash", lambda path: (sent.append(path), None)[1])
     fake_model = FakeToolCallingChatModel(
-        responses=[_made("report.pptx", "plan.pptx"), AIMessage(content="done")]
+        responses=[_made("report.pptx", "plan.pptx"), *_DONE_TWICE]
     )
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
         _run_turn(client, "t_one", "make things")
@@ -139,7 +143,7 @@ def test_a_system_error_is_not_shown_to_the_page_lg(
         raise PermissionError(13, "denied", str(tmp_path / "workspace" / "report.pptx"))
 
     monkeypatch.setattr(artifact_routes, "rename_file", locked)
-    fake_model = FakeToolCallingChatModel(responses=[_made("report.pptx"), AIMessage(content="d")])
+    fake_model = FakeToolCallingChatModel(responses=[_made("report.pptx"), *_DONE_TWICE])
     with _client_lg(tmp_path, monkeypatch, fake_model) as client:
         _run_turn(client, "t_one", "make")
         artifact = client.get("/api/artifacts").json()[0]["id"]
@@ -279,6 +283,18 @@ def test_a_canvas_is_a_design_its_artboards_are_not_and_its_routes_place_them_lg
         stale = client.put(element, json={**edit, "tag": "h1"})
         assert stale.status_code == 409 and "pick it again" in stale.json()["error"]
         assert client.put(element, json={**edit, "page": "nope.html"}).status_code == 404
+        # Undo puts the page back once; a second undo has nothing left.
+        undo = "/api/threads/t_canvas/canvas/element/undo"
+        phone = {"page": "ui.design/phone.html"}
+        steps = "/api/threads/t_canvas/canvas/element/steps"
+        assert client.get(steps, params=phone).json() == {"undo": 1, "redo": 0}
+        assert client.post(undo, json=phone).json() == {"ok": True, "undo": 0, "redo": 1}
+        assert (workspace / "ui.design" / "phone.html").read_text() == "<p>phone</p>"
+        assert client.post(undo, json=phone).status_code == 409
+        redo = "/api/threads/t_canvas/canvas/element/redo"
+        assert client.post(redo, json=phone).json() == {"ok": True, "undo": 1, "redo": 0}
+        assert "color: red" in (workspace / "ui.design" / "phone.html").read_text()
+
         # Any other refusal says so in a fixed text, not the exception's.
         refused = client.put(element, json={**edit, "style": {"color": "red; display: none"}})
         assert refused.status_code == 422
@@ -288,3 +304,47 @@ def test_a_canvas_is_a_design_its_artboards_are_not_and_its_routes_place_them_lg
         assert renamed["name"] == "app"
         assert (workspace / "app.design.json").is_file()
         assert (workspace / "app.design" / "home.html").is_file()
+
+
+def test_an_artboard_is_exported_through_the_route_with_fixed_texts_when_it_cannot_be_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.conversation import NoBrowser, NotSquare
+    from coscribe.web.routes import design as design_routes
+
+    workspace = tmp_path / "workspace"
+    canvas = json.dumps({"boards": [{"id": "mark", "file": "mark.html"}]})
+    writes = [
+        _tool_call("c0", "write_file", {"path": "logo.design.json", "content": canvas}),
+        _tool_call("c1", "write_file", {"path": "logo.design/mark.html", "content": "<p>m</p>"}),
+    ]
+    fake_model = FakeToolCallingChatModel(
+        responses=[AIMessage(content="", tool_calls=writes), AIMessage(content="done")]
+    )
+    asked: list[tuple[str, str, str | None]] = []
+
+    def drawn(page: Path, kind: str, scheme: str | None) -> bytes:
+        asked.append((page.name, kind, scheme))
+        if kind == "ico":
+            raise NotSquare("An icon is made from a square artboard: 1280x800")
+        return b"\x89PNG fake"
+
+    monkeypatch.setattr(design_routes, "export_board", drawn)
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        _run_turn(client, "t_export", "a logo")
+        route = "/api/threads/t_export/canvas/export"
+        got = client.post(route, json={"page": "logo.design/mark.html", "scheme": "dark"})
+        assert (got.status_code, got.headers["content-type"]) == (200, "image/png")
+        assert got.content == b"\x89PNG fake"
+        refused = client.post(route, json={"page": "logo.design/mark.html", "kind": "ico"})
+        assert refused.json() == {"error": "An icon is made from a square artboard"}
+
+        def no_browser(*_: object) -> bytes:
+            raise NoBrowser("No Edge or Chrome on this computer to draw the page with")
+
+        monkeypatch.setattr(design_routes, "export_board", no_browser)
+        missing = client.post(route, json={"page": "logo.design/mark.html"})
+        assert missing.json()["error"].startswith("No Edge or Chrome")
+        assert client.post(route, json={"page": "logo.design/gone.html"}).status_code == 404
+    assert asked == [("mark.html", "png", "dark"), ("mark.html", "ico", None)]
+    assert (workspace / "logo.design" / "mark.html").is_file()

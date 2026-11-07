@@ -1,7 +1,7 @@
 /** What an artboard's page says about its elements (`conversation/board_inspector.js`): the page
  * answers by message, since its frame is sandboxed apart from the app. */
 
-type ElementKind = "Frame" | "Row" | "Column" | "Grid" | "Text" | "Image";
+type ElementKind = "Frame" | "Row" | "Column" | "Grid" | "Text" | "Image" | "Part";
 
 export interface InspectedNode {
   /** Child indexes from the body, dot-separated; the body is "". */
@@ -30,7 +30,13 @@ export interface InspectedElement {
   computed: Record<string, string>;
   rules: InspectedRule[];
   inherited: { from: string; props: [string, string][] }[];
+  /** The part several artboards share that the element is in (or is), filled in by the server: an
+   * edit of it is written into the part's own file. */
+  part: string | null;
 }
+
+/** What an edit to an element of a shared part does. */
+export const partNote = (part: string) => `This is in the shared part “${part}”: a change here shows on every artboard that places it.`;
 
 /** The page's answer to one of the panel's questions, or null for any other message. */
 export function inspectorAnswer(data: unknown): { tree: InspectedNode } | { element: InspectedElement | null } | null {
@@ -71,4 +77,50 @@ export async function editBoardElement(threadId: string, page: string, element: 
     const body = (await response.json().catch(() => null)) as { error?: string } | null;
     throw new Error(body?.error ?? `HTTP ${response.status}`);
   }
+}
+
+/** How many of the panel's edits to a page can be undone and redone. */
+export interface Steps {
+  undo: number;
+  redo: number;
+}
+
+const elementUrl = (threadId: string, action: string) => `/api/threads/${encodeURIComponent(threadId)}/canvas/element/${action}`;
+
+/** Takes back the panel's last edit to the page, or does the last undone one again
+ * (`POST /canvas/element/undo|redo`). Rejects when there is none, or the page was written since. */
+export async function stepBoardElement(threadId: string, page: string, action: "undo" | "redo"): Promise<Steps> {
+  const response = await fetch(elementUrl(threadId, action), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ page }),
+  });
+  const body = (await response.json().catch(() => null)) as (Steps & { error?: string }) | null;
+  if (!response.ok) throw new Error(body?.error ?? `HTTP ${response.status}`);
+  return { undo: body?.undo ?? 0, redo: body?.redo ?? 0 };
+}
+
+/** The steps there are on the page as it is now: none once coscribe has written it since. */
+export async function boardElementSteps(threadId: string, page: string): Promise<Steps> {
+  const response = await fetch(`${elementUrl(threadId, "steps")}?page=${encodeURIComponent(page)}`);
+  if (!response.ok) return { undo: 0, redo: 0 };
+  const body = (await response.json()) as Steps;
+  return { undo: body.undo ?? 0, redo: body.redo ?? 0 };
+}
+
+/** The style typed for an element (`name: value;`, one or more a line) as properties to write: a
+ * property the element had and the text no longer names is removed (an empty value). */
+export function styleChanges(before: [string, string][], typed: string): Record<string, string> {
+  const after = new Map<string, string>();
+  for (const part of typed.split(/;|\n/)) {
+    const at = part.indexOf(":");
+    if (at <= 0) continue;
+    const name = part.slice(0, at).trim();
+    const value = part.slice(at + 1).trim();
+    if (name && value) after.set(name, value);
+  }
+  const changes: Record<string, string> = {};
+  for (const [name] of before) if (!after.has(name)) changes[name] = "";
+  for (const [name, value] of after) if (!before.some(([n, v]) => n === name && v === value)) changes[name] = value;
+  return changes;
 }

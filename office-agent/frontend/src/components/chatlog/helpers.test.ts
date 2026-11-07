@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SummaryParts } from "../../lib/transcriptGrouping";
-import { inSentence, pptxOverlayTargetOf, previewPathOf } from "./helpers";
+import { inSentence, pptxOverlayTargetOf, previewPathOf, splitStopped } from "./helpers";
 
 describe("previewPathOf", () => {
   it("returns the preview_path of a tool result that has one", () => {
@@ -46,5 +46,21 @@ describe("inSentence", () => {
   it("keeps an acronym-led verb's capitals", () => {
     expect(inSentence(parts("PDF"), 2).verb).toBe("PDF");
     expect(inSentence(parts("PDFs read"), 1).verb).toBe("PDFs read");
+  });
+});
+
+describe("splitStopped", () => {
+  it("takes the stop marker off the end of what the model said", () => {
+    expect(splitStopped("Here is part one.\n\n[stopped]")).toEqual({ said: "Here is part one.", stopped: true, running: 0 });
+    expect(splitStopped("[stopped]")).toEqual({ said: "", stopped: true, running: 0 });
+  });
+
+  it("reads how many background tasks the stop left running", () => {
+    const text = "[stopped]\n\n(2 background task(s) still running; stop them in the Background tasks panel.)";
+    expect(splitStopped(text)).toEqual({ said: "", stopped: true, running: 2 });
+  });
+
+  it("leaves a reply that only mentions the marker alone", () => {
+    expect(splitStopped("A [stopped] turn shows a note.")).toEqual({ said: "A [stopped] turn shows a note.", stopped: false, running: 0 });
   });
 });

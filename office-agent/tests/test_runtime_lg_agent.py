@@ -204,6 +204,87 @@ def test_auto_compact_tokens_collapses_a_long_thread_once_past_the_keep_floor() 
     assert any(msg.additional_kwargs.get("lc_source") == "summarization" for msg in messages)
 
 
+_SEEN: list[str] = []
+
+
+class _PromptRecordingModel(_FakeModel):
+    """Keeps the text of every request in `_SEEN` (module level: the summarization middleware
+    calls a copy of the model), so a test can see what the summary call was shown."""
+
+    def _generate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: Any = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        _SEEN.append("\n".join(str(message.content) for message in messages))
+        return super()._generate(messages, stop, run_manager, **kwargs)
+
+
+def _long_thread(open_tasks: Any = None) -> list[BaseMessage]:
+    # About 30 x 500 tokens: far past the 4,000 tokens LangChain's default summarizes.
+    _SEEN.clear()
+    model = _PromptRecordingModel(responses=[AIMessage(content=f"reply {i}") for i in range(40)])
+    agent = build_langgraph_agent(
+        model,
+        [],
+        "be helpful",
+        checkpointer=InMemorySaver(),
+        auto_compact_tokens=12_000,
+        open_tasks=open_tasks,
+    )
+    config = {"configurable": {"thread_id": "t1"}}
+    agent.invoke({"messages": [HumanMessage("Make the Q3 deck from sales-q3.xlsx")]}, config=config)
+    for i in range(30):
+        agent.invoke({"messages": [HumanMessage(f"step {i} " + "x" * 2000)]}, config=config)
+    return list(agent.get_state(config).values["messages"])
+
+
+def test_auto_compact_summary_reads_the_first_request_of_a_long_thread() -> None:
+    messages = _long_thread()
+
+    summary_calls = [text for text in _SEEN if "## Requests" in text]
+    assert summary_calls
+    assert "Make the Q3 deck from sales-q3.xlsx" in summary_calls[0]
+    assert any(m.additional_kwargs.get("lc_source") == "summarization" for m in messages)
+
+
+def test_auto_compact_puts_the_open_tasks_after_the_summary() -> None:
+    note_text = "Open tasks in your plan:\n- [in_progress] 2: Build the chart slide"
+    messages = _long_thread(open_tasks=lambda: note_text)
+
+    note = next(m for m in messages if "Open tasks in your plan" in str(m.content))
+    assert note.content == note_text
+    assert note.additional_kwargs.get("lc_source") == "summarization"
+
+
+def test_old_tool_results_are_cleared_from_the_request_before_compaction() -> None:
+    from coscribe.runtime_lg.context_editing import PLACEHOLDER
+
+    _SEEN.clear()
+    model = _PromptRecordingModel(responses=[AIMessage(content="done")])
+    agent = build_langgraph_agent(
+        model, [], "be helpful", checkpointer=InMemorySaver(), auto_compact_tokens=40_000
+    )
+    history: list[BaseMessage] = [HumanMessage("Summarize the reports")]
+    for i in range(20):
+        call = {"name": "read_file", "args": {"path": f"r{i}.docx"}, "id": f"c{i}"}
+        history.append(AIMessage(content="", tool_calls=[call]))
+        history.append(
+            ToolMessage(f"report {i} " + "x " * 3000, name="read_file", tool_call_id=f"c{i}")
+        )
+    config = {"configurable": {"thread_id": "t1"}}
+
+    agent.invoke({"messages": [*history, HumanMessage("Go on")]}, config=config)
+
+    assert PLACEHOLDER in _SEEN[-1]
+    assert "report 0 " not in _SEEN[-1]
+    assert "report 19 " in _SEEN[-1]
+    kept = agent.get_state(config).values["messages"]
+    assert not any(m.content == PLACEHOLDER for m in kept)
+
+
 def test_auto_compact_tokens_none_means_no_summarization_middleware() -> None:
     """The default (no auto_compact_tokens passed) must not summarize
     anything, even past the 20-message floor -- guards against a regression

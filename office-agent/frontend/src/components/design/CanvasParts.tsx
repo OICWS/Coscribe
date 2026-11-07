@@ -1,4 +1,4 @@
-import { useRef, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useRef, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { designFileUrl } from "../../lib/artifacts";
 import type { CanvasBoard, CanvasNote } from "../../lib/designCanvas";
 import { CursorClickIcon, HandIcon, MoonIcon, PanelRightIcon, PlayIcon, SunIcon } from "../icons";
@@ -123,7 +123,9 @@ export function BoardFrame({
   onPlay,
   onEdit,
   onPick,
+  onEditText,
   highlight,
+  children,
 }: {
   board: CanvasBoard;
   threadId: string;
@@ -137,13 +139,17 @@ export function BoardFrame({
   onEdit: () => void;
   /** A click that did not drag, at a point of the board's page. */
   onPick?: (x: number, y: number) => void;
+  /** A double click, at a point of the board's page. */
+  onEditText?: (x: number, y: number) => void;
   /** The inspected element's box, in the page's pixels. */
   highlight?: { x: number; y: number; width: number; height: number } | null;
+  /** Drawn over the board in the page's pixels, such as text being edited in place. */
+  children?: ReactNode;
 }) {
   const down = useRef<{ x: number; y: number } | null>(null);
   return (
     <div className="absolute" style={{ left: board.x, top: board.y, width: board.width, height: board.height }}>
-      <div className="absolute bottom-full left-0 z-10 mb-1.5 flex origin-bottom-left items-center gap-2" style={{ transform: `scale(${1 / zoom})`, width: board.width * zoom }}>
+      <div className="absolute bottom-full left-0 z-10 mb-2.5 flex origin-bottom-left items-center gap-2" style={{ transform: `scale(${1 / zoom})`, width: board.width * zoom }}>
         <span className={`min-w-0 flex-1 truncate text-[13px] ${selected ? "text-[var(--accent)]" : "text-[var(--muted)]"}`}>{board.title}</span>
         <BoardPlayButton live={live} onPlay={onPlay} onEdit={onEdit} />
       </div>
@@ -167,12 +173,12 @@ export function BoardFrame({
           onClick={(e) => {
             const from = down.current;
             if (!onPick || !from || Math.hypot(e.clientX - from.x, e.clientY - from.y) > 3) return;
-            // The cover is drawn scaled with the canvas; the page's own pixels are the board's.
-            const box = e.currentTarget.getBoundingClientRect();
-            onPick(((e.clientX - box.left) * board.width) / box.width, ((e.clientY - box.top) * board.height) / box.height);
+            onPick(...pagePoint(e, board));
           }}
+          onDoubleClick={(e) => onEditText?.(...pagePoint(e, board))}
         />
       )}
+      {children}
       {highlight && (
         <div
           data-testid="inspected-element"
@@ -182,6 +188,12 @@ export function BoardFrame({
       )}
     </div>
   );
+}
+
+// The cover is drawn scaled with the canvas; the page's own pixels are the board's.
+function pagePoint(e: ReactMouseEvent<HTMLElement>, board: CanvasBoard): [number, number] {
+  const box = e.currentTarget.getBoundingClientRect();
+  return [((e.clientX - box.left) * board.width) / box.width, ((e.clientY - box.top) * board.height) / box.height];
 }
 
 /** A note the person left on the canvas: dragged by its body, its text edited after a double click. */

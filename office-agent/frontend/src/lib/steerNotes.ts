@@ -1,4 +1,4 @@
-import { useEffect, useRef, type Dispatch } from "react";
+import { useEffect, useRef, useState, type Dispatch } from "react";
 import type { ChatAction, ChatState, LogItem } from "../state/reducer";
 import type { WsClientMessage } from "../types/wire";
 
@@ -22,7 +22,10 @@ export function useSteerNotes(
 ) {
   // The unread notes, held until the stopped reply has ended, then sent as a message of their own.
   const afterStop = useRef<string | null>(null);
+  // Stop was pressed and the reply has not ended yet: a model call in flight can take a moment.
+  const [stopping, setStopping] = useState(false);
   useEffect(() => {
+    if (!state.turnInFlight) setStopping(false);
     const text = afterStop.current;
     if (text === null || state.turnInFlight) return;
     afterStop.current = null;
@@ -58,12 +61,28 @@ export function useSteerNotes(
       }
       afterStop.current = text;
       denyApprovals();
+      setStopping(true);
       send({ type: "stop" });
     },
   };
+  const question = state.items.findLast((item) => item.kind === "question" && item.status === "pending");
+  const approval = state.items.findLast((item) => item.kind === "approval" && item.status === "pending");
   return {
     actions,
+    stopping,
+    /** A note for the running reply; while a question or an approval card waits, the reply is
+     * stuck on it, so the text answers the question or denies the call with these words. */
     steer: (text: string) => {
+      if (question) {
+        dispatch({ type: "local_question_answered", id: question.id, answers: [], reply: text });
+        send({ type: "question_response", id: question.id, reply: text });
+        return;
+      }
+      if (approval) {
+        dispatch({ type: "local_approval_resolved", id: approval.id, approved: false, reply: text });
+        send({ type: "approval_response", id: approval.id, approved: false, reply: text });
+        return;
+      }
       const id = `steer-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       dispatch({ type: "local_steer", id, text });
       send({ type: "steer", id, text });
@@ -75,6 +94,7 @@ export function useSteerNotes(
         toComposer(joined(notes));
       }
       denyApprovals();
+      setStopping(true);
       send({ type: "stop" });
     },
   };

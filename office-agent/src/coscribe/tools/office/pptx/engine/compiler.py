@@ -20,6 +20,7 @@ from xml.etree import ElementTree as ET
 from lxml import etree
 from pptx import Presentation
 from pptx.opc.constants import RELATIONSHIP_TYPE as RT
+from pptx.opc.package import Part
 from pptx.util import Emu
 
 from ...._native_svg import pptx_effects
@@ -401,6 +402,19 @@ def _promote_background(root: ET.Element) -> str | None:
     )
 
 
+def _svg_part(slide: Any, data: bytes) -> Part:
+    """python-pptx reads every image part with Pillow, which cannot open an SVG, so the part a
+    picture's svgBlip names is made directly; the same file on many slides is one part."""
+    package = slide.part.package
+    same: Part | None = next(
+        (p for p in package.iter_parts() if p.content_type == "image/svg+xml" and p.blob == data),
+        None,
+    )
+    if same is not None:
+        return same
+    return Part(package.next_partname("/ppt/media/image%d.svg"), "image/svg+xml", package, data)
+
+
 def attach_relationships(
     slide: Any, ctx: ConvertContext, shapes: list[str], report: PageReport
 ) -> list[str]:
@@ -416,7 +430,10 @@ def attach_relationships(
             if data is None:
                 report.errors.append(f"image data missing for {target}")
                 continue
-            _part, new_id = slide.part.get_or_add_image_part(io.BytesIO(data))
+            if target.endswith(".svg"):
+                new_id = slide.part.relate_to(_svg_part(slide, data), RT.IMAGE)
+            else:
+                _part, new_id = slide.part.get_or_add_image_part(io.BytesIO(data))
         elif entry["type"] == RT.HYPERLINK and entry.get("target_mode") == "External":
             new_id = slide.part.relate_to(target, RT.HYPERLINK, is_external=True)
         elif entry["type"].endswith("/chart") or entry["type"].endswith("/chartEx"):

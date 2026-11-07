@@ -1,9 +1,9 @@
 # The model is sent: the system prompt, then the tools bound to it (decision 0001).
 # A change here is a change to what providers cache. UPDATE_TOOL_SCHEMAS=1 rewrites it.
 
-system prompt: 34692 chars, ~8673 tokens, sha256 04a0768afe
+system prompt: 26530 chars, ~6632 tokens, sha256 2a3b246b13
 
-bound to the model: 22 tools, ~4988 tokens
+bound to the model: 22 tools, ~4997 tokens
   ask_user_question (questions:array) desc 1435 chars sha256 e846e64163
   draft_workflow (name?:string) desc 983 chars sha256 e91334c9ee
   edit_file (new_text:string, old_text:string, path:string, replace_all?:boolean) desc 1330 chars sha256 3f5ab0dd7e
@@ -18,7 +18,7 @@ bound to the model: 22 tools, ~4988 tokens
   read_xlsx (path:string, sheet?:string|null) desc 548 chars sha256 299925b715
   revise_workflow (draft_id?:string, request:string, task_id?:string) desc 632 chars sha256 bb65f01516
   search_files (path?:string, pattern?:string, query:string, regex?:boolean) desc 1842 chars sha256 f741658379
-  search_tools (query:string) desc 1831 chars sha256 fe3f8fca2a
+  search_tools (query:string) desc 1868 chars sha256 9331ec0ebd
   task_create (content:string) desc 149 chars sha256 dea506b85f
   task_list () desc 54 chars sha256 7bc88160db
   task_update (status:string, task_id:string) desc 284 chars sha256 e5aa5260b7
@@ -27,7 +27,7 @@ bound to the model: 22 tools, ~4988 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 120 tools, ~37312 tokens (the ones not bound are found through search_tools)
+registered: 120 tools, ~37705 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -44,7 +44,7 @@ registered: 120 tools, ~37312 tokens (the ones not bound are found through searc
   ask_user_question | READ | interaction | core | sha256 9d692cba1a
   build_pptx_from_pages | WRITE_LOCAL | documents | deferred | sha256 9c239d3393
   cancel_wake | WRITE_LOCAL | selfwake | deferred | sha256 ff3c53d9ec
-  check_background_task | READ | background_tasks | deferred | sha256 1fe786e922
+  check_background_task | READ | background_tasks | deferred | sha256 1dfa7b1960
   check_pptx_delivery | READ | documents | deferred | sha256 a52eddb3b5
   check_subagent_task | READ | subagent_tasks | deferred | sha256 3a7ed67fac
   convert_office_file | WRITE_LOCAL | documents | deferred | sha256 0ce017a5dd
@@ -101,7 +101,7 @@ registered: 120 tools, ~37312 tokens (the ones not bound are found through searc
   read_file | READ | filesystem | core | sha256 ee32c83a8a
   read_pdf | READ | documents | core | sha256 3366cc72e1
   read_pptx | READ | documents | core | sha256 c8c3ef7f3e
-  read_pptx_design | READ | documents | deferred | sha256 17efa1a7b8
+  read_pptx_design | READ | documents | deferred | sha256 b98ba9ddd3
   read_pptx_theme_colors | READ | documents | deferred | sha256 b3ee322f96
   read_pptx_xml | READ | documents | deferred | sha256 001495249e
   read_skill_file | READ | skills | deferred | sha256 641b92cec5
@@ -110,6 +110,7 @@ registered: 120 tools, ~37312 tokens (the ones not bound are found through searc
   recalc_xlsx | WRITE_LOCAL | documents | deferred | sha256 552e3332e2
   recolor_pptx_icon | WRITE_LOCAL | documents | deferred | sha256 c79f3aa354
   reject_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 625975143d
+  remember | READ | interaction | deferred | sha256 d0e2643e11
   render_pptx_preview | READ | documents | deferred | sha256 ae8d4ec268
   reorder_pptx_slide | WRITE_LOCAL | documents | deferred | sha256 3529565f4d
   replace_docx_text | WRITE_LOCAL | documents | deferred | sha256 d3ce81d157
@@ -117,8 +118,8 @@ registered: 120 tools, ~37312 tokens (the ones not bound are found through searc
   resume_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 3d546c3215
   review_work | READ | - | deferred | sha256 3d07d2b688
   revise_workflow | READ | - | core | sha256 bb65f01516
-  run_background_command | EXEC | background_tasks | deferred | sha256 43b2112c55
-  run_background_script | EXEC | background_tasks | deferred | sha256 b25440fc4b
+  run_background_command | EXEC | background_tasks | deferred | sha256 582eadae68
+  run_background_script | EXEC | background_tasks | deferred | sha256 0123eabd3a
   run_node_script | EXEC | scripts | deferred | sha256 5751fc83e2
   run_python_script | EXEC | scripts | deferred | sha256 ef3b4aefb3
   save_design_system | WRITE_LOCAL | documents | deferred | sha256 d18de047b0
@@ -141,7 +142,6 @@ registered: 120 tools, ~37312 tokens (the ones not bound are found through searc
   task_update | READ | tasks | core | sha256 7e9e92c5a1
   test_workflow | EXTERNAL | workflows | core | sha256 4732f34b60
   wake_on_event | WRITE_LOCAL | selfwake | deferred | sha256 49123abfdf
-  wake_on_task | WRITE_LOCAL | selfwake | deferred | sha256 246c6a0f4f
   web_search | READ | web | core | sha256 8ae68add7a
   write_docx | WRITE_LOCAL | documents | deferred | sha256 dbe18710bc
   write_file | WRITE_LOCAL | filesystem | core | sha256 509ae7daba

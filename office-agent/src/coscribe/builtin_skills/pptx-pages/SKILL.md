@@ -274,7 +274,10 @@ material, in the workspace, or inside a deck they gave you (read_pptx lists them
 the pages folder with run_python_script: a python-pptx picture's `image.blob`, `image.ext`). Without them, and only when the
 deck's style is built on photographs, search_licensed_images (an English query, orientation
 "landscape") returns openly licensed images; download_image the chosen one into the pages folder.
-Never search_images for a deck: its results carry no licence. Place a photo with
+Never search_images for a deck: its results carry no licence. When the first message lists a
+design system's pictures (`brand/...`), copy_file its logo into the pages folder and place it with
+`<image href="logo.svg" x y width height/>` where its note says (a cover, a closing slide, a small
+mark in a corner), never redrawn, recoloured or stretched; the build warns when no page places it. Place a photo with
 `<image href="store.jpg" x y width height preserveAspectRatio="xMidYMid slice"/>` (cropped to
 fill its box), text over it only on a dark scrim, and for an "attribution-required" result its
 `attribution_text` as a 13-14 px credit line on the same page. One search per photo, at most

@@ -164,6 +164,15 @@ test("the properties panel shows an artboard's elements and the style of the one
   await expect(panel.getByText("gap: 12px;")).toBeVisible();
   await expect(panel.getByText("From <body>")).toBeVisible();
 
+  // The Code tab writes any property into the element's own style; undo takes it back.
+  const own = panel.getByLabel("This element's style");
+  await own.fill("letter-spacing: 2px;");
+  await own.press("Control+Enter");
+  await expect(page.frameLocator('iframe[title="Card"]').locator(".row")).toHaveCSS("letter-spacing", "2px");
+  expect(readFileSync(join(workspace, `${name}.design`, "card.html"), "utf8")).toContain(`<div class='row' style="letter-spacing: 2px">`);
+  await panel.getByRole("button", { name: "Undo" }).click();
+  await expect(page.frameLocator('iframe[title="Card"]').locator(".row")).toHaveCSS("letter-spacing", "normal");
+
   // The Properties tab edits: a size and a text are written into the page, which is served anew
   // with the same element picked.
   await panel.getByRole("tab", { name: "Properties" }).click();
@@ -181,4 +190,152 @@ test("the properties panel shows an artboard's elements and the style of the one
   await text.press("Enter");
   await expect(page.frameLocator('iframe[title="Card"]').locator("h1")).toHaveText("Hi there");
   expect(readFileSync(join(workspace, `${name}.design`, "card.html"), "utf8")).toContain('<h1 style="font-size: 30px">Hi there</h1>');
+
+  // Undo takes the edits back one at a time: the button, then Ctrl+Z outside a field.
+  const heading = page.frameLocator('iframe[title="Card"]').locator("h1");
+  await panel.getByRole("button", { name: "Undo" }).click();
+  await expect(heading).toHaveText("Hello");
+  await expect(heading).toHaveCSS("font-size", "30px");
+  await panel.getByRole("tab", { name: "Properties" }).click();
+  await page.keyboard.press("Control+z");
+  await expect(heading).toHaveCSS("font-size", "40px");
+  await expect(panel.getByRole("button", { name: "Undo" })).toBeDisabled();
+  expect(readFileSync(join(workspace, `${name}.design`, "card.html"), "utf8")).toBe(card);
+
+  // Redo does the size again; the steps are the server's, so they are still there after a reload.
+  await panel.getByRole("button", { name: "Redo" }).click();
+  await expect(heading).toHaveCSS("font-size", "30px");
+  await page.reload();
+  await page.getByTitle(`Open ${name}.design.json`).click();
+  await page.getByRole("button", { name: "Properties", exact: true }).click();
+  const again = (await page.getByTestId("board-card").boundingBox())!;
+  await page.mouse.click(again.x + again.width * 0.12, again.y + again.height * 0.15);
+  await panel.getByRole("button", { name: "Undo" }).click();
+  await expect(heading).toHaveCSS("font-size", "40px");
+  expect(readFileSync(join(workspace, `${name}.design`, "card.html"), "utf8")).toBe(card);
+});
+
+test("a double click on an artboard's text edits it where it is drawn and writes it into the page", async ({ page }) => {
+  const name = `intext-${Math.random().toString(36).slice(2, 8)}`;
+  mkdirSync(join(workspace, `${name}.design`), { recursive: true });
+  const card =
+    "<html><head><style>body{margin:0;font-family:Georgia,serif;color:#123456}.row{display:flex;gap:12px;padding:20px}" +
+    "h1{font-size:40px;margin:0}</style></head><body><div class='row'><h1>Hello</h1><p>World</p></div></body></html>";
+  const file = join(workspace, `${name}.design`, "card.html");
+  writeFileSync(file, card);
+
+  await page.goto(freshThreadPath(name));
+  await waitForConnected(page);
+  await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${INSPECTED}"}]] [[stub-say Done.]]`);
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await page.getByTitle(`Open ${name}.design.json`).click();
+  const heading = page.frameLocator('iframe[title="Card"]').locator("h1");
+  await expect(heading).toBeVisible();
+
+  // With the properties panel closed, a double click on the heading opens it and edits the text in
+  // place; the page's own copy is hidden meanwhile. Escape leaves the page as it was.
+  const board = (await page.getByTestId("board-card").boundingBox())!;
+  await page.mouse.dblclick(board.x + board.width * 0.12, board.y + board.height * 0.15);
+  const field = page.getByLabel("Edit text", { exact: true });
+  await expect(field).toHaveValue("Hello");
+  await expect(field).toBeFocused();
+  await expect(heading).toHaveCSS("color", "rgba(0, 0, 0, 0)");
+  await expect(page.getByRole("complementary", { name: "Properties" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(field).toBeHidden();
+  await expect(heading).toHaveCSS("color", "rgb(18, 52, 86)");
+
+  // Typed and Enter: written into the page, which is served anew.
+  await page.mouse.dblclick(board.x + board.width * 0.12, board.y + board.height * 0.15);
+  await expect(field).toHaveValue("Hello");
+  await page.keyboard.type("Good day");
+  await page.keyboard.press("Enter");
+  await expect(heading).toHaveText("Good day");
+  expect(readFileSync(file, "utf8")).toBe(card.replace("<h1>Hello</h1>", "<h1>Good day</h1>"));
+
+  // The row holds elements, not text alone: a double click there only picks it.
+  // (Inside its padding, left of the heading; the panel now covers the board's right side.)
+  await page.mouse.dblclick(board.x + 8, board.y + 8);
+  await expect(page.getByRole("tree", { name: "Elements" }).getByRole("treeitem", { name: /^Row/ })).toHaveAttribute("aria-selected", "true");
+  await expect(field).toBeHidden();
+});
+
+const PARTED =
+  '{\\"boards\\": [{\\"id\\": \\"home\\", \\"title\\": \\"Home\\", \\"file\\": \\"home.html\\", \\"width\\": 400, \\"height\\": 300}, {\\"id\\": \\"cart\\", \\"title\\": \\"Cart\\", \\"file\\": \\"cart.html\\", \\"width\\": 400, \\"height\\": 300}]}';
+
+test("a part several artboards place is drawn in each, and an edit of it from one board changes them all", async ({ page }) => {
+  const name = `parts-${Math.random().toString(36).slice(2, 8)}`;
+  const folder = join(workspace, `${name}.design`);
+  mkdirSync(folder, { recursive: true });
+  writeFileSync(join(folder, "tabs.part.html"), "<style>.tabs-bar{display:flex;gap:8px;padding:12px;font-size:20px}</style><nav class='tabs-bar'><b>Home</b><b>Cart</b></nav>");
+  const page_ = (title: string) => `<html><head><style>body{margin:0}</style></head><body><coscribe-part name="tabs"></coscribe-part><h1>${title}</h1></body></html>`;
+  writeFileSync(join(folder, "home.html"), page_("Welcome"));
+  writeFileSync(join(folder, "cart.html"), page_("Your cart"));
+
+  await page.goto(freshThreadPath(name));
+  await waitForConnected(page);
+  await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${PARTED}"}]] [[stub-say Done.]]`);
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await page.getByTitle(`Open ${name}.design.json`).click();
+  for (const title of ["Home", "Cart"]) await expect(page.frameLocator(`iframe[title="${title}"]`).locator("nav.tabs-bar b").first()).toHaveText("Home");
+
+  // A text of the part is edited in place; it is written into the part, so both boards show it.
+  const board = (await page.getByTestId("board-home").boundingBox())!;
+  await page.mouse.dblclick(board.x + board.width * 0.05, board.y + board.height * 0.06);
+  const panel = page.getByRole("complementary", { name: "Properties" });
+  await expect(panel.getByText("This is in the shared part “tabs”")).toBeVisible();
+  await expect(panel.getByRole("tree", { name: "Elements" }).getByRole("treeitem", { name: /^Part.*tabs/ })).toBeVisible();
+  const field = page.getByLabel("Edit text", { exact: true });
+  await expect(field).toHaveValue("Home");
+  await page.keyboard.type("Start");
+  await page.keyboard.press("Enter");
+  for (const title of ["Home", "Cart"]) await expect(page.frameLocator(`iframe[title="${title}"]`).locator("nav.tabs-bar b").first()).toHaveText("Start");
+  expect(readFileSync(join(folder, "tabs.part.html"), "utf8")).toContain("<b>Start</b><b>Cart</b>");
+  expect(readFileSync(join(folder, "home.html"), "utf8")).toBe(page_("Welcome"));
+
+  // The page's own heading, after the part, is still written into the page.
+  await page.mouse.dblclick(board.x + board.width * 0.1, board.y + board.height * 0.3);
+  await expect(field).toHaveValue("Welcome");
+  await page.keyboard.type("Hello again");
+  await page.keyboard.press("Enter");
+  await expect(page.frameLocator('iframe[title="Home"]').locator("h1")).toHaveText("Hello again");
+  expect(readFileSync(join(folder, "home.html"), "utf8")).toBe(page_("Hello again"));
+
+  // Undo is the canvas's: from the other board, both edits are taken back in turn.
+  const cart = (await page.getByTestId("board-cart").boundingBox())!;
+  await page.mouse.click(cart.x + cart.width * 0.1, cart.y + cart.height * 0.3);
+  await panel.getByRole("button", { name: "Undo" }).click();
+  await expect(page.frameLocator('iframe[title="Home"]').locator("h1")).toHaveText("Welcome");
+  await panel.getByRole("button", { name: "Undo" }).click();
+  await expect(page.frameLocator('iframe[title="Cart"]').locator("nav.tabs-bar b").first()).toHaveText("Home");
+  await expect(panel.getByRole("button", { name: "Undo" })).toBeDisabled();
+
+});
+
+test("the canvas's Export saves the selected artboard as a PNG, and offers an icon only for a square one", async ({ page }) => {
+  const name = `export-${Math.random().toString(36).slice(2, 8)}`;
+  mkdirSync(join(workspace, `${name}.design`), { recursive: true });
+  writeFileSync(join(workspace, `${name}.design`, "card.html"), "<html><head><style>body{margin:0;background:#2557d6}</style></head><body></body></html>");
+  await page.goto(freshThreadPath(name));
+  await waitForConnected(page);
+  await page.locator("textarea").fill(`draw it [[stub-tool write_file {"path":"${name}.design.json","content":"${INSPECTED}"}]] [[stub-say Done.]]`);
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await page.getByTitle(`Open ${name}.design.json`).click();
+  await expect(page.frameLocator('iframe[title="Card"]').locator("body")).toBeAttached();
+
+  await page.locator(`button[aria-haspopup="menu"][title="${name}.design.json"]`).click();
+  await page.getByRole("menuitem", { name: /Export/ }).hover();
+  // The card is 400 by 300: no icon from it.
+  await expect(page.getByRole("menuitem", { name: /ICO/ })).toBeDisabled();
+  const saving = page.waitForEvent("download");
+  await page.getByRole("menuitem", { name: /PNG/ }).click();
+  const saved = await saving;
+  expect(saved.suggestedFilename()).toBe(`${name}-card.png`);
+  const png = readFileSync(await saved.path());
+  // The PNG signature, then the IHDR width and height: twice the board's 400 by 300.
+  expect(png.subarray(1, 4).toString()).toBe("PNG");
+  expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([800, 600]);
 });

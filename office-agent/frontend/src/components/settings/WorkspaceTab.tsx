@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { DirBrowserModal } from "./DirBrowserModal";
 import { CloseIcon, FolderIcon } from "../icons";
-import { SelectMenu } from "./SelectMenu";
+import { SelectMenu } from "../SelectMenu";
 import { SettingRow, SettingRowInput, SettingRows, SettingsSection, fieldClass, secondaryButtonClass } from "./SettingRow";
 import { SKILLS_DIR_KEY, WORKSPACE_FIELDS, WORKSPACE_ROOT_KEY, type DirEntry, type DirPermission } from "./fields";
 

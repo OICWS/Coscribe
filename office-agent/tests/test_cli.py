@@ -347,6 +347,7 @@ def test_builtin_skills_are_enabled_by_default(
         "Dashboard",
         "PPTX Slides",
         "PPTX Pages",
+        "PPTX Editing",
         "Excel Spreadsheets",
         "Word Documents",
         "Docs",

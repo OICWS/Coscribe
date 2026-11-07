@@ -2,13 +2,46 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 PermissionMode = Literal["manual", "accept-edits", "plan", "auto"]
+
+
+# Checked against each vendor's model page on 2026-11-05. The model a person with only a key
+# starts with, in the order keys are looked for: the vendor's own recommended start.
+DEFAULT_MODELS = {
+    "anthropic": ("ANTHROPIC_API_KEY", "claude-opus-5-5"),
+    "openai": ("OPENAI_API_KEY", "gpt-6-astra"),
+    "gemini": ("GEMINI_API_KEY", "gemini-flash-latest"),
+}
+# The vendor's smallest current model, for the short calls around a turn.
+SIDE_MODELS = {
+    "anthropic": "claude-haiku-5-5",
+    "openai": "gpt-6-luna",
+    "gemini": "gemini-3.5-flash-lite",
+}
+
+
+def default_model_from_keys() -> str:
+    for provider, (key_env, model) in DEFAULT_MODELS.items():
+        if os.environ.get(key_env):
+            return f"{provider}:{model}"
+    return ""
+
+
+def side_model_name(model: str, configured: str = "") -> str:
+    """The model for a conversation's short side calls (its title, the next-message suggestion):
+    the one configured, else the small model of the conversation model's provider, else the
+    conversation model itself (a provider added by the user has no known small model)."""
+    if configured:
+        return configured
+    provider = model.split(":", 1)[0]
+    return f"{provider}:{SIDE_MODELS[provider]}" if provider in SIDE_MODELS else model
 
 
 class Settings(BaseSettings):
@@ -31,8 +64,10 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    default_model: str
-    """Model for the Coordinator agent, as a "provider:model" string."""
+    default_model: str = Field(default_factory=default_model_from_keys)
+    """Model for the Coordinator agent, as a "provider:model" string. Unset or empty, the first
+    provider with a key gives its recommended model (`DEFAULT_MODELS`), so a person who only
+    pasted a key needs no other setup."""
 
     default_effort: Literal["low", "medium", "high", "extra", "max", "ultra"] = "medium"
     """How hard a new conversation's model thinks; each model runs it as the nearest level it
@@ -174,6 +209,11 @@ class Settings(BaseSettings):
     the background after the first finished turn), unless it already has
     a title. Off keeps the first message as the sidebar's label."""
 
+    side_model: str = ""
+    """The "provider:model" for a conversation's short side calls: its title and the suggested
+    next message. Empty picks the smallest model of the conversation model's provider
+    (`side_model_name`); if that model can't be reached, the conversation's own model answers."""
+
     prompt_suggestions: bool = True
     """After a finished turn, ask the model once for the message the person is
     most likely to send next and offer it in the message box. One extra short
@@ -247,6 +287,7 @@ class Settings(BaseSettings):
     @field_validator("default_model")
     @classmethod
     def _validate_default_model(cls, value: str) -> str:
+        value = value or default_model_from_keys()
         if ":" not in value:
             raise ValueError(
                 'default_model must be a "provider:model" string, '

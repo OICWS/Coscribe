@@ -95,6 +95,8 @@ def test_pretool_use_hook_gates_a_low_risk_tool_too(
         responses=[
             AIMessage(content="", tool_calls=[call]),
             AIMessage(content="tracked it"),
+            # The task is left open, so the plan check gives the model one more step.
+            AIMessage(content=""),
         ]
     )
     with _client_lg(tmp_path, monkeypatch, fake_model, hooks_config_path=hooks_path) as client:

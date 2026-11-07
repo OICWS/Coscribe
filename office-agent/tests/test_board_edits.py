@@ -79,8 +79,9 @@ def test_an_edit_is_refused_when_the_page_no_longer_matches_or_the_value_could_b
         edit_board_element(page, "1.0", "p", style={"color": "red"})
     with pytest.raises(BoardEditError, match="pick it again"):
         edit_board_element(page, "1.0", "h1", text="x", text_before="Something else")
-    with pytest.raises(BoardEditError, match="not edited from the panel"):
-        edit_board_element(page, "1.0", "h1", style={"position": "absolute"})
+    for bad_name in ("back ground", "color;x", 'x"y', "Color"):
+        with pytest.raises(BoardEditError, match="not a CSS property name"):
+            edit_board_element(page, "1.0", "h1", style={bad_name: "red"})
     for bad in ('red" onclick="x', "red; display: none", "red</style>"):
         with pytest.raises(BoardEditError, match="not a value"):
             edit_board_element(page, "1.0", "h1", style={"color": bad})
@@ -133,3 +134,106 @@ def test_comments_quoted_angles_and_script_text_do_not_count_as_elements(tmp_pat
     page = _page(tmp_path, source)
     edit_board_element(page, "2", "p", style={"color": "red"})
     assert page.read_text(encoding="utf-8").endswith('<p style="color: red">target</p></body>')
+
+
+def test_undo_and_redo_step_through_the_panels_edits_and_keep_coscribe_told_rightly(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.conversation import (
+        NothingToUndo,
+        PageWrittenSince,
+        keep_for_undo,
+        redo_board_edit,
+        steps_left,
+        undo_board_edit,
+    )
+
+    page, state, scope = _page(tmp_path), tmp_path / "state", WorkspaceScope(tmp_path)
+    entries = [{"path": "ui.design.json", "exists": True}]
+    monkeypatch.setattr(
+        user_edits, "summarize_activity", lambda *_: {"outputs": entries, "references": []}
+    )
+
+    def edit(**change: object) -> None:
+        before = page.read_text(encoding="utf-8")
+        said = edit_board_element(page, "1.0", "h1", **change)  # type: ignore[arg-type]
+        remember_board_edit(page, said, state)
+        keep_for_undo(page, before, said, state)
+
+    assert steps_left(page, state) == {"undo": 0, "redo": 0}
+    edit(style={"color": "red"})
+    after_first = page.read_text(encoding="utf-8")
+    edit(style={"font-size": "28px"})
+    after_second = page.read_text(encoding="utf-8")
+    assert steps_left(page, state) == {"undo": 2, "redo": 0}
+
+    assert undo_board_edit(page, state) == {"undo": 1, "redo": 1}
+    assert page.read_text(encoding="utf-8") == after_first
+    # The undone edit was never told, so the note has only the first.
+    note = design_edits_note([], {}, scope, state)
+    assert "color red" in note and "font-size" not in note
+
+    # Redo writes the edit back; told since its undo, so it is said again.
+    assert redo_board_edit(page, state) == {"undo": 2, "redo": 0}
+    assert page.read_text(encoding="utf-8") == after_second
+    assert "font-size 28px" in design_edits_note([], {}, scope, state)
+    with pytest.raises(NothingToUndo):
+        redo_board_edit(page, state)
+
+    # Told already: undoing now is reported as undone, and the steps survive a reload.
+    assert undo_board_edit(page, state) == {"undo": 1, "redo": 1}
+    assert undo_board_edit(page, state) == {"undo": 0, "redo": 2}
+    assert page.read_text(encoding="utf-8") == PAGE
+    assert steps_left(page, state) == {"undo": 0, "redo": 2}
+    assert "undid <h1> 'Hello & welcome': font-size 28px" in design_edits_note([], {}, scope, state)
+    with pytest.raises(NothingToUndo):
+        undo_board_edit(page, state)
+
+    # A new edit drops what there was to redo.
+    edit(style={"color": "blue"})
+    assert steps_left(page, state) == {"undo": 1, "redo": 0}
+
+    # A page coscribe wrote after the edit is not put back over its work.
+    page.write_text(PAGE.replace("World", "Earth"), encoding="utf-8")
+    assert steps_left(page, state) == {"undo": 0, "redo": 0}
+    with pytest.raises(PageWrittenSince):
+        undo_board_edit(page, state)
+    assert "Earth" in page.read_text(encoding="utf-8")
+    with pytest.raises(NothingToUndo):
+        undo_board_edit(page, state)
+
+
+def test_an_element_of_a_shared_part_is_written_into_the_part_and_undone_from_any_page(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.conversation import keep_for_undo, steps_left, undo_board_edit
+    from coscribe.conversation.board_edits import board_edit_file
+
+    # The served page fills the part into its element, so the paths inside it are counted from the
+    # part's own top-level elements, a style among them, and the paths after it as the source has.
+    page = _page(tmp_path, "<body><coscribe-part name='tabs'></coscribe-part><p>after</p></body>")
+    other = page.with_name("cart.html")
+    other.write_text("<body><coscribe-part name='tabs'></coscribe-part></body>", encoding="utf-8")
+    part = page.with_name("tabs.part.html")
+    part_source = "<style>.t{gap:4px}</style>\n<nav class='t'><a>Home</a><a>Cart</a></nav>"
+    part.write_text(part_source, encoding="utf-8")
+    state = tmp_path / "state"
+
+    assert board_edit_file(page, "0.1.1") == (part, [1, 1])
+    assert board_edit_file(page, "1") == (page, [1])
+    with pytest.raises(BoardEditError, match="through the elements inside it"):
+        edit_board_element(page, "0", "coscribe-part", style={"color": "red"})
+
+    file, _ = board_edit_file(page, "0.1.1")
+    before = file.read_text(encoding="utf-8")
+    said = edit_board_element(page, "0.1.1", "a", text="Bag", text_before="Cart")
+    keep_for_undo(file, before, said, state)
+    assert part.read_text(encoding="utf-8").endswith("<a>Home</a><a>Bag</a></nav>")
+    assert "tabs" in page.read_text(encoding="utf-8") and "<p>after</p>" in page.read_text(
+        encoding="utf-8"
+    )
+
+    # The steps are the canvas's: the other page that places the part sees and undoes the edit.
+    assert steps_left(other, state) == {"undo": 1, "redo": 0}
+    assert undo_board_edit(other, state) == {"undo": 0, "redo": 1}
+    assert part.read_text(encoding="utf-8") == part_source

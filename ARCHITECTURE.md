@@ -37,7 +37,8 @@ tools, and repeat work on a schedule. It needs only a model API key.
   `src/coscribe/web/static/`.
 - **Runtime.** `coscribe.runtime_lg`, on LangChain/LangGraph: one
   coordinator agent per conversation with ~100 built-in tools, plus
-  middleware for approvals, tool deferral, auto-compaction, a per-turn
+  middleware for approvals, tool deferral, auto-compaction (with older
+  tool results cleared from each request from half that size), a per-turn
   model-call cap, and notes the user adds mid-turn. It replaced a
   hand-written runtime whose own provider adapters kept producing bugs.
 - **Models.** Anthropic, OpenAI and Gemini directly, and any
@@ -66,7 +67,9 @@ Specialist behavior comes from Skills and from delegation, not from a
 standing roster of agents.
 
 - **Planning** is the coordinator's own task list (`task_create`/`update`)
-  plus Plan mode, where it can only read until the user approves a plan.
+  plus Plan mode, where it can only read until the user approves a plan. A
+  turn that worked on the list and stops with tasks open gets them back once.
+  A read repeated in a turn gets a note on its result.
 - **Reflection** needs someone who didn't do the work: `review_work` runs a
   fresh reviewer with read-only tools, the rendered pages, and a log of what
   the work's scripts and reads actually returned, so a figure that nothing
@@ -190,8 +193,10 @@ it changed as a fix the person saves into the task, and a heal that changed more
 revision in a conversation, as a failed run's investigation is.
 
 A conversation can also pause itself and resume later (`sleep_until`,
-`wake_on_task`), which is separate from scheduled tasks: a wake belongs to
-one conversation, a task is a global record that starts its own.
+`wake_on_event`), which is separate from scheduled tasks: a wake belongs to
+one conversation, a task is a global record that starts its own. A background
+script, command or sub-agent needs no wake: its end comes back to its conversation
+as a turn of its own (`conversation/subagents.py`).
 
 ### Code is a second runtime, not a node in the first
 
@@ -248,11 +253,12 @@ Workflows never use it: a workflow's agent step (0028) never gets the code modul
   guided one-time setup with an app the user registers
   ([decision 0004](docs/decisions/0004-connectors-sign-in-once-in-the-browser.md)).
 - **Skills**: `SKILL.md` folders loaded on demand. The built-in ones (Slides,
-  Excel, Word, Docs, Design, Dashboard, markdown, Skill Creator) live in
+  PowerPoint editing, Excel, Word, Docs, Design, Dashboard, markdown, Skill Creator) live in
   `src/coscribe/builtin_skills/`; users add their own in `skills_dir`.
 - **Hooks**: scripts on lifecycle events (above).
 - **Global instructions**: one `MEMORY.md` the user edits in Settings, read into
-  every conversation. The model cannot write to it.
+  every conversation. The model cannot write to it: it can offer a line (`remember`), and only
+  the person's Save on that card writes it.
 
 ## Scope
 

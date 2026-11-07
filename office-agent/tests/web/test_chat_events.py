@@ -302,3 +302,161 @@ def test_a_design_system_that_is_not_in_the_library_or_not_for_slides_is_left_ou
             _receive_until(ws, "tasks_changed")
     assert "design system" not in str(fake_model.received[0][-1].content)
     assert "design system" not in str(fake_model.received[1][-1].content)
+
+
+def test_a_design_conversation_started_with_a_design_system_gets_it_as_its_variables(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="ok")])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        made = client.post("/api/design-systems", json={"name": "Acme"}).json()
+        with client.websocket_connect("/ws/t_design") as ws:
+            ws.receive_json()
+            ws.receive_json()
+            ws.send_json(
+                {
+                    "type": "user_message",
+                    "text": "a poster",
+                    "artifact": "design",
+                    "design_system": made["id"],
+                }
+            )
+            _receive_until(ws, "tasks_changed")
+    sent = str(fake_model.received[0][-1].content)
+    assert 'Follow their design system "Acme"' in sent and "the canvas's variables" in sent
+
+
+def test_a_start_with_a_design_system_copies_its_pictures_and_names_them(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="ok")])
+    svg = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64"/>'
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        made = client.post("/api/design-systems", json={"name": "Acme"}).json()
+        logo = client.post(
+            f"/api/design-systems/{made['id']}/assets",
+            files={"file": ("acme-logo.svg", svg, "image/svg+xml")},
+        ).json()
+        client.put(
+            f"/api/design-systems/{made['id']}/assets/{logo['id']}", json={"note": "on light"}
+        )
+        with client.websocket_connect("/ws/t_pictures") as ws:
+            ws.receive_json()
+            ws.receive_json()
+            ws.send_json(
+                {
+                    "type": "user_message",
+                    "text": "a poster",
+                    "artifact": "design",
+                    "design_system": made["id"],
+                }
+            )
+            _receive_until(ws, "tasks_changed")
+    sent = str(fake_model.received[0][-1].content)
+    assert "brand/Acme/acme-logo.svg (logo, 240x64, on light)" in sent
+    assert (tmp_path / "workspace" / "brand" / "Acme" / "acme-logo.svg").read_bytes() == svg
+
+
+class _SummarizingModel(FakeToolCallingChatModel):
+    """Answers the automatic compaction's own call with a summary, and every other call from
+    `responses` in order. A streamed run streams that call too."""
+
+    def _stream(
+        self, messages: list[BaseMessage], stop: Any = None, run_manager: Any = None, **kwargs: Any
+    ) -> Any:
+        if any("## Requests" in str(m.content) for m in messages):
+            yield ChatGenerationChunk(message=AIMessageChunk(content="SUMMARY-OF-WORK"))
+            return
+        yield from super()._stream(messages, stop, run_manager, **kwargs)
+
+
+def test_a_compaction_mid_turn_is_not_shown_as_a_reply_or_as_calls_starting_again_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir(parents=True, exist_ok=True)
+    (workspace / "big.txt").write_text("word " * 1500, encoding="utf-8")
+    calls = [_tool_call(f"call_{i}", "read_file", {"path": "big.txt"}) for i in range(5)]
+    fake_model = _SummarizingModel(
+        responses=[AIMessage(content="", tool_calls=[call]) for call in calls]
+        + [AIMessage(content="done")]
+    )
+    # 3% of the default 128k window: a few reads of big.txt pass it.
+    with _client_lg(tmp_path, monkeypatch, fake_model, auto_compact_threshold=0.03) as client:
+        with client.websocket_connect("/ws/t_compact_mid_turn") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "read big.txt five times"})
+            messages = _receive_until(ws, "tasks_changed")
+
+    shown = "".join(m.get("text", "") for m in messages if m["type"] == "agent_delta")
+    assert "SUMMARY-OF-WORK" not in shown
+    started = [m["arguments"] for m in messages if m["type"] == "tool_started"]
+    assert len(started) == len(calls)
+
+
+def test_a_turn_that_stops_with_its_plan_open_goes_on_once_and_the_note_stays_hidden_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[_tool_call("c1", "task_create", {"content": "Write the memo"})],
+            ),
+            AIMessage(content="I made a plan."),
+            AIMessage(
+                content="",
+                tool_calls=[
+                    _tool_call("c2", "task_update", {"task_id": "1", "status": "completed"})
+                ],
+            ),
+            AIMessage(content="The memo is written."),
+        ]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_plan_check") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "write the memo"})
+            messages = _receive_until(ws, "tasks_changed")
+            while not any(
+                m["type"] == "agent_message" and "memo is" in m["text"] for m in messages
+            ):
+                messages.append(ws.receive_json())
+        with client.websocket_connect("/ws/t_plan_check") as ws:
+            ws.receive_json()  # state
+            history = ws.receive_json()
+
+    shown = "".join(m["text"] for m in messages if m["type"] == "agent_delta")
+    replies = [m["text"] for m in messages if m["type"] == "agent_message"]
+    assert "I made a plan." in shown
+    assert replies == ["The memo is written."]
+    entries = history["entries"]
+    assert [e["kind"] for e in entries if e["kind"] != "tool"] == ["user", "agent", "agent"]
+
+
+def test_a_reply_after_the_plan_check_is_a_new_paragraph_of_the_same_reply_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_model = FakeToolCallingChatModel(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[_tool_call("c1", "task_create", {"content": "Write the memo"})],
+            ),
+            AIMessage(content="I made a plan."),
+            AIMessage(content="The memo needs your figures first."),
+        ]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_plan_check_text") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "write the memo"})
+            messages = _receive_until(ws, "tasks_changed")
+            while not any(m["type"] == "agent_message" for m in messages):
+                messages.append(ws.receive_json())
+
+    replies = [m["text"] for m in messages if m["type"] == "agent_message"]
+    assert replies == ["I made a plan.\n\nThe memo needs your figures first."]
