@@ -1,10 +1,8 @@
 import type {
-  CheckOp,
   CheckStep,
   Condition,
   Match,
   OnFailure,
-  Operand,
   ParallelStep,
   RecoveringStep,
   Workflow,
@@ -13,7 +11,7 @@ import type {
 } from "../types/workflow";
 import { failureFields, withFailure } from "./failureWords";
 import { applyAskQuick, applyWaitQuick, askQuickFields, waitQuickFields } from "./pauseWords";
-import { plainElement, plainReference } from "./plainSteps";
+import { OP_WORDS, operandWords, plainElement, plainReference } from "./plainSteps";
 import { splitTemplate, wholeReference } from "./workflowLabels";
 import { mapWorkflow } from "./workflowTree";
 
@@ -55,23 +53,6 @@ const ARG_LABEL: Record<string, string> = {
 // Arguments a person can't sensibly change without the page or the code in front of them.
 const SHOWN_ARGS = new Set(["ref", "element", "script", "code", "description"]);
 
-const OP_WORDS: Record<CheckOp, string> = {
-  eq: "is",
-  ne: "isn’t",
-  gt: "is more than",
-  ge: "is at least",
-  lt: "is less than",
-  le: "is at most",
-  contains: "contains",
-  not_contains: "doesn’t contain",
-  starts_with: "starts with",
-  ends_with: "ends with",
-  not_empty: "isn’t empty",
-  empty: "is empty",
-  before: "is before",
-  after: "is after",
-};
-
 function words(name: string): string {
   const spaced = name.replace(/_/g, " ");
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
@@ -109,12 +90,6 @@ function argField(name: string, value: unknown, inputs: WorkflowInput[]): QuickF
   if (typeof value === "boolean") return { key, label, kind: "shown", value: value ? "Yes" : "No" };
   const text = String(value);
   return { key, label, kind: text.length > 80 || text.includes("\n") ? "longtext" : "text", value: text };
-}
-
-function operandWords(operand: Operand, inputs: WorkflowInput[]): string {
-  if ("ref" in operand) return plainReference(operand.ref, inputs);
-  if ("count" in operand) return `the number of ${plainReference(operand.count, inputs)}`;
-  return JSON.stringify(operand.value);
 }
 
 /** One field per condition whose right side is a fixed value; the rest of the sentence is its label. */

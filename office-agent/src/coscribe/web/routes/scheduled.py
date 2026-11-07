@@ -15,10 +15,12 @@ from fastapi import (
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
+from ...config import side_model_name
 from ...coordinator import build_coordinator_agent
-from ...runtime import get_tool_metadata
+from ...runtime import get_tool_metadata, load_custom_providers
 from ...runtime_lg import (
     continue_workflow_run,
+    resolve_chat_model,
     start_investigation,
     stop_run,
 )
@@ -46,6 +48,7 @@ from ...workflows import (
     summarize,
     walk,
     workflow_error,
+    write_overview,
 )
 from ..schemas import (
     InvestigateRequest,
@@ -619,6 +622,67 @@ def _version_routes(router: APIRouter, state: AppState) -> None:
     router.add_api_route(path + "/{number}/restore", restore_task_version, methods=["POST"])
 
 
+def _overview_model(settings: Any) -> Any:
+    """The side model (`Settings.side_model`), falling back to the default one, as a title is."""
+    path = settings.providers_config_path
+    custom = load_custom_providers(path) if path is not None else {}
+    main = resolve_chat_model(settings.default_model, custom)
+    name = side_model_name(settings.default_model, settings.side_model)
+    if name == settings.default_model:
+        return main
+    try:
+        return resolve_chat_model(name, custom).with_fallbacks([main])
+    except (ValueError, ImportError):
+        return main
+
+
+def _overview_routes(router: APIRouter, state: AppState) -> None:
+    """The sentence the simple view opens a task with. A model writes it once per saved version;
+    one the person wrote is kept whatever the version."""
+    settings = state.settings
+    writing: dict[str, asyncio.Lock] = {}
+
+    async def overview(trigger_id: str) -> JSONResponse:
+        store = ScheduledTriggerStore(settings.state_dir)
+        trigger = store.load(trigger_id)
+        if trigger is None or trigger.workflow is None:
+            return JSONResponse({"error": f"No workflow task {trigger_id!r}"}, status_code=404)
+        # Two pages opening the task at once make one call, not two.
+        async with writing.setdefault(trigger_id, asyncio.Lock()):
+            version = store.versions.current(trigger_id) or 1
+            kept = store.versions.overview(trigger_id)
+            if kept and (kept.get("by") == "you" or kept.get("version") == version):
+                return JSONResponse(kept)
+            try:
+                text = await write_overview(_overview_model(settings), trigger.name,
+                                            parse_workflow(trigger.workflow))  # fmt: skip
+            # Any failure of the call (no key, no network, a refusal) leaves the page without one.
+            except Exception:
+                return JSONResponse({"text": None})
+            if not text:
+                return JSONResponse({"text": None})
+            store.versions.set_overview(trigger_id, text, version, "ai")
+            return JSONResponse({"text": text, "version": version, "by": "ai"})
+
+    async def put_overview(trigger_id: str, text: Annotated[str, Body(embed=True)]) -> JSONResponse:
+        store = ScheduledTriggerStore(settings.state_dir)
+        if store.load(trigger_id) is None:
+            return JSONResponse({"error": f"No scheduled task {trigger_id!r}"}, status_code=404)
+        line = " ".join(text.split())[:300]
+        if not line:
+            # Cleared: the next look writes one again.
+            store.versions.clear_overview(trigger_id)
+            return JSONResponse({"text": None})
+        version = store.versions.current(trigger_id) or 1
+        store.versions.set_overview(trigger_id, line, version, "you")
+        return JSONResponse({"text": line, "version": version, "by": "you"})
+
+    path = "/api/scheduled-tasks/{trigger_id}/overview"
+    # A POST, though it mostly reads: a first look at a version spends a model call.
+    router.add_api_route(path, overview, methods=["POST"])
+    router.add_api_route(path, put_overview, methods=["PUT"])
+
+
 def router(state: AppState) -> APIRouter:
     router = APIRouter()
     _workflow_routes(router, state)
@@ -629,4 +693,5 @@ def router(state: AppState) -> APIRouter:
     _note_and_lifecycle_routes(router, state)
     _memory_routes(router, state)
     _version_routes(router, state)
+    _overview_routes(router, state)
     return router

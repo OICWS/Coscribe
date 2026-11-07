@@ -40,8 +40,8 @@ test("a run asks for values, then waits until told to go on", async ({ page }) =
   expect(task.trigger_id, JSON.stringify(task)).toBeTruthy();
   try {
     await page.goto(`/?view=scheduled&task=${task.trigger_id}`);
-    await expect(page.locator('[data-canvas-step="ask"]')).toContainText("Asks you for “Limit” and “Team”");
-    await expect(page.locator('[data-canvas-step="later"]')).toContainText("Waits 10 hours");
+    await expect(page.locator('[data-plain-step="ask"]')).toContainText("Asks you for “Limit” and “Team”");
+    await expect(page.locator('[data-plain-step="later"]')).toContainText("Waits 10 hours");
 
     await page.request.post(`/api/scheduled-tasks/${task.trigger_id}/run`, { data: {} });
     await expect

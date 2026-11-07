@@ -126,6 +126,7 @@ POST /api/memory
 POST /api/node-env/packages
 POST /api/providers
 POST /api/scheduled-tasks
+POST /api/scheduled-tasks/{trigger_id}/overview
 POST /api/scheduled-tasks/{trigger_id}/pause
 POST /api/scheduled-tasks/{trigger_id}/resume
 POST /api/scheduled-tasks/{trigger_id}/run
@@ -179,6 +180,7 @@ PUT /api/mcp/servers/{name}/permissions
 PUT /api/scheduled-tasks/{trigger_id}
 PUT /api/scheduled-tasks/{trigger_id}/memory/{name}
 PUT /api/scheduled-tasks/{trigger_id}/notes
+PUT /api/scheduled-tasks/{trigger_id}/overview
 PUT /api/secrets/{name}
 PUT /api/settings/proxy
 PUT /api/threads/{thread_id}/canvas

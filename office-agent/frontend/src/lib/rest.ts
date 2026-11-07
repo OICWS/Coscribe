@@ -452,6 +452,16 @@ export const restoreTaskVersion = (triggerId: string, number: number) =>
     "POST",
     {},
   );
+/** The sentence the simple view opens a task with: written by AI for a version, or by "you". */
+export interface TaskOverview {
+  text: string | null;
+  by?: "ai" | "you";
+}
+/** A POST: the first look at a version has the server write the sentence. */
+export const getTaskOverview = (triggerId: string) =>
+  postJson<TaskOverview>(`/api/scheduled-tasks/${encodeURIComponent(triggerId)}/overview`, {});
+export const setTaskOverview = (triggerId: string, text: string) =>
+  putJson<TaskOverview>(`/api/scheduled-tasks/${encodeURIComponent(triggerId)}/overview`, { text });
 export const getTaskNotes = (triggerId: string) =>
   getJson<TaskNotesResult>(`/api/scheduled-tasks/${encodeURIComponent(triggerId)}/notes`);
 export const saveTaskNotes = (triggerId: string, notes: string) =>

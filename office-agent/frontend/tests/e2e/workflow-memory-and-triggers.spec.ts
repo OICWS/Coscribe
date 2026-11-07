@@ -58,8 +58,8 @@ test("a task remembers between runs and ends quietly when there is nothing to do
   const id = made.trigger_id;
   try {
     await page.goto(`/?view=scheduled&task=${id}`);
-    await expect(page.locator('[data-canvas-step="fresh"]')).toContainText("Ends the run quietly");
-    await expect(page.locator('[data-canvas-step="keep"]')).toContainText("Keeps “Last checked” for the next run");
+    await expect(page.locator('[data-plain-step="fresh"]')).toContainText("Ends the run quietly");
+    await expect(page.locator('[data-plain-step="keep"]')).toContainText("Keeps “Last checked” for the next run");
     const row = page.getByTestId("memory-row");
     await expect(row).toContainText("not kept yet");
 

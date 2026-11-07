@@ -47,11 +47,11 @@ test("a failed step tried again and replaced, and a skipped one, don't stop the 
   expect(task.trigger_id, JSON.stringify(task)).toBeTruthy();
   try {
     await page.goto(`/?view=scheduled&task=${task.trigger_id}`);
-    const rates = page.locator('[data-canvas-step="rates"]');
+    const rates = page.locator('[data-plain-step="rates"]');
     await expect(rates).toContainText("If it fails: 1 more try, then run 1 other step");
-    await expect(page.locator('[data-canvas-step="chat"]')).toContainText("If it fails: skip it");
+    await expect(page.locator('[data-plain-step="chat"]')).toContainText("If it fails: skip it");
 
-    await page.locator('[data-canvas-step="chat"]').click();
+    await page.locator('[data-plain-step="chat"]').click();
     const sheet = page.getByRole("complementary", { name: "Change this step" });
     await expect(sheet.getByText("If it fails", { exact: true })).toBeVisible();
     await expect(sheet.getByLabel("Then")).toHaveText("Skip it and go on");

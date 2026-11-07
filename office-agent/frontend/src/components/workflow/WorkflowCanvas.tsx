@@ -171,14 +171,14 @@ function cannotUndo(step: WorkflowStep): boolean {
  * title, and one sentence on what it does. */
 // The simple view colours a step by what a person sees it touch; a program is background work,
 // so it takes the quiet colour.
-function plainColor(step: WorkflowStep): string {
+export function plainColor(step: WorkflowStep): string {
   if (step.kind === "script") return KIND_COLOR.tool;
   if (step.kind !== "tool") return KIND_COLOR[step.kind];
   if (step.tool.startsWith("browser_")) return "var(--kind-web)";
   return plainKind(step) === "File" ? "var(--kind-file)" : KIND_COLOR.tool;
 }
 
-function PlainTile({ step, color }: { step: WorkflowStep; color: string }) {
+export function PlainTile({ step, color }: { step: WorkflowStep; color: string }) {
   const web = step.kind === "tool" && step.tool.startsWith("browser_");
   const file = step.kind === "tool" && plainKind(step) === "File";
   if (!web && !file && step.kind !== "script") return <StepKindTile step={step} size="sm" />;
