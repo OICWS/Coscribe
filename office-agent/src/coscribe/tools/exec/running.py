@@ -4,13 +4,16 @@
 here instead and pump its output into memory. While a tool call waits, the chat's "Run in
 background" button reaches it by the conversation and the script's text (`request_detach`):
 the page has no id of the call (an approved call is announced without one), and two equal
-scripts running at once in one conversation is not a case worth telling apart. The tool then
-gives the process to the background-task store (`tools/bookkeeping/background_tasks.py`) and
-returns at once.
+scripts running at once in one conversation is not a case worth telling apart. A note the
+person writes mid-turn lets go of every script the conversation waits on, so the model reads
+it now rather than when the script ends, and a script still running at its time limit is let
+go the same way rather than killed. The tool then gives the process to the background-task
+store (`tools/bookkeeping/background_tasks.py`) and returns at once.
 """
 
 from __future__ import annotations
 
+import ast
 import asyncio
 import contextlib
 import os
@@ -38,14 +41,21 @@ _POLL_SECONDS = 0.1
 _RUNNING: dict[tuple[str, str], RunningCommand] = {}
 
 
-def request_detach(thread_id: str, script: str, loop: asyncio.AbstractEventLoop | None) -> bool:
-    """Whether a command of this conversation is waiting on this script. `loop` is the one that
-    must hear about the background task later, from the watcher's thread."""
-    command = _RUNNING.get((thread_id, script))
-    if command is None:
-        return False
-    command.detach(loop)
-    return True
+def request_detach(
+    thread_id: str,
+    script: str | None,
+    loop: asyncio.AbstractEventLoop | None,
+    why: str = "user",
+) -> bool:
+    """Whether a command of this conversation was waiting on this script (on any, for `None`).
+    `loop` is the one that must hear about the background task later, from the watcher's
+    thread; `why` picks what the model is told (`_LET_GO`)."""
+    found = False
+    for (owner, running), command in list(_RUNNING.items()):
+        if owner == thread_id and script in (None, running):
+            command.detach(loop, why)
+            found = True
+    return found
 
 
 def stop_commands(thread_id: str) -> None:
@@ -81,6 +91,7 @@ class RunningCommand:
                 start_new_session=sys.platform != "win32",
             )
         self.loop: asyncio.AbstractEventLoop | None = None
+        self.why = "user"
         self.output_so_far = ""
         self._lock = threading.Lock()
         self._stdout = bytearray()
@@ -127,8 +138,9 @@ class RunningCommand:
         with self._lock:
             return bytes(self._stderr).decode("utf-8", errors="replace").replace("\r\n", "\n")
 
-    def detach(self, loop: asyncio.AbstractEventLoop | None) -> None:
+    def detach(self, loop: asyncio.AbstractEventLoop | None, why: str = "user") -> None:
         self.loop = loop
+        self.why = why
         self._detached.set()
 
     def wait(self, timeout: float) -> str:
@@ -215,6 +227,47 @@ class Ran:
     detached: dict[str, object] | None = None
 
 
+_AFTER_LET_GO = (
+    " It keeps running and its task shows in the Background tasks panel. When it ends, its "
+    "outcome and the end of its output come to you in a message of their own, so don't check it "
+    "again and again: go on with other work, or, if you need its result before you can go on, "
+    "tell the user what you're waiting for and end your turn."
+)
+_LET_GO = {
+    "user": "The user moved this command to the background.",
+    "steer": (
+        "The user wrote to you while this ran, so it moved to the background for you to read "
+        "their message now; answer it before anything else."
+    ),
+    "timeout": "It was still running at its time limit of {timeout:g}s, so it moved to the "
+    "background.",
+}
+
+
+def _only_waits(script: str, language: str) -> bool:
+    """A Python script that does nothing but sleep: the model waiting out time it should have
+    spent ending its turn. Moving that to the background would only hide the mistake."""
+    if language != "python":
+        return False
+    try:
+        body = ast.parse(script).body
+    except SyntaxError:
+        return False
+
+    def waits(node: ast.stmt) -> bool:
+        if isinstance(node, ast.Import | ast.ImportFrom | ast.Pass):
+            return True
+        if isinstance(node, ast.While | ast.For):
+            return all(waits(inner) for inner in node.body)
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Call):
+            called = node.value.func
+            name = called.attr if isinstance(called, ast.Attribute) else getattr(called, "id", "")
+            return name == "sleep"
+        return False
+
+    return bool(body) and all(waits(node) for node in body)
+
+
 def timed_out_result(ran: Ran, timeout: float, keep: Path | None) -> dict[str, object]:
     return {
         "exit_code": None,
@@ -245,6 +298,10 @@ def run_to_end(
         _RUNNING[key] = command
     try:
         outcome = command.wait(timeout)
+        # Let go before it leaves _RUNNING, so a stop that comes now can't miss it.
+        if outcome == "timed_out" and key is not None and not _only_waits(script, language):
+            command.detach(None, "timeout")
+            outcome = "detached"
     finally:
         if key is not None and _RUNNING.get(key) is command:
             del _RUNNING[key]
@@ -262,14 +319,7 @@ def run_to_end(
                 "status": "running_in_background",
                 "task_id": task_id,
                 "output_so_far": truncate_script_output(so_far),
-                "note": (
-                    "The user moved this command to the background. It keeps running and its "
-                    "task shows in the Background tasks panel. When it ends, its outcome and "
-                    "the end of its output come to you in a message of their own, so don't "
-                    "check it again and again: go on with other work, or, if you need its "
-                    "result before you can go on, tell the user what you're waiting for and "
-                    "end your turn."
-                ),
+                "note": _LET_GO[command.why].format(timeout=timeout) + _AFTER_LET_GO,
             },
         )
     if outcome == "timed_out":

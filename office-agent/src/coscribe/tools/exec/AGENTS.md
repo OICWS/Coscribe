@@ -1,7 +1,7 @@
 # tools.exec: Python and Node script tools, their environments and the folder guard
 
 ## Purpose
-Owns `run_python_script` and `run_node_script` (`scripts.py`, `node_scripts.py`), the process they wait on, which the person can hand to the background tasks (`running.py`), the dedicated
+Owns `run_python_script` and `run_node_script` (`scripts.py`, `node_scripts.py`), the process they wait on, which goes to the background tasks when the person lets it go, writes mid-turn or it reaches its time limit (`running.py`), the dedicated
 Python venv and the npm directory the scripts run in (`script_env.py`, `node_env.py`), the Pythons offered for that venv (`find_python.py`, and coscribe's own Python, downloaded only on request, `own_python.py`) and the
 guard that catches a script's mistaken writes outside the conversation's folders
 (`script_guard.py`), and the Windows AppContainer that will hold a script to its folders

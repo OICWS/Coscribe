@@ -508,13 +508,14 @@ class ChatSessionLG:
             future.set_result(answer)
 
     def add_steer(self, steer_id: str, text: str | None) -> None:
-        """A note for the turn in progress, read before its next step; `None` takes it back. With
-        no turn running (it ended as the note was sent), it is sent as a message instead."""
+        """A note for the turn in progress, read before its next step (a script it waits on moves to
+        the background, not to hold it). With no turn running, it is sent as a message instead."""
         self._steers = [s for s in self._steers if s[0] != steer_id]
         if text is not None:
             self._steers.append((steer_id, text))
             if not self._turn_lock.locked():
                 asyncio.get_running_loop().create_task(self._send_unread_steers())
+            request_detach(self.thread_id, None, asyncio.get_running_loop(), "steer")
 
     async def _take_steers(self) -> list[str]:
         if not self._steers:
@@ -549,8 +550,7 @@ class ChatSessionLG:
         await self.handle_user_message(text, socket)
 
     def detach_command(self, script: str) -> bool:
-        """From the running loop: the background task announces itself to this loop from the
-        tool's worker thread."""
+        """From the running loop, which the background task announces itself to later."""
         return request_detach(self.thread_id, script, asyncio.get_running_loop())
 
     def request_stop(self) -> None:
