@@ -159,3 +159,52 @@ def test_stopping_a_conversation_ends_the_script_its_tool_call_waits_on(tmp_path
     assert not worker.is_alive() and time.monotonic() - started < 15
     assert box[0].detached is None and box[0].returncode != 0
     assert box[0].stdout == "first\n"
+
+
+def test_a_script_still_running_at_its_time_limit_moves_to_the_background(tmp_path: Path) -> None:
+    state = tmp_path / "state"
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    heard: list[str] = []
+    set_change_listener("t6", lambda task: heard.append(task.status))
+    detachable = Detachable("t6", partial(adopt_running_command, state))
+    ran = _run(_SLOW.format(seconds=3), 1.5, detachable, scratch)
+
+    assert not ran.timed_out
+    detached = ran.detached
+    assert detached is not None and detached["status"] == "running_in_background"
+    assert "time limit of 1.5s" in str(detached["note"])
+    assert "first" in str(detached["output_so_far"])
+    _until(lambda: heard[-1:] == ["succeeded"])
+    log = read_background_log(state, str(detached["task_id"]))
+    assert log is not None and log["output"].split() == ["first", "oops", "last"]
+
+
+def test_a_script_that_only_sleeps_still_ends_at_its_time_limit(tmp_path: Path) -> None:
+    detachable = Detachable("t7", partial(adopt_running_command, tmp_path / "state"))
+    ran = _run("import time\nwhile True:\n    time.sleep(1)\n", 1.5, detachable, tmp_path)
+    assert ran.timed_out and ran.detached is None
+
+
+def test_a_note_written_mid_turn_moves_every_script_of_the_conversation(tmp_path: Path) -> None:
+    detachable = Detachable("t8", partial(adopt_running_command, tmp_path / "state"))
+    code = _SLOW.format(seconds=2)
+    worker, box = _in_thread(code, 60, detachable, tmp_path)
+    _until(lambda: _printed_first("t8", code))
+    assert not request_detach("another-conversation", None, None, "steer")
+    assert request_detach("t8", None, None, "steer")
+    worker.join(10)
+    detached = box[0].detached
+    assert detached is not None
+    assert "wrote to you while this ran" in str(detached["note"])
+
+
+def test_only_a_script_of_nothing_but_sleeps_counts_as_waiting() -> None:
+    from coscribe.tools.exec.running import _only_waits
+
+    assert _only_waits("import time\ntime.sleep(600)\n", "python")
+    assert _only_waits("from time import sleep\nfor _ in range(9):\n    sleep(60)\n", "python")
+    assert not _only_waits("import time\ntime.sleep(5)\nprint('done')\n", "python")
+    assert not _only_waits("while True:\n    work()\n", "python")
+    assert not _only_waits("setTimeout(() => {}, 600000)", "node")
+    assert not _only_waits("this is not python(", "python")

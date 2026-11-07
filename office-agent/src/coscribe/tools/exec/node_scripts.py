@@ -199,7 +199,8 @@ def build_node_script_tools(
         Args:
             script: the complete Node.js (CommonJS) source to run
             description: one sentence, plain language, what this script does
-            timeout: seconds to allow before killing the script (capped at 600)
+            timeout: seconds to wait for it (capped at 600); still running then, it moves to
+                the background and its outcome comes to you when it ends
         """
         return _run_node_script(
             root,
