@@ -102,9 +102,9 @@ class AgentAssembly:
         self._side: tuple[str, Any] | None = None
 
     def side_model(self) -> Any:
-        """The model for the short calls around a turn (`Settings.side_model`). It falls back to
-        the conversation's model, so a key without access to the small model still gets a
-        title."""
+        """The model for side jobs around a turn (`Settings.side_model`): the reviewer, the title,
+        the suggestion. A picked model falls back to the conversation's, so a key without access
+        to it still gets a title and a verdict."""
         main = self._host.model
         name = side_model_name(self._host._model_string, self._host.settings.side_model)
         if name == self._host._model_string:
@@ -113,7 +113,7 @@ class AgentAssembly:
             try:
                 small = resolve_chat_model(name, self._host._custom_providers)
             except (ValueError, ImportError):
-                # No small model (an unknown provider, no package for it) only costs more.
+                # A picked model that can't be built (a provider since removed) only costs more.
                 return main
             self._side = (name, small)
         return self._side[1].with_fallbacks([main])

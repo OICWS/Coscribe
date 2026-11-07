@@ -19,14 +19,6 @@ DEFAULT_MODELS = {
     "openai": ("OPENAI_API_KEY", "gpt-6-astra"),
     "gemini": ("GEMINI_API_KEY", "gemini-flash-latest"),
 }
-# The vendor's smallest current model, for the short calls around a turn.
-SIDE_MODELS = {
-    "anthropic": "claude-haiku-5-5",
-    "openai": "gpt-6-luna",
-    "gemini": "gemini-3.5-flash-lite",
-}
-
-
 def default_model_from_keys() -> str:
     for provider, (key_env, model) in DEFAULT_MODELS.items():
         if os.environ.get(key_env):
@@ -35,13 +27,11 @@ def default_model_from_keys() -> str:
 
 
 def side_model_name(model: str, configured: str = "") -> str:
-    """The model for a conversation's short side calls (its title, the next-message suggestion):
-    the one configured, else the small model of the conversation model's provider, else the
-    conversation model itself (a provider added by the user has no known small model)."""
-    if configured:
-        return configured
-    provider = model.split(":", 1)[0]
-    return f"{provider}:{SIDE_MODELS[provider]}" if provider in SIDE_MODELS else model
+    """The model for a side job (Auto mode's reviewer, a conversation's title, the next-message
+    suggestion, a scheduled task's one-line overview): the one picked in Settings, else `model`,
+    which is the conversation's own model or, outside a conversation, `Settings.default_model`.
+    Nothing is picked for the person: a cheaper model is their choice to make."""
+    return configured.strip() or model
 
 
 class Settings(BaseSettings):
@@ -210,9 +200,9 @@ class Settings(BaseSettings):
     a title. Off keeps the first message as the sidebar's label."""
 
     side_model: str = ""
-    """The "provider:model" for a conversation's short side calls: its title and the suggested
-    next message. Empty picks the smallest model of the conversation model's provider
-    (`side_model_name`); if that model can't be reached, the conversation's own model answers."""
+    """The "provider:model" for side jobs: Auto mode's reviewer, a conversation's title, the
+    suggested next message, a scheduled task's one-line overview. Empty uses the conversation's
+    own model (`side_model_name`); a picked model that can't be reached falls back to it too."""
 
     prompt_suggestions: bool = True
     """After a finished turn, ask the model once for the message the person is

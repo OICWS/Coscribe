@@ -57,7 +57,8 @@ fails without the filter.
   person decides. Accept Edits writes without asking, by design.
 - **The auto reviewer being persuaded.** It sees the action and the user's requests, but an
   injected string inside the action's arguments (a file name, a script body) is also read by it.
-  Not measured; the limit is the reviewer's judgment.
+  Not measured; the limit is the reviewer's judgment, which is the side-job model's when the person
+  picked a cheaper one in Settings (`Settings.side_model`).
 - **A script run as the user** (off Windows, where the self-test failed and the person let the
   conversation run without isolation, or a command where the command sandbox is not set up) can
   do anything the user can, including rewriting a policy file the file tools may not touch.

@@ -661,7 +661,7 @@ class _FailingModel(_TitlingModel):
 
 
 @pytest.mark.parametrize("small_works", [True, False])
-def test_the_title_comes_from_the_small_model_and_from_the_main_one_when_it_fails_lg(
+def test_the_title_comes_from_the_side_job_model_and_from_the_main_one_when_it_fails_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, small_works: bool
 ) -> None:
     from coscribe.conversation import agent_assembly
