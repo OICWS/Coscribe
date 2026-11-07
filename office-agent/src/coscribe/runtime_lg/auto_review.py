@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.runnables import RunnableWithFallbacks
 from langgraph.constants import TAG_NOSTREAM
 
 from .messages import extract_text
@@ -87,6 +88,21 @@ def _parse(text: str) -> Verdict | None:
     return Verdict(allow=data["decision"] == "allow", reason=str(data.get("reason") or "").strip())
 
 
+def _at_zero_temperature(model: Any) -> Any:
+    """The same model, or chain of fallbacks, asked to answer at temperature 0 wherever it can:
+    the side-job model reaches the reviewer wrapped with the conversation's as its fallback."""
+    if isinstance(model, RunnableWithFallbacks):
+        return model.model_copy(
+            update={
+                "runnable": _at_zero_temperature(model.runnable),
+                "fallbacks": [_at_zero_temperature(m) for m in model.fallbacks],
+            }
+        )
+    if "temperature" in getattr(type(model), "model_fields", {}):
+        return model.model_copy(update={"temperature": 0})
+    return model
+
+
 async def review_action(
     model: Any,
     *,
@@ -102,8 +118,7 @@ async def review_action(
     words were addressed to the main assistant, so "delegate this, don't
     do it yourself" would otherwise read as a boundary against the very
     helper doing the delegated work."""
-    if "temperature" in getattr(type(model), "model_fields", {}):
-        model = model.model_copy(update={"temperature": 0})
+    model = _at_zero_temperature(model)
     action = _clip(json.dumps(arguments, ensure_ascii=False, default=str), _ARGS_CHARS)
     delegation = (
         "The action comes from a helper the assistant handed part of the work to. "

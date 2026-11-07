@@ -1,11 +1,10 @@
 import { useEffect } from "react";
 import { useCodePermissions } from "../../lib/useCodePermissions";
 import type { useCodeStatus } from "../../lib/useCodeStatus";
-import { useConfiguredModels } from "../../lib/useConfiguredModels";
 import { CodeDownload } from "../CodeModuleStatus";
 import { ToggleSwitch } from "../ToggleSwitch";
 import { CODE_MODEL_KEY, CODE_MODULE_ENABLED_KEY } from "./fields";
-import { SelectMenu } from "../SelectMenu";
+import { ConfiguredModelSelect } from "./ConfiguredModelSelect";
 import { SettingRow, SettingRows, SettingsSection } from "./SettingRow";
 
 interface CodeTabProps {
@@ -13,25 +12,6 @@ interface CodeTabProps {
   onChange: (key: string, value: string) => void;
   code: ReturnType<typeof useCodeStatus>;
   codexFolder?: string;
-}
-
-function CodeModelSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  const models = useConfiguredModels();
-  const options = value && !models.includes(value) ? [value, ...models] : models;
-  return (
-    <SelectMenu
-      ariaLabel="Model for code"
-      value={value}
-      options={[
-        { value: "", label: "Same as the chat's model" },
-        ...options.map((model) => ({
-          value: model,
-          label: `${model.split(":").slice(1).join(":")} · ${model.split(":")[0]}`,
-        })),
-      ]}
-      onChange={onChange}
-    />
-  );
 }
 
 /** Codex, which both the command sandbox and the code module run on, then the code module: what
@@ -84,7 +64,7 @@ export function CodeTab({ values, onChange, code, codexFolder }: CodeTabProps) {
                 {problem && <span className="mt-1 block text-[var(--danger)]">{problem}</span>}
               </>
             }
-            control={<CodeModelSelect value={model} onChange={(v) => onChange(CODE_MODEL_KEY, v)} />}
+            control={<ConfiguredModelSelect ariaLabel="Model for code" value={model} onChange={(v) => onChange(CODE_MODEL_KEY, v)} />}
           />
         </SettingRows>
       </SettingsSection>

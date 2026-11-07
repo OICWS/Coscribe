@@ -27,7 +27,7 @@ from typing import Any
 import pytest
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
-from langchain_core.outputs import ChatResult
+from langchain_core.outputs import ChatGeneration, ChatResult
 from langgraph.checkpoint.memory import InMemorySaver
 
 from coscribe.code_runtime import CodePermissions
@@ -1176,6 +1176,56 @@ async def test_the_decision_for_each_reply_of_the_reviewer(
         assert logged == ["unattended"]
         assert not cards
     assert not session._pending_approvals
+
+
+class _ScriptedChat(BaseChatModel):
+    """A chat model that answers with `reply`, or fails when it is None, and records the
+    temperature it was asked at."""
+
+    reply: str | None = None
+    temperature: float = 1.0
+    asked_at: list[float] = field(default_factory=list)
+
+    def _generate(
+        self, messages: list[BaseMessage], stop: Any = None, run_manager: Any = None, **kwargs: Any
+    ) -> ChatResult:
+        self.asked_at.append(self.temperature)
+        if self.reply is None:
+            raise RuntimeError("this key has no access to the picked model")
+        return ChatResult(generations=[ChatGeneration(message=AIMessage(content=self.reply))])
+
+    @property
+    def _llm_type(self) -> str:
+        return "scripted"
+
+
+@pytest.mark.parametrize("picked_works", [True, False])
+async def test_the_reviewer_runs_on_the_side_job_model_and_on_the_chats_when_it_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, picked_works: bool
+) -> None:
+    from coscribe.conversation import agent_assembly
+
+    session = _session(tmp_path, monkeypatch)
+    picked = _ScriptedChat(reply=_verdict("allow") if picked_works else None)
+    main = _ScriptedChat(reply=_verdict("block"))
+    built: list[str] = []
+
+    def resolve(name: str, custom_providers: Any = None) -> Any:
+        built.append(name)
+        return picked
+
+    monkeypatch.setattr(agent_assembly, "resolve_chat_model", resolve)
+    session.settings.side_model = "fake:small"
+    session.model = main
+    session.lg_agent = _Agent([])
+    session.auto_mode = True
+
+    result = await _decide(session, LOCAL, _Socket(True), answer=True)
+
+    assert built == ["fake:small"]
+    assert result["type"] == ("approve" if picked_works else "reject")
+    assert picked.asked_at == [0]
+    assert main.asked_at == ([] if picked_works else [0])
 
 
 @dataclass

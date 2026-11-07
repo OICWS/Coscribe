@@ -127,7 +127,7 @@ task's run follows the task's own approval setting instead.
   (Manual), or **No, keep planning** with what to change. Approving leaves
   Plan mode.
 - `/auto` -- Auto: a reviewer model (`runtime_lg/auto_review.py`, the
-  conversation's own model) decides each gated call in the user's place. It
+  side-job model from Settings > Sessions, else the conversation's own model) decides each gated call in the user's place. It
   allows ordinary work in the conversation's folders and blocks what's hard
   to undo or leaves the computer -- running downloaded code, sending files
   or data out, deleting or overwriting files that were there before,

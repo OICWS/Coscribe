@@ -37,6 +37,7 @@ export interface ConfigResponse {
   COSCRIBE_EXTRA_DELETABLE_DIRS: string | null;
   COSCRIBE_MAX_TURNS: string | null;
   COSCRIBE_CODE_MODEL: string | null;
+  COSCRIBE_SIDE_MODEL: string | null;
   COSCRIBE_CODE_MODULE_ENABLED: string | null;
   COSCRIBE_PROMPT_SUGGESTIONS: string | null;
   COSCRIBE_BACKGROUND_AGENTS: string | null;
