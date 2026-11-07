@@ -39,6 +39,9 @@ test("a parallel step runs its lanes and waits for an approval inside one", asyn
   };
   try {
     await page.goto(`/?view=scheduled&task=${id}`);
+    const both = page.locator('[data-plain-step="both"]');
+    await expect(both).toContainText("At the same time");
+    await page.getByRole("button", { name: "Show the flowchart" }).click();
     await expect(page.getByTestId("parallel-lanes")).toContainText("All 2 lanes run at the same time");
     await expect(page.locator('[data-canvas-step="both"]')).toContainText("Does 2 things at the same time");
 

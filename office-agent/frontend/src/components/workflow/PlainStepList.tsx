@@ -56,6 +56,7 @@ function Row({
       <button
         type="button"
         data-testid="plain-step"
+        data-plain-step={step.id}
         aria-current={openId === step.id ? "true" : undefined}
         className="group flex w-full items-start gap-3 rounded-md px-2 py-2 text-left hover:bg-[var(--card-bg)] aria-[current]:bg-[var(--card-bg)]"
         onClick={() => onOpen(step.id)}

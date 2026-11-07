@@ -55,7 +55,6 @@ GET /api/providers/catalog
 GET /api/scheduled-tasks
 GET /api/scheduled-tasks/{trigger_id}/memory
 GET /api/scheduled-tasks/{trigger_id}/notes
-GET /api/scheduled-tasks/{trigger_id}/overview
 GET /api/scheduled-tasks/{trigger_id}/runs/{run_id}/report
 GET /api/scheduled-tasks/{trigger_id}/versions
 GET /api/screenshots/{name}
@@ -127,6 +126,7 @@ POST /api/memory
 POST /api/node-env/packages
 POST /api/providers
 POST /api/scheduled-tasks
+POST /api/scheduled-tasks/{trigger_id}/overview
 POST /api/scheduled-tasks/{trigger_id}/pause
 POST /api/scheduled-tasks/{trigger_id}/resume
 POST /api/scheduled-tasks/{trigger_id}/run

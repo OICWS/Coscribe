@@ -457,8 +457,9 @@ export interface TaskOverview {
   text: string | null;
   by?: "ai" | "you";
 }
+/** A POST: the first look at a version has the server write the sentence. */
 export const getTaskOverview = (triggerId: string) =>
-  getJson<TaskOverview>(`/api/scheduled-tasks/${encodeURIComponent(triggerId)}/overview`);
+  postJson<TaskOverview>(`/api/scheduled-tasks/${encodeURIComponent(triggerId)}/overview`, {});
 export const setTaskOverview = (triggerId: string, text: string) =>
   putJson<TaskOverview>(`/api/scheduled-tasks/${encodeURIComponent(triggerId)}/overview`, { text });
 export const getTaskNotes = (triggerId: string) =>

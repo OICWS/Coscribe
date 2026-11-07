@@ -48,15 +48,15 @@ def test_overview_is_written_once_per_version_and_kept_when_yours_lg(
             "trigger_id"
         ]
         path = f"/api/scheduled-tasks/{trigger_id}/overview"
-        first = client.get(path).json()
-        again = client.get(path).json()
+        first = client.post(path).json()
+        again = client.post(path).json()
         client.put(f"/api/scheduled-tasks/{trigger_id}", json=_task("Read the new notes"))
-        changed = client.get(path).json()
+        changed = client.post(path).json()
         mine = client.put(path, json={"text": "  My   own words. "}).json()
         client.put(f"/api/scheduled-tasks/{trigger_id}", json=_task("Read old notes"))
-        kept = client.get(path).json()
+        kept = client.post(path).json()
         cleared = client.put(path, json={"text": ""}).json()
-        none_left = client.get(path).json()
+        none_left = client.post(path).json()
 
     assert first == {
         "text": "Reads your notes and tells you what changed.",
