@@ -274,7 +274,8 @@ function StepNode({ step, ctx }: { step: WorkflowStep; ctx: CanvasContext }) {
       <span className="mt-1.5 line-clamp-2 block text-[13px] font-medium leading-snug" title={step.title}>
         {step.title}
       </span>
-      <span className="mt-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-xs text-[var(--muted)]">
+      {/* A card is narrow: a value wraps onto a second line, where a list row cuts it on one. */}
+      <span className="mt-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-xs text-[var(--muted)] [&_[data-arg]]:line-clamp-2 [&_[data-arg]]:whitespace-normal [&_[data-arg]]:[overflow-wrap:anywhere]">
         <StepSummary step={step} inputNames={ctx.inputNames} />
       </span>
       <FailureNote step={step} />

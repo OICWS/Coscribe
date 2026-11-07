@@ -1,5 +1,6 @@
+import type { ReactNode } from "react";
 import { toolLabel } from "../../lib/toolLabels";
-import { formatValue, stepOutput, wholeReference } from "../../lib/workflowLabels";
+import { formatValue, shortPlace, stepOutput, wholeReference } from "../../lib/workflowLabels";
 import { askTimeoutWords } from "../../lib/pauseWords";
 import { duration } from "../../lib/plainSteps";
 import { useTaskNames } from "../../lib/taskCalls";
@@ -37,8 +38,6 @@ function Conditions({
   );
 }
 
-const ARG_PREVIEW_CHARS = 32;
-
 function Irreversible({ on }: { on: boolean }) {
   return on ? <span className="text-[var(--warning)]">· can’t be undone</span> : null;
 }
@@ -53,13 +52,21 @@ function Arrow({ output, inputNames }: { output: string | null; inputNames: Set<
   );
 }
 
+/** `text` with a line break allowed after each slash, so a wrapped path or address breaks
+ * between its parts rather than inside a name. */
+function breakable(text: string): ReactNode[] {
+  return text.split(/(?<=[\\/])/).flatMap((part, index) => (index > 0 ? [<wbr key={index} />, part] : [part]));
+}
+
 export function ArgPreview({ value, inputNames }: { value: unknown; inputNames: Set<string> }) {
   const ref = wholeReference(value);
   if (ref) return <VarToken name={ref} isInput={inputNames.has(ref.split(".")[0])} />;
   const text = formatValue(value).replace(/\s+/g, " ");
+  // Cut where the card ends, not at a count of characters: the same value fits a wide row and
+  // is cut short on a narrow card, and a long address no longer pushes past the card's edge.
   return (
-    <span className="font-mono text-[12px] text-[var(--fg)]">
-      {text.length > ARG_PREVIEW_CHARS ? `${text.slice(0, ARG_PREVIEW_CHARS)}…` : text}
+    <span data-arg title={text} className="min-w-0 max-w-full truncate font-mono text-[12px] text-[var(--fg)]">
+      {breakable(shortPlace(text))}
     </span>
   );
 }
@@ -197,7 +204,7 @@ export function StepSummary({ step, inputNames }: { step: WorkflowStep; inputNam
       <>
         <span>{toolLabel(step.tool)}</span>
         {shown.map(([key, value]) => (
-          <span key={key} className="inline-flex items-baseline gap-1">
+          <span key={key} className="inline-flex min-w-0 max-w-full items-baseline gap-1">
             <span className="text-[var(--muted)]">{key}</span>
             <ArgPreview value={value} inputNames={inputNames} />
           </span>

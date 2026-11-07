@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Workflow, WorkflowStep } from "../types/workflow";
-import { neededAutonomy } from "./workflowLabels";
+import { neededAutonomy, shortPlace } from "./workflowLabels";
 
 const tool: WorkflowStep = {
   id: "a",
@@ -54,5 +54,24 @@ describe("neededAutonomy", () => {
       max_items: 10,
     };
     expect(neededAutonomy(workflow([loop]))).toBe("proactive");
+  });
+});
+
+describe("shortPlace", () => {
+  it("keeps the site and the page of an address", () => {
+    expect(shortPlace("https://sales.example.com/daily?day={{day}}")).toBe("sales.example.com/daily");
+    expect(shortPlace("https://www.example.com/a/b/report.html#top")).toBe("example.com/…/report.html");
+    expect(shortPlace("https://example.com")).toBe("example.com");
+  });
+
+  it("keeps the file and its folder of a long path", () => {
+    expect(shortPlace("C:\\Users\\Allen\\Documents\\Invoices\\march.xlsx")).toBe("…\\Invoices\\march.xlsx");
+    expect(shortPlace("Reports/2026/Sales/{{month}}.txt")).toBe("…/Sales/{{month}}.txt");
+    expect(shortPlace("Support/open tickets.csv")).toBe("Support/open tickets.csv");
+  });
+
+  it("leaves other text whole", () => {
+    expect(shortPlace("approve and/or send the reply")).toBe("approve and/or send the reply");
+    expect(shortPlace("{{summary.text}}")).toBe("{{summary.text}}");
   });
 });
