@@ -24,6 +24,7 @@ const KINDS: { kind: StepKind; label: string; description: string }[] = [
 const STRUCTURE: { kind: StepKind; label: string; description: string }[] = [
   { kind: "branch", label: "If / otherwise", description: "Run different steps depending on a value" },
   { kind: "choice", label: "Choose a path", description: "Several paths, picked by what a value is" },
+  { kind: "parallel", label: "At the same time", description: "Run 2 to 6 lanes of steps at once, then go on" },
   { kind: "loop", label: "For each", description: "Repeat steps for every item in a list" },
 ];
 

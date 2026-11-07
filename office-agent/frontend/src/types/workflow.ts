@@ -16,6 +16,7 @@ export type StepKind =
   | "run_task"
   | "branch"
   | "choice"
+  | "parallel"
   | "loop";
 export type Autonomy = "bounded" | "high" | "full";
 export type OutputFieldType = "text" | "number" | "boolean" | "list";
@@ -243,6 +244,19 @@ export interface ChoiceStep extends StepBase {
   otherwise: WorkflowStep[];
 }
 
+/** One of a parallel step's lanes: its own steps, run beside the others. */
+interface Lane {
+  label: string;
+  steps: WorkflowStep[];
+}
+
+/** Runs 2 to 6 lanes at the same time and goes on once every lane has ended (decision 0036). A
+ * lane reads only what came before the step; after it, what every lane saved. */
+export interface ParallelStep extends RecoveringBase {
+  kind: "parallel";
+  lanes: Lane[];
+}
+
 export interface LoopStep extends StepBase {
   kind: "loop";
   /** A reference to the list to go through. */
@@ -274,9 +288,10 @@ export type WorkflowStep =
   | RunTaskStep
   | BranchStep
   | ChoiceStep
+  | ParallelStep
   | LoopStep;
-export type BlockStep = BranchStep | ChoiceStep | LoopStep;
-export type RecoveringStep = ToolStep | ScriptStep | LLMStep | AgentStep | RunTaskStep;
+export type BlockStep = BranchStep | ChoiceStep | ParallelStep | LoopStep;
+export type RecoveringStep = ToolStep | ScriptStep | LLMStep | AgentStep | RunTaskStep | ParallelStep;
 
 /** Decision 0030: one switch per task, a ceiling on what its steps may be. */
 export type TaskAutonomy = "fixed" | "self_healing" | "proactive" | "autonomous";

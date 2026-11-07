@@ -5,6 +5,7 @@ import type {
   Match,
   OnFailure,
   Operand,
+  ParallelStep,
   RecoveringStep,
   Workflow,
   WorkflowInput,
@@ -164,6 +165,16 @@ function otherwiseField(step: CheckStep): QuickField {
   };
 }
 
+/** A parallel step's lane names (decision 0036). */
+function laneFields(step: ParallelStep): QuickField[] {
+  return step.lanes.map((lane, index) => ({
+    key: `lane:${index}`,
+    label: `Lane ${index + 1}`,
+    kind: "text",
+    value: lane.label,
+  }));
+}
+
 /** What the quick edit shows for a step, title first. */
 export function quickFields(step: WorkflowStep, inputs: WorkflowInput[]): QuickField[] {
   const fields: QuickField[] = [{ key: "title", label: "Name", kind: "text", value: step.title }];
@@ -232,6 +243,8 @@ export function quickFields(step: WorkflowStep, inputs: WorkflowInput[]): QuickF
           }),
         ),
       ];
+    case "parallel":
+      return [...fields, ...laneFields(step), ...failureFields(step)];
     case "loop":
       return [
         ...fields,
@@ -307,6 +320,9 @@ export function applyQuick(step: WorkflowStep, key: string, value: QuickField["v
     case "choice":
       if (head !== "case") return step;
       return { ...step, cases: step.cases.map((c, i) => (i === Number(rest) ? { ...c, is: String(value) } : c)) };
+    case "parallel":
+      if (head !== "lane") return step;
+      return { ...step, lanes: step.lanes.map((l, i) => (i === Number(rest) ? { ...l, label: String(value) } : l)) };
     case "loop":
       if (head === "cond") return { ...step, until: setRight(step.until ?? [], rest, value) };
       if (head === "on_item_failure") return { ...step, on_item_failure: value === "skip" ? "skip" : "stop" };

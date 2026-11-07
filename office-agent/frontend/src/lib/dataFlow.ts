@@ -47,6 +47,8 @@ function readsOf(step: WorkflowStep): string[] {
       return textReads(step.value);
     case "choice":
       return [step.value];
+    case "parallel":
+      return [];
     case "loop":
       return [step.over, ...(step.collect ? [step.collect] : []), ...conditionReads(step.until ?? [])];
   }

@@ -101,6 +101,7 @@
   --kind-memory: #8a5a2b;
   --kind-task: #3d6b8f;
   --kind-loop: #17767c;
+  --kind-parallel: #8f3fa8;
   --kind-web: #0275b8;
   --kind-file: #6b7a1f;
   --accent-ink: #1d5fb0;
@@ -168,6 +169,7 @@
   --kind-memory: #d9ae82;
   --kind-task: #9cc3e3;
   --kind-loop: #7fd2d6;
+  --kind-parallel: #dca2ef;
   --kind-web: #74c4f2;
   --kind-file: #c5d27a;
   --accent-ink: #9cc3f3;

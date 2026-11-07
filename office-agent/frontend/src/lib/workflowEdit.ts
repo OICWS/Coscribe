@@ -1,5 +1,5 @@
 import type { ToolInfo } from "../types/settings";
-import type { Condition, Operand, StepKind, Workflow, WorkflowStep } from "../types/workflow";
+import type { AgentStep, Condition, Operand, StepKind, Workflow, WorkflowStep } from "../types/workflow";
 import { toolLabel } from "./toolLabels";
 import { stepOutput } from "./workflowLabels";
 import { allSteps, everyStep, listAt, mapWorkflow, placeSteps, withList, type ListRef } from "./workflowTree";
@@ -62,6 +62,7 @@ const NEW_TITLE: Record<StepKind, string> = {
   run_task: "Run another task",
   branch: "Decide which way to go",
   choice: "Pick a path by a value",
+  parallel: "Do these at the same time",
   loop: "Repeat for each item",
 };
 
@@ -75,6 +76,21 @@ print(json.dumps(result))`;
 /** What a new bounded agent step may call to begin with: reading in its workspace is what it
  * does first, and without these a run stops to ask before it looks at a file. */
 export const READ_TOOLS = ["list_files", "get_file_info", "read_file"];
+
+function newAgentStep(id: string, title: string, saveAs: string): AgentStep {
+  const limits = { tools: [...READ_TOOLS], folders: [], sites: [], fields: [], max_steps: 20, model: null };
+  return {
+    kind: "agent",
+    id,
+    title,
+    autonomy: "bounded",
+    goal: "",
+    ...limits,
+    save_as: saveAs,
+    trusted_input: false,
+    irreversible: false,
+  };
+}
 
 /** `available`: the names readable where the step goes, to start its
  * condition or list on something real. */
@@ -109,22 +125,7 @@ export function newStep(kind: StepKind, workflow: Workflow, available: string[],
         save_as: saveAs,
       };
     case "agent":
-      return {
-        kind,
-        id,
-        title,
-        autonomy: "bounded",
-        goal: "",
-        tools: [...READ_TOOLS],
-        folders: [],
-        sites: [],
-        fields: [],
-        max_steps: 20,
-        model: null,
-        save_as: saveAs,
-        trusted_input: false,
-        irreversible: false,
-      };
+      return newAgentStep(id, title, saveAs);
     case "check":
       return {
         kind,
@@ -162,6 +163,8 @@ export function newStep(kind: StepKind, workflow: Workflow, available: string[],
       };
     case "choice":
       return { kind, id, title, value: firstValue ?? "", cases: [{ is: "", steps: [] }], otherwise: [] };
+    case "parallel":
+      return { kind, id, title, lanes: [1, 2].map((n) => ({ label: `Lane ${n}`, steps: [] })) };
     case "loop":
       return {
         kind,
@@ -270,6 +273,8 @@ function renameInStep(step: WorkflowStep, from: string, to: string): WorkflowSte
       return { ...step, conditions: step.conditions.map((c) => renameCondition(c, from, to)) };
     case "choice":
       return { ...step, value: renameRoot(step.value, from, to) };
+    case "parallel":
+      return step;
     case "loop":
       return {
         ...step,

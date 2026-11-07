@@ -20,6 +20,7 @@ from .spec import (
     LoopStep,
     MemoryEntry,
     OnFailure,
+    ParallelStep,
     RememberStep,
     Step,
     WaitStep,
@@ -100,8 +101,18 @@ class _Scope:
                 self._field(reference, where)
             self.agents += isinstance(step, AgentStep)
             self._ends_or_remembers(step, where, depth)
-            if isinstance(step, (BranchStep, ChoiceStep, LoopStep)) and depth >= MAX_NESTING:
+            if isinstance(step, (BranchStep, ChoiceStep, LoopStep, ParallelStep)) and (
+                depth >= MAX_NESTING
+            ):
                 raise ValueError(f"{where}: branches and loops nest at most {MAX_NESTING} deep")
+            if isinstance(step, ParallelStep):
+                made = self._lanes(step, available, depth)
+                policy = failure_policy(step)
+                kept = (
+                    self._recovery(step, policy, where, available, depth, made) if policy else made
+                )
+                available |= kept
+                continue
             if isinstance(step, (BranchStep, ChoiceStep)):
                 available |= self._paths(step, available, depth)
                 continue
@@ -137,12 +148,13 @@ class _Scope:
             self.fields[output] = {"path", "found"}
 
     def _recovery(
-        self, step: Step, policy: OnFailure, where: str, available: set[str], depth: int
-    ) -> set[str]:
+        self, step: Step, policy: OnFailure, where: str, available: set[str], depth: int,
+        made_by_it: set[str] | None = None,
+    ) -> set[str]:  # fmt: skip
         """What a step with something to do when it fails leaves for later steps: its result,
         unless a failure skips it or the steps in its place don't make the same name."""
         output = step_output(step)
-        mine = {output} if output else set()
+        mine = made_by_it if made_by_it is not None else ({output} if output else set())
         before = set(self.taken)
         self._save(step)
         if policy.then != "steps":
@@ -197,6 +209,14 @@ class _Scope:
         merged = set.intersection(*made)
         self.scoped |= set.union(*made) - merged
         return merged
+
+    def _lanes(self, step: ParallelStep, available: set[str], depth: int) -> set[str]:
+        """The names the lanes make, all read after the step. A lane sees only what came before
+        the step, and two lanes can't make the same name, since they run at the same time."""
+        made: set[str] = set()
+        for lane in step.lanes:
+            made |= self.check(lane.steps, available, depth + 1) - available
+        return made
 
     def _loop(self, step: LoopStep, where: str, available: set[str], depth: int) -> None:
         if step.item in self.taken:

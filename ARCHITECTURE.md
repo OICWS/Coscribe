@@ -151,7 +151,9 @@ checkpoints). A run can also pause for values a person fills in or for a time
 or a file, holding only its checkpoint until the poller wakes it (0033). A task
 remembers what its last finished run kept, and starts on the clock, every few minutes or when a
 file arrives in a folder; a run with nothing to do ends quietly (0034). A step can run another
-task as a run of its own, and every save keeps a version a person can compare and restore (0035). Decision 0028 (proposed; built in phases from #719) replaces
+task as a run of its own, and every save keeps a version a person can compare and restore (0035).
+A step can run lanes of steps at the same time, each a run of its own, and go on once all have
+ended (0036). Decision 0028 (proposed; built in phases from #719) replaces
 the two kinds below with one: the graph stays fixed, and each step chooses
 its autonomy.
 

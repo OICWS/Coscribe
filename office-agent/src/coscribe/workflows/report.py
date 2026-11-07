@@ -9,7 +9,15 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from ..workflow_spec import LoopStep, RememberStep, Step, Workflow, parse_workflow, walk
+from ..workflow_spec import (
+    LoopStep,
+    ParallelStep,
+    RememberStep,
+    Step,
+    Workflow,
+    parse_workflow,
+    walk,
+)
 from .pause_steps import NO_ANSWER
 from .remember_steps import NOTHING_TO_DO
 
@@ -36,6 +44,20 @@ def _every_step(workflow: Workflow, called: dict[str, Any]) -> dict[str, Step]:
             continue
         steps |= {f"{path}/{p.step.id}": p.step for p in walk(inner.every_step())}
     return steps
+
+
+def _lane_first(steps: dict[str, Step], not_done: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """What wasn't done, without a parallel step whose lane step is listed for the same reason
+    (decision 0036)."""
+    listed = {entry["step_id"] for entry in not_done}
+
+    def shown(entry: dict[str, Any]) -> bool:
+        step = steps.get(entry["step_id"])
+        if not isinstance(step, ParallelStep):
+            return True
+        return not any(p.step.id in listed for lane in step.lanes for p in walk(lane.steps))
+
+    return [entry for entry in not_done if shown(entry)]
 
 
 def _tasks_ran(called: dict[str, Any], records: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -130,7 +152,7 @@ def run_report(
     return {
         "autonomy": workflow.effective_autonomy(),
         "loops": loops,
-        "not_done": not_done,
+        "not_done": _lane_first(steps, not_done),
         "assumed": assumed,
         "unanswered": unanswered,
         "healed": healed,

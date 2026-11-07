@@ -33,8 +33,9 @@ Last reviewed: 2026-11-06.
    a workflow or skill; an in-chat connector card (decision record and independent review first).
 5. **Workflows** (#719 and #788, kurtosisOC; decisions 0028 to 0035). Phases P0 to P5 are done
    (`docs/log/`, 2026-10-29 to 2026-11-02). In review: parallel steps (#789, decision 0036
-   proposed). Open: a cost cap for an agent step, and an L3 step delegating. Left out on purpose:
-   webhooks and connector events as triggers.
+   proposed). Next in #788: a run started by a webhook or a connector event, with the event's
+   data as its inputs (batch 2), then steps a run adds by itself within the task's autonomy
+   (batch 3). Open: a cost cap for an agent step, and an L3 step delegating.
 
 ## Open, smaller
 
