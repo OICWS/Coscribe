@@ -55,6 +55,7 @@ GET /api/providers/catalog
 GET /api/scheduled-tasks
 GET /api/scheduled-tasks/{trigger_id}/memory
 GET /api/scheduled-tasks/{trigger_id}/notes
+GET /api/scheduled-tasks/{trigger_id}/overview
 GET /api/scheduled-tasks/{trigger_id}/runs/{run_id}/report
 GET /api/scheduled-tasks/{trigger_id}/versions
 GET /api/screenshots/{name}
@@ -179,6 +180,7 @@ PUT /api/mcp/servers/{name}/permissions
 PUT /api/scheduled-tasks/{trigger_id}
 PUT /api/scheduled-tasks/{trigger_id}/memory/{name}
 PUT /api/scheduled-tasks/{trigger_id}/notes
+PUT /api/scheduled-tasks/{trigger_id}/overview
 PUT /api/secrets/{name}
 PUT /api/settings/proxy
 PUT /api/threads/{thread_id}/canvas
