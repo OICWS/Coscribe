@@ -158,6 +158,10 @@ class ApprovalHost(Protocol):
     @property
     def folders(self) -> Sequence[Path]: ...
 
+    @property
+    def _assembly(self) -> Any:  # AgentAssembly: its side_model() runs the reviewer
+        ...
+
     def _toggle_mode(self, mode: str) -> None: ...
 
     async def send_state(self, websocket: EventSink, *, on_connect: bool = False) -> None: ...
@@ -672,7 +676,7 @@ class ApprovalDecider:
         state = await self._host.lg_agent.aget_state(self._host.config)
         messages = list(state.values.get("messages", [])) if state.values else []
         return await review_action(
-            self._host.model,
+            self._host._assembly.side_model(),
             tool_name=name,
             arguments=args,
             risk=self._host._gated_tool_risks.get(name, "WRITE_LOCAL"),

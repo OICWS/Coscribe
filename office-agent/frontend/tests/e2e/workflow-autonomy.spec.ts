@@ -89,6 +89,8 @@ test("a finished run shows its report", async ({ page }) => {
       })
       .toBe("completed");
     await page.goto(`/?thread=${started.run.thread_id}`);
+    // The report is part of the detailed run, folded under the simple view's Details.
+    await page.getByTestId("run-details").getByText("Details").click();
     const report = page.getByTestId("run-report");
     await expect(report).toContainText("Report · Fixed");
     await expect(report).toContainText("Every step was done.");

@@ -43,7 +43,7 @@ test("a task runs another, and its versions can be compared and restored", async
   const id = caller.trigger_id;
   try {
     await page.goto(`/?view=scheduled&task=${id}`);
-    await expect(page.locator('[data-canvas-step="call"]')).toContainText("Runs your task “e2e called”");
+    await expect(page.locator('[data-plain-step="call"]')).toContainText("Runs your task “e2e called”");
     await expect(page.getByTestId("workflow-permissions")).toContainText("Runs your task “e2e called”");
 
     await page.request.post(`/api/scheduled-tasks/${id}/run`, { data: {} });
@@ -55,6 +55,7 @@ test("a task runs another, and its versions can be compared and restored", async
     expect(memory.memory.asked.value).toBe("the caller");
 
     await page.goto(`/?thread=scheduled-${id}-${run.run_id}`);
+    await page.getByRole("button", { name: "Detailed", exact: true }).click();
     const row = page.locator('[data-run-step="call"]').first();
     await expect(row).toContainText("Ran “e2e called” · version 1", { timeout: 30_000 });
     await row.getByRole("button", { name: /^Show the 2 steps/ }).click();

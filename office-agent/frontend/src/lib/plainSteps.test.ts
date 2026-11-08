@@ -24,7 +24,7 @@ describe("plain words for a step", () => {
       "Types the claim’s name into “Full name”",
     );
     expect(plainDetail(tool("browser_navigate", { url: "https://example.com/claims/new" }), inputs)).toBe(
-      "Opens example.com/claims/new",
+      "Opens example.com/…/new",
     );
     expect(plainDetail(tool("browser_navigate", { url: "{{link}}" }), inputs)).toBe("Opens a web page");
     // A dropdown's accessible name runs into its options.

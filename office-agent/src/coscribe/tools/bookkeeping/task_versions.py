@@ -3,7 +3,8 @@ of `{"number", "saved_at", "how", "from"?, "workflow"}`, oldest first, the lates
 
 `how` is "created", "edited" (on its page), "conversation" (a draft saved from a conversation),
 "restored" (with the version it came `from`) or "found": a task saved before versions were
-kept, recorded as it was the first time it changes or runs."""
+kept, recorded as it was the first time it changes or runs. Beside them, `<id>.overview.json` holds
+the sentence the simple view opens the task with."""
 
 from __future__ import annotations
 
@@ -12,6 +13,8 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from ._trigger_files import trigger_file
 
 MAX_VERSIONS = 50
 
@@ -74,8 +77,29 @@ class TaskVersions:
             self.keep(trigger_id, before, "found")
         self.keep(trigger_id, after, how, restored_from)
 
+    def overview(self, trigger_id: str) -> dict[str, Any] | None:
+        """The sentence the simple view opens with: `{"text", "version", "by"}`, "by" being "ai"
+        (written for that version) or "you" (kept whatever the version)."""
+        try:
+            data = json.loads(self._overview_path(trigger_id).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+        return data if isinstance(data, dict) and isinstance(data.get("text"), str) else None
+
+    def set_overview(self, trigger_id: str, text: str, version: int, by: str) -> None:
+        self.root.mkdir(parents=True, exist_ok=True)
+        path = self._overview_path(trigger_id)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"text": text, "version": version, "by": by}, ensure_ascii=False),
+                       encoding="utf-8")  # fmt: skip
+        os.replace(tmp, path)
+
+    def clear_overview(self, trigger_id: str) -> None:
+        self._overview_path(trigger_id).unlink(missing_ok=True)
+
     def delete(self, trigger_id: str) -> None:
         self._path(trigger_id).unlink(missing_ok=True)
+        self.clear_overview(trigger_id)
 
     def _write(self, trigger_id: str, versions: list[dict[str, Any]]) -> None:
         self.root.mkdir(parents=True, exist_ok=True)
@@ -85,4 +109,7 @@ class TaskVersions:
         os.replace(tmp, path)
 
     def _path(self, trigger_id: str) -> Path:
-        return self.root / f"{trigger_id}.json"
+        return trigger_file(self.root, trigger_id, ".json")
+
+    def _overview_path(self, trigger_id: str) -> Path:
+        return trigger_file(self.root, trigger_id, ".overview.json")

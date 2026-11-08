@@ -51,6 +51,7 @@
     "vitest": "^5.0.5"
   },
   "overrides": {
-    "katex": "$katex"
+    "katex": "$katex",
+    "postcss-selector-parser": "^6.1.5"
   }
 }

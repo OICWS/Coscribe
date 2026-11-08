@@ -134,6 +134,11 @@ function SimplePermissions({ p, className }: { p: PermissionsResult["permissions
       className={`flex flex-col gap-1.5 text-sm ${className}`}
     >
       {sites.length > 0 && <SimpleLine icon={<GlobeIcon className="h-4 w-4" />}>Opens {sites.join(", ")}</SimpleLine>}
+      {p.sites_at_run_time.length > 0 && (
+        <SimpleLine icon={<GlobeIcon className="h-4 w-4" />}>
+          Opens a page whose address is filled in as it runs ({p.sites_at_run_time.join(", ")}); it asks you first
+        </SimpleLine>
+      )}
       <SimpleLine icon={<FolderIcon className="h-4 w-4" />}>
         Changes files in its workspace
         {folders.length > 0 && ` and ${folders.join(", ")}`}

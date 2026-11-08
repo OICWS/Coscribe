@@ -46,6 +46,8 @@ test("a run's overview shows each step's state, and a step on it opens in the li
     const started = await page.request.post(`/api/scheduled-tasks/${task.trigger_id}/run`, { data: {} });
     const run = (await started.json()).run;
     await page.goto(`/?thread=${run.thread_id}`);
+    await expect(page.getByTestId("run-result")).toContainText("Stopped at");
+    await page.getByRole("button", { name: "Detailed", exact: true }).click();
     await expect(page.getByTestId("run-banner")).toContainText("Failed");
 
     await page.getByRole("button", { name: "Overview" }).click();

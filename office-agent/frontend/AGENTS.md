@@ -45,8 +45,8 @@ the preload object `coscribeDesktop` of `office-agent-desktop/`. `npm run build`
 ## Tests
 Unit tests (vitest, `npm test`) sit next to the file as `x.test.ts`: `src/state/reducer.test.ts`,
 `src/lib/launchToken.test.ts`, `src/lib/dockLayout.test.ts`, `src/lib/dockArrangement.test.ts`,
-`src/lib/workflowLabels.test.ts` (the autonomy a task's steps need), `src/lib/plainSteps.test.ts` (a step in plain words), `src/lib/docModel.test.ts`, `docEditing.test.ts` and `docCommentMarks.test.ts` (jsdom, the Doc editor's blocks, edits and comment marks), `src/lib/slides.test.ts`, `src/lib/transcriptGrouping.test.ts`,
-`src/components/chatlog/helpers.test.ts`, `src/components/slides/sectionDom.test.ts` (jsdom, for that
+`src/lib/workflowLabels.test.ts` (the autonomy a task's steps need), `src/lib/plainSteps.test.ts` (a step in plain words), `src/lib/plainOutline.test.ts` (a task's steps as the simple view lists them), `src/lib/runResult.test.ts` (what a run got, as its simple view says it), `src/lib/docModel.test.ts`, `docEditing.test.ts` and `docCommentMarks.test.ts` (jsdom, the Doc editor's blocks, edits and comment marks), `src/lib/slides.test.ts`, `src/lib/transcriptGrouping.test.ts`,
+`src/components/chatlog/helpers.test.ts`, `src/components/settings/searchIndex.test.ts` (every Settings row can be searched), `src/components/slides/sectionDom.test.ts` (jsdom, for that
 file only). `tests/e2e/*.spec.ts` (Playwright, `npm run test:e2e`)
 runs against a live `coscribe-web` and `npm run dev` (nightly in `.github/workflows/e2e.yml` with
 a stub model, not a required check; `slides.spec.ts` builds a deck into the server's workspace

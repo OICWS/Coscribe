@@ -45,6 +45,7 @@ COSCRIBE_ENV_VARS = [
     "COSCRIBE_MAX_TURNS",
     "COSCRIBE_DEFAULT_PERMISSION_MODE",
     "COSCRIBE_CODE_MODEL",
+    "COSCRIBE_SIDE_MODEL",
     "COSCRIBE_CODE_MODULE_ENABLED",
     "COSCRIBE_PROMPT_SUGGESTIONS",
     "COSCRIBE_BACKGROUND_AGENTS",
@@ -58,6 +59,7 @@ LIVE_SETTINGS = {
     "COSCRIBE_MAX_TURNS": "max_turns",
     "COSCRIBE_DEFAULT_PERMISSION_MODE": "default_permission_mode",
     "COSCRIBE_CODE_MODEL": "code_model",
+    "COSCRIBE_SIDE_MODEL": "side_model",
     "COSCRIBE_CODE_MODULE_ENABLED": "code_module_enabled",
     "COSCRIBE_PROMPT_SUGGESTIONS": "prompt_suggestions",
     "COSCRIBE_BACKGROUND_AGENTS": "background_agents",
@@ -117,6 +119,10 @@ BLANK_UNSAFE_ENV_VARS = {
 }
 
 
+# Blank here means the chat's own model.
+_OPTIONAL_MODEL_KEYS = {"COSCRIBE_CODE_MODEL", "COSCRIBE_SIDE_MODEL"}
+
+
 _BOOLEAN_CODE_KEYS = {
     "COSCRIBE_CODE_MODULE_ENABLED",
     "COSCRIBE_PROMPT_SUGGESTIONS",
@@ -170,7 +176,7 @@ def router(state: AppState) -> APIRouter:
             if key == "COSCRIBE_DEFAULT_MODEL" and ":" not in value:
                 rejected[key] = 'must be a "provider:model" string, e.g. "anthropic:sonnet"'
                 continue
-            if key == "COSCRIBE_CODE_MODEL" and value.strip() and ":" not in value:
+            if key in _OPTIONAL_MODEL_KEYS and value.strip() and ":" not in value:
                 rejected[key] = 'must be a "provider:model" string, or blank for the default model'
                 continue
             if key in _BOOLEAN_CODE_KEYS and value not in ("true", "false"):

@@ -8,7 +8,9 @@ import {
   KEEP_AWAKE_KEY,
   KEEP_AWAKE_ON_BATTERY_KEY,
   PROMPT_SUGGESTIONS_KEY,
+  SIDE_MODEL_KEY,
 } from "./fields";
+import { ConfiguredModelSelect } from "./ConfiguredModelSelect";
 import { SelectMenu } from "../SelectMenu";
 import { SettingRow, SettingRows, SettingsSection } from "./SettingRow";
 
@@ -24,6 +26,17 @@ export function SessionsTab({ values, onChange }: SessionsTabProps) {
   return (
     <SettingsSection title="Sessions">
       <SettingRows>
+        <SettingRow
+          label="Model for side jobs"
+          description="Runs the short calls around a chat: Auto mode's check of each risky action, conversation titles and prompt suggestions. Pick a cheaper model to spend less; if it can't be reached, the chat's model answers."
+          control={
+            <ConfiguredModelSelect
+              ariaLabel="Model for side jobs"
+              value={values[SIDE_MODEL_KEY] ?? ""}
+              onChange={(v) => onChange(SIDE_MODEL_KEY, v)}
+            />
+          }
+        />
         <SettingRow
           label="Prompt suggestions"
           description="Show a suggested next prompt in the message box after a reply: Enter sends it, Tab puts it in the box to edit. Suggestions add a little to your usage."

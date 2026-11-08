@@ -58,8 +58,8 @@ test("a task remembers between runs and ends quietly when there is nothing to do
   const id = made.trigger_id;
   try {
     await page.goto(`/?view=scheduled&task=${id}`);
-    await expect(page.locator('[data-canvas-step="fresh"]')).toContainText("Ends the run quietly");
-    await expect(page.locator('[data-canvas-step="keep"]')).toContainText("Keeps “Last checked” for the next run");
+    await expect(page.locator('[data-plain-step="fresh"]')).toContainText("Ends the run quietly");
+    await expect(page.locator('[data-plain-step="keep"]')).toContainText("Keeps “Last checked” for the next run");
     const row = page.getByTestId("memory-row");
     await expect(row).toContainText("not kept yet");
 
@@ -78,7 +78,7 @@ test("a task remembers between runs and ends quietly when there is nothing to do
 
     await page.goto(`/?thread=scheduled-${id}-${second.run_id}`);
     await expect(page.getByText(/“Not checked yet” found\s+nothing to do/)).toBeVisible({ timeout: 30_000 });
-    await expect(page.locator('[data-run-step="keep"]')).toContainText("Not reached");
+    await expect(page.locator('[data-run-row="keep"]')).toHaveAttribute("data-run-status", "not_reached");
 
     // Cleared, the next run starts from the first value again and keeps a new one.
     await page.goto(`/?view=scheduled&task=${id}`);
