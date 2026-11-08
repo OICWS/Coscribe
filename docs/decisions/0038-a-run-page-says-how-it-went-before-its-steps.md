@@ -1,7 +1,7 @@
 # 0038: A run page says how it went and what it got, before its steps
 
 Status: proposed (2026-11-08, kurtosisOC; agreed with the maintainer in the project thread).
-Issue #833. Follows 0037, which it does not change.
+Issue #843. Follows 0037, which it does not change.
 
 ## Context
 A person opening a run wants to know whether it finished, what it got and whether they need to

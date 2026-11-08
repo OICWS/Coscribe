@@ -1,7 +1,7 @@
 # The simple view says what a task does in words (shipped)
 
 Why: most people who use a task never read how it is configured, and the simple view still
-opened on a flowchart with its settings in the middle (#833; decision 0037).
+opened on a flowchart with its settings in the middle (#843; decision 0037).
 
 ## Shipped
 - A sentence on top of the page (`TaskOverviewLine.tsx`): `workflows/overview.py` has the side

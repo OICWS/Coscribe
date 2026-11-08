@@ -1,7 +1,7 @@
 # A run page says how it went and what it got, before its steps (shipped)
 
 Why: a run's page led with a banner that said nothing when the run wrote no file, and the text
-it wrote sat in a step's output further down (#833; decision 0038).
+it wrote sat in a step's output further down (#843; decision 0038).
 
 ## Shipped
 - The run page follows the task page's Simple / Detailed switch; Detailed is unchanged.
