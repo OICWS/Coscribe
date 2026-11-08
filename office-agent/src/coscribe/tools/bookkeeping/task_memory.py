@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from ...workflow_spec import MemoryEntry, memory_value
+from ._trigger_files import trigger_file
 
 BY_PERSON = "you"
 
@@ -69,4 +70,4 @@ class TaskMemory:
         os.replace(tmp_path, path)
 
     def _path(self, trigger_id: str) -> Path:
-        return self.root / f"{trigger_id}.json"
+        return trigger_file(self.root, trigger_id, ".json")
