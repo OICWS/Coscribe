@@ -17,22 +17,19 @@ Last reviewed: 2026-11-06.
    check of a generated Word file (pagination, tables past the edge, empty pages); and
    `convert_office_file` (legacy `.doc`/`.xls`/`.ppt`, PDF export) through LibreOffice, which passes
    the state folder from `coordinator.py`, an invariant path, so it needs an independent review.
-2. **Settings search index guard.** Settings search lists its rows by hand in
-   `frontend/src/components/settings/searchIndex.ts`; add a test that fails when a `SettingRow`
-   label is missing from it.
-3. **Chat: a live Plan card** (maintainer, 2026-10-21 and 2026-11-06). Done: the conversation
+2. **Chat: a live Plan card** (maintainer, 2026-10-21 and 2026-11-06). Done: the conversation
    shows one task card under the latest call that changed the list, so it moves down only when its
    content changes, and it folds into a "N steps done" line when every item is done
    (`docs/log/2026-11-06-task-card-follows.md`). Open: the card no longer shows which background
    tasks an item started; bring that back on the card if it is missed.
-4. **A more agentic coscribe, measured** (#819), each step scored by `office-agent/evals/agentic/`.
+3. **A more agentic coscribe, measured** (#819), each step scored by `office-agent/evals/agentic/`.
    Done: the evaluation (#820), the end-of-turn plan check (#821), the small model for side calls
    (#822), the delivery check of the Office files a turn wrote (#824), and, put before step 5 by
    the maintainer, a background script's end reported to its conversation (#826), Stop keeping the
    reply so far (#827) and a script moving to the background at its time limit or when the person
    writes mid-turn (`docs/log/2026-11-07-script-to-background.md`). Next: a folder brief on first attach; an offer to save a job as
    a workflow or skill; an in-chat connector card (decision record and independent review first).
-5. **Workflows** (#719 and #788, kurtosisOC; decisions 0028 to 0035). Phases P0 to P5 are done
+4. **Workflows** (#719 and #788, kurtosisOC; decisions 0028 to 0035). Phases P0 to P5 are done
    (`docs/log/`, 2026-10-29 to 2026-11-02). In review: parallel steps (#789, decision 0036
    proposed). Next in #788: a run started by a webhook or a connector event, with the event's
    data as its inputs (batch 2), then steps a run adds by itself within the task's autonomy
