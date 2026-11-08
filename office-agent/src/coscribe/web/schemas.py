@@ -27,6 +27,10 @@ class OpenFileRequest(BaseModel):
     reveal: bool = False
 
 
+class FolderBriefRequest(BaseModel):
+    path: str
+
+
 class DocRestore(BaseModel):
     path: str
     # The version the editor holds, and the kept version to put back over it.

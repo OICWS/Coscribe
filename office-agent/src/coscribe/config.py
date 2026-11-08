@@ -209,6 +209,11 @@ class Settings(BaseSettings):
     most likely to send next and offer it in the message box. One extra short
     model call per turn."""
 
+    folder_briefs: bool = True
+    """Write a few sentences on what each of a conversation's folders holds, from its file names
+    two levels deep (one short side-model call per folder, again when the names at its top
+    change), and give them to the model with the folder's path."""
+
     background_agents: bool = True
     """Whether the model may start sub-agents that run in the background, in parallel with the
     conversation (`spawn_agent_background`). Off, the tool stays bound (the tool list is cached

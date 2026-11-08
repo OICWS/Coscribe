@@ -89,6 +89,7 @@ def _settings(tmp_path: Path) -> Settings:
         # A naming call would take one of the scripted replies these tests count.
         auto_title_threads=False,
         prompt_suggestions=False,
+        folder_briefs=False,
     )  # type: ignore[arg-type]
 
 

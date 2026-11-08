@@ -15,6 +15,7 @@ from langchain_core.tools import BaseTool
 from ..config import Settings
 from ..runtime import Environments
 from ..tools import SCHEDULED_THREAD_PREFIX, load_builtin_skills, load_skills
+from .agent_assembly import AgentAssembly
 from .events import EventSink
 from .turn_lock import TurnLock
 
@@ -36,6 +37,9 @@ class ReconfigureHost(Protocol):
     _gated_tool_risks: dict[str, str]
     _context_window: int | None
     _turn_lock: TurnLock
+
+    @property
+    def _assembly(self) -> AgentAssembly: ...
 
     def _build_agent(self) -> Any: ...
 
@@ -157,6 +161,8 @@ class SessionReconfigurer:
             return False
         host.lg_agent = new_lg_agent
         host._gated_tool_risks = new_gated_tool_risks
+        # Written while the person types, so their first message can carry it.
+        host._assembly.folder_briefs.refresh(host._assembly.folders())
         await host.send_state(websocket)
         return True
 
