@@ -20,6 +20,7 @@ from pydantic import ValidationError
 
 from ...runtime import DEFAULT_ENVIRONMENT, Environments, tool_metadata
 from ...workflow_spec import current_shape, parse_workflow, workflow_error
+from ._trigger_files import is_trigger_id, trigger_file
 from .folder_watch import FolderWatch
 from .schedule_rule import (
     VALID_KINDS,
@@ -305,14 +306,16 @@ class ScheduledTriggerStore:
 
     def save(self, trigger: ScheduledTrigger) -> None:
         self.root.mkdir(parents=True, exist_ok=True)
-        path = self._path_for(trigger.trigger_id)
+        path = trigger_file(self.root, trigger.trigger_id, ".json")
         tmp_path = path.with_suffix(".tmp")
         with tmp_path.open("w", encoding="utf-8") as handle:
             json.dump(trigger.to_dict(), handle, ensure_ascii=False, indent=2)
         os.replace(tmp_path, path)
 
     def load(self, trigger_id: str) -> ScheduledTrigger | None:
-        path = self._path_for(trigger_id)
+        if not is_trigger_id(trigger_id):
+            return None
+        path = trigger_file(self.root, trigger_id, ".json")
         if not path.exists():
             return None
         return ScheduledTrigger.from_dict(json.loads(path.read_text(encoding="utf-8")))
@@ -345,10 +348,12 @@ class ScheduledTriggerStore:
         ]
 
     def delete(self, trigger_id: str) -> bool:
-        path = self._path_for(trigger_id)
+        if not is_trigger_id(trigger_id):
+            return False
+        path = trigger_file(self.root, trigger_id, ".json")
         existed = path.exists()
         path.unlink(missing_ok=True)
-        self._notes_path(trigger_id).unlink(missing_ok=True)
+        trigger_file(self.root, trigger_id, ".notes.md").unlink(missing_ok=True)
         self.memory.delete(trigger_id)
         self.folders.forget(trigger_id)
         self.versions.delete(trigger_id)
@@ -456,7 +461,7 @@ class ScheduledTriggerStore:
         return run
 
     def read_notes(self, trigger_id: str) -> str:
-        path = self._notes_path(trigger_id)
+        path = trigger_file(self.root, trigger_id, ".notes.md")
         return path.read_text(encoding="utf-8") if path.exists() else ""
 
     def write_notes(self, trigger_id: str, notes: str) -> None:
@@ -466,16 +471,11 @@ class ScheduledTriggerStore:
                 "condense them to what future runs actually need."
             )
         self.root.mkdir(parents=True, exist_ok=True)
-        path = self._notes_path(trigger_id)
+        path = trigger_file(self.root, trigger_id, ".notes.md")
         tmp_path = path.with_suffix(".tmp")
         tmp_path.write_text(notes, encoding="utf-8")
         os.replace(tmp_path, path)
 
-    def _path_for(self, trigger_id: str) -> Path:
-        return self.root / f"{trigger_id}.json"
-
-    def _notes_path(self, trigger_id: str) -> Path:
-        return self.root / f"{trigger_id}.notes.md"
 
 
 def _validate_and_build_schedule(

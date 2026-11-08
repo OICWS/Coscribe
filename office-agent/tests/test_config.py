@@ -35,9 +35,9 @@ def test_a_model_that_is_set_wins_over_a_key(monkeypatch: pytest.MonkeyPatch) ->
     assert Settings(_env_file=None).default_model == "deepseek:deepseek-flash"  # type: ignore[call-arg]
 
 
-def test_side_calls_use_the_providers_small_model_unless_one_is_set() -> None:
-    assert side_model_name("anthropic:claude-opus-5-5") == "anthropic:claude-haiku-5-5"
-    assert side_model_name("deepseek:deepseek-flash") == "deepseek:deepseek-flash"
+def test_side_jobs_use_the_conversations_model_unless_one_is_picked() -> None:
+    assert side_model_name("anthropic:claude-opus-5-5") == "anthropic:claude-opus-5-5"
+    assert side_model_name("deepseek:deepseek-flash", "  ") == "deepseek:deepseek-flash"
     assert side_model_name("anthropic:claude-opus-5-5", "openai:gpt-6-luna") == "openai:gpt-6-luna"
 
 

@@ -429,3 +429,22 @@ def test_a_saved_run_waits_for_a_folder_it_hasnt_been_allowed_then_carries_on_lg
     granted = next(t for t in saved if t["trigger_id"] == task["trigger_id"])
     assert granted["permissions"] == {"folders": [str(elsewhere)]}
     assert permissions["permissions"]["folders"] == [str(elsewhere)]
+
+
+def test_folder_brief_shows_in_activity_and_can_be_read_again_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "workspace").mkdir()
+    (tmp_path / "workspace" / "budget.xlsx").write_text("x", encoding="utf-8")
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="Budget workbooks.")])
+    workspace = str(tmp_path / "workspace")
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        before = client.get("/api/threads/t_brief/activity").json()["folders"]
+        written = client.post("/api/threads/t_brief/folder-brief", json={"path": workspace})
+        after = client.get("/api/threads/t_brief/activity").json()["folders"]
+        elsewhere = client.post("/api/threads/t_brief/folder-brief", json={"path": str(tmp_path)})
+
+    assert [(f["path"], f["brief"], f["writing"]) for f in before] == [(workspace, "", False)]
+    assert written.json()["brief"] == "Budget workbooks."
+    assert after[0]["brief"] == "Budget workbooks." and after[0]["written_at"]
+    assert elsewhere.status_code == 404

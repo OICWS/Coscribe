@@ -36,6 +36,7 @@ const SETTING_ENTRIES: SettingEntry[] = [
   { category: "capabilities", label: "Chats can hand tasks to Code", keywords: "codex" },
   { category: "capabilities", label: "Model for code", keywords: "codex" },
   { category: "capabilities", label: "Change files without asking", keywords: "codex approval" },
+  { category: "sessions", label: "Model for side jobs", keywords: "auto mode reviewer title cheap small haiku" },
   { category: "sessions", label: "Prompt suggestions", keywords: "autocomplete tab" },
   { category: "sessions", label: "Background agents" },
   { category: "sessions", label: "Archive inactive conversations", keywords: "days old" },
