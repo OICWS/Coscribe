@@ -855,7 +855,8 @@ class ChatSessionLG:
                 )
         state = await self.lg_agent.aget_state(self.config)
         messages = list(state.values.get("messages", [])) if state.values else []
-        return summarize_activity(messages, catalog, self.workspace_scope())
+        folders = self._assembly.folder_briefs.shown(self._assembly.folders())
+        return {**summarize_activity(messages, catalog, self.workspace_scope()), "folders": folders}
 
     async def get_context_breakdown(self) -> dict[str, Any]:
         """Where this thread's context-window budget goes, for the context panel."""
@@ -1169,10 +1170,9 @@ class ChatSessionLG:
                 return
 
         mode_note = turn_mode_note(self.plan_mode, self.accept_edits, self.auto_mode)
-        # current_date_note() lives here, not in the system prompt --
-        # see its own docstring in runtime_lg/messages.py for why that
-        # matters for caching across every provider, not just Anthropic.
-        context = conversation_context(self.settings, self.workspace_root, self.extra_folders)
+        # Notes here, not in the system prompt: see current_date_note()'s docstring (caching).
+        described = conversation_context(self.settings, self.workspace_root, self.extra_folders)
+        context = self._assembly.folder_briefs.context(described, self._assembly.folders())
         state = await self.lg_agent.aget_state(self.config)
         history = list(state.values.get("messages", [])) if state.values else []
         told = last_conversation_context(history) == context

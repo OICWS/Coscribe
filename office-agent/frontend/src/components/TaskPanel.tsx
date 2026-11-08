@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useDockPanel } from "./dock/dockContext";
-import { getThreadActivity, openThreadFile, threadFileDownloadUrl } from "../lib/rest";
+import { getThreadActivity, openThreadFile, rereadFolderBrief, threadFileDownloadUrl } from "../lib/rest";
 import { formatRunTime, runSourceLabel } from "../lib/runLabels";
 import { toolLabel } from "../lib/toolLabels";
 import { readStored, writeStored } from "../lib/storage";
 import type { ScheduledRun, ScheduledTask } from "../types/settings";
-import type { ActivityFile, ActivityToolUse, ThreadActivity } from "../types/session";
+import type { ActivityFile, ActivityToolUse, FolderBrief, ThreadActivity } from "../types/session";
 import type { ProgressItem, ProgressStatus } from "../lib/workflowProgress";
 import {
   CheckIcon,
@@ -23,6 +23,8 @@ type SectionId = "progress" | "outputs" | "context";
 const COLLAPSED_KEY = "coscribe.taskPanel.collapsed";
 // Coalesces the burst of tool results a single model step can produce.
 const REFRESH_DEBOUNCE_MS = 500;
+// A brief is written in the background after a folder is attached; nothing else signals it.
+const BRIEF_POLL_MS = 3000;
 
 interface TaskPanelProps {
   threadId: string;
@@ -45,6 +47,49 @@ interface TaskPanelProps {
   onOpenPlan?: () => void;
 }
 
+/** What the conversation did, fetched again a moment after each signal. */
+function useThreadActivity(threadId: string, refreshSignal: string) {
+  const [activity, setActivity] = useState<ThreadActivity | null>(null);
+  const [briefPoll, setBriefPoll] = useState(0);
+  const requestRef = useRef(0);
+
+  useEffect(() => {
+    setActivity(null);
+  }, [threadId]);
+
+  useEffect(() => {
+    const request = ++requestRef.current;
+    const timer = window.setTimeout(() => {
+      getThreadActivity(threadId)
+        .then((next) => {
+          if (request === requestRef.current) setActivity(next);
+        })
+        .catch(() => {
+          // Keep showing the last good snapshot; the next signal retries.
+        });
+    }, REFRESH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [threadId, refreshSignal, briefPoll]);
+
+  const briefWriting = activity?.folders?.some((folder) => folder.writing) ?? false;
+  useEffect(() => {
+    if (!briefWriting) return;
+    const timer = window.setTimeout(() => setBriefPoll((n) => n + 1), BRIEF_POLL_MS);
+    return () => window.clearTimeout(timer);
+  }, [briefWriting, activity]);
+
+  const rereadBrief = useCallback(
+    async (path: string) => {
+      const written = await rereadFolderBrief(threadId, path);
+      setActivity((prev) =>
+        prev && { ...prev, folders: prev.folders?.map((folder) => (folder.path === path ? written : folder)) },
+      );
+    },
+    [threadId],
+  );
+  return { activity, rereadBrief };
+}
+
 function readCollapsed(): Set<SectionId> {
   const raw = readStored(COLLAPSED_KEY);
   return new Set(raw ? (raw.split(",").filter(Boolean) as SectionId[]) : []);
@@ -64,33 +109,15 @@ export function TaskPanel({
   onView,
   onOpenPlan,
 }: TaskPanelProps) {
-  const [activity, setActivity] = useState<ThreadActivity | null>(null);
+  const { activity, rereadBrief } = useThreadActivity(threadId, refreshSignal);
   const [collapsed, setCollapsed] = useState<Set<SectionId>>(readCollapsed);
-  const [fileError, setFileError] = useState<string | null>(null);
-  const requestRef = useRef(0);
-
-  useEffect(() => {
-    setActivity(null);
-    setFileError(null);
-  }, [threadId]);
-
-  useEffect(() => {
-    const request = ++requestRef.current;
-    const timer = window.setTimeout(() => {
-      getThreadActivity(threadId)
-        .then((next) => {
-          if (request === requestRef.current) setActivity(next);
-        })
-        .catch(() => {
-          // Keep showing the last good snapshot; the next signal retries.
-        });
-    }, REFRESH_DEBOUNCE_MS);
-    return () => window.clearTimeout(timer);
-  }, [threadId, refreshSignal]);
+  // Kept with its conversation, so switching to another one doesn't show it there.
+  const [fileErrorOf, setFileErrorOf] = useState<{ threadId: string; text: string | null } | null>(null);
+  const fileError = fileErrorOf?.threadId === threadId ? fileErrorOf.text : null;
 
   useEffect(() => {
     if (!fileError) return;
-    const timer = window.setTimeout(() => setFileError(null), 6000);
+    const timer = window.setTimeout(() => setFileErrorOf(null), 6000);
     return () => window.clearTimeout(timer);
   }, [fileError]);
 
@@ -106,7 +133,7 @@ export function TaskPanel({
   const openFile = useCallback(
     async (file: ActivityFile, reveal: boolean) => {
       if (!reveal && onView?.(file.path)) return;
-      setFileError(await openThreadFile(threadId, file.path, reveal));
+      setFileErrorOf({ threadId, text: await openThreadFile(threadId, file.path, reveal) });
     },
     [threadId, onView],
   );
@@ -119,7 +146,8 @@ export function TaskPanel({
     activity.references.length === 0 &&
     activity.tools.length === 0 &&
     activity.connectors.length === 0 &&
-    activity.skills.length === 0;
+    activity.skills.length === 0 &&
+    shownBriefs(activity).length === 0;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -177,7 +205,7 @@ export function TaskPanel({
 
         <Section id="context" title="Context" collapsed={collapsed} onToggle={toggle} last>
           {activity && !contextEmpty ? (
-            <ContextView activity={activity} threadId={threadId} onOpen={openFile} />
+            <ContextView activity={activity} threadId={threadId} onOpen={openFile} onReread={rereadBrief} />
           ) : (
             <EmptyState art={<ContextArt />} text="Track tools and referenced files used in this task." />
           )}
@@ -460,18 +488,75 @@ function ContextGroup({ label, children }: { label: string; children: ReactNode 
   );
 }
 
+/** A folder without a brief (empty, or the side model failed) shows nothing rather than a blank. */
+function shownBriefs(activity: ThreadActivity): FolderBrief[] {
+  return (activity.folders ?? []).filter((folder) => folder.brief || folder.writing);
+}
+
+function FolderBriefs({ folders, onReread }: { folders: FolderBrief[]; onReread: (path: string) => Promise<void> }) {
+  const [rereading, setRereading] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const reread = (path: string) => {
+    setRereading(path);
+    setFailed(null);
+    onReread(path)
+      .catch(() => setFailed(path))
+      .finally(() => setRereading(null));
+  };
+  return (
+    <ContextGroup label={folders.length > 1 ? "About these folders" : "About this folder"}>
+      <div className="flex flex-col gap-2.5">
+        {folders.map((folder) => {
+          const busy = folder.writing || rereading === folder.path;
+          return (
+            <div key={folder.path} className="text-[13px] leading-relaxed">
+              {folders.length > 1 && (
+                <div className="mb-0.5 flex items-center gap-1.5 font-medium" title={folder.path}>
+                  <FolderIcon className="h-3.5 w-3.5 shrink-0 text-[var(--muted)]" />
+                  <span className="truncate">{folder.name}</span>
+                </div>
+              )}
+              {busy && !folder.brief ? (
+                <p className="text-[var(--muted)]">Reading the file names…</p>
+              ) : (
+                <p>{folder.brief}</p>
+              )}
+              <div className="mt-1 flex items-center gap-2 text-xs text-[var(--muted)]">
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="underline-offset-2 hover:text-[var(--fg)] hover:underline disabled:pointer-events-none disabled:opacity-60"
+                  onClick={() => reread(folder.path)}
+                  title="Write this again from the folder's current file names"
+                >
+                  {busy ? "Reading…" : "Read again"}
+                </button>
+                {failed === folder.path && <span className="text-[var(--danger)]">Couldn't read it again</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </ContextGroup>
+  );
+}
+
 function ContextView({
   activity,
   threadId,
   onOpen,
+  onReread,
 }: {
   activity: ThreadActivity;
   threadId: string;
   onOpen: (file: ActivityFile, reveal: boolean) => void;
+  onReread: (path: string) => Promise<void>;
 }) {
   const tools: ActivityToolUse[] = [...activity.tools].sort((a, b) => b.count - a.count);
+  const briefs = shownBriefs(activity);
   return (
     <div className="flex flex-col gap-4">
+      {briefs.length > 0 && <FolderBriefs folders={briefs} onReread={onReread} />}
       {activity.references.length > 0 && (
         <ContextGroup label="Files read">
           <ul className="-mx-2 flex flex-col">

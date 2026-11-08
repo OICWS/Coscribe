@@ -255,7 +255,7 @@
   "office-agent/frontend/src/components/RunPanel.tsx::RunPanel": 253,
   "office-agent/frontend/src/components/ScheduledTaskDetail.tsx::ScheduledTaskDetail": 128,
   "office-agent/frontend/src/components/ScheduledTaskModal.tsx::ScheduledTaskModal": 189,
-  "office-agent/frontend/src/components/TaskPanel.tsx::TaskPanel": 153,
+  "office-agent/frontend/src/components/TaskPanel.tsx::TaskPanel": 136,
   "office-agent/frontend/src/components/ThreadList.tsx::GroupHeader": 116,
   "office-agent/frontend/src/components/ThreadList.tsx::ThreadList": 240,
   "office-agent/frontend/src/components/ThreadList.tsx::ThreadMenu": 127,
@@ -310,7 +310,7 @@
  "long_functions": {
   "src/coscribe/cli.py::_chat_async": 108,
   "src/coscribe/conversation/session.py::ChatSessionLG.__init__": 190,
-  "src/coscribe/conversation/session.py::ChatSessionLG._handle_user_message_locked": 207,
+  "src/coscribe/conversation/session.py::ChatSessionLG._handle_user_message_locked": 206,
   "src/coscribe/conversation/turn_stream.py::TurnStreamer.stream_turn": 115,
   "src/coscribe/coordinator.py::build_coordinator_agent": 147,
   "src/coscribe/runtime_lg/agent.py::build_langgraph_agent": 187,
@@ -341,8 +341,8 @@
   "src/coscribe/web/routes/settings/config.py::router": 103,
   "src/coscribe/web/routes/settings/providers.py::router": 138,
   "src/coscribe/web/routes/skills.py::router": 220,
-  "src/coscribe/web/routes/ws.py::router": 194,
-  "src/coscribe/web/routes/ws.py::router.ws_endpoint": 109
+  "src/coscribe/web/routes/ws.py::router": 191,
+  "src/coscribe/web/routes/ws.py::router.ws_endpoint": 106
  },
  "patch_by_string": {},
  "startup_imports": {

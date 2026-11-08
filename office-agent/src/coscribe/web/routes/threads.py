@@ -32,6 +32,7 @@ from ...tools import (
 from ...workflows import DraftFailed
 from ..artifact_adoption import ArtifactAdoption
 from ..schemas import (
+    FolderBriefRequest,
     GroupRename,
     OpenFileRequest,
     ThreadMetaPatch,
@@ -291,6 +292,23 @@ def _task_and_draft_routes(router: APIRouter, state: AppState) -> None:
         session = _get_session(thread_id)
         activity = await session.get_activity()
         return {"tasks": TaskToolkit(thread_id, settings.state_dir).list_tasks(), **activity}
+
+    async def reread_folder_brief(
+        thread_id: str, body: FolderBriefRequest
+    ) -> dict[str, Any] | JSONResponse:
+        """Writes the brief of one of the conversation's folders again."""
+        session = _get_session(thread_id)
+        folder = next((f for f in session._assembly.folders() if str(f) == body.path), None)
+        if folder is None:
+            return JSONResponse({"error": "Not a folder of this conversation"}, status_code=404)
+        return await session._assembly.folder_briefs.reread(folder)
+
+    router.add_api_route(
+        "/api/threads/{thread_id}/folder-brief",
+        reread_folder_brief,
+        methods=["POST"],
+        response_model=None,
+    )
 
     async def export_thread(thread_id: str) -> Response:
         text = await (await _get_session_async(thread_id))._history.export_markdown()
