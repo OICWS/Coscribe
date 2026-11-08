@@ -32,9 +32,9 @@ Last reviewed: 2026-11-06.
    reply so far (#827) and a script moving to the background at its time limit or when the person
    writes mid-turn (`docs/log/2026-11-07-script-to-background.md`). Next: a folder brief on first attach; an offer to save a job as
    a workflow or skill; an in-chat connector card (decision record and independent review first).
-5. **Workflows** (#719 and #788; decisions 0028 to 0035). Phases P0 to P5 are done
-   (`docs/log/`, 2026-10-29 to 2026-11-02). In review: parallel steps (#789, decision 0036
-   proposed). Next in #788: a run started by a webhook or a connector event, with the event's
+5. **Workflows** (#843; decisions 0028 to 0036). Phases P0 to P5 are done
+   (`docs/log/`, 2026-10-29 to 2026-11-02). Parallel steps are merged (#789, decision 0036
+   proposed). Next in #843: a run started by a webhook or a connector event, with the event's
    data as its inputs (batch 2), then steps a run adds by itself within the task's autonomy
    (batch 3). Open: a cost cap for an agent step, and an L3 step delegating.
 
@@ -49,7 +49,7 @@ Last reviewed: 2026-11-06.
   loaded lazily once the sections modules may be edited; the sidecar started earlier in the
   Electron shell.
 - **Scripts and commands:** a PyPI mirror setting for networks that block PyPI (#560); hiding other
-  drives' user folders from commands (#588); a company proxy on a real Windows machine (Basic only;
+  drives' user folders from commands (#845); a company proxy on a real Windows machine (Basic only;
   NTLM and Kerberos are not supported, #666).
 - **The `tools` interface** (#677): done; B was closed with a reason (#692): the `tools` card and
   `slice.py` list only the 54 names `tools` owns. Moving callers to the sub-components is not
@@ -103,7 +103,7 @@ Last reviewed: 2026-11-06.
 ## Later (wanted, not scheduled)
 
 - A scheduled task changed by describing the change in words, from the task page's simple view
-  (#773): today a person edits steps in the detailed view or asks in a conversation. Needs a
+  (#843): today a person edits steps in the detailed view or asks in a conversation. Needs a
   route that drafts a revision of a saved task from a request, as a failed run's investigation does.
 
 - The rest of `office-agent/README.md` (browser, MCP, hooks, Web UI, desktop) rewritten as the
