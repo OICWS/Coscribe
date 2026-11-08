@@ -541,6 +541,19 @@
         "title": "ElementUndo",
         "type": "object"
       },
+      "FolderBriefRequest": {
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "FolderBriefRequest",
+        "type": "object"
+      },
       "GroupRename": {
         "properties": {
           "name": {
@@ -7479,6 +7492,54 @@
           }
         },
         "summary": "Open Thread File"
+      }
+    },
+    "/api/threads/{thread_id}/folder-brief": {
+      "post": {
+        "description": "Writes the brief of one of the conversation's folders again.",
+        "operationId": "reread_folder_brief_api_threads__thread_id__folder_brief_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderBriefRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reread Folder Brief"
       }
     },
     "/api/threads/{thread_id}/meta": {

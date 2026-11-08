@@ -161,4 +161,15 @@ export interface ThreadActivity {
   tools: ActivityToolUse[];
   connectors: { server: string; tools: ActivityToolUse[] }[];
   skills: string[];
+  /** The conversation's folders, each with what its file names say it holds. */
+  folders?: FolderBrief[];
+}
+
+export interface FolderBrief {
+  path: string;
+  name: string;
+  /** Empty while none is written (an empty folder, or the side model failed). */
+  brief: string;
+  written_at: string | null;
+  writing: boolean;
 }

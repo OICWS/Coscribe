@@ -14,6 +14,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from ._trigger_files import trigger_file
+
 MAX_VERSIONS = 50
 
 
@@ -107,7 +109,7 @@ class TaskVersions:
         os.replace(tmp, path)
 
     def _path(self, trigger_id: str) -> Path:
-        return self.root / f"{trigger_id}.json"
+        return trigger_file(self.root, trigger_id, ".json")
 
     def _overview_path(self, trigger_id: str) -> Path:
-        return self.root / f"{trigger_id}.overview.json"
+        return trigger_file(self.root, trigger_id, ".overview.json")

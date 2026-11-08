@@ -337,6 +337,7 @@ def _settings(tmp_path: Path, **overrides: object) -> Settings:
         # the test's own turns.
         "auto_title_threads": False,
         "prompt_suggestions": False,
+        "folder_briefs": False,
     }
     values.update(overrides)
     return Settings(_env_file=None, **values)  # type: ignore[call-arg, arg-type]

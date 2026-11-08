@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable, Sequence
+from functools import cached_property
 from pathlib import Path
 from typing import Any, Protocol, cast
 
@@ -45,6 +46,7 @@ from ..tools import (
 from ..tools.web import build_http_tools
 from .artifact_tools import build_artifact_tools
 from .context_usage import build_context_breakdown
+from .folder_brief import FolderBriefKeeper
 from .page_tools import build_page_tools
 from .turn_text import build_instructions
 
@@ -55,6 +57,7 @@ class AssemblyHost(Protocol):
     thread_id: str
     settings: Settings
     workspace_root: Path
+    extra_folders: list[Path]
     enabled_skill_names: set[str]
     hooks_config: dict[str, list[str]]
     model: Any
@@ -101,10 +104,21 @@ class AgentAssembly:
         self._host = host
         self._side: tuple[str, Any] | None = None
 
+    @cached_property
+    def folder_briefs(self) -> FolderBriefKeeper:
+        return FolderBriefKeeper(
+            Path(self._host.settings.state_dir),
+            self.side_model,
+            lambda: self._host.settings.folder_briefs,
+        )
+
+    def folders(self) -> list[Path]:
+        return [Path(self._host.workspace_root), *self._host.extra_folders]
+
     def side_model(self) -> Any:
-        """The model for the short calls around a turn (`Settings.side_model`). It falls back to
-        the conversation's model, so a key without access to the small model still gets a
-        title."""
+        """The model for side jobs around a turn (`Settings.side_model`): the reviewer, the title,
+        the suggestion. A picked model falls back to the conversation's, so a key without access
+        to it still gets a title and a verdict."""
         main = self._host.model
         name = side_model_name(self._host._model_string, self._host.settings.side_model)
         if name == self._host._model_string:
@@ -113,7 +127,7 @@ class AgentAssembly:
             try:
                 small = resolve_chat_model(name, self._host._custom_providers)
             except (ValueError, ImportError):
-                # No small model (an unknown provider, no package for it) only costs more.
+                # A picked model that can't be built (a provider since removed) only costs more.
                 return main
             self._side = (name, small)
         return self._side[1].with_fallbacks([main])

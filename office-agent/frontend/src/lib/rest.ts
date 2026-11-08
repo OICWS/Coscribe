@@ -57,6 +57,7 @@ import type {
   CommandsResponse,
   ContextBreakdown,
   BackgroundScriptLog,
+  FolderBrief,
   BackgroundScriptTask,
   SubAgentActionResult,
   SubAgentTasksResponse,
@@ -497,6 +498,10 @@ export const getThreadActivity = (threadId: string) =>
     ...activity,
     outputs: activity.outputs.filter((file) => file.exists),
   }));
+
+/** Writes the brief of one of the conversation's folders again, from its current file names. */
+export const rereadFolderBrief = (threadId: string, path: string) =>
+  postJson<FolderBrief>(`/api/threads/${encodeURIComponent(threadId)}/folder-brief`, { path });
 
 /** Resolves to an error message, or null once the file was handed to the OS. */
 export async function openThreadFile(threadId: string, path: string, reveal: boolean): Promise<string | null> {

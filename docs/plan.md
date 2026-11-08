@@ -30,12 +30,12 @@ Last reviewed: 2026-11-06.
    (#822), the delivery check of the Office files a turn wrote (#824), and, put before step 5 by
    the maintainer, a background script's end reported to its conversation (#826), Stop keeping the
    reply so far (#827) and a script moving to the background at its time limit or when the person
-   writes mid-turn (`docs/log/2026-11-07-script-to-background.md`). Next: a folder brief on first attach; an offer to save a job as
-   a workflow or skill; an in-chat connector card (decision record and independent review first).
+   writes mid-turn (`docs/log/2026-11-07-script-to-background.md`), and a brief of what each folder
+   holds (`docs/log/2026-11-08-folder-brief.md`). Next: an offer to save a job as a workflow or skill; an in-chat connector card (decision record and independent review first).
 5. **Workflows** (#843; decisions 0028 to 0038). Phases P0 to P5 are done
    (`docs/log/`, 2026-10-29 to 2026-11-02). Parallel steps are merged (#789, decision 0036
-   proposed). In review: the simple view says what a task does in words (#839, decision 0037),
-   and a run page says how it went and what it got before its steps (#840, decision 0038).
+   proposed), and so is the simple view in words (#839, decision 0037). In review: a run page
+   says how it went and what it got before its steps (#840, decision 0038).
    Next in #843: a run started by a webhook or a connector event, with the event's data as its
    inputs (batch 2), then steps a run adds by itself within the task's autonomy (batch 3). Open:
    a cost cap for an agent step, and an L3 step delegating.

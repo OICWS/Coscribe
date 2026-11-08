@@ -156,6 +156,7 @@ POST /api/threads/{thread_id}/doc/comments/{comment_id}/replies
 POST /api/threads/{thread_id}/doc/export
 POST /api/threads/{thread_id}/doc/restore
 POST /api/threads/{thread_id}/files/open
+POST /api/threads/{thread_id}/folder-brief
 POST /api/threads/{thread_id}/meta
 POST /api/threads/{thread_id}/rename
 POST /api/threads/{thread_id}/slides/arrange

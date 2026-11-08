@@ -982,3 +982,24 @@ def test_test_connection_tries_the_unsaved_setting_against_the_default_models_pr
     ]
     assert body["ok"] is True and body["proxy"] == "http://proxy:8080"
     assert "COSCRIBE_PROXY_MODE" not in dotenv_values(tmp_path / ".env")
+
+
+def test_the_side_job_model_is_checked_saved_and_cleared_without_a_restart_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("", encoding="utf-8")
+    fake_model = FakeToolCallingChatModel(responses=[])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        bad = client.post("/api/config", json={"updates": {"COSCRIBE_SIDE_MODEL": "haiku"}})
+        good = client.post(
+            "/api/config", json={"updates": {"COSCRIBE_SIDE_MODEL": "anthropic:claude-haiku-5-5"}}
+        )
+        shown = client.get("/api/config").json()["COSCRIBE_SIDE_MODEL"]
+        cleared = client.post("/api/config", json={"updates": {"COSCRIBE_SIDE_MODEL": ""}})
+
+    assert set(bad.json()["rejected"]) == {"COSCRIBE_SIDE_MODEL"}
+    assert good.json() == {"restart_required": False, "rejected": {}}
+    assert shown == "anthropic:claude-haiku-5-5"
+    assert cleared.json() == {"restart_required": False, "rejected": {}}
+    assert not dotenv_values(tmp_path / ".env")["COSCRIBE_SIDE_MODEL"]

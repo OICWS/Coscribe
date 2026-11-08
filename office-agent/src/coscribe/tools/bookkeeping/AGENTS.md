@@ -33,7 +33,8 @@ Also exported: `FINISHED_STATUSES`, `ConversationSource`, `ConversationTranscrip
 
 ## Invariants
 - A store is a file under the state directory written through `_file_locks`; an id that comes
-  from a URL must never name a path outside its store.
+  from a URL must never name a path outside its store. A scheduled task's stores name their files
+  through `_trigger_files.trigger_file`, which takes letters, digits, `_` and `-` only.
 - `scheduled_tasks` validates a workflow against `coscribe.workflow_spec`, a package below `tools`,
   so nothing in `tools` imports `workflows`; a fixed workflow run never reaches an agent.
 - Tool schemas are fixed and snapshotted (`tests/tool_schemas.txt`).
@@ -41,7 +42,7 @@ Also exported: `FINISHED_STATUSES`, `ConversationSource`, `ConversationTranscrip
 ## Tests
 `tests/test_task_tools.py`, `tests/test_scheduled_tasks_tool.py`, `tests/test_scheduled_runs_lg.py`,
 `tests/test_subagent_tasks.py`, `tests/test_background_tasks.py`, `tests/test_selfwake_tool.py`,
-`tests/test_conversations_tool.py`, `tests/test_memory_tool.py`.
+`tests/test_conversations_tool.py`, `tests/test_memory_tool.py`, `tests/test_trigger_files.py`.
 
 ## Verify by hand
 A scheduled task firing while the app is closed and reopened; a background command's output in

@@ -59,6 +59,9 @@ export const LOG_LEVELS = [
 export const CODE_MODEL_KEY = "COSCRIBE_CODE_MODEL";
 export const CODE_MODULE_ENABLED_KEY = "COSCRIBE_CODE_MODULE_ENABLED";
 
+/** Absent or blank means the chat's own model. */
+export const SIDE_MODEL_KEY = "COSCRIBE_SIDE_MODEL";
+
 /** Absent means on; only "false" turns it off. */
 export const PROMPT_SUGGESTIONS_KEY = "COSCRIBE_PROMPT_SUGGESTIONS";
 
