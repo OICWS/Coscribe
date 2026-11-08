@@ -18,12 +18,17 @@ const SETTING_ENTRIES: SettingEntry[] = [
   { category: "general", label: "Theme", keywords: "dark light mode appearance" },
   { category: "general", label: "Interface font", keywords: "typeface appearance" },
   { category: "general", label: "Motion", keywords: "animation reduce appearance" },
+  { category: "general", label: "What should Coscribe call you?", keywords: "name profile" },
+  { category: "general", label: "What best describes your work?", keywords: "role job occupation profile" },
   { category: "general", label: fieldLabel(GENERAL_FIELDS, "COSCRIBE_DEFAULT_MODEL") },
   { category: "general", label: "Default mode", keywords: "permission manual auto plan accept edits" },
   { category: "general", label: fieldLabel(GENERAL_FIELDS, "COSCRIBE_MAX_TURNS"), keywords: "turns limit" },
   { category: "general", label: "Global instructions", keywords: "memory preferences" },
   { category: "general", label: "Keep running in the background", keywords: "tray close window" },
   { category: "general", label: "Notifications" },
+  // Its address, bypass list, user name and password show only once a manual proxy is chosen, so
+  // they are found through this row.
+  { category: "general", label: "Proxy", keywords: "network internet address do not use for bypass user name password" },
   { category: "general", label: "Log level", keywords: "debug logging" },
   { category: "workspace", label: "Default workspace", keywords: "folder directory" },
   { category: "workspace", label: fieldLabel(WORKSPACE_FIELDS, "COSCRIBE_SKILLS_DIR") },
