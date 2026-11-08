@@ -47,6 +47,7 @@ export function scheduleKindLabel(kind: ScheduleKind): string {
   if (kind === "every") return "Repeats";
   if (kind === "folder") return "On new file";
   if (kind === "connector") return "On new item";
+  if (kind === "webhook") return "On event";
   return kind.charAt(0).toUpperCase() + kind.slice(1);
 }
 
@@ -74,6 +75,8 @@ export function describeSchedule(schedule: ScheduleRule): string {
       return `When a ${schedule.pattern && schedule.pattern !== "*" ? `${schedule.pattern} ` : ""}file arrives in ${folderName(schedule.folder ?? "")}`;
     case "connector":
       return describeConnectorCheck(schedule);
+    case "webhook":
+      return "When a program on this computer sends it an event";
     default:
       return schedule.kind;
   }

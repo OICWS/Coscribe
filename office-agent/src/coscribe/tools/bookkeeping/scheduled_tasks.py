@@ -656,6 +656,8 @@ def edit_draft(store: ScheduledTriggerStore, changes: dict[str, Any]) -> dict[st
         "approval_mode": trigger.approval_mode,
     }
     given = {k: v for k, v in changes.items() if k in _EDITABLE_FIELDS and v is not None}
+    if given.get("kind") in ("connector", "webhook") and given["kind"] != current["kind"]:
+        raise ValueError("Only the person makes a task start on outside events, in its form")
     changed = [k for k, v in given.items() if v != current[k]]
     return {**current, **given, "trigger_id": trigger.trigger_id, "changed": changed}
 
@@ -772,8 +774,6 @@ def build_scheduled_task_tools(
             model: "provider:model".
             approval_mode: "manual", "auto" or "skip".
         """
-        if kind in ("connector", "webhook"):
-            raise ValueError("Only the person makes a task start on outside events, in its form")
         draft = edit_draft(
             store,
             {

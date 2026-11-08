@@ -293,6 +293,7 @@ def _task_routes(router: APIRouter, state: AppState) -> None:
             return JSONResponse({"error": str(exc)}, status_code=404)
         except ValueError as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
+        await state.webhooks.sync()
         return JSONResponse(trigger.to_dict())
 
 

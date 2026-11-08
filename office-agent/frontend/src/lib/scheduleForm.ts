@@ -17,7 +17,8 @@ export interface ScheduleForm {
   /** The workflow's file input a new file goes to. */
   input: string;
   /** "connector" (decision 0039): the tool asked, its arguments, which input takes which field
-   * of an item, the most runs an hour, and the person's OK for a tool not marked read-only. */
+   * of an item, the most runs an hour, and the person's OK for a tool not marked read-only.
+   * "webhook" (decision 0040) uses the fields and the limit, for an event. */
   tool: string;
   args: Record<string, unknown>;
   inputsFrom: Record<string, string>;
@@ -62,6 +63,7 @@ const KNOWN = new Set<string>([
   "every",
   "folder",
   "connector",
+  "webhook",
 ]);
 
 /** The form's starting schedule: the task being edited, a draft the model proposed (anything the
@@ -128,5 +130,12 @@ export function schedulePayload(
           },
         }
       : {}),
+    ...(kind === "webhook" ? { watch: { inputs_from: form.inputsFrom, per_hour: form.perHour } } : {}),
   };
+}
+
+/** The saved webhook task a form edits, whose address it can show; a task not saved as one has none
+ * yet (decision 0040). */
+export function webhookTaskId(task: ScheduledTask | null): string | undefined {
+  return task?.schedule.kind === "webhook" ? task.trigger_id : undefined;
 }

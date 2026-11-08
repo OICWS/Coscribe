@@ -6,10 +6,11 @@ import type { Workflow } from "../types/workflow";
 import { ConnectorTriggerFields } from "./ConnectorTriggerFields";
 import { SelectMenu } from "./SelectMenu";
 import { DirBrowserModal } from "./settings/DirBrowserModal";
+import { WebhookTriggerFields } from "./WebhookTriggerFields";
 
 // When a task runs: the Frequency row of the create/edit form. Besides the clock, a workflow task
-// can run every few minutes or when a file arrives in a folder (decision 0034), or when something
-// new shows up in a connector (decision 0039).
+// can run every few minutes or when a file arrives in a folder (decision 0034), when something
+// new shows up in a connector (decision 0039), or when a program sends it an event (decision 0040).
 
 const FREQUENCY_OPTIONS: { value: ScheduleKind; label: string }[] = [
   { value: "manual", label: "Manual" },
@@ -24,6 +25,7 @@ const WORKFLOW_OPTIONS: { value: ScheduleKind; label: string }[] = [
   { value: "every", label: "Every few minutes" },
   { value: "folder", label: "When a file arrives in a folder" },
   { value: "connector", label: "When something new shows up in a connector" },
+  { value: "webhook", label: "When a program sends it an event" },
 ];
 
 const EVERY_MINUTES = [5, 10, 15, 30, 60, 120, 240, 480, 720, 1440];
@@ -115,10 +117,13 @@ export function FrequencyRow({
   form,
   onChange,
   workflow,
+  taskId,
 }: {
   form: ScheduleForm;
   onChange: (form: ScheduleForm) => void;
   workflow: Workflow | null;
+  /** The task being edited, for what only a saved task has (a webhook's address). */
+  taskId?: string;
 }) {
   const inputs = fileInputs(workflow);
   const options = [...FREQUENCY_OPTIONS, ...(workflow ? WORKFLOW_OPTIONS : [])];
@@ -179,6 +184,9 @@ export function FrequencyRow({
       )}
       {form.kind === "folder" && <FolderFields form={form} onChange={onChange} inputs={inputs} />}
       {form.kind === "connector" && <ConnectorTriggerFields form={form} onChange={onChange} workflow={workflow} />}
+      {form.kind === "webhook" && (
+        <WebhookTriggerFields form={form} onChange={onChange} workflow={workflow} taskId={taskId} />
+      )}
     </div>
   );
 }

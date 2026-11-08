@@ -9,6 +9,7 @@ import asyncio
 import json
 import logging
 import socket
+import sys
 from collections.abc import Callable, Coroutine
 from typing import Any
 
@@ -62,7 +63,8 @@ class WebhookListener:
     def status(self) -> dict[str, Any]:
         """Where events go, for the task page: the port it listens on, or why it doesn't."""
         port = self.port or self._settings.webhook_port
-        return {"url": f"http://127.0.0.1:{port}/hooks/", "listening": self.port is not None,
+        listening = self._server is not None and not self._server.should_exit
+        return {"url": f"http://127.0.0.1:{port}/hooks/", "listening": listening,
                 "error": self.error}  # fmt: skip
 
     def _wanted(self) -> bool:
@@ -84,13 +86,19 @@ class WebhookListener:
 
     def _start(self) -> None:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if sys.platform == "win32":
+            # No other program may take the port while it is ours, even one asking to share it.
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        else:
+            # The port comes back at once after a stop, not when its last connections time out.
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             # Taken here, not by uvicorn, which exits the process when a port is busy.
             sock.bind(("127.0.0.1", self._settings.webhook_port))
         except OSError as exc:
             sock.close()
             self.error = (f"Port {self._settings.webhook_port} is taken by another program "
-                          f"({exc.strerror}); pick another in Settings")  # fmt: skip
+                          f"({exc.strerror}); pick another in Settings > Sessions")  # fmt: skip
             logger.warning("webhook: %s", self.error)
             return
         sock.listen()

@@ -1387,6 +1387,20 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "WebhookSample": {
+        "description": "Keep a \"webhook\" task's next event as its sample instead of running it (decision 0040).",
+        "properties": {
+          "waiting": {
+            "title": "Waiting",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "waiting"
+        ],
+        "title": "WebhookSample",
+        "type": "object"
+      },
       "WorkflowAnswer": {
         "properties": {
           "approved": {
@@ -5031,6 +5045,127 @@
           }
         },
         "summary": "Restore Task Version"
+      }
+    },
+    "/api/scheduled-tasks/{trigger_id}/webhook": {
+      "get": {
+        "operationId": "webhook_api_scheduled_tasks__trigger_id__webhook_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trigger_id",
+            "required": true,
+            "schema": {
+              "title": "Trigger Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Webhook"
+      }
+    },
+    "/api/scheduled-tasks/{trigger_id}/webhook/key": {
+      "post": {
+        "operationId": "new_key_api_scheduled_tasks__trigger_id__webhook_key_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trigger_id",
+            "required": true,
+            "schema": {
+              "title": "Trigger Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "New Key"
+      }
+    },
+    "/api/scheduled-tasks/{trigger_id}/webhook/sample": {
+      "post": {
+        "operationId": "sample_api_scheduled_tasks__trigger_id__webhook_sample_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trigger_id",
+            "required": true,
+            "schema": {
+              "title": "Trigger Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookSample"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sample"
       }
     },
     "/api/screenshots/{name}": {

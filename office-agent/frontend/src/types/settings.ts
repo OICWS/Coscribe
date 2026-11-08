@@ -42,6 +42,7 @@ export interface ConfigResponse {
   COSCRIBE_PROMPT_SUGGESTIONS: string | null;
   COSCRIBE_BACKGROUND_AGENTS: string | null;
   COSCRIBE_ARCHIVE_INACTIVE_DAYS: string | null;
+  COSCRIBE_WEBHOOK_PORT: string | null;
   COSCRIBE_FLASH_ON_ATTENTION: string | null;
   COSCRIBE_KEEP_AWAKE: string | null;
   COSCRIBE_KEEP_AWAKE_ON_BATTERY: string | null;
@@ -359,7 +360,8 @@ export type ScheduleKind =
   | "monthly"
   | "every"
   | "folder"
-  | "connector";
+  | "connector"
+  | "webhook";
 
 export type ApprovalMode = "manual" | "auto" | "skip";
 
@@ -377,7 +379,8 @@ export interface ScheduleRule {
   input?: string | null;
   /** "connector" (decision 0039): every `minutes`, `tool` is asked with `args`, and each new item in
    * its answer starts a run. `inputs_from`: input -> the item's field, "*" the whole item, "" the
-   * input's default; an input not named takes the field named like it. */
+   * input's default; an input not named takes the field named like it. A "webhook" task (decision
+   * 0040) fills its inputs from each event the same way, within `per_hour`. */
   tool?: string | null;
   args?: Record<string, unknown>;
   inputs_from?: Record<string, string>;
@@ -390,6 +393,26 @@ export interface ScheduleRule {
 export interface ConnectorCheckState {
   last_check: { at: string; found: number; held: number; error: string | null } | null;
   missed: { at: string; item: string; reason: string }[];
+}
+
+/** A "webhook" task's latest event, its sample and the events that started no run (decision 0040). */
+interface WebhookState {
+  /** The next event is kept as the sample instead of starting a run. */
+  waiting: boolean;
+  sample: unknown;
+  /** Each field of the sample that is a value, by its dotted path. */
+  fields: Record<string, unknown>;
+  last_event: { at: string; status: number; message: string } | null;
+  missed: { at: string; item: string; reason: string }[];
+}
+
+/** GET /api/scheduled-tasks/{id}/webhook: where a program sends the task's events, and with what key. */
+export interface WebhookInfo extends WebhookState {
+  url: string;
+  key: string;
+  /** False when the port is taken by another program; `error` says so. */
+  listening: boolean;
+  error: string | null;
 }
 
 /** POST /api/mcp/check: what a connector's tool answers now. */
@@ -414,8 +437,8 @@ export interface ScheduledRun {
   thread_id: string;
   started_at: string;
   /** "file": a new file in the task's folder started it (decision 0034); "connector": a new item in
-   * a connector's answer (decision 0039). */
-  source: "manual" | "scheduled" | "file" | "connector";
+   * a connector's answer (decision 0039); "webhook": an event a program sent (decision 0040). */
+  source: "manual" | "scheduled" | "file" | "connector" | "webhook";
   status: RunStatus;
   finished_at: string | null;
   error: string | null;
@@ -439,8 +462,9 @@ export interface ScheduledRun {
   /** Per step that ran another task ("<step>" or "<step>/<its step>"): that task and its definition
    * as the run found it. */
   called?: Record<string, CalledTask>;
-  /** What started a "connector" run: the connector, its tool, the item's key and the item. */
-  event?: { connector: string; tool: string; key: string; item: unknown } | null;
+  /** What started a "connector" run (the connector, its tool, the item's key and the item) or a
+   * "webhook" run (the event, as `item`). */
+  event?: { connector?: string; tool?: string; key?: string; item: unknown } | null;
 }
 
 export interface ScheduledTask {
@@ -476,6 +500,8 @@ export interface ScheduledTask {
   results?: string[];
   /** A "connector" task's latest check (decision 0039). */
   connector_check?: ConnectorCheckState;
+  /** A "webhook" task's latest event (decision 0040). */
+  webhook?: WebhookState;
 }
 
 export interface CalledTask {

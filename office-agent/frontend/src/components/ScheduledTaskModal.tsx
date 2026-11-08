@@ -5,7 +5,14 @@ import type { Workflow } from "../types/workflow";
 import type { ApprovalMode, ScheduledTask } from "../types/settings";
 import type { TaskDraft } from "../types/wire";
 import { CloseIcon } from "./icons";
-import { fileInputs, initialSchedule, scheduleProblem, schedulePayload, type ScheduleForm } from "../lib/scheduleForm";
+import {
+  fileInputs,
+  initialSchedule,
+  scheduleProblem,
+  schedulePayload,
+  webhookTaskId,
+  type ScheduleForm,
+} from "../lib/scheduleForm";
 import { allSteps } from "../lib/workflowTree";
 import { DEFAULT_ENVIRONMENT } from "./EnvironmentDialog";
 import { EnvironmentPicker } from "./EnvironmentPicker";
@@ -248,7 +255,7 @@ export function ScheduledTaskModal({
             </div>
           )}
 
-          <FrequencyRow form={schedule} onChange={setSchedule} workflow={workflow} />
+          <FrequencyRow form={schedule} onChange={setSchedule} workflow={workflow} taskId={webhookTaskId(task)} />
 
           {!workflow && (
             <div className="flex flex-wrap items-center gap-2">

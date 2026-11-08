@@ -1,8 +1,8 @@
 # 0034: A task remembers between runs, and starts on a schedule of minutes or a new file
 
 Status: proposed (2026-11-02, kurtosisOC; needs the maintainer's acceptance). Builds on 0031 and
-0033. Issue #776, batch 4. Narrowed by 0039: a task may also start on something new in a
-connector.
+0033. Issue #776, batch 4. Narrowed by 0039 and 0040: a task may also start on something new in a
+connector, or on an event a program sends it.
 
 ## Context
 Every run started from nothing. A task that should handle only what is new since last time (new

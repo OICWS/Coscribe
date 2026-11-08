@@ -45,6 +45,7 @@ const SETTING_ENTRIES: SettingEntry[] = [
   { category: "sessions", label: "Prompt suggestions", keywords: "autocomplete tab" },
   { category: "sessions", label: "Background agents" },
   { category: "sessions", label: "Archive inactive conversations", keywords: "days old" },
+  { category: "sessions", label: "Port for task events", keywords: "webhook listener address" },
   { category: "sessions", label: "Draw attention when Coscribe needs you", keywords: "flash taskbar" },
   { category: "sessions", label: "Keep computer awake while Coscribe works", keywords: "sleep" },
   { category: "sessions", label: "Keep awake on battery power" },

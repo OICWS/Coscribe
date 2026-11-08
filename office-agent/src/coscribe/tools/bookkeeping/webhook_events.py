@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 from ...runtime import delete_secret, harden_file_permissions, resolve_secret, store_secret
 from ...workflow_spec import WorkflowInput
 from ._trigger_files import trigger_file
-from .connector_items import MAX_ITEM_CHARS, event_inputs, missed_item, room
+from .connector_items import MAX_ITEM_CHARS, event_inputs, item_fields, missed_item, room
 
 if TYPE_CHECKING:
     from .schedule_rule import ScheduleRule
@@ -120,6 +120,8 @@ class WebhookEvents:
         return {
             "waiting": bool(state.get("waiting")),
             "sample": state.get("sample"),
+            # Its fields by dotted path, as the form offers them to inputs.
+            "fields": item_fields(state.get("sample")),
             "last_event": state.get("last_event"),
             "missed": state.get("missed") or [],
         }

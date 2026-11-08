@@ -30,14 +30,16 @@ function Section({ title, action, children }: { title: string; action?: ReactNod
 const linkButton = "text-[13px] text-[var(--muted)] hover:text-[var(--fg)] hover:underline";
 
 /** What fills an input by itself when the task starts on something new: a folder task's file
- * (decision 0034), a connector item's field (decision 0039). Nothing to change there. */
+ * (decision 0034), a connector item's or an event's field (decisions 0039, 0040). Nothing to
+ * change there. */
 function filledBy(task: ScheduledTask): Record<string, string> {
   const rule = task.schedule;
   if (rule.kind === "folder" && rule.input) return { [rule.input]: "the new file that arrived in the folder" };
-  if (rule.kind !== "connector") return {};
+  if (rule.kind !== "connector" && rule.kind !== "webhook") return {};
+  const what = rule.kind === "webhook" ? "event" : "new item";
   const filled: Record<string, string> = {};
   for (const [name, path] of Object.entries(rule.inputs_from ?? {})) {
-    if (path) filled[name] = path === "*" ? "the whole new item" : `the new item's ${path}`;
+    if (path) filled[name] = path === "*" ? `the whole ${what}` : `the ${what}'s ${path}`;
   }
   return filled;
 }

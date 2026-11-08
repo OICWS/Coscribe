@@ -412,7 +412,6 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
     # populated before the app starts serving requests (see lifespan
     # below) -- _get_session is only reachable from ws_endpoint, which
     # can't run until the lifespan's own yield has happened.
-    #
     # connectors.tools does NOT have that same guarantee, deliberately:
     # see lifespan's own MCP-connect comment for why a session opened
     # very early may briefly see fewer tools than a slow-to-connect MCP

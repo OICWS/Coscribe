@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, get_args
 
@@ -50,7 +51,25 @@ COSCRIBE_ENV_VARS = [
     "COSCRIBE_PROMPT_SUGGESTIONS",
     "COSCRIBE_BACKGROUND_AGENTS",
     "COSCRIBE_ARCHIVE_INACTIVE_DAYS",
+    "COSCRIBE_WEBHOOK_PORT",
 ]
+
+
+def _number(value: str) -> int:
+    return int(value) if value.strip().isdigit() else -1
+
+
+# Settings that are blank or a number in a range: the check, and what a wrong value is told.
+_NUMBERS: dict[str, tuple[Callable[[str], bool], str]] = {
+    "COSCRIBE_ARCHIVE_INACTIVE_DAYS": (
+        str.isdigit,
+        "must be a number of days, or blank to never archive",
+    ),
+    "COSCRIBE_WEBHOOK_PORT": (
+        lambda value: 1024 <= _number(value) <= 65535,
+        "must be a port from 1024 to 65535, or blank for 8765",
+    ),
+}
 
 
 # Settings update_config applies to the running server as well as .env.
@@ -185,8 +204,8 @@ def router(state: AppState) -> APIRouter:
             if key == "COSCRIBE_MAX_TURNS" and not (value.strip().isdigit() and int(value) > 0):
                 rejected[key] = "must be a positive integer"
                 continue
-            if key == "COSCRIBE_ARCHIVE_INACTIVE_DAYS" and value and not value.isdigit():
-                rejected[key] = "must be a number of days, or blank to never archive"
+            if key in _NUMBERS and value and not _NUMBERS[key][0](value):
+                rejected[key] = _NUMBERS[key][1]
                 continue
             if key == "COSCRIBE_DEFAULT_PERMISSION_MODE" and value not in get_args(PermissionMode):
                 rejected[key] = f"must be one of {', '.join(get_args(PermissionMode))}"
