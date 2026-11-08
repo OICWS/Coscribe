@@ -39,6 +39,12 @@ def _task(client: Any, **watch: Any) -> dict[str, Any]:
     return response.json()
 
 
+def _key(client: Any, trigger_id: str, new: bool = False) -> str:
+    answer = client.post(f"/api/scheduled-tasks/{trigger_id}/webhook/key", json={"new": new})
+    assert answer.status_code == 200, answer.text
+    return str(answer.json()["key"])
+
+
 def _send(url: str, key: str | None, body: Any, **headers: str) -> httpx.Response:
     sent = {"Content-Type": "application/json", **headers}
     if key is not None:
@@ -53,7 +59,8 @@ def test_an_event_with_the_key_starts_a_run_and_anything_else_is_refused(
         task = _task(client, inputs_from={"amount": "total"})
         hook = client.get(f"/api/scheduled-tasks/{task['trigger_id']}/webhook").json()
         assert hook["listening"] and hook["url"].startswith("http://127.0.0.1:")
-        url, key = hook["url"], hook["key"]
+        assert "key" not in hook
+        url, key = hook["url"], _key(client, task["trigger_id"])
         other = url.rsplit("/", 1)[0] + "/nope"
 
         assert _send(url, None, {"total": 1}).status_code == 401
@@ -81,14 +88,15 @@ def test_an_event_with_the_key_starts_a_run_and_anything_else_is_refused(
         assert listed["webhook"]["last_event"]["status"] == 202
         assert "key" not in json.dumps(listed["webhook"])
 
-        new = client.post(f"/api/scheduled-tasks/{task['trigger_id']}/webhook/key").json()["key"]
+        new = _key(client, task["trigger_id"], new=True)
         assert new != key and _send(url, key, {"total": 1}).status_code == 401
 
     entries = AuditLog(_settings(tmp_path).state_dir).read_all()
     events = [e for e in entries if e.reason == "webhook_event"]
     # Only events that came with the task's key: a request without it never reached a task.
-    assert [e.detail.split()[0] for e in events if e.detail] == ["413", "400", "202"]
+    assert [e.detail for e in events] == ["413", "400", "202"]
     assert all("12.5" not in json.dumps(e.arguments) for e in events)
+    assert "next week" not in json.dumps([e.detail for e in events])
 
 
 def test_a_sample_is_kept_without_running_and_a_paused_task_takes_no_event(
@@ -100,7 +108,7 @@ def test_a_sample_is_kept_without_running_and_a_paused_task_takes_no_event(
         waiting = client.post(f"/api/scheduled-tasks/{trigger_id}/webhook/sample",
                               json={"waiting": True}).json()  # fmt: skip
         assert waiting["waiting"] is True
-        url, key = waiting["url"], waiting["key"]
+        url, key = waiting["url"], _key(client, trigger_id)
 
         kept = _send(url, key, {"amount": 3, "customer": {"name": "Ada"}})
         assert kept.status_code == 200
@@ -119,7 +127,6 @@ def test_a_sample_is_kept_without_running_and_a_paused_task_takes_no_event(
 
 
 def test_events_over_the_limits_get_429(tmp_path: Path) -> None:
-    from datetime import datetime
 
     from coscribe.tools import ScheduledRun
     from coscribe.tools.bookkeeping.scheduled_tasks import create_trigger
@@ -129,16 +136,16 @@ def test_events_over_the_limits_get_429(tmp_path: Path) -> None:
     task = create_trigger(store, name="t", kind="webhook", at="", prompt="", workflow=_WORKFLOW,
                           watch={"per_hour": 2})  # fmt: skip
     specs = list(parse_workflow(_WORKFLOW).inputs)
-    now = datetime.now().isoformat()
-    runs = [ScheduledRun(run_id=f"r{n}", thread_id="t", started_at=now, source="webhook",
-                         status="completed") for n in range(2)]  # fmt: skip
-    over = store.webhooks.take(task.trigger_id, task.schedule, specs, runs, {"amount": 1})
+    one = {"amount": 1}
+    # Counted from what the task's file keeps, though the runs list was pruned to nothing.
+    for _ in range(2):
+        assert store.webhooks.take(task.trigger_id, task.schedule, specs, [], one).status == 202
+    over = store.webhooks.take(task.trigger_id, task.schedule, specs, [], one)
     assert over.status == 429 and over.inputs is None
     going = [ScheduledRun(run_id=f"g{n}", thread_id="t", started_at="2000-01-01",
                           source="webhook", status="running") for n in range(3)]  # fmt: skip
     task.schedule.per_hour = 30
-    assert store.webhooks.take(task.trigger_id, task.schedule, specs, going, {}).status == 429
-    one = {"amount": 1}
+    assert store.webhooks.take(task.trigger_id, task.schedule, specs, going, one).status == 429
     assert store.webhooks.take(task.trigger_id, task.schedule, specs, [], one).status == 202
 
 
@@ -181,3 +188,68 @@ def test_only_a_task_with_steps_starts_on_events_and_the_agent_cant_switch_one(
     tools = {t.__name__: t for t in build_scheduled_task_tools(store.state_dir)}
     with pytest.raises(ValueError, match="Only the person"):
         tools["edit_scheduled_task"](task.trigger_id, kind="webhook")
+
+
+def test_a_sender_that_stalls_or_nests_deep_gets_an_answer_and_holds_nothing_up(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import socket
+    import time
+
+    from coscribe.web import webhook_listener
+
+    monkeypatch.setattr(webhook_listener, "BODY_SECONDS", 0.5)
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        trigger_id = _task(client)["trigger_id"]
+        url = client.get(f"/api/scheduled-tasks/{trigger_id}/webhook").json()["url"]
+        key = _key(client, trigger_id)
+        assert _send(url, key, json.loads("[" * 900 + "]" * 900)).status_code == 400
+        deep = httpx.post(url, content="[" * 30_000, headers={"Authorization": f"Bearer {key}",
+                          "Content-Type": "application/json"})  # fmt: skip
+        assert deep.status_code == 400
+
+        port = int(url.split(":")[2].split("/")[0])
+        with socket.create_connection(("127.0.0.1", port)) as stalled:
+            stalled.sendall(
+                f"POST /hooks/{trigger_id} HTTP/1.1\r\nHost: x\r\nAuthorization: Bearer {key}\r\n"
+                "Content-Type: application/json\r\nContent-Length: 100\r\n\r\n{\"a\"".encode()
+            )
+            stalled.settimeout(5)
+            assert b" 408 " in stalled.recv(4096).split(b"\r\n")[0] + b" "
+            began = time.monotonic()
+            assert client.post(f"/api/scheduled-tasks/{trigger_id}/pause").status_code == 200
+            assert time.monotonic() - began < 5
+
+
+def test_a_lost_key_is_never_replaced_by_reading_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from .helpers import _install_fake_keyring
+
+    keychain = _install_fake_keyring(monkeypatch)
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        trigger_id = _task(client)["trigger_id"]
+        _key(client, trigger_id)
+        keychain.store.clear()
+        lost = client.post(f"/api/scheduled-tasks/{trigger_id}/webhook/key", json={})
+        assert lost.status_code == 409 and "make a new key" in lost.json()["error"]
+        assert client.get(f"/api/scheduled-tasks/{trigger_id}/webhook").status_code == 200
+        assert keychain.store == {}
+        assert _key(client, trigger_id, new=True) == _key(client, trigger_id)
+
+
+def test_an_edit_that_says_nothing_of_the_events_keeps_their_mapping_and_limit(
+    tmp_path: Path,
+) -> None:
+    from coscribe.tools.bookkeeping.scheduled_tasks import (
+        build_scheduled_task_tools,
+        create_trigger,
+    )
+
+    store = ScheduledTriggerStore(_settings(tmp_path).state_dir)
+    task = create_trigger(store, name="t", kind="webhook", at="", prompt="", workflow=_WORKFLOW,
+                          watch={"per_hour": 1, "inputs_from": {"amount": "total"}})  # fmt: skip
+    tools = {t.__name__: t for t in build_scheduled_task_tools(store.state_dir)}
+    tools["edit_scheduled_task"](task.trigger_id, name="Renamed")
+    rule = store.load(task.trigger_id).schedule  # type: ignore[union-attr]
+    assert (rule.per_hour, rule.inputs_from) == (1, {"amount": "total"})

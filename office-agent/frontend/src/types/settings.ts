@@ -406,11 +406,9 @@ interface WebhookState {
   missed: { at: string; item: string; reason: string }[];
 }
 
-/** GET /api/scheduled-tasks/{id}/webhook: where a program sends the task's events, and with what key. */
+/** GET /api/scheduled-tasks/{id}/webhook: where a program sends the task's events (its key is read by POST). */
 export interface WebhookInfo extends WebhookState {
   url: string;
-  /** Null when the keychain lost it: only a new key helps. */
-  key: string | null;
   /** False when the port is taken by another program; `error` says so. */
   listening: boolean;
   error: string | null;

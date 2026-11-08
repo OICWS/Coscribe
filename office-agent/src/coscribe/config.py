@@ -271,7 +271,7 @@ class Settings(BaseSettings):
     browser_* tools are offered and drive the tabs in the desktop app's
     Browser panel; unset (the plain web UI), they aren't offered at all."""
 
-    webhook_port: int = 8765
+    webhook_port: int = 8790
     """The port the webhook listener takes on 127.0.0.1 while a task starts on events a program
     sends it (decision 0040). Fixed, unlike the server's own, so the address a program was given
     keeps working; 0 picks a free one (tests)."""

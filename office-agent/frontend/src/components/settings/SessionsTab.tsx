@@ -25,14 +25,14 @@ function WebhookPortRow({ values, onChange }: SessionsTabProps) {
   return (
     <SettingRow
       label="Port for task events"
-      description="A task that starts when a program sends it an event listens on this port, on this computer only. Change it if another program uses 8765, then restart Coscribe; programs then need the new address."
+      description="A task that starts when a program sends it an event listens on this port, on this computer only. Change it if another program uses 8790, then restart Coscribe; programs then need the new address."
       control={
         <input
           aria-label="Port for task events"
           type="number"
           min={1024}
           max={65535}
-          placeholder="8765"
+          placeholder="8790"
           className="w-24 rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm outline-none"
           value={values[WEBHOOK_PORT_KEY] ?? ""}
           onChange={(e) => onChange(WEBHOOK_PORT_KEY, e.target.value)}

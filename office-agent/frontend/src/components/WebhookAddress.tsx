@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getTaskWebhook, newWebhookKey, waitForWebhookSample } from "../lib/rest";
+import { getTaskWebhook, waitForWebhookSample, webhookKey } from "../lib/rest";
 import type { WebhookInfo } from "../types/settings";
 import type { WorkflowInput } from "../types/workflow";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -24,10 +24,12 @@ function exampleBody(info: WebhookInfo, inputs: WorkflowInput[]): string {
 }
 
 function powerShell(info: WebhookInfo, body: string, key: string): string {
+  // PowerShell ends a '...' string at a curly quote too, so a sample's text can't break out of it.
+  const quoted = body.replace(/['\u2018-\u201b]/g, (quote) => quote + quote);
   return (
     `Invoke-RestMethod -Method Post -Uri "${info.url}" ` +
     `-Headers @{ Authorization = "Bearer ${key}" } ` +
-    `-ContentType "application/json" -Body '${body.replace(/'/g, "''")}'`
+    `-ContentType "application/json" -Body '${quoted}'`
   );
 }
 
@@ -43,12 +45,13 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 const HIDDEN = "•".repeat(24);
 
 function KeyRow({
-  info,
+  value,
   shown,
   onShow,
   onNewKey,
 }: {
-  info: WebhookInfo;
+  /** An Error when it couldn't be read. */
+  value: string | Error | null;
   shown: boolean;
   onShow: (shown: boolean) => void;
   onNewKey: () => void;
@@ -57,14 +60,14 @@ function KeyRow({
   const link = "text-[13px] text-[var(--muted)] hover:underline";
   return (
     <Row label="Key">
-      {info.key === null ? (
-        <span className="text-[13px] text-[var(--danger)]">The key was lost from the keychain.</span>
+      {value instanceof Error ? (
+        <span className="text-[13px] text-[var(--danger)]">{value.message}</span>
       ) : (
         <>
           <code className="truncate font-mono text-[12.5px]" data-testid="webhook-key">
-            {shown ? info.key : HIDDEN}
+            {shown ? value : HIDDEN}
           </code>
-          <CopyButton getText={() => info.key ?? ""} title="Copy the key" className={copy} />
+          <CopyButton getText={() => value ?? ""} title="Copy the key" className={copy} />
           <button type="button" className={link} onClick={() => onShow(!shown)}>
             {shown ? "Hide" : "Show"}
           </button>
@@ -121,6 +124,11 @@ export function WebhookAddress({
   const [error, setError] = useState<string | null>(null);
   // Hidden until asked, in the example too, so a shared screen or screenshot doesn't give it away.
   const [shown, setShown] = useState(false);
+  const [key, setKey] = useState<string | Error | null>(null);
+  const readKey = (fresh: boolean) =>
+    void webhookKey(taskId, fresh)
+      .then(setKey)
+      .catch((e: Error) => setKey(e));
   const take = (next: WebhookInfo) => {
     setInfo(next);
     onInfo?.(next);
@@ -129,6 +137,7 @@ export function WebhookAddress({
     getTaskWebhook(taskId)
       .then(take)
       .catch((e: Error) => setError(e.message));
+    readKey(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once per task
   }, [taskId]);
   const waiting = info?.waiting ?? false;
@@ -145,7 +154,7 @@ export function WebhookAddress({
   if (error) return <p className="text-[13px] text-[var(--danger)]">Its address couldn't be read: {error}</p>;
   if (!info) return null;
   const body = exampleBody(info, inputs);
-  const example = powerShell(info, body, info.key ?? HIDDEN);
+  const example = powerShell(info, body, typeof key === "string" ? key : HIDDEN);
   return (
     <div className="flex flex-col gap-2 rounded-md border border-[var(--border)] p-3" data-testid="webhook-address">
       {!info.listening && info.error && <p className="text-[13px] text-[var(--danger)]">{info.error}</p>}
@@ -156,7 +165,7 @@ export function WebhookAddress({
           </code>
           <CopyButton getText={() => info.url} title="Copy the address" className={copy} />
         </Row>
-        <KeyRow info={info} shown={shown} onShow={setShown} onNewKey={() => void newWebhookKey(taskId).then(take)} />
+        <KeyRow value={key} shown={shown} onShow={setShown} onNewKey={() => readKey(true)} />
       </div>
       <details className="text-[13px]">
         <summary className="cursor-pointer text-[var(--muted)] hover:text-[var(--fg)]">Try it from PowerShell</summary>

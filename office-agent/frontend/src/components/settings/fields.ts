@@ -68,7 +68,7 @@ export const PROMPT_SUGGESTIONS_KEY = "COSCRIBE_PROMPT_SUGGESTIONS";
 /** Absent means on; only "false" turns it off. */
 export const BACKGROUND_AGENTS_KEY = "COSCRIBE_BACKGROUND_AGENTS";
 
-/** Where tasks that start on a program's events listen (decision 0040); blank means 8765. */
+/** Where tasks that start on a program's events listen (decision 0040); blank means 8790. */
 export const WEBHOOK_PORT_KEY = "COSCRIBE_WEBHOOK_PORT";
 
 /** Days of silence before a conversation is archived; absent or blank means never. */

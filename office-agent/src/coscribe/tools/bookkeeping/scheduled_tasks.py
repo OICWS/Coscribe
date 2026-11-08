@@ -554,7 +554,9 @@ def update_trigger(
     trigger = store.load(trigger_id)
     if trigger is None:
         raise KeyError(f"No scheduled task with id {trigger_id!r}")
-
+    if watch is None and kind == trigger.schedule.kind:
+        # An edit that says nothing of what the task watches (the agent's, the CLI's) keeps it.
+        watch = {k: getattr(trigger.schedule, k) for k in _WATCH_FIELDS}
     rule, next_run_at, normalized_workflow = _validate_and_build_schedule(
         kind=kind,
         at=at,
@@ -793,15 +795,7 @@ def build_scheduled_task_tools(
         updated = update_trigger(
             store,
             trigger_id,
-            name=draft["name"],
-            kind=draft["kind"],
-            at=draft["at"],
-            prompt=draft["prompt"],
-            weekday=draft["weekday"],
-            day_of_month=draft["day_of_month"],
-            start_date=draft["start_date"],
-            model=draft["model"],
-            approval_mode=draft["approval_mode"],
+            **{field: draft[field] for field in _EDITABLE_FIELDS},
             notes_enabled=trigger.notes_enabled,
             workflow=trigger.workflow,
             environment=trigger.environment,

@@ -160,6 +160,12 @@ class MCPVersionBump(BaseModel):
     version: str
 
 
+class WebhookKey(BaseModel):
+    """Read a "webhook" task's key, or replace it (decision 0040)."""
+
+    new: bool = False
+
+
 class WebhookSample(BaseModel):
     """Keep a "webhook" task's next event as its sample instead of running it (decision 0040)."""
 

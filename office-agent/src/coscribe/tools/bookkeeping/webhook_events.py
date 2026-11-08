@@ -11,14 +11,14 @@ import json
 import os
 import secrets
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from ...runtime import delete_secret, harden_file_permissions, resolve_secret, store_secret
 from ...workflow_spec import WorkflowInput
 from ._trigger_files import trigger_file
-from .connector_items import MAX_ITEM_CHARS, event_inputs, item_fields, missed_item, room
+from .connector_items import MAX_ITEM_CHARS, MAX_RUNNING, event_inputs, item_fields, missed_item
 
 if TYPE_CHECKING:
     from .schedule_rule import ScheduleRule
@@ -94,9 +94,14 @@ class WebhookEvents:
         if state.get("waiting"):
             state |= {"waiting": False, "sample": event}
             return self._done(trigger_id, state, Delivery(200, "Kept as the task's sample"))
+        now = datetime.now()
+        hour_ago = (now - timedelta(hours=1)).isoformat(timespec="seconds")
+        # Counted here, not from the runs: the task keeps only its latest runs, and folds some.
+        started = [at for at in state.get("started") or [] if str(at) >= hour_ago]
+        going = sum(run.source == "webhook" and run.status == "running" for run in runs)
         if len(json.dumps(event, ensure_ascii=False, default=str)) > MAX_ITEM_CHARS:
             delivery = Delivery(400, f"It is over {MAX_ITEM_CHARS // 1000} KB")
-        elif room(runs, rule.per_hour, datetime.now(), "webhook") < 1:
+        elif len(started) >= rule.per_hour or going >= MAX_RUNNING:
             delivery = Delivery(429, "The task is at its limit of runs; send it again later")
         else:
             try:
@@ -104,6 +109,7 @@ class WebhookEvents:
             except ValueError as exc:
                 delivery = Delivery(400, str(exc))
             else:
+                state["started"] = [*started, now.isoformat(timespec="seconds")]
                 return self._done(trigger_id, state, Delivery(202, "Started a run", inputs))
         missed = [*(state.get("missed") or []), missed_item(event, delivery.message)]
         state["missed"] = missed[-_MAX_MISSED:]

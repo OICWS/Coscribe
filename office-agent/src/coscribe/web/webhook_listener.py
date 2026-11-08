@@ -6,6 +6,7 @@ only while a task that starts on events is on."""
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import socket
@@ -15,7 +16,7 @@ from typing import Any
 
 import uvicorn
 from starlette.applications import Starlette
-from starlette.requests import Request
+from starlette.requests import ClientDisconnect, Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
@@ -28,6 +29,8 @@ logger = logging.getLogger(__name__)
 
 # Bytes, so a body is refused before it is read whole; the event is checked again as text.
 MAX_BODY = 64_000
+# A sender that stops mid-body would otherwise hold its connection, and a stop waits for it.
+BODY_SECONDS = 10
 
 Started = Callable[[str, str, list[ScheduledRun]], Coroutine[Any, Any, None]]
 
@@ -101,16 +104,33 @@ class WebhookListener:
             sock.bind(("127.0.0.1", self._settings.webhook_port))
         except OSError as exc:
             sock.close()
-            self.error = (f"Port {self._settings.webhook_port} is taken by another program "
-                          f"({exc.strerror}); pick another in Settings > Sessions")  # fmt: skip
-            logger.warning("webhook: %s", self.error)
+            # Windows also holds a port a moment after its own last connections close.
+            error = (f"Port {self._settings.webhook_port} is in use ({exc.strerror}). If it stays "
+                     "so, another program has it: pick another in Settings > Sessions")  # fmt: skip
+            if error != self.error:  # once, not on every poll
+                logger.warning("webhook: %s", error)
+            self.error = error
             return
         sock.listen()
         self.port, self.error = sock.getsockname()[1], None
         app = Starlette(routes=[Route("/hooks/{trigger_id}", self._receive, methods=["POST"])])
-        config = uvicorn.Config(app, log_level="warning", lifespan="off", access_log=False)
+        # h11 caps a request's headers (httptools buffers them whole), all on the main loop.
+        config = uvicorn.Config(app, http="h11", lifespan="off", access_log=False, log_config=None,
+                                limit_concurrency=16, timeout_graceful_shutdown=2)  # fmt: skip
         self._server = uvicorn.Server(config)
+        # The main server's Ctrl+C and shutdown signals stay its own (uvicorn takes them per serve).
+        vars(self._server)["capture_signals"] = contextlib.nullcontext
         self._serving = asyncio.create_task(self._server.serve(sockets=[sock]))
+        self._serving.add_done_callback(lambda task: self._ended(task, sock))
+
+    def _ended(self, task: asyncio.Task[None], sock: socket.socket) -> None:
+        if task.cancelled() or task.exception() is None or self._serving is not task:
+            return
+        # Ended on its own: the next sync starts it again rather than showing it as listening.
+        logger.error("webhook: the listener stopped", exc_info=task.exception())
+        sock.close()
+        self._server, self._serving, self.port = None, None, None
+        self.error = "Events stopped being received; the app's log has the details"
 
     async def _stop(self) -> None:
         if self._server is None or self._serving is None:
@@ -138,12 +158,16 @@ class WebhookListener:
             return _answer(409, "The task is paused")
         if request.headers.get("content-type", "").split(";")[0].strip() != "application/json":
             return _answer(415, "Send the event as JSON (Content-Type: application/json)")
-        body = await _body(request)
+        try:
+            async with asyncio.timeout(BODY_SECONDS):
+                body = await _body(request)
+        except (TimeoutError, ClientDisconnect):
+            return self._audit(trigger_id, 0, _answer(408, "The event didn't arrive in time"))
         if body is None:
             return self._audit(trigger_id, MAX_BODY, _answer(413, "It is over 64 KB"))
         try:
             event = json.loads(body)
-        except ValueError:
+        except (ValueError, RecursionError):
             return self._audit(trigger_id, len(body), _answer(400, "The body isn't JSON"))
         # Loaded again: another event may have started a run while this one was read.
         trigger = store.load(trigger_id) or trigger
@@ -165,6 +189,7 @@ class WebhookListener:
             arguments={"bytes": size},
             decision="approve" if answer.status_code < 300 else "reject",
             reason="webhook_event",
-            detail=f"{answer.status_code} {bytes(answer.body).decode()[:300]}",
+            # The status only: an answer that refuses a value can quote it.
+            detail=str(answer.status_code),
         )
         return answer

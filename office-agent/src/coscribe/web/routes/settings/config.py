@@ -67,7 +67,7 @@ _NUMBERS: dict[str, tuple[Callable[[str], bool], str]] = {
     ),
     "COSCRIBE_WEBHOOK_PORT": (
         lambda value: 1024 <= _number(value) <= 65535,
-        "must be a port from 1024 to 65535, or blank for 8765",
+        "must be a port from 1024 to 65535, or blank for 8790",
     ),
 }
 
