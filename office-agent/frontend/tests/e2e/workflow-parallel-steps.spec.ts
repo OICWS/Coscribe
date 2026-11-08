@@ -49,13 +49,19 @@ test("a parallel step runs its lanes and waits for an approval inside one", asyn
     await expect.poll(async () => (await lastRun()).status, { timeout: 30_000 }).toBe("needs_approval");
     const run = await lastRun();
     await page.goto(`/?thread=scheduled-${id}-${run.run_id}`);
-    await expect(page.locator('[data-run-step="both"]').first()).toContainText("Waiting inside", { timeout: 30_000 });
-    await expect(page.getByRole("region", { name: "Look" })).toContainText("List the workspace");
-    await page.getByRole("button", { name: "Approve and continue" }).click();
+    // The simple view: the lane's approval opens in the step list, under the step that runs both.
+    const running = page.locator('[data-run-row="both"]');
+    await expect(running).toHaveAttribute("data-run-status", "waiting", { timeout: 30_000 });
+    await expect(page.getByTestId("run-result")).toContainText("Waiting for your OK at");
+    await expect(running.locator('[data-run-row="list"]')).toHaveAttribute("data-run-status", "done");
+    await running.getByRole("button", { name: "Approve and continue" }).click();
     await expect.poll(async () => (await lastRun()).status, { timeout: 30_000 }).toBe("completed");
-    await expect(page.locator('[data-run-step="both"]').first()).toContainText("All 2 lanes ended", {
-      timeout: 30_000,
-    });
+    await expect(page.getByTestId("run-result")).toContainText("Done", { timeout: 30_000 });
+    await expect(running).toHaveAttribute("data-run-status", "done");
+
+    await page.getByRole("button", { name: "Detailed", exact: true }).click();
+    await expect(page.locator('[data-run-step="both"]').first()).toContainText("All 2 lanes ended");
+    await expect(page.getByRole("region", { name: "Look" })).toContainText("List the workspace");
     const done = (await lastRun()).steps.filter((s: { status: string }) => s.status === "done");
     expect(done.map((s: { step_id: string }) => s.step_id).sort()).toEqual(["after", "both", "list", "ok"]);
   } finally {

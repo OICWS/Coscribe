@@ -63,6 +63,12 @@ test("a failed step tried again and replaced, and a skipped one, don't stop the 
       .toBe("completed");
     const run = await lastRun(page.request, task.trigger_id);
     await page.goto(`/?thread=scheduled-${task.trigger_id}-${run.run_id}`);
+    // The simple view says what went differently once, above the steps.
+    await expect(page.getByTestId("run-notes")).toContainText("failed, so other steps ran in its place");
+    await expect(page.getByTestId("run-notes")).toContainText("failed and was skipped");
+    await expect(page.locator('[data-run-row="chat"]')).toContainText("Failed, skipped");
+
+    await page.getByRole("button", { name: "Detailed", exact: true }).click();
     const row = page.locator('[data-run-step="rates"]');
     await expect(row).toContainText("Failed, ran other steps in its place · after 2 tries");
     await expect(row.getByRole("region", { name: "If it fails" })).toContainText("List what is there");

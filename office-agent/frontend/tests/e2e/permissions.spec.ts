@@ -56,7 +56,7 @@ test("a run that needs a folder it hasn't been allowed stops, and carries on onc
     await page.goto(`/?thread=${run.thread_id}`);
 
     await expect(page.getByTestId("permission-request")).toContainText(folder);
-    await expect(page.getByTestId("run-banner")).toContainText("Needs your OK");
+    await expect(page.getByTestId("run-result")).toContainText("Waiting for your OK at");
     await page.getByRole("button", { name: "Allow and continue" }).click();
 
     await expect(page.getByTestId("permission-request")).toHaveCount(0);
