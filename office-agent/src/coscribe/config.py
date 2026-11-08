@@ -209,6 +209,11 @@ class Settings(BaseSettings):
     most likely to send next and offer it in the message box. One extra short
     model call per turn."""
 
+    save_offers: bool = True
+    """After a turn of four or more steps that changed something, if the side model reads the
+    job as one someone would do again, offer once per conversation to save it as a workflow or
+    a skill. One short side-model call for such a turn."""
+
     folder_briefs: bool = True
     """Write a few sentences on what each of a conversation's folders holds, from its file names
     two levels deep (one short side-model call per folder, again when the names at its top

@@ -1262,22 +1262,9 @@ class ChatSessionLG:
                 try:
                     await websocket.send_json({"type": "error", "message": str(exc)})
                 except Exception:  # noqa: BLE001 -- the client is already gone
-                    # Live-hit: a client that drops mid-turn (network blip,
-                    # tab closed) makes _stream_turn's own websocket.send_json
-                    # raise WebSocketDisconnect, landing here -- but the
-                    # socket is already closed by then, so THIS send fails
-                    # too (Starlette raises RuntimeError('Cannot call "send"
-                    # once a close message has been sent.') once it's
-                    # recorded the close). Left uncaught, that second
-                    # exception propagated out of handle_user_message, which
-                    # ws_endpoint fires via asyncio.create_task with nothing
-                    # ever awaiting/checking its result -- so it surfaced
-                    # only as an alarming "asyncio: Task exception was never
-                    # retrieved" log, not a real problem: the turn lock still
-                    # releases correctly either way (handle_user_message's
-                    # `async with self._turn_lock` runs its __aexit__ on any
-                    # exception), and there's no one left to deliver an error
-                    # message to.
+                    # A tab that dropped mid-turn closed the socket, so this send fails too; left
+                    # to propagate it only logs "Task exception was never retrieved" (the turn
+                    # lock releases either way) and there is no one to tell.
                     pass
                 return
 
@@ -1294,6 +1281,7 @@ class ChatSessionLG:
             await websocket.send_json(usage_event(self._last_usage_metadata))
         await websocket.send_json({"type": "tasks_changed"})
         self._offer_suggestion(websocket, text, reply_text)
+        self._assembly.save_offer.consider(websocket, text)
         if self._wants_title():
             # Off the turn's own path: the reply is done, the title can lag.
             self._title_task = asyncio.create_task(self._name_thread(websocket))

@@ -100,6 +100,7 @@ def _session(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ChatSessionLG:
         auto_title_threads=False,
         prompt_suggestions=False,
         folder_briefs=False,
+        save_offers=False,
         default_permission_mode="manual",
         exec_policy_path=tmp_path / "exec_policy.json",
     )

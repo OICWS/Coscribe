@@ -338,6 +338,7 @@ def _settings(tmp_path: Path, **overrides: object) -> Settings:
         "auto_title_threads": False,
         "prompt_suggestions": False,
         "folder_briefs": False,
+        "save_offers": False,
     }
     values.update(overrides)
     return Settings(_env_file=None, **values)  # type: ignore[call-arg, arg-type]

@@ -30,8 +30,9 @@ Last reviewed: 2026-11-06.
    (#822), the delivery check of the Office files a turn wrote (#824), and, put before step 5 by
    the maintainer, a background script's end reported to its conversation (#826), Stop keeping the
    reply so far (#827) and a script moving to the background at its time limit or when the person
-   writes mid-turn (`docs/log/2026-11-07-script-to-background.md`), and a brief of what each folder
-   holds (`docs/log/2026-11-08-folder-brief.md`). Next: an offer to save a job as a workflow or skill; an in-chat connector card (decision record and independent review first).
+   writes mid-turn (`docs/log/2026-11-07-script-to-background.md`); a brief of what each folder
+   holds (`docs/log/2026-11-08-folder-brief.md`) and an offer to save a job as a workflow or skill
+   (`docs/log/2026-11-08-save-offer.md`). Next: an in-chat connector card (decision record and independent review first).
 5. **Workflows** (#719 and #788, kurtosisOC; decisions 0028 to 0035). Phases P0 to P5 are done
    (`docs/log/`, 2026-10-29 to 2026-11-02). In review: parallel steps (#789, decision 0036
    proposed). Next in #788: a run started by a webhook or a connector event, with the event's

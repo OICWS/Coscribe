@@ -43,7 +43,7 @@ the preload object `coscribeDesktop` of `office-agent-desktop/`. `npm run build`
 - A build must pass `tsc -b`, not only `tsc --noEmit`: use `npm run build`.
 
 ## Tests
-Unit tests (vitest, `npm test`) sit next to the file as `x.test.ts`: `src/state/reducer.test.ts`,
+Unit tests (vitest, `npm test`) sit next to the file as `x.test.ts`: `src/state/reducer.test.ts`, `src/state/saveOffer.test.ts` (the save offer's state),
 `src/lib/launchToken.test.ts`, `src/lib/dockLayout.test.ts`, `src/lib/dockArrangement.test.ts`,
 `src/lib/workflowLabels.test.ts` (the autonomy a task's steps need), `src/lib/plainSteps.test.ts` (a step in plain words), `src/lib/docModel.test.ts`, `docEditing.test.ts` and `docCommentMarks.test.ts` (jsdom, the Doc editor's blocks, edits and comment marks), `src/lib/slides.test.ts`, `src/lib/transcriptGrouping.test.ts`,
 `src/components/chatlog/helpers.test.ts`, `src/components/slides/sectionDom.test.ts` (jsdom, for that

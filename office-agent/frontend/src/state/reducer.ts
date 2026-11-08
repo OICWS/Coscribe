@@ -115,18 +115,16 @@ export interface ChatState {
   /** The workflow test running in this turn, if any. */
   workflowTest: { done: number; total: number } | null;
   totalTokens: number;
-  /** Prompt-cache stats from the most recent "usage" event, null when
-   * the provider hasn't reported any yet this session (see UsageEvent's
-   * own comment on why "no data" and "genuinely zero" stay distinguishable
-   * all the way through). Not accumulated across turns -- mirrors
-   * totalTokens' own "latest running total, not a sum" shape, and
-   * Codex CLI's own per-call cache_hit_rate metric this was modeled on. */
+  /** Prompt-cache stats from the latest "usage" event (the running figure, not a sum); null until
+   * the provider reports any, so "no data" stays apart from zero (see UsageEvent). */
   cacheStats: { cacheReadTokens: number; inputTokens: number; hitRate: number } | null;
   turnInFlight: boolean;
   /** When the running turn started (ms since the epoch), as the server said on connect. */
   turnStartedAt: number | null;
   /** The message the person will probably send next, offered in the message box after a reply. */
   suggestion: string | null;
+  /** The last turn did a job worth saving as a workflow or skill (see SaveOfferEvent). */
+  saveOffer: { steps: number; name: string } | null;
   error: string | null;
   /** Bumped on every tasks_changed (the end of each turn) -- a cheap
    * "something may have changed server-side, refetch if you care"
@@ -187,6 +185,7 @@ export const initialChatState: ChatState = {
   turnInFlight: false,
   turnStartedAt: null,
   suggestion: null,
+  saveOffer: null,
   error: null,
   turnTick: 0,
   workflowTest: null,
@@ -195,15 +194,14 @@ export const initialChatState: ChatState = {
   olderStatus: "none",
 };
 
-/** Local, client-originated actions -- not part of the WS wire contract,
- * but handled by the same reducer since they affect the same state
- * (optimistic user bubble on send, approval-button feedback before the
- * server round-trip completes). */
+/** Actions from this tab, not the wire (the bubble on send, an approval shown before the server
+ * answers), handled here because they change the same state. */
 export type LocalAction =
   | { type: "local_user_message"; text: string; instant: boolean; images?: string[]; files?: string[] }
   | { type: "local_steer"; id: string; text: string }
   | { type: "local_steers_withdrawn"; ids: string[] }
   | { type: "local_suggestion_dismissed" }
+  | { type: "local_save_offer_dismissed" }
   | { type: "local_edit_message"; turnIndex: number; text: string }
   | { type: "local_rewind_message"; turnIndex: number }
   | { type: "local_approval_resolved"; id: string; approved: boolean; reply?: string }
@@ -410,12 +408,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "local_user_message":
       return {
         ...state,
-        // Instant commands (/plan, /clear, ...) get a near-immediate
-        // "state"/"cleared"/... reply and never run an agent turn, so
-        // there's nothing for a Stop button to interrupt -- mirrors
-        // app.js's own INSTANT_COMMANDS guard around setTurnInFlight.
+        // Instant commands (/plan, /clear, ...) run no turn, so there is nothing to stop.
         turnInFlight: action.instant ? state.turnInFlight : true,
-        suggestion: null,
+        suggestion: null, saveOffer: null,
         error: null,
         items: [
           ...state.items,
@@ -753,6 +748,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "local_suggestion_dismissed":
       return state.suggestion === null ? state : { ...state, suggestion: null };
 
+    case "save_offer": return state.turnInFlight ? state : { ...state, saveOffer: { steps: action.steps, name: action.name } };
+    case "local_save_offer_dismissed": return { ...state, saveOffer: null };
+
     case "local_steers_withdrawn":
       return { ...state, items: state.items.filter((item) => !(item.kind === "steer" && action.ids.includes(item.id))) };
 
@@ -778,7 +776,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...state,
         turnInFlight: true,
-        suggestion: null,
+        suggestion: null, saveOffer: null,
         error: null,
         items: [
           ...state.items,
