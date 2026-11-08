@@ -43,6 +43,7 @@ export type WorkflowAnswer = [approved: boolean, note: string, values?: AnswerVa
 import { ViewToggle } from "./ViewToggle";
 import { SelectMenu } from "../SelectMenu";
 import { WorkflowCanvas } from "./WorkflowCanvas";
+import { RunEvent } from "./RunEvent";
 import { RunDetails, RunSummary } from "./RunSummary";
 import { loadTaskView, saveTaskView, type TaskView } from "../../lib/taskView";
 
@@ -656,18 +657,22 @@ function RunBanner({
 
 /** The values this run was given. */
 function RunInputs({ workflow, run }: { workflow: Workflow; run: ScheduledRun }) {
-  if (workflow.inputs.length === 0) return null;
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
-      {workflow.inputs.map((input) => (
-        <span key={input.name} className="inline-flex items-center gap-2">
-          <VarToken name={input.name} isInput />
-          <span className="rounded-md bg-[var(--card-bg)] px-2 py-0.5 text-[13px]">
-            {formatValue(run.inputs?.[input.name] ?? input.default)}
-          </span>
-        </span>
-      ))}
-    </div>
+    <>
+      {workflow.inputs.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
+          {workflow.inputs.map((input) => (
+            <span key={input.name} className="inline-flex items-center gap-2">
+              <VarToken name={input.name} isInput />
+              <span className="rounded-md bg-[var(--card-bg)] px-2 py-0.5 text-[13px]">
+                {formatValue(run.inputs?.[input.name] ?? input.default)}
+              </span>
+            </span>
+          ))}
+        </div>
+      )}
+      <RunEvent run={run} />
+    </>
   );
 }
 

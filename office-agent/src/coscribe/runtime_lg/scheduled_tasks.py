@@ -50,6 +50,7 @@ from ..workflows import (
     wake_due,
     walk,
 )
+from .connector_checks import check_connectors, forget_paused
 from .messages import extract_text, strip_mode_note
 
 logger = logging.getLogger(__name__)
@@ -525,13 +526,16 @@ async def poll_due_scheduled_tasks(
     get_session: Callable[[str], Awaitable[Any]],
     on_pruned: Callable[[list[ScheduledRun]], Awaitable[None]] | None = None,
     on_ended: Callable[[str, ScheduledRun], Awaitable[None]] | None = None,
+    connector_tools: Callable[[], list[Any]] | None = None,
 ) -> list[ScheduledTrigger]:
     """Start a run for every due ScheduledTrigger, advance each schedule
     (or disable a one-time trigger), then wait for all of them to finish.
     Returns the triggers that fired, for a caller to log/print. Runs paused
     at a step whose time came go on too (decision 0033), and each new file
-    in a folder task's folder starts a run (decision 0034); those are each
-    passed to `on_ended` with their task's id as they end. One due, or a
+    in a folder task's folder starts a run (decision 0034), as does each new
+    item a due connector task's tool answers with (decision 0039, asked through
+    `connector_tools`); those are each passed to `on_ended` with their task's
+    id as they end. One due, or a
     file that arrived, while Coscribe was closed goes on at the first poll
     after it starts.
 
@@ -545,7 +549,14 @@ async def poll_due_scheduled_tasks(
 
     fired: list[ScheduledTrigger] = []
     executions = []
+    checks: list[ScheduledTrigger] = []
     for due in store.list_due(now):
+        if due.schedule.kind == "connector":
+            # A check, not a run: only what it finds starts runs.
+            due.next_run_at = compute_next_run_at(due.schedule, datetime.now())
+            store.save(due)
+            checks.append(due)
+            continue
         trigger, run, pruned = store.start_run(due.trigger_id, "scheduled")
         if trigger.schedule.kind == "once":
             trigger.enabled = False
@@ -563,8 +574,14 @@ async def poll_due_scheduled_tasks(
         if run is not None and on_ended is not None:
             await on_ended(trigger_id, run)
 
-    for trigger_id, inputs in _new_files(store):
-        _, run, pruned = store.start_run(trigger_id, "file", inputs)
+    forget_paused(store)
+    started: list[tuple[str, str, dict[str, Any], dict[str, Any] | None]] = [
+        (trigger_id, "file", inputs, None) for trigger_id, inputs in _new_files(store)
+    ]
+    found = await check_connectors(state_dir, checks, connector_tools)
+    started += [(trigger_id, "connector", inputs, event) for trigger_id, inputs, event in found]
+    for trigger_id, source, inputs, event in started:
+        _, run, pruned = store.start_run(trigger_id, source, inputs, event)
         if pruned and on_pruned is not None:
             await on_pruned(pruned)
         executions.append(

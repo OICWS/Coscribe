@@ -117,6 +117,7 @@ POST /api/design-systems/{system_id}/assets
 POST /api/design-systems/{system_id}/duplicate
 POST /api/environments
 POST /api/libreoffice
+POST /api/mcp/check
 POST /api/mcp/oauth-apps/import
 POST /api/mcp/servers
 POST /api/mcp/servers/{name}/bump-version

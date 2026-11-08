@@ -16,7 +16,18 @@ export interface ScheduleForm {
   pattern: string;
   /** The workflow's file input a new file goes to. */
   input: string;
+  /** "connector" (decision 0039): the tool asked, its arguments, which input takes which field
+   * of an item, the most runs an hour, and the person's OK for a tool not marked read-only. */
+  tool: string;
+  args: Record<string, unknown>;
+  inputsFrom: Record<string, string>;
+  perHour: number;
+  trustUnmarked: boolean;
 }
+
+/** Mirrors schedule_rule.py's DEFAULT_PER_HOUR and MAX_PER_HOUR. */
+const DEFAULT_PER_HOUR = 30;
+export const MAX_PER_HOUR = 120;
 
 function todayIso(): string {
   const now = new Date();
@@ -41,7 +52,17 @@ function initialDate(task: ScheduledTask | null, draft: TaskDraft | undefined): 
   return todayIso();
 }
 
-const KNOWN = new Set<string>(["manual", "hourly", "daily", "weekdays", "weekly", "monthly", "every", "folder"]);
+const KNOWN = new Set<string>([
+  "manual",
+  "hourly",
+  "daily",
+  "weekdays",
+  "weekly",
+  "monthly",
+  "every",
+  "folder",
+  "connector",
+]);
 
 /** The form's starting schedule: the task being edited, a draft the model proposed (anything the
  * form can't show falls back to a default), or blank. */
@@ -59,12 +80,24 @@ export function initialSchedule(task: ScheduledTask | null, draft: TaskDraft | u
     folder: rule?.folder ?? "",
     pattern: rule?.pattern && rule.pattern !== "*" ? rule.pattern : "",
     input: rule?.input ?? "",
+    tool: rule?.tool ?? "",
+    args: rule?.args ?? {},
+    inputsFrom: rule?.inputs_from ?? {},
+    perHour: rule?.per_hour ?? DEFAULT_PER_HOUR,
+    trustUnmarked: rule?.trust_unmarked ?? false,
   };
 }
 
 /** The workflow's file inputs, which a new file in a folder can be given to. */
 export function fileInputs(workflow: Workflow | null): string[] {
   return (workflow?.inputs ?? []).filter((input) => input.type === "file").map((input) => input.name);
+}
+
+/** What the form still needs before a task can start by itself, or null. */
+export function scheduleProblem(form: ScheduleForm): string | null {
+  if (form.kind === "folder" && !form.folder.trim()) return "Choose the folder to watch.";
+  if (form.kind === "connector" && !form.tool) return "Pick what to ask the connector.";
+  return null;
 }
 
 /** The schedule's part of what the form saves. */
@@ -82,6 +115,18 @@ export function schedulePayload(
     ...(kind === "every" ? { watch: { minutes: form.minutes } } : {}),
     ...(kind === "folder"
       ? { watch: { folder: form.folder.trim(), pattern: form.pattern.trim() || "*", input: form.input || inputs[0] } }
+      : {}),
+    ...(kind === "connector"
+      ? {
+          watch: {
+            minutes: form.minutes,
+            tool: form.tool,
+            args: form.args,
+            inputs_from: form.inputsFrom,
+            per_hour: form.perHour,
+            trust_unmarked: form.trustUnmarked,
+          },
+        }
       : {}),
   };
 }

@@ -97,6 +97,8 @@ export interface ToolInfo {
   requires_approval: boolean;
   description: string;
   params: ToolParam[];
+  /** A connector's tool: its connector marks it read-only. */
+  read_only?: boolean;
 }
 
 export interface ToolsResponse {
@@ -356,7 +358,8 @@ export type ScheduleKind =
   | "weekly"
   | "monthly"
   | "every"
-  | "folder";
+  | "folder"
+  | "connector";
 
 export type ApprovalMode = "manual" | "auto" | "skip";
 
@@ -372,7 +375,35 @@ export interface ScheduleRule {
   folder?: string | null;
   pattern?: string;
   input?: string | null;
+  /** "connector" (decision 0039): every `minutes`, `tool` is asked with `args`, and each new item in
+   * its answer starts a run. `inputs_from`: input -> the item's field, "*" the whole item, "" the
+   * input's default; an input not named takes the field named like it. */
+  tool?: string | null;
+  args?: Record<string, unknown>;
+  inputs_from?: Record<string, string>;
+  per_hour?: number;
+  /** The person confirmed a tool its connector doesn't mark read-only. */
+  trust_unmarked?: boolean;
 }
+
+/** What a connector task's latest check found, and the items that started no run. */
+export interface ConnectorCheckState {
+  last_check: { at: string; found: number; held: number; error: string | null } | null;
+  missed: { at: string; item: string; reason: string }[];
+}
+
+/** POST /api/mcp/check: what a connector's tool answers now. */
+export type ConnectorCheckResult =
+  | {
+      read_only: boolean;
+      /** Null when the tool isn't marked read-only and the person hasn't confirmed it. */
+      items: { title: string; item: unknown }[] | null;
+      count?: number;
+      /** Each field of the first items that is a value, by its dotted path, with an example. */
+      fields?: Record<string, unknown>;
+      error?: string;
+    }
+  | { error: string };
 
 /** "waiting": a wait step paused the run until a time or a file (decision 0033). */
 export type RunStatus = "running" | "completed" | "failed" | "needs_approval" | "waiting" | "stopped";
@@ -382,8 +413,9 @@ export interface ScheduledRun {
   run_id: string;
   thread_id: string;
   started_at: string;
-  /** "file": a new file in the task's folder started it (decision 0034). */
-  source: "manual" | "scheduled" | "file";
+  /** "file": a new file in the task's folder started it (decision 0034); "connector": a new item in
+   * a connector's answer (decision 0039). */
+  source: "manual" | "scheduled" | "file" | "connector";
   status: RunStatus;
   finished_at: string | null;
   error: string | null;
@@ -407,6 +439,8 @@ export interface ScheduledRun {
   /** Per step that ran another task ("<step>" or "<step>/<its step>"): that task and its definition
    * as the run found it. */
   called?: Record<string, CalledTask>;
+  /** What started a "connector" run: the connector, its tool, the item's key and the item. */
+  event?: { connector: string; tool: string; key: string; item: unknown } | null;
 }
 
 export interface ScheduledTask {
@@ -440,6 +474,8 @@ export interface ScheduledTask {
   version?: number;
   /** What a run of it gives a task that runs it: each name its top-level steps save. */
   results?: string[];
+  /** A "connector" task's latest check (decision 0039). */
+  connector_check?: ConnectorCheckState;
 }
 
 export interface CalledTask {
@@ -476,8 +512,18 @@ export interface CreateScheduledTaskPayload {
   from_draft?: string;
   from_thread?: string;
   auto_investigate?: boolean;
-  /** For an "every" or "folder" kind. */
-  watch?: { minutes?: number; folder?: string; pattern?: string; input?: string };
+  /** For an "every", "folder" or "connector" kind. */
+  watch?: {
+    minutes?: number;
+    folder?: string;
+    pattern?: string;
+    input?: string;
+    tool?: string;
+    args?: Record<string, unknown>;
+    inputs_from?: Record<string, string>;
+    per_hour?: number;
+    trust_unmarked?: boolean;
+  };
 }
 
 export type ScheduledTaskResult = ScheduledTask | { error: string };

@@ -274,6 +274,31 @@
         "title": "ConfigUpdate",
         "type": "object"
       },
+      "ConnectorCheck": {
+        "description": "A connector tool asked once from the task form (decision 0039).",
+        "properties": {
+          "args": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Args",
+            "type": "object"
+          },
+          "tool": {
+            "title": "Tool",
+            "type": "string"
+          },
+          "trust_unmarked": {
+            "default": false,
+            "title": "Trust Unmarked",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "tool"
+        ],
+        "title": "ConnectorCheck",
+        "type": "object"
+      },
       "ConnectorPermissionsUpdate": {
         "properties": {
           "tools": {
@@ -3099,6 +3124,42 @@
           }
         },
         "summary": "Get Mcp Catalog"
+      }
+    },
+    "/api/mcp/check": {
+      "post": {
+        "operationId": "check_connector_tool_api_mcp_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectorCheck"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check Connector Tool"
       }
     },
     "/api/mcp/npm-latest-version": {

@@ -53,7 +53,13 @@ export function runDuration(run: ScheduledRun): string | null {
   return formatElapsed(new Date(run.finished_at).getTime() - new Date(run.started_at).getTime());
 }
 
+/** A connector's name as people say it: "gmail" -> "Gmail", "google-drive" -> "Google drive". */
+export function connectorLabel(server: string): string {
+  return capitalize(server.replace(/[-_]+/g, " ").trim());
+}
+
 export function runSourceLabel(run: ScheduledRun): string {
   if (run.source === "file") return "New file";
+  if (run.source === "connector") return run.event ? `New in ${connectorLabel(run.event.connector)}` : "New item";
   return run.source === "manual" ? "Manual" : "Scheduled";
 }

@@ -3,11 +3,13 @@ import { everyWords } from "../lib/scheduleLabels";
 import { fileInputs, type ScheduleForm } from "../lib/scheduleForm";
 import type { ScheduleKind } from "../types/settings";
 import type { Workflow } from "../types/workflow";
+import { ConnectorTriggerFields } from "./ConnectorTriggerFields";
 import { SelectMenu } from "./SelectMenu";
 import { DirBrowserModal } from "./settings/DirBrowserModal";
 
 // When a task runs: the Frequency row of the create/edit form. Besides the clock, a workflow task
-// can run every few minutes or when a file arrives in a folder (decision 0034).
+// can run every few minutes or when a file arrives in a folder (decision 0034), or when something
+// new shows up in a connector (decision 0039).
 
 const FREQUENCY_OPTIONS: { value: ScheduleKind; label: string }[] = [
   { value: "manual", label: "Manual" },
@@ -21,6 +23,7 @@ const FREQUENCY_OPTIONS: { value: ScheduleKind; label: string }[] = [
 const WORKFLOW_OPTIONS: { value: ScheduleKind; label: string }[] = [
   { value: "every", label: "Every few minutes" },
   { value: "folder", label: "When a file arrives in a folder" },
+  { value: "connector", label: "When something new shows up in a connector" },
 ];
 
 const EVERY_MINUTES = [5, 10, 15, 30, 60, 120, 240, 480, 720, 1440];
@@ -130,7 +133,7 @@ export function FrequencyRow({
       <SelectMenu
         ariaLabel="Frequency"
         variant="field"
-        className="w-56"
+        className="w-72"
         value={form.kind}
         options={options.map((opt) => {
           const needsInput = opt.value === "folder" && inputs.length === 0;
@@ -156,7 +159,7 @@ export function FrequencyRow({
           {timeInput}
         </>
       )}
-      {form.kind === "every" && (
+      {(form.kind === "every" || form.kind === "connector") && (
         <SelectMenu
           ariaLabel="How often"
           variant="field"
@@ -175,6 +178,7 @@ export function FrequencyRow({
         </p>
       )}
       {form.kind === "folder" && <FolderFields form={form} onChange={onChange} inputs={inputs} />}
+      {form.kind === "connector" && <ConnectorTriggerFields form={form} onChange={onChange} workflow={workflow} />}
     </div>
   );
 }

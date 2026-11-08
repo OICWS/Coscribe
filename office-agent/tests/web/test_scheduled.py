@@ -135,7 +135,11 @@ def test_wake_poll_loop_publishes_background_events_for_fired_wakes_and_triggers
     store.finish_run(digest.trigger_id, fired_run.run_id, "failed", "no network")
 
     async def _fake_poll_due_scheduled_tasks(
-        state_dir: Any, get_session: Any, on_pruned: Any = None, on_ended: Any = None
+        state_dir: Any,
+        get_session: Any,
+        on_pruned: Any = None,
+        on_ended: Any = None,
+        connector_tools: Any = None,
     ) -> list[Any]:
         return [store.load(digest.trigger_id)]
 

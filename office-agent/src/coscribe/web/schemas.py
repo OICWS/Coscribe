@@ -160,6 +160,15 @@ class MCPVersionBump(BaseModel):
     version: str
 
 
+class ConnectorCheck(BaseModel):
+    """A connector tool asked once from the task form (decision 0039)."""
+
+    tool: str
+    args: dict[str, Any] = {}
+    # The person confirmed a tool its connector doesn't mark read-only.
+    trust_unmarked: bool = False
+
+
 class ConnectorPermissionsUpdate(BaseModel):
     tools: dict[str, str]
 

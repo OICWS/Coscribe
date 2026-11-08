@@ -35,6 +35,11 @@ coscribe runs on your own computer.
   sent to could echo it back.
 - **Connectors** sign in through the service's own page in your browser; their
   tokens are kept in the keychain (or a 0600 file when there is none).
+- **A task that starts on something new in a connector** (decision 0039) asks that connector by
+  itself every few minutes, with no one watching. It asks only a tool the connector marks
+  read-only, or one you confirmed in the task form, and never one blocked in Settings; each check
+  that found something is in the audit log. What comes back is outside content, and the runs it
+  starts keep the task's permissions and autonomy.
 - **Skills and connectors from elsewhere** run with the access you give them;
   read what you add.
 

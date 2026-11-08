@@ -75,7 +75,9 @@ from .tools import (
     PLAN_CHOICE_AUTO,
     PLAN_CHOICE_MANUAL,
     PLAN_CHOICE_REVISE,
+    ConnectorPermissions,
     ScheduledTriggerStore,
+    apply_connector_permissions,
     create_trigger,
     enabled_skill_names,
     update_trigger,
@@ -444,7 +446,13 @@ async def _check_wakes_async(settings: Any) -> None:
 
             fired_wakes = await poll_due_wakes(settings.state_dir, _get_session)
             fired_tasks = await poll_due_scheduled_tasks(
-                settings.state_dir, _get_session, on_ended=_note_woken
+                settings.state_dir,
+                _get_session,
+                on_ended=_note_woken,
+                # Never a tool blocked in Settings > Connectors (decision 0039).
+                connector_tools=lambda: apply_connector_permissions(
+                    mcp_tools, ConnectorPermissions(settings.state_dir).load()
+                ),
             )
     finally:
         for connection in mcp_connections.values():
