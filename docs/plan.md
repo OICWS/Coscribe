@@ -39,6 +39,8 @@ Last reviewed: 2026-11-06.
 
 ## Open, smaller
 
+- **Hidden issues:** when the suspended kurtosisOC account is restored, close its open issues as
+  duplicates of #843 to #846 (`docs/log/2026-11-08-github-activity-pace.md`).
 - **Docs:** a Doc still writes plans the brief did not give (a proposal's migration phases;
   `docs/log/2026-10-29-doc-writing-rules.md`). Version history for documents is wanted, not in v1.
   The Word panel is frozen (decisions 0025, 0027): its remaining items are dropped.
