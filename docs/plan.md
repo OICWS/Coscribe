@@ -32,7 +32,7 @@ Last reviewed: 2026-11-06.
    reply so far (#827) and a script moving to the background at its time limit or when the person
    writes mid-turn (`docs/log/2026-11-07-script-to-background.md`). Next: a folder brief on first attach; an offer to save a job as
    a workflow or skill; an in-chat connector card (decision record and independent review first).
-5. **Workflows** (#719 and #788, kurtosisOC; decisions 0028 to 0035). Phases P0 to P5 are done
+5. **Workflows** (#719 and #788; decisions 0028 to 0035). Phases P0 to P5 are done
    (`docs/log/`, 2026-10-29 to 2026-11-02). In review: parallel steps (#789, decision 0036
    proposed). Next in #788: a run started by a webhook or a connector event, with the event's
    data as its inputs (batch 2), then steps a run adds by itself within the task's autonomy
