@@ -124,7 +124,6 @@ that file.
   a maintainer's account suspended (2026-11), so across all sessions:
   - One PR per goal. Fixes, review answers and follow-ups to it are new commits on
     the same PR, not new PRs; small changes in one area go in one PR.
-  - About 5 new PRs a day for the whole project; past that, wait or batch.
   - A new issue only where the rule above asks for one. A follow-up, idea or
     finding goes in `docs/plan.md` or the PR's "Follow-ups", not its own issue.
   - No throwaway PRs or branches to try CI, no closing and reopening, and only the
