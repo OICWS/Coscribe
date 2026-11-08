@@ -34,10 +34,10 @@ from .interaction import (
 )
 from .memory import format_memory_section, load_memory
 from .schedule_rule import ScheduleRule, compute_next_run_at
+from .scheduled_run import ScheduledRun
 from .scheduled_tasks import (
     SCHEDULED_THREAD_PREFIX,
     TASK_DRAFT_TOOL_NAMES,
-    ScheduledRun,
     ScheduledTrigger,
     ScheduledTriggerStore,
     build_scheduled_task_tools,

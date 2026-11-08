@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import functools
 import html
 import logging
 import os
@@ -537,7 +538,7 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
         _delete_thread_data,
         lambda: checkpointer_holder["checkpointer"],
         poll_due_wakes,
-        poll_due_scheduled_tasks,
+        functools.partial(poll_due_scheduled_tasks, connector_tools=connectors.session_extra_tools),
     )
 
     app = FastAPI(

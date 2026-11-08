@@ -29,18 +29,30 @@ function Section({ title, action, children }: { title: string; action?: ReactNod
 
 const linkButton = "text-[13px] text-[var(--muted)] hover:text-[var(--fg)] hover:underline";
 
-/** `fromFile` names the input a folder task fills with the file that arrived: nothing to change. */
+/** What fills an input by itself when the task starts on something new: a folder task's file
+ * (decision 0034), a connector item's field (decision 0039). Nothing to change there. */
+function filledBy(task: ScheduledTask): Record<string, string> {
+  const rule = task.schedule;
+  if (rule.kind === "folder" && rule.input) return { [rule.input]: "the new file that arrived in the folder" };
+  if (rule.kind !== "connector") return {};
+  const filled: Record<string, string> = {};
+  for (const [name, path] of Object.entries(rule.inputs_from ?? {})) {
+    if (path) filled[name] = path === "*" ? "the whole new item" : `the new item's ${path}`;
+  }
+  return filled;
+}
+
 function Inputs({
   workflow,
-  fromFile,
+  filled,
   onChange,
 }: {
   workflow: Workflow;
-  fromFile: string | null;
+  filled: Record<string, string>;
   onChange: (name: string) => void;
 }) {
   if (workflow.inputs.length === 0) return null;
-  const onlyTheFile = workflow.inputs.every((input) => input.name === fromFile);
+  const onlyTheFile = workflow.inputs.every((input) => input.name in filled);
   return (
     <div>
       <div className="mb-1 text-[13px] text-[var(--muted)]">
@@ -48,12 +60,12 @@ function Inputs({
       </div>
       <ul className="flex flex-col gap-1 text-sm">
         {workflow.inputs.map((input) => {
-          if (input.name === fromFile)
+          if (input.name in filled)
             return (
               <li key={input.name} className="flex items-baseline gap-3">
                 <span className="min-w-0">
                   {input.label || input.name}
-                  <span className="text-[var(--muted)]"> · the new file that arrived in the folder</span>
+                  <span className="text-[var(--muted)]"> · {filled[input.name]}</span>
                 </span>
               </li>
             );
@@ -169,11 +181,11 @@ function NeedsFromYou({
 }) {
   const [editingInput, setEditingInput] = useState<string | null>(null);
   const input = workflow.inputs.find((i) => i.name === editingInput);
-  const fromFile = task.schedule.kind === "folder" ? task.schedule.input || null : null;
+
   return (
     <Section title="What it needs from you">
       <div className="flex flex-col gap-4">
-        <Inputs workflow={workflow} fromFile={fromFile} onChange={setEditingInput} />
+        <Inputs workflow={workflow} filled={filledBy(task)} onChange={setEditingInput} />
         <Waits workflow={workflow} />
         <div>
           <div className="mb-1 text-[13px] text-[var(--muted)]">It may touch</div>

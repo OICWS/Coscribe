@@ -2,7 +2,8 @@
 
 ## Purpose
 Owns the tools that keep the model's own state, and the stores behind them: the task list and
-plan drafts (`tasks.py`), scheduled tasks and their triggers (`scheduled_tasks.py`), sub-agent
+plan drafts (`tasks.py`), scheduled tasks, their runs and triggers (`scheduled_tasks.py`,
+`scheduled_run.py`, `schedule_rule.py`), sub-agent
 runs (`subagent_tasks.py`), background commands (`background_tasks.py`), self-wakes and signals
 (`selfwake.py`), messages between conversations (`conversations.py`), questions and plan choices
 (`interaction.py`) and the memory file (`memory.py`). Does not own running a scheduled task or
@@ -18,7 +19,8 @@ Factories: `build_task_tools`, `build_scheduled_task_tools`, `build_subagent_tas
 triggers: `SCHEDULED_THREAD_PREFIX`, `TASK_DRAFT_TOOL_NAMES`, `compute_next_run_at`,
 `parse_run_thread_id`, `create_trigger`, `update_trigger`, `patch_trigger`, `record_draft`,
 `edit_draft`; a store's `memory` and `folders` hold what each task keeps between runs and the
-files its folder watch has seen (decision 0034), its `versions` every workflow a task was saved
+files its folder watch has seen (decision 0034), its `connector_items` the items a connector task
+has seen and refused (decision 0039), its `versions` every workflow a task was saved
 with and its `calls` the checks on the tasks a workflow runs (decision 0035). Sub-agents: `running_subagent`, `get_subagent_transcript`, `stop_subagent_task`,
 `forget_finished_subagents`. Questions, plans and messages: `QUESTION_TOOL_NAMES`,
 `PLAN_CHOICE_AUTO`, `PLAN_CHOICE_MANUAL`, `PLAN_CHOICE_REVISE`, `PLAN_CHOICE_REJECT`, `format_question_answers`,
@@ -42,7 +44,8 @@ Also exported: `FINISHED_STATUSES`, `ConversationSource`, `ConversationTranscrip
 ## Tests
 `tests/test_task_tools.py`, `tests/test_scheduled_tasks_tool.py`, `tests/test_scheduled_runs_lg.py`,
 `tests/test_subagent_tasks.py`, `tests/test_background_tasks.py`, `tests/test_selfwake_tool.py`,
-`tests/test_conversations_tool.py`, `tests/test_memory_tool.py`, `tests/test_trigger_files.py`.
+`tests/test_conversations_tool.py`, `tests/test_memory_tool.py`, `tests/test_trigger_files.py`,
+`tests/test_connector_trigger.py`.
 
 ## Verify by hand
 A scheduled task firing while the app is closed and reopened; a background command's output in

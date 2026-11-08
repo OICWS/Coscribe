@@ -5,7 +5,7 @@ import type { Workflow } from "../types/workflow";
 import type { ApprovalMode, ScheduledTask } from "../types/settings";
 import type { TaskDraft } from "../types/wire";
 import { CloseIcon } from "./icons";
-import { fileInputs, initialSchedule, schedulePayload, type ScheduleForm } from "../lib/scheduleForm";
+import { fileInputs, initialSchedule, scheduleProblem, schedulePayload, type ScheduleForm } from "../lib/scheduleForm";
 import { allSteps } from "../lib/workflowTree";
 import { DEFAULT_ENVIRONMENT } from "./EnvironmentDialog";
 import { EnvironmentPicker } from "./EnvironmentPicker";
@@ -145,10 +145,8 @@ export function ScheduledTaskModal({
       setError("Instructions are required.");
       return;
     }
-    if (schedule.kind === "folder" && !schedule.folder.trim()) {
-      setError("Choose the folder to watch.");
-      return;
-    }
+    const missing = scheduleProblem(schedule);
+    if (missing) return setError(missing);
     const payload = {
       name: trimmedName,
       ...schedulePayload(schedule, fileInputs(workflow)),

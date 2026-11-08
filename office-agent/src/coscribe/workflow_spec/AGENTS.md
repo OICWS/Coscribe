@@ -9,7 +9,7 @@ imports the other. Does not own running a workflow, what it may touch or draftin
 `workflows`.
 
 ## Public interface
-Definition: `Workflow`, `parse_workflow`, `workflow_error`, `walk`, `Placed`, `step_output`,
+Definition: `Workflow`, `WorkflowInput`, `parse_workflow`, `workflow_error`, `walk`, `Placed`, `step_output`,
 `Step`, `ToolStep`, `ScriptStep`, `LLMStep`, `AgentStep`, `CheckStep`, `ApprovalStep`, `BranchStep`,
 `ChoiceStep`, `LoopStep`, `OutputField`, `AGENT_REPORT_FIELD`, `child_lists`,
 `raw_child_lists` (the same for a stored step's JSON), `current_shape` (a stored workflow as written now), `step_references`, `choose_arm` (which path a

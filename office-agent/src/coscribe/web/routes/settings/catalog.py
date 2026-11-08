@@ -12,6 +12,7 @@ from fastapi import (
 from ....coordinator import build_coordinator_agent
 from ....runtime import get_tool_metadata
 from ....tools import (
+    is_read_only,
     load_builtin_skills,
     load_skills,
 )
@@ -72,6 +73,8 @@ def router(state: AppState) -> APIRouter:
                     "requires_approval": metadata.requires_approval,
                     "description": tool_description(connector_tool).split(". ")[0],
                     "params": describe_params(connector_tool),
+                    # Only a read-only tool may be asked for new items unconfirmed (decision 0039).
+                    "read_only": is_read_only(connector_tool),
                 }
             )
         for tool in agent.tools:

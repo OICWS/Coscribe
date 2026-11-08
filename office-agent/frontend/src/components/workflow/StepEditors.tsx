@@ -66,7 +66,8 @@ function JsonArg({ id, value, onChange }: { id: string; value: unknown; onChange
   );
 }
 
-function ArgControl({
+/** One argument of a tool, by its type; a task's connector check uses it too. */
+export function ArgControl({
   id,
   param,
   value,

@@ -1253,3 +1253,93 @@ def test_a_refused_refresh_is_not_tried_again_on_the_next_request(
 
         assert "expires_at" not in json.loads(saved.read_text(encoding="utf-8"))
         assert len(opened) == 1
+
+
+def test_a_connector_tool_is_asked_once_for_the_task_form_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Decision 0039: "Check now" shows what a task that starts on new items would find."""
+    from langchain_core.tools import StructuredTool
+
+    from coscribe.runtime import tool_metadata
+    from coscribe.tools import ScheduledTriggerStore, create_trigger
+
+    asked: list[str] = []
+
+    def _make(name: str, read_only: bool, answer: Any) -> Any:
+        def run(query: str = "") -> str:
+            asked.append(f"{name}:{query}")
+            return json.dumps(answer)
+
+        tool = StructuredTool.from_function(
+            run, name=name, description=f"{name}.", metadata={"readOnlyHint": read_only}
+        )
+        tool_metadata(tool, risk_category="EXTERNAL", category="mcp:mail")
+        return tool
+
+    mails = [
+        {"id": f"m{n}", "subject": f"Invoice {n}", "from": {"email": "a@x.example"}}
+        for n in range(7)
+    ]
+    tools = [
+        _make("mail_search", True, {"messages": mails}),
+        _make("mail_label", False, {"messages": []}),
+        _make("mail_count", True, 3),
+    ]
+
+    class _FakeConnection:
+        async def close(self) -> None:
+            pass
+
+    async def _connect(name: str, config: Any, *a: Any, **k: Any) -> tuple[list[Any], Any, None]:
+        return tools, _FakeConnection(), None
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("", encoding="utf-8")
+    with _client_lg(tmp_path, monkeypatch, FakeToolCallingChatModel(responses=[])) as client:
+        monkeypatch.setattr(lg_mcp, "connect_one_mcp_server_lg", _connect)
+        client.post("/api/mcp/servers", json={"name": "mail", "command": "npx", "args": ["m"]})
+        found = client.post("/api/mcp/check", json={"tool": "mail_search", "args": {"query": "q"}})
+        unmarked = client.post("/api/mcp/check", json={"tool": "mail_label"})
+        confirmed = client.post(
+            "/api/mcp/check", json={"tool": "mail_label", "trust_unmarked": True}
+        )
+        not_a_list = client.post("/api/mcp/check", json={"tool": "mail_count"})
+        missing = client.post("/api/mcp/check", json={"tool": "mail_send"})
+        listed = {t["name"]: t for t in client.get("/api/tools").json()["tools"]}
+        store = ScheduledTriggerStore(_settings(tmp_path).state_dir)
+        workflow = {
+            "inputs": [{"name": "who", "type": "text"}],
+            "steps": [
+                {
+                    "id": "s",
+                    "title": "S",
+                    "kind": "tool",
+                    "tool": "write_file",
+                    "args": {"path": "a.txt", "content": "{{who}}"},
+                }
+            ],
+        }
+        create_trigger(
+            store,
+            name="Mail",
+            kind="connector",
+            at="",
+            prompt="",
+            workflow=workflow,
+            watch={"minutes": 5, "tool": "mail_search"},
+        )
+        tasks = client.get("/api/scheduled-tasks").json()
+
+    body = found.json()
+    assert body["read_only"] is True and body["count"] == 7
+    assert [i["title"] for i in body["items"]] == [f"Invoice {n}" for n in range(5)]
+    assert body["fields"]["from.email"] == "a@x.example"
+    # A tool its connector doesn't mark read-only is asked only once the person confirms it.
+    assert unmarked.json() == {"read_only": False, "items": None}
+    assert confirmed.json()["count"] == 0
+    assert asked == ["mail_search:q", "mail_label:", "mail_count:"]
+    assert not_a_list.json()["error"] == "Its answer isn't a list of items"
+    assert missing.status_code == 404
+    assert listed["mail_search"]["read_only"] is True and listed["mail_label"]["read_only"] is False
+    assert tasks[0]["connector_check"] == {"last_check": None, "missed": []}

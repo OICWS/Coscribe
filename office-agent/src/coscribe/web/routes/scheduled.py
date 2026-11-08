@@ -195,6 +195,13 @@ def _workflow_routes(router: APIRouter, state: AppState) -> None:
         return JSONResponse({"permissions": summary, "added": added})
 
 
+def _items_checked(store: ScheduledTriggerStore, trigger: Any) -> dict[str, Any]:
+    """A connector task's latest check and the items that started no run (decision 0039)."""
+    if trigger.schedule.kind != "connector":
+        return {}
+    return {"connector_check": store.connector_items.shown(trigger.trigger_id)}
+
+
 def _task_routes(router: APIRouter, state: AppState) -> None:
     settings = state.settings
 
@@ -210,7 +217,8 @@ def _task_routes(router: APIRouter, state: AppState) -> None:
         store = ScheduledTriggerStore(settings.state_dir)
         # A task saved before versions were kept is shown as its version 1 (decision 0035).
         return [{**t.to_dict(), "version": store.versions.current(t.trigger_id) or 1,
-                 "results": _results(t.workflow)} for t in store.list_all()]  # fmt: skip
+                 "results": _results(t.workflow), **_items_checked(store, t)}
+                for t in store.list_all()]  # fmt: skip
 
     @router.post("/api/scheduled-tasks")
     async def create_scheduled_task_endpoint(payload: ScheduledTaskCreate) -> JSONResponse:

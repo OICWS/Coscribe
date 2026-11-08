@@ -1,3 +1,4 @@
+import { connectorOfTool } from "./toolLabels";
 import type { ScheduleKind, ScheduleRule } from "../types/settings";
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -45,6 +46,7 @@ export function scheduleKindLabel(kind: ScheduleKind): string {
   if (kind === "once") return "Once";
   if (kind === "every") return "Repeats";
   if (kind === "folder") return "On new file";
+  if (kind === "connector") return "On new item";
   return kind.charAt(0).toUpperCase() + kind.slice(1);
 }
 
@@ -70,7 +72,21 @@ export function describeSchedule(schedule: ScheduleRule): string {
       return `Every ${everyWords(schedule.minutes ?? 0)}`;
     case "folder":
       return `When a ${schedule.pattern && schedule.pattern !== "*" ? `${schedule.pattern} ` : ""}file arrives in ${folderName(schedule.folder ?? "")}`;
+    case "connector":
+      return describeConnectorCheck(schedule);
     default:
       return schedule.kind;
   }
+}
+
+/** What a connector task asks, by its first argument with a value: "label:invoices". */
+function askedFor(args: Record<string, unknown> | undefined): string {
+  const first = Object.values(args ?? {}).find((value) => typeof value === "string" && value.trim());
+  return typeof first === "string" ? ` (${first.length > 40 ? `${first.slice(0, 39)}…` : first})` : "";
+}
+
+/** "When Gmail has something new (label:invoices) · checks every 10 minutes" (decision 0039). */
+function describeConnectorCheck(schedule: ScheduleRule): string {
+  const connector = connectorOfTool(schedule.tool ?? "");
+  return `When ${connector || "a connector"} has something new${askedFor(schedule.args)} · checks every ${everyWords(schedule.minutes ?? 0)}`;
 }

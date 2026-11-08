@@ -21,13 +21,17 @@ from pydantic import ValidationError
 from ...runtime import DEFAULT_ENVIRONMENT, Environments, tool_metadata
 from ...workflow_spec import current_shape, parse_workflow, workflow_error
 from ._trigger_files import is_trigger_id, trigger_file
+from .connector_items import ConnectorItems
 from .folder_watch import FolderWatch
 from .schedule_rule import (
+    DEFAULT_PER_HOUR,
+    MAX_PER_HOUR,
     VALID_KINDS,
     ScheduleRule,
     _to_local_naive,
     compute_next_run_at,
 )
+from .scheduled_run import ScheduledRun, fold_quiet
 from .task_calls import TaskCalls, check_calls
 from .task_memory import TaskMemory
 from .task_versions import TaskVersions
@@ -52,6 +56,11 @@ _EDITABLE_FIELDS = tuple(
     "name kind at prompt weekday day_of_month start_date model approval_mode".split()
 )
 
+# What a task that starts by itself is told in `watch`, and keeps on its rule.
+_WATCH_FIELDS = tuple(
+    "minutes folder pattern input tool args inputs_from per_hour trust_unmarked".split()
+)
+
 # What a run records besides its steps and status.
 _EVIDENCE = frozenset(
     "screenshot page files sites investigation queued quiet versions called".split()
@@ -63,19 +72,6 @@ MAX_RUNS_KEPT = 50
 # The notes a run carries forward are part of every future run's prompt,
 # so they're kept deliberately small.
 MAX_NOTES_CHARS = 4000
-
-
-def _fold_quiet(runs: list[ScheduledRun]) -> tuple[list[ScheduledRun], list[ScheduledRun]]:
-    """Keep only the latest of each row of quiet runs, counting the ones it stands for: a task
-    that checks every few minutes would otherwise bury its real runs."""
-    kept: list[ScheduledRun] = []
-    dropped: list[ScheduledRun] = []
-    for run in runs:
-        if kept and kept[-1].quiet and run.quiet and run.status == kept[-1].status == "completed":
-            run.quiet += kept[-1].quiet
-            dropped.append(kept.pop())
-        kept.append(run)
-    return kept, dropped
 
 
 def run_thread_id(trigger_id: str, run_id: str) -> str:
@@ -97,89 +93,6 @@ def parse_run_thread_id(thread_id: str) -> tuple[str, str] | None:
 
 def _now_iso() -> str:
     return datetime.now().isoformat()
-
-
-@dataclass
-class ScheduledRun:
-    """One execution of a trigger, in its own fresh conversation -- never
-    the thread the task was created from, and never a previous run's, so
-    history doesn't pile up run after run (continuity comes from the
-    task's notes instead)."""
-
-    run_id: str
-    thread_id: str
-    started_at: str
-    source: str  # "manual" (Run now) | "scheduled" | "file" (a new file in its folder)
-    status: str = "running"  # one of RUN_STATUSES
-    finished_at: str | None = None
-    error: str | None = None
-    # A workflow run's per-step records (workflows/engine.py's StepRecord),
-    # in the order the steps first ran, and the inputs it was given.
-    steps: list[dict[str, Any]] = field(default_factory=list)
-    inputs: dict[str, Any] | None = None
-    # Where a browser workflow run failed: a page_screenshot file name and
-    # the page's text, for the person and the assistant looking into it.
-    screenshot: str | None = None
-    page: str | None = None
-    # What a completed run wrote ({"path", "size", "rows"?, "columns"?}),
-    # and the conversation looking into a failed one.
-    files: list[dict[str, Any]] = field(default_factory=list)
-    investigation: str | None = None
-    # The sites a workflow run opened, as hosts.
-    sites: list[str] = field(default_factory=list)
-    queued: bool = False  # waiting for the browser, which one run uses at a time
-    # A run a check ended with nothing to do (decision 0034): how many such runs in a row this
-    # record stands for, since only the latest of a row is kept; 0 for any other run.
-    quiet: int = 0
-    # The versions of its task it ran (decision 0035), and per run-task step ("<step>" or
-    # "<step>/<its step>"): {"task", "name", "version", "workflow"} of the task it ran.
-    versions: list[int] = field(default_factory=list)
-    called: dict[str, Any] = field(default_factory=dict)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "run_id": self.run_id,
-            "thread_id": self.thread_id,
-            "started_at": self.started_at,
-            "source": self.source,
-            "status": self.status,
-            "finished_at": self.finished_at,
-            "error": self.error,
-            "steps": self.steps,
-            "inputs": self.inputs,
-            "screenshot": self.screenshot,
-            "page": self.page,
-            "files": self.files,
-            "investigation": self.investigation,
-            "sites": self.sites,
-            "queued": self.queued,
-            "quiet": self.quiet,
-            "versions": self.versions,
-            "called": self.called,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ScheduledRun:
-        return cls(
-            run_id=data["run_id"],
-            thread_id=data["thread_id"],
-            started_at=data["started_at"],
-            source=data.get("source", "scheduled"),
-            status=data.get("status", "completed"),
-            finished_at=data.get("finished_at"),
-            error=data.get("error"),
-            steps=data.get("steps") or [],
-            inputs=data.get("inputs"),
-            screenshot=data.get("screenshot"),
-            page=data.get("page"),
-            files=data.get("files") or [],
-            investigation=data.get("investigation"),
-            sites=list(data.get("sites") or []),
-            queued=bool(data.get("queued", False)),
-            quiet=int(data.get("quiet") or 0),
-            versions=[int(v) for v in data.get("versions") or []],
-            called=dict(data.get("called") or {}),
-        )
 
 
 @dataclass
@@ -301,6 +214,7 @@ class ScheduledTriggerStore:
         # (decision 0034), kept beside the tasks and deleted with them.
         self.memory = TaskMemory(self.state_dir)
         self.folders = FolderWatch(self.state_dir)
+        self.connector_items = ConnectorItems(self.state_dir)
         self.versions = TaskVersions(self.state_dir)
         self.calls = TaskCalls(self)
 
@@ -356,11 +270,16 @@ class ScheduledTriggerStore:
         trigger_file(self.root, trigger_id, ".notes.md").unlink(missing_ok=True)
         self.memory.delete(trigger_id)
         self.folders.forget(trigger_id)
+        self.connector_items.forget(trigger_id)
         self.versions.delete(trigger_id)
         return existed
 
     def start_run(
-        self, trigger_id: str, source: str, inputs: dict[str, Any] | None = None
+        self,
+        trigger_id: str,
+        source: str,
+        inputs: dict[str, Any] | None = None,
+        event: dict[str, Any] | None = None,
     ) -> tuple[ScheduledTrigger, ScheduledRun, list[ScheduledRun]]:
         """Record a new run as "running". Returns the freshly loaded
         trigger, the new run, and any runs dropped for exceeding
@@ -376,8 +295,9 @@ class ScheduledTriggerStore:
             started_at=_now_iso(),
             source=source,
             inputs=inputs,
+            event=event,
         )
-        trigger.runs, pruned = _fold_quiet(trigger.runs)
+        trigger.runs, pruned = fold_quiet(trigger.runs)
         trigger.runs.append(run)
         pruned += trigger.runs[:-MAX_RUNS_KEPT]
         trigger.runs = trigger.runs[-MAX_RUNS_KEPT:]
@@ -477,7 +397,6 @@ class ScheduledTriggerStore:
         os.replace(tmp_path, path)
 
 
-
 def _validate_and_build_schedule(
     *,
     kind: str,
@@ -518,6 +437,8 @@ def _validate_and_build_schedule(
     )  # fmt: skip
     if kind == "folder":
         _check_folder_rule(rule, normalized_workflow)
+    if kind == "connector":
+        _connector_rule(rule, watch, normalized_workflow)
     next_run_at = compute_next_run_at(rule, datetime.now())
     # "manual" and "folder" never have a next_run_at by design (see ScheduleRule.kind) --
     # only every other kind treats a None result as "at was in the past."
@@ -533,6 +454,30 @@ def _check_folder_rule(rule: ScheduleRule, workflow: dict[str, Any] | None) -> N
     inputs = {i["name"]: i.get("type") for i in (workflow or {}).get("inputs") or []}
     if inputs.get(rule.input or "") != "file":
         raise ValueError("A task that starts on a new file passes it to one of its file inputs")
+
+
+def _connector_rule(
+    rule: ScheduleRule, watch: dict[str, Any], workflow: dict[str, Any] | None
+) -> None:
+    """A task started by new items in a connector (decision 0039): its tool, the tool's arguments,
+    which input takes which field, and its hourly limit."""
+    if workflow is None:
+        raise ValueError("Only a task with steps can start on something new in a connector")
+    rule.tool = str(watch.get("tool") or "").strip() or None
+    if rule.tool is None:
+        raise ValueError("A task that starts on something new in a connector names the tool to ask")
+    args, inputs_from = watch.get("args") or {}, watch.get("inputs_from") or {}
+    if not isinstance(args, dict) or not isinstance(inputs_from, dict):
+        raise ValueError("A connector check's arguments and inputs are each a set of names")
+    names = {i["name"] for i in workflow.get("inputs") or []}
+    unknown = sorted(set(inputs_from) - names)
+    if unknown:
+        raise ValueError(f"The task has no input {unknown[0]!r} to fill from an item")
+    rule.args, rule.inputs_from = args, {str(k): str(v) for k, v in inputs_from.items()}
+    rule.per_hour = int(watch.get("per_hour") or DEFAULT_PER_HOUR)
+    if not 1 <= rule.per_hour <= MAX_PER_HOUR:
+        raise ValueError(f"A task starts 1 to {MAX_PER_HOUR} runs an hour from new items")
+    rule.trust_unmarked = bool(watch.get("trust_unmarked", False))
 
 
 def _watch_folder(trigger: ScheduledTrigger) -> None:
@@ -691,7 +636,7 @@ def patch_trigger(
         "notes_enabled": trigger.notes_enabled,
         "workflow": trigger.workflow,
         "environment": trigger.environment,
-        "watch": {k: getattr(rule, k) for k in ("minutes", "folder", "pattern", "input")},
+        "watch": {k: getattr(rule, k) for k in _WATCH_FIELDS},
     }
     unknown = sorted(set(changes) - set(current))
     if unknown:

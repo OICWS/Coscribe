@@ -1,20 +1,25 @@
 """When a scheduled task runs: its rule (a frequency and a time, every few minutes, when a file
-arrives in a folder, or by hand) and the next time that rule comes, in the machine's local
-wall-clock time (see `scheduled_tasks.py`)."""
+arrives in a folder, when something new shows up in a connector, or by hand) and the next time
+that rule comes, in the machine's local wall-clock time (see `scheduled_tasks.py`)."""
 
 from __future__ import annotations
 
 import calendar
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
 VALID_KINDS = (
     "manual", "once", "hourly", "daily", "weekdays", "weekly", "monthly", "every", "folder",
+    "connector",
 )  # fmt: skip
-# "every": how often a task that checks something may run (decision 0034).
+# "every": how often a task that checks something may run (decision 0034); "connector": how often
+# its tool is asked (decision 0039).
 MIN_EVERY_MINUTES = 5
 MAX_EVERY_MINUTES = 1440
+# "connector": the runs new items may start in an hour, unless the task says otherwise.
+DEFAULT_PER_HOUR = 30
+MAX_PER_HOUR = 120
 
 
 def _to_local_naive(value: datetime) -> datetime:
@@ -74,6 +79,16 @@ class ScheduleRule:
     folder: str | None = None
     pattern: str = "*"
     input: str | None = None
+    # "connector" (decision 0039): every `minutes`, a connector's `tool` is called with `args`, and
+    # each new item in its answer starts a run. `inputs_from` maps an input to the item's field
+    # ("sender.email"), "*" the whole item, "" the input's default; an input not named takes the
+    # field of its own name. `trust_unmarked`: the person confirmed a tool its connector doesn't
+    # mark read-only.
+    tool: str | None = None
+    args: dict[str, Any] = field(default_factory=dict)
+    inputs_from: dict[str, str] = field(default_factory=dict)
+    per_hour: int = DEFAULT_PER_HOUR
+    trust_unmarked: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -86,6 +101,11 @@ class ScheduleRule:
             "folder": self.folder,
             "pattern": self.pattern,
             "input": self.input,
+            "tool": self.tool,
+            "args": self.args,
+            "inputs_from": self.inputs_from,
+            "per_hour": self.per_hour,
+            "trust_unmarked": self.trust_unmarked,
         }
 
     @classmethod
@@ -100,6 +120,11 @@ class ScheduleRule:
             folder=data.get("folder"),
             pattern=data.get("pattern") or "*",
             input=data.get("input"),
+            tool=data.get("tool"),
+            args=dict(data.get("args") or {}),
+            inputs_from={str(k): str(v) for k, v in (data.get("inputs_from") or {}).items()},
+            per_hour=int(data.get("per_hour") or DEFAULT_PER_HOUR),
+            trust_unmarked=bool(data.get("trust_unmarked", False)),
         )
 
 
@@ -129,7 +154,7 @@ def compute_next_run_at(rule: ScheduleRule, after: datetime) -> str | None:
         candidate = _parse_local(rule.at)
         return candidate.isoformat() if candidate > after else None
 
-    if rule.kind == "every":
+    if rule.kind in ("every", "connector"):
         return _every(rule, after)
     return _next_by_clock(rule, after)
 
@@ -138,7 +163,7 @@ def _every(rule: ScheduleRule, after: datetime) -> str:
     minutes = rule.minutes or 0
     if not MIN_EVERY_MINUTES <= minutes <= MAX_EVERY_MINUTES:
         raise ValueError(
-            f'minutes must be {MIN_EVERY_MINUTES}-{MAX_EVERY_MINUTES} for an "every" schedule'
+            f"minutes must be {MIN_EVERY_MINUTES}-{MAX_EVERY_MINUTES} for {rule.kind!r}"
         )
     return (after.replace(second=0, microsecond=0) + timedelta(minutes=minutes)).isoformat()
 
