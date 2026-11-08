@@ -22,10 +22,9 @@ from ...runtime import DEFAULT_ENVIRONMENT, Environments, tool_metadata
 from ...workflow_spec import current_shape, parse_workflow, workflow_error
 from ._trigger_files import is_trigger_id, trigger_file
 from .connector_items import ConnectorItems
+from .event_rules import event_rule
 from .folder_watch import FolderWatch
 from .schedule_rule import (
-    DEFAULT_PER_HOUR,
-    MAX_PER_HOUR,
     VALID_KINDS,
     ScheduleRule,
     _to_local_naive,
@@ -35,6 +34,7 @@ from .scheduled_run import ScheduledRun, fold_quiet
 from .task_calls import TaskCalls, check_calls
 from .task_memory import TaskMemory
 from .task_versions import TaskVersions
+from .webhook_events import WebhookEvents
 
 VALID_APPROVAL_MODES = ("manual", "auto", "skip")
 RUN_STATUSES = ("running", "completed", "failed", "needs_approval", "waiting", "stopped")
@@ -215,6 +215,7 @@ class ScheduledTriggerStore:
         self.memory = TaskMemory(self.state_dir)
         self.folders = FolderWatch(self.state_dir)
         self.connector_items = ConnectorItems(self.state_dir)
+        self.webhooks = WebhookEvents(self.state_dir)
         self.versions = TaskVersions(self.state_dir)
         self.calls = TaskCalls(self)
 
@@ -271,6 +272,7 @@ class ScheduledTriggerStore:
         self.memory.delete(trigger_id)
         self.folders.forget(trigger_id)
         self.connector_items.forget(trigger_id)
+        self.webhooks.forget(trigger_id)
         self.versions.delete(trigger_id)
         return existed
 
@@ -437,12 +439,12 @@ def _validate_and_build_schedule(
     )  # fmt: skip
     if kind == "folder":
         _check_folder_rule(rule, normalized_workflow)
-    if kind == "connector":
-        _connector_rule(rule, watch, normalized_workflow)
+    if kind in ("connector", "webhook"):
+        event_rule(rule, watch, normalized_workflow)
     next_run_at = compute_next_run_at(rule, datetime.now())
-    # "manual" and "folder" never have a next_run_at by design (see ScheduleRule.kind) --
-    # only every other kind treats a None result as "at was in the past."
-    if next_run_at is None and kind not in ("manual", "folder"):
+    # "manual", "folder" and "webhook" never have a next_run_at by design (see ScheduleRule.kind)
+    # -- only every other kind treats a None result as "at was in the past."
+    if next_run_at is None and kind not in ("manual", "folder", "webhook"):
         raise ValueError(f"at must be in the future, got {at!r}")
     return rule, next_run_at, normalized_workflow
 
@@ -454,30 +456,6 @@ def _check_folder_rule(rule: ScheduleRule, workflow: dict[str, Any] | None) -> N
     inputs = {i["name"]: i.get("type") for i in (workflow or {}).get("inputs") or []}
     if inputs.get(rule.input or "") != "file":
         raise ValueError("A task that starts on a new file passes it to one of its file inputs")
-
-
-def _connector_rule(
-    rule: ScheduleRule, watch: dict[str, Any], workflow: dict[str, Any] | None
-) -> None:
-    """A task started by new items in a connector (decision 0039): its tool, the tool's arguments,
-    which input takes which field, and its hourly limit."""
-    if workflow is None:
-        raise ValueError("Only a task with steps can start on something new in a connector")
-    rule.tool = str(watch.get("tool") or "").strip() or None
-    if rule.tool is None:
-        raise ValueError("A task that starts on something new in a connector names the tool to ask")
-    args, inputs_from = watch.get("args") or {}, watch.get("inputs_from") or {}
-    if not isinstance(args, dict) or not isinstance(inputs_from, dict):
-        raise ValueError("A connector check's arguments and inputs are each a set of names")
-    names = {i["name"] for i in workflow.get("inputs") or []}
-    unknown = sorted(set(inputs_from) - names)
-    if unknown:
-        raise ValueError(f"The task has no input {unknown[0]!r} to fill from an item")
-    rule.args, rule.inputs_from = args, {str(k): str(v) for k, v in inputs_from.items()}
-    rule.per_hour = int(watch.get("per_hour") or DEFAULT_PER_HOUR)
-    if not 1 <= rule.per_hour <= MAX_PER_HOUR:
-        raise ValueError(f"A task starts 1 to {MAX_PER_HOUR} runs an hour from new items")
-    rule.trust_unmarked = bool(watch.get("trust_unmarked", False))
 
 
 def _watch_folder(trigger: ScheduledTrigger) -> None:
@@ -794,6 +772,8 @@ def build_scheduled_task_tools(
             model: "provider:model".
             approval_mode: "manual", "auto" or "skip".
         """
+        if kind in ("connector", "webhook"):
+            raise ValueError("Only the person makes a task start on outside events, in its form")
         draft = edit_draft(
             store,
             {

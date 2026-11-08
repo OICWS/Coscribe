@@ -51,6 +51,8 @@ Reason = Literal[
     "workflow_step",
     # A task asked a connector for something new, as its trigger does (decision 0039).
     "trigger_check",
+    # A program sent a task an event (decision 0040): its size and what it came to.
+    "webhook_event",
 ]
 
 _REDACTED = "[REDACTED]"

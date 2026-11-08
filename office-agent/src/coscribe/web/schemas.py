@@ -160,6 +160,12 @@ class MCPVersionBump(BaseModel):
     version: str
 
 
+class WebhookSample(BaseModel):
+    """Keep a "webhook" task's next event as its sample instead of running it (decision 0040)."""
+
+    waiting: bool
+
+
 class ConnectorCheck(BaseModel):
     """A connector tool asked once from the task form (decision 0039)."""
 
