@@ -70,7 +70,7 @@ export function AutonomySetting({
   );
 }
 
-const PLAIN_LABEL: Record<TaskAutonomy, string> = {
+export const PLAIN_LABEL: Record<TaskAutonomy, string> = {
   fixed: "Stop and tell me",
   self_healing: "Work around small website changes",
   proactive: "Let its AI steps decide how",

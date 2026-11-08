@@ -15,6 +15,7 @@ from .catalog import describe_params, tool_description
 from .engine import RunOutcome, StepContext, StepRecord, WorkflowNotRunnable, WorkflowRun
 from .graph_view import compiled_graph
 from .heal_revision import heal_fixes, heals_to_revise
+from .overview import write_overview
 from .pause_steps import answer_problem, paused_at, wake_due
 from .permissions import (
     allowed_to_run,
@@ -78,4 +79,5 @@ __all__ = [
     "wake_due",
     "walk",
     "workflow_error",
+    "write_overview",
 ]

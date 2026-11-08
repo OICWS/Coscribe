@@ -1,6 +1,16 @@
-import type { AskStep, MemoryEntry, WaitStep, WorkflowInput, WorkflowStep } from "../types/workflow";
+import type {
+  AskStep,
+  CheckOp,
+  Condition,
+  Match,
+  MemoryEntry,
+  Operand,
+  WaitStep,
+  WorkflowInput,
+  WorkflowStep,
+} from "../types/workflow";
 import { toolLabel } from "./toolLabels";
-import { splitTemplate, wholeReference } from "./workflowLabels";
+import { shortPlace, splitTemplate, wholeReference } from "./workflowLabels";
 
 // The simple view says what a step does in words a person would use: no tool names, no variable
 // names, no code. Where a value comes from an earlier step it reads "the claim's name"; where it
@@ -41,7 +51,45 @@ function plainValue(value: unknown, inputs: WorkflowInput[]): string {
     .map((part) => ("ref" in part ? `[${plainReference(part.ref, inputs).replace(/[“”]/g, "")}]` : part.text))
     .join("")
     .trim();
-  return text.length > FIELD_CHARS ? `“${text.slice(0, FIELD_CHARS)}…”` : `“${text}”`;
+  const shown = shortPlace(text);
+  return shown.length > FIELD_CHARS ? `“${shown.slice(0, FIELD_CHARS)}…”` : `“${shown}”`;
+}
+
+export const OP_WORDS: Record<CheckOp, string> = {
+  eq: "is",
+  ne: "isn’t",
+  gt: "is more than",
+  ge: "is at least",
+  lt: "is less than",
+  le: "is at most",
+  contains: "contains",
+  not_contains: "doesn’t contain",
+  starts_with: "starts with",
+  ends_with: "ends with",
+  not_empty: "isn’t empty",
+  empty: "is empty",
+  before: "is before",
+  after: "is after",
+};
+
+export function operandWords(operand: Operand, inputs: WorkflowInput[]): string {
+  if ("ref" in operand) return plainReference(operand.ref, inputs);
+  if ("count" in operand) return `the number of ${plainReference(operand.count, inputs)}`;
+  return JSON.stringify(operand.value);
+}
+
+/** "the order’s total is more than 100 and …", or null when there is nothing to say. */
+export function plainConditions(
+  conditions: Condition[],
+  match: Match | undefined,
+  inputs: WorkflowInput[],
+): string | null {
+  const said = conditions.map((condition) => {
+    const right = condition.right ? ` ${operandWords(condition.right, inputs)}` : "";
+    return `${operandWords(condition.left, inputs)} ${OP_WORDS[condition.op]}${right}`;
+  });
+  if (said.length === 0) return null;
+  return said.join(match === "any" ? " or " : " and ");
 }
 
 const ROLE_WORD: Record<string, string> = {
@@ -73,10 +121,11 @@ function fieldName(ref: unknown, inputs: WorkflowInput[]): string {
 
 function site(url: unknown): string {
   if (typeof url !== "string") return "a web page";
-  if (url.includes("{{")) return "a web page";
   try {
-    const parsed = new URL(url);
-    return `${parsed.host}${parsed.pathname === "/" ? "" : parsed.pathname}`;
+    // A value filled in per run says nothing about where it goes; the site and the page do.
+    const parsed = new URL(url.replace(/\{\{[^}]*\}\}/g, "per-run-value"));
+    if (url.includes("{{") && parsed.pathname.includes("per-run-value")) return parsed.host;
+    return shortPlace(`${parsed.origin}${parsed.pathname}`);
   } catch {
     return "a web page";
   }
@@ -110,7 +159,7 @@ function toolSentence(tool: string, args: Record<string, unknown>, inputs: Workf
   }
 }
 
-function listWords(items: string[]): string {
+export function listWords(items: string[]): string {
   if (items.length <= 1) return items.join("");
   return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }
