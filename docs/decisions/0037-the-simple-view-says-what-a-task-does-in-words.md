@@ -1,7 +1,7 @@
 # 0037: The simple view says what a task does in words
 
 Status: proposed (2026-11-07, kurtosisOC; agreed with the maintainer in the project thread).
-Issue #833.
+Issue #843.
 
 ## Context
 Most people who use a task never read how it is configured. The simple view showed what a task
