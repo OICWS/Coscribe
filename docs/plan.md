@@ -32,9 +32,10 @@ Last reviewed: 2026-11-06.
    reply so far (#827) and a script moving to the background at its time limit or when the person
    writes mid-turn (`docs/log/2026-11-07-script-to-background.md`). Next: a folder brief on first attach; an offer to save a job as
    a workflow or skill; an in-chat connector card (decision record and independent review first).
-5. **Workflows** (#719 and #788, kurtosisOC; decisions 0028 to 0035). Phases P0 to P5 are done
-   (`docs/log/`, 2026-10-29 to 2026-11-02). In review: parallel steps (#789, decision 0036
-   proposed). Next in #788: a run started by a webhook or a connector event, with the event's
+5. **Workflows** (#719, #788 and #833, kurtosisOC; decisions 0028 to 0037). Phases P0 to P5 and
+   parallel steps are done (`docs/log/`, 2026-10-29 to 2026-11-03). In review: the simple view
+   says what a task does in words (#833, decision 0037); then its run page, the result first.
+   Next in #788: a run started by a webhook or a connector event, with the event's
    data as its inputs (batch 2), then steps a run adds by itself within the task's autonomy
    (batch 3). Open: a cost cap for an agent step, and an L3 step delegating.
 

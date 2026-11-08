@@ -47,3 +47,4 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0034](0034-a-task-remembers-between-runs-and-starts-on-a-new-file.md) | A task remembers between runs, and starts on a schedule of minutes or a new file (proposed) |
 | [0035](0035-a-task-runs-another-and-keeps-its-versions.md) | A task runs another task as a step, and keeps every version it was saved as (proposed; narrowed by 0036) |
 | [0036](0036-a-step-runs-several-lanes-at-the-same-time.md) | A step runs several lanes of steps at the same time (proposed) |
+| [0037](0037-the-simple-view-says-what-a-task-does-in-words.md) | The simple view says what a task does in words (proposed) |
