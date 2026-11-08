@@ -18,7 +18,7 @@ from ..tools import (
     connector_of,
     is_read_only,
 )
-from ..workflows import connector_value, parse_workflow
+from ..workflows import ask_connector, parse_workflow
 from .audit import AuditLog, record_decision
 
 logger = logging.getLogger(__name__)
@@ -57,17 +57,11 @@ async def _check(
     if refusal is not None:
         store.connector_items.checked(trigger.trigger_id, error=refusal)
         return []
-    try:
-        answer = connector_value(
-            await asyncio.wait_for(tool.ainvoke(dict(rule.args)), CHECK_SECONDS)
-        )
-    except Exception as exc:
-        # The check's failure, shown on the task; the trace is for whoever reads the log.
-        logger.warning("scheduled_tasks: checking %s failed", rule.tool, exc_info=True)
-        error = "It didn't answer in time" if isinstance(exc, TimeoutError) else str(exc)
-        store.connector_items.checked(trigger.trigger_id, error=error[:300])
-        summary = error[:300]
-        starting: list[tuple[str, Any, dict[str, Any]]] = []
+    answer, error = await ask_connector(tool, rule.args, CHECK_SECONDS)
+    starting: list[tuple[str, Any, dict[str, Any]]] = []
+    if error is not None:
+        store.connector_items.checked(trigger.trigger_id, error=error)
+        summary = error
     else:
         specs = list(parse_workflow(trigger.workflow or {}).inputs)
         starting, summary = store.connector_items.take(

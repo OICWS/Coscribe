@@ -12,7 +12,7 @@ from ..workflow_spec import (
 )
 from .agent_step import AgentCall, AgentReply, AgentRequest, AgentRunner
 from .catalog import describe_params, tool_description
-from .connector_value import connector_value
+from .connector_value import ask_connector
 from .engine import RunOutcome, StepContext, StepRecord, WorkflowNotRunnable, WorkflowRun
 from .graph_view import compiled_graph
 from .heal_revision import heal_fixes, heals_to_revise
@@ -61,7 +61,7 @@ __all__ = [
     "callable_tasks",
     "called_permissions",
     "compiled_graph",
-    "connector_value",
+    "ask_connector",
     "describe_params",
     "draft_workflow",
     "granted_by",

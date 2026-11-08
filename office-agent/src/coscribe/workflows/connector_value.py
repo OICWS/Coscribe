@@ -3,9 +3,16 @@ blocks, sometimes wrapped in markdown sections, and later steps need the value i
 
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 import re
 from typing import Any
+
+from langchain_core.tools import ToolException
+from pydantic import ValidationError
+
+logger = logging.getLogger(__name__)
 
 _SECTION_HEADING = re.compile(r"^### (.+?)\s*$", re.MULTILINE)
 
@@ -41,3 +48,18 @@ def connector_value(result: Any) -> Any:
         except ValueError:
             return result
     return result
+
+
+async def ask_connector(tool: Any, args: dict[str, Any], seconds: float) -> tuple[Any, str | None]:
+    """A connector tool's answer as a value, or why it gave none. Only the connector's own error
+    and a refusal of the arguments are shown as they are: they are what the person can fix, and
+    any other exception's text is the app's internals, which stay in the log."""
+    try:
+        return connector_value(await asyncio.wait_for(tool.ainvoke(dict(args)), seconds)), None
+    except TimeoutError:
+        return None, "It didn't answer in time"
+    except (ToolException, ValidationError) as exc:
+        return None, str(exc)[:300]
+    except Exception as exc:
+        logger.warning("asking connector tool %s failed", getattr(tool, "name", "?"), exc_info=True)
+        return None, f"It failed ({type(exc).__name__}); the app's log has the details"

@@ -3,18 +3,13 @@ the task form can show what it finds and which fields an input can take."""
 
 from __future__ import annotations
 
-import asyncio
-import logging
-
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 from ....tools import ScheduledTriggerStore, connector_of, is_read_only
-from ....workflows import connector_value
+from ....workflows import ask_connector
 from ...schemas import ConnectorCheck
 from ...state import AppState
-
-logger = logging.getLogger(__name__)
 
 # What the form lists of an answer; the rest is counted.
 _SHOWN = 5
@@ -36,13 +31,9 @@ def router(state: AppState) -> APIRouter:
         if not read_only and not payload.trust_unmarked:
             # Not even once: calling a tool that may change something is the person's choice.
             return JSONResponse({"read_only": False, "items": None})
-        try:
-            call = tool.ainvoke(dict(payload.args))
-            answer = connector_value(await asyncio.wait_for(call, _CHECK_SECONDS))
-        except Exception as exc:
-            logger.warning("connector check: %s failed", payload.tool, exc_info=True)
-            error = "It didn't answer in time" if isinstance(exc, TimeoutError) else str(exc)
-            return JSONResponse({"read_only": read_only, "error": error[:300]})
+        answer, error = await ask_connector(tool, payload.args, _CHECK_SECONDS)
+        if error is not None:
+            return JSONResponse({"read_only": read_only, "error": error})
         preview = items.preview(answer, _SHOWN)
         if preview is None:
             return JSONResponse(

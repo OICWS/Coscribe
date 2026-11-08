@@ -303,3 +303,28 @@ async def test_a_tool_not_marked_read_only_or_not_there_is_not_asked(
     store.save(paused)
     await poll_due_scheduled_tasks(settings.state_dir, get_session, connector_tools=lambda: [])
     assert store.connector_items.read(trigger.trigger_id) == {}
+
+
+async def test_a_failed_ask_shows_the_connectors_own_error_but_not_the_apps() -> None:
+    from langchain_core.tools import ToolException
+
+    from coscribe.workflows import ask_connector
+
+    def refuses(query: str) -> str:
+        raise ToolException("query must not be empty")
+
+    def breaks(query: str) -> str:
+        raise RuntimeError("secret internals at C:/Users/x")
+
+    def answers(query: str) -> str:
+        return json.dumps([{"id": 1}])
+
+    def tool(fn: Any) -> StructuredTool:
+        return StructuredTool.from_function(fn, description="Search.", handle_tool_error=False)
+
+    assert await ask_connector(tool(answers), {"query": "q"}, 5) == ([{"id": 1}], None)
+    assert await ask_connector(tool(refuses), {"query": ""}, 5) == (None, "query must not be empty")
+    _, bad_args = await ask_connector(tool(answers), {}, 5)
+    assert bad_args is not None and "query" in bad_args
+    _, broken = await ask_connector(tool(breaks), {"query": "q"}, 5)
+    assert broken == "It failed (RuntimeError); the app's log has the details"
