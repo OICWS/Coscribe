@@ -58,9 +58,9 @@ describe("plainOutline", () => {
     expect(gather.groups[0].rows[0].detail).toBe("Reads “…\\Calendar exports\\[Day].ics”");
   });
 
-  it("says what a model step works out, and how it fails only when set", () => {
+  it("says what a model step works out, and what happens when it fails only when set", () => {
     expect(write.detail).toBe("Works out headline and things to watch");
-    expect(write.notes).toEqual(["Tries again up to 2 times", "Skipped if it fails"]);
+    expect(write.notes).toEqual(["If it fails: 2 more tries, then skip it"]);
     expect(urgent.notes).toEqual([]);
   });
 

@@ -8,7 +8,7 @@ from typing import Any
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.constants import TAG_NOSTREAM
 
-from ..workflow_spec import Step, Workflow, child_lists
+from ..workflow_spec import ChoiceStep, ParallelStep, Step, Workflow, child_lists
 
 OVERVIEW_CHARS = 200
 # Enough for a long task's titles; past it the sentence would say no more.
@@ -34,10 +34,10 @@ def _detail(step: Step) -> str:
 def _arm(step: Step, arm: str) -> str:
     """An arm as the step names it: a lane by its label, a case by its value."""
     kind, _, index = arm.partition(":")
-    if kind == "lane":
-        return f"at the same time, {step.lanes[int(index)].label}"  # type: ignore[union-attr]
-    if kind == "case":
-        return f"when {step.cases[int(index)].is_}"  # type: ignore[union-attr]
+    if kind == "lane" and isinstance(step, ParallelStep):
+        return f"at the same time, {step.lanes[int(index)].label}"
+    if kind == "case" and isinstance(step, ChoiceStep):
+        return f"when {step.cases[int(index)].is_}"
     return {"steps": "each item", "fallback": "if it fails"}.get(arm, arm)
 
 

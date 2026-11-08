@@ -5,8 +5,9 @@ opened on a flowchart with its settings in the middle (#833; decision 0037).
 
 ## Shipped
 - A sentence on top of the page (`TaskOverviewLine.tsx`): `workflows/overview.py` has the side
-  model write it from the task's name, inputs and step titles; `GET/PUT
-  /api/scheduled-tasks/{id}/overview` writes it once per saved version and keeps one the person
+  model write it from the task's name, inputs and step titles; `POST/PUT
+  /api/scheduled-tasks/{id}/overview` writes it once per saved version (a POST, since a first
+  look spends a model call) and keeps one the person
   wrote, stored by `TaskVersions` beside the versions.
 - What it does as a numbered list (`PlainStepList.tsx`, `lib/plainOutline.ts`): a model step says
   what it works out, a branch its condition, a loop what it goes through, a parallel step its

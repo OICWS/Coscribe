@@ -66,6 +66,7 @@ export function TaskOverviewLine({ triggerId, version }: { triggerId: string; ve
       {overview.text ?? <span className="text-[var(--muted)]">No description yet.</span>}{" "}
       <button
         type="button"
+        aria-label="Edit what the task says it does"
         className="text-[13px] text-[var(--muted)] hover:text-[var(--fg)] hover:underline"
         onClick={() => setDraft(overview.text ?? "")}
       >

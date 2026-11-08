@@ -642,7 +642,7 @@ def _overview_routes(router: APIRouter, state: AppState) -> None:
     settings = state.settings
     writing: dict[str, asyncio.Lock] = {}
 
-    async def get_overview(trigger_id: str) -> JSONResponse:
+    async def overview(trigger_id: str) -> JSONResponse:
         store = ScheduledTriggerStore(settings.state_dir)
         trigger = store.load(trigger_id)
         if trigger is None or trigger.workflow is None:
@@ -656,7 +656,8 @@ def _overview_routes(router: APIRouter, state: AppState) -> None:
             try:
                 text = await write_overview(_overview_model(settings), trigger.name,
                                             parse_workflow(trigger.workflow))  # fmt: skip
-            except Exception:  # noqa: BLE001 -- no sentence is the page's fallback, not an error
+            # Any failure of the call (no key, no network, a refusal) leaves the page without one.
+            except Exception:
                 return JSONResponse({"text": None})
             if not text:
                 return JSONResponse({"text": None})
@@ -677,7 +678,8 @@ def _overview_routes(router: APIRouter, state: AppState) -> None:
         return JSONResponse({"text": line, "version": version, "by": "you"})
 
     path = "/api/scheduled-tasks/{trigger_id}/overview"
-    router.add_api_route(path, get_overview, methods=["GET"])
+    # A POST, though it mostly reads: a first look at a version spends a model call.
+    router.add_api_route(path, overview, methods=["POST"])
     router.add_api_route(path, put_overview, methods=["PUT"])
 
 

@@ -1,4 +1,5 @@
 import type { OutputField, Workflow, WorkflowInput, WorkflowStep } from "../types/workflow";
+import { failureLine } from "./failureWords";
 import { listWords, plainConditions, plainDetail, plainReference } from "./plainSteps";
 
 // What a task does, as the simple view lists it: each step by its own title and one sentence,
@@ -59,9 +60,8 @@ function detail(step: WorkflowStep, inputs: WorkflowInput[], ctx: OutlineContext
 function notes(step: WorkflowStep): string[] {
   const said: string[] = [];
   if ("irreversible" in step && step.irreversible) said.push("Can’t be undone");
-  const failure = "on_failure" in step ? step.on_failure : null;
-  if (failure?.retries) said.push(`Tries again up to ${failure.retries === 1 ? "once" : `${failure.retries} times`}`);
-  if (failure?.then === "skip") said.push("Skipped if it fails");
+  const failure = failureLine(step);
+  if (failure) said.push(failure);
   return said;
 }
 

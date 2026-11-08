@@ -51,10 +51,10 @@ test("a step's values and an input's usual value change from the simple view", a
   try {
     await page.goto(`/?view=scheduled&task=${task.trigger_id}`);
     const simple = page.getByTestId("task-simple-view");
-    await expect(simple).toContainText("Only one of these 4 paths runs");
+    await expect(page.locator('[data-plain-step="pick"]')).toContainText("Depending on Department");
     await expect(simple).toContainText("usually First day of last month");
 
-    await page.locator('[data-canvas-step="pick"]').click();
+    await page.locator('[data-plain-step="pick"]').click();
     const sheet = page.getByRole("complementary", { name: "Change this step" });
     await expect(sheet.getByLabel("Path 2, when “Department” is")).toHaveValue("Finance");
     await sheet.getByLabel("Path 3, when “Department” is").fill("Ops");

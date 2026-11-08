@@ -37,11 +37,14 @@ test("a workflow's page shows it as a canvas in plain words, then in detail, and
   try {
     await page.goto(`/?view=scheduled&task=${task.trigger_id}`);
     const simple = page.getByTestId("task-simple-view");
-    await expect(simple).toContainText("Lists the files in “Folder”");
-    await expect(simple).toContainText("Repeats for each report");
-    await expect(simple).toContainText("Reads the report");
-    await expect(simple).toContainText("If so");
-    await expect(simple).toContainText("Waits for your OK");
+    await expect(simple.locator('[data-plain-step="list"]')).toContainText("Lists the files in Folder");
+    await expect(simple.locator('[data-plain-step="each"]')).toContainText("For each report in the files");
+    await expect(simple.locator('[data-plain-step="read"]')).toContainText("Reads the report");
+    await expect(simple.locator('[data-plain-step="any"]')).toContainText("If the number of the files is more than 0");
+    await expect(simple.locator('[data-plain-step="ok"]')).toContainText("Waits for your OK");
+    await simple.getByRole("button", { name: "Show the flowchart" }).click();
+    await expect(simple.getByTestId("workflow-canvas")).toContainText("Repeats for each report");
+    await expect(simple.getByTestId("workflow-canvas")).toContainText("If so");
     await expect(simple).not.toContainText("list_files");
     await expect(simple).not.toContainText("{{");
 
