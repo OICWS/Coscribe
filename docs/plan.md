@@ -48,7 +48,7 @@ Last reviewed: 2026-11-06.
   loaded lazily once the sections modules may be edited; the sidecar started earlier in the
   Electron shell.
 - **Scripts and commands:** a PyPI mirror setting for networks that block PyPI (#560); hiding other
-  drives' user folders from commands (#588); a company proxy on a real Windows machine (Basic only;
+  drives' user folders from commands (#845); a company proxy on a real Windows machine (Basic only;
   NTLM and Kerberos are not supported, #666).
 - **The `tools` interface** (#677): done; B was closed with a reason (#692): the `tools` card and
   `slice.py` list only the 54 names `tools` owns. Moving callers to the sub-components is not
@@ -102,7 +102,7 @@ Last reviewed: 2026-11-06.
 ## Later (wanted, not scheduled)
 
 - A scheduled task changed by describing the change in words, from the task page's simple view
-  (#773): today a person edits steps in the detailed view or asks in a conversation. Needs a
+  (#843): today a person edits steps in the detailed view or asks in a conversation. Needs a
   route that drafts a revision of a saved task from a request, as a failed run's investigation does.
 
 - The rest of `office-agent/README.md` (browser, MCP, hooks, Web UI, desktop) rewritten as the

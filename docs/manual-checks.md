@@ -1,9 +1,9 @@
 # Checks only a person can do (2026-10-17)
 
-The 20 checks of issue #393, after a second try at scripting each. Eight have a part that now
+The 20 checks first collected in issue #393 (now hidden; tracked in #844), after a second try at scripting each. Eight have a part that now
 runs on a Windows runner and fails when the thing breaks; every check still has a part that needs
 a real machine, an account or Office, and that part is written below as steps you can do in the
-time given. Tick the check on #393 and say what you saw; a failure becomes its own issue.
+time given. Tick the check on #844 and say what you saw; a failure becomes its own issue.
 
 Scripted parts run in `.github/workflows/windows-more-checks.yml` (`real-windows`, the tests in
 `office-agent/tests/test_windows_real.py`; `codeowners`), nightly and on a pull request that
