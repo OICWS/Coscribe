@@ -97,14 +97,9 @@ def router(state: AppState) -> APIRouter:
     async def ws_endpoint(websocket: WebSocket, thread_id: str) -> None:
         await websocket.accept()
         session = _get_session(thread_id)
-        # See ChatSessionLG.notify_resync's own docstring -- this is the
-        # one place that knows "a real browser tab is watching this
-        # thread right now," so it's the one place that sets/clears it.
-        # A *new* connection to an already-open thread (two tabs, or a
-        # reload racing its own old socket's teardown) simply overwrites
-        # this with the newest connection -- acceptable: resync is a
-        # best-effort nudge, not a correctness-critical channel, and the
-        # newest tab is the one actually worth nudging.
+        # The one place that knows a tab watches this thread (see notify_resync). A second tab
+        # or a reload overwrites it with the newest connection: resync is a best-effort nudge,
+        # and the newest tab is the one worth nudging.
         session._live_websocket = websocket
         meta_store.mark_seen(thread_id)
         # Written while the person types their first message, so it can carry the brief.

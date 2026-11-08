@@ -341,8 +341,8 @@
   "src/coscribe/web/routes/settings/config.py::router": 103,
   "src/coscribe/web/routes/settings/providers.py::router": 138,
   "src/coscribe/web/routes/skills.py::router": 220,
-  "src/coscribe/web/routes/ws.py::router": 194,
-  "src/coscribe/web/routes/ws.py::router.ws_endpoint": 109
+  "src/coscribe/web/routes/ws.py::router": 191,
+  "src/coscribe/web/routes/ws.py::router.ws_endpoint": 106
  },
  "patch_by_string": {},
  "startup_imports": {
