@@ -157,6 +157,7 @@ def _session(
         memory_path=tmp_path / "MEMORY.md",
         auto_title_threads=False,
         prompt_suggestions=False,
+        folder_briefs=False,
         default_permission_mode="manual",
         code_module_enabled=enabled,
         code_model=code_model,

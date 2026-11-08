@@ -107,6 +107,8 @@ def router(state: AppState) -> APIRouter:
         # newest tab is the one actually worth nudging.
         session._live_websocket = websocket
         meta_store.mark_seen(thread_id)
+        # Written while the person types their first message, so it can carry the brief.
+        session._assembly.folder_briefs.refresh(session._assembly.folders())
         try:
             await session.send_state(websocket, on_connect=True)
             await session.send_history(websocket)

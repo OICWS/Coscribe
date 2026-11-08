@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable, Sequence
+from functools import cached_property
 from pathlib import Path
 from typing import Any, Protocol, cast
 
@@ -45,6 +46,7 @@ from ..tools import (
 from ..tools.web import build_http_tools
 from .artifact_tools import build_artifact_tools
 from .context_usage import build_context_breakdown
+from .folder_brief import FolderBriefKeeper
 from .page_tools import build_page_tools
 from .turn_text import build_instructions
 
@@ -55,6 +57,7 @@ class AssemblyHost(Protocol):
     thread_id: str
     settings: Settings
     workspace_root: Path
+    extra_folders: list[Path]
     enabled_skill_names: set[str]
     hooks_config: dict[str, list[str]]
     model: Any
@@ -100,6 +103,17 @@ class AgentAssembly:
     def __init__(self, host: AssemblyHost) -> None:
         self._host = host
         self._side: tuple[str, Any] | None = None
+
+    @cached_property
+    def folder_briefs(self) -> FolderBriefKeeper:
+        return FolderBriefKeeper(
+            Path(self._host.settings.state_dir),
+            self.side_model,
+            lambda: self._host.settings.folder_briefs,
+        )
+
+    def folders(self) -> list[Path]:
+        return [Path(self._host.workspace_root), *self._host.extra_folders]
 
     def side_model(self) -> Any:
         """The model for the short calls around a turn (`Settings.side_model`). It falls back to
