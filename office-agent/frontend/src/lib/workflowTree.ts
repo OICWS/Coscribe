@@ -1,12 +1,13 @@
-import type { BlockStep, RecoveringStep, Workflow, WorkflowStep } from "../types/workflow";
+import type { BlockStep, ParallelStep, RecoveringStep, Workflow, WorkflowStep } from "../types/workflow";
 
 // Branches and loops hold their own step lists. A list is named by the
 // block that holds it and which of its lists it is; ids are unique across
 // the whole workflow, so that's enough to find it.
 
-/** A choice's paths are "case:0", "case:1"..., then "otherwise". "fallback" is what runs in a
- * failed step's place; "after_failure" is the workflow's own list for a failed run. */
-export type Arm = "then" | "otherwise" | "steps" | "fallback" | "after_failure" | `case:${number}`;
+/** A choice's paths are "case:0", "case:1"..., then "otherwise"; a parallel step's lanes "lane:0",
+ * "lane:1"... "fallback" is what runs in a failed step's place; "after_failure" is the workflow's
+ * own list for a failed run. */
+export type Arm = "then" | "otherwise" | "steps" | "fallback" | "after_failure" | `case:${number}` | `lane:${number}`;
 
 export interface ListRef {
   parent: string | null;
@@ -22,7 +23,7 @@ export function listKey(ref: ListRef): string {
 }
 
 export function isBlock(step: WorkflowStep): step is BlockStep {
-  return step.kind === "branch" || step.kind === "choice" || step.kind === "loop";
+  return step.kind === "branch" || step.kind === "choice" || step.kind === "parallel" || step.kind === "loop";
 }
 
 export function canRecover(step: WorkflowStep): step is RecoveringStep {
@@ -31,7 +32,8 @@ export function canRecover(step: WorkflowStep): step is RecoveringStep {
     step.kind === "script" ||
     step.kind === "llm" ||
     step.kind === "agent" ||
-    step.kind === "run_task"
+    step.kind === "run_task" ||
+    step.kind === "parallel"
   );
 }
 
@@ -55,6 +57,10 @@ export function childLists(step: WorkflowStep): [Arm, WorkflowStep[]][] {
     ];
   }
   if (step.kind === "loop") return [["steps", step.steps]];
+  if (step.kind === "parallel") {
+    const lanes = step.lanes.map((lane, index): [Arm, WorkflowStep[]] => [`lane:${index}`, lane.steps]);
+    return step.on_failure ? [...lanes, ["fallback", step.on_failure.steps]] : lanes;
+  }
   if (canRecover(step) && step.on_failure) return [["fallback", step.on_failure.steps]];
   return [];
 }
@@ -67,6 +73,10 @@ function withArm(step: WorkflowStep, arm: Arm, next: WorkflowStep[]): WorkflowSt
   if (step.kind === "choice" && arm.startsWith("case:")) {
     const at = Number(arm.slice(5));
     return { ...step, cases: step.cases.map((c, i) => (i === at ? { ...c, steps: next } : c)) };
+  }
+  if (step.kind === "parallel" && arm.startsWith("lane:")) {
+    const at = Number(arm.slice(5));
+    return { ...step, lanes: step.lanes.map((lane, i) => (i === at ? { ...lane, steps: next } : lane)) };
   }
   return { ...step, [arm]: next } as WorkflowStep;
 }
@@ -182,6 +192,7 @@ const FAILURE_NAMES = ["failure", "failure.step", "failure.message"];
 /** Names readable at each position of each list ("<listKey>#<index>"),
  * scoped like workflow_spec/scope.py: a loop's item and body results only
  * inside it, a branch's or choice's results after it only when every path makes them,
+ * a parallel step's lanes only what came before it and every lane's results after it,
  * a step's result after it only when a failure can't skip it.
  * Model steps' fields are listed too, for pickers. */
 export function scopes(workflow: Workflow): Map<string, string[]> {
@@ -198,18 +209,25 @@ export function scopes(workflow: Workflow): Map<string, string[]> {
         return;
       }
       if (step.kind === "loop") check(step.steps, { parent: step.id, arm: "steps" }, [...names, step.item]);
+      const own = step.kind === "parallel" ? laneResults(step, names) : outputNames(step);
       const then = canRecover(step) ? step.on_failure?.then : undefined;
       if (then === "skip") return;
       if (then === "steps" && canRecover(step) && step.on_failure) {
         const inPlace = { parent: step.id, arm: "fallback" as const };
         const made = check(step.on_failure.steps, inPlace, [...names, ...FAILURE_NAMES]);
-        names = [...names, ...outputNames(step).filter((name) => made.includes(name))];
+        names = [...names, ...own.filter((name) => made.includes(name))];
         return;
       }
-      names = [...names, ...outputNames(step)];
+      names = [...names, ...own];
     });
     at.set(`${listKey(ref)}#${steps.length}`, names);
     return names;
+  };
+  const laneResults = (step: ParallelStep, before: string[]): string[] => {
+    const made = step.lanes.flatMap((lane, index) =>
+      check(lane.steps, { parent: step.id, arm: `lane:${index}` }, before),
+    );
+    return [...new Set(made)].filter((name) => !before.includes(name));
   };
   const memory = workflow.memory?.length
     ? [...workflow.memory.map((m) => `memory.${m.name}`), "run.started_at", "run.date"]

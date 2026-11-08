@@ -30,7 +30,7 @@ from ...tools import (
     record_draft,
     update_trigger,
 )
-from ...workflow_spec import task_results
+from ...workflow_spec import ParallelStep, Workflow, task_results
 from ...workflows import (
     BranchStep,
     ChoiceStep,
@@ -477,12 +477,19 @@ def _retry_routes(router: APIRouter, state: AppState) -> None:
             ),
             None,
         )
-        # A called task's step goes on inside the step that runs it (decision 0035).
-        if step_id is None or "/" in step_id:
+        # A called task's step goes on inside the step that runs it (decision 0035), a lane's
+        # inside its parallel step (decision 0036).
+        if step_id is None or "/" in step_id or (workflow and step_id in _lane_steps(workflow)):
             _continue_in_background(trigger_id, run_id, lambda wf: wf.resume())
         else:
             _continue_in_background(trigger_id, run_id, lambda wf: wf.retry_from(step_id))
         return JSONResponse({"run": run.to_dict()})
+
+
+def _lane_steps(workflow: Workflow) -> set[str]:
+    """The steps inside a parallel step's lanes, each run of its own (decision 0036)."""
+    lanes = [p.step.lanes for p in walk(workflow.steps) if isinstance(p.step, ParallelStep)]
+    return {q.step.id for each in lanes for lane in each for q in walk(lane.steps)}
 
 
 def _note_and_lifecycle_routes(router: APIRouter, state: AppState) -> None:

@@ -19,6 +19,7 @@ import {
 import { AddRowButton, AutoTextarea, FieldLabel, RemoveButton } from "./fields";
 import { RememberEditor } from "./MemoryEditor";
 import { AskEditor, WaitEditor } from "./PauseEditors";
+import { ParallelEditor } from "./ParallelEditor";
 import { RunTaskEditor } from "./RunTaskEditor";
 import { SelectMenu } from "../SelectMenu";
 
@@ -394,6 +395,8 @@ export function StepFields({ step, onChange, context }: EditorProps<WorkflowStep
         return <BranchEditor step={step} onChange={onChange} context={context} />;
       case "choice":
         return <ChoiceEditor step={step} onChange={onChange} context={context} />;
+      case "parallel":
+        return <ParallelEditor step={step} onChange={onChange} context={context} />;
       case "loop":
         return <LoopEditor step={step} onChange={onChange} context={context} />;
     }

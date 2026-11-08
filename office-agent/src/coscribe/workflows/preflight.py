@@ -12,6 +12,7 @@ from ..workflow_spec import (
     BranchStep,
     ChoiceStep,
     LoopStep,
+    ParallelStep,
     RunTaskStep,
     ToolStep,
     Workflow,
@@ -50,6 +51,8 @@ def preflight(workflow: Workflow, ctx: StepContext) -> None:
             _agent_preflight(step, where, ctx)
         if isinstance(step, RunTaskStep) and ctx.tasks is None:
             raise WorkflowNotRunnable(f"{where}: another task can't be run from here")
+        if isinstance(step, ParallelStep) and not all(lane.steps for lane in step.lanes):
+            raise WorkflowNotRunnable(f"{where}: a lane has no steps yet")
         if isinstance(step, LoopStep) and not step.steps:
             raise WorkflowNotRunnable(f"{where}: the loop has no steps to repeat yet")
         if isinstance(step, (BranchStep, ChoiceStep)) and not any(s for _a, s in child_lists(step)):

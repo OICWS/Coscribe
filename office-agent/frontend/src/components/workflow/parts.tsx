@@ -48,6 +48,15 @@ export function LayersIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** A step that runs lanes at the same time: three lanes side by side, two of them carrying on. */
+function ParallelIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M3 5h14m-3-3 3 3-3 3M3 19h14m-3-3 3 3-3 3M3 12h10" />
+    </svg>
+  );
+}
+
 function StepIcon({ step, className }: { step: WorkflowStep; className: string }) {
   if (step.kind === "llm") return <SparkIcon className={className} />;
   if (step.kind === "agent") return <TargetIcon className={className} />;
@@ -60,6 +69,7 @@ function StepIcon({ step, className }: { step: WorkflowStep; className: string }
   if (step.kind === "script") return <TerminalIcon className={className} />;
   if (step.kind === "branch" || step.kind === "choice") return <BranchIcon className={className} />;
   if (step.kind === "loop") return <LoopIcon className={className} />;
+  if (step.kind === "parallel") return <ParallelIcon className={className} />;
   if (step.tool.startsWith("search")) return <SearchIcon className={className} />;
   if (/^(write|edit|fill|add|format)_/.test(step.tool)) return <FileTextIcon className={className} />;
   return <ToolIcon className={className} />;
@@ -78,6 +88,7 @@ const KIND_ICON: Record<StepKind, (props: { className: string }) => ReactNode> =
   run_task: LayersIcon,
   branch: BranchIcon,
   choice: BranchIcon,
+  parallel: ParallelIcon,
   loop: LoopIcon,
 };
 

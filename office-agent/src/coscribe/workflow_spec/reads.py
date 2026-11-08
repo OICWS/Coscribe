@@ -17,6 +17,7 @@ from .spec import (
     Condition,
     LLMStep,
     LoopStep,
+    ParallelStep,
     RememberStep,
     RunTaskStep,
     ScriptStep,
@@ -60,6 +61,8 @@ def step_references(step: Step) -> list[str]:
     if isinstance(step, LoopStep):
         # `until` reads the item and the body's results, checked where the body is.
         return [step.over]
+    if isinstance(step, ParallelStep):
+        return []  # its lanes' steps read, each where it sits
     return []  # pragma: no cover -- every kind is handled above
 
 

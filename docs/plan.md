@@ -27,14 +27,16 @@ Last reviewed: 2026-11-06.
    tasks an item started; bring that back on the card if it is missed.
 4. **A more agentic coscribe, measured** (#819), each step scored by `office-agent/evals/agentic/`.
    Done: the evaluation (#820), the end-of-turn plan check (#821), the small model for side calls
-   (#822), the delivery check of the Office files a turn wrote (#824). In review, put before step 5
-   by the maintainer: a background script's end reported to its conversation (#826), and Stop
-   keeping the reply so far (#827). Next: a folder brief on first attach; an offer to save a job as
+   (#822), the delivery check of the Office files a turn wrote (#824), and, put before step 5 by
+   the maintainer, a background script's end reported to its conversation (#826), Stop keeping the
+   reply so far (#827) and a script moving to the background at its time limit or when the person
+   writes mid-turn (`docs/log/2026-11-07-script-to-background.md`). Next: a folder brief on first attach; an offer to save a job as
    a workflow or skill; an in-chat connector card (decision record and independent review first).
 5. **Workflows** (#719 and #788, kurtosisOC; decisions 0028 to 0035). Phases P0 to P5 are done
    (`docs/log/`, 2026-10-29 to 2026-11-02). In review: parallel steps (#789, decision 0036
-   proposed). Open: a cost cap for an agent step, and an L3 step delegating. Left out on purpose:
-   webhooks and connector events as triggers.
+   proposed). Next in #788: a run started by a webhook or a connector event, with the event's
+   data as its inputs (batch 2), then steps a run adds by itself within the task's autonomy
+   (batch 3). Open: a cost cap for an agent step, and an L3 step delegating.
 
 ## Open, smaller
 

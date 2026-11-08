@@ -12,6 +12,7 @@ import type {
   ChoiceStep,
   LoopStep,
   MemoryEntry,
+  ParallelStep,
   RecoveringStep,
   Workflow,
   WorkflowInput,
@@ -138,6 +139,9 @@ function runText(step: WorkflowStep, state: NodeRunState): string | null {
     if (!lead || state.status === "skipped") return `Done for ${items}`;
     return passes.done > 0 ? `${lead} · done for ${items}` : lead;
   }
+  // Its lanes' own steps show what failed or waits.
+  if (step.kind === "parallel" && state.status === "failed") return "Stopped in a lane";
+  if (step.kind === "parallel" && state.status === "waiting") return "Waiting in a lane";
   if ((step.kind === "branch" || step.kind === "choice") && state.arms?.length) {
     const label = (arm: string) => armsOf(step, false).find(([a]) => a === arm)?.[1] ?? arm;
     return `Took ${state.arms.map(label).join(" and ")}`;
@@ -270,7 +274,8 @@ function StepNode({ step, ctx }: { step: WorkflowStep; ctx: CanvasContext }) {
       <span className="mt-1.5 line-clamp-2 block text-[13px] font-medium leading-snug" title={step.title}>
         {step.title}
       </span>
-      <span className="mt-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-xs text-[var(--muted)]">
+      {/* A card is narrow: a value wraps onto a second line, where a list row cuts it on one. */}
+      <span className="mt-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-xs text-[var(--muted)] [&_[data-arg]]:line-clamp-2 [&_[data-arg]]:whitespace-normal [&_[data-arg]]:[overflow-wrap:anywhere]">
         <StepSummary step={step} inputNames={ctx.inputNames} />
       </span>
       <FailureNote step={step} />
@@ -447,6 +452,54 @@ function BranchBlock({ step, ctx }: { step: BranchStep | ChoiceStep; ctx: Canvas
   );
 }
 
+/** A step that runs its lanes at the same time (decision 0036): side by side between a doubled
+ * split and join, since every lane runs, not one of them; past three, one under another. */
+function ParallelBlock({ step, ctx }: { step: ParallelStep; ctx: CanvasContext }) {
+  const color = KIND_COLOR.parallel;
+  const stacked = step.lanes.length > SIDE_BY_SIDE;
+  const inner = step.lanes.length > 2 ? { ...ctx, narrow: true } : ctx;
+  const bar = <div aria-hidden="true" className="h-1 w-full border-y" style={{ borderColor: color }} />;
+  return (
+    <div className="flex flex-col items-center">
+      <StepNode step={step} ctx={ctx} />
+      <Arrow />
+      <div
+        data-testid="parallel-lanes"
+        className="flex flex-col items-center rounded-2xl border border-dashed px-4 pb-3 pt-2"
+        style={{ borderColor: `color-mix(in srgb, ${color} 55%, transparent)` }}
+      >
+        <span className="mb-1.5 text-xs font-medium" style={{ color }}>
+          All {step.lanes.length} lanes run at the same time
+        </span>
+        {!stacked && bar}
+        <div className={stacked ? "flex flex-col items-center" : "flex"}>
+          {step.lanes.map((lane, index) => (
+            <div
+              key={index}
+              className={`flex flex-col items-center ${stacked ? `pt-3 ${index > 0 ? "mt-3 border-t border-dashed border-[var(--border)]" : ""}` : inner.narrow ? "px-2.5 pt-3" : "px-4 pt-3"}`}
+            >
+              <ArmLabel taken={false} color={color}>
+                {lane.label}
+              </ArmLabel>
+              {lane.steps.length > 0 ? (
+                <>
+                  <Arrow />
+                  <Flow steps={lane.steps} ctx={inner} />
+                </>
+              ) : (
+                <span className="mt-2 text-xs italic text-[var(--muted)]">no steps yet</span>
+              )}
+              {!stacked && <div aria-hidden="true" className={`min-h-3 w-px flex-1 ${LINE}`} />}
+            </div>
+          ))}
+        </div>
+        {!stacked && bar}
+        <span className="mt-1.5 text-[11px] text-[var(--muted)]">then goes on once every lane has ended</span>
+      </div>
+    </div>
+  );
+}
+
 /** A step with steps to run in its place when it fails: the main line goes on from it, and the
  * steps in its place sit beside it and rejoin the line after. */
 function RecoverBlock({ step, ctx }: { step: RecoveringStep; ctx: CanvasContext }) {
@@ -464,7 +517,7 @@ function RecoverBlock({ step, ctx }: { step: RecoveringStep; ctx: CanvasContext 
   );
   return (
     <div className="flex flex-col items-center">
-      <StepNode step={step} ctx={ctx} />
+      {step.kind === "parallel" ? <ParallelBlock step={step} ctx={ctx} /> : <StepNode step={step} ctx={ctx} />}
       <div aria-hidden="true" className={`h-4 w-px ${LINE}`} />
       <div className="flex">
         {arm(0, <ArmLabel taken={false}>If it works</ArmLabel>, null)}
@@ -605,6 +658,7 @@ function Flow({ steps, ctx }: { steps: WorkflowStep[]; ctx: CanvasContext }) {
           {index > 0 && <Arrow />}
           {(step.kind === "branch" || step.kind === "choice") && <BranchBlock step={step} ctx={ctx} />}
           {step.kind === "loop" && <LoopBlock step={step} ctx={ctx} />}
+          {step.kind === "parallel" && step.on_failure?.then !== "steps" && <ParallelBlock step={step} ctx={ctx} />}
           {canRecover(step) && step.on_failure?.then === "steps" && <RecoverBlock step={step} ctx={ctx} />}
           {!isBlock(step) && !(canRecover(step) && step.on_failure?.then === "steps") && (
             <StepNode step={step} ctx={ctx} />

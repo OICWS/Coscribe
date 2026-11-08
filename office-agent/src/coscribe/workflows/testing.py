@@ -34,6 +34,7 @@ from ..workflow_spec import (
     BranchStep,
     ChoiceStep,
     LoopStep,
+    ParallelStep,
     Step,
     ToolStep,
     Workflow,
@@ -168,6 +169,11 @@ def _guarded(workflow: Workflow) -> tuple[Workflow, dict[str, Step]]:
                 step = step.model_copy(
                     update={"cases": cases, "otherwise": rebuild(step.otherwise)}
                 )
+            elif isinstance(step, ParallelStep):
+                lanes = [
+                    lane.model_copy(update={"steps": rebuild(lane.steps)}) for lane in step.lanes
+                ]
+                step = step.model_copy(update={"lanes": lanes})
             policy = failure_policy(step)
             if policy is not None and policy.steps:
                 in_place = policy.model_copy(update={"steps": rebuild(policy.steps)})

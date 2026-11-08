@@ -230,6 +230,34 @@ def test_a_note_sent_mid_turn_reaches_the_model_at_its_next_step_lg(
     assert next(m for m in messages if m["type"] == "agent_message")["text"] == "done"
 
 
+def test_a_note_sent_mid_turn_lets_go_of_the_scripts_the_turn_waits_on_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import coscribe.conversation.session as session_module
+
+    asked: list[tuple[str, object, str]] = []
+    monkeypatch.setattr(
+        session_module,
+        "request_detach",
+        lambda thread, script, loop, why="user": asked.append((thread, script, why)) or True,
+    )
+    call = _tool_call("call_1", "write_file", {"path": "note.txt", "content": "hi"})
+    fake_model = FakeToolCallingChatModel(
+        responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="done")]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_steer_detach") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "write hi to note.txt"})
+            approval = ws.receive_json()
+            ws.send_json({"type": "steer", "id": "s1", "text": "and make it a list"})
+            ws.send_json({"type": "approval_response", "id": approval["id"], "approved": True})
+            _receive_until(ws, "tasks_changed")
+
+    assert asked == [("t_steer_detach", None, "steer")]
+
+
 def test_a_note_no_turn_was_left_to_read_is_sent_as_the_next_message_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

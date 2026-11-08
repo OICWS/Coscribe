@@ -24,6 +24,7 @@ export const KIND_LABEL: Record<StepKind, string> = {
   run_task: "Task",
   branch: "Branch",
   choice: "Choice",
+  parallel: "At once",
   loop: "Loop",
 };
 
@@ -40,6 +41,7 @@ export const KIND_COLOR: Record<StepKind, string> = {
   run_task: "var(--kind-task)",
   branch: "var(--kind-branch)",
   choice: "var(--kind-branch)",
+  parallel: "var(--kind-parallel)",
   loop: "var(--kind-loop)",
 };
 
@@ -161,6 +163,25 @@ export function formatValue(value: unknown): string {
   if (Array.isArray(value)) return value.length <= 4 ? value.map(formatValue).join(", ") : `${value.length} items`;
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
+}
+
+/** A web address or a file path as a step's summary shows it: the site and the page, or the
+ * file and its folder, which tell steps apart where the middle of a long one doesn't. The
+ * whole value stays in the summary's tooltip. */
+export function shortPlace(text: string): string {
+  const url = /^https?:\/\/(?:www\.)?([^/?#]+)([^?#]*)/.exec(text);
+  if (url) {
+    const page = url[2].split("/").filter(Boolean);
+    if (page.length === 0) return url[1];
+    return page.length === 1 ? `${url[1]}/${page[0]}` : `${url[1]}/…/${page[page.length - 1]}`;
+  }
+  // A path starts at a drive, the home folder or a root, or ends in a file name; prose with a
+  // slash in it ("and/or") is left whole.
+  const path = /^([a-z]:[\\/]|~?[\\/]|\.{1,2}[\\/])/i.test(text) || /[\\/][^\\/]*\.\w{1,5}$/.test(text);
+  if (!path) return text;
+  const parts = text.split(/[\\/]/);
+  const slash = text.includes("\\") ? "\\" : "/";
+  return parts.length > 3 ? `…${slash}${parts.slice(-2).join(slash)}` : text;
 }
 
 export function stepDuration(startedAt: string | null, finishedAt: string | null): string | null {

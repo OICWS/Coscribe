@@ -150,8 +150,15 @@ did depended on something a run can check.
 department, a status): the first case it equals as text, ignoring case, \
 else "otherwise". After a branch or a choice, a name can be read only if \
 every path makes it.
+- "parallel": {"lanes": [{"label": "<short name>", "steps": [...]}, ...]} \
+-- 2 to 6 lanes run at the same time and the run goes on once every lane \
+has ended. Use it only where the conversation did separate pieces of work \
+that don't depend on each other (looking up three sources). A lane reads \
+only names made before it, never another lane's, and each lane saves \
+different names; after it, every name a lane saved can be read. It may say \
+what happens when it fails, like a tool step.
 
-When a step fails -- "tool", "script", "llm" and "agent" steps may add \
+When a step fails -- "tool", "script", "llm", "agent" and "parallel" steps may add \
 "on_failure": {"retries": 0-5, "wait_seconds": 0-300, "then": "stop" | \
 "skip" | "steps", "steps": [...]}. Leave it out unless the conversation \
 showed the need: retries for a site or service that didn't answer at \

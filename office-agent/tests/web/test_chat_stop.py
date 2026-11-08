@@ -280,7 +280,7 @@ def test_detach_command_reaches_the_command_waiting_on_that_script(
     heard: list[asyncio.AbstractEventLoop | None] = []
 
     class _Waiting:
-        def detach(self, loop: asyncio.AbstractEventLoop | None) -> None:
+        def detach(self, loop: asyncio.AbstractEventLoop | None, why: str = "user") -> None:
             heard.append(loop)
 
     monkeypatch.setitem(running._RUNNING, ("t_detach", "print(1)"), _Waiting())  # type: ignore[arg-type]

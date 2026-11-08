@@ -1,17 +1,12 @@
-"""``run_background_script`` and friends -- the fire-and-forget counterpart
-to ``tools/exec/scripts.py``'s ``run_python_script``/``tools/exec/node_scripts.py``'s
-``run_node_script``, for a script expected to run *longer* than those two
-tools' own 600s hard cap (a long OCR/data-processing job, a batch pipeline)
-without blocking the conversation for the whole run.
+"""``run_background_script`` and friends: a script started in the background, for a job that
+would hold a turn too long (a long OCR job, a batch pipeline). ``run_python_script`` and
+``run_node_script`` hand a script over here too: when the person lets it go, writes mid-turn,
+or it reaches its time limit (``tools/exec/running.py``).
 
-Modeled on `pi-background-tasks` (github.com/earendil-works/pi), the one
-harness among the ones surveyed (Codex CLI, Claude Code, DeepSeek Harness,
-openworker) that actually ships this as a *separate* tool from its normal
-exec tool, rather than a flag on it -- deliberately followed here for the
-same reason: "started" and "the complete execution result" are different
-enough shapes (one is a handle, one is stdout/stderr/exit_code) that
-cramming both into run_python_script's own return type would make its
-result ambiguous depending on a boolean the model has to remember to check.
+A separate tool rather than a flag on the exec tools, as `pi-background-tasks`
+(github.com/earendil-works/pi) does: "started" (a handle) and "the complete result"
+(stdout/stderr/exit_code) are different shapes, and one return type for both would turn on a
+boolean the model has to remember to check.
 
 **Fire-and-forget, not fire-and-stream.** Pi's own design deliberately
 doesn't push live output either -- a durable log file plus a *bounded*,
@@ -41,6 +36,7 @@ not justified for a first version of a feature whose whole premise is
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import os
 import re
@@ -137,10 +133,15 @@ _LIVE: dict[str, tuple[BackgroundTask, asyncio.subprocess.Process | RunningComma
 # tasks panel refreshes when a script starts or ends instead of waiting for
 # its poll. A replaced listener is a reopened session, never a second reader.
 _LISTENERS: dict[str, Callable[[BackgroundTask], None]] = {}
+# Each listener's loop: a script let go at its time limit comes from a worker thread, no loop given.
+_LISTENER_LOOPS: dict[str, asyncio.AbstractEventLoop] = {}
 
 
 def set_change_listener(thread_id: str, listener: Callable[[BackgroundTask], None]) -> None:
     _LISTENERS[thread_id] = listener
+    _LISTENER_LOOPS.pop(thread_id, None)  # a replaced listener's loop may be closed
+    with contextlib.suppress(RuntimeError):  # set up outside a loop: called where it happens
+        _LISTENER_LOOPS[thread_id] = asyncio.get_running_loop()
 
 
 def _announce(task: BackgroundTask, loop: asyncio.AbstractEventLoop | None = None) -> None:
@@ -403,6 +404,7 @@ def adopt_running_command(
     )
     store.save(task)
     _LIVE[task.task_id] = (task, command)
+    command.loop = command.loop or _LISTENER_LOOPS.get(thread_id)
     command.adopt(store.log_path(task.task_id))
     _announce(task, command.loop)
     threading.Thread(

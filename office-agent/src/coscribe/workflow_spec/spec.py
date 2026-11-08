@@ -391,6 +391,7 @@ MAX_STEPS = 100
 MAX_LOOP_ITEMS = 200
 MAX_CHOICE_CASES = 12
 MAX_AGENT_STEPS = 60
+MAX_LANES = 6
 
 Autonomy = Literal["bounded", "high", "full"]
 # What an agent step's result holds when it names no fields.
@@ -563,12 +564,35 @@ class LoopStep(_Step):
         return self
 
 
+class Lane(_Model):
+    label: str = Field(min_length=1, max_length=60)
+    steps: list[Step] = []
+
+
+class ParallelStep(_Recovers):
+    """Runs each lane's steps at the same time and goes on when every lane has ended (decision
+    0036). What a lane saves is read after the step, never by another lane; when a lane fails,
+    the others still end, then the step fails and its `on_failure` decides."""
+
+    kind: Literal["parallel"] = "parallel"
+    lanes: list[Lane] = Field(min_length=2, max_length=MAX_LANES)
+
+    _check_lanes = model_validator(mode="after")(lambda step: _lanes_differ(step))
+
+
+def _lanes_differ(step: ParallelStep) -> ParallelStep:
+    labels = [lane.label.strip().casefold() for lane in step.lanes]
+    if len(set(labels)) != len(labels):
+        raise ValueError("each lane needs a different name")
+    return step
+
+
 Step = Annotated[
     ToolStep | ScriptStep | LLMStep | AgentStep | CheckStep | ApprovalStep | AskStep | WaitStep
-    | RememberStep | RunTaskStep | BranchStep | ChoiceStep | LoopStep,
+    | RememberStep | RunTaskStep | BranchStep | ChoiceStep | LoopStep | ParallelStep,
     Field(discriminator="kind"),
 ]  # fmt: skip
-BlockStep = BranchStep | ChoiceStep | LoopStep
+BlockStep = BranchStep | ChoiceStep | LoopStep | ParallelStep
 
 
 def _root(reference: str) -> str:
@@ -588,6 +612,10 @@ def child_lists(step: Step) -> list[tuple[str, list[Step]]]:
         return [*cases, ("otherwise", step.otherwise)]
     if isinstance(step, LoopStep):
         return [("steps", step.steps)]
+    if isinstance(step, ParallelStep):
+        lanes = [(f"lane:{index}", lane.steps) for index, lane in enumerate(step.lanes)]
+        fallback = step.on_failure.steps if step.on_failure else []
+        return [*lanes, *([("fallback", fallback)] if step.on_failure else [])]
     if isinstance(step, _Recovers) and step.on_failure:
         return [("fallback", step.on_failure.steps)]
     return []
@@ -734,4 +762,6 @@ BranchStep.model_rebuild()
 ChoiceCase.model_rebuild()
 ChoiceStep.model_rebuild()
 LoopStep.model_rebuild()
+Lane.model_rebuild()
+ParallelStep.model_rebuild()
 Workflow.model_rebuild()

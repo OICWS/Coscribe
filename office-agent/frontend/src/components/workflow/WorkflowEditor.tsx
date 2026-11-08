@@ -43,16 +43,20 @@ function refusal(action: string, problem: string | null): string | null {
   return `${action} -- ${problem.replace(/^The workflow isn't valid: /, "")}`;
 }
 
+function ownsLists(step: WorkflowStep): boolean {
+  return step.kind === "choice" || step.kind === "parallel";
+}
+
 /** A step without the steps it holds -- what its own editor changes. */
 function ownFields(step: WorkflowStep): string {
-  // A choice's editor changes its paths' list of cases, so its children are its own.
-  return JSON.stringify(step.kind === "choice" ? step : withChildren(step, () => []));
+  // A choice's editor changes its list of cases, a parallel step's its lanes: their children are their own.
+  return JSON.stringify(ownsLists(step) ? step : withChildren(step, () => []));
 }
 
 /** `edited`'s own fields with `current`'s children: the steps inside a
  * block are saved from their own cards while the block is open. */
 function keepChildren(edited: WorkflowStep, current: WorkflowStep | undefined): WorkflowStep {
-  if (!current || current.kind !== edited.kind || edited.kind === "choice") return edited;
+  if (!current || current.kind !== edited.kind || ownsLists(edited)) return edited;
   const lists = new Map(childLists(current));
   // A list the edit just added (the steps to run in a failed step's place) starts as it is.
   return withChildren(edited, (arm, list) => lists.get(arm) ?? list);
@@ -60,6 +64,7 @@ function keepChildren(edited: WorkflowStep, current: WorkflowStep | undefined): 
 
 function armLabel(arm: Arm): string {
   if (arm.startsWith("case:")) return `Path ${Number(arm.slice(5)) + 1}`;
+  if (arm.startsWith("lane:")) return `Lane ${Number(arm.slice(5)) + 1}`;
   const labels = { then: "Then", otherwise: "Otherwise", steps: "For each", fallback: "If it fails" };
   return labels[arm as keyof typeof labels] ?? arm;
 }
@@ -332,9 +337,13 @@ function AddStepButton({ api, list, index, nested }: { api: ListApi; list: ListR
 }
 
 function armsOf(step: WorkflowStep): [Arm, WorkflowStep[], string][] {
+  const lanes =
+    step.kind === "parallel"
+      ? step.lanes.map((lane, i): [Arm, WorkflowStep[], string] => [`lane:${i}`, lane.steps, lane.label])
+      : [];
   if (canRecover(step)) {
     const inPlace = step.on_failure?.then === "steps" ? step.on_failure.steps : null;
-    return inPlace ? [["fallback", inPlace, "in its place · they read failure"]] : [];
+    return inPlace ? [...lanes, ["fallback", inPlace, "in its place · they read failure"]] : lanes;
   }
   if (!isBlock(step)) return [];
   return step.kind === "branch"
