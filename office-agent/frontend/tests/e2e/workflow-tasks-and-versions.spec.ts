@@ -43,7 +43,7 @@ test("a task runs another, and its versions can be compared and restored", async
   const id = caller.trigger_id;
   try {
     await page.goto(`/?view=scheduled&task=${id}`);
-    await expect(page.locator('[data-canvas-step="call"]')).toContainText("Runs your task “e2e called”");
+    await expect(page.locator('[data-plain-step="call"]')).toContainText("Runs your task “e2e called”");
     await expect(page.getByTestId("workflow-permissions")).toContainText("Runs your task “e2e called”");
 
     await page.request.post(`/api/scheduled-tasks/${id}/run`, { data: {} });

@@ -1,12 +1,17 @@
 import { type ReactNode, useState } from "react";
 import { patchScheduledTask } from "../lib/rest";
 import { plainDefault } from "../lib/inputKinds";
+import { waitsForYou } from "../lib/plainOutline";
+import { plainDetail } from "../lib/plainSteps";
 import { describeSchedule } from "../lib/scheduleLabels";
+import { neededAutonomy } from "../lib/workflowLabels";
 import { allSteps } from "../lib/workflowTree";
 import type { ScheduledTask } from "../types/settings";
 import type { Workflow } from "../types/workflow";
-import { AutonomyChoice } from "./workflow/AutonomySetting";
+import { AutonomyChoice, PLAIN_LABEL } from "./workflow/AutonomySetting";
+import { PlainStepList, PlainText } from "./workflow/PlainStepList";
 import { InputQuickPanel, QuickEditPanel } from "./workflow/QuickEditPanel";
+import { TaskOverviewLine } from "./workflow/TaskOverviewLine";
 import { WorkflowCanvas } from "./workflow/WorkflowCanvas";
 import { WorkflowPermissions } from "./workflow/WorkflowPermissions";
 
@@ -37,7 +42,10 @@ function Inputs({
   if (workflow.inputs.length === 0) return null;
   const onlyTheFile = workflow.inputs.every((input) => input.name === fromFile);
   return (
-    <Section title={onlyTheFile ? "Works on" : "Asks you for, each time it runs"}>
+    <div>
+      <div className="mb-1 text-[13px] text-[var(--muted)]">
+        {onlyTheFile ? "Works on" : "You fill in, each time it runs"}
+      </div>
       <ul className="flex flex-col gap-1 text-sm">
         {workflow.inputs.map((input) => {
           if (input.name === fromFile)
@@ -69,30 +77,48 @@ function Inputs({
           );
         })}
       </ul>
-    </Section>
+    </div>
   );
 }
 
-/** A workflow task's page for someone who uses it rather than builds it: what it does in its
- * steps' own titles, when it runs, what happens when a step stops working and what it may touch.
- * Every control here changes the same settings the detailed view shows. */
-/** The steps and what they ask for, each opening its quick edit. */
+/** The steps a run stops at for the person: their OK, or an answer. */
+function Waits({ workflow }: { workflow: Workflow }) {
+  const waits = waitsForYou(workflow);
+  if (waits.length === 0) return null;
+  return (
+    <div>
+      <div className="mb-1 text-[13px] text-[var(--muted)]">It stops and waits for you</div>
+      <ul className="flex flex-col gap-1 text-sm">
+        {waits.map((step) => (
+          <li key={step.id}>
+            {step.kind === "approval" ? "Your OK" : "Your answer"} at <span className="font-medium">{step.title}</span>
+            {step.kind === "ask" && (
+              <span className="text-[var(--muted)]">
+                {" "}
+                · <PlainText text={plainDetail(step, workflow.inputs) ?? ""} inputs={workflow.inputs} />
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** The steps in plain words, each opening its quick edit; the flowchart behind a link. */
 function WhatItDoes({
   workflow,
-  fromFile,
   persist,
   onShowDetails,
   onOpenStep,
 }: {
   workflow: Workflow;
-  fromFile: string | null;
   persist: (next: Workflow) => Promise<string | null>;
   onShowDetails: () => void;
   onOpenStep: (stepId: string) => void;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
-  const [editingInput, setEditingInput] = useState<string | null>(null);
-  const input = workflow.inputs.find((i) => i.name === editingInput);
+  const [chart, setChart] = useState(false);
   const editingStep = editing ? allSteps(workflow).find((step) => step.id === editing) : undefined;
   return (
     <>
@@ -104,7 +130,15 @@ function WhatItDoes({
           </button>
         }
       >
-        <WorkflowCanvas workflow={workflow} plain onOpenStep={setEditing} openStepId={editing} />
+        <PlainStepList workflow={workflow} onOpenStep={setEditing} openStepId={editing} />
+        <button type="button" className={`${linkButton} mt-2`} onClick={() => setChart(!chart)}>
+          {chart ? "Hide the flowchart" : "Show the flowchart"}
+        </button>
+        {chart && (
+          <div className="mt-3">
+            <WorkflowCanvas workflow={workflow} plain onOpenStep={setEditing} openStepId={editing} />
+          </div>
+        )}
       </Section>
       {editingStep && (
         <QuickEditPanel
@@ -116,7 +150,42 @@ function WhatItDoes({
           onOpenEditor={() => onOpenStep(editingStep.id)}
         />
       )}
-      <Inputs workflow={workflow} fromFile={fromFile} onChange={setEditingInput} />
+    </>
+  );
+}
+
+/** What the person gives a run and what it may reach: what they fill in, where it waits for
+ * them, and the folders and sites it may touch. */
+function NeedsFromYou({
+  task,
+  workflow,
+  persist,
+  onShowDetails,
+}: {
+  task: ScheduledTask;
+  workflow: Workflow;
+  persist: (next: Workflow) => Promise<string | null>;
+  onShowDetails: () => void;
+}) {
+  const [editingInput, setEditingInput] = useState<string | null>(null);
+  const input = workflow.inputs.find((i) => i.name === editingInput);
+  const fromFile = task.schedule.kind === "folder" ? task.schedule.input || null : null;
+  return (
+    <Section title="What it needs from you">
+      <div className="flex flex-col gap-4">
+        <Inputs workflow={workflow} fromFile={fromFile} onChange={setEditingInput} />
+        <Waits workflow={workflow} />
+        <div>
+          <div className="mb-1 text-[13px] text-[var(--muted)]">It may touch</div>
+          <WorkflowPermissions
+            workflow={workflow}
+            triggerId={task.trigger_id}
+            version={JSON.stringify(task.permissions ?? {})}
+            className=""
+            simple
+          />
+        </div>
+      </div>
       {input && (
         <InputQuickPanel
           key={input.name}
@@ -127,10 +196,104 @@ function WhatItDoes({
           onOpenEditor={onShowDetails}
         />
       )}
-    </>
+    </Section>
   );
 }
 
+/** How the task is set up rather than what it does, folded under one line that sums it up. */
+function Settings({
+  task,
+  workflow,
+  persist,
+  onEdit,
+  onShowDetails,
+  onChanged,
+  environment,
+}: {
+  task: ScheduledTask;
+  workflow: Workflow;
+  persist: (next: Workflow) => Promise<string | null>;
+  onEdit: () => void;
+  onShowDetails: () => void;
+  onChanged: () => void;
+  environment: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const when = task.schedule.kind === "manual" ? "Only when you start it" : describeSchedule(task.schedule);
+  const failing = PLAIN_LABEL[workflow.autonomy ?? neededAutonomy(workflow)];
+  const toggleInvestigate = async () => {
+    await patchScheduledTask(task.trigger_id, { auto_investigate: !task.auto_investigate });
+    onChanged();
+  };
+  return (
+    <section data-testid="task-settings">
+      <button
+        type="button"
+        aria-expanded={open}
+        className="flex w-full items-baseline gap-2 text-left"
+        onClick={() => setOpen(!open)}
+      >
+        <span className={`text-xs text-[var(--muted)] transition-transform ${open ? "rotate-90" : ""}`}>▸</span>
+        <h2 className="text-sm font-medium">Settings</h2>
+        {!open && (
+          <span className="min-w-0 truncate text-[13px] text-[var(--muted)]">
+            {when} · When a step stops working: {failing.toLowerCase()} · Version {task.version ?? 1}
+          </span>
+        )}
+      </button>
+      {open && (
+        <div className="mt-4 flex flex-col gap-6 pl-4">
+          <Section
+            title="When it runs"
+            action={
+              <button type="button" className={linkButton} onClick={onEdit}>
+                Change
+              </button>
+            }
+          >
+            <div className="text-sm">{when}</div>
+          </Section>
+          <Section title="If a step stops working">
+            <AutonomyChoice workflow={workflow} persist={persist} />
+            <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={task.auto_investigate ?? false}
+                onChange={() => void toggleInvestigate()}
+              />
+              <span>
+                When a run fails, have Coscribe look into it and suggest a fix
+                <span className="block text-[13px] text-[var(--muted)]">It never saves the fix without you.</span>
+              </span>
+            </label>
+          </Section>
+          <Section title="Where it runs">
+            <div className="flex items-center gap-1.5 text-sm">Uses the environment {environment}</div>
+          </Section>
+          <Section
+            title="Versions"
+            action={
+              (task.version ?? 1) > 1 && (
+                <button type="button" className={linkButton} onClick={onShowDetails}>
+                  Compare or restore
+                </button>
+              )
+            }
+          >
+            <div className="text-sm">
+              Version {task.version ?? 1} · each save keeps the one before, so you can go back
+            </div>
+          </Section>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** A workflow task's page for someone who uses it rather than builds it: one sentence on what it
+ * does, its steps in plain words, what it needs from them and its runs, with how it is set up
+ * folded away. Every control here changes the same settings the detailed view shows. */
 export function ScheduledTaskSimple({
   task,
   workflow,
@@ -153,71 +316,21 @@ export function ScheduledTaskSimple({
   runs: ReactNode;
   environment: ReactNode;
 }) {
-  const toggleInvestigate = async () => {
-    await patchScheduledTask(task.trigger_id, { auto_investigate: !task.auto_investigate });
-    onChanged();
-  };
   return (
     <div className="flex flex-col gap-7" data-testid="task-simple-view">
-      <WhatItDoes
-        workflow={workflow}
-        fromFile={task.schedule.kind === "folder" ? task.schedule.input || null : null}
-        persist={persist}
-        onShowDetails={onShowDetails}
-        onOpenStep={onOpenStep}
-      />
+      <TaskOverviewLine triggerId={task.trigger_id} version={task.version ?? 1} />
+      <WhatItDoes workflow={workflow} persist={persist} onShowDetails={onShowDetails} onOpenStep={onOpenStep} />
+      <NeedsFromYou task={task} workflow={workflow} persist={persist} onShowDetails={onShowDetails} />
       {runs}
-      <Section
-        title="When it runs"
-        action={
-          <button type="button" className={linkButton} onClick={onEdit}>
-            Change
-          </button>
-        }
-      >
-        <div className="text-sm">
-          {task.schedule.kind === "manual" ? "Only when you start it" : describeSchedule(task.schedule)}
-        </div>
-      </Section>
-      <Section title="If a step stops working">
-        <AutonomyChoice workflow={workflow} persist={persist} />
-        <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="mt-0.5"
-            checked={task.auto_investigate ?? false}
-            onChange={() => void toggleInvestigate()}
-          />
-          <span>
-            When a run fails, have Coscribe look into it and suggest a fix
-            <span className="block text-[13px] text-[var(--muted)]">It never saves the fix without you.</span>
-          </span>
-        </label>
-      </Section>
-      <Section title="What it may touch">
-        <WorkflowPermissions
-          workflow={workflow}
-          triggerId={task.trigger_id}
-          version={JSON.stringify(task.permissions ?? {})}
-          className=""
-          simple
-        />
-        <div className="mt-2 flex items-center gap-1.5 text-[13px] text-[var(--muted)]">
-          Uses the environment {environment}
-        </div>
-      </Section>
-      {(task.version ?? 1) > 1 && (
-        <Section
-          title="Versions"
-          action={
-            <button type="button" className={linkButton} onClick={onShowDetails}>
-              Compare or restore
-            </button>
-          }
-        >
-          <div className="text-sm">Version {task.version} · each save keeps the one before, so you can go back</div>
-        </Section>
-      )}
+      <Settings
+        task={task}
+        workflow={workflow}
+        persist={persist}
+        onEdit={onEdit}
+        onShowDetails={onShowDetails}
+        onChanged={onChanged}
+        environment={environment}
+      />
     </div>
   );
 }

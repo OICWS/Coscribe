@@ -116,6 +116,19 @@
         "title": "Body_post_asset_api_threads__thread_id__slides_assets_post",
         "type": "object"
       },
+      "Body_put_overview_api_scheduled_tasks__trigger_id__overview_put": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "Body_put_overview_api_scheduled_tasks__trigger_id__overview_put",
+        "type": "object"
+      },
       "Body_upload_file_api_upload_post": {
         "properties": {
           "file": {
@@ -4397,6 +4410,88 @@
           }
         },
         "summary": "Put Scheduled Task Notes"
+      }
+    },
+    "/api/scheduled-tasks/{trigger_id}/overview": {
+      "post": {
+        "operationId": "overview_api_scheduled_tasks__trigger_id__overview_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trigger_id",
+            "required": true,
+            "schema": {
+              "title": "Trigger Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Overview"
+      },
+      "put": {
+        "operationId": "put_overview_api_scheduled_tasks__trigger_id__overview_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trigger_id",
+            "required": true,
+            "schema": {
+              "title": "Trigger Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_put_overview_api_scheduled_tasks__trigger_id__overview_put"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Overview"
       }
     },
     "/api/scheduled-tasks/{trigger_id}/pause": {
