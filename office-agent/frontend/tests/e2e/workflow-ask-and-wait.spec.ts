@@ -66,6 +66,7 @@ test("a run asks for values, then waits until told to go on", async ({ page }) =
     await expect
       .poll(async () => (await lastRun(page.request, task.trigger_id))?.status, { timeout: 30_000 })
       .toBe("completed");
+    await page.getByRole("button", { name: "Detailed", exact: true }).click();
     await expect(page.locator('[data-run-step="ask"]')).toContainText("Answered · Limit: 250 · Team: Sales");
     await expect(page.locator('[data-run-step="later"]')).toContainText("Waited 10 hours");
   } finally {

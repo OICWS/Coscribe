@@ -48,3 +48,4 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0035](0035-a-task-runs-another-and-keeps-its-versions.md) | A task runs another task as a step, and keeps every version it was saved as (proposed; narrowed by 0036) |
 | [0036](0036-a-step-runs-several-lanes-at-the-same-time.md) | A step runs several lanes of steps at the same time (proposed) |
 | [0037](0037-the-simple-view-says-what-a-task-does-in-words.md) | The simple view says what a task does in words (proposed) |
+| [0038](0038-a-run-page-says-how-it-went-before-its-steps.md) | A run page says how it went and what it got, before its steps (proposed) |
