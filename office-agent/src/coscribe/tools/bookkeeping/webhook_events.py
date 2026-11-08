@@ -46,17 +46,21 @@ class WebhookEvents:
     def __init__(self, state_dir: str | Path) -> None:
         self.root = Path(state_dir) / "task_memory"
 
-    def key(self, trigger_id: str) -> str:
-        """The task's key, made the first time it is asked for."""
+    def key(self, trigger_id: str) -> str | None:
+        """The task's key, or None when it has none or the keychain lost it (a new key helps)."""
         state = self.read(trigger_id)
-        if state.get("key_sha256"):
-            try:
-                key = resolve_secret(state.get("key"))
-            except RuntimeError:
-                key = None  # gone from the keychain: a new one is all that helps
-            if key and hmac.compare_digest(_digest(key), str(state["key_sha256"])):
-                return key
-        return self.new_key(trigger_id)
+        if not state.get("key_sha256"):
+            return None
+        try:
+            key = resolve_secret(state.get("key"))
+        except RuntimeError:
+            return None
+        return key if key and hmac.compare_digest(_digest(key), str(state["key_sha256"])) else None
+
+    def ensure_key(self, trigger_id: str) -> None:
+        """Gives the task a key when it has none; only the file is read, never the keychain."""
+        if not self.read(trigger_id).get("key_sha256"):
+            self.new_key(trigger_id)
 
     def new_key(self, trigger_id: str) -> str:
         """A new key; the old one stops working at once."""

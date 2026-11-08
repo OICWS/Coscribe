@@ -57,13 +57,19 @@ function KeyRow({
   const link = "text-[13px] text-[var(--muted)] hover:underline";
   return (
     <Row label="Key">
-      <code className="truncate font-mono text-[12.5px]" data-testid="webhook-key">
-        {shown ? info.key : HIDDEN}
-      </code>
-      <CopyButton getText={() => info.key} title="Copy the key" className={copy} />
-      <button type="button" className={link} onClick={() => onShow(!shown)}>
-        {shown ? "Hide" : "Show"}
-      </button>
+      {info.key === null ? (
+        <span className="text-[13px] text-[var(--danger)]">The key was lost from the keychain.</span>
+      ) : (
+        <>
+          <code className="truncate font-mono text-[12.5px]" data-testid="webhook-key">
+            {shown ? info.key : HIDDEN}
+          </code>
+          <CopyButton getText={() => info.key ?? ""} title="Copy the key" className={copy} />
+          <button type="button" className={link} onClick={() => onShow(!shown)}>
+            {shown ? "Hide" : "Show"}
+          </button>
+        </>
+      )}
       <button type="button" className={`ml-2 ${link}`} onClick={() => setReplacing(true)}>
         New key
       </button>
@@ -139,7 +145,7 @@ export function WebhookAddress({
   if (error) return <p className="text-[13px] text-[var(--danger)]">Its address couldn't be read: {error}</p>;
   if (!info) return null;
   const body = exampleBody(info, inputs);
-  const example = powerShell(info, body, info.key);
+  const example = powerShell(info, body, info.key ?? HIDDEN);
   return (
     <div className="flex flex-col gap-2 rounded-md border border-[var(--border)] p-3" data-testid="webhook-address">
       {!info.listening && info.error && <p className="text-[13px] text-[var(--danger)]">{info.error}</p>}

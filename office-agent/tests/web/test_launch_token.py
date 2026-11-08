@@ -185,6 +185,8 @@ AUDITED_READ_ONLY_GETS = {
     "/api/config",
     "/api/design-systems",
     "/api/design-systems/{system_id}",
+    # A webhook task's address and key: saving the task made the key and started the listener.
+    "/api/scheduled-tasks/{trigger_id}/webhook",
     "/api/mcp/catalog",
     "/api/mcp/npm-latest-version",
     "/api/mcp/oauth-apps",

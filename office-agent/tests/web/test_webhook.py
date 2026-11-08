@@ -152,7 +152,11 @@ def test_the_key_lives_in_the_keychain_and_goes_with_the_task(
     keychain = _install_fake_keyring(monkeypatch)
     store = ScheduledTriggerStore(_settings(tmp_path).state_dir)
     task = create_trigger(store, name="t", kind="webhook", at="", prompt="", workflow=_WORKFLOW)
+    assert store.webhooks.key(task.trigger_id) is None
+    store.webhooks.ensure_key(task.trigger_id)
     key = store.webhooks.key(task.trigger_id)
+    assert key and store.webhooks.key(task.trigger_id) == key
+    store.webhooks.ensure_key(task.trigger_id)
     assert store.webhooks.key(task.trigger_id) == key
     on_disk = (tmp_path / "state" / "task_memory" / f"{task.trigger_id}.webhook.json").read_text()
     assert key not in on_disk and list(keychain.store.values()) == [key]

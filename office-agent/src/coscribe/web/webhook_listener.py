@@ -68,11 +68,15 @@ class WebhookListener:
                 "error": self.error}  # fmt: skip
 
     def _wanted(self) -> bool:
-        tasks = ScheduledTriggerStore(self._settings.state_dir).list_all()
-        return any(t.enabled and t.schedule.kind == "webhook" for t in tasks)
+        store = ScheduledTriggerStore(self._settings.state_dir)
+        tasks = [t for t in store.list_all() if t.schedule.kind == "webhook"]
+        # Made here, where every save of a task passes, so the task page only reads it.
+        for task in tasks:
+            store.webhooks.ensure_key(task.trigger_id)
+        return any(t.enabled for t in tasks)
 
     async def sync(self) -> None:
-        """Listen while a task that starts on events is on, and only then."""
+        """Listen while a task that starts on events is on, and only then; each has a key."""
         async with self._lock:
             wanted = self._wanted()
             if wanted and self._server is None:

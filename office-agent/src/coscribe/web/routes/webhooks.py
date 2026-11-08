@@ -19,7 +19,7 @@ def router(state: AppState) -> APIRouter:
     settings = state.settings
     listener = state.webhooks
 
-    def _answer(trigger_id: str, key: str) -> JSONResponse:
+    def _answer(trigger_id: str, key: str | None) -> JSONResponse:
         status = listener.status()
         store = ScheduledTriggerStore(settings.state_dir)
         return JSONResponse({**status, "url": status["url"] + trigger_id, "key": key,
@@ -36,9 +36,9 @@ def router(state: AppState) -> APIRouter:
         return JSONResponse({"error": f"No task {trigger_id!r} starts on events"}, status_code=404)
 
     async def webhook(trigger_id: str) -> JSONResponse:
+        # Reads only: saving the task gave it its key and started the listener.
         if _task(trigger_id) is None:
             return _missing(trigger_id)
-        await listener.sync()
         store = ScheduledTriggerStore(settings.state_dir)
         return _answer(trigger_id, store.webhooks.key(trigger_id))
 
