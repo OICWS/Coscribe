@@ -398,6 +398,13 @@ class WorkflowDrafting:
                 if brings_outside_content(get_tool_metadata(cast(Any, t)).category)
             ),
             tasks=TaskSource(ScheduledTriggerStore(self._host.settings.state_dir)),
+            read_tools=frozenset(
+                tool_name(t)
+                for t in all_tools
+                if not isinstance(t, BaseTool)
+                and get_tool_metadata(cast(Any, t)).risk_category == "READ"
+            ),
+            adds_steps=True,
         )
 
     def _agent_runner(self, tools: list[Any], model: str | None) -> WorkflowAgentRunner:

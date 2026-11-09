@@ -78,6 +78,7 @@ const RECOVERED_SUMMARY: Record<NonNullable<StepRecord["recovered"]>, string> = 
   skipped: "Failed, skipped",
   fallback: "Failed, ran other steps in its place",
   item_skipped: "Failed, this item was skipped",
+  added: "Failed, the run added steps for it",
 };
 
 function rowSummary(step: WorkflowStep, record: StepRecord | undefined, status: RowStatus, ran?: CalledTask): string {

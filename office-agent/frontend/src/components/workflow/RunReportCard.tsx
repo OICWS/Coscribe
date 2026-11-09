@@ -4,6 +4,7 @@ import type { RunReport } from "../../types/workflow";
 import { memoryPreview } from "../../lib/memoryWords";
 import { AUTONOMY_LABEL } from "./AutonomySetting";
 import { HealFixesSection } from "./HealFixesSection";
+import { AddedStepsSection } from "./AddedStepsSection";
 
 function where(iteration: number[]): string {
   return iteration.length
@@ -58,6 +59,7 @@ const HOW: Record<NonNullable<RunReport["recovered"]>[number]["how"], string> = 
   skipped: "skipped",
   fallback: "ran the steps in its place",
   item_skipped: "skipped the item",
+  added: "the run added steps for it",
 };
 
 /** What went wrong without stopping the run, and what ran because it stopped (decision 0032). */
@@ -248,6 +250,7 @@ export function RunReportCard({
       )}
       <TasksSection report={report} />
       <FailuresSection report={report} />
+      <AddedStepsSection triggerId={triggerId} report={report} onSaved={() => setLoads((n) => n + 1)} />
       <DecidedSection report={report} />
       <RememberedSection report={report} kept={run.status === "completed"} />
       {report.healed.length > 0 && (

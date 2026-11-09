@@ -61,6 +61,7 @@ const HOW: Record<NonNullable<StepRecord["recovered"]>, string> = {
   skipped: "failed and was skipped",
   fallback: "failed, so other steps ran in its place",
   item_skipped: "failed on an item, which was skipped",
+  added: "failed, so the run added steps to do it",
 };
 
 /** What went differently without stopping the run: a failure it went past, a step that took

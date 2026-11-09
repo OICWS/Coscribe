@@ -259,6 +259,7 @@ const RECOVERED: Record<NonNullable<StepRecord["recovered"]>, string> = {
   skipped: "Failed, skipped",
   fallback: "Failed, other steps ran instead",
   item_skipped: "Failed on an item, skipped it",
+  added: "Failed, the run added steps for it",
 };
 
 function Row({ row, number, list }: { row: PlainRow; number: number | null; list: ListContext }) {

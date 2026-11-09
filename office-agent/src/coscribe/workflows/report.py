@@ -60,6 +60,26 @@ def _lane_first(steps: dict[str, Step], not_done: list[dict[str, Any]]) -> list[
     return [entry for entry in not_done if shown(entry)]
 
 
+def _added(
+    records: list[dict[str, Any]], steps: dict[str, Step]
+) -> tuple[list[dict[str, Any]], dict[str, str]]:
+    """The steps the run added (decision 0042), from the record of the step they were added for,
+    and their titles by the ids their own records carry."""
+    added: list[dict[str, Any]] = []
+    titles: dict[str, str] = {}
+    for record in records:
+        plan = (record.get("agent") or {}).get("added")
+        if not isinstance(plan, dict):
+            continue
+        step_id = str(record.get("step_id") or "")
+        planned = [s for s in plan.get("steps") or [] if isinstance(s, dict)]
+        titles |= {f"{step_id}/added/{s.get('id')}": str(s.get("title") or "") for s in planned}
+        named = steps[step_id].title if step_id in steps else step_id
+        added.append({"step_id": step_id, "title": named, "iteration": record.get("iteration")
+                      or [], "why": plan.get("why") or "", "steps": planned})  # fmt: skip
+    return added, titles | {step_id: step.title for step_id, step in steps.items()}
+
+
 def _tasks_ran(called: dict[str, Any], records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """The tasks the run's steps ran, each with the version it ran and how its step ended."""
     status = {str(r.get("step_id")): r.get("status") for r in records}
@@ -77,11 +97,10 @@ def run_report(
 ) -> dict[str, Any]:
     """{"autonomy", "loops": [{"step_id", "title", "done", "total", "skipped"}],
     "not_done": [{"step_id", "title", "iteration", "status", "error"}],
-    "assumed": [{"step_id", "title", "iteration", "values"}],
-    "unanswered": [{"step_id", "title", "iteration"}],
-    "healed": [{"step_id", "title", "iteration", "error", "did"}],
-    "irreversible": [{"step_id", "title", "iteration"}],
-    "recovered": [{"step_id", "title", "iteration", "how", "error"}],
+    "assumed": [{"step_id", "title", "iteration", "values"}], "unanswered": [{"step_id",
+    "title", "iteration"}], "healed": [{"step_id", "title", "iteration", "error", "did"}],
+    "irreversible": [{"step_id", "title", "iteration"}], "recovered": [{"step_id", "title",
+    "iteration", "how", "error"}], "added": [{"step_id", "title", "iteration", "why", "steps"}],
     "retried": [{"step_id", "title", "iteration", "attempts", "worked"}],
     "after_failure": [{"step_id", "title", "status", "error"}],
     "remembered": [{"step_id", "title", "name", "label", "value"}],
@@ -91,10 +110,10 @@ def run_report(
     worked. A step that was removed from the workflow after the run keeps its id as title."""
     steps = _every_step(workflow, called or {})
     after = {placed.step.id for placed in walk(workflow.after_failure)}
+    added, titles = _added(records, steps)
 
     def title(step_id: str) -> str:
-        step = steps.get(step_id)
-        return step.title if step is not None else step_id
+        return titles.get(step_id, step_id)
 
     loops, not_done, assumed, healed, irreversible = [], [], [], [], []
     # `unanswered`: ask steps no one answered in time, which went on with defaults (decision 0033).
@@ -158,6 +177,7 @@ def run_report(
         "healed": healed,
         "irreversible": irreversible,
         "recovered": recovered,
+        "added": added,
         "retried": retried,
         "after_failure": after_failure,
         "remembered": remembered,

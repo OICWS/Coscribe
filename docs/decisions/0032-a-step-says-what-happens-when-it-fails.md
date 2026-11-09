@@ -2,6 +2,7 @@
 
 Status: proposed (2026-11-02, kurtosisOC; needs the maintainer's acceptance). Narrows 0030 (a
 failure no longer always stops the run). Builds on 0028, 0029 and 0030. Issue #776, batch 2.
+Narrowed by 0042: a failure nothing recovers may run steps the run adds.
 
 ## Context
 Any failed step stopped the run. A rates site that didn't answer for a minute failed a monthly

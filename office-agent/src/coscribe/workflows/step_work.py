@@ -76,9 +76,9 @@ class StepRecord:
     agent: dict[str, Any] | None = None
     # Tries the step took in this pass (decision 0032); more than one only when it has retries.
     attempts: int = 1
-    # A failed step whose failure didn't stop the run: it was skipped, steps ran in its place, or
-    # its loop skipped the item it failed on.
-    recovered: Literal["skipped", "fallback", "item_skipped"] | None = None
+    # A failed step whose failure didn't stop the run: it was skipped, steps ran in its place, its
+    # loop skipped the item it failed on, or the run added steps for it (decision 0042).
+    recovered: Literal["skipped", "fallback", "item_skipped", "added"] | None = None
     # A waiting ask or wait step, and what for (decision 0033): conversation.wire's WorkflowPause.
     pause: dict[str, Any] | None = None
 
@@ -131,6 +131,12 @@ class StepContext:
     max_retry_wait: float = float(MAX_RETRY_WAIT)
     # The tasks a run-task step may run (decision 0035); without it such a step fails.
     tasks: TaskSource | None = None
+    # The tools that only read: a step a run adds in front of any other waits for a person
+    # (decision 0042). Empty means every tool asks.
+    read_tools: frozenset[str] = frozenset()
+    # On where a model can plan them; off inside a called task, a parallel lane and the steps a
+    # run added, so those never add more.
+    adds_steps: bool = False
 
 
 def preview(value: Any, depth: int = 0) -> Any:

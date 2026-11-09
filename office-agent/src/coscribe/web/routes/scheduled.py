@@ -37,6 +37,7 @@ from ...workflows import (
     BranchStep,
     ChoiceStep,
     LoopStep,
+    added_fix,
     answer_problem,
     brings_outside_content,
     called_permissions,
@@ -347,7 +348,9 @@ def _run_control_routes(router: APIRouter, state: AppState) -> None:
         workflow = parse_workflow(trigger.workflow)
         report = run_report(workflow, run.steps, run.started_at, run.finished_at, run.called)
         report["versions"] = run.versions
-        return JSONResponse({**report, "fixes": heal_fixes(trigger.workflow, report["healed"])})
+        fixes = heal_fixes(trigger.workflow, report["healed"])
+        added = added_fix(trigger.workflow, report["added"])
+        return JSONResponse({**report, "fixes": fixes, "added_fix": added})
 
     @router.post("/api/scheduled-tasks/{trigger_id}/runs/{run_id}/investigate")
     async def investigate_workflow_run(

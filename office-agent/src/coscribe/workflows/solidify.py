@@ -33,7 +33,7 @@ from ..workflow_spec import (
     workflow_error,
 )
 from .catalog import describe_params, tool_description
-from .engine import UNAVAILABLE_TOOLS
+from .preflight import UNAVAILABLE_TOOLS
 
 SCRIPT_TOOL = "run_python_script"
 # What a run_node_script tool step holds: the call's own result, not what the script printed.

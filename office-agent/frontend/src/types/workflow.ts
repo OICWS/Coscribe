@@ -327,10 +327,12 @@ export interface RunReport {
     step_id: string;
     title: string;
     iteration: number[];
-    how: "skipped" | "fallback" | "item_skipped";
+    how: "skipped" | "fallback" | "item_skipped" | "added";
     error: string | null;
   }[];
   retried?: { step_id: string; title: string; iteration: number[]; attempts: number; worked: boolean }[];
+  /** Steps the run added because a step failed (decision 0042). Absent on older servers. */
+  added?: { step_id: string; title: string; iteration: number[]; why: string; steps: { title?: string }[] }[];
   /** The steps that ran because the run failed. */
   after_failure?: { step_id: string; title: string; iteration: number[]; status: string; error: string | null }[];
   /** What the run keeps for the next one, kept only if it finished (decision 0034). */
@@ -346,6 +348,13 @@ export interface RunReport {
   cached_tokens: number;
   seconds: number | null;
   fixes: HealFixes;
+  added_fix?: AddedFix;
+}
+
+/** A run's added steps offered as their step's `on_failure: steps` (decision 0042). */
+interface AddedFix {
+  steps: { step_id: string; title: string; why: string; added: string[] }[];
+  workflow: Workflow | null;
 }
 
 /** The revision a run's heals propose (decision 0030): saved arguments to replace, and the heals

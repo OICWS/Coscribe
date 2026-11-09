@@ -221,6 +221,12 @@ export interface WorkflowAgentCall {
   args: unknown;
 }
 
+/** The steps a run added for a failed step (decision 0042), each as a workflow step's JSON. */
+export interface WorkflowAddedSteps {
+  why: string;
+  steps: Record<string, unknown>[];
+}
+
 /** An agent step's work: what it used once it ends, or the call waiting for a person. */
 export interface WorkflowAgentActivity {
   tool_calls?: number;
@@ -228,6 +234,7 @@ export interface WorkflowAgentActivity {
   cached_tokens?: number;
   tools_used?: string[];
   pending?: WorkflowAgentCall;
+  added?: WorkflowAddedSteps;
 }
 
 /** One item a pick offers: what it shows, and its place in the list. */
@@ -290,7 +297,7 @@ export interface WorkflowStepRecord {
    * A failure that didn't stop the run: the step was skipped, steps ran in its
    * place, or its loop skipped the item.
    */
-  recovered?: "skipped" | "fallback" | "item_skipped" | null;
+  recovered?: "skipped" | "fallback" | "item_skipped" | "added" | null;
   /** An ask or wait step waiting, and what for; absent on older runs. */
   pause?: WorkflowPause | null;
 }
