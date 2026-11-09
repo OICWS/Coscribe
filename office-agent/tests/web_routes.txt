@@ -96,6 +96,10 @@ GET /api/threads/{thread_id}/slides/{index}/parts
 GET /api/threads/{thread_id}/slides/{index}/svg
 GET /api/threads/{thread_id}/subagents
 GET /api/threads/{thread_id}/tasks
+GET /api/threads/{thread_id}/workspace
+GET /api/threads/{thread_id}/workspace/{root}/list
+GET /api/threads/{thread_id}/workspace/{root}/raw/{path:path}
+GET /api/threads/{thread_id}/workspace/{root}/search
 GET /api/tools
 GET /internal/browser-host
 GET /internal/events

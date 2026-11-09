@@ -82,6 +82,13 @@
      brand accents so "completed" never reads as decoration. */
   --success: #3d8f56;
   --warning: #b87a14;
+  --code-keyword: #8a3ab9;
+  --code-string: #2f7d32;
+  --code-comment: #8a8786;
+  --code-number: #1c6fb8;
+  --code-property: #b3261e;
+  --code-function: #2a5db0;
+  --code-type: #a35200;
   --file-sheet: #2f7d4a;
   --file-doc: #2d62b8;
   --file-slides: #c4561f;
@@ -150,6 +157,13 @@
   --danger-fg: #fbd5d5;
   --success: #8fd19f;
   --warning: #e8b85c;
+  --code-keyword: #c792ea;
+  --code-string: #a5d6a7;
+  --code-comment: #8f8b89;
+  --code-number: #79b8ff;
+  --code-property: #ff9e8f;
+  --code-function: #8fb4ff;
+  --code-type: #ffcb6b;
   --file-sheet: #7fcf98;
   --file-doc: #8cb4f0;
   --file-slides: #f0a076;
@@ -1150,4 +1164,11 @@ body {
   #doc-print-root :is(table, tr, li, .doc-callout, .doc-chart, pre, img, blockquote) {
     break-inside: avoid;
   }
+}
+
+/* The Files panel: a picture on a checkerboard shows where it is transparent. */
+.files-checker {
+  background-color: var(--bg);
+  background-image: conic-gradient(var(--card-bg) 25%, transparent 0 50%, var(--card-bg) 0 75%, transparent 0);
+  background-size: 16px 16px;
 }

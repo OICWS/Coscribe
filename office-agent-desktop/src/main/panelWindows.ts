@@ -21,7 +21,7 @@ const DOCK_CHANNEL = "panel-window:dock";
 const PIN_CHANNEL = "panel-window:pin";
 const CLOSED_EVENT = "panel-window:closed";
 
-const PANELS = new Set(["task", "browser", "background", "viewer", "plan"]);
+const PANELS = new Set(["task", "browser", "background", "viewer", "plan", "files"]);
 
 interface OpenRequest {
   panel: string;

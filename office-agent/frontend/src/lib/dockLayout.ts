@@ -2,8 +2,8 @@
  * splits, each a row or a column of children with their shares of its
  * length. Pure functions only. */
 
-export type PanelId = "task" | "browser" | "background" | "viewer" | "plan";
-export const PANEL_IDS: readonly PanelId[] = ["task", "browser", "background", "viewer", "plan"];
+export type PanelId = "task" | "browser" | "background" | "viewer" | "plan" | "files";
+export const PANEL_IDS: readonly PanelId[] = ["task", "browser", "background", "viewer", "plan", "files"];
 
 export const PANEL_TITLES: Record<PanelId, string> = {
   task: "Task details",
@@ -11,6 +11,7 @@ export const PANEL_TITLES: Record<PanelId, string> = {
   background: "Background tasks",
   viewer: "Viewer",
   plan: "Plan",
+  files: "Files",
 };
 
 export type Direction = "row" | "col";

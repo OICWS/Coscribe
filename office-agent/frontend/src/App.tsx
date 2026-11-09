@@ -32,6 +32,7 @@ import { ShortcutsDialog } from "./components/ShortcutsDialog";
 import { BackgroundTasksPanel } from "./components/BackgroundTasksPanel";
 import { ViewerPanel } from "./components/ViewerPanel";
 import { PlanPanel } from "./components/PlanPanel";
+import { FilesPanel } from "./components/files/FilesPanel";
 import { TaskPanel } from "./components/TaskPanel";
 import { setPlanComments, usePlanComments, withPlanComments } from "./lib/planComments";
 import { planPanelData } from "./lib/taskCard";
@@ -759,6 +760,7 @@ function App() {
       background: { panel: "background", ...backgroundProps },
       viewer: { panel: "viewer", threadId, path: viewerFiles[threadId] ?? null, refreshKey },
       plan: { panel: "plan", threadId, ...planData, comments: planComments, busy: state.turnInFlight },
+      files: { panel: "files", threadId, refreshKey },
     },
     titles: PANEL_TITLES,
     threadId,
@@ -858,17 +860,14 @@ function App() {
       );
     }
     if (panel === "viewer" && viewerFile) {
-      return (
-        <ViewerPanel key={`${threadId}:${viewerFile}`} threadId={threadId} path={viewerFile} refreshKey={refreshKey} busy={state.turnInFlight} items={state.items} onSendComment={onSendComment} onFileChanged={(changed) => (changed ? viewFile(changed) : closePanel("viewer"))} />
-      );
+      return <ViewerPanel key={`${threadId}:${viewerFile}`} threadId={threadId} path={viewerFile} refreshKey={refreshKey} busy={state.turnInFlight} items={state.items} onSendComment={onSendComment} onFileChanged={(changed) => (changed ? viewFile(changed) : closePanel("viewer"))} />;
     }
     if (panel === "browser") {
       return <BrowserPanel threadId={threadId} onSendToChat={onBrowserPanelCapture} onStopAgent={onStop} />;
     }
+    if (panel === "files") return <FilesPanel threadId={threadId} refreshKey={refreshKey} onView={viewFile} />;
     if (panel === "plan") return <PlanPanel {...planData} comments={planComments} onComments={(c) => setPlanComments(planData.plan ?? "", c)} busy={state.turnInFlight} />;
-    return (
-      <BackgroundTasksPanel key={threadId} {...backgroundProps} onApprove={onApprove} />
-    );
+    return <BackgroundTasksPanel key={threadId} {...backgroundProps} onApprove={onApprove} />;
   };
 
   // The page's title: the conversation's name, or where in Scheduled this is.

@@ -28,7 +28,8 @@ export type PanelWindowState =
   | { panel: "browser"; threadId: string }
   | { panel: "background"; threadId: string; refreshKey: number; focusTaskId: string | null }
   | { panel: "viewer"; threadId: string; path: string | null; refreshKey: string }
-  | { panel: "plan"; threadId: string; tasks: ProgressItem[]; plan: string | null; busy: boolean; comments: PlanComment[] };
+  | { panel: "plan"; threadId: string; tasks: ProgressItem[]; plan: string | null; busy: boolean; comments: PlanComment[] }
+  | { panel: "files"; threadId: string; refreshKey: string };
 
 export type PanelWindowAction =
   | { type: "openTask"; task: ScheduledTask }
