@@ -1,5 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { groupToolRuns, groupTurns, latestWorkflowDraft, latestWorkflowDraftId, workflowTests, type WorkflowDraftEntry } from "../lib/transcriptGrouping";
+import { useEffect, useLayoutEffect, useRef } from "react";
+import { groupToolRuns, groupTurns, latestWorkflowDraftId, workflowTests, type WorkflowDraftEntry } from "../lib/transcriptGrouping";
 import { type LogItem } from "../state/reducer";
 import { useFollowEnd } from "../lib/useFollowEnd";
 import { EmptyState } from "./EmptyState";
@@ -8,6 +8,7 @@ import { type PlanChoice, type PlanItem } from "./PlanCard";
 import { type FolderActions } from "./folderActions";
 import { type DraftCards } from "./workflow/draftCards";
 import { PinnedDraftBar } from "./workflow/WorkflowDraftCard";
+import { usePinnedDraft } from "./workflow/usePinnedDraft";
 import { type TaskDraftItem } from "./chatlog/types";
 import { ShowDiffStats, NO_CONNECTOR_TOOLS } from "./chatlog/contexts";
 import { ChatContexts } from "./chatlog/ChatContexts";
@@ -99,30 +100,7 @@ export function ChatLog({
     tests: workflowTests(allItems, turnInFlight),
     onReview: onReviewWorkflowDraft,
   };
-  const latestDraft = latestWorkflowDraft(allItems);
-  const pinnable = latestDraft !== null && !(latestDraft.draftId && cards.saved.has(latestDraft.draftId));
-  const [latestCardVisible, setLatestCardVisible] = useState(true);
-  const latestCardId = pinnable ? latestDraft.id : null;
-
-  useEffect(() => {
-    const root = scrollRef.current;
-    const card = latestCardId ? root?.querySelector(`[data-draft-card="${latestCardId}"]`) : null;
-    if (!root || !card) {
-      setLatestCardVisible(true);
-      return;
-    }
-    const observer = new IntersectionObserver(([entry]) => setLatestCardVisible(entry.isIntersecting), {
-      root,
-      threshold: 0.2,
-    });
-    observer.observe(card);
-    return () => observer.disconnect();
-  }, [latestCardId, items.length]);
-
-  const showLatestCard = () => {
-    const card = latestCardId ? scrollRef.current?.querySelector(`[data-draft-card="${latestCardId}"]`) : null;
-    card?.scrollIntoView({ behavior: "smooth", block: "center" });
-  };
+  const pinnedDraft = usePinnedDraft(allItems, cards.saved, turnInFlight, scrollRef);
 
   const onScroll = useFollowEnd(scrollRef, endRef, items, items[items.length - 1]?.kind === "user");
   // Revealing older history above never moves the viewport (see the scroll-anchoring effect
@@ -227,7 +205,7 @@ export function ChatLog({
           />
         ))}
         <div ref={endRef} />
-        {pinnable && !latestCardVisible && <PinnedDraftBar entry={latestDraft} onShow={showLatestCard} />}
+        {pinnedDraft.pinned && <PinnedDraftBar entry={pinnedDraft.pinned} onShow={pinnedDraft.show} onClose={pinnedDraft.close} />}
       </div>
     </div>
     </ChatContexts>
