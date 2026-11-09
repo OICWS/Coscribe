@@ -22,18 +22,66 @@ import { ThreadIdContext } from "../threadContext";
 // enough to collapse" means the same thing on both sides of a send.
 const LONG_MESSAGE_COLLAPSE_CHARS = 1000;
 
+/** The files and pictures sent with a message, as cards above its bubble; each opens a preview. */
+function SentAttachments({ files, images }: { files: string[]; images: string[] }) {
+  const threadId = useContext(ThreadIdContext);
+  const viewFile = useContext(ViewFile);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [openFile, setOpenFile] = useState<AttachmentView | null>(null);
+  return (
+    <>
+      {files.length > 0 && (
+        <div className="flex flex-wrap justify-end gap-1.5">
+          {files.map((path) => {
+            const name = path.split(/[\\/]/).pop() ?? path;
+            const view: AttachmentView = { kind: attachmentKind(name), name, path };
+            // A Word, Excel or PowerPoint file opens in its panel; the rest in the preview.
+            return <AttachmentCard key={path} view={view} threadId={threadId} onOpen={() => { if (!viewFile?.(path)) setOpenFile(view); }} />;
+          })}
+        </div>
+      )}
+      {images.length > 0 && (
+        <div className="flex flex-wrap justify-end gap-1.5">
+          {images.map((src, i) => (
+            <button
+              key={i}
+              type="button"
+              title="Preview image"
+              className="h-16 w-16 cursor-zoom-in overflow-hidden rounded-lg border border-[var(--border)]"
+              onClick={() => setLightboxSrc(src)}
+            >
+              <img src={src} alt={`Attachment ${i + 1}`} className="h-full w-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+      {openFile && <AttachmentDialog view={openFile} threadId={threadId} onClose={() => setOpenFile(null)} />}
+      {lightboxSrc && (
+        <AttachmentDialog
+          view={{ kind: "image", name: "Attachment", src: lightboxSrc }}
+          threadId={threadId}
+          onClose={() => setLightboxSrc(null)}
+        />
+      )}
+    </>
+  );
+}
+
 /** A note added while the reply was being worked on: a user bubble, with
  * whether the model has read it yet. */
 export function SteerView({ item }: { item: Extract<LogItem, { kind: "steer" }> }) {
   const actions = useContext(SteerActionsContext);
+  const files = item.files ?? [];
+  const images = item.images ?? [];
   return (
     <div className="ml-auto flex max-w-[96%] flex-col items-end gap-1">
-      <div
-        className={`rounded-2xl bg-[var(--user-bubble)] px-4 py-2 text-[var(--user-bubble-fg)] whitespace-pre-wrap ${
-          item.status === "pending" ? "opacity-60" : ""
-        }`}
-      >
-        {item.text}
+      <div className={`flex flex-col items-end gap-1.5 ${item.status === "pending" ? "opacity-60" : ""}`}>
+        <SentAttachments files={files} images={images} />
+        {(item.text.trim() !== "" || (files.length === 0 && images.length === 0)) && (
+          <div className="rounded-2xl bg-[var(--user-bubble)] px-4 py-2 text-[var(--user-bubble-fg)] whitespace-pre-wrap">
+            {item.text}
+          </div>
+        )}
       </div>
       {item.status === "pending" && actions ? (
         <div className="flex items-center gap-1 text-xs text-[var(--muted)]">
@@ -73,10 +121,6 @@ export function UserMessageView({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.text);
-  const threadId = useContext(ThreadIdContext);
-  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
-  const [openFile, setOpenFile] = useState<AttachmentView | null>(null);
-  const viewFile = useContext(ViewFile);
   const files = item.files ?? [];
   const hasAttachments = files.length > 0 || (item.images?.length ?? 0) > 0;
   const [textExpanded, setTextExpanded] = useState(false);
@@ -137,31 +181,7 @@ export function UserMessageView({
 
   return (
     <div className="ml-auto flex max-w-[96%] flex-col items-end gap-1.5">
-      {files.length > 0 && (
-        <div className="flex flex-wrap justify-end gap-1.5">
-          {files.map((path) => {
-            const name = path.split(/[\\/]/).pop() ?? path;
-            const view: AttachmentView = { kind: attachmentKind(name), name, path };
-            // A Word, Excel or PowerPoint file opens in its panel; the rest in the preview.
-            return <AttachmentCard key={path} view={view} threadId={threadId} onOpen={() => { if (!viewFile?.(path)) setOpenFile(view); }} />;
-          })}
-        </div>
-      )}
-      {item.images && item.images.length > 0 && (
-        <div className="flex flex-wrap justify-end gap-1.5">
-          {item.images.map((src, i) => (
-            <button
-              key={i}
-              type="button"
-              title="Preview image"
-              className="h-16 w-16 cursor-zoom-in overflow-hidden rounded-lg border border-[var(--border)]"
-              onClick={() => setLightboxSrc(src)}
-            >
-              <img src={src} alt={`Attachment ${i + 1}`} className="h-full w-full object-cover" />
-            </button>
-          ))}
-        </div>
-      )}
+      <SentAttachments files={files} images={item.images ?? []} />
       <div className="group/msg flex items-center gap-1">
         {onEditMessage && (
           <button
@@ -187,14 +207,6 @@ export function UserMessageView({
         >
           {textExpanded ? "Show less" : "Show more"}
         </button>
-      )}
-      {openFile && <AttachmentDialog view={openFile} threadId={threadId} onClose={() => setOpenFile(null)} />}
-      {lightboxSrc && (
-        <AttachmentDialog
-          view={{ kind: "image", name: "Attachment", src: lightboxSrc }}
-          threadId={threadId}
-          onClose={() => setLightboxSrc(null)}
-        />
       )}
     </div>
   );

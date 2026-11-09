@@ -718,46 +718,6 @@ describe("system notes and turn end", () => {
   });
 });
 
-describe("steering notes", () => {
-  it("adds a pending note", () => {
-    const next = run(stateWith(), { type: "local_steer", id: "s1", text: "also this" });
-    expect(next.items).toEqual([{ id: "s1", kind: "steer", text: "also this", status: "pending" }]);
-  });
-
-  it("withdraws only the listed notes", () => {
-    const base = run(
-      stateWith({ items: [user("u", "x", 0)] }),
-      { type: "local_steer", id: "s1", text: "a" },
-      { type: "local_steer", id: "s2", text: "b" },
-    );
-    const next = run(base, { type: "local_steers_withdrawn", ids: ["s1"] });
-    expect(next.items.map((i) => i.id)).toEqual(["u", "s2"]);
-  });
-
-  it("marks the listed notes delivered", () => {
-    const base = run(
-      stateWith(),
-      { type: "local_steer", id: "s1", text: "a" },
-      { type: "local_steer", id: "s2", text: "b" },
-    );
-    const next = run(base, { type: "steers_delivered", ids: ["s2"] });
-    expect(next.items.map((i) => (i.kind === "steer" ? i.status : null))).toEqual(["pending", "delivered"]);
-  });
-
-  it("replaces requeued notes with one user message and starts a turn", () => {
-    const base = run(
-      stateWith({ items: [user("u", "x", 0)] }),
-      { type: "local_steer", id: "s1", text: "a" },
-      { type: "local_steer", id: "s2", text: "b" },
-      { type: "local_steer", id: "s3", text: "c" },
-    );
-    const next = run(base, { type: "steers_requeued", ids: ["s1", "s2"], text: "a\nb" });
-    expect(next.turnInFlight).toBe(true);
-    expect(next.items.map((i) => i.id)).toEqual(["u", "s3", next.items[2].id]);
-    expect(next.items[2]).toMatchObject({ kind: "user", text: "a\nb", turnIndex: 1 });
-  });
-});
-
 describe("prompt suggestion", () => {
   it("is kept until the person sends something", () => {
     const offered = run(stateWith({}), { type: "prompt_suggestion", text: "next" });

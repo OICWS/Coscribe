@@ -153,7 +153,7 @@ def router(state: AppState) -> APIRouter:
                 elif message_type == "question_response":
                     session.resolve_question(data["id"], question_answer(data))
                 elif message_type == "steer":
-                    session.add_steer(str(data.get("id", "")), data.get("text"))
+                    session.add_steer(data.get("id", ""), data.get("text"), data.get("images"))
                 elif message_type == "detach_command":
                     session.detach_command(str(data.get("script", "")))
                 elif message_type == "stop":
