@@ -13,7 +13,7 @@ from coscribe.tools.convert import build_convert_tools
 
 
 def _convert(root: Path):  # type: ignore[no-untyped-def]
-    (tool,) = build_convert_tools(root)
+    (tool,) = build_convert_tools(root, state_dir=None)
     return tool
 
 
@@ -27,7 +27,7 @@ def _fake_office(monkeypatch: pytest.MonkeyPatch, program: str | None = "Word.Ap
 
 
 def test_the_tool_writes_files_so_it_is_gated() -> None:
-    (tool,) = build_convert_tools(Path("."))
+    (tool,) = build_convert_tools(Path("."), state_dir=None)
     metadata = get_tool_metadata(tool)
 
     assert metadata.risk_category == "WRITE_LOCAL"

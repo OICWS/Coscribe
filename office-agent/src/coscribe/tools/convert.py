@@ -91,6 +91,11 @@ class ConvertToolkit:
                     self._state_dir, source, produced, target_format, _CONVERT_TIMEOUT
                 )
             )
+            if not program and self._state_dir is None:
+                raise ValueError(
+                    "Converting needs Microsoft Office or WPS Office on this computer, and "
+                    "neither was found."
+                )
             if not program:
                 raise ValueError(
                     "Converting needs Microsoft Office, WPS Office or LibreOffice on this "
@@ -119,10 +124,10 @@ def build_convert_tools(
     *,
     extra_readable: Sequence[str | Path] = (),
     extra_writable: Sequence[str | Path] = (),
-    state_dir: str | Path | None = None,
+    state_dir: str | Path | None,
 ) -> list[Callable[..., Any]]:
     """`state_dir` is where coscribe keeps its own LibreOffice, used when no office program
-    converts over COM."""
+    converts over COM; None only where LibreOffice is not to be used."""
     toolkit = ConvertToolkit(
         root, extra_readable=extra_readable, extra_writable=extra_writable, state_dir=state_dir
     )

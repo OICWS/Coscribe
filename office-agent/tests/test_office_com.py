@@ -90,7 +90,7 @@ def test_convert_uses_the_office_program_and_says_which(
     office: _FakeOffice, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     (tmp_path / "old.xls").write_bytes(b"x")
-    (tool,) = build_convert_tools(tmp_path)
+    (tool,) = build_convert_tools(tmp_path, state_dir=None)
 
     result = tool(path="old.xls", to_format="xlsx")
 
@@ -102,7 +102,7 @@ def test_without_any_office_program_convert_says_it_needs_one(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     (tmp_path / "a.docx").write_bytes(b"x")
-    (tool,) = build_convert_tools(tmp_path)
+    (tool,) = build_convert_tools(tmp_path, state_dir=None)
 
     with pytest.raises(ValueError, match="needs Microsoft Office"):
         tool(path="a.docx", to_format="pdf")

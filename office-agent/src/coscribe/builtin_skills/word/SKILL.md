@@ -25,8 +25,8 @@ bold. Spend the effort on content and structure instead:
 A line that is exactly `[PAGEBREAK]` starts the next block on a new page (a cover page, a template
 that is to stand alone on its page). Layout the subset cannot say (a font size, an indent, a column)
 is not worth a script: write the document once, look at the rendered `preview_path` once, fix what the
-tools can fix, and tell the person what could not be done. The result's `page_check` lists what the
-office program's layout showed (an empty page, a table past the paper's edge, a last page of a line
+tools can fix, and tell the person what could not be done. Every Word write (accepting or rejecting
+tracked changes and review edits too) returns `page_check`: what the office program's layout showed (an empty page, a table past the paper's edge, a last page of a line
 or two): fix those and write again; when it says "not checked", say so rather than call the layout
 fine. Do not convert the file to PDF and read
 it page by page again and again, and do not patch the .docx with a script to polish it.

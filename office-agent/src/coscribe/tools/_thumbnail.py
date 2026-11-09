@@ -17,7 +17,6 @@ from __future__ import annotations
 import shutil
 import tempfile
 import uuid
-from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
@@ -64,8 +63,10 @@ def _draw(
         if not program:
             return None
         if check is not None:
-            with suppress(*_DRAW_ERRORS):  # a check that can't read the PDF leaves it unchecked
+            try:
                 check.update(laid_out_by=program, **page_problems(pdf_path))
+            except _DRAW_ERRORS:  # the preview is still worth drawing
+                check["failed"] = f"{program} laid it out, but its PDF could not be read"
         if layout is not None:
             layout.extend(measure_page_words(pdf_path, last))
         return _render_pdf_pages(pdf_path, out_dir, first, last)
@@ -133,7 +134,7 @@ def render_thumbnail(
     """The first page of `file_path` (docx/pdf/xlsx/pptx) as a PNG under `state_dir/previews/`:
     `(preview_name, None)`, the name a bare file name for `GET /api/previews/{name}`, or
     `(None, reason)`. Never raises. Given `check`, an Office file the office program laid out
-    fills it with `laid_out_by` and its `page_problems`."""
+    fills it with `laid_out_by` and its `page_problems`, or `failed` when they could not be read."""
     names, reason = _previews(file_path, state_dir, 1, 1, check=check)
     return (names[0] if names else None), reason
 

@@ -523,7 +523,7 @@ def test_write_docx_toc_renders_as_a_contents_list_in_libreoffice(tmp_path: Path
 
     tools = _tools_by_name(tmp_path)
     tools["write_docx"](path="report.docx", content=TOC_CONTENT)
-    (convert,) = build_convert_tools(tmp_path)
+    (convert,) = build_convert_tools(tmp_path, state_dir=tmp_path / "state")
     convert(path="report.docx", to_format="pdf", output_path="report.pdf")
 
     text = tools["read_pdf"](path="report.pdf")
