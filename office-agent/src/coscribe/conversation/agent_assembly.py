@@ -304,3 +304,26 @@ class AgentAssembly:
             auto_compact_threshold=self._host.settings.auto_compact_threshold,
             last_total_tokens=last_total,
         )
+
+
+class _RebuildsOnUse(Protocol):
+    def apply_pending_tools(self) -> None: ...
+
+
+class RebuiltOnUse:
+    """An attribute of a conversation that a connector change makes stale (its agent, its connector
+    tools, the risks of its gated tools), read through `apply_pending_tools`: rebuilt on first use,
+    not when the change is made, since rebuilding every open conversation at once ran on the
+    server's loop, about a second each, and with dozens open held the whole server."""
+
+    def __set_name__(self, owner: type, name: str) -> None:
+        self._slot = f"_{name}_built"
+
+    def __get__(self, host: _RebuildsOnUse | None, owner: type | None = None) -> Any:
+        if host is None:
+            return self
+        host.apply_pending_tools()
+        return vars(host)[self._slot]
+
+    def __set__(self, host: _RebuildsOnUse, value: Any) -> None:
+        vars(host)[self._slot] = value
