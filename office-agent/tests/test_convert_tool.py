@@ -90,3 +90,26 @@ def test_a_docx_exports_to_a_pdf_at_the_chosen_path(
 
     assert result["path"] == "out/合同.pdf"
     assert (tmp_path / "out" / "合同.pdf").read_bytes().startswith(b"%PDF")
+
+
+def test_without_office_or_wps_the_libreoffice_this_computer_has_converts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.tools import convert as convert_module
+
+    Document().save(str(tmp_path / "a.docx"))
+    _fake_office(monkeypatch, program=None)
+    asked: list[tuple[Path, str]] = []
+
+    def libreoffice(state_dir: Path, source: Path, target: Path, fmt: str, timeout: float) -> str:
+        asked.append((state_dir, fmt))
+        target.write_bytes(b"%PDF from LibreOffice")
+        return "LibreOffice"
+
+    monkeypatch.setattr(convert_module, "convert_with_libreoffice", libreoffice)
+    (tool,) = build_convert_tools(tmp_path, state_dir=tmp_path / "state")
+
+    result = tool(path="a.docx", to_format="pdf")
+
+    assert result["converted_by"] == "LibreOffice" and asked == [(tmp_path / "state", "pdf")]
+    assert (tmp_path / "a.pdf").read_bytes() == b"%PDF from LibreOffice"

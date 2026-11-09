@@ -614,7 +614,7 @@ def build_coordinator_agent(
             extra_writable=extra_writable,
         )
         + build_convert_tools(
-            root,
+            root, state_dir=settings.state_dir,
             extra_readable=extra_readable,
             extra_writable=extra_writable,
         )

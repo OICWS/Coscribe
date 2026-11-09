@@ -27,7 +27,7 @@ bound to the model: 22 tools, ~4997 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 120 tools, ~37740 tokens (the ones not bound are found through search_tools)
+registered: 120 tools, ~37820 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -47,7 +47,7 @@ registered: 120 tools, ~37740 tokens (the ones not bound are found through searc
   check_background_task | READ | background_tasks | deferred | sha256 1dfa7b1960
   check_pptx_delivery | READ | documents | deferred | sha256 a52eddb3b5
   check_subagent_task | READ | subagent_tasks | deferred | sha256 3a7ed67fac
-  convert_office_file | WRITE_LOCAL | documents | deferred | sha256 0ce017a5dd
+  convert_office_file | WRITE_LOCAL | documents | deferred | sha256 cf772b0570
   copy_file | WRITE_LOCAL | filesystem | deferred | sha256 f6cdbcce8c
   create_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 cc7745e488
   crop_pptx_image | WRITE_LOCAL | documents | deferred | sha256 45b8d754c3
@@ -60,7 +60,7 @@ registered: 120 tools, ~37740 tokens (the ones not bound are found through searc
   draft_workflow | READ | - | core | sha256 e91334c9ee
   duplicate_pptx_slide | WRITE_LOCAL | documents | deferred | sha256 ede3ae0640
   edit_docx_review | WRITE_LOCAL | documents | deferred | sha256 05c2455ef6
-  edit_docx_structure | WRITE_LOCAL | documents | deferred | sha256 05a752286f
+  edit_docx_structure | WRITE_LOCAL | documents | deferred | sha256 ebb9b51540
   edit_file | WRITE_LOCAL | filesystem | core | sha256 f8168b6c62
   edit_file_batch | WRITE_LOCAL | filesystem | deferred | sha256 31b92256f0
   edit_pptx_shape | WRITE_LOCAL | documents | deferred | sha256 d7dc66b696
@@ -143,7 +143,7 @@ registered: 120 tools, ~37740 tokens (the ones not bound are found through searc
   test_workflow | EXTERNAL | workflows | core | sha256 4732f34b60
   wake_on_event | WRITE_LOCAL | selfwake | deferred | sha256 49123abfdf
   web_search | READ | web | core | sha256 8ae68add7a
-  write_docx | WRITE_LOCAL | documents | deferred | sha256 dbe18710bc
+  write_docx | WRITE_LOCAL | documents | deferred | sha256 982b0e81cf
   write_file | WRITE_LOCAL | filesystem | core | sha256 509ae7daba
   write_pdf | WRITE_LOCAL | documents | deferred | sha256 468c6374f7
   write_pptx | WRITE_LOCAL | documents | deferred | sha256 b53c3c22c9
