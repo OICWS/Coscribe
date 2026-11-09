@@ -507,6 +507,54 @@ def test_post_mcp_server_splices_tools_into_both_new_and_already_open_sessions(
         assert tool_result["result"] == "fetched:hi"
 
 
+def test_a_connector_change_rebuilds_an_open_conversation_only_when_it_is_next_used(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.conversation import ChatSessionLG
+    from coscribe.runtime import tool_metadata
+
+    def _fake_tool_fn(x: str = "") -> str:
+        """A fake MCP tool for this test."""
+        return f"fetched:{x}"
+
+    _fake_tool_fn.__name__ = "fetch__fetch_url"
+    tool_metadata(_fake_tool_fn, risk_category="READ", category="mcp:fetch")
+
+    class _FakeConnection:
+        async def close(self) -> None:
+            pass
+
+    async def _connect(name: str, config: Any, *args: Any, **kwargs: Any) -> Any:
+        return [_fake_tool_fn], _FakeConnection(), None
+
+    builds: list[str] = []
+    build = ChatSessionLG._build_lg_agent
+
+    def _counted(self: Any, *args: Any) -> Any:
+        builds.append(self.thread_id)
+        return build(self, *args)
+
+    monkeypatch.setattr(ChatSessionLG, "_build_lg_agent", _counted)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("", encoding="utf-8")
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="ok")])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        for thread in ("one", "two"):
+            with client.websocket_connect(f"/ws/{thread}") as ws:
+                ws.receive_json()  # state
+                ws.receive_json()  # history
+        builds.clear()
+        monkeypatch.setattr(lg_mcp, "connect_one_mcp_server_lg", _connect)
+        client.post("/api/mcp/servers", json={"name": "fetch", "command": "uvx", "args": []})
+        assert builds == []
+
+        with client.websocket_connect("/ws/one") as ws:
+            state = ws.receive_json()
+            ws.receive_json()  # history
+    assert builds == ["one"]
+    assert state["connector_tools"] == ["fetch__fetch_url"]
+
+
 def test_delete_mcp_server_removes_only_that_entry(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
