@@ -98,7 +98,7 @@ from ..tools import (
 from ..workflows import StepContext, WorkflowDraft
 from . import tool_hooks
 from .activity import summarize_activity, summarize_workflow_run
-from .agent_assembly import AgentAssembly, risks_of_gated_tools
+from .agent_assembly import AgentAssembly, RebuiltOnUse, risks_of_gated_tools
 from .approval_resume import ApprovalResumer
 from .approvals import ApprovalDecider, can_resolve_approvals
 from .edit_preview import build_document_edit_preview
@@ -164,6 +164,11 @@ _GRPC_METADATA_OVERFLOW_SIGNATURE = "metadata size exceeds soft limit"
 
 
 class ChatSessionLG:
+    lg_agent = RebuiltOnUse()
+    _gated_tool_risks = RebuiltOnUse()
+    _extra_tools = RebuiltOnUse()
+    _pending_tools: list[Any] | None = None
+
     def __init__(
         self,
         *,
@@ -307,7 +312,7 @@ class ChatSessionLG:
         # disconnects live -- self._base_tools never needs rebuilding for
         # that. Combined back in by _build_lg_tools below (same treatment
         # spawn_agent/review_work already get).
-        self._extra_tools: list[Callable[..., Any] | BaseTool] = list(extra_tools)
+        self._extra_tools = list(extra_tools)
         self._title_task: asyncio.Task[None] | None = None
         self._suggestion_task: asyncio.Task[None] | None = None
         self._instructions = agent.instructions or ""
@@ -693,44 +698,25 @@ class ChatSessionLG:
             )
 
     async def refresh_extra_tools(self, extra_tools: list[Any]) -> None:
-        """Rebuild self.lg_agent so this *already-open* thread picks up an
-        MCP connector added/removed/version-bumped after this session was
-        first created -- real, live-reported bug: __init__ takes a one-time
-        snapshot of extra_tools_holder["tools"] (list(extra_tools), see its
-        own comment), so before this method existed, connecting a new
-        connector only ever affected the *next new* thread_id;
-        already-open conversations kept whatever MCP tools existed at
-        session-creation time until the process restarted. app.py calls
-        this on every currently-open ChatSessionLG right after
-        add_mcp_server/remove_mcp_server/bump_mcp_server_version succeeds,
-        mirroring switch_model's "rebuild the compiled graph in place, same
-        checkpointer/thread_id" shape.
+        """Take a connector's tools added, removed or changed after this conversation opened. Its
+        agent is rebuilt on its next use (`RebuiltOnUse`), not here: the change is made for every
+        open conversation at once."""
+        self._pending_tools = list(extra_tools)
 
-        No websocket parameter, unlike switch_model: this
-        runs from a REST endpoint handler, not in response to a message
-        from *this* thread's own client, so there is nothing to reply to
-        and no previous-state revert to report -- a failure here (e.g. a
-        newly-added MCP tool with a schema create_agent rejects) is logged
-        and this session's tools are simply left as they were, same
-        "don't corrupt a working session" posture as switch_model's own
-        except-and-revert branch, just without a websocket to notify.
-        Guarded by _turn_lock so this can't race a concurrent
-        handle_user_message call on the same session's self.lg_agent/
-        self.config, same reasoning as resume_after_reconnect above."""
-        async with self._turn_lock:
-            self._extra_tools = list(extra_tools)
-            try:
-                lg_tools = self._build_lg_tools(self.model)
-                new_lg_agent = self._build_lg_agent(self.model, self._model_string, lg_tools)
-            except Exception:  # noqa: BLE001 -- a bad connector must not corrupt this session
-                logger.exception(
-                    "refresh_extra_tools: failed to rebuild lg_agent for thread %r, "
-                    "keeping its previous tool set",
-                    self.thread_id,
-                )
-                return
-            self.lg_agent = new_lg_agent
-            self._gated_tool_risks = risks_of_gated_tools(lg_tools)
+    def apply_pending_tools(self) -> None:
+        tools, self._pending_tools = self._pending_tools, None
+        if tools is None:
+            return
+        previous, self._extra_tools = self._extra_tools, tools
+        try:
+            lg_tools = self._build_lg_tools(self.model)
+            agent = self._build_lg_agent(self.model, self._model_string, lg_tools)
+        except Exception:  # noqa: BLE001 -- a bad connector must not corrupt this session
+            logger.exception("Rebuilding thread %r with new connector tools failed; it keeps "
+                             "its previous tools", self.thread_id)  # fmt: skip
+            self._extra_tools = previous
+            return
+        self.lg_agent, self._gated_tool_risks = agent, risks_of_gated_tools(lg_tools)
 
     def _build_agent(self) -> Any:
         return build_coordinator_agent(
