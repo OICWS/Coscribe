@@ -47,6 +47,11 @@ coscribe runs on your own computer.
   an hour), each is in the audit log by size and outcome, and the event is outside content: the
   run keeps the task's permissions and autonomy. While no such task is on, the port is free, and
   another program on the machine could take it and read the keys senders send to it.
+- **Steps a run adds when a step fails** (decision 0042, only for a task at proactive or above)
+  are planned by a model from content that may come from outside. They hold only tool, model and
+  check steps, every value they write must already be in the task or the loop's item, and each
+  tool that does more than read waits for your yes, even with no one watching. They are kept
+  only when you save them.
 - **Skills and connectors from elsewhere** run with the access you give them;
   read what you add.
 
