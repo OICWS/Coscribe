@@ -310,6 +310,24 @@ def _task_and_draft_routes(router: APIRouter, state: AppState) -> None:
         response_model=None,
     )
 
+    async def accept_workspace_notes(
+        thread_id: str, body: FolderBriefRequest
+    ) -> dict[str, Any] | JSONResponse:
+        """The person accepts the notes and skills one of the conversation's folders keeps in
+        `.coscribe/`, as they are now (decision 0044)."""
+        session = _get_session(thread_id)
+        folder = next((f for f in session._assembly.folders() if str(f) == body.path), None)
+        if folder is None:
+            return JSONResponse({"error": "Not a folder of this conversation"}, status_code=404)
+        return {"workspace": session._assembly.workspace_folders.accept(folder)}
+
+    router.add_api_route(
+        "/api/threads/{thread_id}/workspace-notes",
+        accept_workspace_notes,
+        methods=["POST"],
+        response_model=None,
+    )
+
     async def export_thread(thread_id: str) -> Response:
         text = await (await _get_session_async(thread_id))._history.export_markdown()
         name = f"conversation-{thread_id[:8]}.md"

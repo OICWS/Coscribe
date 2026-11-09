@@ -99,9 +99,10 @@ Last reviewed: 2026-11-06.
 
 ## Later (wanted, not scheduled)
 
-- A workspace kept like a repository: a `.coscribe/` folder per workspace with `memory.md`, skills,
-  workflows and uploads sorted by kind and named by what they hold, shown as a pinned group in the
-  Files panel (`docs/log/2026-11-09-files-panel.md`). Needs a decision record first.
+- A workspace's uploads in `.coscribe/uploads/<kind>/`, pasted pictures named by date and time and
+  a one-line description of each from the side model (decision 0044, its second part; the notes
+  and skills shipped: `docs/log/2026-11-09-workspace-notes.md`). Later still: `workflows/` and
+  `agents/` read from there, and notes coscribe writes by itself from a person's corrections.
 
 - A scheduled task changed by describing the change in words, from the task page's simple view
   (#843): today a person edits steps in the detailed view or asks in a conversation. Needs a

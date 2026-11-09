@@ -809,7 +809,11 @@ gitignored by default -- track it yourself if you want shared/team memory) holds
 your global instructions: Settings › General › Global instructions edits it, and whatever
 is in it is sent to the model in every conversation. Only you write to it: the
 model can offer a line with `remember` (when you say "always..." or "from now on..."), shown
-as a question card, and the line is added only if you press Save. It is meant to stay a short, curated list (a
+as a question card, and the line is added only if you press Save everywhere. The same card offers
+Save for this folder, which adds it to the folder's own notes, `.coscribe/memory.md`, read only
+when a conversation works in that folder. A folder's notes and its skills in
+`.coscribe/skills/<name>/SKILL.md` are used once you press "Use them" under "About this folder"
+in the side panel, and asked about again when they change outside coscribe (decision 0044). It is meant to stay a short, curated list (a
 preference, a stable detail) -- not a running log, and not addressed by
 `/compact` (which only
 ever touches a single thread's conversation history, a much faster-growing

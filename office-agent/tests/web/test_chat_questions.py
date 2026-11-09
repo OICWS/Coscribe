@@ -366,7 +366,7 @@ def test_a_pending_question_is_redelivered_every_time_the_conversation_is_reopen
     assert next(m for m in messages if m["type"] == "agent_message")["text"] == "done"
 
 
-@pytest.mark.parametrize("answer", ["Save", "Don't save"])
+@pytest.mark.parametrize("answer", ["Save everywhere", "Save for this folder", "Don't save"])
 def test_remember_writes_the_line_only_when_the_user_saves_it(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, answer: str
 ) -> None:
@@ -389,9 +389,15 @@ def test_remember_writes_the_line_only_when_the_user_saves_it(
             _receive_until(ws, "tasks_changed")
 
     tool_messages = [m for m in fake_model.received[-1] if isinstance(m, ToolMessage)]
-    if answer == "Save":
+    folder_notes = tmp_path / "workspace" / ".coscribe" / "memory.md"
+    if answer == "Save everywhere":
         assert memory.read_text(encoding="utf-8") == f"- Write in English.\n- {line}\n"
         assert "Saved" in str(tool_messages[-1].content)
+    elif answer == "Save for this folder":
+        assert memory.read_text(encoding="utf-8") == "- Write in English.\n"
+        assert folder_notes.read_text(encoding="utf-8") == f"- {line}\n"
+        assert "Saved to the notes" in str(tool_messages[-1].content)
     else:
         assert memory.read_text(encoding="utf-8") == "- Write in English.\n"
+        assert not folder_notes.exists()
         assert "didn't save" in str(tool_messages[-1].content)

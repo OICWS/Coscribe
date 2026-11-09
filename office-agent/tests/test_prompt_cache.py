@@ -152,6 +152,26 @@ async def test_the_context_is_sent_once_and_again_when_it_changes(
     assert [strip_mode_note(t) for t in (first, second, third)] == ["first", "second", "third"]
 
 
+async def test_a_folders_own_notes_join_the_context_once_accepted_never_the_system_prompt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    folder = tmp_path / "reports"
+    (folder / ".coscribe").mkdir(parents=True)
+    (folder / ".coscribe" / "memory.md").write_text("- Sent versions live in final/.\n")
+    model = _RecordingModel(responses=[AIMessage(content=str(i)) for i in range(2)])
+    session = _session(tmp_path, monkeypatch, model, "t1", folder)
+
+    await session.handle_user_message("first", _Socket())  # type: ignore[arg-type]
+    first = _last_user_text(model)
+    session._assembly.workspace_folders.accept(folder)
+    await session.handle_user_message("second", _Socket())  # type: ignore[arg-type]
+    second = _last_user_text(model)
+
+    assert "final/" not in first and "hasn't accepted" in first
+    assert "- Sent versions live in final/." in second
+    assert "final/" not in str(model.received[-1][0].content)
+
+
 def test_last_conversation_context_reads_the_most_recent_note() -> None:
     old = HumanMessage(context_note("folders: /a") + "hi")
     plain = HumanMessage("no note here")

@@ -51,10 +51,11 @@ def _entry(item: os.DirEntry[str]) -> dict[str, Any] | None:
 
 
 def list_folder(folder: Path) -> dict[str, Any]:
-    """One level of a folder: folders first, then files, each by name ignoring case."""
+    """One level of a folder: its `.coscribe` first, then folders, then files, each by name
+    ignoring case."""
     with os.scandir(folder) as items:
         entries = [e for item in items if not _hidden(item.name) and (e := _entry(item))]
-    entries.sort(key=lambda e: (not e["dir"], e["name"].casefold()))
+    entries.sort(key=lambda e: (e["name"] != ".coscribe", not e["dir"], e["name"].casefold()))
     return {"entries": entries[:_MAX_ENTRIES], "truncated": len(entries) > _MAX_ENTRIES}
 
 

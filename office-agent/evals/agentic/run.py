@@ -62,7 +62,7 @@ class ScriptedUser(office.Recorder):
         if kind == "question_required" and _is_remember(data["questions"]):
             self.saves += 1
             self.questions += 1
-            self.session.resolve_question(data["id"], ["Save" for _ in data["questions"]])
+            self.session.resolve_question(data["id"], ["Save everywhere" for _ in data["questions"]])
             return
         await super().send_json(data)
 
