@@ -90,6 +90,7 @@ def _settings(tmp_path: Path) -> Settings:
         auto_title_threads=False,
         prompt_suggestions=False,
         folder_briefs=False,
+        save_offers=False,
     )  # type: ignore[arg-type]
 
 
