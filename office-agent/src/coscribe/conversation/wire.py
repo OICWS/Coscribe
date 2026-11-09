@@ -386,6 +386,15 @@ class PromptSuggestionEvent(TypedDict):
     text: str
 
 
+class SaveOfferEvent(TypedDict):
+    """A turn did a job someone would do again: offer to save it as a workflow or a skill.
+    `steps` is how many steps the turn took, `name` a short name for the job."""
+
+    type: Literal["save_offer"]
+    steps: int
+    name: str
+
+
 class ErrorEvent(TypedDict):
     type: Literal["error"]
     message: str
@@ -462,6 +471,7 @@ ServerEvent = (
     | TurnStartedEvent
     | ThreadTitledEvent
     | PromptSuggestionEvent
+    | SaveOfferEvent
     | ErrorEvent
     | AgentMessageEvent
     | CompactedEvent

@@ -158,6 +158,7 @@ def _session(
         auto_title_threads=False,
         prompt_suggestions=False,
         folder_briefs=False,
+        save_offers=False,
         default_permission_mode="manual",
         code_module_enabled=enabled,
         code_model=code_model,

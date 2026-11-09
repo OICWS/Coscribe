@@ -378,6 +378,16 @@ export interface PromptSuggestionEvent {
   text: string;
 }
 
+/**
+ * A turn did a job someone would do again: offer to save it as a workflow or a skill.
+ * `steps` is how many steps the turn took, `name` a short name for the job.
+ */
+export interface SaveOfferEvent {
+  type: "save_offer";
+  steps: number;
+  name: string;
+}
+
 export interface ErrorEvent {
   type: "error";
   message: string;
@@ -453,6 +463,7 @@ export type ServerEvent =
   | TurnStartedEvent
   | ThreadTitledEvent
   | PromptSuggestionEvent
+  | SaveOfferEvent
   | ErrorEvent
   | AgentMessageEvent
   | CompactedEvent

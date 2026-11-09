@@ -48,6 +48,7 @@ from .artifact_tools import build_artifact_tools
 from .context_usage import build_context_breakdown
 from .folder_brief import FolderBriefKeeper
 from .page_tools import build_page_tools
+from .save_offer import SaveOffer
 from .turn_text import build_instructions
 
 
@@ -70,8 +71,16 @@ class AssemblyHost(Protocol):
     _last_usage_metadata: UsageMetadata | None
     _base_tools: list[Callable[..., Any] | BaseTool]
     _extra_tools: list[Callable[..., Any] | BaseTool]
+    # Read by SaveOffer at the end of a turn.
+    lg_agent: Any
+    config: Any
+    _stop_requested: bool
+    _pending_approvals: dict[str, Any]
+    _pending_questions: dict[str, Any]
 
     def workspace_scope(self) -> WorkspaceScope: ...
+
+    def tool_catalog(self) -> dict[str, Any]: ...
 
     def _subagent_host(self, model: Any) -> SubAgentHost: ...
 
@@ -111,6 +120,10 @@ class AgentAssembly:
             self.side_model,
             lambda: self._host.settings.folder_briefs,
         )
+
+    @cached_property
+    def save_offer(self) -> SaveOffer:
+        return SaveOffer(self._host, self.side_model)
 
     def folders(self) -> list[Path]:
         return [Path(self._host.workspace_root), *self._host.extra_folders]
@@ -291,3 +304,26 @@ class AgentAssembly:
             auto_compact_threshold=self._host.settings.auto_compact_threshold,
             last_total_tokens=last_total,
         )
+
+
+class _RebuildsOnUse(Protocol):
+    def apply_pending_tools(self) -> None: ...
+
+
+class RebuiltOnUse:
+    """An attribute of a conversation that a connector change makes stale (its agent, its connector
+    tools, the risks of its gated tools), read through `apply_pending_tools`: rebuilt on first use,
+    not when the change is made, since rebuilding every open conversation at once ran on the
+    server's loop, about a second each, and with dozens open held the whole server."""
+
+    def __set_name__(self, owner: type, name: str) -> None:
+        self._slot = f"_{name}_built"
+
+    def __get__(self, host: _RebuildsOnUse | None, owner: type | None = None) -> Any:
+        if host is None:
+            return self
+        host.apply_pending_tools()
+        return vars(host)[self._slot]
+
+    def __set__(self, host: _RebuildsOnUse, value: Any) -> None:
+        vars(host)[self._slot] = value

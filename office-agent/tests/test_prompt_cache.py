@@ -90,6 +90,7 @@ def _session(
         auto_title_threads=False,
         prompt_suggestions=False,
         folder_briefs=False,
+        save_offers=False,
     )
     folder.mkdir(parents=True, exist_ok=True)
     return ChatSessionLG(

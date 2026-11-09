@@ -166,19 +166,10 @@ class ConnectorManager:
         return True, None
 
     async def refresh_all_sessions_extra_tools(self) -> None:
-        """Add/remove/bump_mcp_server only ever update `tools`, which
-        get_session in web/app.py only reads when constructing a *brand-new*
-        ChatSessionLG -- a connector enabled mid-conversation would never show
-        up in that same, already-open thread, only in threads started
-        afterwards. Called once at the end of each of the three
-        connector-mutating endpoints in the connectors routes (not from inside
-        disconnect_mcp_server_lg/connect_and_register_mcp_server_lg
-        themselves, since add/bump call both back to back and would
-        otherwise rebuild every open session's graph twice for one
-        request). Best-effort per session -- ChatSessionLG.refresh_extra_
-        tools already logs-and-keeps-previous-tools on its own failure, so
-        one broken session's rebuild can't block the others from picking
-        up the change."""
+        """Hand every open conversation the connectors' tools as they are now; each rebuilds its
+        agent on its next use (`RebuiltOnUse` in `conversation/agent_assembly.py`). Called once at
+        the end of each connector-changing route, not from inside connect or disconnect, which add
+        and bump call back to back."""
         tools = self.session_extra_tools()
         for session in self._sessions.values():
             await session.refresh_extra_tools(tools)

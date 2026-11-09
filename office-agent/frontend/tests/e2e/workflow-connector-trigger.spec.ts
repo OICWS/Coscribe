@@ -13,9 +13,6 @@ import { pickOption } from "./helpers";
 const FIXTURE = resolve(dirname(fileURLToPath(import.meta.url)), "fixtures", "inbox_mcp.py");
 
 test("a workflow task can start on each new item in a connector", async ({ page }) => {
-  // Adding and removing a connector rebuilds every open conversation's agent, and late in the
-  // suite there are dozens: each takes about 50 s on CI's runner, on main as on this branch.
-  test.setTimeout(150_000);
   const dir = mkdtempSync(join(tmpdir(), "coscribe-e2e-inbox-"));
   const inbox = join(dir, "inbox.json");
   writeFileSync(

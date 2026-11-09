@@ -28,9 +28,9 @@ a user enabled a connector mid-conversation and it had no effect on that
 same, already-open thread (confirmed against this exact "next new session
 only" gap). add_mcp_server/remove_mcp_server/bump_mcp_server_version below
 now all call ConnectorManager.refresh_all_sessions_extra_tools() after mutating
-the manager's tools, which calls ChatSessionLG.refresh_extra_tools on every
-currently-open session -- same "rebuild the compiled graph in place, same
-checkpointer/thread_id" mechanism switch_model already used for models.
+the manager's tools, which hands them to every currently-open session; each
+rebuilds its compiled graph in place (same checkpointer/thread_id) on its next
+use, not all at once.
 Providers/skills don't get the same treatment here: rebuilding
 *every* open session's graph on *every* kind of config change is
 meaningfully more work and risk than closing the one gap a real user

@@ -3,6 +3,7 @@ system a Slides conversation starts with."""
 
 from __future__ import annotations
 
+import re
 import unicodedata
 from typing import Any, Protocol
 
@@ -134,9 +135,29 @@ TITLE_INSTRUCTIONS = (
 _TITLE_WIDTH = 40
 
 
+# Some models (DeepSeek among them) sometimes answer the title request with reasoning or a
+# tool call written out as text: a `<think>` block, a `<tool_call>` tag, or their own
+# `<｜tool▁calls▁begin｜>` token, with the call's JSON after it. None of that is a title.
+_REASONING = re.compile(r"<(think|thinking|reasoning)>.*?(</\1>|$)", re.IGNORECASE | re.DOTALL)
+_TOOL_CALL = re.compile(
+    r"<\s*/?\s*(tool_calls?|function_calls?|invoke)\b|<[|｜][^>]*tool", re.IGNORECASE
+)
+_TAG = re.compile(r"<[|｜][^>]*[|｜]>|</?[A-Za-z][\w:-]*/?>")
+
+
 def clean_title(text: str) -> str:
-    title = " ".join(text.strip().splitlines()[0].split()) if text.strip() else ""
-    return _fit_title(title.strip("\"'“”「」《》*#。.").strip())
+    """The model's reply as a sidebar title, or "" when it holds no title, so that the first message
+    stays the label and the end of the first turn asks again."""
+    text = _REASONING.sub("", text)
+    call = _TOOL_CALL.search(text)
+    if call:
+        text = text[: call.start()]
+    lines = [line for line in (_TAG.sub("", line).strip() for line in text.splitlines()) if line]
+    title = " ".join(lines[0].split()) if lines else ""
+    title = title.strip("\"'“”「」《》*#。.").strip()
+    if title.startswith(("{", "[")):
+        return ""
+    return _fit_title(title)
 
 
 def _fit_title(title: str) -> str:

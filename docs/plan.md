@@ -21,8 +21,9 @@ Last reviewed: 2026-11-06.
    (#822), the delivery check of the Office files a turn wrote (#824), and, put before step 5 by
    the maintainer, a background script's end reported to its conversation (#826), Stop keeping the
    reply so far (#827) and a script moving to the background at its time limit or when the person
-   writes mid-turn (`docs/log/2026-11-07-script-to-background.md`), and a brief of what each folder
-   holds (`docs/log/2026-11-08-folder-brief.md`). Next: an offer to save a job as a workflow or skill; an in-chat connector card (decision record and independent review first).
+   writes mid-turn (`docs/log/2026-11-07-script-to-background.md`); a brief of what each folder
+   holds (`docs/log/2026-11-08-folder-brief.md`) and an offer to save a job as a workflow or skill
+   (`docs/log/2026-11-08-save-offer.md`). Next: an in-chat connector card (decision record and independent review first).
 3. **Workflows** (#843; decisions 0028 to 0040). Phases P0 to P5 are done
    (`docs/log/`, 2026-10-29 to 2026-11-02). Parallel steps are merged (#789, decision 0036
    proposed), and so are the simple view in words (#839, decision 0037) and the run page that
@@ -34,6 +35,8 @@ Last reviewed: 2026-11-06.
 
 ## Open, smaller
 
+- **Hidden issues:** when the suspended kurtosisOC account is restored, close its open issues as
+  duplicates of #843 to #846 (`docs/log/2026-11-08-github-activity-pace.md`).
 - **Docs:** a Doc still writes plans the brief did not give (a proposal's migration phases;
   `docs/log/2026-10-29-doc-writing-rules.md`). Version history for documents is wanted, not in v1.
   The Word panel is frozen (decisions 0025, 0027): its remaining items are dropped.
