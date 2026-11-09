@@ -387,11 +387,12 @@ def render_conversation(history: list[dict[str, Any]]) -> tuple[str, list[str]]:
     used: list[str] = []
     call_number = 0
     for entry in describe_browser_refs(history):
-        if entry["kind"] == "user":
+        # A steer is the person writing while a turn ran: their words like any other message.
+        if entry["kind"] in ("user", "steer"):
             lines.append(f"[user] {_clip(entry['text'], _TEXT_CHARS)}")
         elif entry["kind"] == "agent":
             lines.append(f"[assistant] {_clip(entry['text'], _TEXT_CHARS)}")
-        else:
+        elif entry["kind"] == "tool":
             call_number += 1
             args = _clip(_as_json(entry["arguments"]), _ARGS_CHARS)
             result = _clip(_as_json(entry["result"]), _RESULT_CHARS)
