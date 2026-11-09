@@ -12,6 +12,7 @@ import {
 import { useTitleBarColors } from "../../lib/titleBar";
 import { BackgroundTasksPanel } from "../BackgroundTasksPanel";
 import { BrowserPanel } from "../BrowserPanel";
+import { FilesPanel } from "../files/FilesPanel";
 import { PlanPanel } from "../PlanPanel";
 import { ViewerPanel } from "../ViewerPanel";
 import { DockBackIcon, PinIcon } from "./windowIcons";
@@ -144,6 +145,10 @@ function PanelContent({ state }: { state: PanelWindowState }) {
         onComments={(comments) => sendPanelWindowAction({ type: "planComments", plan, comments })}
       />
     );
+  }
+  if (state.panel === "files") {
+    const onView = (path: string) => isViewable(path) && (sendPanelWindowAction({ type: "view", path }), true);
+    return <FilesPanel threadId={state.threadId} refreshKey={state.refreshKey} onView={onView} />;
   }
   if (state.path) {
     return (

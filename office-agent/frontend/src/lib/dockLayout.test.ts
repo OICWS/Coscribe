@@ -85,7 +85,7 @@ describe("the rest", () => {
 
   it("accepts only a well-formed saved tree", () => {
     expect(isDockNode(twoColumns)).toBe(true);
-    expect(isDockNode({ kind: "panel", id: "files" })).toBe(false);
+    expect(isDockNode({ kind: "panel", id: "nonsense" })).toBe(false);
     expect(isDockNode({ kind: "split", dir: "row", sizes: [1], children: [] })).toBe(false);
   });
 });
