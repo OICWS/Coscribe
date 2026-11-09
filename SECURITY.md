@@ -34,7 +34,8 @@ coscribe runs on your own computer.
   responses covers common encodings only, and a host you allow a secret to be
   sent to could echo it back.
 - **Connectors** sign in through the service's own page in your browser; their
-  tokens are kept in the keychain (or a 0600 file when there is none).
+  tokens are kept in the keychain (or a 0600 file when there is none). The model can offer one
+  from the built-in list on a card in the chat (decision 0041), but only your click adds it.
 - **A task that starts on something new in a connector** (decision 0039) asks that connector by
   itself every few minutes, with no one watching. It asks only a tool the connector marks
   read-only, or one you confirmed in the task form, and never one blocked in Settings; each check
