@@ -260,9 +260,8 @@ class ChatSessionLG:
         # shared state (_pending_tool_args, _stop_requested). resolve_approval/request_stop
         # stay outside it: they must reach the turn in flight, not queue behind it.
         self._turn_lock = TurnLock(self._turn_lock_changed)
-        # Notes the user sent during a turn, (id, text), not yet read by
-        # the model.
-        self._steers: list[tuple[str, str, list[str]]] = []  # (id, text, pictures), unread
+        # Notes the user sent during a turn, (id, text, pictures), not yet read by the model.
+        self._steers: list[tuple[str, str, list[str]]] = []
         # The task currently holding _turn_lock (handle_user_message or
         # resume_after_reconnect), if any -- see abandon_orphaned_turn's
         # docstring for why this exists: a turn lock alone would let an
@@ -513,9 +512,8 @@ class ChatSessionLG:
             future.set_result(answer)
 
     def add_steer(self, steer_id: object, text: str | None, images: list[str] | None) -> None:
-        """A note for the turn in progress, with any pictures attached to it, read before its next
-        step (a script it waits on moves to the background, not to hold it). With no turn running,
-        it is sent as a message instead."""
+        """A note for the turn in progress, with its pictures, read before its next step (a script
+        it waits on moves to the background). With no turn running, it is sent as a message."""
         key = str(steer_id)
         self._steers = [s for s in self._steers if s[0] != key]
         if text is not None:
@@ -545,7 +543,6 @@ class ChatSessionLG:
             return
         steers, self._steers = self._steers, []
         text = "\n\n".join(note for _, note, _ in steers)
-        images = [url for _, _, pictures in steers for url in pictures]
         websocket: Any = self._live_websocket
         if websocket is not None:
             try:
@@ -555,7 +552,7 @@ class ChatSessionLG:
             except Exception:  # noqa: BLE001 -- the tab went away; run unwatched
                 websocket = None
         socket: Any = websocket or SilentSocket()
-        await self.handle_user_message(text, socket, images=images or None)
+        await self.handle_user_message(text, socket, [u for s in steers for u in s[2]] or None)
 
     def detach_command(self, script: str) -> bool:
         """From the running loop, which the background task announces itself to later."""

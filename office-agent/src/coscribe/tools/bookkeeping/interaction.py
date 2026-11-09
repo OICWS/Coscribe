@@ -140,10 +140,14 @@ def normalize_questions(args: dict[str, Any]) -> list[dict[str, Any]]:
     return questions
 
 
+# Closing the card while a review-or-save artifact is next reads as "not yet": a guessed
+# draft would put a card in front of someone who just said they aren't sure.
 QUESTIONS_DISMISSED = (
-    "The user closed the questions without answering. Don't ask them again; go "
-    "on with the most sensible choice and say which you made, or ask in your reply "
-    "if you can't go on without an answer."
+    "The user closed the questions without answering. Don't ask them again. If "
+    "your next step makes something for them to review or save (a workflow draft, "
+    "a scheduled task), don't make it: say in one line what you'd need to know, "
+    "then stop. Otherwise go on with the most sensible choice and say which you "
+    "made, or ask in your reply if you can't go on without an answer."
 )
 
 QUESTION_REPLIED = (

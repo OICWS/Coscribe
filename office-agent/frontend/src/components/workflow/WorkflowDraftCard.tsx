@@ -9,6 +9,7 @@ import {
   CheckCircleIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  CloseIcon,
   FileTextIcon,
   WorkflowIcon,
   XCircleIcon,
@@ -336,7 +337,15 @@ export function WorkflowDraftCard({ entry }: { entry: WorkflowDraftEntry }) {
 
 /** The newest unsaved draft, kept in reach at the bottom of the
  * conversation while its card is scrolled out of view. */
-export function PinnedDraftBar({ entry, onShow }: { entry: WorkflowDraftEntry; onShow: () => void }) {
+export function PinnedDraftBar({
+  entry,
+  onShow,
+  onClose,
+}: {
+  entry: WorkflowDraftEntry;
+  onShow: () => void;
+  onClose: () => void;
+}) {
   const cards = useContext(DraftCardsContext);
   const status = draftStatus(entry, cards);
   return (
@@ -361,6 +370,15 @@ export function PinnedDraftBar({ entry, onShow }: { entry: WorkflowDraftEntry; o
         onClick={() => cards.onReview?.(entry)}
       >
         {entry.triggerId ? "Review changes" : "Review and save"}
+      </button>
+      <button
+        type="button"
+        aria-label="Close"
+        title="Hide this bar; the draft stays in the conversation"
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
+        onClick={onClose}
+      >
+        <CloseIcon className="h-4 w-4" />
       </button>
     </div>
   );
