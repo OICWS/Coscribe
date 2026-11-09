@@ -157,16 +157,19 @@ def oversized(item: Any) -> bool:
     return len(_canonical(item)) > MAX_ITEM_CHARS
 
 
-def room(runs: Iterable[ScheduledRun], per_hour: int, now: datetime) -> int:
-    """How many runs new items may start now: within the hour's limit, beside the ones going."""
+def room(
+    runs: Iterable[ScheduledRun], per_hour: int, now: datetime, source: str = "connector"
+) -> int:
+    """How many runs new items (or events) may start now: within the hour's limit, beside the
+    ones going."""
     hour_ago = (now - timedelta(hours=1)).isoformat()
-    mine = [run for run in runs if run.source == "connector"]
+    mine = [run for run in runs if run.source == source]
     in_hour = sum(run.started_at >= hour_ago for run in mine)
     going = sum(run.status == "running" for run in mine)
     return max(0, min(per_hour - in_hour, MAX_RUNNING - going))
 
 
-def _missed(item: Any, reason: str) -> dict[str, str]:
+def missed_item(item: Any, reason: str) -> dict[str, str]:
     return {"at": datetime.now().isoformat(timespec="seconds"), "item": item_title(item),
             "reason": reason}  # fmt: skip
 
@@ -236,7 +239,7 @@ class ConnectorItems:
                     raise ValueError(f"It is over {MAX_ITEM_CHARS // 1000} KB")
                 inputs = event_inputs(specs, rule.inputs_from, item, date.today())
             except ValueError as exc:
-                missed.append(_missed(item, str(exc)))
+                missed.append(missed_item(item, str(exc)))
                 taken.append(key)
                 continue
             if len(starting) < free:

@@ -338,6 +338,8 @@ def _settings(tmp_path: Path, **overrides: object) -> Settings:
         "auto_title_threads": False,
         "prompt_suggestions": False,
         "folder_briefs": False,
+        # A free port: tests run side by side, and 8790 may be taken.
+        "webhook_port": 0,
     }
     values.update(overrides)
     return Settings(_env_file=None, **values)  # type: ignore[call-arg, arg-type]

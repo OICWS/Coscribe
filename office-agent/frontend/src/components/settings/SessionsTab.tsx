@@ -9,6 +9,7 @@ import {
   KEEP_AWAKE_ON_BATTERY_KEY,
   PROMPT_SUGGESTIONS_KEY,
   SIDE_MODEL_KEY,
+  WEBHOOK_PORT_KEY,
 } from "./fields";
 import { ConfiguredModelSelect } from "./ConfiguredModelSelect";
 import { SelectMenu } from "../SelectMenu";
@@ -17,6 +18,28 @@ import { SettingRow, SettingRows, SettingsSection } from "./SettingRow";
 interface SessionsTabProps {
   values: Record<string, string>;
   onChange: (key: string, value: string) => void;
+}
+
+/** Where tasks that start on a program's events listen (decision 0040). */
+function WebhookPortRow({ values, onChange }: SessionsTabProps) {
+  return (
+    <SettingRow
+      label="Port for task events"
+      description="A task that starts when a program sends it an event listens on this port, on this computer only. Change it if another program uses 8790, then restart Coscribe; programs then need the new address."
+      control={
+        <input
+          aria-label="Port for task events"
+          type="number"
+          min={1024}
+          max={65535}
+          placeholder="8790"
+          className="w-24 rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm outline-none"
+          value={values[WEBHOOK_PORT_KEY] ?? ""}
+          onChange={(e) => onChange(WEBHOOK_PORT_KEY, e.target.value)}
+        />
+      }
+    />
+  );
 }
 
 export function SessionsTab({ values, onChange }: SessionsTabProps) {
@@ -71,6 +94,7 @@ export function SessionsTab({ values, onChange }: SessionsTabProps) {
             />
           }
         />
+        <WebhookPortRow values={values} onChange={onChange} />
         {isElectron() && (
           <>
             <SettingRow

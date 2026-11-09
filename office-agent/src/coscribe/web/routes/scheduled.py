@@ -196,10 +196,13 @@ def _workflow_routes(router: APIRouter, state: AppState) -> None:
 
 
 def _items_checked(store: ScheduledTriggerStore, trigger: Any) -> dict[str, Any]:
-    """A connector task's latest check and the items that started no run (decision 0039)."""
-    if trigger.schedule.kind != "connector":
-        return {}
-    return {"connector_check": store.connector_items.shown(trigger.trigger_id)}
+    """A connector task's latest check and the items that started no run (decision 0039); a
+    webhook task's latest event and the events that started none (decision 0040)."""
+    if trigger.schedule.kind == "connector":
+        return {"connector_check": store.connector_items.shown(trigger.trigger_id)}
+    if trigger.schedule.kind == "webhook":
+        return {"webhook": store.webhooks.shown(trigger.trigger_id)}
+    return {}
 
 
 def _task_routes(router: APIRouter, state: AppState) -> None:
@@ -248,6 +251,7 @@ def _task_routes(router: APIRouter, state: AppState) -> None:
             store.save(trigger)
         if payload.from_draft:
             record_draft(store, trigger, payload.from_draft)
+        await state.webhooks.sync()
         return JSONResponse(trigger.to_dict())
 
     @router.put("/api/scheduled-tasks/{trigger_id}")
@@ -276,6 +280,7 @@ def _task_routes(router: APIRouter, state: AppState) -> None:
             return JSONResponse({"error": str(exc)}, status_code=404)
         except ValueError as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
+        await state.webhooks.sync()
         return JSONResponse(trigger.to_dict())
 
     @router.patch("/api/scheduled-tasks/{trigger_id}")
@@ -288,6 +293,7 @@ def _task_routes(router: APIRouter, state: AppState) -> None:
             return JSONResponse({"error": str(exc)}, status_code=404)
         except ValueError as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
+        await state.webhooks.sync()
         return JSONResponse(trigger.to_dict())
 
 
@@ -533,6 +539,7 @@ def _note_and_lifecycle_routes(router: APIRouter, state: AppState) -> None:
             return JSONResponse({"error": f"No scheduled task {trigger_id!r}"}, status_code=404)
         trigger.enabled = False
         store.save(trigger)
+        await state.webhooks.sync()
         return JSONResponse(trigger.to_dict())
 
     @router.post("/api/scheduled-tasks/{trigger_id}/resume")
@@ -544,6 +551,7 @@ def _note_and_lifecycle_routes(router: APIRouter, state: AppState) -> None:
         trigger.enabled = True
         trigger.next_run_at = compute_next_run_at(trigger.schedule, datetime.now())
         store.save(trigger)
+        await state.webhooks.sync()
         return JSONResponse(trigger.to_dict())
 
     @router.delete("/api/scheduled-tasks/{trigger_id}")
@@ -553,6 +561,7 @@ def _note_and_lifecycle_routes(router: APIRouter, state: AppState) -> None:
         if trigger is None or not store.delete(trigger_id):
             return JSONResponse({"error": f"No scheduled task {trigger_id!r}"}, status_code=404)
         await _delete_run_threads(trigger.runs)
+        await state.webhooks.sync()
         return JSONResponse({"deleted": trigger_id})
 
 

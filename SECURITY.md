@@ -40,6 +40,13 @@ coscribe runs on your own computer.
   read-only, or one you confirmed in the task form, and never one blocked in Settings; each check
   that found something is in the audit log. What comes back is outside content, and the runs it
   starts keep the task's permissions and autonomy.
+- **A task that starts on an event a program sends** (decision 0040) has a listener of its own on
+  127.0.0.1 (port 8790 by default), on only while such a task is on. A program must send the
+  task's key, a random 32-byte value kept in the keychain and checked by its hash; a request from
+  a web page (with an `Origin` header) is refused. Events are limited per task (3 runs at once, 30
+  an hour), each is in the audit log by size and outcome, and the event is outside content: the
+  run keeps the task's permissions and autonomy. While no such task is on, the port is free, and
+  another program on the machine could take it and read the keys senders send to it.
 - **Skills and connectors from elsewhere** run with the access you give them;
   read what you add.
 

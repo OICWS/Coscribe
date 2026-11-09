@@ -4,10 +4,11 @@
 Owns the server process: the app factory and the `coscribe-web` entry point (`app.py`), the
 first-run setup page (`setup_app.py` with `create_setup_app`), the objects every route shares (`state.py`), one router
 module per area under `routes/` (`ws.py` the chat and browser sockets; `threads.py`, `files.py`,
-`skills.py`, `scheduled.py`, `internal.py`, `slides.py` the Slides panel's reads, `artifacts.py` the Artifacts page's list, thumbnails and opening (`artifact_adoption.py` registers what conversations created); `settings/` and `connectors/` one module per
+`skills.py`, `scheduled.py`, `webhooks.py` a webhook task's address and key, `internal.py`, `slides.py` the Slides panel's reads, `artifacts.py` the Artifacts page's list, thumbnails and opening (`artifact_adoption.py` registers what conversations created); `settings/` and `connectors/` one module per
 resource; `settings/config.py` holds the allowlists of `.env` settings the UI may read and write), request bodies (`schemas.py`), the connector catalog and the live connectors
 (`connector_catalog.py`, `connector_manager.py`), the provider catalog, the loop that fires due
-wakes and scheduled tasks (`scheduler.py`), background events for the tray (`background_events.py`),
+wakes and scheduled tasks (`scheduler.py`) and the listener a webhook task's events come to on
+127.0.0.1 (`webhook_listener.py`, decision 0040), background events for the tray (`background_events.py`),
 the browser panel (`browser_panel.py`, `browser_detect.py`) and the `Host`/`Origin` guard on every request and socket (`local_guard.py`). Does not own a conversation's turns
 or approvals (`conversation/`), the agent (`runtime_lg/`) or the UI (`frontend/`, built into `static/`).
 

@@ -20,6 +20,7 @@ from ..tools import (
 )
 from ..workflows import heals_to_revise, paused_at
 from .background_events import BackgroundEvent, BackgroundEventBus, run_event
+from .webhook_listener import WebhookListener
 
 
 class _LiveSession(Protocol):
@@ -51,11 +52,14 @@ class Scheduler:
         # Per run waiting for an answer: how many days in it was last reminded. Kept only while
         # the process runs: after a restart a run is reminded once more at most.
         self._reminded: dict[str, int] = {}
+        self.webhooks = WebhookListener(settings, self.event_started)
 
-    def start(self) -> None:
+    async def start(self) -> None:
         self._wake_poll_task = asyncio.create_task(self.wake_poll_loop())
+        await self.webhooks.sync()
 
     async def stop(self) -> None:
+        await self.webhooks.stop()
         if self._wake_poll_task is not None:
             self._wake_poll_task.cancel()
             try:
@@ -114,6 +118,11 @@ class Scheduler:
             # can't double-fire a task -- its schedule advances before the
             # run's first await (see poll_due_scheduled_tasks).
             self.track_background(asyncio.create_task(self.poll_scheduled_tasks_once()))
+            # A task paused or deleted by the agent turns the listener off at the next poll.
+            try:
+                await self.webhooks.sync()
+            except Exception:
+                logging.getLogger(__name__).exception("webhook: syncing the listener failed")
 
     async def poll_scheduled_tasks_once(self) -> None:
         try:
@@ -194,6 +203,10 @@ class Scheduler:
             self._settings.state_dir, trigger_id, run_id, self._get_session_async
         )
         await self.announce_run(trigger_id, run)
+
+    async def event_started(self, trigger_id: str, run_id: str, pruned: list[ScheduledRun]) -> None:
+        await self.delete_run_threads(pruned)
+        self.track_background(asyncio.create_task(self.execute_and_announce(trigger_id, run_id)))
 
     def track_background(self, task: asyncio.Task[Any]) -> None:
         # The event loop only holds weak references to tasks -- without a

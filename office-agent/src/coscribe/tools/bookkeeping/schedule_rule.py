@@ -1,5 +1,6 @@
 """When a scheduled task runs: its rule (a frequency and a time, every few minutes, when a file
-arrives in a folder, when something new shows up in a connector, or by hand) and the next time
+arrives in a folder, when something new shows up in a connector, when a program sends it an event,
+or by hand) and the next time
 that rule comes, in the machine's local wall-clock time (see `scheduled_tasks.py`)."""
 
 from __future__ import annotations
@@ -11,13 +12,14 @@ from typing import Any
 
 VALID_KINDS = (
     "manual", "once", "hourly", "daily", "weekdays", "weekly", "monthly", "every", "folder",
-    "connector",
+    "connector", "webhook",
 )  # fmt: skip
 # "every": how often a task that checks something may run (decision 0034); "connector": how often
 # its tool is asked (decision 0039).
 MIN_EVERY_MINUTES = 5
 MAX_EVERY_MINUTES = 1440
-# "connector": the runs new items may start in an hour, unless the task says otherwise.
+# "connector" and "webhook": the runs new items or events may start in an hour, unless the task says
+# otherwise.
 DEFAULT_PER_HOUR = 30
 MAX_PER_HOUR = 120
 
@@ -83,7 +85,8 @@ class ScheduleRule:
     # each new item in its answer starts a run. `inputs_from` maps an input to the item's field
     # ("sender.email"), "*" the whole item, "" the input's default; an input not named takes the
     # field of its own name. `trust_unmarked`: the person confirmed a tool its connector doesn't
-    # mark read-only.
+    # mark read-only. "webhook" (decision 0040): each event a program sends starts a run, its
+    # inputs filled as an item's are, within `per_hour`.
     tool: str | None = None
     args: dict[str, Any] = field(default_factory=dict)
     inputs_from: dict[str, str] = field(default_factory=dict)
@@ -131,7 +134,7 @@ class ScheduleRule:
 def compute_next_run_at(rule: ScheduleRule, after: datetime) -> str | None:
     """The next real occurrence strictly after `after`, as a naive local
     ISO string. None for a "manual" rule (never fires on its own -- only
-    via an explicit run-now), for a "folder" rule (a new file starts it),
+    via an explicit run-now), for a "folder" or "webhook" rule (a new file or an event starts it),
     and for a "once" rule whose `at` is already in the past -- create_trigger
     rejects the latter case up front (same "reject a past timestamp" posture
     sleep_until already has); pause/resume_scheduled_task never re-run
@@ -144,7 +147,7 @@ def compute_next_run_at(rule: ScheduleRule, after: datetime) -> str | None:
     `after` -- a no-op once the schedule's actual occurrences have caught
     up to or passed start_date."""
     after = _to_local_naive(after)
-    if rule.kind in ("manual", "folder"):
+    if rule.kind in ("manual", "folder", "webhook"):
         return None
     if rule.start_date is not None:
         floor = datetime.fromisoformat(rule.start_date) - timedelta(microseconds=1)

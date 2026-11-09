@@ -293,7 +293,7 @@ def _make_lifespan(
                     "Deleted %d scheduled-run conversation(s) whose task or run record is gone.",
                     swept,
                 )
-            scheduler.start()
+            await scheduler.start()
             yield
             await scheduler.stop()
             if mcp_connect_task is not None and not mcp_connect_task.done():
@@ -412,7 +412,6 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
     # populated before the app starts serving requests (see lifespan
     # below) -- _get_session is only reachable from ws_endpoint, which
     # can't run until the lifespan's own yield has happened.
-    #
     # connectors.tools does NOT have that same guarantee, deliberately:
     # see lifespan's own MCP-connect comment for why a session opened
     # very early may briefly see fewer tools than a slow-to-connect MCP
@@ -588,6 +587,7 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
         execute_and_announce=scheduler.execute_and_announce,
         announce_run=scheduler.announce_run,
         track_background=scheduler.track_background,
+        webhooks=scheduler.webhooks,
     )
     include_routers(app, state)
 

@@ -2,7 +2,7 @@
 
 Status: proposed (2026-11-08, OICWS; agreed with the maintainer in the project thread). Narrows
 0034 (a task may now start on a connector's new items). Issue #850, part of #843. A local webhook
-comes in a later record.
+is 0040.
 
 ## Context
 A task could start on the clock, by hand or on a new file. Handling "a new email with this label"

@@ -1,33 +1,17 @@
 import { useEffect, useState } from "react";
 import { checkConnectorTool, getTools } from "../lib/rest";
 import { connectorLabel } from "../lib/runLabels";
-import { MAX_PER_HOUR, type ScheduleForm } from "../lib/scheduleForm";
+import { matchingField } from "../lib/itemFields";
+import type { ScheduleForm } from "../lib/scheduleForm";
 import { connectorToolLabel } from "../lib/toolLabels";
 import type { ConnectorCheckResult, ToolInfo } from "../types/settings";
-import type { Workflow, WorkflowInput } from "../types/workflow";
+import type { Workflow } from "../types/workflow";
+import { InputsFromItem, PerHour } from "./ItemInputs";
 import { SelectMenu } from "./SelectMenu";
 import { ArgControl } from "./workflow/StepEditors";
 
 // A task that starts when something new shows up in a connector (decision 0039): which tool to
 // ask, with what, and which of the workflow's inputs each new item fills in.
-
-const control = "rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm outline-none";
-const WHOLE_ITEM = "*";
-
-function plain(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-/** The field an input takes when the person didn't pick one, as the backend picks it. */
-function matchingField(input: WorkflowInput, fields: string[]): string {
-  const wanted = new Set([plain(input.name), plain(input.label ?? "")].filter(Boolean));
-  return fields.find((path) => wanted.has(plain(path)) || wanted.has(plain(path.split(".").pop() ?? ""))) ?? "";
-}
-
-function sample(value: unknown): string {
-  const text = typeof value === "string" ? value : JSON.stringify(value);
-  return text.length > 40 ? `${text.slice(0, 39)}…` : text;
-}
 
 function ConnectorPicker({
   tools,
@@ -151,48 +135,6 @@ function CheckResult({ result }: { result: ConnectorCheckResult }) {
   );
 }
 
-function InputsFromItem({
-  inputs,
-  fields,
-  form,
-  onChange,
-}: {
-  inputs: WorkflowInput[];
-  fields: Record<string, unknown>;
-  form: ScheduleForm;
-  onChange: (form: ScheduleForm) => void;
-}) {
-  const paths = Object.keys(fields);
-  const saved = Object.values(form.inputsFrom).filter((path) => path && path !== WHOLE_ITEM && !(path in fields));
-  const options = [
-    { value: "", label: "Its default" },
-    { value: WHOLE_ITEM, label: "The whole item" },
-    ...[...paths, ...saved].map((path) => ({
-      value: path,
-      label: path in fields ? `${path} · ${sample(fields[path])}` : path,
-    })),
-  ];
-  return (
-    <div className="flex flex-col gap-1.5">
-      <span className="text-sm text-[var(--muted)]">Each new item fills in</span>
-      <div className="grid grid-cols-[minmax(0,140px)_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5">
-        {inputs.map((input) => (
-          <div key={input.name} className="contents">
-            <span className="truncate text-sm">{input.label || input.name}</span>
-            <SelectMenu
-              ariaLabel={`${input.label || input.name} from`}
-              variant="field"
-              value={form.inputsFrom[input.name] ?? matchingField(input, paths)}
-              options={options}
-              onChange={(path) => onChange({ ...form, inputsFrom: { ...form.inputsFrom, [input.name]: path } })}
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /** The controls a "connector" schedule needs, under the Frequency row. */
 export function ConnectorTriggerFields({
   form,
@@ -254,19 +196,7 @@ export function ConnectorTriggerFields({
           >
             {checking ? "Checking…" : "Check now"}
           </button>
-          <span className="text-[var(--muted)]">At most</span>
-          <input
-            aria-label="Runs an hour at most"
-            type="number"
-            min={1}
-            max={MAX_PER_HOUR}
-            className={`${control} w-16`}
-            value={form.perHour}
-            onChange={(e) =>
-              onChange({ ...form, perHour: Math.max(1, Math.min(MAX_PER_HOUR, Number(e.target.value) || 1)) })
-            }
-          />
-          <span className="text-[var(--muted)]">runs an hour</span>
+          <PerHour form={form} onChange={onChange} />
         </div>
       )}
       {result && <CheckResult result={result} />}

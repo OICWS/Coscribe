@@ -271,6 +271,11 @@ class Settings(BaseSettings):
     browser_* tools are offered and drive the tabs in the desktop app's
     Browser panel; unset (the plain web UI), they aren't offered at all."""
 
+    webhook_port: int = 8790
+    """The port the webhook listener takes on 127.0.0.1 while a task starts on events a program
+    sends it (decision 0040). Fixed, unlike the server's own, so the address a program was given
+    keeps working; 0 picks a free one (tests)."""
+
     wake_poll_seconds: int = 30
     """How often the web server checks for due sleep_until/sleep_for/
     wake_on/wake_on_event requests (tools/bookkeeping/selfwake.py) and resumes their

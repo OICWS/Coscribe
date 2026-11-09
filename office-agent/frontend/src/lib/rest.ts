@@ -1,5 +1,6 @@
 import type {
   ConnectorCheckResult,
+  WebhookInfo,
   DesignAsset,
   DesignSystem,
   DesignSystemSummary,
@@ -277,6 +278,13 @@ export const setConnectorToolPolicies = (name: string, tools: Record<string, Con
 /** Asks a connector's tool once, as a task that starts on its new items would (decision 0039). */
 export const checkConnectorTool = (tool: string, args: Record<string, unknown>, trustUnmarked: boolean) =>
   sendForResult<ConnectorCheckResult>("/api/mcp/check", "POST", { tool, args, trust_unmarked: trustUnmarked });
+const webhookPath = (taskId: string) => `/api/scheduled-tasks/${encodeURIComponent(taskId)}/webhook`;
+export const getTaskWebhook = (taskId: string) => getJson<WebhookInfo>(webhookPath(taskId));
+/** By POST, which needs the launch token, so no other program on the machine can read it. */
+export const webhookKey = (taskId: string, fresh: boolean) =>
+  postJson<{ key: string }>(`${webhookPath(taskId)}/key`, { new: fresh }).then((answer) => answer.key);
+export const waitForWebhookSample = (taskId: string, waiting: boolean) =>
+  postJson<WebhookInfo>(`${webhookPath(taskId)}/sample`, { waiting });
 export const reconnectMcpServer = (name: string) =>
   postJson<McpReconnectResult>(`/api/mcp/servers/${encodeURIComponent(name)}/reconnect`, {});
 export const signInMcpServer = (name: string) =>

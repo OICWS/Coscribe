@@ -11,7 +11,7 @@ import {
 import { goToThread } from "../lib/nav";
 import { capitalize, formatRunTime, RUN_STATUS_LABEL, runDuration, runSourceLabel } from "../lib/runLabels";
 import { describeSchedule } from "../lib/scheduleLabels";
-import { ConnectorCheckNote } from "./ConnectorCheckNote";
+import { TriggerNote, WebhookSection } from "./TriggerNote";
 import { loadTaskView, saveTaskView, type TaskView } from "../lib/taskView";
 import { countModelSteps } from "../lib/workflowLabels";
 import { allSteps } from "../lib/workflowTree";
@@ -47,7 +47,7 @@ const APPROVAL_DESCRIPTION: Record<ScheduledTask["approval_mode"], string> = {
 
 function formatNextRun(task: ScheduledTask): string {
   if (task.schedule.kind === "manual") return "Runs when you start it";
-  if (task.schedule.kind === "folder" || task.schedule.kind === "connector") return describeSchedule(task.schedule);
+  if (["folder", "connector", "webhook"].includes(task.schedule.kind)) return describeSchedule(task.schedule);
   if (!task.next_run_at) return "Not scheduled";
   return `Next run: ${new Date(task.next_run_at).toLocaleString(undefined, {
     month: "short",
@@ -216,9 +216,10 @@ function RunsSection({ task, recent = false }: { task: ScheduledTask; recent?: b
   return (
     <>
       <TaskMemorySection task={task} refresh={`${task.last_run_at}:${task.last_run_status}`} />
+      <WebhookSection task={task} />
       <div>
         {recent ? <h2 className="mb-2 text-sm font-medium">Recent runs</h2> : <SectionLabel>Runs</SectionLabel>}
-        <ConnectorCheckNote task={task} />
+        <TriggerNote task={task} />
         {runs.length === 0 ? (
           <p className="text-sm text-[var(--muted)]">No runs yet -- use Run now to try it out.</p>
         ) : (

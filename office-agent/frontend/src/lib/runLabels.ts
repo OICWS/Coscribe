@@ -60,6 +60,8 @@ export function connectorLabel(server: string): string {
 
 export function runSourceLabel(run: ScheduledRun): string {
   if (run.source === "file") return "New file";
-  if (run.source === "connector") return run.event ? `New in ${connectorLabel(run.event.connector)}` : "New item";
+  if (run.source === "connector")
+    return run.event?.connector ? `New in ${connectorLabel(run.event.connector)}` : "New item";
+  if (run.source === "webhook") return "Webhook";
   return run.source === "manual" ? "Manual" : "Scheduled";
 }

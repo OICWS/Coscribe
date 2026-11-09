@@ -57,6 +57,7 @@ GET /api/scheduled-tasks/{trigger_id}/memory
 GET /api/scheduled-tasks/{trigger_id}/notes
 GET /api/scheduled-tasks/{trigger_id}/runs/{run_id}/report
 GET /api/scheduled-tasks/{trigger_id}/versions
+GET /api/scheduled-tasks/{trigger_id}/webhook
 GET /api/screenshots/{name}
 GET /api/script-env/interpreter
 GET /api/script-env/packages
@@ -136,6 +137,8 @@ POST /api/scheduled-tasks/{trigger_id}/runs/{run_id}/investigate
 POST /api/scheduled-tasks/{trigger_id}/runs/{run_id}/retry
 POST /api/scheduled-tasks/{trigger_id}/runs/{run_id}/stop
 POST /api/scheduled-tasks/{trigger_id}/versions/{number}/restore
+POST /api/scheduled-tasks/{trigger_id}/webhook/key
+POST /api/scheduled-tasks/{trigger_id}/webhook/sample
 POST /api/script-env/interpreter
 POST /api/script-env/own-python
 POST /api/script-env/packages

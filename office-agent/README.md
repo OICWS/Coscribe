@@ -266,7 +266,9 @@ weekdays, weekly, monthly, or "manual" (runs only when you click **Run
 now**). There's no separate recording/replay format; the prompt *is* the
 workflow. A task can also start when something new shows up in a connector:
 it asks one read-only tool every few minutes, and each new item in the answer
-starts one run with the item's fields as its inputs (decision 0039).
+starts one run with the item's fields as its inputs (decision 0039). Or it can start
+when a program on this computer (a PowerShell script, a Power Automate flow) POSTs an event
+to its own address on 127.0.0.1 with its key (decision 0040).
 
 **Creating one starts in conversation.** Work the task out in chat first,
 then ask for it to be saved. The

@@ -20,7 +20,8 @@ triggers: `SCHEDULED_THREAD_PREFIX`, `TASK_DRAFT_TOOL_NAMES`, `compute_next_run_
 `parse_run_thread_id`, `create_trigger`, `update_trigger`, `patch_trigger`, `record_draft`,
 `edit_draft`; a store's `memory` and `folders` hold what each task keeps between runs and the
 files its folder watch has seen (decision 0034), its `connector_items` the items a connector task
-has seen and refused (decision 0039), its `versions` every workflow a task was saved
+has seen and refused (decision 0039), its `webhooks` a webhook task's key, sample and refused
+events (decision 0040, rules checked in `event_rules.py`), its `versions` every workflow a task was saved
 with and its `calls` the checks on the tasks a workflow runs (decision 0035). Sub-agents: `running_subagent`, `get_subagent_transcript`, `stop_subagent_task`,
 `forget_finished_subagents`. Questions, plans and messages: `QUESTION_TOOL_NAMES`,
 `PLAN_CHOICE_AUTO`, `PLAN_CHOICE_MANUAL`, `PLAN_CHOICE_REVISE`, `PLAN_CHOICE_REJECT`, `format_question_answers`,

@@ -1344,7 +1344,7 @@ def test_scheduler_fires_due_wakes_and_nudges_the_open_tab(tmp_path: Path) -> No
     queue = bus.subscribe()
 
     async def _run() -> None:
-        scheduler.start()
+        await scheduler.start()
         for _ in range(100):
             if tab.resynced and calls["tasks"]:
                 break
@@ -1367,7 +1367,7 @@ def test_scheduler_stop_cancels_runs_still_in_flight(tmp_path: Path) -> None:
     async def _run() -> asyncio.Task[None]:
         task = asyncio.create_task(asyncio.sleep(60))
         scheduler.track_background(task)
-        scheduler.start()
+        await scheduler.start()
         await scheduler.stop()
         return task
 

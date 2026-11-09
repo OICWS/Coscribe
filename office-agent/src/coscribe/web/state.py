@@ -15,6 +15,7 @@ from ..runtime_lg import LoopbackCallback, McpOAuth, McpServerConnection
 from ..tools import ScheduledRun, SkillInfo
 from .background_events import BackgroundEventBus
 from .thread_files import ThreadFiles
+from .webhook_listener import WebhookListener
 
 
 @dataclass
@@ -45,3 +46,4 @@ class AppState:
     execute_and_announce: Callable[[str, str], Coroutine[Any, Any, None]]
     announce_run: Callable[[str, ScheduledRun | None], Coroutine[Any, Any, None]]
     track_background: Callable[[asyncio.Task[Any]], None]
+    webhooks: WebhookListener
