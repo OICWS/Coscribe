@@ -152,7 +152,7 @@ def _timed(case: str, program: str, check: Callable[[], str]) -> Result:
 
 
 def check_conversion(work: Path, source: str, to_format: str) -> Result:
-    (convert,) = build_convert_tools(work)
+    (convert,) = build_convert_tools(work, state_dir=None)  # Office itself, not a fallback
     program = _office_com.program_for(work / source) or "-"
     output = f"{Path(source).stem}-{Path(source).suffix[1:]}.{to_format}"
 
@@ -193,7 +193,7 @@ def check_users_file_stays_open(work: Path, kind: str, source: str) -> Result:
             env,
         )
         try:
-            (convert,) = build_convert_tools(work)
+            (convert,) = build_convert_tools(work, state_dir=None)  # Office itself, not a fallback
             convert(path=source, to_format="pdf", output_path=f"while-open-{kind}.pdf")
             if powershell(is_open, env) != "1":
                 return "the user's file was closed by the conversion"

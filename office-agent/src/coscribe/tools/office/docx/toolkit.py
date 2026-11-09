@@ -5,6 +5,7 @@ from typing import Any
 
 from ..._file_locks import locked_by_path
 from ..._ooxml_validate import assert_wml_valid
+from ..._page_check import checked_pages
 from ..._thumbnail import render_thumbnail
 from ..toolkit import WorkspaceToolkit
 from ._markers import apply_markers
@@ -140,12 +141,14 @@ class DocxToolkit(WorkspaceToolkit):
             )
             _write_comments_part(file_path, comments_xml)
 
-        preview_path, preview_skipped_reason = render_thumbnail(file_path, self._state_dir)
+        check: dict[str, Any] = {}
+        preview_path, preview_skipped_reason = render_thumbnail(file_path, self._state_dir, check)
         return {
             "path": self._scope.relative(file_path),
             "bytes_written": file_path.stat().st_size,
             "preview_path": preview_path,
             "preview_skipped_reason": preview_skipped_reason,
+            "page_check": checked_pages(check, preview_skipped_reason),
             "has_toc": has_toc,
             "comments_added": len(pending_comments),
             "tracked_changes": track_changes,
@@ -161,12 +164,14 @@ class DocxToolkit(WorkspaceToolkit):
     def _save_tracked_edit(self, file_path: Path, document: Any) -> dict[str, object]:
         assert_wml_valid(document.element, "tracked_docx_edit")
         document.save(str(file_path))
-        preview_path, preview_skipped_reason = render_thumbnail(file_path, self._state_dir)
+        check: dict[str, Any] = {}
+        preview_path, preview_skipped_reason = render_thumbnail(file_path, self._state_dir, check)
         return {
             "path": self._scope.relative(file_path),
             "bytes_written": file_path.stat().st_size,
             "preview_path": preview_path,
             "preview_skipped_reason": preview_skipped_reason,
+            "page_check": checked_pages(check, preview_skipped_reason),
         }
 
     @locked_by_path
@@ -192,10 +197,12 @@ class DocxToolkit(WorkspaceToolkit):
         done = apply_operations(document, operations, author if track_changes else None, change_ids)
         assert_wml_valid(document.element, "edit_docx_structure")
         document.save(str(target))
-        preview_path, preview_skipped_reason = render_thumbnail(target, self._state_dir)
+        check: dict[str, Any] = {}
+        preview_path, preview_skipped_reason = render_thumbnail(target, self._state_dir, check)
         return {
             "path": self._scope.relative(target),
             "bytes_written": target.stat().st_size,
+            "page_check": checked_pages(check, preview_skipped_reason),
             "done": done,
             "document": summary(document),
             "preview_path": preview_path,
@@ -427,7 +434,8 @@ class DocxToolkit(WorkspaceToolkit):
         data, done = edit_review(file_path.read_bytes(), operations, author)
         write_atomically(file_path, data)
         review = read_review(data)
-        preview_path, preview_skipped_reason = render_thumbnail(file_path, self._state_dir)
+        check: dict[str, Any] = {}
+        preview_path, preview_skipped_reason = render_thumbnail(file_path, self._state_dir, check)
         return {
             "path": self._scope.relative(file_path),
             "done": done,
@@ -435,4 +443,5 @@ class DocxToolkit(WorkspaceToolkit):
             "open_comments": sum(1 for c in review["comments"] if not c["done"]),
             "preview_path": preview_path,
             "preview_skipped_reason": preview_skipped_reason,
+            "page_check": checked_pages(check, preview_skipped_reason),
         }

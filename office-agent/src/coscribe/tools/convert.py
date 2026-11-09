@@ -1,5 +1,5 @@
 """Converting between Office formats with the office program installed: Microsoft Office or
-WPS, through COM (decision 0012).
+WPS, through COM (decision 0012), else a LibreOffice the computer has (decision 0026).
 
 Two jobs people ask for constantly and nothing else here does: open a legacy
 file (.xls, .doc, .ppt -- the readers only take the OOXML formats) and
@@ -17,6 +17,7 @@ from typing import Any
 from ..runtime import tool_metadata
 from . import _office_com
 from ._workspace import WorkspaceScope
+from .libreoffice import convert_with_libreoffice
 
 # What each source type can become. Legacy and OpenDocument files can be
 # brought up to the OOXML format; any Office file can be exported to PDF.
@@ -44,10 +45,12 @@ class ConvertToolkit:
         root: str | Path,
         extra_readable: Sequence[str | Path] = (),
         extra_writable: Sequence[str | Path] = (),
+        state_dir: str | Path | None = None,
     ) -> None:
         self._scope = WorkspaceScope(
             root, extra_readable=extra_readable, extra_writable=extra_writable
         )
+        self._state_dir = Path(state_dir) if state_dir is not None else None
 
     def convert_office_file(
         self, path: str, to_format: str, output_path: str = ""
@@ -82,11 +85,22 @@ class ConvertToolkit:
         work = Path(tempfile.mkdtemp(prefix="coscribe_convert_"))
         try:
             produced = work / f"{source.stem}.{target_format}"
-            program = _office_com.convert(source, produced, target_format, _CONVERT_TIMEOUT)
-            if program is None:
+            program = _office_com.convert(source, produced, target_format, _CONVERT_TIMEOUT) or (
+                self._state_dir
+                and convert_with_libreoffice(
+                    self._state_dir, source, produced, target_format, _CONVERT_TIMEOUT
+                )
+            )
+            if not program and self._state_dir is None:
                 raise ValueError(
                     "Converting needs Microsoft Office or WPS Office on this computer, and "
                     "neither was found."
+                )
+            if not program:
+                raise ValueError(
+                    "Converting needs Microsoft Office, WPS Office or LibreOffice on this "
+                    "computer, and none was found (Settings > Capabilities can download "
+                    "LibreOffice)."
                 )
             if not produced.is_file():
                 raise ValueError(
@@ -110,13 +124,18 @@ def build_convert_tools(
     *,
     extra_readable: Sequence[str | Path] = (),
     extra_writable: Sequence[str | Path] = (),
+    state_dir: str | Path | None,
 ) -> list[Callable[..., Any]]:
-    toolkit = ConvertToolkit(root, extra_readable=extra_readable, extra_writable=extra_writable)
+    """`state_dir` is where coscribe keeps its own LibreOffice, used when no office program
+    converts over COM; None only where LibreOffice is not to be used."""
+    toolkit = ConvertToolkit(
+        root, extra_readable=extra_readable, extra_writable=extra_writable, state_dir=state_dir
+    )
 
     def convert_office_file(path: str, to_format: str, output_path: str = "") -> dict[str, object]:
-        """Convert an Office file to another format with the office program installed -- the
-        way to open a legacy .xls/.doc/.ppt (the read tools take only
-        .xlsx/.docx/.pptx: convert first, then read the new file) and the way
+        """Convert an Office file to another format with the office program installed (or
+        LibreOffice when there is none) -- the way to open a legacy .xls/.doc/.ppt (the read
+        tools take only .xlsx/.docx/.pptx: convert first, then read the new file) and the way
         to export a Word, Excel or PowerPoint file as a PDF.
 
         `.doc`/`.rtf`/`.odt` can become docx or pdf; `.xls`/`.ods` xlsx or

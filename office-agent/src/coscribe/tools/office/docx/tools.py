@@ -47,7 +47,10 @@ def _docx_tools_1(toolkit: DocxToolkit) -> list[Callable[..., Any]]:
 
         The response's `preview_path` (when the file can be drawn) names
         a rendered thumbnail of the first page the user can see in the
-        chat UI -- not something to fetch or parse yourself.
+        chat UI -- not something to fetch or parse yourself. Its
+        `page_check` is what the office program's layout shows: the page
+        count and any problems (an empty page, text past the paper's edge,
+        a last page of a line or two) to fix and write again.
 
         `template_path`, if given, is an existing .docx file (e.g. one with
         the user's own letterhead/styles/page setup) to build the new
@@ -493,7 +496,8 @@ def _edit_docx_structure_tool(toolkit: DocxToolkit) -> Callable[..., Any]:
         If any operation fails, nothing is saved. The result's `document`
         lists the edited file's headings in order, its tables, pictures,
         header, footer and contents list -- enough to check the edit without
-        opening the file.
+        opening the file -- and its `page_check` what the office program's
+        layout shows (as for `write_docx`).
 
         Args:
             path: existing .docx file, relative to the workspace root

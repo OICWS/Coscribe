@@ -11,18 +11,12 @@ Last reviewed: 2026-11-06.
 
 ## Next, in order
 
-1. **LibreOffice as an optional engine** (decision 0026). Done: the Settings › Capabilities card,
-   the download on request, and previews of Word, Excel and PowerPoint files through it when no
-   other office program is there (`docs/log/2026-10-27-libreoffice-*.md`). Left: the page-level
-   check of a generated Word file (pagination, tables past the edge, empty pages); and
-   `convert_office_file` (legacy `.doc`/`.xls`/`.ppt`, PDF export) through LibreOffice, which passes
-   the state folder from `coordinator.py`, an invariant path, so it needs an independent review.
-2. **Chat: a live Plan card** (maintainer, 2026-10-21 and 2026-11-06). Done: the conversation
+1. **Chat: a live Plan card** (maintainer, 2026-10-21 and 2026-11-06). Done: the conversation
    shows one task card under the latest call that changed the list, so it moves down only when its
    content changes, and it folds into a "N steps done" line when every item is done
    (`docs/log/2026-11-06-task-card-follows.md`). Open: the card no longer shows which background
    tasks an item started; bring that back on the card if it is missed.
-3. **A more agentic coscribe, measured** (#819), each step scored by `office-agent/evals/agentic/`.
+2. **A more agentic coscribe, measured** (#819), each step scored by `office-agent/evals/agentic/`.
    Done: the evaluation (#820), the end-of-turn plan check (#821), the small model for side calls
    (#822), the delivery check of the Office files a turn wrote (#824), and, put before step 5 by
    the maintainer, a background script's end reported to its conversation (#826), Stop keeping the
@@ -30,7 +24,7 @@ Last reviewed: 2026-11-06.
    writes mid-turn (`docs/log/2026-11-07-script-to-background.md`); a brief of what each folder
    holds (`docs/log/2026-11-08-folder-brief.md`) and an offer to save a job as a workflow or skill
    (`docs/log/2026-11-08-save-offer.md`). Next: an in-chat connector card (decision record and independent review first).
-4. **Workflows** (#843; decisions 0028 to 0040). Phases P0 to P5 are done
+3. **Workflows** (#843; decisions 0028 to 0040). Phases P0 to P5 are done
    (`docs/log/`, 2026-10-29 to 2026-11-02). Parallel steps are merged (#789, decision 0036
    proposed), and so are the simple view in words (#839, decision 0037) and the run page that
    says how it went before its steps (#840, decision 0038). A task that starts on something

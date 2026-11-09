@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from . import _office_com
+from ._page_check import page_problems
 from ._pdfium import PDFIUM_LOCK
 from .libreoffice import convert_with_libreoffice
 
@@ -44,6 +45,7 @@ def _draw(
     last: int,
     layout: list[dict[str, Any]] | None = None,
     state_dir: Path | None = None,
+    check: dict[str, Any] | None = None,
 ) -> list[Path] | None:
     """Pages first..last as PNG files: a PDF with PDFium; a deck its SVG pages last built, deck
     and pages still as built, with resvg; any other Office file through the office program
@@ -54,12 +56,17 @@ def _draw(
     pages = _built_pages(file_path)
     if pages is None:
         pdf_path = out_dir / f"{file_path.stem}.pdf"
-        if _office_com.convert(file_path, pdf_path, "pdf", OFFICE_TIMEOUT) is None and (
-            state_dir is None
-            or convert_with_libreoffice(state_dir, file_path, pdf_path, "pdf", OFFICE_TIMEOUT)
-            is None
-        ):
+        program = _office_com.convert(file_path, pdf_path, "pdf", OFFICE_TIMEOUT) or (
+            state_dir
+            and convert_with_libreoffice(state_dir, file_path, pdf_path, "pdf", OFFICE_TIMEOUT)
+        )
+        if not program:
             return None
+        if check is not None:
+            try:
+                check.update(laid_out_by=program, **page_problems(pdf_path))
+            except _DRAW_ERRORS:  # the preview is still worth drawing
+                check["failed"] = f"{program} laid it out, but its PDF could not be read"
         if layout is not None:
             layout.extend(measure_page_words(pdf_path, last))
         return _render_pdf_pages(pdf_path, out_dir, first, last)
@@ -98,13 +105,14 @@ def _previews(
     first: int,
     last: int,
     layout: list[dict[str, Any]] | None = None,
+    check: dict[str, Any] | None = None,
 ) -> tuple[list[str], str | None]:
     if state_dir is None:
         return [], "no state_dir configured"
     out_dir = Path(tempfile.mkdtemp(prefix="coscribe_thumbnail_"))
     try:
         try:
-            page_files = _draw(file_path, out_dir, first, last, layout, state_dir)
+            page_files = _draw(file_path, out_dir, first, last, layout, state_dir, check)
         except _DRAW_ERRORS:
             return [], "page rendering failed"
         if page_files is None:
@@ -120,11 +128,14 @@ def _previews(
         shutil.rmtree(out_dir, ignore_errors=True)
 
 
-def render_thumbnail(file_path: Path, state_dir: Path | None) -> tuple[str | None, str | None]:
+def render_thumbnail(
+    file_path: Path, state_dir: Path | None, check: dict[str, Any] | None = None
+) -> tuple[str | None, str | None]:
     """The first page of `file_path` (docx/pdf/xlsx/pptx) as a PNG under `state_dir/previews/`:
     `(preview_name, None)`, the name a bare file name for `GET /api/previews/{name}`, or
-    `(None, reason)`. Never raises."""
-    names, reason = _previews(file_path, state_dir, 1, 1)
+    `(None, reason)`. Never raises. Given `check`, an Office file the office program laid out
+    fills it with `laid_out_by` and its `page_problems`, or `failed` when they could not be read."""
+    names, reason = _previews(file_path, state_dir, 1, 1, check=check)
     return (names[0] if names else None), reason
 
 
