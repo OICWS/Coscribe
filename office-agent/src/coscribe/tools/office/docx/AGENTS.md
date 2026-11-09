@@ -15,7 +15,7 @@ reaches them through `coscribe.tools.office.document_tools`.
 ## Depends on
 `coscribe.runtime`, `coscribe.tools._chart_data`, `coscribe.tools._docx_chart`,
 `coscribe.tools._file_locks`, `coscribe.tools._native_docx_tracks`, `coscribe.tools._ooxml_validate`,
-`coscribe.tools._output_truncation`, `coscribe.tools._thumbnail`, `coscribe.tools.office.markdown_blocks`,
+`coscribe.tools._output_truncation`, `coscribe.tools._page_check`, `coscribe.tools._thumbnail`, `coscribe.tools.office.markdown_blocks`,
 `coscribe.tools.office.table_layout`, `coscribe.tools.office.toolkit`.
 
 ## Invariants
