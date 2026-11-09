@@ -4,7 +4,7 @@
 Owns building the agent graph from the tool factories and their risk metadata (`agent.py`), the
 deferred tool list (`tool_deferral.py`), the chat model for a `provider:model` string and how hard
 it thinks (`providers.py`, `effort.py`), approvals' helpers (`audit.py`, `auto_review.py`,
-`exec_policy.py`), delegated sub-agents and their ready-made roles (`subagents.py`, `subagent_kinds.py`), the runner a workflow's agent step runs through
+`exec_policy.py`), the record of how each turn went, kept on the machine without its words (`trace.py`, decision 0045), delegated sub-agents and their ready-made roles (`subagents.py`, `subagent_kinds.py`), the runner a workflow's agent step runs through
 (`workflow_agent.py`), the code module's entry point
 (`code_agent.py`), hosted and local MCP connectors and their sign-in (`mcp.py`, `mcp_oauth.py`),
 the run side of scheduled tasks and self-wakes (`scheduled_tasks.py`, `selfwake.py`) and asking a
@@ -16,7 +16,7 @@ prompt (`coordinator.py`).
 
 ## Public interface
 Agent and tools: `build_langgraph_agent`, `tool_name`, `SubAgentHost`, `SUBAGENT_MAX_STEPS`, `build_delegation_tools`, `build_review_work_tool`, `select_reviewer_tools`, `subagent_report`, `WorkflowAgentRunner`.
-Approvals: `AuditDecision`, `AuditLog`, `AuditReason`, `AutoApproveReason`, `record_decision`, `redact_secrets`, `Verdict`, `review_action`, `recent_user_requests`, `ExecPolicy`, `EXEC_POLICY_TOOL_NAMES`, `load_exec_policy`, `CODE_APPROVAL_RISKS`. Models: `resolve_chat_model`, `for_conversation`, `keeps_tool_list_fixed`.
+Approvals: `AuditDecision`, `AuditLog`, `AuditReason`, `AutoApproveReason`, `record_decision`, `redact_secrets`, `Verdict`, `review_action`, `recent_user_requests`, `ExecPolicy`, `EXEC_POLICY_TOOL_NAMES`, `load_exec_policy`, `CODE_APPROVAL_RISKS`. Turn record: `TraceLog`, `TurnRecorder`, `TurnTrace`, `tool_failure_rates`. Models: `resolve_chat_model`, `for_conversation`, `keeps_tool_list_fixed`.
 Connectors: `connect_mcp_tools_lg`, `connect_one_mcp_server_lg`, `McpServerConnection` (loaded on first use: eager import costs 250 to 360 ms at startup). Sign-in: `McpOAuth`, `LoopbackCallback`, `NeedsSignIn`, `CallbackPortBusy`, `APP_REDIRECT_URI`, `SIGN_IN_TIMEOUT_SECONDS`. Deferral: `bound_tool_names`, `build_search_tools_tool`, `build_use_tool_tool`, `unwrap_use_tool_call`. Code tasks: `CODE_TASK_TOOL`, `CODE_COMMAND_TOOL`, `CodeTaskContext`, `build_code_task_tool`.
 Runs: `execute_run`, `start_investigation`, `continue_workflow_run`, `fire_trigger_now`, `stop_run`, `poll_due_scheduled_tasks`, `reconcile_interrupted_runs`, `poll_due_wakes`, `SilentSocket`.
 Skills and messages: `CheckpointConversations`, `SkillSaveProposal`, `propose_skill_save_lg`, `write_skill_lg`, `extract_text`, `is_steer`, `render_transcript_lg`, `serialize_history_for_ws_lg`, `strip_mode_note`, `split_attached_files`, `tool_result_value`, `context_note`, `current_date_note`, `language_note`, `artifact_note`, `last_conversation_context`, `ACCEPT_EDITS_MODE_NOTE`, `AUTO_MODE_NOTE`, `NORMAL_MODE_NOTE`, `PLAN_MODE_NOTE`, `answer_every_tool_call`, `stopped_turn_messages`.
@@ -47,7 +47,7 @@ Callers import these from `coscribe.runtime_lg`, not a submodule.
 
 ## Tests
 `tests/test_tool_deferral.py`, `tests/test_mcp_lg.py`, `tests/test_mcp_tools.py`,
-`tests/test_runtime_lg_*.py`, `tests/test_effort.py`, `tests/test_audit_log.py`,
+`tests/test_runtime_lg_*.py`, `tests/test_effort.py`, `tests/test_audit_log.py`, `tests/test_turn_trace.py`,
 `tests/test_exec_policy.py`, `tests/test_subagent_tasks.py`, `tests/test_workflow_agent_runner.py`, `tests/test_code_agent.py`,
 `tests/test_scheduled_runs_lg.py`, `tests/test_selfwake_resume.py`; the sign-in through the
 server is in `tests/web/test_connectors.py`.

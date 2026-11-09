@@ -9,6 +9,7 @@ from langchain_core.messages import AIMessage, AIMessageChunk, ToolMessage
 from langchain_core.messages.ai import UsageMetadata
 from langgraph.types import Command
 
+from ..runtime_lg import TurnRecorder
 from ..runtime_lg import extract_text as _extract_text
 from ..runtime_lg import tool_result_value as _tool_result_value
 from ..runtime_lg import unwrap_use_tool_call
@@ -55,6 +56,7 @@ class TurnStreamHost(Protocol):
     _gated_tool_risks: dict[str, str]
     _pending_tool_args: dict[str, list[dict[str, Any]]]
     _last_usage_metadata: UsageMetadata | None
+    _turn_trace: TurnRecorder | None
 
     async def _run_post_tool_use_hooks(
         self, name: str, args: dict[str, Any], result: Any
@@ -130,6 +132,8 @@ class TurnStreamer:
 
         async def _capture_segment_usage() -> None:
             nonlocal segment
+            if segment is not None and host._turn_trace is not None:
+                host._turn_trace.model_call(segment.usage_metadata)
             if segment is not None and segment.usage_metadata:
                 host._last_usage_metadata = segment.usage_metadata
                 # Sent at every boundary, not only at turn end, so the token counter moves
@@ -164,6 +168,10 @@ class TurnStreamer:
                         if host._pending_tool_args[name]
                         else {}
                     )
+                    if host._turn_trace is not None:
+                        host._turn_trace.tool(
+                            name, is_error=message.status == "error", result=result_value
+                        )
                     await host._run_post_tool_use_hooks(name, args, result_value)
                     # A question or draft tool already has its own card; a tool_result too
                     # would add a second row for the same interaction.

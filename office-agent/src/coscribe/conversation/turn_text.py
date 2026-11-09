@@ -73,6 +73,15 @@ def turn_mode_note(plan_mode: bool, accept_edits: bool, auto_mode: bool) -> str:
     return AUTO_MODE_NOTE if auto_mode else NORMAL_MODE_NOTE
 
 
+def turn_mode(plan_mode: bool, accept_edits: bool, auto_mode: bool) -> str:
+    """The same choice as `turn_mode_note`, as the word a turn's record carries."""
+    if plan_mode:
+        return "plan"
+    if accept_edits:
+        return "accept_edits"
+    return "auto" if auto_mode else "manual"
+
+
 def usage_event(usage: UsageMetadata) -> dict[str, Any]:
     """Build the "usage" WS event from a response's UsageMetadata,
     including prompt-cache stats when the provider reports them --

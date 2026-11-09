@@ -67,6 +67,8 @@ from ..runtime_lg import (
     ExecPolicy,
     SilentSocket,
     SubAgentHost,
+    TraceLog,
+    TurnRecorder,
     Verdict,
     artifact_note,
     context_note,
@@ -118,6 +120,7 @@ from .turn_text import (
     clean_title,
     design_system_for_start,
     format_reply,
+    turn_mode,
     turn_mode_note,
     usage_event,
 )
@@ -254,6 +257,7 @@ class ChatSessionLG:
         # finishes, not checked mid-turn. None until the first real segment
         # completes, or if the active model never populates usage_metadata.
         self._last_usage_metadata: UsageMetadata | None = None
+        self._turn_trace: TurnRecorder | None = None
         # The socket starts each "user_message" as a task without awaiting it, so a turn
         # waiting on an approval can't freeze the socket. Without this lock a second message
         # would start a concurrent turn on the same agent and checkpointed thread, racing on
@@ -1192,6 +1196,14 @@ class ChatSessionLG:
         if not history and self._wants_title():
             self._title_task = asyncio.create_task(self._name_thread(websocket, text))
 
+        trace = self._turn_trace = TurnRecorder(
+            TraceLog(self.settings.state_dir),
+            thread_id=self.thread_id,
+            model=self._model_string,
+            effort=self._effort,
+            mode=turn_mode(self.plan_mode, self.accept_edits, self.auto_mode),
+            notice=notice,
+        )
         retried_after_grpc_metadata_overflow = False
         reply_text = ""  # narrowing hint only -- always reassigned before use, see the loop below
         while True:
@@ -1221,6 +1233,7 @@ class ChatSessionLG:
                 # for its cooperative stop-flag check to run against. What it
                 # streamed before is kept; a dropped socket keeps nothing,
                 # since a reconnect resumes the turn.
+                trace.finish("stopped")
                 try:
                     shown = await self._turn_streamer.stopped()
                     await websocket.send_json({"type": "agent_message", "text": shown})
@@ -1245,6 +1258,7 @@ class ChatSessionLG:
                         pass
                     else:
                         continue
+                trace.finish("error", exc)
                 try:
                     await websocket.send_json({"type": "error", "message": str(exc)})
                 except Exception:  # noqa: BLE001 -- the client is already gone
@@ -1254,6 +1268,7 @@ class ChatSessionLG:
                     pass
                 return
 
+        trace.finish("stopped" if self._stop_requested else "completed")
         if self._stop_requested:
             shown = await self._turn_streamer.stopped(reply_text)
             await websocket.send_json({"type": "agent_message", "text": shown})
