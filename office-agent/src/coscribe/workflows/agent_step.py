@@ -69,11 +69,16 @@ class AgentRequest:
     decide: Callable[[AgentCall], Decision]
     # The person's answer to the call the agent is waiting on.
     answer: dict[str, Any] | None = None
+    # The tokens the agent may use before it ends as "over_budget", and again after each time a
+    # person lets it go on (decision 0043); None: no cap.
+    max_tokens: int | None = None
+    # A person said it may go on after "over_budget".
+    go_on: bool = False
 
 
 @dataclass
 class AgentReply:
-    status: Literal["done", "waiting", "failed"]
+    status: Literal["done", "waiting", "failed", "over_budget"]
     text: str = ""
     # For "waiting": the call a person is asked about.
     call: AgentCall | None = None
@@ -257,6 +262,8 @@ async def result_of(
 
 
 Ask = Callable[[AgentCall], Awaitable[dict[str, Any]]]
+# Asked when the agent used its tokens: returns when a person lets it go on, raises when not.
+MoreTokens = Callable[[AgentReply], Awaitable[None]]
 
 
 def answer_of(raw: Any) -> dict[str, Any]:
@@ -283,11 +290,14 @@ async def run_agent_step(
     make_model: Callable[[str | None], Any],
     ask: Ask,
     guard: CallGuard | None = None,
+    max_tokens: int | None = None,
+    more_tokens: MoreTokens | None = None,
 ) -> tuple[dict[str, Any], AgentReply]:
     """The step's result and the agent's last reply. `ask` puts a call to
     a person and returns their answer ({"approved", "note", "call_id"}); it pauses
     the run, so everything before it here runs again on resume -- which
-    the runner's keyed agent makes safe. `guard` adds to the step's own rules."""
+    the runner's keyed agent makes safe, as it does for `more_tokens`. `guard` adds to the step's
+    own rules."""
     guard = guard or NO_GUARD
 
     def decide_call(call: AgentCall) -> Decision:
@@ -304,9 +314,17 @@ async def run_agent_step(
         model=step.model,
         allows=lambda call: allows(read_only, call) and (guard.allows or bool)(call),
         decide=decide_call,
+        max_tokens=max_tokens,
     )
     while True:
         reply = await runner(request)
+        request = replace(request, go_on=False)
+        if reply.status == "over_budget":
+            if more_tokens is None:
+                raise RuntimeError(f"The agent used {reply.tokens} tokens without finishing.")
+            await more_tokens(reply)
+            request = replace(request, go_on=True)
+            continue
         if reply.status != "waiting" or reply.call is None:
             break
         # A replayed answer may be for a call the agent already moved past;

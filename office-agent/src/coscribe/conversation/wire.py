@@ -270,17 +270,20 @@ class WorkflowAskField(TypedDict):
 
 
 class WorkflowPause(TypedDict):
-    """What a waiting ask or wait step is waiting for (decision 0033). `until`: when an ask
-    stops waiting for an answer, or when a wait ends; None while it waits for as long as it
-    takes."""
+    """What a waiting ask or wait step is waiting for (decision 0033), or a step asking whether
+    the run's models may use more tokens (decision 0043). `until`: when an ask stops waiting for
+    an answer, or when a wait ends; None while it waits for as long as it takes."""
 
-    kind: Literal["ask", "wait"]
+    kind: Literal["ask", "wait", "tokens"]
     until: str | None
     # An ask's.
     fields: NotRequired[list[WorkflowAskField]]
     on_timeout: NotRequired[Literal["defaults", "fail"]]
     # A wait for a file: where it looks.
     path: NotRequired[str]
+    # Tokens: whether the step's agent or the whole run used its share, and how many new tokens.
+    scope: NotRequired[Literal["step", "run"]]
+    used: NotRequired[int]
 
 
 class WorkflowStepRecord(TypedDict):

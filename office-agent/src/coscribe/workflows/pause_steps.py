@@ -319,7 +319,8 @@ class Pauses:
 
 
 def paused_at(records: list[dict[str, Any]]) -> dict[str, Any] | None:
-    """What a stopped run's ask or wait step waits for (its record's `pause`), if one is."""
+    """What a stopped run's ask or wait step, or its question about tokens, waits for (its
+    record's `pause`), if one does."""
     waiting = next((r for r in reversed(records) if r.get("status") == "waiting"), None)
     pause = waiting.get("pause") if waiting else None
     return pause if isinstance(pause, dict) else None

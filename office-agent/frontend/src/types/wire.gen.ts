@@ -256,18 +256,24 @@ export interface WorkflowAskField {
 }
 
 /**
- * What a waiting ask or wait step is waiting for (decision 0033). `until`: when an ask
- * stops waiting for an answer, or when a wait ends; None while it waits for as long as it
- * takes.
+ * What a waiting ask or wait step is waiting for (decision 0033), or a step asking whether
+ * the run's models may use more tokens (decision 0043). `until`: when an ask stops waiting
+ * for an answer, or when a wait ends; None while it waits for as long as it takes.
  */
 export interface WorkflowPause {
-  kind: "ask" | "wait";
+  kind: "ask" | "wait" | "tokens";
   until: string | null;
   /** An ask's. */
   fields?: WorkflowAskField[];
   on_timeout?: "defaults" | "fail";
   /** A wait for a file: where it looks. */
   path?: string;
+  /**
+   * Tokens: whether the step's agent or the whole run used its share, and how many
+   * new tokens.
+   */
+  scope?: "step" | "run";
+  used?: number;
 }
 
 /** One step of one workflow run (`workflows.engine.StepRecord.to_dict()`). */

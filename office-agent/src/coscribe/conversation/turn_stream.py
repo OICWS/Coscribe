@@ -53,7 +53,8 @@ class TurnStreamHost(Protocol):
     _turn_websocket: Any
     _stop_requested: bool
     _gated_tool_risks: dict[str, str]
-    _pending_tool_args: dict[str, list[dict[str, Any]]]
+    # Per tool name: (call id, arguments) of each call whose result hasn't come back yet.
+    _pending_tool_args: dict[str, list[tuple[str, dict[str, Any]]]]
     _last_usage_metadata: UsageMetadata | None
 
     async def _run_post_tool_use_hooks(
@@ -120,7 +121,7 @@ class TurnStreamer:
                     # The stream carries the model's own use_tool call; the tool's result
                     # comes back under the real name.
                     name, args = unwrap_use_tool_call(call["name"], call["args"])
-                    host._pending_tool_args[name].append(args)
+                    host._pending_tool_args[name].append((call_id, args))
                     registered_ids.add(call_id)
             # Providers number each response's tool calls from index 0 and send a call's
             # later argument pieces without its id, so adding chunks joins such a piece to
@@ -159,11 +160,7 @@ class TurnStreamer:
                     text_parts.clear()
                     name = message.name or ""
                     result_value = _tool_result_value(message.content)
-                    args = (
-                        host._pending_tool_args[name].pop(0)
-                        if host._pending_tool_args[name]
-                        else {}
-                    )
+                    args = _take_args(host._pending_tool_args[name], message.tool_call_id)
                     await host._run_post_tool_use_hooks(name, args, result_value)
                     # A question or draft tool already has its own card; a tool_result too
                     # would add a second row for the same interaction.
@@ -212,3 +209,13 @@ class TurnStreamer:
                 for call in message.tool_calls:
                     if call["name"] not in self._host._gated_tool_risks:
                         await self._host._send_tool_started(call["name"], call["args"], websocket)
+
+
+def _take_args(pending: list[tuple[str, dict[str, Any]]], call_id: str) -> dict[str, Any]:
+    """The arguments of the call a result answers. Calls made together finish in any order, so
+    matching by name alone gave one call's result another's arguments; the oldest call of that
+    name is the fallback for a result whose id the stream didn't carry."""
+    for index, (pending_id, _args) in enumerate(pending):
+        if pending_id == call_id:
+            return pending.pop(index)[1]
+    return pending.pop(0)[1] if pending else {}

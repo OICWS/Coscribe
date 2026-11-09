@@ -243,7 +243,7 @@ class ChatSessionLG:
         # _stream_turn's docstring for why this exists (recovering a tool
         # call's arguments for the PostToolUse hook payload, which the
         # ToolMessage carrying its result doesn't itself include).
-        self._pending_tool_args: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        self._pending_tool_args: dict[str, list[tuple[str, dict[str, Any]]]] = defaultdict(list)
         # Cooperative /stop flag -- see request_stop's docstring. Reset at
         # the start of every handle_user_message call.
         self._stop_requested = False

@@ -12,6 +12,7 @@ from ..workflow_spec import (
 )
 from .added_steps import added_fix
 from .agent_step import AgentCall, AgentReply, AgentRequest, AgentRunner
+from .budget import run_budget
 from .catalog import describe_params, tool_description
 from .connector_value import ask_connector
 from .engine import RunOutcome, StepContext, StepRecord, WorkflowNotRunnable, WorkflowRun
@@ -73,6 +74,7 @@ __all__ = [
     "parse_workflow",
     "paused_at",
     "revise_workflow",
+    "run_budget",
     "run_report",
     "run_test",
     "sites_in",
