@@ -2,7 +2,7 @@
 
 ## Purpose
 Owns the tool layer's shared entry point and the tools that fit no smaller component: files and
-folders (`files.py`), conversions (`convert.py`, `pdf_pages.py`), finding a LibreOffice (`libreoffice.py`), the connector config and
+folders (`files.py`), conversions (`convert.py`, `pdf_pages.py`), finding a LibreOffice (`libreoffice.py`), the page check of a laid-out document (`_page_check.py`), the connector config and
 permissions (`mcp.py`, `connector_permissions.py`) and the skills and PowerPoint template
 catalogs (`skills.py`, `skill_catalog.py`, `pptx_templates.py`). The rest is split by card:
 Word, Excel, PowerPoint and PDF in `office/<format>/`, scripts in `exec/`, the browser, search,
