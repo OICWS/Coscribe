@@ -506,6 +506,7 @@ async def _first_request_tools(
         auto_title_threads=False,
         prompt_suggestions=False,
         folder_briefs=False,
+        save_offers=False,
     )
     session = ChatSessionLG(
         thread_id="t",

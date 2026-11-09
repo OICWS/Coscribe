@@ -37,6 +37,7 @@ import { setPlanComments, usePlanComments, withPlanComments } from "./lib/planCo
 import { planPanelData } from "./lib/taskCard";
 import { PanelDock } from "./components/dock/PanelDock";
 import { PanelToggles } from "./components/dock/PanelToggles";
+import { SaveOfferRow } from "./components/SaveOfferRow";
 import { usePinnedItems } from "./lib/toolbarItems";
 import { PANEL_IDS, PANEL_TITLES, type PanelId } from "./lib/dockLayout";
 import { isViewable } from "./lib/viewers";
@@ -981,19 +982,15 @@ function App() {
                     olderStatus={state.olderStatus}
                     onLoadOlder={onLoadOlderMessages}
                   />
-                  {/* Real, live-reported bug: this used to be a bare full-width
-                   * div, a sibling of ChatLog/Composer rather than living inside
-                   * either one's own centered column -- so a turn-ending error
-                   * (e.g. hitting a token-usage limit) rendered as a raw red
-                   * line spanning edge-to-edge from the window's left border,
-                   * instead of aligning with the chat column like everything
-                   * else on this page. mx-auto/max-w-[880px]/px-4 here match
-                   * ChatLog.tsx's own wrapper and Composer's root exactly. */}
+                  {/* Aligned with the chat column (ChatLog's wrapper and Composer's root), not the window. */}
                   {state.error && (
                     <div className="mx-auto w-full max-w-[880px] px-4 py-1 text-sm text-red-500">{state.error}</div>
                   )}
                   {pendingQuestion && (
                     <QuestionPanel key={pendingQuestion.id} item={pendingQuestion} onAnswer={onAnswerQuestion} />
+                  )}
+                  {state.saveOffer && !state.turnInFlight && (
+                    <SaveOfferRow offer={state.saveOffer} onWorkflow={startWorkflowDraft} onSkill={(name) => onSend({ displayText: `/saveskill ${name}`, outgoingText: `/saveskill ${name}`, isInstant: false })} onDismiss={() => dispatch({ type: "local_save_offer_dismissed" })} />
                   )}
                   {composer}
                 </BackgroundTasks.Provider></DetachScript.Provider></OpenDesignSystem.Provider></ViewFile.Provider></SteerActionsContext.Provider>

@@ -48,6 +48,7 @@ from .artifact_tools import build_artifact_tools
 from .context_usage import build_context_breakdown
 from .folder_brief import FolderBriefKeeper
 from .page_tools import build_page_tools
+from .save_offer import SaveOffer
 from .turn_text import build_instructions
 
 
@@ -70,8 +71,16 @@ class AssemblyHost(Protocol):
     _last_usage_metadata: UsageMetadata | None
     _base_tools: list[Callable[..., Any] | BaseTool]
     _extra_tools: list[Callable[..., Any] | BaseTool]
+    # Read by SaveOffer at the end of a turn.
+    lg_agent: Any
+    config: Any
+    _stop_requested: bool
+    _pending_approvals: dict[str, Any]
+    _pending_questions: dict[str, Any]
 
     def workspace_scope(self) -> WorkspaceScope: ...
+
+    def tool_catalog(self) -> dict[str, Any]: ...
 
     def _subagent_host(self, model: Any) -> SubAgentHost: ...
 
@@ -111,6 +120,10 @@ class AgentAssembly:
             self.side_model,
             lambda: self._host.settings.folder_briefs,
         )
+
+    @cached_property
+    def save_offer(self) -> SaveOffer:
+        return SaveOffer(self._host, self.side_model)
 
     def folders(self) -> list[Path]:
         return [Path(self._host.workspace_root), *self._host.extra_folders]
