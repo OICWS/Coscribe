@@ -45,7 +45,7 @@ import { useCommentSender } from "./lib/commentReplies";
 import { artifactActions } from "./lib/artifacts";
 import { useArtifactStart } from "./lib/useArtifactStart";
 import { ArtifactsPage } from "./components/artifacts/ArtifactsPage";
-import { useSteerNotes } from "./lib/steerNotes";
+import { useSteerNotes, type ComposerDraft } from "./lib/steerNotes";
 import { BackgroundTasks, DetachScript, OpenDesignSystem, SteerActionsContext, ViewFile } from "./components/chatlog/contexts";
 import { canOpenPanelWindows, focusPanelWindow, usePanelWindows } from "./lib/panelWindows";
 import { WorkflowDraftPage } from "./components/workflow/WorkflowDraftPage";
@@ -143,7 +143,7 @@ function App() {
   const [pendingPptxCapture, setPendingPptxCapture] = useState<PptxShapeCapture | null>(null);
   // Same pattern again, for SkillsTab's "Create a skill" prefilling the
   // composer's own text (not an image) -- see onCreateSkill below.
-  const [pendingComposerText, setPendingComposerText] = useState<string | null>(null);
+  const [pendingComposerDraft, setPendingComposerDraft] = useState<ComposerDraft | null>(null);
   const artifactStart = useArtifactStart(threadId);
   const [navMode, setNavMode] = useState<NavMode>(() => (readPage().view === "scheduled" ? "run" : "create"));
   const [artifactsOpen, setArtifactsOpen] = useState(() => readPage().view === "artifacts");
@@ -573,7 +573,7 @@ function App() {
    * has what it needs, and the draft comes back here for review. */
   const createTaskWithCoscribe = () => {
     startNewThread();
-    setPendingComposerText("I'd like to set up a scheduled task: ");
+    setPendingComposerDraft({ text: "I'd like to set up a scheduled task: " });
   };
 
   const onReviewTaskDraft = (item: TaskDraftItem) => {
@@ -669,7 +669,7 @@ function App() {
 
   const onSendComment = useCommentSender(threadId, state.items, state.turnInFlight, (text) => onSend({ displayText: text, outgoingText: text, isInstant: false }));
 
-  const steers = useSteerNotes(state, dispatch, (message) => socketRef.current?.send(message), setPendingComposerText, onSend);
+  const steers = useSteerNotes(state, dispatch, (message) => socketRef.current?.send(message), setPendingComposerDraft, onSend);
   const { steer: onSteer, stop: onStop, stopping } = steers;
 
   const onEditMessage = (turnIndex: number, text: string) => {
@@ -681,7 +681,7 @@ function App() {
    * so no turn runs, unlike edit. */
   const onRewindMessage = (turnIndex: number, text: string) => {
     dispatch({ type: "local_rewind_message", turnIndex });
-    setPendingComposerText(text);
+    setPendingComposerDraft({ text });
     socketRef.current?.send({ type: "rewind_message", index: turnIndex });
   };
 
@@ -735,7 +735,7 @@ function App() {
   const onCreateSkill = () => {
     setSettingsOpen(false);
     showChat();
-    setPendingComposerText("/skill-creator ");
+    setPendingComposerDraft({ text: "/skill-creator " });
   };
 
   const closePanel = (panel: PanelId) => {
@@ -836,8 +836,8 @@ function App() {
       designSystem={artifactStart.designSystem}
       onDesignSystem={artifactStart.chooseDesignSystem}
       onManageDesignSystems={(startNew) => showDesignSystems(startNew ? "new" : null)}
-      externalText={pendingComposerText}
-      onExternalTextConsumed={() => setPendingComposerText(null)}
+      externalDraft={pendingComposerDraft}
+      onExternalTextConsumed={() => setPendingComposerDraft(null)}
     />
   );
 

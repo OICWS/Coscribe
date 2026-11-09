@@ -1,4 +1,5 @@
 import { splitAttachedFiles } from "../lib/attachments";
+import { pendingSteer, requeuedNotes, type NewSteer, type SteerItem } from "./steerItems";
 import type { HistoryEntry, QuestionSpec, StateEvent, TaskDraft, WsServerEvent } from "../types/wire";
 
 /** The answer the frontend sends for a saved draft starts with this --
@@ -14,9 +15,8 @@ export type LogItem =
   // handle_edit_message). Assigned once at creation (below), not derived
   // at render time, so it stays stable even as later items are appended.
   | { id: string; kind: "user"; text: string; turnIndex: number; images?: string[]; files?: string[] }
-  /** A note added while a reply was being worked on; part of that turn,
-   * not a turn of its own. Pending until the model reads it. */
-  | { id: string; kind: "steer"; text: string; status: "pending" | "delivered" }
+  /** A note added while a reply was being worked on (steerItems.ts). */
+  | SteerItem
   | { id: string; kind: "agent"; text: string; streaming: boolean }
   | {
       id: string;
@@ -198,7 +198,7 @@ export const initialChatState: ChatState = {
  * answers), handled here because they change the same state. */
 export type LocalAction =
   | { type: "local_user_message"; text: string; instant: boolean; images?: string[]; files?: string[] }
-  | { type: "local_steer"; id: string; text: string }
+  | ({ type: "local_steer" } & NewSteer)
   | { type: "local_steers_withdrawn"; ids: string[] }
   | { type: "local_suggestion_dismissed" }
   | { type: "local_save_offer_dismissed" }
@@ -283,7 +283,7 @@ export function historyToItems(entries: HistoryEntry[]): LogItem[] {
       return { id: genId(), kind: "agent", text: entry.text, streaming: false };
     }
     if (entry.kind === "steer") {
-      return { id: genId(), kind: "steer", text: entry.text, status: "delivered" };
+      return { id: genId(), kind: "steer", text: entry.text, status: "delivered", images: entry.images, files: entry.files };
     }
     if (entry.tool_name === "exit_plan_mode") {
       const status = planStatusOf(typeof entry.result === "string" ? entry.result : "");
@@ -544,7 +544,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
           return { id: genId(), kind: "user", text: entry.text, turnIndex: -1, images: entry.images, files: entry.files } as const;
         }
         if (entry.kind === "steer") {
-          return { id: genId(), kind: "steer", text: entry.text, status: "delivered" } as const;
+          return { id: genId(), kind: "steer", text: entry.text, status: "delivered", images: entry.images, files: entry.files } as const;
         }
         if (entry.kind === "agent") {
           return { id: genId(), kind: "agent", text: entry.text, streaming: false } as const;
@@ -740,7 +740,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return { ...state, workflowTest: { done: action.done, total: action.total } };
 
     case "local_steer":
-      return { ...state, items: [...state.items, { id: action.id, kind: "steer", text: action.text, status: "pending" }] };
+      return { ...state, items: [...state.items, pendingSteer(action)] };
 
     case "prompt_suggestion":
       return state.turnInFlight ? state : { ...state, suggestion: action.text };
@@ -768,7 +768,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         turnInFlight: true,
         items: [
           ...state.items.filter((item) => !(item.kind === "steer" && action.ids.includes(item.id))),
-          { id: genId(), kind: "user", text: action.text, turnIndex: countUserItems(state.items) },
+          { id: genId(), kind: "user", turnIndex: countUserItems(state.items), ...requeuedNotes(state.items, action.ids, action.text) },
         ],
       };
 

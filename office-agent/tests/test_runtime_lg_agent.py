@@ -169,6 +169,16 @@ def test_a_note_added_mid_turn_neither_starts_a_turn_nor_reads_as_one() -> None:
     assert serialize_history_for_ws_lg(history)[2] == {"kind": "steer", "text": "also b"}
 
 
+def test_a_note_added_mid_turn_shows_its_pictures_and_files_in_the_log() -> None:
+    from coscribe.runtime_lg.messages import serialize_history_for_ws_lg, steer_message
+
+    picture = "data:image/png;base64,iVBORw0KGgo="
+    note = steer_message("see\n\n(Attached files, now in the workspace: a.pdf)", [picture])
+
+    entry = serialize_history_for_ws_lg([HumanMessage("go"), note])[1]
+    assert entry == {"kind": "steer", "text": "see", "images": [picture], "files": ["a.pdf"]}
+
+
 def test_auto_compact_tokens_collapses_a_long_thread_once_past_the_keep_floor() -> None:
     """SummarizationMiddleware's own default keep=("messages", 20) means a
     thread shorter than 20 messages is never touched even once the token

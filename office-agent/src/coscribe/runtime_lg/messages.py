@@ -303,10 +303,14 @@ STEER_NOTE = (
 _STEER_MARK = "coscribe_steer"
 
 
-def steer_message(text: str) -> HumanMessage:
-    """A note the user sent mid-turn, read before the model's next step.
-    Marked so the per-turn counts don't take it for a new request."""
-    return HumanMessage(content=STEER_NOTE + text, additional_kwargs={_STEER_MARK: True})
+def steer_message(text: str, images: Sequence[str] = ()) -> HumanMessage:
+    """A note the user sent mid-turn, read before the model's next step, with the pictures
+    attached to it. Marked so the per-turn counts don't take it for a new request."""
+    content: str | list[str | dict[str, Any]] = STEER_NOTE + text
+    if images:
+        content = [{"type": "text", "text": STEER_NOTE + text}]
+        content.extend({"type": "image_url", "image_url": {"url": url}} for url in images)
+    return HumanMessage(content=content, additional_kwargs={_STEER_MARK: True})
 
 
 def is_steer(message: Any) -> bool:
@@ -547,7 +551,7 @@ def serialize_history_for_ws_lg(messages: list[Any]) -> list[dict[str, Any]]:
             entry: dict[str, Any] = {"kind": kind, "text": shown}
             if images:
                 entry["images"] = images
-            if files and kind == "user":
+            if files:
                 entry["files"] = files
             entries.append(entry)
             continue
