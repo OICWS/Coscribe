@@ -61,9 +61,10 @@ def supersteps(steps: list[Step]) -> int:
             # more, in a run of its own (decision 0033).
             total += 3
         else:
-            # Each try is a graph step, and the steps in its place follow the last (decision 0032).
+            # Each try is a graph step, the steps in its place follow the last (decision 0032), and
+            # steps the run adds for it take one more (decision 0042).
             policy = failure_policy(step)
-            total += 1 + (policy.retries + supersteps(policy.steps) if policy else 0)
+            total += 2 + (policy.retries + supersteps(policy.steps) if policy else 0)
     return total
 
 

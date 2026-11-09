@@ -24,14 +24,14 @@ Last reviewed: 2026-11-06.
    writes mid-turn (`docs/log/2026-11-07-script-to-background.md`); a brief of what each folder
    holds (`docs/log/2026-11-08-folder-brief.md`) and an offer to save a job as a workflow or skill
    (`docs/log/2026-11-08-save-offer.md`). Next: an in-chat connector card (decision record and independent review first).
-3. **Workflows** (#843; decisions 0028 to 0040). Phases P0 to P5 are done
+3. **Workflows** (#843; decisions 0028 to 0040, and 0042). Phases P0 to P5 are done
    (`docs/log/`, 2026-10-29 to 2026-11-02). Parallel steps are merged (#789, decision 0036
    proposed), and so are the simple view in words (#839, decision 0037) and the run page that
    says how it went before its steps (#840, decision 0038). A task that starts on something
    new in a connector is merged (#851, decision 0039). In review: a task that starts on an event a
-   program on the machine sends (#850, decision 0040). Next in #843: steps a run adds by itself
-   within the task's autonomy (batch 3). Open: a cost cap for an agent step, and an L3 step
-   delegating.
+   program on the machine sends (#850, decision 0040). In review: steps a run adds when a
+   step fails at proactive or above (batch 3, decision 0042). Open: a cost cap for an agent step,
+   an L3 step delegating, and adding steps when nothing failed.
 
 ## Open, smaller
 

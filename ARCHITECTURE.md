@@ -154,8 +154,9 @@ file arrives in a folder; a run with nothing to do ends quietly (0034). A step c
 task as a run of its own, and every save keeps a version a person can compare and restore (0035).
 A step can run lanes of steps at the same time, each a run of its own, and go on once all have
 ended (0036). Decision 0028 (proposed; built in phases from #719) replaces
-the two kinds below with one: the graph stays fixed, and each step chooses
-its autonomy.
+the two kinds below with one: each step chooses its autonomy, and a run follows
+the saved steps, except that at proactive or above a step nothing recovers may
+get a few steps the run adds, each that does more than read asked first (0042).
 
 - **L0 fixed** (tool, script, check) and **L1** one model call with no tools:
   fast, repeatable, cheap. Until 0028 is built these are the only kinds a

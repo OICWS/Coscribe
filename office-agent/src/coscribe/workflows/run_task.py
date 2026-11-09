@@ -168,7 +168,7 @@ class TaskSteps:
             await self.builder.emit(replace(record, step_id=f"{step.id}/{record.step_id}",
                                             iteration=[*it, *record.iteration]))  # fmt: skip
 
-        inner = replace(ctx, approval_mode=task.approval_mode,
+        inner = replace(ctx, approval_mode=task.approval_mode, adds_steps=False,
                         tasks=ctx.tasks.below(step.id, task.task_id))  # fmt: skip
         run = self.make_run(task.workflow, inner, self.builder.checkpointer, thread, on_step)
         outcome = await _alone(run.settled())

@@ -12,9 +12,26 @@ export function calledWorkflow(run: ScheduledRun, stepId: string): Workflow | nu
   return mapWorkflow(called.workflow, (step: WorkflowStep) => ({ ...step, id: `${stepId}/${step.id}` }));
 }
 
-/** A step's title anywhere in the run, a called task's steps too. */
+const ADDED = /^(.+)\/added\/(.+)$/;
+
+/** A step the run added because one failed (decision 0042), or the approval in front of it: its
+ * title is on the failed step's record, under the id its own records carry after `/added/`. */
+function addedStepTitle(run: ScheduledRun, stepId: string): string | null {
+  const match = ADDED.exec(stepId);
+  if (!match) return null;
+  const [, owner, id] = match;
+  const plan = run.steps.find((record) => record.step_id === owner && record.agent?.added)?.agent?.added;
+  const own = id.startsWith("before_") ? id.slice("before_".length) : id;
+  const title = plan?.steps.find((step) => step.id === own)?.title;
+  if (typeof title !== "string") return null;
+  return own === id ? `${title} (added by the run)` : `Before “${title}” (added by the run)`;
+}
+
+/** A step's title anywhere in the run, a called task's steps and the steps it added too. */
 export function runStepTitle(workflow: Workflow, run: ScheduledRun, stepId: string | undefined): string {
   if (!stepId) return "a step";
+  const added = addedStepTitle(run, stepId);
+  if (added) return added;
   const cut = stepId.lastIndexOf("/");
   const owner = cut < 0 ? workflow : calledWorkflow(run, stepId.slice(0, cut));
   const steps = owner ? everyStep(owner) : [];

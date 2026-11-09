@@ -38,11 +38,11 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0025](0025-the-doc-artifact-is-a-markdown-document-and-the-word-panel-is-frozen.md) | The Doc artifact is a markdown document, and the Word panel is frozen |
 | [0026](0026-libreoffice-is-an-optional-engine-found-or-installed-on-request.md) | LibreOffice is an optional engine, found or installed on request |
 | [0027](0027-an-artifact-is-what-coscribe-made-from-a-source-it-owns.md) | An artifact is what coscribe made from a source it owns |
-| [0028](0028-a-workflow-step-chooses-its-autonomy.md) | A workflow step chooses its autonomy; the graph stays fixed (proposed) |
+| [0028](0028-a-workflow-step-chooses-its-autonomy.md) | A workflow step chooses its autonomy; the graph stays fixed (proposed; narrowed by 0042) |
 | [0029](0029-a-test-run-stops-before-a-step-that-cant-be-taken-back.md) | A test run stops before a step that can't be taken back (proposed) |
 | [0030](0030-a-task-has-one-autonomy-setting-and-every-run-a-report.md) | A task has one autonomy setting, and every run a report (accepted; narrowed by 0032) |
 | [0031](0031-a-workflow-asks-for-typed-inputs-and-goes-one-of-several-ways.md) | A workflow asks for typed inputs and goes one of several ways (proposed) |
-| [0032](0032-a-step-says-what-happens-when-it-fails.md) | A step says what happens when it fails (proposed) |
+| [0032](0032-a-step-says-what-happens-when-it-fails.md) | A step says what happens when it fails (proposed; narrowed by 0042) |
 | [0033](0033-a-run-can-pause-for-a-person-or-a-time.md) | A run can pause for a person or a time (proposed) |
 | [0034](0034-a-task-remembers-between-runs-and-starts-on-a-new-file.md) | A task remembers between runs, and starts on a schedule of minutes or a new file (proposed; narrowed by 0039, 0040) |
 | [0035](0035-a-task-runs-another-and-keeps-its-versions.md) | A task runs another task as a step, and keeps every version it was saved as (proposed; narrowed by 0036) |
@@ -51,3 +51,4 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0038](0038-a-run-page-says-how-it-went-before-its-steps.md) | A run page says how it went and what it got, before its steps (proposed) |
 | [0039](0039-a-task-starts-on-something-new-in-a-connector.md) | A task starts on something new in a connector (proposed) |
 | [0040](0040-a-task-starts-on-an-event-another-program-sends.md) | A task starts on an event another program on the machine sends (proposed) |
+| [0042](0042-a-run-may-add-steps-when-a-step-fails.md) | A run may add steps when a step fails, at proactive or above (proposed) |

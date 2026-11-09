@@ -111,6 +111,7 @@ const RECOVERED: Record<NonNullable<NodeRunState["recovered"]>, string> = {
   skipped: "Failed, skipped it",
   fallback: "Failed, ran the steps in its place",
   item_skipped: "Failed, skipped the item",
+  added: "Failed, the run added steps",
 };
 
 function loopText(state: NodeRunState, done: number, total: number | null, skipped: number): string {

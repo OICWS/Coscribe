@@ -61,6 +61,7 @@ from ..workflow_spec import (
     step_output,
     walk,
 )
+from .added_steps import ADDED, AddedSteps
 from .agent_step import AgentCall, CallGuard, answer_of, run_agent_step
 from .healing import carried, heal_guard, healed, stand_in
 from .loop_labels import item_labels as _item_labels
@@ -74,6 +75,7 @@ from .preflight import UNAVAILABLE_TOOLS as UNAVAILABLE_TOOLS
 from .preflight import WorkflowNotRunnable as WorkflowNotRunnable
 from .preflight import preflight, starting_values
 from .remember_steps import ENDED, check_or_end, remember
+from .routing import Router, arm_router, loop_router, more, routed
 from .run_task import TaskSteps, given_results
 from .step_work import StepContext as StepContext
 from .step_work import StepFailed as StepFailed
@@ -124,6 +126,8 @@ class _State(TypedDict):
     # it and how many of its tries have failed (decision 0032). Each try is its own graph step,
     # so a pause during one resumes that try, not the first.
     attempts: Annotated[dict[str, Any], _merge]
+    # Per step id: the steps the run added for it (decision 0042), for its later passes.
+    added: Annotated[dict[str, Any], _merge]
 
 
 def _node_name(step: Step) -> str:
@@ -147,6 +151,7 @@ class _GraphBuilder:
         self.pauses = Pauses(self)
         self.tasks = TaskSteps(self, WorkflowRun)
         self.parallel = ParallelSteps(self, WorkflowRun, workflow)
+        self.added = AddedSteps(self, WorkflowRun, workflow)
         self.checkpointer: Any = None
 
     async def emit(self, record: StepRecord) -> None:
@@ -200,6 +205,8 @@ class _GraphBuilder:
             routes[PAUSED] = _node_name(step)
         if isinstance(step, CheckStep) and step.otherwise == ENDED:
             routes[ENDED] = END
+        if self.added.eligible(step):
+            routes[ADDED] = _node_name(step)
         # A person's no stops the run, wherever it is.
         loop = None if isinstance(step, (ApprovalStep, AskStep)) else self.skipping_loop(step)
         if loop is not None:
@@ -228,6 +235,11 @@ class _GraphBuilder:
             return {"values": made, "attempts": {step.id: {"route": then}}}
         loop = self.skipping_loop(step)
         if loop is None:
+            if self.added.eligible(step, exc):
+                try:
+                    return await self.added.plan(step, state, it, started, tries, exc)
+                except StepFailed as refused:
+                    exc = refused
             failure = await self.fail(step, it, started, exc, tries, output=output)
             if failure is exc:
                 raise failure
@@ -284,6 +296,8 @@ class _GraphBuilder:
                 return await self.pauses.wait(step, state, held, it)
             # Tries after the first carry on the step's record from when it started.
             failed = (state.get("attempts") or {}).get(step.id) or {}
+            if failed.get("route") == ADDED:
+                return cast(dict[str, Any], await self.added.run(step, state, it, failed))
             retrying = failed.get("route") == "retry"
             started = failed["started"] if retrying else _now()
             attempt = failed["tries"] + 1 if retrying else 1
@@ -471,7 +485,7 @@ class _GraphBuilder:
     def loop_next(self, step: LoopStep) -> Callable[[_State], Awaitable[dict[str, Any]]]:
         async def run(state: _State) -> dict[str, Any]:
             loop = state["loops"][step.id]
-            if _more(loop):
+            if more(loop):
                 return {"values": {step.item: loop["items"][loop["index"]]},
                         "attempts": {step.id: {"route": "ok"}}}  # fmt: skip
             skipped = loop.get("skipped") or []
@@ -531,7 +545,7 @@ class _GraphBuilder:
                 arms = child_lists(step)
                 self.graph.add_node(node, cast(Any, self.make_node(step)))
                 paths = {arm: _node_name(path[0]) if path else following for arm, path in arms}
-                self.edges(node, step, following, _arm_router(step), paths)
+                self.edges(node, step, following, arm_router(step), paths)
                 for _arm, path in arms:
                     self.wire(path, following)
             elif isinstance(step, LoopStep):
@@ -541,7 +555,7 @@ class _GraphBuilder:
                 self.graph.add_node(collect_node, cast(Any, self.loop_collect(step)))
                 self.edges(node, step, next_node)
                 body = _node_name(step.steps[0]) if step.steps else collect_node
-                self.edges(next_node, step, following, _loop_router(step),
+                self.edges(next_node, step, following, loop_router(step),
                            {"body": body, "done": following})  # fmt: skip
                 self.wire(step.steps, collect_node)
                 self.graph.add_edge(collect_node, next_node)
@@ -557,7 +571,7 @@ class _GraphBuilder:
         node: str,
         step: Step,
         following: str,
-        router: Callable[[_State], str] | None = None,
+        router: Router | None = None,
         targets: dict[str, str] | None = None,
     ) -> None:
         """`node`'s ways on: to `targets` by `router` when it worked (to `following` without
@@ -568,7 +582,7 @@ class _GraphBuilder:
             return
         ways = [*(targets or {"ok": following}).items(), *routes.items()]
         destinations: dict[Hashable, str] = {way: target for way, target in ways}
-        self.graph.add_conditional_edges(node, _routed(step, router), destinations)
+        self.graph.add_conditional_edges(node, cast(Any, routed(step, router)), destinations)
 
     def build(self, checkpointer: Any) -> Any:
         self.checkpointer = checkpointer
@@ -579,30 +593,6 @@ class _GraphBuilder:
 
 def build_graph(workflow: Workflow, ctx: StepContext, on_step: OnStep, checkpointer: Any) -> Any:
     return _GraphBuilder(workflow, ctx, on_step).build(checkpointer)
-
-
-def _routed(step: Step, router: Callable[[_State], str] | None) -> Callable[[_State], str]:
-    def route(state: _State) -> str:
-        taken = ((state.get("attempts") or {}).get(step.id) or {}).get("route", "ok")
-        if taken != "ok":
-            return str(taken)
-        return router(state) if router is not None else "ok"
-
-    return route
-
-
-def _arm_router(step: BranchStep | ChoiceStep) -> Callable[[_State], str]:
-    # Re-evaluating is safe: the branch node already evaluated the same
-    # values without error, and nothing has changed them since.
-    return lambda state: choose_arm(step, state["values"])[0]
-
-
-def _more(loop: dict[str, Any]) -> bool:
-    return loop["index"] < len(loop["items"]) and not loop.get("stopped_early")
-
-
-def _loop_router(step: LoopStep) -> Callable[[_State], str]:
-    return lambda state: "body" if _more(state["loops"][step.id]) else "done"
 
 
 class WorkflowRun:
@@ -712,7 +702,7 @@ class WorkflowRun:
         placed = self._placed.get(failure.step_id or "")
         about = {"step": placed.step.title if placed else failure.step_id, "message": str(failure)}
         workflow = self.workflow.model_copy(update={"steps": steps, "after_failure": []})
-        ctx = replace(self.ctx, ask_permission=False)
+        ctx = replace(self.ctx, ask_permission=False, adds_steps=False)
         graph = _GraphBuilder(workflow, ctx, self.on_step, unattended=True).build(InMemorySaver())
         config = {"configurable": {"thread_id": "after-failure"},
                   "recursion_limit": _supersteps(steps) + 10}  # fmt: skip

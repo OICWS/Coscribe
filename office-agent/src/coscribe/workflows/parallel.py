@@ -108,7 +108,8 @@ class ParallelSteps:
     async def _lanes(
         self, step: ParallelStep, values: dict[str, Any], it: list[int], base: str
     ) -> tuple[dict[str, Any], dict[str, Any]]:
-        ctx = self.builder.ctx
+        # A lane reads names it doesn't hold, so a plan for it can't be checked (decision 0042).
+        ctx = replace(self.builder.ctx, adds_steps=False)
         browser = asyncio.Lock()
         lane_ids = {p.step.id for lane in step.lanes for p in walk(lane.steps)}
 

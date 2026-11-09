@@ -10,6 +10,7 @@ from ..workflow_spec import (
     walk,
     workflow_error,
 )
+from .added_steps import added_fix
 from .agent_step import AgentCall, AgentReply, AgentRequest, AgentRunner
 from .catalog import describe_params, tool_description
 from .connector_value import ask_connector
@@ -65,6 +66,7 @@ __all__ = [
     "describe_params",
     "draft_workflow",
     "granted_by",
+    "added_fix",
     "heal_fixes",
     "heals_to_revise",
     "output_files",

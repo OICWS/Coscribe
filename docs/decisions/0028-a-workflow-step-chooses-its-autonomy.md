@@ -1,7 +1,7 @@
 # 0028: A workflow step chooses its autonomy; the graph stays fixed
 
 Status: proposed (2026-10-29, kurtosisOC; needs the maintainer's acceptance). Supersedes 0005 in
-part: a run may contain an agent step; the code module stays out. Issue #719.
+part: a run may contain an agent step; the code module stays out. Issue #719. Narrowed by 0042.
 
 ## Context
 A scheduled task is fixed steps with no agent at run time, or instructions an agent works out each

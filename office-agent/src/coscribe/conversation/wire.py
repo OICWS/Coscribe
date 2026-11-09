@@ -231,6 +231,13 @@ class WorkflowAgentCall(TypedDict):
     args: Any
 
 
+class WorkflowAddedSteps(TypedDict):
+    """The steps a run added for a failed step (decision 0042), each as a workflow step's JSON."""
+
+    why: str
+    steps: list[dict[str, Any]]
+
+
 class WorkflowAgentActivity(TypedDict):
     """An agent step's work: what it used once it ends, or the call waiting for a person."""
 
@@ -239,6 +246,7 @@ class WorkflowAgentActivity(TypedDict):
     cached_tokens: NotRequired[int]
     tools_used: NotRequired[list[str]]
     pending: NotRequired[WorkflowAgentCall]
+    added: NotRequired[WorkflowAddedSteps]
 
 
 class WorkflowAskChoice(TypedDict):
@@ -296,7 +304,7 @@ class WorkflowStepRecord(TypedDict):
     attempts: NotRequired[int]
     # A failure that didn't stop the run: the step was skipped, steps ran in its place, or its
     # loop skipped the item.
-    recovered: NotRequired[Literal["skipped", "fallback", "item_skipped"] | None]
+    recovered: NotRequired[Literal["skipped", "fallback", "item_skipped", "added"] | None]
     # An ask or wait step waiting, and what for; absent on older runs.
     pause: NotRequired[WorkflowPause | None]
 
