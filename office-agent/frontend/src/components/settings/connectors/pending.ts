@@ -15,3 +15,16 @@ export function subscribePendingChanged(listener: () => void): () => void {
     listeners = listeners.filter((l) => l !== listener);
   };
 }
+
+/** A connector a chat card asked Settings to open at, taken once by the Connectors tab when it
+ * opens, so a card can bring the person to a guided setup without a prop through every layer. */
+let toOpen: string | null = null;
+export function openConnectorNext(name: string) {
+  toOpen = name;
+}
+
+export function takeConnectorToOpen(): string | null {
+  const name = toOpen;
+  toOpen = null;
+  return name;
+}

@@ -45,6 +45,7 @@ from ..tools import (
 )
 from ..tools.web import build_http_tools
 from .artifact_tools import build_artifact_tools
+from .connector_offer import build_connector_offer_tools
 from .context_usage import build_context_breakdown
 from .folder_brief import FolderBriefKeeper
 from .page_tools import build_page_tools
@@ -71,6 +72,7 @@ class AssemblyHost(Protocol):
     _last_usage_metadata: UsageMetadata | None
     _base_tools: list[Callable[..., Any] | BaseTool]
     _extra_tools: list[Callable[..., Any] | BaseTool]
+    connector_catalog: Callable[[], list[dict[str, Any]]] | None
     # Read by SaveOffer at the end of a turn.
     lg_agent: Any
     config: Any
@@ -190,6 +192,7 @@ class AgentAssembly:
             *build_page_tools(
                 self._host.workspace_scope, self._host.settings.state_dir, self._host.thread_id
             ),
+            *build_connector_offer_tools(self._host.connector_catalog, self._host.thread_id),
             review_work_tool,
             self._host._build_draft_workflow_tool(),
             self._host._build_revise_workflow_tool(),

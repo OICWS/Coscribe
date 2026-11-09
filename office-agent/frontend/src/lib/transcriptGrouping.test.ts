@@ -3,6 +3,7 @@ import type { LogItem } from "../state/reducer";
 import type { Workflow } from "../types/workflow";
 import {
   blockedWriteOf,
+  connectorOfferOf,
   groupHasPendingApproval,
   groupToolRuns,
   groupTurns,
@@ -10,6 +11,7 @@ import {
   isRunning,
   latestWorkflowDraft,
   latestWorkflowDraftId,
+  openConnectorOfferId,
   summarizeItem,
   workflowTests,
   type ToolRunGroup,
@@ -247,6 +249,29 @@ describe("isRunning", () => {
 
   it("is false for an approved call that already has a result", () => {
     expect(isRunning(approval("write_file", "approved", { result: "ok" }), true)).toBe(false);
+  });
+});
+
+describe("connectorOfferOf", () => {
+  const offered = { connector_offer: "notion", title: "Notion", reason: "To read the plan." };
+
+  it("reads the offer from the result, whatever the arguments say", () => {
+    const t = tool("suggest_connector", { arguments: { name: "canva" }, result: JSON.stringify(offered) });
+    expect(connectorOfferOf(t)).toEqual({ name: "notion", title: "Notion", reason: "To read the plan." });
+  });
+
+  it("is null for a refusal, a call still running, or another tool", () => {
+    expect(connectorOfferOf(tool("suggest_connector", { result: "Notion is already added." }))).toBeNull();
+    expect(connectorOfferOf(tool("suggest_connector"))).toBeNull();
+    expect(connectorOfferOf(tool("read_file", { result: offered }))).toBeNull();
+  });
+
+  it("leaves only the last offer open, until the person sends something", () => {
+    const first = tool("suggest_connector", { result: { ...offered, connector_offer: "canva" } });
+    const last = tool("suggest_connector", { result: offered });
+    expect(openConnectorOfferId([user(), first, last, agent()])).toBe(last.id);
+    expect(openConnectorOfferId([user(), first, last, agent(), user("Not now")])).toBeNull();
+    expect(openConnectorOfferId([user(), agent()])).toBeNull();
   });
 });
 

@@ -176,6 +176,33 @@ export function blockedWriteOf(item: ToolOrApprovalItem): BlockedWrite | null {
   return { path: data.blocked_write, folder: typeof data.blocked_folder === "string" ? data.blocked_folder : null };
 }
 
+/** A connector the model offered from the built-in catalog (decision 0041): the card under the
+ * call reads it from the result alone, since parallel calls' arguments can arrive swapped. */
+export interface ConnectorOffer {
+  name: string;
+  title: string;
+  reason: string;
+}
+
+export function connectorOfferOf(item: ToolOrApprovalItem): ConnectorOffer | null {
+  if (item.toolName !== "suggest_connector" || item.result === undefined) return null;
+  const data = parsedResult(item.result);
+  if (data === null || typeof data.connector_offer !== "string") return null;
+  const title = typeof data.title === "string" ? data.title : data.connector_offer;
+  return { name: data.connector_offer, title, reason: typeof data.reason === "string" ? data.reason : "" };
+}
+
+/** The offer still waiting on the person: the last one, when nothing was sent after it. Only
+ * that card may answer for them; an older one only connects. */
+export function openConnectorOfferId(items: LogItem[]): string | null {
+  for (let index = items.length - 1; index >= 0; index--) {
+    const item = items[index];
+    if (item.kind === "user") return null;
+    if ((item.kind === "tool" || item.kind === "approval") && connectorOfferOf(item)) return item.id;
+  }
+  return null;
+}
+
 /** Each draft's latest test_workflow call among `items`, by draft id. A
  * call with no result is running only while a turn is: Stop cancels it
  * without one. */
@@ -478,6 +505,7 @@ const TOOL_SUMMARIES: Record<string, (args: ArgRecord) => SummaryParts> = {
   test_workflow: () => ({ verb: "Tested a workflow", object: null }),
   edit_scheduled_task: () => ({ verb: "Proposed changes to a task", object: null }),
   search_tools: (a) => ({ verb: "Searched tools", object: str(a, "query") ?? null, glue: ": " }),
+  suggest_connector: (a) => ({ verb: "Suggested a connector", object: str(a, "name") ?? null, glue: ": " }),
   read_web_page: (a) => ({ verb: "Read", object: str(a, "url") ?? "a web page" }),
 };
 

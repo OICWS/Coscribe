@@ -51,3 +51,4 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0038](0038-a-run-page-says-how-it-went-before-its-steps.md) | A run page says how it went and what it got, before its steps (proposed) |
 | [0039](0039-a-task-starts-on-something-new-in-a-connector.md) | A task starts on something new in a connector (proposed) |
 | [0040](0040-a-task-starts-on-an-event-another-program-sends.md) | A task starts on an event another program on the machine sends (proposed) |
+| [0041](0041-the-model-offers-a-connector-only-the-person-connects-it.md) | The model offers a connector in the chat; only the person connects it (proposed) |

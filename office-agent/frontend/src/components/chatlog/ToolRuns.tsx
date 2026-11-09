@@ -1,8 +1,9 @@
 import { useContext, useState } from "react";
-import { blockedWriteOf, groupHasPendingApproval, isRunning, summarizeGroupParts, summarizeItemParts, type ToolRunGroup } from "../../lib/transcriptGrouping";
+import { blockedWriteOf, connectorOfferOf, groupHasPendingApproval, isRunning, summarizeGroupParts, summarizeItemParts, type ToolRunGroup } from "../../lib/transcriptGrouping";
 import { type LogItem } from "../../state/reducer";
 import { type PptxShapeCapture } from "../PptxShapeOverlay";
 import { BlockedFolderCard } from "../BlockedFolderCard";
+import { ConnectorOfferCard } from "../ConnectorOfferCard";
 import { type ToolOrApprovalItem } from "./types";
 import { pptxOverlayTargetOf, inSentence } from "./helpers";
 import { ConnectorTools } from "./contexts";
@@ -90,7 +91,9 @@ export function ToolRunGroupView({
       {single && <RunInBackground item={single} live={live} />}
       {group.items.map((item) => {
         const blocked = blockedWriteOf(item);
-        return blocked ? <BlockedFolderCard key={item.id} blocked={blocked} /> : null;
+        if (blocked) return <BlockedFolderCard key={item.id} blocked={blocked} />;
+        const offer = connectorOfferOf(item);
+        return offer ? <ConnectorOfferCard key={item.id} itemId={item.id} offer={offer} /> : null;
       })}
       {open && (
         <div className="mt-2 overflow-hidden rounded-xl border border-[var(--border)]">

@@ -61,6 +61,10 @@ class ToolMetadata:
     risk_category: ToolRiskCategory = "READ"
     category: str | None = None
     description: str | None = None
+    # A deferred tool may answer a search itself (the query -> what it found, or nothing): it is
+    # then listed with what it found, for things the model can't call yet but the tool can offer,
+    # such as a connector that isn't added. A plain name match can't find those.
+    search_hint: Callable[[str], list[dict[str, Any]]] | None = None
 
     @property
     def requires_approval(self) -> bool:
@@ -76,6 +80,7 @@ def tool_metadata(
     risk_category: ToolRiskCategory = "READ",
     category: str | None = None,
     description: str | None = None,
+    search_hint: Callable[[str], list[dict[str, Any]]] | None = None,
 ) -> Callable[..., Any]:
     """Attach a ToolMetadata to a callable, returning it unchanged (for use as a wrapper)."""
     setattr(
@@ -85,6 +90,7 @@ def tool_metadata(
             risk_category=risk_category,
             category=category,
             description=description,
+            search_hint=search_hint,
         ),
     )
     return func

@@ -23,7 +23,7 @@ import { ConnectorDetail } from "./connectors/ConnectorDetail";
 import { DiscoverCard } from "./connectors/DiscoverCard";
 import { buildRows, findPinnedNpmPackage } from "./connectors/helpers";
 import { NoticeText } from "./connectors/NoticeText";
-import { notifyPendingChanged, pendingConnectorAdds, subscribePendingChanged } from "./connectors/pending";
+import { notifyPendingChanged, pendingConnectorAdds, subscribePendingChanged, takeConnectorToOpen } from "./connectors/pending";
 import { StatusCell } from "./connectors/StatusCell";
 import { SIGN_IN_TEXT } from "./connectors/types";
 import type { ConnectorRow, LocalServerArgs, Notice, RemoteServerArgs } from "./connectors/types";
@@ -41,8 +41,8 @@ const EMPTY: { catalog: McpCatalogEntry[]; servers: McpServersResponse; apps: Mc
  * their permissions), and adding a custom one. */
 export function ConnectorsTab({ active }: { active: boolean }) {
   const [, forceRender] = useState(0);
-  const [tab, setTab] = useState<"yours" | "discover">("yours");
-  const [openName, setOpenName] = useState<string | null>(null);
+  const [openName, setOpenName] = useState<string | null>(takeConnectorToOpen);
+  const [tab, setTab] = useState<"yours" | "discover">(openName ? "discover" : "yours");
   const [adding, setAdding] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const addMenuRef = useRef<HTMLDivElement>(null);

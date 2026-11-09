@@ -27,6 +27,7 @@ import { RunBreadcrumb, TaskPageBreadcrumb } from "./components/RunBreadcrumb";
 import { RunPanel } from "./components/RunPanel";
 import { ScheduledTaskModal } from "./components/ScheduledTaskModal";
 import { SettingsModal, type SettingsCategory } from "./components/settings/SettingsModal";
+import { openConnectorNext } from "./components/settings/connectors/pending";
 import { StartupSplash } from "./components/StartupSplash";
 import { ShortcutsDialog } from "./components/ShortcutsDialog";
 import { BackgroundTasksPanel } from "./components/BackgroundTasksPanel";
@@ -102,6 +103,7 @@ function App() {
   // What Design systems opens on: its new-system form ("new"), one system (its id) or the list.
   const [settingsDesign, setSettingsDesign] = useState<string | null>(null);
   const showDesignSystems = (start: string | null) => { setSettingsCategory("design-systems"); setSettingsDesign(start); setSettingsOpen(true); };
+  const showConnector = (name: string) => { openConnectorNext(name); setSettingsCategory("connectors"); setSettingsOpen(true); };
   // Find in page: null while closed; bumped to refocus an open one.
   const [findKey, setFindKey] = useState<number | null>(null);
   const [pendingComposerAction, setPendingComposerAction] = useState<ComposerAction | null>(null);
@@ -130,13 +132,9 @@ function App() {
   // Per conversation, this page load: whether the panel was opened or
   // closed by hand. Unset, it opens only when it has something to show.
   const [taskPanelChoice, setTaskPanelChoice] = useState<Record<string, boolean>>({});
-  // Set by BrowserPanel's "Send to chat" (an element it picked, screenshot
-  // + a short description) -- Composer watches this prop and appends it to
-  // its own pendingImages the moment it changes, same "external image
-  // arrives, composer adopts it" shape a drag-and-drop would use, just
-  // driven by a prop instead of a DOM event. Cleared right back to null
-  // after handing it off so the same capture can't be re-applied on an
-  // unrelated future re-render.
+  // Set by BrowserPanel's "Send to chat" (a picked element's screenshot and description), which
+  // Composer adds to its images like a dropped one; cleared after the hand-off so a later render
+  // can't add it again.
   const [pendingBrowserCapture, setPendingBrowserCapture] = useState<BrowserCapture | null>(null);
   // Same pattern, for a shape clicked in a pptx preview (ChatLog.tsx's
   // PptxShapeOverlay) instead of an element picked in the Browser panel.
@@ -977,6 +975,7 @@ function App() {
                       onAddFolder: (folder) => socketRef.current?.send({ type: "add_folder", folder }),
                       onTryAgain: () => sendRaw("I added the folder. Please try again."),
                     }}
+                    connectorOffers={{ busy: state.turnInFlight, onSend: (text) => onSend({ displayText: text, outgoingText: text, isInstant: false }), onOpenSettings: showConnector }}
                     onPptxShapePicked={onPptxShapePicked}
                     olderItems={state.olderItems}
                     olderStatus={state.olderStatus}

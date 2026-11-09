@@ -184,8 +184,11 @@ class ChatSessionLG:
         workspace_explicit: bool = False,
         extra_folders: list[Path] | None = None,
         configured_models: Callable[[], list[str]] | None = None,
+        connector_catalog: Callable[[], list[dict[str, Any]]] | None = None,
     ) -> None:
         self.thread_id = thread_id
+        # What suggest_connector may offer; the catalog is the server's, so the CLI has none.
+        self.connector_catalog = connector_catalog
         # "provider:model" for every configured provider -- what a sub-agent
         # may be run on.
         self._configured_models = configured_models or (lambda: [self._model_string])
@@ -279,24 +282,9 @@ class ChatSessionLG:
         self.enabled_skill_names: set[str] = set(enabled_skill_names or ())
         self._checkpointer = checkpointer
         agent = self._build_agent()
-        # Unrestricted by enabled_skill_names deliberately -- a /<slug>
-        # slash command is an explicit, one-off user request to follow
-        # that skill for this message, distinct from the passive "is it
-        # listed in instructions" toggle set_enabled_skills controls
-        # below. Keyed by SkillInfo.slug (a single command-safe token,
-        # e.g. "skill-creator"), not skill.name -- every current built-in
-        # skill's display name has a space in it ("Skill Creator", "Word
-        # Documents", ...), which a bare `.lower()` on the name can never
-        # match against the single word _handle_user_message_locked below
-        # actually parses out of "/<word> <rest>". Real, previously-
-        # shipped-but-untested bug: the frontend's own autocomplete
-        # (Composer.tsx's selectAutocomplete) inserted the literal display
-        # name including its space, so selecting a multi-word skill from
-        # the dropdown produced text this lookup could never match --
-        # confirmed by reading through both sides together, not by a
-        # live report. Distinct from web/app.py's *other*, separately-
-        # scoped `skills_by_name` (the enable/disable toggle, correctly
-        # keyed by display name -- that one was never broken).
+        # Unrestricted by enabled_skill_names: a /<slug> command is a one-off request to follow
+        # that skill. Keyed by slug, a single word, because "/<word> <rest>" is how
+        # _handle_user_message_locked parses it and most display names have spaces.
         self.skills_by_slug = {
             skill.slug: skill for skill in load_builtin_skills() + load_skills(settings.skills_dir)
         }

@@ -21,6 +21,7 @@ from ..tools import (
     validate_mcp_config,
 )
 from ..workflows import tool_description
+from .connector_catalog import MCP_CATALOG
 from .routes.shared import _read_mcp_servers_raw
 
 
@@ -61,6 +62,25 @@ class ConnectorManager:
         return apply_connector_permissions(
             self.tools, ConnectorPermissions(self._settings.state_dir).load()
         )
+
+    def offerable(self) -> list[dict[str, Any]]:
+        """The built-in catalog as a conversation may offer it (decision 0041): each entry's
+        name, title and what it does, and whether it is added already."""
+        path = self._settings.mcp_config_path
+        try:
+            added = _read_mcp_servers_raw(path)["mcpServers"] if path is not None else {}
+        except (OSError, ValueError):
+            # A file Settings can't read either: offering one that is added only gets a note back.
+            added = {}
+        return [
+            {
+                "name": entry["name"],
+                "title": entry.get("title", entry["name"]),
+                "description": entry.get("description", ""),
+                "added": entry["name"] in added,
+            }
+            for entry in MCP_CATALOG
+        ]
 
     def connector_tools(self, name: str) -> list[dict[str, Any]]:
         permissions = ConnectorPermissions(self._settings.state_dir).load().get(name, {})

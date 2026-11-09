@@ -46,7 +46,7 @@ import json
 import re
 from collections.abc import Awaitable, Callable, Iterable, Sequence
 from dataclasses import dataclass, replace
-from typing import Any
+from typing import Any, cast
 
 from langchain.agents.middleware import AgentMiddleware
 from langchain.agents.middleware.types import ModelRequest, ModelResponse
@@ -164,6 +164,13 @@ def build_search_tools_tool(
     entries = [_build_entry(tool) for tool in deferred_tools]
     tools_by_name = {_tool_name(tool): tool for tool in deferred_tools}
     index = _catalog_index(deferred_tools)
+    from ..runtime import get_tool_metadata
+
+    hints = [
+        (tool, hint)
+        for tool in deferred_tools
+        if (hint := get_tool_metadata(cast(Callable[..., Any], tool)).search_hint) is not None
+    ]
 
     def search_tools(query: str) -> str:
         """Find a tool that isn't in your tool list by keyword -- most
@@ -187,16 +194,28 @@ def build_search_tools_tool(
         matches = sorted(
             (pair for pair in scored if pair[0] >= floor), key=lambda pair: pair[0], reverse=True
         )
-        return json.dumps(
-            [
-                {
-                    "name": entry.name,
-                    "description": entry.description,
-                    "parameters": _parameters_schema(tools_by_name[entry.name]),
-                }
-                for _, entry in matches[:_MAX_RESULTS]
-            ]
-        )
+        results: list[dict[str, Any]] = [
+            {
+                "name": entry.name,
+                "description": entry.description,
+                "parameters": _parameters_schema(tools_by_name[entry.name]),
+            }
+            for _, entry in matches[:_MAX_RESULTS]
+        ]
+        for tool, hint in hints:
+            found = hint(query)
+            if found:
+                name = _tool_name(tool)
+                results = [r for r in results if r["name"] != name]
+                results.append(
+                    {
+                        "name": name,
+                        "description": _tool_description(tool),
+                        "parameters": _parameters_schema(tool),
+                        "found": found,
+                    }
+                )
+        return json.dumps(results)
 
     if index:
         # The model can't search for what it doesn't know exists; a short
