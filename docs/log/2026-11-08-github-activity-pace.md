@@ -15,4 +15,5 @@ from OICWS is slowed down as well.
   if GitHub Support names one.
 
 ## Follow-ups
-- When the suspended account is restored, close its open issues as duplicates of #843 to #846.
+- Done 2026-11-10: the account was restored and its issues closed as duplicates of #843 to #846
+  (#393, #469, #588, #719, #776, #788) or of #837 (#832).
