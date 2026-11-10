@@ -29,7 +29,12 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: office-agent/pyproject.toml
+          cache-dependency-path: office-agent/uv.lock
+
+      # Reads uv.lock for scripts/install_locked.py.
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.13.7"
 
       - uses: actions/setup-node@v4
         with:
@@ -42,12 +47,10 @@ jobs:
         run: |
           python -m venv .venv
           .venv/Scripts/python -m pip install --upgrade pip
-          .venv/Scripts/python -m pip install -e ".[dev,web]"
-          .venv/Scripts/python -m pip install pyinstaller
 
-      # Also builds the frontend itself (npm install && npm run build in
-      # office-agent/frontend) as its own first step -- see the script's
-      # own comment for why that's no longer a separate step here.
+      # Also installs the venv's packages from uv.lock and builds the frontend
+      # itself (npm install && npm run build in office-agent/frontend) as its
+      # own first steps -- see the script's own comments for why.
       - name: Stage the PyInstaller sidecar
         working-directory: office-agent-desktop
         run: bash scripts/stage-sidecar.sh

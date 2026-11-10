@@ -164,6 +164,11 @@ web = [
     "websockets>=13.0",
 ]
 
+# Not part of the package: what scripts/install_locked.py adds for a build step. The desktop
+# sidecar is frozen with PyInstaller, and the lock pins it like the rest of what ships.
+[dependency-groups]
+sidecar = ["pyinstaller>=6.0"]
+
 [project.scripts]
 coscribe = "coscribe.cli:main"
 # Needs the `web` extra installed too (FastAPI/uvicorn) -- LangChain/

@@ -25,8 +25,7 @@ Website: https://oicws.github.io/Coscribe/
 ```bash
 cd office-agent
 python3 -m venv .venv && source .venv/bin/activate   # Windows: .\.venv\Scripts\Activate.ps1
-pip install -e ".[dev,web]"
-pip install -U "google-genai>=2.13.0,<2.14.0"
+pip install uv && python scripts/install_locked.py --extra dev --extra web   # the versions in uv.lock
 cp .env.example .env                                   # add a model API key
 (cd frontend && npm install && npm run build)
 coscribe-web                                           # the web UI on http://127.0.0.1:8000

@@ -4,6 +4,7 @@
 office-agent/src/coscribe/tools/_native_animation_presets/animation_presets.json
 office-agent/src/coscribe/tools/_ooxml_schemas/
 package-lock.json
+uv.lock
 site/index.html
 office-agent/tests/openapi.json
 office-agent/src/coscribe/conversation/_vendor/

@@ -43,11 +43,16 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: office-agent/pyproject.toml
+          cache-dependency-path: office-agent/uv.lock
+
+      # Reads uv.lock for scripts/install_locked.py.
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.13.7"
 
       - name: Install the dependencies
         run: |
-          pip install ".[dev,web]"
+          python scripts/install_locked.py --extra dev --extra web
           # setuptools is not a dependency of ours: it comes with the runner's Python, and the
           # one that ships with it is old enough to carry known advisories.
           pip install --upgrade setuptools pip-audit pip-licenses

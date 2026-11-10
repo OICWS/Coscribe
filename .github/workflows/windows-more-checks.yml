@@ -48,10 +48,15 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: office-agent/pyproject.toml
+          cache-dependency-path: office-agent/uv.lock
+
+      # Reads uv.lock for scripts/install_locked.py.
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.13.7"
 
       - name: Install coscribe
-        run: pip install -e ".[dev,web]"
+        run: python scripts/install_locked.py --extra dev --extra web
 
       # -rs lists a skipped test: a check that silently skips would pass without checking.
       - name: Run the checks
@@ -73,7 +78,12 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: office-agent/pyproject.toml
+          cache-dependency-path: office-agent/uv.lock
+
+      # Reads uv.lock for scripts/install_locked.py.
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.13.7"
 
       - uses: actions/cache@v4
         with:
@@ -87,7 +97,7 @@ jobs:
         run: bash ../office-agent-sandbox/scripts/build.sh "$(cygpath -m "$RUNNER_TEMP")/sandbox"
 
       - name: Install coscribe
-        run: pip install -e ".[dev,web]"
+        run: python scripts/install_locked.py --extra dev --extra web
 
       - name: Run the sandbox checks
         run: |
@@ -109,7 +119,12 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: office-agent/pyproject.toml
+          cache-dependency-path: office-agent/uv.lock
+
+      # Reads uv.lock for scripts/install_locked.py.
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.13.7"
 
       - uses: actions/setup-node@v4
         with:
@@ -120,7 +135,7 @@ jobs:
       # pytest is imported by tests/test_deck_engine.py, whose pages slides.spec.ts builds its
       # deck from.
       - name: Install coscribe
-        run: pip install -e ".[dev,web]"
+        run: python scripts/install_locked.py --extra dev --extra web
 
       - name: Build the frontend and install Chromium
         working-directory: office-agent/frontend

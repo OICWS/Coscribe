@@ -59,6 +59,10 @@ Last reviewed: 2026-11-06.
   of the Word open tasks 09 and 10.
 - **PowerPoint, only when a real case asks:** checking names (people, companies) against the
   sources, not only numbers; lifting a slide back to SVG; a group's own rotate and scale.
+- **Python lock** (`docs/log/2026-11-09-python-lock.md`): check the first weekly Dependabot
+  `uv` pull request also moves indirect dependencies in `uv.lock`; `lockfile-only` was reported to
+  move only direct ones (dependabot-core#14073). If it does not, a scheduled `uv lock --upgrade`
+  job takes over that part.
 - **Design systems:** whether the model acts on the "no slide places the logo" warning is not
   measured: in the run of 2026-11-05 it placed the logo every time
   (`docs/log/2026-11-05-logo-and-assets-measured.md`).
