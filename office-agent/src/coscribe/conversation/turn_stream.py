@@ -3,13 +3,14 @@ each tool's start and result, and the running token count."""
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+import functools
+from collections.abc import Awaitable, Callable
+from typing import Any, Protocol, TypeVar, cast
 
 from langchain_core.messages import AIMessage, AIMessageChunk, ToolMessage
 from langchain_core.messages.ai import UsageMetadata
 from langgraph.types import Command
 
-from ..runtime_lg import TurnRecorder
 from ..runtime_lg import extract_text as _extract_text
 from ..runtime_lg import tool_result_value as _tool_result_value
 from ..runtime_lg import unwrap_use_tool_call
@@ -17,6 +18,7 @@ from ..tools import QUESTION_TOOL_NAMES, TASK_DRAFT_TOOL_NAMES
 from .events import EventSink
 from .history import close_orphaned_tool_calls
 from .stopped_turn import keep_stopped_turn
+from .turn_record import TurnRecorder, observed
 from .turn_text import usage_event
 
 
@@ -56,7 +58,6 @@ class TurnStreamHost(Protocol):
     _gated_tool_risks: dict[str, str]
     _pending_tool_args: dict[str, list[dict[str, Any]]]
     _last_usage_metadata: UsageMetadata | None
-    _turn_trace: TurnRecorder | None
 
     async def _run_post_tool_use_hooks(
         self, name: str, args: dict[str, Any], result: Any
@@ -74,6 +75,8 @@ class TurnStreamer:
         self.streamed: list[str] = []
         # Off once the conversation is being deleted, which a kept turn would bring back.
         self.keep_stopped_work = True
+        # Set for the turn that is running (`recorded_turn`); None counts nothing.
+        self.record: TurnRecorder | None = None
 
     async def stopped(self, text: str | None = None) -> str:
         """What the page shows for a turn that ended on a stop, after keeping its work in the
@@ -132,8 +135,6 @@ class TurnStreamer:
 
         async def _capture_segment_usage() -> None:
             nonlocal segment
-            if segment is not None and host._turn_trace is not None:
-                host._turn_trace.model_call(segment.usage_metadata)
             if segment is not None and segment.usage_metadata:
                 host._last_usage_metadata = segment.usage_metadata
                 # Sent at every boundary, not only at turn end, so the token counter moves
@@ -145,7 +146,7 @@ class TurnStreamer:
         # its tool calls run, which "messages" has no event for.
         stream = agent.astream(turn_input, config=config, stream_mode=["messages", "updates"])
         try:
-            async for mode, chunk in _shown(stream):
+            async for mode, chunk in _shown(observed(stream, self.record)):
                 if mode == "updates":
                     await self.announce_started_tools(chunk, websocket)
                     continue
@@ -168,10 +169,6 @@ class TurnStreamer:
                         if host._pending_tool_args[name]
                         else {}
                     )
-                    if host._turn_trace is not None:
-                        host._turn_trace.tool(
-                            name, is_error=message.status == "error", result=result_value
-                        )
                     await host._run_post_tool_use_hooks(name, args, result_value)
                     # A question or draft tool already has its own card; a tool_result too
                     # would add a second row for the same interaction.
@@ -220,3 +217,40 @@ class TurnStreamer:
                 for call in message.tool_calls:
                     if call["name"] not in self._host._gated_tool_risks:
                         await self._host._send_tool_started(call["name"], call["args"], websocket)
+
+
+_Turn = TypeVar("_Turn", bound=Callable[..., Awaitable[None]])
+
+
+def recorded_turn(run: _Turn) -> _Turn:
+    """Wrap the session method that runs one turn so the turn leaves its line, however it ends."""
+
+    @functools.wraps(run)
+    async def wrapper(session: Any, *args: Any, **kwargs: Any) -> None:
+        mode = (
+            "plan"
+            if session.plan_mode
+            else "accept_edits"
+            if session.accept_edits
+            else "auto"
+            if session.auto_mode
+            else "manual"
+        )
+        recorder = session._turn_streamer.record = TurnRecorder(
+            session.settings.state_dir,
+            thread_id=session.thread_id,
+            model=session._model_string,
+            effort=session._effort,
+            mode=mode,
+            # A sub-agent's or a background task's report runs as a turn nobody typed.
+            notice=bool(kwargs.get("notice", False)),
+        )
+        try:
+            await run(session, *args, **kwargs)
+        except Exception as error:
+            recorder.failed(error)
+            raise
+        finally:
+            recorder.finish(stopped=session._stop_requested)
+
+    return cast(_Turn, wrapper)

@@ -96,7 +96,9 @@ Plan, or Auto, where a reviewer model decides on gated calls and hands the
 unclear ones to the user. Scheduled runs have their own approval tiers.
 Every decision goes to an audit log, and Hooks (`PreToolUse`,
 `PostToolUse`, `SessionStart`/`End`, `UserPromptSubmit`, compaction and
-interrupt events) let a user add their own checks.
+interrupt events) let a user add their own checks. How each turn went (its model
+calls, tokens and failed tools, never its words) is kept in a file on the machine
+(decision 0045).
 
 Scripts (`run_python_script`, `run_node_script`, background scripts and
 commands) are approved like any other action, and on Windows they also run in

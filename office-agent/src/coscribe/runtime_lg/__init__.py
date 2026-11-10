@@ -8,7 +8,6 @@ from .agent import build_langgraph_agent, tool_name
 from .audit import AuditLog, AutoApproveReason, record_decision, redact_secrets
 from .audit import Decision as AuditDecision
 from .audit import Reason as AuditReason
-from .trace import TraceLog, TurnRecorder, TurnTrace, tool_failure_rates
 from .auto_review import Verdict, recent_user_requests, review_action
 from .code_agent import (
     CODE_APPROVAL_RISKS,
@@ -110,10 +109,6 @@ __all__ = [
     "AuditDecision",
     "AuditLog",
     "AuditReason",
-    "TraceLog",
-    "TurnRecorder",
-    "TurnTrace",
-    "tool_failure_rates",
     "AutoApproveReason",
     "CODE_APPROVAL_RISKS",
     "CODE_COMMAND_TOOL",

@@ -12,7 +12,7 @@ cheaper or more reliable outside the evaluation, whose 11 tasks all pass.
 
 ## Decision
 - **Every turn that ran a model or a tool leaves one JSON line** in `turns.jsonl` under the
-  state directory (`runtime_lg/trace.py`): when it started, the conversation's id, the model,
+  state directory (`conversation/turn_record.py`): when it started, the conversation's id, the model,
   effort and mode, whether a person typed it, how long it took, how it ended (completed,
   stopped, error), the model calls, the input, cached and output tokens, and the calls and
   errors of each tool by name.
@@ -33,5 +33,5 @@ cheaper or more reliable outside the evaluation, whose 11 tasks all pass.
 - Deleting a conversation does not remove its lines: they say a turn happened and which tools
   it used, not what it was about. If that is ever too much, the fix is to drop the id.
 - Sub-agents' own model calls and a workflow's agent steps are not counted yet; nothing in the
-  app reads the file yet (`tool_failure_rates` is the first reader, for a script or a test).
+  app reads the file yet; the first reader will be a script that ranks tools by failures.
 - An error text can name a file's path. It stays on the machine it came from.

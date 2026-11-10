@@ -47,6 +47,11 @@ coscribe runs on your own computer.
   an hour), each is in the audit log by size and outcome, and the event is outside content: the
   run keeps the task's permissions and autonomy. While no such task is on, the port is free, and
   another program on the machine could take it and read the keys senders send to it.
+- **A record of how each turn went** (decision 0045) is kept in `turns.jsonl` in coscribe's
+  state folder: the model, the time taken, how it ended, token counts and each tool's calls and
+  errors. It holds no message text, tool arguments or results, only the first 300 characters of
+  a tool's error (which can name a file's path), with known secret formats removed. It is never
+  sent anywhere.
 - **Steps a run adds when a step fails** (decision 0042, only for a task at proactive or above)
   are planned by a model from content that may come from outside. They hold only tool, model and
   check steps, every value they write must already be in the task or the loop's item, and each
