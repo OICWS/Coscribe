@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useDockPanel } from "./dock/dockContext";
-import { getThreadActivity, openThreadFile, rereadFolderBrief, threadFileDownloadUrl } from "../lib/rest";
+import {
+  acceptWorkspaceNotes,
+  getThreadActivity,
+  openThreadFile,
+  rereadFolderBrief,
+  threadFileDownloadUrl,
+} from "../lib/rest";
 import { formatRunTime, runSourceLabel } from "../lib/runLabels";
 import { toolLabel } from "../lib/toolLabels";
 import { readStored, writeStored } from "../lib/storage";
 import type { ScheduledRun, ScheduledTask } from "../types/settings";
-import type { ActivityFile, ActivityToolUse, FolderBrief, ThreadActivity } from "../types/session";
+import type { ActivityFile, ActivityToolUse, FolderBrief, ThreadActivity, WorkspaceNotes } from "../types/session";
 import type { ProgressItem, ProgressStatus } from "../lib/workflowProgress";
 import {
   CheckIcon,
@@ -82,12 +88,21 @@ function useThreadActivity(threadId: string, refreshSignal: string) {
     async (path: string) => {
       const written = await rereadFolderBrief(threadId, path);
       setActivity((prev) =>
-        prev && { ...prev, folders: prev.folders?.map((folder) => (folder.path === path ? written : folder)) },
+        prev && { ...prev, folders: prev.folders?.map((folder) => (folder.path === path ? { ...folder, ...written } : folder)) },
       );
     },
     [threadId],
   );
-  return { activity, rereadBrief };
+  const acceptNotes = useCallback(
+    async (path: string) => {
+      const { workspace } = await acceptWorkspaceNotes(threadId, path);
+      setActivity((prev) =>
+        prev && { ...prev, folders: prev.folders?.map((folder) => (folder.path === path ? { ...folder, workspace } : folder)) },
+      );
+    },
+    [threadId],
+  );
+  return { activity, rereadBrief, acceptNotes };
 }
 
 function readCollapsed(): Set<SectionId> {
@@ -109,7 +124,7 @@ export function TaskPanel({
   onView,
   onOpenPlan,
 }: TaskPanelProps) {
-  const { activity, rereadBrief } = useThreadActivity(threadId, refreshSignal);
+  const { activity, rereadBrief, acceptNotes } = useThreadActivity(threadId, refreshSignal);
   const [collapsed, setCollapsed] = useState<Set<SectionId>>(readCollapsed);
   // Kept with its conversation, so switching to another one doesn't show it there.
   const [fileErrorOf, setFileErrorOf] = useState<{ threadId: string; text: string | null } | null>(null);
@@ -205,7 +220,7 @@ export function TaskPanel({
 
         <Section id="context" title="Context" collapsed={collapsed} onToggle={toggle} last>
           {activity && !contextEmpty ? (
-            <ContextView activity={activity} threadId={threadId} onOpen={openFile} onReread={rereadBrief} />
+            <ContextView activity={activity} threadId={threadId} onOpen={openFile} onReread={rereadBrief} onAcceptNotes={acceptNotes} />
           ) : (
             <EmptyState art={<ContextArt />} text="Track tools and referenced files used in this task." />
           )}
@@ -490,10 +505,63 @@ function ContextGroup({ label, children }: { label: string; children: ReactNode 
 
 /** A folder without a brief (empty, or the side model failed) shows nothing rather than a blank. */
 function shownBriefs(activity: ThreadActivity): FolderBrief[] {
-  return (activity.folders ?? []).filter((folder) => folder.brief || folder.writing);
+  return (activity.folders ?? []).filter((folder) => folder.brief || folder.writing || folder.workspace);
 }
 
-function FolderBriefs({ folders, onReread }: { folders: FolderBrief[]; onReread: (path: string) => Promise<void> }) {
+function notesSummary(notes: WorkspaceNotes): string {
+  const skills = notes.skills.length === 1 ? "1 skill" : `${notes.skills.length} skills`;
+  if (notes.notes && notes.skills.length) return `its own notes and ${skills}`;
+  return notes.notes ? "its own notes" : skills;
+}
+
+/** A folder's `.coscribe` notes and skills are instructions from whoever can write the folder, so
+ * they wait for the person's "Use them" before a conversation reads them. */
+function FolderNotes({ notes, onAccept }: { notes: WorkspaceNotes; onAccept: () => Promise<void> }) {
+  const [state, setState] = useState<"idle" | "busy" | "failed">("idle");
+  const title = notes.skills.length ? `Skills: ${notes.skills.join(", ")}` : undefined;
+  if (notes.trusted) {
+    return (
+      <p className="mt-1 text-xs text-[var(--muted)]" title={title}>
+        Uses {notesSummary(notes)} from .coscribe
+      </p>
+    );
+  }
+  const accept = () => {
+    setState("busy");
+    onAccept()
+      .then(() => setState("idle"))
+      .catch(() => setState("failed"));
+  };
+  return (
+    <div className="mt-1.5 rounded-md border border-[var(--border)] px-2.5 py-2 text-xs" title={title}>
+      <p>
+        This folder keeps {notesSummary(notes)} in .coscribe. They are instructions from whoever can change the folder,
+        so they are used only once you say so.
+      </p>
+      <div className="mt-1.5 flex items-center gap-2">
+        <button
+          type="button"
+          disabled={state === "busy"}
+          className="rounded border border-[var(--border)] px-2 py-0.5 font-medium hover:border-[var(--border-hover)] hover:bg-[var(--card-bg)] disabled:opacity-60"
+          onClick={accept}
+        >
+          Use them
+        </button>
+        {state === "failed" && <span className="text-[var(--danger)]">Couldn't save that</span>}
+      </div>
+    </div>
+  );
+}
+
+function FolderBriefs({
+  folders,
+  onReread,
+  onAcceptNotes,
+}: {
+  folders: FolderBrief[];
+  onReread: (path: string) => Promise<void>;
+  onAcceptNotes: (path: string) => Promise<void>;
+}) {
   const [rereading, setRereading] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const reread = (path: string) => {
@@ -519,8 +587,9 @@ function FolderBriefs({ folders, onReread }: { folders: FolderBrief[]; onReread:
               {busy && !folder.brief ? (
                 <p className="text-[var(--muted)]">Reading the file names…</p>
               ) : (
-                <p>{folder.brief}</p>
+                folder.brief && <p>{folder.brief}</p>
               )}
+              {folder.workspace && <FolderNotes notes={folder.workspace} onAccept={() => onAcceptNotes(folder.path)} />}
               <div className="mt-1 flex items-center gap-2 text-xs text-[var(--muted)]">
                 <button
                   type="button"
@@ -546,17 +615,19 @@ function ContextView({
   threadId,
   onOpen,
   onReread,
+  onAcceptNotes,
 }: {
   activity: ThreadActivity;
   threadId: string;
   onOpen: (file: ActivityFile, reveal: boolean) => void;
   onReread: (path: string) => Promise<void>;
+  onAcceptNotes: (path: string) => Promise<void>;
 }) {
   const tools: ActivityToolUse[] = [...activity.tools].sort((a, b) => b.count - a.count);
   const briefs = shownBriefs(activity);
   return (
     <div className="flex flex-col gap-4">
-      {briefs.length > 0 && <FolderBriefs folders={briefs} onReread={onReread} />}
+      {briefs.length > 0 && <FolderBriefs folders={briefs} onReread={onReread} onAcceptNotes={onAcceptNotes} />}
       {activity.references.length > 0 && (
         <ContextGroup label="Files read">
           <ul className="-mx-2 flex flex-col">

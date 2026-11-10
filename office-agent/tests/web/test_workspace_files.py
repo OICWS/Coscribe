@@ -22,15 +22,17 @@ def _tree(root: Path) -> None:
     (root / "~$report.docx").write_text("lock", encoding="utf-8")
 
 
-def test_a_listing_puts_folders_first_hides_git_and_lock_files_and_greys_heavy_folders(
+def test_a_listing_puts_coscribe_and_folders_first_hides_lock_files_and_greys_heavy_folders(
     tmp_path: Path,
 ) -> None:
     _tree(tmp_path)
+    (tmp_path / ".coscribe").mkdir()
     entries = list_folder(tmp_path)["entries"]
 
-    assert [e["name"] for e in entries] == ["docs", "node_modules", "app.py", "Readme.md"]
-    assert entries[1].get("dim") is True and "dim" not in entries[0]
-    assert entries[2]["size"] == len("print(1)\n") and entries[0]["size"] is None
+    names = [".coscribe", "docs", "node_modules", "app.py", "Readme.md"]
+    assert [e["name"] for e in entries] == names
+    assert entries[2].get("dim") is True and "dim" not in entries[1]
+    assert entries[3]["size"] == len("print(1)\n") and entries[1]["size"] is None
 
 
 def test_a_search_finds_names_at_any_depth_but_not_inside_heavy_folders(tmp_path: Path) -> None:

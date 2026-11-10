@@ -20,3 +20,6 @@ ddgs/
 
 # A skill's own reference file, which lives in the skill, not here
 references/
+
+# A person's folder's own notes and skills (decision 0044), which live in that folder
+.coscribe/

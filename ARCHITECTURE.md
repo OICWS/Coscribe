@@ -259,7 +259,8 @@ Workflows never use it: a workflow's agent step (0028) never gets the code modul
 - **Hooks**: scripts on lifecycle events (above).
 - **Global instructions**: one `MEMORY.md` the user edits in Settings, read into
   every conversation. The model cannot write to it: it can offer a line (`remember`), and only
-  the person's Save on that card writes it.
+  the person's Save on that card writes it. A folder can keep its own notes and skills in
+  `.coscribe/`, read into conversations there once the person accepted them (decision 0044).
 
 ## Scope
 

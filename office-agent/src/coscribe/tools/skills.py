@@ -123,14 +123,15 @@ class SkillInfo:
         return self.dir.name.lower()
 
 
-def load_skills(skills_dir: str | Path) -> list[SkillInfo]:
+def load_skills(skills_dir: str | Path, *, create_if_missing: bool = True) -> list[SkillInfo]:
     """Scan skills_dir's immediate subdirectories for a SKILL.md each.
 
     A subdirectory without one isn't a skill (silently skipped); a SKILL.md
     that's missing or has malformed frontmatter is a skill someone meant to
-    write but got wrong -- logged and skipped, not fatal to startup.
+    write but got wrong -- logged and skipped, not fatal to startup. A folder's own
+    `.coscribe/skills` is only read, never made (`create_if_missing=False`).
     """
-    return _scan_skills_dir(Path(skills_dir), create_if_missing=True)
+    return _scan_skills_dir(Path(skills_dir), create_if_missing=create_if_missing)
 
 
 _BUILTIN_SKILLS_DIR = Path(__file__).resolve().parent.parent / "builtin_skills"
