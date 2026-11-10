@@ -21,7 +21,7 @@ from __future__ import annotations
 from xml.etree import ElementTree as ET
 
 from ..drawingml.utils import parse_inline_style, parse_svg_color
-from .formula_compiler import (
+from ...._native_formula import (
     FormulaCompileError,
     compile_latex_to_inline_omml,
 )
