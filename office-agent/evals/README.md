@@ -322,6 +322,6 @@ new tape with the change.
 Record a tape with the settings the shipped app has (no `COSCRIBE_DEFAULT_PERMISSION_MODE`), and
 only for a task that needs nothing installed on the machine: a task that runs a script
 (`run_python_script`) depends on the interpreter the recording machine had. Before committing a
-tape, replay it on Python 3.11 as well as on the version that recorded it: a task whose answer
-makes several calls at once with results that depend on their order (eight `task_create` calls)
-replays differently where threads are scheduled differently.
+tape, replay it on Python 3.11 as well as on the version that recorded it: anything in a run that
+follows scheduling instead of the conversation (a background call the next message cancels,
+calls of one answer whose results depend on which ran first) replays differently there.

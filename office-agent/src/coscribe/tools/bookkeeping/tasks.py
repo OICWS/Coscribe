@@ -9,6 +9,7 @@ via MCP/Skill, so it ships as a built-in tool family alongside the file tools.
 from __future__ import annotations
 
 import json
+import threading
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -33,6 +34,7 @@ class TaskToolkit:
         self._path = Path(state_dir) / f"{quote(thread_id, safe='')}.tasks.json"
         self._tasks: list[dict[str, Any]] = self._load()
         self._next_id = max((int(task["id"]) for task in self._tasks), default=0) + 1
+        self._creating = threading.Lock()
 
     def _load(self) -> list[dict[str, Any]]:
         if not self._path.exists():
@@ -65,9 +67,11 @@ class TaskToolkit:
             replace_with_retry(tmp_path, self._path)
 
     def create(self, content: str) -> dict[str, Any]:
-        task = {"id": str(self._next_id), "content": content, "status": "pending"}
-        self._next_id += 1
-        self._tasks.append(task)
+        # Several calls of one answer run in threads: two must not read the same next id.
+        with self._creating:
+            task = {"id": str(self._next_id), "content": content, "status": "pending"}
+            self._next_id += 1
+            self._tasks.append(task)
         self._save()
         return task
 
