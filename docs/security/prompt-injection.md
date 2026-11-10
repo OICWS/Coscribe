@@ -13,7 +13,7 @@ and the action.
 2. The approval mode changed (Manual, Plan, Accept Edits, Auto).
 3. A limit lifted: Plan mode's read-only rule, the exec policy, the hooks, a connector's permissions.
 4. A secret or a file's content sent out.
-5. A standing instruction planted in the global instructions, read into every later conversation.
+5. A standing instruction planted in the global instructions or a folder's `.coscribe/` notes and skills, read into every later conversation.
 
 ## Where the attacker's text comes from
 
@@ -39,7 +39,7 @@ questions (`web/routes/ws.py`).
 | 2. Mode switched | `/plan`, `/accept-edits`, `/auto` are read from `user_message` only, and not at all from a notice turn (`notice` in `ChatSessionLG._handle_user_message_locked`). A model reply or a tool result is never parsed as a command. | `tests/web/test_prompt_injection.py` |
 | 3. Limit lifted | Plan mode rejects a gated call before any allowance is read, so nothing a file says reopens writing. The exec policy, hooks, connector permissions and messaging policy are written by the Settings routes, which the model has no tool for. | `test_plan_mode_stays_read_only_whatever_a_file_says`, `tests/web/test_chat_policy.py` |
 | 4. Data out | A secret's value never reaches the model (`web/http_request.py` substitutes it after the call); what the model can read it can also send, so each sending tool is gated and its card shows the call. | `docs/security/review-pack.md` section 3 |
-| 5. Standing instructions planted | The global instructions (`MEMORY.md`) are read into every conversation. The model has no tool that writes them: `remember` only shows the line on a question card, and only the person's Save on their own socket writes it (`conversation/approvals.py`); an unattended run or a sub-agent cannot. | `tests/web/test_chat_questions.py` (`test_remember_writes_the_line_only_when_the_user_saves_it`) |
+| 5. Standing instructions planted | The global instructions (`MEMORY.md`) are read into every conversation. The model has no tool that writes them: `remember` only shows the line on a question card, and only the person's Save on their own socket writes it (`conversation/approvals.py`); an unattended run or a sub-agent cannot. A folder's `.coscribe/memory.md` is written the same way (Save for this folder) and the file tools refuse it; a folder's notes and skills, which anyone who can write the folder can change, are read only once the person pressed "Use them" on what is there now, and a change made outside coscribe asks again (decision 0044). | `tests/web/test_chat_questions.py` (`test_remember_writes_the_line_only_when_the_user_saves_it`), `tests/test_workspace_folder.py` |
 
 ## The auto reviewer
 

@@ -172,4 +172,14 @@ export interface FolderBrief {
   brief: string;
   written_at: string | null;
   writing: boolean;
+  /** What the folder keeps in `.coscribe/`; null or absent when it keeps nothing there. */
+  workspace?: WorkspaceNotes | null;
+}
+
+/** A folder's own notes and skills, read into a conversation only once the person accepted them. */
+export interface WorkspaceNotes {
+  notes: boolean;
+  skills: string[];
+  /** False while what is there now (new, or changed outside coscribe) wasn't accepted. */
+  trusted: boolean;
 }

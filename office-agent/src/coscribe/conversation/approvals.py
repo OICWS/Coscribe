@@ -50,9 +50,11 @@ from ..tools import (
     sandbox_mode,
 )
 from .events import EventSink
+from .workspace_folder import WorkspaceFolders
 
 _COMMAND_TOOL = "run_background_command"
-_MEMORY_SAVE = "Save"
+_MEMORY_HERE = "Save for this folder"
+_MEMORY_SAVE = "Save everywhere"
 
 _REPLIED_INSTEAD = (
     "The user didn't approve this call and wrote this instead; do what they ask rather than "
@@ -74,16 +76,26 @@ def question_answer(data: dict[str, Any]) -> str | list[str | None] | dict[str, 
     return str(data.get("answer", ""))
 
 
-def _memory_question(line: str) -> dict[str, Any]:
-    question = f'Save "{line}" to your global instructions? They are read in every conversation.'
-    options = [{"label": _MEMORY_SAVE}, {"label": "Don't save"}]
+def _memory_question(line: str, folder: Path) -> dict[str, Any]:
+    question = (
+        f'Save "{line}"? For this folder it is read whenever a conversation works in '
+        f"{folder.name or folder}; your global instructions are read in every conversation."
+    )
+    options = [{"label": _MEMORY_HERE}, {"label": _MEMORY_SAVE}, {"label": "Don't save"}]
     return {"questions": [{"question": question, "header": "Remember", "options": options}]}
 
 
-def _saved_to_memory(path: Path, line: str, answer: dict[str, Any]) -> dict[str, Any]:
+def _saved_to_memory(
+    path: Path, notes: WorkspaceFolders, folder: Path, line: str, answer: dict[str, Any]
+) -> dict[str, Any]:
     """The model only proposes the line: it is written here, and only on the person's Save."""
-    if not line or answer.get("message") != _MEMORY_SAVE:
+    choice = answer.get("message")
+    if not line or choice not in (_MEMORY_HERE, _MEMORY_SAVE):
         return {"type": "respond", "message": "The user didn't save it. Don't offer it again."}
+    if choice == _MEMORY_HERE:
+        notes.add_note(folder, line)
+        saved = f"Saved to the notes for {folder}. Don't offer it again."
+        return {"type": "respond", "message": saved}
     current = path.read_text(encoding="utf-8").rstrip() if path.is_file() else ""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(f"{current}\n- {line}\n".lstrip("\n"), encoding="utf-8")
@@ -284,8 +296,12 @@ class ApprovalDecider:
                 return await self._decide_plan_request(args, websocket)
             if name == "remember":
                 line = str(args.get("line", "")).strip()
-                answer = await self._decide_question_request(_memory_question(line), websocket)
-                return _saved_to_memory(Path(self._host.settings.memory_path), line, answer)
+                folder = Path(self._host.workspace_root)
+                question = _memory_question(line, folder)
+                answer = await self._decide_question_request(question, websocket)
+                memory = Path(self._host.settings.memory_path)
+                notes = self._host._assembly.workspace_folders
+                return _saved_to_memory(memory, notes, folder, line, answer)
             return await self._decide_question_request(args, websocket)
         if name not in self._host._gated_tool_risks:
             return {"type": "approve"}
