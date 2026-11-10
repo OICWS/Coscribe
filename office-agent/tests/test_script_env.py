@@ -62,7 +62,7 @@ def test_venv_python_uses_bin_python_on_non_windows(monkeypatch: pytest.MonkeyPa
 
     result = venv_python(Path("/state/script-env"))
 
-    assert result == Path("/state/script-env/bin/python")
+    assert result == Path("/state/script-env").absolute() / "bin" / "python"
 
 
 def test_venv_python_is_absolute_for_a_relative_state_folder(
