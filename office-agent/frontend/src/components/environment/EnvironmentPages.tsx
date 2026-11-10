@@ -117,7 +117,7 @@ export function SecretsPage({
 }
 
 /** The environment's folders, the main one first. Which folders exist and how far they may
- * be used is managed in Settings > Workspace; this only picks this environment's. */
+ * be used is managed in Settings > Environments; this only picks this environment's. */
 export function FoldersPage({ folders, onChange }: { folders: string[]; onChange: (folders: string[]) => void }) {
   const [browsing, setBrowsing] = useState(false);
   // Fixed when the page opens, so a folder unticked here stays listed to tick again.

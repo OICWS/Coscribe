@@ -9,7 +9,7 @@ import type { StepRecord, TaskMemoryValues, Workflow } from "./workflow";
  */
 
 // ---------------------------------------------------------------------
-// Config (General + Workspace tabs)
+// Config (the General and Environments pages)
 // ---------------------------------------------------------------------
 
 export interface MaskedKey {
@@ -79,7 +79,7 @@ export type BrowseDirsResponse =
   | { path: string; parent: string | null; directories: BrowseDirsEntry[] };
 
 // ---------------------------------------------------------------------
-// Tools tab
+// The tool list (GET /api/tools)
 // ---------------------------------------------------------------------
 
 export interface ToolParam {

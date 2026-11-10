@@ -5,8 +5,7 @@ import type { ReactNode } from "react";
  * request to replace free-text entry for a setting whose real values are
  * a short known list (Log Level: DEBUG/INFO/WARNING/ERROR), matching a
  * reference screenshot of this exact pattern. Reach for this whenever a
- * SettingRow's value is one of a handful of fixed strings; keep
- * SettingRowInput for anything genuinely open-ended (a path, a model id). */
+ * SettingRow's value is one of a handful of fixed strings. */
 export function SegmentedControl<T extends string>({
   value,
   options,
@@ -26,9 +25,7 @@ export function SegmentedControl<T extends string>({
           aria-label={option.title}
           title={option.title}
           className={`rounded-md px-2.5 py-1 text-sm transition-colors ${
-            option.value === value
-              ? "bg-[var(--bg)] text-[var(--fg)] shadow-sm"
-              : "text-[var(--muted)] hover:text-[var(--fg)]"
+            option.value === value ? "bg-[var(--bg)] text-[var(--fg)] shadow-sm" : "text-[var(--muted)] hover:text-[var(--fg)]"
           }`}
           onClick={() => onChange(option.value)}
         >

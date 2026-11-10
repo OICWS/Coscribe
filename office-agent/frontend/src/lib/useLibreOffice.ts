@@ -47,10 +47,3 @@ export function useLibreOffice(active: boolean) {
 
   return { status, error, download: () => run(downloadLibreOffice), remove: () => run(removeLibreOffice) };
 }
-
-export function libreOfficeSummary(status: LibreOfficeStatus | null): string {
-  if (status === null) return "Checking…";
-  if (status.working) return "Downloading…";
-  if (!status.found) return "Not found";
-  return status.version ? `LibreOffice ${status.version} found` : "Found";
-}

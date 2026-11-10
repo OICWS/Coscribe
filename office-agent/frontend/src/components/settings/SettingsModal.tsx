@@ -2,19 +2,7 @@ import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState }
 import { createPortal } from "react-dom";
 import { getConfig, updateConfig } from "../../lib/rest";
 import type { ConfigResponse } from "../../types/settings";
-import {
-  BookOpenIcon,
-  CloseIcon,
-  BriefcaseIcon,
-  FolderIcon,
-  KeyIcon,
-  LockIcon,
-  LinkIcon,
-  MessageCircleIcon,
-  SettingsIcon,
-  SparkIcon,
-  ToolIcon,
-} from "../icons";
+import { BookOpenIcon, CloseIcon, BriefcaseIcon, FolderIcon, KeyIcon, LockIcon, LinkIcon, SettingsIcon, SparkIcon } from "../icons";
 import { ConnectorsTab } from "./ConnectorsTab";
 import { CapabilitiesTab } from "./CapabilitiesTab";
 import {
@@ -23,18 +11,13 @@ import {
   CODE_MODEL_KEY,
   CODE_MODULE_ENABLED_KEY,
   GENERAL_FIELDS,
-  LOG_LEVEL_KEY,
   PERMISSION_MODE_KEY,
   ARCHIVE_INACTIVE_DAYS_KEY,
-  WEBHOOK_PORT_KEY,
   BACKGROUND_AGENTS_KEY,
   FLASH_ON_ATTENTION_KEY,
   KEEP_AWAKE_KEY,
   KEEP_AWAKE_ON_BATTERY_KEY,
   PROMPT_SUGGESTIONS_KEY,
-  SIDE_MODEL_KEY,
-  WORKSPACE_FIELDS,
-  WORKSPACE_ROOT_KEY,
   buildDirEntries,
   changedDirs,
   type DirEntry,
@@ -47,22 +30,10 @@ import { ProvidersTab } from "./ProvidersTab";
 import { SecretsTab } from "./SecretsTab";
 import { SettingsSearch } from "./SettingsSearch";
 import { useSettingTarget } from "./useSettingTarget";
-import { SessionsTab } from "./SessionsTab";
 import { SkillsTab } from "./SkillsTab";
-import { ToolsTab } from "./ToolsTab";
 import { WorkspaceTab } from "./WorkspaceTab";
 
-export type SettingsCategory =
-  | "general"
-  | "workspace"
-  | "providers"
-  | "tools"
-  | "skills"
-  | "connectors"
-  | "secrets"
-  | "design-systems"
-  | "sessions"
-  | "capabilities";
+export type SettingsCategory = "general" | "workspace" | "providers" | "skills" | "connectors" | "secrets" | "design-systems" | "capabilities";
 
 interface CategoryDef {
   id: SettingsCategory;
@@ -88,11 +59,9 @@ const GROUPS: { label: string; categories: CategoryDef[] }[] = [
     label: "Settings",
     categories: [
       { id: "general", label: "General", icon: SettingsIcon },
-      { id: "workspace", label: "Workspace", icon: FolderIcon },
+      { id: "workspace", label: "Environments", icon: FolderIcon },
       { id: "providers", label: "Providers", icon: KeyIcon },
       { id: "capabilities", label: "Capabilities", icon: BriefcaseIcon },
-      { id: "tools", label: "Tools", icon: ToolIcon },
-      { id: "sessions", label: "Sessions", icon: MessageCircleIcon },
       { id: "secrets", label: "Secrets", icon: LockIcon },
     ],
   },
@@ -109,22 +78,17 @@ const GROUPS: { label: string; categories: CategoryDef[] }[] = [
 // Every key a tab edits must be here, or Save never sees the change.
 const CONFIG_KEYS = [
   ...GENERAL_FIELDS.map((f) => f.key),
-  LOG_LEVEL_KEY,
   PERMISSION_MODE_KEY,
-  ...WORKSPACE_FIELDS.map((f) => f.key),
-  WORKSPACE_ROOT_KEY,
   BACKGROUND_ON_CLOSE_KEY,
   NOTIFICATIONS_KEY,
   CODE_MODEL_KEY,
   CODE_MODULE_ENABLED_KEY,
   PROMPT_SUGGESTIONS_KEY,
-  SIDE_MODEL_KEY,
   FLASH_ON_ATTENTION_KEY,
   KEEP_AWAKE_KEY,
   KEEP_AWAKE_ON_BATTERY_KEY,
   BACKGROUND_AGENTS_KEY,
   ARCHIVE_INACTIVE_DAYS_KEY,
-  WEBHOOK_PORT_KEY,
   USER_NAME_KEY,
 ];
 
@@ -140,14 +104,7 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-export function SettingsModal({
-  open,
-  initialCategory,
-  startDesignSystem,
-  onDescribeDesignSystem,
-  onCreateSkill,
-  onClose,
-}: SettingsModalProps) {
+export function SettingsModal({ open, initialCategory, startDesignSystem, onDescribeDesignSystem, onCreateSkill, onClose }: SettingsModalProps) {
   const [category, setCategory] = useState<SettingsCategory>(initialCategory ?? "general");
   const [config, setConfig] = useState<ConfigResponse | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
@@ -236,13 +193,12 @@ export function SettingsModal({
   // remote-page view included) can end up compositing above a dialog
   // that isn't a descendant of it in the first place.
   return createPortal(
-    <div
-      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 ${DRAWS_TITLE_BAR ? "pt-10" : ""}`}
-      onClick={(e) => e.target === e.currentTarget && close()}
-    >
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 ${DRAWS_TITLE_BAR ? "pt-10" : ""}`} onClick={(e) => e.target === e.currentTarget && close()}>
       {/* In the desktop app the OS draws its window buttons over the top
        * 40px of the page, so the dialog stays below them. */}
-      <div className={`relative flex ${DRAWS_TITLE_BAR ? "h-[min(840px,100vh-4.5rem)]" : "h-[min(840px,100vh-2rem)]"} w-[min(1100px,100vw-2rem)] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow)]`}>
+      <div
+        className={`relative flex ${DRAWS_TITLE_BAR ? "h-[min(840px,100vh-4.5rem)]" : "h-[min(840px,100vh-2rem)]"} w-[min(1100px,100vw-2rem)] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-bg)] shadow-[var(--shadow)]`}
+      >
         <button
           type="button"
           aria-label="Close settings"
@@ -267,16 +223,14 @@ export function SettingsModal({
           <div className="mb-3 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-2 pt-2">
             {GROUPS.map((group) => (
               <div key={group.label} className="flex flex-col gap-0.5">
-                <div className="mb-1 px-3 text-[13px] text-[var(--muted)]">{group.label}</div>
+                {group.label !== "Settings" && <div className="mb-1 px-3 text-[13px] text-[var(--muted)]">{group.label}</div>}
                 {group.categories.map((cat) => (
                   <button
                     key={cat.id}
                     type="button"
                     aria-current={category === cat.id ? "page" : undefined}
                     className={`flex h-9 items-center gap-3 rounded-lg px-3 text-left text-[15px] ${
-                      category === cat.id
-                        ? "bg-[var(--card-bg)] font-medium text-[var(--fg)]"
-                        : "text-[var(--fg)]/80 hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
+                      category === cat.id ? "bg-[var(--card-bg)] font-medium text-[var(--fg)]" : "text-[var(--fg)]/80 hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
                     }`}
                     onClick={() => setCategory(cat.id)}
                   >
@@ -289,35 +243,32 @@ export function SettingsModal({
           </div>
         </nav>
         <div className="flex min-w-0 flex-1 flex-col">
-          {/* Starts below the close button and stops short of the bottom
-           * edge, so the scrollbar keeps clear of both. */}
-          <div ref={content} className="mb-3 mr-1.5 mt-14 min-h-0 flex-1 overflow-y-auto pl-10 pr-8">
+          {/* The first heading sits level with the search box (both centred 34px down); the
+           * right padding keeps rows clear of the close button as they scroll past it. */}
+          <div ref={content} className="mb-3 mr-1.5 mt-3 min-h-0 flex-1 overflow-y-auto pl-10 pr-16 pt-[9px]">
             <div className="pb-8">
-            {category === "general" && <GeneralTab values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} />}
-            {category === "workspace" && (
-              <WorkspaceTab
-                values={values}
-                onChange={(k, v) => setValues({ ...values, [k]: v })}
-                dirEntries={dirEntries}
-                onDirEntriesChange={setDirEntries}
-              />
-            )}
-            {category === "providers" && <ProvidersTab active={category === "providers"} />}
-            {category === "tools" && <ToolsTab active={category === "tools"} />}
-            {category === "skills" && (
-              <SkillsTab
-                active={category === "skills"}
-                onCreateSkill={onCreateSkill}
-              />
-            )}
-            {category === "connectors" && <ConnectorsTab active={category === "connectors"} />}
-            {category === "design-systems" && <DesignSystemsTab active={category === "design-systems"} start={startDesignSystem} onDescribe={() => { onClose(); onDescribeDesignSystem(); }} />}
-            {category === "secrets" && <SecretsTab active={category === "secrets"} />}
-            {category === "sessions" && <SessionsTab values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} />}
-            {category === "capabilities" && <CapabilitiesTab active values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} />}
+              {category === "general" && <GeneralTab values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} />}
+              {category === "workspace" && <WorkspaceTab dirEntries={dirEntries} onDirEntriesChange={setDirEntries} />}
+              {category === "providers" && <ProvidersTab active={category === "providers"} />}
+              {category === "skills" && <SkillsTab active={category === "skills"} onCreateSkill={onCreateSkill} />}
+              {category === "connectors" && <ConnectorsTab active={category === "connectors"} />}
+              {category === "design-systems" && (
+                <DesignSystemsTab
+                  active={category === "design-systems"}
+                  start={startDesignSystem}
+                  onDescribe={() => {
+                    onClose();
+                    onDescribeDesignSystem();
+                  }}
+                />
+              )}
+              {category === "secrets" && <SecretsTab active={category === "secrets"} />}
+              {category === "capabilities" && (
+                <CapabilitiesTab active values={values} onChange={(k, v) => setValues({ ...values, [k]: v })} onOpenEnvironments={() => setCategory("workspace")} />
+              )}
             </div>
           </div>
-          {status && (category === "general" || category === "workspace" || category === "sessions" || category === "capabilities") && (
+          {status && (category === "general" || category === "workspace" || category === "capabilities") && (
             <div
               role="status"
               className={`pointer-events-none absolute bottom-4 right-6 rounded-lg border border-[var(--border)] bg-[var(--panel-bg)] px-3 py-1.5 text-sm shadow-[var(--shadow)] ${status.error ? "text-[var(--danger)]" : "text-[var(--muted)]"}`}

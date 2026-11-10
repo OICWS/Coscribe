@@ -483,7 +483,7 @@ def build_delegation_tools(
         """
         if not host.background_allowed():
             raise ValueError(
-                "Background sub-agents are turned off in Settings > Sessions; use spawn_agent, "
+                "Background sub-agents are turned off in Settings > General; use spawn_agent, "
                 "which waits for the report, or do the work in this conversation."
             )
         task, _runner = start(description, prompt, instructions, model, tool_names, True, kind)

@@ -75,9 +75,17 @@ Last reviewed: 2026-11-06.
 
 - **Audit of 2026-11-10** (`docs/log/2026-11-10-audit-small-fixes.md` fixed five defects). Open:
   the coordinator's instructions say a script runs "with no sandbox at all" and make the model ask
-  for a sub-agent's model and a workflow's kind; rarely needed Settings rows under one Advanced
-  section; a provider's models read from its own list, and a first-run page that takes a
-  compatible provider and checks the key; steps and time per task in the agentic evaluation.
+  for a sub-agent's model and a workflow's kind; a provider's models read from its own list, and
+  a first-run page that takes a compatible provider and checks the key; steps and time per task
+  in the agentic evaluation.
+
+- **Settings, after the simpler page** (`docs/log/2026-11-10-settings-simple.md`). Open: switches
+  for Artifacts and for "Create and edit files" (the tools stay in the fixed list and answer that
+  they are turned off); no cap on steps per reply, the person pauses instead (`max_turns` is still
+  150); the port for task events moves itself when 8790 is taken, and the listener's message stops
+  naming a Settings row; a diagnostic log to export in place of Log level; a package a script
+  needs installed from the chat, with approval; the models for code and for side jobs picked
+  without a row; a proxy change that applies without a restart.
 
 ## For the maintainer (settings and decisions)
 

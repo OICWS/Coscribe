@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GENERAL_FIELDS, WORKSPACE_FIELDS } from "./fields";
+import { GENERAL_FIELDS } from "./fields";
 import { findSettings } from "./searchIndex";
 
 // Settings tabs mount only while open, so search lists its rows by hand; this reads every
@@ -19,8 +19,6 @@ const FOUND_THROUGH: Record<string, string> = {
 const fieldLabel = (fields: { key: string; label: string }[], key: string) => fields.find((f) => f.key === key)!.label;
 const COMPUTED: Record<string, string[]> = {
   "GeneralTab.tsx field(DEFAULT_MODEL_KEY).label": [fieldLabel(GENERAL_FIELDS, "COSCRIBE_DEFAULT_MODEL")],
-  "GeneralTab.tsx maxTurns.label": [fieldLabel(GENERAL_FIELDS, "COSCRIBE_MAX_TURNS")],
-  "WorkspaceTab.tsx label": ["Default workspace", ...WORKSPACE_FIELDS.map((f) => f.label)],
 };
 
 function rowLabels() {
