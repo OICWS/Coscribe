@@ -221,6 +221,10 @@ def venv_python(venv_dir: Path) -> Path:
     # the Environment tab's package listing both raised
     # FileNotFoundError, since venv creates Scripts\python.exe on Windows,
     # not bin/python.
+    #
+    # Absolute, because a script starts in its workspace folder: a path relative to the server's
+    # folder (the default state folder is) names nothing from there.
+    venv_dir = venv_dir.absolute()
     if sys.platform == "win32":
         return venv_dir / "Scripts" / "python.exe"
     return venv_dir / "bin" / "python"

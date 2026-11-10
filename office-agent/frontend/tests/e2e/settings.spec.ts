@@ -29,6 +29,30 @@ test("General tab: a change saves itself", async ({ page }) => {
   await expect(page.getByRole("status")).toHaveText(/^Saved/);
 });
 
+test("General tab: Notifications saves", async ({ page }) => {
+  await page.goto(freshThreadPath("settings"));
+  await waitForConnected(page);
+  const configLoaded = page.waitForResponse((r) => r.url().includes("/api/config") && r.status() === 200);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await configLoaded;
+  const stored = () => page.evaluate(() => fetch("/api/config").then((r) => r.json())).then((c) => c.COSCRIBE_NOTIFICATIONS);
+  const original = (await stored()) ?? "all";
+  const labels: Record<string, string> = { all: "All", problems: "Problems only", off: "Off" };
+  const target = original === "problems" ? "off" : "problems";
+
+  await page.getByRole("button", { name: labels[target], exact: true }).click();
+  await expect(page.getByRole("status")).toHaveText(/^Saved/);
+  expect(await stored()).toBe(target);
+
+  // Reopened, the row shows what was saved, not the default.
+  await page.getByRole("button", { name: "Close settings" }).click();
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByRole("button", { name: labels[target], exact: true })).toHaveAttribute("aria-pressed", "true");
+
+  await page.getByRole("button", { name: labels[original], exact: true }).click();
+  await expect(page.getByRole("status")).toHaveText(/^Saved/);
+});
+
 test("General tab: Default Mode saves", async ({ page }) => {
   await page.goto(freshThreadPath("settings-mode"));
   await waitForConnected(page);
