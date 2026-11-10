@@ -448,3 +448,25 @@ def test_folder_brief_shows_in_activity_and_can_be_read_again_lg(
     assert written.json()["brief"] == "Budget workbooks."
     assert after[0]["brief"] == "Budget workbooks." and after[0]["written_at"]
     assert elsewhere.status_code == 404
+
+
+def test_a_folders_own_notes_wait_in_activity_until_the_person_uses_them_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    notes = tmp_path / "workspace" / ".coscribe" / "memory.md"
+    notes.parent.mkdir(parents=True)
+    notes.write_text("- Sent versions live in final/.\n", encoding="utf-8")
+    workspace = str(tmp_path / "workspace")
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="A folder.")])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        before = client.get("/api/threads/t_notes/activity").json()["folders"]
+        used = client.post("/api/threads/t_notes/workspace-notes", json={"path": workspace})
+        after = client.get("/api/threads/t_notes/activity").json()["folders"]
+        elsewhere = client.post(
+            "/api/threads/t_notes/workspace-notes", json={"path": str(tmp_path)}
+        )
+
+    assert before[0]["workspace"] == {"notes": True, "skills": [], "trusted": False}
+    assert used.json()["workspace"]["trusted"] is True
+    assert after[0]["workspace"]["trusted"] is True
+    assert elsewhere.status_code == 404

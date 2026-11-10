@@ -33,6 +33,5 @@ with the Claude app's Files panel as the reference.
   network folder (a search stops at 20,000 entries), and the PDF viewer inside Electron.
 
 ## Follow-ups
-- Editing, renaming and moving files from the panel (each would go through approvals).
-- The workspace's own `.coscribe/` folder (memory, skills, uploads sorted by kind) shown as a pinned
-  group, once it exists (`docs/plan.md`).
+- None in the panel: it never edits, renames or moves a file (a person does that in their own
+  program or asks the model; decision 0044). It lists a folder's `.coscribe` first.

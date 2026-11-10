@@ -143,7 +143,7 @@ def test_the_scripted_user_saves_a_remember_offer_and_records_calls_per_turn() -
     for event in events:
         asyncio.run(user.send_json(event))
 
-    assert session.answers[0] == ["Save"]
+    assert session.answers[0] == ["Save everywhere"]
     assert "Decide it yourself" in session.answers[1][0]
     assert session.approved == ["a1"]
     assert (user.saves, user.questions, user.approvals) == (1, 2, 1)

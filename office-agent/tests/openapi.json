@@ -8858,6 +8858,54 @@
         "summary": "Get Roots"
       }
     },
+    "/api/threads/{thread_id}/workspace-notes": {
+      "post": {
+        "description": "The person accepts the notes and skills one of the conversation's folders keeps in\n`.coscribe/`, as they are now (decision 0044).",
+        "operationId": "accept_workspace_notes_api_threads__thread_id__workspace_notes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderBriefRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Accept Workspace Notes"
+      }
+    },
     "/api/threads/{thread_id}/workspace/{root}/list": {
       "get": {
         "operationId": "get_listing_api_threads__thread_id__workspace__root__list_get",
