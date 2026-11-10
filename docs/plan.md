@@ -35,9 +35,11 @@ Last reviewed: 2026-11-06.
    when nothing failed, and counting llm steps' tokens.
 
 4. **How turns go, measured in real use** (#867, decision 0045). Done: one line per turn in
-   `turns.jsonl`, without the conversation's words (`docs/log/2026-11-10-turn-trace.md`). Next:
-   the evaluation's replay layer in the PR checks; sub-agent and workflow agent steps counted; a
-   failed turn exported as an evaluation task with the person's consent.
+   `turns.jsonl`, without the conversation's words (`docs/log/2026-11-10-turn-trace.md`), and
+   two agentic evaluation tasks replayed from recorded answers in the PR checks
+   (`docs/log/2026-11-10-eval-replay.md`). Next: tapes for the tasks that run a script;
+   sub-agent and workflow agent steps counted; a failed turn exported as an evaluation task with
+   the person's consent.
 
 ## Open, smaller
 

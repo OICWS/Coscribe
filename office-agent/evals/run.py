@@ -161,6 +161,14 @@ class Recorder:
             self.errors.append(str(data.get("message")))
 
 
+class _FixedWindow:
+    def __init__(self, window: int) -> None:
+        self._window = window
+
+    def get_context_window(self, model: str) -> int:
+        return self._window
+
+
 def _build_session(
     root: Path,
     workspace: Path,
@@ -168,7 +176,10 @@ def _build_session(
     thread_id: str,
     effort: str = DEFAULT_EFFORT,
     language: str = "pages",
+    window: int | None = None,
 ) -> Any:
+    """`window` fixes the model's context window instead of asking the provider for it (a run
+    from a tape has no provider, and must compact where the recorded run did)."""
     from langgraph.checkpoint.memory import InMemorySaver
 
     from coscribe.config import Settings
@@ -199,11 +210,14 @@ def _build_session(
         target = settings.skills_dir / "word"
         target.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(word_skill, target / "SKILL.md")
-    providers = {"deepseek": {"base_url": DEEPSEEK_URL, "api_key": os.environ["DEEPSEEK_API_KEY"]}}
+    key = os.environ.get("DEEPSEEK_API_KEY", "") if window else os.environ["DEEPSEEK_API_KEY"]
+    providers = {"deepseek": {"base_url": DEEPSEEK_URL, "api_key": key}}
     session = ChatSessionLG(
         thread_id=thread_id,
         settings=settings,
-        context_window_client=LLMClient(custom_providers=providers),
+        context_window_client=(
+            _FixedWindow(window) if window else LLMClient(custom_providers=providers)
+        ),
         custom_providers=providers,
         extra_tools=[],
         checkpointer=InMemorySaver(),
