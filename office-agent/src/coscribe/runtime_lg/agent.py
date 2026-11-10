@@ -28,6 +28,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.errors import GraphBubbleUp
 
 from ..runtime import COMPACT_INSTRUCTIONS, get_tool_metadata
+from .call_order import CallOrderMiddleware
 from .context_editing import clear_old_tool_results_middleware
 from .edit_guard import EditGuardMiddleware
 from .messages import pictures_as_user_message, starts_a_turn, steer_message
@@ -497,14 +498,12 @@ def build_langgraph_agent(
     }
     approval_tool_names.update(extra_interrupt_tool_names)
     question_tool_names_set = set(question_tool_names)
-    # _CatchToolErrorsMiddleware always runs, regardless of approval gating --
-    # every graph built here should feed a tool's own raised exception back
-    # to the model instead of crashing the turn (see its own docstring for
-    # the live-reported bug this fixes). Listed before HumanInTheLoopMiddleware
-    # so it's the outermost wrapper; order doesn't change correctness here
-    # (it re-raises GraphBubbleUp untouched either way), but outermost is
-    # the natural place for a catch-all.
+    # _CatchToolErrorsMiddleware always runs, regardless of approval gating: every graph built
+    # here feeds a tool's own raised exception back to the model instead of crashing the turn.
+    # It is the outermost wrapper as the natural place for a catch-all; order doesn't change
+    # correctness (it re-raises GraphBubbleUp untouched either way).
     middleware: list[Any] = [_CatchToolErrorsMiddleware(after=repeat_note(tools))]
+    middleware.append(CallOrderMiddleware())
     if resolve_file is not None:
         middleware.append(EditGuardMiddleware(resolve_file, _writer_names(tools)))
     if redact is not None:

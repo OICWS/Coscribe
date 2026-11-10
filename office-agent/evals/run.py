@@ -197,6 +197,9 @@ def _build_session(
         custom_templates_dir=root / "templates",
         memory_path=root / "MEMORY.md",
         auto_title_threads=False,
+        # Nobody reads a suggestion here, and its call races the next message: whether it is
+        # made depends on how the event loop orders two tasks, so a run could not be replayed.
+        prompt_suggestions=False,
         # The product's own scale and mapping (runtime_lg/effort.py), so a run's level means
         # what the same level means to a user.
         default_effort=effort,
