@@ -31,9 +31,12 @@ from .connector_value import connector_value as _connector_value
 from .model_step import ask_model, field_problems
 
 if TYPE_CHECKING:
+    from .budget import RunBudget
     from .run_task import TaskSource
 
 SCRIPT_TIMEOUT_SECONDS = 300.0
+# About three times what a bounded agent step used to write one short file (decision 0043).
+STEP_TOKENS = 300_000
 SCRIPT_TOOLS = frozenset({"run_python_script", "run_node_script"})
 _PREVIEW_TEXT_CHARS = 2000
 _PREVIEW_LIST_ITEMS = 50
@@ -79,7 +82,8 @@ class StepRecord:
     # A failed step whose failure didn't stop the run: it was skipped, steps ran in its place, its
     # loop skipped the item it failed on, or the run added steps for it (decision 0042).
     recovered: Literal["skipped", "fallback", "item_skipped", "added"] | None = None
-    # A waiting ask or wait step, and what for (decision 0033): conversation.wire's WorkflowPause.
+    # A waiting ask or wait step, or a step asking to use more tokens (decisions 0033, 0043), and
+    # what for: conversation.wire's WorkflowPause.
     pause: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -137,6 +141,10 @@ class StepContext:
     # On where a model can plan them; off inside a called task, a parallel lane and the steps a
     # run added, so those never add more.
     adds_steps: bool = False
+    # What an agent step may use per pass, and the run's models in all, before a person is asked
+    # (decision 0043); no budget: no cap on the run.
+    step_tokens: int = STEP_TOKENS
+    budget: RunBudget | None = None
 
 
 def preview(value: Any, depth: int = 0) -> Any:

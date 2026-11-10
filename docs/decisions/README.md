@@ -52,4 +52,5 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0039](0039-a-task-starts-on-something-new-in-a-connector.md) | A task starts on something new in a connector (proposed) |
 | [0040](0040-a-task-starts-on-an-event-another-program-sends.md) | A task starts on an event another program on the machine sends (proposed) |
 | [0042](0042-a-run-may-add-steps-when-a-step-fails.md) | A run may add steps when a step fails, at proactive or above (proposed) |
+| [0043](0043-a-run-asks-before-its-models-use-more.md) | A run asks before its models use more tokens, with no setting (proposed) |
 | [0044](0044-a-workspace-keeps-its-own-coscribe-folder.md) | A workspace keeps its own `.coscribe/` folder: notes, skills and uploads (proposed) |

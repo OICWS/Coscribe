@@ -47,6 +47,8 @@ class ScheduledRun:
     called: dict[str, Any] = field(default_factory=dict)
     # What started a "connector" run: {"connector", "tool", "key", "item"}.
     event: dict[str, Any] | None = None
+    # The tokens a person let this run's models use, past its own cap (decision 0043).
+    token_cap: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -69,6 +71,7 @@ class ScheduledRun:
             "versions": self.versions,
             "called": self.called,
             "event": self.event,
+            "token_cap": self.token_cap,
         }
 
     @classmethod
@@ -93,6 +96,7 @@ class ScheduledRun:
             versions=[int(v) for v in data.get("versions") or []],
             called=dict(data.get("called") or {}),
             event=data.get("event"),
+            token_cap=data.get("token_cap"),
         )
 
 
