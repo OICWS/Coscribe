@@ -39,6 +39,8 @@ Last reviewed: 2026-11-06.
    five agentic evaluation tasks replayed from recorded answers in the PR checks
    (`docs/log/2026-11-10-eval-replay.md`, `docs/log/2026-11-10-plan-order.md`). Next: tapes for
    the tasks that run a script, and a nightly replay of the three that write Office files;
+   `search_tools` returning its weaker matches as a name and one line
+   (`docs/log/2026-11-10-tool-search-recall.md`);
    sub-agent and workflow agent steps counted; a failed turn exported as an evaluation task with
    the person's consent.
 
