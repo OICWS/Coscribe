@@ -260,9 +260,8 @@ class ChatSessionLG:
         # shared state (_pending_tool_args, _stop_requested). resolve_approval/request_stop
         # stay outside it: they must reach the turn in flight, not queue behind it.
         self._turn_lock = TurnLock(self._turn_lock_changed)
-        # Notes the user sent during a turn, (id, text), not yet read by
-        # the model.
-        self._steers: list[tuple[str, str]] = []
+        # Notes the user sent during a turn, (id, text, pictures), not yet read by the model.
+        self._steers: list[tuple[str, str, list[str]]] = []
         # The task currently holding _turn_lock (handle_user_message or
         # resume_after_reconnect), if any -- see abandon_orphaned_turn's
         # docstring for why this exists: a turn lock alone would let an
@@ -512,25 +511,26 @@ class ChatSessionLG:
         if future is not None and not future.done():
             future.set_result(answer)
 
-    def add_steer(self, steer_id: str, text: str | None) -> None:
-        """A note for the turn in progress, read before its next step (a script it waits on moves to
-        the background, not to hold it). With no turn running, it is sent as a message instead."""
-        self._steers = [s for s in self._steers if s[0] != steer_id]
+    def add_steer(self, steer_id: object, text: str | None, images: list[str] | None) -> None:
+        """A note for the turn in progress, with its pictures, read before its next step (a script
+        it waits on moves to the background). With no turn running, it is sent as a message."""
+        key = str(steer_id)
+        self._steers = [s for s in self._steers if s[0] != key]
         if text is not None:
-            self._steers.append((steer_id, text))
+            self._steers.append((key, text, list(images or [])))
             if not self._turn_lock.locked():
                 asyncio.get_running_loop().create_task(self._send_unread_steers())
             request_detach(self.thread_id, None, asyncio.get_running_loop(), "steer")
 
-    async def _take_steers(self) -> list[str]:
+    async def _take_steers(self) -> list[tuple[str, list[str]]]:
         if not self._steers:
             return []
         steers, self._steers = self._steers, []
         socket = self._live_websocket or self._turn_websocket
         if socket is not None:
             with contextlib.suppress(Exception):  # the tab went away; the model still has them
-                await socket.send_json({"type": "steers_delivered", "ids": [i for i, _ in steers]})
-        return [text for _, text in steers]
+                await socket.send_json({"type": "steers_delivered", "ids": [s[0] for s in steers]})
+        return [(text, images) for _, text, images in steers]
 
     def _turn_lock_changed(self, active: bool) -> None:
         BROWSER_HOST.set_active(self.thread_id, active)
@@ -542,17 +542,17 @@ class ChatSessionLG:
         if not self._steers or self._turn_lock.locked():
             return
         steers, self._steers = self._steers, []
-        text = "\n\n".join(note for _, note in steers)
+        text = "\n\n".join(note for _, note, _ in steers)
         websocket: Any = self._live_websocket
         if websocket is not None:
             try:
                 await websocket.send_json(
-                    {"type": "steers_requeued", "ids": [i for i, _ in steers], "text": text}
+                    {"type": "steers_requeued", "ids": [s[0] for s in steers], "text": text}
                 )
             except Exception:  # noqa: BLE001 -- the tab went away; run unwatched
                 websocket = None
         socket: Any = websocket or SilentSocket()
-        await self.handle_user_message(text, socket)
+        await self.handle_user_message(text, socket, [u for s in steers for u in s[2]] or None)
 
     def detach_command(self, script: str) -> bool:
         """From the running loop, which the background task announces itself to later."""
@@ -841,7 +841,7 @@ class ChatSessionLG:
                 )
         state = await self.lg_agent.aget_state(self.config)
         messages = list(state.values.get("messages", [])) if state.values else []
-        folders = self._assembly.folder_briefs.shown(self._assembly.folders())
+        folders = self._assembly.shown_folders()
         return {**summarize_activity(messages, catalog, self.workspace_scope()), "folders": folders}
 
     async def get_context_breakdown(self) -> dict[str, Any]:
@@ -1158,7 +1158,7 @@ class ChatSessionLG:
         mode_note = turn_mode_note(self.plan_mode, self.accept_edits, self.auto_mode)
         # Notes here, not in the system prompt: see current_date_note()'s docstring (caching).
         described = conversation_context(self.settings, self.workspace_root, self.extra_folders)
-        context = self._assembly.folder_briefs.context(described, self._assembly.folders())
+        context = self._assembly.context(described)
         state = await self.lg_agent.aget_state(self.config)
         history = list(state.values.get("messages", [])) if state.values else []
         told = last_conversation_context(history) == context

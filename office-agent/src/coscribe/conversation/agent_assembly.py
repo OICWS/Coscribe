@@ -50,6 +50,7 @@ from .folder_brief import FolderBriefKeeper
 from .page_tools import build_page_tools
 from .save_offer import SaveOffer
 from .turn_text import build_instructions
+from .workspace_folder import WorkspaceFolders
 
 
 class AssemblyHost(Protocol):
@@ -90,7 +91,7 @@ class AssemblyHost(Protocol):
 
     def _build_test_workflow_tool(self) -> BaseTool: ...
 
-    async def _take_steers(self) -> list[str]: ...
+    async def _take_steers(self) -> list[tuple[str, list[str]]]: ...
 
 
 def risks_of_gated_tools(lg_tools: list[Any]) -> dict[str, str]:
@@ -122,11 +123,29 @@ class AgentAssembly:
         )
 
     @cached_property
+    def workspace_folders(self) -> WorkspaceFolders:
+        return WorkspaceFolders(Path(self._host.settings.state_dir))
+
+    @cached_property
     def save_offer(self) -> SaveOffer:
         return SaveOffer(self._host, self.side_model)
 
     def folders(self) -> list[Path]:
         return [Path(self._host.workspace_root), *self._host.extra_folders]
+
+    def shown_folders(self) -> list[dict[str, Any]]:
+        """For the side panel: each folder's brief and what it keeps in `.coscribe/`."""
+        return [
+            {**brief, "workspace": self.workspace_folders.shown(Path(brief["path"]))}
+            for brief in self.folder_briefs.shown(self.folders())
+        ]
+
+    def context(self, described: str) -> str:
+        """`described` with what the folders hold and the notes and skills they keep."""
+        folders = self.folders()
+        return self.workspace_folders.context(
+            self.folder_briefs.context(described, folders), folders
+        )
 
     def side_model(self) -> Any:
         """The model for side jobs around a turn (`Settings.side_model`): the reviewer, the title,

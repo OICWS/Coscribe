@@ -4,7 +4,7 @@ import { showArtifacts } from "../../lib/nav";
 import { CONVERSATION_ITEMS, type ToolbarItem } from "../../lib/toolbarItems";
 import { DRAWS_TITLE_BAR, TITLE_BAR_ICON } from "../../lib/titleBar";
 import { ArtifactsIcon } from "../artifacts/artifactIcons";
-import { BrowserIcon, ListChecksIcon, PanelRightIcon, SidebarIcon, SubAgentsIcon } from "../icons";
+import { BrowserIcon, FolderIcon, ListChecksIcon, PanelRightIcon, SidebarIcon, SubAgentsIcon } from "../icons";
 import { ToolbarDialog, ToolbarMenu, type ToolbarEntry } from "./ToolbarMenu";
 
 const on = "bg-[var(--accent-soft)] text-[var(--accent-ink)]";
@@ -45,6 +45,7 @@ export function PanelToggles({
     { id: "artifacts", label: "Artifacts", Icon: ArtifactsIcon, active: artifactsOpen, onSelect: showArtifacts },
     { id: "task", label: "Task details", title: task ? "Hide task details" : "Show task details", Icon: PanelRightIcon, active: task, onSelect: () => onToggle("task") },
     { id: "plan", label: "Plan", Icon: ListChecksIcon, active: open("plan"), onSelect: () => onToggle("plan") },
+    { id: "files", label: "Files", Icon: FolderIcon, active: open("files"), onSelect: () => onToggle("files") },
     { id: "browser", label: "Browser", Icon: BrowserIcon, active: open("browser"), onSelect: () => onToggle("browser") },
     {
       id: "background",

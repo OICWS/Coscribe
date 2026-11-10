@@ -62,6 +62,13 @@ class WorkspaceScope:
                 f"Path is one of Coscribe's own settings files; only the user changes it, in "
                 f"Settings: {path}"
             )
+        if write and _is_folder_notes(resolved):
+            # A folder's notes are instructions every later conversation there follows: the
+            # model proposes a line with `remember` and the person's Save writes it.
+            raise PermissionError(
+                f"{path} holds the folder's notes; only the user changes them, or saves a line "
+                "you offer with the remember tool."
+            )
         if self._under(resolved, self.root):
             return resolved
         allowed = self._extra_writable if write else self._extra_readable
@@ -71,7 +78,7 @@ class WorkspaceScope:
                     raise PermissionError(
                         f"{path} is in a folder that allows reading and writing but no deleting, "
                         "moving or renaming. The user can allow those by adding the folder in "
-                        "Settings > Workspace as \"Read, write and delete\"."
+                        'Settings > Workspace as "Read, write and delete".'
                     )
                 return resolved
         verb = "written to" if write else "read"
@@ -99,3 +106,7 @@ class WorkspaceScope:
             return True
         except ValueError:
             return False
+
+
+def _is_folder_notes(path: Path) -> bool:
+    return path.name.casefold() == "memory.md" and path.parent.name.casefold() == ".coscribe"

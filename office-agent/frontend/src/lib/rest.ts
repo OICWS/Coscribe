@@ -60,6 +60,7 @@ import type {
   ContextBreakdown,
   BackgroundScriptLog,
   FolderBrief,
+  WorkspaceNotes,
   BackgroundScriptTask,
   SubAgentActionResult,
   SubAgentTasksResponse,
@@ -514,6 +515,12 @@ export const getThreadActivity = (threadId: string) =>
 /** Writes the brief of one of the conversation's folders again, from its current file names. */
 export const rereadFolderBrief = (threadId: string, path: string) =>
   postJson<FolderBrief>(`/api/threads/${encodeURIComponent(threadId)}/folder-brief`, { path });
+
+/** Accepts the notes and skills a conversation's folder keeps in `.coscribe/`, as they are now. */
+export const acceptWorkspaceNotes = (threadId: string, path: string) =>
+  postJson<{ workspace: WorkspaceNotes | null }>(`/api/threads/${encodeURIComponent(threadId)}/workspace-notes`, {
+    path,
+  });
 
 /** Resolves to an error message, or null once the file was handed to the OS. */
 export async function openThreadFile(threadId: string, path: string, reveal: boolean): Promise<string | null> {

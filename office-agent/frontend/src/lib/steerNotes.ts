@@ -9,7 +9,38 @@ export interface SteerActions {
   sendNow: () => void;
 }
 
+/** A note as the composer hands it over: what the chat shows, what the model reads, and the
+ * pictures (data URLs) and workspace files attached to it. */
+export interface SteerDraft {
+  displayText: string;
+  outgoingText: string;
+  images?: string[];
+  files?: string[];
+}
+
+/** What goes back into the composer: the text and the attachments, to edit and send again. */
+export interface ComposerDraft {
+  text: string;
+  images?: string[];
+  files?: string[];
+}
+
+type MessagePayload = { displayText: string; outgoingText: string; images?: string[]; files?: string[]; isInstant: boolean };
+
 type Note = Extract<LogItem, { kind: "steer" }>;
+
+const nonEmpty = (list: string[]) => (list.length > 0 ? list : undefined);
+
+/** Several notes as one message, attachments included. */
+function asMessage(notes: Note[]): MessagePayload {
+  return {
+    displayText: notes.map((note) => note.text).join("\n\n"),
+    outgoingText: notes.map((note) => note.outgoingText ?? note.text).join("\n\n"),
+    images: nonEmpty(notes.flatMap((note) => note.images ?? [])),
+    files: nonEmpty(notes.flatMap((note) => note.files ?? [])),
+    isInstant: false,
+  };
+}
 
 /** Notes sent while a reply is being worked on: sending one, taking it back, stopping the reply
  * (which hands the unread ones back to the composer) and interrupting it to send them now. */
@@ -17,19 +48,19 @@ export function useSteerNotes(
   state: ChatState,
   dispatch: Dispatch<ChatAction>,
   send: (message: WsClientMessage) => void,
-  toComposer: (text: string) => void,
-  sendMessage: (payload: { displayText: string; outgoingText: string; isInstant: boolean }) => void,
+  toComposer: (draft: ComposerDraft) => void,
+  sendMessage: (payload: MessagePayload) => void,
 ) {
   // The unread notes, held until the stopped reply has ended, then sent as a message of their own.
-  const afterStop = useRef<string | null>(null);
+  const afterStop = useRef<MessagePayload | null>(null);
   // Stop was pressed and the reply has not ended yet: a model call in flight can take a moment.
   const [stopping, setStopping] = useState(false);
   useEffect(() => {
     if (!state.turnInFlight) setStopping(false);
-    const text = afterStop.current;
-    if (text === null || state.turnInFlight) return;
+    const message = afterStop.current;
+    if (message === null || state.turnInFlight) return;
     afterStop.current = null;
-    sendMessage({ displayText: text, outgoingText: text, isInstant: false });
+    sendMessage(message);
   }, [state.turnInFlight]);
 
   const unread = () => state.items.filter((item): item is Note => item.kind === "steer" && item.status === "pending");
@@ -39,27 +70,30 @@ export function useSteerNotes(
     state.items.forEach((item) => {
       if (item.kind === "approval" && item.status === "pending") dispatch({ type: "local_approval_resolved", id: item.id, approved: false });
     });
-  const joined = (notes: Note[]) => notes.map((note) => note.text).join("\n\n");
+  const backToComposer = (notes: Note[]) => {
+    const message = asMessage(notes);
+    toComposer({ text: message.displayText, images: message.images, files: message.files });
+  };
 
   const actions: SteerActions = {
     withdraw: (id) => {
       const note = unread().find((item) => item.id === id);
       if (!note) return;
       drop([note]);
-      toComposer(note.text);
+      backToComposer([note]);
       send({ type: "steer", id, text: null });
     },
     sendNow: () => {
       const notes = unread();
       if (notes.length === 0) return;
       drop(notes);
-      const text = joined(notes);
+      const message = asMessage(notes);
       // A reply that ended meanwhile has no end left to wait for.
       if (!state.turnInFlight) {
-        sendMessage({ displayText: text, outgoingText: text, isInstant: false });
+        sendMessage(message);
         return;
       }
-      afterStop.current = text;
+      afterStop.current = message;
       denyApprovals();
       setStopping(true);
       send({ type: "stop" });
@@ -71,27 +105,37 @@ export function useSteerNotes(
     actions,
     stopping,
     /** A note for the running reply; while a question or an approval card waits, the reply is
-     * stuck on it, so the text answers the question or denies the call with these words. */
-    steer: (text: string) => {
-      if (question) {
+     * stuck on it, so plain text answers the question or denies the call with these words. A note
+     * with attachments can't be such an answer, so it waits as a note for after the card. */
+    steer: (draft: SteerDraft) => {
+      const text = draft.outgoingText;
+      const attached = (draft.images?.length ?? 0) > 0 || (draft.files?.length ?? 0) > 0;
+      if (question && !attached) {
         dispatch({ type: "local_question_answered", id: question.id, answers: [], reply: text });
         send({ type: "question_response", id: question.id, reply: text });
         return;
       }
-      if (approval) {
+      if (approval && !attached) {
         dispatch({ type: "local_approval_resolved", id: approval.id, approved: false, reply: text });
         send({ type: "approval_response", id: approval.id, approved: false, reply: text });
         return;
       }
       const id = `steer-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      dispatch({ type: "local_steer", id, text });
-      send({ type: "steer", id, text });
+      dispatch({
+        type: "local_steer",
+        id,
+        text: draft.displayText,
+        ...(text !== draft.displayText ? { outgoingText: text } : {}),
+        ...(draft.images?.length ? { images: draft.images } : {}),
+        ...(draft.files?.length ? { files: draft.files } : {}),
+      });
+      send({ type: "steer", id, text, ...(draft.images?.length ? { images: draft.images } : {}) });
     },
     stop: () => {
       const notes = unread();
       if (notes.length > 0) {
         drop(notes);
-        toComposer(joined(notes));
+        backToComposer(notes);
       }
       denyApprovals();
       setStopping(true);

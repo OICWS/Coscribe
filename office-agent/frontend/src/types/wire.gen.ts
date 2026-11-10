@@ -62,6 +62,7 @@ export interface SteerEntry {
   kind: "steer";
   text: string;
   images?: string[];
+  files?: string[];
 }
 
 export interface AgentEntry {
@@ -614,13 +615,14 @@ export interface LoadOlderMessagesOut {
 }
 
 /**
- * A note for the turn in progress: the model reads it before its next step. A null text
- * takes the note back.
+ * A note for the turn in progress: the model reads it, with its pictures (data URLs),
+ * before its next step. A null text takes the note back.
  */
 export interface SteerOut {
   type: "steer";
   id: string;
   text: string | null;
+  images?: string[];
 }
 
 /**

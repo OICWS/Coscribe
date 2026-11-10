@@ -315,13 +315,15 @@ class _SteerMiddleware(AgentMiddleware):
     just before the model's next step, so it reads them without waiting
     for the reply to finish."""
 
-    def __init__(self, take_steers: Callable[[], Awaitable[list[str]]]) -> None:
+    def __init__(self, take_steers: Callable[[], Awaitable[list[tuple[str, list[str]]]]]) -> None:
         super().__init__()
         self.take_steers = take_steers
 
     async def abefore_model(self, state: Any, runtime: Any) -> dict[str, Any] | None:
         notes = await self.take_steers()
-        return {"messages": [steer_message(note) for note in notes]} if notes else None
+        if not notes:
+            return None
+        return {"messages": [steer_message(text, images) for text, images in notes]}
 
 
 _AUTO_COMPACT_PROMPT = COMPACT_INSTRUCTIONS + "\n<messages>\n{messages}\n</messages>"
@@ -395,7 +397,7 @@ def build_langgraph_agent(
     auto_compact_tokens: int | None = None,
     defer_tools: bool = False,
     core_tool_names: Iterable[str] = (),
-    take_steers: Callable[[], Awaitable[list[str]]] | None = None,
+    take_steers: Callable[[], Awaitable[list[tuple[str, list[str]]]]] | None = None,
     redact: Callable[[str], str] | None = None,
     resolve_file: Callable[[str], Path] | None = None,
     open_tasks: Callable[[], str] | None = None,

@@ -100,6 +100,11 @@ Last reviewed: 2026-11-06.
 
 ## Later (wanted, not scheduled)
 
+- A workspace's uploads in `.coscribe/uploads/<kind>/`, pasted pictures named by date and time and
+  a one-line description of each from the side model (decision 0044, its second part; the notes
+  and skills shipped: `docs/log/2026-11-09-workspace-notes.md`). Later still: `workflows/` and
+  `agents/` read from there, and notes coscribe writes by itself from a person's corrections.
+
 - A scheduled task changed by describing the change in words, from the task page's simple view
   (#843): today a person edits steps in the detailed view or asks in a conversation. Needs a
   route that drafts a revision of a saved task from a request, as a failed run's investigation does.

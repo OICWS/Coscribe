@@ -15,6 +15,7 @@ from .skills import router as skills_router
 from .slides import router as slides_router
 from .threads import router as threads_router
 from .webhooks import router as webhooks_router
+from .workspace import router as workspace_router
 from .ws import router as ws_router
 
 
@@ -32,6 +33,7 @@ def include_routers(app: FastAPI, state: AppState) -> None:
         settings_router,
         skills_router,
         files_router,
+        workspace_router,
         connectors_router,
         ws_router,
     ):

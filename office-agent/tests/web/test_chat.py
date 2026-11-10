@@ -277,6 +277,54 @@ def test_a_note_no_turn_was_left_to_read_is_sent_as_the_next_message_lg(
     assert next(m for m in messages if m["type"] == "agent_message")["text"] == "noted"
 
 
+def test_a_note_sent_mid_turn_brings_its_pictures_to_the_model_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from coscribe.runtime_lg.messages import STEER_NOTE
+
+    picture = "data:image/png;base64,iVBORw0KGgo="
+    call = _tool_call("call_1", "write_file", {"path": "note.txt", "content": "hi"})
+    fake_model = FakeToolCallingChatModel(
+        responses=[AIMessage(content="", tool_calls=[call]), AIMessage(content="done")]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_steer_image") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "write hi to note.txt"})
+            approval = ws.receive_json()
+            assert approval["type"] == "approval_required"
+            ws.send_json({"type": "steer", "id": "s1", "text": "like this", "images": [picture]})
+            ws.send_json({"type": "approval_response", "id": approval["id"], "approved": True})
+            messages = _receive_until(ws, "tasks_changed")
+
+    assert {"type": "steers_delivered", "ids": ["s1"]} in messages
+    last = fake_model.received[-1][-1]
+    assert is_steer(last)
+    assert last.content == [
+        {"type": "text", "text": STEER_NOTE + "like this"},
+        {"type": "image_url", "image_url": {"url": picture}},
+    ]
+
+
+def test_a_note_with_a_picture_no_turn_read_is_sent_with_it_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    picture = "data:image/png;base64,iVBORw0KGgo="
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="noted")])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_steer_image2") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "steer", "id": "s1", "text": "this one", "images": [picture]})
+            assert ws.receive_json()["type"] == "steers_requeued"
+            _receive_until(ws, "tasks_changed")
+
+    sent = fake_model.received[-1][-1]
+    assert not is_steer(sent)
+    assert {"type": "image_url", "image_url": {"url": picture}} in sent.content
+
+
 def test_stop_drops_the_notes_the_model_has_not_read_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

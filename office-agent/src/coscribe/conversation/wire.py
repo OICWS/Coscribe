@@ -74,6 +74,7 @@ class SteerEntry(TypedDict):
     kind: Literal["steer"]
     text: str
     images: NotRequired[list[str]]
+    files: NotRequired[list[str]]
 
 
 class AgentEntry(TypedDict):
@@ -617,12 +618,13 @@ class LoadOlderMessagesOut(TypedDict):
 
 
 class SteerOut(TypedDict):
-    """A note for the turn in progress: the model reads it before its next step. A null text
-    takes the note back."""
+    """A note for the turn in progress: the model reads it, with its pictures (data URLs), before
+    its next step. A null text takes the note back."""
 
     type: Literal["steer"]
     id: str
     text: str | None
+    images: NotRequired[list[str]]
 
 
 class DetachCommandOut(TypedDict):

@@ -15,6 +15,7 @@ import { StopRingIcon } from "./StopRingIcon";
 import type { PptxShapeCapture } from "./PptxShapeOverlay";
 import { RunStatus } from "./RunStatus";
 import { TextLightbox } from "./TextLightbox";
+import type { ComposerDraft, SteerDraft } from "../lib/steerNotes";
 
 /** Commands that get an instant "state" reply and never run an agent
  * turn (see session.py's _handle_user_message_locked). */
@@ -92,9 +93,9 @@ interface ComposerProps {
   effortPicker: ReactNode;
   usageRing: ReactNode;
   onSend: (payload: ComposerSendPayload) => void;
-  /** Text sent while a reply is being worked on: a note the model reads
-   * before its next step, instead of a message waiting for the reply. */
-  onSteer: (text: string) => void;
+  /** A message sent while a reply is being worked on, attachments included: a note the model
+   * reads before its next step, instead of a message waiting for the reply. */
+  onSteer: (note: SteerDraft) => void;
   onStop: () => void;
   stopping?: boolean;
   onLocalError: (message: string) => void;
@@ -117,7 +118,7 @@ interface ComposerProps {
    * by SkillsTab's "Create a skill" (see App.tsx's onCreateSkill), which
    * prefills "/skill-creator " without sending it, so the user can
    * review/edit before hitting Enter themselves. */
-  externalText: string | null;
+  externalDraft: ComposerDraft | null;
   onExternalTextConsumed: () => void;
   /** The server's guess at the next message; shown as gray text in the empty box. */
   suggestion: string | null;
@@ -151,7 +152,7 @@ export function Composer({
   onExternalImageConsumed,
   externalPptxCapture,
   onExternalPptxCaptureConsumed,
-  externalText,
+  externalDraft,
   onExternalTextConsumed,
   suggestion,
   onSuggestionDismiss,
@@ -189,15 +190,23 @@ export function Composer({
   }, [externalPptxCapture, onExternalPptxCaptureConsumed]);
 
   useEffect(() => {
-    if (externalText === null) return;
-    setValue(externalText);
+    if (externalDraft === null) return;
+    setValue(externalDraft.text);
+    const images = externalDraft.images ?? [];
+    if (images.length > 0) {
+      setPendingImages((prev) => [...prev, ...images.map((dataUrl, i) => ({ name: `Image ${prev.length + i + 1}`, dataUrl }))]);
+    }
+    const files = externalDraft.files ?? [];
+    if (files.length > 0) {
+      setPendingFiles((prev) => [...prev, ...files.map((path) => ({ name: path.split(/[\\/]/).pop() ?? path, path }))]);
+    }
     onExternalTextConsumed();
     requestAnimationFrame(() => {
       resize();
       textareaRef.current?.focus();
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [externalText, onExternalTextConsumed]);
+  }, [externalDraft, onExternalTextConsumed]);
 
   const resize = () => {
     const el = textareaRef.current;
@@ -252,16 +261,6 @@ export function Composer({
       pendingPastes.length === 0
     )
       return;
-    // While a reply is being worked on, text goes to it as a note (or answers the card it waits on)
-    // rather than queuing behind it. Attachments wait for the reply; "/stop" still stops it.
-    if (turnInFlight && text.trim().toLowerCase() !== "/stop") {
-      if (!text.trim() || hasAttachments) return;
-      onSteer(text.trim());
-      setValue("");
-      requestAnimationFrame(resize);
-      return;
-    }
-
     // "/stop" reaches the currently-running turn directly (a dedicated WS
     // "stop" message, not "user_message") -- App.tsx's onSend special-cases
     // displayText for this, same as it already does for the Stop button.
@@ -307,14 +306,20 @@ export function Composer({
       outgoingText = outgoingText ? `${outgoingText}\n\n${note}` : note;
     }
     const commandWord = text.trim().split(/\s+/, 1)[0]?.toLowerCase();
-    onSend({
+    const message = {
       // With only attachments the bubble has no text: the cards say what was sent.
       displayText: displayText || (pendingImages.length > 0 || pendingFiles.length > 0 ? "" : "(attachment sent)"),
       outgoingText,
       images: pendingImages.length > 0 ? pendingImages.map((f) => f.dataUrl) : undefined,
       files: pendingFiles.length > 0 ? pendingFiles.map((f) => f.path) : undefined,
-      isInstant: INSTANT_COMMANDS.has(commandWord ?? ""),
-    });
+    };
+    // While a reply is being worked on, a message goes to it as a note, attachments and all (or
+    // answers the card it waits on), rather than queuing behind it; "/stop" still stops it.
+    if (turnInFlight && text.trim().toLowerCase() !== "/stop") {
+      onSteer({ ...message, displayText: message.displayText.trim(), outgoingText: message.outgoingText.trim() });
+    } else {
+      onSend({ ...message, isInstant: INSTANT_COMMANDS.has(commandWord ?? "") });
+    }
     setValue("");
     setPendingImages([]);
     setPendingFiles([]);
@@ -445,12 +450,8 @@ export function Composer({
   const dropping = useWindowFileDrop((files) => files.forEach((file) => void onFileChosen(file)), true);
 
   let sendTitle = "Send";
-  if (turnInFlight) {
-    sendTitle = hasAttachments ? "Attachments can be sent once this reply is done" : "Add to the reply in progress";
-  }
-  const canSend = turnInFlight
-    ? value.trim().length > 0 && !hasAttachments
-    : value.trim().length > 0 || hasAttachments;
+  if (turnInFlight) sendTitle = "Add to the reply in progress";
+  const canSend = value.trim().length > 0 || hasAttachments;
 
   return (
     <>
