@@ -20,7 +20,8 @@ modes -- Manual, Accept Edits, Plan and Auto -- switchable mid-session.
 cd office-agent
 python3 -m venv .venv
 source .venv/bin/activate          # Windows PowerShell: .\.venv\Scripts\Activate.ps1
-pip install -e ".[dev,web]"
+pip install uv                     # or any other uv install
+python scripts/install_locked.py --extra dev --extra web   # the versions in uv.lock, hash-checked
 cp .env.example .env
 # edit .env and set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GEMINI_API_KEY; optionally
 # COSCRIBE_DEFAULT_MODEL as "provider:model" (left empty, the key's provider picks one)
@@ -30,6 +31,11 @@ cd frontend && npm install && npm run build && cd ..
 # gitignored (a build artifact, not source) so a fresh checkout has none
 # yet. Needed for coscribe-web; not needed for the CLI-only `coscribe`.
 ```
+
+`pyproject.toml` keeps version ranges; `uv.lock` holds the exact versions CI tests and the
+desktop sidecar ships. After changing a dependency or a range, run `uv lock` and commit
+`uv.lock` with it: `scripts/install_locked.py` fails while the two disagree. Dependabot moves
+the lock within the ranges once a week, in one pull request.
 
 **In plain terms:** Coscribe talks to three model makers directly --
 Anthropic (Claude), Google (Gemini), and OpenAI (GPT). Beyond those
@@ -1402,7 +1408,7 @@ mypy src
 ```
 
 Running the full suite (including `tests/web/`) needs the `web`
-extra installed too: `pip install -e ".[dev,web]"`.
+extra installed too: `python scripts/install_locked.py --extra dev --extra web`.
 
 Tests do not require an API key or network access — they exercise
 configuration loading and tool wiring directly (including `cli.py` and the

@@ -6,10 +6,14 @@
 # now; this keeps it from piling up.
 version: 2
 updates:
-  - package-ecosystem: pip
+  # uv.lock is what CI and the desktop build install (scripts/install_locked.py). lockfile-only
+  # moves the lock within pyproject.toml's ranges and never rewrites a range, so the ranges stay
+  # what the code is known to need; widening one is a deliberate change by hand, with `uv lock`.
+  - package-ecosystem: uv
     directory: /office-agent
     schedule:
       interval: weekly
+    versioning-strategy: lockfile-only
     open-pull-requests-limit: 5
     ignore:
       - dependency-name: "*"

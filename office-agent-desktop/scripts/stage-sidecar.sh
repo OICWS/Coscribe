@@ -49,19 +49,22 @@ echo "==> Building frontend (coscribe-web's static assets)"
 # what GitHub's windows-latest runner and any real Windows dev box with Git
 # installed both provide), so `uname`-style OS detection isn't reliable here;
 # checking which layout actually exists on disk is.
-if [ -x "$OFFICE_AGENT/.venv/Scripts/pyinstaller.exe" ]; then
-  PYINSTALLER="$OFFICE_AGENT/.venv/Scripts/pyinstaller.exe"
+if [ -x "$OFFICE_AGENT/.venv/Scripts/python.exe" ]; then
+  VENV_BIN="$OFFICE_AGENT/.venv/Scripts"
 else
-  PYINSTALLER="$OFFICE_AGENT/.venv/bin/pyinstaller"
+  VENV_BIN="$OFFICE_AGENT/.venv/bin"
 fi
+
+# The frozen build ships whatever the venv holds, so the venv is brought to
+# uv.lock first: a sidecar built on one machine then carries the same
+# versions CI tested, PyInstaller included (the lock's `sidecar` group).
+echo "==> Installing office-agent's dependencies from uv.lock"
+"$VENV_BIN/python" "$OFFICE_AGENT/scripts/install_locked.py" --extra web --group sidecar
 
 echo "==> Building coscribe-server via PyInstaller (onedir)"
 (
   cd "$OFFICE_AGENT/packaging"
-  # Uses office-agent's own venv -- must already have pyinstaller installed
-  # (`pip install pyinstaller`) alongside the project's real dependencies,
-  # so the frozen build's import graph matches what's actually installed.
-  "$PYINSTALLER" coscribe-server.spec --noconfirm
+  "$VENV_BIN/pyinstaller" coscribe-server.spec --noconfirm
 )
 
 echo "==> Staging into $SIDECAR_DEST"

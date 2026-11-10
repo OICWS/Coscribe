@@ -36,7 +36,12 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: office-agent/pyproject.toml
+          cache-dependency-path: office-agent/uv.lock
+
+      # Reads uv.lock for scripts/install_locked.py.
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.13.7"
 
       - uses: actions/setup-node@v4
         with:
@@ -56,7 +61,7 @@ jobs:
 
       - name: Install coscribe
         working-directory: office-agent
-        run: pip install -e ".[web]"
+        run: python scripts/install_locked.py --extra web
 
       - name: Build the shell
         working-directory: office-agent-desktop

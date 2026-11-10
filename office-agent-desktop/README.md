@@ -93,9 +93,9 @@ check clicks with real input (xdotool under Xvfb, or Windows itself).
 ## Prerequisites
 
 - Node.js (no Rust toolchain needed at all).
-- `office-agent`'s own venv, with `pyinstaller` installed on top of its
-  normal dependencies (`pip install pyinstaller` inside
-  `office-agent/.venv`) -- needed to freeze the sidecar.
+- `office-agent`'s own venv (`office-agent/.venv`) and `uv` on PATH:
+  `scripts/stage-sidecar.sh` installs the venv's packages from
+  `office-agent/uv.lock`, PyInstaller included, before freezing the sidecar.
 - Icons: `icons/icon.svg` is the source (a paper plane). `icon.png`,
   the sized PNGs, `icon.ico` and `icon.icns` are rendered from it with a
   transparent background; there is no generation script, so re-render
