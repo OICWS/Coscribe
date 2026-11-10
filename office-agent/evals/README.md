@@ -300,8 +300,8 @@ asked for done?") and the checks run again.
 A real run costs money and minutes, so it cannot gate a pull request. A tape can:
 
 ```bash
-python -m evals.agentic.run --tasks 01,10 --out evals/runs/tape --record evals/agentic/tapes
-python -m evals.agentic.run --tasks 01,10 --out evals/runs/replay --replay
+python -m evals.agentic.run --tasks 02,10 --out evals/runs/tape --record evals/agentic/tapes
+python -m evals.agentic.run --tasks 02,10 --out evals/runs/replay --replay
 ```
 
 `--record` writes one tape per task that completed without the nudge: every answer a model gave
@@ -321,4 +321,7 @@ new tape with the change.
 
 Record a tape with the settings the shipped app has (no `COSCRIBE_DEFAULT_PERMISSION_MODE`), and
 only for a task that needs nothing installed on the machine: a task that runs a script
-(`run_python_script`) depends on the interpreter the recording machine had.
+(`run_python_script`) depends on the interpreter the recording machine had. Before committing a
+tape, replay it on Python 3.11 as well as on the version that recorded it: a task whose answer
+makes several calls at once with results that depend on their order (eight `task_create` calls)
+replays differently where threads are scheduled differently.
