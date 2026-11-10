@@ -35,6 +35,7 @@ import uvicorn
 
 pytest.importorskip("langgraph", reason="needs the langgraph_spike extra installed")
 
+from coscribe.config import DEFAULT_MODELS
 from coscribe.runtime import app_data_dir as _app_data_dir
 from coscribe.web.app import _load_settings_or_none, _run_web_server, create_setup_app
 
@@ -87,6 +88,21 @@ async def test_setup_page_is_served_at_root(
         resp = await client.get("/")
         assert resp.status_code == 200
         assert "coscribe-setup-marker" in resp.text
+
+
+async def test_setup_page_starts_each_provider_on_the_model_a_key_alone_would(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _isolate_dotenv(tmp_path, monkeypatch)
+    configured: asyncio.Future[object] = asyncio.get_running_loop().create_future()
+    app = create_setup_app(configured)  # type: ignore[arg-type]
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://127.0.0.1:8000") as client:
+        page = (await client.get("/")).text
+
+    for provider, (_, model) in DEFAULT_MODELS.items():
+        assert f'"{provider}": "{model}"' in page
 
 
 @pytest.mark.parametrize(

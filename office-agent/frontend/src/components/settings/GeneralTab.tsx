@@ -12,8 +12,6 @@ import {
   PERMISSION_MODE_KEY,
   PERMISSION_MODES,
   USER_NAME_KEY,
-  USER_ROLE_KEY,
-  USER_ROLES,
 } from "./fields";
 import { GlobalInstructionsSection } from "./GlobalInstructionsSection";
 import { ProxySection } from "./ProxySection";
@@ -126,17 +124,6 @@ function ProfileSection({ values, onChange }: GeneralTabProps) {
               value={values[USER_NAME_KEY] ?? ""}
               placeholder="Your name"
               onChange={(e) => onChange(USER_NAME_KEY, e.target.value)}
-            />
-          }
-        />
-        <SettingRow
-          label="What best describes your work?"
-          control={
-            <SelectMenu
-              ariaLabel="Your work"
-              value={values[USER_ROLE_KEY] ?? ""}
-              options={USER_ROLES}
-              onChange={(v) => onChange(USER_ROLE_KEY, v)}
             />
           }
         />

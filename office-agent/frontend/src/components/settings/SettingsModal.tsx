@@ -19,6 +19,7 @@ import { ConnectorsTab } from "./ConnectorsTab";
 import { CapabilitiesTab } from "./CapabilitiesTab";
 import {
   BACKGROUND_ON_CLOSE_KEY,
+  NOTIFICATIONS_KEY,
   CODE_MODEL_KEY,
   CODE_MODULE_ENABLED_KEY,
   GENERAL_FIELDS,
@@ -38,7 +39,6 @@ import {
   changedDirs,
   type DirEntry,
   USER_NAME_KEY,
-  USER_ROLE_KEY,
 } from "./fields";
 import { DesignSystemsTab } from "./DesignSystemsTab";
 import { GeneralTab } from "./GeneralTab";
@@ -114,6 +114,7 @@ const CONFIG_KEYS = [
   ...WORKSPACE_FIELDS.map((f) => f.key),
   WORKSPACE_ROOT_KEY,
   BACKGROUND_ON_CLOSE_KEY,
+  NOTIFICATIONS_KEY,
   CODE_MODEL_KEY,
   CODE_MODULE_ENABLED_KEY,
   PROMPT_SUGGESTIONS_KEY,
@@ -125,7 +126,6 @@ const CONFIG_KEYS = [
   ARCHIVE_INACTIVE_DAYS_KEY,
   WEBHOOK_PORT_KEY,
   USER_NAME_KEY,
-  USER_ROLE_KEY,
 ];
 
 interface SettingsModalProps {

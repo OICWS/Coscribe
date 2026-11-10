@@ -54,7 +54,7 @@ def test_venv_python_uses_scripts_python_exe_on_windows(monkeypatch: pytest.Monk
 
     result = venv_python(Path("C:/state/script-env"))
 
-    assert result == Path("C:/state/script-env/Scripts/python.exe")
+    assert result == Path("C:/state/script-env").absolute() / "Scripts" / "python.exe"
 
 
 def test_venv_python_uses_bin_python_on_non_windows(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -62,7 +62,20 @@ def test_venv_python_uses_bin_python_on_non_windows(monkeypatch: pytest.MonkeyPa
 
     result = venv_python(Path("/state/script-env"))
 
-    assert result == Path("/state/script-env/bin/python")
+    assert result == Path("/state/script-env").absolute() / "bin" / "python"
+
+
+def test_venv_python_is_absolute_for_a_relative_state_folder(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A script starts in its workspace folder, where the default relative state folder
+    (`.coscribe/state`) names nothing: every run_python_script failed with "No such file"."""
+    monkeypatch.chdir(tmp_path)
+
+    result = venv_python(Path(".coscribe/state/script-env"))
+
+    assert result.is_absolute()
+    assert result.parent.parent == tmp_path / ".coscribe" / "state" / "script-env"
 
 
 @pytestmark_network

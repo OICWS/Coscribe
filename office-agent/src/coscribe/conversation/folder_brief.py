@@ -35,7 +35,8 @@ BRIEF_INSTRUCTIONS = (
     "which subfolders or files are templates, data, finished work or other kinds, and how the "
     "files are named when there is a pattern. Name the subfolders as they are written. Don't "
     "guess at what files contain beyond what their names and types show, and don't list every "
-    "file. Write in English. Reply with the sentences only."
+    "file. Write in the language most of the file and folder names are in, and in English when "
+    "they are mixed or unclear. Reply with the sentences only."
 )
 MAX_BRIEF_CHARS = 900
 # Folders that are tools' own, never the person's work.

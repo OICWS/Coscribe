@@ -14,19 +14,14 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
-from ..config import Settings
+from ..config import DEFAULT_MODELS, Settings
 from ..runtime import env_value_for_storage, harden_file_permissions
 from .local_guard import LocalOnlyGuard
 from .provider_catalog import BUILTIN_PROVIDERS
 
-# Example models shown as placeholder text on the setup page below -- the
-# same three .env.example already documents in its own COSCRIBE_DEFAULT_MODEL
-# comment, kept in one place so they can't quietly drift apart.
-_PROVIDER_EXAMPLE_MODELS = {
-    "anthropic": "claude-sonnet-4-5-20250929",
-    "openai": "gpt-4o",
-    "gemini": "gemini-2.5-flash",
-}
+# The model each provider's field starts with: the same one a key alone would start a person on
+# (`config.DEFAULT_MODELS`), so the two can't drift apart.
+_PROVIDER_EXAMPLE_MODELS = {provider: model for provider, (_, model) in DEFAULT_MODELS.items()}
 
 # One-line description shown under the provider dropdown on the setup
 # page below -- purely explanatory copy, not a link to get a key (a

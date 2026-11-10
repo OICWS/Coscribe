@@ -67,6 +67,12 @@ Last reviewed: 2026-11-06.
   measured: in the run of 2026-11-05 it placed the logo every time
   (`docs/log/2026-11-05-logo-and-assets-measured.md`).
 
+- **Audit of 2026-11-10** (`docs/log/2026-11-10-audit-small-fixes.md` fixed five defects). Open:
+  the coordinator's instructions say a script runs "with no sandbox at all" and make the model ask
+  for a sub-agent's model and a workflow's kind; rarely needed Settings rows under one Advanced
+  section; a provider's models read from its own list, and a first-run page that takes a
+  compatible provider and checks the key; steps and time per task in the agentic evaluation.
+
 ## For the maintainer (settings and decisions)
 
 - Make the Windows job required once it has 14 green scheduled nights; the count restarted on
