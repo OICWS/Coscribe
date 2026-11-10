@@ -112,7 +112,7 @@ from .subagents import SubAgentApprovalChannel, SubAgentReporter
 from .suggestions import offer_next_prompt
 from .thread_meta import ThreadMetaStore
 from .turn_lock import TurnLock
-from .turn_stream import TurnStreamer
+from .turn_stream import TurnStreamer, recorded_turn
 from .turn_text import (
     TITLE_INSTRUCTIONS,
     clean_title,
@@ -1077,6 +1077,7 @@ class ChatSessionLG:
             # Messages that came in during the turn, or waited on the cap.
             self.schedule_inbox_delivery()
 
+    @recorded_turn
     async def _handle_user_message_locked(
         self,
         text: str,
@@ -1180,10 +1181,8 @@ class ChatSessionLG:
             content.extend({"type": "image_url", "image_url": {"url": url}} for url in images)
         turn_input = {"messages": [HumanMessage(content, additional_kwargs={"notice": notice})]}
 
-        # Reset for this turn -- see _stream_turn's docstring. A stale
-        # entry from a previous turn popping for the wrong call is the only
-        # real risk of *not* resetting; there's no other state to preserve
-        # across turns here.
+        # Reset for this turn (see _stream_turn's docstring): a stale entry from a previous
+        # turn would pop for the wrong call.
         self._pending_tool_args = defaultdict(list)
         # Fresh start for /stop each turn: a stop requested during a previous turn (or
         # left over from one that already finished) must not immediately

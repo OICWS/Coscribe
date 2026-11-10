@@ -34,6 +34,11 @@ Last reviewed: 2026-11-06.
    more tokens, with nothing to set (decision 0043). Open: an L3 step delegating, adding steps
    when nothing failed, and counting llm steps' tokens.
 
+4. **How turns go, measured in real use** (#867, decision 0045). Done: one line per turn in
+   `turns.jsonl`, without the conversation's words (`docs/log/2026-11-10-turn-trace.md`). Next:
+   the evaluation's replay layer in the PR checks; sub-agent and workflow agent steps counted; a
+   failed turn exported as an evaluation task with the person's consent.
+
 ## Open, smaller
 
 - **Hidden issues:** when the suspended kurtosisOC account is restored, close its open issues as

@@ -54,3 +54,4 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0042](0042-a-run-may-add-steps-when-a-step-fails.md) | A run may add steps when a step fails, at proactive or above (proposed) |
 | [0043](0043-a-run-asks-before-its-models-use-more.md) | A run asks before its models use more tokens, with no setting (proposed) |
 | [0044](0044-a-workspace-keeps-its-own-coscribe-folder.md) | A workspace keeps its own `.coscribe/` folder: notes, skills and uploads (proposed) |
+| [0045](0045-how-each-turn-went-is-kept-on-the-machine-without-its-words.md) | How each turn went is kept on the machine, without its words (proposed) |
