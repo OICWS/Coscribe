@@ -4,6 +4,7 @@ office-agent/src/coscribe/tools/_native_animation_presets/animation_presets.json
 office-agent/src/coscribe/tools/_ooxml_schemas/**/*.xsd linguist-generated=true
 office-agent/frontend/package-lock.json linguist-generated=true
 office-agent-desktop/package-lock.json linguist-generated=true
+office-agent/uv.lock linguist-generated=true
 site/index.html linguist-generated=true
 office-agent/src/coscribe/skill_catalog.json linguist-generated=true
 office-agent/tests/openapi.json -text linguist-generated=true
