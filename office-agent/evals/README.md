@@ -294,3 +294,34 @@ asked for done?") and the checks run again.
 - every turn's calls and replies
 
 `summary.md` / `summary.json` hold the totals for the run.
+
+### The same answers again, with no model (`agentic/replay.py`, #867)
+
+A real run costs money and minutes, so it cannot gate a pull request. A tape can:
+
+```bash
+python -m evals.agentic.run --tasks 02,10 --out evals/runs/tape --record evals/agentic/tapes
+python -m evals.agentic.run --tasks 02,10 --out evals/runs/replay --replay
+```
+
+`--record` writes one tape per task that completed without the nudge: every answer a model gave
+(the agent's, a sub-agent's, and the side calls such as the reviewer's verdict and the compaction
+summary), with its token counts, and the tool names of each turn. `--replay` runs the task with
+those answers in place of the model. The agent loop, the middleware, the approvals and every tool
+run for real in a fresh folder, and the task's own checks run on what is left behind.
+`tests/test_evals_agentic_replay.py` replays every tape in `agentic/tapes/` in the PR checks,
+about a second each.
+
+A replay fails when coscribe does something else with the same answers: a turn-end check that
+fires differently, a tool that now fails, a compaction that drops what a later turn reads. It
+says nothing about whether a model would still answer this way after a prompt or a tool
+description changed; that takes the real run. When a change is meant to alter the course of a
+turn, the replay fails with "record the tape again": run `--record` for that task and commit the
+new tape with the change.
+
+Record a tape with the settings the shipped app has (no `COSCRIBE_DEFAULT_PERMISSION_MODE`), and
+only for a task that needs nothing installed on the machine: a task that runs a script
+(`run_python_script`) depends on the interpreter the recording machine had. Before committing a
+tape, replay it on Python 3.11 as well as on the version that recorded it: a task whose answer
+makes several calls at once with results that depend on their order (eight `task_create` calls)
+replays differently where threads are scheduled differently.

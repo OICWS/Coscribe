@@ -3,6 +3,8 @@ gets on its own.
 
     python -m evals.agentic.run --tasks all --out evals/runs/agentic-main
     python -m evals.agentic.run --tasks 01,06 --out evals/runs/agentic-try
+    python -m evals.agentic.run --tasks 01,10 --out evals/runs/tape --record evals/agentic/tapes
+    python -m evals.agentic.run --tasks 01,10 --out evals/runs/replay --replay    # no model
 
 Each task gets a fresh workspace and a `ChatSessionLG` built the way the eval runner builds one,
 but in the tier of a person at the keyboard: questions and approvals reach the scripted user,
@@ -27,6 +29,7 @@ from typing import Any
 
 from .. import run as office
 from ..prices import cost
+from . import replay
 from .tasks import NUDGE, AgenticTask, Outcome, select
 
 TURN_TIMEOUT = 900.0
@@ -108,13 +111,22 @@ def _outcome(task_out: Path, workspace: Path, thread_id: str, turns: list[Turn])
     )
 
 
-def _build(task: AgenticTask, task_out: Path, workspace: Path, model: str, effort: str) -> Any:
+def _build(
+    task: AgenticTask,
+    task_out: Path,
+    workspace: Path,
+    model: str,
+    effort: str,
+    window: int | None = None,
+) -> Any:
     # Settings read the threshold from the environment while the session is built, and nothing
     # awaits in between, so tasks running side by side each get their own.
     previous = os.environ.get("COSCRIBE_AUTO_COMPACT_THRESHOLD")
     os.environ["COSCRIBE_AUTO_COMPACT_THRESHOLD"] = str(task.compact_threshold)
     try:
-        session = office._build_session(task_out, workspace, model, task.name, effort)
+        session = office._build_session(
+            task_out, workspace, model, task.name, effort, window=window
+        )
     finally:
         if previous is None:
             os.environ.pop("COSCRIBE_AUTO_COMPACT_THRESHOLD", None)
@@ -134,7 +146,17 @@ async def _send(session: Any, user: ScriptedUser, text: str, errors: list[str]) 
         errors.append(f"{type(exc).__name__}: {exc}")
 
 
-async def run_task(task: AgenticTask, out: Path, model: str, effort: str) -> dict[str, Any]:
+async def run_task(
+    task: AgenticTask,
+    out: Path,
+    model: str,
+    effort: str,
+    *,
+    record: Path | None = None,
+    tape_file: Path | None = None,
+) -> dict[str, Any]:
+    """Run one task. With `record`, a run that completed leaves its tape in that folder; with
+    `tape_file`, the answers come from that tape (inside `replay.taped_models()`)."""
     task_out = out.resolve() / task.name
     if task_out.exists():
         shutil.rmtree(task_out)
@@ -147,7 +169,14 @@ async def run_task(task: AgenticTask, out: Path, model: str, effort: str) -> dic
     user = ScriptedUser(can_resolve_approvals=True)
     errors: list[str] = []
     started = time.monotonic()
-    session = _build(task, task_out, workspace, model, effort)
+    tape = None
+    if tape_file is not None:
+        tape = replay.Tape.load(tape_file, workspace, task_out)
+    elif record is not None:
+        tape = replay.Tape(task.name, model, effort)
+    if tape is not None:
+        replay.use(tape)
+    session = _build(task, task_out, workspace, model, effort, tape.window if tape_file else None)
     user.session = session
     for text in task.turns:
         await _send(session, user, text, errors)
@@ -185,11 +214,28 @@ async def run_task(task: AgenticTask, out: Path, model: str, effort: str) -> dic
         "cost": cost(model, usage.input_tokens, usage.cached_tokens, usage.output_tokens),
         "turns": [{"calls": turn.calls, "replies": turn.replies} for turn in user.turns],
     }
+    called = [[name for name, _arguments in turn.calls] for turn in user.turns]
+    if tape is not None and tape_file is not None:
+        result["tape"] = {"answers_left": tape.left(), "calls_as_recorded": called == tape.calls}
+    elif tape is not None and record is not None and result["completed"] and not result["errors"]:
+        tape.calls = called
+        tape.window = session._context_window_client.get_context_window(model)
+        tape.save(record / f"{task.name}.json", workspace, task_out)
     (task_out / "result.json").write_text(
         json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     shutil.rmtree(task_out / "state" / "script-env", ignore_errors=True)
     return result
+
+
+async def replay_task(task: AgenticTask, tape_file: Path, out: Path) -> dict[str, Any]:
+    """Run `task` from its tape, with no model, at the model name and effort it was recorded at.
+    The result's `tape` says whether every answer was used and the same tools were called."""
+    recorded = json.loads(tape_file.read_text(encoding="utf-8"))
+    with replay.taped_models():
+        return await run_task(
+            task, out, recorded["model"], recorded["effort"], tape_file=tape_file
+        )
 
 
 def summarize(results: list[dict[str, Any]]) -> dict[str, Any]:
@@ -254,7 +300,10 @@ async def run_all(args: argparse.Namespace, tasks: list[AgenticTask], out: Path)
     async def one(task: AgenticTask) -> dict[str, Any]:
         async with gate:
             print(f"start {task.name}", flush=True)
-            result = await run_task(task, out, args.model, args.effort)
+            if args.replay:
+                result = await replay_task(task, replay.TAPES / f"{task.name}.json", out)
+            else:
+                result = await run_task(task, out, args.model, args.effort, record=args.record)
             print(
                 f"done  {task.name}: completed={result['completed']} "
                 f"after_nudge={result['completed_after_nudge']} cost={result['cost']}",
@@ -274,14 +323,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model", default=office.DEFAULT_MODEL)
     parser.add_argument("--effort", choices=office.EFFORT_LEVELS, default=office.DEFAULT_EFFORT)
     parser.add_argument("--jobs", type=int, default=2, help="tasks run at the same time")
+    parser.add_argument(
+        "--record", type=Path, help="keep each completed task's answers as a tape in this folder"
+    )
+    parser.add_argument(
+        "--replay", action="store_true", help="answer from evals/agentic/tapes, with no model"
+    )
     args = parser.parse_args(argv)
-    if "DEEPSEEK_API_KEY" not in os.environ:
+    if "DEEPSEEK_API_KEY" not in os.environ and not args.replay:
         print("DEEPSEEK_API_KEY is not set", file=sys.stderr)
         return 1
     tasks = select(args.tasks)
     out: Path = args.out
     out.mkdir(parents=True, exist_ok=True)
-    with office.measured_models():
+    with office.measured_models(), replay.recorded_models():
         results = asyncio.run(run_all(args, tasks, out))
     print(write_summary(out, results))
     return 0

@@ -35,9 +35,11 @@ Last reviewed: 2026-11-06.
    when nothing failed, and counting llm steps' tokens.
 
 4. **How turns go, measured in real use** (#867, decision 0045). Done: one line per turn in
-   `turns.jsonl`, without the conversation's words (`docs/log/2026-11-10-turn-trace.md`). Next:
-   the evaluation's replay layer in the PR checks; sub-agent and workflow agent steps counted; a
-   failed turn exported as an evaluation task with the person's consent.
+   `turns.jsonl`, without the conversation's words (`docs/log/2026-11-10-turn-trace.md`), and
+   four agentic evaluation tasks replayed from recorded answers in the PR checks
+   (`docs/log/2026-11-10-eval-replay.md`). Next: tapes for the tasks that run a script or make a plan;
+   sub-agent and workflow agent steps counted; a failed turn exported as an evaluation task with
+   the person's consent.
 
 ## Open, smaller
 
@@ -51,6 +53,9 @@ Last reviewed: 2026-11-06.
 - **Startup cost** (#478, `docs/metrics/2026-10-20-startup-cost.md`): `pptx`, `PIL` and `lxml`
   loaded lazily once the sections modules may be edited; the sidecar started earlier in the
   Electron shell.
+- **Plan order:** `task_create` calls made in one model answer run in threads, so their ids and
+  the plan's order follow thread scheduling, not the order the model wrote them; `create` also
+  reads and raises `_next_id` unlocked (`docs/log/2026-11-10-eval-replay.md`).
 - **Scripts and commands:** a PyPI mirror setting for networks that block PyPI (#560); hiding other
   drives' user folders from commands (#845); a company proxy on a real Windows machine (Basic only;
   NTLM and Kerberos are not supported, #666).

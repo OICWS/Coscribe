@@ -1,0 +1,52 @@
+{
+ "task": "05-remember-preference",
+ "model": "deepseek:deepseek-flash",
+ "effort": "low",
+ "window": 1000000,
+ "provider": "openai",
+ "calls": [
+  []
+ ],
+ "entries": [
+  {
+   "kind": "agent",
+   "content": "",
+   "tool_calls": [
+    {
+     "name": "remember",
+     "args": {
+      "line": "Always write dates as YYYY-MM-DD in anything you produce."
+     },
+     "id": "call_00_4pk35XrTbnPHXedkbc6i6688"
+    }
+   ],
+   "usage": {
+    "input_tokens": 46759,
+    "output_tokens": 93,
+    "total_tokens": 46852,
+    "input_token_details": {
+     "cache_read": 5760
+    },
+    "output_token_details": {
+     "reasoning": 43
+    }
+   }
+  },
+  {
+   "kind": "agent",
+   "content": "已保存。从现在起，无论本次对话还是今后的对话，我都会用 YYYY-MM-DD 格式写日期（例如 2026-11-10）。",
+   "tool_calls": [],
+   "usage": {
+    "input_tokens": 46877,
+    "output_tokens": 36,
+    "total_tokens": 46913,
+    "input_token_details": {
+     "cache_read": 46720
+    },
+    "output_token_details": {
+     "reasoning": 0
+    }
+   }
+  }
+ ]
+}
