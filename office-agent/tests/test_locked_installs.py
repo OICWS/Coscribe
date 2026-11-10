@@ -34,7 +34,11 @@ def _install_locked() -> ModuleType:
 
 def _install_sources() -> list[Path]:
     workflows = sorted((ROOT / ".github" / "workflows").glob("*.yml"))
-    return [*workflows, ROOT / "office-agent-desktop" / "scripts" / "stage-sidecar.sh"]
+    return [
+        *workflows,
+        ROOT / "office-agent-desktop" / "scripts" / "stage-sidecar.sh",
+        ROOT / ".claude" / "hooks" / "session-start.sh",
+    ]
 
 
 def test_the_pattern_catches_an_install_of_the_project() -> None:

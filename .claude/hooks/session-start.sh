@@ -17,15 +17,15 @@ if [ -n "${HTTPS_PROXY:-}" ]; then
   export npm_config_noproxy="$NO_PROXY"
 fi
 
-# office-agent (the "coscribe" package): Python deps, per its own
-# README's documented setup (`python3 -m venv .venv && pip install -e
-# ".[dev,web]"`). Idempotent: pip install -e is a fast no-op once the
-# venv already has everything.
+# office-agent (the "coscribe" package): Python deps at the versions in
+# uv.lock, per its own README's documented setup. Idempotent: pip skips
+# what the venv already has at the locked version.
 cd "$CLAUDE_PROJECT_DIR/office-agent"
 if [ ! -d .venv ]; then
   python3 -m venv .venv
 fi
-.venv/bin/pip install -q -e ".[dev,web]"
+command -v uv >/dev/null || .venv/bin/pip install -q uv
+PATH="$PWD/.venv/bin:$PATH" .venv/bin/python scripts/install_locked.py --extra dev --extra web >/dev/null
 
 if [ ! -d frontend/node_modules ]; then
   (cd frontend && npm ci --no-audit --no-fund)
