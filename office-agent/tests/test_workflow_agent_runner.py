@@ -51,7 +51,11 @@ class ScriptedModel(BaseChatModel):
         self, messages: list[BaseMessage], stop: Any = None, run_manager: Any = None, **kw: Any
     ) -> Any:
         message = self._next(messages)
-        chunk = AIMessageChunk(content=message.content or "", tool_calls=message.tool_calls)
+        chunk = AIMessageChunk(
+            content=message.content or "",
+            tool_calls=message.tool_calls,
+            usage_metadata=message.usage_metadata,
+        )
         yield ChatGenerationChunk(message=chunk)
 
     @property

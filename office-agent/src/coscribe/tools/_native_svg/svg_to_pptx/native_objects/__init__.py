@@ -42,7 +42,7 @@ from .fallback_hash import (
     stamp_native_fallback_baseline,
 )
 from .formula import FormulaSpec, build_native_formula, validate_formula_payload
-from .formula_compiler import estimate_inline_formula_vertical_extent
+from ...._native_formula import estimate_inline_formula_vertical_extent
 from .inline_formula import (
     INLINE_FORMULA_ATTR,
     inline_formula_marker_errors,

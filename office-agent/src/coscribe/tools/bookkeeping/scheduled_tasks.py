@@ -63,7 +63,7 @@ _WATCH_FIELDS = tuple(
 
 # What a run records besides its steps and status.
 _EVIDENCE = frozenset(
-    "screenshot page files sites investigation queued quiet versions called".split()
+    "screenshot page files sites investigation queued quiet versions called token_cap".split()
 )
 
 # Oldest run records beyond this are dropped from the trigger (their

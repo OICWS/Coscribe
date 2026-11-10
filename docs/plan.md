@@ -28,10 +28,11 @@ Last reviewed: 2026-11-06.
    (`docs/log/`, 2026-10-29 to 2026-11-02). Parallel steps are merged (#789, decision 0036
    proposed), and so are the simple view in words (#839, decision 0037) and the run page that
    says how it went before its steps (#840, decision 0038). A task that starts on something
-   new in a connector is merged (#851, decision 0039). In review: a task that starts on an event a
-   program on the machine sends (#850, decision 0040). In review: steps a run adds when a
-   step fails at proactive or above (batch 3, decision 0042). Open: a cost cap for an agent step,
-   an L3 step delegating, and adding steps when nothing failed.
+   new in a connector is merged (#851, decision 0039), and so are the steps a run adds when a step
+   fails at proactive or above (#861, decision 0042). In review: a task that starts on an event a
+   program on the machine sends (#850, decision 0040), and a run asking before its models use
+   more tokens, with nothing to set (decision 0043). Open: an L3 step delegating, adding steps
+   when nothing failed, and counting llm steps' tokens.
 
 4. **How turns go, measured in real use** (#867, decision 0045). Done: one line per turn in
    `turns.jsonl`, without the conversation's words (`docs/log/2026-11-10-turn-trace.md`). Next:

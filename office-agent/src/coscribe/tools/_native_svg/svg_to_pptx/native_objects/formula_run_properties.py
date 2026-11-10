@@ -22,8 +22,7 @@ from __future__ import annotations
 from copy import deepcopy
 from xml.etree import ElementTree as ET
 
-from .formula_omml import validate_omml_resource_limits
-from .formula_parser import FormulaCompileError
+from ...._native_formula import FormulaCompileError, validate_omml_resource_limits
 
 
 DML_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"

@@ -45,6 +45,7 @@ from ..workflows import (
     output_files,
     parse_workflow,
     paused_at,
+    run_budget,
     sites_in,
     uses_browser,
     wake_due,
@@ -208,6 +209,8 @@ async def _run_workflow(
     socket = _RelaySocket(session)
 
     async def on_step(record: StepRecord) -> None:
+        if ctx.budget is not None:
+            ctx.budget.count(record)
         data = record.to_dict()
         store.record_step(trigger.trigger_id, run.run_id, data)
         await socket.send_json({"type": "workflow_step", "run_id": run.run_id, "record": data})
@@ -217,6 +220,7 @@ async def _run_workflow(
     ctx.ask_permission = True
     ctx.approval_mode = trigger.approval_mode
     ctx.tasks = _task_source(store, trigger, run)
+    ctx.budget = _budget(store, trigger, run)
     workflow_run = WorkflowRun(
         workflow,
         ctx,
@@ -267,6 +271,21 @@ async def _run_workflow(
     # A called task's step fails inside the step that runs it, whose error names the task.
     title = titles.get((outcome.step_id or "").split("/", 1)[0], "A step")
     return "failed", f"{title}: {outcome.error}"
+
+
+def _budget(store: ScheduledTriggerStore, trigger: ScheduledTrigger, run: ScheduledRun) -> Any:
+    """What this run's models may use before a person is asked (decision 0043): from what the
+    task's finished runs used, less what this run spent before a pause."""
+    stored = store.load(trigger.trigger_id)
+    runs = stored.runs if stored is not None else []
+    finished = [r.steps for r in runs if r.status == "completed" and r.run_id != run.run_id]
+    current = stored.find_run(run.run_id) if stored is not None else None
+
+    def keep(cap: int) -> None:
+        store.record_evidence(trigger.trigger_id, run.run_id, token_cap=cap)
+
+    steps = current.steps if current is not None else []
+    return run_budget(finished, steps, current.token_cap if current else None, keep)
 
 
 def _task_source(

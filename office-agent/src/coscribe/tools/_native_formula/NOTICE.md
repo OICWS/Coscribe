@@ -20,6 +20,17 @@ deliberately *not* vendored -- they import `drawingml.context`/
 `tools/presentations.py` (`add_pptx_formula`) does that gluing itself,
 using its own existing python-pptx shape/run conventions instead.
 
+The same five files also ship upstream in the SVG emitter's `native_objects/`, which
+`../_native_svg/` copies from a later commit (`bf89859cbf3c5f5974de70e0dd2ccf2239c8c51b`,
+2026-10-13). They were byte-identical at both commits, so that copy imports this package
+instead of carrying its own (see `../_native_svg/NOTICE.md`, change 6). When either copy is
+refreshed from upstream, re-check that the five files still match at the new commit.
+
+## Changes from upstream
+
+None to the five files. `__init__.py` is coscribe's own: it re-exports the names other
+packages may call.
+
 ## License
 
 MIT License

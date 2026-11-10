@@ -18,7 +18,7 @@ import contextvars
 import json
 import logging
 from collections.abc import Awaitable, Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, cast
 
@@ -40,6 +40,7 @@ from .subagents import (
     stream_turn,
     wrap_up,
 )
+from .token_limit import TOKEN_LIMIT_PREFIX
 
 logger = logging.getLogger(__name__)
 
@@ -159,6 +160,12 @@ class WorkflowAgentRunner:
                     )
                 state = await agent.aget_state(config)
                 if not state.next:
+                    if _out_of_tokens(state):
+                        if not request.go_on:
+                            return self._reply("over_budget", state)
+                        turn = {"messages": [HumanMessage(_GO_ON)]}
+                        request = replace(request, go_on=False)
+                        continue
                     if _ended_silently(state) and not _was_nudged(state):
                         turn = {"messages": [HumanMessage(_SILENT_END_NUDGE)]}
                         continue
@@ -199,6 +206,7 @@ class WorkflowAgentRunner:
             checkpointer=self.checkpointer,
             extra_interrupt_tool_names=list(self._risks),
             max_turns=request.max_steps,
+            max_tokens=None if request.max_tokens is None else (request.max_tokens, _GO_ON),
             defer_tools=self.defer_tools,
             core_tool_names=core_names,
             redact=redactor(self.state_dir),
@@ -313,3 +321,18 @@ def _ended_silently(state: Any) -> bool:
 def _was_nudged(state: Any) -> bool:
     messages = (getattr(state, "values", None) or {}).get("messages", [])
     return any(isinstance(m, HumanMessage) and m.content == _SILENT_END_NUDGE for m in messages)
+
+
+# A person let an agent that used its tokens go on (decision 0043): it carries on where it
+# stopped, with as many again.
+_GO_ON = "You may use more tokens now. Carry on with the task from where you stopped."
+
+
+def _messages(state: Any) -> list[Any]:
+    return list((getattr(state, "values", None) or {}).get("messages", []))
+
+
+def _out_of_tokens(state: Any) -> bool:
+    messages = _messages(state)
+    last = messages[-1] if messages else None
+    return isinstance(last, AIMessage) and extract_text(last.content).startswith(TOKEN_LIMIT_PREFIX)

@@ -31,6 +31,7 @@ from ..runtime import COMPACT_INSTRUCTIONS, get_tool_metadata
 from .context_editing import clear_old_tool_results_middleware
 from .edit_guard import EditGuardMiddleware
 from .messages import pictures_as_user_message, starts_a_turn, steer_message
+from .token_limit import TokenLimitMiddleware
 from .tool_calls import answer_every_tool_call
 from .tool_deferral import (
     DeferredToolMiddleware,
@@ -392,6 +393,7 @@ def build_langgraph_agent(
     extra_interrupt_tool_names: Iterable[str] = (),
     question_tool_names: Iterable[str] = (),
     max_turns: int | None = None,
+    max_tokens: tuple[int, str] | None = None,
     auto_compact_tokens: int | None = None,
     defer_tools: bool = False,
     core_tool_names: Iterable[str] = (),
@@ -442,20 +444,9 @@ def build_langgraph_agent(
     middleware, since `allowed_decisions=["respond"]` is the only one
     configured here.
 
-    `max_turns`/`auto_compact_tokens` are the two settings this function
-    was missing during the "audit + delete old runtime" pass (see
-    runtime_lg/README.md's "One real gap" section) -- `Settings.max_turns`/
-    `Settings.auto_compact_threshold` used to drive the old runtime's own
-    `Runner` loop directly (a plain turn-count cap; `maybe_auto_compact`
-    called after every turn) and had no runtime_lg equivalent wired up.
-    Only `conversation/session.py`'s top-level `ChatSessionLG._build_lg_agent` passes
-    these -- spawn_agent/review_work's own sub-agents always used their
-    *own* independent turn cap (a `spawn_agent` function parameter, default
-    6, unrelated to `Settings.max_turns`) and never ran auto-compact at
-    all, so leaving both `None` (the default) at `runtime_lg/subagents.py`'s
-    `build_delegation_tools`/`build_review_work_tool` call sites preserves
-    that same scope exactly, rather than silently widening what these
-    settings apply to.
+    `auto_compact_tokens` is passed only by `conversation/session.py`'s
+    top-level `ChatSessionLG._build_lg_agent`: sub-agents never compact, and
+    their turn cap is their own, not `Settings.max_turns`.
 
     `max_turns`: caps the number of *model calls* per user turn (via
     `_TurnModelCallLimitMiddleware`, counted from the history so approvals
@@ -465,6 +456,8 @@ def build_langgraph_agent(
     counts raw graph steps (not model calls) and raises `GraphRecursionError`
     instead of ending cleanly; see runtime_lg/README.md for the
     `recursion_limit = 2*max_turns + 1` formula this middleware replaced.
+
+    `max_tokens`: (tokens, go-on message), see `token_limit.py` (decision 0043).
 
     `defer_tools`/`core_tool_names`: when `defer_tools` is True, every tool
     not named in `core_tool_names` is hidden from the model by default --
@@ -543,6 +536,8 @@ def build_langgraph_agent(
         middleware.append(_SteerMiddleware(take_steers))
     if max_turns is not None:
         middleware.append(_TurnModelCallLimitMiddleware(max_turns))
+    if max_tokens is not None:
+        middleware.append(TokenLimitMiddleware(*max_tokens))
     if auto_compact_tokens is not None:
         middleware.append(_CompactMiddleware(model, auto_compact_tokens, open_tasks))
         middleware.append(clear_old_tool_results_middleware(auto_compact_tokens // 2))

@@ -63,6 +63,7 @@ from ..workflow_spec import (
 )
 from .added_steps import ADDED, AddedSteps
 from .agent_step import AgentCall, CallGuard, answer_of, run_agent_step
+from .budget import ask_for_tokens, check_run
 from .healing import carried, heal_guard, healed, stand_in
 from .loop_labels import item_labels as _item_labels
 from .loop_labels import loop_progress as _loop_progress
@@ -306,6 +307,7 @@ class _GraphBuilder:
             await self.emit(StepRecord(step.id, "running", started_at=started, iteration=it,
                                        attempts=attempt))  # fmt: skip
             try:
+                await check_run(self, step, started, it)
                 earlier = (state.get("healed") or {}).get(step.id)
                 output, checks, agent = await self._try(step, values, started, it, earlier, last)
             except GraphBubbleUp:
@@ -418,6 +420,10 @@ class _GraphBuilder:
             make_model=self.ctx.make_model,
             ask=ask,
             guard=guard,
+            max_tokens=self.ctx.step_tokens,
+            more_tokens=lambda reply: ask_for_tokens(
+                self, step, started, it, "step", reply.tokens - reply.cached_tokens
+            ),
         )
         return result, reply.activity()
 
