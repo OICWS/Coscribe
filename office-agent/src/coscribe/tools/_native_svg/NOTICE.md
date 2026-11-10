@@ -26,7 +26,8 @@ coscribe's own code that walks an SVG page and packages the slides lives in
    coscribe instead of a set of top-level modules on `sys.path`.
 2. The package `__init__.py` files of `svg_to_pptx/`, `svg_to_pptx/drawingml/` and
    `pptx_to_svg/` are empty: upstream they import modules outside this copy (the exporter CLI).
-   `svg_to_pptx/native_objects/__init__.py` and `pptx_shapes/__init__.py` are unchanged.
+   `pptx_shapes/__init__.py` is unchanged; `svg_to_pptx/native_objects/__init__.py` differs only
+   by the import in change 6.
 3. `svg_finalize/flatten_tspan.py` no longer configures the process's stdout encoding at import
    (three lines for its command-line use, which pulled in upstream's attribution check);
    `svg_to_pptx/tspan_flattener.py` imports it package-relatively instead of editing `sys.path`.
@@ -39,7 +40,14 @@ coscribe's own code that walks an SVG page and packages the slides lives in
    blip embeds a PNG resvg draws at four times the picture's size and names the SVG in an
    `asvg:svgBlip` extension (`_build_image_blip_xml`, `_svg_fallback_png`), because the slide's
    relationships are made by python-pptx, which opens every image part with Pillow.
-6. Nothing else. Docstrings still show upstream's usage examples with top-level imports.
+6. The five formula compiler files upstream keeps in `svg_to_pptx/native_objects/`
+   (`formula_ast.py`, `formula_compiler.py`, `formula_omml.py`, `formula_parser.py`,
+   `formula_profile.py`) are not copied here: they are byte-identical to `../_native_formula/`,
+   vendored earlier from the same upstream directory. The five lines that imported them
+   (`native_objects/__init__.py`, `formula.py`, `inline_formula.py`,
+   `formula_run_properties.py`, and `drawingml/elements.py`) import `..._native_formula`
+   instead, so `native_objects/__init__.py` now differs from upstream by that one line.
+7. Nothing else. Docstrings still show upstream's usage examples with top-level imports.
 
 The upstream project checks its own attribution (SKILL.md metadata, LICENSE, SPONSORS) at its
 script entry points; none of those entry points is in this copy. The MIT licence below is kept
@@ -93,11 +101,6 @@ Windows CI job by `office-agent/scripts/measure_font_advances.py`, which also ch
 - `svg_to_pptx/native_objects/chartex.py`
 - `svg_to_pptx/native_objects/fallback_hash.py`
 - `svg_to_pptx/native_objects/formula.py`
-- `svg_to_pptx/native_objects/formula_ast.py`
-- `svg_to_pptx/native_objects/formula_compiler.py`
-- `svg_to_pptx/native_objects/formula_omml.py`
-- `svg_to_pptx/native_objects/formula_parser.py`
-- `svg_to_pptx/native_objects/formula_profile.py`
 - `svg_to_pptx/native_objects/formula_run_properties.py`
 - `svg_to_pptx/native_objects/inline_formula.py`
 - `svg_to_pptx/native_objects/marker_attributes.py`

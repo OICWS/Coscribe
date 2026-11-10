@@ -2093,7 +2093,7 @@ def _text_line_vertical_extent(
     ascent = font_size * 0.85
     descent = font_size * 0.35
     has_inline_formula = False
-    from ..native_objects.formula_compiler import (
+    from ...._native_formula import (
         estimate_inline_formula_vertical_extent,
     )
 

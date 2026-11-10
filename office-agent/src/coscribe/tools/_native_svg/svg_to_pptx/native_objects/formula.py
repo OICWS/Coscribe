@@ -26,7 +26,7 @@ from xml.etree import ElementTree as ET
 
 from ..drawingml.context import ConvertContext, ShapeResult
 from ..drawingml.utils import _xml_escape, font_px_to_hpt
-from .formula_compiler import FormulaCompileError, compile_latex_to_omml
+from ...._native_formula import FormulaCompileError, compile_latex_to_omml
 from .formula_run_properties import (
     merge_formula_control_properties,
     merge_formula_run_properties,

@@ -266,3 +266,18 @@ def test_pictures_in_sibling_groups_keep_their_own_images(tmp_path: Path) -> Non
         if group.name in ("store", "team")
     }
     assert colours == {"store": (255, 0, 0), "team": (0, 0, 255)}
+
+
+def test_an_inline_formula_becomes_native_math_in_the_text_run(tmp_path: Path) -> None:
+    # The emitter's formula path uses tools/_native_formula's compiler, not a copy of its own.
+    page = (
+        f'<svg {_SVG}><text id="title" x="60" y="80" font-size="30" fill="#000000">'
+        'Area <tspan data-pptx-inline-formula="\\pi r^2">πr²</tspan></text></svg>'
+    )
+
+    out, report = _compile(tmp_path, [("p1", page)])
+
+    assert report.ok, report.errors()
+    slide_xml = Presentation(str(out)).slides[0].shapes[0]._element.xml
+    assert "<m:oMath" in slide_xml
+    assert "<m:sSup>" in slide_xml
