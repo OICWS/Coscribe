@@ -616,7 +616,7 @@ async def test_approval_mode_auto_approves_edits_but_parks_running_code(
             _trigger("trig-auto", approval_mode="auto", notes_enabled=False)
         )
         run = await asyncio.wait_for(
-            fire_trigger_now(settings.state_dir, "trig-auto", get_session), timeout=10
+            fire_trigger_now(settings.state_dir, "trig-auto", get_session), timeout=30
         )
 
     assert run is not None and run.status == "needs_approval"
@@ -641,7 +641,7 @@ async def test_approval_mode_skip_runs_code_without_asking(
             _trigger("trig-skip", approval_mode="skip", notes_enabled=False)
         )
         run = await asyncio.wait_for(
-            fire_trigger_now(settings.state_dir, "trig-skip", get_session), timeout=10
+            fire_trigger_now(settings.state_dir, "trig-skip", get_session), timeout=30
         )
 
     assert run is not None and run.status == "completed"
@@ -677,8 +677,9 @@ async def test_approval_mode_skip_still_obeys_a_forbidding_exec_policy(
         ScheduledTriggerStore(settings.state_dir).save(
             _trigger("trig-skip-policy", approval_mode="skip", notes_enabled=False)
         )
+        # The limit only stops a hang; a loaded Windows runner once took over 10 s here.
         run = await asyncio.wait_for(
-            fire_trigger_now(settings.state_dir, "trig-skip-policy", get_session), timeout=10
+            fire_trigger_now(settings.state_dir, "trig-skip-policy", get_session), timeout=30
         )
 
     assert run is not None and run.status == "completed"

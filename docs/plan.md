@@ -65,7 +65,9 @@ Last reviewed: 2026-11-06.
 ## For the maintainer (settings and decisions)
 
 - Make the Windows job required once it has 14 green scheduled nights; the count restarted on
-  2026-10-27.
+  2026-10-27 and reached 12 (10-28 to 11-08), then the night of 11-09 was red on two tests (a
+  test file written with CRLF, and a 10 s limit on a loaded runner), so it restarts again unless
+  the maintainer excuses that night as on 10-24.
 - Read the CodeQL alerts and the first `audit.yml` run.
 - Decide whether changed-line coverage is enforced (`docs/assessments/2026-10-13-diff-coverage.md`).
 - Decision 0036 (parallel workflow steps) is proposed with #789.
