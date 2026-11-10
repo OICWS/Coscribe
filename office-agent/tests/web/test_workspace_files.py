@@ -16,7 +16,8 @@ def _tree(root: Path) -> None:
     (root / "docs" / "notes").mkdir(parents=True)
     (root / "docs" / "notes" / "plan.md").write_text("# Plan\n", encoding="utf-8")
     (root / "Readme.md").write_text("hi", encoding="utf-8")
-    (root / "app.py").write_text("print(1)\n", encoding="utf-8")
+    # Bytes, so Windows doesn't write CRLF and change the size the listing reports.
+    (root / "app.py").write_bytes(b"print(1)\n")
     (root / ".git").mkdir()
     (root / "node_modules" / "plan").mkdir(parents=True)
     (root / "~$report.docx").write_text("lock", encoding="utf-8")
