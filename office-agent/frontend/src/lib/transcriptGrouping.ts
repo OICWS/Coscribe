@@ -225,6 +225,18 @@ export function currentWorkflowDrafts(items: LogItem[]): WorkflowDraftEntry[] {
   return [...latest.values()];
 }
 
+/** The drafts the reply still running made: the model may still be testing and fixing them, so
+ * they aren't ready to review. Empty while no reply runs. */
+export function draftsInTheWorks(items: LogItem[], turnInFlight: boolean): Set<string> {
+  const ids = new Set<string>();
+  if (!turnInFlight) return ids;
+  for (let i = items.length - 1; i >= 0 && items[i].kind !== "user"; i--) {
+    const item = items[i];
+    if (item.kind === "tool" && workflowDraftOf(item)) ids.add(item.id);
+  }
+  return ids;
+}
+
 function workflowDraftOf(item: ToolOrApprovalItem): WorkflowDraftEntry | null {
   if (item.kind !== "tool" || item.result === undefined) return null;
   if (item.toolName !== "draft_workflow" && item.toolName !== "revise_workflow") return null;

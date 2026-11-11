@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { groupToolRuns, groupTurns, currentWorkflowDrafts, workflowTests, type WorkflowDraftEntry } from "../lib/transcriptGrouping";
+import { groupToolRuns, groupTurns, currentWorkflowDrafts, draftsInTheWorks, workflowTests, type WorkflowDraftEntry } from "../lib/transcriptGrouping";
 import { type LogItem } from "../state/reducer";
 import { useFollowEnd } from "../lib/useFollowEnd";
 import { EmptyState } from "./EmptyState";
@@ -95,6 +95,7 @@ export function ChatLog({
     testProgress: null,
     ...draftCards,
     currentDraftIds: new Set(currentWorkflowDrafts(allItems).map((d) => d.id)),
+    inTheWorks: draftsInTheWorks(allItems, turnInFlight),
     tests: workflowTests(allItems, turnInFlight),
     onReview: onReviewWorkflowDraft,
   };

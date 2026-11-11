@@ -7,6 +7,8 @@ import { placeSteps } from "../../lib/workflowTree";
 export interface DraftCards {
   /** The cards of each workflow's newest draft; any other is superseded. */
   currentDraftIds: ReadonlySet<string>;
+  /** Drafts the running reply made, which it may still test and fix: not ready to review. */
+  inTheWorks: ReadonlySet<string>;
   tests: Map<string, DraftTest>;
   /** Draft id -> the task it was saved into. */
   saved: Map<string, { triggerId: string; name: string }>;
@@ -20,6 +22,7 @@ export interface DraftCards {
 
 export const DraftCardsContext = createContext<DraftCards>({
   currentDraftIds: new Set(),
+  inTheWorks: new Set(),
   tests: new Map(),
   saved: new Map(),
   testProgress: null,

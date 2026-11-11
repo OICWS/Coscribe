@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { currentWorkflowDrafts, workflowTests, type WorkflowDraftEntry } from "../../lib/transcriptGrouping";
+import { currentWorkflowDrafts, draftsInTheWorks, workflowTests, type WorkflowDraftEntry } from "../../lib/transcriptGrouping";
 import type { LogItem } from "../../state/reducer";
 import { WorkflowIcon } from "../icons";
 import type { Notice } from "../NoticeStack";
@@ -64,8 +64,12 @@ export function useDraftNotices(
   on: { save: (draft: WorkflowDraftEntry) => void; review: (draft: WorkflowDraftEntry) => void },
 ): Notice[] {
   const [closed, setClosed] = useState(readClosed);
-  const status = { ...cards, currentDraftIds: new Set<string>(), tests: workflowTests(items, turnInFlight) };
-  return draftsToOffer(items, cards.saved, closed).map((draft) => {
+  const working = draftsInTheWorks(items, turnInFlight);
+  const tests = workflowTests(items, turnInFlight);
+  const status = { ...cards, currentDraftIds: new Set<string>(), inTheWorks: working, tests };
+  // A draft the running reply may still fix shows up once the reply is done.
+  const offered = draftsToOffer(items, cards.saved, closed).filter((draft) => !working.has(draft.id));
+  return offered.map((draft) => {
     const state = draftStatus(draft, status);
     return {
       id: `draft:${draft.id}`,

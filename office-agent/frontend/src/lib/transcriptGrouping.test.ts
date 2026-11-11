@@ -9,6 +9,7 @@ import {
   isFailure,
   isRunning,
   currentWorkflowDrafts,
+  draftsInTheWorks,
   summarizeItem,
   workflowTests,
   type ToolRunGroup,
@@ -355,6 +356,16 @@ describe("workflowTests", () => {
     const tests = workflowTests(items, false);
     expect([...tests.keys()].sort()).toEqual(["d1", "d2"]);
     expect(tests.get("d1")?.result?.status).toBe("passed");
+  });
+});
+
+describe("draftsInTheWorks", () => {
+  it("is the drafts made since the last message, while the reply runs", () => {
+    const earlier = tool("draft_workflow", { result: draftResult() });
+    const now = tool("revise_workflow", { result: draftResult() });
+    const items = [user(), earlier, agent(), user(), now, tool("read_file")];
+    expect([...draftsInTheWorks(items, true)]).toEqual([now.id]);
+    expect(draftsInTheWorks(items, false).size).toBe(0);
   });
 });
 

@@ -225,6 +225,9 @@ export function WorkflowDraftCard({ entry }: { entry: WorkflowDraftEntry }) {
   const test = entry.draftId ? cards.tests.get(entry.draftId) : undefined;
   const result = test && !test.running ? test.result : null;
   const busy = status.kind === "testing";
+  // Reviewing a version the model is still testing and fixing would save one it may replace.
+  const working = cards.inTheWorks.has(entry.id);
+  const tested = status.kind === "passed" || status.kind === "approval" || status.kind === "irreversible";
 
   return (
     <div
@@ -268,11 +271,16 @@ export function WorkflowDraftCard({ entry }: { entry: WorkflowDraftEntry }) {
           >
             Open task
           </button>
+        ) : working ? (
+          <span className="flex items-center gap-1.5 text-[13px] text-[var(--muted)]" data-testid="draft-in-the-works">
+            <span className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] motion-reduce:animate-none" />
+            AI is still testing and fixing this. You can review it once it's done.
+          </span>
         ) : (
           <>
             <button
               type="button"
-              className={primaryButton}
+              className={tested || status.kind === "untested" ? primaryButton : secondaryButton}
               disabled={!cards.onReview}
               onClick={() => cards.onReview?.(entry)}
             >
@@ -298,7 +306,7 @@ export function WorkflowDraftCard({ entry }: { entry: WorkflowDraftEntry }) {
             </button>
           </>
         )}
-        {entry.notes.length > 0 && status.kind !== "saved" && (
+        {entry.notes.length > 0 && status.kind !== "saved" && !working && (
           <span className="ml-auto flex items-center gap-1.5 text-[13px] text-[var(--muted)]">
             <AlertCircleIcon className="h-3.5 w-3.5 text-[var(--warning)]" />
             {entry.notes.length} {entry.notes.length === 1 ? "thing" : "things"} worth checking
