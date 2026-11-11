@@ -72,10 +72,9 @@ files under `COSCRIBE_WORKSPACE_ROOT` (defaults to `./workspace`).
 
 The built-in file/document/spreadsheet/presentation tools can also reach
 specific directories outside the workspace, if you configure them. In the
-web UI, Settings > Workspace has a unified **Directories** list: Workspace
-Root always sits at the top (always fully readable and writable), and you
-can add any number of additional directories below it, each with its own
-Read only / Read & Write toggle -- type a path directly or use **Browse...**,
+web UI, Settings > Environments has an **Other folders** list: you
+can add any number of directories, each with its own
+access (read only, read and write, or read, write and delete) -- type a path directly or use **Browse...**,
 backed by a small server-side folder picker (`/api/browse-dirs`), not the
 browser's native file picker, which never exposes a selected folder's real
 absolute path for security reasons; this sidesteps that by listing real
@@ -133,7 +132,7 @@ task's run follows the task's own approval setting instead.
   (Manual), or **No, keep planning** with what to change. Approving leaves
   Plan mode.
 - `/auto` -- Auto: a reviewer model (`runtime_lg/auto_review.py`, the
-  side-job model from Settings > Sessions, else the conversation's own model) decides each gated call in the user's place. It
+  side-job model `COSCRIBE_SIDE_MODEL` in `.env`, else the conversation's own model) decides each gated call in the user's place. It
   allows ordinary work in the conversation's folders and blocks what's hard
   to undo or leaves the computer -- running downloaded code, sending files
   or data out, deleting or overwriting files that were there before,
@@ -563,7 +562,7 @@ where to read more.
 
 - **Files.** `list_files`, `search_files`, `read_file`, `get_file_info` (`READ`) and `write_file`,
   `edit_file`, `edit_file_batch`, `move_file`, `copy_file`, `delete_file` (`WRITE_LOCAL`, a delete
-  goes to the recycle bin) work inside the conversation's folders (Settings › Workspace; a
+  goes to the recycle bin) work inside the conversation's folders (Settings › Environments; a
   conversation can be given more, read-only or read-write). Card: `src/coscribe/tools/AGENTS.md`.
 - **Artifacts** (decisions 0015, 0027): what coscribe makes from a source it owns opens in a panel
   beside the conversation and is listed on the Artifacts page, where it can be renamed, copied,

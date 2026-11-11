@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { getProxySettings, saveProxySettings, testProxySettings } from "../../lib/rest";
 import type { ProxyMode, ProxySettings, ProxyUpdate } from "../../types/proxy";
 import { SegmentedControl } from "./SegmentedControl";
-import { fieldClass, primaryButtonClass, secondaryButtonClass, SettingRow, SettingRows, SettingsSection } from "./SettingRow";
+import { fieldClass, secondaryButtonClass, SettingRow, SettingRows, SettingsSection } from "./SettingRow";
 
 const MODES = [
   { value: "system", label: "System", title: "System proxy" },
@@ -55,28 +55,14 @@ function Field({
   onChange: (value: string) => void;
 }) {
   return (
-    <input
-      aria-label={label}
-      type={type}
-      autoComplete="off"
-      className={`${fieldClass} w-64`}
-      value={value}
-      placeholder={placeholder}
-      onChange={(e) => onChange(e.target.value)}
-    />
+    <input aria-label={label} type={type} autoComplete="off" className={`${fieldClass} w-64`} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
   );
 }
 
 function ManualFields({ saved, draft, change }: { saved: ProxySettings; draft: Draft; change: (fields: Partial<Draft>) => void }) {
   // The server keeps a saved password only for the address and user name it was saved with.
   const keepsSaved = saved.password_set && draft.address.trim() === saved.address && draft.username.trim() === saved.username;
-  const passwordPlaceholder = draft.clearPassword
-    ? "Removed when saved"
-    : keepsSaved
-      ? "Saved"
-      : saved.password_set
-        ? "Enter it again for this proxy"
-        : "Optional";
+  const passwordPlaceholder = draft.clearPassword ? "Will be removed" : keepsSaved ? "Saved" : saved.password_set ? "Enter it again for this proxy" : "Optional";
   return (
     <>
       <SettingRow
@@ -124,12 +110,12 @@ function ManualFields({ saved, draft, change }: { saved: ProxySettings; draft: D
   );
 }
 
-/** Settings › General › Proxy: System, Manual or No proxy, with its own Save and a test that
- * tries the setting before it is saved. A change applies after a restart. */
+/** Settings › General › Proxy: System, Manual or No proxy. A choice is saved as it is made, the
+ * manual fields when focus leaves them, and Coscribe then tries the connection itself. A change
+ * applies after a restart. */
 export function ProxySection() {
   const [saved, setSaved] = useState<ProxySettings | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ text: string; error: boolean } | null>(null);
 
   useEffect(() => {
@@ -142,62 +128,48 @@ export function ProxySection() {
   }, []);
 
   if (!saved || !draft) {
-    return (
-      <SettingsSection title="Proxy">
-        {note && <span className="text-sm text-[var(--danger)]">{note.text}</span>}
-      </SettingsSection>
-    );
+    return <SettingsSection title="Proxy">{note && <span className="text-sm text-[var(--danger)]">{note.text}</span>}</SettingsSection>;
   }
 
-  const change = (fields: Partial<Draft>) => {
-    setDraft({ ...draft, ...fields });
-    setNote(null);
-  };
-  const changed = JSON.stringify(draft) !== JSON.stringify(draftOf(saved));
-
-  const test = async () => {
-    setBusy(true);
-    setNote({ text: "Testing…", error: false });
-    const result = await testProxySettings(updateOf(draft));
-    setBusy(false);
-    if (!("ok" in result)) setNote({ text: result.error, error: true });
-    else if (result.ok) {
-      const way = result.proxy ? `through ${result.proxy}` : "directly";
-      setNote({ text: `Reached ${result.target} ${way}.`, error: false });
-    } else setNote({ text: result.error ?? `Couldn't reach ${result.target}.`, error: true });
-  };
-
-  const save = async () => {
-    setBusy(true);
-    const result = await saveProxySettings(updateOf(draft));
-    setBusy(false);
+  const apply = async (next: Draft) => {
+    if (JSON.stringify(next) === JSON.stringify(draftOf(saved))) return;
+    if (next.mode === "manual" && !next.address.trim()) return;
+    const update = updateOf(next);
+    const result = await saveProxySettings(update);
     if ("error" in result) {
       setNote({ text: result.error, error: true });
       return;
     }
     setSaved(result);
     setDraft(draftOf(result));
-    setNote({ text: "Saved. Restart Coscribe to apply.", error: false });
+    const check = await testProxySettings(update);
+    const restart = "Applies the next time Coscribe starts.";
+    if ("ok" in check && check.ok) setNote({ text: `Saved. Reached ${check.target} ${check.proxy ? `through ${check.proxy}` : "directly"}. ${restart}`, error: false });
+    else setNote({ text: `Saved, but the connection didn't work. ${"ok" in check ? (check.error ?? `${check.target} couldn't be reached`) : check.error}`, error: true });
+  };
+  const change = (fields: Partial<Draft>) => {
+    const next = { ...draft, ...fields };
+    setDraft(next);
+    setNote(null);
+    if (fields.mode) void apply(next);
   };
 
   return (
     <SettingsSection title="Proxy" description="How Coscribe reaches the internet: the model providers, connectors and web tools.">
-      <SettingRows>
-        <SettingRow
-          label="Proxy"
-          description={modeDescription(saved, draft.mode)}
-          control={<SegmentedControl value={draft.mode} options={MODES} onChange={(mode) => change({ mode })} />}
-        />
-        {draft.mode === "manual" && <ManualFields saved={saved} draft={draft} change={change} />}
-      </SettingRows>
-      <div className="mt-3 flex items-center gap-3">
-        <button type="button" className={secondaryButtonClass} disabled={busy} onClick={() => void test()}>
-          Test connection
-        </button>
-        <button type="button" className={primaryButtonClass} disabled={busy || !changed} onClick={() => void save()}>
-          Save proxy
-        </button>
-        {note && <span className={`text-sm ${note.error ? "text-[var(--danger)]" : "text-[var(--muted)]"}`}>{note.text}</span>}
+      <div onBlur={(event) => !event.currentTarget.contains(event.relatedTarget) && void apply(draft)}>
+        <SettingRows>
+          <SettingRow
+            label="Proxy"
+            description={
+              <>
+                {modeDescription(saved, draft.mode)}
+                {note && <span className={`mt-1 block ${note.error ? "text-[var(--danger)]" : ""}`}>{note.text}</span>}
+              </>
+            }
+            control={<SegmentedControl value={draft.mode} options={MODES} onChange={(mode) => change({ mode })} />}
+          />
+          {draft.mode === "manual" && <ManualFields saved={saved} draft={draft} change={change} />}
+        </SettingRows>
       </div>
     </SettingsSection>
   );

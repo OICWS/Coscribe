@@ -1,28 +1,18 @@
 import { useEffect, useState } from "react";
-import {
-  getCapabilities,
-  getCapabilityFolders,
-  getNodeEnvPackages,
-  getScriptEnvPackages,
-  installNodeEnvPackage,
-  installScriptEnvPackage,
-  removeNodeEnvPackage,
-  removeScriptEnvPackage,
-  setCapability,
-} from "../../lib/rest";
+import { getCapabilities, getScriptIsolation, retestScriptIsolation, setCapability } from "../../lib/rest";
+import { isElectron } from "../../lib/electron";
+import { useCodePermissions } from "../../lib/useCodePermissions";
 import { useCodeStatus } from "../../lib/useCodeStatus";
-import { libreOfficeSummary, useLibreOffice } from "../../lib/useLibreOffice";
-import type { Capabilities, CapabilityFolders, CommandSandbox, CodeStatus } from "../../types/settings";
-import { ConfirmDialog } from "../ConfirmDialog";
+import type { Capabilities, ScriptIsolation } from "../../types/settings";
+import { AllowedSitesDialog } from "../AllowedSitesDialog";
+import { CHECK_WORDS } from "../environment/checkWords";
 import { ToggleSwitch } from "../ToggleSwitch";
-import { CodeTab } from "./CodeTab";
-import { CommandModes, useCommandSandbox } from "./CommandModes";
-import { LibreOfficeSection } from "./LibreOfficeCard";
-import { CODE_MODULE_ENABLED_KEY } from "./fields";
-import { PackageListSection } from "./PackageListSection";
-import { PythonInterpreterSection } from "./PythonInterpreterSection";
-import { ScriptIsolationCard } from "./ScriptIsolationCard";
-import { SettingRow, SettingRows, SettingsSection } from "./SettingRow";
+import { AdvancedSection } from "./AdvancedSection";
+import { CommandRows } from "./CommandRows";
+import { ConfiguredModelSelect } from "./ConfiguredModelSelect";
+import { CODE_MODEL_KEY, CODE_MODULE_ENABLED_KEY } from "./fields";
+import { secondaryButtonClass, SettingRow, SettingRows, SettingsSection, SubRows } from "./SettingRow";
+import { useCommandSandbox } from "./useCommandSandbox";
 
 function useCapabilities(active: boolean) {
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
@@ -32,269 +22,163 @@ function useCapabilities(active: boolean) {
   }, [active]);
   const set = (name: keyof Capabilities, on: boolean) => {
     setError(null);
-    setCapability(name, on).then(setCapabilities, (err: unknown) =>
-      setError(err instanceof Error ? err.message : "Could not save."),
-    );
+    setCapability(name, on).then(setCapabilities, (err: unknown) => setError(err instanceof Error ? err.message : "Could not save."));
   };
   return { capabilities, error, set };
 }
 
-function useFolders(active: boolean) {
-  const [folders, setFolders] = useState<CapabilityFolders | null>(null);
+/** The isolation check, run by Coscribe itself: nothing shows while it holds, one line with a
+ * way to try again when it doesn't. */
+function useScriptIsolation(active: boolean) {
+  const [status, setStatus] = useState<ScriptIsolation | null>(null);
+  const [checking, setChecking] = useState(false);
   useEffect(() => {
-    if (active) getCapabilityFolders().then(setFolders, () => setFolders(null));
+    if (!active) return;
+    let cancelled = false;
+    getScriptIsolation()
+      .then((result) => (result.state === "untested" ? retestScriptIsolation() : result))
+      .then((result) => !cancelled && setStatus(result))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
   }, [active]);
-  return folders;
+  const retry = () => {
+    setChecking(true);
+    retestScriptIsolation()
+      .then(setStatus, () => undefined)
+      .finally(() => setChecking(false));
+  };
+  return { status, checking, retry };
 }
 
-const SECTIONS = {
-  scripts: "capability-scripts",
-  commands: "capability-commands",
-  code: "capability-code",
-  office: "capability-office",
-} as const;
-
-function commandsSummary(capabilities: Capabilities, sandbox: CommandSandbox | null): string {
-  if (!capabilities.commands) return "Off";
-  if (sandbox?.state === "working") return "On · setting up the sandbox…";
-  if (sandbox?.state === "ready") return sandbox.mode === "unelevated" ? "On · basic sandbox" : "On · full sandbox";
-  if (capabilities.commands_without_sandbox) return "On · without a sandbox";
-  return "On, but refused until a sandbox is set up";
+function isolationProblem(status: ScriptIsolation | null): string | null {
+  if (status?.state === "setup_failed") return `Scripts have no Python to run with yet. ${status.detail}`;
+  if (status?.state === "failed")
+    return `Scripts are off here because they can't be kept to their folders on this computer (${(
+      CHECK_WORDS[status.failed] ?? status.failed
+    ).toLowerCase()}). Security software or a company policy can cause this. A conversation can still allow them from its environment.`;
+  return null;
 }
 
-function codeSummary(status: CodeStatus | null, codeOn: boolean): string {
-  const codex = status?.installed ? `Codex ${status.version} downloaded` : "Codex not downloaded";
-  return `${codeOn ? "On" : "Off"} · ${codex}`;
-}
-
-/** One line per capability, what it is set to now; each jumps to its section. */
-function Overview({ rows }: { rows: { label: string; what: string; now: string; section?: string }[] }) {
+function ScriptsRow({ active, on, toggle }: { active: boolean; on: boolean; toggle: () => void }) {
+  const isolation = useScriptIsolation(active);
+  const problem = isolationProblem(isolation.status);
   return (
-    <SettingsSection
-      title="What Coscribe can run on this computer"
-      description="From the safest to the most powerful. A conversation's environment or permission mode can only narrow what is allowed here."
-    >
-      <div className="mt-2 flex flex-col divide-y divide-[var(--border)] rounded-xl border border-[var(--border)]">
-        {rows.map((row) => {
-          const body = (
-            <>
-              <div className="flex min-w-0 flex-col">
-                <span className="text-[15px] text-[var(--fg)]">{row.label}</span>
-                <span className="text-[13px] text-[var(--muted)]">{row.what}</span>
-              </div>
-              <span className="shrink-0 text-right text-[13px] text-[var(--fg)]">{row.now}</span>
-            </>
-          );
-          const className = "flex w-full items-center justify-between gap-6 px-4 py-2.5 text-left";
-          return row.section ? (
-            <button
-              key={row.label}
-              type="button"
-              className={`${className} hover:bg-[var(--card-bg)]`}
-              onClick={() => document.getElementById(row.section ?? "")?.scrollIntoView({ behavior: "smooth" })}
-            >
-              {body}
-            </button>
-          ) : (
-            <div key={row.label} className={className}>
-              {body}
-            </div>
-          );
-        })}
-      </div>
-    </SettingsSection>
-  );
-}
-
-function ScriptsSection({
-  active,
-  on,
-  onToggle,
-  folders,
-}: {
-  active: boolean;
-  on: boolean;
-  onToggle: () => void;
-  folders: CapabilityFolders | null;
-}) {
-  const [showSetup, setShowSetup] = useState(false);
-  return (
-    <div id={SECTIONS.scripts}>
-      <SettingsSection
-        title="Scripts"
-        description="When a task is too big or too specific for the built-in tools, Coscribe writes a Python or Node.js script and runs it after you approve it. On Windows a script runs isolated: it can use only the folders of its environment, can't delete or rename files there, and can't reach the rest of this computer."
-      >
-        <SettingRows>
-          <SettingRow
-            label="Run scripts"
-            description="Off, scripts are refused and Coscribe uses its built-in tools only."
-            control={<ToggleSwitch label="Run scripts" on={on} onClick={onToggle} />}
-          />
-        </SettingRows>
-        <div className="flex flex-col gap-4 pt-2">
-          <ScriptIsolationCard active={active} />
-          <button
-            type="button"
-            aria-expanded={showSetup}
-            className="self-start text-sm text-[var(--accent)] hover:underline"
-            onClick={() => setShowSetup(!showSetup)}
-          >
-            {showSetup ? "Hide" : "Show"} Python and packages
-          </button>
-          {showSetup && (
-            <div className="flex flex-col gap-6 border-l-2 border-[var(--border)] pl-4">
-              <PythonInterpreterSection active={active} />
-              <PackageListSection
-                title="Python packages"
-                description={`Libraries Python scripts can use. They go in a virtual environment made from the Python above; choosing another Python makes it again, empty.${
-                  folders ? ` Kept in ${folders.python_packages}.` : ""
-                }`}
-                placeholder="Library name, e.g. numpy"
-                emptyStateText="None yet -- scripts can use Python's standard library only."
-                active={active}
-                getPackages={getScriptEnvPackages}
-                installPackage={installScriptEnvPackage}
-                removePackage={removeScriptEnvPackage}
-              />
-              <PackageListSection
-                title="Node.js packages"
-                description={`Libraries Node.js scripts can use, besides pptxgenjs. Node.js scripts need Node.js installed on this computer.${
-                  folders ? ` Kept in ${folders.node_packages}.` : ""
-                }`}
-                placeholder="Package name, e.g. sharp"
-                emptyStateText="None added beyond pptxgenjs."
-                active={active}
-                getPackages={getNodeEnvPackages}
-                installPackage={installNodeEnvPackage}
-                removePackage={removeNodeEnvPackage}
-              />
-            </div>
+    <SettingRow
+      label="Run scripts"
+      description={
+        <>
+          For work too big for the built-in tools, Coscribe writes a Python or Node.js script and runs it after you approve it, kept to the folders of its environment.
+          {on && problem && (
+            <span className="mt-1 block text-[var(--danger)]">
+              {isolation.checking ? "Checking again…" : problem}{" "}
+              {!isolation.checking && (
+                <button type="button" className="underline" onClick={isolation.retry}>
+                  Retry
+                </button>
+              )}
+            </span>
           )}
-        </div>
-      </SettingsSection>
-    </div>
+        </>
+      }
+      control={<ToggleSwitch label="Run scripts" on={on} onClick={toggle} />}
+    />
   );
 }
 
-// Turning commands on, and then letting them run outside the sandbox, are two separate risks,
-// each confirmed once (decision 0022).
-const CONFIRMATIONS = {
-  commands: {
-    title: "Turn on commands?",
-    description:
-      "In a command sandbox a command can write only its environment's folders. Without one, a command runs as you: one you approve can change or delete any of your files.",
-    confirmLabel: "Turn on",
-  },
-  commands_without_sandbox: {
-    title: "Run commands without the sandbox?",
-    description:
-      "A command would run as you, with nothing to hold it to its folders: one you approve can change or delete any of your files and reach the internet. Coscribe asks before each command, in every mode, and never lets Auto mode approve one.",
-    confirmLabel: "Allow",
-  },
-} as const;
+interface CodeRowsProps {
+  values: Record<string, string>;
+  onChange: (key: string, value: string) => void;
+  code: ReturnType<typeof useCodeStatus>;
+}
+
+/** Handing work to Code is only a switch: Codex itself is a download the person starts, under Advanced. */
+function CodeRows({ values, onChange, code }: CodeRowsProps) {
+  const approvals = useCodePermissions();
+  const on = values[CODE_MODULE_ENABLED_KEY] === "true";
+  const problem = code.error ?? code.status?.model_problem;
+  return (
+    <>
+      <SettingRow
+        label="Chats can hand tasks to Code"
+        description={
+          <>
+            A chat passes work that needs real code, such as processing data across many files, to a coding agent and gets its report back.
+            {code.status && !code.status.installed && " Needs Codex, under Advanced below."}
+            {on && problem && <span className="mt-1 block text-[var(--danger)]">{problem}</span>}
+          </>
+        }
+        control={<ToggleSwitch label="Chats can hand tasks to Code" on={on} onClick={() => onChange(CODE_MODULE_ENABLED_KEY, on ? "false" : "true")} />}
+      />
+      {on && (
+        <SubRows>
+          <SettingRow
+            label="Model for code"
+            description="What the coding agent runs on. Left as the chat's model, it works with an OpenAI model or a provider that serves the Responses API; with Claude or Gemini in the chat, pick one here."
+            control={<ConfiguredModelSelect ariaLabel="Model for code" value={values[CODE_MODEL_KEY] ?? ""} onChange={(v) => onChange(CODE_MODEL_KEY, v)} />}
+          />
+          {approvals.permissions && (
+            <SettingRow
+              label="Change files without asking"
+              description="Off, it asks before each file change."
+              control={
+                <ToggleSwitch
+                  label="Change files without asking"
+                  on={approvals.permissions.apply_code_change === "allow"}
+                  onClick={() => approvals.set("apply_code_change", approvals.permissions?.apply_code_change === "allow" ? "ask" : "allow")}
+                />
+              }
+            />
+          )}
+        </SubRows>
+      )}
+    </>
+  );
+}
 
 interface CapabilitiesTabProps {
   active: boolean;
   values: Record<string, string>;
   onChange: (key: string, value: string) => void;
+  onOpenEnvironments: () => void;
 }
 
-/** Everything coscribe may run on this computer, in one place (#588): an overview, then each
- * capability from the safest to the most powerful. An environment or a mode can only narrow what
- * is on here. */
-export function CapabilitiesTab({ active, values, onChange }: CapabilitiesTabProps) {
+/** Everything Coscribe may do on this computer, one switch each (#588). Coscribe sets up what a
+ * switch needs (a sandbox, a check) itself; a large download is the person's to start, under
+ * Advanced. An environment or a mode can only narrow what is on here. */
+export function CapabilitiesTab({ active, values, onChange, onOpenEnvironments }: CapabilitiesTabProps) {
+  const [sitesOpen, setSitesOpen] = useState(false);
   const { capabilities, error, set } = useCapabilities(active);
   const sandbox = useCommandSandbox(active);
   const code = useCodeStatus();
-  const folders = useFolders(active);
-  const libreOffice = useLibreOffice(active);
-  const [confirm, setConfirm] = useState<keyof typeof CONFIRMATIONS | null>(null);
+
   if (capabilities === null) {
     return <p className="text-sm text-[var(--muted)]">{error ?? "Loading…"}</p>;
   }
-  const codeOn = values[CODE_MODULE_ENABLED_KEY] === "true";
   return (
     <div className="flex flex-col gap-10">
-      {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
-      <Overview
-        rows={[
-          {
-            label: "Built-in tools",
-            what: "Files, Word, Excel, PowerPoint, PDF, the web and connectors, in the environment's folders",
-            now: "Always on",
-          },
-          {
-            label: "Scripts",
-            what: "Python or Node.js that Coscribe writes, isolated to the environment's folders",
-            now: capabilities.scripts ? "On" : "Off",
-            section: SECTIONS.scripts,
-          },
-          {
-            label: "Commands",
-            what: "cmd or PowerShell lines: git, build tools, installers",
-            now: commandsSummary(capabilities, sandbox.sandbox),
-            section: SECTIONS.commands,
-          },
-          {
-            label: "Code module",
-            what: "Codex writes and fixes code for a chat",
-            now: codeSummary(code.status, codeOn),
-            section: SECTIONS.code,
-          },
-          { label: "LibreOffice", what: "Optional: shows Office files as pages and checks their layout", now: libreOfficeSummary(libreOffice.status), section: SECTIONS.office },
-        ]}
-      />
-      <ScriptsSection
-        active={active}
-        on={capabilities.scripts}
-        onToggle={() => set("scripts", !capabilities.scripts)}
-        folders={folders}
-      />
-      <div id={SECTIONS.commands}>
-        <SettingsSection
-          title="Commands"
-          description="Command lines in cmd or PowerShell, for what a script can't do: build tools, git, installers. Choose below how they are held."
-        >
-          <SettingRows>
+      <SettingsSection title="Capabilities">
+        {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
+        <SettingRows>
+          <ScriptsRow active={active} on={capabilities.scripts} toggle={() => set("scripts", !capabilities.scripts)} />
+          <CommandRows capabilities={capabilities} set={set} control={sandbox} onOpenEnvironments={onOpenEnvironments} />
+          {isElectron() && (
             <SettingRow
-              label="Run commands"
-              description="Off by default. Turning it on is recorded in the audit log."
+              label="Allowed sites"
+              description="Sites where Coscribe can use its browser without asking you first."
               control={
-                <ToggleSwitch
-                  label="Run commands"
-                  on={capabilities.commands}
-                  onClick={() => (capabilities.commands ? set("commands", false) : setConfirm("commands"))}
-                />
+                <button type="button" className={secondaryButtonClass} onClick={() => setSitesOpen(true)}>
+                  Manage
+                </button>
               }
             />
-          </SettingRows>
-          <CommandModes
-            control={sandbox}
-            withoutSandbox={capabilities.commands_without_sandbox}
-            onToggleWithoutSandbox={() =>
-              capabilities.commands_without_sandbox
-                ? set("commands_without_sandbox", false)
-                : setConfirm("commands_without_sandbox")
-            }
-            hidePrivate={capabilities.commands_hide_private_folders}
-            onToggleHidePrivate={() => set("commands_hide_private_folders", !capabilities.commands_hide_private_folders)}
-          />
-        </SettingsSection>
-      </div>
-      <div id={SECTIONS.code}>
-        <CodeTab values={values} onChange={onChange} code={code} codexFolder={folders?.codex} />
-      </div>
-      <LibreOfficeSection id={SECTIONS.office} libreOffice={libreOffice} />
-      {confirm && (
-        <ConfirmDialog
-          {...CONFIRMATIONS[confirm]}
-          onCancel={() => setConfirm(null)}
-          onConfirm={() => {
-            setConfirm(null);
-            set(confirm, true);
-          }}
-        />
-      )}
+          )}
+          <CodeRows values={values} onChange={onChange} code={code} />
+        </SettingRows>
+        {sitesOpen && <AllowedSitesDialog onClose={() => setSitesOpen(false)} />}
+      </SettingsSection>
+      <AdvancedSection active={active} code={code} codexRunsSandbox={sandbox.sandbox?.source !== "bundled"} />
     </div>
   );
 }

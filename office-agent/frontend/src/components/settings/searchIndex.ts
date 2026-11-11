@@ -1,4 +1,4 @@
-import { GENERAL_FIELDS, WORKSPACE_FIELDS } from "./fields";
+import { GENERAL_FIELDS } from "./fields";
 import type { SettingsCategory } from "./SettingsModal";
 
 export interface SettingEntry {
@@ -9,8 +9,7 @@ export interface SettingEntry {
   keywords?: string;
 }
 
-const fieldLabel = (fields: { key: string; label: string }[], key: string) =>
-  fields.find((f) => f.key === key)?.label ?? key;
+const fieldLabel = (fields: { key: string; label: string }[], key: string) => fields.find((f) => f.key === key)?.label ?? key;
 
 // Tabs mount only while open, so their rows can't be read from the page: this
 // lists them, and a row missing here is simply not searchable.
@@ -21,33 +20,32 @@ const SETTING_ENTRIES: SettingEntry[] = [
   { category: "general", label: "What should Coscribe call you?", keywords: "name profile" },
   { category: "general", label: fieldLabel(GENERAL_FIELDS, "COSCRIBE_DEFAULT_MODEL") },
   { category: "general", label: "Default mode", keywords: "permission manual auto plan accept edits" },
-  { category: "general", label: fieldLabel(GENERAL_FIELDS, "COSCRIBE_MAX_TURNS"), keywords: "turns limit" },
   { category: "general", label: "Global instructions", keywords: "memory preferences" },
   { category: "general", label: "Keep running in the background", keywords: "tray close window" },
   { category: "general", label: "Notifications" },
   // Its address, bypass list, user name and password show only once a manual proxy is chosen, so
   // they are found through this row.
   { category: "general", label: "Proxy", keywords: "network internet address do not use for bypass user name password" },
-  { category: "general", label: "Log level", keywords: "debug logging" },
-  { category: "workspace", label: "Default workspace", keywords: "folder directory" },
-  { category: "workspace", label: fieldLabel(WORKSPACE_FIELDS, "COSCRIBE_SKILLS_DIR") },
-  { category: "workspace", label: fieldLabel(WORKSPACE_FIELDS, "COSCRIBE_MEMORY_PATH") },
-  { category: "workspace", label: fieldLabel(WORKSPACE_FIELDS, "COSCRIBE_MCP_CONFIG_PATH"), keywords: "mcp" },
-  { category: "workspace", label: fieldLabel(WORKSPACE_FIELDS, "COSCRIBE_PROVIDERS_CONFIG_PATH") },
-  { category: "workspace", label: fieldLabel(WORKSPACE_FIELDS, "COSCRIBE_HOOKS_CONFIG_PATH") },
+  { category: "workspace", label: "Environments", keywords: "folder workspace internet access new edit" },
+  { category: "workspace", label: "Other folders", keywords: "directory read write" },
   { category: "capabilities", label: "Run scripts", keywords: "python sandbox isolation" },
   { category: "capabilities", label: "Run commands", keywords: "shell terminal sandbox" },
+  { category: "capabilities", label: "Command sandbox", keywords: "basic full administrator" },
+  { category: "capabilities", label: "Private folders", keywords: "documents desktop downloads hide" },
+  { category: "capabilities", label: "Allowed sites", keywords: "browser websites" },
   { category: "capabilities", label: "Chats can hand tasks to Code", keywords: "codex" },
   { category: "capabilities", label: "Model for code", keywords: "codex" },
   { category: "capabilities", label: "Change files without asking", keywords: "codex approval" },
-  { category: "sessions", label: "Model for side jobs", keywords: "auto mode reviewer title cheap small haiku" },
-  { category: "sessions", label: "Prompt suggestions", keywords: "autocomplete tab" },
-  { category: "sessions", label: "Background agents" },
-  { category: "sessions", label: "Archive inactive conversations", keywords: "days old" },
-  { category: "sessions", label: "Port for task events", keywords: "webhook listener address" },
-  { category: "sessions", label: "Draw attention when Coscribe needs you", keywords: "flash taskbar" },
-  { category: "sessions", label: "Keep computer awake while Coscribe works", keywords: "sleep" },
-  { category: "sessions", label: "Keep awake on battery power" },
+  { category: "capabilities", label: "Python for scripts", keywords: "interpreter download" },
+  { category: "capabilities", label: "Packages for scripts", keywords: "library pip npm node add" },
+  { category: "capabilities", label: "LibreOffice", keywords: "page previews download layout" },
+  { category: "capabilities", label: "Codex", keywords: "download update remove coding agent" },
+  { category: "general", label: "Prompt suggestions", keywords: "autocomplete tab" },
+  { category: "general", label: "Background agents" },
+  { category: "general", label: "Archive inactive conversations", keywords: "days old" },
+  { category: "general", label: "Draw attention when Coscribe needs you", keywords: "flash taskbar" },
+  { category: "general", label: "Keep computer awake while Coscribe works", keywords: "sleep" },
+  { category: "general", label: "Keep awake on battery power" },
 ];
 
 /** Where `query` first occurs in `text`, ignoring case; null when it doesn't. */

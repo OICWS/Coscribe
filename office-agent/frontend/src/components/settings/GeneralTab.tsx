@@ -2,18 +2,9 @@ import { setAppearance, useAppearance } from "../../lib/appearance";
 import { useConfiguredModels } from "../../lib/useConfiguredModels";
 import { MonitorIcon, MoonIcon, SunIcon } from "../icons";
 import { ToggleSwitch } from "../ToggleSwitch";
-import {
-  BACKGROUND_ON_CLOSE_KEY,
-  NOTIFICATION_LEVELS,
-  NOTIFICATIONS_KEY,
-  GENERAL_FIELDS,
-  LOG_LEVEL_KEY,
-  LOG_LEVELS,
-  PERMISSION_MODE_KEY,
-  PERMISSION_MODES,
-  USER_NAME_KEY,
-} from "./fields";
+import { BACKGROUND_ON_CLOSE_KEY, NOTIFICATION_LEVELS, NOTIFICATIONS_KEY, GENERAL_FIELDS, PERMISSION_MODE_KEY, PERMISSION_MODES, USER_NAME_KEY } from "./fields";
 import { GlobalInstructionsSection } from "./GlobalInstructionsSection";
+import { SessionsTab } from "./SessionsTab";
 import { ProxySection } from "./ProxySection";
 import { SegmentedControl } from "./SegmentedControl";
 import { SelectMenu } from "../SelectMenu";
@@ -24,11 +15,9 @@ interface GeneralTabProps {
   onChange: (key: string, value: string) => void;
 }
 
-type LogLevel = (typeof LOG_LEVELS)[number]["value"];
 type PermissionMode = (typeof PERMISSION_MODES)[number]["value"];
 
 const DEFAULT_MODEL_KEY = "COSCRIBE_DEFAULT_MODEL";
-const MAX_TURNS_KEY = "COSCRIBE_MAX_TURNS";
 
 function DefaultModelSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const models = useConfiguredModels();
@@ -45,16 +34,6 @@ function DefaultModelSelect({ value, onChange }: { value: string; onChange: (val
       onChange={onChange}
     />
   );
-}
-
-/** Coerces a stored value into one SegmentedControl actually recognizes,
- * so a case difference (config.py stores/accepts either case) or an
- * unset/unrecognized value never leaves the control with nothing
- * selected -- INFO (this app's own real default, config.py's log_level)
- * is the fallback either way. */
-function currentLogLevel(raw: string | undefined): LogLevel {
-  const upper = raw?.toUpperCase();
-  return (LOG_LEVELS.find((level) => level.value === upper)?.value ?? "INFO") as LogLevel;
 }
 
 function currentPermissionMode(raw: string | undefined): PermissionMode {
@@ -84,21 +63,11 @@ function AppearanceSection() {
   return (
     <SettingsSection title="Appearance">
       <SettingRows>
-        <SettingRow
-          label="Theme"
-          control={<SegmentedControl value={appearance.theme} options={THEMES} onChange={(v) => void setAppearance("theme", v)} />}
-        />
+        <SettingRow label="Theme" control={<SegmentedControl value={appearance.theme} options={THEMES} onChange={(v) => void setAppearance("theme", v)} />} />
         <SettingRow
           label="Interface font"
           description="Font for the whole interface: menus, sidebars, panels and conversations. Figtree and OpenDyslexic are open-source (SIL Open Font License)."
-          control={
-            <SelectMenu
-              ariaLabel="Interface font"
-              value={appearance.interfaceFont}
-              options={INTERFACE_FONTS}
-              onChange={(v) => void setAppearance("interfaceFont", v)}
-            />
-          }
+          control={<SelectMenu ariaLabel="Interface font" value={appearance.interfaceFont} options={INTERFACE_FONTS} onChange={(v) => void setAppearance("interfaceFont", v)} />}
         />
         <SettingRow
           label="Motion"
@@ -134,7 +103,6 @@ function ProfileSection({ values, onChange }: GeneralTabProps) {
 
 export function GeneralTab({ values, onChange }: GeneralTabProps) {
   const field = (key: string) => GENERAL_FIELDS.find((f) => f.key === key)!;
-  const maxTurns = field(MAX_TURNS_KEY);
   return (
     <div className="flex flex-col gap-10">
       <ProfileSection values={values} onChange={onChange} />
@@ -151,30 +119,12 @@ export function GeneralTab({ values, onChange }: GeneralTabProps) {
           <SettingRow
             label="Default mode"
             description="The permission mode a new conversation starts in. Auto lets a reviewer model approve routine work and stop risky actions; Manual asks before every change."
-            control={
-              <SegmentedControl
-                value={currentPermissionMode(values[PERMISSION_MODE_KEY])}
-                options={PERMISSION_MODES}
-                onChange={(v) => onChange(PERMISSION_MODE_KEY, v)}
-              />
-            }
-          />
-          <SettingRow
-            label={maxTurns.label}
-            description={maxTurns.description}
-            control={
-              <input
-                aria-label={maxTurns.label}
-                inputMode="numeric"
-                className={`${fieldClass} w-24 text-right`}
-                value={values[MAX_TURNS_KEY] ?? ""}
-                placeholder={maxTurns.placeholder}
-                onChange={(e) => onChange(MAX_TURNS_KEY, e.target.value)}
-              />
-            }
+            control={<SegmentedControl value={currentPermissionMode(values[PERMISSION_MODE_KEY])} options={PERMISSION_MODES} onChange={(v) => onChange(PERMISSION_MODE_KEY, v)} />}
           />
         </SettingRows>
       </SettingsSection>
+
+      <SessionsTab values={values} onChange={onChange} />
 
       <SettingsSection title="Instructions">
         <GlobalInstructionsSection active />
@@ -188,9 +138,7 @@ export function GeneralTab({ values, onChange }: GeneralTabProps) {
             control={
               <ToggleSwitch
                 on={values[BACKGROUND_ON_CLOSE_KEY] !== "false"}
-                onClick={() =>
-                  onChange(BACKGROUND_ON_CLOSE_KEY, values[BACKGROUND_ON_CLOSE_KEY] === "false" ? "true" : "false")
-                }
+                onClick={() => onChange(BACKGROUND_ON_CLOSE_KEY, values[BACKGROUND_ON_CLOSE_KEY] === "false" ? "true" : "false")}
               />
             }
           />
@@ -199,9 +147,7 @@ export function GeneralTab({ values, onChange }: GeneralTabProps) {
             description="When a task run finishes. Problems only: when a run fails or is waiting for you. Clicking one opens the run."
             control={
               <SegmentedControl
-                value={
-                  NOTIFICATION_LEVELS.find((level) => level.value === values[NOTIFICATIONS_KEY])?.value ?? "all"
-                }
+                value={NOTIFICATION_LEVELS.find((level) => level.value === values[NOTIFICATIONS_KEY])?.value ?? "all"}
                 options={NOTIFICATION_LEVELS}
                 onChange={(v) => onChange(NOTIFICATIONS_KEY, v)}
               />
@@ -211,22 +157,6 @@ export function GeneralTab({ values, onChange }: GeneralTabProps) {
       </SettingsSection>
 
       <ProxySection />
-
-      <SettingsSection title="Advanced">
-        <SettingRows>
-          <SettingRow
-            label="Log level"
-            description="How much detail goes into Coscribe's log file. Use Debug only while troubleshooting. Takes effect after a restart."
-            control={
-              <SegmentedControl
-                value={currentLogLevel(values[LOG_LEVEL_KEY])}
-                options={LOG_LEVELS}
-                onChange={(v) => onChange(LOG_LEVEL_KEY, v)}
-              />
-            }
-          />
-        </SettingRows>
-      </SettingsSection>
     </div>
   );
 }
