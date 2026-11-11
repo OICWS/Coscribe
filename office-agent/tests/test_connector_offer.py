@@ -84,7 +84,9 @@ class _OAuth:
 def _directory(tmp_path: Path, servers: dict[str, Any], live: set[str], apps: set[str]) -> Any:
     config = tmp_path / "mcp.json"
     config.write_text(json.dumps({"mcpServers": servers}), encoding="utf-8")
-    settings = Settings(state_dir=tmp_path, mcp_config_path=config)
+    settings = Settings(  # type: ignore[call-arg]
+        _env_file=None, default_model="openai:x", state_dir=tmp_path, mcp_config_path=config
+    )
     return CatalogDirectory(settings, dict.fromkeys(live), _OAuth(apps))  # type: ignore[arg-type]
 
 
