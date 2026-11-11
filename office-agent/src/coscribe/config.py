@@ -175,17 +175,19 @@ class Settings(BaseSettings):
     _handle_compact) still works independently of this threshold.
     """
 
-    max_turns: int = 150
-    """The most model calls the main conversation makes for one user
-    message before the turn ends with a note saying so -- caps the spend of
-    a loop that keeps calling tools without finishing.
+    max_turns: int | None = None
+    """A cap on the model calls the main conversation makes for one user
+    message; None, the default, is no cap. A person stops a reply that
+    runs on, as in Claude Code and Codex, and a long task is not cut off
+    part way (building an xlsx, a docx and a pptx with reviews took 61
+    calls in one turn). Set `COSCRIBE_MAX_TURNS` in `.env` to have a turn
+    end with a note at that many calls.
 
     Counted from the conversation's history (runtime_lg/agent.py's
     _TurnModelCallLimitMiddleware), so resuming after an approval doesn't
-    reset it. Sized for real multi-file work: building an xlsx, a docx and
-    a pptx with reviews took 61 calls in one turn (ROADMAP Phase 8cl).
-    Sub-agents have their own budget (subagents.SUBAGENT_MAX_STEPS) and
-    review_work its own reviewer cap; neither follows this setting.
+    reset it. Sub-agents have their own budget
+    (subagents.SUBAGENT_MAX_STEPS) and review_work its own reviewer cap;
+    neither follows this setting.
     """
 
     default_permission_mode: PermissionMode = "auto"

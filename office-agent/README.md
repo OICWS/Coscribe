@@ -96,13 +96,16 @@ absolute paths, e.g.
 `COSCRIBE_EXTRA_WRITABLE_DIRS=/home/you/Downloads,/home/you/Documents`,
 for when you'd rather edit `.env` directly than use the directories list.
 
-`COSCRIBE_MAX_TURNS` (`.env`, default `20`) caps how many tool-calling
-turns a single agent loop runs before giving up, to bound token/time spend
-from a loop that keeps calling tools without finishing -- applies to a
-normal chat turn and to each scheduled-task run; `spawn_agent`/
-`review_work` sub-agents use their own smaller, separate default (6), not
-this setting. Editable from the web UI's Settings > General as well as
-`.env` directly.
+A reply has no cap on its steps: you stop one that runs on. `COSCRIBE_MAX_TURNS`
+(`.env`, unset by default) ends a turn with a note after that many model calls. A
+scheduled task's run, which nobody watches, stops at 150 when it is unset;
+`spawn_agent`/`review_work` sub-agents have their own smaller budgets.
+
+Settings › Capabilities also has "Create and edit files" and, under it, "Artifacts".
+With the first off, coscribe's own tools write, change and delete nothing (a script or a
+command you approve still can); with the second off, it makes no new Doc, design or
+dashboard and answers in the conversation or writes an Office file. The tools stay in
+the model's list; a refused call tells the model why.
 
 Session state is persisted to `.coscribe/state/<thread-id>.json` so a
 conversation can be resumed with `coscribe --thread <thread-id>`.

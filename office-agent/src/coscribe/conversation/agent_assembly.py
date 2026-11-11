@@ -16,7 +16,7 @@ from langchain_core.tools import BaseTool
 from ..code_runtime import code_service
 from ..config import Settings, side_model_name
 from ..coordinator import CORE_TOOL_NAMES
-from ..runtime import LLMClient, SessionEnvironments, get_tool_metadata, redactor
+from ..runtime import Agent, LLMClient, SessionEnvironments, get_tool_metadata, redactor
 from ..runtime_lg import (
     CODE_APPROVAL_RISKS,
     CODE_TASK_TOOL,
@@ -36,6 +36,7 @@ from ..runtime_lg import (
 )
 from ..tools import (
     QUESTION_TOOL_NAMES,
+    SCHEDULED_THREAD_PREFIX,
     TASK_DRAFT_TOOL_NAMES,
     TaskToolkit,
     WorkspaceScope,
@@ -45,12 +46,16 @@ from ..tools import (
 )
 from ..tools.web import build_http_tools
 from .artifact_tools import build_artifact_tools
+from .capability_guard import hold_to_capabilities
 from .context_usage import build_context_breakdown
 from .folder_brief import FolderBriefKeeper
 from .page_tools import build_page_tools
 from .save_offer import SaveOffer
 from .turn_text import build_instructions
 from .workspace_folder import WorkspaceFolders
+
+# The model calls a scheduled run may make for one message when no cap is set.
+UNATTENDED_MAX_TURNS = 150
 
 
 class AssemblyHost(Protocol):
@@ -248,7 +253,7 @@ class AgentAssembly:
             checkpointer=self._host._checkpointer,
             extra_interrupt_tool_names=extra_interrupt_names,
             question_tool_names=QUESTION_TOOL_NAMES | TASK_DRAFT_TOOL_NAMES,
-            max_turns=self._host.settings.max_turns,
+            max_turns=self._max_turns(),
             auto_compact_tokens=auto_compact_tokens,
             defer_tools=defer,
             core_tool_names=core_names,
@@ -259,6 +264,19 @@ class AgentAssembly:
                 self._host.thread_id, self._host.settings.state_dir
             ).open_tasks_note(),
         )
+
+    def held_to_capabilities(self, agent: Agent) -> Agent:
+        """The coordinator's agent with its file-writing tools following Settings › Capabilities."""
+        host = self._host
+        return hold_to_capabilities(agent, host.settings.state_dir, host.workspace_scope)
+
+    def _max_turns(self) -> int | None:
+        """A conversation has no cap unless one is set: its person stops a reply that runs on.
+        A scheduled run has nobody watching, so it keeps one."""
+        configured = self._host.settings.max_turns
+        if configured is None and self._host.thread_id.startswith(SCHEDULED_THREAD_PREFIX):
+            return UNATTENDED_MAX_TURNS
+        return configured
 
     def tool_binding(
         self, model_string: str, tools: Sequence[Callable[..., Any] | BaseTool]

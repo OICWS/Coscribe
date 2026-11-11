@@ -717,6 +717,10 @@ export interface Environment extends EnvironmentFields {
 
 /** What coscribe may run on this computer (Settings › Capabilities). */
 export interface Capabilities {
+  /** Coscribe's own tools create and change files. */
+  files: boolean;
+  /** It makes Docs, designs and dashboards, which open in the app. */
+  artifacts: boolean;
   scripts: boolean;
   commands: boolean;
   /** The second confirmation: commands may run as the person where the sandbox isn't set up. */

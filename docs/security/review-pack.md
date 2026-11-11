@@ -29,6 +29,9 @@ runs, is refused or waits for a person. The precedence is one table, `ROWS` in
    that skips approval.
 3. A tool that is not gated runs, in plan mode too.
 4. Plan mode refuses every gated call; standing approvals and Accept Edits do not lift it.
+   Before it, a file-writing tool whose switch is off in Settings › Capabilities ("Create and edit
+   files", "Artifacts") is refused without asking anyone, logged as `capability_off`
+   (`conversation/capability_guard.py`; its own test beside the table).
 5. An exec policy rule `forbidden` refuses a script before plan mode is read; `allow` approves a
    script (not in plan mode) and works unattended; `prompt` and rules for other tools change nothing.
 6. A standing approval (`preapproved`) approves any risk tier and is logged as such.

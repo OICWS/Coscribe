@@ -160,11 +160,11 @@ def test_deletable_dirs_parse_like_the_others(monkeypatch: pytest.MonkeyPatch) -
     assert settings.extra_deletable_dirs == [Path("/tmp/d"), Path("/tmp/c")]
 
 
-def test_max_turns_defaults_to_150(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_turn_has_no_cap_on_model_calls_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("COSCRIBE_DEFAULT_MODEL", "anthropic:claude-sonnet-4-5")
     monkeypatch.delenv("COSCRIBE_MAX_TURNS", raising=False)
     settings = Settings(_env_file=None)  # type: ignore[call-arg]
-    assert settings.max_turns == 150
+    assert settings.max_turns is None
 
 
 def test_max_turns_loads_from_env(monkeypatch: pytest.MonkeyPatch) -> None:

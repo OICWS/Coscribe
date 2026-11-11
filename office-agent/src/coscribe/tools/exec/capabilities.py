@@ -2,7 +2,10 @@
 unless turned off) and commands (off unless turned on). A conversation's environment can only
 narrow these, and its mode decides whether the person is asked. The agent's tools stay in its
 list either way, since that list is cached by the provider; a tool whose capability is off
-refuses the call and says where to turn it on."""
+refuses the call and says where to turn it on.
+
+"files" and "artifacts" (on unless turned off) are kept here too: whether coscribe's own tools
+write files and make artifacts. `conversation/capability_guard.py` holds the tools to them."""
 
 from __future__ import annotations
 
@@ -21,6 +24,8 @@ _FILE = "capabilities.json"
 # sandbox is not set up, a command runs as the person only once they accepted that too.
 # "commands_hide_private_folders": a sandboxed command can't read them (#601).
 _DEFAULTS: dict[str, bool] = {
+    "files": True,
+    "artifacts": True,
     "scripts": True,
     "commands": False,
     "commands_without_sandbox": False,

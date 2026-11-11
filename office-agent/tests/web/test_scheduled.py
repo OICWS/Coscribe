@@ -5,7 +5,8 @@ import json
 import threading
 import time
 from pathlib import Path
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 
@@ -17,6 +18,7 @@ from langchain_core.messages import (
     ToolMessage,
 )
 
+from coscribe.conversation.agent_assembly import UNATTENDED_MAX_TURNS, AgentAssembly
 from coscribe.web import app as web_app
 from coscribe.web.routes.settings import environments as settings_routes
 from coscribe.web.schemas import ScriptEnvPackageInstall
@@ -34,6 +36,22 @@ from .helpers import (
     _tool_call,
     _wait_for_run_status,
 )
+
+
+@pytest.mark.parametrize(
+    ("thread_id", "configured", "cap"),
+    [
+        ("t1", None, None),
+        ("t1", 8, 8),
+        ("scheduled-daily-r1", None, UNATTENDED_MAX_TURNS),
+        ("scheduled-daily-r1", 8, 8),
+    ],
+)
+def test_only_a_run_nobody_watches_is_capped_when_no_cap_is_set(
+    thread_id: str, configured: int | None, cap: int | None
+) -> None:
+    host = SimpleNamespace(thread_id=thread_id, settings=SimpleNamespace(max_turns=configured))
+    assert AgentAssembly(cast(Any, host))._max_turns() == cap
 
 
 def test_max_turns_ends_the_run_gracefully_instead_of_looping_forever(
