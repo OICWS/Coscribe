@@ -22,6 +22,7 @@ from .board_undo import (
     steps_left,
     undo_board_edit,
 )
+from .connector_offer import OfferLog, connected_note
 from .dashboard import DashboardDataError, is_dashboard, read_dashboard_data, render_dashboard
 from .design_canvas import (
     CanvasError,
@@ -43,6 +44,8 @@ __all__ = [
     "ChatSessionLG",
     "ThreadMetaStore",
     "question_answer",
+    "OfferLog",
+    "connected_note",
     "ArtifactFileError",
     "ArtifactRegistry",
     "adopt_thread",

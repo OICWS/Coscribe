@@ -290,6 +290,12 @@ export const reconnectMcpServer = (name: string) =>
   postJson<McpReconnectResult>(`/api/mcp/servers/${encodeURIComponent(name)}/reconnect`, {});
 export const signInMcpServer = (name: string) =>
   postJson<McpReconnectResult>(`/api/mcp/servers/${encodeURIComponent(name)}/signin`, {});
+/** "Not now" on a connector the conversation offered: it is not offered again there. */
+export const declineConnectorOffer = (threadId: string, name: string) =>
+  postJson<{ declined: boolean }>(
+    `/api/threads/${encodeURIComponent(threadId)}/connector-offers/${encodeURIComponent(name)}/decline`,
+    {},
+  );
 export const getNpmLatestVersion = (pkg: string) =>
   getJson<NpmLatestVersionResponse>(`/api/mcp/npm-latest-version?package=${encodeURIComponent(pkg)}`);
 export const bumpMcpVersion = (name: string, pkg: string, version: string) =>

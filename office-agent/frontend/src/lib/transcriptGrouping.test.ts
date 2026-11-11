@@ -197,6 +197,24 @@ describe("groupToolRuns", () => {
     const ap = approval("draft_workflow", "approved", { result: draftResult() });
     expect(groupToolRuns([ap]).map((e) => e.kind)).toEqual(["tool_run"]);
   });
+
+  it("shows an offered connector as a card and leaves any other answer a tool call", () => {
+    const offer = { status: "offered", name: "notion", title: "Notion", description: "Pages.", state: "signed_out", why: "To read it.", tool_count: 4 };
+    const offered = tool("offer_connector", { result: JSON.stringify(offer) });
+    const refused = tool("offer_connector", { result: { status: "declined", error: "no" } });
+    const entries = groupToolRuns([tool("find_connector"), offered, refused]);
+    expect(entries.map((e) => e.kind)).toEqual(["tool_run", "connector_offer", "tool_run"]);
+    expect(entries[1]).toEqual({
+      kind: "connector_offer",
+      id: offered.id,
+      name: "notion",
+      title: "Notion",
+      description: "Pages.",
+      why: "To read it.",
+      state: "signed_out",
+      toolCount: 4,
+    });
+  });
 });
 
 describe("groupHasPendingApproval", () => {

@@ -95,16 +95,16 @@ const CONFIG_KEYS = [
 interface SettingsModalProps {
   open: boolean;
   initialCategory?: SettingsCategory;
-  /** What Design systems opens on: "new" for its New design system form, a system's id for that
-   * system, nothing for the list. */
-  startDesignSystem?: string | null;
+  /** What the first category opens on: for Design systems "new" (its New design system form) or a
+   * system's id, for Connectors a connector's name; nothing for the list. */
+  start?: string | null;
   /** Starts the conversation that makes a design system from a description (Settings closes first). */
   onDescribeDesignSystem: () => void;
   onCreateSkill: () => void;
   onClose: () => void;
 }
 
-export function SettingsModal({ open, initialCategory, startDesignSystem, onDescribeDesignSystem, onCreateSkill, onClose }: SettingsModalProps) {
+export function SettingsModal({ open, initialCategory, start, onDescribeDesignSystem, onCreateSkill, onClose }: SettingsModalProps) {
   const [category, setCategory] = useState<SettingsCategory>(initialCategory ?? "general");
   const [config, setConfig] = useState<ConfigResponse | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
@@ -251,11 +251,11 @@ export function SettingsModal({ open, initialCategory, startDesignSystem, onDesc
               {category === "workspace" && <WorkspaceTab dirEntries={dirEntries} onDirEntriesChange={setDirEntries} />}
               {category === "providers" && <ProvidersTab active={category === "providers"} />}
               {category === "skills" && <SkillsTab active={category === "skills"} onCreateSkill={onCreateSkill} />}
-              {category === "connectors" && <ConnectorsTab active={category === "connectors"} />}
+              {category === "connectors" && <ConnectorsTab active={category === "connectors"} start={initialCategory === "connectors" ? start : null} />}
               {category === "design-systems" && (
                 <DesignSystemsTab
                   active={category === "design-systems"}
-                  start={startDesignSystem}
+                  start={initialCategory === "design-systems" ? start : null}
                   onDescribe={() => {
                     onClose();
                     onDescribeDesignSystem();

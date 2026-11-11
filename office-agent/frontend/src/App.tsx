@@ -49,7 +49,7 @@ import { artifactActions } from "./lib/artifacts";
 import { useArtifactStart } from "./lib/useArtifactStart";
 import { ArtifactsPage } from "./components/artifacts/ArtifactsPage";
 import { useSteerNotes, type ComposerDraft } from "./lib/steerNotes";
-import { BackgroundTasks, DetachScript, OpenDesignSystem, SteerActionsContext, ViewFile } from "./components/chatlog/contexts";
+import { BackgroundTasks, DetachScript, OpenConnector, OpenDesignSystem, SteerActionsContext, ViewFile } from "./components/chatlog/contexts";
 import { canOpenPanelWindows, focusPanelWindow, usePanelWindows } from "./lib/panelWindows";
 import { WorkflowDraftPage } from "./components/workflow/WorkflowDraftPage";
 import { WorkflowRunView, type WorkflowAnswer } from "./components/workflow/WorkflowRunView";
@@ -102,9 +102,9 @@ function App() {
   useSessionSignals(threadId, state.turnInFlight, state.items);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsCategory, setSettingsCategory] = useState<SettingsCategory | undefined>(undefined);
-  // What Design systems opens on: its new-system form ("new"), one system (its id) or the list.
-  const [settingsDesign, setSettingsDesign] = useState<string | null>(null);
-  const showDesignSystems = (start: string | null) => { setSettingsCategory("design-systems"); setSettingsDesign(start); setSettingsOpen(true); };
+  // What the category opens on: a design system ("new" or its id) or a connector, else its list.
+  const [settingsStart, setSettingsStart] = useState<string | null>(null);
+  const showSettings = (category: SettingsCategory, start: string | null) => { setSettingsCategory(category); setSettingsStart(start); setSettingsOpen(true); };
   // Find in page: null while closed; bumped to refocus an open one.
   const [findKey, setFindKey] = useState<number | null>(null);
   const [pendingComposerAction, setPendingComposerAction] = useState<ComposerAction | null>(null);
@@ -783,7 +783,7 @@ function App() {
   const artifacts = artifactActions((id, path) => {
     setViewerFiles((files) => ({ ...files, [id]: path }));
     setPanelOpen("viewer", true);
-  }, artifactStart.start, (id) => showDesignSystems(id ?? "new"));
+  }, artifactStart.start, (id) => showSettings("design-systems", id ?? "new"));
   const viewFile = (path: string) => {
     if (!isViewable(path)) return false;
     setViewerFiles((files) => ({ ...files, [threadIdRef.current]: path }));
@@ -839,7 +839,7 @@ function App() {
       onArtifactRemoved={artifactStart.clear}
       designSystem={artifactStart.designSystem}
       onDesignSystem={artifactStart.chooseDesignSystem}
-      onManageDesignSystems={(startNew) => showDesignSystems(startNew ? "new" : null)}
+      onManageDesignSystems={(startNew) => showSettings("design-systems", startNew ? "new" : null)}
       externalDraft={pendingComposerDraft}
       onExternalTextConsumed={() => setPendingComposerDraft(null)}
     />
@@ -957,7 +957,7 @@ function App() {
                   {composer}
                 </div>
               ) : navMode === "create" ? (
-                <SteerActionsContext.Provider value={steers.actions}><ViewFile.Provider value={viewFile}><OpenDesignSystem.Provider value={showDesignSystems}><DetachScript.Provider value={onDetachScript}><BackgroundTasks.Provider value={{ statuses: subAgents.statuses, open: (taskId) => { setSubAgentFocus({ threadId, taskId }); setPanelOpen("background", true); } }}>
+                <SteerActionsContext.Provider value={steers.actions}><ViewFile.Provider value={viewFile}><OpenDesignSystem.Provider value={(id) => showSettings("design-systems", id)}><OpenConnector.Provider value={(name) => showSettings("connectors", name)}><DetachScript.Provider value={onDetachScript}><BackgroundTasks.Provider value={{ statuses: subAgents.statuses, open: (taskId) => { setSubAgentFocus({ threadId, taskId }); setPanelOpen("background", true); } }}>
                   <ChatLog
                     items={state.items}
                     turnInFlight={state.turnInFlight}
@@ -992,7 +992,7 @@ function App() {
                   )}
                   <NoticeStack notices={notices} />
                   {composer}
-                </BackgroundTasks.Provider></DetachScript.Provider></OpenDesignSystem.Provider></ViewFile.Provider></SteerActionsContext.Provider>
+                </BackgroundTasks.Provider></DetachScript.Provider></OpenConnector.Provider></OpenDesignSystem.Provider></ViewFile.Provider></SteerActionsContext.Provider>
               ) : workflowDraft ? (
                 <WorkflowDraftPage
                   threadId={workflowDraft.threadId}
@@ -1044,10 +1044,10 @@ function App() {
               <SettingsModal
                 open={settingsOpen}
                 initialCategory={settingsCategory}
-                startDesignSystem={settingsDesign}
+                start={settingsStart}
                 onDescribeDesignSystem={() => artifacts.make("design-system", true)}
                 onCreateSkill={onCreateSkill}
-                onClose={() => { setSettingsOpen(false); setSettingsCategory(undefined); setSettingsDesign(null); }}
+                onClose={() => { setSettingsOpen(false); setSettingsCategory(undefined); setSettingsStart(null); }}
               />
               {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
             </div>
