@@ -990,7 +990,7 @@ function App() {
                   {pendingQuestion && (
                     <QuestionPanel key={pendingQuestion.id} item={pendingQuestion} onAnswer={onAnswerQuestion} />
                   )}
-                  <NoticeStack notices={notices} />{noticeOverlay}
+                  {!pendingQuestion && <NoticeStack notices={notices} />}{noticeOverlay}
                   {composer}
                 </BackgroundTasks.Provider></DetachScript.Provider></OpenConnector.Provider></OpenDesignSystem.Provider></ViewFile.Provider></SteerActionsContext.Provider>
               ) : workflowDraft ? (

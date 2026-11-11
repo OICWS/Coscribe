@@ -20,8 +20,9 @@ screenshots first.
   and folder, Open (its own program) and a folder button (Show in folder).
 - A call waiting for approval, or a plan waiting for an answer, gets a notice
   while its card is scrolled out of sight; Show scrolls back to it
-  (`components/waitingNotice.tsx`). A question has no notice: its panel already
-  sits above the message box.
+  (`components/waitingNotice.tsx`). A question has no notice: its panel takes
+  the notices' place above the message box until it is answered or closed, as it
+  is what the reply waits on now.
 - A closed notice stays closed until its file changes again (kept in
   localStorage per conversation, file and modified time).
 - `copyImage` moved to `lib/copyImage.ts`, shared with the attachment menu.
