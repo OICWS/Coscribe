@@ -997,6 +997,11 @@ since it's the shape Anthropic's own MCP spec examples popularized, not
 something Coscribe invented. A remote server is an entry with a
 `server_url` (and optional `headers`) instead.
 
+When a request needs a service no connector reaches yet, the assistant can offer one from the
+catalog on a card in the chat. **Connect** (or **Sign in again**) opens that connector's page
+below; once it is connected, the conversation carries on by itself. **Not now** keeps it from
+offering that connector again in the conversation.
+
 **Settings → Connectors** lists the catalog and your own connectors
 (Type Local or Web, "Custom" for ones you added; Status a check when
 connected, Connect for a catalog one not added yet). **Add → Add custom

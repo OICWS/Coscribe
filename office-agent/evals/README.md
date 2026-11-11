@@ -274,8 +274,10 @@ python -m evals.agentic.run --tasks 01,06 --out evals/runs/agentic-try
 
 The tasks live in `agentic/tasks.py`. Each has its turns, a setup that writes its inputs from a
 fixed seed, and checks on what the conversation left behind. A check can look at the last turn's
-replies, the global instructions or a file in the workspace. Some tasks set a low compaction
-threshold so their long reads go through compaction and clearing.
+replies, the global instructions, a file in the workspace or the tool calls made. Some tasks set
+a low compaction threshold so their long reads go through compaction and clearing, and one gives
+the conversation the connector catalog with nothing connected, to see it offer a connector
+(decision 0046).
 
 The session is built as above, but in the tier of a person at the keyboard. The scripted user
 approves gated calls, saves what `remember` offers, and answers every other question with "decide
