@@ -22,6 +22,9 @@ const IDLE_QUIET_MS = 500;
 const IDLE_MAX_MS = 8000;
 // Streams that stay open by design never finish.
 const LONG_LIVED = new Set(["EventSource", "WebSocket", "Ping"]);
+// The width a laptop's browser window gives a page: wide enough for the
+// toolbars of SAP's WebGUI and sites like it.
+const WIDE_LAYOUT_WIDTH = 1280;
 
 export interface PageDialog {
   type: string;
@@ -105,7 +108,7 @@ export class TabCdp {
   }
 
   private reset(): void {
-    this.sized = false;
+    this.layoutKey = "";
     this.dialog = null;
     this.chooser = null;
     this.sessions.clear();
@@ -113,18 +116,53 @@ export class TabCdp {
     this.requests.clear();
   }
 
-  /** Off the panel a page has no viewport of its own (see browserPanel's
-   * layout), so it's given the panel's size to lay out at. */
-  private sized = false;
+  /** Whether the AI widened the page past the panel (widen); until its
+   * turn or run ends (browserPanel's releaseTabs). */
+  wide = false;
+  private layoutKey = "";
+  private lastFit: { hidden: boolean; panel: { width: number; height: number } } | null = null;
 
-  async sizeWhileHidden(hidden: boolean, width: number, height: number): Promise<void> {
-    if (hidden === this.sized || !this.wc.debugger.isAttached()) return;
-    if (hidden) {
-      await this.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
-    } else {
+  /** Lays the page out for the panel. Off the panel a page has no
+   * viewport of its own (see browserPanel's layout), so it gets the
+   * panel's size; widened, it gets WIDE_LAYOUT_WIDTH, unscaled: the panel
+   * shows its left part at the usual size, and the page takes clicks
+   * beyond the panel's edge all the same. */
+  async fit(hidden: boolean, panel: { width: number; height: number }): Promise<void> {
+    if (!this.wc.debugger.isAttached() || panel.width <= 0 || panel.height <= 0) return;
+    this.lastFit = { hidden, panel };
+    const width = this.wide ? Math.max(panel.width, WIDE_LAYOUT_WIDTH) : panel.width;
+    const natural = !hidden && width === panel.width;
+    const key = natural ? "natural" : `${width}x${panel.height}`;
+    if (key === this.layoutKey) return;
+    if (natural) {
       await this.send("Emulation.clearDeviceMetricsOverride");
+    } else {
+      await this.send("Emulation.setDeviceMetricsOverride", { width, height: panel.height, deviceScaleFactor: hidden ? 1 : 0, mobile: false });
     }
-    this.sized = hidden;
+    this.layoutKey = key;
+  }
+
+  /** A narrow panel cuts sites built for a desktop window (SAP's WebGUI)
+   * short: a toolbar that doesn't fit is clipped, not scrolled, and the AI
+   * can't click a button the page never lays out in view. Laid out wider,
+   * it can. False if the page is already as wide as it gets. */
+  async widen(): Promise<boolean> {
+    if (this.wide || !this.lastFit || this.lastFit.panel.width >= WIDE_LAYOUT_WIDTH) return false;
+    this.wide = true;
+    await this.fit(this.lastFit.hidden, this.lastFit.panel);
+    return true;
+  }
+
+  /** An AI step of conversation or run `threadId` is about to act on the tab. */
+  async drive(threadId: string, downloadDir: unknown, hidden: boolean, panel: { width: number; height: number }): Promise<void> {
+    this.stepStarted = Date.now();
+    this.threadId = threadId;
+    if (typeof downloadDir === "string") this.downloadDir = downloadDir;
+    // With the window in the tray the page would count as hidden, and a
+    // hidden page takes no clicks: a scheduled run would fail at its first.
+    this.wc.setBackgroundThrottling(false);
+    await this.ensure();
+    await this.fit(hidden, panel);
   }
 
   send<T = Record<string, unknown>>(method: string, params: Record<string, unknown> = {}, session?: string): Promise<T> {
@@ -374,3 +412,4 @@ export function cdpFor(wc: WebContents): TabCdp {
   }
   return cdp;
 }
+

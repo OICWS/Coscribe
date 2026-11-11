@@ -31,6 +31,7 @@ import {
   normalizeUrl,
   onTabDownload,
   openerOf,
+  releaseTabs,
   selectTab,
   setViewHidden,
   tabInfo,
@@ -298,7 +299,10 @@ async function snapshotFrame(cdp: TabCdp, frame: AgentFrame, depth: number): Pro
 async function locate(cdp: TabCdp, ref: unknown): Promise<{ x: number; y: number; element: string; frame: AgentFrame; inner: string }> {
   const { key, inner } = splitRef(ref);
   const frame = cdp.frame(key);
-  const point = await cdp.agent<{ x: number; y: number; element: string }>(frame, "locate", { ref: inner });
+  let point = await cdp.agent<{ x: number; y: number; element: string; outside: boolean }>(frame, "locate", { ref: inner });
+  // A page laid out for the panel's width may clip what doesn't fit (TabCdp.widen).
+  if (point.outside && (await cdp.widen())) point = await cdp.agent(frame, "locate", { ref: inner });
+  if (point.outside) throw new Error(`${point.element} is cut off outside the visible part of the page, so it can't be clicked.`);
   let { x, y } = point;
   let bounds: { width: number; height: number } | null = null;
   for (let f: AgentFrame = frame; f.parent; f = f.parent) {
@@ -495,6 +499,11 @@ function startActivity(threadId: string): void {
   }
 }
 
+function endActivity(threadId: string): void {
+  activeThreads.delete(threadId);
+  releaseTabs(threadId);
+}
+
 /** Until a download no wait has taken yet has finished -- one already
  * done, under way, or starting while waiting -- and none is still going;
  * then takes them. */
@@ -556,13 +565,7 @@ async function run(command: Command): Promise<Record<string, unknown>> {
       selectTab(tab.id);
       if (args.url) {
         const cdp = cdpFor(tab.view.webContents);
-        cdp.stepStarted = Date.now();
-        cdp.threadId = command.thread_id;
-        if (typeof args.download_dir === "string") cdp.downloadDir = args.download_dir;
-        tab.view.webContents.setBackgroundThrottling(false);
-        await cdp.ensure();
-        const size = hiddenTabSize();
-        await cdp.sizeWhileHidden(!tabShown(tab), size.width, size.height);
+        await cdp.drive(command.thread_id, args.download_dir, !tabShown(tab), hiddenTabSize());
         await load(tab.view.webContents, String(args.url));
         cdp.stepEnded = Date.now();
       }
@@ -581,15 +584,7 @@ async function run(command: Command): Promise<Record<string, unknown>> {
     throw new Error("The current tab is empty -- open a page with browser_navigate first.");
   }
   const cdp = cdpFor(wc);
-  cdp.stepStarted = Date.now();
-  cdp.threadId = command.thread_id;
-  if (typeof args.download_dir === "string") cdp.downloadDir = args.download_dir;
-  // With the window in the tray the page would count as hidden, and a
-  // hidden page takes no clicks: a scheduled run would fail at its first.
-  wc.setBackgroundThrottling(false);
-  await cdp.ensure();
-  const size = hiddenTabSize();
-  await cdp.sizeWhileHidden(!tabShown(tab), size.width, size.height);
+  await cdp.drive(command.thread_id, args.download_dir, !tabShown(tab), hiddenTabSize());
   if (cdp.dialog && command.action !== "handle_dialog") throw new Error(describeDialog(cdp.dialog));
 
   let result: Record<string, unknown>;
@@ -909,7 +904,7 @@ export function startBrowserAgent(port: number, token: string, getWindow: () => 
               // A stop can't queue behind the step it is stopping.
               if (command.action === "activity") {
                 if (command.args?.active) startActivity(command.thread_id);
-                else activeThreads.delete(command.thread_id);
+                else endActivity(command.thread_id);
                 continue;
               }
               if (command.action === "cancel") {

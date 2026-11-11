@@ -88,7 +88,10 @@ check clicks with real input (xdotool under Xvfb, or Windows itself).
   commands from the sidecar's token-authenticated `/internal/browser-host`
   stream and performs them on those tabs with real input events, reading
   pages through `browserAgentPage.ts` in an isolated world. No
-  remote-debugging port is opened.
+  remote-debugging port is opened. When a button the AI wants is clipped by a narrow
+  panel, the page lays out 1280 px wide, unscaled, until the turn or run ends
+  (`TabCdp.widen` in `browserCdp.ts`): the panel shows its left part and the
+  page still takes the click beyond the edge.
 
 ## Prerequisites
 
