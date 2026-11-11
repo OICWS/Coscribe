@@ -128,7 +128,7 @@ export function pageAgent(action: string, args: Record<string, unknown>): unknow
     return el;
   };
 
-  const center = (el: Element): { x: number; y: number; element: string } => {
+  const center = (el: Element): { x: number; y: number; element: string; outside: boolean } => {
     el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" as ScrollBehavior });
     const rect = el.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) {
@@ -136,7 +136,7 @@ export function pageAgent(action: string, args: Record<string, unknown>): unknow
     }
     const x = Math.min(Math.max(rect.left + rect.width / 2, 1), window.innerWidth - 1);
     const y = Math.min(Math.max(rect.top + rect.height / 2, 1), window.innerHeight - 1);
-    return { x, y, element: describe(el) };
+    return { x, y, element: describe(el), outside: rect.right <= 0 || rect.bottom <= 0 || rect.left >= innerWidth || rect.top >= innerHeight };
   };
 
   const SKIP_TAGS = new Set(["script", "style", "noscript", "template", "head", "meta", "link"]);

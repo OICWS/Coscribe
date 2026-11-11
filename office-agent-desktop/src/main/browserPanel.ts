@@ -276,7 +276,7 @@ function layout(): void {
       setBoundsReliably(tab.view, panelRect!);
       lastPanelSize = { width: panelRect!.width, height: panelRect!.height };
       void existingCdp(tab.view.webContents)
-        ?.sizeWhileHidden(false, 0, 0)
+        ?.fit(false, lastPanelSize)
         .catch(() => undefined);
     } else if (isActive && !tab.blank) {
       // The AI may be working in it with the panel closed. Detached, the
@@ -293,6 +293,17 @@ function layout(): void {
 /** Whether the tab's page is on screen in the panel. */
 export function tabShown(tab: Tab): boolean {
   return panelRect !== null && tab.group === viewedGroup && activeIds.get(tab.group) === tab.id && !tab.blank && !viewHidden;
+}
+
+/** The group's turn or run is over: a tab the AI widened goes back to the
+ * panel's width, so the person sees all of it again. */
+export function releaseTabs(group: string): void {
+  for (const tab of groupTabs(group)) {
+    const cdp = existingCdp(tab.view.webContents);
+    if (!cdp?.wide) continue;
+    cdp.wide = false;
+    void cdp.fit(!tabShown(tab), lastPanelSize).catch(() => undefined);
+  }
 }
 
 export function hiddenTabSize(): { width: number; height: number } {
