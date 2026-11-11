@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { currentWorkflowDrafts, draftsInTheWorks, workflowTests, type WorkflowDraftEntry } from "../../lib/transcriptGrouping";
 import type { LogItem } from "../../state/reducer";
+import type { ScheduledTask } from "../../types/settings";
 import { WorkflowIcon } from "../icons";
 import type { Notice } from "../NoticeStack";
 import { type DraftCards, draftStatus, type Status } from "./draftCards";
@@ -57,13 +58,36 @@ function stateWords(status: Status): string {
   }
 }
 
+/** What a conversation's draft cards share that comes from outside it: which drafts the tasks
+ * were saved from, the test running now, and the buttons' actions. */
+export function draftCardsFrom(
+  tasks: ScheduledTask[],
+  testProgress: DraftCards["testProgress"],
+  on: { testAgain?: (draft: WorkflowDraftEntry) => void; openTask: (task: ScheduledTask) => void },
+): Pick<DraftCards, "saved" | "testProgress" | "onTestAgain" | "onContinue" | "onOpenTask"> {
+  const saved = new Map<string, { triggerId: string; name: string }>();
+  for (const task of tasks) for (const id of task.drafts ?? []) saved.set(id, { triggerId: task.trigger_id, name: task.name });
+  return {
+    saved,
+    testProgress,
+    onTestAgain: on.testAgain,
+    onContinue: () => document.querySelector<HTMLTextAreaElement>('[data-testid="composer"] textarea')?.focus(),
+    onOpenTask: (triggerId) => {
+      const task = tasks.find((t) => t.trigger_id === triggerId);
+      if (task) on.openTask(task);
+    },
+  };
+}
+
 export function useDraftNotices(
   items: LogItem[],
   turnInFlight: boolean,
   cards: Pick<DraftCards, "saved" | "testProgress">,
-  on: { save: (draft: WorkflowDraftEntry) => void; review: (draft: WorkflowDraftEntry) => void },
+  on: { save: (draft: WorkflowDraftEntry) => Promise<string | null>; review: (draft: WorkflowDraftEntry) => void },
 ): Notice[] {
   const [closed, setClosed] = useState(readClosed);
+  // Why a save from a notice failed, shown on that notice.
+  const [failed, setFailed] = useState<Record<string, string>>({});
   const working = draftsInTheWorks(items, turnInFlight);
   const tests = workflowTests(items, turnInFlight);
   const status = { ...cards, currentDraftIds: new Set<string>(), inTheWorks: working, tests };
@@ -75,8 +99,8 @@ export function useDraftNotices(
       id: `draft:${draft.id}`,
       icon: <WorkflowIcon className="h-4 w-4" />,
       title: draft.triggerId ? `Changes to “${draft.name}”` : draft.name,
-      detail: draft.triggerId ? "changes to a saved task" : "workflow draft",
-      state: stateWords(state),
+      detail: (failed[draft.id] || draft.triggerId ? "changes to a saved task" : "workflow draft"),
+      state: failed[draft.id] ? "Not saved" : stateWords(state),
       ready: state.kind === "passed",
       onOpen: () =>
         document
@@ -87,7 +111,8 @@ export function useDraftNotices(
         {
           label: draft.triggerId ? "Save changes" : "Save…",
           disabled: state.kind === "testing",
-          onClick: () => on.save(draft),
+          onClick: () =>
+            void on.save(draft).then((error) => setFailed((was) => ({ ...was, [draft.id]: error ?? "" }))),
         },
       ],
       onDismiss: () => {

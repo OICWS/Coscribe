@@ -20,7 +20,7 @@ function failedTitle(result: WorkflowTestResult): string {
   return result.steps.find((s) => s.id === result.failed_step)?.title ?? result.failed_step ?? "a step";
 }
 
-export function StatusLine({ status }: { status: Status }) {
+function StatusLine({ status }: { status: Status }) {
   const base = "flex min-w-0 items-center gap-1.5 text-[13px]";
   switch (status.kind) {
     case "saved":
@@ -199,6 +199,28 @@ function Steps({ entry, result }: { entry: WorkflowDraftEntry; result: WorkflowT
 /** A fixed workflow the model drafted or revised in this conversation,
  * results first: whether its test passed and what it produced. Nothing
  * is saved until the user reviews it and saves. */
+function StillWorking() {
+  return (
+    <span className="flex items-center gap-1.5 text-[13px] text-[var(--muted)]" data-testid="draft-in-the-works">
+      <span className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] motion-reduce:animate-none" />
+      AI is still testing and fixing this. You can review it once it's done.
+    </span>
+  );
+}
+
+function ContinueButton({ onContinue }: { onContinue?: () => void }) {
+  return (
+    <button
+      type="button"
+      className="rounded-md px-2 py-1.5 text-[13px] text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
+      disabled={!onContinue}
+      onClick={() => onContinue?.()}
+    >
+      Continue in chat
+    </button>
+  );
+}
+
 export function WorkflowDraftCard({ entry }: { entry: WorkflowDraftEntry }) {
   const cards = useContext(DraftCardsContext);
   const superseded = !cards.currentDraftIds.has(entry.id);
@@ -272,10 +294,7 @@ export function WorkflowDraftCard({ entry }: { entry: WorkflowDraftEntry }) {
             Open task
           </button>
         ) : working ? (
-          <span className="flex items-center gap-1.5 text-[13px] text-[var(--muted)]" data-testid="draft-in-the-works">
-            <span className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] motion-reduce:animate-none" />
-            AI is still testing and fixing this. You can review it once it's done.
-          </span>
+          <StillWorking />
         ) : (
           <>
             <button
@@ -296,14 +315,7 @@ export function WorkflowDraftCard({ entry }: { entry: WorkflowDraftEntry }) {
                 Test again
               </button>
             )}
-            <button
-              type="button"
-              className="rounded-md px-2 py-1.5 text-[13px] text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
-              disabled={!cards.onContinue}
-              onClick={() => cards.onContinue?.()}
-            >
-              Continue in chat
-            </button>
+            <ContinueButton onContinue={cards.onContinue} />
           </>
         )}
         {entry.notes.length > 0 && status.kind !== "saved" && !working && (

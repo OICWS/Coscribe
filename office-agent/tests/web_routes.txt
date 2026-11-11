@@ -176,7 +176,6 @@ POST /api/threads/{thread_id}/slides/history
 POST /api/threads/{thread_id}/workflow-draft
 POST /api/threads/{thread_id}/workspace-notes
 POST /api/upload
-POST /api/workflows/graph
 POST /api/workflows/permissions
 POST /api/workflows/validate
 POST /internal/browser-host/result

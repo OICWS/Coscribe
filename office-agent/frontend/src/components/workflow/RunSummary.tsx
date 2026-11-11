@@ -52,6 +52,21 @@ const TONE: Record<string, string> = {
   failed: "var(--danger)",
 };
 
+const SPINNER = (
+  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] motion-reduce:animate-none" />
+);
+
+function StopButton({ busy, onStop }: { busy: boolean; onStop: () => void }) {
+  return (
+    <button type="button" className={secondaryButton} disabled={busy} onClick={onStop}>
+      <span className="flex items-center gap-1.5">
+        <StopIcon className="h-3.5 w-3.5" />
+        Stop
+      </span>
+    </button>
+  );
+}
+
 /** The card's first line: how the run ended, or what it is at, and what can be done now. */
 function StatusLine({ ctx }: { ctx: SummaryContext }) {
   const { run, workflow } = ctx;
@@ -124,22 +139,13 @@ function StatusLine({ ctx }: { ctx: SummaryContext }) {
   } else if (run.status === "stopped") {
     words = title ? `Stopped at ${title}. Nothing after that ran.` : "Stopped. Nothing after that ran.";
   } else {
-    icon = (
-      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] motion-reduce:animate-none" />
-    );
+    icon = SPINNER;
     words = plain =
       run.status === "waiting"
         ? `${title ?? "A step"} is waiting; it goes on by itself`
         : `Running${title ? `: ${title}` : ""}`;
     live = true;
-    actions = (
-      <button type="button" className={secondaryButton} disabled={busy} onClick={() => act(ctx.onStop)}>
-        <span className="flex items-center gap-1.5">
-          <StopIcon className="h-3.5 w-3.5" />
-          Stop
-        </span>
-      </button>
-    );
+    actions = <StopButton busy={busy} onStop={() => act(ctx.onStop)} />;
   }
   return (
     <div className="flex flex-col gap-2">

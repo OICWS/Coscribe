@@ -2,7 +2,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import { capitalize, formatRunTime, runDuration, runSourceLabel } from "../../lib/runLabels";
 import {
   describeCheckResult,
-  formatValue,
   agentUsage,
   KIND_COLOR,
   KIND_LABEL,
@@ -24,7 +23,6 @@ import { calledWorkflow, runStepTitle, waitingInside } from "../../lib/calledRun
 import { everyStep, placeSteps } from "../../lib/workflowTree";
 import type { LoopStep, StepRecord, Workflow, WorkflowStep } from "../../types/workflow";
 import { CheckIcon, ChevronDownIcon, ClockIcon, SparkIcon, StopIcon } from "../icons";
-import { VarToken } from "./parts";
 import { Screenshot } from "./Screenshot";
 import { InvestigationLink, WAITING_FOR_BROWSER } from "./InvestigationLink";
 import { StepOutput } from "./StepOutput";
@@ -43,7 +41,7 @@ export type WorkflowAnswer = [approved: boolean, note: string, values?: AnswerVa
 import { ViewToggle } from "./ViewToggle";
 import { SelectMenu } from "../SelectMenu";
 import { WorkflowCanvas } from "./WorkflowCanvas";
-import { RunEvent } from "./RunEvent";
+import { RunInputs, Sites } from "./RunInputs";
 import { RunDetails, RunSummary } from "./RunSummary";
 import { loadTaskView, saveTaskView, type TaskView } from "../../lib/taskView";
 
@@ -663,37 +661,7 @@ function RunBanner({
   return null;
 }
 
-/** The values this run was given. */
-function RunInputs({ workflow, run }: { workflow: Workflow; run: ScheduledRun }) {
-  return (
-    <>
-      {workflow.inputs.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
-          {workflow.inputs.map((input) => (
-            <span key={input.name} className="inline-flex items-center gap-2">
-              <VarToken name={input.name} isInput />
-              <span className="rounded-md bg-[var(--card-bg)] px-2 py-0.5 text-[13px]">
-                {formatValue(run.inputs?.[input.name] ?? input.default)}
-              </span>
-            </span>
-          ))}
-        </div>
-      )}
-      <RunEvent run={run} />
-    </>
-  );
-}
-
 /** A run that stopped without a failed step to retry: the way on is to continue it. */
-function Sites({ run }: { run: ScheduledRun }) {
-  if (!run.sites?.length || run.status === "running") return null;
-  return (
-    <div className="text-[13px] text-[var(--muted)]" data-testid="run-sites">
-      Opened: <span className="text-[var(--fg)]">{run.sites.join(", ")}</span>
-    </div>
-  );
-}
-
 function CrashedBox({ run, onRetry }: Pick<WorkflowRunViewProps, "run" | "onRetry">) {
   const [retrying, setRetrying] = useState(false);
   const [crashError, setCrashError] = useState<string | null>(null);

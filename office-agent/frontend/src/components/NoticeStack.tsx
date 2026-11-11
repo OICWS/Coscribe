@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { CloseIcon } from "./icons";
 
-export interface NoticeAction {
+interface NoticeAction {
   label: string;
   onClick: () => void;
   title?: string;

@@ -98,6 +98,18 @@ interface ScheduledTaskModalProps {
  * action, and the detail page's pencil icon (all pass a different `task`
  * prop into the same component rather than duplicating the form three
  * times). */
+/** What the workflow task runs, and under it its environment, picked as under the message box. */
+function WorkflowBox({ summary, environment, onPick }: { summary: string; environment: string; onPick: (id: string) => void }) {
+  return (
+    <div>
+      <div className="rounded-md border border-[var(--border)] px-3 py-2.5 text-sm text-[var(--muted)]">{summary}</div>
+      <div className="-ml-0.5 flex items-center pt-1.5">
+        <EnvironmentPicker current={environment} disabled={false} onPick={onPick} forTask />
+      </div>
+    </div>
+  );
+}
+
 export function ScheduledTaskModal({
   task,
   draft,
@@ -212,15 +224,7 @@ export function ScheduledTaskModal({
           </div>
 
           {workflow ? (
-            <div>
-              <div className="rounded-md border border-[var(--border)] px-3 py-2.5 text-sm text-[var(--muted)]">
-                {workflowSummary(workflow, isEdit)}
-              </div>
-              {/* The environment sits under the box, as it does under the message box. */}
-              <div className="-ml-0.5 flex items-center pt-1.5">
-                <EnvironmentPicker current={environment} disabled={false} onPick={setEnvironment} forTask />
-              </div>
-            </div>
+            <WorkflowBox summary={workflowSummary(workflow, isEdit)} environment={environment} onPick={setEnvironment} />
           ) : (
             <div>
               <label className="mb-1 block text-sm font-medium">
