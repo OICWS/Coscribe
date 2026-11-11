@@ -14,8 +14,7 @@
  * tab's preload): the page is a separately composited native surface the
  * React DOM can't paint over. This side forwards pick mode and turns a
  * picked element's rect into a screenshot with `capturePage`, which works
- * in the same CSS-pixel space getBoundingClientRect returns -- unless the
- * AI has the page laid out wider than the panel (TabCdp.fit).
+ * in the same CSS-pixel space getBoundingClientRect returns.
  */
 
 import {
@@ -34,7 +33,7 @@ import {
 } from "electron";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { captureTab, existingCdp } from "./browserCdp";
+import { existingCdp } from "./browserCdp";
 import { browserSettings, updateBrowserSettings } from "./browserPermissions";
 
 // preload/index.ts repeats these strings: a sandboxed preload can only
@@ -296,13 +295,13 @@ export function tabShown(tab: Tab): boolean {
   return panelRect !== null && tab.group === viewedGroup && activeIds.get(tab.group) === tab.id && !tab.blank && !viewHidden;
 }
 
-/** The group's turn or run is over: its tabs go back to the panel's own
- * width, for the person to read at the size they chose. */
+/** The group's turn or run is over: a tab the AI widened goes back to the
+ * panel's width, so the person sees all of it again. */
 export function releaseTabs(group: string): void {
   for (const tab of groupTabs(group)) {
     const cdp = existingCdp(tab.view.webContents);
-    if (!cdp?.driving) continue;
-    cdp.driving = false;
+    if (!cdp?.wide) continue;
+    cdp.wide = false;
     void cdp.fit(!tabShown(tab), lastPanelSize).catch(() => undefined);
   }
 }
@@ -450,14 +449,11 @@ export function ensureActiveTab(group: string = viewedGroup): Tab {
 
 async function handlePicked(tab: Tab, info: PickedElementInfo): Promise<void> {
   if (!win || win.isDestroyed()) return;
-  // The page measures in its own pixels; while the AI has it laid out
-  // wider than the panel, the panel shows them scaled.
-  const scale = existingCdp(tab.view.webContents)?.screenScale ?? 1;
   const rect: Rectangle = {
-    x: Math.round(info.rect.x * scale),
-    y: Math.round(info.rect.y * scale),
-    width: Math.max(1, Math.round(info.rect.width * scale)),
-    height: Math.max(1, Math.round(info.rect.height * scale)),
+    x: Math.round(info.rect.x),
+    y: Math.round(info.rect.y),
+    width: Math.round(info.rect.width),
+    height: Math.round(info.rect.height),
   };
   const image = await tab.view.webContents.capturePage(rect);
   win.webContents.send(BROWSER_PANEL_PICKED_EVENT, {
@@ -579,7 +575,7 @@ export function registerBrowserPanelHandlers(window: BrowserWindow): void {
   ipcMain.handle(BROWSER_PANEL_CAPTURE_CHANNEL, async () => {
     const tab = activeTab();
     if (!tab || tab.blank) return null;
-    const image = await captureTab(tab.view.webContents);
+    const image = await tab.view.webContents.capturePage();
     const info = tabInfo(tab);
     return { dataUrl: image.toDataURL(), title: info.title, url: info.url };
   });
@@ -618,7 +614,7 @@ export function registerBrowserPanelHandlers(window: BrowserWindow): void {
 async function saveScreenshot(window: BrowserWindow): Promise<void> {
   const tab = activeTab();
   if (!tab || tab.blank) return;
-  const image = await captureTab(tab.view.webContents);
+  const image = await tab.view.webContents.capturePage();
   const name = (tab.view.webContents.getTitle() || "screenshot").replace(/[\\/:*?"<>|]+/g, " ").trim().slice(0, 80);
   const { canceled, filePath } = await dialog.showSaveDialog(window, {
     defaultPath: join(app.getPath("downloads"), `${name || "screenshot"}.png`),

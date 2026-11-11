@@ -17,7 +17,7 @@ import { Readable } from "node:stream";
 import { type BrowserWindow, type DownloadItem, type WebContents, app, webContents } from "electron";
 import { pageAgent } from "./browserAgentPage";
 import { type Step, cancelFrameOff, enqueue, running, runningSteps, scheduleFrameOff, stepContext } from "./browserAgentSteps";
-import { type AgentFrame, type Download, type PageDialog, type TabCdp, captureTab, cdpFor, existingCdp } from "./browserCdp";
+import { type AgentFrame, type Download, type PageDialog, type TabCdp, cdpFor, existingCdp } from "./browserCdp";
 import { checkNetworkLanding, checkNetworkSites, inSites, isAllowed, normalizeSite, requestPermission } from "./browserPermissions";
 import {
   sendAgentEvent,
@@ -299,7 +299,10 @@ async function snapshotFrame(cdp: TabCdp, frame: AgentFrame, depth: number): Pro
 async function locate(cdp: TabCdp, ref: unknown): Promise<{ x: number; y: number; element: string; frame: AgentFrame; inner: string }> {
   const { key, inner } = splitRef(ref);
   const frame = cdp.frame(key);
-  const point = await cdp.agent<{ x: number; y: number; element: string }>(frame, "locate", { ref: inner });
+  let point = await cdp.agent<{ x: number; y: number; element: string; outside: boolean }>(frame, "locate", { ref: inner });
+  // A page laid out for the panel's width may clip what doesn't fit (TabCdp.widen).
+  if (point.outside && (await cdp.widen())) point = await cdp.agent(frame, "locate", { ref: inner });
+  if (point.outside) throw new Error(`${point.element} is cut off outside the visible part of the page, so it can't be clicked.`);
   let { x, y } = point;
   let bounds: { width: number; height: number } | null = null;
   for (let f: AgentFrame = frame; f.parent; f = f.parent) {
@@ -746,7 +749,7 @@ async function act(
     }
     case "screenshot": {
       await settle(wc);
-      let image = await captureTab(wc);
+      let image = await wc.capturePage();
       const { width } = image.getSize();
       if (width > SCREENSHOT_WIDTH) image = image.resize({ width: SCREENSHOT_WIDTH });
       return withTab(tab, { png: image.toPNG().toString("base64") });
