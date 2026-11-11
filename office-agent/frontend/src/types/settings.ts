@@ -478,6 +478,8 @@ export interface ScheduledTask {
   last_run_status: string | null;
   model: string | null;
   approval_mode: ApprovalMode;
+  /** The most model calls one run of `prompt` makes. */
+  max_steps?: number;
   notes_enabled: boolean;
   /** Oldest first. */
   runs: ScheduledRun[];
@@ -530,6 +532,7 @@ export interface CreateScheduledTaskPayload {
   start_date?: string;
   model?: string;
   approval_mode?: ApprovalMode;
+  max_steps?: number;
   notes_enabled?: boolean;
   workflow?: Workflow | null;
   environment?: string;

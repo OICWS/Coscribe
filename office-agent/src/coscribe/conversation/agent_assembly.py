@@ -38,11 +38,13 @@ from ..tools import (
     QUESTION_TOOL_NAMES,
     SCHEDULED_THREAD_PREFIX,
     TASK_DRAFT_TOOL_NAMES,
+    ScheduledTriggerStore,
     TaskToolkit,
     WorkspaceScope,
     format_skill_listing,
     load_builtin_skills,
     load_skills,
+    parse_run_thread_id,
 )
 from ..tools.web import build_http_tools
 from .artifact_tools import build_artifact_tools
@@ -54,7 +56,7 @@ from .save_offer import SaveOffer
 from .turn_text import build_instructions
 from .workspace_folder import WorkspaceFolders
 
-# The model calls a scheduled run may make for one message when no cap is set.
+# The model calls a scheduled run may make when its task can't be read for its own number.
 UNATTENDED_MAX_TURNS = 150
 
 
@@ -272,11 +274,13 @@ class AgentAssembly:
 
     def _max_turns(self) -> int | None:
         """A conversation has no cap unless one is set: its person stops a reply that runs on.
-        A scheduled run has nobody watching, so it keeps one."""
-        configured = self._host.settings.max_turns
-        if configured is None and self._host.thread_id.startswith(SCHEDULED_THREAD_PREFIX):
-            return UNATTENDED_MAX_TURNS
-        return configured
+        A scheduled run has nobody watching, so it keeps the number its task is saved with."""
+        host = self._host
+        if not host.thread_id.startswith(SCHEDULED_THREAD_PREFIX):
+            return host.settings.max_turns
+        run = parse_run_thread_id(host.thread_id)
+        task = ScheduledTriggerStore(host.settings.state_dir).load(run[0]) if run else None
+        return task.max_steps if task is not None else UNATTENDED_MAX_TURNS
 
     def tool_binding(
         self, model_string: str, tools: Sequence[Callable[..., Any] | BaseTool]

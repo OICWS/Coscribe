@@ -97,8 +97,9 @@ absolute paths, e.g.
 for when you'd rather edit `.env` directly than use the directories list.
 
 A reply has no cap on its steps: you stop one that runs on. `COSCRIBE_MAX_TURNS`
-(`.env`, unset by default) ends a turn with a note after that many model calls. A
-scheduled task's run, which nobody watches, stops at 150 when it is unset;
+(`.env`, unset by default) ends a conversation's turn with a note after that many model
+calls. A scheduled task's run, which nobody watches, stops at the task's own number: 150
+unless you change "Most steps" in the task's form (1 to 1000);
 `spawn_agent`/`review_work` sub-agents have their own smaller budgets.
 
 Settings › Capabilities also has "Create and edit files" and, under it, "Artifacts".

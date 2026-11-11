@@ -19,6 +19,7 @@ from langchain_core.messages import (
 )
 
 from coscribe.conversation.agent_assembly import UNATTENDED_MAX_TURNS, AgentAssembly
+from coscribe.tools import ScheduledTriggerStore, create_trigger, patch_trigger
 from coscribe.web import app as web_app
 from coscribe.web.routes.settings import environments as settings_routes
 from coscribe.web.schemas import ScriptEnvPackageInstall
@@ -43,15 +44,33 @@ from .helpers import (
     [
         ("t1", None, None),
         ("t1", 8, 8),
-        ("scheduled-daily-r1", None, UNATTENDED_MAX_TURNS),
-        ("scheduled-daily-r1", 8, 8),
+        ("scheduled-gone-r1", None, UNATTENDED_MAX_TURNS),
+        ("scheduled-gone-r1", 8, UNATTENDED_MAX_TURNS),
     ],
 )
-def test_only_a_run_nobody_watches_is_capped_when_no_cap_is_set(
-    thread_id: str, configured: int | None, cap: int | None
+def test_a_conversation_has_no_cap_unless_one_is_set_and_a_run_always_has_one(
+    tmp_path: Path, thread_id: str, configured: int | None, cap: int | None
 ) -> None:
-    host = SimpleNamespace(thread_id=thread_id, settings=SimpleNamespace(max_turns=configured))
+    settings = SimpleNamespace(max_turns=configured, state_dir=tmp_path)
+    host = SimpleNamespace(thread_id=thread_id, settings=settings)
     assert AgentAssembly(cast(Any, host))._max_turns() == cap
+
+
+def test_a_run_is_capped_at_the_number_its_task_is_saved_with(tmp_path: Path) -> None:
+    store = ScheduledTriggerStore(tmp_path)
+    task = create_trigger(store, name="Daily", kind="manual", at="", prompt="Go", max_steps=40)
+    assert create_trigger(store, name="B", kind="manual", at="", prompt="Go").max_steps == 150
+    settings = SimpleNamespace(max_turns=8, state_dir=tmp_path)
+    host = SimpleNamespace(thread_id=f"scheduled-{task.trigger_id}-r1", settings=settings)
+    assert AgentAssembly(cast(Any, host))._max_turns() == 40
+
+    kept = patch_trigger(store, task.trigger_id, {"name": "Each day"})
+    assert kept.max_steps == 40
+    assert patch_trigger(store, task.trigger_id, {"max_steps": 300}).max_steps == 300
+    for wrong in (0, 1001, True, "many"):
+        with pytest.raises(ValueError, match="max_steps"):
+            patch_trigger(store, task.trigger_id, {"max_steps": wrong})
+    assert store.load(task.trigger_id).max_steps == 300  # type: ignore[union-attr]
 
 
 def test_max_turns_ends_the_run_gracefully_instead_of_looping_forever(

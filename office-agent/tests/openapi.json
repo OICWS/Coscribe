@@ -983,6 +983,17 @@
             "title": "Kind",
             "type": "string"
           },
+          "max_steps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Steps"
+          },
           "model": {
             "anyOf": [
               {

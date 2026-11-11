@@ -217,6 +217,8 @@ class ScheduledTaskCreate(BaseModel):
     start_date: str | None = None
     model: str | None = None
     approval_mode: str = "manual"
+    # None keeps the task's own number (150 for a new task).
+    max_steps: int | None = None
     notes_enabled: bool = True
     workflow: dict[str, Any] | None = None
     environment: str | None = None

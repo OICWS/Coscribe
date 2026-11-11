@@ -185,7 +185,8 @@ class Settings(BaseSettings):
 
     Counted from the conversation's history (runtime_lg/agent.py's
     _TurnModelCallLimitMiddleware), so resuming after an approval doesn't
-    reset it. Sub-agents have their own budget
+    reset it. A scheduled task's run follows its task's `max_steps`
+    instead. Sub-agents have their own budget
     (subagents.SUBAGENT_MAX_STEPS) and review_work its own reviewer cap;
     neither follows this setting.
     """

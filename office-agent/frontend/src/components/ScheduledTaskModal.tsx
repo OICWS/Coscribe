@@ -56,6 +56,50 @@ function initialValues(task: ScheduledTask | null, draft: TaskDraft | undefined)
   };
 }
 
+const DEFAULT_MAX_STEPS = 150;
+const MOST_STEPS = 1000;
+
+/** What a run of written instructions may do without a person: how far it goes without asking,
+ * and after how many steps it stops, since nobody is there to stop it. */
+function RunLimits({
+  approvalMode,
+  onApprovalMode,
+  maxSteps,
+  onMaxSteps,
+}: {
+  approvalMode: ApprovalMode;
+  onApprovalMode: (mode: ApprovalMode) => void;
+  maxSteps: number;
+  onMaxSteps: (steps: number) => void;
+}) {
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="w-24 shrink-0 text-sm font-medium">Permissions</label>
+        <SelectMenu ariaLabel="Permissions" variant="field" className="w-56" value={approvalMode} options={APPROVAL_OPTIONS} onChange={onApprovalMode} />
+      </div>
+      {APPROVAL_BANNER[approvalMode] && (
+        <div className="rounded-md border border-[var(--border)] px-3 py-2 text-sm text-[var(--muted)]">{APPROVAL_BANNER[approvalMode]}</div>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor="task-max-steps" className="w-24 shrink-0 text-sm font-medium">
+          Most steps
+        </label>
+        <input
+          id="task-max-steps"
+          type="number"
+          min={1}
+          max={MOST_STEPS}
+          className="w-24 rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm outline-none focus:border-[var(--accent)]"
+          value={maxSteps}
+          onChange={(e) => onMaxSteps(Math.min(MOST_STEPS, Math.max(1, Math.round(Number(e.target.value) || 1))))}
+        />
+        <span className="text-sm text-[var(--muted)]">A run stops after this many steps, since nobody is watching it.</span>
+      </div>
+    </>
+  );
+}
+
 interface ProviderInfo {
   default_model: string;
 }
@@ -128,6 +172,7 @@ export function ScheduledTaskModal({
   const [environment, setEnvironment] = useState(task?.environment ?? initialEnvironment ?? DEFAULT_ENVIRONMENT);
   const [schedule, setSchedule] = useState<ScheduleForm>(() => initialSchedule(task, draft));
   const [approvalMode, setApprovalMode] = useState<ApprovalMode>(initial.approvalMode);
+  const [maxSteps, setMaxSteps] = useState(task?.max_steps ?? DEFAULT_MAX_STEPS);
   const [providers, setProviders] = useState<[string, ProviderInfo][]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -160,6 +205,7 @@ export function ScheduledTaskModal({
       prompt: trimmedInstructions,
       ...(model ? { model } : {}),
       approval_mode: approvalMode,
+      ...(workflow ? {} : { max_steps: maxSteps }),
       notes_enabled: task?.notes_enabled ?? true,
       workflow,
       environment,
@@ -257,18 +303,7 @@ export function ScheduledTaskModal({
 
           <FrequencyRow form={schedule} onChange={setSchedule} workflow={workflow} taskId={webhookTaskId(task)} />
 
-          {!workflow && (
-            <div className="flex flex-wrap items-center gap-2">
-              <label className="w-24 shrink-0 text-sm font-medium">Permissions</label>
-              <SelectMenu ariaLabel="Permissions" variant="field" className="w-56" value={approvalMode} options={APPROVAL_OPTIONS} onChange={setApprovalMode} />
-            </div>
-          )}
-
-          {!workflow && APPROVAL_BANNER[approvalMode] && (
-            <div className="rounded-md border border-[var(--border)] px-3 py-2 text-sm text-[var(--muted)]">
-              {APPROVAL_BANNER[approvalMode]}
-            </div>
-          )}
+          {!workflow && <RunLimits approvalMode={approvalMode} onApprovalMode={setApprovalMode} maxSteps={maxSteps} onMaxSteps={setMaxSteps} />}
 
           {error && <div className="text-sm text-[var(--danger)]">{error}</div>}
         </div>

@@ -22,8 +22,12 @@ calls: the person stops one that runs on, as in Claude Code and Codex.
   others.
 - **No cap on steps.** `Settings.max_turns` is unset by default, so a conversation's turn ends
   when the model is done or the person stops it. `COSCRIBE_MAX_TURNS` in `.env` still sets one.
-  A scheduled task's run has nobody to stop it and keeps 150 when none is set
-  (`UNATTENDED_MAX_TURNS`). Sub-agents and the reviewer keep their own budgets.
+  A scheduled task's run has nobody to stop it, so each task of written instructions is saved
+  with its own number (`max_steps`, 150 for a new task and for one the model drafts, 1 to 1000),
+  changed under "Most steps" in the task's form and shown on its page; the run's agent is built
+  with it, whatever `COSCRIBE_MAX_TURNS` says. A workflow's agent steps keep their own
+  `max_steps`. The model's task tools have no parameter for it, so their schemas are unchanged.
+  Sub-agents and the reviewer keep their own budgets.
 - Tried on `coscribe-web` with DeepSeek: with files off, "write hello.txt" wrote nothing and the
   reply gave the text and named the switch; with artifacts off, "make a Doc" got the plan in
   the conversation and an offer of a Word file.
