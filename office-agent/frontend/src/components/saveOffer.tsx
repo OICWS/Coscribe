@@ -15,10 +15,10 @@ export function saveOfferNotice(
     id: "save-offer",
     icon: <WorkflowIcon className="h-4 w-4" />,
     title: "Save this job?",
-    detail: `That took ${offer.steps} steps. Save it so you can run it again, or on a schedule.`,
+    detail: `${offer.steps} steps, to run again or on a schedule`,
     actions: [
       { label: "Save as skill", onClick: pick(on.skill), title: "Instructions the assistant follows next time" },
-      { label: "Save as workflow", primary: true, onClick: pick(on.workflow), title: "Fixed steps you can rerun or schedule" },
+      { label: "Save as workflow", onClick: pick(on.workflow), title: "Fixed steps you can rerun or schedule" },
     ],
     onDismiss: on.dismiss,
     dismissTitle: "Not now",

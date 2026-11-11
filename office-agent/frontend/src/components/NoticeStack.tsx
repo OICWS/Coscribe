@@ -1,11 +1,9 @@
 import { useState, type ReactNode } from "react";
-import { primaryButton, secondaryButton } from "../lib/formStyles";
 import { CloseIcon } from "./icons";
 
 export interface NoticeAction {
   label: string;
   onClick: () => void;
-  primary?: boolean;
   title?: string;
   disabled?: boolean;
 }
@@ -15,65 +13,74 @@ export interface Notice {
   id: string;
   icon: ReactNode;
   title: string;
-  /** One line under the title. */
-  detail?: ReactNode;
-  /** Clicking the title, e.g. to scroll to what the notice is about. */
+  /** A few words after the title. */
+  detail?: string;
+  /** Where it stands, at the right: "Tested", "Testing 2/5". */
+  state?: string;
+  /** Ready to act on (a draft whose test passed): the row turns lavender. */
+  ready?: boolean;
+  /** Clicking the row's text, e.g. to scroll to what the notice is about. */
   onOpen?: () => void;
   actions: NoticeAction[];
   onDismiss?: () => void;
   dismissTitle?: string;
 }
 
-const primaryClass = `${primaryButton} shrink-0 whitespace-nowrap`;
-const secondaryClass = `${secondaryButton} shrink-0 whitespace-nowrap`;
-
 function NoticeRow({ notice }: { notice: Notice }) {
-  const heading = (
+  const fg = notice.ready ? "text-[var(--notice-ready-fg)]" : "text-[var(--notice-fg)]";
+  const text = (
     <>
-      <div className="truncate text-[13px] font-medium" title={notice.title}>
+      <span className="min-w-0 truncate" title={notice.title}>
         {notice.title}
-      </div>
-      {notice.detail && <div className="min-w-0 truncate text-[13px] text-[var(--muted)]">{notice.detail}</div>}
+      </span>
+      {notice.detail && (
+        <span className="min-w-0 shrink-[3] truncate max-sm:hidden" title={notice.detail}>
+          {notice.detail}
+        </span>
+      )}
     </>
   );
   return (
     <div
-      className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] px-3 py-1.5"
+      className={`flex min-h-[52px] min-w-0 items-center gap-3 rounded-xl px-4 font-mono text-[14px] ${fg} ${
+        notice.ready ? "bg-[var(--notice-ready-bg)]" : "bg-[var(--notice-bg)]"
+      }`}
       data-testid="notice"
     >
-      <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[var(--muted)]">{notice.icon}</span>
+      <span className={`flex h-4 w-4 shrink-0 items-center justify-center ${notice.ready ? "" : "text-[var(--notice-icon)]"}`}>
+        {notice.icon}
+      </span>
       {notice.onOpen ? (
-        <button type="button" className="min-w-[10rem] flex-1 text-left" onClick={notice.onOpen}>
-          {heading}
+        <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={notice.onOpen}>
+          {text}
         </button>
       ) : (
-        <div className="min-w-[10rem] flex-1">{heading}</div>
+        <div className="flex min-w-0 flex-1 items-center gap-3">{text}</div>
       )}
-      <div className="ml-auto flex shrink-0 items-center gap-1.5">
-        {notice.actions.map((action) => (
-          <button
-            key={action.label}
-            type="button"
-            className={action.primary ? primaryClass : secondaryClass}
-            title={action.title}
-            disabled={action.disabled}
-            onClick={action.onClick}
-          >
-            {action.label}
-          </button>
-        ))}
-        {notice.onDismiss && (
-          <button
-            type="button"
-            aria-label="Close"
-            title={notice.dismissTitle ?? "Close"}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
-            onClick={notice.onDismiss}
-          >
-            <CloseIcon className="h-4 w-4" />
-          </button>
-        )}
-      </div>
+      {notice.state && <span className="shrink-0 whitespace-nowrap font-sans text-[14px]">{notice.state}</span>}
+      {notice.actions.map((action) => (
+        <button
+          key={action.label}
+          type="button"
+          className="h-8 shrink-0 whitespace-nowrap rounded-lg bg-[var(--notice-pill-bg)] px-2.5 font-sans text-[14px] text-[var(--notice-pill-fg)] hover:brightness-95 disabled:opacity-50"
+          title={action.title}
+          disabled={action.disabled}
+          onClick={action.onClick}
+        >
+          {action.label}
+        </button>
+      ))}
+      {notice.onDismiss && (
+        <button
+          type="button"
+          aria-label="Close"
+          title={notice.dismissTitle ?? "Close"}
+          className="-mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg hover:bg-[color-mix(in_srgb,currentColor_10%,transparent)]"
+          onClick={notice.onDismiss}
+        >
+          <CloseIcon className="h-[18px] w-[18px]" />
+        </button>
+      )}
     </div>
   );
 }
@@ -98,7 +105,7 @@ export function NoticeStack({ notices }: { notices: Notice[] }) {
         {more > 0 && (
           <button
             type="button"
-            className="self-start px-1 text-[12px] text-[var(--muted)] hover:text-[var(--fg)]"
+            className="self-start px-2 text-[14px] text-[var(--fg)] hover:underline"
             onClick={() => setOpen((o) => !o)}
           >
             {open ? "Show less" : `Show ${more} more`}

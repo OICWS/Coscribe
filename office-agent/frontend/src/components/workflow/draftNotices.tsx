@@ -3,8 +3,7 @@ import { currentWorkflowDrafts, workflowTests, type WorkflowDraftEntry } from ".
 import type { LogItem } from "../../state/reducer";
 import { WorkflowIcon } from "../icons";
 import type { Notice } from "../NoticeStack";
-import { type DraftCards, draftStatus } from "./draftCards";
-import { StatusLine } from "./WorkflowDraftCard";
+import { type DraftCards, draftStatus, type Status } from "./draftCards";
 
 const CLOSED_KEY = "coscribe.closedDraftBars";
 
@@ -42,6 +41,22 @@ export function draftsToOffer(
   );
 }
 
+function stateWords(status: Status): string {
+  switch (status.kind) {
+    case "testing":
+      return `Testing ${status.done}/${status.total}`;
+    case "passed":
+      return "Tested";
+    case "approval":
+    case "irreversible":
+      return "Partly tested";
+    case "failed":
+      return "Test failed";
+    default:
+      return "Not tested";
+  }
+}
+
 export function useDraftNotices(
   items: LogItem[],
   turnInFlight: boolean,
@@ -56,7 +71,9 @@ export function useDraftNotices(
       id: `draft:${draft.id}`,
       icon: <WorkflowIcon className="h-4 w-4" />,
       title: draft.triggerId ? `Changes to “${draft.name}”` : draft.name,
-      detail: <StatusLine status={state} />,
+      detail: draft.triggerId ? "changes to a saved task" : "workflow draft",
+      state: stateWords(state),
+      ready: state.kind === "passed",
       onOpen: () =>
         document
           .querySelector(`[data-draft-card="${draft.id}"]`)
@@ -65,7 +82,6 @@ export function useDraftNotices(
         { label: "Review", onClick: () => on.review(draft), title: "Look over each step before saving" },
         {
           label: draft.triggerId ? "Save changes" : "Save…",
-          primary: true,
           disabled: state.kind === "testing",
           onClick: () => on.save(draft),
         },

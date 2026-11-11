@@ -135,6 +135,14 @@
   --panel-shadow: 0 0 1px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.05), 0 4px 16px rgba(0, 0, 0, 0.05);
   --code-bg: color-mix(in srgb, var(--fg) 6%, transparent);
   --code-fg: #b4382b;
+  /* The notices above the message box: gray chips, lavender for one that is ready. */
+  --notice-bg: #f3f3f3;
+  --notice-fg: #616161;
+  --notice-icon: #c5621b;
+  --notice-pill-bg: #e7e7e7;
+  --notice-pill-fg: #171717;
+  --notice-ready-bg: #e8e1f7;
+  --notice-ready-fg: #8e6bd9;
 }
 
 :root[data-theme="dark"] {
@@ -205,6 +213,13 @@
   --panel-shadow: 0 0 1px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.25);
   --code-bg: color-mix(in srgb, var(--fg) 12%, transparent);
   --code-fg: #f0907f;
+  --notice-bg: #2a2827;
+  --notice-fg: #a9a5a1;
+  --notice-icon: #e5894a;
+  --notice-pill-bg: #3a3736;
+  --notice-pill-fg: #f0ede9;
+  --notice-ready-bg: #2e2840;
+  --notice-ready-fg: #b9a2f0;
 }
 
 /* Reusable blue gradient text -- see the palette comment above for

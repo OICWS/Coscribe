@@ -73,7 +73,7 @@ function workflowSummary(workflow: Workflow, isEdit: boolean): string {
   if (count === 0) return "You'll add the workflow's steps on its page after saving.";
   const steps = count === 1 ? "1 step" : `${count} steps`;
   if (isEdit) return `This task runs a workflow of ${steps}. Edit its steps on the task page.`;
-  return `Runs the ${steps} you reviewed. Choose when it runs; you can keep editing the steps on its page.`;
+  return `Runs its ${steps}. Choose when it runs; you can keep editing the steps on its page.`;
 }
 
 interface ScheduledTaskModalProps {
@@ -98,16 +98,6 @@ interface ScheduledTaskModalProps {
  * action, and the detail page's pencil icon (all pass a different `task`
  * prop into the same component rather than duplicating the form three
  * times). */
-/** A workflow task's environment, named as one: a bare "Default" reads as nothing. */
-function EnvironmentRow({ environment, onPick }: { environment: string; onPick: (id: string) => void }) {
-  return (
-    <div className="flex items-center gap-1 border-t border-[var(--border)] bg-[var(--card-bg)] px-3 py-2">
-      <span className="text-[var(--muted)]">Runs in the environment</span>
-      <EnvironmentPicker current={environment} disabled={false} onPick={onPick} forTask />
-    </div>
-  );
-}
-
 export function ScheduledTaskModal({
   task,
   draft,
@@ -222,9 +212,14 @@ export function ScheduledTaskModal({
           </div>
 
           {workflow ? (
-            <div className="overflow-hidden rounded-md border border-[var(--border)] text-sm">
-              <div className="px-3 py-2.5 text-[var(--muted)]">{workflowSummary(workflow, isEdit)}</div>
-              <EnvironmentRow environment={environment} onPick={setEnvironment} />
+            <div>
+              <div className="rounded-md border border-[var(--border)] px-3 py-2.5 text-sm text-[var(--muted)]">
+                {workflowSummary(workflow, isEdit)}
+              </div>
+              {/* The environment sits under the box, as it does under the message box. */}
+              <div className="-ml-0.5 flex items-center pt-1.5">
+                <EnvironmentPicker current={environment} disabled={false} onPick={setEnvironment} forTask />
+              </div>
             </div>
           ) : (
             <div>
@@ -239,18 +234,18 @@ export function ScheduledTaskModal({
                   value={instructions}
                   onChange={(e) => setInstructions(e.target.value)}
                 />
-                <div className="flex items-center justify-between border-t border-[var(--border)] bg-[var(--card-bg)] px-3 py-2 text-sm">
-                  <EnvironmentPicker current={environment} disabled={false} onPick={setEnvironment} forTask />
-                  <SelectMenu
-                    ariaLabel="Model"
-                    value={model}
-                    options={[
-                      { value: "", label: "Default model" },
-                      ...providers.map(([providerKey, info]) => ({ value: `${providerKey}:${info.default_model}`, label: info.default_model })),
-                    ]}
-                    onChange={setModel}
-                  />
-                </div>
+              </div>
+              <div className="-ml-0.5 flex items-center justify-between pt-1.5 text-sm">
+                <EnvironmentPicker current={environment} disabled={false} onPick={setEnvironment} forTask />
+                <SelectMenu
+                  ariaLabel="Model"
+                  value={model}
+                  options={[
+                    { value: "", label: "Default model" },
+                    ...providers.map(([providerKey, info]) => ({ value: `${providerKey}:${info.default_model}`, label: info.default_model })),
+                  ]}
+                  onChange={setModel}
+                />
               </div>
             </div>
           )}
