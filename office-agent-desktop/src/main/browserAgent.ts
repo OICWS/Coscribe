@@ -496,6 +496,11 @@ function startActivity(threadId: string): void {
   }
 }
 
+function endActivity(threadId: string): void {
+  activeThreads.delete(threadId);
+  releaseTabs(threadId);
+}
+
 /** Until a download no wait has taken yet has finished -- one already
  * done, under way, or starting while waiting -- and none is still going;
  * then takes them. */
@@ -896,10 +901,7 @@ export function startBrowserAgent(port: number, token: string, getWindow: () => 
               // A stop can't queue behind the step it is stopping.
               if (command.action === "activity") {
                 if (command.args?.active) startActivity(command.thread_id);
-                else {
-                  activeThreads.delete(command.thread_id);
-                  releaseTabs(command.thread_id);
-                }
+                else endActivity(command.thread_id);
                 continue;
               }
               if (command.action === "cancel") {
