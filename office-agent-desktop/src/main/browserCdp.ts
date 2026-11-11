@@ -10,7 +10,7 @@
  * browses keeps behaving exactly as a plain one.
  */
 
-import type { WebContents } from "electron";
+import { type NativeImage, type WebContents, nativeImage } from "electron";
 import { pageAgent } from "./browserAgentPage";
 
 const WORLD_NAME = "coscribe-agent";
@@ -22,6 +22,9 @@ const IDLE_QUIET_MS = 500;
 const IDLE_MAX_MS = 8000;
 // Streams that stay open by design never finish.
 const LONG_LIVED = new Set(["EventSource", "WebSocket", "Ping"]);
+// The width a laptop's browser window gives a page: wide enough for the
+// toolbars of SAP's WebGUI and sites like it.
+const MIN_LAYOUT_WIDTH = 1280;
 
 export interface PageDialog {
   type: string;
@@ -105,7 +108,8 @@ export class TabCdp {
   }
 
   private reset(): void {
-    this.sized = false;
+    this.layoutKey = "";
+    this.scale = 1;
     this.dialog = null;
     this.chooser = null;
     this.sessions.clear();
@@ -113,18 +117,40 @@ export class TabCdp {
     this.requests.clear();
   }
 
-  /** Off the panel a page has no viewport of its own (see browserPanel's
-   * layout), so it's given the panel's size to lay out at. */
-  private sized = false;
+  /** Whether an AI turn or workflow run is driving the tab now; while it
+   * is, the page lays out no narrower than MIN_LAYOUT_WIDTH (see fit). */
+  driving = false;
+  /** Screen pixels per CSS pixel the layout below applies: mouse events
+   * and capturePage take the former, the page measures in the latter. */
+  private scale = 1;
+  private layoutKey = "";
 
-  async sizeWhileHidden(hidden: boolean, width: number, height: number): Promise<void> {
-    if (hidden === this.sized || !this.wc.debugger.isAttached()) return;
-    if (hidden) {
-      await this.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
-    } else {
+  /** Lays the page out for the panel. Off the panel a page has no
+   * viewport of its own (see browserPanel's layout), so it gets the
+   * panel's size. A narrow panel cuts sites built for a desktop window
+   * (SAP's WebGUI) short: a toolbar or grid that doesn't fit is clipped,
+   * not scrolled, and the AI can't click a button the page never shows.
+   * So while the AI drives it, the page lays out at least
+   * MIN_LAYOUT_WIDTH wide and the panel shows it scaled down to fit. */
+  async fit(hidden: boolean, panel: { width: number; height: number }): Promise<void> {
+    if (!this.wc.debugger.isAttached() || panel.width <= 0 || panel.height <= 0) return;
+    const width = this.driving ? Math.max(panel.width, MIN_LAYOUT_WIDTH) : panel.width;
+    const natural = !hidden && width === panel.width;
+    const height = Math.round((panel.height * width) / panel.width);
+    const scale = hidden ? 1 : panel.width / width;
+    const key = natural ? "natural" : `${width}x${height}@${scale}`;
+    if (key === this.layoutKey) return;
+    if (natural) {
       await this.send("Emulation.clearDeviceMetricsOverride");
+    } else {
+      await this.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: hidden ? 1 : 0, mobile: false, scale });
     }
-    this.sized = hidden;
+    this.layoutKey = key;
+    this.scale = natural ? 1 : scale;
+  }
+
+  get screenScale(): number {
+    return this.wc.debugger.isAttached() ? this.scale : 1;
   }
 
   send<T = Record<string, unknown>>(method: string, params: Record<string, unknown> = {}, session?: string): Promise<T> {
@@ -317,6 +343,9 @@ export class TabCdp {
   }
 
   async input(method: string, params: Record<string, unknown>): Promise<void> {
+    if (method === "Input.dispatchMouseEvent" && this.scale !== 1) {
+      params = { ...params, x: Number(params.x) * this.scale, y: Number(params.y) * this.scale };
+    }
     await this.unlessDialog(this.send(method, params));
   }
 
@@ -373,4 +402,14 @@ export function cdpFor(wc: WebContents): TabCdp {
     cdps.set(wc, cdp);
   }
   return cdp;
+}
+
+/** The tab's page as an image, the whole of what it lays out. Scaled down
+ * to fit the panel, capturePage would return the scaled picture in one
+ * corner of an otherwise blank image the page's full size. */
+export async function captureTab(wc: WebContents): Promise<NativeImage> {
+  const cdp = cdps.get(wc);
+  if (!cdp || cdp.screenScale === 1) return wc.capturePage();
+  const { data } = await cdp.send<{ data: string }>("Page.captureScreenshot", { format: "png" });
+  return nativeImage.createFromBuffer(Buffer.from(data, "base64"));
 }

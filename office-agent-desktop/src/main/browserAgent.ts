@@ -17,7 +17,7 @@ import { Readable } from "node:stream";
 import { type BrowserWindow, type DownloadItem, type WebContents, app, webContents } from "electron";
 import { pageAgent } from "./browserAgentPage";
 import { type Step, cancelFrameOff, enqueue, running, runningSteps, scheduleFrameOff, stepContext } from "./browserAgentSteps";
-import { type AgentFrame, type Download, type PageDialog, type TabCdp, cdpFor, existingCdp } from "./browserCdp";
+import { type AgentFrame, type Download, type PageDialog, type TabCdp, captureTab, cdpFor, existingCdp } from "./browserCdp";
 import { checkNetworkLanding, checkNetworkSites, inSites, isAllowed, normalizeSite, requestPermission } from "./browserPermissions";
 import {
   sendAgentEvent,
@@ -495,6 +495,18 @@ function startActivity(threadId: string): void {
   }
 }
 
+/** The turn or run is over: its tabs go back to the panel's own width,
+ * for the person to read and use at the size they chose. */
+function endActivity(threadId: string): void {
+  activeThreads.delete(threadId);
+  for (const tab of allTabs(threadId)) {
+    const cdp = existingCdp(tab.view.webContents);
+    if (!cdp?.driving) continue;
+    cdp.driving = false;
+    void cdp.fit(!tabShown(tab), hiddenTabSize()).catch(() => undefined);
+  }
+}
+
 /** Until a download no wait has taken yet has finished -- one already
  * done, under way, or starting while waiting -- and none is still going;
  * then takes them. */
@@ -561,8 +573,8 @@ async function run(command: Command): Promise<Record<string, unknown>> {
         if (typeof args.download_dir === "string") cdp.downloadDir = args.download_dir;
         tab.view.webContents.setBackgroundThrottling(false);
         await cdp.ensure();
-        const size = hiddenTabSize();
-        await cdp.sizeWhileHidden(!tabShown(tab), size.width, size.height);
+        cdp.driving = true;
+        await cdp.fit(!tabShown(tab), hiddenTabSize());
         await load(tab.view.webContents, String(args.url));
         cdp.stepEnded = Date.now();
       }
@@ -588,8 +600,8 @@ async function run(command: Command): Promise<Record<string, unknown>> {
   // hidden page takes no clicks: a scheduled run would fail at its first.
   wc.setBackgroundThrottling(false);
   await cdp.ensure();
-  const size = hiddenTabSize();
-  await cdp.sizeWhileHidden(!tabShown(tab), size.width, size.height);
+  cdp.driving = true;
+  await cdp.fit(!tabShown(tab), hiddenTabSize());
   if (cdp.dialog && command.action !== "handle_dialog") throw new Error(describeDialog(cdp.dialog));
 
   let result: Record<string, unknown>;
@@ -754,7 +766,7 @@ async function act(
     }
     case "screenshot": {
       await settle(wc);
-      let image = await wc.capturePage();
+      let image = await captureTab(wc);
       const { width } = image.getSize();
       if (width > SCREENSHOT_WIDTH) image = image.resize({ width: SCREENSHOT_WIDTH });
       return withTab(tab, { png: image.toPNG().toString("base64") });
@@ -909,7 +921,7 @@ export function startBrowserAgent(port: number, token: string, getWindow: () => 
               // A stop can't queue behind the step it is stopping.
               if (command.action === "activity") {
                 if (command.args?.active) startActivity(command.thread_id);
-                else activeThreads.delete(command.thread_id);
+                else endActivity(command.thread_id);
                 continue;
               }
               if (command.action === "cancel") {

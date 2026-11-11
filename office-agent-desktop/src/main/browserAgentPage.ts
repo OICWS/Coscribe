@@ -134,6 +134,11 @@ export function pageAgent(action: string, args: Record<string, unknown>): unknow
     if (rect.width <= 0 || rect.height <= 0) {
       throw new Error(`${describe(el)} isn't visible on the page, so it can't be used right now.`);
     }
+    // Clipped by a box that doesn't scroll, the element stays out of view;
+    // clicking the nearest edge instead would hit something else.
+    if (rect.right <= 0 || rect.bottom <= 0 || rect.left >= window.innerWidth || rect.top >= window.innerHeight) {
+      throw new Error(`${describe(el)} is cut off outside the page's visible area, so it can't be clicked.`);
+    }
     const x = Math.min(Math.max(rect.left + rect.width / 2, 1), window.innerWidth - 1);
     const y = Math.min(Math.max(rect.top + rect.height / 2, 1), window.innerHeight - 1);
     return { x, y, element: describe(el) };
