@@ -293,7 +293,7 @@ export function WorkflowDraftCard({ entry }: { entry: WorkflowDraftEntry }) {
                 disabled={!cards.onTestAgain || busy}
                 onClick={() => cards.onTestAgain?.(entry)}
               >
-                {result ? "Test again" : "Test it"}
+                Test again
               </button>
             )}
             <button
