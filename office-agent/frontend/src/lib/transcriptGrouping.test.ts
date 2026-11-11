@@ -8,8 +8,7 @@ import {
   groupTurns,
   isFailure,
   isRunning,
-  latestWorkflowDraft,
-  latestWorkflowDraftId,
+  currentWorkflowDrafts,
   summarizeItem,
   workflowTests,
   type ToolRunGroup,
@@ -359,32 +358,34 @@ describe("workflowTests", () => {
   });
 });
 
-describe("latestWorkflowDraft", () => {
-  it("is null when there is no draft", () => {
-    expect(latestWorkflowDraft([])).toBeNull();
-    expect(latestWorkflowDraft([user(), tool("read_file"), agent()])).toBeNull();
-  });
+describe("currentWorkflowDrafts", () => {
+  const names = (items: Parameters<typeof currentWorkflowDrafts>[0]) =>
+    currentWorkflowDrafts(items).map((d) => d.name);
 
-  it("returns the newest draft, whichever tool made it", () => {
-    const older = tool("draft_workflow", { result: draftResult({ name: "old" }) });
-    const newer = tool("revise_workflow", { result: draftResult({ name: "new" }) });
-    expect(latestWorkflowDraft([older, agent(), newer, agent()])?.name).toBe("new");
-    expect(latestWorkflowDraft([older, agent()])?.name).toBe("old");
-  });
-
-  it("skips a newer call that did not produce a draft", () => {
+  it("is empty when there is no draft, and skips a call that did not produce one", () => {
+    expect(currentWorkflowDrafts([user(), tool("read_file"), agent()])).toEqual([]);
     const good = tool("draft_workflow", { result: draftResult({ name: "good" }) });
     const bad = tool("revise_workflow", { result: { status: "invalid" } });
-    expect(latestWorkflowDraft([good, bad])?.name).toBe("good");
+    expect(names([good, bad])).toEqual(["good"]);
   });
-});
 
-describe("latestWorkflowDraftId", () => {
-  it("is the id of the newest drafting call, or null", () => {
-    const older = tool("draft_workflow", { result: draftResult() });
-    const newer = tool("revise_workflow", { result: draftResult() });
-    expect(latestWorkflowDraftId([older, newer])).toBe(newer.id);
-    expect(latestWorkflowDraftId([tool("read_file")])).toBeNull();
+  it("keeps the newest draft of each workflow", () => {
+    const report = tool("draft_workflow", { result: draftResult({ name: "Report", draft_id: "d1" }) });
+    const mail = tool("draft_workflow", { result: draftResult({ name: "Mail", draft_id: "d2" }) });
+    const renamed = tool("revise_workflow", {
+      arguments: { draft_id: "d1" },
+      result: draftResult({ name: "Weekly report", draft_id: "d3" }),
+    });
+    const current = currentWorkflowDrafts([report, agent(), mail, agent(), renamed]);
+    expect(current.map((d) => d.draftId)).toEqual(["d2", "d3"]);
+  });
+
+  it("groups changes to a saved task, and redrafts of the same name", () => {
+    const a = tool("revise_workflow", { result: draftResult({ name: "A", trigger_id: "t1" }) });
+    const b = tool("revise_workflow", { result: draftResult({ name: "A2", trigger_id: "t1" }) });
+    const c = tool("draft_workflow", { result: draftResult({ name: "C" }) });
+    const c2 = tool("draft_workflow", { result: draftResult({ name: "C" }) });
+    expect(names([a, c, b, c2])).toEqual(["A2", "C"]);
   });
 });
 

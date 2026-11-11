@@ -377,46 +377,62 @@ function DetailedBody({
   onChanged: () => void;
 }) {
   const workflow = task.workflow;
+  const repeats = (
+    <div>
+      <SectionLabel>Repeats</SectionLabel>
+      <div className="text-sm font-medium">{describeSchedule(task.schedule)}</div>
+    </div>
+  );
+  const environment = (
+    <div>
+      <SectionLabel>Environment</SectionLabel>
+      <EnvironmentName id={task.environment ?? DEFAULT_ENVIRONMENT} />
+    </div>
+  );
+  if (workflow)
+    return (
+      <div className="mt-6 flex flex-col gap-6">
+        <TaskWorkflowSection
+          taskId={task.trigger_id}
+          workflow={workflow}
+          persist={persist}
+          focusStepId={focusStepId}
+          settings={
+            <>
+              {repeats}
+              {environment}
+              <div>
+                <SectionLabel>Permissions</SectionLabel>
+                <div className="text-sm text-[var(--muted)]">
+                  Steps run as saved, without asking each time. The run also pauses at approval steps, and at anything
+                  below it hasn’t been allowed.
+                </div>
+                <WorkflowPermissions
+                  workflow={workflow}
+                  triggerId={task.trigger_id}
+                  version={JSON.stringify(task.permissions ?? {})}
+                  className="mt-3"
+                />
+              </div>
+              <TaskVersionsSection task={task} onChanged={onChanged} />
+              <FailuresSection task={task} onChanged={onChanged} />
+            </>
+          }
+          runs={<RunsSection task={task} />}
+        />
+      </div>
+    );
   return (
     <div className="mt-6 flex flex-col gap-6">
-      {workflow ? (
-        <TaskWorkflowSection taskId={task.trigger_id} workflow={workflow} persist={persist} focusStepId={focusStepId} />
-      ) : (
-        <InstructionsSection prompt={task.prompt} />
-      )}
-      <div>
-        <SectionLabel>Repeats</SectionLabel>
-        <div className="text-sm font-medium">{describeSchedule(task.schedule)}</div>
-      </div>
-      <div>
-        <SectionLabel>Environment</SectionLabel>
-        <EnvironmentName id={task.environment ?? DEFAULT_ENVIRONMENT} />
-      </div>
+      <InstructionsSection prompt={task.prompt} />
+      {repeats}
+      {environment}
       <div>
         <SectionLabel>Permissions</SectionLabel>
-        {workflow ? (
-          <>
-            <div className="text-sm text-[var(--muted)]">
-              Steps run as saved, without asking each time. The run also pauses at approval steps, and at anything below
-              it hasn’t been allowed.
-            </div>
-            <WorkflowPermissions
-              workflow={workflow}
-              triggerId={task.trigger_id}
-              version={JSON.stringify(task.permissions ?? {})}
-              className="mt-3"
-            />
-          </>
-        ) : (
-          <>
-            <div className="text-sm font-medium">{APPROVAL_LABEL[task.approval_mode]}</div>
-            <div className="text-sm text-[var(--muted)]">{APPROVAL_DESCRIPTION[task.approval_mode]}</div>
-          </>
-        )}
+        <div className="text-sm font-medium">{APPROVAL_LABEL[task.approval_mode]}</div>
+        <div className="text-sm text-[var(--muted)]">{APPROVAL_DESCRIPTION[task.approval_mode]}</div>
       </div>
-      {workflow && <TaskVersionsSection task={task} onChanged={onChanged} />}
-      {workflow && <FailuresSection task={task} onChanged={onChanged} />}
-      {!workflow && <NotesSection task={task} onChanged={onChanged} />}
+      <NotesSection task={task} onChanged={onChanged} />
       <RunsSection task={task} />
     </div>
   );

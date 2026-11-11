@@ -404,10 +404,6 @@ export const draftWorkflowFromThread = (threadId: string, name = "") =>
 export const validateWorkflow = (workflow: Workflow) =>
   sendForResult<{ workflow: Workflow }>("/api/workflows/validate", "POST", { workflow });
 
-/** The graph a workflow runs as, as LangGraph compiles it (workflows/graph_view.py). */
-export const compiledGraph = (workflow: Workflow) =>
-  sendForResult<{ mermaid: string }>("/api/workflows/graph", "POST", { workflow });
-
 /** What a workflow will touch, and -- against a saved task -- what it adds. */
 export interface WorkflowPermissions {
   folders: string[];

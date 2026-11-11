@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { groupToolRuns, groupTurns, latestWorkflowDraftId, workflowTests, type WorkflowDraftEntry } from "../lib/transcriptGrouping";
+import { groupToolRuns, groupTurns, currentWorkflowDrafts, workflowTests, type WorkflowDraftEntry } from "../lib/transcriptGrouping";
 import { type LogItem } from "../state/reducer";
 import { useFollowEnd } from "../lib/useFollowEnd";
 import { EmptyState } from "./EmptyState";
@@ -7,8 +7,6 @@ import { type PptxShapeCapture } from "./PptxShapeOverlay";
 import { type PlanChoice, type PlanItem } from "./PlanCard";
 import { type FolderActions } from "./folderActions";
 import { type DraftCards } from "./workflow/draftCards";
-import { PinnedDraftBar } from "./workflow/WorkflowDraftCard";
-import { usePinnedDraft } from "./workflow/usePinnedDraft";
 import { type TaskDraftItem } from "./chatlog/types";
 import { ShowDiffStats, NO_CONNECTOR_TOOLS } from "./chatlog/contexts";
 import { ChatContexts } from "./chatlog/ChatContexts";
@@ -96,11 +94,10 @@ export function ChatLog({
     saved: new Map(),
     testProgress: null,
     ...draftCards,
-    latestDraftId: latestWorkflowDraftId(allItems),
+    currentDraftIds: new Set(currentWorkflowDrafts(allItems).map((d) => d.id)),
     tests: workflowTests(allItems, turnInFlight),
     onReview: onReviewWorkflowDraft,
   };
-  const pinnedDraft = usePinnedDraft(allItems, cards.saved, turnInFlight, scrollRef);
 
   const onScroll = useFollowEnd(scrollRef, endRef, items, items[items.length - 1]?.kind === "user");
   // Revealing older history above never moves the viewport (see the scroll-anchoring effect
@@ -205,7 +202,6 @@ export function ChatLog({
           />
         ))}
         <div ref={endRef} />
-        {pinnedDraft.pinned && <PinnedDraftBar entry={pinnedDraft.pinned} onShow={pinnedDraft.show} onClose={pinnedDraft.close} />}
       </div>
     </div>
     </ChatContexts>

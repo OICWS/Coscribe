@@ -1,6 +1,6 @@
 import { useContext, useState } from "react";
 import type { WorkflowDraftEntry, WorkflowTestResult } from "../../lib/transcriptGrouping";
-import { type DraftCards, DraftCardsContext } from "./draftCards";
+import { DraftCardsContext, draftStatus, type Status } from "./draftCards";
 import { memoryPreview } from "../../lib/memoryWords";
 import { placeSteps } from "../../lib/workflowTree";
 import { primaryButton, secondaryButton } from "../../lib/formStyles";
@@ -9,7 +9,6 @@ import {
   CheckCircleIcon,
   ChevronDownIcon,
   ChevronRightIcon,
-  CloseIcon,
   FileTextIcon,
   WorkflowIcon,
   XCircleIcon,
@@ -17,36 +16,11 @@ import {
 import { StepKindTile } from "./parts";
 import { Screenshot } from "./Screenshot";
 
-type Status =
-  | { kind: "saved"; name: string; triggerId: string }
-  | { kind: "testing"; done: number; total: number }
-  | { kind: "passed"; result: WorkflowTestResult }
-  | { kind: "approval"; result: WorkflowTestResult }
-  | { kind: "irreversible"; result: WorkflowTestResult }
-  | { kind: "failed"; result: WorkflowTestResult }
-  | { kind: "untested" };
-
-function draftStatus(entry: WorkflowDraftEntry, cards: DraftCards): Status {
-  const saved = entry.draftId ? cards.saved.get(entry.draftId) : undefined;
-  if (saved) return { kind: "saved", ...saved };
-  const test = entry.draftId ? cards.tests.get(entry.draftId) : undefined;
-  if (test?.running) {
-    const total = cards.testProgress?.total ?? placeSteps(entry.workflow.steps).length;
-    return { kind: "testing", done: cards.testProgress?.done ?? 0, total };
-  }
-  const result = test?.result;
-  if (!result) return { kind: "untested" };
-  if (result.status === "passed") return { kind: "passed", result };
-  if (result.status === "stopped_at_approval") return { kind: "approval", result };
-  if (result.status === "stopped_before_irreversible") return { kind: "irreversible", result };
-  return { kind: "failed", result };
-}
-
 function failedTitle(result: WorkflowTestResult): string {
   return result.steps.find((s) => s.id === result.failed_step)?.title ?? result.failed_step ?? "a step";
 }
 
-function StatusLine({ status }: { status: Status }) {
+export function StatusLine({ status }: { status: Status }) {
   const base = "flex min-w-0 items-center gap-1.5 text-[13px]";
   switch (status.kind) {
     case "saved":
@@ -227,7 +201,7 @@ function Steps({ entry, result }: { entry: WorkflowDraftEntry; result: WorkflowT
  * is saved until the user reviews it and saves. */
 export function WorkflowDraftCard({ entry }: { entry: WorkflowDraftEntry }) {
   const cards = useContext(DraftCardsContext);
-  const superseded = cards.latestDraftId !== null && entry.id !== cards.latestDraftId;
+  const superseded = !cards.currentDraftIds.has(entry.id);
   const status = draftStatus(entry, cards);
   const revision = entry.triggerId !== null;
   if (superseded) {
@@ -331,55 +305,6 @@ export function WorkflowDraftCard({ entry }: { entry: WorkflowDraftEntry }) {
           </span>
         )}
       </div>
-    </div>
-  );
-}
-
-/** The newest unsaved draft, kept in reach at the bottom of the
- * conversation while its card is scrolled out of view. */
-export function PinnedDraftBar({
-  entry,
-  onShow,
-  onClose,
-}: {
-  entry: WorkflowDraftEntry;
-  onShow: () => void;
-  onClose: () => void;
-}) {
-  const cards = useContext(DraftCardsContext);
-  const status = draftStatus(entry, cards);
-  return (
-    <div
-      className="sticky bottom-2 z-10 flex min-w-0 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.08)]"
-      data-testid="pinned-draft"
-    >
-      <WorkflowIcon className="h-4 w-4 shrink-0 text-[var(--muted)]" />
-      <button
-        type="button"
-        className="min-w-0 flex-1 text-left"
-        title="Show the draft"
-        onClick={onShow}
-      >
-        <div className="truncate text-sm font-medium">{entry.name}</div>
-        <StatusLine status={status} />
-      </button>
-      <button
-        type="button"
-        className={primaryButton}
-        disabled={!cards.onReview}
-        onClick={() => cards.onReview?.(entry)}
-      >
-        {entry.triggerId ? "Review changes" : "Review and save"}
-      </button>
-      <button
-        type="button"
-        aria-label="Close"
-        title="Hide this bar; the draft stays in the conversation"
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
-        onClick={onClose}
-      >
-        <CloseIcon className="h-4 w-4" />
-      </button>
     </div>
   );
 }

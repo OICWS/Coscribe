@@ -38,7 +38,9 @@ import { setPlanComments, usePlanComments, withPlanComments } from "./lib/planCo
 import { planPanelData } from "./lib/taskCard";
 import { PanelDock } from "./components/dock/PanelDock";
 import { PanelToggles } from "./components/dock/PanelToggles";
-import { SaveOfferRow } from "./components/SaveOfferRow";
+import { saveOfferNotice } from "./components/saveOffer";
+import { NoticeStack, type Notice } from "./components/NoticeStack";
+import { useDraftNotices } from "./components/workflow/draftNotices";
 import { usePinnedItems } from "./lib/toolbarItems";
 import { PANEL_IDS, PANEL_TITLES, type PanelId } from "./lib/dockLayout";
 import { isViewable } from "./lib/viewers";
@@ -397,7 +399,8 @@ function App() {
   const planData = planPanelData(state.items);
   const hasPlan = planData.tasks.length > 0;
   const planComments = usePlanComments(planData.plan);
-  const taskPanelWanted = taskPanelChoice[threadId] ?? (threadWorkflow !== null || isScheduledTaskThread || hasPlan);
+  // A workflow run shows its steps on the page itself, so the panel only opens when asked for.
+  const taskPanelWanted = taskPanelChoice[threadId] ?? (threadWorkflow === null && (isScheduledTaskThread || hasPlan));
   const onHome =
     state.historyReceived &&
     state.items.length === 0 &&
@@ -521,6 +524,24 @@ function App() {
     },
   };
 
+  const [noticeError, setNoticeError] = useState<string | null>(null);
+  const draftNotices = useDraftNotices([...state.olderItems, ...state.items], state.turnInFlight, draftCards, {
+    save: (entry) => void saveWorkflowDraft(entry),
+    review: reviewWorkflowDraft,
+  });
+  const notices: Notice[] = [
+    ...draftNotices,
+    ...(state.saveOffer && !state.turnInFlight
+      ? [
+          saveOfferNotice(state.saveOffer, {
+            workflow: startWorkflowDraft,
+            skill: (name) => onSend({ displayText: `/saveskill ${name}`, outgoingText: `/saveskill ${name}`, isInstant: false }),
+            dismiss: () => dispatch({ type: "local_save_offer_dismissed" }),
+          }),
+        ]
+      : []),
+  ];
+
   const leaveWorkflowDraft = () => {
     const draftThread = workflowDraft?.threadId;
     if (draftThread && draftThread !== threadId) goToThread(draftThread);
@@ -584,15 +605,32 @@ function App() {
     setScheduledTaskModal({ task: existing, draft: item, initialEnvironment: threadEnvironment });
   };
 
-  const saveWorkflowRevision = async (triggerId: string, workflow: Workflow) => {
+  const saveWorkflowRevision = async (triggerId: string, workflow: Workflow, fromDraft = workflowDraft?.draftId) => {
     const task = scheduledTasks.find((t) => t.trigger_id === triggerId);
     if (!task) return "That task no longer exists.";
-    const fromDraft = workflowDraft?.draftId;
     const result = await patchScheduledTask(triggerId, { workflow, ...(fromDraft ? { from_draft: fromDraft } : {}) });
     if ("error" in result) return result.error;
     refreshScheduledTasks();
-    showScheduledTaskPage(result);
+    if (workflowDraft) showScheduledTaskPage(result);
     return null;
+  };
+
+  // Saved straight from its notice: changes to a task save in place, a new workflow asks for
+  // its name and schedule first.
+  const saveWorkflowDraft = async (entry: WorkflowDraftEntry) => {
+    if (entry.triggerId) {
+      const error = await saveWorkflowRevision(entry.triggerId, entry.workflow, entry.draftId ?? undefined);
+      setNoticeError(error);
+      return;
+    }
+    setScheduledTaskModal({
+      task: null,
+      newWorkflow: entry.workflow,
+      initialName: entry.name,
+      initialEnvironment: entry.environment ?? threadEnvironment,
+      fromDraft: entry.draftId ?? undefined,
+      fromThread: threadId,
+    });
   };
 
   const onDismissTaskDraft = (item: TaskDraftItem) => {
@@ -988,9 +1026,10 @@ function App() {
                   {pendingQuestion && (
                     <QuestionPanel key={pendingQuestion.id} item={pendingQuestion} onAnswer={onAnswerQuestion} />
                   )}
-                  {state.saveOffer && !state.turnInFlight && (
-                    <SaveOfferRow offer={state.saveOffer} onWorkflow={startWorkflowDraft} onSkill={(name) => onSend({ displayText: `/saveskill ${name}`, outgoingText: `/saveskill ${name}`, isInstant: false })} onDismiss={() => dispatch({ type: "local_save_offer_dismissed" })} />
+                  {noticeError && (
+                    <div className="mx-auto w-full max-w-[880px] px-4 py-1 text-sm text-red-500">{noticeError}</div>
                   )}
+                  <NoticeStack notices={notices} />
                   {composer}
                 </BackgroundTasks.Provider></DetachScript.Provider></OpenDesignSystem.Provider></ViewFile.Provider></SteerActionsContext.Provider>
               ) : workflowDraft ? (

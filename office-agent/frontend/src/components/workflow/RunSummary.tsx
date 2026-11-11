@@ -64,6 +64,8 @@ function StatusLine({ ctx }: { ctx: SummaryContext }) {
   let words: ReactNode;
   let actions: ReactNode = null;
   let why: string | null = null;
+  let live = false;
+  let plain = "";
   if (run.status === "completed") {
     tone = run.quiet ? "" : "done";
     icon = <CheckIcon className="h-4 w-4" strokeWidth={3} />;
@@ -125,10 +127,11 @@ function StatusLine({ ctx }: { ctx: SummaryContext }) {
     icon = (
       <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] motion-reduce:animate-none" />
     );
-    words =
+    words = plain =
       run.status === "waiting"
         ? `${title ?? "A step"} is waiting; it goes on by itself`
         : `Running${title ? `: ${title}` : ""}`;
+    live = true;
     actions = (
       <button type="button" className={secondaryButton} disabled={busy} onClick={() => act(ctx.onStop)}>
         <span className="flex items-center gap-1.5">
@@ -140,12 +143,15 @@ function StatusLine({ ctx }: { ctx: SummaryContext }) {
   }
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <div className={`flex items-center gap-x-3 gap-y-2 ${live ? "" : "flex-wrap"}`}>
         <span className="flex min-w-0 flex-1 items-center gap-2 text-[15px]" style={{ color: TONE[tone] }}>
-          {icon}
-          <span className="min-w-0 text-[var(--fg)]">{words}</span>
+          <span className="flex shrink-0 items-center">{icon}</span>
+          {/* A running run's line changes with each step: one line, so the page doesn't jump. */}
+          <span className={`min-w-0 text-[var(--fg)] ${live ? "truncate" : ""}`} title={live ? plain : undefined}>
+            {words}
+          </span>
         </span>
-        {actions && <span className="flex flex-wrap items-center gap-2">{actions}</span>}
+        {actions && <span className="flex shrink-0 flex-wrap items-center gap-2">{actions}</span>}
       </div>
       {why && <p className="text-[13px] text-[var(--muted)]">{why}</p>}
       {error && <p className="text-[13px] text-[var(--danger)]">{error}</p>}
@@ -279,11 +285,17 @@ function Row({ row, number, list }: { row: PlainRow; number: number | null; list
         )}
         <StatusDot status={status === "not_taken" ? "not_reached" : status} />
         <span className="min-w-0 flex-1">
-          <span className={`block text-sm leading-snug ${MUTED.has(status) ? "text-[var(--muted)]" : ""}`}>
+          <span
+            className={`line-clamp-2 text-sm leading-snug ${MUTED.has(status) ? "text-[var(--muted)]" : ""}`}
+            title={step.title}
+          >
             {step.title}
           </span>
           {row.detail && status !== "not_taken" && (
-            <span className="mt-0.5 block text-[13px] leading-snug text-[var(--muted)] [overflow-wrap:anywhere]">
+            <span
+              className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-[var(--muted)] [overflow-wrap:anywhere]"
+              title={row.detail ?? undefined}
+            >
               <PlainText text={row.detail} inputs={list.inputs} />
             </span>
           )}
@@ -364,17 +376,14 @@ export function RunSummary({ ctx }: { ctx: SummaryContext }) {
   );
 }
 
-/** The detailed run, whole, or folded under the simple view's summary. Folded, it isn't drawn:
- * its cards would answer the same step twice. */
-export function RunDetails({ folded, children }: { folded: boolean; children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-  if (!folded) return <>{children}</>;
+/** What the simple view leaves out of its summary -- the run's inputs and sites -- folded under it. */
+export function RunDetails({ children }: { children: ReactNode }) {
   return (
-    <details data-testid="run-details" onToggle={(e) => setOpen(e.currentTarget.open)}>
+    <details data-testid="run-details">
       <summary className="cursor-pointer text-sm font-medium text-[var(--muted)] hover:text-[var(--fg)]">
         Details
       </summary>
-      {open && <div className="mt-4 flex flex-col gap-6">{children}</div>}
+      <div className="mt-3 flex flex-col gap-3">{children}</div>
     </details>
   );
 }
