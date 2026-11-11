@@ -211,7 +211,37 @@ export function latestWorkflowDraft(items: LogItem[]): WorkflowDraftEntry | null
   return null;
 }
 
-export type TranscriptEntry = Exclude<LogItem, ToolOrApprovalItem> | ToolRunGroup | WorkflowDraftEntry;
+/** A connector the model offered with offer_connector, shown as a card the person answers. */
+export interface ConnectorOfferEntry {
+  kind: "connector_offer";
+  id: string;
+  name: string;
+  title: string;
+  description: string;
+  why: string;
+  /** The connector's state when it was offered: available, signed_out, not_connected or needs_setup. */
+  state: string;
+  toolCount: number;
+}
+
+function connectorOfferOf(item: ToolOrApprovalItem): ConnectorOfferEntry | null {
+  if (item.kind !== "tool" || item.toolName !== "offer_connector" || item.result === undefined) return null;
+  const offer = parsedResult(item.result);
+  if (offer?.status !== "offered" || typeof offer.name !== "string") return null;
+  const text = (key: string) => (typeof offer[key] === "string" ? (offer[key] as string) : "");
+  return {
+    kind: "connector_offer",
+    id: item.id,
+    name: offer.name,
+    title: text("title") || offer.name,
+    description: text("description"),
+    why: text("why"),
+    state: text("state"),
+    toolCount: typeof offer.tool_count === "number" ? offer.tool_count : 0,
+  };
+}
+
+export type TranscriptEntry = Exclude<LogItem, ToolOrApprovalItem> | ToolRunGroup | WorkflowDraftEntry | ConnectorOfferEntry;
 
 /** The id of the newest workflow draft among `items` -- a card for any
  * earlier one is superseded. */
@@ -262,7 +292,7 @@ export function groupToolRuns(items: LogItem[]): TranscriptEntry[] {
   };
 
   for (const item of items) {
-    const drafted = item.kind === "tool" ? workflowDraftOf(item) : null;
+    const drafted = item.kind === "tool" ? (workflowDraftOf(item) ?? connectorOfferOf(item)) : null;
     if (drafted) {
       flush();
       result.push(drafted);
@@ -474,6 +504,7 @@ const TOOL_SUMMARIES: Record<string, (args: ArgRecord) => SummaryParts> = {
   review_work: () => ({ verb: "Asked a reviewer to check the work", object: null }),
   load_skill: (a) => ({ verb: "Loaded skill", object: str(a, "name") ?? null }),
   draft_workflow: () => ({ verb: "Drafted a workflow", object: null }),
+  find_connector: (a) => ({ verb: "Looked for a connector", object: str(a, "need") ?? null, glue: ": " }),
   revise_workflow: () => ({ verb: "Revised a workflow", object: null }),
   test_workflow: () => ({ verb: "Tested a workflow", object: null }),
   edit_scheduled_task: () => ({ verb: "Proposed changes to a task", object: null }),

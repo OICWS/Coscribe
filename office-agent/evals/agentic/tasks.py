@@ -25,6 +25,8 @@ class Outcome:
 
     replies: list[list[str]]
     workspace: Path
+    # Every tool call of the conversation: its name, a space, its arguments as JSON.
+    calls: list[str] = field(default_factory=list)
     memory: str = ""
     tasks: list[dict[str, Any]] = field(default_factory=list)
 
@@ -44,6 +46,8 @@ class AgenticTask:
     # The share of the context window that starts a compaction: low values make a task's long
     # reads run through compaction and clearing the way a long real conversation does.
     compact_threshold: float = 0.8
+    # The conversation gets the connector catalog, with nothing connected.
+    connectors: bool = False
 
 
 def says(*alternatives: str) -> Check:
@@ -52,6 +56,18 @@ def says(*alternatives: str) -> Check:
     def check(outcome: Outcome) -> bool:
         reply = _squash(outcome.last_reply())
         return any(_squash(text) in reply for text in alternatives)
+
+    return check
+
+
+def called(tool: str, *texts: str) -> Check:
+    """A call to the tool whose arguments hold every one of the texts."""
+
+    def check(outcome: Outcome) -> bool:
+        return any(
+            call.split(" ", 1)[0] == tool and all(text in call for text in texts)
+            for call in outcome.calls
+        )
 
     return check
 
@@ -337,6 +353,16 @@ TASKS: tuple[AgenticTask, ...] = (
         turns=("What is the total amount in q3_sales.csv?",),
         setup=write_orders(50, "q3_sales_final.csv"),
         checks={"total": says(str(sum(region_totals(50).values())))},
+    ),
+    AgenticTask(
+        name="12-offers-a-connector",
+        turns=("Find my Notion page called 'Q3 planning' and list its open items.",),
+        setup=nothing,
+        checks={
+            "looked for one": called("find_connector"),
+            "offered Notion": called("offer_connector", '"notion"'),
+        },
+        connectors=True,
     ),
 )
 

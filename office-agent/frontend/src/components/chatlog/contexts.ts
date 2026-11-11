@@ -15,6 +15,9 @@ export const ViewFile = createContext<((path: string) => boolean) | null>(null);
 /** Opens a design system of the library in Settings; null where it cannot. */
 export const OpenDesignSystem = createContext<((id: string) => void) | null>(null);
 
+/** Opens a connector's page in Settings > Connectors; null where it cannot. */
+export const OpenConnector = createContext<((name: string) => void) | null>(null);
+
 /** Lets the script a running tool call waits on carry on as a background task; null where it cannot. */
 export const DetachScript = createContext<((script: string) => void) | null>(null);
 

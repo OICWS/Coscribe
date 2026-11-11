@@ -257,6 +257,9 @@ Workflows never use it: a workflow's agent step (0028) never gets the code modul
   A service that refuses to register clients (HubSpot, Google Workspace) gets a
   guided one-time setup with an app the user registers
   ([decision 0004](docs/decisions/0004-connectors-sign-in-once-in-the-browser.md)).
+  A conversation that needs a service it can't reach offers a catalog connector on a card in
+  the chat; the card opens that connector's page in Settings, and once it is connected the
+  conversation carries on ([decision 0046](docs/decisions/0046-a-conversation-offers-a-connector-the-person-connects.md)).
 - **Skills**: `SKILL.md` folders loaded on demand. The built-in ones (Slides,
   PowerPoint editing, Excel, Word, Docs, Design, Dashboard, markdown, Skill Creator) live in
   `src/coscribe/builtin_skills/`; users add their own in `skills_dir`.

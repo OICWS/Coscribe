@@ -120,7 +120,9 @@ _SEARCH_TOOLS_NOTE = (
     'chart") -- it returns each match with its parameters. Run one with '
     "use_tool(name, arguments). Don't assume something can't be done "
     "just because you don't see a tool for it; search before giving up "
-    "or falling back to a workaround."
+    "or falling back to a workaround. If the work needs a service no tool "
+    "reaches (Notion, Jira, a CRM), call find_connector and offer what it "
+    "finds with offer_connector rather than asking the user to set it up."
 )
 
 

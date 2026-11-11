@@ -20,6 +20,7 @@ import { SUBAGENT_REPORT_PREFIX, SubAgentReportCard } from "../SubAgentReportCar
 import { TaskDraftCard } from "../TaskDraftCard";
 import { TaskCard } from "./TaskCard";
 import { WorkflowDraftCard } from "../workflow/WorkflowDraftCard";
+import { CONNECTED_NOTE_PREFIX, ConnectorConnectedNote, ConnectorOfferCard } from "./ConnectorOfferCard";
 import { type TaskDraftItem } from "./types";
 import { ToolRunGroupView } from "./ToolRuns";
 import { UserMessageView, SteerView } from "./UserMessageView";
@@ -131,6 +132,7 @@ export function TurnView({
           <TaskDraftCard key={entry.id} item={entry} onReview={onReviewTaskDraft} onDismiss={onDismissTaskDraft} />
         ) : entry.kind === "workflow_draft" ? (
           <WorkflowDraftCard key={entry.id} entry={entry} />
+        ) : entry.kind === "connector_offer" ? (<ConnectorOfferCard key={entry.id} entry={entry} />
         ) : entry.kind === "steer" ? (
           <SteerView key={entry.id} item={entry} />
         ) : (
@@ -185,6 +187,7 @@ export function LogItemView({
       return <InvestigationCard text={item.text} />;
     if (item.text.startsWith(SUBAGENT_REPORT_PREFIX)) return <SubAgentReportCard text={item.text} />;
     if (item.text.startsWith(BACKGROUND_REPORT_PREFIX)) return <BackgroundTaskReportCard text={item.text} />;
+    if (item.text.startsWith(CONNECTED_NOTE_PREFIX)) return <ConnectorConnectedNote text={item.text} />;
     if (item.text.startsWith(CONVERSATION_MESSAGE_PREFIX)) return <ConversationMessageCard text={item.text} />;
     return <UserMessageView item={item} onEditMessage={onEditMessage} />;
   }
