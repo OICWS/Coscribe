@@ -296,6 +296,17 @@ export function tabShown(tab: Tab): boolean {
   return panelRect !== null && tab.group === viewedGroup && activeIds.get(tab.group) === tab.id && !tab.blank && !viewHidden;
 }
 
+/** The group's turn or run is over: its tabs go back to the panel's own
+ * width, for the person to read at the size they chose. */
+export function releaseTabs(group: string): void {
+  for (const tab of groupTabs(group)) {
+    const cdp = existingCdp(tab.view.webContents);
+    if (!cdp?.driving) continue;
+    cdp.driving = false;
+    void cdp.fit(!tabShown(tab), lastPanelSize).catch(() => undefined);
+  }
+}
+
 export function hiddenTabSize(): { width: number; height: number } {
   return lastPanelSize;
 }

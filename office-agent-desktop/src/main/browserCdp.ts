@@ -149,6 +149,19 @@ export class TabCdp {
     this.scale = natural ? 1 : scale;
   }
 
+  /** An AI step of conversation or run `threadId` is about to act on the tab. */
+  async drive(threadId: string, downloadDir: unknown, hidden: boolean, panel: { width: number; height: number }): Promise<void> {
+    this.stepStarted = Date.now();
+    this.threadId = threadId;
+    if (typeof downloadDir === "string") this.downloadDir = downloadDir;
+    // With the window in the tray the page would count as hidden, and a
+    // hidden page takes no clicks: a scheduled run would fail at its first.
+    this.wc.setBackgroundThrottling(false);
+    await this.ensure();
+    this.driving = true;
+    await this.fit(hidden, panel);
+  }
+
   get screenScale(): number {
     return this.wc.debugger.isAttached() ? this.scale : 1;
   }

@@ -31,6 +31,7 @@ import {
   normalizeUrl,
   onTabDownload,
   openerOf,
+  releaseTabs,
   selectTab,
   setViewHidden,
   tabInfo,
@@ -495,18 +496,6 @@ function startActivity(threadId: string): void {
   }
 }
 
-/** The turn or run is over: its tabs go back to the panel's own width,
- * for the person to read and use at the size they chose. */
-function endActivity(threadId: string): void {
-  activeThreads.delete(threadId);
-  for (const tab of allTabs(threadId)) {
-    const cdp = existingCdp(tab.view.webContents);
-    if (!cdp?.driving) continue;
-    cdp.driving = false;
-    void cdp.fit(!tabShown(tab), hiddenTabSize()).catch(() => undefined);
-  }
-}
-
 /** Until a download no wait has taken yet has finished -- one already
  * done, under way, or starting while waiting -- and none is still going;
  * then takes them. */
@@ -568,13 +557,7 @@ async function run(command: Command): Promise<Record<string, unknown>> {
       selectTab(tab.id);
       if (args.url) {
         const cdp = cdpFor(tab.view.webContents);
-        cdp.stepStarted = Date.now();
-        cdp.threadId = command.thread_id;
-        if (typeof args.download_dir === "string") cdp.downloadDir = args.download_dir;
-        tab.view.webContents.setBackgroundThrottling(false);
-        await cdp.ensure();
-        cdp.driving = true;
-        await cdp.fit(!tabShown(tab), hiddenTabSize());
+        await cdp.drive(command.thread_id, args.download_dir, !tabShown(tab), hiddenTabSize());
         await load(tab.view.webContents, String(args.url));
         cdp.stepEnded = Date.now();
       }
@@ -593,15 +576,7 @@ async function run(command: Command): Promise<Record<string, unknown>> {
     throw new Error("The current tab is empty -- open a page with browser_navigate first.");
   }
   const cdp = cdpFor(wc);
-  cdp.stepStarted = Date.now();
-  cdp.threadId = command.thread_id;
-  if (typeof args.download_dir === "string") cdp.downloadDir = args.download_dir;
-  // With the window in the tray the page would count as hidden, and a
-  // hidden page takes no clicks: a scheduled run would fail at its first.
-  wc.setBackgroundThrottling(false);
-  await cdp.ensure();
-  cdp.driving = true;
-  await cdp.fit(!tabShown(tab), hiddenTabSize());
+  await cdp.drive(command.thread_id, args.download_dir, !tabShown(tab), hiddenTabSize());
   if (cdp.dialog && command.action !== "handle_dialog") throw new Error(describeDialog(cdp.dialog));
 
   let result: Record<string, unknown>;
@@ -921,7 +896,10 @@ export function startBrowserAgent(port: number, token: string, getWindow: () => 
               // A stop can't queue behind the step it is stopping.
               if (command.action === "activity") {
                 if (command.args?.active) startActivity(command.thread_id);
-                else endActivity(command.thread_id);
+                else {
+                  activeThreads.delete(command.thread_id);
+                  releaseTabs(command.thread_id);
+                }
                 continue;
               }
               if (command.action === "cancel") {

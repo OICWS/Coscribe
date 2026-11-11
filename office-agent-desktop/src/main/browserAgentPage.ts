@@ -131,13 +131,8 @@ export function pageAgent(action: string, args: Record<string, unknown>): unknow
   const center = (el: Element): { x: number; y: number; element: string } => {
     el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" as ScrollBehavior });
     const rect = el.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) {
-      throw new Error(`${describe(el)} isn't visible on the page, so it can't be used right now.`);
-    }
-    // Clipped by a box that doesn't scroll, the element stays out of view;
-    // clicking the nearest edge instead would hit something else.
-    if (rect.right <= 0 || rect.bottom <= 0 || rect.left >= window.innerWidth || rect.top >= window.innerHeight) {
-      throw new Error(`${describe(el)} is cut off outside the page's visible area, so it can't be clicked.`);
+    if (rect.width <= 0 || rect.height <= 0 || rect.right <= 0 || rect.bottom <= 0 || rect.left >= innerWidth || rect.top >= innerHeight) {
+      throw new Error(`${describe(el)} isn't visible on the page (hidden, or cut off by a box that doesn't scroll), so it can't be used right now.`);
     }
     const x = Math.min(Math.max(rect.left + rect.width / 2, 1), window.innerWidth - 1);
     const y = Math.min(Math.max(rect.top + rect.height / 2, 1), window.innerHeight - 1);
