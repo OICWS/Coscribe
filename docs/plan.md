@@ -101,6 +101,9 @@ Last reviewed: 2026-11-06.
 
 ## Needs the maintainer's testing (could not be verified here)
 
+- The notices for made files on Windows: Open and Show in folder starting Excel and Explorer,
+  and Copy putting a picture on the clipboard in the desktop app.
+
 - Sign-in of the 13 connectors added for the skill plugins (only the
   registration was tested), and of the 19 added before them.
 - The guided setup for HubSpot and Google (Gmail, Calendar, Drive): follows the
@@ -127,6 +130,10 @@ Last reviewed: 2026-11-06.
   one file at a time.
 
 ## Later (wanted, not scheduled)
+
+- A tool that saves the browser page the model looks at as a picture file, so a screenshot it
+  takes shows in the conversation and as a picture notice above the message box
+  (`docs/log/2026-11-11-notice-kinds.md`). Today pictures there are only files it wrote.
 
 - A workspace's uploads in `.coscribe/uploads/<kind>/`, pasted pictures named by date and time and
   a one-line description of each from the side model (decision 0044, its second part; the notes

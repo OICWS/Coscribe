@@ -35,7 +35,7 @@ export function PlanCard({
   const primary = "h-8 rounded-lg bg-[var(--primary)] px-3 text-[14px] font-medium text-[var(--primary-fg)] hover:bg-[var(--primary-hover)]";
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3" data-waiting={pending ? item.id : undefined}>
       {item.previous !== undefined && <PlanDiff before={item.previous} after={item.plan} />}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3.5">
         <div className="flex items-baseline justify-between gap-3">
