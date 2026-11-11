@@ -295,13 +295,13 @@ export function tabShown(tab: Tab): boolean {
   return panelRect !== null && tab.group === viewedGroup && activeIds.get(tab.group) === tab.id && !tab.blank && !viewHidden;
 }
 
-/** The group's turn or run is over: a tab the AI widened goes back to the
- * panel's width, so the person sees all of it again. */
+/** The group's turn or run is over: its tabs go back to the panel's
+ * width, so the person sees all of each page again. */
 export function releaseTabs(group: string): void {
   for (const tab of groupTabs(group)) {
     const cdp = existingCdp(tab.view.webContents);
-    if (!cdp?.wide) continue;
-    cdp.wide = false;
+    if (!cdp?.driving) continue;
+    cdp.driving = false;
     void cdp.fit(!tabShown(tab), lastPanelSize).catch(() => undefined);
   }
 }
