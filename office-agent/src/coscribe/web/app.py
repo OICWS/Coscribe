@@ -96,6 +96,7 @@ from ..tools import (
     sweep_folder_grants,
 )
 from .background_events import BackgroundEventBus
+from .connector_directory import CatalogDirectory
 from .connector_manager import ConnectorManager
 from .environment_migration import migrate_to_environments
 from .folder_grants import sweep_unused_folder_grants
@@ -424,6 +425,8 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
     background_events = BackgroundEventBus()
     mcp_oauth = McpOAuth(settings.state_dir)
     connectors = ConnectorManager(settings, sessions, mcp_oauth.auth_for)
+    connector_directory = CatalogDirectory(settings, connectors.connections, mcp_oauth)
+    connectors.after_refresh = lambda: connector_directory.carry_on_offers(_get_session)
 
     def _oauth_callback_response(
         state: str, code: str | None, error: str | None
@@ -470,12 +473,9 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
 
     def _get_session(thread_id: str) -> ChatSessionLG:
         if thread_id not in sessions:
-            # Re-read providers.json fresh for every *new* session (unlike
-            # context_window_client's fixed custom_providers above) -- the
-            # cheapest way to get "a provider added after startup is usable
-            # in the next new thread" without a second holder to keep in
-            # sync, and this file only ever runs once per new thread_id, not
-            # once per message.
+            # Re-read providers.json for every *new* session (unlike context_window_client's
+            # fixed custom_providers above): a provider added after startup is usable in the
+            # next new thread, with no second holder to keep in sync.
             session_custom_providers = (
                 load_custom_providers(settings.providers_config_path)
                 if settings.providers_config_path is not None
@@ -502,6 +502,7 @@ def create_app_lg(settings: Settings | None = None) -> FastAPI:
                 workspace_explicit=bool(folders),
                 extra_folders=folders[1:],
                 configured_models=lambda: _configured_models(settings),
+                connector_directory=connector_directory,
             )
         return sessions[thread_id]
 

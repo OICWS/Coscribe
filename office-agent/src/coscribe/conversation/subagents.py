@@ -372,6 +372,16 @@ class SubAgentReporter:
         finally:
             self._host._reporting_subagents.discard(task_id)
 
+    def tell(self, key: str, text: str) -> None:
+        """Sends `text` as a turn of its own, like a report: after the turn in progress, and
+        within the same cap of turns without the user. `key` names it in the logs."""
+        if key in self._host._reporting_subagents:
+            return
+        self._host._reporting_subagents.add(key)
+        task = asyncio.get_running_loop().create_task(self._report(key, lambda: text, ""))
+        self._host._report_tasks.add(task)
+        task.add_done_callback(self._host._report_tasks.discard)
+
     def schedule_inbox_delivery(self) -> None:
         """Messages from other conversations are waiting: turn them into a turn
         of this one, once. Callable from a tool thread or a connect, with or

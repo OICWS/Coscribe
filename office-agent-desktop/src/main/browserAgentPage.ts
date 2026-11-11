@@ -1,7 +1,7 @@
 /**
  * What coscribe's AI does *inside* a page or one of its frames: read it as
  * a list of elements with refs, find an element by ref, prepare a field
- * for typing, pick dropdown options, scroll. browserCdp.ts runs it in an
+ * for typing, pick dropdown options; pageScroll below finds what to scroll. browserCdp.ts runs it in an
  * isolated world of each frame as `(${pageAgent})(action, args)`, so the
  * function must stay self-contained: no imports, no helpers outside its
  * own body. The isolated world keeps the page's own scripts from seeing
@@ -128,7 +128,7 @@ export function pageAgent(action: string, args: Record<string, unknown>): unknow
     return el;
   };
 
-  const center = (el: Element): { x: number; y: number; element: string; outside: boolean } => {
+  const center = (el: Element): { x: number; y: number; element: string; outside: boolean; right: number; covered: string } => {
     el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" as ScrollBehavior });
     const rect = el.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) {
@@ -136,7 +136,13 @@ export function pageAgent(action: string, args: Record<string, unknown>): unknow
     }
     const x = Math.min(Math.max(rect.left + rect.width / 2, 1), window.innerWidth - 1);
     const y = Math.min(Math.max(rect.top + rect.height / 2, 1), window.innerHeight - 1);
-    return { x, y, element: describe(el), outside: rect.right <= 0 || rect.bottom <= 0 || rect.left >= innerWidth || rect.top >= innerHeight };
+    // What a click there would hit. Part of the same control (a styled
+    // checkbox's box over its input) is fine; a layer over the page that
+    // doesn't hold the element -- a cookie banner, a dialog's backdrop -- is not.
+    const hit = document.elementFromPoint(x, y);
+    const layer = (e: Element | null): Element | null => (!e || /fixed|sticky/.test(getComputedStyle(e).position) ? e : layer(e.parentElement));
+    const over = hit && !el.contains(hit) && !hit.contains(el) && ((layer(hit) && !layer(hit)!.contains(el)) || hit.parentElement === document.body);
+    return { x, y, element: describe(el), outside: rect.right <= 0 || rect.bottom <= 0 || rect.left >= innerWidth || rect.top >= innerHeight, right: rect.right, covered: over ? describe(hit) : "" };
   };
 
   const SKIP_TAGS = new Set(["script", "style", "noscript", "template", "head", "meta", "link"]);
@@ -296,25 +302,6 @@ export function pageAgent(action: string, args: Record<string, unknown>): unknow
     return { selected: matches.map((o) => o.text.trim()), element: describe(el) };
   }
 
-  if (action === "scroll") {
-    // The page itself or the scrolling box under the middle of the view --
-    // many apps scroll an inner pane, not the document.
-    let target: Element | null = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
-    while (target && target !== document.documentElement) {
-      const style = getComputedStyle(target);
-      if (/(auto|scroll)/.test(style.overflowY) && target.scrollHeight > target.clientHeight + 1) break;
-      target = target.parentElement;
-    }
-    const scroller = target && target !== document.documentElement ? target : document.scrollingElement ?? document.documentElement;
-    const step = Math.round(scroller.clientHeight * 0.85) * (args.direction === "up" ? -1 : 1);
-    const before = scroller.scrollTop;
-    scroller.scrollBy({ top: step, behavior: "instant" as ScrollBehavior });
-    const after = scroller.scrollTop;
-    const bottom = scroller.scrollHeight - scroller.clientHeight;
-    if (after === before) return { note: args.direction === "up" ? "Already at the top." : "Already at the bottom." };
-    return { note: `Scrolled ${args.direction}; now ${Math.round(after)} of ${Math.round(bottom)}px.` };
-  }
-
   if (action === "has_text") {
     return { found: (document.body?.innerText ?? "").includes(String(args.text)) };
   }
@@ -354,4 +341,58 @@ export function pageAgent(action: string, args: Record<string, unknown>): unknow
   }
 
   throw new Error(`Unknown page action ${action}`);
+}
+
+/** Finds the area the AI means to scroll and what tells whether it moved
+ * ("probe"); scrolls it if it scrolls natively ("nudge"), else says where
+ * to turn a wheel over it and whether that moved it ("measure"). Run like
+ * pageAgent, so self-contained too. Grids like SAP's draw their own
+ * scrollbar and move their rows only for a wheel; a native box moves
+ * directly, at once, where a wheel's smooth scroll would still be going. */
+export function pageScroll(action: string, args: Record<string, unknown>): unknown {
+  type Found = { area: Element; scroller: Element | null };
+  const w = window as unknown as { __coscribeAgent?: { refs: Map<string, WeakRef<Element>> }; __coscribeScroll?: Found };
+  const horizontal = args.direction === "left" || args.direction === "right";
+  const page = document.scrollingElement ?? document.documentElement;
+  const where = (f: Found) => {
+    const s = f.scroller;
+    const progress = !s ? "" : horizontal ? `${Math.round(s.scrollLeft)} of ${s.scrollWidth - s.clientWidth}px` : `${Math.round(s.scrollTop)} of ${s.scrollHeight - s.clientHeight}px`;
+    // A grid that scrolls by script shows it only in what it holds.
+    return { progress, sig: `${progress}|${(f.area.textContent ?? "").slice(0, 2000)}` };
+  };
+  if (action === "measure") return where(w.__coscribeScroll!);
+  if (action === "nudge") {
+    const s = w.__coscribeScroll!.scroller;
+    s?.scrollBy({ [horizontal ? "left" : "top"]: Number(args.step), behavior: "instant" as ScrollBehavior });
+    return where(w.__coscribeScroll!);
+  }
+
+  let start: Element | null = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+  if (args.within) {
+    start = w.__coscribeAgent?.refs.get(String(args.within))?.deref() ?? null;
+    if (!start?.isConnected) throw new Error(`No element with ref ${args.within} on this page any more -- take a new browser_snapshot.`);
+  }
+  // The nearest box that scrolls this way, else one that clips what it
+  // holds (a grid scrolling by script), else the page.
+  let scroller: Element | null = null;
+  let clipper: Element | null = null;
+  for (let el = start; el && el !== document.documentElement && !scroller; el = el.parentElement) {
+    const style = getComputedStyle(el);
+    const more = horizontal ? el.scrollWidth > el.clientWidth + 1 : el.scrollHeight > el.clientHeight + 1;
+    if (/(auto|scroll)/.test(horizontal ? style.overflowX : style.overflowY) && more) scroller = el;
+    else if (!clipper && el !== document.body && /(hidden|clip)/.test(style.overflow)) clipper = el;
+  }
+  if (!scroller && !clipper) scroller = page;
+  const found: Found = { area: (scroller === page ? document.body : scroller) ?? clipper!, scroller };
+  w.__coscribeScroll = found;
+  const r = found.area === document.body ? new DOMRect(0, 0, innerWidth, innerHeight) : found.area.getBoundingClientRect();
+  const left = Math.max(r.left, 0), right = Math.min(r.right, innerWidth), top = Math.max(r.top, 0), bottom = Math.min(r.bottom, innerHeight);
+  return {
+    x: (left + right) / 2,
+    y: (top + bottom) / 2,
+    step: Math.max(40, Math.round((horizontal ? right - left : bottom - top) * 0.85)),
+    area: found.area === document.body ? "the page" : "that area",
+    native: scroller !== null,
+    ...where(found),
+  };
 }

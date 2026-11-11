@@ -22,9 +22,11 @@ const IDLE_QUIET_MS = 500;
 const IDLE_MAX_MS = 8000;
 // Streams that stay open by design never finish.
 const LONG_LIVED = new Set(["EventSource", "WebSocket", "Ping"]);
-// The width a laptop's browser window gives a page: wide enough for the
-// toolbars of SAP's WebGUI and sites like it.
-const WIDE_LAYOUT_WIDTH = 1280;
+// The width a laptop's browser window gives a page: a desktop layout, and
+// wide enough for the toolbars of SAP's WebGUI and sites like it.
+const AGENT_LAYOUT_WIDTH = 1280;
+// Past this a page that still clips is beyond any screen it was made for.
+const MAX_LAYOUT_WIDTH = 2560;
 
 export interface PageDialog {
   type: string;
@@ -116,21 +118,28 @@ export class TabCdp {
     this.requests.clear();
   }
 
-  /** Whether the AI widened the page past the panel (widen); until its
-   * turn or run ends (browserPanel's releaseTabs). */
-  wide = false;
+  /** Whether an AI turn or run is using the tab, until it ends
+   * (browserPanel's releaseTabs). */
+  driving = false;
+  /** Wider than AGENT_LAYOUT_WIDTH for this turn or run (widenTo). */
+  private minWidth = AGENT_LAYOUT_WIDTH;
   private layoutKey = "";
   private lastFit: { hidden: boolean; panel: { width: number; height: number } } | null = null;
 
   /** Lays the page out for the panel. Off the panel a page has no
    * viewport of its own (see browserPanel's layout), so it gets the
-   * panel's size; widened, it gets WIDE_LAYOUT_WIDTH, unscaled: the panel
-   * shows its left part at the usual size, and the page takes clicks
-   * beyond the panel's edge all the same. */
+   * panel's size. While the AI uses it, the page is at least
+   * AGENT_LAYOUT_WIDTH wide whatever the panel's width: sites change their
+   * layout with the width -- a menu folds away, SAP's WebGUI clips a
+   * toolbar -- and a workflow's steps must find what they found when they
+   * were made. Unscaled: the panel shows the left part at the usual size,
+   * and the page takes clicks beyond the panel's edge all the same. The
+   * height stays the panel's, which rarely changes a page's layout. */
   async fit(hidden: boolean, panel: { width: number; height: number }): Promise<void> {
     if (!this.wc.debugger.isAttached() || panel.width <= 0 || panel.height <= 0) return;
     this.lastFit = { hidden, panel };
-    const width = this.wide ? Math.max(panel.width, WIDE_LAYOUT_WIDTH) : panel.width;
+    if (!this.driving) this.minWidth = AGENT_LAYOUT_WIDTH;
+    const width = this.driving ? Math.max(panel.width, this.minWidth) : panel.width;
     const natural = !hidden && width === panel.width;
     const key = natural ? "natural" : `${width}x${panel.height}`;
     if (key === this.layoutKey) return;
@@ -142,13 +151,12 @@ export class TabCdp {
     this.layoutKey = key;
   }
 
-  /** A narrow panel cuts sites built for a desktop window (SAP's WebGUI)
-   * short: a toolbar that doesn't fit is clipped, not scrolled, and the AI
-   * can't click a button the page never lays out in view. Laid out wider,
-   * it can. False if the page is already as wide as it gets. */
-  async widen(): Promise<boolean> {
-    if (this.wide || !this.lastFit || this.lastFit.panel.width >= WIDE_LAYOUT_WIDTH) return false;
-    this.wide = true;
+  /** Lays the page out wide enough to show what ends `right` px from its
+   * left edge, up to MAX_LAYOUT_WIDTH; false if it can't grow. */
+  async widenTo(right: number): Promise<boolean> {
+    const width = Math.min(Math.ceil(right) + 40, MAX_LAYOUT_WIDTH);
+    if (!this.driving || !this.lastFit || width <= Math.max(this.minWidth, this.lastFit.panel.width)) return false;
+    this.minWidth = width;
     await this.fit(this.lastFit.hidden, this.lastFit.panel);
     return true;
   }
@@ -162,6 +170,7 @@ export class TabCdp {
     // hidden page takes no clicks: a scheduled run would fail at its first.
     this.wc.setBackgroundThrottling(false);
     await this.ensure();
+    this.driving = true;
     await this.fit(hidden, panel);
   }
 
@@ -269,8 +278,8 @@ export class TabCdp {
     }
   }
 
-  async agent<T>(frame: AgentFrame, action: string, args: Record<string, unknown> = {}): Promise<T> {
-    const code = `(${pageAgent.toString()})(${JSON.stringify(action)}, ${JSON.stringify(args)})`;
+  async agent<T>(frame: AgentFrame, action: string, args: Record<string, unknown> = {}, fn: typeof pageAgent = pageAgent): Promise<T> {
+    const code = `(${fn.toString()})(${JSON.stringify(action)}, ${JSON.stringify(args)})`;
     return (await this.evaluate(frame, code))?.value as T;
   }
 
