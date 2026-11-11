@@ -38,11 +38,11 @@ const EMPTY: { catalog: McpCatalogEntry[]; servers: McpServersResponse; apps: Mc
 };
 
 /** Settings > Connectors: the list, a connector's own page (its tools and
- * their permissions), and adding a custom one. */
-export function ConnectorsTab({ active }: { active: boolean }) {
+ * their permissions), and adding a custom one. `start` opens a catalog connector's page. */
+export function ConnectorsTab({ active, start }: { active: boolean; start?: string | null }) {
   const [, forceRender] = useState(0);
-  const [tab, setTab] = useState<"yours" | "discover">("yours");
-  const [openName, setOpenName] = useState<string | null>(null);
+  const [tab, setTab] = useState<"yours" | "discover">(start ? "discover" : "yours");
+  const [openName, setOpenName] = useState<string | null>(start ?? null);
   const [adding, setAdding] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const addMenuRef = useRef<HTMLDivElement>(null);

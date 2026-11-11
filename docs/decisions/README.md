@@ -55,3 +55,4 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0043](0043-a-run-asks-before-its-models-use-more.md) | A run asks before its models use more tokens, with no setting (proposed) |
 | [0044](0044-a-workspace-keeps-its-own-coscribe-folder.md) | A workspace keeps its own `.coscribe/` folder: notes, skills and uploads (proposed) |
 | [0045](0045-how-each-turn-went-is-kept-on-the-machine-without-its-words.md) | How each turn went is kept on the machine, without its words (proposed) |
+| [0046](0046-a-conversation-offers-a-connector-the-person-connects.md) | A conversation offers a connector, and the person connects it (proposed) |

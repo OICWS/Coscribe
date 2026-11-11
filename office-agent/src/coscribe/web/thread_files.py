@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 from ..config import Settings
+from ..conversation import OfferLog
 from ..runtime import Environments
 from ..tools import (
     SCHEDULED_THREAD_PREFIX,
@@ -99,6 +100,7 @@ class ThreadFiles:
         self.title_sidecar_path(thread_id).unlink(missing_ok=True)
         Environments(self._settings.state_dir).forget_thread(thread_id)
         MessagingStore(self._settings.state_dir).delete(thread_id)
+        OfferLog(self._settings.state_dir).forget(thread_id)
 
     def run_folders(self, thread_id: str) -> list[str]:
         """A scheduled run's folders: its task's environment's, then the existing ones its

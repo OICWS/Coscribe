@@ -6,7 +6,7 @@ first-run setup page (`setup_app.py` with `create_setup_app`), the objects every
 module per area under `routes/` (`ws.py` the chat and browser sockets; `threads.py`, `files.py`,
 `skills.py`, `scheduled.py`, `webhooks.py` a webhook task's address and key, `internal.py`, `slides.py` the Slides panel's reads, `workspace.py` the Files panel's read-only listing, name search and raw files of a conversation's folders, `artifacts.py` the Artifacts page's list, thumbnails and opening (`artifact_adoption.py` registers what conversations created); `settings/` and `connectors/` one module per
 resource; `settings/config.py` holds the allowlists of `.env` settings the UI may read and write), request bodies (`schemas.py`), the connector catalog and the live connectors
-(`connector_catalog.py`, `connector_manager.py`), the provider catalog, the loop that fires due
+(`connector_catalog.py`, `connector_manager.py`), the catalog as a conversation searches it and the wake of a conversation whose offered connector is connected (`connector_directory.py`, decision 0046), the provider catalog, the loop that fires due
 wakes and scheduled tasks (`scheduler.py`) and the listener a webhook task's events come to on
 127.0.0.1 (`webhook_listener.py`, decision 0040), background events for the tray (`background_events.py`),
 the browser panel (`browser_panel.py`, `browser_detect.py`) and the `Host`/`Origin` guard on every request and socket (`local_guard.py`). Does not own a conversation's turns

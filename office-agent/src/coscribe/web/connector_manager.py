@@ -54,6 +54,9 @@ class ConnectorManager:
         self.connections: dict[str, Any] = {}
         self.sign_in_tasks: set[asyncio.Task[None]] = set()
         self._reconnecting: set[str] = set()
+        # Run after every open conversation has the new tools, so a conversation woken by a
+        # connection (a connector it offered) already has them.
+        self.after_refresh: Callable[[], None] | None = None
 
     def session_extra_tools(self) -> list[Any]:
         """The connector tools conversations get, under the permissions set
@@ -94,9 +97,7 @@ class ConnectorManager:
         McpServerConnection, if any -- unlike before the persistent-session
         fix (runtime_lg/mcp.py), there is now a real subprocess to actually
         tear down here, not just a tool list to filter."""
-        self.tools = [
-            t for t in self.tools if get_tool_metadata(t).category != f"mcp:{name}"
-        ]
+        self.tools = [t for t in self.tools if get_tool_metadata(t).category != f"mcp:{name}"]
         connection = self.connections.pop(name, None)
         if connection is not None:
             await connection.close()
@@ -173,3 +174,5 @@ class ConnectorManager:
         tools = self.session_extra_tools()
         for session in self._sessions.values():
             await session.refresh_extra_tools(tools)
+        if self.after_refresh is not None:
+            self.after_refresh()
