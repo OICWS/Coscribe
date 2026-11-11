@@ -357,17 +357,21 @@ def _navigation_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable
         result = call("hover", wait + _DEFAULT_TIMEOUT, ref=ref, timeout=wait)
         return _with_tab(f"Hovering over {result.get('element') or ref}.", result)
 
-    def browser_scroll(direction: str = "down", ref: str = "") -> str:
+    def browser_scroll(direction: str = "down", ref: str = "", within: str = "") -> str:
         """Scroll the current page in coscribe's browser by about one
-        screen, or bring one element into view.
+        screen, or bring one element into view. Long lists and tables
+        often show only the rows in view: scroll, snapshot, repeat until
+        what you need appears or nothing moves.
 
         Args:
-            direction: "down" or "up"
+            direction: "down", "up", "left" or "right"
             ref: scroll this element into view instead (from browser_snapshot)
+            within: scroll the list, table or pane this element is in (any
+                ref inside it) rather than the one in the middle of the view
         """
-        if direction not in ("down", "up"):
-            raise ValueError('direction must be "down" or "up".')
-        result = call("scroll", direction=direction, ref=ref or None)
+        if direction not in ("down", "up", "left", "right"):
+            raise ValueError('direction must be "down", "up", "left" or "right".')
+        result = call("scroll", direction=direction, ref=ref or None, within=within or None)
         return _with_tab(str(result.get("note") or "Scrolled."), result)
 
     return {
