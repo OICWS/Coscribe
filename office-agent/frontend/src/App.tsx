@@ -511,14 +511,6 @@ function App() {
     openTask: (task) => showScheduledTaskPage(task),
   });
 
-  const notices = useChatNotices([...state.olderItems, ...state.items], state.turnInFlight, draftCards, state.saveOffer, {
-    saveDraft: (entry) => saveWorkflowDraft(entry),
-    reviewDraft: reviewWorkflowDraft,
-    saveAsWorkflow: startWorkflowDraft,
-    saveAsSkill: (name) => onSend({ displayText: `/saveskill ${name}`, outgoingText: `/saveskill ${name}`, isInstant: false }),
-    dismissOffer: () => dispatch({ type: "local_save_offer_dismissed" }),
-  });
-
   const leaveWorkflowDraft = () => {
     const draftThread = workflowDraft?.threadId;
     if (draftThread && draftThread !== threadId) goToThread(draftThread);
@@ -791,6 +783,14 @@ function App() {
     if (poppedOut.includes("viewer")) focusPanelWindow("viewer");
     return true;
   };
+  const { notices, overlay: noticeOverlay } = useChatNotices({ threadId, refreshKey, items: [...state.olderItems, ...state.items], turnInFlight: state.turnInFlight }, draftCards, state.saveOffer, {
+    saveDraft: (entry) => saveWorkflowDraft(entry),
+    reviewDraft: reviewWorkflowDraft,
+    saveAsWorkflow: startWorkflowDraft,
+    saveAsSkill: (name) => onSend({ displayText: `/saveskill ${name}`, outgoingText: `/saveskill ${name}`, isInstant: false }),
+    dismissOffer: () => dispatch({ type: "local_save_offer_dismissed" }),
+    viewFile,
+  });
 
   if (!bootstrapped) return <StartupSplash />;
 
@@ -990,7 +990,7 @@ function App() {
                   {pendingQuestion && (
                     <QuestionPanel key={pendingQuestion.id} item={pendingQuestion} onAnswer={onAnswerQuestion} />
                   )}
-                  <NoticeStack notices={notices} />
+                  <NoticeStack notices={notices} />{noticeOverlay}
                   {composer}
                 </BackgroundTasks.Provider></DetachScript.Provider></OpenDesignSystem.Provider></ViewFile.Provider></SteerActionsContext.Provider>
               ) : workflowDraft ? (

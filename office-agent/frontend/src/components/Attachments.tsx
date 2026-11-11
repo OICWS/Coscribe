@@ -4,6 +4,7 @@ import { AnnotateEntry } from "./ImageAnnotator";
 import { CloseIcon } from "./icons";
 
 import { type AttachmentView } from "../lib/attachments";
+import { copyImage } from "../lib/copyImage";
 
 function pdfPageUrl(path: string, threadId: string, page: number, width: number): string {
   const query = new URLSearchParams({ path, page: String(page), width: String(width) });
@@ -20,18 +21,6 @@ function thumbnailSrc(view: AttachmentView, threadId: string): string | null {
   if (view.kind === "image") return view.src;
   if (view.kind === "pdf") return pdfPageUrl(view.path, threadId, 1, 360);
   return null;
-}
-
-async function copyImage(src: string): Promise<void> {
-  const image = new Image();
-  image.src = src;
-  await image.decode();
-  const canvas = document.createElement("canvas");
-  canvas.width = image.naturalWidth;
-  canvas.height = image.naturalHeight;
-  canvas.getContext("2d")?.drawImage(image, 0, 0);
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-  if (blob) await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
 }
 
 interface MenuAt {
