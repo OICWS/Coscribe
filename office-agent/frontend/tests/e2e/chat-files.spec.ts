@@ -28,7 +28,8 @@ test(`a file named in a reply is a chip with a card on hover, and the turn ends 
   await chip.click();
   await expect(page.getByRole("region", { name: "Viewer" })).toBeVisible();
 
-  const end = page.getByTitle(`Open ${name}.md`);
+  // The notice above the message box opens the same file under the same title; the end card is the one with its kind.
+  const end = page.getByTitle(`Open ${name}.md`).filter({ hasText: "Document · .md" });
   await expect(end).toBeVisible();
   await expect(end).toContainText("Document · .md");
   await page.mouse.move(5, 500);
