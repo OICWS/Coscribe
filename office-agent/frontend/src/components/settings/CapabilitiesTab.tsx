@@ -161,6 +161,20 @@ export function CapabilitiesTab({ active, values, onChange, onOpenEnvironments }
       <SettingsSection title="Capabilities">
         {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
         <SettingRows>
+          <SettingRow
+            label="Create and edit files"
+            description="Coscribe writes and changes files in the folders of its environment: Word, Excel, PowerPoint, PDF and text. Off, it only reads them and answers in the conversation; a script or command you approve can still write."
+            control={<ToggleSwitch label="Create and edit files" on={capabilities.files} onClick={() => set("files", !capabilities.files)} />}
+          />
+          {capabilities.files && (
+            <SubRows>
+              <SettingRow
+                label="Artifacts"
+                description="Docs, designs and dashboards that open beside the conversation. Off, Coscribe answers in the conversation or writes an Office file; the ones already made still open."
+                control={<ToggleSwitch label="Artifacts" on={capabilities.artifacts} onClick={() => set("artifacts", !capabilities.artifacts)} />}
+              />
+            </SubRows>
+          )}
           <ScriptsRow active={active} on={capabilities.scripts} toggle={() => set("scripts", !capabilities.scripts)} />
           <CommandRows capabilities={capabilities} set={set} control={sandbox} onOpenEnvironments={onOpenEnvironments} />
           {isElectron() && (

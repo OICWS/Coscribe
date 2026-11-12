@@ -39,6 +39,7 @@ from coscribe.runtime import empty_hooks_config
 from coscribe.runtime_lg.audit import AuditLog
 from coscribe.runtime_lg.auto_review import REVIEWER_INSTRUCTIONS, Verdict
 from coscribe.tools.bookkeeping.subagent_tasks import SubAgentTask
+from coscribe.tools.exec import Capabilities
 from coscribe.tools.exec import commands as commands_module
 from tests.environment_helpers import in_environment
 
@@ -360,6 +361,26 @@ async def test_a_refusal_carries_the_reason_the_model_is_told(
 
     assert "Plan mode is active" in plan["message"]
     assert script == {"type": "reject", "message": "no"}
+
+
+async def test_a_write_whose_switch_is_off_is_refused_before_anyone_is_asked(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _session(tmp_path, monkeypatch)
+    Capabilities(session.settings.state_dir).set("files", False)
+    socket = _Socket(attended=True)
+    request = {"name": LOCAL, "args": {"path": "a.txt", "content": "x"}}
+
+    write = await session._decide_action_request(request, socket)
+    script = asyncio.create_task(
+        session._decide_action_request({"name": EXEC, "args": {"script": "x"}}, socket)
+    )
+    await asyncio.sleep(0.05)
+
+    assert write["type"] == "reject" and "Settings › Capabilities" in write["message"]
+    assert _sent(socket, "approval_required") == 1, "the script is its own switch and still asks"
+    assert AuditLog(session.settings.state_dir).read_all()[-1].reason == "capability_off"
+    script.cancel()
 
 
 # ---------------------------------------------------------------------------

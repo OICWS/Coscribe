@@ -300,12 +300,9 @@ class ChatSessionLG:
         # everything else unchanged (checkpointer/thread_id, base tools, instructions).
         self._custom_providers = custom_providers
         self._base_tools: list[Callable[..., Any] | BaseTool] = list(agent.tools)
-        # Kept separate from self._base_tools (not just concatenated once
-        # here) because refresh_extra_tools below can replace this list
-        # wholesale, independently, whenever an MCP connector connects/
-        # disconnects live -- self._base_tools never needs rebuilding for
-        # that. Combined back in by _build_lg_tools below (same treatment
-        # spawn_agent/review_work already get).
+        # Kept separate from self._base_tools: refresh_extra_tools replaces this list
+        # wholesale whenever an MCP connector connects or disconnects, and the base
+        # tools never need rebuilding for that. _build_lg_tools combines them again.
         self._extra_tools = list(extra_tools)
         self._title_task: asyncio.Task[None] | None = None
         self._suggestion_task: asyncio.Task[None] | None = None
@@ -717,7 +714,7 @@ class ChatSessionLG:
         self.lg_agent, self._gated_tool_risks = agent, risks_of_gated_tools(lg_tools)
 
     def _build_agent(self) -> Any:
-        return build_coordinator_agent(
+        agent = build_coordinator_agent(
             self.settings,
             self.thread_id,
             skill_names=self.enabled_skill_names,
@@ -725,6 +722,7 @@ class ChatSessionLG:
             extra_folders=self.extra_folders,
             conversation_source=CheckpointConversations(self._checkpointer),
         )
+        return self._assembly.held_to_capabilities(agent)
 
     @property
     def folders(self) -> list[Path]:

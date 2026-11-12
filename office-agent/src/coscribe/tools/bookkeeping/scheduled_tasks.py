@@ -37,18 +37,15 @@ from .task_versions import TaskVersions
 from .webhook_events import WebhookEvents
 
 VALID_APPROVAL_MODES = ("manual", "auto", "skip")
+DEFAULT_MAX_STEPS, _MOST_STEPS = 150, 1000
 RUN_STATUSES = ("running", "completed", "failed", "needs_approval", "waiting", "stopped")
 
-# Every run's conversation is keyed off this prefix (see run_thread_id) --
-# shared with web/app.py's list_threads, which filters by it so run
-# conversations only ever show up under Scheduled, never in the ordinary
-# chat sidebar.
+# Every run's conversation is keyed off this prefix (see run_thread_id); the thread list filters
+# by it so a run shows under Scheduled only, never in the chat sidebar.
 SCHEDULED_THREAD_PREFIX = "scheduled-"
 
-# Respond-only interrupt tools (like ask_user_question): the model's call
-# becomes a draft the user reviews and edits in the UI, and whatever they
-# decide is substituted as the tool's result -- the Python body below only
-# ever runs outside such a graph (e.g. a direct call in tests).
+# Respond-only interrupt tools (like ask_user_question): the call becomes a draft the user reviews
+# and edits, and what they decide is the tool's result; the bodies below run only outside a graph.
 TASK_DRAFT_TOOL_NAMES: frozenset[str] = frozenset({"create_scheduled_task", "edit_scheduled_task"})
 
 # edit_scheduled_task's fields, as the draft the user reviews names them.
@@ -66,8 +63,7 @@ _EVIDENCE = frozenset(
     "screenshot page files sites investigation queued quiet versions called token_cap".split()
 )
 
-# Oldest run records beyond this are dropped from the trigger (their
-# conversations are deleted along with them, see web/app.py).
+# Older run records are dropped from the trigger, and their conversations deleted with them.
 MAX_RUNS_KEPT = 50
 # The notes a run carries forward are part of every future run's prompt,
 # so they're kept deliberately small.
@@ -95,6 +91,14 @@ def _now_iso() -> str:
     return datetime.now().isoformat()
 
 
+def _checked_steps(asked: Any, kept: int) -> int:
+    if asked is None:
+        return kept
+    if isinstance(asked, bool) or not isinstance(asked, int) or not 1 <= asked <= _MOST_STEPS:
+        raise ValueError(f"max_steps must be a whole number from 1 to {_MOST_STEPS}")
+    return asked
+
+
 @dataclass
 class ScheduledTrigger:
     trigger_id: str
@@ -111,6 +115,8 @@ class ScheduledTrigger:
     # One of VALID_APPROVAL_MODES. "manual" is how triggers saved before this field ran, so
     # loading one without it must not change its behavior.
     approval_mode: str = "manual"
+    # The most model calls one run of `prompt` makes: nobody is watching to stop it.
+    max_steps: int = DEFAULT_MAX_STEPS
     notes_enabled: bool = True
     runs: list[ScheduledRun] = field(default_factory=list)  # oldest first
     # A workflow_spec Workflow as JSON: when set, a run executes these
@@ -144,6 +150,7 @@ class ScheduledTrigger:
             "last_run_status": self.last_run_status,
             "model": self.model,
             "approval_mode": self.approval_mode,
+            "max_steps": self.max_steps,
             "notes_enabled": self.notes_enabled,
             "runs": [run.to_dict() for run in self.runs],
             "workflow": self.workflow,
@@ -184,6 +191,7 @@ class ScheduledTrigger:
             last_run_status=data.get("last_run_status"),
             model=data.get("model"),
             approval_mode=data.get("approval_mode", "manual"),
+            max_steps=data.get("max_steps") or DEFAULT_MAX_STEPS,
             notes_enabled=data.get("notes_enabled", True),
             runs=runs,
             workflow=current_shape(data.get("workflow")),
@@ -411,11 +419,8 @@ def _validate_and_build_schedule(
     workflow: dict[str, Any] | None = None,
     watch: dict[str, Any] | None = None,
 ) -> tuple[ScheduleRule, str | None, dict[str, Any] | None]:
-    """Shared validation + ScheduleRule construction for create_trigger
-    and update_trigger -- kept as one function so the two paths can never
-    silently drift out of sync with each other, same reasoning
-    create_trigger's own docstring already gives for being shared between
-    the model tool and the REST endpoint."""
+    """Validation and the ScheduleRule for create_trigger and update_trigger, in one place so
+    the two can't drift apart."""
     if kind not in VALID_KINDS:
         raise ValueError(f"kind must be one of {VALID_KINDS}, got {kind!r}")
     if approval_mode not in VALID_APPROVAL_MODES:
@@ -486,6 +491,7 @@ def create_trigger(
     start_date: str | None = None,
     model: str | None = None,
     approval_mode: str = "manual",
+    max_steps: int | None = None,
     notes_enabled: bool = True,
     workflow: dict[str, Any] | None = None,
     environment: str | None = None,
@@ -518,6 +524,7 @@ def create_trigger(
         prompt=prompt,
         model=model,
         approval_mode=approval_mode,
+        max_steps=_checked_steps(max_steps, DEFAULT_MAX_STEPS),
         notes_enabled=notes_enabled,
         workflow=normalized_workflow,
         environment=_checked_environment(store, environment),
@@ -541,6 +548,7 @@ def update_trigger(
     start_date: str | None = None,
     model: str | None = None,
     approval_mode: str = "manual",
+    max_steps: int | None = None,
     notes_enabled: bool = True,
     workflow: dict[str, Any] | None = None,
     environment: str | None = None,
@@ -569,6 +577,7 @@ def update_trigger(
         watch=watch,
     )
     check_calls(store, trigger_id, normalized_workflow)
+    steps = _checked_steps(max_steps, trigger.max_steps)
     before = trigger.workflow
 
     trigger.name = name
@@ -576,7 +585,7 @@ def update_trigger(
     trigger.next_run_at = next_run_at
     trigger.prompt = prompt
     trigger.model = model
-    trigger.approval_mode = approval_mode
+    trigger.approval_mode, trigger.max_steps = approval_mode, steps
     trigger.notes_enabled = notes_enabled
     trigger.workflow = normalized_workflow
     trigger.environment = _checked_environment(store, environment)
@@ -613,6 +622,7 @@ def patch_trigger(
         "start_date": rule.start_date,
         "model": trigger.model,
         "approval_mode": trigger.approval_mode,
+        "max_steps": trigger.max_steps,
         "notes_enabled": trigger.notes_enabled,
         "workflow": trigger.workflow,
         "environment": trigger.environment,
@@ -667,22 +677,12 @@ def edit_draft(store: ScheduledTriggerStore, changes: dict[str, Any]) -> dict[st
 def build_scheduled_task_tools(
     state_dir: str | Path, thread_id: str | None = None
 ) -> list[Callable[..., Any]]:
-    """Return the Scheduled Tasks tool callables. They operate globally,
-    not scoped to the calling thread -- a task is an independent entity,
-    not tied to the conversation that created it. The one exception is
-    update_task_notes, only present when `thread_id` is a run's own
-    thread (see parse_run_thread_id), and only ever touching that run's
-    own task.
-    """
+    """The Scheduled Tasks tools. A task belongs to no conversation, so they reach every task;
+    update_task_notes is there only when `thread_id` is a run's own thread, for that run's task."""
     store = ScheduledTriggerStore(state_dir)
 
-    # Optional[X], not X | None: aisuite's Tools.__infer_from_signature
-    # only unwraps typing.Optional (checks `get_origin(t) is Union`), and
-    # PEP 604 `X | None` has origin `types.UnionType` instead -- it slips
-    # through unwrapped and gets serialized as the literal string
-    # "X | None" for the "type" field, which Gemini's strict
-    # OpenAPI-subset schema rejects (see tools/office/xlsx/'s read_xlsx
-    # for the same fix, applied first).
+    # Optional[X], not X | None: aisuite's schema inference unwraps typing.Optional only, and a
+    # PEP 604 union is serialized as the string "X | None", which Gemini's strict schema rejects.
     def create_scheduled_task(
         name: str,
         kind: str,

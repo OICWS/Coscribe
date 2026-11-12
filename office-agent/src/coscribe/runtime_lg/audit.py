@@ -39,6 +39,8 @@ AutoApproveReason = Literal[
 Reason = Literal[
     "hook_veto",
     "plan_mode",
+    # The tool's switch is off in Settings › Capabilities.
+    "capability_off",
     "auto_review_block",
     "exec_policy",
     "code_allowed",
