@@ -2,7 +2,7 @@
 
 ## Purpose
 Owns building the agent graph from the tool factories and their risk metadata (`agent.py`), the
-deferred tool list (`tool_deferral.py`), the chat model for a `provider:model` string and how hard
+deferred tool list (`tool_deferral.py`, the words its search matches on `search_words.py`), the chat model for a `provider:model` string and how hard
 it thinks (`providers.py`, `effort.py`), approvals' helpers (`audit.py`, `auto_review.py`,
 `exec_policy.py`), delegated sub-agents and their ready-made roles (`subagents.py`, `subagent_kinds.py`), the runner a workflow's agent step runs through
 (`workflow_agent.py`, its token cap `token_limit.py`), the code module's entry point
