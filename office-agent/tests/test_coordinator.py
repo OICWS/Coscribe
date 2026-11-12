@@ -285,3 +285,14 @@ def test_the_system_prompt_is_the_same_for_every_conversation(tmp_path: Path) ->
     )
 
     assert one.instructions == two.instructions
+
+
+def test_the_instructions_match_how_scripts_run_and_ask_no_set_questions() -> None:
+    """Scripts run isolated where the self-test passed (decision 0021), and a sub-agent's model
+    and a saved task's kind are chosen without a question the person must answer first."""
+    from coscribe.coordinator import INSTRUCTIONS
+
+    assert "no sandbox at all" not in INSTRUCTIONS
+    assert "isolation is on" in INSTRUCTIONS
+    assert 'header "Sub-agent model"' not in INSTRUCTIONS
+    assert 'header "Workflow' not in INSTRUCTIONS
