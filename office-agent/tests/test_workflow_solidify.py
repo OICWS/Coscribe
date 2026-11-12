@@ -9,7 +9,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 
-from coscribe.runtime_lg.messages import serialize_history_for_ws_lg
+from coscribe.runtime_lg.messages import serialize_history_for_ws_lg, steer_message
 from coscribe.workflow_spec import parse_workflow
 from coscribe.workflows.solidify import (
     DraftFailed,
@@ -112,6 +112,17 @@ def test_the_transcript_numbers_calls_and_marks_failures() -> None:
     assert "error: no such page" in transcript
     assert transcript.startswith("[user] Find every 'Error code' line")
     assert used == ["list_directory", "search_pdf", "write_file"]
+
+
+def test_a_note_written_while_a_turn_ran_reads_as_the_persons() -> None:
+    messages: list[Any] = [
+        HumanMessage("export the report"),
+        steer_message("Division is 01"),
+        AIMessage("exported"),
+    ]
+    transcript, used = render_conversation(serialize_history_for_ws_lg(messages))
+    assert transcript.splitlines()[1] == "[user] Division is 01"
+    assert used == []
 
 
 def test_a_long_transcript_keeps_its_beginning_and_end() -> None:

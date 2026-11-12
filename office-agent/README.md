@@ -489,8 +489,9 @@ fixed workflow I can rerun"): its `draft_workflow` tool runs the same
 curator on the conversation so far, and the result shows in the chat as
 a **Fixed workflow draft** card -- step tiles, inputs, the number of
 things worth checking -- whose **Review and save** opens the draft page.
-Unless the user already said which kind, the model asks ("Fixed steps"
-or "Written instructions") before drafting either.
+Unless the user already said which kind, the model picks one (fixed steps
+for work done here with tools, written instructions otherwise) and says
+which, so the user can ask for the other.
 
 **Changing a saved task from chat.** Asked to change a task that already
 exists, the model changes it in place rather than drafting a copy:
@@ -1000,6 +1001,11 @@ Same schema Claude Desktop, Claude Code, and Cursor all use for local
 since it's the shape Anthropic's own MCP spec examples popularized, not
 something Coscribe invented. A remote server is an entry with a
 `server_url` (and optional `headers`) instead.
+
+When a request needs a service no connector reaches yet, the assistant can offer one from the
+catalog on a card in the chat. **Connect** (or **Sign in again**) opens that connector's page
+below; once it is connected, the conversation carries on by itself. **Not now** keeps it from
+offering that connector again in the conversation.
 
 **Settings → Connectors** lists the catalog and your own connectors
 (Type Local or Web, "Custom" for ones you added; Status a check when

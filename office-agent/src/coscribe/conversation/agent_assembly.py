@@ -49,6 +49,8 @@ from ..tools import (
 from ..tools.web import build_http_tools
 from .artifact_tools import build_artifact_tools
 from .capability_guard import hold_to_capabilities
+from .connector_offer import ConnectorDirectory as ConnectorDirectory
+from .connector_offer import build_connector_offer_tools
 from .context_usage import build_context_breakdown
 from .folder_brief import FolderBriefKeeper
 from .page_tools import build_page_tools
@@ -85,6 +87,9 @@ class AssemblyHost(Protocol):
     _stop_requested: bool
     _pending_approvals: dict[str, Any]
     _pending_questions: dict[str, Any]
+    connector_directory: ConnectorDirectory | None
+
+    def is_workflow_run(self) -> bool: ...
 
     def workspace_scope(self) -> WorkspaceScope: ...
 
@@ -207,10 +212,22 @@ class AgentAssembly:
                     ),
                 )
             )
+        directory = self._host.connector_directory
+        offer_tools = (
+            build_connector_offer_tools(
+                directory,
+                self._host.settings.state_dir,
+                self._host.thread_id,
+                self._host.is_workflow_run,
+            )
+            if directory is not None
+            else []
+        )
         return [
             *combined_tools,
             *delegation_tools,
             *code_tools,
+            *offer_tools,
             *build_http_tools(self._host.settings.state_dir, self._host.thread_id),
             *build_artifact_tools(self._host.settings.state_dir, self._host.workspace_scope),
             *build_page_tools(

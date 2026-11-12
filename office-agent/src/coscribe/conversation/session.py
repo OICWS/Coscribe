@@ -98,7 +98,7 @@ from ..tools import (
 from ..workflows import StepContext, WorkflowDraft
 from . import tool_hooks
 from .activity import summarize_activity, summarize_workflow_run
-from .agent_assembly import AgentAssembly, RebuiltOnUse, risks_of_gated_tools
+from .agent_assembly import AgentAssembly, ConnectorDirectory, RebuiltOnUse, risks_of_gated_tools
 from .approval_resume import ApprovalResumer
 from .approvals import ApprovalDecider, can_resolve_approvals
 from .edit_preview import build_document_edit_preview
@@ -184,8 +184,11 @@ class ChatSessionLG:
         workspace_explicit: bool = False,
         extra_folders: list[Path] | None = None,
         configured_models: Callable[[], list[str]] | None = None,
+        connector_directory: ConnectorDirectory | None = None,
     ) -> None:
         self.thread_id = thread_id
+        # The server's connector catalog; None (the CLI) leaves out the connector offer tools.
+        self.connector_directory = connector_directory
         # "provider:model" for every configured provider -- what a sub-agent
         # may be run on.
         self._configured_models = configured_models or (lambda: [self._model_string])
@@ -212,9 +215,8 @@ class ChatSessionLG:
         # settings.workspace_root -- see coordinator.py's identical
         # fallback in build_coordinator_agent.
         self.workspace_root: Path = workspace_root or settings.workspace_root
-        # A flag, not a comparison with settings.workspace_root: a user can
-        # deliberately choose the default folder, and the UI should show it
-        # as chosen.
+        # A flag, not a comparison with settings.workspace_root: a user can deliberately choose
+        # the default folder, and the UI should show it as chosen.
         self._workspace_explicit = workspace_explicit
         # Folders added after the first; readable and writable like it.
         self.extra_folders: list[Path] = list(extra_folders or [])
@@ -239,20 +241,13 @@ class ChatSessionLG:
         self._auto_paused = False
         if settings.default_permission_mode != "manual" and parse_run_thread_id(thread_id) is None:
             self._toggle_mode(settings.default_permission_mode)
-        # Reset at the top of every handle_user_message call -- see
-        # _stream_turn's docstring for why this exists (recovering a tool
-        # call's arguments for the PostToolUse hook payload, which the
-        # ToolMessage carrying its result doesn't itself include).
+        # Reset at the top of every handle_user_message call -- see _stream_turn's docstring
+        # (recovering a tool call's arguments for the PostToolUse hook payload).
         self._pending_tool_args: dict[str, list[tuple[str, dict[str, Any]]]] = defaultdict(list)
-        # Cooperative /stop flag -- see request_stop's docstring. Reset at
-        # the start of every handle_user_message call.
+        # Cooperative /stop flag (request_stop); reset at the start of every turn.
         self._stop_requested = False
-        # Most recent model-response segment's real usage_metadata (see
-        # turn_stream's _capture_segment_usage) -- not reset per-turn like
-        # _pending_tool_args/_stop_requested above, since it's read once
-        # after the whole turn (including any approval-resume continuation)
-        # finishes, not checked mid-turn. None until the first real segment
-        # completes, or if the active model never populates usage_metadata.
+        # The last model segment's usage_metadata (turn_stream's _capture_segment_usage), read
+        # once after the whole turn, so not reset per turn. None until a segment reports it.
         self._last_usage_metadata: UsageMetadata | None = None
         # The socket starts each "user_message" as a task without awaiting it, so a turn
         # waiting on an approval can't freeze the socket. Without this lock a second message
@@ -386,6 +381,9 @@ class ChatSessionLG:
 
     def schedule_inbox_delivery(self) -> None:
         self._subagents.schedule_inbox_delivery()
+
+    def tell(self, key: str, text: str) -> None:
+        self._subagents.tell(key, text)
 
     def _stop_waited_on_subagents(self) -> None:
         self._subagents._stop_waited_on_subagents()

@@ -16,6 +16,7 @@ import { join, parse } from "node:path";
 import { Readable } from "node:stream";
 import { type BrowserWindow, type DownloadItem, type WebContents, app, webContents } from "electron";
 import { pageAgent } from "./browserAgentPage";
+import { locate, scrollArea, splitRef } from "./browserAgentLocate";
 import { type Step, cancelFrameOff, enqueue, running, runningSteps, scheduleFrameOff, stepContext } from "./browserAgentSteps";
 import { type AgentFrame, type Download, type PageDialog, type TabCdp, cdpFor, existingCdp } from "./browserCdp";
 import { checkNetworkLanding, checkNetworkSites, inSites, isAllowed, normalizeSite, requestPermission } from "./browserPermissions";
@@ -245,13 +246,6 @@ function describeDialog(dialog: PageDialog): string {
   return `${kind} dialog is open on the page: "${dialog.message}". Answer it with browser_handle_dialog before anything else.`;
 }
 
-/** "f2e7" -> frame "f2", element "e7"; "e7" is in the page itself. */
-function splitRef(ref: unknown): { key: string; inner: string } {
-  const text = String(ref ?? "").trim();
-  const match = /^(f\d+)(e\d+)$/.exec(text);
-  return match ? { key: match[1], inner: match[2] } : { key: "", inner: text };
-}
-
 /** A frame's snapshot lines, with each iframe it shows read in turn and
  * indented under it. */
 async function snapshotFrame(cdp: TabCdp, frame: AgentFrame, depth: number): Promise<{ lines: string[]; url: string }> {
@@ -292,29 +286,6 @@ async function snapshotFrame(cdp: TabCdp, frame: AgentFrame, depth: number): Pro
     if (inner.length === 0) out.push(innerUrl === "about:blank" ? "  - (still loading -- wait, then take a new snapshot)" : "  - (empty)");
   }
   return { lines: out, url };
-}
-
-/** Where to click element `ref`, in the tab's viewport: its spot in its
- * own frame plus the offset of each iframe it sits in. */
-async function locate(cdp: TabCdp, ref: unknown): Promise<{ x: number; y: number; element: string; frame: AgentFrame; inner: string }> {
-  const { key, inner } = splitRef(ref);
-  const frame = cdp.frame(key);
-  let point = await cdp.agent<{ x: number; y: number; element: string; outside: boolean }>(frame, "locate", { ref: inner });
-  // A page laid out for the panel's width may clip what doesn't fit (TabCdp.widen).
-  if (point.outside && (await cdp.widen())) point = await cdp.agent(frame, "locate", { ref: inner });
-  if (point.outside) throw new Error(`${point.element} is cut off outside the visible part of the page, so it can't be clicked.`);
-  let { x, y } = point;
-  let bounds: { width: number; height: number } | null = null;
-  for (let f: AgentFrame = frame; f.parent; f = f.parent) {
-    const box = await cdp.agent<{ x: number; y: number; width: number; height: number }>(f.parent, "frame_box", { index: f.index });
-    x += box.x;
-    y += box.y;
-    bounds = box;
-  }
-  if (bounds && (x < 0 || y < 0 || x > bounds.width || y > bounds.height)) {
-    throw new Error(`${point.element} is outside the visible part of its frame -- scroll it into view first.`);
-  }
-  return { x, y, element: point.element, frame, inner };
 }
 
 async function upload(wc: WebContents, cdp: TabCdp, ref: unknown, files: string[]): Promise<string> {
@@ -698,10 +669,10 @@ async function act(
     }
     case "scroll": {
       if (args.ref) {
-        const point = await locate(cdp, args.ref);
+        const point = await locate(cdp, args.ref, true);
         return withTab(tab, { note: `Scrolled ${point.element} into view.` });
       }
-      return withTab(tab, await cdp.agent<Record<string, unknown>>(cdp.main, "scroll", { direction: args.direction }));
+      return withTab(tab, await scrollArea(cdp, String(args.direction ?? "down"), args.within));
     }
     case "wait_for": {
       const waitS = waitSeconds(args);

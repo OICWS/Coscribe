@@ -105,6 +105,7 @@ def _outcome(task_out: Path, workspace: Path, thread_id: str, turns: list[Turn])
     tasks_file = task_out / "state" / f"{thread_id}.tasks.json"
     return Outcome(
         replies=[turn.replies for turn in turns],
+        calls=[f"{name} {arguments}" for turn in turns for name, arguments in turn.calls],
         workspace=workspace,
         memory=memory.read_text(encoding="utf-8") if memory.is_file() else "",
         tasks=json.loads(tasks_file.read_text(encoding="utf-8")) if tasks_file.is_file() else [],
@@ -125,7 +126,13 @@ def _build(
     os.environ["COSCRIBE_AUTO_COMPACT_THRESHOLD"] = str(task.compact_threshold)
     try:
         session = office._build_session(
-            task_out, workspace, model, task.name, effort, window=window
+            task_out,
+            workspace,
+            model,
+            task.name,
+            effort,
+            window=window,
+            connectors=task.connectors,
         )
     finally:
         if previous is None:

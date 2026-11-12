@@ -177,9 +177,11 @@ def _build_session(
     effort: str = DEFAULT_EFFORT,
     language: str = "pages",
     window: int | None = None,
+    connectors: bool = False,
 ) -> Any:
     """`window` fixes the model's context window instead of asking the provider for it (a run
-    from a tape has no provider, and must compact where the recorded run did)."""
+    from a tape has no provider, and must compact where the recorded run did). `connectors`
+    gives the conversation the server's connector catalog, none of them connected."""
     from langgraph.checkpoint.memory import InMemorySaver
 
     from coscribe.config import Settings
@@ -227,10 +229,18 @@ def _build_session(
         hooks_config=empty_hooks_config(),
         enabled_skill_names=enabled_skill_names(settings.skills_dir, settings.state_dir),
         workspace_root=workspace,
+        connector_directory=_catalog(settings) if connectors else None,
     )
     # A scheduled run's tier: every gated call goes ahead, nobody is asked.
     session.run_approval_mode = "skip"
     return session
+
+
+def _catalog(settings: Any) -> Any:
+    from coscribe.runtime_lg import McpOAuth
+    from coscribe.web.connector_directory import CatalogDirectory
+
+    return CatalogDirectory(settings, {}, McpOAuth(settings.state_dir))
 
 
 def _find_output(

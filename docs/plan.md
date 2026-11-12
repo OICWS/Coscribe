@@ -23,7 +23,10 @@ Last reviewed: 2026-11-06.
    reply so far (#827) and a script moving to the background at its time limit or when the person
    writes mid-turn (`docs/log/2026-11-07-script-to-background.md`); a brief of what each folder
    holds (`docs/log/2026-11-08-folder-brief.md`) and an offer to save a job as a workflow or skill
-   (`docs/log/2026-11-08-save-offer.md`). Next: an in-chat connector card (decision record and independent review first).
+   (`docs/log/2026-11-08-save-offer.md`); a connector the conversation offers on a card in the
+   chat and the person connects in Settings (decision 0046, `docs/log/2026-11-11-connector-card.md`),
+   the last of the plan's six steps. Next: the plan's measurements again on a model that does not
+   pass every task already.
 3. **Workflows** (#843; decisions 0028 to 0040, and 0042). Phases P0 to P5 are done
    (`docs/log/`, 2026-10-29 to 2026-11-02). Parallel steps are merged (#789, decision 0036
    proposed), and so are the simple view in words (#839, decision 0037) and the run page that
@@ -74,10 +77,8 @@ Last reviewed: 2026-11-06.
   (`docs/log/2026-11-05-logo-and-assets-measured.md`).
 
 - **Audit of 2026-11-10** (`docs/log/2026-11-10-audit-small-fixes.md` fixed five defects). Open:
-  the coordinator's instructions say a script runs "with no sandbox at all" and make the model ask
-  for a sub-agent's model and a workflow's kind; a provider's models read from its own list, and
-  a first-run page that takes a compatible provider and checks the key; steps and time per task
-  in the agentic evaluation.
+  a provider's models read from its own list, and a first-run page that takes a compatible
+  provider and checks the key; steps and time per task in the agentic evaluation.
 
 - **Settings, after the simpler page** (`docs/log/2026-11-10-settings-simple.md`,
   `docs/log/2026-11-11-capability-switches-no-step-cap.md`). Open: the port for task events moves
