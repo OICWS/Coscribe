@@ -9178,42 +9178,6 @@
         "summary": "Upload File"
       }
     },
-    "/api/workflows/graph": {
-      "post": {
-        "operationId": "workflow_graph_api_workflows_graph_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/WorkflowCheck"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Workflow Graph"
-      }
-    },
     "/api/workflows/permissions": {
       "post": {
         "description": "What a workflow will touch -- shown where it's reviewed -- and,\ngiven an earlier version, what this one adds to it.",

@@ -200,9 +200,16 @@ def _refuse_blocked_write(result: Any) -> None:
     if isinstance(result, dict) and result.get("blocked_write"):
         path = str(result["blocked_write"])
         folder = str(result.get("blocked_folder") or "")
+        if not folder:
+            # No folder short of a drive or the home folder holds it, and those are never offered.
+            raise StepFailed(
+                f'The script tried to write "{path}", which is outside the workspace and the '
+                "folders this run may use. Add its folder in Settings > Other folders, or have "
+                "the script save inside the workspace."
+            )
         raise NeedsPermission(
             "folder",
-            folder or path,
+            folder,
             f'The script tried to write "{path}", which is outside the workspace and the '
             "folders this run may use. Allow that folder, or have the script save inside "
             "the workspace.",

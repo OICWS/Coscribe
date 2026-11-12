@@ -2,7 +2,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import { capitalize, formatRunTime, runDuration, runSourceLabel } from "../../lib/runLabels";
 import {
   describeCheckResult,
-  formatValue,
   agentUsage,
   KIND_COLOR,
   KIND_LABEL,
@@ -24,7 +23,6 @@ import { calledWorkflow, runStepTitle, waitingInside } from "../../lib/calledRun
 import { everyStep, placeSteps } from "../../lib/workflowTree";
 import type { LoopStep, StepRecord, Workflow, WorkflowStep } from "../../types/workflow";
 import { CheckIcon, ChevronDownIcon, ClockIcon, SparkIcon, StopIcon } from "../icons";
-import { VarToken } from "./parts";
 import { Screenshot } from "./Screenshot";
 import { InvestigationLink, WAITING_FOR_BROWSER } from "./InvestigationLink";
 import { StepOutput } from "./StepOutput";
@@ -43,7 +41,7 @@ export type WorkflowAnswer = [approved: boolean, note: string, values?: AnswerVa
 import { ViewToggle } from "./ViewToggle";
 import { SelectMenu } from "../SelectMenu";
 import { WorkflowCanvas } from "./WorkflowCanvas";
-import { RunEvent } from "./RunEvent";
+import { RunInputs, Sites } from "./RunInputs";
 import { RunDetails, RunSummary } from "./RunSummary";
 import { loadTaskView, saveTaskView, type TaskView } from "../../lib/taskView";
 
@@ -355,6 +353,7 @@ function StepRow({
     step.kind !== "loop";
   const muted = status === "not_reached" || status === "pending" || status === "skipped";
   const showCard = !blockStopped && (status === "failed" || status === "waiting");
+  const summary = rowSummary(step, record, status, ctx.run.called?.[step.id]);
 
   return (
     <li className="flex gap-3.5" data-run-step={step.id}>
@@ -368,7 +367,12 @@ function StepRow({
         {!showCard && (
           <>
             <div className="flex min-w-0 items-baseline gap-2.5">
-              <span className={`shrink-0 text-sm ${muted ? "text-[var(--muted)]" : "font-medium"}`}>{step.title}</span>
+              <span
+                className={`min-w-0 max-w-[60%] shrink-0 truncate text-sm ${muted ? "text-[var(--muted)]" : "font-medium"}`}
+                title={step.title}
+              >
+                {step.title}
+              </span>
               {(step.kind === "llm" || step.kind === "agent") && status === "done" && (
                 <span
                   className="shrink-0 rounded-full px-2 py-px text-xs"
@@ -380,10 +384,9 @@ function StepRow({
                   {KIND_LABEL[step.kind]}
                 </span>
               )}
-              <span className="min-w-0 truncate text-[13px] text-[var(--muted)]">
-                {rowSummary(step, record, status, ctx.run.called?.[step.id])}
+              <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--muted)]" title={summary}>
+                {summary}
               </span>
-              <span className="flex-1" />
               {duration && <span className="shrink-0 text-xs tabular-nums text-[var(--muted)]">{duration}</span>}
               {hasOutput && (
                 <button
@@ -398,6 +401,8 @@ function StepRow({
                   />
                 </button>
               )}
+              {/* Keeps the times in one column whether or not a row has output to open. */}
+              {!hasOutput && <span className="w-6 shrink-0" />}
             </div>
             {hasOutput && open && <StepOutput value={record?.output} />}
             {hasOutput && open && step.kind === "agent" && <AgentToolsUsed activity={record?.agent} />}
@@ -656,27 +661,6 @@ function RunBanner({
   return null;
 }
 
-/** The values this run was given. */
-function RunInputs({ workflow, run }: { workflow: Workflow; run: ScheduledRun }) {
-  return (
-    <>
-      {workflow.inputs.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
-          {workflow.inputs.map((input) => (
-            <span key={input.name} className="inline-flex items-center gap-2">
-              <VarToken name={input.name} isInput />
-              <span className="rounded-md bg-[var(--card-bg)] px-2 py-0.5 text-[13px]">
-                {formatValue(run.inputs?.[input.name] ?? input.default)}
-              </span>
-            </span>
-          ))}
-        </div>
-      )}
-      <RunEvent run={run} />
-    </>
-  );
-}
-
 /** A run that stopped without a failed step to retry: the way on is to continue it. */
 function CrashedBox({ run, onRetry }: Pick<WorkflowRunViewProps, "run" | "onRetry">) {
   const [retrying, setRetrying] = useState(false);
@@ -753,37 +737,45 @@ export function WorkflowRunView({
           {page === "detailed" && <RunInputs workflow={workflow} run={run} />}
         </div>
         {page === "simple" && <RunSummary ctx={{ ...ctx, onStop, onInvestigate }} />}
-        <RunDetails folded={page === "simple"}>
-          {page === "simple" && <RunInputs workflow={workflow} run={run} />}
-          <RunBanner run={run} workflow={workflow} onStop={onStop} onInvestigate={onInvestigate} />
-          <InvestigationLink run={run} />
-          <RunReportCard triggerId={task.trigger_id} run={run} onInvestigate={onInvestigate} />
-          {run.sites && run.sites.length > 0 && run.status !== "running" && (
-            <div className="text-[13px] text-[var(--muted)]" data-testid="run-sites">
-              Opened: <span className="text-[var(--fg)]">{run.sites.join(", ")}</span>
-            </div>
-          )}
-
-          {crashed && <CrashedBox run={run} onRetry={onRetry} />}
-
-          <ViewToggle label="Run view" views={RUN_VIEWS} value={view} onChange={setView} />
-          {view === "steps" ? (
-            <RunList steps={workflow.steps} path={[]} ctx={ctx} />
-          ) : (
-            <WorkflowCanvas
-              workflow={workflow}
-              run={run}
-              onOpenStep={(stepId) => {
-                setView("steps");
-                setFocus(stepId);
-                // The list is drawn by the time the next frame paints.
-                requestAnimationFrame(() =>
-                  document.querySelector(`[data-run-step="${CSS.escape(stepId)}"]`)?.scrollIntoView({ block: "center" }),
-                );
-              }}
-            />
-          )}
-        </RunDetails>
+        {page === "simple" && crashed && <CrashedBox run={run} onRetry={onRetry} />}
+        {page === "simple" ? (
+          <RunDetails>
+            <RunInputs workflow={workflow} run={run} />
+            <Sites run={run} />
+            <button
+              type="button"
+              className="self-start text-[13px] text-[var(--muted)] hover:text-[var(--fg)] hover:underline"
+              onClick={() => choosePage("detailed")}
+            >
+              What each step got and did, in the detailed view
+            </button>
+          </RunDetails>
+        ) : (
+          <>
+            <RunBanner run={run} workflow={workflow} onStop={onStop} onInvestigate={onInvestigate} />
+            <InvestigationLink run={run} />
+            <RunReportCard triggerId={task.trigger_id} run={run} onInvestigate={onInvestigate} />
+            <Sites run={run} />
+            {crashed && <CrashedBox run={run} onRetry={onRetry} />}
+            <ViewToggle label="Run view" views={RUN_VIEWS} value={view} onChange={setView} />
+            {view === "steps" ? (
+              <RunList steps={workflow.steps} path={[]} ctx={ctx} />
+            ) : (
+              <WorkflowCanvas
+                workflow={workflow}
+                run={run}
+                onOpenStep={(stepId) => {
+                  setView("steps");
+                  setFocus(stepId);
+                  // The list is drawn by the time the next frame paints.
+                  requestAnimationFrame(() =>
+                    document.querySelector(`[data-run-step="${CSS.escape(stepId)}"]`)?.scrollIntoView({ block: "center" }),
+                  );
+                }}
+              />
+            )}
+          </>
+        )}
       </div>
     </div>
   );

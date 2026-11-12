@@ -29,11 +29,10 @@ test("the autonomy switch refuses a level below the task's steps", async ({
   try {
     await page.goto(`/?view=scheduled&task=${task.trigger_id}`);
     await page.getByRole("button", { name: "Detailed" }).click();
+    await page.getByRole("group", { name: "Workflow view" }).getByRole("button", { name: "Settings" }).click();
     const setting = page.getByTestId("autonomy-setting");
-    await setting.getByRole("radio", { name: "Fixed" }).click();
-    await expect(setting).toContainText(
-      'doesn\'t allow "Write the brief"; raise it to proactive',
-    );
+    // Below what its agent step needs, a level can't be picked.
+    await expect(setting.getByRole("radio", { name: "Fixed" })).toBeDisabled();
     await setting.getByRole("radio", { name: "Proactive" }).click();
     await expect(
       setting.getByRole("radio", { name: "Proactive" }),
@@ -89,8 +88,8 @@ test("a finished run shows its report", async ({ page }) => {
       })
       .toBe("completed");
     await page.goto(`/?thread=${started.run.thread_id}`);
-    // The report is part of the detailed run, folded under the simple view's Details.
-    await page.getByTestId("run-details").getByText("Details").click();
+    // The report is part of the detailed run.
+    await page.getByRole("button", { name: "Detailed", exact: true }).click();
     const report = page.getByTestId("run-report");
     await expect(report).toContainText("Report · Fixed");
     await expect(report).toContainText("Every step was done.");

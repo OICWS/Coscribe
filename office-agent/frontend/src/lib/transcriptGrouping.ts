@@ -202,15 +202,6 @@ export function workflowTests(items: LogItem[], turnInFlight: boolean): Map<stri
 }
 
 /** The newest workflow draft among `items`, as its card shows it. */
-export function latestWorkflowDraft(items: LogItem[]): WorkflowDraftEntry | null {
-  for (let i = items.length - 1; i >= 0; i--) {
-    const item = items[i];
-    const draft = item.kind === "tool" ? workflowDraftOf(item) : null;
-    if (draft) return draft;
-  }
-  return null;
-}
-
 /** A connector the model offered with offer_connector, shown as a card the person answers. */
 export interface ConnectorOfferEntry {
   kind: "connector_offer";
@@ -243,14 +234,37 @@ function connectorOfferOf(item: ToolOrApprovalItem): ConnectorOfferEntry | null 
 
 export type TranscriptEntry = Exclude<LogItem, ToolOrApprovalItem> | ToolRunGroup | WorkflowDraftEntry | ConnectorOfferEntry;
 
-/** The id of the newest workflow draft among `items` -- a card for any
- * earlier one is superseded. */
-export function latestWorkflowDraftId(items: LogItem[]): string | null {
-  for (let i = items.length - 1; i >= 0; i--) {
-    const item = items[i];
-    if (item.kind === "tool" && workflowDraftOf(item)) return item.id;
+/** The newest draft of each workflow among `items`, oldest first -- a card for any earlier one
+ * is superseded. A draft belongs to the saved task it changes, to the draft it revises, or else
+ * to the earlier drafts of the same name, so drafting two workflows in one conversation keeps
+ * both in reach. */
+export function currentWorkflowDrafts(items: LogItem[]): WorkflowDraftEntry[] {
+  const keyOfDraft = new Map<string, string>();
+  const latest = new Map<string, WorkflowDraftEntry>();
+  for (const item of items) {
+    const draft = item.kind === "tool" ? workflowDraftOf(item) : null;
+    if (!draft || item.kind !== "tool") continue;
+    const revises = typeof item.arguments?.draft_id === "string" ? item.arguments.draft_id : "";
+    const key = draft.triggerId
+      ? `task:${draft.triggerId}`
+      : (keyOfDraft.get(revises) ?? `name:${draft.name}`);
+    if (draft.draftId) keyOfDraft.set(draft.draftId, key);
+    latest.delete(key);
+    latest.set(key, draft);
   }
-  return null;
+  return [...latest.values()];
+}
+
+/** The drafts the reply still running made: the model may still be testing and fixing them, so
+ * they aren't ready to review. Empty while no reply runs. */
+export function draftsInTheWorks(items: LogItem[], turnInFlight: boolean): Set<string> {
+  const ids = new Set<string>();
+  if (!turnInFlight) return ids;
+  for (let i = items.length - 1; i >= 0 && items[i].kind !== "user"; i--) {
+    const item = items[i];
+    if (item.kind === "tool" && workflowDraftOf(item)) ids.add(item.id);
+  }
+  return ids;
 }
 
 function workflowDraftOf(item: ToolOrApprovalItem): WorkflowDraftEntry | null {
