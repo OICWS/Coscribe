@@ -272,12 +272,7 @@ class _Context:
                     k.main += free * k.grow / weight
                 free = 0.0
         elif free < 0:
-            weight = sum(k.shrink * k.main for k in kids if not k.hug)
-            if weight > 0:
-                for k in kids:
-                    if not k.hug:
-                        k.main = max(0.0, k.main + free * k.shrink * k.main / weight)
-                free = 0.0
+            free = _shrink(kids, free)
         self.leftover = max(free, 0.0)
 
     def content_cross_or_main(self, kids: list[_Child]) -> float:
@@ -325,6 +320,29 @@ class _Context:
         if self.laid is not None:
             self.laid.leaf[path] = copy_
         return [copy_]
+
+
+def _shrink(kids: list[_Child], free: float) -> float:
+    """Takes the missing room (`free` < 0) from the children that can shrink, in proportion to
+    `flex-shrink` times their size, and returns what could not be taken.
+
+    A child that would go below nothing stops at nothing and the rest is shared again among the
+    others, as CSS flexbox does; otherwise its siblings would keep room it never gave."""
+    base = {id(k): k.main for k in kids}
+    active = [k for k in kids if not k.hug and k.shrink * k.main > 0]
+    while active and free < 0:
+        weight = sum(k.shrink * base[id(k)] for k in active)
+        target = {id(k): base[id(k)] + free * k.shrink * base[id(k)] / weight for k in active}
+        stopped = [k for k in active if target[id(k)] < 0]
+        if not stopped:
+            for k in active:
+                k.main = target[id(k)]
+            return 0.0
+        for k in stopped:
+            k.main = 0.0
+            free += base[id(k)]
+        active = [k for k in active if target[id(k)] >= 0]
+    return free
 
 
 def _style(rest: dict[str, str], x: float, y: float, w: float, h: float) -> str:
