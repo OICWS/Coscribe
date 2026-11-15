@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from coscribe.runtime import get_tool_metadata
-from coscribe.tools.bookkeeping.tasks import build_task_tools
+from coscribe.tools.bookkeeping.tasks import TaskToolkit, build_task_tools
 
 
 def _tools_by_name(thread_id: str, state_dir: Path) -> dict[str, object]:
@@ -168,3 +168,46 @@ def test_a_permission_error_off_windows_is_not_retried(tmp_path, monkeypatch):
     monkeypatch.setattr(_file_locks.os, "replace", refuse)
     with pytest.raises(PermissionError):
         _file_locks.replace_with_retry(tmp_path / "a.tmp", tmp_path / "a.json")
+
+
+def test_replace_keeps_ids_and_statuses_in_the_given_order(tmp_path: Path) -> None:
+    toolkit = TaskToolkit("thread-1", tmp_path)
+    for step in ("one", "two", "three"):
+        toolkit.create(step)
+    toolkit.update("1", "completed")
+
+    result = toolkit.replace(
+        [
+            {"id": "3", "content": "three, reworded"},
+            {"content": "new"},
+            {"id": "1", "content": "one"},
+        ]
+    )
+
+    assert result == [
+        {"id": "3", "content": "three, reworded", "status": "pending"},
+        {"id": "4", "content": "new", "status": "pending"},
+        {"id": "1", "content": "one", "status": "completed"},
+    ]
+    assert toolkit.list_tasks() == result
+
+
+def test_replace_drops_blank_steps_and_treats_an_unknown_id_as_new(tmp_path: Path) -> None:
+    toolkit = TaskToolkit("thread-1", tmp_path)
+    toolkit.create("one")
+
+    result = toolkit.replace([{"id": "9", "content": "made up"}, {"content": "   "}])
+
+    assert result == [{"id": "2", "content": "made up", "status": "pending"}]
+
+
+def test_a_tool_sees_what_another_instance_wrote(tmp_path: Path) -> None:
+    tools = _tools_by_name("thread-1", tmp_path)
+    tools["task_create"](content="one")
+    tools["task_create"](content="two")
+
+    TaskToolkit("thread-1", tmp_path).replace([{"id": "2", "content": "two"}])
+    created = tools["task_create"](content="three")
+
+    assert created["id"] == "3"
+    assert [task["content"] for task in tools["task_list"]()] == ["two", "three"]

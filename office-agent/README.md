@@ -130,7 +130,10 @@ task's run follows the task's own approval setting instead.
   `exit_plan_mode(plan)`, and the chat shows it with Claude Code's three
   choices: **Yes, and use auto mode**, **Yes, manually approve edits**
   (Manual), or **No, keep planning** with what to change. Approving leaves
-  Plan mode.
+  Plan mode. Outside Plan mode the model also asks for this review before a
+  large task (many steps, many files, hard to undo). While a plan waits, the
+  person can edit its task list (untick, reword, reorder, add steps); on
+  approval that list replaces the model's, and the result gives it back.
 - `/auto` -- Auto: a reviewer model (`runtime_lg/auto_review.py`, the
   side-job model `COSCRIBE_SIDE_MODEL` in `.env`, else the conversation's own model) decides each gated call in the user's place. It
   allows ordinary work in the conversation's folders and blocks what's hard

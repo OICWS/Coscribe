@@ -318,6 +318,42 @@ def test_approving_a_plan_leaves_plan_mode_for_auto_lg(
     assert "approved the plan and switched to auto mode" in result
 
 
+def test_a_plan_outside_plan_mode_is_carried_out_with_the_edited_task_list_lg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    steps = [
+        _tool_call("c1", "task_create", {"content": "Read the notes"}),
+        _tool_call("c2", "task_create", {"content": "Write a summary"}),
+    ]
+    exit_plan = _tool_call("c3", "exit_plan_mode", {"plan": "1. Read\n2. Write"})
+    fake_model = FakeToolCallingChatModel(
+        responses=[
+            AIMessage(content="", tool_calls=steps),
+            AIMessage(content="", tool_calls=[exit_plan]),
+            AIMessage(content="On it."),
+            # The end-of-turn check hands the open tasks back once.
+            AIMessage(content="Still on it."),
+        ]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_plan_edit") as ws:
+            ws.receive_json()
+            ws.send_json({"type": "user_message", "text": "summarize the notes"})
+            plan = _receive_until(ws, "plan_ready")[-1]
+            edited = [{"id": "2", "content": "Write a one-page summary"}, {"content": "Send it"}]
+            ws.send_json(
+                {"type": "question_response", "id": plan["id"], "answer": "manual", "tasks": edited}
+            )
+            _receive_until(ws, "tasks_changed")
+
+    result = str(fake_model.received[2][-1].content)
+    assert "kept the current approvals" in result
+    assert result.endswith(
+        '[{"id": "2", "content": "Write a one-page summary", "status": "pending"}, '
+        '{"id": "3", "content": "Send it", "status": "pending"}]'
+    )
+
+
 def test_a_new_conversation_starts_in_the_default_mode_lg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

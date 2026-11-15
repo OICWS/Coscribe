@@ -539,11 +539,26 @@ export interface ApprovalResponseOut {
   reply?: string;
 }
 
+/** One step of a plan's task list as the person left it while reviewing the plan. */
+export interface PlanTaskEdit {
+  /**
+   * The task's id when it was already on the list; absent for a step the person
+   * added.
+   */
+  id?: string;
+  content: string;
+}
+
 /** Answer to a plan or task draft. */
 export interface QuestionAnswerOut {
   type: "question_response";
   id: string;
   answer: string;
+  /**
+   * A plan only: the task list as the person edited it, in their order; absent when
+   * unchanged.
+   */
+  tasks?: PlanTaskEdit[];
 }
 
 /**

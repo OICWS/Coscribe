@@ -44,6 +44,13 @@ Last reviewed: 2026-11-06.
 
 ## Open, smaller
 
+- **Plan review** (#901): part 1 (the model asks for review outside Plan mode, the person's
+  edited task list replaces the model's on approval) is in; part 2, the editor in the Plan panel,
+  is next. Later: `task_update` rewording or dropping a step, `task_create` taking several steps
+  at once, and a background task started with the plan item it belongs to (the task card now
+  guesses it from timing, which goes wrong when several items run at once;
+  `docs/log/2026-11-15-plan-review-edits.md`).
+
 - **Docs:** a Doc still writes plans the brief did not give (a proposal's migration phases;
   `docs/log/2026-10-29-doc-writing-rules.md`). Version history for documents is wanted, not in v1.
   The Word panel is frozen (decisions 0025, 0027): its remaining items are dropped.
