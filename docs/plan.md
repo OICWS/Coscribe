@@ -11,12 +11,7 @@ Last reviewed: 2026-11-06.
 
 ## Next, in order
 
-1. **Chat: a live Plan card** (maintainer, 2026-10-21 and 2026-11-06). Done: the conversation
-   shows one task card under the latest call that changed the list, so it moves down only when its
-   content changes, and it folds into a "N steps done" line when every item is done
-   (`docs/log/2026-11-06-task-card-follows.md`). Open: the card no longer shows which background
-   tasks an item started; bring that back on the card if it is missed.
-2. **A more agentic coscribe, measured** (#819), each step scored by `office-agent/evals/agentic/`.
+1. **A more agentic coscribe, measured** (#819), each step scored by `office-agent/evals/agentic/`.
    Done: the evaluation (#820), the end-of-turn plan check (#821), the small model for side calls
    (#822), the delivery check of the Office files a turn wrote (#824), and, put before step 5 by
    the maintainer, a background script's end reported to its conversation (#826), Stop keeping the
@@ -27,7 +22,7 @@ Last reviewed: 2026-11-06.
    chat and the person connects in Settings (decision 0046, `docs/log/2026-11-11-connector-card.md`),
    the last of the plan's six steps. Next: the plan's measurements again on a model that does not
    pass every task already.
-3. **Workflows** (#843; decisions 0028 to 0040, and 0042). Phases P0 to P5 are done
+2. **Workflows** (#843; decisions 0028 to 0040, and 0042). Phases P0 to P5 are done
    (`docs/log/`, 2026-10-29 to 2026-11-02). Parallel steps are merged (#789, decision 0036
    proposed), and so are the simple view in words (#839, decision 0037) and the run page that
    says how it went before its steps (#840, decision 0038). A task that starts on something
@@ -37,7 +32,7 @@ Last reviewed: 2026-11-06.
    more tokens, with nothing to set (decision 0043). Open: an L3 step delegating, adding steps
    when nothing failed, and counting llm steps' tokens.
 
-4. **How turns go, measured in real use** (#867, decision 0045). Done: one line per turn in
+3. **How turns go, measured in real use** (#867, decision 0045). Done: one line per turn in
    `turns.jsonl`, without the conversation's words (`docs/log/2026-11-10-turn-trace.md`), and
    five agentic evaluation tasks replayed from recorded answers in the PR checks
    (`docs/log/2026-11-10-eval-replay.md`, `docs/log/2026-11-10-plan-order.md`). Next: tapes for
