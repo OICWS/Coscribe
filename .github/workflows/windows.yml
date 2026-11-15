@@ -1,27 +1,16 @@
 name: Windows
 
 # What a Windows machine would catch that the Linux job cannot: paths, the code page,
-# PowerShell and cmd, the keychain. It is not a required check yet, so a red run does not
-# block a pull request, but the run is red when a test fails: the run page and the
-# nightly history show it. It runs nightly, by hand, and on a pull request that changes
-# this file (a pull request that fixes a test only Windows fails touches a comment here to get its
-# Windows run). When it has been green for two weeks it becomes a required check (decision 0009).
+# PowerShell and cmd, the keychain. `pytest` is a required check (decision 0009, after two weeks
+# of green nights), so it runs on every pull request, nightly and by hand.
 "on":
   schedule:
     - cron: "17 19 * * *"
   workflow_dispatch:
   pull_request:
-    paths:
-      - ".github/workflows/windows.yml"
-      # The AppContainer is only real on Windows: its tests skip everywhere else.
-      - "office-agent/src/coscribe/tools/exec/_appcontainer.py"
-      - "office-agent/src/coscribe/tools/exec/isolation.py"
-      - "office-agent/src/coscribe/tools/exec/running.py"
-      - "office-agent/src/coscribe/tools/exec/own_python.py"
-      - "office-agent/src/coscribe/tools/exec/script_env.py"
-      - "office-agent/tests/test_isolation.py"
-      # A Doc saved on Windows has CRLF line endings, which a restore must keep.
-      - "office-agent/src/coscribe/tools/office/doc/history.py"
+    # No `paths:` filter: a required check that never starts would keep a pull request from
+    # ever merging.
+    branches: [main]
 
 concurrency:
   group: windows-${{ github.ref }}
@@ -40,7 +29,10 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
+      # The whole history, so the pull request's diff against its base can be read.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ github.event_name == 'pull_request' && '0' || '1' }}
 
       - uses: actions/setup-python@v5
         with:
@@ -48,12 +40,29 @@ jobs:
           cache: pip
           cache-dependency-path: office-agent/uv.lock
 
+      # A pull request that changes documentation only (scripts/ci_scope.py, the same rule as the
+      # Linux `test` job) runs none of the steps below. The job still runs and reports rather
+      # than being skipped with `if:`, because a job skipped after a failed `needs:` would also
+      # count as passed.
+      - name: Decide what to check
+        id: scope
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff --name-only "origin/${{ github.base_ref }}...HEAD" \
+              | python scripts/ci_scope.py >> "$GITHUB_OUTPUT"
+          else
+            echo "scope=full" >> "$GITHUB_OUTPUT"
+          fi
+          grep '^scope=' "$GITHUB_OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+
       # Reads uv.lock for scripts/install_locked.py.
       - uses: astral-sh/setup-uv@v7
+        if: steps.scope.outputs.scope == 'full'
         with:
           version: "0.13.7"
 
       - uses: actions/setup-node@v4
+        if: steps.scope.outputs.scope == 'full'
         with:
           node-version: "20"
           cache: npm
@@ -61,25 +70,29 @@ jobs:
 
       # web/static/ is a build output that tests constructing the app need.
       - name: Build the frontend
+        if: steps.scope.outputs.scope == 'full'
         working-directory: office-agent/frontend
         run: |
           npm ci
           npm run build
 
       - name: Install coscribe
+        if: steps.scope.outputs.scope == 'full'
         run: |
           python scripts/install_locked.py --extra dev --extra web
 
       # The text widths the deck engine sizes boxes with, measured on this machine's fonts.
       # The table is committed; the test below keeps it equal to the fonts.
       - name: Measure font advances
+        if: steps.scope.outputs.scope == 'full'
         run: python scripts/measure_font_advances.py "C:/Windows/Fonts" --out windows-font-advances.json
 
       - name: Tests
+        if: steps.scope.outputs.scope == 'full'
         run: python -m pytest -q -n 4 -p no:cacheprovider --tb=short -rfE --junitxml=windows-junit.xml
 
       - name: Summary of the failures
-        if: always()
+        if: always() && steps.scope.outputs.scope == 'full'
         run: |
           python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import xml.etree.ElementTree as ET
@@ -100,7 +113,7 @@ jobs:
           PY
 
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.scope.outputs.scope == 'full'
         with:
           name: windows-junit
           path: |
