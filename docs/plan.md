@@ -74,6 +74,10 @@ Last reviewed: 2026-11-06.
   `uv` pull request also moves indirect dependencies in `uv.lock`; `lockfile-only` was reported to
   move only direct ones (dependabot-core#14073). If it does not, a scheduled `uv lock --upgrade`
   job takes over that part.
+- **Scheduled runs:** a run whose turn is cancelled from outside (seen only through a test's time
+  limit) is recorded as `completed`, because the turn swallows the cancellation
+  (`docs/log/2026-11-15-windows-night-1110.md`). Whether a server shutdown does the same is not
+  checked.
 - **Design systems:** whether the model acts on the "no slide places the logo" warning is not
   measured: in the run of 2026-11-05 it placed the logo every time
   (`docs/log/2026-11-05-logo-and-assets-measured.md`).
@@ -92,11 +96,11 @@ Last reviewed: 2026-11-06.
 
 ## For the maintainer (settings and decisions)
 
-- Make the Windows job required once it has 14 green scheduled nights; the count restarted on
-  2026-10-27 and reached 12 (10-28 to 11-08), then the night of 11-09 was red on two tests (a
-  test file written with CRLF, and a 10 s limit on a loaded runner). The maintainer decided on
-  2026-11-10 that this night, like 10-24, does not restart the count: it stays at 12 and the next
-  green scheduled night is the 13th.
+- Make the Windows job required: it has its 14 green scheduled nights. The count restarted on
+  2026-10-27, reached 12 (10-28 to 11-08) and 16 with the nights of 11-11 to 11-14. The nights of
+  11-09 (a test file written with CRLF, a 10 s limit on a loaded runner) and 11-10 (a 5 s limit on a
+  hand-fired run, `docs/log/2026-11-15-windows-night-1110.md`) were red; the maintainer decided
+  that neither restarts the count, as for 10-24.
 - Read the CodeQL alerts and the first `audit.yml` run.
 - Decide whether changed-line coverage is enforced (`docs/assessments/2026-10-13-diff-coverage.md`).
 - Decision 0036 (parallel workflow steps) is proposed with #789.
