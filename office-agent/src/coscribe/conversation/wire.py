@@ -51,9 +51,9 @@ class StateEvent(TypedDict):
     environment: str
     # The connected connectors' tool names.
     connector_tools: list[str]
-    # Only on the state sent right after connecting: whether a turn is already
-    # running on this thread (typically a scheduled run), so the page shows it as
-    # running.
+    # Only on the state sent right after connecting, or after a Stop that found no turn:
+    # whether a turn is running on this thread (typically a scheduled run), so the page
+    # shows it as running, or stops waiting for one that is not.
     turn_in_flight: NotRequired[bool]
     # With turn_in_flight: when that turn started, in ms since the epoch, so a page that opens
     # mid-turn times it from there.
