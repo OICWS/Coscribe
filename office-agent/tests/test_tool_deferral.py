@@ -26,6 +26,7 @@ from coscribe.runtime_lg.tool_deferral import (
     SEARCH_TOOLS_NAME,
     USE_TOOL_NAME,
     _score,
+    _summary,
     build_search_tools_tool,
     run_found_tools_directly,
     show_unbound_calls_as_use_tool,
@@ -149,6 +150,34 @@ def test_search_tools_leaves_out_weak_matches() -> None:
     search_tools = build_search_tools_tool(tools)
     names = [entry["name"] for entry in json.loads(search_tools("run python script"))]
     assert names == ["run_python_script"]
+
+
+def test_search_tools_sends_only_the_best_matches_in_full() -> None:
+    tools = [
+        _FakeTool(f"pptx_tool_{i}", f"Tool {i} for pptx. It does many things.") for i in range(6)
+    ]
+    result = json.loads(build_search_tools_tool(tools)("pptx"))
+    full, short = result[:3], result[3:]
+    assert all({"description", "parameters"} <= set(match) for match in full)
+    assert short and all(set(match) == {"name", "summary"} for match in short)
+    assert short[0]["summary"].startswith("Tool") and short[0]["summary"].endswith("for pptx.")
+
+
+def test_a_summary_is_the_first_sentence_and_not_cut_at_an_abbreviation() -> None:
+    assert _summary("Make a deck, e.g. a pitch. Then more.\n\nArgs: x") == (
+        "Make a deck, e.g. a pitch."
+    )
+    assert len(_summary("word " * 100)) <= 160
+
+
+def test_searching_a_tools_exact_name_brings_it_back_first_in_full() -> None:
+    tools = [
+        _FakeTool("spawn_agent_background", "Spawn an agent in the background."),
+        _FakeTool("spawn_agent", "Spawn an agent."),
+    ]
+    (first, *_) = json.loads(build_search_tools_tool(tools)("spawn_agent"))
+    assert first["name"] == "spawn_agent"
+    assert "parameters" in first
 
 
 # -- use_tool translation -------------------------------------------------

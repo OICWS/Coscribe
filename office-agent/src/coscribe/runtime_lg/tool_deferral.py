@@ -43,6 +43,7 @@ TF-IDF implementation reaches the same conclusion at a similar scale.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Awaitable, Callable, Iterable, Sequence
 from dataclasses import dataclass, replace
 from typing import Any
@@ -76,6 +77,16 @@ _DESCRIPTION_TOKEN_WEIGHT = 1.0
 # could produce for a single short query, so it reliably wins ties.
 _NAME_SUBSTRING_BONUS = 5.0
 _MAX_RESULTS = 8
+# A full match (description and parameter schema) costs 1,000 to 4,000 characters; measured on
+# the 89 queries of tests/test_tool_search_recall.py, the tool asked for was among the first three
+# in 82, so the rest come back as a name and a line and cost a further search only when wanted.
+_FULL_RESULTS = 3
+_SUMMARY_CHARACTERS = 160
+# "e.g. a deck" is not the end of a sentence.
+_SENTENCE_END = re.compile(r"(?<!\be\.g)(?<!\bi\.e)\.\s")
+# A weaker match tells the model to search for its name, so the name must bring that tool
+# back first and in full; without this, "spawn_agent" ranked spawn_agent_background first.
+_EXACT_NAME_BONUS = 10.0
 # A result carries each match's full parameter schema, so a weak match costs
 # tokens for nothing. Measured on the real catalog: without these, a search
 # for "run python script" also returned add_pptx_hyperlink and delete_file.
@@ -126,6 +137,8 @@ def _score(entry: _ToolEntry, query_tokens: Sequence[str], query_lower: str) -> 
     score = 0.0
     if query_lower and query_lower in entry.name.lower():
         score += _NAME_SUBSTRING_BONUS
+        if query_lower == entry.name.lower():
+            score += _EXACT_NAME_BONUS
     in_name = 0
     for token in set(query_tokens):
         in_name += token in entry.name_tokens
@@ -134,6 +147,17 @@ def _score(entry: _ToolEntry, query_tokens: Sequence[str], query_lower: str) -> 
     # Among names that hold the same words of the query, the one that is little else comes
     # first: "powerpoint" is write_pptx before add_pptx_shape_effect.
     return score + (in_name / len(entry.name_tokens) if in_name else 0.0)
+
+
+def _summary(description: str) -> str:
+    """The description's first sentence, enough to tell whether the tool is the one wanted."""
+    first = " ".join(description.split("\n\n", 1)[0].split())
+    end = _SENTENCE_END.search(first)
+    if end:
+        first = first[: end.start() + 1]
+    if len(first) > _SUMMARY_CHARACTERS:
+        first = first[: _SUMMARY_CHARACTERS - 1].rstrip() + "…"
+    return first
 
 
 def _parameters_schema(tool: Callable[..., Any] | BaseTool) -> dict[str, Any]:
@@ -161,9 +185,10 @@ def build_search_tools_tool(
 
     def search_tools(query: str) -> str:
         """Find a tool that isn't in your tool list by keyword -- most
-        tools start hidden to keep this conversation's context small. Each
-        match comes back with its description and parameter schema; run it
-        with use_tool(name, arguments). Always try this before assuming
+        tools start hidden to keep this conversation's context small. The
+        best matches come back with their description and parameter schema;
+        run one with use_tool(name, arguments). Weaker matches come back as
+        a name and a line: search for that name to get its schema. Always try this before assuming
         something can't be done -- it almost certainly has a tool, just
         not one listed yet.
 
@@ -188,7 +213,9 @@ def build_search_tools_tool(
                     "description": entry.description,
                     "parameters": _parameters_schema(tools_by_name[entry.name]),
                 }
-                for _, entry in matches[:_MAX_RESULTS]
+                if rank < _FULL_RESULTS
+                else {"name": entry.name, "summary": _summary(entry.description)}
+                for rank, (_, entry) in enumerate(matches[:_MAX_RESULTS])
             ]
         )
 
