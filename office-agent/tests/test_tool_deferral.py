@@ -25,6 +25,7 @@ from coscribe.runtime_lg.search_words import tokenize
 from coscribe.runtime_lg.tool_deferral import (
     SEARCH_TOOLS_NAME,
     USE_TOOL_NAME,
+    _build_entry,
     _score,
     _summary,
     build_search_tools_tool,
@@ -191,21 +192,26 @@ def test_searching_a_tools_exact_name_brings_it_back_first_and_only_it_in_full()
 
 
 def test_a_tool_named_like_a_word_does_not_crowd_out_the_others() -> None:
+    # "spreadsheet" also searches for "xlsx"; an exact name in the score raised the floor
+    # above what write_xlsx_cells scores on that word.
     tools = [
-        _FakeTool("search", "Search the connected service."),
-        _FakeTool("search_files", "Find files by name."),
-        _FakeTool("search_images", "Find images on the web."),
+        _FakeTool("spreadsheet", "A spreadsheet connector."),
+        _FakeTool("write_xlsx_cells", "Write cells to an xlsx workbook."),
     ]
-    names = [m["name"] for m in json.loads(build_search_tools_tool(tools)("search"))]
-    assert names[0] == "search"
-    assert {"search_files", "search_images"} <= set(names)
+    names = [m["name"] for m in json.loads(build_search_tools_tool(tools)("spreadsheet"))]
+    assert names == ["spreadsheet", "write_xlsx_cells"]
 
 
 def test_equal_scores_go_to_the_shorter_name() -> None:
-    tools = [_FakeTool(f"add_pptx_{k}_item", "Add to a pptx.") for k in "abc"]
-    tools.append(_FakeTool("add_pptx", "Add to a pptx."))
-    first = json.loads(build_search_tools_tool(tools)("add to pptx"))[0]
-    assert first["name"] == "add_pptx"
+    # The query is only in the descriptions, so both score the same, whatever the names' length.
+    tools = [
+        _FakeTool("make_chart_now", "A pptx deck tool."),
+        _FakeTool("make_chart", "A pptx deck tool."),
+    ]
+    a, b = (_score(_build_entry(tool), ["deck", "pptx"], "pptx deck") for tool in tools)
+    assert a == b
+    names = [m["name"] for m in json.loads(build_search_tools_tool(tools)("pptx deck"))]
+    assert names == ["make_chart", "make_chart_now"]
 
 
 # -- use_tool translation -------------------------------------------------
