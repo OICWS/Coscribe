@@ -121,3 +121,74 @@ describe("foldTaskCard", () => {
     expect(entries.map((e) => e.kind)).toEqual(["tool_run", "task_card", "tool_run"]);
   });
 });
+
+describe("background tasks on the card", () => {
+  const card = (items: LogItem[]) => {
+    const cards = cardsOf(fold(items));
+    return cards[cards.length - 1];
+  };
+
+  it("binds a background task to the item in progress when it started", () => {
+    const items = [
+      create("1", "Research"),
+      update("1", "Research", "in_progress"),
+      tool("spawn_agent_background", { prompt: "look" }, { task_id: "agent-1", status: "running" }),
+      tool("run_background_script", { script: "x" }, JSON.stringify({ task_id: "script-1" })),
+    ];
+    expect(card(items).bound).toEqual({ "1": ["agent-1", "script-1"] });
+  });
+
+  it("binds a starter whose call was approved first", () => {
+    const approved: Of<"approval"> = {
+      id: id(),
+      kind: "approval",
+      toolName: "run_background_script",
+      arguments: { language: "python", script: "x" },
+      status: "approved",
+      result: { task_id: "script-9", status: "running" },
+    };
+    const items = [create("1", "Crunch"), update("1", "Crunch", "in_progress"), approved];
+    expect(card(items).bound).toEqual({ "1": ["script-9"] });
+  });
+
+  it("binds a script that moved to the background, and not one that ran to its end", () => {
+    const items = [
+      create("1", "Crunch"),
+      update("1", "Crunch", "in_progress"),
+      tool("run_python_script", { script: "x" }, { status: "running_in_background", task_id: "moved-1" }),
+      tool("run_python_script", { script: "y" }, { returncode: 0, task_id: "not-a-task" }),
+    ];
+    expect(card(items).bound).toEqual({ "1": ["moved-1"] });
+  });
+
+  it("binds nothing before the starter's result is in, or with no item in progress", () => {
+    const pending = [create("1", "A"), update("1", "A", "in_progress"), tool("spawn_agent_background", { prompt: "p" })];
+    expect(card(pending).bound).toEqual({});
+    const idle = [create("1", "A"), tool("spawn_agent_background", { prompt: "p" }, { task_id: "agent-1" })];
+    expect(card(idle).bound).toEqual({});
+  });
+
+  it("gives a task started while two items run to the one that started last", () => {
+    const items = [
+      create("1", "A"),
+      create("2", "B"),
+      update("1", "A", "in_progress"),
+      update("2", "B", "in_progress"),
+      tool("run_background_command", { command: "build" }, { task_id: "cmd-1" }),
+      update("2", "B", "completed"),
+      tool("run_background_command", { command: "test" }, { task_id: "cmd-2" }),
+    ];
+    expect(card(items).bound).toEqual({ "2": ["cmd-1"], "1": ["cmd-2"] });
+  });
+
+  it("keeps an item's tasks when the card moves on in a later turn", () => {
+    const items = [
+      create("1", "A"),
+      update("1", "A", "in_progress"),
+      tool("spawn_agent_background", { prompt: "p" }, { task_id: "agent-1" }),
+      agent("waiting on it"),
+      create("2", "B"),
+    ];
+    expect(card(items).bound).toEqual({ "1": ["agent-1"] });
+  });
+});
