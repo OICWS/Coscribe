@@ -50,9 +50,10 @@ Last reviewed: 2026-11-06.
   The Word panel is frozen (decisions 0025, 0027): its remaining items are dropped.
 - **Artifacts:** pins are kept in the browser, not on the server; a scheduled run's files are not
   listed yet.
-- **Startup cost** (#478, `docs/metrics/2026-10-20-startup-cost.md`): `pptx`, `PIL` and `lxml`
-  loaded lazily once the sections modules may be edited; the sidecar started earlier in the
-  Electron shell.
+- **Startup cost** (#478 closed, `docs/metrics/2026-10-20-startup-cost.md`): `pptx`, `PIL` and
+  `lxml` stay on the startup path (66 to 85 ms and 13 MiB, measured 2026-11-15; not worth
+  editing every deck engine module). Open: the Windows numbers, cold start and the installed app
+  (`scripts/measure_startup.py`, `office-agent-desktop/scripts/measure-startup.mjs`).
 - **Scripts and commands:** a PyPI mirror setting for networks that block PyPI (#560); hiding other
   drives' user folders from commands (#845); a company proxy on a real Windows machine (Basic only;
   NTLM and Kerberos are not supported, #666).
