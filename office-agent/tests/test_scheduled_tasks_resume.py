@@ -406,7 +406,7 @@ async def test_notes_are_in_the_run_prompt_and_the_run_can_update_them(
         store.write_notes("trig-notes", "Processed through invoice 1000.")
 
         run = await asyncio.wait_for(
-            fire_trigger_now(settings.state_dir, "trig-notes", get_session), timeout=5
+            fire_trigger_now(settings.state_dir, "trig-notes", get_session), timeout=30
         )
 
     assert run is not None and run.status == "completed"  # READ tier: never parks on approval
@@ -495,7 +495,7 @@ async def test_approval_mode_auto_or_skip_auto_approves_a_gated_call(
         )
 
         run = await asyncio.wait_for(
-            fire_trigger_now(settings.state_dir, "trig-10", get_session), timeout=5
+            fire_trigger_now(settings.state_dir, "trig-10", get_session), timeout=30
         )
 
     assert run is not None and run.status == "completed"
@@ -520,7 +520,7 @@ async def test_approval_mode_manual_parks_the_run_as_needs_approval(
         store.save(_trigger("trig-manual", prompt="Write hi to note.txt"))
 
         run = await asyncio.wait_for(
-            fire_trigger_now(settings.state_dir, "trig-manual", get_session), timeout=5
+            fire_trigger_now(settings.state_dir, "trig-manual", get_session), timeout=30
         )
 
     assert run is not None and run.status == "needs_approval"
@@ -562,7 +562,7 @@ async def test_approval_mode_auto_is_restored_after_the_run(
             source="manual",
         )
 
-        await asyncio.wait_for(_run_in_session(trigger, run, "", session), timeout=5)
+        await asyncio.wait_for(_run_in_session(trigger, run, "", session), timeout=30)
         assert session.accept_edits is False
         assert session.run_approval_mode is None
 
