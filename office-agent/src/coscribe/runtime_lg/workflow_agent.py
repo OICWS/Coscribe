@@ -29,17 +29,11 @@ from langgraph.types import Command
 from ..runtime import get_tool_metadata, redactor
 from ..workflows import AgentCall, AgentReply, AgentRequest
 from .agent import build_langgraph_agent, tool_name
+from .agent_stream import MODEL_STALL_SECONDS, ModelStalled, RunRecord, no_record, stream_turn
 from .audit import AuditLog, record_decision
 from .audit import Reason as AuditReason
 from .messages import extract_text
-from .subagents import (
-    LIMIT_MESSAGE_PREFIX,
-    MODEL_STALL_SECONDS,
-    ModelStalled,
-    for_subagents,
-    stream_turn,
-    wrap_up,
-)
+from .subagents import LIMIT_MESSAGE_PREFIX, for_subagents, wrap_up
 from .token_limit import TOKEN_LIMIT_PREFIX
 
 logger = logging.getLogger(__name__)
@@ -129,6 +123,8 @@ class WorkflowAgentRunner:
     # The person's PreToolUse hooks: a reason to refuse the call, or None.
     pre_tool_use: Callable[[str, dict[str, Any]], Awaitable[str | None]] | None = None
     model_stall_seconds: float = MODEL_STALL_SECONDS
+    # A record of how each pass of a step went, from what the pass is (its step and model).
+    record_run: Callable[[dict[str, Any]], RunRecord] = no_record
 
     def __post_init__(self) -> None:
         self._tools = workflow_agent_tools(self.tools)
@@ -147,6 +143,32 @@ class WorkflowAgentRunner:
         agent = self._build(request, model_string, chat_model)
         config = {"configurable": {"thread_id": request.key}}
         answers = _Answers(self.state_dir, request.key)
+        # One line per pass: a step that stops to wait for a person leaves a line, and the
+        # pass that resumes it another.
+        recorder = self.record_run(
+            {"kind": "workflow_agent", "step": request.key, "model": model_string}
+        )
+        stopped = False
+        try:
+            return await self._passes(request, agent, config, answers, chat_model, recorder)
+        except asyncio.CancelledError:
+            stopped = True
+            raise
+        except Exception as error:
+            recorder.failed(error)
+            raise
+        finally:
+            recorder.finish(stopped=stopped)
+
+    async def _passes(
+        self,
+        request: AgentRequest,
+        agent: Any,
+        config: dict[str, Any],
+        answers: _Answers,
+        chat_model: Any,
+        recorder: RunRecord,
+    ) -> AgentReply:
         state = await agent.aget_state(config)
         turn: Any = None
         if not state.values:
@@ -156,7 +178,7 @@ class WorkflowAgentRunner:
             while True:
                 if turn is not None:
                     await stream_turn(
-                        agent, turn, config, _ignore, self.model_stall_seconds, running
+                        agent, turn, config, _ignore, self.model_stall_seconds, running, recorder
                     )
                 state = await agent.aget_state(config)
                 if not state.next:
@@ -178,8 +200,10 @@ class WorkflowAgentRunner:
                 answers.clear()
                 turn = Command(resume=resume)
         except ModelStalled as exc:
+            recorder.failed(exc)
             return self._reply("failed", state, error=str(exc))
         except Exception as exc:  # noqa: BLE001 -- the step fails with the agent's error
+            recorder.failed(exc)
             logger.warning("workflow agent %s failed", request.key, exc_info=True)
             return self._reply("failed", state, error=(str(exc) or type(exc).__name__)[:2000])
         answers.clear()

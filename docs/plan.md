@@ -35,11 +35,12 @@ Last reviewed: 2026-11-06.
 3. **How turns go, measured in real use** (#867, decision 0045). Done: one line per turn in
    `turns.jsonl`, without the conversation's words (`docs/log/2026-11-10-turn-trace.md`), and
    five agentic evaluation tasks replayed from recorded answers in the PR checks
-   (`docs/log/2026-11-10-eval-replay.md`, `docs/log/2026-11-10-plan-order.md`). Next: tapes for
+   (`docs/log/2026-11-10-eval-replay.md`, `docs/log/2026-11-10-plan-order.md`); a sub-agent's run
+   and a workflow agent step's pass counted too (`docs/log/2026-11-15-trace-subagent-turns.md`). Next: tapes for
    the tasks that run a script, and a nightly replay of the three that write Office files;
    `search_tools` returning its weaker matches as a name and one line
    (`docs/log/2026-11-10-tool-search-recall.md`);
-   sub-agent and workflow agent steps counted; a failed turn exported as an evaluation task with
+   a failed turn exported as an evaluation task with
    the person's consent.
 
 ## Open, smaller
