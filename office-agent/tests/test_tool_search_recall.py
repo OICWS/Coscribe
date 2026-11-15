@@ -19,6 +19,7 @@ from langchain_core.messages import AIMessage
 from coscribe.coordinator import CORE_TOOL_NAMES
 from coscribe.runtime_lg import build_search_tools_tool, tool_name
 from coscribe.runtime_lg.search_words import query_words, tokenize
+from coscribe.runtime_lg.tool_deferral import _build_entry, _ranked
 
 from .test_prompt_cache import _RecordingModel, _session
 
@@ -150,10 +151,12 @@ def test_every_hidden_tool_comes_back_first_and_in_full_by_its_name(
     session = _session(tmp_path, monkeypatch, model, "names", tmp_path / "folder")
     tools = session._build_lg_tools(model)  # noqa: SLF001
     hidden = [t for t in tools if tool_name(t) not in CORE_TOOL_NAMES]
-    search_tools = build_search_tools_tool(hidden)
-    for name in map(tool_name, hidden):
-        first = json.loads(search_tools(name))[0]
-        assert (first["name"], "parameters" in first) == (name, True)
+    entries = [_build_entry(t) for t in hidden]
+    for entry in entries:
+        assert _ranked(entries, entry.name)[0] == (entry, True)
+    # The ranking holds for every name; one real search checks that first means in full.
+    first = json.loads(build_search_tools_tool(hidden)(entries[0].name))[0]
+    assert "parameters" in first
 
 
 @pytest.mark.parametrize(("query", "tool"), _NOT_FOUND, ids=[query for query, _ in _NOT_FOUND])

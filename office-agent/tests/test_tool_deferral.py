@@ -168,19 +168,44 @@ def test_a_summary_is_the_first_sentence_and_not_cut_at_an_abbreviation() -> Non
         "Make a deck, e.g. a pitch."
     )
     assert _summary("Write it, E.g. a memo. Then more.") == "Write it, E.g. a memo."
-    assert len(_summary("word " * 100)) <= 160
+    assert _summary("Search pages, databases, etc. by title. More.") == (
+        "Search pages, databases, etc. by title."
+    )
+    assert _summary("Is it a deck? Then more.") == "Is it a deck?"
+    assert _summary("Keeps the UTF-8-\n    text shape.") == "Keeps the UTF-8-text shape."
+    long = _summary("Change a file " + "in place " * 30)
+    assert len(long) <= 160 and long.endswith("place…")
 
 
-def test_searching_a_tools_exact_name_brings_it_back_first_in_full() -> None:
-    # Without the exact-name bonus, the background tool's description (which names
-    # spawn_agent) ranks it first.
+def test_searching_a_tools_exact_name_brings_it_back_first_and_only_it_in_full() -> None:
+    # The background tool's description names spawn_agent, so it outscores it on words.
     tools = [
         _FakeTool("spawn_agent_background", "Like spawn_agent, but in the background."),
         _FakeTool("spawn_agent", "Hand a task to a sub-agent."),
+        _FakeTool("spawn_agent_status", "Whether a spawn_agent task is done."),
     ]
-    (first, *_) = json.loads(build_search_tools_tool(tools)("spawn_agent"))
+    first, *rest = json.loads(build_search_tools_tool(tools)("spawn_agent"))
     assert first["name"] == "spawn_agent"
     assert "parameters" in first
+    assert rest and all(set(match) == {"name", "summary"} for match in rest)
+
+
+def test_a_tool_named_like_a_word_does_not_crowd_out_the_others() -> None:
+    tools = [
+        _FakeTool("search", "Search the connected service."),
+        _FakeTool("search_files", "Find files by name."),
+        _FakeTool("search_images", "Find images on the web."),
+    ]
+    names = [m["name"] for m in json.loads(build_search_tools_tool(tools)("search"))]
+    assert names[0] == "search"
+    assert {"search_files", "search_images"} <= set(names)
+
+
+def test_equal_scores_go_to_the_shorter_name() -> None:
+    tools = [_FakeTool(f"add_pptx_{k}_item", "Add to a pptx.") for k in "abc"]
+    tools.append(_FakeTool("add_pptx", "Add to a pptx."))
+    first = json.loads(build_search_tools_tool(tools)("add to pptx"))[0]
+    assert first["name"] == "add_pptx"
 
 
 # -- use_tool translation -------------------------------------------------
