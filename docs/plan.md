@@ -121,6 +121,9 @@ Last reviewed: 2026-11-06.
 
 ## Open problems, not reproduced or not solved
 
+- Stop sometimes taking a while to end a turn on the maintainer's machine (#715): every stop
+  path tried with fake models ends within 0.05 s (`docs/log/2026-11-15-stop-answers-the-page.md`);
+  the exported conversation the issue waits for would show where the turn was.
 - Notion showed no tools for the maintainer; cause not found.
 - The built-in browser panel opened during a connector's first connection
   (sign-in pages should open in the system browser); not reproduced.
