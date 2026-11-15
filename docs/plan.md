@@ -98,11 +98,10 @@ Last reviewed: 2026-11-06.
 
 ## For the maintainer (settings and decisions)
 
-- Make the Windows job required: it has its 14 green scheduled nights. The count restarted on
-  2026-10-27, reached 12 (10-28 to 11-08) and 16 with the nights of 11-11 to 11-14. The nights of
-  11-09 (a test file written with CRLF, a 10 s limit on a loaded runner) and 11-10 (a 5 s limit on a
-  hand-fired run, `docs/log/2026-11-15-windows-night-1110.md`) were red; the maintainer decided
-  that neither restarts the count, as for 10-24.
+- Add the Windows job's `pytest` to `main`'s required status checks (Settings, Branches). It has
+  its 14 green scheduled nights (16 by 11-14; the red nights of 11-09 and 11-10 do not restart the
+  count, `docs/log/2026-11-15-windows-night-1110.md`), and it now runs on every pull request
+  (`docs/log/2026-11-15-windows-required.md`).
 - Read the CodeQL alerts and the first `audit.yml` run.
 - Decide whether changed-line coverage is enforced (`docs/assessments/2026-10-13-diff-coverage.md`).
 - Decision 0036 (parallel workflow steps) is proposed with #789.
