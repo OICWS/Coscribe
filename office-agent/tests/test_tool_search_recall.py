@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from pathlib import Path
 
 import pytest
 from langchain_core.messages import AIMessage
@@ -138,6 +139,21 @@ def test_a_tool_is_found_by_the_words_a_model_would_ask_with(
     search: Callable[[str], list[str]], query: str, tool: str
 ) -> None:
     assert tool in search(query)
+
+
+def test_every_hidden_tool_comes_back_first_and_in_full_by_its_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A weaker match comes back as a name and a line, and the model searches that name for
+    its parameters; a tool that is not then first, in full, cannot be run correctly."""
+    model = _RecordingModel(responses=[AIMessage(content="ok")])
+    session = _session(tmp_path, monkeypatch, model, "names", tmp_path / "folder")
+    tools = session._build_lg_tools(model)  # noqa: SLF001
+    hidden = [t for t in tools if tool_name(t) not in CORE_TOOL_NAMES]
+    search_tools = build_search_tools_tool(hidden)
+    for name in map(tool_name, hidden):
+        first = json.loads(search_tools(name))[0]
+        assert (first["name"], "parameters" in first) == (name, True)
 
 
 @pytest.mark.parametrize(("query", "tool"), _NOT_FOUND, ids=[query for query, _ in _NOT_FOUND])

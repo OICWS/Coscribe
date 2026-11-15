@@ -167,13 +167,16 @@ def test_a_summary_is_the_first_sentence_and_not_cut_at_an_abbreviation() -> Non
     assert _summary("Make a deck, e.g. a pitch. Then more.\n\nArgs: x") == (
         "Make a deck, e.g. a pitch."
     )
+    assert _summary("Write it, E.g. a memo. Then more.") == "Write it, E.g. a memo."
     assert len(_summary("word " * 100)) <= 160
 
 
 def test_searching_a_tools_exact_name_brings_it_back_first_in_full() -> None:
+    # Without the exact-name bonus, the background tool's description (which names
+    # spawn_agent) ranks it first.
     tools = [
-        _FakeTool("spawn_agent_background", "Spawn an agent in the background."),
-        _FakeTool("spawn_agent", "Spawn an agent."),
+        _FakeTool("spawn_agent_background", "Like spawn_agent, but in the background."),
+        _FakeTool("spawn_agent", "Hand a task to a sub-agent."),
     ]
     (first, *_) = json.loads(build_search_tools_tool(tools)("spawn_agent"))
     assert first["name"] == "spawn_agent"

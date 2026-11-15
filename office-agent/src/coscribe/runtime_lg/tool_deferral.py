@@ -11,8 +11,9 @@ this environment's own `ToolSearch`, and `claude-code-best/claude-code`'s
 prompt by prefix and the tool list comes before the messages, so binding a
 tool that `search_tools` found made the provider re-read the whole
 conversation uncached (22-56% of a long DeepSeek task, ROADMAP Phase 8cj).
-So `search_tools` returns the found tools' descriptions *and parameter
-schemas* as its result, and the model runs one through `use_tool`. What a
+So `search_tools` returns the best matches' descriptions *and parameter
+schemas* as its result (the weaker ones as a name and a line, fetched in
+full by searching that name), and the model runs one through `use_tool`. What a
 request sends is the core set plus those two tools, always.
 
 **Why every other layer still sees the real tool name.** Approvals, hooks,
@@ -83,9 +84,11 @@ _MAX_RESULTS = 8
 _FULL_RESULTS = 3
 _SUMMARY_CHARACTERS = 160
 # "e.g. a deck" is not the end of a sentence.
-_SENTENCE_END = re.compile(r"(?<!\be\.g)(?<!\bi\.e)\.\s")
+_SENTENCE_END = re.compile(r"(?<!\be\.g)(?<!\bi\.e)\.\s", re.IGNORECASE)
 # A weaker match tells the model to search for its name, so the name must bring that tool
 # back first and in full; without this, "spawn_agent" ranked spawn_agent_background first.
+# The bonus also lifts the floor of what else is returned, so a name search brings back that
+# tool and few neighbours (list_pptx_shapes no longer lists edit_pptx_shape): it fetches a schema.
 _EXACT_NAME_BONUS = 10.0
 # A result carries each match's full parameter schema, so a weak match costs
 # tokens for nothing. Measured on the real catalog: without these, a search
