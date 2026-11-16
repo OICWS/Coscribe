@@ -296,6 +296,39 @@ async def test_a_heal_enters_only_values_the_run_has(tmp_path: Path) -> None:
     ]
 
 
+async def test_a_heal_fills_a_form_or_runs_steps_only_with_values_the_run_has(
+    tmp_path: Path,
+) -> None:
+    name = {"id": "name", "kind": "tool", "title": "Enter Company name", "tool": "browser_type",
+            "args": {"ref": 'textbox "Company name"', "text": "{{row.company}}"}}  # fmt: skip
+    known = {"fields": [{"ref": "Company", "text": "Acme"}]}
+    guessed = {"fields": [*known["fields"], {"ref": "Sector", "text": "Retail"}]}
+    runner = ScriptedRunner(
+        [
+            ("call", "browser_fill_form", "EXTERNAL", guessed),
+            ("call", "browser_fill_form", "EXTERNAL", known),
+            ("call", "browser_steps", "EXTERNAL", {"steps": [{"type": "Name", "text": "Globex"}]}),
+            ("call", "browser_steps", "EXTERNAL", {"steps": [{"press_key": "x"}]}),
+            ("call", "browser_steps", "EXTERNAL",
+             {"steps": [{"select": "Company", "values": ["Acme"]}, {"press_key": "Enter"}]}),
+            _done("filled"),
+        ]
+    )  # fmt: skip
+    h = Harness(tmp_path, runner, browser_type=_fails, browser_fill_form=lambda **_: "ok",
+                browser_steps=lambda **_: "ok", rows=lambda: [{"company": "Acme"}])  # fmt: skip
+
+    outcome = await h.run([OPEN, ROWS, _each(name)], autonomy="self_healing").start({})
+
+    assert outcome.status == "completed"
+    assert runner.log() == [
+        "refused browser_fill_form",
+        "ran browser_fill_form",
+        "refused browser_steps",
+        "refused browser_steps",
+        "ran browser_steps",
+    ]
+
+
 async def test_a_heal_after_a_send_may_send_again_only_with_a_person(tmp_path: Path) -> None:
     wait = {"id": "wait", "kind": "tool", "title": "Wait for the reference",
             "tool": "browser_wait_for", "args": {"text": "Your reference is"}}  # fmt: skip

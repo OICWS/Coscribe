@@ -703,6 +703,9 @@ any words you wrote on it.
   another step is still working in, stay open and the result says why. It
   can also read several pages at once. A workflow run's pages stay open
   after it ends unless the workflow ends with a step that closes them.
+- **Forms**: one step fills a whole form, dropdowns, checkboxes, radio buttons and date fields
+  included, and says which values the page changed. A step can also do several things on a page
+  in a row (fill, click, wait), and wait for whichever of several messages appears first.
 - **Stop** also reaches the desktop app: the step in progress there (a
   wait can run for an hour) ends at once, and steps that conversation
   had queued are dropped.

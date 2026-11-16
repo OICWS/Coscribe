@@ -131,8 +131,12 @@ function site(url: unknown): string {
   }
 }
 
-function pages(count: number): string {
-  return count === 1 ? "1 page" : `${count} pages`;
+function count(n: number, noun: string): string {
+  return n === 1 ? `1 ${noun}` : `${n} ${noun}s`;
+}
+
+function pages(n: number): string {
+  return count(n, "page");
 }
 
 function tabsSentence(args: Record<string, unknown>): string | null {
@@ -160,7 +164,12 @@ function toolSentence(tool: string, args: Record<string, unknown>, inputs: Workf
       return `Picks ${plainValue(picked, inputs)} in ${fieldName(args.ref, inputs)}`;
     }
     case "browser_wait_for":
+      if (Array.isArray(args.any_of)) return `Waits for the page to show ${args.any_of.map((t) => plainValue(t, inputs)).join(" or ")}`;
       return `Waits for the page to show ${value("text")}`;
+    case "browser_fill_form":
+      return Array.isArray(args.fields) ? `Fills in ${count(args.fields.length, "field")}` : toolLabel(tool);
+    case "browser_steps":
+      return Array.isArray(args.steps) ? `Does ${count(args.steps.length, "thing")} on the page` : toolLabel(tool);
     case "browser_evaluate":
       return "Works with the page directly";
     case "browser_tabs":

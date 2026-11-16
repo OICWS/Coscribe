@@ -16,6 +16,7 @@ import { join, parse } from "node:path";
 import { Readable } from "node:stream";
 import { type BrowserWindow, type DownloadItem, type WebContents, app } from "electron";
 import { commandTab, pinCommand, runTabCommand, withTab, listTabs, popupDownloads, trackPopupDownload } from "./browserAgentTabs";
+import { type FormField, type PageStep, fillForm, runSteps, waitForAny } from "./browserAgentForms";
 import { pageAgent } from "./browserAgentPage";
 import { locate, scrollArea, splitRef } from "./browserAgentLocate";
 import { type Step, browserOperation, handleBrowserControl, cancelFrameOff, enqueue, running, runningSteps, scheduleFrameOff, stepContext } from "./browserAgentSteps";
@@ -569,14 +570,9 @@ async function run(command: Command): Promise<Record<string, unknown>> {
       args = { ...args, ref: await resolveTarget(cdp, args.ref, waitSeconds(args)) };
     }
     if (command.action === "fill_form") {
-      const filled: string[] = [];
-      for (const field of args.fields as Array<{ ref: string; text: string }>) {
-        checkStop();
-        const ref = await resolveTarget(cdp, field.ref, waitSeconds(args));
-        await act({ ...command, action: "type" }, tab, wc, cdp, { ref, text: field.text, submit: false });
-        filled.push(field.ref);
-      }
-      result = withTab(tab, { filled });
+      result = withTab(tab, { filled: await fillForm(pageActions, command, tab, wc, cdp, args.fields as FormField[], waitSeconds(args)) });
+    } else if (command.action === "steps") {
+      result = withTab(tab, await runSteps(pageActions, command, tab, wc, cdp, args.steps as PageStep[], waitSeconds(args)));
     } else result = await act(command, tab, wc, cdp, args);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -603,6 +599,8 @@ async function run(command: Command): Promise<Record<string, unknown>> {
   if (current && current.id !== tab.id) result.current_tab = withTab(current).tab;
   return result;
 }
+
+const pageActions = { act, resolveTarget, settle, click, checkStop, describeDialog };
 
 async function act(
   command: Command,
@@ -706,6 +704,7 @@ async function act(
         const ref = await resolveTarget(cdp, String(args.element), waitS);
         return withTab(tab, { element: ref });
       }
+      if (Array.isArray(args.any_of)) return withTab(tab, await waitForAny(pageActions, cdp, args.any_of.map(String), waitS));
       const text = String(args.text || args.gone || "");
       if (!text) {
         const deadline = Date.now() + Math.min(Number(args.seconds) || 0, waitS) * 1000;
