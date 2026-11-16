@@ -79,7 +79,7 @@ export function passStatus(
 
 /** A block whose own record says failed or waiting because of a step
  * inside it -- that step shows the problem, not the block. */
-export function stoppedInside(step: WorkflowStep, run: ScheduledRun): boolean {
+export function stoppedInside(step: WorkflowStep, run: Pick<ScheduledRun, "steps">): boolean {
   // A step that ran another task holds that task's records, as "<step>/<its step>" (decision 0035).
   const ran = step.kind === "run_task";
   if (!ran && !isBlock(step)) return false;

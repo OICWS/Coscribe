@@ -315,17 +315,17 @@ describe("workflowTests", () => {
 
   it("marks a call with no result as running while its turn is in flight", () => {
     const items = [user(), testCall("d1")];
-    expect(workflowTests(items, true).get("d1")).toEqual({ result: null, running: true });
+    expect(workflowTests(items, true).get("d1")).toEqual({ result: null, running: true, toolCallId: items[1].id });
   });
 
   it("does not leave a call running when no turn is in flight (Stop cancels without a result)", () => {
     const items = [user(), testCall("d1")];
-    expect(workflowTests(items, false).get("d1")).toEqual({ result: null, running: false });
+    expect(workflowTests(items, false).get("d1")).toEqual({ result: null, running: false, toolCallId: items[1].id });
   });
 
   it("does not call a test from an earlier turn running", () => {
     const items = [user("a", 0), testCall("d1"), user("b", 1)];
-    expect(workflowTests(items, true).get("d1")).toEqual({ result: null, running: false });
+    expect(workflowTests(items, true).get("d1")).toEqual({ result: null, running: false, toolCallId: items[1].id });
   });
 
   it("runs an approval-gated test only once it is approved", () => {
