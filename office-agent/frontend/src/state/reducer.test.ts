@@ -142,6 +142,25 @@ describe("history and older messages", () => {
     expect(status("The user rejected the plan. Stop.")).toMatchObject({ kind: "plan", status: "reject" });
   });
 
+  it("restores the task list the person approved, and keeps it on a live answer", () => {
+    const result =
+      'The user approved the plan and kept the current approvals. Carry it out now. They edited your task list.\nTask list as approved:\n' +
+      '[{"id": "2", "content": "Write", "status": "pending"}, {"id": "1", "content": "Read", "status": "completed"}]';
+    const [item] = historyToItems([{ kind: "tool", tool_name: "exit_plan_mode", arguments: { plan: "p" }, result, is_error: false }]);
+    expect(item).toMatchObject({
+      status: "manual",
+      tasks: [
+        { id: "2", content: "Write", status: "pending" },
+        { id: "1", content: "Read", status: "completed" },
+      ],
+    });
+    expect(historyToItems([{ kind: "tool", tool_name: "exit_plan_mode", arguments: { plan: "p" }, result: "The user approved the plan", is_error: false }])[0]).not.toHaveProperty("tasks");
+
+    const tasks = [{ id: "3", content: "Send", status: "pending" as const }];
+    const live = run(stateWith(), { type: "plan_ready", id: "a", plan: "p" }, { type: "local_plan_answered", id: "a", status: "auto", tasks });
+    expect(live.items[0]).toMatchObject({ status: "auto", tasks });
+  });
+
   it("remembers the plan before each one, so a revision can be shown as a diff", () => {
     const entry = (plan: string): HistoryEntry => ({
       kind: "tool",

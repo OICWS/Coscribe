@@ -1,6 +1,7 @@
 import { splitAttachedFiles } from "../lib/attachments";
 import { pendingSteer, requeuedNotes, type NewSteer, type SteerItem } from "./steerItems";
 import type { HistoryEntry, QuestionSpec, StateEvent, TaskDraft, WsServerEvent } from "../types/wire";
+import type { ProgressItem } from "../lib/workflowProgress";
 
 /** The answer the frontend sends for a saved draft starts with this --
  * also how a replayed create_scheduled_task call tells "saved" apart
@@ -75,6 +76,8 @@ export type LogItem =
       /** How the user answered: approved into auto or manual mode, or sent
        * back to keep planning. */
       status: "pending" | "auto" | "manual" | "revise" | "reject";
+      /** The task list as the person edited and approved it; it replaces the model's. */
+      tasks?: ProgressItem[];
     }
   | {
       id: string;
@@ -206,7 +209,7 @@ export type LocalAction =
   | { type: "local_rewind_message"; turnIndex: number }
   | { type: "local_approval_resolved"; id: string; approved: boolean; reply?: string }
   | { type: "local_question_answered"; id: string; answers: (string | null)[] | null; reply?: string }
-  | { type: "local_plan_answered"; id: string; status: "auto" | "manual" | "revise" | "reject" }
+  | { type: "local_plan_answered"; id: string; status: "auto" | "manual" | "revise" | "reject"; tasks?: ProgressItem[] }
   | { type: "local_task_draft_resolved"; id: string; status: "saved" | "dismissed"; savedName?: string }
   | { type: "local_connection_reset" }
   | { type: "local_switch_thread" }
@@ -270,6 +273,26 @@ function planStatusOf(result: string): "auto" | "manual" | "revise" | "reject" {
   return "revise";
 }
 
+// conversation/approvals.py's PLAN_TASKS_MARKER: the approved list follows it, as JSON.
+const PLAN_TASKS_MARKER = "Task list as approved:\n";
+
+/** The task list an approved plan's result gives, when the person edited it. */
+function planTasksOf(result: string): ProgressItem[] | undefined {
+  const at = result.indexOf(PLAN_TASKS_MARKER);
+  if (at < 0) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(result.slice(at + PLAN_TASKS_MARKER.length));
+    if (!Array.isArray(parsed)) return undefined;
+    return parsed.flatMap((task: Record<string, unknown>) =>
+      task && typeof task.content === "string" && task.id !== undefined
+        ? [{ id: String(task.id), content: task.content, status: task.status === "completed" || task.status === "in_progress" ? task.status : "pending" }]
+        : [],
+    );
+  } catch {
+    return undefined;
+  }
+}
+
 /** A checkpointed transcript as chat items -- the main conversation's
  * history, and a sub-agent's in the Background tasks panel. */
 export function historyToItems(entries: HistoryEntry[]): LogItem[] {
@@ -286,11 +309,12 @@ export function historyToItems(entries: HistoryEntry[]): LogItem[] {
       return { id: genId(), kind: "steer", text: entry.text, status: "delivered", images: entry.images, files: entry.files };
     }
     if (entry.tool_name === "exit_plan_mode") {
-      const status = planStatusOf(typeof entry.result === "string" ? entry.result : "");
+      const result = typeof entry.result === "string" ? entry.result : "";
       const plan = String(entry.arguments.plan ?? "");
       const previous = lastPlan;
       lastPlan = plan;
-      return { id: genId(), kind: "plan", plan, previous, status };
+      const tasks = planTasksOf(result);
+      return { id: genId(), kind: "plan", plan, previous, status: planStatusOf(result), ...(tasks ? { tasks } : {}) };
     }
     if (entry.tool_name === "create_scheduled_task" || entry.tool_name === "edit_scheduled_task") {
       const saved = typeof entry.result === "string" && entry.result.startsWith(TASK_DRAFT_SAVED_PREFIX);
@@ -478,7 +502,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...state,
         items: state.items.map((item) =>
-          item.kind === "plan" && item.id === action.id ? { ...item, status: action.status } : item,
+          item.kind === "plan" && item.id === action.id
+            ? { ...item, status: action.status, ...(action.tasks ? { tasks: action.tasks } : {}) }
+            : item,
         ),
       };
 

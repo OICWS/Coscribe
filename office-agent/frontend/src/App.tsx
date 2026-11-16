@@ -16,7 +16,6 @@ import {
 } from "./lib/menuCommands";
 import { FindInPage } from "./components/FindInPage";
 import { DRAWS_TITLE_BAR, useTitleBarColors } from "./lib/titleBar";
-import type { PlanChoice, PlanItem } from "./components/PlanCard";
 import { EffortPicker } from "./components/EffortPicker";
 import type { Effort } from "./components/EffortPicker";
 import { ModelPicker } from "./components/ModelPicker";
@@ -34,8 +33,7 @@ import { ViewerPanel } from "./components/ViewerPanel";
 import { PlanPanel } from "./components/PlanPanel";
 import { FilesPanel } from "./components/files/FilesPanel";
 import { TaskPanel } from "./components/TaskPanel";
-import { setPlanComments, usePlanComments, withPlanComments } from "./lib/planComments";
-import { planPanelData } from "./lib/taskCard";
+import { usePlanState } from "./lib/planState";
 import { PanelDock } from "./components/dock/PanelDock";
 import { PanelToggles } from "./components/dock/PanelToggles";
 import { NoticeStack } from "./components/NoticeStack";
@@ -396,10 +394,8 @@ function App() {
   const threadTask = isScheduledTaskThread ? taskForThread(scheduledTasks, threadId) : null;
   const threadRun = threadTask?.runs.find((r) => r.thread_id === threadId) ?? null;
   const threadWorkflow = threadRun ? (threadTask?.workflow ?? null) : null;
-  const planData = planPanelData(state.items);
-  const hasPlan = planData.tasks.length > 0;
-  const planComments = usePlanComments(planData.plan);
-  const taskPanelWanted = taskPanelChoice[threadId] ?? (threadWorkflow === null && (isScheduledTaskThread || hasPlan));
+  const plans = usePlanState(state.items, (m) => socketRef.current?.send(m), dispatch, () => setPanelOpen("plan", true));
+  const taskPanelWanted = taskPanelChoice[threadId] ?? (threadWorkflow === null && (isScheduledTaskThread || plans.hasPlan));
   const onHome =
     state.historyReceived &&
     state.items.length === 0 &&
@@ -689,15 +685,6 @@ function App() {
 
   const onDetachScript = (script: string) => socketRef.current?.send({ type: "detach_command", script });
 
-  const onAnswerPlan = (item: PlanItem, choice: PlanChoice, feedback: string) => {
-    dispatch({ type: "local_plan_answered", id: item.id, status: choice });
-    socketRef.current?.send({
-      type: "question_response",
-      id: item.id,
-      answer: choice === "revise" ? `revise:${withPlanComments(item.plan, feedback)}` : choice,
-    });
-  };
-
   const onAnswerQuestion = (id: string, answers: (string | null)[] | null) => {
     dispatch({ type: "local_question_answered", id, answers });
     socketRef.current?.send(
@@ -753,7 +740,7 @@ function App() {
       browser: { panel: "browser", threadId },
       background: { panel: "background", ...backgroundProps },
       viewer: { panel: "viewer", threadId, path: viewerFiles[threadId] ?? null, refreshKey },
-      plan: { panel: "plan", threadId, ...planData, comments: planComments, busy: state.turnInFlight },
+      plan: { panel: "plan", threadId, ...plans.panelState, busy: state.turnInFlight },
       files: { panel: "files", threadId, refreshKey },
     },
     titles: PANEL_TITLES,
@@ -764,7 +751,7 @@ function App() {
       else if (action.type === "view") viewFile(action.path);
       else if (action.type === "sendToChat") onBrowserPanelCapture(action.capture);
       else if (action.type === "sendComment") onSendComment(action.text, action.link);
-      else if (action.type === "planComments") setPlanComments(action.plan, action.comments);
+      else if (action.type === "planComments" || action.type === "planSteps") plans.onPanelAction(action);
       else if (action.type === "stopAgent") onStop();
       else onApprove(action.id, action.approved, action.scope);
     },
@@ -868,7 +855,7 @@ function App() {
       return <BrowserPanel threadId={threadId} onSendToChat={onBrowserPanelCapture} onStopAgent={onStop} />;
     }
     if (panel === "files") return <FilesPanel threadId={threadId} refreshKey={refreshKey} onView={viewFile} />;
-    if (panel === "plan") return <PlanPanel {...planData} comments={planComments} onComments={(c) => setPlanComments(planData.plan ?? "", c)} busy={state.turnInFlight} />;
+    if (panel === "plan") return <PlanPanel {...plans.panelProps} busy={state.turnInFlight} />;
     return <BackgroundTasksPanel key={threadId} {...backgroundProps} onApprove={onApprove} />;
   };
 
@@ -963,7 +950,7 @@ function App() {
                     turnInFlight={state.turnInFlight}
                     connectorTools={state.connectorTools}
                     onApprove={onApprove}
-                    onAnswerPlan={onAnswerPlan}
+                    onAnswerPlan={plans.answer}
                     onOpenPlan={() => setPanelOpen("plan", true)}
                     onEditMessage={state.turnInFlight ? undefined : onEditMessage}
                     onRewindMessage={state.turnInFlight ? undefined : onRewindMessage}

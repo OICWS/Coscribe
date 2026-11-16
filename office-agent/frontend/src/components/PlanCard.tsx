@@ -1,22 +1,28 @@
-import { useState } from "react";
-import type { LogItem } from "../state/reducer";
+import { useEffect, useState } from "react";
+import { planTitleOf, type PlanChoice, type PlanItem } from "../lib/planState";
+import { usePlanTaskDraft, draftEdits } from "../lib/planTaskDraft";
 import { Disclosure } from "./chatlog/SummaryLabel";
 import { PlanDiff } from "./PlanDiff";
 
-export type PlanItem = Extract<LogItem, { kind: "plan" }>;
-export type PlanChoice = "auto" | "manual" | "revise" | "reject";
+export type { PlanChoice, PlanItem };
 
 const OUTCOME: Record<Exclude<PlanItem["status"], "pending">, string> = {
   auto: "Accepted. Carrying it out in auto mode",
-  manual: "Accepted. You'll approve each change",
+  manual: "Accepted",
   revise: "Sent back with your feedback",
   reject: "Rejected. Nothing will be done",
 };
 
-/** The plan the model proposed in plan mode. Accepting it leaves plan mode,
- * in auto mode or approving each change by hand; Revise sends it back with
- * what to change; Reject ends the planning. The plan itself is a document
- * in the Plan panel, its source one row above. */
+/** Ctrl/Cmd+Enter typed into a field is the field's own (a new line in the message box). */
+function inField(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+}
+
+/** The plan the model proposed, in plan mode or before a large task. Accepting
+ * it carries it out, in auto mode (the main choice, Ctrl+Enter) or with the
+ * approvals as they were; Revise sends it back with what to change; Reject
+ * ends the planning. The plan itself is a document in the Plan panel, where
+ * its task list can be edited until it is answered. */
 export function PlanCard({
   item,
   onAnswer,
@@ -30,6 +36,20 @@ export function PlanCard({
   const [feedback, setFeedback] = useState("");
   const [source, setSource] = useState(false);
   const pending = item.status === "pending";
+  const draft = usePlanTaskDraft(pending ? item.id : null);
+  const edited = draft !== null && draftEdits(item.id) !== undefined;
+  const title = planTitleOf(item.plan);
+
+  useEffect(() => {
+    if (!pending || !onAnswer) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Enter" || !(event.ctrlKey || event.metaKey) || event.isComposing || inField(event.target)) return;
+      event.preventDefault();
+      onAnswer(item, "auto", "");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pending, onAnswer, item]);
 
   const buttons = "h-8 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2.5 text-[14px] hover:bg-[var(--card-bg)]";
   const primary = "h-8 rounded-lg bg-[var(--primary)] px-3 text-[14px] font-medium text-[var(--primary-fg)] hover:bg-[var(--primary-hover)]";
@@ -46,6 +66,8 @@ export function PlanCard({
             </button>
           )}
         </div>
+        {title && <p className="mt-0.5 truncate text-[14px] text-[var(--muted)]">{title}</p>}
+        {pending && edited && <p className="mt-1 text-[13px] text-[var(--accent)]">You changed the task list; Accept carries out your version.</p>}
         {item.status !== "pending" && <p className="mt-1 text-[13px] text-[var(--muted)]">{OUTCOME[item.status]}</p>}
         {pending && onAnswer && !revising && (
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -61,8 +83,15 @@ export function PlanCard({
               <button type="button" className={buttons} onClick={() => onAnswer(item, "manual", "")}>
                 Accept
               </button>
-              <button type="button" className={primary} onClick={() => onAnswer(item, "auto", "")}>
-                Accept and auto mode
+              <button
+                type="button"
+                aria-label="Accept and use auto mode"
+                aria-keyshortcuts="Control+Enter"
+                className={`${primary} inline-flex items-center gap-2`}
+                onClick={() => onAnswer(item, "auto", "")}
+              >
+                Accept and use auto mode
+                <kbd className="rounded border border-current/30 px-1 font-sans text-[12px] opacity-80">Ctrl ⏎</kbd>
               </button>
             </div>
           </div>
