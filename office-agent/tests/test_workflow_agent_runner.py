@@ -18,6 +18,7 @@ from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, Tool
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 from langgraph.checkpoint.memory import InMemorySaver
 
+from coscribe.conversation.turn_record import run_recorder, turns_path
 from coscribe.runtime import tool_metadata
 from coscribe.runtime_lg import WorkflowAgentRunner
 from coscribe.runtime_lg.workflow_agent import workflow_agent_tools
@@ -124,6 +125,7 @@ class Env:
             checkpointer=self.checkpointer,
             tools=self.tools,
             resolve_model=lambda _m: ("fake:model", self.model),
+            record_run=run_recorder(self.tmp_path / "state", "run-thread"),
         )
 
     def run(self, steps: list[dict[str, Any]], mode: str = "manual") -> WorkflowRun:
@@ -344,3 +346,39 @@ async def test_an_agent_silent_after_being_asked_fails_its_step(tmp_path: Path) 
 
     assert outcome.status == "failed"
     assert "without saying whether the task was done" in (outcome.error or "")
+
+
+def _turn_lines(env: Env) -> list[dict[str, Any]]:
+    text = turns_path(env.tmp_path / "state").read_text(encoding="utf-8")
+    return [json.loads(line) for line in text.splitlines()]
+
+
+async def test_an_agent_step_leaves_a_line_on_how_it_went(tmp_path: Path) -> None:
+    env = Env(tmp_path, [_calls(("read_file", {"path": "in.txt"})), _says("Three urgent.")])
+
+    outcome = await env.run([_agent(autonomy="full")], mode="auto").start({})
+
+    assert outcome.status == "completed"
+    [line] = _turn_lines(env)
+    assert line["kind"] == "workflow_agent"
+    assert line["thread_id"] == "run-thread"
+    assert line["model"] == "fake:model"
+    assert line["outcome"] == "completed"
+    assert line["model_calls"] == 2
+    assert line["tools"] == {"read_file": {"calls": 1, "errors": 0}}
+
+
+async def test_a_step_that_waits_for_a_person_leaves_a_line_per_pass(tmp_path: Path) -> None:
+    env = Env(
+        tmp_path,
+        [_calls(("write_file", {"path": "out.txt", "content": "x"})), _says("Wrote it.")],
+    )
+    run = env.run([_agent(autonomy="high")])
+
+    assert (await run.start({})).status == "waiting"
+    assert (await run.answer(True)).status == "completed"
+
+    first, second = _turn_lines(env)
+    assert first["model_calls"] == 1 and first["tools"] == {}
+    assert second["model_calls"] == 1
+    assert second["tools"] == {"write_file": {"calls": 1, "errors": 0}}

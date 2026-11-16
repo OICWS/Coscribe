@@ -147,6 +147,7 @@ function App() {
   // Same pattern again, for SkillsTab's "Create a skill" prefilling the
   // composer's own text (not an image) -- see onCreateSkill below.
   const [pendingComposerDraft, setPendingComposerDraft] = useState<ComposerDraft | null>(null);
+  const [composerHasDraft, setComposerHasDraft] = useState(false);
   const artifactStart = useArtifactStart(threadId);
   const [navMode, setNavMode] = useState<NavMode>(() => (readPage().view === "scheduled" ? "run" : "create"));
   const [artifactsOpen, setArtifactsOpen] = useState(() => readPage().view === "artifacts");
@@ -837,11 +838,10 @@ function App() {
       onExternalPptxCaptureConsumed={() => setPendingPptxCapture(null)}
       artifact={artifactStart.kind}
       onArtifactRemoved={artifactStart.clear}
-      designSystem={artifactStart.designSystem}
-      onDesignSystem={artifactStart.chooseDesignSystem}
+      designSystem={artifactStart.designSystem} onDesignSystem={artifactStart.chooseDesignSystem}
       onManageDesignSystems={(startNew) => showSettings("design-systems", startNew ? "new" : null)}
       externalDraft={pendingComposerDraft}
-      onExternalTextConsumed={() => setPendingComposerDraft(null)}
+      onExternalTextConsumed={() => setPendingComposerDraft(null)} onHasDraftChange={setComposerHasDraft}
     />
   );
 
@@ -957,7 +957,7 @@ function App() {
                   {composer}
                 </div>
               ) : navMode === "create" ? (
-                <SteerActionsContext.Provider value={steers.actions}><ViewFile.Provider value={viewFile}><OpenDesignSystem.Provider value={(id) => showSettings("design-systems", id)}><OpenConnector.Provider value={(name) => showSettings("connectors", name)}><DetachScript.Provider value={onDetachScript}><BackgroundTasks.Provider value={{ statuses: subAgents.statuses, open: (taskId) => { setSubAgentFocus({ threadId, taskId }); setPanelOpen("background", true); } }}>
+                <SteerActionsContext.Provider value={{ ...steers.actions, composerHasDraft }}><ViewFile.Provider value={viewFile}><OpenDesignSystem.Provider value={(id) => showSettings("design-systems", id)}><OpenConnector.Provider value={(name) => showSettings("connectors", name)}><DetachScript.Provider value={onDetachScript}><BackgroundTasks.Provider value={{ statuses: subAgents.statuses, open: (taskId) => { setSubAgentFocus({ threadId, taskId }); setPanelOpen("background", true); } }}>
                   <ChatLog
                     items={state.items}
                     turnInFlight={state.turnInFlight}

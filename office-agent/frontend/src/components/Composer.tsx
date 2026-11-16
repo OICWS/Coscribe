@@ -120,6 +120,8 @@ interface ComposerProps {
    * review/edit before hitting Enter themselves. */
   externalDraft: ComposerDraft | null;
   onExternalTextConsumed: () => void;
+  /** Whether the box holds anything (text or attachments): a note taken back to edit would overwrite it. */
+  onHasDraftChange?: (hasDraft: boolean) => void;
   /** The server's guess at the next message; shown as gray text in the empty box. */
   suggestion: string | null;
   onSuggestionDismiss: () => void;
@@ -131,6 +133,13 @@ interface ComposerProps {
   designSystem: string | null;
   onDesignSystem: (id: string | null) => void;
   onManageDesignSystems: (startNew: boolean) => void;
+}
+
+/** Tells the parent whether the box holds a draft, each time that changes. */
+function useReportDraft(report: ((hasDraft: boolean) => void) | undefined, hasDraft: boolean) {
+  useEffect(() => {
+    report?.(hasDraft);
+  }, [report, hasDraft]);
 }
 
 export function Composer({
@@ -148,12 +157,9 @@ export function Composer({
   onStop,
   stopping = false,
   onLocalError,
-  externalImage,
-  onExternalImageConsumed,
-  externalPptxCapture,
-  onExternalPptxCaptureConsumed,
-  externalDraft,
-  onExternalTextConsumed,
+  externalImage, onExternalImageConsumed,
+  externalPptxCapture, onExternalPptxCaptureConsumed,
+  externalDraft, onExternalTextConsumed, onHasDraftChange,
   suggestion,
   onSuggestionDismiss,
   artifact,
@@ -176,6 +182,7 @@ export function Composer({
   useComposerAction("open-file", () => fileInputRef.current?.click());
 
   const autocompleteOpen = autocompleteMatches.length > 0;
+  useReportDraft(onHasDraftChange, value.trim() !== "" || [pendingImages, pendingFiles, pendingPastes].some((list) => list.length > 0));
 
   useEffect(() => {
     if (!externalImage) return;
