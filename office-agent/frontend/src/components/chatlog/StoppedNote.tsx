@@ -2,14 +2,14 @@ import { useContext } from "react";
 import { StopIcon } from "../icons";
 import { BackgroundTasks } from "./contexts";
 
-/** The quiet line under a turn the user stopped; a stop leaves background tasks going, so it says
+/** The quiet line under a turn the user stopped; a stop may leave background tasks going, so it says
  * how many and opens their panel. */
 export function StoppedNote({ running }: { running: number }) {
   const background = useContext(BackgroundTasks);
   return (
     <div className="flex items-center gap-1.5 py-1 text-xs text-[var(--muted)]">
       <StopIcon className="h-3 w-3 shrink-0" />
-      <span>Stopped · What should I do instead?</span>
+      <span>Stopped</span>
       {running > 0 && (
         <>
           <span aria-hidden>·</span>
