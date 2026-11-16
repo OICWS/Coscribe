@@ -542,12 +542,22 @@ class ApprovalResponseOut(TypedDict):
     reply: NotRequired[str]
 
 
+class PlanTaskEdit(TypedDict):
+    """One step of a plan's task list as the person left it while reviewing the plan."""
+
+    # The task's id when it was already on the list; absent for a step the person added.
+    id: NotRequired[str]
+    content: str
+
+
 class QuestionAnswerOut(TypedDict):
     """Answer to a plan or task draft."""
 
     type: Literal["question_response"]
     id: str
     answer: str
+    # A plan only: the task list as the person edited it, in their order; absent when unchanged.
+    tasks: NotRequired[list[PlanTaskEdit]]
 
 
 class QuestionAnswersOut(TypedDict):
