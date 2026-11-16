@@ -31,12 +31,19 @@ calls: the person stops one that runs on, as in Claude Code and Codex.
 - Tried on `coscribe-web` with DeepSeek: with files off, "write hello.txt" wrote nothing and the
   reply gave the text and named the switch; with artifacts off, "make a Doc" got the plan in
   the conversation and an offer of a Word file.
+- The E2E job draws board exports with Playwright's headless shell (`COSCRIBE_PAGE_BROWSER`), not
+  the runner's `google-chrome`: `design-canvas.spec.ts`'s PNG export timed out on this pull
+  request and on `main`'s nightly of 11-16. Chrome for Testing 153.0.8010.12 never exits after
+  a one-shot `--dump-dom`, even of `about:blank`; the headless shell drew it and the spec passed.
 
 ## Not verified
 - The desktop app on Windows.
 - A long real task past 150 model calls; the tests cover that no cap is installed.
+- Which Chrome the GitHub runner has: the hang was reproduced with Chrome 153 in a cloud container.
 
 ## Follow-ups
 - With Artifacts off, the Artifacts page's "Make something new" still offers a Doc, a design and
   a dashboard; the conversation then says they are turned off.
 - A refused write still shows as "Wrote hello.txt" (in the failed colour) in the conversation.
+- `page_shot.py` waits out its timeout on a Chrome that never exits; a person whose Edge or Chrome
+  does the same gets no export and no look at the page. Not seen on Windows yet.
