@@ -184,9 +184,8 @@ def exit_plan_mode(plan: str) -> str:
     """Present your plan for the user's approval before doing the work. In
     plan mode this is how planning ends. Outside it, use it first for a task
     of many steps, or one that changes many files or is hard to undo; just
-    do a small task. Record the steps with task_create before calling: the
-    user can untick, reword, reorder and add steps, and the result then
-    gives the list as they approved it, which is the one to carry out.
+    do a small task. Record the steps with task_create before calling; when
+    the result gives a task list as they approved it, carry out that one.
     They choose: approve and carry it out in auto mode, approve and carry it
     out approving each change themselves, or keep planning with feedback.
     The result says which; plan mode ends when they approve.

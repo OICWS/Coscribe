@@ -10,8 +10,10 @@ model (#901).
   task of many steps, many files or one hard to undo, and to just do a small one.
   `tests/tool_schemas.txt` regenerated on Python 3.11 (system prompt +213 characters,
   `exit_plan_mode` +372).
-- Accepting outside Plan mode keeps the current approvals; "auto" switches to auto mode (or keeps
-  it). In Plan mode both answers behave as before. An unattended run still gets no review.
+- "auto" switches to auto mode (or keeps it, and wakes a reviewer that paused itself); "manual"
+  switches to Manual from any mode. An unattended run gets no review: outside Plan mode it is
+  told to carry the plan out. Task ids are never reused: the file keeps the next id, so a
+  `task_update` for a removed step fails instead of landing on a newer task.
 - A plan's `question_response` may carry `tasks` (`conversation/wire.py`, `PlanTaskEdit`): the
   list as the person left it. On approval `TaskToolkit.replace` makes it the plan's list (a kept
   id keeps its status, a new step gets an id past the old ones, a left-out step is gone) and

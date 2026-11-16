@@ -928,6 +928,9 @@ QUESTION_ROWS: dict[str, QuestionRow] = {
     "unattended_answers_a_plan": QuestionRow(
         PLAN, NO_ONE_QUESTION, reasons=["unattended"], attended=False, plan=True, plan_after=True
     ),
+    "unattended_has_a_plan_outside_plan_mode_carried_out": QuestionRow(
+        PLAN, "Carry it out now.", reasons=["unattended"], attended=False
+    ),
     "unattended_answers_a_draft": QuestionRow(
         CREATE_TASK, NO_ONE_DRAFT, reasons=["unattended"], attended=False
     ),
@@ -937,7 +940,7 @@ QUESTION_ROWS: dict[str, QuestionRow] = {
     # -- exit_plan_mode
     "a_plan_outside_plan_mode_is_reviewed_too": QuestionRow(
         PLAN,
-        "kept the current approvals",
+        "will approve each change as you go",
         answer="manual",
         args={"plan": "step 1"},
         sent="plan_ready",
@@ -1100,18 +1103,63 @@ async def test_feedback_on_an_edited_task_list_describes_it_and_keeps_the_old_on
     assert session.plan_mode
 
 
+async def test_approving_by_hand_outside_plan_mode_turns_auto_mode_off(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _session(tmp_path, monkeypatch)
+    session.auto_mode = True
+
+    result = await _decide(session, PLAN, _Socket(True), answer="manual", args={"plan": "x"})
+
+    assert "will approve each change as you go" in result["message"]
+    assert not (session.auto_mode or session.accept_edits or session.plan_mode)
+
+
+async def test_approving_in_auto_mode_resumes_a_paused_reviewer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _session(tmp_path, monkeypatch)
+    session.auto_mode = True
+    session._auto_paused = True
+    session._auto_blocks_in_row = 3
+
+    result = await _decide(session, PLAN, _Socket(True), answer="auto", args={"plan": "x"})
+
+    assert "kept auto mode on" in result["message"]
+    assert session.auto_mode and not session._auto_paused
+    assert session._auto_blocks_in_row == 0
+
+
+@pytest.mark.parametrize(
+    ("answer", "says"),
+    [
+        (None, "closed the plan"),
+        ({"reply": "do the second file first"}, "do the second file first"),
+    ],
+)
+async def test_a_closed_plan_or_a_reply_is_told_to_the_model_as_text(
+    answer: Any, says: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _session(tmp_path, monkeypatch)
+
+    result = await _decide(session, PLAN, _Socket(True), answer=answer, args={"plan": "x"})
+
+    assert isinstance(result["message"], str) and says in result["message"]
+
+
 def test_a_plan_answer_carries_the_edited_task_list() -> None:
     data = {
         "type": "question_response",
         "id": "q",
         "answer": "manual",
-        "tasks": [{"id": "1", "content": "A"}, {"content": "B"}, "junk"],
+        "tasks": [{"id": "1", "content": " A "}, {"content": "B"}, {"content": "  "}, "junk"],
     }
     assert question_answer(data) == {
         "answer": "manual",
         "tasks": [{"content": "A", "id": "1"}, {"content": "B"}],
     }
     assert question_answer({"answer": "manual"}) == "manual"
+    assert question_answer({"reply": "no", "tasks": []}) == {"reply": "no"}
 
 
 @pytest.mark.parametrize(("tool", "consulted"), [(EXEC, 1), (LOCAL, 0), (EXTERNAL, 0)])

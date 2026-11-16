@@ -20,6 +20,15 @@ from .._file_locks import file_lock, read_text_with_retry, replace_with_retry
 VALID_STATUSES = ("pending", "in_progress", "completed")
 
 
+class _NextId:
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+    def take(self) -> str:
+        self.value += 1
+        return str(self.value - 1)
+
+
 class TaskToolkit:
     """A todo list scoped to one conversation thread.
 
@@ -32,12 +41,22 @@ class TaskToolkit:
     def __init__(self, thread_id: str, state_dir: str | Path) -> None:
         self._path = Path(state_dir) / f"{quote(thread_id, safe='')}.tasks.json"
 
-    def _load(self) -> list[dict[str, Any]]:
+    def _load_state(self) -> tuple[list[dict[str, Any]], int]:
+        """The list and the next free id. The id is kept in the file because the list alone
+        can't give it once the person removed the last task: max+1 would hand that removed
+        task's id to the next new one, and a stale task_update would land on it."""
         if not self._path.exists():
-            return []
-        return list(json.loads(read_text_with_retry(self._path)))
+            return [], 1
+        data = json.loads(read_text_with_retry(self._path))
+        tasks = list(data["tasks"] if isinstance(data, dict) else data)
+        past_every_id = max((int(task["id"]) for task in tasks), default=0) + 1
+        stored = data.get("next_id", 1) if isinstance(data, dict) else 1
+        return tasks, max(int(stored), past_every_id)
 
-    def _change(self, edit: Callable[[list[dict[str, Any]]], Any]) -> Any:
+    def _load(self) -> list[dict[str, Any]]:
+        return self._load_state()[0]
+
+    def _change(self, edit: Callable[[list[dict[str, Any]], _NextId], Any]) -> Any:
         """Read the file, apply `edit` to its list, write it back, all under the file's lock.
 
         Another TaskToolkit on the same thread (the person's edits to a plan under review are
@@ -47,22 +66,21 @@ class TaskToolkit:
         the per-file lock, shared by every instance, keeps them from computing the same next id
         or racing on the tmp file's name."""
         with file_lock(self._path.resolve()):
-            tasks = self._load()
-            result = edit(tasks)
+            tasks, next_id = self._load_state()
+            ids = _NextId(next_id)
+            result = edit(tasks, ids)
             self._path.parent.mkdir(parents=True, exist_ok=True)
             tmp_path = self._path.with_suffix(".tmp")
             with tmp_path.open("w", encoding="utf-8") as handle:
-                json.dump(tasks, handle, ensure_ascii=False, indent=2)
+                json.dump(
+                    {"next_id": ids.value, "tasks": tasks}, handle, ensure_ascii=False, indent=2
+                )
             replace_with_retry(tmp_path, self._path)
         return result
 
-    @staticmethod
-    def _next_id(tasks: list[dict[str, Any]]) -> str:
-        return str(max((int(task["id"]) for task in tasks), default=0) + 1)
-
     def create(self, content: str) -> dict[str, Any]:
-        def add(tasks: list[dict[str, Any]]) -> dict[str, Any]:
-            task = {"id": self._next_id(tasks), "content": content, "status": "pending"}
+        def add(tasks: list[dict[str, Any]], ids: _NextId) -> dict[str, Any]:
+            task = {"id": ids.take(), "content": content, "status": "pending"}
             tasks.append(task)
             return task
 
@@ -72,7 +90,7 @@ class TaskToolkit:
         if status not in VALID_STATUSES:
             raise ValueError(f"status must be one of {VALID_STATUSES}, got {status!r}")
 
-        def set_status(tasks: list[dict[str, Any]]) -> dict[str, Any]:
+        def set_status(tasks: list[dict[str, Any]], _ids: _NextId) -> dict[str, Any]:
             for task in tasks:
                 if task["id"] == task_id:
                     task["status"] = status
@@ -84,13 +102,11 @@ class TaskToolkit:
     def replace(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """The list as the person left it when reviewing a plan, in their order: an item with
         the id of a task keeps that task's status, one without (or with an id no task has) is
-        a new pending task, and a task the list leaves out is gone. A new item's id is past every
-        id of the old list, so a task_update aimed at a removed task fails instead of landing on
-        an item the person added."""
+        a new pending task, and a task the list leaves out is gone. Ids are never reused, so a
+        task_update aimed at a removed task fails instead of landing on a newer one."""
 
-        def rebuild(tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        def rebuild(tasks: list[dict[str, Any]], ids: _NextId) -> list[dict[str, Any]]:
             by_id = {task["id"]: task for task in tasks}
-            next_id = int(self._next_id(tasks))
             kept: list[dict[str, Any]] = []
             for item in items:
                 content = str(item.get("content", "")).strip()
@@ -100,8 +116,7 @@ class TaskToolkit:
                 if old is not None:
                     kept.append({**old, "content": content})
                 else:
-                    kept.append({"id": str(next_id), "content": content, "status": "pending"})
-                    next_id += 1
+                    kept.append({"id": ids.take(), "content": content, "status": "pending"})
             tasks[:] = kept
             return [dict(task) for task in kept]
 
