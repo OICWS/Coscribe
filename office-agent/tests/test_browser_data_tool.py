@@ -61,6 +61,8 @@ def test_a_table_across_pages_is_saved_as_a_csv_excel_reads(tmp_path: Path) -> N
     assert result["message"].startswith("Saved 2 rows from 3 pages to data/invoices.csv.")
     raw = (tmp_path / "data" / "invoices.csv").read_bytes()
     assert raw.startswith(b"\xef\xbb\xbf")
+    # Rows end as Excel writes them, on every system: one CR LF, never a blank line between.
+    assert raw.count(b"\r\n") == 3 and b"\r\r" not in raw
     lines = raw.decode("utf-8-sig").splitlines()
     assert lines[0] == "Invoice No.,Amount,Note"
     # A planted formula stays text; a negative number stays a number.

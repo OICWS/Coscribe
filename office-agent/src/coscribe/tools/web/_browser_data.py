@@ -124,7 +124,7 @@ def data_tools(
         for row in ([header] if header else []) + rows:
             writer.writerow([_safe_cell(cell) for cell in row])
         # With a BOM, Excel opens it as UTF-8 and Chinese text reads right.
-        target.write_text(buffer.getvalue(), encoding="utf-8-sig")
+        target.write_bytes(buffer.getvalue().encode("utf-8-sig"))
         name = scope.relative(target) if scope is not None else str(target)
         preview = _rows_text(header, rows, _PREVIEW_ROWS)
         message = with_tab(f"Saved {count} to {name}. The first rows:\n{preview}", result)
