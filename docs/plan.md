@@ -52,9 +52,10 @@ Last reviewed: 2026-11-06.
 - **Startup cost** (#478, `docs/metrics/2026-10-20-startup-cost.md`): `pptx`, `PIL` and `lxml`
   loaded lazily once the sections modules may be edited; the sidecar started earlier in the
   Electron shell.
-- **Scripts and commands:** a PyPI mirror setting for networks that block PyPI (#560); hiding other
-  drives' user folders from commands (#845); a company proxy on a real Windows machine (Basic only;
-  NTLM and Kerberos are not supported, #666).
+- **Scripts and commands:** a PyPI mirror setting for networks that block PyPI (#560); a company
+  proxy on a real Windows machine (Basic only; NTLM and Kerberos are not supported, #666);
+  another drive's `Users` folder hidden from commands, checked on a Windows machine with a second
+  drive (decision 0047).
 - **The `tools` interface** (#677): done; B was closed with a reason (#692): the `tools` card and
   `slice.py` list only the 54 names `tools` owns. Moving callers to the sub-components is not
   planned: it would first need `deep_imports` to count a declared sub-component as an entry, and

@@ -31,7 +31,7 @@ const SETTING_ENTRIES: SettingEntry[] = [
   { category: "capabilities", label: "Run scripts", keywords: "python sandbox isolation" },
   { category: "capabilities", label: "Run commands", keywords: "shell terminal sandbox" },
   { category: "capabilities", label: "Command sandbox", keywords: "basic full administrator" },
-  { category: "capabilities", label: "Private folders", keywords: "documents desktop downloads hide" },
+  { category: "capabilities", label: "Private folders", keywords: "documents desktop downloads hide drive users" },
   { category: "capabilities", label: "Allowed sites", keywords: "browser websites" },
   { category: "capabilities", label: "Chats can hand tasks to Code", keywords: "codex" },
   { category: "capabilities", label: "Model for code", keywords: "codex" },

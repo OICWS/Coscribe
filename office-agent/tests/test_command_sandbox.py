@@ -485,3 +485,18 @@ def test_the_built_in_sandbox_is_the_codex_version_the_code_module_runs() -> Non
     # One setup serves both, so the two must read its records the same way.
     tag = Path(__file__).parents[2] / "office-agent-sandbox" / "CODEX_TAG"
     assert tag.read_text(encoding="utf-8").strip() == f"rust-v{CODEX_VERSION}"
+
+
+def test_the_users_folder_of_another_drive_is_hidden_but_not_the_drive(tmp_path: Path) -> None:
+    system, data, empty, moved = (tmp_path / name for name in ("C", "D", "E", "F"))
+    for folder in (system / "Users", data / "Users" / "old-me", empty, moved / "Users" / "me"):
+        folder.mkdir(parents=True)
+    drives = [str(system), str(data), str(empty), str(moved)]
+
+    found = private_folders_module.users_on_other_drives(
+        drives, str(system) + "/", str(moved / "Users" / "me")
+    )
+
+    # Windows' own drive and a drive with no Users folder add nothing; the drive holding the
+    # person's own profile is left to the folders listed one by one.
+    assert found == [data / "Users"]
