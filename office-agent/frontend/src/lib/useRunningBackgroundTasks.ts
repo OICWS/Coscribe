@@ -38,9 +38,9 @@ export function useRunningBackgroundTasks(threadId: string, tick: number, enable
 
   const statuses = useMemo(() => Object.fromEntries(tasks.map((entry) => [entry.task.task_id, entry.task.status])), [tasks]);
 
-  return {
-    statuses,
-    running: enabled ? active.length : 0,
-    waiting: enabled ? active.filter((t) => t.task.status === "needs_approval").length : 0,
-  };
+  const running = enabled ? active.length : 0;
+  const waiting = enabled ? active.filter((t) => t.task.status === "needs_approval").length : 0;
+  let title = "Background tasks";
+  if (running > 0) title += ` (${running} running${waiting > 0 ? `, ${waiting} waiting for you)` : ")"}`;
+  return { statuses, running, waiting, title };
 }
