@@ -11,6 +11,8 @@ machine had (`docs/log/2026-11-10-eval-replay.md`, follow-up). Part of #867.
   interpreter and the files are written back; the script environment, the Node environment and
   the isolation are not set up. What the tools do with the output still runs: task 03's 20,000
   printed rows are cut and kept whole, and a later `search_files` over the kept file works.
+  Output over 20,000 characters is stored gzipped, its folders marked first: task 03's tape is
+  130 KB instead of 323 KB, under the repository's 200 KB limit for a text file.
 - A sub-agent's and `review_work`'s reviewer's answers are on the tape now. Both run in a fresh
   context, which did not see the task's tape: recording dropped their answers, and on replay the
   sub-agent failed with "no tape" inside `spawn_agent`'s report, which the replay test did not
@@ -24,8 +26,8 @@ machine had (`docs/log/2026-11-10-eval-replay.md`, follow-up). Part of #867.
   with a script's CSV written back for the deck); they are for a nightly job, not this PR.
 
 ## Not verified
-- Windows: a script's output may name paths; they are stored as `{{WORKSPACE}}` and `{{ROOT}}`
-  like the rest of a tape. CI's Windows job is the first replay there.
+- One recording per task. The Windows CI job replayed all eight tapes (its only failure on the
+  first push was the file-size check).
 
 ## Follow-ups
 - `run_background_script` and `run_background_command` are not on the tape.

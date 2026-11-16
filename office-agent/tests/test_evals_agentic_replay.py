@@ -111,6 +111,23 @@ def test_a_replayed_script_writes_back_the_files_it_wrote(tmp_path: Path) -> Non
     assert not (elsewhere / "kept.txt").exists()
 
 
+def test_a_long_script_output_is_kept_compressed_and_names_no_folder(tmp_path: Path) -> None:
+    from coscribe.tools.exec.running import Ran
+
+    root = tmp_path / "run one"
+    printed = "".join(f"{root / 'workspace'}/row{n}.csv\n" for n in range(2000))
+    tape = replay.Tape("t")
+    tape.add_script(Ran(0, printed, ""), {})
+    file = tmp_path / "t.json"
+    tape.save(file, root / "workspace", root)
+
+    assert str(root) not in file.read_text(encoding="utf-8")
+    assert len(file.read_text(encoding="utf-8")) < len(printed) / 4
+    other = tmp_path / "run two"
+    loaded = replay.Tape.load(file, other / "workspace", other)
+    assert loaded.next_script(other / "workspace").stdout == printed.replace(str(root), str(other))
+
+
 def test_a_call_outside_its_tasks_context_finds_the_one_tape_running() -> None:
     import contextvars
 

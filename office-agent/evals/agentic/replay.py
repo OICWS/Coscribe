@@ -23,6 +23,7 @@ from __future__ import annotations
 import base64
 import contextlib
 import contextvars
+import gzip
 import json
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -157,7 +158,7 @@ class Tape:
             "window": self.window,
             "provider": self.provider,
             "calls": self.calls,
-            "scripts": self.scripts,
+            "scripts": [_packed(script, workspace, root) for script in self.scripts],
         }
         text = json.dumps({**body, "entries": self.entries}, ensure_ascii=False, indent=1)
         for real, mark in ((workspace, _WORKSPACE), (root, _ROOT)):
@@ -180,8 +181,39 @@ class Tape:
             data["calls"],
             data["window"],
             data["provider"],
-            data.get("scripts", []),
+            [_unpacked(script, workspace, root) for script in data.get("scripts", [])],
         )
+
+
+# A script's output over this many characters is kept compressed: printed rows run to hundreds of
+# kilobytes, and a tape is a file in the repository.
+_PACK_OVER = 20_000
+
+
+def _packed(script: dict[str, Any], workspace: Path, root: Path) -> dict[str, Any]:
+    packed = dict(script)
+    for key in ("stdout", "stderr"):
+        text = packed[key]
+        if len(text) <= _PACK_OVER:
+            continue
+        # The folders are marked here, since the marking of the whole tape can't see inside.
+        for real, mark in ((workspace, _WORKSPACE), (root, _ROOT)):
+            text = text.replace(str(real), mark)
+        del packed[key]
+        packed[f"{key}_gz"] = base64.b64encode(gzip.compress(text.encode(), mtime=0)).decode()
+    return packed
+
+
+def _unpacked(script: dict[str, Any], workspace: Path, root: Path) -> dict[str, Any]:
+    unpacked = dict(script)
+    for key in ("stdout", "stderr"):
+        if f"{key}_gz" not in unpacked:
+            continue
+        text = gzip.decompress(base64.b64decode(unpacked.pop(f"{key}_gz"))).decode()
+        for real, mark in ((workspace, _WORKSPACE), (root, _ROOT)):
+            text = text.replace(mark, str(real))
+        unpacked[key] = text
+    return unpacked
 
 
 _CURRENT: contextvars.ContextVar[Tape | None] = contextvars.ContextVar("eval_tape", default=None)
