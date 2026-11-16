@@ -1,4 +1,6 @@
+import os
 import shutil
+import sys
 from collections.abc import Iterator
 
 import pytest
@@ -13,6 +15,27 @@ from .flaky_policy import (  # noqa: F401
     pytest_runtest_logreport,
     pytest_terminal_summary,
 )
+
+
+@pytest.fixture(autouse=True)
+def _no_real_keychain() -> Iterator[None]:
+    """No test writes to the Windows Credential Manager of the machine it runs on: on the CI
+    runner, entries written there were sometimes missing when read back, failing tests that only
+    meant to store a key. Linux CI has no keychain service, so this gives Windows the same
+    do-nothing backend; a test of the keychain itself installs a fake on top. The real-Windows
+    checks (`COSCRIBE_WINDOWS_REAL=1`) keep the real one."""
+    if sys.platform != "win32" or os.environ.get("COSCRIBE_WINDOWS_REAL") == "1":
+        yield
+        return
+    import keyring
+    from keyring.backends import fail
+
+    real = keyring.get_keyring()
+    keyring.set_keyring(fail.Keyring())
+    try:
+        yield
+    finally:
+        keyring.set_keyring(real)
 
 
 @pytest.fixture(autouse=True)
