@@ -44,6 +44,10 @@ Last reviewed: 2026-11-06.
    (`docs/log/2026-11-10-tool-search-recall.md`);
    a failed turn exported as an evaluation task with
    the person's consent.
+4. **A workspace is a folder the person picks** (#926, decision 0048 proposed). Phases, one PR
+   each: A the folder access card in chats and Settings' Folder access; B attachments and pasted
+   pictures in `.coscribe/uploads/`; C the first start, no hidden default, environments and tasks
+   moved over; D `.coscribe/settings.json` and `mcp.json`.
 
 ## Open, smaller
 
@@ -61,8 +65,9 @@ Last reviewed: 2026-11-06.
   settings overlays on Windows (`docs/log/2026-11-16-browser-workflow-polish.md`).
   Browser abilities for conversations and saved workflows are planned in #915 (four parts);
   part 1, closing and reading several pages, is `docs/log/2026-11-16-browser-pages-batch.md`;
-  part 2a, forms and page steps, `docs/log/2026-11-16-browser-forms.md`. Next: drag and drop and
-  copy and paste (part 2b), then data out (3) and resilience (4).
+  part 2a, forms and page steps, `docs/log/2026-11-16-browser-forms.md`; part 2b, drag, file drop
+  and the AI's clipboard, `docs/log/2026-11-16-browser-drag-clipboard.md`. Next: data out (3) and
+  resilience (4).
 
 - **Docs:** a Doc still writes plans the brief did not give (a proposal's migration phases;
   `docs/log/2026-10-29-doc-writing-rules.md`). Version history for documents is wanted, not in v1.
@@ -90,6 +95,8 @@ Last reviewed: 2026-11-06.
   `uv` pull request also moves indirect dependencies in `uv.lock`; `lockfile-only` was reported to
   move only direct ones (dependabot-core#14073). If it does not, a scheduled `uv lock --upgrade`
   job takes over that part.
+- **minimatch alert #77** (`docs/log/2026-11-16-soupsieve-python-floor.md`): build-time only,
+  through electron-builder, which still requires minimatch 10; move when it takes 11.
 - **Scheduled runs:** a run whose turn is cancelled from outside (seen only through a test's time
   limit) is recorded as `completed`, because the turn swallows the cancellation
   (`docs/log/2026-11-15-windows-night-1110.md`). Whether a server shutdown does the same is not
@@ -167,7 +174,8 @@ Last reviewed: 2026-11-06.
   (`docs/log/2026-11-11-notice-kinds.md`). Today pictures there are only files it wrote.
 
 - A workspace's uploads in `.coscribe/uploads/<kind>/`, pasted pictures named by date and time and
-  a one-line description of each from the side model (decision 0044, its second part; the notes
+  a one-line description of each from the side model (decision 0044, its second part, now phase B
+  of #926; the notes
   and skills shipped: `docs/log/2026-11-09-workspace-notes.md`). Later still: `workflows/` and
   `agents/` read from there, and notes coscribe writes by itself from a person's corrections.
 

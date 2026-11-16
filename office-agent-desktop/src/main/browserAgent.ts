@@ -17,6 +17,7 @@ import { Readable } from "node:stream";
 import { type BrowserWindow, type DownloadItem, type WebContents, app } from "electron";
 import { commandTab, pinCommand, runTabCommand, withTab, listTabs, popupDownloads, trackPopupDownload } from "./browserAgentTabs";
 import { type FormField, type PageStep, fillForm, runSteps, waitForAny } from "./browserAgentForms";
+import { runMove, dropOnto } from "./browserAgentMoves";
 import { pageAgent } from "./browserAgentPage";
 import { locate, scrollArea, splitRef } from "./browserAgentLocate";
 import { type Step, browserOperation, handleBrowserControl, cancelFrameOff, enqueue, running, runningSteps, scheduleFrameOff, stepContext } from "./browserAgentSteps";
@@ -573,6 +574,8 @@ async function run(command: Command): Promise<Record<string, unknown>> {
       result = withTab(tab, { filled: await fillForm(pageActions, command, tab, wc, cdp, args.fields as FormField[], waitSeconds(args)) });
     } else if (command.action === "steps") {
       result = withTab(tab, await runSteps(pageActions, command, tab, wc, cdp, args.steps as PageStep[], waitSeconds(args)));
+    } else if (["drag", "copy", "paste"].includes(command.action)) {
+      result = withTab(tab, (await runMove(pageActions, command, wc, cdp, args, waitSeconds(args)))!);
     } else result = await act(command, tab, wc, cdp, args);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -738,7 +741,7 @@ async function act(
     case "upload": {
       const files = (Array.isArray(args.paths) ? args.paths : []).map(String);
       if (!files.length) throw new Error("No files to upload.");
-      const element = await upload(wc, cdp, args.ref, files);
+      const element = args.drop ? await dropOnto(cdp, args.ref, files) : await upload(wc, cdp, args.ref, files);
       await settle(wc);
       return withTab(tab, { element });
     }

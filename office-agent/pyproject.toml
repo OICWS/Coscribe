@@ -7,7 +7,7 @@ name = "coscribe"
 version = "0.1.0"
 description = "Local, user-friendly agentic system for office work."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11.5"
 license = { text = "MIT" }
 dependencies = [
     # cache_control (prompt caching) exists in the SDK's types only from about 0.68.
