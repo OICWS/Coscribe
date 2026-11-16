@@ -727,7 +727,7 @@ describe("system notes and turn end", () => {
       status: "done",
       done: 2,
       total: 5,
-    }).workflowTest).toEqual({ done: 2, total: 5 });
+    }).workflowTest).toEqual({ done: 2, total: 5, toolCallId: "c", records: [] });
   });
 
   it("leaves state alone for events App.tsx handles itself", () => {

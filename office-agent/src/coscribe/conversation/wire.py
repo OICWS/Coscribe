@@ -332,6 +332,7 @@ class WorkflowTestProgressEvent(TypedDict):
     status: str
     done: int
     total: int
+    record: NotRequired[WorkflowStepRecord]
 
 
 class TaskDraft(TypedDict):

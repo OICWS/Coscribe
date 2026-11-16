@@ -90,6 +90,9 @@ async def test_a_test_stops_before_a_step_that_cant_be_taken_back(tmp_path: Path
 
     assert for_real["status"] == "passed"
     assert sent == ["a", "b"]
+    passes = [r for r in for_real["records"] if r["step_id"] == "submit"]
+    assert [r["iteration"] for r in passes] == [[0], [1]]
+    assert all(r["status"] == "done" for r in passes)
 
 
 async def test_a_workflow_that_cant_run_fails_the_test(tmp_path: Path) -> None:

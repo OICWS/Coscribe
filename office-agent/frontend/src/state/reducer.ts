@@ -1,3 +1,5 @@
+import { testProgress } from "./workflowTest";
+import type { DraftTestProgress } from "../types/workflow";
 import { splitAttachedFiles } from "../lib/attachments";
 import { pendingSteer, requeuedNotes, type NewSteer, type SteerItem } from "./steerItems";
 import type { HistoryEntry, QuestionSpec, StateEvent, TaskDraft, WsServerEvent } from "../types/wire";
@@ -116,7 +118,7 @@ export interface ChatState {
   environment: string;
   items: LogItem[];
   /** The workflow test running in this turn, if any. */
-  workflowTest: { done: number; total: number } | null;
+  workflowTest: DraftTestProgress | null;
   totalTokens: number;
   /** Prompt-cache stats from the latest "usage" event (the running figure, not a sum); null until
    * the provider reports any, so "no data" stays apart from zero (see UsageEvent). */
@@ -763,7 +765,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return { ...state, turnInFlight: false, turnTick: state.turnTick + 1, workflowTest: null };
 
     case "workflow_test_progress":
-      return { ...state, workflowTest: { done: action.done, total: action.total } };
+      return { ...state, workflowTest: testProgress(state.workflowTest, action) };
 
     case "local_steer":
       return { ...state, items: [...state.items, pendingSteer(action)] };

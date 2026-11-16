@@ -201,3 +201,24 @@ async def test_a_test_run_stops_before_a_lane_step_that_cant_be_undone(tmp_path:
     assert result["status"] == "stopped_before_irreversible"
     assert result["stopped_before"]["id"] == "send"
     assert "s" not in world.written
+
+
+@pytest.mark.parametrize("targeted,expected", [(True, 2), (False, 1)])
+async def test_browser_lanes_overlap_only_with_explicit_targets(
+    tmp_path: Path, targeted: bool, expected: int
+) -> None:
+    world = World(tmp_path)
+
+    async def browser_evaluate(expression: str, tab_id: str = "") -> dict[str, Any]:
+        return await world.slow(expression)
+
+    world.ctx.tools["browser_evaluate"] = browser_evaluate
+    lanes = []
+    for name in ("left", "right"):
+        args = {"expression": name, **({"tab_id": name} if targeted else {})}
+        lanes.append(
+            [{"id": name, "title": name, "kind": "tool", "tool": "browser_evaluate", "args": args}]
+        )
+    outcome = await world.run({"version": 1, "steps": [_parallel(*lanes)]}).start({})
+    assert outcome.status == "completed", outcome.error
+    assert world.most == expected
