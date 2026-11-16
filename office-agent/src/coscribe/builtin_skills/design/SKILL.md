@@ -6,6 +6,8 @@ A design is a canvas of artboards. The canvas is a small JSON file; each artboar
 its own in the folder beside it, drawn at its real size in a sandboxed frame with no network: no
 CDN, no web fonts, no remote images, no fetch. The person pans and zooms the canvas, moves the
 artboards, leaves notes on it, and plays an artboard (on the canvas or full screen) to use its page.
+Present shows the artboards one at a time, full screen, in the order `boards` lists them: list
+them in the order they should be shown.
 
 ## The files
 
@@ -133,8 +135,8 @@ detail at small sizes instead of shrinking it.
   (`feDropShadow`, `dy` about 6% of the height, low opacity) gives depth without an outline.
 - Convert a logo's text to paths. Also write each finished drawing as its own `.svg` beside the
   canvas, so the person can use it elsewhere.
-- The person can export any artboard as a PNG, and a square one as a Windows icon, from the
-  canvas's Export. For an app icon, give each option its own square artboard (128 or 256).
+- The person can export any artboard as a PNG (from the canvas's Export or the button above the
+  board), and a square one as a Windows icon from the canvas's Export. For an app icon, give each option its own square artboard (128 or 256).
 
 ## Changing a design
 

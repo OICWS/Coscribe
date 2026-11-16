@@ -97,6 +97,10 @@ Last reviewed: 2026-11-06.
 - **Design systems:** whether the model acts on the "no slide places the logo" warning is not
   measured: in the run of 2026-11-05 it placed the logo every time
   (`docs/log/2026-11-05-logo-and-assets-measured.md`).
+- **Design canvas, the rest of the toolbar** (`docs/assessments/2026-10-29-design-and-dashboard.md`
+  section 6.2; `docs/log/2026-11-16-design-present.md`): text, frame, pen and shapes on the
+  canvas, and pages, need canvas elements beyond boards and notes in `.design.json`; an issue
+  first, since the format changes.
 
 - **Audit of 2026-11-10** (`docs/log/2026-11-10-audit-small-fixes.md` fixed five defects). Open:
   a provider's models read from its own list, and a first-run page that takes a compatible
