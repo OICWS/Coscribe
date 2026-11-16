@@ -25,8 +25,8 @@ one after another, though none needed the others, and a slow site held up the re
 - **A failed lane lets the others end, then the step fails** naming the lane. A retry, of the
   step or of a step in the lane, goes on in the lanes that failed, from the step that failed (a
   person's no is asked again); finished lanes are not run again, so nothing is sent twice.
-- **Lanes that may use the browser take turns**, since there is one: a browser tool, an agent
-  that may open sites or go beyond its tools, or a called task.
+- **Browser lanes follow 0047:** explicitly targeted browser tools may overlap; untargeted
+  browser operations, autonomous agents and called tasks retain the lane lock.
 
 ## Consequences
 - The editor, quick edit, canvas, run view, side panel, run report and test runs know the new

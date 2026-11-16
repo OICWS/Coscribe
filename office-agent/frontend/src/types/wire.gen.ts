@@ -325,6 +325,7 @@ export interface WorkflowTestProgressEvent {
   status: string;
   done: number;
   total: number;
+  record?: WorkflowStepRecord;
 }
 
 /**

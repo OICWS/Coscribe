@@ -9,7 +9,7 @@ export function StoppedNote({ running }: { running: number }) {
   return (
     <div className="flex items-center gap-1.5 py-1 text-xs text-[var(--muted)]">
       <StopIcon className="h-3 w-3 shrink-0" />
-      <span>Stopped · What should I do instead?</span>
+      <span>Stopped</span>
       {running > 0 && (
         <>
           <span aria-hidden>·</span>
