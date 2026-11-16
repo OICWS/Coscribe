@@ -19,7 +19,8 @@ source page. Downloads belonged to a tab, so a wait on another page could miss a
   download ownership/cleanup/isolation, renderer-independent waiting, and cancellation/timeouts.
   It runs in the desktop CI job. `scripts/browser-native.cjs` checks real popup handles,
   content and returning to the opener instead of an adjacent tab in a separate Electron process,
-  also run by the Windows desktop smoke job. The native view adopts Electron's guest WebContents.
+  also run by the Windows desktop smoke job. The native view adopts Electron's guest WebContents,
+  retaining isolation, the panel preload and background execution settings.
 - Local browser/network/prompt/schema/documentation tests: 51 passed. Desktop build and
   transport regressions passed; `bash scripts/check.sh --fast` passed, including 450 frontend
   tests and the quality ratchet. Documentation describes the new behavior; no SAP-specific

@@ -31,6 +31,7 @@ import {
   type Session,
   type WebContents,
   type WebContentsViewConstructorOptions,
+  type WebPreferences,
 } from "electron";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -337,24 +338,23 @@ const SCROLLBAR_CSS = `
 `;
 
 export function createTab(url?: string, group: string = viewedGroup, popup?: WebContentsViewConstructorOptions): Tab {
-  const view = new WebContentsView({
-    ...popup,
-    webPreferences: {
-      ...popup?.webPreferences,
-      preload: join(__dirname, "..", "preload", "browserPanelContent.js"),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      session: tabSession(),
-      // The AI keeps working while the window is in the tray or behind
-      // another app; a throttled page would stall its steps.
-      backgroundThrottling: false,
-    },
-  });
+  const webPreferences: WebPreferences = {
+    ...popup?.webPreferences,
+    preload: join(__dirname, "..", "preload", "browserPanelContent.js"),
+    contextIsolation: true,
+    nodeIntegration: false,
+    sandbox: true,
+    session: tabSession(),
+    // The AI keeps working while the window is in the tray or behind
+    // another app; a throttled page would stall its steps.
+    backgroundThrottling: false,
+  };
+  const view = new WebContentsView({ ...popup, webPreferences });
   // Matches the rounded page area the panel draws (rounded-lg).
   view.setBorderRadius(8);
   const tab: Tab = { id: nextId++, group, view, blank: popup === undefined, loadError: null };
   const wc = view.webContents;
+  wc.setBackgroundThrottling(false);
   wc.on("did-start-navigation", (details) => {
     if (details.isMainFrame && !details.isSameDocument && tab.blank && details.url !== "about:blank") {
       tab.blank = false;
@@ -394,7 +394,7 @@ export function createTab(url?: string, group: string = viewedGroup, popup?: Web
       return { action: "deny" };
     }
     // Adopting Electron's guest retains window.opener, POST data and the WindowProxy.
-    return { action: "allow", createWindow: (options) => {
+    return { action: "allow", overrideBrowserWindowOptions: { webPreferences }, createWindow: (options) => {
       const opened = createTab(undefined, group, options as WebContentsViewConstructorOptions);
       openers.set(opened.view.webContents, wc);
       opened.openerId = tab.id;

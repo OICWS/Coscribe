@@ -32,6 +32,17 @@ if (!process.versions.electron) {
     assert.ok(handle, 'window.open must retain its WindowProxy');
     const popup = panel.allTabs(group).find(t => t.id !== source.id);
     assert.ok(popup && !popup.blank && popup.openerId === source.id, 'popup must retain its source');
+    const preferences = popup.view.webContents.getLastWebPreferences();
+    assert.equal(preferences.nodeIntegration, false);
+    assert.equal(preferences.contextIsolation, true);
+    assert.equal(preferences.sandbox, true);
+    assert.equal(popup.view.webContents.getBackgroundThrottling(), false);
+    const zoom = popup.view.webContents.getZoomFactor();
+    await popup.view.webContents.executeJavaScript("window.dispatchEvent(new WheelEvent('wheel', { ctrlKey: true, deltaY: -100 }))");
+    for (let n = 0; n < 250 && popup.view.webContents.getZoomFactor() === zoom; n++) {
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    assert.ok(popup.view.webContents.getZoomFactor() > zoom, 'popup must retain the panel preload zoom handler');
     assert.equal(await popup.view.webContents.executeJavaScript('document.body.textContent'), 'Popup form');
     assert.equal(panel.activeTab(group).id, source.id, 'popup must not steal the AI page');
     const neighbour = panel.createTab(undefined, group);

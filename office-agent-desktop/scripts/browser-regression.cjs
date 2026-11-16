@@ -38,6 +38,7 @@ class Contents extends EventEmitter {
     };
   }
   send() {}
+  setBackgroundThrottling() {}
   async executeJavaScriptInIsolatedWorld() { return {}; }
   async executeJavaScript() { return this.empty !== false; }
   close() { this.destroyed = true; this.emit('destroyed'); }
