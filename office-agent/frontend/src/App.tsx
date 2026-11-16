@@ -48,6 +48,7 @@ import { useCommentSender } from "./lib/commentReplies";
 import { artifactActions } from "./lib/artifacts";
 import { useArtifactStart } from "./lib/useArtifactStart";
 import { ArtifactsPage } from "./components/artifacts/ArtifactsPage";
+import { SessionsPage } from "./components/sessions/SessionsPage";
 import { useSteerNotes, type ComposerDraft } from "./lib/steerNotes";
 import { BackgroundTasks, DetachScript, OpenConnector, OpenDesignSystem, SteerActionsContext, ViewFile } from "./components/chatlog/contexts";
 import { canOpenPanelWindows, focusPanelWindow, usePanelWindows } from "./lib/panelWindows";
@@ -150,7 +151,8 @@ function App() {
   const [composerHasDraft, setComposerHasDraft] = useState(false);
   const artifactStart = useArtifactStart(threadId);
   const [navMode, setNavMode] = useState<NavMode>(() => (readPage().view === "scheduled" ? "run" : "create"));
-  const [artifactsOpen, setArtifactsOpen] = useState(() => readPage().view === "artifacts");
+  const [pageView, setPageView] = useState(() => readPage().view);
+  const artifactsOpen = pageView === "artifacts";
   // Not persisted -- a per-page-load convenience, not a remembered
   // setting. Pinned, the rail takes layout space instead of overlaying
   // the header (see the column's paddingLeft below); hover-expanded it
@@ -281,7 +283,7 @@ function App() {
       const id = resolveThreadId();
       const page = readPage();
       setNavMode(page.view === "scheduled" ? "run" : "create");
-      setArtifactsOpen(page.view === "artifacts");
+      setPageView(page.view);
       setSelectedTaskId(page.task);
       setWorkflowDraft(null);
       setFocusStepId(null);
@@ -423,13 +425,8 @@ function App() {
   };
   const selectedTask = scheduledTasks.find((t) => t.trigger_id === selectedTaskId) ?? null;
   // Browser and Background tasks belong to a conversation, not the Scheduled pages.
-  const inConversation = navMode === "create" && !onHome && !artifactsOpen;
+  const inConversation = navMode === "create" && !onHome && !artifactsOpen && pageView !== "sessions";
   const subAgents = useRunningBackgroundTasks(threadId, subAgentsTick, inConversation);
-  let subAgentsTitle = "Background tasks";
-  if (subAgents.running > 0) {
-    subAgentsTitle += ` (${subAgents.running} running`;
-    subAgentsTitle += subAgents.waiting > 0 ? `, ${subAgents.waiting} waiting for you)` : ")";
-  }
 
   findAvailable.current = inConversation;
   menuHandler.current = (command) => {
@@ -874,7 +871,7 @@ function App() {
 
   // The page's title: the conversation's name, or where in Scheduled this is.
   const pageTitle =
-    artifactsOpen ? (
+    artifactsOpen || pageView === "sessions" ? (
       <div className="min-w-0 flex-1" />
     ) : navMode === "create" && isScheduledTaskThread ? (
       <RunBreadcrumb
@@ -905,7 +902,7 @@ function App() {
       onPinnedChange={setPinnedItems}
       sidebar={{ open: navPinned, toggle: () => setNavPinned(!navPinned) }}
       artifactsOpen={artifactsOpen}
-      backgroundTitle={subAgentsTitle}
+      backgroundTitle={subAgents.title}
       running={subAgents.running}
       waiting={subAgents.waiting}
     />
@@ -934,7 +931,9 @@ function App() {
                   Connection lost -- reconnecting...
                 </div>
               )}
-              {artifactsOpen ? (
+              {pageView === "sessions" ? (
+                <SessionsPage threads={threads ?? []} />
+              ) : artifactsOpen ? (
                 <ArtifactsPage onOpen={artifacts.open} onMake={artifacts.make} />
               ) : navMode === "create" && threadWorkflow && threadTask && threadRun ? (
                 <WorkflowRunView

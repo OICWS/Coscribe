@@ -6,16 +6,17 @@ export const SCHEDULED_THREAD_PREFIX = "scheduled-";
  * (and popstate) and shows the page the URL now names. */
 export const THREAD_CHANGE_EVENT = "coscribe:threadchange";
 
-export type View = "chat" | "scheduled" | "artifacts";
+export type View = "chat" | "scheduled" | "artifacts" | "sessions";
 
 /** Which page the URL names: a conversation (the default), the
- * Scheduled portal / one task's page, or the Artifacts page. `thread`
+ * Scheduled portal / one task's page, the Artifacts page or the page of
+ * every session. `thread`
  * stays in the URL on those pages so returning to chat reopens the same
  * conversation. */
 export function readPage(): { view: View; task: string | null } {
   const params = new URL(window.location.href).searchParams;
   const named = params.get("view");
-  const view: View = named === "scheduled" || named === "artifacts" ? named : "chat";
+  const view: View = named === "scheduled" || named === "artifacts" || named === "sessions" ? named : "chat";
   return { view, task: view === "scheduled" ? params.get("task") : null };
 }
 
@@ -62,6 +63,14 @@ export function showScheduled(taskId: string | null, options?: { replace?: boole
 export function showArtifacts(): void {
   navigate((params) => {
     params.set("view", "artifacts");
+    params.delete("task");
+  });
+}
+
+/** Every session, active or archived, as one list. */
+export function showSessions(): void {
+  navigate((params) => {
+    params.set("view", "sessions");
     params.delete("task");
   });
 }
