@@ -133,6 +133,12 @@ class BrowserHost:
         try:
             reply = await asyncio.wait_for(future, timeout)
         except TimeoutError as exc:
+            # Cancel this request only: a later step in the same conversation may already exist.
+            if self._outbox is not None:
+                self._outbox.put_nowait({
+                    "id": "", "thread_id": thread_id, "action": "cancel_request",
+                    "args": {"request_id": request_id},
+                })
             raise ValueError(f"The browser didn't finish {action} within {timeout:.0f}s.") from exc
         finally:
             self._pending.pop(request_id, None)
@@ -191,6 +197,8 @@ def _with_tab(message: str, result: dict[str, Any]) -> str:
     """The step's outcome, then what the page now holds open for the model
     to deal with, then the tab it happened in."""
     lines = [message]
+    if result.get("note"):
+        lines.append(str(result["note"]))
     if result.get("dialog"):
         lines.append(str(result["dialog"]))
     if result.get("file_chooser"):
@@ -207,6 +215,18 @@ def _with_tab(message: str, result: dict[str, Any]) -> str:
             )
         else:
             lines.append(f"Download of {path}: {state}")
+    if result.get("tabs"):
+        lines.append("Browser pages changed (new popups stay in the background):")
+        for tab in result["tabs"]:
+            if isinstance(tab, dict):
+                opener = f" (opened by Tab {tab['opener_id']})" if tab.get("opener_id") else ""
+                lines.append(f"{'* ' if tab.get('active') else '  '}{_tab_line(tab)}{opener}")
+        lines.append(
+            'Use browser_tabs("select", tab_id=...) to work in another page, '
+            'or "close" to close it.'
+        )
+    if result.get("current_tab"):
+        lines.append(f"Current page: {_tab_line(result['current_tab'])}")
     line = _tab_line(result.get("tab"))
     if line:
         lines.append(line)
@@ -548,7 +568,9 @@ def _page_tools(
     def browser_tabs(action: str = "list", tab_id: int = 0, url: str = "") -> str:
         """List, open, switch to or close tabs in coscribe's browser (at
         most 9 are open at once). The other browser_* tools act on the
-        current tab.
+        current tab. Popups list their source tab; select a popup before
+        reading or acting in it, and close it when it is no longer needed.
+        To reuse a page for a different URL, select it and browser_navigate.
 
         Args:
             action: "list", "new" (opens url, or a blank tab), "select" or "close"
@@ -562,10 +584,12 @@ def _page_tools(
         timeout = _NAVIGATE_TIMEOUT if action == "new" and url else _DEFAULT_TIMEOUT
         result = call("tabs", timeout, op=action, tab_id=tab_id or None, url=url or None)
         tabs = result.get("tabs") or []
-        lines = [
-            f"{'* ' if isinstance(t, dict) and t.get('active') else '  '}{_tab_line(t)}"
-            for t in tabs
-        ]
+        lines = []
+        for tab in tabs:
+            if not isinstance(tab, dict):
+                continue
+            opener = f" (opened by Tab {tab['opener_id']})" if tab.get("opener_id") else ""
+            lines.append(f"{'* ' if tab.get('active') else '  '}{_tab_line(tab)}{opener}")
         return "\n".join(lines) if lines else "No tabs are open."
 
     def browser_handle_dialog(accept: bool = True) -> str:

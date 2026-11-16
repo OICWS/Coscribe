@@ -400,3 +400,45 @@ def test_a_turn_or_run_tells_the_desktop_app_when_it_starts_and_ends() -> None:
         ("activity", "t1", {"active": True}),
         ("activity", "t1", {"active": False}),
     ]
+
+
+async def test_timeout_cancels_only_its_request_and_keeps_later_steps() -> None:
+    host = BrowserHost()
+    outbox = host.attach()
+    first = asyncio.create_task(host.request("snapshot", {}, "t1", timeout=0.01))
+    command = await outbox.get()
+    later = asyncio.create_task(host.request("tabs", {}, "t1", timeout=5))
+    next_command = await outbox.get()
+    with pytest.raises(ValueError, match="didn't finish snapshot"):
+        await first
+    cancel = await outbox.get()
+    assert cancel == {
+        "id": "", "thread_id": "t1", "action": "cancel_request",
+        "args": {"request_id": command["id"]},
+    }
+    assert not host.resolve(command["id"], {"ok": True, "result": {}})
+    host.resolve(next_command["id"], {"ok": True, "result": {"tabs": []}})
+    assert await later == {"tabs": []}
+
+
+def test_popup_feedback_names_the_source_and_how_to_select_or_close() -> None:
+    host = _FakeHost({"click": {
+        "element": 'button "Export"',
+        "tab": {"id": 1, "url": "https://source/"},
+        "tabs": [
+            {"id": 1, "url": "https://source/", "active": True},
+            {"id": 2, "url": "https://popup/", "opener_id": 1},
+        ],
+    }})
+    output = _tools(host)["browser_click"]("e1")
+    assert "Browser pages changed" in output
+    assert "opened by Tab 1" in output
+    assert 'browser_tabs("select"' in output
+    assert '"close"' in output
+
+
+def test_tab_list_preserves_popup_relationships() -> None:
+    host = _FakeHost({"tabs": {"tabs": [
+        {"id": 2, "url": "https://popup/", "opener_id": 1, "active": True},
+    ]}})
+    assert "opened by Tab 1" in _tools(host)["browser_tabs"]()

@@ -11,6 +11,7 @@
  */
 
 import type { WebContents } from "electron";
+import { browserOperation, running } from "./browserAgentSteps";
 import { pageAgent } from "./browserAgentPage";
 
 const WORLD_NAME = "coscribe-agent";
@@ -82,7 +83,6 @@ export interface Download {
 export class TabCdp {
   dialog: PageDialog | null = null;
   chooser: FileChooser | null = null;
-  downloads: Download[] = [];
   /** Where the conversation driving this tab wants its downloads. */
   downloadDir = "";
   /** The conversation (or workflow run) whose steps last drove this tab. */
@@ -175,7 +175,8 @@ export class TabCdp {
   }
 
   send<T = Record<string, unknown>>(method: string, params: Record<string, unknown> = {}, session?: string): Promise<T> {
-    return this.wc.debugger.sendCommand(method, params, session) as Promise<T>;
+    if (running.stop) return Promise.reject(new Error("Stopped by the user."));
+    return browserOperation(this.wc.debugger.sendCommand(method, params, session) as Promise<T>);
   }
 
   async ensure(): Promise<void> {
