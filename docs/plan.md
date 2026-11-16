@@ -40,8 +40,6 @@ Last reviewed: 2026-11-06.
    `docs/log/2026-11-10-plan-order.md`, `docs/log/2026-11-16-eval-script-tapes.md`); a sub-agent's
    run and a workflow agent step's pass counted too (`docs/log/2026-11-15-trace-subagent-turns.md`).
    Next: a nightly replay of the three that write Office files;
-   `search_tools` returning its weaker matches as a name and one line
-   (`docs/log/2026-11-10-tool-search-recall.md`);
    a failed turn exported as an evaluation task with
    the person's consent.
 4. **A workspace is a folder the person picks** (#926, decision 0048 proposed). Phases, one PR
