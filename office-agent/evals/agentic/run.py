@@ -224,7 +224,11 @@ async def run_task(
     }
     called = [[name for name, _arguments in turn.calls] for turn in user.turns]
     if tape is not None and tape_file is not None:
-        result["tape"] = {"answers_left": tape.left(), "calls_as_recorded": called == tape.calls}
+        result["tape"] = {
+            "answers_left": tape.left(),
+            "answers_missing": tape.missed,
+            "calls_as_recorded": called == tape.calls,
+        }
     elif tape is not None and record is not None and result["completed"] and not result["errors"]:
         tape.calls = called
         tape.window = session._context_window_client.get_context_window(model)
@@ -233,6 +237,8 @@ async def run_task(
         json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     shutil.rmtree(task_out / "state" / "script-env", ignore_errors=True)
+    if tape is not None:
+        replay.release(tape)
     return result
 
 
