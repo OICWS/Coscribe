@@ -96,8 +96,9 @@ check clicks with real input (xdotool under Xvfb, or Windows itself).
   beyond its edge. Where the AI clicks and what a scroll moves is
   `browserAgentLocate.ts`. Popups preserve Electron's opener and POST semantics,
   stay in the background during AI work, and are reported with their source
-  tab. The AI can select or close them with `browser_tabs`; closing a popup
-  prefers its source. Automation selection is separate from the visible tab; targeted
+  tab. The AI can select or close them with `browser_tabs`, several at once
+  (`close` with `tab_ids`, or `close_all`), which skips pages the person used or controls and
+  busy ones and reports why; closing a popup prefers its source. Automation selection is separate from the visible tab; targeted
   commands run concurrently across tabs, serially within each. The panel reports per-tab
   activity and supports user takeover. Saved names, structured tab info and source-scoped
   relative targets work in workflows; form batches reuse normal input events.
