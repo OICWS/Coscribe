@@ -130,7 +130,10 @@ task's run follows the task's own approval setting instead.
   `exit_plan_mode(plan)`, and the chat shows it with Claude Code's three
   choices: **Yes, and use auto mode**, **Yes, manually approve edits**
   (Manual), or **No, keep planning** with what to change. Approving leaves
-  Plan mode.
+  Plan mode. Outside Plan mode the model also asks for this review before a
+  large task (many steps, many files, hard to undo). An answer may carry an
+  edited task list; on approval that list replaces the model's, and the result
+  gives it back.
 - `/auto` -- Auto: a reviewer model (`runtime_lg/auto_review.py`, the
   side-job model `COSCRIBE_SIDE_MODEL` in `.env`, else the conversation's own model) decides each gated call in the user's place. It
   allows ordinary work in the conversation's folders and blocks what's hard
@@ -695,7 +698,11 @@ any words you wrote on it.
   waits follow the conversation's files across tab changes and closures.
   Completed downloads close only untouched blank popups, keeping login and
   business pages available. A full tab group refuses extra popups rather
-  than replacing the original page.
+  than replacing the original page. The AI can close several pages in one
+  step, or all but the ones it keeps; pages you used or took over, and pages
+  another step is still working in, stay open and the result says why. It
+  can also read several pages at once. A workflow run's pages stay open
+  after it ends unless the workflow ends with a step that closes them.
 - **Stop** also reaches the desktop app: the step in progress there (a
   wait can run for an hour) ends at once, and steps that conversation
   had queued are dropped.

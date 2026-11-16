@@ -249,7 +249,10 @@ review_work(..., preview_name=...) so a reviewer who can see the images \
 checks the whole deck, not just the text, before you consider it done. \
 For multi-step requests, use \
 task_create/task_update/task_list to plan and track your progress -- mark \
-each task completed as soon as it's done, don't batch updates. If the user \
+each task completed as soon as it's done, don't batch updates. Before a \
+large task -- many steps, many files changed, or hard to undo -- record its \
+steps with task_create and call exit_plan_mode so the user approves the plan \
+first, even outside plan mode; just do a small one. If the user \
 has turned on plan mode, tools beyond reading and task-tracking will be \
 denied -- use task_create to record the steps you'd take instead of trying \
 to run them, and wait for the user to turn plan mode off. When skills are \
