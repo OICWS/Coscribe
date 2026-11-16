@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from pathlib import Path
 
 import pytest
 from langchain_core.messages import AIMessage
@@ -18,6 +19,7 @@ from langchain_core.messages import AIMessage
 from coscribe.coordinator import CORE_TOOL_NAMES
 from coscribe.runtime_lg import build_search_tools_tool, tool_name
 from coscribe.runtime_lg.search_words import query_words, tokenize
+from coscribe.runtime_lg.tool_deferral import _build_entry, _ranked
 
 from .test_prompt_cache import _RecordingModel, _session
 
@@ -138,6 +140,23 @@ def test_a_tool_is_found_by_the_words_a_model_would_ask_with(
     search: Callable[[str], list[str]], query: str, tool: str
 ) -> None:
     assert tool in search(query)
+
+
+def test_every_hidden_tool_comes_back_first_and_in_full_by_its_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A weaker match comes back as a name and a line, and the model searches that name for
+    its parameters; a tool that is not then first, in full, cannot be run correctly."""
+    model = _RecordingModel(responses=[AIMessage(content="ok")])
+    session = _session(tmp_path, monkeypatch, model, "names", tmp_path / "folder")
+    tools = session._build_lg_tools(model)  # noqa: SLF001
+    hidden = [t for t in tools if tool_name(t) not in CORE_TOOL_NAMES]
+    entries = [_build_entry(t) for t in hidden]
+    for entry in entries:
+        assert _ranked(entries, entry.name)[0] == (entry, True)
+    # The ranking holds for every name; one real search checks that first means in full.
+    first = json.loads(build_search_tools_tool(hidden)(entries[0].name))[0]
+    assert "parameters" in first
 
 
 @pytest.mark.parametrize(("query", "tool"), _NOT_FOUND, ids=[query for query, _ in _NOT_FOUND])

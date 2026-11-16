@@ -40,8 +40,6 @@ Last reviewed: 2026-11-06.
    `docs/log/2026-11-10-plan-order.md`, `docs/log/2026-11-16-eval-script-tapes.md`); a sub-agent's
    run and a workflow agent step's pass counted too (`docs/log/2026-11-15-trace-subagent-turns.md`).
    Next: a nightly replay of the three that write Office files;
-   `search_tools` returning its weaker matches as a name and one line
-   (`docs/log/2026-11-10-tool-search-recall.md`);
    a failed turn exported as an evaluation task with
    the person's consent.
 4. **A workspace is a folder the person picks** (#926, decision 0048 proposed). Phases, one PR
@@ -114,13 +112,13 @@ Last reviewed: 2026-11-06.
   a provider's models read from its own list, and a first-run page that takes a compatible
   provider and checks the key; steps and time per task in the agentic evaluation.
 
-- **Settings, after the simpler page** (`docs/log/2026-11-10-settings-simple.md`). Open: switches
-  for Artifacts and for "Create and edit files" (the tools stay in the fixed list and answer that
-  they are turned off); no cap on steps per reply, the person pauses instead (`max_turns` is still
-  150); the port for task events moves itself when 8790 is taken, and the listener's message stops
-  naming a Settings row; a diagnostic log to export in place of Log level; a package a script
-  needs installed from the chat, with approval; the models for code and for side jobs picked
-  without a row; a proxy change that applies without a restart.
+- **Settings, after the simpler page** (`docs/log/2026-11-10-settings-simple.md`,
+  `docs/log/2026-11-11-capability-switches-no-step-cap.md`). Open: the port for task events moves
+  itself when 8790 is taken, and the listener's message stops naming a Settings row; a diagnostic
+  log to export in place of Log level; a package a script needs installed from the chat, with
+  approval; the models for code and for side jobs picked without a row; a proxy change that
+  applies without a restart; with Artifacts off, "Make something new" still offers a Doc, a
+  design and a dashboard, and a refused write still reads "Wrote" in the conversation.
 
 ## For the maintainer (settings and decisions)
 

@@ -478,6 +478,8 @@ export interface ScheduledTask {
   last_run_status: string | null;
   model: string | null;
   approval_mode: ApprovalMode;
+  /** The most model calls one run of `prompt` makes. */
+  max_steps?: number;
   notes_enabled: boolean;
   /** Oldest first. */
   runs: ScheduledRun[];
@@ -530,6 +532,7 @@ export interface CreateScheduledTaskPayload {
   start_date?: string;
   model?: string;
   approval_mode?: ApprovalMode;
+  max_steps?: number;
   notes_enabled?: boolean;
   workflow?: Workflow | null;
   environment?: string;
@@ -717,6 +720,10 @@ export interface Environment extends EnvironmentFields {
 
 /** What coscribe may run on this computer (Settings › Capabilities). */
 export interface Capabilities {
+  /** Coscribe's own tools create and change files. */
+  files: boolean;
+  /** It makes Docs, designs and dashboards, which open in the app. */
+  artifacts: boolean;
   scripts: boolean;
   commands: boolean;
   /** The second confirmation: commands may run as the person where the sandbox isn't set up. */

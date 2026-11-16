@@ -28,6 +28,8 @@ const SETTING_ENTRIES: SettingEntry[] = [
   { category: "general", label: "Proxy", keywords: "network internet address do not use for bypass user name password" },
   { category: "workspace", label: "Environments", keywords: "folder workspace internet access new edit" },
   { category: "workspace", label: "Other folders", keywords: "directory read write" },
+  { category: "capabilities", label: "Create and edit files", keywords: "write read only word excel powerpoint pdf" },
+  { category: "capabilities", label: "Artifacts", keywords: "docs design dashboard panel" },
   { category: "capabilities", label: "Run scripts", keywords: "python sandbox isolation" },
   { category: "capabilities", label: "Run commands", keywords: "shell terminal sandbox" },
   { category: "capabilities", label: "Command sandbox", keywords: "basic full administrator" },

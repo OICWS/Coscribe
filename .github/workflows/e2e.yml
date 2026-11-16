@@ -93,8 +93,13 @@ jobs:
           COSCRIBE_STATE_DIR=$scratch/state
           ENV
           nohup python scripts/stub_llm.py > "$scratch/stub.log" 2>&1 &
+          # Board exports draw with a browser on PATH, the runner image's google-chrome; Chrome 153
+          # never exits after a one-shot --dump-dom or --screenshot. Playwright's pinned headless
+          # shell does.
+          shell="$(find "$HOME/.cache/ms-playwright" -name chrome-headless-shell -type f | sort | tail -n 1)"
+          test -n "$shell" || { echo "Playwright's chrome-headless-shell is not installed"; exit 1; }
           (cd "$scratch" && COSCRIBE_LAUNCH_TOKEN=e2e-launch-token PYTHON_KEYRING_BACKEND=keyrings.alt.file.PlaintextKeyring \
-            XDG_DATA_HOME="$scratch/xdg" nohup coscribe-web > "$scratch/web.log" 2>&1 &)
+            COSCRIBE_PAGE_BROWSER="$shell" XDG_DATA_HOME="$scratch/xdg" nohup coscribe-web > "$scratch/web.log" 2>&1 &)
           (cd frontend && COSCRIBE_LAUNCH_TOKEN=e2e-launch-token nohup npx vite --host 127.0.0.1 > "$scratch/vite.log" 2>&1 &)
           for url in http://127.0.0.1:9999/v1/models http://127.0.0.1:8000/ http://127.0.0.1:5173/static/; do
             for _ in $(seq 60); do curl -sf "$url" > /dev/null && continue 2; sleep 1; done

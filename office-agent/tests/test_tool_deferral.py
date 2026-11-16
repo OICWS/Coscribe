@@ -25,7 +25,9 @@ from coscribe.runtime_lg.search_words import tokenize
 from coscribe.runtime_lg.tool_deferral import (
     SEARCH_TOOLS_NAME,
     USE_TOOL_NAME,
+    _build_entry,
     _score,
+    _summary,
     build_search_tools_tool,
     run_found_tools_directly,
     show_unbound_calls_as_use_tool,
@@ -149,6 +151,67 @@ def test_search_tools_leaves_out_weak_matches() -> None:
     search_tools = build_search_tools_tool(tools)
     names = [entry["name"] for entry in json.loads(search_tools("run python script"))]
     assert names == ["run_python_script"]
+
+
+def test_search_tools_sends_only_the_best_matches_in_full() -> None:
+    tools = [
+        _FakeTool(f"pptx_tool_{i}", f"Tool {i} for pptx. It does many things.") for i in range(6)
+    ]
+    result = json.loads(build_search_tools_tool(tools)("pptx"))
+    full, short = result[:3], result[3:]
+    assert all({"description", "parameters"} <= set(match) for match in full)
+    assert short and all(set(match) == {"name", "summary"} for match in short)
+    assert short[0]["summary"].startswith("Tool") and short[0]["summary"].endswith("for pptx.")
+
+
+def test_a_summary_is_the_first_sentence_and_not_cut_at_an_abbreviation() -> None:
+    assert _summary("Make a deck, e.g. a pitch. Then more.\n\nArgs: x") == (
+        "Make a deck, e.g. a pitch."
+    )
+    assert _summary("Write it, E.g. a memo. Then more.") == "Write it, E.g. a memo."
+    assert _summary("Search pages, databases, etc. by title. More.") == (
+        "Search pages, databases, etc. by title."
+    )
+    assert _summary("Is it a deck? Then more.") == "Is it a deck?"
+    assert _summary("Keeps the UTF-8-\n    text shape.") == "Keeps the UTF-8-text shape."
+    long = _summary("Change a file " + "in place " * 30)
+    assert len(long) <= 160 and long.endswith("place…")
+
+
+def test_searching_a_tools_exact_name_brings_it_back_first_and_only_it_in_full() -> None:
+    # The background tool's description names spawn_agent, so it outscores it on words.
+    tools = [
+        _FakeTool("spawn_agent_background", "Like spawn_agent, but in the background."),
+        _FakeTool("spawn_agent", "Hand a task to a sub-agent."),
+        _FakeTool("spawn_agent_status", "Whether a spawn_agent task is done."),
+    ]
+    first, *rest = json.loads(build_search_tools_tool(tools)("spawn_agent"))
+    assert first["name"] == "spawn_agent"
+    assert "parameters" in first
+    assert rest and all(set(match) == {"name", "summary"} for match in rest)
+
+
+def test_a_tool_named_like_a_word_does_not_crowd_out_the_others() -> None:
+    # "spreadsheet" also searches for "xlsx"; an exact name in the score raised the floor
+    # above what write_xlsx_cells scores on that word.
+    tools = [
+        _FakeTool("spreadsheet", "A spreadsheet connector."),
+        _FakeTool("write_xlsx_cells", "Write cells to an xlsx workbook."),
+    ]
+    names = [m["name"] for m in json.loads(build_search_tools_tool(tools)("spreadsheet"))]
+    assert names == ["spreadsheet", "write_xlsx_cells"]
+
+
+def test_equal_scores_go_to_the_shorter_name() -> None:
+    # The query is only in the descriptions, so both score the same, whatever the names' length.
+    tools = [
+        _FakeTool("make_chart_now", "A pptx deck tool."),
+        _FakeTool("make_chart", "A pptx deck tool."),
+    ]
+    a, b = (_score(_build_entry(tool), ["deck", "pptx"], "pptx deck") for tool in tools)
+    assert a == b
+    names = [m["name"] for m in json.loads(build_search_tools_tool(tools)("pptx deck"))]
+    assert names == ["make_chart", "make_chart_now"]
 
 
 # -- use_tool translation -------------------------------------------------

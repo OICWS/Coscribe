@@ -431,6 +431,7 @@ function DetailedBody({
         <SectionLabel>Permissions</SectionLabel>
         <div className="text-sm font-medium">{APPROVAL_LABEL[task.approval_mode]}</div>
         <div className="text-sm text-[var(--muted)]">{APPROVAL_DESCRIPTION[task.approval_mode]}</div>
+        <div className="text-sm text-[var(--muted)]">A run stops after {task.max_steps ?? 150} steps.</div>
       </div>
       <NotesSection task={task} onChanged={onChanged} />
       <RunsSection task={task} />
