@@ -35,10 +35,11 @@ Last reviewed: 2026-11-06.
 
 3. **How turns go, measured in real use** (#867, decision 0045). Done: one line per turn in
    `turns.jsonl`, without the conversation's words (`docs/log/2026-11-10-turn-trace.md`), and
-   five agentic evaluation tasks replayed from recorded answers in the PR checks
-   (`docs/log/2026-11-10-eval-replay.md`, `docs/log/2026-11-10-plan-order.md`); a sub-agent's run
-   and a workflow agent step's pass counted too (`docs/log/2026-11-15-trace-subagent-turns.md`). Next: tapes for
-   the tasks that run a script, and a nightly replay of the three that write Office files;
+   eight agentic evaluation tasks replayed from recorded answers in the PR checks, the three that
+   run a script with its recorded output (`docs/log/2026-11-10-eval-replay.md`,
+   `docs/log/2026-11-10-plan-order.md`, `docs/log/2026-11-16-eval-script-tapes.md`); a sub-agent's
+   run and a workflow agent step's pass counted too (`docs/log/2026-11-15-trace-subagent-turns.md`).
+   Next: a nightly replay of the three that write Office files;
    `search_tools` returning its weaker matches as a name and one line
    (`docs/log/2026-11-10-tool-search-recall.md`);
    a failed turn exported as an evaluation task with
@@ -46,6 +47,12 @@ Last reviewed: 2026-11-06.
 
 ## Open, smaller
 
+- **Plan review** (#901): done (the model asks for review outside Plan mode; the person edits
+  the task list in the Plan panel before accepting). Later: drag to reorder; `task_update`
+  rewording or dropping a step, `task_create` taking several steps
+  at once, and a background task started with the plan item it belongs to (the task card now
+  guesses it from timing, which goes wrong when several items run at once;
+  `docs/log/2026-11-15-plan-review-edits.md`).
 - **Browser page lifecycle:** popup/source feedback, conversation-wide downloads and
   request cancellation have regression coverage. Native popup handles and focus/close behavior
   run in the Windows desktop smoke job; real-site verification remains outstanding
@@ -53,7 +60,9 @@ Last reviewed: 2026-11-06.
   references, batch input and real draft progress are covered in #907; verify SAP exports and
   settings overlays on Windows (`docs/log/2026-11-16-browser-workflow-polish.md`).
   Browser abilities for conversations and saved workflows are planned in #915 (four parts);
-  part 1, closing and reading several pages, is `docs/log/2026-11-16-browser-pages-batch.md`.
+  part 1, closing and reading several pages, is `docs/log/2026-11-16-browser-pages-batch.md`;
+  part 2a, forms and page steps, `docs/log/2026-11-16-browser-forms.md`. Next: drag and drop and
+  copy and paste (part 2b), then data out (3) and resilience (4).
 
 - **Docs:** a Doc still writes plans the brief did not give (a proposal's migration phases;
   `docs/log/2026-10-29-doc-writing-rules.md`). Version history for documents is wanted, not in v1.

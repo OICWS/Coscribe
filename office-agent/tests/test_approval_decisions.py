@@ -33,11 +33,14 @@ from langgraph.checkpoint.memory import InMemorySaver
 from coscribe.code_runtime import CodePermissions
 from coscribe.config import Settings
 from coscribe.conversation import approvals as approvals_module
+from coscribe.conversation import question_answer
 from coscribe.conversation import session as session_module
+from coscribe.conversation.approvals import PLAN_TASKS_MARKER
 from coscribe.conversation.session import ChatSessionLG, _SubAgentApprovalChannel
 from coscribe.runtime import empty_hooks_config
 from coscribe.runtime_lg.audit import AuditLog
 from coscribe.runtime_lg.auto_review import REVIEWER_INSTRUCTIONS, Verdict
+from coscribe.tools import TaskToolkit
 from coscribe.tools.bookkeeping.subagent_tasks import SubAgentTask
 from coscribe.tools.exec import Capabilities
 from coscribe.tools.exec import commands as commands_module
@@ -946,6 +949,9 @@ QUESTION_ROWS: dict[str, QuestionRow] = {
     "unattended_answers_a_plan": QuestionRow(
         PLAN, NO_ONE_QUESTION, reasons=["unattended"], attended=False, plan=True, plan_after=True
     ),
+    "unattended_has_a_plan_outside_plan_mode_carried_out": QuestionRow(
+        PLAN, "Carry it out now.", reasons=["unattended"], attended=False
+    ),
     "unattended_answers_a_draft": QuestionRow(
         CREATE_TASK, NO_ONE_DRAFT, reasons=["unattended"], attended=False
     ),
@@ -953,8 +959,20 @@ QUESTION_ROWS: dict[str, QuestionRow] = {
         EDIT_TASK, NO_ONE_DRAFT, reasons=["unattended"], attended=False
     ),
     # -- exit_plan_mode
-    "a_plan_outside_plan_mode_has_nothing_to_approve": QuestionRow(
-        PLAN, "Plan mode isn't on", args={"plan": "step 1"}
+    "a_plan_outside_plan_mode_is_reviewed_too": QuestionRow(
+        PLAN,
+        "will approve each change as you go",
+        answer="manual",
+        args={"plan": "step 1"},
+        sent="plan_ready",
+    ),
+    "approving_a_plan_outside_plan_mode_can_switch_to_auto_mode": QuestionRow(
+        PLAN,
+        "switched to auto mode",
+        answer="auto",
+        args={"plan": "step 1"},
+        sent="plan_ready",
+        auto_after=True,
     ),
     "approving_a_plan_switches_to_auto_mode": QuestionRow(
         PLAN,
@@ -1056,6 +1074,113 @@ async def test_a_question_tool_answers_with_respond(
     assert session.plan_mode is row.plan_after
     assert session.auto_mode is row.auto_after
     assert not session._pending_questions
+
+
+async def test_approving_an_edited_task_list_makes_it_the_plans_list(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _session(tmp_path, monkeypatch)
+    session.plan_mode = True
+    toolkit = TaskToolkit(session.thread_id, session.settings.state_dir)
+    for step in ("Read the report", "Draft the summary", "Email it"):
+        toolkit.create(step)
+    toolkit.update("1", "completed")
+    edits = [
+        {"id": "2", "content": "Draft a one-page summary"},
+        {"content": "Ask Ana to check it"},
+        {"id": "1", "content": "Read the report"},
+    ]
+
+    result = await _decide(
+        session, PLAN, _Socket(True), answer={"answer": "auto", "tasks": edits}, args={"plan": "x"}
+    )
+
+    expected = [
+        {"id": "2", "content": "Draft a one-page summary", "status": "pending"},
+        {"id": "4", "content": "Ask Ana to check it", "status": "pending"},
+        {"id": "1", "content": "Read the report", "status": "completed"},
+    ]
+    assert toolkit.list_tasks() == expected
+    head, _, listed = result["message"].partition(PLAN_TASKS_MARKER + "\n")
+    assert "switched to auto mode" in head
+    assert json.loads(listed) == expected
+    assert session.auto_mode and not session.plan_mode
+
+
+async def test_feedback_on_an_edited_task_list_describes_it_and_keeps_the_old_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _session(tmp_path, monkeypatch)
+    session.plan_mode = True
+    toolkit = TaskToolkit(session.thread_id, session.settings.state_dir)
+    toolkit.create("Read the report")
+    answer = {"answer": "revise: shorter", "tasks": [{"content": "Skim the report"}]}
+
+    result = await _decide(session, PLAN, _Socket(True), answer=answer, args={"plan": "x"})
+
+    assert "1. Skim the report" in result["message"]
+    assert PLAN_TASKS_MARKER not in result["message"]
+    assert [t["content"] for t in toolkit.list_tasks()] == ["Read the report"]
+    assert session.plan_mode
+
+
+async def test_approving_by_hand_outside_plan_mode_turns_auto_mode_off(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _session(tmp_path, monkeypatch)
+    session.auto_mode = True
+
+    result = await _decide(session, PLAN, _Socket(True), answer="manual", args={"plan": "x"})
+
+    assert "will approve each change as you go" in result["message"]
+    assert not (session.auto_mode or session.accept_edits or session.plan_mode)
+
+
+async def test_approving_in_auto_mode_resumes_a_paused_reviewer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _session(tmp_path, monkeypatch)
+    session.auto_mode = True
+    session._auto_paused = True
+    session._auto_blocks_in_row = 3
+
+    result = await _decide(session, PLAN, _Socket(True), answer="auto", args={"plan": "x"})
+
+    assert "kept auto mode on" in result["message"]
+    assert session.auto_mode and not session._auto_paused
+    assert session._auto_blocks_in_row == 0
+
+
+@pytest.mark.parametrize(
+    ("answer", "says"),
+    [
+        (None, "closed the plan"),
+        ({"reply": "do the second file first"}, "do the second file first"),
+    ],
+)
+async def test_a_closed_plan_or_a_reply_is_told_to_the_model_as_text(
+    answer: Any, says: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _session(tmp_path, monkeypatch)
+
+    result = await _decide(session, PLAN, _Socket(True), answer=answer, args={"plan": "x"})
+
+    assert isinstance(result["message"], str) and says in result["message"]
+
+
+def test_a_plan_answer_carries_the_edited_task_list() -> None:
+    data = {
+        "type": "question_response",
+        "id": "q",
+        "answer": "manual",
+        "tasks": [{"id": "1", "content": " A "}, {"content": "B"}, {"content": "  "}, "junk"],
+    }
+    assert question_answer(data) == {
+        "answer": "manual",
+        "tasks": [{"content": "A", "id": "1"}, {"content": "B"}],
+    }
+    assert question_answer({"answer": "manual"}) == "manual"
+    assert question_answer({"reply": "no", "tasks": []}) == {"reply": "no"}
 
 
 @pytest.mark.parametrize(("tool", "consulted"), [(EXEC, 1), (LOCAL, 0), (EXTERNAL, 0)])

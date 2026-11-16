@@ -136,6 +136,7 @@ function PanelContent({ state }: { state: PanelWindowState }) {
   }
   if (state.panel === "plan") {
     const plan = state.plan ?? "";
+    const review = state.review;
     return (
       <PlanPanel
         tasks={state.tasks}
@@ -143,6 +144,9 @@ function PanelContent({ state }: { state: PanelWindowState }) {
         busy={state.busy}
         comments={state.comments}
         onComments={(comments) => sendPanelWindowAction({ type: "planComments", plan, comments })}
+        review={
+          review && { steps: review.steps, onSteps: (steps) => sendPanelWindowAction({ type: "planSteps", planId: review.planId, steps }) }
+        }
       />
     );
   }

@@ -49,6 +49,8 @@ _PAGE_TOOLS = (
     "browser_hover",
     "browser_wait_for",
     "browser_handle_dialog",
+    "browser_fill_form",
+    "browser_steps",
 )
 _HEAL_MAX_STEPS = 12
 
@@ -93,6 +95,27 @@ def _args_line(args: dict[str, Any], values: dict[str, Any]) -> str:
 
 # Keys that move or confirm but can't type a value of their own.
 _PLAIN_KEYS = frozenset({"Enter", "Tab", "Escape", "Backspace", "Delete", "Home", "End"})
+
+
+def _entered(args: dict[str, Any]) -> tuple[list[str], list[str]]:
+    """What a form fill or a run of page actions types, chooses and presses, so a heal holds it
+    to the same data as one typed field."""
+    listed = args.get("steps")
+    steps: list[Any] = listed if isinstance(listed, list) else [args]
+    entered: list[str] = []
+    keys: list[str] = []
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        for field in step.get("fields") or step.get("fill") or []:
+            if isinstance(field, dict):
+                entered.append(str(field.get("text") or ""))
+        if "type" in step:
+            entered.append(str(step.get("text") or ""))
+        entered += _strings(step.get("values"))
+        if "press_key" in step:
+            keys.append(str(step["press_key"]))
+    return entered, keys
 
 
 def _strings(value: Any) -> list[str]:
@@ -150,6 +173,10 @@ def heal_guard(workflow: Workflow, step: Step, values: dict[str, Any]) -> CallGu
             entered = [str(call.args.get("text") or "")]
         elif call.tool == "browser_select_option":
             entered = _strings(call.args.get("values"))
+        elif call.tool in ("browser_fill_form", "browser_steps"):
+            entered, keys = _entered(call.args)
+            if any(k not in _PLAIN_KEYS for k in keys):
+                return False
         else:
             return True
         return all(not v.strip() or any(_same(v, k) for k in known) for v in entered)

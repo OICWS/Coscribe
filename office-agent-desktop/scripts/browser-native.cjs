@@ -123,6 +123,28 @@ if (!process.versions.electron) {
     const filled = await command('fill_form', { tab_id: background.id, fields: [{ ref: 'textbox \"Company Code\"', text: '1000' }, { ref: 'textbox \"Posting Date\"', text: '2026-11-16' }] });
     assert.equal(filled.ok, true, filled.error);
     assert.deepEqual(await background.view.webContents.executeJavaScript('[company.value,date.value,window.inputs]'), ['1000','2026-11-16',2]);
+    await background.view.webContents.loadURL('data:text/html,' + encodeURIComponent(
+      '<label>Plant<select id="plant" aria-label="Plant"><option>Berlin</option><option value="HH">Hamburg</option></select></label>' +
+      '<label><input type="checkbox" id="urgent">Urgent</label><label><input type="radio" name="m" id="air">Air</label>' +
+      '<label>Due<input type="date" id="due"></label><label>Code<input id="code" oninput="this.value=this.value.toUpperCase()"></label>' +
+      '<button onclick="setTimeout(()=>document.body.append(\'Posted\'),300)">Post</button>'));
+    const kinds = await command('fill_form', { tab_id: background.id, timeout: 5, fields: [
+      { ref: 'combobox "Plant"', text: 'hamburg' }, { ref: 'checkbox "Urgent"', text: 'checked' },
+      { ref: 'radio "Air"', text: 'yes' }, { ref: 'textbox "Due"', text: '2026-12-01' }, { ref: 'textbox "Code"', text: 'ab1' }] });
+    assert.equal(kinds.ok, true, kinds.error);
+    assert.deepEqual(await background.view.webContents.executeJavaScript('[plant.value,urgent.checked,air.checked,due.value,code.value]'),
+      ['HH', true, true, '2026-12-01', 'AB1'], 'every field kind fills in one call');
+    assert.deepEqual(kinds.result.filled.filter(f => f.changed).map(f => f.value), ['AB1'], 'the read-back names what the page changed');
+    const unclear = await command('fill_form', { tab_id: background.id, fields: [{ ref: 'checkbox "Urgent"', text: 'maybe' }] });
+    assert.match(unclear.error, /checked" or "unchecked/);
+    const ran = await command('steps', { tab_id: background.id, steps: [
+      { fill: [{ ref: 'checkbox "Urgent"', text: 'unchecked' }] }, { click: 'button "Post"' }, { wait_for: 'Posted' }] });
+    assert.equal(ran.ok, true, ran.error);
+    assert.equal(await background.view.webContents.executeJavaScript('urgent.checked'), false);
+    const stopped = await command('steps', { tab_id: background.id, timeout: 1, steps: [{ click: 'button "Post"' }, { click: 'button "Missing"' }] });
+    assert.match(stopped.error, /Step 2 of 2 \(click\) failed: .* Done before it: click button "Post"/);
+    const either = await command('wait_for', { tab_id: background.id, any_of: ['Rejected', 'Posted'], timeout: 2 });
+    assert.equal(either.result.found_text, 'Posted');
     await invoke(panel.BROWSER_PANEL_SET_VIEW_HIDDEN_CHANNEL, true);
     const duringOverlay = await command('evaluate', { tab_id: source.id, expression: 'document.title' });
     assert.equal(duringOverlay.ok, true, duringOverlay.error);
@@ -156,7 +178,7 @@ if (!process.versions.electron) {
     await secondPermission;
     panel.destroyBrowserPanel();
     clearTimeout(timeout);
-    console.log('Native browser checks passed: popups, bounds, overlays, background input, form events, takeover and permission queue.');
+    console.log('Native browser checks passed: popups, bounds, overlays, background input, form events, every field kind, page steps, waiting for one of several texts, takeover and permission queue.');
     app.exit(0);
   }).catch(error => { console.error(error); app.exit(1); });
 }

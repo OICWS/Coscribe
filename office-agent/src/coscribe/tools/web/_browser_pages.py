@@ -9,9 +9,19 @@ from typing import Any
 
 DEFAULT_TIMEOUT = 30.0
 NAVIGATE_TIMEOUT = 60.0
+# How long a step waits for its element, text or download by default, and
+# at most -- a saved workflow may wait out a slow export.
+DEFAULT_WAIT = 30.0
+MAX_WAIT = 3600.0
 SNAPSHOT_CHARS = 12_000
 # Reading many pages at once still shows each enough to tell its state.
 _SNAPSHOT_MIN_SHARE = 2_000
+
+
+def wait_limit(timeout: float) -> float:
+    if timeout <= 0:
+        raise ValueError("timeout must be more than 0 seconds.")
+    return min(float(timeout), MAX_WAIT)
 
 
 def tab_line(tab: Any) -> str:
