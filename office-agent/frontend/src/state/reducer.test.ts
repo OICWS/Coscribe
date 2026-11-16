@@ -144,7 +144,7 @@ describe("history and older messages", () => {
 
   it("restores the task list the person approved, and keeps it on a live answer", () => {
     const result =
-      'The user approved the plan and kept the current approvals. Carry it out now. They edited your task list.\nTask list as approved:\n' +
+      'The user approved the plan and will approve each change as you go. Carry it out now. They edited your task list.\nTask list as approved:\n' +
       '[{"id": "2", "content": "Write", "status": "pending"}, {"id": "1", "content": "Read", "status": "completed"}]';
     const [item] = historyToItems([{ kind: "tool", tool_name: "exit_plan_mode", arguments: { plan: "p" }, result, is_error: false }]);
     expect(item).toMatchObject({

@@ -59,7 +59,7 @@ _MEMORY_HERE = "Save for this folder"
 _MEMORY_SAVE = "Save everywhere"
 
 # The line before the approved task list in exit_plan_mode's result; the frontend finds the list
-# after it, live and in a replayed history.
+# after it, live and in a replayed history (frontend/src/state/reducer.ts, planTasksOf).
 PLAN_TASKS_MARKER = "Task list as approved:"
 
 _REPLIED_INSTEAD = (
