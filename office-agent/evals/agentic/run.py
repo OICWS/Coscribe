@@ -27,6 +27,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from coscribe.tools import TaskToolkit
+
 from .. import run as office
 from ..prices import cost
 from . import replay
@@ -102,13 +104,12 @@ def run_checks(task: AgenticTask, outcome: Outcome) -> dict[str, bool]:
 
 def _outcome(task_out: Path, workspace: Path, thread_id: str, turns: list[Turn]) -> Outcome:
     memory = task_out / "MEMORY.md"
-    tasks_file = task_out / "state" / f"{thread_id}.tasks.json"
     return Outcome(
         replies=[turn.replies for turn in turns],
         calls=[f"{name} {arguments}" for turn in turns for name, arguments in turn.calls],
         workspace=workspace,
         memory=memory.read_text(encoding="utf-8") if memory.is_file() else "",
-        tasks=json.loads(tasks_file.read_text(encoding="utf-8")) if tasks_file.is_file() else [],
+        tasks=TaskToolkit(thread_id, task_out / "state").list_tasks(),
     )
 
 
@@ -223,7 +224,11 @@ async def run_task(
     }
     called = [[name for name, _arguments in turn.calls] for turn in user.turns]
     if tape is not None and tape_file is not None:
-        result["tape"] = {"answers_left": tape.left(), "calls_as_recorded": called == tape.calls}
+        result["tape"] = {
+            "answers_left": tape.left(),
+            "answers_missing": tape.missed,
+            "calls_as_recorded": called == tape.calls,
+        }
     elif tape is not None and record is not None and result["completed"] and not result["errors"]:
         tape.calls = called
         tape.window = session._context_window_client.get_context_window(model)
@@ -232,6 +237,8 @@ async def run_task(
         json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     shutil.rmtree(task_out / "state" / "script-env", ignore_errors=True)
+    if tape is not None:
+        replay.release(tape)
     return result
 
 

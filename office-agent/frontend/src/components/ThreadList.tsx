@@ -9,7 +9,7 @@ import {
   renameThreadGroup,
   setThreadMeta,
 } from "../lib/rest";
-import { goToThread } from "../lib/nav";
+import { goToThread, showSessions } from "../lib/nav";
 import { saveBlob } from "../lib/slides";
 import { readStored, writeStored } from "../lib/storage";
 import {
@@ -60,6 +60,30 @@ function readCollapsed(): Set<string> {
   } catch {
     return new Set();
   }
+}
+
+/** Which groups are folded, remembered across reloads. */
+function useCollapsedGroups(): [Set<string>, (key: string) => void] {
+  const [collapsed, setCollapsed] = useState<Set<string>>(readCollapsed);
+  const toggle = (key: string) => {
+    const next = new Set(collapsed);
+    if (!next.delete(key)) next.add(key);
+    setCollapsed(next);
+    writeStored(COLLAPSED_KEY, JSON.stringify([...next]));
+  };
+  return [collapsed, toggle];
+}
+
+function ViewAllLink() {
+  return (
+    <button
+      type="button"
+      className="rounded-md px-2 py-1.5 text-left text-sm text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
+      onClick={showSessions}
+    >
+      View all
+    </button>
+  );
 }
 
 interface MenuState {
@@ -546,7 +570,7 @@ export function ThreadList({
   const [filter, setFilter] = useState<ThreadFilter>("all");
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState("");
-  const [collapsed, setCollapsed] = useState<Set<string>>(readCollapsed);
+  const [collapsed, toggle] = useCollapsedGroups();
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const { selected, setSelected, chosen, toggleSelect, batchMove, batchArchive } = useSelection(threads, setGroups, onChanged);
@@ -584,13 +608,6 @@ export function ThreadList({
   const sections = sectionThreads(shown, groups, filtering);
   const hasGroups = groups.length > 0;
   const total = threads.filter((t) => !t.archived).length;
-
-  const toggle = (key: string) => {
-    const next = new Set(collapsed);
-    if (!next.delete(key)) next.add(key);
-    setCollapsed(next);
-    writeStored(COLLAPSED_KEY, JSON.stringify([...next]));
-  };
 
   const move = async (thread: ThreadSummary, group: string) => {
     setMenu(null);
@@ -728,6 +745,7 @@ export function ThreadList({
             </div>
           );
         })}
+        {threads.length > 0 && !selected && <ViewAllLink />}
       </div>
       {selected && (
         <BatchBar

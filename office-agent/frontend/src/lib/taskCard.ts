@@ -88,14 +88,16 @@ function applyTaskCall(tasks: ProgressItem[], item: ToolOrApprovalItem): Progres
 export function taskListOf(items: LogItem[], tasks: ProgressItem[] = []): ProgressItem[] {
   for (const item of items) {
     if (item.kind === "tool" && isTaskTool(item.toolName)) tasks = applyTaskCall(tasks, item);
+    else if (item.kind === "plan" && item.tasks) tasks = item.tasks;
   }
   return tasks;
 }
 
-/** What the Plan panel shows: the list, and the plan text last proposed. */
-export function planPanelData(items: LogItem[]): { tasks: ProgressItem[]; plan: string | null } {
-  const plans = items.filter((item): item is PlanItem => item.kind === "plan");
-  return { tasks: taskListOf(items), plan: plans.length > 0 ? plans[plans.length - 1].plan : null };
+/** What the Plan panel shows: the list, the plan text last proposed, and that plan's id while
+ * it waits for an answer (its list can be edited then). */
+export function planPanelData(items: LogItem[]): { tasks: ProgressItem[]; plan: string | null; pendingPlanId: string | null } {
+  const last = items.findLast((item): item is PlanItem => item.kind === "plan");
+  return { tasks: taskListOf(items), plan: last ? last.plan : null, pendingPlanId: last?.status === "pending" ? last.id : null };
 }
 
 const allDone = (tasks: ProgressItem[]) => tasks.length > 0 && tasks.every((task) => task.status === "completed");
@@ -112,6 +114,12 @@ export function taskCardPlaces(items: LogItem[]): Record<string, TaskCardEntry> 
   const startedOrder: string[] = [];
   let active = "";
   for (const item of items) {
+    // An approved plan whose list the person edited replaces the list.
+    if (item.kind === "plan" && item.tasks) {
+      if (JSON.stringify(item.tasks) !== JSON.stringify(tasks)) changes.push({ id: item.id, tasks: item.tasks });
+      tasks = item.tasks;
+      continue;
+    }
     if (item.kind !== "tool" && item.kind !== "approval") continue;
     if (item.kind === "approval" || !isTaskTool(item.toolName)) {
       const started = startedTaskId(item);
@@ -145,6 +153,7 @@ export function foldTaskCard(entries: TranscriptEntry[], places: Record<string, 
   for (const entry of entries) {
     if (entry.kind !== "tool_run") {
       out.push(entry);
+      if (places[entry.id]) out.push(places[entry.id]);
       continue;
     }
     let run: ToolOrApprovalItem[] = [];
