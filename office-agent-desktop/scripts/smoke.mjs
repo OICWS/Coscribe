@@ -106,8 +106,10 @@ try {
 
   await step("browser popups retain their source and close back to it", async () => {
     await app.evaluate(async (_electron, { panelPath, cdpPath }) => {
-      const panel = require(panelPath);
-      const { cdpFor } = require(cdpPath);
+      // Playwright evaluates in the main-process global context, outside a CommonJS module.
+      const load = process.getBuiltinModule("module").createRequire(panelPath);
+      const panel = load(panelPath);
+      const { cdpFor } = load(cdpPath);
       const group = "browser-smoke";
       const source = panel.createTab(undefined, group);
       panel.selectTab(source.id);
