@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from typing import Any
 
 DEFAULT_TIMEOUT = 30.0
@@ -22,6 +23,18 @@ def wait_limit(timeout: float) -> float:
     if timeout <= 0:
         raise ValueError("timeout must be more than 0 seconds.")
     return min(float(timeout), MAX_WAIT)
+
+
+def free_path(folder: Path, name: str) -> Path:
+    """`name` in `folder`, as "name (1).ext" and so on if taken -- the way
+    the browser names a download that would overwrite a file."""
+    path = folder / name
+    stem, suffix = Path(name).stem, Path(name).suffix
+    n = 1
+    while path.exists():
+        path = folder / f"{stem} ({n}){suffix}"
+        n += 1
+    return path
 
 
 def tab_line(tab: Any) -> str:

@@ -107,7 +107,10 @@ check clicks with real input (xdotool under Xvfb, or Windows itself).
   end at the first of several texts (`any_of`). The AI drags with real mouse input, or hands an
   HTML5 drag's data to its drop target (`browserAgentMoves.ts`), drops files onto a drop area, and
   copies and pastes through a clipboard of its own per conversation; the person's clipboard is
-  never read or written.
+  never read or written. A table or list is read as rows, found by a text it holds (tables carry
+  no refs), across pages by a Next button found again by its description on each page, or as it
+  loads more on scrolling; a page prints to PDF (`browserAgentData.ts`). The server writes both
+  files.
   Downloads belong to the conversation even if their tab
   closes. Only untouched blank download popups close automatically after a
   successful download; explicit completed-download cleanup retains user-touched, visible,

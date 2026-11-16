@@ -5,10 +5,10 @@ Owns the tools that reach the internet for the model: the browser tools and the 
 that drives the desktop app's built-in browser (`browser.py`; the tab tools, multi-page reads and
 what results say about pages in `_browser_pages.py`; forms, several actions in one step and
 waiting for one of several texts in `_browser_forms.py`; dragging and the AI's own clipboard in
-`_browser_moves.py`), `web_search` and `read_web_page`
-(`websearch.py`), `http_request` with secret substitution (`http_request.py`) and licensed image
-search and download (`images.py`, `_licensed_image_search.py`). Does not own the browser panel
-or its routes (`web/`), the proxy setting (`runtime/proxy.py`) or secret storage (`runtime/`).
+`_browser_moves.py`; a table or list to a CSV and the page to a PDF in `_browser_data.py`),
+`web_search` and `read_web_page` (`websearch.py`), `http_request` with secret substitution
+(`http_request.py`) and licensed image search and download (`images.py`,
+`_licensed_image_search.py`). Does not own the browser panel or its routes (`web/`), the proxy setting (`runtime/proxy.py`) or secret storage (`runtime/`).
 
 ## Public interface
 `build_browser_tools`, `build_websearch_tools`, `build_http_tools`, `build_image_tools`,
@@ -30,9 +30,9 @@ or its routes (`web/`), the proxy setting (`runtime/proxy.py`) or secret storage
   against `network_sites` (`tests/test_network_access.py`).
 
 ## Tests
-`tests/test_browser_tool.py`, `tests/test_websearch_tool.py`, `tests/test_http_request.py`,
-`tests/test_images_tool.py`, `tests/test_licensed_image_search.py`, `tests/test_proxy.py`,
-`tests/test_network_access.py`.
+`tests/test_browser_tool.py`, `tests/test_browser_data_tool.py`, `tests/test_websearch_tool.py`,
+`tests/test_http_request.py`, `tests/test_images_tool.py`, `tests/test_licensed_image_search.py`,
+`tests/test_proxy.py`, `tests/test_network_access.py`.
 
 ## Verify by hand
 The browser tools against a real page in the desktop app; a web search and an image download

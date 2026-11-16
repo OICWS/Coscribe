@@ -222,7 +222,9 @@ looked at the page. Navigate by URL. Where the page took long (a report, \
 an export), keep a browser_wait_for step and give it a timeout well above \
 what the conversation needed, for a slow day. A downloaded file's name \
 changes from run to run: read it from the download wait's result, \
-{{<its save_as>.file}}, never from the name the conversation saw. Give \
+{{<its save_as>.file}}, never from the name the conversation saw; the \
+same goes for a file browser_save_table or browser_save_pdf wrote, which \
+gets a new name when one is already there. Give \
 a workflow that downloads files an input for the folder to keep them in \
 (default: the folder the user named in the conversation, else \
 "downloads") and pass it to the download wait as save_to. A run's pages \
@@ -337,6 +339,9 @@ def _as_json(value: Any) -> str:
 
 _BARE_REF = re.compile(r"(?:f\d+)?e\d+")
 # A snapshot line: '- checkbox "All items" [ref=e322] [checked]'.
+# The browser arguments that name an element: what a step acts on, where a drag drops it, the
+# button that moves a table to its next page.
+_ELEMENT_ARGS = ("ref", "target", "next_page")
 _SNAPSHOT_LINE = re.compile(r'^\s*- ([a-z]+)( ".*")? \[ref=((?:f\d+)?e\d+)\]')
 # What an action reports it acted on: 'Clicked checkbox "All items".'
 _ACTED_ON = re.compile(r"^(?:Clicked|Typed into|Hovering over|Uploaded .+ to) (.+)\.$", re.M)
@@ -371,12 +376,17 @@ def describe_browser_refs(entries: list[dict[str, Any]]) -> list[dict[str, Any]]
         if entry["tool_name"] == "browser_snapshot":
             names.update(_element_names(result))
         args = entry.get("arguments")
-        ref = args.get("ref") if isinstance(args, dict) else None
-        if isinstance(args, dict) and isinstance(ref, str) and _BARE_REF.fullmatch(ref.strip()):
-            acted = _ACTED_ON.search(result)
-            name = names.get(ref.strip()) or (acted[1] if acted else None)
-            if name:
-                entry = {**entry, "arguments": {**args, "ref": name}}
+        if isinstance(args, dict):
+            described = dict(args)
+            for key in _ELEMENT_ARGS:
+                ref = args.get(key)
+                if not isinstance(ref, str) or not _BARE_REF.fullmatch(ref.strip()):
+                    continue
+                acted = _ACTED_ON.search(result) if key == "ref" else None
+                name = names.get(ref.strip()) or (acted[1] if acted else None)
+                if name:
+                    described[key] = name
+            entry = {**entry, "arguments": described}
         out.append(entry)
     return out
 
@@ -473,12 +483,13 @@ def check_draft(workflow: Workflow, tools: dict[str, Any]) -> list[str]:
         if step.tool in UNAVAILABLE_TOOLS or step.tool not in tools:
             problems.append(f"step {index}: there's no tool called {step.tool!r} to use")
             continue
-        ref = step.args.get("ref")
-        if step.tool.startswith("browser_") and isinstance(ref, str) and _BARE_REF.fullmatch(ref):
-            problems.append(
-                f"step {index}: ref {ref!r} only existed on the conversation's page; name the "
-                "element as the snapshot printed it, e.g. 'checkbox \"All items\"'"
-            )
+        for key in _ELEMENT_ARGS if step.tool.startswith("browser_") else ():
+            ref = step.args.get(key)
+            if isinstance(ref, str) and _BARE_REF.fullmatch(ref):
+                problems.append(
+                    f"step {index}: {key} {ref!r} only existed on the conversation's page; name "
+                    "the element as the snapshot printed it, e.g. 'checkbox \"All items\"'"
+                )
         params = {p["name"]: p for p in describe_params(tools[step.tool])}
         unknown = sorted(set(step.args) - set(params))
         if unknown:

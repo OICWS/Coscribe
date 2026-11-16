@@ -18,6 +18,7 @@ import { type BrowserWindow, type DownloadItem, type WebContents, app } from "el
 import { commandTab, pinCommand, runTabCommand, withTab, listTabs, popupDownloads, trackPopupDownload } from "./browserAgentTabs";
 import { type FormField, type PageStep, fillForm, runSteps, waitForAny } from "./browserAgentForms";
 import { runMove, dropOnto } from "./browserAgentMoves";
+import { runData } from "./browserAgentData";
 import { pageAgent } from "./browserAgentPage";
 import { locate, scrollArea, splitRef } from "./browserAgentLocate";
 import { type Step, browserOperation, handleBrowserControl, cancelFrameOff, enqueue, running, runningSteps, scheduleFrameOff, stepContext } from "./browserAgentSteps";
@@ -574,8 +575,8 @@ async function run(command: Command): Promise<Record<string, unknown>> {
       result = withTab(tab, { filled: await fillForm(pageActions, command, tab, wc, cdp, args.fields as FormField[], waitSeconds(args)) });
     } else if (command.action === "steps") {
       result = withTab(tab, await runSteps(pageActions, command, tab, wc, cdp, args.steps as PageStep[], waitSeconds(args)));
-    } else if (["drag", "copy", "paste"].includes(command.action)) {
-      result = withTab(tab, (await runMove(pageActions, command, wc, cdp, args, waitSeconds(args)))!);
+    } else if (["drag", "copy", "paste", "save_table", "save_pdf"].includes(command.action)) {
+      result = withTab(tab, (await (command.action.startsWith("save_") ? runData : runMove)(pageActions, command, wc, cdp, args, waitSeconds(args)))!);
     } else result = await act(command, tab, wc, cdp, args);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -603,7 +604,7 @@ async function run(command: Command): Promise<Record<string, unknown>> {
   return result;
 }
 
-const pageActions = { act, resolveTarget, settle, click, checkStop, describeDialog };
+const pageActions = { act, resolveTarget, settle, click, checkStop, describeDialog, snapshot: (cdp: TabCdp) => snapshotFrame(cdp, cdp.main, 0) };
 
 async function act(
   command: Command,

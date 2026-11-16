@@ -20,6 +20,7 @@ export interface PageActions {
   click(wc: WebContents, cdp: TabCdp, point: { x: number; y: number }, clickCount: number): Promise<void>;
   checkStop(): void;
   describeDialog(dialog: PageDialog): string;
+  snapshot(cdp: TabCdp): Promise<{ lines: string[] }>;
 }
 
 interface FieldState { kind: string; checked: boolean; value: string }
