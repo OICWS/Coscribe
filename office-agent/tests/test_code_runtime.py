@@ -55,6 +55,18 @@ def _requests(tmp_path: Path) -> list[dict[str, Any]]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
 
 
+async def _wait_for_request(tmp_path: Path, method: str, timeout: float = 20.0) -> None:
+    # A fixed sleep raced a slow Windows runner: the turn was cancelled before turn/start was sent,
+    # so there was nothing to interrupt.
+    log = tmp_path / "requests.jsonl"
+    deadline = asyncio.get_running_loop().time() + timeout
+    while asyncio.get_running_loop().time() < deadline:
+        if log.exists() and method in [r.get("method") for r in _requests(tmp_path)]:
+            return
+        await asyncio.sleep(0.05)
+    raise AssertionError(f"Codex was never sent {method}")
+
+
 def _thread(host: CodexHost, workdir: Path, **options: Any) -> CodexThread:
     # Short enough that a turn which never ends fails the test instead of
     # hanging it.
@@ -394,7 +406,7 @@ async def test_cancelling_a_turn_interrupts_it_in_codex(
     host: CodexHost, workdir: Path, tmp_path: Path
 ) -> None:
     run = asyncio.create_task(_thread(host, workdir).run_turn("hang", _Approvals(True)))
-    await asyncio.sleep(0.5)
+    await _wait_for_request(tmp_path, "turn/start")
     run.cancel()
     with pytest.raises(asyncio.CancelledError):
         await run
