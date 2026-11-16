@@ -42,6 +42,7 @@ from ..tools import (
 )
 from .agent import build_langgraph_agent
 from .agent import tool_name as _tool_name
+from .agent_stream import MODEL_STALL_SECONDS, RunRecord, no_record, stream_turn
 from .messages import (
     extract_text,
     render_transcript_lg,
@@ -98,9 +99,6 @@ _NOT_FOR_SUBAGENTS = frozenset(
 # list would fill the parent's, and a wake it set would resume the parent.
 _PARENT_ONLY_CATEGORIES = frozenset({"subagent_tasks", "selfwake", "tasks"})
 
-# A model call that hasn't sent a single chunk in this long is taken as
-# hung: a stuck connection otherwise holds the run open with no end.
-MODEL_STALL_SECONDS = 180.0
 
 
 def for_subagents(tool: Callable[..., Any] | BaseTool) -> bool:
@@ -138,6 +136,8 @@ class SubAgentHost:
     max_turns: int | None = None
     background_allowed: Callable[[], bool] = lambda: True
     model_stall_seconds: float = MODEL_STALL_SECONDS
+    # A record of how a run went, from what the run is (its kind, task and model).
+    record_run: Callable[[dict[str, Any]], RunRecord] = no_record
 
 
 def _record_progress(task: SubAgentTask, update: Any, seen: set[str]) -> bool:
@@ -167,55 +167,6 @@ def _record_progress(task: SubAgentTask, update: Any, seen: set[str]) -> bool:
                 task.last_tool = {"tool_name": last["name"], "arguments": last["args"]}
             changed = True
     return changed
-
-
-class ModelStalled(Exception):
-    pass
-
-
-async def stream_turn(
-    sub_agent: Any,
-    turn_input: Any,
-    child_config: dict[str, Any],
-    on_update: Callable[[Any], Awaitable[None]],
-    stall_seconds: float,
-    running_tools: set[str],
-) -> None:
-    """One astream pass, failing once a model call goes `stall_seconds`
-    without a token. Tool calls aren't timed: they run as long as the tool
-    allows, and a slow one isn't a hung one. `running_tools` holds the
-    calls still waiting on a result -- on a resume after approvals, the
-    pass starts by running them."""
-    stream = sub_agent.astream(
-        turn_input, config=child_config, stream_mode=["updates", "messages"]
-    ).__aiter__()
-    try:
-        while True:
-            try:
-                if running_tools:
-                    mode, chunk = await stream.__anext__()
-                else:
-                    mode, chunk = await asyncio.wait_for(stream.__anext__(), stall_seconds)
-            except StopAsyncIteration:
-                return
-            except TimeoutError:
-                raise ModelStalled(
-                    f"The model sent nothing for {stall_seconds:.0f} seconds, so the run "
-                    "was stopped. Its connection may be stuck, or the provider overloaded."
-                ) from None
-            if mode != "updates" or not isinstance(chunk, dict):
-                continue
-            for node_update in chunk.values():
-                if not isinstance(node_update, dict):
-                    continue
-                for message in node_update.get("messages", []) or []:
-                    if isinstance(message, AIMessage):
-                        running_tools.update(str(call.get("id")) for call in message.tool_calls)
-                    elif isinstance(message, ToolMessage):
-                        running_tools.discard(str(message.tool_call_id))
-            await on_update(chunk)
-    finally:
-        await stream.aclose()
 
 
 async def wrap_up(chat_model: Any, instructions: str, messages: list[Any]) -> str:
@@ -251,6 +202,7 @@ async def _drive(
             await save()
 
     running_tools: set[str] = set()
+    recorder = host.record_run({"kind": "subagent", "task_id": task.task_id, "model": task.model})
     try:
         while True:
             await stream_turn(
@@ -260,6 +212,7 @@ async def _drive(
                 on_update,
                 host.model_stall_seconds,
                 running_tools,
+                recorder,
             )
             state = await sub_agent.aget_state(child_config)
             if not state.next:
@@ -279,6 +232,7 @@ async def _drive(
                 raise RuntimeError("the sub-agent stopped partway with nothing to resume")
             turn_input = Command(resume=resume)
     except asyncio.CancelledError:
+        recorder.finish(stopped=True)
         task.status = "stopped"
         task.stopped_by = take_stop_requester(task.task_id)
         task.pending_approval = None
@@ -287,6 +241,8 @@ async def _drive(
         raise
     except Exception as exc:  # noqa: BLE001 -- a failed child is reported, not raised into the parent
         logger.warning("sub-agent %s failed", task.task_id, exc_info=True)
+        recorder.failed(exc)
+        recorder.finish(stopped=False)
         task.status = "failed"
         task.error = (str(exc) or type(exc).__name__)[:2000]
         task.pending_approval = None
@@ -294,6 +250,7 @@ async def _drive(
         await save()
         return
 
+    recorder.finish(stopped=False)
     state = await sub_agent.aget_state(child_config)
     messages = state.values.get("messages", []) if state.values else []
     reply = extract_text(getattr(messages[-1], "content", None)) if messages else ""

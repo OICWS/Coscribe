@@ -32,6 +32,9 @@ cheaper or more reliable outside the evaluation, whose 11 tasks all pass.
   does not repeat what the audit log holds.
 - Deleting a conversation does not remove its lines: they say a turn happened and which tools
   it used, not what it was about. If that is ever too much, the fix is to drop the id.
-- Sub-agents' own model calls and a workflow's agent steps are not counted yet; nothing in the
-  app reads the file yet; the first reader will be a script that ranks tools by failures.
+- A sub-agent's run and each pass of a workflow's agent step leave a line of their own
+  (`kind`: `subagent`, `workflow_agent`; a conversation's turn is `conversation`), with the
+  parent conversation's or the workflow run's id. Side calls (titles, suggestions, a sub-agent's
+  wrap-up) are not counted. Nothing in the app reads the file yet; the first reader will be a
+  script that ranks tools by failures.
 - An error text can name a file's path. It stays on the machine it came from.
