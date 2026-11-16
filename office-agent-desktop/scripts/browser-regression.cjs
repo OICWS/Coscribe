@@ -62,7 +62,14 @@ Module._load = function(name, ...rest) {
     BrowserWindow: { getAllWindows: () => [] },
     webContents: { getAllWebContents: () => contents },
     app: { getPath: () => scratch }, session: { fromPartition: () => session },
-    WebContentsView: class { constructor(options) { this.webContents = options.webContents ?? new Contents(); } setBorderRadius() {} },
+    // Like Electron, the view drops its webContents before "destroyed" reaches other listeners.
+    WebContentsView: class {
+      constructor(options) {
+        this.webContents = options.webContents ?? new Contents();
+        this.webContents.prependOnceListener('destroyed', () => { this.webContents = undefined; });
+      }
+      setBorderRadius() {}
+    },
   };
   if (name === './browserCdp') return cdpMock;
   if (name === './browserPermissions') return {

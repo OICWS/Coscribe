@@ -7,6 +7,8 @@ export interface SteerActions {
   withdraw: (id: string) => void;
   /** Interrupts the reply and sends the unread notes as the next message. */
   sendNow: () => void;
+  /** The message box already holds a draft, which taking a note back to edit would overwrite. */
+  composerHasDraft?: boolean;
 }
 
 /** A note as the composer hands it over: what the chat shows, what the model reads, and the

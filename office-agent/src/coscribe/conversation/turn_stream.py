@@ -246,6 +246,7 @@ def recorded_turn(run: _Turn) -> _Turn:
         recorder = session._turn_streamer.record = TurnRecorder(
             session.settings.state_dir,
             thread_id=session.thread_id,
+            kind="conversation",
             model=session._model_string,
             effort=session._effort,
             mode=mode,

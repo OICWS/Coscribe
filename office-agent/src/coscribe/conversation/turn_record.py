@@ -1,5 +1,6 @@
 """How each turn went, kept on this machine: one JSON line per turn with its model calls,
-tokens, tools and outcome (decision 0045). It holds none of the conversation's words: no
+tokens, tools and outcome (decision 0045). A conversation's turn, a sub-agent's run and a
+workflow agent step's run each leave one, told apart by `kind`. It holds none of the words: no
 message text, no tool arguments and no tool results, only the start of a tool's error text."""
 
 from __future__ import annotations
@@ -7,7 +8,7 @@ from __future__ import annotations
 import contextlib
 import json
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -70,6 +71,10 @@ class TurnRecorder:
                 {"tool": name, "text": str(redact_secrets(text[:_ERROR_CHARS]))}
             )
 
+    def count(self, mode: str, chunk: Any) -> None:
+        """Count one event of a run streamed with `stream_mode=["updates", "messages"]`."""
+        count_event(self, mode, chunk)
+
     def failed(self, error: BaseException) -> None:
         self._error = error
 
@@ -98,12 +103,18 @@ class TurnRecorder:
                 handle.write(json.dumps(line, ensure_ascii=False) + "\n")
 
 
+def run_recorder(state_dir: str | Path, thread_id: str) -> Callable[[dict[str, Any]], TurnRecorder]:
+    """What a sub-agent's run or a workflow agent step's pass is given to keep its line: the
+    runtime says what the run is, the conversation which conversation it belongs to."""
+    return lambda head: TurnRecorder(state_dir, thread_id=thread_id, **head)
+
+
 async def observed(stream: Any, recorder: TurnRecorder | None) -> AsyncIterator[Any]:
     """A run's events, unchanged, counted into `recorder` as they pass."""
     try:
         async for mode, chunk in stream:
             if recorder is not None:
-                _count(recorder, mode, chunk)
+                count_event(recorder, mode, chunk)
             yield mode, chunk
     except Exception as error:
         if recorder is not None:
@@ -111,7 +122,8 @@ async def observed(stream: Any, recorder: TurnRecorder | None) -> AsyncIterator[
         raise
 
 
-def _count(recorder: TurnRecorder, mode: str, chunk: Any) -> None:
+def count_event(recorder: TurnRecorder, mode: str, chunk: Any) -> None:
+    """Count one event of a run streamed with `stream_mode=["updates", "messages"]`."""
     if mode == "updates":
         # The model node's update is one finished response; pieces of it arrive as "messages".
         update = chunk.get("model") if isinstance(chunk, dict) else None
