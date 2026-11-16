@@ -101,7 +101,13 @@ check clicks with real input (xdotool under Xvfb, or Windows itself).
   busy ones and reports why; closing a popup prefers its source. Automation selection is separate from the visible tab; targeted
   commands run concurrently across tabs, serially within each. The panel reports per-tab
   activity and supports user takeover. Saved names, structured tab info and source-scoped
-  relative targets work in workflows; form batches reuse normal input events.
+  relative targets work in workflows; form batches reuse normal input events, fill dropdowns,
+  checkboxes, radio buttons and date fields too, and report any value the page changed. Several
+  actions on one page run as one step (`steps`), stopping at the first that fails, and a wait can
+  end at the first of several texts (`any_of`). The AI drags with real mouse input, or hands an
+  HTML5 drag's data to its drop target (`browserAgentMoves.ts`), drops files onto a drop area, and
+  copies and pastes through a clipboard of its own per conversation; the person's clipboard is
+  never read or written.
   Downloads belong to the conversation even if their tab
   closes. Only untouched blank download popups close automatically after a
   successful download; explicit completed-download cleanup retains user-touched, visible,

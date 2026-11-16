@@ -1,4 +1,4 @@
-# 0048: A sandboxed command can't read the Users folder of another drive
+# 0049: A sandboxed command can't read the Users folder of another drive
 
 Status: proposed (2026-11-15, issue #845). Narrows 0022, whose private folders were only the
 person's own on Windows' drive.

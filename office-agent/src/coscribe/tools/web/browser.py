@@ -28,21 +28,21 @@ from typing import Any
 from ...needs_permission import SITE_MARK, NeedsPermission
 from ...runtime import NetworkGuard, tool_metadata
 from .._workspace import WorkspaceScope
+from ._browser_forms import form_tools, wait_for_any
+from ._browser_moves import move_tools
 from ._browser_pages import (
     DEFAULT_TIMEOUT,
+    DEFAULT_WAIT,
     NAVIGATE_TIMEOUT,
     snapshot_tool,
     tab_tools,
+    wait_limit,
     with_tab,
 )
 
 # The desktop app may first ask the user whether the AI can use the site
 # (it gives up after three minutes), so every call waits that much longer.
 _PERMISSION_WAIT = 190.0
-# How long a step waits for its element, text or download by default, and
-# at most -- a saved workflow may wait out a slow export.
-_DEFAULT_WAIT = 30.0
-_MAX_WAIT = 3600.0
 _DOWNLOADS_FOLDER = "downloads"
 _EVALUATE_CHARS = 5_000
 
@@ -236,12 +236,6 @@ def page_screenshot(
 
 # The tools are grouped into builders under 100 lines; `build_browser_tools` puts them back in the
 # original order, which is the tool-list order the schema snapshot pins.
-def _wait_limit(timeout: float) -> float:
-    if timeout <= 0:
-        raise ValueError("timeout must be more than 0 seconds.")
-    return min(float(timeout), _MAX_WAIT)
-
-
 def _browser_call(
     thread_id: str,
     host: BrowserHost,
@@ -301,7 +295,7 @@ def _navigation_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable
         """
         return with_tab("Went back.", call("back", tab_id=tab_id))
 
-    def browser_hover(ref: str, timeout: float = _DEFAULT_WAIT, tab_id: int | str = 0) -> str:
+    def browser_hover(ref: str, timeout: float = DEFAULT_WAIT, tab_id: int | str = 0) -> str:
         """Move the mouse over an element in coscribe's browser, e.g. to open
         a menu that appears on hover.
 
@@ -312,7 +306,7 @@ def _navigation_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable
             timeout: how long a described element may take to appear, in
                 seconds (default 30, up to 3600)
         """
-        wait = _wait_limit(timeout)
+        wait = wait_limit(timeout)
         result = call("hover", wait + DEFAULT_TIMEOUT, ref=ref, timeout=wait, tab_id=tab_id)
         return with_tab(f"Hovering over {result.get('element') or ref}.", result)
 
@@ -348,7 +342,7 @@ def _navigation_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable
 
 def _input_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable[..., Any]]:
     def browser_click(
-        ref: str, double: bool = False, timeout: float = _DEFAULT_WAIT, tab_id: int | str = 0
+        ref: str, double: bool = False, timeout: float = DEFAULT_WAIT, tab_id: int | str = 0
     ) -> str:
         """Click an element by snapshot ref or description using normal mouse input.
 
@@ -359,7 +353,7 @@ def _input_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable[...,
             timeout: how long a described element may take to appear, in
                 seconds (default 30, up to 3600)
         """
-        wait = _wait_limit(timeout)
+        wait = wait_limit(timeout)
         result = call(
             "click", wait + DEFAULT_TIMEOUT, ref=ref, double=double, timeout=wait, tab_id=tab_id
         )
@@ -369,7 +363,7 @@ def _input_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable[...,
         ref: str,
         text: str,
         submit: bool = False,
-        timeout: float = _DEFAULT_WAIT,
+        timeout: float = DEFAULT_WAIT,
         tab_id: int | str = 0,
     ) -> str:
         """Type into a text field in coscribe's browser, replacing what's in
@@ -383,7 +377,7 @@ def _input_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable[...,
             timeout: how long a described element may take to appear, in
                 seconds (default 30, up to 3600)
         """
-        wait = _wait_limit(timeout)
+        wait = wait_limit(timeout)
         result = call(
             "type",
             wait + DEFAULT_TIMEOUT,
@@ -407,7 +401,7 @@ def _input_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable[...,
         return with_tab(f"Pressed {key}.", call("press_key", key=key, tab_id=tab_id))
 
     def browser_select_option(
-        ref: str, values: list[str], timeout: float = _DEFAULT_WAIT, tab_id: int | str = 0
+        ref: str, values: list[str], timeout: float = DEFAULT_WAIT, tab_id: int | str = 0
     ) -> str:
         """Choose option(s) in a dropdown (<select>) in coscribe's browser.
 
@@ -419,7 +413,7 @@ def _input_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable[...,
             timeout: how long a described element may take to appear, in
                 seconds (default 30, up to 3600)
         """
-        wait = _wait_limit(timeout)
+        wait = wait_limit(timeout)
         result = call(
             "select_option",
             wait + DEFAULT_TIMEOUT,
@@ -448,9 +442,10 @@ def _waiting_tools(
         element: str = "",
         download: bool = False,
         seconds: float = 0,
-        timeout: float = _DEFAULT_WAIT,
+        timeout: float = DEFAULT_WAIT,
         save_to: str = "",
         tab_id: int | str = 0,
+        any_of: list[str] | None = None,
     ) -> str | dict[str, Any]:
         """Wait in coscribe's browser for one thing: text to appear, text to
         go away (e.g. "Loading…"), an element to appear, or a download to
@@ -470,7 +465,13 @@ def _waiting_tools(
             timeout: give up after this many seconds (default 30, up to 3600)
             save_to: with download, a folder to move the file into (the
                 workspace's downloads/ otherwise); one you can write to
+            any_of: wait until any of these texts appears (e.g. a success and an
+                error message); the result's "found" says which one
         """
+        if any_of is not None:
+            return wait_for_any(
+                call, any_of, [text, gone, element, download, save_to], timeout, tab_id
+            )
         if save_to and not download:
             raise ValueError("save_to goes with download=True.")
         folder = None
@@ -485,7 +486,7 @@ def _waiting_tools(
             chosen.append("download")
         if len(chosen) > 1:
             raise ValueError(f"Wait for one thing at a time, not {' and '.join(chosen)}.")
-        limit = _wait_limit(max(timeout, seconds))
+        limit = wait_limit(max(timeout, seconds))
         if not chosen:
             if seconds <= 0:
                 raise ValueError("Pass text, gone, element or download=True -- or seconds.")
@@ -548,7 +549,9 @@ def _page_tools(
         answer = "Accepted" if result.get("accepted", accept) else "Dismissed"
         return with_tab(f'{answer} the {kind}: "{result.get("message") or ""}".', result)
 
-    def browser_file_upload(paths: list[str], ref: str = "", tab_id: int | str = 0) -> str:
+    def browser_file_upload(
+        paths: list[str], ref: str = "", tab_id: int | str = 0, drop: bool = False
+    ) -> str:
         """Upload files from the user's folders to the page in coscribe's
         browser, as if the user had picked them. Pass the ref of the upload
         button or file field; leave ref empty to answer a file chooser a
@@ -559,7 +562,11 @@ def _page_tools(
             paths: the files, relative to the workspace or absolute under a
                 folder you can read
             ref: the upload button or file field from browser_snapshot
+            drop: drag the files onto ref instead, for an area that says
+                "drop files here" and has no button
         """
+        if drop and not ref:
+            raise ValueError("Pass the ref of the area to drop the files on.")
         if not paths:
             raise ValueError("Pass at least one file in paths.")
         if scope is None:
@@ -570,7 +577,7 @@ def _page_tools(
             if not resolved.is_file():
                 raise ValueError(f"No such file: {path}")
             files.append(str(resolved))
-        result = call("upload", ref=ref or None, paths=files, tab_id=tab_id)
+        result = call("upload", ref=ref or None, paths=files, tab_id=tab_id, drop=drop)
         names = ", ".join(scope.relative(Path(f)) for f in files)
         return with_tab(f"Uploaded {names} to {result.get('element') or 'the page'}.", result)
 
@@ -604,34 +611,6 @@ def _page_tools(
     }
 
 
-def _form_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable[..., Any]]:
-    def browser_fill_form(
-        fields: list[dict[str, str]], tab_id: int | str = 0, timeout: float = _DEFAULT_WAIT
-    ) -> str:
-        """Fill explicitly named fields in order using normal focus and keyboard input.
-
-        Args:
-            fields: objects with ref (snapshot ref or field description) and text
-            timeout: seconds to wait for each field
-            tab_id: runtime tab id or saved name; 0 uses the selected automation page
-        """
-        if not fields or any(set(field) != {"ref", "text"} for field in fields):
-            raise ValueError("Provide fields with ref and text.")
-        wait = _wait_limit(timeout)
-        return with_tab(
-            "Filled the form.",
-            call(
-                "fill_form",
-                wait * len(fields) + DEFAULT_TIMEOUT,
-                fields=fields,
-                tab_id=tab_id,
-                timeout=wait,
-            ),
-        )
-
-    return {"browser_fill_form": browser_fill_form}
-
-
 def build_browser_tools(
     thread_id: str,
     host: BrowserHost = BROWSER_HOST,
@@ -651,7 +630,8 @@ def build_browser_tools(
 
     call = _browser_call(thread_id, host, scope, saved_workflow, allowed_sites, network)
     fns = {
-        **_form_tools(call),
+        **form_tools(call),
+        **move_tools(call),
         **tab_tools(call),
         **snapshot_tool(call),
         **_navigation_tools(call),
@@ -667,11 +647,15 @@ def build_browser_tools(
         fns["browser_scroll"],
         fns["browser_wait_for"],
         fns["browser_tabs"],
+        fns["browser_copy"],
     ]
     act = [
         fns["browser_click"],
         fns["browser_type"],
         fns["browser_fill_form"],
+        fns["browser_steps"],
+        fns["browser_drag"],
+        fns["browser_paste"],
         fns["browser_press_key"],
         fns["browser_select_option"],
         fns["browser_handle_dialog"],

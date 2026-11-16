@@ -13,7 +13,7 @@ test("a proposed plan can be opened, revised and rejected", async ({ page }) => 
   await send("/plan");
   await send('plan it [[stub-tool exit_plan_mode {"plan":"# Memo plan\\n\\n1. Read the notes"}]]');
   await expect(page.getByText("Claude proposed a plan")).toBeVisible();
-  for (const name of ["Reject", "Revise…", "Accept", "Accept and auto mode", "Open plan"]) {
+  for (const name of ["Reject", "Revise…", "Accept", "Accept and use auto mode", "Open plan"]) {
     await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
   }
 

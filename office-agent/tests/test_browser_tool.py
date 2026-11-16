@@ -543,3 +543,93 @@ def test_snapshot_reads_several_pages_at_once() -> None:
     assert pages[2] == "Tab broken: couldn't read it: The page stopped responding."
     with pytest.raises(ValueError):
         _tools(host)["browser_snapshot"](start=10, tab_ids=[1])
+
+
+def test_fill_form_names_the_fields_the_page_changed() -> None:
+    host = _FakeHost(
+        {
+            "fill_form": {
+                "filled": [
+                    {"element": 'textbox "Name"', "value": "Ada", "changed": False},
+                    {"element": 'textbox "Date"', "value": "16.11.2026", "changed": True},
+                ],
+                "tab": {"id": 1, "title": "Form", "url": "u"},
+            }
+        }
+    )
+    fields = [{"ref": "Name", "text": "Ada"}, {"ref": "Date", "text": "2026-11-16"}]
+    lines = _tools(host)["browser_fill_form"](fields).splitlines()
+    assert lines[0] == "Filled 2 fields."
+    assert lines[1].startswith('textbox "Date" now holds "16.11.2026"')
+    assert 'textbox "Name"' not in "\n".join(lines)
+
+
+def test_steps_are_checked_before_the_page_is_touched() -> None:
+    host = _FakeHost({"steps": {"done": ["fill 2 fields", "click Save"]}})
+    steps = [
+        {"fill": [{"ref": "a", "text": "1"}, {"ref": "b", "text": "2"}]},
+        {"click": 'button "Save"'},
+        {"wait_for": "Saved"},
+    ]
+    assert _tools(host)["browser_steps"](steps).startswith("Did 2 steps.")
+    assert host.calls[0][0] == "steps" and host.calls[0][1]["steps"] == steps
+    for bad in ([], [{"click": "a", "type": "b"}], [{"click": "a", "text": "x"}], [{"fill": []}]):
+        with pytest.raises(ValueError):
+            _tools(host)["browser_steps"](bad)
+    assert len(host.calls) == 1
+
+
+def test_waiting_for_any_of_several_texts_says_which_appeared() -> None:
+    host = _FakeHost({"wait_for": {"found_text": "Error", "tab": {"id": 1, "url": "u"}}})
+    result = _tools(host)["browser_wait_for"](any_of=["Saved", "Error"], timeout=5)
+    assert result["found"] == "Error"
+    assert host.calls[0][1]["any_of"] == ["Saved", "Error"]
+    with pytest.raises(ValueError):
+        _tools(host)["browser_wait_for"](text="Saved", any_of=["Error"])
+    with pytest.raises(ValueError):
+        _tools(host)["browser_wait_for"](any_of=[])
+
+
+def test_drag_takes_a_target_or_a_distance() -> None:
+    host = _FakeHost({"drag": {"element": 'button "Card"', "onto": 'region "Done"'}})
+    assert _tools(host)["browser_drag"]("Card", target="Done").startswith(
+        'Dragged button "Card" onto region "Done".'
+    )
+    assert host.calls[0][1]["target"] == "Done"
+    for kwargs in ({}, {"target": "Done", "by_x": 5}):
+        with pytest.raises(ValueError):
+            _tools(host)["browser_drag"]("Card", **kwargs)
+    assert len(host.calls) == 1
+
+
+def test_copy_and_paste_use_the_ai_clipboard() -> None:
+    host = _FakeHost(
+        {
+            "copy": {"chars": 300, "preview": "x" * 200},
+            "paste": {"element": 'textbox "Notes"', "formatted": True},
+        }
+    )
+    tools = _tools(host)
+    assert tools["browser_copy"]("e3").startswith(f'Copied 300 characters: "{"x" * 200}…"')
+    assert tools["browser_paste"]("Notes").startswith(
+        'Pasted into textbox "Notes" with its formatting.'
+    )
+    assert host.calls[1][1]["plain"] is False
+    risks = {name: get_tool_metadata(tools[name]).risk_category for name in tools}
+    assert (risks["browser_copy"], risks["browser_paste"], risks["browser_drag"]) == (
+        "READ",
+        "EXTERNAL",
+        "EXTERNAL",
+    )
+
+
+def test_dropping_files_needs_the_area(tmp_path: Path) -> None:
+    from coscribe.tools._workspace import WorkspaceScope
+
+    (tmp_path / "a.pdf").write_text("x")
+    host = _FakeHost({"upload": {"element": 'button "Drop here"'}})
+    tools = {t.__name__: t for t in build_browser_tools("t1", host, scope=WorkspaceScope(tmp_path))}
+    with pytest.raises(ValueError):
+        tools["browser_file_upload"](["a.pdf"], drop=True)
+    tools["browser_file_upload"](["a.pdf"], ref="Drop here", drop=True)
+    assert host.calls[0][1]["drop"] is True

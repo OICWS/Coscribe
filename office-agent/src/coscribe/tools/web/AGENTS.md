@@ -3,7 +3,9 @@
 ## Purpose
 Owns the tools that reach the internet for the model: the browser tools and the `BrowserHost`
 that drives the desktop app's built-in browser (`browser.py`; the tab tools, multi-page reads and
-what results say about pages in `_browser_pages.py`), `web_search` and `read_web_page`
+what results say about pages in `_browser_pages.py`; forms, several actions in one step and
+waiting for one of several texts in `_browser_forms.py`; dragging and the AI's own clipboard in
+`_browser_moves.py`), `web_search` and `read_web_page`
 (`websearch.py`), `http_request` with secret substitution (`http_request.py`) and licensed image
 search and download (`images.py`, `_licensed_image_search.py`). Does not own the browser panel
 or its routes (`web/`), the proxy setting (`runtime/proxy.py`) or secret storage (`runtime/`).

@@ -57,8 +57,12 @@ describe("planPanelData", () => {
       { id: id(), kind: "plan", plan: "first", status: "revise" },
       { id: id(), kind: "plan", plan: "second", status: "pending" },
     ];
-    expect(planPanelData([create("1", "A"), ...plans])).toEqual({ tasks: [{ id: "1", content: "A", status: "pending" }], plan: "second" });
-    expect(planPanelData([agent()])).toEqual({ tasks: [], plan: null });
+    expect(planPanelData([create("1", "A"), ...plans])).toEqual({
+      tasks: [{ id: "1", content: "A", status: "pending" }],
+      plan: "second",
+      pendingPlanId: plans[1].id,
+    });
+    expect(planPanelData([agent()])).toEqual({ tasks: [], plan: null, pendingPlanId: null });
   });
 });
 
@@ -190,5 +194,38 @@ describe("background tasks on the card", () => {
       create("2", "B"),
     ];
     expect(card(items).bound).toEqual({ "1": ["agent-1"] });
+  });
+});
+
+describe("an approved plan whose list the person edited", () => {
+  const plan = (tasks?: { id: string; content: string; status: "pending" | "completed" }[]): Of<"plan"> => ({
+    id: id(),
+    kind: "plan",
+    plan: "# Plan",
+    status: tasks ? "auto" : "pending",
+    ...(tasks && { tasks }),
+  });
+
+  it("replaces the list, and later calls apply to the new one", () => {
+    const edited = [
+      { id: "2", content: "Write it short", status: "pending" as const },
+      { id: "3", content: "Send", status: "pending" as const },
+    ];
+    const items = [create("1", "Read"), create("2", "Write"), plan(edited), update("3", "Send", "completed")];
+    expect(taskListOf(items)).toEqual([edited[0], { ...edited[1], status: "completed" }]);
+  });
+
+  it("puts the card under the plan when that was the last change", () => {
+    const approved = plan([{ id: "1", content: "Read", status: "pending" }]);
+    const items = [create("1", "Read"), create("2", "Write"), approved];
+    const entries = fold(items);
+    const at = entries.findIndex((entry) => entry.id === approved.id);
+    expect(entries[at + 1]).toMatchObject({ kind: "task_card", tasks: [{ id: "1", content: "Read" }] });
+  });
+
+  it("names the plan that waits for an answer", () => {
+    const waiting = plan();
+    expect(planPanelData([create("1", "Read"), waiting]).pendingPlanId).toBe(waiting.id);
+    expect(planPanelData([create("1", "Read"), plan([])]).pendingPlanId).toBeNull();
   });
 });

@@ -45,6 +45,16 @@ describe("plain words for a step", () => {
       "Opens example.com in a new tab",
     );
     expect(plainDetail(tool("browser_snapshot", { tab_ids: [1, 2, 3] }), inputs)).toBe("Reads 3 pages at once");
+    expect(plainDetail(tool("browser_fill_form", { fields: [{}, {}] }), inputs)).toBe("Fills in 2 fields");
+    expect(plainDetail(tool("browser_steps", { steps: [{}] }), inputs)).toBe("Does 1 thing on the page");
+    expect(plainDetail(tool("browser_drag", { ref: 'button "Card"', target: 'region "Done"' }), inputs)).toBe(
+      "Drags “Card” onto “Done”",
+    );
+    expect(plainDetail(tool("browser_copy", {}), inputs)).toBe("Copies the selected text");
+    expect(plainDetail(tool("browser_paste", { ref: 'textbox "Notes"' }), inputs)).toBe("Pastes into “Notes”");
+    expect(plainDetail(tool("browser_wait_for", { any_of: ["Saved", "Error"] }), inputs)).toBe(
+      "Waits for the page to show “Saved” or “Error”",
+    );
   });
 
   it("says what a file step touches, and falls back to the tool's label", () => {

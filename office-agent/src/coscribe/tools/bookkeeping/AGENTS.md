@@ -37,7 +37,8 @@ Also exported: `FINISHED_STATUSES`, `ConversationSource`, `ConversationTranscrip
 ## Invariants
 - A store is a file under the state directory written through `_file_locks`; an id that comes
   from a URL must never name a path outside its store. A scheduled task's stores name their files
-  through `_trigger_files.trigger_file`, which takes letters, digits, `_` and `-` only.
+  through `_trigger_files.trigger_file`, which takes letters, digits, `_` and `-` only, and
+  `file_in` then refuses a resolved path outside the folder (the check code scanning follows).
 - `scheduled_tasks` validates a workflow against `coscribe.workflow_spec`, a package below `tools`,
   so nothing in `tools` imports `workflows`; a fixed workflow run never reaches an agent.
 - Tool schemas are fixed and snapshotted (`tests/tool_schemas.txt`).

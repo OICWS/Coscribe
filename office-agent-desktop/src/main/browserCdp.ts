@@ -84,6 +84,8 @@ export interface Download {
 export class TabCdp {
   dialog: PageDialog | null = null;
   chooser: FileChooser | null = null;
+  /** What a page started dragging while drags were intercepted (browserAgentDrag.ts). */
+  dragData: unknown = null;
   /** Where the conversation driving this tab wants its downloads. */
   downloadDir = "";
   /** The conversation (or workflow run) whose steps last drove this tab. */
@@ -220,6 +222,8 @@ export class TabCdp {
         session,
         multiple: params.mode === "selectMultiple",
       };
+    } else if (method === "Input.dragIntercepted") {
+      this.dragData = params.data;
     } else if (method === "Network.requestWillBeSent" && !session) {
       if (!LONG_LIVED.has(String(params.type))) this.requests.set(String(params.requestId), Date.now());
     } else if ((method === "Network.loadingFinished" || method === "Network.loadingFailed") && !session) {
