@@ -146,7 +146,11 @@ function Evidence({ result }: { result: WorkflowTestResult }) {
 
 function stepMark(status: string | undefined) {
   if (status === "running") return <span aria-label="Running" className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-500 motion-reduce:animate-none" />;
-  if (status === "not_taken" || status === "skipped") return <span aria-label={status === "not_taken" ? "Not selected" : "Skipped"} className="text-[var(--muted)]">−</span>;
+  if (status === "not_taken" || status === "skipped") return (
+    <svg aria-label={status === "not_taken" ? "Not selected" : "Skipped"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" className="h-3.5 w-3.5 shrink-0 text-[var(--muted)]">
+      <circle cx="12" cy="12" r="9" /><path d="M8 12h8" />
+    </svg>
+  );
   if (status === "done") return <CheckCircleIcon className="h-3.5 w-3.5 shrink-0 text-[var(--success)]" />;
   if (status === "failed") return <XCircleIcon className="h-3.5 w-3.5 shrink-0 text-[var(--danger)]" />;
   if (status === "waiting") return <AlertCircleIcon className="h-3.5 w-3.5 shrink-0 text-[var(--warning)]" />;

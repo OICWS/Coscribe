@@ -93,9 +93,9 @@ export function ContextRing({ threadId, totalTokens, contextWindow, cacheStats }
       </button>
       {open && createPortal(
         <div ref={panelRef} data-native-overlay role="dialog" aria-label="Context usage" style={position} className="fixed z-[1000] max-h-[calc(100dvh-16px)] w-80 max-w-[calc(100vw-16px)] overflow-y-auto rounded-[10px] border border-[var(--border)] bg-[var(--panel-bg)] p-3 text-sm shadow-[var(--shadow)]">
-          <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-            <span className="shrink-0 text-xs text-[var(--muted)]">Context window</span>
-            <span className="ml-auto max-w-full text-right text-xs tabular-nums [overflow-wrap:anywhere]">
+          <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
+            <span className="shrink-0 text-[var(--muted)]">Context window</span>
+            <span className="ml-auto max-w-full text-right tabular-nums [overflow-wrap:anywhere]">
               {formatTokenCount(totalTokens)} / <span className="inline-block whitespace-nowrap">{formatTokenCount(contextWindow)} ({percent.toFixed(0)}%)</span>
             </span>
           </div>
@@ -103,9 +103,9 @@ export function ContextRing({ threadId, totalTokens, contextWindow, cacheStats }
             <div className="h-full bg-[var(--accent)]" style={{ width: `${percent}%` }} />
           </div>
           {cacheStats && (
-            <div className="mt-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-t border-[var(--border)] pt-1.5">
-              <span className="shrink-0 text-xs text-[var(--muted)]" title="Last call">Cache hit</span>
-              <span className="ml-auto max-w-full text-right text-xs tabular-nums [overflow-wrap:anywhere]">
+            <div className="mt-1.5 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 border-t border-[var(--border)] pt-1.5">
+              <span className="shrink-0 text-[var(--muted)]" title="Last call">Cache hit</span>
+              <span className="ml-auto max-w-full text-right tabular-nums [overflow-wrap:anywhere]">
                 {formatTokenCount(cacheStats.cacheReadTokens)} / <span className="inline-block whitespace-nowrap">{formatTokenCount(cacheStats.inputTokens)} ({(cacheStats.hitRate * 100).toFixed(0)}%)</span>
               </span>
             </div>
