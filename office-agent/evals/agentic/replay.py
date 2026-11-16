@@ -20,6 +20,7 @@ ends with answers left) fails with a message saying to record it again.
 
 from __future__ import annotations
 
+import base64
 import contextlib
 import contextvars
 import json
@@ -69,6 +70,9 @@ class Tape:
     # What each Python or Node script printed and how it ended, in the order they ran.
     scripts: list[dict[str, Any]] = field(default_factory=list)
     used: set[int] = field(default_factory=set)
+    # Answers the run asked for and the tape could not give. A sub-agent or a reviewer turns the
+    # error into text of its own, so only this count says the replay went off the tape.
+    missed: int = 0
     scripts_used: int = 0
 
     def add(self, kind: str, message: Any) -> None:
@@ -99,13 +103,14 @@ class Tape:
                     usage_metadata=entry.get("usage"),
                     response_metadata={"model_provider": self.provider},
                 )
+        self.missed += 1
         raise TapeMismatch(
             f"{self.task}: the run asked for one more {kind} answer than the tape holds. "
             "coscribe now does something else with the same answers; if that is intended, "
             "record the tape again (see evals/agentic/replay.py)."
         )
 
-    def add_script(self, ran: Any) -> None:
+    def add_script(self, ran: Any, files: dict[str, str]) -> None:
         self.scripts.append(
             {
                 "returncode": ran.returncode,
@@ -114,13 +119,16 @@ class Tape:
                 "timed_out": ran.timed_out,
                 # A script let go to the background ends outside the turn: no replay can hold it.
                 "detached": ran.detached is not None,
+                # What it wrote in the workspace, which a later step may read (base64).
+                "files": files,
             }
         )
 
-    def next_script(self) -> Any:
+    def next_script(self, cwd: Path) -> Any:
         from coscribe.tools.exec.running import Ran
 
         if self.scripts_used >= len(self.scripts):
+            self.missed += 1
             raise TapeMismatch(
                 f"{self.task}: the run started one more script than the tape holds. Record the "
                 "tape again (see evals/agentic/replay.py)."
@@ -128,7 +136,12 @@ class Tape:
         recorded = self.scripts[self.scripts_used]
         self.scripts_used += 1
         if recorded["detached"]:
+            self.missed += 1
             raise TapeMismatch(f"{self.task}: a script went to the background; record again.")
+        for name, data in recorded.get("files", {}).items():
+            target = cwd / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(base64.b64decode(data))
         return Ran(
             recorded["returncode"], recorded["stdout"], recorded["stderr"], recorded["timed_out"]
         )
@@ -174,16 +187,68 @@ class Tape:
 _CURRENT: contextvars.ContextVar[Tape | None] = contextvars.ContextVar("eval_tape", default=None)
 
 
+# The tapes of the tasks running now. A call made in a fresh context (review_work runs its
+# reviewer in one, so that its tokens do not stream into the chat) cannot see its task's tape.
+_ACTIVE: list[Tape] = []
+
+
 def use(tape: Tape) -> None:
     """Make `tape` the one the task running in this context records to or answers from."""
     _CURRENT.set(tape)
+    _ACTIVE.append(tape)
+
+
+def release(tape: Tape) -> None:
+    """The task of `tape` has ended."""
+    if tape in _ACTIVE:
+        _ACTIVE.remove(tape)
+
+
+def _current() -> Tape | None:
+    tape = _CURRENT.get()
+    if tape is not None or not _ACTIVE:
+        return tape
+    if len(_ACTIVE) > 1:
+        raise RuntimeError(
+            "a model call outside its task's context while several tasks run: record with --jobs 1"
+        )
+    return _ACTIVE[0]
 
 
 def _tape() -> Tape:
-    tape = _CURRENT.get()
+    tape = _current()
     if tape is None:
+        for running in _ACTIVE:
+            running.missed += 1
         raise RuntimeError("no tape is set for this task (replay.use)")
     return tape
+
+
+_FILES_KEPT = 5_000_000
+
+
+def _workspace_files(root: Path) -> dict[str, tuple[int, int]]:
+    return {
+        path.relative_to(root).as_posix(): (path.stat().st_mtime_ns, path.stat().st_size)
+        for path in root.rglob("*")
+        if path.is_file()
+    }
+
+
+def _written(root: Path, before: dict[str, tuple[int, int]]) -> dict[str, str]:
+    """The files under `root` a script created or changed, as base64."""
+    changed = {
+        name: base64.b64encode((root / name).read_bytes()).decode("ascii")
+        for name, stamp in _workspace_files(root).items()
+        if before.get(name) != stamp
+    }
+    if sum(len(data) for data in changed.values()) > _FILES_KEPT:
+        raise RuntimeError("a script wrote more than a tape keeps; this task cannot be taped")
+    return changed
+
+
+def _cwd(args: tuple[Any, ...], kwargs: dict[str, Any]) -> Path:
+    return Path(args[1] if len(args) > 1 else kwargs["cwd"])
 
 
 class _Record(BaseCallbackHandler):
@@ -198,7 +263,7 @@ class _Record(BaseCallbackHandler):
 
     def on_llm_end(self, response: Any, *, run_id: Any, **kwargs: Any) -> None:
         kind = self._kinds.pop(run_id, None)
-        tape = _CURRENT.get()
+        tape = _current()
         if kind is None or tape is None:
             return
         for generations in response.generations:
@@ -247,7 +312,7 @@ class TapeModel(BaseChatModel):
         )
 
     def _get_ls_params(self, stop: list[str] | None = None, **kwargs: Any) -> Any:
-        tape = _CURRENT.get()
+        tape = _current()
         return {**super()._get_ls_params(stop, **kwargs), "ls_provider": tape and tape.provider}
 
     @property
@@ -310,10 +375,12 @@ def recorded_models() -> Iterator[None]:
 
     def run(original: Any) -> Any:
         def run_to_end(*args: Any, **kwargs: Any) -> Any:
+            cwd = _cwd(args, kwargs)
+            before = _workspace_files(cwd)
             ran = original(*args, **kwargs)
-            tape = _CURRENT.get()
+            tape = _current()
             if tape is not None:
-                tape.add_script(ran)
+                tape.add_script(ran, _written(cwd, before))
             return ran
 
         return run_to_end
@@ -331,7 +398,7 @@ def taped_models() -> Iterator[None]:
         return lambda name, custom_providers=None: TapeModel()
 
     def run(original: Any) -> Any:
-        return lambda *args, **kwargs: _tape().next_script()
+        return lambda *args, **kwargs: _tape().next_script(_cwd(args, kwargs))
 
     with _models(build), _scripts(run, prepared=False):
         yield

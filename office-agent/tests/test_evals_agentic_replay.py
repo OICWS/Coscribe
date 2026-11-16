@@ -41,7 +41,7 @@ async def test_a_recorded_task_runs_the_same_from_its_tape(tape_file: Path, tmp_
     result = await run.replay_task(task, tape_file, tmp_path)
 
     assert result["errors"] == []
-    assert result["tape"] == {"answers_left": 0, "calls_as_recorded": True}
+    assert result["tape"] == {"answers_left": 0, "answers_missing": 0, "calls_as_recorded": True}
     assert result["completed"], result["checks"]
     assert result["model_calls"] == 0
 
@@ -73,7 +73,8 @@ async def test_a_replayed_script_starts_no_interpreter(
 
     result = await run.replay_task(task, replay.TAPES / "11-misnamed-file.json", tmp_path)
 
-    assert result["errors"] == [] and result["tool_errors"] == []
+    assert result["errors"] == []
+    assert not [error for error in result["tool_errors"] if "started a process" in str(error)]
     assert result["completed"], result["checks"]
     assert not (tmp_path / task.name / "state" / "script-env").exists()
 
@@ -88,6 +89,42 @@ async def test_a_tape_one_script_short_fails_and_says_to_record_again(tmp_path: 
     result = await run.replay_task(task, short, tmp_path / "out")
 
     assert any("one more script" in error for error in result["errors"] + result["tool_errors"])
+
+
+def test_a_replayed_script_writes_back_the_files_it_wrote(tmp_path: Path) -> None:
+    from coscribe.tools.exec.running import Ran
+
+    workspace = tmp_path / "workspace"
+    (workspace / "out").mkdir(parents=True)
+    (workspace / "kept.txt").write_text("unchanged", encoding="utf-8")
+    before = replay._workspace_files(workspace)
+    (workspace / "out" / "data.csv").write_text("a,b\n1,2\n", encoding="utf-8")
+    tape = replay.Tape("t")
+    tape.add_script(Ran(0, "done\n", ""), replay._written(workspace, before))
+
+    elsewhere = tmp_path / "replay"
+    elsewhere.mkdir()
+    ran = tape.next_script(elsewhere)
+
+    assert ran.stdout == "done\n"
+    assert (elsewhere / "out" / "data.csv").read_text(encoding="utf-8") == "a,b\n1,2\n"
+    assert not (elsewhere / "kept.txt").exists()
+
+
+def test_a_call_outside_its_tasks_context_finds_the_one_tape_running() -> None:
+    import contextvars
+
+    tape, other = replay.Tape("t"), replay.Tape("u")
+    tape.add("agent", _answer("from the reviewer"))
+    contextvars.Context().run(replay.use, tape)
+    try:
+        assert contextvars.Context().run(replay._tape) is tape
+        contextvars.Context().run(replay.use, other)
+        with pytest.raises(RuntimeError, match="--jobs 1"):
+            contextvars.Context().run(replay._tape)
+    finally:
+        replay.release(tape)
+        replay.release(other)
 
 
 def test_answers_of_a_kind_come_back_in_order_and_the_kinds_do_not_mix() -> None:

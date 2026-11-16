@@ -323,10 +323,11 @@ description changed; that takes the real run. When a change is meant to alter th
 turn, the replay fails with "record the tape again": run `--record` for that task and commit the
 new tape with the change.
 
-Record a tape with the settings the shipped app has (no `COSCRIBE_DEFAULT_PERMISSION_MODE`). A
-replay needs no Python environment, Node or network for a script, but a script's files are not
-written on replay: a task whose later turns read what a script wrote needs that file written by a
-tool instead. Only the two script tools are on the tape: a task that uses `run_background_script`
+Record a tape with the settings the shipped app has (no `COSCRIBE_DEFAULT_PERMISSION_MODE`) and
+with `--jobs 1`: a sub-agent and the reviewer of `review_work` run in a fresh context, and their
+answers reach the tape only while one task runs. A replay needs no Python environment, Node or
+network for a script; the files a script wrote in the workspace are on the tape and written back
+in its place. Only the two script tools are on the tape: a task that uses `run_background_script`
 or `run_background_command` cannot be replayed, and one whose script reached its time limit and
 went to the background fails with "record again". Before committing a
 tape, replay it on Python 3.11 as well as on the version that recorded it: anything in a run that
