@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from asyncio import Future, get_running_loop
+from asyncio import Future, get_running_loop, to_thread
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Protocol
@@ -59,7 +59,7 @@ _MEMORY_HERE = "Save for this folder"
 _MEMORY_SAVE = "Save everywhere"
 
 # The line before the approved task list in exit_plan_mode's result; the frontend finds the list
-# after it, live and in a replayed history (frontend/src/state/reducer.ts, planTasksOf).
+# after it, live and in a replayed history.
 PLAN_TASKS_MARKER = "Task list as approved:"
 
 _REPLIED_INSTEAD = (
@@ -75,19 +75,36 @@ def question_answer(data: dict[str, Any]) -> str | list[str | None] | dict[str, 
     whose task list the person edited."""
     if data.get("dismissed"):
         return None
-    if isinstance(data.get("tasks"), list):
+    if isinstance(data.get("answer"), str) and isinstance(data.get("tasks"), list):
+        # Blank steps are dropped here, so Revise describes the list approving would keep.
         tasks = [
-            {"content": str(t.get("content", ""))} | ({"id": str(t["id"])} if "id" in t else {})
+            {"content": content} | ({"id": str(t["id"])} if "id" in t else {})
             for t in data["tasks"]
-            if isinstance(t, dict)
+            if isinstance(t, dict) and (content := str(t.get("content", "")).strip())
         ]
-        return {"answer": str(data.get("answer", "")), "tasks": tasks}
+        return {"answer": data["answer"], "tasks": tasks}
     if isinstance(data.get("reply"), str):
         return {"reply": data["reply"]}
     answers = data.get("answers")
     if isinstance(answers, list):
         return [None if a is None else str(a) for a in answers]
     return str(data.get("answer", ""))
+
+
+def _unattended_answer(name: str, is_draft: bool, *, plan_mode: bool) -> str:
+    if is_draft:
+        return (
+            "No one is available to review this draft -- this is an unattended run, "
+            "so no task was created."
+        )
+    if name == "exit_plan_mode" and not plan_mode:
+        # The instructions ask for a review before a large task, and a scheduled run must
+        # still do its work when no one can give one.
+        return (
+            "No one is available to review this plan -- this is an unattended run. "
+            "Carry it out now."
+        )
+    return "No one is available to answer this question -- this is an unattended run."
 
 
 def _memory_question(line: str, folder: Path) -> dict[str, Any]:
@@ -296,12 +313,7 @@ class ApprovalDecider:
             return self._denied(name, hook_reason)
         if is_question:
             if not can_resolve_approvals(websocket):
-                message = (
-                    "No one is available to review this draft -- this is an unattended run, "
-                    "so no task was created."
-                    if is_draft
-                    else "No one is available to answer this question -- this is an unattended run."
-                )
+                message = _unattended_answer(name, is_draft, plan_mode=self._host.plan_mode)
                 self._audit(audit_log, name, args, "reject", "unattended", message)
                 return self._denied(name, message)
             if is_draft:
@@ -575,25 +587,42 @@ class ApprovalDecider:
         finally:
             self._host._pending_questions.pop(request_id, None)
             self.open_prompts.pop(request_id, None)
+        if answer is None:
+            return {
+                "type": "respond",
+                "message": "The user closed the plan without answering. Don't carry it out; "
+                "wait for their next message.",
+            }
+        if isinstance(answer, dict) and isinstance(answer.get("reply"), str):
+            return {"type": "respond", "message": _REPLIED_INSTEAD.format(reply=answer["reply"])}
         edits: list[dict[str, Any]] | None = None
         if isinstance(answer, dict) and "answer" in answer:
             edits, answer = answer.get("tasks"), answer["answer"]
+        if not isinstance(answer, str):
+            answer = str(answer)
         if answer in (PLAN_CHOICE_AUTO, PLAN_CHOICE_MANUAL):
+            host = self._host
             if answer == PLAN_CHOICE_AUTO:
-                if not self._host.auto_mode:
-                    self._host._toggle_mode("auto")
-                how = "switched to auto mode"
-            elif self._host.plan_mode:
-                self._host._toggle_mode("plan")
-                how = "will approve each change as you go"
+                how = "kept auto mode on" if host.auto_mode else "switched to auto mode"
+                if not host.auto_mode:
+                    host._toggle_mode("auto")
+                # The reviewer may have paused itself; this answer asks for it again.
+                host._auto_paused = False
+                host._auto_blocks_in_row = 0
             else:
-                how = "kept the current approvals"
-            await self._host.send_state(websocket)
+                for mode, on in (
+                    ("plan", host.plan_mode),
+                    ("auto", host.auto_mode),
+                    ("accept-edits", host.accept_edits),
+                ):
+                    if on:
+                        host._toggle_mode(mode)
+                how = "will approve each change as you go"
+            await host.send_state(websocket)
             message = f"The user approved the plan and {how}. Carry it out now."
             if edits is not None:
-                approved = TaskToolkit(self._host.thread_id, self._host.settings.state_dir).replace(
-                    edits
-                )
+                toolkit = TaskToolkit(host.thread_id, host.settings.state_dir)
+                approved = await to_thread(toolkit.replace, edits)
                 message += (
                     " They edited your task list: carry out this one, in this order, and "
                     "task_update these ids; a step they removed is not to be done.\n"

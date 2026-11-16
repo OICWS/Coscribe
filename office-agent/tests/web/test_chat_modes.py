@@ -347,7 +347,7 @@ def test_a_plan_outside_plan_mode_is_carried_out_with_the_edited_task_list_lg(
             _receive_until(ws, "tasks_changed")
 
     result = str(fake_model.received[2][-1].content)
-    assert "kept the current approvals" in result
+    assert "will approve each change as you go" in result
     assert result.endswith(
         '[{"id": "2", "content": "Write a one-page summary", "status": "pending"}, '
         '{"id": "3", "content": "Send it", "status": "pending"}]'
