@@ -14,10 +14,11 @@ from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
-from dotenv import set_key
+from dotenv import dotenv_values, set_key
 
 from ..config import Settings
 from ..runtime import Environments
+from ..runtime_lg import AuditLog, record_decision
 from .events import EventSink
 
 # Where the server and the Folder access page read Settings from (`config.Settings`).
@@ -28,8 +29,7 @@ THIS_CHAT = "chat"
 IN_WORKSPACE = "workspace"
 DENIED = "deny"
 
-# Narrowest first, as Environments.allow_for_thread takes them.
-FOLDER_ACCESS = ("read", "read-write", "read-write-delete")
+FOLDER_ACCESS = Environments.ACCESS
 
 # Settings' Allowed folders, as the Folder access page writes them: a deletable folder is
 # listed as writable too.
@@ -50,19 +50,22 @@ def _under(path: Path, folder: Path) -> bool:
 
 
 def checked_folder(raw: str) -> tuple[Path | None, str]:
-    """The folder to offer, or why it isn't offered: one that exists, and never a whole drive
-    or the home folder, which are too much to hand over with one click."""
+    """The folder to offer, or why it isn't offered: one that exists and isn't too broad
+    (`Environments.too_broad`)."""
     folder = Path(raw.strip()).expanduser()
     if not raw.strip() or not folder.is_absolute():
         return None, f"{raw!r} isn't an absolute folder path. Ask again with the full path."
     folder = folder.resolve()
     if not folder.is_dir():
         return None, f"{folder} isn't an existing folder."
-    if folder == Path(folder.anchor) or folder == Path.home():
+    if Environments.too_broad(folder):
         return None, (
-            f"{folder} is a whole drive or the home folder, which isn't offered. Ask for the "
-            "folder that holds the files you need."
+            f"{folder} is a whole drive, the home folder or holds it, which isn't offered. Ask "
+            "for the folder that holds the files you need."
         )
+    if "," in str(folder):
+        # Settings keeps Allowed folders as one comma-separated value.
+        return None, f"{folder} has a comma in its path, which Allowed folders can't hold."
     return folder, ""
 
 
@@ -87,15 +90,19 @@ def enough(have: str | None, wanted: str) -> bool:
 
 
 def allow_everywhere(settings: Settings, folder: Path, access: str, env_file: Path) -> None:
-    """Into Settings' Allowed folders: the .env the Folder access page edits, and the running
-    server's settings, so it holds without a restart."""
+    """Into Settings' Allowed folders: the .env the Folder access page edits, merged into what it
+    holds now (the page writes it without updating the running server), and the running server's
+    settings, so it holds without a restart."""
+    saved = dotenv_values(env_file) if env_file.is_file() else {}
     for key in _ENV_KEYS[access]:
         field = _FIELDS[key]
-        current: list[Path] = list(getattr(settings, field))
-        if folder not in current:
-            current.append(folder)
-        setattr(settings, field, current)
-        set_key(str(env_file), key, ", ".join(str(p) for p in current), quote_mode="never")
+        listed = [Path(p.strip()) for p in (saved.get(key) or "").split(",") if p.strip()]
+        running: list[Path] = list(getattr(settings, field))
+        for current in (listed, running):
+            if folder not in current:
+                current.append(folder)
+        setattr(settings, field, running)
+        set_key(str(env_file), key, ", ".join(str(p) for p in listed), quote_mode="never")
 
 
 def parse_answer(answer: Any) -> tuple[str, str]:
@@ -111,17 +118,15 @@ def parse_answer(answer: Any) -> tuple[str, str]:
     return DENIED, ""
 
 
-def result_message(choice: str, folder: Path, access: str, answer: Any) -> str:
-    if choice == ALLOW:
-        return (
-            f"The user allowed {folder} ({access}) for every workspace. Call the refused tool "
-            "again."
-        )
-    if choice == THIS_CHAT:
-        return (
-            f"The user allowed {folder} ({access}) for this conversation only. Call the refused "
-            "tool again."
-        )
+def result_message(choice: str, folder: Path, access: str, answer: Any, wanted: str) -> str:
+    if choice in (ALLOW, THIS_CHAT):
+        where = "every workspace" if choice == ALLOW else "this conversation only"
+        if not enough(access, wanted):
+            return (
+                f"The user allowed {folder} for reading only ({where}), not writing. Read what "
+                "you need there; save anything new in the workspace, and say where."
+            )
+        return f"The user allowed {folder} ({access}) for {where}. Call the refused tool again."
     if choice == IN_WORKSPACE:
         return (
             f"The user wants it saved in the workspace instead of {folder}. Save it there, and "
@@ -145,7 +150,8 @@ async def decide_folder_request(
     open_prompts: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
     """The card for request_folder_access. The tools are built again after an allow, before the
-    turn resumes, so the call the model repeats reaches the folder."""
+    turn resumes, so the call the model repeats reaches the folder. The answer is audited like
+    an approval, since Allow widens every later conversation."""
     folder, problem = checked_folder(str(args.get("folder", "")))
     if folder is None:
         return {"type": "respond", "message": problem}
@@ -154,8 +160,9 @@ async def decide_folder_request(
     have = current_access(host.settings, environments.thread_folders(host.thread_id), folder)
     if enough(have, wanted):
         # Allowed meanwhile, in Settings or on another conversation's card.
-        host._reconfigurer.refresh_folder_tools()
-        return {"type": "respond", "message": f"{folder} is allowed. Call the tool again."}
+        failed = host._reconfigurer.refresh_folder_tools()
+        message = failed or f"{folder} is allowed. Call the tool again."
+        return {"type": "respond", "message": message}
     request_id = uuid.uuid4().hex
     future: Future[Any] = get_running_loop().create_future()
     host._pending_questions[request_id] = future
@@ -177,6 +184,16 @@ async def decide_folder_request(
         await to_thread(allow_everywhere, host.settings, folder, access, ENV_FILE)
     elif choice == THIS_CHAT:
         await to_thread(environments.allow_for_thread, host.thread_id, str(folder), access)
+    message = result_message(choice, folder, access, answer, wanted)
     if choice in (ALLOW, THIS_CHAT):
-        host._reconfigurer.refresh_folder_tools()
-    return {"type": "respond", "message": result_message(choice, folder, access, answer)}
+        message = host._reconfigurer.refresh_folder_tools() or message
+    record_decision(
+        AuditLog(host.settings.state_dir),
+        thread_id=host.thread_id,
+        tool_name="request_folder_access",
+        arguments=args,
+        decision="approve" if choice in (ALLOW, THIS_CHAT) else "reject",
+        reason="human",
+        detail=f"{choice}:{access}" if access else choice,
+    )
+    return {"type": "respond", "message": message}

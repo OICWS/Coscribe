@@ -12,7 +12,9 @@ folders on their own. Decision 0048, phase A part 1 (#926).
   offers saving in the workspace; Don't allow, or a reply typed in the chat, refuses.
 - After an allow the conversation's tools are built again before the turn goes on, so the
   refused call reaches the folder (`conversation/folder_access.py`, `reconfigure.py`).
-- A drive root or the home folder is never offered.
+- A drive root, the home folder or a folder that holds it is never offered (`Environments.too_broad`,
+  shared with the scripts' blocked-folder offer), nor a path with a comma, which the `.env` list
+  can't hold. Allow merges into what `.env` holds now, and each answer is audited.
 
 ## Not verified
 - A real Windows machine: the card, a folder path with a drive letter, and the `.env` written

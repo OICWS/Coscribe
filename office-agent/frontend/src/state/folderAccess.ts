@@ -1,5 +1,6 @@
 import type { FolderAccessRequiredEvent } from "../types/wire";
-import { closeStreamingBubble, type ChatAction, type ChatState, type LogItem } from "./reducer";
+import type { ChatAction, ChatState, LogItem } from "./reducer";
+import { closeStreamingBubble } from "./streamingBubble";
 
 /** A folder outside the workspace the model asked for (decision 0048), until the person answers. */
 export interface FolderAccessItem {

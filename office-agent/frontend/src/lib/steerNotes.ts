@@ -68,10 +68,11 @@ export function useSteerNotes(
 
   const unread = () => state.items.filter((item): item is Note => item.kind === "steer" && item.status === "pending");
   const drop = (notes: Note[]) => dispatch({ type: "local_steers_withdrawn", ids: notes.map((note) => note.id) });
-  // A stop denies what is waiting for approval on the server; the cards follow at once.
+  // A stop denies what is waiting for approval or a folder on the server; the cards follow at once.
   const denyApprovals = () =>
     state.items.forEach((item) => {
       if (item.kind === "approval" && item.status === "pending") dispatch({ type: "local_approval_resolved", id: item.id, approved: false });
+      if (item.kind === "folder_access" && item.status === "pending") dispatch({ type: "local_folder_access_answered", id: item.id, answer: "deny" });
     });
   const backToComposer = (notes: Note[]) => {
     const message = asMessage(notes);

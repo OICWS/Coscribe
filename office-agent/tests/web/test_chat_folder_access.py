@@ -10,6 +10,7 @@ pytest.importorskip("langgraph", reason="needs the langgraph_spike extra install
 from langchain_core.messages import AIMessage, ToolMessage
 
 from coscribe.runtime import Environments
+from coscribe.runtime_lg import AuditLog
 
 from .helpers import (
     FakeToolCallingChatModel,
@@ -87,6 +88,10 @@ def test_allow_adds_the_folder_everywhere_and_the_next_call_reaches_it(
     env = (tmp_path / ".env").read_text(encoding="utf-8")
     assert f"COSCRIBE_EXTRA_READABLE_DIRS={folder.resolve()}" in env
     assert Environments(tmp_path / "state").thread_folders("t_folder_allow") == {}
+    [entry] = [
+        e for e in AuditLog(tmp_path / "state").read_all() if e.tool_name == "request_folder_access"
+    ]
+    assert (entry.decision, entry.reason, entry.detail) == ("approve", "human", "allow:read")
 
 
 def test_only_this_chat_keeps_the_folder_to_the_conversation(

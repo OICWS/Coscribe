@@ -5,6 +5,7 @@ import { pendingSteer, requeuedNotes, type NewSteer, type SteerItem } from "./st
 import type { HistoryEntry, QuestionSpec, StateEvent, TaskDraft, WsServerEvent } from "../types/wire";
 import type { ProgressItem } from "../lib/workflowProgress";
 import { planTasksField } from "../lib/planTasksResult";
+import { closeStreamingBubble } from "./streamingBubble";
 import { isFolderAccessEvent, reduceFolderAccess, type FolderAccessAction, type FolderAccessItem } from "./folderAccess";
 
 /** The answer the frontend sends for a saved draft starts with this --
@@ -237,20 +238,6 @@ function splitText(text: string): { text: string; files?: string[] } {
 
 function countUserItems(items: LogItem[]): number {
   return items.reduce((n, item) => n + (item.kind === "user" ? 1 : 0), 0);
-}
-
-/** Finalizes a still-streaming agent bubble left behind mid-turn, such as narration a model
- * (DeepSeek, GLM) emits right before a tool call. Only "agent_delta"/"agent_message" mark a bubble
- * streaming: false, and "agent_message" only looks at the *last* item: once a "tool_result",
- * "approval_required" or "question_required" takes that slot, the bubble can't be found again and
- * its cursor never clears. Call this immediately before pushing any item that isn't itself
- * continuing that streaming bubble. */
-export function closeStreamingBubble(items: LogItem[]): LogItem[] {
-  const last = items[items.length - 1];
-  if (!last || last.kind !== "agent" || !last.streaming) return items;
-  const closed = [...items];
-  closed[closed.length - 1] = { ...last, streaming: false };
-  return closed;
 }
 
 /** The plan last proposed in the conversation, "" when there is none. */

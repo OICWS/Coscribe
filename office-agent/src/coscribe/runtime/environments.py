@@ -149,6 +149,15 @@ def _settings_key(env: dict[str, Any]) -> str:
 
 
 class Environments:
+    ACCESS = FOLDER_ACCESS
+
+    @staticmethod
+    def too_broad(folder: Path) -> bool:
+        """A whole drive, the home folder or a folder that holds it: too much to hand over with
+        one click."""
+        home = Path.home()
+        return folder == Path(folder.anchor) or folder == home or folder in home.parents
+
     def __init__(self, state_dir: str | Path) -> None:
         self.state_dir = Path(state_dir)
         self.path = self.state_dir / _FILE
@@ -321,7 +330,8 @@ class Environments:
         with _LOCK:
             data = self._read()
             env = data["threads"].pop(thread_id, None)
-            if env is not None or data["thread_folders"].pop(thread_id, None) is not None:
+            folders = data["thread_folders"].pop(thread_id, None)
+            if env is not None or folders is not None:
                 self._write(data)
 
     def detach_secret(self, name: str) -> None:

@@ -177,3 +177,27 @@ def test_the_move_groups_conversations_with_the_same_settings_and_runs_once(
     assert named["A long title"]["used_by"] == 2
     assert environments.environment_of("t3") == named["A long title (2)"]["id"]
     assert environments.environment_of("t4") == environments.environment_of("t5") == "default"
+
+
+def test_forgetting_a_conversation_drops_its_chat_only_folders_whatever_its_environment(
+    tmp_path: Path,
+) -> None:
+    environments = Environments(tmp_path)
+    reports = environments.create({"name": "Reports"}, set())
+    environments.assign("t1", reports["id"])
+    environments.allow_for_thread("t1", str(tmp_path / "Contracts"), "read")
+
+    environments.forget_thread("t1")
+
+    assert environments.thread_folders("t1") == {}
+    assert environments.all_thread_folders() == []
+
+
+def test_a_folder_that_holds_home_is_too_broad(monkeypatch: pytest.MonkeyPatch) -> None:
+    home = Path("/srv/users/collins")
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+    assert Environments.too_broad(Path("/srv/users"))
+    assert Environments.too_broad(home)
+    assert Environments.too_broad(Path("/"))
+    assert not Environments.too_broad(home / "Contracts")
+    assert not Environments.too_broad(Path("/srv/other"))
