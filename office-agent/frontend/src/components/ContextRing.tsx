@@ -68,10 +68,10 @@ export function ContextRing({ threadId, totalTokens, contextWindow, cacheStats }
         </svg>
       </button>
       {open && (
-        <div className="absolute bottom-full right-0 mb-1 w-72 rounded-[10px] border border-[var(--border)] bg-[var(--panel-bg)] p-3 text-sm shadow-[var(--shadow)]">
-          <div className="mb-1.5 flex items-center justify-between gap-3">
-            <span className="text-[var(--muted)]">Context window</span>
-            <span>
+        <div className="absolute bottom-full right-0 mb-1 w-80 max-w-[calc(100vw-1.5rem)] rounded-[10px] border border-[var(--border)] bg-[var(--panel-bg)] p-3 text-sm shadow-[var(--shadow)]">
+          <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <span className="shrink-0 text-[var(--muted)]">Context window</span>
+            <span className="min-w-0 break-words text-right tabular-nums">
               {formatTokenCount(totalTokens)} / {formatTokenCount(contextWindow)} ({percent.toFixed(0)}%)
             </span>
           </div>
@@ -79,9 +79,9 @@ export function ContextRing({ threadId, totalTokens, contextWindow, cacheStats }
             <div className="h-full bg-[var(--accent)]" style={{ width: `${percent}%` }} />
           </div>
           {cacheStats && (
-            <div className="mt-1.5 flex items-center justify-between gap-3 border-t border-[var(--border)] pt-1.5">
-              <span className="text-[var(--muted)]">Cache hit (last call)</span>
-              <span>
+            <div className="mt-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-[var(--border)] pt-1.5">
+              <span className="shrink-0 text-[var(--muted)]">Cache hit (last call)</span>
+              <span className="min-w-0 break-words text-right tabular-nums">
                 {formatTokenCount(cacheStats.cacheReadTokens)} / {formatTokenCount(cacheStats.inputTokens)} (
                 {(cacheStats.hitRate * 100).toFixed(0)}%)
               </span>
