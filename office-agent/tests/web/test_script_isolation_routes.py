@@ -71,6 +71,8 @@ def test_capabilities_change_only_by_name_and_each_change_is_audited(
         unknown = client.put("/api/capabilities/everything", json={"on": True})
         off = client.put("/api/capabilities/commands", json={"on": False}).json()
     none = {
+        "files": True,
+        "artifacts": True,
         "scripts": True,
         "commands": False,
         "commands_without_sandbox": False,

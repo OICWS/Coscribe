@@ -11,8 +11,9 @@ this environment's own `ToolSearch`, and `claude-code-best/claude-code`'s
 prompt by prefix and the tool list comes before the messages, so binding a
 tool that `search_tools` found made the provider re-read the whole
 conversation uncached (22-56% of a long DeepSeek task, ROADMAP Phase 8cj).
-So `search_tools` returns the found tools' descriptions *and parameter
-schemas* as its result, and the model runs one through `use_tool`. What a
+So `search_tools` returns the best matches' descriptions *and parameter
+schemas* as its result (the weaker ones as a name and a line, fetched in
+full by searching that name), and the model runs one through `use_tool`. What a
 request sends is the core set plus those two tools, always.
 
 **Why every other layer still sees the real tool name.** Approvals, hooks,
@@ -43,6 +44,7 @@ TF-IDF implementation reaches the same conclusion at a similar scale.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Awaitable, Callable, Iterable, Sequence
 from dataclasses import dataclass, replace
 from typing import Any
@@ -76,6 +78,15 @@ _DESCRIPTION_TOKEN_WEIGHT = 1.0
 # could produce for a single short query, so it reliably wins ties.
 _NAME_SUBSTRING_BONUS = 5.0
 _MAX_RESULTS = 8
+# A full match (description and parameter schema) costs 1,000 to 4,000 characters; measured on
+# the 89 queries of tests/test_tool_search_recall.py, the tool asked for was among the first three
+# in 82, so the rest come back as a name and a line and cost a further search only when wanted.
+_FULL_RESULTS = 3
+_SUMMARY_CHARACTERS = 160
+# "e.g. a deck" or "pages, etc. by title" is not the end of a sentence.
+_SENTENCE_END = re.compile(
+    r"(?<!\be\.g)(?<!\bi\.e)(?<!\betc)(?<!\bvs)(?<!\bapprox)[.?!]\s", re.IGNORECASE
+)
 # A result carries each match's full parameter schema, so a weak match costs
 # tokens for nothing. Measured on the real catalog: without these, a search
 # for "run python script" also returned add_pptx_hyperlink and delete_file.
@@ -136,6 +147,41 @@ def _score(entry: _ToolEntry, query_tokens: Sequence[str], query_lower: str) -> 
     return score + (in_name / len(entry.name_tokens) if in_name else 0.0)
 
 
+def _summary(description: str) -> str:
+    """The description's first sentence, enough to tell whether the tool is the one wanted."""
+    # A line that wraps after a hyphen ("UTF-8-\n text") joins without a space.
+    paragraph = re.sub(r"-\n\s*", "-", description.split("\n\n", 1)[0])
+    first = " ".join(paragraph.split())
+    end = _SENTENCE_END.search(first)
+    if end:
+        first = first[: end.start() + 1]
+    if len(first) > _SUMMARY_CHARACTERS:
+        cut = first[: _SUMMARY_CHARACTERS - 1]
+        first = (cut.rsplit(" ", 1)[0] if " " in cut else cut).rstrip(" -,;:") + "…"
+    return first
+
+
+def _ranked(entries: Sequence[_ToolEntry], query: str) -> list[tuple[_ToolEntry, bool]]:
+    """The matches for `query`, best first, each with whether it is the tool the query names.
+
+    A weaker match tells the model to search for its name, so that name must bring the tool
+    back first: an exact name sorts before any score. It stays out of the score so that the
+    floor, a share of the best score, is the same as for the words of an ordinary query (a
+    connector tool named "search" must not drop everything else for the word "search"). Equal
+    scores go to the name that is little else, since a rank can decide who gets a schema."""
+    query_tokens = sorted(query_words(query))
+    query_lower = query.strip().lower()
+    scored = [(_score(entry, query_tokens, query_lower), entry) for entry in entries]
+    best = max((score for score, _ in scored), default=0.0)
+    floor = max(_MIN_SCORE, best * _MIN_SHARE_OF_BEST)
+    exact = {entry.name for _, entry in scored if entry.name.lower() == query_lower}
+    kept = [pair for pair in scored if pair[0] >= floor or pair[1].name in exact]
+    kept.sort(
+        key=lambda pair: (pair[1].name in exact, pair[0], -len(pair[1].name_tokens)), reverse=True
+    )
+    return [(entry, entry.name in exact) for _, entry in kept]
+
+
 def _parameters_schema(tool: Callable[..., Any] | BaseTool) -> dict[str, Any]:
     """The tool's argument schema the way the model would have been sent it
     as a bound tool: ToolNode wraps a plain function with `tool()` too."""
@@ -161,9 +207,10 @@ def build_search_tools_tool(
 
     def search_tools(query: str) -> str:
         """Find a tool that isn't in your tool list by keyword -- most
-        tools start hidden to keep this conversation's context small. Each
-        match comes back with its description and parameter schema; run it
-        with use_tool(name, arguments). Always try this before assuming
+        tools start hidden to keep this conversation's context small. The
+        best matches come back with their description and parameter schema;
+        run one with use_tool(name, arguments). Weaker matches come back as
+        a name and a line: search for that name to get its schema. Always try this before assuming
         something can't be done -- it almost certainly has a tool, just
         not one listed yet.
 
@@ -173,14 +220,9 @@ def build_search_tools_tool(
                 "pptx") works well since most tool names are literal
                 about what they do.
         """
-        query_tokens = sorted(query_words(query))
-        query_lower = query.strip().lower()
-        scored = [(_score(entry, query_tokens, query_lower), entry) for entry in entries]
-        best = max((score for score, _ in scored), default=0.0)
-        floor = max(_MIN_SCORE, best * _MIN_SHARE_OF_BEST)
-        matches = sorted(
-            (pair for pair in scored if pair[0] >= floor), key=lambda pair: pair[0], reverse=True
-        )
+        matches = _ranked(entries, query)[:_MAX_RESULTS]
+        # A search by name fetches that tool's schema; its neighbours are only a reminder.
+        full = 1 if matches and matches[0][1] else _FULL_RESULTS
         return json.dumps(
             [
                 {
@@ -188,7 +230,9 @@ def build_search_tools_tool(
                     "description": entry.description,
                     "parameters": _parameters_schema(tools_by_name[entry.name]),
                 }
-                for _, entry in matches[:_MAX_RESULTS]
+                if rank < full
+                else {"name": entry.name, "summary": _summary(entry.description)}
+                for rank, (entry, _) in enumerate(matches)
             ]
         )
 

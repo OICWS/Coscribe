@@ -376,6 +376,9 @@ async def test_a_background_script_gets_the_conversations_variables(
 async def test_a_background_script_is_not_handed_the_servers_keys_or_proxy_password(
     tools: BgTools, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # The file's tests share one script environment, built by whichever runs first; built
+    # under the fake proxy below, its packages could not be downloaded.
+    await asyncio.to_thread(ensure_script_env, tools.state_dir)
     monkeypatch.setenv("GEMINI_API_KEY", "gemini-not-for-scripts")
     monkeypatch.setenv("https_proxy", "http://alice:hunter2@proxy.example:8080")
 

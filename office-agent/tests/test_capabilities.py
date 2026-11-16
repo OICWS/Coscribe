@@ -11,6 +11,8 @@ from coscribe.tools.exec import Capabilities, CapabilityOff, build_script_tools,
 
 def test_scripts_are_on_and_commands_off_until_the_person_changes_them(tmp_path: Path) -> None:
     off = {
+        "files": True,
+        "artifacts": True,
         "scripts": True,
         "commands": False,
         "commands_without_sandbox": False,
