@@ -225,7 +225,10 @@ changes from run to run: read it from the download wait's result, \
 {{<its save_as>.file}}, never from the name the conversation saw. Give \
 a workflow that downloads files an input for the folder to keep them in \
 (default: the folder the user named in the conversation, else \
-"downloads") and pass it to the download wait as save_to.
+"downloads") and pass it to the download wait as save_to. A run's pages \
+stay open afterwards so the person can check them; end with a \
+browser_tabs "close_all" step only where the conversation closed them or \
+the person asked for that.
 - "notes" lists what you weren't sure about: guesses, values you turned \
 into inputs, steps you dropped on purpose.
 """

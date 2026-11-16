@@ -35,6 +35,18 @@ describe("plain words for a step", () => {
     expect(plainDetail(select, inputs)).toBe("Picks the claim’s department in “Department”");
   });
 
+  it("says which pages a browser step opens, reads or closes", () => {
+    expect(plainDetail(tool("browser_tabs", { action: "close", tab_ids: ["a", "b"] }), inputs)).toBe("Closes 2 pages");
+    expect(plainDetail(tool("browser_tabs", { action: "close_all" }), inputs)).toBe("Closes its browser pages");
+    expect(plainDetail(tool("browser_tabs", { action: "close_all", keep: ["current"] }), inputs)).toBe(
+      "Closes its browser pages except the current one",
+    );
+    expect(plainDetail(tool("browser_tabs", { action: "new", url: "https://example.com/" }), inputs)).toBe(
+      "Opens example.com in a new tab",
+    );
+    expect(plainDetail(tool("browser_snapshot", { tab_ids: [1, 2, 3] }), inputs)).toBe("Reads 3 pages at once");
+  });
+
   it("says what a file step touches, and falls back to the tool's label", () => {
     expect(plainDetail(tool("read_file", { path: "{{sheet}}" }), inputs)).toBe("Reads “Claims CSV”");
     expect(plainDetail(tool("write_file", { path: "reports/a.txt" }), inputs)).toBe("Saves “reports/a.txt”");
