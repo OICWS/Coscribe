@@ -4,25 +4,30 @@ import type { ProgressItem } from "../lib/workflowProgress";
 import { useDockPanel } from "./dock/dockContext";
 import { MessageCircleIcon } from "./icons";
 import { CommentBox, CommentList } from "./PlanComments";
+import { PlanTaskEditor } from "./PlanTaskEditor";
 import { TaskList } from "./TaskList";
+import type { DraftStep } from "../lib/planTaskDraft";
 
 const Markdown = lazy(() => import("./Markdown").then((m) => ({ default: m.Markdown })));
 
 /** The plan in a panel of its own, like Browser: the plan the model last
  * proposed, rendered, and the task list it is working through. Selected
- * words can be commented on; the comments go to the model with Revise. */
+ * words can be commented on; the comments go to the model with Revise.
+ * While the plan waits for an answer (`review`), its task list can be edited. */
 export function PlanPanel({
   tasks,
   plan,
   busy,
   comments,
   onComments,
+  review = null,
 }: {
   tasks: ProgressItem[];
   plan: string | null;
   busy: boolean;
   comments: PlanComment[];
   onComments: (comments: PlanComment[]) => void;
+  review?: { steps: DraftStep[]; onSteps: (steps: DraftStep[]) => void } | null;
 }) {
   const dock = useDockPanel();
   const host = useRef<HTMLDivElement>(null);
@@ -69,13 +74,22 @@ export function PlanPanel({
             }}
           />
         )}
-        {tasks.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Tasks</h2>
-            <TaskList tasks={tasks} strike live={busy} />
-          </section>
-        )}
         {comments.length > 0 && <CommentList comments={comments} onRemove={(id) => onComments(comments.filter((c) => c.id !== id))} />}
+        {plan !== null && (review || tasks.length > 0) && <hr className="mb-6 border-[var(--border)]" />}
+        {review ? (
+          <section>
+            <h2 className="mb-1 text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Tasks</h2>
+            <p className="mb-2 text-[13px] text-[var(--muted)]">Change the steps before you accept; Claude carries out the list as you leave it.</p>
+            <PlanTaskEditor steps={review.steps} onSteps={review.onSteps} />
+          </section>
+        ) : (
+          tasks.length > 0 && (
+            <section>
+              <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-[var(--muted)]">Tasks</h2>
+              <TaskList tasks={tasks} strike live={busy} />
+            </section>
+          )
+        )}
         {plan === null && tasks.length === 0 && <p className="text-sm text-[var(--muted)]">No plan in this conversation yet.</p>}
       </div>
     </div>
