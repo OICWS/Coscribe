@@ -105,6 +105,8 @@ Last reviewed: 2026-11-06.
 - Read the CodeQL alerts and the first `audit.yml` run.
 - Decide whether changed-line coverage is enforced (`docs/assessments/2026-10-13-diff-coverage.md`).
 - Decision 0036 (parallel workflow steps) is proposed with #789.
+- Decide whether a workflow run's pages close when the run ends. Today they stay open, as for a
+  conversation, until the person closes them (`docs/log/2026-11-16-browser-self-close-crash.md`).
 
 ## Needs the maintainer's testing (could not be verified here)
 

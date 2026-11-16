@@ -474,7 +474,10 @@ export function closeTab(id: number): void {
   if (win && !win.isDestroyed() && win.contentView.children.includes(tab.view)) {
     win.contentView.removeChildView(tab.view);
   }
-  if (!tab.view.webContents.isDestroyed()) tab.view.webContents.close();
+  // A page that closed itself gets here from its "destroyed" event, by which
+  // time Electron has already dropped the view's webContents.
+  const contents = tab.view.webContents as WebContents | undefined;
+  if (contents && !contents.isDestroyed()) contents.close();
   favicons.delete(id);
   if (activeIds.get(tab.group) === id) {
     const rest = groupTabs(tab.group);
