@@ -3,10 +3,12 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
 
+from coscribe.tools.bookkeeping._trigger_files import file_in
 from coscribe.tools.bookkeeping.folder_watch import FolderWatch
 from coscribe.tools.bookkeeping.scheduled_tasks import ScheduledTriggerStore
 from coscribe.tools.bookkeeping.task_memory import TaskMemory
@@ -34,3 +36,17 @@ def test_the_ids_coscribe_makes_and_tests_use_are_task_ids(tmp_path: Path) -> No
     for good in ("3f9a0c1b2d4e", "t1", "trig-1", "does_not_exist"):
         assert store.load(good) is None
         assert store.delete(good) is False
+
+
+@pytest.mark.parametrize("bad", ["..\\..\\secret.json", "../secret.json", "..", "", "."])
+def test_a_name_that_leaves_the_folder_is_refused_even_past_the_id_check(
+    tmp_path: Path, bad: str
+) -> None:
+    if bad.startswith("..\\") and os.sep != "\\":
+        pytest.skip("a backslash separates folders on Windows only")
+    with pytest.raises(ValueError, match="is not a file name inside"):
+        file_in(tmp_path, bad)
+
+
+def test_a_plain_name_stays_in_the_folder(tmp_path: Path) -> None:
+    assert file_in(tmp_path, "t1.json") == tmp_path.resolve() / "t1.json"
