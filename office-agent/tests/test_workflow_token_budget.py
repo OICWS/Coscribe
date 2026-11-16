@@ -142,3 +142,58 @@ def test_a_runs_cap_follows_what_its_tasks_runs_used() -> None:
     # What a provider served from its cache is billed far lower, and isn't counted.
     cached = [{"status": "done", "agent": {"tokens": 900_000, "cached_tokens": 800_000}}]
     assert run_budget([cached], cached, None).spent == 100_000
+
+
+def _llm(step_id: str) -> dict[str, Any]:
+    return {"id": step_id, "kind": "llm", "title": f"Gist {step_id}", "prompt": "Sum it up.",
+            "fields": [{"name": "gist", "type": "text", "description": "One line"}],
+            "save_as": step_id}  # fmt: skip
+
+
+def _gist(text: str, tokens: int, cached: int = 0) -> AIMessage:
+    message = _calls(("step_result", {"gist": text}))
+    message.usage_metadata = {
+        "input_tokens": tokens, "output_tokens": 0, "total_tokens": tokens,
+        "input_token_details": {"cache_read": cached},
+    }  # fmt: skip
+    return message
+
+
+async def test_an_llm_steps_tokens_are_kept_on_its_record(tmp_path: Path) -> None:
+    env = Env(tmp_path, [_gist("short", 700, cached=200)])
+
+    outcome = await _run(env, [_llm("one")]).start({})
+
+    assert outcome.status == "completed"
+    assert outcome.values["one"] == {"gist": "short"}
+    [done] = [r for r in env.records if r.status == "done"]
+    assert done.agent == {"tokens": 700, "cached_tokens": 200}
+
+
+async def test_a_run_past_its_cap_on_llm_steps_asks_before_the_next(tmp_path: Path) -> None:
+    env = Env(tmp_path, [_gist("a", 600), _gist("b", 600), _gist("c", 600)])
+    budget = run_budget([], [], None)
+    budget.cap = budget.grant = 1000
+    run = _run(env, [_llm("one"), _llm("two"), _llm("three")], budget=budget)
+
+    waiting = await run.start({})
+
+    assert waiting.status == "waiting" and waiting.step_id == "three"
+    assert waiting.request is not None
+    assert waiting.request["pause"] == {"kind": "tokens", "until": None, "scope": "run",
+                                        "used": 1200}  # fmt: skip
+    assert (await run.answer(True)).status == "completed"
+
+
+async def test_an_llm_step_that_falls_back_to_json_counts_both_calls(tmp_path: Path) -> None:
+    no_call = _says("not a tool call")
+    no_call.usage_metadata = {"input_tokens": 300, "output_tokens": 0, "total_tokens": 300}
+    as_json = _says('{"gist": "short"}')
+    as_json.usage_metadata = {"input_tokens": 400, "output_tokens": 0, "total_tokens": 400}
+    env = Env(tmp_path, [no_call, as_json])
+
+    outcome = await _run(env, [_llm("one")]).start({})
+
+    assert outcome.values["one"] == {"gist": "short"}
+    [done] = [r for r in env.records if r.status == "done"]
+    assert done.agent == {"tokens": 700, "cached_tokens": 0}

@@ -372,7 +372,8 @@ class _GraphBuilder:
         if isinstance(step, ScriptStep):
             return await run_script(step, values, self.ctx), None, None
         if isinstance(step, LLMStep):
-            return await run_llm(step, values, self.ctx), None, None
+            output, used = await run_llm(step, values, self.ctx)
+            return output, None, used
         if isinstance(step, AgentStep):
             output, agent = await self._agent(step, values, started, it)
             return output, None, agent
