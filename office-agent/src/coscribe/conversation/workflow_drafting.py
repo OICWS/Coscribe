@@ -272,6 +272,7 @@ class WorkflowDrafting:
                         "type": "workflow_test_progress",
                         "tool_call_id": tool_call_id,
                         "step": record.step_id,
+                        "record": record.to_dict(),
                         "status": record.status,
                         "done": len(finished),
                         "total": total,

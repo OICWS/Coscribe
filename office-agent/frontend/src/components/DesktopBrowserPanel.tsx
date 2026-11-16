@@ -16,6 +16,7 @@ import { AllowedSitesDialog } from "./AllowedSitesDialog";
 import { BrowserAnnotator, type PageCapture } from "./BrowserAnnotator";
 import {
   browserPanelBack,
+  browserPanelTakeOver,
   browserPanelCapture,
   browserPanelClose,
   browserPanelCloseTab,
@@ -47,7 +48,7 @@ import { PickedPreview, type BrowserCapture, type PickedElement } from "./Picked
 import { useDockPanel } from "./dock/dockContext";
 
 // Matches the desktop app's own limit (browserPanel.ts's MAX_TABS).
-const MAX_TABS = 9;
+const MAX_TABS = 16;
 
 const iconButton =
   "flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)] disabled:opacity-35 disabled:hover:bg-transparent";
@@ -144,7 +145,6 @@ function useHostEvents(
 export function DesktopBrowserPanel({
   threadId,
   onSendToChat,
-  onStopAgent,
 }: {
   threadId: string;
   onSendToChat: (capture: BrowserCapture) => void;
@@ -158,7 +158,7 @@ export function DesktopBrowserPanel({
   const [editingAddress, setEditingAddress] = useState(false);
   const [pickMode, setPickMode] = useState(false);
   const [picked, setPicked] = useState<PickedElement | null>(null);
-  const [agent, setAgent] = useState<{ threadId: string; busy: boolean } | null>(null);
+  const [agent, setAgent] = useState<{ threadId: string; tabId?: number; busy: boolean } | null>(null);
   const [annotation, setAnnotation] = useState<PageCapture | null>(null);
   const [permission, setPermission] = useState<BrowserPermissionRequest | null>(null);
   const [allowedSitesOpen, setAllowedSitesOpen] = useState(false);
@@ -185,9 +185,14 @@ export function DesktopBrowserPanel({
       if (!box) return null;
       return { x: Math.round(box.left), y: Math.round(box.top), width: Math.round(box.width), height: Math.round(box.height) };
     };
+    let previous = "";
     const reposition = () => {
       const next = rect();
-      if (next && !cancelled) void browserPanelReposition(next);
+      const key = JSON.stringify(next);
+      if (next && !cancelled && key !== previous) {
+        previous = key;
+        void browserPanelReposition(next);
+      }
     };
     repositionRef.current = reposition;
     const stopTabs = onBrowserPanelTabs((payload) => {
@@ -246,23 +251,11 @@ export function DesktopBrowserPanel({
   }, [pickMode]);
 
   useEffect(() => {
-    // Steps arrive a few seconds apart while the model thinks, so "busy"
-    // lingers between them rather than blinking off after each one.
-    let idle: ReturnType<typeof setTimeout> | undefined;
-    const stop = onBrowserAgent((payload) => {
+    return onBrowserAgent((payload) => {
       if (!payload.threadId) return;
-      if (payload.busy) {
-        clearTimeout(idle);
-        setAgent({ threadId: payload.threadId, busy: true });
-      } else if (payload.busy === false) {
-        clearTimeout(idle);
-        idle = setTimeout(() => setAgent(null), 6000);
-      }
+      if (payload.busy) setAgent({ threadId: payload.threadId, tabId: payload.tabId, busy: true });
+      else if (payload.busy === false) setAgent(null);
     });
-    return () => {
-      clearTimeout(idle);
-      stop();
-    };
   }, []);
 
   const startAnnotating = async () => {
@@ -279,14 +272,14 @@ export function DesktopBrowserPanel({
   const viewHidden = annotation !== null || backdropOpen || dock.hidden || snapshot !== null;
   useEffect(() => {
     void browserPanelSetViewHidden(viewHidden);
-  }, [viewHidden, agent]);
+  }, [viewHidden]);
 
   // The drawing is of one page at one moment: switching tabs or the AI
   // acting on the page ends it.
   useEffect(() => setAnnotation(null), [activeId]);
   useEffect(() => {
-    if (agent?.busy) setAnnotation(null);
-  }, [agent]);
+    if (agent?.busy && agent.tabId === activeId) setAnnotation(null);
+  }, [agent, activeId]);
 
   useHostEvents(threadId, setPermission, setAllowedSitesOpen);
 
@@ -294,10 +287,6 @@ export function DesktopBrowserPanel({
     if (!permission) return;
     void answerBrowserPermission(permission.requestId, answer);
     setPermission(null);
-  };
-  const stopAgent = () => {
-    answerPermission("deny");
-    onStopAgent();
   };
 
   const go = () => {
@@ -436,24 +425,26 @@ export function DesktopBrowserPanel({
         </button>
       </div>
 
-      {agent && (
+      <div className="h-8 shrink-0">
+      {(active?.activity || active?.userControlled) && (
         <div className="mx-2 mb-1.5 flex items-center gap-2 rounded-lg bg-[var(--accent)]/10 px-2.5 py-1.5 text-xs text-[var(--fg)]">
-          <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-[var(--accent)]" />
+          <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-[var(--accent)] motion-reduce:animate-none" />
           <span className="min-w-0 flex-1 truncate">
-            {agent.threadId === threadId ? "Coscribe is using the browser" : "Coscribe is using the browser in another conversation"}
+            {active.userControlled ? "You are using this page" : active.activity === "waiting" ? "Waiting for the page…" : "Coscribe is using the browser"}
           </span>
-          {agent.threadId === threadId && (
+          {active && (
             <button
               type="button"
               className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 font-medium hover:bg-[var(--accent)]/15"
-              onClick={stopAgent}
+              onClick={() => { if (activeId !== null) void browserPanelTakeOver(activeId, !active?.userControlled); }}
             >
-              <StopIcon className="h-3 w-3" /> Stop
+              <StopIcon className="h-3 w-3" /> {active.userControlled ? "Allow AI" : "Take over"}
             </button>
           )}
         </div>
       )}
 
+      </div>
       {permission && (
         <div
           role="alertdialog"
@@ -499,9 +490,6 @@ export function DesktopBrowserPanel({
         </div>
       )}
 
-      {active?.loadError && (
-        <div className="mx-2 mb-1.5 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-500">{active.loadError}</div>
-      )}
 
       <div className="flex min-h-0 flex-1 flex-col px-1.5 pb-1.5">
         <div ref={containerRef} data-testid="browser-page-area" className="relative min-h-0 flex-1 overflow-hidden rounded-lg bg-[var(--bg)]">

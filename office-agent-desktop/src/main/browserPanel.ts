@@ -1,7 +1,7 @@
 /**
  * The Browser panel: real browser tabs, each a `WebContentsView` child of
- * the main window, of which only the active tab's view is attached, laid
- * over the panel's content area. The React panel draws the tab strip and
+ * the main window, with the active tab over the panel's content area
+ * and background views kept off-window. The React panel draws the tab strip and
  * address bar and reports where the content area is; this file owns the
  * tabs. Both the user and coscribe's AI (browserAgent.ts) drive the same
  * tabs.
@@ -35,7 +35,7 @@ import {
 } from "electron";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { browserOperation } from "./browserAgentSteps";
+import { browserOperation, runningSteps, tabHasWork } from "./browserAgentSteps";
 import { existingCdp } from "./browserCdp";
 import { browserSettings, updateBrowserSettings } from "./browserPermissions";
 
@@ -71,7 +71,7 @@ const CONTENT_WHEEL_ZOOM_CHANNEL = "browser-panel-content:wheel-zoom";
 
 const PARTITION = "persist:coscribe-browser";
 // As in Claude's browser: past this the tab strip can't show a usable tab.
-export const MAX_TABS = 9;
+export const MAX_TABS = 16;
 const MIN_ZOOM_FACTOR = 0.25;
 const MAX_ZOOM_FACTOR = 5;
 const ZOOM_STEP_FACTOR = 1.1;
@@ -101,6 +101,10 @@ export interface Tab {
   loadError: string | null;
   openerId?: number;
   popupBlocked?: boolean;
+  activity?: "working" | "waiting";
+  name?: string;
+  userControlled?: boolean;
+  userTouched?: boolean;
 }
 
 export interface TabInfo {
@@ -112,6 +116,8 @@ export interface TabInfo {
   canGoBack: boolean;
   canGoForward: boolean;
   loadError: string | null;
+  activity?: "working" | "waiting";
+  userControlled?: boolean;
 }
 
 const tabs: Tab[] = [];
@@ -191,6 +197,8 @@ export function tabInfo(tab: Tab): TabInfo {
     canGoBack: wc.navigationHistory.canGoBack(),
     canGoForward: wc.navigationHistory.canGoForward(),
     loadError: tab.loadError,
+    activity: tab.activity,
+    userControlled: tab.userControlled,
   };
 }
 
@@ -254,11 +262,37 @@ export function waitForPanelOpen(timeoutMs: number): Promise<boolean> {
   });
 }
 
+const appliedBounds = new WeakMap<WebContentsView, PanelRect>();
 function setBoundsReliably(view: WebContentsView, rect: PanelRect): void {
+  const previous = appliedBounds.get(view);
+  if (previous && previous.x === rect.x && previous.y === rect.y && previous.width === rect.width && previous.height === rect.height) return;
+  appliedBounds.set(view, { ...rect });
   // electron/electron#39993: one setBounds can leave the view painting at
   // its old size, stretched and blurry; the second call forces the layout.
   view.setBounds(rect);
   view.setBounds(rect);
+}
+
+const activityIdleTimers = new Map<number, ReturnType<typeof setTimeout>>();
+export function setTabActivity(id: number, activity?: "working" | "waiting"): void {
+  clearTimeout(activityIdleTimers.get(id));
+  activityIdleTimers.delete(id);
+  const publish = () => {
+    activityIdleTimers.delete(id);
+    const tab = tabs.find(t => t.id === id);
+    if (tab && tab.activity !== activity) { tab.activity = activity; sendTabs(); }
+  };
+  // Brief gaps between chained operations should not blink the status strip.
+  if (activity) publish();
+  else activityIdleTimers.set(id, setTimeout(publish, 200));
+}
+function userControl(id: number, enabled: boolean): void {
+  const tab = tabs.find(t => t.id === id);
+  if (!tab) return;
+  tab.userControlled = enabled;
+  if (enabled) for (const step of runningSteps.values()) if (step.tabId === id) step.stop = true;
+  setTabActivity(id);
+  sendTabs();
 }
 
 export function setViewHidden(hidden: boolean): void {
@@ -277,17 +311,17 @@ function layout(): void {
     const show = panelRect !== null && tab.group === viewedGroup && isActive && !tab.blank && !viewHidden;
     const attached = children.includes(tab.view);
     if (show) {
-      if (!attached) win.contentView.addChildView(tab.view);
+      if (!attached) { appliedBounds.delete(tab.view); win.contentView.addChildView(tab.view); }
       setBoundsReliably(tab.view, panelRect!);
       lastPanelSize = { width: panelRect!.width, height: panelRect!.height };
       void existingCdp(tab.view.webContents)
         ?.fit(false, lastPanelSize)
         .catch(() => undefined);
-    } else if (isActive && !tab.blank) {
+    } else if (!tab.blank) {
       // The AI may be working in it with the panel closed. Detached, the
       // page takes no clicks; off-window it takes them but gets no
       // viewport, which the agent then sets (tabShown, hiddenTabSize).
-      if (!attached) win.contentView.addChildView(tab.view);
+      if (!attached) { appliedBounds.delete(tab.view); win.contentView.addChildView(tab.view); }
       setBoundsReliably(tab.view, { x: -(lastPanelSize.width + 10_000), y: 0, ...lastPanelSize });
     } else if (attached) {
       win.contentView.removeChildView(tab.view);
@@ -398,8 +432,9 @@ export function createTab(url?: string, group: string = viewedGroup, popup?: Web
       const opened = createTab(undefined, group, options as WebContentsViewConstructorOptions);
       openers.set(opened.view.webContents, wc);
       opened.openerId = tab.id;
-      // A download popup must not redirect the next AI step away from its source.
-      if (!existingCdp(wc)?.driving) selectTab(opened.id);
+      // User popups remain theirs even after another tab becomes visible.
+      opened.userTouched = !existingCdp(wc)?.driving || Boolean(tab.userControlled);
+      if (opened.userTouched) selectTab(opened.id);
       return opened.view.webContents;
     } };
   });
@@ -456,10 +491,11 @@ export function closeTab(id: number): void {
 /** about:blank may hold a form written through window.open's returned handle. */
 export function closeEmptyDownloadPopup(wc: WebContents): void {
   const popup = tabFor(wc);
-  if (!popup?.openerId || existingCdp(wc)?.driving || wc.getURL() !== "about:blank") return;
+  if (!popup?.openerId || popup.userTouched || popup.userControlled || activeTab(popup.group)?.id === popup.id || existingCdp(wc)?.driving || wc.getURL() !== "about:blank") return;
   void browserOperation(wc.executeJavaScript("!document.body || (!document.body.childElementCount && !document.body.textContent.trim())"))
     .then((empty) => {
-      if (empty && !wc.isDestroyed() && wc.getURL() === "about:blank" && !existingCdp(wc)?.driving) closeTab(popup.id);
+      if (empty && !wc.isDestroyed() && wc.getURL() === "about:blank" && !existingCdp(wc)?.driving &&
+          !popup.userTouched && !popup.userControlled && activeTab(popup.group)?.id !== popup.id && !tabHasWork(popup.group, popup.id)) closeTab(popup.id);
     }).catch(() => undefined);
 }
 
@@ -531,10 +567,19 @@ function closePanel(): void {
 /** App quit: closes every tab's renderer explicitly rather than trusting
  * the window's teardown to. */
 export function destroyBrowserPanel(): void {
+  for (const timer of activityIdleTimers.values()) clearTimeout(timer);
+  activityIdleTimers.clear();
   closePanel();
   for (const tab of tabs.splice(0)) tab.view.webContents.close();
   activeIds.clear();
   win = undefined;
+}
+
+function takeOverActive(): Tab | undefined {
+  const tab = activeTab();
+  if (tab) tab.userTouched = true;
+  if (tab?.activity) userControl(tab.id, true);
+  return tab;
 }
 
 export function registerBrowserPanelHandlers(window: BrowserWindow): void {
@@ -554,6 +599,7 @@ export function registerBrowserPanelHandlers(window: BrowserWindow): void {
     const wc = tabFor(event.sender)?.view.webContents;
     if (wc) wc.setZoomFactor(clampZoomFactor(wc.getZoomFactor() * (1 - deltaY * 0.001)));
   });
+  ipcMain.handle("browser-panel:take-over", (_event, id: number, enabled: boolean) => userControl(id, enabled));
   ipcMain.handle(BROWSER_PANEL_OPEN_CHANNEL, (event, rect: PanelRect) => {
     const host = BrowserWindow.fromWebContents(event.sender);
     if (host) openPanel(host, rect);
@@ -569,17 +615,20 @@ export function registerBrowserPanelHandlers(window: BrowserWindow): void {
     if (isHost(event.sender)) closePanel();
   });
   ipcMain.handle(BROWSER_PANEL_NAVIGATE_CHANNEL, (_event, url: string) => {
-    void ensureActiveTab().view.webContents.loadURL(normalizeUrl(url)).catch(() => undefined);
+    const tab = ensureActiveTab();
+    tab.userTouched = true;
+    if (tab.activity) userControl(tab.id, true);
+    void tab.view.webContents.loadURL(normalizeUrl(url)).catch(() => undefined);
   });
   ipcMain.handle(BROWSER_PANEL_BACK_CHANNEL, () => {
-    const history = activeTab()?.view.webContents.navigationHistory;
+    const history = takeOverActive()?.view.webContents.navigationHistory;
     if (history?.canGoBack()) history.goBack();
   });
   ipcMain.handle(BROWSER_PANEL_FORWARD_CHANNEL, () => {
-    const history = activeTab()?.view.webContents.navigationHistory;
+    const history = takeOverActive()?.view.webContents.navigationHistory;
     if (history?.canGoForward()) history.goForward();
   });
-  ipcMain.handle(BROWSER_PANEL_RELOAD_CHANNEL, () => activeTab()?.view.webContents.reload());
+  ipcMain.handle(BROWSER_PANEL_RELOAD_CHANNEL, () => takeOverActive()?.view.webContents.reload());
   ipcMain.handle(BROWSER_PANEL_SET_PICK_MODE_CHANNEL, (_event, enabled: boolean) => {
     pickModeActive = enabled;
     activeTab()?.view.webContents.send(CONTENT_SET_PICK_MODE_CHANNEL, enabled);
@@ -589,7 +638,8 @@ export function registerBrowserPanelHandlers(window: BrowserWindow): void {
     if (!tabLimitReached()) selectTab(createTab().id);
   });
   ipcMain.handle(BROWSER_PANEL_SELECT_TAB_CHANNEL, (_event, id: number) => {
-    selectTab(Number(id));
+    const tab = selectTab(Number(id));
+    if (tab) tab.userTouched = true;
   });
   ipcMain.handle(BROWSER_PANEL_CLOSE_TAB_CHANNEL, (_event, id: number) => closeTab(Number(id)));
   ipcMain.handle(BROWSER_PANEL_OPEN_EXTERNAL_CHANNEL, () => openActiveExternally());
