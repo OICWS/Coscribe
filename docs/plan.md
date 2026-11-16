@@ -61,8 +61,9 @@ Last reviewed: 2026-11-06.
   settings overlays on Windows (`docs/log/2026-11-16-browser-workflow-polish.md`).
   Browser abilities for conversations and saved workflows are planned in #915 (four parts);
   part 1, closing and reading several pages, is `docs/log/2026-11-16-browser-pages-batch.md`;
-  part 2a, forms and page steps, `docs/log/2026-11-16-browser-forms.md`. Next: drag and drop and
-  copy and paste (part 2b), then data out (3) and resilience (4).
+  part 2a, forms and page steps, `docs/log/2026-11-16-browser-forms.md`; part 2b, drag, file drop
+  and the AI's clipboard, `docs/log/2026-11-16-browser-drag-clipboard.md`. Next: data out (3) and
+  resilience (4).
 
 - **Docs:** a Doc still writes plans the brief did not give (a proposal's migration phases;
   `docs/log/2026-10-29-doc-writing-rules.md`). Version history for documents is wanted, not in v1.

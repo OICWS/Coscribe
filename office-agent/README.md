@@ -706,6 +706,9 @@ any words you wrote on it.
 - **Forms**: one step fills a whole form, dropdowns, checkboxes, radio buttons and date fields
   included, and says which values the page changed. A step can also do several things on a page
   in a row (fill, click, wait), and wait for whichever of several messages appears first.
+- **Drag, drop and copy**: the AI drags cards, rows and sliders, drops your files onto a "drop
+  files here" area, and copies and pastes between pages with a clipboard of its own, keeping
+  formatting in rich text editors. Your own clipboard is never read or changed.
 - **Stop** also reaches the desktop app: the step in progress there (a
   wait can run for an hour) ends at once, and steps that conversation
   had queued are dropped.

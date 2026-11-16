@@ -168,6 +168,12 @@ function toolSentence(tool: string, args: Record<string, unknown>, inputs: Workf
       return `Waits for the page to show ${value("text")}`;
     case "browser_fill_form":
       return Array.isArray(args.fields) ? `Fills in ${count(args.fields.length, "field")}` : toolLabel(tool);
+    case "browser_drag":
+      return args.target ? `Drags ${fieldName(args.ref, inputs)} onto ${fieldName(args.target, inputs)}` : `Drags ${fieldName(args.ref, inputs)}`;
+    case "browser_copy":
+      return args.ref ? `Copies ${fieldName(args.ref, inputs)}` : "Copies the selected text";
+    case "browser_paste":
+      return `Pastes into ${fieldName(args.ref, inputs)}`;
     case "browser_steps":
       return Array.isArray(args.steps) ? `Does ${count(args.steps.length, "thing")} on the page` : toolLabel(tool);
     case "browser_evaluate":

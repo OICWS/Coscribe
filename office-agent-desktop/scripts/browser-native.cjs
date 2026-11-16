@@ -9,14 +9,14 @@ if (!process.versions.electron) {
   try {
     const result = require('node:child_process').spawnSync(electron,
       [...(process.platform === 'linux' ? ['--no-sandbox', '--disable-gpu'] : []), __filename],
-      { stdio: 'inherit', timeout: 30000, env: { ...process.env, COSCRIBE_NATIVE_DATA: scratch } });
+      { stdio: 'inherit', timeout: 60000, env: { ...process.env, COSCRIBE_NATIVE_DATA: scratch } });
     if (result.error) console.error(result.error.message);
     process.exitCode = result.status === 0 ? 0 : 1;
   } finally { rmSync(scratch, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); }
 } else {
   const { app, BrowserWindow } = electron;
   app.setPath('userData', process.env.COSCRIBE_NATIVE_DATA);
-  const timeout = setTimeout(() => { console.error('Native popup test timed out'); app.exit(1); }, 25000);
+  const timeout = setTimeout(() => { console.error('Native popup test timed out'); app.exit(1); }, 50000);
   app.whenReady().then(async () => {
     const panel = require('../dist/main/browserPanel');
     const { cdpFor } = require('../dist/main/browserCdp');
@@ -157,6 +157,35 @@ if (!process.versions.electron) {
     assert.match(denied.error, /taken over/);
     await invoke('browser-panel:take-over', background.id, false);
     assert.equal((await command('evaluate', { tab_id: background.id, expression: 'document.title' })).ok, true);
+    const dropped = join(process.env.COSCRIBE_NATIVE_DATA, 'invoice.pdf');
+    require('node:fs').writeFileSync(dropped, 'pdf');
+    await background.view.webContents.loadURL('data:text/html,' + encodeURIComponent(
+      '<button id="item" draggable="true" ondragstart="event.dataTransfer.setData(\'text/plain\',\'row-7\')">Item</button>' +
+      '<div role="button" aria-label="Zone" style="width:200px;height:60px" ondragover="event.preventDefault()" ondrop="event.preventDefault();window.dropped=event.dataTransfer.getData(\'text/plain\')">Zone</div>' +
+      '<div role="button" aria-label="Files" style="width:200px;height:60px" ondragover="event.preventDefault()" ondrop="event.preventDefault();window.files=[...event.dataTransfer.files].map(f=>f.name)">Files</div>' +
+      '<input type="range" aria-label="Level" id="level" min="0" max="100" value="0" style="width:200px">' +
+      '<div role="note" aria-label="Note"><b>Bold</b> words</div>' +
+      '<div contenteditable="true" role="textbox" aria-label="Editor" id="editor"></div><input aria-label="Plain" id="plain">'));
+    const html5 = await command('drag', { tab_id: background.id, ref: 'button "Item"', target: 'button "Zone"' });
+    assert.equal(html5.ok, true, html5.error);
+    assert.equal(html5.result.how, 'html5');
+    assert.equal(await background.view.webContents.executeJavaScript('window.dropped'), 'row-7', 'an HTML5 drag carries its data to the drop target');
+    const slid = await command('drag', { tab_id: background.id, ref: 'slider "Level"', by_x: 80 });
+    assert.equal(slid.ok, true, slid.error);
+    assert.ok(Number(await background.view.webContents.executeJavaScript('level.value')) > 20, 'a mouse drag moves a slider');
+    const filesDropped = await command('upload', { tab_id: background.id, ref: 'button "Files"', paths: [dropped], drop: true });
+    assert.equal(filesDropped.ok, true, filesDropped.error);
+    assert.deepEqual(await background.view.webContents.executeJavaScript('window.files'), ['invoice.pdf']);
+    assert.equal((await command('paste', { tab_id: background.id, ref: 'textbox "Plain"' })).ok, false, 'nothing to paste before a copy');
+    await background.view.webContents.executeJavaScript('getSelection().selectAllChildren(document.querySelector("[role=note]"))');
+    const copied = await command('copy', { tab_id: background.id });
+    assert.equal(copied.result.preview, 'Bold words');
+    const rich = await command('paste', { tab_id: background.id, ref: 'textbox "Editor"' });
+    assert.equal(rich.result.formatted, true, rich.error);
+    assert.match(await background.view.webContents.executeJavaScript('editor.innerHTML'), /<b>Bold<\/b>/, 'a rich editor keeps the formatting');
+    await command('paste', { tab_id: background.id, ref: 'textbox "Plain"' });
+    assert.equal(await background.view.webContents.executeJavaScript('plain.value'), 'Bold words');
+    assert.notEqual(require('electron').clipboard.readText(), 'Bold words', "the person's clipboard is left alone");
     panel.closeTab(background.id);
     const permissions = require('../dist/main/browserPermissions');
     permissions.registerBrowserPermissionHandlers(window);
@@ -178,7 +207,7 @@ if (!process.versions.electron) {
     await secondPermission;
     panel.destroyBrowserPanel();
     clearTimeout(timeout);
-    console.log('Native browser checks passed: popups, bounds, overlays, background input, form events, every field kind, page steps, waiting for one of several texts, takeover and permission queue.');
+    console.log('Native browser checks passed: popups, bounds, overlays, background input, form events, every field kind, page steps, waiting for one of several texts, drag and drop, file drop, the AI clipboard, takeover and permission queue.');
     app.exit(0);
   }).catch(error => { console.error(error); app.exit(1); });
 }
