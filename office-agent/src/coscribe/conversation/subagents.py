@@ -44,6 +44,7 @@ from .approvals import SubAgentChannel, can_resolve_approvals
 from .events import EventSink
 from .thread_meta import ThreadMetaStore
 from .turn_lock import TurnLock
+from .turn_record import run_recorder
 
 logger = logging.getLogger(__name__)
 
@@ -221,6 +222,7 @@ class SubAgentReporter:
             interrupt_all=bool(self._host.hooks_config["PreToolUse"]),
             max_turns=SUBAGENT_MAX_STEPS,
             background_allowed=lambda: self._host.settings.background_agents,
+            record_run=run_recorder(self._host.settings.state_dir, self._host.thread_id),
         )
 
     async def _subagent_changed(self, task: SubAgentTask) -> None:
