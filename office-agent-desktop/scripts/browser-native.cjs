@@ -53,6 +53,21 @@ if (!process.versions.electron) {
     panel.closeTab(popup.id);
     assert.equal(panel.activeTab(group).id, source.id, 'closing must restore the source, not a neighbour');
     panel.closeTab(neighbour.id);
+    // Electron has already cleared view.webContents when a page that closed itself reports it.
+    const uncaught = [];
+    const onUncaught = error => uncaught.push(error);
+    process.on('uncaughtException', onUncaught);
+    await source.view.webContents.executeJavaScript("void window.open('about:blank')", true);
+    const selfClosing = panel.allTabs(group).find(t => t.openerId === source.id);
+    assert.ok(selfClosing, 'the second popup must open as a tab');
+    void selfClosing.view.webContents.executeJavaScript('window.close()').catch(() => undefined);
+    for (let n = 0; n < 250 && !uncaught.length && panel.allTabs(group).includes(selfClosing); n++) {
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    process.off('uncaughtException', onUncaught);
+    assert.deepEqual(uncaught.map(String), [], 'a page closing itself must not throw in the main process');
+    assert.ok(!panel.allTabs(group).includes(selfClosing), 'a page that closed itself leaves no tab');
+    assert.equal(panel.activeTab(group).id, source.id);
     panel.viewGroup(group);
     const rect = { x: 10, y: 50, width: 700, height: 400 };
     await invoke(panel.BROWSER_PANEL_OPEN_CHANNEL, rect);
