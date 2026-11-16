@@ -689,6 +689,10 @@ function App() {
       answers ? { type: "question_response", id, answers } : { type: "question_response", id, dismissed: true },
     );
   };
+  const onAnswerFolderAccess = (id: string, answer: string) => {
+    dispatch({ type: "local_folder_access_answered", id, answer });
+    socketRef.current?.send({ type: "question_response", id, answer });
+  };
   const pendingQuestion = state.items.findLast((item): item is Extract<LogItem, { kind: "question" }> => item.kind === "question" && item.status === "pending");
 
   const onSwitchModel = (model: string) => socketRef.current?.send({ type: "switch_model", model });
@@ -963,6 +967,8 @@ function App() {
                       busy: state.turnInFlight,
                       onAddFolder: (folder) => socketRef.current?.send({ type: "add_folder", folder }),
                       onTryAgain: () => sendRaw("I added the folder. Please try again."),
+                      onAnswerFolderAccess,
+                      onOpenFolderSettings: () => showSettings("workspace", null),
                     }}
                     onPptxShapePicked={onPptxShapePicked}
                     olderItems={state.olderItems}

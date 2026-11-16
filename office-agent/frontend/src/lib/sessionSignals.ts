@@ -1,9 +1,10 @@
 import { useEffect, useRef } from "react";
 import type { LogItem } from "../state/reducer";
+import { asksThePerson } from "../state/folderAccess";
 import { requestAttention, setSessionBusy } from "./electron";
 
 const WAITING_ON_PERSON = (item: LogItem): boolean =>
-  (item.kind === "approval" || item.kind === "question" || item.kind === "plan") && item.status === "pending";
+  ((item.kind === "approval" || item.kind === "plan") && item.status === "pending") || asksThePerson(item);
 
 /** Tells the desktop shell when a turn runs (it keeps the computer awake) and when coscribe
  * needs the person: a turn ended, or an approval, question or plan is waiting. */

@@ -5,6 +5,7 @@ import { pendingSteer, requeuedNotes, type NewSteer, type SteerItem } from "./st
 import type { HistoryEntry, QuestionSpec, StateEvent, TaskDraft, WsServerEvent } from "../types/wire";
 import type { ProgressItem } from "../lib/workflowProgress";
 import { planTasksField } from "../lib/planTasksResult";
+import { isFolderAccessEvent, reduceFolderAccess, type FolderAccessAction, type FolderAccessItem } from "./folderAccess";
 
 /** The answer the frontend sends for a saved draft starts with this --
  * also how a replayed create_scheduled_task call tells "saved" apart
@@ -12,12 +13,9 @@ import { planTasksField } from "../lib/planTasksResult";
 export const TASK_DRAFT_SAVED_PREFIX = "The user reviewed the draft and saved it";
 
 export type LogItem =
-  // turnIndex: 0-based count among this thread's "user" items only (its
-  // position ignoring every agent/tool/system item in between) -- exactly
-  // the index EditMessageOut expects, since the backend counts the same
-  // way over its own checkpointed HumanMessages (see conversation/session.py's
-  // handle_edit_message). Assigned once at creation (below), not derived
-  // at render time, so it stays stable even as later items are appended.
+  | FolderAccessItem
+  // turnIndex: 0-based among the "user" items only, the index EditMessageOut expects (the backend
+  // counts its checkpointed HumanMessages the same way). Set at creation, so later items can't move it.
   | { id: string; kind: "user"; text: string; turnIndex: number; images?: string[]; files?: string[] }
   /** A note added while a reply was being worked on (steerItems.ts). */
   | SteerItem
@@ -216,7 +214,8 @@ export type LocalAction =
   | { type: "local_task_draft_resolved"; id: string; status: "saved" | "dismissed"; savedName?: string }
   | { type: "local_connection_reset" }
   | { type: "local_switch_thread" }
-  | { type: "local_request_older_messages" };
+  | { type: "local_request_older_messages" }
+  | FolderAccessAction;
 
 export type ChatAction = WsServerEvent | LocalAction;
 
@@ -240,20 +239,13 @@ function countUserItems(items: LogItem[]): number {
   return items.reduce((n, item) => n + (item.kind === "user" ? 1 : 0), 0);
 }
 
-/** Finalizes a still-streaming agent bubble left behind mid-turn -- e.g.
- * narration a model emits right before a tool call (real, live-hit:
- * DeepSeek/GLM both do this; Gemini/Anthropic mostly don't, which is why
- * this went unnoticed for a while). Only "agent_delta"/"agent_message"
- * ever mark a bubble streaming: false -- but "agent_message" only looks
- * at the *last* item, and once a "tool_result"/"approval_required"/
- * "question_required" event takes over that slot, the original bubble
- * can never be found again. Without this, that bubble's cursor never
- * clears, and the backend session.py fix (see its own _stream_turn/
- * _resolve_pending_approvals docstrings) that stops re-sending its text
- * as part of a later "agent_message" only handles the *duplication* half
- * of the bug, not this stuck-cursor half. Call this immediately before
- * pushing any item that isn't itself continuing that streaming bubble. */
-function closeStreamingBubble(items: LogItem[]): LogItem[] {
+/** Finalizes a still-streaming agent bubble left behind mid-turn, such as narration a model
+ * (DeepSeek, GLM) emits right before a tool call. Only "agent_delta"/"agent_message" mark a bubble
+ * streaming: false, and "agent_message" only looks at the *last* item: once a "tool_result",
+ * "approval_required" or "question_required" takes that slot, the bubble can't be found again and
+ * its cursor never clears. Call this immediately before pushing any item that isn't itself
+ * continuing that streaming bubble. */
+export function closeStreamingBubble(items: LogItem[]): LogItem[] {
   const last = items[items.length - 1];
   if (!last || last.kind !== "agent" || !last.streaming) return items;
   const closed = [...items];
@@ -380,15 +372,11 @@ function withToolResult(state: ChatState, action: Extract<ChatAction, { type: "t
 }
 
 export function chatReducer(state: ChatState, action: ChatAction): ChatState {
+  if (isFolderAccessEvent(action)) return reduceFolderAccess(state, action);
   switch (action.type) {
     case "local_connection_reset":
-      // A fresh connection means a fresh pagination cursor server-side
-      // too (ChatSessionLG.load_older_messages' own cursor lives on the
-      // session object, not across reconnects) -- carrying the previous
-      // connection's olderItems/olderStatus over would either show a
-      // stale "no_more" for a thread switch that never even tried, or
-      // (worse) silently duplicate a batch already revealed once the
-      // new connection's cursor starts over from its own current state.
+      // The server's paging cursor lives on the session, so a new connection starts it over:
+      // keeping olderItems would show a stale "no_more" or reveal a batch twice.
       return { ...state, historyReceived: false, olderItems: [], olderStatus: "none" };
 
     case "local_switch_thread":

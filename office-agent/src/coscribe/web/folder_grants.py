@@ -22,8 +22,10 @@ def folders_in_use(settings: Settings) -> list[Path]:
         *settings.extra_writable_dirs,
         *settings.extra_deletable_dirs,
     ]
-    for env in Environments(settings.state_dir).all():
+    environments = Environments(settings.state_dir)
+    for env in environments.all():
         folders.extend(Path(f) for f in env["folders"])
+    folders.extend(Path(f) for f in environments.all_thread_folders())
     for sidecar in settings.state_dir.glob(f"{SCHEDULED_THREAD_PREFIX}*.workspace"):
         folders.extend(Path(f) for f in threads.folders_of(sidecar.stem))
     return folders

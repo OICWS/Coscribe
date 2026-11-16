@@ -166,6 +166,13 @@ class SessionReconfigurer:
         await host.send_state(websocket)
         return True
 
+    def refresh_folder_tools(self) -> None:
+        """After a folder was allowed from the chat: the file tools' folder lists are fixed when
+        they are built, so they are built again, mid-turn, before the refused call repeats."""
+        host = self._host
+        host._base_tools = list(host._build_agent().tools)
+        host.lg_agent, host._gated_tool_risks = host._build_lg_agent_with_risks()
+
     async def set_enabled_skills(
         self, skill_names: set[str], websocket: EventSink, *, announce: bool = True
     ) -> None:

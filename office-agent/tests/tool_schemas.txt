@@ -3,7 +3,7 @@
 
 system prompt: 26655 chars, ~6663 tokens, sha256 e31ceee03c
 
-bound to the model: 22 tools, ~5073 tokens
+bound to the model: 22 tools, ~5079 tokens
   ask_user_question (questions:array) desc 1435 chars sha256 e846e64163
   draft_workflow (name?:string) desc 983 chars sha256 e91334c9ee
   edit_file (new_text:string, old_text:string, path:string, replace_all?:boolean) desc 1330 chars sha256 3f5ab0dd7e
@@ -18,7 +18,7 @@ bound to the model: 22 tools, ~5073 tokens
   read_xlsx (path:string, sheet?:string|null) desc 548 chars sha256 299925b715
   revise_workflow (draft_id?:string, request:string, task_id?:string) desc 632 chars sha256 bb65f01516
   search_files (path?:string, pattern?:string, query:string, regex?:boolean) desc 1842 chars sha256 f741658379
-  search_tools (query:string) desc 1868 chars sha256 9331ec0ebd
+  search_tools (query:string) desc 1892 chars sha256 d689c715f8
   task_create (content:string) desc 149 chars sha256 dea506b85f
   task_list () desc 54 chars sha256 7bc88160db
   task_update (status:string, task_id:string) desc 284 chars sha256 e5aa5260b7
@@ -27,7 +27,7 @@ bound to the model: 22 tools, ~5073 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 120 tools, ~37893 tokens (the ones not bound are found through search_tools)
+registered: 121 tools, ~38134 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -115,6 +115,7 @@ registered: 120 tools, ~37893 tokens (the ones not bound are found through searc
   reorder_pptx_slide | WRITE_LOCAL | documents | deferred | sha256 3529565f4d
   replace_docx_text | WRITE_LOCAL | documents | deferred | sha256 d3ce81d157
   replace_pptx_image | WRITE_LOCAL | documents | deferred | sha256 b8c6137141
+  request_folder_access | READ | interaction | deferred | sha256 806b75496e
   resume_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 3d546c3215
   review_work | READ | - | deferred | sha256 3d07d2b688
   revise_workflow | READ | - | core | sha256 bb65f01516
