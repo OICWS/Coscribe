@@ -44,6 +44,10 @@ Last reviewed: 2026-11-06.
    (`docs/log/2026-11-10-tool-search-recall.md`);
    a failed turn exported as an evaluation task with
    the person's consent.
+4. **A workspace is a folder the person picks** (#926, decision 0048 proposed). Phases, one PR
+   each: A the folder access card in chats and Settings' Folder access; B attachments and pasted
+   pictures in `.coscribe/uploads/`; C the first start, no hidden default, environments and tasks
+   moved over; D `.coscribe/settings.json` and `mcp.json`.
 
 ## Open, smaller
 
@@ -167,7 +171,8 @@ Last reviewed: 2026-11-06.
   (`docs/log/2026-11-11-notice-kinds.md`). Today pictures there are only files it wrote.
 
 - A workspace's uploads in `.coscribe/uploads/<kind>/`, pasted pictures named by date and time and
-  a one-line description of each from the side model (decision 0044, its second part; the notes
+  a one-line description of each from the side model (decision 0044, its second part, now phase B
+  of #926; the notes
   and skills shipped: `docs/log/2026-11-09-workspace-notes.md`). Later still: `workflows/` and
   `agents/` read from there, and notes coscribe writes by itself from a person's corrections.
 
