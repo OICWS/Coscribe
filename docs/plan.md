@@ -27,20 +27,22 @@ Last reviewed: 2026-11-06.
    proposed), and so are the simple view in words (#839, decision 0037) and the run page that
    says how it went before its steps (#840, decision 0038). A task that starts on something
    new in a connector is merged (#851, decision 0039), and so are the steps a run adds when a step
-   fails at proactive or above (#861, decision 0042). In review: a task that starts on an event a
-   program on the machine sends (#850, decision 0040), and a run asking before its models use
-   more tokens, with nothing to set (decision 0043). Open: an L3 step delegating, adding steps
-   when nothing failed, and counting llm steps' tokens.
+   fails at proactive or above (#861, decision 0042). Merged too: a task that starts on an event a
+   program on the machine sends (#853, decision 0040), and a run asking before its models use
+   more tokens, with nothing to set (#862, decision 0043), whose budget now counts llm steps'
+   tokens (`docs/log/2026-11-15-llm-step-tokens.md`). Open: an L3 step delegating, and adding
+   steps when nothing failed.
 
 3. **How turns go, measured in real use** (#867, decision 0045). Done: one line per turn in
    `turns.jsonl`, without the conversation's words (`docs/log/2026-11-10-turn-trace.md`), and
    eight agentic evaluation tasks replayed from recorded answers in the PR checks, the three that
    run a script with its recorded output (`docs/log/2026-11-10-eval-replay.md`,
-   `docs/log/2026-11-16-eval-script-tapes.md`). Next: a nightly replay of the three that write
-   Office files;
+   `docs/log/2026-11-10-plan-order.md`, `docs/log/2026-11-16-eval-script-tapes.md`); a sub-agent's
+   run and a workflow agent step's pass counted too (`docs/log/2026-11-15-trace-subagent-turns.md`).
+   Next: a nightly replay of the three that write Office files;
    `search_tools` returning its weaker matches as a name and one line
    (`docs/log/2026-11-10-tool-search-recall.md`);
-   sub-agent and workflow agent steps counted; a failed turn exported as an evaluation task with
+   a failed turn exported as an evaluation task with
    the person's consent.
 
 ## Open, smaller
@@ -57,9 +59,10 @@ Last reviewed: 2026-11-06.
   The Word panel is frozen (decisions 0025, 0027): its remaining items are dropped.
 - **Artifacts:** pins are kept in the browser, not on the server; a scheduled run's files are not
   listed yet.
-- **Startup cost** (#478, `docs/metrics/2026-10-20-startup-cost.md`): `pptx`, `PIL` and `lxml`
-  loaded lazily once the sections modules may be edited; the sidecar started earlier in the
-  Electron shell.
+- **Startup cost** (#478 closed, `docs/metrics/2026-10-20-startup-cost.md`): `pptx`, `PIL` and
+  `lxml` stay on the startup path (66 to 85 ms and 13 MiB, measured 2026-11-15; not worth
+  editing every deck engine module). Open: the Windows numbers, cold start and the installed app
+  (`scripts/measure_startup.py`, `office-agent-desktop/scripts/measure-startup.mjs`).
 - **Scripts and commands:** a PyPI mirror setting for networks that block PyPI (#560); hiding other
   drives' user folders from commands (#845); a company proxy on a real Windows machine (Basic only;
   NTLM and Kerberos are not supported, #666).
