@@ -308,9 +308,11 @@ python -m evals.agentic.run --tasks 02,10 --out evals/runs/replay --replay
 
 `--record` writes one tape per task that completed without the nudge: every answer a model gave
 (the agent's, a sub-agent's, and the side calls such as the reviewer's verdict and the compaction
-summary), with its token counts, and the tool names of each turn. `--replay` runs the task with
-those answers in place of the model. The agent loop, the middleware, the approvals and every tool
-run for real in a fresh folder, and the task's own checks run on what is left behind.
+summary), with its token counts, what each Python or Node script printed and how it ended, and the
+tool names of each turn. `--replay` runs the task with those answers in place of the model and
+that output in place of the script's interpreter. The agent loop, the middleware, the approvals
+and every tool run for real in a fresh folder (a script's output is still cut and kept whole the
+way a real run does it), and the task's own checks run on what is left behind.
 `tests/test_evals_agentic_replay.py` replays every tape in `agentic/tapes/` in the PR checks,
 about a second each.
 
@@ -321,9 +323,12 @@ description changed; that takes the real run. When a change is meant to alter th
 turn, the replay fails with "record the tape again": run `--record` for that task and commit the
 new tape with the change.
 
-Record a tape with the settings the shipped app has (no `COSCRIBE_DEFAULT_PERMISSION_MODE`), and
-only for a task that needs nothing installed on the machine: a task that runs a script
-(`run_python_script`) depends on the interpreter the recording machine had. Before committing a
+Record a tape with the settings the shipped app has (no `COSCRIBE_DEFAULT_PERMISSION_MODE`). A
+replay needs no Python environment, Node or network for a script, but a script's files are not
+written on replay: a task whose later turns read what a script wrote needs that file written by a
+tool instead. Only the two script tools are on the tape: a task that uses `run_background_script`
+or `run_background_command` cannot be replayed, and one whose script reached its time limit and
+went to the background fails with "record again". Before committing a
 tape, replay it on Python 3.11 as well as on the version that recorded it: anything in a run that
 follows scheduling instead of the conversation (a background call the next message cancels,
 calls of one answer whose results depend on which ran first) replays differently there.

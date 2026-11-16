@@ -3,9 +3,12 @@
     python -m evals.agentic.run --tasks 08 --out evals/runs/tape --record evals/agentic/tapes
 
 A real run writes one tape per task that completed without the nudge: every answer a model
-gave, in order, and the names of the tools each turn called. `replay_task` runs the task again
+gave, in order, what each script it ran printed and how it ended, and the names of the tools each
+turn called. `replay_task` runs the task again
 with those answers in place of the model: the agent loop, its middleware, the approvals and
-every tool run for real, in a fresh folder. It is the part of the evaluation the pull request
+every tool run for real, in a fresh folder, except that a script's interpreter is not started:
+its recorded output stands in, so a replay needs no Python environment, Node or network. It is
+the part of the evaluation the pull request
 checks can afford (`tests/test_evals_agentic_replay.py`).
 
 What a replay catches is a change in what coscribe does with the same answers: a turn-end check
@@ -63,7 +66,10 @@ class Tape:
     # What the provider's messages call it. The compaction trusts a message's token count only
     # when the message and the model name the same provider.
     provider: str = ""
+    # What each Python or Node script printed and how it ended, in the order they ran.
+    scripts: list[dict[str, Any]] = field(default_factory=list)
     used: set[int] = field(default_factory=set)
+    scripts_used: int = 0
 
     def add(self, kind: str, message: Any) -> None:
         content = message.content
@@ -99,8 +105,36 @@ class Tape:
             "record the tape again (see evals/agentic/replay.py)."
         )
 
+    def add_script(self, ran: Any) -> None:
+        self.scripts.append(
+            {
+                "returncode": ran.returncode,
+                "stdout": ran.stdout,
+                "stderr": ran.stderr,
+                "timed_out": ran.timed_out,
+                # A script let go to the background ends outside the turn: no replay can hold it.
+                "detached": ran.detached is not None,
+            }
+        )
+
+    def next_script(self) -> Any:
+        from coscribe.tools.exec.running import Ran
+
+        if self.scripts_used >= len(self.scripts):
+            raise TapeMismatch(
+                f"{self.task}: the run started one more script than the tape holds. Record the "
+                "tape again (see evals/agentic/replay.py)."
+            )
+        recorded = self.scripts[self.scripts_used]
+        self.scripts_used += 1
+        if recorded["detached"]:
+            raise TapeMismatch(f"{self.task}: a script went to the background; record again.")
+        return Ran(
+            recorded["returncode"], recorded["stdout"], recorded["stderr"], recorded["timed_out"]
+        )
+
     def left(self) -> int:
-        return len(self.entries) - len(self.used)
+        return len(self.entries) - len(self.used) + len(self.scripts) - self.scripts_used
 
     def save(self, path: Path, workspace: Path, root: Path) -> None:
         body = {
@@ -110,6 +144,7 @@ class Tape:
             "window": self.window,
             "provider": self.provider,
             "calls": self.calls,
+            "scripts": self.scripts,
         }
         text = json.dumps({**body, "entries": self.entries}, ensure_ascii=False, indent=1)
         for real, mark in ((workspace, _WORKSPACE), (root, _ROOT)):
@@ -132,6 +167,7 @@ class Tape:
             data["calls"],
             data["window"],
             data["provider"],
+            data.get("scripts", []),
         )
 
 
@@ -235,8 +271,34 @@ def _models(build: Any) -> Iterator[None]:
             module.resolve_chat_model = original  # type: ignore[attr-defined]
 
 
-def recorded_models() -> contextlib.AbstractContextManager[None]:
-    """Each model's answers also go to the tape of the task that asked."""
+@contextlib.contextmanager
+def _scripts(run: Any, *, prepared: bool) -> Iterator[None]:
+    """Both script tools start their interpreter through `run(original_run_to_end)`. Unless
+    `prepared`, the environments and isolation a real interpreter needs are not set up."""
+    from coscribe.tools.exec import node_scripts, scripts
+
+    modules = (scripts, node_scripts)
+    patches = [(module, "run_to_end", run(module.run_to_end)) for module in modules]
+    if not prepared:
+        patches += [
+            (scripts, "ensure_script_env", lambda state_dir: Path(state_dir) / "script-env"),
+            (node_scripts, "ensure_node_env", lambda state_dir: Path(state_dir) / "node-env"),
+            *((module, "for_scripts", lambda *args, **kwargs: None) for module in modules),
+        ]
+    originals = [(module, name, getattr(module, name)) for module, name, _ in patches]
+    for module, name, value in patches:
+        setattr(module, name, value)
+    try:
+        yield
+    finally:
+        for module, name, value in originals:
+            setattr(module, name, value)
+
+
+@contextlib.contextmanager
+def recorded_models() -> Iterator[None]:
+    """Each model's answers, and what each script printed, also go to the tape of the task that
+    asked."""
 
     def build(original: Any) -> Any:
         def resolve(name: str, custom_providers: Any = None) -> Any:
@@ -246,13 +308,30 @@ def recorded_models() -> contextlib.AbstractContextManager[None]:
 
         return resolve
 
-    return _models(build)
+    def run(original: Any) -> Any:
+        def run_to_end(*args: Any, **kwargs: Any) -> Any:
+            ran = original(*args, **kwargs)
+            tape = _CURRENT.get()
+            if tape is not None:
+                tape.add_script(ran)
+            return ran
+
+        return run_to_end
+
+    with _models(build), _scripts(run, prepared=True):
+        yield
 
 
-def taped_models() -> contextlib.AbstractContextManager[None]:
-    """No model is built: every answer comes from the running task's tape."""
+@contextlib.contextmanager
+def taped_models() -> Iterator[None]:
+    """No model is built and no script's interpreter started: every answer and every script's
+    output comes from the running task's tape."""
 
     def build(original: Any) -> Any:
         return lambda name, custom_providers=None: TapeModel()
 
-    return _models(build)
+    def run(original: Any) -> Any:
+        return lambda *args, **kwargs: _tape().next_script()
+
+    with _models(build), _scripts(run, prepared=False):
+        yield

@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 from langchain_core.messages import AIMessage
 
+from coscribe.tools.exec import running
 from evals.agentic import replay, run, tasks
 
 TAPE_FILES = sorted(replay.TAPES.glob("*.json"))
@@ -59,6 +60,34 @@ async def test_a_tape_one_answer_short_fails_and_says_to_record_again(
     result = await run.replay_task(task, short, tmp_path / "out")
 
     assert any("record the tape again" in error for error in result["errors"])
+
+
+async def test_a_replayed_script_starts_no_interpreter(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def no_process(*args: object, **kwargs: object) -> None:
+        raise AssertionError("a replay started a process")
+
+    monkeypatch.setattr(running, "RunningCommand", no_process)
+    [task] = tasks.select("11")
+
+    result = await run.replay_task(task, replay.TAPES / "11-misnamed-file.json", tmp_path)
+
+    assert result["errors"] == [] and result["tool_errors"] == []
+    assert result["completed"], result["checks"]
+    assert not (tmp_path / task.name / "state" / "script-env").exists()
+
+
+async def test_a_tape_one_script_short_fails_and_says_to_record_again(tmp_path: Path) -> None:
+    recorded = json.loads((replay.TAPES / "11-misnamed-file.json").read_text(encoding="utf-8"))
+    recorded["scripts"] = []
+    short = tmp_path / "11-misnamed-file.json"
+    short.write_text(json.dumps(recorded), encoding="utf-8")
+    [task] = tasks.select("11")
+
+    result = await run.replay_task(task, short, tmp_path / "out")
+
+    assert any("one more script" in error for error in result["errors"] + result["tool_errors"])
 
 
 def test_answers_of_a_kind_come_back_in_order_and_the_kinds_do_not_mix() -> None:
