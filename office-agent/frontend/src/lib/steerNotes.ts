@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type Dispatch } from "react";
 import type { ChatAction, ChatState, LogItem } from "../state/reducer";
+import { asksThePerson } from "../state/folderAccess";
 import type { WsClientMessage } from "../types/wire";
 
 /** What a note sent while the reply is being worked on can still do. */
@@ -67,10 +68,11 @@ export function useSteerNotes(
 
   const unread = () => state.items.filter((item): item is Note => item.kind === "steer" && item.status === "pending");
   const drop = (notes: Note[]) => dispatch({ type: "local_steers_withdrawn", ids: notes.map((note) => note.id) });
-  // A stop denies what is waiting for approval on the server; the cards follow at once.
+  // A stop denies what is waiting for approval or a folder on the server; the cards follow at once.
   const denyApprovals = () =>
     state.items.forEach((item) => {
       if (item.kind === "approval" && item.status === "pending") dispatch({ type: "local_approval_resolved", id: item.id, approved: false });
+      if (item.kind === "folder_access" && item.status === "pending") dispatch({ type: "local_folder_access_answered", id: item.id, answer: "deny" });
     });
   const backToComposer = (notes: Note[]) => {
     const message = asMessage(notes);
@@ -101,7 +103,7 @@ export function useSteerNotes(
       send({ type: "stop" });
     },
   };
-  const question = state.items.findLast((item) => item.kind === "question" && item.status === "pending");
+  const question = state.items.findLast(asksThePerson);
   const approval = state.items.findLast((item) => item.kind === "approval" && item.status === "pending");
   return {
     actions,
@@ -113,7 +115,7 @@ export function useSteerNotes(
       const text = draft.outgoingText;
       const attached = (draft.images?.length ?? 0) > 0 || (draft.files?.length ?? 0) > 0;
       if (question && !attached) {
-        dispatch({ type: "local_question_answered", id: question.id, answers: [], reply: text });
+        dispatch(question.kind === "folder_access" ? { type: "local_folder_access_answered", id: question.id, answer: "deny", reply: text } : { type: "local_question_answered", id: question.id, answers: [], reply: text });
         send({ type: "question_response", id: question.id, reply: text });
         return;
       }

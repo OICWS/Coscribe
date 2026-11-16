@@ -13,8 +13,11 @@ SITE_MARK = "NEEDS_SITE_PERMISSION:"
 class NeedsPermission(PermissionError):
     """`target` is what to allow: a folder to add, or a site's host."""
 
-    def __init__(self, kind: Literal["folder", "site"], target: str, message: str) -> None:
-        super().__init__(message)
+    def __init__(
+        self, kind: Literal["folder", "site"], target: str, message: str, hint: str = ""
+    ) -> None:
+        # The hint is for a model that can ask the person itself; a waiting run shows `message`.
+        super().__init__(f"{message} {hint}".strip())
         self.kind = kind
         self.target = target
         self.message = message

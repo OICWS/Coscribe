@@ -15,7 +15,7 @@ from functools import partial
 from pathlib import Path
 
 from .config import Settings
-from .runtime import Agent, NetworkGuard, SessionEnvironments
+from .runtime import Agent, Environments, NetworkGuard, SessionEnvironments
 from .tools import (
     NEW_DECK_INSTRUCTIONS,
     ConversationSource,
@@ -559,6 +559,18 @@ def _sites_allowed_to_run(settings: Settings, thread_id: str) -> list[str]:
     return allowed_to_run(trigger, store.calls.tasks(trigger.workflow))["sites"]
 
 
+def _thread_folders(settings: Settings, thread_id: str) -> tuple[list[Path], ...]:
+    """What the folders allowed from this conversation only (decision 0048) may be read, written
+    and deleted in. A conversation's other folders are as open to it as the configured extra
+    directories, and described to the model the same way."""
+    granted = Environments(settings.state_dir).thread_folders(thread_id)
+    return (
+        [Path(f) for f in granted],
+        [Path(f) for f, access in granted.items() if access != "read"],
+        [Path(f) for f, access in granted.items() if access == "read-write-delete"],
+    )
+
+
 def build_coordinator_agent(
     settings: Settings,
     thread_id: str,
@@ -582,16 +594,15 @@ def build_coordinator_agent(
     web/app.py's _get_session passes one (the thread's resolved folders);
     the /api/tools probe agent and any CLI caller keep the global default."""
     root = workspace_root if workspace_root is not None else settings.workspace_root
-    # A conversation's other folders are as open to it as the configured
-    # extra directories, and described to the model the same way.
-    extra_readable = [*settings.extra_readable_dirs, *extra_folders]
-    extra_writable = [*settings.extra_writable_dirs, *extra_folders]
+    granted, granted_writable, granted_deletable = _thread_folders(settings, thread_id)
+    extra_readable = [*settings.extra_readable_dirs, *extra_folders, *granted]
+    extra_writable = [*settings.extra_writable_dirs, *extra_folders, *granted_writable]
     detachable = Detachable(thread_id, partial(adopt_running_command, settings.state_dir))
     # Only the file tools reach skills_dir (the skill creator writes there) and cut script output.
     cut_output = detachable.cut_output_dir(settings.state_dir)
     file_tool_readable = [*extra_readable, settings.skills_dir, cut_output]
     file_tool_writable = [*extra_writable, settings.skills_dir]
-    file_tool_deletable = [*settings.extra_deletable_dirs, settings.skills_dir]
+    file_tool_deletable = [*settings.extra_deletable_dirs, *granted_deletable, settings.skills_dir]
 
     def session_env() -> dict[str, str]:
         # Read at each run: the user can change them in Edit environment mid-conversation.

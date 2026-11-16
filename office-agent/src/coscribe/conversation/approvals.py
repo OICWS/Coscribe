@@ -54,6 +54,7 @@ from ..tools import (
 )
 from .capability_guard import capability_refusal
 from .events import EventSink
+from .folder_access import decide_folder_request
 from .workspace_folder import WorkspaceFolders
 
 _COMMAND_TOOL = "run_background_command"
@@ -204,6 +205,10 @@ class ApprovalHost(Protocol):
     def folders(self) -> Sequence[Path]: ...
 
     @property
+    def _reconfigurer(self) -> Any:  # SessionReconfigurer: rebuilds the tools after a folder card
+        ...
+
+    @property
     def _assembly(self) -> Any:  # AgentAssembly: its side_model() runs the reviewer
         ...
 
@@ -326,6 +331,10 @@ class ApprovalDecider:
                 return await self._decide_task_draft_request(name, args, websocket)
             if name == "exit_plan_mode":
                 return await self._decide_plan_request(args, websocket)
+            if name == "request_folder_access":
+                return await decide_folder_request(
+                    self._host, args, websocket, self._ask, self.open_prompts
+                )
             if name == "remember":
                 line = str(args.get("line", "")).strip()
                 folder = Path(self._host.workspace_root)

@@ -23,9 +23,11 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from ...runtime import Environments
+
 _BLOCKED_MARK = "COSCRIBE_BLOCKED_WRITE:"
 
-PYTHON_WRAPPER = r'''
+PYTHON_WRAPPER = r"""
 import atexit, json, os, runpy, sys
 
 config = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -97,7 +99,7 @@ atexit.register(report)
 sys.addaudithook(hook)
 sys.argv = [script]
 runpy.run_path(script, run_name="__main__")
-'''.replace("@@MARK@@", _BLOCKED_MARK)
+""".replace("@@MARK@@", _BLOCKED_MARK)
 
 
 def writable_roots(workspace_root: Path, extra_writable: list[Path]) -> list[str]:
@@ -201,14 +203,11 @@ def without_guard_warnings(stderr: str) -> str:
 
 def suggested_folder(blocked: str) -> str | None:
     """The folder to offer adding for a refused write: the nearest one that
-    exists, unless that is a whole drive or the user's home -- too much to
-    hand over with one click."""
+    exists, unless that is too broad (`Environments.too_broad`)."""
     path = Path(blocked)
     for candidate in (path, *path.parents):
         if candidate.is_dir():
-            if candidate == Path(candidate.anchor) or candidate == Path.home():
-                return None
-            return str(candidate)
+            return None if Environments.too_broad(candidate) else str(candidate)
     return None
 
 

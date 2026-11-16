@@ -45,7 +45,10 @@ Last reviewed: 2026-11-06.
 4. **A workspace is a folder the person picks** (#926, decision 0048 proposed). Phases, one PR
    each: A the folder access card in chats and Settings' Folder access; B attachments and pasted
    pictures in `.coscribe/uploads/`; C the first start, no hidden default, environments and tasks
-   moved over; D `.coscribe/settings.json` and `mcp.json`.
+   moved over; D `.coscribe/settings.json` and `mcp.json`. A part 1 (the card in chats) is in
+   `docs/log/2026-11-16-folder-access-card.md`; part 2 is Settings' Folder access: "Other
+   folders" renamed Allowed folders, the folder picker listing them, and a change applied without
+   a restart.
 
 ## Open, smaller
 

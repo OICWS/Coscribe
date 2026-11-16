@@ -203,6 +203,19 @@ class QuestionRequiredEvent(TypedDict):
     questions: list[QuestionSpec]
 
 
+class FolderAccessRequiredEvent(TypedDict):
+    """request_folder_access: the model needs a folder outside the workspace. Answered with
+    question_response's `answer`: "allow:<access>" (Allowed folders, every workspace),
+    "chat:<access>" (this conversation only), "workspace" (save there instead) or "deny"."""
+
+    type: Literal["folder_access_required"]
+    id: str
+    folder: str
+    # What the model asked for; the card presets the access to match.
+    access: Literal["read", "write"]
+    reason: str
+
+
 class ScheduledRunStartedEvent(TypedDict):
     """A scheduled run just started on this thread; `text` is the run's prompt (it
     never came from this tab, so there is no local echo)."""
@@ -475,6 +488,7 @@ ServerEvent = (
     | BackgroundTasksChangedEvent
     | PlanReadyEvent
     | QuestionRequiredEvent
+    | FolderAccessRequiredEvent
     | ScheduledRunStartedEvent
     | WorkflowStepEvent
     | WorkflowTestProgressEvent
@@ -551,7 +565,7 @@ class PlanTaskEdit(TypedDict):
 
 
 class QuestionAnswerOut(TypedDict):
-    """Answer to a plan or task draft."""
+    """Answer to a plan, a task draft or a folder access request."""
 
     type: Literal["question_response"]
     id: str

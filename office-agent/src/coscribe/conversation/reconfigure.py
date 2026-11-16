@@ -127,44 +127,47 @@ class SessionReconfigurer:
                 return False
             if folder not in chosen:
                 chosen.append(folder)
-        previous = (
-            host.workspace_root,
-            host.extra_folders,
-            host._workspace_explicit,
-            host._instructions,
-            host._base_tools,
-            host.lg_agent,
-            host._gated_tool_risks,
-        )
+        previous = (host.workspace_root, host.extra_folders, host._workspace_explicit)
         host._context_window = None
-        try:
-            host.workspace_root = chosen[0] if chosen else Path(host.settings.workspace_root)
-            host.extra_folders = chosen[1:]
-            host._workspace_explicit = bool(chosen)
-            agent = host._build_agent()
-            host._instructions = agent.instructions or ""
-            host._base_tools = list(agent.tools)
-            new_lg_agent, new_gated_tool_risks = host._build_lg_agent_with_risks()
-        except Exception as exc:  # noqa: BLE001 -- a bad folder must not corrupt session state
-            (
-                host.workspace_root,
-                host.extra_folders,
-                host._workspace_explicit,
-                host._instructions,
-                host._base_tools,
-                host.lg_agent,
-                host._gated_tool_risks,
-            ) = previous
+        host.workspace_root = chosen[0] if chosen else Path(host.settings.workspace_root)
+        host.extra_folders = chosen[1:]
+        host._workspace_explicit = bool(chosen)
+        failed = self._rebuild()
+        if failed is not None:
+            host.workspace_root, host.extra_folders, host._workspace_explicit = previous
             await websocket.send_json(
-                {"type": "error", "message": f"Could not use those folders: {exc}"}
+                {"type": "error", "message": f"Could not use those folders: {failed}"}
             )
             return False
-        host.lg_agent = new_lg_agent
-        host._gated_tool_risks = new_gated_tool_risks
         # Written while the person types, so their first message can carry it.
         host._assembly.folder_briefs.refresh(host._assembly.folders())
         await host.send_state(websocket)
         return True
+
+    def _rebuild(self) -> str | None:
+        """Builds the tools and the agent again; on a failure leaves the session as it was and
+        returns why."""
+        host = self._host
+        previous = host._instructions, host._base_tools
+        try:
+            agent = host._build_agent()
+            host._instructions = agent.instructions or ""
+            host._base_tools = list(agent.tools)
+            lg_agent, risks = host._build_lg_agent_with_risks()
+        except Exception as exc:  # noqa: BLE001 -- a bad folder must not corrupt session state
+            host._instructions, host._base_tools = previous
+            return str(exc)
+        host.lg_agent, host._gated_tool_risks = lg_agent, risks
+        return None
+
+    def refresh_folder_tools(self) -> str | None:
+        """After a folder was allowed from the chat: the file tools' folder lists are fixed when
+        they are built, so they are built again, mid-turn, before the refused call repeats."""
+        failed = self._rebuild()
+        if failed is not None:
+            return f"The folder was allowed, but the tools could not be rebuilt: {failed}"
+        self._host._context_window = None
+        return None
 
     async def set_enabled_skills(
         self, skill_names: set[str], websocket: EventSink, *, announce: bool = True

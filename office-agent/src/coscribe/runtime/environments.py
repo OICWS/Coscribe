@@ -23,6 +23,8 @@ DEFAULT_ID = "default"
 MAX_NAME = 60
 _FILE = "environments.json"
 _LOCK = threading.Lock()
+# How far a folder outside the workspace may be used, as Settings' Allowed folders say it.
+FOLDER_ACCESS = ("read", "read-write", "read-write-delete")
 
 
 class EnvironmentRefused(ValueError):
@@ -147,6 +149,15 @@ def _settings_key(env: dict[str, Any]) -> str:
 
 
 class Environments:
+    ACCESS = FOLDER_ACCESS
+
+    @staticmethod
+    def too_broad(folder: Path) -> bool:
+        """A whole drive, the home folder or a folder that holds it: too much to hand over with
+        one click."""
+        home = Path.home()
+        return folder == Path(folder.anchor) or folder == home or folder in home.parents
+
     def __init__(self, state_dir: str | Path) -> None:
         self.state_dir = Path(state_dir)
         self.path = self.state_dir / _FILE
@@ -172,7 +183,13 @@ class Environments:
             for t, e in (threads.items() if isinstance(threads, dict) else [])
             if str(e) in envs and str(e) != DEFAULT_ID
         }
-        return {"environments": envs, "threads": uses}
+        granted = raw.get("thread_folders")
+        thread_folders = {
+            str(t): {str(f): str(a) for f, a in folders.items() if a in FOLDER_ACCESS}
+            for t, folders in (granted.items() if isinstance(granted, dict) else [])
+            if isinstance(folders, dict)
+        }
+        return {"environments": envs, "threads": uses, "thread_folders": thread_folders}
 
     def _write(self, data: dict[str, Any]) -> None:
         self.state_dir.mkdir(parents=True, exist_ok=True)
@@ -294,10 +311,27 @@ class Environments:
             self._write(data)
         return env_id
 
+    def thread_folders(self, thread_id: str) -> dict[str, str]:
+        """Folders allowed for this conversation only (decision 0048), each with its access."""
+        return dict(self._read()["thread_folders"].get(thread_id, {}))
+
+    def all_thread_folders(self) -> list[str]:
+        return [f for folders in self._read()["thread_folders"].values() for f in folders]
+
+    def allow_for_thread(self, thread_id: str, folder: str, access: str) -> None:
+        if access not in FOLDER_ACCESS:
+            raise ValueError(access)
+        with _LOCK:
+            data = self._read()
+            data["thread_folders"].setdefault(thread_id, {})[folder] = access
+            self._write(data)
+
     def forget_thread(self, thread_id: str) -> None:
         with _LOCK:
             data = self._read()
-            if data["threads"].pop(thread_id, None) is not None:
+            env = data["threads"].pop(thread_id, None)
+            folders = data["thread_folders"].pop(thread_id, None)
+            if env is not None or folders is not None:
                 self._write(data)
 
     def detach_secret(self, name: str) -> None:

@@ -21,6 +21,8 @@ import { TaskDraftCard } from "../TaskDraftCard";
 import { TaskCard } from "./TaskCard";
 import { WorkflowDraftCard } from "../workflow/WorkflowDraftCard";
 import { CONNECTED_NOTE_PREFIX, ConnectorConnectedNote, ConnectorOfferCard } from "./ConnectorOfferCard";
+import { FolderAccessCard } from "./FolderAccessCard";
+import { asksThePerson } from "../../state/folderAccess";
 import { type TaskDraftItem } from "./types";
 import { ToolRunGroupView } from "./ToolRuns";
 import { UserMessageView, SteerView } from "./UserMessageView";
@@ -101,7 +103,7 @@ export function TurnView({
 }) {
   const entries = foldTaskCard(groupToolRuns(turn.items), turn.taskPlaces);
   const calls = entries.flatMap((entry) => (entry.kind === "tool_run" ? entry.items : []));
-  const waiting = turn.hasPendingApproval || turn.items.some((item) => item.kind === "question" && item.status === "pending");
+  const waiting = turn.hasPendingApproval || turn.items.some(asksThePerson);
   const finalAgentItem = turn.finalAgentItem;
   const userItem = turn.userItem;
   const canFooter =
@@ -109,10 +111,7 @@ export function TurnView({
 
   return (
     <div className="group/turn flex flex-col gap-3">
-      {/* groupToolRuns now always wraps a tool/approval run into a
-       * ToolRunGroup, even a run of one (see its own comment) -- a bare
-       * "tool"/"approval" LogItem can no longer reach this map at all,
-       * so there's no case for it here anymore. */}
+      {/* groupToolRuns wraps every tool or approval, even a run of one, so neither reaches here bare. */}
       {entries.map((entry) =>
         entry.kind === "tool_run" ? (
           <ToolRunGroupView
@@ -133,6 +132,7 @@ export function TurnView({
         ) : entry.kind === "workflow_draft" ? (
           <WorkflowDraftCard key={entry.id} entry={entry} />
         ) : entry.kind === "connector_offer" ? (<ConnectorOfferCard key={entry.id} entry={entry} />
+        ) : entry.kind === "folder_access" ? (<FolderAccessCard key={entry.id} item={entry} />
         ) : entry.kind === "steer" ? (
           <SteerView key={entry.id} item={entry} />
         ) : (

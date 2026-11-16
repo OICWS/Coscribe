@@ -609,6 +609,15 @@ describe("questions, plans and task drafts", () => {
     expect(next.items[1]).toEqual({ id: "q1", kind: "question", questions: [question], status: "pending" });
   });
 
+  it("adds a folder access card once, even when a reconnect sends it again, and records the answer", () => {
+    const event = { type: "folder_access_required", id: "f1", folder: "D:\\Contracts\\2025", access: "read", reason: "quotes" } as const;
+    const base = run(stateWith({ items: [agentItem("a", "t", true)] }), event, event);
+    expect(base.items).toHaveLength(2);
+    expect(base.items[1]).toMatchObject({ kind: "folder_access", status: "pending", access: "read" });
+    const next = run(base, { type: "local_folder_access_answered", id: "f1", answer: "chat:read" });
+    expect(next.items[1]).toMatchObject({ status: "answered", answer: "chat:read" });
+  });
+
   it("records the answers only on the matching question", () => {
     const base = run(
       stateWith(),

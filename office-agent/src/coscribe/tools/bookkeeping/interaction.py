@@ -23,7 +23,7 @@ delegated run.
 """
 
 from collections.abc import Callable, Mapping, Sequence
-from typing import Annotated, Any, NotRequired
+from typing import Annotated, Any, Literal, NotRequired
 
 from pydantic import Field
 
@@ -32,7 +32,9 @@ from typing_extensions import TypedDict
 
 from ...runtime import tool_metadata
 
-QUESTION_TOOL_NAMES: frozenset[str] = frozenset({"ask_user_question", "exit_plan_mode", "remember"})
+QUESTION_TOOL_NAMES: frozenset[str] = frozenset(
+    {"ask_user_question", "exit_plan_mode", "remember", "request_folder_access"}
+)
 
 # exit_plan_mode's answers, as the frontend sends them.
 PLAN_CHOICE_AUTO = "auto"
@@ -223,6 +225,27 @@ def remember(line: str) -> str:
     )
 
 
+def request_folder_access(folder: str, access: Literal["read", "write"], reason: str) -> str:
+    """Ask the user to let you use a folder outside the workspace. Call it when a
+    file tool refused a path as outside any allowed directory and the work needs
+    that folder; don't ask for a whole drive or the home folder. The user allows it
+    for every workspace or only this conversation, or declines; a write can also
+    be told to save in the workspace instead. The result says which; once
+    allowed, call the refused tool again.
+
+    Args:
+        folder: the absolute path of the folder, as the refusal named it.
+        access: "read" to open files there, "write" to save into it as well.
+        reason: one short line on what you need it for, in the language the user
+            wrote in, e.g. "to read the 2025 quotes".
+    """
+    raise RuntimeError(
+        "request_folder_access must be resolved via HumanInTheLoopMiddleware's 'respond' "
+        "decision -- reaching this body means the graph never registered it in "
+        "question_tool_names."
+    )
+
+
 def build_interaction_tools() -> list[Callable[..., Any]]:
     """Return the interaction tool callables. No state to bind -- unlike
     every other build_*_tools factory in this package, this one takes no
@@ -233,4 +256,5 @@ def build_interaction_tools() -> list[Callable[..., Any]]:
         tool_metadata(ask_user_question, risk_category="READ", category="interaction"),
         tool_metadata(exit_plan_mode, risk_category="READ", category="interaction"),
         tool_metadata(remember, risk_category="READ", category="interaction"),
+        tool_metadata(request_folder_access, risk_category="READ", category="interaction"),
     ]

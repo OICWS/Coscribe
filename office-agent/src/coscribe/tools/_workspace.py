@@ -11,6 +11,7 @@ identical to before this existed: everything is confined to `root`.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -86,7 +87,12 @@ class WorkspaceScope:
         folder = suggested_folder(str(resolved))
         if folder is None:
             raise PermissionError(message)
-        raise NeedsPermission("folder", folder, message)
+        access = "write" if write else "read"
+        hint = (
+            "If the work needs it, ask the user: use_tool with name request_folder_access and "
+            f'arguments {{"folder": {json.dumps(folder)}, "access": "{access}", "reason": "..."}}.'
+        )
+        raise NeedsPermission("folder", folder, message, hint)
 
     def relative(self, path: Path) -> str:
         for candidate_root in (self.root, *self._extra_readable):

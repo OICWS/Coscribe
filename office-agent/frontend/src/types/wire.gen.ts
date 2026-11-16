@@ -196,6 +196,20 @@ export interface QuestionRequiredEvent {
 }
 
 /**
+ * request_folder_access: the model needs a folder outside the workspace. Answered with
+ * question_response's `answer`: "allow:<access>" (Allowed folders, every workspace),
+ * "chat:<access>" (this conversation only), "workspace" (save there instead) or "deny".
+ */
+export interface FolderAccessRequiredEvent {
+  type: "folder_access_required";
+  id: string;
+  folder: string;
+  /** What the model asked for; the card presets the access to match. */
+  access: "read" | "write";
+  reason: string;
+}
+
+/**
  * A scheduled run just started on this thread; `text` is the run's prompt (it never came
  * from this tab, so there is no local echo).
  */
@@ -470,6 +484,7 @@ export type ServerEvent =
   | BackgroundTasksChangedEvent
   | PlanReadyEvent
   | QuestionRequiredEvent
+  | FolderAccessRequiredEvent
   | ScheduledRunStartedEvent
   | WorkflowStepEvent
   | WorkflowTestProgressEvent
@@ -550,7 +565,7 @@ export interface PlanTaskEdit {
   content: string;
 }
 
-/** Answer to a plan or task draft. */
+/** Answer to a plan, a task draft or a folder access request. */
 export interface QuestionAnswerOut {
   type: "question_response";
   id: string;
