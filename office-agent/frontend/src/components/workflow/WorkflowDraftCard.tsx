@@ -150,7 +150,7 @@ function stepMark(status: string | undefined) {
   if (status === "done") return <CheckCircleIcon className="h-3.5 w-3.5 shrink-0 text-[var(--success)]" />;
   if (status === "failed") return <XCircleIcon className="h-3.5 w-3.5 shrink-0 text-[var(--danger)]" />;
   if (status === "waiting") return <AlertCircleIcon className="h-3.5 w-3.5 shrink-0 text-[var(--warning)]" />;
-  return <span className="h-3.5 w-3.5 shrink-0" />;
+  return null;
 }
 
 function Steps({ entry, result }: { entry: WorkflowDraftEntry; result: WorkflowTestResult | null }) {
@@ -206,11 +206,10 @@ function Steps({ entry, result }: { entry: WorkflowDraftEntry; result: WorkflowT
               <li
                 key={step.id}
                 data-step-state={status}
-                className={`flex min-w-0 items-center gap-2.5 rounded-md text-[13px] ${running ? "bg-blue-500/5" : ""}`}
-                style={{ paddingLeft: depth * 20 }}
+                className={`flex min-w-0 min-h-6 items-center gap-2 rounded-md text-[13px] ${running ? "bg-blue-500/5" : ""}`}
+                style={{ marginLeft: depth * 16 }}
               >
-                <StepKindTile step={step} size="sm" />
-                <span aria-label={status} className="flex h-4 w-4 shrink-0 items-center justify-center">{stepMark(status)}</span>
+                <span aria-label={status} className="flex h-5 w-5 shrink-0 items-center justify-center">{stepMark(status) ?? <StepKindTile step={step} size="sm" />}</span>
                 <span className={`min-w-0 flex-1 break-words ${running ? "draft-step-sheen" : ""}`}>{step.title}</span>
                 {path && <span className="max-w-[35%] text-right text-[10px] text-[var(--muted)]">{path}{status === "not_taken" ? " · not selected" : selected ? " · selected" : ""}</span>}
                 {status === "waiting" && <span className="text-xs text-[var(--warning)]">{step.kind === "approval" || step.kind === "ask" ? "Waiting for you" : "Waiting"}</span>}

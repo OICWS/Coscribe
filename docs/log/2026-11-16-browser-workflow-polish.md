@@ -14,7 +14,7 @@ workflow tests hid their active steps and runtime tab ids were awkward in saved 
 - Context usage opens within the viewport, with wrapping aligned statistics. Stop retains its
   existing behavior without an automatic follow-up question.
 - Draft tests retain and stream real per-step/iteration records. Their hierarchical list shows
-  separate aligned type/status icons, branches, parallel activity and loop counts, with reduced
+  one aligned icon column, with execution status replacing the type icon once started, branches, parallel activity and loop counts, with reduced
   motion and restrained active-step scrolling.
 
 ## Not verified
