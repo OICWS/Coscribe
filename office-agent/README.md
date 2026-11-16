@@ -692,6 +692,18 @@ any words you wrote on it.
   the user's folder if the conversation named one, else `downloads` --
   and in chat the AI asks where to keep downloads before drafting. Your
   own downloads still ask where to save.
+- **Popups and tabs**: navigation reuses the current tab. A popup opened
+  during AI work stays in the background; tool results report its source
+  and available tabs. The AI can select or close it with `browser_tabs`;
+  closing it returns to its source when that page is still open. Download
+  waits follow the conversation's files across tab changes and closures.
+  Completed downloads close only untouched blank popups, keeping login and
+  business pages available. A full tab group refuses extra popups rather
+  than replacing the original page. The AI can close several pages in one
+  step, or all but the ones it keeps; pages you used or took over, and pages
+  another step is still working in, stay open and the result says why. It
+  can also read several pages at once. A workflow run's pages stay open
+  after it ends unless the workflow ends with a step that closes them.
 - **Stop** also reaches the desktop app: the step in progress there (a
   wait can run for an hour) ends at once, and steps that conversation
   had queued are dropped.

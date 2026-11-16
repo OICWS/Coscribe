@@ -150,3 +150,22 @@ describe("the pass a picked step is shown in", () => {
     expect(passShowing(picked, "read", [])).toBeNull();
   });
 });
+
+it("tracks simultaneous active steps and branch decisions inside parallel lanes", () => {
+  const nested = {
+    version: 1, inputs: [], steps: [{ kind: "parallel", id: "p", title: "Parallel", lanes: [
+      { label: "One", steps: [workflow.steps[2]] },
+      { label: "Two", steps: [{ kind: "tool", id: "other", title: "Other", tool: "read_file", args: {} }] },
+    ] }],
+  } as unknown as Workflow;
+  const states = runMap(nested, run("running", [record("p", "running"), record("any", "done", [], { arm: "then" }), record("sum", "running"), record("other", "running")]));
+  expect(states.get("sum")?.status).toBe("running");
+  expect(states.get("other")?.status).toBe("running");
+  expect(states.get("none")?.status).toBe("not_taken");
+});
+
+it("keeps unobserved steps pending instead of inferring completion from order", () => {
+  const states = runMap(workflow, run("running", [record("any", "running")]));
+  expect(states.get("list")?.status).toBe("not_reached");
+  expect(states.get("none")?.status).toBe("not_reached");
+});

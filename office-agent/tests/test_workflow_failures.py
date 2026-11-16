@@ -11,7 +11,7 @@ from pydantic import ValidationError
 
 from coscribe.needs_permission import NeedsPermission
 from coscribe.workflow_spec import parse_workflow, workflow_error
-from coscribe.workflows import compiled_graph, run_report, run_test, untrusted_agent_steps
+from coscribe.workflows import run_report, run_test, untrusted_agent_steps
 from coscribe.workflows.engine import (
     StepContext,
     StepRecord,
@@ -354,23 +354,6 @@ async def test_a_run_with_nothing_in_a_failed_steps_place_is_refused(tmp_path: P
 
     with pytest.raises(WorkflowNotRunnable, match="step 1: no steps run in its place"):
         await run.start(workflow).start({})
-
-
-def test_the_compiled_graph_shows_each_try_and_the_steps_in_a_steps_place() -> None:
-    instead = [_read("saved", "saved.txt", save_as="rates")]
-    workflow = parse_workflow({"steps": [
-        _read("rates", "rates.txt", on_failure=_failing("steps", 2, instead)),
-        _write("save", "{{rates}}"),
-    ]})  # fmt: skip
-
-    edges = {(e["source"], e["target"], e["label"]) for e in compiled_graph(workflow)["edges"]}
-
-    assert {
-        ("step__rates", "step__rates", "retry"),
-        ("step__rates", "step__saved", "steps"),
-        ("step__rates", "step__save", "ok"),
-        ("step__saved", "step__save", None),
-    } <= edges
 
 
 def test_an_agent_that_reads_a_failure_reads_outside_content() -> None:

@@ -17,7 +17,8 @@ The maintainer wants the person to set nothing.
   asks; the runner stops it before its next model call (`runtime_lg/token_limit.py`).
 - **A run** may use what its task's finished runs used at most, times 3, and at least 2M
   (`run_budget`), counted from its step records, so a resumed run counts what it spent before.
-  It is checked before each agent or llm step. A single llm call isn't counted.
+  It is checked before each agent or llm step, and counts what both used: an llm step keeps
+  its calls' tokens on its record as an agent step does (`agent.tokens`, `agent.cached_tokens`).
 - **Over it, the run pauses**, as for an approval: "Continue" lets it use as many again (the
   agent goes on where it stopped; a run's raised cap is kept on the run, `token_cap`), "Stop"
   ends the step as a person's no, so its `on_failure` applies and nothing heals or adds steps.
@@ -31,4 +32,5 @@ The maintainer wants the person to set nothing.
   `StepRecord` gains `over_budget`; `StepContext` gains `budget`; `ScheduledRun` gains
   `token_cap`.
 - A test run stops at the question as at an approval.
-- Not done: counting llm steps, and a cap for a prompt task (a task that is one instruction).
+- Not done: a cap for a prompt task (a task that is one instruction). An llm step that fails
+  after its retry keeps no record of its tokens.

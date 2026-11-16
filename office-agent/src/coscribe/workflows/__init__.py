@@ -16,7 +16,6 @@ from .budget import run_budget
 from .catalog import describe_params, tool_description
 from .connector_value import ask_connector
 from .engine import RunOutcome, StepContext, StepRecord, WorkflowNotRunnable, WorkflowRun
-from .graph_view import compiled_graph
 from .heal_revision import heal_fixes, heals_to_revise
 from .overview import write_overview
 from .pause_steps import answer_problem, paused_at, wake_due
@@ -62,7 +61,6 @@ __all__ = [
     "brings_outside_content",
     "callable_tasks",
     "called_permissions",
-    "compiled_graph",
     "ask_connector",
     "describe_params",
     "draft_workflow",

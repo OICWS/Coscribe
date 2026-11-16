@@ -43,7 +43,6 @@ TF-IDF implementation reaches the same conclusion at a similar scale.
 from __future__ import annotations
 
 import json
-import re
 from collections.abc import Awaitable, Callable, Iterable, Sequence
 from dataclasses import dataclass, replace
 from typing import Any
@@ -57,6 +56,8 @@ from langchain_core.messages import (
     ToolMessage,
 )
 from langchain_core.tools import BaseTool
+
+from .search_words import query_words, tokenize
 
 # Always sent, alongside the caller's core tools: without them nothing
 # deferred could be found or run.
@@ -82,17 +83,6 @@ _MAX_RESULTS = 8
 # are left out.
 _MIN_SHARE_OF_BEST = 0.4
 _MIN_SCORE = 2.0
-
-_STOPWORDS = frozenset(
-    {"a", "an", "the", "to", "of", "for", "and", "or", "in", "on", "with", "this", "that",
-     "is", "are", "it", "as", "at", "be", "by", "from"}
-)
-_TOKEN_RE = re.compile(r"[a-z0-9]+")
-
-
-def _tokenize(text: str) -> list[str]:
-    return [w for w in _TOKEN_RE.findall(text.lower()) if len(w) > 1 and w not in _STOPWORDS]
-
 
 def _tool_name(tool: Callable[..., Any] | BaseTool) -> str:
     # Deliberately a local copy of agent.py's identical helper, not an
@@ -124,8 +114,8 @@ def _build_entry(tool: Callable[..., Any] | BaseTool) -> _ToolEntry:
     return _ToolEntry(
         name=name,
         description=description,
-        name_tokens=tuple(_tokenize(name)),
-        description_tokens=tuple(_tokenize(description)),
+        name_tokens=tuple(tokenize(name)),
+        description_tokens=tuple(tokenize(description)),
     )
 
 
@@ -136,10 +126,14 @@ def _score(entry: _ToolEntry, query_tokens: Sequence[str], query_lower: str) -> 
     score = 0.0
     if query_lower and query_lower in entry.name.lower():
         score += _NAME_SUBSTRING_BONUS
+    in_name = 0
     for token in set(query_tokens):
+        in_name += token in entry.name_tokens
         score += _NAME_TOKEN_WEIGHT * (token in entry.name_tokens)
         score += _DESCRIPTION_TOKEN_WEIGHT * (token in entry.description_tokens)
-    return score
+    # Among names that hold the same words of the query, the one that is little else comes
+    # first: "powerpoint" is write_pptx before add_pptx_shape_effect.
+    return score + (in_name / len(entry.name_tokens) if in_name else 0.0)
 
 
 def _parameters_schema(tool: Callable[..., Any] | BaseTool) -> dict[str, Any]:
@@ -179,7 +173,7 @@ def build_search_tools_tool(
                 "pptx") works well since most tool names are literal
                 about what they do.
         """
-        query_tokens = _tokenize(query)
+        query_tokens = sorted(query_words(query))
         query_lower = query.strip().lower()
         scored = [(_score(entry, query_tokens, query_lower), entry) for entry in entries]
         best = max((score for score, _ in scored), default=0.0)

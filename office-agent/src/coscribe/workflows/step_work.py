@@ -200,9 +200,16 @@ def _refuse_blocked_write(result: Any) -> None:
     if isinstance(result, dict) and result.get("blocked_write"):
         path = str(result["blocked_write"])
         folder = str(result.get("blocked_folder") or "")
+        if not folder:
+            # No folder short of a drive or the home folder holds it, and those are never offered.
+            raise StepFailed(
+                f'The script tried to write "{path}", which is outside the workspace and the '
+                "folders this run may use. Add its folder in Settings > Other folders, or have "
+                "the script save inside the workspace."
+            )
         raise NeedsPermission(
             "folder",
-            folder or path,
+            folder,
             f'The script tried to write "{path}", which is outside the workspace and the '
             "folders this run may use. Allow that folder, or have the script save inside "
             "the workspace.",
@@ -244,7 +251,12 @@ async def run_script(step: ScriptStep, values: dict[str, Any], ctx: StepContext)
         raise StepFailed(f"The script's last line isn't JSON: {lines[-1][:200]!r}") from exc
 
 
-async def run_llm(step: LLMStep, values: dict[str, Any], ctx: StepContext) -> Any:
+async def run_llm(
+    step: LLMStep, values: dict[str, Any], ctx: StepContext
+) -> tuple[Any, dict[str, int]]:
+    """The step's fields, and the tokens its model calls used, in the shape an agent step's
+    activity has, so the run's token budget counts them (decision 0043)."""
+    usage = {"tokens": 0, "cached_tokens": 0}
     model = ctx.make_model(step.model)
     if "temperature" in getattr(type(model), "model_fields", {}):
         model = model.model_copy(update={"temperature": 0})
@@ -256,13 +268,13 @@ async def run_llm(step: LLMStep, values: dict[str, Any], ctx: StepContext) -> An
     problems: list[str] = []
     for _attempt in range(2):
         try:
-            result = await ask_model(model, messages, step.fields)
+            result = await ask_model(model, messages, step.fields, usage)
         except ValueError as exc:
             problems = [str(exc)]
         else:
             cleaned, problems = field_problems(result, step.fields)
             if not problems:
-                return cleaned
+                return cleaned, usage
         messages.append(
             HumanMessage("That result was rejected: " + "; ".join(problems) + ". Try again.")
         )

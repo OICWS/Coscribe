@@ -38,7 +38,9 @@ import { setPlanComments, usePlanComments, withPlanComments } from "./lib/planCo
 import { planPanelData } from "./lib/taskCard";
 import { PanelDock } from "./components/dock/PanelDock";
 import { PanelToggles } from "./components/dock/PanelToggles";
-import { SaveOfferRow } from "./components/SaveOfferRow";
+import { NoticeStack } from "./components/NoticeStack";
+import { useChatNotices } from "./components/chatNotices";
+import { draftCardsFrom } from "./components/workflow/draftNotices";
 import { usePinnedItems } from "./lib/toolbarItems";
 import { PANEL_IDS, PANEL_TITLES, type PanelId } from "./lib/dockLayout";
 import { isViewable } from "./lib/viewers";
@@ -145,6 +147,7 @@ function App() {
   // Same pattern again, for SkillsTab's "Create a skill" prefilling the
   // composer's own text (not an image) -- see onCreateSkill below.
   const [pendingComposerDraft, setPendingComposerDraft] = useState<ComposerDraft | null>(null);
+  const [composerHasDraft, setComposerHasDraft] = useState(false);
   const artifactStart = useArtifactStart(threadId);
   const [navMode, setNavMode] = useState<NavMode>(() => (readPage().view === "scheduled" ? "run" : "create"));
   const [artifactsOpen, setArtifactsOpen] = useState(() => readPage().view === "artifacts");
@@ -397,7 +400,7 @@ function App() {
   const planData = planPanelData(state.items);
   const hasPlan = planData.tasks.length > 0;
   const planComments = usePlanComments(planData.plan);
-  const taskPanelWanted = taskPanelChoice[threadId] ?? (threadWorkflow !== null || isScheduledTaskThread || hasPlan);
+  const taskPanelWanted = taskPanelChoice[threadId] ?? (threadWorkflow === null && (isScheduledTaskThread || hasPlan));
   const onHome =
     state.historyReceived &&
     state.items.length === 0 &&
@@ -504,22 +507,10 @@ function App() {
     setNavMode("run");
   };
 
-  const savedDrafts = new Map<string, { triggerId: string; name: string }>();
-  for (const task of scheduledTasks) {
-    for (const draftId of task.drafts ?? []) savedDrafts.set(draftId, { triggerId: task.trigger_id, name: task.name });
-  }
-  const draftCards = {
-    saved: savedDrafts,
-    testProgress: state.workflowTest,
-    onTestAgain: state.turnInFlight
-      ? undefined
-      : (entry: WorkflowDraftEntry) => sendRaw(`Test the workflow draft ${entry.draftId} again.`),
-    onContinue: () => document.querySelector<HTMLTextAreaElement>('[data-testid="composer"] textarea')?.focus(),
-    onOpenTask: (triggerId: string) => {
-      const task = scheduledTasks.find((t) => t.trigger_id === triggerId);
-      if (task) showScheduledTaskPage(task);
-    },
-  };
+  const draftCards = draftCardsFrom(scheduledTasks, state.workflowTest, {
+    testAgain: state.turnInFlight ? undefined : (entry) => sendRaw(`Test the workflow draft ${entry.draftId} again.`),
+    openTask: (task) => showScheduledTaskPage(task),
+  });
 
   const leaveWorkflowDraft = () => {
     const draftThread = workflowDraft?.threadId;
@@ -584,14 +575,18 @@ function App() {
     setScheduledTaskModal({ task: existing, draft: item, initialEnvironment: threadEnvironment });
   };
 
-  const saveWorkflowRevision = async (triggerId: string, workflow: Workflow) => {
-    const task = scheduledTasks.find((t) => t.trigger_id === triggerId);
-    if (!task) return "That task no longer exists.";
-    const fromDraft = workflowDraft?.draftId;
+  const saveWorkflowRevision = async (triggerId: string, workflow: Workflow, fromDraft = workflowDraft?.draftId) => {
+    if (!scheduledTasks.some((t) => t.trigger_id === triggerId)) return "That task no longer exists.";
     const result = await patchScheduledTask(triggerId, { workflow, ...(fromDraft ? { from_draft: fromDraft } : {}) });
     if ("error" in result) return result.error;
     refreshScheduledTasks();
-    showScheduledTaskPage(result);
+    if (workflowDraft) showScheduledTaskPage(result);
+    return null;
+  };
+
+  const saveWorkflowDraft = async (entry: WorkflowDraftEntry) => {
+    if (entry.triggerId) return saveWorkflowRevision(entry.triggerId, entry.workflow, entry.draftId ?? undefined);
+    setScheduledTaskModal({ task: null, newWorkflow: entry.workflow, initialName: entry.name, initialEnvironment: entry.environment ?? threadEnvironment, fromDraft: entry.draftId ?? undefined, fromThread: threadId });
     return null;
   };
 
@@ -789,6 +784,14 @@ function App() {
     if (poppedOut.includes("viewer")) focusPanelWindow("viewer");
     return true;
   };
+  const { notices, overlay: noticeOverlay } = useChatNotices({ threadId, refreshKey, items: [...state.olderItems, ...state.items], turnInFlight: state.turnInFlight }, draftCards, state.saveOffer, {
+    saveDraft: (entry) => saveWorkflowDraft(entry),
+    reviewDraft: reviewWorkflowDraft,
+    saveAsWorkflow: startWorkflowDraft,
+    saveAsSkill: (name) => onSend({ displayText: `/saveskill ${name}`, outgoingText: `/saveskill ${name}`, isInstant: false }),
+    dismissOffer: () => dispatch({ type: "local_save_offer_dismissed" }),
+    viewFile,
+  });
 
   if (!bootstrapped) return <StartupSplash />;
 
@@ -835,11 +838,10 @@ function App() {
       onExternalPptxCaptureConsumed={() => setPendingPptxCapture(null)}
       artifact={artifactStart.kind}
       onArtifactRemoved={artifactStart.clear}
-      designSystem={artifactStart.designSystem}
-      onDesignSystem={artifactStart.chooseDesignSystem}
+      designSystem={artifactStart.designSystem} onDesignSystem={artifactStart.chooseDesignSystem}
       onManageDesignSystems={(startNew) => showSettings("design-systems", startNew ? "new" : null)}
       externalDraft={pendingComposerDraft}
-      onExternalTextConsumed={() => setPendingComposerDraft(null)}
+      onExternalTextConsumed={() => setPendingComposerDraft(null)} onHasDraftChange={setComposerHasDraft}
     />
   );
 
@@ -955,7 +957,7 @@ function App() {
                   {composer}
                 </div>
               ) : navMode === "create" ? (
-                <SteerActionsContext.Provider value={steers.actions}><ViewFile.Provider value={viewFile}><OpenDesignSystem.Provider value={(id) => showSettings("design-systems", id)}><OpenConnector.Provider value={(name) => showSettings("connectors", name)}><DetachScript.Provider value={onDetachScript}><BackgroundTasks.Provider value={{ statuses: subAgents.statuses, open: (taskId) => { setSubAgentFocus({ threadId, taskId }); setPanelOpen("background", true); } }}>
+                <SteerActionsContext.Provider value={{ ...steers.actions, composerHasDraft }}><ViewFile.Provider value={viewFile}><OpenDesignSystem.Provider value={(id) => showSettings("design-systems", id)}><OpenConnector.Provider value={(name) => showSettings("connectors", name)}><DetachScript.Provider value={onDetachScript}><BackgroundTasks.Provider value={{ statuses: subAgents.statuses, open: (taskId) => { setSubAgentFocus({ threadId, taskId }); setPanelOpen("background", true); } }}>
                   <ChatLog
                     items={state.items}
                     turnInFlight={state.turnInFlight}
@@ -988,9 +990,7 @@ function App() {
                   {pendingQuestion && (
                     <QuestionPanel key={pendingQuestion.id} item={pendingQuestion} onAnswer={onAnswerQuestion} />
                   )}
-                  {state.saveOffer && !state.turnInFlight && (
-                    <SaveOfferRow offer={state.saveOffer} onWorkflow={startWorkflowDraft} onSkill={(name) => onSend({ displayText: `/saveskill ${name}`, outgoingText: `/saveskill ${name}`, isInstant: false })} onDismiss={() => dispatch({ type: "local_save_offer_dismissed" })} />
-                  )}
+                  {!pendingQuestion && <NoticeStack notices={notices} />}{noticeOverlay}
                   {composer}
                 </BackgroundTasks.Provider></DetachScript.Provider></OpenConnector.Provider></OpenDesignSystem.Provider></ViewFile.Provider></SteerActionsContext.Provider>
               ) : workflowDraft ? (

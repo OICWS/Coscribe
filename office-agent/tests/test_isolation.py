@@ -428,6 +428,28 @@ async def test_the_script_tools_run_contained(tmp_path: Path) -> None:
         _revoke_all(state)
 
 
+@windows
+def test_a_script_makes_its_allowed_folder_without_seeing_the_ones_above(tmp_path: Path) -> None:
+    from coscribe.tools.exec import build_script_tools
+
+    workspace, download = tmp_path / "ws", tmp_path / "outer" / "download"
+    workspace.mkdir()
+    download.mkdir(parents=True)
+    state = tmp_path / "state"
+    try:
+        (run,) = build_script_tools(workspace, state, extra_writable=[download])
+        script = (
+            "import os\n"
+            f"os.makedirs({str(download)!r}, exist_ok=True)\n"
+            f"open({str(download / 'a.txt')!r}, 'w').write('x')\n"
+        )
+        result = run(script=script, description="download")
+        assert not result.get("blocked_write"), result
+        assert (download / "a.txt").read_text() == "x"
+    finally:
+        _revoke_all(state)
+
+
 def test_a_command_line_is_refused_in_the_container(tmp_path: Path) -> None:
     with pytest.raises(IsolationRefused, match="run_background_script"):
         isolation.start("dir /b", str(tmp_path), {}, Isolation(tmp_path))

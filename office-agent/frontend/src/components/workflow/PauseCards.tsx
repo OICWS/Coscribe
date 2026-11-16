@@ -124,10 +124,10 @@ export function AskCard({
         </p>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" disabled={busy || gaps.length > 0} className={primaryButton} onClick={() => send(true)}>
+        <button type="button" disabled={busy || gaps.length > 0} className={`${primaryButton} whitespace-nowrap`} onClick={() => send(true)}>
           Continue
         </button>
-        <button type="button" disabled={busy} className={secondaryButton} onClick={() => send(false)}>
+        <button type="button" disabled={busy} className={`${secondaryButton} whitespace-nowrap`} onClick={() => send(false)}>
           Stop the run
         </button>
         {gaps.length > 0 && <span className="text-xs text-[var(--muted)]">Still needed: {gaps.join(", ")}</span>}
@@ -168,8 +168,8 @@ export function WaitCard({
       <p className="text-[13px] text-[var(--muted)]">
         The run holds nothing while it waits. If Coscribe is closed, it goes on when it next starts.
       </p>
-      <div className="flex gap-2">
-        <button type="button" disabled={busy} className={secondaryButton} onClick={goOn}>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" disabled={busy} className={`${secondaryButton} whitespace-nowrap`} onClick={goOn}>
           {pause.path ? "Check now" : "Go on now"}
         </button>
       </div>

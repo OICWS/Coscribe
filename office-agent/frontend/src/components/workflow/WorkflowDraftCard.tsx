@@ -1,7 +1,9 @@
-import { useContext, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import type { WorkflowDraftEntry, WorkflowTestResult } from "../../lib/transcriptGrouping";
-import { type DraftCards, DraftCardsContext } from "./draftCards";
+import { DraftCardsContext, draftStatus, type Status } from "./draftCards";
 import { memoryPreview } from "../../lib/memoryWords";
+import { runArms } from "../../lib/runArms";
+import { runMap } from "../../lib/workflowRunMap";
 import { placeSteps } from "../../lib/workflowTree";
 import { primaryButton, secondaryButton } from "../../lib/formStyles";
 import {
@@ -9,38 +11,12 @@ import {
   CheckCircleIcon,
   ChevronDownIcon,
   ChevronRightIcon,
-  CloseIcon,
   FileTextIcon,
   WorkflowIcon,
   XCircleIcon,
 } from "../icons";
 import { StepKindTile } from "./parts";
 import { Screenshot } from "./Screenshot";
-
-type Status =
-  | { kind: "saved"; name: string; triggerId: string }
-  | { kind: "testing"; done: number; total: number }
-  | { kind: "passed"; result: WorkflowTestResult }
-  | { kind: "approval"; result: WorkflowTestResult }
-  | { kind: "irreversible"; result: WorkflowTestResult }
-  | { kind: "failed"; result: WorkflowTestResult }
-  | { kind: "untested" };
-
-function draftStatus(entry: WorkflowDraftEntry, cards: DraftCards): Status {
-  const saved = entry.draftId ? cards.saved.get(entry.draftId) : undefined;
-  if (saved) return { kind: "saved", ...saved };
-  const test = entry.draftId ? cards.tests.get(entry.draftId) : undefined;
-  if (test?.running) {
-    const total = cards.testProgress?.total ?? placeSteps(entry.workflow.steps).length;
-    return { kind: "testing", done: cards.testProgress?.done ?? 0, total };
-  }
-  const result = test?.result;
-  if (!result) return { kind: "untested" };
-  if (result.status === "passed") return { kind: "passed", result };
-  if (result.status === "stopped_at_approval") return { kind: "approval", result };
-  if (result.status === "stopped_before_irreversible") return { kind: "irreversible", result };
-  return { kind: "failed", result };
-}
 
 function failedTitle(result: WorkflowTestResult): string {
   return result.steps.find((s) => s.id === result.failed_step)?.title ?? result.failed_step ?? "a step";
@@ -169,17 +145,41 @@ function Evidence({ result }: { result: WorkflowTestResult }) {
 }
 
 function stepMark(status: string | undefined) {
+  if (status === "running") return <span aria-label="Running" className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-500 motion-reduce:animate-none" />;
+  if (status === "not_taken" || status === "skipped") return (
+    <svg aria-label={status === "not_taken" ? "Not selected" : "Skipped"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" className="h-3.5 w-3.5 shrink-0 text-[var(--muted)]">
+      <circle cx="12" cy="12" r="9" /><path d="M8 12h8" />
+    </svg>
+  );
   if (status === "done") return <CheckCircleIcon className="h-3.5 w-3.5 shrink-0 text-[var(--success)]" />;
   if (status === "failed") return <XCircleIcon className="h-3.5 w-3.5 shrink-0 text-[var(--danger)]" />;
   if (status === "waiting") return <AlertCircleIcon className="h-3.5 w-3.5 shrink-0 text-[var(--warning)]" />;
-  return <span className="h-3.5 w-3.5 shrink-0" />;
+  return null;
 }
 
 function Steps({ entry, result }: { entry: WorkflowDraftEntry; result: WorkflowTestResult | null }) {
   const [open, setOpen] = useState(false);
   const placed = placeSteps(entry.workflow.steps);
+  const cards = useContext(DraftCardsContext);
+  const test = entry.draftId ? cards.tests.get(entry.draftId) : undefined;
+  const progress = test?.running && (!test.toolCallId || test.toolCallId === cards.testProgress?.toolCallId) ? cards.testProgress : null;
+  const records = progress?.records ?? result?.records ?? [];
+  const states = runMap(entry.workflow, { steps: records, status: test?.running ? "running" : result?.status === "failed" ? "failed" : "completed" });
+  const list = useRef<HTMLOListElement>(null);
+  const userScrolled = useRef(false);
+  useEffect(() => { userScrolled.current = false; }, [progress?.toolCallId]);
+  const active = [...states].filter(([, value]) => value.status === "running" || value.status === "waiting").map(([id]) => id).join(",");
+  useEffect(() => {
+    const container = list.current;
+    const item = container?.querySelector('[data-step-state="running"], [data-step-state="waiting"]');
+    if (!open || userScrolled.current || !container || !item) return;
+    const row = item.getBoundingClientRect(), viewport = container.getBoundingClientRect();
+    if (row.top < viewport.top) container.scrollTop += row.top - viewport.top;
+    else if (row.bottom > viewport.bottom) container.scrollTop += row.bottom - viewport.bottom;
+  }, [open, active]);
   const inputs = entry.workflow.inputs.length;
   const byId = new Map((result?.steps ?? []).map((s) => [s.id, s]));
+  const stepById = new Map(placed.map(({ step }) => [step.id, step]));
   const summary = [
     `${placed.length} ${placed.length === 1 ? "step" : "steps"}`,
     inputs > 0 ? `${inputs} ${inputs === 1 ? "input" : "inputs"} asked each run` : "no inputs",
@@ -196,20 +196,28 @@ function Steps({ entry, result }: { entry: WorkflowDraftEntry; result: WorkflowT
         {summary}
       </button>
       {open && (
-        <ol className="mt-2 flex flex-col gap-1.5">
-          {placed.map(({ step, depth }) => {
+        <ol ref={list} onPointerDown={() => { userScrolled.current = true; }} onWheel={() => { userScrolled.current = true; }} onTouchMove={() => { userScrolled.current = true; }} className="mt-2 flex max-h-[60vh] flex-col gap-1.5 overflow-y-auto">
+          {placed.map(({ step, depth, list: branch, loops }) => {
             const tested = byId.get(step.id);
+            const current = states.get(step.id);
+            const observed = records.length ? current?.status : tested?.status;
+            const status = observed === "done" && loops.some(id => states.get(id)?.status === "running") ? "pending" : observed;
+            const running = status === "running";
+            const parent = branch.parent ? stepById.get(branch.parent) : undefined;
+            const path = parent && branch.arm ? runArms(parent, undefined)?.arms.find(arm => arm.arm === branch.arm)?.label : undefined;
+            const selected = branch.arm && branch.parent && states.get(branch.parent)?.arms?.includes(branch.arm);
             return (
               <li
                 key={step.id}
-                className="flex min-w-0 items-center gap-2.5 text-[13px]"
-                style={{ paddingLeft: depth * 20 }}
+                data-step-state={status}
+                className={`flex min-w-0 min-h-6 items-center gap-2 rounded-md text-[13px] ${running ? "bg-blue-500/5" : ""}`}
+                style={{ marginLeft: depth * 16 }}
               >
-                {result && stepMark(tested?.status)}
-                <StepKindTile step={step} size="sm" />
-                <span className={`truncate ${tested?.status === "not reached" ? "text-[var(--muted)]" : ""}`}>
-                  {step.title}
-                </span>
+                <span aria-label={status} className="flex h-5 w-5 shrink-0 items-center justify-center">{stepMark(status) ?? <StepKindTile step={step} size="sm" />}</span>
+                <span className={`min-w-0 flex-1 break-words ${running ? "draft-step-sheen" : ""}`}>{step.title}</span>
+                {path && <span className="max-w-[35%] text-right text-[10px] text-[var(--muted)]">{path}{status === "not_taken" ? " · not selected" : selected ? " · selected" : ""}</span>}
+                {status === "waiting" && <span className="text-xs text-[var(--warning)]">{step.kind === "approval" || step.kind === "ask" ? "Waiting for you" : "Waiting"}</span>}
+                {current?.passes && <span className="shrink-0 text-xs tabular-nums text-[var(--muted)]">{current.passes.done}/{current.passes.total ?? "…"}</span>}
                 {tested?.seconds != null && (
                   <span className="ml-auto shrink-0 tabular-nums text-xs text-[var(--muted)]">{tested.seconds}s</span>
                 )}
@@ -225,9 +233,31 @@ function Steps({ entry, result }: { entry: WorkflowDraftEntry; result: WorkflowT
 /** A fixed workflow the model drafted or revised in this conversation,
  * results first: whether its test passed and what it produced. Nothing
  * is saved until the user reviews it and saves. */
+function StillWorking() {
+  return (
+    <span className="flex items-center gap-1.5 text-[13px] text-[var(--muted)]" data-testid="draft-in-the-works">
+      <span className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] motion-reduce:animate-none" />
+      AI is still testing and fixing this. You can review it once it's done.
+    </span>
+  );
+}
+
+function ContinueButton({ onContinue }: { onContinue?: () => void }) {
+  return (
+    <button
+      type="button"
+      className="rounded-md px-2 py-1.5 text-[13px] text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
+      disabled={!onContinue}
+      onClick={() => onContinue?.()}
+    >
+      Continue in chat
+    </button>
+  );
+}
+
 export function WorkflowDraftCard({ entry }: { entry: WorkflowDraftEntry }) {
   const cards = useContext(DraftCardsContext);
-  const superseded = cards.latestDraftId !== null && entry.id !== cards.latestDraftId;
+  const superseded = !cards.currentDraftIds.has(entry.id);
   const status = draftStatus(entry, cards);
   const revision = entry.triggerId !== null;
   if (superseded) {
@@ -251,6 +281,9 @@ export function WorkflowDraftCard({ entry }: { entry: WorkflowDraftEntry }) {
   const test = entry.draftId ? cards.tests.get(entry.draftId) : undefined;
   const result = test && !test.running ? test.result : null;
   const busy = status.kind === "testing";
+  // Reviewing a version the model is still testing and fixing would save one it may replace.
+  const working = cards.inTheWorks.has(entry.id);
+  const tested = status.kind === "passed" || status.kind === "approval" || status.kind === "irreversible";
 
   return (
     <div
@@ -294,11 +327,13 @@ export function WorkflowDraftCard({ entry }: { entry: WorkflowDraftEntry }) {
           >
             Open task
           </button>
+        ) : working ? (
+          <StillWorking />
         ) : (
           <>
             <button
               type="button"
-              className={primaryButton}
+              className={tested || status.kind === "untested" ? primaryButton : secondaryButton}
               disabled={!cards.onReview}
               onClick={() => cards.onReview?.(entry)}
             >
@@ -311,75 +346,19 @@ export function WorkflowDraftCard({ entry }: { entry: WorkflowDraftEntry }) {
                 disabled={!cards.onTestAgain || busy}
                 onClick={() => cards.onTestAgain?.(entry)}
               >
-                {result ? "Test again" : "Test it"}
+                Test again
               </button>
             )}
-            <button
-              type="button"
-              className="rounded-md px-2 py-1.5 text-[13px] text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
-              disabled={!cards.onContinue}
-              onClick={() => cards.onContinue?.()}
-            >
-              Continue in chat
-            </button>
+            <ContinueButton onContinue={cards.onContinue} />
           </>
         )}
-        {entry.notes.length > 0 && status.kind !== "saved" && (
+        {entry.notes.length > 0 && status.kind !== "saved" && !working && (
           <span className="ml-auto flex items-center gap-1.5 text-[13px] text-[var(--muted)]">
             <AlertCircleIcon className="h-3.5 w-3.5 text-[var(--warning)]" />
             {entry.notes.length} {entry.notes.length === 1 ? "thing" : "things"} worth checking
           </span>
         )}
       </div>
-    </div>
-  );
-}
-
-/** The newest unsaved draft, kept in reach at the bottom of the
- * conversation while its card is scrolled out of view. */
-export function PinnedDraftBar({
-  entry,
-  onShow,
-  onClose,
-}: {
-  entry: WorkflowDraftEntry;
-  onShow: () => void;
-  onClose: () => void;
-}) {
-  const cards = useContext(DraftCardsContext);
-  const status = draftStatus(entry, cards);
-  return (
-    <div
-      className="sticky bottom-2 z-10 flex min-w-0 items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.08)]"
-      data-testid="pinned-draft"
-    >
-      <WorkflowIcon className="h-4 w-4 shrink-0 text-[var(--muted)]" />
-      <button
-        type="button"
-        className="min-w-0 flex-1 text-left"
-        title="Show the draft"
-        onClick={onShow}
-      >
-        <div className="truncate text-sm font-medium">{entry.name}</div>
-        <StatusLine status={status} />
-      </button>
-      <button
-        type="button"
-        className={primaryButton}
-        disabled={!cards.onReview}
-        onClick={() => cards.onReview?.(entry)}
-      >
-        {entry.triggerId ? "Review changes" : "Review and save"}
-      </button>
-      <button
-        type="button"
-        aria-label="Close"
-        title="Hide this bar; the draft stays in the conversation"
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
-        onClick={onClose}
-      >
-        <CloseIcon className="h-4 w-4" />
-      </button>
     </div>
   );
 }

@@ -38,8 +38,9 @@ export interface StateEvent {
   /** The connected connectors' tool names. */
   connector_tools: string[];
   /**
-   * Only on the state sent right after connecting: whether a turn is already running
-   * on this thread (typically a scheduled run), so the page shows it as running.
+   * Only on the state sent right after connecting, or after a Stop that found no
+   * turn: whether a turn is running on this thread (typically a scheduled run), so
+   * the page shows it as running, or stops waiting for one that is not.
    */
   turn_in_flight?: boolean;
   /**
@@ -324,6 +325,7 @@ export interface WorkflowTestProgressEvent {
   status: string;
   done: number;
   total: number;
+  record?: WorkflowStepRecord;
 }
 
 /**

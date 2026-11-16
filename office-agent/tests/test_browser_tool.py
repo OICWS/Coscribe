@@ -146,9 +146,10 @@ def test_tabs_marks_the_current_one() -> None:
     assert output.splitlines() == ["  Tab 1: A -- https://a/", "* Tab 2: B -- https://b/"]
 
 
-def test_tabs_select_needs_a_tab_id() -> None:
-    with pytest.raises(ValueError, match="tab_id"):
-        _tools(_FakeHost({}))["browser_tabs"]("select")
+def test_tabs_accepts_named_runtime_targets() -> None:
+    host = _FakeHost({})
+    _tools(host)["browser_tabs"]("select", tab_id="report")
+    assert host.calls[0][1]["tab_id"] == "report"
 
 
 def test_acting_on_a_page_needs_approval_reading_it_does_not() -> None:
@@ -400,3 +401,145 @@ def test_a_turn_or_run_tells_the_desktop_app_when_it_starts_and_ends() -> None:
         ("activity", "t1", {"active": True}),
         ("activity", "t1", {"active": False}),
     ]
+
+
+async def test_timeout_cancels_only_its_request_and_keeps_later_steps() -> None:
+    host = BrowserHost()
+    outbox = host.attach()
+    first = asyncio.create_task(host.request("snapshot", {}, "t1", timeout=0.01))
+    command = await outbox.get()
+    later = asyncio.create_task(host.request("tabs", {}, "t1", timeout=5))
+    next_command = await outbox.get()
+    with pytest.raises(ValueError, match="didn't finish snapshot"):
+        await first
+    cancel = await outbox.get()
+    assert cancel == {
+        "id": "",
+        "thread_id": "t1",
+        "action": "cancel_request",
+        "args": {"request_id": command["id"]},
+    }
+    assert not host.resolve(command["id"], {"ok": True, "result": {}})
+    host.resolve(next_command["id"], {"ok": True, "result": {"tabs": []}})
+    assert await later == {"tabs": []}
+
+
+def test_popup_feedback_names_the_source_and_how_to_select_or_close() -> None:
+    host = _FakeHost(
+        {
+            "click": {
+                "element": 'button "Export"',
+                "tab": {"id": 1, "url": "https://source/"},
+                "tabs": [
+                    {"id": 1, "url": "https://source/", "active": True},
+                    {"id": 2, "url": "https://popup/", "opener_id": 1},
+                ],
+            }
+        }
+    )
+    output = _tools(host)["browser_click"]("e1")
+    assert "Browser pages changed" in output
+    assert "opened by Tab 1" in output
+    assert 'browser_tabs("select"' in output
+    assert '"close"' in output
+
+
+def test_tab_list_preserves_popup_relationships() -> None:
+    host = _FakeHost(
+        {
+            "tabs": {
+                "tabs": [
+                    {"id": 2, "url": "https://popup/", "opener_id": 1, "active": True},
+                ]
+            }
+        }
+    )
+    assert "opened by Tab 1" in _tools(host)["browser_tabs"]()
+
+
+def test_batch_fill_uses_one_targeted_command() -> None:
+    host = _FakeHost({"fill_form": {}})
+    fields = [
+        {"ref": "Company Code", "text": "1000"},
+        {"ref": "Posting Date", "text": "2026-11-16"},
+    ]
+    _tools(host)["browser_fill_form"](fields, tab_id="reports")
+    assert len(host.calls) == 1
+    assert host.calls[0][0] == "fill_form"
+    assert host.calls[0][1]["fields"] == fields
+    assert host.calls[0][1]["tab_id"] == "reports"
+
+
+def test_tab_info_returns_runtime_fields_for_workflow_references() -> None:
+    data = {"tab": {"id": 42, "opener_id": 7}, "tabs": []}
+    host = _FakeHost({"tabs": data})
+    assert _tools(host)["browser_tabs"]("info", "last_opened") == data
+
+
+def test_closing_several_pages_says_which_stayed_open() -> None:
+    host = _FakeHost(
+        {
+            "tabs": {
+                "tabs": [{"id": 3, "title": "Mine", "url": "https://m/", "active": True}],
+                "closed": [{"id": 1}, {"id": 2}],
+                "kept": [
+                    {
+                        "id": 3,
+                        "title": "Mine",
+                        "url": "https://m/",
+                        "reason": "the user has used it",
+                    }
+                ],
+            }
+        }
+    )
+    output = _tools(host)["browser_tabs"]("close", tab_ids=[1, "report", 3])
+    assert host.calls[0][1]["tab_ids"] == [1, "report", 3]
+    assert output.splitlines()[:2] == [
+        "Closed Tab 1, Tab 2.",
+        "Left open Tab 3: Mine -- https://m/ -- the user has used it.",
+    ]
+
+
+def test_close_all_passes_the_pages_to_keep() -> None:
+    host = _FakeHost({"tabs": {"tabs": [], "closed": [], "kept": []}})
+    assert _tools(host)["browser_tabs"]("close_all", keep=["current"]).startswith(
+        "Closed no pages."
+    )
+    assert host.calls[0][1]["op"] == "close_all"
+    assert host.calls[0][1]["keep"] == ["current"]
+
+
+@pytest.mark.parametrize(
+    ("action", "kwargs"),
+    [("close", {"tab_ids": []}), ("select", {"tab_ids": [1]}), ("close", {"keep": [1]})],
+)
+def test_page_lists_only_go_with_their_close(action: str, kwargs: dict[str, Any]) -> None:
+    host = _FakeHost({})
+    with pytest.raises(ValueError):
+        _tools(host)["browser_tabs"](action, **kwargs)
+    assert host.calls == []
+
+
+def test_snapshot_reads_several_pages_at_once() -> None:
+    class _Pages(_FakeHost):
+        def call(
+            self, action: str, args: dict[str, Any], thread_id: str, timeout: float = 30
+        ) -> dict[str, Any]:
+            self.calls.append((action, args, thread_id))
+            if args["tab_id"] == "broken":
+                raise ValueError("The page stopped responding.")
+            text = f"page {args['tab_id']} " * 2000
+            return {"text": text[: args["max_chars"]], "total_chars": len(text),
+                    "tab": {"id": args["tab_id"], "title": "T", "url": "u"}}  # fmt: skip
+
+    host = _Pages({})
+    output = _tools(host)["browser_snapshot"](tab_ids=[1, 2, 2, "broken"])
+    assert sorted(str(c[1]["tab_id"]) for c in host.calls) == ["1", "2", "broken"]
+    assert all(c[1]["max_chars"] == 4000 for c in host.calls)
+    pages = output.split("\n\n----\n\n")
+    assert len(pages) == 3
+    assert "Call browser_snapshot(tab_id=1, start=4000)" in pages[0]
+    assert pages[2] == "Tab broken: couldn't read it: The page stopped responding."
+    with pytest.raises(ValueError):
+        _tools(host)["browser_snapshot"](start=10, tab_ids=[1])

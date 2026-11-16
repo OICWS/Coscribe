@@ -226,6 +226,7 @@ function ToolCallRow({
 
   return (
     <div
+      data-waiting={isPendingApproval ? item.id : undefined}
       className={`w-full rounded-xl border px-3 py-2 text-sm ${
         isPendingApproval ? "border-[var(--accent)] bg-[var(--bg)]" : "border-[var(--border)] bg-[var(--card-bg)] hover:bg-[var(--panel-bg)]"
       }`}

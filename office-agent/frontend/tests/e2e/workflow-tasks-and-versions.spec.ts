@@ -68,6 +68,7 @@ test("a task runs another, and its versions can be compared and restored", async
     });
     await page.goto(`/?view=scheduled&task=${id}`);
     await page.getByRole("button", { name: "Detailed", exact: true }).click();
+    await page.getByRole("group", { name: "Workflow view" }).getByRole("button", { name: "Settings" }).click();
     const rows = page.getByTestId("version-row");
     await expect(rows).toHaveCount(2);
     await expect(rows.first()).toContainText("Version 2");

@@ -1,7 +1,7 @@
 /**
  * The Browser panel: real browser tabs, each a `WebContentsView` child of
- * the main window, of which only the active tab's view is attached, laid
- * over the panel's content area. The React panel draws the tab strip and
+ * the main window, with the active tab over the panel's content area
+ * and background views kept off-window. The React panel draws the tab strip and
  * address bar and reports where the content area is; this file owns the
  * tabs. Both the user and coscribe's AI (browserAgent.ts) drive the same
  * tabs.
@@ -30,9 +30,12 @@ import {
   type DownloadItem,
   type Session,
   type WebContents,
+  type WebContentsViewConstructorOptions,
+  type WebPreferences,
 } from "electron";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { browserOperation, runningSteps, tabHasWork } from "./browserAgentSteps";
 import { existingCdp } from "./browserCdp";
 import { browserSettings, updateBrowserSettings } from "./browserPermissions";
 
@@ -68,7 +71,7 @@ const CONTENT_WHEEL_ZOOM_CHANNEL = "browser-panel-content:wheel-zoom";
 
 const PARTITION = "persist:coscribe-browser";
 // As in Claude's browser: past this the tab strip can't show a usable tab.
-export const MAX_TABS = 9;
+export const MAX_TABS = 16;
 const MIN_ZOOM_FACTOR = 0.25;
 const MAX_ZOOM_FACTOR = 5;
 const ZOOM_STEP_FACTOR = 1.1;
@@ -96,6 +99,12 @@ export interface Tab {
   // page, so its (blank white) view stays detached.
   blank: boolean;
   loadError: string | null;
+  openerId?: number;
+  popupBlocked?: boolean;
+  activity?: "working" | "waiting";
+  name?: string;
+  userControlled?: boolean;
+  userTouched?: boolean;
 }
 
 export interface TabInfo {
@@ -107,6 +116,8 @@ export interface TabInfo {
   canGoBack: boolean;
   canGoForward: boolean;
   loadError: string | null;
+  activity?: "working" | "waiting";
+  userControlled?: boolean;
 }
 
 const tabs: Tab[] = [];
@@ -186,6 +197,8 @@ export function tabInfo(tab: Tab): TabInfo {
     canGoBack: wc.navigationHistory.canGoBack(),
     canGoForward: wc.navigationHistory.canGoForward(),
     loadError: tab.loadError,
+    activity: tab.activity,
+    userControlled: tab.userControlled,
   };
 }
 
@@ -249,11 +262,37 @@ export function waitForPanelOpen(timeoutMs: number): Promise<boolean> {
   });
 }
 
+const appliedBounds = new WeakMap<WebContentsView, PanelRect>();
 function setBoundsReliably(view: WebContentsView, rect: PanelRect): void {
+  const previous = appliedBounds.get(view);
+  if (previous && previous.x === rect.x && previous.y === rect.y && previous.width === rect.width && previous.height === rect.height) return;
+  appliedBounds.set(view, { ...rect });
   // electron/electron#39993: one setBounds can leave the view painting at
   // its old size, stretched and blurry; the second call forces the layout.
   view.setBounds(rect);
   view.setBounds(rect);
+}
+
+const activityIdleTimers = new Map<number, ReturnType<typeof setTimeout>>();
+export function setTabActivity(id: number, activity?: "working" | "waiting"): void {
+  clearTimeout(activityIdleTimers.get(id));
+  activityIdleTimers.delete(id);
+  const publish = () => {
+    activityIdleTimers.delete(id);
+    const tab = tabs.find(t => t.id === id);
+    if (tab && tab.activity !== activity) { tab.activity = activity; sendTabs(); }
+  };
+  // Brief gaps between chained operations should not blink the status strip.
+  if (activity) publish();
+  else activityIdleTimers.set(id, setTimeout(publish, 200));
+}
+function userControl(id: number, enabled: boolean): void {
+  const tab = tabs.find(t => t.id === id);
+  if (!tab) return;
+  tab.userControlled = enabled;
+  if (enabled) for (const step of runningSteps.values()) if (step.tabId === id) step.stop = true;
+  setTabActivity(id);
+  sendTabs();
 }
 
 export function setViewHidden(hidden: boolean): void {
@@ -272,17 +311,17 @@ function layout(): void {
     const show = panelRect !== null && tab.group === viewedGroup && isActive && !tab.blank && !viewHidden;
     const attached = children.includes(tab.view);
     if (show) {
-      if (!attached) win.contentView.addChildView(tab.view);
+      if (!attached) { appliedBounds.delete(tab.view); win.contentView.addChildView(tab.view); }
       setBoundsReliably(tab.view, panelRect!);
       lastPanelSize = { width: panelRect!.width, height: panelRect!.height };
       void existingCdp(tab.view.webContents)
         ?.fit(false, lastPanelSize)
         .catch(() => undefined);
-    } else if (isActive && !tab.blank) {
+    } else if (!tab.blank) {
       // The AI may be working in it with the panel closed. Detached, the
       // page takes no clicks; off-window it takes them but gets no
       // viewport, which the agent then sets (tabShown, hiddenTabSize).
-      if (!attached) win.contentView.addChildView(tab.view);
+      if (!attached) { appliedBounds.delete(tab.view); win.contentView.addChildView(tab.view); }
       setBoundsReliably(tab.view, { x: -(lastPanelSize.width + 10_000), y: 0, ...lastPanelSize });
     } else if (attached) {
       win.contentView.removeChildView(tab.view);
@@ -332,23 +371,24 @@ const SCROLLBAR_CSS = `
   ::-webkit-scrollbar-corner { background: transparent; }
 `;
 
-export function createTab(url?: string, group: string = viewedGroup): Tab {
-  const view = new WebContentsView({
-    webPreferences: {
-      preload: join(__dirname, "..", "preload", "browserPanelContent.js"),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      session: tabSession(),
-      // The AI keeps working while the window is in the tray or behind
-      // another app; a throttled page would stall its steps.
-      backgroundThrottling: false,
-    },
-  });
+export function createTab(url?: string, group: string = viewedGroup, popup?: WebContentsViewConstructorOptions): Tab {
+  const webPreferences: WebPreferences = {
+    ...popup?.webPreferences,
+    preload: join(__dirname, "..", "preload", "browserPanelContent.js"),
+    contextIsolation: true,
+    nodeIntegration: false,
+    sandbox: true,
+    session: tabSession(),
+    // The AI keeps working while the window is in the tray or behind
+    // another app; a throttled page would stall its steps.
+    backgroundThrottling: false,
+  };
+  const view = new WebContentsView({ ...popup, webPreferences });
   // Matches the rounded page area the panel draws (rounded-lg).
   view.setBorderRadius(8);
-  const tab: Tab = { id: nextId++, group, view, blank: true, loadError: null };
+  const tab: Tab = { id: nextId++, group, view, blank: popup === undefined, loadError: null };
   const wc = view.webContents;
+  wc.setBackgroundThrottling(false);
   wc.on("did-start-navigation", (details) => {
     if (details.isMainFrame && !details.isSameDocument && tab.blank && details.url !== "about:blank") {
       tab.blank = false;
@@ -379,18 +419,24 @@ export function createTab(url?: string, group: string = viewedGroup): Tab {
     tab.loadError = errorDescription;
     sendTabs();
   });
+  wc.once("destroyed", () => closeTab(tab.id));
   // target="_blank" and window.open open a tab in the panel rather than a
   // separate native window without any browser chrome.
-  wc.setWindowOpenHandler(({ url: target }) => {
-    // With every tab in use, the link replaces this page instead.
+  wc.setWindowOpenHandler(() => {
     if (tabLimitReached(group)) {
-      void wc.loadURL(normalizeUrl(target)).catch(() => undefined);
-    } else {
-      const opened = createTab(target, group);
-      openers.set(opened.view.webContents, wc);
-      selectTab(opened.id);
+      tab.popupBlocked = true;
+      return { action: "deny" };
     }
-    return { action: "deny" };
+    // Adopting Electron's guest retains window.opener, POST data and the WindowProxy.
+    return { action: "allow", overrideBrowserWindowOptions: { webPreferences }, createWindow: (options) => {
+      const opened = createTab(undefined, group, options as WebContentsViewConstructorOptions);
+      openers.set(opened.view.webContents, wc);
+      opened.openerId = tab.id;
+      // User popups remain theirs even after another tab becomes visible.
+      opened.userTouched = !existingCdp(wc)?.driving || Boolean(tab.userControlled);
+      if (opened.userTouched) selectTab(opened.id);
+      return opened.view.webContents;
+    } };
   });
   wc.on("before-input-event", (_event, input) => {
     if (input.type !== "keyDown" || (!input.control && !input.meta)) return;
@@ -403,7 +449,7 @@ export function createTab(url?: string, group: string = viewedGroup): Tab {
   // about:blank rather than nothing: a webContents that has never loaded
   // a document doesn't answer DevTools, which stalls tools attaching to
   // the app (and the page reads as "" either way).
-  void wc.loadURL(url ? normalizeUrl(url) : "about:blank").catch(() => undefined);
+  if (!popup) void wc.loadURL(url ? normalizeUrl(url) : "about:blank").catch(() => undefined);
   sendTabs();
   return tab;
 }
@@ -428,11 +474,14 @@ export function closeTab(id: number): void {
   if (win && !win.isDestroyed() && win.contentView.children.includes(tab.view)) {
     win.contentView.removeChildView(tab.view);
   }
-  tab.view.webContents.close();
+  // A page that closed itself gets here from its "destroyed" event, by which
+  // time Electron has already dropped the view's webContents.
+  const contents = tab.view.webContents as WebContents | undefined;
+  if (contents && !contents.isDestroyed()) contents.close();
   favicons.delete(id);
   if (activeIds.get(tab.group) === id) {
     const rest = groupTabs(tab.group);
-    const next = rest[Math.min(position, rest.length - 1)];
+    const next = rest.find((t) => t.id === tab.openerId) ?? rest[Math.min(position, rest.length - 1)];
     if (next) activeIds.set(tab.group, next.id);
     else activeIds.delete(tab.group);
   }
@@ -440,6 +489,17 @@ export function closeTab(id: number): void {
   if (tab.group === viewedGroup && !groupTabs(viewedGroup).length) createTab();
   layout();
   sendTabs();
+}
+
+/** about:blank may hold a form written through window.open's returned handle. */
+export function closeEmptyDownloadPopup(wc: WebContents): void {
+  const popup = tabFor(wc);
+  if (!popup?.openerId || popup.userTouched || popup.userControlled || activeTab(popup.group)?.id === popup.id || existingCdp(wc)?.driving || wc.getURL() !== "about:blank") return;
+  void browserOperation(wc.executeJavaScript("!document.body || (!document.body.childElementCount && !document.body.textContent.trim())"))
+    .then((empty) => {
+      if (empty && !wc.isDestroyed() && wc.getURL() === "about:blank" && !existingCdp(wc)?.driving &&
+          !popup.userTouched && !popup.userControlled && activeTab(popup.group)?.id !== popup.id && !tabHasWork(popup.group, popup.id)) closeTab(popup.id);
+    }).catch(() => undefined);
 }
 
 /** The group's active tab, making one if there are none. */
@@ -510,10 +570,19 @@ function closePanel(): void {
 /** App quit: closes every tab's renderer explicitly rather than trusting
  * the window's teardown to. */
 export function destroyBrowserPanel(): void {
+  for (const timer of activityIdleTimers.values()) clearTimeout(timer);
+  activityIdleTimers.clear();
   closePanel();
   for (const tab of tabs.splice(0)) tab.view.webContents.close();
   activeIds.clear();
   win = undefined;
+}
+
+function takeOverActive(): Tab | undefined {
+  const tab = activeTab();
+  if (tab) tab.userTouched = true;
+  if (tab?.activity) userControl(tab.id, true);
+  return tab;
 }
 
 export function registerBrowserPanelHandlers(window: BrowserWindow): void {
@@ -533,6 +602,7 @@ export function registerBrowserPanelHandlers(window: BrowserWindow): void {
     const wc = tabFor(event.sender)?.view.webContents;
     if (wc) wc.setZoomFactor(clampZoomFactor(wc.getZoomFactor() * (1 - deltaY * 0.001)));
   });
+  ipcMain.handle("browser-panel:take-over", (_event, id: number, enabled: boolean) => userControl(id, enabled));
   ipcMain.handle(BROWSER_PANEL_OPEN_CHANNEL, (event, rect: PanelRect) => {
     const host = BrowserWindow.fromWebContents(event.sender);
     if (host) openPanel(host, rect);
@@ -548,17 +618,20 @@ export function registerBrowserPanelHandlers(window: BrowserWindow): void {
     if (isHost(event.sender)) closePanel();
   });
   ipcMain.handle(BROWSER_PANEL_NAVIGATE_CHANNEL, (_event, url: string) => {
-    void ensureActiveTab().view.webContents.loadURL(normalizeUrl(url)).catch(() => undefined);
+    const tab = ensureActiveTab();
+    tab.userTouched = true;
+    if (tab.activity) userControl(tab.id, true);
+    void tab.view.webContents.loadURL(normalizeUrl(url)).catch(() => undefined);
   });
   ipcMain.handle(BROWSER_PANEL_BACK_CHANNEL, () => {
-    const history = activeTab()?.view.webContents.navigationHistory;
+    const history = takeOverActive()?.view.webContents.navigationHistory;
     if (history?.canGoBack()) history.goBack();
   });
   ipcMain.handle(BROWSER_PANEL_FORWARD_CHANNEL, () => {
-    const history = activeTab()?.view.webContents.navigationHistory;
+    const history = takeOverActive()?.view.webContents.navigationHistory;
     if (history?.canGoForward()) history.goForward();
   });
-  ipcMain.handle(BROWSER_PANEL_RELOAD_CHANNEL, () => activeTab()?.view.webContents.reload());
+  ipcMain.handle(BROWSER_PANEL_RELOAD_CHANNEL, () => takeOverActive()?.view.webContents.reload());
   ipcMain.handle(BROWSER_PANEL_SET_PICK_MODE_CHANNEL, (_event, enabled: boolean) => {
     pickModeActive = enabled;
     activeTab()?.view.webContents.send(CONTENT_SET_PICK_MODE_CHANNEL, enabled);
@@ -568,7 +641,8 @@ export function registerBrowserPanelHandlers(window: BrowserWindow): void {
     if (!tabLimitReached()) selectTab(createTab().id);
   });
   ipcMain.handle(BROWSER_PANEL_SELECT_TAB_CHANNEL, (_event, id: number) => {
-    selectTab(Number(id));
+    const tab = selectTab(Number(id));
+    if (tab) tab.userTouched = true;
   });
   ipcMain.handle(BROWSER_PANEL_CLOSE_TAB_CHANNEL, (_event, id: number) => closeTab(Number(id)));
   ipcMain.handle(BROWSER_PANEL_OPEN_EXTERNAL_CHANNEL, () => openActiveExternally());

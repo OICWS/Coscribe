@@ -197,6 +197,37 @@ async def test_a_script_step_the_guard_stopped_needs_the_folder(tmp_path: Path) 
     assert outcome.request["permission"]["target"] == "D:\\reports"
 
 
+async def test_a_blocked_write_with_no_folder_to_offer_fails_rather_than_ask_for_a_drive(
+    tmp_path: Path,
+) -> None:
+    workflow = _workflow(
+        [{"id": "s", "title": "Write it", "kind": "script", "code": "print('{}')"}]
+    )
+
+    def blocked(workspace: Path, state: Path, script: str, timeout: float) -> dict[str, object]:
+        return {
+            "exit_code": 1,
+            "stdout": "",
+            "stderr": "",
+            "timed_out": False,
+            "blocked_write": "C:\\",
+            "blocked_folder": None,
+        }
+
+    ctx = StepContext(
+        tools={},
+        workspace_root=tmp_path,
+        state_dir=tmp_path,
+        make_model=lambda _model: None,
+        run_script=blocked,
+        ask_permission=True,
+    )
+    outcome = await WorkflowRun(workflow, ctx, InMemorySaver(), "t3", lambda _r: None).start({})
+
+    assert outcome.status == "failed"
+    assert outcome.error is not None and "Settings > Other folders" in outcome.error
+
+
 def test_a_path_outside_the_scope_asks_for_its_nearest_folder(tmp_path: Path) -> None:
     from coscribe.tools._workspace import WorkspaceScope
 

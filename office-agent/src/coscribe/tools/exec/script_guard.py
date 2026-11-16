@@ -79,6 +79,19 @@ def report():
         return
 
 
+_makedirs = os.makedirs
+
+
+def makedirs(name, mode=0o777, exist_ok=False):
+    # In the Windows sandbox the folders above an allowed one can't be seen, so the stock
+    # makedirs, which looks at each parent first, climbs to the drive and tries to make it.
+    if exist_ok and os.path.isdir(name):
+        return
+    _makedirs(name, mode, exist_ok)
+
+
+# os.makedirs calls itself for the parents through this module name, so they go through it too.
+os.makedirs = makedirs
 sys.dont_write_bytecode = True
 atexit.register(report)
 sys.addaudithook(hook)

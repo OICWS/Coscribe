@@ -21,11 +21,11 @@ from langgraph.types import Command
 from coscribe.conversation import session as conversation_session
 from coscribe.runtime import tool_metadata
 from coscribe.runtime_lg.agent import build_langgraph_agent
+from coscribe.runtime_lg.search_words import tokenize
 from coscribe.runtime_lg.tool_deferral import (
     SEARCH_TOOLS_NAME,
     USE_TOOL_NAME,
     _score,
-    _tokenize,
     build_search_tools_tool,
     run_found_tools_directly,
     show_unbound_calls_as_use_tool,
@@ -95,15 +95,15 @@ class FakeToolCallingChatModel(BaseChatModel):
 
 
 def test_tokenize_drops_stopwords_and_short_tokens() -> None:
-    assert _tokenize("Add a Chart to the Slide") == ["add", "chart", "slide"]
+    assert tokenize("Add a Chart to the Slide") == ["add", "chart", "slide"]
 
 
 def test_score_rewards_a_name_substring_match() -> None:
     from coscribe.runtime_lg.tool_deferral import _build_entry
 
     entry = _build_entry(write_pptx_chart)
-    on_topic = _score(entry, _tokenize("pptx chart"), "pptx chart")
-    off_topic = _score(entry, _tokenize("send an email"), "send an email")
+    on_topic = _score(entry, tokenize("pptx chart"), "pptx chart")
+    off_topic = _score(entry, tokenize("send an email"), "send an email")
     assert on_topic > off_topic
     assert off_topic == 0
 

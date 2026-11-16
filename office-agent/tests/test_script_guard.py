@@ -48,6 +48,24 @@ def test_python_guard_allows_writes_inside_the_allowed_folder(tmp_path: Path) ->
     assert (allowed / "sub" / "a.txt").read_text() == "x"
 
 
+def test_makedirs_of_an_allowed_folder_does_not_climb_to_the_drive(tmp_path: Path) -> None:
+    # In the Windows sandbox the folders above an allowed one can't be seen.
+    allowed = tmp_path / "outer" / "download"
+    allowed.mkdir(parents=True)
+    script = (
+        "import os\n"
+        "_exists = os.path.exists\n"
+        f"os.path.exists = lambda p: _exists(p) and str(p).startswith({str(allowed)!r})\n"
+        f"os.makedirs({str(allowed)!r}, exist_ok=True)\n"
+        f"os.makedirs({str(allowed / 'a' / 'b')!r}, exist_ok=True)\n"
+        "print('ok')"
+    )
+    done = _run_python(tmp_path, script, allowed)
+    assert done.returncode == 0, done.stderr
+    assert blocked_write(done.stderr)[0] is None
+    assert (allowed / "a" / "b").is_dir()
+
+
 @pytest.mark.parametrize(
     "statement",
     [

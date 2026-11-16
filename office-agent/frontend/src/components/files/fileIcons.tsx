@@ -44,6 +44,15 @@ export function FileImageIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function FileSheetIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M3 9h18M3 15h18M9 3v18" />
+    </Icon>
+  );
+}
+
 export function CollapseAllIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>

@@ -2,9 +2,9 @@
 
 ## Purpose
 Owns building the agent graph from the tool factories and their risk metadata (`agent.py`), the
-deferred tool list (`tool_deferral.py`), the chat model for a `provider:model` string and how hard
+deferred tool list (`tool_deferral.py`, the words its search matches on `search_words.py`), the chat model for a `provider:model` string and how hard
 it thinks (`providers.py`, `effort.py`), approvals' helpers (`audit.py`, `auto_review.py`,
-`exec_policy.py`), delegated sub-agents and their ready-made roles (`subagents.py`, `subagent_kinds.py`), the runner a workflow's agent step runs through
+`exec_policy.py`), delegated sub-agents and their ready-made roles (`subagents.py`, `subagent_kinds.py`), one streamed pass of a sub-agent or an agent step, which fails on a model gone quiet and tells the conversation's record of how the run went (`agent_stream.py`), the runner a workflow's agent step runs through
 (`workflow_agent.py`, its token cap `token_limit.py`), the code module's entry point
 (`code_agent.py`), hosted and local MCP connectors and their sign-in (`mcp.py`, `mcp_oauth.py`),
 the run side of scheduled tasks and self-wakes (`scheduled_tasks.py`, `selfwake.py`) and asking a

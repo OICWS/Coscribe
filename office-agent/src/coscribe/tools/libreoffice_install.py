@@ -28,8 +28,8 @@ from .libreoffice import convert_to_pdf, own_root, version_folders
 
 # The official release, signed by the LibreOffice Build Team key
 # C2839ECAD9408FBE9531C3E9F434A1EFAFEEAEA3; the hash is of the file that signature verified.
-# The Document Foundation moves a release out of `stable/` once a newer one replaces it, so a
-# new version means new pins, not a changed address.
+# The address is the Document Foundation's archive, which keeps every release; `stable/` drops a
+# release as soon as a newer one replaces it, and the pinned download then answered 404.
 LIBREOFFICE_VERSION = "26.8.1"
 
 
@@ -41,8 +41,8 @@ class _Pin(TypedDict):
 
 _PINS: dict[str, _Pin] = {
     "win32/amd64": {
-        "url": "https://download.documentfoundation.org/libreoffice/stable/26.8.1/win/x86_64/"
-        "LibreOffice_26.8.1_Win_x86-64.msi",
+        "url": "https://downloadarchive.documentfoundation.org/libreoffice/old/26.8.1.1/win/x86_64/"
+        "LibreOffice_26.8.1.1_Win_x86-64.msi",
         "size": 374870016,
         "sha256": "c6298b10cfa1748bcbedad94c62ce771e240e5021bfd6d7a967cd571b04b5312",
     }

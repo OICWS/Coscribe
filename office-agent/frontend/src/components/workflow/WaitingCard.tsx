@@ -101,11 +101,11 @@ function ApprovalBody({
           </label>
         </>
       )}
-      <div className="flex gap-2">
-        <button type="button" disabled={busy} className={primaryButton} onClick={() => answer(true)}>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" disabled={busy} className={`${primaryButton} whitespace-nowrap`} onClick={() => answer(true)}>
           {permission || call ? "Allow and continue" : "Approve and continue"}
         </button>
-        <button type="button" disabled={busy} className={secondaryButton} onClick={() => answer(false)}>
+        <button type="button" disabled={busy} className={`${secondaryButton} whitespace-nowrap`} onClick={() => answer(false)}>
           {permission || call ? "Don’t allow" : "Decline"}
         </button>
       </div>
@@ -152,11 +152,11 @@ function TokensBody({
             : "Continue to let the run use as many again. Stop to end the run here."}
         </p>
       </div>
-      <div className="flex gap-2">
-        <button type="button" disabled={busy} className={primaryButton} onClick={() => answer(true)}>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" disabled={busy} className={`${primaryButton} whitespace-nowrap`} onClick={() => answer(true)}>
           Continue
         </button>
-        <button type="button" disabled={busy} className={secondaryButton} onClick={() => answer(false)}>
+        <button type="button" disabled={busy} className={`${secondaryButton} whitespace-nowrap`} onClick={() => answer(false)}>
           Stop
         </button>
       </div>

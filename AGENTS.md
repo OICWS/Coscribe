@@ -98,7 +98,8 @@ it supersedes and lists the wording it retires (`docs/decisions/README.md`).
 A frontend change must pass `npm run build` (`tsc -b`), not only
 `tsc --noEmit`. Every change reaches `main` through a pull request; see "how a
 change reaches `main`" in `office-agent/CLAUDE.md`. Commit author is set per
-that file.
+that file. Name the branch `<area>/<slug>` as that file says (`tools/deck-shrink`), even where
+the session suggests another name such as `claude/...`.
 
 ## Working with other sessions
 
