@@ -71,6 +71,8 @@ export async function browserPanelReload(): Promise<void> {
 }
 
 export interface BrowserTab {
+  activity?: "working" | "waiting";
+  userControlled?: boolean;
   id: number;
   title: string;
   url: string;
@@ -93,6 +95,7 @@ export interface BrowserAgentPayload {
   busy?: boolean;
   threadId?: string;
   action?: string;
+  tabId?: number;
 }
 
 export async function browserPanelNewTab(): Promise<void> {
@@ -275,9 +278,14 @@ declare global {
       browserPanelSetViewHidden?(hidden: boolean): Promise<void>;
       browserPanelViewGroup?(group: string): Promise<void>;
       onBrowserPanelTabs(callback: (payload: unknown) => void): () => void;
+      browserPanelTakeOver(id: number, enabled: boolean): Promise<void>;
       onBrowserAgent?(callback: (payload: unknown) => void): () => void;
       browserPanelSetPickMode(enabled: boolean): Promise<void>;
       onBrowserPanelPicked(callback: (payload: BrowserPanelPickedPayload) => void): () => void;
     };
   }
+}
+
+export async function browserPanelTakeOver(id: number, enabled: boolean): Promise<void> {
+  await window.coscribeDesktop.browserPanelTakeOver(id, enabled);
 }

@@ -32,7 +32,7 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0019](0019-a-docs-artifact-is-the-docx-itself-edited-by-styles.md) | A Docs artifact is the .docx itself, edited in the app block by block, by styles not fonts (narrowed by 0025 and 0027) |
 | [0020](0020-design-systems-are-a-library-the-user-keeps.md) | Design systems are a library the user keeps; a deck gets a copy |
 | [0021](0021-scripts-run-in-an-appcontainer-held-to-the-folder-settings.md) | Scripts run in an AppContainer held to the folder settings (commands changed by 0022) |
-| [0022](0022-commands-run-in-codexs-windows-sandbox.md) | Commands run in Codex's Windows sandbox (narrowed by 0047) |
+| [0022](0022-commands-run-in-codexs-windows-sandbox.md) | Commands run in Codex's Windows sandbox (narrowed by 0048) |
 | [0023](0023-every-conversation-can-read-the-others-unless-archived.md) | Every conversation can list, read and message the others unless they are archived |
 | [0024](0024-word-documents-are-written-from-a-spec-compiled-onto-a-theme-and-checked.md) | Word documents are written from a spec, compiled onto a theme and checked (not adopted) |
 | [0025](0025-the-doc-artifact-is-a-markdown-document-and-the-word-panel-is-frozen.md) | The Doc artifact is a markdown document, and the Word panel is frozen |
@@ -46,7 +46,7 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0033](0033-a-run-can-pause-for-a-person-or-a-time.md) | A run can pause for a person or a time (proposed) |
 | [0034](0034-a-task-remembers-between-runs-and-starts-on-a-new-file.md) | A task remembers between runs, and starts on a schedule of minutes or a new file (proposed; narrowed by 0039, 0040) |
 | [0035](0035-a-task-runs-another-and-keeps-its-versions.md) | A task runs another task as a step, and keeps every version it was saved as (proposed; narrowed by 0036) |
-| [0036](0036-a-step-runs-several-lanes-at-the-same-time.md) | A step runs several lanes of steps at the same time (proposed) |
+| [0036](0036-a-step-runs-several-lanes-at-the-same-time.md) | A step runs several lanes of steps at the same time (proposed; narrowed by 0047) |
 | [0037](0037-the-simple-view-says-what-a-task-does-in-words.md) | The simple view says what a task does in words (proposed) |
 | [0038](0038-a-run-page-says-how-it-went-before-its-steps.md) | A run page says how it went and what it got, before its steps (proposed) |
 | [0039](0039-a-task-starts-on-something-new-in-a-connector.md) | A task starts on something new in a connector (proposed) |
@@ -56,4 +56,5 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0044](0044-a-workspace-keeps-its-own-coscribe-folder.md) | A workspace keeps its own `.coscribe/` folder: notes, skills and uploads (proposed) |
 | [0045](0045-how-each-turn-went-is-kept-on-the-machine-without-its-words.md) | How each turn went is kept on the machine, without its words (proposed) |
 | [0046](0046-a-conversation-offers-a-connector-the-person-connects.md) | A conversation offers a connector, and the person connects it (proposed) |
-| [0047](0047-a-sandboxed-command-cant-read-other-drives-users-folders.md) | A sandboxed command can't read the Users folder of another drive (proposed) |
+| [0047](0047-browser-operations-follow-their-target-tab.md) | Browser operations follow their target tab |
+| [0048](0048-a-sandboxed-command-cant-read-other-drives-users-folders.md) | A sandboxed command can't read the Users folder of another drive (proposed) |

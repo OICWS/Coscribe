@@ -2,7 +2,7 @@
 
 Why: with "Private folders" on, the command sandbox hid the person's own folders, but Codex
 refuses a deny on a drive's root, so a second drive stayed readable whole, its `Users` folder
-included (#845). Decision 0047.
+included (#845). Decision 0048.
 
 ## Shipped
 - `tools/exec/_private_folders.py`: `private_folders()` adds the `Users` folder of every fixed
@@ -11,7 +11,7 @@ included (#845). Decision 0047.
   Skipped: removable, network and optical drives, and the drive holding the person's own profile,
   whose private folders are listed one by one.
 - Settings › Capabilities › Private folders says another drive's `Users` folder is hidden and the
-  rest of another drive stays readable. `ARCHITECTURE.md` and decision 0022 (narrowed by 0047)
+  rest of another drive stays readable. `ARCHITECTURE.md` and decision 0022 (narrowed by 0048)
   say the same.
 - A sandboxed command with Full network is still approved by the person: what stays readable is
   still enough to send out.

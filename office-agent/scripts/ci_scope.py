@@ -1,8 +1,8 @@
 """Decide how much CI a pull request needs, from the files it changes (one path per stdin line).
 
 Prints `scope=docs` when every changed file is documentation that only the documentation tests
-read, else `scope=full`. The `test` job is a required check, so it always runs and reports; a
-`paths:` filter would leave it unreported and block the merge. Markdown that the product reads
+read, else `scope=full`. The Linux `test` job and the Windows `pytest` job are required checks, so
+they always run and report; a `paths:` filter would leave them unreported and block the merge. Markdown that the product reads
 (a skill's SKILL.md, a template) is not documentation here.
 """
 

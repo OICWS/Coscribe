@@ -73,3 +73,7 @@ jobs:
         working-directory: office-agent-desktop
         run: |
           COSCRIBE_SERVER_BIN="$(python -c 'import shutil; print(shutil.which("coscribe-web"))')" node scripts/smoke.mjs
+
+      - name: Native browser popup lifecycle
+        working-directory: office-agent-desktop
+        run: node scripts/browser-native.cjs
