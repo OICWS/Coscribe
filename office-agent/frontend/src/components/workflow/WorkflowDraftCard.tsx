@@ -213,7 +213,7 @@ function Steps({ entry, result }: { entry: WorkflowDraftEntry; result: WorkflowT
                 <span aria-label={status} className="flex h-4 w-4 shrink-0 items-center justify-center">{stepMark(status)}</span>
                 <span className={`min-w-0 flex-1 break-words ${running ? "draft-step-sheen" : ""}`}>{step.title}</span>
                 {path && <span className="max-w-[35%] text-right text-[10px] text-[var(--muted)]">{path}{status === "not_taken" ? " · not selected" : selected ? " · selected" : ""}</span>}
-                {status === "waiting" && <span className="text-xs text-[var(--warning)]">Waiting for you</span>}
+                {status === "waiting" && <span className="text-xs text-[var(--warning)]">{step.kind === "approval" || step.kind === "ask" ? "Waiting for you" : "Waiting"}</span>}
                 {current?.passes && <span className="shrink-0 text-xs tabular-nums text-[var(--muted)]">{current.passes.done}/{current.passes.total ?? "…"}</span>}
                 {tested?.seconds != null && (
                   <span className="ml-auto shrink-0 tabular-nums text-xs text-[var(--muted)]">{tested.seconds}s</span>

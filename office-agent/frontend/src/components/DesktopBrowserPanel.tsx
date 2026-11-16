@@ -426,23 +426,23 @@ export function DesktopBrowserPanel({
       </div>
 
       <div className="h-8 shrink-0">
-      {(active?.activity || active?.userControlled) && (
-        <div className="mx-2 mb-1.5 flex items-center gap-2 rounded-lg bg-[var(--accent)]/10 px-2.5 py-1.5 text-xs text-[var(--fg)]">
-          <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-[var(--accent)] motion-reduce:animate-none" />
-          <span className="min-w-0 flex-1 truncate">
-            {active.userControlled ? "You are using this page" : active.activity === "waiting" ? "Waiting for the page…" : "Coscribe is using the browser"}
-          </span>
-          {active && (
-            <button
-              type="button"
-              className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 font-medium hover:bg-[var(--accent)]/15"
-              onClick={() => { if (activeId !== null) void browserPanelTakeOver(activeId, !active?.userControlled); }}
-            >
-              <StopIcon className="h-3 w-3" /> {active.userControlled ? "Allow AI" : "Take over"}
-            </button>
-          )}
-        </div>
-      )}
+        {(active?.activity || active?.userControlled) && (
+          <div className="mx-2 mb-1.5 flex items-center gap-2 rounded-lg bg-[var(--accent)]/10 px-2.5 py-1.5 text-xs text-[var(--fg)]">
+            {!active.userControlled && <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-[var(--accent)] motion-reduce:animate-none" />}
+            <span className="min-w-0 flex-1 truncate">
+              {!active.userControlled && (active.activity === "waiting" ? "Waiting for the page…" : "Coscribe is using the browser")}
+            </span>
+            {active && (
+              <button
+                type="button"
+                className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 font-medium hover:bg-[var(--accent)]/15"
+                onClick={() => { if (activeId !== null) void browserPanelTakeOver(activeId, !active?.userControlled); }}
+              >
+                {!active.userControlled && <StopIcon className="h-3 w-3" />} {active.userControlled ? "Allow AI" : "Take over"}
+              </button>
+            )}
+          </div>
+        )}
 
       </div>
       {permission && (
