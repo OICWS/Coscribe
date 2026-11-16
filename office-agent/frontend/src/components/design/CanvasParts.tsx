@@ -1,7 +1,7 @@
 import { useRef, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { designFileUrl } from "../../lib/artifacts";
 import type { CanvasBoard, CanvasNote } from "../../lib/designCanvas";
-import { CursorClickIcon, HandIcon, MoonIcon, PanelRightIcon, PlayIcon, SunIcon } from "../icons";
+import { CursorClickIcon, DownloadIcon, ExpandIcon, HandIcon, MoonIcon, PanelRightIcon, PlayIcon, SunIcon } from "../icons";
 import { BoardPlayButton } from "./BoardPlay";
 import type { PlayMode } from "./useBoardPlay";
 import type { Tool } from "./useCanvasEditing";
@@ -93,7 +93,7 @@ export function CanvasZoom({ zoom, scheme, variablesOpen, propertiesOpen, onPlay
       <ToolButton label="Properties" active={propertiesOpen} onClick={onProperties}>
         <PanelRightIcon className="h-4 w-4" />
       </ToolButton>
-      <ToolButton label="Play full screen" active={false} onClick={onPlay}>
+      <ToolButton label="Present" active={false} onClick={onPlay}>
         <PlayIcon className="h-4 w-4" />
       </ToolButton>
       <button type="button" aria-label="Zoom out" className={plain} onClick={() => onZoom(1 / 1.25)}>
@@ -106,6 +106,22 @@ export function CanvasZoom({ zoom, scheme, variablesOpen, propertiesOpen, onPlay
         +
       </button>
     </div>
+  );
+}
+
+// Quiet like the Play pill, and pressing one must not start dragging the board.
+function BoardIconButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      className="flex h-[18px] w-[18px] items-center justify-center rounded-full text-[var(--muted)] hover:bg-[var(--panel-bg)] hover:text-[var(--text)]"
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={onClick}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -122,6 +138,7 @@ export function BoardFrame({
   onPress,
   onPlay,
   onEdit,
+  onDownload,
   onPick,
   onEditText,
   highlight,
@@ -137,6 +154,7 @@ export function BoardFrame({
   onPress: (e: ReactPointerEvent) => void;
   onPlay: (mode: PlayMode) => void;
   onEdit: () => void;
+  onDownload: () => void;
   /** A click that did not drag, at a point of the board's page. */
   onPick?: (x: number, y: number) => void;
   /** A double click, at a point of the board's page. */
@@ -151,6 +169,12 @@ export function BoardFrame({
     <div className="absolute" style={{ left: board.x, top: board.y, width: board.width, height: board.height }}>
       <div className="absolute bottom-full left-0 z-10 mb-2.5 flex origin-bottom-left items-center gap-2" style={{ transform: `scale(${1 / zoom})`, width: board.width * zoom }}>
         <span className={`min-w-0 flex-1 truncate text-[13px] ${selected ? "text-[var(--accent)]" : "text-[var(--muted)]"}`}>{board.title}</span>
+        <BoardIconButton label="Present from here" onClick={() => onPlay("full")}>
+          <ExpandIcon className="h-3 w-3" />
+        </BoardIconButton>
+        <BoardIconButton label="Download PNG" onClick={onDownload}>
+          <DownloadIcon className="h-3 w-3" />
+        </BoardIconButton>
         <BoardPlayButton live={live} onPlay={onPlay} onEdit={onEdit} />
       </div>
       <iframe

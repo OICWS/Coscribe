@@ -54,12 +54,26 @@ test("a canvas shows its artboards; a board moves and a note is left, and both a
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(page.getByTestId("board-home")).toBeVisible();
 
-  // Full screen: one board fills the panel and still works; Edit goes back.
-  await page.getByRole("button", { name: "Play full screen" }).click();
+  // Present: one board fills the panel and still works, the arrow keys and buttons step through
+  // the boards in the file's order, and Escape goes back.
+  await page.getByRole("button", { name: "Present", exact: true }).click();
   const full = page.getByTestId("board-full-screen");
-  await expect(full.locator("iframe")).toBeVisible();
+  await expect(full.locator('iframe[title="Home"]')).toBeVisible();
+  await expect(full.getByTestId("board-position")).toHaveText("1 / 2");
+  await expect(full.getByRole("button", { name: "Previous board" })).toBeDisabled();
+  await page.keyboard.press("ArrowRight");
+  await expect(full.locator('iframe[title="Phone"]')).toBeVisible();
+  await expect(full.getByTestId("board-position")).toHaveText("2 / 2");
+  await expect(full.getByRole("button", { name: "Next board" })).toBeDisabled();
+  await full.getByRole("button", { name: "Previous board" }).click();
+  await expect(full.getByTestId("board-position")).toHaveText("1 / 2");
   await page.keyboard.press("Escape");
   await expect(full).toHaveCount(0);
+
+  // A board's own Present starts from that board.
+  await page.getByRole("button", { name: "Present from here" }).nth(1).click();
+  await expect(full.getByTestId("board-position")).toHaveText("2 / 2");
+  await page.keyboard.press("Escape");
 });
 
 const THEMED = '{\\"boards\\": [{\\"id\\": \\"card\\", \\"title\\": \\"Card\\", \\"file\\": \\"card.html\\", \\"width\\": 400, \\"height\\": 300}], \\"variables\\": [{\\"name\\": \\"--brand\\", \\"value\\": \\"#2557d6\\", \\"label\\": \\"Brand\\"}]}';
@@ -338,4 +352,9 @@ test("the canvas's Export saves the selected artboard as a PNG, and offers an ic
   // The PNG signature, then the IHDR width and height: twice the board's 400 by 300.
   expect(png.subarray(1, 4).toString()).toBe("PNG");
   expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([800, 600]);
+
+  // The same PNG from the button above the board, without selecting it first.
+  const again = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download PNG" }).click();
+  expect((await again).suggestedFilename()).toBe(`${name}-card.png`);
 });
