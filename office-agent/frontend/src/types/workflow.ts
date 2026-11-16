@@ -368,3 +368,10 @@ export interface HealFixes {
 export type StepRecord = WorkflowStepRecord;
 export type StepStatus = StepRecord["status"];
 export type CheckResult = WorkflowCheck;
+
+export interface DraftTestProgress {
+  done: number;
+  total: number;
+  toolCallId?: string;
+  records?: StepRecord[];
+}

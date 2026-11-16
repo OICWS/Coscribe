@@ -51,9 +51,9 @@ class StateEvent(TypedDict):
     environment: str
     # The connected connectors' tool names.
     connector_tools: list[str]
-    # Only on the state sent right after connecting: whether a turn is already
-    # running on this thread (typically a scheduled run), so the page shows it as
-    # running.
+    # Only on the state sent right after connecting, or after a Stop that found no turn:
+    # whether a turn is running on this thread (typically a scheduled run), so the page
+    # shows it as running, or stops waiting for one that is not.
     turn_in_flight: NotRequired[bool]
     # With turn_in_flight: when that turn started, in ms since the epoch, so a page that opens
     # mid-turn times it from there.
@@ -332,6 +332,7 @@ class WorkflowTestProgressEvent(TypedDict):
     status: str
     done: int
     total: int
+    record: NotRequired[WorkflowStepRecord]
 
 
 class TaskDraft(TypedDict):
@@ -541,12 +542,22 @@ class ApprovalResponseOut(TypedDict):
     reply: NotRequired[str]
 
 
+class PlanTaskEdit(TypedDict):
+    """One step of a plan's task list as the person left it while reviewing the plan."""
+
+    # The task's id when it was already on the list; absent for a step the person added.
+    id: NotRequired[str]
+    content: str
+
+
 class QuestionAnswerOut(TypedDict):
     """Answer to a plan or task draft."""
 
     type: Literal["question_response"]
     id: str
     answer: str
+    # A plan only: the task list as the person edited it, in their order; absent when unchanged.
+    tasks: NotRequired[list[PlanTaskEdit]]
 
 
 class QuestionAnswersOut(TypedDict):

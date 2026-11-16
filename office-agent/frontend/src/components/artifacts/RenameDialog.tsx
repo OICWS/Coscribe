@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { createPortal } from "react-dom";
 
 /** A new name, asked in the app's own dialog; `rename` makes the change and what it returns goes to `onDone`. */
@@ -6,6 +6,7 @@ export function RenameDialog<T>({ current, rename, onCancel, onDone }: { current
   const [name, setName] = useState(current);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const titleId = useId();
   const submit = () => {
     if (!name.trim() || busy) return;
     setBusy(true);
@@ -17,6 +18,9 @@ export function RenameDialog<T>({ current, rename, onCancel, onDone }: { current
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onCancel}>
       <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className="w-[min(380px,100vw-2rem)] rounded-[14px] border border-[var(--border)] bg-[var(--panel-bg)] p-4 shadow-[var(--shadow)]"
         onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => {
@@ -24,7 +28,9 @@ export function RenameDialog<T>({ current, rename, onCancel, onDone }: { current
           submit();
         }}
       >
-        <div className="mb-3 text-sm font-medium">Rename</div>
+        <div id={titleId} className="mb-3 text-sm font-medium">
+          Rename
+        </div>
         <input
           autoFocus
           aria-label="Name"

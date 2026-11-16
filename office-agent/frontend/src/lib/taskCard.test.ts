@@ -57,8 +57,12 @@ describe("planPanelData", () => {
       { id: id(), kind: "plan", plan: "first", status: "revise" },
       { id: id(), kind: "plan", plan: "second", status: "pending" },
     ];
-    expect(planPanelData([create("1", "A"), ...plans])).toEqual({ tasks: [{ id: "1", content: "A", status: "pending" }], plan: "second" });
-    expect(planPanelData([agent()])).toEqual({ tasks: [], plan: null });
+    expect(planPanelData([create("1", "A"), ...plans])).toEqual({
+      tasks: [{ id: "1", content: "A", status: "pending" }],
+      plan: "second",
+      pendingPlanId: plans[1].id,
+    });
+    expect(planPanelData([agent()])).toEqual({ tasks: [], plan: null, pendingPlanId: null });
   });
 });
 
@@ -119,5 +123,109 @@ describe("foldTaskCard", () => {
   it("keeps the calls around a task call in runs of their own", () => {
     const entries = fold([tool("list_files"), create("1", "A"), tool("read_file")]);
     expect(entries.map((e) => e.kind)).toEqual(["tool_run", "task_card", "tool_run"]);
+  });
+});
+
+describe("background tasks on the card", () => {
+  const card = (items: LogItem[]) => {
+    const cards = cardsOf(fold(items));
+    return cards[cards.length - 1];
+  };
+
+  it("binds a background task to the item in progress when it started", () => {
+    const items = [
+      create("1", "Research"),
+      update("1", "Research", "in_progress"),
+      tool("spawn_agent_background", { prompt: "look" }, { task_id: "agent-1", status: "running" }),
+      tool("run_background_script", { script: "x" }, JSON.stringify({ task_id: "script-1" })),
+    ];
+    expect(card(items).bound).toEqual({ "1": ["agent-1", "script-1"] });
+  });
+
+  it("binds a starter whose call was approved first", () => {
+    const approved: Of<"approval"> = {
+      id: id(),
+      kind: "approval",
+      toolName: "run_background_script",
+      arguments: { language: "python", script: "x" },
+      status: "approved",
+      result: { task_id: "script-9", status: "running" },
+    };
+    const items = [create("1", "Crunch"), update("1", "Crunch", "in_progress"), approved];
+    expect(card(items).bound).toEqual({ "1": ["script-9"] });
+  });
+
+  it("binds a script that moved to the background, and not one that ran to its end", () => {
+    const items = [
+      create("1", "Crunch"),
+      update("1", "Crunch", "in_progress"),
+      tool("run_python_script", { script: "x" }, { status: "running_in_background", task_id: "moved-1" }),
+      tool("run_python_script", { script: "y" }, { returncode: 0, task_id: "not-a-task" }),
+    ];
+    expect(card(items).bound).toEqual({ "1": ["moved-1"] });
+  });
+
+  it("binds nothing before the starter's result is in, or with no item in progress", () => {
+    const pending = [create("1", "A"), update("1", "A", "in_progress"), tool("spawn_agent_background", { prompt: "p" })];
+    expect(card(pending).bound).toEqual({});
+    const idle = [create("1", "A"), tool("spawn_agent_background", { prompt: "p" }, { task_id: "agent-1" })];
+    expect(card(idle).bound).toEqual({});
+  });
+
+  it("gives a task started while two items run to the one that started last", () => {
+    const items = [
+      create("1", "A"),
+      create("2", "B"),
+      update("1", "A", "in_progress"),
+      update("2", "B", "in_progress"),
+      tool("run_background_command", { command: "build" }, { task_id: "cmd-1" }),
+      update("2", "B", "completed"),
+      tool("run_background_command", { command: "test" }, { task_id: "cmd-2" }),
+    ];
+    expect(card(items).bound).toEqual({ "2": ["cmd-1"], "1": ["cmd-2"] });
+  });
+
+  it("keeps an item's tasks when the card moves on in a later turn", () => {
+    const items = [
+      create("1", "A"),
+      update("1", "A", "in_progress"),
+      tool("spawn_agent_background", { prompt: "p" }, { task_id: "agent-1" }),
+      agent("waiting on it"),
+      create("2", "B"),
+    ];
+    expect(card(items).bound).toEqual({ "1": ["agent-1"] });
+  });
+});
+
+describe("an approved plan whose list the person edited", () => {
+  const plan = (tasks?: { id: string; content: string; status: "pending" | "completed" }[]): Of<"plan"> => ({
+    id: id(),
+    kind: "plan",
+    plan: "# Plan",
+    status: tasks ? "auto" : "pending",
+    ...(tasks && { tasks }),
+  });
+
+  it("replaces the list, and later calls apply to the new one", () => {
+    const edited = [
+      { id: "2", content: "Write it short", status: "pending" as const },
+      { id: "3", content: "Send", status: "pending" as const },
+    ];
+    const items = [create("1", "Read"), create("2", "Write"), plan(edited), update("3", "Send", "completed")];
+    expect(taskListOf(items)).toEqual([edited[0], { ...edited[1], status: "completed" }]);
+  });
+
+  it("puts the card under the plan when that was the last change", () => {
+    const approved = plan([{ id: "1", content: "Read", status: "pending" }]);
+    const items = [create("1", "Read"), create("2", "Write"), approved];
+    const entries = fold(items);
+    const at = entries.findIndex((entry) => entry.id === approved.id);
+    expect(entries[at + 1]).toMatchObject({ kind: "task_card", tasks: [{ id: "1", content: "Read" }] });
+  });
+
+  it("names the plan that waits for an answer", () => {
+    const waiting = plan();
+    expect(planPanelData([create("1", "Read"), waiting]).pendingPlanId).toBe(waiting.id);
+    expect(planPanelData([create("1", "Read"), plan([])]).pendingPlanId).toBeNull();
   });
 });

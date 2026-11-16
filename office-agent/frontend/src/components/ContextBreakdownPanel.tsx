@@ -91,10 +91,10 @@ export function ContextBreakdownPanel({ threadId, refreshKey }: ContextBreakdown
         {breakdown.categories.map((category) => {
           const percent = (category.tokens / denominator) * 100;
           return (
-            <div key={category.key} className="flex items-center gap-2">
+            <div key={category.key} className="grid grid-cols-[10px_minmax(0,1fr)_minmax(0,1fr)_2.75rem] items-start gap-2">
               <span className={`h-2.5 w-2.5 shrink-0 rounded-sm ${CATEGORY_STYLE[category.key] ?? DEFAULT_STYLE}`} />
-              <span className="min-w-0 flex-1 truncate text-[var(--muted)]">{category.label}</span>
-              <span className="shrink-0 tabular-nums">{formatTokenCount(category.tokens)}</span>
+              <span className="min-w-0 break-words text-[var(--muted)]">{category.label}</span>
+              <span className="min-w-0 text-right tabular-nums [overflow-wrap:anywhere]">{formatTokenCount(category.tokens)}</span>
               <span className="w-9 shrink-0 text-right tabular-nums text-[var(--muted)]">
                 {percent.toFixed(1)}%
               </span>

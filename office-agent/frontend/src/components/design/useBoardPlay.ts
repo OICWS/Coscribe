@@ -20,6 +20,13 @@ export function useBoardPlay(canvas: Canvas | null, stageSize: () => { width: nu
     const size = stageSize();
     if (size) setView(fitView({ boards: [to], variables: [], notes: [] }, size.width, size.height));
   };
-  const fullBoard = canvas?.boards.find((board) => board.id === full) ?? null;
-  return { live, fullBoard, play, edit, go, stop };
+  const boards = canvas?.boards ?? [];
+  const at = boards.findIndex((board) => board.id === full);
+  const fullBoard = at >= 0 ? boards[at] : null;
+  // Presenting walks the boards in the canvas file's order, the order the model wrote them in.
+  const step = (delta: number) => {
+    const next = boards[at + delta];
+    if (at >= 0 && next) setFull(next.id);
+  };
+  return { live, fullBoard, fullAt: { index: at, count: boards.length }, play, edit, go, step, stop };
 }

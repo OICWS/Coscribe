@@ -11,6 +11,7 @@
  */
 
 import type { WebContents } from "electron";
+import { browserOperation, running } from "./browserAgentSteps";
 import { pageAgent } from "./browserAgentPage";
 
 const WORLD_NAME = "coscribe-agent";
@@ -66,6 +67,7 @@ function exceptionMessage(details: ExceptionDetails): string {
 
 /** A file the page downloaded during the AI's steps, saved without asking. */
 export interface Download {
+  tabIds?: number[];
   path: string;
   /** The name the site gave it, before any " (1)" to avoid a clash. */
   name: string;
@@ -82,7 +84,8 @@ export interface Download {
 export class TabCdp {
   dialog: PageDialog | null = null;
   chooser: FileChooser | null = null;
-  downloads: Download[] = [];
+  /** What a page started dragging while drags were intercepted (browserAgentDrag.ts). */
+  dragData: unknown = null;
   /** Where the conversation driving this tab wants its downloads. */
   downloadDir = "";
   /** The conversation (or workflow run) whose steps last drove this tab. */
@@ -143,12 +146,17 @@ export class TabCdp {
     const natural = !hidden && width === panel.width;
     const key = natural ? "natural" : `${width}x${panel.height}`;
     if (key === this.layoutKey) return;
-    if (natural) {
-      await this.send("Emulation.clearDeviceMetricsOverride");
-    } else {
-      await this.send("Emulation.setDeviceMetricsOverride", { width, height: panel.height, deviceScaleFactor: hidden ? 1 : 0, mobile: false });
-    }
     this.layoutKey = key;
+    try {
+      if (natural) {
+        await this.send("Emulation.clearDeviceMetricsOverride");
+      } else {
+        await this.send("Emulation.setDeviceMetricsOverride", { width, height: panel.height, deviceScaleFactor: 0, mobile: false });
+      }
+    } catch (error) {
+      if (this.layoutKey === key) this.layoutKey = "";
+      throw error;
+    }
   }
 
   /** Lays the page out wide enough to show what ends `right` px from its
@@ -175,7 +183,8 @@ export class TabCdp {
   }
 
   send<T = Record<string, unknown>>(method: string, params: Record<string, unknown> = {}, session?: string): Promise<T> {
-    return this.wc.debugger.sendCommand(method, params, session) as Promise<T>;
+    if (running.stop) return Promise.reject(new Error("Stopped by the user."));
+    return browserOperation(this.wc.debugger.sendCommand(method, params, session) as Promise<T>);
   }
 
   async ensure(): Promise<void> {
@@ -213,6 +222,8 @@ export class TabCdp {
         session,
         multiple: params.mode === "selectMultiple",
       };
+    } else if (method === "Input.dragIntercepted") {
+      this.dragData = params.data;
     } else if (method === "Network.requestWillBeSent" && !session) {
       if (!LONG_LIVED.has(String(params.type))) this.requests.set(String(params.requestId), Date.now());
     } else if ((method === "Network.loadingFinished" || method === "Network.loadingFailed") && !session) {

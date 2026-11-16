@@ -16,7 +16,6 @@ import {
 } from "./lib/menuCommands";
 import { FindInPage } from "./components/FindInPage";
 import { DRAWS_TITLE_BAR, useTitleBarColors } from "./lib/titleBar";
-import type { PlanChoice, PlanItem } from "./components/PlanCard";
 import { EffortPicker } from "./components/EffortPicker";
 import type { Effort } from "./components/EffortPicker";
 import { ModelPicker } from "./components/ModelPicker";
@@ -34,8 +33,7 @@ import { ViewerPanel } from "./components/ViewerPanel";
 import { PlanPanel } from "./components/PlanPanel";
 import { FilesPanel } from "./components/files/FilesPanel";
 import { TaskPanel } from "./components/TaskPanel";
-import { setPlanComments, usePlanComments, withPlanComments } from "./lib/planComments";
-import { planPanelData } from "./lib/taskCard";
+import { usePlanState } from "./lib/planState";
 import { PanelDock } from "./components/dock/PanelDock";
 import { PanelToggles } from "./components/dock/PanelToggles";
 import { NoticeStack } from "./components/NoticeStack";
@@ -48,6 +46,7 @@ import { useCommentSender } from "./lib/commentReplies";
 import { artifactActions } from "./lib/artifacts";
 import { useArtifactStart } from "./lib/useArtifactStart";
 import { ArtifactsPage } from "./components/artifacts/ArtifactsPage";
+import { SessionsPage } from "./components/sessions/SessionsPage";
 import { useSteerNotes, type ComposerDraft } from "./lib/steerNotes";
 import { BackgroundTasks, DetachScript, OpenConnector, OpenDesignSystem, SteerActionsContext, ViewFile } from "./components/chatlog/contexts";
 import { canOpenPanelWindows, focusPanelWindow, usePanelWindows } from "./lib/panelWindows";
@@ -147,9 +146,11 @@ function App() {
   // Same pattern again, for SkillsTab's "Create a skill" prefilling the
   // composer's own text (not an image) -- see onCreateSkill below.
   const [pendingComposerDraft, setPendingComposerDraft] = useState<ComposerDraft | null>(null);
+  const [composerHasDraft, setComposerHasDraft] = useState(false);
   const artifactStart = useArtifactStart(threadId);
   const [navMode, setNavMode] = useState<NavMode>(() => (readPage().view === "scheduled" ? "run" : "create"));
-  const [artifactsOpen, setArtifactsOpen] = useState(() => readPage().view === "artifacts");
+  const [pageView, setPageView] = useState(() => readPage().view);
+  const artifactsOpen = pageView === "artifacts";
   // Not persisted -- a per-page-load convenience, not a remembered
   // setting. Pinned, the rail takes layout space instead of overlaying
   // the header (see the column's paddingLeft below); hover-expanded it
@@ -280,7 +281,7 @@ function App() {
       const id = resolveThreadId();
       const page = readPage();
       setNavMode(page.view === "scheduled" ? "run" : "create");
-      setArtifactsOpen(page.view === "artifacts");
+      setPageView(page.view);
       setSelectedTaskId(page.task);
       setWorkflowDraft(null);
       setFocusStepId(null);
@@ -396,10 +397,8 @@ function App() {
   const threadTask = isScheduledTaskThread ? taskForThread(scheduledTasks, threadId) : null;
   const threadRun = threadTask?.runs.find((r) => r.thread_id === threadId) ?? null;
   const threadWorkflow = threadRun ? (threadTask?.workflow ?? null) : null;
-  const planData = planPanelData(state.items);
-  const hasPlan = planData.tasks.length > 0;
-  const planComments = usePlanComments(planData.plan);
-  const taskPanelWanted = taskPanelChoice[threadId] ?? (threadWorkflow === null && (isScheduledTaskThread || hasPlan));
+  const plans = usePlanState(state.items, (m) => socketRef.current?.send(m), dispatch, () => setPanelOpen("plan", true));
+  const taskPanelWanted = taskPanelChoice[threadId] ?? (threadWorkflow === null && (isScheduledTaskThread || plans.hasPlan));
   const onHome =
     state.historyReceived &&
     state.items.length === 0 &&
@@ -422,13 +421,8 @@ function App() {
   };
   const selectedTask = scheduledTasks.find((t) => t.trigger_id === selectedTaskId) ?? null;
   // Browser and Background tasks belong to a conversation, not the Scheduled pages.
-  const inConversation = navMode === "create" && !onHome && !artifactsOpen;
+  const inConversation = navMode === "create" && !onHome && !artifactsOpen && pageView !== "sessions";
   const subAgents = useRunningBackgroundTasks(threadId, subAgentsTick, inConversation);
-  let subAgentsTitle = "Background tasks";
-  if (subAgents.running > 0) {
-    subAgentsTitle += ` (${subAgents.running} running`;
-    subAgentsTitle += subAgents.waiting > 0 ? `, ${subAgents.waiting} waiting for you)` : ")";
-  }
 
   findAvailable.current = inConversation;
   menuHandler.current = (command) => {
@@ -689,15 +683,6 @@ function App() {
 
   const onDetachScript = (script: string) => socketRef.current?.send({ type: "detach_command", script });
 
-  const onAnswerPlan = (item: PlanItem, choice: PlanChoice, feedback: string) => {
-    dispatch({ type: "local_plan_answered", id: item.id, status: choice });
-    socketRef.current?.send({
-      type: "question_response",
-      id: item.id,
-      answer: choice === "revise" ? `revise:${withPlanComments(item.plan, feedback)}` : choice,
-    });
-  };
-
   const onAnswerQuestion = (id: string, answers: (string | null)[] | null) => {
     dispatch({ type: "local_question_answered", id, answers });
     socketRef.current?.send(
@@ -753,7 +738,7 @@ function App() {
       browser: { panel: "browser", threadId },
       background: { panel: "background", ...backgroundProps },
       viewer: { panel: "viewer", threadId, path: viewerFiles[threadId] ?? null, refreshKey },
-      plan: { panel: "plan", threadId, ...planData, comments: planComments, busy: state.turnInFlight },
+      plan: { panel: "plan", threadId, ...plans.panelState, busy: state.turnInFlight },
       files: { panel: "files", threadId, refreshKey },
     },
     titles: PANEL_TITLES,
@@ -764,7 +749,7 @@ function App() {
       else if (action.type === "view") viewFile(action.path);
       else if (action.type === "sendToChat") onBrowserPanelCapture(action.capture);
       else if (action.type === "sendComment") onSendComment(action.text, action.link);
-      else if (action.type === "planComments") setPlanComments(action.plan, action.comments);
+      else if (action.type === "planComments" || action.type === "planSteps") plans.onPanelAction(action);
       else if (action.type === "stopAgent") onStop();
       else onApprove(action.id, action.approved, action.scope);
     },
@@ -837,11 +822,10 @@ function App() {
       onExternalPptxCaptureConsumed={() => setPendingPptxCapture(null)}
       artifact={artifactStart.kind}
       onArtifactRemoved={artifactStart.clear}
-      designSystem={artifactStart.designSystem}
-      onDesignSystem={artifactStart.chooseDesignSystem}
+      designSystem={artifactStart.designSystem} onDesignSystem={artifactStart.chooseDesignSystem}
       onManageDesignSystems={(startNew) => showSettings("design-systems", startNew ? "new" : null)}
       externalDraft={pendingComposerDraft}
-      onExternalTextConsumed={() => setPendingComposerDraft(null)}
+      onExternalTextConsumed={() => setPendingComposerDraft(null)} onHasDraftChange={setComposerHasDraft}
     />
   );
 
@@ -868,13 +852,13 @@ function App() {
       return <BrowserPanel threadId={threadId} onSendToChat={onBrowserPanelCapture} onStopAgent={onStop} />;
     }
     if (panel === "files") return <FilesPanel threadId={threadId} refreshKey={refreshKey} onView={viewFile} />;
-    if (panel === "plan") return <PlanPanel {...planData} comments={planComments} onComments={(c) => setPlanComments(planData.plan ?? "", c)} busy={state.turnInFlight} />;
+    if (panel === "plan") return <PlanPanel {...plans.panelProps} busy={state.turnInFlight} />;
     return <BackgroundTasksPanel key={threadId} {...backgroundProps} onApprove={onApprove} />;
   };
 
   // The page's title: the conversation's name, or where in Scheduled this is.
   const pageTitle =
-    artifactsOpen ? (
+    artifactsOpen || pageView === "sessions" ? (
       <div className="min-w-0 flex-1" />
     ) : navMode === "create" && isScheduledTaskThread ? (
       <RunBreadcrumb
@@ -905,7 +889,7 @@ function App() {
       onPinnedChange={setPinnedItems}
       sidebar={{ open: navPinned, toggle: () => setNavPinned(!navPinned) }}
       artifactsOpen={artifactsOpen}
-      backgroundTitle={subAgentsTitle}
+      backgroundTitle={subAgents.title}
       running={subAgents.running}
       waiting={subAgents.waiting}
     />
@@ -934,7 +918,9 @@ function App() {
                   Connection lost -- reconnecting...
                 </div>
               )}
-              {artifactsOpen ? (
+              {pageView === "sessions" ? (
+                <SessionsPage threads={threads ?? []} />
+              ) : artifactsOpen ? (
                 <ArtifactsPage onOpen={artifacts.open} onMake={artifacts.make} />
               ) : navMode === "create" && threadWorkflow && threadTask && threadRun ? (
                 <WorkflowRunView
@@ -957,13 +943,13 @@ function App() {
                   {composer}
                 </div>
               ) : navMode === "create" ? (
-                <SteerActionsContext.Provider value={steers.actions}><ViewFile.Provider value={viewFile}><OpenDesignSystem.Provider value={(id) => showSettings("design-systems", id)}><OpenConnector.Provider value={(name) => showSettings("connectors", name)}><DetachScript.Provider value={onDetachScript}><BackgroundTasks.Provider value={{ statuses: subAgents.statuses, open: (taskId) => { setSubAgentFocus({ threadId, taskId }); setPanelOpen("background", true); } }}>
+                <SteerActionsContext.Provider value={{ ...steers.actions, composerHasDraft }}><ViewFile.Provider value={viewFile}><OpenDesignSystem.Provider value={(id) => showSettings("design-systems", id)}><OpenConnector.Provider value={(name) => showSettings("connectors", name)}><DetachScript.Provider value={onDetachScript}><BackgroundTasks.Provider value={{ statuses: subAgents.statuses, open: (taskId) => { setSubAgentFocus({ threadId, taskId }); setPanelOpen("background", true); } }}>
                   <ChatLog
                     items={state.items}
                     turnInFlight={state.turnInFlight}
                     connectorTools={state.connectorTools}
                     onApprove={onApprove}
-                    onAnswerPlan={onAnswerPlan}
+                    onAnswerPlan={plans.answer}
                     onOpenPlan={() => setPanelOpen("plan", true)}
                     onEditMessage={state.turnInFlight ? undefined : onEditMessage}
                     onRewindMessage={state.turnInFlight ? undefined : onRewindMessage}

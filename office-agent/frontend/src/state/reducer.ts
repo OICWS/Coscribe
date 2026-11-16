@@ -1,6 +1,10 @@
+import { testProgress } from "./workflowTest";
+import type { DraftTestProgress } from "../types/workflow";
 import { splitAttachedFiles } from "../lib/attachments";
 import { pendingSteer, requeuedNotes, type NewSteer, type SteerItem } from "./steerItems";
 import type { HistoryEntry, QuestionSpec, StateEvent, TaskDraft, WsServerEvent } from "../types/wire";
+import type { ProgressItem } from "../lib/workflowProgress";
+import { planTasksField } from "../lib/planTasksResult";
 
 /** The answer the frontend sends for a saved draft starts with this --
  * also how a replayed create_scheduled_task call tells "saved" apart
@@ -75,6 +79,8 @@ export type LogItem =
       /** How the user answered: approved into auto or manual mode, or sent
        * back to keep planning. */
       status: "pending" | "auto" | "manual" | "revise" | "reject";
+      /** The task list as the person edited and approved it; it replaces the model's. */
+      tasks?: ProgressItem[];
     }
   | {
       id: string;
@@ -113,7 +119,7 @@ export interface ChatState {
   environment: string;
   items: LogItem[];
   /** The workflow test running in this turn, if any. */
-  workflowTest: { done: number; total: number } | null;
+  workflowTest: DraftTestProgress | null;
   totalTokens: number;
   /** Prompt-cache stats from the latest "usage" event (the running figure, not a sum); null until
    * the provider reports any, so "no data" stays apart from zero (see UsageEvent). */
@@ -206,7 +212,7 @@ export type LocalAction =
   | { type: "local_rewind_message"; turnIndex: number }
   | { type: "local_approval_resolved"; id: string; approved: boolean; reply?: string }
   | { type: "local_question_answered"; id: string; answers: (string | null)[] | null; reply?: string }
-  | { type: "local_plan_answered"; id: string; status: "auto" | "manual" | "revise" | "reject" }
+  | { type: "local_plan_answered"; id: string; status: "auto" | "manual" | "revise" | "reject"; tasks?: ProgressItem[] }
   | { type: "local_task_draft_resolved"; id: string; status: "saved" | "dismissed"; savedName?: string }
   | { type: "local_connection_reset" }
   | { type: "local_switch_thread" }
@@ -261,11 +267,10 @@ function lastPlanOf(items: LogItem[]): string {
   return last ? last.plan : "";
 }
 
-/** How the user answered a plan, read back from exit_plan_mode's result
- * (conversation/session.py's _decide_plan_request writes these sentences). */
+/** How the user answered a plan, read back from the sentences of exit_plan_mode's result (conversation/approvals.py). */
 function planStatusOf(result: string): "auto" | "manual" | "revise" | "reject" {
   if (result.includes("rejected the plan")) return "reject";
-  if (result.includes("switched to auto mode")) return "auto";
+  if (result.includes("switched to auto mode") || result.includes("kept auto mode on")) return "auto";
   if (result.includes("approved the plan")) return "manual";
   return "revise";
 }
@@ -286,11 +291,11 @@ export function historyToItems(entries: HistoryEntry[]): LogItem[] {
       return { id: genId(), kind: "steer", text: entry.text, status: "delivered", images: entry.images, files: entry.files };
     }
     if (entry.tool_name === "exit_plan_mode") {
-      const status = planStatusOf(typeof entry.result === "string" ? entry.result : "");
+      const result = typeof entry.result === "string" ? entry.result : "";
       const plan = String(entry.arguments.plan ?? "");
       const previous = lastPlan;
       lastPlan = plan;
-      return { id: genId(), kind: "plan", plan, previous, status };
+      return { id: genId(), kind: "plan", plan, previous, status: planStatusOf(result), ...planTasksField(result) };
     }
     if (entry.tool_name === "create_scheduled_task" || entry.tool_name === "edit_scheduled_task") {
       const saved = typeof entry.result === "string" && entry.result.startsWith(TASK_DRAFT_SAVED_PREFIX);
@@ -478,7 +483,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...state,
         items: state.items.map((item) =>
-          item.kind === "plan" && item.id === action.id ? { ...item, status: action.status } : item,
+          item.kind === "plan" && item.id === action.id ? { ...item, status: action.status, ...(action.tasks && { tasks: action.tasks }) } : item,
         ),
       };
 
@@ -737,7 +742,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return { ...state, turnInFlight: false, turnTick: state.turnTick + 1, workflowTest: null };
 
     case "workflow_test_progress":
-      return { ...state, workflowTest: { done: action.done, total: action.total } };
+      return { ...state, workflowTest: testProgress(state.workflowTest, action) };
 
     case "local_steer":
       return { ...state, items: [...state.items, pendingSteer(action)] };

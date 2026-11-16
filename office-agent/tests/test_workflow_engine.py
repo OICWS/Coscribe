@@ -715,3 +715,81 @@ def test_a_connectors_result_section_is_the_value() -> None:
     navigate = "### Ran Playwright code\n```js\nawait page.goto('x');\n```"
     assert _connector_value(navigate) == navigate
     assert _connector_value("plain ### not a heading") == "plain ### not a heading"
+
+
+async def test_a_saved_workflow_reads_several_pages_and_closes_its_own(tmp_path: Path) -> None:
+    from coscribe.tools.web.browser import BrowserHost, build_browser_tools
+
+    class _Host(BrowserHost):
+        def __init__(self) -> None:
+            super().__init__()
+            self.seen: list[tuple[str, dict[str, Any]]] = []
+
+        def call(
+            self, action: str, args: dict[str, Any], thread_id: str, timeout: float = 30
+        ) -> dict[str, Any]:
+            self.seen.append((action, args))
+            if action == "snapshot":
+                return {"text": f"Export {args['tab_id']}: done", "tab": {"id": 1, "url": "u"}}
+            return {"tabs": [], "closed": [{"id": 1}, {"id": 2}], "kept": []}
+
+    host = _Host()
+    h = Harness(tmp_path, [])
+    for tool in build_browser_tools("run-1", host, saved_workflow=True):
+        h.ctx.tools[tool.__name__] = tool
+    workflow = parse_workflow(
+        {
+            "steps": [
+                {"id": "read", "kind": "tool", "title": "Read the exports",
+                 "tool": "browser_snapshot", "args": {"tab_ids": ["north", "south"]},
+                 "save_as": "exports"},
+                {"id": "close", "kind": "tool", "title": "Close the pages",
+                 "tool": "browser_tabs", "args": {"action": "close_all"}},
+            ]
+        }
+    )  # fmt: skip
+
+    outcome = await h.run(InMemorySaver(), workflow).start({})
+
+    assert outcome.status == "completed", outcome
+    assert "Export north: done" in outcome.values["exports"]
+    assert "Export south: done" in outcome.values["exports"]
+    assert host.seen[-1][0] == "tabs" and host.seen[-1][1]["op"] == "close_all"
+
+
+async def test_a_saved_workflow_drags_and_copies_between_pages(tmp_path: Path) -> None:
+    from coscribe.tools.web.browser import BrowserHost, build_browser_tools
+
+    class _Host(BrowserHost):
+        def __init__(self) -> None:
+            super().__init__()
+            self.seen: list[tuple[str, dict[str, Any]]] = []
+
+        def call(
+            self, action: str, args: dict[str, Any], thread_id: str, timeout: float = 30
+        ) -> dict[str, Any]:
+            self.seen.append((action, args))
+            return {"element": "x", "chars": 4, "preview": "PO-7"}
+
+    host = _Host()
+    h = Harness(tmp_path, [])
+    for tool in build_browser_tools("run-1", host, saved_workflow=True):
+        h.ctx.tools[tool.__name__] = tool
+    workflow = parse_workflow(
+        {
+            "steps": [
+                {"id": "move", "kind": "tool", "title": "Move the card", "tool": "browser_drag",
+                 "args": {"ref": 'button "PO-7"', "target": 'region "Approved"'}},
+                {"id": "copy", "kind": "tool", "title": "Copy the number", "tool": "browser_copy",
+                 "args": {"ref": 'text "PO-7"', "tab_id": "orders"}},
+                {"id": "paste", "kind": "tool", "title": "Paste it", "tool": "browser_paste",
+                 "args": {"ref": 'textbox "Reference"', "tab_id": "invoice"}},
+            ]
+        }
+    )  # fmt: skip
+
+    outcome = await h.run(InMemorySaver(), workflow).start({})
+
+    assert outcome.status == "completed", outcome
+    assert [action for action, _ in host.seen] == ["drag", "copy", "paste"]
+    assert host.seen[2][1]["tab_id"] == "invoice"

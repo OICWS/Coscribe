@@ -137,9 +137,29 @@ describe("history and older messages", () => {
     });
     const status = (result: string) => historyToItems([planEntry(result)])[0];
     expect(status("The user switched to auto mode")).toMatchObject({ kind: "plan", plan: "Do it", status: "auto" });
+    expect(status("The user approved the plan and kept auto mode on.")).toMatchObject({ kind: "plan", status: "auto" });
     expect(status("The user approved the plan")).toMatchObject({ kind: "plan", status: "manual" });
     expect(status("The user wants changes")).toMatchObject({ kind: "plan", status: "revise" });
     expect(status("The user rejected the plan. Stop.")).toMatchObject({ kind: "plan", status: "reject" });
+  });
+
+  it("restores the task list the person approved, and keeps it on a live answer", () => {
+    const result =
+      'The user approved the plan and will approve each change as you go. Carry it out now. They edited your task list.\nTask list as approved:\n' +
+      '[{"id": "2", "content": "Write", "status": "pending"}, {"id": "1", "content": "Read", "status": "completed"}]';
+    const [item] = historyToItems([{ kind: "tool", tool_name: "exit_plan_mode", arguments: { plan: "p" }, result, is_error: false }]);
+    expect(item).toMatchObject({
+      status: "manual",
+      tasks: [
+        { id: "2", content: "Write", status: "pending" },
+        { id: "1", content: "Read", status: "completed" },
+      ],
+    });
+    expect(historyToItems([{ kind: "tool", tool_name: "exit_plan_mode", arguments: { plan: "p" }, result: "The user approved the plan", is_error: false }])[0]).not.toHaveProperty("tasks");
+
+    const tasks = [{ id: "3", content: "Send", status: "pending" as const }];
+    const live = run(stateWith(), { type: "plan_ready", id: "a", plan: "p" }, { type: "local_plan_answered", id: "a", status: "auto", tasks });
+    expect(live.items[0]).toMatchObject({ status: "auto", tasks });
   });
 
   it("remembers the plan before each one, so a revision can be shown as a diff", () => {
@@ -708,7 +728,7 @@ describe("system notes and turn end", () => {
       status: "done",
       done: 2,
       total: 5,
-    }).workflowTest).toEqual({ done: 2, total: 5 });
+    }).workflowTest).toEqual({ done: 2, total: 5, toolCallId: "c", records: [] });
   });
 
   it("leaves state alone for events App.tsx handles itself", () => {

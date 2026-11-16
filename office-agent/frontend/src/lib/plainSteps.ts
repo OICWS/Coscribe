@@ -131,6 +131,25 @@ function site(url: unknown): string {
   }
 }
 
+function count(n: number, noun: string): string {
+  return n === 1 ? `1 ${noun}` : `${n} ${noun}s`;
+}
+
+function pages(n: number): string {
+  return count(n, "page");
+}
+
+function tabsSentence(args: Record<string, unknown>): string | null {
+  if (args.action === "new") return `Opens ${args.url ? site(args.url) : "a blank page"} in a new tab`;
+  if (args.action === "close") return Array.isArray(args.tab_ids) ? `Closes ${pages(args.tab_ids.length)}` : "Closes a page";
+  if (args.action !== "close_all") return null;
+  const keep = Array.isArray(args.keep) ? args.keep : [];
+  if (!keep.length) return "Closes its browser pages";
+  return keep.length === 1 && keep[0] === "current"
+    ? "Closes its browser pages except the current one"
+    : `Closes its browser pages except ${pages(keep.length)}`;
+}
+
 function toolSentence(tool: string, args: Record<string, unknown>, inputs: WorkflowInput[]): string {
   const value = (key: string) => plainValue(args[key], inputs);
   switch (tool) {
@@ -145,9 +164,24 @@ function toolSentence(tool: string, args: Record<string, unknown>, inputs: Workf
       return `Picks ${plainValue(picked, inputs)} in ${fieldName(args.ref, inputs)}`;
     }
     case "browser_wait_for":
+      if (Array.isArray(args.any_of)) return `Waits for the page to show ${args.any_of.map((t) => plainValue(t, inputs)).join(" or ")}`;
       return `Waits for the page to show ${value("text")}`;
+    case "browser_fill_form":
+      return Array.isArray(args.fields) ? `Fills in ${count(args.fields.length, "field")}` : toolLabel(tool);
+    case "browser_drag":
+      return args.target ? `Drags ${fieldName(args.ref, inputs)} onto ${fieldName(args.target, inputs)}` : `Drags ${fieldName(args.ref, inputs)}`;
+    case "browser_copy":
+      return args.ref ? `Copies ${fieldName(args.ref, inputs)}` : "Copies the selected text";
+    case "browser_paste":
+      return `Pastes into ${fieldName(args.ref, inputs)}`;
+    case "browser_steps":
+      return Array.isArray(args.steps) ? `Does ${count(args.steps.length, "thing")} on the page` : toolLabel(tool);
     case "browser_evaluate":
       return "Works with the page directly";
+    case "browser_tabs":
+      return tabsSentence(args) ?? toolLabel(tool);
+    case "browser_snapshot":
+      return Array.isArray(args.tab_ids) ? `Reads ${pages(args.tab_ids.length)} at once` : toolLabel(tool);
     case "read_file":
       return `Reads ${value("path")}`;
     case "write_file":

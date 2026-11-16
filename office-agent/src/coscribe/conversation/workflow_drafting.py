@@ -51,6 +51,7 @@ from ..workflows import (
 )
 from .events import EventSink
 from .turn_lock import TurnLock
+from .turn_record import run_recorder
 
 logger = logging.getLogger(__name__)
 
@@ -272,6 +273,7 @@ class WorkflowDrafting:
                         "type": "workflow_test_progress",
                         "tool_call_id": tool_call_id,
                         "step": record.step_id,
+                        "record": record.to_dict(),
                         "status": record.status,
                         "done": len(finished),
                         "total": total,
@@ -427,6 +429,7 @@ class WorkflowDrafting:
             fixed_tool_names=frozenset(tool_name(t) for t in host._base_tools),
             keeps_tool_list_fixed=lambda m: keeps_tool_list_fixed(m, host._custom_providers),
             pre_tool_use=hooks,
+            record_run=run_recorder(host.settings.state_dir, host.thread_id),
         )
 
     async def draft_workflow(self, name_hint: str = "") -> WorkflowDraft:

@@ -6,8 +6,9 @@ pending-approval futures and their resolution, the socket and the hooks.
 
 from __future__ import annotations
 
+import json
 import uuid
-from asyncio import Future, get_running_loop
+from asyncio import Future, get_running_loop, to_thread
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Protocol
@@ -41,6 +42,7 @@ from ..tools import (
     QUESTION_TOOL_NAMES,
     TASK_DRAFT_TOOL_NAMES,
     ScheduledTriggerStore,
+    TaskToolkit,
     edit_draft,
     expect_sandbox,
     format_question_answers,
@@ -56,24 +58,53 @@ _COMMAND_TOOL = "run_background_command"
 _MEMORY_HERE = "Save for this folder"
 _MEMORY_SAVE = "Save everywhere"
 
+# The line before the approved task list in exit_plan_mode's result; the frontend finds the list
+# after it, live and in a replayed history (frontend/src/lib/planTasksResult.ts).
+PLAN_TASKS_MARKER = "Task list as approved:"
+
 _REPLIED_INSTEAD = (
     "The user didn't approve this call and wrote this instead; do what they ask rather than "
     "trying the same call again:\n{reply}"
 )
 
 
-def question_answer(data: dict[str, Any]) -> str | list[str | None] | dict[str, str] | None:
+def question_answer(data: dict[str, Any]) -> str | list[str | None] | dict[str, Any] | None:
     """The answer a tab's question_response carries: None when the questions were closed,
     `{"reply": text}` when the person wrote in the chat instead of choosing, one answer per
-    question, or a plain answer (a plan's or a task draft's)."""
+    question, a plain answer (a plan's or a task draft's), or `{"answer", "tasks"}` for a plan
+    whose task list the person edited."""
     if data.get("dismissed"):
         return None
+    if isinstance(data.get("answer"), str) and isinstance(data.get("tasks"), list):
+        # Blank steps are dropped here, so Revise describes the list approving would keep.
+        tasks = [
+            {"content": content} | ({"id": str(t["id"])} if "id" in t else {})
+            for t in data["tasks"]
+            if isinstance(t, dict) and (content := str(t.get("content", "")).strip())
+        ]
+        return {"answer": data["answer"], "tasks": tasks}
     if isinstance(data.get("reply"), str):
         return {"reply": data["reply"]}
     answers = data.get("answers")
     if isinstance(answers, list):
         return [None if a is None else str(a) for a in answers]
     return str(data.get("answer", ""))
+
+
+def _unattended_answer(name: str, is_draft: bool, *, plan_mode: bool) -> str:
+    if is_draft:
+        return (
+            "No one is available to review this draft -- this is an unattended run, "
+            "so no task was created."
+        )
+    if name == "exit_plan_mode" and not plan_mode:
+        # The instructions ask for a review before a large task, and a scheduled run must
+        # still do its work when no one can give one.
+        return (
+            "No one is available to review this plan -- this is an unattended run. "
+            "Carry it out now."
+        )
+    return "No one is available to answer this question -- this is an unattended run."
 
 
 def _memory_question(line: str, folder: Path) -> dict[str, Any]:
@@ -176,7 +207,7 @@ class ApprovalHost(Protocol):
 
     def _toggle_mode(self, mode: str) -> None: ...
 
-    async def send_state(self, websocket: EventSink, *, on_connect: bool = False) -> None: ...
+    async def send_state(self, websocket: EventSink, *, with_turn: bool = False) -> None: ...
 
     async def _send_tool_started(
         self, name: str, args: dict[str, Any], websocket: EventSink
@@ -282,12 +313,7 @@ class ApprovalDecider:
             return self._denied(name, hook_reason)
         if is_question:
             if not can_resolve_approvals(websocket):
-                message = (
-                    "No one is available to review this draft -- this is an unattended run, "
-                    "so no task was created."
-                    if is_draft
-                    else "No one is available to answer this question -- this is an unattended run."
-                )
+                message = _unattended_answer(name, is_draft, plan_mode=self._host.plan_mode)
                 self._audit(audit_log, name, args, "reject", "unattended", message)
                 return self._denied(name, message)
             if is_draft:
@@ -546,16 +572,12 @@ class ApprovalDecider:
     async def _decide_plan_request(
         self, args: dict[str, Any], websocket: EventSink
     ) -> dict[str, Any]:
-        """exit_plan_mode: the user approves the plan -- leaving plan mode for
-        auto or manual approvals -- or keeps planning with feedback."""
-        if not self._host.plan_mode:
-            return {
-                "type": "respond",
-                "message": "Plan mode isn't on, so there's no plan to approve -- go ahead "
-                "with the work; the usual approvals apply.",
-            }
+        """exit_plan_mode: the user approves the plan -- in auto mode, or approving changes
+        as before (leaving plan mode for Manual when it was on) -- or keeps planning with
+        feedback. Outside plan mode the model asks for this review itself before a large task.
+        The task list the person edited meanwhile becomes the plan's list when they approve."""
         request_id = uuid.uuid4().hex
-        future: Future[str] = get_running_loop().create_future()
+        future: Future[Any] = get_running_loop().create_future()
         self._host._pending_questions[request_id] = future
         await self._ask(
             websocket, {"type": "plan_ready", "id": request_id, "plan": str(args.get("plan", ""))}
@@ -565,26 +587,59 @@ class ApprovalDecider:
         finally:
             self._host._pending_questions.pop(request_id, None)
             self.open_prompts.pop(request_id, None)
-        if answer in (PLAN_CHOICE_AUTO, PLAN_CHOICE_MANUAL):
-            self._host._toggle_mode("auto" if answer == PLAN_CHOICE_AUTO else "plan")
-            await self._host.send_state(websocket)
-            how = (
-                "switched to auto mode"
-                if answer == PLAN_CHOICE_AUTO
-                else "will approve each change as you go"
-            )
+        if answer is None:
             return {
                 "type": "respond",
-                "message": f"The user approved the plan and {how}. Carry it out now.",
+                "message": "The user closed the plan without answering. Don't carry it out; "
+                "wait for their next message.",
             }
+        if isinstance(answer, dict) and isinstance(answer.get("reply"), str):
+            return {"type": "respond", "message": _REPLIED_INSTEAD.format(reply=answer["reply"])}
+        edits: list[dict[str, Any]] | None = None
+        if isinstance(answer, dict) and "answer" in answer:
+            edits, answer = answer.get("tasks"), answer["answer"]
+        if not isinstance(answer, str):
+            answer = str(answer)
+        if answer in (PLAN_CHOICE_AUTO, PLAN_CHOICE_MANUAL):
+            host = self._host
+            if answer == PLAN_CHOICE_AUTO:
+                how = "kept auto mode on" if host.auto_mode else "switched to auto mode"
+                if not host.auto_mode:
+                    host._toggle_mode("auto")
+                # The reviewer may have paused itself; this answer asks for it again.
+                host._auto_paused = False
+                host._auto_blocks_in_row = 0
+            else:
+                for mode, on in (
+                    ("plan", host.plan_mode),
+                    ("auto", host.auto_mode),
+                    ("accept-edits", host.accept_edits),
+                ):
+                    if on:
+                        host._toggle_mode(mode)
+                how = "will approve each change as you go"
+            await host.send_state(websocket)
+            message = f"The user approved the plan and {how}. Carry it out now."
+            if edits is not None:
+                toolkit = TaskToolkit(host.thread_id, host.settings.state_dir)
+                approved = await to_thread(toolkit.replace, edits)
+                message += (
+                    " They edited your task list: carry out this one, in this order, and "
+                    "task_update these ids; a step they removed is not to be done.\n"
+                    f"{PLAN_TASKS_MARKER}\n{json.dumps(approved, ensure_ascii=False)}"
+                )
+            return {"type": "respond", "message": message}
         if answer == PLAN_CHOICE_REJECT:
             return {
                 "type": "respond",
                 "message": "The user rejected the plan. Don't carry it out and don't propose "
                 "another one; stop and wait for their next message.",
             }
-        if answer.startswith(PLAN_CHOICE_REVISE):
+        if isinstance(answer, str) and answer.startswith(PLAN_CHOICE_REVISE):
             feedback = answer[len(PLAN_CHOICE_REVISE) :].strip() or "(no details)"
+            if edits is not None:
+                steps = "\n".join(f"{i}. {t['content']}" for i, t in enumerate(edits, 1))
+                feedback += f"\n\nThe task list as they left it:\n{steps}"
             return {
                 "type": "respond",
                 "message": f"The user wants to keep planning: {feedback}. Revise the plan "

@@ -102,6 +102,29 @@ def test_children_shrink_when_they_do_not_fit() -> None:
     assert widths[0] == pytest.approx(widths[1])
 
 
+def test_a_child_that_shrinks_to_nothing_leaves_the_rest_to_its_siblings() -> None:
+    # The first child's flex-shrink would take more than its 100px; the 200px the column lacks
+    # all comes from the shape. The inner container has no look, so nothing is drawn at 0px.
+    source = (
+        '<section><x-stack style="left:0px;top:0px;width:800px;height:400px">'
+        '<x-stack style="height:100px;flex-shrink:50"><p>Hi</p></x-stack>'
+        '<x-shape style="height:500px;background:#222222"/></x-stack></section>'
+    )
+    shape = next(b for tag, b in _boxes(source) if tag == "x-shape")
+    assert (shape["y"], shape["h"]) == (pytest.approx(0), pytest.approx(400))
+
+
+def test_shrinking_shares_the_lack_by_flex_shrink_times_size() -> None:
+    source = _row(
+        '<x-shape style="width:400px;flex-shrink:3;background:#111111"/>',
+        '<x-shape style="width:1600px;background:#222222"/>',
+    )
+    widths = [b["w"] for tag, b in _boxes(source) if tag == "x-shape"]
+    # 400px too much for the 1600px between the padding and the gap, weighed 1200 to 1600.
+    expected = [400 - 400 * 1200 / 2800, 1600 - 400 * 1600 / 2800]
+    assert widths == pytest.approx(expected, abs=0.01)  # the reader rounds to 0.01px
+
+
 def test_a_card_is_a_shape_behind_its_children() -> None:
     boxes = _boxes(_row(CARD.format("A", "Short.")))
     assert [tag for tag, _ in boxes] == ["x-shape", "h3", "p"]

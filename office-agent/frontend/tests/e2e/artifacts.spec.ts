@@ -28,6 +28,16 @@ async function openPage(page: Page) {
   await expect(page.getByRole("heading", { name: "Artifacts" })).toBeVisible();
 }
 
+// A card's menu button shows only while the card is hovered, so hover it and click it as a person
+// would: the click then waits until nothing (a closing dialog's backdrop) covers the button.
+async function openOptions(page: Page, name: string) {
+  await page.getByRole("button", { name: `Open ${name}` }).hover();
+  await page.getByRole("button", { name: `Options for ${name}` }).click();
+  const menu = page.getByRole("menu", { name: `Options for ${name}` });
+  await expect(menu).toBeVisible();
+  return menu;
+}
+
 test("the sidebar opens the Artifacts page, which lists, searches, filters and pins", async ({ page }) => {
   await openPage(page);
   const cards = page.getByRole("button", { name: /^Open / });
@@ -47,8 +57,7 @@ test("the sidebar opens the Artifacts page, which lists, searches, filters and p
   await page.getByRole("menuitemradio", { name: "All types" }).click();
 
   // Pinned ones come first, and the Pinned tab keeps only them.
-  await page.getByRole("button", { name: "Options for Costs" }).click({ force: true });
-  await page.getByRole("menuitem", { name: /^Pin/ }).click();
+  await (await openOptions(page, "Costs")).getByRole("menuitem", { name: /^Pin/ }).click();
   await expect(cards.first()).toHaveText(/Costs/);
   await page.getByRole("tab", { name: "Pinned" }).click();
   await expect(cards).toHaveText([/Costs/]);
@@ -107,22 +116,16 @@ test("a card's menu renames, copies and deletes through the app's own dialogs", 
   });
   await openPage(page);
 
-  await page.getByRole("button", { name: "Options for Project plan" }).click({ force: true });
-  const menu = page.getByRole("menu", { name: "Options for Project plan" });
+  const menu = await openOptions(page, "Project plan");
   await expect(menu).toContainText("Document");
   await expect(menu.getByRole("menuitem", { name: "Open in Word" })).toBeVisible();
   await menu.getByRole("menuitem", { name: "Rename" }).click();
-  await page.getByLabel("Name").fill("Roadmap");
+  await page.getByLabel("Name", { exact: true }).fill("Roadmap");
   await page.getByRole("button", { name: "Rename", exact: true }).click();
   await expect.poll(() => calls).toContain('rename {"name":"Roadmap"}');
 
-  // The rename dialog is still handing focus back; a click that lands in that moment closes the menu again.
-  await expect(page.getByRole("dialog")).toBeHidden();
-  await expect(async () => {
-    await page.getByRole("button", { name: "Options for Project plan" }).click({ force: true });
-    await expect(page.getByRole("menuitem", { name: "Delete" })).toBeVisible({ timeout: 2000 });
-  }).toPass({ timeout: 15000 });
-  await page.getByRole("menuitem", { name: "Delete" }).click();
+  await expect(page.getByRole("dialog", { name: "Rename" })).toBeHidden();
+  await (await openOptions(page, "Project plan")).getByRole("menuitem", { name: "Delete" }).click();
   await expect(page.getByText("moves Project plan to the Recycle Bin")).toBeVisible();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
   await expect.poll(() => calls).toContain("DELETE");
@@ -200,12 +203,7 @@ test("a design system is a card of its own: it opens its editor, and its menu re
     await expect(page.getByLabel("Overview", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Close settings" }).click();
 
-    const options = async (item: string) => {
-      await expect(async () => {
-        await page.getByRole("button", { name: `Options for ${item}` }).click({ force: true });
-        await expect(page.getByRole("menu", { name: `Options for ${item}` })).toBeVisible({ timeout: 2000 });
-      }).toPass({ timeout: 15000 });
-    };
+    const options = (item: string) => openOptions(page, item);
     await options(name);
     const menu = page.getByRole("menu", { name: `Options for ${name}` });
     await expect(menu).toContainText("Design system");
@@ -220,7 +218,7 @@ test("a design system is a card of its own: it opens its editor, and its menu re
     await expect(page.getByRole("heading", { name: "Artifacts" })).toBeVisible();
     await options(`${name} copy`);
     await page.getByRole("menuitem", { name: "Rename" }).click();
-    await page.getByLabel("Name").fill(`${name} v2`);
+    await page.getByLabel("Name", { exact: true }).fill(`${name} v2`);
     await page.getByRole("button", { name: "Rename", exact: true }).click();
     await expect.poll(listed).toContain(`${name} v2`);
 

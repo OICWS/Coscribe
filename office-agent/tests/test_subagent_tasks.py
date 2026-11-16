@@ -15,10 +15,13 @@ import pytest
 
 pytest.importorskip("langgraph", reason="needs the langgraph_spike extra installed")
 
+import json
+
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, ToolCall
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 
+from coscribe.conversation.turn_record import run_recorder, turns_path
 from coscribe.runtime import tool_metadata
 from coscribe.runtime_lg.selfwake import poll_due_wakes
 from coscribe.runtime_lg.subagent_kinds import subagent_role
@@ -678,3 +681,45 @@ def test_an_unknown_kind_is_refused(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="research, check"):
         asyncio.run(spawn(description="x", prompt="y", kind="writer"))
+
+
+def _turn_lines(tmp_path: Path) -> list[dict[str, Any]]:
+    text = turns_path(tmp_path).read_text(encoding="utf-8")
+    return [json.loads(line) for line in text.splitlines()]
+
+
+async def test_a_sub_agents_run_leaves_a_line_beside_its_parents(tmp_path: Path) -> None:
+    model = FakeToolCallingChatModel(
+        responses=[
+            AIMessage(content="", tool_calls=[_call("_read_note", {})]),
+            AIMessage(content="it says hi"),
+        ]
+    )
+    host = _host(tmp_path, model)
+    host.record_run = run_recorder(tmp_path, "thread-1")
+    spawn, _ = _spawn_tools(host)
+
+    await spawn(description="read the note", prompt="what does it say?")
+
+    [task] = SubAgentTaskStore(tmp_path).list_for_thread("thread-1")
+    [line] = _turn_lines(tmp_path)
+    assert line["kind"] == "subagent"
+    assert line["thread_id"] == "thread-1"
+    assert line["task_id"] == task.task_id
+    assert line["outcome"] == "completed"
+    assert line["model_calls"] == 2
+    assert line["tools"] == {"_read_note": {"calls": 1, "errors": 0}}
+
+
+async def test_a_stalled_sub_agent_leaves_a_line_that_says_it_failed(tmp_path: Path) -> None:
+    host = _host(tmp_path, _SilentChatModel(responses=[]))
+    host.model_stall_seconds = 0.2
+    host.record_run = run_recorder(tmp_path, "thread-1")
+    _, spawn_background = build_delegation_tools(host, _tools())
+
+    started = await spawn_background(description="hang", prompt="anything")
+    await _wait_for_status(SubAgentTaskStore(tmp_path), started["task_id"], "failed")
+
+    [line] = _turn_lines(tmp_path)
+    assert line["outcome"] == "error"
+    assert line["error"] == "ModelStalled"

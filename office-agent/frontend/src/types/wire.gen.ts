@@ -38,8 +38,9 @@ export interface StateEvent {
   /** The connected connectors' tool names. */
   connector_tools: string[];
   /**
-   * Only on the state sent right after connecting: whether a turn is already running
-   * on this thread (typically a scheduled run), so the page shows it as running.
+   * Only on the state sent right after connecting, or after a Stop that found no
+   * turn: whether a turn is running on this thread (typically a scheduled run), so
+   * the page shows it as running, or stops waiting for one that is not.
    */
   turn_in_flight?: boolean;
   /**
@@ -324,6 +325,7 @@ export interface WorkflowTestProgressEvent {
   status: string;
   done: number;
   total: number;
+  record?: WorkflowStepRecord;
 }
 
 /**
@@ -538,11 +540,26 @@ export interface ApprovalResponseOut {
   reply?: string;
 }
 
+/** One step of a plan's task list as the person left it while reviewing the plan. */
+export interface PlanTaskEdit {
+  /**
+   * The task's id when it was already on the list; absent for a step the person
+   * added.
+   */
+  id?: string;
+  content: string;
+}
+
 /** Answer to a plan or task draft. */
 export interface QuestionAnswerOut {
   type: "question_response";
   id: string;
   answer: string;
+  /**
+   * A plan only: the task list as the person edited it, in their order; absent when
+   * unchanged.
+   */
+  tasks?: PlanTaskEdit[];
 }
 
 /**

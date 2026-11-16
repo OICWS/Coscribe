@@ -295,3 +295,22 @@ def test_detach_command_reaches_the_command_waiting_on_that_script(
             ws.send_json({"type": "user_message", "text": "hi"})
             _receive_until(ws, "tasks_changed")
     assert len(heard) == 1 and heard[0] is not None
+
+
+def test_a_stop_with_no_turn_running_tells_the_page_none_runs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A page that thinks a reply is running waits for its end after Stop, and "Send now" holds
+    the person's notes until then; with no turn on the server nothing else would end the wait."""
+    fake_model = FakeToolCallingChatModel(responses=[AIMessage(content="hi")])
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_stop_idle") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "hello"})
+            _receive_until(ws, "tasks_changed")  # the turn ended; the page missed it
+            ws.send_json({"type": "stop"})
+            state = ws.receive_json()
+
+    assert state["type"] == "state"
+    assert state["turn_in_flight"] is False
