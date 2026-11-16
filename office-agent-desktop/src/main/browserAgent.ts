@@ -14,10 +14,10 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { join, parse } from "node:path";
 import { Readable } from "node:stream";
-import { type BrowserWindow, type DownloadItem, type WebContents, app, webContents } from "electron";
+import { type BrowserWindow, type DownloadItem, type WebContents, app } from "electron";
 import { pageAgent } from "./browserAgentPage";
 import { locate, scrollArea, splitRef } from "./browserAgentLocate";
-import { type Step, cancelFrameOff, enqueue, running, runningSteps, scheduleFrameOff, stepContext } from "./browserAgentSteps";
+import { type Step, browserOperation, handleBrowserControl, cancelFrameOff, enqueue, running, runningSteps, scheduleFrameOff, stepContext } from "./browserAgentSteps";
 import { type AgentFrame, type Download, type PageDialog, type TabCdp, cdpFor, existingCdp } from "./browserCdp";
 import { checkNetworkLanding, checkNetworkSites, inSites, isAllowed, normalizeSite, requestPermission } from "./browserPermissions";
 import {
@@ -26,6 +26,7 @@ import {
   activeTab,
   allTabs,
   closeTab,
+  closeEmptyDownloadPopup,
   createTab,
   ensureActiveTab,
   hiddenTabSize,
@@ -84,6 +85,14 @@ const UNCLAIMED_KEEP_MS = 30 * 60_000;
 /** Conversations with a turn under way and workflow runs in progress, as
  * the server reports them. */
 const activeThreads = new Set<string>();
+// A popup can close before its download finishes; the conversation still owns the file.
+const downloadInboxes = new Map<string, Download[]>();
+const reportedTabs = new Map<string, string>();
+function downloadsFor(threadId: string): Download[] {
+  let inbox = downloadInboxes.get(threadId);
+  if (!inbox) downloadInboxes.set(threadId, inbox = []);
+  return inbox;
+}
 
 function checkStop(): void {
   if (running.stop) throw new Error("Stopped by the user.");
@@ -109,9 +118,10 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function inPage<T>(wc: WebContents, action: string, args: Record<string, unknown> = {}): Promise<T> {
+  checkStop();
   const code = `(${pageAgent.toString()})(${JSON.stringify(action)}, ${JSON.stringify(args)})`;
   try {
-    return (await wc.executeJavaScriptInIsolatedWorld(AGENT_WORLD_ID, [{ code }])) as T;
+    return (await browserOperation(wc.executeJavaScriptInIsolatedWorld(AGENT_WORLD_ID, [{ code }]))) as T;
   } catch (err) {
     // Errors thrown in the page come back wrapped; the model needs just
     // the sentence it can act on.
@@ -135,12 +145,7 @@ async function load(wc: WebContents, url: string): Promise<void> {
   // folders the conversation was given.
   if (!/^https?:\/\//i.test(target)) throw new Error(`Only http and https pages can be opened, not ${url}.`);
   try {
-    await Promise.race([
-      wc.loadURL(target),
-      sleep(LOAD_TIMEOUT_MS).then(() => {
-        throw new Error(`${url} took more than ${LOAD_TIMEOUT_MS / 1000}s to load.`);
-      }),
-    ]);
+    await browserOperation(wc.loadURL(target), LOAD_TIMEOUT_MS);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     // A redirect or a script navigating straight away aborts the first
@@ -232,7 +237,7 @@ function listTabs(group: string): Record<string, unknown> {
   return {
     tabs: allTabs(group).map((t) => {
       const info = tabInfo(t);
-      return { id: info.id, title: info.title, url: info.url, active: info.id === current };
+      return { id: info.id, title: info.title, url: info.url, active: info.id === current, opener_id: t.openerId };
     }),
   };
 }
@@ -427,10 +432,11 @@ function onDownload(item: DownloadItem, wc: WebContents): void {
     finishedAt: 0,
   };
   item.setSavePath(download.path);
-  cdp.downloads.push(download);
+  downloadsFor(cdp.threadId).push(download);
   item.once("done", (_event, state) => {
     download.state = state;
     download.finishedAt = Date.now();
+    if (state === "completed") closeEmptyDownloadPopup(wc);
   });
 }
 
@@ -438,11 +444,12 @@ type DownloadReport = { path: string; name: string; state: string };
 
 /** What the model hasn't heard about the tab's downloads: finished ones,
  * and newly started ones still going after `waitMs`. */
-async function newDownloads(cdp: TabCdp, waitMs: number): Promise<DownloadReport[]> {
+async function newDownloads(threadId: string, waitMs: number): Promise<DownloadReport[]> {
+  const inbox = downloadsFor(threadId);
   const deadline = Date.now() + waitMs;
-  while (cdp.downloads.some((d) => d.state === "progressing") && Date.now() < deadline && !running.stop) await sleep(200);
+  while (inbox.some((d) => d.state === "progressing") && Date.now() < deadline && !running.stop) await sleep(200);
   const news: DownloadReport[] = [];
-  for (const d of cdp.downloads) {
+  for (const d of inbox) {
     if (d.reported) continue;
     if (d.state !== "progressing") {
       news.push({ path: d.path, name: d.name, state: d.state });
@@ -452,9 +459,9 @@ async function newDownloads(cdp: TabCdp, waitMs: number): Promise<DownloadReport
       d.announced = true;
     }
   }
-  cdp.downloads = cdp.downloads.filter(
+  downloadInboxes.set(threadId, inbox.filter(
     (d) => !(d.reported && (d.claimed || Date.now() - d.finishedAt > UNCLAIMED_KEEP_MS)),
-  );
+  ));
   return news;
 }
 
@@ -463,11 +470,7 @@ async function newDownloads(cdp: TabCdp, waitMs: number): Promise<DownloadReport
  * doesn't take them -- one may have been moved or deleted since. */
 function startActivity(threadId: string): void {
   activeThreads.add(threadId);
-  for (const wc of webContents.getAllWebContents()) {
-    const cdp = existingCdp(wc);
-    if (cdp?.threadId !== threadId) continue;
-    for (const d of cdp.downloads) if (d.reported && d.state !== "progressing") d.claimed = true;
-  }
+  for (const d of downloadsFor(threadId)) if (d.reported && d.state !== "progressing") d.claimed = true;
 }
 
 function endActivity(threadId: string): void {
@@ -478,20 +481,25 @@ function endActivity(threadId: string): void {
 /** Until a download no wait has taken yet has finished -- one already
  * done, under way, or starting while waiting -- and none is still going;
  * then takes them. */
-async function waitForDownload(cdp: TabCdp, waitS: number): Promise<DownloadReport[]> {
+async function waitForDownload(threadId: string, waitS: number): Promise<DownloadReport[]> {
   const deadline = Date.now() + waitS * 1000;
   for (;;) {
     checkStop();
-    const open = cdp.downloads.filter((d) => !d.claimed);
+    const open = downloadsFor(threadId).filter((d) => !d.claimed);
     const going = open.filter((d) => d.state === "progressing");
     if (!going.length && open.length) {
       for (const d of open) {
         d.claimed = true;
         d.reported = true;
       }
+      if (!open.some((d) => d.state === "completed")) {
+        throw new Error(open.map((d) => `Download of ${d.name}: ${d.state}`).join("; "));
+      }
       return open.map((d) => ({ path: d.path, name: d.name, state: d.state }));
     }
-    if (cdp.dialog) throw new Error(describeDialog(cdp.dialog));
+    const current = activeTab(threadId);
+    const dialog = current && existingCdp(current.view.webContents)?.dialog;
+    if (dialog) throw new Error(describeDialog(dialog));
     if (Date.now() >= deadline) {
       throw new Error(
         going.length
@@ -546,9 +554,21 @@ async function run(command: Command): Promise<Record<string, unknown>> {
       if (!allTabs(command.thread_id).some((t) => t.id === Number(args.tab_id))) throw new Error(`There's no tab ${args.tab_id}.`);
       closeTab(Number(args.tab_id));
     }
-    return listTabs(command.thread_id);
+    const result = listTabs(command.thread_id);
+    reportedTabs.set(command.thread_id, JSON.stringify(result));
+    return result;
   }
 
+  // Completion must remain observable even if a renderer stops answering or closes.
+  if (command.action === "wait_for" && args.download) {
+    const downloads = await waitForDownload(command.thread_id, waitSeconds(args));
+    const current = activeTab(command.thread_id);
+    const pages = listTabs(command.thread_id);
+    reportedTabs.set(command.thread_id, JSON.stringify(pages));
+    return { ...(current ? withTab(current) : {}), ...pages, downloads };
+  }
+
+  const beforeIds = new Set(allTabs(command.thread_id).map((t) => t.id));
   const tab = ensureActiveTab(command.thread_id);
   const wc = tab.view.webContents;
   if (command.action !== "navigate" && tab.blank) {
@@ -573,8 +593,20 @@ async function run(command: Command): Promise<Record<string, unknown>> {
   // What a step left open for the model to deal with next.
   if (cdp.dialog) result.dialog = describeDialog(cdp.dialog);
   if (cdp.chooser) result.file_chooser = true;
-  const downloads = [...((result.downloads as unknown[] | undefined) ?? []), ...(await newDownloads(cdp, DOWNLOAD_QUICK_MS))];
+  const downloads = [...((result.downloads as unknown[] | undefined) ?? []), ...(await newDownloads(command.thread_id, DOWNLOAD_QUICK_MS))];
   if (downloads.length) result.downloads = downloads;
+  const pages = listTabs(command.thread_id);
+  if (JSON.stringify(pages) !== reportedTabs.get(command.thread_id)) result.tabs = pages.tabs;
+  reportedTabs.set(command.thread_id, JSON.stringify(pages));
+  for (const opened of allTabs(command.thread_id)) {
+    if (!beforeIds.has(opened.id)) checkNetworkLanding(opened.view.webContents, args.network_sites);
+  }
+  if (tab.popupBlocked) {
+    result.note = "A popup was blocked because all tabs are in use; close an unused tab and retry.";
+    tab.popupBlocked = false;
+  }
+  const current = activeTab(command.thread_id);
+  if (current && current.id !== tab.id) result.current_tab = withTab(current).tab;
   return result;
 }
 
@@ -676,7 +708,6 @@ async function act(
     }
     case "wait_for": {
       const waitS = waitSeconds(args);
-      if (args.download) return withTab(tab, { downloads: await waitForDownload(cdp, waitS) });
       if (args.element) {
         const ref = await resolveTarget(cdp, String(args.element), waitS);
         return withTab(tab, { element: ref });
@@ -779,10 +810,11 @@ export function startBrowserAgent(port: number, token: string, getWindow: () => 
   // Conversations stopped, and when: their steps that arrived before then
   // are dropped rather than carried out.
   const stoppedAt = new Map<string, number>();
+  const cancelledRequests = new Set<string>();
   const panelDeclinedAt = new Map<string, number>();
 
   const execute = async (command: Command) => {
-    if ((stoppedAt.get(command.thread_id) ?? 0) >= (command.receivedAt ?? 0)) {
+    if (cancelledRequests.delete(command.id) || (stoppedAt.get(command.thread_id) ?? 0) >= (command.receivedAt ?? 0)) {
       await reply(command.id, { ok: false, error: "Stopped by the user." });
       return;
     }
@@ -820,9 +852,10 @@ export function startBrowserAgent(port: number, token: string, getWindow: () => 
     setViewHidden(false);
     sendAgentEvent({ busy: true, threadId: command.thread_id, action: command.action });
     cancelFrameOff(command.thread_id);
-    const frameTab = command.action === "tabs" ? undefined : ensureActiveTab(command.thread_id);
+    const frameTab = command.action === "tabs" || (command.action === "wait_for" && command.args.download)
+      ? undefined : ensureActiveTab(command.thread_id);
     if (frameTab && !frameTab.blank) void inPage(frameTab.view.webContents, "agent_frame", { on: true }).catch(() => undefined);
-    const step: Step = { threadId: command.thread_id, stop: false };
+    const step: Step = { threadId: command.thread_id, requestId: command.id, stop: false };
     runningSteps.set(command.thread_id, step);
     try {
       const result = await stepContext.run(step, () => run(command));
@@ -872,18 +905,8 @@ export function startBrowserAgent(port: number, token: string, getWindow: () => 
               } catch {
                 continue;
               }
-              // A stop can't queue behind the step it is stopping.
-              if (command.action === "activity") {
-                if (command.args?.active) startActivity(command.thread_id);
-                else endActivity(command.thread_id);
-                continue;
-              }
-              if (command.action === "cancel") {
-                stoppedAt.set(command.thread_id, Date.now());
-                const step = runningSteps.get(command.thread_id);
-                if (step) step.stop = true;
-                continue;
-              }
+              if (handleBrowserControl(command, stoppedAt, cancelledRequests,
+                (thread, active) => active ? startActivity(thread) : endActivity(thread))) continue;
               command.receivedAt = Date.now();
               // Two clicks racing on one page would land unpredictably.
               enqueue(command.thread_id, () => execute(command));

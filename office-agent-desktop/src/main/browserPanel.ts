@@ -30,9 +30,11 @@ import {
   type DownloadItem,
   type Session,
   type WebContents,
+  type WebPreferences,
 } from "electron";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { browserOperation } from "./browserAgentSteps";
 import { existingCdp } from "./browserCdp";
 import { browserSettings, updateBrowserSettings } from "./browserPermissions";
 
@@ -96,6 +98,8 @@ export interface Tab {
   // page, so its (blank white) view stays detached.
   blank: boolean;
   loadError: string | null;
+  openerId?: number;
+  popupBlocked?: boolean;
 }
 
 export interface TabInfo {
@@ -332,9 +336,10 @@ const SCROLLBAR_CSS = `
   ::-webkit-scrollbar-corner { background: transparent; }
 `;
 
-export function createTab(url?: string, group: string = viewedGroup): Tab {
+export function createTab(url?: string, group: string = viewedGroup, popupPreferences?: WebPreferences): Tab {
   const view = new WebContentsView({
     webPreferences: {
+      ...popupPreferences,
       preload: join(__dirname, "..", "preload", "browserPanelContent.js"),
       contextIsolation: true,
       nodeIntegration: false,
@@ -347,7 +352,7 @@ export function createTab(url?: string, group: string = viewedGroup): Tab {
   });
   // Matches the rounded page area the panel draws (rounded-lg).
   view.setBorderRadius(8);
-  const tab: Tab = { id: nextId++, group, view, blank: true, loadError: null };
+  const tab: Tab = { id: nextId++, group, view, blank: popupPreferences === undefined, loadError: null };
   const wc = view.webContents;
   wc.on("did-start-navigation", (details) => {
     if (details.isMainFrame && !details.isSameDocument && tab.blank && details.url !== "about:blank") {
@@ -379,18 +384,23 @@ export function createTab(url?: string, group: string = viewedGroup): Tab {
     tab.loadError = errorDescription;
     sendTabs();
   });
+  wc.once("destroyed", () => closeTab(tab.id));
   // target="_blank" and window.open open a tab in the panel rather than a
   // separate native window without any browser chrome.
-  wc.setWindowOpenHandler(({ url: target }) => {
-    // With every tab in use, the link replaces this page instead.
+  wc.setWindowOpenHandler(() => {
     if (tabLimitReached(group)) {
-      void wc.loadURL(normalizeUrl(target)).catch(() => undefined);
-    } else {
-      const opened = createTab(target, group);
-      openers.set(opened.view.webContents, wc);
-      selectTab(opened.id);
+      tab.popupBlocked = true;
+      return { action: "deny" };
     }
-    return { action: "deny" };
+    // Electron must retain window.opener, POST data and the returned WindowProxy.
+    return { action: "allow", createWindow: (options) => {
+      const opened = createTab(undefined, group, options.webPreferences ?? {});
+      openers.set(opened.view.webContents, wc);
+      opened.openerId = tab.id;
+      // A download popup must not redirect the next AI step away from its source.
+      if (!existingCdp(wc)?.driving) selectTab(opened.id);
+      return opened.view.webContents;
+    } };
   });
   wc.on("before-input-event", (_event, input) => {
     if (input.type !== "keyDown" || (!input.control && !input.meta)) return;
@@ -403,7 +413,7 @@ export function createTab(url?: string, group: string = viewedGroup): Tab {
   // about:blank rather than nothing: a webContents that has never loaded
   // a document doesn't answer DevTools, which stalls tools attaching to
   // the app (and the page reads as "" either way).
-  void wc.loadURL(url ? normalizeUrl(url) : "about:blank").catch(() => undefined);
+  if (!popupPreferences) void wc.loadURL(url ? normalizeUrl(url) : "about:blank").catch(() => undefined);
   sendTabs();
   return tab;
 }
@@ -428,11 +438,11 @@ export function closeTab(id: number): void {
   if (win && !win.isDestroyed() && win.contentView.children.includes(tab.view)) {
     win.contentView.removeChildView(tab.view);
   }
-  tab.view.webContents.close();
+  if (!tab.view.webContents.isDestroyed()) tab.view.webContents.close();
   favicons.delete(id);
   if (activeIds.get(tab.group) === id) {
     const rest = groupTabs(tab.group);
-    const next = rest[Math.min(position, rest.length - 1)];
+    const next = rest.find((t) => t.id === tab.openerId) ?? rest[Math.min(position, rest.length - 1)];
     if (next) activeIds.set(tab.group, next.id);
     else activeIds.delete(tab.group);
   }
@@ -440,6 +450,16 @@ export function closeTab(id: number): void {
   if (tab.group === viewedGroup && !groupTabs(viewedGroup).length) createTab();
   layout();
   sendTabs();
+}
+
+/** about:blank may hold a form written through window.open's returned handle. */
+export function closeEmptyDownloadPopup(wc: WebContents): void {
+  const popup = tabFor(wc);
+  if (!popup?.openerId || existingCdp(wc)?.driving || wc.getURL() !== "about:blank") return;
+  void browserOperation(wc.executeJavaScript("!document.body || (!document.body.childElementCount && !document.body.textContent.trim())"))
+    .then((empty) => {
+      if (empty && !wc.isDestroyed() && wc.getURL() === "about:blank" && !existingCdp(wc)?.driving) closeTab(popup.id);
+    }).catch(() => undefined);
 }
 
 /** The group's active tab, making one if there are none. */

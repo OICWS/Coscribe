@@ -93,7 +93,17 @@ check clicks with real input (xdotool under Xvfb, or Windows itself).
   (`TabCdp.fit` in `browserCdp.ts`), so a workflow finds the layout it was
   made in; the panel shows the left part and the page still takes clicks
   beyond its edge. Where the AI clicks and what a scroll moves is
-  `browserAgentLocate.ts`.
+  `browserAgentLocate.ts`. Popups preserve Electron's opener and POST semantics,
+  stay in the background during AI work, and are reported with their source
+  tab. The AI can select or close them with `browser_tabs`; closing a popup
+  prefers its source. Downloads belong to the conversation even if their tab
+  closes. Only untouched blank download popups close automatically after a
+  successful download; content pages remain available. Protocol operations
+  have a deadline, and backend request timeouts cancel only that request.
+
+Run `npm run test:browser` for the panel/command-queue regressions using an
+Electron transport double. `scripts/smoke.mjs` also checks real popup handles,
+focus and close behavior in the Windows desktop smoke job.
 
 ## Prerequisites
 
