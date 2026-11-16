@@ -19,5 +19,5 @@ undefined (reading 'isDestroyed') at closeTab" in the main process. When a page 
   pass under Linux/Xvfb; the native one also runs in the Windows desktop smoke job.
 
 ## Follow-ups
-- Whether a workflow run's pages close when the run ends is a product decision; listed for the
-  maintainer in `docs/plan.md`.
+- A workflow run's pages stay open when it ends, by the maintainer's choice; a per-workflow
+  setting to close them is in `docs/plan.md`.
