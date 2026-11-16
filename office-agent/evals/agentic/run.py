@@ -27,6 +27,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from coscribe.tools import TaskToolkit
+
 from .. import run as office
 from ..prices import cost
 from . import replay
@@ -102,13 +104,12 @@ def run_checks(task: AgenticTask, outcome: Outcome) -> dict[str, bool]:
 
 def _outcome(task_out: Path, workspace: Path, thread_id: str, turns: list[Turn]) -> Outcome:
     memory = task_out / "MEMORY.md"
-    tasks_file = task_out / "state" / f"{thread_id}.tasks.json"
     return Outcome(
         replies=[turn.replies for turn in turns],
         calls=[f"{name} {arguments}" for turn in turns for name, arguments in turn.calls],
         workspace=workspace,
         memory=memory.read_text(encoding="utf-8") if memory.is_file() else "",
-        tasks=json.loads(tasks_file.read_text(encoding="utf-8")) if tasks_file.is_file() else [],
+        tasks=TaskToolkit(thread_id, task_out / "state").list_tasks(),
     )
 
 
