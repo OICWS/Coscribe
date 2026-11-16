@@ -104,34 +104,6 @@ try {
     if (platform !== process.platform) throw new Error(`the preload says ${platform}`);
   });
 
-  await step("browser popups retain their source and close back to it", async () => {
-    await app.evaluate(async (_electron, { panelPath, cdpPath }) => {
-      // Playwright evaluates in the main-process global context, outside a CommonJS module.
-      const load = process.getBuiltinModule("module").createRequire(panelPath);
-      const panel = load(panelPath);
-      const { cdpFor } = load(cdpPath);
-      const group = "browser-smoke";
-      const source = panel.createTab(undefined, group);
-      panel.selectTab(source.id);
-      try {
-        await source.view.webContents.loadURL("data:text/html,<title>Source</title><p>Source page</p>");
-        cdpFor(source.view.webContents).driving = true;
-        const handle = await source.view.webContents.executeJavaScript("(() => { const p = window.open('about:blank'); if (p) p.document.body.textContent = 'Popup form'; return Boolean(p); })()", true);
-        if (!handle) throw new Error("window.open lost its WindowProxy");
-        const popup = panel.allTabs(group).find(t => t.id !== source.id);
-        if (!popup || popup.blank || popup.openerId !== source.id) throw new Error("popup lost its source");
-        if (panel.activeTab(group).id !== source.id) throw new Error("popup stole the AI page");
-        const extra = panel.createTab(undefined, group);
-        panel.selectTab(popup.id);
-        panel.closeTab(popup.id);
-        if (panel.activeTab(group).id !== source.id) throw new Error("close chose a neighbour instead of the source");
-        panel.closeTab(extra.id);
-      } finally {
-        for (const tab of [...panel.allTabs(group)]) panel.closeTab(tab.id);
-      }
-    }, { panelPath: join(root, "dist/main/browserPanel.js"), cdpPath: join(root, "dist/main/browserCdp.js") });
-  });
-
   await step("closing the window quits the app and the sidecar", async () => {
     await window.close();
     await Promise.race([
@@ -152,5 +124,5 @@ try {
 }
 
 const failed = steps.filter(([, error]) => error).length;
-if (steps.length < 4 && !failed) console.log("FAIL  the run ended before every step");
-process.exit(failed || steps.length < 4 ? 1 : 0);
+if (steps.length < 3 && !failed) console.log("FAIL  the run ended before every step");
+process.exit(failed || steps.length < 3 ? 1 : 0);

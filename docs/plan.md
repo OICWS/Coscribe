@@ -46,7 +46,7 @@ Last reviewed: 2026-11-06.
 
 - **Browser page lifecycle:** popup/source feedback, conversation-wide downloads and
   request cancellation have regression coverage. Native popup handles and focus/close behavior
-  are in the Windows desktop smoke job; its run and real-site verification remain outstanding
+  run in the Windows desktop smoke job; real-site verification remains outstanding
   (`docs/log/2026-11-16-browser-page-lifecycle.md`).
 
 - **Docs:** a Doc still writes plans the brief did not give (a proposal's migration phases;

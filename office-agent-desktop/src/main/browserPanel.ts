@@ -30,7 +30,7 @@ import {
   type DownloadItem,
   type Session,
   type WebContents,
-  type WebPreferences,
+  type WebContentsViewConstructorOptions,
 } from "electron";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -336,10 +336,11 @@ const SCROLLBAR_CSS = `
   ::-webkit-scrollbar-corner { background: transparent; }
 `;
 
-export function createTab(url?: string, group: string = viewedGroup, popupPreferences?: WebPreferences): Tab {
+export function createTab(url?: string, group: string = viewedGroup, popup?: WebContentsViewConstructorOptions): Tab {
   const view = new WebContentsView({
+    ...popup,
     webPreferences: {
-      ...popupPreferences,
+      ...popup?.webPreferences,
       preload: join(__dirname, "..", "preload", "browserPanelContent.js"),
       contextIsolation: true,
       nodeIntegration: false,
@@ -352,7 +353,7 @@ export function createTab(url?: string, group: string = viewedGroup, popupPrefer
   });
   // Matches the rounded page area the panel draws (rounded-lg).
   view.setBorderRadius(8);
-  const tab: Tab = { id: nextId++, group, view, blank: popupPreferences === undefined, loadError: null };
+  const tab: Tab = { id: nextId++, group, view, blank: popup === undefined, loadError: null };
   const wc = view.webContents;
   wc.on("did-start-navigation", (details) => {
     if (details.isMainFrame && !details.isSameDocument && tab.blank && details.url !== "about:blank") {
@@ -392,9 +393,9 @@ export function createTab(url?: string, group: string = viewedGroup, popupPrefer
       tab.popupBlocked = true;
       return { action: "deny" };
     }
-    // Electron must retain window.opener, POST data and the returned WindowProxy.
+    // Adopting Electron's guest retains window.opener, POST data and the WindowProxy.
     return { action: "allow", createWindow: (options) => {
-      const opened = createTab(undefined, group, options.webPreferences ?? {});
+      const opened = createTab(undefined, group, options as WebContentsViewConstructorOptions);
       openers.set(opened.view.webContents, wc);
       opened.openerId = tab.id;
       // A download popup must not redirect the next AI step away from its source.
@@ -413,7 +414,7 @@ export function createTab(url?: string, group: string = viewedGroup, popupPrefer
   // about:blank rather than nothing: a webContents that has never loaded
   // a document doesn't answer DevTools, which stalls tools attaching to
   // the app (and the page reads as "" either way).
-  if (!popupPreferences) void wc.loadURL(url ? normalizeUrl(url) : "about:blank").catch(() => undefined);
+  if (!popup) void wc.loadURL(url ? normalizeUrl(url) : "about:blank").catch(() => undefined);
   sendTabs();
   return tab;
 }

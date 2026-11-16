@@ -17,16 +17,18 @@ source page. Downloads belonged to a tab, so a wait on another page could miss a
 - `npm run test:browser` exercises the actual panel/queue code with an Electron transport double:
   navigation reuse, popup selection and close, delayed popup feedback, overflow, page destruction,
   download ownership/cleanup/isolation, renderer-independent waiting, and cancellation/timeouts.
-  It runs in the desktop CI job. The Windows desktop smoke also checks real popup handles and
-  returning to the opener instead of an adjacent tab.
+  It runs in the desktop CI job. `scripts/browser-native.cjs` checks real popup handles,
+  content and returning to the opener instead of an adjacent tab in a separate Electron process,
+  also run by the Windows desktop smoke job. The native view adopts Electron's guest WebContents.
 - Local browser/network/prompt/schema/documentation tests: 51 passed. Desktop build and
   transport regressions passed; `bash scripts/check.sh --fast` passed, including 450 frontend
   tests and the quality ratchet. Documentation describes the new behavior; no SAP-specific
   workflow logic is included.
 
 ## Not verified
-- The Windows desktop smoke and real authenticated sites, including SAP. This Linux task has
-  not run that native smoke; a transport double is not evidence of native popup compatibility.
+- Real authenticated sites, including SAP, and a person using the Windows desktop app. Native
+  popup and full desktop startup smoke tests passed locally under Linux/Xvfb; Windows lifecycle
+  checks run in CI. The transport double alone is not evidence of native compatibility.
 - The complete Python suite is not claimed green; environment onboarding already recorded
   unrelated process-reaping, renderer and simulated Codex failures.
 

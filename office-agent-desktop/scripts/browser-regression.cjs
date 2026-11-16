@@ -28,7 +28,12 @@ class Contents extends EventEmitter {
   setWindowOpenHandler(fn) {
     this.open = ({ url }) => {
       const response = fn({ url });
-      if (response.createWindow) void response.createWindow({ webPreferences: {} }).loadURL(url);
+      if (response.createWindow) {
+        const guest = new Contents();
+        const adopted = response.createWindow({ webContents: guest, webPreferences: {} });
+        assert.equal(adopted, guest, "native popup must adopt Electron's guest WebContents");
+        void adopted.loadURL(url);
+      }
       return response;
     };
   }
@@ -56,7 +61,7 @@ Module._load = function(name, ...rest) {
     BrowserWindow: { getAllWindows: () => [] },
     webContents: { getAllWebContents: () => contents },
     app: { getPath: () => scratch }, session: { fromPartition: () => session },
-    WebContentsView: class { webContents = new Contents(); setBorderRadius() {} },
+    WebContentsView: class { constructor(options) { this.webContents = options.webContents ?? new Contents(); } setBorderRadius() {} },
   };
   if (name === './browserCdp') return cdpMock;
   if (name === './browserPermissions') return {

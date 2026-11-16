@@ -9,6 +9,7 @@
     "start": "npm run build && electron .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:browser": "npm run build && node scripts/browser-regression.cjs",
+    "test:browser:native": "npm run build && node scripts/browser-native.cjs",
     "dist:portable": "npm run build && electron-builder --win dir",
     "dist:nsis": "npm run build && electron-builder --win nsis",
     "icon": "echo icons/ was copied from the original Tauri shell (since removed) -- see office-agent-desktop/README.md"
