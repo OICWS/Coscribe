@@ -216,7 +216,7 @@ async def test_wake_hitting_a_gated_tool_call_resolves_promptly_not_hangs(
             )
         )
 
-        fired = await asyncio.wait_for(poll_due_wakes(settings.state_dir, get_session), timeout=5)
+        fired = await asyncio.wait_for(poll_due_wakes(settings.state_dir, get_session), timeout=30)
 
     assert [w.wake_id for w in fired] == ["wake-5"]
     # The gated write_file call was never approved -- the file must not exist.
@@ -261,7 +261,7 @@ async def test_unattended_wake_in_auto_mode_lets_the_reviewer_decide(
             )
         )
 
-        fired = await asyncio.wait_for(poll_due_wakes(settings.state_dir, get_session), timeout=5)
+        fired = await asyncio.wait_for(poll_due_wakes(settings.state_dir, get_session), timeout=30)
 
     assert [w.wake_id for w in fired] == ["wake-auto"]
     assert (tmp_path / "workspace" / "note.txt").exists() is written

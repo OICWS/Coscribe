@@ -1,13 +1,13 @@
 # The model is sent: the system prompt, then the tools bound to it (decision 0001).
 # A change here is a change to what providers cache. UPDATE_TOOL_SCHEMAS=1 rewrites it.
 
-system prompt: 26441 chars, ~6610 tokens, sha256 d9ab267b12
+system prompt: 26655 chars, ~6663 tokens, sha256 e31ceee03c
 
-bound to the model: 22 tools, ~4997 tokens
+bound to the model: 22 tools, ~5073 tokens
   ask_user_question (questions:array) desc 1435 chars sha256 e846e64163
   draft_workflow (name?:string) desc 983 chars sha256 e91334c9ee
   edit_file (new_text:string, old_text:string, path:string, replace_all?:boolean) desc 1330 chars sha256 3f5ab0dd7e
-  exit_plan_mode (plan:string) desc 509 chars sha256 9e553f14a8
+  exit_plan_mode (plan:string) desc 813 chars sha256 141c9389ff
   get_file_info (path:string) desc 458 chars sha256 78103b0484
   list_files (path?:string, pattern?:string, recursive?:boolean) desc 878 chars sha256 03bee73daf
   read_docx (path:string, view?:string) desc 546 chars sha256 88ec6e9067
@@ -27,7 +27,7 @@ bound to the model: 22 tools, ~4997 tokens
   web_search (max_results?:integer, query:string) desc 410 chars sha256 ebd4b8a7ac
   write_file (content:string, overwrite?:boolean, path:string) desc 517 chars sha256 786f2a4211
 
-registered: 120 tools, ~37820 tokens (the ones not bound are found through search_tools)
+registered: 120 tools, ~37893 tokens (the ones not bound are found through search_tools)
   accept_docx_tracked_changes | WRITE_LOCAL | documents | deferred | sha256 c0db3f117a
   add_docx_chart | WRITE_LOCAL | documents | deferred | sha256 a20460f4a8
   add_docx_image | WRITE_LOCAL | documents | deferred | sha256 51c929e9ea
@@ -69,7 +69,7 @@ registered: 120 tools, ~37820 tokens (the ones not bound are found through searc
   edit_pptx_theme_colors | WRITE_LOCAL | documents | deferred | sha256 ffc61d7262
   edit_pptx_xml | WRITE_LOCAL | documents | deferred | sha256 18520bcfdc
   edit_scheduled_task | WRITE_LOCAL | scheduled_tasks | deferred | sha256 39782553e3
-  exit_plan_mode | READ | interaction | core | sha256 f22b0af33b
+  exit_plan_mode | READ | interaction | core | sha256 eafcca98ba
   extract_pptx_template | WRITE_LOCAL | documents | deferred | sha256 4462e72289
   fill_pptx_template | WRITE_LOCAL | documents | deferred | sha256 645155af29
   get_file_info | READ | filesystem | core | sha256 258c40c574
