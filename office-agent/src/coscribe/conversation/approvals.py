@@ -43,6 +43,7 @@ from ..tools import (
     TASK_DRAFT_TOOL_NAMES,
     ScheduledTriggerStore,
     TaskToolkit,
+    WorkspaceScope,
     edit_draft,
     expect_sandbox,
     format_question_answers,
@@ -51,6 +52,7 @@ from ..tools import (
     sandbox_codex,
     sandbox_mode,
 )
+from .capability_guard import capability_refusal
 from .events import EventSink
 from .workspace_folder import WorkspaceFolders
 
@@ -225,6 +227,10 @@ class ApprovalHost(Protocol):
 
     def _load_exec_policy(self) -> ExecPolicy: ...
 
+    def tool_catalog(self) -> dict[str, Any]: ...
+
+    def workspace_scope(self) -> WorkspaceScope: ...
+
 
 class ApprovalDecider:
     def __init__(self, host: ApprovalHost) -> None:
@@ -378,7 +384,7 @@ class ApprovalDecider:
         self, name: str, args: dict[str, Any], websocket: Any, audit_log: AuditLog
     ) -> Any:
         """The precedence for a gated tool once no hook has vetoed it: exec
-        policy forbids, plan mode, exec policy allows, a code-module
+        policy forbids, its switch is off, plan mode, exec policy allows, a code-module
         allowance, accept-edits or auto mode, the auto reviewer, and last
         a person."""
         exec_policy_decision, exec_policy_detail = "prompt", None
@@ -389,6 +395,10 @@ class ApprovalDecider:
             message = exec_policy_detail or "Forbidden by exec policy."
             self._audit(audit_log, name, args, "reject", "exec_policy", message)
             return {"type": "reject", "message": message}
+        turned_off = self._turned_off(name, args)
+        if turned_off is not None:
+            self._audit(audit_log, name, args, "reject", "capability_off", turned_off)
+            return {"type": "reject", "message": turned_off}
         if self._host.plan_mode:
             message = (
                 "Plan mode is active (read-only). Note this step with "
@@ -418,6 +428,14 @@ class ApprovalDecider:
             if decision is not None:
                 return decision
         return await self._ask_person_only(audit_log, name, args, websocket, reviewer_note)
+
+    def _turned_off(self, name: str, args: dict[str, Any]) -> str | None:
+        """Asked before a person is: nobody approves a write its switch then refuses."""
+        metadata = self._host.tool_catalog().get(name)
+        if metadata is None:
+            return None
+        state_dir = self._host.settings.state_dir
+        return capability_refusal(state_dir, name, metadata, args, self._host.workspace_scope)
 
     def _command_needs_the_person(self) -> bool:
         """Outside the sandbox a command runs as the person; inside it, it still reads most of
