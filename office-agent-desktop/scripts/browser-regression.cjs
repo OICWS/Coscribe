@@ -51,7 +51,7 @@ const cdpMock = {
       threadId: '', main: {}, dialog: null, driving: false, downloads: [],
       async drive(threadId, dir) { this.threadId = threadId; this.downloadDir = dir; this.driving = true; },
       async fit() {}, async idle() {},
-      async evaluateInPage(expression) { return { value: onEvaluate(wc, expression) }; },
+      async evaluateInPage(expression) { return { value: await onEvaluate(wc, expression) }; },
     });
     return cdps.get(wc);
   },
@@ -106,8 +106,9 @@ function download(wc, name, state = 'completed') {
   const item = new EventEmitter();
   Object.assign(item, { getFilename: () => name, setSavePath(path) { this.path = path; } });
   session.emit('will-download', {}, item, wc);
-  item.emit('done', {}, state);
+  if (state !== 'progressing') item.emit('done', {}, state);
   assert.ok(item.path, 'download must bypass the system save dialog');
+  return item;
 }
 (async () => {
   startBrowserAgent(1, 'test', () => undefined);
@@ -125,7 +126,7 @@ function download(wc, name, state = 'completed') {
   assert.equal(panel.activeTab('a').id, source.id, 'AI popup must not steal its source');
   assert.equal(opened.tabs.find(t => t.id === popup.id).opener_id, source.id);
   await call('tabs', { op: 'select', tab_id: popup.id });
-  assert.equal(panel.activeTab('a').id, popup.id);
+  assert.equal(panel.activeTab('a').id, source.id, 'automation selection must not move the user view');
 
   // The wait is on the popup, but the download belongs to the source tab.
   download(source.view.webContents, 'report.xlsx');
@@ -138,7 +139,6 @@ function download(wc, name, state = 'completed') {
 
   source.view.webContents.open({ url: 'about:blank' });
   const blank = panel.allTabs('a').find(t => t.openerId === source.id);
-  panel.selectTab(blank.id);
   download(blank.view.webContents, 'empty-popup.xlsx');
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(panel.allTabs('a').length, 1, 'completed untouched empty popup is closed');
@@ -154,6 +154,79 @@ function download(wc, name, state = 'completed') {
   assert.ok(panel.allTabs('a').includes(written), 'never close a nonempty about:blank form');
   await call('wait_for', { download: true, timeout: 1 });
   panel.closeTab(written.id);
+
+  await call('tabs', { op: 'new', name: 'reports', url: 'https://reports.example/' });
+  const named = await call('tabs', { op: 'info', tab_id: 'reports' });
+  const reports = panel.allTabs('a').find(t => t.name === 'reports');
+  assert.equal(named.tab.id, reports.id);
+  assert.equal(panel.activeTab('a').id, source.id);
+  source.view.webContents.open({ url: 'https://source-child.example/' });
+  reports.view.webContents.open({ url: 'https://reports-child.example/' });
+  const reportChild = await call('tabs', { op: 'info', tab_id: 'last_opened', source_tab: 'reports' });
+  const sourceChild = await call('tabs', { op: 'info', tab_id: 'last_opened', source_tab: source.id });
+  assert.equal(reportChild.tab.opener_id, reports.id);
+  assert.equal(sourceChild.tab.opener_id, source.id);
+  await call('tabs', { op: 'close', tab_id: reportChild.tab.id });
+  await call('tabs', { op: 'close', tab_id: sourceChild.tab.id });
+  let concurrent = 0;
+  let maximum = 0;
+  onEvaluate = async () => {
+    concurrent++; maximum = Math.max(maximum, concurrent);
+    await new Promise(resolve => setTimeout(resolve, 80));
+    concurrent--;
+    return 'independent';
+  };
+  await Promise.all([call('evaluate', { expression: 'read', tab_id: source.id }), call('evaluate', { expression: 'read', tab_id: 'reports' })]);
+  assert.equal(maximum, 2, 'different tabs must actually overlap');
+  maximum = 0;
+  await Promise.all([call('evaluate', { expression: 'read', tab_id: 'reports' }), call('evaluate', { expression: 'read', tab_id: 'reports' })]);
+  assert.equal(maximum, 1, 'one page must remain serialized');
+  assert.equal(panel.activeTab('a').id, source.id, 'background work must not change user focus');
+  onEvaluate = () => 'unchanged';
+  await call('tabs', { op: 'select', tab_id: source.id });
+  const sourceDownload = download(source.view.webContents, 'source-only.xlsx', 'progressing');
+  const reportDownload = download(reports.view.webContents, 'reports-only.xlsx', 'progressing');
+  const sourceWait = call('wait_for', { download: true, timeout: 1, tab_id: source.id });
+  const reportWait = call('wait_for', { download: true, timeout: 1, tab_id: 'reports' });
+  reportDownload.emit('done', {}, 'completed');
+  sourceDownload.emit('done', {}, 'completed');
+  const [sourceFiles, reportFiles] = await Promise.all([sourceWait, reportWait]);
+  assert.deepEqual(sourceFiles.downloads.map(file => file.name), ['source-only.xlsx']);
+  assert.deepEqual(reportFiles.downloads.map(file => file.name), ['reports-only.xlsx']);
+  const pendingDownloads = [];
+  for (let n = 0; n < 3; n++) {
+    source.view.webContents.open({ url: 'https://forward.example/' });
+    const temporary = panel.allTabs('a').at(-1);
+    temporary.view.webContents.empty = false;
+    pendingDownloads.push(download(temporary.view.webContents, `export-${n}.xlsx`, 'progressing'));
+  }
+  await call('tabs', { op: 'close_downloads' });
+  assert.equal(panel.allTabs('a').filter(t => t.openerId === source.id).length, 3, 'incomplete downloads retain all popup pages');
+  for (const index of [2, 0, 1]) pendingDownloads[index].emit('done', {}, 'completed');
+  await call('wait_for', { download: true, tab_id: source.id, timeout: 1 });
+  await call('tabs', { op: 'close_downloads' });
+  assert.equal(panel.allTabs('a').filter(t => t.openerId === source.id).length, 0);
+  assert.ok(panel.allTabs('a').includes(source) && panel.allTabs('a').includes(reports), 'cleanup protects normal pages');
+  // A user-visible forwarding page is retained even after its download completes.
+  source.view.webContents.open({ url: 'https://forward.example/' });
+  const inspected = panel.allTabs('a').at(-1);
+  inspected.view.webContents.empty = false;
+  panel.selectTab(inspected.id);
+  download(inspected.view.webContents, 'inspected.xlsx');
+  await call('wait_for', { download: true, tab_id: source.id, timeout: 1 });
+  await call('tabs', { op: 'close_downloads' });
+  assert.ok(panel.allTabs('a').includes(inspected));
+  panel.selectTab(source.id);
+  await call('tabs', { op: 'close_downloads' });
+  source.view.webContents.open({ url: 'https://failed-export.example/' });
+  const failedPopup = panel.allTabs('a').at(-1);
+  failedPopup.view.webContents.empty = false;
+  download(failedPopup.view.webContents, 'failed-export.xlsx', 'interrupted');
+  assert.equal((await request('wait_for', { download: true, tab_id: source.id, timeout: 1 }).result).ok, false);
+  await call('tabs', { op: 'close_downloads' });
+  assert.ok(panel.allTabs('a').includes(failedPopup), 'failed downloads keep their page');
+  panel.closeTab(failedPopup.id);
+  await call('tabs', { op: 'close', tab_id: 'reports' });
 
   const emptyOther = await request('wait_for', { download: true, timeout: 0.01 }, 'empty').result;
   assert.match(emptyOther.error, /No download started/);

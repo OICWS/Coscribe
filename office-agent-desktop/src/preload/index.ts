@@ -268,6 +268,9 @@ contextBridge.exposeInMainWorld("coscribeDesktop", {
   browserPanelShowMenu(x: number, y: number): void {
     ipcRenderer.send(BROWSER_PANEL_SHOW_MENU_CHANNEL, { x, y });
   },
+  browserPanelTakeOver(id: number, enabled: boolean): Promise<void> {
+    return ipcRenderer.invoke("browser-panel:take-over", id, enabled);
+  },
   onBrowserAgent(callback: (payload: unknown) => void): () => void {
     return subscribe(BROWSER_PANEL_AGENT_EVENT, callback);
   },

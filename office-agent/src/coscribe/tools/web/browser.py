@@ -135,10 +135,14 @@ class BrowserHost:
         except TimeoutError as exc:
             # Cancel this request only: a later step in the same conversation may already exist.
             if self._outbox is not None:
-                self._outbox.put_nowait({
-                    "id": "", "thread_id": thread_id, "action": "cancel_request",
-                    "args": {"request_id": request_id},
-                })
+                self._outbox.put_nowait(
+                    {
+                        "id": "",
+                        "thread_id": thread_id,
+                        "action": "cancel_request",
+                        "args": {"request_id": request_id},
+                    }
+                )
             raise ValueError(f"The browser didn't finish {action} within {timeout:.0f}s.") from exc
         finally:
             self._pending.pop(request_id, None)
@@ -290,6 +294,8 @@ def _browser_call(
     network: NetworkGuard | None,
 ) -> Callable[..., dict[str, Any]]:
     def call(action: str, limit: float = _DEFAULT_TIMEOUT, **args: Any) -> dict[str, Any]:
+        if not args.get("tab_id"):
+            args.pop("tab_id", None)
         if network is not None:
             network.check_online()
             # The desktop app checks every step against these, as a click can leave the page.
@@ -319,39 +325,39 @@ def _browser_call(
 
 
 def _navigation_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable[..., Any]]:
-    def browser_navigate(url: str) -> str:
-        """Open a URL in coscribe's browser (the Browser panel the user
-        watches), in the current tab. Use this instead of read_web_page when
-        the page needs the user's login, JavaScript, clicking or typing.
-        Then call browser_snapshot to see what's on the page.
+    def browser_navigate(url: str, tab_id: int | str = 0) -> str:
+        """Navigate coscribe's browser for pages needing login, JavaScript or interaction.
+        Reuses the target tab; call browser_snapshot afterwards.
 
         Args:
+            tab_id: runtime tab id or saved name; 0 uses the automation-selected page
             url: the address; a bare domain like "example.com" works too
         """
-        result = call("navigate", _NAVIGATE_TIMEOUT, url=url)
+        result = call("navigate", _NAVIGATE_TIMEOUT, url=url, tab_id=tab_id)
         return _with_tab("Loaded.", result)
 
-    def browser_navigate_back() -> str:
-        """Go back one page in the current tab of coscribe's browser."""
-        return _with_tab("Went back.", call("back"))
-
-    def browser_snapshot(start: int = 0) -> str:
-        """Read the current tab of coscribe's browser: the page's headings,
-        text, links, buttons and form fields in page order. Every element
-        you can act on has a ref like [ref=e12] -- pass it to browser_click,
-        browser_type, browser_select_option or browser_hover. Take a new
-        snapshot after anything that changes the page; refs from an older
-        snapshot may no longer exist. In place of a ref those tools also
-        take the element as the snapshot prints it, e.g. 'checkbox "All
-        items"' (add " #2" for the second such): it waits for the element
-        to appear (for the action's timeout), and it's what a saved
-        workflow must use, since refs are numbered afresh on every load.
+    def browser_navigate_back(tab_id: int | str = 0) -> str:
+        """Go back one page in the current tab of coscribe's browser.
 
         Args:
+            tab_id: runtime tab id or saved name; 0 uses the automation-selected page
+        """
+        return _with_tab("Went back.", call("back", tab_id=tab_id))
+
+    def browser_snapshot(start: int = 0, tab_id: int | str = 0) -> str:
+        """Read headings, text, links, buttons and fields in page order.
+        Act using fresh [ref=e12] references; take a new snapshot after page changes.
+        Actions also accept a role and quoted name as printed here, e.g.
+        'checkbox "All items"' (append " #2" for the second). Descriptions wait for
+        the action's timeout. Saved workflows must use descriptions because refs
+        are numbered afresh on every load.
+
+        Args:
+            tab_id: runtime tab id or saved name; 0 uses the automation-selected page
             start: character offset to continue a long page from (the
                 previous snapshot says where it stopped)
         """
-        result = call("snapshot", start=max(0, start), max_chars=_SNAPSHOT_CHARS)
+        result = call("snapshot", start=max(0, start), max_chars=_SNAPSHOT_CHARS, tab_id=tab_id)
         text = str(result.get("text") or "")
         total = int(result.get("total_chars") or len(text))
         end = max(0, start) + len(text)
@@ -363,27 +369,31 @@ def _navigation_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable
             )
         return f"{header}\n\n{text}" if header else text
 
-    def browser_hover(ref: str, timeout: float = _DEFAULT_WAIT) -> str:
+    def browser_hover(ref: str, timeout: float = _DEFAULT_WAIT, tab_id: int | str = 0) -> str:
         """Move the mouse over an element in coscribe's browser, e.g. to open
         a menu that appears on hover.
 
         Args:
+            tab_id: runtime tab id or saved name; 0 uses the automation-selected page
             ref: the element's ref from the latest browser_snapshot, or its
                 description
             timeout: how long a described element may take to appear, in
                 seconds (default 30, up to 3600)
         """
         wait = _wait_limit(timeout)
-        result = call("hover", wait + _DEFAULT_TIMEOUT, ref=ref, timeout=wait)
+        result = call("hover", wait + _DEFAULT_TIMEOUT, ref=ref, timeout=wait, tab_id=tab_id)
         return _with_tab(f"Hovering over {result.get('element') or ref}.", result)
 
-    def browser_scroll(direction: str = "down", ref: str = "", within: str = "") -> str:
+    def browser_scroll(
+        direction: str = "down", ref: str = "", within: str = "", tab_id: int | str = 0
+    ) -> str:
         """Scroll the current page in coscribe's browser by about one
         screen, or bring one element into view. Long lists and tables
         often show only the rows in view: scroll, snapshot, repeat until
         what you need appears or nothing moves.
 
         Args:
+            tab_id: runtime tab id or saved name; 0 uses the automation-selected page
             direction: "down", "up", "left" or "right"
             ref: scroll this element into view instead (from browser_snapshot)
             within: scroll the list, table or pane this element is in (any
@@ -391,7 +401,9 @@ def _navigation_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable
         """
         if direction not in ("down", "up", "left", "right"):
             raise ValueError('direction must be "down", "up", "left" or "right".')
-        result = call("scroll", direction=direction, ref=ref or None, within=within or None)
+        result = call(
+            "scroll", direction=direction, ref=ref or None, within=within or None, tab_id=tab_id
+        )
         return _with_tab(str(result.get("note") or "Scrolled."), result)
 
     return {
@@ -404,28 +416,36 @@ def _navigation_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable
 
 
 def _input_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable[..., Any]]:
-    def browser_click(ref: str, double: bool = False, timeout: float = _DEFAULT_WAIT) -> str:
-        """Click an element in coscribe's browser, by its ref from the latest
-        browser_snapshot. Clicks as a real mouse would, so links open and
-        buttons submit.
+    def browser_click(
+        ref: str, double: bool = False, timeout: float = _DEFAULT_WAIT, tab_id: int | str = 0
+    ) -> str:
+        """Click an element by snapshot ref or description using normal mouse input.
 
         Args:
+            tab_id: runtime tab id or saved name; 0 uses the automation-selected page
             ref: the element's ref, e.g. "e12", or its description
             double: double-click instead of a single click
             timeout: how long a described element may take to appear, in
                 seconds (default 30, up to 3600)
         """
         wait = _wait_limit(timeout)
-        result = call("click", wait + _DEFAULT_TIMEOUT, ref=ref, double=double, timeout=wait)
+        result = call(
+            "click", wait + _DEFAULT_TIMEOUT, ref=ref, double=double, timeout=wait, tab_id=tab_id
+        )
         return _with_tab(f"Clicked {result.get('element') or ref}.", result)
 
     def browser_type(
-        ref: str, text: str, submit: bool = False, timeout: float = _DEFAULT_WAIT
+        ref: str,
+        text: str,
+        submit: bool = False,
+        timeout: float = _DEFAULT_WAIT,
+        tab_id: int | str = 0,
     ) -> str:
         """Type into a text field in coscribe's browser, replacing what's in
         it, by the field's ref from the latest browser_snapshot.
 
         Args:
+            tab_id: runtime tab id or saved name; 0 uses the automation-selected page
             ref: the field's ref, e.g. "e7", or its description
             text: what to type
             submit: press Enter afterwards (e.g. to run a search)
@@ -434,24 +454,34 @@ def _input_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable[...,
         """
         wait = _wait_limit(timeout)
         result = call(
-            "type", wait + _DEFAULT_TIMEOUT, ref=ref, text=text, submit=submit, timeout=wait
+            "type",
+            wait + _DEFAULT_TIMEOUT,
+            ref=ref,
+            text=text,
+            submit=submit,
+            timeout=wait,
+            tab_id=tab_id,
         )
         return _with_tab(f"Typed into {result.get('element') or ref}.", result)
 
-    def browser_press_key(key: str) -> str:
+    def browser_press_key(key: str, tab_id: int | str = 0) -> str:
         """Press a key in coscribe's browser, on whatever has focus -- e.g.
         "Enter", "Escape", "Tab", "ArrowDown", "PageDown", "Backspace",
         "F1".."F12", or a combination like "Control+a" or "Shift+F4".
 
         Args:
+            tab_id: runtime tab id or saved name; 0 uses the automation-selected page
             key: the key or combination
         """
-        return _with_tab(f"Pressed {key}.", call("press_key", key=key))
+        return _with_tab(f"Pressed {key}.", call("press_key", key=key, tab_id=tab_id))
 
-    def browser_select_option(ref: str, values: list[str], timeout: float = _DEFAULT_WAIT) -> str:
+    def browser_select_option(
+        ref: str, values: list[str], timeout: float = _DEFAULT_WAIT, tab_id: int | str = 0
+    ) -> str:
         """Choose option(s) in a dropdown (<select>) in coscribe's browser.
 
         Args:
+            tab_id: runtime tab id or saved name; 0 uses the automation-selected page
             ref: the dropdown's ref from the latest browser_snapshot, or
                 its description
             values: the options to choose, by their visible text or value
@@ -460,7 +490,12 @@ def _input_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable[...,
         """
         wait = _wait_limit(timeout)
         result = call(
-            "select_option", wait + _DEFAULT_TIMEOUT, ref=ref, values=values, timeout=wait
+            "select_option",
+            wait + _DEFAULT_TIMEOUT,
+            ref=ref,
+            values=values,
+            timeout=wait,
+            tab_id=tab_id,
         )
         chosen = ", ".join(str(v) for v in result.get("selected") or values)
         return _with_tab(f"Selected {chosen}.", result)
@@ -484,6 +519,7 @@ def _waiting_tools(
         seconds: float = 0,
         timeout: float = _DEFAULT_WAIT,
         save_to: str = "",
+        tab_id: int | str = 0,
     ) -> str | dict[str, Any]:
         """Wait in coscribe's browser for one thing: text to appear, text to
         go away (e.g. "Loading…"), an element to appear, or a download to
@@ -491,6 +527,7 @@ def _waiting_tools(
         a report or export that takes minutes.
 
         Args:
+            tab_id: runtime tab id or saved name; 0 uses the automation-selected page
             text: wait until this text is on the page
             gone: wait until this text is no longer on the page
             element: wait until this element is there, as the snapshot
@@ -521,7 +558,7 @@ def _waiting_tools(
         if not chosen:
             if seconds <= 0:
                 raise ValueError("Pass text, gone, element or download=True -- or seconds.")
-            result = call("wait_for", seconds + 10, seconds=seconds, timeout=limit)
+            result = call("wait_for", seconds + 10, seconds=seconds, timeout=limit, tab_id=tab_id)
             return _with_tab(f"Waited {seconds:g}s.", result)
         result = call(
             "wait_for",
@@ -531,6 +568,7 @@ def _waiting_tools(
             element=element or None,
             download=download,
             timeout=limit,
+            tab_id=tab_id,
         )
         if download:
             # A saved workflow's next step reads the file from here: the
@@ -565,53 +603,28 @@ def _waiting_tools(
 def _page_tools(
     call: Callable[..., dict[str, Any]], scope: WorkspaceScope | None
 ) -> dict[str, Callable[..., Any]]:
-    def browser_tabs(action: str = "list", tab_id: int = 0, url: str = "") -> str:
-        """List, open, switch to or close tabs in coscribe's browser (at
-        most 9 are open at once). The other browser_* tools act on the
-        current tab. Popups list their source tab; select a popup before
-        reading or acting in it, and close it when it is no longer needed.
-        To reuse a page for a different URL, select it and browser_navigate.
-
-        Args:
-            action: "list", "new" (opens url, or a blank tab), "select" or "close"
-            tab_id: the tab for "select"/"close", from "list"
-            url: for "new"
-        """
-        if action not in ("list", "new", "select", "close"):
-            raise ValueError('action must be "list", "new", "select" or "close".')
-        if action in ("select", "close") and not tab_id:
-            raise ValueError(f'"{action}" needs a tab_id from browser_tabs("list").')
-        timeout = _NAVIGATE_TIMEOUT if action == "new" and url else _DEFAULT_TIMEOUT
-        result = call("tabs", timeout, op=action, tab_id=tab_id or None, url=url or None)
-        tabs = result.get("tabs") or []
-        lines = []
-        for tab in tabs:
-            if not isinstance(tab, dict):
-                continue
-            opener = f" (opened by Tab {tab['opener_id']})" if tab.get("opener_id") else ""
-            lines.append(f"{'* ' if tab.get('active') else '  '}{_tab_line(tab)}{opener}")
-        return "\n".join(lines) if lines else "No tabs are open."
-
-    def browser_handle_dialog(accept: bool = True) -> str:
+    def browser_handle_dialog(accept: bool = True, tab_id: int | str = 0) -> str:
         """Answer the alert or confirm dialog open on the current page in
         coscribe's browser (a step's result says when one opened; the page
         waits until it's answered).
 
         Args:
+            tab_id: runtime tab id or saved name; 0 uses the automation-selected page
             accept: OK (True) or Cancel (False)
         """
-        result = call("handle_dialog", accept=accept)
+        result = call("handle_dialog", accept=accept, tab_id=tab_id)
         kind = str(result.get("dialog_type") or "dialog")
         answer = "Accepted" if result.get("accepted", accept) else "Dismissed"
         return _with_tab(f'{answer} the {kind}: "{result.get("message") or ""}".', result)
 
-    def browser_file_upload(paths: list[str], ref: str = "") -> str:
+    def browser_file_upload(paths: list[str], ref: str = "", tab_id: int | str = 0) -> str:
         """Upload files from the user's folders to the page in coscribe's
         browser, as if the user had picked them. Pass the ref of the upload
         button or file field; leave ref empty to answer a file chooser a
         click just opened.
 
         Args:
+            tab_id: runtime tab id or saved name; 0 uses the automation-selected page
             paths: the files, relative to the workspace or absolute under a
                 folder you can read
             ref: the upload button or file field from browser_snapshot
@@ -626,11 +639,11 @@ def _page_tools(
             if not resolved.is_file():
                 raise ValueError(f"No such file: {path}")
             files.append(str(resolved))
-        result = call("upload", ref=ref or None, paths=files)
+        result = call("upload", ref=ref or None, paths=files, tab_id=tab_id)
         names = ", ".join(scope.relative(Path(f)) for f in files)
         return _with_tab(f"Uploaded {names} to {result.get('element') or 'the page'}.", result)
 
-    def browser_evaluate(expression: str) -> str:
+    def browser_evaluate(expression: str, tab_id: int | str = 0) -> str:
         """Run a JavaScript expression in the current page of coscribe's
         browser, as the page's own scripts would, and return its value
         (awaited if it's a promise). For reading what a snapshot doesn't
@@ -638,12 +651,13 @@ def _page_tools(
         when they can do the job.
 
         Args:
+            tab_id: runtime tab id or saved name; 0 uses the automation-selected page
             expression: e.g. "document.title" or
                 "[...document.querySelectorAll('h2')].map(h => h.textContent)"
         """
         if not expression.strip():
             raise ValueError("Pass a JavaScript expression.")
-        result = call("evaluate", expression=expression)
+        result = call("evaluate", expression=expression, tab_id=tab_id)
         value = str(result.get("value") if result.get("value") is not None else "null")
         if len(value) > _EVALUATE_CHARS:
             value = (
@@ -653,11 +667,85 @@ def _page_tools(
         return _with_tab(value, result)
 
     return {
-        "browser_tabs": browser_tabs,
         "browser_handle_dialog": browser_handle_dialog,
         "browser_file_upload": browser_file_upload,
         "browser_evaluate": browser_evaluate,
     }
+
+
+def _form_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable[..., Any]]:
+    def browser_fill_form(
+        fields: list[dict[str, str]], tab_id: int | str = 0, timeout: float = _DEFAULT_WAIT
+    ) -> str:
+        """Fill explicitly named fields in order using normal focus and keyboard input.
+
+        Args:
+            fields: objects with ref (snapshot ref or field description) and text
+            timeout: seconds to wait for each field
+            tab_id: runtime tab id or saved name; 0 uses the selected automation page
+        """
+        if not fields or any(set(field) != {"ref", "text"} for field in fields):
+            raise ValueError("Provide fields with ref and text.")
+        wait = _wait_limit(timeout)
+        return _with_tab(
+            "Filled the form.",
+            call(
+                "fill_form",
+                wait * len(fields) + _DEFAULT_TIMEOUT,
+                fields=fields,
+                tab_id=tab_id,
+                timeout=wait,
+            ),
+        )
+
+    return {"browser_fill_form": browser_fill_form}
+
+
+def _tab_tools(call: Callable[..., dict[str, Any]]) -> dict[str, Callable[..., Any]]:
+    def browser_tabs(
+        action: str = "list",
+        tab_id: int | str = 0,
+        url: str = "",
+        name: str = "",
+        source_tab: int | str = 0,
+    ) -> str | dict[str, Any]:
+        """Manage up to 16 tabs. Automation selection leaves the user's visible tab alone.
+        Other tools use tab_id or that selection. Popups list their opener; close them
+        when finished. Use browser_navigate to reuse a tab with a different URL.
+
+        Args:
+            action: "list", "new", "select", "close", "info" (structured runtime ids),
+                or "close_downloads" (finished unused popup downloads)
+            tab_id: runtime id or saved name; "current", "opener" or "last_opened"
+            source_tab: optional id or name to scope "opener" or "last_opened";
+                specify it in parallel workflows so another lane cannot change the source
+            url: for "new"
+            name: optional stable name for a new page, reusable as tab_id in any browser tool
+        """
+        if action not in ("list", "new", "select", "close", "info", "close_downloads"):
+            raise ValueError("Unknown browser tab action.")
+        timeout = _NAVIGATE_TIMEOUT if action == "new" and url else _DEFAULT_TIMEOUT
+        result = call(
+            "tabs",
+            timeout,
+            op=action,
+            tab_id=tab_id or None,
+            url=url or None,
+            name=name or None,
+            **({"source_tab": source_tab} if source_tab else {}),
+        )
+        if action == "info":
+            return result
+        tabs = result.get("tabs") or []
+        lines = []
+        for tab in tabs:
+            if not isinstance(tab, dict):
+                continue
+            opener = f" (opened by Tab {tab['opener_id']})" if tab.get("opener_id") else ""
+            lines.append(f"{'* ' if tab.get('active') else '  '}{_tab_line(tab)}{opener}")
+        return "\n".join(lines) if lines else "No tabs are open."
+
+    return {"browser_tabs": browser_tabs}
 
 
 def build_browser_tools(
@@ -679,6 +767,8 @@ def build_browser_tools(
 
     call = _browser_call(thread_id, host, scope, saved_workflow, allowed_sites, network)
     fns = {
+        **_form_tools(call),
+        **_tab_tools(call),
         **_navigation_tools(call),
         **_input_tools(call),
         **_waiting_tools(call, scope),
@@ -696,6 +786,7 @@ def build_browser_tools(
     act = [
         fns["browser_click"],
         fns["browser_type"],
+        fns["browser_fill_form"],
         fns["browser_press_key"],
         fns["browser_select_option"],
         fns["browser_handle_dialog"],

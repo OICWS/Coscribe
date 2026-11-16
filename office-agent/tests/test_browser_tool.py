@@ -146,9 +146,10 @@ def test_tabs_marks_the_current_one() -> None:
     assert output.splitlines() == ["  Tab 1: A -- https://a/", "* Tab 2: B -- https://b/"]
 
 
-def test_tabs_select_needs_a_tab_id() -> None:
-    with pytest.raises(ValueError, match="tab_id"):
-        _tools(_FakeHost({}))["browser_tabs"]("select")
+def test_tabs_accepts_named_runtime_targets() -> None:
+    host = _FakeHost({})
+    _tools(host)["browser_tabs"]("select", tab_id="report")
+    assert host.calls[0][1]["tab_id"] == "report"
 
 
 def test_acting_on_a_page_needs_approval_reading_it_does_not() -> None:
@@ -413,7 +414,9 @@ async def test_timeout_cancels_only_its_request_and_keeps_later_steps() -> None:
         await first
     cancel = await outbox.get()
     assert cancel == {
-        "id": "", "thread_id": "t1", "action": "cancel_request",
+        "id": "",
+        "thread_id": "t1",
+        "action": "cancel_request",
         "args": {"request_id": command["id"]},
     }
     assert not host.resolve(command["id"], {"ok": True, "result": {}})
@@ -422,14 +425,18 @@ async def test_timeout_cancels_only_its_request_and_keeps_later_steps() -> None:
 
 
 def test_popup_feedback_names_the_source_and_how_to_select_or_close() -> None:
-    host = _FakeHost({"click": {
-        "element": 'button "Export"',
-        "tab": {"id": 1, "url": "https://source/"},
-        "tabs": [
-            {"id": 1, "url": "https://source/", "active": True},
-            {"id": 2, "url": "https://popup/", "opener_id": 1},
-        ],
-    }})
+    host = _FakeHost(
+        {
+            "click": {
+                "element": 'button "Export"',
+                "tab": {"id": 1, "url": "https://source/"},
+                "tabs": [
+                    {"id": 1, "url": "https://source/", "active": True},
+                    {"id": 2, "url": "https://popup/", "opener_id": 1},
+                ],
+            }
+        }
+    )
     output = _tools(host)["browser_click"]("e1")
     assert "Browser pages changed" in output
     assert "opened by Tab 1" in output
@@ -438,7 +445,32 @@ def test_popup_feedback_names_the_source_and_how_to_select_or_close() -> None:
 
 
 def test_tab_list_preserves_popup_relationships() -> None:
-    host = _FakeHost({"tabs": {"tabs": [
-        {"id": 2, "url": "https://popup/", "opener_id": 1, "active": True},
-    ]}})
+    host = _FakeHost(
+        {
+            "tabs": {
+                "tabs": [
+                    {"id": 2, "url": "https://popup/", "opener_id": 1, "active": True},
+                ]
+            }
+        }
+    )
     assert "opened by Tab 1" in _tools(host)["browser_tabs"]()
+
+
+def test_batch_fill_uses_one_targeted_command() -> None:
+    host = _FakeHost({"fill_form": {}})
+    fields = [
+        {"ref": "Company Code", "text": "1000"},
+        {"ref": "Posting Date", "text": "2026-11-16"},
+    ]
+    _tools(host)["browser_fill_form"](fields, tab_id="reports")
+    assert len(host.calls) == 1
+    assert host.calls[0][0] == "fill_form"
+    assert host.calls[0][1]["fields"] == fields
+    assert host.calls[0][1]["tab_id"] == "reports"
+
+
+def test_tab_info_returns_runtime_fields_for_workflow_references() -> None:
+    data = {"tab": {"id": 42, "opener_id": 7}, "tabs": []}
+    host = _FakeHost({"tabs": data})
+    assert _tools(host)["browser_tabs"]("info", "last_opened") == data

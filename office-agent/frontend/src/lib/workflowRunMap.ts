@@ -41,25 +41,27 @@ function armOf(record: StepRecord): string | null {
  * only known once every pass of the loop is through. */
 function notTaken(workflow: Workflow, byStep: Map<string, StepRecord[]>): Set<string> {
   const skipped = new Set<string>();
-  const finished = (loop: string | null) =>
-    loop === null || (byStep.get(loop) ?? []).every((record) => record.status === "done");
-  const visit = (steps: WorkflowStep[], loop: string | null) => {
+  const finished = (loops: string[]) => loops.every(loop => {
+    const records = byStep.get(loop) ?? [];
+    return records.length > 0 && records.every(record => record.status === "done");
+  });
+  const visit = (steps: WorkflowStep[], loops: string[]) => {
     for (const step of steps) {
-      if (step.kind === "loop") visit(step.steps, step.id);
-      if (step.kind !== "branch" && step.kind !== "choice") continue;
+      const nestedLoops = step.kind === "loop" ? [...loops, step.id] : loops;
       const records = byStep.get(step.id) ?? [];
       const taken = new Set(records.map(armOf).filter((arm) => arm !== null));
-      const decided = records.some((record) => record.status === "done") && finished(loop);
+      const decided = (step.kind === "branch" || step.kind === "choice") &&
+        records.some(record => record.status === "done") && finished(loops);
       for (const [arm, list] of childLists(step)) {
         if (decided && !taken.has(arm)) {
           for (const placed of placeSteps(list)) skipped.add(placed.step.id);
         } else {
-          visit(list, loop);
+          visit(list, nestedLoops);
         }
       }
     }
   };
-  visit(workflow.steps, null);
+  visit(workflow.steps, []);
   return skipped;
 }
 
@@ -91,7 +93,7 @@ function passesInside(statuses: NodeStatus[], loopRecords: StepRecord[], direct:
 
 /** Each step's state in `run`, for drawing the run on the workflow's canvas.
  * A step inside a loop gets the state of its passes taken together. */
-export function runMap(workflow: Workflow, run: ScheduledRun): Map<string, NodeRunState> {
+export function runMap(workflow: Workflow, run: Pick<ScheduledRun, "status" | "steps">): Map<string, NodeRunState> {
   const byStep = new Map<string, StepRecord[]>();
   for (const record of run.steps) byStep.set(record.step_id, [...(byStep.get(record.step_id) ?? []), record]);
   const going = run.status === "running";

@@ -224,6 +224,7 @@ async def run_test(
     what the run would keep comes back as "would_remember", and "ended" says a check ended it
     with nothing to do (decision 0034) -- a test never keeps anything."""
     records: dict[str, StepRecord] = {}
+    progress_records: dict[tuple[str, tuple[int, ...]], dict[str, Any]] = {}
     shown = workflow
     guards: dict[str, Step] = {}
     if not send_for_real:
@@ -232,6 +233,7 @@ async def run_test(
     async def record_step(record: StepRecord) -> None:
         # Inside a loop the last pass stands for the step.
         records[record.step_id] = record
+        progress_records[(record.step_id, tuple(record.iteration))] = record.to_dict()
         if on_step is not None:
             await on_step(record)
 
@@ -292,6 +294,7 @@ async def run_test(
         **extra,
         "seconds": round(time.monotonic() - started, 1),
         "steps": steps,
+        "records": list(progress_records.values()),
         "files": output_files([r.output for r in records.values()], ctx.workspace_root, started_at),
         "failed_step": outcome.step_id if status == "failed" else None,
         "error": outcome.error if status == "failed" else None,

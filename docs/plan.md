@@ -47,7 +47,9 @@ Last reviewed: 2026-11-06.
 - **Browser page lifecycle:** popup/source feedback, conversation-wide downloads and
   request cancellation have regression coverage. Native popup handles and focus/close behavior
   run in the Windows desktop smoke job; real-site verification remains outstanding
-  (`docs/log/2026-11-16-browser-page-lifecycle.md`).
+  (`docs/log/2026-11-16-browser-page-lifecycle.md`). Targeted concurrency, runtime workflow tab
+  references, batch input and real draft progress are covered in #907; verify SAP exports and
+  settings overlays on Windows (`docs/log/2026-11-16-browser-workflow-polish.md`).
 
 - **Docs:** a Doc still writes plans the brief did not give (a proposal's migration phases;
   `docs/log/2026-10-29-doc-writing-rules.md`). Version history for documents is wanted, not in v1.

@@ -67,6 +67,7 @@ function exceptionMessage(details: ExceptionDetails): string {
 
 /** A file the page downloaded during the AI's steps, saved without asking. */
 export interface Download {
+  tabIds?: number[];
   path: string;
   /** The name the site gave it, before any " (1)" to avoid a clash. */
   name: string;
@@ -143,12 +144,17 @@ export class TabCdp {
     const natural = !hidden && width === panel.width;
     const key = natural ? "natural" : `${width}x${panel.height}`;
     if (key === this.layoutKey) return;
-    if (natural) {
-      await this.send("Emulation.clearDeviceMetricsOverride");
-    } else {
-      await this.send("Emulation.setDeviceMetricsOverride", { width, height: panel.height, deviceScaleFactor: hidden ? 1 : 0, mobile: false });
-    }
     this.layoutKey = key;
+    try {
+      if (natural) {
+        await this.send("Emulation.clearDeviceMetricsOverride");
+      } else {
+        await this.send("Emulation.setDeviceMetricsOverride", { width, height: panel.height, deviceScaleFactor: 0, mobile: false });
+      }
+    } catch (error) {
+      if (this.layoutKey === key) this.layoutKey = "";
+      throw error;
+    }
   }
 
   /** Lays the page out wide enough to show what ends `right` px from its

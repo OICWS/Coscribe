@@ -5,6 +5,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 export interface Step {
   threadId: string;
   requestId: string;
+  tabId?: number;
   stop: boolean;
 }
 export const stepContext = new AsyncLocalStorage<Step>();
@@ -17,8 +18,11 @@ export const running = {
 
 const queues = new Map<string, Promise<void>>();
 
-/** Runs `work` after the thread's earlier work: one step at a time per
- * conversation, while conversations don't wait for each other. */
+export function tabHasWork(threadId: string, tabId: number): boolean {
+  return queues.has(`${threadId}:${tabId}`);
+}
+
+/** Serializes operations on one tab while independent tabs run concurrently. */
 export function enqueue(threadId: string, work: () => Promise<void>): void {
   const next = (queues.get(threadId) ?? Promise.resolve()).catch(() => undefined).then(work);
   queues.set(threadId, next);
@@ -65,11 +69,12 @@ export function handleBrowserControl(
   cancelledRequests: Set<string>,
   activity: (thread: string, active: boolean) => void,
 ): boolean {
-  const step = runningSteps.get(command.thread_id);
+  const steps = [...runningSteps.values()].filter(step => step.threadId === command.thread_id);
   if (command.action === "activity") activity(command.thread_id, Boolean(command.args.active));
   else if (command.action === "cancel_request") {
     const id = String(command.args.request_id);
-    if (step?.requestId === id) step.stop = true;
+    const step = steps.find(step => step.requestId === id);
+    if (step) step.stop = true;
     else {
       cancelledRequests.add(id);
       // Late cancellation replies must not accumulate for the life of the app.
@@ -77,7 +82,7 @@ export function handleBrowserControl(
     }
   } else if (command.action === "cancel") {
     stoppedAt.set(command.thread_id, Date.now());
-    if (step) step.stop = true;
+    for (const step of steps) step.stop = true;
   } else return false;
   return true;
 }

@@ -83,7 +83,8 @@ check clicks with real input (xdotool under Xvfb, or Windows itself).
   completely untouched -- they still serve the plain-browser-tab case.
 
 - **Tabs, shared with the AI.** `browserPanel.ts` keeps one
-  `WebContentsView` per tab (only the active one attached) in its own
+  `WebContentsView` per tab, with sixteen tabs per conversation and background views
+  attached off-window, in its own
   persistent session; `browserAgent.ts` takes the AI's `browser_*`
   commands from the sidecar's token-authenticated `/internal/browser-host`
   stream and performs them on those tabs with real input events, reading
@@ -96,14 +97,22 @@ check clicks with real input (xdotool under Xvfb, or Windows itself).
   `browserAgentLocate.ts`. Popups preserve Electron's opener and POST semantics,
   stay in the background during AI work, and are reported with their source
   tab. The AI can select or close them with `browser_tabs`; closing a popup
-  prefers its source. Downloads belong to the conversation even if their tab
+  prefers its source. Automation selection is separate from the visible tab; targeted
+  commands run concurrently across tabs, serially within each. The panel reports per-tab
+  activity and supports user takeover. Saved names, structured tab info and source-scoped
+  relative targets work in workflows; form batches reuse normal input events.
+  Downloads belong to the conversation even if their tab
   closes. Only untouched blank download popups close automatically after a
-  successful download; content pages remain available. Protocol operations
+  successful download; explicit completed-download cleanup retains user-touched, visible,
+  active and unsuccessful pages. Foreground overlays keep native views off-window.
+  Unchanged geometry and viewport metrics are skipped, with double bounds calls retained
+  when geometry changes. Protocol operations
   have a deadline, and backend request timeouts cancel only that request.
 
 Run `npm run test:browser` for the panel/command-queue regressions using an
 Electron transport double. `npm run test:browser:native` checks real popup
-handles, content, focus and close behavior in a separate Electron process. The
+handles, content, focus, bounds, overlays, background form input, takeover and permission
+queuing in a separate Electron process. The
 Windows desktop smoke job runs it separately from the Playwright UI smoke.
 
 ## Prerequisites
