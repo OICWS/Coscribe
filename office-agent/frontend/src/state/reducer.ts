@@ -4,6 +4,7 @@ import { splitAttachedFiles } from "../lib/attachments";
 import { pendingSteer, requeuedNotes, type NewSteer, type SteerItem } from "./steerItems";
 import type { HistoryEntry, QuestionSpec, StateEvent, TaskDraft, WsServerEvent } from "../types/wire";
 import type { ProgressItem } from "../lib/workflowProgress";
+import { planTasksField } from "../lib/planTasksResult";
 
 /** The answer the frontend sends for a saved draft starts with this --
  * also how a replayed create_scheduled_task call tells "saved" apart
@@ -266,33 +267,12 @@ function lastPlanOf(items: LogItem[]): string {
   return last ? last.plan : "";
 }
 
-/** How the user answered a plan, read back from exit_plan_mode's result
- * (conversation/session.py's _decide_plan_request writes these sentences). */
+/** How the user answered a plan, read back from the sentences of exit_plan_mode's result (conversation/approvals.py). */
 function planStatusOf(result: string): "auto" | "manual" | "revise" | "reject" {
   if (result.includes("rejected the plan")) return "reject";
-  if (result.includes("switched to auto mode")) return "auto";
+  if (result.includes("switched to auto mode") || result.includes("kept auto mode on")) return "auto";
   if (result.includes("approved the plan")) return "manual";
   return "revise";
-}
-
-// conversation/approvals.py's PLAN_TASKS_MARKER: the approved list follows it, as JSON.
-const PLAN_TASKS_MARKER = "Task list as approved:\n";
-
-/** The task list an approved plan's result gives, when the person edited it. */
-function planTasksOf(result: string): ProgressItem[] | undefined {
-  const at = result.indexOf(PLAN_TASKS_MARKER);
-  if (at < 0) return undefined;
-  try {
-    const parsed: unknown = JSON.parse(result.slice(at + PLAN_TASKS_MARKER.length));
-    if (!Array.isArray(parsed)) return undefined;
-    return parsed.flatMap((task: Record<string, unknown>) =>
-      task && typeof task.content === "string" && task.id !== undefined
-        ? [{ id: String(task.id), content: task.content, status: task.status === "completed" || task.status === "in_progress" ? task.status : "pending" }]
-        : [],
-    );
-  } catch {
-    return undefined;
-  }
 }
 
 /** A checkpointed transcript as chat items -- the main conversation's
@@ -315,8 +295,7 @@ export function historyToItems(entries: HistoryEntry[]): LogItem[] {
       const plan = String(entry.arguments.plan ?? "");
       const previous = lastPlan;
       lastPlan = plan;
-      const tasks = planTasksOf(result);
-      return { id: genId(), kind: "plan", plan, previous, status: planStatusOf(result), ...(tasks ? { tasks } : {}) };
+      return { id: genId(), kind: "plan", plan, previous, status: planStatusOf(result), ...planTasksField(result) };
     }
     if (entry.tool_name === "create_scheduled_task" || entry.tool_name === "edit_scheduled_task") {
       const saved = typeof entry.result === "string" && entry.result.startsWith(TASK_DRAFT_SAVED_PREFIX);
@@ -504,9 +483,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...state,
         items: state.items.map((item) =>
-          item.kind === "plan" && item.id === action.id
-            ? { ...item, status: action.status, ...(action.tasks ? { tasks: action.tasks } : {}) }
-            : item,
+          item.kind === "plan" && item.id === action.id ? { ...item, status: action.status, ...(action.tasks && { tasks: action.tasks }) } : item,
         ),
       };
 

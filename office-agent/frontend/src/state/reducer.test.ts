@@ -137,6 +137,7 @@ describe("history and older messages", () => {
     });
     const status = (result: string) => historyToItems([planEntry(result)])[0];
     expect(status("The user switched to auto mode")).toMatchObject({ kind: "plan", plan: "Do it", status: "auto" });
+    expect(status("The user approved the plan and kept auto mode on.")).toMatchObject({ kind: "plan", status: "auto" });
     expect(status("The user approved the plan")).toMatchObject({ kind: "plan", status: "manual" });
     expect(status("The user wants changes")).toMatchObject({ kind: "plan", status: "revise" });
     expect(status("The user rejected the plan. Stop.")).toMatchObject({ kind: "plan", status: "reject" });

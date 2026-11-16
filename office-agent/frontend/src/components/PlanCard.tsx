@@ -23,6 +23,40 @@ function inField(target: EventTarget | null): boolean {
  * approvals as they were; Revise sends it back with what to change; Reject
  * ends the planning. The plan itself is a document in the Plan panel, where
  * its task list can be edited until it is answered. */
+const buttons = "h-8 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2.5 text-[14px] hover:bg-[var(--card-bg)]";
+const primary = "h-8 rounded-lg bg-[var(--primary)] px-3 text-[14px] font-medium text-[var(--primary-fg)] hover:bg-[var(--primary-hover)]";
+
+function ReviseForm({ onBack, onRevise }: { onBack: () => void; onRevise: (feedback: string) => void }) {
+  const [feedback, setFeedback] = useState("");
+  return (
+    <form
+      className="mt-3 flex flex-col gap-3"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onRevise(feedback);
+      }}
+    >
+      <textarea
+        aria-label="What should change?"
+        placeholder="What should change? (optional)"
+        rows={3}
+        autoFocus
+        className="w-full resize-none rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[15px] outline-none focus:border-[var(--accent)]"
+        value={feedback}
+        onChange={(event) => setFeedback(event.target.value)}
+      />
+      <div className="flex items-center justify-between">
+        <button type="button" className={buttons} onClick={onBack}>
+          Back
+        </button>
+        <button type="submit" className={primary}>
+          Revise
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export function PlanCard({
   item,
   onAnswer,
@@ -33,7 +67,6 @@ export function PlanCard({
   onOpenPlan?: () => void;
 }) {
   const [revising, setRevising] = useState(false);
-  const [feedback, setFeedback] = useState("");
   const [source, setSource] = useState(false);
   const pending = item.status === "pending";
   const draft = usePlanTaskDraft(pending ? item.id : null);
@@ -50,9 +83,6 @@ export function PlanCard({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [pending, onAnswer, item]);
-
-  const buttons = "h-8 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2.5 text-[14px] hover:bg-[var(--card-bg)]";
-  const primary = "h-8 rounded-lg bg-[var(--primary)] px-3 text-[14px] font-medium text-[var(--primary-fg)] hover:bg-[var(--primary-hover)]";
 
   return (
     <div className="flex flex-col gap-3" data-waiting={pending ? item.id : undefined}>
@@ -97,31 +127,7 @@ export function PlanCard({
           </div>
         )}
         {pending && onAnswer && revising && (
-          <form
-            className="mt-3 flex flex-col gap-3"
-            onSubmit={(event) => {
-              event.preventDefault();
-              onAnswer(item, "revise", feedback);
-            }}
-          >
-            <textarea
-              aria-label="What should change?"
-              placeholder="What should change? (optional)"
-              rows={3}
-              autoFocus
-              className="w-full resize-none rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[15px] outline-none focus:border-[var(--accent)]"
-              value={feedback}
-              onChange={(event) => setFeedback(event.target.value)}
-            />
-            <div className="flex items-center justify-between">
-              <button type="button" className={buttons} onClick={() => setRevising(false)}>
-                Back
-              </button>
-              <button type="submit" className={primary}>
-                Revise
-              </button>
-            </div>
-          </form>
+          <ReviseForm onBack={() => setRevising(false)} onRevise={(feedback) => onAnswer(item, "revise", feedback)} />
         )}
       </div>
       <div className="w-full text-sm">
