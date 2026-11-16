@@ -17,6 +17,9 @@ workflow tests hid their active steps and runtime tab ids were awkward in saved 
   one aligned icon column, with execution status replacing the type icon once started, branches, parallel activity and loop counts, with reduced
   motion and restrained active-step scrolling.
 
+- Script secrecy tests initialize their runtime before injecting an invalid proxy, so
+  isolated CI workers do not depend on another test preparing the environment first.
+
 ## Not verified
 - A real SAP account and Windows interactive use were unavailable in the cloud environment.
 
