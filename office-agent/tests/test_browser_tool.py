@@ -588,3 +588,48 @@ def test_waiting_for_any_of_several_texts_says_which_appeared() -> None:
         _tools(host)["browser_wait_for"](text="Saved", any_of=["Error"])
     with pytest.raises(ValueError):
         _tools(host)["browser_wait_for"](any_of=[])
+
+
+def test_drag_takes_a_target_or_a_distance() -> None:
+    host = _FakeHost({"drag": {"element": 'button "Card"', "onto": 'region "Done"'}})
+    assert _tools(host)["browser_drag"]("Card", target="Done").startswith(
+        'Dragged button "Card" onto region "Done".'
+    )
+    assert host.calls[0][1]["target"] == "Done"
+    for kwargs in ({}, {"target": "Done", "by_x": 5}):
+        with pytest.raises(ValueError):
+            _tools(host)["browser_drag"]("Card", **kwargs)
+    assert len(host.calls) == 1
+
+
+def test_copy_and_paste_use_the_ai_clipboard() -> None:
+    host = _FakeHost(
+        {
+            "copy": {"chars": 300, "preview": "x" * 200},
+            "paste": {"element": 'textbox "Notes"', "formatted": True},
+        }
+    )
+    tools = _tools(host)
+    assert tools["browser_copy"]("e3").startswith(f'Copied 300 characters: "{"x" * 200}…"')
+    assert tools["browser_paste"]("Notes").startswith(
+        'Pasted into textbox "Notes" with its formatting.'
+    )
+    assert host.calls[1][1]["plain"] is False
+    risks = {name: get_tool_metadata(tools[name]).risk_category for name in tools}
+    assert (risks["browser_copy"], risks["browser_paste"], risks["browser_drag"]) == (
+        "READ",
+        "EXTERNAL",
+        "EXTERNAL",
+    )
+
+
+def test_dropping_files_needs_the_area(tmp_path: Path) -> None:
+    from coscribe.tools._workspace import WorkspaceScope
+
+    (tmp_path / "a.pdf").write_text("x")
+    host = _FakeHost({"upload": {"element": 'button "Drop here"'}})
+    tools = {t.__name__: t for t in build_browser_tools("t1", host, scope=WorkspaceScope(tmp_path))}
+    with pytest.raises(ValueError):
+        tools["browser_file_upload"](["a.pdf"], drop=True)
+    tools["browser_file_upload"](["a.pdf"], ref="Drop here", drop=True)
+    assert host.calls[0][1]["drop"] is True

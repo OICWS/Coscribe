@@ -29,6 +29,7 @@ from ...needs_permission import SITE_MARK, NeedsPermission
 from ...runtime import NetworkGuard, tool_metadata
 from .._workspace import WorkspaceScope
 from ._browser_forms import form_tools, wait_for_any
+from ._browser_moves import move_tools
 from ._browser_pages import (
     DEFAULT_TIMEOUT,
     DEFAULT_WAIT,
@@ -548,7 +549,9 @@ def _page_tools(
         answer = "Accepted" if result.get("accepted", accept) else "Dismissed"
         return with_tab(f'{answer} the {kind}: "{result.get("message") or ""}".', result)
 
-    def browser_file_upload(paths: list[str], ref: str = "", tab_id: int | str = 0) -> str:
+    def browser_file_upload(
+        paths: list[str], ref: str = "", tab_id: int | str = 0, drop: bool = False
+    ) -> str:
         """Upload files from the user's folders to the page in coscribe's
         browser, as if the user had picked them. Pass the ref of the upload
         button or file field; leave ref empty to answer a file chooser a
@@ -559,7 +562,11 @@ def _page_tools(
             paths: the files, relative to the workspace or absolute under a
                 folder you can read
             ref: the upload button or file field from browser_snapshot
+            drop: drag the files onto ref instead, for an area that says
+                "drop files here" and has no button
         """
+        if drop and not ref:
+            raise ValueError("Pass the ref of the area to drop the files on.")
         if not paths:
             raise ValueError("Pass at least one file in paths.")
         if scope is None:
@@ -570,7 +577,7 @@ def _page_tools(
             if not resolved.is_file():
                 raise ValueError(f"No such file: {path}")
             files.append(str(resolved))
-        result = call("upload", ref=ref or None, paths=files, tab_id=tab_id)
+        result = call("upload", ref=ref or None, paths=files, tab_id=tab_id, drop=drop)
         names = ", ".join(scope.relative(Path(f)) for f in files)
         return with_tab(f"Uploaded {names} to {result.get('element') or 'the page'}.", result)
 
@@ -624,6 +631,7 @@ def build_browser_tools(
     call = _browser_call(thread_id, host, scope, saved_workflow, allowed_sites, network)
     fns = {
         **form_tools(call),
+        **move_tools(call),
         **tab_tools(call),
         **snapshot_tool(call),
         **_navigation_tools(call),
@@ -639,12 +647,15 @@ def build_browser_tools(
         fns["browser_scroll"],
         fns["browser_wait_for"],
         fns["browser_tabs"],
+        fns["browser_copy"],
     ]
     act = [
         fns["browser_click"],
         fns["browser_type"],
         fns["browser_fill_form"],
         fns["browser_steps"],
+        fns["browser_drag"],
+        fns["browser_paste"],
         fns["browser_press_key"],
         fns["browser_select_option"],
         fns["browser_handle_dialog"],
