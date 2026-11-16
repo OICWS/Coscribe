@@ -41,8 +41,12 @@ def shared_state_dir() -> Iterator[Path]:
     a real ~20s network-bound cost, worth paying once per file, not once
     per test."""
     state_dir = Path(tempfile.mkdtemp(prefix="coscribe_bg_tasks_test_state_"))
-    yield state_dir
-    shutil.rmtree(state_dir, ignore_errors=True)
+    try:
+        # Tests may deliberately install an unusable proxy after fixture setup.
+        ensure_script_env(state_dir)
+        yield state_dir
+    finally:
+        shutil.rmtree(state_dir, ignore_errors=True)
 
 
 @dataclass

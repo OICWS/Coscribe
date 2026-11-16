@@ -63,7 +63,9 @@ export function RunStatus({ threadId, turnInFlight, serverStartedAt, totalTokens
   const tokenDelta = Math.max(0, totalTokens - start.tokens);
 
   return (
-    <span className="hidden shrink-0 text-xs @[600px]:inline tabular-nums text-[var(--muted)]" data-testid="run-status">
+    // The time and tokens wait for a wide composer; "Stopping…" shows at any width, as the only
+    // sign that the stop was received while the turn takes time to end.
+    <span className={`${stopping ? "inline" : "hidden @[600px]:inline"} shrink-0 text-xs tabular-nums text-[var(--muted)]`} data-testid="run-status">
       {workflowTest && (
         <span data-testid="workflow-test-progress">
           Testing workflow {workflowTest.done}/{workflowTest.total} ·{" "}

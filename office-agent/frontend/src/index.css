@@ -1187,3 +1187,7 @@ body {
   background-image: conic-gradient(var(--card-bg) 25%, transparent 0 50%, var(--card-bg) 0 75%, transparent 0);
   background-size: 16px 16px;
 }
+
+@keyframes draft-step-sweep { from { background-position: 150% 0; } to { background-position: -150% 0; } }
+.draft-step-sheen { background: linear-gradient(110deg, var(--fg) 40%, #60a5fa 50%, var(--fg) 60%); background-size: 250% 100%; background-clip: text; -webkit-text-fill-color: transparent; animation: draft-step-sweep 4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .draft-step-sheen { animation: none; background: none; -webkit-text-fill-color: currentColor; } }

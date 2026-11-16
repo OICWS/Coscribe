@@ -6,9 +6,17 @@ import asyncio
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from ...conversation import question_answer
+from ...conversation import ChatSessionLG, question_answer
 from ..browser_panel import BrowserPanelError, BrowserPanelSession
 from ..state import AppState
+
+
+async def _stop(session: ChatSessionLG, websocket: WebSocket) -> None:
+    if not session.request_stop():
+        # The page thought a reply was running and waits for its end, with "Send now" holding
+        # the person's notes until then: nothing else would end that wait.
+        await session.send_state(websocket, with_turn=True)
+    await session.run_interrupt_hooks()
 
 
 def router(state: AppState) -> APIRouter:
@@ -105,7 +113,7 @@ def router(state: AppState) -> APIRouter:
         # Written while the person types their first message, so it can carry the brief.
         session._assembly.folder_briefs.refresh(session._assembly.folders())
         try:
-            await session.send_state(websocket, on_connect=True)
+            await session.send_state(websocket, with_turn=True)
             await session.send_history(websocket)
             # A pending approval from before a restart or dropped connection
             # doesn't wait for a new user_message to surface -- redeliver it
@@ -157,8 +165,7 @@ def router(state: AppState) -> APIRouter:
                 elif message_type == "detach_command":
                     session.detach_command(str(data.get("script", "")))
                 elif message_type == "stop":
-                    session.request_stop()
-                    await session.run_interrupt_hooks()
+                    await _stop(session, websocket)
                 elif message_type == "switch_model":
                     # Directly awaited, not asyncio.create_task like
                     # user_message -- same reasoning as web/app.py's

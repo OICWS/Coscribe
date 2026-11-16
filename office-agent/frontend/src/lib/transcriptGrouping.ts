@@ -128,6 +128,7 @@ export interface WorkflowTestFile {
 
 /** What test_workflow reported. */
 export interface WorkflowTestResult {
+  records?: import("../types/workflow").StepRecord[];
   status: "passed" | "failed" | "stopped_at_approval" | "stopped_before_irreversible";
   /** For "stopped_before_irreversible": the step a test doesn't run. */
   stopped_before?: { id: string; title: string };
@@ -146,6 +147,7 @@ export interface WorkflowTestResult {
 
 /** A draft's latest test: its result, or running with none yet. */
 export interface DraftTest {
+  toolCallId?: string;
   result: WorkflowTestResult | null;
   running: boolean;
 }
@@ -188,7 +190,7 @@ export function workflowTests(items: LogItem[], turnInFlight: boolean): Map<stri
     if (typeof draftId !== "string" || !draftId) continue;
     if (item.result === undefined) {
       const running = turnInFlight && index > lastUser && (item.kind === "tool" || item.status === "approved");
-      tests.set(draftId, { result: null, running });
+      tests.set(draftId, { result: null, running, toolCallId: item.id });
       continue;
     }
     const data = parsedResult(item.result);

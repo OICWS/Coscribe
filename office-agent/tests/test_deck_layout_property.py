@@ -177,12 +177,7 @@ def _check_container(item: Item, path: Path, boxes: dict[Path, Box]) -> None:
     used = sum(main[1] for main, _ in spans) + gaps
     # Only what is sized by its content can push the others out of the container.
     hug = sum(main[1] for (main, _), k in zip(spans, item.kids, strict=True) if k.hug_main)
-    # A shrink factor above the others can take more than a child has: the engine stops that
-    # child at nothing and does not share the rest out again, so the others stay too large.
-    squeezed = any(
-        k.main is not None and main[1] < EPS for (main, _), k in zip(spans, item.kids, strict=True)
-    )
-    overflows = hug + gaps > room + EPS or squeezed
+    overflows = hug + gaps > room + EPS
 
     for j, (main, cross) in enumerate(spans):
         if not overflows:

@@ -556,8 +556,9 @@ class ChatSessionLG:
         """From the running loop, which the background task announces itself to later."""
         return request_detach(self.thread_id, script, asyncio.get_running_loop())
 
-    def request_stop(self) -> None:
-        """Called directly from ws_endpoint on a "stop" message, not
+    def request_stop(self) -> bool:
+        """Whether a turn was running (one that was not sends no reply). Called directly from
+        ws_endpoint on a "stop" message, not
         awaited -- it has to reach whichever turn is *currently* running,
         same reasoning as resolve_approval. Mostly cooperative: sets a flag
         that _stream_turn/_decide_action_request check at their own natural
@@ -610,6 +611,7 @@ class ChatSessionLG:
             and not self._current_turn_task.done()
         ):
             self._current_turn_task.cancel()
+        return self._turn_lock.locked()
 
     async def stop_and_wait(self, timeout: float = 15.0) -> None:
         """Stops the running turn and waits for it to end: one ending after its conversation was
@@ -761,7 +763,7 @@ class ChatSessionLG:
     ) -> None:
         await self._reconfigurer.set_enabled_skills(skill_names, websocket, announce=announce)
 
-    async def send_state(self, websocket: EventSink, *, on_connect: bool = False) -> None:
+    async def send_state(self, websocket: EventSink, *, with_turn: bool = False) -> None:
         if self._context_window is None:
             self._context_window = await asyncio.to_thread(
                 self._context_window_client.get_context_window, self._model_string
@@ -786,9 +788,9 @@ class ChatSessionLG:
                 if (get_tool_metadata(cast(Any, t)).category or "").startswith("mcp:")
             ),
         }
-        if on_connect:
+        if with_turn:
             # A tab opening mid-turn (a scheduled run, or a switch back) shows it running, with Stop
-            # and its time so far. Connect-time only: a state sent inside a turn holds the lock.
+            # and its time so far; after a Stop that found no turn, that none runs. Not in a turn.
             state["turn_in_flight"] = self._turn_lock.locked()
             if self._turn_lock.turn_started_at is not None:
                 state["turn_started_at"] = self._turn_lock.turn_started_at

@@ -4,8 +4,8 @@ starting from the values the caller had, its records the caller's under their ow
 step waits for every lane to end; then their pauses go up one at a time, keyed by where the
 lane stopped, since LangGraph replays every earlier answer when the step runs again. A lane
 that fails lets the others end, then the step fails; a retry goes on in the lanes that failed
-and leaves the ones that finished as they are. Lanes that use the browser take turns, since
-there is one."""
+and leaves the ones that finished as they are. Browser lanes without explicit targets retain
+a lane lock (decision 0047)."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ def _lane_workflow(caller: Workflow, lane: Lane) -> Workflow:
 
 def _may_browse(step: Step) -> bool:
     if isinstance(step, ToolStep):
-        return step.tool.startswith("browser_")
+        return step.tool.startswith("browser_") and not step.args.get("tab_id")
     if isinstance(step, AgentStep):
         browses = step.sites or any(t.startswith("browser_") for t in step.tools)
         return bool(browses) or step.autonomy != "bounded"

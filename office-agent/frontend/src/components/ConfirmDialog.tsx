@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 interface ConfirmDialogProps {
@@ -25,6 +25,7 @@ export function ConfirmDialog({
   onConfirm,
   tone = "danger",
 }: ConfirmDialogProps) {
+  const titleId = useId();
   // Portaled to document.body -- same fix, same reason as SettingsModal's
   // own (see its docstring): a modal rendered in place, deep in App's
   // tree, could end up painted under a sibling panel despite z-index math
@@ -32,10 +33,15 @@ export function ConfirmDialog({
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onCancel}>
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className="w-[min(360px,100vw-2rem)] rounded-[14px] border border-[var(--border)] bg-[var(--panel-bg)] p-4 shadow-[var(--shadow)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-1 text-sm font-medium">{title}</div>
+        <div id={titleId} className="mb-1 text-sm font-medium">
+          {title}
+        </div>
         <div className="mb-4 text-sm text-[var(--muted)]">{description}</div>
         <div className="flex justify-end gap-2">
           <button

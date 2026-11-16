@@ -12,6 +12,7 @@ import { app, ipcMain, type BrowserWindow, type WebContents } from "electron";
 import { readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { enqueue } from "./browserAgentSteps";
 
 export const BROWSER_PERMISSION_EVENT = "browser-panel:permission";
 const PERMISSION_ANSWER_CHANNEL = "browser-panel:permission-answer";
@@ -135,10 +136,17 @@ function sendPending(win: BrowserWindow | undefined): void {
   win.webContents.send(BROWSER_PERMISSION_EVENT, { requestId: pending.requestId, host: pending.host, threadId: pending.threadId });
 }
 
-/** Asks in the Browser panel whether the AI may use `host`; throws if the
- * user says no or doesn't answer. One prompt at a time: the AI's steps
- * already run one at a time. */
-export async function requestPermission(host: string, threadId: string, win: BrowserWindow | undefined): Promise<void> {
+/** Native permission prompts share one foreground answer UI. */
+export function requestPermission(host: string, threadId: string, win: BrowserWindow | undefined): Promise<void> {
+  return new Promise((resolve, reject) => enqueue("permissions", async () => {
+    try {
+      if (!isAllowed(host, threadId)) await askPermission(host, threadId, win);
+      resolve();
+    } catch (error) { reject(error); }
+  }));
+}
+
+async function askPermission(host: string, threadId: string, win: BrowserWindow | undefined): Promise<void> {
   const site = normalizeSite(host) ?? host;
   const answer = await new Promise<PermissionAnswer>((resolve) => {
     const requestId = nextRequestId++;

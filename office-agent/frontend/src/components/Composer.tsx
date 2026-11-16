@@ -567,18 +567,15 @@ export function Composer({
         />
         </div>
 
-        {/* Send/Stop lives inside the input box itself, bottom-right --
-         * a small bordered icon button (feather's corner-down-left
-         * "return" glyph) instead of the old large filled-accent circle
-         * sitting in its own row below. */}
         {turnInFlight && !value.trim() ? (
           <button
             type="button"
-            title="Stop"
-            className="absolute bottom-3 right-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--fg)] hover:bg-[var(--card-bg)]"
+            // Still pressable while stopping: a second Stop is how a page that missed the end asks again.
+            title={stopping ? "Stopping…" : "Stop"} aria-label={stopping ? "Stopping…" : "Stop"}
+            className={`absolute bottom-3 right-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg hover:bg-[var(--card-bg)] ${stopping ? "text-[var(--muted)]" : "text-[var(--fg)]"}`}
             onClick={() => (onStop(), textareaRef.current?.focus())}
           >
-            <StopRingIcon className="h-5 w-5" />
+            <StopRingIcon className={stopping ? "h-5 w-5 animate-pulse" : "h-5 w-5"} />
           </button>
         ) : (
           <button

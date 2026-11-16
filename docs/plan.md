@@ -11,12 +11,7 @@ Last reviewed: 2026-11-06.
 
 ## Next, in order
 
-1. **Chat: a live Plan card** (maintainer, 2026-10-21 and 2026-11-06). Done: the conversation
-   shows one task card under the latest call that changed the list, so it moves down only when its
-   content changes, and it folds into a "N steps done" line when every item is done
-   (`docs/log/2026-11-06-task-card-follows.md`). Open: the card no longer shows which background
-   tasks an item started; bring that back on the card if it is missed.
-2. **A more agentic coscribe, measured** (#819), each step scored by `office-agent/evals/agentic/`.
+1. **A more agentic coscribe, measured** (#819), each step scored by `office-agent/evals/agentic/`.
    Done: the evaluation (#820), the end-of-turn plan check (#821), the small model for side calls
    (#822), the delivery check of the Office files a turn wrote (#824), and, put before step 5 by
    the maintainer, a background script's end reported to its conversation (#826), Stop keeping the
@@ -27,7 +22,7 @@ Last reviewed: 2026-11-06.
    chat and the person connects in Settings (decision 0046, `docs/log/2026-11-11-connector-card.md`),
    the last of the plan's six steps. Next: the plan's measurements again on a model that does not
    pass every task already.
-3. **Workflows** (#843; decisions 0028 to 0040, and 0042). Phases P0 to P5 are done
+2. **Workflows** (#843; decisions 0028 to 0040, and 0042). Phases P0 to P5 are done
    (`docs/log/`, 2026-10-29 to 2026-11-02). Parallel steps are merged (#789, decision 0036
    proposed), and so are the simple view in words (#839, decision 0037) and the run page that
    says how it went before its steps (#840, decision 0038). A task that starts on something
@@ -37,7 +32,7 @@ Last reviewed: 2026-11-06.
    more tokens, with nothing to set (decision 0043). Open: an L3 step delegating, adding steps
    when nothing failed, and counting llm steps' tokens.
 
-4. **How turns go, measured in real use** (#867, decision 0045). Done: one line per turn in
+3. **How turns go, measured in real use** (#867, decision 0045). Done: one line per turn in
    `turns.jsonl`, without the conversation's words (`docs/log/2026-11-10-turn-trace.md`), and
    five agentic evaluation tasks replayed from recorded answers in the PR checks
    (`docs/log/2026-11-10-eval-replay.md`, `docs/log/2026-11-10-plan-order.md`). Next: tapes for
@@ -46,6 +41,13 @@ Last reviewed: 2026-11-06.
    the person's consent.
 
 ## Open, smaller
+
+- **Browser page lifecycle:** popup/source feedback, conversation-wide downloads and
+  request cancellation have regression coverage. Native popup handles and focus/close behavior
+  run in the Windows desktop smoke job; real-site verification remains outstanding
+  (`docs/log/2026-11-16-browser-page-lifecycle.md`). Targeted concurrency, runtime workflow tab
+  references, batch input and real draft progress are covered in #907; verify SAP exports and
+  settings overlays on Windows (`docs/log/2026-11-16-browser-workflow-polish.md`).
 
 - **Docs:** a Doc still writes plans the brief did not give (a proposal's migration phases;
   `docs/log/2026-10-29-doc-writing-rules.md`). Version history for documents is wanted, not in v1.
@@ -72,6 +74,10 @@ Last reviewed: 2026-11-06.
   `uv` pull request also moves indirect dependencies in `uv.lock`; `lockfile-only` was reported to
   move only direct ones (dependabot-core#14073). If it does not, a scheduled `uv lock --upgrade`
   job takes over that part.
+- **Scheduled runs:** a run whose turn is cancelled from outside (seen only through a test's time
+  limit) is recorded as `completed`, because the turn swallows the cancellation
+  (`docs/log/2026-11-15-windows-night-1110.md`). Whether a server shutdown does the same is not
+  checked.
 - **Design systems:** whether the model acts on the "no slide places the logo" warning is not
   measured: in the run of 2026-11-05 it placed the logo every time
   (`docs/log/2026-11-05-logo-and-assets-measured.md`).
@@ -90,11 +96,10 @@ Last reviewed: 2026-11-06.
 
 ## For the maintainer (settings and decisions)
 
-- Make the Windows job required once it has 14 green scheduled nights; the count restarted on
-  2026-10-27 and reached 12 (10-28 to 11-08), then the night of 11-09 was red on two tests (a
-  test file written with CRLF, and a 10 s limit on a loaded runner). The maintainer decided on
-  2026-11-10 that this night, like 10-24, does not restart the count: it stays at 12 and the next
-  green scheduled night is the 13th.
+- Add the Windows job's `pytest` to `main`'s required status checks (Settings, Branches). It has
+  its 14 green scheduled nights (16 by 11-14; the red nights of 11-09 and 11-10 do not restart the
+  count, `docs/log/2026-11-15-windows-night-1110.md`), and it now runs on every pull request
+  (`docs/log/2026-11-15-windows-required.md`).
 - Read the CodeQL alerts and the first `audit.yml` run.
 - Decide whether changed-line coverage is enforced (`docs/assessments/2026-10-13-diff-coverage.md`).
 - Decision 0036 (parallel workflow steps) is proposed with #789.
@@ -119,6 +124,9 @@ Last reviewed: 2026-11-06.
 
 ## Open problems, not reproduced or not solved
 
+- Stop sometimes taking a while to end a turn on the maintainer's machine (#715): every stop
+  path tried with fake models ends within 0.05 s (`docs/log/2026-11-15-stop-answers-the-page.md`);
+  the exported conversation the issue waits for would show where the turn was.
 - Notion showed no tools for the maintainer; cause not found.
 - The built-in browser panel opened during a connector's first connection
   (sign-in pages should open in the system browser); not reproduced.

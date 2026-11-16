@@ -1,3 +1,4 @@
+import type { DraftTestProgress } from "../../types/workflow";
 import { createContext } from "react";
 import type { DraftTest, WorkflowDraftEntry, WorkflowTestResult } from "../../lib/transcriptGrouping";
 import { placeSteps } from "../../lib/workflowTree";
@@ -13,7 +14,7 @@ export interface DraftCards {
   /** Draft id -> the task it was saved into. */
   saved: Map<string, { triggerId: string; name: string }>;
   /** Steps finished of the test running now, if any. */
-  testProgress: { done: number; total: number } | null;
+  testProgress: DraftTestProgress | null;
   onReview?: (entry: WorkflowDraftEntry) => void;
   onTestAgain?: (entry: WorkflowDraftEntry) => void;
   onContinue?: () => void;
@@ -42,8 +43,9 @@ export function draftStatus(entry: WorkflowDraftEntry, cards: DraftCards): Statu
   if (saved) return { kind: "saved", ...saved };
   const test = entry.draftId ? cards.tests.get(entry.draftId) : undefined;
   if (test?.running) {
-    const total = cards.testProgress?.total ?? placeSteps(entry.workflow.steps).length;
-    return { kind: "testing", done: cards.testProgress?.done ?? 0, total };
+    const progress = !test.toolCallId || test.toolCallId === cards.testProgress?.toolCallId ? cards.testProgress : null;
+    const total = progress?.total ?? placeSteps(entry.workflow.steps).length;
+    return { kind: "testing", done: progress?.done ?? 0, total };
   }
   const result = test?.result;
   if (!result) return { kind: "untested" };

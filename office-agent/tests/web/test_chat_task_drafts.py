@@ -105,6 +105,8 @@ def test_the_chat_model_tests_its_draft_and_fixes_what_failed_lg(
     progress = [m for m in messages if m["type"] == "workflow_test_progress"]
     assert {m["tool_call_id"] for m in progress} == {"c3", "c5"}
     assert progress[-1]["done"] == progress[-1]["total"] == 1
+    assert progress[-1]["record"]["step_id"] == progress[-1]["step"]
+    assert progress[-1]["record"]["status"] == "done"
     assert ScheduledTriggerStore(tmp_path / "state").list_all() == []
 
 
