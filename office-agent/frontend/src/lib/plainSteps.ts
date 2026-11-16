@@ -131,6 +131,21 @@ function site(url: unknown): string {
   }
 }
 
+function pages(count: number): string {
+  return count === 1 ? "1 page" : `${count} pages`;
+}
+
+function tabsSentence(args: Record<string, unknown>): string | null {
+  if (args.action === "new") return `Opens ${args.url ? site(args.url) : "a blank page"} in a new tab`;
+  if (args.action === "close") return Array.isArray(args.tab_ids) ? `Closes ${pages(args.tab_ids.length)}` : "Closes a page";
+  if (args.action !== "close_all") return null;
+  const keep = Array.isArray(args.keep) ? args.keep : [];
+  if (!keep.length) return "Closes its browser pages";
+  return keep.length === 1 && keep[0] === "current"
+    ? "Closes its browser pages except the current one"
+    : `Closes its browser pages except ${pages(keep.length)}`;
+}
+
 function toolSentence(tool: string, args: Record<string, unknown>, inputs: WorkflowInput[]): string {
   const value = (key: string) => plainValue(args[key], inputs);
   switch (tool) {
@@ -148,6 +163,10 @@ function toolSentence(tool: string, args: Record<string, unknown>, inputs: Workf
       return `Waits for the page to show ${value("text")}`;
     case "browser_evaluate":
       return "Works with the page directly";
+    case "browser_tabs":
+      return tabsSentence(args) ?? toolLabel(tool);
+    case "browser_snapshot":
+      return Array.isArray(args.tab_ids) ? `Reads ${pages(args.tab_ids.length)} at once` : toolLabel(tool);
     case "read_file":
       return `Reads ${value("path")}`;
     case "write_file":
