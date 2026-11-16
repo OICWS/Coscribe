@@ -67,13 +67,42 @@ def _known_folder(name: str) -> Path | None:
 _CREDENTIAL_FOLDERS = (".ssh", ".aws", ".azure", ".kube", ".docker", ".gnupg")
 
 
+def _fixed_drives() -> list[str]:
+    """The roots of this computer's fixed (not removable, network or optical) drives."""
+    if sys.platform != "win32":
+        return []
+    import ctypes
+
+    kernel32 = ctypes.windll.kernel32
+    mask = kernel32.GetLogicalDrives()
+    roots = [f"{chr(65 + i)}:\\" for i in range(26) if mask & (1 << i)]
+    return [root for root in roots if kernel32.GetDriveTypeW(root) == 3]  # DRIVE_FIXED
+
+
+def users_on_other_drives(drives: Iterable[str], system_drive: str, profile: str) -> list[Path]:
+    """The `Users` folder of each drive but Windows' own: a profile copied there from an old
+    computer holds the same private folders. Not the drive itself, which Codex refuses to deny;
+    the rest of such a drive stays readable. Not the one holding the person's own profile, whose
+    private folders are listed one by one: denying it whole would hide their tools' settings."""
+    system = os.path.normcase(system_drive.rstrip("\\/"))
+    found: list[Path] = []
+    for drive in drives:
+        if os.path.normcase(drive.rstrip("\\/")) == system:
+            continue
+        folder = Path(drive, "Users")
+        if folder.is_dir() and not (profile and inside_any(Path(profile), [folder])):
+            found.append(folder)
+    return found
+
+
 class GrantFailed(OSError):
     """The sandbox's users could not be let read a folder a command needs."""
 
 
 def private_folders() -> list[Path]:
     """The folders a sandboxed command may not read while this is on: the person's documents,
-    OneDrive, AppData and credential folders. Never a drive's root, which Codex refuses."""
+    OneDrive, AppData and credential folders, and the `Users` folder of every other fixed drive.
+    Never a drive's root, which Codex refuses."""
     if sys.platform != "win32":
         return []
     found: list[Path] = []
@@ -85,6 +114,7 @@ def private_folders() -> list[Path]:
             found.append(Path(os.environ[var]))
     if profile:
         found += [Path(profile, name) for name in _CREDENTIAL_FOLDERS]
+    found += users_on_other_drives(_fixed_drives(), os.environ.get("SystemDrive", "C:"), profile)
     unique: dict[str, Path] = {}
     for folder in found:
         if folder.is_dir() and folder.parent != folder:

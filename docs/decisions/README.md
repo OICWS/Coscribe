@@ -32,7 +32,7 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0019](0019-a-docs-artifact-is-the-docx-itself-edited-by-styles.md) | A Docs artifact is the .docx itself, edited in the app block by block, by styles not fonts (narrowed by 0025 and 0027) |
 | [0020](0020-design-systems-are-a-library-the-user-keeps.md) | Design systems are a library the user keeps; a deck gets a copy |
 | [0021](0021-scripts-run-in-an-appcontainer-held-to-the-folder-settings.md) | Scripts run in an AppContainer held to the folder settings (commands changed by 0022) |
-| [0022](0022-commands-run-in-codexs-windows-sandbox.md) | Commands run in Codex's Windows sandbox |
+| [0022](0022-commands-run-in-codexs-windows-sandbox.md) | Commands run in Codex's Windows sandbox (narrowed by 0049) |
 | [0023](0023-every-conversation-can-read-the-others-unless-archived.md) | Every conversation can list, read and message the others unless they are archived |
 | [0024](0024-word-documents-are-written-from-a-spec-compiled-onto-a-theme-and-checked.md) | Word documents are written from a spec, compiled onto a theme and checked (not adopted) |
 | [0025](0025-the-doc-artifact-is-a-markdown-document-and-the-word-panel-is-frozen.md) | The Doc artifact is a markdown document, and the Word panel is frozen |
@@ -58,3 +58,4 @@ documents may not say it again (`tests/test_doc_freshness.py`).
 | [0046](0046-a-conversation-offers-a-connector-the-person-connects.md) | A conversation offers a connector, and the person connects it (proposed) |
 | [0047](0047-browser-operations-follow-their-target-tab.md) | Browser operations follow their target tab |
 | [0048](0048-a-workspace-is-a-folder-the-person-picks.md) | A workspace is a folder the person picks; other folders are allowed when needed (proposed) |
+| [0049](0049-a-sandboxed-command-cant-read-other-drives-users-folders.md) | A sandboxed command can't read the Users folder of another drive (proposed) |

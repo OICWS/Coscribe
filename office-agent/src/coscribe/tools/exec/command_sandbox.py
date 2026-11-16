@@ -4,7 +4,8 @@
 (`codex sandbox setup --elevated`, which needs an administrator). That user may write only the
 conversation's folders; network is off unless the environment's is Full. It reads what Codex
 grants its users, the whole disk, less the person's private folders while Settings ›
-Capabilities hides them (`_private_folders.py`); other drives stay readable, so an online command
+Capabilities hides them (`_private_folders.py`, another drive's `Users` among them); the rest of
+another drive stays readable, so an online command
 still goes to the person (`conversation/approvals.py`). Settings ›
 Capabilities sets the sandbox up and records here which Codex did it; this module reads that
 record and builds the command line, so the tools need nothing from the code module. Elsewhere,

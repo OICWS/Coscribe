@@ -114,8 +114,9 @@ remains (Codex's code module runs no commands); it refuses writes outside the fo
 A command line (`run_background_command`) runs in Codex's Windows sandbox once the person set it
 up in Settings › Capabilities (decision 0022): it writes only the conversation's folders and is
 offline unless the environment's network is Full. It can't read the person's private folders
-(Documents, Desktop, Downloads, AppData and the like) unless the person turns that off, but it
-still reads other drives and Windows' own folders, so an online command is approved by the person. Without it, a command runs as the user only after a second
+(Documents, Desktop, Downloads, AppData and the like, and another drive's `Users` folder) unless
+the person turns that off, but it still reads the rest of another drive and Windows' own folders,
+so an online command is approved by the person. Without it, a command runs as the user only after a second
 confirmation, and the person approves every one. The UI and docs say which one holds. No
 import allow/deny lists: they are easy to bypass and only look like safety.
 

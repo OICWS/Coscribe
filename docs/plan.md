@@ -76,9 +76,10 @@ Last reviewed: 2026-11-06.
   `lxml` stay on the startup path (66 to 85 ms and 13 MiB, measured 2026-11-15; not worth
   editing every deck engine module). Open: the Windows numbers, cold start and the installed app
   (`scripts/measure_startup.py`, `office-agent-desktop/scripts/measure-startup.mjs`).
-- **Scripts and commands:** a PyPI mirror setting for networks that block PyPI (#560); hiding other
-  drives' user folders from commands (#845); a company proxy on a real Windows machine (Basic only;
-  NTLM and Kerberos are not supported, #666).
+- **Scripts and commands:** a PyPI mirror setting for networks that block PyPI (#560); a company
+  proxy on a real Windows machine (Basic only; NTLM and Kerberos are not supported, #666);
+  another drive's `Users` folder hidden from commands, checked on a Windows machine with a second
+  drive (decision 0049).
 - **The `tools` interface** (#677): done; B was closed with a reason (#692): the `tools` card and
   `slice.py` list only the 54 names `tools` owns. Moving callers to the sub-components is not
   planned: it would first need `deep_imports` to count a declared sub-component as an entry, and
