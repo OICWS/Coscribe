@@ -699,7 +699,11 @@ any words you wrote on it.
   waits follow the conversation's files across tab changes and closures.
   Completed downloads close only untouched blank popups, keeping login and
   business pages available. A full tab group refuses extra popups rather
-  than replacing the original page.
+  than replacing the original page. The AI can close several pages in one
+  step, or all but the ones it keeps; pages you used or took over, and pages
+  another step is still working in, stay open and the result says why. It
+  can also read several pages at once. A workflow run's pages stay open
+  after it ends unless the workflow ends with a step that closes them.
 - **Stop** also reaches the desktop app: the step in progress there (a
   wait can run for an hour) ends at once, and steps that conversation
   had queued are dropped.

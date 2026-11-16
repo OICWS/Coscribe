@@ -62,7 +62,14 @@ Module._load = function(name, ...rest) {
     BrowserWindow: { getAllWindows: () => [] },
     webContents: { getAllWebContents: () => contents },
     app: { getPath: () => scratch }, session: { fromPartition: () => session },
-    WebContentsView: class { constructor(options) { this.webContents = options.webContents ?? new Contents(); } setBorderRadius() {} },
+    // Like Electron, the view drops its webContents before "destroyed" reaches other listeners.
+    WebContentsView: class {
+      constructor(options) {
+        this.webContents = options.webContents ?? new Contents();
+        this.webContents.prependOnceListener('destroyed', () => { this.webContents = undefined; });
+      }
+      setBorderRadius() {}
+    },
   };
   if (name === './browserCdp') return cdpMock;
   if (name === './browserPermissions') return {
@@ -258,14 +265,37 @@ function download(wc, name, state = 'completed') {
   await new Promise(resolve => setImmediate(resolve));
   emit({ action: 'cancel_request', thread_id: 'a', args: { request_id: pending.id } });
   assert.equal((await pending.result).ok, false);
+  // Closing several pages: the person's pages and busy ones stay, each with its reason.
+  await call('navigate', { url: 'https://first.example/' }, 'c');
+  for (const name of ['one', 'two', 'used', 'busy']) await call('tabs', { op: 'new', name, url: `https://${name}.example/` }, 'c');
+  const byName = name => panel.allTabs('c').find(t => t.name === name);
+  byName('used').userTouched = true;
+  let release;
+  steps.enqueue(`c:${byName('busy').id}`, () => new Promise(resolve => { release = resolve; }));
+  await assert.rejects(call('tabs', { op: 'close', tab_ids: ['one', 'missing'] }, 'c'), /No browser tab matches missing/);
+  assert.ok(byName('one'), 'an unknown page closes nothing');
+  const some = await call('tabs', { op: 'close', tab_ids: ['one', 'used', 'one'] }, 'c');
+  assert.deepEqual(some.closed.map(t => t.url), ['https://one.example/']);
+  assert.deepEqual(some.kept.map(t => t.reason), ['the user has used it']);
+  await call('tabs', { op: 'select', tab_id: 'two' }, 'c');
+  const rest = await call('tabs', { op: 'close_all', keep: ['current'] }, 'c');
+  assert.deepEqual(rest.closed.map(t => t.url), ['https://first.example/']);
+  assert.deepEqual(rest.kept.map(t => t.reason).sort(), ['another step is still working in it', 'the user has used it']);
+  assert.deepEqual(panel.allTabs('c').map(t => t.name).sort(), ['busy', 'two', 'used']);
+  release();
+  await new Promise(resolve => setImmediate(resolve));
+  const last = await call('tabs', { op: 'close_all' }, 'c');
+  assert.deepEqual(last.closed.map(t => t.url).sort(), ['https://busy.example/', 'https://two.example/']);
+  assert.deepEqual(panel.allTabs('c').map(t => t.name), ['used']);
+
   await call('tabs', { op: 'list' });
   await assert.rejects(steps.browserOperation(new Promise(() => {}), 1), /stopped responding/);
   const step = { threadId: 'a', requestId: 'cancel', stop: false };
   const cancelled = steps.stepContext.run(step, () => steps.browserOperation(new Promise(() => {})));
   step.stop = true;
   await assert.rejects(cancelled, /Stopped/);
-  for (const thread of ['a', 'b']) steps.cancelFrameOff(thread);
-  console.log('Browser regressions passed: reuse, popup feedback/select/close, download ownership/cleanup/isolation, cancellation and protocol timeout.');
+  for (const thread of ['a', 'b', 'c']) steps.cancelFrameOff(thread);
+  console.log('Browser regressions passed: reuse, popup feedback/select/close, closing several pages, download ownership/cleanup/isolation, cancellation and protocol timeout.');
 })().then(() => { rmSync(scratch, { recursive: true, force: true }); process.exit(0); }, error => {
   console.error(error); rmSync(scratch, { recursive: true, force: true }); process.exit(1);
 });

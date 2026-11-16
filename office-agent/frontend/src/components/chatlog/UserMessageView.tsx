@@ -1,6 +1,7 @@
-import { useContext, useState } from "react";
+import { useContext, useState, type ReactNode } from "react";
 import { type LogItem } from "../../state/reducer";
-import { CloseIcon, PencilIcon } from "../icons";
+import { CloseIcon, PencilIcon, RewindIcon } from "../icons";
+import { CopyButton } from "../CopyButton";
 import { attachedFilesNote, attachmentKind, type AttachmentView } from "../../lib/attachments";
 import { SteerActionsContext, ViewFile } from "./contexts";
 import { AttachmentCard, AttachmentDialog } from "../Attachments";
@@ -67,12 +68,35 @@ function SentAttachments({ files, images }: { files: string[]; images: string[] 
   );
 }
 
+/** A dark label above a control while the pointer is on it. It sits on a wrapper rather than the
+ * button, so a disabled button still says why it is disabled. */
+function HoverTip({ label, align = "center", children }: { label: string; align?: "center" | "end"; children: ReactNode }) {
+  return (
+    <span className="group/tip relative inline-flex">
+      {children}
+      <span
+        role="tooltip"
+        className={`pointer-events-none absolute bottom-full z-20 mb-1.5 whitespace-nowrap rounded-md bg-[var(--primary)] px-2 py-1 text-xs text-[var(--primary-fg)] opacity-0 shadow-md transition-opacity delay-150 group-hover/tip:opacity-100 ${
+          align === "end" ? "right-0" : "left-1/2 -translate-x-1/2"
+        }`}
+      >
+        {label}
+      </span>
+    </span>
+  );
+}
+
+const STEER_ICON_BUTTON =
+  "flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--muted)]";
+
 /** A note added while the reply was being worked on: a user bubble, with
  * whether the model has read it yet. */
 export function SteerView({ item }: { item: Extract<LogItem, { kind: "steer" }> }) {
   const actions = useContext(SteerActionsContext);
   const files = item.files ?? [];
   const images = item.images ?? [];
+  // Taking the note back puts it in the message box, which would lose what is typed there.
+  const editBlocked = actions?.composerHasDraft ?? false;
   return (
     <div className="ml-auto flex max-w-[96%] flex-col items-end gap-1">
       <div className={`flex flex-col items-end gap-1.5 ${item.status === "pending" ? "opacity-60" : ""}`}>
@@ -84,20 +108,35 @@ export function SteerView({ item }: { item: Extract<LogItem, { kind: "steer" }> 
         )}
       </div>
       {item.status === "pending" && actions ? (
-        <div className="flex items-center gap-1 text-xs text-[var(--muted)]">
-          <button
-            type="button"
-            title="Cancel"
-            aria-label="Cancel"
-            className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
-            onClick={() => actions.withdraw(item.id)}
+        <div className="flex items-center gap-0.5 text-xs text-[var(--muted)]">
+          {item.text.trim() !== "" && (
+            <HoverTip label="Copy">
+              <CopyButton getText={() => item.text} title="" className={STEER_ICON_BUTTON} />
+            </HoverTip>
+          )}
+          <HoverTip label="Rewind is unavailable while working" align="end">
+            <button type="button" aria-label="Rewind" disabled className={STEER_ICON_BUTTON}>
+              <RewindIcon className="h-3.5 w-3.5" />
+            </button>
+          </HoverTip>
+          <HoverTip
+            label={editBlocked ? "Clear the message box first to edit this message" : "Cancel and edit message"}
+            align="end"
           >
-            <CloseIcon className="h-3.5 w-3.5" />
-          </button>
+            <button
+              type="button"
+              aria-label="Cancel and edit message"
+              disabled={editBlocked}
+              className={STEER_ICON_BUTTON}
+              onClick={() => actions.withdraw(item.id)}
+            >
+              <CloseIcon className="h-3.5 w-3.5" />
+            </button>
+          </HoverTip>
           <button
             type="button"
-            title="Interrupt the reply and send this now"
-            className="rounded-md px-1.5 py-0.5 hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
+            aria-label="Interrupt the reply and send this now"
+            className="ml-0.5 rounded-md px-2 py-1 text-[var(--muted)] hover:bg-[color-mix(in_srgb,var(--fg)_10%,transparent)] hover:text-[var(--fg)]"
             onClick={actions.sendNow}
           >
             Send now
