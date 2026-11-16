@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { designFileUrl } from "../../lib/artifacts";
 import type { CanvasBoard } from "../../lib/designCanvas";
-import { PlayIcon } from "../icons";
+import { ChevronRightIcon, PlayIcon } from "../icons";
 import type { Scheme } from "./useCanvasLook";
 import type { PlayMode } from "./useBoardPlay";
 
@@ -57,11 +57,50 @@ export function BoardPlayButton({ live, onPlay, onEdit }: { live: boolean; onPla
   );
 }
 
-/** One board filling the panel, fitted and centred at no more than its real size; Edit or Escape
- * goes back to the canvas. */
-export function FullScreenPlayer({ board, threadId, version, scheme, onClose }: { board: CanvasBoard; threadId: string; version: string; scheme: Scheme; onClose: () => void }) {
+/** Left, right, Page Up and Page Down step through the boards while one fills the panel. A key
+ * pressed inside the board's own page stays with the page: its frame keeps the event. */
+function useStepKeys(onStep: (delta: number) => void) {
+  const step = useRef(onStep);
+  useEffect(() => {
+    step.current = onStep;
+  });
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+      if (e.key === "ArrowRight" || e.key === "PageDown") step.current(1);
+      else if (e.key === "ArrowLeft" || e.key === "PageUp") step.current(-1);
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", down);
+    return () => window.removeEventListener("keydown", down);
+  }, []);
+}
+
+const STEP = "flex h-7 w-7 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--panel-bg)] hover:bg-[var(--card-bg)] disabled:opacity-40 disabled:hover:bg-[var(--panel-bg)]";
+
+/** One board filling the panel, fitted and centred at no more than its real size, with the boards
+ * before and after it a step away; Edit or Escape goes back to the canvas. */
+export function FullScreenPlayer({
+  board,
+  at,
+  threadId,
+  version,
+  scheme,
+  onStep,
+  onClose,
+}: {
+  board: CanvasBoard;
+  at: { index: number; count: number };
+  threadId: string;
+  version: string;
+  scheme: Scheme;
+  onStep: (delta: number) => void;
+  onClose: () => void;
+}) {
   const area = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  useStepKeys(onStep);
   useEffect(() => {
     const el = area.current;
     if (!el) return;
@@ -75,6 +114,19 @@ export function FullScreenPlayer({ board, threadId, version, scheme, onClose }: 
     <div className="absolute inset-0 z-30 flex flex-col bg-[var(--card-bg)]" data-testid="board-full-screen">
       <div className="flex h-11 shrink-0 items-center gap-2 px-3">
         <span className="min-w-0 flex-1 truncate text-sm text-[var(--muted)]">{board.title}</span>
+        {at.count > 1 && (
+          <>
+            <button type="button" aria-label="Previous board" title="Previous board (Left)" className={STEP} disabled={at.index <= 0} onClick={() => onStep(-1)}>
+              <ChevronRightIcon className="h-4 w-4 rotate-180" />
+            </button>
+            <span className="min-w-10 text-center text-xs tabular-nums text-[var(--muted)]" data-testid="board-position">
+              {at.index + 1} / {at.count}
+            </span>
+            <button type="button" aria-label="Next board" title="Next board (Right)" className={STEP} disabled={at.index >= at.count - 1} onClick={() => onStep(1)}>
+              <ChevronRightIcon className="h-4 w-4" />
+            </button>
+          </>
+        )}
         <button type="button" className="h-7 rounded-md border border-[var(--border)] bg-[var(--panel-bg)] px-2.5 text-xs font-medium hover:bg-[var(--card-bg)]" onClick={onClose}>
           Edit
         </button>

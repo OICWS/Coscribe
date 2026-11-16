@@ -6,7 +6,7 @@ import { useDockPanel } from "../dock/dockContext";
 import { FullScreenPlayer } from "./BoardPlay";
 import { BoardInspector } from "./BoardInspector";
 import { BoardTextEditor } from "./BoardTextEditor";
-import { boardExports } from "./boardExports";
+import { boardExports, saveBoard } from "./boardExports";
 import type { MenuEntry } from "../slides/SlideMenu";
 import { BoardFrame, CanvasTools, CanvasZoom, NoteCard } from "./CanvasParts";
 import { CanvasVariables } from "./CanvasVariables";
@@ -140,6 +140,7 @@ function CanvasBoards({
   play,
   inspector,
   onPress,
+  onDownload,
 }: {
   canvas: Canvas;
   threadId: string;
@@ -150,6 +151,7 @@ function CanvasBoards({
   play: ReturnType<typeof useBoardPlay>;
   inspector: ReturnType<typeof useBoardInspector>;
   onPress: (e: ReactPointerEvent, id: string) => void;
+  onDownload: (board: Canvas["boards"][number]) => void;
 }) {
   return canvas.boards.map((board) => (
     <BoardFrame
@@ -164,6 +166,7 @@ function CanvasBoards({
       onPress={(e) => onPress(e, board.id)}
       onPlay={(mode) => play.play(board.id, mode)}
       onEdit={() => play.edit(board.id)}
+      onDownload={() => onDownload(board)}
       onPick={inspector.open ? inspector.pick : undefined}
       onEditText={inspector.editTextAt}
       highlight={inspector.open && selected === board.id && !inspector.editingText ? inspector.element?.box : null}
@@ -277,6 +280,7 @@ export function DesignCanvasPanel({ threadId, path, refreshKey, onFileChanged }:
                     setSelected(id);
                     edit.start(e, "board", id);
                   }}
+                  onDownload={(board) => saveBoard(threadId, path, board, "png", look.scheme, setProblem)}
                 />
               )}
               {canvas?.notes.map((note) => (
@@ -294,7 +298,7 @@ export function DesignCanvasPanel({ threadId, path, refreshKey, onFileChanged }:
               ))}
             </div>
           </div>
-          {play.fullBoard && <FullScreenPlayer board={play.fullBoard} threadId={threadId} version={version} scheme={look.scheme} onClose={play.stop} />}
+          {play.fullBoard && <FullScreenPlayer board={play.fullBoard} at={play.fullAt} onStep={play.step} threadId={threadId} version={version} scheme={look.scheme} onClose={play.stop} />}
         </div>
         {inspector.open && <InspectorAside canvas={canvas} selected={selected} inspector={inspector} />}
       </div>

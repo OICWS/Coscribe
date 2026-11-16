@@ -9,15 +9,17 @@ const tile = (text: string) => (
   </span>
 );
 
+export function saveBoard(threadId: string, canvasPath: string, board: CanvasBoard, kind: BoardExport, scheme: "light" | "dark", onProblem: (problem: string | null) => void) {
+  const stem = `${(canvasPath.split(/[\\/]/).pop() ?? canvasPath).replace(/\.design\.json$/i, "")}-${board.id}`;
+  onProblem(null);
+  exportBoard(threadId, board.path, kind, scheme, stem).catch((e: unknown) => onProblem(e instanceof Error ? e.message : String(e)));
+}
+
 /** The canvas file menu's Export: the selected artboard (or the first) as a PNG, or as an icon when
  * it is square, in the scheme the canvas shows. */
 export function boardExports(threadId: string, canvasPath: string, board: CanvasBoard | null, scheme: "light" | "dark", onProblem: (problem: string | null) => void): MenuEntry[] {
   if (!board) return [];
-  const stem = `${(canvasPath.split(/[\\/]/).pop() ?? canvasPath).replace(/\.design\.json$/i, "")}-${board.id}`;
-  const run = (kind: BoardExport) => {
-    onProblem(null);
-    exportBoard(threadId, board.path, kind, scheme, stem).catch((e: unknown) => onProblem(e instanceof Error ? e.message : String(e)));
-  };
+  const run = (kind: BoardExport) => saveBoard(threadId, canvasPath, board, kind, scheme, onProblem);
   const square = board.width === board.height;
   return [
     {
