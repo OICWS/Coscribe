@@ -9,14 +9,14 @@ if (!process.versions.electron) {
   try {
     const result = require('node:child_process').spawnSync(electron,
       [...(process.platform === 'linux' ? ['--no-sandbox', '--disable-gpu'] : []), __filename],
-      { stdio: 'inherit', timeout: 60000, env: { ...process.env, COSCRIBE_NATIVE_DATA: scratch } });
+      { stdio: 'inherit', timeout: 80000, env: { ...process.env, COSCRIBE_NATIVE_DATA: scratch } });
     if (result.error) console.error(result.error.message);
     process.exitCode = result.status === 0 ? 0 : 1;
   } finally { rmSync(scratch, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); }
 } else {
   const { app, BrowserWindow } = electron;
   app.setPath('userData', process.env.COSCRIBE_NATIVE_DATA);
-  const timeout = setTimeout(() => { console.error('Native popup test timed out'); app.exit(1); }, 50000);
+  const timeout = setTimeout(() => { console.error('Native popup test timed out'); app.exit(1); }, 70000);
   app.whenReady().then(async () => {
     const panel = require('../dist/main/browserPanel');
     const { cdpFor } = require('../dist/main/browserCdp');
@@ -242,6 +242,26 @@ if (!process.versions.electron) {
     await command('paste', { tab_id: background.id, ref: 'textbox "Plain"' });
     assert.equal(await background.view.webContents.executeJavaScript('plain.value'), 'Bold words');
     assert.notEqual(require('electron').clipboard.readText(), 'Bold words', "the person's clipboard is left alone");
+    await background.view.webContents.loadURL('data:text/html,' + encodeURIComponent(
+      '<table><tr><td>Layout</td><td><table><thead><tr><th>Invoice No.</th><th colspan="2">Amount</th></tr></thead><tbody id="body"></tbody></table></td></tr></table>' +
+      '<div id="pager"></div><div id="feed" style="height:80px;overflow:auto"><ul id="items"></ul></div>' +
+      '<script>let page=0;function show(){page++;body.innerHTML=[1,2,3].map(n=>`<tr><td>INV-${page}${n}</td><td>${n}0</td><td>CNY</td></tr>`).join("");' +
+      'pager.innerHTML=`<button ${page===3?"disabled":""} onclick="show()">Next</button>`}show();' +
+      'let more=0;function grow(){for(let i=0;i<5;i++){const li=document.createElement("li");li.style.height="30px";li.textContent="Item "+(more++);items.append(li)}}grow();' +
+      'feed.onscroll=()=>{if(more<15&&feed.scrollTop+feed.clientHeight>=feed.scrollHeight-5)grow()}</script>'));
+    const nextRef = /button "Next" \[ref=(e\d+)\]/.exec((await command('snapshot', { tab_id: background.id })).result.text)[1];
+    const paged = await command('save_table', { tab_id: background.id, table: 'Invoice No.', next_page: nextRef, max_pages: 10, timeout: 2 });
+    assert.equal(paged.ok, true, paged.error);
+    assert.deepEqual(paged.result.header, ['Invoice No.', 'Amount', 'Amount'], 'a header spanning two columns names both');
+    assert.equal(paged.result.pages, 3, 'a Next button re-drawn on every page is found again');
+    assert.deepEqual(paged.result.rows.map(r => r[0]), ['INV-11', 'INV-12', 'INV-13', 'INV-21', 'INV-22', 'INV-23', 'INV-31', 'INV-32', 'INV-33']);
+    assert.deepEqual(paged.result.rows[0], ['INV-11', '10', 'CNY'], 'a cell spanning two columns fills both');
+    assert.equal(paged.result.stopped, 'end');
+    const scrolled = await command('save_table', { tab_id: background.id, table: 'Item 0', scroll: true, max_pages: 10, timeout: 1 });
+    assert.equal(scrolled.ok, true, scrolled.error);
+    assert.equal(scrolled.result.rows.length, 15, 'a list that loads more on scrolling is read to its end');
+    const pdf = await command('save_pdf', { tab_id: background.id });
+    assert.equal(Buffer.from(pdf.result.pdf, 'base64').subarray(0, 4).toString(), '%PDF');
     panel.closeTab(background.id);
     const permissions = require('../dist/main/browserPermissions');
     permissions.registerBrowserPermissionHandlers(window);
@@ -263,7 +283,7 @@ if (!process.versions.electron) {
     await secondPermission;
     panel.destroyBrowserPanel();
     clearTimeout(timeout);
-    console.log('Native browser checks passed: popups, bounds, overlays, background input, form events, every field kind, page steps, waiting for one of several texts, drag and drop, file drop, the AI clipboard, takeover and permission queue.');
+    console.log('Native browser checks passed: popups, bounds, overlays, background input, form events, every field kind, page steps, waiting for one of several texts, drag and drop, file drop, the AI clipboard, tables across pages and scrolling, page PDF, takeover and permission queue.');
     app.exit(0);
   }).catch(error => { console.error(error); app.exit(1); });
 }

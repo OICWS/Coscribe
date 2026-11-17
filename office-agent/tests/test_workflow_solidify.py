@@ -363,6 +363,8 @@ BROWSER_CONVERSATION = [
     ToolMessage('Clicked button "Close".', tool_call_id="c3"),
     _call("c4", "browser_click", {"ref": "e999"}),
     ToolMessage('Clicked button "Execute".', tool_call_id="c4"),
+    _call("c5", "browser_save_table", {"table": "Invoice", "next_page": "e320", "path": "a.csv"}),
+    ToolMessage("Saved 30 rows from 3 pages to a.csv.", tool_call_id="c5"),
 ]
 
 
@@ -376,6 +378,8 @@ def test_the_transcript_names_browser_elements_instead_of_page_refs() -> None:
     # Not in any snapshot: the element the step reported acting on.
     assert '"ref": "button \\"Execute\\""' in transcript
     assert '"e322"' not in transcript
+    # A table's Next button is found again on each page by its description too.
+    assert '"next_page": "checkbox \\"Open items\\""' in transcript
 
 
 def test_check_draft_refuses_a_bare_page_ref_in_a_browser_step() -> None:
@@ -405,6 +409,19 @@ def test_check_draft_refuses_a_bare_page_ref_in_a_browser_step() -> None:
     )
     problems = check_draft(workflow, {"browser_click": browser_click})
     assert len(problems) == 1 and problems[0].startswith("step 1: ref 'e322'")
+
+
+def test_check_draft_refuses_a_bare_page_ref_for_a_next_button() -> None:
+    def browser_save_table(table: str = "", next_page: str = "") -> str:
+        """Save."""
+        return ""
+
+    workflow = parse_workflow(
+        {"steps": [{"id": "a", "kind": "tool", "title": "A", "tool": "browser_save_table",
+                    "args": {"table": "Invoice", "next_page": "e12"}}]}
+    )  # fmt: skip
+    problems = check_draft(workflow, {"browser_save_table": browser_save_table})
+    assert len(problems) == 1 and problems[0].startswith("step 1: next_page 'e12'")
 
 
 async def test_a_revision_never_unmarks_a_step_that_cant_be_taken_back() -> None:

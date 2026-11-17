@@ -28,12 +28,14 @@ from typing import Any
 from ...needs_permission import SITE_MARK, NeedsPermission
 from ...runtime import NetworkGuard, tool_metadata
 from .._workspace import WorkspaceScope
+from ._browser_data import data_tools
 from ._browser_forms import form_tools, wait_for_any
 from ._browser_moves import move_tools
 from ._browser_pages import (
     DEFAULT_TIMEOUT,
     DEFAULT_WAIT,
     NAVIGATE_TIMEOUT,
+    free_path,
     snapshot_tool,
     tab_tools,
     wait_limit,
@@ -192,18 +194,6 @@ _BROWSER_RUNS: dict[str, asyncio.Lock] = {}
 def browser_run(thread_id: str) -> asyncio.Lock:
     """The lock a run that drives the browser holds in `thread_id`'s tabs."""
     return _BROWSER_RUNS.setdefault(thread_id, asyncio.Lock())
-
-
-def _free_path(folder: Path, name: str) -> Path:
-    """`name` in `folder`, as "name (1).ext" and so on if taken -- the way
-    the browser names a download that would overwrite a file."""
-    path = folder / name
-    stem, suffix = Path(name).stem, Path(name).suffix
-    n = 1
-    while path.exists():
-        path = folder / f"{stem} ({n}){suffix}"
-        n += 1
-    return path
 
 
 SCREENSHOT_FOLDER = "screenshots"
@@ -510,7 +500,7 @@ def _waiting_tools(
                 folder.mkdir(parents=True, exist_ok=True)
                 for item in done:
                     source = scope.resolve(str(item.get("path")))
-                    target = _free_path(folder, str(item.get("name") or source.name))
+                    target = free_path(folder, str(item.get("name") or source.name))
                     shutil.move(str(source), target)
                     item["path"] = scope.relative(target)
             files = [str(item.get("path")) for item in done]
@@ -632,6 +622,7 @@ def build_browser_tools(
     fns = {
         **form_tools(call),
         **move_tools(call),
+        **data_tools(call, scope),
         **tab_tools(call),
         **snapshot_tool(call),
         **_navigation_tools(call),
@@ -664,6 +655,10 @@ def build_browser_tools(
     return (
         [tool_metadata(f, risk_category="READ", category="browser") for f in read]
         + [tool_metadata(f, risk_category="EXTERNAL", category="browser") for f in act]
+        + [
+            tool_metadata(fns[name], risk_category="WRITE_LOCAL", category="browser")
+            for name in ("browser_save_table", "browser_save_pdf")
+        ]
         # Arbitrary script with the user's logins behind it.
         + [tool_metadata(fns["browser_evaluate"], risk_category="EXEC", category="browser")]
     )

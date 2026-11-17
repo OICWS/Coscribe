@@ -51,6 +51,11 @@ describe("plain words for a step", () => {
       "Drags “Card” onto “Done”",
     );
     expect(plainDetail(tool("browser_copy", {}), inputs)).toBe("Copies the selected text");
+    expect(plainDetail(tool("browser_save_table", { path: "orders.csv", next_page: 'button "Next"' }), inputs)).toBe(
+      "Saves the table across its pages to “orders.csv”",
+    );
+    expect(plainDetail(tool("browser_save_table", {}), inputs)).toBe("Reads the table");
+    expect(plainDetail(tool("browser_save_pdf", { path: "page.pdf" }), inputs)).toBe("Saves the page as “page.pdf”");
     expect(plainDetail(tool("browser_paste", { ref: 'textbox "Notes"' }), inputs)).toBe("Pastes into “Notes”");
     expect(plainDetail(tool("browser_wait_for", { any_of: ["Saved", "Error"] }), inputs)).toBe(
       "Waits for the page to show “Saved” or “Error”",

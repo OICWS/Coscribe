@@ -714,6 +714,10 @@ any words you wrote on it.
 - **Drag, drop and copy**: the AI drags cards, rows and sliders, drops your files onto a "drop
   files here" area, and copies and pastes between pages with a clipboard of its own, keeping
   formatting in rich text editors. Your own clipboard is never read or changed.
+- **Data out**: the AI saves a table or list from a page as a CSV (Excel opens it; the
+  spreadsheet tools turn it into a workbook), following a Next button or loading more by
+  scrolling to gather every page, and saves a page as a PDF. In a workflow, the next step reads
+  the file it wrote; a file already there is kept and the new one gets a new name.
 - **Stop** also reaches the desktop app: the step in progress there (a
   wait can run for an hour) ends at once, and steps that conversation
   had queued are dropped.
