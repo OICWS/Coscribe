@@ -25,7 +25,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from ...needs_permission import SITE_MARK, NeedsPermission
+from ...needs_permission import SIGN_IN_MARK, SITE_MARK, NeedsPermission
 from ...runtime import NetworkGuard, tool_metadata
 from .._workspace import WorkspaceScope
 from ._browser_data import data_tools
@@ -57,6 +57,28 @@ _UNAVAILABLE = (
 
 class BrowserUnavailableError(ValueError):
     pass
+
+
+_SIGN_IN_ASKS = {
+    "password": "asks you to sign in",
+    "code": "asks for a verification code",
+    "captcha": "asks you to prove you're a person",
+}
+
+
+def _sign_in(marked: str) -> NeedsPermission:
+    """ "password:example.com Why the step failed" -> the request to the person: only they can
+    sign in, and a step retried or healed against the form would only fail again."""
+    head, _, failed = marked.partition(" ")
+    reason, _, host = head.partition(":")
+    asks = _SIGN_IN_ASKS.get(reason, "asks you to sign in")
+    return NeedsPermission(
+        "sign_in",
+        host,
+        f"{host} {asks}. Do that on its page in the browser panel, then continue.",
+        f"(The step failed: {failed}) Ask the person to do it in the browser panel, then try "
+        "again; never type a password or code yourself unless they give it to you for that.",
+    )
 
 
 class BrowserHost:
@@ -163,6 +185,8 @@ class BrowserHost:
                     f"{host} isn't a site this workflow is allowed to use. "
                     "Allow it for the workflow, or name it in a step.",
                 )
+            if error.startswith(SIGN_IN_MARK):
+                raise _sign_in(error[len(SIGN_IN_MARK) :])
             raise ValueError(error)
         result = reply.get("result")
         return result if isinstance(result, dict) else {}

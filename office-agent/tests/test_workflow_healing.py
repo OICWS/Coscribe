@@ -346,3 +346,20 @@ async def test_a_heal_after_a_send_may_send_again_only_with_a_person(tmp_path: P
     # Reading the page is free; the click that may send again waited for the person's yes.
     assert runner.log() == ["ran browser_snapshot", "ran browser_click"]
     assert 'if the page refused what "Click Submit" sent' in runner.requests[0].task
+
+
+def test_a_heal_drags_and_copies_but_pastes_or_saves_only_for_its_own_step() -> None:
+    from coscribe.workflows.healing import stand_in
+
+    def tools_for(tool: str) -> list[str]:
+        step = {"id": "s", "kind": "tool", "title": "S", "tool": tool, "args": {"ref": "x"}}
+        workflow = parse_workflow({"autonomy": "self_healing", "steps": [step]})
+        agent = stand_in(workflow, workflow.steps[0], {}, "gone")
+        assert agent is not None
+        return list(agent.tools or [])
+
+    clicking = tools_for("browser_click")
+    assert {"browser_drag", "browser_copy"} <= set(clicking)
+    assert not {"browser_paste", "browser_save_table", "browser_save_pdf"} & set(clicking)
+    for own in ("browser_paste", "browser_save_table", "browser_save_pdf"):
+        assert own in tools_for(own)

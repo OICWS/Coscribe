@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { StepRecord, WorkflowStep } from "../../types/workflow";
-import type { WorkflowPause } from "../../types/wire.gen";
+import type { WorkflowPause, WorkflowPermission } from "../../types/wire.gen";
 import { AgentCallRequest } from "./AgentActivity";
 import { primaryButton, secondaryButton } from "../../lib/formStyles";
 import { AskCard, type AnswerValues, WaitCard } from "./PauseCards";
@@ -47,7 +47,24 @@ export function WaitingCard({
   );
 }
 
-/** An approval step, a folder or site the run wasn't allowed, or an agent's call. */
+const PERMISSION_WORDS: Record<WorkflowPermission["kind"], { asks: string; then: string; yes: string; no: string }> = {
+  folder: {
+    asks: "It needs to change a folder it hasn’t been allowed",
+    then: "Allowing adds it to this workflow for this and later runs. The step then runs again from its start.",
+    yes: "Allow and continue",
+    no: "Don’t allow",
+  },
+  site: {
+    asks: "It needs to open a website it hasn’t been allowed",
+    then: "Allowing adds it to this workflow for this and later runs.",
+    yes: "Allow and continue",
+    no: "Don’t allow",
+  },
+  // `then` comes from the run: what the site asks for (a sign-in, a code, a captcha).
+  sign_in: { asks: "The site needs you", then: "", yes: "Done, continue", no: "Stop the run" },
+};
+
+/** An approval step, a folder or site the run wasn't allowed, the person's sign-in, or an agent's call. */
 function ApprovalBody({
   step,
   record,
@@ -71,16 +88,10 @@ function ApprovalBody({
     <>
       {permission ? (
         <div className="flex flex-col gap-1" data-testid="permission-request">
-          <p className="text-sm font-medium">
-            {permission.kind === "folder"
-              ? "It needs to change a folder it hasn’t been allowed"
-              : "It needs to open a website it hasn’t been allowed"}
-          </p>
+          <p className="text-sm font-medium">{PERMISSION_WORDS[permission.kind].asks}</p>
           <p className="break-all text-sm">{permission.target}</p>
           <p className="text-[13px] text-[var(--muted)]">
-            {permission.kind === "folder"
-              ? "Allowing adds it to this workflow for this and later runs. The step then runs again from its start."
-              : "Allowing adds it to this workflow for this and later runs."}
+            {permission.kind === "sign_in" ? permission.message : PERMISSION_WORDS[permission.kind].then}
           </p>
         </div>
       ) : (
@@ -103,10 +114,10 @@ function ApprovalBody({
       )}
       <div className="flex flex-wrap gap-2">
         <button type="button" disabled={busy} className={`${primaryButton} whitespace-nowrap`} onClick={() => answer(true)}>
-          {permission || call ? "Allow and continue" : "Approve and continue"}
+          {permission ? PERMISSION_WORDS[permission.kind].yes : call ? "Allow and continue" : "Approve and continue"}
         </button>
         <button type="button" disabled={busy} className={`${secondaryButton} whitespace-nowrap`} onClick={() => answer(false)}>
-          {permission || call ? "Don’t allow" : "Decline"}
+          {permission ? PERMISSION_WORDS[permission.kind].no : call ? "Don’t allow" : "Decline"}
         </button>
       </div>
       {error && (

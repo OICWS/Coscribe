@@ -262,6 +262,22 @@ if (!process.versions.electron) {
     assert.equal(scrolled.result.rows.length, 15, 'a list that loads more on scrolling is read to its end');
     const pdf = await command('save_pdf', { tab_id: background.id });
     assert.equal(Buffer.from(pdf.result.pdf, 'base64').subarray(0, 4).toString(), '%PDF');
+    const login = require('node:http').createServer((req, res) => {
+      res.setHeader('content-type', 'text/html');
+      res.end(req.url === '/settings'
+        ? '<title>Settings</title><h1>Change password</h1><input type="password" aria-label="New">'
+        : '<title>Sign in</title><h1>Sign in</h1><input aria-label="User"><input type="password" aria-label="Password"><button>Sign in</button>');
+    });
+    await new Promise(resolve => login.listen(0, '127.0.0.1', resolve));
+    const origin = `http://127.0.0.1:${login.address().port}`;
+    await background.view.webContents.loadURL(`${origin}/login`);
+    const signIn = await command('click', { tab_id: background.id, ref: 'button "Export"', timeout: 1, saved_workflow: true, allowed_sites: ['127.0.0.1'] });
+    assert.equal(signIn.ok, false);
+    assert.match(signIn.error, /^NEEDS_SIGN_IN:password:127\.0\.0\.1 /, 'a step that fails on a sign-in form asks for the person');
+    await background.view.webContents.loadURL(`${origin}/settings`);
+    const settings = await command('click', { tab_id: background.id, ref: 'button "Export"', timeout: 1, saved_workflow: true, allowed_sites: ['127.0.0.1'] });
+    assert.doesNotMatch(settings.error, /NEEDS_SIGN_IN/, 'a password field on a settings page is no sign-in');
+    login.close();
     panel.closeTab(background.id);
     const permissions = require('../dist/main/browserPermissions');
     permissions.registerBrowserPermissionHandlers(window);
@@ -283,7 +299,7 @@ if (!process.versions.electron) {
     await secondPermission;
     panel.destroyBrowserPanel();
     clearTimeout(timeout);
-    console.log('Native browser checks passed: popups, bounds, overlays, background input, form events, every field kind, page steps, waiting for one of several texts, drag and drop, file drop, the AI clipboard, tables across pages and scrolling, page PDF, takeover and permission queue.');
+    console.log('Native browser checks passed: popups, bounds, overlays, background input, form events, every field kind, page steps, waiting for one of several texts, drag and drop, file drop, the AI clipboard, tables across pages and scrolling, page PDF, sign-in handover, takeover and permission queue.');
     app.exit(0);
   }).catch(error => { console.error(error); app.exit(1); });
 }

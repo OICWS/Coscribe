@@ -114,6 +114,8 @@ check clicks with real input (xdotool under Xvfb, or Windows itself).
   no refs), across pages by a Next button found again by its description on each page, or as it
   loads more on scrolling; a page prints to PDF (`browserAgentData.ts`). The server writes both
   files.
+  A step that fails on a page showing a sign-in form, a one-time-code field or a captcha comes
+  back marked (`browserAgentSignIn.ts`), and the server asks the person instead of failing.
   Downloads belong to the conversation even if their tab
   closes. Only untouched blank download popups close automatically after a
   successful download; explicit completed-download cleanup retains user-touched, visible,

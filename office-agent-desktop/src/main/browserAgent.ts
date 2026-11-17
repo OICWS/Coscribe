@@ -19,6 +19,7 @@ import { commandTab, pinCommand, runTabCommand, withTab, listTabs, popupDownload
 import { type FormField, type PageStep, fillForm, runSteps, waitForAny } from "./browserAgentForms";
 import { runMove, dropOnto } from "./browserAgentMoves";
 import { runData } from "./browserAgentData";
+import { signInNeeded } from "./browserAgentSignIn";
 import { pageAgent } from "./browserAgentPage";
 import { locate, scrollArea, splitRef } from "./browserAgentLocate";
 import { type Step, browserOperation, handleBrowserControl, cancelFrameOff, enqueue, running, runningSteps, scheduleFrameOff, stepContext } from "./browserAgentSteps";
@@ -580,7 +581,7 @@ async function run(command: Command): Promise<Record<string, unknown>> {
     } else result = await act(command, tab, wc, cdp, args);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    throw new Error(cdp.dialog ? `${message} ${describeDialog(cdp.dialog)}` : message);
+    throw new Error(cdp.dialog ? `${message} ${describeDialog(cdp.dialog)}` : await signInNeeded(cdp, wc, message));
   } finally {
     cdp.stepEnded = Date.now();
   }
