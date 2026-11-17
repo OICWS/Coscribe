@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { ThreadIdContext } from "./components/threadContext";
-import { HomeGreeting } from "./components/EmptyState";
+import { HomeGreeting, InvestigationHandoff } from "./components/EmptyState";
 import { ChatLog } from "./components/ChatLog";
 import { Composer, type ComposerSendPayload } from "./components/Composer";
 import { ContextRing } from "./components/ContextRing";
@@ -67,6 +67,7 @@ import {
   type WorkflowDraftResult,
 } from "./lib/rest";
 import { useRunningBackgroundTasks } from "./lib/useRunningBackgroundTasks";
+import { useInvestigationHandoff } from "./lib/useInvestigationHandoff";
 import { shortLabel } from "./lib/threadStatus";
 import {
   goToThread,
@@ -96,9 +97,9 @@ type ConversationPanel = Exclude<PanelId, "task">;
 
 function App() {
   const [state, dispatch] = useReducer(chatReducer, initialChatState);
-  const [investigatingThread, setInvestigatingThread] = useState<string | null>(null);
   const socketRef = useRef<AgentSocket | null>(null);
   const [threadId, setThreadId] = useState(resolveThreadId);
+  const [handingOff, beginInvestigationHandoff] = useInvestigationHandoff(threadId, state.items.length > 0);
   useSessionSignals(threadId, state.turnInFlight, state.items);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsCategory, setSettingsCategory] = useState<SettingsCategory | undefined>(undefined);
@@ -405,7 +406,7 @@ function App() {
     state.items.length === 0 &&
     state.olderItems.length === 0 &&
     !state.turnInFlight &&
-    investigatingThread !== threadId &&
+    !handingOff &&
     !isScheduledTaskThread &&
     threadWorkflow === null;
   const taskPanelShown =
@@ -541,7 +542,7 @@ function App() {
   const investigateWorkflow = async (task: ScheduledTask, run: ScheduledRun, model: string | null) => {
     const result = await investigateWorkflowRun(task.trigger_id, run.run_id, model);
     if ("error" in result) return result.error;
-    setInvestigatingThread(result.thread_id);
+    beginInvestigationHandoff(result.thread_id);
     goToThread(result.thread_id);
     return null;
   };
@@ -942,6 +943,8 @@ function App() {
                   onStop={() => stopWorkflow(threadTask, threadRun)}
                   onInvestigate={(model) => investigateWorkflow(threadTask, threadRun, model)}
                 />
+              ) : navMode === "create" && handingOff ? (
+                <InvestigationHandoff error={state.error} />
               ) : navMode === "create" && onHome ? (
                 // A new conversation: greeting and message box centered in the page.
                 <div className="flex min-h-0 flex-1 flex-col items-center justify-center pb-[6vh]">

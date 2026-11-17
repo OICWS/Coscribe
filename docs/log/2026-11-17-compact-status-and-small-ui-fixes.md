@@ -7,7 +7,7 @@ Why: manual compaction took many seconds without feedback, and several small con
 - Make the Stop action a solid square icon-only button in Simple and Detailed workflow run views.
 - Make Scheduled sort menus match their trigger width and center the sidebar View all action.
 - Align Sessions title, optional group, environment and last-active columns; long names truncate with native hover titles.
-- Use a quiet neutral starting label instead of the old blue gradient welcome view when opening an investigation conversation.
+- Show a dedicated "Handing off to AI…" screen while a failed run is being handed to its investigation conversation. No welcome greeting or composer appears during the handoff; the existing conversation view takes over when the first message arrives.
 
 ## Not verified
 - UI behavior in the running desktop app, including an actual workflow investigation.
