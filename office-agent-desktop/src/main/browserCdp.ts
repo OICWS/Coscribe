@@ -86,6 +86,8 @@ export class TabCdp {
   chooser: FileChooser | null = null;
   /** What a page started dragging while drags were intercepted (browserAgentDrag.ts). */
   dragData: unknown = null;
+  /** Page pixels per pixel of the last picture the model saw (browserAgentLook.ts). */
+  lookScale = 1;
   /** Where the conversation driving this tab wants its downloads. */
   downloadDir = "";
   /** The conversation (or workflow run) whose steps last drove this tab. */

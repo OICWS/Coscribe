@@ -38,8 +38,8 @@ from .agent_step import AgentCall, CallGuard
 from .permissions import URL_TOOLS, granted_by
 
 # Acting on the page in front of it; no scripts on the page (browser_evaluate), no uploads, and
-# no new pages unless the failed step itself opened one. Dragging moves what is on the page and
-# copying only reads it.
+# no new pages unless the failed step itself opened one. Dragging moves what is on the page,
+# copying only reads it, and a click by position reaches what has no ref (a canvas, an icon).
 _PAGE_TOOLS = (
     "browser_snapshot",
     "browser_click",
@@ -54,6 +54,9 @@ _PAGE_TOOLS = (
     "browser_steps",
     "browser_drag",
     "browser_copy",
+    "browser_read_text",
+    "browser_screenshot",
+    "browser_click_at",
 )
 # These enter what the run's clipboard holds or write a file: a heal may use one only to redo
 # its own step, like a step that opens a page.
@@ -247,7 +250,8 @@ def stand_in(
         "The page has probably changed since the workflow was saved. Take a browser_snapshot, "
         "then do what the step meant on the page as it is now -- the same action on the "
         "element that now plays that part (a renamed field, a moved button; close a banner "
-        "or pop-up in the way).\n\n"
+        "or pop-up in the way). What the snapshot doesn't name, such as a canvas or an icon "
+        "without a label, browser_screenshot shows and browser_click_at clicks.\n\n"
         "If the page isn't yet where the step can act, because the form changed before it, "
         "you may first bring it there, and only by these means:\n"
         "- fill a field the page now requires, with a value from the item above, never one "

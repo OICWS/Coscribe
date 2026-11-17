@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..tools import ScheduledRun, ScheduledTrigger
+from ..workflow_spec import RememberStep
 from ..workflows import parse_workflow, walk
 
 
@@ -71,6 +72,27 @@ def _files_line(files: list[dict[str, Any]]) -> str:
     return f"{shape} · saved to {first['path']}{more}"
 
 
+def _remembered_line(trigger: ScheduledTrigger, run: ScheduledRun) -> str:
+    """The values a run kept for the next one, by their labels: what a task that watches a page
+    found ("Price: ¥89"). Dates and lists are bookkeeping, not news."""
+    if trigger.workflow is None:
+        return ""
+    workflow = parse_workflow(trigger.workflow)
+    labels = {m.name: m.label or m.name for m in workflow.memory if m.type in ("text", "number")}
+    remembers = {p.step.id for p in walk(workflow.every_step()) if isinstance(p.step, RememberStep)}
+    kept = [
+        s.get("output")
+        for s in run.steps
+        if s.get("status") == "done" and s.get("step_id") in remembers
+    ]
+    parts = [
+        f"{labels[out['name']]}: {out.get('value')}"
+        for out in kept
+        if isinstance(out, dict) and out.get("name") in labels
+    ]
+    return "".join(f" · {part}" for part in parts)
+
+
 def run_event(
     trigger: ScheduledTrigger, run: ScheduledRun, investigation: str | None = None
 ) -> BackgroundEvent | None:
@@ -82,7 +104,7 @@ def run_event(
     if run.quiet:
         return None
     if run.status == "completed":
-        body = f"Completed{_files_line(run.files)}"
+        body = f"Completed{_remembered_line(trigger, run)}{_files_line(run.files)}"
     elif run.status == "failed":
         body = f"Failed -- {run.error or 'it stopped before it finished'}"
         if investigation:

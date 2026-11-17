@@ -14,6 +14,7 @@ import type { Command } from "./browserAgent";
 import type { PageActions } from "./browserAgentForms";
 import { locate, splitRef } from "./browserAgentLocate";
 import type { TabCdp } from "./browserCdp";
+import { pageText } from "./browserAgentLook";
 
 type Point = { x: number; y: number };
 
@@ -99,7 +100,7 @@ export function pageClipboard(action: string, args: Record<string, unknown>): un
   return { rich: document.execCommand("insertHTML", false, String(args.html)) };
 }
 
-/** drag, copy and paste; null for any other action. */
+/** drag, a click by position, copy and paste; null for any other action. */
 export async function runMove(page: PageActions, command: Command, wc: WebContents, cdp: TabCdp, args: Record<string, unknown>, waitS: number): Promise<Record<string, unknown> | null> {
   if (command.action === "drag") {
     const from = await locate(cdp, args.ref);
@@ -113,6 +114,17 @@ export async function runMove(page: PageActions, command: Command, wc: WebConten
     const how = await dragBetween(cdp, from, to);
     await page.settle(wc);
     return { element: from.element, onto, how };
+  }
+  if (command.action === "click_at") {
+    // In the picture's pixels, as the model saw it.
+    const point = { x: Number(args.x) * cdp.lookScale, y: Number(args.y) * cdp.lookScale };
+    const { width, height } = await cdp.agent<{ width: number; height: number }>(cdp.main, "viewport", {}, pageText);
+    if (!(point.x >= 0 && point.y >= 0 && point.x < width && point.y < height)) {
+      throw new Error(`(${args.x}, ${args.y}) is outside the page's visible part -- take a new browser_screenshot.`);
+    }
+    await page.click(wc, cdp, point, args.double ? 2 : 1);
+    await page.settle(wc);
+    return { x: args.x, y: args.y };
   }
   if (command.action === "copy") {
     const { key, inner } = splitRef(args.ref);

@@ -30,6 +30,7 @@ from ...runtime import NetworkGuard, tool_metadata
 from .._workspace import WorkspaceScope
 from ._browser_data import data_tools
 from ._browser_forms import form_tools, wait_for_any
+from ._browser_look import look_tools
 from ._browser_moves import move_tools
 from ._browser_pages import (
     DEFAULT_TIMEOUT,
@@ -647,6 +648,7 @@ def build_browser_tools(
         **form_tools(call),
         **move_tools(call),
         **data_tools(call, scope),
+        **look_tools(call),
         **tab_tools(call),
         **snapshot_tool(call),
         **_navigation_tools(call),
@@ -663,6 +665,8 @@ def build_browser_tools(
         fns["browser_wait_for"],
         fns["browser_tabs"],
         fns["browser_copy"],
+        fns["browser_screenshot"],
+        fns["browser_read_text"],
     ]
     act = [
         fns["browser_click"],
@@ -670,6 +674,7 @@ def build_browser_tools(
         fns["browser_fill_form"],
         fns["browser_steps"],
         fns["browser_drag"],
+        fns["browser_click_at"],
         fns["browser_paste"],
         fns["browser_press_key"],
         fns["browser_select_option"],

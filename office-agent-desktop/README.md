@@ -116,6 +116,8 @@ check clicks with real input (xdotool under Xvfb, or Windows itself).
   files.
   A step that fails on a page showing a sign-in form, a one-time-code field or a captcha comes
   back marked (`browserAgentSignIn.ts`), and the server asks the person instead of failing.
+  The model can see the visible part of a page as a picture and click a point of it, scaled
+  back to page pixels, and read the text by a label (`browserAgentLook.ts`).
   Downloads belong to the conversation even if their tab
   closes. Only untouched blank download popups close automatically after a
   successful download; explicit completed-download cleanup retains user-touched, visible,
