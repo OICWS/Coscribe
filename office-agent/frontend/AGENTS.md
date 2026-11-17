@@ -53,6 +53,10 @@ runs against a live `coscribe-web` and `npm run dev` (nightly in `.github/workfl
 a stub model, not a required check; `slides.spec.ts` builds a deck into the server's workspace
 (`COSCRIBE_E2E_WORKSPACE`) and has the stub model read it). `office-agent/tests/test_wire_ts.py` covers the generator.
 
+The desktop smoke also checks Context popover overlap through the full application and its
+native browser (`office-agent-desktop/scripts/browser-ui.mjs`); `lib/useOverlayOverlap.ts`
+keeps uncovered native pages live.
+
 ## Verify by hand
 The desktop-only paths (native folder picker, browser panel bounds, detached panel windows) in
 the Electron app on Windows; layout and the dock in a real window; a reconnect after the server
