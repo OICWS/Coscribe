@@ -78,6 +78,7 @@ const Markdown = lazy(() => import("../Markdown").then((m) => ({ default: m.Mark
 export function TurnView({
   turn,
   isLastTurn = false,
+  compactAfter = false,
   onApprove,
   onAnswerPlan,
   onOpenPlan,
@@ -90,6 +91,7 @@ export function TurnView({
 }: {
   turn: Turn;
   isLastTurn?: boolean;
+  compactAfter?: boolean;
   /** This turn is the one a reply is still being generated for. */
   live?: boolean;
   onApprove: (id: string, approved: boolean, scope?: "task") => void;
@@ -110,7 +112,7 @@ export function TurnView({
     finalAgentItem !== null && userItem !== null && !finalAgentItem.streaming && !turn.hasPendingApproval;
 
   return (
-    <div className="group/turn flex flex-col gap-3">
+    <div className="group/turn relative flex flex-col gap-3">
       {/* groupToolRuns wraps every tool or approval, even a run of one, so neither reaches here bare. */}
       {entries.map((entry) =>
         entry.kind === "tool_run" ? (
@@ -142,7 +144,7 @@ export function TurnView({
       <FileCards items={calls} />
       <SystemCards items={calls} />
       {canFooter && (
-        <div className="-mt-2 flex items-center gap-0.5 self-start opacity-0 transition-opacity group-hover/turn:opacity-100">
+        <div className={`${compactAfter ? "absolute left-0 top-full mt-1" : "-mt-2"} flex items-center gap-0.5 self-start opacity-0 transition-opacity group-hover/turn:opacity-100`}>
           <CopyButton
             getText={() => splitStopped(finalAgentItem.text).said}
             title="Copy reply"
@@ -218,7 +220,7 @@ export function LogItemView({
   }
 
   if (item.text.startsWith("Context compacted")) return (
-    <div role="note" className="w-full py-1 text-center text-xs text-[var(--muted)]">{item.text}</div>
+    <div role="note" className="w-full px-7 py-1 text-center text-xs text-[var(--muted)]">{item.text}</div>
   );
 
   return (
