@@ -564,6 +564,7 @@ function FolderBriefs({
 }) {
   const [rereading, setRereading] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
   const reread = (path: string) => {
     setRereading(path);
     setFailed(null);
@@ -571,25 +572,40 @@ function FolderBriefs({
       .catch(() => setFailed(path))
       .finally(() => setRereading(null));
   };
+  const several = folders.length > 1;
+  // The brief is written for the model, so it stays folded: the notes need the person's yes and
+  // are shown either way.
   return (
-    <ContextGroup label={folders.length > 1 ? "About these folders" : "About this folder"}>
-      <div className="flex flex-col gap-2.5">
-        {folders.map((folder) => {
-          const busy = folder.writing || rereading === folder.path;
-          return (
-            <div key={folder.path} className="text-[13px] leading-relaxed">
-              {folders.length > 1 && (
-                <div className="mb-0.5 flex items-center gap-1.5 font-medium" title={folder.path}>
-                  <FolderIcon className="h-3.5 w-3.5 shrink-0 text-[var(--muted)]" />
-                  <span className="truncate">{folder.name}</span>
-                </div>
-              )}
-              {busy && !folder.brief ? (
+    <div className="flex flex-col gap-2.5">
+      <button
+        type="button"
+        aria-expanded={open}
+        className="-mx-1 flex items-center gap-1 rounded px-1 text-left text-[13px] text-[var(--muted)] hover:text-[var(--fg)]"
+        onClick={() => setOpen((v) => !v)}
+        title="Coscribe reads only the file names, so it knows how the folder is laid out without listing it in every conversation."
+      >
+        {open ? <ChevronDownIcon className="h-3.5 w-3.5 shrink-0" /> : <ChevronRightIcon className="h-3.5 w-3.5 shrink-0" />}
+        {several ? "What Coscribe knows about these folders" : "What Coscribe knows about this folder"}
+      </button>
+      {folders.map((folder) => {
+        const busy = folder.writing || rereading === folder.path;
+        if (!open && !folder.workspace) return null;
+        return (
+          <div key={folder.path} className="text-[13px] leading-relaxed">
+            {several && (
+              <div className="mb-0.5 flex items-center gap-1.5 font-medium" title={folder.path}>
+                <FolderIcon className="h-3.5 w-3.5 shrink-0 text-[var(--muted)]" />
+                <span className="truncate">{folder.name}</span>
+              </div>
+            )}
+            {open &&
+              (busy && !folder.brief ? (
                 <p className="text-[var(--muted)]">Reading the file names…</p>
               ) : (
                 folder.brief && <p>{folder.brief}</p>
-              )}
-              {folder.workspace && <FolderNotes notes={folder.workspace} onAccept={() => onAcceptNotes(folder.path)} />}
+              ))}
+            {folder.workspace && <FolderNotes notes={folder.workspace} onAccept={() => onAcceptNotes(folder.path)} />}
+            {open && (
               <div className="mt-1 flex items-center gap-2 text-xs text-[var(--muted)]">
                 <button
                   type="button"
@@ -602,11 +618,11 @@ function FolderBriefs({
                 </button>
                 {failed === folder.path && <span className="text-[var(--danger)]">Couldn't read it again</span>}
               </div>
-            </div>
-          );
-        })}
-      </div>
-    </ContextGroup>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
