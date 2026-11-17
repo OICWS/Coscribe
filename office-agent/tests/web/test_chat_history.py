@@ -63,9 +63,16 @@ def test_compact_note_ends_with_the_open_tasks(
             history = ws.receive_json()
 
     note = history["entries"][0]["text"]
-    assert "the summary" in note
-    assert "2: Write the summary memo" in note
-    assert "Read sales.xlsx" not in note
+    assert note.startswith("Context compacted")
+    assert "the summary" not in str(history)
+    assert "Write the summary memo" not in str(history)
+    assert [e["text"] for e in history["older_entries"]] == [
+        "turn a",
+        "reply a",
+        "turn b",
+        "reply b",
+    ]
+    assert (tmp_path / "state" / "t_compact_tasks.title").read_text(encoding="utf-8") == "turn a"
 
 
 def test_load_older_messages_across_two_compactions_reveals_each_epoch_once(
@@ -127,8 +134,8 @@ def test_load_older_messages_across_two_compactions_reveals_each_epoch_once(
     # accumulated list starts with, same as the live conversation would
     # have shown it during epoch two itself.
     first_texts = [(e["kind"], e.get("text")) for e in first_older["entries"]]
-    assert first_texts[0][0] == "user"
-    assert "first summary" in first_texts[0][1]
+    assert first_texts[0][0] == "system"
+    assert first_texts[0][1].startswith("Context compacted")
     assert first_texts[1:] == [
         ("user", "turn two-a"),
         ("agent", "reply two-a"),
@@ -151,14 +158,40 @@ def test_load_older_messages_across_two_compactions_reveals_each_epoch_once(
     assert limits and all(limit == 1 for limit in limits)
 
 
+def test_automatic_compaction_notifies_without_ending_the_turn(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    model = FakeToolCallingChatModel(responses=[AIMessage(content="reply") for _ in range(20)])
+    events = []
+    with _client_lg(tmp_path, monkeypatch, model, auto_compact_threshold=0.00001) as client:
+        with client.websocket_connect("/ws/auto_compact") as ws:
+            ws.receive_json()
+            ws.receive_json()
+            for i in range(5):
+                ws.send_json({"type": "user_message", "text": f"original {i} " * 200})
+                events.extend(_receive_until(ws, "tasks_changed"))
+        with client.websocket_connect("/ws/auto_compact") as ws:
+            ws.receive_json()
+            replay = ws.receive_json()
+    compacted = [event for event in events if event["type"] == "compacted"]
+    assert compacted and all(event["automatic"] for event in compacted)
+    assert all(event["tokens_saved"] >= 0 for event in compacted)
+    assert "Here is a summary" not in str(replay)
+    assert replay["older_entries"]
+
+
 def test_compacted_history_can_be_reloaded_after_switching_threads(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     image = "data:image/png;base64,aGVsbG8="
-    model = FakeToolCallingChatModel(responses=[
-        AIMessage(content="picture reply"), AIMessage(content="second reply"),
-        AIMessage(content="summary"), AIMessage(content="other conversation"),
-    ])
+    model = FakeToolCallingChatModel(
+        responses=[
+            AIMessage(content="picture reply"),
+            AIMessage(content="second reply"),
+            AIMessage(content="summary"),
+            AIMessage(content="other conversation"),
+        ]
+    )
     with _client_lg(tmp_path, monkeypatch, model) as client:
         titles = {"original": "My original conversation", "repair": "Look into: Export"}
         for thread_id, title in titles.items():
@@ -188,9 +221,44 @@ def test_compacted_history_can_be_reloaded_after_switching_threads(
 
         with client.websocket_connect("/ws/original") as ws:
             ws.receive_json()
-            assert ws.receive_json()["has_older"] is True
+            replay = ws.receive_json()
+            assert replay["has_older"] is True
+            assert replay["older_entries"] == original
             ws.send_json({"type": "load_older_messages"})
-            assert ws.receive_json()["entries"] == original
+            assert ws.receive_json()["entries"] == []
+
+
+def test_edit_and_rewind_after_compaction_use_visible_message_indices(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    model = FakeToolCallingChatModel(
+        responses=[AIMessage(content=text) for text in ("a", "b", "private summary", "c", "d")]
+    )
+    with _client_lg(tmp_path, monkeypatch, model) as client:
+        with client.websocket_connect("/ws/compact_edit") as ws:
+            ws.receive_json()
+            ws.receive_json()
+            for text in ("original a", "original b"):
+                ws.send_json({"type": "user_message", "text": text})
+                _receive_until(ws, "tasks_changed")
+            ws.send_json({"type": "user_message", "text": "/compact"})
+            assert ws.receive_json()["type"] == "compacted"
+            ws.send_json({"type": "user_message", "text": "next"})
+            _receive_until(ws, "tasks_changed")
+            ws.send_json({"type": "edit_message", "index": 0, "text": "amended"})
+            events = _receive_until(ws, "tasks_changed")
+            assert any(event.get("text") == "d" for event in events)
+            ws.send_json({"type": "rewind_message", "index": 0})
+            assert ws.receive_json()["type"] == "rewound"
+        with client.websocket_connect("/ws/compact_edit") as ws:
+            ws.receive_json()
+            replay = ws.receive_json()
+    assert "private summary" not in str(replay)
+    assert replay["entries"][0]["kind"] == "system"
+    assert [e["text"] for e in replay["older_entries"] if e["kind"] == "user"] == [
+        "original a",
+        "original b",
+    ]
 
 
 def test_edit_message_rejects_anything_but_the_latest_message(

@@ -68,12 +68,10 @@ export function RunStatus({ threadId, turnInFlight, compaction, serverStartedAt,
     return () => clearInterval(interval);
   }, [compaction]);
 
-  if (compaction) {
+  if (compaction?.status === "running") {
     return (
       <span className="min-w-0 truncate text-xs tabular-nums text-[var(--muted)]" data-testid="compact-status">
-        {compaction.status === "running"
-          ? `Compacting conversation… ${formatElapsed(now - compaction.startedAt)}`
-          : compaction.text}
+        {`Compacting conversation… ${formatElapsed(now - compaction.startedAt)}`}
       </span>
     );
   }

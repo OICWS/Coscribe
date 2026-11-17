@@ -8,9 +8,11 @@ from __future__ import annotations
 
 import asyncio
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
 from langchain_core.messages import HumanMessage, RemoveMessage, SystemMessage
+from langchain_core.messages.utils import count_tokens_approximately
 from langgraph.graph import END
 from langgraph.graph.message import REMOVE_ALL_MESSAGES
 
@@ -36,6 +38,13 @@ if TYPE_CHECKING:
 # messages" unconditionally on *every* thread, including a brand new one
 # with nothing to load).
 _COMPACT_NOTE_PREFIX = "[Earlier conversation compacted to save context.]"
+
+
+def _is_compaction_summary(message: Any) -> bool:
+    return isinstance(message, HumanMessage) and (
+        str(message.content).startswith(_COMPACT_NOTE_PREFIX)
+        or message.additional_kwargs.get("lc_source") == "summarization"
+    )
 
 
 async def close_orphaned_tool_calls(agent: Any, config: dict[str, Any]) -> bool:
@@ -131,22 +140,36 @@ class ConversationHistory:
         # connect; see _COMPACT_NOTE_PREFIX's own comment for why this
         # check is safe and accurate in practice.
         first_message = messages[0] if messages else None
-        has_older = isinstance(first_message, HumanMessage) and str(
-            first_message.content
-        ).startswith(_COMPACT_NOTE_PREFIX)
+        has_older = _is_compaction_summary(first_message)
         entries = serialize_history_for_ws_lg(messages)
+        older_entries = (
+            serialize_history_for_ws_lg(await self._take_older_messages()) if has_older else None
+        )
         prompt = self._host.active_run_prompt
         if prompt is not None and not any(
             e["kind"] == "user" and e["text"] == prompt for e in entries
         ):
             entries.append({"kind": "user", "text": prompt})
-        await websocket.send_json({"type": "history", "entries": entries, "has_older": has_older})
+        replay: dict[str, Any] = {"type": "history", "entries": entries, "has_older": has_older}
+        if older_entries is not None:
+            replay["older_entries"] = older_entries
+        await websocket.send_json(replay)
         # The replay replaces what the tab shows; a turn still waiting on a
         # question or approval (a run's, an investigation's) asks this tab too.
         for event in list(self._host._approvals.open_prompts.values()):
             await websocket.send_json(event)
 
     async def load_older_messages(self, websocket: EventSink) -> None:
+        older = await self._take_older_messages()
+        await websocket.send_json(
+            {
+                "type": "older_messages",
+                "entries": serialize_history_for_ws_lg(older),
+                "has_more": bool(older),
+            }
+        )
+
+    async def _take_older_messages(self) -> list[Any]:
         """Reveal the preceding compacted epoch from versioned checkpoints.
 
         Within an epoch, earlier message IDs are a subset of the current ones. The
@@ -158,8 +181,13 @@ class ConversationHistory:
         what the client displays. Read checkpoints individually because LangGraph eagerly
         consumes each history request while SQLite holds the shared saver lock.
         """
+        current_state = await self._host.lg_agent.aget_state(
+            self._history_boundary_config or self._host.config
+        )
+        epoch = list(current_state.values.get("messages", [])) if current_state.values else []
+        if not epoch or not _is_compaction_summary(epoch[0]):
+            return []
         if self._history_boundary_config is None or self._history_known_message_ids is None:
-            current_state = await self._host.lg_agent.aget_state(self._host.config)
             self._history_boundary_config = current_state.config
             self._history_known_message_ids = (
                 {m.id for m in current_state.values.get("messages", [])}
@@ -185,8 +213,15 @@ class ConversationHistory:
             boundary = snapshot.config
             snapshot_messages = list(snapshot.values.get("messages", [])) if snapshot.values else []
             snapshot_ids = {m.id for m in snapshot_messages}
-            if not snapshot_ids <= self._history_known_message_ids:
-                older = snapshot_messages
+            # Edits and rewinds remove IDs too; only crossing the summary's own
+            # checkpoint boundary may reveal archived conversation messages.
+            if (
+                epoch[0].id not in snapshot_ids
+                and not snapshot_ids <= self._history_known_message_ids
+            ):
+                older = [
+                    m for m in snapshot_messages if m.id not in self._history_known_message_ids
+                ]
                 found_config = snapshot.config
                 break
 
@@ -200,36 +235,14 @@ class ConversationHistory:
         # An empty result is the one unambiguous "nothing left" signal;
         # the frontend is expected to stop offering it only then, not on
         # has_more alone.
-        await websocket.send_json(
-            {
-                "type": "older_messages",
-                "entries": serialize_history_for_ws_lg(older),
-                "has_more": bool(older),
-            }
-        )
+        return older
 
     async def _handle_compact(self, websocket: EventSink) -> None:
-        """Summarize this thread's checkpointed message history down to one
-        note, freeing up context -- the runtime_lg counterpart to
-        ChatSession's /compact. Reuses runtime/compaction.py's own
-        COMPACT_INSTRUCTIONS (not a duplicate prompt) but can't reuse
-        run_compaction/compact_state themselves: those work on RunState's
-        plain dict messages, not LangGraph's checkpointed BaseMessage list,
-        and collapse via FileStateStore.save_state rather than
-        aupdate_state's RemoveMessage(id=REMOVE_ALL_MESSAGES) sentinel
-        (verified live against real Gemini before wiring this in -- see
-        runtime_lg/README.md).
+        """Replace model context with a summary, retaining checkpoints for display.
 
-        No system message to re-add after clearing: verified empirically
-        that create_agent never stores one in checkpointed state at all
-        (system_prompt is injected fresh at call time), unlike the old
-        runtime's RunState.messages, which always keeps one at index 0.
-
-        The pending-approval check below predates _turn_lock and is mostly
-        unreachable through ordinary concurrent messaging now that the lock
-        serializes every turn -- see _handle_clear's docstring for the one
-        remaining window it still guards (a fresh process restart racing
-        resume_after_reconnect for the lock)."""
+        The graph injects the system prompt on each call, so it need not be restored.
+        Check pending approvals in case a fresh process has not resumed its interrupt.
+        """
         state = await self._host.lg_agent.aget_state(self._host.config)
         messages = list(state.values.get("messages", [])) if state.values else []
         if len(messages) < 4:
@@ -260,9 +273,33 @@ class ConversationHistory:
         tasks = TaskToolkit(self._host.thread_id, self._host.settings.state_dir).open_tasks_note()
         if tasks:
             note = f"{note}\n\n{tasks}"
+        title_path = Path(self._host.settings.state_dir) / f"{self._host.thread_id}.title"
+        if not title_path.exists():
+            first_user = next(
+                (e["text"] for e in serialize_history_for_ws_lg(messages) if e["kind"] == "user"),
+                "",
+            )
+            if first_user:
+                title_path.write_text(first_user[:200], encoding="utf-8")
+        tokens_saved = max(
+            0,
+            count_tokens_approximately(messages)
+            - count_tokens_approximately([HumanMessage(content=note)]),
+        )
         await self._host.lg_agent.aupdate_state(
             self._host.config,
-            {"messages": [RemoveMessage(id=REMOVE_ALL_MESSAGES), HumanMessage(content=note)]},
+            {
+                "messages": [
+                    RemoveMessage(id=REMOVE_ALL_MESSAGES),
+                    HumanMessage(
+                        content=note,
+                        additional_kwargs={
+                            "lc_source": "summarization",
+                            "coscribe_compaction": {"tokens_saved": tokens_saved},
+                        },
+                    ),
+                ]
+            },
         )
         after_state = await self._host.lg_agent.aget_state(self._host.config)
         after = len(after_state.values.get("messages", [])) if after_state.values else 0
@@ -276,6 +313,7 @@ class ConversationHistory:
                 "before": len(messages),
                 "after": after,
                 "elapsed_ms": elapsed_ms,
+                "tokens_saved": tokens_saved,
             },
         )
         await websocket.send_json(
@@ -284,6 +322,7 @@ class ConversationHistory:
                 "before": len(messages),
                 "after": after,
                 "elapsed_ms": elapsed_ms,
+                "tokens_saved": tokens_saved,
             }
         )
 
@@ -379,7 +418,12 @@ class ConversationHistory:
             return
 
         human_positions = [
-            i for i, m in enumerate(messages) if isinstance(m, HumanMessage) and not is_steer(m)
+            i
+            for i, m in enumerate(messages)
+            if isinstance(m, HumanMessage)
+            and not is_steer(m)
+            and m.additional_kwargs.get("lc_source") != "summarization"
+            and not str(m.content).startswith(_COMPACT_NOTE_PREFIX)
         ]
         if index < 0 or index >= len(human_positions):
             await websocket.send_json(
@@ -431,7 +475,12 @@ class ConversationHistory:
             return
 
         human_positions = [
-            i for i, m in enumerate(messages) if isinstance(m, HumanMessage) and not is_steer(m)
+            i
+            for i, m in enumerate(messages)
+            if isinstance(m, HumanMessage)
+            and not is_steer(m)
+            and m.additional_kwargs.get("lc_source") != "summarization"
+            and not str(m.content).startswith(_COMPACT_NOTE_PREFIX)
         ]
         if index < 0 or index >= len(human_positions):
             await websocket.send_json(

@@ -10,6 +10,12 @@ saver holds a shared lock while reading it, delaying unrelated conversations too
   multiple-compaction pagination are preserved.
 - Replaying current history resets the pagination cursor, so switching away and returning
   can load the same original messages again instead of retaining an exhausted cursor.
+- Reopening preloads the preceding segment. Model summaries become short token-saving
+  notices without horizontal rules; private summary/task text is not sent to the UI.
+- Archive lookup crosses the compaction marker's boundary, rather than treating IDs
+  removed by edits or rewinds as archived messages. Retained user-turn counts keep new
+  edits and rewinds aligned after automatic compaction. An unset title is preserved before
+  manual compaction, and sidebar previews exclude internal summary text.
 - Regression tests verify bounded underlying SQLite history queries, repeated compactions,
   switching to another conversation, returning, and preservation of uploaded image data,
   thread IDs and explicitly saved titles. Both new checks fail against the old implementation.

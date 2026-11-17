@@ -186,7 +186,6 @@ export function ChatLog({
             onPptxShapePicked={() => {}}
           />
         ))}
-        {olderItems.length > 0 && <div className="border-b border-[var(--border)]" />}
         {turns.map((turn, i) => (
           <TurnView
             key={turn.id}

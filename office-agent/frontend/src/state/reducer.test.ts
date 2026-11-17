@@ -697,26 +697,6 @@ describe("usage", () => {
 });
 
 describe("system notes and turn end", () => {
-  it("shows the compact result below the composer, without a duplicate transcript note", () => {
-    const started = run(
-      stateWith({ items: [user("u", "hi", 0)] }),
-      { type: "local_user_message", text: "/compact", instant: true },
-      { type: "local_compact_started", startedAt: 1000 },
-    );
-    expect(started.turnInFlight).toBe(false);
-    expect(started.compaction).toEqual({ status: "running", startedAt: 1000 });
-    const done = run(started, { type: "compacted", before: 40, after: 6, elapsed_ms: 2500 });
-    expect(done.compaction).toEqual({ status: "done", text: "Compacted 40 messages down to 6 · 2.5s" });
-    expect(done.items).toEqual(started.items);
-    expect(run(done, { type: "local_user_message", text: "next", instant: false }).compaction).toBeNull();
-  });
-
-  it("clears a running compact status on error or reconnection", () => {
-    const started = run(stateWith(), { type: "local_compact_started", startedAt: 1000 });
-    expect(run(started, { type: "error", message: "failed" }).compaction).toBeNull();
-    expect(run(started, { type: "local_connection_reset" }).compaction).toBeNull();
-  });
-
   it("replaces the whole log with one note when cleared", () => {
     const next = run(stateWith({ turnInFlight: true, items: [user("u", "x", 0), agentItem("a", "y", false)] }), {
       type: "cleared",

@@ -91,7 +91,12 @@ class ToolEntry(TypedDict):
     is_error: bool
 
 
-HistoryEntry = UserEntry | SteerEntry | AgentEntry | ToolEntry
+class SystemEntry(TypedDict):
+    kind: Literal["system"]
+    text: str
+
+
+HistoryEntry = UserEntry | SteerEntry | AgentEntry | ToolEntry | SystemEntry
 
 
 class HistoryEvent(TypedDict):
@@ -102,6 +107,7 @@ class HistoryEvent(TypedDict):
     # Whether the checkpoint starts with a compaction note, i.e. whether
     # load_older_messages has anything to find.
     has_older: bool
+    older_entries: NotRequired[list[HistoryEntry]]
 
 
 class OlderMessagesEvent(TypedDict):
@@ -439,6 +445,9 @@ class CompactedEvent(TypedDict):
     before: int
     after: int
     elapsed_ms: int
+    tokens_saved: NotRequired[int]
+    automatic: NotRequired[bool]
+    retained_user_turns: NotRequired[int]
 
 
 class ClearedEvent(TypedDict):

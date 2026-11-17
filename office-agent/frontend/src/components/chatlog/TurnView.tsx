@@ -217,6 +217,10 @@ export function LogItemView({
     );
   }
 
+  if (item.text.startsWith("Context compacted")) return (
+    <div role="note" className="w-full py-1 text-center text-xs text-[var(--muted)]">{item.text}</div>
+  );
+
   return (
     <div className="self-start text-xs text-[var(--muted)]">
       {item.text}

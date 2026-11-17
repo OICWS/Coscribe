@@ -80,21 +80,28 @@ export interface ToolEntry {
   is_error: boolean;
 }
 
+export interface SystemEntry {
+  kind: "system";
+  text: string;
+}
+
 export type HistoryEntry =
   | UserEntry
   | SteerEntry
   | AgentEntry
-  | ToolEntry;
+  | ToolEntry
+  | SystemEntry;
 
 /** The thread's checkpointed messages, replayed once after connecting. */
 export interface HistoryEvent {
   type: "history";
-  entries: (UserEntry | SteerEntry | AgentEntry | ToolEntry)[];
+  entries: (UserEntry | SteerEntry | AgentEntry | ToolEntry | SystemEntry)[];
   /**
    * Whether the checkpoint starts with a compaction note, i.e. whether
    * load_older_messages has anything to find.
    */
   has_older: boolean;
+  older_entries?: (UserEntry | SteerEntry | AgentEntry | ToolEntry | SystemEntry)[];
 }
 
 /**
@@ -104,7 +111,7 @@ export interface HistoryEvent {
  */
 export interface OlderMessagesEvent {
   type: "older_messages";
-  entries: (UserEntry | SteerEntry | AgentEntry | ToolEntry)[];
+  entries: (UserEntry | SteerEntry | AgentEntry | ToolEntry | SystemEntry)[];
   has_more: boolean;
 }
 
@@ -437,6 +444,9 @@ export interface CompactedEvent {
   before: number;
   after: number;
   elapsed_ms: number;
+  tokens_saved?: number;
+  automatic?: boolean;
+  retained_user_turns?: number;
 }
 
 export interface ClearedEvent {

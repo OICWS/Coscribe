@@ -1,4 +1,5 @@
 import { testProgress } from "./workflowTest";
+import { formatTokenCount } from "../lib/format";
 import type { DraftTestProgress } from "../types/workflow";
 import { splitAttachedFiles } from "../lib/attachments";
 import { pendingSteer, requeuedNotes, type NewSteer, type SteerItem } from "./steerItems";
@@ -94,7 +95,6 @@ export type LogItem =
 
 export type CompactionState =
   | { status: "running"; startedAt: number }
-  | { status: "done"; text: string }
   | null;
 
 export interface ChatState {
@@ -130,6 +130,7 @@ export interface ChatState {
   cacheStats: { cacheReadTokens: number; inputTokens: number; hitRate: number } | null;
   turnInFlight: boolean;
   compaction: CompactionState;
+  retainedUserTurns: number;
   /** When the running turn started (ms since the epoch), as the server said on connect. */
   turnStartedAt: number | null;
   /** The message the person will probably send next, offered in the message box after a reply. */
@@ -195,6 +196,7 @@ export const initialChatState: ChatState = {
   cacheStats: null,
   turnInFlight: false,
   compaction: null,
+  retainedUserTurns: 0,
   turnStartedAt: null,
   suggestion: null,
   saveOffer: null,
@@ -232,10 +234,6 @@ let nextId = 0;
 function genId(): string {
   nextId += 1;
   return `item-${nextId}`;
-}
-
-function formatDuration(elapsedMs: number): string {
-  return elapsedMs < 1000 ? `${elapsedMs}ms` : `${(elapsedMs / 1000).toFixed(1)}s`;
 }
 
 /** A message's text and, when it came with files, their paths (the note naming them is not shown). */
@@ -277,6 +275,7 @@ export function historyToItems(entries: HistoryEntry[]): LogItem[] {
     if (entry.kind === "steer") {
       return { id: genId(), kind: "steer", text: entry.text, status: "delivered", images: entry.images, files: entry.files };
     }
+    if (entry.kind === "system") return { id: genId(), kind: "system", text: entry.text };
     if (entry.tool_name === "exit_plan_mode") {
       const result = typeof entry.result === "string" ? entry.result : "";
       const plan = String(entry.arguments.plan ?? "");
@@ -398,11 +397,12 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return { ...state, compaction: { status: "running", startedAt: action.startedAt } };
 
     case "local_user_message":
+      if (action.text.trim().toLowerCase() === "/compact") return { ...state, error: null, suggestion: null };
       return {
         ...state,
         // Instant commands (/plan, /clear, ...) run no turn, so there is nothing to stop.
         turnInFlight: action.instant ? state.turnInFlight : true,
-        compaction: action.text.trim().toLowerCase() === "/compact" ? state.compaction : null,
+        compaction: null,
         suggestion: null, saveOffer: null,
         error: null,
         items: [
@@ -411,7 +411,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
             id: genId(),
             kind: "user",
             text: action.text,
-            turnIndex: countUserItems(state.items),
+            turnIndex: state.retainedUserTurns + countUserItems(state.items),
             images: action.images,
             files: action.files,
           },
@@ -518,7 +518,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         workflowTest: null,
         historyReceived: true,
+        retainedUserTurns: 0,
         olderStatus: action.has_older ? "idle" : "none",
+        olderItems: historyToItems(action.older_entries ?? []).map(item => item.kind === "user" ? { ...item, turnIndex: -1 } : item),
         items: historyToItems(action.entries),
       };
     }
@@ -527,30 +529,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       if (action.entries.length === 0) {
         return { ...state, olderStatus: "no_more" };
       }
-      // turnIndex: -1 -- these are read-only replay, never rendered with
-      // onEditMessage wired (see ChatLog.tsx's older-history section), so
-      // the value is inert; -1 rather than a real count just makes that
-      // "not a real turn index" explicit rather than accidentally
-      // plausible-looking.
-      const revealed: LogItem[] = action.entries.map((entry) => {
-        if (entry.kind === "user") {
-          return { id: genId(), kind: "user", text: entry.text, turnIndex: -1, images: entry.images, files: entry.files } as const;
-        }
-        if (entry.kind === "steer") {
-          return { id: genId(), kind: "steer", text: entry.text, status: "delivered", images: entry.images, files: entry.files } as const;
-        }
-        if (entry.kind === "agent") {
-          return { id: genId(), kind: "agent", text: entry.text, streaming: false } as const;
-        }
-        return {
-          id: genId(),
-          kind: "tool",
-          toolName: entry.tool_name,
-          arguments: entry.arguments,
-          result: entry.result,
-          isError: entry.is_error,
-        } as const;
-      });
+      const revealed = historyToItems(action.entries).map(item => item.kind === "user" ? { ...item, turnIndex: -1 } : item);
       return {
         ...state,
         olderItems: [...revealed, ...state.olderItems],
@@ -677,16 +656,19 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "compacted":
       return {
         ...state,
-        turnInFlight: false,
-        compaction: {
-          status: "done",
-          text: `Compacted ${action.before} messages down to ${action.after} · ${formatDuration(action.elapsed_ms)}`,
-        },
+        turnInFlight: action.automatic ? state.turnInFlight : false,
+        compaction: null,
+        retainedUserTurns: action.retained_user_turns ?? 0,
+        olderItems: [...state.olderItems, ...closeStreamingBubble(state.items)],
+        items: [{ id: genId(), kind: "system", text: "Context compacted" +
+          (action.tokens_saved === undefined ? "" : ` · ~${formatTokenCount(action.tokens_saved)} tokens saved`) }],
       };
 
     case "cleared":
       return {
         ...state,
+        compaction: null,
+        retainedUserTurns: 0,
         turnInFlight: false,
         items: [
           {

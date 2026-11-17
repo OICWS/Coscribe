@@ -540,8 +540,10 @@ function App() {
   };
 
   const investigateWorkflow = async (task: ScheduledTask, run: ScheduledRun, model: string | null) => {
+    const origin = window.location.href;
     const result = await investigateWorkflowRun(task.trigger_id, run.run_id, model);
     if ("error" in result) return result.error;
+    if (window.location.href !== origin) return null;
     beginInvestigationHandoff(result.thread_id);
     goToThread(result.thread_id);
     return null;
@@ -625,9 +627,7 @@ function App() {
     showChat();
   };
 
-  /** Sends a bare user_message with no chat-log bubble -- for commands the
-   * UI issues on the user's behalf (the mode pill toggling /plan or
-   * /accept-edits), mirroring app.js's sendRaw(). */
+  // Mode commands change state without adding a chat bubble.
   const sendRaw = (text: string) => { if (state.compaction?.status !== "running") socketRef.current?.send({ type: "user_message", text }); };
 
   const onSend = (payload: ComposerSendPayload) => {
