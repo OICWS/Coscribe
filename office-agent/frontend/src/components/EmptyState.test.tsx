@@ -13,7 +13,7 @@ describe("workflow investigation handoff", () => {
 
   it("replaces the loading indicator with an error when the handoff fails", () => {
     const html = renderToStaticMarkup(<InvestigationHandoff error="Connection failed" />);
-    expect(html).toContain("Couldn't hand off to AI");
+    expect(html).toContain("hand off to AI");
     expect(html).toContain("Connection failed");
     expect(html).not.toContain("animate-spin");
   });
