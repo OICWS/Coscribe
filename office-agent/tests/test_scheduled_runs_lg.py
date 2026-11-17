@@ -120,6 +120,11 @@ def test_a_notification_says_what_the_run_produced_or_where_it_stopped() -> None
         "Coscribe is looking into it."
     )
     assert waiting_event is not None and waiting_event.body == "Waiting for you at Send the report?"
+    signing = _run("needs_approval", steps=[{"step_id": "ok", "status": "waiting", "permission":
+                   {"kind": "sign_in", "target": "erp.example", "message": "m"}}])  # fmt: skip
+    signing_event = run_event(_task([signing]), signing)
+    assert signing_event is not None
+    assert signing_event.body == "Needs you to sign in to erp.example at Send the report?"
     assert run_event(_task([]), _run("stopped")) is None
 
 

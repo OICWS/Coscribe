@@ -718,6 +718,10 @@ any words you wrote on it.
   spreadsheet tools turn it into a workbook), following a Next button or loading more by
   scrolling to gather every page, and saves a page as a PDF. In a workflow, the next step reads
   the file it wrote; a file already there is kept and the new one gets a new name.
+- **Sign-in handover**: when a step fails because the site now shows a sign-in form, asks for a
+  verification code or a captcha, a workflow run waits and notifies you instead of failing or
+  trying to click past it; you do it on that page in the browser panel and press Done, and the
+  step runs again. In a conversation the AI asks you the same way.
 - **Stop** also reaches the desktop app: the step in progress there (a
   wait can run for an hour) ends at once, and steps that conversation
   had queued are dropped.

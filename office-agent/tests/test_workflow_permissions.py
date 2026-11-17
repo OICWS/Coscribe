@@ -145,6 +145,51 @@ async def test_a_step_that_needs_a_folder_waits_then_carries_on_once_allowed(
     assert outcome.values["saved"] == "saved"
 
 
+async def test_a_browser_step_on_a_sign_in_form_waits_for_the_person_not_a_heal(
+    tmp_path: Path,
+) -> None:
+    from coscribe.tools.web.browser import BrowserHost, build_browser_tools
+
+    class _Host(BrowserHost):
+        signed_in = False
+
+        def call(
+            self, action: str, args: dict[str, Any], thread_id: str, timeout: float = 30
+        ) -> dict[str, Any]:
+            if not self.signed_in:
+                raise NeedsPermission("sign_in", "erp.example", "erp.example asks you to sign in.")
+            return {"element": 'button "Export"'}
+
+    async def no_heal(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("a sign-in is the person's, not an agent's")
+
+    host = _Host()
+    tools = {t.__name__: t for t in build_browser_tools("run-1", host, saved_workflow=True)}
+    records: list[StepRecord] = []
+    workflow = parse_workflow(
+        {"autonomy": "self_healing", "steps": [
+            {"id": "export", "kind": "tool", "title": "Export", "tool": "browser_click",
+             "args": {"ref": 'button "Export"'}}]}
+    )  # fmt: skip
+    ctx = StepContext(
+        tools=tools,
+        workspace_root=tmp_path,
+        state_dir=tmp_path,
+        make_model=lambda _model: None,
+        ask_permission=True,
+        run_agent=no_heal,
+    )
+    run = WorkflowRun(workflow, ctx, InMemorySaver(), "t1", records.append)
+
+    outcome = await run.start({})
+    assert outcome.status == "waiting"
+    assert outcome.request is not None and outcome.request["permission"]["kind"] == "sign_in"
+
+    host.signed_in = True
+    outcome = await run.answer(True)
+    assert outcome.status == "completed"
+
+
 async def test_declining_a_permission_fails_the_step(tmp_path: Path) -> None:
     harness = _Harness(tmp_path)
     run = harness.run()

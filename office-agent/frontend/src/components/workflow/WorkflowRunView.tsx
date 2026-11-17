@@ -590,7 +590,7 @@ function RunBanner({
         <div className="flex items-center gap-2.5">
           <ClockIcon className="h-4 w-4 shrink-0 text-[var(--warning)]" />
           <span>
-            {waiting?.permission ? "Needs your OK" : waiting?.pause ? "Waiting for your answer" : "Waiting for you"} at{" "}
+            {waiting?.permission?.kind === "sign_in" ? "Needs you to sign in" : waiting?.permission ? "Needs your OK" : waiting?.pause ? "Waiting for your answer" : "Waiting for you"} at{" "}
             <span className="font-medium">{runStepTitle(workflow, run, waiting?.step_id)}</span> -- answer it below to go on.
           </span>
         </div>

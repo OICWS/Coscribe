@@ -96,7 +96,9 @@ def run_event(
         step = str(waiting.get("step_id")) if waiting else ""
         where = f" at {titles.get(step, step)}" if step else ""
         asked = waiting.get("permission") if waiting else None
-        if isinstance(asked, dict) and asked.get("target"):
+        if isinstance(asked, dict) and asked.get("kind") == "sign_in":
+            body = f"Needs you to sign in to {asked.get('target')}{where}"
+        elif isinstance(asked, dict) and asked.get("target"):
             body = f"Needs your OK to use {asked['target']}{where}"
         elif waiting and waiting.get("pause"):
             body = f"Waiting for your answer{where}"

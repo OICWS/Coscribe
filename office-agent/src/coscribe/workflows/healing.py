@@ -38,7 +38,8 @@ from .agent_step import AgentCall, CallGuard
 from .permissions import URL_TOOLS, granted_by
 
 # Acting on the page in front of it; no scripts on the page (browser_evaluate), no uploads, and
-# no new pages unless the failed step itself opened one.
+# no new pages unless the failed step itself opened one. Dragging moves what is on the page and
+# copying only reads it.
 _PAGE_TOOLS = (
     "browser_snapshot",
     "browser_click",
@@ -51,7 +52,12 @@ _PAGE_TOOLS = (
     "browser_handle_dialog",
     "browser_fill_form",
     "browser_steps",
+    "browser_drag",
+    "browser_copy",
 )
+# These enter what the run's clipboard holds or write a file: a heal may use one only to redo
+# its own step, like a step that opens a page.
+_OWN_STEP_TOOLS = frozenset({"browser_paste", "browser_save_table", "browser_save_pdf"})
 _HEAL_MAX_STEPS = 12
 
 DID = OutputField(
@@ -224,7 +230,7 @@ def stand_in(
     ):
         return None
     tools = list(_PAGE_TOOLS)
-    if step.tool in URL_TOOLS:
+    if step.tool in URL_TOOLS or step.tool in _OWN_STEP_TOOLS:
         tools.append(step.tool)
     sent, final = _irreversible(workflow, step)
     resend = (

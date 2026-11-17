@@ -85,6 +85,21 @@ def test_an_error_reply_reaches_the_model_as_the_tools_error() -> None:
             host.call("click", {"ref": "e9"}, "t1", timeout=5)
 
 
+def test_a_step_that_failed_on_a_sign_in_form_asks_for_the_person() -> None:
+    from coscribe.needs_permission import NeedsPermission
+
+    host = BrowserHost()
+    error = 'NEEDS_SIGN_IN:code:bank.example No element named button "Export".'
+    with _ServerLoop() as loop:
+        _connect_desktop_app(host, loop, {"ok": False, "error": error})
+        with pytest.raises(NeedsPermission) as raised:
+            host.call("click", {"ref": 'button "Export"'}, "t1", timeout=5)
+    need = raised.value
+    assert (need.kind, need.target) == ("sign_in", "bank.example")
+    assert need.message.startswith("bank.example asks for a verification code.")
+    assert 'No element named button "Export".' in str(need)
+
+
 def test_without_the_desktop_app_the_tools_say_so() -> None:
     with pytest.raises(BrowserUnavailableError, match="desktop app"):
         _tools(BrowserHost())["browser_snapshot"]()

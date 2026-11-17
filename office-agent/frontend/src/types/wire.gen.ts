@@ -232,9 +232,9 @@ export interface WorkflowCheck {
   right: unknown;
 }
 
-/** A waiting step asking to be allowed a folder or site. */
+/** A waiting step asking to be allowed a folder or site, or for the person to sign in. */
 export interface WorkflowPermission {
-  kind: "folder" | "site";
+  kind: "folder" | "site" | "sign_in";
   target: string;
   message: string;
 }

@@ -239,9 +239,9 @@ class WorkflowCheck(TypedDict):
 
 
 class WorkflowPermission(TypedDict):
-    """A waiting step asking to be allowed a folder or site."""
+    """A waiting step asking to be allowed a folder or site, or for the person to sign in."""
 
-    kind: Literal["folder", "site"]
+    kind: Literal["folder", "site", "sign_in"]
     target: str
     message: str
 
