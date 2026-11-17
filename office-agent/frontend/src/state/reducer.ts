@@ -1,5 +1,4 @@
 import { testProgress } from "./workflowTest";
-import { formatTokenCount } from "../lib/format";
 import type { DraftTestProgress } from "../types/workflow";
 import { splitAttachedFiles } from "../lib/attachments";
 import { pendingSteer, requeuedNotes, type NewSteer, type SteerItem } from "./steerItems";
@@ -661,7 +660,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         retainedUserTurns: action.retained_user_turns ?? 0,
         olderItems: [...state.olderItems, ...closeStreamingBubble(state.items)],
         items: [{ id: genId(), kind: "system", text: "Context compacted" +
-          (action.tokens_saved === undefined ? "" : ` · ~${formatTokenCount(action.tokens_saved)} tokens saved`) }],
+          (action.tokens_saved === undefined ? "" : ` · ~${action.tokens_saved.toLocaleString("en-US")} tokens saved`) }],
       };
 
     case "cleared":

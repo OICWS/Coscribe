@@ -16,7 +16,7 @@ describe("compaction", () => {
     const done = run(started, { type: "compacted", before: 40, after: 6, elapsed_ms: 2500, tokens_saved: 123400 });
     expect(done.compaction).toBeNull();
     expect(done.olderItems).toEqual(started.items);
-    expect(done.items.at(-1)).toMatchObject({ kind: "system", text: "Context compacted · ~123.4k tokens saved" });
+    expect(done.items.at(-1)).toMatchObject({ kind: "system", text: "Context compacted · ~123,400 tokens saved" });
     expect(run(done, { type: "local_user_message", text: "next", instant: false }).compaction).toBeNull();
   });
 
