@@ -11,6 +11,26 @@ export function EmptyState() {
   );
 }
 
+/** An investigation starts in the background; it is a handoff, not a new chat greeting. */
+export function InvestigationHandoff({ error }: { error: string | null }) {
+  return (
+    <div role="status" aria-live="polite" className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
+      {error ? (
+        <>
+          <p className="text-sm font-medium text-[var(--fg)]">Couldn't hand off to AI</p>
+          <p className="max-w-lg text-sm text-[var(--muted)]">{error}</p>
+        </>
+      ) : (
+        <>
+          <span aria-hidden="true" className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--fg)] motion-reduce:animate-none" />
+          <p className="text-sm font-medium text-[var(--fg)]">Handing off to AI…</p>
+          <p className="text-xs text-[var(--muted)]">Preparing to investigate the failed run</p>
+        </>
+      )}
+    </div>
+  );
+}
+
 // Module-level so it outlives the heading, which remounts each time home opens.
 let lastShown = "";
 

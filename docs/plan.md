@@ -52,6 +52,10 @@ Last reviewed: 2026-11-06.
 
 ## Open, smaller
 
+- **Compaction history:** bounded checkpoint reads and reconnect pagination are covered.
+  The reported apparent change to an investigation title is not reproduced; confirm against
+  the affected conversation (`docs/log/2026-11-17-compact-history-paging.md`).
+
 - **Browser Context/form checks** (#932, #934): full-app popover visibility and genuine
   single-execution form batches are covered; authenticated SAP verification remains with
   the maintainer (`docs/log/2026-11-17-page-batch-input.md`).

@@ -92,6 +92,10 @@ export type LogItem =
     }
   | { id: string; kind: "system"; text: string };
 
+export type CompactionState =
+  | { status: "running"; startedAt: number }
+  | null;
+
 export interface ChatState {
   planMode: boolean;
   acceptEdits: boolean;
@@ -124,6 +128,8 @@ export interface ChatState {
    * the provider reports any, so "no data" stays apart from zero (see UsageEvent). */
   cacheStats: { cacheReadTokens: number; inputTokens: number; hitRate: number } | null;
   turnInFlight: boolean;
+  compaction: CompactionState;
+  retainedUserTurns: number;
   /** When the running turn started (ms since the epoch), as the server said on connect. */
   turnStartedAt: number | null;
   /** The message the person will probably send next, offered in the message box after a reply. */
@@ -188,6 +194,8 @@ export const initialChatState: ChatState = {
   totalTokens: 0,
   cacheStats: null,
   turnInFlight: false,
+  compaction: null,
+  retainedUserTurns: 0,
   turnStartedAt: null,
   suggestion: null,
   saveOffer: null,
@@ -203,6 +211,7 @@ export const initialChatState: ChatState = {
  * answers), handled here because they change the same state. */
 export type LocalAction =
   | { type: "local_user_message"; text: string; instant: boolean; images?: string[]; files?: string[] }
+  | { type: "local_compact_started"; startedAt: number }
   | ({ type: "local_steer" } & NewSteer)
   | { type: "local_steers_withdrawn"; ids: string[] }
   | { type: "local_suggestion_dismissed" }
@@ -224,10 +233,6 @@ let nextId = 0;
 function genId(): string {
   nextId += 1;
   return `item-${nextId}`;
-}
-
-function formatDuration(elapsedMs: number): string {
-  return elapsedMs < 1000 ? `${elapsedMs}ms` : `${(elapsedMs / 1000).toFixed(1)}s`;
 }
 
 /** A message's text and, when it came with files, their paths (the note naming them is not shown). */
@@ -269,6 +274,7 @@ export function historyToItems(entries: HistoryEntry[]): LogItem[] {
     if (entry.kind === "steer") {
       return { id: genId(), kind: "steer", text: entry.text, status: "delivered", images: entry.images, files: entry.files };
     }
+    if (entry.kind === "system") return { id: genId(), kind: "system", text: entry.text };
     if (entry.tool_name === "exit_plan_mode") {
       const result = typeof entry.result === "string" ? entry.result : "";
       const plan = String(entry.arguments.plan ?? "");
@@ -364,7 +370,8 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "local_connection_reset":
       // The server's paging cursor lives on the session, so a new connection starts it over:
       // keeping olderItems would show a stale "no_more" or reveal a batch twice.
-      return { ...state, historyReceived: false, olderItems: [], olderStatus: "none" };
+      return { ...state, historyReceived: false, olderItems: [], olderStatus: "none",
+        compaction: state.compaction?.status === "running" ? null : state.compaction };
 
     case "local_switch_thread":
       // model/workspace stay on screen until the new thread's "state" replaces them, not blank.
@@ -385,11 +392,16 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "local_request_older_messages":
       return state.olderStatus === "loading" ? state : { ...state, olderStatus: "loading" };
 
+    case "local_compact_started":
+      return { ...state, compaction: { status: "running", startedAt: action.startedAt } };
+
     case "local_user_message":
+      if (action.text.trim().toLowerCase() === "/compact") return { ...state, error: null, suggestion: null };
       return {
         ...state,
         // Instant commands (/plan, /clear, ...) run no turn, so there is nothing to stop.
         turnInFlight: action.instant ? state.turnInFlight : true,
+        compaction: null,
         suggestion: null, saveOffer: null,
         error: null,
         items: [
@@ -398,7 +410,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
             id: genId(),
             kind: "user",
             text: action.text,
-            turnIndex: countUserItems(state.items),
+            turnIndex: state.retainedUserTurns + countUserItems(state.items),
             images: action.images,
             files: action.files,
           },
@@ -505,7 +517,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         workflowTest: null,
         historyReceived: true,
+        retainedUserTurns: 0,
         olderStatus: action.has_older ? "idle" : "none",
+        olderItems: historyToItems(action.older_entries ?? []).map(item => item.kind === "user" ? { ...item, turnIndex: -1 } : item),
         items: historyToItems(action.entries),
       };
     }
@@ -514,30 +528,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       if (action.entries.length === 0) {
         return { ...state, olderStatus: "no_more" };
       }
-      // turnIndex: -1 -- these are read-only replay, never rendered with
-      // onEditMessage wired (see ChatLog.tsx's older-history section), so
-      // the value is inert; -1 rather than a real count just makes that
-      // "not a real turn index" explicit rather than accidentally
-      // plausible-looking.
-      const revealed: LogItem[] = action.entries.map((entry) => {
-        if (entry.kind === "user") {
-          return { id: genId(), kind: "user", text: entry.text, turnIndex: -1, images: entry.images, files: entry.files } as const;
-        }
-        if (entry.kind === "steer") {
-          return { id: genId(), kind: "steer", text: entry.text, status: "delivered", images: entry.images, files: entry.files } as const;
-        }
-        if (entry.kind === "agent") {
-          return { id: genId(), kind: "agent", text: entry.text, streaming: false } as const;
-        }
-        return {
-          id: genId(),
-          kind: "tool",
-          toolName: entry.tool_name,
-          arguments: entry.arguments,
-          result: entry.result,
-          isError: entry.is_error,
-        } as const;
-      });
+      const revealed = historyToItems(action.entries).map(item => item.kind === "user" ? { ...item, turnIndex: -1 } : item);
       return {
         ...state,
         olderItems: [...revealed, ...state.olderItems],
@@ -657,26 +648,26 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         error: action.message,
         turnInFlight: false,
+        compaction: null,
         items: closeStreamingBubble(state.items),
       };
 
     case "compacted":
       return {
         ...state,
-        turnInFlight: false,
-        items: [
-          ...state.items,
-          {
-            id: genId(),
-            kind: "system",
-            text: `Compacted ${action.before} messages down to ${action.after} · ${formatDuration(action.elapsed_ms)}.`,
-          },
-        ],
+        turnInFlight: action.automatic ? state.turnInFlight : false,
+        compaction: null,
+        retainedUserTurns: action.retained_user_turns ?? 0,
+        olderItems: [...state.olderItems, ...closeStreamingBubble(state.items)],
+        items: [{ id: genId(), kind: "system", text: "Context compacted" +
+          (action.tokens_saved === undefined ? "" : ` · ~${action.tokens_saved.toLocaleString("en-US")} tokens saved`) }],
       };
 
     case "cleared":
       return {
         ...state,
+        compaction: null,
+        retainedUserTurns: 0,
         turnInFlight: false,
         items: [
           {

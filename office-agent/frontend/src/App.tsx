@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { ThreadIdContext } from "./components/threadContext";
-import { HomeGreeting } from "./components/EmptyState";
+import { HomeGreeting, InvestigationHandoff } from "./components/EmptyState";
 import { ChatLog } from "./components/ChatLog";
 import { Composer, type ComposerSendPayload } from "./components/Composer";
 import { ContextRing } from "./components/ContextRing";
@@ -67,6 +67,7 @@ import {
   type WorkflowDraftResult,
 } from "./lib/rest";
 import { useRunningBackgroundTasks } from "./lib/useRunningBackgroundTasks";
+import { useInvestigationHandoff } from "./lib/useInvestigationHandoff";
 import { shortLabel } from "./lib/threadStatus";
 import {
   goToThread,
@@ -98,6 +99,7 @@ function App() {
   const [state, dispatch] = useReducer(chatReducer, initialChatState);
   const socketRef = useRef<AgentSocket | null>(null);
   const [threadId, setThreadId] = useState(resolveThreadId);
+  const [handingOff, beginInvestigationHandoff] = useInvestigationHandoff(threadId, state.items.length > 0);
   useSessionSignals(threadId, state.turnInFlight, state.items);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsCategory, setSettingsCategory] = useState<SettingsCategory | undefined>(undefined);
@@ -404,6 +406,7 @@ function App() {
     state.items.length === 0 &&
     state.olderItems.length === 0 &&
     !state.turnInFlight &&
+    !handingOff &&
     !isScheduledTaskThread &&
     threadWorkflow === null;
   const taskPanelShown =
@@ -537,8 +540,11 @@ function App() {
   };
 
   const investigateWorkflow = async (task: ScheduledTask, run: ScheduledRun, model: string | null) => {
+    const origin = window.location.href;
     const result = await investigateWorkflowRun(task.trigger_id, run.run_id, model);
     if ("error" in result) return result.error;
+    if (window.location.href !== origin) return null;
+    beginInvestigationHandoff(result.thread_id);
     goToThread(result.thread_id);
     return null;
   };
@@ -621,12 +627,11 @@ function App() {
     showChat();
   };
 
-  /** Sends a bare user_message with no chat-log bubble -- for commands the
-   * UI issues on the user's behalf (the mode pill toggling /plan or
-   * /accept-edits), mirroring app.js's sendRaw(). */
-  const sendRaw = (text: string) => socketRef.current?.send({ type: "user_message", text });
+  // Mode commands change state without adding a chat bubble.
+  const sendRaw = (text: string) => { if (state.compaction?.status !== "running") socketRef.current?.send({ type: "user_message", text }); };
 
   const onSend = (payload: ComposerSendPayload) => {
+    if (state.compaction?.status === "running") return;
     const saveWorkflow = /^\/saveworkflow(?:\s+([\s\S]*))?$/i.exec(payload.displayText.trim());
     if (saveWorkflow) {
       startWorkflowDraft((saveWorkflow[1] ?? "").trim());
@@ -652,6 +657,7 @@ function App() {
         images: payload.images,
         files: payload.files,
       });
+      if (payload.outgoingText.trim().toLowerCase() === "/compact") dispatch({ type: "local_compact_started", startedAt: Date.now() });
       socketRef.current?.send({ type: "user_message", text: payload.outgoingText, images: payload.images, ...artifactStart.take(payload.displayText) });
     });
   };
@@ -785,7 +791,7 @@ function App() {
 
   const composer = (
     <Composer
-      turnInFlight={state.turnInFlight} turnStartedAt={state.turnStartedAt}
+      turnInFlight={state.turnInFlight} compaction={state.compaction} turnStartedAt={state.turnStartedAt}
       suggestion={state.suggestion}
       onSuggestionDismiss={() => dispatch({ type: "local_suggestion_dismissed" })}
       totalTokens={state.totalTokens}
@@ -937,6 +943,8 @@ function App() {
                   onStop={() => stopWorkflow(threadTask, threadRun)}
                   onInvestigate={(model) => investigateWorkflow(threadTask, threadRun, model)}
                 />
+              ) : navMode === "create" && handingOff ? (
+                <InvestigationHandoff error={state.error} />
               ) : navMode === "create" && onHome ? (
                 // A new conversation: greeting and message box centered in the page.
                 <div className="flex min-h-0 flex-1 flex-col items-center justify-center pb-[6vh]">

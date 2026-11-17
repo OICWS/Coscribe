@@ -90,22 +90,8 @@ def _listing_routes(router: APIRouter, state: AppState) -> None:
 
     @router.get("/api/threads")
     async def list_threads() -> list[dict[str, Any]]:
-        # Direct port of web/app.py's identical endpoint would glob
-        # settings.state_dir for *.json files -- wrong storage entirely
-        # here: runtime_lg persists conversation history in the shared
-        # AsyncSqliteSaver checkpointer (runtime_lg_checkpoints.sqlite),
-        # never as one JSON file per thread, so that glob always came back
-        # empty and the session-switcher UI (which calls this) had no
-        # history to show, even though every thread's real state was
-        # right there in the checkpoint database. Queries the checkpoints
-        # table directly instead -- confirmed by inspecting AsyncSqliteSaver
-        # (no built-in "list every thread" method exists on the class
-        # itself, only per-thread aget_tuple/alist). setup() is idempotent
-        # (a no-op once already run) and creates the checkpoints/writes
-        # tables if they don't exist yet -- needed here since this query
-        # goes around the checkpointer's own API, which normally triggers
-        # setup() lazily on first real use; a brand-new app with no
-        # conversations yet would otherwise 500 on "no such table".
+        # Checkpoints share one database; no per-thread JSON history exists. setup() also
+        # creates its tables for a new installation before this direct listing query.
         checkpointer = checkpointer_holder["checkpointer"]
         await checkpointer.setup()
         cursor = await checkpointer.conn.execute(
@@ -138,6 +124,12 @@ def _listing_routes(router: APIRouter, state: AppState) -> None:
             preview = ""
             for message in messages:
                 if getattr(message, "type", None) == "human":
+                    if message.additional_kwargs.get(
+                        "lc_source"
+                    ) == "summarization" or extract_text(message.content).startswith(
+                        "[Earlier conversation compacted to save context.]"
+                    ):
+                        continue
                     preview = strip_mode_note(extract_text(message.content))
                     break
             workspace_root = next(iter(_folders_of(thread_id)), str(settings.workspace_root))

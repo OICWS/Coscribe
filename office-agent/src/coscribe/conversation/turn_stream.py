@@ -206,6 +206,22 @@ class TurnStreamer:
         # Only the model node adds new calls: the compaction's update re-adds the kept tail,
         # whose calls ran before it.
         for node, node_update in update.items():
+            automatic = node == "_CompactMiddleware.before_model"
+            if automatic and isinstance(node_update, dict):
+                for message in (node_update.get("messages", []) or [])[1:2]:
+                    info = getattr(message, "additional_kwargs", {}).get("coscribe_compaction")
+                    if info:
+                        await websocket.send_json(
+                            {
+                                "type": "compacted",
+                                "before": info["before"],
+                                "after": info["after"],
+                                "elapsed_ms": 0,
+                                "tokens_saved": info["tokens_saved"],
+                                "automatic": True,
+                                "retained_user_turns": info["retained_user_turns"],
+                            }
+                        )
             if node != "model" or not isinstance(node_update, dict):
                 continue
             for message in node_update.get("messages", []) or []:

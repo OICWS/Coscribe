@@ -22,7 +22,7 @@ import { runArms } from "../../lib/runArms";
 import { calledWorkflow, runStepTitle, waitingInside } from "../../lib/calledRun";
 import { everyStep, placeSteps } from "../../lib/workflowTree";
 import type { LoopStep, StepRecord, Workflow, WorkflowStep } from "../../types/workflow";
-import { CheckIcon, ChevronDownIcon, ClockIcon, SparkIcon, StopIcon } from "../icons";
+import { CheckIcon, ChevronDownIcon, ClockIcon, SparkIcon } from "../icons";
 import { Screenshot } from "./Screenshot";
 import { InvestigationLink, WAITING_FOR_BROWSER } from "./InvestigationLink";
 import { StepOutput } from "./StepOutput";
@@ -508,11 +508,8 @@ function GoingBanner({
             {run.queued ? WAITING_FOR_BROWSER : `Running${current ? ` · ${runStepTitle(workflow, run, current.step_id)}` : ""}`}
           </span>
         )}
-        <button type="button" className={secondaryButton} disabled={busy} onClick={onStop}>
-          <span className="flex items-center gap-1.5">
-            <StopIcon className="h-3.5 w-3.5" />
-            Stop run
-          </span>
+        <button type="button" aria-label="Stop run" title="Stop run" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[var(--fg)] hover:bg-[var(--card-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] disabled:opacity-40" disabled={busy} onClick={onStop}>
+          <span aria-hidden="true" className="h-3.5 w-3.5 rounded-[2px] bg-current" />
         </button>
       </div>
       {error && <p className="text-[13px] text-[var(--danger)]">{error}</p>}

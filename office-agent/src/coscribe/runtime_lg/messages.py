@@ -339,6 +339,9 @@ def starts_a_turn(message: Any) -> bool:
         getattr(message, "type", None) == "human"
         and not is_steer(message)
         and (getattr(message, "additional_kwargs", None) or {}).get("lc_source") != "summarization"
+        and not extract_text(message.content).startswith(
+            "[Earlier conversation compacted to save context.]"
+        )
     )
 
 
@@ -441,74 +444,45 @@ def pictures_as_user_message(messages: list[Any]) -> tuple[list[Any], bool]:
     return out, changed
 
 
+def _compaction_note(message: Any, first: bool) -> str | None:
+    if message.type != "human":
+        return None
+    extra = getattr(message, "additional_kwargs", {})
+    text = extract_text(message.content)
+    legacy = first and text.startswith("[Earlier conversation compacted to save context.]")
+    if extra.get("lc_source") != "summarization" and not legacy:
+        return None
+    if not (
+        legacy
+        or text.startswith("Here is a summary of the conversation to date:")
+        or text.startswith("[Earlier conversation compacted to save context.]")
+    ):
+        return ""
+    saved = extra.get("coscribe_compaction", {}).get("tokens_saved")
+    suffix = f" · ~{saved:,} tokens saved" if saved is not None else ""
+    return f"Context compacted{suffix}"
+
+
+def _user_history_entry(message: Any, text: str) -> dict[str, Any] | None:
+    images = extract_images(message.content)
+    if (not text and not images) or is_plan_check(message):
+        return None
+    kind = "steer" if is_steer(message) else "user"
+    shown, files = split_attached_files(strip_mode_note(text))
+    entry: dict[str, Any] = {"kind": kind, "text": shown}
+    if images:
+        entry["images"] = images
+    if files:
+        entry["files"] = files
+    return entry
+
+
 def serialize_history_for_ws_lg(messages: list[Any]) -> list[dict[str, Any]]:
-    """Structured, chronological replay of a thread's checkpointed message
-    history for the WS "history" event app.py sends once right after
-    connect -- lets the frontend rehydrate the chat log when a browser tab
-    (re)connects to an *existing* thread.
+    """Replay visible conversation entries, folding tool results into their calls.
 
-    Real, live-reported bug this closes: the visible chat log was only
-    ever built up from live events during the *current* WS connection's
-    lifetime (agent_delta/agent_message/tool_result), and nothing persists
-    it client-side either (no localStorage) -- so switching sessions always
-    showed a blank pane, even though the model itself still remembered
-    everything via the checkpointer. Confirmed the same gap exists
-    verbatim in the old runtime's web/app.py/session.py (ChatSession.
-    send_state has no history field either, and app.js has no client-side
-    cache) -- not a runtime_lg regression, just never noticed there before
-    this session's thread-switcher work made it easy to reach.
-
-    Skips a tool call with no matching ToolMessage yet: an in-flight/
-    still-pending call (most commonly a not-yet-answered approval from before a
-    disconnect) hasn't produced anything to show yet, and
-    resume_after_reconnect already redelivers its own live
-    "approval_required" event for that separately -- showing it here too
-    would just be a duplicate.
-
-    Real, live-reported bug this also closes: a "tool" entry's own result
-    used to be silently dropped -- `results_by_id` was already computed
-    just to decide whether to include the entry at all (the skip check
-    above), but the looked-up value itself never made it into the emitted
-    dict. A reloaded/reconnected thread's own past tool calls (and
-    ask_user_question's, whose "result" is the user's chosen answer) were
-    each still individually click-to-expand, but expanding one showed
-    nothing -- ToolCallRow's own `item.result !== undefined` guard always
-    failed on a replayed item. Same tool_result_value(...) call the live
-    "tool_result" WS event already uses, so a replayed entry's result has
-    the exact same decoded shape a live one does.
-
-    Each entry also carries `is_error`, straight off the checkpointed
-    ToolMessage's own `.status` field ("success"/"error", set by
-    agent.py's _CatchToolErrorsMiddleware whenever the tool's Python body
-    raised) -- the one place a genuinely generic, works-for-every-tool
-    failure signal already exists server-side. Same field the live
-    "tool_result" WS event now sends (see session.py's _stream_turn), so a
-    replayed entry's failure indicator matches a live one's exactly.
-
-    A "user" entry has its mode_note prefix (see strip_mode_note above)
-    stripped back off -- the live bubble the user actually saw when they
-    hit Send never had it, so a history replay shouldn't show it either.
-
-    Real, user-reported bug this also closes: a "user" entry's own
-    attached images used to be silently dropped on replay -- the images
-    were already faithfully checkpointed (baked into the HumanMessage's
-    own image_url content blocks, see conversation/session.py's
-    _handle_user_message_locked), just never read back out here, so they
-    rendered fine for the rest of the *live* WS connection that sent them
-    (the frontend's own optimistic local echo still had the data URLs in
-    memory) but vanished the moment that connection's history got
-    replayed -- a reload, a reconnect, or switching threads and back.
-    Fixed via extract_images (this module) alongside extract_text; an
-    image-only send (no caption) is also no longer dropped entirely by
-    the empty-text skip below, which used to fire before any image was
-    ever looked at.
-
-    Known, accepted gap for v1: a /compact'd thread's history includes the
-    synthetic HumanMessage _handle_compact replaces the tail with (the
-    rendered pre-compaction transcript, folded into one message) -- it
-    replays as one large "user" entry rather than being specially
-    unpacked. Same trade-off render_transcript_lg's own callers (the
-    /saveskill curator prompt) already accept for that message."""
+    Keep images, file references and error status; strip model-only notes. Compaction
+    summaries become short notices, never user messages or expandable summary text.
+    """
     results_by_id: dict[str, tuple[Any, bool]] = {}
     for message in messages:
         if message.type == "tool" and getattr(message, "tool_call_id", None):
@@ -516,6 +490,11 @@ def serialize_history_for_ws_lg(messages: list[Any]) -> list[dict[str, Any]]:
             results_by_id[message.tool_call_id] = (tool_result_value(message.content), is_error)
     entries: list[dict[str, Any]] = []
     for message in messages:
+        compacted = _compaction_note(message, message is messages[0])
+        if compacted is not None:
+            if compacted:
+                entries.append({"kind": "system", "text": compacted})
+            continue
         tool_calls = getattr(message, "tool_calls", None)
         if tool_calls:
             text = extract_text(message.content)
@@ -539,21 +518,9 @@ def serialize_history_for_ws_lg(messages: list[Any]) -> list[dict[str, Any]]:
             continue  # already folded into its call's own entry above
         text = extract_text(message.content)
         if message.type == "human":
-            # Checked before the `if not text` skip below -- an image-only
-            # send (no caption text) has an empty extract_text() result,
-            # but real content (the image itself) that a bare text check
-            # would otherwise drop the whole entry over.
-            images = extract_images(message.content)
-            if (not text and not images) or is_plan_check(message):
-                continue
-            kind = "steer" if is_steer(message) else "user"
-            shown, files = split_attached_files(strip_mode_note(text))
-            entry: dict[str, Any] = {"kind": kind, "text": shown}
-            if images:
-                entry["images"] = images
-            if files:
-                entry["files"] = files
-            entries.append(entry)
+            entry = _user_history_entry(message, text)
+            if entry is not None:
+                entries.append(entry)
             continue
         if not text:
             continue

@@ -173,7 +173,7 @@ export function ChatLog({
         {olderStatus === "loading" && (
           <p className="self-center text-xs text-[var(--muted)]">Loading earlier messages...</p>
         )}
-        {olderTurns.map((turn) => (
+        {olderTurns.map((turn, i) => (
           // No onEditMessage (read-only replay, see olderItems' own prop
           // comment) and onPptxShapePicked is a no-op -- targeting a
           // follow-up edit off a pre-compact preview isn't something
@@ -182,11 +182,11 @@ export function ChatLog({
           <TurnView
             key={turn.id}
             turn={turn}
+            compactAfter={i === olderTurns.length - 1 && items[0]?.kind === "system" && items[0].text.startsWith("Context compacted")}
             onApprove={onApprove}
             onPptxShapePicked={() => {}}
           />
         ))}
-        {olderItems.length > 0 && <div className="border-b border-[var(--border)]" />}
         {turns.map((turn, i) => (
           <TurnView
             key={turn.id}

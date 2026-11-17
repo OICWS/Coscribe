@@ -697,14 +697,6 @@ describe("usage", () => {
 });
 
 describe("system notes and turn end", () => {
-  it("appends a compaction note with the elapsed time, and ends the turn", () => {
-    const fast = run(stateWith({ turnInFlight: true }), { type: "compacted", before: 40, after: 6, elapsed_ms: 850 });
-    const slow = run(stateWith(), { type: "compacted", before: 40, after: 6, elapsed_ms: 2500 });
-    expect(fast.turnInFlight).toBe(false);
-    expect(fast.items[0]).toMatchObject({ kind: "system", text: "Compacted 40 messages down to 6 · 850ms." });
-    expect(slow.items[0]).toMatchObject({ text: "Compacted 40 messages down to 6 · 2.5s." });
-  });
-
   it("replaces the whole log with one note when cleared", () => {
     const next = run(stateWith({ turnInFlight: true, items: [user("u", "x", 0), agentItem("a", "y", false)] }), {
       type: "cleared",

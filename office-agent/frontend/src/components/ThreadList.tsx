@@ -78,7 +78,7 @@ function ViewAllLink() {
   return (
     <button
       type="button"
-      className="rounded-md px-2 py-1.5 text-left text-sm text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
+      className="self-center rounded-md px-2 py-1.5 text-sm text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]"
       onClick={showSessions}
     >
       View all

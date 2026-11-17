@@ -23,6 +23,7 @@ from langchain.agents.middleware import (
     hook_config,
 )
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages.utils import count_tokens_approximately
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.errors import GraphBubbleUp
@@ -357,24 +358,34 @@ class _CompactMiddleware(SummarizationMiddleware):
         )
         self.open_tasks = open_tasks
 
-    def _with_tasks(self, update: dict[str, Any] | None) -> dict[str, Any] | None:
-        if update is None or self.open_tasks is None:
-            return update
-        note = self.open_tasks()
-        if not note:
+    def _with_tasks(self, update: dict[str, Any] | None, state: Any) -> dict[str, Any] | None:
+        if update is None:
             return update
         messages = list(update["messages"])
+        retained_user_turns = sum(starts_a_turn(message) for message in messages[2:])
+        note = self.open_tasks() if self.open_tasks else ""
         # [RemoveMessage(all), summary, *kept]: the note goes right after the summary.
-        messages.insert(
-            2, HumanMessage(content=note, additional_kwargs={"lc_source": "summarization"})
-        )
+        if note:
+            messages.insert(
+                2, HumanMessage(content=note, additional_kwargs={"lc_source": "summarization"})
+            )
+        messages[1].additional_kwargs["coscribe_compaction"] = {
+            "before": len(state["messages"]),
+            "after": len(messages) - 1,
+            "retained_user_turns": retained_user_turns,
+            "tokens_saved": max(
+                0,
+                count_tokens_approximately(state["messages"])
+                - count_tokens_approximately(messages[1:]),
+            ),
+        }
         return {**update, "messages": messages}
 
     def before_model(self, state: Any, runtime: Any) -> dict[str, Any] | None:
-        return self._with_tasks(super().before_model(state, runtime))
+        return self._with_tasks(super().before_model(state, runtime), state)
 
     async def abefore_model(self, state: Any, runtime: Any) -> dict[str, Any] | None:
-        return self._with_tasks(await super().abefore_model(state, runtime))
+        return self._with_tasks(await super().abefore_model(state, runtime), state)
 
 
 def _writer_names(tools: Sequence[Callable[..., Any] | BaseTool]) -> set[str]:
