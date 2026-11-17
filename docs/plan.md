@@ -46,9 +46,12 @@ Last reviewed: 2026-11-06.
    each: A the folder access card in chats and Settings' Folder access; B attachments and pasted
    pictures in `.coscribe/uploads/`; C the first start, no hidden default, environments and tasks
    moved over; D `.coscribe/settings.json` and `mcp.json`. A part 1 (the card in chats) is in
-   `docs/log/2026-11-16-folder-access-card.md`; part 2 is Settings' Folder access: "Other
-   folders" renamed Allowed folders, the folder picker listing them, and a change applied without
-   a restart.
+   `docs/log/2026-11-16-folder-access-card.md`; part 2 (Settings' environments table and the
+   Allowed folders dialog, applied without a restart) is in `docs/log/2026-11-17-allowed-folders.md`.
+   Next, one PR each: the edit dialog with "environment" called workspace in the UI; one site list
+   per workspace with a browser level per site and where each secret is sent (decision record
+   first); a task showing what it reaches, its folder inputs picked from that reach, and a folder
+   outside it allowed on the spot.
 
 ## Open, smaller
 

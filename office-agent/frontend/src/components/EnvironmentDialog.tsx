@@ -53,7 +53,7 @@ function usedBy(environment: Environment | null): string {
   return `Used by ${plural(environment.used_by, "conversation")}${tasks}`;
 }
 
-function whereItsConversationsGo(environment: Environment): string {
+export function whereItsConversationsGo(environment: Environment): string {
   const users = [environment.used_by, environment.tasks].some((n) => n > 0);
   return users ? "Its conversations and scheduled tasks move to Default." : "Nothing uses it.";
 }

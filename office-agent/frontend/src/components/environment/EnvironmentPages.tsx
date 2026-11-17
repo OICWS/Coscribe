@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { SecretInfo } from "../../types/settings";
 import { folderName, readRecent } from "../../lib/recentFolders";
 import { getConfig } from "../../lib/rest";
-import { buildDirEntries, type DirEntry } from "../settings/fields";
+import { buildDirEntries, DIR_PERMISSION_LABELS, type DirEntry } from "../settings/fields";
 import { ChevronRightIcon, PlusIcon } from "../icons";
 import { DirBrowserModal } from "../settings/DirBrowserModal";
 import { fieldClass } from "../settings/SettingRow";
@@ -118,12 +118,6 @@ export function SecretsPage({
   );
 }
 
-const ACCESS_LABELS: Record<DirEntry["permission"], string> = {
-  read: "Read only",
-  "read-write": "Read and write",
-  "read-write-delete": "Read, write and delete",
-};
-
 /** Settings' Allowed folders, which this environment reaches too, listed so its whole reach is in one place. */
 function AllowedFolders() {
   const [entries, setEntries] = useState<DirEntry[]>([]);
@@ -143,7 +137,7 @@ function AllowedFolders() {
               <span className="truncate text-sm">{folderName(entry.path)}</span>
               <span className="truncate text-xs text-[var(--muted)]">{entry.path}</span>
             </span>
-            <span className="shrink-0 text-xs text-[var(--muted)]">{ACCESS_LABELS[entry.permission]}</span>
+            <span className="shrink-0 text-xs text-[var(--muted)]">{DIR_PERMISSION_LABELS[entry.permission]}</span>
           </li>
         ))}
       </ul>
