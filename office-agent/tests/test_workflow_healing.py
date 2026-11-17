@@ -359,7 +359,8 @@ def test_a_heal_drags_and_copies_but_pastes_or_saves_only_for_its_own_step() -> 
         return list(agent.tools or [])
 
     clicking = tools_for("browser_click")
-    assert {"browser_drag", "browser_copy"} <= set(clicking)
+    seeing = {"browser_drag", "browser_copy", "browser_screenshot", "browser_click_at"}
+    assert seeing <= set(clicking)
     assert not {"browser_paste", "browser_save_table", "browser_save_pdf"} & set(clicking)
     for own in ("browser_paste", "browser_save_table", "browser_save_pdf"):
         assert own in tools_for(own)

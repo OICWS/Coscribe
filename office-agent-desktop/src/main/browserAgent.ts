@@ -576,8 +576,8 @@ async function run(command: Command): Promise<Record<string, unknown>> {
       result = withTab(tab, { mode: args.mode ?? "batch", filled: await fillForm(pageActions, command, tab, wc, cdp, args.fields as FormField[], waitSeconds(args)) });
     } else if (command.action === "steps") {
       result = withTab(tab, await runSteps(pageActions, command, tab, wc, cdp, args.steps as PageStep[], waitSeconds(args)));
-    } else if (["drag", "copy", "paste", "save_table", "save_pdf"].includes(command.action)) {
-      result = withTab(tab, (await (command.action.startsWith("save_") ? runData : runMove)(pageActions, command, wc, cdp, args, waitSeconds(args)))!);
+    } else if (["drag", "click_at", "copy", "paste", "save_table", "save_pdf", "look", "read_text"].includes(command.action)) {
+      result = withTab(tab, (await (["drag", "click_at", "copy", "paste"].includes(command.action) ? runMove : runData)(pageActions, command, wc, cdp, args, waitSeconds(args)))!);
     } else result = await act(command, tab, wc, cdp, args);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

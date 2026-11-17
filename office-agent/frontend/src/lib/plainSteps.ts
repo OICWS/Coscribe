@@ -180,6 +180,12 @@ function toolSentence(tool: string, args: Record<string, unknown>, inputs: Workf
       const across = args.next_page || args.scroll ? " across its pages" : "";
       return args.path ? `Saves the table${across} to ${value("path")}` : `Reads the table${across}`;
     }
+    case "browser_read_text":
+      return args.near ? `Reads ${value("near")} on the page` : "Reads the page’s text";
+    case "browser_click_at":
+      return "Clicks a point on the page";
+    case "browser_screenshot":
+      return "Looks at the page";
     case "browser_save_pdf":
       return `Saves the page as ${value("path")}`;
     case "browser_evaluate":
