@@ -148,6 +148,7 @@ function App() {
   // Same pattern again, for SkillsTab's "Create a skill" prefilling the
   // composer's own text (not an image) -- see onCreateSkill below.
   const [pendingComposerDraft, setPendingComposerDraft] = useState<ComposerDraft | null>(null);
+  const [taskSetupThreadId, setTaskSetupThreadId] = useState<string | null>(null);
   const [composerHasDraft, setComposerHasDraft] = useState(false);
   const artifactStart = useArtifactStart(threadId);
   const [navMode, setNavMode] = useState<NavMode>(() => (readPage().view === "scheduled" ? "run" : "create"));
@@ -406,7 +407,7 @@ function App() {
     state.items.length === 0 &&
     state.olderItems.length === 0 &&
     !state.turnInFlight &&
-    !handingOff &&
+    !handingOff && taskSetupThreadId !== threadId &&
     !isScheduledTaskThread &&
     threadWorkflow === null;
   const taskPanelShown =
@@ -557,11 +558,9 @@ function App() {
     goToThread(result.run.thread_id);
   };
 
-  /** "Create with coscribe": a fresh chat, pre-seeded so the model knows
-   * the goal is a task -- it drafts one (create_scheduled_task) once it
-   * has what it needs, and the draft comes back here for review. */
+  /** Start a new chat with the scheduled-task request prefilled for review before sending. */
   const createTaskWithCoscribe = () => {
-    startNewThread();
+    setTaskSetupThreadId(startNewThread());
     setPendingComposerDraft({ text: "I'd like to set up a scheduled task: " });
   };
 
@@ -958,6 +957,7 @@ function App() {
                 <SteerActionsContext.Provider value={{ ...steers.actions, composerHasDraft }}><ViewFile.Provider value={viewFile}><OpenDesignSystem.Provider value={(id) => showSettings("design-systems", id)}><OpenConnector.Provider value={(name) => showSettings("connectors", name)}><DetachScript.Provider value={onDetachScript}><BackgroundTasks.Provider value={{ statuses: subAgents.statuses, open: (taskId) => { setSubAgentFocus({ threadId, taskId }); setPanelOpen("background", true); } }}>
                   <ChatLog
                     items={state.items}
+                    suppressEmptyState={taskSetupThreadId === threadId}
                     turnInFlight={state.turnInFlight}
                     connectorTools={state.connectorTools}
                     onApprove={onApprove}

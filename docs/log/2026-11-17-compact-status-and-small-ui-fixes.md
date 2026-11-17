@@ -8,6 +8,7 @@ Why: manual compaction took many seconds without feedback, and several small con
 - Make Scheduled sort menus match their trigger width and center the sidebar View all action.
 - Align Sessions title, optional group, environment and last-active columns; long names truncate with native hover titles.
 - Show a dedicated "Handing off to AI…" screen while a failed run is being handed to its investigation conversation. No welcome greeting or composer appears during the handoff; the existing conversation view takes over when the first message arrives.
+- "Create with Coscribe" opens an empty chat with the scheduled-task text prefilled and holds that layout after history loads, rather than remounting the composer inside a greeting screen and losing the draft. This only affects the seeded task-setup thread; ordinary New session greetings stay unchanged.
 
 ## Not verified
 - UI behavior in the running desktop app, including an actual workflow investigation.

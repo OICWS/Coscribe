@@ -15,6 +15,8 @@ import { TurnView, LogItemView } from "./chatlog/TurnView";
 
 interface ChatLogProps {
   items: LogItem[];
+  /** A prefilled task-setup chat stays in the editor instead of showing a new-chat greeting. */
+  suppressEmptyState?: boolean;
   /** A reply is being generated -- its tool calls without a result yet
    * are shown as running. */
   turnInFlight?: boolean;
@@ -68,6 +70,7 @@ const SCROLL_LOAD_OLDER_THRESHOLD_PX = 150;
 
 export function ChatLog({
   items,
+  suppressEmptyState = false,
   onApprove,
   onAnswerPlan, onOpenPlan,
   onEditMessage,
@@ -159,9 +162,9 @@ export function ChatLog({
               aria-label="Loading conversation"
             />
           </div>
-        ) : (
+        ) : !suppressEmptyState ? (
           <EmptyState />
-        )}
+        ) : null}
       </div>
     );
   }
