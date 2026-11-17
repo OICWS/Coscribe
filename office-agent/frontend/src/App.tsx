@@ -627,9 +627,7 @@ function App() {
   /** Sends a bare user_message with no chat-log bubble -- for commands the
    * UI issues on the user's behalf (the mode pill toggling /plan or
    * /accept-edits), mirroring app.js's sendRaw(). */
-  const sendRaw = (text: string) => {
-    if (state.compaction?.status !== "running") socketRef.current?.send({ type: "user_message", text });
-  };
+  const sendRaw = (text: string) => { if (state.compaction?.status !== "running") socketRef.current?.send({ type: "user_message", text }); };
 
   const onSend = (payload: ComposerSendPayload) => {
     if (state.compaction?.status === "running") return;
@@ -658,9 +656,7 @@ function App() {
         images: payload.images,
         files: payload.files,
       });
-      if (payload.outgoingText.trim().toLowerCase() === "/compact") {
-        dispatch({ type: "local_compact_started", startedAt: Date.now() });
-      }
+      if (payload.outgoingText.trim().toLowerCase() === "/compact") dispatch({ type: "local_compact_started", startedAt: Date.now() });
       socketRef.current?.send({ type: "user_message", text: payload.outgoingText, images: payload.images, ...artifactStart.take(payload.displayText) });
     });
   };
