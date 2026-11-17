@@ -204,7 +204,7 @@ def _refuse_blocked_write(result: Any) -> None:
             # No folder short of a drive or the home folder holds it, and those are never offered.
             raise StepFailed(
                 f'The script tried to write "{path}", which is outside the workspace and the '
-                "folders this run may use. Add its folder in Settings > Other folders, or have "
+                "folders this run may use. Add its folder in Settings > Allowed folders, or have "
                 "the script save inside the workspace."
             )
         raise NeedsPermission(

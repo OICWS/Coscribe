@@ -46,11 +46,11 @@ export function WorkspaceTab({ dirEntries, onDirEntriesChange }: WorkspaceTabPro
       <EnvironmentsSection active />
 
       <SettingsSection
-        title="Other folders"
-        description="Folders every environment can use, besides its own. Coscribe can always read and change an environment's folders. Only folders set to read, write and delete let it delete, move or rename files; deleted files go to the Recycle Bin. On Windows, scripts read nothing outside these folders, so add a folder as read only for a script to read it."
+        title="Allowed folders"
+        description="Folders every environment can use, besides its own. When a chat needs another folder, Coscribe asks on a card, and Allow adds it here. Only folders set to read, write and delete let it delete, move or rename files; deleted files go to the Recycle Bin. On Windows, scripts read nothing outside these folders, so add a folder as read only for a script to read it."
       >
         {dirEntries.length === 0 ? (
-          <p className="mt-3 text-sm text-[var(--muted)]">No other folders yet.</p>
+          <p className="mt-3 text-sm text-[var(--muted)]">No allowed folders yet.</p>
         ) : (
           <div className="mt-3 flex flex-col divide-y divide-[var(--border)] overflow-hidden rounded-xl border border-[var(--border)]">
             {dirEntries.map((entry) => (

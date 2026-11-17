@@ -104,3 +104,32 @@ def test_only_this_chat_keeps_the_folder_to_the_conversation(
     assert not (tmp_path / ".env").exists() or "EXTRA" not in (tmp_path / ".env").read_text()
     granted = Environments(tmp_path / "state").thread_folders("t_folder_chat")
     assert granted == {str(folder.resolve()): "read-write"}
+
+
+def test_a_folder_allowed_in_settings_reaches_an_open_conversation_without_a_restart(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    folder = _outside(tmp_path)
+    path = str(folder / "quote.txt")
+    fake_model = FakeToolCallingChatModel(
+        responses=[
+            AIMessage(content="hello"),
+            AIMessage(content="", tool_calls=[_tool_call("c1", "read_file", {"path": path})]),
+            AIMessage(content="done"),
+        ]
+    )
+    with _client_lg(tmp_path, monkeypatch, fake_model) as client:
+        with client.websocket_connect("/ws/t_folder_settings") as ws:
+            ws.receive_json()  # state
+            ws.receive_json()  # history
+            ws.send_json({"type": "user_message", "text": "hi"})
+            _receive_until(ws, "agent_message")
+            saved = client.post(
+                "/api/config", json={"updates": {"COSCRIBE_EXTRA_READABLE_DIRS": str(folder)}}
+            )
+            ws.send_json({"type": "user_message", "text": "read the quote"})
+            _receive_until(ws, "agent_message")
+    assert saved.json()["restart_required"] is False
+    [read] = [m for m in fake_model.received[-1] if isinstance(m, ToolMessage)]
+    assert "Quote 42" in str(read.content)

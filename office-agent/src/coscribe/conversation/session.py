@@ -145,21 +145,12 @@ def _new_draft_id() -> str:
     return uuid.uuid4().hex[:8]
 
 
-# langchain_google_genai's gRPC channel accumulates something into the
-# outgoing x-goog-api-client metadata header across repeated calls on the
-# same long-lived channel -- an unresolved upstream bug in google-auth-
-# library-python (see e.g. googleapis/python-aiplatform#3965,
-# langchain-ai/langchain-google#306), not fixable from this codebase.
-# Eventually the header outgrows grpc's default metadata soft limit and
-# every further call on that channel fails with this exact message --
-# waiting or retrying on the *same* channel never helps, since this
-# session's ChatGoogleGenerativeAI client (and its channel) lives as long
-# as the thread does. Forcing transport="rest" to dodge gRPC state
-# entirely was already tried and reverted for a different real bug in
-# this SDK version's async REST streaming path -- see providers.py's own
-# comment. The narrow fix instead: recognize this one signature and
-# recreate the client (a fresh channel starts the header at zero) before
-# retrying.
+# langchain_google_genai's gRPC channel grows its x-goog-api-client metadata header on every
+# call (an upstream google-auth bug: googleapis/python-aiplatform#3965,
+# langchain-ai/langchain-google#306) until grpc's metadata limit fails every call with this
+# message. Retrying on the same channel never helps and the REST transport has its own bug
+# (providers.py), so this signature recreates the client, whose fresh channel starts the header
+# at zero, before retrying.
 _GRPC_METADATA_OVERFLOW_SIGNATURE = "metadata size exceeds soft limit"
 
 
@@ -700,7 +691,11 @@ class ChatSessionLG:
         open conversation at once."""
         self._pending_tools = list(extra_tools)
 
+    def allowed_folders_changed(self) -> None:
+        self._reconfigurer.folders_changed()
+
     def apply_pending_tools(self) -> None:
+        self._reconfigurer.apply_folder_change()
         tools, self._pending_tools = self._pending_tools, None
         if tools is None:
             return

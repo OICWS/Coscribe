@@ -270,7 +270,7 @@ async def test_a_blocked_write_with_no_folder_to_offer_fails_rather_than_ask_for
     outcome = await WorkflowRun(workflow, ctx, InMemorySaver(), "t3", lambda _r: None).start({})
 
     assert outcome.status == "failed"
-    assert outcome.error is not None and "Settings > Other folders" in outcome.error
+    assert outcome.error is not None and "Settings > Allowed folders" in outcome.error
 
 
 def test_a_path_outside_the_scope_asks_for_its_nearest_folder(tmp_path: Path) -> None:

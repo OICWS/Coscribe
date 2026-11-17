@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { SecretInfo } from "../../types/settings";
 import { folderName, readRecent } from "../../lib/recentFolders";
+import { getConfig } from "../../lib/rest";
+import { buildDirEntries, type DirEntry } from "../settings/fields";
 import { ChevronRightIcon, PlusIcon } from "../icons";
 import { DirBrowserModal } from "../settings/DirBrowserModal";
 import { fieldClass } from "../settings/SettingRow";
@@ -116,6 +118,39 @@ export function SecretsPage({
   );
 }
 
+const ACCESS_LABELS: Record<DirEntry["permission"], string> = {
+  read: "Read only",
+  "read-write": "Read and write",
+  "read-write-delete": "Read, write and delete",
+};
+
+/** Settings' Allowed folders, which this environment reaches too, listed so its whole reach is in one place. */
+function AllowedFolders() {
+  const [entries, setEntries] = useState<DirEntry[]>([]);
+  useEffect(() => {
+    getConfig()
+      .then((config) => setEntries(buildDirEntries(config as unknown as Record<string, string | null>)))
+      .catch(() => undefined);
+  }, []);
+  if (entries.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-sm font-medium">Also allowed in every environment</span>
+      <ul className="flex flex-col divide-y divide-[var(--border)] overflow-hidden rounded-xl border border-[var(--border)]">
+        {entries.map((entry) => (
+          <li key={entry.path} className="flex items-center gap-3 px-3.5 py-2.5" title={entry.path}>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate text-sm">{folderName(entry.path)}</span>
+              <span className="truncate text-xs text-[var(--muted)]">{entry.path}</span>
+            </span>
+            <span className="shrink-0 text-xs text-[var(--muted)]">{ACCESS_LABELS[entry.permission]}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /** The environment's folders, the main one first. Which folders exist and how far they may
  * be used is managed in Settings > Environments; this only picks this environment's. */
 export function FoldersPage({ folders, onChange }: { folders: string[]; onChange: (folders: string[]) => void }) {
@@ -130,7 +165,7 @@ export function FoldersPage({ folders, onChange }: { folders: string[]; onChange
     <section className="flex flex-col gap-3">
       <p className={introClass}>
         The folders this environment's conversations work in. New files go to the main one. With none ticked they use the default
-        workspace. Which other folders it may read or change is set in Settings &gt; Workspace.
+        workspace. Folders every environment may use are in Settings &gt; Environments &gt; Allowed folders.
       </p>
       {rows.length === 0 ? (
         <p className={emptyClass}>The default workspace.</p>
@@ -166,6 +201,7 @@ export function FoldersPage({ folders, onChange }: { folders: string[]; onChange
       >
         <PlusIcon className="h-4 w-4" /> Add folder…
       </button>
+      <AllowedFolders />
       {browsing && (
         <DirBrowserModal
           onClose={() => setBrowsing(false)}

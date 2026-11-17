@@ -51,6 +51,7 @@ class ReconfigureHost(Protocol):
 class SessionReconfigurer:
     def __init__(self, host: ReconfigureHost) -> None:
         self._host = host
+        self._folders_changed = False
 
     async def _wait_idle(self, websocket: EventSink, refusal: str) -> bool:
         # A short wait, not an immediate refusal: resume_after_reconnect holds the lock
@@ -168,6 +169,16 @@ class SessionReconfigurer:
             return f"The folder was allowed, but the tools could not be rebuilt: {failed}"
         self._host._context_window = None
         return None
+
+    def folders_changed(self) -> None:
+        """Settings' Allowed folders changed. Like a connector change, each open conversation
+        takes it on its next use (`apply_pending_tools`), not all at once."""
+        self._folders_changed = True
+
+    def apply_folder_change(self) -> None:
+        if self._folders_changed:
+            self._folders_changed = False
+            self.refresh_folder_tools()
 
     async def set_enabled_skills(
         self, skill_names: set[str], websocket: EventSink, *, announce: bool = True

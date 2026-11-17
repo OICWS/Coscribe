@@ -72,7 +72,8 @@ files under `COSCRIBE_WORKSPACE_ROOT` (defaults to `./workspace`).
 
 The built-in file/document/spreadsheet/presentation tools can also reach
 specific directories outside the workspace, if you configure them. In the
-web UI, Settings > Environments has an **Other folders** list: you
+web UI, Settings > Environments has an **Allowed folders** list (a change applies without a
+restart, and a chat that needs another folder asks on a card whose Allow adds it there): you
 can add any number of directories, each with its own
 access (read only, read and write, or read, write and delete) -- type a path directly or use **Browse...**,
 backed by a small server-side folder picker (`/api/browse-dirs`), not the
