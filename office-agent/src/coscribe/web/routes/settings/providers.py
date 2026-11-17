@@ -20,6 +20,7 @@ from ....runtime import (
     store_secret,
 )
 from ...provider_catalog import (
+    BUILTIN_CATALOG,
     BUILTIN_PROVIDERS,
     PROVIDER_CATALOG,
 )
@@ -38,41 +39,10 @@ def router(state: AppState) -> APIRouter:
 
     @router.get("/api/providers/catalog")
     async def get_providers_catalog() -> list[dict[str, Any]]:
-        builtin_entries: list[dict[str, Any]] = [
-            {
-                "name": "anthropic",
-                "description": "Anthropic's Claude models.",
-                "base_url": "",
-                # Unlike the third-party PROVIDER_CATALOG below, this one
-                # is worth pinning to a real model ID -- Anthropic doesn't
-                # publish a rolling "-latest" alias the way gemini's own
-                # "gemini-flash-latest" entry below does, so an empty
-                # default would leave the single most common Add-provider
-                # path with the worst experience of any entry here.
-                # Still real drift, caught live: this was "claude-opus-4-6"
-                # until an unrelated bug report exposed it as already
-                # stale (no such model -- the current family is Opus 5/
-                # Sonnet 5/Haiku 4.5). Whoever bumps coscribe's own
-                # supported-model docs should bump this alongside them.
-                "default_model": "claude-opus-5",
-                "builtin": True,
-            },
-            {
-                "name": "openai",
-                "description": "OpenAI's GPT models.",
-                "base_url": "",
-                "default_model": "",
-                "builtin": True,
-            },
-            {
-                "name": "gemini",
-                "description": "Google's Gemini models.",
-                "base_url": "",
-                "default_model": "gemini-flash-latest",
-                "builtin": True,
-            },
+        builtin_entries = [{**entry, "base_url": "", "builtin": True} for entry in BUILTIN_CATALOG]
+        custom_entries = [
+            {**entry, "default_model": "", "builtin": False} for entry in PROVIDER_CATALOG
         ]
-        custom_entries = [{**entry, "builtin": False} for entry in PROVIDER_CATALOG]
         return [*builtin_entries, *custom_entries]
 
     @router.get("/api/providers")
