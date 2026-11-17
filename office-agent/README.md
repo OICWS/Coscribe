@@ -722,6 +722,10 @@ any words you wrote on it.
   verification code or a captcha, a workflow run waits and notifies you instead of failing or
   trying to click past it; you do it on that page in the browser panel and press Done, and the
   step runs again. In a conversation the AI asks you the same way.
+- **Pictures and watching**: for what a page doesn't name (a canvas, a chart, an icon without a
+  label) the AI looks at the page as a picture and clicks by position. It can read the text next
+  to a label ("Price"), so a scheduled task can watch a page: it ends quietly while the value is
+  the same and notifies you with the new one ("Completed · Price: ¥89") when it changes.
 - **Stop** also reaches the desktop app: the step in progress there (a
   wait can run for an hour) ends at once, and steps that conversation
   had queued are dropped.

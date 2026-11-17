@@ -262,6 +262,20 @@ if (!process.versions.electron) {
     assert.equal(scrolled.result.rows.length, 15, 'a list that loads more on scrolling is read to its end');
     const pdf = await command('save_pdf', { tab_id: background.id });
     assert.equal(Buffer.from(pdf.result.pdf, 'base64').subarray(0, 4).toString(), '%PDF');
+    await background.view.webContents.loadURL('data:text/html,' + encodeURIComponent(
+      '<meta charset="utf-8"><style>body{margin:0}</style><canvas id="chart" width="400" height="200" style="display:block"></canvas>' +
+      '<dl><dt>Price</dt><dd>¥89</dd></dl><p><b>Status</b>: shipped</p>' +
+      '<script>chart.onclick=e=>{window.hit=[e.offsetX,e.offsetY]}</script>'));
+    const seen = await command('look', { tab_id: background.id });
+    assert.equal(seen.ok, true, seen.error);
+    assert.ok(seen.result.png.length > 100 && seen.result.width > 0);
+    const clicked = await command('click_at', { tab_id: background.id, x: 120, y: 80 });
+    assert.equal(clicked.ok, true, clicked.error);
+    assert.deepEqual(await background.view.webContents.executeJavaScript('window.hit'), [120, 80], 'a click by position lands where the picture showed');
+    assert.equal((await command('click_at', { tab_id: background.id, x: 5000, y: 5 })).ok, false, 'a point outside the page is refused');
+    assert.equal((await command('read_text', { tab_id: background.id, near: 'Price', timeout: 1 })).result.text, 'Price\n¥89');
+    assert.equal((await command('read_text', { tab_id: background.id, near: 'Status', timeout: 1 })).result.text, 'Status: shipped');
+    assert.equal((await command('read_text', { tab_id: background.id, near: 'Missing', timeout: 1 })).ok, false);
     const login = require('node:http').createServer((req, res) => {
       res.setHeader('content-type', 'text/html');
       res.end(req.url === '/settings'
@@ -299,7 +313,7 @@ if (!process.versions.electron) {
     await secondPermission;
     panel.destroyBrowserPanel();
     clearTimeout(timeout);
-    console.log('Native browser checks passed: popups, bounds, overlays, background input, form events, every field kind, page steps, waiting for one of several texts, drag and drop, file drop, the AI clipboard, tables across pages and scrolling, page PDF, sign-in handover, takeover and permission queue.');
+    console.log('Native browser checks passed: popups, bounds, overlays, background input, form events, every field kind, page steps, waiting for one of several texts, drag and drop, file drop, the AI clipboard, tables across pages and scrolling, page PDF, sign-in handover, a picture and clicks by position, text by a label, takeover and permission queue.');
     app.exit(0);
   }).catch(error => { console.error(error); app.exit(1); });
 }
