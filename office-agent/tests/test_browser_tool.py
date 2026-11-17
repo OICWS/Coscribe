@@ -457,17 +457,23 @@ def test_tab_list_preserves_popup_relationships() -> None:
     assert "opened by Tab 1" in _tools(host)["browser_tabs"]()
 
 
-def test_batch_fill_uses_one_targeted_command() -> None:
+@pytest.mark.parametrize("saved_workflow", [False, True])
+def test_batch_fill_uses_one_targeted_command(saved_workflow: bool) -> None:
     host = _FakeHost({"fill_form": {}})
     fields = [
         {"ref": "Company Code", "text": "1000"},
         {"ref": "Posting Date", "text": "2026-11-16"},
     ]
-    _tools(host)["browser_fill_form"](fields, tab_id="reports")
+    tools = {
+        tool.__name__: tool
+        for tool in build_browser_tools("t1", host, saved_workflow=saved_workflow)
+    }
+    tools["browser_fill_form"](fields, tab_id="reports")
     assert len(host.calls) == 1
     assert host.calls[0][0] == "fill_form"
     assert host.calls[0][1]["fields"] == fields
     assert host.calls[0][1]["tab_id"] == "reports"
+    assert host.calls[0][1].get("saved_workflow", False) == saved_workflow
 
 
 def test_tab_info_returns_runtime_fields_for_workflow_references() -> None:

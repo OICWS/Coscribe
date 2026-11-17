@@ -8,6 +8,7 @@
 // install; it is resolved from there so this package needs no dependency of its own. Without a
 // display (Linux) run it under xvfb-run.
 
+import { checkBrowserOverlay } from "./browser-ui.mjs";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
@@ -104,6 +105,8 @@ try {
     if (platform !== process.platform) throw new Error(`the preload says ${platform}`);
   });
 
+  await step("Context usage preserves the browser and Settings stays in front", () => checkBrowserOverlay(app, window, until));
+
   await step("closing the window quits the app and the sidecar", async () => {
     await window.close();
     await Promise.race([
@@ -124,5 +127,5 @@ try {
 }
 
 const failed = steps.filter(([, error]) => error).length;
-if (steps.length < 3 && !failed) console.log("FAIL  the run ended before every step");
-process.exit(failed || steps.length < 3 ? 1 : 0);
+if (steps.length < 4 && !failed) console.log("FAIL  the run ended before every step");
+process.exit(failed || steps.length < 4 ? 1 : 0);

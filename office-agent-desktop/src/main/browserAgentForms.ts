@@ -96,7 +96,8 @@ export async function fillForm(page: PageActions, command: Command, tab: Tab, wc
     } else {
       await page.act({ ...command, action: "type" }, tab, wc, cdp, { ref, text, submit: false });
     }
-    await page.settle(wc);
+    // Text input already settles in act; other controls still need their change to land.
+    if (before.kind !== "text") await page.settle(wc);
     const after = await cdp.agent<FieldState>(frame, "field_state", { ref: inner }, pageFields).catch(() => null);
     const value = !after ? null : want !== undefined ? (after.checked ? "checked" : "unchecked") : after.value;
     const kept = value === null || (want !== undefined ? after?.checked === want : value.trim() === expected);

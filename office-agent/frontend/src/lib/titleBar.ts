@@ -116,7 +116,7 @@ export function useBackdropOpen(): boolean {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     let frame = 0;
-    const check = () => setOpen(openBackdrops().length > 0 || document.querySelector("[data-native-overlay]") !== null);
+    const check = () => setOpen(openBackdrops().length > 0);
     check();
     const observer = new MutationObserver(() => {
       if (frame) return;

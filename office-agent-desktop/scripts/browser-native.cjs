@@ -119,10 +119,21 @@ if (!process.versions.electron) {
       results.set(id, resolve);
       stream.enqueue(Buffer.from(`data: ${JSON.stringify({ id, thread_id: group, action, args })}\n\n`));
     });
-    await background.view.webContents.loadURL('data:text/html,<label>Company Code<input id="company"></label><label>Posting Date<input id="date"></label><script>window.inputs=0;document.addEventListener("input",()=>window.inputs++)</script>');
-    const filled = await command('fill_form', { tab_id: background.id, fields: [{ ref: 'textbox \"Company Code\"', text: '1000' }, { ref: 'textbox \"Posting Date\"', text: '2026-11-16' }] });
+    const fields = ['Company Code', 'Posting From', 'Posting To', 'Fiscal Year', 'Business Area', 'Document Type'];
+    const values = ['1000', '2026-11-01', '2026-11-17', '2026', 'HQ', 'SA'];
+    await background.view.webContents.loadURL('data:text/html,' + encodeURIComponent(
+      fields.map((label, n) => `<label>${label}<input id="field${n}"></label>`).join('') +
+      '<script>window.accepted={};document.addEventListener("input",e=>{if(e.isTrusted)window.accepted[e.target.id]=e.target.value})</script>'));
+    let settles = 0;
+    const idle = cdp.idle.bind(cdp);
+    cdp.idle = async (...args) => { settles++; return idle(...args); };
+    const filled = await command('fill_form', { tab_id: background.id,
+      fields: fields.map((label, n) => ({ ref: `textbox "${label}"`, text: values[n] })) });
+    cdp.idle = idle;
     assert.equal(filled.ok, true, filled.error);
-    assert.deepEqual(await background.view.webContents.executeJavaScript('[company.value,date.value,window.inputs]'), ['1000','2026-11-16',2]);
+    assert.deepEqual(await background.view.webContents.executeJavaScript('Object.values(window.accepted)'), values,
+      'one batch must update all six fields through the page input handlers');
+    assert.equal(settles, fields.length, 'text fields must settle once, not twice per field');
     await background.view.webContents.loadURL('data:text/html,' + encodeURIComponent(
       '<label>Plant<select id="plant" aria-label="Plant"><option>Berlin</option><option value="HH">Hamburg</option></select></label>' +
       '<label><input type="checkbox" id="urgent">Urgent</label><label><input type="radio" name="m" id="air">Air</label>' +

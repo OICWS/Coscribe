@@ -43,6 +43,7 @@ import {
   type BrowserPermissionAnswer,
   type BrowserPermissionRequest,
 } from "../lib/electron";
+import { useOverlayOverlap } from "../lib/useOverlayOverlap";
 import { useBackdropOpen } from "../lib/titleBar";
 import { PickedPreview, type BrowserCapture, type PickedElement } from "./PickedPreview";
 import { useDockPanel } from "./dock/dockContext";
@@ -227,8 +228,10 @@ export function DesktopBrowserPanel({
   // A move to a box of the same size is no resize, so the observer misses it.
   useEffect(() => repositionRef.current(), [dock.boundsKey]);
 
+  const popoverOverlaps = useOverlayOverlap(containerRef);
+  const freezePage = dock.frozen || popoverOverlaps;
   useEffect(() => {
-    if (!dock.frozen) {
+    if (!freezePage) {
       setSnapshot(null);
       return;
     }
@@ -244,7 +247,7 @@ export function DesktopBrowserPanel({
     return () => {
       live = false;
     };
-  }, [dock.frozen]);
+  }, [freezePage]);
 
   useEffect(() => {
     void browserPanelSetPickMode(pickMode);

@@ -52,6 +52,10 @@ Last reviewed: 2026-11-06.
 
 ## Open, smaller
 
+- **Browser Context/form checks** (#932): full-app popover visibility and six-field batch
+  regressions are covered; authenticated SAP verification remains with the maintainer
+  (`docs/log/2026-11-17-context-browser-visibility.md`).
+
 - **Plan review** (#901): done (the model asks for review outside Plan mode; the person edits
   the task list in the Plan panel before accepting). Later: drag to reorder; `task_update`
   rewording or dropping a step, `task_create` taking several steps
