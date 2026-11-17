@@ -1,7 +1,7 @@
 /**
  * Taking data off a page: a table or list as rows, gathered across its
- * pages (a Next button) or as it loads more on scrolling, and the page as
- * a PDF. The rows and bytes go back to the server, which writes the file
+ * pages (a Next button) or as it loads more on scrolling, the page as a
+ * PDF, and the page as a picture or a piece of its text (browserAgentLook.ts). The rows and bytes go back to the server, which writes the file
  * where the person's folders allow.
  */
 
@@ -9,6 +9,7 @@ import type { WebContents } from "electron";
 import type { Command } from "./browserAgent";
 import type { PageActions } from "./browserAgentForms";
 import { locate } from "./browserAgentLocate";
+import { look, readText } from "./browserAgentLook";
 import type { TabCdp } from "./browserCdp";
 
 interface Rows { kind: string; header: string[] | null; rows: string[][] }
@@ -182,6 +183,8 @@ async function collect(page: PageActions, wc: WebContents, cdp: TabCdp, args: Re
 }
 
 export async function runData(page: PageActions, command: Command, wc: WebContents, cdp: TabCdp, args: Record<string, unknown>, waitS: number): Promise<Record<string, unknown>> {
+  if (command.action === "look") return look(page, wc, cdp);
+  if (command.action === "read_text") return readText(page, cdp, args, waitS);
   if (command.action === "save_pdf") {
     const pdf = await wc.printToPDF({ printBackground: true, landscape: args.landscape === true });
     return { pdf: pdf.toString("base64") };

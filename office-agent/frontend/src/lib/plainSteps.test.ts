@@ -56,6 +56,8 @@ describe("plain words for a step", () => {
     );
     expect(plainDetail(tool("browser_save_table", {}), inputs)).toBe("Reads the table");
     expect(plainDetail(tool("browser_save_pdf", { path: "page.pdf" }), inputs)).toBe("Saves the page as “page.pdf”");
+    expect(plainDetail(tool("browser_read_text", { near: "Price" }), inputs)).toBe("Reads “Price” on the page");
+    expect(plainDetail(tool("browser_click_at", { x: 4, y: 5 }), inputs)).toBe("Clicks a point on the page");
     expect(plainDetail(tool("browser_paste", { ref: 'textbox "Notes"' }), inputs)).toBe("Pastes into “Notes”");
     expect(plainDetail(tool("browser_wait_for", { any_of: ["Saved", "Error"] }), inputs)).toBe(
       "Waits for the page to show “Saved” or “Error”",

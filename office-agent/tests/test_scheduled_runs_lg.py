@@ -128,6 +128,24 @@ def test_a_notification_says_what_the_run_produced_or_where_it_stopped() -> None
     assert run_event(_task([]), _run("stopped")) is None
 
 
+def test_a_completed_watch_says_the_value_it_kept() -> None:
+    task = _task([])
+    task.workflow = {
+        "memory": [{"name": "price", "label": "Price", "type": "text"},
+                   {"name": "last", "label": "Last checked", "type": "date"}],
+        "steps": [{"id": "keep", "kind": "remember", "title": "Keep", "name": "price",
+                   "value": "x"},
+                  {"id": "when", "kind": "remember", "title": "When", "name": "last",
+                   "value": "{{run.date}}"}],
+    }  # fmt: skip
+    run = _run("completed", steps=[
+        {"step_id": "keep", "status": "done", "output": {"name": "price", "value": "¥89"}},
+        {"step_id": "when", "status": "done", "output": {"name": "last", "value": "2026-11-17"}},
+    ])  # fmt: skip
+    event = run_event(task, run)
+    assert event is not None and event.body == "Completed · Price: ¥89"
+
+
 def test_a_heal_no_saved_fix_can_keep_is_drafted_as_a_revision() -> None:
     workflow = {"steps": [
         {"id": "name", "kind": "tool", "title": "Enter Company name", "tool": "browser_type",

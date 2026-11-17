@@ -184,7 +184,12 @@ run finishes, so a later step of the same run still reads the old one, and \
 a failed run keeps nothing. A "list" that grows too long keeps its newest \
 items. The usual shape: read {{memory.seen}}, work out what is new in a \
 script, end with a check "otherwise": "end" when nothing is, do the work, \
-then remember what was handled.
+then remember what was handled. A task that watches a page for a change \
+(a price, a status, a notice) reads it with browser_read_text, checks \
+{"ref": "<its save_as>.text"} "ne" {"ref": "memory.<name>"} with \
+"otherwise": "end", and remembers {{<its save_as>.text}} under a memory \
+with a label: the person's notification shows the label and the new \
+value.
 
 References: "{{name}}" or "{{name.field}}" reads an input or an earlier \
 step's save_as. A whole-string reference keeps the value's type; inside \
@@ -230,7 +235,9 @@ a workflow that downloads files an input for the folder to keep them in \
 "downloads") and pass it to the download wait as save_to. A run's pages \
 stay open afterwards so the person can check them; end with a \
 browser_tabs "close_all" step only where the conversation closed them or \
-the person asked for that.
+the person asked for that. Keep a browser_click_at step only where the \
+conversation found nothing to name; its position depends on the page's \
+layout, so say so in "notes".
 - "notes" lists what you weren't sure about: guesses, values you turned \
 into inputs, steps you dropped on purpose.
 """
