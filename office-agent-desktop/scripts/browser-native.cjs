@@ -123,17 +123,62 @@ if (!process.versions.electron) {
     const values = ['1000', '2026-11-01', '2026-11-17', '2026', 'HQ', 'SA'];
     await background.view.webContents.loadURL('data:text/html,' + encodeURIComponent(
       fields.map((label, n) => `<label>${label}<input id="field${n}"></label>`).join('') +
-      '<script>window.accepted={};document.addEventListener("input",e=>{if(e.isTrusted)window.accepted[e.target.id]=e.target.value})</script>'));
+      '<script>window.accepted={};window.inputTurns=[];window.turn=0;setInterval(()=>window.turn++,0);document.addEventListener("input",e=>{if(e.isTrusted){window.accepted[e.target.id]=e.target.value;window.inputTurns.push(window.turn)}})</script>'));
     let settles = 0;
     const idle = cdp.idle.bind(cdp);
     cdp.idle = async (...args) => { settles++; return idle(...args); };
-    const filled = await command('fill_form', { tab_id: background.id,
+    const filled = await command('fill_form', { tab_id: background.id, mode: 'type',
       fields: fields.map((label, n) => ({ ref: `textbox "${label}"`, text: values[n] })) });
     cdp.idle = idle;
     assert.equal(filled.ok, true, filled.error);
     assert.deepEqual(await background.view.webContents.executeJavaScript('Object.values(window.accepted)'), values,
       'one batch must update all six fields through the page input handlers');
     assert.equal(settles, fields.length, 'text fields must settle once, not twice per field');
+    await background.view.webContents.executeJavaScript('window.accepted={};window.inputTurns=[]');
+    settles = 0;
+    cdp.idle = async (...args) => { settles++; return idle(...args); };
+    const batch = await command('fill_form', { tab_id: background.id,
+      fields: fields.map((label, n) => ({ ref: `textbox "${label}"`, text: values[n] })) });
+    cdp.idle = idle;
+    assert.equal(batch.ok, true, batch.error);
+    assert.equal(batch.result.mode, 'batch');
+    assert.equal(settles, 1, 'batch editing settles once for the entire form');
+    assert.deepEqual(await background.view.webContents.executeJavaScript('Object.values(window.accepted)'), values,
+      'batch editing repairs application state even when the DOM already displays the values');
+    const turns = await background.view.webContents.executeJavaScript('window.inputTurns');
+    assert.equal(turns.length, fields.length);
+    assert.equal(new Set(turns).size, 1, 'all six trusted input events must happen in the same page turn');
+    await background.view.webContents.loadURL('data:text/html,' + encodeURIComponent(
+      '<label>Notes<textarea id="notes" aria-label="Notes">old</textarea></label><label>Amount<input id="amount" aria-label="Amount" type="number" value="12"></label>' +
+      '<div contenteditable="true" role="textbox" aria-label="Message" id="message">old</div>' +
+      '<label>Locked<input id="locked" readonly value="keep"></label>'));
+    const editables = await command('fill_form', { tab_id: background.id, fields: [
+      { ref: 'textbox "Notes"', text: '第一行\nsecond line' }, { ref: 'spinbutton "Amount"', text: '42' },
+      { ref: 'textbox "Message"', text: 'new message' }] });
+    assert.equal(editables.ok, true, editables.error);
+    assert.deepEqual(await background.view.webContents.executeJavaScript('[notes.value,amount.value,message.textContent]'),
+      ['第一行\nsecond line', '42', 'new message']);
+    const refused = await command('fill_form', { tab_id: background.id, fields: [
+      { ref: 'textbox "Notes"', text: 'must not change' }, { ref: 'textbox "Locked"', text: 'cannot' }] });
+    assert.equal(refused.ok, false);
+    assert.match(refused.error, /read-only/);
+    assert.equal(await background.view.webContents.executeJavaScript('notes.value'), '第一行\nsecond line',
+      'preflight must reject an unsupported target before editing any field');
+
+    const cleared = await command('fill_form', { tab_id: background.id, fields: [
+      { ref: 'textbox "Notes"', text: '' }, { ref: 'spinbutton "Amount"', text: '0' },
+      { ref: 'textbox "Message"', text: '<b>plain text</b>' }] });
+    assert.equal(cleared.ok, true, cleared.error);
+    assert.deepEqual(await background.view.webContents.executeJavaScript('[notes.value,amount.value,message.textContent,!!message.querySelector("b")]'),
+      ['', '0', '<b>plain text</b>', false], 'batch editing clears and inserts text without interpreting HTML');
+    await background.view.webContents.loadURL('data:text/html,' + encodeURIComponent(
+      '<label>First<input id="first" oninput="document.getElementById(\'second\').remove()"></label>' +
+      '<label>Second<input id="second"></label>'));
+    const replaced = await command('fill_form', { tab_id: background.id, fields: [
+      { ref: 'textbox "First"', text: 'kept' }, { ref: 'textbox "Second"', text: 'later' }] });
+    assert.equal(replaced.ok, false);
+    assert.match(replaced.error, /Batch stopped after 1\/2/);
+    assert.equal(await background.view.webContents.executeJavaScript('first.value'), 'kept');
     await background.view.webContents.loadURL('data:text/html,' + encodeURIComponent(
       '<label>Plant<select id="plant" aria-label="Plant"><option>Berlin</option><option value="HH">Hamburg</option></select></label>' +
       '<label><input type="checkbox" id="urgent">Urgent</label><label><input type="radio" name="m" id="air">Air</label>' +

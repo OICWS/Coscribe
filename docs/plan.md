@@ -52,9 +52,13 @@ Last reviewed: 2026-11-06.
 
 ## Open, smaller
 
-- **Browser Context/form checks** (#932): full-app popover visibility and six-field batch
-  regressions are covered; authenticated SAP verification remains with the maintainer
-  (`docs/log/2026-11-17-context-browser-visibility.md`).
+- **Compaction history:** bounded checkpoint reads and reconnect pagination are covered.
+  The reported apparent change to an investigation title is not reproduced; confirm against
+  the affected conversation (`docs/log/2026-11-17-compact-history-paging.md`).
+
+- **Browser Context/form checks** (#932, #934): full-app popover visibility and genuine
+  single-execution form batches are covered; authenticated SAP verification remains with
+  the maintainer (`docs/log/2026-11-17-page-batch-input.md`).
 
 - **Plan review** (#901): done (the model asks for review outside Plan mode; the person edits
   the task list in the Plan panel before accepting). Later: drag to reorder; `task_update`

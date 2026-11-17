@@ -71,6 +71,17 @@ def test_compact_note_ends_with_the_open_tasks(
 def test_load_older_messages_across_two_compactions_reveals_each_epoch_once(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+
+    limits = []
+    original = AsyncSqliteSaver.alist
+
+    async def tracked_history(self, *args, **kwargs):
+        limits.append(kwargs.get("limit"))
+        async for checkpoint in original(self, *args, **kwargs):
+            yield checkpoint
+
+    monkeypatch.setattr(AsyncSqliteSaver, "alist", tracked_history)
     fake_model = FakeToolCallingChatModel(
         responses=[
             AIMessage(content="reply one-a"),
@@ -137,6 +148,49 @@ def test_load_older_messages_across_two_compactions_reveals_each_epoch_once(
     # a naive "always subset-check against the current checkpoint" version
     # of this would have hit -- see load_older_messages' own docstring).
     assert third_older == {"type": "older_messages", "entries": [], "has_more": False}
+    assert limits and all(limit == 1 for limit in limits)
+
+
+def test_compacted_history_can_be_reloaded_after_switching_threads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    image = "data:image/png;base64,aGVsbG8="
+    model = FakeToolCallingChatModel(responses=[
+        AIMessage(content="picture reply"), AIMessage(content="second reply"),
+        AIMessage(content="summary"), AIMessage(content="other conversation"),
+    ])
+    with _client_lg(tmp_path, monkeypatch, model) as client:
+        titles = {"original": "My original conversation", "repair": "Look into: Export"}
+        for thread_id, title in titles.items():
+            (tmp_path / "state" / f"{thread_id}.title").write_text(title, encoding="utf-8")
+        with client.websocket_connect("/ws/original") as ws:
+            ws.receive_json()
+            ws.receive_json()
+            ws.send_json({"type": "user_message", "text": "my picture", "images": [image]})
+            _receive_until(ws, "tasks_changed")
+            ws.send_json({"type": "user_message", "text": "another turn"})
+            _receive_until(ws, "tasks_changed")
+            ws.send_json({"type": "user_message", "text": "/compact"})
+            assert ws.receive_json()["type"] == "compacted"
+            ws.send_json({"type": "load_older_messages"})
+            original = ws.receive_json()["entries"]
+            assert original[0] == {"kind": "user", "text": "my picture", "images": [image]}
+            ws.send_json({"type": "load_older_messages"})
+            assert ws.receive_json()["entries"] == []
+
+        with client.websocket_connect("/ws/repair") as ws:
+            ws.receive_json()
+            assert ws.receive_json()["entries"] == []
+            ws.send_json({"type": "user_message", "text": "separate repair conversation"})
+            _receive_until(ws, "tasks_changed")
+        listed = {thread["thread_id"]: thread for thread in client.get("/api/threads").json()}
+        assert {key: listed[key]["preview"] for key in titles} == titles
+
+        with client.websocket_connect("/ws/original") as ws:
+            ws.receive_json()
+            assert ws.receive_json()["has_older"] is True
+            ws.send_json({"type": "load_older_messages"})
+            assert ws.receive_json()["entries"] == original
 
 
 def test_edit_message_rejects_anything_but_the_latest_message(
