@@ -101,8 +101,11 @@ check clicks with real input (xdotool under Xvfb, or Windows itself).
   busy ones and reports why; closing a popup prefers its source. Automation selection is separate from the visible tab; targeted
   commands run concurrently across tabs, serially within each. The panel reports per-tab
   activity and supports user takeover. Saved names, structured tab info and source-scoped
-  relative targets work in workflows; form batches reuse normal input events, fill dropdowns,
-  checkboxes, radio buttons and date fields too, and report any value the page changed. Several
+  relative targets work in workflows. `browserAgentBatch.ts` fills a form in one page execution,
+  using browser editing commands for text and reporting values the page changed. It supports
+  standard dropdowns, checkboxes, radio buttons and native date fields too. The explicit typing
+  mode retains sequential input for sites that need it; a batch requires one frame and never
+  silently switches to typing. Readback alone does not prove server acceptance. Several
   actions on one page run as one step (`steps`), stopping at the first that fails, and a wait can
   end at the first of several texts (`any_of`). The AI drags with real mouse input, or hands an
   HTML5 drag's data to its drop target (`browserAgentMoves.ts`), drops files onto a drop area, and

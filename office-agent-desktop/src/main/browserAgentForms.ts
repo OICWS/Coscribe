@@ -6,6 +6,7 @@
 
 import type { WebContents } from "electron";
 import type { Command } from "./browserAgent";
+import { fillBatch } from "./browserAgentBatch";
 import { locate, splitRef } from "./browserAgentLocate";
 import type { PageDialog, TabCdp } from "./browserCdp";
 import type { Tab } from "./browserPanel";
@@ -69,6 +70,9 @@ export function pageFields(action: string, args: Record<string, unknown>): unkno
 /** Every kind of field in one call, each read back afterwards: a page may
  * reformat what it was given, and the result says so rather than hiding it. */
 export async function fillForm(page: PageActions, command: Command, tab: Tab, wc: WebContents, cdp: TabCdp, fields: FormField[], waitS: number): Promise<Record<string, unknown>[]> {
+  const mode = command.args.mode ?? "batch";
+  if (mode === "batch") return fillBatch(page, wc, cdp, fields, waitS);
+  if (mode !== "type") throw new Error('Use mode="batch" or mode="type".');
   const filled: Record<string, unknown>[] = [];
   for (const field of fields) {
     page.checkStop();
@@ -114,7 +118,7 @@ export async function runSteps(page: PageActions, command: Command, tab: Tab, wc
     const [kind] = Object.keys(step).filter((k) => ["click", "type", "select", "press_key", "wait_for", "fill"].includes(k));
     try {
       if (kind === "fill") {
-        await fillForm(page, command, tab, wc, cdp, step.fill as FormField[], waitS);
+        await fillForm(page, { ...command, args: { ...command.args, mode: step.mode ?? "batch" } }, tab, wc, cdp, step.fill as FormField[], waitS);
       } else if (kind === "press_key") {
         await page.act({ ...command, action: "press_key" }, tab, wc, cdp, { key: step.press_key });
       } else if (kind === "wait_for") {

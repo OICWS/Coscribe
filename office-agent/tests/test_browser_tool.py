@@ -473,6 +473,7 @@ def test_batch_fill_uses_one_targeted_command(saved_workflow: bool) -> None:
     assert host.calls[0][0] == "fill_form"
     assert host.calls[0][1]["fields"] == fields
     assert host.calls[0][1]["tab_id"] == "reports"
+    assert host.calls[0][1]["mode"] == "batch"
     assert host.calls[0][1].get("saved_workflow", False) == saved_workflow
 
 
@@ -565,7 +566,7 @@ def test_fill_form_names_the_fields_the_page_changed() -> None:
     )
     fields = [{"ref": "Name", "text": "Ada"}, {"ref": "Date", "text": "2026-11-16"}]
     lines = _tools(host)["browser_fill_form"](fields).splitlines()
-    assert lines[0] == "Filled 2 fields."
+    assert lines[0] == "Filled 2 fields in one page execution."
     assert lines[1].startswith('textbox "Date" now holds "16.11.2026"')
     assert 'textbox "Name"' not in "\n".join(lines)
 
@@ -639,3 +640,35 @@ def test_dropping_files_needs_the_area(tmp_path: Path) -> None:
         tools["browser_file_upload"](["a.pdf"], drop=True)
     tools["browser_file_upload"](["a.pdf"], ref="Drop here", drop=True)
     assert host.calls[0][1]["drop"] is True
+
+
+@pytest.mark.parametrize("saved_workflow", [False, True])
+def test_fill_form_explicit_typing_mode_is_available(saved_workflow: bool) -> None:
+    host = _FakeHost({"fill_form": {}})
+    tools = {
+        tool.__name__: tool
+        for tool in build_browser_tools("t1", host, saved_workflow=saved_workflow)
+    }
+    result = tools["browser_fill_form"]([{"ref": "e1", "text": "value"}], mode="type")
+    assert host.calls[0][1]["mode"] == "type"
+    assert "sequential input" in result
+    with pytest.raises(ValueError, match="mode"):
+        tools["browser_fill_form"]([{"ref": "e1", "text": "value"}], mode="auto")
+
+
+def test_page_steps_accept_an_explicit_fill_mode() -> None:
+    host = _FakeHost({"steps": {"done": []}})
+    steps = [{"fill": [{"ref": "e1", "text": "value"}], "mode": "type"}]
+    _tools(host)["browser_steps"](steps)
+    assert host.calls[0][1]["steps"] == steps
+    with pytest.raises(ValueError, match="mode"):
+        _tools(host)["browser_steps"]([{**steps[0], "mode": "auto"}])
+
+
+def test_fill_form_schema_exposes_real_batch_and_sequential_modes() -> None:
+    from langchain_core.utils.function_calling import convert_to_openai_tool
+
+    schema = convert_to_openai_tool(_tools(_FakeHost({}))["browser_fill_form"])
+    mode = schema["function"]["parameters"]["properties"]["mode"]
+    assert mode["default"] == "batch"
+    assert mode["enum"] == ["batch", "type"]
