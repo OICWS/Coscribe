@@ -1124,20 +1124,21 @@ constructor -- that's all an OpenAI-compatible endpoint needs.
 catalog itself, for the same staleness reason -- fill in your own
 current model id there); it isn't read by anything else.
 
-The web UI's **Settings → Providers** tab (see the Web UI section) edits
-this same file for you, with DeepSeek, Kimi (Moonshot), Zhipu GLM, and a
-local Ollama runtime as one-click catalog entries plus a form for any
-other OpenAI-compatible API -- those four are convenient examples, not
-an exhaustive list; none of them pre-fill a guessed "default model" (see
-above) since that goes stale, fill in your own. Adding or removing a
-provider here is saved immediately, no restart needed, and takes effect
-in already-open conversations too, not just new ones. Anthropic,
-OpenAI, and Gemini (the three built-in providers, configured by API key
-rather than base URL) also appear in this tab once their key is set in
-**Settings → API Keys**, alongside an optional "default model" field per
-key -- that pairing is what lets the composer's model pill (below) offer a
-one-click switch to that provider without you having to remember or type
-its exact model id.
+The web UI's **Settings → Providers** tab edits this same file for you. It is
+laid out like Connectors: **Yours** lists what is added (logo, default model,
+the key's last four characters), **Discover** shows the catalog
+(`web/provider_catalog.py`) as cards with each provider's logo, and each
+provider has its own page with a link to where its key is made. The catalog
+holds the three built-in providers (Anthropic, OpenAI, Gemini, configured by
+API key rather than base URL) and OpenAI-compatible presets: DeepSeek, Kimi,
+GLM, Qwen, Doubao, MiniMax, SiliconFlow, OpenRouter, Mistral, xAI, Groq,
+Together AI, Fireworks AI, Cerebras, and local Ollama and LM Studio. They are
+conveniences, not a limit: **Add → Add custom provider** takes any other
+OpenAI-compatible API. None pre-fills a guessed default model (see above).
+Adding or removing a provider is saved immediately, no restart needed, and
+takes effect in already-open conversations too. A provider's optional default
+model is what lets the composer's model pill (below) offer a one-click switch
+to it without you typing its exact model id.
 
 ## Secrets storage
 
